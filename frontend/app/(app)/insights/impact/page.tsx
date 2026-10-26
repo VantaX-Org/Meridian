@@ -20,7 +20,8 @@ import {
 import { domainOf } from "@/design/tokens";
 import { getCostModel } from "@/lib/api/settings";
 import { drillLabel, fixHref } from "@/lib/drill";
-import { plural } from "@/lib/format";
+import { featureLabel, plural } from "@/lib/format";
+import { previousInLineage } from "@/lib/runs";
 import { isListFailure, apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
@@ -63,7 +64,7 @@ const impactColumns = (currency?: string | null, run?: string): ColumnDef<Impact
     header: "SAP feature",
     cell: ({ row }) => (
       <span className="flex flex-col">
-        <span>{row.original.feature}</span>
+        <span>{featureLabel(row.original.feature)}</span>
         {row.original.l1 ? <span className="m-text-meta m-ink-3">{l1Label(row.original.l1)}</span> : null}
       </span>
     ),
@@ -77,7 +78,7 @@ const impactColumns = (currency?: string | null, run?: string): ColumnDef<Impact
     // rule named it is a plain figure.
     cell: ({ row }) => {
       const [first, ...more] = row.original.causing_rules;
-      const label = `${drillLabel({ count: row.original.record_count, what: "blocked records", check: first })} that block ${row.original.feature}${more.length ? `; ${plural(more.length, "more rule")} in the rules column` : ""}`;
+      const label = `${drillLabel({ count: row.original.record_count, what: "blocked records", check: first })} that block ${featureLabel(row.original.feature)}${more.length ? `; ${plural(more.length, "more rule")} in the rules column` : ""}`;
       return <DrillCount href={first ? ruleRecordsHref(first, run) : undefined} count={row.original.record_count} label={label}>{row.original.record_count.toLocaleString()}</DrillCount>;
     },
   },
@@ -96,7 +97,7 @@ const impactColumns = (currency?: string | null, run?: string): ColumnDef<Impact
   {
     id: "action", header: "", enableSorting: false,
     cell: ({ row }) => (row.original.causing_rules[0]
-      ? <Link href={ruleRecordsHref(row.original.causing_rules[0], run)} aria-label={`Open the records that block ${row.original.feature}`} className="m-ink-accent underline underline-offset-2">Open records</Link>
+      ? <Link href={ruleRecordsHref(row.original.causing_rules[0], run)} aria-label={`Open the records that block ${featureLabel(row.original.feature)}`} className="m-ink-accent underline underline-offset-2">Open records</Link>
       : "—"),
   },
 ];
@@ -145,7 +146,7 @@ function ProvenCostPanel({ query, run }: { query: UseQueryResult<ProvenCostRespo
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="m-stat-grid">
         <Stat
           label="Largest proven cost, one process"
           help="provenCost"
@@ -153,9 +154,9 @@ function ProvenCostPanel({ query, run }: { query: UseQueryResult<ProvenCostRespo
           hint={topCost ? `${l1Label(topCost.l1)}, across ${topCost.processes} ${topCost.processes === 1 ? "process" : "processes"}` : undefined}
         />
         <Stat
-          label="Most at risk, one process"
+          label={topRisk ? `Most at risk: ${l1Label(topRisk.l1)}` : "Most at risk"}
           value={topRisk ? formatMoney(topRisk.value_at_risk, currency) : "—"}
-          hint={topRisk ? `${l1Label(topRisk.l1)}, across ${topRisk.processes} ${topRisk.processes === 1 ? "process" : "processes"}` : undefined}
+          hint={topRisk ? `Across ${topRisk.processes} ${topRisk.processes === 1 ? "process" : "processes"}` : undefined}
         />
       </div>
       {rows.length === 0 ? (
@@ -204,8 +205,8 @@ function ImpactPanel({
       return (
         <EmptyState
           title="No feature is priced yet"
-          detail="Value at risk multiplies blocked records by a value per record. Give each SAP feature a value under Admin, Settings."
-          action={<Button render={<Link href="/admin/settings">Open settings</Link>} />}
+          detail="Value at risk multiplies blocked records by a value per record. Give each SAP feature a value under Rules, Scoring and alerts, in the cost model."
+          action={<Button render={<Link href="/rules/scoring#feature-values">Set feature values</Link>} />}
         />
       );
     }
@@ -217,18 +218,28 @@ function ImpactPanel({
       />
     );
   }
-  return <DataTable columns={impactColumns(currency, run)} data={rows} getRowId={(row) => row.feature} hideToolbar dense height="auto" />;
+  return <DataTable columns={impactColumns(currency, run)} data={rows} getRowId={(row) => row.feature} hideToolbar height="auto" />;
 }
 
 export default function ImpactPage() {
-  const { run, resolving } = useInsightScope();
+  const { run, runs, resolving, error: listError, refetch: refetchList } = useInsightScope();
   const dayOne = useDayOne();
+  // No run because the run list (or the day-one sources) failed: an error, never "No value at risk yet".
+  const loadError = run ? null : listError ?? (dayOne.status === "error" ? dayOne.error : null);
 
   // Both follow the run the header names; they wait for it rather than read whatever run the API thinks is latest.
   const impactQuery = useQuery({
     queryKey: queryKeys.insights("impact", run),
     queryFn: () => getImpact({ version_id: run }),
     enabled: !!run,
+  });
+  // What changed: the same features at the run before this one in its lineage (same system, or uploads of the same objects).
+  const current = runs.find((r) => r.id === run);
+  const previous = current ? previousInLineage(current, runs) : null;
+  const prevQuery = useQuery({
+    queryKey: queryKeys.insights("impact", previous?.id),
+    queryFn: () => getImpact({ version_id: previous?.id }),
+    enabled: !!previous,
   });
   const provenCostQuery = useQuery({
     queryKey: queryKeys.insights("proven-cost", run),
@@ -243,10 +254,24 @@ export default function ImpactPage() {
   const rows = impactRows(impactQuery.data?.rows ?? []);
   const top = [...rows].sort((x, y) => y.value_at_risk - x.value_at_risk)[0];
   const currency = provenCostQuery.data?.currency ?? costModel.data?.currency;
-  const byFeature = rows.filter((r) => r.value_at_risk > 0).map((r) => ({ x: r.feature, y: r.value_at_risk, domain: domainOf(r.feature) }));
+  const byFeature = rows.filter((r) => r.value_at_risk > 0).map((r) => ({ x: featureLabel(r.feature), y: r.value_at_risk, domain: domainOf(r.feature) }));
+  const prevRows = impactRows(prevQuery.data?.rows ?? []);
+  const atRisk = rows.reduce((n, r) => n + r.value_at_risk, 0);
+  const prevAtRisk = prevRows.reduce((n, r) => n + r.value_at_risk, 0);
+  const changed = previous && prevQuery.isLoading
+    ? <Skeleton height={16} />
+    : !previous
+      ? "First run of this system"
+      : !prevQuery.data
+        ? "The previous run could not be read"
+        : atRisk !== prevAtRisk
+          ? `Value at risk ${atRisk > prevAtRisk ? "up" : "down"} ${formatMoney(Math.abs(atRisk - prevAtRisk), currency)} since the previous run`
+          : rows.length === prevRows.length
+            ? `${plural(rows.length, "feature")} blocked, as in the previous run`
+            : `${Math.abs(rows.length - prevRows.length).toLocaleString()} ${rows.length > prevRows.length ? "more" : "fewer"} features blocked than in the previous run`;
 
   // Each card follows its own query, so proven cost shows while a large impact query is still running.
-  const state: "loading" | "empty" | undefined = dayOne.status === "loading" || resolving ? "loading" : !run ? "empty" : undefined;
+  const state: "loading" | "empty" | "error" | undefined = dayOne.status === "loading" || resolving ? "loading" : loadError ? "error" : !run ? "empty" : undefined;
 
   return (
     <InsightFrame
@@ -255,6 +280,7 @@ export default function ImpactPage() {
       scope
       run={run}
       state={state}
+      errorProps={{ error: loadError, onRetry: () => { refetchList(); dayOne.refetch(); } }}
       emptyProps={{
         title: "No value at risk yet",
         detail: dayOne.step?.detail ?? "Value at risk is worked out from a finished run.",
@@ -272,18 +298,18 @@ export default function ImpactPage() {
         loading: impactQuery.isLoading,
         situation: {
           sentence: top && top.value_at_risk > 0
-            ? `${formatMoney(top.value_at_risk, currency)} at risk in ${top.feature}, the largest of ${plural(rows.length, "blocked SAP feature")}`
+            ? `${formatMoney(top.value_at_risk, currency)} at risk in ${featureLabel(top.feature)}, the largest of ${plural(rows.length, "blocked SAP feature")}`
             : rows.length ? `${plural(rows.length, "feature is", "features are")} blocked, but none is priced yet` : "No feature carries value at risk",
           tone: top && top.value_at_risk > 0 ? "at-risk" : rows.length ? "at-risk" : "go",
         },
-        changed: { sentence: provenCostQuery.data ? `${plural(provenCostQuery.data.rows.length, "cost is", "costs are")} proven by posted documents` : provenCostQuery.isError ? "Proven cost did not load" : "Reading proven cost" },
+        changed: { sentence: changed, href: previous && run ? `/runs/${run}/vs/${previous.id}` : undefined },
         why: { sentence: "Value at risk is what the blocked records are worth: their count times the value of each" },
         next: unpriced
-          ? { sentence: "Give each SAP feature a value and the defects get a price", action: { label: "Open settings", href: "/admin/settings" } }
+          ? { sentence: "Give each SAP feature a value and the defects get a price", action: { label: "Set feature values", href: "/rules/scoring#feature-values" } }
           : top
           ? top.causing_rules[0]
-            ? { sentence: `Fix the rule behind ${top.feature}`, action: { label: "Open its records", href: ruleRecordsHref(top.causing_rules[0], run) } }
-            : { sentence: `Fix the rules behind ${top.feature}`, action: { label: "Open failing rules", href: withScope("/insights/rules", { run }) } }
+            ? { sentence: `Fix the rule behind ${featureLabel(top.feature)}`, action: { label: "Open its records", href: ruleRecordsHref(top.causing_rules[0], run) } }
+            : { sentence: `Fix the rules behind ${featureLabel(top.feature)}`, action: { label: "Open failing rules", href: withScope("/insights/rules", { run }) } }
           : { sentence: "Nothing is blocked; keep the score where it is", action: { label: "Open failing rules", href: withScope("/insights/rules", { run }) } },
       }}
     >

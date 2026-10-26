@@ -20,6 +20,7 @@ import {
   type ImpactRow, type LineageDirection, type LineageNode,
 } from "@/lib/api/lineage";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
+import { formatModuleName } from "@/lib/format";
 import { runScopeLabel } from "@/lib/run-scope";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
@@ -44,7 +45,7 @@ function GuardsPanel({ node, versionId }: { node: string; versionId?: string }) 
   const d = q.data;
   return (
     <div className="flex flex-col gap-2">
-      <h3 className="font-medium">Rules that check it</h3>
+      <h3 className="m-text-h font-semibold m-ink">Rules that check it</h3>
       <p className="m-text-body m-ink-2">
         {d.steps.length.toLocaleString()} process {d.steps.length === 1 ? "step feeds" : "steps feed"} this item.{" "}
         {d.coverage_gaps.length ? `${d.coverage_gaps.length.toLocaleString()} of them ${d.coverage_gaps.length === 1 ? "has" : "have"} no rule checking the data.` : "Every step has a rule checking its data."}
@@ -68,7 +69,8 @@ function GuardsPanel({ node, versionId }: { node: string; versionId?: string }) 
   );
 }
 
-function BlastPanel({ checkId, versionId }: { checkId: string; versionId: string }) {
+/** `objectName` names a lineage object id from the traced graph; an id outside it reads through `formatModuleName`. */
+function BlastPanel({ checkId, versionId, objectName }: { checkId: string; versionId: string; objectName?: (id: string) => string | undefined }) {
   const q = useQuery({
     queryKey: queryKeys.lineageBlast(versionId, checkId),
     queryFn: () => getBlastRadius(versionId, checkId),
@@ -83,10 +85,10 @@ function BlastPanel({ checkId, versionId }: { checkId: string; versionId: string
   }
   return (
     <div className="flex flex-col gap-2">
-      <h3 className="font-medium">What this rule reaches</h3>
+      <h3 className="m-text-h font-semibold m-ink">What this rule reaches</h3>
       <p className="m-text-body m-ink-2">
         {d.failing_records.toLocaleString()} failing {d.failing_records === 1 ? "record" : "records"}{d.keys_truncated ? " (first ones only)" : ""} on{" "}
-        {d.object ?? "an unmapped object"} touch {d.processes_touched.length.toLocaleString()} {d.processes_touched.length === 1 ? "process" : "processes"}.
+        {d.object ? objectName?.(d.object) ?? formatModuleName(d.object) : "an unmapped object"} touch {d.processes_touched.length.toLocaleString()} {d.processes_touched.length === 1 ? "process" : "processes"}.
       </p>
       {d.targets.length ? (
         <ul className="flex flex-col gap-2">
@@ -115,8 +117,10 @@ export default function LineagePage() {
   const [direction, setDirection] = useState<LineageDirection>("both");
   const [depth, setDepth] = useState(4);
   const [selId, setSelId] = useState<string | null>(null);
-  const { latest } = useLatestVersion();
+  const { latest, error: latestError, refetch: refetchLatest } = useLatestVersion();
   const dayOne = useDayOne();
+  // No run because the run list (or the day-one sources) failed: an error, never "No lineage yet".
+  const noRunError = latest ? null : latestError ?? (dayOne.status === "error" ? dayOne.error : null);
 
   const modelQ = useQuery({ queryKey: queryKeys.lineageModel(), queryFn: getLineageModel });
   const impactQ = useQuery({
@@ -201,7 +205,7 @@ export default function LineagePage() {
   const purpose = PAGE_PURPOSE["/insights/lineage"];
   if (modelQ.isLoading) return <InsightFrame title="Lineage" purpose={purpose} state="loading" />;
   if (modelQ.error) {
-    return <InsightFrame title="Lineage" purpose={purpose} state="error" errorProps={{ message: apiErrorMessage(modelQ.error), onRetry: () => void modelQ.refetch() }} />;
+    return <InsightFrame title="Lineage" purpose={purpose} state="error" errorProps={{ error: modelQ.error, onRetry: () => void modelQ.refetch() }} />;
   }
   if (!modelQ.data) return <InsightFrame title="Lineage" purpose={purpose} state="empty" emptyProps={{ title: "The lineage map could not be read", detail: "The server sent no lineage map.", action: <Button onClick={() => void modelQ.refetch()}>Retry</Button> }} />;
   const model = modelQ.data;
@@ -252,7 +256,7 @@ export default function LineagePage() {
                   <p className="m-text-body m-ink-2">
                     {nodes.length.toLocaleString()} items and {edges.length.toLocaleString()} links {direction === "both" ? "up and downstream of" : direction === "up" ? "upstream of" : "downstream of"} {label(focus)}.
                     {capped ? ` Nearest ${MAX_NODES} of ${graphQ.data?.nodes.length.toLocaleString()} items shown; choose fewer steps to see the rest.` : ""}
-                    {" "}Red squares are reached by a failing rule. Red and orange links block or degrade their target.
+                    {" "}Items with a dashed red outline are reached by a failing rule. A dashed link blocks its target; a dotted link degrades it.
                   </p>
                 </>
               ) : <EmptyState title="Nothing is linked to this item" detail="Check the spelling, try an item from the table below, or choose more steps." action={rows[0] ? <Button onClick={() => trace(rows[0].id)}>{`Trace ${rows[0].label}`}</Button> : <Button render={<Link href="/rules">Open rules</Link>} />} />}
@@ -262,9 +266,10 @@ export default function LineagePage() {
           <Async query={impactQ} skeleton={160} notFoundIsEmpty>{rows.length === 0 ? (
               latest
                 ? <EmptyState title="No failing rule reaches a KPI, process or feature" detail="The failing rules in this run touch nothing the lineage map links to." action={<Button render={<Link href={`/insights/rules?run=${encodeURIComponent(latest.id)}`}>Open failing rules</Link>} />} />
+                : noRunError ? <ErrorState {...apiErrorState(noRunError)} onRetry={() => { void refetchLatest(); dayOne.refetch(); }} />
                 : <EmptyState title="No lineage yet" detail={dayOne.step?.detail ?? "Impact needs a completed analysis."} action={<DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />} />
             )
-            : <DataTable columns={columns} data={rows} getRowId={(r) => r.id} onRowClick={(r) => trace(r.id)} hideToolbar dense height="auto" />}</Async>
+            : <DataTable columns={columns} data={rows} getRowId={(r) => r.id} onRowClick={(r) => trace(r.id)} hideToolbar height="auto" />}</Async>
         </Card>
       </InsightFrame>
 
@@ -280,7 +285,8 @@ export default function LineagePage() {
             {sel.type === "kpi" || sel.type === "feature" || sel.type === "process" || sel.type === "step"
               ? <GuardsPanel node={sel.id} versionId={latest?.id} /> : null}
             {sel.type === "check"
-              ? (latest ? <BlastPanel checkId={sel.id.slice("check:".length)} versionId={latest.id} /> : (
+              ? (latest ? <BlastPanel checkId={sel.id.slice("check:".length)} versionId={latest.id}
+                objectName={(id) => graphQ.data?.nodes.find((n) => n.id === `object:${id}`)?.label} /> : (
                 <EmptyState
                   title="Nothing to follow yet"
                   detail="Following a rule to what it reaches needs a completed analysis."

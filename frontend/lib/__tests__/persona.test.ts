@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ROLES, isRole, legacyRole } from "@/hooks/use-role";
-import { PERSONA_OPTIONS, homeHrefForRole, personaForRole } from "../persona";
+import { PERSONA_OPTIONS, approvesOnly, homeHrefForRole, homeRoleFrom, personaForRole } from "../persona";
 
 describe("personaForRole", () => {
   it("maps every legacy role to a persona (rbac.md 1.1)", () => {
@@ -51,6 +51,16 @@ describe("personaForRole", () => {
     expect(homeHrefForRole("analyst", () => false)).toBe("/home/lead");
   });
 
+  it("lands an approver who cannot apply (the data owner) on Fix work's approvals tab", () => {
+    const owner = (a: string) => a === "approve" || a === "view" || a === "export";
+    expect(homeHrefForRole("data_owner", owner)).toBe("/fix?tab=batches");
+    expect(homeHrefForRole("approver", owner)).toBe("/fix?tab=batches");
+    // A steward who may apply still starts on Records to fix.
+    expect(homeHrefForRole("data_steward", (a) => a === "approve" || a === "apply")).toBe("/fix");
+    expect(approvesOnly(owner)).toBe(true);
+    expect(approvesOnly((a) => a === "approve" || a === "apply")).toBe(false);
+  });
+
   it("sends the SAP basis role to the basis home", () => {
     expect(homeHrefForRole("sap_basis")).toBe("/home/basis");
   });
@@ -58,5 +68,19 @@ describe("personaForRole", () => {
   it("offers every persona a role can land on, and only those, under View as", () => {
     const landed = new Set(ROLES.map(personaForRole));
     expect(new Set(PERSONA_OPTIONS.map((o) => o.value))).toEqual(landed);
+  });
+});
+
+describe("homeRoleFrom", () => {
+  it("lands a scoped-only steward (users.role viewer) on Fix, not the lead home", () => {
+    const role = homeRoleFrom("viewer", ["data_steward", "viewer"]);
+    expect(role).toBe("data_steward");
+    expect(homeHrefForRole(role)).toBe("/fix");
+  });
+
+  it("keeps users.role when it already has a persona, or no grant has one", () => {
+    expect(homeRoleFrom("sap_basis", ["data_steward"])).toBe("sap_basis");
+    expect(homeRoleFrom("viewer", ["viewer", "custom:x", "analyst"])).toBe("viewer");
+    expect(homeRoleFrom("viewer", [])).toBe("viewer");
   });
 });

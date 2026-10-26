@@ -7,7 +7,7 @@ import type { ProcessVariant } from "@/types/process-model";
 import { addChild, newId, type Doc } from "./doc";
 
 const NAMES: Record<string, string> = {
-  PTP_MFG: "Plan to Produce", MTO: "Make to Order", RTR: "Record to Report", HTR: "Hire to Retire", STC: "Service to Cash",
+  PTP_MFG: "Plan to produce", MTO: "Make to order", RTR: "Record to report", HTR: "Hire to retire", STC: "Service to cash",
 };
 
 /**
@@ -34,7 +34,7 @@ export function groupDiscovered(variants: ProcessVariant[]): Group[] {
 
 /** An L1 with one L2, one L3 and one L4 per detector step, each with one activity in a straight line. */
 export function skeletonFrom(doc: Doc, g: Group): Doc {
-  let d = addChild(doc, null, NAMES[g.process_id] ?? g.process_id.replaceAll("_", " ").toLowerCase()).doc;
+  let d = addChild(doc, null, NAMES[g.process_id] ?? g.process_id).doc;
   const l1 = d.l1[d.l1.length - 1].id;
   const l2 = addChild(d, l1, "Discovered steps"); d = l2.doc;
   const l3 = addChild(d, l2.id, "Discovered flow"); d = l3.doc;

@@ -15,7 +15,7 @@ vi.mock("next/navigation", () => ({
 // useDayOne() needs LocalAuthProvider context, which this test does not set up;
 // mock it wholesale so the page renders without an auth provider.
 vi.mock("@/hooks/use-day-one", () => ({
-  useDayOne: () => ({ status: "ready", step: null }),
+  useDayOne: () => ({ status: "ready", step: null, error: null, refetch: () => {} }),
   DayOneAction: () => null,
 }));
 
@@ -77,7 +77,8 @@ describe("ImpactPage", () => {
     renderWithQuery(<ImpactPage />);
 
     await waitFor(() => expect(screen.getByText("Largest proven cost, one process")).toBeInTheDocument());
-    expect(screen.getByText("Most at risk, one process")).toBeInTheDocument();
+    expect(screen.getByText("Most at risk: Procure to pay")).toBeInTheDocument();
+    expect(screen.getByText("Across 2 processes")).toBeInTheDocument();
     expect(screen.getAllByText("Procure to pay, across 2 processes").length).toBeGreaterThan(0);
     expect(screen.getByText("Late purchase orders")).toBeInTheDocument();
     expect(screen.getByText("MM140")).toBeInTheDocument();
@@ -120,14 +121,16 @@ describe("ImpactPage", () => {
     expect(screen.getAllByText(/ZAR[\u00a0 ]?6[,. \u00a0]300/).length).toBeGreaterThan(0);
   });
 
-  it("points at Admin, Settings when no feature is priced", async () => {
+  it("points at the feature values on Rules, Scoring and alerts when no feature is priced", async () => {
     vi.spyOn(settingsApi, "getCostModel").mockResolvedValue({ currency: "ZAR", features: {} } as never);
     mockEmptyProvenCost();
     vi.spyOn(insightsApi, "getImpact").mockResolvedValue({ version_id: "v1", rows: [] });
     renderWithQuery(<ImpactPage />);
     expect(await screen.findByText("No feature is priced yet")).toBeInTheDocument();
-    expect(screen.getByText(/under Admin, Settings/)).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "Open settings" })[0]).toHaveAttribute("href", "/admin/settings");
+    expect(screen.getByText(/under Rules, Scoring and alerts/)).toBeInTheDocument();
+    const links = screen.getAllByRole("link", { name: "Set feature values" });
+    expect(links.length).toBeGreaterThanOrEqual(1);
+    links.forEach((l) => expect(l).toHaveAttribute("href", "/rules/scoring#feature-values"));
     expect(screen.queryByText(/no impact results yet/i)).toBeNull();
   });
 

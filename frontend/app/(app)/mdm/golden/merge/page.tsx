@@ -6,7 +6,7 @@
  * from one of two sources: the match engine's scored pairs (default; uncertain ones first, each opened in a
  * drawer to merge, mark not a match or leave for later) or, with `?source=cleaning`, the cleaning engine's
  * duplicate candidates (compare and keep one record). `?object=<module>&record=<key>` keeps one record's pairs
- * in either source. With `?id` it compares one golden record field by field against every contributing source.
+ * in either source. With `?id` it lists one golden record's fields with the source system each value came from.
  */
 
 import { useMemo, useState } from "react";
@@ -15,11 +15,12 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  Button, ConfirmDialog, DataTable, Drawer, EmptyState, ErrorState, ExplorerPage, FilterChip, Mono, PageHeader, Pager, Pill,
+  Button, ChoiceGroup, ConfirmDialog, DataTable, Drawer, EmptyState, ErrorState, ExplorerPage, FilterChip, Mono, PageHeader, Pager, Pill,
   Select, Skeleton, asyncStateOf, toast,
 } from "@/design";
 import { CleaningPairs, cleaningPairsKey } from "@/components/mdm/cleaning-pairs";
 import { LedgerHead, RowButton, actionColumn } from "@/components/mdm/ledger";
+import { contributionSystem, sourceSystems } from "@/components/mdm/golden-status";
 import { BAND_LABEL, pct, whyMatched } from "@/components/mdm/match-review-model";
 import { PairReview, matchReviewKey } from "@/components/mdm/pair-review";
 import { useRole } from "@/hooks/use-role";
@@ -113,23 +114,23 @@ function MatchReview() {
 
   const filterBar = (
     <div className="flex flex-wrap items-end gap-3">
-      <div role="group" aria-label="Source" className="flex flex-wrap gap-1">
-        {(["matcher", "cleaning"] as const).map((s) => (
-          <Button key={s} size="sm" variant={source === s ? "secondary" : "ghost"} aria-pressed={source === s} onClick={() => setParams({ source: s === "matcher" ? null : s, band: null, pair: null, page: null })}>
-            {SOURCE_LABEL[s]}{counts[s] != null ? ` (${counts[s].toLocaleString()})` : ""}
-          </Button>
-        ))}
-      </div>
-      {source === "matcher" ? <div role="group" aria-label="Score band" className="flex flex-wrap gap-1">
-        {BANDS.map((b) => {
-          const n = b === "all" ? waiting : bands?.[b];
-          return (
-            <Button key={b} size="sm" variant={band === b ? "secondary" : "ghost"} aria-pressed={band === b} onClick={() => setParams({ band: b === "review" ? null : b, page: null })}>
-              {b === "all" ? "All waiting" : BAND_LABEL[b]}{n != null ? ` (${n.toLocaleString()})` : ""}
-            </Button>
-          );
-        })}
-      </div> : null}
+      <ChoiceGroup
+        label="Source"
+        value={source}
+        onChange={(s) => setParams({ source: s === "matcher" ? null : s, band: null, pair: null, page: null })}
+        options={(["matcher", "cleaning"] as const).map((s) => ({ value: s, label: `${SOURCE_LABEL[s]}${counts[s] != null ? ` (${counts[s].toLocaleString()})` : ""}` }))}
+      />
+      {source === "matcher" ? (
+        <ChoiceGroup
+          label="Score band"
+          value={band}
+          onChange={(b) => setParams({ band: b === "review" ? null : b, page: null })}
+          options={BANDS.map((b) => {
+            const n = b === "all" ? waiting : bands?.[b];
+            return { value: b, label: `${b === "all" ? "All waiting" : BAND_LABEL[b]}${n != null ? ` (${n.toLocaleString()})` : ""}` };
+          })}
+        />
+      ) : null}
       <Select
         label="Object"
         placeholder="All objects"
@@ -188,7 +189,7 @@ function MatchReview() {
       filterBar={filterBar}
       state={asyncStateOf(list, () => pairs.length === 0)}
       emptyProps={empty}
-      errorProps={{ message: apiErrorMessage(list.error), onRetry: () => void list.refetch() }}
+      errorProps={{ error: list.error, onRetry: () => void list.refetch() }}
       table={
         <div className="flex flex-col gap-3">
           <DataTable columns={columns} data={pairs} getRowId={(r) => r.id} onRowClick={(r) => setParams({ pair: r.id })} tableId="mdm-match-review" />
@@ -265,6 +266,18 @@ function BulkMerge({ open, onOpenChange, domain, floor }: { open: boolean; onOpe
 
 /* ---------- One golden record against its sources ---------- */
 
+type SourceFieldRow = { field: string; value: unknown; system: string | null; confidence: number | null };
+
+const sourceFieldCols: ColumnDef<SourceFieldRow>[] = [
+  { id: "field", header: "Field", cell: ({ row }) => <Mono>{row.original.field}</Mono> },
+  { id: "golden", header: "Golden value", accessorFn: (r) => (r.value == null ? "None" : String(r.value)) },
+  { id: "system", header: "Source system", cell: ({ row }) => (row.original.system ? <Mono>{row.original.system}</Mono> : <span className="m-ink-3">Not recorded</span>) },
+  { id: "conf", header: "Confidence", accessorFn: (r) => (r.confidence == null ? "None" : `${Math.round(r.confidence * 100)}%`) },
+];
+
+/** source_contributions is keyed by field (api/services/golden_record_engine.py): each entry is the surviving
+ * value, the one source system it came from and the survivorship confidence. The API keeps no other source's
+ * value, so the page shows where each golden value came from, not a source-by-source diff. */
 function CompareSources({ id }: { id: string }) {
   const query = useQuery({ queryKey: queryKeys.masterRecord(id), queryFn: () => getMasterRecord(id) });
   if (query.isLoading) {
@@ -288,35 +301,21 @@ function CompareSources({ id }: { id: string }) {
   }
 
   const fields = Object.entries(record.golden_fields);
-  const sources = Object.entries(record.source_contributions);
-  const rows = fields.map(([field, value]) => ({ field, value }));
-  const conflicts = rows.filter((r) => sources.some(([, s]) => s.value !== r.value)).length;
-  const cols: ColumnDef<{ field: string; value: unknown }>[] = [
-    { id: "field", header: "Field", cell: ({ row }) => <Mono>{row.original.field}</Mono> },
-    { id: "golden", header: "Golden value", accessorFn: (r) => (r.value == null ? "None" : String(r.value)) },
-    ...sources.map(([system, s]): ColumnDef<{ field: string; value: unknown }> => ({
-      id: `src-${system}`,
-      header: () => <Mono>{system}</Mono>,
-      cell: ({ row }) => {
-        const differs = s.value !== row.original.value;
-        return (
-          <span className={differs ? "m-ink-critical" : undefined}>
-            {s.value == null ? "None" : String(s.value)} ({Math.round(s.confidence * 100)}%){differs ? " differs" : ""}
-          </span>
-        );
-      },
-    })),
-  ];
+  const rows: SourceFieldRow[] = fields.map(([field, value]) => {
+    const c = record.source_contributions[field];
+    return { field, value, system: contributionSystem(c), confidence: c?.confidence ?? null };
+  });
+  const systems = sourceSystems(record.source_contributions);
 
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        title={`Merge conflicts for ${record.sap_object_key}`}
-        meta="Each field's golden value against every source that contributed it. A source that differs is marked in red."
+        title={`Sources of ${record.sap_object_key}`}
+        meta="Each golden field with the source system its value came from and how confident the survivorship rule was."
         actions={<Button variant="secondary" render={<Link href={`/mdm/golden/${record.id}`}>Back to record</Link>} />}
       />
-      <section aria-label="Field comparison">
-        <LedgerHead title="Field comparison" meta={`${fields.length.toLocaleString()} fields, ${conflicts.toLocaleString()} with a differing source`} />
+      <section aria-label="Field sources">
+        <LedgerHead title="Field sources" meta={`${fields.length.toLocaleString()} ${fields.length === 1 ? "field" : "fields"} from ${systems.length.toLocaleString()} source ${systems.length === 1 ? "system" : "systems"}`} />
         {fields.length === 0 ? (
           <EmptyState
             title="No golden fields to compare"
@@ -324,7 +323,7 @@ function CompareSources({ id }: { id: string }) {
             action={<Button variant="secondary" render={<Link href={`/mdm/golden/${record.id}`}>Back to record</Link>} />}
           />
         ) : (
-          <DataTable columns={cols} getRowId={(r) => r.field} data={rows} height="auto" />
+          <DataTable columns={sourceFieldCols} getRowId={(r) => r.field} data={rows} height="auto" />
         )}
       </section>
       <div>

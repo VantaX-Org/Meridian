@@ -11,7 +11,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(h.qs),
 }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
-vi.mock("@/hooks/use-day-one", () => ({ useDayOne: () => ({ status: "ready", step: null }), DayOneAction: () => null }));
+vi.mock("@/hooks/use-day-one", () => ({ useDayOne: () => ({ status: "ready", step: null, error: null, refetch: () => {} }), DayOneAction: () => null }));
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: { id: "u1", role: "admin" } }) }));
 
 const task = (id: string, item_type: string, assigned_to: string | null) => ({
@@ -45,7 +45,8 @@ async function show(load: () => Promise<{ default: ComponentType }>, qs: string)
   const { default: Page } = await load();
   render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><Page /></QueryClientProvider>);
 }
-const showing = () => screen.queryByText(/^Showing/);
+// The filter banner names what is shown and ends in "only" (no "Showing" sentence).
+const showing = () => screen.queryByText(/ only$/);
 const GARBAGE = ["constructor", "__proto__", "zzz"];
 const inbox = () => import("../inbox/page");
 const fix = () => import("../fix/page");
@@ -56,21 +57,21 @@ const chip = (label: string) => screen.queryByRole("button", { name: `Remove fil
 describe("inbox filters against loaded tasks", () => {
   it("type=match_review filters to that type, with a chip", async () => {
     await show(inbox, "type=match_review");
-    await waitFor(() => expect(screen.getByText(/record rec-A/)).toBeInTheDocument());
-    expect(screen.queryByText(/record rec-B/)).toBeNull();
+    await waitFor(() => expect(screen.getByLabelText(/^Select Match review in/)).toBeInTheDocument());
+    expect(screen.queryByLabelText(/^Select Merge proposal in/)).toBeNull();
     expect(showing()).toBeNull();
     expect(chip("Type")).toBe("TypeMatch review");
   });
   it.each(GARBAGE)("type=%s applies no filter and shows no chip", async (g) => {
     await show(inbox, `type=${g}`);
-    await waitFor(() => expect(screen.getByText(/record rec-A/)).toBeInTheDocument());
-    expect(screen.getByText(/record rec-B/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText(/^Select Match review in/)).toBeInTheDocument());
+    expect(screen.getByLabelText(/^Select Merge proposal in/)).toBeInTheDocument();
     expect(chip("Type")).toBeNull();
   });
   it("view=mine filters to my tasks with proper wording", async () => {
     await show(inbox, "view=mine");
-    await waitFor(() => expect(screen.getByText(/record rec-A/)).toBeInTheDocument());
-    expect(screen.queryByText(/record rec-B/)).toBeNull();
+    await waitFor(() => expect(screen.getByLabelText(/^Select Match review in/)).toBeInTheDocument());
+    expect(screen.queryByLabelText(/^Select Merge proposal in/)).toBeNull();
     expect(chip("Who")).toBe("WhoMine");
   });
   it("legacy view=breached reads as the Overdue urgency filter, not a lowercased key", async () => {

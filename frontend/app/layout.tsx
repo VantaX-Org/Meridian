@@ -1,14 +1,25 @@
 import type { Metadata, Viewport } from "next";
-import { Manrope, JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import { AuthProvider } from "@/lib/auth-provider";
-import { Toaster } from "@/design";
+import { Attribution, Toaster } from "@/design";
 import { Providers } from "@/lib/providers";
+import { themeBootScript } from "@/lib/theme";
 import brand from "../public/brand/brand.json";
 import "./globals.css";
 
 // Manrope for UI and numerals, JetBrains Mono for SAP identifiers. tokens.css reads --font-ui and --font-jbm.
-const sans = Manrope({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], variable: "--font-ui", display: "swap" });
-const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-jbm", display: "swap" });
+// Self-hosted (app/_fonts, latin subset, variable wght axis, SIL OFL 1.1) so builds and offline
+// customer deployments never fetch from Google Fonts.
+const manrope = localFont({
+  src: [{ path: "./_fonts/Manrope-latin-wght.woff2", weight: "200 800", style: "normal" }],
+  variable: "--font-ui",
+  display: "swap",
+});
+const jetbrainsMono = localFont({
+  src: [{ path: "./_fonts/JetBrainsMono-latin-wght.woff2", weight: "100 800", style: "normal" }],
+  variable: "--font-jbm",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Meridian",
@@ -31,12 +42,12 @@ export default function RootLayout({
   return (
     <AuthProvider>
       {/* Font variables sit on <html> so tokens.css (:root) can resolve --font-ui and --font-jbm. */}
-      <html lang="en" suppressHydrationWarning className={`${sans.variable} ${mono.variable}`}>
+      <html lang="en" suppressHydrationWarning className={`${manrope.variable} ${jetbrainsMono.variable}`}>
         <head>
-          {/* Sets data-theme before first paint; keys match hooks/use-theme.ts (old aurora:theme is read as a fallback). "system" leaves it to prefers-color-scheme in tokens.css, but is resolved here too so dark users never flash light. */}
+          {/* Sets data-theme before first paint from the keys lib/preferences.ts writes, defaulting to DEFAULT_THEME (lib/theme.ts). */}
           <script
             dangerouslySetInnerHTML={{
-              __html: `try{var t=localStorage.getItem("meridian:theme")||localStorage.getItem("aurora:theme")||"dark";if(t==="system")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t}catch(e){}`,
+              __html: themeBootScript(),
             }}
           />
         </head>
@@ -44,6 +55,7 @@ export default function RootLayout({
           <Providers>
             {children}
             <Toaster />
+            <Attribution />
           </Providers>
         </body>
       </html>

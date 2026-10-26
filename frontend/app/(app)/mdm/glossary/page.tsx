@@ -7,11 +7,12 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, ExplorerPage, Field, Input, PageHeader, Pill, Select, asyncStateOf, type CellMeta } from "@/design";
+import { Button, DataTable, ExplorerPage, Field, Input, PageHeader, Pager, Pill, Select, asyncStateOf, type CellMeta } from "@/design";
 import { actionColumn, RowLink } from "@/components/mdm/ledger";
 import { formatModuleName } from "@/lib/format";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getGlossaryTerms, populateGlossary } from "@/lib/api/glossary";
+import { getRuleCoverage } from "@/lib/api/rules";
 import { useRole } from "@/hooks/use-role";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
@@ -23,6 +24,8 @@ const STATUS_OPTIONS = [
   { value: "under_review", label: "Under review" },
   { value: "deprecated", label: "Deprecated" },
 ];
+
+const PAGE_SIZE = 100;
 
 const STATUS_LABEL: Record<string, string> = { active: "Active", under_review: "Under review", deprecated: "Deprecated" };
 
@@ -43,13 +46,32 @@ export default function GlossaryPage() {
   // One replace: separate useUrlState setters would each rebuild the query from the same stale string.
   const clearFilters = () => {
     const params = new URLSearchParams(urlParams.toString());
-    for (const k of ["domain", "status", "q"]) params.delete(k);
+    for (const k of ["domain", "status", "q", "page"]) params.delete(k);
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   };
-  const [domain, setDomain] = useUrlState("domain", "all");
-  const [status, setStatus] = useUrlState("status", "all");
-  const [search, setSearch] = useUrlState("q");
+  const domain = urlParams.get("domain") ?? "all";
+  const status = urlParams.get("status") ?? "all";
+  const [search, setSearchRaw] = useUrlState("q");
+  const page = Math.max(1, Number(urlParams.get("page")) || 1);
+  // A filter change starts again from page one: one replace, so the setters never race.
+  const setFilter = (key: string, value: string) => {
+    const params = new URLSearchParams(urlParams.toString());
+    params.delete("page");
+    if (value && value !== "all") params.set(key, value); else params.delete(key);
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
+  const setDomain = (v: string) => setFilter("domain", v);
+  const setStatus = (v: string) => setFilter("status", v);
+  // Typing keeps the hook's local value; only the first keystroke on a later page goes through setFilter.
+  const setSearch = page > 1 ? (v: string) => setFilter("q", v) : setSearchRaw;
+  const setPage = (n: number) => {
+    const params = new URLSearchParams(urlParams.toString());
+    if (n > 1) params.set("page", String(n)); else params.delete("page");
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
   const qc = useQueryClient();
   const canDraft = useRole().can("approve");
   const draft = useMutation({
@@ -62,22 +84,27 @@ export default function GlossaryPage() {
   });
 
   const query = useQuery({
-    queryKey: queryKeys.glossary("list", { domain, status, search }),
+    queryKey: queryKeys.glossary("list", { domain, status, search, page }),
     queryFn: () =>
       getGlossaryTerms({
         domain: domain === "all" ? undefined : domain,
         status: status === "all" ? undefined : status,
         search: search || undefined,
-        per_page: 100,
+        per_page: PAGE_SIZE,
+        page,
       }),
   });
 
   const terms = useMemo(() => query.data?.terms ?? [], [query.data]);
+  // Every object with rules (the same catalogue the rule drafts use), not only those on the loaded page.
+  const coverage = useQuery({ queryKey: ["rule-coverage", "modules"], queryFn: () => getRuleCoverage(), staleTime: 60_000, meta: { ignoreError: true } });
   const domainOptions = useMemo(() => {
-    const seen = new Set<string>();
-    for (const t of terms) seen.add(t.domain);
-    return [{ value: "all", label: "All domains" }, ...Array.from(seen).sort().map((d) => ({ value: d, label: formatModuleName(d) }))];
-  }, [terms]);
+    const seen = new Set((coverage.data?.objects ?? []).map((o) => o.module));
+    if (domain !== "all") seen.add(domain);
+    return [{ value: "all", label: "All objects" }, ...Array.from(seen).sort().map((d) => ({ value: d, label: formatModuleName(d) }))];
+  }, [coverage.data, domain]);
+  const total = query.data?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const state = asyncStateOf(query, () => terms.length === 0, true);
   const filtered = domain !== "all" || status !== "all" || !!search;
@@ -100,7 +127,7 @@ export default function GlossaryPage() {
               placeholder="Term, SAP table or field"
             />
           </Field>
-          <Field label="Domain">
+          <Field label="Object">
             <Select value={domain} onValueChange={setDomain} options={domainOptions} />
           </Field>
           <Field label="Status">
@@ -109,13 +136,16 @@ export default function GlossaryPage() {
         </div>
       }
       table={
-        <DataTable
-          columns={columns}
-          data={terms}
-          getRowId={(r) => r.id}
-          onRowClick={(r) => router.push(`/mdm/glossary/${r.id}`)}
-          rowHref={(r) => `/mdm/glossary/${r.id}`}
-        />
+        <div className="flex flex-col gap-3">
+          <DataTable
+            columns={columns}
+            data={terms}
+            getRowId={(r) => r.id}
+            onRowClick={(r) => router.push(`/mdm/glossary/${r.id}`)}
+            rowHref={(r) => `/mdm/glossary/${r.id}`}
+          />
+          {pageCount > 1 && <Pager page={page} pageCount={pageCount} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />}
+        </div>
       }
       state={state}
       emptyProps={{
@@ -130,7 +160,7 @@ export default function GlossaryPage() {
             : <Button variant="secondary" render={<Link href="/runs">Open runs</Link>} />,
       }}
       errorProps={{
-        message: apiErrorMessage(query.error),
+        error: query.error,
         onRetry: () => query.refetch(),
       }}
     />

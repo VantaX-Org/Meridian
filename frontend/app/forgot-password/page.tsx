@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { requestPasswordReset } from "@/lib/api/auth";
 import { AuthFrame, authFormClass, authLinkClass } from "@/components/auth/auth-frame";
-import { Button, Field, Notice } from "@/design";
+import { Button, Field, Input, Notice } from "@/design";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -16,7 +16,7 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     setError(null);
     if (!email.trim()) {
-      setError("Enter the email you sign in with.");
+      setError("Enter the email you sign in with");
       return;
     }
     setSubmitting(true);
@@ -42,10 +42,9 @@ export default function ForgotPasswordPage() {
         </>
       ) : (
         <form className={authFormClass} onSubmit={onSubmit} noValidate>
-          {error ? <Notice tone="danger">{error}</Notice> : null}
-          <Field label="Work email">
-            <input className="m-input w-full" type="email" required autoComplete="email" autoFocus
-              value={email} onChange={(e) => setEmail(e.target.value)} />
+          <Field label="Work email" error={error ?? undefined}>
+            <Input className="w-full" type="email" required autoComplete="email" autoFocus
+              value={email} onChange={(e) => { setEmail(e.target.value); setError(null); }} />
           </Field>
           <Button type="submit" pending={submitting} className="w-full">Send link</Button>
         </form>

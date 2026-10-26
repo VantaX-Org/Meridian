@@ -14,7 +14,8 @@ Shape of a job::
      stage, stages: [{id, label, status}],          # status queued|running|done|failed|skipped
      percent, rows_done, rows_total, message,
      tables: [{table, status, rows, expected, ...}],  # extraction: one row per SAP table
-     error, result, started_at, updated_at, finished_at}
+     error, result, started_at, updated_at, finished_at,
+     retry: {via, body}}                              # extraction: its start request, for POST /jobs/{id}/retry
 
 ``kind`` is one of extraction, config_sync, analysis, upload, simulation. ``status`` is
 queued, running, completed, failed.
@@ -55,10 +56,15 @@ STAGES: dict[str, list[tuple[str, str]]] = {
 # invalidates only these React Query key prefixes when the job completes.
 # "config_sync"/"config_load"/"simulation" have no Wave 1a consumer yet, so
 # they touch nothing rather than guessing.
+# An analysis also writes a new version and its aggregates: the System page
+# (system-versions, system-agg), Runs (versions-list) and Home's aggregates
+# (findings-aggregate, home-top-findings) read those (frontend/lib/query-keys.ts).
+_ANALYSIS_TOUCHES = ["object", "rule", "records", "run", "shell-counts", "system-versions", "system-agg",
+                     "findings-aggregate", "home-top-findings", "versions-list"]
 TOUCHES: dict[str, list[str]] = {
-    "analysis": ["object", "rule", "records", "run", "shell-counts"],
-    "upload": ["object", "rule", "records", "run", "shell-counts"],
-    "extraction": ["systems", "run"],
+    "analysis": list(_ANALYSIS_TOUCHES),
+    "upload": list(_ANALYSIS_TOUCHES),
+    "extraction": ["systems", "run", "system-versions"],
     "simulation": ["records", "batch", "shell-counts"],
     "config_sync": ["systems", "run"],
     "config_load": ["systems", "run"],

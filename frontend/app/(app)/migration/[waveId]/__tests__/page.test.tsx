@@ -44,7 +44,14 @@ describe("WaveCockpitPage", () => {
     expect(await screen.findByText("Wave 1")).toBeInTheDocument();
     expect(screen.getAllByText("At risk").length).toBeGreaterThan(0);
     expect(screen.getByText("97.0%")).toBeInTheDocument();
-    expect(screen.getByText("BP supplier")).toBeInTheDocument();
+    // The object reads by formatModuleName, never the API's label.
+    expect(screen.getByText("Accounts payable")).toBeInTheDocument();
+    expect(screen.queryByText("BP supplier")).toBeNull();
+    // The gap count is migration gaps and opens this wave's gap view, not the object's rules.
+    expect(screen.getByRole("columnheader", { name: /Migration gaps/ })).toBeInTheDocument();
+    expect(screen.queryByText("Blocking gaps")).toBeNull();
+    const gaps = screen.getAllByRole("link", { name: "3" }).find((a) => a.getAttribute("href")?.includes("tab=blockers"));
+    expect(gaps).toHaveAttribute("href", "/migration/w1?tab=blockers");
     expect(screen.queryByRole("button", { name: "Sign off" })).not.toBeInTheDocument();
   });
 
@@ -71,6 +78,24 @@ describe("WaveCockpitPage", () => {
     await waitFor(() => expect(fix).toHaveBeenCalledWith("w1", {
       module: "accounts_payable", gap_type: "value_unmapped", field: "BUT000.BU_GROUP",
     }));
+  });
+
+  it("drills a blocker's records into the analysis version, never the migration run id", async () => {
+    search = new URLSearchParams("tab=blockers");
+    vi.spyOn(migrationApi, "getWaveCockpit").mockResolvedValue(COCKPIT);
+    renderWithQuery(<WaveCockpitPage />);
+    await screen.findByText("BUT000.BU_GROUP");
+    const drill = screen.getAllByRole("link", { name: "3" }).find((a) => a.getAttribute("href")?.includes("tab=records"));
+    expect(drill).toHaveAttribute("href", "/objects/accounts_payable?run=v1&tab=records");
+  });
+
+  it("reads a blocker's count as plain text when the run has no analysis version", async () => {
+    search = new URLSearchParams("tab=blockers");
+    vi.spyOn(migrationApi, "getWaveCockpit").mockResolvedValue({ ...COCKPIT, source_version_id: null });
+    renderWithQuery(<WaveCockpitPage />);
+    await screen.findByText("BUT000.BU_GROUP");
+    expect(screen.queryAllByRole("link").filter((a) => a.getAttribute("href")?.includes("run=r2"))).toHaveLength(0);
+    expect(screen.queryAllByRole("link", { name: "3" }).filter((a) => a.getAttribute("href")?.includes("tab=records"))).toHaveLength(0);
   });
 
   it("offers sign-off when the verdict is go", async () => {
@@ -181,5 +206,24 @@ describe("WaveCockpitPage empty states", () => {
     renderWithQuery(<WaveCockpitPage />);
     await emptyOf("Not run yet");
     expect(screen.queryByRole("button", { name: "Run now" })).toBeNull();
+  });
+});
+
+describe("WaveCockpitPage not found", () => {
+  beforeEach(() => { allowed = true; vi.restoreAllMocks(); search = new URLSearchParams(); });
+
+  it("says the wave is not found with a link back to migration on a 404", async () => {
+    vi.spyOn(migrationApi, "getWaveCockpit").mockRejectedValue(Object.assign(new Error("nf"), { isAxiosError: true, response: { status: 404, data: {} } }));
+    renderWithQuery(<WaveCockpitPage />);
+    expect(await screen.findByText("Wave not found")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back to migration" })).toHaveAttribute("href", "/migration");
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+  });
+
+  it("keeps the error with Retry for any other failure", async () => {
+    vi.spyOn(migrationApi, "getWaveCockpit").mockRejectedValue(Object.assign(new Error("x"), { isAxiosError: true, response: { status: 500, data: {} } }));
+    renderWithQuery(<WaveCockpitPage />);
+    expect(await screen.findByText("The server could not complete the request.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 });

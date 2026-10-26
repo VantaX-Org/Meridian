@@ -9,6 +9,8 @@ Triggers (all times SAST = UTC+2):
 
 Also: board pack by email to the alert channels set to weekly (Monday 07:00 SAST) or
 monthly (the 1st, 07:00 SAST) — workers/tasks/send_report_pack.py.
+Scheduled reports (report_schedules, migration 089): every 15 minutes the due schedules are
+generated, kept in the report history and delivered — workers/tasks/report_schedules.py.
 """
 
 import gzip
@@ -24,6 +26,7 @@ from sqlalchemy.orm import Session
 from workers.celery_app import celery_app
 from workers.db import get_sync_engine
 import workers.tasks.send_report_pack  # noqa: F401 — registers the board pack beat tasks
+import workers.tasks.report_schedules  # noqa: F401 — registers the scheduled report tasks
 
 logger = logging.getLogger("meridian.scheduler")
 
@@ -410,7 +413,7 @@ def monthly_report():
                 prev_month = (now.replace(day=1) - timedelta(days=1))
                 period = prev_month.strftime("%Y-%m")
 
-                # Sum mitigated ZAR from impact_records
+                # Sum mitigated risk (tenant cost-model currency) from impact_records
                 impact_result = session.execute(
                     text("""
                         SELECT COALESCE(SUM(
@@ -424,7 +427,13 @@ def monthly_report():
                     {"tid": tid, "prev_date": prev_month.isoformat(), "curr_date": now.isoformat()},
                 )
                 mitigated = impact_result.scalar() or 0
-                subscription_cost = 8500  # Default R8,500/month
+                # The tenant's monthly subscription (cost model ``subscription_monthly``); unset, 0, so the
+                # ROI multiple stays 0 rather than come from an invented fee. Same currency as the risk.
+                from checks import cost as cost_model
+                own_model = session.execute(text("SELECT cost_model FROM tenants WHERE id = :tid"),
+                                            {"tid": tid}).scalar()
+                subscription_cost = cost_model.effective(own_model if isinstance(own_model, dict) else None)[
+                    "subscription_monthly"] or 0
 
                 session.execute(
                     text("""
@@ -626,9 +635,13 @@ def daily_digest():
                                  "AND status IN ('detected', 'recommended') LIMIT 100")
                     excs = rows("SELECT * FROM exceptions WHERE tenant_id = :tid "
                                 "AND status IN ('open', 'investigating') LIMIT 100")
-                    thresholds = session.execute(text("SELECT alert_thresholds FROM tenants WHERE id = :tid"),
-                                                 {"tid": tid}).scalar() or {}
-                    presc = PrescriptiveAnalytics(thresholds.get("planner") or {})
+                    from api.services.analytics_engine import planner_config
+                    from api.services.insights_impact import tenant_currency
+                    trow = session.execute(text("SELECT alert_thresholds, cost_model FROM tenants WHERE id = :tid"),
+                                           {"tid": tid}).fetchone()
+                    thresholds = (trow[0] if trow else None) or {}
+                    presc = PrescriptiveAnalytics(planner_config(thresholds.get("planner") or {},
+                                                                 tenant_currency(trow[1] if trow else None)))
                     next_actions = presc.generate_next_best_actions(findings, queue, excs, limit=5)
                 except Exception as e:
                     logger.warning(f"  tenant={tid}: prescriptive analytics failed: {e}")
@@ -989,6 +1002,10 @@ celery_app.conf.beat_schedule = {
         "task": "workers.tasks.send_report_pack.send_report_pack",
         "schedule": crontab(hour=5, minute=0, day_of_month=1),  # 1st, 05:00 UTC = 07:00 SAST
         "args": ("monthly",),
+    },
+    "report-schedules-every-15min": {
+        "task": "workers.tasks.report_schedules.run_due_report_schedules",
+        "schedule": crontab(minute="1,16,31,46"),  # due slots are on the quarter hour or later; idempotent per slot
     },
     "forced-update-check-every-15min": {
         "task": "forced_update_check",

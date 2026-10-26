@@ -190,6 +190,10 @@ def _run(version_id: str, tenant_id: str, parquet_path: str) -> dict:
                               {"vid": version_id}).fetchone()
         metadata = (row[0] if row else None) or {}
         dictionary = dictionary_for(session, metadata.get("system_id"))
+        # alignment findings are priced from the tenant's cost model, in its currency
+        cost_row = session.execute(text("SELECT cost_model FROM tenants WHERE id = :tid"),
+                                   {"tid": tenant_id}).fetchone()
+        cost_model = cost_row[0] if cost_row else None
         try:
             from workers.tasks.run_checks import snapshot_as_of
             as_of = snapshot_as_of(session, metadata)
@@ -207,7 +211,7 @@ def _run(version_id: str, tenant_id: str, parquet_path: str) -> dict:
         return {"version_id": version_id, "status": "empty"}
 
     now = datetime.now(timezone.utc)  # persistence binds these as timestamps
-    config_result = ConfigIntelligenceEngine().analyze(records)
+    config_result = ConfigIntelligenceEngine(cost_model if isinstance(cost_model, dict) else None).analyze(records)
     for el in config_result.config_inventory:
         el.first_seen = el.first_seen or now
         el.last_seen = now

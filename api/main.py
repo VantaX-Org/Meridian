@@ -14,6 +14,7 @@ from api.routes.findings import router as findings_router
 from api.routes.analyse import router as analyse_router
 from api.routes.analysis_status import router as analysis_status_router
 from api.routes.reports import router as reports_router
+from api.routes.report_library import router as report_library_router
 from api.routes.user_guide import router as user_guide_router
 from api.routes.settings import router as settings_router
 from api.routes.llm_settings import router as llm_settings_router
@@ -48,6 +49,7 @@ from api.routes.me_notifications import router as me_notifications_router
 from api.routes.systems import router as systems_router
 from api.routes.master_records import router as master_records_router
 from api.routes.merge_explain import router as merge_explain_router
+from api.routes.golden_writeback import router as golden_writeback_router
 from api.routes.ai_feedback import router as ai_feedback_router
 from api.routes.insight_feedback import router as insight_feedback_router
 from api.routes.client_errors import router as client_errors_router
@@ -174,13 +176,23 @@ async def lifespan(app: FastAPI):
                     import uuid as _uuid
                     from api.services.local_auth import hash_password
                     default_pw = hash_password("admin")
+                    admin_id = str(_uuid.uuid4())
                     await session.execute(
                         text(
                             "INSERT INTO users (id, tenant_id, email, name, role, password_hash, is_active) "
                             "VALUES (:id, '00000000-0000-0000-0000-000000000001', "
-                            "'admin@meridian.local', 'Admin', 'admin', :pw, true)"
+                            "'admin@meridian.local', 'Admin', 'platform_admin', :pw, true)"
                         ),
-                        {"id": str(_uuid.uuid4()), "pw": default_pw},
+                        {"id": admin_id, "pw": default_pw},
+                    )
+                    # Roles are grants: users.role mirrors this unscoped grant (rbac.recompute_users_role).
+                    await session.execute(
+                        text(
+                            "INSERT INTO user_role_scopes (tenant_id, user_id, role_key) "
+                            "VALUES ('00000000-0000-0000-0000-000000000001', :id, 'platform_admin') "
+                            "ON CONFLICT DO NOTHING"
+                        ),
+                        {"id": admin_id},
                     )
                     await session.commit()
                     logger.info("Default admin user created: admin@meridian.local / admin")
@@ -294,6 +306,7 @@ app.include_router(versions_router)
 app.include_router(findings_router)
 app.include_router(analyse_router)
 app.include_router(analysis_status_router)
+app.include_router(report_library_router)  # before reports_router: /reports/history, /reports/schedules
 app.include_router(reports_router)
 app.include_router(user_guide_router)
 app.include_router(settings_router)
@@ -329,6 +342,7 @@ app.include_router(me_notifications_router)
 app.include_router(systems_router)
 app.include_router(master_records_router)
 app.include_router(merge_explain_router)
+app.include_router(golden_writeback_router)
 app.include_router(ai_feedback_router)
 app.include_router(insight_feedback_router)
 app.include_router(client_errors_router)

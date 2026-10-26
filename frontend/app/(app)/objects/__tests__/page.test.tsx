@@ -50,7 +50,7 @@ describe("ObjectsPage", () => {
     renderWithQuery(<ObjectsPage />);
     await waitFor(() => expect(ledger().getByText("Material Master")).toBeInTheDocument());
     expect(ledger().getByText("72.5").closest("a")).toHaveAttribute("href", "/objects/material_master?run=v1&tab=rules");
-    expect(screen.getByText("Not ready")).toBeInTheDocument();
+    expect(screen.getAllByText("No-go").length).toBeGreaterThan(0);
   });
 
   it("shows an empty state when the run has no objects", async () => {
@@ -118,11 +118,15 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     currentSearch = "run=v1&readiness=fail";
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: [mk("a", "AAA", "pass", 99), mk("c", "CCC", "fail", 50, { blocking_rule_id: "mm_bad", blocking_rule_name: "Bad" })] });
     renderWithQuery(<ObjectsPage />);
-    const map = await screen.findByRole("list", { name: "Objects by records and verdict" });
+    // No work list is built here, so the tiles are sized by rule failures and the map says so.
+    const map = await screen.findByRole("list", { name: "Objects by rule failures and verdict" });
     const tiles = within(map).getAllByRole("link");
     expect(tiles).toHaveLength(1);
     expect(tiles[0]).toHaveAttribute("data-verdict", "no-go");
     expect(tiles[0]).toHaveAttribute("href", "/objects/c?run=v1&tab=fix");
+    // Each tile counts in the unit that sizes the map, not "records".
+    expect(tiles[0].getAttribute("aria-label")).toMatch(/rule failures?$/);
+    expect(tiles[0].getAttribute("aria-label")).not.toMatch(/records$/);
     currentSearch = "run=v1";
   });
 
@@ -132,7 +136,17 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     renderWithQuery(<ObjectsPage />);
     await waitFor(() => expect(ledger().getByText("CCC")).toBeInTheDocument());
     expect(ledger().queryByText("AAA")).not.toBeInTheDocument();
-    expect(screen.getByText("Not ready").closest("a")).toHaveAttribute("href", "/objects?run=v1&readiness=fail");
+    expect(screen.getAllByText("No-go").map((e) => e.closest("a")).find((a) => a?.getAttribute("href")?.includes("readiness=fail"))).toHaveAttribute("href", "/objects?run=v1&readiness=fail");
+    currentSearch = "run=v1";
+  });
+
+  it("?readiness=warn,fail keeps every object below target (at risk and no-go), the drill Home uses", async () => {
+    currentSearch = "run=v1&readiness=warn%2Cfail";
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: [mk("a", "AAA", "pass", 99), mk("b", "BBB", "warn", 80), mk("c", "CCC", "fail", 50)] });
+    renderWithQuery(<ObjectsPage />);
+    await waitFor(() => expect(ledger().getByText("CCC")).toBeInTheDocument());
+    expect(ledger().getByText("BBB")).toBeInTheDocument();
+    expect(ledger().queryByText("AAA")).not.toBeInTheDocument();
     currentSearch = "run=v1";
   });
 
@@ -149,7 +163,8 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     renderWithQuery(<ObjectsPage />);
     await waitFor(() => expect(ledger().getByText("mm_bad")).toBeInTheDocument());
     expect(ledger().getByText("mm_bad").closest("a")).toHaveAttribute("href", "/objects/a?run=v1&tab=fix&issue=mm_bad");
-    expect(screen.getByText("Blocking findings")).toBeInTheDocument();
+    // per run, the tile opens exactly the run's critical and high findings
+    expect(screen.getByText("Critical and high findings").closest("a")).toHaveAttribute("href", "/runs/v1?tab=findings&severity=critical,high");
     expect(screen.getByRole("button", { name: "Accuracy" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "ann" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Trend" })).toBeInTheDocument();
@@ -210,7 +225,7 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     });
     renderWithQuery(<ObjectsPage />);
     await waitFor(() => expect(ledger().getByText("AAA")).toBeInTheDocument());
-    expect(ledger().getAllByRole("columnheader").map((h) => h.textContent?.trim())).toEqual(["Object", "Blocking rule", "Records", "DQS", "Verdict", "Trend", "Action"]);
+    expect(ledger().getAllByRole("columnheader").map((h) => h.textContent?.trim())).toEqual(["Object", "Blocking rule", "Rule failures", "Score", "Verdict", "Trend", "Action"]);
     expect(ledger().getByText("Bad data")).toBeInTheDocument();
     expect(ledger().getByRole("link", { name: "Open AAA" })).toHaveAttribute("href", "/objects/a?run=v1&tab=fix");
   });

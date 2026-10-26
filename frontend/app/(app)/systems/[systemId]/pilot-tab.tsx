@@ -4,7 +4,7 @@ import { useMemo, useRef } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { toast } from "sonner";
+import { toast } from "@/design";
 import { Button, Card, DataTable, EmptyState, ErrorState, Mono, Notice, Pill, Skeleton, Stat } from "@/design";
 import { apiErrorState } from "@/lib/error";
 import { getScorecard, uploadKnownIssues, type KnownIssue, type RuleScore } from "@/lib/api/pilot";

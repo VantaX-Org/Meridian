@@ -45,7 +45,7 @@ export const chartTheme = {
   pass: mColor.pass,
 };
 
-/** Text alternative for a chart: caller's label (or a default) plus every point as "x y". */
-export function chartSummary(data: ChartPoint[], label = "Chart"): string {
-  return `${label}: ${data.map((p) => `${p.label ?? p.x} ${p.y}`).join(", ") || "no data"}`;
+/** Text alternative for a chart: caller's label (or a default) plus every point as "x y", y through `format` when given. */
+export function chartSummary(data: ChartPoint[], label = "Chart", format?: (n: number) => string): string {
+  return `${label}: ${data.map((p) => `${p.label ?? p.x} ${format ? format(p.y) : p.y}`).join(", ") || "no data"}`;
 }

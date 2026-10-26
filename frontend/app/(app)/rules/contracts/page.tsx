@@ -5,8 +5,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Button, Card, DataTable, Drawer, ExplorerPage, Field, Input, Mono, PageHeader, Pill, Select, Skeleton, Stat, Textarea, type PillTone } from "@/design";
+import { Button, DataTable, Drawer, ExplorerPage, Field, Input, PageHeader, Pill, Select, Skeleton, Stat, Status, Textarea, type PillTone } from "@/design";
+import { InsightTabs } from "@/app/(app)/insights/_components/InsightViews";
+import { InsightActions } from "@/app/(app)/insights/_components/InsightActions";
 import { actionColumn, RowButton } from "@/components/mdm/ledger";
+import { usePeople } from "@/components/mdm/use-people";
+import { ContractTermsEditor, ContractTermsView, hasTerms, type TermsBody } from "./contract-terms";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { useAuth } from "@/context/auth-context";
@@ -20,8 +24,10 @@ import type { Contract, ContractStatus } from "@/types/api";
 type StatusFilter = "all" | "breached" | ContractStatus;
 const STATUSES: StatusFilter[] = ["all", "breached", "active", "pending_approval", "draft", "expired"];
 const breached = (c: Contract) => c.status === "active" && c.latest_compliant === false;
+/** A compliance check reads as a verdict: Go when it held, No-go when it broke. */
+const Compliance = ({ ok }: { ok: boolean | null | undefined }) =>
+  ok == null ? <>Not checked</> : <Status kind="verdict" value={ok ? "go" : "no-go"} />;
 const TONE: Record<ContractStatus, PillTone> = { active: "go", pending_approval: "at-risk", draft: "neutral", expired: "no-go" };
-const TERMS: [keyof Contract, string][] = [["schema_contract", "Schema"], ["quality_contract", "Quality"], ["freshness_contract", "Freshness"], ["volume_contract", "Volume"]];
 
 export default function ContractsPage() {
   const qc = useQueryClient();
@@ -73,7 +79,7 @@ const RANK = (c: Contract) => (breached(c) ? 0 : c.status === "pending_approval"
     {
       id: "compliance",
       header: "Latest check",
-      cell: ({ row }) => (row.original.latest_compliant === true ? "Compliant" : row.original.latest_compliant === false ? "Not compliant" : "Not checked"),
+      cell: ({ row }) => <Compliance ok={row.original.latest_compliant} />,
     },
     { id: "checked", header: "Checked", cell: ({ row }) => (row.original.last_checked ? relativeTime(row.original.last_checked) : "—") },
     actionColumn((c) => <RowButton label={`Open ${c.name}`} onClick={() => setSelectedId(c.id)}>Open</RowButton>),
@@ -86,7 +92,7 @@ const RANK = (c: Contract) => (breached(c) ? 0 : c.status === "pending_approval"
 
   return (
     <ExplorerPage
-      header={<PageHeader title="Data contracts" meta={`A contract is a promise between the system that produces data and the one that uses it, checked on every analysis.${q.data ? ` ${all.length.toLocaleString()} contracts.` : ""}`} actions={canCreate ? <Button onClick={() => setCreating(true)}>New contract</Button> : undefined} />}
+      header={<PageHeader title="Data contracts" meta={`A contract is a promise between the system that produces data and the one that uses it, checked on every analysis.${q.data ? ` ${all.length.toLocaleString()} contracts.` : ""}`} actions={<><InsightActions />{canCreate ? <Button onClick={() => setCreating(true)}>New contract</Button> : null}</>} tabs={<InsightTabs />} />}
       filterBar={
         <div className="flex items-end gap-3">
           <div className="flex items-end gap-3">
@@ -120,14 +126,14 @@ const RANK = (c: Contract) => (breached(c) ? 0 : c.status === "pending_approval"
               action: canCreate ? <Button onClick={() => setCreating(true)}>New contract</Button> : <Button variant="secondary" onClick={() => router.push("/rules")}>Open rules</Button>,
             }
       }
-      errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
+      errorProps={{ error: q.error, onRetry: () => q.refetch() }}
       drawer={
         <>
           <Drawer open={!!selected} onOpenChange={(o) => !o && setSelectedId(null)} title={selected?.name ?? "Contract"}>
             {selected ? <ContractDetail contract={selected} canSubmit={canCreate} canActivate={canActivate} userId={user?.id ?? null} onChanged={refresh} /> : null}
           </Drawer>
           <Drawer open={creating} onOpenChange={setCreating} title="New data contract">
-            {creating ? <NewContractForm onDone={() => { setCreating(false); refresh(); }} /> : null}
+            {creating ? <NewContractForm onDone={(id) => { setCreating(false); refresh(); setSelectedId(id); }} /> : null}
           </Drawer>
         </>
       }
@@ -137,6 +143,16 @@ const RANK = (c: Contract) => (breached(c) ? 0 : c.status === "pending_approval"
 
 function ContractDetail({ contract: c, canSubmit, canActivate, userId, onChanged }: { contract: Contract; canSubmit: boolean; canActivate: boolean; userId: string | null; onChanged: () => void }) {
   const isAuthor = c.created_by != null && c.created_by === userId;
+  const { nameOf } = usePeople(userId);
+  const by = (id: string | null) => (id ? ` by ${nameOf(id) ?? "a user"}` : "");
+  const [editing, setEditing] = useState(false);
+  const saveTerms = useMutation({
+    mutationFn: (body: TermsBody) => updateContract(c.id, body),
+    onSuccess: () => { toast.success(`Terms saved on ${c.name}`); setEditing(false); onChanged(); },
+    onError: (e) => toast.error(apiErrorMessage(e)),
+  });
+  const termed = hasTerms(c);
+  const canEditTerms = canSubmit && c.status === "draft";
   const submit = useMutation({
     mutationFn: () => updateContract(c.id, { status: "pending_approval" }),
     onSuccess: () => { toast.success(`${c.name} is awaiting approval`); onChanged(); },
@@ -148,7 +164,6 @@ function ContractDetail({ contract: c, canSubmit, canActivate, userId, onChanged
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const compliance = useQuery({ queryKey: queryKeys.contractCompliance(c.id), queryFn: () => getContractCompliance(c.id) });
-  const terms = TERMS.filter(([k]) => c[k] && Object.keys(c[k] as object).length);
   const history = compliance.data?.compliance_history ?? [];
 
   return (
@@ -158,32 +173,23 @@ function ContractDetail({ contract: c, canSubmit, canActivate, userId, onChanged
       <dl className="grid grid-cols-[140px_1fr] gap-y-1 m-text-body">
         <dt className="m-ink-3">Producer</dt><dd>{c.producer}</dd>
         <dt className="m-ink-3">Consumer</dt><dd>{c.consumer}</dd>
-        <dt className="m-ink-3">Latest check</dt><dd>{c.latest_compliant === true ? "Compliant" : c.latest_compliant === false ? "Not compliant" : "Not checked"}</dd>
+        <dt className="m-ink-3">Latest check</dt><dd><Compliance ok={c.latest_compliant} /></dd>
         <dt className="m-ink-3">Checked</dt><dd>{c.last_checked ? relativeTime(c.last_checked) : "Never"}</dd>
-        <dt className="m-ink-3">Created</dt><dd>{relativeTime(c.created_at)}{c.created_by ? ` by ${c.created_by}` : ""}</dd>
-        <dt className="m-ink-3">Activated</dt><dd>{c.activated_at ? `${relativeTime(c.activated_at)}${c.approved_by ? ` by ${c.approved_by}` : ""}` : "Not yet"}</dd>
+        <dt className="m-ink-3">Created</dt><dd>{relativeTime(c.created_at)}{by(c.created_by)}</dd>
+        <dt className="m-ink-3">Activated</dt><dd>{c.activated_at ? `${relativeTime(c.activated_at)}${by(c.approved_by)}` : "Not yet"}</dd>
         <dt className="m-ink-3">Expires</dt><dd>{c.expires_at ? formatDate(c.expires_at) : "Never"}</dd>
       </dl>
 
-      {terms.length ? (
-        <div className="flex flex-col gap-3">
-          {terms.map(([k, title]) => (
-            <div key={k}>
-              <Card title={`${title} terms`} padding="sm">
-                <dl className="m-text-body grid grid-cols-[140px_1fr] gap-y-1">
-                  {Object.entries(c[k] as Record<string, unknown>).map(([key, v]) => (
-                    <div key={key} className="contents">
-                      <dt className="m-ink-3">{key.replace(/_/g, " ")}</dt>
-                      <dd><Mono>{typeof v === "string" ? v : JSON.stringify(v)}</Mono></dd>
-                    </div>
-                  ))}
-                </dl>
-              </Card>
-            </div>
-          ))}
-        </div>
+      {editing ? (
+        <ContractTermsEditor contract={c} pending={saveTerms.isPending} onSave={(body) => saveTerms.mutate(body)} onCancel={() => setEditing(false)} />
       ) : (
-        <p className="m-text-meta m-ink-3">No terms stated yet; the contract documents the pair until terms are added.</p>
+        <>
+          <ContractTermsView contract={c} />
+          {termed ? null : (
+            <p className="m-text-meta m-ink-3">No terms stated yet. A contract promises nothing until it states a quality, freshness, volume or schema term</p>
+          )}
+          {canEditTerms ? <div><Button variant="secondary" onClick={() => setEditing(true)}>{termed ? "Edit terms" : "Add terms"}</Button></div> : null}
+        </>
       )}
 
       <div>
@@ -196,7 +202,7 @@ function ContractDetail({ contract: c, canSubmit, canActivate, userId, onChanged
           <ul className="flex flex-col gap-1">
             {history.map((h) => (
               <li key={h.id} className="flex items-center gap-2 m-text-body">
-                <Pill tone={h.overall_compliant ? "go" : "no-go"}>{h.overall_compliant ? "Compliant" : "Not compliant"}</Pill>
+                <Compliance ok={h.overall_compliant} />
                 <span className="m-ink-3">{relativeTime(h.recorded_at)}</span>
               </li>
             ))}
@@ -204,9 +210,12 @@ function ContractDetail({ contract: c, canSubmit, canActivate, userId, onChanged
         )}
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {canSubmit && c.status === "draft" ? (
-          <Button onClick={() => submit.mutate()} disabled={submit.isPending}>{submit.isPending ? "Submitting…" : "Submit for approval"}</Button>
+          <>
+            <Button onClick={() => submit.mutate()} disabled={submit.isPending || !termed || editing}>{submit.isPending ? "Submitting…" : "Submit for approval"}</Button>
+            {!termed ? <span className="m-text-meta m-ink-3">Add at least one term before submitting it for approval</span> : null}
+          </>
         ) : null}
         {canActivate && !isAuthor && c.status === "pending_approval" ? (
           <Button onClick={() => activate.mutate()} disabled={activate.isPending}>{activate.isPending ? "Activating…" : "Activate"}</Button>
@@ -230,11 +239,11 @@ const CONTRACT_SCHEMA: Schema<{ name: string; producer: string; consumer: string
   description: length(1, 2000, "Use up to 2,000 characters"),
 };
 
-function NewContractForm({ onDone }: { onDone: () => void }) {
+function NewContractForm({ onDone }: { onDone: (id: string) => void }) {
   const [d, setD] = useState({ name: "", producer: "", consumer: "", description: "" });
   const create = useMutation({
     mutationFn: () => createContract({ name: d.name, producer: d.producer, consumer: d.consumer, description: d.description || undefined }),
-    onSuccess: () => { toast.success("Contract created as a draft"); onDone(); },
+    onSuccess: (r) => { toast.success("Contract created as a draft. Add its terms next"); onDone(r.id); },
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const form = useFormErrors(CONTRACT_SCHEMA, d);
@@ -247,7 +256,7 @@ function NewContractForm({ onDone }: { onDone: () => void }) {
       <Field label="What the contract governs" error={form.error("description")}>
         <Textarea rows={3} value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} onBlur={() => form.blur("description")} />
       </Field>
-      <p className="m-text-meta m-ink-3">It starts as a draft. Add schema, quality, freshness and volume terms, then submit it for approval.</p>
+      <p className="m-text-meta m-ink-3">It starts as a draft. Open it to add its quality, freshness, volume and schema terms, then submit it for approval.</p>
       <div><Button type="submit" disabled={!valid || create.isPending}>{create.isPending ? "Creating…" : "Create draft"}</Button></div>
     </form>
   );

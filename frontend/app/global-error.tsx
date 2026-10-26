@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 import "../design/tokens.css";
 import "../design/global-error.css";
 import { clientErrorId, reportClientError } from "@/lib/client-errors";
+import { Attribution } from "@/design/brand/Attribution";
+import { themeBootScript } from "@/lib/theme";
 
 // Replaces the root layout, so there is no shell, no Tailwind and no design primitives here: plain elements
 // styled by design/global-error.css, which reads tokens.css variables only.
-const THEME_SCRIPT = `try{var t=localStorage.getItem("meridian:theme")||"light";if(t==="system")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t}catch(e){}`;
+const THEME_SCRIPT = themeBootScript();
 
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   const reference = clientErrorId(error, error.digest);
@@ -50,6 +52,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
             </div>
           </div>
         </main>
+        <Attribution />
       </body>
     </html>
   );

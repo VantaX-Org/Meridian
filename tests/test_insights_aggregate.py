@@ -77,6 +77,16 @@ def test_overview_has_no_cross_l1_total():
     assert var["worst_l1"] == "O2C" and var["worst_l1_amount"] == 120.0  # not 220.0
 
 
+def test_features_blocked_counts_only_blocked_status():
+    """A degraded or ok feature is impacted, not blocked: "SAP features blocked" counts status == "blocked" only."""
+    data = _overview_data()
+    data["impact_rows"] = [{"feature": "a", "l1": "P2P", "status": "blocked", "record_count": 3, "value_at_risk": 1.0},
+                           {"feature": "b", "l1": "P2P", "status": "degraded", "record_count": 5, "value_at_risk": 1.0},
+                           {"feature": "c", "l1": "O2C", "status": "ok", "record_count": 2, "value_at_risk": 1.0},
+                           {"feature": "d", "l1": "O2C", "status": "blocked", "record_count": 0, "value_at_risk": 0.0}]
+    assert agg.overview_from(data)["value_at_risk"]["features_blocked"] == 1
+
+
 # -- overview + narrative ----------------------------------------------------------------------
 
 def _overview_data():

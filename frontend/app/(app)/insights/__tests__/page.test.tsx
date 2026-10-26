@@ -19,7 +19,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 vi.mock("@/hooks/use-day-one", () => ({
-  useDayOne: () => ({ status: "ready", step: null }),
+  useDayOne: () => ({ status: "ready", step: null, error: null, refetch: () => {} }),
   DayOneAction: () => null,
 }));
 
@@ -46,6 +46,7 @@ function mockAll() {
   vi.spyOn(insightsApi, "getHeatmap").mockResolvedValue({ version_id: "v1", dimensions: [], rows: [] });
   vi.spyOn(insightsApi, "getCleansing").mockResolvedValue({ version_id: "v1", currency: "USD", steps: [], by_module: [], by_rule: [] } as never);
   vi.spyOn(migrationApi, "getS4Readiness").mockResolvedValue({ version_id: "v1", status: "ok", ready: true, rules: 0, evaluated: 0, failing: 0, failing_records: 0, blocking_failing: 0, warning_failing: 0, areas: [] });
+  vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue({ severity: { critical: 2, high: 5, medium: 9, low: 1 } } as never);
 }
 
 afterEach(() => {
@@ -63,8 +64,8 @@ describe("InsightsOverviewPage", () => {
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
     expect(screen.getAllByTestId("insight-hero-stats")).toHaveLength(1);
     expect(screen.getByRole("link", { name: /^Reports/ })).toBeInTheDocument();
-    // The hero names what it counts (config-impact blocking gaps), so it never contradicts Readiness's "Blockers".
-    expect(screen.getByText("Blocking gaps")).toBeInTheDocument();
+    // One term for the count on every insight page: blocking findings.
+    expect(screen.getByText("Blocking findings")).toBeInTheDocument();
     expect(screen.queryByText("Blockers")).toBeNull();
     // one run is never described as "all objects"
     expect(screen.queryByText(/all objects/i)).toBeNull();
@@ -73,7 +74,23 @@ describe("InsightsOverviewPage", () => {
   it("shows the worst L1 and never a cross-L1 total", async () => {
     mockAll();
     mount();
-    expect(await screen.findByText(/Procure to pay, 3 features blocked/i)).toBeInTheDocument();
+    expect(await screen.findByText("Most at risk: Procure to pay")).toBeInTheDocument();
+    expect(screen.getByText("3 features blocked")).toBeInTheDocument();
+  });
+
+  it("counts the run's critical and high findings, as the current state does, and keeps blocking findings in their own tile", async () => {
+    mockAll();
+    mount();
+    // 2 critical + 5 high failing rules of the run, opening exactly those findings on the run's findings tab.
+    const tile = (await screen.findByText("Critical and high findings")).closest("a");
+    expect(tile).toHaveAttribute("href", "/runs/v1?tab=findings&severity=critical,high");
+    expect(await within(tile as HTMLElement).findByText("7")).toBeInTheDocument();
+    // The hero's sub-line compares with the previous run rather than repeating the tile.
+    expect(within(screen.getByTestId("hero-verdict")).getByText("Was 70.0 in the previous run")).toBeInTheDocument();
+    expect(within(screen.getByTestId("hero-verdict")).queryByText("7 critical and high findings")).toBeNull();
+    expect(findingsApi.getFindingsAggregate).toHaveBeenCalledWith({ version_id: "v1", module: undefined });
+    // The S/4 and critical set keeps its own name and opens the readiness view.
+    expect(screen.getByText("Blocking findings").closest("a")).toHaveAttribute("href", "/insights/readiness?run=v1");
   });
 
   it("links Open records to the object's records tab pre-filtered by the rule, and omits a zero wave count", async () => {
@@ -87,7 +104,7 @@ describe("InsightsOverviewPage", () => {
     // A field failing two rules opens the object's failing records in Fix work.
     const link = await screen.findByRole("link", { name: /^Open the failing records of accounts payable/i });
     expect(link).toHaveAttribute("href", "/fix?run=v1&module=accounts_payable");
-    expect(screen.getAllByText("1 blocking gap").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("1 blocking finding").length).toBeGreaterThan(0);
     expect(screen.queryByText(/across 0 waves/)).toBeNull();
     expect(screen.getByText("No wave defined")).toBeInTheDocument();
   });
@@ -180,9 +197,9 @@ describe("InsightsOverviewPage without ?run= (current state)", () => {
     expect(screen.getByRole("group", { name: /Cleansing funnel/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Create remediation batch" })).toHaveAttribute("href", "/fix?sugg=1");
     // auto-fixable records in the hero, value at risk of the worst L1 only
-    expect(screen.getByText("Auto-fixable records")).toBeInTheDocument();
+    expect(screen.getByText("Records with a suggested value")).toBeInTheDocument();
     expect(screen.getByText("50% of failing records")).toBeInTheDocument();
-    expect(within(screen.getByTestId("current-value-at-risk")).getByText("Most at risk, Order to cash")).toBeInTheDocument();
+    expect(within(screen.getByTestId("current-value-at-risk")).getByText("Most at risk: Order to cash")).toBeInTheDocument();
     // only the scope=current wrappers are read, never the one-run ones
     expect(insightsApi.getCurrentOverview).toHaveBeenCalledWith();
     expect(migrationApi.getS4Readiness).not.toHaveBeenCalled();
@@ -190,6 +207,28 @@ describe("InsightsOverviewPage without ?run= (current state)", () => {
     // the per-run card is reduced to links
     expect(screen.queryByText("Analysed per run")).toBeNull();
     expect(within(screen.getByTestId("per-run-list")).getAllByRole("link").length).toBe(3);
+  });
+
+  it("never opens one run's impact from a value at risk that spans several runs", async () => {
+    query = "";
+    mockCurrent();
+    mount();
+    const tiles = await screen.findByTestId("current-value-at-risk");
+    expect(within(tiles).getByText("Most at risk: Order to cash").closest("a")).toBeNull();
+    expect(within(tiles).getAllByText("Across 3 runs").length).toBe(2);
+    // each run's own value at risk is one link away
+    const perRun = within(screen.getByTestId("value-at-risk-runs")).getAllByRole("link");
+    expect(perRun.map((a) => a.getAttribute("href"))).toEqual(expect.arrayContaining(["/insights/impact?run=co2", "/insights/impact?run=mm1", "/insights/impact?run=ap1"]));
+  });
+
+  it("opens the one run behind the state from value at risk, and names it", async () => {
+    query = "";
+    mockCurrent();
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [currentVersions[3]] } as never);
+    mount();
+    const tiles = await screen.findByTestId("current-value-at-risk");
+    expect(within(tiles).getByText("Most at risk: Order to cash").closest("a")).toHaveAttribute("href", "/insights/impact?run=ap1");
+    expect(screen.queryByTestId("value-at-risk-runs")).toBeNull();
   });
 
   it("shows an honest error in each current-state card when its endpoint fails, and keeps the page", async () => {
@@ -218,18 +257,36 @@ describe("InsightsOverviewPage without ?run= (current state)", () => {
     // the one-run overview endpoints are not read for a cross-object page
     expect(insightsApi.getOverview).not.toHaveBeenCalled();
     expect(insightsApi.getRootCauses).not.toHaveBeenCalled();
-    // mean of 50, 80 and 95; blocking findings are critical and high across the objects (3 + 2)
+    // mean of 50, 80 and 95; critical and high findings across the objects (3 + 2). Not "blocking": that word is the
+    // run overview's set (critical or S/4-blocking rules, blockers.count).
     const verdict = screen.getByTestId("hero-verdict");
     expect(within(verdict).getByText("At risk")).toBeInTheDocument();
-    expect(within(verdict).getByText("5 blocking findings in 2 objects")).toBeInTheDocument();
+    // The sub-line compares with the target rather than repeating the Critical and high tile: below target is
+    // at risk or no-go (50 no-go, 80 at risk; 95 go).
+    expect(within(verdict).getByText("2 of 3 objects below target")).toBeInTheDocument();
+    expect(screen.queryByText("Blocking findings")).toBeNull();
+    // the tile opens the findings behind its count, not the objects below target
+    expect(screen.getByText("Critical and high findings").closest("a")).toHaveAttribute("href", "/insights?severity=critical,high");
     expect(screen.getByText("DQS 75.0 across 3 objects, at risk")).toBeInTheDocument();
-    expect(screen.getAllByText("1 of 3 objects is not ready for go-live.").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("1 of 3 objects is not ready for go-live, 1 at risk.").length).toBeGreaterThan(0);
     // Fix first lists each object's findings from its own latest run only (CO099 is from an older controlling run)
     expect(await screen.findByText("CO001")).toBeInTheDocument();
     expect(screen.getByText("MM045")).toBeInTheDocument();
     expect(screen.queryByText("CO099")).toBeNull();
     // the per-run analyses are offered per run, each a link that pins that run
     expect(screen.getByRole("link", { name: "material_master_25k, 16 Oct 2026" })).toHaveAttribute("href", "/insights?run=mm1");
+  });
+
+  it("narrows Fix first to the severities of ?severity=, every matching row, with a way back", async () => {
+    query = "severity=critical,high";
+    mockCurrent();
+    mount();
+    expect(await screen.findByText("CO001")).toBeInTheDocument();
+    expect(findingsApi.getFindings).toHaveBeenCalledWith({ severity: "critical,high", sort: "impact", limit: 200 });
+    expect(screen.getByText("Critical and high failing rules, each object at its latest run, highest impact first")).toBeInTheDocument();
+    expect(screen.getByTestId("fix-first-clear")).toHaveAttribute("href", "/insights");
+    // still the current state: the one-run overview is not read
+    expect(insightsApi.getOverview).not.toHaveBeenCalled();
   });
 
   it("lays the verdict out with a wrapping basis so it never shrinks to a word per line", async () => {
@@ -251,5 +308,28 @@ describe("InsightsOverviewPage without ?run= (current state)", () => {
     mockAll();
     mount();
     expect(await screen.findByTestId("hero-verdict")).toHaveClass("m-hero-verdict");
+  });
+});
+
+describe("InsightsOverviewPage when the run list fails", () => {
+  const http500 = () => Object.assign(new Error("x"), { isAxiosError: true, response: { status: 500, data: {} } });
+
+  it("shows the error with Retry before \"No insights yet\" on the current state", async () => {
+    query = "";
+    const list = vi.spyOn(versionsApi, "getVersions").mockRejectedValue(http500());
+    mount();
+    expect(await screen.findByText("The server could not complete the request.")).toBeInTheDocument();
+    expect(screen.queryByText("No insights yet")).toBeNull();
+    const calls = list.mock.calls.length;
+    screen.getByRole("button", { name: "Retry" }).click();
+    await vi.waitFor(() => expect(list.mock.calls.length).toBeGreaterThan(calls));
+  });
+
+  it("shows the error, not \"No insights yet\", for an object filter with no run to resolve", async () => {
+    query = "module=material_master";
+    vi.spyOn(versionsApi, "getVersions").mockRejectedValue(http500());
+    mount();
+    expect(await screen.findByText("The server could not complete the request.")).toBeInTheDocument();
+    expect(screen.queryByText("No insights yet")).toBeNull();
   });
 });

@@ -1,5 +1,6 @@
 """Learned house rules (checks/house_rules.py): review queue. The miner is the maker;
-a person with ``approve`` is the checker. Approval writes an active rule_versions row
+a person with ``approve`` (or ``review_ai_rules``) is the checker, and may approve or reject;
+``manage_rules`` may also reject. Approval writes an active rule_versions row
 under a new append-only LR- id, run from the next analysis (checks/lifecycle.authored_rules)."""
 from __future__ import annotations
 
@@ -15,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _row, _rls
-from api.services.rbac import current_user_label, require_permission
+from api.services.rbac import current_user_label, require_any_permission, require_permission
 from checks import lifecycle
 
 router = APIRouter(prefix="/api/v1", tags=["learned-rules"])
@@ -126,7 +127,8 @@ async def mine(body: Mine, db: AsyncSession = Depends(get_db), tenant: Tenant = 
     return {"queued": True, "modules": modules}
 
 
-@router.post("/learned-rules/{pid}/approve", dependencies=[Depends(require_permission("approve"))])
+@router.post("/learned-rules/{pid}/approve",
+             dependencies=[Depends(require_any_permission("approve", "review_ai_rules"))])
 async def approve(pid: uuid.UUID, body: Approve, db: AsyncSession = Depends(get_db),
                   tenant: Tenant = Depends(get_tenant)) -> dict:
     me = current_user_label()
@@ -141,7 +143,8 @@ async def approve(pid: uuid.UUID, body: Approve, db: AsyncSession = Depends(get_
     return out
 
 
-@router.post("/learned-rules/{pid}/reject", dependencies=[Depends(require_permission("manage_rules"))])
+@router.post("/learned-rules/{pid}/reject",
+             dependencies=[Depends(require_any_permission("manage_rules", "approve", "review_ai_rules"))])
 async def reject(pid: uuid.UUID, body: Reject, db: AsyncSession = Depends(get_db),
                  tenant: Tenant = Depends(get_tenant)) -> dict:
     me = current_user_label()

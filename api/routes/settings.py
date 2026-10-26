@@ -1,6 +1,7 @@
 """Settings endpoints — tenant configuration, DQS weights, alert thresholds, notifications."""
 
 import json
+import math
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -47,6 +48,8 @@ class PlannerConfig(BaseModel):
     exception_hours: float = 2.0
     sprint_hours: float = 40.0
     cost_per_record: Optional[float] = None
+    # Kept for stored settings only: planner amounts are named by the cost model's currency
+    # (GET/PUT /settings/cost-model), which replaces this when the planner runs.
     currency: str = "ZAR"
 
 
@@ -253,14 +256,45 @@ async def put_scoring(body: ScoringConfig, db: AsyncSession = Depends(get_db),
 # Cost of poor data quality (checks/cost.py): the tenant's overrides of
 # checks/cost_model.yaml. Applies from the next analysis or re-analysis.
 
+# Sane ceilings: no amount (per record, per unit, per feature, a month) above a trillion, at most
+# _COST_MAX_ENTRIES keys in any section, and every number finite (NaN/Infinity would poison every total).
+# Checked in put_cost_model, not by pydantic: a pydantic error echoes the input, and a NaN/Infinity
+# input cannot be rendered as JSON (the 422 would become a 500).
+_COST_MAX_AMOUNT = 1e12
+_COST_MAX_ENTRIES = 500
+
+
+def _cost_number_errors(path: str, value: object) -> list[str]:
+    """Every non-finite or out-of-range number anywhere under ``value``."""
+    if isinstance(value, dict):
+        if len(value) > _COST_MAX_ENTRIES:
+            return [f"{path}: at most {_COST_MAX_ENTRIES} entries"]
+        return [e for k, v in value.items() for e in _cost_number_errors(f"{path}.{k}", v)]
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        if not math.isfinite(value):
+            return [f"{path}: must be a finite number"]
+        if value < 0:
+            return [f"{path}: must be a number >= 0"]
+        if value > _COST_MAX_AMOUNT:
+            return [f"{path}: must be at most {_COST_MAX_AMOUNT:.0e}"]
+    return []
+
+
 class CostModel(BaseModel):
-    currency: Optional[str] = Field(None, min_length=3, max_length=3)
+    # ISO 4217 code every amount of the model is in (risk, ROI, value at risk, planner, config impact).
+    currency: Optional[str] = Field(None, pattern=r"^[A-Z]{3}$")
     severity: dict[str, dict] = {}
     modules: dict[str, dict] = {}
     rules: dict[str, dict] = {}
-    # feature -> ZAR value per blocked record (api/services/insights_impact.py value_at_risk).
+    # feature -> value per blocked record (api/services/insights_impact.py value_at_risk).
     # Plain floats, not cost specs: not routed through validate_spec's per_record/field shapes.
     features: dict[str, float] = {}
+    # defect type -> {unit_cost, factor, mitigation} (api/services/analytics_engine.py BusinessImpactAnalytics).
+    impact: dict[str, dict] = {}
+    # alignment finding type -> estimated impact of one unit (config_intelligence/alignment_validator.py).
+    config_alignment: dict[str, float] = {}
+    # what the tenant pays a month, for the ROI multiple and payback; None: no ROI multiple.
+    subscription_monthly: Optional[float] = None
 
 
 @router.get("/cost-model", dependencies=[Depends(require_permission("view"))])
@@ -271,16 +305,38 @@ async def get_cost_model(db: AsyncSession = Depends(get_db), tenant: TenantDep =
     return {"defaults": cost.defaults(), "tenant": own, "effective": cost.effective(own)}
 
 
+@router.get("/cost-model/features", dependencies=[Depends(require_permission("view"))])
+async def get_cost_model_features() -> dict:
+    """The SAP features a value per blocked record can be set for (``features`` of the cost
+    model): every target feature of the config impact rules. Static rule metadata, no tenant data."""
+    from api.services.insights_impact import impact_features
+    return {"features": impact_features()}
+
+
 @router.put("/cost-model", dependencies=[Depends(require_permission("manage_settings"))])
 async def put_cost_model(body: CostModel, db: AsyncSession = Depends(get_db),
                          tenant: TenantDep = Depends(get_tenant)):
     """Replace the tenant's cost model. Each spec is {per_record: n} or
     {field: "TABLE.FIELD"}, either with an optional factor."""
     from checks import cost
+    from api.services.insights_impact import impact_features
+    sections = ("severity", "modules", "rules", "features", "impact", "config_alignment")
+    numbers = [e for section in sections for e in _cost_number_errors(section, getattr(body, section))]
+    numbers += _cost_number_errors("subscription_monthly", body.subscription_monthly)
+    if numbers:
+        raise HTTPException(status_code=422, detail=numbers)
+    feature_names = {f["feature"] for f in impact_features()}
+    unknown = sorted(set(body.features) - feature_names)
+    if unknown:
+        raise HTTPException(status_code=422, detail=[f"features.{k}: not a config impact feature" for k in unknown])
     if set(body.severity) - set(cost.SEVERITY_FACTOR):
         raise HTTPException(status_code=422, detail=f"severity keys are {sorted(cost.SEVERITY_FACTOR)}")
     errors = [f"{section}.{key}: {err}" for section in ("severity", "modules", "rules")
               for key, spec in getattr(body, section).items() if (err := cost.validate_spec(spec))]
+    errors += [f"impact.{key}: {err}" for key, spec in body.impact.items() if (err := cost.validate_impact(key, spec))]
+    known = set(cost.defaults().get("config_alignment") or {})
+    errors += [f"config_alignment.{key}: alignment types are {sorted(known)}"
+               for key in body.config_alignment if key not in known]
     if errors:
         raise HTTPException(status_code=422, detail=errors)
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))

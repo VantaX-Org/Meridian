@@ -80,6 +80,24 @@ describe("DryRunPage", () => {
     expect(pdfLink).toHaveAttribute("href", "/api/v1/migration/runs/run-1/dry-run/pdf");
   });
 
+  it("pages through every failing record and points the stats at the list, not the data quality run", async () => {
+    vi.spyOn(migrationApi, "getMigrationRun").mockResolvedValue(RUN_DETAIL);
+    const row = (k: string) => ({ module: "material_master", source_table: "MARA", record_key: k, status: "load_fail" as const, reasons: ["x"] });
+    const records = vi.spyOn(migrationApi, "getDryRunRecords").mockImplementation(async (_id, p) => ({
+      total: 450, rows: [row(`K${p?.offset ?? 0}`)],
+    }));
+    renderWithQuery(<DryRunPage />);
+    expect(await screen.findByText("K0")).toBeInTheDocument();
+    expect(records).toHaveBeenCalledWith("run-1", { status: "load_fail", limit: 200, offset: 0 });
+    expect(screen.getByText("1–200 of 450")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(await screen.findByText("K200")).toBeInTheDocument();
+    expect(records).toHaveBeenCalledWith("run-1", { status: "load_fail", limit: 200, offset: 200 });
+    // "Would fail to load" opens the failing records below; nothing links to the data quality run's page
+    expect(screen.getByRole("link", { name: /Would fail to load/ })).toHaveAttribute("href", "#failing-records");
+    expect(screen.queryAllByRole("link").filter((a) => a.getAttribute("href")?.startsWith("/runs/"))).toHaveLength(0);
+  });
+
   it("lists the dry runs to choose from when none is selected, and opens one", async () => {
     searchParams = "";
     const list = vi.spyOn(migrationApi, "getMigrationRuns").mockResolvedValue([RUN_DETAIL.run]);

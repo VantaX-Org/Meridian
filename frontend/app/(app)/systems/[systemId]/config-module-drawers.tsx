@@ -43,7 +43,7 @@ export function InventoryModuleDrawer({ module, onClose }: { module: string | nu
             <Stat label="Elements" value={n(elements.length)} />
             {(["active", "dormant", "ghost"] as const).map((s) => <Stat key={s} label={labelOf(s)} value={n(counts[s] ?? 0)} />)}
           </div>
-          <DataTable columns={columns} data={elements} getRowId={(e) => `${e.element_type}/${e.element_value}`} hideToolbar dense height="auto" tableId="config-inventory-module" />
+          <DataTable columns={columns} data={elements} getRowId={(e) => `${e.element_type}/${e.element_value}`} hideToolbar height="auto" tableId="config-inventory-module" />
         </div>
       )}</Async>
     </Drawer>
@@ -73,7 +73,6 @@ export function AlignmentModuleDrawer({ module, onClose }: { module: string | nu
           data={findings}
           getRowId={(f) => `${f.check_id}/${f.title}`}
           hideToolbar
-          dense
           height="auto"
           tableId="config-alignment-module"
           renderExpanded={(f) => (

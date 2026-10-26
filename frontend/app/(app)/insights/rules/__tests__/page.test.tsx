@@ -8,6 +8,10 @@ import { rulesFor80 } from "../../_components/rulesFor80";
 import RulesPage from "../page";
 
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+vi.mock("@/hooks/use-day-one", () => ({
+  useDayOne: () => ({ status: "ready", step: null, error: null, refetch: () => {} }),
+  DayOneAction: () => null,
+}));
 let query = "run=v1";
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -62,6 +66,28 @@ describe("RulesPage", () => {
     // The shared tab strip and action bar come with the frame.
   });
 
+  it.each([
+    ["blocking", ["B1"]],
+    ["warning", ["W1"]],
+    ["yes", ["B1", "W1"]],
+  ])("?s4=%s keeps the S/4 rules of that impact, the ones the readiness page counts", async (s4, kept) => {
+    query = `run=v1&s4=${s4}`;
+    const rank = vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({
+      version_id: "v1", rows: [{ ...row("B1", 80), s4: "blocking" }, { ...row("W1", 20), s4: "warning" }],
+    });
+    try {
+      mount();
+      expect(await screen.findByRole("grid")).toBeInTheDocument();
+      expect(rank).toHaveBeenCalledWith(expect.objectContaining({ s4_only: true }));
+      for (const id of ["B1", "W1"]) {
+        if (kept.includes(id)) expect(screen.getAllByText(`Rule ${id}`).length).toBeGreaterThan(0);
+        else expect(screen.queryAllByText(`Rule ${id}`)).toHaveLength(0);
+      }
+    } finally {
+      query = "run=v1";
+    }
+  });
+
   it("keeps the product's case in Impact by S/4 status", async () => {
     query = "run=v1&axis=s4";
     vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [{ ...row("A1", 80), s4: "blocking" }] });
@@ -100,5 +126,23 @@ describe("RulesPage", () => {
     vi.spyOn(insightsApi, "getRuleRanking").mockRejectedValue(new Error("network error"));
     mount();
     expect(await screen.findByRole("button", { name: /retry/i })).toBeInTheDocument();
+  });
+});
+
+describe("RulesPage when the run list fails", () => {
+  it("shows the error with Retry, never \"No failing rules yet\"", async () => {
+    query = "";
+    try {
+      const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      const list = vi.spyOn(versionsApi, "getVersions").mockRejectedValue(Object.assign(new Error("x"), { isAxiosError: true, response: { status: 503, data: {} } }));
+      render(<QueryClientProvider client={qc}><RulesPage /></QueryClientProvider>);
+      expect(await screen.findByText("The server could not complete the request.")).toBeInTheDocument();
+      expect(screen.queryByText("No failing rules yet")).toBeNull();
+      const calls = list.mock.calls.length;
+      screen.getByRole("button", { name: "Retry" }).click();
+      await vi.waitFor(() => expect(list.mock.calls.length).toBeGreaterThan(calls));
+    } finally {
+      query = "run=v1";
+    }
   });
 });

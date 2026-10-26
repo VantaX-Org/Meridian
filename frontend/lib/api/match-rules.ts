@@ -78,10 +78,12 @@ export async function approveProposedRule(
   return data;
 }
 
+/** The reason, when given, is kept in the audit log (api/routes/ai_feedback.py). */
 export async function rejectProposedRule(
   id: string,
+  reason?: string,
 ): Promise<{ id: string; status: string }> {
-  const { data } = await apiClient.post(`/api/v1/ai/proposed-rules/${id}/reject`);
+  const { data } = await apiClient.post(`/api/v1/ai/proposed-rules/${id}/reject`, reason ? { reason } : {});
   return data;
 }
 

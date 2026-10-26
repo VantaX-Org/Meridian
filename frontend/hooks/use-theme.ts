@@ -3,6 +3,7 @@
 import { useCallback, useEffect } from "react";
 import { usePreferences } from "@/hooks/use-preferences";
 import type { DensityTier, Theme } from "@/lib/preferences";
+import { DEFAULT_THEME } from "@/lib/theme";
 
 export type { DensityTier, Theme };
 
@@ -14,7 +15,7 @@ const DEFAULT_DENSITY: DensityTier = "default";
  */
 export function useAuroraPrefs() {
   const { prefs, update } = usePreferences();
-  const theme: Theme = prefs.theme ?? "light";
+  const theme: Theme = prefs.theme ?? DEFAULT_THEME;
   const density: DensityTier = prefs.density ?? DEFAULT_DENSITY;
   useEffect(() => {
     if (theme === "system") delete document.documentElement.dataset.theme;

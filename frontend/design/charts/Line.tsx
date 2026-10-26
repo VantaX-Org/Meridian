@@ -7,15 +7,59 @@ import { ComposedChart, Area, Line as RLine, XAxis, YAxis, CartesianGrid, Toolti
 import { chartTheme, chartSummary, type ChartPoint } from "./theme";
 import { ChartTooltip } from "./Tooltip";
 import { ChartLegend, isolatedOpacity } from "./Legend";
+import { ChartPointActions } from "./PointActions";
 import { mMotion, reducedMotion } from "../tokens";
 
 /** An extra named series for a multi-series Line. Colours come from the ten-hue palette in order. */
 export interface LineSeries {
   name: string;
   data: ChartPoint[];
+  /** An uncertainty band, low to high at each x, drawn behind the line in the series hue's fill. */
+  band?: LineBand[];
 }
 
-type LineRow = { x: string | number } & Record<string, string | number>;
+/** One x of a series band: the range a value is expected to fall in. */
+export interface LineBand {
+  x: string | number;
+  low: number;
+  high: number;
+}
+
+type LineRow = { x: string | number } & Record<string, string | number | [number, number]>;
+
+/**
+ * The chart rows: one per x across every series (and `xDomain`), `s{i}` the value of series i and `b{i}` its band
+ * as `[low, high]`. On a numeric axis the rows are sorted by x, so a line runs left to right whatever the input order.
+ */
+export function lineRows(
+  lines: readonly LineSeries[],
+  xDomain: readonly { x: string | number }[] = [],
+  numericX = false,
+): LineRow[] {
+  const byX = new Map<string | number, LineRow>();
+  const at = (x: string | number): LineRow => {
+    const row = byX.get(x) ?? { x };
+    byX.set(x, row);
+    return row;
+  };
+  for (const d of xDomain) at(d.x);
+  lines.forEach((sr, i) => {
+    sr.data.forEach((p) => { at(p.x)[`s${i}`] = p.y; });
+    sr.band?.forEach((b) => { at(b.x)[`b${i}`] = [b.low, b.high]; });
+  });
+  const rows = [...byX.values()];
+  return numericX ? rows.sort((a, b) => Number(a.x) - Number(b.x)) : rows;
+}
+
+/**
+ * The series key the chart isolates: the legend's choice when the viewer made one, else the series named by
+ * `highlight` (a caller's selector), else none.
+ */
+export function isolationKey(lines: readonly LineSeries[], legendChoice: string | null | undefined, highlight: string | undefined): string | null {
+  if (legendChoice !== undefined) return legendChoice;
+  const i = highlight === undefined ? -1 : lines.findIndex((sr) => sr.name === highlight);
+  return i >= 0 ? String(i) : null;
+}
 
 /** Room for the first tick label so it never sits on the y-axis "0", and for the last dot. */
 const X_PADDING = { left: 16, right: 16 } as const;
@@ -66,6 +110,22 @@ export function tickText(label: string, dropYear: boolean): string {
   return s.replace(/(\d{1,2}:\d{2}):\d{2}/, "$1");
 }
 
+/**
+ * Each x's tick text, unique: when two points shorten to the same text (runs a minute apart, twins), the first keeps
+ * it and each later one reads by its ordinal in that group ("#2", "#3"), so the axis never repeats a label.
+ */
+export function uniqueTicks(xs: readonly (string | number)[], text: (x: string | number) => string): Map<string | number, string> {
+  const seen = new Map<string, number>();
+  const out = new Map<string | number, string>();
+  for (const x of xs) {
+    const t = text(x);
+    const n = (seen.get(t) ?? 0) + 1;
+    seen.set(t, n);
+    out.set(x, n === 1 ? t : `#${n}`);
+  }
+  return out;
+}
+
 export function Line({
   data,
   onPointClick,
@@ -77,6 +137,8 @@ export function Line({
   series,
   xDomain,
   counts = false,
+  numericX = false,
+  highlight,
 }: {
   data: ChartPoint[];
   onPointClick?: (point: ChartPoint) => void;
@@ -94,18 +156,27 @@ export function Line({
   xDomain?: { x: string | number; label?: string }[];
   /** Counts, not scores: the y axis runs from 0 to a round number above the largest value. */
   counts?: boolean;
+  /**
+   * A numeric x axis: points sit at their x value (e.g. days from today), not at equal steps. Ticks are the
+   * `xDomain` values when given; labels come from `xDomain` and point labels as on a category axis.
+   */
+  numericX?: boolean;
+  /** Multi-series mode: the name of the series to isolate, e.g. from a selector beside the chart. The legend can still change it. */
+  highlight?: string;
 }) {
   const animate = draw && !reducedMotion();
-  const [isolated, setIsolated] = useState<string | null>(null);
+  // undefined: follow `highlight`; null or a key: the viewer's legend choice, until `highlight` changes.
+  const [legendChoice, setLegendChoice] = useState<string | null | undefined>(undefined);
+  const [choiceFor, setChoiceFor] = useState(highlight);
+  if (choiceFor !== highlight) {
+    setChoiceFor(highlight);
+    setLegendChoice(undefined);
+  }
   const multi = series && series.length > 0 ? series : null;
-  const lines = multi ?? [{ name: label ?? "Value", data }];
-  const rows = useMemo<LineRow[]>(() => {
-    const byX = new Map<string | number, LineRow>();
-    for (const d of xDomain ?? []) byX.set(d.x, { x: d.x });
-    if (!multi) data.forEach((p) => byX.set(p.x, { ...(byX.get(p.x) ?? { x: p.x }), s0: p.y }));
-    else multi.forEach((sr, i) => sr.data.forEach((p) => byX.set(p.x, { ...(byX.get(p.x) ?? { x: p.x }), [`s${i}`]: p.y })));
-    return [...byX.values()];
-  }, [multi, data, xDomain]);
+  const lines = useMemo<LineSeries[]>(() => multi ?? [{ name: label ?? "Value", data }], [multi, label, data]);
+  const isolated = isolationKey(lines, legendChoice, multi ? highlight : undefined);
+  const rows = useMemo<LineRow[]>(() => lineRows(lines, xDomain, numericX), [lines, xDomain, numericX]);
+  const hasBand = lines.some((sr) => sr.band && sr.band.length > 0);
   // A point keyed by an id (a run id) carries its display text in `label`; ticks and the tooltip show that, never the key.
   const labelOf = useMemo(() => {
     const m = new Map<string | number, string>();
@@ -114,17 +185,33 @@ export function Line({
     return (x: string | number) => m.get(x) ?? String(x);
   }, [multi, data, xDomain]);
   const years = new Set(rows.map((r) => /\b(\d{4})\b/.exec(labelOf(r.x))?.[1]).filter(Boolean));
-  const tickOf = (x: string | number) => tickText(labelOf(x), years.size === 1);
+  const ticks = uniqueTicks(rows.map((r) => r.x), (x) => tickText(labelOf(x), years.size === 1));
+  const tickOf = (x: string | number) => ticks.get(x) ?? tickText(labelOf(x), years.size === 1);
   const rightMargin = lastTickMargin(rows.length ? tickOf(rows[rows.length - 1].x) : undefined);
-  const values = rows.flatMap((r) => Object.entries(r).filter(([k]) => k !== "x").map(([, v]) => Number(v))).filter(Number.isFinite);
+  const values = rows
+    .flatMap((r) => Object.entries(r).filter(([k]) => k !== "x").flatMap(([, v]) => (Array.isArray(v) ? v : [Number(v)])))
+    .filter(Number.isFinite);
   const domain = counts ? countDomain(values) : yDomain(values, dqsThreshold);
   const summaryData = multi ? multi.flatMap((sr) => sr.data.map((p) => ({ ...p, x: `${sr.name} ${p.label ?? p.x}`, label: undefined }))) : data;
+  // The keyboard path: one button per point, named by series in a multi-series chart.
+  const pointSeries = new Map<ChartPoint, string>(multi ? multi.flatMap((sr) => sr.data.map((p) => [p, sr.name] as const)) : []);
   return (
+    <div>
     <div role="img" aria-label={chartSummary(summaryData, label)}>
     <ResponsiveContainer width="100%" height={height}>
       <ComposedChart data={rows} accessibilityLayer={false} margin={{ top: 5, right: rightMargin, bottom: 5, left: 5 }}>
         <CartesianGrid stroke={chartTheme.grid} strokeDasharray="none" vertical={false} />
-        <XAxis dataKey="x" axisLine={false} tickLine={false} tick={{ fill: chartTheme.axis, fontSize: 12 }} tickFormatter={tickOf} minTickGap={24} padding={X_PADDING} interval="preserveStartEnd" />
+        <XAxis
+          dataKey="x"
+          axisLine={false}
+          tickLine={false}
+          tick={{ fill: chartTheme.axis, fontSize: 12 }}
+          tickFormatter={tickOf}
+          minTickGap={24}
+          padding={X_PADDING}
+          interval="preserveStartEnd"
+          {...(numericX ? { type: "number" as const, domain: ["dataMin", "dataMax"], ticks: xDomain?.map((d) => d.x) } : {})}
+        />
         <YAxis axisLine={false} tickLine={false} tick={{ fill: chartTheme.axis, fontSize: 12 }} domain={domain} tickCount={5} />
         <Tooltip content={<ChartTooltip />} cursor={false} labelFormatter={(x) => labelOf(x as string | number)} />
         {dqsThreshold !== undefined && (
@@ -135,8 +222,27 @@ export function Line({
             label={{ value: `Target ${dqsThreshold}`, position: "insideTopRight", fill: chartTheme.axis, fontSize: 12 }}
           />
         )}
-        {/* Area under the first series only. */}
-        <Area type="monotone" dataKey="s0" baseValue={domain[0]} stroke="none" fill={chartTheme.area} isAnimationActive={false} activeDot={false} legendType="none" tooltipType="none" />
+        {/* Area under the first series only, unless the chart draws bands: then each band is the only fill. */}
+        {!hasBand && (
+          <Area type="linear" dataKey="s0" baseValue={domain[0]} stroke="none" fill={chartTheme.area} isAnimationActive={false} activeDot={false} legendType="none" tooltipType="none" />
+        )}
+        {lines.map((sr, i) =>
+          sr.band && sr.band.length > 0 ? (
+            <Area
+              key={`b${i}`}
+              type="linear"
+              dataKey={`b${i}`}
+              stroke="none"
+              fill={chartTheme.seriesFill[i % chartTheme.seriesFill.length]}
+              fillOpacity={isolated == null || isolated === String(i) ? 1 : 0}
+              connectNulls
+              isAnimationActive={false}
+              activeDot={false}
+              legendType="none"
+              tooltipType="none"
+            />
+          ) : null,
+        )}
         {annotations?.map((a) => (
           <ReferenceLine
             key={`${a.x}-${a.label}`}
@@ -152,7 +258,8 @@ export function Line({
           return (
             <RLine
               key={key}
-              type="monotone"
+              // Straight segments between measured points: a smoothed curve would draw values no run produced.
+              type="linear"
               dataKey={key}
               name={sr.name}
               stroke={color}
@@ -192,11 +299,19 @@ export function Line({
         })}
       </ComposedChart>
     </ResponsiveContainer>
+    </div>
+    <ChartPointActions
+      points={multi ? multi.flatMap((sr) => sr.data) : data}
+      onPointClick={onPointClick}
+      label={label}
+      nameOf={multi ? (p) => `${pointSeries.get(p) ?? ""} ${labelOf(p.x)}`.trim() : (p) => labelOf(p.x)}
+    />
+    {/* The legend's isolate buttons sit outside the image, which would otherwise hide them from assistive tech. */}
     {multi && multi.length > 1 && (
       <ChartLegend
         items={multi.map((sr, i) => ({ key: String(i), name: sr.name, color: chartTheme.series[i % chartTheme.series.length] }))}
         isolated={isolated}
-        onIsolate={setIsolated}
+        onIsolate={setLegendChoice}
       />
     )}
     </div>

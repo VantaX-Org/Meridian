@@ -95,11 +95,20 @@ describe("HelpMenu", () => {
   });
 
   it("report a problem shows the support address and the details, and sends nothing", async () => {
+    render(<HelpMenu hasTour={false} hasNew={false} context={context} supportEmail="help@customer.example" {...handlers} />);
+    fireEvent.click(screen.getByRole("button", { name: "Help" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Report a problem" }));
+    expect(await screen.findByRole("dialog")).toHaveTextContent("help@customer.example");
+    const details = screen.getByLabelText("Details") as HTMLTextAreaElement;
+    expect(details.value).toBe("Page: https://meridian.test/objects?run=r1\nRun: r1\nVersion: 2.0.0");
+  });
+
+  it("without a support address it says to ask the administrator and never shows a placeholder", async () => {
     render(<HelpMenu hasTour={false} hasNew={false} context={context} {...handlers} />);
     fireEvent.click(screen.getByRole("button", { name: "Help" }));
     fireEvent.click(await screen.findByRole("menuitem", { name: "Report a problem" }));
-    expect(await screen.findByRole("dialog")).toHaveTextContent("support@meridian.local");
-    const details = screen.getByLabelText("Details") as HTMLTextAreaElement;
-    expect(details.value).toBe("Page: https://meridian.test/objects?run=r1\nRun: r1\nVersion: 2.0.0");
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("Ask your administrator for the support address");
+    expect(dialog).not.toHaveTextContent("@");
   });
 });

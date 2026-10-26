@@ -10,12 +10,12 @@ import { queryKeys } from "@/lib/query-keys";
 export function VersionsMenu({ modelId, shown, onPick }: { modelId: string; shown: number | null; onPick: (no: number | null) => void }) {
   const q = useQuery({ queryKey: queryKeys.processModelVersions(modelId), queryFn: () => listModelVersions(modelId) });
   const rows = q.data ?? [];
-  const items = rows.length
-    ? rows.map((r, i) => ({
-        label: `Version ${r.version_no}${r.created_at ? `, ${formatDate(r.created_at)}` : ""}${r.note ? `, ${r.note}` : ""}${(shown ?? rows[0].version_no) === r.version_no ? " (current)" : ""}`,
-        onSelect: () => onPick(i === 0 ? null : r.version_no),
-      }))
-    : [{ label: "No saved versions yet.", onSelect: () => {} }];
+  // Nothing to pick before the first save: the trigger is disabled and says why instead of opening a menu with a no-op row.
+  if (!rows.length) return <Button variant="secondary" disabled title="Saved versions appear here after the first save">Versions</Button>;
+  const items = rows.map((r, i) => ({
+    label: `Version ${r.version_no}${r.created_at ? `, ${formatDate(r.created_at)}` : ""}${r.note ? `, ${r.note}` : ""}${(shown ?? rows[0].version_no) === r.version_no ? " (current)" : ""}`,
+    onSelect: () => onPick(i === 0 ? null : r.version_no),
+  }));
   return <Menu trigger={<Button variant="secondary">Versions</Button>} items={items} />;
 }
 

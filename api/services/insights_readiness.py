@@ -44,7 +44,16 @@ def wave_verdict(cells: list[ReadinessCell]) -> str:
 
 
 def blocking_gaps(gap_counts: dict[str, int]) -> int:
+    """Legacy estimate from per-type counts, for runs analysed before ``blocking_gaps`` was stored."""
     return sum(n for t, n in gap_counts.items() if t not in _INFORMATIONAL)
+
+
+def module_blocking_gaps(mr: dict) -> int:
+    """A module's blocking gaps: its findings of a blocking severity (critical / high), as run_migration
+    stores them and the cockpit's Blockers tab lists them; the per-type estimate for older runs."""
+    if mr.get("blocking_gaps") is not None:
+        return int(mr["blocking_gaps"])
+    return blocking_gaps(mr.get("gaps") or {})
 
 
 def build_wave_cells(wave: str, modules: list[str], gap_summary: dict[str, dict], dqs_by_module: dict[str, float | None],
@@ -59,5 +68,5 @@ def build_wave_cells(wave: str, modules: list[str], gap_summary: dict[str, dict]
         score = mr.get("score")
         cells.append(ReadinessCell(
             module, wave, cell_verdict(mr.get("verdict"), score, dqs, min_readiness, min_dqs),
-            blocking_gaps(mr.get("gaps") or {}), dqs, score, int(mr.get("blocked_records") or 0)))
+            module_blocking_gaps(mr), dqs, score, int(mr.get("blocked_records") or 0)))
     return cells

@@ -5,11 +5,12 @@
 // without it they open the current state. A root cause of the current state carries the run it was computed in.
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bar, Button, Funnel, Mono } from "@/design";
+import { Bar, Button, Card, Funnel, Mono } from "@/design";
 import type { CleansingStep, RootCauseCluster } from "@/lib/api/insights";
 import type { S4Area } from "@/lib/api/migration";
 import { drillLabel, fixHref, type FixFilter } from "@/lib/drill";
 import { formatModuleName, labelOf } from "@/lib/format";
+import { useRole } from "@/hooks/use-role";
 import { withScope } from "./useInsightScope";
 
 type Cluster = RootCauseCluster & { version_id?: string };
@@ -30,27 +31,31 @@ export function RootCauseList({ clusters, run, empty }: { clusters: Cluster[]; r
         const where = c.table && c.field ? `${c.table}.${c.field}` : null;
         const at = run ?? c.version_id;
         return (
-          <li key={c.key} className="m-card-sm flex flex-col gap-1 [background:var(--m-surface)] [border-radius:var(--m-radius-sheet)] [padding:var(--m-space-3)]">
-            <span className="font-medium">
-              {where
-                ? <>{`${formatModuleName(c.module)}: one field fails on ${c.records.toLocaleString()}${c.records_estimated ? " (estimated)" : ""} records `}<Mono>{where}</Mono></>
-                : `${formatModuleName(c.module)}: ${c.records.toLocaleString()} records without a known field`}
-            </span>
-            <span className="m-text-meta m-ink-3">
-              {`${c.rules.length} ${c.rules.length === 1 ? "rule" : "rules"}, ${labelOf(c.dimension).toLowerCase()}, ${labelOf(c.severity).toLowerCase()}`}
-            </span>
-            <span className="m-text-meta m-ink-3">
-              {`Impact on score ${c.impact.toLocaleString()}${c.auto_fix_pct != null ? `, ${Math.round(c.auto_fix_pct)}% auto-fixable` : ""}`}
-            </span>
-            <span className="flex gap-3 m-text-body">
-              <Link href={withScope("/insights/rules", { run: at, module: c.module, field: c.field ?? undefined })} className="underline-offset-2 hover:underline">Open rules</Link>
-              {/* One rule opens exactly its records; a field failing several rules opens the object's records. */}
-              <Link
-                href={fixHref({ run: at, module: c.module, check: c.rules.length === 1 ? c.rules[0] : undefined })}
-                aria-label={drillLabel({ what: "failing records", module: c.module, check: c.rules.length === 1 ? c.rules[0] : undefined })}
-                className="underline-offset-2 hover:underline"
-              >Open records</Link>
-            </span>
+          <li key={c.key}>
+            <Card padding="sm">
+              <div className="flex flex-col gap-1">
+                <span className="font-medium">
+                  {where
+                    ? <>{`${formatModuleName(c.module)}: one field fails on ${c.records.toLocaleString()}${c.records_estimated ? " (estimated)" : ""} records `}<Mono>{where}</Mono></>
+                    : `${formatModuleName(c.module)}: ${c.records.toLocaleString()} records without a known field`}
+                </span>
+                <span className="m-text-meta m-ink-3">
+                  {`${c.rules.length} ${c.rules.length === 1 ? "rule" : "rules"}, ${labelOf(c.dimension).toLowerCase()}, ${labelOf(c.severity).toLowerCase()}`}
+                </span>
+                <span className="m-text-meta m-ink-3">
+                  {`Impact on score ${c.impact.toLocaleString()}${c.auto_fix_pct != null ? `, ${Math.round(c.auto_fix_pct)}% auto-fixable` : ""}`}
+                </span>
+                <span className="flex gap-3 m-text-body">
+                  <Link href={withScope("/insights/rules", { run: at, module: c.module, field: c.field ?? undefined })} className="underline-offset-2 hover:underline">Open rules</Link>
+                  {/* One rule opens exactly its records; a field failing several rules opens the object's records. */}
+                  <Link
+                    href={fixHref({ run: at, module: c.module, check: c.rules.length === 1 ? c.rules[0] : undefined })}
+                    aria-label={drillLabel({ what: "failing records", module: c.module, check: c.rules.length === 1 ? c.rules[0] : undefined })}
+                    className="underline-offset-2 hover:underline"
+                  >Open records</Link>
+                </span>
+              </div>
+            </Card>
           </li>
         );
       })}
@@ -104,11 +109,13 @@ export const CLEANSING_STAGE_FILTER: Record<CleansingStep["key"], FixFilter> = {
   applied: { st: "sent" },
 };
 
-/** Failing records to applied fixes; each stage opens the fix queue at that status. */
+/** Failing records to applied fixes; each stage opens Fix work at that status. */
 export function CleansingFunnel({ steps, run }: { steps: CleansingStep[]; run?: string }) {
   const router = useRouter();
+  // A batch is built from fixes someone applies: without `apply` the funnel stays a read (its stages still open Fix work).
+  const { can } = useRole();
   if (steps.length === 0 || steps.every((s) => !s.records)) {
-    return <p className="m-text-body m-ink-3">No failing records to clean in this scope. <Link href={fixHref({ run })} className="m-ink-accent underline underline-offset-2">Open the fix queue</Link></p>;
+    return <p className="m-text-body m-ink-3">No failing records to clean in this scope. <Link href={fixHref({ run })} className="m-ink-accent underline underline-offset-2">Open Fix work</Link></p>;
   }
   return (
     <>
@@ -121,9 +128,11 @@ export function CleansingFunnel({ steps, run }: { steps: CleansingStep[]; run?: 
           }}
         />
       </div>
-      <div className="mt-3">
-        <Button variant="secondary" render={<Link href={fixHref({ run, sugg: true })}>Create remediation batch</Link>} />
-      </div>
+      {can("apply") ? (
+        <div className="mt-3">
+          <Button variant="secondary" render={<Link href={fixHref({ run, sugg: true })}>Create remediation batch</Link>} />
+        </div>
+      ) : null}
     </>
   );
 }

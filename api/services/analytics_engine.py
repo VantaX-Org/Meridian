@@ -53,6 +53,43 @@ def _days_since_first(stamps: list) -> list[float]:
     return [(v - first) / 86400 for v in parsed]
 
 
+# Horizon (days ahead) → the history span in days it needs before it is projected at all.
+# About three times the fitted span at most: a line fitted on 3 days says little about day 90.
+FORECAST_MIN_SPAN_DAYS: dict[int, float] = {7: 0.0, 30: 10.0, 90: 30.0}
+
+
+def _prediction_interval(
+    days: list[float], scores: list[float], intercept: float, slope: float, x0: float, level: float = 0.95
+) -> tuple[float, float, float]:
+    """Point forecast at ``x0`` and its two-sided prediction interval for a simple linear fit.
+
+    ``ŷ ± t(level, n−2) · s · sqrt(1 + 1/n + (x0 − x̄)² / Sxx)``, with ``s`` the residual
+    standard error. All three values are clamped to the 0–100 score scale and rounded to
+    one decimal. Needs at least three points on at least two distinct days."""
+    from scipy.stats import t as student_t
+
+    x = np.asarray(days, dtype=float)
+    y = np.asarray(scores, dtype=float)
+    n = len(x)
+    residuals = y - (intercept + slope * x)
+    s = float(np.sqrt(np.sum(residuals**2) / (n - 2)))
+    sxx = float(np.sum((x - x.mean()) ** 2))
+    half = float(student_t.ppf(0.5 + level / 2, n - 2)) * s * float(np.sqrt(1 + 1 / n + (x0 - x.mean()) ** 2 / sxx))
+    point = intercept + slope * x0
+
+    def clamp(v: float) -> float:
+        return round(float(np.clip(v, 0, 100)), 1)
+
+    return clamp(point), clamp(point - half), clamp(point + half)
+
+
+def _interval_confidence(low: float | None, high: float | None) -> int:
+    """0–100: 100 minus the width in score points of a prediction interval (0 when unknown)."""
+    if low is None or high is None:
+        return 0
+    return int(round(max(0.0, min(100.0, 100.0 - (high - low)))))
+
+
 # ── Predictive Analytics ─────────────────────────────────────────────────────
 
 
@@ -60,7 +97,23 @@ class PredictiveAnalytics:
     """DQS forecasting and early-warning signals."""
 
     def forecast_dqs(self, dqs_history: list[dict]) -> list[dict]:
-        """Group by module_id, run linear regression, project future scores."""
+        """Per module: a least-squares line through the daily scores, projected 7, 30 and 90 days ahead.
+
+        Each horizon carries a 95% prediction interval from the fit residuals
+        (``forecast_{h}_low`` / ``forecast_{h}_high``, see ``_prediction_interval``).
+        A horizon further out than the history supports is ``None`` (with its bounds):
+        the 30-day point needs ``span_days >= 10`` and the 90-day point ``span_days >= 30``
+        (``FORECAST_MIN_SPAN_DAYS``), so a line is never extended more than about three
+        times the span it was fitted on; the 7-day point needs only the three days every
+        forecast needs.
+
+        ``confidence`` (0–100) is ``100`` minus the width in score points of the 7-day
+        interval (``_interval_confidence``): 100 when the scores sit on the line, 0 when
+        the range spans the whole scale. It is not a probability.
+
+        ``history`` lists the fitted points as ``{"day", "score"}`` with ``day`` counted
+        back from the latest point (0 = now, negative = earlier), so a chart can draw the
+        history and the projection on one days axis."""
         modules: dict[str, list[dict]] = {}
         for entry in dqs_history:
             modules.setdefault(entry["module_id"], []).append(entry)
@@ -89,9 +142,7 @@ class PredictiveAnalytics:
 
             current_score = scores[-1]
             last_day = days[-1]
-            forecast_7d = float(np.clip(model.predict([[last_day + 7]])[0], 0, 100))
-            forecast_30d = float(np.clip(model.predict([[last_day + 30]])[0], 0, 100))
-            forecast_90d = float(np.clip(model.predict([[last_day + 90]])[0], 0, 100))
+            span_days = round(days[-1] - days[0], 1)
 
             if slope > 0.1:
                 trend = "improving"
@@ -102,7 +153,14 @@ class PredictiveAnalytics:
             else:
                 trend = "stable"
 
-            confidence = min(95, 50 + len(history) * 2)
+            horizons: dict[str, float | None] = {}
+            for h, min_span in FORECAST_MIN_SPAN_DAYS.items():
+                key = f"forecast_{h}d"
+                if span_days < min_span:
+                    horizons[key] = horizons[f"{key}_low"] = horizons[f"{key}_high"] = None
+                    continue
+                point, low, high = _prediction_interval(days, scores, float(model.intercept_), slope, last_day + h)
+                horizons[key], horizons[f"{key}_low"], horizons[f"{key}_high"] = point, low, high
 
             # Identify contributing factors from dimension trends
             contributing_factors = self._identify_factors(history)
@@ -111,13 +169,14 @@ class PredictiveAnalytics:
                 {
                     "module_id": module_id,
                     "current_score": current_score,
-                    "forecast_7d": round(forecast_7d, 1),
-                    "forecast_30d": round(forecast_30d, 1),
-                    "forecast_90d": round(forecast_90d, 1),
+                    **horizons,
                     "trend": trend,
-                    "confidence": confidence,
+                    "confidence": _interval_confidence(horizons["forecast_7d_low"], horizons["forecast_7d_high"]),
                     "points": len(history),
-                    "span_days": round(days[-1] - days[0], 1),
+                    "span_days": span_days,
+                    "history": [
+                        {"day": round(d - last_day, 2), "score": round(s, 1)} for d, s in zip(days, scores)
+                    ],
                     "contributing_factors": contributing_factors,
                 }
             )
@@ -164,36 +223,43 @@ class PredictiveAnalytics:
         }
 
     def generate_early_warnings(
-        self, forecasts: list[dict], thresholds: dict | None = None
+        self, forecasts: list[dict], thresholds: dict | None = None, default_threshold: float = 90
     ) -> list[dict]:
-        """Compare current and forecast scores against per-module thresholds."""
-        default_threshold = 90
+        """Compare current and forecast scores against per-module thresholds.
+
+        ``thresholds`` maps a module to its score floor; a module without one is held to
+        ``default_threshold`` (the route passes the tenant's warning band). Every forecast gets a
+        row, green included, with structured fields (``threshold``, ``reason``) so a client can word
+        the message itself; ``message`` is a plain fallback that never embeds the module id."""
         warnings: list[dict] = []
 
         for fc in forecasts:
             module_id = fc["module_id"]
-            threshold = (thresholds or {}).get(module_id, default_threshold)
+            threshold = float((thresholds or {}).get(module_id, default_threshold))
             current = fc["current_score"]
             f7 = fc["forecast_7d"]
-            f30 = fc["forecast_30d"]
+            f30 = fc.get("forecast_30d")
+            shown = int(threshold) if threshold == int(threshold) else threshold
 
-            if current < threshold or f7 < threshold:
-                signal = "red"
-                message = f"{module_id} DQS is below threshold ({threshold})"
-                action = "Immediate remediation required — review critical findings"
-            elif f30 < threshold:
-                signal = "amber"
-                message = f"{module_id} DQS projected to drop below {threshold} within 30 days"
-                action = "Schedule data quality review within the next sprint"
+            if current < threshold or (f7 is not None and f7 < threshold):
+                signal, reason = "red", "below_threshold"
+                message = f"Score is below its threshold of {shown}"
+                action = "Remediate now: review the critical findings"
+            elif f30 is not None and f30 < threshold:
+                signal, reason = "amber", "projected_below_threshold"
+                message = f"Score is projected to drop below {shown} within 30 days"
+                action = "Schedule a data quality review within the next sprint"
             else:
-                signal = "green"
-                message = f"{module_id} DQS is healthy and stable"
-                action = "Continue monitoring — no action needed"
+                signal, reason = "green", "healthy"
+                message = "Score is healthy and stable"
+                action = "Keep monitoring; no action needed"
 
             warnings.append(
                 {
                     "module_id": module_id,
                     "signal": signal,
+                    "reason": reason,
+                    "threshold": threshold,
                     "message": message,
                     "recommended_action": action,
                 }
@@ -217,15 +283,19 @@ DEFAULT_PLANNER = {
     "exception_hours": 2.0,        # resolve one open exception
     "sprint_hours": 40.0,          # capacity per sprint bucket
     "cost_per_record": None,       # optional: the tenant's own cost of one bad record
-    "currency": "ZAR",
+    "currency": "ZAR",             # replaced by the tenant cost model's currency (planner_config)
 }
 
 
-def planner_config(overrides: dict | None) -> dict:
+def planner_config(overrides: dict | None, currency: str | None = None) -> dict:
+    """The planner assumptions; ``currency`` (the tenant cost model's) names every amount, so a
+    planner-level currency left over from older settings never contradicts the cost model."""
     cfg = dict(DEFAULT_PLANNER)
     for k, v in (overrides or {}).items():
         if k in cfg and v is not None and v != "":
             cfg[k] = v
+    if currency:
+        cfg["currency"] = currency
     return cfg
 
 
@@ -368,135 +438,148 @@ class PrescriptiveAnalytics:
 # ── Business Impact Analytics ────────────────────────────────────────────────
 
 
+# The impact buckets and the ROI are priced from the tenant's cost model (``impact`` and
+# ``subscription_monthly`` of checks/cost_model.yaml, overlaid by ``tenants.cost_model``), in that model's
+# currency. The payload keys ``annual_risk_zar`` / ``mitigated_zar`` are historical names (the impact_records
+# columns); ``annual_risk`` / ``mitigated`` carry the same amounts, and ``currency`` names it.
+
+_IMPACT_BASIS = {
+    "duplicate_payment": "affected_count", "warranty_miss": "affected_count",
+    "compliance_penalty": "affected_count", "blocked_invoice": "count", "failed_posting": "count",
+    "inventory_write_off": "affected_count", "labour_displacement": "count", "contract_violation": "count",
+}
+
+
+def _amount(x: float) -> str:
+    return f"{x:,.0f}" if float(x).is_integer() else f"{x:,.2f}"
+
+
 class BusinessImpactAnalytics:
-    """Rand risk quantification across 8 impact categories."""
+    """Risk quantification across 8 impact categories, priced from the tenant cost model."""
+
+    def __init__(self, cost_model: dict | None = None) -> None:
+        from checks import cost
+        model = cost.effective(cost_model)
+        self.currency: str = model["currency"]
+        self.impact: dict[str, dict] = model["impact"]
+        self.subscription_monthly: float | None = model["subscription_monthly"]
+
+    def _unit(self, category: str) -> tuple[float, float]:
+        """(risk of one counted item, share of it mitigated) for a defect type."""
+        spec = self.impact.get(category) or {}
+        unit = float(spec.get("unit_cost") or 0) * float(spec.get("factor", 1))
+        return unit, float(spec.get("mitigation") or 0)
+
+    def _method(self, category: str) -> str:
+        spec = self.impact.get(category) or {}
+        factor = float(spec.get("factor", 1))
+        scale = f" × {factor:g}" if factor != 1 else ""
+        return f"{_IMPACT_BASIS[category]} × {_amount(float(spec.get('unit_cost') or 0))} {self.currency}{scale}"
 
     def quantify_impact(
         self, findings: list[dict], exceptions: list[dict]
     ) -> list[dict]:
-        """Categorise findings/exceptions into 8 impact buckets with ZAR values."""
+        """Categorise findings/exceptions into 8 impact buckets, valued in the tenant currency."""
         buckets: dict[str, dict[str, Any]] = {
-            "duplicate_payment": {"annual_risk_zar": 0, "mitigated_zar": 0, "finding_count": 0, "method": "affected_count × R8,500 × 2.3% × 12"},
-            "warranty_miss": {"annual_risk_zar": 0, "mitigated_zar": 0, "finding_count": 0, "method": "affected_count × R35,000"},
-            "compliance_penalty": {"annual_risk_zar": 0, "mitigated_zar": 0, "finding_count": 0, "method": "affected_count × R25,000"},
-            "blocked_invoice": {"annual_risk_zar": 0, "mitigated_zar": 0, "finding_count": 0, "method": "count × R12,000 × 12"},
-            "failed_posting": {"annual_risk_zar": 0, "mitigated_zar": 0, "finding_count": 0, "method": "count × R5,000 × 12"},
-            "inventory_write_off": {"annual_risk_zar": 0, "mitigated_zar": 0, "finding_count": 0, "method": "affected_count × R8,000"},
-            "labour_displacement": {"annual_risk_zar": 0, "mitigated_zar": 0, "finding_count": 0, "method": "count × 0.25h × R450 × 12"},
-            "contract_violation": {"annual_risk_zar": 0, "mitigated_zar": 0, "finding_count": 0, "method": "count × R15,000"},
+            c: {"annual_risk": 0.0, "mitigated": 0.0, "finding_count": 0} for c in _IMPACT_BASIS
         }
+
+        def add(category: str, count: float) -> None:
+            unit, mitigation = self._unit(category)
+            risk = count * unit
+            buckets[category]["annual_risk"] += risk
+            buckets[category]["mitigated"] += risk * mitigation
+            buckets[category]["finding_count"] += 1
 
         for f in findings:
             dimension = f.get("dimension", "")
-            affected = f.get("affected_count", 0)
+            affected = f.get("affected_count", 0) or 0
             module = f.get("module", "")
             check_id = f.get("check_id", "")
 
             # duplicate_payment — uniqueness dimension findings
             if dimension == "uniqueness":
-                risk = affected * 8500 * 0.023 * 12
-                buckets["duplicate_payment"]["annual_risk_zar"] += risk
-                buckets["duplicate_payment"]["mitigated_zar"] += risk * 0.7
-                buckets["duplicate_payment"]["finding_count"] += 1
+                add("duplicate_payment", affected)
 
             # warranty_miss — completeness findings on warranty/expiry fields
             if dimension == "completeness" and any(
                 kw in (check_id + module).lower()
                 for kw in ["warranty", "expiry", "expiration", "valid_to", "end_date"]
             ):
-                risk = affected * 35000
-                buckets["warranty_miss"]["annual_risk_zar"] += risk
-                buckets["warranty_miss"]["mitigated_zar"] += risk * 0.6
-                buckets["warranty_miss"]["finding_count"] += 1
+                add("warranty_miss", affected)
 
             # compliance_penalty — tax/bbee/regulatory findings
             if any(
                 kw in (check_id + module + f.get("message", "")).lower()
                 for kw in ["tax", "bbee", "regulatory", "compliance", "vat", "legal"]
             ):
-                risk = affected * 25000
-                buckets["compliance_penalty"]["annual_risk_zar"] += risk
-                buckets["compliance_penalty"]["mitigated_zar"] += risk * 0.8
-                buckets["compliance_penalty"]["finding_count"] += 1
+                add("compliance_penalty", affected)
 
             # inventory_write_off — material master completeness findings
             if dimension == "completeness" and "material" in module.lower():
-                risk = affected * 8000
-                buckets["inventory_write_off"]["annual_risk_zar"] += risk
-                buckets["inventory_write_off"]["mitigated_zar"] += risk * 0.5
-                buckets["inventory_write_off"]["finding_count"] += 1
+                add("inventory_write_off", affected)
 
         for ex in exceptions:
             ex_type = ex.get("type", "")
             ex_category = ex.get("category", "")
-            count = 1
+            for category in ("blocked_invoice", "failed_posting", "contract_violation"):
+                if ex_type == category or ex_category == category:
+                    add(category, 1)
 
-            if ex_type == "blocked_invoice" or ex_category == "blocked_invoice":
-                risk = count * 12000 * 12
-                buckets["blocked_invoice"]["annual_risk_zar"] += risk
-                buckets["blocked_invoice"]["mitigated_zar"] += risk * 0.9
-                buckets["blocked_invoice"]["finding_count"] += 1
-
-            if ex_type == "failed_posting" or ex_category == "failed_posting":
-                risk = count * 5000 * 12
-                buckets["failed_posting"]["annual_risk_zar"] += risk
-                buckets["failed_posting"]["mitigated_zar"] += risk * 0.85
-                buckets["failed_posting"]["finding_count"] += 1
-
-            if ex_type == "contract_violation" or ex_category == "contract_violation":
-                risk = count * 15000
-                buckets["contract_violation"]["annual_risk_zar"] += risk
-                buckets["contract_violation"]["mitigated_zar"] += risk * 0.7
-                buckets["contract_violation"]["finding_count"] += 1
-
-        # labour_displacement — auto-resolved cleaning items (from cleaning queue context)
-        # Calculated from cleaning queue items that were auto-approved
-        # This is handled when cleaning_queue data is passed as part of exceptions
+        # labour_displacement — auto-resolved cleaning items, passed in as exceptions
         for ex in exceptions:
             if ex.get("type") == "auto_resolved" or ex.get("category") == "labour_displacement":
-                count = 1
-                risk = count * 0.25 * 450 * 12
-                buckets["labour_displacement"]["annual_risk_zar"] += risk
-                buckets["labour_displacement"]["mitigated_zar"] += risk
-                buckets["labour_displacement"]["finding_count"] += 1
+                add("labour_displacement", 1)
 
         results: list[dict] = []
         for category, data in buckets.items():
+            risk, mitigated = round(data["annual_risk"], 2), round(data["mitigated"], 2)
             results.append(
                 {
                     "category": category,
-                    "annual_risk_zar": round(data["annual_risk_zar"], 2),
-                    "mitigated_zar": round(data["mitigated_zar"], 2),
+                    "annual_risk": risk,
+                    "mitigated": mitigated,
+                    "annual_risk_zar": risk,
+                    "mitigated_zar": mitigated,
                     "finding_count": data["finding_count"],
-                    "calculation_method": data["method"],
+                    "calculation_method": self._method(category),
+                    "currency": self.currency,
                 }
             )
 
         return results
 
     def calculate_roi(
-        self, impacts: list[dict], monthly_subscription_zar: float
+        self, impacts: list[dict], monthly_subscription: float | None = None
     ) -> dict:
-        """Calculate ROI from impact data vs subscription cost."""
-        annual_sub = monthly_subscription_zar * 12
-        total_mitigated = sum(i.get("mitigated_zar", 0) for i in impacts)
+        """Calculate ROI from impact data vs the tenant's subscription (cost model ``subscription_monthly``,
+        unless ``monthly_subscription`` is given).
 
-        if annual_sub <= 0:
+        With no subscription configured (None or 0) there is nothing to divide by:
+        the subscription, ROI multiple and payback are None, never a made-up fee.
+        """
+        total_mitigated = sum(float(i.get("mitigated", i.get("mitigated_zar", 0)) or 0) for i in impacts)
+        monthly = monthly_subscription if monthly_subscription is not None else self.subscription_monthly
+
+        if not monthly or monthly <= 0:
             return {
-                "subscription_annual": 0,
+                "subscription_annual": None,
                 "risk_mitigated": round(total_mitigated, 2),
-                "roi_multiple": 0,
-                "payback_months": 0,
+                "roi_multiple": None,
+                "payback_months": None,
+                "currency": self.currency,
             }
 
+        annual_sub = monthly * 12
         roi_multiple = total_mitigated / annual_sub
-        payback_months = (annual_sub / total_mitigated) * 12 if total_mitigated > 0 else 0
+        payback_months = (annual_sub / total_mitigated) * 12 if total_mitigated > 0 else None
 
         return {
             "subscription_annual": round(annual_sub, 2),
             "risk_mitigated": round(total_mitigated, 2),
             "roi_multiple": round(roi_multiple, 1),
-            "payback_months": round(payback_months, 1),
+            "payback_months": round(payback_months, 1) if payback_months is not None else None,
+            "currency": self.currency,
         }
 
 

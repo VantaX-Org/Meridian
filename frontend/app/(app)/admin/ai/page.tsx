@@ -2,8 +2,8 @@
 
 import { useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { Button, ErrorState, Field, Notice, PageHeader, Select, Skeleton, Input } from "@/design";
+import { Button, ConfirmDialog, ErrorState, Field, Notice, PageHeader, Select, Skeleton, Input, toast } from "@/design";
+import { SettingsTabs } from "@/components/admin/settings-tabs";
 import { SettingsSection, SettingsSheet } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import {
@@ -31,7 +31,7 @@ export default function AdminAIPage() {
   if (!allowed) {
     return (
       <div className="flex flex-col gap-4">
-        <PageHeader title="AI" meta="Which language model writes summaries and fix proposals" />
+        <PageHeader tabs={<SettingsTabs />} title="AI" meta="Which language model writes summaries and fix proposals" />
         {note("Only administrators change the language model. Ask an administrator to change the provider, model or endpoint.")}
       </div>
     );
@@ -55,7 +55,7 @@ export default function AdminAIPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="AI" meta="Choose which language model writes summaries and fix proposals. Test the connection, then save" />
+      <PageHeader tabs={<SettingsTabs />} title="AI" meta="Choose which language model writes summaries and fix proposals. Test the connection, then save" />
 
       <div className="flex gap-4">
         <div className="flex flex-col gap-1">
@@ -79,7 +79,7 @@ export default function AdminAIPage() {
 
       {note("The model never sees SAP data. It receives aggregated finding summaries and writes narrative and remediation proposals. Every score, count and rate comes from deterministic checks.")}
 
-      {providers.data && c ? <LLMForm key={c.updated_at ?? "env"} providers={providers.data} config={c} /> : <Skeleton height={320} />}
+      {providers.data && c ? <LLMForm key={c.updated_at ?? "env"} providers={providers.data} config={c} /> : <div aria-busy="true"><Skeleton height={320} /></div>}
     </div>
   );
 }
@@ -100,9 +100,11 @@ function LLMForm({ providers, config }: { providers: Record<string, LLMProvider>
   const p = providers[form.provider];
   const body = (): LLMConfigUpdate => ({ ...form, ...(apiKey ? { api_key: apiKey } : {}) });
 
+  const [confirming, setConfirming] = useState(false);
   const save = useMutation({
     mutationFn: () => updateLLMConfig(body()),
     onSuccess: () => {
+      setConfirming(false);
       toast.success("Language-model settings saved");
       setApiKey("");
       qc.invalidateQueries({ queryKey: queryKeys.llmConfig() });
@@ -110,6 +112,12 @@ function LLMForm({ providers, config }: { providers: Record<string, LLMProvider>
     onError: (e) => toast.error(`Settings not saved. ${apiErrorMessage(e)}`),
   });
   const test = useMutation({ mutationFn: () => testLLMConnection(body()) });
+  // A provider change is saved after a passing test of exactly these settings, or after a confirmation that says what leaves.
+  const [testedBody, setTestedBody] = useState<string | null>(null);
+  const changedProvider = form.provider !== config.provider;
+  const passed = !!test.data?.success && testedBody === JSON.stringify(body());
+  const cloud = !!p?.requires_api_key;
+  const onSave = () => (changedProvider && (!passed || cloud) ? setConfirming(true) : save.mutate());
 
   const set = (patch: Partial<LLMConfigUpdate>) => setForm({ ...form, ...patch });
   const num = (v: string) => (v === "" ? undefined : Number(v));
@@ -134,7 +142,7 @@ function LLMForm({ providers, config }: { providers: Record<string, LLMProvider>
 
         {p?.requires_base_url ? (
           <Field label="Endpoint URL">
-            <Input type="url" className="font-mono" value={form.base_url ?? ""} onChange={(e) => set({ base_url: e.target.value })} />
+            <Input type="url" value={form.base_url ?? ""} onChange={(e) => set({ base_url: e.target.value })} />
           </Field>
         ) : null}
 
@@ -182,13 +190,26 @@ function LLMForm({ providers, config }: { providers: Record<string, LLMProvider>
       {test.error ? note(apiErrorMessage(test.error), "danger") : null}
 
       <div className="flex gap-2">
-        <Button variant="secondary" pending={test.isPending} onClick={() => test.mutate()}>
+        <Button variant="secondary" pending={test.isPending} onClick={() => { setTestedBody(JSON.stringify(body())); test.mutate(); }}>
           {test.isPending ? "Testing" : "Test connection"}
         </Button>
-        <Button pending={save.isPending} disabled={!form.model?.trim()} onClick={() => save.mutate()}>
+        <Button pending={save.isPending} disabled={!form.model?.trim()} onClick={onSave}>
           {save.isPending ? "Saving" : "Save settings"}
         </Button>
       </div>
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title={`Switch the language model to ${p?.label ?? form.provider}`}
+        body={[
+          cloud ? `Aggregated findings will be sent to ${p?.label ?? form.provider}; raw SAP data never leaves this deployment.` : "The model runs inside this deployment; nothing leaves it.",
+          passed ? "The connection test passed." : "The connection has not passed a test with these settings; narrative and proposals stop until it works.",
+        ].join(" ")}
+        confirmLabel={`Use ${p?.label ?? form.provider}`}
+        cancelLabel="Keep the current provider"
+        pending={save.isPending}
+        onConfirm={() => save.mutate()}
+      />
 
       {config.updated_at ? (
         <p className="m-text-meta m-ink-3">

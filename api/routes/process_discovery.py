@@ -253,11 +253,19 @@ class HappyPath(BaseModel):
     fitness: Optional[float]
 
 
+class ExtraActivity(BaseModel):
+    """An activity the cases perform that the reference mapping does not name (spec §3.5 "extra")."""
+    activity: str
+    cases: int
+    share: float
+
+
 class ConformanceResponse(BaseModel):
     case_type: str
     fitness: Optional[float]
     missing: dict[str, float]
     steps: list[ConformanceStep]
+    extra: list[ExtraActivity] = []
     happy_path: HappyPath = HappyPath(activities=[], case_count=0, share=0.0, fitness=None)
 
 
@@ -717,7 +725,14 @@ async def conformance(run_id: str, request: Request, tenant: Tenant = Depends(ge
         case_type=ct, fitness=c.fitness, missing=c.missing,
         steps=[ConformanceStep(activity=a, step_fitness=c.step_fitness.get(a),
                                out_of_order=c.out_of_order.get(a, 0.0)) for a in steps],
+        extra=_extra(c.extra, mined.cases),
         happy_path=HappyPath(**hp))
+
+
+def _extra(extra: dict[str, int], cases: int) -> list[ExtraActivity]:
+    """Activities outside the reference mapping, most cases first, each with its share of the view's cases."""
+    return [ExtraActivity(activity=a, cases=n, share=round(n / cases, 4) if cases else 0.0)
+            for a, n in sorted(extra.items(), key=lambda kv: (-kv[1], kv[0]))]
 
 
 CASES_SQL = """
@@ -733,7 +748,8 @@ WHERE (CAST(:act AS text) IS NULL OR has_act) AND (CAST(:variant AS text) IS NUL
 ORDER BY first_ts DESC, case_id LIMIT :n OFFSET :o"""
 
 
-@router.get("/runs/{run_id}/cases", dependencies=EXPORT, response_model=CasePage)
+@router.get("/runs/{run_id}/cases", dependencies=VIEW,  # reading cases is viewing; export stays export_process
+           response_model=CasePage)
 async def cases(run_id: str, request: Request, activity: Optional[str] = None, variant: Optional[str] = None,
                 limit: int = Query(50, ge=1, le=500), offset: int = Query(0, ge=0),
                 tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_db)) -> CasePage:
@@ -747,7 +763,7 @@ async def cases(run_id: str, request: Request, activity: Optional[str] = None, v
                     items=[CaseRow.model_validate(dict(r._mapping)) for r in rows])
 
 
-@router.get("/runs/{run_id}/cases/{case_id:path}", dependencies=EXPORT,  # PTP case ids are "EBELN/EBELP"
+@router.get("/runs/{run_id}/cases/{case_id:path}", dependencies=VIEW,  # PTP case ids are "EBELN/EBELP"
             response_model=CaseEvents)
 async def case_events(run_id: str, case_id: str, request: Request, tenant: Tenant = Depends(get_tenant),
                       db: AsyncSession = Depends(get_db)) -> CaseEvents:

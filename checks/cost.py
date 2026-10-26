@@ -24,13 +24,44 @@ def defaults() -> dict:
         return yaml.safe_load(f)
 
 
+# Business impact defect types (api/services/analytics_engine.py BusinessImpactAnalytics) and
+# Config Intelligence alignment unit costs: the keys a tenant may price.
+IMPACT_TYPES = ("duplicate_payment", "warranty_miss", "compliance_penalty", "blocked_invoice",
+                "failed_posting", "inventory_write_off", "labour_displacement", "contract_violation")
+_IMPACT_KEYS = ("unit_cost", "factor", "mitigation")
+
+
 def effective(tenant_model: Optional[dict] = None) -> dict:
-    """Defaults with the tenant's model laid over them, key by key per section."""
+    """Defaults with the tenant's model laid over them, key by key per section.
+
+    ``impact`` entries merge field by field (a tenant's ``{unit_cost: 9000}`` keeps the default
+    factor and mitigation); ``subscription_monthly`` is the tenant's, else the default (None)."""
     base, own = defaults(), tenant_model or {}
     model = {"currency": own.get("currency") or base.get("currency", "ZAR")}
-    for s in _SECTIONS:
+    for s in _SECTIONS + ("config_alignment",):
         model[s] = {**(base.get(s) or {}), **(own.get(s) or {})}
+    base_impact, own_impact = base.get("impact") or {}, own.get("impact") or {}
+    model["impact"] = {k: {**(base_impact.get(k) or {}), **(own_impact.get(k) or {})}
+                       for k in dict.fromkeys([*base_impact, *own_impact])}
+    sub = own.get("subscription_monthly", base.get("subscription_monthly"))
+    model["subscription_monthly"] = float(sub) if isinstance(sub, (int, float)) and sub > 0 else None
     return model
+
+
+def validate_impact(key: str, spec: object) -> Optional[str]:
+    """None when ``spec`` prices impact defect type ``key``, else the reason it does not."""
+    if key not in IMPACT_TYPES:
+        return f"impact types are {sorted(IMPACT_TYPES)}"
+    if not isinstance(spec, dict):
+        return "an impact cost is an object"
+    if set(spec) - set(_IMPACT_KEYS):
+        return f"unknown keys: {sorted(set(spec) - set(_IMPACT_KEYS))}"
+    for k, v in spec.items():
+        if not (isinstance(v, (int, float)) and not isinstance(v, bool) and v >= 0):
+            return f"{k} is a number >= 0"
+    if spec.get("mitigation", 0) > 1:
+        return "mitigation is a share between 0 and 1"
+    return None
 
 
 def validate_spec(spec: object) -> Optional[str]:

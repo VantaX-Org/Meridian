@@ -70,10 +70,11 @@ def test_sidebar_systems_and_data_items():
 
 
 def test_sidebar_quality_items():
-    """Objects is a main entry; Runs sits under Analysis."""
+    """Objects and Runs are main entries (owner: runs must be easy to find), not under Analysis."""
     content = _nav()
     assert _has_item(_group_block(content, "Work"), "/objects", "Objects")
-    assert _has_item(_group_block(content, "Analysis"), "/runs", "Runs")
+    assert _has_item(_group_block(content, "Work"), "/runs", "Runs")
+    assert not _has_item(_group_block(content, "Analysis"), "/runs", "Runs")
 
 
 def test_sidebar_fix_items():
@@ -96,8 +97,11 @@ def test_sidebar_mdm_items():
 
 
 def test_sidebar_process_and_impact_items():
-    """Processes sit under Analysis; the insight views reach the process map, lineage, patterns and duplicates."""
-    assert '"/process"' in _group_block(_nav(), "Analysis")
+    """Processes are a main pill (Work); their runs and the designer sit under Analysis; the insight views reach the
+    process map, lineage, patterns and duplicates."""
+    assert '"/process"' in _group_block(_nav(), "Work")
+    analysis = _group_block(_nav(), "Analysis")
+    assert '"/process/runs"' in analysis and '"/insights/process/designer"' in analysis
     views = VIEWS.read_text(encoding="utf-8")
     for href in ("/insights/process", "/insights/lineage", "/insights/mining", "/insights/duplicates"):
         assert f'"{href}"' in views
@@ -169,32 +173,36 @@ def test_settings_cards_are_gated():
 # RBAC role administration moved from /settings to /admin (settings is now an
 # index page that delegates user management to /admin).
 def test_settings_has_ai_reviewer_role():
-    """Admin page includes ai_reviewer in the invitable roles."""
-    path = Path("frontend/app/(app)/admin/users/page.tsx")
-    content = path.read_text(encoding="utf-8")
+    """Admin page includes ai_reviewer in the invitable roles (the shared role list it imports)."""
+    page = Path("frontend/app/(app)/admin/users/page.tsx").read_text(encoding="utf-8")
+    assert '@/lib/roles' in page
+    content = Path("frontend/lib/roles.ts").read_text(encoding="utf-8")
     assert "ai_reviewer" in content
     assert "AI Reviewer" in content
 
 
 def test_settings_ai_reviewer_distinct_badge():
-    """ai_reviewer has its own label; roles are plain text, hue is for defects only."""
-    path = Path("frontend/app/(app)/admin/users/page.tsx")
+    """ai_reviewer has its own label; roles are plain text, hue is for defects only. The role names live in one
+    module (frontend/lib/roles.ts) that Admin › Users and the account menu both read."""
+    path = Path("frontend/lib/roles.ts")
     content = path.read_text(encoding="utf-8")
     assert 'ai_reviewer: { label: "AI Reviewer"' in content
 
 
 def test_settings_ai_reviewer_tooltip():
     """ai_reviewer has descriptive tooltip."""
-    path = Path("frontend/app/(app)/admin/users/page.tsx")
+    path = Path("frontend/lib/roles.ts")
     content = path.read_text(encoding="utf-8")
     assert "approve proposed rules" in content
 
 
 def test_settings_permissions_table_comes_from_the_api():
-    """Role capabilities table is the server's matrix (GET /auth/roles), never a local copy."""
+    """Admin › Users keeps no local copy of role capabilities and sets no role: it shows the user's grants
+    from the API (GET /users/{id}/grants) and links to Roles and access, which owns the server's matrix."""
     path = Path("frontend/app/(app)/admin/users/page.tsx")
     content = path.read_text(encoding="utf-8")
-    assert "getRoleMatrix" in content and "ai_feedback" not in content
+    assert "listGrants" in content and "ai_feedback" not in content
+    assert "ROLE_OPTIONS" not in content and "<Select" not in content
 
 
 # ── O.5 Upload page — connected systems banner ─────────────────────────────

@@ -10,7 +10,7 @@ import type { Version } from "@/types/api";
 const getSystems = vi.fn();
 const getConfigLandscape = vi.fn();
 const getVersions = vi.fn();
-let permissions: string[] = ["manage_system", "upload"];
+let permissions: string[] = ["manage_systems", "trigger_sync", "upload"];
 
 vi.mock("@/lib/api/connectivity", () => ({ getSystems: (...a: unknown[]) => getSystems(...a) }));
 vi.mock("@/lib/api/config-load", () => ({ getConfigLandscape: (...a: unknown[]) => getConfigLandscape(...a) }));
@@ -22,7 +22,7 @@ vi.mock("@/context/auth-context", () => ({
 import { useDayOne } from "../use-day-one";
 
 const system = (overrides: Partial<SAPSystemExtended> = {}): SAPSystemExtended =>
-  ({ id: "s1", config_sync_status: "loaded", health_status: "healthy", ...overrides }) as SAPSystemExtended;
+  ({ id: "s1", name: "ECC Prod", config_sync_status: "loaded", health_status: "healthy", last_sync_at: null, ...overrides }) as SAPSystemExtended;
 const landscape = (overrides: Partial<LandscapeConfigStatus> = {}): LandscapeConfigStatus =>
   ({ systems: [], counts: {}, loaded: 1, total: 1, ...overrides }) as unknown as LandscapeConfigStatus;
 const version = (status: string, id = "v1"): Version => ({ id, run_at: "2026-01-01", label: null, status, dqs_summary: null, metadata: null }) as Version;
@@ -40,7 +40,7 @@ async function run() {
 
 describe("useDayOne", () => {
   beforeEach(() => {
-    permissions = ["manage_system", "upload"];
+    permissions = ["manage_systems", "trigger_sync", "upload"];
     getSystems.mockReset();
     getConfigLandscape.mockReset();
     getVersions.mockReset();
@@ -62,6 +62,7 @@ describe("useDayOne", () => {
     const { step } = await run();
     expect(step?.key).toBe("failed");
     expect(step?.href).toBe("/runs/v2");
+    expect(step?.actionLabel).toBe("Open the failed run");
   });
 
   it("a run is in progress → step running", async () => {
@@ -79,6 +80,29 @@ describe("useDayOne", () => {
     getVersions.mockResolvedValue({ versions: [] });
     const { step } = await run();
     expect(step?.key).toBe("connect");
+    expect(step?.href).toBe("/systems?connect=1");
+    expect(step?.secondary).toEqual({ label: "Import a file", href: "/import" });
+  });
+
+  it("offers no import beside connect without upload", async () => {
+    permissions = ["manage_systems"];
+    getSystems.mockResolvedValue([]);
+    getConfigLandscape.mockResolvedValue(landscape({ loaded: 0, total: 0 }));
+    getVersions.mockResolvedValue({ versions: [] });
+    const { step } = await run();
+    expect(step?.key).toBe("connect");
+    expect(step?.secondary).toBeUndefined();
+  });
+
+  it("an upload-only user with no system gets an actionable import step", async () => {
+    permissions = ["upload"];
+    getSystems.mockResolvedValue([]);
+    getConfigLandscape.mockResolvedValue(landscape({ loaded: 0, total: 0 }));
+    getVersions.mockResolvedValue({ versions: [] });
+    const { step } = await run();
+    expect(step?.key).toBe("import");
+    expect(step?.href).toBe("/import");
+    expect(step?.actionable).toBe(true);
   });
 
   it("system connected but configuration not loaded → step config", async () => {
@@ -87,6 +111,18 @@ describe("useDayOne", () => {
     getVersions.mockResolvedValue({ versions: [] });
     const { step } = await run();
     expect(step?.key).toBe("config");
+    expect(step?.href).toBe("/systems/s1?tab=health&part=config");
+    expect(step?.detail).toContain("ECC Prod");
+  });
+
+  it("names the first system missing configuration, not the first system", async () => {
+    getSystems.mockResolvedValue([system(), system({ id: "s2", name: "BW Dev", config_sync_status: "not_loaded" })]);
+    getConfigLandscape.mockResolvedValue(landscape({ loaded: 0, total: 2 }));
+    getVersions.mockResolvedValue({ versions: [] });
+    const { step } = await run();
+    expect(step?.key).toBe("config");
+    expect(step?.href).toBe("/systems/s2?tab=health&part=config");
+    expect(step?.detail).toContain("BW Dev");
   });
 
   it("system connected and configured but never extracted → step extract", async () => {
@@ -95,6 +131,17 @@ describe("useDayOne", () => {
     getVersions.mockResolvedValue({ versions: [] });
     const { step } = await run();
     expect(step?.key).toBe("extract");
+    expect(step?.href).toBe("/systems/s1?extract=1");
+  });
+
+  it("gates extraction on trigger_sync, not on managing systems", async () => {
+    permissions = ["manage_systems"];
+    getSystems.mockResolvedValue([system()]);
+    getConfigLandscape.mockResolvedValue(landscape());
+    getVersions.mockResolvedValue({ versions: [] });
+    const { step } = await run();
+    expect(step?.key).toBe("extract");
+    expect(step?.actionable).toBe(false);
   });
 
   it("gates the step label for a viewer without manage_system", async () => {
@@ -126,5 +173,29 @@ describe("useDayOne", () => {
     getVersions.mockResolvedValue({ versions: [] });
     const { result } = renderHook(() => useDayOne(), { wrapper });
     await waitFor(() => expect(result.current.status).toBe("error"));
+  });
+
+  it("exposes the failed request and a refetch that reads all three sources again", async () => {
+    const boom = new Error("runs down");
+    getSystems.mockResolvedValue([system()]);
+    getConfigLandscape.mockResolvedValue(landscape());
+    getVersions.mockRejectedValue(boom);
+    const { result } = renderHook(() => useDayOne(), { wrapper });
+    await waitFor(() => expect(result.current.status).toBe("error"));
+    expect(result.current.error).toBe(boom);
+    const calls = [getSystems.mock.calls.length, getConfigLandscape.mock.calls.length, getVersions.mock.calls.length];
+    result.current.refetch();
+    await waitFor(() => {
+      expect(getSystems.mock.calls.length).toBeGreaterThan(calls[0]);
+      expect(getConfigLandscape.mock.calls.length).toBeGreaterThan(calls[1]);
+      expect(getVersions.mock.calls.length).toBeGreaterThan(calls[2]);
+    });
+  });
+
+  it("has no error once the sources answer", async () => {
+    getSystems.mockResolvedValue([system()]);
+    getConfigLandscape.mockResolvedValue(landscape());
+    getVersions.mockResolvedValue({ versions: [version("complete")] });
+    expect((await run()).error).toBeNull();
   });
 });

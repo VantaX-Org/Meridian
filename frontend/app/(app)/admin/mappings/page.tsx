@@ -4,8 +4,8 @@ import { createContext, useCallback, useContext, useMemo, useState } from "react
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { Button, ConfirmDialog, DataTable, EmptyState, Field, Input, Mono, Notice, PageHeader, Pill, Select, Stat, Async } from "@/design";
+import { Button, ConfirmDialog, DataTable, EmptyState, Field, Input, Mono, Notice, PageHeader, Pill, Select, Stat, Async, toast } from "@/design";
+import { SettingsTabs } from "@/components/admin/settings-tabs";
 import { LedgerHead } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { getFieldMappings, resetFieldMappings, updateFieldMapping, type FieldMapping } from "@/lib/api/field-mappings";
@@ -25,17 +25,19 @@ function DraftInput({ m, field, label, mono }: { m: FieldMapping; field: keyof D
   return (
     <Input value={d[field] ?? ""} aria-label={`${m.standard_field} ${label}`} disabled={!write} className={mono ? "font-mono" : undefined}
       placeholder={field === "customer_field" ? "Column header in the file" : undefined}
-      onChange={(e) => set(m, { [field]: (field === "customer_field" ? e.target.value.trim() : e.target.value) || null })} />
+      onChange={(e) => set(m, { [field]: e.target.value || null })} />
   );
 }
 
 function SaveCell({ m }: { m: FieldMapping }) {
   const { drafts, write, onSaved } = useContext(DraftsContext);
   const d = draftOf(drafts, m);
+  // The column header is kept as typed (spaces inside it included) and trimmed only when saved.
+  const column = d.customer_field?.trim() || undefined;
   const save = useMutation({
     mutationFn: () => updateFieldMapping(m.id, {
-      customer_field: d.customer_field ?? undefined, customer_label: d.customer_label ?? undefined,
-      notes: d.notes ?? undefined, is_mapped: !!(d.customer_field && d.customer_field.trim()),
+      customer_field: column, customer_label: d.customer_label ?? undefined,
+      notes: d.notes ?? undefined, is_mapped: !!column,
     }),
     onSuccess: () => { onSaved(m.id); toast.success(`${m.standard_field} saved`); },
     onError: (e) => toast.error(`${m.standard_field} not saved. ${apiErrorMessage(e)}`),
@@ -67,6 +69,8 @@ export default function AdminMappingsPage() {
   const shown = mappings.filter((m) => (!object || m.module === object)
     && (!term || [m.standard_field, m.standard_label, m.customer_field, m.customer_label].some((v) => v?.toLowerCase().includes(term))));
   const mapped = shown.filter((m) => m.is_mapped).length;
+  // A customised field is one the tenant gave its own column, label or note; the reset applies to the chosen object or all.
+  const customised = mappings.filter((m) => (!object || m.module === object) && (m.customer_field || m.customer_label || m.notes)).length;
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const refresh = () => qc.invalidateQueries({ queryKey: queryKeys.fieldMappings() });
   const set = useCallback((m: FieldMapping, patch: Partial<Draft>) => setDrafts((p) => ({ ...p, [m.id]: { ...draftOf(p, m), ...patch } })), []);
@@ -81,7 +85,7 @@ export default function AdminMappingsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Field mapping" meta="Which column in your files holds each standard SAP field. Type your column header next to a field and save the row" />
+      <PageHeader tabs={<SettingsTabs />} title="Field mapping" meta="Which column in your files holds each standard SAP field. Type your column header next to a field and save the row" />
       <Notice tone="info">A standard field with no customer column is skipped by every check that needs it.</Notice>
 
       <div className="flex gap-4">
@@ -98,18 +102,19 @@ export default function AdminMappingsPage() {
         />
         {object || search ? <Button variant="secondary" onClick={() => { setObject(""); setSearch(""); }}>Clear</Button> : null}
         {write ? <Button variant="ghost" onClick={() => setConfirmReset(true)}>Reset {object ? formatModuleName(object) : "all"} to defaults</Button> : null}
-        <ConfirmDialog
-          open={confirmReset}
-          onOpenChange={setConfirmReset}
-          tone="danger"
-          title={`Reset ${object ? formatModuleName(object) : "every object"} to the shipped mappings?`}
-          body="Customer columns, labels and notes typed here are replaced by the defaults Meridian ships with."
-          confirmLabel="Reset mappings"
-          cancelLabel="Keep mappings"
-          pending={reset.isPending}
-          onConfirm={() => reset.mutate()}
-        />
       </div>
+
+      <ConfirmDialog
+        open={confirmReset}
+        onOpenChange={setConfirmReset}
+        title={`Reset ${object ? formatModuleName(object) : "every object"} to the shipped mappings`}
+        tone="danger"
+        body={`${customised.toLocaleString()} customised ${customised === 1 ? "field goes" : "fields go"} back to the shipped mapping. Imported files are matched on the shipped columns from then on.`}
+        confirmLabel="Reset mappings"
+        cancelLabel="Keep mappings"
+        pending={reset.isPending}
+        onConfirm={() => reset.mutate()}
+      />
 
       <Async query={all} skeleton={320} notFoundIsEmpty>{!shown.length ? (
           object || search ? (

@@ -49,6 +49,13 @@ def test_cost_appears_only_at_the_tenants_own_rate():
     assert planner_config({"minutes_per_record": None, "bogus": 1})["minutes_per_record"] == 3.0
 
 
+def test_planner_amounts_take_the_cost_model_currency():
+    """The cost model's currency names planner amounts, over a planner currency left in older settings."""
+    cfg = planner_config({"cost_per_record": 10, "currency": "ZAR"}, "USD")
+    actions = PrescriptiveAnalytics(cfg).generate_next_best_actions(_findings(), [], [])
+    assert cfg["currency"] == "USD" and all(a["currency"] == "USD" for a in actions)
+
+
 def test_sprint_projects_dqs_through_the_scoring_engine():
     findings = _findings()
     planner = PrescriptiveAnalytics({"sprint_hours": 10})
@@ -86,3 +93,71 @@ def test_forecast_regresses_on_calendar_days():
     # missing stamps fall back to the run index without failing
     [h] = PredictiveAnalytics().forecast_dqs([{**p, "recorded_at": None} for p in weekly])
     assert h["forecast_7d"] == 80.0
+
+
+def test_impact_defaults_keep_the_shipped_rand_values() -> None:
+    """Without a tenant cost model the buckets price at the figures Meridian shipped with, in ZAR."""
+    from api.services.analytics_engine import BusinessImpactAnalytics
+
+    bia = BusinessImpactAnalytics()
+    impacts = {i["category"]: i for i in bia.quantify_impact(
+        [{"dimension": "uniqueness", "affected_count": 2, "module": "accounts_payable", "check_id": "AP001"},
+         {"dimension": "completeness", "affected_count": 3, "module": "material_master", "check_id": "MM001"}],
+        [{"type": "blocked_invoice"}, {"type": "auto_resolved"}])}
+    assert impacts["duplicate_payment"]["annual_risk"] == round(2 * 8500 * 0.023 * 12, 2)
+    assert impacts["duplicate_payment"]["mitigated"] == round(2 * 8500 * 0.023 * 12 * 0.7, 2)
+    assert impacts["inventory_write_off"]["annual_risk"] == 3 * 8000
+    assert impacts["blocked_invoice"]["annual_risk"] == 12000 * 12
+    assert impacts["labour_displacement"]["annual_risk"] == 0.25 * 450 * 12
+    assert all(i["currency"] == "ZAR" for i in impacts.values())
+    # the historical key names carry the same amounts
+    assert all(i["annual_risk_zar"] == i["annual_risk"] and i["mitigated_zar"] == i["mitigated"] for i in impacts.values())
+    assert impacts["warranty_miss"]["calculation_method"] == "affected_count × 35,000 ZAR"
+    assert bia.calculate_roi(list(impacts.values()))["currency"] == "ZAR"
+
+
+def test_impact_and_roi_price_from_the_tenant_cost_model() -> None:
+    """A tenant's unit costs, mitigation shares, currency and subscription drive every amount."""
+    from api.services.analytics_engine import BusinessImpactAnalytics
+
+    bia = BusinessImpactAnalytics({
+        "currency": "EUR",
+        "impact": {"duplicate_payment": {"unit_cost": 100, "factor": 2, "mitigation": 0.5},
+                   "blocked_invoice": {"unit_cost": 1000}},
+        "subscription_monthly": 1000,
+    })
+    impacts = {i["category"]: i for i in bia.quantify_impact(
+        [{"dimension": "uniqueness", "affected_count": 3, "module": "accounts_payable", "check_id": "AP001"}],
+        [{"type": "blocked_invoice"}])}
+    assert impacts["duplicate_payment"]["annual_risk"] == 600.0 and impacts["duplicate_payment"]["mitigated"] == 300.0
+    assert impacts["duplicate_payment"]["calculation_method"] == "affected_count × 100 EUR × 2"
+    # a partial override keeps the default factor (12 months) and mitigation (0.9)
+    assert impacts["blocked_invoice"]["annual_risk"] == 12000.0 and impacts["blocked_invoice"]["mitigated"] == 10800.0
+    assert all(i["currency"] == "EUR" for i in impacts.values())
+    roi = bia.calculate_roi(list(impacts.values()))
+    assert roi == {"subscription_annual": 12000.0, "risk_mitigated": 11100.0, "roi_multiple": 0.9,
+                   "payback_months": round(12000 / 11100 * 12, 1), "currency": "EUR"}
+
+
+def test_roi_without_a_subscription_states_no_multiple_payback_or_fee() -> None:
+    """With no subscription in the cost model, ROI multiple, payback and the annual subscription are None
+    (never computed from an invented fee); the cost avoided is still stated."""
+    import inspect
+
+    from api.routes import analytics as analytics_routes
+    from api.services.analytics_engine import BusinessImpactAnalytics
+
+    bia = BusinessImpactAnalytics()
+    impacts = [{"mitigated_zar": 540000.0}]
+    for sub in (None, 0.0):
+        roi = bia.calculate_roi(impacts, sub)
+        assert roi["subscription_annual"] is None
+        assert roi["roi_multiple"] is None
+        assert roi["payback_months"] is None
+        assert roi["risk_mitigated"] == 540000.0
+    # A real subscription still yields the multiple and payback.
+    real = bia.calculate_roi(impacts, 15000.0)
+    assert real["subscription_annual"] == 180000.0 and real["roi_multiple"] == 3.0 and real["payback_months"] == 4.0
+    # The routes use no hard-coded fee: the default cost model has none.
+    assert BusinessImpactAnalytics().subscription_monthly is None
+    assert "15000" not in inspect.getsource(analytics_routes)

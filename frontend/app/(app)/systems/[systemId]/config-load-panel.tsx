@@ -9,29 +9,16 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { Button, Card, DrillLink, EmptyState, ErrorState, Mono, Notice, Pill, Skeleton, type PillTone, ProgressFill } from "@/design";
-import { getConfigLoad, startConfigLoad, type AreaObject, type AreaStatus, type ConfigLoad, type LoadArea } from "@/lib/api/config-load";
+import { useState } from "react";
+import { Button, Card, ConfirmDialog, DrillLink, EmptyState, ErrorState, Mono, Notice, Pill, Skeleton, ProgressFill, Status, toast } from "@/design";
+import { environmentLabel } from "@/components/systems/connect-system-dialog";
+import { getConfigLoad, startConfigLoad, type AreaObject, type ConfigLoad, type LoadArea } from "@/lib/api/config-load";
 import { getJob } from "@/lib/api/jobs";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { SystemType } from "@/types/api";
 
-const AREA_TONE: Record<AreaStatus, PillTone> = {
-  waiting: "neutral",
-  running: "neutral",
-  loaded: "go",
-  failed: "no-go",
-  not_available: "neutral",
-};
-const AREA_LABEL: Record<AreaStatus, string> = {
-  waiting: "Waiting",
-  running: "Reading",
-  loaded: "Loaded",
-  failed: "Failed",
-  not_available: "Not available",
-};
 
 const lower = (t: string) => t.charAt(0).toLowerCase() + t.slice(1);
 
@@ -70,7 +57,7 @@ function AreaRows({ systemId, areas }: { systemId: string; areas: LoadArea[] }) 
               )}
               <div className="flex items-center gap-2">
                 <span className="m-text-body m-ink-2">{a.tables_done} of {a.tables_total}</span>
-                <Pill tone={AREA_TONE[a.status]}>{AREA_LABEL[a.status]}</Pill>
+                <Status kind="lifecycle" value={a.status} />
               </div>
             </div>
             {a.status === "running" || a.status === "waiting" ? (
@@ -209,11 +196,31 @@ function Result({ systemId, load, retry, retrying, canLoad }: { systemId: string
   );
 }
 
-/** Configuration panel shown on the system page's Health tab. */
-export function ConfigLoadPanel({ systemId, systemType, canLoad }: { systemId: string; systemType: SystemType; canLoad: boolean }) {
+/** Configuration panel shown on the system page's Health tab: the one Configuration home, with the one Load button. */
+export function ConfigLoadPanel({ systemId, systemType, system, canLoad }: {
+  systemId: string;
+  systemType: SystemType;
+  /** Named in the confirmation: which system and environment is about to be read. */
+  system?: { name: string; environment: string };
+  canLoad: boolean;
+}) {
   const { load, running, job, start, isLoading, error, refetch } = useConfigLoad(systemId);
   const status = configStatus(load, running, systemType);
-  const action = canLoad && !hasNoConfig(systemType) ? <ConfigLoadButton running={running} loaded={!!load} onClick={() => start.mutate()} /> : null;
+  const [confirming, setConfirming] = useState(false);
+  const ask = () => setConfirming(true);
+  const action = canLoad && !hasNoConfig(systemType) ? <ConfigLoadButton running={running} loaded={!!load} onClick={ask} /> : null;
+  const confirm = canLoad && !hasNoConfig(systemType) ? (
+    <ConfirmDialog
+      open={confirming}
+      onOpenChange={setConfirming}
+      title={`Load configuration from ${system ? `${system.name} (${environmentLabel(system.environment)})` : "this system"}`}
+      body={`Reads every configuration table of every business area${load?.areas_total ? ` (${load.areas_total.toLocaleString()} areas)` : ""}, in full, so rules know which checks apply. Read-only: Meridian never writes to SAP.`}
+      confirmLabel="Load configuration"
+      cancelLabel="Not now"
+      pending={start.isPending}
+      onConfirm={() => start.mutate(undefined, { onSettled: () => setConfirming(false) })}
+    />
+  ) : null;
 
   let body: React.ReactNode;
   if (status === "not_available") {
@@ -239,30 +246,31 @@ export function ConfigLoadPanel({ systemId, systemType, canLoad }: { systemId: s
       </div>
     );
   } else if (status === "failed") {
-    const timedOut = (load?.error ?? job?.error ?? "") === "Timed out";
-    body = (
-      <ErrorState
-        message={timedOut
-          ? "Reading took too long. Nothing was saved. Try again outside peak hours."
-          : `Something failed on our side. Nothing was saved. ${load?.error ?? ""}`.trim()}
-        onRetry={canLoad ? () => start.mutate() : undefined}
-      />
-    );
+    // The cause, in the same words the area rows use: the first failed object names it, else the load's own error.
+    const cause = load?.areas.flatMap((a) => a.objects).find((o) => o.state === "failed" && o.cause);
+    const error = load?.error ?? job?.error ?? "";
+    const message = cause
+      ? `${cause.object}: ${areaObjectText(cause)} Nothing was saved.`
+      : error === "Timed out"
+        ? "Reading took too long. Nothing was saved. Try again outside peak hours."
+        : `Something failed on our side. Nothing was saved. ${error}`.trim();
+    body = <ErrorState message={message} onRetry={canLoad ? ask : undefined} />;
   } else if (status === "not_loaded" || !load) {
     body = (
       <EmptyState
         title="Configuration not loaded"
         detail="Rules apply by default until you load it."
-        action={canLoad ? <Button onClick={() => start.mutate()}>Load configuration</Button> : undefined}
+        action={canLoad ? <Button onClick={ask}>Load configuration</Button> : undefined}
       />
     );
   } else {
-    body = <Result systemId={systemId} load={load} retry={() => start.mutate()} retrying={start.isPending} canLoad={canLoad} />;
+    body = <Result systemId={systemId} load={load} retry={ask} retrying={start.isPending} canLoad={canLoad} />;
   }
 
   return (
     <Card title="Configuration" actions={action} dataTour="config-load">
       {body}
+      {confirm}
     </Card>
   );
 }

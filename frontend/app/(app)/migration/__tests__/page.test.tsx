@@ -51,7 +51,7 @@ describe("MigrationPage", () => {
     vi.spyOn(systemsApi, "getSystems").mockResolvedValue([]);
     const create = vi.spyOn(migrationApi, "createWave").mockResolvedValue({ ...WAVE, id: "w2", name: "Wave 2" });
     renderWithQuery(<MigrationPage />);
-    expect(await screen.findByText(/no migration waves yet/i)).toBeInTheDocument();
+    expect(await screen.findByText("No waves yet")).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole("button", { name: "Create wave" })[0]);
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Wave 2" } });
     fireEvent.change(screen.getByLabelText("Objects"), { target: { value: "material_master, fi_gl" } });

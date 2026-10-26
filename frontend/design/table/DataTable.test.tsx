@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { DataTable } from "./DataTable";
 import { textColumn, numberColumn, idColumn, barFill, type CellMeta } from "./columns";
 import { Pager } from "./Pager";
+import { RowAction, actionColumn, ROW_ACTION_CLASS } from "./RowAction";
 import { Drawer } from "../primitives/Drawer";
 
 interface Row {
@@ -24,6 +25,17 @@ describe("DataTable", () => {
     fireEvent.click(header);
     const cells = screen.getAllByRole("cell");
     expect(cells[0]).toHaveTextContent("Alpha");
+  });
+
+  it("names the grid and each row's checkbox by what the row is, never its id", () => {
+    const { unmount } = render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} bulkActions={() => null} />);
+    expect(screen.getByRole("grid", { name: "Data table" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Select Alpha" })).toBeInTheDocument();
+    unmount();
+    render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} bulkActions={() => null} label="Plants" rowLabel={(r) => `plant ${r.name}`} />);
+    expect(screen.getByRole("grid", { name: "Plants" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Select plant Bravo" })).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: /Select row/ })).toBeNull();
   });
 
   it("filters rows via the global filter input", () => {
@@ -75,18 +87,18 @@ describe("DataTable", () => {
     // Space selects, it does not open.
     fireEvent.keyDown(grid, { key: " " });
     expect(onRowClick).toHaveBeenCalledTimes(2);
-    expect(screen.getByLabelText("Select row 2")).toBeChecked();
+    expect(screen.getByLabelText("Select Bravo")).toBeChecked();
     fireEvent.keyDown(grid, { key: "x" });
-    expect(screen.getByLabelText("Select row 2")).not.toBeChecked();
+    expect(screen.getByLabelText("Select Bravo")).not.toBeChecked();
     fireEvent.keyDown(grid, { key: "End" });
     expect(grid).toHaveAttribute("aria-activedescendant", (screen.getByText("Alpha").closest("tr") as HTMLTableRowElement).id);
     fireEvent.keyDown(grid, { key: "Home" });
     expect(grid).toHaveAttribute("aria-activedescendant", bravoRow.id);
 
-    fireEvent.click(screen.getByLabelText("Select row 1"));
+    fireEvent.click(screen.getByLabelText("Select Alpha"));
     expect(onRowClick).toHaveBeenCalledTimes(2);
     fireEvent.keyDown(grid, { key: "Escape" });
-    expect(screen.getByLabelText("Select row 1")).not.toBeChecked();
+    expect(screen.getByLabelText("Select Alpha")).not.toBeChecked();
   });
 
   it("virtualises large row sets: total height matches getTotalSize and scrolling reveals later rows", () => {
@@ -183,11 +195,11 @@ describe("DataTable", () => {
     render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} bulkActions={() => null} />);
     fireEvent.change(screen.getByLabelText("Filter rows"), { target: { value: "Alpha" } });
     fireEvent.click(screen.getByLabelText("Select all rows"));
-    expect(screen.getByLabelText("Select row 1")).toBeChecked();
+    expect(screen.getByLabelText("Select Alpha")).toBeChecked();
     fireEvent.change(screen.getByLabelText("Filter rows"), { target: { value: "" } });
-    expect(screen.getByLabelText("Select row 2")).not.toBeChecked();
-    fireEvent.keyDown(screen.getByLabelText("Select row 1"), { key: "Escape" });
-    expect(screen.getByLabelText("Select row 1")).not.toBeChecked();
+    expect(screen.getByLabelText("Select Bravo")).not.toBeChecked();
+    fireEvent.keyDown(screen.getByLabelText("Select Alpha"), { key: "Escape" });
+    expect(screen.getByLabelText("Select Alpha")).not.toBeChecked();
   });
 
   it("exposes grid row semantics", () => {
@@ -212,8 +224,8 @@ describe("DataTable", () => {
         )}
       />,
     );
-    fireEvent.click(screen.getByLabelText("Select row 2"));
-    fireEvent.click(screen.getByLabelText("Select row 1"));
+    fireEvent.click(screen.getByLabelText("Select Bravo"));
+    fireEvent.click(screen.getByLabelText("Select Alpha"));
     expect(screen.getByText("2 selected")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Delete"));
     expect(onAction).toHaveBeenCalledWith(expect.arrayContaining([
@@ -231,9 +243,22 @@ describe("DataTable", () => {
     expect(screen.getAllByRole("row")[1]).toHaveStyle({ height: "32px" });
   });
 
+  it("defaults to the 40px row and follows the user's density tier", async () => {
+    render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} />);
+    expect(screen.getAllByRole("row")[1]).toHaveStyle({ height: "40px" });
+    document.documentElement.style.setProperty("--m-row-h", "48px");
+    document.documentElement.dataset.density = "comfortable";
+    try {
+      await waitFor(() => expect(screen.getAllByRole("row")[1]).toHaveStyle({ height: "48px" }));
+    } finally {
+      document.documentElement.style.removeProperty("--m-row-h");
+      delete document.documentElement.dataset.density;
+    }
+  });
+
   it("marks selected rows and shows the floating bulk bar", () => {
     render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} bulkActions={(s) => <button>Act {s.length}</button>} />);
-    fireEvent.click(screen.getByLabelText("Select row 1"));
+    fireEvent.click(screen.getByLabelText("Select Alpha"));
     expect(screen.getByText("1 selected")).toBeInTheDocument();
     expect(screen.getByText("Act 1")).toBeInTheDocument();
     expect(screen.getAllByRole("row")[2]).toHaveClass("bg-[var(--m-accent-soft)]");
@@ -354,5 +379,31 @@ describe("DataTable layout features", () => {
     const { container } = render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} hideSearch hideToolbar maxHeight={300} />);
     expect(screen.queryByLabelText("Filter rows")).not.toBeInTheDocument();
     expect(container.querySelector("div[style*='max-height: 300px']")).not.toBeNull();
+  });
+
+  it("right-aligns a sortable numeric header with its figures", () => {
+    interface N { id: string; n: number }
+    render(<DataTable columns={[numberColumn<N>("n", "Count")]} data={[{ id: "a", n: 3 }]} getRowId={(r) => r.id} hideToolbar />);
+    const button = screen.getByRole("button", { name: "Count" });
+    expect(button).toHaveClass("w-full", "justify-end");
+    expect(button.closest("th")).toHaveClass("text-right");
+  });
+
+  it("pins sticky columns, hides low-priority columns on phones and draws the row action in one style", () => {
+    const cols = [
+      { ...textColumn<Row>("name", "Name"), meta: { sticky: "start" } satisfies CellMeta },
+      { ...idColumn<Row>("id", "Key"), meta: { mono: true, priority: "low" } satisfies CellMeta },
+      actionColumn<Row>((r) => <RowAction href={`/x/${r.id}`} label={`Open ${r.name}`} />),
+    ];
+    render(<DataTable columns={cols} data={rows} getRowId={(r) => r.id} hideToolbar />);
+    const head = screen.getAllByRole("columnheader");
+    expect(head[0]).toHaveClass("sticky", "left-0");
+    expect(head[1]).toHaveClass("max-[640px]:hidden");
+    expect(head[2]).toHaveClass("sticky", "right-0");
+    const open = screen.getByRole("link", { name: "Open Alpha" });
+    expect(open).toHaveAttribute("href", "/x/1");
+    expect(open.className).toBe(ROW_ACTION_CLASS);
+    const cell = open.closest("td");
+    expect(cell).toHaveClass("sticky", "right-0", "bg-[var(--m-sheet)]");
   });
 });

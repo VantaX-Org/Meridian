@@ -54,6 +54,87 @@ describe("RecordFixSheetPage", () => {
     const exports = screen.getAllByRole("button", { name: "Export" });
     expect(exports).toHaveLength(1);
     expect(exports[0].closest("header")).not.toBeNull();
+    expect(screen.getByText("Organisational levels")).toBeInTheDocument();
+  });
+
+  it("offers the record sheet PDF and the organisational levels only for a material", async () => {
+    routeParams = { object: "accounts_payable", key: encodeURIComponent("LIFNR=V9|BUKRS=2000") };
+    vi.spyOn(objectsApi, "getObjectRecord").mockResolvedValue({ ...material, matnr: "LIFNR=V9|BUKRS=2000", views: [], mara: { LIFNR: "V9" }, labels: { LIFNR: "V9" } });
+    vi.spyOn(objectsApi, "getObjectRecordFindings").mockResolvedValue({ version_id: "v1", failing: [] });
+    renderWithQuery(<RecordFixSheetPage />);
+    expect(await screen.findByText("No failing rules on this run")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Export" })).toBeNull();
+    expect(screen.queryByText(/levels/i)).toBeNull();
+    routeParams = { object: "material_master", key: "100001" };
+  });
+
+  it("reads a material that fails a rule as No-go even with every field filled, and links the rule", async () => {
+    vi.spyOn(objectsApi, "getObjectRecord").mockResolvedValue(material);
+    vi.spyOn(materialsApi, "getMaterialFindings").mockResolvedValue({
+      matnr: "100001", version_id: "v1", rules_total: 1,
+      by_view: [{
+        view: "basic", label: "Basic data", rules: 1, passing_count: 0, not_evaluated: [],
+        failing: [{ check_id: "MM101", message: "Base unit is not allowed", severity: "critical", field: "MARA.MEINS", level: "client", actual_value: "XX", record_key: "100001", issue_id: null, issue_status: null, record_fix: null }],
+      }],
+    } as never);
+    vi.spyOn(materialsApi, "getMaterialSupersession").mockResolvedValue({ matnr: "100001", plants: [], bom_usage: null });
+    vi.spyOn(materialsApi, "getMaterialDuplicates").mockResolvedValue({ matnr: "100001", algorithm: "exact", threshold: 1, source: "makt", items: [] });
+    renderWithQuery(<RecordFixSheetPage />);
+    expect(await screen.findByText("Base unit is not allowed")).toBeInTheDocument();
+    expect(screen.getByText("No-go")).toBeInTheDocument();
+    expect(screen.queryByText(/^Go$/)).toBeNull();
+    expect(screen.getByText("Failing rules", { selector: "h2, h3, [class*=title]" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "MM101" })).toHaveAttribute("href", expect.stringContaining("/objects/material_master/rules/MM101"));
+  });
+
+  it("shows a pending status, not Go, while the findings load", async () => {
+    vi.spyOn(objectsApi, "getObjectRecord").mockResolvedValue(material);
+    vi.spyOn(materialsApi, "getMaterialFindings").mockReturnValue(new Promise(() => {}));
+    vi.spyOn(materialsApi, "getMaterialSupersession").mockResolvedValue({ matnr: "100001", plants: [], bom_usage: null });
+    vi.spyOn(materialsApi, "getMaterialDuplicates").mockResolvedValue({ matnr: "100001", algorithm: "exact", threshold: 1, source: "makt", items: [] });
+    renderWithQuery(<RecordFixSheetPage />);
+    await screen.findByText("Steel bolt");
+    expect(screen.getByText("Checking…")).toBeInTheDocument();
+    expect(screen.queryByText(/^Go$/)).toBeNull();
+  });
+
+  it("says it couldn't check, not Go, when the findings fail to load", async () => {
+    routeParams = { object: "accounts_payable", key: encodeURIComponent("LIFNR=V9|BUKRS=2000") };
+    vi.spyOn(objectsApi, "getObjectRecord").mockResolvedValue({ ...material, matnr: "LIFNR=V9|BUKRS=2000", views: [], mara: { LIFNR: "V9" }, labels: { LIFNR: "V9" } });
+    vi.spyOn(objectsApi, "getObjectRecordFindings").mockRejectedValue(new Error("boom"));
+    renderWithQuery(<RecordFixSheetPage />);
+    expect(await screen.findByText("Couldn't check")).toBeInTheDocument();
+    expect(screen.queryByText(/^Go$/)).toBeNull();
+    expect(screen.queryByText("No-go")).toBeNull();
+    routeParams = { object: "material_master", key: "100001" };
+  });
+
+  it("reads a record whose findings name a failing rule as No-go", async () => {
+    routeParams = { object: "accounts_payable", key: encodeURIComponent("LIFNR=V9|BUKRS=2000") };
+    vi.spyOn(objectsApi, "getObjectRecord").mockResolvedValue({ ...material, matnr: "LIFNR=V9|BUKRS=2000", views: [], mara: { LIFNR: "V9" }, labels: { LIFNR: "V9" } });
+    vi.spyOn(objectsApi, "getObjectRecordFindings").mockResolvedValue({
+      version_id: "v1", failing: [{ check_id: "AP012", severity: "critical", message: "Reconciliation account is missing", field: "LFB1.AKONT" }],
+    });
+    renderWithQuery(<RecordFixSheetPage />);
+    expect(await screen.findByText("No-go")).toBeInTheDocument();
+    expect(screen.queryByText("Checking…")).toBeNull();
+    routeParams = { object: "material_master", key: "100001" };
+  });
+
+  it("links each duplicate candidate to its record and to the merge review, with the score as a percentage", async () => {
+    vi.spyOn(objectsApi, "getObjectRecord").mockResolvedValue(material);
+    vi.spyOn(materialsApi, "getMaterialFindings").mockResolvedValue({ matnr: "100001", version_id: "v1", rules_total: 0, by_view: [] });
+    vi.spyOn(materialsApi, "getMaterialSupersession").mockResolvedValue({ matnr: "100001", plants: [], bom_usage: null });
+    vi.spyOn(materialsApi, "getMaterialDuplicates").mockResolvedValue({
+      matnr: "100001", algorithm: "description", threshold: 85, source: "makt",
+      items: [{ matnr: "100002", maktx: "Steel bolt M8", mtart: null, matkl: null, meins: null, ean11: null, matches_on: ["Description 87 %"], score: 87 }],
+    });
+    renderWithQuery(<RecordFixSheetPage />);
+    const record = await screen.findByRole("link", { name: "100002" });
+    expect(record.getAttribute("href")).toContain("/objects/material_master/records/100002");
+    expect(screen.getByRole("link", { name: "Review pair 100001 and 100002" })).toHaveAttribute("href", "/mdm/golden/merge?object=material_master&record=100001");
+    expect(screen.getByText("87%")).toBeInTheDocument();
+    expect(screen.queryByText(/score 87/)).toBeNull();
   });
 
   it("shows any other object's record: its fields and the rules it fails, looked up by the whole key", async () => {

@@ -1,4 +1,5 @@
 // Shared helpers for the systems list and the system detail page.
+import type { Verdict } from "@/design";
 import type { SystemVersion } from "@/lib/api/system-objects";
 import type { HealthStatus, SyncProfile } from "@/types/api";
 
@@ -8,6 +9,15 @@ export const HEALTH_LABEL: Record<HealthStatus, string> = {
   unreachable: "Unreachable",
   auth_failed: "Sign-in refused",
   unknown: "Not tested",
+};
+
+/** A connection's health as the verdict vocabulary; an untested system has no verdict. */
+export const HEALTH_VERDICT: Record<HealthStatus, Verdict | null> = {
+  healthy: "go",
+  degraded: "at-risk",
+  unreachable: "no-go",
+  auth_failed: "no-go",
+  unknown: null,
 };
 
 const meanDqs = (v: SystemVersion): number | null => {

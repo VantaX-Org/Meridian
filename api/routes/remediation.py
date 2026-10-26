@@ -38,6 +38,8 @@ class BatchFilter(BaseModel):
     search: Optional[str] = None
     version_id: Optional[uuid.UUID] = None
     issue_ids: Optional[list[uuid.UUID]] = Field(None, max_length=MAX_ITEMS)
+    # The records a steward ticked in the workbench: the batch holds only those.
+    record_keys: Optional[list[str]] = Field(None, max_length=MAX_ITEMS)
 
 
 class BatchCreate(BaseModel):
@@ -97,6 +99,9 @@ async def create_batch(
     if f.issue_ids:
         where += " AND ri.id = ANY(:ids)"
         p["ids"] = [str(i) for i in f.issue_ids]
+    if f.record_keys:
+        where += " AND ri.record_key = ANY(:record_keys)"
+        p["record_keys"] = f.record_keys
     rows = (await db.execute(text(f"""
         SELECT ri.id AS issue_id, ri.scope, ri.module, ri.check_id, ri.record_key, ri.grain,
                ri.last_seen_version, f.details->>'field_checked' AS field

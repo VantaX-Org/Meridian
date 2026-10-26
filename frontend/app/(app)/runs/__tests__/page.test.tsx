@@ -1,6 +1,8 @@
 // frontend/app/(app)/runs/__tests__/page.test.tsx
 import Link from "next/link";
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import { Button } from "@/design";
@@ -19,10 +21,12 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => searchParams,
 }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+// The Run analysis drawer's object picker reads a system's objects; the page test only needs it to appear.
+vi.mock("@/app/(app)/systems/[systemId]/scope-picker", () => ({ ScopePicker: () => <div data-testid="scope-picker" /> }));
 // useDayOne() shares the systems/versions query keys with this page's own queries;
 // mocking it outright avoids a real-vs-mocked getSystems collision on queryKeys.systems().
 vi.mock("@/hooks/use-day-one", () => ({
-  useDayOne: () => ({ status: "ready", step: null }),
+  useDayOne: () => ({ status: "ready", step: null, error: null, refetch: () => {} }),
   DayOneAction: ({ step, fallbackHref, fallbackLabel }: { step: { href: string | null; label: string; actionable: boolean } | null; fallbackHref: string; fallbackLabel: string }) =>
     step && (!step.actionable || !step.href) ? (
       <span>{step.label}</span>
@@ -87,6 +91,20 @@ describe("RunsPage", () => {
     });
   });
 
+  it("opens Run analysis as the system-picker drawer, under the Operate view tabs", async () => {
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer] });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    renderWithQuery(<RunsPage />);
+    expect(await screen.findByRole("navigation", { name: "Operate views" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Runs" })).toHaveAttribute("aria-current", "page");
+    // One run: the score tile names its system, its run and day, and what the number is a mean of.
+    expect(await screen.findByText("Latest DQS, ECC Prod")).toBeInTheDocument();
+    expect(await screen.findByText("Oct 8 upload, 8 Oct 2026, mean of 1 object")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Run analysis" }));
+    expect(await screen.findByRole("dialog", { name: "Run analysis" })).toBeInTheDocument();
+    expect(await screen.findByTestId("scope-picker")).toBeInTheDocument();
+  });
+
   it("shows the DQS column and a score chart for the latest system", async () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, older] });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
@@ -96,6 +114,18 @@ describe("RunsPage", () => {
     expect(links.length).toBeGreaterThan(1); // stat tile and table cell
     for (const link of links) expect(link).toHaveAttribute("href", "/runs/v2");
     expect(screen.getByText("Score per run, ECC Prod")).toBeInTheDocument();
+    expect(screen.getByText("Latest DQS, ECC Prod")).toBeInTheDocument();
+    expect(screen.getByText("Oct 8 upload, 8 Oct 2026, vs previous run")).toBeInTheDocument();
+  });
+
+  it("names uploads, never a made-up system, when the latest run has no system", async () => {
+    const meta = { modules: ["material_master"], file_name: "upload.csv", row_count: 10 };
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [{ ...newer, metadata: meta }, { ...older, metadata: meta }] });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    renderWithQuery(<RunsPage />);
+    expect(await screen.findByText("Score per run, uploads")).toBeInTheDocument();
+    expect(screen.getByText("Latest DQS, uploads")).toBeInTheDocument();
+    expect(screen.queryByText(/latest system/)).toBeNull();
   });
 
   it("groups the ledger by day, newest first: the day is printed on the first run of each day only, and each row ends in Open", async () => {
@@ -117,11 +147,32 @@ describe("RunsPage", () => {
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
-    fireEvent.click(screen.getByLabelText("Select row v1"));
+    fireEvent.click(screen.getByLabelText("Select Oct 1 upload"));
     expect(screen.getByText("Select two runs")).toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText("Select row v2"));
+    fireEvent.click(screen.getByLabelText("Select Oct 8 upload"));
     const bulkBar = screen.getByText("2 selected").parentElement as HTMLElement;
     fireEvent.click(within(bulkBar).getByRole("button", { name: "Compare" }));
+    expect(push).toHaveBeenCalledWith("/runs/v2/vs/v1");
+  });
+
+  it("compares on c, but not while a dialog, menu or control has the keyboard", async () => {
+    push.mockClear();
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, older] });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    renderWithQuery(<RunsPage />);
+    await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText("Select Oct 1 upload"));
+    fireEvent.click(screen.getByLabelText("Select Oct 8 upload"));
+    for (const role of ["dialog", "alertdialog", "listbox", "option", "menu", "menuitem", "combobox"]) {
+      const owner = document.createElement("div");
+      owner.setAttribute("role", role);
+      document.body.appendChild(owner);
+      fireEvent.keyDown(owner, { key: "c" });
+      owner.remove();
+    }
+    fireEvent.keyDown(screen.getByRole("button", { name: "Compare" }), { key: "c" });
+    expect(push).not.toHaveBeenCalled();
+    fireEvent.keyDown(document.body, { key: "c" });
     expect(push).toHaveBeenCalledWith("/runs/v2/vs/v1");
   });
 
@@ -172,8 +223,26 @@ describe("RunsPage", () => {
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
-    expect(screen.getByRole("button", { name: "Remove filter System: ECC Prod" })).toBeInTheDocument();
+    const chip = screen.getByRole("button", { name: "Remove filter System" }).closest(".m-chip");
+    expect(chip).toHaveTextContent("SystemECC Prod");
     searchParams.delete("system");
+  });
+});
+
+describe("RunsPage header", () => {
+  it("puts the run count in the meta, not a tile, and leads with one primary action and the rest in More", async () => {
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, older] });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    renderWithQuery(<RunsPage />);
+    await waitFor(() => expect(screen.getByTestId("runs-meta")).toHaveTextContent("2 runs, newest first"));
+    expect(screen.queryByText("Runs", { selector: ".m-stat *" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Run analysis" })).toHaveClass("m-btn-primary");
+    expect(screen.queryByRole("link", { name: "Present" })).toBeNull();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "More" }));
+    expect(await screen.findByRole("menuitem", { name: "Review fixes" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Present" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Archive older runs" })).toBeInTheDocument();
   });
 });
 
@@ -184,7 +253,9 @@ describe("RunsPage archive", () => {
     const archive = vi.spyOn(versionsApi, "archiveVersions").mockResolvedValue({ archived: 1 });
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: "Archive older runs" }));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "More" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Archive older runs" }));
     const keep = await screen.findByLabelText("Keep the newest");
     fireEvent.change(keep, { target: { value: "3" } });
     fireEvent.click(screen.getByRole("button", { name: "Archive" }));
@@ -201,8 +272,10 @@ describe("RunsPage archive", () => {
     await waitFor(() => expect(screen.getByText("Old upload")).toBeInTheDocument());
     expect(get).toHaveBeenCalledWith(expect.objectContaining({ include_archived: true }));
     expect(screen.getByText("Archived")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Remove filter Including archived" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Restore archived runs" }));
+    expect(screen.getByRole("button", { name: "Remove filter Runs" }).closest(".m-chip")).toHaveTextContent("RunsIncluding archived");
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "More" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Restore archived runs" }));
     await waitFor(() => expect(restore).toHaveBeenCalled());
     searchParams.delete("archived");
   });
@@ -222,15 +295,61 @@ describe("RunsPage status param", () => {
     searchParams.delete("status");
   });
 
-  it("?status=failed shows only failed runs", async () => {
+  it("?status=failed asks the server for failed runs only", async () => {
     searchParams.set("status", "failed");
     const failed = version({ id: "v3", label: "Broken run", status: "failed" });
-    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, failed] });
+    const get = vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [failed], total: 1 });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText("Broken run")).toBeInTheDocument());
-    expect(screen.queryByText("Oct 8 upload")).not.toBeInTheDocument();
+    expect(get).toHaveBeenCalledWith(expect.objectContaining({ status: "failed", offset: 0 }));
     searchParams.delete("status");
+  });
+});
+
+describe("RunsPage server-side filters and paging", () => {
+  const page = (n: number, prefix: string) =>
+    Array.from({ length: n }, (_, i) => version({ id: `${prefix}${i}`, label: `${prefix} run ${i}`, run_at: `2026-09-${String((i % 28) + 1).padStart(2, "0")}T00:00:00Z` }));
+
+  it("sends the system filter to the server and keeps the pager for a filtered set over one page", async () => {
+    searchParams.set("system", "sys-1");
+    searchParams.set("status", "failed");
+    const get = vi.spyOn(versionsApi, "getVersions").mockImplementation(async (p) => ({ versions: page(100, `p${(p?.offset ?? 0) / 100}-`), total: 150 }));
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    renderWithQuery(<RunsPage />);
+    expect(await screen.findByText("1–100 of 150")).toBeInTheDocument();
+    expect(get).toHaveBeenCalledWith(expect.objectContaining({ system_id: "sys-1", status: "failed", limit: 100, offset: 0 }));
+    expect(screen.queryByText("No runs match")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    await waitFor(() => expect(get).toHaveBeenCalledWith(expect.objectContaining({ system_id: "sys-1", status: "failed", offset: 100 })));
+    searchParams.delete("system");
+    searchParams.delete("status");
+  });
+
+  it("steps back to the last page when the set shrinks under the current page, never a false empty", async () => {
+    let total = 150;
+    const get = vi.spyOn(versionsApi, "getVersions").mockImplementation(async (p) =>
+      (p?.offset ?? 0) >= total ? { versions: [], total } : { versions: page(Math.min(100, total - (p?.offset ?? 0)), `o${p?.offset ?? 0}-`), total });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={queryClient}><RunsPage /></QueryClientProvider>);
+    fireEvent.click(await screen.findByRole("button", { name: "Next" }));
+    expect(await screen.findByText("101–150 of 150")).toBeInTheDocument();
+    total = 100;
+    await queryClient.invalidateQueries();
+    await waitFor(() => expect(get).toHaveBeenLastCalledWith(expect.objectContaining({ offset: 0 })));
+    expect(await screen.findByText("o0- run 0")).toBeInTheDocument();
+    expect(screen.queryByText("No runs yet")).toBeNull();
+  });
+
+  it("offers every connected system in the system filter, not only those on the current page", async () => {
+    const other: SAPSystemExtended = { ...system, id: "sys-2", name: "S4 Quality" };
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer], total: 1 });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system, other]);
+    renderWithQuery(<RunsPage />);
+    await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("combobox", { name: "System" }));
+    expect(await screen.findByRole("option", { name: "S4 Quality" })).toBeInTheDocument();
   });
 });
 

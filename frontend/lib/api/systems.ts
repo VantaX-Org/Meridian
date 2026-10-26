@@ -42,9 +42,11 @@ export async function updateSystem(
     base_url?: string;
     company_id?: string;
     auth_type?: string;
+    token_url?: string; // "" clears it
     description?: string;
     environment?: string;
     is_active?: boolean;
+    // Only the secrets the user retyped; an absent key keeps the stored value.
     credentials?: Record<string, string>;
     role?: "source" | "target";
     target_system_id?: string; // "" clears the target
@@ -87,6 +89,21 @@ export async function testDraftConnection(body: {
 }): Promise<TestConnectionResponse> {
   const { data } = await apiClient.post<TestConnectionResponse>(
     "/api/v1/systems/test-connection",
+    body
+  );
+  return data;
+}
+
+/**
+ * Tests an existing system's edited, unsaved connection fields. A secret left out of
+ * `credentials` falls back to the one stored for this system; nothing is saved.
+ */
+export async function testEditedConnection(
+  systemId: string,
+  body: Parameters<typeof testDraftConnection>[0]
+): Promise<TestConnectionResponse> {
+  const { data } = await apiClient.post<TestConnectionResponse>(
+    `/api/v1/systems/${systemId}/test-connection`,
     body
   );
   return data;
@@ -138,6 +155,11 @@ export async function updateSyncProfile(
     body
   );
   return data;
+}
+
+// Needs DELETE /api/v1/systems/{id}/profiles/{profile_id} on the API (api/routes/systems.py); not there yet.
+export async function deleteSyncProfile(systemId: string, profileId: string): Promise<void> {
+  await apiClient.delete(`/api/v1/systems/${systemId}/profiles/${profileId}`);
 }
 
 export async function getSyncRuns(

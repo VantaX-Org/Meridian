@@ -1,6 +1,5 @@
 "use client";
 
-import { toast } from "sonner";
 /**
  * Steward inbox: every open stewardship task in one list. Ports the legacy
  * workbench inbox's data wiring (views, sorts, assign, resolve, escalate,
@@ -13,18 +12,29 @@ import { toast } from "sonner";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQueries, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Button, Card, Drawer, ErrorState, ExplorerPage, ExportMenu, Field, FilterChip, Notice, PageHeader, Pill, Select, Skeleton, Stat, Tabs, Textarea, emptyExportOptions, type PillTone, Input, Mono, Status } from "@/design";
+import { Button, Card, ConfirmDialog, Drawer, ErrorState, ExplorerPage, Field, FilterChip, IconButton, IconMore, Menu, Notice, PageHeader, Pill, Select, Skeleton, Tabs, Textarea, toast, type MenuItemDef, type PillTone, Input, Mono, Status } from "@/design";
+import { ProposalCell, proposalOf } from "@/components/fix/proposal";
 import { Fact, Workbench, type WorkbenchItem, type WorkbenchTone } from "@/components/inbox/workbench";
+import { ExceptionThread } from "@/components/inbox/exception-thread";
 import { QuickFilters } from "@/components/inbox/quick-filters";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
-import { exportIssues } from "@/lib/api/issues";
 import { assignItem, bulkApprove, escalateItem, getMetrics, getQueueItems, resolveItem, submitAiFeedback } from "@/lib/api/stewardship";
-import { bulkTriage, getTriageMetrics, ownerRungs } from "@/lib/api/triage";
+import { bulkTriage } from "@/lib/api/triage";
 import { getAssignableUsers, getUsers } from "@/lib/api/users";
+import { getCleaningItem, type CleaningQueueItem } from "@/lib/api/cleaning";
+import { getContracts } from "@/lib/api/contracts";
+import { getGlossaryTerm } from "@/lib/api/glossary";
+import { getMasterRecord } from "@/lib/api/master-records";
+import { getReviewPair, type ReviewPair } from "@/lib/api/match-review";
+import { getException } from "@/lib/api/exceptions";
+import { getRules } from "@/lib/api/rules";
+import { getCostModel } from "@/lib/api/settings";
+import type { RootCauseType } from "@/lib/api/config-intelligence";
+import { HIGH_CONFIDENCE_LABEL } from "@/lib/api/remediation";
 import {
   assignException,
   createExceptionRule,
@@ -36,10 +46,11 @@ import {
   updateExceptionRule,
 } from "@/lib/api/exceptions";
 import { apiErrorMessage, apiErrorState, isNotFound } from "@/lib/error";
-import { formatDate, formatInt, formatModuleName, labelOf, relativeTime } from "@/lib/format";
-import { inboxKeyHandler } from "@/lib/inbox-keys";
+import { MODULE_LABELS, formatDate, formatInt, formatModuleName, formatMoney, labelOf, relativeTime } from "@/lib/format";
+import { inboxKeyHandler, keyBelongsElsewhere } from "@/lib/inbox-keys";
 import { queryKeys } from "@/lib/query-keys";
 import { ApprovalsPanel, IssuesPanel, SapMonitorPanel } from "./inbox-panels";
+import { EXC_PAGE, taskSourceLink } from "./task-source";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import type { Exception, ExceptionRule, ExceptionStatus, Severity, StewardshipQueueItem, StewardshipStatus } from "@/types/api";
 
@@ -49,8 +60,11 @@ const LIVE: StewardshipStatus[] = ["open", "in_progress", "escalated"];
 const STATUS_TONE: Record<StewardshipStatus, PillTone> = { open: "neutral", in_progress: "at-risk", escalated: "no-go", resolved: "go" };
 const EXC_STATUS_TONE: Record<ExceptionStatus, PillTone> = { open: "neutral", investigating: "at-risk", pending_approval: "at-risk", resolved: "go", verified: "go", closed: "neutral" };
 const KINDS = [
-  { value: "task", label: "Tasks" }, { value: "exception", label: "Exceptions" }, { value: "issues", label: "Issues" },
-  { value: "sap", label: "SAP monitor" }, { value: "approvals", label: "Approvals" },
+  { value: "task", label: "Tasks" },
+  { value: "exception", label: "Exceptions" },
+  { value: "issues", label: "Issues" },
+  { value: "sap", label: "SAP monitor" },
+  { value: "approvals", label: "Approvals" },
 ];
 /** Who holds the task. Stacks with WHEN and the priority filter. */
 const WHO = [{ value: "all", label: "Everyone" }, { value: "mine", label: "Mine" }, { value: "unassigned", label: "Unassigned" }] as const;
@@ -71,10 +85,32 @@ const PURPOSE: Record<string, string> = {
   sap: "Live signals from SAP, such as failed jobs and locked records. Open one to see what happened",
   approvals: "Changes to SAP that wait for a second person. Approve the ones you did not request",
 };
+/** How many tasks per status the list loads at a time (the API's ceiling, api/routes/stewardship.py); "Load more" adds the next page. */
+const PAGE = 200;
+/** The exception engine's rule kinds (api/services/exception_engine.py). */
+const RULE_TYPES = [
+  { value: "field_condition", label: "Field condition" }, { value: "threshold", label: "Threshold" },
+  { value: "temporal", label: "Temporal" }, { value: "relationship", label: "Relationship" },
+];
+const OBJECT_OPTIONS = Object.keys(MODULE_LABELS).sort().map((m) => ({ value: m, label: formatModuleName(m) }));
+const SEVERITY_OPTIONS: { value: Severity; label: string }[] = [
+  { value: "critical", label: "Critical" }, { value: "high", label: "High" }, { value: "medium", label: "Medium" }, { value: "low", label: "Low" },
+];
+/** The resolution kinds the exceptions API bills (api/routes/exceptions.py billing_map). */
+const RESOLUTION_TYPES = [
+  { value: "steward_resolved", label: "Resolved by a steward" }, { value: "auto_resolved", label: "Resolved itself" },
+  { value: "dedup", label: "Resolved by a merge" }, { value: "custom_rule", label: "Resolved by a custom rule" },
+];
+/** The root-cause vocabulary the config-intelligence API uses for findings. */
+const ROOT_CAUSES: { value: RootCauseType | "other"; label: string }[] = [
+  { value: "bad_data", label: "Bad data" }, { value: "bad_config", label: "Bad configuration" },
+  { value: "bad_data_and_config", label: "Bad data and bad configuration" }, { value: "process_gap", label: "Process gap" }, { value: "other", label: "Other" },
+];
 /** Stands in for "no due date" so those tasks sort last. */
 const NO_DUE = Number.MAX_SAFE_INTEGER;
 const BULK_CONFIDENCE = 0.85;
 const DAY = 24 * HOUR;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const priorityLabel = (p: number) => (p === 1 ? "Priority 1 (highest)" : `Priority ${p}`);
 
 /** 45m, 5h, 3d */
@@ -116,6 +152,13 @@ async function each(ids: string[], fn: (id: string) => Promise<unknown>): Promis
   return { ok, failed: r.length - ok };
 }
 
+/** A task's domain, or null when the queue has none to name ("unknown" or empty). */
+const knownDomain = (d: string | null | undefined) => (d && d.trim() && d.trim().toLowerCase() !== "unknown" ? d : null);
+/** "Merge decision in Material master"; just the kind when the domain is unknown, never "in Unknown". */
+const taskTitle = (t: StewardshipQueueItem) => {
+  const d = knownDomain(t.domain);
+  return d ? `${labelOf(t.item_type)} in ${formatModuleName(d)}` : labelOf(t.item_type);
+};
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
 
 type QueueCache = { items: StewardshipQueueItem[] };
@@ -139,6 +182,7 @@ export default function InboxPage() {
   const [whenRaw, setWhen] = useUrlState("due", "any");
   const [prioRaw, setPrio] = useUrlState("prio", "");
   const [typeRaw, setType] = useUrlState("type", "all");
+  const [assigneeRaw, setAssignee] = useUrlState("assignee", "");
   const [kindRaw, setKind] = useUrlState("kind", "task");
   const view: Who = oneOf(viewRaw, WHO.map((v) => v.value), "all");
   const when: When = legacyWhen(viewRaw) ?? oneOf(whenRaw, WHEN.map((v) => v.value), "any");
@@ -149,7 +193,7 @@ export default function InboxPage() {
   // One replace: separate useUrlState setters would each rebuild the query from the same stale string.
   const showAll = (alsoSearch: boolean) => {
     const params = new URLSearchParams(urlParams.toString());
-    for (const k of ["view", "type", "due", "prio"]) params.delete(k);
+    for (const k of ["view", "type", "due", "prio", "assignee"]) params.delete(k);
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     if (alsoSearch) setSearch("");
@@ -164,38 +208,64 @@ export default function InboxPage() {
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }, [viewRaw, urlParams, pathname, router]);
   const [rawFocusedIndex, setFocusedIndex] = useState(0);
+  // `?focus=` (a link from MDM or a notification) lands on that task once the list holds it.
+  const focusId = urlParams.get("focus");
+  const [focusDone, setFocusDone] = useState<string | null>(null);
   const [rollbackNote, setRollbackNote] = useState<string | null>(null);
   const [rejectIds, setRejectIds] = useState<string[] | null>(null);
   const [reason, setReason] = useState("");
   const [reasonTouched, setReasonTouched] = useState(false);
+  const [resolutionType, setResolutionType] = useState("steward_resolved");
+  const [rootCause, setRootCause] = useState("other");
+  const [escalateIds, setEscalateIds] = useState<string[] | null>(null);
+  const [approveIds, setApproveIds] = useState<string[] | null>(null);
+  /** The one task the detail pane's Approve asks about. There is no un-approve endpoint, so it confirms first. */
+  const [approveOne, setApproveOne] = useState<StewardshipQueueItem | null>(null);
+  /** The task `r` armed; Enter approves it (the keyboard's confirm step). There is no un-approve endpoint, so no undo toast. */
+  const [armed, setArmed] = useState<string | null>(null);
   const [rulesOpen, setRulesOpen] = useState(false);
-  const [ruleDraft, setRuleDraft] = useState({ name: "", description: "", rule_type: "", object_type: "", condition: "", severity: "medium" as Severity });
+  const [ruleDraft, setRuleDraft] = useState({ name: "", description: "", rule_type: "field_condition", object_type: "", condition: "", severity: "medium" as Severity });
+  const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
+  const [pages, setPages] = useState(1);
+  const [excPages, setExcPages] = useState(1);
 
+  // One query per status and page, by offset: "Load more" adds the next page and keeps the rows already on screen
+  // (the API takes at most PAGE a call, so widening one limit would be refused). Page-major, so new pages append.
   const queues = useQueries({
-    queries: LIVE.map((status) => ({
-      queryKey: queryKeys.inbox({ status, limit: 200 }),
-      queryFn: () => getQueueItems({ status, limit: 200 }),
+    queries: Array.from({ length: pages }, (_, i) => i * PAGE).flatMap((offset) => LIVE.map((status) => ({
+      queryKey: queryKeys.inbox({ status, limit: PAGE, offset }),
+      queryFn: () => getQueueItems({ status, limit: PAGE, offset }),
+      placeholderData: keepPreviousData,
       refetchInterval: 60_000,
       enabled: !isExceptions,
-    })),
+    }))),
   });
-  const weekQ = useQuery({ queryKey: queryKeys.triageMetrics(8), queryFn: () => getTriageMetrics(8), refetchInterval: 60_000, enabled: !isExceptions });
+  // Amounts print in the tenant's currency code (the cost model); without it the number stands alone.
+  const costModel = useQuery({ queryKey: ["cost-model"], queryFn: getCostModel, enabled: isExceptions, retry: false, meta: { ignoreError: true }, staleTime: 300_000 });
   const metricsQ = useQuery({ queryKey: queryKeys.stewardshipMetrics(), queryFn: getMetrics, refetchInterval: 60_000, enabled: !isExceptions });
   // The user list needs `manage_users`; without it assignees show as "You" or an id prefix.
   const usersQ = useQuery({ queryKey: queryKeys.users(), queryFn: getUsers, enabled: can("manage_users") });
   // People a task can be handed to; needs `assign`, and also names assignees for roles without `manage_users`.
   const assignableQ = useQuery({ queryKey: ["users", "assignable"], queryFn: getAssignableUsers, enabled: canReassign, staleTime: 300_000 });
 
-  const excQ = useQuery({
-    queryKey: queryKeys.inbox({ kind: "exception", per_page: 100 }),
-    queryFn: () => getExceptions({ per_page: 100 }),
-    refetchInterval: 60_000,
-    enabled: isExceptions,
+  // The exceptions API pages at most 100 a call; "Load more" adds the next page.
+  const excPageQs = useQueries({
+    queries: Array.from({ length: excPages }, (_, i) => ({
+      queryKey: queryKeys.inbox({ kind: "exception", per_page: EXC_PAGE, page: i + 1 }),
+      queryFn: () => getExceptions({ per_page: EXC_PAGE, page: i + 1 }),
+      refetchInterval: 60_000,
+      enabled: isExceptions,
+    })),
   });
+  const excQ = excPageQs[0]!;
+  const excLoaded = useMemo(() => excPageQs.flatMap((q) => q.data?.exceptions ?? []), [excPageQs]);
+  const excTotal = excQ.data?.total ?? 0;
   const excMetricsQ = useQuery({ queryKey: queryKeys.exceptionMetrics(), queryFn: () => getExceptionMetrics(), enabled: isExceptions });
   const excRulesQ = useQuery({ queryKey: queryKeys.exceptionRules(), queryFn: getExceptionRules, enabled: isExceptions && rulesOpen });
 
-  const isLoading = queues.some((q) => q.isLoading);
+  // Only the first page decides "loading": a page being added never blanks the list already shown.
+  const isLoading = queues.slice(0, LIVE.length).some((q) => q.isLoading);
+  const queueFetching = queues.some((q) => q.isFetching);
   // A 404 means no queue yet: that is the empty state, not an error.
   const failedQueue = queues.find((q) => q.isError && !isNotFound(q.error));
   const isError = !!failedQueue;
@@ -203,23 +273,38 @@ export default function InboxPage() {
   const firstError = isExceptions ? excQ.error : failedQueue?.error;
   // SLA maths runs against the last fetch time, so it stays pure and refreshes with the data.
   const now = isExceptions ? excQ.dataUpdatedAt : Math.max(0, ...queues.map((q) => q.dataUpdatedAt));
-  const all = useMemo(() => queues.flatMap((q) => q.data?.items ?? []), [queues]);
-  const queueTotal = queues.reduce((n, q) => n + (q.data?.total ?? 0), 0);
+  // Deduplicated: a task decided between two page loads shifts the offsets, so one may arrive on two pages.
+  const all = useMemo(() => [...new Map(queues.flatMap((q) => q.data?.items ?? []).map((t) => [t.id, t])).values()], [queues]);
+  // The server's count of every open task, from the first page of each status, however many pages are loaded.
+  const queueTotal = queues.slice(0, LIVE.length).reduce((n, q) => n + (q.data?.total ?? 0), 0);
+  /** More tasks are open than are loaded, so counts taken from the loaded rows cover only the newest ones. */
+  const partial = queueTotal > all.length;
 
   // Guarded: an unexpected payload must not take the whole inbox down.
   const assignable = useMemo(() => (Array.isArray(assignableQ.data) ? assignableQ.data : []), [assignableQ.data]);
-  const names = useMemo(
-    () => new Map([...assignable, ...(Array.isArray(usersQ.data?.users) ? usersQ.data.users : [])].map((u) => [u.id, u.name || u.email])),
-    [usersQ.data, assignable],
-  );
+  const directory = useMemo(() => [...assignable, ...(Array.isArray(usersQ.data?.users) ? usersQ.data.users : [])], [usersQ.data, assignable]);
+  const names = useMemo(() => new Map(directory.map((u) => [u.id, u.name || u.email])), [directory]);
   const people = useMemo(
     () => assignable.filter((u) => u.id !== user?.id).map((u) => ({ value: u.id, label: u.name || u.email })),
     [assignable, user?.id],
   );
+  // `?assignee=` comes from the owners view's "Open inbox" (a user id); a display name or an email also matches.
+  const assignee = assigneeRaw.trim();
+  const assigneeIds = useMemo(() => {
+    if (!assignee) return null;
+    const a = assignee.toLowerCase();
+    const ids = new Set(directory.filter((u) => (u.name ?? "").toLowerCase() === a || (u.email ?? "").toLowerCase() === a).map((u) => u.id));
+    ids.add(assignee);
+    if (user && (user.email?.toLowerCase() === a || user.name?.toLowerCase() === a)) ids.add(user.id);
+    return ids;
+  }, [assignee, directory, user]);
   const who = useCallback(
-    (id: string | null) => (!id ? "Unassigned" : id === user?.id ? "You" : names.get(id) ?? id.slice(0, 8)),
+    (id: string | null) => (!id ? "Unassigned" : id === user?.id ? "You" : names.get(id) ?? "Unknown user"),
     [names, user?.id],
   );
+
+  // The Owner chip names the person: `?assignee=` may be a user id (the owners view's "Open inbox"), never shown raw.
+  const assigneeLabel = !assignee ? "" : assignee === user?.id || names.has(assignee) ? who(assignee) : UUID_RE.test(assignee) ? "Unknown user" : assignee;
 
   // A type is only a filter when the loaded tasks carry it; unknown values apply nothing.
   const type = useMemo(() => oneOf(typeRaw, [...new Set(all.map((t) => t.item_type))], "all"), [typeRaw, all]);
@@ -238,24 +323,30 @@ export default function InboxPage() {
     const rows = all.filter((t) => {
       if (type !== "all" && t.item_type !== type) return false;
       if (prio !== null && t.priority !== prio) return false;
+      if (assigneeIds && !(t.assigned_to && assigneeIds.has(t.assigned_to))) return false;
       if (!matchesWho(t, view) || !matchesWhen(t, when)) return false;
       return !q || [t.id, t.source_id, t.domain, t.item_type, who(t.assigned_to)].some((v) => v.toLowerCase().includes(q));
     });
     const due = (t: StewardshipQueueItem) => slaOf(t, now).remaining ?? NO_DUE;
     return rows.sort((x, y) => due(x) - due(y) || x.priority - y.priority);
-  }, [all, type, prio, view, when, search, now, who, matchesWho, matchesWhen]);
+  }, [all, type, prio, view, when, search, now, who, matchesWho, matchesWhen, assigneeIds]);
 
   const excItems = useMemo(() => {
-    const excAll = excQ.data?.exceptions ?? [];
+    const excAll = excLoaded;
     const q = search.trim().toLowerCase();
     const rows = excAll.filter((e) => !q || [e.id, e.title, e.category, e.type, e.status, who(e.assigned_to)].some((v) => v.toLowerCase().includes(q)));
     const due = (e: Exception) => (e.sla_deadline ? Date.parse(e.sla_deadline) : NO_DUE);
     return [...rows].sort((a, b) => due(a) - due(b));
-  }, [excQ.data, search, who]);
+  }, [excLoaded, search, who]);
 
   // Clamped at read time (not in an effect) so a shrinking list never points past its last row.
   const rowCount = isExceptions ? excItems.length : items.length;
   const focusedIndex = Math.min(rawFocusedIndex, Math.max(rowCount - 1, 0));
+  // State adjusted during render (the React-documented pattern): the linked task is focused once, when it first appears.
+  if (focusId && focusDone !== focusId) {
+    const at = (isExceptions ? excItems : items).findIndex((x) => x.id === focusId);
+    if (at >= 0) { setFocusDone(focusId); setFocusedIndex(at); }
+  }
 
   const typeOptions = useMemo(
     () => [{ value: "", label: "All types" }, ...[...new Set(all.map((t) => t.item_type))].sort().map((t) => ({ value: t, label: labelOf(t) }))],
@@ -279,6 +370,9 @@ export default function InboxPage() {
     void qc.invalidateQueries({ queryKey: queryKeys.stewardshipMetrics() });
     void qc.invalidateQueries({ queryKey: queryKeys.exceptionMetrics() });
     void qc.invalidateQueries({ queryKey: queryKeys.unreadNotifications() });
+    // The rail's Inbox count and the steward home's top tasks read the same queue.
+    void qc.invalidateQueries({ queryKey: queryKeys.shellCounts() });
+    void qc.invalidateQueries({ queryKey: ["home-inbox-top"] });
   }, [qc]);
   const done = useCallback((verb: string, r: { ok: number; failed: number }) => {
     if (r.ok) toast(`${verb} ${plural(r.ok, "task")}`);
@@ -307,11 +401,15 @@ export default function InboxPage() {
     mutationFn: (ids: string[]) =>
       ids.length === 1 ? resolveItem(ids[0], "approve").then(() => ({ approved: 1, asked: 1 })) : bulkApprove(ids, BULK_CONFIDENCE).then((d) => ({ approved: d.approved, asked: ids.length })),
     onSuccess: ({ approved, asked }) => {
+      setApproveIds(null);
+      setApproveOne(null);
       toast(`Approved ${plural(approved, "task")}`);
-      if (asked > approved) toast(`${asked - approved} below ${BULK_CONFIDENCE * 100}% model confidence or already closed — left for manual review`);
+      if (asked > approved) toast(`${asked - approved} below ${HIGH_CONFIDENCE_LABEL} or already closed, left for manual review`);
       refresh();
     },
-    onError: (e, _ids, ctx) => rollback(ctx?.snap, `Not approved: ${apiErrorMessage(e)}`),
+    // The server may have closed the task (a stale write-back is resolved with a 409): put the snapshot back, say
+    // the server's reason and refetch, so the inbox never offers a task that is already closed.
+    onError: (e, _ids, ctx) => { setApproveIds(null); setApproveOne(null); rollback(ctx?.snap, `Not approved: ${apiErrorMessage(e)}`); refresh(); },
   });
   // Rejecting overrides the model's recommendation: the correction reason is recorded on the task
   // and fed to the AI-feedback loop that proposes new match rules (/ai/rules).
@@ -324,11 +422,12 @@ export default function InboxPage() {
         if (t) await submitAiFeedback({ queue_item_id: id, steward_decision: "reject", correction_reason: why, domain: t.domain });
       }),
     onSuccess: (r) => { setRejectIds(null); setReason(""); done("Rejected", r); },
-    onError: (e, _v, ctx) => rollback(ctx?.snap, `Not rejected: ${apiErrorMessage(e)}`),
+    onError: (e, _v, ctx) => { rollback(ctx?.snap, `Not rejected: ${apiErrorMessage(e)}`); refresh(); },
   });
   const escalate = useMutation({
     mutationFn: (ids: string[]) => each(ids, escalateItem),
     onSuccess: (r) => done("Escalated", r),
+    onError: (e) => toast.error(`Not escalated: ${apiErrorMessage(e)}`),
   });
   const assign = useMutation({
     onMutate: async ({ ids, userId }: { ids: string[]; userId: string }) => { setRollbackNote(null); return { snap: await patchQueue(ids, (t) => ({ ...t, assigned_to: userId })) }; },
@@ -357,14 +456,16 @@ export default function InboxPage() {
   const excAssign = useMutation({
     mutationFn: ({ ids, userId }: { ids: string[]; userId: string }) => each(ids, (id) => assignException(id, { user_id: userId, user_name: names.get(userId) })),
     onSuccess: (r) => done("Assigned", r),
+    onError: (e) => toast.error(`Not assigned: ${apiErrorMessage(e)}`),
   });
   const excEscalate = useMutation({
-    mutationFn: (ids: string[]) => each(ids, (id) => escalateException(id, { reason: "Escalated from the inbox" })),
-    onSuccess: (r) => done("Escalated", r),
+    mutationFn: ({ ids, reason: why }: { ids: string[]; reason: string }) => each(ids, (id) => escalateException(id, { reason: why })),
+    onSuccess: (r) => { setEscalateIds(null); setReason(""); done("Escalated", r); },
+    onError: (e) => toast.error(`Not escalated: ${apiErrorMessage(e)}`),
   });
   const excResolve = useMutation({
     mutationFn: ({ ids, reason: why }: { ids: string[]; reason: string }) =>
-      each(ids, (id) => resolveException(id, { resolution_type: "fixed", resolution_notes: why, root_cause_category: "other" })),
+      each(ids, (id) => resolveException(id, { resolution_type: resolutionType, resolution_notes: why, root_cause_category: rootCause })),
     onSuccess: (r) => { setRejectIds(null); setReason(""); done("Resolved", r); },
     onError: (e) => toast.error(`Not resolved: ${apiErrorMessage(e)}`),
   });
@@ -372,36 +473,49 @@ export default function InboxPage() {
     ? excAssign.isPending || excEscalate.isPending || excResolve.isPending
     : approve.isPending || reject.isPending || escalate.isPending || assign.isPending || release.isPending || reassign.isPending;
 
+  // Enter opens what the task points at: its id is a pair, golden record, proposal, exception, contract or term id,
+  // never an SAP record key, so the target follows the task type (a proposal opens its record by its key).
   const openRecord = useCallback((index: number) => {
-    if (isExceptions) return; // exceptions have no object/record to open — the row carries its own detail.
+    if (isExceptions) return false; // exceptions have no object/record to open — the row carries its own detail.
     const t = items[index];
-    if (t) router.push(`/objects/${t.domain}/records/${t.source_id}`);
-  }, [isExceptions, items, router]);
+    if (!t) return false;
+    void resolveTaskLink(qc, t).then((link) => { if (link) router.push(link.href); });
+    return true;
+  }, [isExceptions, items, router, qc]);
 
+  // The keys belong to the task and exception workbenches only; the other tabs own their tables.
+  const keysLive = kind === "task" || kind === "exception";
   useEffect(() => {
+    if (!keysLive) return;
     const onKey = (ev: KeyboardEvent) => {
-      const el = ev.target as HTMLElement | null;
-      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable)) return;
+      // Fields, dialogs, menus and other buttons keep their keys; Enter on a queue row still opens the record.
+      if (keyBelongsElsewhere(ev, "[data-tour=inbox-queue] li")) return;
       if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
       const t = isExceptions ? null : items[focusedIndex];
       const e = isExceptions ? excItems[focusedIndex] : null;
+      // `r` arms the focused task; the next Enter approves it and any other key disarms it.
+      if (armed) {
+        setArmed(null);
+        if (ev.key === "Enter" && t && t.id === armed && canApprove && !busy) { ev.preventDefault(); approve.mutate([t.id]); return; }
+      }
       switch (ev.key) {
-        case "Escape": setRejectIds(null); setRulesOpen(false); return;
+        case "Escape": setRejectIds(null); setEscalateIds(null); setApproveIds(null); setApproveOne(null); setRulesOpen(false); return;
         case "a": if (t && canApprove && !busy && user) { ev.preventDefault(); assign.mutate({ ids: [t.id], userId: user.id }); } else if (e && canSeeTeam && !busy && user) { ev.preventDefault(); excAssign.mutate({ ids: [e.id], userId: user.id }); } return;
-        case "r": if (t && canApprove && !busy) { ev.preventDefault(); approve.mutate([t.id]); } else if (e && canApprove && !busy) { ev.preventDefault(); setRejectIds([e.id]); } return;
+        // The keyboard's confirm step: `r` says what Enter will approve, in the same words as the Approve dialog.
+        case "r": if (t && canApprove && !busy) { ev.preventDefault(); setArmed(t.id); toast(`Press Enter to ${approveCopy(t, qc.getQueryData<CleaningQueueItem>(proposalKey(t.source_id)) ?? null, qc.getQueryData<ReviewPair>(pairKey(t.source_id)) ?? null).action}`); } else if (e && canApprove && !busy) { ev.preventDefault(); setRejectIds([e.id]); } return;
         case "x": if (t && canApprove) { ev.preventDefault(); setRejectIds([t.id]); } return;
         default: inboxKeyHandler(ev, { focusedIndex, rowCount, setFocus: setFocusedIndex, onOpen: openRecord });
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [focusedIndex, rowCount, openRecord, isExceptions, items, excItems, canApprove, canSeeTeam, busy, user, assign, approve, excAssign]);
+  }, [keysLive, armed, focusedIndex, rowCount, openRecord, isExceptions, items, excItems, canApprove, canSeeTeam, busy, user, assign, approve, excAssign, qc]);
 
   const createRule = useMutation({
     mutationFn: () => createExceptionRule({ ...ruleDraft, auto_assign_to: undefined }),
     onSuccess: () => {
       toast("Exception rule created");
-      setRuleDraft({ name: "", description: "", rule_type: "", object_type: "", condition: "", severity: "medium" });
+      setRuleDraft({ name: "", description: "", rule_type: "field_condition", object_type: "", condition: "", severity: "medium" });
       void qc.invalidateQueries({ queryKey: queryKeys.exceptionRules() });
     },
     onError: (e) => toast.error(apiErrorMessage(e)),
@@ -416,9 +530,9 @@ export default function InboxPage() {
     const sla = slaOf(t, now);
     return {
       id: t.id,
-      label: `${labelOf(t.item_type)} ${t.source_id}`,
-      title: <>{labelOf(t.item_type)} in {formatModuleName(t.domain)}</>,
-      meta: `${who(t.assigned_to)}, priority ${t.priority}, record ${t.source_id}, raised ${span(now - Date.parse(t.created_at))} ago`,
+      label: `${taskTitle(t)}, raised ${formatDate(t.created_at, "datetime")}`,
+      title: taskTitle(t),
+      meta: `${who(t.assigned_to)}, priority ${t.priority}, raised ${span(now - Date.parse(t.created_at))} ago`,
       aside: <Pill tone={SLA_TONE[sla.state]}>{slaText(sla)}</Pill>,
       tone: SLA_BAR[sla.state],
     };
@@ -434,7 +548,6 @@ export default function InboxPage() {
       tone: e.severity === "critical" || e.severity === "high" || e.severity === "medium" || e.severity === "low" ? e.severity : "low",
     };
   }), [excItems, now, who]);
-  const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
   const onCheck = useCallback((id: string, on: boolean) => setChecked((prev) => {
     const next = new Set(prev);
     if (on) next.add(id); else next.delete(id);
@@ -452,22 +565,28 @@ export default function InboxPage() {
     : isLoading ? "loading" : isError ? "error" : items.length === 0 ? (dayOne.status === "loading" ? "loading" : "empty") : undefined;
 
   const kindToggle = (
-    <Tabs items={KINDS.filter((k) => k.value !== "approvals" || canApprove).map((k) => ({ ...k, content: null }))} value={kind} onValueChange={setKind} />
+    <Tabs items={KINDS.filter((k) => k.value !== "approvals" || canApprove).map((k) => ({ value: k.value, label: k.label, content: null }))} value={kind} onValueChange={setKind} />
   );
-  const overdue = isExceptions ? excMetricsQ.data?.overdue_count ?? 0 : counts.overdue;
-  const openCount = isExceptions ? excMetricsQ.data?.open_count ?? excItems.length : all.length;
-  const exportOptions = [{ format: "xlsx" as const, label: "Issues (.xlsx)", run: () => exportIssues("xlsx", { search: search || undefined, assigned_to: view === "mine" ? user?.id : undefined }) }];
+  // Open and overdue are the server's totals; an older server sends no task overdue count, so the loaded rows are
+  // counted and the header says which part.
+  const serverOverdue = metricsQ.data?.overdue_count;
+  const aiAcceptance = metricsQ.data?.ai_acceptance_rate ?? null;
+  // Suggestion acceptance across all queues, for roles that assign work.
+  const acceptance = !isExceptions && canSeeTeam && aiAcceptance != null ? ` Suggestion acceptance ${Math.round(aiAcceptance * 100)}%.` : "";
+  const overdue = isExceptions ? excMetricsQ.data?.overdue_count ?? 0 : serverOverdue ?? counts.overdue;
+  const openCount = isExceptions ? excMetricsQ.data?.open_count ?? excItems.length : queueTotal;
+  const overdueScope = !isExceptions && partial && serverOverdue == null ? ` in the newest ${formatInt(all.length)}` : "";
   // Counts belong to the tasks and exceptions lists; the other tabs load their own and say only what they are for.
   const counted = kind === "task" || kind === "exception";
   const header = (
     <PageHeader
       title="Inbox"
-      meta={counted ? `${formatInt(openCount)} open, ${formatInt(overdue)} overdue. ${PURPOSE[kind]}` : PURPOSE[kind]}
+      meta={counted ? `${formatInt(openCount)} open, ${formatInt(overdue)} overdue${overdueScope}. ${PURPOSE[kind]}${acceptance}` : PURPOSE[kind]}
       tabs={kindToggle}
       actions={
         isExceptions
           ? canManageRules ? <Button variant="secondary" onClick={() => setRulesOpen(true)}>Exception rules</Button> : undefined
-          : kind === "task" ? <ExportMenu options={items.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} /> : undefined
+          : undefined
       }
     />
   );
@@ -503,16 +622,19 @@ export default function InboxPage() {
             }
           : { title: "No tasks match these filters", detail: "Show all tasks to see the rest of the queue", action: <Button variant="secondary" onClick={() => showAll(true)}>Show all</Button> }
       }
-      errorProps={{ message: apiErrorMessage(firstError), onRetry: refresh }}
+      errorProps={{ error: firstError, onRetry: refresh }}
+      // The header carries the open and overdue counts and the When chips carry overdue and due soon, so the only
+      // summary is the "Load more" note when the list is partial.
       summary={
-        <div className="flex flex-col gap-4">
-          <div className="m-stat-grid @5xl:[grid-template-columns:repeat(3,minmax(0,240px))]">
-            <Stat label="Overdue" value={overdue} tone={overdue > 0 ? "no-go" : undefined} loading={isExceptions ? excMetricsQ.isLoading : isLoading} onClick={isExceptions ? undefined : () => setWhen("overdue")} />
-            {!isExceptions && <Stat label="Due in 24 hours" value={counts.soon} tone={counts.soon > 0 ? "at-risk" : undefined} loading={isLoading} onClick={() => setWhen("soon")} />}
-            {!isExceptions && !isLoading && queueTotal > all.length && <Stat label="Tasks loaded" value={all.length.toLocaleString()} hint={`of ${queueTotal.toLocaleString()}`} />}
-          </div>
-          {!isExceptions && canSeeTeam && <TeamPanel rungs={ownerRungs(weekQ.data)} aiAcceptance={metricsQ.data?.ai_acceptance_rate ?? null} />}
-        </div>
+        !isExceptions && !isLoading && partial ? (
+          <Notice action={<Button variant="secondary" disabled={queueFetching} onClick={() => setPages((n) => n + 1)}>Load more</Button>}>
+            Newest {all.length.toLocaleString()} of {queueTotal.toLocaleString()} loaded
+          </Notice>
+        ) : isExceptions && !excQ.isLoading && excTotal > excLoaded.length ? (
+          <Notice action={<Button variant="secondary" disabled={excPageQs.some((q) => q.isFetching)} onClick={() => setExcPages((n) => n + 1)}>Load more</Button>}>
+            {excLoaded.length.toLocaleString()} of {excTotal.toLocaleString()} exceptions loaded
+          </Notice>
+        ) : undefined
       }
       filterBar={
         <div className="flex flex-wrap gap-3 items-end">
@@ -542,12 +664,13 @@ export default function InboxPage() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </Field>
-          {!isExceptions && (view !== "all" || when !== "any" || type !== "all" || prio !== null) && (
+          {!isExceptions && (view !== "all" || when !== "any" || type !== "all" || prio !== null || !!assignee) && (
             <div className="flex flex-wrap items-center gap-2" aria-label="Active filters">
               {view !== "all" && <FilterChip label="Who" value={WHO_CHIP[view]} onRemove={() => setView("")} />}
               {when !== "any" && <FilterChip label="When" value={WHEN_CHIP[when]} onRemove={() => setWhen("")} />}
               {type !== "all" && <FilterChip label="Type" value={labelOf(type)} onRemove={() => setType("")} />}
-              {prio !== null && <FilterChip label="Priority" value={String(prio)} onRemove={() => setPrio("")} />}
+              {prio !== null && <FilterChip label="Priority" value={priorityLabel(prio)} onRemove={() => setPrio("")} />}
+              {assignee && <FilterChip label="Owner" value={assigneeLabel} onRemove={() => setAssignee("")} />}
               <Button variant="ghost" size="sm" onClick={() => showAll(false)}>Clear filters</Button>
             </div>
           )}
@@ -568,7 +691,7 @@ export default function InboxPage() {
               <>
                 {canSeeTeam && user && <Button variant="secondary" size="sm" disabled={busy} onClick={() => excAssign.mutate({ ids, userId: user.id })}>Claim</Button>}
                 {canSeeTeam && people.length > 0 && <ReassignSelect people={people} disabled={busy} onPick={(userId) => excAssign.mutate({ ids, userId })} />}
-                {canApprove && <Button variant="secondary" size="sm" disabled={busy} onClick={() => excEscalate.mutate(ids)}>Escalate</Button>}
+                {canApprove && <Button variant="secondary" size="sm" disabled={busy} onClick={() => setEscalateIds(ids)}>Escalate</Button>}
                 {canApprove && <Button variant="secondary" size="sm" disabled={busy} onClick={() => setRejectIds(ids)}>Resolve with notes</Button>}
               </>
             )}
@@ -580,9 +703,10 @@ export default function InboxPage() {
                 busy={busy}
                 canResolve={canApprove}
                 canAssign={canSeeTeam && !!user}
+                currency={costModel.data?.currency}
                 people={canSeeTeam ? people : []}
                 onResolve={() => setRejectIds([selectedExc.id])}
-                onEscalate={() => excEscalate.mutate([selectedExc.id])}
+                onEscalate={() => setEscalateIds([selectedExc.id])}
                 onAssign={(userId) => excAssign.mutate({ ids: [selectedExc.id], userId: userId ?? user?.id ?? "" })}
               />
             ) : null}
@@ -601,7 +725,7 @@ export default function InboxPage() {
                 {canApprove && user && <Button variant="secondary" size="sm" disabled={busy} onClick={() => assign.mutate({ ids, userId: user.id })}>Claim</Button>}
                 {canApprove && <Button variant="secondary" size="sm" disabled={busy} onClick={() => release.mutate(ids)}>Release</Button>}
                 {canReassign && people.length > 0 && <ReassignSelect people={people} disabled={busy} onPick={(userId) => reassign.mutate({ ids, userId })} />}
-                {canApprove && <Button variant="secondary" size="sm" disabled={busy} onClick={() => approve.mutate(ids)}>Approve</Button>}
+                {canApprove && <Button variant="secondary" size="sm" disabled={busy} onClick={() => setApproveIds(ids)}>Approve {ids.length.toLocaleString()} at {HIGH_CONFIDENCE_LABEL}</Button>}
                 {canApprove && <Button variant="secondary" size="sm" disabled={busy} onClick={() => setRejectIds(ids)}>Reject with reason</Button>}
                 <Button variant="secondary" size="sm" disabled={busy} onClick={() => escalate.mutate(ids)}>Escalate</Button>
               </>
@@ -617,7 +741,7 @@ export default function InboxPage() {
                 canAssign={canApprove && !!user && selectedTask.assigned_to !== user.id}
                 canRelease={canApprove && !!selectedTask.assigned_to}
                 people={canReassign ? people : []}
-                onApprove={() => approve.mutate([selectedTask.id])}
+                onApprove={() => setApproveOne(selectedTask)}
                 onReject={() => setRejectIds([selectedTask.id])}
                 onEscalate={() => escalate.mutate([selectedTask.id])}
                 onAssign={() => user && assign.mutate({ ids: [selectedTask.id], userId: user.id })}
@@ -641,7 +765,17 @@ export default function InboxPage() {
                   ? "Say what was done, so the next person can see how it was closed."
                   : "Say why the suggestion is wrong. The reason is kept on the task and helps Meridian suggest better next time."}
               </p>
-              <Field label="Reason" error={reasonTouched && !reason.trim() ? "Write a reason first" : undefined}>
+              {isExceptions ? (
+                <>
+                  <Field label="Resolution">
+                    <Select value={resolutionType} onValueChange={setResolutionType} options={RESOLUTION_TYPES} />
+                  </Field>
+                  <Field label="Root cause">
+                    <Select value={rootCause} onValueChange={setRootCause} options={ROOT_CAUSES} />
+                  </Field>
+                </>
+              ) : null}
+              <Field label={isExceptions ? "Notes" : "Reason"} error={reasonTouched && !reason.trim() ? "Write a reason first" : undefined}>
                 <Textarea
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
@@ -664,6 +798,41 @@ export default function InboxPage() {
               </div>
             </div>
           </Drawer>
+          <Drawer
+            open={escalateIds !== null}
+            onOpenChange={(open) => !open && setEscalateIds(null)}
+            title="Escalate exception"
+          >
+            <div className="flex flex-col gap-3">
+              <Field label="Reason">
+                <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={4} />
+              </Field>
+              <div className="flex gap-2 justify-end">
+                <Button variant="ghost" onClick={() => setEscalateIds(null)}>Keep as is</Button>
+                <Button variant="primary" disabled={!reason.trim() || excEscalate.isPending} onClick={() => escalateIds && excEscalate.mutate({ ids: escalateIds, reason })}>
+                  Escalate
+                </Button>
+              </div>
+            </div>
+          </Drawer>
+          <ConfirmDialog
+            open={approveIds !== null}
+            onOpenChange={(open) => !open && setApproveIds(null)}
+            title={`Approve ${plural(approveIds?.length ?? 0, "task")}?`}
+            body={`Each task whose model suggestion is at ${HIGH_CONFIDENCE_LABEL} is approved. The rest stay open for a manual decision.`}
+            confirmLabel={`Approve ${(approveIds?.length ?? 0).toLocaleString()}`}
+            cancelLabel="Keep open"
+            pending={approve.isPending}
+            onConfirm={() => approveIds && approve.mutate(approveIds)}
+          />
+          {approveOne ? (
+            <ApproveTaskDialog
+              t={approveOne}
+              onOpenChange={(open) => !open && setApproveOne(null)}
+              pending={approve.isPending}
+              onConfirm={() => approve.mutate([approveOne.id])}
+            />
+          ) : null}
           <Drawer open={rulesOpen} onOpenChange={setRulesOpen} title="Exception rules">
             <div className="flex flex-col gap-4">
               <p className="m-text-body m-ink-2">A rule raises an exception when a new finding matches its condition. Turn a rule off to stop new exceptions from it.</p>
@@ -674,7 +843,7 @@ export default function InboxPage() {
                   <div key={r.id} className="flex items-center justify-between gap-2 border-b py-2">
                     <div className="flex flex-col">
                       <span className="m-text-body font-medium">{r.name}</span>
-                      <span className="m-text-body m-ink-3">{r.object_type}, {r.rule_type}</span>
+                      <span className="m-text-body m-ink-3">{formatModuleName(r.object_type)}, {labelOf(r.rule_type)}</span>
                     </div>
                     {canManageRules ? (
                       <Button variant="secondary" size="sm" disabled={toggleRule.isPending} onClick={() => toggleRule.mutate({ id: r.id, is_active: !r.is_active })}>
@@ -696,16 +865,13 @@ export default function InboxPage() {
                   />
                 </Field>
                 <Field label="Rule type">
-                  <Input
-                    value={ruleDraft.rule_type}
-                    onChange={(e) => setRuleDraft({ ...ruleDraft, rule_type: e.target.value })}
-                  />
+                  <Select value={ruleDraft.rule_type} options={RULE_TYPES} onValueChange={(v) => setRuleDraft({ ...ruleDraft, rule_type: v })} />
                 </Field>
-                <Field label="Object type">
-                  <Input
-                    value={ruleDraft.object_type}
-                    onChange={(e) => setRuleDraft({ ...ruleDraft, object_type: e.target.value })}
-                  />
+                <Field label="Object (required)">
+                  <Select value={ruleDraft.object_type} options={OBJECT_OPTIONS} placeholder="Choose an object" onValueChange={(v) => setRuleDraft({ ...ruleDraft, object_type: v })} />
+                </Field>
+                <Field label="Severity">
+                  <Select value={ruleDraft.severity} options={SEVERITY_OPTIONS} onValueChange={(v) => setRuleDraft({ ...ruleDraft, severity: v as Severity })} />
                 </Field>
                 <Field label="Condition (required)">
                   <Input
@@ -713,10 +879,11 @@ export default function InboxPage() {
                     onChange={(e) => setRuleDraft({ ...ruleDraft, condition: e.target.value })}
                   />
                 </Field>
+                <p className="m-text-meta m-ink-3">A field condition such as MARA.MATKL = &apos;&apos;, a threshold such as count &gt; 100, a temporal window or a relationship between two fields</p>
                 <div className="flex justify-end">
                   <Button
                     variant="primary"
-                    disabled={!ruleDraft.name.trim() || !ruleDraft.condition.trim() || createRule.isPending}
+                    disabled={!ruleDraft.name.trim() || !ruleDraft.object_type || !ruleDraft.condition.trim() || createRule.isPending}
                     onClick={() => createRule.mutate()}
                   >
                     Create rule
@@ -731,31 +898,231 @@ export default function InboxPage() {
   );
 }
 
+const proposalKey = (id: string) => ["cleaning", "item", id] as const;
+
+/** The cleaning proposal a write-back task approves; it carries the SAP record key the task itself does not. */
+function useProposal(t: StewardshipQueueItem) {
+  return useQuery({
+    queryKey: proposalKey(t.source_id),
+    queryFn: () => getCleaningItem(t.source_id),
+    enabled: t.item_type === "writeback_approval",
+    retry: false,
+    meta: { ignoreError: true },
+  });
+}
+
+/** The link for Enter: a proposal is fetched (or read from the cache) first, for its record key. */
+async function resolveTaskLink(qc: QueryClient, t: StewardshipQueueItem) {
+  if (t.item_type !== "writeback_approval") return taskSourceLink(t, null);
+  const proposal = await qc.fetchQuery({ queryKey: proposalKey(t.source_id), queryFn: () => getCleaningItem(t.source_id), retry: false }).catch((): CleaningQueueItem | null => null);
+  return taskSourceLink(t, proposal);
+}
+
+const pct = (n: number) => `${Math.round(n * 100)}%`;
+
+const pairKey = (id: string) => ["mdm", "match-review", "pair", id] as const;
+
+/** The match pair a merge decision approves (the same query TaskSource reads, so it comes from the cache). */
+function usePair(t: StewardshipQueueItem) {
+  return useQuery({ queryKey: pairKey(t.source_id), queryFn: () => getReviewPair(t.source_id), enabled: t.item_type === "merge_decision", retry: false, meta: { ignoreError: true } });
+}
+
+/**
+ * What approving one task does, in the words of its type: the write-back names the field, value and record,
+ * the merge names both records. `action` completes "Press Enter to …" and the dialog's body.
+ * Approving a write-back marks the proposal applied in Meridian (api/routes/stewardship.py: no SAP write happens
+ * there); the value reaches SAP only in the cleaning export (an LSMW, BAPI or IDoc file) that is loaded into SAP.
+ */
+function approveCopy(t: StewardshipQueueItem, proposal: CleaningQueueItem | null, pair: ReviewPair | null): {
+  title: string; confirmLabel: string; action: string; body: React.ReactNode;
+} {
+  if (t.item_type === "writeback_approval") {
+    const p = proposal ? proposalOf(proposal) : null;
+    if (proposal && p) {
+      const value = p.value || "(blank)";
+      const before = p.before ? p.before : "blank";
+      const field = p.field ? ` ${p.field}` : "";
+      return {
+        title: "Approve this write-back?",
+        confirmLabel: "Approve write-back",
+        action: `approve changing${field} from ${before} to ${value} on ${proposal.record_key}`,
+        body: <>Approves changing{p.field ? <> <Mono>{p.field}</Mono></> : null} from {p.before ? <Mono>{before}</Mono> : before} to <Mono>{value}</Mono> on <Mono>{proposal.record_key}</Mono>. It is applied in the export to SAP; nothing is written to SAP from here.</>,
+      };
+    }
+    return { title: "Approve this write-back?", confirmLabel: "Approve write-back", action: "approve the proposed value", body: "Approves the proposed value. It is applied in the export to SAP; nothing is written to SAP from here." };
+  }
+  if (t.item_type === "golden_writeback") {
+    return {
+      title: "Approve this SAP write-back?",
+      confirmLabel: "Approve write-back",
+      action: "approve writing the golden values to SAP",
+      body: "Writes the golden record's values to SAP for the fields its simulation showed as changing. You cannot approve a write-back you requested.",
+    };
+  }
+  if (t.item_type === "merge_decision") {
+    if (pair) {
+      return {
+        title: "Approve this merge?",
+        confirmLabel: "Approve merge",
+        action: `merge ${pair.a} and ${pair.b}`,
+        body: <>Merges <Mono>{pair.a}</Mono> and <Mono>{pair.b}</Mono> (match score {pct(pair.total)}) into one golden record. An approved merge cannot be undone here.</>,
+      };
+    }
+    return { title: "Approve this merge?", confirmLabel: "Approve merge", action: "approve the merge", body: "The two records are merged into one golden record. An approved merge cannot be undone here." };
+  }
+  const what = labelOf(t.item_type).toLowerCase();
+  return { title: `Approve this ${what}?`, confirmLabel: "Approve", action: `approve this ${what}`, body: "The task closes as approved. It cannot be reopened here." };
+}
+
+/** The detail pane's single Approve: one ConfirmDialog worded by the task's type, as bulk approve has. */
+function ApproveTaskDialog({ t, pending, onOpenChange, onConfirm }: {
+  t: StewardshipQueueItem; pending: boolean; onOpenChange: (open: boolean) => void; onConfirm: () => void;
+}) {
+  const proposal = useProposal(t);
+  const pair = usePair(t);
+  const copy = approveCopy(t, proposal.data ?? null, pair.data ?? null);
+  return (
+    <ConfirmDialog
+      open
+      onOpenChange={onOpenChange}
+      title={copy.title}
+      body={copy.body}
+      confirmLabel={copy.confirmLabel}
+      cancelLabel="Keep open"
+      pending={pending}
+      onConfirm={onConfirm}
+    />
+  );
+}
+
+/** What the task decides on, from the source it points at: the proposal, the pair, the golden record, the exception, the contract or the term. */
+function TaskSource({ t }: { t: StewardshipQueueItem }) {
+  const proposal = useProposal(t);
+  const opts = { retry: false, meta: { ignoreError: true } } as const;
+  const exception = useQuery({ queryKey: ["exceptions", "detail", t.source_id], queryFn: () => getException(t.source_id), enabled: t.item_type === "exception", ...opts });
+  const pair = usePair(t);
+  const golden = useQuery({ queryKey: ["master-records", t.source_id], queryFn: () => getMasterRecord(t.source_id), enabled: t.item_type === "golden_record_review", ...opts });
+  const term = useQuery({ queryKey: ["glossary", "term", t.source_id], queryFn: () => getGlossaryTerm(t.source_id), enabled: t.item_type === "glossary_review", ...opts });
+  const contracts = useQuery({ queryKey: ["contracts", "active"], queryFn: () => getContracts("active"), enabled: t.item_type === "contract_breach", staleTime: 60_000, ...opts });
+  const ruleId = proposal.data?.rule_id ?? null;
+  const rules = useQuery({ queryKey: ["rules", "names"], queryFn: () => getRules({ limit: 1000 }), enabled: !!ruleId, staleTime: 300_000, meta: { ignoreError: true } });
+  const loading = [proposal, exception, pair, golden, term, contracts].some((q) => q.isLoading);
+  if (loading) return <Skeleton height={64} />;
+  const facts = (children: React.ReactNode) => (
+    <dl className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]" data-testid="task-source">{children}</dl>
+  );
+  if (t.item_type === "writeback_approval") {
+    if (!proposal.data) return null;
+    const p = proposalOf(proposal.data);
+    // A rules row is named "<check id>: <message>"; ruleId is its UUID, which no steward reads.
+    const name = ruleId ? rules.data?.rules.find((r) => r.id === ruleId)?.name : undefined;
+    const split = name ? name.indexOf(":") : -1;
+    const checkId = name ? (split >= 0 ? name.slice(0, split).trim() : name) : null;
+    const message = name && split >= 0 ? name.slice(split + 1).trim() : null;
+    return facts(<>
+      <Fact label="Record"><Mono>{proposal.data.record_key}</Mono></Fact>
+      {ruleId ? (
+        <Fact label="Rule">
+          <span className="inline-flex flex-wrap items-baseline gap-2">
+            <Link href={`/rules/${encodeURIComponent(ruleId)}`} className="m-ink-accent underline underline-offset-2">{checkId ? <Mono>{checkId}</Mono> : "Open the rule"}</Link>
+            {message ? <span>{message}</span> : null}
+          </span>
+        </Fact>
+      ) : null}
+      {p?.field ? <Fact label="Field"><Mono>{p.field}</Mono></Fact> : null}
+      <Fact label="Current value">{p?.before ? <Mono>{p.before}</Mono> : "blank"}</Fact>
+      <Fact label="Proposed value"><ProposalCell proposal={p} /></Fact>
+    </>);
+  }
+  if (t.item_type === "exception") {
+    if (!exception.data) return null;
+    return (
+      <div className="flex flex-col gap-1" data-testid="task-source">
+        <p className="m-text-body font-medium">{exception.data.title}</p>
+        {exception.data.description ? <p className="m-text-body m-ink-2">{exception.data.description}</p> : null}
+      </div>
+    );
+  }
+  if (t.item_type === "merge_decision") {
+    if (!pair.data) return null;
+    return facts(<>
+      <Fact label="Records"><span className="inline-flex flex-wrap items-baseline gap-2"><Mono>{pair.data.a}</Mono><span className="m-ink-3">and</span><Mono>{pair.data.b}</Mono></span></Fact>
+      <Fact label="Match score">{pct(pair.data.total)}</Fact>
+    </>);
+  }
+  if (t.item_type === "golden_record_review") {
+    if (!golden.data) return null;
+    return facts(<>
+      <Fact label="Record"><Mono>{golden.data.sap_object_key}</Mono></Fact>
+      <Fact label="Confidence">{pct(golden.data.overall_confidence)}</Fact>
+      <Fact label="Golden record status">{labelOf(golden.data.status)}</Fact>
+    </>);
+  }
+  if (t.item_type === "glossary_review") {
+    if (!term.data) return null;
+    return facts(<>
+      <Fact label="Term">{term.data.business_name}</Fact>
+      <Fact label="Field"><Mono>{`${term.data.sap_table}.${term.data.sap_field}`}</Mono></Fact>
+      <Fact label="Last reviewed">{term.data.last_reviewed_at ? formatDate(term.data.last_reviewed_at) : "Never"}</Fact>
+      <Fact label="Review every">{`${term.data.review_cycle_days.toLocaleString()} days`}</Fact>
+    </>);
+  }
+  if (t.item_type === "contract_breach") {
+    const c = contracts.data?.contracts.find((x) => x.id === t.source_id);
+    if (!c) return null;
+    return facts(<>
+      <Fact label="Contract">{c.name}</Fact>
+      <Fact label="Producer">{c.producer}</Fact>
+      <Fact label="Consumer">{c.consumer}</Fact>
+      <Fact label="Last checked">{c.last_checked ? relativeTime(c.last_checked) : "Not checked yet"}</Fact>
+    </>);
+  }
+  return null;
+}
+
+/** The one link out of a task, to the page that holds what it decides on. */
+function TaskOpen({ t }: { t: StewardshipQueueItem }) {
+  const proposal = useProposal(t);
+  const link = taskSourceLink(t, proposal.data ?? null);
+  if (!link) return null;
+  return <div><Button variant="secondary" render={<Link href={link.href} />}>{link.label}</Button></div>;
+}
+
 /** The selected task: what it is, where it stands against its SLA, the model's suggestion and the one decision. */
 function TaskDetail({ t, sla, now, assignee, busy, canApprove, canAssign, canRelease, people, onApprove, onReject, onEscalate, onAssign, onRelease, onReassign }: {
   t: StewardshipQueueItem; sla: Sla; now: number; assignee: string; busy: boolean; canApprove: boolean; canAssign: boolean; canRelease: boolean;
   people: { value: string; label: string }[];
   onApprove: () => void; onReject: () => void; onEscalate: () => void; onAssign: () => void; onRelease: () => void; onReassign: (userId: string) => void;
 }) {
+  const claimFirst = canAssign && !t.assigned_to;
+  // The rarer moves wait in the menu: taking over someone else's task, handing it back, escalating.
+  const more: MenuItemDef[] = [
+    ...(canAssign && !claimFirst ? [{ label: "Claim", onSelect: onAssign }] : []),
+    ...(canRelease ? [{ label: "Release", onSelect: onRelease }] : []),
+    ...(t.status !== "escalated" ? [{ label: "Escalate", onSelect: onEscalate }] : []),
+  ];
   return (
     <Card
-      title={`${labelOf(t.item_type)} in ${formatModuleName(t.domain)}`}
+      title={taskTitle(t)}
       meta={<Pill tone={SLA_TONE[sla.state]}>{slaText(sla)}</Pill>}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          {canApprove && <Button variant="primary" disabled={busy} onClick={onApprove}>Approve</Button>}
+          {/* The primary follows the task's state: an unowned task is claimed first, an owned one decided. */}
+          {claimFirst && <Button variant="primary" disabled={busy} onClick={onAssign}>Claim</Button>}
+          {canApprove && <Button variant={claimFirst ? "secondary" : "primary"} disabled={busy} onClick={onApprove}>Approve</Button>}
           {canApprove && <Button variant="secondary" disabled={busy} onClick={onReject}>Reject</Button>}
-          {canAssign && <Button variant="ghost" disabled={busy} onClick={onAssign}>Claim</Button>}
-          {canRelease && <Button variant="ghost" disabled={busy} onClick={onRelease}>Release</Button>}
           {people.length > 0 && <ReassignSelect people={people} disabled={busy} onPick={onReassign} />}
-          <Button variant="ghost" disabled={busy || t.status === "escalated"} onClick={onEscalate}>Escalate</Button>
+          {more.length > 0 && (
+            busy
+              ? <IconButton size="sm" aria-label="More actions" disabled><IconMore size={16} /></IconButton>
+              : <Menu trigger={<IconButton size="sm" aria-label="More actions"><IconMore size={16} /></IconButton>} items={more} />
+          )}
         </div>
       }
     >
       <div className="flex flex-col gap-4">
         <dl className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
-          <Fact label="Record"><Mono>{t.source_id}</Mono></Fact>
-          <Fact label="Object">{formatModuleName(t.domain)}</Fact>
+          <Fact label="Object">{knownDomain(t.domain) ? formatModuleName(t.domain) : "—"}</Fact>
           <Fact label="Priority">{priorityLabel(t.priority)}</Fact>
           <Fact label="Status"><Pill tone={STATUS_TONE[t.status]}>{labelOf(t.status)}</Pill></Fact>
           <Fact label="Assignee">{assignee}</Fact>
@@ -763,23 +1130,22 @@ function TaskDetail({ t, sla, now, assignee, busy, canApprove, canAssign, canRel
           <Fact label="Raised">{formatDate(t.created_at, "datetime")}</Fact>
           <Fact label="Due">{t.due_at ? formatDate(t.due_at, "datetime") : t.sla_hours ? `${t.sla_hours}h after it was raised` : "No due date"}</Fact>
         </dl>
+        <TaskSource t={t} />
         {t.ai_recommendation ? (
           <p className="m-text-body m-ink-2">
             Meridian suggests: {labelOf(t.ai_recommendation)}
-            {t.ai_confidence != null ? `, ${Math.round(t.ai_confidence * 100)}% sure` : ""}. Check the record before you decide.
+            {t.ai_confidence != null ? `, ${Math.round(t.ai_confidence * 100)}% sure` : ""}. Check it before you decide.
           </p>
         ) : null}
-        <div>
-          <Button variant="secondary" render={<Link href={`/objects/${t.domain}/records/${t.source_id}`} />}>Open record</Button>
-        </div>
+        <TaskOpen t={t} />
       </div>
     </Card>
   );
 }
 
 /** The selected exception: severity, SLA, what happened and the one decision. */
-function ExceptionDetail({ e, now, assignee, busy, canResolve, canAssign, people, onResolve, onEscalate, onAssign }: {
-  e: Exception; now: number; assignee: string; busy: boolean; canResolve: boolean; canAssign: boolean;
+function ExceptionDetail({ e, now, assignee, busy, canResolve, canAssign, currency, people, onResolve, onEscalate, onAssign }: {
+  e: Exception; now: number; assignee: string; busy: boolean; canResolve: boolean; canAssign: boolean; currency?: string | null;
   people: { value: string; label: string }[];
   onResolve: () => void; onEscalate: () => void; onAssign: (userId?: string) => void;
 }) {
@@ -806,9 +1172,10 @@ function ExceptionDetail({ e, now, assignee, busy, canResolve, canAssign, people
           <Fact label="Assignee">{assignee}</Fact>
           <Fact label="Raised">{relativeTime(e.created_at)}</Fact>
           {e.source_system ? <Fact label="Source">{e.source_system}</Fact> : null}
-          {e.estimated_impact_zar != null ? <Fact label="Estimated impact">{`${e.estimated_impact_zar.toLocaleString()} ZAR`}</Fact> : null}
+          {e.estimated_impact_zar != null ? <Fact label="Estimated impact">{formatMoney(e.estimated_impact_zar, currency)}</Fact> : null}
         </dl>
         {e.description ? <p className="m-text-body m-ink-2">{e.description}</p> : null}
+        <ExceptionThread id={e.id} />
       </div>
     </Card>
   );
@@ -818,31 +1185,4 @@ function ExceptionDetail({ e, now, assignee, busy, canResolve, canAssign, people
 function ReassignSelect({ people, disabled, onPick }: { people: { value: string; label: string }[]; disabled: boolean; onPick: (userId: string) => void }) {
   if (disabled) return <Button variant="ghost" size="sm" disabled>Reassign</Button>;
   return <Select label="Reassign to" value="" placeholder="Reassign to…" options={people} onValueChange={(v) => { if (v) onPick(v); }} />;
-}
-
-/**
- * Replaces the legacy OwnerLadder (not in @/design) with a plain table. Its counts come from the triage
- * metrics, which span every queue (record issues as well as stewardship tasks), so the heading says so
- * rather than reading as a breakdown of the inbox list.
- */
-function TeamPanel({ rungs, aiAcceptance }: { rungs: ReturnType<typeof ownerRungs>; aiAcceptance: number | null }) {
-  return (
-    <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 m-text-body">
-      <span className="font-medium">Who holds the work across all queues</span>
-      {rungs.length ? (
-        rungs.map((r) => (
-          <span key={r.label} className="inline-flex items-baseline gap-3">
-            <span>{r.label}</span>
-            <span className="m-ink-2">{formatInt(r.open)} open across all queues</span>
-            <span className="m-ink-2">{formatInt(r.breached)} breached</span>
-          </span>
-        ))
-      ) : (
-        <span className="m-ink-3">Nobody holds open work</span>
-      )}
-      {aiAcceptance != null && (
-        <span className="m-ink-3">Suggestion acceptance {Math.round(aiAcceptance * 100)}%</span>
-      )}
-    </div>
-  );
 }

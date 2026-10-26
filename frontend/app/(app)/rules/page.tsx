@@ -21,7 +21,7 @@ import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
-import { DrillLink, Button, Card, DataTable, DomainChip, Drawer, EmptyState, ErrorState, ExportMenu, Field, Input, Mono, Notice, PageHeader, Pill, Score, Select, Skeleton, Stat, Switch, Tabs, Textarea, Status, buildDrillHref, emptyExportOptions, toast, type CellMeta, PageFrame } from "@/design";
+import { DrillLink, Button, Card, DataTable, DomainChip, Drawer, EmptyState, ErrorState, Field, Input, Mono, Notice, PageHeader, Pill, Score, Select, Skeleton, Stat, Switch, Tabs, Textarea, Status, buildDrillHref, toast, type CellMeta, PageFrame } from "@/design";
 import { actionColumn, LedgerHead, RowLink } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
@@ -31,7 +31,7 @@ import { useSystemScope } from "@/lib/permissions";
 import { getSystems } from "@/lib/api/connectivity";
 import { getConfigAwareScore, type ConfigAwareModule } from "@/lib/api/config-load";
 import { apiErrorState } from "@/lib/error";
-import { checkClassLabel, DIMENSIONS, formatModuleName, formatDate, labelOf } from "@/lib/format";
+import { checkClassLabel, DIMENSIONS, formatModuleName, formatDate, formatPct, labelOf } from "@/lib/format";
 import { MM_VIEWS } from "@/lib/material-views";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
@@ -66,7 +66,8 @@ const rateOf = (r: Rule): number | null => (r.last_pass_rate == null ? null : r.
 const SEV_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 3 };
 /** The ledger's rank: lowest pass rate first (the rules failing most records), rules not run yet last, then severity. */
 const byFailing = (a: Rule, b: Rule) => (rateOf(a) ?? 101) - (rateOf(b) ?? 101) || (SEV_RANK[a.severity] ?? 4) - (SEV_RANK[b.severity] ?? 4);
-const pct = (v: number) => `${(v * (v <= 1 ? 100 : 1)).toFixed(1)} %`;
+/** The API sends a fraction or a percent; one formatter either way. */
+const pct = (v: number) => formatPct(v * (v <= 1 ? 100 : 1));
 const matches = (r: Rule, q: string) => !q || [r.id, r.name, r.description ?? "", r.module, r.severity, ...(r.tags ?? [])].join(" ").toLowerCase().includes(q.toLowerCase());
 const detail = (e: unknown) => (isAxiosError<{ detail?: unknown }>(e) && typeof e.response?.data?.detail === "string" ? e.response.data.detail : null) ?? "Request failed";
 const splitList = (s: string) => s.split(/[,\n]/).map((v) => v.trim()).filter(Boolean);
@@ -83,9 +84,11 @@ async function getAllRules(category?: string): Promise<Rule[]> {
 
 function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthoring: (v: boolean) => void }) {
   const qc = useQueryClient();
-  const canManage = useRole().can("manage_rules");
+  const { can } = useRole();
+  const canManage = can("manage_rules");
   const dayOne = useDayOne();
-  const hasFinishedRun = dayOne.status !== "loading" && dayOne.step === null;
+  // Only a read that answered says whether a run has finished; a failed read is unknown, not "yes".
+  const hasFinishedRun = dayOne.status === "ready" && dayOne.step === null;
   const [category, setCategory] = useUrlState("category", "all");
   const [module, setModule] = useUrlState("module", "");
   const [check, setCheck] = useUrlState("check", "");
@@ -99,6 +102,7 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
   const state = rawState === "enabled" || rawState === "disabled" || rawState === "not_run" || rawState === "failing" ? rawState : "";
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [moreFilters, setMoreFilters] = useState(false);
 
   const [cfgSystem, setCfgSystem] = useUrlState("config_system", "");
   const systemScope = useSystemScope();
@@ -210,7 +214,7 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
               <Switch
                 checked={r.enabled}
                 label={r.enabled ? "On" : "Off"}
-                aria-label={`Enabled: ${nameOf(r)}`} className="[min-width:24px] [min-height:24px]"
+                aria-label={`${r.enabled ? "On" : "Off"}: ${nameOf(r)}`} className="[min-width:24px] [min-height:24px]"
                 onCheckedChange={(enabled) => toggleRule({ id: r.id, enabled })}
               />
             </span>
@@ -269,7 +273,7 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
 
   const chips: FilterChip[] = [
     search && { key: "search", label: `Search: ${search}`, clear: () => setSearch("") },
-    category !== "all" && { key: "category", label: `System: ${CATEGORY_LABEL[category] ?? category}`, clear: () => setCategory("all") },
+    category !== "all" && { key: "category", label: `System type: ${CATEGORY_LABEL[category] ?? category}`, clear: () => setCategory("all") },
     module && { key: "module", label: `Object: ${formatModuleName(module)}`, clear: () => setModule("") },
     check && { key: "check", label: `Check: ${checkClassLabel(check)}`, clear: () => setCheck("") },
     dimension && { key: "dimension", label: `Dimension: ${labelOf(dimension)}`, clear: () => setDimension("") },
@@ -281,31 +285,41 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
     state && { key: "state", label: `State: ${state === "not_run" ? "Not run yet" : labelOf(state)}`, clear: () => setState("") },
   ].filter((c): c is FilterChip => !!c);
 
+  // The common filters sit up front; the rest wait behind "Filters". Every active filter shows as a chip below either way.
+  const secondaryActive = [category !== "all", check, dimension, auth, source, table, cfgSystem].filter(Boolean).length;
   const filterBar = (
-    <div className="flex flex-wrap items-end gap-3">
-      <Field label="Search">
-        <Input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter rules" />
-      </Field>
-      <Field label="System">
-        <Select value={category === "all" ? "" : category} onValueChange={(v) => setCategory(v || "all")} placeholder="All systems"
-          options={[{ value: "", label: "All systems" }, ...Object.entries(CATEGORY_LABEL).map(([value, label]) => ({ value, label }))]} />
-      </Field>
-      {facetSelect("Check type", check, setCheck, facets.checks, checkClassLabel, "All check types")}
-      {facetSelect("Dimension", dimension, setDimension, facets.dimensions, labelOf, "All dimensions")}
-      {facetSelect("Severity", severity, setSeverity, [...SEVERITIES], labelOf, "All severities")}
-      <Field label="Authority">
-        <Select value={auth} onValueChange={setAuth} placeholder="All authorities"
-          options={[{ value: "", label: "All authorities" }, { value: "shipped", label: "SAP standard (shipped)" }, { value: "customer", label: "Customer configured" }]} />
-      </Field>
-      {facetSelect("State", state, setState, ["failing", "enabled", "disabled", "not_run"], (v) => (v === "not_run" ? "Not run yet" : labelOf(v)), "All states")}
-      {facetSelect("Source", source, setSource, facets.sources, (v) => labelOf(SOURCE_LABEL[v] ?? v), "All sources")}
-      {facetSelect("Object", module, setModule, facets.modules, formatModuleName, "All objects")}
-      {facetSelect("Table", table, setTable, facets.tables, (v) => v, "All tables")}
-      {facetSelect("View", view, setView, facets.views, (v) => MM_VIEWS.find((x) => x.id === v)?.label ?? v, "All views")}
-      {(systemsQ.data?.length ?? 0) > 1
-        ? facetSelect("Configuration", cfgSystem, setCfgSystem, (systemsQ.data ?? []).map((s) => s.id), (id) => systemsQ.data?.find((s) => s.id === id)?.name ?? id, "All systems")
-        : null}
-      <ExportMenu options={visible.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} />
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-end gap-3">
+        <Field label="Search">
+          <Input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter rules" />
+        </Field>
+        {facetSelect("Object", module, setModule, facets.modules, formatModuleName, "All objects")}
+        {facetSelect("View", view, setView, facets.views, (v) => MM_VIEWS.find((x) => x.id === v)?.label ?? v, "All views")}
+        {facetSelect("Severity", severity, setSeverity, [...SEVERITIES], labelOf, "All severities")}
+        {facetSelect("State", state, setState, ["failing", "enabled", "disabled", "not_run"], (v) => (v === "not_run" ? "Not run yet" : labelOf(v)), "All states")}
+        <Button variant="secondary" aria-expanded={moreFilters} aria-controls="rules-more-filters" onClick={() => setMoreFilters((o) => !o)}>
+          {secondaryActive ? `Filters (${secondaryActive})` : "Filters"}
+        </Button>
+      </div>
+      {moreFilters ? (
+        <div id="rules-more-filters" className="flex flex-wrap items-end gap-3">
+          <Field label="System type">
+            <Select value={category === "all" ? "" : category} onValueChange={(v) => setCategory(v || "all")} placeholder="All system types"
+              options={[{ value: "", label: "All system types" }, ...Object.entries(CATEGORY_LABEL).map(([value, label]) => ({ value, label }))]} />
+          </Field>
+          {facetSelect("Check type", check, setCheck, facets.checks, checkClassLabel, "All check types")}
+          {facetSelect("Dimension", dimension, setDimension, facets.dimensions, labelOf, "All dimensions")}
+          <Field label="Authority">
+            <Select value={auth} onValueChange={setAuth} placeholder="All authorities"
+              options={[{ value: "", label: "All authorities" }, { value: "shipped", label: "SAP standard (shipped)" }, { value: "customer", label: "Customer configured" }]} />
+          </Field>
+          {facetSelect("Source", source, setSource, facets.sources, (v) => labelOf(SOURCE_LABEL[v] ?? v), "All sources")}
+          {facetSelect("Table", table, setTable, facets.tables, (v) => v, "All tables")}
+          {(systemsQ.data?.length ?? 0) > 1
+            ? facetSelect("Configuration", cfgSystem, setCfgSystem, (systemsQ.data ?? []).map((s) => s.id), (id) => systemsQ.data?.find((s) => s.id === id)?.name ?? id, "All systems")
+            : null}
+        </div>
+      ) : null}
     </div>
   );
 
@@ -314,8 +328,10 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
       <LedgerHead title="Coverage by object" meta="How many rules apply on this configuration" />
       {dayOne.status === "loading" || rulesQ.isLoading ? (
         <Skeleton height={coverageRows.length ? coverageRows.length * 40 + 40 : 240} />
+      ) : dayOne.status === "error" ? (
+        <ErrorState {...apiErrorState(dayOne.error)} onRetry={dayOne.refetch} />
       ) : hasFinishedRun ? (
-        <DataTable columns={coverageColumns} data={coverageRows} getRowId={(r) => r.module} tableId="rules-coverage" />
+        <DataTable columns={coverageColumns} data={coverageRows} getRowId={(r) => r.module} tableId="rules-coverage" hideSearch />
       ) : (
         <EmptyState title="Coverage is measured on a finished run" action={<DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />} />
       )}
@@ -326,9 +342,10 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
     <div className="flex flex-col gap-4 py-4">
       {!canManage ? <Notice tone="info">Enabling, disabling or writing a rule needs the manage-rules permission. The library is read-only for you.</Notice> : null}
       <div className="m-stat-grid">
-        <Stat label="Failing" value={failingCount.toLocaleString()} href="/rules?state=failing" tone={failingCount ? "at-risk" : undefined} hint="Last pass rate under 100" loading={rulesQ.isLoading} />
-        <Stat label="Disabled" value={disabledCount.toLocaleString()} href="/rules?state=disabled" loading={rulesQ.isLoading} />
-        <Stat label="Not run yet" value={notRunCount.toLocaleString()} href="/rules?state=not_run" loading={rulesQ.isLoading} />
+        {/* A failed read has no counts: "—", never zeros above the error. */}
+        <Stat label="Failing" value={rulesQ.isError ? "—" : failingCount.toLocaleString()} href={rulesQ.isError ? undefined : "/rules?state=failing"} tone={!rulesQ.isError && failingCount ? "at-risk" : undefined} hint="Last pass rate under 100" loading={rulesQ.isLoading} />
+        <Stat label="Disabled" value={rulesQ.isError ? "—" : disabledCount.toLocaleString()} href={rulesQ.isError ? undefined : "/rules?state=disabled"} loading={rulesQ.isLoading} />
+        <Stat label="Not run yet" value={rulesQ.isError ? "—" : notRunCount.toLocaleString()} href={rulesQ.isError ? undefined : "/rules?state=not_run"} loading={rulesQ.isLoading} />
       </div>
       {filterBar}
       <FilterChips chips={chips} onClearAll={clearFilters} />
@@ -339,7 +356,7 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
       ) : visible.length ? (
         <section aria-label="Rule catalogue">
           <LedgerHead title="Rules, lowest pass rate first" meta={`${visible.length.toLocaleString()} of ${rules.length.toLocaleString()}`} />
-          <DataTable columns={columns} data={visible} getRowId={(r) => r.id} onRowClick={(r) => setSelectedId(r.id)} rowHref={(r) => `/rules/${r.id}`} tableId="rules-library" />
+          <DataTable columns={columns} data={visible} getRowId={(r) => r.id} onRowClick={(r) => setSelectedId(r.id)} rowHref={(r) => `/rules/${r.id}`} tableId="rules-library" hideSearch exportOptions={exportOptions} exportName="rules" />
         </section>
       ) : filtered ? (
         <EmptyState
@@ -350,8 +367,10 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
       ) : (
         <EmptyState
           title="No rules loaded"
-          detail="Built-in rules ship with Meridian. If this list is empty, check HQ sync in settings."
-          action={<Button render={<Link href="/admin/settings">Open settings</Link>} />}
+          detail={can("manage_settings")
+            ? "Built-in rules ship with Meridian. If this list is empty, check HQ sync in settings."
+            : "Built-in rules ship with Meridian. If this list is empty, ask an administrator to check HQ sync in settings."}
+          action={can("manage_settings") ? <Button render={<Link href="/admin/settings">Open settings</Link>} /> : undefined}
         />
       )}
       {coverage}
@@ -464,7 +483,7 @@ function AuthorDrawer({ open, onClose, modules }: { open: boolean; onClose: () =
         </Field>
         {cls === "dependency_check" && textInput("determinant", "Determining field (e.g. LFA1.KTOKK; its value decides the field below)")}
         {needsField && textInput("field", "Field (e.g. LFA1.STCD1)")}
-        {cls === "regex_check" && textInput("pattern", "Pattern (regular expression -- values that do not match fail, e.g. ^[0-9]{10}$)")}
+        {cls === "regex_check" && textInput("pattern", "Pattern (regular expression; values that do not match fail, e.g. ^[0-9]{10}$)")}
         {(cls === "domain_value_check" || cls === "uniqueness_check") && (
           <Field label={cls === "domain_value_check" ? "Allowed values (comma or newline separated)" : "Fields that must be unique together (comma or newline separated)"}>
             <Textarea
@@ -505,7 +524,7 @@ function AuthorDrawer({ open, onClose, modules }: { open: boolean; onClose: () =
           <Notice tone="danger">The rule errored on this data: {result.error}</Notice>
         ) : (
           <section className="flex flex-col gap-2">
-            <h3 className="m-text-body font-semibold">Dry run{result.grain ? ` -- per ${result.grain} record` : ""}</h3>
+            <h3 className="m-text-body font-semibold">Dry run{result.grain ? `, per ${result.grain} record` : ""}</h3>
             <dl className="m-text-body flex flex-col gap-1">
               <div className="flex justify-between"><dt className="m-ink-3">Checked</dt><dd>{result.population.toLocaleString()}</dd></div>
               <div className="flex justify-between"><dt className="m-ink-3">Failing</dt><dd>{result.failing.toLocaleString()}</dd></div>

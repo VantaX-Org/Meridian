@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useId, useRef, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode } from "react";
 import {
   type ColumnDef,
+  type Row,
   type RowSelectionState,
   type SortingState,
   type VisibilityState,
@@ -26,7 +27,7 @@ import { Mono } from "../primitives/Mono";
 import { Menu } from "../primitives/Menu";
 import { exportOptionLabel, runExportOption, type ExportOption } from "../primitives/ExportMenu";
 import { deleteView, loadViews, saveView, toCsv, type TableView } from "./views";
-import { barFill, type CellMeta } from "./columns";
+import { barFill, columnLayoutClass, type CellMeta } from "./columns";
 import { rampStep } from "../tokens";
 import { readPrefs, subscribePreferences } from "../../lib/preferences";
 
@@ -68,7 +69,8 @@ export interface DataTableProps<T> {
    * Omit both to keep the table's own uncontrolled sort state. */
   sorting?: SortingState;
   onSortingChange?: (sorting: SortingState) => void;
-  /** Compact rows (`--m-row-h-dense`). Initial density; the toolbar toggle takes over from there. */
+  /** Compact rows (`--m-row-h-dense`). Off by default: rows are `--m-row-h`, which the user's density preference
+   * (`<html data-density>`) retunes. Initial density only; the toolbar toggle takes over from there. */
   dense?: boolean;
   /** Key for saved views (per viewer, localStorage). Defaults to the column ids joined, so two tables
    * with the same columns share views; pass an explicit id when that matters. */
@@ -88,6 +90,10 @@ export interface DataTableProps<T> {
   hideToolbar?: boolean;
   /** `data-tour` value on the table card, so a guided tour can spotlight it (lib/help/tours.ts). */
   dataTour?: string;
+  /** Accessible name of the grid, e.g. "Rules". Defaults to "Data table". */
+  label?: string;
+  /** Names a row for its selection checkbox ("Select <name>"). Defaults to the row's first text cell, then its id. */
+  rowLabel?: (row: T) => string;
 }
 
 export interface RowPrefetch {
@@ -130,8 +136,9 @@ function PrefetchRow({ prefetchInfo, children, ...rest }: { prefetchInfo?: RowPr
 
 export function DataTable<T>({
   columns, data, getRowId, onRowClick, renderDrawer, bulkActions: bulkActionsProp, maxHeight: maxHeightProp, height: heightProp, hideSearch = false, renderExpanded, emptyMessage, emptyAction,
-  sorting: sortingProp, onSortingChange: onSortingChangeProp, dense: denseProp = true,
+  sorting: sortingProp, onSortingChange: onSortingChangeProp, dense: denseProp = false,
   tableId, exportOptions = [], exportName = "export", hideToolbar = false, drawerTitle, rowHref, rowPrefetch, dataTour,
+  label = "Data table", rowLabel,
 }: DataTableProps<T>) {
   "use no memo";
   const maxHeight = maxHeightProp ?? heightProp ?? "calc(100vh - 240px)";
@@ -165,11 +172,30 @@ export function DataTable<T>({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [rowHeights, setRowHeights] = useState({ comfortable: ROW_H_FALLBACK, dense: ROW_H_DENSE_FALLBACK });
   useEffect(() => {
-    setRowHeights({ comfortable: readPx("--m-row-h", ROW_H_FALLBACK), dense: readPx("--m-row-h-dense", ROW_H_DENSE_FALLBACK) });
+    const read = () => setRowHeights({ comfortable: readPx("--m-row-h", ROW_H_FALLBACK), dense: readPx("--m-row-h-dense", ROW_H_DENSE_FALLBACK) });
+    read();
+    // The density preference lands on <html data-density> (presentation mode on data-present): re-read the tiers.
+    if (typeof MutationObserver === "undefined") return;
+    const mo = new MutationObserver(read);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-density", "data-present"] });
+    return () => mo.disconnect();
   }, []);
   const rowH = dense ? rowHeights.dense : rowHeights.comfortable;
   const uid = useId();
   const parentRef = useRef<HTMLDivElement>(null);
+
+  // A checkbox reads "Select Plant 1000", never "Select row 3f2a…": the caller's name, else the first text cell.
+  const nameOfRow = (row: Row<T>): string => {
+    const named = rowLabel?.(row.original);
+    if (named) return named;
+    for (const cell of row.getVisibleCells()) {
+      if (cell.column.id === SELECT_COLUMN_ID || cell.column.id === EXPAND_COLUMN_ID) continue;
+      const v = cell.getValue();
+      // A raw timestamp names nothing a reader would say aloud; the next text cell does.
+      if (typeof v === "string" && v.trim() && !/^\d{4}-\d{2}-\d{2}(T|$)/.test(v)) return v;
+    }
+    return `row ${row.id}`;
+  };
 
   const selectColumn: ColumnDef<T> = {
     id: SELECT_COLUMN_ID,
@@ -182,7 +208,7 @@ export function DataTable<T>({
     ),
     cell: ({ row }) => (
       <Checkbox
-        aria-label={`Select row ${row.id}`}
+        aria-label={`Select ${nameOfRow(row)}`}
         checked={row.getIsSelected()}
         onChange={row.getToggleSelectedHandler()}
         onClick={(e) => e.stopPropagation()}
@@ -395,23 +421,24 @@ export function DataTable<T>({
           style={{ color: "var(--m-ink)" }}
           role="grid"
           tabIndex={0}
-          aria-label="Data table"
+          aria-label={label}
           aria-rowcount={rowModel.length + 1}
           aria-activedescendant={activeRendered ? rowDomId(activeIndex) : undefined}
           onKeyDown={onGridKeyDown}
         >
-          <thead className="sticky top-0 z-[1]">
+          <thead className="sticky top-0 z-[2]">
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id} aria-rowindex={1}>
                 {hg.headers.map((h) => {
                   const sortable = h.column.getCanSort();
                   const sorted = h.column.getIsSorted();
-                  const headHeat = (h.column.columnDef.meta as CellMeta | undefined)?.heat;
+                  const headMeta = h.column.columnDef.meta as CellMeta | undefined;
+                  const headHeat = headMeta?.heat;
                   return (
                     <th
                       key={h.id}
                       aria-sort={sortable ? (sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : "none") : undefined}
-                      className={`m-text-label px-2 font-medium border-b ${(h.column.columnDef.meta as CellMeta | undefined)?.numeric ? "text-right" : "text-left"}`}
+                      className={`m-text-label px-2 font-medium border-b ${headMeta?.numeric ? "text-right" : "text-left"} ${columnLayoutClass(headMeta)}`}
                       style={{
                         height: 28, background: "var(--m-sheet)", borderColor: "var(--m-line-strong)",
                         color: sorted ? "var(--m-ink)" : "var(--m-ink-3)",
@@ -422,7 +449,8 @@ export function DataTable<T>({
                         <button
                           type="button"
                           onClick={h.column.getToggleSortingHandler()}
-                          className="flex items-center gap-1 select-none"
+                          // A numeric header sits over right-aligned figures: the button fills the cell and packs to the right.
+                          className={`flex items-center gap-1 select-none ${headMeta?.numeric ? "w-full justify-end" : ""}`}
                         >
                           {flexRender(h.column.columnDef.header, h.getContext())}
                           {sorted === "asc" ? <IconArrowUp size={12} /> : sorted === "desc" ? <IconArrowDown size={12} /> : null}
@@ -498,7 +526,7 @@ export function DataTable<T>({
                     return (
                       <td
                         key={cell.id}
-                        className={`px-2 ${meta?.numeric ? "text-right m-numeric" : ""} ${firstText ? "m-motion-colors group-hover:text-[var(--m-accent)]" : ""} ${heat ?? ""}`}
+                        className={`px-2 ${meta?.numeric ? "text-right m-numeric" : ""} ${firstText ? "m-motion-colors group-hover:text-[var(--m-accent)]" : ""} ${heat ?? ""} ${meta?.sticky ? `z-[1] ${row.getIsSelected() ? "bg-[var(--m-accent-soft)]" : "bg-[var(--m-sheet)] group-hover:bg-[var(--m-sheet-raised)]"}` : ""} ${columnLayoutClass(meta)}`}
                       >
                         {bar ? (
                           <span className="flex items-center justify-end gap-2">

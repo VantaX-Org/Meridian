@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button, Field, Pill, Select, IconClose } from "@/design";
 import { getSystemModules } from "@/lib/api/connectivity";
 import type { GrantInput, Role } from "@/lib/api/roles";
+import { grantLabel, grantableRoles } from "@/lib/roles";
 
 export interface SystemRef { id: string; name: string }
 export interface GrantRowView { id: string; role_key: string; system_id: string | null; module: string | null }
@@ -33,21 +34,26 @@ export function GrantsPicker({ grants, roles, systems, onAdd, onRemove, busy, pr
   // Module suggestions come from the chosen system (native datalist); any module key may still be typed.
   const modulesQ = useQuery({ queryKey: ["system-modules", system], queryFn: () => getSystemModules(system), enabled: system !== ALL });
   const modules = (modulesQ.data ?? []).map((m) => m.module);
-  const roleOptions = roles.map((r) => ({ value: r.key, label: r.name }));
+  // New grants offer persona and custom roles only; held legacy grants still list below, named "(legacy)".
+  const roleOptions = grantableRoles(roles).map((r) => ({ value: r.key, label: r.name }));
   const systemOptions = [{ value: ALL, label: "All systems" }, ...systems.map((s) => ({ value: s.id, label: s.name }))];
+  const label = (g: GrantRowView) => grantLabel(
+    roles.find((r) => r.key === g.role_key)?.name, g.role_key,
+    g.system_id ? systems.find((s) => s.id === g.system_id)?.name ?? g.system_id : null, g.module,
+  );
 
   return (
     <div className="flex flex-col gap-3">
       <ul className="flex flex-wrap gap-2" aria-label="Grants">
         {grants.map((g) => (
           <li key={g.id} className="inline-flex items-center gap-1">
-            <Pill>{g.role_key}, {scopeLabel(g.system_id, g.module, systems)}</Pill>
-            <button type="button" aria-label={`Remove ${g.role_key} ${scopeLabel(g.system_id, g.module, systems)}`} disabled={busy} onClick={() => onRemove(g)}>
+            <Pill>{label(g)}</Pill>
+            <button type="button" aria-label={`Remove ${label(g)}`} disabled={busy} onClick={() => onRemove(g)}>
               <IconClose size={14} />
             </button>
           </li>
         ))}
-        {grants.length === 0 ? <li className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>No grants yet.</li> : null}
+        {grants.length === 0 ? <li className="m-text-meta m-ink-3">No grants yet.</li> : null}
       </ul>
       <div className="flex flex-wrap items-end gap-2">
         <Field label="Role"><Select options={roleOptions} value={role} onValueChange={setRole} placeholder="Choose a role" /></Field>

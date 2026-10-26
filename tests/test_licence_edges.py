@@ -496,6 +496,38 @@ async def test_expired_grace_keeps_last_signed_entitlements_with_warning(monkeyp
     assert resp.status_code == 402
 
 
+@pytest.mark.asyncio
+async def test_licence_locks_say_so_in_detail(monkeypatch):
+    """Every gated route answers a lock, and the UI shows ``detail``: without it each page read an unreachable
+    HQ as "Could not reach the server." / "You do not have access to this." and never mentioned the licence."""
+    from api.middleware import licence as lic
+
+    monkeypatch.setattr(lic.settings, "licence_key", "MRDX-TEST")
+    monkeypatch.setattr(lic.settings, "licence_mode", "online")
+    monkeypatch.setattr(lic, "_degraded_at", None)
+
+    class _Down:
+        def __init__(self, *a, **kw):
+            raise OSError("connection refused")
+
+    monkeypatch.setattr(lic.httpx, "AsyncClient", _Down)  # fresh boot, HQ unreachable, nothing cached
+    resp = await lic.LicenceMiddleware(app=None).dispatch(_FakeRequest("/api/v1/me/permissions", "GET"), _ok_call_next)
+    body = json.loads(resp.body)
+    assert resp.status_code == 403 and body["error"] == "licence_unverified"
+    assert "Meridian HQ" in body["detail"] and "licence" in body["detail"]
+
+    monkeypatch.setattr(lic, "_degraded_at", None)
+    monkeypatch.setattr(lic, "_cache", {"response": None, "expires_at": 0.0})
+    _fake_client(lic, monkeypatch, 403, {"valid": False, "reason": "expired"})
+    resp = await lic.LicenceMiddleware(app=None).dispatch(_FakeRequest("/api/v1/me/permissions", "GET"), _ok_call_next)
+    body = json.loads(resp.body)
+    assert resp.status_code == 402 and body == {"error": "licence_invalid", "reason": "expired", "detail": body["detail"]}
+    assert "(expired)" in body["detail"]
+    # the cached verdict answers the next request the same way
+    resp = await lic.LicenceMiddleware(app=None).dispatch(_FakeRequest("/api/v1/systems", "GET"), _ok_call_next)
+    assert resp.status_code == 402 and "(expired)" in json.loads(resp.body)["detail"]
+
+
 def _rsa_pair():
     from cryptography.hazmat.primitives import serialization
     from cryptography.hazmat.primitives.asymmetric import rsa

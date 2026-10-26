@@ -6,7 +6,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, Drawer, EmptyState, ErrorState, Mono, Notice, Pill, Skeleton } from "@/design";
+import { Button, Card, DataTable, Drawer, EmptyState, ErrorState, Mono, Notice, Pill, Skeleton } from "@/design";
 import { getCaseEvents, listCases, type CaseRow, type ProcessFilterParams } from "@/lib/api/process-discovery";
 import { apiErrorState } from "@/lib/error";
 import { formatDate } from "@/lib/format";
@@ -36,15 +36,10 @@ export function CaseExplorer({ runId, filters, caseId, onOpenCase, onClearFilter
         : !q.data.items.length ? <EmptyState title="No cases in this view" detail="Widen the filters to include more cases."
           action={onClearFilters && <Button variant="secondary" onClick={onClearFilters}>Clear filters</Button>} />
         : (
-          <div className="grid gap-2">
-            {q.data.total > q.data.items.length && (
-              <p className="m-ink-3">
-                Showing the first {fmtCount(q.data.items.length)} of {fmtCount(q.data.total)} cases. Narrow the filters to find one.
-              </p>
-            )}
+          <Card padding="sm" meta={q.data.total > q.data.items.length ? `First ${fmtCount(q.data.items.length)} of ${fmtCount(q.data.total)} cases` : undefined}>
             <DataTable columns={COLUMNS} data={q.data.items} getRowId={(c) => c.case_id} onRowClick={(c) => onOpenCase(c.case_id)}
-              height="auto" dense tableId="process-cases" exportName={`process-cases-${runId}`} />
-          </div>
+              height="auto" tableId="process-cases" exportName={`process-cases-${runId}`} />
+          </Card>
         )}
       <CaseDrawer runId={runId} filters={filters} caseId={caseId} onClose={() => onOpenCase(null)} />
     </>

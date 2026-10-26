@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { Suspense, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { AskMeridian, Breadcrumb, Button, JobTray, NotificationBell, Rail, TopBar, CommandPalette, RootPageFrame, ProgressFill, IconChart } from "@/design";
+import { AskMeridian, Breadcrumb, Button, JobTray, NotificationBell, Rail, TopBar, CommandPalette, RootPageFrame, ProgressFill, IconChart, IconGrid } from "@/design";
 import "@/design/print.css";
 import { UserMenu } from "@/components/user-menu";
 import { useAuth } from "@/context/auth-context";
@@ -29,13 +29,13 @@ import { reportClientError } from "@/lib/client-errors";
 
 function CommandPaletteSlot() {
   const groups = useVisibleNav();
-  const { role } = useRole();
+  const { homeRole: role, can } = useRole();
   // A persona home can resolve to another entry (a steward's home is Fix work): each page is listed once,
   // and the dropped entry's key hint (Home's ⌘1) moves onto the one kept.
   const all = groups.flatMap((g) =>
     flattenNav(g.items).map((item) => ({
       label: item.label,
-      href: resolveNavHref(item.href, role),
+      href: resolveNavHref(item.href, role, can),
       group: g.group,
       icon: <item.icon size={16} aria-hidden />,
       shortcut: item.shortcut,
@@ -56,7 +56,9 @@ function CommandPaletteSlot() {
         label: `${v.label}: ${label}`, href, group: insightsGroup, icon: <IconChart size={16} />, shortcut: undefined,
       })))
     : [];
-  const items = [...navItems, ...viewTabs];
+  // All features (/features) lists every page by area; it leads the palette as it leads the More panel.
+  const allFeatures = { label: "All features", href: "/features", group: undefined, icon: <IconGrid size={16} aria-hidden />, shortcut: undefined };
+  const items = [allFeatures, ...navItems, ...viewTabs];
   const objectsQ = useQuery({ queryKey: queryKeys.objects("latest"), queryFn: () => getObjects("latest") });
   const grammar = {
     objects: (objectsQ.data?.objects ?? []).map((o) => ({ module: o.module, label: o.label })),
@@ -109,16 +111,21 @@ function Presentation({ children }: { children: ReactNode }) {
     router.replace(params.size ? `${pathname}?${params}` : pathname);
   };
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") exit(); };
+    // Escape leaves the presentation unless something else already took it, or an open dialog or drawer owns it.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented || document.querySelector('[role="dialog"]')) return;
+      exit();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, searchParams]);
   return (
-    <div className="flex h-screen flex-col" data-present="1">
+    <div className="flex h-dvh flex-col" data-present="1">
       {/* The shell is gone, so the document heading the Breadcrumb owns is kept here, visually hidden. */}
       <div className="sr-only"><Breadcrumb /></div>
-      <main id="main" tabIndex={0} className="flex-1 overflow-auto outline-none [background:var(--m-canvas)]">
+      {/* The same bottom room as the shell: "Exit presentation" and the attribution sit over it, never over the last row. */}
+      <main id="main" tabIndex={0} className="m-shell-main flex-1 overflow-auto outline-none [background:var(--m-canvas)]">
         <RootPageFrame>{children}</RootPageFrame>
       </main>
       <div className="fixed bottom-4 right-4 m-print-hide">
@@ -132,7 +139,7 @@ function Chrome({ children }: { children: ReactNode }) {
   const present = useSearchParams().get("present") === "1";
   if (present) return <Presentation>{children}</Presentation>;
   return (
-      <div className="flex h-screen flex-col m-print-flow">
+      <div className="flex h-dvh flex-col m-print-flow">
         <JobProgressBar />
         <Suspense fallback={<div className="[height:var(--m-topbar-h)]" />}>
           <Rail
@@ -144,8 +151,8 @@ function Chrome({ children }: { children: ReactNode }) {
         </Suspense>
         <Suspense fallback={null}><RunCarrier /></Suspense>
         <TopBar trailing={<><Suspense fallback={null}><GlobalSearch /></Suspense><Suspense fallback={null}><GlobalObjectPicker /></Suspense><Suspense fallback={null}><GlobalRunPicker /></Suspense><ScopedPill /></>} />
-        {/* Bottom room for the Ask Meridian launcher (fixed bottom-right), so the last row of a page never sits under it. */}
-        <main id="main" tabIndex={0} className="flex-1 overflow-auto outline-none m-print-flow [background:var(--m-canvas)] [padding-bottom:calc(var(--m-space-10)+var(--m-space-8))]">
+        {/* m-shell-main keeps room under the Ask Meridian launcher (fixed bottom-right): the last row of a page and a focused control never sit under it. */}
+        <main id="main" tabIndex={0} className="m-shell-main flex-1 overflow-auto outline-none m-print-flow [background:var(--m-canvas)]">
           <RootPageFrame>{children}</RootPageFrame>
         </main>
         <AskMeridian />

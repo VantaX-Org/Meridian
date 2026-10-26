@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi, describe, it, expect } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
@@ -6,11 +6,15 @@ import * as rulesApi from "@/lib/api/rules";
 import type { Rule } from "@/lib/api/rules";
 import RulesPage from "../page";
 
-vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+const h = vi.hoisted(() => ({
+  can: (() => true) as (action: string) => boolean,
+  dayOne: { status: "ready", step: null, error: null as unknown, refetch: () => {} },
+}));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (a: string) => h.can(a) }) }));
 // useDayOne() needs LocalAuthProvider context, which this test does not set up;
 // mock it wholesale so the page renders without an auth provider.
 vi.mock("@/hooks/use-day-one", () => ({
-  useDayOne: () => ({ status: "ready", step: null }),
+  useDayOne: () => h.dayOne,
   DayOneAction: () => null,
 }));
 // Stable instance across re-renders: useUrlState's sync effect depends on this
@@ -39,6 +43,25 @@ describe("rules page", () => {
     await waitFor(() => expect(screen.getByText("Vendor number is mandatory")).toBeInTheDocument());
   });
 
+  it("has one search and one export, with the secondary filters behind Filters", async () => {
+    vi.spyOn(rulesApi, "getRules").mockResolvedValue({ rules: [RULE], total: 1, limit: 1000, offset: 0 });
+    vi.spyOn(rulesApi, "getRulesSummary").mockResolvedValue({ summary: [] });
+    renderWithQuery(<RulesPage />);
+    await waitFor(() => expect(screen.getByText("Vendor number is mandatory")).toBeInTheDocument());
+    expect(screen.getAllByRole("textbox", { name: /search|filter/i })).toHaveLength(1);
+    expect(screen.queryByPlaceholderText("Type to filter rows")).toBeNull();
+    // The catalogue's own export is the only one above it: no stray Export in the filter row.
+    expect(within(screen.getByRole("region", { name: "Rule catalogue" })).getAllByRole("button", { name: /^export/i }).map((b) => b.textContent)).toEqual(["Export table"]);
+    expect(screen.queryByRole("button", { name: "Export" })).toBeNull();
+
+    const filters = screen.getByRole("button", { name: "Filters" });
+    expect(filters).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("combobox", { name: "Authority" })).toBeNull();
+    await userEvent.setup().click(filters);
+    expect(filters).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("combobox", { name: "Authority" })).toBeInTheDocument();
+  });
+
   it("shows a retryable error when rules fail to load", async () => {
     const spy = vi.spyOn(rulesApi, "getRules").mockRejectedValue(new Error("network down"));
     vi.spyOn(rulesApi, "getRulesSummary").mockResolvedValue({ summary: [] });
@@ -48,6 +71,45 @@ describe("rules page", () => {
     spy.mockResolvedValue({ rules: [RULE], total: 1, limit: 1000, offset: 0 });
     retry.click();
     await waitFor(() => expect(screen.getByText("Vendor number is mandatory")).toBeInTheDocument());
+  });
+
+  it("shows \"—\" in the stats above a failed read, never zeros", async () => {
+    vi.spyOn(rulesApi, "getRules").mockRejectedValue(new Error("network down"));
+    vi.spyOn(rulesApi, "getRulesSummary").mockResolvedValue({ summary: [] });
+    renderWithQuery(<RulesPage />);
+    await screen.findByText(/could not reach the server/i);
+    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(3);
+    expect(screen.queryByText("0")).toBeNull();
+  });
+
+  it("sends only a manage_settings user to settings from an empty library", async () => {
+    vi.spyOn(rulesApi, "getRules").mockResolvedValue({ rules: [], total: 0, limit: 1000, offset: 0 });
+    vi.spyOn(rulesApi, "getRulesSummary").mockResolvedValue({ summary: [] });
+    h.can = (a) => a !== "manage_settings";
+    try {
+      renderWithQuery(<RulesPage />);
+      expect(await screen.findByText("No rules loaded")).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Open settings" })).toBeNull();
+      expect(screen.getByText(/ask an administrator to check HQ sync/i)).toBeInTheDocument();
+    } finally {
+      h.can = () => true;
+    }
+  });
+
+  it("treats a failed day-one read as unknown: coverage shows the error, not \"measured on a finished run\"", async () => {
+    vi.spyOn(rulesApi, "getRules").mockResolvedValue({ rules: [RULE], total: 1, limit: 1000, offset: 0 });
+    vi.spyOn(rulesApi, "getRulesSummary").mockResolvedValue({ summary: [] });
+    const refetch = vi.fn();
+    h.dayOne = { status: "error", step: null, error: Object.assign(new Error("x"), { isAxiosError: true, response: { status: 500, data: {} } }), refetch };
+    try {
+      renderWithQuery(<RulesPage />);
+      expect(await screen.findByText("The server could not complete the request.")).toBeInTheDocument();
+      expect(screen.queryByText("Coverage is measured on a finished run")).toBeNull();
+      screen.getByRole("button", { name: "Retry" }).click();
+      expect(refetch).toHaveBeenCalled();
+    } finally {
+      h.dayOne = { status: "ready", step: null, error: null, refetch: () => {} };
+    }
   });
 
   it("narrows the list to a material master view once one is selected", async () => {
@@ -103,11 +165,11 @@ describe("rule enable switch", () => {
     vi.spyOn(rulesApi, "getRulesSummary").mockResolvedValue({ summary: [] });
     const update = vi.spyOn(rulesApi, "updateRule").mockRejectedValue(new Error("nope"));
     renderWithQuery(<RulesPage />);
-    const sw = await screen.findByRole("switch", { name: "Enabled: Vendor number is mandatory" });
+    const sw = await screen.findByRole("switch", { name: "On: Vendor number is mandatory" });
     expect(sw).toHaveAttribute("aria-checked", "true");
     await userEvent.setup().click(sw);
     expect(update).toHaveBeenCalledWith("r1", { enabled: false });
-    await waitFor(() => expect(screen.getByRole("switch", { name: /Enabled:/ })).toHaveAttribute("aria-checked", "true"));
+    await waitFor(() => expect(screen.getByRole("switch", { name: /: Vendor number is mandatory$/ })).toHaveAttribute("aria-checked", "true"));
   });
 
   it("flips the switch state when the update succeeds", async () => {
@@ -116,8 +178,8 @@ describe("rule enable switch", () => {
     vi.spyOn(rulesApi, "getRulesSummary").mockResolvedValue({ summary: [] });
     vi.spyOn(rulesApi, "updateRule").mockImplementation(async () => { enabled = false; return { ...RULE, enabled }; });
     renderWithQuery(<RulesPage />);
-    const sw = await screen.findByRole("switch", { name: /Enabled:/ });
+    const sw = await screen.findByRole("switch", { name: /: Vendor number is mandatory$/ });
     await userEvent.setup().click(sw);
-    await waitFor(() => expect(screen.getByRole("switch", { name: /Enabled:/ })).toHaveAttribute("aria-checked", "false"));
+    await waitFor(() => expect(screen.getByRole("switch", { name: "Off: Vendor number is mandatory" })).toHaveAttribute("aria-checked", "false"));
   });
 });

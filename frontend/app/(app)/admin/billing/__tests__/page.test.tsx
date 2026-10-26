@@ -4,6 +4,9 @@ import { renderWithQuery } from "@/__tests__/render";
 import * as exceptionsApi from "@/lib/api/exceptions";
 import ExceptionBillingPage from "../page";
 
+const perms = vi.hoisted(() => ({ settings: true }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (a: string) => a !== "manage_settings" || perms.settings, loading: false }) }));
+
 const BILLING: exceptionsApi.ExceptionBillingPeriod = {
   period: "2026-01",
   tier1_count: 2,
@@ -24,7 +27,7 @@ describe("admin billing page", () => {
   it("renders billing once loaded", async () => {
     vi.spyOn(exceptionsApi, "getExceptionBilling").mockResolvedValue(BILLING);
     renderWithQuery(<ExceptionBillingPage />);
-    await waitFor(() => expect(screen.getByText("Invoice inv_123")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Invoiced. The invoice is in Meridian HQ")).toBeInTheDocument());
   });
 
   it("shows every amount in the period's currency", async () => {
@@ -43,6 +46,20 @@ describe("admin billing page", () => {
     await waitFor(() => expect(screen.getByText((650).toLocaleString(undefined, { minimumFractionDigits: 2 }))).toBeInTheDocument());
   });
 
+  it("says the page needs manage_settings, and never asks the API, for a user without it", async () => {
+    perms.settings = false;
+    const spy = vi.spyOn(exceptionsApi, "getExceptionBilling").mockResolvedValue(BILLING);
+    try {
+      renderWithQuery(<ExceptionBillingPage />);
+      expect(await screen.findByText("Exception billing needs the manage-settings permission")).toBeInTheDocument();
+      expect(screen.getByText(/ask an administrator/i)).toBeInTheDocument();
+      expect(screen.queryByText(/could not reach the server/i)).toBeNull();
+      expect(spy).not.toHaveBeenCalled();
+    } finally {
+      perms.settings = true;
+    }
+  });
+
   it("shows a retryable error when billing fails to load", async () => {
     const spy = vi.spyOn(exceptionsApi, "getExceptionBilling").mockRejectedValue(new Error("network down"));
     renderWithQuery(<ExceptionBillingPage />);
@@ -50,6 +67,6 @@ describe("admin billing page", () => {
     const retry = screen.getByRole("button", { name: /retry/i });
     spy.mockResolvedValue(BILLING);
     retry.click();
-    await waitFor(() => expect(screen.getByText("Invoice inv_123")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Invoiced. The invoice is in Meridian HQ")).toBeInTheDocument());
   });
 });

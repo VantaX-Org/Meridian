@@ -67,6 +67,7 @@ class SystemResponse(BaseModel):
     base_url: Optional[str] = None
     company_id: Optional[str] = None
     auth_type: Optional[str] = None
+    token_url: Optional[str] = None  # not a secret: the edit form shows and changes it
     username: Optional[str] = None
     health_status: str = "unknown"
     health_message: Optional[str] = None
@@ -94,6 +95,7 @@ class UpdateSystemRequest(BaseModel):
     company_id: Optional[str] = None
     auth_type: Optional[str] = None
     username: Optional[str] = None
+    token_url: Optional[str] = None  # "" clears it
     description: Optional[str] = None
     environment: Optional[str] = None
     is_active: Optional[bool] = None
@@ -269,6 +271,7 @@ async def register_system(
         created_at=row[13],
         updated_at=row[14],
         role=body.role,
+        token_url=body.token_url,
     )
 
 
@@ -299,7 +302,7 @@ async def list_systems(
                    s.discovery_status, s.discovered_at::text, s.sap_release,
                    (SELECT max(v.run_at)::text FROM analysis_versions v
                     WHERE v.metadata->>'system_id' = s.id::text AND {finished_sql('v.status')}) AS last_analysis_at,
-                   s.role, s.target_system_id::text
+                   s.role, s.target_system_id::text, s.token_url
             FROM sap_systems s
             WHERE s.tenant_id = :tid
             ORDER BY s.created_at DESC
@@ -318,7 +321,7 @@ async def list_systems(
             config_last_synced_at=r[18], config_sync_status=r[19],
             last_sync_at=r[20], last_sync_status=r[21],
             discovery_status=r[22], discovered_at=r[23], sap_release=r[24], last_analysis_at=r[25],
-            role=r[26], target_system_id=r[27],
+            role=r[26], target_system_id=r[27], token_url=r[28],
         )
         for r in rows
     ]
@@ -341,6 +344,16 @@ async def update_system(
     if body.role == "source":  # the cascade below writes other systems' rows: tenant-wide only
         await require_scope(request, db, tenant, "manage_systems", Scope())
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
+
+    # An endpoint change must bring its own secrets: the stored ones are never kept for a new endpoint.
+    stored = await _stored_connection(db, system_id, str(tenant.id))
+    if stored is None:
+        raise HTTPException(status_code=404, detail="System not found")
+    changed = _endpoint_changes(stored, body)
+    if changed:
+        missing = _missing_secrets(stored, stored["system_type"], body.auth_type or stored["auth_type"], body.credentials)
+        if missing:
+            raise HTTPException(status_code=422, detail=_reenter_message(changed, missing))
 
     # Build dynamic SET clause
     updates = {}
@@ -369,6 +382,9 @@ async def update_system(
     if body.username is not None:
         set_parts.append("username = :username")
         updates["username"] = body.username
+    if body.token_url is not None:
+        set_parts.append("token_url = :token_url")
+        updates["token_url"] = body.token_url.strip() or None
     if body.description is not None:
         set_parts.append("description = :description")
         updates["description"] = body.description
@@ -456,7 +472,7 @@ async def update_system(
         text("""
             SELECT id, name, system_type, host, client, sysnr, username, base_url, company_id,
                    auth_type, description, environment, is_active,
-                   created_at::text, updated_at::text, role, target_system_id::text
+                   created_at::text, updated_at::text, role, target_system_id::text, token_url
             FROM sap_systems WHERE id = :sid AND tenant_id = :tid
         """),
         {"sid": system_id, "tid": str(tenant.id)},
@@ -470,6 +486,7 @@ async def update_system(
         sysnr=row[5], username=row[6], base_url=row[7], company_id=row[8], auth_type=row[9],
         description=row[10], environment=row[11], is_active=row[12],
         created_at=row[13], updated_at=row[14], role=row[15], target_system_id=row[16],
+        token_url=row[17],
     )
 
 
@@ -499,6 +516,27 @@ async def delete_system(
     return {"status": "deleted"}
 
 
+@router.delete("/systems/{system_id}/profiles/{profile_id}", status_code=204)
+async def delete_sync_profile(
+    system_id: str,
+    profile_id: str,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    role: str = Depends(require_permission("manage_systems", scope=scope_from_path)),
+):
+    """Delete one extraction schedule (sync profile). Its extraction log (sync_runs) cascades; analysis runs stay."""
+    if not _as_uuid(system_id) or not _as_uuid(profile_id):
+        raise HTTPException(status_code=404, detail="Schedule not found")  # never reaches the uuid cast
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
+    result = await db.execute(
+        text("DELETE FROM sync_profiles WHERE id = :pid AND system_id = :sid AND tenant_id = :tid RETURNING id"),
+        {"pid": profile_id, "sid": system_id, "tid": str(tenant.id)},
+    )
+    if not result.fetchone():
+        raise HTTPException(status_code=404, detail="Schedule not found")
+    await db.commit()
+
+
 def _run_connection_test(system_type: str, params: dict, secrets_to_mask: list[str]) -> TestConnectionResponse:
     """Connect + ping with the given params, masking any secret that leaks into an error message."""
     from sap.base import SAPConnectorError
@@ -525,6 +563,85 @@ def _run_connection_test(system_type: str, params: dict, secrets_to_mask: list[s
             connector.close()
 
 
+_SECRET_KEYS = ("password", "client_id", "client_secret", "api_key")
+
+# The fields that decide where a stored secret is sent. Changing any of them needs the secrets retyped.
+_ENDPOINT_FIELDS = ("host", "client", "sysnr", "base_url", "token_url", "auth_type")
+
+
+async def _stored_connection(db: AsyncSession, system_id: str, tenant_id: str) -> Optional[dict]:
+    """This tenant's stored endpoint fields and encrypted secrets for one system, or None."""
+    row = (await db.execute(
+        text("""
+            SELECT s.system_type, s.auth_type, s.client_id_encrypted, s.client_secret_encrypted,
+                   s.api_key_encrypted, sc.encrypted_password,
+                   s.host, s.client, s.sysnr, s.base_url, s.token_url
+            FROM sap_systems s
+            LEFT JOIN system_credentials sc ON sc.system_id = s.id
+            WHERE s.id = :sid AND s.tenant_id = :tid
+        """),
+        {"sid": system_id, "tid": tenant_id},
+    )).fetchone()
+    if not row:
+        return None
+    keys = ("system_type", "auth_type", "client_id", "client_secret", "api_key", "password",
+            "host", "client", "sysnr", "base_url", "token_url")
+    return dict(zip(keys, row))
+
+
+def _endpoint_changes(stored: dict, body: BaseModel) -> list[str]:
+    """The endpoint fields the body sets to something other than the stored value (None = not sent)."""
+    changed = []
+    for field in _ENDPOINT_FIELDS:
+        value = getattr(body, field, None)
+        if value is None:
+            continue
+        if field == "auth_type" and (stored["system_type"] in RFC_SYSTEM_TYPES or not stored["auth_type"]):
+            continue  # RFC ignores it; an unset stored auth type is the connector's default
+        if value.strip() != (stored[field] or "").strip():
+            changed.append(field)
+    return changed
+
+
+def _needed_secrets(system_type: str, auth_type: Optional[str]) -> tuple[str, ...]:
+    """The secrets a connection of this type and auth sends."""
+    if system_type in RFC_SYSTEM_TYPES or auth_type == "basic":
+        return ("password",)
+    return ("client_id", "client_secret", "api_key") if system_type == "ariba" else ("client_id", "client_secret")
+
+
+def _missing_secrets(stored: dict, system_type: str, auth_type: Optional[str], credentials: dict[str, str]) -> list[str]:
+    """The secrets this connection uses that are stored but were not typed again."""
+    return [k for k in _needed_secrets(system_type, auth_type) if stored.get(k) and not credentials.get(k)]
+
+
+def _reenter_message(changed: list[str], missing: list[str]) -> str:
+    label = {"password": "password", "client_id": "client ID", "client_secret": "client secret", "api_key": "API key"}
+    return (f"Re-enter the {', '.join(label[k] for k in missing)} when you change the "
+            f"{', '.join(f.replace('_', ' ') for f in changed)}: stored secrets are never sent to a changed endpoint.")
+
+
+def _draft_params(body: RegisterSystemRequest, system_type: str, secrets: dict[str, str]) -> dict:
+    """Connector params for a draft connection: the typed fields plus the given secrets."""
+    import os
+
+    return {
+        "host": body.host,
+        "client": body.client,
+        "sysnr": body.sysnr,
+        "user": body.username or os.getenv("SAP_RFC_USER", "RFC_USER"),
+        "password": secrets.get("password", ""),
+        "base_url": body.base_url,
+        "company_id": body.company_id,
+        "auth_type": body.auth_type,
+        "username": (body.username or "") if system_type in CLOUD_SYSTEM_TYPES else "",
+        "client_id": secrets.get("client_id", ""),
+        "client_secret": secrets.get("client_secret", ""),
+        "api_key": secrets.get("api_key", ""),
+        "token_url": body.token_url or "",
+    }
+
+
 @router.post("/systems/test-connection", response_model=TestConnectionResponse)
 async def test_draft_connection(
     body: RegisterSystemRequest,
@@ -538,30 +655,60 @@ async def test_draft_connection(
     if body.system_type not in RFC_SYSTEM_TYPES and body.system_type not in CLOUD_SYSTEM_TYPES:
         raise HTTPException(status_code=400, detail=f"Unsupported system_type: {body.system_type}")
 
-    import os
+    secrets = {k: body.credentials.get(k, "") for k in _SECRET_KEYS}
+    params = _draft_params(body, body.system_type, secrets)
+    return _run_connection_test(body.system_type, params, [secrets["password"], secrets["client_secret"], secrets["api_key"]])
 
-    password = body.credentials.get("password", "")
-    client_id = body.credentials.get("client_id", "")
-    client_secret = body.credentials.get("client_secret", "")
-    api_key = body.credentials.get("api_key", "")
 
-    rfc_user = body.username or os.getenv("SAP_RFC_USER", "RFC_USER")
-    params = {
-        "host": body.host,
-        "client": body.client,
-        "sysnr": body.sysnr,
-        "user": rfc_user,
-        "password": password,
-        "base_url": body.base_url,
-        "company_id": body.company_id,
-        "auth_type": body.auth_type,
-        "username": (body.username or "") if body.system_type in CLOUD_SYSTEM_TYPES else "",
-        "client_id": client_id,
-        "client_secret": client_secret,
-        "api_key": api_key,
-        "token_url": body.token_url or "",
-    }
-    return _run_connection_test(body.system_type, params, [password, client_secret, api_key])
+@router.post("/systems/{system_id}/test-connection", response_model=TestConnectionResponse)
+async def test_edited_connection(
+    system_id: str,
+    body: RegisterSystemRequest,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    role: str = Depends(require_permission("manage_systems", scope=scope_from_path)),
+) -> TestConnectionResponse:
+    """Test an existing system's edited, unsaved connection fields.
+
+    The edit form sends the fields as they stand; a secret left empty falls back to the one
+    stored for this system in this tenant, except when an endpoint field (host, client, system
+    number, base URL, token URL or auth type) differs from the stored one: then every secret the
+    connection uses must be typed again (422 otherwise), so a stored credential is never sent to
+    a new endpoint. Nothing is saved and the system's health is not
+    touched: the result describes the draft, not the stored connection.
+    """
+    if not _as_uuid(system_id):
+        raise HTTPException(status_code=404, detail="System not found")
+    await db.execute(text(f"SET app.tenant_id = '{str(tenant.id)}'"))
+    stored = await _stored_connection(db, system_id, str(tenant.id))
+    if stored is None:
+        raise HTTPException(status_code=404, detail="System not found")
+    system_type = stored["system_type"]
+    auth_type = body.auth_type or stored["auth_type"]
+    # A changed endpoint never receives a stored secret: it could be an attacker's host.
+    changed = _endpoint_changes(stored, body)
+    if changed:
+        missing = _missing_secrets(stored, system_type, auth_type, body.credentials)
+        if missing:
+            raise HTTPException(status_code=422, detail=_reenter_message(changed, missing))
+
+    from api.services.credential_store import decrypt_password
+
+    secrets: dict[str, str] = {}
+    for key in _SECRET_KEYS:
+        typed = body.credentials.get(key, "")
+        if typed or changed:
+            secrets[key] = typed
+            continue
+        try:
+            secrets[key] = decrypt_password(str(tenant.id), stored[key]) if stored[key] else ""
+        except Exception:
+            return TestConnectionResponse(connected=False, message="Failed to decrypt the stored credentials")
+
+    # The type is the stored one (an edit cannot change it); an absent auth type keeps the stored one.
+    draft = body.model_copy(update={"auth_type": auth_type})
+    params = _draft_params(draft, system_type, secrets)
+    return _run_connection_test(system_type, params, [secrets["password"], secrets["client_secret"], secrets["api_key"]])
 
 
 @router.post("/systems/{system_id}/test", response_model=TestConnectionResponse)

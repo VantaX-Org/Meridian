@@ -20,26 +20,32 @@ import { useDayOne } from "@/hooks/use-day-one";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { exportFindings } from "@/lib/api/findings";
+import { getQueueItems } from "@/lib/api/stewardship";
 import { RunAnalysis } from "@/app/(app)/insights/_components/RunAnalysis";
+import { useAiProposals } from "@/app/(app)/rules/drafts/ai-proposals";
 import { HomeOnboarding } from "@/components/help/home-onboarding";
 import { RouteInsight } from "@/components/insight/route-insight";
+import { dqsExplanation, useDqsInputs } from "@/components/insight/dqs-score";
 import { verdictSentence, type NarrativeInput } from "@/lib/home-narrative";
 import {
-  runCap, capRuleCount, capRules, cappedReason, dimensionHeatmapCells, objectRecords, runDqs, runDimensions, trend, readinessOf,
+  runCap, capRuleCount, capRules, cappedReason, dimensionHeatmapCells, objectRecords, runDqs, runDimensions, trend, readinessOf, isBelowTarget, BELOW_TARGET,
   worstObjectsFirst, DIMENSIONS,
 } from "@/lib/home-metrics";
 import {
-  blockingTotal, isScored, latestPerLineage, runObjectsName, stateDqs, stateObjects, stateRows, stateScopeLine, stateSeries, stateSummary,
+  criticalHighHref, criticalHighTotal, isScored, latestPerLineage, runObjectsName, stateDqs, stateObjects, stateRows, stateScopeLine, stateSeries, stateSummary,
   type StateRow,
 } from "@/lib/current-state";
-import { formatDate, formatModuleName, plural, round1, shortCapReason } from "@/lib/format";
+import { formatDate, formatModuleName, labelOf, plural, relativeTime, round1, shortCapReason } from "@/lib/format";
 import { previousInLineage, runPageHref } from "@/lib/runs";
-import { hrefWithRun } from "@/lib/run-scope";
+import { fixHref } from "@/lib/drill";
+import { hrefWithRun, runName, runScopeLabel } from "@/lib/run-scope";
+import { reportFilename } from "@/lib/report-filename";
 import { StateScope } from "@/components/run-scope";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { apiErrorState, isListFailure } from "@/lib/error";
 import { openJobTray } from "@/lib/job-tray-bus";
 import { queryKeys } from "@/lib/query-keys";
 import { PERSONA_OPTIONS } from "@/lib/persona";
+import { homeActionFor } from "@/lib/home-action";
 import type { Version } from "@/types/api";
 
 /** The ledger shows this many objects, then a link to all of them; the heatmap draws the same rows. */
@@ -53,8 +59,7 @@ const Heatmap = dynamic(() => import("@/design/charts/Heatmap").then((m) => m.He
 
 
 /** Header label for a run: never a raw id (same formula as the run selector). */
-const runLabel = (v: Version) =>
-  v.label ?? `${(v.metadata?.modules ?? []).map(formatModuleName).join(", ") || "Latest"}, ${formatDate(v.run_at, "date")}`;
+const runLabel = (v: Version) => runScopeLabel(v);
 
 function WorkRow({ children }: { children: ReactNode }) {
   return <div className="m-stat-grid">{children}</div>;
@@ -91,6 +96,12 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const shellCountsQ = useQuery({ queryKey: queryKeys.shellCounts(), queryFn: getShellCounts, enabled: wantsFindings });
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const landscapeQ = useQuery({ queryKey: queryKeys.configLandscape(), queryFn: getConfigLandscape });
+  // The steward's queue leads the page: the five open items due first.
+  const queueQ = useQuery({ queryKey: ["home-inbox-top"], queryFn: () => getQueueItems({ status: "open", limit: 5 }), enabled: role === "steward", meta: { ignoreError: true } });
+  // A reviewer of AI rules who does not write rules (the AI reviewer): their next action is the proposals waiting.
+  const reviewsAiRules = can("review_ai_rules") && !can("manage_rules");
+  const proposalsQ = useAiProposals(reviewsAiRules);
+  const pendingProposals = reviewsAiRules ? proposalsQ.data?.total ?? 0 : 0;
   const finished = allVersions
     .filter(isScored)
     .sort((a, b) => new Date(b.run_at).getTime() - new Date(a.run_at).getTime());
@@ -109,6 +120,8 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     queryFn: () => getFindingsAggregate(pinned?.id),
     enabled: wantsFindings && !!newest,
   });
+  // The weights and costliest rules the hero's "Data quality score ⓘ" breakdown reads (components/insight/dqs-score.tsx).
+  const dqsInputs = useDqsInputs(pinned?.id, !!aggregateQ.data);
 
   // Seed the run-keyed objects list so opening an object from home needs no second fetch.
   const runId = objectsQ.data?.run_id;
@@ -118,6 +131,8 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
 
   const loading = dayOne.status === "loading" || objectsQ.isLoading;
   const erroring = dayOne.status === "error" || isListFailure(objectsQ);
+  // The message comes from whichever read failed; Retry reads all four again (objects, runs, systems, landscape).
+  const failure = isListFailure(objectsQ) ? objectsQ.error : dayOne.error;
 
   if (loading) return <HomePage persona={role} state="loading" />;
   if (erroring) {
@@ -125,7 +140,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       <HomePage
         persona={role}
         state="error"
-        error={{ message: apiErrorMessage(objectsQ.error), onRetry: () => { void objectsQ.refetch(); void versionsQ.refetch(); } }}
+        error={{ error: failure, onRetry: () => { void objectsQ.refetch(); void versionsQ.refetch(); void systemsQ.refetch(); void landscapeQ.refetch(); } }}
       />
     );
   }
@@ -146,6 +161,13 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         lists={lists}
         onboarding={<HomeOnboarding />}
         cells={<RouteInsight />}
+        emptyActions={<>
+          {can("upload") && dayOne.step.secondary?.href !== "/import" && dayOne.step.href !== "/import"
+            ? <Button variant="secondary" render={<Link href="/import">Import a file</Link>} /> : null}
+          {(systemsQ.data ?? []).length > 0 ? <RunAnalysis variant="secondary" /> : null}
+          {(systemsQ.data ?? []).length > 0 && can("run_process_discovery")
+            ? <Button variant="secondary" render={<Link href="/process/runs?new=1">Run process discovery</Link>} /> : null}
+        </>}
       />
     );
   }
@@ -179,19 +201,24 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const findings = (findingsQ.data?.findings ?? []).filter((f) => (!scopeFilter.modules || scopeFilter.modules.has(f.module)) && f.version_id === runOf.get(f.module)?.id);
   const scored = worstObjectsFirst(objects);
   const worst = scored[0];
-  const notReady = objects.filter((o) => o.readiness === "fail");
+  // Objects below target: at risk or no-go (go only at the target); "not ready" is kept for wave readiness.
+  const belowTarget = objects.filter(isBelowTarget);
+  const belowTargetTone = objects.some((o) => o.readiness === "fail") ? "no-go" : belowTarget.length ? "at-risk" : "go";
   const systems = systemsQ.data ?? [];
   const activeSystems = systems.filter((s) => s.is_active);
 
-  const action =
-    role === "lead"
-      ? { label: notReady.length ? "Open objects not ready" : "Open objects", href: objectsHref(notReady.length ? { readiness: "fail" } : {}) }
-      : role === "steward"
-        ? { label: "Open worst object", href: worst ? `/objects/${worst.module}?run=${worst.run_id}` : objectsHref() }
-        : (() => {
-            const failed = activeSystems.some(isFailing);
-            return { label: failed ? "Open failed system" : "Open systems", href: "/systems" };
-          })();
+  const action = pendingProposals > 0
+    ? { label: `Review ${plural(pendingProposals, "proposal")}`, href: "/rules/drafts?tab=ai" }
+    : homeActionFor({
+    persona: role,
+    can,
+    belowTarget: belowTarget.length,
+    objectsHref: (filtered) => objectsHref(filtered ? { readiness: BELOW_TARGET } : {}),
+    worstHref: worst ? `/objects/${worst.module}?run=${worst.run_id}` : undefined,
+    systemFailing: activeSystems.some(isFailing),
+  });
+  // The ledger's row action fixes only for a role that can work a fix (apply it, or approve it); else it opens.
+  const canFix = can("apply") || can("approve");
 
   const capReason = cappedReason(merged);
   const cappedObjects = state.filter((o) => o.summary.composite_score != null && o.summary.capped).length;
@@ -295,9 +322,10 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         return r ? <Link href={hrefWithRun(`/home/${role}`, search, r.id)} className="m-ink-3 whitespace-nowrap" title={runLabel(r)} onClick={(e) => e.stopPropagation()}>{[systemName(r), formatDate(r.run_at, "date")].filter(Boolean).join(", ")}</Link> : "—";
       },
     },
-    { accessorKey: "affected_records", header: "Records affected", meta: { numeric: true }, cell: ({ row: { original: o } }) => o.affected_records?.toLocaleString() ?? "—" },
+    // Summed over the object's failing rules (a record failing two rules counts twice): rule failures, not records.
+    { accessorKey: "affected_records", header: "Rule failures", meta: { numeric: true }, cell: ({ row: { original: o } }) => o.affected_records?.toLocaleString() ?? "—" },
     {
-      id: "dqs", header: "DQS", meta: { numeric: true },
+      id: "dqs", header: "Score", meta: { numeric: true },
       accessorFn: (o) => o.composite_score ?? -1,
       cell: ({ row: { original: o } }) => o.composite_score === null ? "—" : (
         <Score size="sm" value={o.composite_score} bands={bands} />
@@ -310,8 +338,9 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     },
     {
       id: "action", header: "", enableSorting: false,
-      cell: ({ row: { original: o } }) => o.fixable
-        ? <Link href={`/fix?module=${o.module}`} className="m-ink-accent" aria-label={`Fix ${o.label}`}>Fix</Link>
+      cell: ({ row: { original: o } }) => o.fixable && canFix
+        // The blocking rule's records in the run that found them, the rule this row names.
+        ? <Link href={fixHref({ run: o.run_id, module: o.module, check: o.blocking })} className="m-ink-accent" aria-label={`Fix ${o.label}`}>Fix</Link>
         : <Link href={objectHref(o)} className="m-ink-accent" aria-label={`Open ${o.label}`}>Open</Link>,
     },
   ];
@@ -390,28 +419,61 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const counts = shellCountsQ.data;
   const unhealthy = activeSystems.filter(isFailing).length;
   const notLoaded = Math.max((landscapeQ.data?.total ?? 0) - (landscapeQ.data?.loaded ?? 0), 0);
-  // Failing critical and high checks of every object in scope.
-  const blocking = blockingTotal(state);
+  // Failing critical and high checks of every object in scope ("blocking" is the insights overview's own set).
+  const criticalHigh = criticalHighTotal(state);
+  // The findings behind the count: one run's findings tab, or the current-state findings on the Insights overview.
+  const criticalHighLink = criticalHighHref(scopeRuns);
   const countsReady = !!counts;
+  const queueItems = queueQ.data?.items ?? [];
+  const inboxCard = role === "steward" ? (
+    <Card title="Inbox" meta={countsReady ? `${plural(counts.inbox, "open item")}` : undefined} padding="sm">
+      {queueQ.isLoading ? <Skeleton height={120} /> : queueQ.isError ? (
+        <div role="alert" className="flex flex-wrap items-center gap-3 m-text-body" data-testid="home-inbox-error">
+          <span>{`The inbox did not load. ${apiErrorState(queueQ.error).title}`}</span>
+          <Button variant="secondary" onClick={() => void queueQ.refetch()}>Retry</Button>
+        </div>
+      ) : queueItems.length === 0 ? (
+        <EmptyState variant="inline" title="Nothing waits in the inbox" action={<Link href="/fix?tab=cleaning" className="underline-offset-2 hover:underline">Open cleaning proposals</Link>} />
+      ) : (
+        <ul className="flex flex-col" data-testid="home-inbox-items">
+          {queueItems.map((it) => (
+            <li key={it.id} className="flex items-center gap-3 border-b py-2 [border-color:var(--m-line)] m-text-body">
+              <Link href={`/inbox?focus=${encodeURIComponent(it.id)}`} className="flex-1 underline-offset-2 hover:underline">{labelOf(it.item_type)}, {formatModuleName(it.domain)}</Link>
+              {it.sla_state === "breached" && <Pill tone="no-go">Overdue</Pill>}
+              <span className="m-ink-3">{it.due_at ? `due ${relativeTime(it.due_at)}` : `opened ${relativeTime(it.created_at)}`}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  ) : null;
   const work =
     role === "lead" ? (
       <WorkRow>
-        <Stat label="Objects not ready" value={notReady.length} hint={`of ${objects.length}`} tone={notReady.length ? "no-go" : "go"} href={objectsHref({ readiness: "fail" })} />
-        <Stat label="Blocking findings" value={blocking.toLocaleString()} hint={blocking ? "critical and high" : "none"} tone={blocking ? "no-go" : "go"} href={objectsHref({ readiness: "fail" })} />
+        <Stat label="Objects below target" value={belowTarget.length} hint={`of ${objects.length}`} tone={belowTargetTone} href={objectsHref({ readiness: BELOW_TARGET })} />
+        <Stat label="Critical and high findings" value={criticalHigh.toLocaleString()} hint={criticalHigh ? "failing rules" : "none"} tone={criticalHigh ? "no-go" : "go"} href={criticalHighLink} />
         <Stat label="Open inbox" value={countsReady ? counts.inbox : "—"} hint={countsReady && !counts.inbox ? "clear" : undefined} href="/inbox" />
       </WorkRow>
     ) : role === "steward" ? (
-      <WorkRow>
-        <Stat label="Open inbox" value={countsReady ? counts.inbox : "—"} hint={countsReady && !counts.inbox ? "clear" : undefined} href="/inbox" />
-        <Stat label="Cleaning proposals" value={countsReady ? counts.fix.toLocaleString() : "—"} hint={countsReady && !counts.fix ? "clear" : undefined} href="/fix" />
-        <Stat
-          label="Worst object"
-          value={worst?.composite_score?.toFixed(1) ?? "—"}
-          hint={worst?.label}
-          tone={worst?.composite_score != null ? readinessOf(worst.composite_score, bands) : undefined}
-          href={worst ? `/objects/${worst.module}?run=${worst.run_id}` : undefined}
-        />
-      </WorkRow>
+      <>
+        <WorkRow>
+          <Stat label="Open inbox" value={countsReady ? counts.inbox : "—"} hint={countsReady && !counts.inbox ? "clear" : undefined} href="/inbox" />
+          {/* counts.fix is the latest run's records to fix, or cleaning proposals when that run has no work list: fix_source says which. */}
+          {countsReady && counts.fix_source === "cleaning" ? (
+            <Stat label="Cleaning proposals to review" value={counts.fix.toLocaleString()} hint={!counts.fix ? "clear" : "no work list for the latest run"} href="/fix?tab=cleaning" />
+          ) : (
+            <Stat label="Records to fix" value={countsReady ? counts.fix.toLocaleString() : "—"} hint={countsReady && !counts.fix ? "clear" : undefined} href="/fix" />
+          )}
+          <Stat
+            label="Worst object"
+            value={worst?.composite_score?.toFixed(1) ?? "—"}
+            hint={worst?.label}
+            tone={worst?.composite_score != null ? readinessOf(worst.composite_score, bands) : undefined}
+            href={worst ? `/objects/${worst.module}?run=${worst.run_id}` : undefined}
+          />
+        </WorkRow>
+        {inboxCard}
+      </>
     ) : (
       <WorkRow>
         <Stat label="Systems unhealthy" value={unhealthy} hint={`of ${activeSystems.length} active`} tone={unhealthy ? "no-go" : "go"} href="/systems" />
@@ -424,8 +486,13 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     <HomePage
       persona={role}
       state="ready"
+      workFirst={role === "steward"}
+      explain={dqsExplanation({ agg: aggregateQ.data, versionId: pinned?.id, cap: cap?.cap, capReason }, dqsInputs)?.explain}
       verdict={{
         dqs,
+        cap: cap?.cap,
+        criticals: cap?.criticals,
+        bands,
         delta: dqs != null && previousDqs != null ? round1(dqs - previousDqs) : null,
         previousLabel: previous ? (pinned ? runLabel(previous) : "before the latest run") : undefined,
         firstRun: !previous,
@@ -434,7 +501,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         capLine,
         action,
       }}
-      run={{ label: pinned ? runLabel(pinned) : stateScopeLine(objects.length, newest.run_at), runAt: newest.run_at }}
+      run={{ id: newest.id, label: pinned ? runLabel(pinned) : stateScopeLine(objects.length, newest.run_at), runAt: newest.run_at }}
       scope={
         <StateScope
           runs={latestPerLineage(finished)}
@@ -454,22 +521,22 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       onboarding={<HomeOnboarding />}
       cells={<RouteInsight />}
       headerActions={<>
-        <RunAnalysis />
+        <RunAnalysis variant="secondary" />
         <Select
           label="View as"
           value={role}
-          onValueChange={(r) => router.push(`/home/${r}`)}
+          onValueChange={(r) => router.push(hrefWithRun(`/home/${r}`, search, pinnedId))}
           options={PERSONA_OPTIONS}
         />
         {can("export") ? (
           <span data-tour="home-export" className="inline-flex"><ExportMenu
             options={[
-              ...(role === "steward" ? [{ format: "xlsx" as const, label: "My failing records (Excel)", run: () => exportFindings("xlsx", { ...(pinned ? { version_id: pinned.id } : {}), sort: "severity" }) }] : []),
+              ...(role === "steward" ? [{ format: "xlsx" as const, label: "Failing records (Excel)", run: () => exportFindings("xlsx", { ...(pinned ? { version_id: pinned.id } : {}), sort: "severity" }) }] : []),
               // The executive report is one run's: without ?run= it is the newest run's, and says so.
               {
                 format: "pdf",
                 label: pinned ? "Executive report (PDF)" : "Executive report, latest run (PDF)",
-                run: () => downloadAuthenticated(getExecutiveReportUrl(newest.id), `meridian-executive-${newest.label ?? newest.id}.pdf`),
+                run: () => downloadAuthenticated(getExecutiveReportUrl(newest.id), reportFilename("executive", runName(newest))),
               },
             ]}
           /></span>

@@ -12,7 +12,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 vi.mock("@/hooks/use-day-one", () => ({
-  useDayOne: () => ({ status: "ready", step: null }),
+  useDayOne: () => ({ status: "ready", step: null, error: null, refetch: () => {} }),
   DayOneAction: () => null,
 }));
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: { id: "u1", role: "admin" } }) }));
@@ -45,7 +45,7 @@ const ROUTES: ReadonlyArray<readonly [string, () => Promise<{ default: Component
   ["/mdm/match-rules", () => import("../mdm/match-rules/page")],
   ["/inbox", () => import("../inbox/page")],
   ["/fix", () => import("../fix/page")],
-  ["/fix/[batchId]", () => import("../fix/[batchId]/page")],
+  ["/fix/proposals/[runId]", () => import("../fix/proposals/[runId]/page")],
   ["/admin/ai", () => import("../admin/ai/page")],
   ["/admin/billing", () => import("../admin/billing/page")],
   ["/admin/licence", () => import("../admin/licence/page")],

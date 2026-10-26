@@ -48,7 +48,7 @@ def fuse(survivor: dict, merged: dict, contributions: dict, merged_key: str,
 
 
 _COLS = ("id, domain, sap_object_key, golden_fields, source_contributions, own_fields, steward_overrides, "
-         "merged_into, status, created_at")
+         "merged_into, status, created_at, own_contributions")
 _HIST = text("""
     INSERT INTO master_record_history (id, tenant_id, master_record_id, changed_by, change_type,
                                        previous_fields, new_fields)
@@ -58,6 +58,39 @@ _HIST = text("""
 
 def _own(r: Any) -> dict:
     return dict(r.own_fields if r.own_fields is not None else (r.golden_fields or {}))
+
+
+def _derived(entry: Any) -> bool:
+    """A contribution a merge or a steward wrote, not one the record's own sources gave it."""
+    label = str((entry or {}).get("source_system") or "") if isinstance(entry, dict) else ""
+    return label.startswith("merge:") or label == "steward_override"
+
+
+def _own_contrib(r: Any) -> dict:
+    """The record's own source_contributions (pre-merge), tagged with the system each value came from.
+
+    own_contributions is kept from the first merge on (migration 090); before that, a record's own
+    contributions are its source_contributions without the entries merges and stewards wrote.
+    """
+    if getattr(r, "own_contributions", None) is not None:
+        return dict(r.own_contributions)
+    return {f: e for f, e in (r.source_contributions or {}).items() if not _derived(e)}
+
+
+def _systems(r: Any) -> dict:
+    """``{field: {id, name}}`` for the fields whose source system is known."""
+    out: dict = {}
+    for f, e in _own_contrib(r).items():
+        if isinstance(e, dict) and (e.get("source_system_id") or e.get("source_system_name")):
+            out[f] = {"id": e.get("source_system_id"), "name": e.get("source_system_name"),
+                      **({"origin": e["origin"]} if e.get("origin") else {})}
+    return out
+
+
+def _tags(entry: Any) -> dict:
+    if not isinstance(entry, dict):
+        return {}
+    return {k: entry[k] for k in ("source_system_id", "source_system_name", "origin") if entry.get(k)}
 
 
 async def _by_key(db: AsyncSession, tid: str, domain: str, key: str) -> Any:
@@ -101,12 +134,14 @@ async def _recompute(db: AsyncSession, tid: str, head: Any, members: list[Any], 
     """Recompute and store golden values + explanation for ``head`` over ``members``."""
     rows = [head, *members]
     res = survive_cluster(
-        [{"key": r.sap_object_key, "fields": _own(r), "extracted_at": r.created_at} for r in rows],
+        [{"key": r.sap_object_key, "fields": _own(r), "extracted_at": r.created_at, "systems": _systems(r)}
+         for r in rows],
         await _rules(db, tid, head.domain), overrides)
+    own_of = {r.sap_object_key: _own_contrib(r) for r in rows}
     golden = {f: "" for r in rows for f in _own(r)}
     golden.update(res["fields"])
     now = datetime.now(timezone.utc).isoformat()
-    old = head.source_contributions or {}
+    old = own_of[head.sap_object_key]
     contrib: dict = {}
     for f, ex in res["explanation"].items():
         if ex["rule"] == "steward_override":
@@ -116,16 +151,19 @@ async def _recompute(db: AsyncSession, tid: str, head: Any, members: list[Any], 
             if f in old:
                 contrib[f] = old[f]
         else:
+            # The value keeps the source system it came from, so trusted-system survivorship still
+            # sees it after the merge.
             contrib[f] = {"value": golden[f], "source_system": f"merge:{ex['winner_key']}", "extracted_at": now,
-                          "confidence": None}
+                          "confidence": None, "merged_from": ex["winner_key"],
+                          **_tags(own_of.get(ex["winner_key"], {}).get(f))}
     await db.execute(text("""
         UPDATE master_records SET golden_fields = CAST(:f AS jsonb), source_contributions = CAST(:c AS jsonb),
                steward_overrides = CAST(:o AS jsonb), survivorship_explanation = CAST(:e AS jsonb),
-               own_fields = CAST(:own AS jsonb), updated_at = now()
+               own_fields = CAST(:own AS jsonb), own_contributions = CAST(:oc AS jsonb), updated_at = now()
          WHERE tenant_id = :tid AND id = :id
     """), {"tid": tid, "id": str(head.id), "f": json.dumps(golden, default=str), "c": json.dumps(contrib, default=str),
            "o": json.dumps(overrides, default=str), "e": json.dumps(res["explanation"], default=str),
-           "own": json.dumps(_own(head), default=str)})
+           "own": json.dumps(_own(head), default=str), "oc": json.dumps(old, default=str)})
     return golden
 
 
@@ -193,7 +231,8 @@ async def merge_master_records(db: AsyncSession, tenant_id: str, domain: str, su
               "steward_overrides": s_ov}
 
     await db.execute(text("""
-        UPDATE master_records SET own_fields = COALESCE(own_fields, golden_fields), merged_into = :s,
+        UPDATE master_records SET own_fields = COALESCE(own_fields, golden_fields),
+               own_contributions = COALESCE(own_contributions, source_contributions), merged_into = :s,
                status = 'superseded', updated_at = now()
          WHERE tenant_id = :tid AND (id = :m OR merged_into = :m)
     """), {"tid": tenant_id, "s": str(s.id), "m": str(m.id)})
@@ -240,6 +279,8 @@ async def unmerge(db: AsyncSession, tenant_id: str, golden_id: str, split_keys: 
         r = by_key[k]
         await db.execute(text("""
             UPDATE master_records SET merged_into = NULL, status = 'candidate', golden_fields = CAST(:f AS jsonb),
+                   source_contributions = COALESCE(own_contributions, source_contributions),
+                   own_fields = NULL, own_contributions = NULL,
                    survivorship_explanation = NULL, steward_overrides = '{}'::jsonb, updated_at = now()
              WHERE tenant_id = :tid AND id = :id
         """), {"tid": tenant_id, "id": str(r.id), "f": json.dumps(_own(r), default=str)})
@@ -249,6 +290,10 @@ async def unmerge(db: AsyncSession, tenant_id: str, golden_id: str, split_keys: 
     remaining = [r for r in members if r.sap_object_key not in split]
     new_ov = dict(restore_overrides) if restore_overrides is not None else ov
     golden = await _recompute(db, tenant_id, head, remaining, new_ov)
+    if not remaining:
+        # A head left with no members is standalone again: sync updates its golden values directly.
+        await db.execute(text("UPDATE master_records SET own_fields = NULL, own_contributions = NULL "
+                              "WHERE tenant_id = :tid AND id = :id"), {"tid": tenant_id, "id": str(head.id)})
     await db.execute(_HIST, {"tid": tenant_id, "mid": head.id, "uid": user_id, "ct": "unmerged",
                              "prev": json.dumps(head.golden_fields or {}, default=str),
                              "new": json.dumps(golden, default=str)})

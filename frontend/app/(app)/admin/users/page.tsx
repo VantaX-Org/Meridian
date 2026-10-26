@@ -4,53 +4,45 @@ import { useUrlState } from "@/hooks/use-url-state";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { toast } from "sonner";
 import Link from "next/link";
-import { Button, Checkbox, ConfirmDialog, DataTable, Drawer, EmptyState, ErrorState, ExportMenu, Field, Menu, PageHeader, Pill, Select, Skeleton, Stat, Tabs, Async, IconMore } from "@/design";
-import { LedgerHead } from "@/components/mdm/ledger";
+import { Button, Checkbox, ConfirmDialog, DataTable, Drawer, EmptyState, Menu, Notice, PageHeader, Pill, Skeleton, Async, IconButton, IconMore, Tooltip, toast, type CellMeta } from "@/design";
+import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { downloadCsv } from "@/lib/actions";
-import { getRoleMatrix } from "@/lib/api/auth";
-import { exportAuditEntries, getAuditEntries, type AuditEntry } from "@/lib/api/audit";
-import { apiErrorMessage, apiErrorState } from "@/lib/error";
+import { getSystems } from "@/lib/api/connectivity";
+import { listGrants, listRoles } from "@/lib/api/roles";
+import { apiErrorDetail, apiErrorMessage } from "@/lib/error";
 import { deleteUser, getAssignableUsers, getUsers, updateUser } from "@/lib/api/users";
 import { InviteForm } from "@/components/admin/invite-form";
-import { labelOf, relativeTime } from "@/lib/format";
+import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import type { User, UserRole } from "@/types/api";
+import type { User } from "@/types/api";
+import { grantLabel, roleLabel } from "@/lib/roles";
 
 // ponytail: getAssignableUsers() is unused here, same as the legacy component it replaces.
 void getAssignableUsers;
 
-const ROLES: UserRole[] = [
-  "admin", "manager", "steward", "ai_reviewer", "approver", "analyst", "viewer", "auditor", "process_analyst",
-  "programme_lead", "data_steward", "data_owner", "sap_basis", "platform_admin",
-];
-const ROLE_META: Record<UserRole, { label: string; desc: string }> = {
-  admin: { label: "Admin", desc: "Full access. Manage users and rules, approve proposed rules." },
-  manager: { label: "Manager", desc: "Run the programme. Connect systems, sync, analyse, approve, apply and assign work." },
-  steward: { label: "Steward", desc: "Own the data. Fix, clean, approve and apply, maintain rules and assign work." },
-  ai_reviewer: { label: "AI Reviewer", desc: "Review and approve proposed rules from steward corrections." },
-  approver: { label: "Approver", desc: "Four-eyes approval of cleaning, golden records and stewardship changes." },
-  analyst: { label: "Analyst", desc: "Upload, sync and run analysis; export results. No approvals." },
-  viewer: { label: "Viewer", desc: "Read-only access to dashboards and findings." },
-  auditor: { label: "Auditor", desc: "Read-only access including the audit log." },
-  process_analyst: { label: "Process analyst", desc: "Read everything, run process discovery and export as-is process models." },
-  // Persona keys (rbac.py PERSONA_ROLES): each carries the actions of the legacy role it replaces.
-  programme_lead: { label: "Programme lead / CIO", desc: "Same access as Manager. Lands on the lead home." },
-  data_steward: { label: "Data steward", desc: "Same access as Steward. Lands on the steward home." },
-  data_owner: { label: "Data owner / approver", desc: "Same access as Approver. Lands on the steward home." },
-  sap_basis: { label: "SAP Basis / integration admin", desc: "Analyst access plus connecting systems, sync and field mapping. Lands on the basis home." },
-  platform_admin: { label: "Platform admin", desc: "Same access as Admin, including platform updates." },
-};
-const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: ROLE_META[r].label }));
+/** Why your own row's Active and Remove are locked (the API refuses them too: api/routes/users.py). */
+const SELF_ACCESS_REASON = "You can't change your own access";
+
+/** Roles and access, opened on this user's grants. */
+const manageHref = (id: string) => `/admin/roles?tab=users&user=${encodeURIComponent(id)}`;
+
+/** The table's Roles cell: each granted role once, in grant order; users.role before any grant is listed. */
+function grantNames(u: User): string {
+  const names = Array.from(new Set((u.grants ?? []).map((g) => g.role_name || roleLabel(g.role_key))));
+  return names.length ? names.join(", ") : roleLabel(u.role);
+}
 
 export default function AdminUsersPage() {
-  const [tabRaw, setTab] = useUrlState("tab", "users");
-  const tab = (["users", "roles", "audit"] as string[]).includes(tabRaw) ? tabRaw : "users";
+  // Old links: ?tab=roles (the retired role matrix) and ?tab=audit point at the pages that own them now.
+  const [tabRaw] = useUrlState("tab", "users");
   const { can, loading } = useRole();
   const canManage = can("manage_users");
   const [invite, setInvite] = useState(false);
+  // The header meta counts the people: the same query the users table reads, so it is fetched once.
+  const usersQ = useQuery({ queryKey: queryKeys.users(), queryFn: getUsers, enabled: canManage && !loading });
+  const usersMeta = usersMetaLine(usersQ.data?.users);
 
   // Grants fail closed while loading; a refusal must not flash before they arrive.
   if (loading) return <div aria-busy="true"><Skeleton height={320} /></div>;
@@ -66,23 +58,31 @@ export default function AdminUsersPage() {
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Users"
-        meta="Who can sign in and what each person may do. Invite people, change a role, or suspend someone's access"
-        actions={tab === "users" ? <Button onClick={() => setInvite(true)}>Invite user</Button> : undefined}
+        meta={usersMeta ? <span data-testid="users-meta">{usersMeta}</span> : "Who can sign in and which roles each person holds. Invite people or suspend someone's access"}
+        actions={
+          <>
+            <Button variant="secondary" render={<Link href="/admin/roles">Roles and access</Link>} />
+            <Button variant="secondary" render={<Link href="/admin/audit">Audit log</Link>} />
+            <Button onClick={() => setInvite(true)}>Invite user</Button>
+          </>
+        }
       />
-      <Tabs
-        value={tab}
-        onValueChange={setTab}
-        items={[
-          { value: "users", label: "Users", content: <UsersView invite={invite} setInvite={setInvite} /> },
-          { value: "roles", label: "Roles", content: <RolesView /> },
-          { value: "audit", label: "Audit log", content: <AuditView /> },
-        ]}
-      />
+      {tabRaw === "audit" ? <EmptyState variant="inline" title="The audit log has its own page" action={<Button render={<Link href="/admin/audit">Open the audit log</Link>} />} /> : null}
+      {tabRaw === "roles" ? <EmptyState variant="inline" title="Roles are managed under Roles and access" action={<Button render={<Link href="/admin/roles">Open roles and access</Link>} />} /> : null}
+      <p className="m-text-body m-ink-3">
+        Roles are given and taken back as grants, for every system or for one system or object, under <Link href="/admin/roles" className="m-ink-accent underline underline-offset-2">Roles and access</Link>.
+      </p>
+      <UsersView invite={invite} setInvite={setInvite} />
     </div>
   );
-  // ponytail: dropped URL-sync for the active tab. Tabs now takes onValueChange, but
-  // each view is its own component below and its query only runs once its panel
-  // mounts, so a tab switch needs no URL state to work correctly.
+}
+
+/** "3 users, 2 never signed in": the header line; undefined until the users are known. */
+function usersMetaLine(users: User[] | undefined): string | undefined {
+  if (!users) return undefined;
+  const never = users.filter((u) => u.is_active && !u.last_login).length;
+  const count = `${users.length.toLocaleString()} ${users.length === 1 ? "user" : "users"}`;
+  return never ? `${count}, ${never.toLocaleString()} never signed in` : count;
 }
 
 function UsersView({ invite, setInvite }: { invite: boolean; setInvite: (open: boolean) => void }) {
@@ -91,15 +91,13 @@ function UsersView({ invite, setInvite }: { invite: boolean; setInvite: (open: b
 
   const usersQ = useQuery({ queryKey: queryKeys.users(), queryFn: getUsers });
   const users = useMemo(() => usersQ.data?.users ?? [], [usersQ.data]);
-  const active = users.filter((u) => u.is_active);
-  const neverSignedIn = active.filter((u) => !u.last_login).length;
   const refresh = () => qc.invalidateQueries({ queryKey: queryKeys.users() });
 
   const del = useMutation({
     mutationFn: (u: User) => deleteUser(u.id),
     onSuccess: (_, u) => { toast.success(`${u.name} removed`); setEditing(null); refresh(); },
     onError: (e) => toast.error(
-      (e as { response?: { status?: number } }).response?.status === 409
+      (e as { response?: { status?: number } }).response?.status === 409 && !apiErrorDetail(e)?.includes("last active admin")
         ? "This user is referenced by audit or stewardship records, deactivate them instead"
         : `Not removed. ${apiErrorMessage(e)}`,
     ),
@@ -107,19 +105,25 @@ function UsersView({ invite, setInvite }: { invite: boolean; setInvite: (open: b
 
   const columns = useMemo<ColumnDef<User, unknown>[]>(() => [
     {
-      id: "user", header: "User",
-      cell: ({ row }) => <span><strong>{row.original.name}</strong><div className="m-text-meta m-ink-3">{row.original.email}</div></span>,
+      // One line: the name, then the email in quiet ink, so the row keeps its height.
+      id: "user", header: "User", meta: { sticky: "start" } satisfies CellMeta,
+      cell: ({ row }) => (
+        <span className="flex min-w-0 max-w-[420px] items-baseline gap-2 whitespace-nowrap" title={row.original.email}>
+          <strong className="truncate">{row.original.name}</strong>
+          <span className="m-text-meta m-ink-3 truncate">{row.original.email}</span>
+        </span>
+      ),
     },
-    { id: "role", header: "Role", cell: ({ row }) => <span>{ROLE_META[row.original.role]?.label ?? row.original.role}</span> },
+    { id: "role", header: "Roles", cell: ({ row }) => <span>{grantNames(row.original)}</span> },
     { id: "active", header: "Status", cell: ({ row }) => <Pill tone={row.original.is_active ? "go" : "neutral"}>{row.original.is_active ? "Active" : "Suspended"}</Pill> },
     { id: "login", header: "Last sign-in", cell: ({ row }) => row.original.last_login ? relativeTime(row.original.last_login) : "Never" },
-    { id: "since", header: "Member since", cell: ({ row }) => relativeTime(row.original.created_at) },
+    { id: "since", header: "Member since", meta: { priority: "low" } satisfies CellMeta, cell: ({ row }) => relativeTime(row.original.created_at) },
     {
-      id: "actions", header: "Action",
+      id: "actions", header: "Action", meta: { sticky: "end" } satisfies CellMeta,
       cell: ({ row }) => (
         <span onClick={(e) => e.stopPropagation()}>
           <Menu
-            trigger={<button aria-label={`Actions for ${row.original.name}`}><IconMore size={16} /></button>}
+            trigger={<IconButton type="button" size="sm" aria-label={`Actions for ${row.original.name}`}><IconMore size={16} /></IconButton>}
             items={[{ label: "Edit", onSelect: () => setEditing(row.original) }]}
           />
         </span>
@@ -129,10 +133,6 @@ function UsersView({ invite, setInvite }: { invite: boolean; setInvite: (open: b
 
   return (
     <div className="flex flex-col gap-4 pt-4">
-      <div className="flex gap-4">
-        <Stat label="Never signed in" value={usersQ.isLoading ? undefined : neverSignedIn} />
-      </div>
-
       <Async query={usersQ} skeleton={240}>{users.length ? (
         <DataTable
           columns={columns}
@@ -143,7 +143,7 @@ function UsersView({ invite, setInvite }: { invite: boolean; setInvite: (open: b
           exportOptions={[{
             format: "csv",
             label: "Export users",
-            run: async () => downloadCsv("meridian-users.csv", users.map((u) => ({ name: u.name, email: u.email, role: u.role, active: u.is_active, last_login: u.last_login ?? "" }))),
+            run: async () => downloadCsv("meridian-users.csv", users.map((u) => ({ name: u.name, email: u.email, roles: grantNames(u), active: u.is_active, last_login: u.last_login ?? "" }))),
           }]}
         />
       ) : (
@@ -168,110 +168,95 @@ function UsersView({ invite, setInvite }: { invite: boolean; setInvite: (open: b
   );
 }
 
-function RolesView() {
-  const matrixQ = useQuery({ queryKey: queryKeys.authRoles(), queryFn: getRoleMatrix });
-  const usersQ = useQuery({ queryKey: queryKeys.users(), queryFn: getUsers });
-  const users = (usersQ.data?.users ?? []).filter((u) => u.is_active);
-  const matrix = matrixQ.data;
-  const actions = useMemo(() => Array.from(new Set(Object.values(matrix ?? {}).flat())).sort(), [matrix]);
-
-  const matrixCols = useMemo<ColumnDef<UserRole, unknown>[]>(() => [
-    { id: "role", header: "Role", cell: ({ row }) => <span>{ROLE_META[row.original].label}<div className="m-text-label m-ink-3">{ROLE_META[row.original].desc}</div></span> },
-    ...actions.map((a): ColumnDef<UserRole, unknown> => ({
-      id: a, header: labelOf(a),
-      cell: ({ row }) => (matrix?.[row.original]?.includes(a) ? <span aria-label="Allowed">Yes</span> : <span className="sr-only">Not allowed</span>),
-    })),
-  ], [actions, matrix]);
-  const holderCols = useMemo<ColumnDef<UserRole, unknown>[]>(() => [
-    { id: "role", header: "Role", cell: ({ row }) => <strong>{ROLE_META[row.original].label}</strong> },
-    { id: "n", header: "Users", cell: ({ row }) => users.filter((u) => u.role === row.original).length },
-    { id: "who", header: "Who", cell: ({ row }) => users.filter((u) => u.role === row.original).map((u) => u.name).join(", ") },
-  ], [users]);
-
+/** The user's grants, read-only: each role with where it applies. Changed under Roles and access. */
+function UserGrants({ userId }: { userId: string }) {
+  const grantsQ = useQuery({ queryKey: ["grants", userId], queryFn: () => listGrants(userId) });
+  const rolesQ = useQuery({ queryKey: ["roles"], queryFn: listRoles });
+  const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
+  const roleName = (key: string) => rolesQ.data?.find((r) => r.key === key)?.name;
+  const systemName = (id: string | null) => id ? systemsQ.data?.find((s) => s.id === id)?.name ?? "Unknown system" : null;
   return (
-    <div className="flex flex-col gap-6 pt-4">
-      <p className="m-text-body m-ink-3">What each role may do. To change someone&apos;s role, open them on the Users tab.</p>
-      {matrixQ.isError ? (
-        <ErrorState {...apiErrorState(matrixQ.error)} onRetry={() => matrixQ.refetch()} />
-      ) : matrix ? (
-        <section aria-label="Role matrix">
-          <LedgerHead title="Role matrix" />
-          <DataTable columns={matrixCols} data={ROLES} getRowId={(r) => r} />
-        </section>
-      ) : <Skeleton height={240} />}
-      <section aria-label="Who holds each role">
-        <LedgerHead title="Who holds each role" />
-        <DataTable columns={holderCols} data={ROLES.filter((r) => users.some((u) => u.role === r))} getRowId={(r) => r} />
-      </section>
-    </div>
-  );
-}
-
-function AuditView() {
-  const auditQ = useQuery({ queryKey: queryKeys.auditEntries(50), queryFn: () => getAuditEntries({ limit: 50 }) });
-  const entries: AuditEntry[] = auditQ.data?.entries ?? [];
-  const auditCols = useMemo<ColumnDef<AuditEntry, unknown>[]>(() => [
-    { id: "when", header: "When", cell: ({ row }) => <time dateTime={row.original.created_at}>{relativeTime(row.original.created_at)}</time> },
-    { id: "who", header: "Actor", cell: ({ row }) => (row.original.actor_email ? row.original.actor_email.split("@")[0] : "System") },
-    { id: "what", header: "Action", cell: ({ row }) => `${row.original.action}, ${row.original.entity_type}` },
-    { id: "ctx", header: "Context", cell: ({ row }) => `${row.original.method} ${row.original.path} returned ${row.original.status_code}${row.original.entity_id ? `, ${row.original.entity_id.slice(0, 8)}` : ""}` },
-  ], []);
-
-  return (
-    <div className="flex flex-col gap-4 pt-4">
-      <div className="flex justify-end">
-        <ExportMenu
-          options={[
-            { format: "xlsx", run: () => exportAuditEntries("xlsx") },
-            { format: "csv", run: () => exportAuditEntries("csv") },
-          ]}
-        />
-      </div>
-      <Async query={auditQ} skeleton={240}>{entries.length ? (
-        <DataTable columns={auditCols} data={entries} getRowId={(e) => e.id} />
-      ) : <EmptyState title="No audit activity yet" detail="Changes to users, rules and data are recorded here." ghost="list" action={<Button variant="secondary" onClick={() => void auditQ.refetch()}>Refresh</Button>} />}</Async>
+    <div className="flex flex-col gap-2">
+      <span className="m-text-label m-ink-3">Roles</span>
+      <Async query={grantsQ} skeleton={32}>{grantsQ.data?.length ? (
+        <ul className="flex flex-wrap gap-2" aria-label="Roles granted">
+          {grantsQ.data.map((g) => (
+            <li key={g.id}><Pill>{grantLabel(roleName(g.role_key), g.role_key, systemName(g.system_id), g.module)}</Pill></li>
+          ))}
+        </ul>
+      ) : (
+        <p className="m-text-meta m-ink-3">No roles granted, this user can view only</p>
+      )}</Async>
     </div>
   );
 }
 
 function EditForm({ user, onDone, onRemove, removing }: { user: User; onDone: () => void; onRemove: () => void; removing: boolean }) {
-  const [role, setRole] = useState<UserRole>(user.role);
   const [isActive, setActive] = useState(user.is_active);
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmSave, setConfirmSave] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const { user: me } = useAuth();
+  const self = !!me && me.id === user.id;
   const m = useMutation({
-    mutationFn: () => updateUser(user.id, { role, is_active: isActive }),
-    onSuccess: () => { toast.success(`${user.name} saved`); onDone(); },
+    mutationFn: () => updateUser(user.id, { is_active: isActive }),
+    onSuccess: () => { toast.success(`${user.name} saved`); setConfirmSave(false); onDone(); },
     onError: (e) => toast.error(`Not saved. ${apiErrorMessage(e)}`),
   });
+  const suspending = user.is_active && !isActive;
+  const reactivating = !user.is_active && isActive;
+  const body = suspending
+    ? `${user.name} can no longer sign in; their history stays attributed to them.`
+    : reactivating ? `${user.name} can sign in again.` : "";
 
   return (
-    <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); m.mutate(); }}>
+    <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); if (suspending) setConfirmSave(true); else m.mutate(); }}>
       <p className="m-text-body m-ink-3">{user.email}</p>
-      <Field label="Role">
-        <Select options={ROLE_OPTIONS} value={role} onValueChange={(v) => setRole(v as UserRole)} />
-      </Field>
-      <p className="m-text-meta m-ink-3">{ROLE_META[role].desc}</p>
+      {self ? <Notice tone="info">{SELF_ACCESS_REASON}. Another admin can change your roles or access.</Notice> : null}
+      <UserGrants userId={user.id} />
+      <div>
+        <Button type="button" variant="secondary" render={<Link href={manageHref(user.id)}>Manage roles</Link>} />
+      </div>
       <label className="flex items-center gap-2 m-text-body">
-        <Checkbox aria-label="Active" checked={isActive} onChange={(e) => setActive(e.target.checked)} />
+        <Checkbox aria-label="Active" checked={isActive} disabled={self} title={self ? SELF_ACCESS_REASON : undefined} onChange={(e) => setActive(e.target.checked)} />
         <span>Active, {isActive ? "this user can sign in" : "sign-in is blocked"}</span>
       </label>
       <div className="flex gap-2">
-        <Button type="submit" pending={m.isPending}>Save</Button>
+        <Button type="submit" pending={m.isPending} disabled={self || isActive === user.is_active}>Save</Button>
         <Button type="button" variant="secondary" onClick={onDone}>Close</Button>
       </div>
       <p className="m-text-meta m-ink-3">To stop someone signing in but keep their name on past work, untick Active and save instead of removing them.</p>
-      <div><Button type="button" variant="ghost" disabled={removing} onClick={() => setConfirmOpen(true)}>Remove user</Button></div>
+      <div>
+        {self ? (
+          <Tooltip label={SELF_ACCESS_REASON} render={<Button type="button" variant="ghost" disabled aria-disabled="true" aria-label={`Remove user. ${SELF_ACCESS_REASON}`} />}>
+            Remove user
+          </Tooltip>
+        ) : (
+          <Button type="button" variant="ghost" disabled={removing} onClick={() => setConfirmRemove(true)}>Remove user</Button>
+        )}
+      </div>
 
       <ConfirmDialog
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
+        open={confirmSave}
+        onOpenChange={setConfirmSave}
+        title={`Suspend ${user.name}`}
+        body={body}
+        confirmLabel="Suspend and save"
+        cancelLabel="Keep as is"
         tone="danger"
-        title={`Remove ${user.name}?`}
-        body={`${user.name} can no longer sign in. Their past stewardship work stays attributed to them.`}
+        pending={m.isPending}
+        onConfirm={() => m.mutate()}
+      />
+      <ConfirmDialog
+        open={confirmRemove}
+        onOpenChange={setConfirmRemove}
+        title={`Remove ${user.name}`}
+        body={`${user.name} (${user.email}) loses access at once. Their stewardship history stays attributed to them. A user referenced by audit or stewardship records cannot be removed; suspend them instead.`}
         confirmLabel="Remove user"
         cancelLabel="Keep user"
+        tone="danger"
+        typeToConfirm={user.email}
         pending={removing}
-        onConfirm={() => { setConfirmOpen(false); onRemove(); }}
+        onConfirm={() => { setConfirmRemove(false); onRemove(); }}
       />
     </form>
   );

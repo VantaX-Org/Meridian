@@ -7,6 +7,7 @@ import { getRuleByCode } from "@/lib/api/rules";
 
 const replace = vi.fn();
 let params = { ruleId: "MM045" };
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 vi.mock("next/navigation", () => ({
   useParams: () => params,
   useRouter: () => ({ replace, push: vi.fn() }),

@@ -57,6 +57,7 @@ const EXPECTED: Record<string, string> = {
   "/reports": "/insights",
   "/cleaning": "/fix",
   "/remediation": "/fix?tab=batches",
+  "/fix/:id((?!what-if$|proposals$|proposals/).*)": "/fix/proposals/:id",
   "/settings/field-mapping": "/admin/mappings",
   "/settings/ai": "/admin/ai",
   "/settings/licence": "/admin/licence",
@@ -75,6 +76,16 @@ describe("legacy route redirects", () => {
     const actual = Object.fromEntries(plain.map((r) => [r.source, r.destination]));
     expect(actual).toEqual(EXPECTED);
     for (const r of redirects) expect(r.permanent).toBe(false);
+  });
+
+  it("sends old /fix/{run} links to /fix/proposals/{run} without catching /fix/what-if or the new path", async () => {
+    const redirects = await nextConfig.redirects!();
+    const rule = redirects.find((r) => r.destination === "/fix/proposals/:id")!;
+    const pattern = new RegExp(`^${rule.source.replace(/:id\((.*)\)$/, "($1)")}$`);
+    expect("/fix/R1").toMatch(pattern);
+    expect("/fix/what-if").not.toMatch(pattern);
+    expect("/fix/proposals").not.toMatch(pattern);
+    expect("/fix/proposals/R1").not.toMatch(pattern);
   });
 
   it("sends legacy /workbench?tab=batches deep links to /fix?tab=batches, ahead of the generic /workbench rule", async () => {

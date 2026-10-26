@@ -69,13 +69,15 @@ describe("ObjectsPage without ?run=: the current state", () => {
     expect(bodyRows()).toHaveLength(3);
     // one list per lineage, never the superseded controlling upload and never run=latest
     expect(getObjects.mock.calls.map((c) => c[0]).sort()).toEqual(["co2", "mm", "sys"]);
-    expect(cellLink("60")).toHaveAttribute("href", "/objects/controlling?tab=rules");
+    expect(cellLink("60.0")).toHaveAttribute("href", "/objects/controlling?tab=rules");
     expect(cellLink("4,500")).toHaveAttribute("href", "/objects/business_partner?tab=fix");
     expect(screen.getByTestId("run-scope")).toHaveTextContent("Current state of 3 objects, latest run 16 Oct 2026");
     expect(screen.queryByText("Back to latest")).toBeNull();
     // the stats read the merged list: one not ready, one at risk, one go, 0 critical + 3 high blocking
-    expect(screen.getByText("Not ready").closest("a")).toHaveAttribute("href", "/objects?readiness=fail");
-    expect(within(screen.getByText("Blocking findings").closest("a, div") as HTMLElement).getByText("3")).toBeInTheDocument();
+    expect(screen.getAllByText("No-go").map((e) => e.closest("a")).find((a) => a?.getAttribute("href")?.includes("readiness=fail"))).toHaveAttribute("href", "/objects?readiness=fail");
+    expect(within(screen.getByText("Critical and high findings").closest("a, div") as HTMLElement).getByText("3")).toBeInTheDocument();
+    // across several runs, the tile opens the current-state findings filtered the same way
+    expect(screen.getByText("Critical and high findings").closest("a")).toHaveAttribute("href", "/insights?severity=critical,high");
   });
 
   it("?readiness=fail keeps only the not-ready objects of the merged list", async () => {

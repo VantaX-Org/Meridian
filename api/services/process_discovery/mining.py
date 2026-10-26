@@ -137,6 +137,7 @@ class Conformance:
     missing: dict[str, float]       # expected key (alternatives joined by "|") -> share of cases missing it
     out_of_order: dict[str, float]  # activity -> share of cases where it is out of order
     step_fitness: dict[str, float]  # expected activity -> step fitness (spec §3.5)
+    extra: dict[str, int] = field(default_factory=dict)  # activity not in the mapping -> cases it occurs in (§3.5)
 
 
 @dataclass
@@ -332,6 +333,7 @@ def conformance(variants: Iterable[Variant], mapping: Sequence[ActivityMap]) -> 
     fits: list[float] = []
     missing: Counter[frozenset[str]] = Counter()
     bad: Counter[str] = Counter()
+    extra: Counter[str] = Counter()
     for v in sorted(variants, key=lambda x: (-x.case_count, x.hash)):
         fit, miss, oo = score_variant(v.activities, groups, order)
         v.fitness = round(fit, 4)
@@ -339,6 +341,9 @@ def conformance(variants: Iterable[Variant], mapping: Sequence[ActivityMap]) -> 
         fits.append(fit * v.case_count)
         missing.update({g: v.case_count for g in miss})
         bad.update({a: v.case_count for a in oo})
+        # the Other bucket names no activity of its own, so it adds nothing to "extra"
+        if v.hash != OTHER_HASH:
+            extra.update({a: v.case_count for a in set(v.activities) if a != OTHER and order(a) is None})
     if not total:
         return Conformance(None, {}, {}, {})
 
@@ -348,7 +353,8 @@ def conformance(variants: Iterable[Variant], mapping: Sequence[ActivityMap]) -> 
     return Conformance(round(math.fsum(fits) / total, 4),
                        {name(g): round(missing[g] / total, 4) for g in groups if missing[g]},
                        {a: round(n / total, 4) for a, n in sorted(bad.items())},
-                       {k: max(0.0, v) for k, v in step.items()})
+                       {k: max(0.0, v) for k, v in step.items()},
+                       dict(sorted(extra.items(), key=lambda kv: (-kv[1], kv[0]))))
 
 
 def loops(edges: Iterable[Edge]) -> set[tuple[str, str]]:

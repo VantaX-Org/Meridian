@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { resolveTourHref, type TourLinkSources } from "./tour-links";
 import { TOURS, tourById, tourForPath } from "./tours";
+import { homeHrefForRole } from "@/lib/persona";
 
 const ROOT = path.resolve(__dirname, "..", "..");
 
@@ -52,6 +53,23 @@ describe("tour definitions", () => {
     expect(tourForPath("/home/basis")?.id).toBe("basis");
     expect(tourForPath("/home/process")?.id).toBe("process");
     expect(tourForPath("/objects")).toBeUndefined();
+  });
+
+  it("offers the steward tour on Fix work, where stewards land, to stewards only", () => {
+    expect(tourForPath("/fix", "steward")?.id).toBe("steward");
+    expect(tourForPath("/fix", "lead")).toBeUndefined();
+    expect(tourForPath("/fix")).toBeUndefined();
+    expect(tourForPath("/fix/what-if", "steward")).toBeUndefined();
+    expect(tourForPath("/home/lead", "steward")?.id).toBe("lead");
+  });
+
+  it("offers the steward tour where a steward actually lands", () => {
+    expect(tourById("steward")!.landing?.route).toBe(homeHrefForRole("steward"));
+  });
+
+  it("starts every step of the steward tour from any page: each target is reached by its href or sits in the shell", () => {
+    const shell = new Set(["help-menu", "rail", "command-palette"]);
+    for (const step of tourById("steward")!.steps) expect(step.href !== undefined || shell.has(step.target), step.target).toBe(true);
   });
 
   it("writes copy in sentence case with no empty text", () => {

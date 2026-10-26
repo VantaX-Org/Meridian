@@ -2,12 +2,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { PageHeader, DrillLink, Button, ConfirmDialog, DataTable, Delta, ExplorerPage, ExportMenu, emptyExportOptions, Field, Input, Line, Pager, Pill, Score, Select, Skeleton, Sparkline, Stat, StatSkeleton, Tooltip, usePrefetch, type CellMeta, Status, toLifecycle, ProgressFill } from "@/design";
+import { PageHeader, DrillLink, FilterChip, Button, ConfirmDialog, DataTable, Delta, EmptyState, ExplorerPage, ExportMenu, emptyExportOptions, Field, HelpHint, Input, Line, Menu, Pager, Pill, RowAction, Score, Select, Skeleton, Sparkline, Stat, StatSkeleton, Tooltip, usePrefetch, type CellMeta, Status, toLifecycle, ProgressFill } from "@/design";
+import { RunAnalysis } from "@/app/(app)/insights/_components/RunAnalysis";
+import { InsightTabs } from "@/app/(app)/insights/_components/InsightViews";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
@@ -17,14 +18,13 @@ import { exportRuns } from "@/lib/api/v1/runs";
 import { blockedReasonOf, deleteVersion } from "@/lib/api/retention";
 import { getAnalysisStatus } from "@/lib/api/upload";
 import { archiveVersions, compareVersions, getVersions, restoreVersions } from "@/lib/api/versions";
-import { formatDate, runAxisLabels } from "@/lib/format";
+import { formatDate, plural, runAxisLabels } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { isFinished, lineageSeries, overallDqs, previousRunId, runPageHref, scopeOf } from "@/lib/runs";
+import { runName, runScopeLabel } from "@/lib/run-scope";
 import type { Version } from "@/types/api";
 import { isListFailure } from "@/lib/error";
 
-
-const runName = (v: Version) => v.label ?? formatDate(v.run_at, "datetime");
 const IN_PROGRESS = new Set(["pending", "running", "agents_enqueued", "agents_running"]);
 
 /** Live progress for a run that is still being analysed: polls the status endpoint until it settles, then refreshes the list. */
@@ -102,8 +102,8 @@ function makeColumns(allVersions: Version[], onDelete?: (v: Version) => void): C
       ),
     },
     {
-      id: "lineage",
-      header: "Lineage",
+      id: "history",
+      header: () => <span className="inline-flex items-center gap-1">History <HelpHint term="run" /></span>,
       size: 110,
       enableSorting: false,
       cell: ({ row }) => {
@@ -125,7 +125,7 @@ function makeColumns(allVersions: Version[], onDelete?: (v: Version) => void): C
     {
       id: "dqs",
       accessorFn: (v) => overallDqs(v) ?? -1,
-      header: "DQS",
+      header: "Score",
       cell: ({ row }) => {
         const dqs = overallDqs(row.original);
         if (dqs === null) return "—";
@@ -146,6 +146,7 @@ function makeColumns(allVersions: Version[], onDelete?: (v: Version) => void): C
       header: "",
       size: 150,
       enableSorting: false,
+      meta: { sticky: "end" } satisfies CellMeta,
       cell: ({ row }) => (
         <span className="inline-flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
           {onDelete && row.original.metadata?.archived ? (
@@ -153,12 +154,15 @@ function makeColumns(allVersions: Version[], onDelete?: (v: Version) => void): C
               Delete permanently
             </Button>
           ) : null}
-          <Link href={`/runs/${row.original.id}`} aria-label={`Open ${runName(row.original)}`} className="m-ink-accent">Open</Link>
+          <RowAction href={`/runs/${row.original.id}`} label={`Open ${runName(row.original)}`} />
         </span>
       ),
     },
   ];
 }
+
+/** Where `c` is someone else's key: a field, a control, or a dialog, listbox or menu that owns the keyboard. */
+const KEY_OWNERS = "input, textarea, select, [contenteditable], a, button, [role=dialog], [role=alertdialog], [role=listbox], [role=option], [role=menu], [role=menuitem], [role=combobox]";
 
 /** Bulk bar for the selection; `c` compares once exactly two runs are selected. */
 function CompareBar({ selected, onCompare }: { selected: Version[]; onCompare: (a: Version, b: Version) => void }) {
@@ -173,7 +177,7 @@ function CompareBar({ selected, onCompare }: { selected: Version[]; onCompare: (
     if (!two) return;
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
-      if (e.key !== "c" || e.metaKey || e.ctrlKey || e.altKey || t?.closest("input, textarea, select, [contenteditable]")) return;
+      if (e.key !== "c" || e.metaKey || e.ctrlKey || e.altKey || t?.closest(KEY_OWNERS)) return;
       onCompare(selected[0], selected[1]);
     };
     window.addEventListener("keydown", onKey);
@@ -182,24 +186,11 @@ function CompareBar({ selected, onCompare }: { selected: Version[]; onCompare: (
   return two ? <Button {...prefetch} onClick={() => onCompare(selected[0], selected[1])}>Compare</Button> : <span className="m-ink-2">Select two runs</span>;
 }
 
-function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onRemove}
-      aria-label={`Remove filter ${label}`}
-      className="inline-flex items-center gap-1 rounded px-2 py-1 m-motion-colors [background:var(--m-accent-soft)]! m-ink-accent [font-size:var(--m-text-meta)]!"
-    >
-      {label}
-      <span aria-hidden>×</span>
-    </button>
-  );
-}
-
 const PAGE_SIZE = 100;
 
 export default function RunsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [system, setSystem] = useUrlState("system");
   const [rawStatus, setStatus] = useUrlState("status", "");
   const [archivedParam, setArchived] = useUrlState("archived", "");
@@ -211,20 +202,36 @@ export default function RunsPage() {
   const failedOnly = rawStatus === "failed";
   const dayOne = useDayOne();
 
-  const [page, setPage] = useState(1);
+  // The page belongs to one filter set: changing a filter starts again at page 1.
+  const filterKey = `${system}|${failedOnly ? "failed" : ""}|${showArchived ? "1" : ""}`;
+  const [paging, setPaging] = useState({ key: filterKey, page: 1 });
+  const page = paging.key === filterKey ? paging.page : 1;
+  const setPage = (p: number) => setPaging({ key: filterKey, page: p });
   const all = useQuery({
     // Nested under the shared list's key so invalidating it refreshes this page too, but never the same key:
     // the shared list holds the paginated newest runs (hooks/use-run-list) and must not be replaced by one page.
-    queryKey: [...queryKeys.run("list"), "page", page, showArchived] as const,
-    queryFn: () => getVersions({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE, ...(showArchived ? { include_archived: true } : {}) }),
+    // System and status are filtered on the server, so `total` and the pager count the filtered set, not one page.
+    queryKey: [...queryKeys.run("list"), "page", page, showArchived, system, failedOnly] as const,
+    queryFn: () => getVersions({
+      limit: PAGE_SIZE,
+      offset: (page - 1) * PAGE_SIZE,
+      ...(system ? { system_id: system } : {}),
+      ...(failedOnly ? { status: "failed" as const } : {}),
+      ...(showArchived ? { include_archived: true } : {}),
+    }),
     placeholderData: keepPreviousData,
     // Keep the list fresh while any run on this page is still being analysed.
     refetchInterval: (query) => (query.state.data?.versions?.some((v) => IN_PROGRESS.has(v.status)) ? 5000 : false),
   });
-  // Summary stats and the trend use the newest page only, whichever table page is showing. Page 1 shares the cache key above.
+  const total = all.data?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  // Archiving or deleting can shrink the set under the current page: step back to the last page that exists.
+  if (all.data && !all.isPlaceholderData && page > pageCount) setPage(pageCount);
+  // Summary stats and the trend use the newest page of the chosen system, whichever table page is showing.
+  // Unfiltered, page 1 shares the cache key above.
   const head = useQuery({
-    queryKey: [...queryKeys.run("list"), "page", 1, false] as const,
-    queryFn: () => getVersions({ limit: PAGE_SIZE, offset: 0 }),
+    queryKey: [...queryKeys.run("list"), "page", 1, false, system, false] as const,
+    queryFn: () => getVersions({ limit: PAGE_SIZE, offset: 0, ...(system ? { system_id: system } : {}) }),
     placeholderData: keepPreviousData,
   });
   const systems = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
@@ -237,22 +244,23 @@ export default function RunsPage() {
     () => makeColumns(allVersions, canPurge ? setDeleteTarget : undefined),
     [allVersions, canPurge],
   );
-  // The upload scope has no system_id to filter by, so only real systems are offered.
-  const systemOptions = useMemo(() => {
-    const ids = [...new Set(allVersions.map(scopeOf))].filter((id) => id !== "upload");
-    return [{ value: "", label: "All systems" }, ...ids.map((id) => ({ value: id, label: systemName.get(id) ?? id }))];
-  }, [allVersions, systemName]);
-  const scoped = useMemo(() => (system ? allVersions.filter((v) => v.metadata?.system_id === system) : allVersions), [allVersions, system]);
-  const headVersions = useMemo(() => head.data?.versions ?? [], [head.data]);
-  const headScoped = useMemo(() => (system ? headVersions.filter((v) => v.metadata?.system_id === system) : headVersions), [headVersions, system]);
+  // Every connected system, not only the ones on the current page. The upload scope has no system_id to filter by.
+  const systemOptions = useMemo(
+    () => [{ value: "", label: "All systems" }, ...(systems.data ?? []).map((s) => ({ value: s.id, label: s.name }))],
+    [systems.data],
+  );
+  // The server already scoped both lists to the chosen system.
+  const headScoped = useMemo(() => head.data?.versions ?? [], [head.data]);
+  const headVersions = headScoped;
   const failedCount = headScoped.filter((v) => toLifecycle(v.status) === "failed").length;
   // Newest first, so the day groups of the ledger read top-down.
   const rows = useMemo(
-    () => [...(failedOnly ? scoped.filter((v) => toLifecycle(v.status) === "failed") : scoped)].sort((a, b) => (a.run_at < b.run_at ? 1 : a.run_at > b.run_at ? -1 : 0)),
-    [scoped, failedOnly],
+    () => [...allVersions].sort((a, b) => (a.run_at < b.run_at ? 1 : a.run_at > b.run_at ? -1 : 0)),
+    [allVersions],
   );
 
-  const state = all.isLoading ? "loading" : isListFailure(all) ? "error" : rows.length === 0 ? "empty" : undefined;
+  // Empty only when the filtered set is: a page past the end steps back above instead of reading as "No runs match".
+  const state = all.isLoading ? "loading" : isListFailure(all) ? "error" : rows.length === 0 && total === 0 ? "empty" : undefined;
 
   const latest = headScoped[0];
   const latestDqs = latest ? overallDqs(latest) : null;
@@ -262,6 +270,10 @@ export default function RunsPage() {
 
   // Chart scope: the chosen system, else the system of the latest run.
   const chartScope = system || (latest ? scopeOf(latest) : "");
+  // The name of a scope: the system's name, "uploads" for imported files; null until the systems load.
+  const scopeName = (scope: string): string | null => (scope === "upload" ? "uploads" : systemName.get(scope) ?? null);
+  const chartScopeName = chartScope ? scopeName(chartScope) : null;
+  const latestScopeName = latest ? scopeName(scopeOf(latest)) : null;
   const points = useMemo(() => {
     // Keyed by run id with a disambiguated date as the tick, so two runs on one day never merge into one point.
     const scoped = headScoped.filter((v) => isFinished(v) && scopeOf(v) === chartScope);
@@ -300,36 +312,39 @@ export default function RunsPage() {
       toast.error(blocked ? `Not deleted: ${blocked}` : errorText(e));
     },
   });
-  const firstSystem = systems.data?.[0];
-
+  // Runs is a tab of the Operate view, under the view tabs. Run analysis is the one primary action and Export the one
+  // secondary; Review fixes, Present and archiving wait in "More". The run count is the header meta, not a tile.
+  const runTotal = all.data?.total ?? allVersions.length;
+  const presenting = searchParams?.get("present") === "1";
+  const presentHref = `/runs?${new URLSearchParams({ ...Object.fromEntries(searchParams?.entries() ?? []), present: "1" })}`;
+  // The other ways to start a run sit beside Run analysis: import a file, run process discovery.
+  const moreItems = [
+    ...(can("upload") ? [{ label: "Import a file", onSelect: () => router.push("/import") }] : []),
+    ...(can("run_process_discovery") ? [{ label: "Run process discovery", onSelect: () => router.push("/process/runs?new=1") }] : []),
+    { label: "Review fixes", onSelect: () => router.push("/fix") },
+    { label: "Present", onSelect: () => router.push(presentHref) },
+    ...(can("analyse")
+      ? [showArchived
+        ? { label: "Restore archived runs", onSelect: () => restore.mutate() }
+        : { label: "Archive older runs", onSelect: () => setArchiveOpen(true) }]
+      : []),
+  ];
   const header = (
     <PageHeader
       title="Runs"
-      actions={
-        <>
-          <ExportMenu options={state === "empty" ? emptyExportOptions(exportOptions) : exportOptions} />
-          {can("analyse") ? (
-            showArchived ? (
-              <Tooltip label="Bring every archived run back into the lists" render={<Button variant="secondary" onClick={() => restore.mutate()} pending={restore.isPending} />}>
-                Restore archived runs
-              </Tooltip>
-            ) : (
-              <Tooltip label="Hide finished runs older than the newest ones you keep. Nothing is deleted." maxWidth={260} render={<Button variant="secondary" onClick={() => setArchiveOpen(true)} />}>
-                Archive older runs
-              </Tooltip>
-            )
-          ) : null}
-          {firstSystem ? (
-            <Tooltip label="Extract and check the connected system now" render={<Button render={<Link href={`/systems/${firstSystem.id}`} />} />}>
-              Run analysis
-            </Tooltip>
-          ) : (
-            <Tooltip label="Connect a system first" render={<Button aria-disabled="true" onClick={() => undefined} />}>
-              Run analysis
-            </Tooltip>
-          )}
-        </>
+      meta={
+        <span data-testid="runs-meta" className="inline-flex items-center gap-1">
+          {all.isLoading || runTotal === 0 ? "Every analysis" : plural(runTotal, "run")}, newest first; change is against the previous run of the same system <HelpHint term="previous_run" />
+        </span>
       }
+      tabs={<InsightTabs />}
+      actions={presenting ? undefined : (
+        <>
+          <Menu trigger={<Button variant="ghost" pending={restore.isPending}>More</Button>} items={moreItems} />
+          <ExportMenu options={state === "empty" ? emptyExportOptions(exportOptions) : exportOptions} />
+          <RunAnalysis variant="primary" />
+        </>
+      )}
     />
   );
 
@@ -345,29 +360,29 @@ export default function RunsPage() {
     <div className="flex flex-col gap-4">
       <div data-testid="runs-chart-slot" className="flex flex-col gap-1">
         <h2 className="font-semibold m-text-h">
-          {`Score per run, ${systemName.get(chartScope) ?? "latest system"}`}
+          {chartScopeName ? `Score per run, ${chartScopeName}` : "Score per run"}
         </h2>
         {points.length > 1 ? (
           <Line data={points} height={120} onPointClick={(p) => { if (p.runId) router.push(runPageHref(p.runId)); }} />
         ) : (
-          <div className="flex items-center justify-center text-sm [height:120px] [background:var(--m-sheet-sunken)] m-ink-3">
-            Trend appears after two runs
+          <div className="flex items-center justify-center [height:120px] [background:var(--m-sheet-sunken)]">
+            <EmptyState variant="inline" title="Trend appears after two runs" />
           </div>
         )}
       </div>
       {rows.length > 0 || headScoped.length > 0 ? (
-        <div className="m-stat-grid m-motion-stagger @5xl:[grid-template-columns:repeat(2,minmax(0,360px))]">
+        // As many columns as tiles, so one tile never stretches across the row.
+        <div className={`m-stat-grid m-motion-stagger ${failedCount > 0 ? "@5xl:[grid-template-columns:repeat(2,minmax(0,360px))]" : "[grid-template-columns:minmax(0,360px)]"}`}>
           <Stat
-            label="Latest DQS"
+            label={latestScopeName ? `Latest DQS, ${latestScopeName}` : "Latest DQS"}
             help="dqs"
             value={latest && latestDqs !== null ? latestDqs.toFixed(1) : "—"}
             bar={latest && latestDqs !== null ? latestDqs : undefined}
             rule={{}}
             delta={delta !== null ? <Delta value={delta} /> : undefined}
-            hint={delta === null ? "No earlier run" : "vs previous"}
+            hint={!latest ? "No earlier run" : delta === null ? `${runScopeLabel(latest)}, mean of ${plural(Object.keys(latest.dqs_summary ?? {}).length, "object")}` : `${runScopeLabel(latest)}, vs previous run`}
             href={latest ? `/runs/${latest.id}` : undefined}
           />
-          <Stat label="Runs" value={(all.data?.total ?? allVersions.length).toLocaleString()} hint={all.data?.total != null && all.data.total > headVersions.length ? `latest ${headVersions.length} used for the figures above` : undefined} />
           {failedCount > 0 ? <Stat label="Failed runs" hint={`in the latest ${PAGE_SIZE}`} value={failedCount.toLocaleString()} tone="no-go" href="/runs?status=failed" /> : null}
         </div>
       ) : null}
@@ -377,10 +392,10 @@ export default function RunsPage() {
   const filterBar = (
     <div className="flex flex-wrap items-center gap-2">
       <Select label="System" value={system} onValueChange={setSystem} options={systemOptions} placeholder="All systems" />
-      {system ? <FilterChip label={`System: ${systemName.get(system) ?? system}`} onRemove={() => setSystem("")} /> : null}
-      {failedOnly ? <FilterChip label="Status: failed" onRemove={() => setStatus("")} /> : null}
+      {system ? <FilterChip label="System" value={systemName.get(system) ?? system} onRemove={() => setSystem("")} /> : null}
+      {failedOnly ? <FilterChip label="Status" value="Failed" onRemove={() => setStatus("")} /> : null}
       {showArchived ? (
-        <FilterChip label="Including archived" onRemove={() => setArchived("")} />
+        <FilterChip label="Runs" value="Including archived" onRemove={() => setArchived("")} />
       ) : (
         <Tooltip label="Include runs that were archived" render={<Button variant="ghost" onClick={() => setArchived("1")} />}>
           Show archived
@@ -447,8 +462,8 @@ export default function RunsPage() {
           onRowClick={(row) => router.push(`/runs/${row.id}`)}
           bulkActions={(selected) => <CompareBar selected={selected} onCompare={compare} />}
         />
-        {(all.data?.total ?? 0) > PAGE_SIZE && (
-          <Pager page={page} pageCount={Math.ceil((all.data?.total ?? 0) / PAGE_SIZE)} pageSize={PAGE_SIZE} total={all.data?.total ?? 0} onPageChange={setPage} />
+        {total > PAGE_SIZE && (
+          <Pager page={page} pageCount={pageCount} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />
         )}
         </>
       }

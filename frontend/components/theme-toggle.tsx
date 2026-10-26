@@ -10,7 +10,7 @@ const OPTIONS: { value: Theme; label: string; icon: Icon }[] = [
   { value: "dark", label: "Dark", icon: IconMoon },
 ];
 
-/** Light / System / Dark segmented control. Choice is stored per browser by useAuroraPrefs. */
+/** Light / System / Dark as `.m-choice` pills in a radio group (arrow keys move the choice). Stored by useAuroraPrefs. */
 export function ThemeToggle() {
   const { theme, setTheme } = useAuroraPrefs();
 
@@ -26,13 +26,7 @@ export function ThemeToggle() {
   };
 
   return (
-    <div
-      role="radiogroup"
-      aria-label="Theme"
-      onKeyDown={onKeyDown}
-      className="inline-flex items-center gap-0.5 p-0.5"
-      style={{ height: "var(--m-control-h)", background: "var(--m-sheet-sunken)", borderRadius: "var(--m-radius-pill)" }}
-    >
+    <div role="radiogroup" aria-label="Theme" onKeyDown={onKeyDown} className="inline-flex items-center gap-1">
       {OPTIONS.map(({ value, label, icon: Icon }) => {
         const selected = theme === value;
         return (
@@ -44,12 +38,7 @@ export function ThemeToggle() {
             data-value={value}
             tabIndex={selected ? 0 : -1}
             onClick={() => setTheme(value)}
-            className={`m-motion-colors inline-flex h-full items-center gap-1 px-2 m-text-meta font-medium ${selected ? "m-elev-1" : ""}`}
-            style={{
-              borderRadius: "var(--m-radius-pill)",
-              background: selected ? "var(--m-sheet)" : "transparent",
-              color: selected ? "var(--m-ink)" : "var(--m-ink-3)",
-            }}
+            className="m-choice"
           >
             <Icon size={14} aria-hidden />
             {label}

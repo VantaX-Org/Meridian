@@ -18,6 +18,13 @@ export function readinessOf(score: number, bands: ScoreBands = DEFAULT_SCORE_BAN
   return score >= bands.target ? "go" : score >= bands.warning ? "at-risk" : "no-go";
 }
 
+/**
+ * Below target: at risk or no-go (`readinessOf` is "go" only at the target). Objects not scored yet are neither.
+ * `BELOW_TARGET` is the `/objects?readiness=` value that lists the same objects.
+ */
+export const isBelowTarget = (o: { readiness?: string | null }): boolean => o.readiness === "warn" || o.readiness === "fail";
+export const BELOW_TARGET = "warn,fail";
+
 /** Mean `composite_score` across every module measured in this run, or null if none are. */
 export function runDqs(v: Scored): number | null {
   const scores = Object.values(v.dqs_summary ?? {}).flatMap((m) => (m.composite_score == null ? [] : [m.composite_score]));

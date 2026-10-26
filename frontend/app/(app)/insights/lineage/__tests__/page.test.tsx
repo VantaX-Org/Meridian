@@ -13,7 +13,7 @@ vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(""), useRouter: () => ({ push: vi.fn(), replace: vi.fn() }), usePathname: () => "/" }));
 // DayOneAction renders its fallback link, as it does with no day-one step.
 vi.mock("@/hooks/use-day-one", () => ({
-  useDayOne: () => ({ status: "ready", step: null }),
+  useDayOne: () => ({ status: "ready", step: null, error: null, refetch: () => {} }),
   DayOneAction: ({ fallbackHref, fallbackLabel }: { fallbackHref: string; fallbackLabel: string }) => <a href={fallbackHref}>{fallbackLabel}</a>,
 }));
 
@@ -140,6 +140,42 @@ describe("LineagePage blast radius", () => {
     const empty = (await screen.findByText("Nothing to follow yet")).closest("[data-state='empty']") as HTMLElement;
     expect(within(empty).getByText("Following a rule to what it reaches needs a completed analysis.")).toBeInTheDocument();
     expect(within(empty).getByRole("link", { name: "Open runs" })).toHaveAttribute("href", "/runs");
+    vi.unstubAllGlobals();
+  });
+
+  it("names the object a rule reaches by its lineage name, never its id", async () => {
+    class StubRO { observe() {} disconnect() {} unobserve() {} }
+    vi.stubGlobal("ResizeObserver", StubRO);
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [LATEST as never] });
+    vi.spyOn(lineageApi, "getLineageModel").mockResolvedValue({ model_version: 3, node_counts: {}, edge_count: 10, kpis: [], processes: [], features: [], warnings: [] });
+    vi.spyOn(lineageApi, "getLineage").mockResolvedValue({
+      start: "check:AP017", model_version: 3,
+      nodes: [
+        { id: "check:AP017", type: "check", label: "AP017" },
+        { id: "object:gl_account", type: "object", label: "G/L account" },
+      ],
+      edges: [{ source: "check:AP017", target: "object:gl_account", rel: "guards" }],
+      paths_to_kpis: [],
+    } as never);
+    vi.spyOn(lineageApi, "getLineageImpact").mockResolvedValue({
+      version_id: "v1", model_version: 3, cost_available: false, kpis: [], processes: [], features: [], unmapped_checks: [],
+    });
+    vi.spyOn(lineageApi, "getBlastRadius").mockResolvedValue({
+      version_id: "v1", check_id: "AP017", grain: "SKA1", object: "gl_account", failing_records: 4, keys_truncated: false,
+      targets: [], steps_touched: [], processes_touched: [],
+    });
+    const { container } = renderWithQuery(<LineagePage />);
+    fireEvent.change(await screen.findByLabelText("Item to trace"), { target: { value: "check:AP017" } });
+    fireEvent.click(screen.getByRole("button", { name: "Trace" }));
+    const node = await waitFor(() => {
+      const g = Array.from(container.querySelectorAll("g.m-graph-node")).find((el) => el.querySelector("title")?.textContent === "AP017");
+      expect(g).toBeTruthy();
+      return g as SVGGElement;
+    });
+    fireEvent.click(node);
+
+    expect(await screen.findByText(/4 failing records on G\/L account touch 0 processes/)).toBeInTheDocument();
+    expect(screen.queryByText(/on gl_account/)).toBeNull();
     vi.unstubAllGlobals();
   });
 });

@@ -54,7 +54,7 @@ def test_export_objects_builds_real_workbook() -> None:
     assert wb.sheetnames == ["Cover", "Objects"]
     ws = wb["Objects"]
     headers = [c.value for c in ws[1]]
-    assert headers == ["Module", "Label", "Composite score", "Readiness", "Failing checks", "Affected records"]
+    assert headers == ["Module", "Label", "Composite score", "Readiness", "Failing checks", "Rule failures"]
     assert ws.cell(row=2, column=headers.index("Composite score") + 1).value == 72.5
 
     cover = wb["Cover"]

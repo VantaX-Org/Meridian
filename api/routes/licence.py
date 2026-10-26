@@ -8,16 +8,21 @@ Used by the customer frontend to:
 - Show expiry countdown
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
-from api.middleware.licence import get_cached_licence, get_cached_manifest
+from api.deps import Tenant, get_db, get_tenant
+from api.middleware import licence as licence_mw
+from api.middleware.licence import get_cached_manifest
+from api.services.rbac import require_permission
 
 router = APIRouter(prefix="/api/v1", tags=["licence"])
 
 
 @router.get("/licence")
-async def get_licence(request: Request):
+async def get_licence(request: Request, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     """Return the current licence manifest as cached from the last validation.
 
     Includes: valid, status, tier, expiry, days_remaining, enabled_modules,
@@ -27,4 +32,28 @@ async def get_licence(request: Request):
     Platform-update UI should prefer GET /api/v1/system/update-status instead
     (api/routes/system_update.py) — it does the version comparison server-side.
     """
-    return get_cached_manifest()
+    return await _with_seats(db, tenant)
+
+
+@router.post("/licence/validate", dependencies=[Depends(require_permission("manage_system"))])
+async def validate_licence(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """Check the licence with Meridian HQ now instead of waiting for the 6-hour refresh.
+
+    Updates the same in-memory caches the licence middleware does and returns the
+    fresh manifest in the shape of GET /api/v1/licence. 503 when HQ cannot be reached.
+    """
+    result, outcome = await licence_mw.revalidate()
+    if result is None or outcome == "cutoff":
+        raise HTTPException(status_code=503, detail="Meridian HQ could not be reached. Try again shortly")
+    return await _with_seats(db, tenant)
+
+
+async def _with_seats(db: AsyncSession, tenant: Tenant) -> dict:
+    """The cached manifest with the tenant's seats in use."""
+    manifest = dict(get_cached_manifest())
+    # Seats in use: active users of this tenant. ``seats`` comes from the manifest when the licence sets one.
+    await db.execute(text(f"SET app.tenant_id = '{str(tenant.id)}'"))
+    used = await db.execute(text("SELECT COUNT(*) FROM users WHERE tenant_id = :tid AND is_active"), {"tid": str(tenant.id)})
+    manifest["seats_used"] = int(used.scalar() or 0)
+    manifest.setdefault("seats", manifest.get("max_users"))
+    return manifest

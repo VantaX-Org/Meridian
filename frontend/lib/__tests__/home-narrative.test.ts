@@ -45,6 +45,12 @@ describe("verdictSentence", () => {
     expect(verdictSentence(objects)).toBe("1 of 2 objects is not ready for go-live.");
     expect(verdictSentence([one, { ...one, module: "fi_gl" }])).toBe("2 of 2 objects are not ready for go-live.");
   });
+  it("counts the objects at risk after the ones not ready", () => {
+    const warn: ObjectSummary = { ...one, module: "fi_gl", readiness: "warn" };
+    const pass: ObjectSummary = { ...one, module: "mm_purchasing", readiness: "pass" };
+    expect(verdictSentence([one, warn, pass])).toBe("1 of 3 objects is not ready for go-live, 1 at risk.");
+    expect(verdictSentence([warn, pass])).toBe("1 of 2 objects is at risk for go-live.");
+  });
   it("never says zero objects are not ready", () => {
     expect(verdictSentence([{ ...one, readiness: "pass" }, { ...one, module: "fi_gl", readiness: "pass" }])).toBe("All 2 objects are ready for go-live.");
   });

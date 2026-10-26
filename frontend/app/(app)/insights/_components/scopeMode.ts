@@ -10,15 +10,15 @@ import { lineageChoices } from "@/lib/run-scope";
 export type InsightScopeMode = "current" | "run";
 
 /**
- * Views that can describe the current state across objects. Every other view that takes its scope from the frame
- * reads an endpoint that answers one run (`/insights/exec`, `/insights/rules`, `/insights/impact`, readiness,
- * the trends of one lineage, a run compared with its baseline), so it always shows one run and says so.
+ * Views that can describe the current state across objects: the overview and the executive summary, so Home and
+ * the summary answer "how are we" with the same number. Every other view that takes its scope from the frame reads
+ * an endpoint that answers one run (`/insights/rules`, `/insights/impact`, readiness, the trends of one lineage, a
+ * run compared with its baseline), so it always shows one run and says so.
  */
-export const CURRENT_STATE_VIEWS: readonly string[] = ["/insights"];
+export const CURRENT_STATE_VIEWS: readonly string[] = ["/insights", "/insights/exec"];
 
 /** Views that take their scope from the frame and always show one run. */
 export const ONE_RUN_VIEWS: readonly string[] = [
-  "/insights/exec",
   "/insights/progress",
   "/insights/trends",
   "/insights/rules",

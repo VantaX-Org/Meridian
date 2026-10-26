@@ -1,10 +1,11 @@
 // frontend/app/(app)/process/__tests__/process-pages.test.tsx
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as connectivityApi from "@/lib/api/connectivity";
 import * as pdApi from "@/lib/api/process-discovery";
 import * as jobsHook from "@/hooks/use-jobs";
+import * as permissions from "@/lib/permissions";
 import type { CatalogueRow, DiscoveryRun, DiscoveryRunDetail } from "@/lib/api/process-discovery";
 import type { SAPSystemExtended } from "@/types/api";
 import type { Job } from "@/types/jobs";
@@ -60,13 +61,60 @@ describe("process catalogue", () => {
     expect(pdApi.getCatalogue).not.toHaveBeenCalled();
   });
 
-  it("shows 13 reference cards and a Run discovery action before any run", async () => {
+  it("shows 13 reference cards and one Run discovery button that opens the new-run dialog before any run", async () => {
     renderWithQuery(<ProcessCataloguePage />);
     expect(await screen.findByText("0 of 13 processes discovered on KSA PRD; 13 reference only.")).toBeTruthy();
     expect(screen.getAllByText("Reference, not discovered")).toHaveLength(13);
     expect(screen.getAllByText("Not run yet")).toHaveLength(13);
-    const action = screen.getByRole("link", { name: /Run discovery/ });
-    expect(action.getAttribute("href")).toBe("/process/runs?system=sys-1&new=1");
+    // one primary, with what discovery reads and how long it takes; the header does not repeat it
+    expect(screen.queryByRole("link", { name: /Run discovery/ })).toBeNull();
+    const run = screen.getAllByRole("button", { name: "Run discovery" });
+    expect(run).toHaveLength(1);
+    expect(screen.getByText(/Discovery reads the document and change tables of each process from KSA PRD/)).toBeTruthy();
+    fireEvent.click(run[0]);
+    expect(await screen.findByRole("button", { name: "Start run" })).toBeTruthy();
+  });
+
+  it("tells a viewer who cannot run discovery whom to ask, with Request access on the disabled primary", async () => {
+    h.can = () => false;
+    const requestAccess = vi.fn();
+    vi.spyOn(permissions, "usePermissionsContext").mockReturnValue({ loading: false, requestAccess } as unknown as ReturnType<typeof permissions.usePermissionsContext>);
+    renderWithQuery(<ProcessCataloguePage />);
+    // the panel's sentence, and the same sentence as the InsightHeader's next step
+    expect((await screen.findAllByText(/^Ask a programme lead, data steward or SAP Basis to run discovery\./)).length).toBe(2);
+    const run = screen.getByRole("button", { name: /^Run discovery\. Needs Programme lead, data steward or SAP Basis on KSA PRD/ });
+    expect((run as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Request access" }));
+    expect(requestAccess).toHaveBeenCalledWith({ resource: "process", action: "run", system_id: "sys-1", systemLabel: "KSA PRD" });
+  });
+
+  it("says a system without document tables needs a connected SAP system, with a link to Systems", async () => {
+    vi.spyOn(pdApi, "getCatalogue").mockResolvedValue(L1S.map((l1) => ({ ...reference(l1),
+      reason: "Event tables are not exposed by this connector; showing the reference model and configuration." })));
+    renderWithQuery(<ProcessCataloguePage />);
+    expect(await screen.findByText("Discovery needs a connected SAP system")).toBeTruthy();
+    expect(screen.getByText(/^Process discovery reads SAP document tables, so it needs a connected SAP system\. KSA PRD/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Open systems" }).getAttribute("href")).toBe("/systems");
+    expect(screen.queryByRole("button", { name: "Run discovery" })).toBeNull();
+  });
+
+  it("draws one card per process with its coverage, figures and links, lowest fitness first", async () => {
+    vi.spyOn(pdApi, "getCatalogue").mockResolvedValue([
+      { ...reference("PTP"), coverage: "discovered", last_run: lastRun({ id: "run-p", fitness: 0.9, variants: 5 }) },
+      { ...reference("OTC"), coverage: "partial", last_run: lastRun({ id: "run-o", fitness: 0.55, cases: 1234 }) },
+      ...L1S.slice(2).map(reference)]);
+    renderWithQuery(<ProcessCataloguePage />);
+    const list = await screen.findByRole("list", { name: "Processes" });
+    const cards = within(list).getAllByRole("listitem");
+    expect(cards).toHaveLength(13);
+    expect(within(cards[0]).getByRole("link", { name: "OTC process" }).getAttribute("href")).toBe("/process/OTC?system=sys-1&run=run-o");
+    expect(within(cards[0]).getByText("1,234")).toBeTruthy();
+    expect(within(cards[0]).getByRole("link", { name: "55.0%" }).getAttribute("href")).toBe("/process/OTC?system=sys-1&run=run-o&tab=conformance");
+    expect(within(cards[1]).getByRole("link", { name: "5" }).getAttribute("href")).toBe("/process/PTP?system=sys-1&run=run-p&tab=variants");
+    expect(within(cards[1]).getByText("Median duration")).toBeTruthy();
+    // no day-one panel once a process is discovered; the header carries Run discovery
+    expect(screen.queryByText("No discovery run yet")).toBeNull();
+    expect(screen.getByRole("link", { name: "Run discovery" }).getAttribute("href")).toBe("/process/runs?system=sys-1&new=1");
   });
 
   it("offers the variants of the top L1 to a user who cannot run discovery", async () => {
@@ -74,7 +122,7 @@ describe("process catalogue", () => {
     vi.spyOn(pdApi, "getCatalogue").mockResolvedValue([
       { ...reference("PTP"), coverage: "discovered", last_run: lastRun({}) }, ...L1S.slice(1).map(reference)]);
     renderWithQuery(<ProcessCataloguePage />);
-    expect(await screen.findByRole("link", { name: /Open PTP variants/ })).toBeTruthy();
+    expect(await screen.findByRole("link", { name: /Open PTP process variants/ })).toBeTruthy();
     expect(screen.queryByRole("link", { name: /Run .*discovery/ })).toBeNull();
   });
 
@@ -85,7 +133,7 @@ describe("process catalogue", () => {
       ...L1S.slice(1).map(reference)]);
     renderWithQuery(<ProcessCataloguePage />);
     expect((await screen.findByRole("link", { name: "See the error" })).getAttribute("href")).toBe("/process/runs/run-3");
-    expect(screen.getByText("Cases")).toBeTruthy();
+    expect(screen.getAllByText("Cases").length).toBe(13);
   });
 
   it("shows the live stage of a run in progress", async () => {
@@ -97,17 +145,27 @@ describe("process catalogue", () => {
     expect(await screen.findByText("Mining")).toBeTruthy();
   });
 
-  it("links an L1's DQ defects to the failing objects and dashes an unmapped L1", async () => {
+  it("links an L1's DQ defects to that L1's readiness in that run, not every no-go object, and dashes an unmapped L1", async () => {
     vi.spyOn(pdApi, "getCatalogue").mockResolvedValue([
-      { ...reference("PTP"), coverage: "discovered", last_run: lastRun({}), dq_defects: 7, dq_version_id: "v-7" },
+      { ...reference("PTP"), coverage: "discovered", last_run: lastRun({ variants: 3 }), dq_defects: 7, dq_version_id: "v-7" },
       { ...reference("OTC"), dq_defects: null }]);
     renderWithQuery(<ProcessCataloguePage />);
-    expect((await screen.findByRole("link", { name: "7" })).getAttribute("href")).toBe("/objects?run=v-7&readiness=fail");
+    expect((await screen.findByRole("link", { name: "7" })).getAttribute("href"))
+      .toBe("/insights/process?l1=PTP&object=accounts_payable&run=v-7");
+  });
+
+  it("prints an L1's DQ defects as plain text when the L1 has no readiness page of its own", async () => {
+    vi.spyOn(pdApi, "getCatalogue").mockResolvedValue([
+      { ...reference("R2R"), coverage: "discovered", last_run: lastRun({}), dq_defects: 9, dq_version_id: "v-9" },
+      { ...reference("OTC"), dq_defects: null }]);
+    renderWithQuery(<ProcessCataloguePage />);
+    expect(await screen.findByText("9")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "9" })).toBeNull();
   });
 
   it("shows a dash, not a link, when a count has no DQ run behind it (null dq_version_id)", async () => {
     vi.spyOn(pdApi, "getCatalogue").mockResolvedValue([
-      { ...reference("PTP"), coverage: "discovered", last_run: lastRun({}), dq_defects: 7, dq_version_id: null },
+      { ...reference("PTP"), coverage: "discovered", last_run: lastRun({ variants: 3 }), dq_defects: 7, dq_version_id: null },
       ...L1S.slice(1).map(reference)]);
     renderWithQuery(<ProcessCataloguePage />);
     await screen.findByText("PTP process");
@@ -145,13 +203,33 @@ describe("discovery runs", () => {
       l1s: L1S.filter((l) => l !== "OTC"), mode: "full", period_from: null }));
   });
 
-  it("says why the list is empty and offers New run, under a one-line purpose", async () => {
+  it("preselects only the ?l1= process the home link named", async () => {
+    h.qs = "new=1&l1=OTC";
+    const start = vi.spyOn(pdApi, "startRuns").mockResolvedValue({ job_id: "job-9", run_ids: ["r1"] });
+    renderWithQuery(<ProcessRunsPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Start run" }));
+    await waitFor(() => expect(start).toHaveBeenCalledWith("sys-1", { l1s: ["OTC"], mode: "full", period_from: null }));
+  });
+
+  it("says why the list is empty and offers one Run discovery, under a one-line purpose", async () => {
     renderWithQuery(<ProcessRunsPage />);
     expect(await screen.findByText("No discovery run yet")).toBeTruthy();
     expect(screen.getByText(/Every discovery run on this system/)).toBeTruthy();
-    await waitFor(() => expect(screen.getAllByRole("button", { name: "New run" }).every((b) => !(b as HTMLButtonElement).disabled)).toBe(true));
-    fireEvent.click(screen.getAllByRole("button", { name: "New run" })[1]);
+    expect(screen.queryByRole("button", { name: "New run" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Run discovery" }));
     expect(await screen.findByRole("button", { name: "Start run" })).toBeTruthy();
+  });
+
+  it("asks whom to run discovery when the viewer cannot, and names the missing source on a file-only system", async () => {
+    h.can = () => false;
+    const { unmount } = renderWithQuery(<ProcessRunsPage />);
+    expect(await screen.findByText(/^Ask a programme lead, data steward or SAP Basis to run discovery\./)).toBeTruthy();
+    unmount();
+    h.can = () => true;
+    vi.spyOn(pdApi, "getCatalogue").mockResolvedValue(L1S.map((l1) => ({ ...reference(l1), reason: "Event tables are not exposed by this connector." })));
+    renderWithQuery(<ProcessRunsPage />);
+    expect(await screen.findByText("Discovery needs a connected SAP system")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "New run" })).toBeNull();
   });
 
   it("hides New run from a user without run_process_discovery", async () => {
@@ -183,7 +261,7 @@ describe("run detail", () => {
     renderWithQuery(<ProcessRunPage />);
     expect(await screen.findByText("EKPO read failed")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Retry/ })).toBeNull();
-    expect(screen.getByText("Ask a process analyst to run it again.")).toBeTruthy();
+    expect(screen.getByText("Ask a programme lead, data steward or SAP Basis to run it again.")).toBeTruthy();
   });
 
   it("lists the tables read with partial and truncated flags", async () => {
@@ -192,6 +270,36 @@ describe("run detail", () => {
     renderWithQuery(<ProcessRunPage />);
     expect(await screen.findByText("CDHDR")).toBeTruthy();
     expect(screen.getByText("Truncated")).toBeTruthy();
-    expect(screen.getByText("Complete")).toBeTruthy();
+    expect(screen.getAllByText("Done").length).toBeGreaterThan(0);
+  });
+
+  it("shows shared objects and the unmapped activities beside the tables read", async () => {
+    vi.spyOn(pdApi, "getRun").mockResolvedValue({ ...RUN, system_id: "sys-1", system_type: "S4HANA",
+      stats: { cases: 100, tables: { EKKO: { rows: 10, partial: false } }, truncated_tables: [], shared_objects: 2210,
+        unmapped: { POST_ZF01: 812, POST_ZF02: 3 } } });
+    renderWithQuery(<ProcessRunPage />);
+    expect(await screen.findByText("Shared objects")).toBeTruthy();
+    expect(screen.getByText("2,210")).toBeTruthy();
+    expect(screen.getByText("815")).toBeTruthy();
+    const list = screen.getByRole("list", { name: "Unmapped activities" });
+    expect(within(list).getAllByRole("listitem").map((li) => li.textContent)).toEqual(["POST_ZF01812 events", "POST_ZF023 events"]);
+  });
+
+  it("leaves the event log card out of a run that has no such stats yet", async () => {
+    vi.spyOn(pdApi, "getRun").mockResolvedValue({ ...RUN, system_id: "sys-1", system_type: "S4HANA", stats: {} });
+    renderWithQuery(<ProcessRunPage />);
+    await screen.findAllByText("PTP");
+    expect(screen.queryByText("Shared objects")).toBeNull();
+  });
+});
+
+describe("run detail not found", () => {
+  it("says the run is not found with a way back, never \"Not found.\" with Retry only", async () => {
+    h.can = () => true;
+    vi.spyOn(pdApi, "getRun").mockRejectedValue(Object.assign(new Error("nf"), { isAxiosError: true, response: { status: 404, data: {} } }));
+    renderWithQuery(<ProcessRunPage />);
+    expect(await screen.findByText("Discovery run not found")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Back to discovery runs" }).getAttribute("href")).toBe("/process/runs");
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
   });
 });

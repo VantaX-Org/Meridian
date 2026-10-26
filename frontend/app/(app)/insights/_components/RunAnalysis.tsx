@@ -11,9 +11,30 @@ import { getSystems } from "@/lib/api/connectivity";
 import { queryKeys } from "@/lib/query-keys";
 import { ScopePicker } from "@/app/(app)/systems/[systemId]/scope-picker";
 
-/** `variant`: primary where starting a run is the page's main step (the homes); secondary in the insight action bar,
- * where the page's own "Do next" action leads. */
-export function RunAnalysis({ variant = "primary" }: { variant?: "primary" | "secondary" } = {}) {
+const LINK = "m-ink-accent underline underline-offset-2";
+
+/** No system yet: the next step this role may take (connect needs manage_systems, import needs upload), else whom to ask. */
+function NoSystems({ can }: { can: (action: string) => boolean }) {
+  const connect = can("manage_systems");
+  const upload = can("upload");
+  if (connect) {
+    return (
+      <p className="m-text-body m-ink-2">
+        No SAP system is connected yet. <Link href="/systems?connect=1" className={LINK}>Connect a system</Link>
+        {upload ? <>, or <Link href="/import" className={LINK}>import a file</Link> to start without one</> : null}.
+      </p>
+    );
+  }
+  if (upload) {
+    return <p className="m-text-body m-ink-2">No SAP system is connected yet. <Link href="/import" className={LINK}>Import a file</Link> to start without one, or ask an administrator to connect a system.</p>;
+  }
+  return <p className="m-text-body m-ink-2">No SAP system is connected yet. Ask an administrator to connect one.</p>;
+}
+
+/** `variant`: secondary by default, on the homes and in the insight action bar, where the page's own next step (the
+ * home's verdict action, the insight's "Do next") is the one primary button; primary only where starting a run is
+ * the page's main step. */
+export function RunAnalysis({ variant = "secondary" }: { variant?: "primary" | "secondary" } = {}) {
   const { can } = useRole();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -29,7 +50,7 @@ export function RunAnalysis({ variant = "primary" }: { variant?: "primary" | "se
         <div className="flex flex-col gap-4">
           <Select label="System" value={chosen} onValueChange={setSystemId} placeholder="Choose a system" options={list.map((s) => ({ value: s.id, label: s.name }))} />
           {systems.isError ? <p role="alert" className="m-text-body">The systems did not load. <button type="button" className="m-ink-accent underline underline-offset-2" onClick={() => void systems.refetch()}>Retry</button></p> : null}
-          {systems.isSuccess && list.length === 0 ? <p className="m-text-body m-ink-2">No SAP system is connected yet. <Link href="/systems" className="m-ink-accent underline underline-offset-2">Connect a system</Link></p> : null}
+          {systems.isSuccess && list.length === 0 ? <NoSystems can={can} /> : null}
           {chosen ? <ScopePicker id={chosen} onDownloaded={() => { setOpen(false); router.push("/runs"); }} /> : null}
         </div>
       </Drawer>

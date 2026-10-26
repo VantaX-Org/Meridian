@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Dialog } from "@/design";
+import { Button, Dialog, Notice } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { useUpdateModal, UPDATE_SNOOZE_KEY } from "@/context/update-modal-context";
 import {
@@ -34,17 +34,6 @@ const POLL_INTERVAL_MS = 2500;
 const RECONNECT_CAP_MS = 3 * 60 * 1000;
 
 const TERMINAL_PHASES: ProgressPhase[] = ["done", "failed", "rolled_back", "reconnect_timeout"];
-
-/** Banner replacement: a bordered note, tinted by severity. */
-function Notice({ tone, title, children }: { tone: "warning" | "danger"; title: string; children?: React.ReactNode }) {
-  const colour = tone === "danger" ? "var(--m-critical)" : "var(--m-medium)";
-  return (
-    <div className="rounded border px-3 py-2 m-text-body mt-2" style={{ borderColor: colour, color: "var(--m-ink)" }}>
-      <p className="font-medium" style={{ color: colour }}>{title}</p>
-      {children ? <p className="mt-1" style={{ color: "var(--m-ink-2)" }}>{children}</p> : null}
-    </div>
-  );
-}
 
 function progressCopy(phase: ProgressPhase, message: string): string {
   switch (phase) {
@@ -287,7 +276,7 @@ export function UpdateAvailableModal() {
     footer = <Button variant="ghost" onClick={handleClose}>Close</Button>;
   }
 
-  const note = "m-text-body";
+  const note = "m-text-body m-ink-2";
   return (
     <Dialog
       open
@@ -298,38 +287,40 @@ export function UpdateAvailableModal() {
     >
       {stage === "announce" && (
         <>
-          <p className={note} style={{ color: "var(--m-ink-2)" }}>
+          <p className={note}>
             <strong>{status.latest_version}</strong> is available. You are running <strong>{status.current_version}</strong>.
           </p>
-          {status.release_notes && <p className={`${note} mt-2 whitespace-pre-line`} style={{ color: "var(--m-ink-2)" }}>{status.release_notes}</p>}
+          {status.release_notes && <p className={`${note} mt-2 whitespace-pre-line`}>{status.release_notes}</p>}
         </>
       )}
 
       {(stage === "confirm" || stage === "submitting") && (
         <>
+          <div className="mt-2 flex flex-col gap-2">
           <Notice tone="warning" title="This restarts Meridian for everyone">
             Everyone currently signed in is disconnected. The update usually takes a few minutes. Make sure nothing else is
             mid-run (an import, a sync, a report export) before continuing.
           </Notice>
           {triggerError && <Notice tone="danger" title="The update did not start">{triggerError}</Notice>}
+          </div>
         </>
       )}
 
       {stage === "progress" && (
         <>
-          <p className={note} style={{ color: "var(--m-ink-2)" }} role="status" aria-busy={!isTerminal} data-phase={phase ?? undefined}>
+          <p className={note} role="status" aria-busy={!isTerminal} data-phase={phase ?? undefined}>
             {phase ? progressCopy(phase, progressMessage) : "Starting the update…"}
           </p>
           {phase === "rolled_back" && (
-            <Notice tone="warning" title="Rolled back">
+            <div className="mt-2"><Notice tone="warning" title="Rolled back">
               The update failed and was rolled back automatically. Meridian is back on {status.current_version}.
               {progressMessage ? ` (${progressMessage})` : ""}
-            </Notice>
+            </Notice></div>
           )}
           {phase === "failed" && (
-            <Notice tone="danger" title="The update failed">
+            <div className="mt-2"><Notice tone="danger" title="The update failed">
               {progressMessage || "Check the server logs or contact support."}
-            </Notice>
+            </Notice></div>
           )}
         </>
       )}

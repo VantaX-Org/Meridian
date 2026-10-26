@@ -7,6 +7,7 @@ import { FixWork } from "../fix-work";
 import { RecordPanel } from "../record-panel";
 import { dueLabel } from "../status";
 import * as work from "@/lib/api/work";
+import * as versions from "@/lib/api/versions";
 
 const replace = vi.fn();
 const push = vi.fn();
@@ -68,6 +69,15 @@ beforeEach(() => {
 });
 
 describe("FixWork", () => {
+  it("names the run its counts belong to, and calls critical what it is", async () => {
+    const getVersion = vi.spyOn(versions, "getVersion").mockResolvedValue({ id: "R1", label: "material_master_25k", status: "complete", run_at: "2026-10-16T05:00:00Z", dqs_summary: null, metadata: {} });
+    renderWithQuery(<FixWork />);
+    expect(await screen.findByText("As of material_master_25k, 16 Oct 2026")).toBeInTheDocument();
+    expect(getVersion).toHaveBeenCalledWith("R1");
+    expect(screen.getByText("critical severity")).toBeInTheDocument();
+    expect(screen.queryByText("block SAP processes")).toBeNull();
+  });
+
   it("shows the totals, the issues and the records worst first, and the first record's panel", async () => {
     renderWithQuery(<FixWork />);
     expect((await screen.findAllByText("Records to fix")).length).toBeGreaterThan(0);
@@ -95,6 +105,21 @@ describe("FixWork", () => {
     expect(replace).toHaveBeenCalledWith("/fix?record=material_master%7CMATNR%3D2", { scroll: false });
     fireEvent.keyDown(window, { key: "a" });
     await waitFor(() => expect(work.decide).toHaveBeenCalledWith([{ module: "material_master", record_key: "MATNR=1", action: "accept" }], undefined));
+  });
+
+  it("opens the record from Enter on a row or the page, never from Enter on another button", async () => {
+    push.mockClear();
+    renderWithQuery(<FixWork />);
+    const rows = await screen.findAllByTestId("work-record");
+    const other = screen.getAllByRole("button").find((b) => !b.closest("[data-testid=work-record]"));
+    expect(other).toBeDefined();
+    expect(fireEvent.keyDown(other!, { key: "Enter" })).toBe(true);
+    expect(push).not.toHaveBeenCalled();
+    fireEvent.keyDown(within(rows[0]).getAllByRole("button")[0], { key: "Enter" });
+    expect(push).toHaveBeenCalledWith("/objects/material_master/records/MATNR%3D1");
+    push.mockClear();
+    fireEvent.keyDown(document.body, { key: "Enter" });
+    expect(push).toHaveBeenCalledTimes(1);
   });
 
   it("says when the run's work list is not built, and lets an analyst build it", async () => {
@@ -135,7 +160,7 @@ describe("FixWork", () => {
     renderWithQuery(<FixWork />);
     await screen.findAllByTestId("work-record");
     expect(work.getWorkRecords).toHaveBeenCalledWith(expect.objectContaining({ severity: "blocking", status: "all", system: "S1" }));
-    expect(screen.getAllByText("Blocking (critical or high)").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Critical and high").length).toBeGreaterThan(0);
     expect(screen.getByText("one source system")).toBeInTheDocument();
   });
 

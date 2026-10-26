@@ -38,8 +38,8 @@ describe("ShortcutSheet", () => {
   });
 
   it("takes navigation shortcuts from the nav definition", () => {
-    expect(navShortcuts()).toContainEqual({ group: "Navigation", keys: "⌘1", description: "Go to Home" });
-    expect(shortcutSections().map((s) => s.group)).toEqual(["Navigation", "Fix work", "Tables", "Inbox", "Global"]);
+    expect(navShortcuts()).toContainEqual({ group: "Navigation", keys: "⌘1", description: "Go to Home, with the command palette open" });
+    expect(shortcutSections().map((s) => s.group)).toEqual(["Navigation", "Fix work", "Tables", "Inbox", "Designer", "Global"]);
   });
 
   it("lists no key for collapsing the navigation (there is no sidebar to collapse)", () => {

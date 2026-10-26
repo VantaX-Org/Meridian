@@ -6,7 +6,11 @@ import * as objectsApi from "@/lib/api/v1/objects";
 import * as versionsApi from "@/lib/api/versions";
 import * as rulesApi from "@/lib/api/rules";
 import * as fieldProfileApi from "@/lib/api/field-profile";
+import * as insightsApi from "@/lib/api/insights";
+import * as remediationApi from "@/lib/api/remediation";
 import * as workApi from "@/lib/api/work";
+import * as findingsApi from "@/lib/api/findings";
+import * as settingsApi from "@/lib/api/settings";
 import type { Version } from "@/types/api";
 import ObjectDetailPage from "../page";
 
@@ -72,7 +76,7 @@ describe("ObjectDetailPage", () => {
     ], total: 4 });
     const getObject = vi.spyOn(objectsApi, "getObject").mockResolvedValue(OBJECT);
     renderWithQuery(<ObjectDetailPage />);
-    expect(await screen.findByRole("img", { name: "Score 73" })).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: "Score 72.5" })).toBeInTheDocument();
     expect(getObject).toHaveBeenCalledWith("material_master", "mm-latest");
     expect(getObject).not.toHaveBeenCalledWith("material_master", "bp-new");
     // The header names the run (the scope bar picks it), and nothing is pinned, so there is no "Back to latest".
@@ -126,9 +130,9 @@ describe("ObjectDetailPage", () => {
   it("renders the overview workbench: the score, the stats, the failing rules ranked by records and the dimension bars", async () => {
     searchParams = new URLSearchParams("run=v1&tab=overview");
     renderWithQuery(<ObjectDetailPage />);
-    expect(await screen.findByRole("img", { name: "Score 73" })).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: "Score 72.5" })).toBeInTheDocument();
     expect(screen.getByText("Material master")).toBeInTheDocument();
-    for (const label of ["Failing checks", "Blocking rules", "Records affected", "Auto-fixable"]) expect(await screen.findByText(label)).toBeInTheDocument();
+    for (const label of ["Failing rules", "Critical and high", "Rule failures", "Auto-fixable"]) expect((await screen.findAllByText(label)).length).toBeGreaterThan(0);
     const rules = await screen.findAllByTestId("workbench-rule-row");
     expect(rules.map((r) => r.textContent)).toEqual([expect.stringContaining("mm_missing_desc"), expect.stringContaining("mm_bad_uom")]);
     expect(rules[0]).toHaveAttribute("aria-current", "true");
@@ -147,7 +151,42 @@ describe("ObjectDetailPage", () => {
     const rows = screen.getAllByTestId("workbench-rule-row");
     expect(rows[1]).toHaveAttribute("aria-current", "true");
     expect(rows[0]).toHaveAttribute("href", "/objects/material_master?run=v1&rule=mm_missing_desc");
-    expect(screen.getByRole("link", { name: "Propose fix" })).toHaveAttribute("href", "/objects/material_master/records/MATNR%3D7?run=v1");
+    expect(screen.getByRole("button", { name: "Propose fix" })).toBeEnabled();
+  });
+
+  it("Propose fix drafts a fix batch for the selected rule in this run and offers to open it", async () => {
+    searchParams = new URLSearchParams("run=v1&rule=mm_bad_uom");
+    vi.spyOn(versionsApi, "getFindingRecords").mockResolvedValue({
+      version_id: "v1", check_id: "mm_bad_uom", total: 1,
+      records: [{ record_key: "MATNR=7", grain: "MATNR", module: "material_master", field_values: null }],
+    });
+    const create = vi.spyOn(remediationApi, "createBatch").mockResolvedValue({ id: "b1", name: "mm_bad_uom material_master", status: "draft", item_count: 10 });
+    renderWithQuery(<ObjectDetailPage />);
+    await screen.findByText("MATNR=7");
+    fireEvent.click(screen.getByRole("button", { name: "Propose fix" }));
+    await waitFor(() => expect(create).toHaveBeenCalledWith("mm_bad_uom material_master", { check_id: "mm_bad_uom", module: "material_master", version_id: "v1" }));
+  });
+
+  it("ticking records offers to add them to a fix batch", async () => {
+    searchParams = new URLSearchParams("run=v1&rule=mm_bad_uom");
+    vi.spyOn(versionsApi, "getFindingRecords").mockResolvedValue({
+      version_id: "v1", check_id: "mm_bad_uom", total: 1,
+      records: [{ record_key: "MATNR=7", grain: "MATNR", module: "material_master", field_values: null }],
+    });
+    const create = vi.spyOn(remediationApi, "createBatch").mockResolvedValue({ id: "b1", name: "n", status: "draft", item_count: 1 });
+    renderWithQuery(<ObjectDetailPage />);
+    await screen.findByText("MATNR=7");
+    fireEvent.click(screen.getByLabelText("Select MATNR=7"));
+    fireEvent.click(await screen.findByRole("button", { name: "Add to fix batch" }));
+    await waitFor(() => expect(create).toHaveBeenCalledWith("mm_bad_uom material_master", expect.objectContaining({ record_keys: ["MATNR=7"] })));
+  });
+
+  it("names the rule beside its id on the rules tab, without printing the id twice", async () => {
+    searchParams = new URLSearchParams("run=v1&tab=rules");
+    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ rows: [{ check_id: "mm_missing_desc", name: "Description is mandatory" }] } as never);
+    renderWithQuery(<ObjectDetailPage />);
+    expect(await screen.findByText("Description is mandatory")).toBeInTheDocument();
+    expect(screen.getAllByText("mm_missing_desc")).toHaveLength(1);
   });
 
   it("lists rules on the rules tab and navigates to the records tab on row click", async () => {
@@ -243,7 +282,7 @@ describe("ObjectDetailPage", () => {
     });
     renderWithQuery(<ObjectDetailPage />);
     await waitFor(() => expect(screen.getByText("MATNR=100001")).toBeInTheDocument());
-    for (const link of screen.getAllByRole("link", { name: /open fix sheet/i })) {
+    for (const link of screen.getAllByRole("link", { name: /open record/i })) {
       expect(link).toHaveAttribute("href", "/objects/material_master/records/MATNR%3D100001?run=v1");
     }
   });
@@ -376,19 +415,19 @@ describe("ObjectDetailPage", () => {
   });
 
   describe("?blocking= filter on the rules tab", () => {
-    it("blocking=true keeps only critical and high rules and pressed Blocking only chip", async () => {
+    it("blocking=true keeps only critical and high rules and pressed Critical and high chip", async () => {
       searchParams = new URLSearchParams("run=v1&tab=rules&blocking=true");
       renderWithQuery(<ObjectDetailPage />);
       await waitFor(() => expect(screen.getByText("mm_missing_desc")).toBeInTheDocument());
       expect(screen.queryByText("mm_bad_uom")).toBeNull();
-      expect(screen.getByRole("button", { name: "Blocking only", pressed: true })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Critical and high", pressed: true })).toBeInTheDocument();
     });
     it.each(["constructor", "__proto__", "false", "1", "TRUE"])("blocking=%s applies no filter and shows no pressed chip", async (g) => {
       searchParams = new URLSearchParams(`run=v1&tab=rules&blocking=${g}`);
       renderWithQuery(<ObjectDetailPage />);
       await waitFor(() => expect(screen.getByText("mm_bad_uom")).toBeInTheDocument());
       expect(screen.getByText("mm_missing_desc")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Blocking only", pressed: false })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Critical and high", pressed: false })).toBeInTheDocument();
     });
   });
 });
@@ -443,6 +482,17 @@ describe("ObjectDetailPage keyboard and gating", () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
+  it("shows the run list's error with Retry, never \"No run has measured this object\"", async () => {
+    searchParams = new URLSearchParams("");
+    const list = vi.spyOn(versionsApi, "getVersions").mockRejectedValue(Object.assign(new Error("x"), { isAxiosError: true, response: { status: 403, data: {} } }));
+    renderWithQuery(<ObjectDetailPage />);
+    expect(await screen.findByText("You do not have access to this.")).toBeInTheDocument();
+    expect(screen.queryByText("No run has measured this object")).toBeNull();
+    const calls = list.mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(list.mock.calls.length).toBeGreaterThan(calls));
+  });
+
   it("empty-state copy: no run, no rule, all records pass", async () => {
     searchParams = new URLSearchParams("");
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [], total: 0 });
@@ -459,11 +509,46 @@ describe("ObjectDetailPage keyboard and gating", () => {
   it("shows the header counts and affected records from a complete payload", async () => {
     searchParams = new URLSearchParams("run=v1&tab=overview");
     renderWithQuery(<ObjectDetailPage />);
-    expect(await screen.findByText("Records affected")).toBeInTheDocument();
+    expect((await screen.findAllByText("Rule failures")).length).toBeGreaterThan(0);
+    // The strip's summed count is labelled and drilled like the header's: rule failures, opening Records to fix.
+    expect(screen.getAllByText("Rule failures").map((e) => e.closest("a")?.getAttribute("href"))).toContain("/objects/material_master?run=v1&tab=fix");
     expect(screen.getAllByText("120").length).toBeGreaterThan(0);
     // Each header count opens what it counts.
-    expect((await screen.findByText("1 failing checks")).closest("a")).toHaveAttribute("href", "/objects/material_master?run=v1&tab=rules");
-    expect(screen.getByText("120 affected records").closest("a")).toHaveAttribute("href", "/objects/material_master?run=v1&tab=fix");
+    // One rule, singular; the summed affected count is rule failures, not records.
+    expect((await screen.findByText("1 failing rule")).closest("a")).toHaveAttribute("href", "/objects/material_master?run=v1&tab=rules");
+    expect(screen.getByText("120 rule failures").closest("a")).toHaveAttribute("href", "/objects/material_master?run=v1&tab=fix");
+    expect(screen.queryByText(/affected records/)).toBeNull();
+  });
+
+  it("opens the score explainer with the cap, its reason and this run's history", async () => {
+    vi.spyOn(settingsApi, "getSettings").mockResolvedValue({ dqs_weights: { completeness: 0.5, accuracy: 0.5 } } as never);
+    vi.spyOn(objectsApi, "getObject").mockResolvedValue({ ...OBJECT, composite_score: 70, raw_score: 82.4, capped: true, cap_reason: "MM001: material type missing — score capped at 70" });
+    searchParams = new URLSearchParams("run=v1&tab=overview");
+    renderWithQuery(<ObjectDetailPage />);
+    fireEvent.click(await screen.findByRole("button", { name: /Explain score 82/ }));
+    expect((await screen.findAllByText(/Capped at 70/)).length).toBeGreaterThan(0);
+    expect(screen.getByText(/MM001/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Score history/i })).toHaveAttribute("href", "/objects/material_master?run=v1&tab=history");
+  });
+
+  it("plots this system's runs only, each as scored at the time", async () => {
+    vi.spyOn(findingsApi, "getScoreHistory").mockResolvedValue({
+      history: [
+        { version_id: "v1", run_at: "2026-10-08T00:00:00Z", system_id: "sys-1", scoring_recorded: true, at_the_time: { composite: 70, tier: "warn", scoring: null }, under_current: { composite: 75, tier: "warn", modules: {} } },
+        { version_id: "other", run_at: "2026-10-07T00:00:00Z", system_id: "sys-2", scoring_recorded: true, at_the_time: { composite: 10, tier: "fail", scoring: null }, under_current: { composite: 10, tier: "fail", modules: {} } },
+        { version_id: "v0", run_at: "2026-10-01T00:00:00Z", system_id: "sys-1", scoring_recorded: true, at_the_time: { composite: 60, tier: "fail", scoring: null }, under_current: { composite: 65, tier: "fail", modules: {} } },
+      ],
+      modules: { material_master: [
+        { version_id: "v1", composite: 77.7, at_the_time: 72.5 },
+        { version_id: "other", composite: 11.1, at_the_time: 11.1 },
+        { version_id: "v0", composite: 66.6, at_the_time: 61.5 },
+      ] },
+    });
+    searchParams = new URLSearchParams("run=v1&tab=history");
+    renderWithQuery(<ObjectDetailPage />);
+    expect(await screen.findByText("2 runs, 61.5 to 72.5")).toBeInTheDocument();
+    expect(screen.queryByText("11.1")).toBeNull();
+    expect(screen.queryByText("77.7")).toBeNull();
   });
 
   it("does not throw when composite_score is null and dimension_scores is empty", async () => {
@@ -473,7 +558,7 @@ describe("ObjectDetailPage keyboard and gating", () => {
     searchParams = new URLSearchParams("run=v1&tab=overview");
     renderWithQuery(<ObjectDetailPage />);
     expect(await screen.findByText("No dimension scores")).toBeInTheDocument();
-    expect(screen.getByText("Records affected")).toBeInTheDocument();
+    expect(screen.getAllByText("Rule failures").length).toBeGreaterThan(0);
   });
 });
 

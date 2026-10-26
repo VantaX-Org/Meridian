@@ -39,7 +39,17 @@ describe("route insight", () => {
     expect(h.changed.sentence).toBe("Up 2.4 points since the last run.");
     expect(h.why.sentence).toMatch(/3 critical findings are capping the score/);
     expect(h.next.href).toBe("/objects/material_master?run=r1");
-    expect(h.next.sentence).toBe("Start with Material master: 61 findings, 2 of them critical.");
+    expect(h.next.sentence).toBe("Material master needs the most work: 61 findings, 2 of them critical.");
+  });
+  it("offers no second button on the homes, where the verdict's action is the next step", () => {
+    const facts: InsightFacts = {
+      ...empty, hasRun: true, runId: "r1", dqs: 72.4, prevDqs: 70, critical: 3, total: 120, affected: 4500,
+      worst: { module: "material_master", label: "Material master", findings: 61, critical: 2 },
+    };
+    const home = buildInsight("home", facts);
+    expect(home.next.href).toBe("/objects/material_master?run=r1");
+    expect(home.next.action).toBeUndefined();
+    expect(buildInsight("objects", facts).next.action?.label).toBe("Open object");
   });
   it("builds the Changed cell from the compare delta and links the compare view", () => {
     const h = buildInsight("runs", {

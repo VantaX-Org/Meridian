@@ -130,7 +130,7 @@ test.describe("visual — overlays", () => {
   });
 
   test("admin/users: row menu, edit form Select and the invite drawer", async ({ app }) => {
-    await open(app, "/admin/users", "Users and audit");
+    await open(app, "/admin/users", "Users");
     // the first row sits at the bottom of the viewport on the recording, where the row menu flips up
     // under the sticky table header and cannot be clicked; give it room below first
     const actions = app.getByRole("button", { name: /^Actions for / }).first();

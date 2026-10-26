@@ -6,16 +6,21 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Bar, Button, DataTable, Delta, Heatmap, Line, Pill, Radar, Skeleton, toneOfTier, type ChartPoint, type ExportOption, type HeatmapCell, Score } from "@/design";
+import { Bar, Button, DataTable, Delta, Heatmap, Line, Pill, Radar, Skeleton, statusLabel, toneOfTier, type ChartPoint, type ExportOption, type HeatmapCell, Score } from "@/design";
 import { downloadAuthenticated } from "@/lib/api/download";
 import {
   getCleansing, getHeatmap, getOverview, getRootCauses, getRuleRanking, getTrends, l1Label, type RuleRow,
 } from "@/lib/api/insights";
 import { getS4Readiness } from "@/lib/api/migration";
 import { getBoardReportUrl, getWorkbookUrl } from "@/lib/api/reports";
+import { getFindingsAggregate } from "@/lib/api/findings";
+import { criticalHighHref } from "@/lib/current-state";
+import { previousInLineage } from "@/lib/runs";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { deltaSentence, formatModuleName, labelOf, plural, shortCapReason, trendSentence } from "@/lib/format";
 import { fixHref } from "@/lib/drill";
+import { reportFilename } from "@/lib/report-filename";
+import { runName } from "@/lib/run-scope";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { InsightFrame, formatMoney } from "./_components/InsightFrame";
@@ -28,8 +33,6 @@ import { ruleColumns } from "./_components/RuleColumns";
 import { useInsightScope, withScope } from "./_components/useInsightScope";
 import { CurrentOverview } from "./_components/CurrentOverview";
 import { CleansingFunnel, RootCauseList, S4Chart, s4Totals } from "./_components/RunAnalyses";
-
-const VERDICT_SENTENCE: Record<string, string> = { go: "Ready to load", at_risk: "At risk", no_go: "Not ready" };
 
 
 const dimLabel = (d: string) => (d === "composite" ? "Composite" : labelOf(d));
@@ -46,7 +49,9 @@ export default function InsightsOverviewPage() {
 function RunOverview() {
   const router = useRouter();
   const dayOne = useDayOne();
-  const { run, module, runs, versions, resolving } = useInsightScope();
+  const { run, module, runs, versions, resolving, error: listError, refetch: refetchList } = useInsightScope();
+  // No run to show because the run list (or the day-one sources) failed: an error, never "No insights yet".
+  const loadError = run ? null : listError ?? (dayOne.status === "error" ? dayOne.error : null);
   const finding = useFindingOpener(run);
   const on = !!run;
   const scope = { version_id: run, module };
@@ -58,6 +63,13 @@ function RunOverview() {
   const heat = useQuery({ queryKey: queryKeys.insights("heatmap", run, module), queryFn: () => getHeatmap(scope), enabled: on });
   const cleanse = useQuery({ queryKey: queryKeys.insights("cleansing", run, module), queryFn: () => getCleansing(scope), enabled: on });
   const s4 = useQuery({ queryKey: queryKeys.insights("s4-readiness", run), queryFn: () => getS4Readiness(run ?? ""), enabled: on });
+  // The run's failing critical and high rules: the same count the current state shows, from the run's severity totals.
+  const agg = useQuery({
+    queryKey: module ? [...queryKeys.findingsAggregate(run ?? ""), module] : queryKeys.findingsAggregate(run ?? ""),
+    queryFn: () => getFindingsAggregate({ version_id: run, module }),
+    enabled: on,
+  });
+  const criticalHigh = agg.data ? agg.data.severity.critical + agg.data.severity.high : undefined;
 
   const o = ov.data;
   // The trend follows this run's lineage only (its system, or uploads of the same objects), keyed by run id with
@@ -83,9 +95,13 @@ function RunOverview() {
     return m && d ? toneOfTier(m.tier[d]) : undefined;
   };
 
+  // Files are named by the run (and the object, for a workbook filtered to one), never its id.
+  const runLabel = current ? runName(current) : undefined;
+  // The board pack compares with the run before this one in its lineage; without it every pack says nothing changed.
+  const previous = current ? previousInLineage(current, runs) : null;
   const exportOptions: ExportOption[] = run ? [
-    { format: "pdf", label: "Board pack (PDF)", run: () => downloadAuthenticated(getBoardReportUrl(run), `board_${run}.pdf`) },
-    { format: "xlsx", label: "Analyst workbook (Excel)", run: () => downloadAuthenticated(getWorkbookUrl(run, { module }), `workbook_${run}.xlsx`) },
+    { format: "pdf", label: "Board pack (PDF)", run: () => downloadAuthenticated(getBoardReportUrl(run, previous?.id), reportFilename("board", runLabel)) },
+    { format: "xlsx", label: "Analyst workbook (Excel)", run: () => downloadAuthenticated(getWorkbookUrl(run, { module }), reportFilename("workbook", [runLabel, module && formatModuleName(module)].filter(Boolean).join(", "))) },
   ] : [];
 
   const fixColumns: ColumnDef<RuleRow>[] = ruleColumns(run, true);
@@ -94,6 +110,7 @@ function RunOverview() {
   const ovFailed = isListFailure(ov);
   const state: "loading" | "empty" | "error" | undefined =
     resolving || dayOne.status === "loading" ? "loading"
+    : loadError ? "error"
     : !run || (ov.isSuccess && !o) ? "empty" : undefined;
   const loading = ov.isLoading;
   const fallback = (s: string) => (loading ? "Loading" : s);
@@ -116,7 +133,6 @@ function RunOverview() {
                 value={o?.dqs.composite}
                 versionId={run}
                 href={withScope("/insights/trends", { run })}
-                tone={o?.dqs.tier === "go" ? "go" : o?.dqs.tier === "at_risk" ? "at-risk" : o?.dqs.tier === "no_go" ? "no-go" : undefined}
                 hint={o?.dqs.capped ? `Capped: ${o.dqs.cap_reason ? shortCapReason(o.dqs.cap_reason) : "critical failures"}` : undefined}
                 delta={o?.dqs.delta != null ? <Delta value={o.dqs.delta} /> : undefined}
               />
@@ -128,28 +144,32 @@ function RunOverview() {
             ) : (
             <div className="m-hero-verdict" data-testid="hero-verdict">
               <span className="font-semibold m-text-verdict-line m-ink [letter-spacing:var(--m-tracking-title)]">
-                {o?.dqs.tier ? VERDICT_SENTENCE[o.dqs.tier] ?? labelOf(o.dqs.tier) : "Not scored yet"}
+                {o?.dqs.tier ? statusLabel("verdict", o.dqs.tier) : "Not scored yet"}
               </span>
               <span className="m-text-body m-ink-2">
-                {o ? `${plural(o.blockers.count, "blocking gap")}${o.blockers.waves ? ` across ${plural(o.blockers.waves, "wave")}` : ""}` : " "}
+                {/* A comparison, not the Critical and high tile again: the score against the run before. */}
+                {o ? (o.dqs.previous != null ? `Was ${o.dqs.previous.toFixed(1)} in the previous run` : "First scored run") : " "}
               </span>
             </div>
             )}
           </div>
         ),
         stats: [
-          { label: "Blocking gaps", value: o?.blockers.count ?? "—", to: withScope("/insights/readiness", { run }), hint: o ? (o.blockers.waves ? plural(o.blockers.waves, "wave") : "No wave defined") : undefined, tone: o ? (o.blockers.count ? "no-go" : "go") : undefined, versionId: run },
-          { label: "Auto-fixable records", value: o?.auto_fixable.records ?? "—", to: fixHref({ run, module, sugg: true }), hint: o?.auto_fixable.pct != null ? `${Math.round(o.auto_fixable.pct)}% of failing records` : undefined, versionId: run },
+          // The same headline as the current state: failing critical and high rules, opening exactly those findings.
+          { label: "Critical and high findings", value: criticalHigh ?? "—", hint: criticalHigh ? "failing rules" : criticalHigh === 0 ? "none" : undefined, tone: criticalHigh == null ? undefined : criticalHigh ? "no-go" : "go", to: run ? criticalHighHref([{ id: run }], module) : undefined, versionId: run },
+          // Blocking findings (critical, or blocking an S/4 load) are their own set, opened on the readiness view.
+          { label: "Blocking findings", value: o?.blockers.count ?? "—", to: withScope("/insights/readiness", { run }), hint: o ? (o.blockers.waves ? plural(o.blockers.waves, "wave") : "No wave defined") : undefined, tone: o ? (o.blockers.count ? "no-go" : "go") : undefined, versionId: run },
+          { label: "Records with a suggested value", value: o?.auto_fixable.records ?? "—", to: fixHref({ run, module, sugg: true }), hint: o?.auto_fixable.pct != null ? `${Math.round(o.auto_fixable.pct)}% of failing records` : undefined, versionId: run },
           {
-            label: "Value at risk, top process",
+            label: o?.value_at_risk.worst_l1 ? `Most at risk: ${l1Label(o.value_at_risk.worst_l1)}` : "Most at risk",
             value: o?.value_at_risk.worst_l1 ? formatMoney(o.value_at_risk.worst_l1_amount, o.value_at_risk.currency) : "—",
             to: withScope("/insights/impact", { run }),
-            hint: o?.value_at_risk.worst_l1 ? `${l1Label(o.value_at_risk.worst_l1)}, ${o.value_at_risk.features_blocked} features blocked` : undefined,
+            hint: o?.value_at_risk.worst_l1 ? plural(o.value_at_risk.features_blocked, "feature blocked", "features blocked") : undefined,
           },
         ],
-        situation: { sentence: o ? `DQS ${o.dqs.composite ?? "not scored"}${o.dqs.tier ? `, ${labelOf(o.dqs.tier).toLowerCase()}` : ""}` : fallback("—"), tone: o?.dqs.tier === "no_go" ? "no-go" : o?.dqs.tier === "at_risk" ? "at-risk" : o?.dqs.tier === "go" ? "go" : undefined, href: withScope("/insights/trends", { run }) },
+        situation: { sentence: o ? `${o.dqs.composite != null ? `DQS ${o.dqs.composite.toFixed(1)}` : "Not scored"}${o.dqs.tier ? `, ${statusLabel("verdict", o.dqs.tier)}` : ""}` : fallback("—"), tone: o?.dqs.tier === "no_go" ? "no-go" : o?.dqs.tier === "at_risk" ? "at-risk" : o?.dqs.tier === "go" ? "go" : undefined, href: withScope("/insights/trends", { run }) },
         changed: { sentence: o?.dqs.delta != null ? deltaSentence(o.dqs.delta) : fallback("No earlier run") },
-        why: { sentence: o ? plural(o.blockers.count, "blocking gap") : fallback("—"), href: withScope("/insights/readiness", { run }) },
+        why: { sentence: o ? plural(o.blockers.count, "blocking finding") : fallback("—"), href: withScope("/insights/readiness", { run }) },
         next: { sentence: "Fix the highest-impact rules first", action: { label: "Open failing rules", href: withScope("/insights/rules", { run, module }) } },
       }}
       state={state}
@@ -159,6 +179,7 @@ function RunOverview() {
         ghost: "table",
         action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
       }}
+      errorProps={{ error: loadError, onRetry: () => { refetchList(); dayOne.refetch(); } }}
     >
       <div className="flex flex-col [gap:var(--m-section-gap)]" data-testid="insights-overview">
         {ovFailed && (
@@ -174,14 +195,14 @@ function RunOverview() {
           meta="Ranked by impact on the score"
           actions={<Link href={withScope("/insights/rules", { run, module })} className="m-text-body underline-offset-2 hover:underline">See all</Link>}
         >
-          <DataTable columns={fixColumns} data={rules.data?.rows ?? []} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar dense height="auto" />
+          <DataTable columns={fixColumns} data={rules.data?.rows ?? []} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar height="auto" />
         </Section>
 
         <div className="grid gap-4 @5xl:grid-cols-12">
           <div className="@5xl:col-span-8">
             <Section title="Trend" height={180} query={trends} meta={trendNote}>
               {trendLine.length < 2 ? <p className="m-text-body m-ink-3">A trend needs a second scored run of the same system or upload. <Link href="/runs" className="m-ink-accent underline underline-offset-2">Open runs</Link></p> : (
-                <Line data={trendLine} label="Composite score per run" annotations={annotations} height={180} />
+                <Line data={trendLine} label="Score per run" annotations={annotations} height={180} />
               )}
             </Section>
           </div>

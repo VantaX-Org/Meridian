@@ -5,12 +5,14 @@ GET  /api/v1/stewardship/{id}           — single queue item with source contex
 PUT  /api/v1/stewardship/{id}/assign    — assign to a steward (user_id null releases it)
 PUT  /api/v1/stewardship/{id}/resolve   — resolve (approve/reject) an item
 PUT  /api/v1/stewardship/{id}/escalate  — escalate an item
+POST /api/v1/stewardship/handoff        — hand one blocking rule to a steward (handoff_rule)
+GET  /api/v1/stewardship/handoff/stewards — who a rule can be handed to (users who can fix)
 POST /api/v1/stewardship/bulk-approve   — bulk approve high-confidence items
 GET  /api/v1/stewardship/metrics        — steward productivity metrics
 """
 
 import uuid as uuid_mod
-from datetime import datetime, timezone
+from datetime import date, datetime, time, timezone
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
@@ -19,7 +21,9 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.services.rbac import current_user_id, dev_role_override, has_permission, require_permission, scope_from_path
+from api.services.notifications import create_notification
+from api.services.rbac import (actions_for, current_user_id, current_user_label, dev_role_override,
+                               has_permission, require_permission, scope_from_path, user_grants)
 
 
 def sees_steward_breakdown(role: str) -> bool:
@@ -92,6 +96,8 @@ class MetricsResponse(BaseModel):
     items_by_status: dict[str, int]
     avg_resolution_hours_by_type: dict[str, float]
     backlog_total: int
+    #: open, in-progress and escalated tasks past their due date (or created + SLA hours), as the inbox counts them
+    overdue_count: int = 0
     sla_compliance_rate: float
     ai_acceptance_rate: Optional[float] = None
     steward_breakdown: Optional[list[dict]] = None
@@ -272,6 +278,17 @@ async def get_stewardship_metrics(
     )
     backlog_total = result.scalar() or 0
 
+    # Overdue: the inbox's rule (lib slaOf), over every waiting task rather than the rows a page has loaded
+    result = await db.execute(
+        text("""
+            SELECT COUNT(*) FROM stewardship_queue
+            WHERE tenant_id = :tid AND status IN ('open', 'in_progress', 'escalated')
+              AND COALESCE(due_at, created_at + make_interval(hours => sla_hours)) < now()
+        """),
+        {"tid": tid},
+    )
+    overdue_count = result.scalar() or 0
+
     # Avg resolution time by type
     result = await db.execute(
         text("""
@@ -354,6 +371,7 @@ async def get_stewardship_metrics(
         items_by_status=items_by_status,
         avg_resolution_hours_by_type=avg_resolution,
         backlog_total=backlog_total,
+        overdue_count=overdue_count,
         sla_compliance_rate=sla_compliance,
         ai_acceptance_rate=ai_acceptance_rate,
         steward_breakdown=steward_breakdown,
@@ -392,6 +410,140 @@ async def get_queue_item(
     return _row_to_item(row)
 
 
+# ── Rule hand-off (process owner -> steward) ─────────────────────────────────
+#
+# A process analyst can see a rule blocking a process but not fix it, and holds no `assign` over the inbox.
+# handoff_rule lets them create exactly one task: an exception tracking the rule, assigned to a user who can fix
+# (holds `apply`), with their note as its first comment and their due date as its deadline. Every `assign`
+# holder (leads, stewards, admins) holds handoff_rule too.
+
+_SEV_PRIORITY = {"critical": 1, "high": 2, "medium": 3, "low": 4}
+
+
+def can_fix(role: str) -> bool:
+    """A hand-off target: a user whose role may apply fixes."""
+    return has_permission(role, "apply")
+
+
+async def user_can_fix(db: AsyncSession, tenant_id: uuid_mod.UUID, user_id: str, role: str,
+                       module: Optional[str] = None) -> bool:
+    """A hand-off target: users.role or any role grant (built-in or custom, scoped or not) holds `apply`.
+
+    With ``module`` only grants covering that module count; the system is not known at hand-off,
+    so a grant scoped to one system still counts.
+    """
+    for key, scope in await user_grants(db, tenant_id, user_id, role):
+        if module is not None and scope.module is not None and scope.module != module:
+            continue
+        if "apply" in await actions_for(key, tenant_id, db):
+            return True
+    return False
+
+
+class HandoffBody(BaseModel):
+    check_id: str = Field(..., min_length=1, max_length=128)
+    module: str = Field(..., min_length=1, max_length=64, description="the object (module) the rule runs on")
+    assignee_id: uuid_mod.UUID
+    note: str = Field(..., min_length=1, max_length=2000)
+    due_date: date
+    version_id: Optional[uuid_mod.UUID] = None
+    finding_id: Optional[uuid_mod.UUID] = None
+    #: where the rule blocks, for the task title: an L1 process name or a step
+    process: Optional[str] = Field(None, max_length=200)
+    field: Optional[str] = Field(None, max_length=128)
+
+
+class HandoffOut(BaseModel):
+    task_id: str
+    exception_id: str
+    assigned_to: str
+    due_at: str
+
+
+class StewardOut(BaseModel):
+    id: str
+    name: Optional[str] = None
+    email: str
+    role: str
+
+
+@router.get("/stewardship/handoff/stewards", response_model=list[StewardOut])
+async def handoff_stewards(
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("handoff_rule")),
+) -> list[StewardOut]:
+    """Active users a blocking rule can be handed to: those who can fix (no admin rights needed to list them)."""
+    await db.execute(text(f"SET app.tenant_id = '{str(tenant.id)}'"))
+    rows = await db.execute(text("SELECT id, name, email, role FROM users WHERE tenant_id = :tid AND is_active "
+                                 "ORDER BY name, email"), {"tid": str(tenant.id)})
+    return [StewardOut(id=str(r[0]), name=r[1], email=r[2], role=r[3]) for r in rows.fetchall()
+            if await user_can_fix(db, tenant.id, str(r[0]), r[3])]
+
+
+@router.post("/stewardship/handoff", response_model=HandoffOut, status_code=201)
+async def handoff_rule(
+    body: HandoffBody,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("handoff_rule")),
+) -> HandoffOut:
+    """Hand one blocking rule to a steward: an exception on the rule plus its inbox task, both assigned."""
+    tid = str(tenant.id)
+    await db.execute(text(f"SET app.tenant_id = '{tid}'"))
+    if body.due_date < datetime.now(timezone.utc).date():
+        raise HTTPException(status_code=422, detail="The due date is in the past")
+    who = (await db.execute(text("SELECT role, is_active FROM users WHERE id = :u AND tenant_id = :tid"),
+                            {"u": str(body.assignee_id), "tid": tid})).fetchone()
+    if not who or not who[1] or not await user_can_fix(db, tenant.id, str(body.assignee_id), who[0], body.module):
+        raise HTTPException(status_code=422, detail="Hand the rule to an active user who can fix data")
+
+    # The finding the task tracks: the one named, else the rule's finding on that object in that run.
+    finding = None
+    if body.finding_id or body.version_id:
+        sql = ("SELECT id, severity FROM findings WHERE tenant_id = :tid AND "
+               + ("id = :f" if body.finding_id else "version_id = :v AND check_id = :c AND module = :m")
+               + " LIMIT 1")
+        finding = (await db.execute(text(sql), {"tid": tid, "f": str(body.finding_id), "v": str(body.version_id),
+                                                "c": body.check_id, "m": body.module})).fetchone()
+        if body.finding_id and not finding:
+            raise HTTPException(status_code=404, detail="Finding not found")
+    severity = finding[1] if finding and finding[1] in _SEV_PRIORITY else "high"
+    due_at = datetime.combine(body.due_date, time(23, 59, 59), tzinfo=timezone.utc)
+    where = f" blocks {body.process}" if body.process else f" fails on {body.module}"
+    title = f"Hand-off: {body.check_id}{where}"
+    author = current_user_label()
+    exc_id, task_id = str(uuid_mod.uuid4()), str(uuid_mod.uuid4())
+
+    await db.execute(text("""
+        INSERT INTO exceptions (id, tenant_id, type, category, severity, status, title, description,
+            assigned_to, escalation_tier, sla_deadline, created_at, linked_finding_id, source_reference)
+        VALUES (:id, :tid, 'dq_rule', :module, :sev, 'investigating', :title, :note,
+            CAST(:assignee AS uuid), 1, :due, now(), CAST(:finding AS uuid), :ref)
+    """), {"id": exc_id, "tid": tid, "module": body.module, "sev": severity, "title": title, "note": body.note,
+           "assignee": str(body.assignee_id), "due": due_at, "finding": str(finding[0]) if finding else None,
+           "ref": f"{body.version_id}:{body.check_id}" if body.version_id else body.check_id})
+    await db.execute(text("""
+        INSERT INTO exception_comments (id, exception_id, tenant_id, user_name, text, created_at)
+        VALUES (gen_random_uuid(), :eid, :tid, :who, :txt, now())
+    """), {"eid": exc_id, "tid": tid, "who": author,
+           "txt": f"Handed over by {author}" + (f" ({body.field})" if body.field else "") + f": {body.note}"})
+    # The task carries the chosen due date as its clock: sla_started_at is set so apply_sla leaves it alone.
+    await db.execute(text("""
+        INSERT INTO stewardship_queue (id, tenant_id, item_type, source_id, domain, priority, due_at, assigned_to,
+            status, assigned_at, sla_started_at, sla_state)
+        VALUES (:id, :tid, 'exception', :src, :module, :prio, :due, CAST(:assignee AS uuid), 'in_progress',
+            now(), now(), 'on_track')
+        ON CONFLICT DO NOTHING
+    """), {"id": task_id, "tid": tid, "src": exc_id, "module": body.module, "prio": _SEV_PRIORITY[severity],
+           "due": due_at, "assignee": str(body.assignee_id)})
+    await create_notification(tid, str(body.assignee_id), "assignment", f"Handed to you: {body.check_id}",
+                              body.note[:200], f"/inbox?focus={task_id}", db)
+    await db.commit()
+    return HandoffOut(task_id=task_id, exception_id=exc_id, assigned_to=str(body.assignee_id),
+                      due_at=due_at.isoformat())
+
+
 # ── PUT /stewardship/{id}/assign ─────────────────────────────────────────────
 
 
@@ -409,6 +561,14 @@ async def assign_queue_item(
     if body.user_id is None:
         return await _release_queue_item(db, str(tenant.id), item_id)
 
+    try:
+        assignee = str(uuid_mod.UUID(body.user_id))
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Assign the task to an active user of this tenant")
+    if not (await db.execute(text("SELECT 1 FROM users WHERE id = :u AND tenant_id = :t AND is_active"),
+                             {"u": assignee, "t": str(tenant.id)})).scalar():
+        raise HTTPException(status_code=422, detail="Assign the task to an active user of this tenant")
+
     result = await db.execute(
         text("UPDATE stewardship_queue SET assigned_to = :uid, status = 'in_progress', updated_at = now(), assigned_at = now(), assigned_team_id = NULL, assigned_by_rule = NULL WHERE id = :id AND tenant_id = :tid RETURNING id"),
         {"uid": body.user_id, "id": item_id, "tid": str(tenant.id)},
@@ -419,6 +579,8 @@ async def assign_queue_item(
     from api.services.triage import apply_sla
     tid = str(tenant.id)
     await db.run_sync(lambda s: apply_sla(s, tid, "queue", [item_id]))
+    await create_notification(tid, body.user_id, "assignment", "A task was assigned to you",
+                              "Open your inbox to work it.", f"/inbox?focus={item_id}", db)
     await db.commit()
     return {"id": item_id, "status": "in_progress", "assigned_to": body.user_id}
 
@@ -447,6 +609,9 @@ async def _release_queue_item(db: AsyncSession, tid: str, item_id: str) -> dict:
 
 # ── PUT /stewardship/{id}/resolve ────────────────────────────────────────────
 
+
+#: A task the inbox still lists (and the shell badge counts); anything else is closed.
+_OPEN_STATUSES = ("open", "in_progress", "escalated")
 
 @router.put("/stewardship/{item_id}/resolve")
 async def resolve_queue_item(
@@ -483,10 +648,40 @@ async def resolve_queue_item(
         raise HTTPException(status_code=404, detail="Queue item not found")
 
     item = _row_to_item(row)
+    # Already closed (resolved elsewhere, or a stale write-back closed by an earlier attempt): nothing to decide,
+    # and the source record must not be touched again.
+    if item.status not in _OPEN_STATUSES:
+        raise HTTPException(status_code=409, detail="This task is already closed; nothing was changed.")
+    if item.item_type == "golden_writeback":
+        # An SAP write: the same four-eyes decision as POST /master-records/{id}/writeback/approve,
+        # with the real authenticated user (never the dev fallback id).
+        from api.routes.writeback import _require_user
+        from api.services import golden_writeback as gw
+        decider = _require_user(request)
+        try:
+            rid = await gw.decide(db, str(tenant.id), item.source_id, body.action, decider)
+        except gw.DecisionError as e:
+            await db.rollback()
+            raise HTTPException(status_code=e.status, detail=e.detail) from None
+        await db.commit()
+        if body.action == "approve":
+            gw.enqueue(rid, str(tenant.id), "apply")
+        return {"id": item_id, "status": "resolved", "action": body.action}
     user_id = await _resolve_user_id(db, tenant, request)
 
     # Apply the resolution to the source record
-    await _apply_source_action(db, item, body.action, user_id, body.notes)
+    try:
+        await _apply_source_action(db, item, body.action, user_id, body.notes)
+    except HTTPException as e:
+        if e.status_code == 409 and item.item_type == "writeback_approval":
+            # Close the stale task so the inbox stops offering it, then report the conflict.
+            await db.execute(
+                text("UPDATE stewardship_queue SET status = 'resolved', updated_at = now(), resolved_at = now() "
+                     "WHERE id = :id AND tenant_id = :tid AND status IN ('open', 'in_progress', 'escalated')"),
+                {"id": item_id, "tid": str(tenant.id)},
+            )
+            await db.commit()
+        raise
 
     # Mark queue item resolved
     await db.execute(
@@ -537,21 +732,30 @@ async def _apply_source_action(
                 {"sid": item.source_id, "notes": notes or "Resolved via stewardship workbench"},
             )
 
-    elif item.item_type == "writeback_approval":
+    elif item.item_type == "writeback_approval" and action in ("approve", "reject"):
         if action == "approve":
-            await db.execute(
+            res = await db.execute(
                 # Same semantics as POST /cleaning/apply: the corrected value is
                 # accepted in Meridian (export/load file) with a 72h rollback
                 # window. No SAP write happens here.
                 text("UPDATE cleaning_queue SET status = 'applied', applied_at = now(), "
                      "rollback_deadline = now() + interval '72 hours', "
-                     "approved_by = COALESCE(approved_by, CAST(:uid AS uuid)) WHERE id = :sid"),
-                {"sid": item.source_id, "uid": current_user_id()},
+                     "approved_by = COALESCE(approved_by, CAST(:uid AS uuid)) "
+                     "WHERE id = :sid AND tenant_id = :tid AND status = 'approved'"),
+                {"sid": item.source_id, "tid": item.tenant_id, "uid": current_user_id()},
             )
-        elif action == "reject":
-            await db.execute(
-                text("UPDATE cleaning_queue SET status = 'rejected' WHERE id = :sid"),
-                {"sid": item.source_id},
+        else:
+            res = await db.execute(
+                text("UPDATE cleaning_queue SET status = 'rejected' "
+                     "WHERE id = :sid AND tenant_id = :tid AND status = 'approved'"),
+                {"sid": item.source_id, "tid": item.tenant_id},
+            )
+        if res.rowcount == 0:
+            # The proposal was applied, rejected or rolled back on Fix after this
+            # item was queued; acting on it again would rewrite its history.
+            raise HTTPException(
+                status_code=409,
+                detail="This fix was already applied, rejected or rolled back. Refresh the inbox.",
             )
 
     elif item.item_type == "glossary_review":
@@ -683,13 +887,26 @@ async def bulk_approve(
             continue
 
         item = _row_to_item(row)
+        if item.item_type == "golden_writeback":
+            continue  # an SAP write-back is approved one at a time, never in bulk
 
         # Only approve if above confidence threshold
         if item.ai_confidence is not None and item.ai_confidence < body.min_confidence:
             continue
 
         # Apply source action individually
-        await _apply_source_action(db, item, "approve", user_id, "Bulk approved via stewardship workbench")
+        try:
+            await _apply_source_action(db, item, "approve", user_id, "Bulk approved via stewardship workbench")
+        except HTTPException as e:
+            if e.status_code != 409 or item.item_type != "writeback_approval":
+                raise
+            # The fix moved on (applied/rejected on Fix): close the stale task, don't count it.
+            await db.execute(
+                text("UPDATE stewardship_queue SET status = 'resolved', updated_at = now(), resolved_at = now() "
+                     "WHERE id = :id AND tenant_id = :tid"),
+                {"id": iid, "tid": str(tenant.id)},
+            )
+            continue
         approved += 1
 
         # Individual history row for golden_record_review items
@@ -698,8 +915,8 @@ async def bulk_approve(
 
         # Mark resolved
         await db.execute(
-            text("UPDATE stewardship_queue SET status = 'resolved', updated_at = now(), resolved_at = now(), acknowledged_at = COALESCE(acknowledged_at, now()) WHERE id = :id"),
-            {"id": iid},
+            text("UPDATE stewardship_queue SET status = 'resolved', updated_at = now(), resolved_at = now(), acknowledged_at = COALESCE(acknowledged_at, now()) WHERE id = :id AND tenant_id = :tid"),
+            {"id": iid, "tid": str(tenant.id)},
         )
 
     await db.commit()

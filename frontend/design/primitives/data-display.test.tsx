@@ -32,7 +32,7 @@ describe("data-display primitives", () => {
 
   it("ScoreRing labels itself with the score", () => {
     render(<ScoreRing score={92} />);
-    expect(screen.getByLabelText("Score 92")).toBeInTheDocument();
+    expect(screen.getByLabelText("Score 92.0")).toBeInTheDocument();
   });
 
   it("ErrorState calls onRetry", () => {
@@ -82,15 +82,15 @@ describe("wave 6 readings", () => {
   it("ScoreRing does not label a cap that does not bind", () => {
     render(<ScoreRing score={70} cap={85} size={96} />);
     expect(screen.queryByText(/Capped at/)).toBeNull();
-    expect(screen.getByLabelText("Score 70")).toBeInTheDocument();
+    expect(screen.getByLabelText("Score 70.0")).toBeInTheDocument();
   });
 
   it("ScoreRing cap shows tick, ghost arc, clamped value and label", () => {
     const { container } = render(<ScoreRing score={96} cap={85} criticals={1} size={160} />);
     expect(container.querySelector("[data-cap]")).toBeTruthy();
     expect(container.querySelector("[data-ghost]")).toBeTruthy();
-    expect(screen.getByText("Capped at 85, 1 critical")).toBeInTheDocument();
-    expect(screen.getByLabelText("Score 85, capped from 96, 1 critical")).toBeInTheDocument();
+    expect(screen.getByText("Capped at 85.0, 1 critical")).toBeInTheDocument();
+    expect(screen.getByLabelText("Score 85.0, capped from 96.0, 1 critical")).toBeInTheDocument();
   });
 
   it("Counter uses the hero token by default", () => {

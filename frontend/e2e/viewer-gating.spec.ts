@@ -24,18 +24,11 @@ const MUTATING = /^(approve|reject|write ?back|sign off|extract( now)?|apply|acc
 const PRIMARY = /^(approve|write back|sign off|extract( now)?)\b/i;
 
 /**
- * Routes where a viewer still sees a control whose label starts with a mutating verb on the
- * recording (release 0.0.449). Each is a navigation link or an onboarding item, not a write,
- * but the brief allows none; they are reported as gating gaps and expected to fail here until
- * the pages hide them for viewers (the test then flips to an unexpected pass).
+ * Routes where a viewer still sees a control whose label starts with a mutating verb, each expected to fail here
+ * until the page hides it for viewers. Empty: the /insights "Create remediation batch" (apply), /insights/readiness
+ * "Create wave" (analyse) and the single-run "Import file" (upload) gaps are gated now.
  */
-const KNOWN_GAPS: Record<string, string> = {
-  "/runs": "\"Run analysis\" link to the system page is not gated by can(\"analyse\")",
-  "/insights": "the current-state overview's \"Cleansing opportunity\" funnel shows its \"Create remediation batch\" link (to /fix) for a viewer",
-  "/insights/readiness": "\"Create wave\" link shows for a viewer",
-  [`/runs/${RECORDED.businessPartnerRunId}`]: "\"Import file\" action in the single-run empty state shows for a viewer",
-  [`/systems/${RECORDED.systemId}`]: "the Objects tab's per-object \"Extract\" links show for a viewer (the Extract primary itself is disabled)",
-};
+const KNOWN_GAPS: Record<string, string> = {};
 
 test.describe("viewer gating", () => {
   test.beforeEach(async ({ app }) => {
@@ -66,9 +59,9 @@ test.describe("viewer gating", () => {
     await expect(app.getByRole("dialog", { name: "Request access" })).toBeVisible();
   });
 
-  test("Users and audit shows the manage_users notice instead of the user list", async ({ app }) => {
+  test("Users shows the administrator notice instead of the user list", async ({ app }) => {
     await app.goto("/admin/users", { waitUntil: "load" });
-    await expect(app.getByText(/needs the manage_users permission/i)).toBeVisible({ timeout: 20_000 });
+    await expect(app.getByText(/only administrators manage users/i)).toBeVisible({ timeout: 20_000 });
     await expect(app.getByRole("button", { name: "Invite user" })).toHaveCount(0);
   });
 
@@ -86,7 +79,10 @@ test.describe("viewer gating", () => {
         els
           .filter((el) => {
             const r = (el as HTMLElement).getBoundingClientRect();
-            return r.width > 0 && r.height > 0 && !el.closest("th, [role='columnheader']") && !el.classList.contains("m-stat");
+            // a picker (the scope bar's run and object choice) changes what is shown, not the data; an error
+            // state's Retry reads the data again (pages whose API is not in the recording show one)
+            return r.width > 0 && r.height > 0 && !el.closest("th, [role='columnheader']") && !el.classList.contains("m-stat")
+              && el.getAttribute("role") !== "combobox" && !el.closest("[data-state='error']");
           })
           .map((el) => ({
             name: (el.getAttribute("aria-label") ?? el.textContent ?? "").trim(),
@@ -103,7 +99,8 @@ test.describe("viewer gating", () => {
 test("an admin sees the Test connection and Extract controls", async ({ app }) => {
   await app.goto(`/systems/${RECORDED.systemId}`, { waitUntil: "load" });
   await expect(app.getByRole("button", { name: "Test connection" })).toBeEnabled({ timeout: 20_000 });
-  const extract = app.getByRole("button", { name: "Extract", exact: true });
+  // The header primary; an empty object list repeats it as its own call to action.
+  const extract = app.getByRole("button", { name: "Extract", exact: true }).first();
   await expect(extract).toBeEnabled({ timeout: 20_000 });
   await extract.click();
   await expect(app.getByText("Extract objects into a new run")).toBeVisible();

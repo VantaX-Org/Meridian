@@ -5,13 +5,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { Button, Delta, EmptyState, ErrorState, ReportPage, Select, Stat, Waterfall, asyncStateOf } from "@/design";
+import { Button, Delta, EmptyState, ErrorState, ReportPage, Select, Stat, Waterfall, asyncStateOf, toast } from "@/design";
 import { createSimulation, getSimulation, isSimulationResult } from "@/lib/api/simulation";
 import { getVersions } from "@/lib/api/versions";
 import { isFinished } from "@/lib/runs";
 import { apiErrorMessage } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
+import { runChoiceLabels } from "@/lib/run-scope";
 import { useSearchParams } from "next/navigation";
 import { usePermissions } from "@/lib/permissions";
 import { CreateBatchFromSimulation, RuleImpact } from "./rule-impact";
@@ -22,6 +22,7 @@ export default function WhatIfPage() {
   const [simId, setSimId] = useState<string | null>(null);
   const versions = useQuery({ queryKey: ["versions", "what-if"], queryFn: () => getVersions({ limit: 25 }) });
   const runs = (versions.data?.versions ?? []).filter(isFinished);
+  const runLabels = runChoiceLabels(runs);
   const fromUrl = useSearchParams().get("run");
   const versionId = picked || runs.find((v) => v.id === fromUrl)?.id || runs[0]?.id || "";
   const run = useMutation({
@@ -42,7 +43,7 @@ export default function WhatIfPage() {
 
   const controls = (
     <div className="flex items-center gap-2">
-      {runs.length > 0 && <Select label="Analysis run" value={versionId} onValueChange={(v) => { setPicked(v); setSimId(null); }} options={runs.map((r) => ({ value: r.id, label: r.label ?? r.id }))} placeholder="Run" />}
+      {runs.length > 0 && <Select label="Analysis run" value={versionId} onValueChange={(v) => { setPicked(v); setSimId(null); }} options={runs.map((r) => ({ value: r.id, label: runLabels.get(r.id) ?? "Run" }))} placeholder="Run" />}
       {can("analyse") && <Button pending={run.isPending || running} disabled={!versionId} onClick={() => run.mutate()}>Run simulation</Button>}
       {can("apply") && result ? <CreateBatchFromSimulation simulation={result} /> : null}
     </div>
@@ -62,7 +63,7 @@ export default function WhatIfPage() {
         ghost: "chart",
         action: <Button render={<Link href="/runs">Open runs</Link>} />,
       }}
-      errorProps={{ message: apiErrorMessage(versions.error), onRetry: () => void versions.refetch() }}
+      errorProps={{ error: versions.error, onRetry: () => void versions.refetch() }}
       narrative={
         result && o && delta != null
           ? `Applying every fix would move the score from ${(o.before ?? 0).toFixed(1)} to ${(o.after ?? 0).toFixed(1)}, resolving ${result.findings.resolved.toLocaleString()} findings across ${result.records.resolved.toLocaleString()} records.`

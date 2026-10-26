@@ -1,30 +1,32 @@
 // frontend/app/(app)/mdm/golden/[id]/page.tsx
 "use client";
 
-import { toast } from "sonner";
 import Link from "next/link";
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, ConfirmDialog, DataTable, EntityTabs, EmptyState, ErrorState, Mono, Pill, RecordPage, Skeleton, type RecordStatus } from "@/design";
-import { getMasterRecord, getMasterRecordHistory, promoteMasterRecord, writebackMasterRecord } from "@/lib/api/master-records";
+import { Button, ConfirmDialog, DataTable, EntityTabs, EmptyState, ErrorState, Mono, Pill, RecordPage, Skeleton, toast } from "@/design";
+import { getMasterRecord, getMasterRecordHistory, promoteMasterRecord } from "@/lib/api/master-records";
 import { getRelationships } from "@/lib/api/relationships";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { LedgerHead } from "@/components/mdm/ledger";
 import { MergedRecords } from "@/components/mdm/merged-records";
+import { GoldenFields } from "@/components/mdm/golden-fields";
+import { MergeHistory, mergeEventsKey } from "@/components/mdm/merge-history";
 import { GatedPrimary } from "@/components/gated-primary";
+import { GoldenStatusPill, contributionSystem, sourceSystems } from "@/components/mdm/golden-status";
+import { GoldenWriteback } from "@/components/mdm/golden-writeback";
 import { useRole } from "@/hooks/use-role";
-import { formatModuleName } from "@/lib/format";
+import { formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { MasterRecordDetail } from "@/types/api";
 import type { ColumnDef } from "@tanstack/react-table";
 
 type Rel = { id: string; relationship_type: string; to_key: string; to_domain: string };
 type Hist = { id: string; changed_at: string; change_type: string; changed_by?: string | null };
-type FieldRow = { field: string; value: unknown };
-type SourceRow = { system: string; value: unknown; confidence: number; ai: string | null | undefined };
+/** One golden field and the source system its surviving value came from (source_contributions is keyed by field). */
+type SourceRow = { field: string; system: string | null; via: string | undefined; value: unknown; confidence: number | null; ai: string | null | undefined };
 
-const STATUS_LABEL: Record<string, string> = { candidate: "Candidate", pending_review: "Pending review", golden: "Golden", superseded: "Superseded" };
 const show = (v: unknown) => (v == null ? "None" : String(v));
 
 const relCols: ColumnDef<Rel>[] = [
@@ -33,18 +35,20 @@ const relCols: ColumnDef<Rel>[] = [
   { id: "domain", header: "Object", accessorFn: (r) => formatModuleName(r.to_domain) },
 ];
 const histCols: ColumnDef<Hist>[] = [
-  { id: "when", header: "When", accessorFn: (e) => e.changed_at },
-  { id: "type", header: "Type", accessorFn: (e) => e.change_type },
+  { id: "when", header: "When", accessorFn: (e) => e.changed_at, cell: ({ row }) => formatDate(row.original.changed_at, "datetime") },
+  { id: "type", header: "Change", accessorFn: (e) => labelOf(e.change_type) },
   { id: "by", header: "By", accessorFn: (e) => e.changed_by ?? "System" },
 ];
-const fieldCols: ColumnDef<FieldRow>[] = [
-  { id: "field", header: "Field", cell: ({ row }) => <Mono>{row.original.field}</Mono> },
-  { id: "value", header: "Value", accessorFn: (r) => show(r.value) },
-];
 const sourceCols: ColumnDef<SourceRow>[] = [
-  { id: "system", header: "System", cell: ({ row }) => <Mono>{row.original.system}</Mono> },
+  { id: "field", header: "Field", cell: ({ row }) => <Mono>{row.original.field}</Mono> },
+  {
+    id: "system", header: "Source system", accessorFn: (r) => r.system ?? "",
+    cell: ({ row }) => (row.original.system ? (
+      <span><Mono>{row.original.system}</Mono>{row.original.via ? <span className="m-ink-3"> via merge of <Mono>{row.original.via}</Mono></span> : null}</span>
+    ) : <span className="m-ink-3">Not recorded</span>),
+  },
   { id: "value", header: "Value", accessorFn: (r) => show(r.value) },
-  { id: "conf", header: "Confidence", accessorFn: (r) => `${Math.round(r.confidence * 100)}%` },
+  { id: "conf", header: "Confidence", accessorFn: (r) => (r.confidence == null ? "None" : `${Math.round(r.confidence * 100)}%`) },
   { id: "ai", header: "Model recommendation", accessorFn: (r) => r.ai ?? "None" },
 ];
 
@@ -53,7 +57,6 @@ export default function MasterRecordPage() {
   const qc = useQueryClient();
   const { can } = useRole();
   const canApprove = can("approve");
-  const canApply = can("apply");
   const [confirmPromote, setConfirmPromote] = useState(false);
 
   const recordQuery = useQuery<MasterRecordDetail>({
@@ -74,16 +77,11 @@ export default function MasterRecordPage() {
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: queryKeys.masterRecord(id) });
     qc.invalidateQueries({ queryKey: queryKeys.masterRecordHistory(id) });
+    qc.invalidateQueries({ queryKey: mergeEventsKey(id) });
   };
   const promote = useMutation({
     mutationFn: () => promoteMasterRecord(id, true),
     onSuccess: () => { invalidate(); setConfirmPromote(false); },
-    onError: (error) => {
-      toast.error(apiErrorMessage(error));
-    },
-  });
-  const writeback = useMutation({
-    mutationFn: () => writebackMasterRecord(id),
     onError: (error) => {
       toast.error(apiErrorMessage(error));
     },
@@ -117,29 +115,24 @@ export default function MasterRecordPage() {
     );
   }
 
-  // RecordPage only speaks the record-quality vocabulary; the golden-record status is the Pill in the overview.
-  const status: RecordStatus = record.status === "golden"
-    ? { label: "passing", tone: "go" }
-    : { label: "in batch", tone: record.status === "superseded" ? "neutral" : "at-risk" };
+  // RecordPage's status speaks the record-quality vocabulary, so it is omitted; the lifecycle Pill is in the overview.
   const promotable = record.status !== "golden" && record.status !== "superseded";
 
-  const fields = Object.entries(record.golden_fields);
-  const sources = Object.entries(record.source_contributions);
+  const contributions = Object.entries(record.source_contributions);
+  const systems = sourceSystems(record.source_contributions);
   const relationships = relationshipsQuery.data?.relationships ?? [];
   const history = historyQuery.data ?? [];
-  const fieldRows: FieldRow[] = fields.map(([field, value]) => ({ field, value }));
-  const sourceRows: SourceRow[] = sources.map(([system, c]) => ({ system, value: c.value, confidence: c.confidence, ai: c.ai_recommendation }));
+  const sourceRows: SourceRow[] = contributions.map(([field, c]) => ({ field, system: contributionSystem(c), via: c.merged_from, value: c.value, confidence: c.confidence, ai: c.ai_recommendation }));
 
   return (
     <RecordPage
       recordKey={record.sap_object_key}
       object={record.domain}
-      status={status}
       meta={record.status === "superseded"
         ? "This record was merged into another golden record. Its own values are kept for an unmerge."
-        : `The one trusted version of this record, built from ${sources.length.toLocaleString()} ${sources.length === 1 ? "source" : "sources"}. ${promotable ? "Check the values, then promote it." : "It is the version other systems should use."}`}
-      actions={canApprove && promotable ? (
-        <Button disabled={promote.isPending} onClick={() => setConfirmPromote(true)}>Promote</Button>
+        : `The one trusted version of this record, built from ${systems.length.toLocaleString()} source ${systems.length === 1 ? "system" : "systems"}. ${promotable ? "Check the values, then promote it." : "It is the version other systems should use."}`}
+      actions={promotable ? (
+        <GatedPrimary kind="approve" allowed={canApprove} disabled={promote.isPending} onClick={() => setConfirmPromote(true)}>Promote</GatedPrimary>
       ) : undefined}
     >
       <EntityTabs entityType="master-records" entityId={id}
@@ -166,54 +159,35 @@ export default function MasterRecordPage() {
           <DataTable columns={histCols} getRowId={(r) => r.id} data={history as Hist[]} height="auto" />
         )}
       </section>
+      <MergeHistory id={id} />
         </>}
         overview={<>
       <section className="flex items-center gap-2">
-        <Pill tone={record.status === "golden" ? "go" : record.status === "superseded" ? "no-go" : "at-risk"}>
-          {STATUS_LABEL[record.status] ?? record.status.replace(/_/g, " ")}
-        </Pill>
+        <GoldenStatusPill status={record.status} />
         <Pill tone="neutral">{Math.round(record.overall_confidence * 100)}% confidence</Pill>
-        <GatedPrimary
-          kind="writeback"
-          allowed={canApply}
-          variant="secondary"
-          disabled={writeback.isPending || (writeback.data ? !writeback.data.writeback_supported : false)}
-          onClick={() => writeback.mutate()}
-        >
-          {writeback.isPending ? "Writing back…" : "Write back"}
-        </GatedPrimary>
+        <GoldenWriteback recordId={record.id} status={record.status} />
         <Button variant="ghost" render={<Link href={`/mdm/golden/merge?id=${record.id}`}>Compare sources</Link>} />
       </section>
-      {writeback.data ? (
-        <p className="m-text-body m-ink-3">{writeback.data.message}</p>
-      ) : null}
 
       <ConfirmDialog
         open={confirmPromote}
         onOpenChange={setConfirmPromote}
         title="Promote to golden record?"
-        body={<p className="m-text-body m-ink-2">This replaces the current golden fields for {record.sap_object_key} with the merged values. This cannot be undone.</p>}
+        body={<p className="m-text-body m-ink-2">This replaces the current golden fields for <Mono>{record.sap_object_key}</Mono> with the merged values. This cannot be undone.</p>}
         confirmLabel="Promote"
         cancelLabel="Keep as is"
         pending={promote.isPending}
         onConfirm={() => promote.mutate()}
       />
 
-      <section aria-label="Golden fields">
-        <LedgerHead title="Golden fields" meta={String(fields.length)} />
-        {fields.length === 0 ? (
-          <EmptyState variant="inline" title="No golden fields recorded" detail="Fields fill in when the golden record is built from its sources." action={<Link className="m-ink-accent-ink hover:underline" href="/mdm/survivorship">Survivorship rules</Link>} />
-        ) : (
-          <DataTable columns={fieldCols} getRowId={(r) => r.field} data={fieldRows} height="auto" />
-        )}
-      </section>
+      <GoldenFields id={record.id} fields={record.golden_fields} onChanged={invalidate} />
 
       <section aria-label="Source contributions">
-        <LedgerHead title="Source contributions" meta={String(sources.length)} />
-        {sources.length === 0 ? (
+        <LedgerHead title="Source contributions" meta={`${contributions.length.toLocaleString()} ${contributions.length === 1 ? "field" : "fields"} from ${systems.length.toLocaleString()} ${systems.length === 1 ? "system" : "systems"}`} />
+        {contributions.length === 0 ? (
           <EmptyState variant="inline" title="No sources recorded" detail="A source is added each time an extraction carries this key." action={<Link className="m-ink-accent-ink hover:underline" href="/systems">Open systems</Link>} />
         ) : (
-          <DataTable columns={sourceCols} getRowId={(r) => r.system} data={sourceRows} height="auto" />
+          <DataTable columns={sourceCols} getRowId={(r) => r.field} data={sourceRows} height="auto" />
         )}
       </section>
 

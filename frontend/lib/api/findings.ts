@@ -55,7 +55,7 @@ export interface FindingsAggregate {
   cost_at_risk?: number;
   by_dimension: { dimension: string; findings: number; avg_pass_rate: number | null }[];
   avg_pass_rate: number | null;
-  dqs: { composite: number | null; raw?: number | null; dimension_scores: Record<string, number>; modules: Record<string, number>; capped?: boolean;
+  dqs: { composite: number | null; raw?: number | null; dimension_scores: Record<string, number>; modules: Record<string, number>; capped?: boolean; cap_reason?: string | null;
     tier?: "pass" | "warn" | "fail" | null };
   previous_dqs: number | null;
 }
@@ -111,7 +111,10 @@ export interface ScoreHistoryEntry {
 /** One run's composite score for a single module, part of the per-module series below. */
 export interface ModuleScoreHistoryEntry {
   version_id: string;
+  /** Re-weighted under the tenant's current scoring config. */
   composite: number;
+  /** The module's score as stored when the run was scored. */
+  at_the_time?: number | null;
 }
 
 /** GET /api/v1/scores/history — composite DQS across runs, as scored at the time and under today's weights. */

@@ -6,9 +6,11 @@
  */
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, EmptyState, ErrorState, Pill, Skeleton, type PillTone, Status } from "@/design";
+import { Button, Card, DataTable, EmptyState, ErrorState, Pill, Skeleton, Status } from "@/design";
+import { HEALTH_LABEL, HEALTH_VERDICT } from "@/app/(app)/systems/_health";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { getSystems } from "@/lib/api/connectivity";
@@ -18,20 +20,20 @@ import { queryKeys } from "@/lib/query-keys";
 import type { SAPSystemExtended } from "@/types/api";
 import type { Job } from "@/types/jobs";
 
-const HEALTH: Record<string, { tone: PillTone; label: string }> = {
-  healthy: { tone: "go", label: "Healthy" },
-  degraded: { tone: "at-risk", label: "Degraded" },
-  unreachable: { tone: "no-go", label: "Unreachable" },
-  auth_failed: { tone: "no-go", label: "Sign-in refused" },
-  unknown: { tone: "neutral", label: "Not tested" },
-};
-
 const systemColumns: ColumnDef<SAPSystemExtended>[] = [
   {
     id: "health", header: "Health",
     cell: ({ row: { original: s } }) => {
-      const h = HEALTH[s.health_status ?? "unknown"] ?? HEALTH.unknown;
-      return <Pill tone={s.is_active ? h.tone : "neutral"}>{s.is_active ? h.label : "Inactive"}</Pill>;
+      if (!s.is_active) return <Pill tone="neutral">Inactive</Pill>;
+      const verdict = HEALTH_VERDICT[s.health_status ?? "unknown"];
+      return (
+        <span className="inline-flex flex-col items-start">
+          {verdict ? <Status kind="verdict" value={verdict} /> : <span className="m-ink-3">{HEALTH_LABEL.unknown}</span>}
+          <span className="m-text-meta m-ink-3">
+            {s.last_health_check ? `${verdict && verdict !== "go" ? `${HEALTH_LABEL[s.health_status]}, checked` : "Checked"} ${relativeTime(s.last_health_check)}` : verdict ? "Never checked" : ""}
+          </span>
+        </span>
+      );
     },
   },
   { accessorKey: "name", header: "System" },
@@ -45,8 +47,10 @@ const jobColumns: ColumnDef<Job>[] = [
 ];
 
 const link = (href: string, label: string) => <Button variant="secondary" render={<Link href={href}>{label}</Link>} />;
+const healthHref = (s: SAPSystemExtended) => `/systems/${s.id}?tab=health`;
 
 export function LiveSection() {
+  const router = useRouter();
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const { active } = useJobs();
   const { can } = useRole();
@@ -60,15 +64,15 @@ export function LiveSection() {
         ) : isListFailure(systemsQ) ? (
           <ErrorState message="Live system state could not be read" onRetry={() => void systemsQ.refetch()} />
         ) : systems.length ? (
-          <DataTable columns={systemColumns} data={systems} getRowId={(s) => s.id} height="auto" dense hideToolbar tableId="home-systems" />
+          <DataTable columns={systemColumns} data={systems} getRowId={(s) => s.id} rowHref={healthHref} onRowClick={(s) => router.push(healthHref(s))} height="auto" hideToolbar tableId="home-systems" />
         ) : (
-          <EmptyState title="No systems connected" action={can("manage_systems") ? link("/systems?new=1", "Connect a system") : undefined} />
+          <EmptyState title="No systems connected" action={can("manage_systems") ? link("/systems?connect=1", "Connect a system") : undefined} />
         )}
       </Card>
 
       <Card title="Jobs running" padding="sm">
         {active.length ? (
-          <DataTable columns={jobColumns} data={active} getRowId={(j) => j.id} height="auto" dense hideToolbar tableId="home-jobs" />
+          <DataTable columns={jobColumns} data={active} getRowId={(j) => j.id} height="auto" hideToolbar tableId="home-jobs" />
         ) : (
           <EmptyState title="Nothing is running" action={can("trigger_sync") ? link("/systems", "Run extraction") : undefined} />
         )}

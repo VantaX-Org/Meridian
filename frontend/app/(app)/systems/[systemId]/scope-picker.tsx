@@ -4,13 +4,13 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { toast } from "sonner";
-import { Button, Card, Checkbox, DataTable, EmptyState, ErrorState, Field, Input, Mono, Notice, Skeleton } from "@/design";
+import { Button, Card, Checkbox, DataTable, EmptyState, ErrorState, Field, Input, Mono, Notice, Skeleton, toast } from "@/design";
+import { environmentLabel } from "@/components/systems/connect-system-dialog";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
+import { clsx } from "clsx";
 import { getSystemObjects, startDownload, type DownloadScope, type ScopeKey } from "@/lib/api/system-objects";
 import { formatModuleName, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import { clsx } from "clsx";
 
 const SCOPE_LABEL: Record<ScopeKey, string> = {
   company_codes: "Company codes",
@@ -21,11 +21,18 @@ const SCOPE_LABEL: Record<ScopeKey, string> = {
 const list = (v: string) => v.split(/[\s,;]+/).map((x) => x.trim().toUpperCase()).filter(Boolean);
 const note = "m-text-body";
 
-/** Choose objects and scope, confirm inline, then extract into a new run. */
-export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: (jobId: string) => void }) {
+/** Choose objects and scope, confirm inline, then extract into a new run. The one Extract drawer's body. */
+export function ScopePicker({ id, system, onDownloaded, initialObjects = [] }: {
+  id: string;
+  /** Named in the confirmation: which system and environment is about to be read. */
+  system?: { name: string; environment: string };
+  onDownloaded: (jobId: string) => void;
+  /** Objects picked on open (`?object=` on the system page, e.g. the SAP monitor's Re-extract); unknown ones are ignored. */
+  initialObjects?: readonly string[];
+}) {
   const qc = useQueryClient();
   const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: queryKeys.systemObjects(id), queryFn: () => getSystemObjects(id) });
-  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [picked, setPicked] = useState<Set<string>>(() => new Set(initialObjects));
   const [scopeText, setScopeText] = useState<Partial<Record<ScopeKey, string>>>({});
   const [dates, setDates] = useState<{ date_from?: string; date_to?: string }>({});
   const [excludeDeleted, setExcludeDeleted] = useState(false);
@@ -39,15 +46,16 @@ export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: (j
   const windowed = chosen.flatMap((o) => o.date_window);
   const toggle = (o: string) => setPicked((p) => { const n = new Set(p); if (n.has(o)) n.delete(o); else n.add(o); return n; });
 
+  const scope = (): DownloadScope => {
+    const s: DownloadScope = { ...dates, ...(excludeDeleted ? { exclude_deleted: true } : {}) };
+    for (const k of filters) {
+      const v = list(scopeText[k] ?? "");
+      if (v.length) s[k] = v;
+    }
+    return s;
+  };
   const download = useMutation({
-    mutationFn: (analyse: boolean) => {
-      const scope: DownloadScope = { ...dates, ...(excludeDeleted ? { exclude_deleted: true } : {}) };
-      for (const k of filters) {
-        const v = list(scopeText[k] ?? "");
-        if (v.length) scope[k] = v;
-      }
-      return startDownload(id, { objects: Array.from(picked), scope, label: label || undefined, analyse });
-    },
+    mutationFn: (analyse: boolean) => startDownload(id, { objects: chosen.map((o) => o.object), scope: scope(), label: label || undefined, analyse }),
     onSuccess: (job, analyse) => {
       toast.success(analyse ? "Extraction started. Analysis follows." : "Extraction started. A new run appears under Runs.");
       setPicked(new Set()); setConfirm(null);
@@ -65,9 +73,18 @@ export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: (j
       const t = row.original.tables;
       return <Mono>{t.slice(0, 5).join(", ")}{t.length > 5 ? ` +${t.length - 5}` : ""}</Mono>;
     } },
-    { id: "last", header: "Last extraction", cell: ({ row }) => (row.original.last_download ? relativeTime(row.original.last_download.at) : "Never") },
+    { id: "last", header: "Last extracted", cell: ({ row }) => (row.original.last_download ? relativeTime(row.original.last_download.at) : "Never") },
     { id: "records", header: "Rows", cell: ({ row }) => row.original.last_download?.records?.toLocaleString() ?? "—" },
   ], [picked]);
+
+  // The scope sentence of the confirmation: which filters narrow the read, or that it reads everything.
+  const s = scope();
+  const scopeParts = [
+    ...filters.flatMap((k) => (s[k]?.length ? [`${SCOPE_LABEL[k].toLowerCase()} ${s[k]!.join(", ")}`] : [])),
+    ...(s.date_from || s.date_to ? [`documents ${s.date_from ?? "the start"} to ${s.date_to ?? "today"}`] : []),
+    ...(excludeDeleted ? ["records flagged for deletion skipped"] : []),
+  ];
+  const scopeSentence = scopeParts.length ? `Scope: ${scopeParts.join("; ")}.` : "Scope: everything, no organisational filter.";
 
   return (
     <Card title="Extract objects into a new run" meta={chosen.length ? `${chosen.length} selected` : undefined}>
@@ -116,13 +133,13 @@ export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: (j
               ) : (
                 <Notice
                   tone="warning"
-                  title={`Extract ${chosen.length} object${chosen.length === 1 ? "" : "s"}${confirm ? " and analyse" : ""}?`}
+                  title={`Extract ${chosen.length} object${chosen.length === 1 ? "" : "s"} from ${system ? `${system.name} (${environmentLabel(system.environment)})` : "this system"}${confirm ? " and analyse" : ""}?`}
                   action={<>
                     <Button onClick={() => download.mutate(confirm)} pending={download.isPending}>{confirm ? "Start extract and analysis" : "Start extract"}</Button>
                     <Button variant="ghost" onClick={() => setConfirm(null)}>Keep scope</Button>
                   </>}
                 >
-                  Only the selected objects and scope are read, into a new run.
+                  {chosen.map((o) => formatModuleName(o.object)).join(", ")}. {scopeSentence} Only these are read, into a new run. Read-only: Meridian never writes to SAP.
                 </Notice>
               )}
             </div>

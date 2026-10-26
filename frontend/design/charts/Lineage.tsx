@@ -32,6 +32,10 @@ const TYPE_COLOR: Record<LineageChartType, string> = {
   step: mColor.viz[4], process: mColor.viz[1], feature: mColor.viz[9], kpi: mColor.viz[5],
 };
 const EDGE_COLOR = { full_block: "var(--m-critical)", degraded: "var(--m-high)", cosmetic: "var(--m-line-strong)" } as const;
+/** The non-colour cue for impact: a blocking link is long-dashed, a degrading one dotted, any other link solid. */
+const EDGE_DASH = { full_block: "6 3", degraded: "2 3", cosmetic: undefined } as const;
+/** Read and hovered with an at-risk node's label. */
+export const AT_RISK_NOTE = "reached by a failing rule";
 
 const MIN_COL_W = 128;
 const ROW_H = 22;
@@ -115,7 +119,8 @@ export function LineageChart({
             return (
               <path key={i} d={`M${x1},${y1} C${x1 + dx},${y1} ${x2 - dx},${y2} ${x2},${y2}`}
                 stroke={e.impact ? EDGE_COLOR[e.impact] : "var(--m-line-strong)"}
-                strokeOpacity={dimEdge(e) ? 0.12 : e.impact ? 0.9 : 0.6} strokeWidth={e.impact === "full_block" ? 1.5 : 1} />
+                strokeOpacity={dimEdge(e) ? 0.12 : e.impact ? 0.9 : 0.6} strokeWidth={e.impact === "full_block" ? 1.5 : 1}
+                strokeDasharray={e.impact ? EDGE_DASH[e.impact] : undefined} data-impact={e.impact ?? undefined} />
             );
           })}
         </g>
@@ -126,8 +131,10 @@ export function LineageChart({
               style={{ cursor: onNodeClick ? "pointer" : "default", opacity: dimNode(n.id) ? 0.3 : 1 }}
               onMouseEnter={() => setHover(n.id)} onMouseLeave={() => setHover(null)}
               onClick={() => onNodeClick?.(n.id)} onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); onNodeClick?.(n.id); } }}>
-              <title>{n.label}</title>
-              <rect x={-PAD / 2} y={2} width={COL_W - PAD * 2} height={ROW_H - 4} fill={sel || n.id === focusId ? "var(--m-accent-soft)" : "transparent"} />
+              <title>{n.atRisk ? `${n.label}, ${AT_RISK_NOTE}` : n.label}</title>
+              {/* At risk also takes a dashed critical outline, so it never rests on the red square's colour alone. */}
+              <rect x={-PAD / 2} y={2} width={COL_W - PAD * 2} height={ROW_H - 4} fill={sel || n.id === focusId ? "var(--m-accent-soft)" : "transparent"}
+                stroke={n.atRisk ? "var(--m-critical)" : "none"} strokeDasharray={n.atRisk ? "3 2" : undefined} data-at-risk={n.atRisk ? "" : undefined} />
               <rect className="m-graph-node-dot" x={0} y={(ROW_H - DOT) / 2} width={DOT} height={DOT} fill={n.atRisk ? "var(--m-critical)" : TYPE_COLOR[n.type]}
                 stroke={n.id === focusId ? "var(--m-accent)" : "none"} strokeWidth={2} />
               <text x={DOT + PAD} y={ROW_H / 2 + 4} fill="var(--m-ink)" style={{ fontSize: "var(--m-text-body)", fontWeight: n.id === focusId ? 600 : 400 }}>

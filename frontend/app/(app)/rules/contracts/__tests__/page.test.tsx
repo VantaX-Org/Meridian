@@ -2,6 +2,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { vi, describe, it, expect } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as contractsApi from "@/lib/api/contracts";
+import * as usersApi from "@/lib/api/users";
 import type { Contract } from "@/types/api";
 import ContractsPage from "../page";
 
@@ -13,7 +14,8 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/rules/contracts",
   useSearchParams: () => searchParams,
 }));
-vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => allowed }) }));
+let denied = new Set<string>();
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (p: string) => allowed && !denied.has(p) }) }));
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: { id: "me" } }) }));
 
 const CONTRACT: Contract = {
@@ -42,6 +44,26 @@ describe("rules contracts page", () => {
     vi.spyOn(contractsApi, "getContracts").mockResolvedValue({ contracts: [CONTRACT], total: 1 });
     renderWithQuery(<ContractsPage />);
     await waitFor(() => expect(screen.getByText("Vendor master to S/4HANA")).toBeInTheDocument());
+  });
+
+  it("says the latest check as a verdict, Go or No-go, never Compliant", async () => {
+    const broken: Contract = { ...CONTRACT, id: "c3", name: "Broken one", latest_compliant: false };
+    const fresh: Contract = { ...CONTRACT, id: "c4", name: "Fresh one", latest_compliant: null };
+    vi.spyOn(contractsApi, "getContracts").mockResolvedValue({ contracts: [CONTRACT, broken, fresh], total: 3 });
+    vi.spyOn(contractsApi, "getContractCompliance").mockResolvedValue({
+      contract_id: "c3",
+      compliance_history: [{ id: "h1", overall_compliant: false, recorded_at: "2026-01-02T00:00:00Z" }] as never,
+    });
+    renderWithQuery(<ContractsPage />);
+    const row = (name: string) => screen.getByText(name).closest("tr") as HTMLElement;
+    await waitFor(() => expect(screen.getByText("Vendor master to S/4HANA")).toBeInTheDocument());
+    expect(within(row("Vendor master to S/4HANA")).getByText("Go")).toHaveAttribute("data-status", "verdict");
+    expect(within(row("Broken one")).getByText("No-go")).toHaveAttribute("data-value", "no-go");
+    expect(within(row("Fresh one")).getByText("Not checked")).toBeInTheDocument();
+    expect(screen.queryByText(/Compliant|Not compliant/)).toBeNull();
+    fireEvent.click(screen.getByText("Broken one"));
+    await waitFor(() => expect(screen.getAllByText("No-go").length).toBeGreaterThanOrEqual(3));
+    expect(screen.queryByText(/Compliant|Not compliant/)).toBeNull();
   });
 
   it("shows a retryable error when contracts fail to load", async () => {
@@ -74,7 +96,7 @@ describe("rules contracts page", () => {
   });
 
   it("offers Submit for approval on a draft and Activate only on a contract awaiting approval", async () => {
-    const draft: Contract = { ...CONTRACT, id: "d1", name: "Draft one", status: "draft", created_by: "me" };
+    const draft: Contract = { ...CONTRACT, id: "d1", name: "Draft one", status: "draft", created_by: "me", quality_contract: { min_dqs: 80 } };
     vi.spyOn(contractsApi, "getContracts").mockResolvedValue({ contracts: [draft], total: 1 });
     const update = vi.spyOn(contractsApi, "updateContract").mockResolvedValue({ ...draft, status: "pending_approval" });
     const activate = vi.spyOn(contractsApi, "activateContract");
@@ -113,6 +135,75 @@ describe("rules contracts page", () => {
       expect(push).toHaveBeenCalledWith("/rules");
     } finally {
       allowed = true;
+    }
+  });
+
+  it("blocks Submit for approval until the draft states a term, and says why", async () => {
+    const draft: Contract = { ...CONTRACT, id: "d2", name: "Bare draft", status: "draft", created_by: "me", quality_contract: { modules: ["fi_gl"] } as unknown as Record<string, number> };
+    vi.spyOn(contractsApi, "getContracts").mockResolvedValue({ contracts: [draft], total: 1 });
+    vi.spyOn(contractsApi, "getContractCompliance").mockResolvedValue({ contract_id: "d2", compliance_history: [] });
+    renderWithQuery(<ContractsPage />);
+    fireEvent.click(await screen.findByText("Bare draft"));
+    expect(await screen.findByRole("button", { name: "Submit for approval" })).toBeDisabled();
+    expect(screen.getByText("Add at least one term before submitting it for approval")).toBeInTheDocument();
+  });
+
+  it("adds terms to a draft through the update API, keeping the object scope", async () => {
+    const draft: Contract = { ...CONTRACT, id: "d3", name: "New draft", status: "draft", created_by: "me", quality_contract: { modules: ["fi_gl"] } as unknown as Record<string, number> };
+    vi.spyOn(contractsApi, "getContracts").mockResolvedValue({ contracts: [draft], total: 1 });
+    vi.spyOn(contractsApi, "getContractCompliance").mockResolvedValue({ contract_id: "d3", compliance_history: [] });
+    const update = vi.spyOn(contractsApi, "updateContract").mockResolvedValue(draft);
+    renderWithQuery(<ContractsPage />);
+    fireEvent.click(await screen.findByText("New draft"));
+    fireEvent.click(await screen.findByRole("button", { name: "Add terms" }));
+    fireEvent.change(screen.getByLabelText("Minimum DQS"), { target: { value: "80" } });
+    fireEvent.change(screen.getByLabelText("Completeness %"), { target: { value: "95" } });
+    fireEvent.change(screen.getByLabelText("Maximum age of the latest analysis, in hours"), { target: { value: "24" } });
+    fireEvent.change(screen.getByLabelText("Minimum records"), { target: { value: "500" } });
+    fireEvent.change(screen.getByLabelText("Maximum records"), { target: { value: "100" } });
+    expect(await screen.findByText("The maximum is below the minimum")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save terms" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Maximum records"), { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add a field" }));
+    fireEvent.change(screen.getByLabelText("SAP field"), { target: { value: "lifnr" } });
+    fireEvent.change(screen.getByLabelText("Allowed values, comma separated"), { target: { value: "A, B" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save terms" }));
+    await waitFor(() => expect(update).toHaveBeenCalledWith("d3", {
+      quality_contract: { modules: ["fi_gl"], min_dqs: 80, completeness: 95 },
+      freshness_contract: { max_age_hours: 24 },
+      volume_contract: { min_records: 500 },
+      schema_contract: { LIFNR: { mandatory: true, allowed_values: ["A", "B"] } },
+    }));
+  });
+
+  it("shows terms as label and value pairs and names the author and approver", async () => {
+    const active: Contract = { ...CONTRACT, id: "a1", name: "Stated", created_by: "u-1", approved_by: "u-2", activated_at: "2026-01-02T00:00:00Z",
+      quality_contract: { completeness: 95 }, freshness_contract: { max_age_hours: 24 }, schema_contract: { LIFNR: { mandatory: true, allowed_values: ["A"] } } };
+    vi.spyOn(contractsApi, "getContracts").mockResolvedValue({ contracts: [active], total: 1 });
+    vi.spyOn(contractsApi, "getContractCompliance").mockResolvedValue({ contract_id: "a1", compliance_history: [] });
+    vi.spyOn(usersApi, "getAssignableUsers").mockResolvedValue([{ id: "u-1", name: "Ana Silva", email: "a@x", role: "steward" }]);
+    renderWithQuery(<ContractsPage />);
+    fireEvent.click(await screen.findByText("Stated"));
+    expect(await screen.findByText("At least 95%")).toBeInTheDocument();
+    expect(screen.getByText("24 hours")).toBeInTheDocument();
+    expect(screen.getByText(/Mandatory, allowed/)).toBeInTheDocument();
+    expect(await screen.findByText(/by Ana Silva/)).toBeInTheDocument();
+    expect(screen.getByText(/by a user/)).toBeInTheDocument();
+    expect(screen.queryByText(/u-1|u-2/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/[{}]/)).not.toBeInTheDocument();
+  });
+
+  it("says a user when the viewer can read no user list", async () => {
+    denied = new Set(["assign", "manage_users"]);
+    const active: Contract = { ...CONTRACT, id: "a2", name: "Anon", created_by: "u-1" };
+    vi.spyOn(contractsApi, "getContracts").mockResolvedValue({ contracts: [active], total: 1 });
+    vi.spyOn(contractsApi, "getContractCompliance").mockResolvedValue({ contract_id: "a2", compliance_history: [] });
+    try {
+      renderWithQuery(<ContractsPage />);
+      fireEvent.click(await screen.findByText("Anon"));
+      expect(await screen.findByText(/by a user/)).toBeInTheDocument();
+    } finally {
+      denied = new Set();
     }
   });
 });

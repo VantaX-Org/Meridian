@@ -61,6 +61,9 @@ class DedupMergeBody(BaseModel):
     candidate_id: str
     survivor_key: str
     field_overrides: Optional[dict] = None
+    # Required, as for a match-score merge (POST /match-scores/{id}/merge): kept on the candidate
+    # (merge_reason), in the golden record's merge history (mdm_merge_events.reason) and the cleaning audit.
+    reason: str = Field(min_length=1, max_length=2000)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -132,7 +135,8 @@ _TOTAL_CACHE_MAX = 64
 
 
 def _total_key(where: str, params: dict) -> tuple:
-    return (where, tuple(sorted((k, str(v)) for k, v in params.items() if k != "tid")))
+    # Every bound value is part of the key, the tenant included: a total cached for one tenant is never served to another.
+    return (where, tuple(sorted((k, str(v)) for k, v in params.items())))
 
 
 def _cached_queue_total(where: str, params: dict) -> Optional[int]:
@@ -179,9 +183,15 @@ async def list_cleaning_queue(
     if object_type:
         where_clauses.append("object_type = :ot")
         params["ot"] = object_type
-    if status:
+    # One status, or several comma-separated ("detected,recommended": every proposal still waiting, the
+    # same set /cleaning/queue/groups counts and bulk approve acts on).
+    statuses = [s.strip() for s in (status or "").split(",") if s.strip()]
+    if len(statuses) == 1:
         where_clauses.append("status = :st")
-        params["st"] = status
+        params["st"] = statuses[0]
+    elif statuses:
+        where_clauses.append(f"status IN ({', '.join(f':st{i}' for i in range(len(statuses)))})")
+        params.update({f"st{i}": s for i, s in enumerate(statuses)})
     if rule_id:
         where_clauses.append("rule_id = :rid")
         params["rid"] = rule_id
@@ -1032,6 +1042,9 @@ async def dedup_merge(
         raise HTTPException(status_code=400, detail="survivor_key must be one of the candidate's two records.")
     if row.get("status") == "merged":
         raise HTTPException(status_code=409, detail="Candidate already merged.")
+    reason = body.reason.strip()
+    if not reason:
+        raise HTTPException(status_code=422, detail="reason is required to merge")
 
     # Consolidate the master records when both exist (golden-record fusion);
     # otherwise the decision is recorded and applied when golden records are built.
@@ -1040,7 +1053,7 @@ async def dedup_merge(
     try:
         consolidation = await merge_master_records(db, str(tenant.id), row.get("object_type", ""),
                                                    body.survivor_key, merged_key, current_user_id(),
-                                                   body.field_overrides)
+                                                   body.field_overrides, reason=reason)
     except PairConstraintError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -1048,12 +1061,12 @@ async def dedup_merge(
     await db.execute(
         text("""
             UPDATE dedup_candidates
-            SET status = 'merged', survivor_key = :sk, merged_at = :now, merged_by = :mb
+            SET status = 'merged', survivor_key = :sk, merged_at = :now, merged_by = :mb, merge_reason = :reason
             WHERE id = :id AND tenant_id = :tid
         """),
         {
             "id": body.candidate_id, "tid": str(tenant.id),
-            "sk": body.survivor_key, "now": now, "mb": current_user_id(),
+            "sk": body.survivor_key, "now": now, "mb": current_user_id(), "reason": reason,
         },
     )
 
@@ -1068,7 +1081,8 @@ async def dedup_merge(
         queue_id = str(_row_to_dict(queue_row)["id"])
         await _create_audit(
             db, tenant.id, queue_id, "applied", queue_key, row.get("object_type", ""),
-            metadata={"merge": True, "survivor_key": body.survivor_key, "field_overrides": body.field_overrides},
+            metadata={"merge": True, "survivor_key": body.survivor_key, "field_overrides": body.field_overrides,
+                      "reason": reason},
         )
 
     await db.commit()
@@ -1078,5 +1092,6 @@ async def dedup_merge(
         "status": "merged",
         "survivor_key": body.survivor_key,
         "merged_at": now.isoformat(),
+        "merge_reason": reason,
         "consolidated": consolidation,
     }

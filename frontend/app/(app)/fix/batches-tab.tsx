@@ -16,9 +16,8 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
-import { toast } from "sonner";
 import {
-  Button, Card, DataTable, Drawer, EmptyState, ErrorState, Field, Mono, Notice, Pager, Pill, Select, Skeleton, Stat, Tooltip,
+  Button, Card, ConfirmDialog, DataTable, Drawer, EmptyState, ErrorState, Field, Mono, Notice, Pager, Pill, Select, Skeleton, Stat, Tooltip, toast,
   type PillTone, type SelectOption, Input } from "@/design";
 import { useAuth } from "@/context/auth-context";
 import { GatedPrimary } from "@/components/gated-primary";
@@ -26,11 +25,12 @@ import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import {
   acceptHighConfidence, approveBatch, errorText, exportBatch, getBatch, getBatchDiff, getBatchEvents,
-  getBatchPackages, getMonitor, listBatches, patchItem,
-  CONFIDENCE_LABEL, EVENT_LABEL, FORMAT_LABEL, RECON_LABEL, SOURCE_LABEL, STATUS_LABEL,
+  getBatchPackages, getMonitor, listBatches, patchItem, writeBackModeSentence,
+  CONFIDENCE_LABEL, EVENT_LABEL, FORMAT_LABEL, HIGH_CONFIDENCE_LABEL, RECON_LABEL, SOURCE_LABEL, STATUS_LABEL,
   type Batch, type BatchItem, type BatchStatus, type BatchSummary, type DiffChange, type DiffRecord,
   type ExportFormat, type ExportPackage, type MonitorItem,
 } from "@/lib/api/remediation";
+import { getPendingApprovals } from "@/lib/api/writeback";
 import { formatDate, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -181,7 +181,7 @@ export function BatchesTab() {
       <MonitorSummaryNotice />
       {status ? (
         <Notice action={<Button variant="ghost" onClick={() => setStatus("")}>Show all</Button>}>
-          Showing {STATUS_LABEL[status].toLowerCase()} batches only.
+          {STATUS_LABEL[status]} batches only
         </Notice>
       ) : null}
 
@@ -259,6 +259,9 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
   const packages = useQuery({
     queryKey: queryKeys.remediationPackages(batchId), queryFn: () => getBatchPackages(batchId), enabled: canExport,
   });
+  // The deployment's write-back mode comes from the write-back API (needs `approve`); without it the export wording stands.
+  const writeback = useQuery({ queryKey: ["inbox", "approvals"], queryFn: getPendingApprovals, enabled: canApprove, retry: false, meta: { ignoreError: true } });
+  const mode = writeBackModeSentence(writeback.data?.live_enabled);
   const [itemPage, setItemPage] = useState(1);
   const [editing, setEditing] = useState<string | null>(null);
   const [draftValue, setDraftValue] = useState("");
@@ -266,6 +269,7 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
   const [crType, setCrType] = useState("");
   const [failure, setFailure] = useState<string | null>(null);
   const [ask, setAsk] = useState<"approve" | "export" | null>(null);
+  const [askAccept, setAskAccept] = useState(false);
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: queryKeys.remediationBatches() });
@@ -276,8 +280,8 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
 
   const accept = useMutation({
     mutationFn: () => acceptHighConfidence(batchId),
-    onSuccess: (d) => { toast.success(`Accepted ${d.accepted.toLocaleString()} high-confidence proposal${d.accepted === 1 ? "" : "s"}`); refresh(); },
-    onError: (e) => toast.error(errorText(e)),
+    onSuccess: (d) => { setAskAccept(false); toast.success(`Accepted ${d.accepted.toLocaleString()} proposal${d.accepted === 1 ? "" : "s"} at ${HIGH_CONFIDENCE_LABEL}`); refresh(); },
+    onError: (e) => { setAskAccept(false); toast.error(errorText(e)); },
   });
   const approve = useMutation({
     mutationFn: () => approveBatch(batchId),
@@ -402,7 +406,7 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
       {ask ? (
         <Card padding="sm">
           <p className="m-text-body">
-            Meridian never posts to SAP. {ask === "export" ? "This hands a file to the Migration Cockpit or a mass-change template." : "This is Meridian's record only."}
+            {mode} {ask === "export" ? "This hands a file to the Migration Cockpit or a mass-change template." : "Approving is Meridian's record only."}
           </p>
           <div className="flex items-center gap-2">
             {ask === "export" ? <Select label="Export format" value={format} onValueChange={(v) => setFormat(v as ExportFormat)} options={FORMATS} /> : null}
@@ -428,8 +432,8 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
       ) : (
         <div className="flex items-center gap-2">
           {batch.status === "draft" && highConfidence.length > 0 && canApprove ? (
-            <Button onClick={() => accept.mutate()} disabled={accept.isPending}>
-              Accept {highConfidence.length.toLocaleString()} high-confidence proposal{highConfidence.length === 1 ? "" : "s"}
+            <Button onClick={() => setAskAccept(true)} disabled={accept.isPending}>
+              Accept {highConfidence.length.toLocaleString()} at {HIGH_CONFIDENCE_LABEL}
             </Button>
           ) : null}
           {batch.status === "draft" ? (
@@ -444,11 +448,22 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
           ) : null}
           {batch.status === "exported" ? (
             <p className="m-text-body m-ink-2">
-              Exported. Load it with the Migration Cockpit or a mass-change template — Meridian never posts to SAP.
+              Exported. {mode} Load the file with the Migration Cockpit or a mass-change template.
             </p>
           ) : null}
         </div>
       )}
+
+      <ConfirmDialog
+        open={askAccept}
+        onOpenChange={setAskAccept}
+        title={`Accept ${highConfidence.length.toLocaleString()} proposal${highConfidence.length === 1 ? "" : "s"}?`}
+        body={`Every proposal in this batch at ${HIGH_CONFIDENCE_LABEL} is accepted in one step. ${mode}`}
+        confirmLabel={`Accept ${highConfidence.length.toLocaleString()}`}
+        cancelLabel="Not now"
+        pending={accept.isPending}
+        onConfirm={() => accept.mutate()}
+      />
 
       <section>
         <h3 className="m-text-body font-semibold">Items</h3>

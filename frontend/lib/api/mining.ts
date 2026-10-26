@@ -30,19 +30,6 @@ export interface MiningPatternsResponse {
   patterns: MiningPattern[];
 }
 
-export interface MiningRun {
-  id: string;
-  started_at: string;
-  finished_at: string | null;
-  status: "running" | "complete" | "failed";
-  module: string;
-  pattern_count: number;
-}
-
-export interface MiningRunsResponse {
-  runs: MiningRun[];
-}
-
 export const EMPTY_MINING_SUMMARY: MiningSummary = {
   window_days: 30,
   total_patterns: 0,
@@ -94,20 +81,6 @@ export async function getMiningPatterns(params?: {
   } catch (err) {
     if (err instanceof AxiosError && err.response?.status === 404) {
       return { patterns: [] };
-    }
-    throw err;
-  }
-}
-
-export async function getMiningRuns(limit = 20): Promise<MiningRunsResponse> {
-  try {
-    const { data } = await apiClient.get<MiningRunsResponse>("/api/v1/mining/runs", {
-      params: { limit },
-    });
-    return data;
-  } catch (err) {
-    if (err instanceof AxiosError && err.response?.status === 404) {
-      return { runs: [] };
     }
     throw err;
   }

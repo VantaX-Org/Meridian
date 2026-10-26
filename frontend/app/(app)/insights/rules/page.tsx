@@ -11,10 +11,12 @@ import { Button, Card, DataTable, EmptyState, ErrorState, Mono, Pareto, Select, 
 import { FilterChips } from "@/app/(app)/objects/_header";
 import { getRuleRanking, type RuleRow } from "@/lib/api/insights";
 import { getCostModel } from "@/lib/api/settings";
-import { apiErrorMessage, isListFailure, apiErrorState } from "@/lib/error";
+import { isListFailure, apiErrorState } from "@/lib/error";
 import { formatModuleName, labelOf, plural } from "@/lib/format";
 import { drillLabel, fixHref } from "@/lib/drill";
 import { queryKeys } from "@/lib/query-keys";
+import { previousInLineage } from "@/lib/runs";
+import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { DrillCount } from "../_components/DrillCount";
 import { rulesFor80 } from "../_components/rulesFor80";
 import { useFindingOpener } from "../_components/FindingOpener";
@@ -45,25 +47,40 @@ function groupBy(rows: RuleRow[], axis: Axis): Group[] {
   return [...map.values()].map((g) => ({ ...g, autoFix: g.affected ? g.weighted / g.affected : 0 })).sort((a, b) => b.impact - a.impact);
 }
 const DIMENSIONS = ["completeness", "validity", "uniqueness", "consistency", "timeliness", "accuracy"];
+// `?s4=`: yes (any S/4 rule), blocking or warning (the S/4 impact the readiness page counts by).
+const S4_FILTERS = [
+  { value: "yes", label: "Blocking or warning" },
+  { value: "blocking", label: "Blocking only" },
+  { value: "warning", label: "Warning only" },
+];
 
 export default function RulesPage() {
   const router = useRouter();
   const path = usePathname();
   const search = useSearchParams();
   const field = search.get("field") ?? undefined;
+  // `?check=A1,B2`: only these rules (the impact page's "rules behind a feature").
+  const check = search.get("check") ?? undefined;
+  const checks = (check ?? "").split(",").filter(Boolean);
   const axisParam = search.get("axis") as Axis | null;
   const axis: Axis = axisParam && AXES.some((a) => a.value === axisParam) ? axisParam : "rule";
-  const { run, module, versions, resolving } = useInsightScope();
+  const { run, module, versions, runs, resolving, error: listError, refetch: refetchList } = useInsightScope();
+  const dayOne = useDayOne();
+  // No run to rank because the run list (or the day-one sources) failed: an error, never "No failing rules yet".
+  const loadError = run ? null : listError ?? (dayOne.status === "error" ? dayOne.error : null);
   const finding = useFindingOpener(run);
   // Every filter lives in the URL (design rule 9), so a view can be saved, shared and restored.
   const severity = search.get("severity") ?? ANY;
   const dimension = search.get("dimension") ?? ANY;
   const auto = search.get("auto") ?? ANY;
-  const s4 = search.get("s4") ?? ANY;
+  const s4Param = search.get("s4");
+  const s4 = S4_FILTERS.some((f) => f.value === s4Param) ? s4Param ?? ANY : ANY;
+  // The API narrows to S/4 rules; blocking or warning keeps the rules of that impact (the readiness counts).
+  const s4Impact = s4 === "blocking" || s4 === "warning" ? s4 : null;
   const filters: Record<string, string | undefined> = {
-    module, field, axis: axis === "rule" ? undefined : axis,
+    module, field, check, axis: axis === "rule" ? undefined : axis,
     severity: severity === ANY ? undefined : severity, dimension: dimension === ANY ? undefined : dimension,
-    auto: auto === "yes" ? "yes" : undefined, s4: s4 === "yes" ? "yes" : undefined,
+    auto: auto === "yes" ? "yes" : undefined, s4: s4 === ANY ? undefined : s4,
   };
   const go = (next: Record<string, string | undefined>) => router.replace(withScope(path, { run, ...filters, ...next }));
   const setSeverity = (v: string) => go({ severity: v === ANY ? undefined : v });
@@ -78,12 +95,29 @@ export default function RulesPage() {
       severity: severity === ANY ? undefined : severity,
       dimension: dimension === ANY ? undefined : dimension,
       auto_fixable: auto === "yes" ? true : undefined,
-      s4_only: s4 === "yes" ? true : undefined,
+      s4_only: s4 !== ANY ? true : undefined,
     }),
     enabled: !!run,
   });
 
-  const rows = useMemo(() => (q.data?.rows ?? []).filter((r) => !field || r.field === field), [q.data, field]);
+  // What changed: the same ranking at the run before this one in its lineage (same system, or uploads of the same objects).
+  const current = runs.find((r) => r.id === run);
+  const previous = current ? previousInLineage(current, runs) : null;
+  const prevQ = useQuery({
+    queryKey: queryKeys.insights("rules", previous?.id, module, severity, dimension, auto, s4),
+    queryFn: () => getRuleRanking({
+      version_id: previous?.id, module, limit: 200,
+      severity: severity === ANY ? undefined : severity,
+      dimension: dimension === ANY ? undefined : dimension,
+      auto_fixable: auto === "yes" ? true : undefined,
+      s4_only: s4 !== ANY ? true : undefined,
+    }),
+    enabled: !!previous,
+  });
+
+  const keep = (r: RuleRow) => (!field || r.field === field) && (checks.length === 0 || checks.includes(r.check_id)) && (!s4Impact || r.s4 === s4Impact);
+  const rows = useMemo(() => (q.data?.rows ?? []).filter(keep), [q.data, field, check, s4Impact]); // eslint-disable-line react-hooks/exhaustive-deps
+  const prevRows = (prevQ.data?.rows ?? []).filter(keep);
   const groups = useMemo(() => (axis === "rule" ? [] : groupBy(rows, axis)), [rows, axis]);
   const groupLabel = (key: string) => (axis === "module" ? formatModuleName(key) : axis === "field" ? key : labelOf(key));
   /** A group's failing records in Fix work, where Fix work can filter by the axis (object or severity). */
@@ -102,7 +136,7 @@ export default function RulesPage() {
     else if (axis === "field") go({ ...back, field: g.key === "No field" ? undefined : g.key });
     else if (axis === "dimension") go({ ...back, dimension: g.key });
     else if (axis === "severity") go({ ...back, severity: g.key });
-    else go({ ...back, s4: g.key === "blocking" ? "yes" : undefined });
+    else go({ ...back, s4: g.key === "blocking" || g.key === "warning" ? g.key : undefined });
   };
   const groupColumns = useMemo<ColumnDef<Group>[]>(() => [
     { accessorKey: "key", header: AXES.find((a) => a.value === axis)?.label ?? "Group", cell: ({ row }) => (
@@ -149,11 +183,20 @@ export default function RulesPage() {
   const axisLabel = AXES.find((a) => a.value === axis)?.label ?? "Rule";
   // "Impact by S/4 status" keeps the product name's case; every other axis reads in lower case.
   const axisInTitle = axis === "s4" ? axisLabel : axisLabel.toLowerCase();
-  const state = resolving || q.isLoading || versions.isLoading ? "loading" : isListFailure(q) ? "error" : undefined;
+  const state = resolving || q.isLoading || versions.isLoading || dayOne.status === "loading" ? "loading" : loadError || isListFailure(q) ? "error" : !run ? "empty" : undefined;
   const top = rows[0];
   const hasFilters = Object.entries(filters).some(([k, v]) => k !== "axis" && !!v);
   const totalAffected = rows.reduce((n, r) => n + r.affected, 0);
   const blocking = rows.filter((r) => r.s4 === "blocking").length;
+  const changed = previous && prevQ.isLoading
+    ? <Skeleton height={16} />
+    : !previous
+      ? "First run of this system"
+      : !prevQ.data
+        ? "The previous run could not be read"
+        : rows.length === prevRows.length
+          ? `${plural(rows.length, "rule fails", "rules fail")}, as in the previous run`
+          : `${Math.abs(rows.length - prevRows.length).toLocaleString()} ${rows.length > prevRows.length ? "more" : "fewer"} rules fail than in the previous run`;
 
   return (
     <InsightFrame
@@ -165,7 +208,7 @@ export default function RulesPage() {
       module={module}
       insight={{
         situation: { sentence: rows.length ? `${plural(rows.length, "rule fails", "rules fail")} on ${plural(totalAffected, "record")} in this scope` : "No rule fails in this scope", tone: blocking ? "no-go" : rows.length ? "at-risk" : "go" },
-        changed: { sentence: rows.length ? `${plural(n80, "rule accounts", "rules account")} for 80% of the impact on the score` : "Nothing to rank" },
+        changed: { sentence: changed, href: previous && run ? `/runs/${run}/vs/${previous.id}` : undefined },
         why: { sentence: blocking ? `${plural(blocking, "rule")} would block an S/4 load` : "No failing rule blocks an S/4 load", href: withScope("/insights/readiness", { run }) },
         next: top
           ? { sentence: `Start with ${top.name || top.check_id}, the highest impact`, action: { label: "Open the rule", onClick: () => void finding.open(top) } }
@@ -175,7 +218,8 @@ export default function RulesPage() {
       }}
       state={state}
       skeleton={<><Skeleton height={220} /><Skeleton height={320} /></>}
-      errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}
+      emptyProps={{ title: "No failing rules yet", detail: dayOne.step?.detail ?? "Rules are ranked once a run has finished analysing.", ghost: "table", action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" /> }}
+      errorProps={loadError ? { error: loadError, onRetry: () => { refetchList(); dayOne.refetch(); } } : { error: q.error, onRetry: () => void q.refetch() }}
     >
       <div className="flex flex-col gap-2">
         <FilterChips label="Group by" value={axis} options={AXES} onChange={setAxis} />
@@ -183,8 +227,9 @@ export default function RulesPage() {
           <Select label="Severity" value={severity} onValueChange={setSeverity} options={opts(SEVERITIES, "Any severity")} />
           <Select label="Dimension" value={dimension} onValueChange={setDimension} options={opts(DIMENSIONS, "Any dimension")} />
           <Select label="Auto-fixable" value={auto} onValueChange={setAuto} options={yesNo("Any fix type")} />
-          <Select label="Blocks an S/4 load" value={s4} onValueChange={setS4} options={yesNo("Any S/4 status")} />
+          <Select label="S/4 impact" value={s4} onValueChange={setS4} options={[{ value: ANY, label: "Any S/4 status" }, ...S4_FILTERS]} />
           {field && <Button variant="secondary" onClick={() => go({ field: undefined })}>Clear field filter</Button>}
+          {checks.length > 0 && <Button variant="secondary" onClick={() => go({ check: undefined })}>{`Every rule, not only ${checks.length === 1 ? checks[0] : plural(checks.length, "rule")}`}</Button>}
           {module && <Button variant="secondary" onClick={() => go({ module: undefined })}>Every object in this run</Button>}
           <SavedViews route="/insights/rules" current={filters} onApply={(f) => router.replace(withScope(path, { run, ...f }))} />
         </div>
@@ -200,8 +245,8 @@ export default function RulesPage() {
         <>
           {/* The ledger first: the rules (or groups) ranked by impact, the last column the row's one action. */}
           {axis === "rule"
-            ? <DataTable columns={columns} data={rows} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} dense />
-            : <DataTable columns={groupColumns} data={groups} getRowId={(g) => g.key} onRowClick={drill} dense />}
+            ? <DataTable columns={columns} data={rows} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} />
+            : <DataTable columns={groupColumns} data={groups} getRowId={(g) => g.key} onRowClick={drill} />}
           {pareto.length > 0 && (
             <Card title={`Impact by ${axisInTitle}`} meta={axis === "rule" ? `${plural(n80, "rule accounts", "rules account")} for 80% of impact` : `${n80} of ${groups.length} ${n80 === 1 ? "accounts" : "account"} for 80% of impact`}>
               <Pareto

@@ -7,19 +7,36 @@ import * as sourceDesignApi from "@/lib/api/source-design";
 import * as configLoadApi from "@/lib/api/config-load";
 import * as configPairingApi from "@/lib/api/config-pairing";
 import * as pilotApi from "@/lib/api/pilot";
+import * as systemsApi from "@/lib/api/systems";
 import type { SAPSystemExtended } from "@/types/api";
+import { toast } from "@/design";
 import SystemPage from "../page";
 
 let tab: string | null = null;
+let extract: string | null = null;
 // one object for the life of the file, as Next hands out, so a URL-state hook does not see a new URL on every render
-const searchParams = { get: (k: string) => (k === "tab" ? tab : null), toString: () => (tab ? `tab=${tab}` : "") };
+// built over a real URLSearchParams so every reader the page uses (get, getAll, has, toString) behaves as in Next
+const currentParams = (): URLSearchParams => {
+  const p = new URLSearchParams();
+  if (tab) p.set("tab", tab);
+  if (extract) p.set("extract", extract);
+  return p;
+};
+const searchParams = {
+  get: (k: string) => currentParams().get(k),
+  getAll: (k: string) => currentParams().getAll(k),
+  has: (k: string) => currentParams().has(k),
+  toString: () => currentParams().toString(),
+};
 vi.mock("next/navigation", () => ({
   useParams: () => ({ systemId: "s1" }),
   usePathname: () => "/systems/s1",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
   useSearchParams: () => searchParams,
 }));
-vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+/** The actions the viewer lacks; empty means every action is allowed. */
+let denied = new Set<string>();
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (a: string) => !denied.has(a), loading: false }) }));
 
 const SYSTEM: SAPSystemExtended = {
   id: "s1", name: "ECC Prod", system_type: "ecc", host: null, client: null, sysnr: null, username: null,
@@ -50,7 +67,113 @@ function mockHappyPath() {
 }
 
 describe("system detail page", () => {
-  beforeEach(() => { tab = null; });
+  beforeEach(() => { tab = null; extract = null; denied = new Set(); vi.restoreAllMocks(); });
+
+  describe("edit form connection test", () => {
+    const openEdit = async () => {
+      mockHappyPath();
+      vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([{ ...SYSTEM, host: "old.internal", client: "100", sysnr: "00", auth_type: "rfc" }]);
+      vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([]);
+      renderWithQuery(<SystemPage />);
+      await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
+      fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+      return screen.findByLabelText("Host");
+    };
+
+    it("tries the edited host, not the stored connection, with the secret left for the API to fill in", async () => {
+      const stored = vi.spyOn(connectivityApi, "testConnection");
+      const draft = vi.spyOn(systemsApi, "testEditedConnection").mockResolvedValue({ connected: false, message: "Connection failed: host not found" });
+      const host = await openEdit();
+      fireEvent.change(host, { target: { value: "new.internal" } });
+      fireEvent.click(screen.getAllByRole("button", { name: "Test connection" }).at(-1)!);
+      await waitFor(() => expect(draft).toHaveBeenCalledOnce());
+      expect(stored).not.toHaveBeenCalled();
+      expect(draft.mock.calls[0]![0]).toBe("s1");
+      expect(draft.mock.calls[0]![1]).toMatchObject({ system_type: "ecc", host: "new.internal", client: "100", sysnr: "00", credentials: {} });
+      // The outcome stays in the form, not only in a toast.
+      expect(await screen.findByText("Not connected")).toBeInTheDocument();
+      expect(screen.getByText("Connection failed: host not found")).toBeInTheDocument();
+    });
+
+    it("marks the result out of date when a connection field changes after the test", async () => {
+      vi.spyOn(systemsApi, "testEditedConnection").mockResolvedValue({ connected: true, message: "Connection successful" });
+      const host = await openEdit();
+      fireEvent.click(screen.getAllByRole("button", { name: "Test connection" }).at(-1)!);
+      expect(await screen.findByText("Connected")).toBeInTheDocument();
+      fireEvent.change(host, { target: { value: "other.internal" } });
+      expect(screen.getByText("Test result out of date")).toBeInTheDocument();
+      expect(screen.queryByText("Connected")).toBeNull();
+      // Back to the tested values: the result describes them again.
+      fireEvent.change(host, { target: { value: "old.internal" } });
+      expect(screen.getByText("Connected")).toBeInTheDocument();
+    });
+
+    it("applies the connect dialog's rules: a bad client blocks the test and the save", async () => {
+      const save = vi.spyOn(systemsApi, "updateSystem").mockResolvedValue({} as never);
+      await openEdit();
+      fireEvent.change(screen.getByLabelText("Client"), { target: { value: "12" } });
+      expect(screen.getAllByRole("button", { name: "Test connection" }).at(-1)).toBeDisabled();
+      expect(screen.getByText("To test, complete the client")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      expect(await screen.findByText("Enter a 3-digit client")).toBeInTheDocument();
+      expect(save).not.toHaveBeenCalled();
+      // An empty password is fine here: the stored one is kept.
+      fireEvent.change(screen.getByLabelText("Client"), { target: { value: "200" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(save).toHaveBeenCalledOnce());
+      expect(save.mock.calls[0]![1]).toMatchObject({ client: "200" });
+      expect(save.mock.calls[0]![1]).not.toHaveProperty("credentials");
+    });
+  });
+
+  describe("without manage_systems", () => {
+    it("offers no edit drawer and points a failed test to an admin", async () => {
+      denied = new Set(["manage_systems"]);
+      mockHappyPath();
+      vi.spyOn(connectivityApi, "testConnection").mockResolvedValue({ status: "auth_failed", message: "Logon failed", latency_ms: 10 });
+      const error = vi.spyOn(toast, "error").mockReturnValue(1);
+      renderWithQuery(<SystemPage />);
+      await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
+      expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Test connection" }));
+      await waitFor(() => expect(error).toHaveBeenCalled());
+      const [, options] = error.mock.calls[0]!;
+      expect(options).toEqual({ description: "Ask an admin to update the credentials." });
+      expect(screen.queryByRole("button", { name: "Remove system" })).toBeNull();
+    });
+
+    it("offers Update credentials on a failed test to whoever may edit the system", async () => {
+      mockHappyPath();
+      vi.spyOn(connectivityApi, "testConnection").mockResolvedValue({ status: "auth_failed", message: "Logon failed", latency_ms: 10 });
+      const error = vi.spyOn(toast, "error").mockReturnValue(1);
+      renderWithQuery(<SystemPage />);
+      await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
+      fireEvent.click(screen.getByRole("button", { name: "Test connection" }));
+      await waitFor(() => expect(error).toHaveBeenCalled());
+      expect(error.mock.calls[0]![1]).toMatchObject({ action: { label: "Update credentials" } });
+    });
+  });
+
+  describe("?extract=1", () => {
+    it("says why nothing opens when the viewer cannot extract", async () => {
+      extract = "1";
+      denied = new Set(["trigger_sync"]);
+      mockHappyPath();
+      renderWithQuery(<SystemPage />);
+      expect(await screen.findByText("You cannot extract from ECC Prod")).toBeInTheDocument();
+      expect(screen.getByText(/Extraction needs the SAP Basis role on this system/)).toBeInTheDocument();
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("opens the Extract drawer for a viewer who can extract", async () => {
+      extract = "1";
+      mockHappyPath();
+      vi.spyOn(systemObjectsApi, "getSystemObjects").mockResolvedValue({ system_type: "ecc", objects: [] });
+      renderWithQuery(<SystemPage />);
+      expect(await screen.findByRole("dialog", { name: "Extract from ECC Prod" })).toBeInTheDocument();
+      expect(screen.queryByText("You cannot extract from ECC Prod")).toBeNull();
+    });
+  });
 
   it("renders the system once loaded", async () => {
     mockHappyPath();
@@ -66,6 +189,42 @@ describe("system detail page", () => {
     fireEvent.click(screen.getByRole("button", { name: "Test connection" }));
     await waitFor(() => expect(spy).toHaveBeenCalledWith("s1"));
     await waitFor(() => expect(screen.getByRole("button", { name: "Connection tested" })).toBeInTheDocument());
+  });
+
+  it("leads with Test connection, not Extract, until the connection is healthy", async () => {
+    mockHappyPath();
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([{ ...SYSTEM, health_status: "unreachable" } as SAPSystemExtended]);
+    renderWithQuery(<SystemPage />);
+    await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Test connection" })).toHaveClass("m-btn-primary");
+    expect(screen.getAllByRole("button", { name: "Extract" })[0]).toHaveClass("m-btn-secondary");
+  });
+
+  it("edits an OAuth system's token URL and sends it with the save", async () => {
+    mockHappyPath();
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([{
+      ...SYSTEM, name: "BTP Prod", system_type: "btp", base_url: "https://api.example", auth_type: "oauth2_client_credentials",
+      token_url: "https://old.example/oauth/token",
+    }]);
+    vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([]);
+    const save = vi.spyOn(systemsApi, "updateSystem").mockResolvedValue({} as never);
+    renderWithQuery(<SystemPage />);
+    await waitFor(() => expect(screen.getByText("BTP Prod")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    const field = await screen.findByLabelText("Token URL");
+    expect(field).toHaveValue("https://old.example/oauth/token");
+    expect(screen.queryByText(/cannot be changed here/)).toBeNull();
+
+    fireEvent.change(field, { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("Enter the token URL")).toBeInTheDocument();
+    expect(save).not.toHaveBeenCalled();
+
+    fireEvent.change(field, { target: { value: " https://new.example/oauth/token " } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(save).toHaveBeenCalled());
+    expect(save.mock.calls[0][0]).toBe("s1");
+    expect(save.mock.calls[0][1]).toMatchObject({ token_url: "https://new.example/oauth/token", base_url: "https://api.example" });
   });
 
   it("clicking the Active text in the edit form toggles the box", async () => {
@@ -100,10 +259,25 @@ describe("system detail page", () => {
       download: null,
     });
     renderWithQuery(<SystemPage />);
-    const ring = await screen.findByRole("img", { name: "Score 70" });
+    const ring = await screen.findByRole("img", { name: "Score 70.0" });
     const stat = ring.closest("a");
-    expect(stat).toHaveTextContent("Quality score");
-    expect(stat).not.toHaveTextContent("70.0");
+    expect(stat).toHaveTextContent("Score");
+    expect(stat).not.toHaveTextContent("Quality score");
+    // The ring prints the one numeral (70.0); no second numeral beside it.
+    expect(stat?.textContent?.match(/70(\.0)?/g)).toHaveLength(1);
+  });
+
+  it("opens the latest run's Findings tab from the score and open-findings tiles", async () => {
+    mockHappyPath();
+    vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({
+      versions: [{ id: "v1", run_at: "2026-10-01T00:00:00Z", label: null, status: "complete", objects: ["material_master"], scope: {}, records: {}, analysed_at: "2026-10-01T00:00:00Z", rule_set: null, baseline: false, analysable: true, dqs: { material_master: 70 } }] as never,
+      download: null,
+    });
+    renderWithQuery(<SystemPage />);
+    const ring = await screen.findByRole("img", { name: "Score 70.0" });
+    expect(ring.closest("a")).toHaveAttribute("href", "/runs/v1?tab=findings");
+    const open = screen.getByText("Open findings").closest("a");
+    expect(open).toHaveAttribute("href", "/runs/v1?tab=findings");
   });
 
   it("links each run on the Runs tab to its extraction log, a failed one by why it failed", async () => {
@@ -150,8 +324,21 @@ describe("system detail page", () => {
     const bench = await screen.findByTestId("system-workbench");
     expect(within(bench).getByText("Extract this object to score it.")).toBeInTheDocument();
     const empty = within(bench).getByText("Not analysed yet").closest("[data-state='empty']") as HTMLElement;
-    expect(within(empty).getByRole("link", { name: "Extract" })).toHaveAttribute("href", "/systems/s1?tab=objects");
-    expect(within(bench).getAllByRole("link")).toHaveLength(1);
+    expect(within(empty).getByRole("button", { name: "Extract" })).toBeInTheDocument();
+    expect(within(bench).queryAllByRole("link")).toHaveLength(0); // the one action is the Extract button, which opens the Extract drawer
+  });
+
+  it("on the Objects tab, says why Extract again and Analyse are off", async () => {
+    tab = "objects";
+    mockHappyPath();
+    vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([
+      { module: "fi_gl", system_type: "ecc", enabled: false, last_synced_at: null, last_sync_status: null, row_count: 10, config_synced: false },
+    ] as never);
+    renderWithQuery(<SystemPage />);
+    const extractBtn = await screen.findByRole("button", { name: /^Extract again\. This object is turned off for this system/ });
+    expect(extractBtn).toBeDisabled();
+    const analyseBtn = screen.getByRole("button", { name: /^Analyse\. No finished extraction of this object to analyse yet/ });
+    expect(analyseBtn).toBeDisabled();
   });
 
   it("shows the system role in the header", async () => {

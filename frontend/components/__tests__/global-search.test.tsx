@@ -78,6 +78,17 @@ describe("GlobalSearch", () => {
     expect(options[0]).toHaveTextContent("2 issues");
   });
 
+  it("keeps one live status mounted and announces the result count in it", async () => {
+    searchWork.mockResolvedValue({ version_id: "v1", items: [item(1), item(2), item(3)] });
+    renderSearch();
+    const live = screen.getByRole("status");
+    expect(live).toHaveTextContent("");
+    await typeAndWait("bolt");
+    await screen.findAllByRole("option");
+    expect(screen.getByRole("status")).toBe(live);
+    expect(live).toHaveTextContent("3 matching records");
+  });
+
   it("opens the highlighted record on Enter, keeping ?run=", async () => {
     search = new URLSearchParams("run=v9");
     searchWork.mockResolvedValue({ version_id: "v9", items: [item(1), item(2)] });

@@ -11,6 +11,12 @@ export async function getJob(jobId: string): Promise<Job> {
   return res.data;
 }
 
+/** Start a failed job again through the endpoint that started it (POST /api/v1/jobs/{id}/retry). */
+export async function retryJob(jobId: string): Promise<{ job_id?: string | null; status?: string }> {
+  const res = await apiClient.post<{ job_id?: string | null; status?: string }>(`/api/v1/jobs/${jobId}/retry`);
+  return res.data;
+}
+
 /**
  * Live job stream. EventSource cannot send the bearer token, so this reads
  * the SSE body through fetch and parses `event:`/`data:` frames itself.

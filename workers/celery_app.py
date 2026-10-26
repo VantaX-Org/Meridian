@@ -65,6 +65,7 @@ import workers.tasks.ai_enrich_report  # noqa: F401
 import workers.tasks.mining.orchestrator  # noqa: F401 — registers dedup/anomaly/relationship + mining
 import workers.tasks.run_match  # noqa: F401 — match pipeline → match_scores
 import workers.tasks.build_golden_records  # noqa: F401
+import workers.tasks.run_golden_writeback  # noqa: F401 — golden-record write-back (simulate / approved apply)
 import workers.tasks.run_migration  # noqa: F401 — source→source/dest migration
 import workers.tasks.run_extraction  # noqa: F401 — live SAP extraction → checks
 import workers.tasks.run_config_sync  # noqa: F401 — SPRO/FO config sync
@@ -81,6 +82,7 @@ import workers.tasks.send_owner_digests  # noqa: F401 — weekly owner digest (b
 import workers.tasks.run_process_discovery  # noqa: F401 — process discovery chain and nightly prune
 import workers.tasks.purge_expired  # noqa: F401 — nightly retention purge (beat)
 import workers.tasks.build_worklist  # noqa: F401 — steward work list per run
+import workers.tasks.report_schedules  # noqa: F401 — scheduled reports (beat) and run now
 import workers.scheduler  # noqa: F401, E402 — registers beat schedule
 
 

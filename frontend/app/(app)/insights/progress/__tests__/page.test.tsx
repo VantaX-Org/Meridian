@@ -1,5 +1,5 @@
 // frontend/app/(app)/insights/progress/__tests__/page.test.tsx
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as versionsApi from "@/lib/api/versions";
@@ -15,7 +15,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 vi.mock("@/hooks/use-day-one", () => ({
-  useDayOne: () => ({ status: "ready", step: null }),
+  useDayOne: () => ({ status: "ready", step: null, error: null, refetch: () => {} }),
   DayOneAction: () => null,
 }));
 
@@ -94,7 +94,7 @@ describe("ProgressPage", () => {
     mount();
     expect(await screen.findByText("How fast the data is getting fixed, and what is slowing it down.")).toBeInTheDocument();
     expect(screen.getAllByText("Progress").length).toBeGreaterThan(0);
-    expect(await screen.findByText("Open records")).toBeInTheDocument();
+    expect(await screen.findByText("Records to fix")).toBeInTheDocument();
     expect(screen.getByText("Fixed this week")).toBeInTheDocument();
     expect(screen.getByText("Median time to fix")).toBeInTheDocument();
     expect(screen.getByText("Projected finish")).toBeInTheDocument();
@@ -102,7 +102,7 @@ describe("ProgressPage", () => {
     expect(burndown).toHaveBeenCalledWith({ versionId: "bp2", module: undefined });
     expect(change).toHaveBeenCalledWith({ versionId: "bp2", module: undefined });
     expect(screen.getAllByText(/At 2 a day net, the backlog clears on 5 Nov 2026/).length).toBeGreaterThan(0);
-    expect(screen.getByRole("img", { name: /Open issues per day/ })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /Failing records open per day/ })).toBeInTheDocument();
     expect(screen.getByText(/FI general ledger takes longest to fix: typically 28 days/)).toBeInTheDocument();
   });
 
@@ -114,7 +114,7 @@ describe("ProgressPage", () => {
     expect(screen.getByText("Nobody yet")).toBeInTheDocument();
     expect(await screen.findByText("GL002")).toBeInTheDocument();
     expect(screen.getByText("MM001")).toBeInTheDocument();
-    expect(screen.getByText(/2 issues failed again after a fix: 25% of 8 tracked/)).toBeInTheDocument();
+    expect(screen.getByText(/2 failing records failed again after a fix: 25% of 8 tracked/)).toBeInTheDocument();
     expect(screen.getByText(/Plant: 2 failing records across 2 values/)).toBeInTheDocument();
     expect(screen.getByText("Rule suggestion")).toBeInTheDocument();
     const change = screen.getByText("Change since the previous run").closest("section, div") as HTMLElement;
@@ -161,7 +161,11 @@ describe("ProgressPage", () => {
     const link = (name: string | RegExp) => screen.getByRole("link", { name }).getAttribute("href");
     expect(await screen.findByText("GL002")).toBeInTheDocument();
     expect(screen.getByText("Fixed this week").closest("a")?.getAttribute("href")).toBe("/fix?run=bp2&st=fixed");
-    expect(screen.getByText("Open records").closest("a")?.getAttribute("href")).toBe("/fix?run=bp2");
+    expect(screen.getByText("Records to fix").closest("a")?.getAttribute("href")).toBe("/fix?run=bp2");
+    // Fix work has no date filter: the tile says its drill opens every fixed record, and one noun is used throughout.
+    expect(screen.getByText("Last 7 days; opens all fixed records")).toBeInTheDocument();
+    expect(screen.queryByText(/\d issues?\b/)).toBeNull();
+    expect(screen.queryAllByRole("link", { name: /fix list|fix queue/i })).toHaveLength(0);
     expect(screen.getByText("Projected finish").closest("a")?.getAttribute("href")).toBe("#burndown");
     expect(document.getElementById("burndown")).not.toBeNull();
     expect(link("Open the open records of rule GL002 in FI general ledger")).toBe("/fix?run=bp2&module=fi_gl&check=GL002");
@@ -177,5 +181,24 @@ describe("ProgressPage", () => {
     expect(link("Open the critical open records of WERKS 1000")).toBe("/fix?run=bp2&sev=critical&part=WERKS%3D1000");
     expect(link("Open the 2 fixed records of material master")).toBe("/fix?run=bp2&module=material_master&st=fixed");
     expect(link("Open approvals and export for rule suggestion values")).toBe("/fix?tab=batches");
+  });
+
+  it("names the pinned baseline and pins the shown run as baseline", async () => {
+    mockAll();
+    const pin = vi.spyOn(versionsApi, "pinBaseline").mockResolvedValue({ baseline: true });
+    mount();
+    expect(await screen.findByText("No baseline pinned")).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Pin as baseline" }));
+    await waitFor(() => expect(pin).toHaveBeenCalledWith("bp2", true));
+  });
+
+  it("offers Unpin on the pinned run itself", async () => {
+    mockAll();
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [{ ...RUNS[0], metadata: { ...RUNS[0].metadata, baseline: true } }, RUNS[1]] });
+    const pin = vi.spyOn(versionsApi, "pinBaseline").mockResolvedValue({ baseline: false });
+    mount();
+    expect(await screen.findByText("Baseline: material_master_100k, 16 Oct 2026")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Unpin baseline" }));
+    await waitFor(() => expect(pin).toHaveBeenCalledWith("bp2", false));
   });
 });

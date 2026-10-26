@@ -36,6 +36,12 @@ export interface ObjectRule {
 }
 
 export interface ObjectDetail extends ObjectSummary {
+  /** dqs_summary[module].capped: a critical failure holds the score at a cap. */
+  capped?: boolean;
+  /** Why the score is capped (dqs_summary[module].cap_reason). */
+  cap_reason?: string | null;
+  /** The measured score before the cap. */
+  raw_score?: number | null;
   dimension_scores: Record<string, number>;
   rules: ObjectRule[];
 }

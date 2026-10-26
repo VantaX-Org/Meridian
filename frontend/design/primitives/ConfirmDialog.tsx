@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { Button } from "./Button";
 import { Dialog } from "./Dialog";
 import { Field } from "./Field";
@@ -11,9 +11,10 @@ import { Mono } from "./Mono";
  * Confirms a consequential action. `tone: "danger"` uses the danger button and the destructive title size.
  * `typeToConfirm` makes the user type that exact value (a team name, say) before the button enables.
  * Label the buttons with the action and its inverse ("Delete team" / "Keep"), never OK / Cancel.
+ * `confirmDisabled` holds the confirm button until the body is complete (a required reason, say); the body says why.
  */
 export function ConfirmDialog({
-  open, onOpenChange, title, body, confirmLabel, cancelLabel = "Keep", tone = "default", typeToConfirm, pending = false, onConfirm,
+  open, onOpenChange, title, body, confirmLabel, cancelLabel = "Keep", tone = "default", typeToConfirm, pending = false, confirmDisabled = false, onConfirm,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -24,9 +25,11 @@ export function ConfirmDialog({
   tone?: "danger" | "default";
   typeToConfirm?: string;
   pending?: boolean;
+  confirmDisabled?: boolean;
   onConfirm: () => void;
 }) {
   const [typed, setTyped] = useState("");
+  const matchId = useId();
   // Clear on every close, including a controlled close after success, and whenever the value to type changes
   // (state adjusted during render, the React-documented pattern, so no effect is needed).
   const resetKey = `${open}:${typeToConfirm ?? ""}`;
@@ -51,7 +54,7 @@ export function ConfirmDialog({
       footer={
         <>
           <Button variant="secondary" disabled={pending} onClick={() => change(false)}>{cancelLabel}</Button>
-          <Button variant={tone === "danger" ? "danger" : "primary"} pending={pending} disabled={!matched} onClick={onConfirm}>{confirmLabel}</Button>
+          <Button variant={tone === "danger" ? "danger" : "primary"} pending={pending} disabled={!matched || confirmDisabled} onClick={onConfirm}>{confirmLabel}</Button>
         </>
       }
     >
@@ -65,12 +68,13 @@ export function ConfirmDialog({
               placeholder={typeToConfirm}
               autoComplete="off"
               spellCheck={false}
-              onKeyDown={(e) => { if (e.key === "Enter" && matched && !pending) onConfirm(); }}
+              aria-describedby={matchId}
+              onKeyDown={(e) => { if (e.key === "Enter" && matched && !confirmDisabled && !pending) onConfirm(); }}
             />
           </Field>
         )}
         {typeToConfirm !== undefined && (
-          <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
+          <p id={matchId} className="m-text-meta m-ink-3">
             Matches exactly: <Mono inline>{typeToConfirm}</Mono>
           </p>
         )}

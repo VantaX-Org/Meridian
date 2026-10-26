@@ -8,6 +8,8 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
+from fastapi.routing import APIRoute
+from starlette.background import BackgroundTask
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,9 +25,88 @@ from api.services.storage import download_file
 from api.config import settings
 from db.schema import Report
 
-# Every route here returns a downloadable file, so the whole router needs export.
-router = APIRouter(prefix="/api/v1", tags=["reports"], dependencies=[Depends(require_permission("export"))])
 logger = logging.getLogger("meridian.reports")
+
+
+def _store_in_history(tenant_id: str, kind: str, data: bytes, file_name: str, content_type: str,
+                      version_id: Optional[str], params: dict, user_id: Optional[str], email: Optional[str]) -> None:
+    """Background, after the file has gone out: keep it in report_files (migration 089). Never
+    raises; a failure costs the history row, never the download."""
+    from api.services.report_history import store_report_file
+    from workers.db import get_sync_engine, tenant_session
+
+    try:
+        with tenant_session(get_sync_engine(), tenant_id) as session:
+            if user_id and not session.execute(text("SELECT 1 FROM users WHERE id = CAST(:u AS uuid) "
+                                                    "AND tenant_id = CAST(:t AS uuid)"),
+                                               {"u": user_id, "t": str(tenant_id)}).scalar():
+                user_id = None  # created_by is a users FK; a dev or service caller has no row
+            if version_id and not session.execute(text("SELECT 1 FROM analysis_versions WHERE id = CAST(:v AS uuid) "
+                                                       "AND tenant_id = CAST(:t AS uuid)"),
+                                                  {"v": version_id, "t": str(tenant_id)}).scalar():
+                version_id = None
+            store_report_file(session, tenant_id, kind=kind, data=data, file_name=file_name,
+                              content_type=content_type, version_id=version_id, params=params, source="download",
+                              created_by=user_id, created_by_email=email)
+            session.commit()
+    except Exception as e:
+        logger.warning("report %s not kept in history (%s)", kind, type(e).__name__)
+
+
+def _uuid_or_none(value: object) -> Optional[str]:
+    try:
+        return str(uuid.UUID(str(value))) if value else None
+    except ValueError:
+        return None
+
+
+class HistoryRoute(APIRoute):
+    """Keeps every file a report route hands out in the report history: after a 200 attachment
+    response, the bytes are stored in a background task (the download is never held up)."""
+
+    def get_route_handler(self):  # type: ignore[no-untyped-def]
+        from api.services.report_history import ENDPOINT_KINDS
+
+        handler = super().get_route_handler()
+        kind = ENDPOINT_KINDS.get(self.name)
+        if kind is None:
+            return handler
+
+        async def with_history(request: Request) -> Response:
+            response = await handler(request)
+            try:
+                disposition = response.headers.get("content-disposition", "")
+                body = getattr(response, "body", None)
+                tenant_id = getattr(request.state, "tenant_id", None)
+                if response.status_code == 200 and "attachment" in disposition and body and tenant_id:
+                    file_name = disposition.split("filename=", 1)[-1].strip().strip('"') or f"meridian_{kind}"
+                    params = {**{k: v for k, v in request.path_params.items()}, **dict(request.query_params)}
+                    vid = _uuid_or_none(request.path_params.get("version_id") or request.query_params.get("version_id")
+                                        or request.query_params.get("v2"))
+                    uid = _uuid_or_none(getattr(request.state, "local_user_id", None))
+                    task = BackgroundTask(_store_in_history, str(tenant_id), kind, bytes(body), file_name,
+                                          response.media_type or response.headers.get("content-type", ""),
+                                          vid, params, uid, getattr(request.state, "local_user_email", None))
+                    if response.background is None:
+                        response.background = task
+                    else:  # keep the route's own background work, then store
+                        previous = response.background
+
+                        async def both() -> None:
+                            await previous()
+                            await task()
+
+                        response.background = BackgroundTask(both)
+            except Exception:
+                logger.exception("report history hook failed")
+            return response
+
+        return with_history
+
+
+# Every route here returns a downloadable file, so the whole router needs export.
+router = APIRouter(prefix="/api/v1", tags=["reports"], dependencies=[Depends(require_permission("export"))],
+                   route_class=HistoryRoute)
 
 
 async def _regenerate_pdf(version_id: str, tenant_id: str) -> bytes:

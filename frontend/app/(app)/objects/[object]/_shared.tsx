@@ -22,12 +22,16 @@ export const objectQuery = (object: string, run: string) => ({
   staleTime: STALE_MS,
 });
 
-/** Blocking = critical or high severity (the same rule the migration export uses). */
+/**
+ * Critical or high severity (the same rule the migration export uses): the `?blocking=true` filter, shown as
+ * "Critical and high". Not the glossary's blocking findings (critical, or blocking an S/4 load).
+ */
 export const isBlocking = (r: ObjectRule) => r.severity === "critical" || r.severity === "high";
 
-export const recordsQuery = (run: string, checkId: string, page: number) => ({
-  queryKey: [...queryKeys.rule(checkId, run), page],
-  queryFn: () => getFindingRecords(run, checkId, { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
+/** `grain` narrows the records to one key grain; it rides along on the request so the server can filter when it supports it. */
+export const recordsQuery = (run: string, checkId: string, page: number, grain?: string | null) => ({
+  queryKey: [...queryKeys.rule(checkId, run), page, grain ?? ""],
+  queryFn: () => getFindingRecords(run, checkId, { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE, ...(grain ? { grain } : {}) }),
   enabled: !!run && !!checkId,
   staleTime: STALE_MS,
 });
@@ -51,7 +55,7 @@ export function useFixShortcut(object: string, run: string, firstKey: string | u
   }, [firstKey, object, run, router]);
 }
 
-/** The record, grain and module columns, one mono column per field_values key unioned across `records`, and the fix sheet link. */
+/** The record, grain and module columns, one mono column per field_values key unioned across `records`, and the record link. */
 export function useRecordColumns(object: string, run: string, records: readonly FindingRecord[] | undefined): ColumnDef<FindingRecord>[] {
   // Spec section 5.2: one mono column per field_values key, unioned across the current page of records.
   const fieldValueKeys = useMemo(() => {
@@ -66,7 +70,7 @@ export function useRecordColumns(object: string, run: string, records: readonly 
     () => [
       { accessorKey: "record_key", header: "Record", cell: ({ row }) => <Mono>{row.original.record_key}</Mono> },
       { accessorKey: "grain", header: "Grain", cell: ({ row }) => row.original.grain ?? "—" },
-      { accessorKey: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
+      { accessorKey: "module", header: "Object", cell: ({ row }) => formatModuleName(row.original.module) },
       ...fieldValueKeys.map((key): ColumnDef<FindingRecord> => ({
         id: `field_values.${key}`,
         header: key,
@@ -77,7 +81,7 @@ export function useRecordColumns(object: string, run: string, records: readonly 
       })),
       {
         id: "fix",
-        header: "Fix sheet",
+        header: "",
         cell: ({ row }) => (
           <Button
             variant="ghost"
@@ -86,10 +90,10 @@ export function useRecordColumns(object: string, run: string, records: readonly 
               <Link
                 href={fixSheetHref(object, run, row.original.record_key)}
                 data-fix={row.original.record_key}
-                aria-label={`Open fix sheet for ${row.original.record_key}`}
+                aria-label={`Open record ${row.original.record_key}`}
                 onClick={(e) => e.stopPropagation()}
               >
-                Open fix sheet
+                Open record
               </Link>
             }
           />

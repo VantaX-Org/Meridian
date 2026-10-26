@@ -11,9 +11,9 @@ const ROUTES: ReadonlyArray<readonly [string, RegExp]> = [
   ["/systems", /^No systems yet$/],
   ["/objects", /^No objects measured yet$/],
   ["/runs", /^No runs yet$/],
-  ["/search", /Search objects, records, checks and rules\./],
+  ["/search", /Search pages, objects, rules and processes/],
   ["/import", /^No imports yet$/],
-  ["/migration", /No migration waves yet\. Create one to track readiness\./],
+  ["/migration", /No waves yet/],
 ];
 
 for (const [path, sentence] of ROUTES) {

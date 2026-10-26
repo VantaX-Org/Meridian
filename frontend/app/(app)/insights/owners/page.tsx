@@ -3,13 +3,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { fixHref } from "@/lib/drill";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Button, Card, ConfirmDialog, DataTable, Delta, Status } from "@/design";
 import { useRole } from "@/hooks/use-role";
-import { getOwners, getReadiness, type OwnerCardResponse } from "@/lib/api/insights";
+import { getOwners, type OwnerCardResponse } from "@/lib/api/insights";
+import { getObjects } from "@/lib/api/v1/objects";
 import { sendOwnerDigests } from "@/lib/api/owners";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { labelOf, plural, relativeTime } from "@/lib/format";
@@ -24,12 +24,16 @@ const openCount = (o: OwnerCardResponse) => Object.values(o.open_by_severity).re
 const scoreColumns: ColumnDef<OwnerCardResponse>[] = [
   { accessorKey: "owner", header: "Owner" },
   { accessorKey: "score", header: "Score", meta: { numeric: true, heat: "seq", heatRange: [0, 100] } },
-  { id: "open", header: "Open items", accessorFn: openCount, meta: { numeric: true }, cell: ({ row }) => row.original.user_id
-    ? <Link href={fixHref({ assignee: row.original.user_id })} aria-label={`Open the ${openCount(row.original).toLocaleString()} open records of ${row.original.owner}`} className="m-ink-accent underline underline-offset-2">{openCount(row.original).toLocaleString()}</Link>
-    : openCount(row.original).toLocaleString() },
-  { accessorKey: "delta", header: "Change", meta: { numeric: true }, cell: ({ row }) => <Delta value={row.original.delta} /> },
-  { accessorKey: "fixed_since_baseline", header: "Fixed since the first run", meta: { numeric: true } },
-  { id: "action", header: "", enableSorting: false, cell: () => <Link href="/inbox" className="m-ink-accent underline underline-offset-2">Open inbox</Link> },
+  // Open record issues assigned to the owner across every run. No list shows exactly these (Fix work lists the
+  // latest run's records, not issues), so the count is plain; the row's "Open inbox" is its action.
+  { id: "open", header: "Open issues", accessorFn: openCount, meta: { numeric: true }, cell: ({ row }) => openCount(row.original).toLocaleString() },
+  // Score now against the score 7 days ago (the issues open then); negative when the owner lost ground.
+  { accessorKey: "delta", header: "Change this week", meta: { numeric: true }, cell: ({ row }) => <Delta value={row.original.delta} /> },
+  { accessorKey: "fixed_since_baseline", header: "Fixed in the last 7 days", meta: { numeric: true } },
+  // The owner's own inbox tasks (the inbox reads ?assignee= as a user id, a name or an email); no link without a user.
+  { id: "action", header: "", enableSorting: false, cell: ({ row }) => row.original.user_id
+    ? <Link href={`/inbox?assignee=${encodeURIComponent(row.original.user_id)}`} aria-label={`Open the inbox of ${row.original.owner}`} className="m-ink-accent underline underline-offset-2">Open inbox</Link>
+    : null },
 ];
 
 /** Writes the digest notification now. `owner` undefined sends to everyone. */
@@ -55,7 +59,7 @@ function OwnerCard({ owner, canSend, send }: { owner: OwnerCardResponse; canSend
         ))}
       </div>
       <div className="m-text-body m-ink-3">
-        {`${owner.fixed_since_baseline.toLocaleString()} fixed since the first run, oldest open item ${plural(owner.oldest_item_age_days, "day")} old`}
+        {`${owner.fixed_since_baseline.toLocaleString()} fixed in the last 7 days, oldest open item ${plural(owner.oldest_item_age_days, "day")} old`}
       </div>
       <p className="m-text-body">{owner.digest}</p>
       <div className="m-text-meta m-ink-3">
@@ -82,11 +86,12 @@ export default function OwnersPage() {
     queryFn: () => getOwners(),
   });
 
-  const readiness = useQuery({ queryKey: queryKeys.insights("readiness", run), queryFn: () => getReadiness({ version_id: run }) });
+  // The tenant's score target (the objects list's bands), the same line the homes draw.
+  const bandsQ = useQuery({ queryKey: queryKeys.objects("latest"), queryFn: () => getObjects("latest") });
   const owners = data?.owners ?? [];
 
-  const threshold = readiness.data?.threshold;
-  const below = typeof threshold === "number" ? owners.filter((o) => o.score < threshold).length : undefined;
+  const target = bandsQ.data?.thresholds?.target;
+  const below = typeof target === "number" ? owners.filter((o) => o.score < target).length : undefined;
   const openTotal = owners.reduce((n, o) => n + Object.values(o.open_by_severity).reduce((a, b) => a + b, 0), 0);
   const ranked = [...owners].sort((x, y) => x.score - y.score);
   const worst = ranked[0];
@@ -98,9 +103,9 @@ export default function OwnersPage() {
       run={run}
       controls={<Button variant="ghost" render={<Link href="/rules/scoring">Schedule digests</Link>} />}
       insight={{
-        situation: { sentence: below === undefined ? `${plural(owners.length, "owner")} with open items` : `${below} of ${plural(owners.length, "owner is", "owners are")} below the ${threshold}% target`, tone: below === undefined ? undefined : below ? "at-risk" : "go" },
-        changed: { sentence: `${plural(owners.filter((o) => o.delta < 0).length, "owner")} lost ground since the last run` },
-        why: { sentence: openTotal ? `${plural(openTotal, "open item sits", "open items sit")} with owners` : "No open item sits with an owner" },
+        situation: { sentence: below === undefined ? `${plural(owners.length, "owner")} with open issues` : `${below} of ${plural(owners.length, "owner is", "owners are")} below the target of ${target}`, tone: below === undefined ? undefined : below ? "at-risk" : "go" },
+        changed: { sentence: `${plural(owners.filter((o) => o.delta < 0).length, "owner")} lost ground in the last 7 days` },
+        why: { sentence: openTotal ? `${plural(openTotal, "open issue sits", "open issues sit")} with owners` : "No open issue sits with an owner" },
         next: canSend && owners.length
           ? { sentence: worst ? `Start with ${worst.owner}, the lowest score, and send everyone their digest` : "Send everyone their digest", action: { label: "Send digests to everyone", onClick: () => setConfirmAll(true) } }
           : { sentence: worst ? `Start with ${worst.owner}, the lowest score` : "Assign owners", action: { label: "Open inbox", href: "/inbox" } },
@@ -109,14 +114,14 @@ export default function OwnersPage() {
       state={isLoading ? "loading" : isListFailure({ isError, error }) ? "error" : owners.length === 0 ? "empty" : undefined}
       emptyProps={{
         title: "No issues are assigned yet",
-        detail: "Owners are scored on the issues assigned to them, so they appear once issues in the fix queue have an owner.",
+        detail: "Owners are scored on the records assigned to them, so they appear once records in Fix work have an owner.",
         ghost: "list",
-        action: <Button render={<Link href="/fix">Open fix queue</Link>} />,
+        action: <Button render={<Link href="/fix">Open Fix work</Link>} />,
       }}
-      errorProps={{ message: apiErrorMessage(error), onRetry: () => void refetch() }}
+      errorProps={{ error: error, onRetry: () => void refetch() }}
     >
       <Card title="Score by owner" meta="Lowest score first" dataTour="owners">
-        <DataTable columns={scoreColumns} data={ranked} getRowId={(o) => o.owner} hideToolbar dense height="auto" />
+        <DataTable columns={scoreColumns} data={ranked} getRowId={(o) => o.owner} hideToolbar height="auto" />
       </Card>
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
         {ranked.map((owner) => (

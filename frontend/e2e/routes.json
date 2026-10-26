@@ -5,8 +5,8 @@
     "heading": "Fix"
   },
   {
-    "name": "fix-batch",
-    "path": "/fix/B1",
+    "name": "fix-proposals",
+    "path": "/fix/proposals/B1",
     "heading": "Fix",
     "mocked": true
   },
@@ -89,7 +89,7 @@
   {
     "name": "admin-users",
     "path": "/admin/users",
-    "heading": "Users and audit"
+    "heading": "Users"
   },
   {
     "name": "design",
@@ -169,7 +169,7 @@
   {
     "name": "insights-process",
     "path": "/insights/process",
-    "heading": "Processes",
+    "heading": "Process data readiness",
     "knownBad": [
       "/api/v1/business-process/"
     ]
@@ -194,7 +194,7 @@
     "path": "/mdm",
     "heading": "Overview",
     "knownBad": [
-      "/api/v1/analytics/mdm-health",
+      "/api/v1/mdm-metrics/history",
       "/api/v1/stewardship?item_type=merge_decision"
     ]
   },
@@ -280,17 +280,17 @@
   {
     "name": "rules-contracts",
     "path": "/rules/contracts",
-    "heading": "Contracts"
+    "heading": "Data contracts"
   },
   {
     "name": "rules-dictionary",
     "path": "/rules/dictionary",
-    "heading": "Data dictionary"
+    "heading": "Dictionary"
   },
   {
     "name": "rules-drafts",
     "path": "/rules/drafts",
-    "heading": "Drafts"
+    "heading": "Rule drafts"
   },
   {
     "name": "rules-learned",

@@ -20,6 +20,14 @@ describe("process resource", () => {
     expect(permissionsPayload("analyst").resources.process).toMatchObject({ view: true, run: false, export: false });
   });
 
+  it("every assign holder hands rules to a steward (stewardship create); others do not", () => {
+    for (const role of ["admin", "manager", "steward"] as const) {
+      expect(permissionsPayload(role).resources.stewardship).toMatchObject({ create: true, edit: true });
+    }
+    expect(permissionsPayload("analyst").resources.stewardship).toMatchObject({ create: false, edit: false });
+    expect(resourceMatrix(["view", "handoff_rule"]).stewardship).toMatchObject({ create: true, edit: false });
+  });
+
   it("turns a 403 on the new actions into a requestable pair", () => {
     expect(requestTargetFor({ resource: null, action: "run_process_discovery" })).toEqual({ resource: "process", action: "run" });
     expect(requestTargetFor({ resource: null, action: "export_process" })).toEqual({ resource: "process", action: "export" });

@@ -22,7 +22,8 @@ describe("asyncStateOf", () => {
 describe("Async", () => {
   it("shows the skeleton while loading", () => {
     const { container } = render(<Async query={q({ isLoading: true })} skeleton={120}>never</Async>);
-    expect(container.querySelector("[data-state='loading']")).not.toBeNull();
+    expect(container.querySelector("[data-state='loading']")).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("status")).toHaveTextContent("Loading");
     expect(screen.queryByText("never")).toBeNull();
   });
   it("shows apiErrorState's title and retries the query", () => {
@@ -31,6 +32,25 @@ describe("Async", () => {
     expect(screen.getByText("Not found.")).toBeInTheDocument();
     screen.getByRole("button", { name: "Retry" }).click();
     expect(refetch).toHaveBeenCalled();
+  });
+  it("reads a raw `error` through apiErrorState, so a 403 is not \"Could not reach the server.\"", () => {
+    const onRetry = vi.fn();
+    render(<Async state="error" error={{ error: http(403), onRetry }}>never</Async>);
+    expect(screen.getByText("You do not have access to this.")).toBeInTheDocument();
+    expect(screen.queryByText(/could not reach the server/i)).toBeNull();
+    screen.getByRole("button", { name: "Retry" }).click();
+    expect(onRetry).toHaveBeenCalled();
+  });
+  it("reads a 500 as a server error and keeps an explicit title over the error's", () => {
+    render(<Async state="error" error={{ error: http(500) }}>never</Async>);
+    expect(screen.getByText("The server could not complete the request.")).toBeInTheDocument();
+    render(<Async state="error" error={{ error: http(500), title: "Rules did not load." }}>never</Async>);
+    expect(screen.getByText("Rules did not load.")).toBeInTheDocument();
+  });
+  it("still takes the old message-only error", () => {
+    render(<Async state="error" error={{ message: "Something specific" }}>never</Async>);
+    expect(screen.getByText("Could not reach the server.")).toBeInTheDocument();
+    expect(screen.getByText("Something specific")).toBeInTheDocument();
   });
   it("shows the empty copy, or the children when there is none", () => {
     render(<Async query={q({ data: [] as number[] })} isEmpty={(d) => d.length === 0} empty={{ title: "No rules yet" }}>never</Async>);

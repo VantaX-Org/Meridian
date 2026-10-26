@@ -131,7 +131,7 @@ async def get_impact(
             return {"version_id": None, "rows": []}
         version_id = resolved
 
-    # features_value: tenant's own CostModel.features (api/routes/settings.py), ZAR per
+    # features_value: tenant's own CostModel.features (api/routes/settings.py), tenant currency per
     # blocked record. No numeric default exists in db/seeds/config_impact_rules.yaml, so a
     # feature the tenant hasn't priced is skipped rather than guessing a cost (deviation
     # from the brief's Step 3 "seeded default" — that field does not exist in the YAML).
@@ -313,30 +313,55 @@ async def create_merge_proposals(
     return {"created": created}
 
 
+def l1_label(key: str) -> str:
+    """An L1 key as a reader says it: "procure_to_pay" reads "procure to pay" (sentence case mid-sentence)."""
+    return key.replace("_", " ")
+
+
 def exec_narrative(no_go: int, cells: int, priced: int, worst_name: Optional[str], worst_amount: float,
                    owners: int, top_cost: Optional[dict], currency: Optional[str]) -> str:
     """The exec Situation text: one sentence per fact that has something to say and none for a
     zero, so a quiet run reads "" and the page shows its own fallback. Deterministic, no LLM."""
     out: list[str] = []
+    unit = f" {currency}" if currency else ""
     if no_go:
-        out.append(f"{no_go} of {cells} readiness cells {'is' if no_go == 1 else 'are'} no-go.")
+        out.append(f"{no_go} of {cells} object and wave {'pair cannot' if no_go == 1 else 'pairs cannot'} load.")
     if priced:
         noun = "feature is" if priced == 1 else "features are"
-        where = f" in {worst_name.replace('_', ' ')}" if worst_name else ""
-        tail = f"; the largest exposure is {worst_amount:,.2f}{where}." if worst_amount else "."
+        where = f" in {l1_label(worst_name)}" if worst_name else ""
+        tail = f"; the largest exposure is {worst_amount:,.2f}{unit}{where}." if worst_amount else "."
         out.append(f"{priced} priced {noun} affected{tail}")
     if owners:
         out.append(f"{owners} {'owner has' if owners == 1 else 'owners have'} open digests.")
     if top_cost and (top_cost.get("amount") or 0) > 0:
-        unit = f" {currency}" if currency else ""
-        l1 = str(top_cost.get("l1") or "").replace("_", " ")
+        l1 = l1_label(str(top_cost.get("l1") or ""))
         out.append(f"The largest proven cost is {top_cost['amount']:,.2f}{unit} lost or held in transactions in {l1}.")
     return " ".join(out)
+
+
+Scope = Literal["run", "current"]
+_SCOPE = Query("run", description="run: one run (version_id, default the latest complete run). current: every "
+                                  "object at the latest complete run of its lineage; no version_id.")
+
+
+def _exec_dqs(s, tid: str, vid: str) -> dict:
+    """The DQS block of one run (composite, capped, cap_reason), the same numbers /overview shows for it."""
+    v = agg.resolve_version(s, tid, vid)
+    return agg.dqs_block(v, None, agg.load_scoring(s, tid), None) if v else {}
+
+
+def _exec_score(dqs: dict) -> dict:
+    """composite, cap and cap_reason for the exec payload: the cap is the composite itself while a critical finding
+    holds the score there (api/services/scoring.py:_cap), so the page can draw the measured value beyond it."""
+    comp = dqs.get("composite")
+    capped = bool(dqs.get("capped")) and comp is not None
+    return {"composite": comp, "cap": comp if capped else None, "cap_reason": dqs.get("cap_reason") if capped else None}
 
 
 @router.get("/exec", dependencies=[Depends(require_permission("view"))])
 async def get_exec(
     version_id: Optional[uuid.UUID] = None,
+    scope: Scope = _SCOPE,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
@@ -346,8 +371,22 @@ async def get_exec(
     directly (same pattern get_impact already uses for get_config_impact), all scoped
     to the same resolved version_id, so both the JSON page and the PDF export
     (api/routes/reports.py's executive_report_pdf, unchanged) describe the same run.
-    narrative is a deterministic string built from these numbers — no LLM call."""
+    narrative is a deterministic string built from these numbers — no LLM call.
+
+    ``scope=current`` (the scope of Home): the composite, cap and cap_reason come from the current state, every
+    object at the latest complete run of its lineage (``_latest_version_ids``, as /overview?scope=current). The
+    readiness cells, impact rows and proven cost are per run, so they come from the newest of those runs, whose id
+    is ``latest_version_id`` (``version_id`` stays null: the summary is not one run's)."""
     await _rls(db, tenant)
+    current: Optional[dict] = None
+    if scope == "current":
+        if version_id is not None:
+            raise HTTPException(422, "version_id and scope=current are exclusive")
+        ids = await _latest_version_ids(db, tenant)
+        if ids:
+            current = await db.run_sync(lambda s: agg.current_overview(s, str(tenant.id), ids, None))
+            newest = (current.get("version_ids") or [None])[0]
+            version_id = uuid.UUID(newest) if newest else None
     if version_id is None:
         version_id = await latest_run(db, tenant.id)
         if version_id is None:
@@ -355,6 +394,9 @@ async def get_exec(
             # tenant. 200 with empty fields so the page renders its empty state.
             return {
                 "version_id": None,
+                "latest_version_id": None,
+                "scope": scope,
+                "composite": None, "cap": None, "cap_reason": None,
                 "narrative": "",
                 "readiness_cells": [],
                 "waterfall": [],
@@ -380,9 +422,15 @@ async def get_exec(
 
     narrative = exec_narrative(no_go, len(cells), len(rows), worst_name, worst_amount, len(owner_rows),
                                top_cost, proven_cost["currency"])
+    dqs = current["dqs"] if current else await db.run_sync(lambda s: _exec_dqs(s, str(tenant.id), str(version_id)))
 
     return {
-        "version_id": str(version_id),
+        "version_id": None if current else str(version_id),
+        # The run the readiness, impact and proven cost come from (the newest of the current state's runs under
+        # scope=current): the run a page builds its board pack, workbook and run data exports from.
+        "latest_version_id": str(version_id),
+        "scope": scope,
+        **_exec_score(dqs),
         "narrative": narrative,
         "readiness_cells": cells,
         "waterfall": waterfall,
@@ -400,11 +448,6 @@ async def _agg(db: AsyncSession, tenant: Tenant, fn, *args, **kw) -> dict:
     if out is None:
         raise HTTPException(404, "No completed run found")
     return out
-
-
-Scope = Literal["run", "current"]
-_SCOPE = Query("run", description="run: one run (version_id, default the latest complete run). current: every "
-                                  "object at the latest complete run of its lineage; no version_id.")
 
 
 async def _current(db: AsyncSession, tenant: Tenant, fn, version_id: Optional[uuid.UUID], module: Optional[str]) -> dict:

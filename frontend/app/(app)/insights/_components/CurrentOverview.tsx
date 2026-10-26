@@ -7,7 +7,7 @@
 // endpoints, which take each object once from the newest run that measured it. The Runs card opens one run.
 import { useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Bar, buildDrillHref, Card, DataTable, Delta, Heatmap, Line, Mono, Radar, Score, Stat, Status } from "@/design";
@@ -15,13 +15,11 @@ import { getFindings } from "@/lib/api/findings";
 import { getCurrentCleansing, getCurrentOverview, getCurrentRootCauses, l1Label } from "@/lib/api/insights";
 import { getCurrentS4Readiness } from "@/lib/api/migration";
 import { getObjects } from "@/lib/api/v1/objects";
-import { blockingTotal, runObjectsName, stateDqs, stateObjects, stateRows, stateSeries, stateSummary, tierOf } from "@/lib/current-state";
-import { DIMENSIONS, dimensionHeatmapCells, runCap, runDimensions, worstObjectsFirst } from "@/lib/home-metrics";
+import { criticalHighHref, criticalHighTotal, runObjectsName, stateDelta, stateDqs, stateRows, stateSeries, stateSummary, tierOf, type StateObject } from "@/lib/current-state";
+import { BELOW_TARGET, DIMENSIONS, dimensionHeatmapCells, isBelowTarget, runCap, runDimensions, worstObjectsFirst } from "@/lib/home-metrics";
 import { verdictSentence } from "@/lib/home-narrative";
-import { checkClassLabel, deltaSentence, formatModuleName, plural, round1, trendSentence } from "@/lib/format";
-import { previousInLineage } from "@/lib/runs";
+import { checkClassLabel, deltaSentence, formatModuleName, plural, trendSentence } from "@/lib/format";
 import { runScopeLabel } from "@/lib/run-scope";
-import { apiErrorMessage } from "@/lib/error";
 import { drillLabel, fixHref } from "@/lib/drill";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
@@ -35,13 +33,23 @@ import { Section } from "./Section";
 import { useCurrentState } from "./useCurrentState";
 import { withScope } from "./useInsightScope";
 
-const VERDICT = { pass: "Ready to load", warn: "At risk", fail: "Not ready" } as const;
+const VERDICT = { pass: "Go", warn: "At risk", fail: "No-go" } as const;
 const TONE = { pass: "go", warn: "at-risk", fail: "no-go" } as const;
 
 /** A finding's failing records in Fix work, in the run that found them. */
 const findingRecords = (f: Finding) => fixHref({ run: f.version_id, module: f.module, check: f.check_id });
 
-const findingColumns: ColumnDef<Finding>[] = [
+/**
+ * Fix first of the current state: each object's findings from its own current run only (a finding of an older run
+ * of the same object is dropped), in the order given (highest impact first), at most `limit`.
+ */
+export function currentFixFirst(findings: readonly Finding[], objects: readonly StateObject[], modules: ReadonlySet<string> | null, limit: number): Finding[] {
+  const runOf = new Map(objects.map((o) => [o.module, o.run.id]));
+  return findings.filter((f) => (!modules || modules.has(f.module)) && f.version_id === runOf.get(f.module)).slice(0, limit);
+}
+
+/** The Fix first ledger's columns over current-state findings (Insights overview and executive summary). */
+export const currentFindingColumns: ColumnDef<Finding>[] = [
   {
     accessorKey: "check_id", header: "Rule",
     // Plain words first (the finding's message, else the kind of check), the check id under them.
@@ -73,10 +81,34 @@ const findingColumns: ColumnDef<Finding>[] = [
   },
 ];
 
+const SEVERITY_ORDER = ["critical", "high", "medium", "low"] as const;
+
+/** `?severity=critical,high`: the Fix first ledger's severities, in rank order; null for every severity. */
+export function severityFilterOf(param: string | null | undefined): string[] | null {
+  const wanted = new Set((param ?? "").split(",").map((s) => s.trim().toLowerCase()));
+  const out = SEVERITY_ORDER.filter((s) => wanted.has(s));
+  return out.length ? out : null;
+}
+
+/** "Critical and high" for a severity filter. */
+function severityFilterLabel(severities: readonly string[]): string {
+  const words = severities.map((s, i) => (i === 0 ? s[0].toUpperCase() + s.slice(1) : s));
+  return words.length > 1 ? `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}` : words[0];
+}
+
+/** The API's page size cap for GET /findings. */
+const FILTERED_LIMIT = 200;
+
 export function CurrentOverview() {
   const router = useRouter();
+  const search = useSearchParams();
+  // `?severity=` (the Critical and high tile's drill) narrows the Fix first ledger to those severities, every row.
+  const severities = severityFilterOf(search?.get("severity"));
+  const severityKey = severities?.join(",");
   const dayOne = useDayOne();
-  const { finished, runs, objects, newest, modules, loading: listLoading } = useCurrentState();
+  const { finished, runs, objects, newest, modules, loading: listLoading, error: listError, refetch: refetchList } = useCurrentState();
+  // The run list (or the day-one sources) failing is an error, never "No insights yet".
+  const loadError = listError ?? (dayOne.status === "error" ? dayOne.error : null);
   // The tenant's score bands; the same request (and cache entry) as the homes' objects list.
   const bandsQ = useQuery({ queryKey: queryKeys.objects("latest"), queryFn: () => getObjects("latest") });
   const bands = bandsQ.data?.thresholds;
@@ -86,6 +118,12 @@ export function CurrentOverview() {
     queryFn: () => getFindings({ sort: "impact", limit: 100 }),
     enabled: !!newest,
   });
+  const filteredQ = useQuery({
+    queryKey: ["current-findings", severityKey],
+    queryFn: () => getFindings({ severity: severityKey, sort: "impact", limit: FILTERED_LIMIT }),
+    enabled: !!newest && !!severityKey,
+  });
+  const ledgerQ = severityKey ? filteredQ : findingsQ;
 
   // The analyses the API computes per run, asked for the current state (`scope=current`): the same runs, each object
   // once from the newest run that measured it, as `stateObjects` takes them here.
@@ -103,17 +141,16 @@ export function CurrentOverview() {
   const dqs = stateDqs(objects);
   const tier = tierOf(dqs, bands);
   // The change the newest run made: the newest run swapped for the one before it in its own lineage.
-  const previous = newest ? previousInLineage(newest, finished) : null;
-  const previousDqs = previous && newest ? stateDqs(stateObjects(runs.map((r) => (r.id === newest.id ? previous : r)), modules)) : null;
-  const delta = dqs != null && previousDqs != null ? round1(dqs - previousDqs) : null;
+  const delta = stateDelta(runs, finished, modules);
   const cap = runCap(merged);
   const measured = objects.filter((o) => o.summary.composite_score != null).length;
   const capped = objects.filter((o) => o.summary.composite_score != null && o.summary.capped).length;
-  const blocking = blockingTotal(objects);
-  const withBlocking = objects.filter((o) => o.summary.critical_count + o.summary.high_count > 0).length;
-  const notReady = rows.filter((r) => r.readiness === "fail");
+  // Failing critical and high checks; "blocking" is the run overview's set (critical or S/4-blocking rules).
+  const criticalHigh = criticalHighTotal(objects);
+  // Below target: at risk or no-go (go only at the target), the same objects `/objects?readiness=warn,fail` lists.
+  const belowTarget = rows.filter(isBelowTarget);
+  const belowTargetTone = rows.some((r) => r.readiness === "fail") ? "no-go" : belowTarget.length ? "at-risk" : "go";
   const worst = worstObjectsFirst(rows)[0];
-  const runOf = new Map(objects.map((o) => [o.module, o.run.id]));
   const objectsHref = (q: Record<string, string> = {}) => withScope("/objects", q);
   const worstHref = worst ? withScope(`/objects/${worst.module}`, { run: worst.run_id }) : objectsHref();
 
@@ -126,9 +163,7 @@ export function CurrentOverview() {
   const heatTone = new Map(heatCells.map((c) => [`${c.row}:${c.col}`, c.tone]));
 
   // Each object's findings from its own current run only, highest impact first.
-  const fixFirst = (findingsQ.data?.findings ?? [])
-    .filter((f) => (!modules || modules.has(f.module)) && f.version_id === runOf.get(f.module))
-    .slice(0, 10);
+  const fixFirst = currentFixFirst(ledgerQ.data?.findings ?? [], objects, modules, severityKey ? FILTERED_LIMIT : 10);
 
   // The runs behind the current state, worst object first, for the analyses that are computed per run.
   const perRun = runs
@@ -139,13 +174,17 @@ export function CurrentOverview() {
     })
     .sort((a, b) => a.worstScore - b.worstScore);
 
-  const state: "loading" | "empty" | undefined =
-    listLoading || dayOne.status === "loading" ? "loading" : !newest || objects.length === 0 ? "empty" : undefined;
+  const state: "loading" | "empty" | "error" | undefined =
+    listLoading || dayOne.status === "loading" ? "loading" : loadError ? "error" : !newest || objects.length === 0 ? "empty" : undefined;
   const loading = state === "loading";
   const verdict = tier ? VERDICT[tier] : loading ? "Scoring" : "Not scored yet";
   const tone = tier ? TONE[tier] : undefined;
   const hint = cap ? `Capped at ${cap.cap}` : capped ? `${capped} of ${plural(measured, "object")} capped` : undefined;
-  const blockingLine = `${plural(blocking, "blocking finding")}${withBlocking ? ` in ${plural(withBlocking, "object")}` : ""}`;
+  // The impact page reads one run: with one run behind the state its value at risk opens that run, labelled with it.
+  const impactHref = runs.length === 1 ? withScope("/insights/impact", { run: runs[0].id }) : undefined;
+  const impactScopeHint = runs.length === 1 ? runScopeLabel(runs[0]) : runs.length > 1 ? `Across ${plural(runs.length, "run")}` : undefined;
+  // The hero's sub-line compares against the target rather than repeating the Critical and high tile.
+  const belowTargetLine = `${belowTarget.length} of ${plural(rows.length, "object")} below target`;
 
   return (
     <InsightFrame
@@ -164,22 +203,21 @@ export function CurrentOverview() {
               value={dqs}
               versionId={newest?.id}
               href={objectsHref()}
-              tone={tone}
               hint={hint}
               delta={delta != null ? <Delta value={delta} /> : undefined}
             />
             <div className="m-hero-verdict" data-testid="hero-verdict">
               <span className="font-semibold m-text-verdict-line m-ink [letter-spacing:var(--m-tracking-title)]">{verdict}</span>
-              <span className="m-text-body m-ink-2">{newest ? blockingLine : " "}</span>
+              <span className="m-text-body m-ink-2">{newest ? belowTargetLine : " "}</span>
             </div>
           </div>
         ),
         stats: [
-          { label: "Blocking findings", value: newest ? blocking : "—", hint: blocking ? "critical and high" : "none", tone: newest ? (blocking ? "no-go" : "go") : undefined, to: objectsHref({ readiness: "fail" }), versionId: newest?.id },
-          { label: "Objects not ready", value: newest ? notReady.length : "—", hint: `of ${rows.length}`, tone: newest ? (notReady.length ? "no-go" : "go") : undefined, to: objectsHref({ readiness: "fail" }), versionId: newest?.id },
+          { label: "Critical and high findings", value: newest ? criticalHigh : "—", hint: criticalHigh ? "failing rules" : "none", tone: newest ? (criticalHigh ? "no-go" : "go") : undefined, to: criticalHighHref(runs), versionId: newest?.id },
+          { label: "Objects below target", value: newest ? belowTarget.length : "—", hint: `of ${rows.length}`, tone: newest ? belowTargetTone : undefined, to: objectsHref({ readiness: BELOW_TARGET }), versionId: newest?.id },
           { label: "Worst object", value: worst?.composite_score != null ? worst.composite_score.toFixed(1) : "—", hint: worst?.label, to: worstHref },
           {
-            label: "Auto-fixable records",
+            label: "Records with a suggested value",
             value: ov ? ov.auto_fixable.records : "—",
             hint: ov?.auto_fixable.pct != null ? `${Math.round(ov.auto_fixable.pct)}% of failing records` : undefined,
             to: fixHref({ sugg: true }),
@@ -204,21 +242,25 @@ export function CurrentOverview() {
         ghost: "table",
         action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
       }}
-      errorProps={{ message: apiErrorMessage(bandsQ.error) }}
+      errorProps={{ error: loadError, onRetry: () => { refetchList(); dayOne.refetch(); } }}
     >
       <div className="flex flex-col [gap:var(--m-section-gap)]" data-testid="insights-overview">
         {/* The ledger: the failing rules ranked by impact, each object at its latest run, each with its one action. */}
         <Section
-          title="Fix first" height={264} query={findingsQ}
-          meta="Highest-impact failing rules, each object at its latest run"
-          actions={<Link href={objectsHref()} className="m-text-body underline-offset-2 hover:underline">Open objects</Link>}
+          title="Fix first" height={264} query={ledgerQ}
+          meta={severities
+            ? `${severityFilterLabel(severities)} failing rules, each object at its latest run, highest impact first${fixFirst.length >= FILTERED_LIMIT ? `; the first ${FILTERED_LIMIT}` : ""}`
+            : "Highest-impact failing rules, each object at its latest run"}
+          actions={severities
+            ? <Link href="/insights" className="m-text-body underline-offset-2 hover:underline" data-testid="fix-first-clear">Every severity</Link>
+            : <Link href={objectsHref()} className="m-text-body underline-offset-2 hover:underline">Open objects</Link>}
         >
           <DataTable
-            columns={findingColumns}
+            columns={currentFindingColumns}
             data={fixFirst}
             getRowId={(f) => f.id}
             onRowClick={(f) => router.push(buildDrillHref({ object: f.module, ruleId: f.check_id, run: f.version_id }))}
-            hideToolbar dense height="auto"
+            hideToolbar height="auto"
           />
         </Section>
 
@@ -260,14 +302,30 @@ export function CurrentOverview() {
           <div className="@5xl:col-span-6">
             <Section title="Value at risk" height={120} query={ovQ} meta="The end-to-end process with the most at risk; processes are never added together">
               {ov?.value_at_risk.worst_l1 ? (
-                <div className="grid grid-cols-2 gap-3" data-testid="current-value-at-risk">
-                  <Stat
-                    label={`Most at risk, ${l1Label(ov.value_at_risk.worst_l1)}`}
-                    value={formatMoney(ov.value_at_risk.worst_l1_amount, ov.value_at_risk.currency)}
-                    href={withScope("/insights/impact", { run: newest?.id })}
-                  />
-                  <Stat label="SAP features blocked" value={ov.value_at_risk.features_blocked} href={withScope("/insights/impact", { run: newest?.id })} />
-                </div>
+                <>
+                  {/* The impact page reads one run. One run behind the state: the tiles open it and say so. Several
+                      runs: the figures span them, so the tiles open nothing and each run's impact is listed below. */}
+                  <div className="grid grid-cols-2 gap-3" data-testid="current-value-at-risk">
+                    <Stat
+                      label={`Most at risk: ${l1Label(ov.value_at_risk.worst_l1)}`}
+                      value={formatMoney(ov.value_at_risk.worst_l1_amount, ov.value_at_risk.currency)}
+                      hint={impactScopeHint}
+                      href={impactHref}
+                    />
+                    <Stat label="SAP features blocked" value={ov.value_at_risk.features_blocked} hint={impactScopeHint} href={impactHref} />
+                  </div>
+                  {runs.length > 1 && (
+                    <p className="mt-2 m-text-meta m-ink-3" data-testid="value-at-risk-runs">
+                      {"Value at risk per run: "}
+                      {runs.map((r, i) => (
+                        <span key={r.id}>
+                          {i > 0 ? ", " : null}
+                          <Link href={withScope("/insights/impact", { run: r.id })} aria-label={`Value at risk of ${runScopeLabel(r)}`} className="m-ink-accent underline underline-offset-2">{runScopeLabel(r)}</Link>
+                        </span>
+                      ))}
+                    </p>
+                  )}
+                </>
               ) : (
                 <p className="m-text-body m-ink-3">No priced SAP feature is blocked. <Link href="/insights/impact" className="m-ink-accent underline underline-offset-2">Open value at risk</Link></p>
               )}

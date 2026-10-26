@@ -36,6 +36,8 @@ function setDetailTitle(next: BreadcrumbTitle | null) {
 /**
  * Publishes the current entity's name as the page's h1 (for routes the URL alone cannot name, such as
  * /systems/[id]), with its list page as the crumb before it. Cleared on unmount; null publishes nothing.
+ * Every detail page calls this beside its `PageHeader`, so the document's one h1 is the entity's name and not
+ * the list page's title: `useBreadcrumbTitle(system ? { label: system.name, parent: { label: "Systems", href: "/systems" } } : null)`.
  */
 export function useBreadcrumbTitle(title: BreadcrumbTitle | null) {
   const label = title?.label ?? "";
@@ -56,7 +58,7 @@ function Overflow({ crumbs }: { crumbs: Crumb[] }) {
   const router = useRouter();
   return (
     <Menu
-      trigger={<button type="button" aria-label="Earlier pages" className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>…</button>}
+      trigger={<button type="button" aria-label="Earlier pages" className="m-text-meta m-ink-3">…</button>}
       items={crumbs.map((c) => ({ label: c.label, onSelect: () => router.push(c.href) }))}
     />
   );
@@ -87,18 +89,19 @@ export function Breadcrumb() {
           <Dot />
         </>
       )}
-      {shown.map((crumb) => (
+      {shown.map((crumb, i) => (
         <span key={crumb.href} className="flex items-center gap-2">
-          <Link href={crumb.href} className="m-motion-colors hover:!text-[var(--m-ink)]" style={{ color: "var(--m-ink-3)" }}>{crumb.label}</Link>
-          <Dot />
+          <Link href={crumb.href} className="m-motion-colors m-ink-3 hover:!text-[var(--m-ink)]">{crumb.label}</Link>
+          {/* No dot after the last crumb when the page draws its own title: nothing visible follows it. */}
+          {(i < shown.length - 1 || !pageDrawsTitle) && <Dot />}
         </span>
       ))}
-      <h1 className={pageDrawsTitle ? "sr-only" : "m-text-h truncate font-semibold"} style={{ color: "var(--m-ink)" }}>
+      <h1 className={pageDrawsTitle ? "sr-only" : "m-text-h truncate font-semibold m-ink"}>
         {title}
       </h1>
       {scopeParts.map((part) => (
         // The page's own header carries its scope; shown here too, the line would keep the bar from collapsing.
-        <span key={part} data-testid="crumb-scope" className={pageDrawsTitle ? "sr-only" : "truncate"} style={{ color: "var(--m-ink-3)" }}>{part}</span>
+        <span key={part} data-testid="crumb-scope" className={pageDrawsTitle ? "sr-only" : "truncate m-ink-3"}>{part}</span>
       ))}
     </nav>
   );

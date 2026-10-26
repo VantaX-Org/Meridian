@@ -13,13 +13,17 @@ from datetime import datetime, timedelta, timezone
 #: aggregated in SQL (not one row per record_issue) — a tenant can have 300k+ rows in
 #: that table, so GROUP BY does the counting/MIN/FILTER work Postgres is built for
 #: instead of materialising every row in the API process or the digest task.
-#: :cutoff is baseline_cutoff() below, bound once by the caller so both the "is this
-#: open" and "is this a recent fix" windows agree with _BASELINE_WINDOW.
+#: :cutoff is baseline_cutoff() below (7 days ago), bound once by the caller so the
+#: "was it open a week ago" and "fixed this week" windows agree with _BASELINE_WINDOW.
+#: baseline_open_count is what was open at the cutoff: first seen before it and either
+#: still open or resolved after it. An issue first seen this week is not in it, so an
+#: owner's score can fall as well as rise over the week (delta < 0: lost ground).
 OWNER_ISSUE_SQL = """
     SELECT ri.assigned_to AS user_id, u.name AS owner, ri.severity,
            COUNT(*) FILTER (WHERE ri.status NOT IN ('resolved', 'accepted')) AS open_count,
            COUNT(*) FILTER (
-               WHERE ri.status NOT IN ('resolved', 'accepted') OR ri.resolved_at >= :cutoff
+               WHERE ri.first_seen_at < :cutoff
+                 AND (ri.status NOT IN ('resolved', 'accepted') OR ri.resolved_at >= :cutoff)
            ) AS baseline_open_count,
            COUNT(*) FILTER (
                WHERE ri.status IN ('resolved', 'accepted') AND ri.resolved_at >= :cutoff
@@ -56,11 +60,11 @@ def render_digest(owner: str, score: float, delta: float, open_by_severity: dict
     trend = "improved" if delta > 0 else "declined" if delta < 0 else "held steady"
     total_open = sum(open_by_severity.values())
     worst = max(open_by_severity, key=open_by_severity.get) if open_by_severity else None
-    s1 = f"{owner}'s score is {score:.1f}, which has {trend} by {abs(delta):.1f} points since the baseline run."
+    s1 = f"{owner}'s score is {score:.1f}, which has {trend} by {abs(delta):.1f} points in the last 7 days."
     s2 = (
         f"{total_open} items are open" + (f", most of them {worst}" if worst else "") + "."
     )
-    s3 = f"{fixed_since_baseline} items were fixed since the baseline; the oldest open item is {oldest_item_age_days} days old."
+    s3 = f"{fixed_since_baseline} items were fixed in the last 7 days; the oldest open item is {oldest_item_age_days} days old."
     return f"{s1} {s2} {s3}"
 
 

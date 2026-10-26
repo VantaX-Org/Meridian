@@ -22,6 +22,9 @@ export interface LicenceManifest {
   tier?: "starter" | "professional" | "enterprise";
   expiry_date?: string;
   days_remaining?: number;
+  /** Active users of this tenant, and the seats the licence grants (max_users), from GET /licence. */
+  seats_used?: number;
+  seats?: number | null;
   enabled_modules: string[];
   enabled_menu_items: string[];
   features: LicenceFeatures;
@@ -61,6 +64,12 @@ export async function getLicenceManifest(): Promise<LicenceManifest> {
   } catch {
     return DEFAULT_MANIFEST;
   }
+}
+
+/** Check the licence with Meridian HQ now (licence admins). Rejects with the server's message when HQ is unreachable. */
+export async function validateLicence(): Promise<LicenceManifest> {
+  const { data } = await apiClient.post<LicenceManifest>("/api/v1/licence/validate");
+  return data;
 }
 
 export { DEFAULT_MANIFEST };

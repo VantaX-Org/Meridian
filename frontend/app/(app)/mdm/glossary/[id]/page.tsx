@@ -6,12 +6,14 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Button, Card, DataTable, EmptyState, EntityTabs, ErrorState, Field, Mono, Pill, RecordPage, Skeleton, Status, Textarea, buildDrillHref, type RecordStatus } from "@/design";
+import { Button, Card, DataTable, DrillLink, EmptyState, EntityTabs, ErrorState, Field, Mono, Pill, RecordPage, Select, Skeleton, Status, Textarea, buildDrillHref, type RecordStatus } from "@/design";
 import { RowLink, actionColumn } from "@/components/mdm/ledger";
 import { getGlossaryTerm, requestAIDraft, reviewGlossaryTerm, updateGlossaryTerm } from "@/lib/api/glossary";
 import { LedgerHead } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
+import { usePeople } from "@/components/mdm/use-people";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
+import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { AIDraftResponse, GlossaryTermDetail } from "@/types/api";
@@ -26,15 +28,16 @@ const approvedCols: ColumnDef<Approved>[] = [
   { id: "label", header: "Label", accessorFn: (r) => r.label || "None" },
 ];
 const ruleCols: ColumnDef<Rule>[] = [
-  { id: "rule", header: "Rule", cell: ({ row }) => <Mono>{row.original.rule_id}</Mono> },
+  { id: "rule", header: "Rule", cell: ({ row }) => <DrillLink href={`/rules/${encodeURIComponent(row.original.rule_id)}`}><Mono>{row.original.rule_id}</Mono></DrillLink> },
   { id: "sev", header: "Severity", cell: ({ row }) => (row.original.severity ? <Status kind="severity" value={row.original.severity} /> : "") },
   { id: "pass", header: "Pass rate", accessorFn: (r) => (r.pass_rate != null ? `${r.pass_rate.toFixed(1)}%` : "") },
   { id: "aff", header: "Records failing", accessorFn: (r) => `${(r.affected_count ?? 0).toLocaleString()}${r.total_count != null ? ` of ${r.total_count.toLocaleString()}` : ""}` },
   actionColumn((r) => <RowLink href={buildDrillHref({ object: r.domain, ruleId: r.rule_id })} label={`See records failing ${r.rule_id}`}>Fix</RowLink>),
 ];
 const changeCols: ColumnDef<Change>[] = [
+  { id: "when", header: "When", accessorFn: (e) => e.changed_at, cell: ({ row }) => formatDate(row.original.changed_at, "datetime") },
   { id: "field", header: "Field", accessorFn: (e) => e.field_changed },
-  { id: "by", header: "By", accessorFn: (e) => e.changed_by },
+  { id: "by", header: "By", accessorFn: (e) => e.changed_by || "Unknown user" },
   { id: "change", header: "Change", accessorFn: (e) => e.new_value ?? "" },
 ];
 
@@ -49,6 +52,8 @@ export default function GlossaryTermPage() {
   const { can } = useRole();
   const canApprove = can("approve");
   const canDraft = can("trigger_ai");
+  // Names the steward; an approver with a readable user list can also hand the term to someone (PUT data_steward_id).
+  const { people, nameOf } = usePeople();
   const [editDef, setEditDef] = useState<string | null>(null);
   const [draft, setDraft] = useState<AIDraftResponse | null>(null);
 
@@ -128,6 +133,7 @@ export default function GlossaryTermPage() {
       recordKey={term.business_name}
       object={term.domain}
       status={status}
+      mono={false}
       meta="What this field means to the business, where it lives in SAP, and the rules that check it"
     >
       <EntityTabs entityType="glossary" entityId={id} overview={<>
@@ -207,7 +213,17 @@ export default function GlossaryTermPage() {
           <dt className="m-ink-3">Technical name</dt>
           <dd><Mono>{term.technical_name}</Mono></dd>
           <dt className="m-ink-3">Steward</dt>
-          <dd>{term.data_steward_id ?? "Unassigned"}</dd>
+          <dd>
+            {canApprove && people.length ? (
+              <Select
+                label="Steward"
+                value={term.data_steward_id ?? ""}
+                options={[{ value: "", label: "Unassigned" }, ...people.map((p) => ({ value: p.id, label: p.name || p.email })),
+                  ...(term.data_steward_id && !people.some((p) => p.id === term.data_steward_id) ? [{ value: term.data_steward_id, label: "A user" }] : [])]}
+                onValueChange={(v) => { if (v !== (term.data_steward_id ?? "")) save.mutate({ data_steward_id: v }); }}
+              />
+            ) : term.data_steward_id ? nameOf(term.data_steward_id) ?? "A user" : "Unassigned"}
+          </dd>
         </dl>
       </Card>
 
@@ -223,9 +239,7 @@ export default function GlossaryTermPage() {
       <section aria-label="Linked rules failing">
         <LedgerHead title="Linked rules failing" meta={String(failing.length)} />
         {failing.length === 0 ? (
-          <p className="m-text-body m-ink-3">
-            {term.linked_rules.length ? "Every linked rule passes in the latest analysis" : "No rules are linked to this term"}
-          </p>
+          <EmptyState variant="inline" title={term.linked_rules.length ? "Every linked rule passes in the latest analysis" : "No rules are linked to this term"} />
         ) : (
           <DataTable columns={ruleCols} getRowId={(r) => r.rule_id} data={failing} height="auto" />
         )}
@@ -234,7 +248,7 @@ export default function GlossaryTermPage() {
       <section aria-label="Change history">
         <LedgerHead title="Change history" meta={String(term.change_history.length)} />
         {term.change_history.length === 0 ? (
-          <p className="m-text-body m-ink-3">No changes recorded</p>
+          <EmptyState variant="inline" title="No changes recorded" />
         ) : (
           <DataTable columns={changeCols} getRowId={(r) => r.id} data={term.change_history} height="auto" />
         )}

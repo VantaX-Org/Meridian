@@ -8,8 +8,6 @@ import { Button } from "../primitives/Button";
 import { Textarea } from "../primitives/Textarea";
 import { IconHelp } from "../icons";
 
-export const DEFAULT_SUPPORT_EMAIL = "support@meridian.local";
-
 export interface ReportContext {
   /** The page the person is on. */
   url: string;
@@ -24,7 +22,7 @@ export function reportText(ctx: ReportContext): string {
   return [`Page: ${ctx.url}`, `Run: ${ctx.runId || "none selected"}`, `Version: ${ctx.version}`].join("\n");
 }
 
-function ReportDialog({ open, onOpenChange, context, supportEmail }: { open: boolean; onOpenChange: (open: boolean) => void; context: ReportContext; supportEmail: string }) {
+function ReportDialog({ open, onOpenChange, context, supportEmail }: { open: boolean; onOpenChange: (open: boolean) => void; context: ReportContext; supportEmail?: string }) {
   const [copied, setCopied] = useState<"idle" | "done" | "failed">("idle");
   const text = reportText(context);
   const copy = async () => {
@@ -48,9 +46,13 @@ function ReportDialog({ open, onOpenChange, context, supportEmail }: { open: boo
       }
     >
       <div className="flex flex-col gap-3">
-        <p>Copy these details and send them to <strong className="font-medium" style={{ color: "var(--m-ink)" }}>{supportEmail}</strong> with a sentence about what you expected. Nothing is sent from this page.</p>
+        {supportEmail ? (
+          <p>Copy these details and send them to <strong className="font-medium m-ink">{supportEmail}</strong> with a sentence about what you expected. Nothing is sent from this page.</p>
+        ) : (
+          <p>Copy these details and send them to your support contact with a sentence about what you expected. Ask your administrator for the support address. Nothing is sent from this page.</p>
+        )}
         <Textarea aria-label="Details" readOnly rows={3} value={text} onFocus={(e) => e.currentTarget.select()} />
-        <p role="status" style={{ color: "var(--m-ink-3)", minHeight: 18 }}>
+        <p role="status" className="m-ink-3" style={{ minHeight: 18 }}>
           {copied === "done" ? "Copied to the clipboard" : copied === "failed" ? "Copying was blocked, select the text above and copy it" : ""}
         </p>
       </div>
@@ -68,11 +70,12 @@ export interface HelpMenuProps {
   hasNew: boolean;
   onDocs: () => void;
   context: ReportContext;
+  /** The customer's support address (NEXT_PUBLIC_SUPPORT_EMAIL). Unset, the dialog says to ask the administrator. */
   supportEmail?: string;
 }
 
 /** The `?` button in the top bar: tour, shortcuts, what's new, documentation, report a problem. */
-export function HelpMenu({ hasTour, onTour, onShortcuts, onWhatsNew, hasNew, onDocs, context, supportEmail = DEFAULT_SUPPORT_EMAIL }: HelpMenuProps) {
+export function HelpMenu({ hasTour, onTour, onShortcuts, onWhatsNew, hasNew, onDocs, context, supportEmail }: HelpMenuProps) {
   const [reporting, setReporting] = useState(false);
   const items: MenuItemDef[] = [
     ...(hasTour ? [{ label: "Tour this page", onSelect: onTour }] : []),

@@ -3,7 +3,7 @@
 import json
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Awaitable, Callable, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
@@ -12,7 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services.exception_engine import ExceptionBillingCalculator
-from api.services.rbac import has_permission, require_permission
+from api.services.notifications import create_notification
+from api.services.rbac import has_permission, require_any_permission, require_permission
 
 router = APIRouter(prefix="/api/v1", tags=["exceptions"])
 
@@ -28,6 +29,12 @@ class CreateExceptionBody(BaseModel):
     description: str
     affected_records: Optional[dict] = None
     object_type: Optional[str] = None
+    # Raised from a failing rule: the finding it tracks (this tenant's) and where it came from.
+    linked_finding_id: Optional[uuid.UUID] = None
+    # SAP-source fields: system managers only (the SAP monitor writes them server-side). Anyone else
+    # may only send the reference of the linked finding ("<version_id>:<check_id>").
+    source_system: Optional[str] = None
+    source_reference: Optional[str] = None
 
 
 class AssignBody(BaseModel):
@@ -77,6 +84,41 @@ class UpdateRuleBody(BaseModel):
 
 async def _set_rls(db: AsyncSession, tenant_id: uuid.UUID) -> None:
     await db.execute(text(f"SET app.tenant_id = '{str(tenant_id)}'"))
+
+
+def require_action_or_sap_source(action: str) -> Callable[..., Awaitable[str]]:
+    """Dependency factory: `action` on any exception, or `manage_systems` on an exception raised from an SAP system
+    (an SAP monitor row: type 'sap_transaction' with source_system set). SAP Basis owns the SAP monitor's signals (failed jobs, locked records) without holding
+    `assign` or `approve`, so it can claim and resolve those, and only those."""
+    gate = require_any_permission(action, "manage_systems")
+    strict = require_permission(action)
+
+    async def _check(
+        exception_id: str,
+        request: Request,
+        tenant: Tenant = Depends(get_tenant),
+        db: AsyncSession = Depends(get_db),
+    ) -> str:
+        role = await gate(request, tenant, db)
+        try:
+            return await strict(request, tenant, db)
+        except HTTPException:
+            pass  # manage_systems only: the exception must come from an SAP system
+        await _set_rls(db, tenant.id)
+        row = (await db.execute(
+            text("SELECT source_system IS NOT NULL AND type = 'sap_transaction' "
+                 "FROM exceptions WHERE id::text = :eid AND tenant_id = :tid"),
+            {"eid": exception_id, "tid": str(tenant.id)},
+        )).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Exception not found")
+        if not row[0]:
+            raise HTTPException(status_code=403, detail=(
+                f"Role '{role}' does not have '{action}' permission; system managers act only on exceptions "
+                "raised from an SAP system"))
+        return role
+
+    return _check
 
 
 def _row_to_dict(row) -> dict:
@@ -223,8 +265,9 @@ async def get_exception(
     # Load linked finding if present
     if exc.get("linked_finding_id"):
         fr = await db.execute(
-            text("SELECT id, module, check_id, severity, dimension, pass_rate FROM findings WHERE id = :fid"),
-            {"fid": str(exc["linked_finding_id"])},
+            text("SELECT id, module, check_id, severity, dimension, pass_rate FROM findings "
+                 "WHERE id = :fid AND tenant_id = :tid"),
+            {"fid": str(exc["linked_finding_id"]), "tid": str(tenant.id)},
         )
         linked = fr.fetchone()
         exc["linked_finding"] = _row_to_dict(linked) if linked else None
@@ -232,8 +275,9 @@ async def get_exception(
     # Load linked cleaning if present
     if exc.get("linked_cleaning_id"):
         cr = await db.execute(
-            text("SELECT id, object_type, record_key, status, confidence FROM cleaning_queue WHERE id = :cid"),
-            {"cid": str(exc["linked_cleaning_id"])},
+            text("SELECT id, object_type, record_key, status, confidence FROM cleaning_queue "
+                 "WHERE id = :cid AND tenant_id = :tid"),
+            {"cid": str(exc["linked_cleaning_id"]), "tid": str(tenant.id)},
         )
         linked = cr.fetchone()
         exc["linked_cleaning"] = _row_to_dict(linked) if linked else None
@@ -244,13 +288,44 @@ async def get_exception(
 # ── 3. POST /api/v1/exceptions — create manually ────────────────────────────
 
 
-@router.post("/exceptions", status_code=201, dependencies=[Depends(require_permission("analyse"))])
+# Process owners (run_process_discovery) raise exceptions on what blocks their process too.
+_SAP_SOURCE_TYPES = ("sap_transaction",)  # written by the SAP monitor; system managers own them
+
+
+async def _holds(request: Request, tenant: Tenant, db: AsyncSession, action: str) -> bool:
+    try:
+        await require_permission(action)(request, tenant, db)
+        return True
+    except HTTPException:
+        return False
+
+
+@router.post("/exceptions", status_code=201, dependencies=[Depends(require_any_permission("analyse", "run_process_discovery"))])
 async def create_exception(
     body: CreateExceptionBody,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
     await _set_rls(db, tenant.id)
+
+    finding_ref: Optional[str] = None
+    if body.linked_finding_id is not None:
+        f = (await db.execute(
+            text("SELECT version_id, check_id FROM findings WHERE id = :f AND tenant_id = :t"),
+            {"f": str(body.linked_finding_id), "t": str(tenant.id)},
+        )).fetchone()
+        if not f:
+            raise HTTPException(status_code=422, detail="The linked finding was not found")
+        finding_ref = f"{f[0]}:{f[1]}"
+
+    # An SAP-source exception lets system managers claim and resolve it: only they may raise one.
+    sap_source = body.source_system or body.type in _SAP_SOURCE_TYPES or (
+        body.source_reference and body.source_reference != finding_ref)
+    if sap_source and not await _holds(request, tenant, db, "manage_systems"):
+        raise HTTPException(status_code=422, detail=(
+            "Only system managers can raise an SAP-source exception (source system, SAP monitor type, or a "
+            "source reference other than the linked finding's)"))
 
     new_id = str(uuid.uuid4())
     sla_hours = _SLA_HOURS.get(body.severity, 72)
@@ -259,9 +334,11 @@ async def create_exception(
     await db.execute(
         text("""
             INSERT INTO exceptions (id, tenant_id, type, category, severity, status,
-                title, description, affected_records, escalation_tier, sla_deadline, created_at)
+                title, description, affected_records, escalation_tier, sla_deadline, created_at,
+                linked_finding_id, source_system, source_reference)
             VALUES (:id, :tid, :type, :category, :severity, 'open',
-                :title, :description, CAST(:affected_records AS jsonb), 1, :sla_deadline, now())
+                :title, :description, CAST(:affected_records AS jsonb), 1, :sla_deadline, now(),
+                CAST(:finding AS uuid), :source_system, :source_reference)
         """),
         {
             "id": new_id,
@@ -273,6 +350,9 @@ async def create_exception(
             "description": body.description,
             "affected_records": json.dumps(body.affected_records) if body.affected_records else None,
             "sla_deadline": sla_deadline,
+            "finding": str(body.linked_finding_id) if body.linked_finding_id else None,
+            "source_system": body.source_system,
+            "source_reference": body.source_reference,
         },
     )
     await db.commit()
@@ -283,7 +363,7 @@ async def create_exception(
 # ── 4. PUT /api/v1/exceptions/{id}/assign ────────────────────────────────────
 
 
-@router.put("/exceptions/{exception_id}/assign", dependencies=[Depends(require_permission("assign"))])
+@router.put("/exceptions/{exception_id}/assign", dependencies=[Depends(require_action_or_sap_source("assign"))])
 async def assign_exception(
     exception_id: str,
     body: AssignBody,
@@ -307,6 +387,20 @@ async def assign_exception(
         """),
         {"eid": exception_id, "tid": str(tenant.id), "txt": f"Assigned to {body.user_name}"},
     )
+    # The assignee hears about it in the bell (and in their digest or immediate email, per preferences).
+    # exceptions.assigned_to has no FK but notifications.user_id does: an assignee that is not a user of this
+    # tenant (a team name, a free-text owner) gets no notification rather than a 500. Compared as text, so a
+    # non-uuid id never reaches a uuid cast.
+    is_user = (await db.execute(
+        text("SELECT 1 FROM users WHERE id::text = :uid AND tenant_id = :tid"),
+        {"uid": body.user_id, "tid": str(tenant.id)},
+    )).scalar()
+    if is_user:
+        title_row = await db.execute(text("SELECT title FROM exceptions WHERE id = :eid AND tenant_id = :tid"),
+                                     {"eid": exception_id, "tid": str(tenant.id)})
+        title = (title_row.scalar() or "an exception")
+        await create_notification(str(tenant.id), body.user_id, "assignment", f"Assigned to you: {title}",
+                                  "An exception was assigned to you.", f"/inbox?kind=exception&focus={exception_id}", db)
     await db.commit()
 
     return {"id": exception_id, "assigned_to": body.user_id}
@@ -370,7 +464,7 @@ async def resolve_exception(
     body: ResolveBody,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("approve")),
+    _role: str = Depends(require_action_or_sap_source("approve")),
 ):
     await _set_rls(db, tenant.id)
 

@@ -5,15 +5,20 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Bar, Button, DataTable, EmptyState, ErrorState, ExportMenu, Mono, Notice, ReportPage, Status } from "@/design";
+import { Bar, Button, DataTable, EmptyState, ErrorState, ExportMenu, Notice, ReportPage, Skeleton, Status } from "@/design";
+import { runName } from "@/lib/run-scope";
 import { JobProgress } from "@/design/shell/JobProgress";
 import { RunProgressBanner } from "@/components/run-progress-banner";
+import { JobError } from "@/components/job-error";
 import { getJob } from "@/lib/api/jobs";
+import { getSystems } from "@/lib/api/connectivity";
 import { exportRunSteps, getRunSteps, type RunStep } from "@/lib/api/v1/runs";
 import { getVersion } from "@/lib/api/versions";
 import { apiErrorState } from "@/lib/error";
 import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { GatedPrimary } from "@/components/gated-primary";
+import { useRole } from "@/hooks/use-role";
 
 // A run repeats a step per object, so a step is named by its number and when it started.
 const stepId = (st: RunStep, i: number) => `${st.step_number}-${st.started_at}-${i}`;
@@ -45,11 +50,15 @@ const columns: ColumnDef<RunStep>[] = [
 
 export default function ExtractionPage() {
   const { systemId, runId } = useParams<{ systemId: string; runId: string }>();
+  const { can } = useRole();
 
   const steps = useQuery({
     queryKey: [...queryKeys.run(runId), "steps"],
     queryFn: () => getRunSteps(runId),
   });
+  // The system's name scopes the Extract again gate ("Needs SAP Basis on ECC Prod"), never its id.
+  const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
+  const systemName = systemsQ.data?.find((s) => s.id === systemId)?.name ?? "this system";
   const version = useQuery({ queryKey: ["version", runId], queryFn: () => getVersion(runId), retry: false });
   const job = useQuery({
     queryKey: [...queryKeys.run(runId), "job"],
@@ -81,7 +90,7 @@ export default function ExtractionPage() {
   const v = version.data;
   const narrative = (
     <>
-      {v ? <>Extracted {formatDate(v.run_at, "datetime")}{v.label ? <>, run <Mono>{v.label}</Mono></> : null}.</> : <>Run <Mono>{runId}</Mono></>}
+      {v ? <>Extracted {formatDate(v.run_at, "datetime")}, run {runName(v)}.</> : version.isPending ? <Skeleton width={240} height={20} /> : <>The run of this extraction could not be read.</>}
       {" "}Each step Meridian ran to pull this data from SAP, and how long it took.
       {activeJob ? (
         <>
@@ -99,8 +108,22 @@ export default function ExtractionPage() {
         </>
       ) : null}
       {failedStep ? (
-        <Notice tone="danger" action={<Button variant="secondary" render={<Link href={`/systems/${systemId}?tab=health`}>Check the connection</Link>} />}>
-          {failedStep.step_name} failed: {failedStep.error_detail}
+        <Notice
+          tone="danger"
+          action={
+            <>
+              <Button variant="secondary" render={<Link href={`/systems/${systemId}?tab=health`}>Check the connection</Link>} />
+              {/* Only trigger_sync opens the Extract drawer; without it the control stays, disabled, saying why. */}
+              <GatedPrimary kind="extract" allowed={can("trigger_sync")} systemId={systemId} scopeLabel={systemName} variant="secondary" render={<Link href={`/systems/${systemId}?extract=1`} />}>
+                Extract again
+              </GatedPrimary>
+            </>
+          }
+        >
+          <span className="flex flex-col gap-1">
+            <span>{failedStep.step_name} failed.</span>
+            <JobError error={failedStep.error_detail} />
+          </span>
         </Notice>
       ) : null}
     </>

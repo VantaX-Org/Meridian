@@ -74,13 +74,13 @@ async def test_cost_model_round_trips_features(tenant_row, monkeypatch):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         r = await client.put(
             "/api/v1/settings/cost-model",
-            json={"features": {"three_way_match": 500.0}},
+            json={"features": {"Account Determination": 500.0}},
             headers=headers,
         )
         assert r.status_code == 200
-        assert r.json()["effective"]["features"] == {"three_way_match": 500.0}
+        assert r.json()["effective"]["features"] == {"Account Determination": 500.0}
         r = await client.get("/api/v1/settings/cost-model", headers=headers)
     assert r.status_code == 200
     body = r.json()
-    assert body["tenant"]["features"] == {"three_way_match": 500.0}
-    assert body["effective"]["features"] == {"three_way_match": 500.0}
+    assert body["tenant"]["features"] == {"Account Determination": 500.0}
+    assert body["effective"]["features"] == {"Account Determination": 500.0}

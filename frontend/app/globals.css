@@ -116,9 +116,11 @@
     font-size: 14px;
     @apply font-sans;
   }
-  h1, .text-display-lg { font-family: var(--m-font-sans); font-weight: 600; font-size: 2rem; line-height: 1.15; letter-spacing: -0.01em; }
-  h2, .text-display { font-family: var(--m-font-sans); font-weight: 600; font-size: 1.5rem; line-height: 1.2; }
-  h3, .text-heading { font-family: var(--m-font-sans); font-weight: 600; font-size: 1.25rem; line-height: 1.3; }
+  /* Headings sit on the token type scale: h1 the page title, h2 and h3 the section heading. A heading still sets its
+     size with an m-text-* class; these only keep a bare one from falling back to browser sizes. */
+  h1, .text-display-lg { font-family: var(--m-font-sans); font-weight: 600; font-size: var(--m-text-title); line-height: var(--m-leading-title); letter-spacing: var(--m-tracking-title); }
+  h2, .text-display { font-family: var(--m-font-sans); font-weight: 600; font-size: var(--m-text-section); line-height: var(--m-leading-section); letter-spacing: var(--m-tracking-title); }
+  h3, .text-heading { font-family: var(--m-font-sans); font-weight: 600; font-size: var(--m-text-section); line-height: var(--m-leading-section); }
   .text-tabular { font-variant-numeric: tabular-nums; }
   .font-mono { font-variant-numeric: tabular-nums slashed-zero; }
   input, textarea, [contenteditable] { caret-color: var(--m-accent); }
@@ -248,14 +250,20 @@
   /* ---------- The index bar (design/shell/Rail.tsx) and the scope bar (TopBar.tsx) ---------- */
   .m-topnav { display: flex; align-items: center; gap: var(--m-space-5); height: var(--m-topbar-h); padding: 0 var(--m-space-6); background: var(--m-rail); border-bottom: 1px solid var(--m-rail-edge); flex-shrink: 0; }
   .m-topnav-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: var(--m-text-section); line-height: var(--m-leading-section); color: var(--m-ink); text-decoration: none; }
-  .m-topnav-nav { min-width: 0; flex: 1; overflow-x: auto; scrollbar-width: none; }
-  .m-topnav-list { display: flex; align-items: center; gap: 2px; margin: 0; padding: 4px; list-style: none; background: var(--m-sheet-raised); border-radius: var(--m-radius-pill); width: max-content; }
-  .m-topnav-link { position: relative; display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: var(--m-radius-pill); color: var(--m-ink-2); font-size: var(--m-text-body); line-height: var(--m-leading-body); font-weight: 600; text-decoration: none; white-space: nowrap; border: 0; background: transparent; cursor: pointer; }
+  /* The nav is the raised track: the pills scroll inside it, More is pinned at its end outside the scroller. */
+  .m-topnav-nav { display: flex; align-items: center; gap: 2px; min-width: 0; flex: 0 1 auto; padding: 2px; background: var(--m-sheet-raised); border-radius: var(--m-radius-pill); }
+  .m-topnav-scroll { min-width: 0; overflow-x: auto; scrollbar-width: none; padding: 2px; border-radius: var(--m-radius-pill); }
+  .m-topnav-scroll::-webkit-scrollbar { display: none; }
+  .m-topnav-list { display: flex; align-items: center; gap: 2px; margin: 0; padding: 0; list-style: none; width: max-content; }
+  .m-topnav-morewrap { position: relative; flex-shrink: 0; padding: 2px 2px 2px 0; }
+  .m-topnav-link { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: var(--m-rail-link-h); min-width: var(--m-rail-link-h); padding: 0 12px; border-radius: var(--m-radius-pill); color: var(--m-ink-2); font-size: var(--m-text-body); line-height: var(--m-leading-body); font-weight: 600; text-decoration: none; white-space: nowrap; border: 0; background: transparent; cursor: pointer; }
   .m-topnav-link:hover { color: var(--m-ink); }
   .m-topnav-link[aria-current="page"], .m-topnav-link[data-active="true"] { background: var(--m-sheet); color: var(--m-ink); box-shadow: var(--m-elev-card); }
   .m-topnav-link:focus-visible { outline: none; box-shadow: var(--m-elev-focus); }
   .m-topnav-right { display: flex; align-items: center; gap: var(--m-space-2); margin-left: auto; white-space: nowrap; }
-  .m-topnav-more { position: absolute; top: calc(100% + 8px); left: 0; z-index: 50; min-width: 600px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--m-space-4); padding: var(--m-space-4); background: var(--m-sheet); border: 1px solid var(--m-line); border-radius: var(--m-radius-sheet); }
+  /* Fixed under the More button (Rail.tsx sets the anchor): the pill strip scrolls sideways and would clip it. */
+  .m-topnav-more { position: fixed; top: var(--rail-more-top, calc(var(--m-topbar-h) + 8px)); left: max(var(--m-space-4), min(var(--rail-more-left, var(--m-space-4)), calc(100vw - 600px - var(--m-space-4)))); z-index: 50; min-width: 600px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--m-space-4); padding: var(--m-space-4); background: var(--m-sheet); border: 1px solid var(--m-line); border-radius: var(--m-radius-sheet); }
+  .m-topnav-all { grid-column: 1 / -1; font-weight: 600; }
   .m-topnav-group { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   .m-topnav-group-label { font-size: var(--m-text-micro); line-height: var(--m-leading-micro); font-weight: 600; color: var(--m-ink-3); padding: 4px 8px; }
   .m-topnav-item { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border-radius: var(--m-radius-control); color: var(--m-ink-2); font-size: var(--m-text-body); font-weight: 500; text-decoration: none; min-width: 0; }
@@ -268,28 +276,57 @@
   .m-scopebar:not(:has(nav a, nav [data-testid="crumb-scope"]:not(.sr-only), nav h1:not(.sr-only), .m-scopebar-trailing > *)) { min-height: 0; height: 0; padding: 0; border: 0; }
   @media (max-width: 1023px) {
     .m-topnav { padding: 0 var(--m-space-4); gap: var(--m-space-3); }
-    .m-topnav-more { min-width: 0; width: calc(100vw - 32px); grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .m-scopebar { padding: 0 var(--m-space-4); }
+    .m-topnav-more { left: var(--m-space-4); min-width: 0; width: calc(100vw - 32px); max-height: calc(100dvh - var(--rail-more-top, var(--m-topbar-h)) - var(--m-space-4)); overflow-y: auto; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    /* Below lg the scope bar wraps: the title first, then search and the pickers on as many rows as they need, so a
+       390px screen never scrolls sideways. */
+    .m-scopebar { padding: var(--m-space-2) var(--m-space-4); flex-wrap: wrap; row-gap: var(--m-space-2); }
+    .m-scopebar-trailing { flex-wrap: wrap; white-space: normal; margin-left: 0; min-width: 0; max-width: 100%; }
+    .m-scopebar-trailing > * { min-width: 0; max-width: 100%; }
   }
+  @media (max-width: 639px) {
+    /* Two rows: brand and controls, then the pill track on its own line so every pill and More fit. */
+    .m-topnav { flex-wrap: wrap; height: auto; column-gap: var(--m-space-2); row-gap: 0; padding-bottom: var(--m-space-2); }
+    .m-topnav::after { content: ""; order: 2; flex-basis: 100%; }
+    .m-topnav-brand, .m-topnav-right { height: var(--m-topbar-h); }
+    .m-topnav-nav { order: 3; max-width: 100%; }
+    /* Icon-only pills: the label stays in the accessible name, the badge stays visible. */
+    .m-topnav-link { padding: 0 8px; gap: 4px; }
+    .m-topnav-label { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  }
+
+  /* ---------- Ask Meridian (design/shell/AskMeridian.tsx): fixed bottom-right, clear of the home indicator ---------- */
+  .m-ask { position: fixed; right: calc(var(--m-space-4) + env(safe-area-inset-right)); bottom: calc(var(--m-space-4) + env(safe-area-inset-bottom)); z-index: 40; }
+  /* The launcher hides while its own panel is open (the panel anchors to it, so it keeps its box). */
+  .m-ask-launcher[data-popup-open] { visibility: hidden; }
+  @media (max-width: 767px) {
+    .m-ask-launcher { width: 44px; height: 44px; padding: 0; border-radius: var(--m-radius-pill); }
+    .m-ask-label { display: none; }
+  }
+  /* The main scroller keeps the launcher's height and gap free at its foot, and scrolls a focused control clear of it. */
+  .m-shell-main { padding-bottom: calc(var(--m-launcher-clearance) + env(safe-area-inset-bottom)); scroll-padding-bottom: calc(var(--m-launcher-clearance) + env(safe-area-inset-bottom)); }
 
   /* ---------- The object map (design/charts/ObjectMap.tsx): area is records, colour is verdict ---------- */
   .m-omap { display: grid; grid-auto-flow: dense; gap: 4px; margin: 0; padding: 0; list-style: none; }
   .m-omap-tile { display: flex; flex-direction: column; justify-content: space-between; height: 100%; padding: 6px 8px; border-radius: var(--m-radius-control); border: 1px solid var(--m-line); background: var(--m-sheet-raised); color: var(--m-ink); text-decoration: none; min-width: 0; overflow: hidden; }
-  .m-omap-tile[data-verdict="no-go"] { background: var(--m-no-go-soft); border-color: var(--m-no-go); }
-  .m-omap-tile[data-verdict="at-risk"] { background: var(--m-at-risk-soft); border-color: var(--m-at-risk); }
-  .m-omap-tile[data-verdict="go"] { background: var(--m-go-soft); border-color: var(--m-go); }
-  .m-omap-tile[data-verdict="info"] { background: var(--m-info-soft); border-color: var(--m-info); }
-  a.m-omap-tile:hover { box-shadow: var(--m-elev-card); }
+  /* The verdict is a soft tint plus the shape before the score; every tile keeps the hairline, so red is never a texture. */
+  .m-omap-tile[data-verdict="no-go"] { background: var(--m-no-go-soft); }
+  .m-omap-tile[data-verdict="at-risk"] { background: var(--m-at-risk-soft); }
+  .m-omap-tile[data-verdict="go"] { background: var(--m-go-soft); }
+  .m-omap-tile[data-verdict="info"] { background: var(--m-info-soft); }
+  a.m-omap-tile:hover { box-shadow: var(--m-elev-card); border-color: var(--m-line-strong); }
   a.m-omap-tile:focus-visible { outline: none; box-shadow: var(--m-elev-focus); }
-  .m-omap-label { font-weight: 600; font-size: var(--m-text-body); line-height: var(--m-leading-body); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+  /* One line with an ellipsis, never a word broken onto a second line; the tile's title carries the full name. */
+  .m-omap-label { display: block; font-weight: 600; font-size: var(--m-text-body); line-height: var(--m-leading-body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; min-width: 0; }
   .m-omap-meta { font-size: var(--m-text-meta); line-height: var(--m-leading-meta); color: var(--m-ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .m-omap-score { align-self: flex-end; font-weight: 700; line-height: 1; letter-spacing: var(--m-tracking-tight); }
+  .m-omap-score { align-self: flex-end; display: inline-flex; align-items: center; gap: 4px; font-weight: 700; line-height: 1; letter-spacing: var(--m-tracking-tight); }
+  .m-omap-shape { display: inline-flex; align-items: center; }
 
   .m-page { width: 100%; margin-inline: auto; padding: var(--m-page-pad); max-width: var(--m-page-max); container-type: inline-size; }
   @media (max-width: 1023px) { .m-page { padding: var(--m-page-pad-sm); } }
   .m-reading { max-width: var(--m-page-max-reading); }
 
-  .m-stat { position: relative; background: transparent; border-left: 1px solid var(--m-line-strong); padding: var(--m-stat-pad); height: var(--m-stat-h); min-width: 0; }
+  /* The tile grows rather than clip: a long value wraps and the label may take two lines. */
+  .m-stat { position: relative; background: transparent; border-left: 1px solid var(--m-line-strong); padding: var(--m-stat-pad); min-height: var(--m-stat-h); min-width: 0; }
   .m-stat-hero { height: auto; min-height: var(--m-stat-hero-h); }
   .m-stat-grid { display: grid; gap: var(--m-space-4) var(--m-space-5); grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
 
@@ -334,6 +371,9 @@
   .m-tab[data-selected] { color: var(--m-ink); font-weight: 600; }
   .m-tab-count { margin-left: 6px; }
   .m-tab-indicator { position: absolute; left: 0; bottom: -1px; height: 2px; background: var(--m-accent); }
+  /* Link mode: a strip of route links (InsightTabs) wears the same tab; the current page carries the accent rule. */
+  a.m-tab { display: inline-flex; align-items: center; text-decoration: none; }
+  .m-tab[aria-current="page"] { color: var(--m-ink); font-weight: 600; box-shadow: inset 0 -2px 0 var(--m-accent); }
 
   .m-mono { font-family: var(--m-font-mono); }
   .m-mono-inline { color: var(--m-ink); font-size: var(--m-text-meta); line-height: var(--m-leading-meta); background: var(--m-sheet-sunken); padding: 1px 4px; border-radius: var(--m-radius-control); }

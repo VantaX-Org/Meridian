@@ -24,8 +24,10 @@ from api.services.survivorship import (
     FieldContribution,
     SurvivorshipChain,
     SurvivorshipResult,
+    TrustedSource,
     apply_most_recent,
     evaluate_field,
+    matches_source,
 )
 from api.services.ai_survivorship import ai_survivorship_available, propose_field_winner
 from sap.deterministic import classify_field
@@ -60,7 +62,13 @@ async def _load_survivorship_rules(
     tenant_id: str,
     domain: str,
 ) -> dict[str, dict]:
-    """Load active survivorship rules for a domain, keyed by field name."""
+    """Load active survivorship rules for a domain, keyed by field name.
+
+    ``trusted_sources`` comes back resolved: an entry naming a connected system (by name or id) becomes
+    that system's aliases ``[id, current name, entry]``, so a rule keeps matching after a rename and
+    matches values tagged by system id as well as legacy values labelled by name.
+    """
+    systems = await _system_aliases(db, tenant_id)
     result = await db.execute(
         text("""
             SELECT field, rule_type, trusted_sources, weight
@@ -73,10 +81,82 @@ async def _load_survivorship_rules(
     for row in result.fetchall():
         rules[row[0]] = {
             "rule_type": row[1],
-            "trusted_sources": row[2],
+            "trusted_sources": resolve_trusted_sources(row[2], systems),
             "weight": row[3],
         }
     return rules
+
+
+async def _system_aliases(db: AsyncSession, tenant_id: str) -> dict[str, tuple[str, str]]:
+    """``{id or name: (id, name)}`` for the tenant's connected systems."""
+    rows = (await db.execute(text("SELECT id::text, name FROM sap_systems WHERE tenant_id = :tid"),
+                             {"tid": tenant_id})).fetchall()
+    out: dict[str, tuple[str, str]] = {}
+    for sid, name in rows:
+        out[sid] = (sid, name)
+        if name:
+            out.setdefault(name, (sid, name))
+    return out
+
+
+def resolve_trusted_sources(stored: Optional[list[str]],
+                            systems: dict[str, tuple[str, str]]) -> Optional[list[TrustedSource]]:
+    """Each stored entry that names a connected system becomes its aliases; any other entry stays as is."""
+    if not stored:
+        return stored
+    out: list[TrustedSource] = []
+    for entry in stored:
+        hit = systems.get(entry)
+        out.append([hit[0], hit[1], entry] if hit else entry)
+    return out
+
+
+def contribution_from_entry(entry: object) -> Optional[FieldContribution]:
+    """A stored source_contributions entry as a contender, or None when it carries no value."""
+    if not isinstance(entry, dict) or entry.get("value") is None:
+        return None
+    when = entry.get("extracted_at")
+    try:
+        extracted = datetime.fromisoformat(str(when).replace("Z", "+00:00")) if when else None
+    except ValueError:
+        extracted = None
+    conf = entry.get("confidence")
+    return FieldContribution(
+        value=entry["value"],
+        source_system=str(entry.get("source_system") or ""),
+        extracted_at=extracted or datetime(1970, 1, 1, tzinfo=timezone.utc),
+        confidence=float(conf) if conf is not None else 1.0,
+        system_id=entry.get("source_system_id"),
+        system_name=entry.get("source_system_name"),
+        origin=entry.get("origin"),
+    )
+
+
+def trusted_winner(contributions: list[FieldContribution], prior: Optional[FieldContribution],
+                   trusted: list[TrustedSource]) -> tuple[Optional[FieldContribution], bool]:
+    """The value of the highest-trust system among this batch and the value the record holds now.
+
+    Returns ``(winner, kept_prior)``. On the same system the incoming (newer) value wins.
+    """
+    pool = [c for c in contributions if c.value is not None]
+    if prior is not None:
+        pool.append(prior)
+    for rank in trusted:
+        hit = next((c for c in pool if matches_source(c, rank)), None)
+        if hit is not None:
+            return hit, hit is prior
+    return None, False
+
+
+def system_tags(system_id: Optional[str], system_name: Optional[str], origin: Optional[str] = None) -> dict:
+    """The source-system keys a source_contributions entry carries when its system is known, and its
+    origin ("upload" for a hand-made file) so later runs and write-back never trust it as that system."""
+    out: dict = {"origin": origin} if origin else {}
+    if system_id:
+        out["source_system_id"] = system_id
+    if system_name:
+        out["source_system_name"] = system_name
+    return out
 
 
 async def _get_or_create_master_record(
@@ -87,11 +167,16 @@ async def _get_or_create_master_record(
 ) -> tuple[str, dict, dict, bool]:
     """Find existing master record or prepare for creation.
 
-    Returns: (record_id, golden_fields, source_contributions, is_new)
+    Returns: (record_id, golden_fields, source_contributions, is_new). For a record in a merge
+    cluster the fields and contributions are its own pre-merge ones (own_fields /
+    own_contributions, migration 090), so the fused values of merged members never leak into
+    the record's own_fields on the next sync.
     """
     result = await db.execute(
         text("""
-            SELECT id, golden_fields, source_contributions
+            SELECT id, COALESCE(own_fields, golden_fields),
+                   CASE WHEN own_fields IS NULL THEN source_contributions
+                        ELSE COALESCE(own_contributions, source_contributions) END
             FROM master_records
             WHERE tenant_id = :tid AND domain = :domain AND sap_object_key = :key
         """),
@@ -115,6 +200,8 @@ def _build_contributions(
       - extracted_at: str (ISO timestamp)
       - fields: dict[str, value]
       - confidence: float (optional, default 1.0)
+      - source_system_id / source_system_name: the connected system (optional)
+      - origin: "upload" for a hand-made file (optional)
     """
     field_contributions: dict[str, list[FieldContribution]] = {}
 
@@ -134,6 +221,9 @@ def _build_contributions(
                     source_system=source,
                     extracted_at=extracted,
                     confidence=conf,
+                    system_id=record.get("source_system_id"),
+                    system_name=record.get("source_system_name"),
+                    origin=record.get("origin"),
                 )
             )
 
@@ -185,7 +275,23 @@ async def process_sync_batch(
             rule = rules.get(field_name)
             result: Optional[SurvivorshipResult] = None
 
-            if rule:
+            # Trusted system wins across runs: the value the record holds now competes with this batch,
+            # so a lower-trust system's newer extraction does not replace a higher-trust system's value.
+            trusted = rule.get("trusted_sources") if rule else None
+            if trusted and rule["rule_type"] in ("trusted_source", "chain"):
+                prior = contribution_from_entry(existing_contributions.get(field_name))
+                winner, kept_prior = trusted_winner(contributions, prior, trusted)
+                if kept_prior:
+                    new_golden_fields[field_name] = winner.value
+                    new_source_contributions[field_name] = existing_contributions[field_name]
+                    confidence_scores.append(winner.confidence)
+                    continue
+                if winner is not None:
+                    result = SurvivorshipResult(winner.value, winner.source_system, "trusted_source",
+                                                winner.confidence, winner.system_id, winner.system_name,
+                                                winner.origin)
+
+            if result is None and rule:
                 result = evaluate_field(
                     field_name=field_name,
                     contributions=contributions,
@@ -240,6 +346,7 @@ async def process_sync_batch(
                             source_system=matching[0].source_system,
                             rule_type="ai_recommended",
                             confidence=ai_result["confidence"],
+                            origin=matching[0].origin,
                         )
 
             # Final fallback: most_recent
@@ -256,6 +363,7 @@ async def process_sync_batch(
                     "source_system": result.source_system,
                     "extracted_at": max(c.extracted_at for c in contributions).isoformat(),
                     "confidence": result.confidence,
+                    **system_tags(result.system_id, result.system_name, result.origin),
                 }
                 if ai_recommendation:
                     contribution_entry["ai_recommendation"] = ai_recommendation["recommended_value_source"]
@@ -337,6 +445,8 @@ async def process_sync_batch(
                         source_contributions = CASE WHEN own_fields IS NULL
                                                     THEN CAST(:source_contributions AS jsonb)
                                                     ELSE source_contributions END,
+                        own_contributions = CASE WHEN own_fields IS NULL THEN own_contributions
+                                                 ELSE CAST(:source_contributions AS jsonb) END,
                         overall_confidence = :confidence,
                         status = CASE
                             WHEN status = 'golden' THEN 'golden'

@@ -3,6 +3,18 @@
 import { Tooltip, IconLock } from "@/design";
 import type { Matrix, Pair } from "@/lib/api/roles";
 
+/** Action keys as words, for matrix headers and confirmations (rbac.py PERMISSIONS). */
+const PERMISSION_LABEL: Record<string, string> = {
+  view: "View", upload: "Import files", analyse: "Run analysis", approve: "Approve", apply: "Apply fixes", export: "Export", assign: "Assign work",
+  handoff_rule: "Hand rules to a steward",
+  manage_users: "Manage users", manage_rules: "Manage rules", manage_system: "Platform updates and licence", manage_systems: "Manage SAP systems",
+  manage_settings: "Manage settings", view_audit: "View the audit log", ai_feedback: "Give AI feedback", review_ai_rules: "Review AI rules",
+  trigger_ai: "Run AI", trigger_sync: "Run extractions", manage_field_mappings: "Manage field mapping", manage_llm: "Manage the language model",
+  "mdm.write": "Edit golden records", export_process: "Export process models", read: "Read", write: "Write", create: "Create", edit: "Edit",
+  delete: "Delete", run: "Run", admin: "Administer",
+};
+export const permissionLabel = (key: string): string => PERMISSION_LABEL[key] ?? key.replace(/[._]+/g, " ").replace(/^./, (c) => c.toUpperCase());
+
 /** Resources that ignore scope (rbac.md §2.3). */
 const TENANT_WIDE = new Set(["users", "licence", "llm", "audit"]);
 
@@ -30,17 +42,17 @@ export function RoleMatrix({ matrix, onChange, label, scoped = false }: { matrix
   const toggle = (r: string, a: string) => onChange?.({ ...matrix, [r]: { ...matrix[r], [a]: !matrix[r][a] } });
   return (
     <div className="overflow-x-auto">
-      <table className="m-text-meta" aria-label={label}>
+      <table className="m-table" aria-label={label}>
         <thead>
           <tr>
-            <th scope="col" className="text-left pr-3">Resource</th>
-            {actions.map((a) => <th key={a} scope="col" className="text-center px-2">{a}</th>)}
+            <th scope="col">Resource</th>
+            {actions.map((a) => <th key={a} scope="col" className="text-center">{permissionLabel(a)}</th>)}
           </tr>
         </thead>
         <tbody>
           {resources.map((r) => (
             <tr key={r}>
-              <th scope="row" className="text-left pr-3 py-1 font-normal">
+              <th scope="row" className="font-normal">
                 {r}
                 {scoped && TENANT_WIDE.has(r) ? (
                   <span className="ml-1 align-middle">

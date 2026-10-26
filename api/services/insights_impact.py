@@ -23,12 +23,34 @@ def tenant_currency(cost_model: dict | None) -> str:
     return str((cost_model or {}).get("currency") or DEFAULT_CURRENCY)
 
 
+async def load_tenant_cost_model(db, tenant_id: str) -> dict:
+    """The tenant's own cost model overrides (``tenants.cost_model``); {} when none is stored."""
+    from sqlalchemy import text
+    res = await db.execute(text("SELECT cost_model FROM tenants WHERE id = :t"), {"t": str(tenant_id)})
+    value = res.scalar() if hasattr(res, "scalar") else None
+    return value if isinstance(value, dict) else {}
+
+
 @lru_cache(maxsize=1)
 def feature_l1() -> dict[str, str]:
     """target_feature -> L1 process, from the ``l1`` key of db/seeds/config_impact_rules.yaml."""
     path = Path(__file__).resolve().parents[2] / "db" / "seeds" / "config_impact_rules.yaml"
     rules = yaml.safe_load(path.read_text()).get("rules") or []
     return {r["target_feature"]: r["l1"] for r in rules if r.get("target_feature") and r.get("l1")}
+
+
+@lru_cache(maxsize=1)
+def impact_features() -> list[dict]:
+    """Every feature a config impact rule can block or degrade (``target_feature`` of
+    db/seeds/config_impact_rules.yaml), once each, with its L1 when the rule names one."""
+    path = Path(__file__).resolve().parents[2] / "db" / "seeds" / "config_impact_rules.yaml"
+    rules = yaml.safe_load(path.read_text()).get("rules") or []
+    out: dict[str, str | None] = {}
+    for r in rules:
+        f = r.get("target_feature")
+        if f and (f not in out or out[f] is None):
+            out[f] = r.get("l1")
+    return [{"feature": f, "l1": l1} for f, l1 in sorted(out.items())]
 
 
 def by_l1(rows: list[dict]) -> dict[str, float]:

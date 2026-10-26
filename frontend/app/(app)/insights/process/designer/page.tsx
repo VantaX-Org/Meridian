@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, ErrorState, Input, Mono, Notice, PageHeader, Select, Skeleton, Stat } from "@/design";
+import { Button, ChoiceGroup, ConfirmDialog, ErrorState, Field, Input, Mono, Notice, PageHeader, Select, Skeleton, Stat } from "@/design";
 import { useFindingHref, useLatestVersion } from "@/components/process/shared";
 import { runScopeLabel } from "@/lib/run-scope";
 import {
-  adoptVariant, createModel, getModel, getOverlay, getReference, listModels, listVariants, saveFailure, saveModel,
+  adoptVariant, createModel, deleteModel, getModel, getOverlay, getReference, listModels, listVariants, patchModel, saveFailure, saveModel,
   pptxExportUrl, signavioExportUrl, type SaveFailure,
 } from "@/lib/api/process-designer";
 import { toast } from "sonner";
@@ -103,11 +103,12 @@ function Editor(p: EditorProps) {
   const attr = sp.get("attr");
   const node = sp.get("node");
   const reference = model === "reference";
-  // Wave 16: every designer write needs `analyse`, the export needs `export`. Without them the
-  // controls are not rendered and the reference prompt never opens.
+  // Wave 16: every designer write needs `analyse` (or run_process_discovery, the process owner's right), the
+  // export needs `export` (or export_process). Without them the controls are not rendered and the reference
+  // prompt never opens. Mirrors api/routes/process_designer.py and process_export.py.
   const role = useRole();
-  const canDesign = role.can("analyse");
-  const canExport = role.can("export");
+  const canDesign = role.can("analyse") || role.can("run_process_discovery");
+  const canExport = role.can("export") || role.can("export_process");
   const editable = canDesign && !reference && !viewingOld;
 
   const [doc, setDoc] = useState(initial);
@@ -115,7 +116,11 @@ function Editor(p: EditorProps) {
   const [fail, setFail] = useState<SaveFailure | null>(null);
   const [prompt, setPrompt] = useState(false);
   const [naming, setNaming] = useState<string | null>(null);
+  // A model or version picked while there are unsaved edits waits here for "Discard unsaved changes?".
+  const [leaving, setLeaving] = useState<{ body: string; confirmLabel: string; run: () => void } | null>(null);
   const dirty = doc !== initial;
+  /** Runs `run` now, or after the discard confirm when there are unsaved edits. */
+  const guard = (body: string, confirmLabel: string, run: () => void) => { if (dirty) setLeaving({ body, confirmLabel, run }); else run(); };
 
   const go = (patch: Record<string, string | null>) => {
     const next = new URLSearchParams(sp.toString());
@@ -129,7 +134,13 @@ function Editor(p: EditorProps) {
   };
 
   const create = useMutation({
-    mutationFn: (a: { name: string; from: string }) => createModel(a.name, a.from),
+    // "Create from this model" copies what is on screen: with unsaved edits, the draft is saved as the new model's
+    // first version, so nothing is dropped by the switch to it.
+    mutationFn: async (a: { name: string; from: string; draft?: ProcessModelDocument }) => {
+      const r = await createModel(a.name, a.from);
+      if (a.draft) await saveModel(r.model.id, { document: a.draft, note: note || "Copied with unsaved edits", base_version: r.version_no });
+      return r;
+    },
     onSuccess: (r) => { void qc.invalidateQueries({ queryKey: queryKeys.processModels() }); setNaming(null); setPrompt(false); go({ model: r.model.id, v: null, attr: null }); },
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
@@ -157,6 +168,26 @@ function Editor(p: EditorProps) {
     onSuccess: refresh,
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
+  // Rename and delete the open model (PATCH / DELETE /process-designer/models/{id}, permission `analyse` or `run_process_discovery`).
+  const modelName = p.models.find((m) => m.id === model)?.name ?? "";
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const rename = useMutation({
+    mutationFn: (name: string) => patchModel(model, { name }),
+    onSuccess: (r) => { setRenaming(null); refresh(); toast.success(`Model renamed to ${r.name}`); },
+    onError: (e) => toast.error(apiErrorMessage(e)),
+  });
+  const remove = useMutation({
+    mutationFn: () => deleteModel(model),
+    onSuccess: () => {
+      setDeleting(false);
+      toast.success(`Model ${modelName} deleted`);
+      void qc.invalidateQueries({ queryKey: queryKeys.processModels() });
+      switchTo("reference");
+    },
+    onError: (e) => toast.error(apiErrorMessage(e)),
+  });
+  const renameTo = renaming?.trim() ?? "";
 
   const saveRef = useRef(() => {});
   useEffect(() => { saveRef.current = () => { if (dirty && editable && !save.isPending) save.mutate(); }; });
@@ -202,9 +233,11 @@ function Editor(p: EditorProps) {
     move: (id, dir) => edit((d) => D.moveItem(d, id, dir)),
   };
 
+  const switchTo = (m: string) => go({ model: m, v: null, attr: null, node: null });
   const exportZip = useMutation({
     mutationFn: () => downloadAuthenticated(
       signavioExportUrl(model, viewingOld ? versionNo : undefined, overlayOn ? p.latestId : undefined), "process-model.zip"),
+    onSuccess: () => toast.success("Signavio package exported"),
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const exportPptx = useMutation({
@@ -228,17 +261,43 @@ function Editor(p: EditorProps) {
             label="Process model"
             value={model}
             options={[{ value: "reference", label: "Reference model" }, ...p.models.map((m) => ({ value: m.id, label: m.name }))]}
-            onValueChange={(m) => !dirty && go({ model: m, v: null, attr: null, node: null })} />
-          {!reference ? <VersionsMenu modelId={model} shown={viewingOld ? versionNo : null} onPick={(no) => go({ v: no ? String(no) : null })} /> : null}
+            onValueChange={(m) => { if (m !== model) guard("Switching models drops the edits you have not saved to this one.", "Discard and switch", () => switchTo(m)); }} />
+          {!reference ? <VersionsMenu modelId={model} shown={viewingOld ? versionNo : null}
+            onPick={(no) => guard("Opening another version drops the edits you have not saved.", "Discard and open", () => go({ v: no ? String(no) : null }))} /> : null}
           {canDesign ? <Button variant={reference ? "primary" : "secondary"} onClick={() => setNaming(naming === null ? "" : null)}>{reference ? "Create a model to edit" : "New model"}</Button> : null}
+          {canDesign && !reference && modelName ? <Button variant="ghost" onClick={() => setRenaming(modelName)}>Rename</Button> : null}
+          {canDesign && !reference && modelName ? <Button variant="ghost" onClick={() => setDeleting(true)}>Delete</Button> : null}
           {canExport ? <Button variant="secondary" disabled={dirty} pending={exportZip.isPending} onClick={() => exportZip.mutate()}>Export to Signavio</Button> : null}
           {canExport ? <Button variant="secondary" disabled={dirty} pending={exportPptx.isPending} onClick={() => exportPptx.mutate()}>Export to PowerPoint</Button> : null}
         </>} />
 
+      <ConfirmDialog open={leaving !== null} onOpenChange={(o) => { if (!o) setLeaving(null); }}
+        title="Discard unsaved changes?" body={leaving?.body ?? ""}
+        confirmLabel={leaving?.confirmLabel ?? "Discard"} cancelLabel="Keep editing" tone="danger"
+        onConfirm={() => { const l = leaving; setLeaving(null); setDoc(initial); l?.run(); }} />
+      <ConfirmDialog open={renaming !== null} onOpenChange={(o) => { if (!o) setRenaming(null); }}
+        title="Rename model" confirmLabel="Save name" pending={rename.isPending}
+        confirmDisabled={!renameTo || renameTo === modelName}
+        onConfirm={() => { if (renameTo && renameTo !== modelName) rename.mutate(renameTo); }}
+        body={
+          <Field label="Name">
+            <Input value={renaming ?? ""} autoFocus onChange={(e) => setRenaming(e.target.value)} />
+          </Field>
+        } />
+      <ConfirmDialog open={deleting} onOpenChange={setDeleting} tone="danger"
+        title={`Delete ${modelName}?`} confirmLabel="Delete model" pending={remove.isPending} typeToConfirm={modelName}
+        onConfirm={() => remove.mutate()}
+        body={<p className="m-ink-2">The model and all {currentVersion.toLocaleString()} of its versions are removed for everyone{dirty ? ", with the edits you have not saved" : ""}. This cannot be undone.</p>} />
+
       {naming !== null ? (
-        <form className="flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); if (naming.trim()) create.mutate({ name: naming.trim(), from: model }); }}>
+        <form className="flex items-center gap-2" onSubmit={(e) => {
+          e.preventDefault();
+          if (naming.trim()) create.mutate({ name: naming.trim(), from: model, draft: dirty && !reference ? doc : undefined });
+        }}>
           <Input aria-label="Model name" autoFocus value={naming} onChange={(e) => setNaming(e.target.value)} />
-          <Button variant="primary" type="submit" disabled={!naming.trim() || create.isPending}>Create from {reference ? "reference" : "this model"}</Button>
+          <Button variant="primary" type="submit" disabled={!naming.trim() || create.isPending}>
+            {reference ? "Create from reference" : dirty ? "Create from this model, with your unsaved edits" : "Create from this model"}
+          </Button>
           <Button variant="ghost" onClick={() => setNaming(null)}>Close</Button>
         </form>
       ) : null}
@@ -271,16 +330,18 @@ function Editor(p: EditorProps) {
         </form>
       ) : null}
 
-      <div className="flex items-center gap-2" role="group" aria-label="Show data on the model">
-        <span className="m-text-body">Show data on the model</span>
-        <Button variant={overlayOn ? "secondary" : "ghost"} aria-pressed={overlayOn} onClick={() => go({ overlay: null })}>Selected run</Button>
-        <Button variant={!overlayOn ? "secondary" : "ghost"} aria-pressed={!overlayOn} onClick={() => go({ overlay: "none" })}>None</Button>
-      </div>
+      <ChoiceGroup
+        label="Show data on the model"
+        showLabel
+        value={overlayOn ? "run" : "none"}
+        onChange={(v) => go({ overlay: v === "run" ? null : "none" })}
+        options={[{ value: "run", label: "Selected run" }, { value: "none", label: "None" }]}
+      />
 
       <div className="flex gap-6 flex-wrap">
         <Stat label="Activities" value={acts.length} delta={`${D.allL4(doc).length} sub-processes in ${doc.l1.length} processes.`} />
-        <Stat label="Blocked" value={ov ? count("red") : "—"} delta={noOverlay ?? (count("red") ? "Activities with a blocking failure." : "No activity is blocked.")} />
-        <Stat label="Degraded" value={ov ? count("amber") : "—"} delta={noOverlay ?? (count("amber") ? "Activities with some failing fields." : "No activity is degraded.")} />
+        <Stat label="No-go" value={ov ? count("red") : "—"} delta={noOverlay ?? (count("red") ? "Activities with a blocking failure." : "No activity is blocked.")} />
+        <Stat label="At risk" value={ov ? count("amber") : "—"} delta={noOverlay ?? (count("amber") ? "Activities with some failing fields." : "No activity is at risk.")} />
         <Stat label="Discovered variants" value={p.latestId ? p.variants.length : "—"} delta={p.latestId ? "Document types found in the data." : "Run an analysis to discover variants."} />
         <Stat label="Unmapped" value={p.latestId ? unmapped.length : "—"}
           delta={p.latestId ? (unmapped.length ? "Found in the data, not on any sub-process." : "Every variant sits on a sub-process.") : "Run an analysis to find unmapped variants."} />

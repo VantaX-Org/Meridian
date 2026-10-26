@@ -30,5 +30,9 @@ export function useRunScope(opts: { object?: string } = {}) {
     fetchingRun: !!explicit && fetchingRun,
     /** True while the run list, or the by-id read of a `?run=` older than it, is on its way. */
     resolving: list.isLoading || (!!explicit && fetchingRun),
+    /** The run list's failure, or null. A page shows its error state before "no run yet" when this is set. */
+    error: list.isError ? (list.error as unknown) : null,
+    /** Reads the run list again (the error state's Retry). */
+    refetch: () => void list.refetch(),
   };
 }

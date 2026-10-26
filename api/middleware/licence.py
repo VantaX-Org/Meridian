@@ -192,7 +192,8 @@ def _read_offline_token() -> dict | None:
     token = os.getenv("MERIDIAN_LICENCE_TOKEN", "").strip()
     if not token:
         return None
-    key = os.getenv("MERIDIAN_OFFLINE_PUBLIC_KEY", "").strip()
+    # A PEM in .env is usually one line with \n escapes; restore the line breaks.
+    key = os.getenv("MERIDIAN_OFFLINE_PUBLIC_KEY", "").strip().strip('"').replace("\\n", "\n")
     if not key:
         logger.error("MERIDIAN_LICENCE_TOKEN set but MERIDIAN_OFFLINE_PUBLIC_KEY is not — cannot verify")
         return {"valid": False, "reason": "no_public_key"}
@@ -612,12 +613,42 @@ def _check_feature_gate(path: str, licensed_features: list[str]) -> JSONResponse
                     {
                         "error": "feature_not_licenced",
                         "feature": feature,
+                        "detail": "This feature is not included in this deployment's licence.",
                         "upgrade_url": "https://meridian-hq.vantax.co.za/upgrade",
                     },
                     status_code=402,
                 )
             break
     return None
+
+
+def feature_licensed(feature: str) -> bool:
+    """Whether the licence entitles ``feature``, for code outside a request (Celery workers).
+
+    Decided as LicenceMiddleware.dispatch decides a gated route: the development bypass, the cached
+    result while fresh, else a revalidation; when HQ is unreachable, the last validated licence inside
+    the degradation window; otherwise closed. Synchronous: never call it from a running event loop."""
+    if not settings.licence_key and settings.env == "development":
+        return True
+    if _cache["response"] and _cache["expires_at"] > time.time():
+        manifest = _cache["response"]
+        if not manifest.get("valid"):
+            return False
+    else:
+        import asyncio
+
+        result, outcome = asyncio.run(revalidate())
+        if result is None:
+            last_known = _cache.get("response")
+            if not (last_known and last_known.get("valid") and not is_cloudflare_unreachable()):
+                return False
+            manifest = last_known
+        elif outcome in ("cutoff", "invalid"):
+            return False
+        else:
+            manifest = _cache["response"] if outcome == "grace" else result
+    features = _features_to_list(manifest.get("features", {}))
+    return "*" in features or feature in features
 
 
 def enforce_licensed_modules(request: Request, requested: list[str]) -> None:
@@ -671,6 +702,76 @@ async def _serve_entitled(request: Request, call_next, manifest: dict):
     return await call_next(request)
 
 
+def _record_validation(result: dict) -> str:
+    """Apply a validation result to the in-memory caches.
+
+    Returns the outcome: ``cutoff`` (HQ unreachable past the hard cutoff, caches
+    untouched), ``grace`` (expired less than 7 days ago: the last signed
+    entitlements stay in ``_cache``), ``invalid`` or ``valid``.
+    """
+    now = time.time()
+    if result.get("reason") == "licence_server_unreachable_cutoff":
+        return "cutoff"
+    if not result.get("valid"):
+        reason = result.get("reason", "unknown")
+        last_known = _cache.get("response")
+        # Grace: HQ says the licence expired less than 7 days ago. Keep the
+        # last SIGNED entitlements, bounded by that manifest's own expiry
+        # date (not by the unsigned grace timestamp), and warn every caller.
+        if reason == "expired_grace" and last_known and last_known.get("valid") \
+                and _within_grace(last_known.get("expiry_date") or last_known.get("expiresAt")):
+            _manifest_cache.update({"status": "expired_grace",
+                                    "grace_period_ends": result.get("grace_period_ends")})
+            _cache["expires_at"] = now + INVALID_CACHE_TTL_SECONDS
+            _cache["grace"] = True
+            return "grace"
+        _cache["response"] = result
+        _cache["expires_at"] = now + INVALID_CACHE_TTL_SECONDS
+        _cache["grace"] = False
+        _manifest_cache.update({"valid": False, "status": reason})
+        return "invalid"
+
+    _cache["response"] = result
+    _cache["expires_at"] = now + CACHE_TTL_SECONDS
+    _cache["grace"] = False
+    # Populate full manifest cache for GET /api/v1/licence
+    _update_manifest_cache(result)
+    # Sync rules and field mappings from manifest asynchronously
+    _sync_manifest_to_db(result)
+    return "valid"
+
+
+async def revalidate() -> tuple[dict | None, str]:
+    """Validate with the licence server now and refresh the caches.
+
+    Used by the middleware on a cache miss and by POST /api/v1/licence/validate.
+    Returns ``(None, "unreachable")`` when the server could not be reached.
+    """
+    result = await _validate_licence()
+    if result is None:
+        return None, "unreachable"
+    return result, _record_validation(result)
+
+
+# A licence lock blocks every gated route, so its body says so in ``detail`` (the field every UI surface shows);
+# without it the frontend read a lock as "Could not reach the server." or "You do not have access to this."
+LICENCE_LOCK_DETAIL: dict[str, str] = {
+    "licence_invalid": "This deployment's licence is not valid ({reason}). Ask your administrator to renew it in Meridian HQ.",
+    "licence_unverified": "Meridian could not reach Meridian HQ to validate its licence, so features stay locked "
+                          "until it does. Check that the API can reach the licence server.",
+    "licence_server_cutoff": "Meridian HQ has been unreachable for too long to keep running on the last licence. "
+                             "Check that the API can reach the licence server.",
+}
+
+
+def licence_lock_response(error: str, reason: str | None, status_code: int) -> JSONResponse:
+    """The 402/403 a licence lock answers with: ``error`` and ``reason`` for code, ``detail`` for people."""
+    return JSONResponse(
+        {"error": error, "reason": reason, "detail": LICENCE_LOCK_DETAIL[error].format(reason=reason or "unknown")},
+        status_code=status_code,
+    )
+
+
 class LicenceMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         # Only check /api/v1/* routes
@@ -704,13 +805,10 @@ class LicenceMiddleware(BaseHTTPMiddleware):
                     response.headers["X-Licence-Warning"] = "expired_grace"
                 return response
             else:
-                return JSONResponse(
-                    {"error": "licence_invalid", "reason": cached.get("reason")},
-                    status_code=402,
-                )
+                return licence_lock_response("licence_invalid", cached.get("reason"), 402)
 
         # Cache miss — call licence server
-        result = await _validate_licence()
+        result, outcome = await revalidate()
 
         if result is None:
             # Licence server unreachable. FAIL CLOSED — granting ["*"] here let
@@ -733,46 +831,15 @@ class LicenceMiddleware(BaseHTTPMiddleware):
             logger.error(
                 "Licence server unreachable and no valid cached licence — denying"
             )
-            return JSONResponse(
-                {"error": "licence_unverified", "reason": "licence_server_unreachable"},
-                status_code=403,
-            )
+            return licence_lock_response("licence_unverified", "licence_server_unreachable", 403)
 
         # Task 08: Check cutoff rejection reason
-        if result.get("reason") == "licence_server_unreachable_cutoff":
-            return JSONResponse(
-                {"error": "licence_server_cutoff", "reason": "Licence server unreachable for >2hrs. Please restore connection."},
-                status_code=403,
-            )
-
-        if not result.get("valid"):
-            reason = result.get("reason", "unknown")
-            last_known = _cache.get("response")
-            # Grace: HQ says the licence expired less than 7 days ago. Keep the
-            # last SIGNED entitlements, bounded by that manifest's own expiry
-            # date (not by the unsigned grace timestamp), and warn every caller.
-            if reason == "expired_grace" and last_known and last_known.get("valid") \
-                    and _within_grace(last_known.get("expiry_date") or last_known.get("expiresAt")):
-                _manifest_cache.update({"status": "expired_grace",
-                                        "grace_period_ends": result.get("grace_period_ends")})
-                _cache["expires_at"] = now + INVALID_CACHE_TTL_SECONDS
-                _cache["grace"] = True
-                response = await _serve_entitled(request, call_next, last_known)
-                response.headers["X-Licence-Warning"] = "expired_grace"
-                return response
-            _cache["response"] = result
-            _cache["expires_at"] = now + INVALID_CACHE_TTL_SECONDS
-            _cache["grace"] = False
-            _manifest_cache.update({"valid": False, "status": reason})
-            return JSONResponse({"error": "licence_invalid", "reason": reason}, status_code=402)
-
-        # Cache the result
-        _cache["response"] = result
-        _cache["expires_at"] = now + CACHE_TTL_SECONDS
-        _cache["grace"] = False
-
-        # Populate full manifest cache for GET /api/v1/licence
-        _update_manifest_cache(result)
-        # Sync rules and field mappings from manifest asynchronously
-        _sync_manifest_to_db(result)
+        if outcome == "cutoff":
+            return licence_lock_response("licence_server_cutoff", "licence_server_unreachable_cutoff", 403)
+        if outcome == "grace":
+            response = await _serve_entitled(request, call_next, _cache["response"])
+            response.headers["X-Licence-Warning"] = "expired_grace"
+            return response
+        if outcome == "invalid":
+            return licence_lock_response("licence_invalid", result.get("reason", "unknown"), 402)
         return await _serve_entitled(request, call_next, result)

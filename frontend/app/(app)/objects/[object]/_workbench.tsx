@@ -6,9 +6,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { Button, Card, DataTable, DimensionBars, EmptyState, ErrorState, ExportMenu, Mono, Pager, ProgressFill, SeverityDot, Skeleton, Stat, Status, isSeverity } from "@/design";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Button, Card, DataTable, DimensionBars, EmptyState, ErrorState, ExportMenu, Mono, Pager, RankedRow, SeverityDot, Skeleton, Stat, Status, isSeverity, toast } from "@/design";
+import { useRole } from "@/hooks/use-role";
 import { exportFindingRecords } from "@/lib/api/findings";
+import { createBatch } from "@/lib/api/remediation";
 import { getRuleRanking, type RuleRow } from "@/lib/api/insights";
 import type { ObjectRule } from "@/lib/api/v1/objects";
 import { apiErrorState } from "@/lib/error";
@@ -17,19 +19,12 @@ import { queryKeys } from "@/lib/query-keys";
 import { FilterChips } from "../_header";
 import { PAGE_SIZE, STALE_MS, fixSheetHref, isBlocking, objectQuery, recordsQuery, useFixShortcut, useRecordColumns } from "./_shared";
 
-/** The bar under a rule's row is filled to its share of the worst rule's records, in its severity's hue. */
-const SEVERITY_FILL: Record<string, string> = {
-  critical: "[&_.m-progress-fill]:!bg-[var(--m-critical)]",
-  high: "[&_.m-progress-fill]:!bg-[var(--m-high)]",
-  medium: "[&_.m-progress-fill]:!bg-[var(--m-medium)]",
-  low: "[&_.m-progress-fill]:!bg-[var(--m-low)]",
-};
 const SEVERITY_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 
 type WorkRule = ObjectRule & { name: string | null; field: string | null; autoFixPct: number | null };
 
 /** The rules' names, fields and auto-fix shares come from the insights ranking; the workbench reads without them if it fails. */
-function useRuleDetails(object: string, run: string) {
+export function useRuleDetails(object: string, run: string) {
   return useQuery({
     queryKey: queryKeys.insights("rules", run, object, "workbench"),
     queryFn: () => getRuleRanking({ version_id: run, module: object, limit: 200 }),
@@ -40,21 +35,25 @@ function useRuleDetails(object: string, run: string) {
   });
 }
 
-function SeverityBar({ severity, share }: { severity: string; share: number }) {
-  return (
-    <span aria-hidden className={`block h-1.5 w-full overflow-hidden rounded-full bg-[var(--m-sheet-raised)] ${SEVERITY_FILL[severity] ?? SEVERITY_FILL.low}`}>
-      <ProgressFill value={share} />
-    </span>
-  );
-}
-
 function RulePane({ object, run, rule }: { object: string; run: string; rule: WorkRule }) {
   const router = useRouter();
   const search = useSearchParams();
   const [page, setPage] = useState(1);
-  const { data, isLoading, isError, error, refetch } = useQuery(recordsQuery(run, rule.check_id, page));
   const grain = search.get("grain");
+  const { data, isLoading, isError, error, refetch } = useQuery(recordsQuery(run, rule.check_id, page, grain));
   const records = data?.records;
+  const canApply = useRole().can("apply");
+  /** Drafts a fix batch for this rule in this run, or for the records ticked in the table. */
+  const draft = useMutation({
+    mutationFn: (keys: string[] | null) =>
+      createBatch(`${rule.check_id} ${object}`, { check_id: rule.check_id, module: object, version_id: run, ...(keys ? { record_keys: keys } : {}) }),
+    onSuccess: (b) => {
+      toast.success(`Fix batch drafted with ${b.item_count.toLocaleString()} ${b.item_count === 1 ? "item" : "items"}`, {
+        action: { label: "Open batch", onClick: () => router.push(`/fix?tab=batches&batch=${b.id}`) },
+      });
+    },
+    onError: () => toast.error("Could not draft the fix batch"),
+  });
   useFixShortcut(object, run, records?.[0]?.record_key);
   const columns = useRecordColumns(object, run, records);
 
@@ -66,7 +65,6 @@ function RulePane({ object, run, rule }: { object: string; run: string; rule: Wo
     router.replace(`/objects/${object}?${params.toString()}`, { scroll: false });
   };
 
-  const first = records?.[0]?.record_key;
   const detailHref = `/objects/${object}/rules/${encodeURIComponent(rule.check_id)}?run=${run}`;
   const exportOptions = [{ format: "xlsx" as const, run: () => exportFindingRecords(run, rule.check_id, "xlsx") }];
   const pageCount = Math.max(1, Math.ceil((data?.total ?? 0) / PAGE_SIZE));
@@ -78,7 +76,7 @@ function RulePane({ object, run, rule }: { object: string; run: string; rule: Wo
         <>
           <ExportMenu options={exportOptions} />
           <Button variant="ghost" render={<Link href={detailHref}>Rule details</Link>} />
-          {first ? <Button render={<Link href={fixSheetHref(object, run, first)}>Propose fix</Link>} /> : <Button disabled>Propose fix</Button>}
+          {canApply ? <Button pending={draft.isPending} disabled={!data || data.records.length === 0} onClick={() => draft.mutate(null)}>Propose fix</Button> : null}
         </>
       }
     >
@@ -106,6 +104,9 @@ function RulePane({ object, run, rule }: { object: string; run: string; rule: Wo
               getRowId={(row) => row.record_key}
               rowHref={(row) => fixSheetHref(object, run, row.record_key)}
               onRowClick={(row) => router.push(fixSheetHref(object, run, row.record_key))}
+              bulkActions={canApply ? (selected) => (
+                <Button variant="secondary" disabled={draft.isPending} onClick={() => draft.mutate(selected.map((r) => r.record_key))}>Add to fix batch</Button>
+              ) : undefined}
             />
             <Pager page={page} pageCount={pageCount} pageSize={PAGE_SIZE} total={data.total} onPageChange={setPage} />
           </>
@@ -167,13 +168,15 @@ export function Workbench({ object, run }: { object: string; run: string }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="m-stat-grid">
-        <Stat label="Failing checks" value={data.failing_checks.toLocaleString()} href={rulesHref} />
-        <Stat label="Blocking rules" value={blockingRules} tone={blockingRules > 0 ? "no-go" : "go"} href={`${rulesHref}&blocking=true`} />
-        <Stat label="Records affected" value={data.affected_records.toLocaleString()} href={failing[0] ? tabHref(`records&check_id=${encodeURIComponent(failing[0].check_id)}`) : undefined} />
+        <Stat label="Failing rules" value={data.failing_checks.toLocaleString()} href={rulesHref} />
+        {/* `?blocking=true` keeps the critical and high rules (isBlocking), not the blocking findings of the readiness view. */}
+        <Stat label="Critical and high" value={blockingRules} hint="failing rules" tone={blockingRules > 0 ? "no-go" : "go"} href={`${rulesHref}&blocking=true`} />
+        {/* Summed over the failing rules (a record failing two rules counts twice): rule failures, as the header says. */}
+        <Stat label="Rule failures" value={data.affected_records.toLocaleString()} hint="records failing a rule, per rule" href={tabHref("fix")} />
         <Stat
           label="Auto-fixable"
           value={autoRecords == null ? "—" : autoRecords.toLocaleString()}
-          hint={autoRecords != null && data.affected_records > 0 ? `${Math.round((autoRecords / data.affected_records) * 100)}% of affected records` : undefined}
+          hint={autoRecords != null && data.affected_records > 0 ? `${Math.round((autoRecords / data.affected_records) * 100)}% of rule failures` : undefined}
           href={autoRecords != null ? `/insights/rules?run=${run}&module=${object}&auto=yes` : undefined}
         />
       </div>
@@ -196,35 +199,31 @@ export function Workbench({ object, run }: { object: string; run: string }) {
               />
             ) : (
               <ul aria-label="Failing rules" className="flex flex-col overflow-y-auto [max-height:min(60vh,32rem)]">
-                {listed.map((r) => {
-                  const on = r.check_id === selected?.check_id;
-                  return (
-                    <li key={r.check_id}>
-                      <Link
-                        href={hrefWith({ rule: r.check_id })}
-                        replace
-                        scroll={false}
-                        aria-current={on ? "true" : undefined}
-                        data-testid="workbench-rule-row"
-                        className="flex flex-col gap-1.5 border-l-2 border-transparent px-3 py-2 hover:bg-[var(--m-sheet-raised)] aria-[current=true]:border-[var(--m-accent)] aria-[current=true]:bg-[var(--m-accent-soft)]"
-                      >
-                        <span className="flex min-w-0 items-center gap-2">
-                          {isSeverity(r.severity) ? <SeverityDot severity={r.severity} /> : null}
-                          <Mono>{r.check_id}</Mono>
-                          {r.name ? <span className="min-w-0 flex-1 truncate m-ink-2">{r.name}</span> : <span className="flex-1" />}
-                          <span className="m-numeric font-medium">{r.affected_count.toLocaleString()}</span>
-                        </span>
-                        <SeverityBar severity={r.severity} share={(r.affected_count / top) * 100} />
-                        {r.field || r.dimension ? (
-                          <span className="flex min-w-0 items-center gap-2 m-text-meta m-ink-3">
-                            {r.field ? <Mono>{r.field}</Mono> : null}
-                            {r.dimension ? <span>{formatModuleName(r.dimension)}</span> : null}
-                          </span>
-                        ) : null}
-                      </Link>
-                    </li>
-                  );
-                })}
+                {listed.map((r) => (
+                  <RankedRow
+                    key={r.check_id}
+                    tone={isSeverity(r.severity) ? r.severity : "low"}
+                    href={hrefWith({ rule: r.check_id })}
+                    replace
+                    selected={r.check_id === selected?.check_id}
+                    testId="workbench-rule-row"
+                    label={
+                      <span className="flex min-w-0 items-center gap-2">
+                        {isSeverity(r.severity) ? <SeverityDot severity={r.severity} /> : null}
+                        <Mono>{r.check_id}</Mono>
+                        {r.name ? <span className="min-w-0 flex-1 truncate font-normal m-ink-2">{r.name}</span> : null}
+                      </span>
+                    }
+                    magnitude={r.affected_count.toLocaleString()}
+                    share={(r.affected_count / top) * 100}
+                    meta={r.field || r.dimension ? (
+                      <>
+                        {r.field ? <Mono>{r.field}</Mono> : null}
+                        {r.dimension ? <span>{formatModuleName(r.dimension)}</span> : null}
+                      </>
+                    ) : undefined}
+                  />
+                ))}
               </ul>
             )}
           </Card>

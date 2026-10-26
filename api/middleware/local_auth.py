@@ -127,6 +127,8 @@ class LocalAuthMiddleware(BaseHTTPMiddleware):
         # Set user info on request state for downstream use
         request.state.local_user_id = payload.get("sub")
         request.state.local_user_email = payload.get("email")
+        # Informational only: the role claim is a sign-in snapshot. Authorisation reads users.role and the
+        # grants from the database on every request (rbac._get_user_role), so a grant change applies at once.
         request.state.local_user_role = payload.get("role")
         _current_user.set({"id": payload.get("sub"), "email": payload.get("email")})
 

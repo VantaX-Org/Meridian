@@ -1,5 +1,5 @@
 // frontend/app/(app)/runs/[versionId]/__tests__/page.test.tsx
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as analyticsApi from "@/lib/api/analytics";
@@ -8,6 +8,7 @@ import * as findingsApi from "@/lib/api/findings";
 import { getAnalysisReportUrl, getReportDownloadUrl } from "@/lib/api/reports";
 import * as objectsApi from "@/lib/api/v1/objects";
 import * as runsApi from "@/lib/api/v1/runs";
+import * as settingsApi from "@/lib/api/settings";
 import * as versionsApi from "@/lib/api/versions";
 import * as systemObjectsApi from "@/lib/api/system-objects";
 import { toast } from "sonner";
@@ -90,6 +91,57 @@ describe("RunDetailPage", () => {
       expect(await screen.findByText("No next actions for this run")).toBeInTheDocument();
       expect(screen.getByTestId("next-actions-slot")).toBeInTheDocument();
     });
+
+    it("opens a cleaning action on the object's cleaning tab and explains it in plain words", async () => {
+      vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+      vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue({
+        ...EMPTY_AGGREGATE, total: 1,
+        by_module: [{ module: "material_master", findings: 1, affected: 120, critical: 1, high: 0, medium: 0, low: 0, avg_pass_rate: null }],
+      });
+      vi.spyOn(analyticsApi, "getPrescriptiveAnalytics").mockResolvedValue({
+        actions: [{ type: "cleaning", id: "c1", title: "Fill base units", severity: "critical", affected_count: 120, total_count: 500,
+          effort_hours: 3.6, impact_points: 480, value_per_hour: 133.3, priority_score: 1, estimated_cost: null, currency: "ZAR",
+          recommended_steward: null, module: "material_master" }],
+        sprints: [], basis: { version_id: "v2", findings: 1, cleaning_items: 1, exceptions: 0 },
+      } as unknown as Awaited<ReturnType<typeof analyticsApi.getPrescriptiveAnalytics>>);
+      renderWithQuery(<RunDetailPage />);
+      expect(await screen.findByRole("link", { name: "Open cleaning" })).toHaveAttribute("href", "/fix?tab=cleaning&module=material_master");
+      fireEvent.click(screen.getByText("Why?"));
+      expect(await screen.findByText("120 records, 120 critical; about 4 hours.")).toBeInTheDocument();
+      expect(screen.queryByText(/impact points per hour/)).toBeNull();
+    });
+  });
+
+  it("asks for next actions scoped to this run", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue({ ...EMPTY_AGGREGATE, total: 1 });
+    const spy = vi.spyOn(analyticsApi, "getPrescriptiveAnalytics").mockResolvedValue({ actions: [], sprints: [], basis: { version_id: "v2", findings: 0, cleaning_items: 0, exceptions: 0 } } as unknown as Awaited<ReturnType<typeof analyticsApi.getPrescriptiveAnalytics>>);
+    renderWithQuery(<RunDetailPage />);
+    await waitFor(() => expect(spy).toHaveBeenCalledWith({ limit: 5, version_id: "v2" }));
+  });
+
+  it("keeps the hero score on a run with nothing failing", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+    vi.spyOn(analyticsApi, "getPrescriptiveAnalytics").mockResolvedValue({ actions: [], sprints: [], basis: { version_id: "v2", findings: 0, cleaning_items: 0, exceptions: 0 } } as unknown as Awaited<ReturnType<typeof analyticsApi.getPrescriptiveAnalytics>>);
+    renderWithQuery(<RunDetailPage />);
+    expect((await screen.findAllByText("Nothing failed in this run")).length).toBeGreaterThan(0);
+    expect(screen.getByTestId("score-hero")).toBeInTheDocument();
+    expect(screen.queryByText("Next actions")).toBeNull();
+  });
+
+  it("drills blocking findings to critical and to high, and prices cost at risk in the tenant currency", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+    vi.spyOn(settingsApi, "getCostModel").mockResolvedValue({ currency: "ZAR" } as never);
+    vi.spyOn(settingsApi, "getSettings").mockResolvedValue({} as never);
+    vi.spyOn(analyticsApi, "getPrescriptiveAnalytics").mockResolvedValue({ actions: [], sprints: [], basis: { version_id: "v2", findings: 0, cleaning_items: 0, exceptions: 0 } } as unknown as Awaited<ReturnType<typeof analyticsApi.getPrescriptiveAnalytics>>);
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue({
+      ...EMPTY_AGGREGATE, total: 5, severity: { critical: 2, high: 3, medium: 0, low: 0 }, cost_at_risk: 1500,
+      dqs: { composite: 70, dimension_scores: { completeness: 70 }, modules: { material_master: 70 } },
+    });
+    renderWithQuery(<RunDetailPage />);
+    expect(await screen.findByRole("link", { name: "2 critical" })).toHaveAttribute("href", "/runs/v2?tab=findings&severity=critical");
+    expect(screen.getByRole("link", { name: "3 high" })).toHaveAttribute("href", "/runs/v2?tab=findings&severity=high");
+    expect(await screen.findByText(/ZAR\s?1,500/)).toBeInTheDocument();
   });
 
   it("renders the decisive error of a failed step", async () => {
@@ -164,6 +216,35 @@ describe("RunDetailPage", () => {
     await waitFor(() => expect(analyse).toHaveBeenCalledWith("v2"));
   });
 
+  it("re-runs the AI pipeline after the confirm dialog", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue({ ...current, status: "agents_complete" });
+    const agents = vi.spyOn(versionsApi, "runAgents").mockResolvedValue({ version_id: "v2", job_id: "j1", status: "agents_enqueued" });
+    renderWithQuery(<RunDetailPage />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Re-run AI analysis" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Re-run AI analysis" }));
+    expect(agents).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Re-run AI analysis" }));
+    await waitFor(() => expect(agents).toHaveBeenCalledWith("v2"));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("AI analysis started. Progress shows above."));
+  });
+
+  it("hides Re-run AI analysis on a run the route refuses", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue({ ...current, status: "ai_enriched" });
+    renderWithQuery(<RunDetailPage />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Re-run analysis" })).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "Re-run AI analysis" })).toBeNull();
+  });
+
+  it("offers no AI re-run without the analyse permission", async () => {
+    can.mockImplementation((action: string) => action === "export");
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+    renderWithQuery(<RunDetailPage />);
+    await waitFor(() => expect(screen.getByText("Oct 8")).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "Re-run AI analysis" })).toBeNull();
+    can.mockImplementation((action: string) => action === "analyse" || action === "export");
+  });
+
   it("shows the Baseline pill and the unpin action for a pinned run", async () => {
     vi.spyOn(versionsApi, "getVersion").mockResolvedValue(baseline);
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [baseline] });
@@ -201,6 +282,32 @@ describe("RunDetailPage", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Objects" }));
     await waitFor(() => expect(screen.getByText("Material master")).toBeInTheDocument());
     expect(screen.getByRole("link", { name: "Material master" })).toHaveAttribute("href", "/objects/material_master?run=v2");
+  });
+
+  it("prints the capped composite in the hero and draws the measured value only as the ghost beyond the cap", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+    vi.spyOn(analyticsApi, "getPrescriptiveAnalytics").mockResolvedValue({ actions: [], sprints: [], basis: { version_id: "v2", findings: 0, cleaning_items: 0, exceptions: 0 } } as unknown as Awaited<ReturnType<typeof analyticsApi.getPrescriptiveAnalytics>>);
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue({
+      ...EMPTY_AGGREGATE, total: 2, severity: { critical: 2, high: 0, medium: 0, low: 0 },
+      dqs: { composite: 70, raw: 82.4, capped: true, dimension_scores: {}, modules: {} },
+    });
+    renderWithQuery(<RunDetailPage />);
+    const hero = await screen.findByTestId("score-hero");
+    expect(screen.getByRole("img", { name: /score 82\.4, capped at 70/i })).toBeInTheDocument();
+    expect(hero).toHaveTextContent("Capped at 70, 2 critical");
+    expect(hero.textContent).not.toMatch(/82\.4/);
+  });
+
+  it("prints object counts with thousands separators on the objects tab", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({
+      run_id: "v2",
+      objects: [{ module: "material_master", label: "Material master", composite_score: 91.2, readiness: "pass", failing_checks: 1234, affected_records: 50000 }],
+    });
+    renderWithQuery(<RunDetailPage />);
+    fireEvent.click(await screen.findByRole("tab", { name: "Objects" }));
+    expect(await screen.findByRole("link", { name: "1,234" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "50,000" })).toBeInTheDocument();
   });
 
   it("renders a sparkline trend column on the objects tab from the per-module score history", async () => {
@@ -248,6 +355,9 @@ describe("RunDetailPage", () => {
     expect(row).toHaveTextContent("mm_missing_desc");
     expect(row).toHaveTextContent("Description missing");
     expect(screen.getByRole("link", { name: "2" })).toHaveAttribute("href", "/runs/v2?tab=findings&module=material_master&severity=critical");
+    // Affected counts are "Failing records"; "Records" is kept for totals.
+    expect(screen.getByRole("columnheader", { name: "Failing records" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Records" })).toBeNull();
   });
 
   it("draws the composite line for an upload from the scored runs of the same objects, keyed by run id", async () => {
@@ -312,6 +422,19 @@ describe("RunDetailPage", () => {
     await waitFor(() => expect(screen.getByText("mm_missing_desc")).toBeInTheDocument());
   });
 
+  it("filters the findings by critical and high together, with a plain chip and a matching Severity value", async () => {
+    searchParams = new URLSearchParams("tab=findings&severity=critical,high");
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+    const list = vi.spyOn(findingsApi, "getFindings").mockResolvedValue({ findings: [], total: 0, filters_applied: {} });
+    renderWithQuery(<RunDetailPage />);
+    await waitFor(() => expect(list).toHaveBeenCalledWith(expect.objectContaining({ version_id: "v2", severity: "critical,high" })));
+    expect((await screen.findByRole("button", { name: "Remove filter Severity" })).closest(".m-chip")).toHaveTextContent("SeverityCritical and high");
+    expect(screen.queryByText(/Critical,high/)).toBeNull();
+    // the Severity select shows the filter, not a blank value
+    expect(screen.getAllByText("Critical and high").length).toBeGreaterThan(0);
+    searchParams = new URLSearchParams();
+  });
+
   it("shows a loading skeleton while the run loads", async () => {
     vi.spyOn(versionsApi, "getVersion").mockReturnValue(new Promise(() => {}));
     const { container } = renderWithQuery(<RunDetailPage />);
@@ -324,5 +447,24 @@ describe("RunDetailPage", () => {
     renderWithQuery(<RunDetailPage />);
     await waitFor(() => expect(runsApi.getRunSteps).toHaveBeenCalled());
     expect(findingsApi.getFindingsAggregate).toHaveBeenCalled();
+  });
+
+  it("offers Import file in the single-run empty state only to a role that may upload", async () => {
+    const single = version({ id: "v2", metadata: { modules: ["material_master"], file_name: "f.csv", row_count: 1 } });
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(single);
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [single] });
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue({ ...EMPTY_AGGREGATE, total: 1 });
+    try {
+      can.mockImplementation((a: string) => a === "view");
+      const viewer = renderWithQuery(<RunDetailPage />);
+      expect(await screen.findByText("Only one run so far")).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Import file" })).toBeNull();
+      viewer.unmount();
+      can.mockImplementation((a: string) => a === "upload");
+      renderWithQuery(<RunDetailPage />);
+      expect(await screen.findByRole("link", { name: "Import file" })).toHaveAttribute("href", "/import");
+    } finally {
+      can.mockImplementation((action: string) => action === "analyse" || action === "export");
+    }
   });
 });

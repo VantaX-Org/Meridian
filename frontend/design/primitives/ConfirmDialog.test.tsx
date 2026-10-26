@@ -47,6 +47,20 @@ describe("ConfirmDialog", () => {
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
+  it("describes the input by the value to type, and Enter respects confirmDisabled", async () => {
+    const { onConfirm } = setup({ typeToConfirm: "Finance", confirmDisabled: true });
+    const input = screen.getByLabelText("Type to confirm");
+    expect(input).toHaveAccessibleDescription("Matches exactly: Finance");
+    await userEvent.type(input, "Finance{Enter}");
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it("confirms on Enter once the value matches", async () => {
+    const { onConfirm } = setup({ typeToConfirm: "Finance" });
+    await userEvent.type(screen.getByLabelText("Type to confirm"), "Finance{Enter}");
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
   it("clears the typed value when closed through the open prop", async () => {
     const onConfirm = vi.fn();
     const props = { onOpenChange: vi.fn(), title: "Delete team", body: "Gone.", confirmLabel: "Delete team", tone: "danger" as const, typeToConfirm: "Finance", onConfirm };

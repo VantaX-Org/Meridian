@@ -1,12 +1,15 @@
 // frontend/design/charts/charts.test.tsx
 import { describe, expect, it, vi } from "vitest";
-import { render, fireEvent, screen } from "@testing-library/react";
+import { render, fireEvent, screen, within } from "@testing-library/react";
+import type { JSX } from "react";
+import { LineageChart, AT_RISK_NOTE } from "./Lineage";
+import type { ChartPoint } from "./theme";
 import { Heatmap, toneOfTier } from "./Heatmap";
 import { Pareto } from "./Pareto";
 import { Bar, categoryAxisWidth } from "./Bar";
 import { Graph, GraphLegend } from "./Graph";
 import { ChartLegend, isolatedOpacity } from "./Legend";
-import { Line, lastTickMargin, pointAtRow } from "./Line";
+import { Line, isolationKey, lastTickMargin, lineRows, pointAtRow } from "./Line";
 import { Radar, RADAR_MIN_WIDTH } from "./Radar";
 import { Sparkline } from "./Sparkline";
 import { Waterfall } from "./Waterfall";
@@ -55,6 +58,16 @@ describe("charts onPointClick contract", () => {
   it("Sparkline renders without a theme prop (uses the shared chartTheme)", () => {
     const { container } = render(<Sparkline data={data} />);
     expect(container.querySelector("svg")).toBeTruthy();
+  });
+});
+
+describe("Waterfall value format", () => {
+  it("reads every value through formatValue in its text alternative, and raw without one", () => {
+    const fmt = (n: number) => `ZAR ${n.toLocaleString("en-US")}`;
+    const { getByRole, rerender } = render(<Waterfall data={[{ x: "Invoice posting", y: 5672930 }]} label="At risk" formatValue={fmt} />);
+    expect(getByRole("img").getAttribute("aria-label")).toBe("At risk: Invoice posting ZAR 5,672,930");
+    rerender(<Waterfall data={[{ x: "Invoice posting", y: 5672930 }]} label="At risk" />);
+    expect(getByRole("img").getAttribute("aria-label")).toBe("At risk: Invoice posting 5672930");
   });
 });
 
@@ -184,7 +197,7 @@ describe("chart tooltip and theme", () => {
     expect(dots).toEqual(["var(--m-dom-material)", "var(--m-dom-vendor)"]);
     expect(container.querySelectorAll(".m-pulse-once")).toHaveLength(1);
     expect(container.querySelector("[data-bottleneck]")).toHaveAttribute("aria-label", "Node B");
-    expect(container.querySelector("line")?.getAttribute("data-edge-width")).toBe("5");
+    expect(container.querySelector("line")?.getAttribute("data-edge-width")).toBe("6"); // the frequent band is one pixel heavier
   });
 
   it("Graph does not replay the pulse when pulse is false", () => {
@@ -266,6 +279,51 @@ describe("run-keyed line charts and axis sizing", () => {
     expect(screen.getByRole("img", { name: "Dimensions: Completeness 2 Oct 2026 90" })).toBeInTheDocument();
   });
 
+  it("lineRows keys each series and its band by x, and sorts a numeric axis", () => {
+    const rows = lineRows(
+      [
+        { name: "A", data: [{ x: 7, y: 70 }, { x: -3, y: 76 }, { x: 0, y: 72 }], band: [{ x: 0, low: 72, high: 72 }, { x: 7, low: 66, high: 75 }] },
+        { name: "B", data: [{ x: -1, y: 90 }] },
+      ],
+      [{ x: 30 }],
+      true,
+    );
+    expect(rows.map((r) => r.x)).toEqual([-3, -1, 0, 7, 30]);
+    expect(rows.find((r) => r.x === 7)).toEqual({ x: 7, s0: 70, b0: [66, 75] });
+    expect(rows.find((r) => r.x === -1)).toEqual({ x: -1, s1: 90 });
+    // a category axis keeps the input order, as before
+    expect(lineRows([{ name: "A", data: [{ x: "r2", y: 1 }, { x: "r1", y: 2 }] }]).map((r) => r.x)).toEqual(["r2", "r1"]);
+  });
+
+  it("isolationKey follows the caller's highlight until the viewer picks from the legend", () => {
+    const lines = [{ name: "A", data: [] }, { name: "B", data: [] }];
+    expect(isolationKey(lines, undefined, "B")).toBe("1");
+    expect(isolationKey(lines, undefined, undefined)).toBeNull();
+    expect(isolationKey(lines, undefined, "missing")).toBeNull();
+    expect(isolationKey(lines, "0", "B")).toBe("0");
+    expect(isolationKey(lines, null, "B")).toBeNull();
+  });
+
+  it("Line on a numeric axis with a band and a highlight renders without changing its text alternative", () => {
+    render(
+      <Line
+        data={[]}
+        numericX
+        highlight="B"
+        xDomain={[{ x: 0, label: "Today" }, { x: 7, label: "In 7 days" }]}
+        series={[
+          { name: "A", data: [{ x: 0, y: 80, label: "Today" }, { x: 7, y: 81, label: "In 7 days" }] },
+          { name: "B", data: [{ x: 0, y: 70, label: "Today" }, { x: 7, y: 68, label: "In 7 days" }], band: [{ x: 0, low: 70, high: 70 }, { x: 7, low: 62, high: 74 }] },
+        ]}
+        label="Forecast"
+      />,
+    );
+    expect(screen.getByRole("img", { name: "Forecast: A Today 80, A In 7 days 81, B Today 70, B In 7 days 68" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "B" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(screen.getByRole("button", { name: "B" }));
+    expect(screen.getByRole("button", { name: "B" })).toHaveAttribute("aria-pressed", "false");
+  });
+
   it("Line accepts a shared x domain so sibling charts line up", () => {
     const { container } = render(<Line data={[{ x: "r2", label: "b", y: 1 }]} xDomain={[{ x: "r1", label: "a" }, { x: "r2", label: "b" }, { x: "r3", label: "c" }]} />);
     expect(container.querySelector(".recharts-responsive-container") ?? container.querySelector("svg")).toBeTruthy();
@@ -312,5 +370,78 @@ describe("Radar below the minimum width", () => {
     expect(RADAR_MIN_WIDTH).toBe(300);
     const { container } = render(<Radar data={[{ x: "Accuracy", y: 91 }]} label="Dimensions" />);
     expect(container.querySelector("[data-radar='radar']")).not.toBeNull();
+  });
+});
+
+describe("clickable charts have a keyboard path", () => {
+  const points = [{ x: "MM001", y: 12, label: "Missing unit" }, { x: "MM002", y: 4 }];
+  const cases: [string, (onPointClick: (p: ChartPoint) => void) => JSX.Element][] = [
+    ["Bar", (f) => <Bar data={points} onPointClick={f} label="Rules" />],
+    ["Line", (f) => <Line data={points} onPointClick={f} label="Rules" />],
+    ["Pareto", (f) => <Pareto data={points} onPointClick={f} label="Rules" />],
+    ["Waterfall", (f) => <Waterfall data={points} onPointClick={f} label="Rules" />],
+    ["Radar", (f) => <Radar data={points} onPointClick={f} label="Rules" />],
+  ];
+  it.each(cases)("%s renders one named button per point, outside the image, calling onPointClick", (_, chart) => {
+    const onPointClick = vi.fn();
+    render(chart(onPointClick));
+    const list = screen.getByRole("list", { name: "Open a point in Rules" });
+    expect(screen.getByRole("img").contains(list)).toBe(false);
+    const first = within(list).getByRole("button", { name: "Missing unit, 12" });
+    first.focus();
+    expect(first).toHaveFocus();
+    fireEvent.click(first);
+    expect(onPointClick).toHaveBeenCalledWith(expect.objectContaining({ x: "MM001", y: 12 }));
+    expect(within(list).getAllByRole("button")).toHaveLength(2);
+  });
+  it("leaves a chart without onPointClick with no buttons", () => {
+    render(<Bar data={points} label="Rules" />);
+    expect(screen.queryByRole("list")).toBeNull();
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+  it("names a multi-series point by its series", () => {
+    const onPointClick = vi.fn();
+    render(<Line data={[]} series={[{ name: "Plant 1000", data: [{ x: "Oct", y: 90 }] }, { name: "Plant 2000", data: [{ x: "Oct", y: 80 }] }]} onPointClick={onPointClick} label="Score" />);
+    fireEvent.click(screen.getByRole("button", { name: "Plant 2000 Oct, 80" }));
+    expect(onPointClick).toHaveBeenCalledWith({ x: "Oct", y: 80 });
+  });
+});
+
+describe("Waterfall and Radar respect reduced motion", () => {
+  it.each([
+    ["Waterfall", () => <Waterfall data={data} label="Change" />],
+    ["Radar", () => <Radar data={data} label="Dimensions" />],
+  ] as const)("%s reads prefers-reduced-motion before it animates", (_, chart) => {
+    const original = window.matchMedia;
+    const matchMedia = vi.fn((q: string) => ({ matches: true, media: q, onchange: null, addListener: vi.fn(), removeListener: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn(), dispatchEvent: vi.fn() }));
+    window.matchMedia = matchMedia as unknown as typeof window.matchMedia;
+    try {
+      render(chart());
+      expect(matchMedia).toHaveBeenCalledWith("(prefers-reduced-motion: reduce)");
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+});
+
+describe("LineageChart never rests on colour", () => {
+  it("outlines an at-risk node, names it in the title, and dashes a blocking link", () => {
+    class StubRO { observe() {} disconnect() {} unobserve() {} }
+    vi.stubGlobal("ResizeObserver", StubRO);
+    try {
+      const { container } = render(
+        <LineageChart
+          nodes={[{ id: "c", type: "check", label: "MM001", atRisk: true }, { id: "k", type: "kpi", label: "DPO" }]}
+          edges={[{ source: "c", target: "k", impact: "full_block" }]}
+        />,
+      );
+      const titles = Array.from(container.querySelectorAll("title")).map((t) => t.textContent);
+      expect(titles).toContain(`MM001, ${AT_RISK_NOTE}`);
+      expect(titles).toContain("DPO");
+      expect(container.querySelector("[data-at-risk]")).toHaveAttribute("stroke-dasharray");
+      expect(container.querySelector("path[data-impact='full_block']")).toHaveAttribute("stroke-dasharray", "6 3");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

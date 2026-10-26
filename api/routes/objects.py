@@ -202,7 +202,8 @@ _OBJECTS_EXPORT_COLUMNS = [
     ColumnSpec("composite_score", "Composite score", kind="money"),
     ColumnSpec("readiness", "Readiness"),
     ColumnSpec("failing_checks", "Failing checks", kind="int"),
-    ColumnSpec("affected_records", "Affected records", kind="int"),
+    # summed over the failing rules (a record failing two rules counts twice): rule failures, not records
+    ColumnSpec("affected_records", "Rule failures", kind="int"),
 ]
 
 
@@ -241,6 +242,9 @@ class ObjectDetailOut(BaseModel):
     readiness: Optional[str] = None
     failing_checks: int
     affected_records: int
+    capped: bool = False
+    raw_score: Optional[float] = None  # the measured score before the cap
+    cap_reason: Optional[str] = None
     dimension_scores: dict[str, float]
     rules: list[ObjectRuleOut]
 
@@ -268,6 +272,10 @@ async def get_object(module: str, run: uuid.UUID = Query(..., alias="run"),
         "readiness": tier(score, thresholds) if score is not None else None,
         "failing_checks": len(failing),
         "affected_records": sum(r[3] for r in failing),
+        # the score's cap as dqs_summary records it, so the explainer can say why the score stops where it does
+        "capped": bool(mod_summary.get("capped")),
+        "cap_reason": mod_summary.get("cap_reason"),
+        "raw_score": mod_summary.get("raw_score"),
         "dimension_scores": {d: v for d, v in (mod_summary.get("dimension_scores") or {}).items()
                              if (mod_summary.get("dimension_coverage") or {}).get(d) != 0},  # coverage 0: not measured
         "rules": [

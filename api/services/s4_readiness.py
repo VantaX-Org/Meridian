@@ -22,13 +22,27 @@ def pack() -> dict[str, Any]:
     return yaml.safe_load(_find_module_yaml(MODULE).read_text())
 
 
+def _areas(doc: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """The pack's areas as dicts: an area may be written as just its description (a string)."""
+    return {a: spec if isinstance(spec, dict) else {"description": spec}
+            for a, spec in (doc.get("areas") or {}).items()}
+
+
+def _impact(rule: dict[str, Any]) -> str:
+    """blocking / warning; a rule whose s4_impact says what fails in words is blocking at critical or high."""
+    impact = rule.get("s4_impact")
+    if impact in ("blocking", "warning"):
+        return impact
+    return "blocking" if rule.get("severity") in ("critical", "high") else "warning"
+
+
 def membership() -> dict[str, tuple[str, str]]:
     """check_id -> (area, impact) for every rule the readiness roll-up counts."""
     doc = pack()
     out = {cid: (area, impact)
-           for area, spec in (doc.get("areas") or {}).items()
+           for area, spec in _areas(doc).items()
            for impact, ids in (spec.get("related") or {}).items() for cid in ids}
-    out.update({r["id"]: (r["s4_area"], r["s4_impact"]) for r in doc.get("rules", [])})
+    out.update({r["id"]: (r["s4_area"], _impact(r)) for r in doc.get("rules", [])})
     return out
 
 
@@ -45,10 +59,10 @@ def rollup(findings: list[dict[str, Any]]) -> dict[str, Any]:
     warning failures and a green/amber/red status; plus the overall verdict."""
     doc, members = pack(), membership()
     areas: dict[str, dict[str, Any]] = {
-        a: {"area": a, "label": spec.get("label", a), "simplification_item": spec.get("simplification_item"),
+        a: {"area": a, "label": spec.get("label", a.replace("_", " ").capitalize()), "simplification_item": spec.get("simplification_item"),
             "rules": 0, "evaluated": 0, "failing": 0, "failing_records": 0,
             "blocking_failing": 0, "warning_failing": 0, "status": "green", "checks": []}
-        for a, spec in (doc.get("areas") or {}).items()}
+        for a, spec in _areas(doc).items()}
     for area, _ in members.values():
         areas[area]["rules"] += 1
     for f in findings:

@@ -39,9 +39,9 @@ function useHrefWith(object: string) {
 }
 
 /**
- * The compact strip above the object's tabs: its DQS, its records failing a check, how many of those are critical,
- * and how many carry a suggested value. The counts come from the work list; before it is built, records failing
- * falls back to the run's affected records.
+ * The compact strip above the object's tabs: its records failing a check, how many of those are critical, how many
+ * carry a suggested value and how many are overdue (the DQS is the header's ring). The counts come from the work
+ * list; before it is built, the first tile shows the run's rule failures (summed over rules) and says so.
  */
 export function FixStrip({ object, summary, work, loading }: {
   object: string; summary: ObjectSummary | undefined; work: WorkObject | undefined; loading: boolean;
@@ -49,12 +49,10 @@ export function FixStrip({ object, summary, work, loading }: {
   const hrefWith = useHrefWith(object);
   const fix = (patch: Record<string, string | null>) =>
     hrefWith({ tab: "fix", record: null, ...Object.fromEntries(FILTER_KEYS.map((k) => [k, null])), ...patch });
-  const score = summary?.composite_score;
   const failing = work?.open ?? (loading ? undefined : summary?.affected_records);
   return (
     <div className="m-stat-grid" data-testid="fix-strip">
-      <Stat label="DQS" value={score == null ? "—" : score.toLocaleString(undefined, { maximumFractionDigits: 1 })} loading={!summary} />
-      <Stat label="Records failing" value={failing == null ? "—" : failing.toLocaleString()} href={fix({})} loading={loading && !work} />
+      <Stat label={work || loading ? "Records failing" : "Rule failures"} value={failing == null ? "—" : failing.toLocaleString()} href={fix({})} loading={loading && !work} />
       <Stat
         label="Critical"
         value={work ? work.critical.toLocaleString() : "—"}
@@ -67,6 +65,13 @@ export function FixStrip({ object, summary, work, loading }: {
         value={work ? work.proposed.toLocaleString() : "—"}
         hint={work && work.open > 0 ? `${Math.round((work.proposed / work.open) * 100)}% of records failing` : undefined}
         href={work && work.proposed > 0 ? fix({ suggested: "1" }) : undefined}
+        loading={loading && !work}
+      />
+      <Stat
+        label="Overdue"
+        value={work ? work.overdue.toLocaleString() : "—"}
+        tone={work ? (work.overdue > 0 ? "no-go" : "go") : undefined}
+        href={work && work.overdue > 0 ? fix({ due: "overdue" }) : undefined}
         loading={loading && !work}
       />
     </div>

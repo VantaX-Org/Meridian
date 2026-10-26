@@ -70,7 +70,27 @@ describe("InsightFrame scope line", () => {
     expect(line).toHaveTextContent("One run");
   });
 
-  it.each(["/insights/exec", "/insights/trends", "/insights/rules", "/insights/readiness"])("labels %s as one run even without ?run=", async (p) => {
+  it("describes the current state on the executive summary, the same scope as Home", async () => {
+    path = "/insights/exec";
+    query = "";
+    mount();
+    const line = await screen.findByTestId("insight-scope");
+    expect(line).toHaveAttribute("data-scope", "current");
+    expect(screen.getByRole("combobox", { name: "Showing" })).toBeInTheDocument();
+  });
+
+  it("hides the scope pickers and the way back in presentation mode", async () => {
+    path = "/insights";
+    query = "run=co1&present=1";
+    mount();
+    const line = await screen.findByTestId("insight-scope");
+    expect(line).toHaveTextContent("As of controlling_1k, 15 Oct 2026");
+    expect(screen.queryByRole("combobox", { name: "Showing run" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Back to current state" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Present" })).toBeNull();
+  });
+
+  it.each(["/insights/trends", "/insights/rules", "/insights/readiness"])("labels %s as one run even without ?run=", async (p) => {
     path = p;
     query = "";
     mount();

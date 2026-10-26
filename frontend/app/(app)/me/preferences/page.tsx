@@ -1,12 +1,14 @@
 "use client";
 
-/** Me › Preferences: the signed-in user's own display and notification choices. Stored on the server, so they follow the user to any browser. */
+/**
+ * Me › Preferences: the signed-in user's own display and notification choices (stored on the server, so they follow the
+ * user to any browser), their password, and the log of notifications sent to them.
+ */
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
-import { toast } from "sonner";
-import { Button, Card, Field, Notice, PageFrame, PageHeader, Select, Switch } from "@/design";
+import { Button, Card, ConfirmDialog, Field, Notice, PageFrame, PageHeader, Select, Switch, toast } from "@/design";
 import { resetSavedViews } from "@/design/table/views";
 import { useAuroraPrefs, type DensityTier, type Theme } from "@/hooks/use-theme";
 import { usePreferences } from "@/hooks/use-preferences";
@@ -16,6 +18,7 @@ import { apiErrorMessage } from "@/lib/error";
 import { formatDate } from "@/lib/format";
 import { localeOptions, timezoneOptions, type DigestFrequency } from "@/lib/preferences";
 import { queryKeys } from "@/lib/query-keys";
+import { DeliveriesCard, PasswordCard } from "./account-cards";
 
 const THEMES: { value: Theme; label: string }[] = [
   { value: "light", label: "Light" }, { value: "system", label: "System" }, { value: "dark", label: "Dark" },
@@ -37,6 +40,9 @@ export default function PreferencesPage() {
   const { prefs, update } = usePreferences();
   const health = useQuery({ queryKey: queryKeys.health(), queryFn: getHealth, staleTime: 60_000, retry: false });
   const [testing, setTesting] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const views = Object.values(prefs.saved_views ?? {}).reduce((n, list) => n + list.length, 0);
+  const tables = Object.values(prefs.saved_views ?? {}).filter((list) => list.length > 0).length;
 
   const locales = useMemo(() => {
     const own = prefs.locale && !localeOptions().includes(prefs.locale) ? [prefs.locale] : [];
@@ -77,7 +83,7 @@ export default function PreferencesPage() {
 
   return (
     <PageFrame gap={4}>
-      <PageHeader title="Preferences" meta="How Meridian looks and when it tells you about new work. Changes save at once and follow you to any browser" />
+      <PageHeader title="Preferences" meta="How Meridian looks, when it tells you about new work, and your password. Changes save at once and follow you to any browser" />
       <Card title="Display">
         <div className="grid gap-4 md:grid-cols-2">
           <Field label="Theme"><Select value={theme} onValueChange={(v) => setTheme(v as Theme)} options={THEMES} /></Field>
@@ -105,11 +111,23 @@ export default function PreferencesPage() {
           </div>
         </div>
       </Card>
+      <DeliveriesCard />
+      <PasswordCard />
       <Card title="Guidance and saved views" meta="Show the first-visit tours again, or remove the table filters you saved">
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" onClick={replayTours}>Replay tours</Button>
-          <Button variant="secondary" onClick={() => { resetSavedViews(); toast.success("Saved views removed"); }}>Reset saved views</Button>
+          <Button variant="secondary" disabled={views === 0} onClick={() => setResetting(true)}>Reset saved views</Button>
         </div>
+        <ConfirmDialog
+          open={resetting}
+          onOpenChange={setResetting}
+          title="Reset saved views"
+          tone="danger"
+          body={`${views.toLocaleString()} saved ${views === 1 ? "view" : "views"} across ${tables.toLocaleString()} ${tables === 1 ? "table" : "tables"} are removed from your account on every browser. Tables go back to their default columns and filters.`}
+          confirmLabel="Remove saved views"
+          cancelLabel="Keep views"
+          onConfirm={() => { resetSavedViews(); setResetting(false); toast.success("Saved views removed"); }}
+        />
       </Card>
     </PageFrame>
   );

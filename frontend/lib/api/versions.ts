@@ -8,6 +8,8 @@ export async function getVersions(params?: {
   module?: string;
   system_id?: string;
   include_archived?: boolean;
+  /** `failed`: only failed runs (failed, agents_failed, error, errored), filtered before paging and `total`. */
+  status?: "failed";
 }): Promise<VersionList> {
   const { data } = await apiClient.get<VersionList>("/api/v1/versions", {
     params,
@@ -101,6 +103,19 @@ export async function pinBaseline(id: string, pinned = true): Promise<{ baseline
   return data;
 }
 
+/** The run states a manual AI re-run accepts; api/routes/analyse.py answers 409 for any other. */
+export const AI_RERUN_STATUSES: readonly string[] = ["complete", "agents_complete", "agents_failed"];
+
+/**
+ * Re-run the AI pipeline (the LangGraph agents) over a finished run's findings
+ * (POST /versions/{id}/run-agents, permission `analyse`). Progress reports through
+ * the run's analysis status and the jobs tray like an analysis.
+ */
+export async function runAgents(versionId: string): Promise<{ version_id: string; job_id: string; status: "agents_enqueued" }> {
+  const { data } = await apiClient.post(`/api/v1/versions/${versionId}/run-agents`);
+  return data;
+}
+
 export interface FindingRecord {
   /** SAP record key, e.g. "LIFNR=0000100001|BUKRS=1000". */
   record_key: string;
@@ -114,7 +129,7 @@ export interface FindingRecord {
 export async function getFindingRecords(
   versionId: string,
   checkId: string,
-  params: { limit?: number; offset?: number } = {}
+  params: { limit?: number; offset?: number; grain?: string } = {}
 ): Promise<{ version_id: string; check_id: string; total: number; records: FindingRecord[] }> {
   const { data } = await apiClient.get(
     `/api/v1/versions/${versionId}/findings/${encodeURIComponent(checkId)}/records`, { params });

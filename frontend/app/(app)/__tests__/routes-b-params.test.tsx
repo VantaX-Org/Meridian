@@ -11,7 +11,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(h.qs),
 }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
-vi.mock("@/hooks/use-day-one", () => ({ useDayOne: () => ({ status: "loading", step: null }), DayOneAction: () => null }));
+vi.mock("@/hooks/use-day-one", () => ({ useDayOne: () => ({ status: "loading", step: null, error: null, refetch: () => {} }), DayOneAction: () => null }));
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: { id: "u1", role: "admin" } }) }));
 
 const calls: { url?: string; params?: unknown }[] = [];
@@ -28,7 +28,8 @@ async function show(load: () => Promise<{ default: ComponentType }>, qs: string)
   render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><Page /></QueryClientProvider>);
 }
 const selected = () => screen.getAllByRole("tab").find((t) => t.getAttribute("aria-selected") === "true")?.textContent ?? "";
-const showing = () => screen.queryByText(/^Showing/);
+// The filter banner names what is shown and ends in "only" (no "Showing" sentence).
+const showing = () => screen.queryByText(/ only$/);
 
 const fix = () => import("../fix/page");
 const inbox = () => import("../inbox/page");
@@ -50,7 +51,7 @@ describe("wave 10 URL params are whitelisted", () => {
     await show(fix, `tab=batches&status=${g}&sort=${g}`);
     expect(showing()).toBeNull();
   });
-  it("fix batches ?status=draft shows a Showing banner with Show all", async () => {
+  it("fix batches ?status=draft shows a filter banner with Show all", async () => {
     await show(fix, "tab=batches&status=draft");
     expect(showing()).not.toBeNull();
     expect(screen.getByRole("button", { name: "Show all" })).toBeTruthy();
@@ -71,7 +72,8 @@ describe("wave 10 URL params are whitelisted", () => {
 
   it.each(GARBAGE)("process ?tab=%s falls back to readiness", async (g) => {
     await show(process_, `tab=${g}&module=${g}`);
-    expect(selected()).toMatch(/readiness/i);
+    // Readiness and Map are a pressed-button toggle under the view's tab strip, not a second strip of tabs.
+    expect(await screen.findByRole("button", { name: "Readiness" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it.each(GARBAGE)("mining ?tab=%s falls back to links", async (g) => {

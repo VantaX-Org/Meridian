@@ -8,11 +8,14 @@
 
 import { createContext, useContext, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { Button, DataTable, ErrorState, Field, Mono, Notice, Pill, Radio, Skeleton, Textarea, toast } from "@/design";
 import { useRole } from "@/hooks/use-role";
+import { GatedPrimary, primaryRole } from "@/components/gated-primary";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
+import { queryKeys } from "@/lib/query-keys";
 import { formatModuleName } from "@/lib/format";
 import { getReviewPair, mergePair, type ReviewPairDetail } from "@/lib/api/match-review";
 import { clearPairConstraint, decidePair, undoLastMerge, type AttributeExplanation } from "@/lib/api/merge-explain";
@@ -102,6 +105,7 @@ const PICK_COLUMNS: ColumnDef<FieldRow>[] = [
 
 export function PairReview({ pairId, onDone, onLater }: { pairId: string; onDone: () => void; onLater: () => void }) {
   const qc = useQueryClient();
+  const router = useRouter();
   const canDecide = useRole().can("approve");
   const detail = useQuery({ queryKey: [...matchReviewKey, "pair", pairId], queryFn: () => getReviewPair(pairId) });
   const [survivorPick, setSurvivorPick] = useState<Side | null>(null);
@@ -139,10 +143,17 @@ export function PairReview({ pairId, onDone, onLater }: { pairId: string; onDone
   const merge = useMutation({
     mutationFn: () => mergePair(pairId, { survivor: survivorKey, overrides, reason: reason.trim() }),
     onSuccess: (r) => {
-      toast.undoable(`Merged ${r.merged_key} into ${r.survivor_key}`, {
-        undo: async () => { await undoLastMerge(r.golden_record_id, "Undone from match review"); await refresh(); },
+      const undo = async () => { await undoLastMerge(r.golden_record_id, "Undone from match review"); await refresh(); };
+      // Undo stays the action; the golden record the merge produced is one click away beside it.
+      toast(`Merged ${r.merged_key} into ${r.survivor_key}`, {
+        duration: 8000,
+        action: { label: "Undo", onClick: () => { undo().then(() => { toast("Undone"); }, () => { toast.error("Could not undo"); }); } },
+        cancel: r.golden_record_id ? { label: "Open golden record", onClick: () => router.push(`/mdm/golden/${r.golden_record_id}`) } : undefined,
       });
       void refresh();
+      // The pair's merge_decision task in the Inbox is resolved by the merge.
+      void qc.invalidateQueries({ queryKey: ["inbox"] });
+      void qc.invalidateQueries({ queryKey: queryKeys.shellCounts() });
       onDone();
     },
     onError: (e) => toast.error(apiErrorMessage(e)),
@@ -215,16 +226,20 @@ export function PairReview({ pairId, onDone, onLater }: { pairId: string; onDone
       ) : !d.a_record_id || !d.b_record_id ? (
         <Notice tone="warning">One of these records has no golden record yet, so it cannot be merged. Golden records are built after matching runs.</Notice>
       ) : !canDecide ? (
-        <Notice tone="info">Deciding on a pair needs the approve permission. Ask a steward or an administrator.</Notice>
+        <section aria-label="Decision" className="flex flex-col gap-2">
+          <div><GatedPrimary kind="approve" allowed={false}>Merge</GatedPrimary></div>
+          <p className="m-text-meta m-ink-3">Merging a pair or marking it not a match needs {primaryRole("approve")} on all systems</p>
+        </section>
       ) : (
         <section aria-label="Decision" className="flex flex-col gap-3">
-          <Field label="Reason, kept in the merge history">
-            <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="Same tax number and address" />
+          <Field label="Reason (required), kept in the merge history">
+            <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="Same tax number and address" aria-required="true" />
           </Field>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button pending={merge.isPending} disabled={busy || noReason || (hasOverrides && picked.isLoading)} onClick={() => merge.mutate()}>Merge</Button>
             <Button variant="secondary" pending={reject.isPending} disabled={busy || noReason} onClick={() => reject.mutate()}>Not a match</Button>
             <Button variant="ghost" disabled={busy} onClick={onLater}>Decide later</Button>
+            {noReason ? <span className="m-text-meta m-ink-3">Give a reason to merge or mark not a match</span> : null}
           </div>
         </section>
       )}

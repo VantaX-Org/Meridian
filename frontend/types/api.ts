@@ -80,11 +80,16 @@ export interface ModuleDelta {
   dimensions: Record<string, { v1: number | null; v2: number | null; change: number | null }>;
 }
 
-/** A check that ran cleanly in both versions and failed in only one of them. */
+/**
+ * A check that ran cleanly in both versions and either failed in only one of them, or failed in both with
+ * materially more or fewer records (10% of the earlier count and at least 10 records).
+ */
 export interface CheckChange {
   check_id: string;
   module: string;
   severity: string;
+  /** The rule's message in plain words, shown beside its id; null for runs that stored none. */
+  message?: string | null;
   v1_affected: number;
   v2_affected: number;
 }
@@ -93,7 +98,8 @@ export interface VersionComparison {
   v1: Version;
   v2: Version;
   delta: Record<string, ModuleDelta>;
-  checks: { newly_failing: CheckChange[]; fixed: CheckChange[] };
+  /** `worse` and `better`: failing in both runs with materially more or fewer records (absent from older APIs). */
+  checks: { newly_failing: CheckChange[]; fixed: CheckChange[]; worse?: CheckChange[]; better?: CheckChange[] };
 }
 
 /* ─── Finding ─── */
@@ -300,14 +306,36 @@ export interface AlertThresholds {
   readiness_waves: Record<string, string[]>;
 }
 
+/** One cost spec (checks/cost_model.yaml): a fixed amount per failing record, or a field of the failing records, either scaled by `factor`. */
+export interface CostSpec {
+  per_record?: number;
+  field?: string;
+  factor?: number;
+}
+
 /** Cost model used to price findings and features (spec 8.2's value-at-risk). */
+/** What one counted item of a business-impact defect type costs: annual risk = count × unit_cost × factor. */
+export interface ImpactCost {
+  unit_cost?: number;
+  factor?: number;
+  /** Share of the risk Meridian's fixes mitigate, 0 to 1. */
+  mitigation?: number;
+}
+
 export interface CostModel {
+  /** ISO 4217 code every amount is in: risk, ROI, value at risk, planner and config impact. */
   currency: string;
-  severity: Record<string, number>;
-  modules: Record<string, number>;
-  rules: Record<string, number>;
+  severity: Record<string, CostSpec>;
+  modules: Record<string, CostSpec>;
+  rules: Record<string, CostSpec>;
   /** feature name (e.g. "MIGO") → value per blocked record */
   features: Record<string, number>;
+  /** business-impact defect type (e.g. "duplicate_payment") → its unit cost */
+  impact?: Record<string, ImpactCost>;
+  /** Config Intelligence alignment finding type (e.g. "ghost_config") → impact of one unit */
+  config_alignment?: Record<string, number>;
+  /** Monthly subscription the ROI divides by; null: no ROI multiple or payback. */
+  subscription_monthly?: number | null;
 }
 
 export interface TenantSettings {
@@ -549,17 +577,30 @@ export type UserRole =
   | "data_owner"
   | "platform_admin";
 
+/** One role grant as GET /users lists it, names resolved (api/routes/users.py list_users). */
+export interface UserGrant {
+  id: string;
+  role_key: string;
+  role_name: string;
+  system_id: string | null;
+  system_name: string | null;
+  module: string | null;
+}
+
 export interface User {
   id: string;
   tenant_id: string;
   clerk_user_id: string | null;
   email: string;
   name: string;
+  /** Derived by the API from the strongest unscoped grant; never set directly. */
   role: UserRole;
   permissions: Record<string, unknown> | null;
   is_active: boolean;
   last_login: string | null;
   created_at: string;
+  /** The user's grants (GET /users only). */
+  grants?: UserGrant[];
 }
 
 export interface UserListResponse {
@@ -581,6 +622,7 @@ export interface SAPSystem {
   base_url: string | null;
   company_id: string | null;
   auth_type: AuthType | null;
+  token_url?: string | null;
   description: string | null;
   environment: "PRD" | "QAS" | "DEV";
   is_active: boolean;
@@ -624,9 +666,15 @@ export type MasterRecordStatus =
 
 export interface SourceContribution {
   value: unknown;
+  /** Provenance label: `upload:<run>`, `merge:<record key>`, `steward_override` or a system name. */
   source_system: string;
+  /** The connected system (sap_systems) the value came from, when the run's system is known. */
+  source_system_id?: string;
+  source_system_name?: string;
+  /** For a value a merge took from another record: that record's key. */
+  merged_from?: string;
   extracted_at: string;
-  confidence: number;
+  confidence: number | null;
   ai_recommendation?: string;
   ai_confidence?: number;
   ai_reasoning?: string;
@@ -838,6 +886,7 @@ export type StewardshipItemType =
   | "golden_record_review"
   | "exception"
   | "writeback_approval"
+  | "golden_writeback"
   | "contract_breach"
   | "glossary_review"
   | "config_value_match";
@@ -880,6 +929,8 @@ export interface StewardshipMetrics {
   items_by_status: Record<string, number>;
   avg_resolution_hours_by_type: Record<string, number>;
   backlog_total: number;
+  /** Waiting tasks past their due date (or created + SLA hours), across the whole queue. */
+  overdue_count?: number;
   sla_compliance_rate: number;
   ai_acceptance_rate: number | null;
   steward_breakdown: StewardBreakdown[] | null;
@@ -966,6 +1017,7 @@ export interface SAPSystemExtended {
   base_url: string | null;
   company_id: string | null;
   auth_type: AuthType | null;
+  token_url?: string | null;
   description: string | null;
   environment: "PRD" | "QAS" | "DEV";
   is_active: boolean;

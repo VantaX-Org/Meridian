@@ -61,7 +61,7 @@ function AreaDrawer({ area, versionId, onClose, onFix, fixing, canFix }: {
             <EmptyState variant="inline" title="No failing checks in this area" />
           ) : (
             <>
-              <DataTable columns={columns} data={failing} getRowId={(c) => c.check_id} hideToolbar dense height="auto" tableId="s4-area-checks" />
+              <DataTable columns={columns} data={failing} getRowId={(c) => c.check_id} hideToolbar height="auto" tableId="s4-area-checks" />
               <section className="flex flex-col gap-3" data-testid="s4-remediation">
                 <h3 className="m-text-body font-semibold">How to fix it</h3>
                 {shown.map((c, i) => {

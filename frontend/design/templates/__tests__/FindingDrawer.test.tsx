@@ -1,11 +1,13 @@
 // frontend/design/templates/__tests__/FindingDrawer.test.tsx
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as findingsApi from "@/lib/api/findings";
 import type { FindingDetailData } from "@/lib/api/findings";
 import * as analyticsApi from "@/lib/api/analytics";
 import * as configApi from "@/lib/api/config-intelligence";
+import * as exceptionsApi from "@/lib/api/exceptions";
+import * as settingsApi from "@/lib/api/settings";
 import { FindingDrawer } from "../FindingDrawer";
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
@@ -45,21 +47,37 @@ describe("FindingDrawer", () => {
       finding_id: "f1",
       finding,
       impacts: [
-        { category: "procurement", annual_risk_zar: 50000, mitigated_zar: 0, finding_count: 12, calculation_method: "per-record" },
+        { category: "procurement", annual_risk: 50000, mitigated: 0, finding_count: 12, calculation_method: "per-record", currency: "EUR" },
       ],
     });
+    // A EUR tenant: the API prices the buckets from its cost model and names EUR; the drawer prints what the API says.
+    vi.spyOn(settingsApi, "getCostModel").mockResolvedValue({ currency: "EUR" } as Awaited<ReturnType<typeof settingsApi.getCostModel>>);
     renderWithQuery(<FindingDrawer findingId="f1" versionId="v1" onClose={() => {}} />);
     await waitFor(() => expect(screen.getByText("Description is blank.")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/EUR\s50,000 a year at risk/)).toBeInTheDocument());
+    expect(screen.queryByText(/ZAR/)).toBeNull();
     expect(screen.getByText(/12 of 100 records affected/i)).toBeInTheDocument();
     expect(screen.getByText("A missing description blocks procurement.")).toBeInTheDocument();
     await waitFor(() =>
       expect(
-        screen.getAllByText((_, node) => node?.tagName === "LI" && (node.textContent?.includes("at risk per year") ?? false)),
+        screen.getAllByText((_, node) => node?.tagName === "LI" && (node.textContent?.includes("a year at risk") ?? false)),
       ).toHaveLength(1),
     );
+    expect(screen.queryByText(/per-record/)).toBeNull();
     expect(screen.getByText(/Populate MAKT-MAKTX/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open records" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open rule" })).toBeInTheDocument();
+  });
+
+  it("prints sample records as a field and value table", async () => {
+    vi.spyOn(findingsApi, "getFinding").mockResolvedValue({ ...finding, details: { message: "Description is blank.", sample_failing_records: [{ MATNR: "100001", MAKTX: null }] } });
+    vi.spyOn(analyticsApi, "getFindingImpact").mockResolvedValue(null);
+    renderWithQuery(<FindingDrawer findingId="f1" versionId="v1" onClose={() => {}} />);
+    expect(await screen.findByText("MATNR")).toBeInTheDocument();
+    expect(screen.getByText("100001")).toBeInTheDocument();
+    expect(screen.getByText("MAKTX")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Field" })).toBeInTheDocument();
+    expect(screen.queryByText(/\{"MATNR"/)).toBeNull();
   });
 
   it("shows an empty state when the finding cannot be found", async () => {
@@ -101,5 +119,17 @@ describe("FindingDrawer", () => {
     renderWithQuery(<FindingDrawer findingId="f1" versionId="v1" onClose={() => {}} />);
     await waitFor(() => expect(screen.getByText(/no impact model for this check/i)).toBeInTheDocument());
     await waitFor(() => expect(screen.queryByTestId("root-cause")).not.toBeInTheDocument());
+  });
+
+  it("raises an exception linked to the finding and then links to it", async () => {
+    vi.spyOn(findingsApi, "getFinding").mockResolvedValue(finding);
+    vi.spyOn(analyticsApi, "getFindingImpact").mockResolvedValue({ finding_id: "f1", finding, impacts: [] });
+    const create = vi.spyOn(exceptionsApi, "createException").mockResolvedValue({ id: "e9", status: "open" });
+    renderWithQuery(<FindingDrawer findingId="f1" versionId="v1" onClose={() => {}} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Raise exception" }));
+    await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({
+      type: "dq_rule", severity: "high", linked_finding_id: "f1", title: "mm_missing_desc fails on 12 records",
+    })));
+    expect(await screen.findByRole("link", { name: "Open exception" })).toHaveAttribute("href", "/inbox?kind=exception&focus=e9");
   });
 });

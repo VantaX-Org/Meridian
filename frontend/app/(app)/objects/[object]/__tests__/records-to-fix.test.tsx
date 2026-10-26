@@ -81,7 +81,9 @@ describe("Records to fix", () => {
     expect(await screen.findByRole("tab", { name: /Records to fix/, selected: true })).toBeInTheDocument();
     expect(screen.getByText("Records of Material master that fail a check in this run, worst first. Pick one and fix it.")).toBeInTheDocument();
     const strip = screen.getByTestId("fix-strip");
-    for (const label of ["DQS", "Records failing", "Critical", "With a suggestion"]) expect(within(strip).getByText(label)).toBeInTheDocument();
+    // The DQS is the header's ring, not a second strip tile; the strip's fourth tile is Overdue.
+    for (const label of ["Records failing", "Critical", "With a suggestion", "Overdue"]) expect(within(strip).getByText(label)).toBeInTheDocument();
+    expect(within(strip).queryByText("DQS")).toBeNull();
     const rows = await screen.findAllByTestId("fix-row");
     expect(rows).toHaveLength(3);
     // A named record shows its name with the key under it; an unnamed one shows its key.

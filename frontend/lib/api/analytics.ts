@@ -5,20 +5,35 @@ import type { Finding } from "@/types/api";
 export interface DqsForecast {
   module_id: string;
   current_score: number;
-  forecast_7d: number;
-  forecast_30d: number;
-  forecast_90d: number;
+  /** Each horizon is null when the history is too short to project that far: 30 days needs a 10-day span, 90 days a 30-day span. */
+  forecast_7d: number | null;
+  forecast_30d: number | null;
+  forecast_90d: number | null;
+  /** The 95% prediction interval of each horizon, from the fit residuals; null with its point. Optional on older APIs. */
+  forecast_7d_low?: number | null;
+  forecast_7d_high?: number | null;
+  forecast_30d_low?: number | null;
+  forecast_30d_high?: number | null;
+  forecast_90d_low?: number | null;
+  forecast_90d_high?: number | null;
   trend: "improving" | "stable" | "declining" | "critical";
-  /** 50–95: a heuristic that grows with the number of runs, not a statistical interval. */
+  /** 0–100: 100 minus the width in points of the 7-day interval. Not a probability; show the range instead. */
   confidence: number;
   points: number;
   span_days: number;
+  /** The fitted daily scores, `day` counted back from the latest (0 = now). Optional on older APIs. */
+  history?: { day: number; score: number }[];
   contributing_factors: string[];
 }
 
 export interface EarlyWarning {
   module_id: string;
   signal: "red" | "amber" | "green";
+  /** Why the signal: below the threshold now (or in 7 days), projected below it in 30 days, or healthy. */
+  reason?: "below_threshold" | "projected_below_threshold" | "healthy";
+  /** The score the object is held to: its floor under Rules, Scoring and alerts, else the warning band. */
+  threshold?: number;
+  /** A plain fallback; the page words its own message from `signal` and `threshold`. */
   message: string;
   recommended_action: string;
 }
@@ -88,17 +103,29 @@ export interface PrescriptiveResponse {
 
 export interface ImpactBucket {
   category: string;
-  annual_risk_zar: number;
-  mitigated_zar: number;
+  /** A year's risk, priced from the tenant cost model's unit cost for this defect type. */
+  annual_risk: number;
+  /** The share of `annual_risk` the cost model says is mitigated. */
+  mitigated: number;
+  /** Historical names of the same amounts (the impact_records columns); not rand despite the suffix. */
+  annual_risk_zar?: number;
+  mitigated_zar?: number;
   finding_count: number;
   calculation_method: string;
+  /** The currency of the amounts: the tenant cost model's (api/services/analytics_engine.py). Print with this. */
+  currency: string;
 }
 
 export interface RoiSummary {
-  subscription_annual: number;
+  /** Null until the cost model states a monthly subscription (Admin, Settings): no fee is invented. */
+  subscription_annual: number | null;
   risk_mitigated: number;
-  roi_multiple: number;
-  payback_months: number;
+  /** Null without a configured subscription (nothing to divide by). */
+  roi_multiple: number | null;
+  /** Null without a configured subscription, or before any cost is avoided. */
+  payback_months: number | null;
+  /** The currency of the amounts: the tenant cost model's. */
+  currency: string;
 }
 
 export interface ImpactResponse {
@@ -147,6 +174,8 @@ export async function getPredictiveAnalytics(
 export async function getPrescriptiveAnalytics(params?: {
   limit?: number;
   type?: NextBestAction["type"];
+  /** The run whose findings the actions come from; default the latest finished run. */
+  version_id?: string;
 }): Promise<PrescriptiveResponse> {
   const { data } = await apiClient.get<PrescriptiveResponse>(
     "/api/v1/analytics/prescriptive",
@@ -165,7 +194,7 @@ export async function getLlmHealth(): Promise<{ llm_available: boolean; reason?:
   }
 }
 
-/* ─── Operations (api/routes/analytics.py: operational, sprints, bottlenecks, capacity, roi, mdm-health) ─── */
+/* ─── Operations (api/routes/analytics.py: operational, sprints, bottlenecks, capacity, roi) ─── */
 
 export interface OperationalKpis {
   throughput: number;
@@ -232,16 +261,6 @@ export interface RoiResponse {
   cost_avoidance_history: { period: string; amount?: number }[];
 }
 
-export interface MdmHealthPoint {
-  snapshot_date: string;
-  mdm_health_score: number;
-  golden_record_coverage_pct: number;
-  avg_match_confidence: number;
-  steward_sla_compliance_pct: number;
-  source_consistency_pct: number;
-  backlog_count: number;
-}
-
 export async function getOperational(): Promise<OperationalResponse> {
   return (await apiClient.get<OperationalResponse>("/api/v1/analytics/operational")).data;
 }
@@ -256,8 +275,4 @@ export async function getSprints(maxHours = 40): Promise<{ sprints: SprintPlan[]
 
 export async function getRoi(): Promise<RoiResponse> {
   return (await apiClient.get<RoiResponse>("/api/v1/analytics/roi")).data;
-}
-
-export async function getMdmHealth(days = 56): Promise<{ data: MdmHealthPoint[]; days: number }> {
-  return (await apiClient.get("/api/v1/analytics/mdm-health", { params: { days } })).data;
 }

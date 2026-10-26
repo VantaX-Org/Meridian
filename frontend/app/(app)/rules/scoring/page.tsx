@@ -14,10 +14,11 @@ import { Button, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Radar
 import { SettingsSection, SettingsSheet } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { getFindingsAggregate } from "@/lib/api/findings";
-import { getCostModel, getSettings, saveNotificationSettings, updateCostModel, savePlannerConfig, updateAlertThresholds, updateDqsWeights } from "@/lib/api/settings";
-import { formatModuleName } from "@/lib/format";
+import { getCostModel, getCostModelFeatures, getSettings, saveNotificationSettings, updateCostModel, savePlannerConfig, updateAlertThresholds, updateDqsWeights } from "@/lib/api/settings";
+import { apiErrorMessage } from "@/lib/error";
+import { featureLabel, formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import type { AlertThresholds, CostModel, DimensionScores, PlannerConfig, TenantSettings } from "@/types/api";
+import type { AlertThresholds, CostModel, CostSpec, DimensionScores, PlannerConfig, TenantSettings } from "@/types/api";
 import { clsx } from "clsx";
 
 const DIMS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"] as const;
@@ -28,7 +29,8 @@ const DEFAULT_THRESHOLDS: AlertThresholds = {
   readiness_dqs_threshold: 75, readiness_waves: {},
 };
 const DEFAULT_NOTIFY = { email: "", teams_webhook: "", daily_digest: false, weekly_summary: true, monthly_report: true };
-const DEFAULT_PLANNER: PlannerConfig = { minutes_per_record: 3, investigation_hours: 1, cleaning_item_hours: 0.25, exception_hours: 2, sprint_hours: 40, cost_per_record: null, currency: "ZAR" };
+// No currency of its own: planner amounts are named by the cost model's currency (Admin, Settings).
+const DEFAULT_PLANNER: PlannerConfig = { minutes_per_record: 3, investigation_hours: 1, cleaning_item_hours: 0.25, exception_hours: 2, sprint_hours: 40, cost_per_record: null, currency: "" };
 
 /** Stored weights (tenants.dqs_weights) sum to 100; the form edits fractions of 1, so rescale on load. */
 function fromStored(stored: DimensionScores | null): DimensionScores {
@@ -54,6 +56,27 @@ function composite(scores: Record<string, number>, weights: DimensionScores): nu
   return Math.round((measured.reduce((a, d) => a + scores[d] * weights[d], 0) / total) * 100) / 100;
 }
 
+/** Two weight sets are the same once normalised (to four places, the precision `fromStored` keeps). */
+const sameWeights = (a: DimensionScores, b: DimensionScores) => DIMS.every((d) => Math.abs((Number(a[d]) || 0) - (Number(b[d]) || 0)) < 1e-4);
+
+/**
+ * The "With these weights" figure. With the saved weights it is the score now, unchanged. Otherwise it reweights the
+ * latest dimension scores, and the delta compares it with the saved weights over the same scores, so both sides
+ * ignore caps alike: the backend caps per object by critical rules over tolerance, which a client-side average
+ * cannot reproduce.
+ */
+export function weightPreview(
+  scores: Record<string, number>, saved: DimensionScores, weights: DimensionScores, current: number | null,
+): { value: number | null; delta: number | null; hint: string } {
+  if (current === null) return { value: null, delta: null, hint: "Needs a scored run" };
+  if (sameWeights(saved, weights)) return { value: current, delta: 0, hint: "No change" };
+  const next = composite(scores, weights);
+  const now = composite(scores, saved);
+  if (next === null || now === null) return { value: null, delta: null, hint: "Needs a scored run" };
+  const delta = Math.round((next - now) * 10) / 10;
+  return { value: next, delta, hint: delta === 0 ? "No change before caps" : `${delta > 0 ? "Up" : "Down"} ${Math.abs(delta)} points before caps` };
+}
+
 export default function ScoringPage() {
   const settings = useQuery({ queryKey: queryKeys.scoringSettings(), queryFn: getSettings });
   if (!settings.data) {
@@ -61,7 +84,7 @@ export default function ScoringPage() {
       <div className="flex flex-col gap-4">
         <PageHeader title="Scoring and alerts" meta="How the quality score is weighted, when an alert fires and who is told" />
         {settings.isError ? (
-          <ErrorState message="Settings could not be loaded." onRetry={() => void settings.refetch()} />
+          <ErrorState title="Settings could not be loaded." message={apiErrorMessage(settings.error)} onRetry={() => void settings.refetch()} />
         ) : (
           <div className="flex flex-col gap-2"><Skeleton height={32} /><Skeleton height={32} /><Skeleton height={32} /></div>
         )}
@@ -90,6 +113,8 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
   const unfloored = (initial.licensed_modules ?? []).filter((m) => !(m in floors));
   const [notify, setNotify] = useState(initial.notification_config ?? DEFAULT_NOTIFY);
   const [planner, setPlanner] = useState<PlannerConfig>(initial.planner_config ?? DEFAULT_PLANNER);
+  const costModel = useQuery({ queryKey: ["cost-model"], queryFn: getCostModel });
+  const moneyCurrency = costModel.data?.currency;
 
   const sum = DIMS.reduce((a, d) => a + (Number(weights[d]) || 0), 0);
   const normalised = useMemo(() => {
@@ -100,12 +125,9 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
   const sumOk = Math.abs(sum - 1) < 0.005;
   const scores = agg.data?.dqs.dimension_scores ?? {};
   const current = agg.data?.dqs.composite ?? null;
-  const rawPreview = composite(scores, normalised);
+  const saved = useMemo(() => fromStored(initial.dqs_weights), [initial.dqs_weights]);
+  const preview = weightPreview(scores, saved, normalised, current);
   const capped = agg.data?.dqs.capped;
-  const criticals = agg.data?.severity.critical ?? 0;
-  const capValue = capped && criticals > 0 ? (criticals >= 2 ? 70 : 85) : null;
-  const preview = rawPreview !== null && capValue !== null ? Math.min(rawPreview, capValue) : rawPreview;
-  const delta = preview !== null && current !== null ? Math.round((preview - current) * 10) / 10 : null;
 
   const saveWeights = useMutation({
     mutationFn: () => updateDqsWeights(toStored(normalised)),
@@ -152,11 +174,9 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
           size="hero"
           label="With these weights"
           loading={agg.isLoading}
-          value={preview}
-          tone={preview !== null && current !== null && preview < current ? "at-risk" : undefined}
-          hint={capValue !== null && rawPreview !== null && rawPreview > capValue
-            ? `Capped at ${capValue} by ${criticals} critical ${criticals === 1 ? "finding" : "findings"}`
-            : delta === null ? "Needs a scored run" : delta === 0 ? "Same as now" : `${delta > 0 ? "Up" : "Down"} ${Math.abs(delta)} points`}
+          value={preview.value}
+          tone={preview.delta !== null && preview.delta < 0 ? "at-risk" : undefined}
+          hint={preview.hint}
         />
         <div className="flex flex-col gap-1">
           <span className="m-text-meta m-ink-3">Weights sum</span>
@@ -166,6 +186,10 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
       </div>
       )}
 
+      {!agg.isError && current !== null ? (
+        <p className="m-text-meta m-ink-3">The preview reweights the latest run&rsquo;s dimension scores and ignores caps; caps apply per object when a run is scored.</p>
+      ) : null}
+
       {Object.keys(scores).length > 0 ? (
         <Radar label="Latest score per dimension" data={DIMS.filter((d) => scores[d] != null).map((d) => ({ x: d[0].toUpperCase() + d.slice(1), y: scores[d] }))} />
       ) : null}
@@ -173,10 +197,10 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
       <SettingsSheet>
       <SettingsSection title="Dimension weights">
         <p className="m-text-body m-ink-3">
-          The score is each measured dimension times its weight. One critical finding caps it at 85, two or more at 70. The cap is fixed.
+          The score is each measured dimension times its weight. A critical rule failing beyond its tolerance caps that object at 85; two or more at 70. The cap is fixed.
         </p>
-        <table className="m-text-body">
-          <thead><tr><th className="text-left">Dimension</th><th className="text-left">Weight</th><th className="text-right">Normalised</th><th className="text-right">Latest score</th><th className="text-right">Contribution</th></tr></thead>
+        <table className="m-table">
+          <thead><tr><th>Dimension</th><th>Weight</th><th className="text-right">Normalised</th><th className="text-right">Latest score</th><th className="text-right">Contribution</th></tr></thead>
           <tbody>
             {DIMS.map((d: Dim) => (
               <tr key={d}>
@@ -224,8 +248,8 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
           <div>
             <h3 className="m-text-body font-semibold mb-1">Score floors per object</h3>
             <p className="m-text-meta mb-2 m-ink-3">An analysis that scores an object below its floor raises an in-app alert, and an email or Teams message when configured.</p>
-            <table className="m-text-body [max-width:480px]!">
-              <thead><tr><th className="text-left">Object</th><th className="text-left">Floor</th><th /></tr></thead>
+            <table className="m-table [max-width:480px]">
+              <thead><tr><th>Object</th><th>Floor</th><th /></tr></thead>
               <tbody>
                 {Object.entries(floors).sort(([a], [b]) => a.localeCompare(b)).map(([m, v]) => (
                   <tr key={m}>
@@ -258,7 +282,8 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); savePlanner.mutate(); }}>
           <p className="m-text-body m-ink-3">
             The next-sprint planner ranks open work by severity-weighted records per hour. Effort comes from these figures.
-            Money appears only when you state what one failing record costs you.
+            Money appears only when you state what one failing record costs you
+            {moneyCurrency ? `, in ${moneyCurrency}, the cost model's currency (Admin, Settings)` : ""}.
           </p>
           <div className="grid grid-cols-3 gap-3">
             <Field label="Minutes per record">
@@ -277,13 +302,9 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
               <Input type="number" min="1" step="1" value={planner.sprint_hours} disabled={!write}
                 onChange={(e) => setPlanner({ ...planner, sprint_hours: Number(e.target.value) })} />
             </Field>
-            <Field label="Cost per failing record">
+            <Field label={moneyCurrency ? `Cost per failing record (${moneyCurrency})` : "Cost per failing record"}>
               <Input type="number" min="0" step="1" value={planner.cost_per_record ?? ""} disabled={!write} placeholder="Not set"
                 onChange={(e) => setPlanner({ ...planner, cost_per_record: e.target.value === "" ? null : Number(e.target.value) })} />
-            </Field>
-            <Field label="Currency">
-              <Input value={planner.currency} maxLength={3} disabled={!write}
-                onChange={(e) => setPlanner({ ...planner, currency: e.target.value.toUpperCase() })} />
             </Field>
           </div>
           {write ? <div><Button type="submit" disabled={savePlanner.isPending}>Save assumptions</Button></div> : null}
@@ -324,18 +345,49 @@ const COST_LABELS: Record<string, string> = { critical: "Critical finding cost",
 /** The severities a new cost model starts with: one field each, at zero, for the user to fill in and save. */
 const COST_SEVERITIES = ["critical", "high", "medium", "low"] as const;
 
-/** Cost per blocked record by severity. Feeds value-at-risk on the insight pages. */
+/** A severity draft laid over the stored specs: an edited amount becomes `{per_record}`, keeping the spec's factor. */
+export function withSeverityDraft(base: Record<string, CostSpec>, draft: Record<string, number>): Record<string, CostSpec> {
+  const out = { ...base };
+  Object.entries(draft).forEach(([k, n]) => {
+    const factor = base[k]?.factor;
+    out[k] = factor != null ? { per_record: n, factor } : { per_record: n };
+  });
+  return out;
+}
+
+/** A feature draft laid over the stored values: null removes the feature's value. */
+export function withFeatureDraft(base: Record<string, number>, draft: Record<string, number | null>): Record<string, number> {
+  const out = { ...base };
+  Object.entries(draft).forEach(([k, v]) => {
+    if (v == null) delete out[k];
+    else out[k] = v;
+  });
+  return out;
+}
+
+/**
+ * Cost per blocked record by severity, and the value of one blocked record per SAP feature (value at risk on
+ * Insights, Value at risk multiplies a feature's blocked records by it).
+ */
 function CostModelCard({ write }: { write: boolean }) {
   const q = useQuery({ queryKey: ["cost-model"], queryFn: getCostModel });
+  const featuresQ = useQuery({ queryKey: ["cost-model", "features"], queryFn: getCostModelFeatures, staleTime: 300_000 });
   const [draft, setDraft] = useState<Record<string, number>>({});
+  const [featureDraft, setFeatureDraft] = useState<Record<string, number | null>>({});
   const m = useMutation({
-    mutationFn: (base: CostModel) => updateCostModel({ ...base, severity: { ...base.severity, ...draft } }),
-    onSuccess: () => { toast.success("Cost model saved"); setDraft({}); void q.refetch(); },
+    mutationFn: (base: CostModel) => updateCostModel({
+      ...base,
+      severity: withSeverityDraft(base.severity, draft),
+      features: withFeatureDraft(base.features ?? {}, featureDraft),
+    }),
+    onSuccess: () => { toast.success("Cost model saved"); setDraft({}); setFeatureDraft({}); void q.refetch(); },
     onError: (e) => toast.error((e as Error).message || "Cost model not saved"),
   });
   if (q.isError) return <ErrorState message="The cost model could not be read." onRetry={() => void q.refetch()} />;
   if (!q.data) return <Skeleton height={64} />;
-  const sev = { ...q.data.severity, ...draft };
+  const sev = withSeverityDraft(q.data.severity, draft);
+  const features = withFeatureDraft(q.data.features ?? {}, featureDraft);
+  const unpriced = (featuresQ.data ?? []).map((f) => f.feature).filter((f) => !(f in features));
   return (
     <SettingsSection title={`Cost model (${q.data.currency})`}>
       <p className="m-text-body m-ink-3">What one blocked record costs, by severity.</p>
@@ -346,13 +398,54 @@ function CostModelCard({ write }: { write: boolean }) {
           action={write ? <Button onClick={() => setDraft(Object.fromEntries(COST_SEVERITIES.map((k) => [k, 0])))}>Add severity costs</Button> : undefined}
         />
       )}
-      <form className="flex flex-wrap gap-3" onSubmit={(e) => { e.preventDefault(); m.mutate(q.data); }}>
-        {Object.entries(sev).map(([k, v]) => (
-          <Field key={k} label={COST_LABELS[k] ?? `${formatModuleName(k)} finding cost`}>
-            <Input type="number" min={0} value={v} disabled={!write} onChange={(e) => setDraft({ ...draft, [k]: Number(e.target.value) })} />
-          </Field>
-        ))}
-        {write && Object.keys(sev).length > 0 && <Button type="submit" disabled={m.isPending}>Save cost model</Button>}
+      <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); m.mutate(q.data); }}>
+        <div className="flex flex-wrap gap-3">
+          {/* a severity priced from a field of the records (`{field}`) is kept as it is; only amounts are edited here */}
+          {Object.entries(sev).filter(([, spec]) => !spec.field).map(([k, spec]) => (
+            <Field key={k} label={COST_LABELS[k] ?? `${formatModuleName(k)} finding cost`}>
+              <Input type="number" min={0} value={spec.per_record ?? ""} disabled={!write}
+                onChange={(e) => setDraft({ ...draft, [k]: Number(e.target.value) })} />
+            </Field>
+          ))}
+        </div>
+
+        <div id="feature-values" className="flex flex-col gap-2">
+          <h3 className="m-text-body font-semibold">Value per blocked record, by SAP feature</h3>
+          <p className="m-text-meta m-ink-3">
+            Value at risk multiplies a feature&rsquo;s blocked records by this value. A feature without one is left out of value at risk.
+          </p>
+          <table className="m-table [max-width:560px]">
+            <thead><tr><th>SAP feature</th><th>Value per record</th><th /></tr></thead>
+            <tbody>
+              {Object.entries(features).sort(([a], [b]) => a.localeCompare(b)).map(([f, v]) => (
+                <tr key={f}>
+                  <td>{featureLabel(f)}</td>
+                  <td>
+                    <Input type="number" min={0} step="1" value={v} disabled={!write} aria-label={`${featureLabel(f)} value per record`}
+                      onChange={(e) => setFeatureDraft({ ...featureDraft, [f]: Math.max(0, Number(e.target.value)) })} />
+                  </td>
+                  <td>{write ? <Button type="button" variant="ghost" onClick={() => setFeatureDraft({ ...featureDraft, [f]: null })}>Remove</Button> : null}</td>
+                </tr>
+              ))}
+              {!Object.keys(features).length ? <tr><td colSpan={3} className="m-text-meta m-ink-3">No feature has a value yet</td></tr> : null}
+            </tbody>
+          </table>
+          {featuresQ.isError ? (
+            <p className="m-text-meta m-ink-3">The list of SAP features could not be read.</p>
+          ) : write && unpriced.length ? (
+            <div className="[max-width:320px]">
+              <Select
+                label="Add a value for"
+                value="" placeholder="Pick an SAP feature"
+                options={unpriced.map((f) => ({ value: f, label: featureLabel(f) }))}
+                onValueChange={(f) => f && setFeatureDraft({ ...featureDraft, [f]: 0 })} />
+            </div>
+          ) : null}
+        </div>
+
+        {write && (Object.keys(sev).length > 0 || Object.keys(features).length > 0 || Object.keys(featureDraft).length > 0) && (
+          <div><Button type="submit" disabled={m.isPending}>Save cost model</Button></div>
+        )}
       </form>
     </SettingsSection>
   );

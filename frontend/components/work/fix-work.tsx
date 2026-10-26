@@ -7,7 +7,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 import { toast } from "sonner";
 import {
   BulkBar, Button, Card, Checkbox, ConfirmDialog, Dialog, EmptyState, ErrorState, FilterChip, Input, Mono, Notice, Pill,
-  ProgressFill, Select, SeverityDot, Skeleton, Stat, Switch, Textarea, isSeverity,
+  RankedRow, Select, SeverityDot, Skeleton, Stat, Switch, Textarea, isSeverity,
 } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import {
@@ -16,12 +16,16 @@ import {
 } from "@/lib/api/work";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { formatModuleName, plural } from "@/lib/format";
-import { RecordPanel } from "./record-panel";
+import { getVersion } from "@/lib/api/versions";
+import { queryKeys } from "@/lib/query-keys";
+import { RunScope } from "@/components/run-scope";
+import { keyBelongsElsewhere } from "@/lib/inbox-keys";
+import { RecordPanel, invalidateAfterDecision, toastDraftBatch } from "./record-panel";
 import { STATUS, STATUS_ORDER, dueLabel } from "./status";
 
 const PAGE = 50;
 const SEVERITIES = ["critical", "high", "medium", "low"] as const;
-const SEVERITY_LABEL: Record<string, string> = { blocking: "Blocking (critical or high)" };
+const SEVERITY_LABEL: Record<string, string> = { blocking: "Critical and high" };
 const STATUS_FILTERS = ["open", ...STATUS_ORDER, "all"] as const;
 const STATUS_FILTER_LABEL: Record<(typeof STATUS_FILTERS)[number], string> = {
   open: "Still open", all: "Every status", ...Object.fromEntries(STATUS_ORDER.map((s) => [s, STATUS[s].label])) as Record<(typeof STATUS_ORDER)[number], string>,
@@ -33,8 +37,6 @@ const splitRecord = (v: string | null): [string, string] | null => {
   const i = v ? v.indexOf("|") : -1;
   return v && i > 0 ? [v.slice(0, i), v.slice(i + 1)] : null;
 };
-const typing = (t: EventTarget | null) =>
-  t instanceof HTMLElement && (t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName) || !!t.closest("[role=dialog]"));
 
 function useFilters() {
   const search = useSearchParams();
@@ -73,24 +75,26 @@ function GroupList({ groups, active, onPick }: { groups: WorkGroup[]; active: st
         className={`flex items-center justify-between rounded-[var(--m-radius-control)] px-3 py-2 text-left m-text-body ${!active ? "bg-[var(--m-accent-soft)] m-ink" : "m-ink-2 hover:bg-[var(--m-sheet-raised)]"}`}>
         <span>Every issue</span>
       </button>
-      {groups.map((g) => (
-        <button key={g.check_id} type="button" onClick={() => onPick(g.check_id)} aria-current={active === g.check_id ? "true" : undefined}
-          data-testid="work-group"
-          className={`flex flex-col gap-1 rounded-[var(--m-radius-control)] px-3 py-2 text-left ${active === g.check_id ? "bg-[var(--m-accent-soft)]" : "hover:bg-[var(--m-sheet-raised)]"}`}>
-          <span className="flex items-start gap-2">
-            <SeverityDot severity={isSeverity(g.severity) ? g.severity : "low"} />
-            <span className="m-text-body m-ink flex-1">{g.message ?? g.check_id}</span>
-            <span className="m-text-body m-numeric m-ink-2">{g.open.toLocaleString()}</span>
-          </span>
-          <span className="flex items-center gap-2 pl-5 m-text-meta m-ink-3">
-            {formatModuleName(g.module)}{g.field ? <>, <Mono inline>{g.field}</Mono></> : null}
-            {g.proposed ? <>, {g.proposed.toLocaleString()} suggested</> : null}
-          </span>
-          <span aria-hidden className="ml-5 block h-1 overflow-hidden rounded-full bg-[var(--m-sheet-raised)]">
-            <ProgressFill value={(g.open / top) * 100} />
-          </span>
-        </button>
-      ))}
+      <ul aria-label="Issues ranked by open records" className="flex flex-col">
+        {groups.map((g) => (
+          <RankedRow
+            key={g.check_id}
+            tone={isSeverity(g.severity) ? g.severity : "low"}
+            onSelect={() => onPick(g.check_id)}
+            selected={active === g.check_id}
+            testId="work-group"
+            label={
+              <span className="flex min-w-0 items-center gap-2">
+                <SeverityDot severity={isSeverity(g.severity) ? g.severity : "low"} />
+                <span className="min-w-0 flex-1 truncate">{g.message ?? g.check_id}</span>
+              </span>
+            }
+            magnitude={g.open.toLocaleString()}
+            share={(g.open / top) * 100}
+            meta={<span className="truncate">{formatModuleName(g.module)}{g.field ? <>, <Mono inline>{g.field}</Mono></> : null}{g.proposed ? <>, {g.proposed.toLocaleString()} suggested</> : null}</span>}
+          />
+        ))}
+      </ul>
     </nav>
   );
 }
@@ -143,7 +147,7 @@ function SetValueDialog({ group, open, onOpenChange, run }: { group: WorkGroup; 
   const [onlyBlank, setOnlyBlank] = useState(true);
   const m = useMutation({
     mutationFn: () => setGroupValue(group.check_id, value, onlyBlank, run),
-    onSuccess: (r) => { toast.success(`${plural(r.updated, "record")} set to "${value}": they wait in your draft batch for approval`); onOpenChange(false); void qc.invalidateQueries({ queryKey: ["work"] }); },
+    onSuccess: (r) => { toastDraftBatch(`${plural(r.updated, "record")} set to "${value}": they wait in your draft batch for approval`); onOpenChange(false); invalidateAfterDecision(qc); },
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
   return (
@@ -180,6 +184,9 @@ export function FixWork() {
   const [q, setQ] = useState(filter.q ?? "");
 
   const summary = useQuery({ queryKey: ["work", "summary", run ?? "latest"], queryFn: () => getWorkSummary(run), retry: false });
+  // The run the counts belong to, named above them (the summary resolves "latest" to its id).
+  const shownRunId = summary.data?.version_id;
+  const shownRun = useQuery({ queryKey: queryKeys.run(shownRunId ?? ""), queryFn: () => getVersion(shownRunId ?? ""), enabled: !!shownRunId, meta: { ignoreError: true } });
   const groups = useQuery({
     queryKey: ["work", "groups", run ?? "latest", filter.module ?? "", filter.severity ?? ""],
     queryFn: () => getWorkGroups({ version_id: run, module: filter.module, severity: filter.severity }),
@@ -212,12 +219,12 @@ export function FixWork() {
 
   const bulk = useMutation({
     mutationFn: (d: Decision[]) => decide(d, run),
-    onSuccess: (r) => { toast.success(`${plural(r.updated, "change")} saved`); setChecked(new Set()); setSignOff(false); void qc.invalidateQueries({ queryKey: ["work"] }); },
+    onSuccess: (r) => { toast.success(`${plural(r.updated, "change")} saved`); setChecked(new Set()); setSignOff(false); invalidateAfterDecision(qc); },
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const groupAccept = useMutation({
     mutationFn: (check: string) => acceptAllInGroup(check, run),
-    onSuccess: (r) => { toast.success(`${plural(r.accepted, "suggested value")} accepted: they wait in your draft batch for approval`); setAcceptAll(false); void qc.invalidateQueries({ queryKey: ["work"] }); },
+    onSuccess: (r) => { toastDraftBatch(`${plural(r.accepted, "suggested value")} accepted: they wait in your draft batch for approval`); setAcceptAll(false); invalidateAfterDecision(qc); },
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const build = useMutation({
@@ -242,14 +249,15 @@ export function FixWork() {
   // Keyboard triage: j/k (or arrows) move, a accepts the record's suggestions, t takes it, u undoes, Enter opens it.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey || typing(e.target)) return;
+      // Fields, dialogs, menus and other buttons keep their keys; Enter opens only from a record row or the page.
+      if (e.metaKey || e.ctrlKey || e.altKey || keyBelongsElsewhere(e, "[data-testid=work-record]")) return;
       if (e.key === "j" || e.key === "ArrowDown") { e.preventDefault(); next(); }
       else if (e.key === "k" || e.key === "ArrowUp") { e.preventDefault(); pick(items[Math.max(0, index - 1)]); }
       else if (!current) return;
       else if (e.key === "a" && canFix) bulk.mutate([{ module: current.module, record_key: current.record_key, action: "accept" }], { onSuccess: next });
       else if (e.key === "t" && can("assign")) bulk.mutate([{ module: current.module, record_key: current.record_key, action: "assign", assignee: "me" }]);
       else if (e.key === "u" && canFix) bulk.mutate([{ module: current.module, record_key: current.record_key, action: "undo" }]);
-      else if (e.key === "Enter") router.push(`/objects/${current.module}/records/${encodeURIComponent(current.record_key)}${run ? `?run=${run}` : ""}`);
+      else if (e.key === "Enter") { e.preventDefault(); router.push(`/objects/${current.module}/records/${encodeURIComponent(current.record_key)}${run ? `?run=${run}` : ""}`); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -288,9 +296,14 @@ export function FixWork() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="fix-work">
+      {shownRun.data ? (
+        <p className="m-text-body m-ink-2">
+          <RunScope scope={{ run: shownRun.data, latestId: undefined, pinned: false, choices: [] }} hrefFor={(id) => (id ? `/fix?${new URLSearchParams({ run: id })}` : "/fix")} />
+        </p>
+      ) : null}
       <div className="m-stat-grid @5xl:[grid-template-columns:repeat(4,minmax(0,1fr))]">
         <Stat label="Records to fix" value={t.open.toLocaleString()} hint={`${plural(t.issues, "issue")} across ${plural(s.objects.length, "object")}`} onClick={() => set({ st: null, sev: null, sugg: null, due: null })} />
-        <Stat label="Critical" value={t.critical.toLocaleString()} tone={t.critical ? "no-go" : "go"} hint="block SAP processes" onClick={() => set({ sev: "critical" })} />
+        <Stat label="Critical" value={t.critical.toLocaleString()} tone={t.critical ? "no-go" : "go"} hint="critical severity" onClick={() => set({ sev: "critical" })} />
         <Stat label="With a suggested value" value={t.proposed.toLocaleString()} hint="accept in one step" onClick={() => set({ sugg: "1" })} />
         <Stat label="Overdue" value={t.overdue.toLocaleString()} tone={t.overdue ? "at-risk" : undefined} hint="past their due date" onClick={() => set({ due: "overdue" })} />
       </div>
@@ -325,7 +338,7 @@ export function FixWork() {
         </div>
       ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-[300px_minmax(0,1fr)_minmax(0,480px)] lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)]">
+      <div className="grid gap-4 lg:grid-cols-[400px_minmax(0,1fr)] xl:grid-cols-[400px_minmax(0,1fr)_minmax(0,440px)] 2xl:grid-cols-[400px_minmax(0,1fr)_minmax(0,480px)]">
         <Card title="Issues" meta={groups.data ? `${groups.data.total.toLocaleString()} in this run` : undefined} padding="sm">
           {groups.isLoading ? <Skeleton height={240} /> : groups.isError ? <ErrorState {...apiErrorState(groups.error)} onRetry={() => groups.refetch()} />
             : groups.data && groups.data.groups.length ? (

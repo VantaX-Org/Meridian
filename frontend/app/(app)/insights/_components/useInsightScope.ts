@@ -22,7 +22,7 @@ export function useInsightScope() {
   const { list: versions, versions: all, explicit } = scope;
   const runs = all.filter(isFinished);
   const mode = insightScopeMode(pathname, { explicit, module: mod });
-  return { run: scope.runId, explicit, module: mod, runs, versions, resolving: explicit ? scope.fetchingRun : versions.isLoading, scope, mode };
+  return { run: scope.runId, explicit, module: mod, runs, versions, resolving: explicit ? scope.fetchingRun : versions.isLoading, scope, mode, error: scope.error, refetch: scope.refetch };
 }
 
 /** `?run=` and `?module=` carried onto a drill link. */

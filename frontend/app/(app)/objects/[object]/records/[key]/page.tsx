@@ -29,6 +29,11 @@ function SectionError({ what, query }: { what: string; query: UseQueryResult }) 
   );
 }
 
+/** A duplicate candidate's score as a percentage; the API sends 0-100, a 0-1 ratio is scaled. */
+function duplicateScore(score: number): string {
+  return `${Math.round(score <= 1 ? score * 100 : score)}%`;
+}
+
 export default function RecordFixSheetPage() {
   const params = useParams<{ object: string; key: string }>();
   const search = useSearchParams();
@@ -95,6 +100,9 @@ export default function RecordFixSheetPage() {
       </div>
     );
   }
+  if (!run && scope.error) {
+    return <ErrorState {...apiErrorState(scope.error)} onRetry={scope.refetch} />;
+  }
   if (!run) {
     return (
       <EmptyState
@@ -124,8 +132,18 @@ export default function RecordFixSheetPage() {
 
   const hasMissing = material.views.some((view) => view.cells.some((cell) => cell.state === "missing"));
   const failingRules = genericFindingsQuery.data?.failing ?? [];
-  const failing = isMaterial ? hasMissing : failingRules.length > 0;
-  const status: RecordStatus = failing ? { label: "failing", tone: "no-go" } : { label: "passing", tone: "go" };
+  // A material fails on a missing field or on any rule its findings report, whichever view it sits in.
+  const materialRules = new Set((findingsQuery.data?.by_view ?? []).flatMap((view) => view.failing.map((rule) => rule.check_id)));
+  const failing = isMaterial ? hasMissing || materialRules.size > 0 : failingRules.length > 0;
+  // The verdict waits on the findings: never "passing" while they load or when they could not be read.
+  const verdictQuery = isMaterial ? findingsQuery : genericFindingsQuery;
+  const status: RecordStatus = failing
+    ? { label: "failing", tone: "no-go" }
+    : verdictQuery.isError
+      ? { label: "unknown", tone: "neutral" }
+      : verdictQuery.isPending
+        ? { label: "checking", tone: "neutral" }
+        : { label: "passing", tone: "go" };
   const fieldRows = Object.entries(material.mara ?? {}).filter(([, v]) => v != null && String(v).trim() !== "");
   // Every field of the sheet plus the fields the checks read, grouped by table, the failing ones highlighted.
   const sheetTable = material.labels.Table ?? (isMaterial ? "MARA" : "Record");
@@ -135,14 +153,15 @@ export default function RecordFixSheetPage() {
   const supersession = supersessionQuery.data;
   const duplicates = duplicatesQuery.data;
 
-  const exportOptions = [
+  // The record sheet PDF reads a material (MARA/MATNR, api/services/pdf_reports.py:load_record): only a material offers it.
+  const exportOptions = isMaterial ? [
     {
       format: "pdf" as const,
-      label: "Fix sheet (PDF)",
+      label: "Record sheet (PDF)",
       run: () =>
         downloadAuthenticated(getRecordReportUrl(run, material.matnr), `meridian-fix-sheet-${material.matnr}.pdf`),
     },
-  ];
+  ] : [];
 
   return (
     <RecordPage
@@ -150,12 +169,17 @@ export default function RecordFixSheetPage() {
       object={object}
       status={status}
       meta={<RunScope scope={scope} hrefFor={(id) => hrefWithRun(`/objects/${object}/records/${encodeURIComponent(key)}`, search, id)} />}
-      actions={<ExportMenu options={exportOptions} />}
+      actions={exportOptions.length > 0 ? <ExportMenu options={exportOptions} /> : undefined}
       stats={isMaterial ? [
+        verdictQuery.isSuccess
+          ? { label: "Failing rules", value: materialRules.size, tone: materialRules.size ? "no-go" : "go" }
+          : { label: "Failing rules", value: "—" },
         { label: "Missing fields", value: material.views.reduce((n, v) => n + v.cells.filter((c) => c.state === "missing").length, 0), tone: hasMissing ? "no-go" : "go" },
         { label: "Views", value: material.views.length },
       ] : [
-        { label: "Failing rules", value: failingRules.length, tone: failingRules.length ? "no-go" : "go" },
+        verdictQuery.isSuccess
+          ? { label: "Failing rules", value: failingRules.length, tone: failingRules.length ? "no-go" : "go" }
+          : { label: "Failing rules", value: "—" },
         { label: "Fields with a value", value: fieldRows.length },
       ]}
     >
@@ -182,8 +206,12 @@ export default function RecordFixSheetPage() {
               </Fragment>
             ))
           )}
-          <dt className="m-ink-3">Levels</dt>
-          <dd>{material.levels_total}</dd>
+          {isMaterial ? (
+            <>
+              <dt className="m-ink-3">Organisational levels</dt>
+              <dd>{material.levels_total}</dd>
+            </>
+          ) : null}
         </dl>
       </Card>
 
@@ -211,14 +239,14 @@ export default function RecordFixSheetPage() {
               {failingRules.map((rule) => (
                 <li key={rule.check_id} className="flex flex-wrap items-baseline gap-2">
                   <Status kind="severity" value={rule.severity} />
-                  <Link href={hrefWithRun(`/objects/${object}/rules/${encodeURIComponent(rule.check_id)}`, null, scope.explicit ?? null)} className="m-ink-accent"><Mono>{rule.check_id}</Mono></Link>
+                  <Link href={hrefWithRun(`/objects/${object}/rules/${encodeURIComponent(rule.check_id)}`, null, scope.explicit ?? null)} className="m-ink-accent underline underline-offset-2"><Mono>{rule.check_id}</Mono></Link>
                   <span>{rule.message ?? ""}</span>
                   {rule.field ? <Mono>{rule.field}</Mono> : null}
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="m-ink-3">No failing rules on this run.</p>
+            <EmptyState variant="inline" title="No failing rules on this run" />
           )}
         </Card>
       )}
@@ -226,21 +254,23 @@ export default function RecordFixSheetPage() {
       <FieldSheet fields={sheet} />
 
       {isMaterial && (
-        <Card title="Findings">
+        <Card title="Failing rules">
           {findingsQuery.isError ? (
             <SectionError what="this record's findings" query={findingsQuery} />
           ) : findings && findings.by_view.some((view) => view.failing.length > 0) ? (
             <ul className="flex flex-col gap-1">
               {findings.by_view.flatMap((view) =>
                 view.failing.map((rule) => (
-                  <li key={`${view.view}-${rule.check_id}`}>
-                    <Mono>{rule.check_id}</Mono> (<Mono>{rule.severity}</Mono>) — {rule.message}
+                  <li key={`${view.view}-${rule.check_id}`} className="flex flex-wrap items-baseline gap-2">
+                    <Status kind="severity" value={rule.severity} />
+                    <Link href={hrefWithRun(`/objects/${object}/rules/${encodeURIComponent(rule.check_id)}`, null, scope.explicit ?? null)} className="m-ink-accent underline underline-offset-2"><Mono>{rule.check_id}</Mono></Link>
+                    <span>{rule.message}</span>
                   </li>
                 )),
               )}
             </ul>
           ) : (
-            <p className="m-ink-3">No failing rules on this run.</p>
+            <EmptyState variant="inline" title="No failing rules on this run" />
           )}
         </Card>
       )}
@@ -259,7 +289,7 @@ export default function RecordFixSheetPage() {
               ))}
             </ul>
           ) : (
-            <p className="m-ink-3">Not superseded at any plant.</p>
+            <EmptyState variant="inline" title="Not superseded at any plant" />
           )}
         </Card>
       )}
@@ -271,14 +301,23 @@ export default function RecordFixSheetPage() {
           ) : duplicates && duplicates.items.length > 0 ? (
             <ul className="flex flex-col gap-1">
               {duplicates.items.map((item) => (
-                <li key={item.matnr}>
-                  <Mono>{item.matnr}</Mono> {item.maktx ?? ""} — matches on {item.matches_on.join(", ")} (score{" "}
-                  {item.score})
+                <li key={item.matnr} className="flex flex-wrap items-baseline gap-2">
+                  <Link href={hrefWithRun(`/objects/material_master/records/${encodeURIComponent(item.matnr)}`, null, scope.explicit ?? null)} className="m-ink-accent underline underline-offset-2"><Mono>{item.matnr}</Mono></Link>
+                  <span>{item.maktx ?? ""}</span>
+                  <span className="m-ink-3">matches on {item.matches_on.join(", ")}</span>
+                  <span className="tabular-nums">{duplicateScore(item.score)}</span>
+                  <Link
+                    href={`/mdm/golden/merge?object=material_master&record=${encodeURIComponent(material.matnr)}`}
+                    aria-label={`Review pair ${material.matnr} and ${item.matnr}`}
+                    className="m-ink-accent underline underline-offset-2"
+                  >
+                    Review pair
+                  </Link>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="m-ink-3">No duplicate candidates for this record.</p>
+            <EmptyState variant="inline" title="No duplicate candidates for this record" />
           )}
         </Card>
       )}

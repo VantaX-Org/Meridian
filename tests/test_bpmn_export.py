@@ -292,8 +292,26 @@ def test_route_reference_download(client):
     assert client.audits[-1]["action"] == "export" and client.audits[-1]["entity_id"] is None
 
 
-def test_route_viewer_cannot_download(client):
+def test_route_viewer_cannot_download_signavio(client):
+    # Owner decision 2026-10-26: Signavio downloads stay with roles that hold `export` (leads, admins, process
+    # analysts), overriding spec §6.5's `view`.
     r = client.c.get("/api/v1/process-designer/reference/export/signavio", headers={"X-User-Role": "viewer"})
+    assert r.status_code == 403
+    r = client.c.get(f"/api/v1/process-designer/models/{client.mine}/export/signavio", headers={"X-User-Role": "viewer"})
+    assert r.status_code == 403
+
+
+def test_route_process_analyst_downloads_with_export_process(client):
+    # process_analyst holds export_process (its intended export right), not the legacy `export`.
+    pa = {"X-User-Role": "process_analyst"}
+    assert client.c.get("/api/v1/process-designer/reference/export/signavio", headers=pa).status_code == 200
+    assert client.c.get(f"/api/v1/process-designer/models/{client.mine}/export/signavio", headers=pa).status_code == 200
+    assert client.c.get("/api/v1/process-designer/reference/export/pptx", headers=pa).status_code == 200
+
+
+def test_route_viewer_cannot_download_pptx(client):
+    # the PowerPoint deck is not one of the exports §6.5 names: it keeps `export`
+    r = client.c.get("/api/v1/process-designer/reference/export/pptx", headers={"X-User-Role": "viewer"})
     assert r.status_code == 403 and client.audits == []
 
 

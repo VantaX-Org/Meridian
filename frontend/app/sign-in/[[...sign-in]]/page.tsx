@@ -6,8 +6,6 @@ import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
 import { AuthFrame, PasswordField, authFormClass, authLinkClass } from "@/components/auth/auth-frame";
 import { Button, Field, Notice } from "@/design";
-import { resolveNavHref } from "@/lib/nav";
-import { isRole } from "@/hooks/use-role";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -64,12 +62,11 @@ export default function SignInPage() {
     if (invalid) return;
     setLoading(true);
     try {
-      const signedInUser = await login(email, password);
+      await login(email, password);
       const next = new URLSearchParams(window.location.search).get("next");
-      const role = isRole(signedInUser.role) ? signedInUser.role : "viewer";
-      router.push(
-        next && next.startsWith("/") && !next.startsWith("//") ? next : resolveNavHref("/home/lead", role),
-      );
+      // /home decides the landing page once /me/permissions has loaded: the user's role alone cannot say whether a
+      // steward may open Fix work, or whether a scoped grant makes them a steward at all.
+      router.push(next && next.startsWith("/") && !next.startsWith("//") ? next : "/home");
     } catch (err: unknown) {
       setError(describeError(err));
     } finally {

@@ -107,3 +107,148 @@ export async function pollVersionStatus(
   }
   throw new Error("Polling timed out");
 }
+
+/* ── Report history: every report file Meridian generated (downloads and scheduled runs) ── */
+
+export type ReportFileFormat = "pdf" | "xlsx" | "json";
+
+export interface ReportFile {
+  id: string;
+  /** The catalogue id of the report (board, workbook, trend ...). */
+  kind: string;
+  name: string;
+  version_id: string | null;
+  run_label: string | null;
+  run_at: string | null;
+  format: ReportFileFormat;
+  file_name: string;
+  size_bytes: number;
+  source: "download" | "schedule" | "run_now";
+  schedule_id: string | null;
+  created_by: string | null;
+  created_by_label: string | null;
+  created_at: string;
+  /** The viewer made it, or is a reports admin. */
+  can_delete: boolean;
+}
+
+export interface ReportFilePage {
+  total: number;
+  limit: number;
+  offset: number;
+  items: ReportFile[];
+}
+
+export async function getReportHistory(params: { kind?: string; limit?: number; offset?: number } = {}): Promise<ReportFilePage> {
+  const { data } = await apiClient.get<ReportFilePage>("/api/v1/reports/history", { params });
+  return data;
+}
+
+export function getReportHistoryDownloadUrl(fileId: string): string {
+  return `/api/v1/reports/history/${encodeURIComponent(fileId)}/download`;
+}
+
+export async function deleteReportFile(fileId: string): Promise<void> {
+  await apiClient.delete(`/api/v1/reports/history/${encodeURIComponent(fileId)}`);
+}
+
+/* ── Scheduled reports ── */
+
+export type ScheduleCadence = "daily" | "weekly" | "monthly";
+export type ScheduleRunStatus = "running" | "sent" | "partial" | "failed" | "skipped";
+
+export interface ReportScheduleParams {
+  /** "latest" (any finished run), "upload" (file uploads) or a system id. */
+  scope: string;
+  module?: string | null;
+}
+
+export interface ReportScheduleInput {
+  name: string;
+  kind: string;
+  format?: ReportFileFormat;
+  params: ReportScheduleParams;
+  cadence: ScheduleCadence;
+  /** "HH:MM" in the schedule's time zone. */
+  time_of_day: string;
+  /** 0 = Monday; weekly only. */
+  weekday?: number | null;
+  /** 1-31, clamped to the month's last day; monthly only. */
+  day_of_month?: number | null;
+  /** IANA name; omitted means the tenant's time zone. */
+  timezone?: string | null;
+  recipient_user_ids: string[];
+  recipient_channel_ids: string[];
+  enabled: boolean;
+}
+
+export interface ReportSchedule {
+  id: string;
+  name: string;
+  kind: string;
+  format: ReportFileFormat;
+  params: ReportScheduleParams;
+  cadence: ScheduleCadence;
+  time_of_day: string;
+  weekday: number | null;
+  day_of_month: number | null;
+  timezone: string;
+  recipient_user_ids: string[];
+  recipient_channel_ids: string[];
+  enabled: boolean;
+  last_run_at: string | null;
+  last_status: ScheduleRunStatus | null;
+  next_run_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  /** "Every Monday at 07:00 (Africa/Johannesburg)". */
+  summary: string;
+  /** The viewer made it, or is a reports admin. */
+  can_edit: boolean;
+}
+
+export interface ScheduleOption {
+  id: string;
+  label: string;
+  detail?: string | null;
+}
+
+export interface ScheduleOptions {
+  timezone: string;
+  types: { id: string; name: string; format: ReportFileFormat; needs_run: boolean; needs_module: boolean }[];
+  users: ScheduleOption[];
+  /** Alert channels, labelled without their target URL. */
+  channels: ScheduleOption[];
+  systems: ScheduleOption[];
+  modules: string[];
+}
+
+export async function getReportSchedules(): Promise<ReportSchedule[]> {
+  const { data } = await apiClient.get<ReportSchedule[]>("/api/v1/reports/schedules");
+  return data;
+}
+
+export async function getReportScheduleOptions(): Promise<ScheduleOptions> {
+  const { data } = await apiClient.get<ScheduleOptions>("/api/v1/reports/schedules/options");
+  return data;
+}
+
+export async function createReportSchedule(body: ReportScheduleInput): Promise<ReportSchedule> {
+  const { data } = await apiClient.post<ReportSchedule>("/api/v1/reports/schedules", body);
+  return data;
+}
+
+export async function updateReportSchedule(id: string, body: ReportScheduleInput): Promise<ReportSchedule> {
+  const { data } = await apiClient.put<ReportSchedule>(`/api/v1/reports/schedules/${encodeURIComponent(id)}`, body);
+  return data;
+}
+
+export async function deleteReportSchedule(id: string): Promise<void> {
+  await apiClient.delete(`/api/v1/reports/schedules/${encodeURIComponent(id)}`);
+}
+
+/** Generate and deliver now, on the worker; the next scheduled run is unchanged. */
+export async function runReportScheduleNow(id: string): Promise<{ queued: boolean; due_at: string }> {
+  const { data } = await apiClient.post<{ queued: boolean; due_at: string }>(`/api/v1/reports/schedules/${encodeURIComponent(id)}/run`);
+  return data;
+}

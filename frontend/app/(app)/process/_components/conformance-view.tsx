@@ -6,7 +6,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, EmptyState, ErrorState, Notice, Pareto, Skeleton, Stat } from "@/design";
+import { Button, DataTable, EmptyState, ErrorState, Mono, Notice, Pareto, Skeleton, Stat } from "@/design";
 import { getConformance, type Conformance, type ProcessFilterParams } from "@/lib/api/process-discovery";
 import { apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
@@ -23,20 +23,39 @@ const POINT_COLUMNS: ColumnDef<Point>[] = [
 function ParetoPanel({ title, data, id }: { title: string; data: Point[]; id: string }) {
   return (
     <section className="grid gap-2">
-      <h2 className="font-semibold">{title}</h2>
+      <h2 className="m-text-h font-semibold m-ink">{title}</h2>
       {data.length ? (
         <ViewAsTable
           chart={<Pareto data={data} height={220} />}
-          table={<DataTable columns={POINT_COLUMNS} data={data} getRowId={(p) => p.x} height="auto" hideToolbar dense
+          table={<DataTable columns={POINT_COLUMNS} data={data} getRowId={(p) => p.x} height="auto" hideToolbar
             tableId={id} exportName={id} />} />
-      ) : <p className="m-ink-3">None in this view.</p>}
+      ) : <EmptyState title="None in this view" />}
     </section>
   );
 }
 
-export function ConformanceView({ runId, l1, filters, rework, onClearFilters }: {
+/** Spec §3.5 "extra": steps the cases perform that the reference model does not name, most cases first. */
+function ExtraList({ extra }: { extra: NonNullable<Conformance["extra"]> }) {
+  return (
+    <section className="grid gap-2" aria-labelledby="process-extra-title">
+      <h2 id="process-extra-title" className="m-text-h font-semibold m-ink">Not in the reference model</h2>
+      {extra.length ? (
+        <ul className="grid">
+          {extra.map((e) => (
+            <li key={e.activity} className="m-ranked-row">
+              <Mono>{e.activity}</Mono>
+              <span className="flex-1" />
+              <span className="m-text-body m-ink-2 tabular-nums">{`${e.cases.toLocaleString()} ${e.cases === 1 ? "case" : "cases"}, ${fmtShare(e.share)}`}</span>
+            </li>
+          ))}
+        </ul>
+      ) : <EmptyState variant="inline" title="Every step in this view is in the reference model" />}
+    </section>
+  );
+}
+
+export function ConformanceView({ runId, filters, rework, onClearFilters }: {
   runId: string;
-  l1: string;
   filters: ProcessFilterParams;
   rework: Record<string, number> | undefined;
   onClearFilters?: () => void;
@@ -60,15 +79,16 @@ export function ConformanceView({ runId, l1, filters, rework, onClearFilters }: 
 
   return (
     <div className="grid gap-4">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="m-stat-grid">
         <Stat label="Fitness" help="fitness" value={fmtFitness(c.fitness)} tone={tone === "go" || tone === "at-risk" || tone === "no-go" ? tone : undefined}
           hint="Share of reference steps each case performs in order" />
         <Stat label="Happy path" help="happyPath" value={fmtShare(c.happy_path?.share ?? 0)}
           hint={`${c.happy_path?.case_count ?? 0} cases follow ${(c.happy_path?.activities ?? []).join(" → ") || "—"}`} />
       </div>
-      {l1 === "SFX" && (
-        <Notice tone="info" title="Rework is not measured for SuccessFactors">
-          Each application keeps only its latest status, so a repeated step leaves no trace.
+      {/* Builders that cannot see a repeated step (SuccessFactors keeps only the latest status) leave rework out of the stats. */}
+      {!rework && (
+        <Notice tone="info" title="Rework is not measured for this process">
+          The source keeps only the latest status of each record, so a repeated step leaves no trace.
         </Notice>
       )}
       <div className="grid gap-4 lg:grid-cols-2">
@@ -77,8 +97,9 @@ export function ConformanceView({ runId, l1, filters, rework, onClearFilters }: 
         <ParetoPanel title="Out-of-order steps" id="process-out-of-order"
           data={c.steps.filter((s) => s.out_of_order > 0).map((s) => ({ x: s.activity, y: s.out_of_order }))} />
       </div>
-      <DataTable columns={columns} data={steps} getRowId={(s) => s.activity} height="auto" dense
+      <DataTable columns={columns} data={steps} getRowId={(s) => s.activity} height="auto"
         tableId="process-conformance-steps" exportName={`process-conformance-${runId}`} />
+      <ExtraList extra={c.extra ?? []} />
     </div>
   );
 }

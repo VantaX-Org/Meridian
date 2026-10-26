@@ -1,10 +1,10 @@
 "use client";
 
 /** Rules › Learned: house rules the tenant's own data follows for >= 95% of records
- * (checks/house_rules.py). The miner proposes; a person with `approve` turns a
- * proposal into an active rule with a new LR- id; `manage_rules` can reject. */
+ * (checks/house_rules.py). The miner proposes; a person with `approve` (or `review_ai_rules`)
+ * turns a proposal into an active rule with a new LR- id, or rejects it; `manage_rules` can reject too. */
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Button, DataTable, DrillLink, ExplorerPage, Field, Mono, PageHeader, Pill, Select, asyncStateOf } from "@/design";
 import { actionColumn, RowButton } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
+import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import {
   approveLearnedRule,
   getLearnedRules,
@@ -26,7 +27,7 @@ import {
 } from "@/lib/api/learnedRules";
 import { errorText } from "@/lib/api/remediation";
 import { getVersions } from "@/lib/api/versions";
-import { apiErrorMessage } from "@/lib/error";
+import { labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
 const STATUS_OPTIONS = [
@@ -35,6 +36,8 @@ const STATUS_OPTIONS = [
   { value: "rejected", label: "Rejected" },
 ];
 const KIND_OPTIONS = [{ value: "all", label: "All kinds" }, ...Object.entries(KIND_LABEL).map(([value, label]) => ({ value, label }))];
+const SEVERITIES = ["critical", "high", "medium", "low"] as const;
+const SEVERITY_OPTIONS = SEVERITIES.map((value) => ({ value, label: labelOf(value) }));
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
 
 /** The part of a composite record key that is the rule's own field (`PRCTR=BAD-0037`), else its first part. */
@@ -47,9 +50,15 @@ function exampleOf(key: string, field: string): string {
 export default function LearnedRulesPage() {
   const qc = useQueryClient();
   const { can } = useRole();
-  const [status, setStatus] = useState<LearnedStatus>("pending");
-  const [kind, setKind] = useState<"all" | LearnedKind>("all");
-  const [severity] = useState<Severity>("medium");
+  // api/routes/learned_rules.py: the checker (approve or review_ai_rules) approves and rejects; manage_rules may reject.
+  const canDecide = can("approve") || can("review_ai_rules");
+  const canReject = canDecide || can("manage_rules");
+  const [statusRaw, setStatus] = useUrlState("status", "pending");
+  const status = oneOf(statusRaw, ["pending", "approved", "rejected"] as const satisfies readonly LearnedStatus[], "pending");
+  const [kindRaw, setKind] = useUrlState("kind", "all");
+  const kind = oneOf(kindRaw, ["all", ...(Object.keys(KIND_LABEL) as LearnedKind[])] as const, "all");
+  const [severityRaw, setSeverity] = useUrlState("severity", "medium");
+  const severity: Severity = oneOf(severityRaw, SEVERITIES, "medium");
   const q = useQuery({
     queryKey: queryKeys.learnedRules({ status, kind }),
     queryFn: () => getLearnedRules(status, kind === "all" ? undefined : kind),
@@ -92,11 +101,11 @@ export default function LearnedRulesPage() {
     } },
     actionColumn((r) => r.status === "pending" ? (
       <span className="flex gap-3">
-        {can("approve") ? <RowButton onClick={() => approve.mutate(r.id)} disabled={approve.isPending}>Approve</RowButton> : null}
-        {can("manage_rules") ? <RowButton onClick={() => reject.mutate(r.id)} disabled={reject.isPending}>Reject</RowButton> : null}
+        {canDecide ? <RowButton onClick={() => approve.mutate(r.id)} disabled={approve.isPending}>Approve</RowButton> : null}
+        {canReject ? <RowButton onClick={() => reject.mutate(r.id)} disabled={reject.isPending}>Reject</RowButton> : null}
       </span>
-    ) : <Mono>{r.rule_id ?? r.status}</Mono>),
-  ], [approve, reject, can]);
+    ) : r.rule_id ? <Mono>{r.rule_id}</Mono> : <Pill tone="neutral">{labelOf(r.status)}</Pill>),
+  ], [approve, reject, canDecide, canReject]);
 
   const items = q.data?.items ?? [];
   return (
@@ -110,8 +119,11 @@ export default function LearnedRulesPage() {
       }
       filterBar={
         <div className="flex items-end gap-3">
-          <Field label="Status"><Select value={status} onValueChange={(v) => setStatus(v as LearnedStatus)} options={STATUS_OPTIONS} /></Field>
-          <Field label="Kind"><Select value={kind} onValueChange={(v) => setKind(v as "all" | LearnedKind)} options={KIND_OPTIONS} /></Field>
+          <Field label="Status"><Select value={status} onValueChange={setStatus} options={STATUS_OPTIONS} /></Field>
+          <Field label="Kind"><Select value={kind} onValueChange={setKind} options={KIND_OPTIONS} /></Field>
+          {canDecide && status === "pending" ? (
+            <Field label="Approve as"><Select value={severity} onValueChange={setSeverity} options={SEVERITY_OPTIONS} /></Field>
+          ) : null}
         </div>
       }
       state={asyncStateOf(q, () => items.length === 0, true)}
@@ -125,7 +137,7 @@ export default function LearnedRulesPage() {
           }
         : { title: status === "approved" ? "Nothing approved yet" : "Nothing rejected", detail: "Proposals you decide on are listed here.", action: <Button variant="secondary" onClick={() => setStatus("pending")}>Show proposals waiting</Button> }}
       errorProps={{
-        message: apiErrorMessage(q.error),
+        error: q.error,
         onRetry: () => q.refetch(),
       }}
       table={<DataTable columns={columns} data={items} getRowId={(r) => r.id} />}

@@ -2,44 +2,38 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DrillLink, Button, Delta, DataTable, ExplorerPage, ExportMenu, FilterChip, Mono, PageHeader, Pill, Score, Skeleton, Stat, emptyExportOptions, type PillTone, type Verdict } from "@/design";
-import { HEALTH_LABEL, dqsTrend, latestDqs, nextRun } from "./_health";
+import { DrillLink, Button, RowAction, Delta, DataTable, ExplorerPage, ExportMenu, FilterChip, Mono, PageHeader, Pill, Score, Skeleton, Stat, Status, emptyExportOptions } from "@/design";
+import { HEALTH_LABEL, HEALTH_VERDICT, dqsTrend, latestDqs, nextRun } from "./_health";
 import { useUrlState } from "@/hooks/use-url-state";
 import { usePermissions, useSystemScope } from "@/lib/permissions";
 import { ConnectSystemDialog } from "@/components/systems/connect-system-dialog";
+import { RunAnalysis } from "@/app/(app)/insights/_components/RunAnalysis";
 import { getSystemModules, getSystems } from "@/lib/api/connectivity";
 import { getSystemVersions } from "@/lib/api/system-objects";
 import { getSyncProfiles } from "@/lib/api/systems";
 import { getConfigLandscape, type SystemConfigState } from "@/lib/api/config-load";
 import { exportRuns } from "@/lib/api/versions";
 import { getTriageSettings } from "@/lib/api/triage";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
-import { browserTimezone, formatDate, relativeTime } from "@/lib/format";
+import { isListFailure } from "@/lib/error";
+import { browserTimezone, formatDate, relativeTime, systemTypeLabel } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { HealthStatus, SAPSystemExtended } from "@/types/api";
 
-/** A connection's health as the verdict vocabulary; an untested system has no verdict. */
-const HEALTH_VERDICT: Record<HealthStatus, Verdict | null> = {
-  healthy: "go",
-  degraded: "at-risk",
-  unreachable: "no-go",
-  auth_failed: "no-go",
-  unknown: null,
-};
 /** Worst first, so the ledger leads with what needs a hand. */
 const HEALTH_RANK: Record<HealthStatus, number> = { unreachable: 0, auth_failed: 0, degraded: 1, unknown: 2, healthy: 3 };
 const isDown = (h: HealthStatus) => h === "unreachable" || h === "auth_failed";
 
-const CONFIG_TONE: Record<SystemConfigState, PillTone> = {
-  loaded: "go",
-  with_gaps: "at-risk",
-  loading: "neutral",
-  not_loaded: "neutral",
-  failed: "no-go",
-  not_available: "neutral",
+/** A configuration load as the lifecycle vocabulary; the states outside it (not loaded, not available) render neutral by name. */
+const CONFIG_LIFECYCLE: Record<SystemConfigState, string> = {
+  loaded: "done",
+  with_gaps: "done",
+  loading: "running",
+  not_loaded: "not_loaded",
+  failed: "failed",
+  not_available: "not_available",
 };
 const CONFIG_LABEL: Record<SystemConfigState, string> = {
   loaded: "Loaded",
@@ -64,8 +58,9 @@ function configSub(c: {
     case "not_available":
       return "No configuration to read";
     case "loaded":
-    case "with_gaps":
       return c.loaded_at ? `${relativeTime(c.loaded_at)}, ${c.areas_loaded} of ${c.areas_total} areas` : "—";
+    case "with_gaps":
+      return c.loaded_at ? `With gaps: ${c.areas_loaded} of ${c.areas_total} areas, ${relativeTime(c.loaded_at)}` : "With gaps";
     default:
       return "—";
   }
@@ -73,6 +68,7 @@ function configSub(c: {
 
 export default function SystemsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const systemScope = useSystemScope();
   const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, select: systemScope });
   const systems = data ?? [];
@@ -84,7 +80,12 @@ export default function SystemsPage() {
   const dqsById = new Map(
     systems.map((s, i) => {
       const vs = versionsQ[i]?.data?.versions;
-      return [s.id, vs ? { dqs: latestDqs(vs).dqs, trend: dqsTrend(vs) } : null];
+      if (!vs) return [s.id, null];
+      const { dqs, version } = latestDqs(vs);
+      // A run that read no rows has nothing to score: its rules pass vacuously, so its number would mislead.
+      const rows = version ? Object.values(version.records ?? {}) : [];
+      const readNothing = rows.length > 0 && rows.every((n) => !n);
+      return [s.id, { dqs: readNothing ? null : dqs, trend: readNothing ? null : dqsTrend(vs) }];
     }),
   );
   const modulesQ = useQueries({
@@ -119,17 +120,24 @@ export default function SystemsPage() {
   const isUnhealthy = (h: HealthStatus) => h === "degraded" || h === "unreachable" || h === "auth_failed";
   const matchesHealth = (h: HealthStatus) =>
     !healthFilter || (healthFilter === "unhealthy" ? isUnhealthy(h) : healthFilter === "down" ? isDown(h) : h === healthFilter);
-  const dqsOf = (id: string) => dqsById.get(id)?.dqs ?? null;
+  /** The score, or null when nothing has been loaded: never extracted, no object with rows, or a run that read none. */
+  const scoreOf = (s: SAPSystemExtended) => {
+    const d = dqsById.get(s.id);
+    const o = objectsById.get(s.id);
+    if (!d || d.dqs == null || (!s.last_sync_at && o != null && o.total > 0 && o.loaded === 0)) return null;
+    return d;
+  };
+  const dqsOf = (s: SAPSystemExtended) => scoreOf(s)?.dqs ?? null;
   const shown = systems
     .filter((s) => !configFilter || configById.get(s.id)?.status === configFilter)
     .filter((s) => matchesHealth(s.health_status))
     .sort((a, b) => HEALTH_RANK[a.health_status] - HEALTH_RANK[b.health_status]
-      || (dqsOf(a.id) ?? Infinity) - (dqsOf(b.id) ?? Infinity)
+      || (dqsOf(a) ?? Infinity) - (dqsOf(b) ?? Infinity)
       || a.name.localeCompare(b.name));
 
   const columns: ColumnDef<SAPSystemExtended>[] = [
     { accessorKey: "name", header: "System", size: 240, cell: ({ row }) => (<span className="inline-flex items-baseline gap-2">{row.original.name}<Mono>{row.original.client ? `${row.original.environment}/${row.original.client}` : row.original.environment}</Mono></span>) },
-    { accessorKey: "system_type", header: "Type", size: 110, cell: ({ row }) => `${row.original.system_type}${row.original.role === "target" ? ", target" : ""}` },
+    { accessorKey: "system_type", header: "Type", size: 150, cell: ({ row }) => `${systemTypeLabel(row.original.system_type)}${row.original.role === "target" ? ", target" : ""}` },
     {
       accessorKey: "health_status",
       header: "Health",
@@ -137,11 +145,15 @@ export default function SystemsPage() {
       cell: ({ row }) => {
         const h = row.original.health_status;
         const verdict = HEALTH_VERDICT[h];
+        // Connection health in its own words (Healthy, Degraded, Unreachable), toned by the verdict it maps to;
+        // Go and No-go are the data's verdicts, not a connection's.
         return (
           <span className="inline-flex flex-col items-start">
-            <Pill tone={verdict ?? "neutral"}>{HEALTH_LABEL[h]}</Pill>
+            {verdict ? <Pill tone={verdict}>{HEALTH_LABEL[h]}</Pill> : <span className="m-ink-3">{HEALTH_LABEL.unknown}</span>}
             <span className="m-text-meta m-ink-3">
-              {row.original.last_health_check ? `Checked ${relativeTime(row.original.last_health_check)}` : verdict ? "Never checked" : ""}
+              {row.original.last_health_check
+                ? `${verdict && verdict !== "go" ? `${HEALTH_LABEL[h]}, checked` : "Checked"} ${relativeTime(row.original.last_health_check)}`
+                : verdict ? `${HEALTH_LABEL[h]}, never checked` : ""}
             </span>
           </span>
         );
@@ -160,11 +172,11 @@ export default function SystemsPage() {
     },
     {
       id: "dqs",
-      header: "Quality score",
+      header: "Score",
       size: 190,
       cell: ({ row }) => {
-        const d = dqsById.get(row.original.id);
-        if (!d || d.dqs == null) return "—";
+        const d = scoreOf(row.original);
+        if (!d || d.dqs == null) return <span className="m-ink-3">—</span>;
         const t = d.trend;
         return (
           <span className="inline-flex items-center gap-2">
@@ -184,7 +196,7 @@ export default function SystemsPage() {
         if (!c) return "No configuration yet";
         return (
           <Link href={`/systems/${row.original.id}?tab=health&part=config`} className="flex flex-col items-start" onClick={(e) => e.stopPropagation()}>
-            <Pill tone={CONFIG_TONE[c.status]}>{CONFIG_LABEL[c.status]}</Pill>
+            <Status kind="lifecycle" value={CONFIG_LIFECYCLE[c.status]} />
             <span className="m-text-meta m-ink-2">{configSub(c)}</span>
           </Link>
         );
@@ -192,8 +204,8 @@ export default function SystemsPage() {
     },
     {
       id: "last_sync",
-      header: "Last extraction",
-      size: 170,
+      header: "Last extracted",
+      size: 190,
       cell: ({ row }) => {
         const n = nextRunById.get(row.original.id);
         return (
@@ -206,11 +218,11 @@ export default function SystemsPage() {
     },
     {
       id: "open",
-      header: "",
-      size: 80,
-      cell: ({ row }) => (
-        <Link href={`/systems/${row.original.id}`} className="m-ink-accent-ink underline" aria-label={`Open ${row.original.name}`} onClick={(e) => e.stopPropagation()}>Open</Link>
-      ),
+      header: "Action",
+      enableSorting: false,
+      size: 72,
+      meta: { sticky: "end" },
+      cell: ({ row }) => <RowAction href={`/systems/${row.original.id}`} label={`Open ${row.original.name}`} />,
     },
   ];
 
@@ -229,7 +241,12 @@ export default function SystemsPage() {
   const attention = systems.length - healthy;
   const filtering = Boolean(configFilter || healthFilter);
   const canConnect = usePermissions().has("systems", "create");
-  const [connecting, setConnecting] = useState(false);
+  // `/systems?connect=1` (the day-one step, the home empty state) lands with the connect dialog open.
+  const [connecting, setConnecting] = useState(searchParams.get("connect") === "1");
+  const openConnect = (open: boolean) => {
+    setConnecting(open);
+    if (!open && searchParams.get("connect")) router.replace("/systems", { scroll: false });
+  };
 
   return (
     <>
@@ -240,10 +257,11 @@ export default function SystemsPage() {
           actions={
             <>
               <ExportMenu options={systems.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} />
-              {canConnect ? <Button onClick={() => setConnecting(true)}>Connect system</Button> : null}
+              {systems.length > 0 ? <RunAnalysis variant="secondary" /> : null}
+              {canConnect ? <Button onClick={() => openConnect(true)}>Connect system</Button> : null}
             </>
           }
-          meta={`${isLoading ? "" : `${systems.length} ${systems.length === 1 ? "system" : "systems"}${attention ? `, ${attention} need attention` : ""}. `}The SAP systems Meridian reads from, worst first. Open one to test it, load its configuration or pull data`}
+          meta={`${isLoading ? "" : `${systems.length} ${systems.length === 1 ? "system" : "systems"}${attention ? `, ${attention} ${attention === 1 ? "needs" : "need"} attention` : ""}. `}The SAP systems Meridian reads from, worst first. Open one to test it, load its configuration or pull data`}
         />
       }
       filterBar={
@@ -256,7 +274,8 @@ export default function SystemsPage() {
         ) : undefined
       }
       summary={
-        isLoading || systems.length > 0 ? (
+        // One system's health is its row; the strip only earns its place when there are several to count.
+        isLoading || systems.length > 1 ? (
           <div className="m-stat-grid m-motion-stagger" data-testid="systems-health">
             <Stat label="Healthy" loading={isLoading} value={isLoading ? "" : healthy} tone={isLoading ? undefined : healthy > 0 ? "go" : undefined} href="?health=healthy" />
             <Stat label="Degraded" loading={isLoading} value={isLoading ? "" : degraded} tone={isLoading ? undefined : degraded > 0 ? "at-risk" : undefined} href="?health=degraded" />
@@ -281,14 +300,17 @@ export default function SystemsPage() {
         detail: canConnect
           ? "Connect an SAP system so Meridian can read its data, or import a file to start without a connection."
           : "Ask an admin to connect an SAP system, or import a file to start without a connection.",
-        action: canConnect
-          ? <Button onClick={() => setConnecting(true)}>Connect system</Button>
-          : <Button variant="secondary" render={<Link href="/import">Import file</Link>} />,
+        action: (
+          <div className="flex gap-2">
+            {canConnect ? <Button onClick={() => openConnect(true)}>Connect system</Button> : null}
+            <Button variant={canConnect ? "secondary" : "primary"} render={<Link href="/import">Import file</Link>} />
+          </div>
+        ),
         ghost: "table",
       }}
-      errorProps={{ message: apiErrorMessage(error), onRetry: () => refetch() }}
+      errorProps={{ error: error, onRetry: () => refetch() }}
     />
-    <ConnectSystemDialog open={connecting} onOpenChange={setConnecting} />
+    <ConnectSystemDialog open={connecting && canConnect} onOpenChange={openConnect} />
     </>
   );
 }

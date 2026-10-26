@@ -23,6 +23,9 @@ describe("design tokens", () => {
     expect(mMotion.slow).toBe(240);
     expect(mMotion.draw).toBe(480);
     expect(mMotion.shimmer).toBe(1400);
+    // Nothing bounces and a count settles with its bar: no spring easing, the count-up on the draw length.
+    expect(mMotion.count).toBe(mMotion.draw);
+    expect(mMotion).not.toHaveProperty("easeSpring");
   });
 
   it("dqsBand picks the colour key by threshold", () => {

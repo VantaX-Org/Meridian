@@ -17,8 +17,8 @@
  *   selection under Mined dependencies, use plain `useState` instead of
  *   `useUrlState` for the same reason (no controlled-Tabs URL round trip to
  *   preserve them against).
- * - Brief said `getMiningRuns`/`isMiningAvailable` would be consumed; the
- *   real legacy component never calls either, so this port doesn't either.
+ * - Brief said `isMiningAvailable` would be consumed; the real legacy
+ *   component never calls it, so this port doesn't either.
  */
 
 import { InsightFrame } from "../_components/InsightFrame";
@@ -85,7 +85,7 @@ function EntityLinks() {
     }
     const nodes: GraphNode[] = Array.from(stats, ([d, s]) => ({ id: d, size: s.out + s.in, label: formatModuleName(d), domain: domainOf(d) }));
     const edges: GraphEdge[] = Array.from(pairs.values()).sort((a, b) => b.n - a.n).slice(0, MAX_EDGES).map((p) => ({
-      id: `${p.from}>${p.to}>${p.type}`, source: p.from, target: p.to, label: `${p.type}, ${p.n.toLocaleString()}`,
+      id: `${p.from}>${p.to}>${p.type}`, source: p.from, target: p.to, label: `${labelOf(p.type)}, ${p.n.toLocaleString()}`,
     }));
     return { nodes, edges };
   }, [rels]);
@@ -121,6 +121,7 @@ function EntityLinks() {
         </p>
         {q.isLoading || dayOne.status === "loading" ? <Skeleton height={320} />
           : nodes.length ? <Graph nodes={nodes} edges={edges} height={320} onNodeClick={(id) => setDomain(id === domain ? "" : id)} />
+          : dayOne.status === "error" ? <ErrorState {...apiErrorState(dayOne.error)} onRetry={dayOne.refetch} />
           : (
             <EmptyState
               title="No record links found yet"

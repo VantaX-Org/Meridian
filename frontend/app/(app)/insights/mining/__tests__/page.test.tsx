@@ -20,7 +20,7 @@ vi.mock("next/navigation", () => ({
 // useDayOne() needs LocalAuthProvider context, which this test does not set up;
 // mock it wholesale so the page renders without an auth provider.
 vi.mock("@/hooks/use-day-one", () => ({
-  useDayOne: () => ({ status: "ready", step: null }),
+  useDayOne: () => ({ status: "ready", step: null, error: null, refetch: () => {} }),
   DayOneAction: () => null,
 }));
 
@@ -38,9 +38,12 @@ describe("MiningPage", () => {
       window_days: 30, total_patterns: 4, new_anomalies: 1, stable_patterns: 3,
       coverage_pct: 80, runs_total: 2, cost_usd: 0,
     });
-    renderWithQuery(<MiningPage />);
+    const { container } = renderWithQuery(<MiningPage />);
     await waitFor(() => expect(relationshipsApi.getRelationships).toHaveBeenCalled());
     await waitFor(() => expect(miningApi.getMiningSummary).toHaveBeenCalled());
+    // the graph's edge reads the link type in words, like the table, never the raw enum
+    await waitFor(() => expect(container.textContent).toContain("Used in, 1"));
+    expect(container.textContent).not.toContain("used_in");
   });
 
   it("shows an empty state when there are no patterns mined yet", async () => {

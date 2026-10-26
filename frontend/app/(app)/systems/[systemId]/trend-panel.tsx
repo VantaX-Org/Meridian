@@ -8,10 +8,6 @@ import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatModuleName, runAxisLabels } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { runPageHref } from "@/lib/runs";
-import { clsx } from "clsx";
-
-const th = "px-3 py-2 text-left font-medium";
-const td = "px-3 py-1.5 border-t";
 
 const FLAG_LABEL: Record<TrendFlag, string> = {
   scope_changed: "Scope changed",
@@ -38,12 +34,12 @@ export function TrendPanel({ systemId }: { systemId: string }) {
       {!summary.length ? (
         <EmptyState title="No analysed run yet" detail="Trends need at least one analysed run." action={<Button render={<Link href={`/systems/${systemId}?tab=objects`}>Run analysis</Link>} />} />
       ) : (
-        <table className="w-full m-text-body">
+        <table className="m-table">
           <thead>
             <tr>
-              <th className={clsx(th, "m-ink-3")}>Object</th><th className={clsx(th, "m-ink-3")}>Score</th>
-              <th className={clsx(th, "m-ink-3")}>Last change</th><th className={clsx(th, "m-ink-3")}>Trend</th>
-              <th className={clsx(th, "m-ink-3")}>Since baseline</th><th className={clsx(th, "m-ink-3")}>Notes</th>
+              <th>Object</th><th>Score</th>
+              <th>Last change</th><th>Trend</th>
+              <th>Since baseline</th><th>Notes</th>
             </tr>
           </thead>
           <tbody>
@@ -54,12 +50,12 @@ export function TrendPanel({ systemId }: { systemId: string }) {
               const pts = scored.map((p) => ({ x: p.version_id, label: ticks.get(p.version_id), y: p.dqs as number }));
               return (
                 <tr key={s.object}>
-                  <td className={clsx(td, "[border-color:var(--m-line)]")}>{formatModuleName(s.object)}</td>
-                  <td className={clsx(td, "[border-color:var(--m-line)]")}>{s.dqs == null ? "—" : <DrillLink href={`/objects/${s.object}`}>{s.dqs.toFixed(1)}</DrillLink>}</td>
-                  <td className={clsx(td, "[border-color:var(--m-line)]")}>
+                  <td>{formatModuleName(s.object)}</td>
+                  <td>{s.dqs == null ? "—" : <DrillLink href={`/objects/${s.object}`}>{s.dqs.toFixed(1)}</DrillLink>}</td>
+                  <td>
                     {s.dqs_delta == null ? "—" : <span className={deltaInk(s.dqs_delta)}>{signed(s.dqs_delta)}</span>}
                   </td>
-                  <td className={clsx(td, "[border-color:var(--m-line)]")}>
+                  <td>
                     {pts.length >= 2 ? (
                       // The trend opens the latest run of this object, scoped to that run and object.
                       <Link
@@ -74,10 +70,10 @@ export function TrendPanel({ systemId }: { systemId: string }) {
                       "—"
                     )}
                   </td>
-                  <td className={clsx(td, "[border-color:var(--m-line)]")}>
+                  <td>
                     {s.vs_baseline ? <span className={deltaInk(s.vs_baseline.dqs_delta)}>{signed(s.vs_baseline.dqs_delta)}</span> : "—"}
                   </td>
-                  <td className={clsx(td, "[border-color:var(--m-line)]")}>
+                  <td>
                     <span className="flex flex-wrap gap-1">
                       {s.flags.map((f) => <Pill key={f} tone="at-risk">{FLAG_LABEL[f]}</Pill>)}
                     </span>

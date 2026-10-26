@@ -5,6 +5,7 @@ import { renderWithQuery } from "@/__tests__/render";
 import { BatchesTab, compareHref } from "../batches-tab";
 import * as remediationApi from "@/lib/api/remediation";
 import type { BatchDetail, BatchSummary, MonitorItem } from "@/lib/api/remediation";
+import * as writebackApi from "@/lib/api/writeback";
 
 // Stable instance across re-renders, same reasoning as rules/__tests__/page.test.tsx:
 // useUrlState's sync effect depends on this object's identity.
@@ -47,6 +48,7 @@ beforeEach(() => {
   vi.spyOn(remediationApi, "getMonitor").mockResolvedValue({ items: [] });
   vi.spyOn(remediationApi, "getBatch").mockResolvedValue(detail());
   vi.spyOn(remediationApi, "getBatchEvents").mockResolvedValue({ items: [] });
+  vi.spyOn(writebackApi, "getPendingApprovals").mockResolvedValue({ approvals: [], live_enabled: false });
 });
 
 describe("BatchesTab", () => {
@@ -61,7 +63,15 @@ describe("BatchesTab", () => {
     const row = await screen.findByText("AP001 batch");
     await userEvent.click(row);
     await waitFor(() => expect(remediationApi.getBatch).toHaveBeenCalledWith("b1"));
-    expect(await screen.findByRole("button", { name: /Accept 1 high-confidence proposal/ })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Accept 1 at 85%+ confidence" })).toBeInTheDocument();
+  });
+
+  it("states the deployment's write-back mode from the write-back API flag", async () => {
+    vi.spyOn(writebackApi, "getPendingApprovals").mockResolvedValue({ approvals: [], live_enabled: true });
+    vi.spyOn(remediationApi, "getBatch").mockResolvedValue(detail({ status: "exported", exported_at: "2026-01-02T00:00:00Z" }));
+    renderWithQuery(<BatchesTab />);
+    await userEvent.click(await screen.findByText("AP001 batch"));
+    expect(await screen.findByText(/Approved batches are written back to SAP/)).toBeInTheDocument();
   });
 
   it("blocks the batch's own creator from approving it (four-eyes)", async () => {
@@ -79,7 +89,9 @@ describe("BatchesTab", () => {
     await userEvent.click(await screen.findByText("AP001 batch"));
     await waitFor(() => expect(getBatch).toHaveBeenCalledWith("b1"));
     const callsBeforeAccept = getBatch.mock.calls.length;
-    await userEvent.click(await screen.findByRole("button", { name: /Accept 1 high-confidence proposal/ }));
+    await userEvent.click(await screen.findByRole("button", { name: "Accept 1 at 85%+ confidence" }));
+    // The threshold accept is confirmed with its count first.
+    await userEvent.click(await screen.findByRole("button", { name: "Accept 1" }));
     await waitFor(() => expect(accept).toHaveBeenCalledWith("b1"));
     // The accept mutation must invalidate/refetch the batch detail, not just fire the API call.
     await waitFor(() => expect(getBatch.mock.calls.length).toBeGreaterThan(callsBeforeAccept));

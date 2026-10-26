@@ -1,11 +1,13 @@
-"""SAP BTP OData connector (read-only).
+"""SAP BTP OData connector.
 
 Reads OData services exposed through SAP BTP destinations (e.g. the Business
 Partner API of SAP Master Data Governance or an S/4HANA backend), authenticated
 with OAuth 2.0 client credentials against the subaccount's XSUAA token URL.
 
 Transport, OAuth, paging (V4 nextLink, V2 __next, $skip) and retry are
-inherited from S4HanaCloudConnector; only GET requests are ever issued.
+inherited from S4HanaCloudConnector. Extraction only issues GET requests; the one
+write is ``update_entity`` (PATCH), used by the four-eyes approved golden-record
+write-back of business partner fields (api/services/golden_writeback.py).
 
 Usage:
     from sap.btp import BTPConnector

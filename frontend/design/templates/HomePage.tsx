@@ -4,10 +4,10 @@ import Link from "next/link";
 import { Button } from "../primitives/Button";
 import { Card } from "../primitives/Card";
 import { Delta } from "../primitives/Delta";
-import { Score } from "../primitives/Score";
+import { Score, type ScoreBands, type ScoreExplanation } from "../primitives/Score";
 import { PageHeader } from "../primitives/PageHeader";
 import { Skeleton, StatSkeleton } from "../primitives/Skeleton";
-import { Async, type AsyncState } from "../primitives/Async";
+import { Async, type AsyncError, type AsyncState } from "../primitives/Async";
 import { PageFrame } from "./PageFrame";
 import { JourneyStepper } from "./JourneyStepper";
 import type { DayOneStep } from "../../hooks/use-day-one";
@@ -27,6 +27,12 @@ export interface HomeVerdict {
   firstRunLabel?: string;
   /** The narrative's first sentence: the verdict with the number that caused it. */
   sentence: string;
+  /** The cap a critical rule put on the score, so the hero's ruler marks it; omitted when not capped. */
+  cap?: number;
+  /** Critical findings behind the cap. */
+  criticals?: number;
+  /** The tenant's score bands (the objects list's thresholds); the ruler's target tick. */
+  bands?: ScoreBands;
   /** "Capped at 70 by 3 critical rules ...", with DrillLinks; omitted when not capped. */
   capLine?: ReactNode;
   /** The one next action. */
@@ -34,6 +40,8 @@ export interface HomeVerdict {
 }
 
 export interface HomeRunInfo {
+  /** The run id: keys the score's count-up, never printed. */
+  id: string;
   /** Display label, never a raw id. */
   label: string;
   runAt: string;
@@ -73,7 +81,7 @@ const loadingSkeleton = (
  * data-specific piece; this component places it and owns the loading, no-data and error geometry.
  */
 export function HomePage({
-  state, verdict, run, scope, journey, error, aside, dimensions, objects, trend, heatmap, work, lists, headerActions, onboarding, cells,
+  state, verdict, run, scope, journey, error, aside, dimensions, objects, trend, heatmap, work, lists, headerActions, emptyActions, onboarding, cells, explain, workFirst,
 }: {
   persona: string;
   /** "empty" is a fresh install (no analysis yet): the journey to a first score. */
@@ -83,7 +91,8 @@ export function HomePage({
   /** Header meta in the data state: what the page's numbers belong to ("As of ..." or "Current state of ..."). */
   scope?: ReactNode;
   journey?: HomeJourney;
-  error?: { message: string; onRetry: () => void };
+  /** The failed request as `error` (read through `apiErrorState`), or an explicit title and message; Retry runs `onRetry`. */
+  error?: AsyncError;
   /** Right of the score in the hero (5/12): the object map. */
   aside?: ReactNode;
   /** Under `aside` in the hero: the dimension bars, compact. */
@@ -98,16 +107,22 @@ export function HomePage({
   work?: ReactNode;
   lists?: ReactNode;
   headerActions?: ReactNode;
+  /** Header actions on a fresh install (state "empty"): the other ways to start a run, beside the journey's step. */
+  emptyActions?: ReactNode;
   /** First-run tour offer and setup checklist, one compact row (components/help/home-onboarding.tsx); shown once the page has loaded. */
   onboarding?: ReactNode;
   /** The four sentences (situation, what changed, why, do next), set under the hero. */
   cells?: ReactNode;
+  /** The breakdown behind the hero score, opened from its label ("Data quality score ⓘ"); never a second ring. */
+  explain?: ScoreExplanation;
+  /** The persona works a queue (the steward): the work row leads, the score hero follows. */
+  workFirst?: boolean;
 }) {
   const header = (
     <PageHeader
       title="Home"
       meta={state === "ready" ? scope : undefined}
-      actions={state === "ready" ? headerActions : undefined}
+      actions={state === "ready" ? headerActions : state === "empty" ? emptyActions : undefined}
     />
   );
   const hasAside = !!(aside || dimensions);
@@ -119,7 +134,7 @@ export function HomePage({
 
       {/* Loading and error go through Async; empty (the journey) and ready are this template's own geometry. */}
       {(state === "error" || state === "loading") && (
-        <Async state={state} error={{ message: error?.message ?? "Could not reach the server.", onRetry: error?.onRetry }} skeleton={loadingSkeleton}>
+        <Async state={state} error={error ?? { error: undefined }} skeleton={loadingSkeleton}>
           {null}
         </Async>
       )}
@@ -142,6 +157,7 @@ export function HomePage({
       )}
       {state === "empty" && onboarding}
 
+      {state === "ready" && workFirst && work}
       {state === "ready" && verdict && (
         <section className="m-hero grid grid-cols-1 items-start gap-x-10 gap-y-6 @4xl:grid-cols-12" data-testid="home-verdict-row" data-tour="home-verdict">
           <div className={`flex min-w-0 flex-col gap-6 ${hasAside ? "@4xl:col-span-7" : "@4xl:col-span-12"}`}>
@@ -149,7 +165,11 @@ export function HomePage({
               <Score
                 size="hero"
                 value={verdict.dqs}
-                versionId={run?.label}
+                cap={verdict.cap}
+                criticals={verdict.criticals}
+                bands={verdict.bands}
+                versionId={run?.id}
+                explain={explain}
                 hint={verdict.firstRun ? verdict.firstRunLabel ?? "First run for this object" : verdict.delta != null && verdict.previousLabel ? `vs ${verdict.previousLabel}` : undefined}
                 delta={verdict.delta != null ? <Delta value={verdict.delta} /> : undefined}
               />
@@ -159,7 +179,8 @@ export function HomePage({
               {verdict.capLine && <p className="m-text-body" style={{ color: "var(--m-hero-ink-2)" }}>{verdict.capLine}</p>}
               {verdict.action && (
                 <div className="pt-2">
-                  <Button variant="secondary" render={<Link href={verdict.action.href}>{verdict.action.label}</Link>} />
+                  {/* The verdict's next step is the home's one primary action; Run analysis in the header is secondary. */}
+                  <Button render={<Link href={verdict.action.href}>{verdict.action.label}</Link>} />
                 </div>
               )}
             </div>
@@ -175,7 +196,7 @@ export function HomePage({
       {state === "ready" && cells}
       {state === "ready" && objects}
       {state === "ready" && onboarding}
-      {state === "ready" && work}
+      {state === "ready" && !workFirst && work}
       {state === "ready" && (trend || heatmap) && (
         <div className="grid grid-cols-1 gap-4 @5xl:grid-cols-12">
           {trend && <div data-testid="home-trend" data-tour="home-trend" className={`min-w-0 ${heatmap ? "@5xl:col-span-6" : "@5xl:col-span-12"}`}>{trend}</div>}

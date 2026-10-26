@@ -10,8 +10,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Button, EmptyState, Input, PageHeader, ErrorState, Field, InsightHeader, Mono, Notice, Pill, Select, Tabs, type TabItem,
-} from "@/design";
+  Button, EmptyState, Input, PageHeader, ErrorState, Field, InsightHeader, Mono, Notice, Pill, Select, Tabs, type TabItem, useBreadcrumbTitle } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getCatalogue, getRun, getRunModel, type DiscoveryRunDetail, type ProcessFilterParams } from "@/lib/api/process-discovery";
 import { getReference } from "@/lib/api/process-designer";
@@ -28,6 +27,9 @@ import { TABS, trail, useProcessDrill, type Tab } from "../_components/drill";
 import { ExportDialog } from "../_components/export-dialog";
 import { FlowView } from "../_components/flow-view";
 import { L5Table } from "../_components/l5-table";
+import { DiscoveryStart, NOT_MINABLE, canMine } from "../_components/discovery-start";
+import { readinessHref, useProcessReadiness } from "@/components/process/shared";
+import { HandToSteward } from "@/components/process/handoff";
 import { NoSystem, fitnessTone, fmtCount, fmtFitness, fmtSeconds, l1Href, useProcessSystem } from "../_components/shared";
 import { BodySkeleton, PROCESS_PURPOSE, ProcessFrame, processMeta } from "../_components/process-header";
 import { VariantsTable } from "../_components/variants-table";
@@ -46,6 +48,8 @@ export default function ProcessL1Page() {
   const { l1 } = useParams<{ l1: string }>();
   const { can } = useRole();
   const canExport = can("export_process");
+  // Reading cases is viewing (the cases API needs `view`): every role that runs discovery opens them; export stays export_process.
+  const canCases = can("view");
   const drill = useProcessDrill();
   const { systems, system } = useProcessSystem();
   const [exporting, setExporting] = useState(false);
@@ -62,6 +66,8 @@ export default function ProcessL1Page() {
     queryKey: queryKeys.processRunView(runId, "model"), queryFn: () => getRunModel(runId), enabled: !!runId && discovered,
   });
   const reference = useQuery({ queryKey: queryKeys.processReference(), queryFn: getReference });
+  // The process is the page's h1, under Processes.
+  useBreadcrumbTitle(row && system ? { label: row.name, parent: { label: "As-is processes", href: `/process?system=${encodeURIComponent(system.id)}` } } : null);
 
   const wrap = (n: ReactNode) => <ProcessFrame>{n}</ProcessFrame>;
   if (systems.isError) return wrap(<ErrorState {...apiErrorState(systems.error)} onRetry={() => systems.refetch()} />);
@@ -74,7 +80,7 @@ export default function ProcessL1Page() {
   }
   if (!row) {
     return wrap(<EmptyState title="Process not in the catalogue" detail={`There is no end-to-end process with the code ${l1}. It may have been renamed.`}
-      action={<Button render={<Link href="/process">Open the catalogue</Link>} />} />);
+      action={<Button render={<Link href={`/process?system=${encodeURIComponent(system!.id)}`}>Open the catalogue</Link>} />} />);
   }
 
   const r = run.data;
@@ -84,7 +90,7 @@ export default function ProcessL1Page() {
   const crumbs = trail(doc, l1, drill.node);
   const here = crumbs[crumbs.length - 1];
   const node = here && here.id !== l1 ? here.id : null;
-  const available = TABS.filter((t) => t !== "cases" || canExport);
+  const available = TABS.filter((t) => t !== "cases" || canCases);
   const fallback: Tab = isReference || !discovered ? "reference" : "flow";
   const tab: Tab = (available as readonly string[]).includes(drill.tab) ? (drill.tab as Tab) : fallback;
   const filters: ProcessFilterParams = drill.filters;
@@ -92,23 +98,29 @@ export default function ProcessL1Page() {
   const clearFilters = () => drill.set(Object.fromEntries(Object.keys(filters).map((k) => [k, null])));
 
   const canRun = can("run_process_discovery");
-  const notDiscovered = (
-    <EmptyState title={isReference ? "Reference only, not discovered" : "No completed discovery run yet"}
-      detail={isReference ? (reason ?? "This system has no source tables for this process, so only the SAP reference is shown.") : "Run discovery for this process, then come back."}
-      action={isReference
-        ? <Button variant="secondary" onClick={() => drill.set({ tab: "reference" })}>Open the reference</Button>
-        : canRun
-          ? <Button render={<Link href={`/process/runs?system=${system!.id}&new=1`}>Run discovery</Link>} />
-          : <Button variant="secondary" render={<Link href={`/process?system=${system!.id}`}>Open processes</Link>} />} />
+  // Day one for this process on a system that can mine it, or a system with nothing to mine: the start panel (one
+  // action) sits under the header, and a tab with no mined result points back to it.
+  const minable = canMine(catalogue.data);
+  // An L1 never run reads "reference" in the catalogue too; only a §10 reason means it has no source here.
+  const start = !minable || (!row.reason && !row.last_run && !row.in_progress);
+  const startPanel = <DiscoveryStart system={system!} rows={catalogue.data} only={l1} />;
+  const notDiscovered = isReference && minable && !start ? (
+    <EmptyState title="Reference only, not discovered"
+      detail={reason ?? "This system has no source tables for this process, so only the SAP reference is shown."}
+      action={<Button variant="secondary" onClick={() => drill.set({ tab: "reference" })}>Open the reference</Button>} />
+  ) : (
+    <EmptyState title="No completed discovery run yet"
+      detail={minable ? "Discovery has not produced a flow for this process yet. Read the SAP reference meanwhile." : `${NOT_MINABLE}.`}
+      action={<Button variant="secondary" onClick={() => drill.set({ tab: "reference" })}>Open the reference</Button>} />
   );
   const mined = (content: ReactNode) => (discovered && r ? content : notDiscovered);
   const content: Record<Tab, ReactNode> = {
     flow: mined(<FlowView runId={runId} doc={doc} node={node} filters={filters} onDrill={(id) => drill.set({ node: id })}
       onUp={crumbs.length > 1 ? () => drill.set({ node: crumbs.length > 2 ? crumbs[crumbs.length - 2].id : null }) : undefined} />),
     bpmn: mined(<BpmnView doc={doc} node={node} onOpenFlow={() => drill.set({ tab: "flow", case: null })} />),
-    variants: mined(<VariantsTable runId={runId} filters={filters} canExport={canExport} onClearFilters={clearFilters}
+    variants: mined(<VariantsTable runId={runId} filters={filters} canOpenCases={canCases} onClearFilters={clearFilters}
       onOpenCase={(id) => drill.set({ tab: "cases", case: id })} />),
-    conformance: mined(<ConformanceView runId={runId} l1={l1} filters={filters} rework={r?.stats.rework} onClearFilters={clearFilters} />),
+    conformance: mined(<ConformanceView runId={runId} filters={filters} rework={r?.stats.rework} onClearFilters={clearFilters} />),
     cases: mined(<CaseExplorer runId={runId} filters={filters} caseId={drill.caseId} onClearFilters={clearFilters} onOpenCase={(id) => drill.set({ case: id })} />),
     reference: <ReferenceView doc={reference.data} l1={l1} node={node} onOpen={(id) => drill.set({ node: id })} />,
   };
@@ -118,7 +130,9 @@ export default function ProcessL1Page() {
     <ProcessFrame>
       <Header l1={l1} name={row.name} systemName={system!.name} systemId={system!.id} run={discovered ? r : undefined}
         reason={isReference ? reason : null} canExport={canExport && discovered} onExport={() => setExporting(true)}
-        canRun={canRun} />
+        canRun={canRun && !start} readyHref={readinessHref({ l1 })} />
+      {start && startPanel}
+      <BlockingRule l1={l1} systemId={system!.id} name={row.name} />
       <nav aria-label="Process levels">
         <ol className="flex flex-wrap items-center gap-1">
           {crumbs.map((c, i) => (
@@ -141,16 +155,42 @@ export default function ProcessL1Page() {
   );
 }
 
-function Header({ l1, name, systemName, systemId, run, reason, canExport, onExport, canRun }: {
+/**
+ * The rule that blocks this process most (the red field failing the most records in the system's latest DQ run),
+ * on every tab, with the process owner's one action: hand it to a steward. Nothing when no rule blocks it.
+ */
+function BlockingRule({ l1, systemId, name }: { l1: string; systemId: string; name: string }) {
+  const { byL1, latest } = useProcessReadiness(systemId);
+  const ready = byL1.get(l1);
+  const w = ready?.worst;
+  if (!ready || !w?.check_id) return null;
+  return (
+    <Notice tone="warning" title="Data blocks this process"
+      action={<HandToSteward variant="secondary" target={{ checkId: w.check_id, module: ready.module, versionId: latest?.id, process: name, field: w.field }} />}>
+      <Mono>{w.check_id}</Mono> fails on {ready.failing.toLocaleString()} {ready.failing === 1 ? "record" : "records"}
+      {w.description ? `: ${w.description}` : ""}
+    </Notice>
+  );
+}
+
+/** "Data readiness for this process": the DQ-driven readiness of the same L1, in running text. */
+function ReadinessLink({ href }: { href: string | undefined }) {
+  if (!href) return null;
+  return <>. <Link href={href} className="m-ink-accent-ink underline underline-offset-2">Data readiness for this process</Link></>;
+}
+
+function Header({ l1, name, systemName, systemId, run, reason, canExport, onExport, canRun, readyHref }: {
   l1: string; name: string; systemName: string; systemId: string; run: DiscoveryRunDetail | undefined; reason: string | null;
   canExport: boolean; onExport: () => void; canRun: boolean;
+  /** The readiness page of this L1 (`readinessHref`); undefined when the L1 has no readiness definition. */
+  readyHref: string | undefined;
 }) {
   const runLink = canRun
-    ? <Button render={<Link href={`/process/runs?system=${systemId}&new=1`}>Run discovery</Link>} /> : null;
+    ? <Button render={<Link href={`/process/runs?system=${systemId}&new=1&l1=${l1}`}>Run discovery</Link>} /> : null;
   if (!run) {
     return (
       <>
-        <PageHeader title={name} meta={processMeta(PROCESS_PURPOSE.l1, <><Mono>{l1}</Mono> on {systemName}</>)} actions={runLink} />
+        <PageHeader title={name} meta={processMeta(PROCESS_PURPOSE.l1, <><Mono>{l1}</Mono> on {systemName}<ReadinessLink href={readyHref} /></>)} actions={runLink} />
         <InsightHeader
           situation={{ sentence: `${name} on ${systemName} has no discovered flow.` }}
           changed={{ sentence: "No completed discovery run." }}
@@ -164,7 +204,7 @@ function Header({ l1, name, systemName, systemId, run, reason, canExport, onExpo
   return (
     <>
       <PageHeader title={name}
-        meta={processMeta(PROCESS_PURPOSE.l1, <><Mono>{l1}</Mono> on {systemName}{run.finished_at ? `, discovered ${relativeTime(run.finished_at)}` : ""}</>)}
+        meta={processMeta(PROCESS_PURPOSE.l1, <><Mono>{l1}</Mono> on {systemName}{run.finished_at ? `, discovered ${relativeTime(run.finished_at)}` : ""}<ReadinessLink href={readyHref} /></>)}
         status={<Pill tone={fitnessTone(fitness)}>{`Fits the reference ${fmtFitness(fitness)}`}</Pill>}
         actions={<>
           {canExport && <Button variant="secondary" onClick={onExport} data-tour="process-export">Export</Button>}
@@ -215,7 +255,7 @@ function ReferenceView({ doc, l1, node, onOpen }: {
   const hit = locate(doc, node ?? l1);
   if (!hit) return <EmptyState title="Not in the reference model" detail="This step exists only in the discovered flow."
       action={<Button render={<Link href="/insights/process/designer">Open designer</Link>} />} />;
-  if (hit.level === 4) return <L5Table l4={hit.item as L4} onOpen={noop} />;
+  if (hit.level === 4) return <L5Table l4={hit.item as L4} />;
   return (
     <>
       <Notice tone="info" title="Reference model">The SAP best-practice steps this process is measured against.</Notice>

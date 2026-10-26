@@ -12,7 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services.rbac import has_permission
+from api.services.scoring import scoring_config
 from api.services.version_status import FINISHED, finished_sql
+from api.services.insights_impact import load_tenant_cost_model, tenant_currency
 from api.services.analytics_engine import (
     planner_config,
     BusinessImpactAnalytics,
@@ -37,7 +39,6 @@ logger = logging.getLogger("meridian.analytics")
 
 predictive = PredictiveAnalytics()
 prescriptive = PrescriptiveAnalytics()
-impact_analytics = BusinessImpactAnalytics()
 operational = OperationalAnalytics()
 
 
@@ -141,8 +142,8 @@ async def get_predictive_analytics(
                 "runs_seen": runs_seen, "days_seen": days_seen}
 
     forecasts = predictive.forecast_dqs(history)
-    thresholds = {}  # Could load from tenant.alert_thresholds
-    warnings = predictive.generate_early_warnings(forecasts, thresholds)
+    floors, warning_band = await _forecast_thresholds(db, tenant)
+    warnings = predictive.generate_early_warnings(forecasts, floors, warning_band)
 
     out = {"forecasts": forecasts, "early_warnings": warnings, "runs_seen": runs_seen, "days_seen": days_seen}
     if not forecasts:
@@ -157,16 +158,23 @@ async def get_predictive_analytics(
 async def get_prescriptive_analytics(
     limit: int = Query(20, ge=1, le=50),
     type: Optional[str] = Query(None),
+    version_id: Optional[uuid.UUID] = Query(None, description="The run whose findings the actions come from; "
+                                                              "default the latest finished run."),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
     """Next-best actions ranked by ROI per hour."""
     await _set_tenant(db, tenant)
 
-    # Load latest version findings
+    # Load the findings of the named run, else of the latest finished one
+    version_filter = [AnalysisVersion.tenant_id == tenant.id]
+    if version_id is not None:
+        version_filter.append(AnalysisVersion.id == version_id)
+    else:
+        version_filter.append(AnalysisVersion.status.in_(FINISHED))
     latest_version = await db.execute(
         select(AnalysisVersion)
-        .where(AnalysisVersion.tenant_id == tenant.id, AnalysisVersion.status.in_(FINISHED))
+        .where(*version_filter)
         .order_by(AnalysisVersion.run_at.desc())
         .limit(1)
     )
@@ -220,6 +228,18 @@ async def get_prescriptive_analytics(
     }
 
 
+async def _forecast_thresholds(db: AsyncSession, tenant: Tenant) -> tuple[dict[str, float], float]:
+    """The thresholds early warnings hold each object to: its score floor (Rules, Scoring and
+    alerts, ``alert_thresholds.module_floors``), else the tenant's warning band (``dqs_weights``)."""
+    row = (await db.execute(
+        text("SELECT dqs_weights, alert_thresholds FROM tenants WHERE id = :tid"), {"tid": str(tenant.id)}
+    )).fetchone()
+    scoring = (row[0] if row else None) or {}
+    alerts = (row[1] if row else None) or {}
+    floors = {m: float(v) for m, v in (alerts.get("module_floors") or {}).items() if isinstance(v, (int, float))}
+    return floors, float(scoring_config(scoring)["thresholds"]["warning"])
+
+
 async def _planner_inputs(db: AsyncSession, tenant: Tenant) -> tuple[dict, dict]:
     """The tenant's planner assumptions (Admin → Scoring & alerts) and DQS weights."""
     row = (await db.execute(
@@ -227,7 +247,8 @@ async def _planner_inputs(db: AsyncSession, tenant: Tenant) -> tuple[dict, dict]
     )).fetchone()
     weights = {k: v for k, v in ((row[0] if row and row[0] else {}) or {}).items() if k != "notification_config"}
     planner = ((row[1] if row and row[1] else {}) or {}).get("planner") or {}
-    return planner_config(planner), weights
+    currency = tenant_currency(await load_tenant_cost_model(db, str(tenant.id)))
+    return planner_config(planner, currency), weights
 
 
 # ── 3. GET /analytics/impact ─────────────────────────────────────────────────
@@ -239,8 +260,9 @@ async def get_impact_analytics(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    """Business impact quantification across 8 categories."""
+    """Business impact quantification across 8 categories, priced from the tenant cost model."""
     await _set_tenant(db, tenant)
+    impact_analytics = await _impact_analytics(db, tenant)
 
     # Determine version
     if version_id:
@@ -254,7 +276,8 @@ async def get_impact_analytics(
         )
         row = latest.first()
         if not row:
-            return {"impacts": [], "roi": {"subscription_annual": 0, "risk_mitigated": 0, "roi_multiple": 0, "payback_months": 0}}
+            # No run yet: the same ROI as a run with no impact (no subscription: nulls, never made-up zeros).
+            return {"impacts": [], "roi": impact_analytics.calculate_roi([])}
         vid = row[0].id
 
     # Load findings
@@ -271,9 +294,7 @@ async def get_impact_analytics(
 
     impacts = impact_analytics.quantify_impact(findings_data, exc_data)
 
-    # Default subscription — could come from tenant config
-    monthly_sub = 15000.0
-    roi = impact_analytics.calculate_roi(impacts, monthly_sub)
+    roi = impact_analytics.calculate_roi(impacts)
 
     return {"impacts": impacts, "roi": roi, "version_id": str(vid)}
 
@@ -299,7 +320,7 @@ async def get_finding_impact(
         raise HTTPException(status_code=404, detail="Finding not found")
 
     finding_data = _row_to_dict(row)
-    impacts = impact_analytics.quantify_impact([finding_data], [])
+    impacts = (await _impact_analytics(db, tenant)).quantify_impact([finding_data], [])
 
     return {
         "finding_id": finding_id,
@@ -443,6 +464,13 @@ async def get_module_forecast(
     }
 
 
+async def _impact_analytics(db: AsyncSession, tenant: Tenant) -> BusinessImpactAnalytics:
+    """Impact buckets and ROI priced from the tenant's cost model, in its currency. The monthly
+    subscription the ROI divides by is the cost model's ``subscription_monthly``; unset, the ROI
+    multiple, payback and annual subscription stay None rather than come from an invented fee."""
+    return BusinessImpactAnalytics(await load_tenant_cost_model(db, str(tenant.id)))
+
+
 # ── 8. GET /analytics/roi ────────────────────────────────────────────────────
 
 
@@ -472,8 +500,7 @@ async def get_roi(
     )
     cost_avoidance = [_row_to_dict(r) for r in ca_result.all()]
 
-    monthly_sub = 15000.0
-    roi = impact_analytics.calculate_roi(impacts, monthly_sub)
+    roi = (await _impact_analytics(db, tenant)).calculate_roi(impacts)
 
     return {
         "roi": roi,

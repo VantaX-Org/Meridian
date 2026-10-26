@@ -4,8 +4,8 @@ import { useMemo, useState, type ReactNode } from "react";
 import { AnalyseAction } from "./analyse-action";
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { toast } from "sonner";
-import { Button, DataTable, EmptyState, ErrorState, Mono, Pill, Skeleton, Tabs, Status } from "@/design";
+
+import { Button, DataTable, EmptyState, ErrorState, Mono, Pill, Skeleton, Tabs, Status, toast } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import {
   detectZObjectsNow, getZAnomalies, getZDormant, getZDrift, getZGhost, getZProfile, getZRegistry, submitZAnomalyFeedback,
@@ -174,8 +174,7 @@ export function CustomObjectsTab({ systemId }: { systemId?: string }) {
   const detect = useRerun({
     run: () => detectZObjectsNow(systemId),
     queryKey: ["z-objects"],
-    queued: "Detection queued. Results refresh as it finishes",
-    done: "Custom object results refreshed",
+    queued: "Detection started",
   });
   return (
     <div className="flex flex-col gap-3">

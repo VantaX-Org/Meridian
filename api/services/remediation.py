@@ -261,12 +261,17 @@ def mass_change(items: list[dict]) -> pd.DataFrame:
 # ── post-load reconciliation ─────────────────────────────────────────────────
 
 
-def reconcile(session, tenant_id: str, version_id: str, scope: str) -> int:
+def reconcile(session, tenant_id: str, version_id: str, scope: str, checks: Optional[list[str]] = None) -> int:
     """Mark exported batch items fixed / still failing from this run.
 
-    Call right after ``record_issues.track`` in the same transaction: it reads
-    ``tmp_present`` (records evaluated in this run). Only runs after the export count.
+    ``record_issues.track`` calls this once per check batch (``checks``), inside that batch's
+    transaction, while ``tmp_present`` (the records evaluated in this run) is populated; the batch's
+    commit drops it (ON COMMIT DROP). Called anywhere else the table is empty: an item can still be
+    proved still failing, but one that no longer fails stays unreconciled rather than being assumed
+    fixed. Only runs after the export count.
     """
+    session.execute(text("CREATE TEMP TABLE IF NOT EXISTS tmp_present (grain text, record_key text) "
+                         "ON COMMIT DROP"))
     return session.execute(text("""
         WITH ran AS (
             SELECT check_id FROM findings
@@ -282,6 +287,7 @@ def reconcile(session, tenant_id: str, version_id: str, scope: str) -> int:
                    recon_version = :vid, updated_at = now()
               FROM remediation_batches b
              WHERE b.id = i.batch_id AND b.status = 'exported' AND i.tenant_id = :tid AND i.scope = :scope
+               AND (CAST(:checks AS text[]) IS NULL OR i.check_id = ANY(CAST(:checks AS text[])))
                AND b.exported_at < (SELECT run_at FROM analysis_versions WHERE id = :vid)
                AND (EXISTS (SELECT 1 FROM finding_records fr WHERE fr.version_id = :vid
                               AND fr.check_id = i.check_id AND fr.record_key = i.record_key)
@@ -292,4 +298,4 @@ def reconcile(session, tenant_id: str, version_id: str, scope: str) -> int:
         )
         INSERT INTO remediation_events (tenant_id, batch_id, item_id, action, to_value, version_id, user_label)
         SELECT :tid, batch_id, id, 'reconciled', recon_status, :vid, 'system' FROM upd
-    """), {"tid": tenant_id, "vid": version_id, "scope": scope}).rowcount
+    """), {"tid": tenant_id, "vid": version_id, "scope": scope, "checks": checks}).rowcount

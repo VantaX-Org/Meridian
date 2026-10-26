@@ -24,10 +24,11 @@ const record: MasterRecordDetail = {
   id: "m1",
   domain: "material_master",
   sap_object_key: "MARA-1000",
-  golden_fields: { MATKL: "FERT" },
+  golden_fields: { MATKL: "FERT", MAKTX: "Bolt" },
+  // Keyed by field, as api/services/golden_record_engine.py writes it.
   source_contributions: {
-    ECC: { value: "FERT", source_system: "ECC", extracted_at: "2026-01-01T00:00:00Z", confidence: 0.9 },
-    SF: { value: "HALB", source_system: "SF", extracted_at: "2026-01-01T00:00:00Z", confidence: 0.4 },
+    MATKL: { value: "FERT", source_system: "ECC", extracted_at: "2026-01-01T00:00:00Z", confidence: 0.9 },
+    MAKTX: { value: "Bolt", source_system: "S4HANA_CLOUD", extracted_at: "2026-01-01T00:00:00Z", confidence: 0.4 },
   },
   overall_confidence: 0.9,
   status: "golden",
@@ -135,10 +136,47 @@ describe("One review screen for both sources", () => {
     expect(await screen.findByRole("button", { name: "Match engine (7)" })).toHaveAttribute("aria-pressed", "false");
     expect(counts).toHaveBeenCalledWith(expect.objectContaining({ limit: 1 }));
     expect(screen.queryByRole("group", { name: "Score band" })).not.toBeInTheDocument();
+    // The object reads by its module name, not a title-cased id.
+    expect(await screen.findAllByText("Material master")).not.toHaveLength(0);
     fireEvent.click(await screen.findByText("7"));
     expect(await screen.findByText("Bolt M8")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Keep B" }));
-    await waitFor(() => expect(merge).toHaveBeenCalledWith({ candidate_id: "d1", survivor_key: "7" }));
+    // A merge has no undo route, so it asks first and nothing is sent until confirmed.
+    const dialog = await screen.findByRole("dialog", { name: /Keep record B/ });
+    expect(within(dialog).getByText(/cannot be undone/)).toBeInTheDocument();
+    expect(merge).not.toHaveBeenCalled();
+    // The reason is required, as for a match-engine merge: Merge stays off until one is given.
+    expect(within(dialog).getByRole("button", { name: "Merge" })).toBeDisabled();
+    fireEvent.change(within(dialog).getByRole("textbox"), { target: { value: " Same supplier, new number " } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Merge" }));
+    await waitFor(() => expect(merge).toHaveBeenCalledWith({ candidate_id: "d1", survivor_key: "7", reason: "Same supplier, new number" }));
+  });
+
+  it("keeps Merge in view, disabled with the role that grants it, without approve rights", async () => {
+    role.approve = false;
+    nav.params = new URLSearchParams({ source: "cleaning" });
+    vi.spyOn(matchReviewApi, "getReviewPairs").mockResolvedValue(list);
+    vi.spyOn(cleaningApi, "getDedupPreview").mockResolvedValue({ merge_preview: {} });
+    renderWithQuery(<GoldenRecordMergePage />);
+    fireEvent.click(await screen.findByText("7"));
+    expect(await screen.findByRole("button", { name: "Merge. Needs Data owner on all systems — Request access" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Keep A" })).not.toBeInTheDocument();
+  });
+
+  it("cancelling the keep confirmation merges nothing", async () => {
+    nav.params = new URLSearchParams({ source: "cleaning", object: "sd_customer_master" });
+    vi.spyOn(matchReviewApi, "getReviewPairs").mockResolvedValue(list);
+    vi.spyOn(cleaningApi, "getDedupCandidates").mockResolvedValue({ items: [{ ...candidate, object_type: "sd_customer_master" }], total: 1 });
+    vi.spyOn(cleaningApi, "getDedupPreview").mockResolvedValue({ merge_preview: {} });
+    const merge = vi.spyOn(cleaningApi, "mergeDedupCandidate");
+    renderWithQuery(<GoldenRecordMergePage />);
+    fireEvent.click(await screen.findByText("7"));
+    expect(await screen.findByText(/SD customer master, 90% match/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Keep A" }));
+    const dialog = await screen.findByRole("dialog", { name: /Keep record A/ });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Keep both" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: /Keep record A/ })).not.toBeInTheDocument());
+    expect(merge).not.toHaveBeenCalled();
   });
 
   it("keeps one record's pairs in both sources, with a chip to clear it", async () => {
@@ -181,6 +219,9 @@ describe("Reviewing one pair", () => {
 
     const mergeButton = screen.getByRole("button", { name: "Merge" });
     expect(mergeButton).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Not a match" })).toBeDisabled();
+    expect(screen.getByText("Reason (required), kept in the merge history")).toBeInTheDocument();
+    expect(screen.getByText("Give a reason to merge or mark not a match")).toBeInTheDocument();
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "Same company" } });
     await waitFor(() => expect(mergeButton).toBeEnabled());
     fireEvent.click(mergeButton);
@@ -218,20 +259,33 @@ describe("Reviewing one pair", () => {
     vi.spyOn(matchReviewApi, "getReviewPair").mockResolvedValue(detail);
     const merge = vi.spyOn(matchReviewApi, "mergePair");
     renderWithQuery(<GoldenRecordMergePage />);
-    expect(await screen.findByText(/needs the approve permission/)).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Merge. Needs Data owner on all systems — Request access" })).toBeDisabled();
+    expect(screen.getByText("Merging a pair or marking it not a match needs Data owner on all systems")).toBeInTheDocument();
+    expect(screen.queryByText(/approve permission/)).not.toBeInTheDocument();
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
     expect(merge).not.toHaveBeenCalled();
   });
 });
 
 describe("Comparing one golden record against its sources", () => {
-  it("renders a field-by-field comparison with the differing source marked", async () => {
+  it("lists one row per field with its golden value, source system and confidence", async () => {
     nav.params = new URLSearchParams({ id: "m1" });
     vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue(record);
     renderWithQuery(<GoldenRecordMergePage />);
-    await waitFor(() => expect(screen.getByText(/MARA-1000/)).toBeInTheDocument());
-    expect(screen.getByText("MATKL")).toBeInTheDocument();
-    expect(screen.getByText(/HALB.*differs/)).toBeInTheDocument();
+    await screen.findByRole("heading", { name: /Sources of MARA-1000/ });
+    expect(screen.getByText("2 fields from 2 source systems")).toBeInTheDocument();
+    const matkl = screen.getByText("MATKL").closest("tr");
+    expect(matkl).not.toBeNull();
+    expect(within(matkl as HTMLElement).getByText("FERT")).toBeInTheDocument();
+    expect(within(matkl as HTMLElement).getByText("ECC")).toBeInTheDocument();
+    expect(within(matkl as HTMLElement).getByText("90%")).toBeInTheDocument();
+    const maktx = screen.getByText("MAKTX").closest("tr") as HTMLElement;
+    expect(within(maktx).getByText("S4HANA_CLOUD")).toBeInTheDocument();
+    expect(within(maktx).getByText("40%")).toBeInTheDocument();
+    // Field names are never read as systems: no field-by-field grid of differing sources.
+    expect(screen.queryByRole("columnheader", { name: "MATKL" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/differs/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Use this value" })).not.toBeInTheDocument();
   });
 
   it("shows the API error message and retries on click", async () => {

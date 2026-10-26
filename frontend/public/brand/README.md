@@ -38,3 +38,7 @@ fill, no gradient. The arc is ink; the meridian line is the accent.
 The wordmark is outlined from Public Sans, licensed under the SIL Open Font
 License 1.1 (https://openfontlicense.org). Outlined glyphs and the bundled
 `app/_fonts/PublicSans-*.ttf` stay under that licence.
+
+The UI faces in `app/_fonts` (Manrope and JetBrains Mono variable woff2, from
+Fontsource) are also SIL OFL 1.1; their licences sit beside them as
+`Manrope-OFL.txt` and `JetBrainsMono-OFL.txt`.

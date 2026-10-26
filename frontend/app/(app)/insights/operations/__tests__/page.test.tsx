@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as analyticsApi from "@/lib/api/analytics";
+import * as triageApi from "@/lib/api/triage";
 import * as usersApi from "@/lib/api/users";
 import * as versionsApi from "@/lib/api/versions";
 import OperationsPage, { stageLabel } from "../page";
@@ -12,17 +13,24 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
   useSearchParams: () => new URLSearchParams("run=v1"),
 }));
-vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+const role = vi.hoisted(() => ({ assign: true }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (p: string) => p !== "assign" || role.assign }) }));
+
+const EMPTY_METRICS: triageApi.TriageMetrics = {
+  weeks: 8, backlog_by_owner: [], backlog_by_team: [], unassigned: 0, resolved_in_sla: 0, resolved_total: 0,
+  sla_attainment_pct: null, mtta_hours: null, mttr_hours: null, breach_count: 0, weekly: [],
+};
 
 function mount() {
   vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [{ id: "v1", label: "Run 1", status: "complete", run_at: "2026-10-01T00:00:00Z" }] } as never);
   vi.spyOn(usersApi, "getAssignableUsers").mockResolvedValue([]);
   vi.spyOn(analyticsApi, "getSprints").mockResolvedValue({ sprints: [], total_actions: 0 });
+  if (!vi.isMockFunction(triageApi.getTriageMetrics)) vi.spyOn(triageApi, "getTriageMetrics").mockResolvedValue(EMPTY_METRICS);
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={qc}><OperationsPage /></QueryClientProvider>);
 }
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => { vi.restoreAllMocks(); role.assign = true; });
 
 describe("stageLabel", () => {
   it("maps queue stage ids to the steward's words", () => {
@@ -60,6 +68,18 @@ describe("OperationsPage", () => {
     expect(screen.getByText("1 steward now, 0 needed")).toBeInTheDocument();
     expect(screen.queryByText("Stewards needed")).toBeNull();
     expect(screen.getByText("1 stage is holding work")).toBeInTheDocument();
+    // The queue counts are the cleaning queue: they open Fix work's Cleaning proposals tab, not the inbox.
+    // Four headline tiles; the other figures are a definition list whose values drill.
+    for (const label of ["Processed", "In progress"]) {
+      expect(screen.getByText(label).closest("a")).toHaveAttribute("href", "/fix?tab=cleaning");
+    }
+    for (const label of ["Throughput", "Time to resolve", "Average queue age"]) {
+      const term = screen.getByText(label);
+      expect(term.tagName).toBe("DT");
+      expect(term.nextElementSibling?.querySelector("a")).toHaveAttribute("href", "/fix?tab=cleaning");
+    }
+    expect(document.querySelectorAll(".m-stat-grid .m-stat").length).toBe(4);
+    expect(document.querySelector('a[href="/inbox"]')).toBeNull();
   });
 
   it("shows the parts that loaded while the slow operational query is still on its way, never the whole-page timeout", async () => {
@@ -94,5 +114,41 @@ describe("OperationsPage", () => {
     expect(screen.getByText("Nothing processed yet")).toBeInTheDocument();
     expect(screen.getByText("2 stages are holding work")).toBeInTheDocument();
     expect(screen.getByText("Unblock Pending review first")).toBeInTheDocument();
+  });
+
+  it("reports steward work against the SLA with the open backlog per owner", async () => {
+    vi.spyOn(analyticsApi, "getOperational").mockResolvedValue({
+      kpis: {
+        throughput: 0, automation_rate: 0, mttr_hours: 0, sla_compliance_pct: 0, rejection_rate: 0, rollback_rate: 0,
+        items_in_flight: 1, avg_queue_age_hours: 0, top_rule_by_volume: "N/A", total_processed: 0, total_detected: 1,
+      },
+      bottlenecks: [],
+      capacity: { needed: 1, current: 1, surplus_deficit: 0, recommendation: "" },
+    });
+    const metrics = vi.spyOn(triageApi, "getTriageMetrics").mockResolvedValue({
+      ...EMPTY_METRICS, unassigned: 4, resolved_in_sla: 9, resolved_total: 12, sla_attainment_pct: 75, mtta_hours: 2.25, mttr_hours: 30, breach_count: 3,
+      backlog_by_owner: [{ user_id: "u1", email: "ana@x.io", open: 7, breached: 2, at_risk: 1 }],
+    });
+    mount();
+    expect(await screen.findByText("Steward work against the SLA")).toBeInTheDocument();
+    expect(metrics).toHaveBeenCalledWith(8);
+    expect(await screen.findByText("75%")).toBeInTheDocument();
+    expect(screen.getByText("9 of 12 with a due date")).toBeInTheDocument();
+    expect(screen.getByText("2.3 h")).toBeInTheDocument();
+    expect(screen.getByText("30 h")).toBeInTheDocument();
+    expect(screen.getByText("ana@x.io")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "7" })).toHaveAttribute("href", "/inbox?assignee=u1");
+    expect(screen.getByRole("link", { name: "SLA policies" })).toHaveAttribute("href", "/admin/triage");
+  });
+});
+
+describe("OperationsPage without assign", () => {
+  it("leaves out the team member card and never asks for the assignable users (a viewer's 403)", async () => {
+    role.assign = false;
+    vi.spyOn(analyticsApi, "getOperational").mockReturnValue(new Promise(() => {}));
+    mount();
+    expect(await screen.findByText("Throughput and capacity")).toBeInTheDocument();
+    expect(screen.queryByText("Team member")).not.toBeInTheDocument();
+    expect(usersApi.getAssignableUsers).not.toHaveBeenCalled();
   });
 });

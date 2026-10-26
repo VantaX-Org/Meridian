@@ -64,23 +64,53 @@ def _catalogue(system_id: str, system_type: str, tenant_id: str) -> list[dict]:
 _CATALOGUE_KEY = "object_catalogue"
 
 
-def _stored_catalogue(session, snapshot: Optional[str]) -> Optional[tuple]:
-    """The catalogue saved against this discovery snapshot, if it has been built."""
+@lru_cache(maxsize=1)
+def _catalogue_fingerprint() -> str:
+    """What the catalogue depends on besides the snapshot: the app version, the rule pack and
+    dictionaries (YAML under checks/ and sap/dictionaries/) and the planning code. A stored
+    catalogue built with other inputs (an update shipped new rules or tables) is rebuilt.
+    """
+    import hashlib
+    from pathlib import Path
+
+    import checks.frames
+    import checks.runner
+    import sap.extraction_plan
+    from api.services.version import APP_VERSION
+
+    root = Path(__file__).resolve().parents[2]
+    h = hashlib.sha256(APP_VERSION.encode())
+    files = sorted({*(root / "checks").rglob("*.yaml"), *(root / "sap" / "dictionaries").rglob("*.yaml"),
+                    *(Path(m.__file__) for m in (sap.extraction_plan, checks.runner, checks.frames))})
+    for f in files:
+        try:
+            h.update(str(f.relative_to(root)).encode() + b"\0" + f.read_bytes())
+        except (OSError, ValueError):
+            continue
+    return h.hexdigest()[:16]
+
+
+def _stored_catalogue(session, tenant_id: str, snapshot: Optional[str]) -> Optional[tuple]:
+    """The catalogue saved against this discovery snapshot, if built from the current inputs."""
     if not snapshot:
         return None
     row = session.execute(text(
-        "SELECT system_info -> :k FROM ddic_snapshots WHERE id = CAST(:s AS uuid)"),
-        {"k": _CATALOGUE_KEY, "s": snapshot}).scalar()
-    return tuple(row) if row else None
+        "SELECT system_info -> :k FROM ddic_snapshots WHERE id = CAST(:s AS uuid) AND tenant_id = CAST(:t AS uuid)"),
+        {"k": _CATALOGUE_KEY, "s": snapshot, "t": tenant_id}).scalar()
+    # A bare list is the pre-fingerprint format: stale by definition.
+    if not isinstance(row, dict) or row.get("fingerprint") != _catalogue_fingerprint():
+        return None
+    return tuple(row.get("objects") or ()) or None
 
 
-def _store_catalogue(session, snapshot: Optional[str], payload: tuple) -> None:
+def _store_catalogue(session, tenant_id: str, snapshot: Optional[str], payload: tuple) -> None:
     if not snapshot:
         return
     session.execute(text(
         "UPDATE ddic_snapshots SET system_info = COALESCE(system_info, '{}'::jsonb) "
-        "|| jsonb_build_object(:k, CAST(:p AS jsonb)) WHERE id = CAST(:s AS uuid)"),
-        {"k": _CATALOGUE_KEY, "p": json.dumps(payload), "s": snapshot})
+        "|| jsonb_build_object(:k, CAST(:p AS jsonb)) WHERE id = CAST(:s AS uuid) AND tenant_id = CAST(:t AS uuid)"),
+        {"k": _CATALOGUE_KEY, "s": snapshot, "t": tenant_id,
+         "p": json.dumps({"fingerprint": _catalogue_fingerprint(), "objects": list(payload)})})
     session.commit()
 
 
@@ -101,7 +131,7 @@ def _catalogue_for(system_id: str, system_type: str, tenant_id: str, snapshot: O
 
     with Session(get_sync_engine()) as s:
         s.execute(text("SET app.tenant_id = :t"), {"t": tenant_id})
-        cached = _stored_catalogue(s, snapshot)
+        cached = _stored_catalogue(s, tenant_id, snapshot)
         if cached:
             return cached
         dictionary = dictionary_for(s, system_id, system_type)
@@ -121,7 +151,7 @@ def _catalogue_for(system_id: str, system_type: str, tenant_id: str, snapshot: O
     built = tuple(out)
     with Session(get_sync_engine()) as s:
         s.execute(text("SET app.tenant_id = :t"), {"t": tenant_id})
-        _store_catalogue(s, snapshot, built)
+        _store_catalogue(s, tenant_id, snapshot, built)
     return built
 
 
@@ -164,7 +194,8 @@ async def start_download(system_id: uuid.UUID, body: DownloadBody, request: Requ
     enforce_licensed_modules(request, body.objects)
     version_id = str(uuid.uuid4())
     jobs.start_job(str(tenant.id), f"dl-{version_id}", "extraction", body.label or ", ".join(body.objects),
-                   status="queued", system_id=str(system_id), modules=body.objects, version_id=version_id)
+                   status="queued", system_id=str(system_id), modules=body.objects, version_id=version_id,
+                   retry={"via": "downloads", "body": body.model_dump(mode="json")})
     run_extraction.delay(str(tenant.id), str(system_id), body.objects, True, "both",
                          scope, body.analyse, body.label, version_id)
     return {"job_id": f"dl-{version_id}", "version_id": version_id, "status": "queued", "objects": body.objects,

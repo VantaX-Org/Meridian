@@ -9,8 +9,12 @@ import { getObjects } from "@/lib/api/v1/objects";
 import { queryKeys } from "@/lib/query-keys";
 import { isFinished } from "@/lib/runs";
 import { hrefWithRun, runChoiceLabels } from "@/lib/run-scope";
+import { isCurrentStateView, isModuleScoped, isRunScoped } from "@/lib/current-state";
 
-/** Where the chosen run and object are kept between screens, in this browser. */
+/**
+ * Where the chosen run and object are kept between screens: this tab's session only (sessionStorage), so a run
+ * picked yesterday never pins today's screens.
+ */
 export const RUN_KEY = "m-selected-run";
 export const OBJECT_KEY = "m-selected-object";
 const LATEST = "latest";
@@ -25,7 +29,7 @@ const objectOfPath = (path: string): string | null => /^\/objects\/([^/?#]+)/.ex
 
 function read(key: string): string | null {
   try {
-    return window.localStorage.getItem(key);
+    return window.sessionStorage.getItem(key);
   } catch {
     return null;
   }
@@ -33,8 +37,8 @@ function read(key: string): string | null {
 
 function write(key: string, value: string | null): void {
   try {
-    if (value) window.localStorage.setItem(key, value);
-    else window.localStorage.removeItem(key);
+    if (value) window.sessionStorage.setItem(key, value);
+    else window.sessionStorage.removeItem(key);
   } catch {
     /* storage unavailable: the choice holds through the URL alone */
   }
@@ -44,10 +48,16 @@ export const readSelectedRun = () => read(RUN_KEY);
 export const writeSelectedRun = (run: string | null) => write(RUN_KEY, run);
 export const readSelectedObject = () => read(OBJECT_KEY);
 
-/** A choice the scope bar holds across screens: its URL parameter, where it is kept, and screens that own it. */
-const CARRIED: { param: string; key: string; owned: (path: string) => boolean }[] = [
-  { param: "run", key: RUN_KEY, owned: ownsRun },
-  { param: "module", key: OBJECT_KEY, owned: (path) => ownsRun(path) || !!objectOfPath(path) },
+/**
+ * A choice the scope bar holds across screens: its URL parameter, where it is kept, screens that own it (never read
+ * nor written) and screens it is never carried onto. A screen that does not read the parameter at all (outside
+ * `RUN_SCOPED` / `MODULE_SCOPED` in lib/current-state.ts) is treated as owning it, so nothing is carried onto it. The current-state views (Home, the Insights overview and the
+ * executive summary) describe every object at its latest run; a carried `?run=` or `?module=` would silently turn
+ * them into one run, so they open as the current state and only an explicit link or their own picker pins a run.
+ */
+const CARRIED: { param: string; key: string; owned: (path: string) => boolean; notCarried: (path: string) => boolean }[] = [
+  { param: "run", key: RUN_KEY, owned: (path) => ownsRun(path) || isCurrentStateView(path) || !isRunScoped(path), notCarried: isCurrentStateView },
+  { param: "module", key: OBJECT_KEY, owned: (path) => ownsRun(path) || !!objectOfPath(path) || !isModuleScoped(path), notCarried: isCurrentStateView },
 ];
 
 /**
@@ -76,7 +86,7 @@ export function RunCarrier() {
       if (v) write(c.key, v);
       else if (p?.path === pathname) {
         if (p.values[i]) write(c.key, null);
-      } else {
+      } else if (!c.notCarried(pathname)) {
         const kept = read(c.key);
         if (kept) { params.set(c.param, kept); carried = true; }
       }
@@ -87,7 +97,7 @@ export function RunCarrier() {
   return null;
 }
 
-/** The scope bar's object picker: every object, or one, held on every screen. */
+/** The scope bar's object picker: every object, or one, held across the screens that read `?module=` (`MODULE_SCOPED`). */
 export function GlobalObjectPicker() {
   const pathname = usePathname();
   const search = useSearchParams();
@@ -95,7 +105,7 @@ export function GlobalObjectPicker() {
   const q = useQuery({ queryKey: queryKeys.objects("latest"), queryFn: () => getObjects("latest") });
   const objects = q.data?.objects ?? [];
   const fromPath = objectOfPath(pathname);
-  if (!objects.length || ownsRun(pathname)) return null;
+  if (!objects.length || ownsRun(pathname) || !isModuleScoped(pathname)) return null;
   const chosen = fromPath ? decodeURIComponent(fromPath) : search?.get("module") ?? null;
   const value = chosen && objects.some((o) => o.module === chosen) ? chosen : EVERY;
   const pick = (m: string) => {
@@ -123,7 +133,7 @@ export function GlobalObjectPicker() {
   );
 }
 
-/** The scope bar's run picker: the latest run, or any finished run, held on every screen. */
+/** The scope bar's run picker: the latest run, or any finished run, held across the screens that read `?run=` (`RUN_SCOPED`). */
 export function GlobalRunPicker() {
   const pathname = usePathname();
   const search = useSearchParams();
@@ -145,7 +155,8 @@ export function GlobalRunPicker() {
       router.replace(hrefWithRun(pathname, search, null), { scroll: false });
     }
   }, [run, data, pathname, search, router]);
-  if (!runs.length || ownsRun(pathname)) return null;
+  // A current-state view's own header picker owns its scope ("Current state" or one run): no second run picker.
+  if (!runs.length || ownsRun(pathname) || !isRunScoped(pathname) || isCurrentStateView(pathname)) return null;
   const labels = runChoiceLabels(runs);
   const value = run && runs.some((r) => r.id === run) ? run : LATEST;
   return (

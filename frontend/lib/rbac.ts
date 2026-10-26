@@ -31,6 +31,8 @@ export const LEGACY_ACTION_MAP: Readonly<Record<string, readonly Pair[]>> = {
   approve: [["fixes", "approve"], ["mdm", "approve"], ["stewardship", "approve"], ["analysis", "approve"]],
   apply: [["fixes", "run"]],
   assign: [["stewardship", "edit"]],
+  // Hand one blocking rule to a steward (one new task); every `assign` holder and process_analyst hold it.
+  handoff_rule: [["stewardship", "create"]],
   export: [["reports", "export"], ["*", "export"]],
   manage_rules: [["rules", "create"], ["rules", "edit"], ["contracts", "create"], ["contracts", "edit"], ["glossary", "edit"]],
   review_ai_rules: [["rules", "approve"]],
@@ -68,6 +70,31 @@ export interface RequestTarget {
   module?: string | null;
   /** Shown instead of the raw system id when the caller knows it. */
   systemLabel?: string;
+}
+
+/** Plain words for the (resource, action) pairs people request most; `accessLabel` builds the rest. */
+const ACCESS_LABEL: Readonly<Record<string, string>> = {
+  "fixes.approve": "Approve fixes",
+  "fixes.run": "Apply fixes",
+  "fixes.edit": "Edit fixes",
+  "analysis.approve": "Sign off analysis",
+  "analysis.run": "Run analysis",
+  "extraction.run": "Run extraction",
+  "extraction.create": "Upload data",
+  "mdm.edit": "Edit golden records",
+  "stewardship.create": "Hand rules to a steward",
+  "process.export_process": "Export process models",
+};
+const VERB: Readonly<Record<string, string>> = {
+  view: "View", create: "Create", edit: "Edit", approve: "Approve", run: "Run", export: "Export", admin: "Administer",
+};
+
+/** A permission pair as a person says it ("Approve fixes", "Run extraction"), never the raw keys. */
+export function accessLabel(resource: string, action: string): string {
+  const known = ACCESS_LABEL[`${resource}.${action}`];
+  if (known) return known;
+  const verb = VERB[action] ?? action.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+  return resource ? `${verb} ${resource.replace(/_/g, " ")}` : verb;
 }
 
 /** A 403 names a legacy action (and sometimes a resource); the access-request API wants a (resource, action) pair. */

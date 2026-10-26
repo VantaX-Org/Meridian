@@ -8,7 +8,7 @@
 import { useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { toast } from "sonner";
+import { toast } from "@/design";
 import { Button, Card, EmptyState, ErrorState, Mono, Notice, Pill, Skeleton, type PillTone } from "@/design";
 import { getConfigCompare, proposeConfigMatches, type MatchStatus } from "@/lib/api/config-pairing";
 import { apiErrorDetail, apiErrorMessage, isListFailure } from "@/lib/error";
@@ -62,19 +62,19 @@ export function ConfigComparePanel({ systemId, canPropose }: { systemId: string;
   } else {
     body = (
       <div className="flex flex-col gap-3">
-        <table className="w-full m-text-body m-ink">
+        <table className="m-table">
           <thead>
-            <tr className="m-ink-2">
-              <th className="text-left font-medium">Object</th>
-              <th className="text-right font-medium">In target</th>
-              <th className="text-right font-medium">Key match</th>
-              <th className="text-right font-medium">Description match</th>
-              <th className="text-right font-medium">Missing</th>
+            <tr>
+              <th>Object</th>
+              <th className="text-right">In target</th>
+              <th className="text-right">Key match</th>
+              <th className="text-right">Description match</th>
+              <th className="text-right">Missing</th>
             </tr>
           </thead>
           <tbody>
             {data.objects.map((o) => (
-              <tr key={o.object} className="border-t [border-color:var(--m-line)]">
+              <tr key={o.object}>
                 <td>
                   <button type="button" className="underline" onClick={() => setObject(o.object)}>
                     <Mono>{o.object}</Mono>

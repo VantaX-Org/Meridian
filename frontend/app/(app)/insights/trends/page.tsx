@@ -7,15 +7,14 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, Card, DataTable, Delta, EmptyState, Heatmap, Line, Pill, Select, type CellMeta, type ChartPoint, type HeatmapCell } from "@/design";
-import { getSystems } from "@/lib/api/connectivity";
-import { useSystemScope } from "@/lib/permissions";
+import { Button, Card, DataTable, Delta, EmptyState, Heatmap, HelpHint, Line, Pill, Select, type CellMeta, type ChartPoint, type HeatmapCell } from "@/design";
 import { getRuleRanking, getTrends, type RuleRow, type TrendRun } from "@/lib/api/insights";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { isListFailure } from "@/lib/error";
 import { drillLabel, fixHref } from "@/lib/drill";
-import { formatDate, labelOf, plural, trendSentence } from "@/lib/format";
+import { labelOf, plural, trendSentence } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { runPageHref } from "@/lib/runs";
+import { runName } from "@/lib/run-scope";
 import { DrillCount } from "../_components/DrillCount";
 import { ruleColumns } from "../_components/RuleColumns";
 import { useFindingOpener } from "../_components/FindingOpener";
@@ -27,8 +26,10 @@ import { scopeTrendRuns, scopedComparisons, trendDomain, trendPoints } from "../
 const WINDOWS = [{ value: "6", label: "Last 6 runs" }, { value: "12", label: "Last 12 runs" }, { value: "24", label: "Last 24 runs" }];
 const DIMENSIONS = ["completeness", "validity", "uniqueness", "consistency", "timeliness", "accuracy"];
 const num = { numeric: true } satisfies CellMeta;
-const runName = (r: TrendRun) => r.label || formatDate(r.run_at, "datetime");
 const count = (n: number | null | undefined) => (typeof n === "number" ? n.toLocaleString() : "—");
+
+/** One run's failing rules at one severity: the run's findings tab, filtered. */
+const severityFindingsHref = (versionId: string, severity: "critical" | "high") => `/runs/${versionId}?tab=findings&severity=${severity}`;
 
 /** The run-by-run ledger: each run's results and what changed from the run before. Newest first. */
 function runColumns(current: string | undefined): ColumnDef<TrendRun>[] {
@@ -44,10 +45,11 @@ function runColumns(current: string | undefined): ColumnDef<TrendRun>[] {
       ),
     },
     { id: "score", header: "Score", accessorFn: (r) => r.composite ?? -1, meta: num, cell: ({ row }) => (row.original.composite == null ? "—" : row.original.composite.toFixed(1)) },
-    { id: "change", header: "Change", accessorFn: (r) => r.change ?? 0, meta: num, cell: ({ row }) => (row.original.change == null ? <span className="m-ink-3">first run</span> : <Delta value={row.original.change} />) },
-    // Each count opens that run's failing records in Fix work, at that severity.
-    { id: "critical", header: "Critical", accessorFn: (r) => r.critical, meta: num, cell: ({ row }) => <DrillCount href={fixHref({ run: row.original.version_id, sev: "critical" })} count={row.original.critical} label={`${drillLabel({ sev: "critical", what: "failing records" })} of run ${runName(row.original)}`}>{count(row.original.critical)}</DrillCount> },
-    { id: "high", header: "High", accessorFn: (r) => r.high, meta: num, cell: ({ row }) => <DrillCount href={fixHref({ run: row.original.version_id, sev: "high" })} count={row.original.high} label={`${drillLabel({ sev: "high", what: "failing records" })} of run ${runName(row.original)}`}>{count(row.original.high)}</DrillCount> },
+    // Not sortable: the ledger reads in run order, and a sort button cannot hold the hint's own button.
+    { id: "change", header: () => <span className="inline-flex items-center gap-1">Change <HelpHint term="previous_run" /></span>, accessorFn: (r) => r.change ?? 0, meta: num, enableSorting: false, cell: ({ row }) => (row.original.change == null ? <span className="m-ink-3">first run</span> : <Delta value={row.original.change} />) },
+    // Each count is that run's failing rules at that severity, and opens exactly those rules on the run's findings tab.
+    { id: "critical", header: "Critical", accessorFn: (r) => r.critical, meta: num, cell: ({ row }) => <DrillCount href={severityFindingsHref(row.original.version_id, "critical")} count={row.original.critical} label={`${drillLabel({ count: row.original.critical, sev: "critical", what: "failing rules" })} of run ${runName(row.original)}`}>{count(row.original.critical)}</DrillCount> },
+    { id: "high", header: "High", accessorFn: (r) => r.high, meta: num, cell: ({ row }) => <DrillCount href={severityFindingsHref(row.original.version_id, "high")} count={row.original.high} label={`${drillLabel({ count: row.original.high, sev: "high", what: "failing rules" })} of run ${runName(row.original)}`}>{count(row.original.high)}</DrillCount> },
     { id: "fixed", header: "Rules fixed", accessorFn: (r) => r.rules_fixed ?? -1, meta: num, cell: ({ row }) => (row.original.rules_fixed == null ? "—" : row.original.rules_fixed > 0 ? <Delta value={row.original.rules_fixed} /> : "0") },
     { id: "new", header: "Newly failing", accessorFn: (r) => r.rules_new ?? -1, meta: num, cell: ({ row }) => (row.original.rules_new == null ? "—" : row.original.rules_new > 0 ? <Delta value={row.original.rules_new} invert /> : "0") },
     { id: "records", header: "Failing records", accessorFn: (r) => r.affected_records, meta: num, cell: ({ row }) => <DrillCount href={fixHref({ run: row.original.version_id })} count={row.original.affected_records} label={`${drillLabel({ count: row.original.affected_records, what: "failing records" })} of run ${runName(row.original)}`}>{count(row.original.affected_records)}</DrillCount> },
@@ -55,14 +57,13 @@ function runColumns(current: string | undefined): ColumnDef<TrendRun>[] {
 }
 
 export default function TrendsPage() {
-  const { run, runs, versions, resolving } = useInsightScope();
+  const { run, runs, versions, resolving, error: listError, refetch: refetchList } = useInsightScope();
+  // No run because the run list failed: an error, never "No runs to compare yet".
+  const loadError = run ? null : listError;
   const finding = useFindingOpener(run);
   const [win, setWin] = useState("12");
-  const systemScope = useSystemScope();
-  const systems = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, meta: { ignoreError: true }, select: systemScope });
-  const [systemChoice, setSystem] = useState("all");
-  const systemId = systemChoice === "all" ? undefined : systemChoice;
-  const q = useQuery({ queryKey: queryKeys.insights("trends", run, win, systemId ?? "all"), queryFn: () => getTrends({ version_id: run, system_id: systemId, limit: Number(win) }), enabled: !!run });
+  // The run fixes the system: the trend is the lineage of the scoped run, never a second system choice.
+  const q = useQuery({ queryKey: queryKeys.insights("trends", run, win), queryFn: () => getTrends({ version_id: run, limit: Number(win) }), enabled: !!run });
   const moved = useQuery({ queryKey: queryKeys.insights("rules", run, undefined, "moved"), queryFn: () => getRuleRanking({ version_id: run, limit: 200 }), enabled: !!run });
   const router = useRouter();
   // A dot opens its own run, with ?run= naming that run so the page and the shell agree.
@@ -98,7 +99,7 @@ export default function TrendsPage() {
   const narrative = last && first && composite.length > 1 ? trendSentence(first.y, last.y, composite.length) : "A trend needs at least two scored runs.";
   const change = last && first && composite.length > 1 ? Math.round((last.y - first.y) * 10) / 10 : null;
   const biggestMove = movedRows[0];
-  const state = resolving || q.isLoading || versions.isLoading ? "loading" : isListFailure(q) ? "error" : !run || trend.length === 0 ? "empty" : undefined;
+  const state = resolving || q.isLoading || versions.isLoading ? "loading" : loadError || isListFailure(q) ? "error" : !run || trend.length === 0 ? "empty" : undefined;
 
   return (
     <InsightFrame
@@ -109,10 +110,8 @@ export default function TrendsPage() {
       run={run}
       controls={
         <>
-          {(systems.data?.length ?? 0) > 1 ? (
-            <Select label="System" value={systemChoice} onValueChange={setSystem} options={[{ value: "all", label: "All systems" }, ...(systems.data ?? []).map((s) => ({ value: s.id, label: s.name }))]} />
-          ) : null}
-          <Select label="Window" value={win} onValueChange={setWin} options={WINDOWS} />
+          {/* No System select: the scoped run fixes the system, and the header's run picker reaches every other one. */}
+          <span className="inline-flex items-center gap-1"><Select label="Window" value={win} onValueChange={setWin} options={WINDOWS} /><HelpHint term="window" /></span>
         </>
       }
       insight={{
@@ -124,17 +123,17 @@ export default function TrendsPage() {
       state={state}
       skeleton={<><CardSkeleton height={240} /><CardSkeleton height={140} /></>}
       emptyProps={{ title: "No runs to compare yet", detail: "Trends appear after the second finished run of the same system or upload.", ghost: "chart", action: <Button variant="secondary" render={<Link href="/runs">Open runs</Link>} /> }}
-      errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}
+      errorProps={loadError ? { error: loadError, onRetry: refetchList } : { error: q.error, onRetry: () => void q.refetch() }}
     >
       <div className="grid gap-4 @5xl:grid-cols-12">
         <div className="@5xl:col-span-12">
-          <Card title="Composite score" meta={`${narrative} Select a point to open that run.`}>
-            <Line data={composite} xDomain={domain} label="Composite score per run" annotations={annotations} onPointClick={openRun} height={200} />
+          <Card title="Score" meta={`${narrative} Select a point to open that run.`}>
+            <Line data={composite} xDomain={domain} label="Score per run" annotations={annotations} onPointClick={openRun} height={200} />
           </Card>
         </div>
         <div className="@5xl:col-span-12">
           <Card title="Run by run" meta={trend.length > 1 ? `${plural(fixedTotal, "rule")} fixed and ${newTotal.toLocaleString()} newly failing across these runs, each against the run before` : "Change appears after the second run"}>
-            <DataTable columns={runCols} data={byRun} getRowId={(r) => r.version_id} rowHref={(r) => runPageHref(r.version_id)} onRowClick={(r) => router.push(runPageHref(r.version_id))} hideToolbar dense height="auto" />
+            <DataTable columns={runCols} data={byRun} getRowId={(r) => r.version_id} rowHref={(r) => runPageHref(r.version_id)} onRowClick={(r) => router.push(runPageHref(r.version_id))} hideToolbar height="auto" />
           </Card>
         </div>
         <div className="@5xl:col-span-12">
@@ -142,7 +141,7 @@ export default function TrendsPage() {
             {movedRows.length === 0 && !moved.isLoading ? (
               <EmptyState variant="inline" title="No rule changed" detail={moved.isError ? "The rule changes did not load." : "No rule gained or lost failing records against the run before."} action={moved.isError ? <Button variant="secondary" onClick={() => void moved.refetch()}>Retry</Button> : <Link href={withScope("/insights/rules", { run })} className="underline-offset-2 hover:underline">Open failing rules</Link>} />
             ) : (
-              <DataTable columns={movedCols} data={movedRows} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar dense height="auto" />
+              <DataTable columns={movedCols} data={movedRows} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar height="auto" />
             )}
             {finding.drawer}
           </Card>

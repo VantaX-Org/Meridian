@@ -1,12 +1,13 @@
 // frontend/app/(app)/migration/dry-run/page.tsx
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { isAxiosError } from "axios";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, ExplorerPage, Mono, Notice, PageHeader, Pill, ReportPage, Skeleton, Stat, Status, asyncStateOf } from "@/design";
+import { Button, DataTable, ExplorerPage, Mono, Notice, PageHeader, Pager, Pill, ReportPage, Skeleton, Stat, Status, asyncStateOf } from "@/design";
 import { getDryRunRecords, getMigrationRun, getMigrationRuns, dryRunExportUrl, type DryRunRecord } from "@/lib/api/migration";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatDate, formatModuleName } from "@/lib/format";
@@ -15,13 +16,16 @@ import type { MigrationRun, MigrationStatus, TransferVerdict, WaveVerdict } from
 
 const FROM_ENGINE: Record<TransferVerdict, WaveVerdict> = { go: "go", conditional: "at_risk", "no-go": "no_go" };
 
+/** Failing records per page: the records endpoint's default page. */
+export const DRY_RUN_PAGE = 200;
+
 const inFlight = (status: MigrationStatus | undefined) => status === "queued" || status === "running";
 
 const STATUS_TONE ={ load_ready: "go", load_fail: "no-go" } as const;
 const STATUS_LABEL = { load_ready: "Load ready", load_fail: "Load fail" } as const;
 
 const columnsFor = (srcVersion: string | null | undefined): ColumnDef<DryRunRecord>[] => [
-  { accessorKey: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
+  { accessorKey: "module", header: "Object", cell: ({ row }) => formatModuleName(row.original.module) },
   { accessorKey: "source_table", header: "Source table", cell: ({ row }) => <Mono>{row.original.source_table}</Mono> },
   { accessorKey: "record_key", header: "Record", cell: ({ row }) => <Mono>{row.original.record_key}</Mono> },
   {
@@ -68,7 +72,7 @@ function DryRunPicker({ notADryRun }: { notADryRun?: boolean }) {
           detail: "Start one from a migration wave with Dry run (S/4 load). It checks every record against the S/4HANA load rules without loading anything.",
           action: <Button render={<Link href="/migration">Open migration cockpit</Link>} />,
         }}
-        errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
+        errorProps={{ error: q.error, onRetry: () => q.refetch() }}
         table={<DataTable columns={pickerColumns} data={runs} getRowId={(r) => r.id} onRowClick={(r) => router.push(`/migration/dry-run?run=${r.id}`)} />}
       />
     </div>
@@ -78,6 +82,7 @@ function DryRunPicker({ notADryRun }: { notADryRun?: boolean }) {
 export default function DryRunPage() {
   const search = useSearchParams();
   const runId = search.get("run") ?? undefined;
+  const [page, setPage] = useState(1);
 
   const runQuery = useQuery({
     queryKey: queryKeys.migrationRun(runId ?? ""),
@@ -88,8 +93,8 @@ export default function DryRunPage() {
   const running = inFlight(runQuery.data?.run.status);
 
   const recordsQuery = useQuery({
-    queryKey: queryKeys.migrationDryRun(runId ?? "", { status: "load_fail" }),
-    queryFn: () => getDryRunRecords(runId as string, { status: "load_fail" }),
+    queryKey: queryKeys.migrationDryRun(runId ?? "", { status: "load_fail", page }),
+    queryFn: () => getDryRunRecords(runId as string, { status: "load_fail", limit: DRY_RUN_PAGE, offset: (page - 1) * DRY_RUN_PAGE }),
     enabled: !!runId,
     refetchInterval: running ? 3000 : false,
   });
@@ -107,6 +112,7 @@ export default function DryRunPage() {
   const isError = runQuery.isError || isListFailure(recordsQuery);
   const run = runQuery.data?.run;
   const rows = recordsQuery.data?.rows ?? [];
+  const total = recordsQuery.data?.total ?? rows.length;
 
   const state = isLoading ? "loading" : isError ? "error" : undefined;
 
@@ -124,7 +130,8 @@ export default function DryRunPage() {
   }
 
   const columns = columnsFor(run?.source_version_id);
-  const srcHref = run?.source_version_id ? `/runs/${run.source_version_id}` : undefined;
+  // The stats count this dry run's records, not the data quality run's findings: they open the list below.
+  const failingHref = "#failing-records";
   const moduleBadges = run
     ? Object.entries(run.gap_summary ?? {}).map(([module, summary]) => {
         const verdict = FROM_ENGINE[summary.verdict];
@@ -159,14 +166,21 @@ export default function DryRunPage() {
         <div className="flex flex-col [gap:var(--m-section-gap)]">
           {run ? (
             <div className="m-stat-grid">
-              <Stat label="Would fail to load" value={run.records_blocked.toLocaleString()} tone={run.records_blocked > 0 ? "no-go" : "go"} href={srcHref} />
-              <Stat label="Records checked" value={run.records_total.toLocaleString()} href={srcHref} />
+              <Stat label="Would fail to load" value={run.records_blocked.toLocaleString()} tone={run.records_blocked > 0 ? "no-go" : "go"} href={run.records_blocked > 0 ? failingHref : undefined} />
+              <Stat label="Records checked" value={run.records_total.toLocaleString()} />
             </div>
           ) : null}
           {moduleBadges.length ? <div className="flex flex-wrap items-center gap-3">{moduleBadges}</div> : null}
         </div>
       }
-      tables={<DataTable columns={columns} data={rows} getRowId={(row) => `${row.module}:${row.record_key}`} />}
+      tables={
+        <div id="failing-records" className="flex flex-col gap-2">
+          <DataTable columns={columns} data={rows} getRowId={(row) => `${row.module}:${row.record_key}`} />
+          {total > DRY_RUN_PAGE ? (
+            <Pager page={page} pageCount={Math.ceil(total / DRY_RUN_PAGE)} pageSize={DRY_RUN_PAGE} total={total} onPageChange={setPage} />
+          ) : null}
+        </div>
+      }
       state={state}
       emptyProps={{ title: "No records would fail", detail: "Every record passed the S/4HANA load rules in this dry run." }}
       errorProps={{

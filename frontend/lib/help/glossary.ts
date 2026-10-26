@@ -142,7 +142,7 @@ export const GLOSSARY = {
   dryRun: {
     term: "Dry run",
     short: "A trial load that shows what the target system would reject, without changing anything",
-    long: "A dry run applies the target system's own checks to the source records and reports which would be blocked and why. Nothing is written to SAP. Use it before each wave to turn surprises at load time into a fix list days earlier.",
+    long: "A dry run applies the target system's own checks to the source records and reports which would be blocked and why. Nothing is written to SAP. Use it before each wave to turn surprises at load time into Fix work days earlier.",
     href: "/docs?page=data-in",
   },
   zObject: {
@@ -162,6 +162,60 @@ export const GLOSSARY = {
     short: "A change in configuration or data behaviour since the last time it was read",
     long: "Drift is recorded when a later configuration read differs from the earlier one, such as a field turned from optional to required. Each drift entry names what changed and when, so a score change can be linked to a change in SAP rather than to the data.",
     href: "/docs?page=data-in",
+  },
+  run: {
+    term: "Run",
+    short: "One analysis of one system or file: its scores, findings and records at that moment",
+    long: "A run is one pass of every applicable rule over the data read from one system (or one uploaded file). It carries its scores, findings and the records behind them, and it never changes afterwards. Runs of the same system line up in time, which is what progress, trends and the forecast read.",
+    href: "/runs",
+  },
+  previous_run: {
+    term: "Previous run",
+    short: "The finished run of the same system that came just before this one",
+    long: "Change on a run page, the Runs ledger and Trends is measured against the previous run: the newest finished run of the same system (or of the same uploaded objects) that started earlier. Runs of other systems are never compared with each other.",
+    href: "/runs",
+  },
+  baseline: {
+    term: "Baseline",
+    short: "The run you pinned to measure progress against; without one, the previous run is used",
+    long: "Pin any finished run as the baseline of its system and every later run reports its change since that run, on the Since baseline page and in the progress report. Without a pinned baseline the comparison falls back to the previous run. One baseline per system; pinning another replaces it.",
+    href: "/insights/progress",
+  },
+  current_state: {
+    term: "Current state",
+    short: "Every object at its latest finished run, combined: the whole landscape as it stands today",
+    long: "Home and the Insights summary read the current state: each object as measured by the newest finished run of its system, so a system analysed yesterday and a file uploaded today both count. Choose a run under Showing to read that one run alone instead.",
+    href: "/home",
+  },
+  pinned_run: {
+    term: "Pinned run",
+    short: "An older run opened by its link; the page reads that run, not the latest",
+    long: "A page normally shows the latest finished run. Opening a run from the ledger, a trend point or a shared link pins that run: every number on the page comes from it and the header names it. Back to latest returns to the newest run.",
+    href: "/runs",
+  },
+  window: {
+    term: "Window",
+    short: "How many of the latest runs a trend draws",
+    long: "Trends draw the last 6, 12 or 24 finished runs of one system, newest on the right. A wider window shows the long arc; a narrower one makes the last few changes readable. The window never mixes runs of different systems.",
+    href: "/insights/trends",
+  },
+  verdict: {
+    term: "Verdict",
+    short: "Go, At risk or No-go: whether the score clears the target, is near it, or is below the warning line",
+    long: "The verdict turns a score into a decision using the tenant's bands: Go at or above the target, At risk between the warning line and the target, No-go below it. Objects, waves and processes carry the same three words, so a reader never needs a second scale.",
+    href: "/rules/scoring",
+  },
+  blocking_finding: {
+    term: "Blocking finding",
+    short: "A failing rule that is critical, or that the S/4HANA readiness pack counts as blocking",
+    long: "A blocking finding stops a migration wave: the rule is critical (it caps the score), or the S/4HANA readiness pack marks it as blocking the load. Pages that count every critical and high finding say \"Critical and high findings\" instead. Counts of blocking findings open the readiness view behind them.",
+    href: "/insights/readiness",
+  },
+  migration_gap: {
+    term: "Migration gap",
+    short: "A field or value that stops a record loading into the target system",
+    long: "A migration gap is found by a wave's run: a missing target field, or a value that would be cut short, lose precision or be refused. Readiness counts an object's gaps per wave, informational ones left out, and the count opens the wave's gap list. It is not a count of rules: those say \"Critical and high findings\" or \"Blocking findings\".",
+    href: "/migration",
   },
 } as const satisfies Record<string, GlossaryEntry>;
 

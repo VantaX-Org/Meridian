@@ -208,8 +208,57 @@ describe("process L1 drill", () => {
     expect(within(cell.closest("tr")!).getByText("12%")).toBeTruthy();
   });
 
-  it("hides the Cases tab without export_process", async () => {
-    h.can = (a) => a !== "export_process";
+  it("lists the steps the cases take that the reference model does not name, with counts", async () => {
+    h.qs = "system=sys-1&tab=conformance";
+    vi.spyOn(pdApi, "getConformance").mockResolvedValue({ case_type: "po_item", fitness: 0.82, missing: {},
+      steps: [{ activity: "Create PO item", step_fitness: 0.95, out_of_order: 0.02 }],
+      extra: [{ activity: "ZZ_MANUAL_FIX", cases: 1200, share: 0.12 }, { activity: "YY_REVERSAL", cases: 1, share: 0.0001 }] });
+    renderWithQuery(<ProcessL1Page />);
+    const heading = await screen.findByRole("heading", { name: "Not in the reference model" });
+    const items = within(heading.closest("section")!).getAllByRole("listitem").map((li) => li.textContent);
+    expect(items).toEqual(["ZZ_MANUAL_FIX1,200 cases, 12%", "YY_REVERSAL1 case, 0%"]);
+  });
+
+  it("says every step is in the reference model when there is no extra activity", async () => {
+    h.qs = "system=sys-1&tab=conformance";
+    renderWithQuery(<ProcessL1Page />);
+    expect(await screen.findByText("Every step in this view is in the reference model")).toBeTruthy();
+  });
+
+  it("links to this process's data readiness in running text", async () => {
+    renderWithQuery(<ProcessL1Page />);
+    const link = await screen.findByRole("link", { name: "Data readiness for this process" });
+    expect(link.getAttribute("href")).toBe("/insights/process?l1=PTP&object=accounts_payable");
+    expect(link.className).toContain("underline underline-offset-2");
+  });
+
+  it("puts one Run discovery on a process never discovered, preselecting it in the dialog", async () => {
+    vi.spyOn(pdApi, "getCatalogue").mockResolvedValue([{ ...ROW, coverage: "reference", last_run: null }, { ...ROW, l1: "OTC", name: "Order to cash", coverage: "reference", last_run: null }]);
+    const start = vi.spyOn(pdApi, "startRuns").mockResolvedValue({ job_id: "j", run_ids: ["r1"] });
+    renderWithQuery(<ProcessL1Page />);
+    const run = await screen.findAllByRole("button", { name: "Run discovery" });
+    expect(run).toHaveLength(1);
+    expect(screen.queryByRole("link", { name: "Run discovery" })).toBeNull();
+    fireEvent.click(run[0]);
+    fireEvent.click(await screen.findByRole("button", { name: "Start run" }));
+    await waitFor(() => expect(start).toHaveBeenCalledWith("sys-1", { l1s: ["PTP"], mode: "full", period_from: null }));
+  });
+
+  it("says discovery needs a connected SAP system when no process on it can be mined", async () => {
+    vi.spyOn(pdApi, "getCatalogue").mockResolvedValue([{ ...ROW, coverage: "reference", last_run: null, reason: "Event tables are not exposed by this connector." }]);
+    renderWithQuery(<ProcessL1Page />);
+    expect(await screen.findByText("Discovery needs a connected SAP system")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Open systems" }).getAttribute("href")).toBe("/systems");
+    expect(screen.queryByRole("button", { name: "Run discovery" })).toBeNull();
+  });
+
+  it("shows the Cases tab with view alone (no export_process), and hides it without view", async () => {
+    h.can = (a) => a === "view";
+    const { unmount } = renderWithQuery(<ProcessL1Page />);
+    expect(await screen.findByRole("tab", { name: "Cases" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Export" })).toBeNull();
+    unmount();
+    h.can = (a) => a !== "view";
     h.qs = "system=sys-1&tab=cases";
     renderWithQuery(<ProcessL1Page />);
     await screen.findByRole("button", { name: "Node Purchasing" });
@@ -225,14 +274,34 @@ describe("process L1 drill", () => {
     expect(screen.getAllByText("Purchasing").length).toBeGreaterThan(0);
   });
 
-  it("links each node's DQ defects to the failing objects and dashes an unmapped node", async () => {
+  it("links each node's DQ defects to its process's readiness in that run and dashes an unmapped node", async () => {
     vi.spyOn(pdApi, "getDfg").mockResolvedValue(dfg(2, node("PTP", "Procure to Pay", 100),
       [{ ...node("PTP-01", "Purchasing", 100), dq_defects: 12, dq_version_id: "v-ecc" }, { ...node("PTP-02", "Receiving", 50), dq_defects: null }]));
     renderWithQuery(<ProcessL1Page />);
     await screen.findByRole("button", { name: "Node Purchasing" });
     fireEvent.click(screen.getByRole("button", { name: "View as table" }));
-    expect(screen.getByRole("link", { name: "12" }).getAttribute("href")).toBe("/objects?run=v-ecc&readiness=fail");
+    expect(screen.getByRole("link", { name: "12" }).getAttribute("href")).toBe("/insights/process?l1=PTP&object=accounts_payable&run=v-ecc");
     expect(screen.getByRole("columnheader", { name: /DQ defects/ })).toBeTruthy();
+  });
+
+  it("reads the reference L5 table as plain names and dashes, never dead links or 0 cases", async () => {
+    h.qs = "system=sys-1&tab=reference&node=PTP-01-01-01";
+    const bare: L4 = { ...L4_PO, activities: L4_PO.activities.map((a) => ({ ...a, discovery: undefined })) };
+    vi.spyOn(designerApi, "getReference").mockResolvedValue({ ...DOC, l1: [{ ...DOC.l1[0], l2: [{ ...DOC.l1[0].l2[0],
+      l3: [{ ...DOC.l1[0].l2[0].l3[0], l4: [bare] }] }] }] });
+    renderWithQuery(<ProcessL1Page />);
+    const row = (await screen.findByText("PTP-01-01-01-A2")).closest("tr")!;
+    expect(within(row).getByText("Release PO").closest("button")).toBeNull();
+    expect(within(row).queryByText("0%")).toBeNull();
+    const cells = within(row).getAllByRole("cell").map((c) => c.textContent);
+    expect(cells[3]).toBe("—");
+    expect(cells[4]).toBe("—");
+  });
+
+  it("keeps the system on Open the catalogue when the L1 is not in it", async () => {
+    vi.spyOn(pdApi, "getCatalogue").mockResolvedValue([]);
+    renderWithQuery(<ProcessL1Page />);
+    expect((await screen.findByRole("link", { name: "Open the catalogue" })).getAttribute("href")).toBe("/process?system=sys-1");
   });
 
   it("defaults a reference-only L1 to the reference tab and explains the other tabs", async () => {
@@ -248,8 +317,10 @@ describe("process L1 drill", () => {
 
   it("explains a reference-only L1 on a mined tab", async () => {
     h.qs = "system=sys-1&tab=flow";
+    // Another L1 of the system can be mined, so this one is reference-only by itself (spec §10), not the system.
     vi.spyOn(pdApi, "getCatalogue").mockResolvedValue([
-      { ...ROW, coverage: "reference", reason: "No PTP tables on this system.", last_run: null }]);
+      { ...ROW, coverage: "reference", reason: "No PTP tables on this system.", last_run: null },
+      { ...ROW, l1: "OTC", name: "Order to cash" }]);
     renderWithQuery(<ProcessL1Page />);
     expect(await screen.findByText("Reference only, not discovered")).toBeTruthy();
     expect(screen.getAllByText("No PTP tables on this system.").length).toBeGreaterThan(0);

@@ -3,7 +3,8 @@
 
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { toast } from "sonner";
+import type { ColumnDef } from "@tanstack/react-table";
+import { toast } from "../shell/Toaster";
 import Link from "next/link";
 import { Drawer } from "../primitives/Drawer";
 import { Button } from "../primitives/Button";
@@ -15,16 +16,18 @@ import { SeverityDot } from "../primitives/SeverityDot";
 import { Pill } from "../primitives/Pill";
 import { Status } from "../primitives/Status";
 import { ExportMenu } from "../primitives/ExportMenu";
+import { DataTable } from "../table/DataTable";
 import { isSeverity } from "../tokens";
 import { buildDrillHref } from "../shell/DrillLink";
 import { exportFindingRecords, getFinding } from "@/lib/api/findings";
 import { createBatch } from "@/lib/api/remediation";
+import { createException } from "@/lib/api/exceptions";
 import { useRole } from "@/hooks/use-role";
 import { getFindingImpact } from "@/lib/api/analytics";
 import { getConfigRootCause, type RootCauseType } from "@/lib/api/config-intelligence";
 import { queryKeys } from "@/lib/query-keys";
 import { apiErrorState } from "@/lib/error";
-import { checkClassLabel, AUTHORITY_SENTENCE, formatModuleName } from "@/lib/format";
+import { checkClassLabel, AUTHORITY_SENTENCE, formatModuleName, formatMoney, labelOf } from "@/lib/format";
 
 const heading = "m-text-body font-semibold";
 // Pill has no high tone: high shares the at-risk fill with medium.
@@ -66,6 +69,21 @@ function RootCauseSection({ checkId, versionId }: { checkId: string; versionId: 
   );
 }
 
+type SampleRow = { id: string; sample: number; field: string; value: string };
+
+/** One row per field of each sample record: the record number, the SAP field and its value. */
+function sampleRows(samples: Record<string, unknown>[]): SampleRow[] {
+  return samples.slice(0, 10).flatMap((row, i) =>
+    Object.entries(row).map(([field, value]) => ({ id: `${i}:${field}`, sample: i + 1, field, value: value == null ? "" : String(value) })),
+  );
+}
+
+const SAMPLE_COLUMNS: ColumnDef<SampleRow>[] = [
+  { id: "sample", header: "Record", accessorFn: (r) => r.sample, meta: { numeric: true } },
+  { id: "field", header: "Field", cell: ({ row }) => <Mono>{row.original.field}</Mono> },
+  { id: "value", header: "Value", cell: ({ row }) => (row.original.value ? <Mono>{row.original.value}</Mono> : <span style={dim}>blank</span>) },
+];
+
 export interface FindingDrawerProps {
   /** null closes the drawer. */
   findingId: string | null;
@@ -85,8 +103,30 @@ function AutoCleanButton({ checkId, module, versionId }: { checkId: string; modu
     onError: () => toast.error("Could not create the fix batch"),
   });
   if (!can("apply")) return null;
-  if (batchId) return <Button render={<Link href={`/fix/${batchId}`}>Open fix batch</Link>} />;
+  if (batchId) return <Button render={<Link href={`/fix?tab=batches&batch=${batchId}`}>Open fix batch</Link>} />;
   return <Button onClick={() => create.mutate()} pending={create.isPending}>Create fix batch</Button>;
+}
+
+/** Track this finding as an exception: an owner, a status, an SLA and a comment thread in the inbox. */
+function RaiseExceptionButton({ finding }: { finding: { id: string; check_id: string; module: string; severity: string; version_id: string; affected_count: number; details: { message?: string | null } } }) {
+  const { can } = useRole();
+  const [raised, setRaised] = useState<string | null>(null);
+  const raise = useMutation({
+    mutationFn: () => createException({
+      type: "dq_rule",
+      category: finding.module,
+      severity: isSeverity(finding.severity) ? finding.severity : "medium",
+      title: `${finding.check_id} fails on ${finding.affected_count.toLocaleString()} ${finding.affected_count === 1 ? "record" : "records"}`,
+      description: finding.details.message ?? `Raised from rule ${finding.check_id}.`,
+      linked_finding_id: finding.id,
+      source_reference: `${finding.version_id}:${finding.check_id}`,
+    }),
+    onSuccess: (r) => { setRaised(r.id); toast.success("Exception raised. It now has an owner, an SLA and a thread in the inbox"); },
+    onError: () => toast.error("Could not raise the exception"),
+  });
+  if (!can("analyse")) return null;
+  if (raised) return <Button variant="secondary" render={<Link href={`/inbox?kind=exception&focus=${raised}`}>Open exception</Link>} />;
+  return <Button variant="secondary" onClick={() => raise.mutate()} pending={raise.isPending}>Raise exception</Button>;
 }
 
 export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerProps) {
@@ -172,8 +212,7 @@ export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerPr
                   <ul className="flex flex-col gap-1 m-text-body">
                     {impactQuery.data.impacts.map((bucket) => (
                       <li key={bucket.category}>
-                        {bucket.category}: {bucket.finding_count.toLocaleString()} finding{bucket.finding_count === 1 ? "" : "s"},{" "}
-                        {bucket.annual_risk_zar.toLocaleString()} at risk per year ({bucket.calculation_method}).
+                        {labelOf(bucket.category)} puts {formatMoney(bucket.annual_risk, bucket.currency)} a year at risk across {bucket.finding_count.toLocaleString()} finding{bucket.finding_count === 1 ? "" : "s"}.
                       </li>
                     ))}
                   </ul>
@@ -197,11 +236,14 @@ export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerPr
                     ))}
                   </ul>
                 ) : failingSamples.length > 0 ? (
-                  <ul className="flex flex-col gap-1 m-text-body">
-                    {failingSamples.slice(0, 10).map((row, i) => (
-                      <li key={i}><Mono>{JSON.stringify(row)}</Mono></li>
-                    ))}
-                  </ul>
+                  <DataTable
+                    columns={SAMPLE_COLUMNS}
+                    data={sampleRows(failingSamples)}
+                    getRowId={(r) => r.id}
+                    hideToolbar
+                    hideSearch
+                    height="auto"
+                  />
                 ) : (
                   <p className="m-text-body" style={dim}>No sample records stored for this finding.</p>
                 )}
@@ -236,6 +278,7 @@ export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerPr
 
               <div className="flex flex-wrap gap-2 pt-2 border-t" style={{ borderColor: "var(--m-line)" }}>
                 <AutoCleanButton checkId={finding.check_id} module={finding.module} versionId={finding.version_id} />
+                <RaiseExceptionButton finding={finding} />
                 <Button
                   variant="secondary"
                   render={<Link href={buildDrillHref({ object: finding.module, ruleId: finding.check_id, run: finding.version_id })}>Open records</Link>}

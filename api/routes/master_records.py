@@ -4,7 +4,7 @@ Endpoints:
   GET  /master-records           — list with domain/status filters, paginated
   GET  /master-records/{id}      — detail (strips ai_recommendation unless view_ai_confidence)
   POST /master-records/{id}/promote  — requires approve permission
-  POST /master-records/{id}/writeback — requires apply permission
+  POST /master-records/{id}/writeback — write-back preview per target system (apply permission)
   GET  /master-records/{id}/history  — immutable audit trail
 """
 
@@ -396,15 +396,20 @@ async def writeback_master_record(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    """Trigger write-back for a golden record. Requires apply permission.
-    Delegates to existing writeback.py 4-eyes flow.
+    """What a write-back of this golden record would do, per target system. Requires apply permission.
+
+    Nothing is written here: a write-back is simulated, approved by a second person and applied by the
+    worker (api/routes/golden_writeback.py). ``writeback_supported`` says whether any source system
+    can take any of the record's fields (api/services/golden_writeback.py plan_target).
     """
+    from api.services.golden_writeback import build_preview
+
     tenant_id = str(tenant.id)
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
 
     result = await db.execute(
         text("""
-            SELECT id, status, golden_fields, domain
+            SELECT id, status, golden_fields, domain, sap_object_key, source_contributions
             FROM master_records
             WHERE id = :id AND tenant_id = :tid
         """),
@@ -420,25 +425,10 @@ async def writeback_master_record(
             detail="Only golden records can be written back — promote first"
         )
 
-    # SAP write-back is finding-driven by design: write_back_log.finding_id is
-    # NOT NULL and the 4-eyes BAPI flow (api/routes/writeback.py) executes the
-    # deterministic record_fixes attached to a finding. A golden record on its
-    # own carries no finding/sql_statement, so this endpoint does NOT write to
-    # SAP — it returns the golden field values and routes the steward to the
-    # supported path (apply the validated findings via 4-eyes write-back).
-    # ponytail: guidance, not a write. One-click golden-record write-back needs
-    # a nullable-finding write_back_log + golden-field BAPI mapping — tracked.
-    return {
-        "record_id": str(row[0]),
-        "domain": row[3],
-        "golden_fields": row[2] or {},
-        "writeback_supported": False,
-        "message": (
-            "Golden field values are ready. SAP write-back runs from validated "
-            "findings via the 4-eyes flow — open this record's findings and apply "
-            "the deterministic fixes to push changes to SAP."
-        ),
-    }
+    return await build_preview(db, tenant_id, {
+        "id": str(row[0]), "domain": row[3], "sap_object_key": row[4],
+        "golden_fields": row[2] or {}, "source_contributions": row[5] or {},
+    })
 
 
 @router.get("/master-records/{record_id}/history", response_model=list[HistoryEntry])

@@ -54,11 +54,12 @@ describe("InsightHeader", () => {
     expect(screen.getByText("Connect").closest("a")?.getAttribute("href")).toBe("/systems");
     expect(screen.getByText("2 minutes")).toBeTruthy();
   });
-  it("shows the AI summary in place of the four cells, never both", () => {
+  it("keeps the four rule-built cells and sets the model's summary under them, labelled in words", () => {
     render(<InsightHeader situation={cell("S")} changed={cell("C")} why={cell("W")} next={cell("N")} aiSummary={{ llmOk: true, text: "model words", fallback: "S W" }} />);
     expect(screen.getByText("model words")).toBeTruthy();
-    expect(screen.queryByText("Situation")).toBeNull();
-    expect(screen.queryByText("S")).toBeNull();
+    expect(screen.getByText("Summary, written by the model from the findings")).toBeTruthy();
+    expect(screen.getByText("Situation")).toBeTruthy();
+    expect(screen.getByText("S")).toBeTruthy();
   });
   it("shows skeletons, not sentences, while loading", () => {
     render(<InsightHeader situation={cell("S")} changed={cell("C")} why={cell("W")} next={cell("N")} loading />);
@@ -97,11 +98,11 @@ describe("Score explain", () => {
         }}
       />,
     );
-    fireEvent.click(screen.getByLabelText("Explain score 92"));
+    fireEvent.click(screen.getByLabelText("Explain score 92.0"));
     // The popover names the band and cap; the score itself is drawn once, by the ring.
     expect(screen.getAllByLabelText(/^Score 85/)).toHaveLength(1);
     expect(screen.getByText("20.0")).toBeTruthy();
-    expect(screen.getByText(/Capped at 85: one critical failure/)).toBeTruthy();
+    expect(screen.getByText(/Capped at 85.0: one critical failure/)).toBeTruthy();
     const ids = screen.getAllByText(/MM-00/).map((n) => n.textContent);
     expect(ids).toEqual(["MM-002", "MM-001"]);
   });

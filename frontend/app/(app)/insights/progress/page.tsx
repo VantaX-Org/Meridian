@@ -3,19 +3,23 @@
 /**
  * Insights > Progress: the lead's screen. How fast the data is getting fixed, and what is slowing it down:
  * the burn-down with its projected finish, decisions per person, time to fix, what keeps coming back, where
- * the failing records sit, how good the proposals are, and what changed since the previous run.
+ * the failing records sit, how good the proposals are, and what changed since the previous run. The toolbar pins
+ * the run later comparisons start from (the baseline).
  * Every number comes from /api/v1/work/analytics (SQL over the work already recorded).
  */
 
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Bar, Card, DataTable, EmptyState, Funnel, Line, Mono, Pareto, Select, Status } from "@/design";
+import { toast } from "sonner";
+import { Bar, Button, Card, DataTable, EmptyState, Funnel, HelpHint, Line, Mono, Pareto, Select, Status } from "@/design";
+import { useRole } from "@/hooks/use-role";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getComparisonReportUrl, getWorkbookUrl } from "@/lib/api/reports";
+import { pinBaseline } from "@/lib/api/versions";
 import {
   getBurndown, getProposalQuality, getRecurrence, getRootCauses, getRunChange, getThroughput, getTimeToFix,
   type DecisionKind, type PersonThroughput, type ProposalSourceStat, type Recurrence, type RootCauseValue,
@@ -24,6 +28,9 @@ import {
 import { drillLabel, fixHref as fixLink, type FixStatus } from "@/lib/drill";
 import { apiErrorMessage } from "@/lib/error";
 import { formatDate, formatModuleName, plural } from "@/lib/format";
+import { queryKeys } from "@/lib/query-keys";
+import { lineageOf } from "@/lib/runs";
+import { runName, runScopeLabel } from "@/lib/run-scope";
 import { DrillCount } from "../_components/DrillCount";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { Section } from "../_components/Section";
@@ -44,7 +51,11 @@ type SystemRecurrence = Recurrence["by_system"][number];
 export default function ProgressPage() {
   const dayOne = useDayOne();
   const router = useRouter();
-  const { run, module, resolving } = useInsightScope();
+  const { run, module, runs, resolving, error: listError, refetch: refetchList } = useInsightScope();
+  // No run because the run list (or the day-one sources) failed: an error, never "Nothing to track yet".
+  const loadError = run ? null : listError ?? (dayOne.status === "error" ? dayOne.error : null);
+  const { can } = useRole();
+  const qc = useQueryClient();
   const scope = { versionId: run, module };
   const key = (name: string) => ["work-analytics", name, run ?? null, module ?? null];
   const ready = !resolving;
@@ -63,6 +74,20 @@ export default function ProgressPage() {
   /** Fix work for these records, in this page's run and object scope. */
   const fix = useCallback((f: Parameters<typeof fixLink>[0] = {}) => fixLink({ run, module, ...f }), [run, module]);
   const runsHref = "/runs";
+
+  // The pinned baseline of this run's system (or uploads of the same objects), if any; the shown run itself may be it.
+  const current = runs.find((r) => r.id === run);
+  const pinnedRun = current ? runs.find((r) => lineageOf(r) === lineageOf(current) && r.metadata?.baseline === true) : undefined;
+  const pinnedHere = !!run && pinnedRun?.id === run;
+  const pin = useMutation({
+    mutationFn: () => pinBaseline(run ?? "", !pinnedHere),
+    onSuccess: (r) => {
+      toast.success(r.baseline ? "Pinned as baseline. Later runs compare against it." : "Baseline unpinned. Later runs compare against the previous run.");
+      void qc.invalidateQueries({ queryKey: queryKeys.run("list") });
+      void qc.invalidateQueries({ queryKey: ["versions"] });
+    },
+    onError: (e) => toast.error(apiErrorMessage(e)),
+  });
 
   // ── columns ────────────────────────────────────────────────────────────────
   const peopleColumns = useMemo<ColumnDef<PersonThroughput>[]>(() => [
@@ -162,35 +187,47 @@ export default function ProgressPage() {
   const neverRan = !!b && !b.version_id && b.days.every((d) => d.open === 0 && d.opened === 0);
   const state: "loading" | "empty" | "error" | undefined = resolving || burn.isLoading || dayOne.status === "loading"
     ? "loading"
-    : burn.isError ? "error" : neverRan ? "empty" : undefined;
-  const openLabel = b?.open_records != null ? "Open records" : "Open issues";
+    : burn.isError || (neverRan && loadError) ? "error" : neverRan ? "empty" : undefined;
+  // One noun: a failing record is one record failing one rule (the burn-down's unit); records to fix are the distinct
+  // records in the work list.
+  const openLabel = b?.open_records != null ? "Records to fix" : "Failing records";
   const openValue = b ? (b.open_records ?? b.open_now) : "—";
 
   return (
     <InsightFrame
       title="Progress"
       scope
-      meta={PURPOSE}
+      purpose={PURPOSE}
       run={run}
       module={module}
+      toolbar={run ? (
+        <>
+          <span className="inline-flex items-center gap-1 m-text-meta m-ink-3" data-testid="baseline-line">
+            {pinnedRun ? `Baseline: ${runScopeLabel(pinnedRun)}` : "No baseline pinned"}
+            <HelpHint term="baseline" />
+          </span>
+          {can("analyse") ? <Button variant="secondary" onClick={() => pin.mutate()} pending={pin.isPending}>{pinnedHere ? "Unpin baseline" : "Pin as baseline"}</Button> : null}
+        </>
+      ) : undefined}
       exportOptions={run ? [
-        { format: "pdf", label: "Proof of progress (PDF)", run: () => downloadAuthenticated(getComparisonReportUrl(run), `progress_${run}.pdf`) },
+        { format: "pdf", label: "Progress report (PDF)", run: () => downloadAuthenticated(getComparisonReportUrl(run), `progress_${run}.pdf`) },
         { format: "xlsx", label: "Comparison workbook (Excel)", run: () => downloadAuthenticated(getWorkbookUrl(run, { module }), `comparison_${run}.xlsx`) },
       ] : []}
       insight={{
         hero: true,
         stats: [
-          { label: openLabel, value: openValue, hint: b && b.open_records != null ? `${n(b.open_now)} open issues` : undefined, to: fixHref },
-          { label: "Fixed this week", value: b?.fixed_7d ?? "—", tone: b?.fixed_7d ? "go" : undefined, hint: "Last 7 days", to: fix({ st: "fixed" }) },
+          { label: openLabel, value: openValue, hint: b && b.open_records != null ? `${n(b.open_now)} failing records` : undefined, to: fixHref },
+          // Fix work has no date filter, so the count says the last 7 days and the drill says it opens every fixed record.
+          { label: "Fixed this week", value: b?.fixed_7d ?? "—", tone: b?.fixed_7d ? "go" : undefined, hint: "Last 7 days; opens all fixed records", to: fix({ st: "fixed" }) },
           { label: "Median time to fix", value: overall ? daysText(overall.median_days) : "—", hint: overall?.fixed ? `Over ${plural(overall.fixed, "fix", "fixes")}` : undefined, to: overall?.fixed ? "#time-to-fix" : undefined },
           { label: "Projected finish", value: b?.projected_finish ? formatDate(b.projected_finish) : b && b.open_now === 0 ? "Done" : "No date yet", tone: b?.projected_finish ? "go" : b && b.open_now > 0 ? "at-risk" : undefined, hint: b ? `At the last ${b.pace_window_days} days' pace` : undefined, to: b ? "#burndown" : undefined },
         ],
-        situation: { sentence: b ? (b.open_now ? `${plural(b.open_now, "issue")} open across ${b.open_records != null ? plural(b.open_records, "record") : "the tracked records"}` : "Nothing is open") : "—", tone: b && b.open_now === 0 ? "go" : undefined },
-        changed: { sentence: b ? `${plural(b.fixed_7d, "issue")} fixed in the last 7 days; ${b.pace_per_day >= 0 ? `${b.pace_per_day.toLocaleString()} a day net closed` : `${Math.abs(b.pace_per_day).toLocaleString()} a day net added`} over ${b.pace_window_days} days` : "—" },
+        situation: { sentence: b ? (b.open_now ? `${plural(b.open_now, "failing record")} open${b.open_records != null ? `, ${plural(b.open_records, "record")} to fix` : ""}` : "Nothing is open") : "—", tone: b && b.open_now === 0 ? "go" : undefined },
+        changed: { sentence: b ? `${plural(b.fixed_7d, "failing record")} fixed in the last 7 days; ${b.pace_per_day >= 0 ? `${b.pace_per_day.toLocaleString()} a day net closed` : `${Math.abs(b.pace_per_day).toLocaleString()} a day net added`} over ${b.pace_window_days} days` : "—" },
         why: { sentence: slowest ? `${formatModuleName(slowest.module)} takes longest to fix: typically ${daysText(slowest.median_days)}` : "No fixes recorded yet, so no fix times", href: slowest ? fix({ module: slowest.module }) : undefined },
         next: b && b.projected_finish
-          ? { sentence: finishSentence(b), tone: "go", action: { label: "Open fix list", href: fixHref } }
-          : { sentence: b ? finishSentence(b) : "—", tone: b && b.open_now > 0 ? "at-risk" : undefined, action: { label: "Open fix list", href: fixHref } },
+          ? { sentence: finishSentence(b), tone: "go", action: { label: "Open Fix work", href: fixHref } }
+          : { sentence: b ? finishSentence(b) : "—", tone: b && b.open_now > 0 ? "at-risk" : undefined, action: { label: "Open Fix work", href: fixHref } },
       }}
       state={state}
       skeleton={<><CardSkeleton height={280} /><CardSkeleton height={240} /><CardSkeleton height={240} /></>}
@@ -200,26 +237,26 @@ export default function ProgressPage() {
         ghost: "chart",
         action: <DayOneAction step={dayOne.step} fallbackHref={runsHref} fallbackLabel="Open runs" />,
       }}
-      errorProps={{ message: apiErrorMessage(burn.error), onRetry: () => void burn.refetch() }}
+      errorProps={burn.isError ? { error: burn.error, onRetry: () => void burn.refetch() } : { error: loadError, onRetry: () => { refetchList(); dayOne.refetch(); } }}
     >
       <div id="burndown" className="scroll-mt-24">
       <Card
         title="Burn-down"
-        meta={b && chart ? `Open issues per day over the last 90 days, at most ${n(chart.peak)}. ${finishSentence(b)}` : undefined}
-        actions={<Link href={fixHref} className={linkClass}>Open fix list</Link>}
+        meta={b && chart ? `Failing records open per day over the last 90 days, at most ${n(chart.peak)}. ${finishSentence(b)}` : undefined}
+        actions={<Link href={fixHref} className={linkClass}>Open Fix work</Link>}
       >
         {b && chart && b.days.some((d) => d.open > 0) ? (
           <div className="flex flex-col gap-4">
-            <Line series={chart.series} data={[]} xDomain={chart.xDomain} height={260} counts label="Open issues per day" />
+            <Line series={chart.series} data={[]} xDomain={chart.xDomain} height={260} counts label="Failing records open per day" />
             {b.runs.length > 1 && (
               <div>
-                <p className="m-text-meta m-ink-3">Failing record checks in each run of this system</p>
-                <Bar data={b.runs.map((r) => ({ x: r.version_id, y: r.issues, label: r.label || formatDate(r.run_at, "datetime"), runId: r.version_id }))} height={Math.max(120, b.runs.length * 28)} label="Failing record checks per run" onPointClick={(p) => { if (p.runId) router.push(fixLink({ run: p.runId, module })); }} />
+                <p className="m-text-meta m-ink-3">Failing records in each run of this system</p>
+                <Bar data={b.runs.map((r) => ({ x: r.version_id, y: r.issues, label: runName(r), runId: r.version_id }))} height={Math.max(120, b.runs.length * 28)} label="Failing records per run" onPointClick={(p) => { if (p.runId) router.push(fixLink({ run: p.runId, module })); }} />
               </div>
             )}
           </div>
         ) : (
-          <EmptyState variant="inline" title="No open issues in the last 90 days" action={<Link href={runsHref} className={linkClass}>Open runs</Link>} />
+          <EmptyState variant="inline" title="No failing records open in the last 90 days" action={<Link href={runsHref} className={linkClass}>Open runs</Link>} />
         )}
       </Card>
       </div>
@@ -228,7 +265,7 @@ export default function ProgressPage() {
         {thr.data && thr.data.people.length ? (
           <div className="flex flex-col gap-4">
             <Bar data={thr.data.people.slice(0, 12).map((p) => ({ x: p.person, y: p.total }))} height={Math.max(120, Math.min(12, thr.data.people.length) * 32)} label="Decisions per person, last 30 days" />
-            <DataTable columns={peopleColumns} data={thr.data.people} getRowId={(r) => r.person} hideToolbar dense height="auto" />
+            <DataTable columns={peopleColumns} data={thr.data.people} getRowId={(r) => r.person} hideToolbar height="auto" />
           </div>
         ) : (
           <EmptyState variant="inline" title="No decisions in the last 30 days" action={<Link href={fixHref} className={linkClass}>Start fixing</Link>} />
@@ -236,7 +273,7 @@ export default function ProgressPage() {
         {thr.data && thr.data.workload.length > 0 && (
           <div className="mt-4 flex flex-col gap-2">
             <p className="m-text-meta m-ink-3">Open work per person</p>
-            <DataTable columns={workloadColumns} data={thr.data.workload} getRowId={(r) => r.assignee_id ?? "unassigned"} hideToolbar dense height="auto" />
+            <DataTable columns={workloadColumns} data={thr.data.workload} getRowId={(r) => r.assignee_id ?? "unassigned"} hideToolbar height="auto" />
           </div>
         )}
       </Section>
@@ -253,19 +290,19 @@ export default function ProgressPage() {
                 ))}
               </p>
             )}
-            <DataTable columns={ttfColumns} data={ttf.data.by_check} getRowId={(r) => `${r.module}:${r.check_id}`} hideToolbar dense height="auto" />
+            <DataTable columns={ttfColumns} data={ttf.data.by_check} getRowId={(r) => `${r.module}:${r.check_id}`} hideToolbar height="auto" />
           </div>
         ) : (
-          <EmptyState variant="inline" title="Nothing fixed yet" detail="Fix times appear once a run shows a record passing" action={<Link href={fixHref} className={linkClass}>Open fix list</Link>} />
+          <EmptyState variant="inline" title="Nothing fixed yet" detail="Fix times appear once a run shows a record passing" action={<Link href={fixHref} className={linkClass}>Open Fix work</Link>} />
         )}
       </Section>
       </div>
 
-      <Section title="Problems that come back" height={200} query={rec} meta={rec.data?.totals.reopened ? `${plural(rec.data.totals.reopened, "issue")} failed again after a fix: ${pct(rec.data.totals.rate_pct)} of ${n(rec.data.totals.issues)} tracked` : undefined}>
+      <Section title="Problems that come back" height={200} query={rec} meta={rec.data?.totals.reopened ? `${plural(rec.data.totals.reopened, "failing record")} failed again after a fix: ${pct(rec.data.totals.rate_pct)} of ${n(rec.data.totals.issues)} tracked` : undefined}>
         {rec.data && rec.data.by_check.length ? (
           <div className="flex flex-col gap-4">
-            <DataTable columns={recurColumns} data={rec.data.by_check} getRowId={(r) => `${r.module}:${r.check_id}`} hideToolbar dense height="auto" />
-            {rec.data.by_system.length > 0 && <DataTable columns={systemColumns} data={rec.data.by_system} getRowId={(r) => r.scope} hideToolbar dense height="auto" />}
+            <DataTable columns={recurColumns} data={rec.data.by_check} getRowId={(r) => `${r.module}:${r.check_id}`} hideToolbar height="auto" />
+            {rec.data.by_system.length > 0 && <DataTable columns={systemColumns} data={rec.data.by_system} getRowId={(r) => r.scope} hideToolbar height="auto" />}
           </div>
         ) : (
           <EmptyState variant="inline" title="Nothing has come back after a fix" action={<Link href={withScope("/insights/rules", { run })} className={linkClass}>Open rules</Link>} />
@@ -283,7 +320,7 @@ export default function ProgressPage() {
           <div className="flex flex-col gap-4">
             <Pareto data={activeDim.top.map((v) => ({ x: v.value, y: v.records }))} label={`Failing records by ${activeDim.label.toLowerCase()}`} onPointClick={(p) => router.push(fix({ part: { field: activeDim.field, value: String(p.x) } }))} />
             <p className="m-text-meta m-ink-3">Read from the record key: <Mono>{activeDim.field}</Mono></p>
-            <DataTable columns={rootColumns} data={activeDim.top} getRowId={(r) => r.value} hideToolbar dense height="auto" />
+            <DataTable columns={rootColumns} data={activeDim.top} getRowId={(r) => r.value} hideToolbar height="auto" />
           </div>
         ) : (
           <EmptyState variant="inline" title="No organisational unit in the failing records' keys" action={<Link href={withScope("/insights/rules", { run })} className={linkClass}>Explore by rule</Link>} />
@@ -299,10 +336,10 @@ export default function ProgressPage() {
               { label: "Sent to SAP", value: prop.data.totals.exported },
               { label: "Fixed", value: prop.data.totals.fixed },
             ]} onStageClick={(stage) => { const st = STAGE_STATUS[stage.label]; if (st) router.push(fix({ st })); }} />
-            <DataTable columns={sourceColumns} data={prop.data.sources.filter((s) => s.proposed || s.fixed || s.still_failing)} getRowId={(r) => r.source} hideToolbar dense height="auto" />
+            <DataTable columns={sourceColumns} data={prop.data.sources.filter((s) => s.proposed || s.fixed || s.still_failing)} getRowId={(r) => r.source} hideToolbar height="auto" />
           </div>
         ) : (
-          <EmptyState variant="inline" title="No values proposed yet" action={<Link href={fixHref} className={linkClass}>Open fix list</Link>} />
+          <EmptyState variant="inline" title="No values proposed yet" action={<Link href={fixHref} className={linkClass}>Open Fix work</Link>} />
         )}
       </Section>
 
@@ -310,10 +347,10 @@ export default function ProgressPage() {
         title="Change since the previous run"
         height={200}
         query={change}
-        meta={change.data?.previous ? `Compared with ${change.data.previous.label || formatDate(change.data.previous.run_at, "datetime")}: ${n(change.data.totals.fixed)} fixed, ${n(change.data.totals.new)} new, ${n(change.data.totals.still_failing)} still failing${change.data.not_comparable_checks ? `; ${plural(change.data.not_comparable_checks, "rule")} not in both runs left out` : ""}` : undefined}
+        meta={change.data?.previous ? `Compared with ${runName(change.data.previous)}: ${n(change.data.totals.fixed)} fixed, ${n(change.data.totals.new)} new, ${n(change.data.totals.still_failing)} still failing${change.data.not_comparable_checks ? `; ${plural(change.data.not_comparable_checks, "rule")} not in both runs left out` : ""}` : undefined}
       >
         {change.data?.previous ? (
-          change.data.objects.length ? <DataTable columns={changeColumns} data={change.data.objects} getRowId={(r) => r.module} hideToolbar dense height="auto" />
+          change.data.objects.length ? <DataTable columns={changeColumns} data={change.data.objects} getRowId={(r) => r.module} hideToolbar height="auto" />
             : <EmptyState variant="inline" title="No object failed in either run" action={<Link href={runsHref} className={linkClass}>Open runs</Link>} />
         ) : (
           <EmptyState variant="inline" title="No earlier run of this system to compare with" detail="The change appears after the next run" action={<Link href={runsHref} className={linkClass}>Open runs</Link>} />

@@ -16,7 +16,7 @@ Actions: see PERMISSIONS below — it is the single source of truth.
 import json
 import os
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from typing import Optional
 
@@ -39,25 +39,26 @@ from api.deps import Tenant, get_db, get_tenant
 #   approver     four-eyes approver only
 #   auditor      read-only + audit log
 #   ai_reviewer  reviews AI proposals
+#   (handoff_rule: hand one blocking rule to a steward; every `assign` holder and process_analyst)
 #   viewer       read-only
 
 _READ = {"view", "mdm.read", "view_ai_confidence"}
 
 PERMISSIONS: dict[str, set[str]] = {
     "admin": _READ | {
-        "upload", "analyse", "approve", "apply", "export", "assign",
+        "upload", "analyse", "approve", "apply", "export", "assign", "handoff_rule",
         "manage_users", "manage_rules", "manage_field_mappings", "manage_llm",
         "manage_system", "manage_systems", "manage_settings", "view_audit",
         "ai_feedback", "review_ai_rules", "trigger_ai", "trigger_sync",
         "mdm.write", "run_process_discovery", "export_process",
     },
     "manager": _READ | {
-        "upload", "analyse", "approve", "apply", "export", "assign",
+        "upload", "analyse", "approve", "apply", "export", "assign", "handoff_rule",
         "manage_systems", "view_audit",
         "ai_feedback", "trigger_ai", "trigger_sync", "mdm.write", "export_process",
     },
     "steward": _READ | {
-        "upload", "analyse", "approve", "apply", "export", "assign",
+        "upload", "analyse", "approve", "apply", "export", "assign", "handoff_rule",
         "manage_rules", "ai_feedback", "review_ai_rules", "trigger_ai",
         "trigger_sync", "mdm.write",
     },
@@ -79,18 +80,26 @@ PERMISSIONS: dict[str, set[str]] = {
 # widen the legacy analyst, so it is deliberately not done here.
 
 PERSONA_ROLES: dict[str, set[str]] = {
-    "programme_lead": PERMISSIONS["manager"],
-    "data_steward": PERMISSIONS["steward"],
+    # Leads and stewards run process discovery (owner decision 2026-10-26); the legacy keys stay unchanged.
+    "programme_lead": PERMISSIONS["manager"] | {"run_process_discovery"},
+    "data_steward": PERMISSIONS["steward"] | {"run_process_discovery"},
     "data_owner": PERMISSIONS["approver"],
     # No manage_system: in code it gates platform update/restart and admin doctor
     # (system_update.py, admin_doctor.py), not SAP systems. manage_systems covers those.
     "sap_basis": PERMISSIONS["analyst"] | {
-        "manage_systems", "trigger_sync", "manage_field_mappings", "upload",
+        "manage_systems", "trigger_sync", "manage_field_mappings", "upload", "run_process_discovery",
     },
     "platform_admin": PERMISSIONS["admin"],
-    # Process discovery (process-discovery spec 6.1): read everything, run discovery, export as-is models.
-    "process_analyst": _READ | {"run_process_discovery", "export_process"},
+    # Process discovery (process-discovery spec 6.1): read everything, run discovery, export as-is models,
+    # and hand a blocking rule to a steward (handoff_rule) without general `assign` over the inbox.
+    "process_analyst": _READ | {"run_process_discovery", "export_process", "handoff_rule"},
 }
+
+# The admin sees every feature (owner requirement): platform_admin and the legacy admin hold the union of every
+# action any built-in role holds, so an action added to another role later never leaves the admin out.
+ALL_ACTIONS: frozenset[str] = frozenset().union(*PERMISSIONS.values(), *PERSONA_ROLES.values())
+PERMISSIONS["admin"] = set(ALL_ACTIONS)
+PERSONA_ROLES["platform_admin"] = set(ALL_ACTIONS)
 
 # Persona key -> legacy key whose special-cased behaviour it inherits.
 PERSONA_ALIAS: dict[str, str] = {
@@ -143,6 +152,44 @@ def current_user_label() -> str:
 
 # All valid role values accepted by the users table
 VALID_ROLES: set[str] = set(PERMISSIONS.keys()) | set(PERSONA_ROLES.keys())
+
+# Legacy keys a persona replaces (plus ai_reviewer): existing grants of them still work and display,
+# but no new grant or invite may hand one out (api/routes/roles.py insert_grant).
+LEGACY_ROLES: frozenset[str] = frozenset(set(PERMISSIONS) - set(PERSONA_ROLES) - {"analyst", "auditor", "viewer"})
+
+# users.role is derived, never set by hand: the strongest unscoped built-in grant, strongest first.
+# Grants are the only source of a user's role (recompute_users_role); custom keys never become users.role.
+ROLE_RANK: tuple[str, ...] = (
+    "platform_admin", "admin", "programme_lead", "manager", "data_steward", "steward", "sap_basis",
+    "data_owner", "approver", "process_analyst", "analyst", "ai_reviewer", "auditor", "viewer",
+)
+
+
+def persona_for(role: str) -> str:
+    """The persona key that replaces a legacy key (admin -> platform_admin, ...); any other key is itself."""
+    return next((p for p, legacy in PERSONA_ALIAS.items() if legacy == role), role)
+
+
+def strongest_role(keys: Iterable[str]) -> str:
+    """users.role for a set of unscoped grant keys: the highest built-in by ROLE_RANK, else viewer."""
+    held = set(keys)
+    return next((k for k in ROLE_RANK if k in held), "viewer")
+
+
+async def recompute_users_role(db: AsyncSession, tenant_id: uuid.UUID | str, user_id: uuid.UUID | str) -> str:
+    """Set users.role from the user's unscoped grants (strongest built-in, else viewer). Caller commits.
+
+    Run after every grant added or removed and after an invite. users.role is read from the database on
+    every request (_get_user_role), never from the token, so the new value applies at the next request."""
+    await db.execute(text(f"SET LOCAL app.tenant_id = '{uuid.UUID(str(tenant_id))}'"))
+    rows = await db.execute(
+        text("SELECT role_key FROM user_role_scopes WHERE tenant_id = :t AND user_id = :u "
+             "AND system_id IS NULL AND module IS NULL"),
+        {"t": str(tenant_id), "u": str(user_id)})
+    role = strongest_role(r[0] for r in rows.fetchall())
+    await db.execute(text("UPDATE users SET role = :r WHERE id = :u AND tenant_id = :t"),
+                     {"r": role, "u": str(user_id), "t": str(tenant_id)})
+    return role
 
 
 def has_permission(role: str, action: str) -> bool:
@@ -238,6 +285,8 @@ LEGACY_ACTION_MAP: dict[str, set[tuple[str, str]]] = {
                 ("analysis", "approve")},
     "apply": {("fixes", "run")},
     "assign": {("stewardship", "edit")},
+    # Create one stewardship task for a blocking rule (POST /stewardship/handoff); every `assign` holder has it too.
+    "handoff_rule": {("stewardship", "create")},
     "export": {("reports", "export"), ("*", "export")},
     "manage_rules": {("rules", "create"), ("rules", "edit"), ("contracts", "create"),
                      ("contracts", "edit"), ("glossary", "edit")},
@@ -580,6 +629,40 @@ async def user_grants(db: AsyncSession, tenant_id: uuid.UUID, user_id: str | Non
     if not any(r == user_role for r, _ in grants):
         grants.append((user_role, Scope()))
     return grants
+
+
+def active_users_holding_sync(session, tenant_id: uuid.UUID | str, user_ids: Iterable[str], action: str) -> set[str]:
+    """The ids among ``user_ids`` of active users of this tenant who hold ``action`` tenant-wide: by users.role
+    or by an unscoped grant (built-in or custom), the same answer require_permission gives a signed-in user.
+
+    Synchronous (a Session or Connection) so a Celery worker can ask; a route calls it through
+    ``AsyncSession.run_sync``. Every query carries tenant_id; RLS is the second line, not the only one."""
+    ids = sorted({str(u) for u in user_ids if u})
+    if not ids:
+        return set()
+    tid = str(tenant_id)
+    users = session.execute(
+        text("SELECT id::text, role FROM users WHERE tenant_id = CAST(:t AS uuid) AND is_active "
+             "AND id = ANY(CAST(:ids AS uuid[]))"), {"t": tid, "ids": ids}).fetchall()
+    grants: dict[str, set[str]] = {}
+    for uid, key in session.execute(
+            text("SELECT user_id::text, role_key FROM user_role_scopes WHERE tenant_id = CAST(:t AS uuid) "
+                 "AND user_id = ANY(CAST(:ids AS uuid[])) AND system_id IS NULL AND module IS NULL"),
+            {"t": tid, "ids": ids}).fetchall():
+        grants.setdefault(uid, set()).add(key)
+    custom: dict[str, set[str]] = {}
+
+    def holds(key: str) -> bool:
+        if not key.startswith("custom:"):
+            return has_permission(key, action)
+        if key not in custom:
+            rows = session.execute(
+                text("SELECT rp.resource, rp.action FROM role_permissions rp JOIN roles r ON r.id = rp.role_id "
+                     "WHERE r.tenant_id = CAST(:t AS uuid) AND r.key = :key"), {"t": tid, "key": key}).fetchall()
+            custom[key] = legacy_actions_for_pairs({(r[0], r[1]) for r in rows})
+        return action in custom[key]
+
+    return {uid for uid, role in users if any(holds(k) for k in {role, *grants.get(uid, set())})}
 
 
 async def effective_actions(db: AsyncSession, tenant_id: uuid.UUID, user_id: str | None,

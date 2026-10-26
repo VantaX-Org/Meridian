@@ -1,4 +1,5 @@
 import { setFormatPrefs } from "./format";
+import { LEGACY_THEME_STORAGE_KEY, PREFS_STORAGE_KEY, THEME_STORAGE_KEY } from "./theme";
 
 /** Row density tiers; mirrors the CSS `[data-density]` values. */
 export type DensityTier = "compact" | "default" | "comfortable";
@@ -49,9 +50,9 @@ export interface PreferencesPatch {
 }
 
 /** The whole document, kept in localStorage so the first paint needs no network. */
-export const PREFS_KEY = "meridian:prefs";
+export const PREFS_KEY = PREFS_STORAGE_KEY;
 /** Per-key mirrors that the inline first-paint script in app/layout.tsx reads (and that pre-sync builds wrote). */
-const THEME_KEY = "meridian:theme";
+const THEME_KEY = THEME_STORAGE_KEY;
 const DENSITY_KEY = "meridian:density";
 /** Same event name hooks/use-theme.ts has always used. */
 export const PREFS_EVENT = "meridian:prefs";
@@ -100,7 +101,7 @@ let cacheValue: Preferences = EMPTY;
 export function readPrefs(): Preferences {
   if (typeof window === "undefined") return EMPTY;
   const doc = readKey(PREFS_KEY);
-  const theme = readKey(THEME_KEY) ?? readKey("aurora:theme");
+  const theme = readKey(THEME_KEY) ?? readKey(LEGACY_THEME_STORAGE_KEY);
   const density = readKey(DENSITY_KEY) ?? readKey("aurora:density");
   const raw = `${doc}|${theme}|${density}`;
   if (raw === cacheRaw) return cacheValue;

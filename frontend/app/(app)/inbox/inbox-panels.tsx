@@ -3,27 +3,35 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { toast } from "sonner";
 import Link from "next/link";
-import { Button, Card, DataTable, EmptyState, ErrorState, ExportMenu, Field, Mono, Notice, Pill, Select, Skeleton, Stat, type PillTone, Input, Status, Textarea } from "@/design";
+import { Button, Card, ConfirmDialog, DataTable, EmptyState, ErrorState, ExportMenu, Field, Mono, Notice, Pill, Select, Skeleton, Stat, Textarea, toast, type PillTone, Input, Status } from "@/design";
 import { Workbench, type WorkbenchItem, type WorkbenchTone } from "@/components/inbox/workbench";
 import { QuickFilters } from "@/components/inbox/quick-filters";
 import { getAssignableUsers } from "@/lib/api/users";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
-import { getSAPMonitor } from "@/lib/api/exceptions";
+import { assignException, getSAPMonitor, resolveException } from "@/lib/api/exceptions";
 import {
   commentIssue, exportIssues, getIssue, getIssues, updateIssues, type IssueStatus, type RecordIssue,
 } from "@/lib/api/issues";
 import { approveWriteback, getPendingApprovals, type PendingApproval } from "@/lib/api/writeback";
+import { getFindingReportContext } from "@/lib/api/findings";
+import { getVersion } from "@/lib/api/versions";
+import { getRules } from "@/lib/api/rules";
+import { getUsers } from "@/lib/api/users";
+import { writeBackModeSentence } from "@/lib/api/remediation";
 import { apiErrorMessage, isNotFound, apiErrorState } from "@/lib/error";
 import { formatModuleName, labelOf, relativeTime } from "@/lib/format";
+import { runName } from "@/lib/run-scope";
+import { queryKeys } from "@/lib/query-keys";
 import type { Exception } from "@/types/api";
 
 const STATUSES: IssueStatus[] = ["open", "in_progress", "waiting_sap", "waiting_requester", "accepted", "resolved"];
 const SEVERITIES = ["critical", "high", "medium", "low"] as const;
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
+/** How many issues the list loads at a time; "Load more" widens it. */
+const ISSUE_PAGE = 200;
 
 /** 45m, 5h, 3d */
 function span(ms: number): string {
@@ -89,14 +97,26 @@ function IssueThread({ issue }: { issue: RecordIssue }) {
   );
 }
 
+/** The issue's rule by name when the rule library has it, with the check id in mono beside it. */
+function IssueTitle({ issue, name }: { issue: RecordIssue; name?: string }) {
+  return (
+    <span className="inline-flex flex-wrap items-baseline gap-2">
+      <span>{name ?? "Rule"} in {formatModuleName(issue.module)}</span>
+      <Mono>{issue.check_id}</Mono>
+    </span>
+  );
+}
+
 const issueTone = (sev: string): WorkbenchTone => (sev === "critical" || sev === "high" || sev === "medium" ? sev : "low");
 
 export function IssuesPanel() {
   const { can } = useRole();
   const { user } = useAuth();
   const qc = useQueryClient();
-  // Status, assignee and resolve changes need `assign` on the server (api/routes/record_issues.py bulk_update).
+  // Status, assignee and resolve changes need `assign` on the server (api/routes/record_issues.py bulk_update);
+  // accepting (an approver's sign-off on the risk) needs `approve` alone, so a data owner can accept.
   const canAssign = can("assign");
+  const canAccept = can("approve");
   const [status, setStatus] = useState<IssueStatus | "">("");
   const [severity, setSeverity] = useState("");
   const [who, setWho] = useState<"all" | "mine" | "unassigned">("all");
@@ -104,11 +124,14 @@ export function IssuesPanel() {
   const [search, setSearch] = useState("");
   const [picked, setPicked] = useState<string | null>(null);
   const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
+  const [limit, setLimit] = useState(ISSUE_PAGE);
   const filter = {
     status: status || undefined, severity: severity || undefined, search: search.trim() || undefined,
     assigned_to: who === "mine" ? "me" : who === "unassigned" ? "unassigned" : undefined,
   };
-  const q = useQuery({ queryKey: ["issues", "list", filter], queryFn: () => getIssues({ ...filter, limit: 200 }), retry: false });
+  const q = useQuery({ queryKey: ["issues", "list", filter, limit], queryFn: () => getIssues({ ...filter, limit }), retry: false, placeholderData: (prev) => prev });
+  // Rule names for the detail title; the check id stays beside the name.
+  const rules = useQuery({ queryKey: ["rules", "names"], queryFn: () => getRules({ limit: 1000 }), staleTime: 300_000, meta: { ignoreError: true } });
   const people = useQuery({ queryKey: ["users", "assignable"], queryFn: getAssignableUsers, enabled: canAssign, staleTime: 300_000 });
   const bulk = useMutation({
     mutationFn: (v: { ids: string[]; status?: IssueStatus; resolution?: string; assigned_to?: string }) => updateIssues(v),
@@ -117,6 +140,8 @@ export function IssuesPanel() {
   });
   const now = q.dataUpdatedAt;
   const loaded = useMemo(() => q.data?.items ?? [], [q.data]);
+  const total = q.data?.total ?? 0;
+  const partial = total > loaded.length;
   // The urgency filter runs on the loaded page: the list endpoint filters by owner, status and severity, not by due date.
   const items = useMemo(() => (when === "any" ? loaded : loaded.filter((i) => urgencyOf(i, now).state === when)), [loaded, when, now]);
   const urgentCounts = useMemo(() => ({
@@ -144,15 +169,21 @@ export function IssuesPanel() {
   const filtering = !!(status || severity || search.trim()) || who !== "all" || when !== "any";
   const clear = () => { setStatus(""); setSeverity(""); setSearch(""); setWho("all"); setWhen("any"); };
   const assignees = (Array.isArray(people.data) ? people.data : []).filter((u) => u.id !== user?.id).map((u) => ({ value: u.id, label: u.name || u.email }));
-  const actions = (ids: string[]) => canAssign ? (
+  const accept = (ids: string[]) => bulk.mutate({ ids, status: "accepted", resolution: "accepted_risk" });
+  const actions = (ids: string[]) => canAssign || canAccept ? (
     <>
-      {user ? <Button variant="secondary" size="sm" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids, assigned_to: user.id })}>Claim</Button> : null}
-      <Button variant="secondary" size="sm" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids, assigned_to: "" })}>Release</Button>
-      {assignees.length > 0 ? (
-        <Select label="Reassign to" value="" placeholder="Reassign to…" options={assignees} onValueChange={(v) => { if (v) bulk.mutate({ ids, assigned_to: v }); }} />
+      {canAssign ? (
+        <>
+          {user ? <Button variant="secondary" size="sm" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids, assigned_to: user.id })}>Claim</Button> : null}
+          <Button variant="secondary" size="sm" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids, assigned_to: "" })}>Release</Button>
+          {assignees.length > 0 ? (
+            <Select label="Reassign to" value="" placeholder="Reassign to…" options={assignees} onValueChange={(v) => { if (v) bulk.mutate({ ids, assigned_to: v }); }} />
+          ) : null}
+          <Button variant="secondary" size="sm" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids, status: "in_progress" })}>Start work</Button>
+          <Button variant="secondary" size="sm" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids, status: "resolved", resolution: "fixed_in_source" })}>Fixed in SAP</Button>
+        </>
       ) : null}
-      <Button variant="secondary" size="sm" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids, status: "in_progress" })}>Start work</Button>
-      <Button variant="secondary" size="sm" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids, status: "resolved", resolution: "fixed_in_source" })}>Fixed in SAP</Button>
+      {canAccept ? <Button variant="secondary" size="sm" disabled={bulk.isPending} onClick={() => accept(ids)}>Accept risk</Button> : null}
     </>
   ) : null;
   return (
@@ -179,6 +210,11 @@ export function IssuesPanel() {
         {filtering ? <Button variant="ghost" size="sm" onClick={clear}>Clear filters</Button> : null}
         <ExportMenu options={[{ format: "xlsx", label: "Issues (.xlsx)", run: () => exportIssues("xlsx", filter) }]} />
       </div>
+      {!q.isLoading && partial ? (
+        <Notice action={<Button variant="secondary" disabled={q.isFetching} onClick={() => setLimit((n) => n + ISSUE_PAGE)}>Load more</Button>}>
+          {loaded.length.toLocaleString()} of {total.toLocaleString()} issues loaded, and the Overdue and Due in 24 hours counts cover only these
+        </Notice>
+      ) : null}
       <Panel q={q}>
         {items.length === 0 ? (
           filtering ? (
@@ -198,13 +234,24 @@ export function IssuesPanel() {
             bulk={actions}
             detail={selected ? (
               <Card
-                title={`${selected.check_id} in ${formatModuleName(selected.module)}`}
+                title={<IssueTitle issue={selected} name={rules.data?.rules.find((r) => r.id === selected.check_id)?.name} />}
                 meta={<span className="inline-flex items-center gap-2"><Status kind="severity" value={selected.severity} /><Pill tone={urgencyOf(selected, now).tone}>{urgencyOf(selected, now).text}</Pill></span>}
-                actions={canAssign && user ? (
-                  selected.assigned_to === user.id
-                    ? <Button variant="ghost" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids: [selected.id], assigned_to: "" })}>Release</Button>
-                    : <Button variant="secondary" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids: [selected.id], assigned_to: user.id })}>Claim</Button>
-                ) : undefined}
+                actions={
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button variant="secondary" render={<Link href={`/objects/${encodeURIComponent(selected.module)}/records/${encodeURIComponent(selected.record_key)}`} />}>Open record</Button>
+                    {canAssign && selected.status !== "resolved" ? (
+                      <Button variant="primary" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids: [selected.id], status: "resolved", resolution: "fixed_in_source" })}>Fixed in SAP</Button>
+                    ) : null}
+                    {canAccept && selected.status !== "accepted" && selected.status !== "resolved" ? (
+                      <Button variant={canAssign ? "secondary" : "primary"} disabled={bulk.isPending} onClick={() => accept([selected.id])}>Accept risk</Button>
+                    ) : null}
+                    {canAssign && user ? (
+                      selected.assigned_to === user.id
+                        ? <Button variant="ghost" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids: [selected.id], assigned_to: "" })}>Release</Button>
+                        : <Button variant="secondary" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids: [selected.id], assigned_to: user.id })}>Claim</Button>
+                    ) : null}
+                  </div>
+                }
               >
                 <IssueThread key={selected.id} issue={selected} />
               </Card>
@@ -217,6 +264,75 @@ export function IssuesPanel() {
 }
 
 /* ─── SAP monitor: exceptions raised from live SAP signals ─── */
+
+/** The system the signal's run read and the objects whose findings raised it (api/services/exception_engine.py). */
+export function sapSignalSource(e: Exception): { systemId: string | null; objects: string[] } {
+  const a = e.affected_records ?? {};
+  const systemId = typeof a.system_id === "string" && a.system_id ? a.system_id : null;
+  const objects = Array.isArray(a.modules) ? a.modules.filter((m): m is string => typeof m === "string" && !!m) : [];
+  return { systemId, objects };
+}
+
+/** The system's Extract drawer, opened with the signal's objects picked. */
+export function reExtractHref(systemId: string, objects: string[]): string {
+  const p = new URLSearchParams({ extract: "1" });
+  for (const o of objects) p.append("object", o);
+  return `/systems/${encodeURIComponent(systemId)}?${p}`;
+}
+
+const isClosed = (status: string) => status === "resolved" || status === "verified" || status === "closed";
+
+/**
+ * One SAP signal's detail and what can be done with it. Claim and Resolve need `assign` and `approve`, or
+ * `manage_systems` (SAP Basis), which the server allows on SAP-raised exceptions only (api/routes/exceptions.py
+ * require_action_or_sap_source); Re-extract needs `trigger_sync` and the system the signal's run read.
+ */
+function SapSignal({ e }: { e: Exception }) {
+  const { can } = useRole();
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const [note, setNote] = useState("");
+  const fromSap = !!e.source_system;
+  const basis = fromSap && can("manage_systems");
+  const canClaim = can("assign") || basis;
+  const canResolve = can("approve") || basis;
+  const { systemId, objects } = sapSignalSource(e);
+  const done = (what: string) => { toast.success(what); void qc.invalidateQueries({ queryKey: ["inbox", "sap-monitor"] }); };
+  const claim = useMutation({
+    mutationFn: (me: { id: string; name: string }) => assignException(e.id, { user_id: me.id, user_name: me.name }),
+    onSuccess: () => done("Claimed"),
+    onError: (err) => toast.error(`Not claimed: ${apiErrorMessage(err)}`),
+  });
+  const resolve = useMutation({
+    mutationFn: () => resolveException(e.id, { resolution_type: "steward", resolution_notes: note.trim(), root_cause_category: "system" }),
+    onSuccess: () => { setNote(""); done("Resolved"); },
+    onError: (err) => toast.error(`Not resolved: ${apiErrorMessage(err)}`),
+  });
+  const open = !isClosed(e.status);
+  const mine = !!user && e.assigned_to === user.id;
+  return (
+    <div className="flex flex-col gap-3 m-text-body">
+      <p>{e.description || "SAP sent no further detail for this signal."}</p>
+      {objects.length ? <p className="m-ink-2">Raised from {objects.map(formatModuleName).join(", ")}{e.source_system ? `, ${e.source_system}` : ""}</p> : null}
+      {open && canResolve ? (
+        <Field label="What was done in SAP">
+          <Textarea rows={3} value={note} onChange={(ev) => setNote(ev.target.value)} />
+        </Field>
+      ) : null}
+      <div className="flex flex-wrap items-center gap-2">
+        {open && canResolve ? (
+          <Button variant="primary" disabled={!note.trim() || claim.isPending} pending={resolve.isPending} onClick={() => resolve.mutate()}>Resolve</Button>
+        ) : null}
+        {open && canClaim && user && !mine ? (
+          <Button variant="secondary" disabled={resolve.isPending} pending={claim.isPending} onClick={() => claim.mutate({ id: user.id, name: user.name || user.email })}>Claim</Button>
+        ) : null}
+        {systemId && can("trigger_sync") ? (
+          <Button variant="secondary" render={<Link href={reExtractHref(systemId, objects)} />}>Re-extract</Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 export function SapMonitorPanel() {
   const q = useQuery({ queryKey: ["inbox", "sap-monitor"], queryFn: getSAPMonitor, refetchInterval: 60_000, retry: false });
@@ -241,7 +357,7 @@ export function SapMonitorPanel() {
             {Object.entries(q.data?.by_category ?? {}).map(([k, v]) => <Stat key={k} label={labelOf(k)} value={v.length} />)}
           </div>
           <DataTable columns={cols} data={list} getRowId={(e) => e.id} height={440} exportName="sap-monitor"
-            renderDrawer={(e) => <p className="m-text-body">{e.description || "SAP sent no further detail for this signal."}</p>} />
+            renderDrawer={(e) => <SapSignal key={e.id} e={e} />} />
         </div>
       )}
     </Panel>
@@ -250,44 +366,88 @@ export function SapMonitorPanel() {
 
 /* ─── Approvals: live write-back requests waiting for a second person ─── */
 
+/** The rule behind a write-back request, from its finding: the check id in mono with the object beside it. */
+function FindingRule({ findingId }: { findingId: string | null }) {
+  const q = useQuery({ queryKey: ["findings", "context", findingId ?? ""], queryFn: () => getFindingReportContext(findingId as string), enabled: !!findingId, retry: false, meta: { ignoreError: true } });
+  if (!findingId) return <>—</>;
+  if (!q.data) return <Mono>{findingId}</Mono>;
+  return <span className="inline-flex items-baseline gap-2"><Mono>{q.data.check_id}</Mono><span className="m-ink-3">{formatModuleName(q.data.module)}</span></span>;
+}
+
+/** The run a write-back request was raised from, by name. */
+function RunName({ versionId }: { versionId: string | null }) {
+  const q = useQuery({ queryKey: queryKeys.run(versionId ?? ""), queryFn: () => getVersion(versionId as string), enabled: !!versionId, retry: false, meta: { ignoreError: true } });
+  if (!versionId) return <>—</>;
+  return <>{q.data ? runName(q.data) : "Run"}</>;
+}
+
 export function ApprovalsPanel() {
   const { user } = useAuth();
+  const { can } = useRole();
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["inbox", "approvals"], queryFn: getPendingApprovals, retry: false });
+  // Names come from the assignable list (`assign`), or the full user list (`manage_users`); a requester neither
+  // names reads as "Unknown user", never an id.
+  const usersQ = useQuery({ queryKey: queryKeys.users(), queryFn: getUsers, enabled: can("manage_users"), meta: { ignoreError: true } });
+  const assignableQ = useQuery({ queryKey: ["users", "assignable"], queryFn: getAssignableUsers, enabled: can("assign"), staleTime: 300_000, meta: { ignoreError: true } });
+  const names = useMemo(
+    () => new Map([...(Array.isArray(assignableQ.data) ? assignableQ.data : []), ...(usersQ.data?.users ?? [])].map((u) => [u.id, u.name || u.email])),
+    [usersQ.data, assignableQ.data],
+  );
+  const who = (id: string | null) => (!id ? "Unknown user" : id === user?.id ? "You" : names.get(id) ?? "Unknown user");
+  const [asking, setAsking] = useState<PendingApproval | null>(null);
   const approve = useMutation({
     mutationFn: (id: string) => approveWriteback(id),
     onSuccess: (r) => {
+      setAsking(null);
       if (r.errors.length) toast.error(r.errors.join("; "));
-      else toast.success(`${r.applied} records written back`);
+      else toast.success(`${r.applied.toLocaleString()} records written back`);
       void qc.invalidateQueries({ queryKey: ["inbox", "approvals"] });
     },
     // The server enforces 4-eyes and the live switch; show its reason rather than guess.
-    onError: (e) => toast.error(apiErrorMessage(e)),
+    onError: (e) => { setAsking(null); toast.error(apiErrorMessage(e)); },
   });
   const cols = useMemo<ColumnDef<PendingApproval, unknown>[]>(() => [
-    { id: "finding", header: "Finding id", cell: ({ row }) => <Mono>{row.original.finding_id?.slice(0, 8) ?? "—"}</Mono> },
-    { id: "run", header: "Run", cell: ({ row }) => <Mono>{row.original.version_id ?? "—"}</Mono> },
+    { id: "finding", header: "Rule", cell: ({ row }) => <FindingRule findingId={row.original.finding_id} /> },
+    { id: "run", header: "Run", cell: ({ row }) => <RunName versionId={row.original.version_id} /> },
     { id: "host", header: "SAP host", cell: ({ row }) => row.original.sap_host ?? "—" },
     { id: "records", header: "Records", cell: ({ row }) => row.original.records_updated.toLocaleString() },
-    { id: "by", header: "Requested by", cell: ({ row }) => <Mono>{row.original.requested_by?.slice(0, 8) ?? "—"}</Mono> },
+    { id: "by", header: "Requested by", cell: ({ row }) => who(row.original.requested_by) },
     { id: "when", header: "Requested", cell: ({ row }) => row.original.created_at ? relativeTime(row.original.created_at) : "—" },
     { id: "act", header: "", cell: ({ row }) => (
       <Button variant="secondary" disabled={approve.isPending || !q.data?.live_enabled || (user != null && row.original.requested_by === user.id)}
         title={user != null && row.original.requested_by === user.id ? "You requested this; another approver must approve it" : undefined}
-        onClick={() => approve.mutate(row.original.id)}>Approve</Button>
+        onClick={() => setAsking(row.original)}>Approve</Button>
     ) },
-  ], [approve, q.data?.live_enabled, user]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `who` closes over names and user
+  ], [approve, q.data?.live_enabled, user, names]);
   const list = q.data?.approvals ?? [];
   return (
     <Panel q={q}>
       <div className="flex flex-col gap-3">
-        {q.data && !q.data.live_enabled ? (
-          <Notice>Live SAP write-back is off on this deployment. Export fixes as an LSMW or BAPI file and load them in SAP.</Notice>
-        ) : null}
+        <Notice>
+          {writeBackModeSentence(q.data?.live_enabled)}
+          {q.data && !q.data.live_enabled ? " Live SAP write-back is off on this deployment. Export fixes as an LSMW or BAPI file and load them in SAP." : ""}
+        </Notice>
         <p className="m-text-body m-ink-2">Each request needs a second person: you cannot approve a write-back you asked for.</p>
         {list.length === 0 ? <EmptyState title="No write-backs waiting" detail="Approved fixes queue here before they reach SAP" action={<Button variant="secondary" render={<Link href="/fix">Open fixes</Link>} />} /> : (
           <DataTable columns={cols} data={list} getRowId={(a) => a.id} height={380} exportName="writeback-approvals" />
         )}
+        <ConfirmDialog
+          open={asking !== null}
+          onOpenChange={(open) => { if (!open) setAsking(null); }}
+          title="Write these records back to SAP?"
+          body={asking ? (
+            <div className="flex flex-col gap-1">
+              <p>Rule: <FindingRule findingId={asking.finding_id} /></p>
+              <p>{asking.records_updated.toLocaleString()} record{asking.records_updated === 1 ? "" : "s"} on {asking.sap_host ?? "the connected SAP system"}, requested by {who(asking.requested_by)}.</p>
+            </div>
+          ) : null}
+          confirmLabel="Approve and write back"
+          cancelLabel="Keep waiting"
+          pending={approve.isPending}
+          onConfirm={() => asking && approve.mutate(asking.id)}
+        />
       </div>
     </Panel>
   );

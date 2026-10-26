@@ -14,6 +14,14 @@ export interface SurvivorshipRule {
   ai_inferred: boolean;
 }
 
+/** One rule as PUT /survivorship-rules takes it (api/routes/survivorship_rules.py SurvivorshipRuleBody). */
+export type SurvivorshipRuleInput = Pick<SurvivorshipRule, "field" | "rule_type" | "trusted_sources" | "weight" | "active">;
+
+/** Replace every rule of one domain with `rules`: a rule of the domain left out is deleted. */
+export async function putSurvivorshipRules(domain: string, rules: SurvivorshipRuleInput[]): Promise<{ rules: SurvivorshipRule[]; total: number }> {
+  return (await apiClient.put("/api/v1/survivorship-rules", { domain, rules })).data;
+}
+
 export async function getSurvivorshipRules(domain?: string): Promise<{ rules: SurvivorshipRule[]; total: number }> {
   return (await apiClient.get("/api/v1/survivorship-rules", { params: domain ? { domain } : undefined })).data;
 }

@@ -5,15 +5,18 @@ import { useRole } from "../use-role";
 const h = vi.hoisted(() => ({ user: { role: "viewer", permissions: [] as string[] }, replace: vi.fn() }));
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: h.user }) }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: h.replace }) }));
+const grants = vi.hoisted(() => ({ ctx: null as null | { loading: boolean; can: () => boolean; data: { roles: { key: string }[] } } }));
+vi.mock("@/lib/permissions", () => ({ usePermissionsContext: () => grants.ctx }));
 
 import HomeRedirect from "@/app/(app)/home/page";
 
 describe("useRole with persona role keys", () => {
-  beforeEach(() => h.replace.mockClear());
+  beforeEach(() => { h.replace.mockClear(); grants.ctx = null; });
 
   it.each([
-    ["data_steward", "/fix", ["approve"]],
-    ["data_owner", "/fix", ["approve"]],
+    ["data_steward", "/fix", ["approve", "apply"]],
+    // The data owner approves but cannot apply (rbac.py data_owner = approver): their work is the approvals tab.
+    ["data_owner", "/fix?tab=batches", ["approve"]],
     ["data_steward", "/home/steward", []], // a custom steward role that may neither approve nor apply
     ["programme_lead", "/home/lead", []],
     ["platform_admin", "/home/lead", []],
@@ -31,5 +34,15 @@ describe("useRole with persona role keys", () => {
     expect(renderHook(() => useRole()).result.current.isAdmin).toBe(true);
     h.user = { role: "superuser", permissions: [] };
     expect(renderHook(() => useRole()).result.current.role).toBe("viewer");
+  });
+
+  it("lands a scoped-only steward (users.role viewer) on the steward home, here and in the nav", async () => {
+    h.user = { role: "viewer", permissions: [] };
+    grants.ctx = { loading: false, can: (a?: string) => a === "approve" || a === "apply", data: { roles: [{ key: "viewer" }, { key: "data_steward" }] } } as never;
+    const r = renderHook(() => useRole()).result.current;
+    expect(r.role).toBe("viewer");
+    expect(r.homeRole).toBe("data_steward");
+    render(<HomeRedirect />);
+    await waitFor(() => expect(h.replace).toHaveBeenCalledWith("/fix"));
   });
 });

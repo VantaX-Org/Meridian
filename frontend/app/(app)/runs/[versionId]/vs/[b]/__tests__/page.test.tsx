@@ -57,11 +57,66 @@ describe("CompareRunsPage", () => {
   it("renders the narrative, three stats and the changed-rule table", async () => {
     renderWithQuery(<CompareRunsPage />);
     await waitFor(() => expect(screen.getByText("DQS moved from 71.2 to 74.8 (+3.6) across 1 module.")).toBeInTheDocument());
-    expect(screen.getByText("Oct 8 vs Oct 1")).toBeInTheDocument();
+    expect(screen.getByText(/^Oct 8, .* vs Oct 1, /)).toBeInTheDocument();
     expect(screen.getAllByText("74.8").length).toBeGreaterThan(0);
-    expect(screen.getByText("DQS Oct 1")).toBeInTheDocument();
+    expect(screen.getByText(/^DQS Oct 1, /)).toBeInTheDocument();
     const rules = screen.getAllByRole("row").map((r) => r.textContent ?? "");
     expect(rules.findIndex((t) => t.includes("MM041"))).toBeLessThan(rules.findIndex((t) => t.includes("MM002"))); // largest regression first
+    // Each rule id opens its failing records on its object, in this run.
+    expect(screen.getByText("MM041").closest("a")).toHaveAttribute("href", "/objects/material_master?run=v2&tab=records&check_id=MM041");
+  });
+
+  it("narrows the ledger to the newly failing or the fixed rules from ?change=, under the Progress view tabs", async () => {
+    searchParams.set("change", "new");
+    try {
+      renderWithQuery(<CompareRunsPage />);
+      await waitFor(() => expect(screen.getByText("MM041")).toBeInTheDocument());
+      expect(screen.queryByText("MM002")).toBeNull();
+      expect(screen.getByRole("combobox", { name: "Change" })).toHaveTextContent("Newly failing");
+      // A lead can step back to the Progress view, the compared run carried along.
+      expect(screen.getByRole("navigation", { name: "Progress views" })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Progress" })).toHaveAttribute("href", "/insights/progress?run=v2");
+      expect(screen.getAllByText("Mean of 1 object in both runs; objects in only one run are left out").length).toBe(2);
+    } finally {
+      searchParams.delete("change");
+    }
+  });
+
+  it("lists rules failing in both runs whose records moved as worse and better, with the rule's words beside its id", async () => {
+    vi.spyOn(versionsApi, "compareVersions").mockResolvedValue({
+      ...cmp,
+      checks: {
+        ...cmp.checks,
+        worse: [{ check_id: "MM010", module: "material_master", severity: "high", message: "Material has no base unit", v1_affected: 100, v2_affected: 50_000 }],
+        better: [{ check_id: "MM020", module: "material_master", severity: "medium", message: null, v1_affected: 5_000, v2_affected: 4_000 }],
+      },
+    });
+    renderWithQuery(<CompareRunsPage />);
+    await waitFor(() => expect(screen.getByText("MM010")).toBeInTheDocument());
+    const rows = screen.getAllByRole("row").map((r) => r.textContent ?? "");
+    // Ranked by the change in failing records: 100 -> 50,000 first, 5,000 -> 4,000 last.
+    expect(rows.findIndex((t) => t.includes("MM010"))).toBeLessThan(rows.findIndex((t) => t.includes("MM041")));
+    expect(rows.find((t) => t.includes("MM010"))).toContain("Material has no base unit");
+    expect(rows.find((t) => t.includes("MM010"))).toContain("Worse");
+    expect(rows.find((t) => t.includes("MM020"))).toContain("Better");
+    expect(rows.findIndex((t) => t.includes("MM020"))).toBe(rows.length - 1);
+  });
+
+  it("narrows the ledger to the worse rules from ?change=worse", async () => {
+    vi.spyOn(versionsApi, "compareVersions").mockResolvedValue({
+      ...cmp,
+      checks: { ...cmp.checks, worse: [{ check_id: "MM010", module: "material_master", severity: "high", v1_affected: 100, v2_affected: 50_000 }], better: [] },
+    });
+    searchParams.set("change", "worse");
+    try {
+      renderWithQuery(<CompareRunsPage />);
+      await waitFor(() => expect(screen.getByText("MM010")).toBeInTheDocument());
+      expect(screen.queryByText("MM041")).toBeNull();
+      expect(screen.queryByText("MM002")).toBeNull();
+      expect(screen.getByRole("combobox", { name: "Change" })).toHaveTextContent("Worse");
+    } finally {
+      searchParams.delete("change");
+    }
   });
 
   it("asks the API to resolve the baseline when b is the literal", async () => {
@@ -78,15 +133,25 @@ describe("CompareRunsPage", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Export" })).toBeInTheDocument());
     // a report page's export menu also offers Print, so the single PDF option sits in the menu
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "PDF" }));
-    await waitFor(() => expect(dl).toHaveBeenCalledWith("/api/v1/reports/compare.pdf?v2=v2&v1=v1", "comparison.pdf"));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /PDF/ }));
+    await waitFor(() => expect(dl).toHaveBeenCalledWith("/api/v1/reports/compare.pdf?v2=v2&v1=v1", expect.stringMatching(/^Meridian run comparison – Oct 8 vs Oct 1 – \d{4}-\d{2}-\d{2}\.pdf$/)));
+  });
+
+  it("names the PDF without characters a file name cannot hold", async () => {
+    vi.spyOn(versionsApi, "compareVersions").mockResolvedValue({ ...cmp, v1: version("v1", "Q3: ECC/PRD"), v2: version("v2", 'Run "B" <new>') });
+    const dl = vi.spyOn(downloadApi, "downloadAuthenticated").mockResolvedValue();
+    renderWithQuery(<CompareRunsPage />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Export" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /PDF/ }));
+    await waitFor(() => expect(dl).toHaveBeenCalledWith(expect.any(String), expect.stringMatching(/^Meridian run comparison – Run -B- -new- vs Q3- ECC-PRD – \d{4}-\d{2}-\d{2}\.pdf$/)));
   });
 
   it("creates a fix batch for a newly failing rule from its drawer", async () => {
     const create = vi.spyOn(remediationApi, "createBatch").mockResolvedValue({ id: "b1", name: "Regressions MM041", status: "draft", item_count: 1240 });
     renderWithQuery(<CompareRunsPage />);
     await waitFor(() => expect(screen.getByText("MM041")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("MM041"));
+    fireEvent.click(screen.getByText("MM041").closest("tr") as HTMLElement);
     fireEvent.click(await screen.findByRole("button", { name: "Create fix batch" }));
     await waitFor(() => expect(create).toHaveBeenCalledWith("Regressions MM041", { version_id: "v2", check_id: "MM041", module: "material_master" }));
   });
@@ -95,7 +160,7 @@ describe("CompareRunsPage", () => {
     const keys = vi.spyOn(versionsApi, "compareRecordKeys").mockResolvedValue({ record_keys: ["000000000001"] });
     renderWithQuery(<CompareRunsPage />);
     await waitFor(() => expect(screen.getByText("MM041")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("MM041"));
+    fireEvent.click(screen.getByText("MM041").closest("tr") as HTMLElement);
     expect(await screen.findByText("000000000001")).toBeInTheDocument();
     expect(keys).toHaveBeenCalledWith("MM041", { v1: "v1", v2: "v2", change: "new", limit: 50, offset: 0 });
   });
@@ -103,7 +168,7 @@ describe("CompareRunsPage", () => {
   it("hides fix batch actions without the apply permission", async () => {
     can.mockImplementation(() => false);
     renderWithQuery(<CompareRunsPage />);
-    await waitFor(() => expect(screen.getByText("Oct 8 vs Oct 1")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/^Oct 8, .* vs Oct 1, /)).toBeInTheDocument());
     expect(screen.queryByRole("button", { name: /Create fix batch/ })).toBeNull();
   });
 
@@ -137,7 +202,7 @@ describe("CompareRunsPage", () => {
       .spyOn(versionsApi, "compareVersions")
       .mockImplementation((_v1, _v2, module) => Promise.resolve(module ? cmp : multiModuleCmp));
     renderWithQuery(<CompareRunsPage />);
-    await waitFor(() => expect(screen.getByText("Oct 8 vs Oct 1")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/^Oct 8, .* vs Oct 1, /)).toBeInTheDocument());
 
     const user = userEvent.setup();
     await user.click(screen.getByRole("combobox", { name: "Object" }));
@@ -173,8 +238,8 @@ describe("CompareRunsPage", () => {
     const { toast } = await import("sonner");
     renderWithQuery(<CompareRunsPage />);
     await waitFor(() => expect(screen.getByText("MM041")).toBeInTheDocument());
-    fireEvent.click(screen.getByLabelText("Select row MM041"));
-    fireEvent.click(screen.getByLabelText("Select row MM050"));
+    fireEvent.click(screen.getByLabelText("Select MM041"));
+    fireEvent.click(screen.getByLabelText("Select MM050"));
     fireEvent.click(await screen.findByRole("button", { name: "Create fix batches" }));
     await waitFor(() => expect(create).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Created 1 of 2 fix batches; 1 failed"));
@@ -186,7 +251,7 @@ describe("CompareRunsPage", () => {
     const user = userEvent.setup();
     renderWithQuery(<CompareRunsPage />);
     await waitFor(() => expect(screen.getByText("MM041")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("MM041"));
+    fireEvent.click(screen.getByText("MM041").closest("tr") as HTMLElement);
     await waitFor(() => expect(screen.getByText("No new records")).toBeInTheDocument());
     await user.type(screen.getByLabelText("Filter record keys"), "zzz");
     await waitFor(() => expect(screen.getByText("No records match")).toBeInTheDocument());

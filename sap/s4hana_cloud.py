@@ -412,6 +412,47 @@ class S4HanaCloudConnector(CloudSAPConnector):
         return pd.DataFrame(all_records) if all_records else pd.DataFrame()
 
     # ------------------------------------------------------------------
+    # Single entity read / update (golden-record write-back)
+    # ------------------------------------------------------------------
+
+    def _entity_url(self, entity_set: str, key: str) -> str:
+        """``<service>/<EntitySet>('<key>')`` for a single-string-key entity (OData V2 and V4)."""
+        return f"{self._resolve_service_path(entity_set)}/{entity_set}('{str(key).replace(chr(39), chr(39) * 2)}')"
+
+    def read_entity(self, entity_set: str, key: str, select: list[str]) -> tuple[dict[str, Any], dict[str, str]]:
+        """Read one entity by key. Returns (properties, write headers).
+
+        The GET also fetches the CSRF token (``x-csrf-token: Fetch``) and the entity's ETag, which the
+        SAP Gateway requires on a modifying request; they come back as the headers ``update_entity`` sends.
+        """
+        self._ensure_connected()
+        resp = self._request_with_retry(
+            "GET", self._entity_url(entity_set, key),
+            params={"$select": ",".join(select)} if select else None,
+            headers={"x-csrf-token": "Fetch"},
+        )
+        body = resp.json()
+        row = body.get("d") if isinstance(body.get("d"), dict) else body  # V2 wraps the entity in "d"
+        etag = resp.headers.get("etag") or row.get("@odata.etag") or (row.get("__metadata") or {}).get("etag")
+        write_headers = {"If-Match": etag or "*"}
+        if token := resp.headers.get("x-csrf-token"):
+            write_headers["x-csrf-token"] = token
+        return {k: v for k, v in row.items() if not k.startswith(("@", "__"))}, write_headers
+
+    def update_entity(self, entity_set: str, key: str, changes: dict[str, Any]) -> None:
+        """PATCH the given properties of one entity (fresh CSRF token and ETag first).
+
+        Used only by the approved golden-record write-back (workers/tasks/run_golden_writeback.py).
+        Raises SAPConnectorError when the system refuses the change.
+        """
+        self._ensure_connected()
+        _, write_headers = self.read_entity(entity_set, key, list(changes))
+        self._request_with_retry(
+            "PATCH", self._entity_url(entity_set, key),
+            headers={**write_headers, "Content-Type": "application/json"}, json=changes,
+        )
+
+    # ------------------------------------------------------------------
     # Module-level reading
     # ------------------------------------------------------------------
 
@@ -555,6 +596,8 @@ class S4HanaCloudConnector(CloudSAPConnector):
         *,
         params: Optional[dict[str, str]] = None,
         retries: int = _MAX_RETRIES,
+        headers: Optional[dict[str, str]] = None,
+        json: Optional[dict[str, Any]] = None,
     ) -> httpx.Response:
         """Execute an HTTP request with retries on transient errors.
 
@@ -567,7 +610,7 @@ class S4HanaCloudConnector(CloudSAPConnector):
         for attempt in range(1, retries + 1):
             try:
                 # params={} makes httpx drop the query of a nextLink (endless paging); None keeps it
-                resp = self._client.request(method, url, params=params or None)
+                resp = self._client.request(method, url, params=params or None, headers=headers, json=json)
 
                 if resp.status_code == 429:
                     wait = _RATE_LIMIT_BACKOFF_SECONDS * attempt

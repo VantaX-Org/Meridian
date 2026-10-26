@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Button, ErrorState, Notice, PageHeader, Pill, Skeleton } from "@/design";
+import { SettingsTabs } from "@/components/admin/settings-tabs";
 import { SettingsSection, SettingsSheet } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { getDoctor, type DoctorItem } from "@/lib/api/admin-doctor";
@@ -11,6 +12,7 @@ import { apiErrorState } from "@/lib/error";
 import { formatDate, labelOf, humanizeIds } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { AlertChannelsPanel } from "./alert-channels-panel";
+import { CostModelPanel } from "./cost-model-panel";
 import { RetentionPanel } from "./retention-panel";
 
 // ponytail: FIX_HREF kept local to this page (only consumer); legacy version lived in
@@ -49,7 +51,7 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Settings" meta="This deployment at a glance: licence, alert channels, how long data is kept, and health checks that say what needs fixing" actions={<Button variant="secondary" render={<Link href="/admin/licence">Open licence</Link>} />} />
+      <PageHeader tabs={<SettingsTabs />} title="Settings" meta="This deployment at a glance: licence, alert channels, how long data is kept, how defects are priced, and health checks that say what needs fixing" actions={<Button variant="secondary" render={<Link href="/admin/licence">Open licence</Link>} />} />
 
       {l?.valid === false ? (
         <Notice tone="danger">
@@ -69,6 +71,7 @@ export default function AdminSettingsPage() {
 
         {can("manage_settings") ? <AlertChannelsPanel /> : null}
         {can("manage_settings") ? <RetentionPanel /> : null}
+        {can("manage_settings") ? <CostModelPanel /> : null}
 
         {can("manage_system") && doctor.isLoading ? (
           <SettingsSection title="Health checks"><Skeleton height={96} /></SettingsSection>

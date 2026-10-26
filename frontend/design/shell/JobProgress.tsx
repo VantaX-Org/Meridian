@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { Job } from "../../types/jobs";
 import { etaSeconds, formatDuration, isStalled, updatedAgo } from "../../lib/job-timing";
 import { Mono } from "../primitives/Mono";
@@ -23,7 +24,7 @@ export function JobProgress({ job }: { job: Job }) {
   const eta = etaSeconds(job.percent, job.started_at, now);
   const stalled = isStalled(job.status, job.updated_at, now);
   return (
-    <div className="mt-1 flex flex-col gap-1 m-text-meta" style={{ color: "var(--m-ink-3)" }}>
+    <div className="mt-1 flex flex-col gap-1 m-text-meta m-ink-3">
       {job.message && (
         <span className="flex flex-wrap gap-x-2">
           {shown.map((part, i) => (
@@ -38,8 +39,9 @@ export function JobProgress({ job }: { job: Job }) {
         <span>{updatedAgo(job.updated_at, now)}</span>
       </span>
       {stalled && (
-        <span>
-          <Pill tone="at-risk">No update for {Math.floor((now - job.updated_at) / 60)} min — may be stalled</Pill>
+        <span className="flex flex-wrap items-center gap-2">
+          <Pill tone="at-risk">No update for {Math.floor((now - job.updated_at) / 60).toLocaleString()} min</Pill>
+          <Link href="/admin/jobs" className="font-medium m-ink-accent-ink hover:underline">Open job</Link>
         </span>
       )}
     </div>

@@ -23,6 +23,7 @@ class _Conn:
     def __init__(self, password_hash: str):
         self.password_hash = password_hash
         self.updated = False
+        self.audit: list = []
 
     def __enter__(self):
         return self
@@ -35,9 +36,11 @@ class _Conn:
         if "jwt_secret" in sql:
             return _Row(("secret",))
         if "password_hash, is_active" in sql:
-            return _Row(("u1", self.password_hash, True))
+            return _Row(("u1", self.password_hash, True, "u1@example.com"))
         if sql.startswith("UPDATE users"):
             self.updated = True
+        if sql.startswith("INSERT INTO audit_log"):
+            self.audit.append(_params)
         return _Row(None)
 
     def commit(self):
@@ -83,3 +86,46 @@ def test_right_current_password_changes_it(monkeypatch):
     r = _post(client, "the-real-password")
     assert r.status_code == 200
     assert conn.updated
+    assert len(conn.audit) == 1
+    assert conn.audit[0]["u"] == "u1" and conn.audit[0]["e"] == "u1@example.com"
+
+
+def test_wrong_current_password_writes_no_audit_row(monkeypatch):
+    client, conn = _client(monkeypatch, "the-real-password")
+    _post(client, "nope-nope-nope")
+    assert conn.audit == []
+
+
+def test_change_password_is_rate_limited_per_user(monkeypatch):
+    """Five tries a minute per signed-in user, then 429: a stolen session cannot brute-force the current password."""
+    import api.services.rate_limiter as rl
+
+    class _Redis:
+        def __init__(self):
+            self.counts: dict[str, int] = {}
+
+        def incr(self, key):
+            self.counts[key] = self.counts.get(key, 0) + 1
+            return self.counts[key]
+
+        def expire(self, key, ttl):
+            pass
+
+    redis = _Redis()
+    monkeypatch.setattr(rl, "get_redis", lambda: redis)
+    client, conn = _client(monkeypatch, "the-real-password")
+
+    @client.app.middleware("http")
+    async def _who(request, call_next):  # LocalAuthMiddleware sets this from the session token
+        request.state.local_user_id = request.headers.get("x-test-user")
+        return await call_next(request)
+
+    def post(user):
+        return client.post("/api/v1/auth/change-password",
+                           json={"current_password": "guess-guess-guess", "new_password": "a-brand-new-password"},
+                           headers={"Authorization": "Bearer t", "x-test-user": user})
+
+    assert [post("u1").status_code for _ in range(5)] == [422] * 5
+    assert post("u1").status_code == 429
+    assert post("u2").status_code == 422  # another user has their own bucket
+    assert all(":user:" in k for k in redis.counts)

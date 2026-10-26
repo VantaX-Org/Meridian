@@ -6,10 +6,10 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, DataTable, type CellMeta, ExplorerPage, Field, Input, Mono, PageHeader, Pager, Pill, Select, asyncStateOf } from "@/design";
+import { Button, DataTable, type CellMeta, ExplorerPage, Field, Input, Mono, PageHeader, Pager, Select, asyncStateOf } from "@/design";
 import { actionColumn, RowLink } from "@/components/mdm/ledger";
+import { GoldenStatusPill } from "@/components/mdm/golden-status";
 import { getMasterRecords } from "@/lib/api/master-records";
-import { apiErrorMessage } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { MasterRecordSummary } from "@/types/api";
@@ -23,7 +23,7 @@ const STATUS_OPTIONS = [
 ];
 
 const DOMAIN_OPTIONS = [
-  { value: "all", label: "All domains" },
+  { value: "all", label: "All objects" },
   { value: "material_master", label: "Material master" },
   { value: "business_partner", label: "Business partner" },
 ];
@@ -31,12 +31,10 @@ const DOMAIN_OPTIONS = [
 /** Keeps a percentage box to whole numbers 0 to 100, so a stray letter never reaches the API as NaN. */
 const pctInput = (raw: string) => { const d = raw.replace(/\D/g, "").slice(0, 3); return d === "" ? "" : String(Math.min(100, Number(d))); };
 
-const STATUS_LABEL: Record<string, string> = { candidate: "Candidate", pending_review: "Pending review", golden: "Golden", superseded: "Superseded" };
-
 const columns: ColumnDef<MasterRecordSummary>[] = [
   { accessorKey: "sap_object_key", header: "SAP key", size: 200, cell: ({ row }) => <Mono>{row.original.sap_object_key}</Mono> },
   { id: "domain", header: "Object", size: 160, cell: ({ row }) => formatModuleName(row.original.domain) },
-  { id: "status", header: "Status", size: 130, accessorFn: (r) => r.status, cell: ({ row }) => <Pill tone={row.original.status === "golden" ? "go" : row.original.status === "superseded" ? "neutral" : "info"}>{STATUS_LABEL[row.original.status] ?? row.original.status.replace(/_/g, " ")}</Pill> },
+  { id: "status", header: "Status", size: 130, accessorFn: (r) => r.status, cell: ({ row }) => <GoldenStatusPill status={row.original.status} /> },
   { accessorKey: "source_count", header: "Sources", size: 90, meta: { numeric: true } satisfies CellMeta },
   { id: "conf", header: "Confidence", size: 110, meta: { numeric: true } satisfies CellMeta, accessorFn: (r) => r.overall_confidence, cell: ({ row }) => `${Math.round(row.original.overall_confidence * 100)}%` },
   { accessorKey: "pending_issues", header: "Open issues", size: 110, meta: { numeric: true } satisfies CellMeta },
@@ -73,7 +71,8 @@ export default function GoldenRecordsPage() {
     queryFn: () => getMasterRecords({ ...filters, per_page: 100, page }),
   });
 
-  const records = useMemo(() => query.data?.records ?? [], [query.data]);
+  // The steward's work first: records waiting for review, then the rest in the API's order.
+  const records = useMemo(() => [...(query.data?.records ?? [])].sort((a, b) => Number(b.status === "pending_review") - Number(a.status === "pending_review")), [query.data]);
   const pageCount = Math.max(1, Math.ceil((query.data?.total ?? 0) / 100));
   const state = asyncStateOf(query, () => records.length === 0, true);
   const filtered = domain !== "all" || status !== "all" || !!minConfidence || !!maxConfidence;
@@ -89,7 +88,7 @@ export default function GoldenRecordsPage() {
       }
       filterBar={
         <div className="flex items-end gap-3">
-          <Field label="Domain">
+          <Field label="Object">
             <Select value={domain} onValueChange={(v) => setParams({ domain: v })} options={DOMAIN_OPTIONS} />
           </Field>
           <Field label="Status">
@@ -132,7 +131,7 @@ export default function GoldenRecordsPage() {
           : { title: "No golden records yet", detail: "They are built when a match run groups the same record from your systems. Set the match rules first.", action: <Button render={<Link href="/mdm/match-rules">Open match rules</Link>} /> }
       }
       errorProps={{
-        message: apiErrorMessage(query.error),
+        error: query.error,
         onRetry: () => query.refetch(),
       }}
     />

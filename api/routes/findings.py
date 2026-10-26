@@ -94,6 +94,8 @@ def composite_dqs(summaries: list[dict], *, scoring: dict | None) -> dict:
             "dimension_scores": dims,
             "modules": {m: round(float(r["composite_score"]), 2) for m, r in mods.items()},
             "capped": any(r.get("capped") for r in mods.values()),
+            # The first capped object's reason, so the score explainer names what holds the score down.
+            "cap_reason": next((r.get("cap_reason") for r in mods.values() if r.get("capped") and r.get("cap_reason")), None),
             "coverage": coverage,
             "low_confidence": coverage is not None and coverage < LOW_CONFIDENCE_COVERAGE,
             "thresholds": cfg["thresholds"],
@@ -225,9 +227,13 @@ async def aggregate_findings(
                 "severity": {"critical": 0, "high": 0, "medium": 0, "low": 0}, "by_module": [], "by_dimension": [], "avg_pass_rate": None,
                 "dqs": composite_dqs([], scoring=await _scoring_raw(db, tenant)), "previous_dqs": None}
     p = {"ids": [str(i) for i in ids]}
-    narrow = {k: v for k, v in (("module", module), ("severity", severity), ("dimension", dimension),
-                                ("check_id", check_id)) if v}
+    narrow = {k: v for k, v in (("module", module), ("dimension", dimension), ("check_id", check_id)) if v}
     where = "".join(f" AND {k} = :{k}" for k in narrow)
+    if severity:
+        # A comma list ("critical,high") matches any of them.
+        sevs = {f"sev{i}": s for i, s in enumerate(x for x in severity.split(",") if x)}
+        where += f" AND severity IN ({', '.join(':' + k for k in sevs)})"
+        narrow.update(sevs)
     rows = (await db.execute(text(f"""
         SELECT module, severity, dimension, count(*) AS n, COALESCE(sum(affected_count), 0) AS affected,
                avg(pass_rate) AS avg_pass, COALESCE(sum(cost_at_risk) FILTER (WHERE affected_count > 0), 0) AS cost
@@ -306,8 +312,12 @@ async def score_history(
          ORDER BY run_at DESC LIMIT :lim
     """), {"tid": str(tenant.id), "lim": limit})).mappings().all()
     out = []
+    # Each module's score as stored when the run was scored (no re-weighting), keyed by run.
+    then_modules: dict[str, dict[str, float]] = {}
     for r in rows:
         summary = r["dqs_summary"] or {}
+        then_modules[str(r["id"])] = {m: v["composite_score"] for m, v in summary.items()
+                                      if isinstance(v, dict) and v.get("composite_score") is not None}
         then = composite_dqs([summary], scoring=r["scoring"])
         now = composite_dqs([{m: rescore(v, current) for m, v in summary.items() if isinstance(v, dict)}], scoring=current)
         out.append({"version_id": str(r["id"]), "run_at": r["run_at"].isoformat() if r["run_at"] else None,
@@ -320,7 +330,8 @@ async def score_history(
     modules: dict[str, list[dict]] = {}
     for r in out:
         for m, c in r["under_current"]["modules"].items():
-            modules.setdefault(m, []).append({"version_id": r["version_id"], "composite": c})
+            modules.setdefault(m, []).append({"version_id": r["version_id"], "composite": c,
+                                              "at_the_time": then_modules[r["version_id"]].get(m)})
     return {"history": out, "modules": modules}
 
 
@@ -362,7 +373,9 @@ async def list_findings(
         base = base.where(Finding.module == module)
         filters_applied["module"] = module
     if severity:
-        base = base.where(Finding.severity == severity)
+        # "critical,high" filters to either: the blocking findings in one list.
+        severities = [s for s in severity.split(",") if s]
+        base = base.where(Finding.severity.in_(severities))
         filters_applied["severity"] = severity
     if dimension:
         base = base.where(Finding.dimension == dimension)

@@ -23,10 +23,11 @@ function Sequence({ activities }: { activities: string[] }) {
   );
 }
 
-export function VariantsTable({ runId, filters, canExport, onOpenCase, onClearFilters }: {
+export function VariantsTable({ runId, filters, canOpenCases, onOpenCase, onClearFilters }: {
   runId: string;
   filters: ProcessFilterParams;
-  canExport: boolean;
+  /** Sample cases open the Cases tab, which needs `view`. */
+  canOpenCases: boolean;
   onOpenCase: (caseId: string) => void;
   onClearFilters?: () => void;
 }) {
@@ -51,7 +52,7 @@ export function VariantsTable({ runId, filters, canExport, onOpenCase, onClearFi
   ];
 
   return (
-    <DataTable columns={columns} data={rows} getRowId={(v) => v.hash} height="auto" dense
+    <DataTable columns={columns} data={rows} getRowId={(v) => v.hash} height="auto"
       tableId="process-variants" exportName={`process-variants-${runId}`}
       renderDrawer={(v) => (
         <div className="grid gap-4">
@@ -59,9 +60,9 @@ export function VariantsTable({ runId, filters, canExport, onOpenCase, onClearFi
             ? <p>Every variant past the top {rows.length - 1}, merged into one row.</p>
             : <ol className="grid gap-1">{v.activities.map((a, i) => <li key={i}><Mono>{a}</Mono></li>)}</ol>}
           <p>Fitness against the reference: <Pill tone={fitnessTone(v.fitness)}>{fmtFitness(v.fitness)}</Pill></p>
-          {canExport && v.sample_case_ids.length > 0 && (
+          {canOpenCases && v.sample_case_ids.length > 0 && (
             <section className="grid gap-1">
-              <h2 className="font-semibold">Sample cases</h2>
+              <h2 className="m-text-h font-semibold m-ink">Sample cases</h2>
               <ul className="flex flex-wrap gap-2">
                 {v.sample_case_ids.map((id) => (
                   <li key={id}><Button variant="ghost" onClick={() => onOpenCase(id)}><Mono>{id}</Mono></Button></li>

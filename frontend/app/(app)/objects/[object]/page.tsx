@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, PageHeader, PageFrame, Card, DataTable, Delta, DrillLink, EmptyState, ErrorState, ExportMenu, Line, Mono, Pager, Pill, SeverityDot, Skeleton, Score, Tabs, emptyExportOptions, isSeverity, entityTabs, Status } from "@/design";
+import { Button, PageHeader, PageFrame, Card, DataTable, Delta, DrillLink, EmptyState, ErrorState, ExportMenu, Line, Mono, Pager, Pill, SeverityDot, Skeleton, Score, Tabs, emptyExportOptions, isSeverity, entityTabs, Status, statusLabel } from "@/design";
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
 import { RunScope } from "@/components/run-scope";
 import { useRunScope } from "@/hooks/use-run-scope";
@@ -14,7 +14,7 @@ import { hrefWithRun, runLacksObject, runScopeLabel } from "@/lib/run-scope";
 import { FilterChips } from "../_header";
 import { FindingContextPanel } from "./rules/[ruleId]/finding-context-panel";
 import { RootCauseSection } from "./rules/[ruleId]/root-cause";
-import { Workbench } from "./_workbench";
+import { Workbench, useRuleDetails } from "./_workbench";
 import { FixStrip, RecordsToFix } from "./_fix";
 import { workSummaryQuery } from "../_work";
 import { PAGE_SIZE, STALE_MS, fixSheetHref, isBlocking, objectQuery, recordsQuery, useFixShortcut, useRecordColumns } from "./_shared";
@@ -29,7 +29,7 @@ import { getProfileByVersion, type ShapeCount, type ValueCount } from "@/lib/api
 import { apiErrorState, isNotFound } from "@/lib/error";
 import { getRuleHistoryBatch } from "@/lib/api/rules";
 import { queryKeys } from "@/lib/query-keys";
-import { DIMENSIONS, formatDate, formatModuleName } from "@/lib/format";
+import { DIMENSIONS, formatDate, formatModuleName, moduleDescription, plural, shortCapReason } from "@/lib/format";
 
 const RULE_HISTORY_RUNS = 8;
 const TAB_KEYS = ["fix", "overview", "rules", "fields", "records"] as const;
@@ -46,25 +46,32 @@ const historyQuery = (object: string, run: string) => ({
  * The object's DQS as the md ring. Once the object and the tenant's weights have loaded, the ring opens the
  * breakdown (weighted dimensions, costliest rules); until then, or without weights, it is the plain ring.
  */
-function ObjectScore({ summary, detail }: { summary: ObjectSummary; detail: ObjectDetail | undefined }) {
+function ObjectScore({ summary, detail, run }: { summary: ObjectSummary; detail: ObjectDetail | undefined; run: string }) {
   const settings = useQuery({ queryKey: queryKeys.scoringSettings(), queryFn: getSettings, retry: false, meta: { ignoreError: true } });
-  const score = summary.composite_score;
-  if (score == null) return null;
+  const composite = summary.composite_score;
+  if (composite == null) return null;
+  // A critical failure holds the score at the cap: the ring draws the measured score and fills to the cap, as the
+  // run's DQS ring does (components/insight/dqs-score.tsx).
+  const cap = detail?.capped ? composite : undefined;
+  const score = cap != null ? (detail?.raw_score ?? composite) : composite;
   const weights = settings.data?.dqs_weights as Record<string, number> | undefined;
   const measured = detail && weights ? Object.entries(detail.dimension_scores).filter(([d]) => weights[d] != null) : [];
-  if (!detail || !weights || measured.length === 0) return <Score value={score} />;
+  if (!detail || !weights || measured.length === 0) return <Score value={score} cap={cap} />;
   const total = measured.reduce((n, [d]) => n + weights[d], 0) || 1;
   const tone = summary.readiness === "pass" ? "go" : summary.readiness === "warn" ? "at-risk" : summary.readiness === "fail" ? "no-go" : "neutral";
   const failing = detail.rules.filter((r) => r.affected_count > 0).sort((a, b) => b.affected_count - a.affected_count).slice(0, 5);
   return (
     <Score
       value={score}
+      cap={cap}
       explain={{
-        band: { label: tone === "go" ? "On target" : tone === "at-risk" ? "Needs attention" : tone === "no-go" ? "Below floor" : "Scored", tone },
+        band: { label: tone ? statusLabel("verdict", tone) : "Scored", tone },
+        capReason: cap != null ? (detail.cap_reason ? shortCapReason(detail.cap_reason) : "a critical finding is open") : undefined,
+        run,
         dimensions: measured.map(([d, v]) => ({ name: DIMENSIONS.find((x) => x.id === d)?.label ?? d, weight: weights[d] / total, score: v })),
         // weight descends with rank so the explainer's recordsFailed * weight sort keeps the records order
         rules: failing.map((r, i, all) => ({ ruleId: r.check_id, object: detail.module, recordsFailed: r.affected_count, weight: (all.length - i) / all.length })),
-        historyHref: `/objects/${detail.module}?tab=history`,
+        historyHref: `/objects/${detail.module}?${new URLSearchParams({ run, tab: "history" })}`,
       }}
     />
   );
@@ -102,6 +109,8 @@ function RulesTab({ object, run }: { object: string; run: string }) {
   };
   const { data, isLoading, isError, error, refetch } = useQuery(objectQuery(object, run));
   const batch = useQuery(historyQuery(object, run));
+  const details = useRuleDetails(object, run);
+  const nameOf = new Map((details.data?.rows ?? []).map((r) => [r.check_id, r.name]));
 
   const rulesRanked = data
     ? [...data.rules]
@@ -125,7 +134,14 @@ function RulesTab({ object, run }: { object: string; run: string }) {
       cell: ({ row }) =>
         isSeverity(row.original.severity) ? <SeverityDot severity={row.original.severity} /> : row.original.severity,
     },
-    { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
+    {
+      accessorKey: "check_id",
+      header: "Rule",
+      cell: ({ row }) => {
+        const name = nameOf.get(row.original.check_id);
+        return <span className="inline-flex min-w-0 items-baseline gap-2"><Mono>{row.original.check_id}</Mono>{name ? <span className="truncate">{name}</span> : null}</span>;
+      },
+    },
     { accessorKey: "dimension", header: "Dimension", cell: ({ row }) => (row.original.dimension ? formatModuleName(row.original.dimension) : "—") },
     {
       accessorKey: "affected_count",
@@ -172,7 +188,7 @@ function RulesTab({ object, run }: { object: string; run: string }) {
       <div className="flex flex-wrap items-center gap-4">
         <FilterChips label="Severity" value={severity} options={SEVERITIES} onChange={(v) => setParam("severity", v)} />
         {dimensions.length > 1 ? <FilterChips label="Dimension" value={dimension} options={dimensions} onChange={(v) => setParam("dimension", v)} /> : null}
-        <FilterChips label="Show" value={blocking ? "true" : null} options={[{ value: "true", label: "Blocking only" }]} onChange={(v) => setParam("blocking", v)} />
+        <FilterChips label="Show" value={blocking ? "true" : null} options={[{ value: "true", label: "Critical and high" }]} onChange={(v) => setParam("blocking", v)} />
       </div>
       {rulesRanked.length === 0 ? (
         <EmptyState
@@ -195,14 +211,21 @@ function RulesTab({ object, run }: { object: string; run: string }) {
   );
 }
 
-/** This object's composite score across every scored run, oldest first: improvement over time, per object. */
-function HistoryTab({ object, run }: { object: string; run: string }) {
+/**
+ * This object's score across the scored runs of this run's system, oldest first, each as it was scored at the time
+ * (as the run page's history does): another system's runs, or today's re-weighting, would not be this object's history.
+ */
+function HistoryTab({ object, run, systemId }: { object: string; run: string; systemId: string | null | undefined }) {
   const q = useQuery({ queryKey: ["scores", "history"], queryFn: () => getScoreHistory({ limit: SCORE_HISTORY_LIMIT }) });
-  const series = q.data?.modules[object] ?? [];
   const runs = new Map((q.data?.history ?? []).map((h) => [h.version_id, h]));
+  // The API lists newest first; the line runs oldest first.
+  const series = (q.data?.modules[object] ?? [])
+    .filter((p) => (runs.get(p.version_id)?.system_id ?? null) === (systemId ?? null) && p.at_the_time != null)
+    .map((p) => ({ version_id: p.version_id, score: p.at_the_time as number }))
+    .reverse();
   const points = series.map((p, i) => {
     const h = runs.get(p.version_id);
-    return { version_id: p.version_id, x: h?.run_at ? formatDate(h.run_at) : `Run ${i + 1}`, y: Math.round(p.composite * 10) / 10, change: i === 0 ? null : Math.round((p.composite - series[i - 1].composite) * 10) / 10 };
+    return { version_id: p.version_id, x: h?.run_at ? formatDate(h.run_at) : `Run ${i + 1}`, y: Math.round(p.score * 10) / 10, change: i === 0 ? null : Math.round((p.score - series[i - 1].score) * 10) / 10 };
   });
   type Point = (typeof points)[number];
   const columns: ColumnDef<Point>[] = [
@@ -219,7 +242,7 @@ function HistoryTab({ object, run }: { object: string; run: string }) {
         <Line data={points.map((p) => ({ x: p.x, y: p.y }))} label={`${formatModuleName(object)} composite score per run`} />
       </Card>
       <Card title="Runs">
-        <DataTable columns={columns} data={[...points].reverse()} getRowId={(p) => p.version_id} hideToolbar dense height="auto" />
+        <DataTable columns={columns} data={[...points].reverse()} getRowId={(p) => p.version_id} hideToolbar height="auto" />
       </Card>
     </div>
   );
@@ -292,6 +315,8 @@ function RecordsTab({ object, run, checkId }: { object: string; run: string; che
   const { data, isLoading, isError, error, refetch } = useQuery(recordsQuery(run, checkId, page));
   useFixShortcut(object, run, data?.records[0]?.record_key);
   const columns = useRecordColumns(object, run, data?.records);
+  const details = useRuleDetails(object, run);
+  const ruleName = details.data?.rows.find((r) => r.check_id === checkId)?.name ?? null;
 
   if (isLoading) return <div aria-busy="true"><Skeleton height={240} /></div>;
   if (isError) return <ErrorState {...apiErrorState(error)} onRetry={() => refetch()} />;
@@ -317,11 +342,11 @@ function RecordsTab({ object, run, checkId }: { object: string; run: string; che
         fields={Object.keys(data.records[0]?.field_values ?? {})}
       />
       <Card
-        title={checkId}
-        meta={<><Mono>{checkId}</Mono>, {data.total.toLocaleString()} record{data.total === 1 ? "" : "s"}</>}
+        title={ruleName ?? <Mono>{checkId}</Mono>}
+        meta={<>{ruleName ? <><Mono>{checkId}</Mono>, </> : null}{data.total.toLocaleString()} record{data.total === 1 ? "" : "s"}</>}
         actions={
           <>
-            <Button render={<Link href={fixSheetHref(object, run, data.records[0].record_key)}>Open fix sheet</Link>} />
+            <Button render={<Link href={fixSheetHref(object, run, data.records[0].record_key)}>Open record</Link>} />
             <ExportMenu options={exportOptions} />
           </>
         }
@@ -402,6 +427,10 @@ export default function ObjectDetailPage() {
       </PageFrame>
     );
   }
+  if (!run && scope.error) {
+    // The run list failed: we cannot tell whether a run measured this object.
+    return <ErrorState {...apiErrorState(scope.error)} onRetry={scope.refetch} />;
+  }
   if (!run) {
     return (
       <EmptyState
@@ -446,17 +475,20 @@ export default function ObjectDetailPage() {
         ),
     },
   ];
-  // The header's counts open what they count: the failing checks on the Rules tab, the records on Records to fix.
+  // The header's counts open what they count: the failing rules on the Rules tab, the records on Records to fix.
   const tabHref = (t: string) => `/objects/${object}?${new URLSearchParams({ run, tab: t })}`;
   const name = summary?.label ?? formatModuleName(object);
+  const description = moduleDescription(object);
   const meta = (
     <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+      {description && <span className="block w-full max-w-[72ch] m-ink-2">{description}</span>}
       <RunScope scope={scope} hrefFor={(id) => hrefWithRun(`/objects/${object}`, search, id)} />
       {summary && (
         <span>
-          <Link href={tabHref("rules")} aria-label={`Open the ${summary.failing_checks.toLocaleString()} failing checks of ${name}`} className="m-ink-accent underline underline-offset-2">{`${summary.failing_checks.toLocaleString()} failing checks`}</Link>
+          <Link href={tabHref("rules")} aria-label={`Open the ${plural(summary.failing_checks, "failing rule")} of ${name}`} className="m-ink-accent underline underline-offset-2">{plural(summary.failing_checks, "failing rule")}</Link>
           {", "}
-          <Link href={tabHref("fix")} aria-label={`Open the ${summary.affected_records.toLocaleString()} affected records of ${name}`} className="m-ink-accent underline underline-offset-2">{`${summary.affected_records.toLocaleString()} affected records`}</Link>
+          {/* Summed over the rules (a record failing two rules counts twice): rule failures, not records; the Overview strip's "Rule failures" is the same count and opens the same tab. */}
+          <Link href={tabHref("fix")} aria-label={`Open the records behind the ${plural(summary.affected_records, "rule failure")} of ${name}`} className="m-ink-accent underline underline-offset-2">{plural(summary.affected_records, "rule failure")}</Link>
         </span>
       )}
     </span>
@@ -470,7 +502,7 @@ export default function ObjectDetailPage() {
         status={
           summary && (summary.composite_score != null || summary.readiness) ? (
             <span className="inline-flex items-center gap-3">
-              {summary.composite_score != null ? <ObjectScore summary={summary} detail={data} /> : null}
+              {summary.composite_score != null ? <ObjectScore summary={summary} detail={data} run={run} /> : null}
               {summary.readiness ? <Status kind="verdict" value={summary.readiness} /> : null}
             </span>
           ) : null
@@ -505,7 +537,7 @@ export default function ObjectDetailPage() {
               />
             ),
           },
-          ...entityTabs({ entityType: "objects", entityId: object, auditPath: `/objects/${object}`, history: <HistoryTab object={object} run={run} /> }),
+          ...entityTabs({ entityType: "objects", entityId: object, auditPath: `/objects/${object}`, history: <HistoryTab object={object} run={run} systemId={version?.metadata?.system_id} /> }),
         ]}
       />
     </PageFrame>

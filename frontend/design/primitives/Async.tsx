@@ -22,11 +22,26 @@ export interface AsyncEmpty {
   variant?: "card" | "inline";
 }
 
+/**
+ * What an error region says. Pass the failed request as `error` and the title and message come from
+ * `apiErrorState` (404 not found, 401/403 access, other statuses a server error, no response the network
+ * sentence); an explicit `title` or `message` still wins over what `error` would say.
+ */
 export interface AsyncError {
-  /** Defaults to the network sentence; `apiErrorState` fills it from a failed query. */
+  /** The failed request (a query's `error`), read through `apiErrorState`. */
+  error?: unknown;
+  /** Defaults to what `error` says, else the network sentence. */
   title?: string;
-  message: string;
+  /** Defaults to the API's detail for `error`. */
+  message?: string;
   onRetry?: () => void;
+}
+
+/** Title and message for an `AsyncError`: `error` through `apiErrorState`, explicit `title`/`message` over it. */
+export function asyncErrorView(e: AsyncError): { title?: string; message: string } {
+  if (!("error" in e)) return { title: e.title, message: e.message ?? "" };
+  const fromError = apiErrorState(e.error);
+  return { title: e.title ?? fromError.title, message: e.message ?? fromError.message };
 }
 
 /** The slice of a TanStack query `Async` reads. */
@@ -87,9 +102,16 @@ export function Async<T>({ query, state, isEmpty, notFoundIsEmpty, skeleton, emp
   if (s === "loading" && stuck) {
     return <ErrorState title={SLOW_LOAD_MESSAGE} message="The server has not answered. Retry, or check the job tray." onRetry={retry ?? (() => window.location.reload())} />;
   }
-  if (s === "loading") return <div data-state="loading">{skeletonFor(skeleton)}</div>;
+  if (s === "loading") {
+    return (
+      <div data-state="loading" aria-busy="true">
+        <span role="status" className="sr-only">Loading</span>
+        {skeletonFor(skeleton)}
+      </div>
+    );
+  }
   if (s === "error") {
-    const e = error ?? (query ? apiErrorState(query.error) : { message: "Something went wrong" });
+    const e = error ? asyncErrorView(error) : query ? apiErrorState(query.error) : { message: "Something went wrong" };
     return <ErrorState title={e.title} message={e.message} onRetry={retry} />;
   }
   if (s === "empty" && empty) {

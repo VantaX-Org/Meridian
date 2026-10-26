@@ -5,6 +5,7 @@ import { Bar as RBar, Cell, CartesianGrid, ComposedChart, Line as RLine, Respons
 import { ChartTooltip } from "./Tooltip";
 import { chartTheme, chartSummary, type ChartPoint } from "./theme";
 import { hoverBar } from "./HoverBar";
+import { ChartPointActions } from "./PointActions";
 import { categoryAxisWidth } from "./Bar";
 import { mMotion, reducedMotion } from "../tokens";
 import { formatInt } from "../../lib/format";
@@ -34,6 +35,7 @@ export function Pareto({
     cum: Math.round((sorted.slice(0, i + 1).reduce((n, q) => n + q.y, 0) / total) * 100),
   }));
   return (
+    <>
     <div role="img" aria-label={chartSummary(sorted, label ?? "Pareto chart")}>
     <ResponsiveContainer width="100%" height={height}>
       <ComposedChart data={rows}>
@@ -74,5 +76,7 @@ export function Pareto({
       </ComposedChart>
     </ResponsiveContainer>
     </div>
+    <ChartPointActions points={rows} onPointClick={onPointClick} label={label ?? "Pareto chart"} format={formatInt} />
+    </>
   );
 }

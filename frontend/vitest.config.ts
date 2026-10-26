@@ -9,6 +9,11 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    // jsdom's default origin is http://localhost:3000, where a local `next dev` usually listens: a request a test
+    // leaves unmocked (e.g. useDayOne's systems/landscape/runs) then hangs on that server instead of failing at once,
+    // and a page waiting on it never leaves its loading state. Port 9 (discard) has no listener: such a request is
+    // refused immediately, as on CI.
+    environmentOptions: { jsdom: { url: "http://localhost:9/" } },
     setupFiles: ["./vitest.setup.ts"],
     include: ["**/*.test.{ts,tsx}"],
     exclude: ["node_modules", ".next", "e2e"],

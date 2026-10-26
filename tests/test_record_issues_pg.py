@@ -115,7 +115,7 @@ def test_lifecycle_and_diff(app_engine):
     sid = str(uuid.uuid4())
 
     v1, st1 = _run(app, tid, sid, [_result("CHK-A", ["1", "2"]), _result("CHK-ERR", ["1"])], ["1", "2", "3"])
-    assert st1 == {"failing_records": 3, "created": 3, "reopened": 0, "auto_resolved": 0}
+    assert st1 == {"failing_records": 3, "created": 3, "reopened": 0, "auto_resolved": 0, "reconciled": 0}
 
     # vendor 2 is not in the second extract; CHK-ERR errored this time
     v2, st2 = _run(app, tid, sid, [_result("CHK-A", ["3"]), _result("CHK-ERR", [], error="boom")], ["1", "3"])
@@ -213,13 +213,26 @@ def test_issue_and_diff_api(app_engine):
             # accepting needs a resolution
             assert (await c.post("/api/v1/issues/bulk", headers=steward,
                                  json={"ids": [open_id], "status": "accepted"})).status_code == 400
+            # a data owner (approve, no assign) signs off acceptance, but may not start work or reassign
+            owner_h = {"X-User-Role": "data_owner"}
+            assert (await c.post("/api/v1/issues/bulk", headers=owner_h,
+                                 json={"ids": [open_id], "status": "in_progress"})).status_code == 403
+            assert (await c.post("/api/v1/issues/bulk", headers=owner_h,
+                                 json={"ids": [open_id], "status": "accepted", "resolution": "accepted_risk",
+                                       "assigned_to": ""})).status_code == 403
+            ok = await c.post("/api/v1/issues/bulk", headers=owner_h,
+                              json={"ids": [open_id], "status": "accepted", "resolution": "accepted_risk"})
+            assert ok.status_code == 200 and ok.json() == {"updated": 1}
+            reopen = await c.post("/api/v1/issues/bulk", headers=steward, json={"ids": [open_id], "status": "open"})
+            assert reopen.json() == {"updated": 1}
             ok = await c.post("/api/v1/issues/bulk", headers=steward,
                               json={"ids": [open_id], "status": "accepted", "resolution": "accepted_risk",
                                     "note": "Signed off by AP lead"})
             assert ok.json() == {"updated": 1}
             d = (await c.get(f"/api/v1/issues/{open_id}", headers=analyst)).json()
             assert d["issue"]["status"] == "accepted"
-            assert [e["action"] for e in d["events"]] == ["comment", "status"]
+            # comment, the data owner's acceptance, the steward's re-open, the steward's acceptance
+            assert [e["action"] for e in d["events"]] == ["comment", "status", "status", "status"]
             with app_eng.begin() as conn:
                 conn.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
                 assert conn.execute(text("SELECT steward_verdict FROM record_issues WHERE id = :i"),
@@ -713,3 +726,106 @@ def test_baseline_monitor_drafts_regressions(app_engine, monkeypatch):
 
     monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")
     asyncio.run(scenario())
+
+
+def test_fully_passing_check_resolves(app_engine):
+    """A check that ran but now passes for every record has no finding_records this run; it must still
+    get a lifecycle batch, or its open issues never auto-resolve."""
+    from sqlalchemy import text
+
+    owner, app = app_engine
+    tid, sid = str(uuid.uuid4()), str(uuid.uuid4())
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:a, 'TP')"), {"a": tid})
+    _run(app, tid, sid, [_result("CHK-P", ["1", "2"]), _result("CHK-Q", ["1"])], ["1", "2"])
+    # second run: CHK-P now passes for every record, CHK-Q still fails
+    _, st = _run(app, tid, sid, [_result("CHK-P", []), _result("CHK-Q", ["1"])], ["1", "2"])
+    assert st["auto_resolved"] == 2
+    iss = _issues(app, tid)
+    assert iss[("CHK-P", "LIFNR=1")].status == "resolved"
+    assert iss[("CHK-P", "LIFNR=2")].status == "resolved"
+    assert iss[("CHK-P", "LIFNR=1")].resolution == "verified_fixed"
+    assert iss[("CHK-Q", "LIFNR=1")].status == "open"
+
+
+def test_reconcile_marks_exported_items_fixed_during_track(app_engine):
+    """track reconciles exported fix batches per lifecycle batch, while that batch's tmp_present (the
+    records evaluated in this run) is still populated - its commit drops it. An item whose record no
+    longer fails becomes ``fixed``; one that still fails ``still_failing``."""
+    from sqlalchemy import text
+    from sqlalchemy.orm import Session
+
+    from api.services.remediation import reconcile
+
+    owner, app = app_engine
+    tid, sid = str(uuid.uuid4()), str(uuid.uuid4())
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:a, 'TR')"), {"a": tid})
+    _run(app, tid, sid, [_result("CHK-R", ["1", "2"])], ["1", "2"])
+    bid = str(uuid.uuid4())
+    with app.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        c.execute(text("INSERT INTO remediation_batches (id, tenant_id, name, status, exported_at) "
+                       "VALUES (:b, :t, 'fix', 'exported', now() - interval '1 minute')"), {"b": bid, "t": tid})
+        c.execute(text("INSERT INTO remediation_items (tenant_id, batch_id, scope, module, check_id, record_key, "
+                       "grain, field, proposed_value) VALUES "
+                       "(:t, :b, :s, 'accounts_payable', 'CHK-R', 'LIFNR=1', 'LFA1', 'LFA1.NAME1', 'A'), "
+                       "(:t, :b, :s, 'accounts_payable', 'CHK-R', 'LIFNR=2', 'LFA1', 'LFA1.NAME1', 'B')"),
+                  {"t": tid, "b": bid, "s": sid})
+
+    # vendor 2 was fixed in SAP; vendor 1 still fails
+    vid, st = _run(app, tid, sid, [_result("CHK-R", ["1"])], ["1", "2"])
+    assert st["reconciled"] == 2
+    with app.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        rows = dict(c.execute(text("SELECT record_key, recon_status FROM remediation_items "
+                                   "WHERE recon_version = :v"), {"v": vid}).all())
+        assert rows == {"LIFNR=1": "still_failing", "LIFNR=2": "fixed"}
+        assert c.execute(text("SELECT count(*) FROM remediation_events WHERE batch_id = :b "
+                              "AND action = 'reconciled'"), {"b": bid}).scalar() == 2
+        c.execute(text("UPDATE remediation_items SET recon_status = NULL, recon_version = NULL"))
+
+    # a reconcile outside track (no tmp_present) never claims an item fixed
+    with Session(app) as s:
+        s.execute(text("SET app.tenant_id = :t"), {"t": tid})
+        assert reconcile(s, tid, vid, sid) == 1  # only the still-failing item
+        s.commit()
+
+
+def test_run_checks_lifecycle_session_resets_tenant_per_transaction(app_engine):
+    """run_checks' step-9 session commits (DQS, each lifecycle batch) before the finding_records DELETE,
+    reconcile and monitor steps; after a commit the pooled connection may carry another tenant (or
+    none). A session-level SET issued once is lost; tenant_session sets it in every transaction."""
+    import inspect
+
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.orm import Session
+
+    from workers.db import tenant_session
+    from workers.tasks import run_checks
+
+    owner, app = app_engine
+    tid, other, vid = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:a, 'TS'), (:b, 'TO')"), {"a": tid, "b": other})
+        c.execute(text("INSERT INTO analysis_versions (id, tenant_id, status) VALUES (:v, :t, 'complete')"),
+                  {"v": vid, "t": tid})
+    eng = create_engine(app.url.render_as_string(hide_password=False), pool_size=1, max_overflow=0)
+    try:
+        def visible(make_session):
+            with make_session() as s:
+                s.execute(text("SET app.tenant_id = :t"), {"t": tid})
+                s.commit()  # the connection goes back to the pool
+                with eng.connect() as c:  # another job on that same backend, for another tenant
+                    c.execute(text("SELECT set_config('app.tenant_id', :t, false)"), {"t": other})
+                    c.commit()
+                return s.execute(text("SELECT count(*) FROM analysis_versions WHERE id = :v"), {"v": vid}).scalar()
+
+        assert visible(lambda: Session(eng)) == 0  # the bug: the tenant was swapped under the session
+        assert visible(lambda: tenant_session(eng, tid)) == 1
+    finally:
+        eng.dispose()
+
+    src = inspect.getsource(run_checks)
+    step9 = src[src.index("# Step 9: findings of the post-passes"):src.index("# Step 9b")]
+    assert "with tenant_session(engine, tenant_id) as session:" in step9

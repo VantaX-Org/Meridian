@@ -1,10 +1,11 @@
 import { screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { vi, describe, it, expect } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as triageApi from "@/lib/api/triage";
 import * as usersApi from "@/lib/api/users";
 import type { TriageTeam, AssignmentRule, SlaPolicy, TriageSettings } from "@/lib/api/triage";
-import AdminTriagePage from "../page";
+import AdminTriagePage, { matchText } from "../page";
 
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
@@ -31,12 +32,48 @@ function mockAll() {
 }
 
 describe("admin triage page", () => {
+  it("names a severity-limited rule's severities instead of matching everything", () => {
+    expect(matchText({ severity: ["critical", "high"] })).toBe("Severity: Critical, High");
+    expect(matchText({ severity: ["critical"], module: ["fi_gl"] })).toBe("Severity: Critical; Objects: FI general ledger");
+    expect(matchText({})).toBe("Matches everything");
+  });
+
   it("renders teams, rules and policies once loaded", async () => {
     mockAll();
     renderWithQuery(<AdminTriagePage />);
     await waitFor(() => expect(screen.getByText("Stewards")).toBeInTheDocument());
     expect(screen.getByText("Critical to stewards")).toBeInTheDocument();
   });
+
+  it("names the SLA scope column Object, as every other ledger does", async () => {
+    mockAll();
+    renderWithQuery(<AdminTriagePage />);
+    expect(await screen.findByText("All objects")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Object" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Module" })).toBeNull();
+  });
+
+  it("flags a stored time zone that is not an IANA zone and blocks saving", async () => {
+    mockAll();
+    vi.spyOn(triageApi, "getTriageSettings").mockResolvedValue({ ...SETTINGS, timezone: "Mars/Olympus" });
+    renderWithQuery(<AdminTriagePage />);
+    expect(await screen.findByText(/Mars\/Olympus is not a recognised time zone/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save calendar" })).toBeDisabled();
+  });
+
+  it("confirms before a new time zone moves the extraction schedules", async () => {
+    mockAll();
+    const save = vi.spyOn(triageApi, "saveTriageSettings").mockResolvedValue({ ...SETTINGS, timezone: "Europe/Berlin" });
+    const user = userEvent.setup();
+    renderWithQuery(<AdminTriagePage />);
+    await user.click(await screen.findByRole("combobox", { name: "Time zone" }));
+    await user.click(await screen.findByRole("option", { name: "Europe/Berlin" }));
+    await user.click(screen.getByRole("button", { name: "Save calendar" }));
+    expect(await screen.findByText(/Every extraction schedule will run in Europe\/Berlin instead of UTC/)).toBeInTheDocument();
+    expect(save).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Change time zone" }));
+    await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({ timezone: "Europe/Berlin" })));
+  }, 60_000); // the zone list holds ~400 options
 
   it("shows a retryable error when teams fail to load", async () => {
     const spy = vi.spyOn(triageApi, "getTeams").mockRejectedValue(new Error("network down"));

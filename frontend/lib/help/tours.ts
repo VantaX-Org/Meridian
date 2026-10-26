@@ -10,6 +10,8 @@
  * with a completed discovery run. A step whose href cannot be resolved (for
  * example no system yet) is skipped.
  */
+import type { Persona } from "@/lib/persona";
+
 export type TourPlacement = "top" | "bottom" | "left" | "right";
 
 export interface TourStep {
@@ -29,6 +31,11 @@ export interface TourDef {
   title: string;
   /** Route that offers this tour from the help menu. */
   route?: string;
+  /**
+   * Where this tour's persona lands when that is not `route` (stewards land on Fix work, lib/persona.ts
+   * `homeHrefForRole`): the route offers the tour too, to that persona only.
+   */
+  landing?: { route: string; persona: Persona };
   /** A dismissed offer counts as done, so it is not shown again. */
   oneShot?: boolean;
   steps: TourStep[];
@@ -39,6 +46,7 @@ export const TOURS: readonly TourDef[] = [
     id: "steward",
     title: "Steward tour",
     route: "/home/steward",
+    landing: { route: "/fix", persona: "steward" },
     steps: [
       {
         target: "inbox-queue", href: "/inbox", placement: "top",
@@ -142,6 +150,11 @@ export const TOURS: readonly TourDef[] = [
     route: "/home/process",
     steps: [
       {
+        target: "process-readiness", href: "/insights/process?tab=readiness", placement: "top",
+        title: "Can it run",
+        body: "The verdict for one end-to-end process: which gates are blocked, the rules failing them and the records behind each. Start here before any discovery run.",
+      },
+      {
         target: "process-catalogue", href: "/process", placement: "top",
         title: "Process list",
         body: "One row per level 1 process for the chosen system, with coverage, fitness, variants and cases. Select a process to drill down.",
@@ -191,9 +204,16 @@ export function tourById(id: string, tours: readonly TourDef[] = TOURS): TourDef
   return tours.find((t) => t.id === id);
 }
 
-/** The tour a route offers from the help menu, matched on the path without its query string. */
-export function tourForPath(pathname: string, tours: readonly TourDef[] = TOURS): TourDef | undefined {
-  return tours.find((t) => t.route !== undefined && t.route === pathname);
+/**
+ * The tour a route offers from the help menu, matched on the path without its query string. `persona` (the
+ * viewer's, from their home role) also matches a tour's `landing`, so a steward on Fix work is offered the
+ * steward tour.
+ */
+export function tourForPath(pathname: string, persona?: Persona, tours: readonly TourDef[] = TOURS): TourDef | undefined {
+  return (
+    tours.find((t) => t.route !== undefined && t.route === pathname) ??
+    (persona ? tours.find((t) => t.landing?.route === pathname && t.landing.persona === persona) : undefined)
+  );
 }
 
 /** Home routes that offer the first-run tour. */

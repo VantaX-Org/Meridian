@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { vi, describe, it, expect } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as connectivityApi from "@/lib/api/connectivity";
@@ -17,6 +17,15 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(currentSearch),
 }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+/** Whether the viewer holds systems/create (who may connect a system). */
+const grants = vi.hoisted(() => ({ connect: false }));
+vi.mock("@/lib/permissions", async (orig) => {
+  const actual = await orig<typeof import("@/lib/permissions")>();
+  return {
+    ...actual,
+    usePermissions: () => ({ ...actual.usePermissions(), has: (r: string, a: string) => grants.connect && r === "systems" && a === "create" }),
+  };
+});
 
 const SYSTEM: SAPSystemExtended = {
   id: "s1", name: "ECC Prod", system_type: "ecc", host: null, client: null, sysnr: null, username: null,
@@ -78,6 +87,22 @@ describe("systems list page", () => {
     expect(screen.getAllByRole("link", { name: /^Open / })).toHaveLength(4);
   });
 
+  it("shows no score and no tile strip for a lone system that has loaded nothing, and says one needs attention", async () => {
+    const version = { id: "v1", run_at: "2026-01-02T00:00:00Z", analysed_at: "2026-01-02T00:00:00Z", records: { material_master: 0 }, dqs: { material_master: 70 } } as unknown as SystemVersion;
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([{ ...SYSTEM, health_status: "unreachable" } as SAPSystemExtended]);
+    vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({ versions: [version], download: null });
+    vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 1 });
+    vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([]);
+    vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([]);
+    renderWithQuery(<SystemsPage />);
+    expect(await screen.findByText(/^1 system, 1 needs attention\./)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
+    await waitFor(() => expect(systemObjectsApi.getSystemVersions).toHaveBeenCalled());
+    expect(screen.queryByText("70.0")).toBeNull();
+    expect(screen.queryByTestId("systems-health")).toBeNull();
+    expect(screen.getByRole("link", { name: "Open ECC Prod" })).toHaveClass("hover:underline");
+  });
+
   it("renders systems once loaded", async () => {
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([SYSTEM]);
     vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({ versions: [], download: null });
@@ -119,6 +144,38 @@ describe("systems list page", () => {
     vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([]);
     renderWithQuery(<SystemsPage />);
     await waitFor(() => expect(screen.getByText(/3 Jan 2026, 00:00 GMT\+2/)).toBeInTheDocument());
+  });
+
+  it("?connect=1 lands with the connect dialog open", async () => {
+    currentSearch = "connect=1";
+    grants.connect = true;
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
+    vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 0 });
+    renderWithQuery(<SystemsPage />);
+    expect(await screen.findByRole("dialog", { name: "Connect a system" })).toBeInTheDocument();
+    currentSearch = "";
+    grants.connect = false;
+  });
+
+  it("leads the empty state with Connect system, Import file second", async () => {
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
+    vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 0 });
+    renderWithQuery(<SystemsPage />);
+    expect(await screen.findByText("No systems yet")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Import file" })).toHaveAttribute("href", "/import");
+  });
+
+  it("names the system type as its product and reads connection health in its own words", async () => {
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([SYSTEM]);
+    vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({ versions: [], download: null });
+    vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 1 });
+    vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([]);
+    vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([]);
+    renderWithQuery(<SystemsPage />);
+    await waitFor(() => expect(screen.getByText("ECC")).toBeInTheDocument());
+    const rows = screen.getAllByRole("row");
+    expect(rows.some((r) => within(r).queryByText("Healthy"))).toBe(true);
+    expect(rows.some((r) => within(r).queryByText("Go"))).toBe(false);
   });
 
   it("shows an up/down trend arrow with an aria-label once the DQS move passes the 0.05 threshold", async () => {
@@ -175,5 +232,20 @@ describe("systems page health param", () => {
     expect(screen.getByText("BW Down")).toBeInTheDocument();
     expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument();
     currentSearch = "";
+  });
+
+  it.each([[true, 1], [false, 0]])("?connect=1 opens the connect dialog only for a viewer who may connect (%s)", async (may, dialogs) => {
+    currentSearch = "connect=1";
+    grants.connect = may;
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([SYSTEM]);
+    vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({ versions: [], download: null });
+    vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 1 });
+    vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([]);
+    vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([]);
+    renderWithQuery(<SystemsPage />);
+    await waitFor(() => expect(screen.getAllByText("ECC Prod").length).toBeGreaterThan(0));
+    expect(screen.queryAllByRole("dialog", { name: "Connect a system" })).toHaveLength(dialogs);
+    currentSearch = "";
+    grants.connect = false;
   });
 });

@@ -74,6 +74,12 @@ export async function getRetentionPreview(): Promise<RetentionPreviewItem[]> {
   return data.items;
 }
 
+/** What a draft policy would purge now if it were saved, as a dry run (nothing is saved or deleted). */
+export async function previewRetentionDraft(policy: RetentionPolicy): Promise<RetentionPreviewItem[]> {
+  const { data } = await apiClient.post<{ items: RetentionPreviewItem[] }>("/api/v1/settings/retention/preview", policy);
+  return data.items;
+}
+
 export async function getPurgeLog(limit = 50): Promise<PurgeLogEntry[]> {
   const { data } = await apiClient.get<{ items: PurgeLogEntry[] }>("/api/v1/settings/purge-log", { params: { limit } });
   return data.items;

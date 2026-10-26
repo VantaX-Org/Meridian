@@ -26,8 +26,8 @@ class _Res:
 
 
 class _Db:
-    def __init__(self, history, extent):
-        self.history, self.extent = history, extent
+    def __init__(self, history, extent, tenant_row=None):
+        self.history, self.extent, self.tenant_row = history, extent, tenant_row
 
     async def execute(self, stmt, params=None):
         sql = str(stmt)
@@ -35,13 +35,15 @@ class _Db:
             return _Res([self.extent])
         if "GROUP BY module_id" in sql:
             return _Res(self.history)
+        if "FROM tenants" in sql:
+            return _Res([self.tenant_row] if self.tenant_row else [])
         return _Res([])
 
 
-def _client(history, extent) -> TestClient:
+def _client(history, extent, tenant_row=None) -> TestClient:
     app = FastAPI()
     app.include_router(analytics.router)
-    db = _Db(history, extent)
+    db = _Db(history, extent, tenant_row)
 
     async def _db():
         yield db
@@ -84,3 +86,19 @@ def test_three_days_forecast_without_a_reason():
     body = _client(hist, (3, 3)).get("/api/v1/analytics/predictive", headers=H).json()
     assert len(body["forecasts"]) == 1 and "reason" not in body
     assert (body["runs_seen"], body["days_seen"]) == (3, 3)
+
+
+def test_early_warnings_hold_each_object_to_its_floor_else_the_warning_band():
+    hist = [_point("01", 80), _point("02", 80), _point("03", 80)]
+    # no tenant config: the default warning band (75), so a steady 80 is green
+    [w] = _client(hist, (3, 3)).get("/api/v1/analytics/predictive", headers=H).json()["early_warnings"]
+    assert (w["signal"], w["threshold"], w["reason"]) == ("green", 75.0, "healthy")
+    # the tenant's warning band from its scoring config
+    banded = ({"thresholds": {"target": 95, "warning": 85, "critical": 60}}, {})
+    [w] = _client(hist, (3, 3), banded).get("/api/v1/analytics/predictive", headers=H).json()["early_warnings"]
+    assert (w["signal"], w["threshold"]) == ("red", 85.0)
+    # an object's own floor wins over the band
+    floored = ({"thresholds": {"warning": 85}}, {"module_floors": {"material_master": 70}})
+    [w] = _client(hist, (3, 3), floored).get("/api/v1/analytics/predictive", headers=H).json()["early_warnings"]
+    assert (w["signal"], w["threshold"]) == ("green", 70.0)
+    assert "material_master" not in w["message"]

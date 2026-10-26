@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Checkbox, ConfirmDialog, DataTable, Dialog, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Pill, Select, Skeleton, Stat, Status, Textarea } from "@/design";
+import { Button, Checkbox, ChoiceGroup, ConfirmDialog, DataTable, Dialog, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Pill, Select, Skeleton, Stat, Status, Textarea, toast } from "@/design";
+import { SettingsTabs } from "@/components/admin/settings-tabs";
 import { LedgerHead, RowButton } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import {
@@ -14,7 +14,8 @@ import {
 } from "@/lib/api/triage";
 import { getAssignableUsers } from "@/lib/api/users";
 import { apiErrorMessage } from "@/lib/error";
-import { formatModuleName } from "@/lib/format";
+import { formatModuleName, isValidTimeZone, labelOf } from "@/lib/format";
+import { timezoneOptions } from "@/lib/preferences";
 import { queryKeys } from "@/lib/query-keys";
 
 type User = { id: string; name: string; email: string };
@@ -22,7 +23,7 @@ const SEVERITIES: TriageSeverity[] = ["critical", "high", "medium", "low"];
 const STRATEGIES = [{ value: "round_robin", label: "Round robin" }, { value: "least_loaded", label: "Least loaded" }];
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MATCH_FIELDS = [
-  ["module", "Modules"], ["check_id", "Check ids"], ["dimension", "Dimensions"],
+  ["module", "Objects"], ["check_id", "Check ids"], ["dimension", "Dimensions"],
   ["company_code", "Company codes"], ["plant", "Plants"], ["sales_org", "Sales orgs"],
 ] as const;
 type ListField = (typeof MATCH_FIELDS)[number][0];
@@ -40,22 +41,9 @@ function useUsers() {
   return { users, name, isError: q.isError, error: q.error, refetch: q.refetch };
 }
 
-function Toggle({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function Section({ title, action, children, id }: { title: string; action?: React.ReactNode; children: React.ReactNode; id?: string }) {
   return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className="px-2 py-0.5 m-text-meta rounded-full border m-ink-3 [border-color:var(--m-line)] [background:var(--m-sheet)] aria-pressed:[color:var(--m-pass)] aria-pressed:[border-color:var(--m-pass)] aria-pressed:[background:var(--m-sheet-raised)]"
-    >
-      {children}
-    </button>
-  );
-}
-
-function Section({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <section aria-label={title}>
+    <section aria-label={title} id={id} className="scroll-mt-24">
       <LedgerHead title={title} action={action} />
       {children}
     </section>
@@ -85,7 +73,7 @@ export default function AdminTriagePage() {
 
   return (
     <div className="flex flex-col gap-4" aria-busy={teams.isLoading || undefined}>
-      <PageHeader title="Triage" meta="Who gets each new issue, how long they have to fix it, and the working days the clock counts. These drive the urgency colours in the inbox" />
+      <PageHeader tabs={<SettingsTabs />} title="Triage" meta="Who gets each new issue, how long they have to fix it, and the working days the clock counts. These drive the urgency colours in the inbox" />
 
       <div className="flex gap-4">
         <Stat label="Rules switched off" value={idle} tone={idle ? "at-risk" : undefined} loading={ruleQ.isLoading} delta={`of ${ruleQ.data?.length ?? 0} assignment rules`} />
@@ -216,8 +204,10 @@ function TeamForm({ team, onClose }: { team: TriageTeam | null; onClose: () => v
 
 // ---------------------------------------------------------------- Rules
 
-function matchText(m: RuleMatch): string {
-  const parts = MATCH_FIELDS.filter(([k]) => m[k]?.length).map(([k, label]) => `${label}: ${m[k]!.join(", ")}`);
+/** A rule's match in words: every condition it narrows on, severity included; objects by name, never by id. */
+export function matchText(m: RuleMatch): string {
+  const parts = MATCH_FIELDS.filter(([k]) => m[k]?.length).map(([k, label]) => `${label}: ${m[k]!.map((v) => (k === "module" ? formatModuleName(v) : v)).join(", ")}`);
+  if (m.severity?.length) parts.unshift(`Severity: ${m.severity.map(labelOf).join(", ")}`);
   return parts.length ? parts.join("; ") : "Matches everything";
 }
 
@@ -256,7 +246,7 @@ function RulesSection({ write }: { write: boolean }) {
   };
 
   const ruleCols: ColumnDef<AssignmentRule, unknown>[] = [
-    { id: "n", header: "#", cell: ({ row }) => <span className="font-mono m-text-meta">{row.index + 1}</span> },
+    { id: "n", header: "#", cell: ({ row }) => <span className="m-numeric m-text-meta">{row.index + 1}</span> },
     { id: "name", header: "Name", cell: ({ row }) => row.original.name },
     { id: "match", header: "Matches", cell: ({ row }) => <span className="m-ink-3">{matchText(row.original.match)}</span> },
     { id: "to", header: "Assigns to", cell: ({ row }) => target(row.original) },
@@ -348,11 +338,13 @@ function RuleForm({ rule, onClose }: { rule: AssignmentRule | null; onClose: () 
           />
         </Field>
         <Field label="Severity">
-          <div className="flex gap-2">
-            {SEVERITIES.map((s) => (
-              <Toggle key={s} active={severity.includes(s)} onClick={() => setSeverity(toggled(severity, s, !severity.includes(s)))}>{s}</Toggle>
-            ))}
-          </div>
+          <ChoiceGroup
+            multiple
+            label="Severity"
+            value={severity}
+            onChange={setSeverity}
+            options={SEVERITIES.map((s) => ({ value: s, label: labelOf(s) }))}
+          />
         </Field>
         {MATCH_FIELDS.map(([k, label]) => (
           <Field key={k} label={`${label} (comma-separated)`}>
@@ -383,7 +375,7 @@ function PoliciesSection({ write }: { write: boolean }) {
 
   const slaCols: ColumnDef<SlaPolicy, unknown>[] = [
     { id: "sev", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} /> },
-    { id: "mod", header: "Module", cell: ({ row }) => (row.original.module ? formatModuleName(row.original.module) : "All modules") },
+    { id: "mod", header: "Object", cell: ({ row }) => (row.original.module ? formatModuleName(row.original.module) : "All objects") },
     { id: "ack", header: "Acknowledge", cell: ({ row }) => mins(row.original.ack_minutes) },
     { id: "res", header: "Resolve", cell: ({ row }) => mins(row.original.resolve_minutes) },
     { id: "risk", header: "At-risk", cell: ({ row }) => `${row.original.at_risk_pct}%` },
@@ -452,7 +444,7 @@ function PolicyForm({ policy, onClose }: { policy: SlaPolicy | null; onClose: ()
         <Field label="Severity">
           <Select value={severity} onValueChange={(v) => setSeverity(v as TriageSeverity)} options={SEVERITIES.map((s) => ({ value: s, label: s }))} />
         </Field>
-        <Field label="Module (blank = all modules)"><Input value={module} onChange={(e) => setModule(e.target.value)} /></Field>
+        <Field label="Object (blank = all objects)"><Input value={module} onChange={(e) => setModule(e.target.value)} /></Field>
         <Field label="Acknowledge minutes (optional)"><Input type="number" min="0" value={ack} onChange={(e) => setAck(e.target.value)} /></Field>
         <Field label="Resolve minutes"><Input type="number" min="1" value={resolve} onChange={(e) => setResolve(e.target.value)} /></Field>
         <Field label="At-risk %"><Input type="number" min="1" max="99" value={atRisk} onChange={(e) => setAtRisk(e.target.value)} /></Field>
@@ -482,7 +474,7 @@ function CalendarSection({ write }: { write: boolean }) {
   }
   if (settings.isLoading) return <Section title="Working calendar"><Skeleton height={160} /></Section>;
   return (
-    <Section title="Working calendar">
+    <Section title="Working calendar" id="calendar">
       {!write ? (
         <Notice tone="info">Changing the calendar needs the manage settings permission.</Notice>
       ) : null}
@@ -501,30 +493,45 @@ function CalendarForm({ settings, write }: { settings: TriageSettings; write: bo
   const [fallback, setFallback] = useState(settings.fallback_user_id ?? "");
   const [holidaysText, setHolidaysText] = useState(settings.holidays.join("\n"));
   const badDates = list(holidaysText).filter((d) => !/^\d{4}-\d{2}-\d{2}$/.test(d));
+  const [confirmZone, setConfirmZone] = useState(false);
+  // Only IANA zones are accepted; a stored zone the browser does not know stays listed so the admin sees it, flagged.
+  const zoneError = isValidTimeZone(timezone) ? undefined : `${timezone || "This"} is not a recognised time zone. Pick one from the list`;
+  const zones = useMemo(() => {
+    const all = timezoneOptions();
+    const own = timezone && !all.includes(timezone) ? [timezone] : [];
+    return [...own, ...all].map((z) => ({ value: z, label: z.replace(/_/g, " ") }));
+  }, [timezone]);
+  const zoneChanged = timezone !== settings.timezone;
 
   const save = useMutation({
     mutationFn: () => saveTriageSettings({
       timezone, work_days: workDays, work_start: workStart, work_end: workEnd,
       holidays: list(holidaysText), fallback_user_id: fallback || null,
     }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.triageSettings() }); toast.success("Calendar saved"); },
+    onSuccess: () => { setConfirmZone(false); qc.invalidateQueries({ queryKey: queryKeys.triageSettings() }); toast.success("Calendar saved"); },
     onError: (e) => toast.error(errText(e, "Calendar not saved")),
   });
+  const submit = () => (zoneChanged ? setConfirmZone(true) : save.mutate());
 
   return (
     <div className="flex flex-col gap-3 max-w-[480px]">
-      <Field label="Timezone"><Input value={timezone} disabled={!write} onChange={(e) => setTimezone(e.target.value)} /></Field>
+      <div className="flex flex-col gap-1">
+        <Field label="Time zone" error={zoneError}>
+          {write
+            ? <Select value={timezone} onValueChange={setTimezone} options={zones} placeholder="Pick a time zone" />
+            : <Input value={timezone} disabled readOnly />}
+        </Field>
+        <p className="m-text-meta m-ink-3">Extraction schedules, SLA clocks and dates for anyone without a zone of their own use this zone</p>
+      </div>
       <Field label="Work days">
-        <div className="flex gap-2">
-          {DAYS.map((label, i) => {
-            const iso = i + 1;
-            return (
-              <Toggle key={iso} active={workDays.includes(iso)} onClick={() => write && setWorkDays(toggled(workDays, iso, !workDays.includes(iso)))}>
-                {label}
-              </Toggle>
-            );
-          })}
-        </div>
+        <ChoiceGroup
+          multiple
+          label="Work days"
+          disabled={!write}
+          value={workDays.map(String)}
+          onChange={(days) => setWorkDays(days.map(Number))}
+          options={DAYS.map((label, i) => ({ value: String(i + 1), label }))}
+        />
       </Field>
       <div className="flex gap-3">
         <Field label="Day starts"><Input type="time" value={workStart} disabled={!write} onChange={(e) => setWorkStart(e.target.value)} /></Field>
@@ -538,9 +545,19 @@ function CalendarForm({ settings, write }: { settings: TriageSettings; write: bo
       </Field>
       {write ? (
         <div>
-          <Button disabled={!!badDates.length || save.isPending} onClick={() => save.mutate()}>{save.isPending ? "Saving…" : "Save calendar"}</Button>
+          <Button disabled={!!badDates.length || !!zoneError || save.isPending} onClick={submit}>{save.isPending ? "Saving…" : "Save calendar"}</Button>
         </div>
       ) : null}
+      <ConfirmDialog
+        open={confirmZone}
+        onOpenChange={setConfirmZone}
+        title="Change the time zone"
+        body={`Every extraction schedule will run in ${timezone.replace(/_/g, " ")} instead of ${settings.timezone.replace(/_/g, " ")}, so a daily 02:00 extract moves to 02:00 there. SLA clocks and default dates follow too.`}
+        confirmLabel="Change time zone"
+        cancelLabel="Keep current zone"
+        pending={save.isPending}
+        onConfirm={() => save.mutate()}
+      />
     </div>
   );
 }

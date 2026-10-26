@@ -26,7 +26,20 @@ from api.models.config_intelligence import (
 
 
 class AlignmentValidator:
-    """Validate alignment between config, processes, and transactional data."""
+    """Validate alignment between config, processes, and transactional data.
+
+    ``estimated_impact_zar`` (the name is historical) is priced from the tenant's cost model
+    (``config_alignment`` of checks/cost_model.yaml, overlaid by ``tenants.cost_model``) and is
+    in that model's currency.
+    """
+
+    def __init__(self, cost_model: dict | None = None) -> None:
+        from checks import cost
+        self.unit_costs: dict[str, float] = cost.effective(cost_model)["config_alignment"]
+
+    def _unit(self, key: str) -> float:
+        """The tenant's estimated impact of one unit of an alignment finding type."""
+        return float(self.unit_costs.get(key) or 0)
 
     # ------------------------------------------------------------------
     # Helpers
@@ -187,7 +200,7 @@ class AlignmentValidator:
                 description=f"{count} {element_type} configurations in module {module} have zero transactions",
                 affected_elements=[e.element_value for e in group],
                 remediation=f"Review and deactivate unused {element_type} configurations",
-                estimated_impact_zar=count * 500,
+                estimated_impact_zar=count * self._unit("ghost_config"),
             ))
         return findings
 
@@ -226,7 +239,7 @@ class AlignmentValidator:
                     ),
                     affected_elements=[proc.bottleneck_step],
                     remediation=f"Investigate and resolve bottleneck at {proc.bottleneck_step}",
-                    estimated_impact_zar=exception_count * 2500,
+                    estimated_impact_zar=exception_count * self._unit("bottleneck_exception"),
                 ))
 
             # Incomplete process (shadow process)
@@ -247,7 +260,7 @@ class AlignmentValidator:
                     ),
                     affected_elements=missing_steps,
                     remediation=f"Review and implement missing process steps",
-                    estimated_impact_zar=missing_count * 5000,
+                    estimated_impact_zar=missing_count * self._unit("shadow_process_step"),
                 ))
 
         return findings
@@ -275,7 +288,7 @@ class AlignmentValidator:
                     title=f"Module {module} has minimal usage ({total} transactions)",
                     description=f"Module {module} has only {total} transactions — potential licence waste",
                     remediation=f"Review whether module {module} licence is still needed",
-                    estimated_impact_zar=50000,
+                    estimated_impact_zar=self._unit("licence_waste_module"),
                 ))
 
         # Inactive processes with some step volume
@@ -294,7 +307,7 @@ class AlignmentValidator:
                             f"match individual steps"
                         ),
                         remediation=f"Investigate residual data in {proc.process_name}",
-                        estimated_impact_zar=25000,
+                        estimated_impact_zar=self._unit("licence_waste_process"),
                     ))
 
         return findings
@@ -334,7 +347,7 @@ class AlignmentValidator:
                 ),
                 affected_elements=list(conflicting_materials.keys()),
                 remediation="Harmonise MRP type settings across plants for each material",
-                estimated_impact_zar=count * 2000,
+                estimated_impact_zar=count * self._unit("conflict_mrp_cross_plant"),
             ))
 
         # Vendors with payment method but no bank details
@@ -361,7 +374,7 @@ class AlignmentValidator:
                 ),
                 affected_elements=vendors_no_bank,
                 remediation="Add bank details for vendors with payment methods configured",
-                estimated_impact_zar=count * 8000,
+                estimated_impact_zar=count * self._unit("conflict_vendor_bank"),
             ))
 
         return findings
@@ -397,7 +410,7 @@ class AlignmentValidator:
                 ),
                 affected_elements=customers_no_sales_area,
                 remediation="Assign sales area data to customer master records",
-                estimated_impact_zar=count * 5000,
+                estimated_impact_zar=count * self._unit("mismatch_customer_sales_area"),
             ))
 
         return findings
@@ -426,7 +439,7 @@ class AlignmentValidator:
                     ),
                     affected_elements=[e.element_value],
                     remediation="Extend or reset the number range before exhaustion",
-                    estimated_impact_zar=100000,
+                    estimated_impact_zar=self._unit("number_range_exhaustion"),
                 ))
 
         return findings
@@ -451,7 +464,7 @@ class AlignmentValidator:
                 ),
                 affected_elements=[e.element_value for e in plants],
                 remediation="Configure purchasing organisation and assign to plants",
-                estimated_impact_zar=50000,
+                estimated_impact_zar=self._unit("org_gap_plant_purch"),
             ))
 
         return findings
@@ -474,7 +487,7 @@ class AlignmentValidator:
                 title="One-way IDoc integration detected (outbound only)",
                 description="IDocs are configured for outbound only — no inbound processing detected",
                 remediation="Review whether inbound IDoc processing is required",
-                estimated_impact_zar=30000,
+                estimated_impact_zar=self._unit("integration_oneway_idoc"),
             ))
 
         # IDoc error rate
@@ -504,7 +517,7 @@ class AlignmentValidator:
                         e.element_value == s and e.transaction_count > 0 for e in idoc_statuses
                     )],
                     remediation="Investigate and reprocess failed IDocs",
-                    estimated_impact_zar=error_count * 3000,
+                    estimated_impact_zar=error_count * self._unit("integration_idoc_errors"),
                 ))
 
         return findings
@@ -545,7 +558,7 @@ class AlignmentValidator:
                     ),
                     affected_elements=[e.element_value for e in group],
                     remediation="Review ghost Z config values and deactivate if no longer needed",
-                    estimated_impact_zar=len(group) * 300,
+                    estimated_impact_zar=len(group) * self._unit("ghost_z_object"),
                 ))
 
         # Z field completeness: ZZ fields with >50% null rate
@@ -586,7 +599,7 @@ class AlignmentValidator:
                     ),
                     affected_elements=[field],
                     remediation=f"Review field {field}: enforce data entry or deprecate",
-                    estimated_impact_zar=null_count * 100,
+                    estimated_impact_zar=null_count * self._unit("z_field_null"),
                 ))
 
         return findings

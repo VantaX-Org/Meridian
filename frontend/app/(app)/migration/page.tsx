@@ -8,6 +8,8 @@ import { useUrlState } from "@/hooks/use-url-state";
 import { toast } from "sonner";
 import Link from "next/link";
 import { DrillLink, Button, DataTable, ExplorerPage, FilterChip, PageHeader, Pill, Sparkline, Stat, Status, asyncStateOf, statusLabel } from "@/design";
+import { InsightTabs } from "@/app/(app)/insights/_components/InsightViews";
+import { InsightActions } from "@/app/(app)/insights/_components/InsightActions";
 import { useRole } from "@/hooks/use-role";
 import { apiErrorMessage } from "@/lib/error";
 import { getWaves, runWave, startMigration } from "@/lib/api/migration";
@@ -111,7 +113,7 @@ export default function MigrationPage() {
   return (
     <>
       <ExplorerPage
-        header={<PageHeader title="Migration" meta={`${waves.isPending ? "" : `${data.length} ${data.length === 1 ? "wave" : "waves"}. `}Whether each group of objects is ready to load into S/4HANA, worst first. Run a wave to refresh its readiness`} actions={createButton} />}
+        header={<PageHeader title="Migration" meta={`${waves.isPending ? "" : `${data.length} ${data.length === 1 ? "wave" : "waves"}. `}Whether each group of objects is ready to load into S/4HANA, worst first. Run a wave to refresh its readiness`} actions={<><InsightActions />{createButton}</>} tabs={<InsightTabs />} />}
         summary={data.length > 0 ? (
           <div className="m-stat-grid">
             <Stat label="Waves" help="wave" value={data.length} />
@@ -131,13 +133,13 @@ export default function MigrationPage() {
                           onRowClick={(w) => router.push(`/migration/${w.id}`)} />}
         state={asyncStateOf(waves, () => data.length === 0, true)}
         emptyProps={{
-          title: "No migration waves yet",
+          title: "No waves yet",
           detail: createButton
             ? "A wave groups the objects you move to S/4HANA together, so you can see whether they are ready to load."
             : "A wave groups the objects you move to S/4HANA together. Ask an analyst to create the first one.",
           action: createButton,
         }}
-        errorProps={{ message: apiErrorMessage(waves.error), onRetry: () => void waves.refetch() }}
+        errorProps={{ error: waves.error, onRetry: () => void waves.refetch() }}
       />
       <CreateWaveDialog open={creating} onOpenChange={setCreating} />
     </>

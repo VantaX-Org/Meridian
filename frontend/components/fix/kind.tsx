@@ -17,4 +17,4 @@ export const kindText = (kind: string, ruleName?: string | null) =>
 
 /** Where one group is reviewed: duplicates merge on the Duplicates tab, everything else on its own page. */
 export const groupHref = (g: { version_id: string | null; kind: string }) =>
-  g.kind === "duplicate" ? "/mdm/golden/merge?source=cleaning" : `/fix/${g.version_id ?? ALL_RUNS}?kind=${encodeURIComponent(g.kind)}`;
+  g.kind === "duplicate" ? "/mdm/golden/merge?source=cleaning" : `/fix/proposals/${g.version_id ?? ALL_RUNS}?kind=${encodeURIComponent(g.kind)}`;

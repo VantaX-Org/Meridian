@@ -3,16 +3,16 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Dialog, Mono } from "@/design";
+import { Button, Dialog } from "@/design";
 import { createAccessRequest } from "@/lib/api/me";
 import { apiErrorMessage } from "@/lib/error";
-import type { RequestTarget } from "@/lib/rbac";
+import { formatModuleName } from "@/lib/format";
+import { accessLabel, type RequestTarget } from "@/lib/rbac";
 
-const field = "w-full rounded-[var(--m-radius-control)] border px-2 py-1 m-text-body";
-const fieldStyle = { borderColor: "var(--m-line)", color: "var(--m-ink)" };
+const field = "m-input m-textarea w-full";
 
 /**
- * Request access (rbac.md §5): resource, action and scope prefilled, a reason,
+ * Request access (rbac.md §5): the access (in plain words) and scope prefilled, a reason,
  * submit to POST /access-requests. The API's own message (e.g. the 422 for a
  * pair no role confers) is shown in the Dialog; nothing is pre-hidden.
  */
@@ -41,7 +41,9 @@ function RequestForm({ target, onClose }: { target: RequestTarget; onClose: () =
       onClose();
     },
   });
-  const scope = `${target.systemLabel ?? target.system_id ?? "all systems"}, ${target.module ?? "all modules"}`;
+  // Never a raw id: the caller's system name, else "one system".
+  const system = target.systemLabel ?? (target.system_id ? "One system" : "All systems");
+  const scope = `${system}, ${target.module ? formatModuleName(target.module) : "all objects"}`;
   return (
     <form
       className="flex flex-col gap-3"
@@ -50,21 +52,19 @@ function RequestForm({ target, onClose }: { target: RequestTarget; onClose: () =
         send.mutate();
       }}
     >
-      <dl className="grid grid-cols-[80px_1fr] gap-x-3 gap-y-1 m-text-body" style={{ color: "var(--m-ink)" }}>
-        <dt style={{ color: "var(--m-ink-3)" }}>Resource</dt>
-        <dd><Mono>{target.resource}</Mono></dd>
-        <dt style={{ color: "var(--m-ink-3)" }}>Action</dt>
-        <dd><Mono>{target.action}</Mono></dd>
-        <dt style={{ color: "var(--m-ink-3)" }}>Scope</dt>
+      <dl className="grid grid-cols-[80px_1fr] gap-x-3 gap-y-1 m-text-body m-ink">
+        <dt className="m-ink-3">Access</dt>
+        <dd>{accessLabel(target.resource, target.action)}</dd>
+        <dt className="m-ink-3">Scope</dt>
         <dd>{scope}</dd>
       </dl>
-      <label className="flex flex-col gap-1 m-text-meta" style={{ color: "var(--m-ink-2)" }}>
+      <label className="flex flex-col gap-1 m-text-meta m-ink-2">
         Reason
-        <textarea className={field} style={fieldStyle} rows={3} maxLength={2000} value={reason}
+        <textarea className={field} rows={3} maxLength={2000} value={reason}
           onChange={(e) => setReason(e.target.value)} />
       </label>
       {send.isError && (
-        <p role="alert" className="m-text-meta" style={{ color: "var(--m-critical)" }}>
+        <p role="alert" className="m-text-meta m-ink-critical">
           {apiErrorMessage(send.error)}
         </p>
       )}

@@ -1,5 +1,5 @@
 // frontend/app/(app)/home/__tests__/persona-home.test.tsx
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { AxiosError, type AxiosResponse } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
@@ -7,9 +7,11 @@ import * as objectsApi from "@/lib/api/v1/objects";
 import * as findingsApi from "@/lib/api/findings";
 import * as versionsApi from "@/lib/api/versions";
 import * as shellApi from "@/lib/api/shell";
+import * as stewardshipApi from "@/lib/api/stewardship";
 import * as connectivityApi from "@/lib/api/connectivity";
 import * as configLoadApi from "@/lib/api/config-load";
 import * as downloadApi from "@/lib/api/download";
+import * as matchRulesApi from "@/lib/api/match-rules";
 import * as jobsHook from "@/hooks/use-jobs";
 import * as dayOneHook from "@/hooks/use-day-one";
 import type { Version } from "@/types/api";
@@ -18,7 +20,8 @@ import LeadHomePage from "../lead/page";
 import StewardHomePage from "../steward/page";
 import BasisHomePage from "../basis/page";
 
-vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+const perms = vi.hoisted(() => ({ granted: null as Set<string> | null, can: (() => true) as (action: string) => boolean }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (a: string) => (perms.granted ? perms.granted.has(a) : perms.can(a)) }) }));
 vi.mock("@/components/insight/route-insight", () => ({ RouteInsight: () => null }));
 const nav = vi.hoisted(() => ({ search: "" }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), useSearchParams: () => new URLSearchParams(nav.search) }));
@@ -51,11 +54,14 @@ const LATEST: Version = {
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  perms.granted = null;
+  perms.can = () => true;
   // jsdom has no matchMedia; the trend chart's reduced-motion check needs a stub.
   vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
   vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: OBJECTS });
   vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [LATEST] });
   vi.spyOn(shellApi, "getShellCounts").mockResolvedValue({ fix: 0, inbox: 0 });
+  vi.spyOn(stewardshipApi, "getQueueItems").mockResolvedValue({ items: [], total: 0 } as unknown as Awaited<ReturnType<typeof stewardshipApi.getQueueItems>>);
   vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
   vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 0 });
   vi.spyOn(jobsHook, "useJobs").mockReturnValue({ active: [], jobs: [] } as unknown as ReturnType<typeof jobsHook.useJobs>);
@@ -64,7 +70,7 @@ beforeEach(() => {
 
 describe("PersonaHomePage 404 handling", () => {
   it("treats a 404 from the objects list as empty, not an error", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     vi.spyOn(objectsApi, "getObjects").mockRejectedValue(new AxiosError("nf", "ERR_BAD_REQUEST", undefined, undefined, { status: 404 } as AxiosResponse));
 
     renderWithQuery(<LeadHomePage />);
@@ -77,7 +83,7 @@ describe("PersonaHomePage 404 handling", () => {
 
 describe("PersonaHomePage data layout", () => {
   it("shows the run DQS, six linked dimension stats and the ledger of what moves the score", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
 
     renderWithQuery(<LeadHomePage />);
 
@@ -91,13 +97,49 @@ describe("PersonaHomePage data layout", () => {
   });
 });
 
+describe("PersonaHomePage AI reviewer", () => {
+  const PROPOSAL = {
+    id: "ap1", tenant_id: "t1", domain: "business_partner", rationale: "r", supporting_correction_count: 10,
+    proposed_rule: { field: "BUT000.NAME_ORG1", match_type: "fuzzy" as const, weight: 60, threshold: 0.9 },
+    status: "pending" as const, reviewed_by: null, reviewed_at: null, created_at: "2026-10-20T00:00:00Z",
+  };
+  beforeEach(() => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
+  });
+
+  it("makes Review N proposals the primary action for review_ai_rules without manage_rules", async () => {
+    perms.granted = new Set(["view", "review_ai_rules", "ai_feedback"]);
+    const read = vi.spyOn(matchRulesApi, "getProposedRules").mockResolvedValue({ rules: [PROPOSAL, { ...PROPOSAL, id: "ap2" }], total: 2 });
+    renderWithQuery(<LeadHomePage />);
+    const action = await screen.findByRole("link", { name: "Review 2 proposals" });
+    expect(action).toHaveAttribute("href", "/rules/drafts?tab=ai");
+    expect(read).toHaveBeenCalledWith("pending");
+  });
+
+  it("keeps the lead's action when no proposal waits", async () => {
+    perms.granted = new Set(["view", "review_ai_rules"]);
+    vi.spyOn(matchRulesApi, "getProposedRules").mockResolvedValue({ rules: [], total: 0 });
+    renderWithQuery(<LeadHomePage />);
+    expect(await screen.findByTestId("home-verdict-row")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /^Review \d/ })).toBeNull();
+  });
+
+  it("never reads proposals for a rule writer, whose action stays the objects", async () => {
+    const read = vi.spyOn(matchRulesApi, "getProposedRules").mockResolvedValue({ rules: [PROPOSAL], total: 1 });
+    renderWithQuery(<LeadHomePage />);
+    expect(await screen.findByTestId("home-verdict-row")).toBeInTheDocument();
+    expect(read).not.toHaveBeenCalled();
+    expect(screen.queryByRole("link", { name: /^Review \d/ })).toBeNull();
+  });
+});
+
 describe("PersonaHomePage Brief geometry", () => {
   const SECOND = { ...LATEST.dqs_summary!.material_master, composite_score: 95 };
   const two: Version = { ...LATEST, dqs_summary: { material_master: LATEST.dqs_summary!.material_master, controlling: SECOND }, metadata: { modules: ["material_master", "controlling"], file_name: "f.csv", row_count: 5000, object_rows: { material_master: 4000, controlling: 1000 } } };
   const find = (check_id: string, module: string, extra: Record<string, unknown> = {}) => ({ id: `${module}-${check_id}`, version_id: "v1", check_id, module, severity: "critical", details: { message: "Material description is missing." }, ...extra });
 
   beforeEach(() => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [two] });
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: OBJECTS });
   });
@@ -132,7 +174,7 @@ describe("PersonaHomePage Brief geometry", () => {
       expect(rows[0]).toHaveTextContent("Controlling");
       expect(rows[1]).toHaveTextContent("Material master");
     });
-    for (const h of ["Object", "Blocking rule", "Records affected", "DQS", "Verdict"]) expect(screen.getByRole("columnheader", { name: new RegExp(h) })).toBeInTheDocument();
+    for (const h of ["Object", "Blocking rule", "Rule failures", "Score", "Verdict"]) expect(screen.getByRole("columnheader", { name: new RegExp(h) })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "All 2 objects" })).toHaveAttribute("href", "/objects");
   });
 
@@ -146,15 +188,35 @@ describe("PersonaHomePage Brief geometry", () => {
     renderWithQuery(<LeadHomePage />);
     const link = await screen.findByRole("link", { name: "MM-001" });
     expect(link.closest("tr")).toHaveTextContent("Material description is missing");
-    expect(screen.getByRole("link", { name: "Fix Material master" })).toHaveAttribute("href", "/fix?module=material_master");
+    expect(screen.getByRole("link", { name: "Fix Material master" })).toHaveAttribute("href", "/fix?run=v1&module=material_master&check=MM-001");
     expect(screen.getByRole("link", { name: "Open Controlling" })).toHaveAttribute("href", "/objects/controlling?run=v1");
     expect(screen.queryByRole("link", { name: "Fix Controlling" })).toBeNull();
+  });
+
+  it("offers Open, never Fix, to a role that can neither apply nor approve", async () => {
+    perms.can = (a) => a === "view" || a === "export";
+    vi.spyOn(findingsApi, "getFindings").mockResolvedValue({
+      findings: [find("MM-001", "material_master", { record_fixes: [{ record_id: "1" }] })],
+    } as unknown as Awaited<ReturnType<typeof findingsApi.getFindings>>);
+    renderWithQuery(<LeadHomePage />);
+    await screen.findByRole("link", { name: "MM-001" });
+    expect(screen.queryByRole("link", { name: "Fix Material master" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Open Material master" })).toHaveAttribute("href", "/objects/material_master?run=v1");
+  });
+
+  it("keeps Fix for an approver who cannot apply", async () => {
+    perms.can = (a) => a === "view" || a === "approve";
+    vi.spyOn(findingsApi, "getFindings").mockResolvedValue({
+      findings: [find("MM-001", "material_master", { record_fixes: [{ record_id: "1" }] })],
+    } as unknown as Awaited<ReturnType<typeof findingsApi.getFindings>>);
+    renderWithQuery(<LeadHomePage />);
+    expect(await screen.findByRole("link", { name: "Fix Material master" })).toBeInTheDocument();
   });
 
   it("keeps the onboarding as one row under the ledger, before the work row", async () => {
     renderWithQuery(<LeadHomePage />);
     const ledger = await screen.findByText("What moves the score");
-    const work = screen.getByText("Objects not ready");
+    const work = screen.getByText("Objects below target");
     expect(ledger.compareDocumentPosition(work) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByTestId("home-trend")).toBeInTheDocument();
   });
@@ -162,7 +224,7 @@ describe("PersonaHomePage Brief geometry", () => {
 
 describe("PersonaHomePage lineage and heatmap", () => {
   it("prints each dimension score in the heatmap cell with the readiness as its tone", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     renderWithQuery(<LeadHomePage />);
     const cell = await screen.findByLabelText("Material master Uniqueness: 95, go");
     expect(cell).toHaveTextContent("95");
@@ -171,7 +233,7 @@ describe("PersonaHomePage lineage and heatmap", () => {
   });
 
   it("calls the only run of its lineage the first run instead of comparing with another object's run", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     const other: Version = {
       ...LATEST, id: "v0", label: "Controlling", run_at: "2026-10-01T00:00:00Z",
       dqs_summary: { controlling: { ...LATEST.dqs_summary!.material_master, composite_score: 95 } },
@@ -194,7 +256,7 @@ describe("PersonaHomePage blocking and loading states", () => {
   const finding = (check_id: string) => ({ id: check_id, version_id: "v1", check_id, module: "material_master", severity: "critical" });
 
   it("names up to two distinct critical rules in the cap line as drill links, never /findings", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [CAPPED] });
     vi.spyOn(findingsApi, "getFindings").mockResolvedValue({
       findings: [finding("MM-001"), finding("MM-001"), finding("MM-002"), finding("MM-003")],
@@ -210,7 +272,7 @@ describe("PersonaHomePage blocking and loading states", () => {
   });
 
   it("counts the critical rules it does not name", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [CAPPED] });
     vi.spyOn(findingsApi, "getFindings").mockResolvedValue({
       findings: [finding("MM-001"), finding("MM-002"), finding("MM-003")],
@@ -223,7 +285,7 @@ describe("PersonaHomePage blocking and loading states", () => {
   });
 
   it("takes count and names from the cap reason, so the line always adds up, even before findings load", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     const reason = "4 critical failures over tolerance (BP019: 4% of BUT000 rows; BP002: 3% of BUT000 rows; BP007: 2% of BUT000 rows; BP011: 2% of BUT000 rows) — score capped at 70";
     const bp: Version = { ...LATEST, dqs_summary: { material_master: { ...LATEST.dqs_summary!.material_master, composite_score: 70, critical_count: 6, capped: true, cap_reason: reason } } };
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [bp] });
@@ -240,7 +302,7 @@ describe("PersonaHomePage blocking and loading states", () => {
   });
 
   it("counts an object whose cap reason names no rule by its critical count", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     const mm = LATEST.dqs_summary!.material_master;
     const two: Version = { ...LATEST, dqs_summary: {
       material_master: { ...mm, composite_score: 85, critical_count: 1, capped: true, cap_reason: "1 critical failure over tolerance (BP019: 4% of BUT000 rows) — score capped at 85" },
@@ -255,7 +317,7 @@ describe("PersonaHomePage blocking and loading states", () => {
   });
 
   it("shows plain cap text while findings load", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [CAPPED] });
     vi.spyOn(findingsApi, "getFindings").mockReturnValue(new Promise(() => {}));
 
@@ -265,18 +327,44 @@ describe("PersonaHomePage blocking and loading states", () => {
     expect(screen.queryByRole("link", { name: /MM-/ })).toBeNull();
   });
 
-  it("counts critical plus high as blocking and links it to the objects list", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+  it("counts critical plus high findings and links one run's count to its findings, critical and high", async () => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
 
     renderWithQuery(<LeadHomePage />);
 
-    const stat = (await screen.findByText("Blocking findings")).closest("a");
-    expect(stat).toHaveAttribute("href", "/objects?readiness=fail");
+    const stat = (await screen.findByText("Critical and high findings")).closest("a");
+    expect(stat).toHaveAttribute("href", "/runs/v1?tab=findings&severity=critical,high");
     expect(stat).toHaveTextContent("1");
   });
 
+  it("sets the steward's work row and inbox items before the score, and the lead's after it", async () => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
+    vi.spyOn(stewardshipApi, "getQueueItems").mockResolvedValue({ items: [
+      { id: "q1", tenant_id: "t", item_type: "merge_decision", source_id: "s", domain: "material_master", priority: 1, due_at: null, assigned_to: null, status: "open", sla_hours: null, created_at: "2026-10-08T00:00:00Z", updated_at: "2026-10-08T00:00:00Z", ai_recommendation: null, ai_confidence: null },
+    ], total: 1 } as unknown as Awaited<ReturnType<typeof stewardshipApi.getQueueItems>>);
+
+    renderWithQuery(<StewardHomePage />);
+
+    const items = await screen.findByTestId("home-inbox-items");
+    expect(items).toHaveTextContent("Merge decision, Material master");
+    // Each item opens that task in the inbox, not every task of its type.
+    expect(within(items).getByRole("link", { name: /Merge decision/ })).toHaveAttribute("href", "/inbox?focus=q1");
+    const hero = screen.getByTestId("home-verdict-row");
+    const inbox = screen.getByText("Open inbox").closest("a") as HTMLElement;
+    expect(inbox.compareDocumentPosition(hero) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(items.compareDocumentPosition(hero) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("keeps the lead's score before the work row", async () => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
+    renderWithQuery(<LeadHomePage />);
+    const hero = await screen.findByTestId("home-verdict-row");
+    const inbox = screen.getByText("Open inbox").closest("a") as HTMLElement;
+    expect(hero.compareDocumentPosition(inbox) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("shows a dash, no hint, for inbox and proposals until counts load", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     vi.spyOn(shellApi, "getShellCounts").mockReturnValue(new Promise(() => {}));
 
     renderWithQuery(<StewardHomePage />);
@@ -284,13 +372,23 @@ describe("PersonaHomePage blocking and loading states", () => {
     const inbox = (await screen.findByText("Open inbox")).closest("a");
     expect(inbox).toHaveTextContent("—");
     expect(inbox).not.toHaveTextContent(/clear|0/);
-    expect((await screen.findByText("Cleaning proposals")).closest("a")).not.toHaveTextContent(/clear/);
+    expect((await screen.findByText("Records to fix")).closest("a")).not.toHaveTextContent(/clear/);
+  });
+
+  it("labels the steward's fix tile as cleaning proposals when the latest run has no work list", async () => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
+    vi.spyOn(shellApi, "getShellCounts").mockResolvedValue({ fix: 4, fix_source: "cleaning", inbox: 0 });
+    renderWithQuery(<StewardHomePage />);
+    const tile = (await screen.findByText("Cleaning proposals to review")).closest("a");
+    expect(tile).toHaveAttribute("href", "/fix?tab=cleaning");
+    expect(tile).toHaveTextContent("4");
+    expect(screen.queryByText("Records to fix")).toBeNull();
   });
 });
 
 describe("PersonaHomePage header actions (T20)", () => {
   it("offers the executive PDF in the header when a run is ready", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
 
     renderWithQuery(<LeadHomePage />);
 
@@ -300,13 +398,13 @@ describe("PersonaHomePage header actions (T20)", () => {
     await waitFor(() =>
       expect(downloadApi.downloadAuthenticated).toHaveBeenCalledWith(
         "/api/v1/reports/executive/v1.pdf",
-        "meridian-executive-Oct 8.pdf",
+        expect.stringMatching(/^Meridian executive report – Oct 8 – \d{4}-\d{2}-\d{2}\.pdf$/),
       ),
     );
   });
 
   it("gives the steward one Export menu, not two side by side", async () => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
 
     renderWithQuery(<StewardHomePage />);
 
@@ -317,7 +415,7 @@ describe("PersonaHomePage header actions (T20)", () => {
   it("does not render the header export action while gated by useDayOne's day-one journey", async () => {
     vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({
       step: { key: "connect", href: "/systems", label: "Connect a system.", detail: "", actionable: true },
-      status: "ready",
+      status: "ready", error: null, refetch: vi.fn(),
     });
 
     renderWithQuery(<LeadHomePage />);
@@ -363,7 +461,7 @@ describe("PersonaHomePage current state across objects", () => {
   ];
 
   beforeEach(() => {
-    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: RUNS });
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "co2", objects: [], thresholds: { target: 90, warning: 75, critical: 60 } });
   });
@@ -372,18 +470,29 @@ describe("PersonaHomePage current state across objects", () => {
     renderWithQuery(<LeadHomePage />);
 
     // Every number names its runs: the state's sources, each linking to its run alone.
-    expect(await screen.findByTestId("run-sources")).toHaveTextContent("3 objects from controlling_1k, 16 Oct 2026;");
-    expect(screen.getByRole("link", { name: "controlling_1k, 16 Oct 2026" })).toHaveAttribute("href", "/home/lead?run=co2");
-    expect(screen.getByTestId("home-verdict")).toHaveTextContent("1 of 3 objects is not ready for go-live.");
+    // One line, no raw run ids: the runs sit behind a "3 runs" disclosure, each named by its object.
+    const sources = await screen.findByTestId("run-sources");
+    expect(sources).toHaveTextContent("Current state of 3 objects, latest run 16 Oct 2026, from 3 runs");
+    expect(sources).not.toHaveTextContent("controlling_1k");
+    fireEvent.click(screen.getByRole("button", { name: "3 runs" }));
+    const list = await screen.findByTestId("run-source-list");
+    expect(within(list).getAllByRole("link")).toHaveLength(3);
+    expect(within(list).getByRole("link", { name: /^Controlling/ })).toHaveAttribute("href", "/home/lead?run=co2");
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+    expect(screen.getByTestId("home-verdict")).toHaveTextContent("1 of 3 objects is not ready for go-live, 1 at risk.");
     // (70 + 95 + 80) / 3 against the state before the newest run, (64 + 95 + 80) / 3: +2
     const dqs = screen.getByTestId("home-dqs");
     expect(dqs).toHaveTextContent("vs before the latest run");
     expect(dqs).toHaveTextContent("2.0");
-    const notReady = (screen.getByText("Objects not ready")).closest("a");
-    expect(notReady).toHaveTextContent("of 3");
-    expect(notReady).toHaveAttribute("href", "/objects?readiness=fail");
+    const notReady = (screen.getByText("Objects below target")).closest("a");
+    // below target is at risk or no-go: controlling (no-go) and material master (at risk)
+    expect(notReady).toHaveTextContent(/2\s*of 3/);
+    expect(notReady).toHaveAttribute("href", "/objects?readiness=warn%2Cfail");
     // critical and high: controlling 2 + 1, material master 1, accounts payable 4
-    expect((screen.getByText("Blocking findings")).closest("a")).toHaveTextContent("8");
+    const criticalHigh = (screen.getByText("Critical and high findings")).closest("a");
+    expect(criticalHigh).toHaveTextContent("8");
+    // Several runs: the current-state findings filtered to critical and high, not the objects below target.
+    expect(criticalHigh).toHaveAttribute("href", "/insights?severity=critical,high");
     expect(screen.getByText("All objects, each at its latest run by then")).toBeInTheDocument();
   });
 
@@ -398,9 +507,34 @@ describe("PersonaHomePage current state across objects", () => {
     await screen.findByTestId("run-scope");
     expect((screen.getByText("Worst object")).closest("a")).toHaveAttribute("href", "/objects/controlling?run=co2");
     expect(screen.getByRole("link", { name: "Open worst object" })).toHaveAttribute("href", "/objects/controlling?run=co2");
+    // The verdict's next step is the home's one primary button; Run analysis is secondary.
+    expect(screen.getByRole("link", { name: "Open worst object" })).toHaveClass("m-btn-primary");
+    expect(screen.getByRole("button", { name: "Run analysis" })).toHaveClass("m-btn-secondary");
     // the blocking rule of an object that is not in the newest run drills into that object's own run
     expect(screen.getByRole("link", { name: "MM045" })).toHaveAttribute("href", "/objects/material_master?run=mm1&tab=records&check_id=MM045");
     expect(screen.getByText("1 of 3 objects capped by critical rules")).toBeInTheDocument();
+  });
+
+  it("gives a data owner (approves, cannot apply) Open approvals as the steward home's next step", async () => {
+    perms.can = (a) => a === "view" || a === "approve" || a === "export";
+    renderWithQuery(<StewardHomePage />);
+    const open = await screen.findByRole("link", { name: "Open approvals" });
+    expect(open).toHaveAttribute("href", "/fix?tab=batches");
+    expect(open).toHaveClass("m-btn-primary");
+    expect(screen.queryByRole("link", { name: "Open worst object" })).toBeNull();
+  });
+
+  it("gives the auditor Open audit log, not the lead's objects below target", async () => {
+    perms.can = (a) => a === "view" || a === "export" || a === "view_audit";
+    renderWithQuery(<LeadHomePage />);
+    expect(await screen.findByRole("link", { name: "Open audit log" })).toHaveAttribute("href", "/admin/audit");
+    expect(screen.queryByRole("link", { name: "Open objects below target" })).toBeNull();
+  });
+
+  it("keeps Open objects below target for a viewer, who has no audit log", async () => {
+    perms.can = (a) => a === "view";
+    renderWithQuery(<LeadHomePage />);
+    expect(await screen.findByRole("link", { name: "Open objects below target" })).toBeInTheDocument();
   });
 
   it("asks the findings endpoints for the current state, not one run", async () => {
@@ -422,12 +556,42 @@ describe("PersonaHomePage current state across objects", () => {
       const scope = await screen.findByTestId("run-scope");
       expect(scope).toHaveTextContent("controlling_1k, 16 Oct 2026");
       expect(screen.queryByTestId("run-sources")).toBeNull();
-      expect(screen.getByRole("link", { name: "Back to all runs" })).toHaveAttribute("href", "/home/lead");
+      expect(screen.getByRole("link", { name: "Back to current state" })).toHaveAttribute("href", "/home/lead");
       expect(screen.getByTestId("home-verdict")).toHaveTextContent("1 of 1 object is not ready for go-live.");
       expect(screen.getByTestId("home-dqs")).toHaveTextContent("First run for this object");
-      expect((screen.getByText("Objects not ready")).closest("a")).toHaveAttribute("href", "/objects?run=co1&readiness=fail");
+      expect((screen.getByText("Objects below target")).closest("a")).toHaveAttribute("href", "/objects?run=co1&readiness=warn%2Cfail");
     } finally {
       nav.search = "";
     }
+  });
+});
+
+describe("PersonaHomePage error state", () => {
+  const http = (status: number) => new AxiosError("x", "ERR_BAD_RESPONSE", undefined, undefined, { status, data: {} } as AxiosResponse);
+  const callCount = (f: unknown) => (f as { mock: { calls: unknown[] } }).mock.calls.length;
+
+  it("names the failing source's error and Retry reads objects, runs, systems and the landscape again", async () => {
+    vi.spyOn(connectivityApi, "getSystems").mockRejectedValue(http(500));
+    renderWithQuery(<LeadHomePage />);
+
+    expect(await screen.findByText("The server could not complete the request.")).toBeInTheDocument();
+    expect(screen.queryByText(/could not reach the server/i)).toBeNull();
+    const sources = [objectsApi.getObjects, versionsApi.getVersions, connectivityApi.getSystems, configLoadApi.getConfigLandscape];
+    const before = sources.map(callCount);
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => sources.forEach((f, i) => expect(callCount(f)).toBeGreaterThan(before[i])));
+  });
+
+  it("shows an inline error with Retry on the steward's inbox card, never \"Nothing waits in the inbox\"", async () => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
+    const queue = vi.spyOn(stewardshipApi, "getQueueItems").mockRejectedValue(http(503));
+    renderWithQuery(<StewardHomePage />);
+
+    const alert = await screen.findByTestId("home-inbox-error");
+    expect(alert).toHaveTextContent("The inbox did not load");
+    expect(screen.queryByText("Nothing waits in the inbox")).toBeNull();
+    const calls = queue.mock.calls.length;
+    fireEvent.click(within(alert).getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(queue.mock.calls.length).toBeGreaterThan(calls));
   });
 });

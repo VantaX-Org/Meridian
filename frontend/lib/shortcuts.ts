@@ -2,14 +2,31 @@
  * The one registry of keyboard shortcuts. `ShortcutSheet` (the `?` sheet) and
  * the inbox read from here, so a key is documented in exactly one place.
  * Navigation shortcuts come from the `shortcut` fields in lib/nav.ts and are
- * handled by design/shell/CommandPalette.tsx's global key handler; the rest
+ * handled by design/shell/CommandPalette.tsx while the palette is open (⌘K is
+ * the only global modifier key, so ⌘/Ctrl + digit stays the browser's); the rest
  * are listed below next to the component that handles them.
  */
+import { useSyncExternalStore } from "react";
 import { NAV_GROUPS, flattenNav } from "@/lib/nav";
 
-export type ShortcutGroup = "Navigation" | "Fix work" | "Tables" | "Inbox" | "Global";
+export type ShortcutGroup = "Navigation" | "Fix work" | "Tables" | "Inbox" | "Designer" | "Global";
 
-export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = ["Navigation", "Fix work", "Tables", "Inbox", "Global"];
+export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = ["Navigation", "Fix work", "Tables", "Inbox", "Designer", "Global"];
+
+/**
+ * The registry writes a modifier shortcut as "⌘K"; `shortcutLabel` spells it for the viewer's platform
+ * ("⌘K" on macOS, "Ctrl K" elsewhere). The one helper the sheet, the palette and the tour read.
+ */
+export function shortcutLabel(keys: string, isMac: boolean): string {
+  return isMac ? keys : keys.replace(/⌘/g, "Ctrl ");
+}
+
+const noSubscribe = () => () => {};
+const readIsMac = () => /Mac|iPhone|iPad/.test(navigator.platform);
+/** The viewer's platform. The server snapshot is "not Mac", so SSR and hydration agree. */
+export function useIsMac(): boolean {
+  return useSyncExternalStore(noSubscribe, readIsMac, () => false);
+}
 
 export interface Shortcut {
   group: ShortcutGroup;
@@ -47,6 +64,11 @@ export const FIX_SHORTCUTS: readonly Shortcut[] = [
   { group: "Fix work", keys: "1 to 5", description: "Switch tabs on an object page" },
 ];
 
+/** app/(app)/insights/process/designer/page.tsx key handler. */
+export const DESIGNER_SHORTCUTS: readonly Shortcut[] = [
+  { group: "Designer", keys: "⌘S", description: "Save model" },
+];
+
 /** design/shell/CommandPalette.tsx and the sheet itself. */
 export const GLOBAL_SHORTCUTS: readonly Shortcut[] = [
   { group: "Global", keys: "⌘K", description: "Search or jump to a page" },
@@ -54,15 +76,18 @@ export const GLOBAL_SHORTCUTS: readonly Shortcut[] = [
   { group: "Global", keys: "/", description: "Find a record by key or name" },
 ];
 
-/** Navigation shortcuts, derived from `lib/nav.ts` so a new `shortcut` field shows up here with no second edit. */
+/**
+ * Navigation shortcuts, derived from `lib/nav.ts` so a new `shortcut` field shows up here with no second edit.
+ * They work inside the command palette only, and say so.
+ */
 export function navShortcuts(): Shortcut[] {
   return flattenNav(NAV_GROUPS.flatMap((g) => g.items))
     .filter((i): i is typeof i & { shortcut: string } => Boolean(i.shortcut))
-    .map((i) => ({ group: "Navigation" as const, keys: i.shortcut, description: `Go to ${i.label}` }));
+    .map((i) => ({ group: "Navigation" as const, keys: i.shortcut, description: `Go to ${i.label}, with the command palette open` }));
 }
 
 export function shortcutRegistry(): Shortcut[] {
-  return [...navShortcuts(), ...FIX_SHORTCUTS, ...TABLE_SHORTCUTS, ...INBOX_SHORTCUTS, ...GLOBAL_SHORTCUTS];
+  return [...navShortcuts(), ...FIX_SHORTCUTS, ...TABLE_SHORTCUTS, ...INBOX_SHORTCUTS, ...DESIGNER_SHORTCUTS, ...GLOBAL_SHORTCUTS];
 }
 
 export interface ShortcutSection {

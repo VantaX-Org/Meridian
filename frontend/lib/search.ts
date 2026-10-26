@@ -1,10 +1,29 @@
 // frontend/lib/search.ts
+export type SearchKind =
+  | "page" | "system" | "object" | "material" | "rule" | "batch" | "run" | "glossary"
+  | "process" | "discovery_run" | "model";
+
 export interface SearchCandidate {
-  kind: "object" | "material" | "rule" | "batch" | "run" | "glossary";
+  kind: SearchKind;
   id: string;
   label: string;
   href: string;
 }
+
+/** The type pill on the search ledger, one label per kind. */
+export const SEARCH_KIND_LABEL: Record<SearchKind, string> = {
+  page: "Page",
+  system: "System",
+  object: "Object",
+  material: "Material",
+  rule: "Rule",
+  batch: "Batch",
+  run: "Run",
+  glossary: "Glossary term",
+  process: "Process",
+  discovery_run: "Discovery run",
+  model: "Process model",
+};
 
 /** 3 = exact id, 2 = label prefix, 1 = substring, 0 = no match (dropped). */
 function score(query: string, candidate: SearchCandidate): number {

@@ -94,16 +94,25 @@ export function hrefWithRun(pathname: string, search: URLSearchParams | string |
   return q ? `${pathname}?${q}` : pathname;
 }
 
-/** A run's name, never a raw id: its label, else the objects it measured. */
-export function runName(v: Pick<Version, "label" | "metadata" | "dqs_summary">): string {
+/** The least a run needs to be named: its label; the objects it measured and the day it ran refine the fallback. */
+export type RunNameInput = { label?: string | null; run_at?: string | null } & Partial<Pick<Version, "metadata" | "dqs_summary">>;
+
+/**
+ * The one name of a run, never a raw id: its label, else the objects it measured, else the day it ran. Every
+ * surface that prints a run goes through here (or `runScopeLabel`), so one run reads the same on every page.
+ */
+export function runName(v: RunNameInput): string {
   if (v.label) return v.label;
   const modules = v.metadata?.modules?.length ? v.metadata.modules : Object.keys(v.dqs_summary ?? {});
-  return modules.length ? modules.map(formatModuleName).join(", ") : "Run";
+  if (modules.length) return modules.map(formatModuleName).join(", ");
+  return v.run_at ? formatDate(v.run_at, "datetime") : "Run";
 }
 
 /** "material_master_25k, 16 Oct 2026": the run's name and the day it ran. */
-export function runScopeLabel(v: Pick<Version, "label" | "metadata" | "dqs_summary" | "run_at">): string {
-  return `${runName(v)}, ${formatDate(v.run_at, "date")}`;
+export function runScopeLabel(v: RunNameInput & Pick<Version, "run_at">): string {
+  // A run with nothing but a date is named by its day, never dated twice.
+  const named = !!v.label || Object.keys(v.dqs_summary ?? {}).length > 0 || (v.metadata?.modules?.length ?? 0) > 0;
+  return named ? `${runName(v)}, ${formatDate(v.run_at, "date")}` : formatDate(v.run_at, "date");
 }
 
 /** Picker labels: name and day, with the time added where two runs would otherwise read the same. */

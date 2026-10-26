@@ -37,6 +37,18 @@ describe("GoldenRecordsPage", () => {
     await waitFor(() => expect(screen.getByText("MARA-1000")).toBeInTheDocument());
   });
 
+  it("lists records waiting for review first", async () => {
+    const row = (id: string, status: "golden" | "pending_review") => ({
+      id, domain: "material_master", sap_object_key: id, overall_confidence: 0.9, status, source_count: 1, pending_issues: 0,
+      promoted_at: null, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
+    });
+    vi.spyOn(masterRecordsApi, "getMasterRecords").mockResolvedValue({ records: [row("MARA-1", "golden"), row("MARA-2", "pending_review")], total: 2, page: 1, per_page: 100 });
+    renderWithQuery(<GoldenRecordsPage />);
+    const rows = await screen.findAllByRole("row");
+    expect(rows[1]).toHaveTextContent("MARA-2");
+    expect(rows[2]).toHaveTextContent("MARA-1");
+  });
+
   it("shows an empty state when no records match", async () => {
     vi.spyOn(masterRecordsApi, "getMasterRecords").mockResolvedValue({ records: [], total: 0, page: 1, per_page: 100 });
     renderWithQuery(<GoldenRecordsPage />);

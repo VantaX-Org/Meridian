@@ -27,4 +27,12 @@ describe("DqsScore", () => {
     fireEvent.click(await screen.findByRole("button", { name: /explain score 82/i }));
     expect(await screen.findByRole("link", { name: "Score history" })).toHaveAttribute("href", "/insights/trends?run=v1");
   });
+
+  it("names the run's own cap reason", async () => {
+    vi.spyOn(settings, "getSettings").mockResolvedValue({ dqs_weights: { completeness: 0.5, validity: 0.5 } } as Awaited<ReturnType<typeof settings.getSettings>>);
+    vi.spyOn(findings, "getFindings").mockResolvedValue({ findings: [], total: 0, filters_applied: {} });
+    renderWithQuery(<DqsScore agg={agg} versionId="v1" cap={70} capReason="MM001: material type missing — score capped at 70" />);
+    fireEvent.click(await screen.findByRole("button", { name: /explain score 82/i }));
+    expect(await screen.findByText(/MM001: material type missing/)).toBeInTheDocument();
+  });
 });

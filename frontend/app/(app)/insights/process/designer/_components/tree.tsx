@@ -14,7 +14,7 @@ export interface TreeActions {
 
 interface Row { item: TreeItem; level: Level; index: number; count: number }
 
-const WORD: Record<DqColour, string> = { red: "Blocked activities below", amber: "Degraded activities below", green: "" };
+const WORD: Record<DqColour, string> = { red: "No-go activities below", amber: "At-risk activities below", green: "" };
 
 export function ProcessTree({ doc, selected, colour, actions, onSelect, onBlocked, editable, canDesign = true }: {
   doc: Doc;

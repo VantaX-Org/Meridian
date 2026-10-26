@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, Card, DataTable, Delta, Dialog, DimensionBars, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, FindingDrawer, Input, Line, Mono, Pager, Pill, Tooltip, DrillLink, Score, Select, SeverityDot, Skeleton, Sparkline, Stat, Tabs, isSeverity, entityTabs, NextActions, PageHeader, Status, asyncStateOf, type CellMeta } from "@/design";
+import { Button, Card, ConfirmDialog, DataTable, Delta, Dialog, DimensionBars, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, FilterChip, FindingDrawer, Input, InsightHeader, Line, Mono, Pager, Pill, Tooltip, DrillLink, Score, Select, SeverityDot, Skeleton, Sparkline, Tabs, isSeverity, entityTabs, NextActions, PageHeader, Status, asyncStateOf, type CellMeta } from "@/design";
 import { getPrescriptiveAnalytics } from "@/lib/api/analytics";
 import { useRole } from "@/hooks/use-role";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -18,29 +18,38 @@ import { getAnalysisReportUrl, getReportDownloadUrl } from "@/lib/api/reports";
 import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
 import { exportRunSteps, getRunSteps, type RunStep } from "@/lib/api/v1/runs";
 import { getSystems } from "@/lib/api/connectivity";
-import { getVersion, getVersions, patchVersionLabel, pinBaseline } from "@/lib/api/versions";
+import { getCostModel } from "@/lib/api/settings";
+import { AI_RERUN_STATUSES, getVersion, getVersions, patchVersionLabel, pinBaseline, runAgents } from "@/lib/api/versions";
+import { useDqsExplanation } from "@/components/insight/dqs-score";
 import { getAnalysisStatus } from "@/lib/api/upload";
 import { analyseVersion } from "@/lib/api/system-objects";
 import { RunProgressBanner } from "@/components/run-progress-banner";
-import { DIMENSIONS, formatDate, formatModuleName, labelOf, runAxisLabels } from "@/lib/format";
+import { DIMENSIONS, formatDate, formatModuleName, formatMoney, formatNumber, labelOf, plural, runAxisLabels } from "@/lib/format";
 import { ConfigMatchesTab } from "./config-matches-tab";
 import { queryKeys } from "@/lib/query-keys";
 import { baselineRunId, isFinished, lineageOf, overallDqs, previousRunId, runPageHref } from "@/lib/runs";
-import { latestFinishedRun, lineageChoices } from "@/lib/run-scope";
+import { latestFinishedRun, lineageChoices, runName } from "@/lib/run-scope";
 import { RunScope } from "@/components/run-scope";
 import type { Finding, Version } from "@/types/api";
 import { clsx } from "clsx";
 
-
-
-
 const SEVERITY_OPTIONS = [
   { value: "", label: "All severities" },
+  // The Home and Insights "Critical and high findings" tiles drill here with both.
+  { value: "critical,high", label: "Critical and high" },
   { value: "critical", label: "Critical" },
   { value: "high", label: "High" },
   { value: "medium", label: "Medium" },
   { value: "low", label: "Low" },
 ];
+
+/** The chip's words for a severity filter: the option's label, else each severity in plain words. */
+function severityFilterLabel(severity: string): string {
+  const option = SEVERITY_OPTIONS.find((o) => o.value === severity);
+  if (option) return option.label;
+  const words = severity.split(",").filter(Boolean).map((s, i) => (i === 0 ? labelOf(s) : labelOf(s).toLowerCase()));
+  return words.length > 1 ? `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}` : words[0] ?? severity;
+}
 
 const DIMENSION_OPTIONS = [{ value: "", label: "All dimensions" }, ...DIMENSIONS.map((d) => ({ value: d.id, label: d.label }))];
 
@@ -84,7 +93,7 @@ function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; hi
     },
     {
       id: "composite",
-      header: "Composite",
+      header: "Score",
       cell: ({ row }) => (row.original.composite_score == null ? "—" : (
         <DrillLink object={row.original.module} run={versionId}>{row.original.composite_score.toFixed(1)}</DrillLink>
       )),
@@ -97,13 +106,13 @@ function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; hi
     },
     {
       accessorKey: "failing_checks",
-      header: "Failing checks",
-      cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{row.original.failing_checks}</DrillLink>,
+      header: "Failing rules",
+      cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{formatNumber(row.original.failing_checks)}</DrillLink>,
     },
     {
       accessorKey: "affected_records",
-      header: "Affected records",
-      cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{row.original.affected_records}</DrillLink>,
+      header: "Failing records",
+      cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{formatNumber(row.original.affected_records)}</DrillLink>,
     },
     {
       id: "trend",
@@ -185,7 +194,7 @@ function RunLedger({ versionId, rows, objects }: { versionId: string; rows: Modu
       cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}&severity=high`}>{row.original.high.toLocaleString()}</DrillLink>,
     },
     {
-      id: "records", header: "Records", accessorFn: (m) => m.affected ?? 0, meta: { numeric: true } satisfies CellMeta,
+      id: "records", header: "Failing records", accessorFn: (m) => m.affected ?? 0, meta: { numeric: true } satisfies CellMeta,
       cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{(row.original.affected ?? 0).toLocaleString()}</DrillLink>,
     },
     {
@@ -222,10 +231,18 @@ function SummaryTab({
   lineage: Version[];
 }) {
   const router = useRouter();
-  const prescriptive = useQuery({ queryKey: ["prescriptive", "next-actions", "all-systems"], queryFn: () => getPrescriptiveAnalytics({ limit: 5 }) });
+  // The empty trend's "Run analysis" (analyse) and "Import file" (upload) are offered only to roles that may do them.
+  const { can } = useRole();
+  // Next actions come from this run's findings, not the newest run of the tenant.
+  const prescriptive = useQuery({ queryKey: ["prescriptive", "next-actions", versionId], queryFn: () => getPrescriptiveAnalytics({ limit: 5, version_id: versionId }) });
   // Shared with the Objects tab: the score, blocking rule and readiness of each object.
   const objects = useQuery({ queryKey: queryKeys.objects(versionId), queryFn: () => getObjects(versionId) });
   const objectByModule = new Map((objects.data?.objects ?? []).map((o) => [o.module, o]));
+  const cost = aggregate.data?.cost_at_risk;
+  // The tenant currency names the cost; until it is known the figure prints as plain digits.
+  const costModel = useQuery({ queryKey: ["cost-model"], queryFn: getCostModel, enabled: cost != null, retry: false, meta: { ignoreError: true }, staleTime: 300_000 });
+  // The breakdown behind the hero's number, opened from its label: formula, weights, cap and costliest rules.
+  const explained = useDqsExplanation({ agg: aggregate.data, versionId });
 
   if (aggregate.isLoading) {
     return (
@@ -240,22 +257,13 @@ function SummaryTab({
   }
 
   const a = aggregate.data;
-  if (a.total === 0) {
-    return (
-      <div>
-        <EmptyState
-          title="No findings in this run"
-          detail="Open steps to see what ran."
-          action={<Button render={<Link href={`/runs/${versionId}?tab=steps`}>Open steps</Link>} />}
-        />
-      </div>
-    );
-  }
-
+  // A run with nothing failing still has a score: the hero stays, the ledger and next actions give way.
+  const clean = a.total === 0;
   const composite = a.dqs.composite;
   const delta = composite != null && a.previous_dqs != null ? Math.round((composite - a.previous_dqs) * 10) / 10 : null;
   const blocking = a.severity.critical + a.severity.high;
-  // A critical finding holds the score at the cap: the ruler draws the measured value beyond it.
+  // A critical finding holds the score at the cap: the numeral is the capped composite (the score every other
+  // page shows, and the one the delta compares), and the ruler draws the measured value as a ghost beyond it.
   const raw = a.dqs.raw ?? composite;
   const capped = a.dqs.capped === true && composite != null && raw != null && raw > composite;
 
@@ -289,50 +297,89 @@ function SummaryTab({
     title: act.title,
     impact: [`${act.affected_count.toLocaleString()} records`, `${act.impact_points.toLocaleString()} impact points`],
     verb: act.type === "finding" ? "Open finding" : act.type === "cleaning" ? "Open cleaning" : "Open exception",
-    href: act.type === "finding" ? `/runs/${versionId}?tab=findings${act.module ? `&module=${act.module}` : ""}` : "/inbox",
-    why: `Ranked by impact points per hour of effort (${act.value_per_hour.toFixed(1)}), ${act.severity} severity.`,
+    href: act.type === "finding"
+      ? `/runs/${versionId}?tab=findings${act.module ? `&module=${act.module}` : ""}`
+      : act.type === "cleaning" ? `/fix?${new URLSearchParams({ tab: "cleaning", ...(act.module ? { module: act.module } : {}) })}` : "/inbox",
+    // Plain words from the same action: its records, how many of them are critical, and the effort.
+    why: `${plural(act.affected_count, "record")}, ${(act.severity === "critical" ? act.affected_count : 0).toLocaleString()} critical; about ${plural(Math.max(1, Math.round(act.effort_hours)), "hour")}.`,
   }));
 
   return (
     <div className="flex flex-col gap-4">
-      <section className="m-hero grid gap-6 @5xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]" aria-label="Score">
-        <div className="flex min-w-0 flex-col gap-4">
-          <Score
-            size="hero"
-            value={raw}
-            cap={capped ? composite ?? undefined : undefined}
-            criticals={a.severity.critical}
-            versionId={versionId}
-            delta={delta != null ? <Delta value={delta} run="previous run" /> : undefined}
-            href={`/runs/${versionId}?tab=findings`}
-          />
-          <div className="m-stat-grid">
-            <Stat label="Blocking findings" value={blocking.toLocaleString()} tone={blocking > 0 ? "no-go" : undefined} href={`/runs/${versionId}?tab=findings&severity=critical`} />
-            <Stat label="Affected records" value={a.affected_records.toLocaleString()} href={`/runs/${versionId}?tab=findings`} />
-            {a.cost_at_risk != null ? (
-              <Stat label="Cost at risk" value={a.cost_at_risk.toLocaleString()} href={`/runs/${versionId}?tab=findings`} />
-            ) : null}
+      {/* The score band as Insights and MDM draw it: the hero score and its verdict on the left, the stats beside it. */}
+      <InsightHeader
+        hero
+        bare
+        lead={
+          <div className="m-hero-lead">
+            <Score
+              size="hero"
+              value={composite}
+              measured={capped ? raw : undefined}
+              cap={capped ? composite ?? undefined : undefined}
+              criticals={a.severity.critical}
+              versionId={versionId}
+              explain={explained?.explain}
+              delta={delta != null ? <Delta value={delta} run="previous run" /> : undefined}
+              hint={clean ? "Nothing failed in this run" : undefined}
+              href={`/runs/${versionId}?tab=findings`}
+            />
           </div>
-        </div>
-        <div className="flex min-w-0 flex-col gap-2">
-          <h2 className="font-semibold m-text-h">Score by dimension</h2>
+        }
+        stats={[
+          // The findings list filters by one severity, so the two that block are two drills.
+          {
+            label: "Critical and high findings",
+            value: blocking.toLocaleString(),
+            tone: blocking > 0 ? "no-go" : undefined,
+            hint: (
+              <span className="inline-flex gap-2">
+                <DrillLink href={`/runs/${versionId}?tab=findings&severity=critical`}>{a.severity.critical.toLocaleString()} critical</DrillLink>
+                <DrillLink href={`/runs/${versionId}?tab=findings&severity=high`}>{a.severity.high.toLocaleString()} high</DrillLink>
+              </span>
+            ),
+          },
+          { label: "Affected records", value: a.affected_records.toLocaleString(), to: `/runs/${versionId}?tab=findings` },
+          ...(cost != null ? [{ label: "Cost at risk", value: formatMoney(Math.round(cost), costModel.data?.currency), to: `/runs/${versionId}?tab=findings` }] : []),
+        ]}
+        // `bare` sets the score band alone; the cells below are not drawn.
+        situation={{ sentence: "" }}
+        changed={{ sentence: "" }}
+        why={{ sentence: "" }}
+        next={{ sentence: "" }}
+      />
+      {/* The dimension bars are a strip under the score, not a chart of their own. */}
+      {dimensions.length > 0 ? (
+        <section aria-label="Score by dimension" data-testid="run-dimensions" className="@5xl:max-w-[50%]">
+          <h2 className="m-text-meta m-ink-3 pb-1">Score by dimension</h2>
           <DimensionBars items={dimensions} label="Score by dimension" />
-        </div>
-      </section>
-      <section className="flex flex-col gap-2">
-        <h2 className="font-semibold m-text-h">Objects in this run</h2>
-        <RunLedger versionId={versionId} rows={ledgerRows} objects={objectByModule} />
-      </section>
-      <section className={clsx("flex flex-col gap-2", prescriptive.isLoading && "[min-height:124px]")} data-testid="next-actions-slot">
-        <h2 className="font-semibold m-text-h">Next actions</h2>
-        {prescriptive.isLoading ? (
-          <Skeleton height={96} />
-        ) : next.length > 0 ? (
-          <NextActions actions={next} />
-        ) : (
-          <p className="text-sm m-ink-3">No next actions for this run</p>
-        )}
-      </section>
+        </section>
+      ) : null}
+      {clean ? (
+        <EmptyState
+          variant="inline"
+          title="Nothing failed in this run"
+          detail="Open steps to see what ran."
+          action={<Button variant="ghost" render={<Link href={`/runs/${versionId}?tab=steps`}>Open steps</Link>} />}
+        />
+      ) : (
+        <>
+          <section className="flex flex-col gap-2">
+            <h2 className="font-semibold m-text-h">Objects in this run</h2>
+            <RunLedger versionId={versionId} rows={ledgerRows} objects={objectByModule} />
+          </section>
+          <section className={clsx("flex flex-col gap-2", prescriptive.isLoading && "[min-height:124px]")} data-testid="next-actions-slot">
+            <h2 className="font-semibold m-text-h">Next actions</h2>
+            {prescriptive.isLoading ? (
+              <Skeleton height={96} />
+            ) : next.length > 0 ? (
+              <NextActions actions={next} />
+            ) : (
+              <EmptyState variant="inline" title="No next actions for this run" />
+            )}
+          </section>
+        </>
+      )}
       <Card title="Composite over runs">
         {versionLoading || (systemId != null && history.isLoading) ? (
           <Skeleton height={160} />
@@ -341,7 +388,9 @@ function SummaryTab({
             variant="inline"
             title="Only one run so far"
             detail={systemId ? "Scores over time appear after a second run of this system." : "Scores over time appear after a second upload of the same objects."}
-            action={<Button render={<Link href={systemId ? `/systems/${systemId}` : "/import"}>{systemId ? "Run analysis" : "Import file"}</Link>} />}
+            action={(systemId ? can("analyse") : can("upload"))
+              ? <Button render={<Link href={systemId ? `/systems/${systemId}` : "/import"}>{systemId ? "Run analysis" : "Import file"}</Link>} />
+              : undefined}
           />
         ) : (
           <Line data={points} label="Composite over runs" height={160} annotations={annotations} onPointClick={(p) => { if (p.runId) router.push(runPageHref(p.runId)); }} />
@@ -364,20 +413,6 @@ const findingsFetch = (versionId: string, severity: string, dimension: string, m
     limit: FINDINGS_PAGE,
     offset: (page - 1) * FINDINGS_PAGE,
   });
-
-function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onRemove}
-      aria-label={`Remove filter ${label}`}
-      className="inline-flex items-center gap-1 rounded px-2 py-1 m-motion-colors [background:var(--m-accent-soft)]! m-ink-accent [font-size:var(--m-text-meta)]!"
-    >
-      {label}
-      <span aria-hidden>×</span>
-    </button>
-  );
-}
 
 function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenSteps: () => void }) {
   const router = useRouter();
@@ -444,7 +479,7 @@ function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenStep
     { id: "dimension", header: "Dimension", accessorFn: (f) => labelOf(f.dimension) },
     {
       id: "affected",
-      header: "Records",
+      header: "Failing records",
       accessorFn: (f) => f.affected_count,
       cell: ({ row }) => (
         <DrillLink href={`/objects/${row.original.module}?run=${versionId}&tab=records&check_id=${row.original.check_id}`}>
@@ -461,9 +496,9 @@ function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenStep
         <div className="flex flex-wrap items-center gap-2">
           <Select label="Severity" value={severity} onValueChange={(v) => setFilter("severity", v)} options={SEVERITY_OPTIONS} placeholder="Severity" />
           <Select label="Dimension" value={dimension} onValueChange={(v) => setFilter("dimension", v)} options={DIMENSION_OPTIONS} placeholder="Dimension" />
-          {severity ? <FilterChip label={`Severity: ${labelOf(severity)}`} onRemove={() => setFilter("severity", "")} /> : null}
-          {dimension ? <FilterChip label={`Dimension: ${DIMENSIONS.find((d) => d.id === dimension)?.label ?? labelOf(dimension)}`} onRemove={() => setFilter("dimension", "")} /> : null}
-          {moduleFilter ? <FilterChip label={`Object: ${formatModuleName(moduleFilter)}`} onRemove={() => setFilter("module", "")} /> : null}
+          {severity ? <FilterChip label="Severity" value={severityFilterLabel(severity)} onRemove={() => setFilter("severity", "")} /> : null}
+          {dimension ? <FilterChip label="Dimension" value={DIMENSIONS.find((d) => d.id === dimension)?.label ?? labelOf(dimension)} onRemove={() => setFilter("dimension", "")} /> : null}
+          {moduleFilter ? <FilterChip label="Object" value={formatModuleName(moduleFilter)} onRemove={() => setFilter("module", "")} /> : null}
         </div>
       }
       toolbarEnd={
@@ -559,6 +594,17 @@ export default function RunDetailPage() {
     },
     onError: (e: Error) => toast.error(errorText(e)),
   });
+  const [aiOpen, setAiOpen] = useState(false);
+  const rerunAi = useMutation({
+    mutationFn: () => runAgents(versionId),
+    onSuccess: () => {
+      setAiOpen(false);
+      toast.success("AI analysis started. Progress shows above.");
+      void qc.invalidateQueries({ queryKey: [...queryKeys.run(versionId), "status"] });
+      void qc.invalidateQueries({ queryKey: queryKeys.run(versionId), exact: true });
+    },
+    onError: (e: Error) => toast.error(errorText(e)),
+  });
   const pin = useMutation({
     mutationFn: () => pinBaseline(versionId, !isBaseline),
     onMutate: async () => {
@@ -633,7 +679,7 @@ export default function RunDetailPage() {
 
   const header = v ? (
     <PageHeader
-      title={v.label ?? formatDate(v.run_at, "datetime")}
+      title={runName(v)}
       meta={
         <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
           <span>{["Started " + formatDate(v.run_at, "datetime"), systemName, duration].filter(Boolean).join(", ")}</span>
@@ -666,7 +712,7 @@ export default function RunDetailPage() {
                 Rename
               </Tooltip>
               <Tooltip
-                label={isBaseline ? "Stop comparing later runs in this system with this run" : "Later runs in this system are compared with this run on the Monitor tab"}
+                label={isBaseline ? "Stop comparing later runs in this system with this run" : "Later runs in this system are compared with this run on Insights › Since baseline"}
                 render={<Button variant="ghost" onClick={() => pin.mutate()} pending={pin.isPending} />}
               >
                 {isBaseline ? "Unpin baseline" : "Pin as baseline"}
@@ -678,6 +724,15 @@ export default function RunDetailPage() {
               >
                 Re-run analysis
               </Tooltip>
+              {AI_RERUN_STATUSES.includes(v.status) ? (
+                <Tooltip
+                  label={running ? "Analysis is already running" : "Run the AI pipeline again over this run's findings. Findings and scores stay; summaries, remediation and the narrative report are rewritten."}
+                  maxWidth={280}
+                  render={<Button variant="ghost" onClick={() => setAiOpen(true)} disabled={running} />}
+                >
+                  Re-run AI analysis
+                </Tooltip>
+              ) : null}
             </>
           ) : null}
           {can("export") ? <ExportMenu options={exportOptions} /> : null}
@@ -706,6 +761,15 @@ export default function RunDetailPage() {
             onKeyDown={(e) => { if (e.key === "Enter" && draftLabel.trim() && !rename.isPending) rename.mutate(); }} />
         </Field>
       </Dialog>
+      <ConfirmDialog
+        open={aiOpen}
+        onOpenChange={setAiOpen}
+        title="Re-run AI analysis"
+        body={<p className="m-ink-2">The AI pipeline runs again over this run&apos;s aggregated findings. Findings and scores do not change; the summaries, remediation advice and narrative report are replaced when it finishes.</p>}
+        confirmLabel="Re-run AI analysis"
+        pending={rerunAi.isPending}
+        onConfirm={() => rerunAi.mutate()}
+      />
       <div>{header}</div>
       {analysisStatus.data?.status === "queued" || analysisStatus.data?.status === "processing" ? (
         <RunProgressBanner

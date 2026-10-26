@@ -1,10 +1,13 @@
 // The record panel's detail: the rule, how many records share the issue, its history and SLA, the values the rule
 // accepts (one click fills the edit box), and the record beyond this run (last run, golden record, duplicates).
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { screen, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import { QueryClient } from "@tanstack/react-query";
+import type { ReactNode } from "react";
+import { toast } from "sonner";
 import userEvent from "@testing-library/user-event";
 import { renderWithQuery } from "../../../__tests__/render";
-import { RecordPanel, historyLine, issueAnchor, lastRunLine, populationLine, ruleHref, sameIssueHref } from "../record-panel";
+import { RecordPanel, invalidateAfterDecision, toastDraftBatch, historyLine, issueAnchor, lastRunLine, populationLine, ruleHref, sameIssueHref } from "../record-panel";
 import * as work from "@/lib/api/work";
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() } }));
@@ -117,5 +120,21 @@ describe("record panel detail", () => {
     renderWithQuery(<RecordPanel module="material_master" recordKey="MATNR=2" run="R2" />);
     await screen.findAllByTestId("work-issue");
     expect(screen.queryByTestId("record-context")).toBeNull();
+  });
+});
+
+describe("after a proposed fix", () => {
+  it("the toast opens the draft batch on Fix", () => {
+    toastDraftBatch("Fix proposed: it waits in your draft batch for approval");
+    const opts = vi.mocked(toast.success).mock.calls[0]![1] as { action: ReactNode };
+    render(<>{opts.action}</>);
+    expect(screen.getByRole("link", { name: "Open draft batch" })).toHaveAttribute("href", "/fix?tab=batches");
+  });
+
+  it("refreshes the work list, the draft batches, the rail counts and the steward home's tasks", () => {
+    const qc = new QueryClient();
+    const invalidate = vi.spyOn(qc, "invalidateQueries");
+    invalidateAfterDecision(qc);
+    expect(invalidate.mock.calls.map(([f]) => f?.queryKey)).toEqual([["work"], ["remediation", "batches"], ["shell-counts"], ["home-inbox-top"]]);
   });
 });

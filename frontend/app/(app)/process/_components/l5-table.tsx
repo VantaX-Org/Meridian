@@ -12,18 +12,22 @@ export const SOURCE: Record<NodeSource, { label: string; tone: PillTone }> = {
   discovered: { label: "Discovered", tone: "go" },
 };
 
-export function L5Table({ l4, onOpen }: { l4: L4; onOpen: (id: string) => void }) {
+/**
+ * `onOpen` opens an activity's detail; without it (the reference tab, which has no detail to open) names are plain
+ * text. An activity with no mined figures reads "—", never 0 cases or 0.0%.
+ */
+export function L5Table({ l4, onOpen }: { l4: L4; onOpen?: (id: string) => void }) {
   const columns: ColumnDef<L5>[] = [
     { accessorKey: "id", header: "ID", cell: ({ row }) => <Mono>{row.original.id}</Mono> },
-    { accessorKey: "name", header: "Label", cell: ({ row }) => (
-        <button type="button" className="ui-link-button" onClick={() => onOpen(row.original.id)}>{row.original.name}</button>
-      ) },
+    { accessorKey: "name", header: "Label", cell: ({ row }) => (onOpen
+        ? <button type="button" className="ui-link-button" onClick={() => onOpen(row.original.id)}>{row.original.name}</button>
+        : row.original.name) },
     { id: "source", header: "Source", cell: ({ row }) => {
         const s = SOURCE[row.original.source ?? "template"];
         return <Pill tone={s.tone}>{s.label}</Pill>;
       } },
-    { id: "cases", header: "Cases", accessorFn: (a) => a.discovery?.case_count ?? 0, cell: ({ row }) => fmtCount(row.original.discovery?.case_count ?? 0) },
-    { id: "share", header: "Share", cell: ({ row }) => fmtShare(row.original.discovery?.share ?? 0) },
+    { id: "cases", header: "Cases", accessorFn: (a) => a.discovery?.case_count ?? -1, cell: ({ row }) => fmtCount(row.original.discovery?.case_count) },
+    { id: "share", header: "Share", cell: ({ row }) => fmtShare(row.original.discovery?.share) },
     { id: "median", header: "Median", cell: ({ row }) => fmtSeconds(row.original.discovery?.median_seconds) },
     { id: "p90", header: "P90", cell: ({ row }) => fmtSeconds(row.original.discovery?.p90_seconds) },
     { id: "rework", header: "Rework", cell: ({ row }) => fmtShare(row.original.discovery?.rework_rate) },
@@ -33,7 +37,7 @@ export function L5Table({ l4, onOpen }: { l4: L4; onOpen: (id: string) => void }
     { id: "fields", header: "Fields", cell: ({ row }) => fmtCount(row.original.fields.length) },
   ];
   return (
-    <DataTable columns={columns} data={l4.activities} getRowId={(a) => a.id} height="auto" dense
+    <DataTable columns={columns} data={l4.activities} getRowId={(a) => a.id} height="auto"
       tableId="process-l5" exportName={`process-${l4.id}-activities`} />
   );
 }

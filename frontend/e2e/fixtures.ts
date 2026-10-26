@@ -51,6 +51,20 @@ export const RECORDED = {
   vendorRunId: "65988d5a-0243-4f9b-bdff-52779e71c6ed",
 } as const;
 
+/**
+ * The Executive summary now reads the current state (`GET /insights/exec?scope=current`), which the recording
+ * predates. On this recording the current state is the latest run, so the recorded exec of that run answers it.
+ */
+async function mockCurrentStateExec(page: Page, har: string) {
+  const entry = (JSON.parse(fs.readFileSync(har, "utf8")) as { log: { entries: { request: { url: string }; response: { content: { text?: string; encoding?: string } } }[] } })
+    .log.entries.find((e) => e.request.url.includes(`/api/v1/insights/exec?version_id=${RECORDED.latestRunId}`));
+  if (!entry?.response.content.text) return;
+  const { text, encoding } = entry.response.content;
+  const body = encoding === "base64" ? Buffer.from(text, "base64").toString("utf8") : text;
+  await page.route(/\/api\/v1\/insights\/exec\?(.*&)?scope=current/, (r) =>
+    r.request().method() === "GET" ? r.fulfill({ status: 200, contentType: "application/json", body }) : r.fallback());
+}
+
 /** The recording is stored gzipped against http://localhost:3000; replay it on whatever origin the suite runs. */
 function harFor(origin: string): string {
   const out = path.join(__dirname, "..", "test-results", `api.${origin.replace(/\W+/g, "_")}.har`);
@@ -85,6 +99,7 @@ export const test = base.extend<{ app: Page }>({
     await mockGlossaryTerm(page);
     await mockWrites(page);
     await mockRoutes18c(page);
+    await mockCurrentStateExec(page, harFor(origin));
     await provide(page);
   },
 });
@@ -94,8 +109,8 @@ export const json = (body: unknown) => ({ status: 200, contentType: "application
 /**
  * Backend defects on the seeded stack (release 0.0.401), each recorded as a 500 or 404 and
  * reported with the recording. Shimmed here so the specs test the page, not the defect:
- *  - GET /analytics/mdm-health?days=56 → 500: `days` is bound as an integer into
- *    `(:days || ' days')::interval` (api/routes/analytics.py).
+ *  - GET /mdm-metrics/history?days=56 (the /mdm trend) is newer than the recording, which
+ *    holds the /analytics/mdm-health call it replaced (a 500 then); answered empty here.
  *  - GET /stewardship?item_type=merge_decision… answered 500 on the /mdm page in two of six
  *    recording passes (intermittent; the recording holds its 200 and no shim is needed).
  *  - /migration/dry-run, opened with a data quality run's `?run=`, passes it to
@@ -105,7 +120,7 @@ export const json = (body: unknown) => ({ status: 200, contentType: "application
  *    (api/routes/business_process.py); the same for every module outside the registry.
  */
 async function mockDefects(page: Page) {
-  await page.route(/\/api\/v1\/analytics\/mdm-health(\?.*)?$/, (r) => r.fulfill(json({ data: [], days: 56 })));
+  await page.route(/\/api\/v1\/mdm-metrics\/history(\?.*)?$/, (r) => r.fulfill(json({ history: [] })));
   const RUN = RECORDED.latestRunId;
   await page.route(new RegExp(`/api/v1/business-process/${RUN}/controlling$`), (r) => r.fulfill(json({
     version_id: RUN, module: "controlling",

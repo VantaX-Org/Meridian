@@ -21,6 +21,8 @@ export interface BatchFilter {
   search?: string | null;
   version_id?: string | null;
   issue_ids?: string[] | null;
+  /** Only these records of the rule (the object workbench's selection). Sent as given; the API narrows by it where supported. */
+  record_keys?: string[] | null;
   baseline_id?: string | null;
   monitor?: boolean | null;
 }
@@ -146,6 +148,14 @@ export interface ExportPackage {
 }
 
 // ── Labels (never show a raw id, DESIGN.md rule 18) ─────────────────────────
+
+/** The one phrase for the auto-accept threshold, on every fix surface. */
+export const HIGH_CONFIDENCE_LABEL = "85%+ confidence";
+
+/** What happens to an approved batch on this deployment, from the write-back API's `live_enabled` flag. */
+export function writeBackModeSentence(liveEnabled: boolean | undefined): string {
+  return liveEnabled ? "Approved batches are written back to SAP." : "Approved batches are exported for SAP.";
+}
 
 export const STATUS_LABEL: Record<BatchStatus, string> = { draft: "Draft", approved: "Approved", exported: "Exported" };
 export const SOURCE_LABEL: Record<ProposalSource, string> = {

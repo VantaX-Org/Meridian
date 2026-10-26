@@ -2,16 +2,19 @@
 
 /** Insights › Operations: team throughput, bottlenecks, capacity and sprint plans. */
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { clsx } from "clsx";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Bar, Button, Card, DataTable, EmptyState, Mono, Select, Stat } from "@/design";
+import { Bar, Button, Card, DataTable, DrillLink, EmptyState, Mono, Select, Stat } from "@/design";
+import { useRole } from "@/hooks/use-role";
 import { getAssignableUsers } from "@/lib/api/users";
 import {
   getOperational, getSprints, getTeamPerformance, type Bottleneck, type SprintPlan,
 } from "@/lib/api/analytics";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { getTriageMetrics, type TriageMetrics } from "@/lib/api/triage";
+import { isListFailure } from "@/lib/error";
 import { fixHref } from "@/lib/drill";
 import { labelOf, plural } from "@/lib/format";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
@@ -35,6 +38,8 @@ export const stageLabel = (stage: string) => STAGE_LABEL[stage] ?? labelOf(stage
 /** "330 h": queue ages are whole hours. */
 const hours = (h: number) => `${Math.round(h).toLocaleString()} h`;
 const pct = (p: number) => `${Math.round(p)}%`;
+/** The cleaning queue these figures count: Fix work's Cleaning proposals tab, not the steward inbox. */
+const CLEANING = "/fix?tab=cleaning";
 
 const bottleneckColumns: ColumnDef<Bottleneck>[] = [
   { id: "stage", header: "Stage", accessorFn: (b) => stageLabel(b.stage) },
@@ -52,6 +57,44 @@ const sprintColumns: ColumnDef<SprintPlan>[] = [
   { id: "cost", header: "Estimated cost", cell: ({ row }) => row.original.estimated_cost == null ? "—" : `${row.original.estimated_cost.toLocaleString()} ${row.original.currency}` },
 ];
 
+type OwnerRow = TriageMetrics["backlog_by_owner"][number];
+
+const ownerColumns: ColumnDef<OwnerRow>[] = [
+  { accessorKey: "email", header: "Owner" },
+  { accessorKey: "open", header: "Open", meta: { numeric: true }, cell: ({ row }) => <DrillLink href={`/inbox?assignee=${encodeURIComponent(row.original.user_id)}`}>{row.original.open.toLocaleString()}</DrillLink> },
+  { accessorKey: "at_risk", header: "At risk", meta: { numeric: true }, cell: ({ row }) => row.original.at_risk.toLocaleString() },
+  { accessorKey: "breached", header: "Past due", meta: { numeric: true }, cell: ({ row }) => <span className={row.original.breached ? "m-ink-critical" : undefined}>{row.original.breached.toLocaleString()}</span> },
+];
+
+/** Hours as words: "3.5 h", or "—" before anything was acknowledged or resolved. */
+const hoursOrDash = (h: number | null) => (h == null ? "—" : `${h.toLocaleString(undefined, { maximumFractionDigits: 1 })} h`);
+
+/**
+ * Steward work against its SLA over the last eight weeks (GET /triage/metrics): issues and stewardship tasks
+ * together, with the open backlog per owner. The SLA policies themselves are set in Settings › Triage.
+ */
+function SlaSection() {
+  const q = useQuery({ queryKey: ["triage", "metrics", 8], queryFn: () => getTriageMetrics(8) });
+  const m = q.data;
+  const owners = m?.backlog_by_owner ?? [];
+  return (
+    <Section title="Steward work against the SLA" height={160} query={q} meta={`Issues and stewardship tasks, the last ${m?.weeks ?? 8} weeks`}
+      actions={<Link href="/admin/triage" className="m-text-meta underline underline-offset-2">SLA policies</Link>}>
+      <div className="flex flex-col gap-4">
+        <div className="m-stat-grid">
+          <Stat label="Resolved in time" value={m?.sla_attainment_pct == null ? "—" : pct(m.sla_attainment_pct)}
+            hint={m && m.resolved_total ? `${m.resolved_in_sla.toLocaleString()} of ${m.resolved_total.toLocaleString()} with a due date` : "Nothing with a due date resolved yet"} />
+          <Stat label="Time to acknowledge" value={hoursOrDash(m?.mtta_hours ?? null)} hint="Average, from the SLA start" />
+          <Stat label="Time to close" value={hoursOrDash(m?.mttr_hours ?? null)} hint="Average, from the SLA start" />
+          <Stat label="Breaches" value={m ? m.breach_count.toLocaleString() : "—"} href="/inbox?due=overdue" tone={m && m.breach_count > 0 ? "no-go" : undefined} hint="Open past due, or resolved late" />
+          <Stat label="Unassigned" value={m ? m.unassigned.toLocaleString() : "—"} href="/inbox?view=unassigned" />
+        </div>
+        {owners.length ? <DataTable columns={ownerColumns} data={owners} getRowId={(r) => r.user_id} hideToolbar height="auto" /> : null}
+      </div>
+    </Section>
+  );
+}
+
 function TeamCard() {
   const [userId, setUserId] = useState("");
   const users = useQuery({ queryKey: ["assignable-users"], queryFn: getAssignableUsers });
@@ -68,7 +111,7 @@ function TeamCard() {
           options={(users.data ?? []).map((u) => ({ value: u.id, label: u.name || u.email }))}
         />
         {s ? (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="m-stat-grid">
             <Stat label="Processed" value={s.total_processed} />
             <Stat label="Approval rate" value={`${s.approval_rate}%`} />
             <Stat label="Review hours" value={s.total_review_hours} />
@@ -82,8 +125,22 @@ function TeamCard() {
   );
 }
 
+/** One secondary queue figure: the label, the value (a drill link when it opens rows) and an optional hint. */
+function QueueFigure({ label, value, hint, href, critical = false }: { label: string; value: ReactNode; hint?: string; href?: string; critical?: boolean }) {
+  return (
+    <>
+      <dt className="m-ink-3">{label}</dt>
+      <dd className={clsx("m-numeric font-medium", critical ? "m-ink-critical" : "m-ink")}>
+        {href ? <DrillLink href={href}>{value}</DrillLink> : value}
+        {hint ? <span className="ml-2 m-text-meta font-normal m-ink-3">{hint}</span> : null}
+      </dd>
+    </>
+  );
+}
+
 export default function OperationsPage() {
   const { run } = useInsightScope();
+  const { can } = useRole();
   const ops = useQuery({ queryKey: ["analytics", "operational"], queryFn: getOperational });
   const sprints = useQuery({ queryKey: ["analytics", "sprints"], queryFn: () => getSprints() });
   const k = ops.data?.kpis;
@@ -113,7 +170,7 @@ export default function OperationsPage() {
         situation: { sentence: `${plural(k?.items_in_flight ?? 0, "item")} in progress, ${k ? pct(k.sla_compliance_pct) : "—"} handled within the agreed time` },
         changed: { sentence: bottlenecks.length ? `${plural(bottlenecks.length, "stage is", "stages are")} holding work` : "No stage is holding work" },
         why: { sentence: cap?.recommendation || "—" },
-        next: { sentence: worst ? `Unblock ${stageLabel(worst.stage)} first` : "Nothing is blocked", action: { label: "Open inbox", href: "/inbox" } },
+        next: { sentence: worst ? `Unblock ${stageLabel(worst.stage)} first` : "Nothing is blocked", action: { label: "Open cleaning proposals", href: CLEANING } },
       }}
       skeleton={
         <>
@@ -123,27 +180,31 @@ export default function OperationsPage() {
         </>
       }
       state={loading ? "loading" : failed ? "error" : empty ? "empty" : undefined}
-      emptyProps={{ title: "No queue activity yet", detail: "Throughput, bottlenecks and sprint plans appear once cleaning items exist.", ghost: "chart", action: <Button render={<Link href="/inbox">Open inbox</Link>} /> }}
-      errorProps={{ message: apiErrorMessage(failed?.error), onRetry: () => { void ops.refetch(); void sprints.refetch(); } }}
+      emptyProps={{ title: "No queue activity yet", detail: "Throughput, bottlenecks and sprint plans appear once cleaning items exist.", ghost: "chart", action: <Button render={<Link href={CLEANING}>Open cleaning proposals</Link>} /> }}
+      errorProps={{ error: failed?.error, onRetry: () => { void ops.refetch(); void sprints.refetch(); } }}
     >
       <Section title="Throughput and capacity" height={160} query={ops}>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Stat label="Processed" href="/inbox" value={k?.total_processed ?? "—"} hint={k?.total_detected != null ? `of ${k.total_detected.toLocaleString()} detected` : undefined} />
-          <Stat label="Throughput" href="/inbox" value={k?.throughput ?? "—"} hint="Items per day" />
-          <Stat label="Automation rate" value={k ? pct(k.automation_rate) : "—"} />
-          <Stat label="Rejection rate" value={k ? pct(k.rejection_rate) : "—"} tone={k && k.rejection_rate > 0 ? "at-risk" : undefined} />
-          <Stat label="Rollback rate" value={k ? pct(k.rollback_rate) : "—"} tone={k && k.rollback_rate > 0 ? "no-go" : undefined} />
-          <Stat label="Time to resolve" href="/inbox" value={k ? hours(k.mttr_hours) : "—"} />
-          <Stat label="Within agreed time (SLA)" value={k ? pct(k.sla_compliance_pct) : "—"} />
-          <Stat label="In progress" href="/inbox" value={k?.items_in_flight ?? "—"} />
-          <Stat label="Average queue age" href="/inbox" value={k ? hours(k.avg_queue_age_hours) : "—"} />
-          <Stat label="Capacity" value={gapText} hint={cap ? `${plural(cap.current, "steward")} now, ${cap.needed.toLocaleString()} needed` : undefined} tone={gap === null ? undefined : gap < 0 ? "no-go" : "go"} />
-          <Stat label="Top rule by volume" value={topRule ? <Mono>{topRule}</Mono> : "—"} hint={topRule ? undefined : "Nothing processed yet"} href={topRule ? fixHref({ check: topRule }) : undefined} />
+        <div className="flex flex-col gap-4">
+          <div className="m-stat-grid">
+            <Stat label="Processed" href={CLEANING} value={k?.total_processed ?? "—"} hint={k?.total_detected != null ? `of ${k.total_detected.toLocaleString()} detected` : undefined} />
+            <Stat label="In progress" href={CLEANING} value={k?.items_in_flight ?? "—"} />
+            <Stat label="Within agreed time (SLA)" value={k ? pct(k.sla_compliance_pct) : "—"} />
+            <Stat label="Capacity" value={gapText} hint={cap ? `${plural(cap.current, "steward")} now, ${cap.needed.toLocaleString()} needed` : undefined} tone={gap === null ? undefined : gap < 0 ? "no-go" : "go"} />
+          </div>
+          <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-6 gap-y-2 m-text-body border-t pt-4 [border-color:var(--m-line)]" aria-label="Queue figures">
+            <QueueFigure label="Throughput" href={CLEANING} value={k?.throughput ?? "—"} hint="Items per day" />
+            <QueueFigure label="Time to resolve" href={CLEANING} value={k ? hours(k.mttr_hours) : "—"} />
+            <QueueFigure label="Average queue age" href={CLEANING} value={k ? hours(k.avg_queue_age_hours) : "—"} />
+            <QueueFigure label="Automation rate" value={k ? pct(k.automation_rate) : "—"} />
+            <QueueFigure label="Rejection rate" value={k ? pct(k.rejection_rate) : "—"} />
+            <QueueFigure label="Rollback rate" value={k ? pct(k.rollback_rate) : "—"} critical={!!k && k.rollback_rate > 0} />
+            <QueueFigure label="Top rule by volume" value={topRule ? <Mono>{topRule}</Mono> : "—"} hint={topRule ? undefined : "Nothing processed yet"} href={topRule ? fixHref({ check: topRule }) : undefined} />
+          </dl>
         </div>
       </Section>
       <Section title="Queue age by stage" height={160} query={ops}>
         {bottlenecks.length === 0 ? (
-          <EmptyState title="No stage is holding work" detail="Queue age shows here once items wait in a stage." action={<Button render={<Link href="/inbox">Open inbox</Link>} />} />
+          <EmptyState title="No stage is holding work" detail="Queue age shows here once items wait in a stage." action={<Button render={<Link href={CLEANING}>Open cleaning proposals</Link>} />} />
         ) : (
           <>
             <Bar data={bottlenecks.map((b) => ({ x: b.stage, label: stageLabel(b.stage), y: Math.round(b.avg_age_hours) }))} label="Average age by stage in hours" height={Math.max(120, bottlenecks.length * 40)} />
@@ -151,17 +212,19 @@ export default function OperationsPage() {
           </>
         )}
       </Section>
-      <TeamCard />
+      <SlaSection />
+      {/* The member list is /users/assignable, which needs assign: without it the card has nobody to pick. */}
+      {can("assign") && <TeamCard />}
       {bottlenecks.length > 0 && (
         <Section title="Bottlenecks" height={120} query={ops} meta="Each waiting stage and what would clear it">
-          <DataTable columns={bottleneckColumns} data={bottlenecks} getRowId={(r) => r.stage} hideToolbar dense height="auto" />
+          <DataTable columns={bottleneckColumns} data={bottlenecks} getRowId={(r) => r.stage} hideToolbar height="auto" />
         </Section>
       )}
       <Section title="Sprint plans" height={120} query={sprints} meta="Suggested batches of fixes and what each would do to the score">
         {plans.length === 0 ? (
-          <EmptyState variant="inline" title="No sprint plan yet" detail="Plans are suggested once the fix queue holds open items." action={<Link href="/fix" className="underline-offset-2 hover:underline">Open fix queue</Link>} />
+          <EmptyState variant="inline" title="No sprint plan yet" detail="Plans are suggested once Fix work holds open records." action={<Link href="/fix" className="underline-offset-2 hover:underline">Open Fix work</Link>} />
         ) : (
-          <DataTable columns={sprintColumns} data={plans} getRowId={(r) => String(r.sprint_number)} hideToolbar dense height="auto" />
+          <DataTable columns={sprintColumns} data={plans} getRowId={(r) => String(r.sprint_number)} hideToolbar height="auto" />
         )}
       </Section>
     </InsightFrame>

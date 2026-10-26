@@ -2,20 +2,19 @@
 "use client";
 
 import { type ReactNode } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePermissions } from "@/lib/permissions";
 import type { ColumnDef } from "@tanstack/react-table";
-import { buildDrillHref, DataTable, DomainChip, useBreadcrumbScope, ExplorerPage, ExportMenu, Mono, ObjectMap, PageHeader, Sparkline, Stat, emptyExportOptions, type CellMeta, type ObjectMapItem, type ScoreBands, Status, Score } from "@/design";
+import { buildDrillHref, DataTable, RowAction, DomainChip, useBreadcrumbScope, ExplorerPage, ExportMenu, Mono, ObjectMap, PageHeader, Sparkline, Stat, emptyExportOptions, type CellMeta, type ObjectMapItem, type ScoreBands, Status, Score } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getAnalysisReportUrl } from "@/lib/api/reports";
 import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
 import { getVersion } from "@/lib/api/versions";
-import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
-import { stateScopeLine } from "@/lib/current-state";
+import { criticalHighHref, stateObjects, stateScopeLine } from "@/lib/current-state";
 import { fixHref } from "@/lib/drill";
 import { formatModuleName, plural } from "@/lib/format";
 import { DrillCount } from "@/app/(app)/insights/_components/DrillCount";
@@ -27,6 +26,7 @@ import { FilterChips } from "./_header";
 import { useCurrentObjects } from "./_current";
 import { toFixHref, workSummaryQuery } from "./_work";
 import type { WorkObject } from "@/lib/api/work";
+import { BELOW_TARGET } from "@/lib/home-metrics";
 
 /**
  * A row of the list. With `?run=` every row is that run's; without it (the current state) each row is its object
@@ -53,6 +53,7 @@ const ranked = (a: ObjectRow, b: ObjectRow) =>
 const MAP_VERDICT = { fail: "no-go", warn: "at-risk", pass: "go" } as const;
 
 const READINESS_FILTER = [
+  { value: BELOW_TARGET, label: "Below target" },
   { value: "fail", label: "No-go" },
   { value: "warn", label: "At risk" },
   { value: "pass", label: "Go" },
@@ -113,14 +114,15 @@ const allColumns = (run: string | undefined, bands: ScoreBands | undefined, open
   {
     id: "affected_records",
     accessorFn: (o) => o.affected_records ?? -1,
-    header: "Records",
+    // Summed over the object's failing rules: a record failing two rules counts twice, so this is rule failures, not
+    // records (the distinct records are the work list's "To fix").
+    header: "Rule failures",
     size: 110,
     meta: { numeric: true } satisfies CellMeta,
-    // The object's failing records in its own list of records to fix.
     cell: ({ row }) => {
       const n = row.original.affected_records;
       if (n == null) return "—";
-      return <DrillCount href={toFixHref(row.original.module, run)} count={n} label={`Open the ${plural(n, "failing record")} of ${row.original.label}`}>{n.toLocaleString()}</DrillCount>;
+      return <DrillCount href={toFixHref(row.original.module, run)} count={n} label={`Open the records behind the ${plural(n, "rule failure")} of ${row.original.label}`}>{n.toLocaleString()}</DrillCount>;
     },
   },
   workColumn("work_open", "To fix", (w) => w.open, run, ["record to fix", "records to fix"]),
@@ -129,12 +131,12 @@ const allColumns = (run: string | undefined, bands: ScoreBands | undefined, open
   workColumn("work_overdue", "Overdue", (w) => w.overdue, run, ["overdue record", "overdue records"], { due: "overdue" }),
   {
     accessorKey: "composite_score",
-    header: "DQS",
+    header: "Score",
     cell: ({ row }) => {
       const score = row.original.composite_score;
       if (score == null) return "—";
       return (
-        <Score size="sm" value={score} bands={bands}>{drill(row.original, run, score)}</Score>
+        <Score size="sm" value={score} bands={bands}>{drill(row.original, run, score.toFixed(1))}</Score>
       );
     },
   },
@@ -168,16 +170,8 @@ const allColumns = (run: string | undefined, bands: ScoreBands | undefined, open
     header: "Action",
     enableSorting: false,
     size: 72,
-    cell: ({ row }) => (
-      <Link
-        href={openHref(row.original)}
-        className="m-text-meta font-medium m-ink-accent-ink hover:underline"
-        aria-label={`Open ${row.original.label}`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        Open
-      </Link>
-    ),
+    meta: { sticky: "end" },
+    cell: ({ row }) => <RowAction href={openHref(row.original)} label={`Open ${row.original.label}`} />,
   },
 ];
 
@@ -212,6 +206,10 @@ export default function ObjectsPage() {
   const baseRows: ObjectRow[] = current
     ? currentQ.rows
     : (data?.objects ?? []).filter((o) => !scopeFilter.modules || scopeFilter.modules.has(o.module));
+  // Objects the run measured that the user's scope hides: an empty list then means "outside your access", not "none".
+  const outOfScope = !scopeFilter.modules ? 0 : current
+    ? stateObjects(currentQ.runs).filter((o) => !scopeFilter.modules?.has(o.module)).length
+    : (data?.objects ?? []).length - baseRows.length;
   // The work list per run the rows come from (one run with ?run=, each lineage's latest run without it). A run whose
   // work list is not built, or could not be read, leaves its rows without counts.
   const workRuns = current ? [...new Set(baseRows.map((o) => o.run_id).filter((id): id is string => !!id))] : runId ? [runId] : [];
@@ -235,19 +233,26 @@ export default function ObjectsPage() {
 
   let state: "loading" | "empty" | "error" | undefined;
   let emptyProps: { title: string; detail?: string; action?: ReactNode; ghost?: "table" } = { title: "No objects in this run", ghost: "table" };
+  const anyRun = current ? !!newest : !!data?.run_id;
   if (isLoading || dayOne.status === "loading") {
     state = "loading";
-  } else if (isListFailure(query)) {
+  } else if (isListFailure(query) || (loaded && objects.length === 0 && !anyRun && dayOne.status === "error")) {
+    // The list, or (no run yet) the sources the first step is read from, failed: never "No objects measured yet".
     state = "error";
   } else if (loaded && objects.length === 0) {
     state = "empty";
-    const anyRun = current ? !!newest : !!data?.run_id;
-    emptyProps = {
-      title: anyRun ? (current ? "No objects measured" : "No objects in this run") : "No objects measured yet",
-      detail: anyRun ? "Run an analysis on a connected system." : dayOne.step?.detail ?? "Run an extraction to analyse your first objects.",
-      action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
-      ghost: "table",
-    };
+    emptyProps = anyRun && outOfScope > 0
+      ? {
+          title: `${plural(outOfScope, "object")} ${current ? "measured" : "in this run"} ${outOfScope === 1 ? "is" : "are"} outside your access`,
+          detail: "Ask an administrator for access to them.",
+          ghost: "table",
+        }
+      : {
+          title: anyRun ? (current ? "No objects measured" : "No objects in this run") : "No objects measured yet",
+          detail: anyRun ? "Run an analysis on a connected system." : dayOne.step?.detail ?? "Run an extraction to analyse your first objects.",
+          action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
+          ghost: "table",
+        };
   }
 
   // The export and the report are per run: without ?run= they are the newest finished run's, and say so.
@@ -268,7 +273,7 @@ export default function ObjectsPage() {
   const dimension = search.get("dimension");
   const owner = search.get("owner");
   const shownObjs = objects
-    .filter((o) => !readiness || o.readiness === readiness)
+    .filter((o) => !readiness || (o.readiness != null && readiness.split(",").includes(o.readiness)))
     .filter((o) => !dimension || o.worst_dimension === dimension)
     .filter((o) => !owner || o.owner === owner)
     .sort(ranked);
@@ -297,6 +302,9 @@ export default function ObjectsPage() {
       ? objects.reduce((n, o) => n + (o.critical_checks ?? 0) + (o.high_checks ?? 0), 0)
       : undefined
     : data?.blocking_findings_total;
+  // The findings behind that count, in both modes: the run's findings tab filtered to critical and high (one run), or
+  // the current-state findings on the Insights overview filtered the same way (several runs).
+  const criticalHighFindingsHref = current ? criticalHighHref(currentQ.runs) : runId ? criticalHighHref([{ id: runId }]) : undefined;
   const failingChecks = objects.reduce((a, o) => a + o.failing_checks, 0);
   const recordsAffected = objects.reduce((n, o) => n + (o.affected_records ?? 0), 0);
   const atRisk = objects.filter((o) => o.readiness === "warn").length;
@@ -308,10 +316,9 @@ export default function ObjectsPage() {
       <div className="m-stat-grid m-motion-stagger">
         <Stat label="Go" value={go} tone={go > 0 ? "go" : undefined} href={listHref({ readiness: "pass" })} />
         <Stat label="At risk" value={atRisk} tone={atRisk > 0 ? "at-risk" : "go"} href={listHref({ readiness: "warn" })} />
-        <Stat label="Not ready" value={notReady} tone={notReady > 0 ? "no-go" : "go"} href={listHref({ readiness: "fail" })} />
-        <Stat label="Failing checks" value={failingChecks.toLocaleString()} hint="across all objects" href={current ? "/insights/rules" : `/insights/rules?${new URLSearchParams({ run })}`} />
-        {/* Fix work has no "critical or high" filter, so the blocking count stays a figure; the not ready verdict lists those objects. */}
-        {blockingFindings != null ? <Stat label="Blocking findings" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} hint="critical or high checks" href={current ? undefined : fixHref({ run, sev: "blocking" })} /> : <Stat label="Records affected" value={recordsAffected.toLocaleString()} hint="across all objects" href={fixHref({ run: current ? undefined : run })} />}
+        <Stat label="No-go" value={notReady} tone={notReady > 0 ? "no-go" : "go"} href={listHref({ readiness: "fail" })} />
+        <Stat label="Failing rules" value={failingChecks.toLocaleString()} hint="across all objects" href={current ? "/insights/rules" : `/insights/rules?${new URLSearchParams({ run })}`} />
+        {blockingFindings != null ? <Stat label="Critical and high findings" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} hint="failing rules" href={criticalHighFindingsHref} /> : <Stat label="Rule failures" value={recordsAffected.toLocaleString()} hint="records failing a rule, per rule" href={fixHref({ run: current ? undefined : run })} />}
       </div>
       <div className="flex flex-wrap items-center gap-4">
         <FilterChips label="Readiness" value={readiness} options={[...READINESS_FILTER]} onChange={(v) => setParam("readiness", v)} />
@@ -328,16 +335,19 @@ export default function ObjectsPage() {
   const columns = makeColumns(current ? undefined : runId, bands, objects, openHref); // React Compiler memoizes on run and thresholds
 
   // The map is drawn from the rows the ledger shows: the same filters, the same objects.
+  // Tiles are sized by distinct failing records when every shown object's work list is built; otherwise by the
+  // summed rule failures, and the map says so.
+  const distinctRecords = shownObjs.length > 0 && shownObjs.every((o) => o.work);
   const mapItems: ObjectMapItem[] = shownObjs.map((o) => ({
     id: o.module,
     label: o.label,
     href: openHref(o),
     score: o.composite_score,
-    records: o.affected_records ?? 0,
+    records: distinctRecords ? o.work?.records ?? 0 : o.affected_records ?? 0,
     verdict: o.readiness ? MAP_VERDICT[o.readiness] : "neutral",
-    meta: o.blocking_rule_id ?? (o.affected_records != null ? `${o.affected_records.toLocaleString()} records` : undefined),
+    meta: o.blocking_rule_id ?? (distinctRecords && o.work ? plural(o.work.records, "record") : o.affected_records != null ? plural(o.affected_records, "rule failure") : undefined),
   }));
-  const map = shownObjs.length > 0 && <ObjectMap items={mapItems} columns={12} rowHeight={44} />;
+  const map = shownObjs.length > 0 && <ObjectMap items={mapItems} columns={12} rowHeight={44} label={distinctRecords ? undefined : "Objects by rule failures and verdict"} unit={distinctRecords ? "records" : "rule failures"} />;
 
   return (
     <ExplorerPage
@@ -369,8 +379,8 @@ export default function ObjectsPage() {
       state={state}
       emptyProps={emptyProps}
       errorProps={{
-        message: apiErrorMessage(query.error),
-        onRetry: refetch,
+        error: query.isError ? query.error : dayOne.error,
+        onRetry: () => { refetch(); if (dayOne.status === "error") dayOne.refetch(); },
       }}
     />
   );

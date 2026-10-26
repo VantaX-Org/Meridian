@@ -5,6 +5,8 @@ export interface AskRequest {
   question: string;
   version_id?: string;
   module?: string;
+  /** "current": score questions read the current state (every object at its latest run); ignored with `version_id`. */
+  scope?: "current";
 }
 
 export type AskIntent =
@@ -18,6 +20,12 @@ export type AskIntent =
   | "fixes"
   | "owners"
   | "changes"
+  | "rule"
+  | "value_at_risk"
+  | "forecast"
+  | "progress"
+  | "retrieval"
+  | "refused"
   | "ai"
   | "unknown";
 
@@ -32,13 +40,31 @@ export interface AskLink {
   href: string;
 }
 
-/** One answer. `ai` is true only when no built-in answer fitted and the model wrote it from aggregated findings. */
+/** One figure an answer was assembled from, in the order the answer uses them. */
+export interface AskFact {
+  statement: string;
+  value: number | null;
+  /** Where the figure comes from, in words ("Run of 25 Oct, Material master score", "Rule ranking"). */
+  source: string;
+  /** A relative app route that opens the page behind the figure. */
+  href: string | null;
+}
+
+/**
+ * One answer. Every number in `answer` appears in `facts` when `grounded` is true (the server checks it).
+ * `phrased` is true when the model reworded the assembled facts without adding a number; `ai` equals `phrased`.
+ * `coverage` (0..1) is how much of the question the facts cover: 1 in full, below 1 for a partial retrieval, 0 when refused.
+ */
 export interface AskAnswer {
   answer: string;
   intent: AskIntent | string;
   data: AskDatum[] | null;
   chart: "bar" | "line" | null;
   links: AskLink[];
+  facts: AskFact[];
+  coverage: number;
+  grounded: boolean;
+  phrased: boolean;
   ai: boolean;
   version_id: string | null;
 }
