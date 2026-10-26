@@ -19,8 +19,8 @@ def test_pre_existing_pairs_unchanged() -> None:
 def test_who_holds_the_new_actions() -> None:
     run = {r for r in VALID_ROLES if has_permission(r, "run_process_discovery")}
     export = {r for r in VALID_ROLES if has_permission(r, "export_process")}
-    assert run == {"admin", "platform_admin", "process_analyst"}
-    assert export == run | {"manager", "programme_lead"}
+    assert run == {"admin", "platform_admin", "process_analyst", "programme_lead", "data_steward", "sap_basis"}
+    assert export == {"admin", "platform_admin", "process_analyst", "manager", "programme_lead"}
     assert has_permission("viewer", "export_process") is False
     assert has_permission("manager", "run_process_discovery") is False
 

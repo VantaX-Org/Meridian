@@ -79,13 +79,14 @@ PERMISSIONS: dict[str, set[str]] = {
 # widen the legacy analyst, so it is deliberately not done here.
 
 PERSONA_ROLES: dict[str, set[str]] = {
-    "programme_lead": PERMISSIONS["manager"],
-    "data_steward": PERMISSIONS["steward"],
+    # Leads and stewards run process discovery (owner decision 2026-10-26); the legacy keys stay unchanged.
+    "programme_lead": PERMISSIONS["manager"] | {"run_process_discovery"},
+    "data_steward": PERMISSIONS["steward"] | {"run_process_discovery"},
     "data_owner": PERMISSIONS["approver"],
     # No manage_system: in code it gates platform update/restart and admin doctor
     # (system_update.py, admin_doctor.py), not SAP systems. manage_systems covers those.
     "sap_basis": PERMISSIONS["analyst"] | {
-        "manage_systems", "trigger_sync", "manage_field_mappings", "upload",
+        "manage_systems", "trigger_sync", "manage_field_mappings", "upload", "run_process_discovery",
     },
     "platform_admin": PERMISSIONS["admin"],
     # Process discovery (process-discovery spec 6.1): read everything, run discovery, export as-is models.

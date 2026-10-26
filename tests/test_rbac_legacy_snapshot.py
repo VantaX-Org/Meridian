@@ -33,13 +33,16 @@ def test_unknown_role_and_action_still_denied() -> None:
 
 
 def test_persona_roles_equal_the_legacy_role_they_replace() -> None:
+    # Leads and stewards also run process discovery (owner decision 2026-10-26); nothing else differs.
+    extra = {"programme_lead": ["run_process_discovery"], "data_steward": ["run_process_discovery"]}
     for persona, legacy in (("programme_lead", "manager"), ("data_steward", "steward"),
                             ("data_owner", "approver"), ("platform_admin", "admin")):
-        assert permissions_for(persona) == LEGACY_SNAPSHOT[legacy]
+        assert permissions_for(persona) == sorted(LEGACY_SNAPSHOT[legacy] + extra.get(persona, []))
     assert set(PERSONA_ROLES) <= VALID_ROLES and set(LEGACY_SNAPSHOT) <= VALID_ROLES
 
 
 def test_sap_basis_is_analyst_plus_integration_actions() -> None:
     extra = set(permissions_for("sap_basis")) - set(LEGACY_SNAPSHOT["analyst"])
-    assert extra == {"manage_systems", "manage_field_mappings"}  # manage_system (platform update) is admin-only
+    # manage_system (platform update) is admin-only; Basis runs process discovery on the systems it connects.
+    assert extra == {"manage_systems", "manage_field_mappings", "run_process_discovery"}
     assert not has_permission("sap_basis", "manage_users")
