@@ -299,3 +299,66 @@ def test_survivorship_save_keeps_ai_inferred_on_postgres(app_engine):  # noqa: F
         asyncio.run(main())
     finally:
         os.environ.pop("MERIDIAN_DEV_ROLE_HEADER", None)
+
+
+def test_an_upload_attached_to_a_trusted_system_never_wins_as_it_nor_becomes_a_writeback_target(app_engine):  # noqa: F811
+    """A hand-made file attached to PRD carries origin "upload": it loses to a lower-trust system's
+    extraction, and golden write-back never targets PRD for it (also for a legacy untagged entry)."""
+    from sqlalchemy import text
+
+    from api.services.golden_record_engine import process_sync_batch
+    from api.services.golden_writeback import resolve_targets
+    from workers.tasks.build_golden_records import _rows_to_incoming, _run_origin, _run_system
+
+    import pandas as pd
+
+    owner, app_eng = app_engine
+    tid, prd, s4p, v_prd, v_s4p = _seed_tenant(owner, app_eng)
+    v_up = str(uuid.uuid4())
+    with app_eng.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        c.execute(text("INSERT INTO analysis_versions (id, tenant_id, status, metadata) "
+                       "VALUES (:v, :t, 'complete', CAST(:m AS jsonb))"),
+                  {"v": v_up, "t": tid, "m": json.dumps({"system_id": prd, "upload_path": "uploads/x.csv"})})
+        c.execute(text("INSERT INTO survivorship_rules (tenant_id, domain, field, rule_type, trusted_sources) "
+                       "VALUES (:t, :d, 'NAME_ORG1', 'trusted_source', '{PRD,S4P}')"), {"t": tid, "d": DOMAIN})
+    aeng, factory = _session_factory(app_eng)
+
+    async def batch(db, vid, key, fields, when):
+        sid, name = await _run_system(db, vid, tid)
+        origin = await _run_origin(db, vid, tid)
+        rec = _rows_to_incoming(pd.DataFrame([fields]), f"upload:{vid[:8]}", sid, name, origin)
+        for r in rec:
+            r["extracted_at"] = when
+        return await process_sync_batch(db, tid, DOMAIN, key, rec, use_ai=False)
+
+    async def scenario():
+        async with factory() as db:
+            await _rls(db, tid)
+            assert await _run_origin(db, v_up, tid) == "upload"
+            assert await _run_origin(db, v_prd, tid) is None
+            await batch(db, v_s4p, "500", {"NAME_ORG1": "From S4P"}, "2026-01-01T00:00:00+00:00")
+            await batch(db, v_up, "500", {"NAME_ORG1": "Forged"}, "2026-02-01T00:00:00+00:00")
+            await batch(db, v_up, "600", {"NAME_ORG1": "Only upload"}, "2026-02-01T00:00:00+00:00")
+        rows = _rows(app_eng, tid)
+        assert rows["500"].golden_fields["NAME_ORG1"] == "From S4P"  # PRD ranks first, but the file is not PRD
+        up = rows["600"].source_contributions["NAME_ORG1"]
+        assert up["origin"] == "upload" and up["source_system_id"] == prd
+        async with factory() as db:
+            await _rls(db, tid)
+            targets, _ = await resolve_targets(db, tid, rows["600"].source_contributions)
+            assert targets == []
+            legacy = {"NAME_ORG1": {k: v for k, v in up.items() if k != "origin"}}  # written before tagging
+            targets, unresolved = await resolve_targets(db, tid, legacy)
+            assert targets == [] and unresolved == [f"upload:{v_up[:8]}"]
+            extracted = {"NAME_ORG1": {"value": "x", "source_system": f"upload:{v_prd[:8]}"}}
+            targets, _ = await resolve_targets(db, tid, extracted)
+            assert [t["system_id"] for t in targets] == [prd]
+
+    async def main():
+        try:
+            await scenario()
+        finally:
+            await aeng.dispose()
+
+    asyncio.run(main())

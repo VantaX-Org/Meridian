@@ -66,11 +66,13 @@ def _clean_value(v):
 
 
 def _rows_to_incoming(group: pd.DataFrame, source_system: str, system_id: str | None = None,
-                      system_name: str | None = None) -> list[dict]:
+                      system_name: str | None = None, origin: str | None = None) -> list[dict]:
     """Turn the upload rows for one object key into engine ``incoming_records``.
 
     ``system_id`` / ``system_name``: the connected system the run came from (an extraction, or an
     upload attached to a system), so every value is tagged with it for trusted-system survivorship.
+    ``origin``: "upload" for a hand-made file. Such values never rank as their attached system in
+    trusted-system survivorship and never make that system a golden write-back target.
     """
     extracted = datetime.now(timezone.utc).isoformat()
     records: list[dict] = []
@@ -88,6 +90,7 @@ def _rows_to_incoming(group: pd.DataFrame, source_system: str, system_id: str | 
                 "confidence": 1.0,
                 **({"source_system_id": system_id} if system_id else {}),
                 **({"source_system_name": system_name} if system_name else {}),
+                **({"origin": origin} if origin else {}),
             }
         )
     return records
@@ -102,6 +105,21 @@ async def _run_system(db, version_id: str, tenant_id: str) -> tuple[str | None, 
          WHERE v.id = CAST(:v AS uuid) AND v.tenant_id = CAST(:t AS uuid)
     """), {"v": str(version_id), "t": str(tenant_id)})).first()
     return (row[0], row[1]) if row else (None, None)
+
+
+# A run is a file upload unless a connector wrote it: upload.py stores upload_path and no "source";
+# extraction, sync and RFC runs set metadata.source. Unknown runs count as uploads (fail closed).
+UPLOAD_RUN_SQL = ("(v.metadata->>'upload_path' IS NOT NULL OR v.metadata->>'source' IS NULL "
+                  "OR v.metadata->>'source' = 'upload')")
+
+
+async def _run_origin(db, version_id: str, tenant_id: str) -> str | None:
+    """"upload" when the run is a file upload (attached to a system or not), else None."""
+    row = (await db.execute(text(f"""
+        SELECT {UPLOAD_RUN_SQL} FROM analysis_versions v
+         WHERE v.id = CAST(:v AS uuid) AND v.tenant_id = CAST(:t AS uuid)
+    """), {"v": str(version_id), "t": str(tenant_id)})).first()
+    return "upload" if row is None or row[0] else None
 
 
 async def _build_for_module(
@@ -136,12 +154,13 @@ async def _build_for_module(
             )
             await db.commit()
             system_id, system_name = await _run_system(db, version_id, tenant_id)
+            origin = await _run_origin(db, version_id, tenant_id)
 
             for key_value, group in df.groupby(key_col, sort=False):
                 key_str = str(key_value).strip()
                 if not key_str or key_str.lower() in ("nan", "none", "nat"):
                     continue
-                incoming = _rows_to_incoming(group, source_system, system_id, system_name)
+                incoming = _rows_to_incoming(group, source_system, system_id, system_name, origin)
                 # process_sync_batch swallows its own errors and returns None,
                 # so one bad object never aborts the rest of the module.
                 record_id = await process_sync_batch(

@@ -9,7 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.routes.roles import LAST_ADMIN_DETAIL, guard_user_access_change, insert_grant
+from api.routes.roles import LAST_ADMIN_DETAIL, guard_user_access_change, insert_grant, lock_admin_rows
 from api.services.rbac import BUILTIN_NAMES, PERSONA_ALIAS, require_permission, strongest_role
 from workers.tasks.send_user_invitation import send_invitation_email
 
@@ -67,7 +67,9 @@ async def _is_active_admin(db: AsyncSession, tenant_id: uuid.UUID, user_id: uuid
 
 async def forbid_last_admin(db: AsyncSession, tenant_id: uuid.UUID, user_id: uuid.UUID) -> None:
     """409 when `user_id` is an active admin and no other active admin is left in the tenant:
-    demoting, deactivating or removing them would leave nobody able to manage users."""
+    demoting, deactivating or removing them would leave nobody able to manage users. The admin rows are
+    locked first, so a concurrent change to another admin cannot pass the same check (lock_admin_rows)."""
+    await lock_admin_rows(db, tenant_id)
     if not await _is_active_admin(db, tenant_id, user_id):
         return
     others = (await db.execute(text(

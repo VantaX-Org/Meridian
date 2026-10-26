@@ -282,3 +282,80 @@ def test_system_manager_claims_and_resolves_only_sap_raised_exceptions(engines, 
         await aeng.dispose()
 
     asyncio.run(scenario())
+
+
+def test_only_system_managers_raise_sap_source_exceptions_and_links_stay_in_the_tenant(engines, monkeypatch):
+    """POST /exceptions: an analyst cannot mint an SAP-source exception (source_system, the SAP monitor type or
+    a foreign source_reference) that sap_basis could then resolve; linked_finding_id must be this tenant's
+    finding; GET never reads another tenant's finding or cleaning item; a client row that only claims a
+    source_system is not an SAP monitor row for the system-manager guard."""
+    from fastapi import FastAPI
+    from httpx import ASGITransport, AsyncClient
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from api.deps import Tenant, get_db, get_tenant
+    from api.routes.exceptions import router
+
+    monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")
+    owner, app_eng = engines
+    tid, other, fid, foreign_fid, vid, vid2, forged, foreign_clean = (str(uuid.uuid4()) for _ in range(8))
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:a, 'E7'), (:b, 'E7b')"), {"a": tid, "b": other})
+        for f, v, t in ((fid, vid, tid), (foreign_fid, vid2, other)):
+            c.execute(text("INSERT INTO analysis_versions (id, tenant_id, status) VALUES (:v, :t, 'complete')"),
+                      {"v": v, "t": t})
+            c.execute(text("INSERT INTO findings (id, version_id, tenant_id, module, check_id, severity, dimension) "
+                           "VALUES (:f, :v, :t, 'material_master', 'mm_missing_desc', 'high', 'completeness')"),
+                      {"f": f, "v": v, "t": t})
+        c.execute(text("INSERT INTO cleaning_queue (id, tenant_id, object_type, record_key, status) "
+                       "VALUES (:i, :t, 'material_master', 'M1', 'pending')"), {"i": foreign_clean, "t": other})
+        # a row a client created with a source_system before this fix: not an SAP monitor row
+        c.execute(text("INSERT INTO exceptions (id, tenant_id, type, category, severity, status, title, "
+                       "description, source_system, escalation_tier, created_at, linked_finding_id, linked_cleaning_id) "
+                       "VALUES (:i, :t, 'dq_rule', 'x', 'high', 'open', 'x', 'd', 'SAP MM', 1, now(), :f, :c)"),
+                  {"i": forged, "t": tid, "f": foreign_fid, "c": foreign_clean})
+
+    aeng = create_async_engine(app_eng.url.set(drivername="postgresql+asyncpg"))
+    factory = async_sessionmaker(aeng, expire_on_commit=False)
+
+    async def _db():
+        async with factory() as s:
+            yield s
+
+    api = FastAPI()
+    api.include_router(router)
+    api.dependency_overrides[get_db] = _db
+    api.dependency_overrides[get_tenant] = lambda: Tenant(uuid.UUID(tid), "E7", [])
+    base = {"type": "dq_rule", "category": "material_master", "severity": "high", "title": "t", "description": "d"}
+    resolve = {"resolution_type": "steward", "resolution_notes": "n", "root_cause_category": "system"}
+
+    async def scenario():
+        async with AsyncClient(transport=ASGITransport(app=api), base_url="http://t") as c:
+            analyst, basis = {"X-User-Role": "analyst"}, {"X-User-Role": "sap_basis"}
+
+            async def post(h, **kw):
+                return await c.post("/api/v1/exceptions", headers=h, json={**base, **kw})
+
+            for kw in ({"source_system": "SAP MM"}, {"type": "sap_transaction"},
+                       {"source_reference": "failed_confirmation"},
+                       {"linked_finding_id": fid, "source_reference": f"{vid}:other_check"}):
+                r = await post(analyst, **kw)
+                assert r.status_code == 422, (kw, r.text)
+            # the Raise exception button: the linked finding and its own reference
+            r = await post(analyst, linked_finding_id=fid, source_reference=f"{vid}:mm_missing_desc")
+            assert r.status_code == 201, r.text
+            for bad in (foreign_fid, "not-a-uuid"):
+                assert (await post(analyst, linked_finding_id=bad)).status_code == 422
+            # a system manager may raise one
+            r = await post(basis, type="sap_transaction", source_system="SAP MM", source_reference="manual-1")
+            assert r.status_code == 201, r.text
+            minted = r.json()["id"]
+            assert (await c.put(f"/api/v1/exceptions/{minted}/resolve", headers=basis, json=resolve)).status_code == 200
+            # source_system alone on a non-monitor row does not open it to system managers
+            assert (await c.put(f"/api/v1/exceptions/{forged}/resolve", headers=basis, json=resolve)).status_code == 403
+            got = (await c.get(f"/api/v1/exceptions/{forged}", headers=analyst)).json()
+            assert got["linked_finding"] is None and got["linked_cleaning"] is None
+        await aeng.dispose()
+
+    asyncio.run(scenario())

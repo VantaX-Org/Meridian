@@ -128,6 +128,7 @@ def contribution_from_entry(entry: object) -> Optional[FieldContribution]:
         confidence=float(conf) if conf is not None else 1.0,
         system_id=entry.get("source_system_id"),
         system_name=entry.get("source_system_name"),
+        origin=entry.get("origin"),
     )
 
 
@@ -147,9 +148,10 @@ def trusted_winner(contributions: list[FieldContribution], prior: Optional[Field
     return None, False
 
 
-def system_tags(system_id: Optional[str], system_name: Optional[str]) -> dict:
-    """The source-system keys a source_contributions entry carries when its system is known."""
-    out: dict = {}
+def system_tags(system_id: Optional[str], system_name: Optional[str], origin: Optional[str] = None) -> dict:
+    """The source-system keys a source_contributions entry carries when its system is known, and its
+    origin ("upload" for a hand-made file) so later runs and write-back never trust it as that system."""
+    out: dict = {"origin": origin} if origin else {}
     if system_id:
         out["source_system_id"] = system_id
     if system_name:
@@ -197,6 +199,7 @@ def _build_contributions(
       - fields: dict[str, value]
       - confidence: float (optional, default 1.0)
       - source_system_id / source_system_name: the connected system (optional)
+      - origin: "upload" for a hand-made file (optional)
     """
     field_contributions: dict[str, list[FieldContribution]] = {}
 
@@ -218,6 +221,7 @@ def _build_contributions(
                     confidence=conf,
                     system_id=record.get("source_system_id"),
                     system_name=record.get("source_system_name"),
+                    origin=record.get("origin"),
                 )
             )
 
@@ -282,7 +286,8 @@ async def process_sync_batch(
                     continue
                 if winner is not None:
                     result = SurvivorshipResult(winner.value, winner.source_system, "trusted_source",
-                                                winner.confidence, winner.system_id, winner.system_name)
+                                                winner.confidence, winner.system_id, winner.system_name,
+                                                winner.origin)
 
             if result is None and rule:
                 result = evaluate_field(
@@ -339,6 +344,7 @@ async def process_sync_batch(
                             source_system=matching[0].source_system,
                             rule_type="ai_recommended",
                             confidence=ai_result["confidence"],
+                            origin=matching[0].origin,
                         )
 
             # Final fallback: most_recent
@@ -355,7 +361,7 @@ async def process_sync_batch(
                     "source_system": result.source_system,
                     "extracted_at": max(c.extracted_at for c in contributions).isoformat(),
                     "confidence": result.confidence,
-                    **system_tags(result.system_id, result.system_name),
+                    **system_tags(result.system_id, result.system_name, result.origin),
                 }
                 if ai_recommendation:
                     contribution_entry["ai_recommendation"] = ai_recommendation["recommended_value_source"]

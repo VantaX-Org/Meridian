@@ -345,6 +345,16 @@ async def update_system(
         await require_scope(request, db, tenant, "manage_systems", Scope())
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
+    # An endpoint change must bring its own secrets: the stored ones are never kept for a new endpoint.
+    stored = await _stored_connection(db, system_id, str(tenant.id))
+    if stored is None:
+        raise HTTPException(status_code=404, detail="System not found")
+    changed = _endpoint_changes(stored, body)
+    if changed:
+        missing = _missing_secrets(stored, stored["system_type"], body.auth_type or stored["auth_type"], body.credentials)
+        if missing:
+            raise HTTPException(status_code=422, detail=_reenter_message(changed, missing))
+
     # Build dynamic SET clause
     updates = {}
     set_parts = []
@@ -555,6 +565,61 @@ def _run_connection_test(system_type: str, params: dict, secrets_to_mask: list[s
 
 _SECRET_KEYS = ("password", "client_id", "client_secret", "api_key")
 
+# The fields that decide where a stored secret is sent. Changing any of them needs the secrets retyped.
+_ENDPOINT_FIELDS = ("host", "client", "sysnr", "base_url", "token_url", "auth_type")
+
+
+async def _stored_connection(db: AsyncSession, system_id: str, tenant_id: str) -> Optional[dict]:
+    """This tenant's stored endpoint fields and encrypted secrets for one system, or None."""
+    row = (await db.execute(
+        text("""
+            SELECT s.system_type, s.auth_type, s.client_id_encrypted, s.client_secret_encrypted,
+                   s.api_key_encrypted, sc.encrypted_password,
+                   s.host, s.client, s.sysnr, s.base_url, s.token_url
+            FROM sap_systems s
+            LEFT JOIN system_credentials sc ON sc.system_id = s.id
+            WHERE s.id = :sid AND s.tenant_id = :tid
+        """),
+        {"sid": system_id, "tid": tenant_id},
+    )).fetchone()
+    if not row:
+        return None
+    keys = ("system_type", "auth_type", "client_id", "client_secret", "api_key", "password",
+            "host", "client", "sysnr", "base_url", "token_url")
+    return dict(zip(keys, row))
+
+
+def _endpoint_changes(stored: dict, body: BaseModel) -> list[str]:
+    """The endpoint fields the body sets to something other than the stored value (None = not sent)."""
+    changed = []
+    for field in _ENDPOINT_FIELDS:
+        value = getattr(body, field, None)
+        if value is None:
+            continue
+        if field == "auth_type" and (stored["system_type"] in RFC_SYSTEM_TYPES or not stored["auth_type"]):
+            continue  # RFC ignores it; an unset stored auth type is the connector's default
+        if value.strip() != (stored[field] or "").strip():
+            changed.append(field)
+    return changed
+
+
+def _needed_secrets(system_type: str, auth_type: Optional[str]) -> tuple[str, ...]:
+    """The secrets a connection of this type and auth sends."""
+    if system_type in RFC_SYSTEM_TYPES or auth_type == "basic":
+        return ("password",)
+    return ("client_id", "client_secret", "api_key") if system_type == "ariba" else ("client_id", "client_secret")
+
+
+def _missing_secrets(stored: dict, system_type: str, auth_type: Optional[str], credentials: dict[str, str]) -> list[str]:
+    """The secrets this connection uses that are stored but were not typed again."""
+    return [k for k in _needed_secrets(system_type, auth_type) if stored.get(k) and not credentials.get(k)]
+
+
+def _reenter_message(changed: list[str], missing: list[str]) -> str:
+    label = {"password": "password", "client_id": "client ID", "client_secret": "client secret", "api_key": "API key"}
+    return (f"Re-enter the {', '.join(label[k] for k in missing)} when you change the "
+            f"{', '.join(f.replace('_', ' ') for f in changed)}: stored secrets are never sent to a changed endpoint.")
+
 
 def _draft_params(body: RegisterSystemRequest, system_type: str, secrets: dict[str, str]) -> dict:
     """Connector params for a draft connection: the typed fields plus the given secrets."""
@@ -606,34 +671,33 @@ async def test_edited_connection(
     """Test an existing system's edited, unsaved connection fields.
 
     The edit form sends the fields as they stand; a secret left empty falls back to the one
-    stored for this system in this tenant, so changing the host or base URL without retyping
-    the password still tries the new values. Nothing is saved and the system's health is not
+    stored for this system in this tenant, except when an endpoint field (host, client, system
+    number, base URL, token URL or auth type) differs from the stored one: then every secret the
+    connection uses must be typed again (422 otherwise), so a stored credential is never sent to
+    a new endpoint. Nothing is saved and the system's health is not
     touched: the result describes the draft, not the stored connection.
     """
     if not _as_uuid(system_id):
         raise HTTPException(status_code=404, detail="System not found")
     await db.execute(text(f"SET app.tenant_id = '{str(tenant.id)}'"))
-    row = (await db.execute(
-        text("""
-            SELECT s.system_type, s.auth_type, s.client_id_encrypted, s.client_secret_encrypted,
-                   s.api_key_encrypted, sc.encrypted_password
-            FROM sap_systems s
-            LEFT JOIN system_credentials sc ON sc.system_id = s.id
-            WHERE s.id = :sid AND s.tenant_id = :tid
-        """),
-        {"sid": system_id, "tid": str(tenant.id)},
-    )).fetchone()
-    if not row:
+    stored = await _stored_connection(db, system_id, str(tenant.id))
+    if stored is None:
         raise HTTPException(status_code=404, detail="System not found")
-    system_type, stored_auth_type, cid_enc, csecret_enc, api_key_enc, pw_enc = row
+    system_type = stored["system_type"]
+    auth_type = body.auth_type or stored["auth_type"]
+    # A changed endpoint never receives a stored secret: it could be an attacker's host.
+    changed = _endpoint_changes(stored, body)
+    if changed:
+        missing = _missing_secrets(stored, system_type, auth_type, body.credentials)
+        if missing:
+            raise HTTPException(status_code=422, detail=_reenter_message(changed, missing))
 
     from api.services.credential_store import decrypt_password
 
-    stored = {"password": pw_enc, "client_id": cid_enc, "client_secret": csecret_enc, "api_key": api_key_enc}
     secrets: dict[str, str] = {}
     for key in _SECRET_KEYS:
         typed = body.credentials.get(key, "")
-        if typed:
+        if typed or changed:
             secrets[key] = typed
             continue
         try:
@@ -642,7 +706,7 @@ async def test_edited_connection(
             return TestConnectionResponse(connected=False, message="Failed to decrypt the stored credentials")
 
     # The type is the stored one (an edit cannot change it); an absent auth type keeps the stored one.
-    draft = body.model_copy(update={"auth_type": body.auth_type or stored_auth_type})
+    draft = body.model_copy(update={"auth_type": auth_type})
     params = _draft_params(draft, system_type, secrets)
     return _run_connection_test(system_type, params, [secrets["password"], secrets["client_secret"], secrets["api_key"]])
 

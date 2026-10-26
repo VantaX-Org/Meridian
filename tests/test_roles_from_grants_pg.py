@@ -125,3 +125,58 @@ def test_routes_keep_users_role_derived(owner: Engine, monkeypatch: pytest.Monke
         assert _users_role(owner, tid, u["padmin"]) == "platform_admin"
 
     _serve(owner, monkeypatch, tid, scenario)
+
+
+def test_concurrent_admin_removals_cannot_remove_the_last_admin(owner: Engine) -> None:
+    """Two admins removed at once (one grant revoked, the other deactivated), each check alone sees the
+    other admin left. The admin rows are locked FOR UPDATE, so the second waits and then refuses (409)."""
+    import asyncio
+    import uuid
+
+    from fastapi import HTTPException
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from api.routes.roles import forbid_last_admin_grant
+    from api.routes.users import forbid_last_admin
+    from api.services.rbac import recompute_users_role
+
+    tid, u = _tenant(owner, {"a": "platform_admin", "b": "platform_admin"})
+    ga = _grant(owner, tid, u["a"], "platform_admin")
+    _grant(owner, tid, u["b"], "platform_admin")
+    t = uuid.UUID(tid)
+
+    async def scenario() -> None:
+        eng = create_async_engine(owner.url.set(drivername="postgresql+asyncpg"))
+        maker = async_sessionmaker(eng, expire_on_commit=False)
+        try:
+            async with maker() as s1, maker() as s2:
+                # s1 revokes a's admin grant: b is still an admin, so it passes; not committed yet
+                await forbid_last_admin_grant(s1, t, uuid.UUID(u["a"]), uuid.UUID(ga), "platform_admin")
+                await s1.execute(text("DELETE FROM user_role_scopes WHERE id = :g"), {"g": ga})
+                await recompute_users_role(s1, t, u["a"])
+
+                async def deactivate_b() -> None:
+                    await forbid_last_admin(s2, t, uuid.UUID(u["b"]))
+                    await s2.execute(text("UPDATE users SET is_active = false WHERE id = :u"), {"u": u["b"]})
+                    await s2.commit()
+
+                task = asyncio.create_task(deactivate_b())
+                await asyncio.sleep(0.5)
+                assert not task.done()  # waiting on s1's admin-row locks
+                await s1.commit()
+                try:
+                    await asyncio.wait_for(task, 10)
+                    raise AssertionError("the last admin was deactivated")
+                except HTTPException as e:
+                    assert e.status_code == 409
+                await s2.rollback()
+        finally:
+            await eng.dispose()
+
+    asyncio.run(scenario())
+    with owner.connect() as c:
+        active_admins = c.execute(text(
+            "SELECT count(*) FROM users WHERE tenant_id = :t AND is_active AND role = 'platform_admin'"),
+            {"t": tid}).scalar()
+    assert active_admins == 1

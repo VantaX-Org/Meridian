@@ -133,6 +133,8 @@ class _DB:
         if sql.startswith("SELECT s.role_key, s.system_id, s.module, u.role"):
             g = next((g for g in self.grants if g["id"] == p["g"] and g["user"] == p["u"]), None)
             return _Result([(g["key"], g["system"], g["module"], self.users[g["user"]]["role"])] if g else [])
+        if sql.startswith("SELECT u.id FROM users u WHERE u.tenant_id = :t") and sql.endswith("FOR UPDATE OF u"):
+            return _Result([])
         if sql.startswith("SELECT is_active FROM users"):
             return _Result([(self.users[p["u"]]["active"],)])
         if sql.startswith("SELECT count(*) FROM user_role_scopes g JOIN users u"):

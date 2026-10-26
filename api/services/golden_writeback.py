@@ -270,8 +270,10 @@ async def resolve_targets(db: Any, tenant_id: str, source_contributions: dict) -
 
     from sqlalchemy import text
 
+    # A value from a file upload is never a write-back target, even when the file was attached to a
+    # system: it was hand-made, not read from that system.
     labels = sorted({str(c["source_system"]) for c in source_contributions.values()
-                     if isinstance(c, dict) and c.get("source_system")})
+                     if isinstance(c, dict) and c.get("source_system") and c.get("origin") != "upload"})
     systems: dict[str, dict] = {}
     unresolved: list[str] = []
     for label in labels:
@@ -285,6 +287,8 @@ async def resolve_targets(db: Any, tenant_id: str, source_contributions: dict) -
                     "SELECT s.id, s.name, s.system_type FROM analysis_versions v "
                     "JOIN sap_systems s ON CAST(s.id AS text) = v.metadata->>'system_id' AND s.tenant_id = v.tenant_id "
                     "WHERE v.tenant_id = :t AND CAST(v.id AS text) LIKE :p "
+                    "AND NOT (v.metadata->>'upload_path' IS NOT NULL OR v.metadata->>'source' IS NULL "
+                    "OR v.metadata->>'source' = 'upload') "
                     "ORDER BY v.run_at DESC NULLS LAST LIMIT 1"),
                     {"t": tenant_id, "p": prefix + "%"})).fetchone()
         else:

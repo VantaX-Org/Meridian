@@ -56,6 +56,9 @@ class FieldContribution:
     # system rule also matches for rules written before values carried their system.
     system_id: Optional[str] = None
     system_name: Optional[str] = None
+    # "upload" for a value from a hand-made file (even one attached to a system); None otherwise.
+    # An uploaded value never ranks as its attached system in trusted-system survivorship.
+    origin: Optional[str] = None
 
 
 @dataclass
@@ -67,6 +70,7 @@ class SurvivorshipResult:
     confidence: float
     system_id: Optional[str] = None
     system_name: Optional[str] = None
+    origin: Optional[str] = None
 
 
 def _result(winner: FieldContribution, rule_type: str, confidence: Optional[float] = None) -> SurvivorshipResult:
@@ -77,6 +81,7 @@ def _result(winner: FieldContribution, rule_type: str, confidence: Optional[floa
         confidence=winner.confidence if confidence is None else confidence,
         system_id=winner.system_id,
         system_name=winner.system_name,
+        origin=winner.origin,
     )
 
 
@@ -90,7 +95,12 @@ def aliases_of(source: TrustedSource) -> tuple[str, ...]:
 
 
 def matches_source(c: FieldContribution, source: TrustedSource) -> bool:
-    """Whether a trusted_sources rank names this contribution's system: its id, its name or its label."""
+    """Whether a trusted_sources rank names this contribution's system: its id, its name or its label.
+
+    An uploaded value (origin "upload") matches by its provenance label only, never as the system it
+    was attached to: a hand-made file must not win as that trusted system."""
+    if c.origin == "upload":
+        return c.source_system in aliases_of(source)
     tags = {t for t in (c.system_id, c.system_name, c.source_system) if t}
     return any(a in tags for a in aliases_of(source))
 

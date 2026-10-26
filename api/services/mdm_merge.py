@@ -82,14 +82,15 @@ def _systems(r: Any) -> dict:
     out: dict = {}
     for f, e in _own_contrib(r).items():
         if isinstance(e, dict) and (e.get("source_system_id") or e.get("source_system_name")):
-            out[f] = {"id": e.get("source_system_id"), "name": e.get("source_system_name")}
+            out[f] = {"id": e.get("source_system_id"), "name": e.get("source_system_name"),
+                      **({"origin": e["origin"]} if e.get("origin") else {})}
     return out
 
 
 def _tags(entry: Any) -> dict:
     if not isinstance(entry, dict):
         return {}
-    return {k: entry[k] for k in ("source_system_id", "source_system_name") if entry.get(k)}
+    return {k: entry[k] for k in ("source_system_id", "source_system_name", "origin") if entry.get(k)}
 
 
 async def _by_key(db: AsyncSession, tid: str, domain: str, key: str) -> Any:
