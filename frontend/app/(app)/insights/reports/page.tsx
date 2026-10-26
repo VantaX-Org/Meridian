@@ -4,7 +4,7 @@
 
 import { useState, type KeyboardEvent } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button, Card, Field, Input, Pill, Select, asyncStateOf } from "@/design";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -21,6 +21,8 @@ import { runName } from "@/lib/run-scope";
 import { CardSkeleton, InsightFrame, formatMoney, useRunLabel } from "../_components/InsightFrame";
 import { useInsightScope } from "../_components/useInsightScope";
 import { PAGE_PURPOSE } from "../_components/InsightViews";
+import { ReportHistory } from "./_components/ReportHistory";
+import { ReportSchedules } from "./_components/ReportSchedules";
 
 const NONE = "none";
 const EXT: Record<CatalogueEntry["format"], string> = { PDF: "pdf", XLSX: "xlsx", JSON: "json" };
@@ -30,6 +32,14 @@ const REPORT_NAME: Record<string, string> = {
   workbook: "Comparison workbook", analysis: "Run report (analysis)", full: "Narrative report",
 };
 const nameOf = (e: CatalogueEntry) => REPORT_NAME[e.id] ?? e.name;
+/** The library's reports by id, for the history and schedules, which outlive the selected run's catalogue. */
+const KIND_NAME: Record<string, string> = {
+  ...{ extraction: "Extraction report", cleaning: "Cleaning and fixes", json: "Run data", object: "Object report",
+    owners: "Owner workload", rules: "Rule catalogue", dictionary: "Data dictionary", record: "Record fix sheet" },
+  ...REPORT_NAME,
+};
+const KINDS = Object.keys(KIND_NAME);
+const kindName = (kind: string) => KIND_NAME[kind] ?? labelOf(kind);
 /** What a report still needs before it can download, as the step the reader takes (the API's `requires` tokens). */
 const REQUIRES_STEP: Record<string, string> = { module: "Choose an object", record: "Enter a record key" };
 const requiresSentence = (requires: readonly string[]) =>
@@ -40,6 +50,7 @@ const requiresSentence = (requires: readonly string[]) =>
 
 export default function ReportsPage() {
   const { can, has } = usePermissions();
+  const qc = useQueryClient();
   const { run: scopedRun, runs, versions } = useInsightScope();
   // null until the reader picks: the default is the run before this one in its lineage (previousInLineage), so a board
   // pack states what changed instead of reading as a first run.
@@ -103,6 +114,8 @@ export default function ReportsPage() {
       toast.error(apiErrorMessage(e));
     } finally {
       setBuilding(null);
+      // the API keeps every file it hands out: the new one shows in the history
+      void qc.invalidateQueries({ queryKey: ["reports", "history"] });
     }
   };
   const o = overview.data;
@@ -202,9 +215,15 @@ export default function ReportsPage() {
           </div>
         </div>
       )}
+      {can("export") && (
+        <div className="mt-4 flex flex-col gap-4">
+          <ReportHistory nameOf={kindName} kinds={KINDS} />
+          <ReportSchedules nameOf={kindName} />
+        </div>
+      )}
       {canSeeAudit && (
         <div className="mt-4">
-          <Card title="Recent exports" meta="The last five reports anyone downloaded">
+          <Card title="Recent exports" meta="The last five board, trend, workbook and catalogue downloads in the audit log">
             {recent.isError ? (
               <div className="flex items-center gap-3 m-text-body" role="alert">
                 <span>{`Recent exports did not load. ${apiErrorMessage(recent.error)}`}</span>
@@ -216,7 +235,7 @@ export default function ReportsPage() {
               <ul className="flex flex-col gap-1 m-text-body">
                 {recent.data?.entries.map((e) => {
                   const kind = (e.after_json as { kind?: string } | null)?.kind ?? "report";
-                  return <li key={e.id}>{`${formatDate(e.created_at, "datetime")}: ${REPORT_NAME[kind] ?? labelOf(kind)} by ${e.actor_email ?? "unknown"}`}</li>;
+                  return <li key={e.id}>{`${formatDate(e.created_at, "datetime")}: ${kindName(kind)} by ${e.actor_email ?? "unknown"}`}</li>;
                 })}
               </ul>
             )}
