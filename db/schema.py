@@ -595,6 +595,9 @@ class User(Base):
     # routes to a password-change screen and every other API call
     # returns 409 until rotation completes.
     must_change_password = Column(Boolean, nullable=False, server_default="false")
+    # Session revocation (migration 092): access tokens carry it as the `tv` claim and
+    # LocalAuthMiddleware rejects a lower one. Password change/reset and deactivation add one.
+    token_version = Column(Integer, nullable=False, server_default="0")
     last_login = Column(DateTime(timezone=True), nullable=True)
     # Validated by api/routes/preferences.py (theme, density, locale, saved views, ...).
     preferences = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))

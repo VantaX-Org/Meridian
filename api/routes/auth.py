@@ -21,6 +21,7 @@ from api.services.local_auth import (
     generate_jwt_secret,
     verify_password,
 )
+from api.middleware.local_auth import forget_token_version
 from api.services.rate_limiter import rate_limit
 
 # Login endpoint is unauthenticated, so rate-limit by IP: 10 attempts per
@@ -76,6 +77,13 @@ class ChangePasswordRequest(BaseModel):
     new_password: str
 
 
+class ChangePasswordResponse(BaseModel):
+    ok: bool = True
+    # The change revokes every session issued before it, including the caller's: this is the
+    # caller's replacement session token.
+    token: str
+
+
 def _get_sync_connection():
     """Get a synchronous DB connection for auth operations."""
     engine = get_sync_engine_or_create()
@@ -116,6 +124,23 @@ def _ensure_local_auth_schema(conn) -> None:
     )
 
 
+def _set_auth_cookie(response: Response, token: str) -> None:
+    """Cookie fallback for browser-initiated downloads (anchor/open-in-new-tab)
+    where custom Authorization headers are not reliably attached. httponly
+    so JS can't read the JWT (the browser still sends it on downloads);
+    secure by default — set AUTH_COOKIE_SECURE=false only for local HTTP dev."""
+    cookie_secure = os.getenv("AUTH_COOKIE_SECURE", "true").lower() != "false"
+    response.set_cookie(
+        key="mn_auth_token",
+        value=token,
+        max_age=24 * 60 * 60,
+        path="/",
+        samesite="lax",
+        httponly=True,
+        secure=cookie_secure,
+    )
+
+
 @router.post("/login", response_model=LoginResponse, dependencies=[Depends(_login_rate_limit)])
 def login(body: LoginRequest, response: Response):
     """Authenticate with email/password and receive a JWT."""
@@ -129,7 +154,7 @@ def login(body: LoginRequest, response: Response):
         must_change_select = "must_change_password" if supports_must_change else "false as must_change_password"
         row = conn.execute(
             text(
-                f"SELECT id, email, name, role, password_hash, is_active, {must_change_select} "
+                f"SELECT id, email, name, role, password_hash, is_active, {must_change_select}, token_version "
                 "FROM users WHERE LOWER(email) = LOWER(:email) AND tenant_id = :tid"
             ),
             {"email": (body.email or "").strip(), "tid": DEV_TENANT_ID},
@@ -144,7 +169,7 @@ def login(body: LoginRequest, response: Response):
         if not verify_password(body.password, row[4]):
             raise HTTPException(status_code=401, detail="Invalid credentials")
 
-        must_change = bool(row[6]) if len(row) > 6 else False
+        must_change = bool(row[6])
 
         # Ensure tenant has a jwt_secret
         secret_row = conn.execute(
@@ -168,21 +193,9 @@ def login(body: LoginRequest, response: Response):
             email=row[1],
             role=row[3],
             secret=jwt_secret,
+            token_version=int(row[7]),
         )
-        # Cookie fallback for browser-initiated downloads (anchor/open-in-new-tab)
-        # where custom Authorization headers are not reliably attached. httponly
-        # so JS can't read the JWT (the browser still sends it on downloads);
-        # secure by default — set AUTH_COOKIE_SECURE=false only for local HTTP dev.
-        cookie_secure = os.getenv("AUTH_COOKIE_SECURE", "true").lower() != "false"
-        response.set_cookie(
-            key="mn_auth_token",
-            value=token,
-            max_age=24 * 60 * 60,
-            path="/",
-            samesite="lax",
-            httponly=True,
-            secure=cookie_secure,
-        )
+        _set_auth_cookie(response, token)
 
         # Update last_login
         conn.execute(
@@ -262,17 +275,19 @@ def me(request: Request):
 _MIN_PASSWORD_LENGTH = 12
 
 
-@router.post("/change-password", dependencies=[Depends(_change_password_rate_limit)])
-def change_password(body: ChangePasswordRequest, request: Request):
+@router.post("/change-password", response_model=ChangePasswordResponse,
+             dependencies=[Depends(_change_password_rate_limit)])
+def change_password(body: ChangePasswordRequest, request: Request, response: Response):
     """Rotate the password for the currently-authenticated user.
 
     Accepted even when `must_change_password` is true on the account —
     in fact that's the intended path. Clears the flag on success so
     the user can proceed with normal API use. Writes a ``user.password_change`` audit row.
 
-    Other sessions are not revoked: session JWTs carry no token version and the auth
-    middleware checks no per-user issued-at cutoff, so existing tokens stay valid until they
-    expire (local_auth._JWT_EXPIRY_HOURS).
+    Revokes every other session: bumps ``users.token_version``, so LocalAuthMiddleware rejects
+    any token issued before the change (a stolen session dies with the old password). The
+    caller's own session is replaced, not ended: the response carries a fresh token (and
+    cookie) at the new version, which the frontend stores in place of the old one.
     """
     auth_header = request.headers.get("authorization", "")
     if not auth_header.startswith("Bearer "):
@@ -309,7 +324,7 @@ def change_password(body: ChangePasswordRequest, request: Request):
 
         conn.execute(text(f"SET app.tenant_id = \'{str(DEV_TENANT_ID)}\'"))
         row = conn.execute(
-            text("SELECT id, password_hash, is_active, email FROM users WHERE id = :uid AND tenant_id = :tid"),
+            text("SELECT id, password_hash, is_active, email, role FROM users WHERE id = :uid AND tenant_id = :tid"),
             {"uid": payload["sub"], "tid": DEV_TENANT_ID},
         ).fetchone()
         if not row or not row[2]:
@@ -319,14 +334,14 @@ def change_password(body: ChangePasswordRequest, request: Request):
             # 422 like the other input errors here: a 401 would sign the user out (frontend/lib/api/client.ts)
             raise HTTPException(status_code=422, detail="Current password is incorrect")
 
-        conn.execute(
+        version = conn.execute(
             text(
                 "UPDATE users "
-                "SET password_hash = :ph, must_change_password = false "
-                "WHERE id = :uid"
+                "SET password_hash = :ph, must_change_password = false, token_version = token_version + 1 "
+                "WHERE id = :uid RETURNING token_version"
             ),
             {"ph": hash_password(new_password), "uid": str(row[0])},
-        )
+        ).fetchone()
         conn.execute(
             text("INSERT INTO audit_log (tenant_id, actor_user_id, actor_email, action, entity_type, entity_id, "
                  "method, path, status_code) VALUES (:t, :u, :e, 'user.password_change', 'user', :u, "
@@ -334,7 +349,17 @@ def change_password(body: ChangePasswordRequest, request: Request):
             {"t": DEV_TENANT_ID, "u": str(row[0]), "e": row[3], "m": request.method, "p": request.url.path},
         )
         conn.commit()
-    return {"ok": True}
+        forget_token_version(str(row[0]))
+        token = create_access_token(
+            user_id=str(row[0]),
+            tenant_id=DEV_TENANT_ID,
+            email=row[3],
+            role=row[4],
+            secret=secret_row[0],
+            token_version=int(version[0]),
+        )
+    _set_auth_cookie(response, token)
+    return ChangePasswordResponse(token=token)
 
 
 class AcceptInviteRequest(BaseModel):
@@ -558,7 +583,7 @@ def reset_password(body: ResetPasswordRequest):
         result = conn.execute(
             text(
                 "UPDATE users "
-                "SET password_hash = :ph, must_change_password = false "
+                "SET password_hash = :ph, must_change_password = false, token_version = token_version + 1 "
                 "WHERE id = :uid AND tenant_id = :tid AND is_active = true "
                 "RETURNING id, email"
             ),
@@ -568,5 +593,7 @@ def reset_password(body: ResetPasswordRequest):
         if not row:
             raise HTTPException(status_code=404, detail="Account not found or inactive")
         conn.commit()
+        # Every session issued before the reset is revoked (users.token_version).
+        forget_token_version(str(row[0]))
 
     return {"ok": True, "email": row[1]}

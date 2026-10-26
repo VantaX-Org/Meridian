@@ -1128,7 +1128,7 @@ DATA_DICTIONARY: dict[str, dict[str, dict]] = {
             "key": False,
             "mandatory": True,
             "valid_values": None,
-            "config_table": "TB003",
+            "config_table": "TB001",
             "sap_help": "Controls the number range and field configuration for the business partner. Similar to account group in vendor/customer master. Defined in SPRO under business partner customising.",
             "standard_values": {
                 "0001": "Customer",
@@ -1198,7 +1198,7 @@ DATA_DICTIONARY: dict[str, dict[str, dict]] = {
             "key": True,
             "mandatory": True,
             "valid_values": None,
-            "config_table": "TBZ9",
+            "config_table": "TB003",
             "sap_help": "Defines the business role assigned to the partner — e.g. vendor, customer, contact person, employee. A single partner can have multiple roles. Roles control which views and data segments are available.",
             "standard_values": {
                 "BUP001": "General BP role",

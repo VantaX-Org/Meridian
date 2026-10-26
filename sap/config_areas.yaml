@@ -14,7 +14,7 @@ _abap: &abap
      objects: [T003, T004, TBSL, T052, T042, T042Z, T047, TABW, BNKA, FINSC_LEDGER, TKA01, TKA02, CSKS, CEPC]}
   - {area: quality, label: Quality, objects: [TQ30, TQ80]}
   - {area: master_data, label: Master data,
-     objects: [T134, T134M, T023, T006, T077D, T077Y, TB003, TBZ9, CVI_CUST_LINK, CVI_VEND_LINK]}
+     objects: [T134, T134M, T023, T006, T077D, T077Y, TB001, TB003, TBZ9, CVI_CUST_LINK, CVI_VEND_LINK]}
   - {area: organisation, label: Organisation, objects: [T001, T001L, T001P, T500P]}
   - {area: production, label: Production, objects: [T003O, T399X, T438A]}
   - {area: maintenance, label: Maintenance, objects: [T356]}

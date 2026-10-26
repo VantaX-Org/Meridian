@@ -174,7 +174,7 @@ BASELINE_CONFIG: dict[str, dict[str, dict[str, list[dict]]]] = {
         # Business Partner
         # -----------------------------------------------------------------
         "business_partner": {
-            "TB003": [
+            "TB001": [
                 {"BU_GROUP": "0001", "BU_GROUPTXT": "Organization", "DESCRIPTION": "Business partner group for organisations"},
                 {"BU_GROUP": "0002", "BU_GROUPTXT": "Person", "DESCRIPTION": "Business partner group for natural persons"},
                 {"BU_GROUP": "0003", "BU_GROUPTXT": "Group", "DESCRIPTION": "Business partner group for groups / associations"},
@@ -182,14 +182,14 @@ BASELINE_CONFIG: dict[str, dict[str, dict[str, list[dict]]]] = {
                 {"BU_GROUP": "BP02", "BU_GROUPTXT": "Vendor", "DESCRIPTION": "Vendor-facing business partner group"},
                 {"BU_GROUP": "BPEM", "BU_GROUPTXT": "Employee", "DESCRIPTION": "Business partner group for employees"},
             ],
-            "TBZ9": [
-                {"ROLE_CATEGORY": "BUP001", "ROLE_CATTXT": "General BP role", "DESCRIPTION": "General business partner role"},
-                {"ROLE_CATEGORY": "BUP002", "ROLE_CATTXT": "Contact person", "DESCRIPTION": "Contact person role"},
-                {"ROLE_CATEGORY": "BUP003", "ROLE_CATTXT": "Employee", "DESCRIPTION": "Employee role"},
-                {"ROLE_CATEGORY": "FLVN00", "ROLE_CATTXT": "FI Vendor", "DESCRIPTION": "Financial accounting vendor role"},
-                {"ROLE_CATEGORY": "FLVN01", "ROLE_CATTXT": "FI Vendor (extended)", "DESCRIPTION": "Extended FI vendor role"},
-                {"ROLE_CATEGORY": "FLCU00", "ROLE_CATTXT": "FI Customer", "DESCRIPTION": "Financial accounting customer role"},
-                {"ROLE_CATEGORY": "FLCU01", "ROLE_CATTXT": "FI Customer (extended)", "DESCRIPTION": "Extended FI customer role"},
+            "TB003": [
+                {"ROLE": "BUP001", "DESCRIPTION": "General business partner role"},
+                {"ROLE": "BUP002", "DESCRIPTION": "Contact person role"},
+                {"ROLE": "BUP003", "DESCRIPTION": "Employee role"},
+                {"ROLE": "FLVN00", "DESCRIPTION": "Financial accounting vendor role"},
+                {"ROLE": "FLVN01", "DESCRIPTION": "Extended FI vendor role"},
+                {"ROLE": "FLCU00", "DESCRIPTION": "Financial accounting customer role"},
+                {"ROLE": "FLCU01", "DESCRIPTION": "Extended FI customer role"},
             ],
         },
         # -----------------------------------------------------------------

@@ -32,3 +32,13 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     if drop:
         config.hook.pytest_deselected(items=drop)
         items[:] = keep
+
+
+@pytest.fixture(autouse=True)
+def _session_revocation_off(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    """LocalAuthMiddleware reads users.token_version for every session token (session revocation).
+    Route tests bypass authentication by stubbing the token decode with a user that need not exist,
+    so the lookup answers "version 0" for them. Tests marked ``session_revocation`` keep the real one."""
+    if request.node.get_closest_marker("session_revocation"):
+        return
+    monkeypatch.setattr("api.middleware.local_auth._current_token_version", lambda _uid, _tid: 0)
