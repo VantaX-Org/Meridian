@@ -192,7 +192,8 @@ def _read_offline_token() -> dict | None:
     token = os.getenv("MERIDIAN_LICENCE_TOKEN", "").strip()
     if not token:
         return None
-    key = os.getenv("MERIDIAN_OFFLINE_PUBLIC_KEY", "").strip()
+    # A PEM in .env is usually one line with \n escapes; restore the line breaks.
+    key = os.getenv("MERIDIAN_OFFLINE_PUBLIC_KEY", "").strip().strip('"').replace("\\n", "\n")
     if not key:
         logger.error("MERIDIAN_LICENCE_TOKEN set but MERIDIAN_OFFLINE_PUBLIC_KEY is not — cannot verify")
         return {"valid": False, "reason": "no_public_key"}
