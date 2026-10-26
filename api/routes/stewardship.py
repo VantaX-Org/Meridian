@@ -507,6 +507,21 @@ async def resolve_queue_item(
     # and the source record must not be touched again.
     if item.status not in _OPEN_STATUSES:
         raise HTTPException(status_code=409, detail="This task is already closed; nothing was changed.")
+    if item.item_type == "golden_writeback":
+        # An SAP write: the same four-eyes decision as POST /master-records/{id}/writeback/approve,
+        # with the real authenticated user (never the dev fallback id).
+        from api.routes.writeback import _require_user
+        from api.services import golden_writeback as gw
+        decider = _require_user(request)
+        try:
+            rid = await gw.decide(db, str(tenant.id), item.source_id, body.action, decider)
+        except gw.DecisionError as e:
+            await db.rollback()
+            raise HTTPException(status_code=e.status, detail=e.detail) from None
+        await db.commit()
+        if body.action == "approve":
+            gw.enqueue(rid, str(tenant.id), "apply")
+        return {"id": item_id, "status": "resolved", "action": body.action}
     user_id = await _resolve_user_id(db, tenant, request)
 
     # Apply the resolution to the source record
@@ -727,6 +742,8 @@ async def bulk_approve(
             continue
 
         item = _row_to_item(row)
+        if item.item_type == "golden_writeback":
+            continue  # an SAP write-back is approved one at a time, never in bulk
 
         # Only approve if above confidence threshold
         if item.ai_confidence is not None and item.ai_confidence < body.min_confidence:

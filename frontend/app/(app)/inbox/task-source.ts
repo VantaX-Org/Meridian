@@ -19,6 +19,9 @@ export function taskSourceLink(
       return { href: `/mdm/golden/merge?pair=${id}`, label: "Review the pair" };
     case "golden_record_review":
       return { href: `/mdm/golden/${id}`, label: "Open the golden record" };
+    case "golden_writeback":
+      // source_id is the golden record; its page shows the simulated field diff being approved.
+      return { href: `/mdm/golden/${id}`, label: "Review the write-back" };
     case "writeback_approval":
       return proposal?.record_key
         ? { href: `/objects/${encodeURIComponent(proposal.object_type)}/records/${encodeURIComponent(proposal.record_key)}`, label: "Open record" }

@@ -34,6 +34,7 @@ SLA_DEFAULTS = {
     "golden_record_review": 72,
     "exception": 24,
     "writeback_approval": 24,
+    "golden_writeback": 24,
     "contract_breach": 12,
     "glossary_review": 168,  # 7 days
 }
