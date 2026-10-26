@@ -32,6 +32,10 @@ export interface Version {
   id: string;
   run_at: string;
   label: string | null;
+  /** 1-based within its lineage (the system, or an upload); what makes a re-run pickable. */
+  run_number?: number | null;
+  /** The run this one repeats, when its lineage and object set match an earlier run. */
+  parent_version_id?: string | null;
   status:
     | "pending"
     | "running"

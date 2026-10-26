@@ -85,6 +85,11 @@ class AnalysisVersion(Base):
         server_default=text("now()"),
     )
     label = Column(Text, nullable=True)
+    # 1-based within the lineage (the system, or "upload"), so "run 2" identifies a re-run even when
+    # two ran the same day; parent_version_id points at the run this one repeats (migration 093).
+    run_number = Column(Integer, nullable=True)
+    parent_version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="SET NULL"),
+                               nullable=True)
     dqs_summary = Column(JSONB, nullable=True)
     metadata_ = Column("metadata", JSONB, nullable=True)
     status = Column(

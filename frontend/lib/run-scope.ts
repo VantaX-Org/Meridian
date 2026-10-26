@@ -115,12 +115,24 @@ export function runScopeLabel(v: RunNameInput & Pick<Version, "run_at">): string
   return named ? `${runName(v)}, ${formatDate(v.run_at, "date")}` : formatDate(v.run_at, "date");
 }
 
-/** Picker labels: name and day, with the time added where two runs would otherwise read the same. */
+/** "Material master · run 2": the run's number within its lineage, when the API sends one. */
+export function runScopeLabelNumbered(v: RunNameInput & Pick<Version, "run_at"> & { run_number?: number | null }): string {
+  const short = runScopeLabel(v);
+  return v.run_number ? `${short} · run ${v.run_number}` : short;
+}
+
+/**
+ * Picker labels: name, day and run number. The number is what makes a re-run pickable: two runs of
+ * the same objects on the same day used to differ only by the clock, so "run 2" is the identity a
+ * steward can act on.
+ */
 export function runChoiceLabels(runs: readonly Version[]): Map<string, string> {
   const day = new Map<string, number>();
   for (const r of runs) day.set(runScopeLabel(r), (day.get(runScopeLabel(r)) ?? 0) + 1);
   return new Map(runs.map((r) => {
-    const short = runScopeLabel(r);
-    return [r.id, (day.get(short) ?? 0) > 1 ? `${runName(r)}, ${formatDate(r.run_at, "datetime")}` : short];
+    const numbered = runScopeLabelNumbered(r);
+    const sameDay = (day.get(runScopeLabel(r)) ?? 0) > 1;
+    const label = sameDay ? `${runName(r)}, ${formatDate(r.run_at, "datetime")}` : numbered;
+    return [r.id, r.run_number && sameDay ? `${label} · run ${r.run_number}` : label];
   }));
 }

@@ -353,13 +353,29 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
             anchors = _graph()[1]
             object_rows = {m: stored_rows[anchors[m]] for m in modules if anchors.get(m) in stored_rows}
             total_rows = int(sum(stored_rows.values()))
+            # Number this run within its lineage and point at the run it repeats, so two runs of the
+            # same objects are distinguishable in the picker ("run 2", "re-run of run 1") instead of
+            # only by their timestamps (migration 093).
             session.execute(
                 text("""
-                    INSERT INTO analysis_versions (id, tenant_id, status, label, metadata)
-                    VALUES (:vid, :tid, :st, :label, CAST(:meta AS jsonb))
+                    INSERT INTO analysis_versions
+                        (id, tenant_id, status, label, metadata, run_number, parent_version_id)
+                    SELECT :vid, :tid, :st, :label, CAST(:meta AS jsonb),
+                           COALESCE((SELECT max(run_number) FROM analysis_versions
+                                      WHERE tenant_id = CAST(:tid AS uuid)
+                                        AND COALESCE(metadata->>'system_id', 'upload')
+                                            = COALESCE(:sysid, 'upload')), 0) + 1,
+                           (SELECT id FROM analysis_versions
+                             WHERE tenant_id = CAST(:tid AS uuid)
+                               AND COALESCE(metadata->>'system_id', 'upload')
+                                   = COALESCE(:sysid, 'upload')
+                               AND COALESCE(metadata->'modules', '[]'::jsonb)
+                                   = CAST(:mods AS jsonb)
+                             ORDER BY run_at DESC, id DESC LIMIT 1)
                 """),
                 {"vid": version_id, "tid": tenant_id, "st": "pending" if analyse else "extracted",
-                 "label": label, "meta": json.dumps({
+                 "label": label, "sysid": system_id, "mods": json.dumps(modules),
+                 "meta": json.dumps({
                     "modules": modules, "source": "extraction", "system_id": system_id,
                     "config_basis": config_basis,
                     "scope": scope or {}, **({"purpose": purpose} if purpose else {}),

@@ -37,6 +37,9 @@ class VersionResponse(BaseModel):
     id: str
     run_at: str
     label: Optional[str]
+    # 1-based within the lineage, and the run this one repeats (migration 093)
+    run_number: Optional[int] = None
+    parent_version_id: Optional[str] = None
     status: str
     dqs_summary: Optional[dict]
     metadata: Optional[dict]
@@ -53,6 +56,8 @@ def _version_to_response(v: AnalysisVersion) -> VersionResponse:
         id=str(v.id),
         run_at=v.run_at.isoformat() if v.run_at else "",
         label=v.label,
+        run_number=v.run_number,
+        parent_version_id=str(v.parent_version_id) if v.parent_version_id else None,
         status=v.status,
         dqs_summary=v.dqs_summary,
         metadata=v.metadata_,
