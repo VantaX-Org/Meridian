@@ -291,7 +291,7 @@ async def list_pending_writebacks(
                    f.check_id, f.module, f.rule_context->>'message', COALESCE(NULLIF(u.name, ''), u.email)
             FROM write_back_log w
             LEFT JOIN findings f ON f.id = w.finding_id AND f.tenant_id = w.tenant_id
-            LEFT JOIN users u ON u.id = w.requested_by AND u.tenant_id = w.tenant_id
+            LEFT JOIN users u ON u.id::text = w.requested_by AND u.tenant_id = w.tenant_id
             WHERE w.tenant_id = :tid AND w.dry_run = false AND w.approved_by IS NULL
             ORDER BY w.created_at DESC
             LIMIT 200
