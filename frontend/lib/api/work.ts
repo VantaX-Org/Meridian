@@ -1,6 +1,11 @@
 // The steward work list (api/routes/work.py): what fails in a run, record by record, and the decisions on it.
+// Without a run the reads ask for the current state (`scope=current`): every object at its own latest complete run,
+// the scope Home shows. Each object, group and record then names the run it was found in, the run its decisions go to.
 import apiClient from "./client";
 import { downloadBlob } from "./download";
+
+/** The run to read, or (none) the current state. */
+const scoped = (version_id?: string) => (version_id ? { version_id } : { scope: "current" as const });
 
 export type WorkStatus = "to_fix" | "proposed" | "approved" | "sent" | "not_an_issue" | "fixed";
 export type WorkSeverity = "critical" | "high" | "medium" | "low" | "info";
@@ -8,6 +13,8 @@ export type WorkAction = "accept" | "edit" | "not_an_issue" | "accept_risk" | "u
 
 export interface WorkObject {
   module: string;
+  /** The run the object's records were found in. */
+  version_id?: string;
   records: number;
   open: number;
   issues: number;
@@ -18,9 +25,16 @@ export interface WorkObject {
 }
 
 export interface WorkSummary {
-  version_id: string;
-  scope: string;
-  /** False for a run from before the work list: offer to build it. */
+  /** The run read; null for the current state. */
+  version_id: string | null;
+  scope: string | null;
+  /** "current": every object at its own latest run. */
+  mode?: "run" | "current";
+  /** The runs read: the one run, or the runs behind the current state. */
+  version_ids?: string[];
+  /** Runs read whose work list is not built yet (from before the work list): offer to build them. */
+  unbuilt?: string[];
+  /** False when no run read has a work list. */
   built: boolean;
   objects: WorkObject[];
   totals: { records: number; open: number; issues: number; critical: number; proposed: number; overdue: number };
@@ -29,6 +43,8 @@ export interface WorkSummary {
 export interface WorkGroup {
   check_id: string;
   module: string;
+  /** The run the check failed in. */
+  version_id?: string;
   severity: WorkSeverity;
   dimension: string | null;
   message: string | null;
@@ -46,6 +62,8 @@ export interface WorkGroup {
 
 export interface WorkRecord {
   module: string;
+  /** The run the record failed in: its panel and decisions read that run. */
+  version_id?: string;
   record_key: string;
   name: string | null;
   issues: number;
@@ -196,19 +214,19 @@ export interface Decision {
 const clean = (o: object) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== "" && v !== null));
 
 export async function getWorkSummary(version_id?: string): Promise<WorkSummary> {
-  const { data } = await apiClient.get("/api/v1/work/summary", { params: clean({ version_id }) });
+  const { data } = await apiClient.get("/api/v1/work/summary", { params: scoped(version_id) });
   return data;
 }
 
 export async function getWorkGroups(f: { version_id?: string; module?: string; severity?: string; proposed?: boolean; q?: string } = {}):
-  Promise<{ version_id: string; built: boolean; total: number; groups: WorkGroup[] }> {
-  const { data } = await apiClient.get("/api/v1/work/groups", { params: clean(f) });
+  Promise<{ version_id: string | null; built: boolean; total: number; groups: WorkGroup[] }> {
+  const { data } = await apiClient.get("/api/v1/work/groups", { params: clean({ ...f, ...scoped(f.version_id) }) });
   return data;
 }
 
 export async function getWorkRecords(f: RecordFilter & { after?: string; limit?: number }):
-  Promise<{ version_id: string; total: number; total_capped: boolean; next: string | null; items: WorkRecord[] }> {
-  const { data } = await apiClient.get("/api/v1/work/records", { params: clean(f) });
+  Promise<{ version_id: string | null; total: number; total_capped: boolean; next: string | null; items: WorkRecord[] }> {
+  const { data } = await apiClient.get("/api/v1/work/records", { params: clean({ ...f, ...scoped(f.version_id) }) });
   return data;
 }
 
@@ -219,8 +237,8 @@ export async function getWorkRecord(module: string, recordKey: string, version_i
 }
 
 export async function searchWork(q: string, version_id?: string):
-  Promise<{ version_id: string; items: Pick<WorkRecord, "module" | "record_key" | "name" | "issues" | "status" | "severity">[] }> {
-  const { data } = await apiClient.get("/api/v1/work/search", { params: clean({ q, version_id }) });
+  Promise<{ version_id: string | null; items: Pick<WorkRecord, "module" | "version_id" | "record_key" | "name" | "issues" | "status" | "severity">[] }> {
+  const { data } = await apiClient.get("/api/v1/work/search", { params: clean({ q, ...scoped(version_id) }) });
   return data;
 }
 
@@ -248,12 +266,12 @@ export async function buildWorklist(version_id?: string): Promise<{ version_id: 
 }
 
 export async function downloadFixSheet(f: RecordFilter): Promise<void> {
-  await downloadBlob("/api/v1/work/export", clean(f), "fix-sheet.xlsx");
+  await downloadBlob("/api/v1/work/export", clean({ ...f, ...scoped(f.version_id) }), "fix-sheet.xlsx");
 }
 
 /** One workbook, a sheet per object, with each record's value at risk. */
 export async function downloadFixSheetByObject(f: RecordFilter): Promise<void> {
-  await downloadBlob("/api/v1/work/export/per-object", clean(f), "records-to-fix-by-object.xlsx");
+  await downloadBlob("/api/v1/work/export/per-object", clean({ ...f, ...scoped(f.version_id) }), "records-to-fix-by-object.xlsx");
 }
 
 export async function importFixSheet(file: File, version_id?: string):
@@ -261,7 +279,7 @@ export async function importFixSheet(file: File, version_id?: string):
   const form = new FormData();
   form.append("file", file);
   const { data } = await apiClient.post("/api/v1/work/import", form, {
-    params: clean({ version_id }), headers: { "Content-Type": "multipart/form-data" },
+    params: scoped(version_id), headers: { "Content-Type": "multipart/form-data" },
   });
   return data;
 }

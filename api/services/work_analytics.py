@@ -30,6 +30,8 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.services.current_state import pairs_clause, run_ids
+from api.services.insights_owners import CLOSED_STATUSES, OWNER_JOIN, OWNER_NAME
 from api.services.record_issues import DIFF_SQL
 from api.services.run_context import latest_run
 from api.services.run_lineage import same_lineage_as
@@ -258,12 +260,14 @@ _DECISIONS_SQL = f"""
     SELECT day, person, user_id, kind, count(*) AS n FROM d GROUP BY day, person, user_id, kind
 """
 
+# Owners as the owner scorecard reads them (insights_owners.OWNER_JOIN / OWNER_NAME): one definition, so Progress's
+# open work per person and Insights > Owners never disagree on who owns what.
 _WORKLOAD_SQL = f"""
-    SELECT ri.assigned_to::text AS assignee_id, max(u.name) AS name, max(u.email) AS email, count(*) AS open,
+    SELECT ri.assigned_to::text AS assignee_id, max({OWNER_NAME}) AS name, max(u.email) AS email, count(*) AS open,
            count(*) FILTER (WHERE ri.severity = 'critical') AS critical,
            count(*) FILTER (WHERE ri.due_at < now()) AS overdue
-      FROM record_issues ri LEFT JOIN users u ON u.id = ri.assigned_to
-     WHERE ri.tenant_id = CAST(:t AS uuid) AND ri.status NOT IN ('resolved', 'accepted')
+      FROM record_issues ri LEFT JOIN {OWNER_JOIN.format(t=":t")}
+     WHERE ri.tenant_id = CAST(:t AS uuid) AND ri.status NOT IN {CLOSED_STATUSES}
        AND {_MOD.format(c="ri.module")}
      GROUP BY ri.assigned_to
 """
@@ -355,6 +359,11 @@ def _roots_sql(source: str) -> str:
         base = f"""SELECT fr.record_key, count(*) AS issues, true AS is_open, false AS crit
                      FROM finding_records fr WHERE fr.version_id = CAST(:v AS uuid) AND {_MOD.format(c="fr.module")}
                     GROUP BY fr.module, fr.record_key"""
+    return _roots_from(base)
+
+
+def _roots_from(base: str) -> str:
+    """The top values per organisational unit over ``base`` (record_key, issues, is_open, crit)."""
     return f"""
         WITH r AS ({base}),
         s AS (
@@ -387,6 +396,11 @@ async def root_causes(db: AsyncSession, tenant_id: Any, version_id: str | None, 
         total = (await db.execute(text(f"SELECT count(*) FROM (SELECT DISTINCT module, record_key FROM finding_records "
                                        f"WHERE version_id = CAST(:v AS uuid) AND {_MOD.format(c='module')}) x"), p)).scalar()
     rows = (await db.execute(text(_roots_sql(source)), p)).fetchall()
+    return {"version_id": version_id, "source": source, "total_records": int(total or 0),
+            "dimensions": _dimensions(rows, total)}
+
+
+def _dimensions(rows: list, total: int | None) -> list[dict]:
     dims: dict[str, dict] = {}
     for r in rows:
         d = dims.setdefault(r.dim, {"field": r.dim, "label": ORG_UNITS[r.dim], "records": int(r.dim_records),
@@ -400,7 +414,7 @@ async def root_causes(db: AsyncSession, tenant_id: Any, version_id: str | None, 
             d = dims[f]
             d["top"] = sorted(d["top"], key=lambda x: (-x["records"], x["value"]))[:TOP]
             out.append(d)
-    return {"version_id": version_id, "source": source, "total_records": int(total or 0), "dimensions": out}
+    return out
 
 
 # ── proposal quality ─────────────────────────────────────────────────────────
@@ -474,3 +488,78 @@ async def run_change(db: AsyncSession, tenant_id: Any, version_id: str | None, m
                          "run_at": prev.run_at.isoformat() if prev.run_at else None},
             "objects": out, "totals": {k: sum(o[k] for o in out) for k in ("new", "fixed", "still_failing")},
             "not_comparable_checks": skipped}
+
+
+# ── the current state: every object at its own latest run (api/services/current_state.py) ─────────────────
+
+async def _built_runs(db: AsyncSession, tenant_id: Any, ids: list[str]) -> set[str]:
+    if not ids:
+        return set()
+    return set((await db.execute(text(
+        "SELECT id::text FROM analysis_versions WHERE tenant_id = CAST(:t AS uuid) AND id = ANY(CAST(:ids AS uuid[])) "
+        "AND COALESCE(metadata, '{}'::jsonb) ? 'worklist_built_at'"), {"t": str(tenant_id), "ids": ids})).scalars().all())
+
+
+async def burndown_current(db: AsyncSession, tenant_id: Any, pairs: list[dict], module: str | None) -> dict:
+    """The burn-down over the current state. The daily flows are tenant-wide already (every record issue); the
+    records to fix are the open work records of each object at its own run (None when no run has a work list).
+    No single lineage exists, so there are no per-run bars."""
+    out = dict(await burndown(db, tenant_id, None, module))
+    built = await _built_runs(db, tenant_id, run_ids(pairs))
+    keep = [x for x in pairs if x["version_id"] in built]
+    open_records: int | None = None
+    if keep:
+        p = _p(tenant_id, module, open_work=list(OPEN_WORK))
+        open_records = int((await db.execute(text(
+            f"SELECT count(*) FROM work_records w WHERE w.tenant_id = CAST(:t AS uuid) AND {pairs_clause('w', keep, p)} "
+            f"AND w.status = ANY(:open_work) AND {_MOD.format(c='w.module')}"), p)).scalar() or 0)
+    return {**out, "version_id": None, "scope": "current", "version_ids": run_ids(pairs),
+            "open_records": open_records, "runs": []}
+
+
+async def root_causes_current(db: AsyncSession, tenant_id: Any, pairs: list[dict], module: str | None) -> dict:
+    """Failing records by organisational unit over the current state: each object's work records at its own run,
+    or its failing records where that run has no work list."""
+    empty = {"version_id": None, "scope": "current", "version_ids": run_ids(pairs), "source": None,
+             "total_records": 0, "dimensions": []}
+    if not pairs:
+        return empty
+    built = await _built_runs(db, tenant_id, run_ids(pairs))
+    work = [x for x in pairs if x["version_id"] in built]
+    raw = [x for x in pairs if x["version_id"] not in built]
+    p = _p(tenant_id, module, top=TOP, open_work=list(OPEN_WORK))
+    parts = []
+    if work:
+        parts.append(f"""SELECT w.record_key, w.issues, (w.status = ANY(:open_work)) AS is_open, (w.sev_rank = 0) AS crit
+                           FROM work_records w WHERE w.tenant_id = CAST(:t AS uuid) AND {pairs_clause('w', work, p)}
+                            AND {_MOD.format(c="w.module")}""")
+    if raw:
+        parts.append(f"""SELECT fr.record_key, count(*) AS issues, true AS is_open, false AS crit
+                           FROM finding_records fr WHERE fr.tenant_id = CAST(:t AS uuid)
+                            AND {pairs_clause('fr', raw, p, key='r')} AND {_MOD.format(c="fr.module")}
+                          GROUP BY fr.module, fr.record_key""")
+    base = " UNION ALL ".join(parts)
+    total = (await db.execute(text(f"SELECT count(*) FROM ({base}) b"), p)).scalar()
+    rows = (await db.execute(text(_roots_from(base)), p)).fetchall()
+    source = "work_records" if not raw else "finding_records" if not work else "mixed"
+    return {**empty, "source": source, "total_records": int(total or 0), "dimensions": _dimensions(rows, total)}
+
+
+async def run_change_current(db: AsyncSession, tenant_id: Any, pairs: list[dict], module: str | None) -> dict:
+    """Per object of the current state: new, fixed and still failing between the object's own run and the run
+    before it in that run's lineage. ``compared`` names each pair of runs; ``previous`` is set only when one run
+    is compared, so a header can name it."""
+    objects: list[dict] = []
+    compared: list[dict] = []
+    for vid in run_ids(pairs):
+        own = {x["module"] for x in pairs if x["version_id"] == vid}
+        r = await run_change(db, tenant_id, vid, module)
+        if not r["previous"]:
+            continue
+        compared.append({"version_id": vid, "previous": r["previous"]})
+        objects += [o for o in r["objects"] if o["module"] in own]
+    objects.sort(key=lambda o: (-o["new"], -o["still_failing"], o["module"]))
+    return {"version_id": None, "scope": "current", "previous": compared[0]["previous"] if len(compared) == 1 else None,
+            "compared": compared, "objects": objects,
+            "totals": {k: sum(o[k] for o in objects) for k in ("new", "fixed", "still_failing")},
+            "not_comparable_checks": sum(o["not_comparable_checks"] for o in objects)}

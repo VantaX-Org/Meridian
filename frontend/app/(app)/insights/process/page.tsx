@@ -37,6 +37,7 @@ import { runName, runScopeLabel } from "@/lib/run-scope";
 import { queryKeys } from "@/lib/query-keys";
 import { useRunList } from "@/hooks/use-run-list";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
+import { useCurrentState } from "../_components/useCurrentState";
 import { PAGE_PURPOSE } from "../_components/InsightViews";
 
 import type { BusinessProcessL3, ConfigImpactResult } from "@/types/api";
@@ -253,8 +254,17 @@ function FeaturesList({ results }: { results: ConfigImpactResult[] }) {
 
 function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) {
   const dayOne = useDayOne();
-  const { latest, isLoading: versionsLoading, error: versionsError, refetch: refetchVersions } = useLatestVersion();
-  const modules = useMemo(() => (latest?.dqs_summary ? Object.keys(latest.dqs_summary) : []), [latest]);
+  const { latest: pinnedRun, isLoading: runLoading, error: versionsError, refetch: refetchVersions } = useLatestVersion();
+  // No ?run=: the current state, every object at its own latest run (Home's scope), so every process object is on
+  // offer and each is read from its own run. ?run= reads that run's objects.
+  const { mode } = useInsightScope();
+  const isCurrent = mode === "current";
+  const state = useCurrentState();
+  const versionsLoading = isCurrent ? state.loading : runLoading;
+  const modules = useMemo(
+    () => (isCurrent ? state.objects.map((o) => o.module) : pinnedRun?.dqs_summary ? Object.keys(pinnedRun.dqs_summary) : []),
+    [isCurrent, state.objects, pinnedRun],
+  );
   const [objectChoice, setObject] = useUrlState("object", "");
   const [l1Choice, setL1] = useUrlState("l1", "");
   // `?l1=` names the L1; the object read must carry that L1's definition, since the API returns one object's processes.
@@ -263,6 +273,8 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
   const object = l1Objects.length
     ? oneOf(objectChoice, l1Objects, l1Objects[0])
     : oneOf(objectChoice, modules, modules.find((m) => PROCESS_MODULES.has(m)) || modules[0] || "");
+  // The run the object is read from: its own latest run in the current state, else the pinned run.
+  const latest = isCurrent ? state.objects.find((o) => o.module === object)?.run : pinnedRun;
 
   const bp = useQuery({
     queryKey: queryKeys.businessProcess(latest?.id, object),

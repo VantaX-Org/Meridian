@@ -1,7 +1,7 @@
 // Builds the four InsightHeader cells for a route from facts the API already returns.
 // Pure: no fetching here, so every sentence is testable and every number traces to a field.
 import type { InsightHeaderProps } from "@/design";
-import { formatMoney } from "@/lib/format";
+import { formatMoneyShort } from "@/lib/format";
 
 export interface InsightFacts {
   hasRun: boolean;
@@ -12,8 +12,10 @@ export interface InsightFacts {
   critical: number;
   total: number;
   affected: number;
-  /** findings/aggregate cost_at_risk, when the tenant has a cost rate configured */
+  /** findings/aggregate cost_at_risk: failing records times their cost per record (hooks/use-cost-at-risk.ts). */
   costAtRisk?: number;
+  /** The scope's one next step (lib/do-next.ts): the cell names it instead of the object with most findings. */
+  doNext?: { sentence: string; href: string; label: string };
   /** Tenant currency code for `costAtRisk`; plain digits when unknown. */
   currency?: string;
   /** True when no earlier run exists in this run's lineage (same system, or same upload objects): there is nothing to compare with. */
@@ -137,12 +139,17 @@ export function buildInsight(section: Section, f: InsightFacts): Omit<InsightHea
         ? "Nothing critical, so nothing caps the score."
         : "This run found nothing wrong.";
 
-  // Held until the cost model names the currency, so the sentence never reads as a bare number.
-  const risk = f.costAtRisk != null && f.costAtRisk > 0 && f.currency ? ` About ${formatMoney(Math.round(f.costAtRisk), f.currency)} is at risk.` : "";
-  // On the homes the verdict's action is the one next step (it picks the lowest-scoring object, this cell the most
-  // findings), so this cell links its object but offers no second button.
-  const next =
-    worst && f.total > 0
+  // Held until the cost model names the currency, so the sentence never reads as a bare number. Named "cost at
+  // risk" (failing records times their cost), never "value at risk" (blocked SAP features), a different figure.
+  const risk = f.costAtRisk != null && f.costAtRisk > 0 && f.currency ? ` Cost at risk of the failing records: ${formatMoneyShort(f.costAtRisk, f.currency)}.` : "";
+  // On the homes the verdict's action is the one button, so this cell links its step but offers no second button.
+  const next = f.doNext
+    ? {
+        sentence: `${f.doNext.sentence}.`,
+        href: f.doNext.href,
+        ...(section === "home" ? {} : { action: { label: f.doNext.label, href: f.doNext.href } }),
+      }
+    : worst && f.total > 0
       ? {
           sentence: `${worst.label} needs the most work: ${n(worst.findings)} findings${worst.critical ? `, ${n(worst.critical)} of them critical` : ""}.`,
           href: `/objects/${worst.module}${q(f.runId)}`,

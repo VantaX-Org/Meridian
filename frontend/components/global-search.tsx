@@ -30,7 +30,7 @@ export function recordHref(item: Pick<Result, "module" | "record_key">, run: str
 
 /**
  * The scope bar's record finder: type a record key or name, pick one of the failing records it matches in the
- * current run, and open it in its object. "/" focuses it from anywhere outside a text field; Escape closes the list.
+ * chosen run (or, with none, the current state), and open it in its object. "/" focuses it from anywhere outside a text field; Escape closes the list.
  */
 export function GlobalSearch() {
   const router = useRouter();
@@ -47,7 +47,7 @@ export function GlobalSearch() {
   const enabled = q.length >= MIN_CHARS;
 
   const { data, isFetching, isError } = useQuery({
-    queryKey: ["work-search", run ?? "latest", q],
+    queryKey: ["work-search", run ?? "current", q],
     queryFn: () => searchWork(q, run ?? undefined),
     enabled,
     staleTime: 30_000,
@@ -82,7 +82,8 @@ export function GlobalSearch() {
     setOpen(false);
     setText("");
     inputRef.current?.blur();
-    router.push(recordHref(item, run));
+    // Without a run the search covers the current state: the record opens in the run it was found in.
+    router.push(recordHref(item, run ?? item.version_id ?? null));
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {

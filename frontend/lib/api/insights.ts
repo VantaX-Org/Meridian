@@ -45,7 +45,8 @@ export interface ImpactResponse {
   rows: ImpactRow[];
 }
 
-export async function getImpact(params?: { version_id?: string }): Promise<ImpactResponse> {
+/** One run (`version_id`, default the latest with impact rows), or `scope: "current"`: every object at its latest run, each feature from the newest run that computed it. */
+export async function getImpact(params?: { version_id?: string; scope?: "current" }): Promise<ImpactResponse> {
   const { data } = await apiClient.get<ImpactResponse>("/api/v1/insights/impact", { params });
   return data;
 }
@@ -132,7 +133,8 @@ export function largestCost(by_l1: CostL1[]): { l1: string; amount: number; proc
   return { ...top, processes: by_l1.length };
 }
 
-export async function getProvenCost(params?: { version_id?: string }): Promise<ProvenCostResponse> {
+/** One run, or `scope: "current"`: each metric from the newest current run that has it. */
+export async function getProvenCost(params?: { version_id?: string; scope?: "current" }): Promise<ProvenCostResponse> {
   const { data } = await apiClient.get<ProvenCostResponse>("/api/v1/insights/proven-cost", { params });
   return data;
 }

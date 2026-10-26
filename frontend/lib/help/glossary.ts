@@ -85,6 +85,18 @@ export const GLOSSARY = {
     long: "Proven cost is calculated from real documents in SAP that were posted with a defective value, such as a payment sent twice or a price off by a tolerance. It is shown per top-level process in the tenant currency and is never summed across processes.",
     href: "/docs?page=analysis",
   },
+  valueAtRisk: {
+    term: "Value at risk",
+    short: "Records blocking an SAP feature, times the value you give that feature",
+    long: "Value at risk prices the SAP features that failing records block or degrade, such as vendor payments or MRP: the blocked records times the value per record you set for each feature in the cost model. A feature you have not priced adds nothing, so it reads nothing until you price one. It is a different figure from cost at risk.",
+    href: "/rules/scoring#feature-values",
+  },
+  costAtRisk: {
+    term: "Cost at risk",
+    short: "Every failing record, times its cost per record in the cost model",
+    long: "Cost at risk prices each failing record by its rule, object and severity in the cost model (the default model until you set your own). It counts from the first run, so it can show an amount while value at risk, which prices only blocked SAP features you have valued, shows none.",
+    href: "/rules/scoring",
+  },
   variant: {
     term: "Variant",
     short: "A distinct path that cases take through a process, listed by how many cases follow it",

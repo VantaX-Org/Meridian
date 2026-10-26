@@ -3,8 +3,9 @@
 /**
  * Insights > Progress: the lead's screen. How fast the data is getting fixed, and what is slowing it down:
  * the burn-down with its projected finish, decisions per person, time to fix, what keeps coming back, where
- * the failing records sit, how good the proposals are, and what changed since the previous run. The toolbar pins
- * the run later comparisons start from (the baseline).
+ * the failing records sit, how good the proposals are, and what changed since the previous run. Without `?run=`
+ * it reads the current state (every object at its own latest run, Home's scope); with `?run=` that run, and the
+ * toolbar pins the run later comparisons start from (the baseline).
  * Every number comes from /api/v1/work/analytics (SQL over the work already recorded).
  */
 
@@ -51,13 +52,17 @@ type SystemRecurrence = Recurrence["by_system"][number];
 export default function ProgressPage() {
   const dayOne = useDayOne();
   const router = useRouter();
-  const { run, module, runs, resolving, error: listError, refetch: refetchList } = useInsightScope();
+  const { run: scopedRun, module, mode, runs, resolving, error: listError, refetch: refetchList } = useInsightScope();
+  // The current state (no ?run=): the run-bound reads span every object at its own latest run, and every drill
+  // opens Fix work in the same scope. ?run= (or an object filter) reads that one run.
+  const isCurrent = mode === "current";
+  const run = isCurrent ? undefined : scopedRun;
   // No run because the run list (or the day-one sources) failed: an error, never "Nothing to track yet".
-  const loadError = run ? null : listError ?? (dayOne.status === "error" ? dayOne.error : null);
+  const loadError = scopedRun ? null : listError ?? (dayOne.status === "error" ? dayOne.error : null);
   const { can } = useRole();
   const qc = useQueryClient();
   const scope = { versionId: run, module };
-  const key = (name: string) => ["work-analytics", name, run ?? null, module ?? null];
+  const key = (name: string) => ["work-analytics", name, run ?? "current", module ?? null];
   const ready = !resolving;
 
   const burn = useQuery({ queryKey: key("burndown"), queryFn: () => getBurndown(scope), enabled: ready });
@@ -155,9 +160,9 @@ export default function ProgressPage() {
       { accessorKey: "records", header: "Failing records", meta: { numeric: true }, cell: ({ row }) => n(row.original.records) },
       { accessorKey: "open", header: "Still to fix", meta: { numeric: true }, cell: ({ row }) => <DrillCount href={fix({ part: { field, value: row.original.value } })} count={row.original.open} label={drillLabel({ count: row.original.open, what: "open records", of: at(row.original.value) })}>{n(row.original.open)}</DrillCount> },
       { accessorKey: "critical", header: "Critical", meta: { numeric: true }, cell: ({ row }) => <DrillCount href={fix({ part: { field, value: row.original.value }, sev: "critical" })} count={row.original.critical} label={drillLabel({ sev: "critical", what: "open records", of: at(row.original.value) })}>{n(row.original.critical)}</DrillCount> },
-      { accessorKey: "share_pct", header: "Share of run", meta: { numeric: true }, cell: ({ row }) => pct(row.original.share_pct) },
+      { accessorKey: "share_pct", header: isCurrent ? "Share" : "Share of run", meta: { numeric: true }, cell: ({ row }) => pct(row.original.share_pct) },
     ];
-  }, [field, fix]);
+  }, [field, fix, isCurrent]);
 
   const sourceColumns = useMemo<ColumnDef<ProposalSourceStat>[]>(() => [
     // Fix work has no filter by proposal source: cleaning proposals have their own tab, every other value waits for approval on Approvals and export.
@@ -182,6 +187,8 @@ export default function ProgressPage() {
   ], [run]);
 
   // ── the four sentences and the KPI strip ───────────────────────────────────
+  // One run compares with its previous run; the current state with each object's previous run.
+  const hasChange = !!change.data?.previous || (change.data?.compared?.length ?? 0) > 0;
   const slowest = ttf.data?.by_object[0];
   const overall = ttf.data?.overall;
   const neverRan = !!b && !b.version_id && b.days.every((d) => d.open === 0 && d.opened === 0);
@@ -200,7 +207,7 @@ export default function ProgressPage() {
       purpose={PURPOSE}
       run={run}
       module={module}
-      toolbar={run ? (
+      toolbar={run && !isCurrent ? (
         <>
           <span className="inline-flex items-center gap-1 m-text-meta m-ink-3" data-testid="baseline-line">
             {pinnedRun ? `Baseline: ${runScopeLabel(pinnedRun)}` : "No baseline pinned"}
@@ -209,7 +216,7 @@ export default function ProgressPage() {
           {can("analyse") ? <Button variant="secondary" onClick={() => pin.mutate()} pending={pin.isPending}>{pinnedHere ? "Unpin baseline" : "Pin as baseline"}</Button> : null}
         </>
       ) : undefined}
-      exportOptions={run ? [
+      exportOptions={run && !isCurrent ? [
         { format: "pdf", label: "Progress report (PDF)", run: () => downloadAuthenticated(getComparisonReportUrl(run), `progress_${run}.pdf`) },
         { format: "xlsx", label: "Comparison workbook (Excel)", run: () => downloadAuthenticated(getWorkbookUrl(run, { module }), `comparison_${run}.xlsx`) },
       ] : []}
@@ -347,13 +354,13 @@ export default function ProgressPage() {
         title="Change since the previous run"
         height={200}
         query={change}
-        meta={change.data?.previous ? `Compared with ${runName(change.data.previous)}: ${n(change.data.totals.fixed)} fixed, ${n(change.data.totals.new)} new, ${n(change.data.totals.still_failing)} still failing${change.data.not_comparable_checks ? `; ${plural(change.data.not_comparable_checks, "rule")} not in both runs left out` : ""}` : undefined}
+        meta={hasChange && change.data ? `${change.data.previous ? `Compared with ${runName(change.data.previous)}` : `Each object compared with the run before its own latest run (${plural(change.data.compared?.length ?? 0, "run")})`}: ${n(change.data.totals.fixed)} fixed, ${n(change.data.totals.new)} new, ${n(change.data.totals.still_failing)} still failing${change.data.not_comparable_checks ? `; ${plural(change.data.not_comparable_checks, "rule")} not in both runs left out` : ""}` : undefined}
       >
-        {change.data?.previous ? (
+        {hasChange && change.data ? (
           change.data.objects.length ? <DataTable columns={changeColumns} data={change.data.objects} getRowId={(r) => r.module} hideToolbar height="auto" />
             : <EmptyState variant="inline" title="No object failed in either run" action={<Link href={runsHref} className={linkClass}>Open runs</Link>} />
         ) : (
-          <EmptyState variant="inline" title="No earlier run of this system to compare with" detail="The change appears after the next run" action={<Link href={runsHref} className={linkClass}>Open runs</Link>} />
+          <EmptyState variant="inline" title={isCurrent ? "No object has an earlier run to compare with" : "No earlier run of this system to compare with"} detail="The change appears after the next run" action={<Link href={runsHref} className={linkClass}>Open runs</Link>} />
         )}
       </Section>
     </InsightFrame>

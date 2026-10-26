@@ -9,7 +9,7 @@ import { getObjects } from "@/lib/api/v1/objects";
 import { queryKeys } from "@/lib/query-keys";
 import { isFinished } from "@/lib/runs";
 import { hrefWithRun, runChoiceLabels } from "@/lib/run-scope";
-import { isCurrentStateView, isModuleScoped, isRunScoped } from "@/lib/current-state";
+import { CURRENT_STATE_LABEL, isCurrentStateView, isModuleScoped, isRunScoped, opensOnCurrentState } from "@/lib/current-state";
 
 /**
  * Where the chosen run and object are kept between screens: this tab's session only (sessionStorage), so a run
@@ -133,7 +133,11 @@ export function GlobalObjectPicker() {
   );
 }
 
-/** The scope bar's run picker: the latest run, or any finished run, held across the screens that read `?run=` (`RUN_SCOPED`). */
+/**
+ * The scope bar's run picker: the screen's default, or any finished run, held across the screens that read `?run=`
+ * (`RUN_SCOPED`). The default is named for what it shows: "Current state" where the screen opens on every object at
+ * its own latest run (`opensOnCurrentState`: the objects, an object, Fix work), else "Latest run".
+ */
 export function GlobalRunPicker() {
   const pathname = usePathname();
   const search = useSearchParams();
@@ -179,7 +183,7 @@ export function GlobalRunPicker() {
             );
         }}
         options={[
-          { value: LATEST, label: "Latest run" },
+          { value: LATEST, label: opensOnCurrentState(pathname) ? CURRENT_STATE_LABEL : "Latest run" },
           ...runs.map((r) => ({
             value: r.id,
             label: labels.get(r.id) ?? r.id,

@@ -10,6 +10,7 @@
  *    (api/routes/audit.py);
  *  - the glossary list, /glossary (api/routes/glossary.py): the seeded glossary is empty;
  *  - the run the Fix page names, /versions/{latest} (api/routes/versions.py): the recording holds it only in the list;
+ *  - the current state (`scope=current`) of Fix work's /work reads, and of /insights/impact and /insights/proven-cost;
  *  - the report library, /reports/history, /reports/schedules, /reports/schedules/options
  *    (api/routes/report_library.py), and the catalogue with `compare` (the recording holds it without);
  *  - the caller's delivery log, /me/notifications/deliveries (api/routes/me_notifications.py);
@@ -324,6 +325,27 @@ async function mockWork(page: Router, actions: () => Promise<readonly string[]>)
     const [object, key] = new URL(r.request().url()).pathname.split("/").slice(-2).map(decodeURIComponent);
     return record(vid, run, object, key, await actions());
   });
+  // scope=current (Fix work without ?run=): every modelled object at its own run, each row naming its run. Registered
+  // last so it answers first; a call for one run falls through to the handlers above.
+  const current = (re: RegExp, merge: (parts: [string, Run][], q: URLSearchParams) => unknown) =>
+    page.route(re, (route) => (route.request().method() === "GET" && params(route).get("scope") === "current"
+      ? route.fulfill(json(merge(Object.entries(RUNS), params(route))))
+      : route.fallback()));
+  await current(/\/api\/v1\/work\/summary(\?.*)?$/, (parts) => {
+    const objects = parts.map(([vid, run]) => ({ ...summary(vid, run).objects[0], version_id: vid }));
+    const sum = (k: "records" | "open" | "issues" | "critical") => objects.reduce((n, o) => n + o[k], 0);
+    return { version_id: null, scope: null, mode: "current", version_ids: parts.map(([vid]) => vid), unbuilt: [], built: true, objects,
+      totals: { records: sum("records"), open: sum("open"), issues: sum("issues"), critical: sum("critical"), proposed: 0, overdue: 0 } };
+  });
+  await current(/\/api\/v1\/work\/groups(\?.*)?$/, (parts, q) => {
+    const all = parts.flatMap(([vid, run]) => groups(vid, run, q).groups.map((g) => ({ ...g, version_id: vid })));
+    return { version_id: null, built: true, total: all.length, groups: all };
+  });
+  await current(/\/api\/v1\/work\/records(\?.*)?$/, (parts, q) => {
+    const pages = parts.map(([vid, run]) => ({ vid, page: records(vid, run, q) }));
+    const items = pages.flatMap(({ vid, page }) => page.items.map((i) => ({ ...i, version_id: vid })));
+    return { version_id: null, total: pages.reduce((n, p) => n + p.page.total, 0), total_capped: false, next: null, items };
+  });
 }
 
 // ── /work/analytics (api/services/work_analytics.py) ─────────────────────────
@@ -612,6 +634,22 @@ async function mockLatestRun(page: Router, har: string) {
   await page.route(new RegExp(`/api/v1/versions/${LATEST}$`), (r) => (r.request().method() === "GET" ? r.fulfill(json(run)) : r.fallback()));
 }
 
+/**
+ * Value at risk and proven cost of the current state (`scope=current`, api/routes/insights.py), which Value at risk
+ * and the executive summary read without ?run=: the recording holds them without a scope, which for the recorded
+ * tenant (no priced feature, no proven cost) is the same answer.
+ */
+async function mockCurrentMoney(page: Router, har: string) {
+  const entries = entriesOf(har);
+  for (const name of ["impact", "proven-cost"]) {
+    const hit = entries.find((e) => new RegExp(`/api/v1/insights/${name}$`).test(e.request.url))?.response.content;
+    if (!hit?.text) continue;
+    const body = JSON.parse(hit.encoding === "base64" ? Buffer.from(hit.text, "base64").toString("utf8") : hit.text) as object;
+    await page.route(new RegExp(`/api/v1/insights/${name}\\?scope=current$`), (r) =>
+      (r.request().method() === "GET" ? r.fulfill(json({ ...body, version_id: null, scope: "current" })) : r.fallback()));
+  }
+}
+
 // ── Report library (api/routes/report_library.py) ────────────────────────────
 
 const RUN_LABEL = "controlling_1k";
@@ -768,6 +806,7 @@ export async function mockUnrecorded(page: Page, har: string) {
   await mockAudit(router);
   await mockGlossary(router);
   await mockLatestRun(router, har);
+  await mockCurrentMoney(router, har);
   await mockReports(router);
   await mockMe(router);
   await mockCostModel(router);

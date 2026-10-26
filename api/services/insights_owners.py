@@ -18,9 +18,17 @@ from datetime import datetime, timedelta, timezone
 #: baseline_open_count is what was open at the cutoff: first seen before it and either
 #: still open or resolved after it. An issue first seen this week is not in it, so an
 #: owner's score can fall as well as rise over the week (delta < 0: lost ground).
-OWNER_ISSUE_SQL = """
-    SELECT ri.assigned_to AS user_id, u.name AS owner, ri.severity,
-           COUNT(*) FILTER (WHERE ri.status NOT IN ('resolved', 'accepted')) AS open_count,
+#: Who owns a record issue, one definition for every surface that names owners: the owner scorecard and the
+#: executive summary (OWNER_ISSUE_SQL) and Progress's open work per person (work_analytics._WORKLOAD_SQL).
+#: The owner is record_issues.assigned_to, a user of the same tenant, named by name else email; an issue is open
+#: until it is resolved or accepted. ``{t}`` is the tenant bind of the caller's query.
+OWNER_JOIN = "users u ON u.id = ri.assigned_to AND u.tenant_id = CAST({t} AS uuid)"
+OWNER_NAME = "COALESCE(u.name, u.email)"
+CLOSED_STATUSES = "('resolved', 'accepted')"
+
+OWNER_ISSUE_SQL = f"""
+    SELECT ri.assigned_to AS user_id, {OWNER_NAME} AS owner, ri.severity,
+           COUNT(*) FILTER (WHERE ri.status NOT IN {CLOSED_STATUSES}) AS open_count,
            COUNT(*) FILTER (
                WHERE ri.first_seen_at < :cutoff
                  AND (ri.status NOT IN ('resolved', 'accepted') OR ri.resolved_at >= :cutoff)
@@ -29,9 +37,9 @@ OWNER_ISSUE_SQL = """
                WHERE ri.status IN ('resolved', 'accepted') AND ri.resolved_at >= :cutoff
            ) AS fixed_since_baseline,
            MIN(ri.first_seen_at) FILTER (WHERE ri.status NOT IN ('resolved', 'accepted')) AS oldest_open_first_seen
-    FROM record_issues ri JOIN users u ON u.id = ri.assigned_to AND u.tenant_id = :tid
+    FROM record_issues ri JOIN {OWNER_JOIN.format(t=":tid")}
     WHERE ri.tenant_id = :tid AND ri.assigned_to IS NOT NULL
-    GROUP BY ri.assigned_to, u.name, ri.severity
+    GROUP BY ri.assigned_to, {OWNER_NAME}, ri.severity
 """
 
 _SEVERITY_WEIGHT = {"critical": 10, "high": 5, "medium": 2, "low": 1}
