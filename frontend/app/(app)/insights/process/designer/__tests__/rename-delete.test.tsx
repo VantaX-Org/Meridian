@@ -1,5 +1,5 @@
 // frontend/app/(app)/insights/process/designer/__tests__/rename-delete.test.tsx
-// Rename and delete of the open model: both behind `analyse`, both confirmed, delete by typing the name.
+// Rename and delete of the open model: both behind `analyse` or `run_process_discovery`, both confirmed, delete by typing the name.
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
@@ -62,8 +62,8 @@ describe("process designer rename and delete", () => {
     await waitFor(() => expect(String(h.replace.mock.calls.at(-1)?.[0])).toContain("model=reference"));
   });
 
-  it("offers neither without analyse, nor on the reference model", async () => {
-    h.can = (a) => a !== "analyse";
+  it("offers neither without analyse or discovery, nor on the reference model", async () => {
+    h.can = (a) => a !== "analyse" && a !== "run_process_discovery";
     const { unmount } = renderWithQuery(<ProcessDesigner />);
     await screen.findByText(/Version 2 of 2/);
     expect(screen.queryByRole("button", { name: "Rename" })).toBeNull();

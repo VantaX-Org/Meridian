@@ -168,7 +168,7 @@ function Editor(p: EditorProps) {
     onSuccess: refresh,
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
-  // Rename and delete the open model (PATCH / DELETE /process-designer/models/{id}, permission `analyse`).
+  // Rename and delete the open model (PATCH / DELETE /process-designer/models/{id}, permission `analyse` or `run_process_discovery`).
   const modelName = p.models.find((m) => m.id === model)?.name ?? "";
   const [renaming, setRenaming] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
