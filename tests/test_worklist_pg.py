@@ -367,3 +367,23 @@ async def test_fix_sheet_sign_offs_need_the_approve_permission(run, client_for, 
     with owner.begin() as c:
         assert c.execute(text("SELECT count(*) FROM record_issues WHERE tenant_id = :t AND status = 'accepted'"),
                          {"t": tid}).scalar() == 0
+
+
+@pytest.mark.anyio
+async def test_records_carry_age_and_suggested_value(run, client_for):
+    """Each listed record says when the oldest of its failing issues was first seen (the queue's Age) and the first
+    suggested value of its checks (the rule's fix for the record, else for its current value), read per page."""
+    owner, tid, vid, _ = run
+    with owner.begin() as c:
+        c.execute(text("UPDATE record_issues SET first_seen_at = now() - CASE check_id WHEN 'MM001' "
+                       "THEN interval '9 days' ELSE interval '30 days' END WHERE tenant_id = :t"), {"t": tid})
+    deps, client = client_for(tid)
+    await deps.engine.dispose()
+    async with client:
+        items = (await client.get("/api/v1/work/records", params={"version_id": vid}, headers=HEADERS)).json()["items"]
+    by = {i["record_key"]: i for i in items}
+    assert by["MATNR=1"]["suggested_value"] == "EA"  # MM001's fix for the record
+    assert by["MATNR=2"]["suggested_value"] == "FERT"  # MM001 has none for it: MM002's fix for the value XX
+    now = pd.Timestamp.now(tz="UTC")
+    assert (now - pd.Timestamp(by["MATNR=1"]["first_seen_at"])).days == 9
+    assert (now - pd.Timestamp(by["MATNR=2"]["first_seen_at"])).days == 30  # the older of its two issues

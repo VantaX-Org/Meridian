@@ -112,6 +112,15 @@ describe("FixPage", () => {
 
     expect(await screen.findByText("No cleaning proposals")).toBeInTheDocument();
   });
+
+  it("offers the sections as a Select for a phone, beside the tab strip it replaces below 640px", async () => {
+    vi.mocked(getCleaningGroups).mockResolvedValue({ groups: [], records: 0, confident: 0, runs: 0 });
+    renderWithQuery(<FixPage />);
+    const section = await screen.findByRole("combobox", { name: "Section" });
+    expect(section).toHaveTextContent("Cleaning proposals");
+    expect(section.closest(".sm\\:hidden")).not.toBeNull();
+    expect(screen.getByRole("tablist").closest(".max-\\[639px\\]\\:\\[\\&_\\.m-tabs-list\\]\\:hidden")).not.toBeNull();
+  });
 });
 
 describe("FixPage duplicates tab", () => {

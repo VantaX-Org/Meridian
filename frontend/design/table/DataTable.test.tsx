@@ -319,6 +319,36 @@ describe("DataTable toolbar", () => {
     expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
   });
 
+  it("offers shipped views beside the viewer's own and hands a view's page filters to the page", () => {
+    window.localStorage.clear();
+    const onApplyView = vi.fn();
+    render(<DataTable columns={two} data={rows} getRowId={(r) => r.id} tableId="t-preset" viewParams={{ sev: "high" }} onApplyView={onApplyView}
+      presetViews={[{ name: "Critical", visibility: {}, dense: true, sorting: [], params: { sev: "critical" } }]} />);
+    fireEvent.click(screen.getByRole("button", { name: "Views (1)" }));
+    expect(screen.queryByRole("button", { name: "Delete view Critical" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Critical" }));
+    expect(onApplyView).toHaveBeenLastCalledWith(expect.objectContaining({ params: { sev: "critical" } }));
+    fireEvent.change(screen.getByLabelText("View name"), { target: { value: "High" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save view" }));
+    expect(JSON.parse(window.localStorage.getItem("meridian:prefs") ?? "{}").saved_views["t-preset"][0].params).toEqual({ sev: "high" });
+  });
+
+  it("takes a controlled active row, selection and order from a caller that owns them", () => {
+    const onActive = vi.fn();
+    const onSelection = vi.fn();
+    render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} manualSorting rowTestId="r" activeRowId="1"
+      onActiveRowChange={onActive} selection={{ "2": true }} onSelectionChange={onSelection} bulkActions={() => null} />);
+    const trs = screen.getAllByTestId("r");
+    // manualSorting: the caller's order stands.
+    expect(trs.map((r) => r.textContent)).toEqual(["Bravo", "Alpha"]);
+    expect(trs[1]).toHaveClass("m-row-active");
+    expect(screen.getByRole("checkbox", { name: "Select Bravo" })).toBeChecked();
+    fireEvent.keyDown(screen.getByRole("grid"), { key: "ArrowUp" });
+    expect(onActive).toHaveBeenCalledWith(rows[0]);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Alpha" }));
+    expect(onSelection).toHaveBeenCalledWith({ "2": true, "1": true });
+  });
+
   it("shows a filtered-empty row with a Clear filter button", () => {
     render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} />);
     fireEvent.change(screen.getByLabelText("Filter rows"), { target: { value: "zzz" } });

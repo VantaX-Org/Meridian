@@ -27,6 +27,7 @@ import { Mono } from "../primitives/Mono";
 import { Menu } from "../primitives/Menu";
 import { exportOptionLabel, runExportOption, type ExportOption } from "../primitives/ExportMenu";
 import { deleteView, loadViews, saveView, toCsv, type TableView } from "./views";
+export type { TableView } from "./views";
 import { barFill, columnLayoutClass, type CellMeta } from "./columns";
 import { rampStep } from "../tokens";
 import { readPrefs, subscribePreferences } from "../../lib/preferences";
@@ -94,6 +95,25 @@ export interface DataTableProps<T> {
   label?: string;
   /** Names a row for its selection checkbox ("Select <name>"). Defaults to the row's first text cell, then its id. */
   rowLabel?: (row: T) => string;
+  /** The caller orders `data` itself (e.g. by the server or its own keyboard order): headers still show and set `sorting`. */
+  manualSorting?: boolean;
+  /** Controlled row selection (row ids), for a caller that clears it after a bulk action. */
+  selection?: RowSelectionState;
+  onSelectionChange?: (selection: RowSelectionState) => void;
+  /** Controlled active row: highlighted and kept in view; arrow keys report the next one through `onActiveRowChange`. */
+  activeRowId?: string | null;
+  onActiveRowChange?: (row: T) => void;
+  /** Called when the rows are scrolled (or arrowed) near their end, to load the next page. */
+  onEndReached?: () => void;
+  /** `data-testid` on each body row. */
+  rowTestId?: string;
+  /** Shipped views offered before the viewer's own; they cannot be removed. */
+  presetViews?: TableView[];
+  /** The page's filters, saved with a view; a page that passes them applies a view's `params` in `onApplyView`. */
+  viewParams?: Record<string, string>;
+  onApplyView?: (view: TableView) => void;
+  /** Hides the toolbar's export menu, for a page that offers its exports beside the table. */
+  hideExport?: boolean;
 }
 
 export interface RowPrefetch {
@@ -138,7 +158,8 @@ export function DataTable<T>({
   columns, data, getRowId, onRowClick, renderDrawer, bulkActions: bulkActionsProp, maxHeight: maxHeightProp, height: heightProp, hideSearch = false, renderExpanded, emptyMessage, emptyAction,
   sorting: sortingProp, onSortingChange: onSortingChangeProp, dense: denseProp = false,
   tableId, exportOptions = [], exportName = "export", hideToolbar = false, drawerTitle, rowHref, rowPrefetch, dataTour,
-  label = "Data table", rowLabel,
+  label = "Data table", rowLabel, manualSorting = false, selection: selectionProp, onSelectionChange, activeRowId, onActiveRowChange,
+  onEndReached, rowTestId, presetViews = [], viewParams, onApplyView, hideExport = false,
 }: DataTableProps<T>) {
   "use no memo";
   const maxHeight = maxHeightProp ?? heightProp ?? "calc(100vh - 240px)";
@@ -165,11 +186,17 @@ export function DataTable<T>({
   // An embedded table (hideToolbar) shows its filter box only once it has eight rows or a filter is typed; a bare
   // box above three rows is noise. Full explorer tables always keep it.
   const showSearch = !hideSearch && (!hideToolbar || data.length >= 8 || globalFilter !== "");
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [internalSelection, setInternalSelection] = useState<RowSelectionState>({});
+  const rowSelection = selectionProp ?? internalSelection;
+  const setRowSelection = onSelectionChange
+    ? (updater: RowSelectionState | ((old: RowSelectionState) => RowSelectionState)) =>
+        onSelectionChange(typeof updater === "function" ? updater(rowSelection) : updater)
+    : setInternalSelection;
   const [openRow, setOpenRow] = useState<T | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   // The active row is tracked by id so sorting, filtering and data refreshes cannot move it to another row.
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [internalActiveId, setActiveId] = useState<string | null>(null);
+  const activeId = activeRowId !== undefined ? activeRowId : internalActiveId;
   const [rowHeights, setRowHeights] = useState({ comfortable: ROW_H_FALLBACK, dense: ROW_H_DENSE_FALLBACK });
   useEffect(() => {
     const read = () => setRowHeights({ comfortable: readPx("--m-row-h", ROW_H_FALLBACK), dense: readPx("--m-row-h-dense", ROW_H_DENSE_FALLBACK) });
@@ -248,6 +275,7 @@ export function DataTable<T>({
     onGlobalFilterChange: setGlobalFilter,
     onRowSelectionChange: setRowSelection,
     enableRowSelection: !!bulkActions,
+    manualSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -308,6 +336,7 @@ export function DataTable<T>({
     setColumnVisibility(v.visibility);
     setDense(v.dense);
     setSorting(v.sorting);
+    onApplyView?.(v);
   };
 
   const rowDomId = (i: number) => `${uid}-row-${rowModel[i]?.id}`;
@@ -320,8 +349,26 @@ export function DataTable<T>({
   const moveTo = (i: number) => {
     const next = Math.max(0, Math.min(rowModel.length - 1, i));
     setActiveId(rowModel[next].id);
+    onActiveRowChange?.(rowModel[next].original);
     if (shouldVirtualize) virtualizer.scrollToIndex(next);
+    if (next === rowModel.length - 1) onEndReached?.();
   };
+
+  // A controlled active row that moves (the page's own keys) is scrolled into view.
+  const followActive = activeRowId !== undefined && activeIndex >= 0;
+  const activeDomId = followActive ? rowDomId(activeIndex) : null;
+  useEffect(() => {
+    if (!followActive || activeDomId === null) return;
+    if (shouldVirtualize) virtualizer.scrollToIndex(activeIndex);
+    else document.getElementById(activeDomId)?.scrollIntoView?.({ block: "nearest" });
+  }, [followActive, activeDomId, activeIndex, shouldVirtualize, virtualizer]);
+
+  const onScroll = onEndReached
+    ? (e: React.UIEvent<HTMLDivElement>) => {
+        const el = e.currentTarget;
+        if (el.scrollHeight - el.scrollTop - el.clientHeight < rowH * 10) onEndReached();
+      }
+    : undefined;
   const onGridKeyDown = (e: KeyboardEvent<HTMLTableElement>) => {
     if (e.target !== e.currentTarget) return;
     const last = rowModel.length - 1;
@@ -371,11 +418,16 @@ export function DataTable<T>({
             items={dataColumns.map((c) => ({ label: colLabel(c), checked: c.getIsVisible(), onSelect: () => c.toggleVisibility() }))}
           />
           <Popover.Root>
-            <Popover.Trigger className="m-btn m-btn-secondary m-btn-sm">Views{views.length > 0 ? ` (${views.length})` : ""}</Popover.Trigger>
+            <Popover.Trigger className="m-btn m-btn-secondary m-btn-sm">Views{views.length + presetViews.length > 0 ? ` (${views.length + presetViews.length})` : ""}</Popover.Trigger>
             <Popover.Portal>
               <Popover.Positioner sideOffset={4} className="z-50">
                 <Popover.Popup className="m-popup min-w-56 p-2">
-                  {views.length === 0 && <p className="py-1" style={{ color: "var(--m-ink-3)" }}>No saved views yet.</p>}
+                  {presetViews.map((v) => (
+                    <div key={`preset-${v.name}`} className="py-1">
+                      <button type="button" onClick={() => applyView(v)} className="text-left">{v.name}</button>
+                    </div>
+                  ))}
+                  {views.length === 0 && presetViews.length === 0 && <p className="py-1" style={{ color: "var(--m-ink-3)" }}>No saved views yet.</p>}
                   {views.map((v) => (
                     <div key={v.name} className="flex items-center justify-between gap-2 py-1">
                       <button type="button" onClick={() => applyView(v)} className="text-left">{v.name}</button>
@@ -388,7 +440,7 @@ export function DataTable<T>({
                       e.preventDefault();
                       const name = viewName.trim();
                       if (!name) return;
-                      setViews(saveView(viewsKey, { name, visibility: columnVisibility, dense, sorting }));
+                      setViews(saveView(viewsKey, { name, visibility: columnVisibility, dense, sorting, ...(viewParams ? { params: viewParams } : {}) }));
                       setViewName("");
                     }}
                   >
@@ -404,7 +456,7 @@ export function DataTable<T>({
           <button type="button" className="m-btn m-btn-secondary m-btn-sm" aria-pressed={dense} onClick={() => setDense((d) => !d)}>
             {dense ? "Comfortable rows" : "Compact rows"}
           </button>
-          {(!perms || perms.can("export")) && (
+          {!hideExport && (!perms || perms.can("export")) && (
             <Menu
               trigger={<button type="button" className="m-btn m-btn-secondary m-btn-sm">Export table</button>}
               items={allExport.map((o) => ({ label: exportOptionLabel(o), onSelect: () => void runExportOption(o) }))}
@@ -415,7 +467,7 @@ export function DataTable<T>({
         </div>
       )}
       <div className="m-card m-table-card" style={{ padding: 0, overflow: "hidden" }} onKeyDown={onRegionKeyDown} data-tour={dataTour}>
-      <div ref={parentRef} className="m-table-scroll" style={{ maxHeight: maxHeight === "auto" ? undefined : maxHeight, overflow: "auto" }}>
+      <div ref={parentRef} className="m-table-scroll" onScroll={onScroll} style={{ maxHeight: maxHeight === "auto" ? undefined : maxHeight, overflow: "auto" }}>
         <table
           className="m-text-body w-full"
           style={{ color: "var(--m-ink)" }}
@@ -508,6 +560,7 @@ export function DataTable<T>({
                   id={rowDomId(index)}
                   aria-rowindex={index + 2}
                   aria-selected={bulkActions ? row.getIsSelected() : undefined}
+                  data-testid={rowTestId}
                   prefetchInfo={prefetchFor(row.original)}
                   className={`group border-b m-motion-colors ${row.getIsSelected() ? "bg-[var(--m-accent-soft)]" : "hover:bg-[var(--m-sheet-raised)]"} ${index === activeIndex ? "m-row-active" : ""} ${sevClass}`}
                   onClick={activate}
