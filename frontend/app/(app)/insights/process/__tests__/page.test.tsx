@@ -59,6 +59,12 @@ describe("ProcessInsightsPage", () => {
     await waitFor(() => expect(screen.getByText("Process steps")).toBeInTheDocument());
     expect(screen.getByText("Readiness")).toBeInTheDocument();
     expect(screen.getByText("Map")).toBeInTheDocument();
+    // Readiness and Map are a toggle, not a second tab strip under the view's tabs.
+    expect(screen.getByRole("button", { name: "Readiness" })).toHaveAttribute("aria-pressed", "true");
+    expect(document.querySelectorAll(".m-tabs-list").length).toBeLessThanOrEqual(1);
+    // The blocking ledger is not a card inside a card, and step verdicts use the one Status vocabulary.
+    expect(screen.getByRole("region", { name: "Blocking findings" }).closest(".m-card")).toBeNull();
+    expect(screen.queryByText("Ready")).toBeNull();
   });
 
   it("is titled Process data readiness and links to how the process actually runs, on the run's system", async () => {
@@ -135,7 +141,7 @@ describe("ProcessInsightsPage blocking ledger", () => {
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
     renderWithQuery(<ProcessInsightsPage />);
     expect(await screen.findByText("AP001")).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "Fix" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: /^Fix / }).length).toBeGreaterThan(0);
     expect(screen.getByText("No fields mapped")).toBeInTheDocument();
     expect(screen.getAllByText("No-go").length).toBeGreaterThan(0);
   });

@@ -12,6 +12,18 @@ export interface CellMeta {
   heatRange?: readonly [number, number];
   /** Draws a 56x6 inline bar (aria-hidden) beside the number. `seq` fills by quintile of value/max, `rate` by pass-rate tone (value/max: >= 0.95 pass, >= 0.8 medium, else critical). */
   bar?: { max: number; tone?: "seq" | "rate" };
+  /** Pins the column while the table scrolls sideways: "start" to the left edge (the row's name), "end" to the right edge (the row's action). */
+  sticky?: "start" | "end";
+  /** "low": the column hides below 640px so a phone keeps the row's name, its key figure and its action in view. */
+  priority?: "low";
+}
+
+/** Classes DataTable puts on a column's header and body cells for `sticky` and `priority`. */
+export function columnLayoutClass(meta: CellMeta | undefined): string {
+  return [
+    meta?.sticky === "start" ? "sticky left-0" : meta?.sticky === "end" ? "sticky right-0" : "",
+    meta?.priority === "low" ? "max-[640px]:hidden" : "",
+  ].filter(Boolean).join(" ");
 }
 
 /** Bar fill percentage (0 to 100) and the data attribute the fill carries. */

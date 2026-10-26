@@ -72,7 +72,8 @@ describe("wave 10 URL params are whitelisted", () => {
 
   it.each(GARBAGE)("process ?tab=%s falls back to readiness", async (g) => {
     await show(process_, `tab=${g}&module=${g}`);
-    expect(selected()).toMatch(/readiness/i);
+    // Readiness and Map are a pressed-button toggle under the view's tab strip, not a second strip of tabs.
+    expect(await screen.findByRole("button", { name: "Readiness" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it.each(GARBAGE)("mining ?tab=%s falls back to links", async (g) => {

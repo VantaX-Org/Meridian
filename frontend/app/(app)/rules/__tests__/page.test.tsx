@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi, describe, it, expect } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
@@ -41,6 +41,25 @@ describe("rules page", () => {
     vi.spyOn(rulesApi, "getRulesSummary").mockResolvedValue({ summary: [] });
     renderWithQuery(<RulesPage />);
     await waitFor(() => expect(screen.getByText("Vendor number is mandatory")).toBeInTheDocument());
+  });
+
+  it("has one search and one export, with the secondary filters behind Filters", async () => {
+    vi.spyOn(rulesApi, "getRules").mockResolvedValue({ rules: [RULE], total: 1, limit: 1000, offset: 0 });
+    vi.spyOn(rulesApi, "getRulesSummary").mockResolvedValue({ summary: [] });
+    renderWithQuery(<RulesPage />);
+    await waitFor(() => expect(screen.getByText("Vendor number is mandatory")).toBeInTheDocument());
+    expect(screen.getAllByRole("textbox", { name: /search|filter/i })).toHaveLength(1);
+    expect(screen.queryByPlaceholderText("Type to filter rows")).toBeNull();
+    // The catalogue's own export is the only one above it: no stray Export in the filter row.
+    expect(within(screen.getByRole("region", { name: "Rule catalogue" })).getAllByRole("button", { name: /^export/i }).map((b) => b.textContent)).toEqual(["Export table"]);
+    expect(screen.queryByRole("button", { name: "Export" })).toBeNull();
+
+    const filters = screen.getByRole("button", { name: "Filters" });
+    expect(filters).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("combobox", { name: "Authority" })).toBeNull();
+    await userEvent.setup().click(filters);
+    expect(filters).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("combobox", { name: "Authority" })).toBeInTheDocument();
   });
 
   it("shows a retryable error when rules fail to load", async () => {

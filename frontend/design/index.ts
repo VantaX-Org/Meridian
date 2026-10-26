@@ -51,6 +51,7 @@ export * from "./table/DataTable";
 export * from "./table/columns";
 export * from "./table/Pager";
 export * from "./table/BulkBar";
+export * from "./table/RowAction";
 
 export * from "./charts/theme";
 export * from "./charts/Line";

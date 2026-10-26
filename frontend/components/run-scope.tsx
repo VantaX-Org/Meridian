@@ -1,11 +1,11 @@
 "use client";
 
-import { Fragment } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Popover } from "@base-ui/react/popover";
 import { Select } from "@/design";
-import { CURRENT_STATE_LABEL } from "@/lib/current-state";
-import { plural } from "@/lib/format";
+import { CURRENT_STATE_LABEL, stateScopeLine } from "@/lib/current-state";
+import { formatDate, formatModuleName, plural } from "@/lib/format";
 import { runChoiceLabels, runScopeLabel } from "@/lib/run-scope";
 import type { Version } from "@/types/api";
 
@@ -73,9 +73,46 @@ export function RunScope({ scope, hrefFor, picker = false }: RunScopeProps) {
 
 const ALL_RUNS = "all";
 
+/** The objects a run measured, by name ("Controlling, Material master"); never the run's raw label or id. */
+function runObjects(v: Version): string {
+  const modules = v.metadata?.modules?.length ? v.metadata.modules : Object.keys(v.dqs_summary ?? {});
+  return modules.length ? modules.map(formatModuleName).join(", ") : "Run";
+}
+
+/**
+ * "15 runs": a disclosure listing the run each object's numbers come from, each a link to that run alone.
+ * The trigger is a button and the panel holds plain links, so every run stays reachable by keyboard.
+ */
+function RunSources({ runs, systemName, hrefFor }: { runs: readonly Version[]; systemName: (v: Version) => string | undefined; hrefFor: RunScopeProps["hrefFor"] }) {
+  return (
+    <Popover.Root>
+      <Popover.Trigger className="m-ink-accent cursor-pointer underline underline-offset-2">
+        {plural(runs.length, "run")}
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Positioner side="bottom" align="start" sideOffset={6} className="z-50">
+          <Popover.Popup aria-label="Runs behind these numbers" className="m-popup max-h-[360px] max-w-[calc(100vw-32px)] overflow-y-auto">
+            <ul data-testid="run-source-list" className="flex flex-col">
+              {runs.map((r) => (
+                <li key={r.id}>
+                  <Link href={hrefFor(r.id)} className="m-popup-item h-auto flex-col items-start gap-0 py-1.5 hover:[background:var(--m-sheet-raised)]">
+                    <span className="[color:var(--m-accent)]">{runObjects(r)}</span>
+                    <span className="m-text-meta [color:var(--m-ink-3)]">{[systemName(r), formatDate(r.run_at, "date")].filter(Boolean).join(", ")}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
 /**
  * The header meta of a page that combines runs (home's current state): a "Showing" switch between the current state
- * (every object at its latest run) and any one run, and, for all runs, the runs each number comes from, each with its system and a link to it alone.
+ * (every object at its latest run) and any one run, and, for the current state, one line ("Current state of 15 objects,
+ * latest run 16 Oct 2026") with the runs each number comes from behind a "15 runs" disclosure, each a link to it alone.
  */
 export function StateScope({ runs, pinned, objectCount, systemName, hrefFor }: {
   /** The latest run of every lineage, newest first. */
@@ -102,17 +139,12 @@ export function StateScope({ runs, pinned, objectCount, systemName, hrefFor }: {
         <Link href={hrefFor(null)} className="m-ink-accent underline underline-offset-2">
           Back to current state
         </Link>
-      ) : (
+      ) : runs[0] ? (
         <span data-testid="run-sources">
-          {plural(objectCount, "object")} from{" "}
-          {runs.map((r, i) => (
-            <Fragment key={r.id}>
-              {i > 0 && "; "}
-              <Link href={hrefFor(r.id)} className="m-ink-accent underline underline-offset-2">{source(r)}</Link>
-            </Fragment>
-          ))}
+          {stateScopeLine(objectCount, runs[0].run_at)}, from{" "}
+          <RunSources runs={runs} systemName={systemName} hrefFor={hrefFor} />
         </span>
-      )}
+      ) : null}
     </span>
   );
 }

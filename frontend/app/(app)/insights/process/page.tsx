@@ -20,7 +20,8 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, buildDrillHref, Card, DataTable, Drawer, EmptyState, ErrorState, Graph, Mono, Notice, Pill, Select, Skeleton, Stat, Tabs, type InsightHeaderProps, Status } from "@/design";
+import { Button, buildDrillHref, Card, DataTable, Drawer, EmptyState, ErrorState, Graph, Mono, Notice, Pill, Select, Skeleton, RowAction, RowActionButton, Stat, actionColumn, type InsightHeaderProps, Status } from "@/design";
+import { LedgerHead } from "@/components/mdm/ledger";
 import { apiErrorState } from "@/lib/error";
 import { PROCESS_MODULES, asIsHref, isCompleteVersion, l1Fields, l4Fields, modulesOfL1, red, score, sev, systemOfVersion, useFindingHref, useLatestVersion, verdictOf } from "@/components/process/shared";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
@@ -217,10 +218,7 @@ const blockingColumns: ColumnDef<BlockingRow>[] = [
   { id: "finding", header: "Finding", cell: ({ row }) => <span className="line-clamp-2 [min-width:14rem]" title={row.original.title}>{row.original.title}</span> },
   { id: "gate", header: "Process step", accessorFn: (b) => b.gate },
   { accessorKey: "affected", header: "Records", meta: { numeric: true }, cell: ({ row }) => row.original.affected.toLocaleString() },
-  {
-    id: "action", header: "", enableSorting: false,
-    cell: ({ row }) => (row.original.href ? <Link href={row.original.href} className="m-ink-accent underline underline-offset-2">Fix</Link> : null),
-  },
+  actionColumn<BlockingRow>((b) => (b.href ? <RowAction href={b.href} label={`Fix ${b.checkId ?? b.field}`}>Fix</RowAction> : null), ""),
 ];
 
 function FeaturesList({ results }: { results: ConfigImpactResult[] }) {
@@ -424,12 +422,13 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
         </span>
       </div>
 
-      {/* The ledger: the blocking findings ranked by records affected, each with its one action. */}
-      <Card title="Blocking findings" dataTour="process-readiness" meta={`Fields that stop a process step, most records first${blockingFindings.length > 10 ? `; top 10 of ${blockingFindings.length.toLocaleString()}` : ""}`}>
+      {/* The ledger: the blocking findings ranked by records affected, each with its one action. The table is its own sheet, never a card in a card. */}
+      <section aria-label="Blocking findings" data-tour="process-readiness">
+        <LedgerHead title="Blocking findings" meta={`Fields that stop a process step, most records first${blockingFindings.length > 10 ? `; top 10 of ${blockingFindings.length.toLocaleString()}` : ""}`} />
         {blockingFindings.length ? (
           <DataTable columns={blockingColumns} data={blockingFindings.slice(0, 10)} getRowId={(b) => b.id} hideToolbar height="auto" />
-        ) : <EmptyState title="Nothing blocks go-live" detail="No mandatory field fails in this process." action={<Button variant="secondary" render={<Link href={withScope("/insights/rules", { run: latest.id, module: object })}>Open failing rules</Link>} />} />}
-      </Card>
+        ) : <Card><EmptyState title="Nothing blocks go-live" detail="No mandatory field fails in this process." action={<Button variant="secondary" render={<Link href={withScope("/insights/rules", { run: latest.id, module: object })}>Open failing rules</Link>} />} /></Card>}
+      </section>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card title="Process steps" meta={`${l1.l1_name}: the share of fields passing in each step`}>
@@ -584,7 +583,7 @@ function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) 
                     { id: "status", header: "Status", cell: ({ row }) => <Status kind="verdict" value={row.original.step_status} /> },
                     { id: "step", header: "Step", accessorFn: (b) => b.label },
                     { id: "records", header: "Records", meta: { numeric: true }, accessorFn: (b) => b.affected_records, cell: ({ row }) => records(row.original.affected_records) },
-                    { id: "action", header: "", enableSorting: false, cell: ({ row }) => <button type="button" className="m-ink-accent underline underline-offset-2" onClick={() => setNode(row.original.id)}>Open</button> },
+                    actionColumn<(typeof bottlenecks)[number]>((b) => <RowActionButton label={`Open ${b.label}`} onClick={() => setNode(b.id)}>Open</RowActionButton>, ""),
                   ] as ColumnDef<(typeof bottlenecks)[number]>[]}
                   data={bottlenecks.slice(0, 8)}
                   getRowId={(b) => b.id}
@@ -646,10 +645,17 @@ export default function ProcessInsightsPage() {
       run={latest?.id ?? run}
       insight={insight ?? placeholder}
     >
-      <Tabs value={tab} onValueChange={setTab} items={[
-        { value: "readiness", label: "Readiness", content: <ReadinessView onInsight={onInsight} /> },
-        { value: "map", label: "Map", content: <MapView onInsight={onInsight} /> },
-      ]} />
+      {/* The frame already draws the view's tab strip; Readiness and Map switch with a pair of toggle buttons, not a second strip. */}
+      <div className="flex flex-col gap-4">
+        <div role="group" aria-label="Show" className="flex items-center gap-2">
+          {([["readiness", "Readiness"], ["map", "Map"]] as const).map(([value, label]) => (
+            <Button key={value} size="sm" variant={tab === value ? "secondary" : "ghost"} aria-pressed={tab === value} onClick={() => setTab(value)}>
+              {label}
+            </Button>
+          ))}
+        </div>
+        {tab === "map" ? <MapView onInsight={onInsight} /> : <ReadinessView onInsight={onInsight} />}
+      </div>
     </InsightFrame>
   );
 }

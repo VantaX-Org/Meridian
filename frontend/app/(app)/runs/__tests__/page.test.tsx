@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import { Button } from "@/design";
@@ -228,6 +229,23 @@ describe("RunsPage", () => {
   });
 });
 
+describe("RunsPage header", () => {
+  it("puts the run count in the meta, not a tile, and leads with one primary action and the rest in More", async () => {
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, older] });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    renderWithQuery(<RunsPage />);
+    await waitFor(() => expect(screen.getByTestId("runs-meta")).toHaveTextContent("2 runs, newest first"));
+    expect(screen.queryByText("Runs", { selector: ".m-stat *" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Run analysis" })).toHaveClass("m-btn-primary");
+    expect(screen.queryByRole("link", { name: "Present" })).toBeNull();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "More" }));
+    expect(await screen.findByRole("menuitem", { name: "Review fixes" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Present" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Archive older runs" })).toBeInTheDocument();
+  });
+});
+
 describe("RunsPage archive", () => {
   it("archives older runs keeping the newest N and refreshes the list", async () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, older] });
@@ -235,7 +253,9 @@ describe("RunsPage archive", () => {
     const archive = vi.spyOn(versionsApi, "archiveVersions").mockResolvedValue({ archived: 1 });
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: "Archive older runs" }));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "More" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Archive older runs" }));
     const keep = await screen.findByLabelText("Keep the newest");
     fireEvent.change(keep, { target: { value: "3" } });
     fireEvent.click(screen.getByRole("button", { name: "Archive" }));
@@ -253,7 +273,9 @@ describe("RunsPage archive", () => {
     expect(get).toHaveBeenCalledWith(expect.objectContaining({ include_archived: true }));
     expect(screen.getByText("Archived")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Remove filter Runs" }).closest(".m-chip")).toHaveTextContent("RunsIncluding archived");
-    fireEvent.click(screen.getByRole("button", { name: "Restore archived runs" }));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "More" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Restore archived runs" }));
     await waitFor(() => expect(restore).toHaveBeenCalled());
     searchParams.delete("archived");
   });
