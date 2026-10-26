@@ -1,5 +1,9 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+
+// The picker follows the run it starts into its extraction log, so it needs a router under test.
+const push = vi.hoisted(() => vi.fn());
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }), usePathname: () => "/systems/s1" }));
 import { renderWithQuery } from "@/__tests__/render";
 import { ScopePicker } from "../scope-picker";
 import * as systemObjectsApi from "@/lib/api/system-objects";
