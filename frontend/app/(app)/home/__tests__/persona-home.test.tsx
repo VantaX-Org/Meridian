@@ -410,8 +410,15 @@ describe("PersonaHomePage current state across objects", () => {
     renderWithQuery(<LeadHomePage />);
 
     // Every number names its runs: the state's sources, each linking to its run alone.
-    expect(await screen.findByTestId("run-sources")).toHaveTextContent("3 objects from controlling_1k, 16 Oct 2026;");
-    expect(screen.getByRole("link", { name: "controlling_1k, 16 Oct 2026" })).toHaveAttribute("href", "/home/lead?run=co2");
+    // One line, no raw run ids: the runs sit behind a "3 runs" disclosure, each named by its object.
+    const sources = await screen.findByTestId("run-sources");
+    expect(sources).toHaveTextContent("Current state of 3 objects, latest run 16 Oct 2026, from 3 runs");
+    expect(sources).not.toHaveTextContent("controlling_1k");
+    fireEvent.click(screen.getByRole("button", { name: "3 runs" }));
+    const list = await screen.findByTestId("run-source-list");
+    expect(within(list).getAllByRole("link")).toHaveLength(3);
+    expect(within(list).getByRole("link", { name: /^Controlling/ })).toHaveAttribute("href", "/home/lead?run=co2");
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
     expect(screen.getByTestId("home-verdict")).toHaveTextContent("1 of 3 objects is not ready for go-live, 1 at risk.");
     // (70 + 95 + 80) / 3 against the state before the newest run, (64 + 95 + 80) / 3: +2
     const dqs = screen.getByTestId("home-dqs");

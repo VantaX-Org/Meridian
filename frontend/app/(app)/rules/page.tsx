@@ -21,7 +21,7 @@ import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
-import { DrillLink, Button, Card, DataTable, DomainChip, Drawer, EmptyState, ErrorState, ExportMenu, Field, Input, Mono, Notice, PageHeader, Pill, Score, Select, Skeleton, Stat, Switch, Tabs, Textarea, Status, buildDrillHref, emptyExportOptions, toast, type CellMeta, PageFrame } from "@/design";
+import { DrillLink, Button, Card, DataTable, DomainChip, Drawer, EmptyState, ErrorState, Field, Input, Mono, Notice, PageHeader, Pill, Score, Select, Skeleton, Stat, Switch, Tabs, Textarea, Status, buildDrillHref, toast, type CellMeta, PageFrame } from "@/design";
 import { actionColumn, LedgerHead, RowLink } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
@@ -102,6 +102,7 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
   const state = rawState === "enabled" || rawState === "disabled" || rawState === "not_run" || rawState === "failing" ? rawState : "";
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [moreFilters, setMoreFilters] = useState(false);
 
   const [cfgSystem, setCfgSystem] = useUrlState("config_system", "");
   const systemScope = useSystemScope();
@@ -284,31 +285,41 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
     state && { key: "state", label: `State: ${state === "not_run" ? "Not run yet" : labelOf(state)}`, clear: () => setState("") },
   ].filter((c): c is FilterChip => !!c);
 
+  // The common filters sit up front; the rest wait behind "Filters". Every active filter shows as a chip below either way.
+  const secondaryActive = [category !== "all", check, dimension, auth, source, table, cfgSystem].filter(Boolean).length;
   const filterBar = (
-    <div className="flex flex-wrap items-end gap-3">
-      <Field label="Search">
-        <Input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter rules" />
-      </Field>
-      <Field label="System type">
-        <Select value={category === "all" ? "" : category} onValueChange={(v) => setCategory(v || "all")} placeholder="All system types"
-          options={[{ value: "", label: "All system types" }, ...Object.entries(CATEGORY_LABEL).map(([value, label]) => ({ value, label }))]} />
-      </Field>
-      {facetSelect("Check type", check, setCheck, facets.checks, checkClassLabel, "All check types")}
-      {facetSelect("Dimension", dimension, setDimension, facets.dimensions, labelOf, "All dimensions")}
-      {facetSelect("Severity", severity, setSeverity, [...SEVERITIES], labelOf, "All severities")}
-      <Field label="Authority">
-        <Select value={auth} onValueChange={setAuth} placeholder="All authorities"
-          options={[{ value: "", label: "All authorities" }, { value: "shipped", label: "SAP standard (shipped)" }, { value: "customer", label: "Customer configured" }]} />
-      </Field>
-      {facetSelect("State", state, setState, ["failing", "enabled", "disabled", "not_run"], (v) => (v === "not_run" ? "Not run yet" : labelOf(v)), "All states")}
-      {facetSelect("Source", source, setSource, facets.sources, (v) => labelOf(SOURCE_LABEL[v] ?? v), "All sources")}
-      {facetSelect("Object", module, setModule, facets.modules, formatModuleName, "All objects")}
-      {facetSelect("Table", table, setTable, facets.tables, (v) => v, "All tables")}
-      {facetSelect("View", view, setView, facets.views, (v) => MM_VIEWS.find((x) => x.id === v)?.label ?? v, "All views")}
-      {(systemsQ.data?.length ?? 0) > 1
-        ? facetSelect("Configuration", cfgSystem, setCfgSystem, (systemsQ.data ?? []).map((s) => s.id), (id) => systemsQ.data?.find((s) => s.id === id)?.name ?? id, "All systems")
-        : null}
-      <ExportMenu options={visible.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} />
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-end gap-3">
+        <Field label="Search">
+          <Input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter rules" />
+        </Field>
+        {facetSelect("Object", module, setModule, facets.modules, formatModuleName, "All objects")}
+        {facetSelect("View", view, setView, facets.views, (v) => MM_VIEWS.find((x) => x.id === v)?.label ?? v, "All views")}
+        {facetSelect("Severity", severity, setSeverity, [...SEVERITIES], labelOf, "All severities")}
+        {facetSelect("State", state, setState, ["failing", "enabled", "disabled", "not_run"], (v) => (v === "not_run" ? "Not run yet" : labelOf(v)), "All states")}
+        <Button variant="secondary" aria-expanded={moreFilters} aria-controls="rules-more-filters" onClick={() => setMoreFilters((o) => !o)}>
+          {secondaryActive ? `Filters (${secondaryActive})` : "Filters"}
+        </Button>
+      </div>
+      {moreFilters ? (
+        <div id="rules-more-filters" className="flex flex-wrap items-end gap-3">
+          <Field label="System type">
+            <Select value={category === "all" ? "" : category} onValueChange={(v) => setCategory(v || "all")} placeholder="All system types"
+              options={[{ value: "", label: "All system types" }, ...Object.entries(CATEGORY_LABEL).map(([value, label]) => ({ value, label }))]} />
+          </Field>
+          {facetSelect("Check type", check, setCheck, facets.checks, checkClassLabel, "All check types")}
+          {facetSelect("Dimension", dimension, setDimension, facets.dimensions, labelOf, "All dimensions")}
+          <Field label="Authority">
+            <Select value={auth} onValueChange={setAuth} placeholder="All authorities"
+              options={[{ value: "", label: "All authorities" }, { value: "shipped", label: "SAP standard (shipped)" }, { value: "customer", label: "Customer configured" }]} />
+          </Field>
+          {facetSelect("Source", source, setSource, facets.sources, (v) => labelOf(SOURCE_LABEL[v] ?? v), "All sources")}
+          {facetSelect("Table", table, setTable, facets.tables, (v) => v, "All tables")}
+          {(systemsQ.data?.length ?? 0) > 1
+            ? facetSelect("Configuration", cfgSystem, setCfgSystem, (systemsQ.data ?? []).map((s) => s.id), (id) => systemsQ.data?.find((s) => s.id === id)?.name ?? id, "All systems")
+            : null}
+        </div>
+      ) : null}
     </div>
   );
 
@@ -320,7 +331,7 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
       ) : dayOne.status === "error" ? (
         <ErrorState {...apiErrorState(dayOne.error)} onRetry={dayOne.refetch} />
       ) : hasFinishedRun ? (
-        <DataTable columns={coverageColumns} data={coverageRows} getRowId={(r) => r.module} tableId="rules-coverage" />
+        <DataTable columns={coverageColumns} data={coverageRows} getRowId={(r) => r.module} tableId="rules-coverage" hideSearch />
       ) : (
         <EmptyState title="Coverage is measured on a finished run" action={<DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />} />
       )}
@@ -345,7 +356,7 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
       ) : visible.length ? (
         <section aria-label="Rule catalogue">
           <LedgerHead title="Rules, lowest pass rate first" meta={`${visible.length.toLocaleString()} of ${rules.length.toLocaleString()}`} />
-          <DataTable columns={columns} data={visible} getRowId={(r) => r.id} onRowClick={(r) => setSelectedId(r.id)} rowHref={(r) => `/rules/${r.id}`} tableId="rules-library" />
+          <DataTable columns={columns} data={visible} getRowId={(r) => r.id} onRowClick={(r) => setSelectedId(r.id)} rowHref={(r) => `/rules/${r.id}`} tableId="rules-library" hideSearch exportOptions={exportOptions} exportName="rules" />
         </section>
       ) : filtered ? (
         <EmptyState

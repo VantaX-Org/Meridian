@@ -2,13 +2,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { PageHeader, DrillLink, FilterChip, Button, ConfirmDialog, DataTable, Delta, EmptyState, ExplorerPage, emptyExportOptions, Field, HelpHint, Input, Line, Pager, Pill, Score, Select, Skeleton, Sparkline, Stat, StatSkeleton, Tooltip, usePrefetch, type CellMeta, Status, toLifecycle, ProgressFill } from "@/design";
-import { InsightActions } from "@/app/(app)/insights/_components/InsightActions";
+import { PageHeader, DrillLink, FilterChip, Button, ConfirmDialog, DataTable, Delta, EmptyState, ExplorerPage, ExportMenu, emptyExportOptions, Field, HelpHint, Input, Line, Menu, Pager, Pill, RowAction, Score, Select, Skeleton, Sparkline, Stat, StatSkeleton, Tooltip, usePrefetch, type CellMeta, Status, toLifecycle, ProgressFill } from "@/design";
+import { RunAnalysis } from "@/app/(app)/insights/_components/RunAnalysis";
 import { InsightTabs } from "@/app/(app)/insights/_components/InsightViews";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { useRole } from "@/hooks/use-role";
@@ -147,6 +146,7 @@ function makeColumns(allVersions: Version[], onDelete?: (v: Version) => void): C
       header: "",
       size: 150,
       enableSorting: false,
+      meta: { sticky: "end" } satisfies CellMeta,
       cell: ({ row }) => (
         <span className="inline-flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
           {onDelete && row.original.metadata?.archived ? (
@@ -154,7 +154,7 @@ function makeColumns(allVersions: Version[], onDelete?: (v: Version) => void): C
               Delete permanently
             </Button>
           ) : null}
-          <Link href={`/runs/${row.original.id}`} aria-label={`Open ${runName(row.original)}`} className="m-ink-accent">Open</Link>
+          <RowAction href={`/runs/${row.original.id}`} label={`Open ${runName(row.original)}`} />
         </span>
       ),
     },
@@ -190,6 +190,7 @@ const PAGE_SIZE = 100;
 
 export default function RunsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [system, setSystem] = useUrlState("system");
   const [rawStatus, setStatus] = useUrlState("status", "");
   const [archivedParam, setArchived] = useUrlState("archived", "");
@@ -311,29 +312,36 @@ export default function RunsPage() {
       toast.error(blocked ? `Not deleted: ${blocked}` : errorText(e));
     },
   });
-  // Runs is a tab of the Operate view: the same spine (view tabs, Run analysis, Review fixes, Present, Export) as
-  // every insight page, so the thread from a run to its results never breaks.
+  // Runs is a tab of the Operate view, under the view tabs. Run analysis is the one primary action and Export the one
+  // secondary; Review fixes, Present and archiving wait in "More". The run count is the header meta, not a tile.
+  const runTotal = all.data?.total ?? allVersions.length;
+  const presenting = searchParams?.get("present") === "1";
+  const presentHref = `/runs?${new URLSearchParams({ ...Object.fromEntries(searchParams?.entries() ?? []), present: "1" })}`;
+  const moreItems = [
+    { label: "Review fixes", onSelect: () => router.push("/fix") },
+    { label: "Present", onSelect: () => router.push(presentHref) },
+    ...(can("analyse")
+      ? [showArchived
+        ? { label: "Restore archived runs", onSelect: () => restore.mutate() }
+        : { label: "Archive older runs", onSelect: () => setArchiveOpen(true) }]
+      : []),
+  ];
   const header = (
     <PageHeader
       title="Runs"
-      meta={<span className="inline-flex items-center gap-1">Every analysis, newest first; change is against the previous run of the same system <HelpHint term="previous_run" /></span>}
-      tabs={<InsightTabs />}
-      actions={
-        <>
-          {can("analyse") ? (
-            showArchived ? (
-              <Tooltip label="Bring every archived run back into the lists" render={<Button variant="secondary" onClick={() => restore.mutate()} pending={restore.isPending} />}>
-                Restore archived runs
-              </Tooltip>
-            ) : (
-              <Tooltip label="Hide finished runs older than the newest ones you keep. Nothing is deleted." maxWidth={260} render={<Button variant="secondary" onClick={() => setArchiveOpen(true)} />}>
-                Archive older runs
-              </Tooltip>
-            )
-          ) : null}
-          <InsightActions options={state === "empty" ? emptyExportOptions(exportOptions) : exportOptions} />
-        </>
+      meta={
+        <span data-testid="runs-meta" className="inline-flex items-center gap-1">
+          {all.isLoading || runTotal === 0 ? "Every analysis" : plural(runTotal, "run")}, newest first; change is against the previous run of the same system <HelpHint term="previous_run" />
+        </span>
       }
+      tabs={<InsightTabs />}
+      actions={presenting ? undefined : (
+        <>
+          <Menu trigger={<Button variant="ghost" pending={restore.isPending}>More</Button>} items={moreItems} />
+          <ExportMenu options={state === "empty" ? emptyExportOptions(exportOptions) : exportOptions} />
+          <RunAnalysis variant="primary" />
+        </>
+      )}
     />
   );
 
@@ -360,7 +368,8 @@ export default function RunsPage() {
         )}
       </div>
       {rows.length > 0 || headScoped.length > 0 ? (
-        <div className="m-stat-grid m-motion-stagger @5xl:[grid-template-columns:repeat(2,minmax(0,360px))]">
+        // As many columns as tiles, so one tile never stretches across the row.
+        <div className={`m-stat-grid m-motion-stagger ${failedCount > 0 ? "@5xl:[grid-template-columns:repeat(2,minmax(0,360px))]" : "[grid-template-columns:minmax(0,360px)]"}`}>
           <Stat
             label={latestScopeName ? `Latest DQS, ${latestScopeName}` : "Latest DQS"}
             help="dqs"
@@ -371,7 +380,6 @@ export default function RunsPage() {
             hint={!latest ? "No earlier run" : delta === null ? `${runScopeLabel(latest)}, mean of ${plural(Object.keys(latest.dqs_summary ?? {}).length, "object")}` : `${runScopeLabel(latest)}, vs previous run`}
             href={latest ? `/runs/${latest.id}` : undefined}
           />
-          <Stat label="Runs" value={(all.data?.total ?? allVersions.length).toLocaleString()} hint={all.data?.total != null && all.data.total > headVersions.length ? `latest ${headVersions.length} used for the figures above` : undefined} />
           {failedCount > 0 ? <Stat label="Failed runs" hint={`in the latest ${PAGE_SIZE}`} value={failedCount.toLocaleString()} tone="no-go" href="/runs?status=failed" /> : null}
         </div>
       ) : null}

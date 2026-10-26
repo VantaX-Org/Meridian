@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { DataTable } from "./DataTable";
 import { textColumn, numberColumn, idColumn, barFill, type CellMeta } from "./columns";
 import { Pager } from "./Pager";
+import { RowAction, actionColumn, ROW_ACTION_CLASS } from "./RowAction";
 import { Drawer } from "../primitives/Drawer";
 
 interface Row {
@@ -378,5 +379,31 @@ describe("DataTable layout features", () => {
     const { container } = render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} hideSearch hideToolbar maxHeight={300} />);
     expect(screen.queryByLabelText("Filter rows")).not.toBeInTheDocument();
     expect(container.querySelector("div[style*='max-height: 300px']")).not.toBeNull();
+  });
+
+  it("right-aligns a sortable numeric header with its figures", () => {
+    interface N { id: string; n: number }
+    render(<DataTable columns={[numberColumn<N>("n", "Count")]} data={[{ id: "a", n: 3 }]} getRowId={(r) => r.id} hideToolbar />);
+    const button = screen.getByRole("button", { name: "Count" });
+    expect(button).toHaveClass("w-full", "justify-end");
+    expect(button.closest("th")).toHaveClass("text-right");
+  });
+
+  it("pins sticky columns, hides low-priority columns on phones and draws the row action in one style", () => {
+    const cols = [
+      { ...textColumn<Row>("name", "Name"), meta: { sticky: "start" } satisfies CellMeta },
+      { ...idColumn<Row>("id", "Key"), meta: { mono: true, priority: "low" } satisfies CellMeta },
+      actionColumn<Row>((r) => <RowAction href={`/x/${r.id}`} label={`Open ${r.name}`} />),
+    ];
+    render(<DataTable columns={cols} data={rows} getRowId={(r) => r.id} hideToolbar />);
+    const head = screen.getAllByRole("columnheader");
+    expect(head[0]).toHaveClass("sticky", "left-0");
+    expect(head[1]).toHaveClass("max-[640px]:hidden");
+    expect(head[2]).toHaveClass("sticky", "right-0");
+    const open = screen.getByRole("link", { name: "Open Alpha" });
+    expect(open).toHaveAttribute("href", "/x/1");
+    expect(open.className).toBe(ROW_ACTION_CLASS);
+    const cell = open.closest("td");
+    expect(cell).toHaveClass("sticky", "right-0", "bg-[var(--m-sheet)]");
   });
 });

@@ -27,7 +27,7 @@ import { Mono } from "../primitives/Mono";
 import { Menu } from "../primitives/Menu";
 import { exportOptionLabel, runExportOption, type ExportOption } from "../primitives/ExportMenu";
 import { deleteView, loadViews, saveView, toCsv, type TableView } from "./views";
-import { barFill, type CellMeta } from "./columns";
+import { barFill, columnLayoutClass, type CellMeta } from "./columns";
 import { rampStep } from "../tokens";
 import { readPrefs, subscribePreferences } from "../../lib/preferences";
 
@@ -426,18 +426,19 @@ export function DataTable<T>({
           aria-activedescendant={activeRendered ? rowDomId(activeIndex) : undefined}
           onKeyDown={onGridKeyDown}
         >
-          <thead className="sticky top-0 z-[1]">
+          <thead className="sticky top-0 z-[2]">
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id} aria-rowindex={1}>
                 {hg.headers.map((h) => {
                   const sortable = h.column.getCanSort();
                   const sorted = h.column.getIsSorted();
-                  const headHeat = (h.column.columnDef.meta as CellMeta | undefined)?.heat;
+                  const headMeta = h.column.columnDef.meta as CellMeta | undefined;
+                  const headHeat = headMeta?.heat;
                   return (
                     <th
                       key={h.id}
                       aria-sort={sortable ? (sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : "none") : undefined}
-                      className={`m-text-label px-2 font-medium border-b ${(h.column.columnDef.meta as CellMeta | undefined)?.numeric ? "text-right" : "text-left"}`}
+                      className={`m-text-label px-2 font-medium border-b ${headMeta?.numeric ? "text-right" : "text-left"} ${columnLayoutClass(headMeta)}`}
                       style={{
                         height: 28, background: "var(--m-sheet)", borderColor: "var(--m-line-strong)",
                         color: sorted ? "var(--m-ink)" : "var(--m-ink-3)",
@@ -448,7 +449,8 @@ export function DataTable<T>({
                         <button
                           type="button"
                           onClick={h.column.getToggleSortingHandler()}
-                          className="flex items-center gap-1 select-none"
+                          // A numeric header sits over right-aligned figures: the button fills the cell and packs to the right.
+                          className={`flex items-center gap-1 select-none ${headMeta?.numeric ? "w-full justify-end" : ""}`}
                         >
                           {flexRender(h.column.columnDef.header, h.getContext())}
                           {sorted === "asc" ? <IconArrowUp size={12} /> : sorted === "desc" ? <IconArrowDown size={12} /> : null}
@@ -524,7 +526,7 @@ export function DataTable<T>({
                     return (
                       <td
                         key={cell.id}
-                        className={`px-2 ${meta?.numeric ? "text-right m-numeric" : ""} ${firstText ? "m-motion-colors group-hover:text-[var(--m-accent)]" : ""} ${heat ?? ""}`}
+                        className={`px-2 ${meta?.numeric ? "text-right m-numeric" : ""} ${firstText ? "m-motion-colors group-hover:text-[var(--m-accent)]" : ""} ${heat ?? ""} ${meta?.sticky ? `z-[1] ${row.getIsSelected() ? "bg-[var(--m-accent-soft)]" : "bg-[var(--m-sheet)] group-hover:bg-[var(--m-sheet-raised)]"}` : ""} ${columnLayoutClass(meta)}`}
                       >
                         {bar ? (
                           <span className="flex items-center justify-end gap-2">

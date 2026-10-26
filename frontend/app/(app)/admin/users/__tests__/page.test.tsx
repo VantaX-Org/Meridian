@@ -133,6 +133,19 @@ describe("admin users page", () => {
     expect(within(dialog).getByRole("button", { name: "Remove user" })).toBeEnabled();
   });
 
+  it("counts users and those who never signed in in the header meta, not a stat tile", async () => {
+    const signedIn: User = { ...USER, id: "u2", name: "Ben Analyst", email: "ben@example.com", last_login: "2026-10-20T00:00:00Z" };
+    const never: User = { ...USER, id: "u3", name: "Cleo Viewer", email: "cleo@example.com" };
+    vi.spyOn(usersApi, "getUsers").mockResolvedValue({ users: [USER, signedIn, never] });
+    renderWithQuery(<AdminUsersPage />);
+    expect(await screen.findByTestId("users-meta")).toHaveTextContent("3 users, 2 never signed in");
+    expect(screen.queryByText("Never signed in")).toBeNull();
+    // the user cell is one line: name and email side by side
+    const name = await screen.findByText("Ana Steward");
+    expect(name.parentElement).toHaveTextContent("Ana Stewardana@example.com");
+    expect(name.closest("td")).toHaveClass("sticky");
+  });
+
   it("shows a retryable error when users fail to load", async () => {
     const spy = vi.spyOn(usersApi, "getUsers").mockRejectedValue(new Error("network down"));
     vi.spyOn(usersApi, "getAssignableUsers").mockResolvedValue([]);

@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, Checkbox, ConfirmDialog, DataTable, Drawer, EmptyState, Menu, Notice, PageHeader, Pill, Skeleton, Stat, Async, IconButton, IconMore, Tooltip, toast } from "@/design";
+import { Button, Checkbox, ConfirmDialog, DataTable, Drawer, EmptyState, Menu, Notice, PageHeader, Pill, Skeleton, Async, IconButton, IconMore, Tooltip, toast, type CellMeta } from "@/design";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { downloadCsv } from "@/lib/actions";
@@ -40,6 +40,9 @@ export default function AdminUsersPage() {
   const { can, loading } = useRole();
   const canManage = can("manage_users");
   const [invite, setInvite] = useState(false);
+  // The header meta counts the people: the same query the users table reads, so it is fetched once.
+  const usersQ = useQuery({ queryKey: queryKeys.users(), queryFn: getUsers, enabled: canManage && !loading });
+  const usersMeta = usersMetaLine(usersQ.data?.users);
 
   // Grants fail closed while loading; a refusal must not flash before they arrive.
   if (loading) return <div aria-busy="true"><Skeleton height={320} /></div>;
@@ -55,7 +58,7 @@ export default function AdminUsersPage() {
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Users"
-        meta="Who can sign in and which roles each person holds. Invite people or suspend someone's access"
+        meta={usersMeta ? <span data-testid="users-meta">{usersMeta}</span> : "Who can sign in and which roles each person holds. Invite people or suspend someone's access"}
         actions={
           <>
             <Button variant="secondary" render={<Link href="/admin/roles">Roles and access</Link>} />
@@ -74,14 +77,20 @@ export default function AdminUsersPage() {
   );
 }
 
+/** "3 users, 2 never signed in": the header line; undefined until the users are known. */
+function usersMetaLine(users: User[] | undefined): string | undefined {
+  if (!users) return undefined;
+  const never = users.filter((u) => u.is_active && !u.last_login).length;
+  const count = `${users.length.toLocaleString()} ${users.length === 1 ? "user" : "users"}`;
+  return never ? `${count}, ${never.toLocaleString()} never signed in` : count;
+}
+
 function UsersView({ invite, setInvite }: { invite: boolean; setInvite: (open: boolean) => void }) {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<User | null>(null);
 
   const usersQ = useQuery({ queryKey: queryKeys.users(), queryFn: getUsers });
   const users = useMemo(() => usersQ.data?.users ?? [], [usersQ.data]);
-  const active = users.filter((u) => u.is_active);
-  const neverSignedIn = active.filter((u) => !u.last_login).length;
   const refresh = () => qc.invalidateQueries({ queryKey: queryKeys.users() });
 
   const del = useMutation({
@@ -96,15 +105,21 @@ function UsersView({ invite, setInvite }: { invite: boolean; setInvite: (open: b
 
   const columns = useMemo<ColumnDef<User, unknown>[]>(() => [
     {
-      id: "user", header: "User",
-      cell: ({ row }) => <span><strong>{row.original.name}</strong><div className="m-text-meta m-ink-3">{row.original.email}</div></span>,
+      // One line: the name, then the email in quiet ink, so the row keeps its height.
+      id: "user", header: "User", meta: { sticky: "start" } satisfies CellMeta,
+      cell: ({ row }) => (
+        <span className="flex min-w-0 max-w-[420px] items-baseline gap-2 whitespace-nowrap" title={row.original.email}>
+          <strong className="truncate">{row.original.name}</strong>
+          <span className="m-text-meta m-ink-3 truncate">{row.original.email}</span>
+        </span>
+      ),
     },
     { id: "role", header: "Roles", cell: ({ row }) => <span>{grantNames(row.original)}</span> },
     { id: "active", header: "Status", cell: ({ row }) => <Pill tone={row.original.is_active ? "go" : "neutral"}>{row.original.is_active ? "Active" : "Suspended"}</Pill> },
     { id: "login", header: "Last sign-in", cell: ({ row }) => row.original.last_login ? relativeTime(row.original.last_login) : "Never" },
-    { id: "since", header: "Member since", cell: ({ row }) => relativeTime(row.original.created_at) },
+    { id: "since", header: "Member since", meta: { priority: "low" } satisfies CellMeta, cell: ({ row }) => relativeTime(row.original.created_at) },
     {
-      id: "actions", header: "Action",
+      id: "actions", header: "Action", meta: { sticky: "end" } satisfies CellMeta,
       cell: ({ row }) => (
         <span onClick={(e) => e.stopPropagation()}>
           <Menu
@@ -118,10 +133,6 @@ function UsersView({ invite, setInvite }: { invite: boolean; setInvite: (open: b
 
   return (
     <div className="flex flex-col gap-4 pt-4">
-      <div className="flex gap-4">
-        <Stat label="Never signed in" value={usersQ.isLoading ? undefined : neverSignedIn} />
-      </div>
-
       <Async query={usersQ} skeleton={240}>{users.length ? (
         <DataTable
           columns={columns}
