@@ -23,7 +23,7 @@ const PATHS = [...new Set([...NAV_HREFS, ...ROUTES.map((r) => r.path), "/fix?tab
 
 const MUTATING = /^(approve|reject|write ?back|sign off|extract( now)?|apply|accept|assign|merge|delete|remove|create|new|add|upload|import|run|re-run|rerun|sync|test|save|edit|discover|start|generate|invite|promote|publish|retry|resolve|dismiss|claim|export|bulk|deactivate|revoke|grant|decline)\b/i;
 // A GatedPrimary names itself "<label>. Needs <role> on <scope> — Request access" when not permitted.
-const PRIMARY = /^(approve|write back|sign off|extract( now)?|run discovery|promote)\. Needs .+ — Request access$/i;
+const PRIMARY = /^(approve|write back|sign off|extract( now)?|run discovery|promote|merge)\. Needs .+ — Request access$/i;
 
 /**
  * Routes where a viewer still sees a control whose label starts with a mutating verb, each expected to fail here

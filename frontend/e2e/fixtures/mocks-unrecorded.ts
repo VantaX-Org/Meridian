@@ -543,6 +543,14 @@ async function mockMdm(page: Router) {
   await get(new RegExp(`/api/v1/master-records/${GOLDEN_ID}/merge-events(\\?.*)?$`), []);
   await page.route(/\/api\/v1\/match-scores(\?.*)?$/, (r) =>
     r.request().method() === "GET" ? r.fulfill(json(matchScores(new URL(r.request().url()).searchParams))) : r.fallback());
+  // GET /match-scores/{id} (ReviewPairDetail): the pair plus both records' compared fields
+  for (const p of REVIEW_PAIRS) {
+    const side = (key: string, id: string, v: "value_a" | "value_b") =>
+      ({ key, record_id: id, confidence: null, fields: Object.fromEntries(p.explanation.attributes.map((x) => [x.field, x[v]])) });
+    await get(`**/api/v1/match-scores/${p.id}`, {
+      ...p, record_a: side(p.a, p.a_record_id, "value_a"), record_b: side(p.b, p.b_record_id, "value_b"), default_survivor: p.a,
+    });
+  }
 }
 
 // ── Audit (api/routes/audit.py) ─────────────────────────────────────────────
