@@ -3084,6 +3084,8 @@ rules:
     it before the conversion.
 - id: S4M111
   field: MARA.MTART
+  s4_area: material
+  s4_impact: blocking
   check_class: null_check
   severity: critical
   dimension: completeness
@@ -3097,6 +3099,8 @@ rules:
   record_fix_template: 'MARA.MTART: ''{actual_value}'' is blank. Assign the material type in MM01/MM02.'
 - id: S4M112
   field: MARA.MBRSH
+  s4_area: material
+  s4_impact: blocking
   check_class: null_check
   severity: critical
   dimension: completeness
@@ -3110,6 +3114,8 @@ rules:
   record_fix_template: 'MARA.MBRSH: ''{actual_value}'' is blank. Assign the industry sector.'
 - id: S4M113
   field: MARA.MEINS
+  s4_area: material
+  s4_impact: blocking
   check_class: null_check
   severity: critical
   dimension: completeness
@@ -3122,6 +3128,8 @@ rules:
   record_fix_template: 'MARA.MEINS: ''{actual_value}'' is blank. Assign the base unit of measure.'
 - id: S4M114
   field: MARA.MATKL
+  s4_area: material
+  s4_impact: blocking
   check_class: null_check
   severity: high
   dimension: completeness
@@ -3135,6 +3143,8 @@ rules:
   record_fix_template: 'MARA.MATKL: ''{actual_value}'' is blank. Assign the material group.'
 - id: S4M115
   field: MARA.SPART
+  s4_area: material
+  s4_impact: warning
   check_class: null_check
   severity: medium
   dimension: completeness
@@ -3148,6 +3158,8 @@ rules:
   record_fix_template: 'MARA.SPART: ''{actual_value}'' is blank. Assign the division.'
 - id: S4M116
   field: MARA.PRDHA
+  s4_area: material
+  s4_impact: warning
   check_class: null_check
   severity: low
   dimension: completeness
@@ -3160,6 +3172,8 @@ rules:
   record_fix_template: 'MARA.PRDHA: ''{actual_value}'' is blank. Assign the product hierarchy.'
 - id: S4M117
   field: MARA.MATNR
+  s4_area: material
+  s4_impact: blocking
   check_class: regex_check
   pattern: ^[0-9A-Za-z._-]{1,18}$
   severity: critical
@@ -3175,6 +3189,8 @@ rules:
     material before conversion.'
 - id: S4M118
   field: MBEW.VPRSV
+  s4_area: material_ledger
+  s4_impact: blocking
   check_class: null_check
   severity: critical
   dimension: completeness
@@ -3188,6 +3204,8 @@ rules:
   record_fix_template: 'MBEW.VPRSV: ''{actual_value}'' is blank. Set the price control (S or V) in MM02.'
 - id: S4M119
   field: MBEW.VERPR
+  s4_area: material_ledger
+  s4_impact: blocking
   check_class: cross_field_check
   fail_when: '`MBEW.VERPR` == 0'
   require_populated: true
@@ -3204,6 +3222,8 @@ rules:
     conversion.'
 - id: S4M120
   field: MBEW.STPRS
+  s4_area: material_ledger
+  s4_impact: blocking
   check_class: cross_field_check
   fail_when: '`MBEW.STPRS` == 0'
   require_populated: true
@@ -3219,6 +3239,8 @@ rules:
   record_fix_template: 'MBEW.STPRS: ''{actual_value}'' is zero. Set the standard price in MM02.'
 - id: S4M121
   field: MBEW.PEINH
+  s4_area: material_ledger
+  s4_impact: warning
   check_class: cross_field_check
   fail_when: '`MBEW.PEINH` == 0'
   require_populated: true
@@ -3233,6 +3255,8 @@ rules:
   record_fix_template: 'MBEW.PEINH: ''{actual_value}'' is zero. Set the price unit (normally 1 or 1000).'
 - id: S4M122
   field: MBEW.MLMAA
+  s4_area: material_ledger
+  s4_impact: warning
   check_class: null_check
   severity: medium
   dimension: completeness
@@ -3247,6 +3271,8 @@ rules:
     in the valuation area.'
 - id: S4M123
   field: T001K.MLBWA
+  s4_area: material_ledger
+  s4_impact: blocking
   check_class: null_check
   severity: high
   dimension: completeness
@@ -3261,6 +3287,8 @@ rules:
     in the valuation area.'
 - id: S4M124
   field: ANLA.ANLKL
+  s4_area: asset_accounting
+  s4_impact: blocking
   check_class: null_check
   severity: critical
   dimension: completeness
@@ -3274,6 +3302,8 @@ rules:
   record_fix_template: 'ANLA.ANLKL: ''{actual_value}'' is blank. Assign the asset class.'
 - id: S4M125
   field: ANLA.KTOGR
+  s4_area: asset_accounting
+  s4_impact: blocking
   check_class: null_check
   severity: high
   dimension: completeness
@@ -3287,6 +3317,8 @@ rules:
   record_fix_template: 'ANLA.KTOGR: ''{actual_value}'' is blank. Assign the account determination key.'
 - id: S4M126
   field: ANLA.AKTIV
+  s4_area: asset_accounting
+  s4_impact: blocking
   check_class: null_check
   severity: high
   dimension: completeness
@@ -3299,6 +3331,8 @@ rules:
   record_fix_template: 'ANLA.AKTIV: ''{actual_value}'' is blank. Set the capitalisation date.'
 - id: S4M127
   field: ANLB.AFASL
+  s4_area: asset_accounting
+  s4_impact: blocking
   check_class: null_check
   severity: high
   dimension: completeness
@@ -3311,6 +3345,8 @@ rules:
   record_fix_template: 'ANLB.AFASL: ''{actual_value}'' is blank. Assign the depreciation key.'
 - id: S4M128
   field: ANLB.NDJAR
+  s4_area: asset_accounting
+  s4_impact: warning
   check_class: null_check
   severity: medium
   dimension: completeness
@@ -3323,6 +3359,8 @@ rules:
   record_fix_template: 'ANLB.NDJAR: ''{actual_value}'' is blank. Set the useful life.'
 - id: S4M129
   field: ANLB.BUKRS
+  s4_area: asset_accounting
+  s4_impact: blocking
   check_class: uniqueness_check
   fields:
   - ANLB.BUKRS
@@ -3340,6 +3378,8 @@ rules:
   record_fix_template: 'ANLB.BUKRS: duplicate key. Keep one row per asset and depreciation area.'
 - id: S4M130
   field: CSKA.KTOPL
+  s4_area: finance
+  s4_impact: blocking
   check_class: null_check
   severity: high
   dimension: completeness
@@ -3353,6 +3393,8 @@ rules:
   record_fix_template: 'CSKA.KTOPL: ''{actual_value}'' is blank. Assign the chart of accounts.'
 - id: S4M131
   field: CSKB.KSTAR
+  s4_area: finance
+  s4_impact: blocking
   check_class: null_check
   severity: high
   dimension: completeness
@@ -3365,6 +3407,8 @@ rules:
   record_fix_template: 'CSKB.KSTAR: ''{actual_value}'' is blank. Assign the cost element.'
 - id: S4M132
   field: CSKB.KATYP
+  s4_area: finance
+  s4_impact: blocking
   check_class: domain_value_check
   allowed_values:
   - '01'
@@ -3389,6 +3433,8 @@ rules:
     category.'
 - id: S4M133
   field: CSKB.KSTAR
+  s4_area: finance
+  s4_impact: blocking
   check_class: uniqueness_check
   fields:
   - CSKB.KOKRS
@@ -3404,6 +3450,8 @@ rules:
   record_fix_template: 'CSKB.KSTAR: duplicate key. Keep one cost element per controlling area.'
 - id: S4M134
   field: KNA1.KTOKD
+  s4_area: business_partner
+  s4_impact: blocking
   check_class: null_check
   severity: critical
   dimension: completeness
@@ -3417,6 +3465,8 @@ rules:
   record_fix_template: 'KNA1.KTOKD: ''{actual_value}'' is blank. Assign the account group.'
 - id: S4M135
   field: LFA1.KTOKK
+  s4_area: business_partner
+  s4_impact: blocking
   check_class: null_check
   severity: critical
   dimension: completeness
@@ -3429,6 +3479,8 @@ rules:
   record_fix_template: 'LFA1.KTOKK: ''{actual_value}'' is blank. Assign the account group.'
 - id: S4M136
   field: BUT000.BU_GROUP
+  s4_area: business_partner
+  s4_impact: blocking
   check_class: null_check
   severity: high
   dimension: completeness
@@ -3441,6 +3493,8 @@ rules:
   record_fix_template: 'BUT000.BU_GROUP: ''{actual_value}'' is blank. Assign the BP grouping.'
 - id: S4M137
   field: BUT000.TYPE
+  s4_area: business_partner
+  s4_impact: blocking
   check_class: domain_value_check
   allowed_values:
   - '1'
@@ -3457,6 +3511,8 @@ rules:
   record_fix_template: 'BUT000.TYPE: ''{actual_value}'' is not a permitted value. Correct the BP category.'
 - id: S4M138
   field: LFA1.STCD1
+  s4_area: business_partner
+  s4_impact: warning
   check_class: null_check
   severity: medium
   dimension: completeness
@@ -3471,6 +3527,8 @@ rules:
     data). Maintain the tax number.'
 - id: S4M139
   field: T012.BANKL
+  s4_area: finance
+  s4_impact: blocking
   check_class: null_check
   severity: high
   dimension: completeness
@@ -3484,6 +3542,8 @@ rules:
     data). Maintain the bank key.'
 - id: S4M140
   field: T012.BANKS
+  s4_area: finance
+  s4_impact: blocking
   check_class: null_check
   severity: high
   dimension: completeness
@@ -3496,6 +3556,8 @@ rules:
   record_fix_template: 'T012.BANKS: ''{actual_value}'' is blank. Maintain the bank country.'
 - id: S4M141
   field: T012.HBKID
+  s4_area: finance
+  s4_impact: warning
   check_class: uniqueness_check
   fields:
   - T012.BUKRS
@@ -3511,6 +3573,8 @@ rules:
   record_fix_template: 'T012.HBKID: duplicate key. Keep one house bank per id.'
 - id: S4M142
   field: LQUA.MATNR
+  s4_area: warehouse_ewm
+  s4_impact: blocking
   check_class: null_check
   severity: high
   dimension: completeness
@@ -3523,6 +3587,8 @@ rules:
   record_fix_template: 'LQUA.MATNR: ''{actual_value}'' is blank. Correct or clear the quant.'
 - id: S4M143
   field: LQUA.WERKS
+  s4_area: warehouse_ewm
+  s4_impact: warning
   check_class: null_check
   severity: medium
   dimension: completeness
@@ -3535,6 +3601,8 @@ rules:
   record_fix_template: 'LQUA.WERKS: ''{actual_value}'' is blank. Assign the plant.'
 - id: S4M144
   field: AUSP.OBJEK
+  s4_area: warehouse_ewm
+  s4_impact: warning
   check_class: null_check
   severity: medium
   dimension: completeness
@@ -3547,6 +3615,8 @@ rules:
   record_fix_template: 'AUSP.OBJEK: ''{actual_value}'' is blank. Correct the object reference.'
 - id: S4M145
   field: AUSP.ATINN
+  s4_area: warehouse_ewm
+  s4_impact: warning
   check_class: null_check
   severity: medium
   dimension: completeness
@@ -3559,6 +3629,8 @@ rules:
   record_fix_template: 'AUSP.ATINN: ''{actual_value}'' is blank. Correct the characteristic.'
 - id: S4M146
   field: T001.WAERS
+  s4_area: finance
+  s4_impact: blocking
   check_class: null_check
   severity: critical
   dimension: completeness
@@ -3571,6 +3643,8 @@ rules:
   record_fix_template: 'T001.WAERS: ''{actual_value}'' is blank. Assign the company code currency.'
 - id: S4M147
   field: T001.LAND1
+  s4_area: finance
+  s4_impact: blocking
   check_class: null_check
   severity: high
   dimension: completeness
@@ -3583,6 +3657,8 @@ rules:
   record_fix_template: 'T001.LAND1: ''{actual_value}'' is blank. Assign the country.'
 - id: S4M148
   field: T001W.LAND1
+  s4_area: finance
+  s4_impact: warning
   check_class: null_check
   severity: medium
   dimension: completeness
@@ -3595,6 +3671,8 @@ rules:
   record_fix_template: 'T001W.LAND1: ''{actual_value}'' is blank. Assign the plant country.'
 - id: S4M149
   field: T001W.BWKEY
+  s4_area: finance
+  s4_impact: warning
   check_class: null_check
   severity: medium
   dimension: completeness
@@ -3607,6 +3685,8 @@ rules:
   record_fix_template: 'T001W.BWKEY: ''{actual_value}'' is blank. Assign the valuation area.'
 - id: S4M150
   field: T001.RCOMP
+  s4_area: finance
+  s4_impact: warning
   check_class: null_check
   severity: low
   dimension: completeness

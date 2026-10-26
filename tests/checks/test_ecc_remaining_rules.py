@@ -24,7 +24,7 @@ EXPECTED_COUNTS = {
     "project_system": 165,
     "plant_maintenance": 238,
     "quality_management": 133,
-    "s4_readiness": 110,
+    "s4_readiness": 150,
     "banking_tax": 91,
     "interface_health": 53,
     "s4hc_master_data": 43,

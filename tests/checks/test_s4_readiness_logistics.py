@@ -12,7 +12,8 @@ META = ("id", "field", "check_class", "severity", "dimension", "message", "why_i
         "sap_impact", "fix_map", "record_fix_template", "s4_area", "s4_impact", "simplification_item")
 D = get_dictionary("s4hana")
 DOC = yaml.safe_load(open("checks/rules/ecc/s4_readiness.yaml"))
-MINE = [r for r in DOC["rules"] if r["s4_area"] in AREAS]
+# The readiness layer (baseline s4_target); the S4M1xx migration criteria are their own family.
+MINE = [r for r in DOC["rules"] if r["s4_area"] in AREAS and r.get("baseline") == "s4_target"]
 
 
 def _run(**frames):
