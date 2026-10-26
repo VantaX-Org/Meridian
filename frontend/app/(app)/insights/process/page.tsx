@@ -651,7 +651,7 @@ export default function ProcessInsightsPage() {
       title="Process data readiness"
       purpose={PAGE_PURPOSE["/insights/process"]}
       meta={latest ? `As of ${runScopeLabel(latest)}` : "No finished run yet"}
-      run={latest?.id ?? run}
+      run={run ?? latest?.id}
       insight={insight ?? placeholder}
     >
       {/* The frame already draws the view's tab strip; Readiness and Map switch with a pair of toggle buttons, not a second strip. */}

@@ -8,7 +8,7 @@ import { Button, Card, Checkbox, DataTable, EmptyState, ErrorState, Field, Input
 import { environmentLabel } from "@/components/systems/connect-system-dialog";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { clsx } from "clsx";
-import { getSystemObjects, startDownload, type DownloadScope, type ScopeKey } from "@/lib/api/system-objects";
+import { getSystemObjects, runIdOfDownload, startDownload, type DownloadScope, type ScopeKey } from "@/lib/api/system-objects";
 import { formatModuleName, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -31,6 +31,7 @@ export function ScopePicker({ id, system, onDownloaded, initialObjects = [] }: {
   initialObjects?: readonly string[];
 }) {
   const qc = useQueryClient();
+  const router = useRouter();
   const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: queryKeys.systemObjects(id), queryFn: () => getSystemObjects(id) });
   const [picked, setPicked] = useState<Set<string>>(() => new Set(initialObjects));
   const [scopeText, setScopeText] = useState<Partial<Record<ScopeKey, string>>>({});
@@ -61,6 +62,9 @@ export function ScopePicker({ id, system, onDownloaded, initialObjects = [] }: {
       setPicked(new Set()); setConfirm(null);
       qc.invalidateQueries({ queryKey: queryKeys.systemVersions(id) });
       onDownloaded(job.job_id);
+      // Follow the run instead of leaving the user on the system page with a toast: the extraction
+      // log shows progress and leads on to the analysis and its findings.
+      router.push(`/systems/${id}/extractions/${runIdOfDownload(job.job_id)}`);
     },
     onError: (e) => toast.error(apiErrorMessage(e)),
   });

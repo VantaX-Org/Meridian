@@ -11,7 +11,7 @@ import {
 } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import {
-  acceptAllInGroup, buildWorklist, decide, downloadFixSheet, getWorkGroups, getWorkRecords, getWorkSummary, importFixSheet,
+  acceptAllInGroup, buildWorklist, decide, downloadFixSheet, downloadFixSheetByObject, getWorkGroups, getWorkRecords, getWorkSummary, importFixSheet,
   setGroupValue, type Decision, type RecordFilter, type WorkGroup, type WorkRecord,
 } from "@/lib/api/work";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
@@ -321,7 +321,13 @@ export function FixWork() {
           <Input aria-label="Find a record" placeholder="Find a record by key or name" value={q} onChange={(e) => setQ(e.target.value)} className="m-input flex-1" />
         </form>
         <div className="ml-auto flex flex-wrap gap-2">
-          {can("export") ? <Button variant="secondary" onClick={() => downloadFixSheet(filter).catch((e) => toast.error(apiErrorMessage(e)))}>Download fix sheet</Button> : null}
+          {can("export") ? (
+            <>
+              <Button variant="secondary" onClick={() => downloadFixSheet(filter).catch((e) => toast.error(apiErrorMessage(e)))}>Download fix sheet</Button>
+              <Button variant="secondary" title="One sheet per object, with each record's value at risk"
+                onClick={() => downloadFixSheetByObject(filter).catch((e) => toast.error(apiErrorMessage(e)))}>Download by object</Button>
+            </>
+          ) : null}
           {canFix ? (
             <>
               <Button variant="secondary" pending={upload.isPending} onClick={() => fileRef.current?.click()}>Import fix sheet</Button>
