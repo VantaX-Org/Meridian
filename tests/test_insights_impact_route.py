@@ -31,7 +31,7 @@ def two_tenants_with_version():
             text(
                 "INSERT INTO config_impact_results "
                 "(id, version_id, tenant_id, feature, system, status, total_affected_records, blocking_findings) "
-                "VALUES (:id, :vid, :t, 'three_way_match', 'ECC', 'blocked', 42, :findings)"
+                "VALUES (:id, :vid, :t, 'Account Determination', 'ECC', 'blocked', 42, :findings)"
             ),
             {"id": str(uuid.uuid4()), "vid": v1, "t": t1, "findings": json.dumps(["MM-003"])},
         )
@@ -68,7 +68,7 @@ async def test_impact_computes_value_at_risk_when_feature_priced(two_tenants_wit
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         r = await client.put(
             "/api/v1/settings/cost-model",
-            json={"features": {"three_way_match": 150.0}},
+            json={"features": {"Account Determination": 150.0}},
             headers=headers,
         )
         assert r.status_code == 200
@@ -77,7 +77,7 @@ async def test_impact_computes_value_at_risk_when_feature_priced(two_tenants_wit
     body = r.json()
     assert body["version_id"] == v1
     assert body["rows"] == [{
-        "feature": "three_way_match", "l1": None, "status": "blocked", "record_count": 42,
+        "feature": "Account Determination", "l1": "master_data", "status": "blocked", "record_count": 42,
         "value_per_record": 150.0, "value_at_risk": 6300.0, "causing_rules": ["MM-003"],
     }]
 
@@ -92,7 +92,7 @@ async def test_impact_is_tenant_isolated(two_tenants_with_version, monkeypatch):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         r = await client.put(
             "/api/v1/settings/cost-model",
-            json={"features": {"three_way_match": 150.0}},
+            json={"features": {"Account Determination": 150.0}},
             headers=headers,
         )
         assert r.status_code == 200
