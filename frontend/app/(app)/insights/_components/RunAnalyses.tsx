@@ -1,7 +1,7 @@
 "use client";
 
-// The bodies of the Root causes, S/4 migration and Cleansing opportunity cards, shared by the one-run overview
-// (`RunOverview` in ../page.tsx) and the current-state overview (`CurrentOverview`). `run` pins the links to one run;
+// The bodies of the Root causes, S/4 migration and Cleansing opportunity cards on the lead home (home/_analyses.tsx,
+// which took them from the retired Insights overview). `run` pins the links to one run;
 // without it they open the current state. A root cause of the current state carries the run it was computed in.
 import Link from "next/link";
 import { useRouter } from "next/navigation";

@@ -70,6 +70,32 @@ describe("InboxPage counts", () => {
     // A task row carries no ranked bar: the SLA pill already says how late it is.
     expect(list.querySelector(".m-ranked-track")).toBeNull();
   });
+
+  it("titles an exception task by its check and object, with the meta as separate sentences and the Object named", async () => {
+    nav.qs = "keep=1";
+    nav.can = true;
+    vi.spyOn(stewardship, "getQueueItems").mockImplementation(async (p) => ({
+      items: p?.status === "open" ? [{
+        id: "i1", tenant_id: "t", item_type: "exception", source_id: "e1", domain: "unknown", priority: 2,
+        due_at: null, assigned_to: null, status: "open", sla_hours: null,
+        created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z", ai_recommendation: null, ai_confidence: null,
+      }] : [],
+      total: p?.status === "open" ? 1 : 0,
+    }));
+    vi.spyOn(stewardship, "getMetrics").mockResolvedValue({ items_by_type: {}, items_by_status: {}, avg_resolution_hours: null, sla_breached: 0 } as never);
+    vi.spyOn(exceptions, "getExceptions").mockResolvedValue({
+      exceptions: [{ id: "e1", title: "Custom Rule: Blank material group", category: "material_master", type: "custom_business", status: "open", assigned_to: null, sla_deadline: null, affected_records: null }],
+      total: 1,
+    } as never);
+    vi.spyOn(exceptions, "getException").mockRejectedValue(new Error("not needed"));
+    renderWithQuery(<InboxPage />);
+    const list = await screen.findByRole("list", { name: "Tasks" });
+    expect(await within(list).findByText("Custom Rule: Blank material group in Material master")).toBeInTheDocument();
+    expect(within(list).getByText(/^Unassigned\. Priority 2\. Raised \S+ ago\.$/)).toBeInTheDocument();
+    const detail = screen.getByRole("region", { name: "Selected item" });
+    expect(within(detail).getByText("Material master")).toBeInTheDocument();
+    expect(within(detail).queryByText("—")).toBeNull();
+  });
 });
 
 describe("InboxPage show all", () => {
@@ -92,8 +118,9 @@ describe("InboxPage show all", () => {
     expect(nav.replace.mock.calls[0]?.[0]).toBe("/inbox?keep=1");
   });
 
-  it("clears the search from the exceptions empty state", async () => {
-    nav.qs = "kind=exception";
+  it("keeps the search in the URL and clears it from the exceptions empty state", async () => {
+    nav.qs = "kind=exception&q=zzzz";
+    nav.replace.mockClear();
     vi.spyOn(stewardship, "getQueueItems").mockResolvedValue({ items: [], total: 0 });
     vi.spyOn(stewardship, "getMetrics").mockResolvedValue({ items_by_type: {}, items_by_status: {}, avg_resolution_hours: null, sla_breached: 0 } as never);
     vi.spyOn(triage, "getTriageMetrics").mockResolvedValue({} as never);
@@ -103,10 +130,9 @@ describe("InboxPage show all", () => {
       total: 1,
     } as never);
     renderWithQuery(<InboxPage />);
-    fireEvent.change(await screen.findByLabelText("Search exceptions"), { target: { value: "zzzz" } });
+    expect(await screen.findByLabelText("Search exceptions")).toHaveValue("zzzz");
     fireEvent.click(await screen.findByRole("button", { name: "Clear search" }));
-    await waitFor(() => expect(screen.queryByText("No exceptions in this view")).toBeNull());
-    expect(screen.getByLabelText("Search exceptions")).toHaveValue("");
+    expect(nav.replace).toHaveBeenCalledWith("/inbox?kind=exception", { scroll: false });
   });
 });
 
@@ -184,15 +210,27 @@ describe("InboxPage workbench", () => {
     await waitFor(() => expect(resolve).toHaveBeenCalledWith("b", "approve"));
   });
 
-  it("ignores the keys on the tabs that own their own tables", async () => {
+  it("sends the retired Issues tab to Fix work, on the viewer's own records", async () => {
     nav.qs = "kind=issues";
+    nav.replace.mockClear();
+    vi.spyOn(stewardship, "getQueueItems").mockResolvedValue({ items: [], total: 0 });
+    vi.spyOn(stewardship, "getMetrics").mockResolvedValue({} as never);
+    renderWithQuery(<InboxPage />);
+    await waitFor(() => expect(nav.replace).toHaveBeenCalledWith("/fix?mine=1"));
+    // Tasks, Approvals and SAP monitor; exceptions are a view of Tasks, and Issues is gone.
+    expect(screen.queryByRole("tab", { name: "Issues" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Exceptions" })).toBeNull();
+  });
+
+  it("ignores the keys on the tabs that own their own tables", async () => {
+    nav.qs = "kind=sap";
     nav.can = true;
     const resolve = vi.spyOn(stewardship, "resolveItem").mockResolvedValue({ id: "a", status: "resolved", action: "approve" });
     vi.spyOn(stewardship, "getQueueItems").mockResolvedValue({ items: [task("a", "material_master")], total: 1 } as never);
     vi.spyOn(stewardship, "getMetrics").mockResolvedValue({} as never);
     vi.spyOn(triage, "getTriageMetrics").mockResolvedValue({} as never);
     renderWithQuery(<InboxPage />);
-    await screen.findByText(/Each row is one SAP record that fails a rule/);
+    await screen.findByText(/Live signals from SAP/);
     fireEvent.keyDown(window, { key: "r" });
     fireEvent.keyDown(window, { key: "Enter" });
     expect(resolve).not.toHaveBeenCalled();

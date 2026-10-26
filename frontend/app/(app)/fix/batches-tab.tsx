@@ -31,6 +31,7 @@ import {
   type ExportFormat, type ExportPackage, type MonitorItem,
 } from "@/lib/api/remediation";
 import { getPendingApprovals } from "@/lib/api/writeback";
+import { APPROVALS_HREF } from "@/lib/persona";
 import { formatDate, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -89,7 +90,10 @@ function BeforeAfter({ batch, monitor }: { batch: Batch; monitor: MonitorItem[] 
   return <Link href={href} onClick={(e) => e.stopPropagation()}>Before vs after</Link>;
 }
 
-/** The Fix batches tab: batch list with monitoring above it, and a batch's detail in a drawer. */
+/**
+ * The Fix batches tab ("Batches and export"): batch list with monitoring above it, and a batch's detail in a drawer,
+ * where an approved batch is exported. Its approvals are listed with every other approval in Inbox › Approvals.
+ */
 export function BatchesTab() {
   const { user } = useAuth();
   const { can } = useRole();
@@ -179,6 +183,14 @@ export function BatchesTab() {
   return (
     <div className="flex flex-col gap-6">
       <MonitorSummaryNotice />
+      {/* Approving has one place, Inbox › Approvals, beside the SAP write-backs; this tab keeps the batches and their export. */}
+      {canApprove || can("view_audit") ? (
+        <Notice tone="info" action={<Button variant="secondary" render={<Link href={APPROVALS_HREF}>Open approvals</Link>} />}>
+          {counts.draft
+            ? `${counts.draft.toLocaleString()} draft batch${counts.draft === 1 ? " waits" : "es wait"} for a second person. Approvals are decided in Inbox, Approvals.`
+            : "Batches waiting for a second person are listed in Inbox, Approvals."}
+        </Notice>
+      ) : null}
       {status ? (
         <Notice action={<Button variant="ghost" onClick={() => setStatus("")}>Show all</Button>}>
           {STATUS_LABEL[status]} batches only
@@ -248,7 +260,7 @@ export function BatchesTab() {
   );
 }
 
-function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
+export function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
   batchId: string; currentUserId: string | null; canApprove: boolean; canExport: boolean;
 }) {
   const qc = useQueryClient();
@@ -317,7 +329,7 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
   });
 
   if (detail.isLoading) return <Skeleton height={240} />;
-  if (detail.isError || !detail.data) return <EmptyState title="Batch not found" detail="It may have been removed" action={<Button variant="secondary" render={<Link href="?tab=batches">Back to batches</Link>} />} />;
+  if (detail.isError || !detail.data) return <EmptyState title="Batch not found" detail="It may have been removed" action={<Button variant="secondary" render={<Link href="/fix?tab=batches">Back to batches</Link>} />} />;
 
   const { batch, items } = detail.data;
   const isCreator = !!currentUserId && batch.created_by === currentUserId;
@@ -473,7 +485,7 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
             {items.length > ITEM_PAGE_SIZE ? <Pager page={itemPage} pageCount={pageCount} pageSize={ITEM_PAGE_SIZE} total={items.length} onPageChange={setItemPage} /> : null}
           </>
         ) : (
-          <EmptyState title="No items in this batch" detail="Proposals are added when a cleanup run creates them" action={<Button variant="secondary" render={<Link href="?tab=batches">Back to batches</Link>} />} />
+          <EmptyState title="No items in this batch" detail="Proposals are added when a cleanup run creates them" action={<Button variant="secondary" render={<Link href="/fix?tab=batches">Back to batches</Link>} />} />
         )}
       </section>
 

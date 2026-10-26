@@ -30,7 +30,8 @@ import { mockUnrecorded } from "./fixtures/mocks-unrecorded";
 export const HAR = path.join(__dirname, "fixtures", "api.har.gz");
 /** The instant the HAR was recorded; Date.now() in the page returns this. */
 export const RECORDED_AT = new Date("2026-10-19T04:21:43.777Z");
-export const ROUTES: ReadonlyArray<{ name: string; path: string; heading: string; mocked?: boolean; knownBad?: string[] }> = routes;
+/** `redirectsTo`: a retired route; it is asserted to land there (routes-b.spec.ts) and is not screenshotted again. */
+export const ROUTES: ReadonlyArray<{ name: string; path: string; heading: string; mocked?: boolean; knownBad?: string[]; redirectsTo?: string }> = routes;
 
 /** Ids as in the recording. */
 export const RECORDED = {

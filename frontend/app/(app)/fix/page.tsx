@@ -106,10 +106,12 @@ function CleaningQueueTab() {
 const TABS: { value: string; label: string; Content: ComponentType }[] = [
   { value: "work", label: "Records to fix", Content: FixWork },
   { value: "cleaning", label: "Cleaning proposals", Content: CleaningQueueTab },
-  { value: "batches", label: "Approvals and export", Content: BatchesTab },
+  // Approving is done in Inbox › Approvals (the one approvals page); this tab keeps the batches and their export.
+  { value: "batches", label: "Batches and export", Content: BatchesTab },
   { value: "monitor", label: "Monitor", Content: MonitorTab },
-  { value: "dedup", label: "Duplicates", Content: DedupTab },
 ];
+/** Old tab names that now live elsewhere: duplicate pairs are reviewed in MDM › Match review (DedupTab redirects). */
+const MOVED_TABS = ["dedup", "duplicates"];
 
 export default function FixPage() {
   // An approver who may not apply has every control disabled on "Records to fix", so the nav entry
@@ -117,9 +119,10 @@ export default function FixPage() {
   const { can, homeRole } = useRole();
   const approverOnly = approvesOnly(can);
   const [tabRaw, setTab] = useUrlState("tab", approverOnly ? "batches" : "work");
-  const tab = oneOf(tabRaw, ["work", "cleaning", "batches", "monitor", "dedup"], "work");
+  const tab = oneOf(tabRaw, TABS.map((t) => t.value), "work");
   // Stewards land here rather than on a persona home (lib/persona.ts homeHrefForRole), so the first-run offer is here too.
   const steward = !!homeRole && personaForRole(homeRole) === "steward";
+  if (MOVED_TABS.includes(tabRaw)) return <DedupTab />;
 
   return (
     <div className="flex flex-col gap-4">
@@ -129,7 +132,7 @@ export default function FixPage() {
       actions={<Button variant="secondary" render={<Link href="/fix/what-if">What-if</Link>} />}
     />
     {steward && <HomeOnboarding />}
-    {/* Below 640px the five tabs would wrap: a Select picks the section and the tab strip steps aside. */}
+    {/* Below 640px the four tabs would wrap: a Select picks the section and the tab strip steps aside. */}
     <div className="sm:hidden">
       <Select label="Section" value={tab} onValueChange={setTab} options={TABS.map(({ value, label }) => ({ value, label }))}
         className="m-input inline-flex w-full items-center justify-between gap-2" />

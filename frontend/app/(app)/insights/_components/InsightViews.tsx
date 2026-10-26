@@ -8,7 +8,7 @@ import { withScope } from "./useInsightScope";
 export interface InsightView { id: string; label: string; question: string; tabs: [href: string, label: string][] }
 
 export const VIEWS: InsightView[] = [
-  { id: "summary", label: "Summary", question: "How are we, since when, what next", tabs: [["/insights/exec", "Executive summary"], ["/insights", "Overview"], ["/insights/reports", "Reports"]] },
+  { id: "summary", label: "Summary", question: "How are we, since when, what next", tabs: [["/insights/exec", "Executive summary"], ["/insights/reports", "Reports"]] },
   { id: "progress", label: "Progress", question: "Did it get better, and why", tabs: [["/insights/progress", "Progress"], ["/insights/trends", "Trends"], ["/insights/forecast", "Forecast"]] },
   { id: "explore", label: "Explore", question: "Where exactly is it, from every angle", tabs: [["/insights/rules", "Failing rules"], ["/insights/impact", "Value at risk"], ["/insights/lineage", "Lineage"], ["/insights/mining", "Patterns"], ["/insights/duplicates", "Duplicates"]] },
   { id: "readiness", label: "Readiness", question: "Can we load, can we run the process", tabs: [["/insights/readiness", "Waves"], ["/insights/process", "Process data readiness"], ["/migration", "Migration cockpit"]] },
@@ -20,7 +20,6 @@ export const VIEWS: InsightView[] = [
  * Pages pass it to `InsightFrame purpose`.
  */
 export const PAGE_PURPOSE = {
-  "/insights": "Where your SAP data stands, what holds the score down, and which failing rules to fix first.",
   "/insights/exec": "The one-page view for leadership: score, readiness by wave, value at risk and owners. Download the board pack to share it.",
   "/insights/reports": "Ready-made reports for the selected run. Pick a report, check the preview, then download it or copy a link.",
   "/insights/trends": "How the score moved from run to run for the same system or upload, and which rules drove the change.",

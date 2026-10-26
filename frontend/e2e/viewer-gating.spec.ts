@@ -88,7 +88,9 @@ test.describe("viewer gating", () => {
             // whose API is not in the recording show one)
             return r.width > 0 && r.height > 0 && !el.closest("th, [role='columnheader']") && !el.classList.contains("m-stat")
               && el.getAttribute("role") !== "combobox" && !el.classList.contains("m-choice")
-              && !el.closest("[data-chart-points]") && !el.closest("[data-state='error']");
+              && !el.closest("[data-chart-points]") && !el.closest("[data-state='error']")
+              // a filter chip's "Remove filter Assigned" (FilterChip's .m-chip-x) narrows the list back, as a picker does
+              && !el.classList.contains("m-chip-x");
           })
           .map((el) => ({
             name: (el.getAttribute("aria-label") ?? el.textContent ?? "").trim(),

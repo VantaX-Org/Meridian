@@ -165,7 +165,7 @@ export default function ProgressPage() {
   }, [field, fix, isCurrent]);
 
   const sourceColumns = useMemo<ColumnDef<ProposalSourceStat>[]>(() => [
-    // Fix work has no filter by proposal source: cleaning proposals have their own tab, every other value waits for approval on Approvals and export.
+    // Fix work has no filter by proposal source: cleaning proposals have their own tab, every other value waits for approval in Inbox › Approvals.
     { id: "source", header: "Where the value came from", accessorFn: (r) => sourceLabel(r.source), cell: ({ row }) => (
       <DrillCount href={row.original.source === "cleaning" ? "/fix?tab=cleaning" : "/fix?tab=batches"} label={row.original.source === "cleaning" ? "Open the cleaning proposals" : `Open approvals and export for ${sourceLabel(row.original.source).toLowerCase()} values`}>{sourceLabel(row.original.source)}</DrillCount>
     ) },

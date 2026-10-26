@@ -66,7 +66,7 @@ export const TOURS: readonly TourDef[] = [
       {
         target: "fix-batches", href: "/fix?tab=batches", placement: "bottom",
         title: "Fix batches",
-        body: "Accepted proposals are grouped into batches. Approve a batch, export it for loading into SAP, and the next run checks that the records now pass.",
+        body: "Accepted proposals are grouped into batches. A second person approves each batch in Inbox, Approvals; export it here for loading into SAP, and the next run checks that the records now pass.",
       },
       {
         target: "help-menu", placement: "bottom",

@@ -1,4 +1,27 @@
-import type { StewardshipQueueItem } from "@/types/api";
+import { MODULE_LABELS } from "@/lib/format";
+import type { Exception, StewardshipQueueItem } from "@/types/api";
+
+/**
+ * Where record issues are worked: Fix work, on the viewer's own records. The Inbox's Issues tab (a second record-fix
+ * pane) was retired into it; `/inbox?kind=issues` redirects here (the Inbox page; /issues in next.config.ts).
+ */
+export const RECORD_ISSUES_HREF = "/fix?mine=1";
+
+const isObject = (m: unknown): m is string => typeof m === "string" && Object.hasOwn(MODULE_LABELS, m);
+
+/**
+ * The SAP object an exception is about, for its title and the task's Object: the objects whose findings raised an SAP
+ * signal (`affected_records.modules`), else a custom rule's object type (its `category`), else its linked finding's.
+ * Null when none of them names a known object.
+ */
+export function exceptionObject(e: Pick<Exception, "affected_records" | "category" | "type"> & { linked_finding?: Exception["linked_finding"] }): string | null {
+  const modules = e.affected_records?.modules;
+  const first = Array.isArray(modules) ? modules.find(isObject) : undefined;
+  if (first) return first;
+  if (e.type === "custom_business" && isObject(e.category)) return e.category;
+  const linked = e.linked_finding?.module;
+  return isObject(linked) ? linked : null;
+}
 
 /** The exceptions API returns at most 100 a page (api/routes/exceptions.py). */
 export const EXC_PAGE = 100;

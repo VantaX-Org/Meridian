@@ -497,8 +497,8 @@ describe("PersonaHomePage current state across objects", () => {
     // critical and high: controlling 2 + 1, material master 1, accounts payable 4
     const criticalHigh = (screen.getByText("Critical and high findings")).closest("a");
     expect(criticalHigh).toHaveTextContent("8");
-    // Several runs: the current-state findings filtered to critical and high, not the objects below target.
-    expect(criticalHigh).toHaveAttribute("href", "/insights?severity=critical,high");
+    // Several runs: Fix work's current state filtered to critical and high, not the objects below target.
+    expect(criticalHigh).toHaveAttribute("href", "/fix?sev=blocking");
     expect(screen.getByText(/^Score over runs, all objects each at its latest run by then/)).toBeInTheDocument();
   });
 

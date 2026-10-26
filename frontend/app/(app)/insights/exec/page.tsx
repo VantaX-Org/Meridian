@@ -34,6 +34,7 @@ import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { drillLabel, fixHref } from "@/lib/drill";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
+import { useRole } from "@/hooks/use-role";
 import { DrillCount } from "../_components/DrillCount";
 import { ruleColumns } from "../_components/RuleColumns";
 import { useFindingOpener } from "../_components/FindingOpener";
@@ -42,7 +43,7 @@ import { InsightActions } from "../_components/InsightActions";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { PAGE_PURPOSE } from "../_components/InsightViews";
-import { currentFindingColumns, currentFixFirst } from "../_components/CurrentOverview";
+import { currentFindingColumns, currentFixFirst } from "../_components/currentFindings";
 import { useCurrentState } from "../_components/useCurrentState";
 import { migrationGapColumns, useWaveIds } from "../_components/migrationGaps";
 
@@ -96,6 +97,7 @@ export default function ExecPage() {
   const { run, mode, runs, error: listError, refetch: refetchList } = useInsightScope();
   const isCurrent = mode === "current";
   const router = useRouter();
+  const { can } = useRole();
   const dayOne = useDayOne();
   // No run because the run list (or the day-one sources) failed: an error, never "No executive summary yet".
   const loadError = run ? null : listError ?? (dayOne.status === "error" ? dayOne.error : null);
@@ -223,7 +225,7 @@ export default function ExecPage() {
   // The sections with nothing in them yet: named in one line under the rest, each with where to start it.
   const notYet = [
     ...(data && cells.length === 0 ? [{ what: "no migration wave", link: "Open migration cockpit", href: "/migration" }] : []),
-    ...(data && ownerRows.length === 0 ? [{ what: "no owner scored", link: "Assign records in Fix work", href: withScope("/fix", { run }) }] : []),
+    ...(data && ownerRows.length === 0 ? [{ what: "no owner scored", link: can("assign") ? "Assign records in Fix work" : "Open Fix work", href: withScope("/fix", { run }) }] : []),
     ...(noCostAvoided ? [{ what: "no cost avoided", link: "Review fixes", href: withScope("/fix", { run }) }] : []),
   ];
 
@@ -340,7 +342,7 @@ export default function ExecPage() {
                   }} />
                 ) : null}
                 {isCurrent
-                  ? <Link href="/insights" className="m-text-body underline-offset-2 hover:underline">Open overview</Link>
+                  ? <Link href="/insights/rules" className="m-text-body underline-offset-2 hover:underline">See all</Link>
                   : <Link href={withScope("/insights/rules", { run })} className="m-text-body underline-offset-2 hover:underline">See all</Link>}
               </span>
             }

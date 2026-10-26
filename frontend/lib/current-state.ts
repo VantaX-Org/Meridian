@@ -17,11 +17,11 @@ import { runDqs, type TrendPoint } from "@/lib/home-metrics";
  */
 
 /**
- * The insight views that describe the current state when no `?run=` pins one: the overview, the executive summary,
+ * The insight views that describe the current state when no `?run=` pins one: the executive summary,
  * Progress, Value at risk and Process data readiness (`insights/_components/scopeMode.ts` reads this list). Their
  * own header picker names the scope "Current state" and offers one run instead.
  */
-export const CURRENT_STATE_INSIGHTS: readonly string[] = ["/insights", "/insights/exec", "/insights/progress", "/insights/impact", "/insights/process"];
+export const CURRENT_STATE_INSIGHTS: readonly string[] = ["/insights/exec", "/insights/progress", "/insights/impact", "/insights/process"];
 
 /**
  * Screens that describe the current state when no `?run=` pins one: every home (`/home`, `/home/<persona>`) and the
@@ -43,7 +43,6 @@ export function opensOnCurrentState(pathname: string): boolean {
 
 /** The insight pages that take their scope from `useInsightScope` (`?run=` and `?module=`); not lineage nor the process designer. */
 const INSIGHT_SCOPED = [
-  "/insights",
   "/insights/duplicates",
   "/insights/exec",
   "/insights/forecast",
@@ -290,13 +289,16 @@ export function criticalHighTotal(objects: readonly StateObject[]): number {
 /** The `severity` value that lists the findings behind `criticalHighTotal`. */
 export const CRITICAL_AND_HIGH = "critical,high";
 
+/** The current state's critical and high failing records, by rule: Fix work's "Critical and high" severity. */
+export const CRITICAL_AND_HIGH_WORK = "/fix?sev=blocking";
+
 /**
  * The findings behind `criticalHighTotal`: one run's findings tab filtered to critical and high, or (several runs)
- * the current-state findings on the Insights overview, filtered the same way. `module` narrows one run's tab to an
- * object, for a count taken over that object alone.
+ * Fix work's current state filtered to critical and high (`sev=blocking`), grouped by rule. `module` narrows one
+ * run's tab to an object, for a count taken over that object alone.
  */
 export function criticalHighHref(runs: readonly Pick<Version, "id">[], module?: string): string {
-  if (runs.length !== 1) return `/insights?severity=${CRITICAL_AND_HIGH}`;
+  if (runs.length !== 1) return CRITICAL_AND_HIGH_WORK;
   return `/runs/${runs[0].id}?tab=findings${module ? `&module=${encodeURIComponent(module)}` : ""}&severity=${CRITICAL_AND_HIGH}`;
 }
 

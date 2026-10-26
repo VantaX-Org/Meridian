@@ -240,7 +240,7 @@ The failing records of one run, ranked worst first with their statuses, built as
 
 ### Write-back
 
-Sending an approved change straight into SAP instead of exporting a file, offered as **Write back** on a golden record. Someone other than the requester must approve each request, under **Approvals** in the Inbox. A deployment can switch live write-back off; you then export fixes as a file and load them in SAP. See [Approvals and export](/docs?page=approvals).
+Sending an approved change straight into SAP instead of exporting a file, offered as **Write back** on a golden record. Someone other than the requester must approve each request, under **Approvals** in the Inbox, beside the fix batches. A deployment can switch live write-back off; you then export fixes as a file and load them in SAP. See [Approvals and export](/docs?page=approvals).
 
 ### Z-object
 

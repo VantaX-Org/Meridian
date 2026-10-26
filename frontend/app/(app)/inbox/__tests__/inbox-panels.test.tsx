@@ -1,13 +1,13 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as writeback from "@/lib/api/writeback";
-import * as issues from "@/lib/api/issues";
+import * as remediation from "@/lib/api/remediation";
 import * as rules from "@/lib/api/rules";
 import * as users from "@/lib/api/users";
 import * as exceptions from "@/lib/api/exceptions";
 import type { Exception } from "@/types/api";
-import { ApprovalsPanel, IssuesPanel, SapMonitorPanel, reExtractHref, sapSignalSource } from "../inbox-panels";
+import { ApprovalsPanel, SapMonitorPanel, reExtractHref, sapSignalSource } from "../inbox-panels";
 
 const perms = vi.hoisted(() => ({ can: (() => true) as (action: string) => boolean }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (a: string) => perms.can(a) }) }));
@@ -20,7 +20,47 @@ vi.mock("next/navigation", () => ({
 
 afterEach(() => { vi.restoreAllMocks(); perms.can = () => true; });
 
+const batch = (id: string, over: Record<string, unknown> = {}) => ({
+  id, name: `Fixes by Sam ${id}`, status: "draft", filter: {}, created_by: "u-sam", created_by_label: "Sam Steward",
+  created_at: "2026-10-01T00:00:00Z", approved_by: null, approved_by_label: null, approved_at: null, exported_at: null,
+  items: 3, with_proposal: 3, auto_approvable: 1, fixed: 0, still_failing: 0, ...over,
+});
+
+describe("ApprovalsPanel: fix batches", () => {
+  it("lists the batches waiting for approval with the rule by name, the requester and the first change", async () => {
+    vi.spyOn(writeback, "getPendingApprovals").mockResolvedValue({ approvals: [], live_enabled: false });
+    vi.spyOn(remediation, "listBatches").mockResolvedValue({ items: [batch("b1"), batch("b2", { status: "exported" })] } as never);
+    vi.spyOn(remediation, "getBatchDiff").mockResolvedValue({ records: [{ record_key: "MATNR=1", table: "MARA", changes: [
+      { field: "MATKL", before: null, after: "001", rule: "MM101" }, { field: "MEINS", before: "X", after: "EA", rule: "MM102" },
+    ] }] });
+    vi.spyOn(rules, "getRules").mockResolvedValue({ rules: [{ id: "r1", name: "MM101: Material group is blank" }], total: 1 } as never);
+    renderWithQuery(<ApprovalsPanel />);
+    expect(await screen.findByText("Fixes by Sam b1")).toBeInTheDocument();
+    // The exported batch is evidence under its own filter, not a request waiting here.
+    expect(screen.queryByText("Fixes by Sam b2")).toBeNull();
+    expect(screen.getByText("Sam Steward")).toBeInTheDocument();
+    const preview = await screen.findByTestId("batch-preview");
+    expect(within(preview).getByText("MM101")).toBeInTheDocument();
+    await waitFor(() => expect(within(preview).getByText("Material group is blank")).toBeInTheDocument());
+    expect(within(preview).getByText("and 1 more")).toBeInTheDocument();
+    expect(preview).toHaveTextContent("MARA.MATKL on MATNR=1: blank to 001, and 1 more");
+  });
+
+  it("lets view_audit read the batches without approve, and asks nothing of the write-back API", async () => {
+    perms.can = (a) => a === "view_audit";
+    const pending = vi.spyOn(writeback, "getPendingApprovals");
+    vi.spyOn(remediation, "listBatches").mockResolvedValue({ items: [batch("b1")] } as never);
+    vi.spyOn(remediation, "getBatchDiff").mockResolvedValue({ records: [] });
+    renderWithQuery(<ApprovalsPanel />);
+    expect(await screen.findByText("Fixes by Sam b1")).toBeInTheDocument();
+    expect(screen.queryByText("SAP write-backs")).toBeNull();
+    expect(pending).not.toHaveBeenCalled();
+  });
+});
+
 describe("ApprovalsPanel", () => {
+  beforeEach(() => { vi.spyOn(remediation, "listBatches").mockResolvedValue({ items: [] }); });
+
   it("says why there is no Approve when live write-back is off, instead of a greyed button", async () => {
     vi.spyOn(writeback, "getPendingApprovals").mockResolvedValue({
       approvals: [{ id: "a1", finding_id: null, version_id: null, requested_by: "someone", records_updated: 4, sap_host: null, created_at: null }],
@@ -92,90 +132,6 @@ describe("ApprovalsPanel", () => {
     vi.spyOn(writeback, "getPendingApprovals").mockResolvedValue({ approvals: [], live_enabled: true });
     renderWithQuery(<ApprovalsPanel />);
     expect(await screen.findByText(/no write-backs/i)).toBeInTheDocument();
-  });
-});
-
-const issue = (id: string, over: Record<string, unknown> = {}) => ({
-  id, scope: "s", module: "material_master", check_id: "MM101", record_key: `MATNR=${id}`, grain: null, severity: "high",
-  status: "open", resolution: null, assigned_to: null, assignee_email: null, first_seen_version: "v", last_seen_version: "v",
-  resolved_version: null, first_seen_at: "2026-01-01T00:00:00Z", last_seen_at: "2026-01-01T00:00:00Z", resolved_at: null,
-  reopened_count: 0, message: "Material has no base unit", field: "MEINS", priority: null, assigned_team_id: null,
-  acknowledged_at: null, due_at: null, ack_due_at: null, risk_at: null, sla_state: null, sla_paused_at: null,
-  snoozed_until: null, snooze_reason: null, ...over,
-});
-
-describe("IssuesPanel", () => {
-  const mount = () => {
-    vi.spyOn(issues, "getIssues").mockResolvedValue({
-      total: 2, counts: { open: 2 },
-      items: [issue("1", { sla_state: "breached", due_at: "2000-01-01T00:00:00Z" }), issue("2")],
-    } as never);
-    vi.spyOn(issues, "getIssue").mockResolvedValue({ issue: issue("1"), events: [], runs: [] } as never);
-    vi.spyOn(users, "getAssignableUsers").mockResolvedValue([]);
-    renderWithQuery(<IssuesPanel />);
-  };
-
-  it("marks overdue issues and filters to them", async () => {
-    mount();
-    expect((await screen.findAllByText(/\d+d overdue$/)).length).toBeGreaterThan(0);
-    fireEvent.click(await screen.findByRole("button", { name: "Overdue (1)" }));
-    await waitFor(() => expect(screen.getByRole("list", { name: "Issues" }).querySelectorAll("li")).toHaveLength(1));
-  });
-
-  it("releases and resolves the ticked issues with the resolution the server needs", async () => {
-    mount();
-    const update = vi.spyOn(issues, "updateIssues").mockResolvedValue({ updated: 2 });
-    fireEvent.click(await screen.findByLabelText("Select all 2"));
-    const bar = await screen.findByTestId("inbox-bulk");
-    fireEvent.click(within(bar).getByRole("button", { name: "Release" }));
-    await waitFor(() => expect(update).toHaveBeenCalledWith({ ids: ["1", "2"], assigned_to: "" }));
-    fireEvent.click(within(bar).getByRole("button", { name: "Fixed in SAP" }));
-    await waitFor(() => expect(update).toHaveBeenCalledWith({ ids: ["1", "2"], status: "resolved", resolution: "fixed_in_source" }));
-  });
-
-  it("titles the selected issue by its rule, opens its record and marks it fixed in SAP on its own", async () => {
-    vi.spyOn(rules, "getRules").mockResolvedValue({ rules: [{ id: "MM101", name: "Base unit is set" }], total: 1 } as never);
-    mount();
-    const update = vi.spyOn(issues, "updateIssues").mockResolvedValue({ updated: 1 });
-    const detail = await screen.findByRole("region", { name: "Selected item" });
-    expect(await within(detail).findByText("Base unit is set in Material master")).toBeInTheDocument();
-    expect(within(detail).getByText("MM101")).toBeInTheDocument();
-    expect(within(detail).getByRole("link", { name: "Open record" })).toHaveAttribute("href", "/objects/material_master/records/MATNR%3D1");
-    fireEvent.click(within(detail).getByRole("button", { name: "Fixed in SAP" }));
-    await waitFor(() => expect(update).toHaveBeenCalledWith({ ids: ["1"], status: "resolved", resolution: "fixed_in_source" }));
-  });
-
-  it("lets a data owner (approve, no assign) accept the risk, and nothing that needs assign", async () => {
-    perms.can = (a) => a === "view" || a === "approve" || a === "export";
-    mount();
-    const update = vi.spyOn(issues, "updateIssues").mockResolvedValue({ updated: 1 });
-    const detail = await screen.findByRole("region", { name: "Selected item" });
-    expect(within(detail).queryByRole("button", { name: "Fixed in SAP" })).toBeNull();
-    expect(within(detail).queryByRole("button", { name: "Claim" })).toBeNull();
-    fireEvent.click(within(detail).getByRole("button", { name: "Accept risk" }));
-    await waitFor(() => expect(update).toHaveBeenCalledWith({ ids: ["1"], status: "accepted", resolution: "accepted_risk" }));
-    fireEvent.click(await screen.findByLabelText("Select all 2"));
-    const bar = await screen.findByTestId("inbox-bulk");
-    expect(within(bar).queryByRole("button", { name: "Release" })).toBeNull();
-    fireEvent.click(within(bar).getByRole("button", { name: "Accept risk" }));
-    await waitFor(() => expect(update).toHaveBeenCalledWith({ ids: ["1", "2"], status: "accepted", resolution: "accepted_risk" }));
-  });
-
-  it("offers Accept risk to nobody without approve", async () => {
-    perms.can = (a) => a === "view" || a === "analyse";
-    mount();
-    const detail = await screen.findByRole("region", { name: "Selected item" });
-    expect(within(detail).queryByRole("button", { name: "Accept risk" })).toBeNull();
-  });
-
-  it("says how many issues are loaded and loads more, rather than capping the list silently", async () => {
-    const get = vi.spyOn(issues, "getIssues").mockResolvedValue({ total: 450, counts: { open: 450 }, items: [issue("1"), issue("2")] } as never);
-    vi.spyOn(issues, "getIssue").mockResolvedValue({ issue: issue("1"), events: [], runs: [] } as never);
-    vi.spyOn(users, "getAssignableUsers").mockResolvedValue([]);
-    renderWithQuery(<IssuesPanel />);
-    expect(await screen.findByText(/^2 of 450 issues loaded/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Load more" }));
-    await waitFor(() => expect(get).toHaveBeenCalledWith(expect.objectContaining({ limit: 400 })));
   });
 });
 

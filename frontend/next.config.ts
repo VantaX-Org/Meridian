@@ -75,11 +75,13 @@ const nextConfig: NextConfig = {
       { source: "/analyse/finding/:id", destination: "/objects", permanent: false },
       { source: "/analyse/rule/:checkId", destination: "/rules/:checkId", permanent: false },
       { source: "/notifications", destination: "/inbox", permanent: false },
-      { source: "/issues", destination: "/inbox", permanent: false },
+      // Inbox › Issues was retired into Fix work. /inbox?kind=issues is redirected by the Inbox page itself: a
+      // config redirect would carry ?kind=issues along to /fix.
+      { source: "/issues", destination: "/fix?mine=1", permanent: false },
       { source: "/dedup", destination: "/insights/duplicates", permanent: false },
       { source: "/ai/rules", destination: "/rules", permanent: false },
       { source: "/config-impact", destination: "/insights/impact", permanent: false },
-      { source: "/reports", destination: "/insights", permanent: false },
+      { source: "/reports", destination: "/insights/reports", permanent: false },
       { source: "/cleaning", destination: "/fix", permanent: false },
       { source: "/remediation", destination: "/fix?tab=batches", permanent: false },
       // The proposals page moved under /fix/proposals/; the regex keeps /fix/what-if and /fix/proposals/* themselves out.

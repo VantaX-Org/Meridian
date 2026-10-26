@@ -108,9 +108,12 @@ def test_sidebar_process_and_impact_items():
 
 
 def test_sidebar_reports_and_admin_items():
-    """Insights is the report hub under Analysis; Admin has Users and audit and Settings with its sub-pages."""
+    """Insights is the report hub under Analysis (led by the executive summary: the overview was retired into Home);
+    Admin has Users and audit and Settings with its sub-pages."""
     content = _nav()
-    assert _has_item(_group_block(content, "Analysis"), "/insights", "Insights")
+    analysis = _group_block(content, "Analysis")
+    assert _has_item(analysis, "/insights/exec", "Summary")
+    assert 'href: "/insights",' not in content
     assert '"/rules"' in _group_block(content, "Rules")
     admin = _group_block(content, "Admin")
     assert '"/admin/users"' in admin and '"/admin/settings"' in admin
