@@ -29,6 +29,25 @@ describe("HomePage no-data state", () => {
     expect(screen.queryByTestId("home-dqs")).toBeNull();
     expect(screen.queryAllByRole("link")).toHaveLength(1); // only the step sheet's primary action
   });
+
+  it("names the step under way: a running first run says so and rings First score, even with configuration skipped", () => {
+    render(
+      <HomePage
+        persona="lead"
+        state="empty"
+        journey={{
+          systemsConnected: true,
+          configLoaded: false,
+          extracted: true,
+          complete: false,
+          step: { key: "running", href: "/runs/r1", label: "Analysis is running", detail: "Wait.", actionable: true, actionLabel: "Open the job" },
+        }}
+      />,
+    );
+    expect(screen.getByTestId("home-verdict")).toHaveTextContent("The first analysis is running.");
+    expect(screen.getByText(", current step").parentElement).toHaveTextContent("First score");
+    expect(screen.getByRole("link", { name: "Open the job" })).toHaveAttribute("href", "/runs/r1");
+  });
 });
 
 describe("HomePage data state", () => {

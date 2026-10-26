@@ -224,9 +224,11 @@ function RunLedger({ versionId, rows, objects }: { versionId: string; rows: Modu
 }
 
 function SummaryTab({
-  versionId, aggregate, history, systemId, versionLoading, lineage,
+  versionId, aggregate, history, systemId, versionLoading, lineage, inProgress = false,
 }: {
   versionId: string; aggregate: UseQueryResult<FindingsAggregate>; history: History; systemId?: string; versionLoading: boolean;
+  /** The run is still extracting or analysing: no findings yet means "not scored yet", not "nothing failed". */
+  inProgress?: boolean;
   /** Scored runs of this run's lineage (uploads of the same objects), used for the composite line when there is no system history. */
   lineage: Version[];
 }) {
@@ -254,6 +256,15 @@ function SummaryTab({
   }
   if (aggregate.isError || !aggregate.data) {
     return <ErrorState message={errorText(aggregate.error)} onRetry={() => aggregate.refetch()} />;
+  }
+  if (inProgress && aggregate.data.total === 0) {
+    return (
+      <EmptyState
+        title="Analysis is running"
+        detail="The score, objects and findings appear here when it finishes. Steps shows how far it has got."
+        action={<Button variant="secondary" render={<Link href={`/runs/${versionId}?tab=steps`}>Open steps</Link>} />}
+      />
+    );
   }
 
   const a = aggregate.data;
@@ -790,7 +801,7 @@ export default function RunDetailPage() {
         value={tab}
         onValueChange={setTab}
         items={[
-          { value: "overview", label: "Overview", content: <SummaryTab versionId={versionId} aggregate={aggregate} history={history} systemId={systemId} versionLoading={version.isLoading} lineage={v ? runs.filter((r) => lineageOf(r) === lineageOf(v) && isFinished(r)) : []} /> },
+          { value: "overview", label: "Overview", content: <SummaryTab versionId={versionId} aggregate={aggregate} history={history} systemId={systemId} versionLoading={version.isLoading} lineage={v ? runs.filter((r) => lineageOf(r) === lineageOf(v) && isFinished(r)) : []} inProgress={running || v?.status === "pending" || v?.status === "running"} /> },
           { value: "objects", label: "Objects", content: <ObjectsTab versionId={versionId} history={history} onOpenSteps={openSteps} /> },
           { value: "findings", label: "Findings", content: <FindingsTab versionId={versionId} onOpenSteps={openSteps} /> },
           {

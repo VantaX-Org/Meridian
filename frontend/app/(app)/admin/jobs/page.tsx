@@ -6,10 +6,11 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, DataTable, DisabledJobAction, ExplorerPage, PageHeader, RetryJobButton, Status, asyncStateOf, retryAction } from "@/design";
+import { DataTable, DisabledJobAction, ExplorerPage, PageHeader, RetryJobButton, Status, asyncStateOf, retryAction } from "@/design";
 import { actionColumn, RowLink } from "@/components/mdm/ledger";
 import { JobError } from "@/components/job-error";
 import { useRole } from "@/hooks/use-role";
+import { DayOneAction, useDayOne } from "@/hooks/use-day-one";
 import { JOBS_HISTORY_QUERY_KEY } from "@/hooks/use-jobs";
 import { getJobs } from "@/lib/api/jobs";
 import { formatDate, labelOf } from "@/lib/format";
@@ -74,6 +75,8 @@ function Chips<T extends string>({ label, value, options, onChange }: { label: s
 
 export default function JobsPage() {
   const tz = useTenantTimezone();
+  // No job yet: the empty state offers the tenant's next day-one step (connect, configure, extract), not one fixed link.
+  const dayOne = useDayOne();
   const [status, setStatus] = useState<StatusFilter>("all");
   const [kind, setKind] = useState<JobKind | "all">("all");
   // The SSE stream patches this list too; the poll covers a dropped stream while anything is still queued or running.
@@ -129,7 +132,11 @@ export default function JobsPage() {
         </div>
       ) : undefined}
       state={asyncStateOf(q, () => jobs.length === 0, true)}
-      emptyProps={{ title: "No jobs have run yet", detail: "Extractions, analyses, uploads and simulations are listed here.", action: <Button render={<Link href="/import">Import data</Link>} /> }}
+      emptyProps={{
+        title: "No jobs have run yet",
+        detail: dayOne.step ? `Extractions, analyses, uploads and simulations are listed here. ${dayOne.step.detail}` : "Extractions, analyses, uploads and simulations are listed here.",
+        action: <DayOneAction step={dayOne.step} fallbackHref="/systems" fallbackLabel="Open systems" />,
+      }}
       errorProps={{ error: q.error, onRetry: () => void q.refetch() }}
       table={
         <DataTable

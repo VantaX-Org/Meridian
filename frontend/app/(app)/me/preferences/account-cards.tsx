@@ -7,7 +7,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Card, Notice, Pill, type PillTone, toast } from "@/design";
+import { Async, Button, Card, Notice, Pill, type PillTone, toast } from "@/design";
 import { PasswordField } from "@/components/auth/auth-frame";
 import { changeOwnPassword } from "@/lib/api/auth";
 import { getMyDeliveries, type DeliveryKind, type DeliveryStatus } from "@/lib/api/notifications";
@@ -72,19 +72,16 @@ const DELIVERY_LIMIT = 20;
 
 export function DeliveriesCard() {
   const q = useQuery({ queryKey: queryKeys.myDeliveries(DELIVERY_LIMIT), queryFn: () => getMyDeliveries(DELIVERY_LIMIT) });
-  const items = q.data ?? [];
   return (
     <Card title="Delivery history" meta={`The last ${DELIVERY_LIMIT} notifications Meridian sent you, newest first`}>
-      {q.isError ? (
-        <div className="flex items-center gap-3 m-text-body" role="alert">
-          <span>{`The delivery history did not load. ${apiErrorMessage(q.error)}`}</span>
-          <Button variant="secondary" onClick={() => void q.refetch()}>Retry</Button>
-        </div>
-      ) : q.isLoading ? (
-        <p className="m-text-body m-ink-3">Loading deliveries</p>
-      ) : items.length === 0 ? (
-        <p className="m-text-body m-ink-2">Nothing has been sent to you yet. Turn on a digest or send yourself a test above.</p>
-      ) : (
+      <Async
+        query={q}
+        skeleton="list"
+        isEmpty={(d) => d.length === 0}
+        empty={{ variant: "inline", title: "Nothing has been sent to you yet.", detail: "Turn on a digest or send yourself a test above." }}
+        error={{ error: q.error, title: "The delivery history did not load.", onRetry: () => void q.refetch() }}
+      >
+        {(items) => (
         <table className="m-table w-full">
           <thead>
             <tr>
@@ -108,7 +105,8 @@ export function DeliveriesCard() {
             })}
           </tbody>
         </table>
-      )}
+        )}
+      </Async>
     </Card>
   );
 }

@@ -131,6 +131,15 @@ describe("RunDetailPage", () => {
     expect(screen.queryByText("Next actions")).toBeNull();
   });
 
+  it("says a run still analysing is running, not that nothing failed, and points to its steps", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(version({ id: "v2", label: "Oct 8", status: "running" }));
+    vi.spyOn(analyticsApi, "getPrescriptiveAnalytics").mockResolvedValue({ actions: [], sprints: [], basis: { version_id: "v2", findings: 0, cleaning_items: 0, exceptions: 0 } } as unknown as Awaited<ReturnType<typeof analyticsApi.getPrescriptiveAnalytics>>);
+    renderWithQuery(<RunDetailPage />);
+    expect(await screen.findByText("Analysis is running")).toBeInTheDocument();
+    expect(screen.queryByText("Nothing failed in this run")).toBeNull();
+    expect(screen.getByRole("link", { name: "Open steps" })).toHaveAttribute("href", "/runs/v2?tab=steps");
+  });
+
   it("drills blocking findings to critical and to high, and prices cost at risk in the tenant currency", async () => {
     vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
     vi.spyOn(settingsApi, "getCostModel").mockResolvedValue({ currency: "ZAR" } as never);

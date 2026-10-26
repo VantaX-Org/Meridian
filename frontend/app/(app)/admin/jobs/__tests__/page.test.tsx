@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as jobsApi from "@/lib/api/jobs";
 import * as connectivityApi from "@/lib/api/connectivity";
+import * as configLoadApi from "@/lib/api/config-load";
+import * as versionsApi from "@/lib/api/versions";
 import type { Job } from "@/types/jobs";
 import JobsPage from "../page";
 
@@ -96,5 +98,15 @@ describe("admin jobs page", () => {
     renderWithQuery(<JobsPage />);
     expect(await screen.findByText(/^The newest 200 extractions, analyses, uploads and simulations, latest first; older jobs are not kept, and the filters apply to these\./)).toBeInTheDocument();
     expect(get).toHaveBeenCalledWith({ limit: 200 });
+  });
+
+  it("with no job yet, offers the next day-one step: extract from the connected system", async () => {
+    perms = new Set(["trigger_sync"]);
+    vi.spyOn(jobsApi, "getJobs").mockResolvedValue([]);
+    vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 1, total: 1 });
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
+    renderWithQuery(<JobsPage />);
+    expect(await screen.findByText("No jobs have run yet")).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Run an extraction" })).toHaveAttribute("href", "/systems/s-1?extract=1");
   });
 });

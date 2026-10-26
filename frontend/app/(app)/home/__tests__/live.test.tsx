@@ -55,6 +55,20 @@ describe("LiveSection", () => {
     expect(screen.getByRole("link", { name: "Run extraction" })).toBeInTheDocument();
   });
 
+  it("opens the Extract drawer of the system extracted longest ago (never extracted first), not the Systems list", async () => {
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([
+      system,
+      { ...system, id: "sys-2", name: "S4 QA", last_sync_at: null },
+      { ...system, id: "sys-3", name: "Old", last_sync_at: null, is_active: false },
+    ]);
+    vi.spyOn(jobsApi, "getJobs").mockResolvedValue([]);
+
+    renderWithQuery(<LiveSection />);
+
+    await screen.findByText("S4 QA");
+    expect(screen.getByRole("link", { name: "Run extraction" })).toHaveAttribute("href", "/systems/sys-2?extract=1");
+  });
+
   it("offers a viewer no extraction or connect action", async () => {
     allowed = false;
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);

@@ -66,5 +66,20 @@ describe("DeliveriesCard", () => {
     vi.spyOn(notifications, "getMyDeliveries").mockResolvedValue([]);
     renderWithQuery(<DeliveriesCard />);
     expect(await screen.findByText(/Nothing has been sent to you yet/)).toBeInTheDocument();
+    expect(screen.getByText(/send yourself a test above/)).toBeInTheDocument();
+  });
+
+  it("shows a skeleton while loading, then an error with Retry that reads the history again", async () => {
+    const err = new AxiosError("500", "ERR", undefined, undefined, {
+      status: 500, statusText: "", headers: {}, config: { headers: new AxiosHeaders() }, data: { detail: "Database unavailable" },
+    });
+    const get = vi.spyOn(notifications, "getMyDeliveries").mockRejectedValueOnce(err).mockResolvedValue([]);
+    renderWithQuery(<DeliveriesCard />);
+    expect(screen.getByRole("status")).toHaveTextContent("Loading");
+    expect(await screen.findByText("The delivery history did not load.")).toBeInTheDocument();
+    expect(screen.getByText("Database unavailable")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByText(/Nothing has been sent to you yet/)).toBeInTheDocument();
+    expect(get).toHaveBeenCalledTimes(2);
   });
 });

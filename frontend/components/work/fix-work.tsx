@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -10,6 +9,7 @@ import {
   RankedRow, Select, SeverityDot, Skeleton, Stat, Switch, Textarea, isSeverity,
 } from "@/design";
 import { useRole } from "@/hooks/use-role";
+import { DayOneAction, useDayOne } from "@/hooks/use-day-one";
 import {
   acceptAllInGroup, buildWorklist, decide, downloadFixSheet, downloadFixSheetByObject, getWorkGroups, getWorkRecords, getWorkSummary, importFixSheet,
   setGroupValue, type Decision, type RecordFilter, type WorkGroup, type WorkRecord,
@@ -168,6 +168,18 @@ function SetValueDialog({ group, open, onOpenChange, run }: { group: WorkGroup; 
  * should be. Pick an issue on the left (or every issue), a record in the middle, decide on the right; the next
  * record comes up by itself. Keyboard: j / k move, a accepts the suggested values, t takes the record, u undoes.
  */
+/** No finished run: the tenant's next day-one step (import, ask for a connection, extract, or the run in progress), never a dead end. */
+function NoRunYet() {
+  const { step } = useDayOne();
+  return (
+    <EmptyState
+      title="No finished run yet"
+      detail={`Fix work lists the records a run found failing. ${step?.detail ?? "Load data or connect a system, then run the checks."}`}
+      action={<DayOneAction step={step} fallbackHref="/runs" fallbackLabel="Open runs" />}
+    />
+  );
+}
+
 export function FixWork() {
   const qc = useQueryClient();
   const { can } = useRole();
@@ -268,7 +280,7 @@ export function FixWork() {
   if (summary.isError) {
     const st = (summary.error as { response?: { status?: number } })?.response?.status;
     if (st === 404) {
-      return <EmptyState title="No finished run yet" detail="Fix work lists the records a run found failing. Load data or connect a system, then run the checks." action={<Button render={<Link href="/import">Import a file</Link>} />} />;
+      return <NoRunYet />;
     }
     return <ErrorState {...apiErrorState(summary.error)} onRetry={() => summary.refetch()} />;
   }
