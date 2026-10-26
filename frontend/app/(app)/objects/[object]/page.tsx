@@ -124,8 +124,9 @@ function RulesTab({ object, run }: { object: string; run: string }) {
 
   const delta = (checkId: string): number | null => {
     const runs = batch.data?.history[checkId];
-    if (!runs || runs.length < 2 || runs[0].pass_rate == null || runs[1].pass_rate == null) return null;
-    return runs[0].pass_rate - runs[1].pass_rate;
+    const [now, before] = [passRatePct(runs?.[0]?.pass_rate), passRatePct(runs?.[1]?.pass_rate)];
+    // Points of pass rate, whichever scale the run stored (0 to 1 or 0 to 100).
+    return now == null || before == null ? null : now - before;
   };
   const recordsHref = (checkId: string) => `/objects/${object}?run=${run}&tab=records&check_id=${checkId}`;
 
@@ -162,7 +163,7 @@ function RulesTab({ object, run }: { object: string; run: string }) {
       meta: { priority: "low" } satisfies CellMeta,
       cell: ({ row }) => {
         const d = delta(row.original.check_id);
-        return d == null ? "—" : <Delta value={d * 100} run="previous run" />;
+        return d == null ? "—" : <Delta value={d} run="previous run" />;
       },
     },
     {
