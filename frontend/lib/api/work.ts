@@ -217,8 +217,9 @@ export interface Decision {
 
 const clean = (o: object) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== "" && v !== null));
 
-export async function getWorkSummary(version_id?: string): Promise<WorkSummary> {
-  const { data } = await apiClient.get("/api/v1/work/summary", { params: scoped(version_id) });
+/** With `filter`, `totals` count the records GET /work/records lists for the same filter (status defaults to open). */
+export async function getWorkSummary(version_id?: string, filter?: Omit<RecordFilter, "version_id">): Promise<WorkSummary> {
+  const { data } = await apiClient.get("/api/v1/work/summary", { params: filter ? clean({ ...filter, ...scoped(version_id) }) : scoped(version_id) });
   return data;
 }
 
@@ -228,7 +229,8 @@ export async function getWorkGroups(f: { version_id?: string; module?: string; s
   return data;
 }
 
-export async function getWorkRecords(f: RecordFilter & { after?: string; limit?: number }):
+/** `sort`: severity and/or age, comma separated, a leading minus for descending (`-age` is the oldest first). */
+export async function getWorkRecords(f: RecordFilter & { after?: string; limit?: number; sort?: string }):
   Promise<{ version_id: string | null; total: number; total_capped: boolean; next: string | null; items: WorkRecord[] }> {
   const { data } = await apiClient.get("/api/v1/work/records", { params: clean({ ...f, ...scoped(f.version_id) }) });
   return data;

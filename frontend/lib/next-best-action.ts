@@ -41,6 +41,7 @@ export function nextBestActionView(act: NextBestAction, run: string): NextBestAc
     title: act.title,
     why: `A ${act.severity} exception on ${plural(act.affected_count, "record")} is open; it clears the most weighted records per hour, ${effort}.`,
     verb: "Open exception",
-    href: `/inbox?${new URLSearchParams({ run })}`,
+    // The Inbox lists exceptions under Tasks with ?kind=exception (app/(app)/inbox/page.tsx); it has no run filter.
+    href: "/inbox?kind=exception",
   };
 }

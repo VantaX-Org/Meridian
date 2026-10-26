@@ -44,8 +44,8 @@ describe("DqsScore", () => {
     const mm = await screen.findByRole("link", { name: "MM003" });
     expect(mm).toHaveAttribute("href", "/objects/material_master?run=v1&tab=records&check_id=MM003");
     expect(mm.closest("li")).toHaveTextContent("120 records, 88.0% pass");
-    // a 0..1 share from an older row reads as a percentage too
-    expect(screen.getByRole("link", { name: "GL002" }).closest("li")).toHaveTextContent("9 records, 91.0% pass");
+    // findings.pass_rate is 0..100: a rule with under 1% passing reads as such, never as a 0..1 share
+    expect(screen.getByRole("link", { name: "GL002" }).closest("li")).toHaveTextContent("9 records, 0.9% pass");
     // the tenant's weights, normalised over the measured dimensions (0.25 and 0.1 of 0.35)
     expect(screen.getByRole("cell", { name: "71%" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "29%" })).toBeInTheDocument();

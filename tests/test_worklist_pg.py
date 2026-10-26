@@ -387,3 +387,35 @@ async def test_records_carry_age_and_suggested_value(run, client_for):
     now = pd.Timestamp.now(tz="UTC")
     assert (now - pd.Timestamp(by["MATNR=1"]["first_seen_at"])).days == 9
     assert (now - pd.Timestamp(by["MATNR=2"]["first_seen_at"])).days == 30  # the older of its two issues
+
+
+@pytest.mark.anyio
+async def test_records_sort_on_the_server_and_page_by_that_sort(run, client_for):
+    """The queue's sort goes to the server: "oldest first" is global, not a sort of the loaded page, and the
+    keyset pages by the sort, so a later page never holds a record that belongs before an earlier one."""
+    owner, tid, vid, _ = run
+    with owner.begin() as c:
+        c.execute(text("UPDATE record_issues SET first_seen_at = now() - CASE check_id WHEN 'MM001' "
+                       "THEN interval '9 days' ELSE interval '30 days' END WHERE tenant_id = :t"), {"t": tid})
+    deps, client = client_for(tid)
+    await deps.engine.dispose()
+    async with client:
+        get = lambda **params: client.get("/api/v1/work/records", params={"version_id": vid, "limit": 1, **params},
+                                          headers=HEADERS)
+
+        async def walk(sort=None):
+            keys, after = [], None
+            while True:
+                body = (await get(**({"sort": sort} if sort else {}), **({"after": after} if after else {}))).json()
+                keys += [i["record_key"] for i in body["items"]]
+                assert body["total"] == 2
+                if not (after := body["next"]):
+                    return keys
+
+        assert await walk() == ["MATNR=1", "MATNR=2"]  # severity (both critical), then the key
+        assert await walk("-age") == ["MATNR=2", "MATNR=1"]  # the oldest first: MATNR=2 has a 30-day issue
+        assert await walk("severity,-age") == ["MATNR=2", "MATNR=1"]
+        assert await walk("age") == ["MATNR=1", "MATNR=2"]  # the newest first
+        first = (await get(sort="-age")).json()
+        assert (await get(sort="age", after=first["next"])).status_code == 422  # a cursor of another order
+        assert (await get(sort="due")).status_code == 422

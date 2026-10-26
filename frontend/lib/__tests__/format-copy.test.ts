@@ -3,7 +3,7 @@
 // run-axis ticks that never show a user-supplied label, and the delta and trend sentences.
 import { describe, expect, it } from "vitest";
 import {
-  capRuleIds, deltaSentence, formatModuleName, formatMoney, formatMoneyCompact, MODULE_LABELS, plural, runAxisLabels, runOptionLabels, shortCapReason, shortList,
+  capRuleIds, deltaSentence, formatModuleName, formatMoney, formatMoneyCompact, MODULE_LABELS, passRatePct, plural, runAxisLabels, runOptionLabels, shortCapReason, shortList,
   systemTypeLabel, trendSentence, zoneName,
 } from "../format";
 
@@ -198,6 +198,26 @@ describe("formatMoneyCompact", () => {
     expect(formatMoneyCompact(950, "ZAR")).toBe(formatMoney(950, "ZAR"));
     expect(formatMoneyCompact(12_300_000)).toBe("12.3 m");
     expect(formatMoneyCompact(null, "ZAR")).toBe("—");
+  });
+  it("rounds before picking the unit, stepping up when the rounded figure reaches a thousand", () => {
+    expect(formatMoneyCompact(999_999, "ZAR")).toBe("ZAR 1 m");
+    expect(formatMoneyCompact(999_499, "ZAR")).toBe("ZAR 999 k");
+    expect(formatMoneyCompact(999_499_999, "ZAR")).toBe("ZAR 999 m");
+    expect(formatMoneyCompact(999_500_000, "ZAR")).toBe("ZAR 1 bn");
+    expect(formatMoneyCompact(999_999_999_999, "ZAR")).toBe("ZAR 1 tn");
+    expect(formatMoneyCompact(-999_999, "ZAR")).toBe("ZAR -1 m");
+  });
+});
+
+describe("passRatePct", () => {
+  it("passes the stored 0..100 rate through, so a nearly failing rule is not read as a 0..1 share", () => {
+    expect(passRatePct(0.5)).toBe(0.5);
+    expect(passRatePct(1)).toBe(1);
+    expect(passRatePct(0)).toBe(0);
+    expect(passRatePct(98.46)).toBe(98.46);
+    expect(passRatePct(null)).toBeNull();
+    expect(passRatePct(undefined)).toBeNull();
+    expect(passRatePct(Number.NaN)).toBeNull();
   });
 });
 

@@ -288,7 +288,7 @@ async def list_pending_writebacks(
     result = await db.execute(
         text("""
             SELECT w.id, w.finding_id, w.version_id, w.requested_by, w.records_updated, w.sap_host, w.created_at,
-                   f.check_id, f.module, f.rule_context->>'message', COALESCE(NULLIF(u.name, ''), u.email)
+                   f.check_id, f.module, COALESCE(f.details->>'message', f.rule_context->>'message'), COALESCE(NULLIF(u.name, ''), u.email)
             FROM write_back_log w
             LEFT JOIN findings f ON f.id = w.finding_id AND f.tenant_id = w.tenant_id
             LEFT JOIN users u ON u.id::text = w.requested_by AND u.tenant_id = w.tenant_id

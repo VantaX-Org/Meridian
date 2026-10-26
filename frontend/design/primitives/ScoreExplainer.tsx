@@ -21,7 +21,7 @@ export interface ScoreRule {
   object: string;
   recordsFailed: number;
   weight: number;
-  /** The check's record-level pass rate, 0..100 (`passRatePct` in lib/format normalises a 0..1 value); omitted when unknown. */
+  /** The check's record-level pass rate, 0..100 as `findings.pass_rate` stores it; omitted when unknown. */
   passRate?: number | null;
 }
 

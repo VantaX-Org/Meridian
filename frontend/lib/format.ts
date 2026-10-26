@@ -172,9 +172,11 @@ const MONEY_SCALES = [
  */
 export function formatMoneyCompact(n: number | null | undefined, currency?: string | null): string {
   if (typeof n !== "number" || !Number.isFinite(n)) return "—";
-  const scale = MONEY_SCALES.find((s) => Math.abs(n) >= s.at);
+  // Round to the displayed three significant figures before picking the unit, so 999,999 reads "1 m", not "1,000 k".
+  const rounded = Number(n.toPrecision(3));
+  const scale = MONEY_SCALES.find((s) => Math.abs(rounded) >= s.at);
   if (!scale) return formatMoney(Math.round(n), currency);
-  const value = new Intl.NumberFormat(formatPrefs.locale, { maximumSignificantDigits: 3 }).format(n / scale.at);
+  const value = new Intl.NumberFormat(formatPrefs.locale, { maximumSignificantDigits: 3 }).format(rounded / scale.at);
   return `${currency ? `${currency} ` : ""}${value} ${scale.unit}`;
 }
 
@@ -572,12 +574,12 @@ export function formatPct(p: number | null | undefined): string {
 }
 
 /**
- * A finding's pass rate on the 0..100 scale. `findings.pass_rate` is written 0..100 by the check engine
- * (checks/base.py) but older rows hold a 0..1 share; a value at or below 1 is read as the share, as FindingDrawer does.
+ * A finding's pass rate on the 0..100 scale, or null when unknown. `findings.pass_rate` is always 0..100
+ * (checks/base.py pass_rate_of; migration 094 rescaled the one legacy 0..1 writer), so a value at or below 1
+ * is a rule that is almost entirely failing, never a share to rescale.
  */
 export function passRatePct(p: number | null | undefined): number | null {
-  if (!isNum(p)) return null;
-  return p <= 1 ? p * 100 : p;
+  return isNum(p) ? p : null;
 }
 
 /** "+2.1" or "−0.8" (U+2212), one decimal; zero is "0.0". */

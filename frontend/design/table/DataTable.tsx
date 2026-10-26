@@ -358,14 +358,19 @@ export function DataTable<T>({
     if (next === rowModel.length - 1) onEndReached?.();
   };
 
-  // A controlled active row that moves (the page's own keys) is scrolled into view.
-  const followActive = activeRowId !== undefined && activeIndex >= 0;
-  const activeDomId = followActive ? rowDomId(activeIndex) : null;
+  // A controlled active row that moves (the page's own keys, a click) is scrolled into view once, when it changes: rows
+  // loading or re-sorting around it move its index but must not yank the scroll back to it. The first active row (the
+  // one the table mounts with, or the caller's auto-selection) is never scrolled to: on a phone that would scroll the
+  // page past its title and filters before the viewer has done anything.
+  const followedId = useRef<string | null | undefined>(undefined);
   useEffect(() => {
-    if (!followActive || activeDomId === null) return;
+    if (activeRowId === undefined || activeRowId === null || activeIndex < 0 || followedId.current === activeRowId) return;
+    const first = followedId.current === undefined;
+    followedId.current = activeRowId;
+    if (first) return;
     if (shouldVirtualize) virtualizer.scrollToIndex(activeIndex);
-    else document.getElementById(activeDomId)?.scrollIntoView?.({ block: "nearest" });
-  }, [followActive, activeDomId, activeIndex, shouldVirtualize, virtualizer]);
+    else document.getElementById(rowDomId(activeIndex))?.scrollIntoView?.({ block: "nearest" });
+  });
 
   const onScroll = onEndReached
     ? (e: React.UIEvent<HTMLDivElement>) => {

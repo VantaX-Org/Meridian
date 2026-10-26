@@ -116,21 +116,67 @@ async def _unbuilt(db: AsyncSession, tenant: Tenant, rows: _Rows) -> list[str]:
         {"t": str(tenant.id), "ids": ids})).scalars().all())
 
 
-def _cursor(row) -> str:
-    return base64.urlsafe_b64encode(json.dumps([row.sev_rank, row.module, row.record_key]).encode()).decode()
+# The oldest failing issue of a work record: its age (as _row_extras reports it as first_seen_at).
+_FIRST_SEEN = """LEFT JOIN LATERAL (SELECT min(ri.first_seen_at) AS first_seen_at FROM record_issues ri
+                    WHERE ri.tenant_id = CAST(:t AS uuid) AND ri.scope = w.scope AND ri.record_key = w.record_key
+                      AND ri.check_id = ANY(w.checks)) fs ON true"""
+# Sort keys of /work/records as ascending, never-null expressions, so one row comparison pages any order.
+# "age" descending is the oldest first; a record without a first-seen time sorts last either way.
+_SORT_KEYS = {
+    ("severity", False): "w.sev_rank",
+    ("severity", True): "-w.sev_rank",
+    ("age", True): "COALESCE(EXTRACT(EPOCH FROM fs.first_seen_at)::float8, 'Infinity'::float8)",
+    ("age", False): "COALESCE(-EXTRACT(EPOCH FROM fs.first_seen_at)::float8, 'Infinity'::float8)",
+}
+_SORT_CAST = {"severity": "int", "age": "float8"}
 
 
-def _uncursor(c: str) -> tuple[int, str, str]:
+def _parse_sort(sort: Optional[str]) -> list[tuple[str, bool]]:
+    """``severity,-age`` -> [("severity", False), ("age", True)]; a leading minus is descending. Default: severity."""
+    keys: list[tuple[str, bool]] = []
+    for part in (sort or "severity").split(","):
+        part = part.strip()
+        if not part:
+            continue
+        key = (part.lstrip("-"), part.startswith("-"))
+        if key not in _SORT_KEYS:
+            raise HTTPException(status_code=422, detail=f"sort takes severity and age, each optionally with a leading minus; not {part!r}")
+        if any(k == key[0] for k, _ in keys):
+            continue
+        keys.append(key)
+    return keys or [("severity", False)]
+
+
+def _cursor(sort: list[tuple[str, bool]], row) -> str:
+    return base64.urlsafe_b64encode(json.dumps(
+        [[f"{'-' if d else ''}{k}" for k, d in sort], [getattr(row, f"s{i}") for i in range(len(sort))],
+         row.module, row.record_key]).encode()).decode()
+
+
+def _uncursor(sort: list[tuple[str, bool]], c: str) -> tuple[list, str, str]:
     try:
-        rank, module, key = json.loads(base64.urlsafe_b64decode(c.encode()))
-        return int(rank), str(module), str(key)
+        spec, values, module, key = json.loads(base64.urlsafe_b64decode(c.encode()))
+        if spec != [f"{'-' if d else ''}{k}" for k, d in sort] or len(values) != len(sort):
+            raise ValueError("cursor of another sort")
+        return [int(v) if _SORT_CAST[k] == "int" else float(v) for (k, _), v in zip(sort, values)], str(module), str(key)
     except Exception:
         raise HTTPException(status_code=422, detail="after is not a cursor from this list")
 
 
 @router.get("/summary")
 async def summary(
+    request: Request,
     version_id: Optional[uuid.UUID] = None,
+    module: Optional[str] = None,
+    check_id: Optional[str] = None,
+    severity: Optional[str] = Query(None, pattern="^(critical|high|medium|low|blocking)$"),
+    status: Optional[str] = Query(None, pattern="^(open|all|to_fix|proposed|approved|sent|not_an_issue|fixed)$"),
+    assigned: Optional[str] = Query(None, description="'me', 'unassigned' or a user id"),
+    proposed: Optional[bool] = None,
+    due: Optional[str] = Query(None, pattern="^(overdue|today)$"),
+    part: Optional[str] = Query(None, max_length=200),
+    system: Optional[str] = Query(None, max_length=100),
+    q: Optional[str] = Query(None, max_length=200),
     scope: WorkScope = _SCOPE,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
@@ -138,7 +184,9 @@ async def summary(
 ):
     """Per object of the run (or, ``scope=current``, of the current state, each object from its own run): records
     and issues to fix, by work status, and its groups' size. ``unbuilt`` lists the runs whose work list is missing;
-    ``built`` is false when no run read has one."""
+    ``built`` is false when no run read has one. With any of /work/records' filters, ``totals`` count the records
+    that list shows (status defaults to open, as there) so the Fix work tiles follow the filters; ``objects`` stay
+    unfiltered."""
     await _rls(db, tenant)
     sel = await _rows(db, tenant, version_id, scope)
     p: dict = {"t": str(tenant.id)}
@@ -163,9 +211,21 @@ async def summary(
     out = sorted(objects.values(), key=lambda o: (-o["critical"], -o["open"], o["module"]))
     unbuilt = await _unbuilt(db, tenant, sel)
     ids = run_ids(sel.pairs) if sel.pairs is not None else [sel.vid]
+    totals = {k: sum(o[k] for o in out) for k in ("records", "open", "issues", "critical", "proposed", "overdue")}
+    filters = (module, check_id, severity, status, assigned, proposed, due, part, system, q)
+    if any(f is not None for f in filters):
+        where, fp = _records_where(tenant, sel, request, module, check_id, severity, status or "open", assigned,
+                                   proposed, q, due, part, system)
+        f = (await db.execute(text(f"""
+            SELECT count(*) AS records, COALESCE(sum(w.issues), 0) AS issues,
+                   count(*) FILTER (WHERE w.sev_rank = 0) AS critical, count(*) FILTER (WHERE w.proposed > 0) AS proposed,
+                   count(*) FILTER (WHERE w.due_at < now()) AS overdue
+              FROM work_records w WHERE {' AND '.join(where)}"""), fp)).mappings().one()
+        totals = {"records": f["records"], "open": f["records"], "issues": int(f["issues"]), "critical": f["critical"],
+                  "proposed": f["proposed"], "overdue": f["overdue"]}
     return {"version_id": sel.vid, "scope": sel.scope, "mode": "current" if sel.current else "run",
             "version_ids": ids, "unbuilt": unbuilt, "built": len(unbuilt) < len(ids), "objects": out,
-            "totals": {k: sum(o[k] for o in out) for k in ("records", "open", "issues", "critical", "proposed", "overdue")}}
+            "totals": totals}
 
 
 @router.get("/groups")
@@ -206,7 +266,10 @@ async def groups(
           FROM work_groups WHERE {' AND '.join(where)}
          ORDER BY sev_rank, records DESC, check_id LIMIT :limit"""), p)).mappings().all()
     total = (await db.execute(text(f"SELECT count(*) FROM work_groups WHERE {' AND '.join(where)}"), p)).scalar()
-    built = sel.current or await _built(db, sel.vid)
+    if sel.current:  # as /work/summary: built once any run read has its work list
+        built = len(await _unbuilt(db, tenant, sel)) < len(run_ids(sel.pairs))
+    else:
+        built = await _built(db, sel.vid)
     return {"version_id": sel.vid, "built": built, "total": int(total or 0),
             "groups": [{**dict(r), "open": sum(int((r["statuses"] or {}).get(s, 0)) for s in OPEN)} for r in rows]}
 
@@ -288,30 +351,38 @@ async def records(
     q: Optional[str] = Query(None, max_length=200),
     after: Optional[str] = Query(None, description="cursor from the previous page"),
     limit: int = Query(PAGE, ge=1, le=500),
+    sort: Optional[str] = Query(None, max_length=50, description="severity and/or age, comma separated, a leading minus "
+                                                                 "for descending (-age: the oldest first); default severity"),
     scope: WorkScope = _SCOPE,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _perm: str = Depends(require_permission("view")),
 ):
-    """Failing records of the run (or the current state), worst first, a page at a time (keyset: no deep OFFSET at
-    millions). Each record names the run it was found in (``version_id``): the run its decisions go to."""
+    """Failing records of the run (or the current state), worst first unless ``sort`` says otherwise, a page at a time
+    (keyset over the sort, then module and record key: no deep OFFSET at millions, and no page reorders the ones before
+    it). Each record names the run it was found in (``version_id``): the run its decisions go to."""
     await _rls(db, tenant)
     sel = await _rows(db, tenant, version_id, scope)
+    order = _parse_sort(sort)
     where, p = _records_where(tenant, sel, request, module, check_id, severity, status, assigned, proposed, q, due, part,
                               system)
+    exprs = [_SORT_KEYS[k] for k in order]
     page_where = list(where)
     if after:
-        rank, mod, key = _uncursor(after)
-        page_where.append("(w.sev_rank, w.module, w.record_key) > (:ar, :am, :ak)")
-        p.update(ar=rank, am=mod, ak=key)
+        values, mod, key = _uncursor(order, after)
+        marks = ", ".join(f"CAST(:as{i} AS {_SORT_CAST[k]})" for i, (k, _) in enumerate(order))
+        page_where.append(f"({', '.join(exprs)}, w.module, w.record_key) > ({marks}, :am, :ak)")
+        p.update({f"as{i}": v for i, v in enumerate(values)}, am=mod, ak=key)
     rows = (await db.execute(text(f"""
         SELECT w.module, w.version_id::text AS version_id, w.record_key, w.name, w.issues, w.sev_rank, w.checks,
-               w.proposed, w.status, w.due_at, w.assigned_to, u.email AS assignee_email, g.message AS top_message, g.field AS top_field
+               w.proposed, w.status, w.due_at, w.assigned_to, u.email AS assignee_email, g.message AS top_message, g.field AS top_field,
+               {', '.join(f"{e} AS s{i}" for i, e in enumerate(exprs))}
           FROM work_records w
+          {_FIRST_SEEN if any(k == "age" for k, _ in order) else ""}
           LEFT JOIN users u ON u.id = w.assigned_to
           LEFT JOIN work_groups g ON g.version_id = w.version_id AND g.check_id = w.checks[1]
          WHERE {' AND '.join(page_where)}
-         ORDER BY w.sev_rank, w.module, w.record_key LIMIT :lim"""), {**p, "lim": limit + 1})).fetchall()
+         ORDER BY {', '.join(exprs)}, w.module, w.record_key LIMIT :lim"""), {**p, "lim": limit + 1})).fetchall()
     more = len(rows) > limit
     rows = rows[:limit]
     extra = await _row_extras(db, tenant, rows)
@@ -319,7 +390,7 @@ async def records(
                                    f"LIMIT {COUNT_CAP + 1}) x"), p)).scalar() or 0
     return {
         "version_id": sel.vid, "total": min(total, COUNT_CAP), "total_capped": total > COUNT_CAP,
-        "next": _cursor(rows[-1]) if more and rows else None,
+        "next": _cursor(order, rows[-1]) if more and rows else None,
         "items": [{"module": r.module, "version_id": r.version_id, "record_key": r.record_key, "name": r.name, "issues": r.issues,
                    "severity": SEVERITIES[r.sev_rank] if r.sev_rank < 4 else "info", "checks": list(r.checks),
                    "proposed": r.proposed, "status": r.status,
@@ -752,6 +823,15 @@ async def decide(
 ):
     """Apply decisions to failing records. Values go to the user's draft fix batch (a second person approves it);
     "not an issue" and "accept the risk" sign the issues off; undo takes a value back out of the draft."""
+    out = await _apply_decisions(body, request, db, tenant, role)
+    await db.commit()
+    work_analytics.forget(tenant.id)
+    return out
+
+
+async def _apply_decisions(body: DecideBody, request: Request, db: AsyncSession, tenant: Tenant, role: str) -> dict:
+    """decide's work without the commit: the caller commits once, so several runs' decisions (a fix sheet of the
+    current state) land together or not at all. Raises HTTPException before or while writing; the caller rolls back."""
     missing = sorted({a for a in {_NEEDS[d.action] for d in body.items} if not await _allowed(db, tenant, request, role, a)})
     if missing:
         raise HTTPException(status_code=403, detail=f"Your role cannot {', '.join(missing)}.")
@@ -865,8 +945,6 @@ async def decide(
             done += len(issue_ids)
     if touched:
         await db.run_sync(lambda s: worklist.refresh(s, str(tenant.id), scope, touched))
-    await db.commit()
-    work_analytics.forget(tenant.id)
     return {"updated": done, "draft_batch_id": draft}
 
 
@@ -1246,20 +1324,27 @@ async def import_sheet(
             continue
         by_run.setdefault(run, []).append(i)
     updated, rows_n, draft = 0, 0, None
-    for run, group in by_run.items():
-        failing = set((await db.execute(text("""
-            SELECT fr.module, fr.record_key, fr.check_id FROM finding_records fr
-              JOIN unnest(CAST(:m AS text[]), CAST(:k AS text[]), CAST(:c AS text[])) AS x(module, record_key, check_id)
-                ON fr.module = x.module AND fr.record_key = x.record_key AND fr.check_id = x.check_id
-             WHERE fr.version_id = CAST(:v AS uuid)"""),
-            {"v": run, "m": [i.module for i in group], "k": [i.record_key for i in group],
-             "c": [i.check_id or "" for i in group]})).fetchall())
-        kept = [i for i in group if (i.module, i.record_key, i.check_id) in failing]
-        skipped += [f"{i.record_key} {i.check_id}: does not fail this check in the run" for i in group if i not in kept]
-        if not kept:
-            continue
-        out = await decide(DecideBody(version_id=uuid.UUID(run), items=kept), request, db, tenant, role)
-        updated += out["updated"]
-        rows_n += len(kept)
-        draft = out["draft_batch_id"] or draft
+    # One transaction for every run: a group that fails (409, 403, ...) leaves no earlier run's decisions behind.
+    try:
+        for run, group in by_run.items():
+            failing = set((await db.execute(text("""
+                SELECT fr.module, fr.record_key, fr.check_id FROM finding_records fr
+                  JOIN unnest(CAST(:m AS text[]), CAST(:k AS text[]), CAST(:c AS text[])) AS x(module, record_key, check_id)
+                    ON fr.module = x.module AND fr.record_key = x.record_key AND fr.check_id = x.check_id
+                 WHERE fr.version_id = CAST(:v AS uuid)"""),
+                {"v": run, "m": [i.module for i in group], "k": [i.record_key for i in group],
+                 "c": [i.check_id or "" for i in group]})).fetchall())
+            kept = [i for i in group if (i.module, i.record_key, i.check_id) in failing]
+            skipped += [f"{i.record_key} {i.check_id}: does not fail this check in the run" for i in group if i not in kept]
+            if not kept:
+                continue
+            out = await _apply_decisions(DecideBody(version_id=uuid.UUID(run), items=kept), request, db, tenant, role)
+            updated += out["updated"]
+            rows_n += len(kept)
+            draft = out["draft_batch_id"] or draft
+        await db.commit()
+    except BaseException:
+        await db.rollback()
+        raise
+    work_analytics.forget(tenant.id)
     return {"updated": updated, "draft_batch_id": draft, "rows": rows_n, "skipped": skipped[:50]}

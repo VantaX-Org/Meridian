@@ -211,3 +211,90 @@ async def test_owners_and_open_work_per_person_count_the_same_issues(tenants, ge
     assert owners[0]["owner"] == mine[0]["name"] == "Sim steward"
     assert sum(owners[0]["open_by_severity"].values()) == mine[0]["open"] == 1
     assert (await get(b, "/api/v1/insights/owners"))["owners"] == []
+
+
+@pytest.mark.anyio
+async def test_current_state_groups_report_built_as_the_summary_does(tenants, get):
+    """/work/groups with scope=current says built only while some run of the current state has its work list."""
+    a, b, ids, _ = tenants
+    engine = create_engine(os.environ["MERIDIAN_TEST_DB_URL"])
+    with engine.begin() as c:
+        c.execute(text("UPDATE analysis_versions SET metadata = metadata - 'worklist_built_at' WHERE id = :v"),
+                  {"v": ids["mm_new"]})
+    assert (await get(a, "/api/v1/work/groups", scope="current"))["built"] is True  # ap still has its list
+    with engine.begin() as c:
+        c.execute(text("UPDATE analysis_versions SET metadata = metadata - 'worklist_built_at' WHERE id = :v"),
+                  {"v": ids["ap"]})
+    engine.dispose()
+    assert (await get(a, "/api/v1/work/summary", scope="current"))["built"] is False
+    assert (await get(a, "/api/v1/work/groups", scope="current"))["built"] is False
+
+
+@pytest.mark.anyio
+async def test_summary_totals_follow_the_record_filters(tenants, get):
+    """The Fix work tiles: with /work/records' filters the summary totals count what the list shows, in the
+    current state and for the tenant only; the objects stay unfiltered."""
+    a, b, ids, user = tenants
+    plain = await get(a, "/api/v1/work/summary", scope="current")
+    assert plain["totals"]["open"] == 2
+    mine = await get(a, "/api/v1/work/summary", scope="current", assigned=user)
+    assert mine["totals"]["open"] == mine["totals"]["critical"] == 1 and len(mine["objects"]) == 2
+    listed = await get(a, "/api/v1/work/records", scope="current", assigned=user)
+    assert listed["total"] == mine["totals"]["open"]
+    assert (await get(a, "/api/v1/work/summary", scope="current", severity="critical"))["totals"]["open"] == 2
+    assert (await get(a, "/api/v1/work/summary", scope="current", severity="low"))["totals"]["open"] == 0
+    assert (await get(a, "/api/v1/work/summary", scope="current", proposed="true"))["totals"]["open"] == 0
+    assert (await get(a, "/api/v1/work/summary", scope="current", due="overdue"))["totals"]["open"] == 0
+    from api.main import app  # the status filter: ``get`` takes ``status`` as the expected HTTP code
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        r = await client.get("/api/v1/work/summary", params={"scope": "current", "status": "approved"}, headers=HEADERS)
+        assert r.status_code == 200 and r.json()["totals"]["open"] == 0
+        r = await client.get("/api/v1/work/summary", params={"scope": "current", "status": "all"}, headers=HEADERS)
+        assert r.json()["totals"]["open"] == 2
+    assert (await get(b, "/api/v1/work/summary", scope="current", severity="critical"))["totals"]["open"] == 1
+
+
+@pytest.mark.anyio
+async def test_current_state_fix_sheet_import_is_all_or_nothing(tenants, monkeypatch):
+    """A current-state fix sheet spans runs; when one run's decisions fail (here: accept with no suggested value,
+    409), no other run's decisions are kept either."""
+    import io
+
+    from openpyxl import Workbook
+
+    from api import deps as api_deps
+    from api.deps import Tenant, get_tenant
+    from api.main import app
+
+    a, b, ids, _ = tenants
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Fix sheet"
+    ws.append(["Object", "Record", "Check", "New value", "Decision", "Reason"])
+    ws.append(["material_master", "MATNR=1", "MM001", "KG", None, None])  # valid: an edit in mm_new
+    ws.append(["accounts_payable", "LIFNR=1", "AP001", None, "fix", None])  # invalid: nothing to accept in ap
+    buf = io.BytesIO()
+    wb.save(buf)
+
+    monkeypatch.setattr("api.middleware.local_auth._load_jwt_secret", lambda: "test-secret")
+    monkeypatch.setattr("api.middleware.local_auth.decode_access_token", lambda token, secret: {
+        "sub": "00000000-0000-0000-0000-000000000002", "email": "dev@example.com", "role": "admin"})
+    monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")
+    monkeypatch.setitem(app.dependency_overrides, get_tenant, lambda: Tenant(uuid.UUID(a), "T", []))
+    await api_deps.engine.dispose()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        r = await client.post("/api/v1/work/import", params={"scope": "current"}, headers=HEADERS,
+                              files={"file": ("fix.xlsx", buf.getvalue(), "application/octet-stream")})
+    engine = create_engine(os.environ["MERIDIAN_TEST_DB_URL"])
+    with engine.begin() as c:
+        items = c.execute(text("SELECT count(*) FROM remediation_items WHERE tenant_id = :t"), {"t": a}).scalar()
+        batches = c.execute(text("SELECT count(*) FROM remediation_batches WHERE tenant_id = :t"), {"t": a}).scalar()
+        statuses = {k: s for k, s in c.execute(text(
+            "SELECT record_key, status FROM record_issues WHERE tenant_id = :t AND record_key IN ('MATNR=1', 'LIFNR=1')"),
+            {"t": a})}
+        c.execute(text("DELETE FROM remediation_items WHERE tenant_id = :t"), {"t": a})
+        c.execute(text("DELETE FROM remediation_batches WHERE tenant_id = :t"), {"t": a})
+    engine.dispose()
+    assert r.status_code == 409, r.text
+    assert items == 0 and batches == 0
+    assert set(statuses.values()) == {"open"}

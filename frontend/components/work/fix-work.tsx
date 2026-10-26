@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef, RowSelectionState, SortingState } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
@@ -30,7 +30,6 @@ import { STATUS, STATUS_ORDER, dueLabel } from "./status";
 const PAGE = 200;
 const DAY = 86_400_000;
 const SEVERITIES = ["critical", "high", "medium", "low"] as const;
-const SEV_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
 const SEVERITY_LABEL: Record<string, string> = { blocking: "Critical and high" };
 const STATUS_FILTERS = ["open", ...STATUS_ORDER, "all"] as const;
 const STATUS_FILTER_LABEL: Record<(typeof STATUS_FILTERS)[number], string> = {
@@ -65,34 +64,16 @@ const ageDays = (r: WorkRecord, now: number): number | null => {
   return Number.isNaN(t) ? null : Math.max(0, Math.floor((now - t) / DAY));
 };
 
-/** Sort keys per column; nulls always last. */
-const SORT_VALUE: Record<string, (r: WorkRecord, now: number) => string | number | null> = {
-  record: (r) => (r.name ?? r.record_key).toLowerCase(),
-  rule: (r) => (r.top_message ?? r.checks[0] ?? "").toLowerCase(),
-  severity: (r) => SEV_RANK[r.severity] ?? 4,
-  age: ageDays,
-  due: (r) => (r.due_at ? Date.parse(r.due_at) : null),
-  assignee: (r) => r.assignee_email?.toLowerCase() ?? null,
-  suggested: (r) => r.suggested_value ?? null,
+/**
+ * The columns the server sorts and pages by (GET /work/records ?sort=): severity, and age (the oldest failing issue's
+ * first-seen time). The queue is never re-sorted in the browser: a sort of the loaded pages alone would not be global,
+ * and the next page would reorder the rows above the cursor.
+ */
+const SERVER_SORTS = new Set(["severity", "age"]);
+const serverSorting = (s: SortingState): SortingState => {
+  const kept = s.filter((x) => SERVER_SORTS.has(x.id));
+  return kept.length ? kept : DEFAULT_SORT;
 };
-
-/** The loaded records in the table's order, the order j / k walk. Ties keep the server's worst-first order. */
-export function sortRecords(items: WorkRecord[], sorting: SortingState, now: number = Date.now()): WorkRecord[] {
-  const keys = sorting.filter((s) => SORT_VALUE[s.id]);
-  if (!keys.length) return items;
-  return items.map((r, i) => ({ r, i })).sort((a, b) => {
-    for (const k of keys) {
-      const va = SORT_VALUE[k.id](a.r, now);
-      const vb = SORT_VALUE[k.id](b.r, now);
-      if (va === vb) continue;
-      if (va === null) return 1;
-      if (vb === null) return -1;
-      const c = va < vb ? -1 : 1;
-      return k.desc ? -c : c;
-    }
-    return a.i - b.i;
-  }).map((x) => x.r);
-}
 
 
 function useFilters() {
@@ -159,20 +140,21 @@ function GroupList({ groups, active, onPick }: { groups: WorkGroup[]; active: st
 
 const DASH = <span className="m-ink-3">—</span>;
 
-/** The queue's columns: Record, Rule, Severity, Age, Due, Assignee, Suggested value. Sorting is the page's (`sortRecords`). */
+/** The queue's columns: Record, Rule, Severity, Age, Due, Assignee, Suggested value. Severity and Age sort on the server. */
 function queueColumns(now: number): ColumnDef<WorkRecord>[] {
   return [
     {
-      id: "record", header: "Record", accessorFn: (r) => r.name ?? r.record_key, meta: { sticky: "start" } satisfies CellMeta,
+      id: "record", header: "Record", accessorFn: (r) => r.name ?? r.record_key, enableSorting: false, meta: { sticky: "start" } satisfies CellMeta,
       cell: ({ row: { original: r } }) => (
-        <span className="flex w-[200px] min-w-0 items-baseline gap-2" title={r.name ? `${r.name} ${r.record_key}` : r.record_key}>
-          {r.name ? <span className="max-w-[110px] shrink-0 truncate">{r.name}</span> : null}
-          <span className="min-w-0 shrink truncate m-text-meta m-ink-3"><Mono inline>{r.record_key}</Mono></span>
+        // The name on one line, the full key under it (wrapped, never cut): at phone width a truncated key is unreadable.
+        <span className="flex w-[200px] min-w-0 flex-col" title={r.name ? `${r.name} ${r.record_key}` : r.record_key}>
+          {r.name ? <span className="truncate">{r.name}</span> : null}
+          <span className="break-all m-text-meta m-ink-3" data-testid="work-record-key"><Mono inline>{r.record_key}</Mono></span>
         </span>
       ),
     },
     {
-      id: "rule", header: "Rule", accessorFn: (r) => r.top_message ?? r.checks[0] ?? "",
+      id: "rule", header: "Rule", accessorFn: (r) => r.top_message ?? r.checks[0] ?? "", enableSorting: false,
       cell: ({ row: { original: r } }) => (
         <span className="flex w-[210px] min-w-0 items-baseline gap-2" title={r.top_message ?? undefined}>
           <span className="min-w-0 shrink truncate">{r.top_message ?? r.checks[0]}</span>
@@ -197,7 +179,7 @@ function queueColumns(now: number): ColumnDef<WorkRecord>[] {
     },
     {
       // Due only applies while nobody has decided a value; after that the cell says where the fix is.
-      id: "due", header: "Due", accessorFn: (r) => r.due_at ?? "",
+      id: "due", header: "Due", accessorFn: (r) => r.due_at ?? "", enableSorting: false,
       cell: ({ row: { original: r } }) => {
         if (r.status !== "to_fix") return <Pill tone={STATUS[r.status].tone}>{STATUS[r.status].label}</Pill>;
         const due = dueLabel(r.due_at, now);
@@ -206,11 +188,11 @@ function queueColumns(now: number): ColumnDef<WorkRecord>[] {
       },
     },
     {
-      id: "assignee", header: "Assignee", accessorFn: (r) => r.assignee_email ?? "", meta: { priority: "low" } satisfies CellMeta,
+      id: "assignee", header: "Assignee", accessorFn: (r) => r.assignee_email ?? "", enableSorting: false, meta: { priority: "low" } satisfies CellMeta,
       cell: ({ row: { original: r } }) => (r.assignee_email ? <span className="block max-w-[150px] truncate" title={r.assignee_email}>{r.assignee_email}</span> : DASH),
     },
     {
-      id: "suggested", header: "Suggested value", accessorFn: (r) => r.suggested_value ?? "", meta: { priority: "low" } satisfies CellMeta,
+      id: "suggested", header: "Suggested value", accessorFn: (r) => r.suggested_value ?? "", enableSorting: false, meta: { priority: "low" } satisfies CellMeta,
       cell: ({ row: { original: r } }) => (r.suggested_value != null
         ? <span className="block max-w-[120px] truncate" title={r.suggested_value}><Mono inline>{r.suggested_value}</Mono></span>
         : r.proposed ? <span className="m-ink-3">{plural(r.proposed, "suggestion")}</span> : DASH),
@@ -295,7 +277,9 @@ export function FixWork() {
   const { can } = useRole();
   const canFix = can("apply");
   const canSignOff = can("approve");
-  const { filter, selected, set, sorting, viewParams, fromObject } = useFilters();
+  const { filter, selected, set, sorting: urlSorting, viewParams, fromObject } = useFilters();
+  const sorting = serverSorting(urlSorting);
+  const sort = encodeSort(sorting);
   const router = useRouter();
   const narrow = useMediaQuery(BELOW_XL);
   const run = filter.version_id;
@@ -316,21 +300,31 @@ export function FixWork() {
   const runList = useRunList();
   const stateIds = new Set(run ? [] : summary.data?.version_ids ?? []);
   const newestOfState = (runList.data?.versions ?? []).filter((v) => stateIds.has(v.id)).sort((a, b) => (a.run_at < b.run_at ? 1 : -1))[0];
+  // The tiles count what the list shows: with a filter (mine, severity, status, suggestion, ...) the summary is asked
+  // for the same filter; without one, the plain summary's totals already are the list's.
+  const listFilter: RecordFilter = { ...filter, version_id: undefined };
+  const filtered = Object.entries(listFilter).some(([k, v]) => v !== undefined && !(k === "status" && v === "open"));
+  const tiles = useQuery({
+    queryKey: ["work", "summary", run ?? "current", listFilter],
+    queryFn: () => getWorkSummary(run, listFilter),
+    enabled: summary.isSuccess && filtered,
+    placeholderData: keepPreviousData,
+  });
   const groups = useQuery({
     queryKey: ["work", "groups", run ?? "current", filter.module ?? "", filter.severity ?? ""],
     queryFn: () => getWorkGroups({ version_id: run, module: filter.module, severity: filter.severity }),
     enabled: summary.isSuccess,
   });
   const records = useInfiniteQuery({
-    queryKey: ["work", "records", filter],
-    queryFn: ({ pageParam }) => getWorkRecords({ ...filter, after: pageParam, limit: PAGE }),
+    queryKey: ["work", "records", filter, sort],
+    queryFn: ({ pageParam }) => getWorkRecords({ ...filter, sort, after: pageParam, limit: PAGE }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.next ?? undefined,
     enabled: summary.isSuccess,
   });
-  const loaded = useMemo(() => records.data?.pages.flatMap((p) => p.items) ?? [], [records.data]);
-  const sortKey = encodeSort(sorting);
-  const items = useMemo(() => sortRecords(loaded, decodeSort(sortKey), now), [loaded, sortKey, now]);
+  // In the server's order: each page continues the one before it, so loading more never reorders the rows above.
+  const items = useMemo(() => records.data?.pages.flatMap((p) => p.items) ?? [], [records.data]);
+  const loaded = items;
   const total = records.data?.pages[0]?.total ?? 0;
   const capped = records.data?.pages[0]?.total_capped ?? false;
   const activeGroup = groups.data?.groups.find((g) => g.check_id === filter.check_id);
@@ -422,7 +416,8 @@ export function FixWork() {
     </Notice>
   );
   if (!s.built) return buildNotice;
-  const t = s.totals;
+  const t = filtered ? tiles.data?.totals : s.totals;
+  const tile = (n: number | undefined) => (n === undefined ? "—" : n.toLocaleString());
   // The scope bar holds the object and the record search; a chip only for what it does not show.
   const chips: { label: string; value: string; key: string }[] = [
     fromObject && filter.module ? { label: "Object", value: formatModuleName(filter.module), key: "object" } : null,
@@ -458,10 +453,10 @@ export function FixWork() {
       ) : null}
       {isCurrent && s.unbuilt?.length ? buildNotice : null}
       <div className="m-stat-grid @5xl:[grid-template-columns:repeat(4,minmax(0,1fr))]">
-        <Stat label="Records to fix" value={t.open.toLocaleString()} hint={`${plural(t.issues, "issue")} across ${plural(s.objects.length, "object")}`} onClick={() => set({ st: null, sev: null, sugg: null, due: null })} />
-        <Stat label="Critical" value={t.critical.toLocaleString()} tone={t.critical ? "no-go" : "go"} hint="critical severity" onClick={() => set({ sev: "critical" })} />
-        <Stat label="With a suggested value" value={t.proposed.toLocaleString()} hint="accept in one step" onClick={() => set({ sugg: "1" })} />
-        <Stat label="Overdue" value={t.overdue.toLocaleString()} tone={t.overdue ? "at-risk" : undefined} hint="past their due date" onClick={() => set({ due: "overdue" })} />
+        <Stat label="Records to fix" value={tile(t?.open)} hint={t ? `${plural(t.issues, "issue")} across ${plural(s.objects.length, "object")}${filtered ? ", these filters" : ""}` : undefined} onClick={() => set({ st: null, sev: null, sugg: null, due: null })} />
+        <Stat label="Critical" value={tile(t?.critical)} tone={t ? (t.critical ? "no-go" : "go") : undefined} hint="critical severity" onClick={() => set({ sev: "critical" })} />
+        <Stat label="With a suggested value" value={tile(t?.proposed)} hint="accept in one step" onClick={() => set({ sugg: "1" })} />
+        <Stat label="Overdue" value={tile(t?.overdue)} tone={t?.overdue ? "at-risk" : undefined} hint="past their due date" onClick={() => set({ due: "overdue" })} />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -560,7 +555,13 @@ export function FixWork() {
                     </>
                   ) : undefined}
                 />
-                {records.isFetchingNextPage ? <p className="m-text-meta m-ink-3" role="status">Loading more records</p> : null}
+                {records.isFetchingNextPage ? <p className="m-text-meta m-ink-3" role="status">Loading more records</p>
+                  : records.hasNextPage ? (
+                    // Scrolling to the end loads the next page by itself; the button is the visible cue and the fallback.
+                    <Button variant="secondary" size="sm" className="self-start" onClick={loadMore}>
+                      Load more records ({loaded.length.toLocaleString()} of {capped ? "100,000+" : total.toLocaleString()} loaded)
+                    </Button>
+                  ) : null}
                 <p className="px-1 m-text-meta m-ink-3 max-[639px]:hidden">Keys: <kbd className="m-kbd">j</kbd> <kbd className="m-kbd">k</kbd> move, <kbd className="m-kbd">a</kbd> accept suggestions, <kbd className="m-kbd">t</kbd> take, <kbd className="m-kbd">u</kbd> undo, <kbd className="m-kbd">Enter</kbd> full record</p>
               </>
             )}

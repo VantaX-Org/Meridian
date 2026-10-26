@@ -125,7 +125,7 @@ function RulesTab({ object, run }: { object: string; run: string }) {
   const delta = (checkId: string): number | null => {
     const runs = batch.data?.history[checkId];
     const [now, before] = [passRatePct(runs?.[0]?.pass_rate), passRatePct(runs?.[1]?.pass_rate)];
-    // Points of pass rate, whichever scale the run stored (0 to 1 or 0 to 100).
+    // Points of pass rate between the two newest runs (findings.pass_rate is 0 to 100).
     return now == null || before == null ? null : now - before;
   };
   const recordsHref = (checkId: string) => `/objects/${object}?run=${run}&tab=records&check_id=${checkId}`;

@@ -349,6 +349,28 @@ describe("DataTable toolbar", () => {
     expect(onSelection).toHaveBeenCalledWith({ "2": true, "1": true });
   });
 
+  it("scrolls to a controlled active row when it changes, not on mount and not when rows load around it", () => {
+    const scroll = vi.fn();
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = scroll;
+    try {
+      // The row the table mounts with (an auto-selection) is not scrolled to: the page stays at its top.
+      const { rerender } = render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} manualSorting activeRowId="1" />);
+      expect(scroll).not.toHaveBeenCalled();
+      // The viewer moves the active row (j / k, arrows, a click): that one is followed.
+      rerender(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} manualSorting activeRowId="2" />);
+      expect(scroll).toHaveBeenCalledTimes(1);
+      // The next page arrives and lands above the active row: its index moves, the viewer's scroll stays.
+      const more = [{ id: "3", name: "Charlie" }, { id: "4", name: "Delta" }, ...rows];
+      rerender(<DataTable columns={columns} data={more} getRowId={(r) => r.id} manualSorting activeRowId="2" />);
+      expect(scroll).toHaveBeenCalledTimes(1);
+      rerender(<DataTable columns={columns} data={more} getRowId={(r) => r.id} manualSorting activeRowId="4" />);
+      expect(scroll).toHaveBeenCalledTimes(2);
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
+  });
+
   it("shows a filtered-empty row with a Clear filter button", () => {
     render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} />);
     fireEvent.change(screen.getByLabelText("Filter rows"), { target: { value: "zzz" } });

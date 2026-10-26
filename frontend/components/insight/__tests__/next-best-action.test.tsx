@@ -28,11 +28,12 @@ describe("nextBestActionView", () => {
     expect(v.href).toBe("/objects/material_master?run=run-1&tab=records&check_id=MM003");
   });
 
-  it("carries the run to a cleaning item and an exception", () => {
+  it("carries the run to a cleaning item, and opens an exception on the Inbox's exceptions list", () => {
     expect(nextBestActionView({ ...finding, type: "cleaning", title: "Clean: vendor — V1", module: undefined, check_id: undefined }, "run-1").href)
       .toBe("/fix?tab=cleaning&run=run-1");
+    // ?run= alone opened the Inbox on its queue tasks; the exceptions are under ?kind=exception.
     expect(nextBestActionView({ ...finding, type: "exception", title: "Blocked payment run", module: undefined, check_id: undefined }, "run-1").href)
-      .toBe("/inbox?run=run-1");
+      .toBe("/inbox?kind=exception");
   });
 });
 

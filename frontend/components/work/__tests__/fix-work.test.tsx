@@ -72,6 +72,37 @@ beforeEach(() => {
 });
 
 describe("FixWork", () => {
+  it("counts the tiles for the active filters: Mine shows my records, not everyone's", async () => {
+    search = new URLSearchParams("mine=1&sev=critical");
+    vi.mocked(work.getWorkSummary).mockImplementation(async (_run, filter) =>
+      filter ? summary({ totals: { records: 1, open: 1, issues: 1, critical: 1, proposed: 0, overdue: 0 } })
+        : summary({ totals: { records: 24712, open: 24712, issues: 30000, critical: 900, proposed: 50, overdue: 7 } }));
+    renderWithQuery(<FixWork />);
+    await screen.findAllByTestId("work-record");
+    expect(work.getWorkSummary).toHaveBeenCalledWith(undefined, expect.objectContaining({ assigned: "me", severity: "critical", status: "open" }));
+    await waitFor(() => expect(screen.getByText(/these filters/)).toBeInTheDocument());
+    expect(screen.queryByText("24,712")).toBeNull();
+  });
+
+  it("asks for no filtered summary without a filter: the plain totals are the list's", async () => {
+    renderWithQuery(<FixWork />);
+    await screen.findAllByTestId("work-record");
+    expect(work.getWorkSummary).toHaveBeenCalledTimes(1);
+    expect(work.getWorkSummary).toHaveBeenCalledWith(undefined);
+  });
+
+  it("offers a visible Load more while pages remain, and loads the next page from it", async () => {
+    vi.mocked(work.getWorkRecords).mockImplementation(async (f) => f.after
+      ? { version_id: "R1", total: 3, total_capped: false, next: null, items: [rec("MATNR=3", { name: "Washer" })] }
+      : { version_id: "R1", total: 3, total_capped: false, next: "c1", items: [rec("MATNR=1", { name: "Bolt" }), rec("MATNR=2", { name: "Nut" })] });
+    renderWithQuery(<FixWork />);
+    await screen.findAllByTestId("work-record");
+    await userEvent.click(await screen.findByRole("button", { name: "Load more records (2 of 3 loaded)" }));
+    await waitFor(() => expect(screen.getAllByTestId("work-record")).toHaveLength(3));
+    expect(work.getWorkRecords).toHaveBeenLastCalledWith(expect.objectContaining({ after: "c1" }));
+    expect(screen.queryByRole("button", { name: /^Load more records/ })).toBeNull();
+  });
+
   it("names the run its counts belong to when ?run= pins one, and calls critical what it is", async () => {
     search = new URLSearchParams("run=R1");
     const getVersion = vi.spyOn(versions, "getVersion").mockResolvedValue({ id: "R1", label: "material_master_25k", status: "complete", run_at: "2026-10-16T05:00:00Z", dqs_summary: null, metadata: {} });
@@ -245,30 +276,51 @@ describe("FixWork", () => {
       ] });
     });
 
-    it("shows Record, Rule, Severity, Age, Due, Assignee and Suggested value, severity first and then the oldest", async () => {
+    it("shows Record, Rule, Severity, Age, Due, Assignee and Suggested value, asking the server for severity, then the oldest", async () => {
       renderWithQuery(<FixWork />);
       const rows = await screen.findAllByTestId("work-record");
       const headers = within(screen.getByRole("grid", { name: "Records to fix" })).getAllByRole("columnheader").map((h) => h.textContent);
       expect(headers).toEqual(["", "Record", "Rule", "Severity", "Age", "Due", "Assignee", "Suggested value"]);
-      // Critical before high; among the critical, 40 days before 3 days.
-      expect(rows.map((r) => within(r).getByText(/Bolt|Nut|Washer/).textContent)).toEqual(["Nut", "Bolt", "Washer"]);
-      expect(rows[0]).toHaveTextContent("40 d");
-      expect(within(rows[0]).getByText("EA")).toBeInTheDocument();
-      expect(within(rows[1]).getByText("Overdue")).toBeInTheDocument();
-      expect(rows[1]).toHaveTextContent("ann@example.com");
+      // The sort is the server's (global over every page), and the table keeps its order: no re-sort of loaded rows.
+      expect(work.getWorkRecords).toHaveBeenCalledWith(expect.objectContaining({ sort: "severity,-age" }));
+      expect(rows.map((r) => within(r).getByText(/Bolt|Nut|Washer/).textContent)).toEqual(["Bolt", "Nut", "Washer"]);
+      expect(rows[1]).toHaveTextContent("40 d");
+      expect(within(rows[1]).getByText("EA")).toBeInTheDocument();
+      expect(within(rows[0]).getByText("Overdue")).toBeInTheDocument();
+      expect(rows[0]).toHaveTextContent("ann@example.com");
       expect(within(rows[2]).getByText("Fix proposed")).toBeInTheDocument();
-      // j walks the table's order, not the server's.
+      // j walks the table's order.
       fireEvent.keyDown(window, { key: "j" });
-      expect(replace).toHaveBeenLastCalledWith("/fix?record=material_master%7CMATNR%3D1", { scroll: false });
+      expect(replace).toHaveBeenLastCalledWith("/fix?record=material_master%7CMATNR%3D2", { scroll: false });
     });
 
-    it("keeps a header sort in the URL and follows it", async () => {
+    it("sends the URL's sort to the server and sorts only the columns the server pages by", async () => {
       search = new URLSearchParams("sort=-age");
       renderWithQuery(<FixWork />);
       const rows = await screen.findAllByTestId("work-record");
-      expect(rows.map((r) => within(r).getByText(/Bolt|Nut|Washer/).textContent)).toEqual(["Washer", "Nut", "Bolt"]);
-      await userEvent.click(screen.getByRole("button", { name: "Record" }));
-      expect(replace).toHaveBeenLastCalledWith("/fix?sort=record", { scroll: false });
+      expect(work.getWorkRecords).toHaveBeenCalledWith(expect.objectContaining({ sort: "-age" }));
+      expect(rows.map((r) => within(r).getByText(/Bolt|Nut|Washer/).textContent)).toEqual(["Bolt", "Nut", "Washer"]);
+      // Record, Rule, Due, Assignee and Suggested value are not sortable: a sort of the loaded page would lie.
+      expect(screen.queryByRole("button", { name: "Record" })).toBeNull();
+      await userEvent.click(screen.getByRole("button", { name: "Severity" }));
+      expect(replace).toHaveBeenLastCalledWith(expect.stringMatching(/^\/fix\?sort=.*severity/), { scroll: false });
+    });
+
+    it("asks for the default sort when the URL names a column the server does not sort", async () => {
+      search = new URLSearchParams("sort=record");
+      renderWithQuery(<FixWork />);
+      await screen.findAllByTestId("work-record");
+      expect(work.getWorkRecords).toHaveBeenCalledWith(expect.objectContaining({ sort: "severity,-age" }));
+    });
+
+    it("shows a record's whole key, wrapped rather than cut", async () => {
+      vi.mocked(work.getWorkRecords).mockResolvedValue({ version_id: "R1", total: 1, total_capped: false, next: null,
+        items: [rec("MATNR=MAT000012345678|WERKS=1000", { name: "Bolt" })] });
+      renderWithQuery(<FixWork />);
+      const key = (await screen.findAllByTestId("work-record-key"))[0];
+      expect(key).toHaveTextContent("MATNR=MAT000012345678|WERKS=1000");
+      expect(key).toHaveClass("break-all");
+      expect(key).not.toHaveClass("truncate");
     });
 
     it("ships saved views that set the queue's filters in the URL", async () => {
