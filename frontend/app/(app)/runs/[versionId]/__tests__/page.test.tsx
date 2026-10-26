@@ -82,14 +82,16 @@ describe("RunDetailPage", () => {
       expect(slot).toHaveClass("[min-height:124px]");
     });
 
-    it("shows a muted line when there are no actions", async () => {
+    it("leaves the section out when there are no actions, rather than a dead heading", async () => {
       withFindings();
-      vi.spyOn(analyticsApi, "getPrescriptiveAnalytics").mockResolvedValue({
+      const prescriptive = vi.spyOn(analyticsApi, "getPrescriptiveAnalytics").mockResolvedValue({
         actions: [], sprints: [], basis: { version_id: "v2", findings: 0, cleaning_items: 0, exceptions: 0 },
       } as unknown as Awaited<ReturnType<typeof analyticsApi.getPrescriptiveAnalytics>>);
       renderWithQuery(<RunDetailPage />);
-      expect(await screen.findByText("No next actions for this run")).toBeInTheDocument();
-      expect(screen.getByTestId("next-actions-slot")).toBeInTheDocument();
+      expect(await screen.findByText("Objects in this run")).toBeInTheDocument();
+      await waitFor(() => expect(prescriptive).toHaveBeenCalled());
+      await waitFor(() => expect(screen.queryByTestId("next-actions-slot")).toBeNull());
+      expect(screen.queryByText("No next actions for this run")).toBeNull();
     });
 
     it("opens a cleaning action on the object's cleaning tab and explains it in plain words", async () => {
@@ -460,7 +462,7 @@ describe("RunDetailPage", () => {
     expect(findingsApi.getFindingsAggregate).toHaveBeenCalled();
   });
 
-  it("offers Import file in the single-run empty state only to a role that may upload", async () => {
+  it("offers no Import file or Run analysis in the single-run empty state, whoever reads the run", async () => {
     const single = version({ id: "v2", metadata: { modules: ["material_master"], file_name: "f.csv", row_count: 1 } });
     vi.spyOn(versionsApi, "getVersion").mockResolvedValue(single);
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [single] });
@@ -471,9 +473,11 @@ describe("RunDetailPage", () => {
       expect(await screen.findByText("Only one run so far")).toBeInTheDocument();
       expect(screen.queryByRole("link", { name: "Import file" })).toBeNull();
       viewer.unmount();
-      can.mockImplementation((a: string) => a === "upload");
+      can.mockImplementation((a: string) => a === "upload" || a === "analyse");
       renderWithQuery(<RunDetailPage />);
-      expect(await screen.findByRole("link", { name: "Import file" })).toHaveAttribute("href", "/import");
+      expect(await screen.findByText("Only one run so far")).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Import file" })).toBeNull();
+      expect(screen.queryByRole("link", { name: "Run analysis" })).toBeNull();
     } finally {
       can.mockImplementation((action: string) => action === "analyse" || action === "export");
     }

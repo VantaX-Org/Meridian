@@ -110,16 +110,18 @@ async def list_rules(
 
     params["limit"] = limit
     params["offset"] = offset
-    # last_pass_rate: the rule's most recent finding (findings.check_id = rule id before the ':')
+    # last_pass_rate / last_affected_count: the rule's most recent finding (findings.check_id = rule id before the ':');
+    # the count ranks the rules list by records affected, not by pass rate (a tie of 0.0 across the top 40 rules)
     result = await db.execute(
         text(f"""
             SELECT r.id, r.name, r.description, r.module, r.category, r.severity,
                    r.enabled, r.conditions, r.thresholds, r.tags, r.source_yaml, r.source,
-                   r.created_at, r.updated_at, f.pass_rate AS last_pass_rate, f.created_at AS last_run_at
+                   r.created_at, r.updated_at, f.pass_rate AS last_pass_rate, f.created_at AS last_run_at,
+                   f.affected_count AS last_affected_count
             FROM (SELECT * FROM rules WHERE {where_clause}
                   ORDER BY category, module, name LIMIT :limit OFFSET :offset) r
             LEFT JOIN (
-                SELECT DISTINCT ON (check_id, module) check_id, module, pass_rate, created_at
+                SELECT DISTINCT ON (check_id, module) check_id, module, pass_rate, affected_count, created_at
                 FROM findings WHERE tenant_id = :tid
                 ORDER BY check_id, module, created_at DESC
             ) f ON f.check_id = split_part(r.name, ':', 1) AND f.module = r.module

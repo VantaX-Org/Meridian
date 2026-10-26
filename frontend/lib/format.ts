@@ -159,13 +159,31 @@ export function formatMoney(n: number, currency?: string | null): string {
   }
 }
 
-/** "ZAR 4.84 bn", "ZAR 12.5 m", "ZAR 830 k": a large amount in three significant figures, for a sentence or a tile. */
-export function formatMoneyShort(n: number, currency?: string | null): string {
-  const abs = Math.abs(n);
-  const [div, unit] = abs >= 1e9 ? [1e9, "bn"] : abs >= 1e6 ? [1e6, "m"] : abs >= 1e3 ? [1e3, "k"] : [1, ""];
-  if (!unit) return formatMoney(n, currency);
-  const num = new Intl.NumberFormat(formatPrefs.locale, { maximumSignificantDigits: 3 }).format(n / div);
-  return `${currency ? `${currency} ` : ""}${num} ${unit}`;
+const MONEY_SCALES = [
+  { at: 1e12, unit: "tn" },
+  { at: 1e9, unit: "bn" },
+  { at: 1e6, unit: "m" },
+] as const;
+
+/**
+ * Headline money (stat tiles, sentences): "ZAR 4.84 bn", "ZAR 12.3 m", three significant figures from a million up;
+ * below that the full amount as `formatMoney` gives it. Tables and exports keep `formatMoney`'s exact figure.
+ */
+export function formatMoneyCompact(n: number | null | undefined, currency?: string | null): string {
+  if (typeof n !== "number" || !Number.isFinite(n)) return "—";
+  const scale = MONEY_SCALES.find((s) => Math.abs(n) >= s.at);
+  if (!scale) return formatMoney(Math.round(n), currency);
+  const value = new Intl.NumberFormat(formatPrefs.locale, { maximumSignificantDigits: 3 }).format(n / scale.at);
+  return `${currency ? `${currency} ` : ""}${value} ${scale.unit}`;
+}
+
+/** The short name of a time zone ("UTC", "GMT+2"), for a column header that states the zone once instead of every cell. */
+export function zoneName(tz: string, at: Date = new Date()): string {
+  try {
+    return intl({ timeZoneName: "short" }, tz).formatToParts(at).find((p) => p.type === "timeZoneName")?.value ?? tz;
+  } catch {
+    return tz;
+  }
 }
 
 const SYSTEM_TYPE_LABELS: Record<string, string> = {
@@ -374,15 +392,16 @@ export function browserTimezone(): string {
 
 /** The one date style: "2 Oct 2026" or "2 Oct 2026, 05:09", in the user's chosen zone, else the tenant's, else
  * UTC. With an explicit IANA `tz` (schedule and sign-off times, read in the tenant's zone) the time is shown in
- * that zone and labelled with it: "2 Oct 2026, 07:09 GMT+2". An unparseable value is an em dash. */
-export function formatDate(iso: string | number | Date | null | undefined, kind: "date" | "datetime" | "seconds" = "date", tz?: string): string {
+ * that zone and labelled with it: "2 Oct 2026, 07:09 GMT+2", unless `zoneLabel` is false (a table that names the zone
+ * in its header, `zoneName`). An unparseable value is an em dash. */
+export function formatDate(iso: string | number | Date | null | undefined, kind: "date" | "datetime" | "seconds" = "date", tz?: string, zoneLabel = true): string {
   if (iso === null || iso === undefined || iso === "") return "—";
   const d = iso instanceof Date ? iso : new Date(typeof iso === "string" && /^\d{4}-\d{2}-\d{2}T[\d:.]+$/.test(iso) ? `${iso}Z` : iso);
   if (Number.isNaN(d.getTime())) return "—";
   const opts = kind === "date" ? DATE_OPTS : kind === "seconds" ? SECONDS_OPTS : DATETIME_OPTS;
   if (!tz) return intl(opts, formatPrefs.timezone ?? tenantZone ?? "UTC").format(d);
   const text = intl(opts, tz).format(d);
-  if (kind === "date") return text;
+  if (kind === "date" || !zoneLabel) return text;
   const zone = intl({ timeZoneName: "short" }, tz).formatToParts(d).find((p) => p.type === "timeZoneName")?.value;
   return zone ? `${text} ${zone}` : text;
 }

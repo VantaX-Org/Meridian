@@ -13,7 +13,7 @@
 import type { Page } from "@playwright/test";
 import { expect, test, RECORDED } from "./fixtures";
 import { PERSONA_ROLES, personaActions, personaPermissionsPayload, type PersonaRole } from "./fixtures/persona-permissions";
-import { homeHrefForRole, personaForRole } from "../lib/persona";
+import { homeHrefForRole, pillSetFor } from "../lib/persona";
 import { MAX_PILLS, resolveNavHref, visibleNav } from "../lib/nav";
 import { railSplit } from "../design/shell/Rail";
 
@@ -29,9 +29,9 @@ function expectedNav(role: PersonaRole) {
     isMenuItemEnabled: () => true,
     has: (r, a) => p.resources[r]?.[a] === true,
   });
-  // the Rail resolves with the viewer's `can`: a data owner's Home is Fix work's approvals tab, not /fix
+  // the Rail resolves with the viewer's `can`: a data owner's Home is Inbox › Approvals, not /fix
   const resolve = (href: string) => resolveNavHref(href, role, (a) => actions.has(a));
-  const { main, more } = railSplit(groups, personaForRole(role), resolve);
+  const { main, more } = railSplit(groups, pillSetFor(role), resolve);
   return {
     pills: main.map((i) => resolve(i.href)),
     more: more.map((g) => ({ group: g.group, hrefs: g.items.map((i) => resolve(i.href)) })),

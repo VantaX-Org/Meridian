@@ -38,13 +38,16 @@ export function processHomeInsight(rows: readonly ProcessHomeRow[], system: { id
       next: { sentence: `Analyse a run of ${system.name} to score each process`, action: { label: "Open system", href: `/systems/${encodeURIComponent(system.id)}` } },
     };
   }
+  // Counted over every process, so "1 of 1" never sits over a table of thirteen; the unscored rest is named.
+  const unscored = rows.length - scored.length;
+  const rest = unscored > 0 ? `; ${unscored} not scored yet` : "";
   return {
     situation: {
       sentence: noGo.length
-        ? `${noGo.length} of ${plural(scored.length, "scored process", "scored processes")} cannot run on ${system.name}`
+        ? `${noGo.length} of ${plural(rows.length, "process", "processes")} cannot run on ${system.name}${rest}`
         : atRisk.length
-          ? `${atRisk.length} of ${plural(scored.length, "scored process", "scored processes")} at risk on ${system.name}, none no-go`
-          : `Every scored process can run on ${system.name}`,
+          ? `${atRisk.length} of ${plural(rows.length, "process", "processes")} at risk on ${system.name}, none no-go${rest}`
+          : `Every scored process can run on ${system.name}${rest}`,
       tone: noGo.length ? "no-go" : atRisk.length ? "at-risk" : "go",
     },
     changed: { sentence: `Scored from ${runScopeLabel(latest)}` },

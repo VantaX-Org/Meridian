@@ -8,6 +8,12 @@ export interface PendingApproval {
   records_updated: number;
   sap_host: string | null;
   created_at: string | null;
+  /** The finding's rule, module and rule message, joined by the API so an approver never reads a bare finding id. */
+  check_id?: string | null;
+  module?: string | null;
+  rule_message?: string | null;
+  /** The requester's name (else email), joined by the API: a data owner cannot read the users list. */
+  requested_by_name?: string | null;
 }
 
 /** Live write-back requests awaiting a second approver (needs `approve`). */

@@ -8,7 +8,7 @@ import {
   FEATURE_AREAS, FEATURE_DESC, INDEX_ONLY_GROUPS, MAX_PILLS, NAV_GROUPS, featureArea, featureIndex, flattenNav,
   resolveNavHref, visibleNav, type NavGate,
 } from "../nav";
-import { personaForRole } from "../persona";
+import { pillSetFor } from "../persona";
 import { LEGACY_PERMISSIONS } from "../../e2e/fixtures/legacy-permissions";
 import { resourceMatrix } from "../rbac";
 
@@ -45,7 +45,7 @@ const path0 = (h: string) => h.split("?")[0]!;
 const allItems = [...flattenNav(NAV_GROUPS.flatMap((g) => g.items)), ...INDEX_ONLY_GROUPS.flatMap((g) => g.items)];
 
 describe("admin reaches every page", () => {
-  const { main, more } = railSplit(visibleNav(gate), personaForRole(role), resolve);
+  const { main, more } = railSplit(visibleNav(gate), pillSetFor(role), resolve);
   const railHrefs = [...main, ...more.flatMap((g) => g.items)].map((i) => path0(resolve(i.href)));
   const index = featureIndex(gate, resolve);
   const indexHrefs = index.flatMap((a) => a.items.map((i) => path0(i.href)));
@@ -55,7 +55,9 @@ describe("admin reaches every page", () => {
   });
 
   it("makes Runs a pill, in order, within MAX_PILLS", () => {
-    expect(main.map((i) => i.href)).toEqual(["/fix", "/objects", "/runs", "/process", "/insights/progress", "/inbox"]);
+    expect(main.map((i) => i.href)).toEqual(["/home/lead", "/objects", "/fix", "/inbox", "/insights/progress", "/runs"]);
+    // Processes, the main entry the lead's strip leaves out, leads More
+    expect(more[0]?.items[0]?.href).toBe("/process");
     expect(main.length).toBeLessThanOrEqual(MAX_PILLS);
   });
 
@@ -69,6 +71,7 @@ describe("admin reaches every page", () => {
     const hrefsFor = (actions: readonly string[]) => featureIndex(gateFor(actions)).flatMap((a) => a.items.map((i) => i.href));
     expect(hrefsFor(LEGACY_PERMISSIONS.auditor)).toContain("/fix?tab=batches");
     expect(hrefsFor(LEGACY_PERMISSIONS.approver)).toContain("/migration");
+    expect(hrefsFor(LEGACY_PERMISSIONS.approver)).toContain("/inbox?kind=approvals");
     expect(hrefsFor(LEGACY_PERMISSIONS.manager)).toContain("/admin/triage");
     expect(hrefsFor(LEGACY_PERMISSIONS.analyst)).toContain("/admin/jobs");
     expect(featureArea("/admin/jobs")).toBe("Systems and import");

@@ -133,6 +133,25 @@ describe("HomePage data state", () => {
     expect(screen.getByTestId("trend").parentElement?.parentElement).toBe(screen.getByTestId("heat").parentElement?.parentElement);
   });
 
+  it("opsFirst (the Basis home) leads with the work row and the lists, the score after them, each once", () => {
+    render(
+      <HomePage
+        persona="basis"
+        state="ready"
+        opsFirst
+        verdict={{ dqs: 70, sentence: "x" }}
+        run={run}
+        cells={<div data-testid="cells" />}
+        work={<div data-testid="work" />}
+        lists={<div data-testid="lists" />}
+      />,
+    );
+    const order = ["work", "lists", "home-verdict-row", "cells"].map((id) => screen.getByTestId(id));
+    order.slice(1).forEach((el, i) => expect(order[i].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy());
+    expect(screen.getAllByTestId("lists")).toHaveLength(1);
+    expect(screen.getAllByTestId("work")).toHaveLength(1);
+  });
+
   it("loading shows skeletons only", () => {
     render(<HomePage persona="lead" state="loading" />);
     expect(screen.getByTestId("home-loading")).toBeInTheDocument();

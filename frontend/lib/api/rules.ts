@@ -20,6 +20,8 @@ export interface Rule {
   /** Pass rate of the rule's most recent finding; null when it has not run yet. */
   last_pass_rate?: number | null;
   last_run_at?: string | null;
+  /** Records failing the rule's most recent finding; null when it has not run yet. The list ranks by it. */
+  last_affected_count?: number | null;
 }
 
 export interface RulesListResponse {

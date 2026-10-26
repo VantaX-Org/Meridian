@@ -79,7 +79,8 @@ export async function mockRoutes18c(page: Page) {
 
   // Inbox: approvals and SAP monitor
   await get(/\/api\/v1\/writeback\/approvals(\?.*)?$/, { live_enabled: false, approvals: [
-    { id: "wb1", finding_id: "f1f1f1f1-0000-4000-8000-000000000001", version_id: RUN, requested_by: "u-requester", records_updated: 14, sap_host: "sap-dev", created_at: AT },
+    { id: "wb1", finding_id: "f1f1f1f1-0000-4000-8000-000000000001", version_id: RUN, requested_by: "u-requester", records_updated: 14, sap_host: "sap-dev", created_at: AT,
+      check_id: "MM101", module: "material_master", rule_message: "Material type not allowed", requested_by_name: "Thandi Nkosi" },
   ] });
   const signal = { id: "ex1", tenant_id: "e2e", type: "sap_monitor", category: "failed_job", severity: "high", status: "open", title: "Nightly extract job failed",
     description: "Job ended with a dump.", source_system: "ECC Prod", source_reference: "JOB1", affected_records: null, estimated_impact_zar: null, assigned_to: null,

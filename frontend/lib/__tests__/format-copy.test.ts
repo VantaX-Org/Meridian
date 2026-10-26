@@ -3,8 +3,8 @@
 // run-axis ticks that never show a user-supplied label, and the delta and trend sentences.
 import { describe, expect, it } from "vitest";
 import {
-  capRuleIds, deltaSentence, formatModuleName, formatMoney, MODULE_LABELS, plural, runAxisLabels, runOptionLabels, shortCapReason, shortList,
-  systemTypeLabel, trendSentence,
+  capRuleIds, deltaSentence, formatModuleName, formatMoney, formatMoneyCompact, MODULE_LABELS, plural, runAxisLabels, runOptionLabels, shortCapReason, shortList,
+  systemTypeLabel, trendSentence, zoneName,
 } from "../format";
 
 describe("plural", () => {
@@ -184,5 +184,25 @@ describe("trendSentence", () => {
   it("says rose or fell otherwise, with the run count agreed", () => {
     expect(trendSentence(60, 70, 2)).toBe("Composite score rose from 60 to 70 over 2 runs.");
     expect(trendSentence(82.5, 70, 4, "Completeness")).toBe("Completeness fell from 82.5 to 70 over 4 runs.");
+  });
+});
+
+describe("formatMoneyCompact", () => {
+  it("shortens headline money to three significant figures from a million up", () => {
+    expect(formatMoneyCompact(4_840_487_383, "ZAR")).toBe("ZAR 4.84 bn");
+    expect(formatMoneyCompact(4_793_500, "ZAR")).toBe("ZAR 4.79 m");
+    expect(formatMoneyCompact(1_250_000_000_000, "ZAR")).toBe("ZAR 1.25 tn");
+  });
+  it("keeps smaller amounts whole, and says nothing for a missing figure", () => {
+    expect(formatMoneyCompact(840_000, "ZAR")).toBe(formatMoney(840_000, "ZAR"));
+    expect(formatMoneyCompact(12_300_000)).toBe("12.3 m");
+    expect(formatMoneyCompact(null, "ZAR")).toBe("—");
+  });
+});
+
+describe("zoneName", () => {
+  it("names a zone once for a column header", () => {
+    expect(zoneName("UTC")).toBe("UTC");
+    expect(zoneName("Africa/Johannesburg", new Date("2026-01-03T00:00:00Z"))).toBe("GMT+2");
   });
 });

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { DQSSummary, Version } from "@/types/api";
 import { stateObjects } from "./current-state";
 import { doNext } from "./do-next";
-import { formatMoneyShort } from "./format";
+import { formatMoney, formatMoneyCompact } from "./format";
 
 const summary = (score: number | null, capReason: string | null = null): DQSSummary => ({
   composite_score: score, dimension_scores: {}, critical_count: capReason ? 1 : 0, high_count: 0, medium_count: 0, low_count: 0,
@@ -46,10 +46,11 @@ describe("doNext", () => {
   });
 });
 
-describe("formatMoneyShort", () => {
+describe("formatMoneyCompact", () => {
   it("writes a large amount in three figures with its unit and currency", () => {
-    expect(formatMoneyShort(4_840_487_383, "ZAR")).toBe("ZAR 4.84 bn");
-    expect(formatMoneyShort(12_500_000, "ZAR")).toBe("ZAR 12.5 m");
-    expect(formatMoneyShort(830_400, "EUR")).toBe("EUR 830 k");
+    expect(formatMoneyCompact(4_840_487_383, "ZAR")).toBe("ZAR 4.84 bn");
+    expect(formatMoneyCompact(12_500_000, "ZAR")).toBe("ZAR 12.5 m");
+    // Below a million the exact amount, as formatMoney writes it.
+    expect(formatMoneyCompact(830_400, "EUR")).toBe(formatMoney(830_400, "EUR"));
   });
 });

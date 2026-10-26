@@ -24,7 +24,7 @@ import { useDqsExplanation } from "@/components/insight/dqs-score";
 import { getAnalysisStatus } from "@/lib/api/upload";
 import { analyseVersion } from "@/lib/api/system-objects";
 import { RunProgressBanner } from "@/components/run-progress-banner";
-import { DIMENSIONS, formatDate, formatModuleName, formatMoney, formatNumber, labelOf, plural, runAxisLabels } from "@/lib/format";
+import { DIMENSIONS, formatDate, formatModuleName, formatMoneyCompact, formatNumber, labelOf, plural, runAxisLabels } from "@/lib/format";
 import { ConfigMatchesTab } from "./config-matches-tab";
 import { queryKeys } from "@/lib/query-keys";
 import { baselineRunId, isFinished, lineageOf, overallDqs, previousRunId, runPageHref } from "@/lib/runs";
@@ -233,8 +233,6 @@ function SummaryTab({
   lineage: Version[];
 }) {
   const router = useRouter();
-  // The empty trend's "Run analysis" (analyse) and "Import file" (upload) are offered only to roles that may do them.
-  const { can } = useRole();
   // Next actions come from this run's findings, not the newest run of the tenant.
   const prescriptive = useQuery({ queryKey: ["prescriptive", "next-actions", versionId], queryFn: () => getPrescriptiveAnalytics({ limit: 5, version_id: versionId }) });
   // Shared with the Objects tab: the score, blocking rule and readiness of each object.
@@ -353,7 +351,7 @@ function SummaryTab({
             ),
           },
           { label: "Affected records", value: a.affected_records.toLocaleString(), to: `/runs/${versionId}?tab=findings` },
-          ...(cost != null ? [{ label: "Cost at risk", value: formatMoney(Math.round(cost), costModel.data?.currency), to: `/runs/${versionId}?tab=findings` }] : []),
+          ...(cost != null ? [{ label: "Cost at risk", value: formatMoneyCompact(cost, costModel.data?.currency), to: `/runs/${versionId}?tab=findings` }] : []),
         ]}
         // `bare` sets the score band alone; the cells below are not drawn.
         situation={{ sentence: "" }}
@@ -381,29 +379,24 @@ function SummaryTab({
             <h2 className="font-semibold m-text-h">Objects in this run</h2>
             <RunLedger versionId={versionId} rows={ledgerRows} objects={objectByModule} />
           </section>
-          <section className={clsx("flex flex-col gap-2", prescriptive.isLoading && "[min-height:124px]")} data-testid="next-actions-slot">
-            <h2 className="font-semibold m-text-h">Next actions</h2>
-            {prescriptive.isLoading ? (
-              <Skeleton height={96} />
-            ) : next.length > 0 ? (
-              <NextActions actions={next} />
-            ) : (
-              <EmptyState variant="inline" title="No next actions for this run" />
-            )}
-          </section>
+          {/* A run with no prescribed action shows no section, not a heading over "No next actions". */}
+          {prescriptive.isLoading || next.length > 0 ? (
+            <section className={clsx("flex flex-col gap-2", prescriptive.isLoading && "[min-height:124px]")} data-testid="next-actions-slot">
+              <h2 className="font-semibold m-text-h">Next actions</h2>
+              {prescriptive.isLoading ? <Skeleton height={96} /> : <NextActions actions={next} />}
+            </section>
+          ) : null}
         </>
       )}
       <Card title="Composite over runs">
         {versionLoading || (systemId != null && history.isLoading) ? (
           <Skeleton height={160} />
         ) : points.length <= 1 ? (
+          // A note, not a call to action: reading a run is no moment to import a file or start another analysis.
           <EmptyState
             variant="inline"
             title="Only one run so far"
             detail={systemId ? "Scores over time appear after a second run of this system." : "Scores over time appear after a second upload of the same objects."}
-            action={(systemId ? can("analyse") : can("upload"))
-              ? <Button render={<Link href={systemId ? `/systems/${systemId}` : "/import"}>{systemId ? "Run analysis" : "Import file"}</Link>} />
-              : undefined}
           />
         ) : (
           <Line data={points} label="Composite over runs" height={160} annotations={annotations} onPointClick={(p) => { if (p.runId) router.push(runPageHref(p.runId)); }} />

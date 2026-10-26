@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getFindingsAggregate } from "@/lib/api/findings";
 import { getCostModel } from "@/lib/api/settings";
-import { formatMoneyShort } from "@/lib/format";
+import { formatMoneyCompact } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
 /**
@@ -43,7 +43,7 @@ export function useCostAtRisk(run?: string, enabled = true): CostAtRisk {
     amount,
     currency,
     // Held until the cost model names the currency, so the figure never reads as a bare number.
-    text: amount != null && amount > 0 && currency ? formatMoneyShort(amount, currency) : null,
+    text: amount != null && amount > 0 && currency ? formatMoneyCompact(amount, currency) : null,
     loading: agg.isLoading,
   };
 }
