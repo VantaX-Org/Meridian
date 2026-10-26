@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ColumnDef, RowSelectionState, SortingState } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  BulkBar, Button, Card, Checkbox, ConfirmDialog, Dialog, EmptyState, ErrorState, FilterChip, Input, Mono, Notice, Pill,
-  RankedRow, Select, SeverityDot, Skeleton, Stat, Switch, Textarea, isSeverity,
+  Button, Card, ConfirmDialog, DataTable, Dialog, Drawer, EmptyState, ErrorState, ExportMenu, FilterChip, Input, Mono, Notice, Pill,
+  RankedRow, Select, SeverityDot, Skeleton, Stat, Switch, Textarea, isSeverity, type CellMeta, type TableView,
 } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { DayOneAction, useDayOne } from "@/hooks/use-day-one";
@@ -15,7 +16,7 @@ import {
   setGroupValue, type Decision, type RecordFilter, type WorkGroup, type WorkRecord,
 } from "@/lib/api/work";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
-import { formatModuleName, plural } from "@/lib/format";
+import { formatDate, formatModuleName, plural } from "@/lib/format";
 import { getVersion } from "@/lib/api/versions";
 import { queryKeys } from "@/lib/query-keys";
 import { RunScope } from "@/components/run-scope";
@@ -25,13 +26,31 @@ import { keyBelongsElsewhere } from "@/lib/inbox-keys";
 import { RecordPanel, invalidateAfterDecision, toastDraftBatch } from "./record-panel";
 import { STATUS, STATUS_ORDER, dueLabel } from "./status";
 
-const PAGE = 50;
+/** Records per request; the queue loads the next page as the table nears its end (or `j` passes the last row). */
+const PAGE = 200;
+const DAY = 86_400_000;
 const SEVERITIES = ["critical", "high", "medium", "low"] as const;
+const SEV_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
 const SEVERITY_LABEL: Record<string, string> = { blocking: "Critical and high" };
 const STATUS_FILTERS = ["open", ...STATUS_ORDER, "all"] as const;
 const STATUS_FILTER_LABEL: Record<(typeof STATUS_FILTERS)[number], string> = {
   open: "Still open", all: "Every status", ...Object.fromEntries(STATUS_ORDER.map((s) => [s, STATUS[s].label])) as Record<(typeof STATUS_ORDER)[number], string>,
 };
+/** The queue's own filters in the URL: what a saved view holds and replaces. The scope bar's run and object stay. */
+const VIEW_KEYS = ["check", "sev", "st", "mine", "assignee", "sugg", "due", "system", "part", "q", "sort"] as const;
+
+/** Severity, then age with the oldest first. */
+const DEFAULT_SORT: SortingState = [{ id: "severity", desc: false }, { id: "age", desc: true }];
+const PRESET_VIEWS: TableView[] = [
+  { name: "Mine, open, oldest first", visibility: {}, dense: true, sorting: [{ id: "age", desc: true }], params: { mine: "1" } },
+  { name: "Critical", visibility: {}, dense: true, sorting: DEFAULT_SORT, params: { sev: "critical" } },
+  { name: "Has a suggestion", visibility: {}, dense: true, sorting: DEFAULT_SORT, params: { sugg: "1" } },
+];
+
+/** `?sort=severity,-age`: column ids, a leading minus for descending. */
+const encodeSort = (s: SortingState): string => s.map((x) => `${x.desc ? "-" : ""}${x.id}`).join(",");
+const decodeSort = (v: string): SortingState =>
+  v ? v.split(",").filter(Boolean).map((x) => ({ id: x.replace(/^-/, ""), desc: x.startsWith("-") })) : DEFAULT_SORT;
 
 /** `module|record_key` for the URL's ?record=. */
 const recordId = (r: Pick<WorkRecord, "module" | "record_key">) => `${r.module}|${r.record_key}`;
@@ -39,6 +58,52 @@ const splitRecord = (v: string | null): [string, string] | null => {
   const i = v ? v.indexOf("|") : -1;
   return v && i > 0 ? [v.slice(0, i), v.slice(i + 1)] : null;
 };
+
+/** Whole days since the record's oldest failing issue was first seen; null when the server does not say. */
+const ageDays = (r: WorkRecord, now: number): number | null => {
+  const t = r.first_seen_at ? Date.parse(r.first_seen_at) : NaN;
+  return Number.isNaN(t) ? null : Math.max(0, Math.floor((now - t) / DAY));
+};
+
+/** Sort keys per column; nulls always last. */
+const SORT_VALUE: Record<string, (r: WorkRecord, now: number) => string | number | null> = {
+  record: (r) => (r.name ?? r.record_key).toLowerCase(),
+  rule: (r) => (r.top_message ?? r.checks[0] ?? "").toLowerCase(),
+  severity: (r) => SEV_RANK[r.severity] ?? 4,
+  age: ageDays,
+  due: (r) => (r.due_at ? Date.parse(r.due_at) : null),
+  assignee: (r) => r.assignee_email?.toLowerCase() ?? null,
+  suggested: (r) => r.suggested_value ?? null,
+};
+
+/** The loaded records in the table's order, the order j / k walk. Ties keep the server's worst-first order. */
+export function sortRecords(items: WorkRecord[], sorting: SortingState, now: number = Date.now()): WorkRecord[] {
+  const keys = sorting.filter((s) => SORT_VALUE[s.id]);
+  if (!keys.length) return items;
+  return items.map((r, i) => ({ r, i })).sort((a, b) => {
+    for (const k of keys) {
+      const va = SORT_VALUE[k.id](a.r, now);
+      const vb = SORT_VALUE[k.id](b.r, now);
+      if (va === vb) continue;
+      if (va === null) return 1;
+      if (vb === null) return -1;
+      const c = va < vb ? -1 : 1;
+      return k.desc ? -c : c;
+    }
+    return a.i - b.i;
+  }).map((x) => x.r);
+}
+
+/** True below xl, where the page has no room for the record panel beside the queue: it opens as a sheet. */
+const NARROW = "(max-width: 1279px)";
+function subscribeNarrow(cb: () => void): () => void {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => undefined;
+  const mq = window.matchMedia(NARROW);
+  mq.addEventListener?.("change", cb);
+  return () => mq.removeEventListener?.("change", cb);
+}
+const narrowSnapshot = () => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(NARROW).matches;
+const useNarrow = () => useSyncExternalStore(subscribeNarrow, narrowSnapshot, () => false);
 
 function useFilters() {
   const search = useSearchParams();
@@ -66,7 +131,8 @@ function useFilters() {
     const qs = p.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }, [search, router, pathname]);
-  return { filter, selected: splitRecord(search?.get("record") ?? null), set };
+  const viewParams = Object.fromEntries(VIEW_KEYS.map((k) => [k, get(k)]).filter(([, v]) => v));
+  return { filter, selected: splitRecord(search?.get("record") ?? null), set, sorting: decodeSort(get("sort")), viewParams, fromObject: !get("module") && !!get("object") };
 }
 
 function GroupList({ groups, active, onPick }: { groups: WorkGroup[]; active: string | undefined; onPick: (check: string | null) => void }) {
@@ -101,33 +167,65 @@ function GroupList({ groups, active, onPick }: { groups: WorkGroup[]; active: st
   );
 }
 
-function RecordRow({ r, active, checked, onSelect, onCheck, canBulk }: {
-  r: WorkRecord; active: boolean; checked: boolean; onSelect: () => void; onCheck: (on: boolean) => void; canBulk: boolean;
-}) {
-  const due = r.status === "to_fix" ? dueLabel(r.due_at) : null;
-  return (
-    <li data-testid="work-record" aria-current={active ? "true" : undefined}
-      className={`flex items-start gap-3 border-b border-[var(--m-line)] px-3 py-2 ${active ? "bg-[var(--m-accent-soft)]" : "hover:bg-[var(--m-sheet-raised)]"}`}>
-      {canBulk ? <span className="pt-1"><Checkbox aria-label={`Select ${r.name ?? r.record_key}`} checked={checked} onChange={(e) => onCheck(e.target.checked)} /></span> : null}
-      <button type="button" onClick={onSelect} className="flex min-w-0 flex-1 flex-col gap-1 text-left">
-        <span className="flex items-center gap-2">
-          <SeverityDot severity={isSeverity(r.severity) ? r.severity : "low"} />
-          <span className="truncate m-text-body font-medium m-ink">{r.name ?? <Mono inline>{r.record_key}</Mono>}</span>
+const DASH = <span className="m-ink-3">—</span>;
+
+/** The queue's columns: Record, Rule, Severity, Age, Due, Assignee, Suggested value. Sorting is the page's (`sortRecords`). */
+function queueColumns(now: number): ColumnDef<WorkRecord>[] {
+  return [
+    {
+      id: "record", header: "Record", accessorFn: (r) => r.name ?? r.record_key, meta: { sticky: "start" } satisfies CellMeta,
+      cell: ({ row: { original: r } }) => (
+        <span className="flex w-[200px] min-w-0 items-baseline gap-2" title={r.name ? `${r.name} ${r.record_key}` : r.record_key}>
+          {r.name ? <span className="max-w-[110px] shrink-0 truncate">{r.name}</span> : null}
+          <span className="min-w-0 shrink truncate m-text-meta m-ink-3"><Mono inline>{r.record_key}</Mono></span>
         </span>
-        {r.name ? <span className="pl-5 m-text-meta m-ink-3"><Mono inline>{r.record_key}</Mono></span> : null}
-        <span className="pl-5 m-text-body m-ink-2">
-          {r.top_message ?? r.checks[0]}{r.issues > 1 ? <span className="m-ink-3"> and {plural(r.issues - 1, "more issue")}</span> : null}
+      ),
+    },
+    {
+      id: "rule", header: "Rule", accessorFn: (r) => r.top_message ?? r.checks[0] ?? "",
+      cell: ({ row: { original: r } }) => (
+        <span className="flex w-[210px] min-w-0 items-baseline gap-2" title={r.top_message ?? undefined}>
+          <span className="min-w-0 shrink truncate">{r.top_message ?? r.checks[0]}</span>
+          <span className="shrink-0 m-text-meta m-ink-3"><Mono inline>{r.checks[0]}</Mono>{r.issues > 1 ? ` +${r.issues - 1}` : null}</span>
         </span>
-        <span className="flex flex-wrap items-center gap-2 pl-5">
-          <Pill tone={STATUS[r.status].tone}>{STATUS[r.status].label}</Pill>
-          {r.proposed ? <span className="m-text-meta m-ink-3">{plural(r.proposed, "suggested value")}</span> : null}
-          {due ? <Pill tone={due.tone}>{due.label}</Pill> : null}
-          {r.assignee_email ? <span className="m-text-meta m-ink-3">{r.assignee_email}</span> : null}
-          <span className="m-text-meta m-ink-3">{formatModuleName(r.module)}</span>
+      ),
+    },
+    {
+      id: "severity", header: "Severity", accessorFn: (r) => r.severity, meta: { severity: true } satisfies CellMeta,
+      cell: ({ row: { original: r } }) => (
+        <span className="inline-flex items-center gap-2 whitespace-nowrap">
+          <SeverityDot severity={isSeverity(r.severity) ? r.severity : "low"} />{r.severity[0].toUpperCase() + r.severity.slice(1)}
         </span>
-      </button>
-    </li>
-  );
+      ),
+    },
+    {
+      id: "age", header: "Age", accessorFn: (r) => ageDays(r, now), meta: { numeric: true } satisfies CellMeta,
+      cell: ({ row: { original: r } }) => {
+        const d = ageDays(r, now);
+        return d === null ? DASH : <span className="whitespace-nowrap" title={`First seen ${formatDate(r.first_seen_at)}`}>{d} d</span>;
+      },
+    },
+    {
+      // Due only applies while nobody has decided a value; after that the cell says where the fix is.
+      id: "due", header: "Due", accessorFn: (r) => r.due_at ?? "",
+      cell: ({ row: { original: r } }) => {
+        if (r.status !== "to_fix") return <Pill tone={STATUS[r.status].tone}>{STATUS[r.status].label}</Pill>;
+        const due = dueLabel(r.due_at, now);
+        if (due) return <Pill tone={due.tone}>{due.label}</Pill>;
+        return r.due_at ? <span className="whitespace-nowrap">{formatDate(r.due_at)}</span> : DASH;
+      },
+    },
+    {
+      id: "assignee", header: "Assignee", accessorFn: (r) => r.assignee_email ?? "", meta: { priority: "low" } satisfies CellMeta,
+      cell: ({ row: { original: r } }) => (r.assignee_email ? <span className="block max-w-[150px] truncate" title={r.assignee_email}>{r.assignee_email}</span> : DASH),
+    },
+    {
+      id: "suggested", header: "Suggested value", accessorFn: (r) => r.suggested_value ?? "", meta: { priority: "low" } satisfies CellMeta,
+      cell: ({ row: { original: r } }) => (r.suggested_value != null
+        ? <span className="block max-w-[120px] truncate" title={r.suggested_value}><Mono inline>{r.suggested_value}</Mono></span>
+        : r.proposed ? <span className="m-ink-3">{plural(r.proposed, "suggestion")}</span> : DASH),
+    },
+  ];
 }
 
 function SignOffDialog({ open, onOpenChange, count, pending, onConfirm }: {
@@ -182,12 +280,6 @@ export async function decideInRuns(items: Decision[], runOf: (module: string) =>
   return { updated, draft_batch_id: draft };
 }
 
-/**
- * Fix work: every record that fails a check, worst first: without `?run=` the current state (every object at its
- * own latest run, as Home counts them), with `?run=` that run alone, with what is wrong and what the value
- * should be. Pick an issue on the left (or every issue), a record in the middle, decide on the right; the next
- * record comes up by itself. Keyboard: j / k move, a accepts the suggested values, t takes the record, u undoes.
- */
 /** No finished run: the tenant's next day-one step (import, ask for a connection, extract, or the run in progress), never a dead end. */
 function NoRunYet() {
   const { step } = useDayOne();
@@ -200,20 +292,32 @@ function NoRunYet() {
   );
 }
 
+/**
+ * Fix work: every record that fails a check: without `?run=` the current state (every object at its own latest run,
+ * as Home counts them), with `?run=` that run alone, with what is wrong and what the value should be. Pick an issue on
+ * the left (or every issue), a record in the dense queue in the middle (severity, then the oldest first, unless a
+ * header or a saved view says otherwise), decide on the right; the next record comes up by itself. Every filter, the
+ * sort and the record are in the URL. Keyboard: j / k move, a accepts the suggested values, t takes the record, u
+ * undoes, Enter opens it.
+ */
 export function FixWork() {
   const qc = useQueryClient();
   const { can } = useRole();
   const canFix = can("apply");
   const canSignOff = can("approve");
-  const { filter, selected, set } = useFilters();
+  const { filter, selected, set, sorting, viewParams, fromObject } = useFilters();
   const router = useRouter();
+  const narrow = useNarrow();
   const run = filter.version_id;
   const fileRef = useRef<HTMLInputElement>(null);
-  const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [checked, setChecked] = useState<RowSelectionState>({});
   const [signOff, setSignOff] = useState(false);
   const [acceptAll, setAcceptAll] = useState(false);
   const [setValueOpen, setSetValueOpen] = useState(false);
-  const [q, setQ] = useState(filter.q ?? "");
+  const [sheetOpen, setSheetOpen] = useState(false);
+  // Ages are counted from one moment per mount, so a re-render never reorders the queue under the cursor.
+  const [now] = useState(() => Date.now());
+  const columns = useMemo(() => queueColumns(now), [now]);
 
   const summary = useQuery({ queryKey: ["work", "summary", run ?? "current"], queryFn: () => getWorkSummary(run), retry: false });
   // The run the counts belong to, named above them; the current state names its objects and newest run instead.
@@ -234,10 +338,15 @@ export function FixWork() {
     getNextPageParam: (last) => last.next ?? undefined,
     enabled: summary.isSuccess,
   });
-  const items = useMemo(() => records.data?.pages.flatMap((p) => p.items) ?? [], [records.data]);
+  const loaded = useMemo(() => records.data?.pages.flatMap((p) => p.items) ?? [], [records.data]);
+  const sortKey = encodeSort(sorting);
+  const items = useMemo(() => sortRecords(loaded, decodeSort(sortKey), now), [loaded, sortKey, now]);
   const total = records.data?.pages[0]?.total ?? 0;
   const capped = records.data?.pages[0]?.total_capped ?? false;
   const activeGroup = groups.data?.groups.find((g) => g.check_id === filter.check_id);
+  const loadMore = useCallback(() => {
+    if (records.hasNextPage && !records.isFetchingNextPage) void records.fetchNextPage();
+  }, [records]);
 
   // Without a selection, the first record is selected; the selection survives paging.
   const selectedId = selected ? `${selected[0]}|${selected[1]}` : items[0] ? recordId(items[0]) : null;
@@ -249,8 +358,8 @@ export function FixWork() {
   const next = useCallback(() => {
     const n = items[index + 1];
     if (n) pick(n);
-    else if (records.hasNextPage) void records.fetchNextPage();
-  }, [items, index, pick, records]);
+    if (index + 1 >= items.length - 1) loadMore();
+  }, [items, index, pick, loadMore]);
 
   // The run a record's decisions go to: the pinned run, else the run its object is read from in the current state.
   const versionOf = useCallback((module: string): string | undefined =>
@@ -258,7 +367,7 @@ export function FixWork() {
   [run, summary.data, items]);
   const bulk = useMutation({
     mutationFn: (d: Decision[]) => decideInRuns(d, versionOf),
-    onSuccess: (r) => { toast.success(`${plural(r.updated, "change")} saved`); setChecked(new Set()); setSignOff(false); invalidateAfterDecision(qc); },
+    onSuccess: (r) => { toast.success(`${plural(r.updated, "change")} saved`); setChecked({}); setSignOff(false); invalidateAfterDecision(qc); },
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const groupAccept = useMutation({
@@ -282,15 +391,17 @@ export function FixWork() {
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
 
-  const selectedRows = items.filter((r) => checked.has(recordId(r)));
+  const selectedRows = items.filter((r) => checked[recordId(r)]);
   const ofRows = (action: Decision["action"], extra: Partial<Decision> = {}) =>
     selectedRows.map((r) => ({ module: r.module, record_key: r.record_key, action, ...extra }));
 
   // Keyboard triage: j/k (or arrows) move, a accepts the record's suggestions, t takes it, u undoes, Enter opens it.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      // Fields, dialogs, menus and other buttons keep their keys; Enter opens only from a record row or the page.
+      // Fields, dialogs, menus and other buttons keep their keys; Enter opens only from a record row, the queue or the page.
       if (e.metaKey || e.ctrlKey || e.altKey || keyBelongsElsewhere(e, "[data-testid=work-record]")) return;
+      // The queue moves its own cursor with the arrows (and reports it through onActiveRowChange).
+      if ((e.key === "ArrowDown" || e.key === "ArrowUp") && e.defaultPrevented) return;
       if (e.key === "j" || e.key === "ArrowDown") { e.preventDefault(); next(); }
       else if (e.key === "k" || e.key === "ArrowUp") { e.preventDefault(); pick(items[Math.max(0, index - 1)]); }
       else if (!current) return;
@@ -322,8 +433,9 @@ export function FixWork() {
   );
   if (!s.built) return buildNotice;
   const t = s.totals;
+  // The scope bar holds the object and the record search; a chip only for what it does not show.
   const chips: { label: string; value: string; key: string }[] = [
-    filter.module ? { label: "Object", value: formatModuleName(filter.module), key: "module" } : null,
+    fromObject && filter.module ? { label: "Object", value: formatModuleName(filter.module), key: "object" } : null,
     filter.check_id ? { label: "Issue", value: activeGroup?.message ?? filter.check_id, key: "check" } : null,
     filter.severity ? { label: "Severity", value: SEVERITY_LABEL[filter.severity] ?? filter.severity, key: "sev" } : null,
     filter.system ? { label: "System", value: filter.system === "upload" ? "uploads" : "one source system", key: "system" } : null,
@@ -333,9 +445,18 @@ export function FixWork() {
     filter.due ? { label: "Due", value: "overdue", key: "due" } : null,
     filter.q ? { label: "Search", value: filter.q, key: "q" } : null,
   ].filter((c): c is { label: string; value: string; key: string } => !!c);
+  const clearFilters = () => set({ object: null, check: null, sev: null, mine: null, assignee: null, system: null, part: null, sugg: null, due: null, q: null, st: null, record: null });
+  const applyView = (v: TableView) => set({
+    ...Object.fromEntries(VIEW_KEYS.map((k) => [k, null])),
+    ...v.params,
+    sort: v.sorting.length && encodeSort(v.sorting) !== encodeSort(DEFAULT_SORT) ? encodeSort(v.sorting) : null,
+    record: null,
+  });
+  const open = (r: WorkRecord) => { pick(r); if (narrow) setSheetOpen(true); };
+  const panel = current ? <RecordPanel module={current.module} recordKey={current.record_key} run={versionOf(current.module)} onDecided={next} /> : null;
 
   return (
-    <div className="flex flex-col gap-4" data-testid="fix-work">
+    <div className="flex min-w-0 flex-col gap-4" data-testid="fix-work">
       {isCurrent ? (
         <p className="m-text-body m-ink-2" data-testid="fix-scope">
           {newestOfState ? stateScopeLine(s.objects.length, newestOfState.run_at) : `Current state of ${plural(s.objects.length, "object")}`}, each object at its own latest run
@@ -354,25 +475,17 @@ export function FixWork() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Select label="Object" value={filter.module ?? "all"} onValueChange={(v) => set({ module: v === "all" ? null : v, object: null, check: null, record: null })}
-          options={[{ value: "all", label: "Every object" }, ...s.objects.map((o) => ({ value: o.module, label: `${formatModuleName(o.module)} (${o.open.toLocaleString()})` }))]} />
         <Select label="Severity" value={filter.severity ?? "all"} onValueChange={(v) => set({ sev: v === "all" ? null : v, record: null })}
           options={[{ value: "all", label: "Every severity" }, { value: "blocking", label: SEVERITY_LABEL.blocking }, ...SEVERITIES.map((v) => ({ value: v, label: v[0].toUpperCase() + v.slice(1) }))]} />
         <Select label="Status" value={filter.status ?? "open"} onValueChange={(v) => set({ st: v === "open" ? null : v, record: null })}
           options={STATUS_FILTERS.map((v) => ({ value: v, label: STATUS_FILTER_LABEL[v] }))} />
-        <Switch checked={!!filter.assigned} onCheckedChange={(on) => set({ mine: on ? "1" : null, record: null })} label="Mine" />
+        <Switch checked={!!filter.assigned} onCheckedChange={(on) => set({ mine: on ? "1" : null, assignee: null, record: null })} label="Mine" />
         <Switch checked={!!filter.proposed} onCheckedChange={(on) => set({ sugg: on ? "1" : null, record: null })} label="Has a suggestion" />
-        <form className="flex min-w-[220px] flex-1 items-center gap-2" onSubmit={(e) => { e.preventDefault(); set({ q: q.trim() || null, record: null }); }}>
-          <Input aria-label="Find a record" placeholder="Find a record by key or name" value={q} onChange={(e) => setQ(e.target.value)} className="m-input flex-1" />
-        </form>
         <div className="ml-auto flex flex-wrap gap-2">
-          {can("export") ? (
-            <>
-              <Button variant="secondary" onClick={() => downloadFixSheet(filter).catch((e) => toast.error(apiErrorMessage(e)))}>Download fix sheet</Button>
-              <Button variant="secondary" title="One sheet per object, with each record's value at risk"
-                onClick={() => downloadFixSheetByObject(filter).catch((e) => toast.error(apiErrorMessage(e)))}>Download by object</Button>
-            </>
-          ) : null}
+          <ExportMenu options={[
+            { format: "xlsx", label: "Fix sheet (.xlsx)", run: () => downloadFixSheet(filter) },
+            { format: "xlsx", label: "Fix sheet, one sheet per object (.xlsx)", run: () => downloadFixSheetByObject(filter) },
+          ]} />
           {canFix ? (
             <>
               <Button variant="secondary" pending={upload.isPending} onClick={() => fileRef.current?.click()}>Import fix sheet</Button>
@@ -384,65 +497,94 @@ export function FixWork() {
       </div>
       {chips.length ? (
         <div className="flex flex-wrap items-center gap-2">
-          {chips.map((c) => <FilterChip key={c.key} label={c.label} value={c.value} onRemove={() => { set({ [c.key]: null, ...(c.key === "module" ? { object: null } : {}), record: null }); if (c.key === "q") setQ(""); }} />)}
-          <Button variant="ghost" size="sm" onClick={() => { setQ(""); set({ module: null, object: null, check: null, sev: null, mine: null, assignee: null, system: null, part: null, sugg: null, due: null, q: null, st: null, record: null }); }}>Clear filters</Button>
+          {chips.map((c) => <FilterChip key={c.key} label={c.label} value={c.value} onRemove={() => set({ [c.key]: null, record: null })} />)}
+          <Button variant="ghost" size="sm" onClick={clearFilters}>Clear filters</Button>
         </div>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-[400px_minmax(0,1fr)] xl:grid-cols-[400px_minmax(0,1fr)_minmax(0,440px)] 2xl:grid-cols-[400px_minmax(0,1fr)_minmax(0,480px)]">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_minmax(0,380px)] 2xl:grid-cols-[320px_minmax(0,1fr)_minmax(0,460px)]">
         <Card title="Issues" meta={groups.data ? `${groups.data.total.toLocaleString()} ${isCurrent ? `across ${plural(s.objects.length, "object")}` : "in this run"}` : undefined} padding="sm">
           {groups.isLoading ? <Skeleton height={240} /> : groups.isError ? <ErrorState {...apiErrorState(groups.error)} onRetry={() => groups.refetch()} />
             : groups.data && groups.data.groups.length ? (
-              <div className="max-h-[70vh] overflow-auto"><GroupList groups={groups.data.groups} active={filter.check_id} onPick={(c) => set({ check: c, record: null })} /></div>
+              <div className="max-h-[40vh] overflow-auto lg:max-h-[70vh]"><GroupList groups={groups.data.groups} active={filter.check_id} onPick={(c) => set({ check: c, record: null })} /></div>
             ) : <p className="m-text-body m-ink-3">No failing checks.</p>}
         </Card>
 
-        <Card
-          title={activeGroup ? activeGroup.message ?? activeGroup.check_id : "Records to fix"}
-          meta={records.data ? `${capped ? "100,000+" : total.toLocaleString()} ${total === 1 ? "record" : "records"}, worst first` : undefined}
-          actions={activeGroup && canFix ? (
+        <section aria-label="Records to fix" className="flex min-w-0 flex-col gap-2">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="m-text-h font-semibold m-ink">{activeGroup ? activeGroup.message ?? activeGroup.check_id : "Records to fix"}</h2>
+            {records.data ? (
+              <span className="m-text-meta m-ink-3">
+                {capped ? "100,000+" : total.toLocaleString()} {total === 1 ? "record" : "records"}{loaded.length < total ? `, ${loaded.length.toLocaleString()} loaded` : ""}
+              </span>
+            ) : null}
+          </div>
+          {activeGroup && canFix ? (
             <span className="flex flex-wrap gap-2">
               {activeGroup.proposed ? <Button size="sm" onClick={() => setAcceptAll(true)}>Accept {activeGroup.proposed.toLocaleString()} suggested</Button> : null}
               <Button size="sm" variant="secondary" onClick={() => setSetValueOpen(true)}>Set one value</Button>
             </span>
-          ) : undefined}
-          padding="sm"
-        >
+          ) : null}
           {activeGroup?.truncated ? <Notice tone="info">The run kept the first 100,000 records of this check. Fix these, and the next run lists the rest.</Notice> : null}
           {records.isLoading ? <Skeleton height={360} /> : records.isError ? <ErrorState {...apiErrorState(records.error)} onRetry={() => records.refetch()} />
             : items.length === 0 ? (
-              <EmptyState variant="inline" title={chips.length || filter.status !== "open" ? "No records match these filters" : "Nothing left to fix"}
-                detail={chips.length ? "Clear a filter to see more." : `Every failing record ${isCurrent ? "of every object" : "in this run"} has a decision.`}
-                action={chips.length ? <Button variant="secondary" onClick={() => set({ module: null, object: null, check: null, sev: null, mine: null, assignee: null, system: null, part: null, sugg: null, due: null, q: null })}>Clear filters</Button> : undefined} />
+              <Card padding="sm">
+                <EmptyState variant="inline" title={chips.length || filter.status !== "open" ? "No records match these filters" : "Nothing left to fix"}
+                  detail={chips.length ? "Clear a filter to see more." : `Every failing record ${isCurrent ? "of every object" : "in this run"} has a decision.`}
+                  action={chips.length ? <Button variant="secondary" onClick={clearFilters}>Clear filters</Button> : undefined} />
+              </Card>
             ) : (
               <>
-                <ul className="max-h-[70vh] overflow-auto" aria-label="Records to fix">
-                  {items.map((r) => (
-                    <RecordRow key={recordId(r)} r={r} active={recordId(r) === selectedId} canBulk={canFix}
-                      checked={checked.has(recordId(r))} onSelect={() => pick(r)}
-                      onCheck={(on) => setChecked((prev) => { const n = new Set(prev); if (on) n.add(recordId(r)); else n.delete(recordId(r)); return n; })} />
-                  ))}
-                </ul>
-                {records.hasNextPage ? (
-                  <div className="flex justify-center p-3"><Button variant="secondary" pending={records.isFetchingNextPage} onClick={() => records.fetchNextPage()}>Show {PAGE} more</Button></div>
-                ) : null}
-                <p className="px-3 pt-2 m-text-meta m-ink-3">Keys: <kbd className="m-kbd">j</kbd> <kbd className="m-kbd">k</kbd> move, <kbd className="m-kbd">a</kbd> accept suggestions, <kbd className="m-kbd">t</kbd> take, <kbd className="m-kbd">u</kbd> undo, <kbd className="m-kbd">Enter</kbd> full record</p>
+                <DataTable
+                  label="Records to fix"
+                  tableId="fix-work-queue"
+                  columns={columns}
+                  data={items}
+                  getRowId={recordId}
+                  rowLabel={(r) => r.name ?? r.record_key}
+                  rowTestId="work-record"
+                  dense
+                  hideSearch
+                  hideExport
+                  maxHeight="70vh"
+                  manualSorting
+                  sorting={sorting}
+                  onSortingChange={(v) => set({ sort: v.length ? encodeSort(v) : null })}
+                  activeRowId={selectedId}
+                  onActiveRowChange={pick}
+                  onRowClick={open}
+                  onEndReached={loadMore}
+                  presetViews={PRESET_VIEWS}
+                  viewParams={viewParams}
+                  onApplyView={applyView}
+                  selection={checked}
+                  onSelectionChange={setChecked}
+                  bulkActions={canFix ? () => (
+                    <>
+                      <Button variant="ghost" pending={bulk.isPending} onClick={() => bulk.mutate(ofRows("accept"))}>Accept suggestions</Button>
+                      {can("assign") ? <Button variant="ghost" onClick={() => bulk.mutate(ofRows("assign", { assignee: "me" }))}>Take them</Button> : null}
+                      {can("assign") ? <Button variant="ghost" onClick={() => bulk.mutate(ofRows("assign", { assignee: "" }))}>Release</Button> : null}
+                      {canSignOff ? <Button variant="ghost" onClick={() => setSignOff(true)}>Not an issue</Button> : null}
+                      <Button variant="ghost" onClick={() => bulk.mutate(ofRows("undo"))}>Undo</Button>
+                      <Button variant="ghost" onClick={() => setChecked({})}>Clear</Button>
+                    </>
+                  ) : undefined}
+                />
+                {records.isFetchingNextPage ? <p className="m-text-meta m-ink-3" role="status">Loading more records</p> : null}
+                <p className="px-1 m-text-meta m-ink-3 max-[639px]:hidden">Keys: <kbd className="m-kbd">j</kbd> <kbd className="m-kbd">k</kbd> move, <kbd className="m-kbd">a</kbd> accept suggestions, <kbd className="m-kbd">t</kbd> take, <kbd className="m-kbd">u</kbd> undo, <kbd className="m-kbd">Enter</kbd> full record</p>
               </>
             )}
-          <BulkBar count={selectedRows.length} actions={<>
-            <Button variant="ghost" pending={bulk.isPending} onClick={() => bulk.mutate(ofRows("accept"))}>Accept suggestions</Button>
-            {can("assign") ? <Button variant="ghost" onClick={() => bulk.mutate(ofRows("assign", { assignee: "me" }))}>Take them</Button> : null}
-            {can("assign") ? <Button variant="ghost" onClick={() => bulk.mutate(ofRows("assign", { assignee: "" }))}>Release</Button> : null}
-            {canSignOff ? <Button variant="ghost" onClick={() => setSignOff(true)}>Not an issue</Button> : null}
-            <Button variant="ghost" onClick={() => bulk.mutate(ofRows("undo"))}>Undo</Button>
-            <Button variant="ghost" onClick={() => setChecked(new Set())}>Clear</Button>
-          </>} />
-        </Card>
+        </section>
 
-        <div className="lg:sticky lg:top-4 lg:self-start">
-          {current ? <RecordPanel module={current.module} recordKey={current.record_key} run={versionOf(current.module)} onDecided={next} />
-            : <Card><p className="m-text-body m-ink-3">Pick a record to see what is wrong with it.</p></Card>}
-        </div>
+        {narrow ? (
+          <Drawer open={sheetOpen && !!current} onOpenChange={setSheetOpen} title="Record">
+            {panel}
+          </Drawer>
+        ) : (
+          <div className="xl:sticky xl:top-4 xl:self-start">
+            {panel ?? <Card><p className="m-text-body m-ink-3">Pick a record to see what is wrong with it.</p></Card>}
+          </div>
+        )}
       </div>
 
       <SignOffDialog open={signOff} onOpenChange={setSignOff} count={selectedRows.length} pending={bulk.isPending}

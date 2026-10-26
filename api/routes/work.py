@@ -2,7 +2,7 @@
 
   GET  /work/summary                       per object: records to fix, issues, by work status
   GET  /work/groups                        what fails, ranked: (check × object) with counts
-  GET  /work/records                       failing records, worst first, keyset paged
+  GET  /work/records                       failing records, worst first, keyset paged; each with its age and suggestion
   GET  /work/records/{module}/{key}        one record: every failing check, current and suggested value, status
   GET  /work/search                        a record by key or name, across objects
   POST /work/decide                        accept / edit / not an issue / undo / assign, for records
@@ -314,6 +314,7 @@ async def records(
          ORDER BY w.sev_rank, w.module, w.record_key LIMIT :lim"""), {**p, "lim": limit + 1})).fetchall()
     more = len(rows) > limit
     rows = rows[:limit]
+    extra = await _row_extras(db, tenant, rows)
     total = (await db.execute(text(f"SELECT count(*) FROM (SELECT 1 FROM work_records w WHERE {' AND '.join(where)} "
                                    f"LIMIT {COUNT_CAP + 1}) x"), p)).scalar() or 0
     return {
@@ -324,8 +325,50 @@ async def records(
                    "proposed": r.proposed, "status": r.status,
                    "due_at": r.due_at.isoformat() if r.due_at else None,
                    "assigned_to": str(r.assigned_to) if r.assigned_to else None, "assignee_email": r.assignee_email,
-                   "top_message": r.top_message, "top_field": r.top_field} for r in rows],
+                   "top_message": r.top_message, "top_field": r.top_field,
+                   **extra.get((r.version_id, r.module, r.record_key), {"first_seen_at": None, "suggested_value": None})}
+                  for r in rows],
     }
+
+
+async def _row_extras(db: AsyncSession, tenant: Tenant, rows) -> dict[tuple[str, str, str], dict]:
+    """Per row of one page, keyed (version_id, module, record_key): when the oldest of its failing issues was first seen (the
+    record's age) and the first suggested value of its checks in check order (the rule's own fix for the record,
+    else the rule's fix for its current value: the values ``proposed`` counts). Read for the page only."""
+    if not rows:
+        return {}
+    keys = {"t": str(tenant.id), "kv": [r.version_id for r in rows], "km": [r.module for r in rows],
+            "kk": [r.record_key for r in rows]}
+    out = (await db.execute(text("""
+        WITH k AS (SELECT * FROM unnest(CAST(:kv AS uuid[]), CAST(:km AS text[]), CAST(:kk AS text[]))
+                                 AS k(version_id, module, record_key)),
+             pw AS (SELECT w.* FROM work_records w JOIN k USING (version_id, module, record_key)),
+             auto AS (SELECT f.version_id, f.check_id, e->>'record_key' AS record_key, e->>'proposed_value' AS value
+                        FROM findings f, jsonb_array_elements(CASE WHEN jsonb_typeof(f.record_fixes) = 'array'
+                                                                   THEN f.record_fixes ELSE '[]'::jsonb END) e
+                       WHERE (f.version_id, f.check_id) IN (SELECT version_id, unnest(checks) FROM pw WHERE proposed > 0)
+                         AND e->>'proposed_value' IS NOT NULL AND e->>'record_key' = ANY(CAST(:kk AS text[])))
+        SELECT w.version_id::text AS version_id, w.module, w.record_key,
+               (SELECT min(ri.first_seen_at) FROM record_issues ri
+                 WHERE ri.tenant_id = CAST(:t AS uuid) AND ri.scope = w.scope AND ri.record_key = w.record_key
+                   AND ri.check_id = ANY(w.checks)) AS first_seen_at,
+               CASE WHEN w.proposed > 0 THEN (
+                 SELECT COALESCE(a.value, CASE WHEN jsonb_typeof(f.value_fix_map) = 'object' THEN
+                          f.value_fix_map -> (fr.field_values ->> (f.details->>'field_checked')) ->> 'suggested_value' END)
+                   FROM unnest(w.checks) WITH ORDINALITY c(check_id, n)
+                   JOIN findings f ON f.version_id = w.version_id AND f.check_id = c.check_id
+                   LEFT JOIN finding_records fr ON fr.version_id = w.version_id AND fr.check_id = c.check_id
+                                               AND fr.module = w.module AND fr.record_key = w.record_key
+                   LEFT JOIN auto a ON a.version_id = w.version_id AND a.check_id = c.check_id
+                                   AND a.record_key = w.record_key
+                  WHERE COALESCE(a.value, CASE WHEN jsonb_typeof(f.value_fix_map) = 'object' THEN
+                          f.value_fix_map -> (fr.field_values ->> (f.details->>'field_checked')) ->> 'suggested_value' END)
+                        IS NOT NULL
+                  ORDER BY c.n LIMIT 1) END AS suggested_value
+          FROM pw w"""), keys)).fetchall()
+    return {(r.version_id, r.module, r.record_key): {
+        "first_seen_at": r.first_seen_at.isoformat() if r.first_seen_at else None,
+        "suggested_value": r.suggested_value} for r in out}
 
 
 @router.get("/search")

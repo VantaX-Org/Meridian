@@ -88,7 +88,7 @@ describe("FixWork", () => {
     expect(await screen.findAllByTestId("work-group")).toHaveLength(1);
     const rows = await screen.findAllByTestId("work-record");
     expect(rows.map((r) => within(r).getAllByText(/Bolt|Nut/)[0].textContent)).toEqual(["Bolt", "Nut"]);
-    expect(rows[1]).toHaveTextContent("and 1 more issue");
+    expect(rows[1]).toHaveTextContent("MM001 +1");
     expect(await screen.findByTestId("record-panel")).toBeInTheDocument();
     // The record opens in the run it was found in (the current state names each object's run).
     expect(work.getWorkRecord).toHaveBeenCalledWith("material_master", "MATNR=1", "R1");
@@ -120,7 +120,7 @@ describe("FixWork", () => {
     expect(other).toBeDefined();
     expect(fireEvent.keyDown(other!, { key: "Enter" })).toBe(true);
     expect(push).not.toHaveBeenCalled();
-    fireEvent.keyDown(within(rows[0]).getAllByRole("button")[0], { key: "Enter" });
+    fireEvent.keyDown(rows[0], { key: "Enter" });
     expect(push).toHaveBeenCalledWith("/objects/material_master/records/MATNR%3D1?run=R1");
     push.mockClear();
     fireEvent.keyDown(document.body, { key: "Enter" });
@@ -232,6 +232,67 @@ describe("FixWork", () => {
     vi.mocked(work.getWorkRecords).mockResolvedValue({ version_id: "R1", total: 0, total_capped: false, next: null, items: [] });
     renderWithQuery(<FixWork />);
     expect(await screen.findByText("No records match these filters")).toBeInTheDocument();
+  });
+
+  describe("the dense queue", () => {
+    const day = 86_400_000;
+    const ago = (d: number) => new Date(Date.now() - d * day - 3_600_000).toISOString();
+    beforeEach(() => {
+      vi.mocked(work.getWorkRecords).mockResolvedValue({ version_id: "R1", total: 3, total_capped: false, next: null, items: [
+        rec("MATNR=1", { name: "Bolt", first_seen_at: ago(3), due_at: ago(1), assignee_email: "ann@example.com" }),
+        rec("MATNR=2", { name: "Nut", first_seen_at: ago(40), proposed: 1, suggested_value: "EA" }),
+        rec("MATNR=3", { name: "Washer", severity: "high", first_seen_at: ago(90), status: "proposed" }),
+      ] });
+    });
+
+    it("shows Record, Rule, Severity, Age, Due, Assignee and Suggested value, severity first and then the oldest", async () => {
+      renderWithQuery(<FixWork />);
+      const rows = await screen.findAllByTestId("work-record");
+      const headers = within(screen.getByRole("grid", { name: "Records to fix" })).getAllByRole("columnheader").map((h) => h.textContent);
+      expect(headers).toEqual(["", "Record", "Rule", "Severity", "Age", "Due", "Assignee", "Suggested value"]);
+      // Critical before high; among the critical, 40 days before 3 days.
+      expect(rows.map((r) => within(r).getByText(/Bolt|Nut|Washer/).textContent)).toEqual(["Nut", "Bolt", "Washer"]);
+      expect(rows[0]).toHaveTextContent("40 d");
+      expect(within(rows[0]).getByText("EA")).toBeInTheDocument();
+      expect(within(rows[1]).getByText("Overdue")).toBeInTheDocument();
+      expect(rows[1]).toHaveTextContent("ann@example.com");
+      expect(within(rows[2]).getByText("Fix proposed")).toBeInTheDocument();
+      // j walks the table's order, not the server's.
+      fireEvent.keyDown(window, { key: "j" });
+      expect(replace).toHaveBeenLastCalledWith("/fix?record=material_master%7CMATNR%3D1", { scroll: false });
+    });
+
+    it("keeps a header sort in the URL and follows it", async () => {
+      search = new URLSearchParams("sort=-age");
+      renderWithQuery(<FixWork />);
+      const rows = await screen.findAllByTestId("work-record");
+      expect(rows.map((r) => within(r).getByText(/Bolt|Nut|Washer/).textContent)).toEqual(["Washer", "Nut", "Bolt"]);
+      await userEvent.click(screen.getByRole("button", { name: "Record" }));
+      expect(replace).toHaveBeenLastCalledWith("/fix?sort=record", { scroll: false });
+    });
+
+    it("ships saved views that set the queue's filters in the URL", async () => {
+      search = new URLSearchParams("run=R1&sev=low");
+      renderWithQuery(<FixWork />);
+      await screen.findAllByTestId("work-record");
+      await userEvent.click(screen.getByRole("button", { name: /^Views/ }));
+      await userEvent.click(await screen.findByRole("button", { name: "Mine, open, oldest first" }));
+      expect(replace).toHaveBeenLastCalledWith("/fix?run=R1&mine=1&sort=-age", { scroll: false });
+      await userEvent.click(screen.getByRole("button", { name: "Has a suggestion" }));
+      expect(replace).toHaveBeenLastCalledWith("/fix?run=R1&sugg=1", { scroll: false });
+    });
+
+    it("leaves the record search and the object to the scope bar, and puts the downloads in one export menu", async () => {
+      renderWithQuery(<FixWork />);
+      await screen.findAllByTestId("work-record");
+      expect(screen.queryByRole("textbox", { name: "Find a record" })).toBeNull();
+      expect(screen.queryByRole("combobox", { name: "Object" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Download fix sheet" })).toBeNull();
+      await userEvent.click(screen.getByRole("button", { name: /^Export/ }));
+      await userEvent.click(await screen.findByRole("menuitem", { name: "Fix sheet, one sheet per object (.xlsx)" }));
+      await waitFor(() => expect(work.downloadFixSheetByObject).toHaveBeenCalledWith(expect.objectContaining({ status: "open" })));
+      expect(screen.getByRole("button", { name: "Import fix sheet" })).toBeInTheDocument();
+    });
   });
 });
 

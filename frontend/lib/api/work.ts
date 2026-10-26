@@ -76,6 +76,10 @@ export interface WorkRecord {
   assignee_email: string | null;
   top_message: string | null;
   top_field: string | null;
+  /** When the oldest of its failing issues was first seen: the record's age in the queue. */
+  first_seen_at?: string | null;
+  /** The first suggested value of its checks, in check order; null when none has one. */
+  suggested_value?: string | null;
 }
 
 export interface WorkSuggestion {
