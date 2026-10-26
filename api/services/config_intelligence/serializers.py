@@ -144,7 +144,9 @@ class ConfigSummaryResponse(BaseModel):
     total_findings: int
     critical_findings: int
     aggregate_chs: float
+    # In ``currency`` (the tenant cost model's); the name is historical.
     estimated_total_impact_zar: float
+    currency: Optional[str] = None
 
 
 class ConfigDiscoverRequest(BaseModel):
@@ -179,6 +181,8 @@ class AlignmentListResponse(BaseModel):
     module: Optional[str] = None
     total: int
     findings: list[AlignmentFindingResponse]
+    # The currency of each finding's ``estimated_impact_zar`` (the tenant cost model's).
+    currency: Optional[str] = None
 
 
 class HealthScoreListResponse(BaseModel):
@@ -295,7 +299,7 @@ def drift_entry_to_response(d: DriftEntry) -> DriftEntryResponse:
 
 
 def result_to_discover_response(
-    run_id: str, result: ConfigIntelligenceResult
+    run_id: str, result: ConfigIntelligenceResult, currency: Optional[str] = None
 ) -> ConfigDiscoverResponse:
     return ConfigDiscoverResponse(
         run_id=run_id,
@@ -309,6 +313,7 @@ def result_to_discover_response(
             critical_findings=result.critical_findings,
             aggregate_chs=result.aggregate_chs,
             estimated_total_impact_zar=result.estimated_total_impact_zar,
+            currency=currency,
         ),
         config_inventory=[config_element_to_response(e) for e in result.config_inventory],
         processes=[process_health_to_response(p) for p in result.processes],

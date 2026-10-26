@@ -21,3 +21,43 @@ modules:
   # PO line net value (document currency) of each failing item; 5 % of that spend at risk
   mm_purchasing: {field: EKPO.NETWR, factor: 0.05}
 rules: {}
+
+# Value per blocked record by SAP feature (value at risk, api/services/insights_impact.py).
+# None by default: a feature without a value is left out of value at risk.
+features: {}
+
+# Business impact buckets (api/services/analytics_engine.py BusinessImpactAnalytics) and the ROI.
+# Each defect type's annual risk = count × unit_cost × factor; mitigated = risk × mitigation.
+# ``count`` is the finding's affected records, or one per exception / auto-resolved item.
+# Amounts are in ``currency`` above; the defaults are the rand figures Meridian shipped with.
+impact:
+  duplicate_payment:   {unit_cost: 8500,  factor: 0.276, mitigation: 0.7}   # invoice value × 2.3 % duplicate rate × 12 months
+  warranty_miss:       {unit_cost: 35000, factor: 1,     mitigation: 0.6}   # per warranty claim missed
+  compliance_penalty:  {unit_cost: 25000, factor: 1,     mitigation: 0.8}   # per tax / regulatory record
+  blocked_invoice:     {unit_cost: 12000, factor: 12,    mitigation: 0.9}   # per blocked invoice a month
+  failed_posting:      {unit_cost: 5000,  factor: 12,    mitigation: 0.85}  # per failed posting a month
+  inventory_write_off: {unit_cost: 8000,  factor: 1,     mitigation: 0.5}   # per material record
+  labour_displacement: {unit_cost: 450,   factor: 3,     mitigation: 1.0}   # hourly rate × 0.25 h × 12 months
+  contract_violation:  {unit_cost: 15000, factor: 1,     mitigation: 0.7}   # per contract breach
+
+# The monthly subscription the ROI divides by. None: no ROI multiple or payback is shown,
+# rather than one computed from an invented fee.
+subscription_monthly: null
+
+# Config Intelligence alignment findings (api/services/config_intelligence/alignment_validator.py):
+# the estimated impact of one unit of each finding type.
+config_alignment:
+  ghost_config: 500                     # per configured value never used
+  bottleneck_exception: 2500            # per process exception at the bottleneck step
+  shadow_process_step: 5000             # per process step missing from the data
+  licence_waste_module: 50000           # per licensed module with no transactions
+  licence_waste_process: 25000          # per inactive configured process
+  conflict_mrp_cross_plant: 2000        # per material with conflicting MRP settings across plants
+  conflict_vendor_bank: 8000            # per vendor without bank details
+  mismatch_customer_sales_area: 5000    # per customer without a sales area
+  number_range_exhaustion: 100000       # per number range near exhaustion
+  org_gap_plant_purch: 50000            # plant without a purchasing organisation
+  integration_oneway_idoc: 30000        # one-way IDoc integration
+  integration_idoc_errors: 3000         # per IDoc in error
+  ghost_z_object: 300                   # per unused custom (Z) object
+  z_field_null: 100                     # per empty value of a custom (Z) field

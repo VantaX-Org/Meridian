@@ -314,13 +314,28 @@ export interface CostSpec {
 }
 
 /** Cost model used to price findings and features (spec 8.2's value-at-risk). */
+/** What one counted item of a business-impact defect type costs: annual risk = count × unit_cost × factor. */
+export interface ImpactCost {
+  unit_cost?: number;
+  factor?: number;
+  /** Share of the risk Meridian's fixes mitigate, 0 to 1. */
+  mitigation?: number;
+}
+
 export interface CostModel {
+  /** ISO 4217 code every amount is in: risk, ROI, value at risk, planner and config impact. */
   currency: string;
   severity: Record<string, CostSpec>;
   modules: Record<string, CostSpec>;
   rules: Record<string, CostSpec>;
   /** feature name (e.g. "MIGO") → value per blocked record */
   features: Record<string, number>;
+  /** business-impact defect type (e.g. "duplicate_payment") → its unit cost */
+  impact?: Record<string, ImpactCost>;
+  /** Config Intelligence alignment finding type (e.g. "ghost_config") → impact of one unit */
+  config_alignment?: Record<string, number>;
+  /** Monthly subscription the ROI divides by; null: no ROI multiple or payback. */
+  subscription_monthly?: number | null;
 }
 
 export interface TenantSettings {

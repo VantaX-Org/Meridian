@@ -12,7 +12,7 @@ import {
   type AlignmentFinding, type ConfigDriftEntry, type ConfigElement, type ConfigHealthScore, type LicenceUtilisation, type ProcessHealth,
 } from "@/lib/api/config-intelligence";
 import { isNotFound, apiErrorState } from "@/lib/error";
-import { formatModuleName, labelOf } from "@/lib/format";
+import { formatModuleName, formatMoney, labelOf } from "@/lib/format";
 import { ConfigComparePanel } from "./config-compare-panel";
 import { AlignmentModuleDrawer, InventoryModuleDrawer } from "./config-module-drawers";
 import { useRerun } from "./use-rerun";
@@ -148,18 +148,19 @@ function ProcessesSection() {
   );
 }
 
-function findingCols(): ColumnDef<AlignmentFinding, unknown>[] {
+/** The impact column names the currency the API sends (the tenant cost model's); without one the amount stands alone. */
+export function findingCols(currency?: string | null): ColumnDef<AlignmentFinding, unknown>[] {
   return [
     { id: "check", header: "Check", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
     { id: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
     { id: "category", header: "Category", cell: ({ row }) => labelOf(row.original.category) },
     { id: "severity", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} /> },
     { id: "title", header: "Finding", cell: ({ row }) => row.original.title },
-    { id: "impact", header: "Impact (ZAR)", cell: ({ row }) => n(Math.round(row.original.estimated_impact_zar)) },
+    { id: "impact", header: currency ? `Impact (${currency})` : "Impact", cell: ({ row }) => formatMoney(Math.round(row.original.estimated_impact_zar), currency) },
   ];
 }
 
-function FindingsTable({ rows, name }: { rows: AlignmentFinding[]; name: string }) {
+function FindingsTable({ rows, name, currency }: { rows: AlignmentFinding[]; name: string; currency?: string | null }) {
   const { open, drawer, column } = useRowDrawer<AlignmentFinding>("Finding", (f) => (
     <div className="flex flex-col gap-2 m-text-body">
       <p>{f.description}</p>
@@ -167,7 +168,7 @@ function FindingsTable({ rows, name }: { rows: AlignmentFinding[]; name: string 
       {f.affected_elements.length ? <p className="m-ink-2">Affected: {f.affected_elements.join(", ")}</p> : null}
     </div>
   ));
-  const cols = useMemo(() => [...findingCols(), column], [column]);
+  const cols = useMemo(() => [...findingCols(currency), column], [column, currency]);
   const ranked = useMemo(() => [...rows].sort((a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity) || b.estimated_impact_zar - a.estimated_impact_zar), [rows]);
   if (rows.length === 0) return <EmptyState title="Nothing found" detail="The latest analysis raised no findings here." action={analyseAction} />;
   return (
@@ -209,7 +210,7 @@ function AlignmentSection() {
                 <DataTable columns={moduleCols} data={[...byModule.values()].sort((a, b) => SEVERITY_ORDER.indexOf(a.worst) - SEVERITY_ORDER.indexOf(b.worst) || b.total - a.total)} getRowId={(m) => m.module} onRowClick={(m) => setModuleOpen(m.module)} hideToolbar height="auto" tableId="config-alignment-modules" />
               </Card>
             ) : null}
-            <FindingsTable rows={d.findings} name="config-alignment" />
+            <FindingsTable rows={d.findings} name="config-alignment" currency={d.currency} />
             <AlignmentModuleDrawer module={moduleOpen} onClose={() => setModuleOpen(null)} />
           </div>
         );
@@ -224,10 +225,10 @@ function GhostShadowSection() {
   return (
     <div className="flex flex-col gap-4">
       <Card title="Ghost configuration" meta="All systems; configured in SAP but never used in a transaction">
-        <Feed q={ghost} empty="Ghost configuration is configured but unused.">{(d) => <FindingsTable rows={d.findings} name="config-ghost" />}</Feed>
+        <Feed q={ghost} empty="Ghost configuration is configured but unused.">{(d) => <FindingsTable rows={d.findings} name="config-ghost" currency={d.currency} />}</Feed>
       </Card>
       <Card title="Shadow configuration" meta="All systems; used in transactions but missing from the configuration">
-        <Feed q={shadow} empty="Shadow configuration is used but not configured.">{(d) => <FindingsTable rows={d.findings} name="config-shadow" />}</Feed>
+        <Feed q={shadow} empty="Shadow configuration is used but not configured.">{(d) => <FindingsTable rows={d.findings} name="config-shadow" currency={d.currency} />}</Feed>
       </Card>
     </div>
   );

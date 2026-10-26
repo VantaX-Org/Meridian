@@ -47,6 +47,8 @@ class PlannerConfig(BaseModel):
     exception_hours: float = 2.0
     sprint_hours: float = 40.0
     cost_per_record: Optional[float] = None
+    # Kept for stored settings only: planner amounts are named by the cost model's currency
+    # (GET/PUT /settings/cost-model), which replaces this when the planner runs.
     currency: str = "ZAR"
 
 
@@ -254,13 +256,20 @@ async def put_scoring(body: ScoringConfig, db: AsyncSession = Depends(get_db),
 # checks/cost_model.yaml. Applies from the next analysis or re-analysis.
 
 class CostModel(BaseModel):
-    currency: Optional[str] = Field(None, min_length=3, max_length=3)
+    # ISO 4217 code every amount of the model is in (risk, ROI, value at risk, planner, config impact).
+    currency: Optional[str] = Field(None, pattern=r"^[A-Z]{3}$")
     severity: dict[str, dict] = {}
     modules: dict[str, dict] = {}
     rules: dict[str, dict] = {}
-    # feature -> ZAR value per blocked record (api/services/insights_impact.py value_at_risk).
+    # feature -> value per blocked record (api/services/insights_impact.py value_at_risk).
     # Plain floats, not cost specs: not routed through validate_spec's per_record/field shapes.
     features: dict[str, Annotated[float, Field(ge=0)]] = {}
+    # defect type -> {unit_cost, factor, mitigation} (api/services/analytics_engine.py BusinessImpactAnalytics).
+    impact: dict[str, dict] = {}
+    # alignment finding type -> estimated impact of one unit (config_intelligence/alignment_validator.py).
+    config_alignment: dict[str, Annotated[float, Field(ge=0)]] = {}
+    # what the tenant pays a month, for the ROI multiple and payback; None: no ROI multiple.
+    subscription_monthly: Optional[float] = Field(None, ge=0)
 
 
 @router.get("/cost-model", dependencies=[Depends(require_permission("view"))])
@@ -289,6 +298,10 @@ async def put_cost_model(body: CostModel, db: AsyncSession = Depends(get_db),
         raise HTTPException(status_code=422, detail=f"severity keys are {sorted(cost.SEVERITY_FACTOR)}")
     errors = [f"{section}.{key}: {err}" for section in ("severity", "modules", "rules")
               for key, spec in getattr(body, section).items() if (err := cost.validate_spec(spec))]
+    errors += [f"impact.{key}: {err}" for key, spec in body.impact.items() if (err := cost.validate_impact(key, spec))]
+    known = set(cost.defaults().get("config_alignment") or {})
+    errors += [f"config_alignment.{key}: alignment types are {sorted(known)}"
+               for key in body.config_alignment if key not in known]
     if errors:
         raise HTTPException(status_code=422, detail=errors)
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
