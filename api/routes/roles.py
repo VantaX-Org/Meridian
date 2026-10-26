@@ -201,6 +201,21 @@ async def guard_user_access_change(db: AsyncSession, tenant: Tenant, request: Re
         await enforce_ceiling(db, tenant.id, at, key)
 
 
+async def lock_admin_rows(db: AsyncSession, tenant_id: uuid.UUID) -> None:
+    """Lock every active admin's users row (FOR UPDATE, in id order) before a last-admin count.
+
+    Two concurrent revokes/demotions/deactivations of different admins each lock the same rows, so
+    the second waits for the first to commit; its count, a later statement, then sees the committed
+    change (READ COMMITTED takes a new snapshot per statement) and refuses to remove the last admin.
+    Every path that can take an admin away (grant revoke, deactivate, delete) holds these locks."""
+    await db.execute(text(
+        "SELECT u.id FROM users u WHERE u.tenant_id = :t AND u.is_active AND (u.role = ANY(:keys) OR EXISTS ("
+        "SELECT 1 FROM user_role_scopes g WHERE g.tenant_id = u.tenant_id AND g.user_id = u.id "
+        "AND g.system_id IS NULL AND g.module IS NULL AND g.role_key = ANY(:keys))) "
+        "ORDER BY u.id FOR UPDATE OF u"),
+        {"t": str(tenant_id), "keys": sorted(_PLATFORM_ADMIN)})
+
+
 async def forbid_last_admin_grant(db: AsyncSession, tenant_id: uuid.UUID, user_id: uuid.UUID,
                                   grant_id: uuid.UUID, role_key: str) -> None:
     """409 when revoking this unscoped admin/platform_admin grant leaves the tenant without an active admin.
@@ -209,6 +224,7 @@ async def forbid_last_admin_grant(db: AsyncSession, tenant_id: uuid.UUID, user_i
     key; the grant being revoked no longer counts. Revoking from an inactive user takes no admin away."""
     if role_key not in _PLATFORM_ADMIN:
         return
+    await lock_admin_rows(db, tenant_id)
     active = (await db.execute(text("SELECT is_active FROM users WHERE id = :u AND tenant_id = :t"),
                                {"u": str(user_id), "t": str(tenant_id)})).scalar()
     if not active:

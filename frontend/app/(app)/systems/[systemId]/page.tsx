@@ -929,7 +929,7 @@ function EditForm({ system, targets, onDone, onDeleted }: {
 
       <fieldset className="flex flex-col gap-3 border-t pt-4 [border-color:var(--m-line)]">
         <legend className="m-text-body font-semibold m-ink">Connection and credentials</legend>
-        <p className="m-text-meta m-ink-3">Stored secrets are never shown. Leave a secret empty to keep the stored one.</p>
+        <p className="m-text-meta m-ink-3">Stored secrets are never shown. Leave a secret empty to keep the stored one; re-enter the password/secret when you change the host.</p>
         <ConnectionFields v={v} bind={bind} error={form.error} onAuthChange={(a) => update({ auth_type: a })} secretPlaceholder="Unchanged" />
         {outcome ? <TestOutcome outcome={outcome.value} stale={outcome.key !== currentKey} /> : null}
         <div className="flex flex-col gap-1">

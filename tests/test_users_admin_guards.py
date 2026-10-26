@@ -59,6 +59,9 @@ class _DB:
             return _Result([(u["role"],)] if u else [])
         if sql.startswith("SELECT DISTINCT role_key"):
             return _Result([])
+        if sql.startswith("SELECT u.id FROM users u WHERE u.tenant_id = :t") and sql.endswith("FOR UPDATE OF u"):
+            self.locks = getattr(self, "locks", 0) + 1
+            return _Result([])
         if sql.startswith("SELECT 1 FROM users u WHERE u.id = :uid"):
             assert p["tid"] == str(TENANT)
             u = self.users.get(p["uid"])

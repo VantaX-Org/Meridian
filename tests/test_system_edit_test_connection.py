@@ -1,5 +1,7 @@
 """POST /api/v1/systems/{id}/test-connection tries the edit form's unsaved fields, with the
-stored secret standing in for one the user left empty, read from this tenant's row only."""
+stored secret standing in for one the user left empty, read from this tenant's row only. A
+changed endpoint (host, client, sysnr, base URL, token URL, auth type) never gets a stored
+secret: every secret the connection uses must be retyped, else 422."""
 
 import uuid
 
@@ -56,17 +58,22 @@ def _body(**kw) -> RegisterSystemRequest:
     return RegisterSystemRequest(name="ECC Prod", system_type="ecc", environment="PRD", **kw)
 
 
+ECC_ROW = ("ecc", "rfc", None, None, None, "enc-pw", "old-host.internal", "200", "01", None, None)
+SF_ROW = ("successfactors", "basic", "enc-id", "enc-secret", None, "enc-pw", None, None, None,
+          "https://api.old.example", None)
+
+
 @pytest.mark.asyncio
-async def test_edited_host_is_tried_with_the_stored_password(captured):
-    db = _DB(("ecc", "rfc", None, None, None, "enc-pw"))
+async def test_unchanged_endpoint_is_tried_with_the_stored_password(captured):
+    db = _DB(ECC_ROW)
     res = await edited_test(
-        SID, _body(host="new-host.internal", client="200", sysnr="01"), db=db, tenant=TENANT, role="admin",
+        SID, _body(host="old-host.internal", client="200", sysnr="01", username="NEWUSER"),
+        db=db, tenant=TENANT, role="admin",
     )
     assert res.connected
     assert captured["system_type"] == "ecc"
-    assert captured["params"]["host"] == "new-host.internal"
-    assert captured["params"]["client"] == "200"
-    assert captured["params"]["sysnr"] == "01"
+    assert captured["params"]["host"] == "old-host.internal"
+    assert captured["params"]["user"] == "NEWUSER"
     assert captured["params"]["password"] == f"plain:enc-pw:{TENANT.id}"
     assert captured["params"]["password"] in captured["secrets"]  # masked in any error message
     select = next((sql, p) for sql, p in db.calls if sql.startswith("SELECT"))
@@ -75,25 +82,76 @@ async def test_edited_host_is_tried_with_the_stored_password(captured):
 
 
 @pytest.mark.asyncio
-async def test_a_typed_secret_wins_over_the_stored_one(captured):
-    db = _DB(("ecc", "rfc", None, None, None, "enc-pw"))
+@pytest.mark.parametrize("field,value", [
+    ("host", "attacker.example"), ("client", "300"), ("sysnr", "99"),
+])
+async def test_a_changed_rfc_endpoint_without_the_password_is_refused(captured, field, value):
+    fields = {"host": "old-host.internal", "client": "200", "sysnr": "01", field: value}
+    with pytest.raises(HTTPException) as e:
+        await edited_test(SID, _body(**fields), db=_DB(ECC_ROW), tenant=TENANT, role="admin")
+    assert e.value.status_code == 422
+    assert "Re-enter the password" in e.value.detail
+    assert captured == {}  # nothing was sent anywhere
+
+
+@pytest.mark.asyncio
+async def test_a_changed_host_with_the_password_retyped_is_tried_with_it(captured):
     await edited_test(
-        SID, _body(host="h", client="100", sysnr="00", credentials={"password": "typed"}), db=db, tenant=TENANT, role="admin",
+        SID, _body(host="new-host.internal", client="200", sysnr="01", credentials={"password": "typed"}),
+        db=_DB(ECC_ROW), tenant=TENANT, role="admin",
+    )
+    assert captured["params"]["host"] == "new-host.internal"
+    assert captured["params"]["password"] == "typed"
+
+
+@pytest.mark.asyncio
+async def test_a_typed_secret_wins_over_the_stored_one(captured):
+    db = _DB(ECC_ROW)
+    await edited_test(
+        SID, _body(host="old-host.internal", client="200", sysnr="01", credentials={"password": "typed"}),
+        db=db, tenant=TENANT, role="admin",
     )
     assert captured["params"]["password"] == "typed"
 
 
 @pytest.mark.asyncio
-async def test_cloud_falls_back_per_secret_and_keeps_the_stored_type_and_auth(captured):
-    db = _DB(("successfactors", "basic", "enc-id", "enc-secret", None, "enc-pw"))
+@pytest.mark.parametrize("field,value", [
+    ("base_url", "https://attacker.example"), ("token_url", "https://attacker.example/token"),
+    ("auth_type", "oauth2_client_credentials"),
+])
+async def test_a_changed_cloud_endpoint_without_the_secrets_is_refused(captured, field, value):
+    fields = {"base_url": "https://api.old.example", field: value}
+    body = RegisterSystemRequest(name="SF", system_type="successfactors", username="svc", **fields)
+    with pytest.raises(HTTPException) as e:
+        await edited_test(SID, body, db=_DB(SF_ROW), tenant=TENANT, role="admin")
+    assert e.value.status_code == 422
+    assert "Re-enter" in e.value.detail
+    assert captured == {}
+
+
+@pytest.mark.asyncio
+async def test_a_changed_cloud_endpoint_never_falls_back_to_a_stored_secret(captured):
     body = RegisterSystemRequest(
-        name="SF", system_type="ecc", base_url="https://api.new.example", company_id="ACME", username="svc",
+        name="SF", system_type="successfactors", base_url="https://api.new.example", username="svc",
+        credentials={"password": "typed"},
+    )
+    await edited_test(SID, body, db=_DB(SF_ROW), tenant=TENANT, role="admin")
+    p = captured["params"]
+    assert p["password"] == "typed"
+    assert p["client_id"] == "" and p["client_secret"] == ""  # stored ones stay home
+
+
+@pytest.mark.asyncio
+async def test_cloud_falls_back_per_secret_and_keeps_the_stored_type_and_auth(captured):
+    db = _DB(SF_ROW)
+    body = RegisterSystemRequest(
+        name="SF", system_type="ecc", base_url="https://api.old.example", company_id="ACME", username="svc",
         credentials={"client_secret": "typed-secret"},
     )
     await edited_test(SID, body, db=db, tenant=TENANT, role="admin")
     assert captured["system_type"] == "successfactors"  # never the body's type
     p = captured["params"]
-    assert p["base_url"] == "https://api.new.example"
+    assert p["base_url"] == "https://api.old.example"
     assert p["auth_type"] == "basic"
     assert p["username"] == "svc"
     assert p["client_secret"] == "typed-secret"
@@ -118,8 +176,8 @@ async def test_a_stored_secret_that_cannot_be_decrypted_says_so_without_detail(c
         raise ValueError("bad key material abc123")
 
     monkeypatch.setattr(store, "decrypt_password", boom)
-    db = _DB(("ecc", "rfc", None, None, None, "enc-pw"))
-    res = await edited_test(SID, _body(host="h"), db=db, tenant=TENANT, role="admin")
+    db = _DB(ECC_ROW)
+    res = await edited_test(SID, _body(host="old-host.internal"), db=db, tenant=TENANT, role="admin")
     assert not res.connected
     assert "abc123" not in res.message
     assert captured == {}

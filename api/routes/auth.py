@@ -33,6 +33,8 @@ _forgot_rate_limit = rate_limit("auth_forgot", limit=5, window_s=60, key_by="ip"
 _reset_rate_limit = rate_limit("auth_reset", limit=5, window_s=60, key_by="ip")
 _invite_rate_limit = rate_limit("auth_invite", limit=5, window_s=60, key_by="ip")
 _invite_preview_rate_limit = rate_limit("auth_invite_preview", limit=5, window_s=60, key_by="ip")
+# Per signed-in user (the session token's subject): bounds guessing the current password with a stolen session.
+_change_password_rate_limit = rate_limit("auth_change_password", limit=5, window_s=60, key_by="user")
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -260,13 +262,17 @@ def me(request: Request):
 _MIN_PASSWORD_LENGTH = 12
 
 
-@router.post("/change-password")
+@router.post("/change-password", dependencies=[Depends(_change_password_rate_limit)])
 def change_password(body: ChangePasswordRequest, request: Request):
     """Rotate the password for the currently-authenticated user.
 
     Accepted even when `must_change_password` is true on the account —
     in fact that's the intended path. Clears the flag on success so
-    the user can proceed with normal API use.
+    the user can proceed with normal API use. Writes a ``user.password_change`` audit row.
+
+    Other sessions are not revoked: session JWTs carry no token version and the auth
+    middleware checks no per-user issued-at cutoff, so existing tokens stay valid until they
+    expire (local_auth._JWT_EXPIRY_HOURS).
     """
     auth_header = request.headers.get("authorization", "")
     if not auth_header.startswith("Bearer "):
@@ -303,7 +309,7 @@ def change_password(body: ChangePasswordRequest, request: Request):
 
         conn.execute(text(f"SET app.tenant_id = \'{str(DEV_TENANT_ID)}\'"))
         row = conn.execute(
-            text("SELECT id, password_hash, is_active FROM users WHERE id = :uid AND tenant_id = :tid"),
+            text("SELECT id, password_hash, is_active, email FROM users WHERE id = :uid AND tenant_id = :tid"),
             {"uid": payload["sub"], "tid": DEV_TENANT_ID},
         ).fetchone()
         if not row or not row[2]:
@@ -320,6 +326,12 @@ def change_password(body: ChangePasswordRequest, request: Request):
                 "WHERE id = :uid"
             ),
             {"ph": hash_password(new_password), "uid": str(row[0])},
+        )
+        conn.execute(
+            text("INSERT INTO audit_log (tenant_id, actor_user_id, actor_email, action, entity_type, entity_id, "
+                 "method, path, status_code) VALUES (:t, :u, :e, 'user.password_change', 'user', :u, "
+                 ":m, :p, 200)"),
+            {"t": DEV_TENANT_ID, "u": str(row[0]), "e": row[3], "m": request.method, "p": request.url.path},
         )
         conn.commit()
     return {"ok": True}

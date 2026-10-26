@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.config import settings
 from api.deps import Tenant, get_db, get_tenant
 from api.services import jobs
-from api.services.rbac import require_permission
+from api.services.rbac import Scope, require_permission, require_scope
 from api.services.column_mapper import (
     apply_column_mapping,
     get_required_fields,
@@ -69,6 +69,7 @@ async def upload_file(
     # Checked before anything is stored, so a bad id leaves no orphan file behind.
     if system_id:
         system_id = await _tenant_system(db, tenant.id, system_id)
+        await _require_attach_right(request, db, tenant, system_id)
 
     # Step 1-2: Read in chunks — abort early if file exceeds MAX_FILE_SIZE (OOM prevention)
     chunks: list[bytes] = []
@@ -321,6 +322,20 @@ async def _tenant_system(db: AsyncSession, tenant_id: uuid.UUID, system_id: str)
     if not found:
         raise HTTPException(status_code=404, detail="System not found")
     return sid
+
+
+async def _require_attach_right(request: Request, db: AsyncSession, tenant: Tenant, system_id: str) -> None:
+    """Attaching a file to a system puts its values in that system's lineage (and golden-record
+    survivorship), so it needs trigger_sync or manage_systems at that system, not just upload."""
+    denied: HTTPException | None = None
+    for action in ("trigger_sync", "manage_systems"):
+        try:
+            await require_scope(request, db, tenant, action, Scope(uuid.UUID(system_id), None))
+            return
+        except HTTPException as e:
+            denied = e
+    assert denied is not None
+    raise denied
 
 
 async def _enqueue_checks(db: AsyncSession, tenant_id: uuid.UUID, version_id: uuid.UUID,

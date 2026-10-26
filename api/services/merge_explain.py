@@ -222,7 +222,9 @@ def survive_cluster(members: list[dict], rules: Optional[dict] = None,
     all_fields += [f for f in overrides if f not in all_fields]
 
     contribs = {f: [FieldContribution(None if _blank(m["fields"].get(f)) else m["fields"].get(f),
-                                      m["key"], when[m["key"]], 1.0, *system_of(m, f)) for m in members]
+                                      m["key"], when[m["key"]], 1.0, *system_of(m, f),
+                                      origin=((m.get("systems") or {}).get(f) or {}).get("origin"))
+                    for m in members]
                 for f in all_fields}
     blanks = {k: sum(1 for f in all_fields if _blank(next(m for m in members if m["key"] == k)["fields"].get(f)))
               for k in order}
