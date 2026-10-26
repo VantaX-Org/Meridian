@@ -19,7 +19,7 @@ import copy
 import logging
 from typing import Any
 
-from sap.process_definitions import PROCESS_DEFINITIONS
+from sap.process_definitions import definitions
 
 logger = logging.getLogger("meridian.services.process_writer")
 
@@ -77,7 +77,7 @@ def generate_process_document(
 
     enriched_processes: list[dict[str, Any]] = []
 
-    for l1 in PROCESS_DEFINITIONS:
+    for l1 in definitions():
         # Only include processes that reference this module
         if module not in l1.get("modules", []):
             continue

@@ -433,6 +433,11 @@ areas:
       - PA110
       - PA112
       - EC118
+  treasury: House banks and payment data that become business-partner bank details in S/4HANA.
+  organisational: Company code and plant organisational fields the universal journal and valuation depend
+    on.
+  warehouse: Storage-bin stock that has to be migrated before or with the move to EWM.
+  controlling: Cost elements and controlling objects that post into the S/4HANA universal journal.
 rules:
 - id: S4R-BP-KNA1-ADRNR
   field: KNA1.ADRNR
@@ -3087,105 +3092,137 @@ rules:
   check_class: null_check
   severity: critical
   dimension: completeness
-  message: 'S/4HANA migration: material has no material type'
+  message: 'S/4HANA readiness: material has no material type'
   why_it_matters: MTART drives number ranges, valuation class, account determination and the screens the
     material appears on. A material without one cannot be migrated.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: The conversion rejects the material; stock and costs cannot be posted.
   fix_map:
     __blank__: Assign the material type in MM01/MM02.
   record_fix_template: 'MARA.MTART: ''{actual_value}'' is blank. Assign the material type in MM01/MM02.'
+  baseline: s4_target
+  s4_area: material
+  s4_impact: The conversion rejects the material; stock and costs cannot be posted.
+  simplification_item: Material master fields
 - id: S4M112
   field: MARA.MBRSH
   check_class: null_check
   severity: critical
   dimension: completeness
-  message: 'S/4HANA migration: material has no industry sector'
+  message: 'S/4HANA readiness: material has no industry sector'
   why_it_matters: MBRSH is mandatory in S/4HANA and controls field selection together with the material
     type.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Material master cannot be written in the target system.
   fix_map:
     __blank__: Assign the industry sector.
   record_fix_template: 'MARA.MBRSH: ''{actual_value}'' is blank. Assign the industry sector.'
+  baseline: s4_target
+  s4_area: material
+  s4_impact: Material master cannot be written in the target system.
+  simplification_item: Material master fields
 - id: S4M113
   field: MARA.MEINS
   check_class: null_check
   severity: critical
   dimension: completeness
-  message: 'S/4HANA migration: material has no base unit of measure'
+  message: 'S/4HANA readiness: material has no base unit of measure'
   why_it_matters: MEINS is the unit all stock and valuations are held in; S/4 requires it.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Stock quantities cannot be converted; the material fails the load.
   fix_map:
     __blank__: Assign the base unit of measure.
   record_fix_template: 'MARA.MEINS: ''{actual_value}'' is blank. Assign the base unit of measure.'
+  baseline: s4_target
+  s4_area: material
+  s4_impact: Stock quantities cannot be converted; the material fails the load.
+  simplification_item: Material master fields
 - id: S4M114
   field: MARA.MATKL
   check_class: null_check
   severity: high
   dimension: completeness
-  message: 'S/4HANA migration: material group is blank'
+  message: 'S/4HANA readiness: material group is blank'
   why_it_matters: MATKL drives the material-group hierarchy, procurement analytics and default account
     assignment in S/4.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Purchasing and spend reporting lose the material.
   fix_map:
     __blank__: Assign the material group.
   record_fix_template: 'MARA.MATKL: ''{actual_value}'' is blank. Assign the material group.'
+  baseline: s4_target
+  s4_area: material
+  s4_impact: Purchasing and spend reporting lose the material.
+  simplification_item: Material master fields
 - id: S4M115
   field: MARA.SPART
   check_class: null_check
   severity: medium
   dimension: completeness
-  message: 'S/4HANA migration: division is blank'
+  message: 'S/4HANA readiness: division is blank'
   why_it_matters: SPART is required for sales-side account determination and is a mandatory field in several
     S/4 material types.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Sales postings and revenue reporting are incomplete.
   fix_map:
     __blank__: Assign the division.
   record_fix_template: 'MARA.SPART: ''{actual_value}'' is blank. Assign the division.'
+  baseline: s4_target
+  s4_area: material
+  s4_impact: Sales postings and revenue reporting are incomplete.
+  simplification_item: Material master fields
 - id: S4M116
   field: MARA.PRDHA
   check_class: null_check
   severity: low
   dimension: completeness
-  message: 'S/4HANA migration: product hierarchy is blank'
+  message: 'S/4HANA readiness: product hierarchy is blank'
   why_it_matters: PRDHA drives margin and product-line reporting in S/4HANA analytics.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Product-line reporting cannot classify the material.
   fix_map:
     __blank__: Assign the product hierarchy.
   record_fix_template: 'MARA.PRDHA: ''{actual_value}'' is blank. Assign the product hierarchy.'
+  baseline: s4_target
+  s4_area: material
+  s4_impact: Product-line reporting cannot classify the material.
+  simplification_item: Material master fields
 - id: S4M117
   field: MARA.MATNR
   check_class: regex_check
   pattern: ^[0-9A-Za-z._-]{1,18}$
   severity: critical
   dimension: validity
-  message: 'S/4HANA migration: material number exceeds the 18-character S/4 limit'
+  message: 'S/4HANA readiness: material number exceeds the 18-character S/4 limit'
   why_it_matters: MATNR is CHAR 18 in S/4HANA. Numbers beyond that cannot be represented and there is
     no automatic renumbering in a conversion.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: The material cannot be migrated without renumbering or an extension.
   fix_map:
     __other__: Shorten or renumber the material before conversion.
   record_fix_template: 'MARA.MATNR: ''{actual_value}'' has an invalid format. Shorten or renumber the
     material before conversion.'
+  baseline: s4_target
+  s4_area: material
+  s4_impact: The material cannot be migrated without renumbering or an extension.
+  simplification_item: Material master fields
 - id: S4M118
   field: MBEW.VPRSV
   check_class: null_check
   severity: critical
   dimension: completeness
-  message: 'S/4HANA migration: valuation class/price control is blank'
+  message: 'S/4HANA readiness: valuation class/price control is blank'
   why_it_matters: VPRSV decides whether the material is valued at standard or moving average price; S/4
     requires one.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Valuation cannot be converted; stock value is undefined.
   fix_map:
     __blank__: Set the price control (S or V) in MM02.
   record_fix_template: 'MBEW.VPRSV: ''{actual_value}'' is blank. Set the price control (S or V) in MM02.'
+  baseline: s4_target
+  s4_area: material_ledger
+  s4_impact: Valuation cannot be converted; stock value is undefined.
+  simplification_item: Material ledger / valuation
 - id: S4M119
   field: MBEW.VERPR
   check_class: cross_field_check
@@ -3193,15 +3230,19 @@ rules:
   require_populated: true
   severity: high
   dimension: validity
-  message: 'S/4HANA migration: moving average price is zero'
+  message: 'S/4HANA readiness: moving average price is zero'
   why_it_matters: A moving average price of zero values every unit of stock at nothing. The material-ledger
     conversion carries this value forward.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Stock value and COGS become zero after migration.
   fix_map:
     __other__: Correct the moving average price before conversion.
   record_fix_template: 'MBEW.VERPR: ''{actual_value}'' is zero. Correct the moving average price before
     conversion.'
+  baseline: s4_target
+  s4_area: material_ledger
+  s4_impact: Stock value and COGS become zero after migration.
+  simplification_item: Material ledger / valuation
 - id: S4M120
   field: MBEW.STPRS
   check_class: cross_field_check
@@ -3209,14 +3250,18 @@ rules:
   require_populated: true
   severity: high
   dimension: validity
-  message: 'S/4HANA migration: standard price is zero for a standard-priced material'
+  message: 'S/4HANA readiness: standard price is zero for a standard-priced material'
   why_it_matters: A standard price of zero means every posting is valued at nothing; the conversion adopts
     the price as-is.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Inventory and production variances are valued at zero.
   fix_map:
     __other__: Set the standard price in MM02.
   record_fix_template: 'MBEW.STPRS: ''{actual_value}'' is zero. Set the standard price in MM02.'
+  baseline: s4_target
+  s4_area: material_ledger
+  s4_impact: Inventory and production variances are valued at zero.
+  simplification_item: Material ledger / valuation
 - id: S4M121
   field: MBEW.PEINH
   check_class: cross_field_check
@@ -3224,103 +3269,117 @@ rules:
   require_populated: true
   severity: medium
   dimension: validity
-  message: 'S/4HANA migration: price unit is zero'
+  message: 'S/4HANA readiness: price unit is zero'
   why_it_matters: PEINH divides the price; zero makes every valuation arithmetic undefined.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Valuation divides by zero and the price is discarded.
   fix_map:
     __other__: Set the price unit (normally 1 or 1000).
   record_fix_template: 'MBEW.PEINH: ''{actual_value}'' is zero. Set the price unit (normally 1 or 1000).'
+  baseline: s4_target
+  s4_area: material_ledger
+  s4_impact: Valuation divides by zero and the price is discarded.
+  simplification_item: Material ledger / valuation
 - id: S4M122
   field: MBEW.MLMAA
   check_class: null_check
   severity: medium
   dimension: completeness
-  message: 'S/4HANA migration: material ledger activation marker is blank'
+  message: 'S/4HANA readiness: material ledger activation marker is blank'
   why_it_matters: S/4HANA values inventory in the material ledger by default; MLMAA records the activation
     per valuation area.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Material-ledger conversion misreads the valuation history.
   fix_map:
     __blank__: Review the material ledger activation in the valuation area.
   record_fix_template: 'MBEW.MLMAA: ''{actual_value}'' is blank. Review the material ledger activation
     in the valuation area.'
-- id: S4M123
-  field: T001K.MLBWA
-  check_class: null_check
-  severity: high
-  dimension: completeness
-  message: 'S/4HANA migration: valuation area has no material ledger currency type'
-  why_it_matters: S/4HANA activates the material ledger; the valuation area needs its currency type set
-    before the conversion.
-  rule_authority: sap_hard_constraint
-  sap_impact: The valuation area cannot be converted to the material ledger.
-  fix_map:
-    __blank__: Set the material ledger currency type in the valuation area.
-  record_fix_template: 'T001K.MLBWA: ''{actual_value}'' is blank. Set the material ledger currency type
-    in the valuation area.'
+  baseline: s4_target
+  s4_area: material_ledger
+  s4_impact: Material-ledger conversion misreads the valuation history.
+  simplification_item: Material ledger / valuation
 - id: S4M124
   field: ANLA.ANLKL
   check_class: null_check
   severity: critical
   dimension: completeness
-  message: 'S/4HANA migration: asset has no asset class'
+  message: 'S/4HANA readiness: asset has no asset class'
   why_it_matters: ANLKL determines the asset's account determination, screen layout and depreciation rules;
     new asset accounting requires it.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: The asset cannot be posted or depreciated in S/4.
   fix_map:
     __blank__: Assign the asset class.
   record_fix_template: 'ANLA.ANLKL: ''{actual_value}'' is blank. Assign the asset class.'
+  baseline: s4_target
+  s4_area: asset_accounting
+  s4_impact: The asset cannot be posted or depreciated in S/4.
+  simplification_item: New Asset Accounting
 - id: S4M125
   field: ANLA.KTOGR
   check_class: null_check
   severity: high
   dimension: completeness
-  message: 'S/4HANA migration: asset class has no account determination key'
+  message: 'S/4HANA readiness: asset class has no account determination key'
   why_it_matters: KTOGR links the asset to its reconciliation accounts; the new asset accounting conversion
     needs it.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Asset postings cannot find their G/L accounts.
   fix_map:
     __blank__: Assign the account determination key.
   record_fix_template: 'ANLA.KTOGR: ''{actual_value}'' is blank. Assign the account determination key.'
+  baseline: s4_target
+  s4_area: asset_accounting
+  s4_impact: Asset postings cannot find their G/L accounts.
+  simplification_item: New Asset Accounting
 - id: S4M126
   field: ANLA.AKTIV
   check_class: null_check
   severity: high
   dimension: completeness
-  message: 'S/4HANA migration: capitalisation date is blank'
+  message: 'S/4HANA readiness: capitalisation date is blank'
   why_it_matters: AKTIV is the capitalisation date new asset accounting uses to derive depreciation start.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Depreciation is calculated from the wrong date or not at all.
   fix_map:
     __blank__: Set the capitalisation date.
   record_fix_template: 'ANLA.AKTIV: ''{actual_value}'' is blank. Set the capitalisation date.'
+  baseline: s4_target
+  s4_area: asset_accounting
+  s4_impact: Depreciation is calculated from the wrong date or not at all.
+  simplification_item: New Asset Accounting
 - id: S4M127
   field: ANLB.AFASL
   check_class: null_check
   severity: high
   dimension: completeness
-  message: 'S/4HANA migration: depreciation key is blank'
+  message: 'S/4HANA readiness: depreciation key is blank'
   why_it_matters: AFASL selects the depreciation method and rates applied in new asset accounting.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: The asset is not depreciated after conversion.
   fix_map:
     __blank__: Assign the depreciation key.
   record_fix_template: 'ANLB.AFASL: ''{actual_value}'' is blank. Assign the depreciation key.'
+  baseline: s4_target
+  s4_area: asset_accounting
+  s4_impact: The asset is not depreciated after conversion.
+  simplification_item: New Asset Accounting
 - id: S4M128
   field: ANLB.NDJAR
   check_class: null_check
   severity: medium
   dimension: completeness
-  message: 'S/4HANA migration: useful life is blank'
+  message: 'S/4HANA readiness: useful life is blank'
   why_it_matters: NDJAR is the useful life in years used to compute depreciation.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Depreciation amounts are undefined.
   fix_map:
     __blank__: Set the useful life.
   record_fix_template: 'ANLB.NDJAR: ''{actual_value}'' is blank. Set the useful life.'
+  baseline: s4_target
+  s4_area: asset_accounting
+  s4_impact: Depreciation amounts are undefined.
+  simplification_item: New Asset Accounting
 - id: S4M129
   field: ANLB.BUKRS
   check_class: uniqueness_check
@@ -3330,39 +3389,51 @@ rules:
   - ANLB.AFABE
   severity: high
   dimension: uniqueness
-  message: 'S/4HANA migration: asset has duplicate depreciation areas'
+  message: 'S/4HANA readiness: asset has duplicate depreciation areas'
   why_it_matters: Each asset may hold one row per depreciation area; duplicates double the depreciation
     posted.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Depreciation is posted twice per period.
   fix_map:
     __other__: Keep one row per asset and depreciation area.
   record_fix_template: 'ANLB.BUKRS: duplicate key. Keep one row per asset and depreciation area.'
+  baseline: s4_target
+  s4_area: asset_accounting
+  s4_impact: Depreciation is posted twice per period.
+  simplification_item: New Asset Accounting
 - id: S4M130
   field: CSKA.KTOPL
   check_class: null_check
   severity: high
   dimension: completeness
-  message: 'S/4HANA migration: cost element has no chart of accounts'
+  message: 'S/4HANA readiness: cost element has no chart of accounts'
   why_it_matters: KTOPL is the key of CSKA; without it the cost element cannot be matched to a G/L account
     in the universal journal.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Cost element conversion fails; cost postings are unmapped.
   fix_map:
     __blank__: Assign the chart of accounts.
   record_fix_template: 'CSKA.KTOPL: ''{actual_value}'' is blank. Assign the chart of accounts.'
+  baseline: s4_target
+  s4_area: controlling
+  s4_impact: Cost element conversion fails; cost postings are unmapped.
+  simplification_item: Universal journal
 - id: S4M131
   field: CSKB.KSTAR
   check_class: null_check
   severity: high
   dimension: completeness
-  message: 'S/4HANA migration: cost element row has no cost element number'
+  message: 'S/4HANA readiness: cost element row has no cost element number'
   why_it_matters: KSTAR is the key every CO line item references.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: CO line items cannot resolve their cost element.
   fix_map:
     __blank__: Assign the cost element.
   record_fix_template: 'CSKB.KSTAR: ''{actual_value}'' is blank. Assign the cost element.'
+  baseline: s4_target
+  s4_area: controlling
+  s4_impact: CO line items cannot resolve their cost element.
+  simplification_item: Universal journal
 - id: S4M132
   field: CSKB.KATYP
   check_class: domain_value_check
@@ -3378,15 +3449,19 @@ rules:
   - '43'
   severity: high
   dimension: validity
-  message: 'S/4HANA migration: cost element category is not a valid value'
+  message: 'S/4HANA readiness: cost element category is not a valid value'
   why_it_matters: KATYP decides whether the element is primary/secondary and how it posts to the universal
     journal.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: The cost element is classified wrongly and posts to the wrong journal line type.
   fix_map:
     __other__: Correct the cost element category.
   record_fix_template: 'CSKB.KATYP: ''{actual_value}'' is not a permitted value. Correct the cost element
     category.'
+  baseline: s4_target
+  s4_area: controlling
+  s4_impact: The cost element is classified wrongly and posts to the wrong journal line type.
+  simplification_item: Universal journal
 - id: S4M133
   field: CSKB.KSTAR
   check_class: uniqueness_check
@@ -3395,50 +3470,66 @@ rules:
   - CSKB.KSTAR
   severity: critical
   dimension: uniqueness
-  message: 'S/4HANA migration: duplicate cost elements within a controlling area'
+  message: 'S/4HANA readiness: duplicate cost elements within a controlling area'
   why_it_matters: KSTAR is unique per controlling area; duplicates split the postings across two masters.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Costs post to the wrong master; balances are distorted.
   fix_map:
     __other__: Keep one cost element per controlling area.
   record_fix_template: 'CSKB.KSTAR: duplicate key. Keep one cost element per controlling area.'
+  baseline: s4_target
+  s4_area: controlling
+  s4_impact: Costs post to the wrong master; balances are distorted.
+  simplification_item: Universal journal
 - id: S4M134
   field: KNA1.KTOKD
   check_class: null_check
   severity: critical
   dimension: completeness
-  message: 'S/4HANA migration: customer has no account group'
+  message: 'S/4HANA readiness: customer has no account group'
   why_it_matters: KTOKD maps to the business-partner grouping during CVI; without it the customer cannot
     become a BP.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: The customer-vendor integration conversion skips the customer.
   fix_map:
     __blank__: Assign the account group.
   record_fix_template: 'KNA1.KTOKD: ''{actual_value}'' is blank. Assign the account group.'
+  baseline: s4_target
+  s4_area: business_partner
+  s4_impact: The customer-vendor integration conversion skips the customer.
+  simplification_item: Business Partner (CVI)
 - id: S4M135
   field: LFA1.KTOKK
   check_class: null_check
   severity: critical
   dimension: completeness
-  message: 'S/4HANA migration: vendor has no account group'
+  message: 'S/4HANA readiness: vendor has no account group'
   why_it_matters: KTOKK maps to the business-partner grouping during CVI.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: The vendor cannot be converted to a business partner.
   fix_map:
     __blank__: Assign the account group.
   record_fix_template: 'LFA1.KTOKK: ''{actual_value}'' is blank. Assign the account group.'
+  baseline: s4_target
+  s4_area: business_partner
+  s4_impact: The vendor cannot be converted to a business partner.
+  simplification_item: Business Partner (CVI)
 - id: S4M136
   field: BUT000.BU_GROUP
   check_class: null_check
   severity: high
   dimension: completeness
-  message: 'S/4HANA migration: business partner has no grouping'
+  message: 'S/4HANA readiness: business partner has no grouping'
   why_it_matters: BU_GROUP drives the BP number range and field selection in S/4.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: The BP cannot be created or sorted into a number range.
   fix_map:
     __blank__: Assign the BP grouping.
   record_fix_template: 'BUT000.BU_GROUP: ''{actual_value}'' is blank. Assign the BP grouping.'
+  baseline: s4_target
+  s4_area: business_partner
+  s4_impact: The BP cannot be created or sorted into a number range.
+  simplification_item: Business Partner (CVI)
 - id: S4M137
   field: BUT000.TYPE
   check_class: domain_value_check
@@ -3448,52 +3539,68 @@ rules:
   - '3'
   severity: high
   dimension: validity
-  message: 'S/4HANA migration: business partner category is not 1, 2 or 3'
+  message: 'S/4HANA readiness: business partner category is not 1, 2 or 3'
   why_it_matters: BU_TYPE must be person (1), organisation (2) or group (3).
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: The BP is rejected by the S/4 data model.
   fix_map:
     __other__: Correct the BP category.
   record_fix_template: 'BUT000.TYPE: ''{actual_value}'' is not a permitted value. Correct the BP category.'
+  baseline: s4_target
+  s4_area: business_partner
+  s4_impact: The BP is rejected by the S/4 data model.
+  simplification_item: Business Partner (CVI)
 - id: S4M138
   field: LFA1.STCD1
   check_class: null_check
   severity: medium
   dimension: completeness
-  message: 'S/4HANA migration: vendor has no tax number'
+  message: 'S/4HANA readiness: vendor has no tax number'
   why_it_matters: S/4 business partners carry tax numbers on the BP; a vendor without one is flagged in
     the CVI conversion.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Tax determination and reporting are incomplete for the vendor.
   fix_map:
     __blank__: Maintain the tax number.
   record_fix_template: 'LFA1.STCD1: the value is blank or invalid and is not repeated here (personal/tax/bank
     data). Maintain the tax number.'
+  baseline: s4_target
+  s4_area: business_partner
+  s4_impact: Tax determination and reporting are incomplete for the vendor.
+  simplification_item: Business Partner (CVI)
 - id: S4M139
   field: T012.BANKL
   check_class: null_check
   severity: high
   dimension: completeness
-  message: 'S/4HANA migration: house bank has no bank key'
+  message: 'S/4HANA readiness: house bank has no bank key'
   why_it_matters: House banks become business-partner bank details in S/4; the bank key is required.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Payment program cannot route the bank.
   fix_map:
     __blank__: Maintain the bank key.
   record_fix_template: 'T012.BANKL: the value is blank or invalid and is not repeated here (personal/tax/bank
     data). Maintain the bank key.'
+  baseline: s4_target
+  s4_area: treasury
+  s4_impact: Payment program cannot route the bank.
+  simplification_item: House bank / BP bank details
 - id: S4M140
   field: T012.BANKS
   check_class: null_check
   severity: high
   dimension: completeness
-  message: 'S/4HANA migration: house bank has no bank country'
+  message: 'S/4HANA readiness: house bank has no bank country'
   why_it_matters: BANKS resolves the bank key; without it the bank detail is ambiguous.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Bank determination fails for payments.
   fix_map:
     __blank__: Maintain the bank country.
   record_fix_template: 'T012.BANKS: ''{actual_value}'' is blank. Maintain the bank country.'
+  baseline: s4_target
+  s4_area: treasury
+  s4_impact: Bank determination fails for payments.
+  simplification_item: House bank / BP bank details
 - id: S4M141
   field: T012.HBKID
   check_class: uniqueness_check
@@ -3502,118 +3609,158 @@ rules:
   - T012.HBKID
   severity: medium
   dimension: uniqueness
-  message: 'S/4HANA migration: duplicate house bank ids in a company code'
+  message: 'S/4HANA readiness: duplicate house bank ids in a company code'
   why_it_matters: HBKID is unique per company code.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Payments attach to the wrong house bank.
   fix_map:
     __other__: Keep one house bank per id.
   record_fix_template: 'T012.HBKID: duplicate key. Keep one house bank per id.'
+  baseline: s4_target
+  s4_area: treasury
+  s4_impact: Payments attach to the wrong house bank.
+  simplification_item: House bank / BP bank details
 - id: S4M142
   field: LQUA.MATNR
   check_class: null_check
   severity: high
   dimension: completeness
-  message: 'S/4HANA migration: warehouse quant has no material'
+  message: 'S/4HANA readiness: warehouse quant has no material'
   why_it_matters: The quant links stock to a material; a quant without one cannot be migrated to EWM.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Stock at that bin is lost in the warehouse conversion.
   fix_map:
     __blank__: Correct or clear the quant.
   record_fix_template: 'LQUA.MATNR: ''{actual_value}'' is blank. Correct or clear the quant.'
+  baseline: s4_target
+  s4_area: warehouse
+  s4_impact: Stock at that bin is lost in the warehouse conversion.
+  simplification_item: WM to EWM
 - id: S4M143
   field: LQUA.WERKS
   check_class: null_check
   severity: medium
   dimension: completeness
-  message: 'S/4HANA migration: warehouse quant has no plant'
+  message: 'S/4HANA readiness: warehouse quant has no plant'
   why_it_matters: WERKS ties the quant to the plant whose stock it represents.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Stock cannot be assigned to a plant after conversion.
   fix_map:
     __blank__: Assign the plant.
   record_fix_template: 'LQUA.WERKS: ''{actual_value}'' is blank. Assign the plant.'
+  baseline: s4_target
+  s4_area: warehouse
+  s4_impact: Stock cannot be assigned to a plant after conversion.
+  simplification_item: WM to EWM
 - id: S4M144
   field: AUSP.OBJEK
   check_class: null_check
   severity: medium
   dimension: completeness
-  message: 'S/4HANA migration: characteristic value has no object'
+  message: 'S/4HANA readiness: characteristic value has no object'
   why_it_matters: AUSP rows attach characteristic values to objects; without the object the value is orphaned.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Classification data is dropped in the migration.
   fix_map:
     __blank__: Correct the object reference.
   record_fix_template: 'AUSP.OBJEK: ''{actual_value}'' is blank. Correct the object reference.'
+  baseline: s4_target
+  s4_area: batch_serial
+  s4_impact: Classification data is dropped in the migration.
+  simplification_item: Classification / batch
 - id: S4M145
   field: AUSP.ATINN
   check_class: null_check
   severity: medium
   dimension: completeness
-  message: 'S/4HANA migration: characteristic value has no characteristic'
+  message: 'S/4HANA readiness: characteristic value has no characteristic'
   why_it_matters: ATINN identifies the characteristic; classification cannot be rebuilt without it.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Batch and class characteristics do not survive the conversion.
   fix_map:
     __blank__: Correct the characteristic.
   record_fix_template: 'AUSP.ATINN: ''{actual_value}'' is blank. Correct the characteristic.'
+  baseline: s4_target
+  s4_area: batch_serial
+  s4_impact: Batch and class characteristics do not survive the conversion.
+  simplification_item: Classification / batch
 - id: S4M146
   field: T001.WAERS
   check_class: null_check
   severity: critical
   dimension: completeness
-  message: 'S/4HANA migration: company code has no currency'
+  message: 'S/4HANA readiness: company code has no currency'
   why_it_matters: The company code currency is the basis of the universal journal in S/4.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Every posting in the company code is unvalued.
   fix_map:
     __blank__: Assign the company code currency.
   record_fix_template: 'T001.WAERS: ''{actual_value}'' is blank. Assign the company code currency.'
+  baseline: s4_target
+  s4_area: organisational
+  s4_impact: Every posting in the company code is unvalued.
+  simplification_item: Organisational data
 - id: S4M147
   field: T001.LAND1
   check_class: null_check
   severity: high
   dimension: completeness
-  message: 'S/4HANA migration: company code has no country'
+  message: 'S/4HANA readiness: company code has no country'
   why_it_matters: LAND1 drives tax procedure and the legal reporting the universal journal must satisfy.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Tax determination fails for the company code.
   fix_map:
     __blank__: Assign the country.
   record_fix_template: 'T001.LAND1: ''{actual_value}'' is blank. Assign the country.'
+  baseline: s4_target
+  s4_area: organisational
+  s4_impact: Tax determination fails for the company code.
+  simplification_item: Organisational data
 - id: S4M148
   field: T001W.LAND1
   check_class: null_check
   severity: medium
   dimension: completeness
-  message: 'S/4HANA migration: plant has no country'
+  message: 'S/4HANA readiness: plant has no country'
   why_it_matters: The plant country drives tax and intrastat reporting.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Intrastat and plant tax reporting are incomplete.
   fix_map:
     __blank__: Assign the plant country.
   record_fix_template: 'T001W.LAND1: ''{actual_value}'' is blank. Assign the plant country.'
+  baseline: s4_target
+  s4_area: organisational
+  s4_impact: Intrastat and plant tax reporting are incomplete.
+  simplification_item: Organisational data
 - id: S4M149
   field: T001W.BWKEY
   check_class: null_check
   severity: medium
   dimension: completeness
-  message: 'S/4HANA migration: plant has no valuation area'
+  message: 'S/4HANA readiness: plant has no valuation area'
   why_it_matters: BWKEY is the valuation area the plant's stock is valued in.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Stock valuation cannot be assigned to a valuation area.
   fix_map:
     __blank__: Assign the valuation area.
   record_fix_template: 'T001W.BWKEY: ''{actual_value}'' is blank. Assign the valuation area.'
+  baseline: s4_target
+  s4_area: organisational
+  s4_impact: Stock valuation cannot be assigned to a valuation area.
+  simplification_item: Organisational data
 - id: S4M150
   field: T001.RCOMP
   check_class: null_check
   severity: low
   dimension: completeness
-  message: 'S/4HANA migration: company id is blank'
+  message: 'S/4HANA readiness: company id is blank'
   why_it_matters: RCOMP links the company code to its consolidation company.
-  rule_authority: sap_hard_constraint
+  rule_authority: s4hana_migration
   sap_impact: Consolidation cannot group the company code.
   fix_map:
     __blank__: Assign the company id.
   record_fix_template: 'T001.RCOMP: ''{actual_value}'' is blank. Assign the company id.'
+  baseline: s4_target
+  s4_area: organisational
+  s4_impact: Consolidation cannot group the company code.
+  simplification_item: Organisational data
