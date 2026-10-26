@@ -141,6 +141,8 @@ export interface Conformance {
   missing: Record<string, number>;
   steps: { activity: string; step_fitness: number | null; out_of_order: number }[];
   happy_path?: { activities: string[]; case_count: number; share: number; fitness: number | null };
+  /** Activities the cases perform that the reference mapping does not name (spec §3.5), most cases first. */
+  extra?: { activity: string; cases: number; share: number }[];
 }
 
 export interface CaseRow {

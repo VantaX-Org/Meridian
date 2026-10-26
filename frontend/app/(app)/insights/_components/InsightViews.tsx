@@ -11,7 +11,7 @@ export const VIEWS: InsightView[] = [
   { id: "summary", label: "Summary", question: "How are we, since when, what next", tabs: [["/insights/exec", "Executive summary"], ["/insights", "Overview"], ["/insights/reports", "Reports"]] },
   { id: "progress", label: "Progress", question: "Did it get better, and why", tabs: [["/insights/progress", "Progress"], ["/insights/trends", "Trends"], ["/insights/forecast", "Forecast"]] },
   { id: "explore", label: "Explore", question: "Where exactly is it, from every angle", tabs: [["/insights/rules", "Failing rules"], ["/insights/impact", "Value at risk"], ["/insights/lineage", "Lineage"], ["/insights/mining", "Patterns"], ["/insights/duplicates", "Duplicates"]] },
-  { id: "readiness", label: "Readiness", question: "Can we load, can we run the process", tabs: [["/insights/readiness", "Waves"], ["/insights/process", "Processes"], ["/migration", "Migration cockpit"]] },
+  { id: "readiness", label: "Readiness", question: "Can we load, can we run the process", tabs: [["/insights/readiness", "Waves"], ["/insights/process", "Process data readiness"], ["/migration", "Migration cockpit"]] },
   { id: "operate", label: "Operate", question: "Who does what today", tabs: [["/insights/owners", "Owners"], ["/insights/operations", "Operations"], ["/runs", "Runs"], ["/fix", "Fix work"], ["/rules/contracts", "Data contracts"]] },
 ];
 

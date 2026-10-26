@@ -2,8 +2,7 @@
 
 /** Process › Discovery runs (process-discovery spec §7.3): every run on the system, live stage, New run. */
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
-import { PageHeader, Button, EmptyState, ErrorState, Notice } from "@/design";
+import { PageHeader, Button, ErrorState, Notice } from "@/design";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
@@ -12,6 +11,7 @@ import { apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { PROCESS_PURPOSE, ProcessFrame, RowsSkeleton, processMeta } from "../_components/process-header";
 import { NewRunDialog } from "../_components/new-run-dialog";
+import { DiscoveryStart, canMine } from "../_components/discovery-start";
 import { NoSystem, RunsTable, SystemSelect, useProcessSystem } from "../_components/shared";
 
 export default function ProcessRunsPage() {
@@ -42,7 +42,9 @@ export default function ProcessRunsPage() {
         actions={(
           <>
             <SystemSelect value={system.id} onValueChange={setSystem} systems={list} />
-            {can("run_process_discovery") && <Button onClick={() => setNewRun("1")} disabled={!catalogue.data}>New run</Button>}
+            {can("run_process_discovery") && runs.data?.length !== 0 && (!catalogue.data || canMine(catalogue.data)) && (
+              <Button onClick={() => setNewRun("1")} disabled={!catalogue.data}>New run</Button>
+            )}
           </>
         )} />
       {extraction && (
@@ -54,11 +56,8 @@ export default function ProcessRunsPage() {
         ? <ErrorState {...apiErrorState(runs.error)} onRetry={() => runs.refetch()} />
         : !runs.data ? <RowsSkeleton />
         : runs.data.length === 0 ? (
-          <EmptyState title="No discovery run yet" ghost="table"
-            detail={`Discovery reads the documents of ${system.name} and mines how each process really runs.`}
-            action={can("run_process_discovery")
-              ? <Button onClick={() => setNewRun("1")} disabled={!catalogue.data}>New run</Button>
-              : <Button variant="secondary" render={<Link href={`/process?system=${system.id}`}>Open processes</Link>} />} />
+          catalogue.isError ? <ErrorState {...apiErrorState(catalogue.error)} onRetry={() => catalogue.refetch()} />
+            : catalogue.data ? <DiscoveryStart system={system} rows={catalogue.data} /> : <RowsSkeleton />
         ) : <RunsTable runs={runs.data} jobs={jobs} systemName={system.name} names={names} />}
       {catalogue.data && (
         <NewRunDialog open={newRun === "1"} onOpenChange={(o) => setNewRun(o ? "1" : "")}

@@ -27,6 +27,8 @@ import { TABS, trail, useProcessDrill, type Tab } from "../_components/drill";
 import { ExportDialog } from "../_components/export-dialog";
 import { FlowView } from "../_components/flow-view";
 import { L5Table } from "../_components/l5-table";
+import { DiscoveryStart, NOT_MINABLE, canMine } from "../_components/discovery-start";
+import { readinessHref } from "@/components/process/shared";
 import { NoSystem, fitnessTone, fmtCount, fmtFitness, fmtSeconds, l1Href, useProcessSystem } from "../_components/shared";
 import { BodySkeleton, PROCESS_PURPOSE, ProcessFrame, processMeta } from "../_components/process-header";
 import { VariantsTable } from "../_components/variants-table";
@@ -93,14 +95,20 @@ export default function ProcessL1Page() {
   const clearFilters = () => drill.set(Object.fromEntries(Object.keys(filters).map((k) => [k, null])));
 
   const canRun = can("run_process_discovery");
-  const notDiscovered = (
-    <EmptyState title={isReference ? "Reference only, not discovered" : "No completed discovery run yet"}
-      detail={isReference ? (reason ?? "This system has no source tables for this process, so only the SAP reference is shown.") : "Run discovery for this process, then come back."}
-      action={isReference
-        ? <Button variant="secondary" onClick={() => drill.set({ tab: "reference" })}>Open the reference</Button>
-        : canRun
-          ? <Button render={<Link href={`/process/runs?system=${system!.id}&new=1`}>Run discovery</Link>} />
-          : <Button variant="secondary" render={<Link href={`/process?system=${system!.id}`}>Open processes</Link>} />} />
+  // Day one for this process on a system that can mine it, or a system with nothing to mine: the start panel (one
+  // action) sits under the header, and a tab with no mined result points back to it.
+  const minable = canMine(catalogue.data);
+  // An L1 never run reads "reference" in the catalogue too; only a §10 reason means it has no source here.
+  const start = !minable || (!row.reason && !row.last_run && !row.in_progress);
+  const startPanel = <DiscoveryStart system={system!} rows={catalogue.data} only={l1} />;
+  const notDiscovered = isReference && minable && !start ? (
+    <EmptyState title="Reference only, not discovered"
+      detail={reason ?? "This system has no source tables for this process, so only the SAP reference is shown."}
+      action={<Button variant="secondary" onClick={() => drill.set({ tab: "reference" })}>Open the reference</Button>} />
+  ) : (
+    <EmptyState title="No completed discovery run yet"
+      detail={minable ? "Discovery has not produced a flow for this process yet. Read the SAP reference meanwhile." : `${NOT_MINABLE}.`}
+      action={<Button variant="secondary" onClick={() => drill.set({ tab: "reference" })}>Open the reference</Button>} />
   );
   const mined = (content: ReactNode) => (discovered && r ? content : notDiscovered);
   const content: Record<Tab, ReactNode> = {
@@ -119,7 +127,8 @@ export default function ProcessL1Page() {
     <ProcessFrame>
       <Header l1={l1} name={row.name} systemName={system!.name} systemId={system!.id} run={discovered ? r : undefined}
         reason={isReference ? reason : null} canExport={canExport && discovered} onExport={() => setExporting(true)}
-        canRun={canRun} />
+        canRun={canRun && !start} readyHref={readinessHref({ l1 })} />
+      {start && startPanel}
       <nav aria-label="Process levels">
         <ol className="flex flex-wrap items-center gap-1">
           {crumbs.map((c, i) => (
@@ -142,16 +151,24 @@ export default function ProcessL1Page() {
   );
 }
 
-function Header({ l1, name, systemName, systemId, run, reason, canExport, onExport, canRun }: {
+/** "Data readiness for this process": the DQ-driven readiness of the same L1, in running text. */
+function ReadinessLink({ href }: { href: string | undefined }) {
+  if (!href) return null;
+  return <>. <Link href={href} className="m-ink-accent-ink underline underline-offset-2">Data readiness for this process</Link></>;
+}
+
+function Header({ l1, name, systemName, systemId, run, reason, canExport, onExport, canRun, readyHref }: {
   l1: string; name: string; systemName: string; systemId: string; run: DiscoveryRunDetail | undefined; reason: string | null;
   canExport: boolean; onExport: () => void; canRun: boolean;
+  /** The readiness page of this L1 (`readinessHref`); undefined when the L1 has no readiness definition. */
+  readyHref: string | undefined;
 }) {
   const runLink = canRun
     ? <Button render={<Link href={`/process/runs?system=${systemId}&new=1&l1=${l1}`}>Run discovery</Link>} /> : null;
   if (!run) {
     return (
       <>
-        <PageHeader title={name} meta={processMeta(PROCESS_PURPOSE.l1, <><Mono>{l1}</Mono> on {systemName}</>)} actions={runLink} />
+        <PageHeader title={name} meta={processMeta(PROCESS_PURPOSE.l1, <><Mono>{l1}</Mono> on {systemName}<ReadinessLink href={readyHref} /></>)} actions={runLink} />
         <InsightHeader
           situation={{ sentence: `${name} on ${systemName} has no discovered flow.` }}
           changed={{ sentence: "No completed discovery run." }}
@@ -165,7 +182,7 @@ function Header({ l1, name, systemName, systemId, run, reason, canExport, onExpo
   return (
     <>
       <PageHeader title={name}
-        meta={processMeta(PROCESS_PURPOSE.l1, <><Mono>{l1}</Mono> on {systemName}{run.finished_at ? `, discovered ${relativeTime(run.finished_at)}` : ""}</>)}
+        meta={processMeta(PROCESS_PURPOSE.l1, <><Mono>{l1}</Mono> on {systemName}{run.finished_at ? `, discovered ${relativeTime(run.finished_at)}` : ""}<ReadinessLink href={readyHref} /></>)}
         status={<Pill tone={fitnessTone(fitness)}>{`Fits the reference ${fmtFitness(fitness)}`}</Pill>}
         actions={<>
           {canExport && <Button variant="secondary" onClick={onExport} data-tour="process-export">Export</Button>}

@@ -3,9 +3,10 @@
 import type { ComponentProps, ReactNode } from "react";
 import { Button, Tooltip } from "@/design";
 import { usePermissionsContext } from "@/lib/permissions";
+import { grantingRolesLabel } from "@/lib/who-grants";
 
 /**
- * The four primaries that stay visible when not permitted (rbac.md §5, ruling 2): disabled, with a
+ * The primaries that stay visible when not permitted (rbac.md §5, ruling 2): disabled, with a
  * tooltip naming the role that grants them and a "Request access" link that opens the request Dialog.
  * Every other mutating control is simply absent.
  */
@@ -14,6 +15,7 @@ const PRIMARIES = {
   writeback: { resource: "fixes", action: "run", role: "Data steward" },
   signoff: { resource: "analysis", action: "approve", role: "Data owner" },
   extract: { resource: "extraction", action: "run", role: "SAP Basis" },
+  discover: { resource: "process", action: "run", role: grantingRolesLabel("run_process_discovery") },
 } as const;
 
 export type PrimaryKind = keyof typeof PRIMARIES;

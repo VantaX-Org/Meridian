@@ -22,7 +22,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, buildDrillHref, Card, DataTable, Drawer, EmptyState, ErrorState, Graph, Mono, Notice, Pill, Select, Skeleton, Stat, Tabs, type InsightHeaderProps, Status } from "@/design";
 import { apiErrorState } from "@/lib/error";
-import { PROCESS_MODULES, isCompleteVersion, l1Fields, l4Fields, modulesOfL1, red, score, sev, useFindingHref, useLatestVersion, verdictOf } from "@/components/process/shared";
+import { PROCESS_MODULES, asIsHref, isCompleteVersion, l1Fields, l4Fields, modulesOfL1, red, score, sev, systemOfVersion, useFindingHref, useLatestVersion, verdictOf } from "@/components/process/shared";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { useSystemScope } from "@/lib/permissions";
@@ -418,7 +418,9 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
         <span className="m-text-h font-semibold m-ink">{l1.l1_name}</span>
         <span className="m-text-body m-ink-2">
           L1 is the end-to-end process, L2 to L4 the areas and steps inside it, L5 the fields each step writes; a blocked
-          step cannot run while one of its fields fails.
+          step cannot run while one of its fields fails.{" "}
+          <Link href={asIsHref(l1.l1_id, systemId ?? (latest ? systemOfVersion(latest) : undefined))}
+            className="m-ink-accent-ink underline underline-offset-2">See how this process actually runs</Link>
         </span>
       </div>
 
@@ -638,7 +640,7 @@ export default function ProcessInsightsPage() {
   const placeholder: ViewInsight = { loading: true, situation: { sentence: "" }, changed: { sentence: "" }, why: { sentence: "" }, next: { sentence: "" } };
   return (
     <InsightFrame
-      title="Process readiness"
+      title="Process data readiness"
       purpose={PAGE_PURPOSE["/insights/process"]}
       meta={latest ? `As of ${runScopeLabel(latest)}` : "No finished run yet"}
       run={latest?.id ?? run}

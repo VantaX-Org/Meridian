@@ -3,8 +3,8 @@
  * the header page titles. Both surfaces filter it with `visibleNav()`, so a
  * role or licence never sees a page in one place and not the other.
  *
- * Four main entries for everyone (the "Work" group: Fix work, Objects,
- * Progress, Inbox) and five "More" sections (Analysis, Master data, Rules,
+ * Five main entries for everyone (the "Work" group: Fix work, Objects,
+ * Processes, Progress, Inbox) and five "More" sections (Analysis, Master data, Rules,
  * Data in, Admin), each href appearing exactly once (enforced by nav and Rail
  * tests). `splitNav()` gives the Rail its pills and its More menu. Routes removed from the nav stay
  * routable — their titles live in `OFF_NAV_TITLES` or come from the
@@ -103,14 +103,20 @@ export function resolveNavHref(href: string, role: Role): string {
   return href.startsWith("/home/") ? homeHrefForRole(role) : href;
 }
 
+/** DESIGN.md §1.1: the index bar holds at most this many pills before More (the main group's size). */
+export const MAX_PILLS = 5;
+
 export const NAV_GROUPS: readonly NavGroup[] = [
   {
-    // The four entries everyone works from; the Rail shows them as pills. Every other group sits under "More".
+    // The five entries everyone works from; the Rail shows them as pills (at most five: DESIGN.md §1.1). Every other
+    // group sits under "More". Processes is here so every persona finds the as-is flows, not only the process analyst.
     group: "Work",
     main: true,
     items: [
       { href: "/fix", requires: req("fixes", "view"), label: "Fix work", icon: IconEraser, anyOf: ["approve", "apply"], badgeKey: "fix", keywords: "fix cleaning corrections proposals apply batches" },
       { href: "/objects", requires: req("findings", "view"), label: "Objects", icon: IconCube, licenceKey: "findings", keywords: "checks critical severity findings records" },
+      // Labelled "Processes" on its pill (Rail PILL_LABEL); its page and the palette keep the full name.
+      { href: "/process", requires: req("process", "view"), label: "As-is processes", icon: IconProcess, anyOf: ["view"], keywords: "processes process discovery mining as-is l1 l5 ptp otc variants conformance signavio bpmn flow" },
       { href: "/insights/progress", requires: req("reports", "view"), label: "Progress", icon: IconTrend, anyOf: ["view"], keywords: "baseline compare movement fixed new trends history forecast predictive", aliases: ["/insights/trends", "/insights/forecast"] },
       {
         href: "/inbox",
@@ -141,24 +147,14 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         children: [
           { href: "/insights/exec", requires: req("reports", "view"), label: "Summary", icon: IconGauge, keywords: "executive summary exec overview narrative board pack reports pdf", aliases: ["/insights/reports"] },
           { href: "/insights/rules", requires: req("reports", "view"), label: "Explore", icon: IconCompass, keywords: "rule ranking failing impact pareto root cause field value at risk lineage patterns mining duplicates", aliases: ["/insights/impact", "/insights/lineage", "/insights/mining", "/insights/duplicates"] },
-          { href: "/insights/readiness", requires: req("reports", "view"), label: "Readiness", icon: IconFlag, keywords: "waves go no-go blockers migration cutover process readiness", aliases: ["/insights/process"] },
+          { href: "/insights/readiness", requires: req("reports", "view"), label: "Readiness", icon: IconFlag, keywords: "waves go no-go blockers migration cutover process readiness process data readiness", aliases: ["/insights/process"] },
           { href: "/insights/owners", requires: req("reports", "view"), label: "Operate", icon: IconPeople, keywords: "owners digest steward operations sprints bottlenecks capacity runs fix queue", aliases: ["/insights/operations"] },
         ],
       },
       { href: "/fix/what-if", requires: req("fixes", "view"), label: "What-if", icon: IconBranch, anyOf: ["approve", "apply"], keywords: "simulation simulate score before after fix" },
       { href: "/runs", requires: req("analysis", "view"), label: "Runs", icon: IconHistory, licenceKey: "versions", keywords: "compare history snapshots baseline" },
-      {
-        href: "/process",
-        requires: req("process", "view"),
-        label: "As-is processes",
-        icon: IconProcess,
-        anyOf: ["view"],
-        keywords: "process discovery mining as-is l1 l5 ptp otc variants conformance signavio bpmn",
-        children: [
-          { href: "/insights/process/designer", requires: req("process", "view"), label: "Process designer", icon: IconDraft, anyOf: ["view"], keywords: "bpmn designer model reference l1 l5 signavio export" },
-        ],
-      },
-      { href: "/process/runs", requires: req("process", "view"), label: "Discovery runs", icon: IconHistory, anyOf: ["view"], keywords: "process discovery run incremental extraction" },
+      { href: "/insights/process/designer", requires: req("process", "view"), label: "Process designer", icon: IconDraft, anyOf: ["view"], keywords: "bpmn designer model reference l1 l5 signavio export processes" },
+      { href: "/process/runs", requires: req("process", "view"), label: "Discovery runs", icon: IconHistory, anyOf: ["view"], keywords: "process discovery run runs processes incremental extraction" },
     ],
   },
   {
@@ -261,7 +257,7 @@ const OFF_NAV_TITLES: Record<string, string> = {
   "/insights/mining": "Patterns",
   "/insights/duplicates": "Duplicates",
   "/insights/readiness": "Waves",
-  "/insights/process": "Process readiness",
+  "/insights/process": "Process data readiness",
   "/insights/owners": "Owners",
   "/insights/operations": "Operations",
   "/insights/reports": "Reports",

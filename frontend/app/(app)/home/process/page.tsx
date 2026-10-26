@@ -20,6 +20,7 @@ import {
   NoSystem, RunsTable, SystemSelect, fitnessTone, fmtFitness, l1Href, headline, useProcessSystem,
 } from "../../process/_components/shared";
 import { CoveragePill } from "../../process/_components/coverage-pill";
+import { DiscoveryStart, canMine, isDayOne } from "../../process/_components/discovery-start";
 
 type Row = CatalogueRow & { readiness: L1Readiness | undefined };
 
@@ -110,6 +111,7 @@ export default function ProcessHomePage() {
           options={PERSONA_OPTIONS}
         />
       </>} />
+      {(isDayOne(rows) || !canMine(rows)) && <DiscoveryStart system={system} rows={rows} />}
       <Card title="Can each process run" padding="sm"
         meta={readiness.latest
           ? `${noGo} of ${readiness.byL1.size} scored processes no-go, from ${runScopeLabel(readiness.latest)} on ${system.name}`

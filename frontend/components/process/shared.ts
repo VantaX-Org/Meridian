@@ -43,6 +43,10 @@ export function readinessHref({ l1, object, run }: { l1: string; object?: string
   return `/insights/process?${p}`;
 }
 
+/** The as-is flow of an L1, mined by process discovery (`/process/<l1>`), on the system when it is known. */
+export const asIsHref = (l1: string, systemId?: string | null): string =>
+  `/process/${encodeURIComponent(l1)}${systemId ? `?${new URLSearchParams({ system: systemId })}` : ""}`;
+
 /**
  * Where a process step a rule gates opens. An L1 with a readiness definition opens its readiness over the rule's
  * object when that object belongs to the L1 (in `run`, the newest run that evaluated the rule), else over the L1's

@@ -208,6 +208,50 @@ describe("process L1 drill", () => {
     expect(within(cell.closest("tr")!).getByText("12%")).toBeTruthy();
   });
 
+  it("lists the steps the cases take that the reference model does not name, with counts", async () => {
+    h.qs = "system=sys-1&tab=conformance";
+    vi.spyOn(pdApi, "getConformance").mockResolvedValue({ case_type: "po_item", fitness: 0.82, missing: {},
+      steps: [{ activity: "Create PO item", step_fitness: 0.95, out_of_order: 0.02 }],
+      extra: [{ activity: "ZZ_MANUAL_FIX", cases: 1200, share: 0.12 }, { activity: "YY_REVERSAL", cases: 1, share: 0.0001 }] });
+    renderWithQuery(<ProcessL1Page />);
+    const heading = await screen.findByRole("heading", { name: "Not in the reference model" });
+    const items = within(heading.closest("section")!).getAllByRole("listitem").map((li) => li.textContent);
+    expect(items).toEqual(["ZZ_MANUAL_FIX1,200 cases, 12%", "YY_REVERSAL1 case, 0%"]);
+  });
+
+  it("says every step is in the reference model when there is no extra activity", async () => {
+    h.qs = "system=sys-1&tab=conformance";
+    renderWithQuery(<ProcessL1Page />);
+    expect(await screen.findByText("Every step in this view is in the reference model")).toBeTruthy();
+  });
+
+  it("links to this process's data readiness in running text", async () => {
+    renderWithQuery(<ProcessL1Page />);
+    const link = await screen.findByRole("link", { name: "Data readiness for this process" });
+    expect(link.getAttribute("href")).toBe("/insights/process?l1=PTP&object=accounts_payable");
+    expect(link.className).toContain("underline underline-offset-2");
+  });
+
+  it("puts one Run discovery on a process never discovered, preselecting it in the dialog", async () => {
+    vi.spyOn(pdApi, "getCatalogue").mockResolvedValue([{ ...ROW, coverage: "reference", last_run: null }, { ...ROW, l1: "OTC", name: "Order to cash", coverage: "reference", last_run: null }]);
+    const start = vi.spyOn(pdApi, "startRuns").mockResolvedValue({ job_id: "j", run_ids: ["r1"] });
+    renderWithQuery(<ProcessL1Page />);
+    const run = await screen.findAllByRole("button", { name: "Run discovery" });
+    expect(run).toHaveLength(1);
+    expect(screen.queryByRole("link", { name: "Run discovery" })).toBeNull();
+    fireEvent.click(run[0]);
+    fireEvent.click(await screen.findByRole("button", { name: "Start run" }));
+    await waitFor(() => expect(start).toHaveBeenCalledWith("sys-1", { l1s: ["PTP"], mode: "full", period_from: null }));
+  });
+
+  it("says discovery needs a connected SAP system when no process on it can be mined", async () => {
+    vi.spyOn(pdApi, "getCatalogue").mockResolvedValue([{ ...ROW, coverage: "reference", last_run: null, reason: "Event tables are not exposed by this connector." }]);
+    renderWithQuery(<ProcessL1Page />);
+    expect(await screen.findByText("Discovery needs a connected SAP system")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Open systems" }).getAttribute("href")).toBe("/systems");
+    expect(screen.queryByRole("button", { name: "Run discovery" })).toBeNull();
+  });
+
   it("hides the Cases tab without export_process", async () => {
     h.can = (a) => a !== "export_process";
     h.qs = "system=sys-1&tab=cases";
@@ -268,8 +312,10 @@ describe("process L1 drill", () => {
 
   it("explains a reference-only L1 on a mined tab", async () => {
     h.qs = "system=sys-1&tab=flow";
+    // Another L1 of the system can be mined, so this one is reference-only by itself (spec §10), not the system.
     vi.spyOn(pdApi, "getCatalogue").mockResolvedValue([
-      { ...ROW, coverage: "reference", reason: "No PTP tables on this system.", last_run: null }]);
+      { ...ROW, coverage: "reference", reason: "No PTP tables on this system.", last_run: null },
+      { ...ROW, l1: "OTC", name: "Order to cash" }]);
     renderWithQuery(<ProcessL1Page />);
     expect(await screen.findByText("Reference only, not discovered")).toBeTruthy();
     expect(screen.getAllByText("No PTP tables on this system.").length).toBeGreaterThan(0);

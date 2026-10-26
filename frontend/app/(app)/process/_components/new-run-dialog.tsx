@@ -9,15 +9,26 @@ import { startRuns, type CatalogueRow, type RunMode } from "@/lib/api/process-di
 import { apiErrorMessage } from "@/lib/error";
 
 /**
- * §7.3 "New run": L1 multi-select (all by default, or only the `?l1=` the link named), mode (incremental once a
- * run completed), period start (full only).
+ * What a discovery run reads from SAP and roughly how long it takes: the one sentence the dialog and every
+ * "Run discovery" empty state show. The worker's time limit is two hours (workers/tasks/run_process_discovery.py,
+ * spec §8.2); the tables per process are spec §1.2.
  */
-export function NewRunDialog({ open, onOpenChange, systemId, systemName, rows }: {
+export const discoveryReads = (systemName: string): string =>
+  `Discovery reads the document and change tables of each process from ${systemName} and mines how it really runs; a full run takes from a few minutes to two hours, depending on volume.`;
+
+/**
+ * §7.3 "New run": L1 multi-select (all by default, or only the `?l1=` the link named, or `only`), mode (incremental
+ * once a run completed), period start (full only).
+ */
+export function NewRunDialog({ open, onOpenChange, systemId, systemName, rows, only: onlyProp }: {
   open: boolean; onOpenChange: (open: boolean) => void; systemId: string; systemName: string; rows: CatalogueRow[];
+  /** Preselect this L1 alone (the L1 page); otherwise `?l1=`, else every L1. */
+  only?: string;
 }) {
   const qc = useQueryClient();
   const router = useRouter();
-  const only = useSearchParams().get("l1");
+  const urlOnly = useSearchParams().get("l1");
+  const only = onlyProp ?? urlOnly;
   const hasCompleted = rows.some((r) => r.last_run && r.coverage !== "reference");
   const [l1s, setL1s] = useState<string[]>(() => (only && rows.some((r) => r.l1 === only) ? [only] : rows.map((r) => r.l1)));
   const [mode, setMode] = useState<RunMode>(hasCompleted ? "incremental" : "full");
@@ -41,6 +52,7 @@ export function NewRunDialog({ open, onOpenChange, systemId, systemName, rows }:
       </>}>
       <div className="grid gap-4">
         <p>System: <strong>{systemName}</strong></p>
+        <p className="m-ink-2">{discoveryReads(systemName)}</p>
         <fieldset className="grid gap-1">
           <legend className="m-field-label mb-1">Processes</legend>
           <div className="grid grid-cols-2 gap-1">

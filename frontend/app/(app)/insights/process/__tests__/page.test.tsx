@@ -61,6 +61,26 @@ describe("ProcessInsightsPage", () => {
     expect(screen.getByText("Map")).toBeInTheDocument();
   });
 
+  it("is titled Process data readiness and links to how the process actually runs, on the run's system", async () => {
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [{ ...LATEST, metadata: { system_id: "sys-9" } } as never] });
+    vi.spyOn(connectivityApi, "getBusinessProcess").mockResolvedValue([
+      { l1_id: "PTP", l1_name: "Procure to pay", l1_description: "", system: "ecc", l2_groups: [] },
+    ] as never);
+    vi.spyOn(connectivityApi, "getConfigImpact").mockResolvedValue({
+      results: [], summary: { total_features_assessed: 0, features_blocked: 0, features_degraded: 0, features_ok: 0, top_blocked_features: [] },
+    });
+    vi.spyOn(miningApi, "getMiningGraph").mockResolvedValue({
+      version_id: "v1", module: "material_master", activities: [], transitions: [], variants: [], cases: [], cases_supported: false,
+    });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
+    renderWithQuery(<ProcessInsightsPage />);
+    const link = await screen.findByRole("link", { name: "See how this process actually runs" }, { timeout: 5000 });
+    expect(link.getAttribute("href")).toBe("/process/PTP?system=sys-9");
+    expect(link.className).toContain("underline underline-offset-2");
+    expect(screen.getAllByText("Process data readiness").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Process readiness")).toBeNull();
+  });
+
   it("heads each block under Rules by step one level below the card", async () => {
     const tally = { applicable: 4, not_applicable: 0, passes: 3, by_default: 4, score: 75, not_applicable_reasons: [], not_applicable_rules: [], top_failing: [] };
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [LATEST as never] });

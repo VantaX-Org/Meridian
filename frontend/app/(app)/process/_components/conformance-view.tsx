@@ -6,7 +6,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, EmptyState, ErrorState, Notice, Pareto, Skeleton, Stat } from "@/design";
+import { Button, DataTable, EmptyState, ErrorState, Mono, Notice, Pareto, Skeleton, Stat } from "@/design";
 import { getConformance, type Conformance, type ProcessFilterParams } from "@/lib/api/process-discovery";
 import { apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
@@ -30,6 +30,26 @@ function ParetoPanel({ title, data, id }: { title: string; data: Point[]; id: st
           table={<DataTable columns={POINT_COLUMNS} data={data} getRowId={(p) => p.x} height="auto" hideToolbar
             tableId={id} exportName={id} />} />
       ) : <EmptyState title="None in this view" />}
+    </section>
+  );
+}
+
+/** Spec §3.5 "extra": steps the cases perform that the reference model does not name, most cases first. */
+function ExtraList({ extra }: { extra: NonNullable<Conformance["extra"]> }) {
+  return (
+    <section className="grid gap-2" aria-labelledby="process-extra-title">
+      <h2 id="process-extra-title" className="m-text-h font-semibold m-ink">Not in the reference model</h2>
+      {extra.length ? (
+        <ul className="grid">
+          {extra.map((e) => (
+            <li key={e.activity} className="m-ranked-row">
+              <Mono>{e.activity}</Mono>
+              <span className="flex-1" />
+              <span className="m-text-body m-ink-2 tabular-nums">{`${e.cases.toLocaleString()} ${e.cases === 1 ? "case" : "cases"}, ${fmtShare(e.share)}`}</span>
+            </li>
+          ))}
+        </ul>
+      ) : <EmptyState variant="inline" title="Every step in this view is in the reference model" />}
     </section>
   );
 }
@@ -79,6 +99,7 @@ export function ConformanceView({ runId, filters, rework, onClearFilters }: {
       </div>
       <DataTable columns={columns} data={steps} getRowId={(s) => s.activity} height="auto"
         tableId="process-conformance-steps" exportName={`process-conformance-${runId}`} />
+      <ExtraList extra={c.extra ?? []} />
     </div>
   );
 }

@@ -30,6 +30,7 @@ vi.mock("@/lib/api/connectivity", () => ({
 }));
 
 import { Rail } from "./Rail";
+import { MAX_PILLS } from "../../lib/nav";
 
 function renderRail() {
   const client = new QueryClient();
@@ -58,13 +59,15 @@ describe("Rail (the index bar)", () => {
     expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/admin/settings");
   });
 
-  it("gives the process persona a Processes pill in place of Fix, and Fix moves into More", async () => {
+  it("leads the process persona's strip with Processes, and Fix moves into More", async () => {
     role = "process_analyst";
     renderRail();
     const processes = await screen.findByRole("link", { name: "Processes" });
     expect(processes).toHaveAttribute("href", "/process");
     const strip = screen.getByTestId("rail-nav-items");
-    expect([...strip.querySelectorAll(":scope > li > a")].map((a) => a.textContent)).not.toContain("Fix3");
+    const pills = [...strip.querySelectorAll(":scope > li > a")].map((a) => a.textContent);
+    expect(pills[0]).toBe("Processes");
+    expect(pills).not.toContain("Fix work3");
     fireEvent.click(screen.getByRole("button", { name: "More" }));
     const panel = screen.getByRole("group", { name: "More pages" });
     expect(panel).toHaveTextContent("Fix");
@@ -72,13 +75,22 @@ describe("Rail (the index bar)", () => {
     expect(panel).not.toHaveTextContent("As-is processes");
   });
 
-  it("keeps Fix as a pill and As-is processes in More for every other persona", async () => {
-    renderRail();
-    await screen.findByRole("link", { name: /^Fix/ });
-    expect(screen.queryByRole("link", { name: "Processes" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "More" }));
-    expect(screen.getByRole("group", { name: "More pages" })).toHaveTextContent("As-is processes");
-  });
+  it.each(["admin", "platform_admin", "programme_lead", "data_steward", "data_owner", "sap_basis", "analyst", "viewer", "auditor", "steward", "manager"])(
+    "%s: keeps Fix as a pill and shows a Processes pill, with Discovery runs and the designer under More",
+    async (r) => {
+      role = r;
+      renderRail();
+      expect(await screen.findByRole("link", { name: "Processes" })).toHaveAttribute("href", "/process");
+      expect(screen.getByRole("link", { name: /^Fix work/ })).toBeInTheDocument();
+      const pills = [...screen.getByTestId("rail-nav-items").children].filter((li) => li.querySelector("a"));
+      expect(pills.length).toBeLessThanOrEqual(MAX_PILLS);
+      fireEvent.click(screen.getByRole("button", { name: "More" }));
+      const panel = screen.getByRole("group", { name: "More pages" });
+      expect(panel).toHaveTextContent("Discovery runs");
+      expect(panel).toHaveTextContent("Process designer");
+      expect(panel).not.toHaveTextContent("As-is processes");
+    },
+  );
 
   it("never carries the page's ?run= onto a nav link", async () => {
     pathname = "/objects/material_master";
@@ -99,11 +111,11 @@ describe("Rail (the index bar)", () => {
     expect(current[0]).toHaveTextContent("Objects");
   });
 
-  it("shows the four main entries as pills, in order, and everything else under More", async () => {
+  it("shows the five main entries as pills, in order, and everything else under More", async () => {
     renderRail();
     await screen.findByRole("link", { name: "Objects" });
     const pills = [...screen.getByTestId("rail-nav-items").children].map((li) => li.textContent?.replace(/\d+$/, "").trim());
-    expect(pills).toEqual(["Fix work", "Objects", "Progress", "Inbox", "More"]);
+    expect(pills).toEqual(["Fix work", "Objects", "Processes", "Progress", "Inbox", "More"]);
     fireEvent.click(screen.getByRole("button", { name: "More" }));
     const panel = screen.getByRole("group", { name: "More pages" });
     for (const section of ["Analysis", "Master data", "Rules", "Data in", "Admin"]) expect(panel).toHaveTextContent(section);

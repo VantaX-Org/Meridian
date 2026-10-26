@@ -87,6 +87,23 @@ describe("process home", () => {
     expect(screen.queryByRole("link", { name: "Can it run" })).toBeNull();
   });
 
+  it("opens with one Run discovery on day one, before any process is discovered", async () => {
+    const never = (l: string, n: string): CatalogueRow => ({ ...row(l, n), coverage: "reference", last_run: null });
+    vi.spyOn(pdApi, "getCatalogue").mockResolvedValue([never("PTP", "Procure to pay"), never("R2R", "Record to report")]);
+    vi.spyOn(connectivityApi, "getBusinessProcess").mockResolvedValue([]);
+    renderWithQuery(<ProcessHomePage />);
+    expect(await screen.findByText("No discovery run yet")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Run discovery" })).toHaveLength(1);
+    expect(screen.getByText(/^Discovery reads the document and change tables of each process from KSA PRD/)).toBeInTheDocument();
+  });
+
+  it("leaves the start panel out once a process is discovered", async () => {
+    vi.spyOn(connectivityApi, "getBusinessProcess").mockResolvedValue([l1("PTP", "Procure to pay", [field({})])]);
+    renderWithQuery(<ProcessHomePage />);
+    await screen.findByText("Go");
+    expect(screen.queryByText("No discovery run yet")).toBeNull();
+  });
+
   it("reads go when every mapped field passes", async () => {
     vi.spyOn(connectivityApi, "getBusinessProcess").mockResolvedValue([l1("PTP", "Procure to pay", [field({})])]);
     renderWithQuery(<ProcessHomePage />);

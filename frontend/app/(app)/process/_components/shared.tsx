@@ -2,16 +2,15 @@
 
 /**
  * Pieces shared by the process home, the catalogue and the runs pages
- * (process-discovery spec §7.3): the `?system=` choice, the L1 card grid,
+ * (process-discovery spec §7.3): the `?system=` choice, the L1 cards,
  * the runs table and the InsightHeader sentences.
  */
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  Button, DataTable, DrillLink, EmptyState, Mono, Pill, Select, type InsightHeaderProps, type PillTone,
+  Button, Card, DataTable, DrillLink, EmptyState, Mono, Pill, Select, type InsightHeaderProps, type PillTone,
 } from "@/design";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getSystems } from "@/lib/api/connectivity";
@@ -23,6 +22,7 @@ import { readinessHref } from "@/components/process/shared";
 import { queryKeys } from "@/lib/query-keys";
 import type { Job } from "@/types/jobs";
 import { CoveragePill, RunStatusPill } from "./coverage-pill";
+import { ASK_TO_RUN_DISCOVERY, NOT_MINABLE, canMine } from "./discovery-start";
 
 export const fitnessTone = (f: number | null | undefined): PillTone =>
   f == null ? "neutral" : f >= 0.8 ? "go" : f >= 0.6 ? "at-risk" : "no-go";
@@ -67,12 +67,12 @@ export function SystemSelect({ value, onValueChange, systems }: {
   );
 }
 
-/** §7.4 fresh install: no system connected yet. */
+/** §7.4 fresh install: no system connected yet (uploaded files alone carry no document flow to mine). */
 export function NoSystem() {
   return (
     <EmptyState
       title="Connect a system to discover processes"
-      detail="Connect a system, run discovery, then read the as-is flow."
+      detail={`${NOT_MINABLE}. Connect a system, run discovery, then read the as-is flow.`}
       ghost="stepper"
       action={<Button render={<Link href="/systems">Connect a system</Link>} />}
     />
@@ -109,55 +109,75 @@ export function processInsight(rows: CatalogueRow[], systemName: string, systemI
       ? { sentence: `${worst.name} fitness ${fmtFitness(worst.last_run?.fitness)} is the lowest.`,
           tone: fitnessTone(worst.last_run?.fitness), href: l1Href(worst.l1, systemId, worst.last_run?.id, "conformance") }
       : { sentence: "Conformance is measured once a process is discovered." },
-    next: canRun
+    next: !canMine(rows)
+      ? { sentence: `${NOT_MINABLE}.` }
+      : canRun
       ? { sentence: found.length ? "Refresh the event log since the last run." : "Extract the event tables and mine every process.",
           action: { label: found.length ? "Run incremental discovery" : "Run discovery", href: `/process/runs?system=${systemId}&new=1` } }
       : top
         ? { sentence: `Read the most frequent ${top.name} paths.`,
             action: { label: `Open ${top.name} variants`, href: l1Href(top.l1, systemId, top.last_run?.id, "variants") } }
-        : { sentence: "Ask a process analyst to run discovery." },
+        : { sentence: ASK_TO_RUN_DISCOVERY },
   };
 }
 
-export function CatalogueTable({ rows, systemId, jobs }: { rows: CatalogueRow[]; systemId: string; jobs: Job[] }) {
-  const href = (r: CatalogueRow) => l1Href(r.l1, systemId, r.last_run && r.coverage !== "reference" ? r.last_run.id : undefined);
-  const columns: ColumnDef<CatalogueRow>[] = [
-    { accessorKey: "name", header: "Process", cell: ({ row: { original: r } }) => (
-        <span className="flex items-baseline gap-2">
-          <DrillLink href={href(r)}>{r.name}</DrillLink><Mono>{r.l1}</Mono>
-        </span>
-      ) },
-    { id: "coverage", header: "Coverage", accessorFn: (r) => r.coverage, cell: ({ row: { original: r } }) => <CoveragePill coverage={r.coverage} /> },
-    { id: "fitness", header: "Fitness", accessorFn: (r) => r.last_run?.fitness ?? -1, cell: ({ row: { original: r } }) => {
-        const f = r.last_run?.fitness;
-        const last = f == null ? "—" : (
-          <DrillLink href={l1Href(r.l1, systemId, r.last_run!.id, "conformance")}>
-            <Pill tone={fitnessTone(f)}>{fmtFitness(f)}</Pill>
-          </DrillLink>
-        );
-        if (!r.failed && !r.in_progress) return last;
-        const live = r.in_progress && (stageLabel(jobs.find((j) => j.id === r.in_progress?.job_id)) ?? <RunStatusPill status={r.in_progress.status} />);
-        return (
-          <span className="flex items-center gap-2">{last}
-            {live && <span className="m-ink-3">{live}</span>}
-            {r.failed && <DrillLink href={`/process/runs/${r.failed.id}`}>See the error</DrillLink>}
-          </span>
-        );
-      } },
-    { id: "variants", header: "Variants", meta: { numeric: true }, accessorFn: (r) => r.last_run?.variants ?? -1, cell: ({ row: { original: r } }) => fmtCount(r.last_run?.variants) },
-    { id: "cases", header: "Cases", meta: { numeric: true }, accessorFn: (r) => r.last_run?.cases ?? -1, cell: ({ row: { original: r } }) => fmtCount(r.last_run?.cases) },
-    { id: "median", header: "Median duration", meta: { numeric: true }, accessorFn: (r) => r.last_run?.median_seconds ?? -1, cell: ({ row: { original: r } }) => fmtSeconds(r.last_run?.median_seconds) },
-    { id: "dq_defects", header: "DQ defects", meta: { numeric: true }, accessorFn: (r) => r.dq_defects ?? -1, cell: ({ row: { original: r } }) => <DqDefects n={r.dq_defects} versionId={r.dq_version_id} l1={r.l1} /> },
-    { id: "finished", header: "Last run", accessorFn: (r) => r.last_run?.finished_at ?? "", cell: ({ row: { original: r } }) => (
-        r.last_run?.finished_at ? relativeTime(r.last_run.finished_at) : "Not run yet") },
-    { id: "open", header: "", size: 80, enableSorting: false, cell: ({ row: { original: r } }) => (
-        <Link href={href(r)} className="m-ink-accent-ink underline" aria-label={`Open ${r.name}`} onClick={(e) => e.stopPropagation()}>Open</Link>) },
-  ];
-  const router = useRouter();
-  // Lowest fitness first: the process furthest from its model leads; not-discovered processes follow.
+/** One figure of a catalogue card: a label over a value, in the stat grid. */
+function Figure({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="grid gap-1">
+      <dt className="m-text-label m-ink-3">{label}</dt>
+      <dd className="m-text-h font-semibold m-ink tabular-nums">{children}</dd>
+    </div>
+  );
+}
+
+/**
+ * The catalogue as one Card per L1 (spec §7.3): name and L1 id, coverage, the fitness verdict, cases, variants,
+ * median duration, DQ defects and the last run, each opening its view. Ranked lowest fitness first, so the process
+ * furthest from its model leads; processes not discovered follow.
+ */
+export function CatalogueCards({ rows, systemId, jobs }: { rows: CatalogueRow[]; systemId: string; jobs: Job[] }) {
   const ranked = [...rows].sort((a, b) => (a.last_run?.fitness ?? 2) - (b.last_run?.fitness ?? 2));
-  return <DataTable columns={columns} data={ranked} getRowId={(r) => r.l1} height="auto" hideToolbar
-    onRowClick={(r) => router.push(href(r))} rowHref={href} tableId="process-catalogue" dataTour="process-catalogue" exportName="process-catalogue" />;
+  return (
+    <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Processes" data-tour="process-catalogue">
+      {ranked.map((r) => <li key={r.l1} className="grid"><CatalogueCard row={r} systemId={systemId} jobs={jobs} /></li>)}
+    </ul>
+  );
+}
+
+function CatalogueCard({ row: r, systemId, jobs }: { row: CatalogueRow; systemId: string; jobs: Job[] }) {
+  const runId = r.last_run && r.coverage !== "reference" ? r.last_run.id : undefined;
+  const href = l1Href(r.l1, systemId, runId);
+  const f = r.last_run?.fitness;
+  const live = r.in_progress && (stageLabel(jobs.find((j) => j.id === r.in_progress?.job_id)) ?? <RunStatusPill status={r.in_progress.status} />);
+  return (
+    <Card padding="sm" title={<DrillLink href={href}>{r.name}</DrillLink>} meta={<Mono>{r.l1}</Mono>}>
+      <div className="grid gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <CoveragePill coverage={r.coverage} />
+          {live && <span className="m-text-meta m-ink-3">{live}</span>}
+          {r.failed && <DrillLink href={`/process/runs/${r.failed.id}`}>See the error</DrillLink>}
+        </div>
+        {r.reason && r.coverage === "reference" && <p className="m-text-meta m-ink-3">{r.reason}</p>}
+        <dl className="m-stat-grid">
+          <Figure label="Fitness">
+            {f == null || !runId ? "—" : (
+              <DrillLink href={l1Href(r.l1, systemId, runId, "conformance")}><Pill tone={fitnessTone(f)}>{fmtFitness(f)}</Pill></DrillLink>
+            )}
+          </Figure>
+          <Figure label="Cases">{fmtCount(r.last_run?.cases)}</Figure>
+          <Figure label="Variants">
+            {runId && r.last_run?.variants != null
+              ? <DrillLink href={l1Href(r.l1, systemId, runId, "variants")}>{fmtCount(r.last_run.variants)}</DrillLink>
+              : fmtCount(r.last_run?.variants)}
+          </Figure>
+          <Figure label="Median duration">{fmtSeconds(r.last_run?.median_seconds)}</Figure>
+          <Figure label="DQ defects"><DqDefects n={r.dq_defects} versionId={r.dq_version_id} l1={r.l1} /></Figure>
+        </dl>
+        <p className="m-text-meta m-ink-3">{r.last_run?.finished_at ? `Last run ${relativeTime(r.last_run.finished_at)}` : "Not run yet"}</p>
+      </div>
+    </Card>
+  );
 }
 
 /** `names`: catalogue L1 id to process name; a run reads as its process, the id in Mono beside it. */

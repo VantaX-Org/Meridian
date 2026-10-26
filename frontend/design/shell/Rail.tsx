@@ -17,12 +17,13 @@ import { Badge } from "../primitives/Badge";
 import { Skeleton } from "../primitives/Skeleton";
 
 /**
- * The index bar: the product's top row. The brand, the four places everyone works from (Fix work, Objects,
- * Progress, Inbox: lib/nav.ts's main group) as one pill strip with live counts, a "More" menu holding every
- * other visible page under its section (Analysis, Master data, Rules, Data in, Admin), and the shell's controls
- * on the right (search, jobs, notifications, help, the user). There is no sidebar, collapsed state or flyout.
+ * The index bar: the product's top row. The brand, the five places everyone works from (Fix work, Objects,
+ * Processes, Progress, Inbox: lib/nav.ts's main group) as one pill strip with live counts, a "More" menu holding
+ * every other visible page under its section (Analysis, Master data, Rules, Data in, Admin), and the shell's
+ * controls on the right (search, jobs, notifications, help, the user). There is no sidebar, collapsed state or flyout.
  * Links never carry `?run=`: each section opens on its own latest run (lib/run-scope.ts).
- * The process persona's strip swaps Fix work for Processes (`railSplit`): its day is the catalogue, not the fix queue.
+ * The process persona's strip leads with Processes and moves Fix work into More (`railSplit`): its day is the
+ * catalogue, not the fix queue.
  */
 
 /** The pill label where the nav label is too long for the strip. */
@@ -51,8 +52,8 @@ type MoreGroup = { group: string; items: NavItem[] };
 /**
  * The pills and the More panel for one persona: main's split (lib/nav.ts `splitNav`), then two adjustments.
  * A folded item (Settings) stands for its tabs, so its children leave the panel. The process persona's day is
- * the catalogue, not the fix queue: its strip swaps Fix work for As-is processes (labelled Processes), still
- * four pills, and Fix work moves to the top of More.
+ * the catalogue, not the fix queue: its strip leads with As-is processes (labelled Processes), and Fix work moves
+ * to the top of More.
  */
 export function railSplit(
   groups: readonly NavGroup[],
@@ -67,12 +68,10 @@ export function railSplit(
   );
   let main = split.main;
   let more: MoreGroup[] = split.more.map((g) => ({ group: g.group, items: g.items.filter((i) => !folded.has(i.href)) }));
-  const processItem = persona === "process" ? groups.flatMap((g) => g.items).find((i) => i.href === "/process") : undefined;
+  const processItem = persona === "process" ? main.find((i) => i.href === "/process") : undefined;
   if (processItem) {
-    const fixIndex = main.findIndex((i) => i.href === "/fix");
-    const fixItem = fixIndex >= 0 ? main[fixIndex] : undefined;
-    main = fixItem ? main.map((i, n) => (n === fixIndex ? processItem : i)) : [processItem, ...main];
-    more = more.map((g) => ({ group: g.group, items: g.items.filter((i) => i.href !== "/process") }));
+    const fixItem = main.find((i) => i.href === "/fix");
+    main = [processItem, ...main.filter((i) => i !== processItem && i !== fixItem)];
     if (fixItem) {
       const [first, ...rest] = more;
       more = first ? [{ group: first.group, items: [fixItem, ...first.items] }, ...rest] : [{ group: "Work", items: [fixItem] }];

@@ -83,14 +83,15 @@ async def _respond(request: Request, tenant: Tenant, doc: ProcessModelDocument, 
                     headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 
 
-@router.get("/reference/export/signavio", dependencies=[Depends(require_permission("export"))])
+# Spec process-discovery §6.5: the reference and saved-model Signavio exports keep `view`.
+@router.get("/reference/export/signavio", dependencies=[Depends(require_permission("view"))])
 async def export_reference(request: Request, overlay: Optional[str] = None, db: AsyncSession = Depends(get_db),
                            tenant: Tenant = Depends(get_tenant)):
     doc = reference_document()
     return await _respond(request, tenant, doc, "reference", 0, None, await _overlay(db, tenant, doc, overlay))
 
 
-@router.get("/models/{model_id}/export/signavio", dependencies=[Depends(require_permission("export"))])
+@router.get("/models/{model_id}/export/signavio", dependencies=[Depends(require_permission("view"))])
 async def export_model(model_id: uuid.UUID, request: Request, version: Optional[int] = Query(None, ge=1),
                        overlay: Optional[str] = None, db: AsyncSession = Depends(get_db),
                        tenant: Tenant = Depends(get_tenant)):

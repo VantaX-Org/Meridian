@@ -5,13 +5,14 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, PageHeader, Card, DataTable, EmptyState, ErrorState, InsightHeader, Mono, Notice, Pill, Status, useBreadcrumbTitle } from "@/design";
+import { Button, PageHeader, Card, DataTable, EmptyState, ErrorState, InsightHeader, Mono, Notice, Pill, Stat, Status, useBreadcrumbTitle } from "@/design";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { ACTIVE_RUN, getCatalogue, getRun, startRuns } from "@/lib/api/process-discovery";
 import { apiErrorMessage, apiErrorState, isNotFound } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { askToRun } from "@/lib/who-grants";
 import { BodySkeleton, PROCESS_PURPOSE, ProcessFrame, processMeta } from "../../_components/process-header";
 import { CoveragePill, RunStatusPill } from "../../_components/coverage-pill";
 import { fitnessTone, fmtCount, fmtFitness, fmtSeconds, l1Href, stageLabel } from "../../_components/shared";
@@ -35,6 +36,38 @@ const TABLE_COLUMNS: ColumnDef<TableRow>[] = [
       </span>
     ) },
 ];
+
+/**
+ * Spec §3.6: documents shared by several cases (a goods receipt for several PO items appears in each item's case) and
+ * the events no reference step names, which land in the model as discovered steps. Shown beside the tables read.
+ */
+function EventLogCard({ sharedObjects, unmapped }: { sharedObjects: number | undefined; unmapped: Record<string, number> | undefined }) {
+  const rows = Object.entries(unmapped ?? {}).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  if (sharedObjects == null && !rows.length) return null;
+  const events = rows.reduce((n, [, e]) => n + e, 0);
+  return (
+    <Card title="Event log" padding="sm" meta="Documents shared across cases, and events outside the reference model">
+      <div className="grid gap-4">
+        <div className="m-stat-grid">
+          <Stat label="Shared objects" value={fmtCount(sharedObjects)} hint="Documents that appear in more than one case" />
+          <Stat label="Unmapped events" value={fmtCount(events)}
+            hint={rows.length ? `${rows.length.toLocaleString()} ${rows.length === 1 ? "activity" : "activities"} no reference step names` : "Every event maps to a reference step"} />
+        </div>
+        {rows.length > 0 && (
+          <ul className="grid" aria-label="Unmapped activities">
+            {rows.map(([activity, n]) => (
+              <li key={activity} className="m-ranked-row">
+                <Mono>{activity}</Mono>
+                <span className="flex-1" />
+                <span className="m-text-body m-ink-2 tabular-nums">{`${n.toLocaleString()} ${n === 1 ? "event" : "events"}`}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Card>
+  );
+}
 
 export default function ProcessRunPage() {
   const { runId } = useParams<{ runId: string }>();
@@ -107,7 +140,7 @@ export default function ProcessRunPage() {
           : r.status === "failed"
             ? (canRun
               ? { sentence: "Fix the cause, then run the process again.", action: { label: retry.isPending ? "Starting" : "Retry", onClick: () => { if (!retry.isPending) retry.mutate(); } } }
-              : { sentence: "Ask a process analyst to run it again." })
+              : { sentence: askToRun("run_process_discovery", "run it again") })
             : { sentence: "Leave this page open or come back later; the run continues in the background." }}
       />
       {r.status === "failed" && (
@@ -135,6 +168,7 @@ export default function ProcessRunPage() {
             tableId="process-run-tables" exportName={`process-run-${r.id}-tables`} />
         </Card>
       )}
+      <EventLogCard sharedObjects={s.shared_objects} unmapped={s.unmapped} />
     </ProcessFrame>
   );
 }

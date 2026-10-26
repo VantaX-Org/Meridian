@@ -169,7 +169,7 @@
   {
     "name": "insights-process",
     "path": "/insights/process",
-    "heading": "Process readiness",
+    "heading": "Process data readiness",
     "knownBad": [
       "/api/v1/business-process/"
     ]

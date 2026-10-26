@@ -1,7 +1,7 @@
 // frontend/lib/__tests__/nav.test.ts
 import { describe, expect, it } from "vitest";
 import nextConfig from "../../next.config";
-import { NAV_GROUPS, flattenNav, getPageTitle, activeHref, homeHrefForRole, isItemVisible, resolveNavHref, splitNav, visibleNav, type NavItem } from "../nav";
+import { MAX_PILLS, NAV_GROUPS, flattenNav, getPageTitle, activeHref, homeHrefForRole, isItemVisible, resolveNavHref, splitNav, visibleNav, type NavItem } from "../nav";
 import { LEGACY_ROLES, permissionsPayload } from "../../e2e/fixtures/legacy-permissions";
 
 describe("nav vs legacy redirects", () => {
@@ -109,11 +109,27 @@ describe("wave 18b gap routes", () => {
 describe("Process entries", () => {
   const flat = flattenNav(NAV_GROUPS.flatMap((g) => g.items));
 
-  it("lists the catalogue and the runs under Analysis, both gated on process/view", () => {
-    const group = NAV_GROUPS.find((g) => g.group === "Analysis");
-    const process = group!.items.filter((i) => i.href.startsWith("/process"));
-    expect(process.map((i) => i.href)).toEqual(["/process", "/process/runs"]);
-    for (const item of process) expect(item.requires).toEqual({ resource: "process", action: "view" });
+  it("makes the catalogue a main entry and keeps the runs and the designer under Analysis, all gated on process/view", () => {
+    const work = NAV_GROUPS.find((g) => g.main)!;
+    const analysis = NAV_GROUPS.find((g) => g.group === "Analysis")!;
+    expect(work.items.filter((i) => i.href.startsWith("/process")).map((i) => i.href)).toEqual(["/process"]);
+    expect(analysis.items.filter((i) => i.href.includes("process")).map((i) => i.href)).toEqual(["/insights/process/designer", "/process/runs"]);
+    for (const item of [...work.items, ...analysis.items].filter((i) => i.href.includes("process"))) {
+      expect(item.requires).toEqual({ resource: "process", action: "view" });
+    }
+  });
+
+  it.each(LEGACY_ROLES)("%s: search and the command palette list the catalogue, the runs and the designer", (role) => {
+    const p = permissionsPayload(role);
+    const groups = visibleNav({ can: (a) => p.actions.includes(a), isMenuItemEnabled: () => true, has: (r, a) => p.resources[r]?.[a] === true });
+    const hrefs = flattenNav(groups.flatMap((g) => g.items)).map((i) => i.href);
+    for (const h of ["/process", "/process/runs", "/insights/process/designer"]) expect(hrefs, h).toContain(h);
+  });
+
+  it("titles the DQ-driven readiness page Process data readiness, apart from the as-is processes", () => {
+    expect(getPageTitle("/insights/process")).toBe("Process data readiness");
+    expect(getPageTitle("/process")).toBe("As-is processes");
+    expect(getPageTitle("/process/runs")).toBe("Discovery runs");
   });
 
   it("highlights the runs entry on a run detail and the catalogue on an L1 drill", () => {
@@ -124,9 +140,9 @@ describe("Process entries", () => {
 });
 
 describe("menu structure", () => {
-  it("has four main entries and five More sections", () => {
+  it("has five main entries and five More sections", () => {
     const main = NAV_GROUPS.filter((g) => g.main);
-    expect(main.flatMap((g) => g.items.map((i) => i.href))).toEqual(["/fix", "/objects", "/insights/progress", "/inbox"]);
+    expect(main.flatMap((g) => g.items.map((i) => i.href))).toEqual(["/fix", "/objects", "/process", "/insights/progress", "/inbox"]);
     expect(NAV_GROUPS.filter((g) => !g.main).map((g) => g.group)).toEqual(["Analysis", "Master data", "Rules", "Data in", "Admin"]);
   });
 
@@ -134,7 +150,9 @@ describe("menu structure", () => {
     const sectionOf = (href: string) => NAV_GROUPS.find((g) => flattenNav(g.items).some((i) => i.href === href))?.group;
     expect(sectionOf("/insights/exec")).toBe("Analysis");
     expect(sectionOf("/insights/rules")).toBe("Analysis");
-    expect(sectionOf("/process")).toBe("Analysis");
+    expect(sectionOf("/process")).toBe("Work");
+    expect(sectionOf("/process/runs")).toBe("Analysis");
+    expect(sectionOf("/insights/process/designer")).toBe("Analysis");
     expect(sectionOf("/fix/what-if")).toBe("Analysis");
     expect(sectionOf("/mdm/glossary")).toBe("Master data");
     expect(sectionOf("/rules/drafts")).toBe("Rules");
@@ -166,8 +184,16 @@ describe("menu structure", () => {
     const p = permissionsPayload("steward");
     const groups = visibleNav({ can: (a) => p.actions.includes(a), isMenuItemEnabled: () => true, has: (r, a) => p.resources[r]?.[a] === true });
     const { main, more } = splitNav(groups, (h) => resolveNavHref(h, "steward"));
-    expect(main.map((i) => i.label)).toEqual(["Fix work", "Objects", "Progress", "Inbox"]);
+    expect(main.map((i) => i.label)).toEqual(["Fix work", "Objects", "As-is processes", "Progress", "Inbox"]);
     expect(more.flatMap((g) => g.items).some((i) => i.href === "/home/lead")).toBe(false);
+  });
+
+  it.each(LEGACY_ROLES)("%s: the process catalogue is a pill, and the strip holds at most MAX_PILLS", (role) => {
+    const p = permissionsPayload(role);
+    const groups = visibleNav({ can: (a) => p.actions.includes(a), isMenuItemEnabled: () => true, has: (r, a) => p.resources[r]?.[a] === true });
+    const { main } = splitNav(groups, (h) => resolveNavHref(h, role));
+    expect(main.map((i) => i.href)).toContain("/process");
+    expect(main.length).toBeLessThanOrEqual(MAX_PILLS);
   });
 
   it("hides Fix work from a role that cannot open it", () => {

@@ -79,6 +79,18 @@ describe("admin jobs page", () => {
     expect(screen.queryByRole("button", { name: /^Retry/ })).toBeNull();
   });
 
+  it("opens a discovery job's run, never the readiness page or the extraction it chained", async () => {
+    vi.spyOn(jobsApi, "getJobs").mockResolvedValue([
+      { ...BASE, id: "pd-r-1", kind: "process_discovery", status: "completed", error: null, label: "Process discovery: PTP", run_ids: ["r-1", "r-2"] },
+      { ...BASE, id: "pd-r-9", kind: "process_discovery", status: "completed", error: null, label: "Process discovery: OTC", run_ids: undefined },
+      { ...BASE, id: "x-3", kind: "process_discovery", status: "completed", error: null, label: "Process discovery: R2R", run_ids: [] },
+    ]);
+    renderWithQuery(<JobsPage />);
+    expect(await screen.findByRole("link", { name: "Open Process discovery: PTP" })).toHaveAttribute("href", "/process/runs/r-1");
+    expect(screen.getByRole("link", { name: "Open Process discovery: OTC" })).toHaveAttribute("href", "/process/runs/r-9");
+    expect(screen.getByRole("link", { name: "Open Process discovery: R2R" })).toHaveAttribute("href", "/process/runs");
+  });
+
   it("says the list is the newest 200 jobs the registry keeps, and asks for all of them", async () => {
     const get = vi.spyOn(jobsApi, "getJobs").mockResolvedValue([BASE]);
     renderWithQuery(<JobsPage />);

@@ -17,8 +17,8 @@
  *   selection under Mined dependencies, use plain `useState` instead of
  *   `useUrlState` for the same reason (no controlled-Tabs URL round trip to
  *   preserve them against).
- * - Brief said `getMiningRuns`/`isMiningAvailable` would be consumed; the
- *   real legacy component never calls either, so this port doesn't either.
+ * - Brief said `isMiningAvailable` would be consumed; the real legacy
+ *   component never calls it, so this port doesn't either.
  */
 
 import { InsightFrame } from "../_components/InsightFrame";

@@ -20,15 +20,23 @@ import type { Job, JobKind, JobStatus } from "@/types/jobs";
 /** Where each kind of job's result lives, without a system or run to open. */
 const JOB_HREF: Record<Job["kind"], string> = {
   extraction: "/systems", config_sync: "/systems", config_load: "/systems", analysis: "/runs",
-  upload: "/import", simulation: "/fix/what-if", process_discovery: "/insights/process",
+  upload: "/import", simulation: "/fix/what-if", process_discovery: "/process/runs",
 };
 const SYSTEM_JOBS = new Set<Job["kind"]>(["extraction", "config_sync", "config_load"]);
 const ACTIVE = new Set<JobStatus>(["queued", "running"]);
 /** The job registry keeps the newest 200 per tenant (api/services/jobs.py INDEX_KEEP), so this page loads all it holds. */
 const JOBS_KEPT = 200;
 
-/** The job's own place: its extraction log or system Health tab, its run, else the page of its kind. */
+/**
+ * The job's own place: its discovery run, its extraction log or system Health tab, its run, else the page of its kind.
+ * A discovery job (`pd-<first run id>`, api/routes/process_discovery.py) carries its queued run ids; its `version_id` is
+ * the extraction it chained, not an analysis run, so it never opens `/runs`.
+ */
 function jobHref(j: Job): string {
+  if (j.kind === "process_discovery") {
+    const run = j.run_ids?.[0] ?? (j.id.startsWith("pd-") ? j.id.slice(3) : undefined);
+    return run ? `/process/runs/${encodeURIComponent(run)}` : JOB_HREF.process_discovery;
+  }
   if (j.kind === "extraction" && j.system_id && j.version_id) return `/systems/${j.system_id}/extractions/${j.version_id}`;
   if (SYSTEM_JOBS.has(j.kind) && j.system_id) return `/systems/${j.system_id}?tab=health${j.kind === "extraction" ? "" : "&part=config"}`;
   if (j.version_id) return `/runs/${j.version_id}`;
