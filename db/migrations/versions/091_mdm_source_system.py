@@ -37,38 +37,71 @@ depends_on: str | Sequence[str] | None = None
 # One tenant at a time: master_records, analysis_versions and sap_systems are FORCE-RLS.
 BACKFILL_SQL = """
     DO $$
-    DECLARE t uuid;
+    DECLARE t uuid; map jsonb;
     BEGIN
         FOR t IN SELECT id FROM tenants LOOP
             PERFORM set_config('app.tenant_id', t::text, true);
 
             -- 1. upload:<version prefix> -> the run's system, when the prefix names one version only.
-            UPDATE master_records m SET source_contributions = x.c
-              FROM (
-                SELECT m2.id,
-                       jsonb_object_agg(e.key, CASE WHEN r.sid IS NOT NULL
-                           THEN e.value || jsonb_build_object('source_system_id', r.sid,
-                                                              'source_system_name', r.sname)
-                           ELSE e.value END) AS c,
-                       bool_or(r.sid IS NOT NULL) AS hit
-                  FROM master_records m2
-                  CROSS JOIN LATERAL jsonb_each(m2.source_contributions) e
-                  LEFT JOIN LATERAL (
-                      SELECT max(s.id::text) AS sid, max(s.name) AS sname, count(*) AS n
-                        FROM analysis_versions v
-                        LEFT JOIN sap_systems s ON s.tenant_id = v.tenant_id
-                                               AND s.id::text = v.metadata->>'system_id'
-                       WHERE jsonb_typeof(e.value) = 'object'
-                         AND NOT (e.value ? 'source_system_id')
-                         AND e.value->>'source_system' LIKE 'upload:%'
-                         AND length(e.value->>'source_system') >= 15
-                         AND v.tenant_id = m2.tenant_id
-                         AND v.id::text LIKE substr(e.value->>'source_system', 8) || '%'
-                  ) r ON r.n = 1
-                 WHERE m2.tenant_id = t
-                 GROUP BY m2.id
-              ) x
-             WHERE m.id = x.id AND x.hit;
+            --    The prefix -> system map is built once per tenant, from the DISTINCT prefixes in use,
+            --    as one jsonb object; each entry then looks its prefix up in it. Matching every entry
+            --    against analysis_versions with LIKE instead (a lateral per entry) took tens of minutes
+            --    on large tables while this migration holds ACCESS EXCLUSIVE on master_records.
+            WITH pfx AS (
+                SELECT DISTINCT p, translate(p, '%_' || chr(92), '') = p AS plain
+                  FROM (SELECT CASE WHEN jsonb_typeof(e.value) = 'object'
+                                     AND NOT (e.value ? 'source_system_id')
+                                     AND e.value->>'source_system' LIKE 'upload:%'
+                                     AND length(e.value->>'source_system') >= 15
+                                    THEN substr(e.value->>'source_system', 8) END AS p
+                          FROM master_records m2
+                          CROSS JOIN LATERAL jsonb_each(m2.source_contributions) e
+                         WHERE m2.tenant_id = t) q
+                 WHERE p IS NOT NULL
+            ), ver AS (
+                SELECT v.id::text AS vid, s.id::text AS sid, s.name AS sname
+                  FROM analysis_versions v
+                  LEFT JOIN sap_systems s ON s.tenant_id = v.tenant_id
+                                         AND s.id::text = v.metadata->>'system_id'
+                 WHERE v.tenant_id = t
+            ), hit AS (
+                -- a plain prefix: equality with the version ids cut to each prefix length in use
+                SELECT pfx.p, c.sid, c.sname
+                  FROM pfx
+                  JOIN (SELECT left(ver.vid, l.len) AS vpfx, ver.sid, ver.sname
+                          FROM ver CROSS JOIN (SELECT DISTINCT length(p) AS len FROM pfx WHERE plain) l) c
+                    ON c.vpfx = pfx.p
+                 WHERE pfx.plain
+                UNION ALL
+                -- a prefix holding a LIKE wildcard or the escape character keeps LIKE's meaning
+                SELECT pfx.p, ver.sid, ver.sname
+                  FROM pfx JOIN ver ON ver.vid LIKE pfx.p || '%'
+                 WHERE NOT pfx.plain
+            )
+            SELECT jsonb_object_agg(p, jsonb_build_object('source_system_id', sid, 'source_system_name', sname))
+              INTO map
+              FROM (SELECT p, max(sid) AS sid, max(sname) AS sname FROM hit GROUP BY p HAVING count(*) = 1) u
+             WHERE sid IS NOT NULL;
+
+            IF map IS NOT NULL THEN
+                UPDATE master_records m
+                   SET source_contributions = (
+                       SELECT jsonb_object_agg(e.key, CASE WHEN map ? k.p THEN e.value || (map -> k.p)
+                                                           ELSE e.value END)
+                         FROM jsonb_each(m.source_contributions) e
+                         CROSS JOIN LATERAL (SELECT CASE WHEN jsonb_typeof(e.value) = 'object'
+                                                          AND NOT (e.value ? 'source_system_id')
+                                                          AND e.value->>'source_system' LIKE 'upload:%'
+                                                          AND length(e.value->>'source_system') >= 15
+                                                         THEN substr(e.value->>'source_system', 8) END AS p) k)
+                 WHERE m.tenant_id = t
+                   AND EXISTS (SELECT 1 FROM jsonb_each(m.source_contributions) e
+                                WHERE jsonb_typeof(e.value) = 'object'
+                                  AND NOT (e.value ? 'source_system_id')
+                                  AND e.value->>'source_system' LIKE 'upload:%'
+                                  AND length(e.value->>'source_system') >= 15
+                                  AND map ? substr(e.value->>'source_system', 8));
+            END IF;
 
             -- 2. merge:<key> -> the tags of that member's own entry for the field.
             UPDATE master_records m SET source_contributions = x.c

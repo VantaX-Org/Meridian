@@ -27,7 +27,7 @@ from api.services.task_progress import (
     update_task_progress,
 )
 from workers.celery_app import celery_app
-from workers.db import get_sync_engine
+from workers.db import get_sync_engine, tenant_session
 
 logger = logging.getLogger("meridian.worker")
 
@@ -1007,7 +1007,11 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                                          if k in entry["dqs"]})
 
         # Step 9: findings of the post-passes (every module's were stored at its checkpoint)
-        with Session(engine) as session:
+        # tenant_session re-applies app.tenant_id at the start of EVERY transaction: this block commits
+        # (DQS, each lifecycle batch, the work list) and each commit returns the connection to the pool,
+        # so the finding_records DELETE, reconcile and monitor steps after it may run on a backend that
+        # never saw a SET issued once here, or one last set for another tenant.
+        with tenant_session(engine, tenant_id) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
             _upsert_findings(session, version_id, tenant_id, post)
 
@@ -1079,11 +1083,10 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                     stats = track(session, str(tenant_id), str(version_id), scope_of(metadata), all_results, frames,
                                   store=False)
                 logger.info(f"record issues for {version_id}: {stats}")
-                if "lifecycle" not in stats:  # newest run of this system: check exported fix batches
-                    from api.services.remediation import reconcile
-                    with session.begin_nested():
-                        n = reconcile(session, str(tenant_id), str(version_id), scope_of(metadata))
-                    logger.info(f"remediation items reconciled for {version_id}: {n}")
+                if "lifecycle" not in stats:  # newest run of this system
+                    # exported fix batches were reconciled inside track, per batch, while each batch's
+                    # tmp_present (records evaluated in this run) still existed
+                    logger.info(f"remediation items reconciled for {version_id}: {stats.get('reconciled', 0)}")
                     try:  # post-cleanup monitor: compare with the system's pinned baseline
                         from api.services import monitor
                         with session.begin_nested():

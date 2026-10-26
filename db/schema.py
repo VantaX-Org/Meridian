@@ -301,7 +301,7 @@ class DedupCandidate(Base):
     survivor_key = Column(Text, nullable=True)
     merged_at = Column(DateTime(timezone=True), nullable=True)
     merged_by = Column(UUID(as_uuid=True), nullable=True)
-    merge_reason = Column(Text, nullable=True)  # the steward's reason for the merge (migration 090)
+    merge_reason = Column(Text, nullable=True)  # the steward's reason for the merge (migration 091)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
 
     __table_args__ = (
@@ -1543,7 +1543,7 @@ class MasterRecord(Base):
     promoted_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     merged_into = Column(UUID(as_uuid=True), ForeignKey("master_records.id"), nullable=True)
     own_fields = Column(JSONB, nullable=True)
-    # The record's own pre-merge source_contributions, each tagged with its source system (migration 090).
+    # The record's own pre-merge source_contributions, each tagged with its source system (migration 091).
     own_contributions = Column(JSONB, nullable=True)
     steward_overrides = Column(JSONB, nullable=False, server_default="{}")
     survivorship_explanation = Column(JSONB, nullable=True)
