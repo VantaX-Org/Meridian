@@ -570,6 +570,9 @@ export default function InboxPage() {
   // Open and overdue are the server's totals; an older server sends no task overdue count, so the loaded rows are
   // counted and the header says which part.
   const serverOverdue = metricsQ.data?.overdue_count;
+  const aiAcceptance = metricsQ.data?.ai_acceptance_rate ?? null;
+  // Suggestion acceptance across all queues, for roles that assign work.
+  const acceptance = !isExceptions && canSeeTeam && aiAcceptance != null ? ` Suggestion acceptance ${Math.round(aiAcceptance * 100)}%.` : "";
   const overdue = isExceptions ? excMetricsQ.data?.overdue_count ?? 0 : serverOverdue ?? counts.overdue;
   const openCount = isExceptions ? excMetricsQ.data?.open_count ?? excItems.length : queueTotal;
   const overdueScope = !isExceptions && partial && serverOverdue == null ? ` in the newest ${formatInt(all.length)}` : "";
@@ -578,7 +581,7 @@ export default function InboxPage() {
   const header = (
     <PageHeader
       title="Inbox"
-      meta={counted ? `${formatInt(openCount)} open, ${formatInt(overdue)} overdue${overdueScope}. ${PURPOSE[kind]}` : PURPOSE[kind]}
+      meta={counted ? `${formatInt(openCount)} open, ${formatInt(overdue)} overdue${overdueScope}. ${PURPOSE[kind]}${acceptance}` : PURPOSE[kind]}
       tabs={kindToggle}
       actions={
         isExceptions

@@ -18,7 +18,7 @@ You can link straight to exceptions as `/inbox?kind=exception`; it is also liste
 
 ## Tasks
 
-The figures at the top are **Overdue** and **Due in 24 hours**; select one to filter. When the queue holds more than the page loaded, **Tasks loaded** says how many. Roles that assign work also see who holds the work across all queues.
+The **When** filter shows how many tasks are **Overdue** and **Due in 24 hours**. When the queue holds more than the page loaded, a notice says how many are loaded. To see who holds the work across all queues, open **Insights › Operate**.
 
 Filter the list with:
 
