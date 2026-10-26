@@ -105,7 +105,7 @@ describe("RunDetailPage", () => {
         sprints: [], basis: { version_id: "v2", findings: 1, cleaning_items: 1, exceptions: 0 },
       } as unknown as Awaited<ReturnType<typeof analyticsApi.getPrescriptiveAnalytics>>);
       renderWithQuery(<RunDetailPage />);
-      expect(await screen.findByRole("link", { name: "Open cleaning" })).toHaveAttribute("href", "/fix?tab=cleaning&module=material_master");
+      expect(await screen.findByRole("link", { name: "Open cleaning" })).toHaveAttribute("href", "/fix?tab=cleaning&run=v2&module=material_master");
       fireEvent.click(screen.getByText("Why?"));
       expect(await screen.findByText("120 records, 120 critical; about 4 hours.")).toBeInTheDocument();
       expect(screen.queryByText(/impact points per hour/)).toBeNull();

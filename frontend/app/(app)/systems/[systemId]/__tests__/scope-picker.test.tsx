@@ -5,6 +5,8 @@ import { ScopePicker } from "../scope-picker";
 import * as systemObjectsApi from "@/lib/api/system-objects";
 import type { SystemObject } from "@/lib/api/system-objects";
 
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+
 const object = (over: Partial<SystemObject> = {}): SystemObject => ({
   object: "material_master",
   tables: ["MARA", "MARC"],

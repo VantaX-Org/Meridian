@@ -6,6 +6,7 @@
  * run-scoped, never that a run actually survives a click. Each case below failed before the fix.
  */
 
+import type { Page } from "@playwright/test";
 import { expect, json, test } from "./fixtures";
 
 const SYSTEM_S1 = {
@@ -24,7 +25,7 @@ const RUN_R1 = {
 };
 const MODULES = [{ module: "material_master", enabled: true, row_count: 1200, last_synced_at: "2026-10-02T09:00:00Z" }];
 
-async function systemPage(app: Parameters<Parameters<typeof test>[1]>[0]["app"]) {
+async function systemPage(app: Page) {
   await app.route(/\/api\/v1\/systems(\?.*)?$/, (r) => r.fulfill(json([SYSTEM_S1])));
   await app.route("**/api/v1/connectivity/systems/s1/modules", (r) => r.fulfill(json(MODULES)));
   await app.route("**/api/v1/systems/s1/versions", (r) => r.fulfill(json({ versions: [RUN_R1], download: null })));
