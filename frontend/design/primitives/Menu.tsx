@@ -10,6 +10,7 @@ export interface MenuItemDef {
   checked?: boolean;
   /** A small accent dot after the label, for "something new here". */
   dot?: boolean;
+  disabled?: boolean;
 }
 
 export function Menu({ trigger, items }: { trigger: ReactNode; items: MenuItemDef[] }) {
@@ -22,7 +23,7 @@ export function Menu({ trigger, items }: { trigger: ReactNode; items: MenuItemDe
           <BaseMenu.Popup className="m-popup">
             {items.map((item) =>
               item.checked === undefined ? (
-                <BaseMenu.Item key={item.label} onClick={item.onSelect} className="m-popup-item">
+                <BaseMenu.Item key={item.label} onClick={item.onSelect} disabled={item.disabled} className="m-popup-item">
                   <span>{item.label}</span>
                   {item.dot && (
                     <>

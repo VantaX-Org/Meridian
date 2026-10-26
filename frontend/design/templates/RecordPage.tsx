@@ -52,14 +52,14 @@ export function RecordPage({
   }
   return (
     <PageFrame gap={4}>
-      <header className="flex items-center gap-3">
-        <span style={{ fontSize: "var(--m-text-title)", lineHeight: "var(--m-leading-title)", fontWeight: 600 }}>
+      <header className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <span className="min-w-0 [overflow-wrap:anywhere]" style={{ fontSize: "var(--m-text-title)", lineHeight: "var(--m-leading-title)", fontWeight: 600 }}>
           {mono ? <Mono>{recordKey}</Mono> : recordKey}
         </span>
         <span style={{ color: "var(--m-ink-3)" }}>{formatModuleName(object)}</span>
         <DomainChip moduleId={object} />
         {status ? (PILL_LABEL[status.label] ? <Pill tone={status.tone}>{PILL_LABEL[status.label]}</Pill> : <Status kind="verdict" value={status.label === "failing" ? "no-go" : "go"} />) : null}
-        {actions ? <div className="ml-auto flex items-center gap-2">{actions}</div> : null}
+        {actions ? <div className="ml-auto flex flex-wrap items-center gap-2">{actions}</div> : null}
       </header>
       {meta != null && <div className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{meta}</div>}
       {stats && stats.length > 0 && <div className="m-stat-grid">{stats.map((x) => <Stat key={x.label} {...x} />)}</div>}

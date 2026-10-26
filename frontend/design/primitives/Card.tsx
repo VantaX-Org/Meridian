@@ -32,10 +32,11 @@ export function Card({
       }}
     >
       {hasHeader && (
-        <header className="flex items-center gap-3 mb-4">
+        <header className="flex items-center gap-3 mb-4 max-sm:flex-wrap">
           {title && <h2 className="m-text-h flex-1 font-semibold" style={{ color: "var(--m-ink)" }}>{title}</h2>}
           {meta && <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{meta}</span>}
-          {actions}
+          {/* Below 640px the actions take their own row under the title instead of squeezing it into a column. */}
+          {actions && <div data-card-actions className="contents max-sm:flex max-sm:basis-full max-sm:flex-wrap max-sm:items-center max-sm:gap-2">{actions}</div>}
         </header>
       )}
       {children}

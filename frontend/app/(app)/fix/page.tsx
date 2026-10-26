@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import type { ComponentType } from "react";
-import { Button, DataTable, ExplorerPage, ExportMenu, FilterChip, PageHeader, Select, Stat, Tabs, emptyExportOptions, type CellMeta } from "@/design";
+import { Button, DataTable, ExplorerPage, ExportMenu, FilterChip, PageHeader, Stat, Tabs, emptyExportOptions, type CellMeta } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { downloadCleaningExport, getCleaningGroups, type CleaningGroup } from "@/lib/api/cleaning";
 import { KindLabel, groupHref, kindText } from "@/components/fix/kind";
@@ -129,18 +129,11 @@ export default function FixPage() {
       actions={<Button variant="secondary" render={<Link href="/fix/what-if">What-if</Link>} />}
     />
     {steward && <HomeOnboarding />}
-    {/* Below 640px the five tabs would wrap: a Select picks the section and the tab strip steps aside. */}
-    <div className="sm:hidden">
-      <Select label="Section" value={tab} onValueChange={setTab} options={TABS.map(({ value, label }) => ({ value, label }))}
-        className="m-input inline-flex w-full items-center justify-between gap-2" />
-    </div>
-    <div className="max-[639px]:[&_.m-tabs-list]:hidden">
-      <Tabs
-        value={tab}
-        onValueChange={setTab}
-        items={TABS.map(({ value, label, Content }) => ({ value, label, content: <Content /> }))}
-      />
-    </div>
+    <Tabs
+      value={tab}
+      onValueChange={setTab}
+      items={TABS.map(({ value, label, Content }) => ({ value, label, content: <Content /> }))}
+    />
     </div>
   );
 }

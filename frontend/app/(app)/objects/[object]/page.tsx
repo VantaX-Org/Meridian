@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, PageHeader, PageFrame, Card, DataTable, Delta, DrillLink, EmptyState, ErrorState, ExportMenu, Line, Mono, Pager, Pill, SeverityDot, Skeleton, Score, Tabs, emptyExportOptions, isSeverity, entityTabs, Status, statusLabel } from "@/design";
+import { Button, PageHeader, PageFrame, Card, DataTable, Delta, DrillLink, EmptyState, ErrorState, ExportMenu, Line, Mono, Pager, Pill, SeverityDot, Skeleton, Score, Tabs, emptyExportOptions, isSeverity, entityTabs, Status, statusLabel, type CellMeta } from "@/design";
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
 import { NextBestActionCard } from "@/components/insight/next-best-action";
 import { RunScope } from "@/components/run-scope";
@@ -141,10 +141,10 @@ function RulesTab({ object, run }: { object: string; run: string }) {
       header: "Rule",
       cell: ({ row }) => {
         const name = nameOf.get(row.original.check_id);
-        return <span className="inline-flex min-w-0 items-baseline gap-2"><Mono>{row.original.check_id}</Mono>{name ? <span className="truncate">{name}</span> : null}</span>;
+        return <span className="inline-flex min-w-0 items-baseline gap-2" title={name ?? undefined}><Mono>{row.original.check_id}</Mono>{name ? <span className="truncate max-sm:hidden">{name}</span> : null}</span>;
       },
     },
-    { accessorKey: "dimension", header: "Dimension", cell: ({ row }) => (row.original.dimension ? formatModuleName(row.original.dimension) : "—") },
+    { accessorKey: "dimension", header: "Dimension", meta: { priority: "low" } satisfies CellMeta, cell: ({ row }) => (row.original.dimension ? formatModuleName(row.original.dimension) : "—") },
     {
       accessorKey: "affected_count",
       header: "Records failing",
@@ -153,11 +153,13 @@ function RulesTab({ object, run }: { object: string; run: string }) {
     {
       accessorKey: "pass_rate",
       header: "Pass rate",
-      cell: ({ row }) => (row.original.pass_rate == null ? "—" : `${(row.original.pass_rate * 100).toFixed(1)}%`),
+      // pass_rate is already a percentage (0 to 100), as the rules export reads it.
+      cell: ({ row }) => (row.original.pass_rate == null ? "—" : `${row.original.pass_rate.toFixed(1)}%`),
     },
     {
       id: "trend",
       header: "Trend",
+      meta: { priority: "low" } satisfies CellMeta,
       cell: ({ row }) => {
         const d = delta(row.original.check_id);
         return d == null ? "—" : <Delta value={d * 100} run="previous run" />;
@@ -166,6 +168,7 @@ function RulesTab({ object, run }: { object: string; run: string }) {
     {
       id: "open",
       header: "Action",
+      meta: { priority: "low" } satisfies CellMeta,
       cell: ({ row }) => <Button variant="ghost" size="sm" render={<Link href={recordsHref(row.original.check_id)} onClick={(e) => e.stopPropagation()}>Open records</Link>} />,
     },
   ];

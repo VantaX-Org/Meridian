@@ -107,6 +107,7 @@ function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; hi
     {
       accessorKey: "failing_checks",
       header: "Failing rules",
+      meta: { priority: "low" } satisfies CellMeta,
       cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{formatNumber(row.original.failing_checks)}</DrillLink>,
     },
     {
@@ -117,6 +118,7 @@ function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; hi
     {
       id: "trend",
       header: "Trend",
+      meta: { priority: "low" } satisfies CellMeta,
       cell: ({ row }) => {
         const series = modules[row.original.module];
         if (!series || series.length < 2) return "—";
@@ -128,6 +130,7 @@ function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; hi
       header: "",
       size: 90,
       enableSorting: false,
+      meta: { priority: "low" } satisfies CellMeta,
       cell: ({ row }) => (
         <span onClick={(e) => e.stopPropagation()}>
           <Link href={`/objects/${row.original.module}?run=${versionId}`} aria-label={`Open ${formatModuleName(row.original.module)}`} className="m-ink-accent">Open</Link>
@@ -480,9 +483,9 @@ function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenStep
         </span>
       ),
     },
-    { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
-    { id: "module", header: "Object", accessorFn: (f) => formatModuleName(f.module) },
-    { id: "dimension", header: "Dimension", accessorFn: (f) => labelOf(f.dimension) },
+    { accessorKey: "check_id", header: "Rule", meta: { mono: true } satisfies CellMeta },
+    { id: "module", header: "Object", meta: { priority: "low" } satisfies CellMeta, accessorFn: (f) => formatModuleName(f.module) },
+    { id: "dimension", header: "Dimension", meta: { priority: "low" } satisfies CellMeta, accessorFn: (f) => labelOf(f.dimension) },
     {
       id: "affected",
       header: "Failing records",
@@ -493,7 +496,7 @@ function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenStep
         </DrillLink>
       ),
     },
-    { id: "message", header: "Message", accessorFn: (f) => f.details.message ?? "—", cell: ({ row }) => <span className="block max-w-[360px] truncate">{row.original.details.message ?? "—"}</span> },
+    { id: "message", header: "Message", meta: { priority: "low" } satisfies CellMeta, accessorFn: (f) => f.details.message ?? "—", cell: ({ row }) => <span className="block max-w-[360px] truncate">{row.original.details.message ?? "—"}</span> },
   ];
 
   return (
@@ -700,18 +703,8 @@ export default function RunDetailPage() {
           {isBaseline ? <Pill>Baseline</Pill> : null}
         </>
       }
-      actions={
+      secondary={
         <>
-          {prevId ? (
-            <Tooltip label="What changed since the run before this one" render={<Button variant="secondary" render={<Link href={`/runs/${versionId}/vs/${prevId}`} />} />}>
-              Compare with previous
-            </Tooltip>
-          ) : null}
-          {baseId ? (
-            <Tooltip label="What changed since the pinned baseline run" render={<Button variant="secondary" render={<Link href={`/runs/${versionId}/vs/baseline`} />} />}>
-              Compare with baseline
-            </Tooltip>
-          ) : null}
           {can("analyse") ? (
             <>
               <Tooltip label="Give this run a name you will recognise in lists and comparisons" render={<Button variant="ghost" onClick={openRename} />}>
@@ -740,6 +733,26 @@ export default function RunDetailPage() {
                 </Tooltip>
               ) : null}
             </>
+          ) : null}
+        </>
+      }
+      more={can("analyse") ? [
+        { label: "Rename", onSelect: openRename },
+        { label: isBaseline ? "Unpin baseline" : "Pin as baseline", onSelect: () => pin.mutate(), disabled: pin.isPending },
+        { label: "Re-run analysis", onSelect: () => rerun.mutate(), disabled: running || rerun.isPending },
+        ...(AI_RERUN_STATUSES.includes(v.status) ? [{ label: "Re-run AI analysis", onSelect: () => setAiOpen(true), disabled: running }] : []),
+      ] : undefined}
+      actions={
+        <>
+          {prevId ? (
+            <Tooltip label="What changed since the run before this one" render={<Button variant="secondary" render={<Link href={`/runs/${versionId}/vs/${prevId}`} />} />}>
+              Compare with previous
+            </Tooltip>
+          ) : null}
+          {baseId ? (
+            <Tooltip label="What changed since the pinned baseline run" render={<Button variant="secondary" render={<Link href={`/runs/${versionId}/vs/baseline`} />} />}>
+              Compare with baseline
+            </Tooltip>
           ) : null}
           {can("export") ? <ExportMenu options={exportOptions} /> : null}
         </>

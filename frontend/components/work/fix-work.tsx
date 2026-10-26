@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef, RowSelectionState, SortingState } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Button, Card, ConfirmDialog, DataTable, Dialog, Drawer, EmptyState, ErrorState, ExportMenu, FilterChip, Input, Mono, Notice, Pill,
-  RankedRow, Select, SeverityDot, Skeleton, Stat, Switch, Textarea, isSeverity, type CellMeta, type TableView,
+  BELOW_XL, Button, Card, ConfirmDialog, DataTable, DetailPane, Dialog, EmptyState, ErrorState, ExportMenu, FilterChip, Input, Mono, Notice, Pill,
+  RankedRow, Select, SeverityDot, Skeleton, Stat, Switch, Textarea, isSeverity, type CellMeta, type TableView, useMediaQuery,
 } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { DayOneAction, useDayOne } from "@/hooks/use-day-one";
@@ -94,16 +94,6 @@ export function sortRecords(items: WorkRecord[], sorting: SortingState, now: num
   }).map((x) => x.r);
 }
 
-/** True below xl, where the page has no room for the record panel beside the queue: it opens as a sheet. */
-const NARROW = "(max-width: 1279px)";
-function subscribeNarrow(cb: () => void): () => void {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => undefined;
-  const mq = window.matchMedia(NARROW);
-  mq.addEventListener?.("change", cb);
-  return () => mq.removeEventListener?.("change", cb);
-}
-const narrowSnapshot = () => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(NARROW).matches;
-const useNarrow = () => useSyncExternalStore(subscribeNarrow, narrowSnapshot, () => false);
 
 function useFilters() {
   const search = useSearchParams();
@@ -307,7 +297,7 @@ export function FixWork() {
   const canSignOff = can("approve");
   const { filter, selected, set, sorting, viewParams, fromObject } = useFilters();
   const router = useRouter();
-  const narrow = useNarrow();
+  const narrow = useMediaQuery(BELOW_XL);
   const run = filter.version_id;
   const fileRef = useRef<HTMLInputElement>(null);
   const [checked, setChecked] = useState<RowSelectionState>({});
@@ -576,15 +566,10 @@ export function FixWork() {
             )}
         </section>
 
-        {narrow ? (
-          <Drawer open={sheetOpen && !!current} onOpenChange={setSheetOpen} title="Record">
-            {panel}
-          </Drawer>
-        ) : (
-          <div className="xl:sticky xl:top-4 xl:self-start">
-            {panel ?? <Card><p className="m-text-body m-ink-3">Pick a record to see what is wrong with it.</p></Card>}
-          </div>
-        )}
+        <DetailPane open={sheetOpen} onOpenChange={setSheetOpen} title="Record" label="Record" className="xl:sticky xl:top-4 xl:self-start"
+          empty={<Card><p className="m-text-body m-ink-3">Pick a record to see what is wrong with it.</p></Card>}>
+          {panel}
+        </DetailPane>
       </div>
 
       <SignOffDialog open={signOff} onOpenChange={setSignOff} count={selectedRows.length} pending={bulk.isPending}

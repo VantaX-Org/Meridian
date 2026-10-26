@@ -7,7 +7,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Button, Card, DataTable, DimensionBars, EmptyState, ErrorState, ExportMenu, Mono, Pager, RankedRow, SeverityDot, Skeleton, Stat, Status, isSeverity, toast } from "@/design";
+import { BELOW_LG, Button, Card, DataTable, DetailPane, DimensionBars, EmptyState, ErrorState, ExportMenu, Mono, Pager, RankedRow, SeverityDot, Skeleton, Stat, Status, isSeverity, toast } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { exportFindingRecords } from "@/lib/api/findings";
 import { createBatch } from "@/lib/api/remediation";
@@ -118,6 +118,7 @@ function RulePane({ object, run, rule }: { object: string; run: string; rule: Wo
 
 export function Workbench({ object, run }: { object: string; run: string }) {
   const search = useSearchParams();
+  const router = useRouter();
   const { data, isLoading, isError, error, refetch } = useQuery(objectQuery(object, run));
   const details = useRuleDetails(object, run);
 
@@ -180,8 +181,8 @@ export function Workbench({ object, run }: { object: string; run: string }) {
           href={autoRecords != null ? `/insights/rules?run=${run}&module=${object}&auto=yes` : undefined}
         />
       </div>
-      <div className="grid [gap:var(--m-section-gap)] [grid-template-columns:minmax(0,1fr)] @5xl:[grid-auto-rows:min-content] @5xl:[grid-template-columns:400px_minmax(0,1fr)]" data-testid="workbench">
-        <div className="min-w-0 @5xl:col-start-1">
+      <div className="grid [gap:var(--m-section-gap)] [grid-template-columns:minmax(0,1fr)] lg:[grid-auto-rows:min-content] lg:[grid-template-columns:400px_minmax(0,1fr)]" data-testid="workbench">
+        <div className="min-w-0 lg:col-start-1">
           <Card title="Failing rules" meta={`${listed.length.toLocaleString()} of ${failing.length.toLocaleString()}`} padding="sm">
             {dimension && listed.length > 0 ? (
               <div className="px-3 pb-2">
@@ -198,7 +199,7 @@ export function Workbench({ object, run }: { object: string; run: string }) {
                 action={<Button variant="secondary" render={<Link href={hrefWith({ dimension: null })}>Clear filter</Link>} />}
               />
             ) : (
-              <ul aria-label="Failing rules" className="flex flex-col overflow-y-auto [max-height:min(60vh,32rem)]">
+              <ul aria-label="Failing rules" className="flex flex-col lg:overflow-y-auto lg:[max-height:min(60vh,32rem)]">
                 {listed.map((r) => (
                   <RankedRow
                     key={r.check_id}
@@ -228,10 +229,18 @@ export function Workbench({ object, run }: { object: string; run: string }) {
             )}
           </Card>
         </div>
-        <div className="min-w-0 @5xl:col-start-2 @5xl:row-span-2 @5xl:row-start-1">
+        {/* Below lg a picked rule (?rule=) opens as a sheet over the list; closing it drops the pick. */}
+        <DetailPane
+          open={!!wanted}
+          onOpenChange={(o) => { if (!o) router.replace(hrefWith({ rule: null }), { scroll: false }); }}
+          below={BELOW_LG}
+          title={selected?.check_id ?? "Rule"}
+          label="Selected rule"
+          className="min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1"
+        >
           {selected ? <RulePane key={selected.check_id} object={object} run={run} rule={selected} /> : null}
-        </div>
-        <div className="min-w-0 @5xl:col-start-1">
+        </DetailPane>
+        <div className="min-w-0 lg:col-start-1">
           <Card title="Score by dimension" padding="sm">
             {dimensionItems.length === 0 ? (
               <EmptyState

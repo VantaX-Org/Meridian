@@ -68,6 +68,9 @@ export function Stat({ label, value, delta, hint, href, onClick, tone, domain, h
   const animate = (countUp ?? hero) && typeof value === "number";
   const sparkColor = hero ? "var(--m-hero-ink-2)" : tone ? `var(--m-${tone})` : "var(--m-accent)";
   const interactive = Boolean(href || onClick);
+  // A text value wraps only between words; a single token too wide for the tile truncates (full text in its title).
+  const textValue = typeof value === "string" && !loading;
+  const wordValue = textValue && !/\s/.test(value);
   const body = (
     <>
       <span
@@ -86,12 +89,16 @@ export function Stat({ label, value, delta, hint, href, onClick, tone, domain, h
         <span className="m-text-meta m-stat-label" style={{ color: hero ? "var(--m-hero-ink-2)" : "var(--m-ink-3)" }}>{label}</span>
       )}
       <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+        {/* Text never breaks mid-word ("Unreachabl" / "e"). */}
         <span
-          className="m-numeric font-semibold"
+          className={clsx("m-numeric font-semibold", wordValue && "min-w-0 max-w-full truncate")}
+          title={wordValue ? value : undefined}
           style={{
-            minWidth: "4ch",
-            overflowWrap: "break-word",
-            fontSize: hero ? "var(--m-text-hero)" : "var(--m-text-stat)",
+            minWidth: wordValue ? undefined : "4ch",
+            overflowWrap: textValue ? "normal" : "break-word",
+            hyphens: "none",
+            // A long word ("Unreachable") steps down to the verdict size so it fits a phone or tablet tile whole.
+            fontSize: hero ? "var(--m-text-hero)" : wordValue && (value as string).length > 8 ? "var(--m-text-verdict)" : "var(--m-text-stat)",
             lineHeight: hero ? "var(--m-leading-hero)" : "var(--m-leading-stat)",
             letterSpacing: "var(--m-tracking-tight)",
             color: hero ? "var(--m-hero-ink)" : "var(--m-ink)",

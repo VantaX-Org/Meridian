@@ -1,8 +1,9 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Tabs as BaseTabs } from "@base-ui/react/tabs";
 import { Badge } from "./Badge";
+import { Select } from "./Select";
 
 export interface TabItem {
   value: string;
@@ -12,21 +13,39 @@ export interface TabItem {
   count?: number;
 }
 
+/**
+ * A tab strip over its panels. Below 640px the strip would wrap or run off the screen, so a Select named
+ * `label` picks the panel instead and the strip steps aside (CSS only: both share one value, nothing remounts).
+ */
 export function Tabs({
-  items, value, defaultValue, onValueChange, onTabHover,
+  items, value, defaultValue, onValueChange, onTabHover, label = "Section",
 }: {
   items: TabItem[]; value?: string; defaultValue?: string; onValueChange?: (value: string) => void;
   /** Fired on pointer enter and focus of a tab trigger, e.g. to prefetch that tab's data. */
   onTabHover?: (value: string) => void;
+  /** Accessible name of the Select that stands in for the strip below 640px. */
+  label?: string;
 }) {
-  // `value` makes this controlled (so a client-side URL change can switch tabs after
-  // mount); omit it and it falls back to the original uncontrolled `defaultValue` behaviour.
+  // `value` makes this controlled (so a client-side URL change can switch tabs after mount); omit it and the
+  // tabs keep their own state from `defaultValue`. Either way the strip and the phone Select read the same value.
+  const [own, setOwn] = useState(defaultValue ?? items[0]?.value ?? "");
+  const current = value ?? own;
+  const change = (v: string) => {
+    setOwn(v);
+    onValueChange?.(v);
+  };
   return (
-    <BaseTabs.Root
-      {...(value !== undefined ? { value } : { defaultValue: defaultValue ?? items[0]?.value })}
-      onValueChange={(v) => onValueChange?.(v as string)}
-    >
-      <BaseTabs.List className="m-tabs-list">
+    <BaseTabs.Root value={current} onValueChange={(v) => change(v as string)}>
+      <div className="sm:hidden" data-testid="tabs-select">
+        <Select
+          label={label}
+          value={current}
+          onValueChange={(v) => { if (v) change(v); }}
+          options={items.map((i) => ({ value: i.value, label: i.count ? `${i.label} (${i.count.toLocaleString()})` : i.label }))}
+          className="m-input inline-flex w-full items-center justify-between gap-2"
+        />
+      </div>
+      <BaseTabs.List className="m-tabs-list max-sm:hidden">
         {items.map((item) => (
           <BaseTabs.Tab
             key={item.value}
