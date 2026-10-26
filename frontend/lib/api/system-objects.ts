@@ -1,4 +1,5 @@
 import apiClient from "./client";
+import type { PreviewSource } from "@/types/api";
 
 export type ScopeKey = "company_codes" | "plants" | "sales_orgs" | "purchasing_orgs";
 
@@ -21,6 +22,8 @@ export interface SystemObject {
   scope_filters: ScopeKey[];
   date_window: string[];
   last_download: { version_id: string; at: string; status: string; records: number | null } | null;
+  /** Registry sources of this object whose names are not yet verified against SAP; empty when all are. */
+  preview_sources?: PreviewSource[];
 }
 
 export interface SystemVersion {

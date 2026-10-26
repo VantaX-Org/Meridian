@@ -1042,6 +1042,13 @@ export interface SAPSystemExtended {
   target_system_id: string | null;
 }
 
+/** A registry source whose name is not yet verified against SAP (sap/extraction_registry.py status "preview"). */
+export interface PreviewSource {
+  source: string;
+  /** One line: why it is not verified. */
+  reason: string;
+}
+
 export interface SystemModule {
   module: string;
   system_type: SystemType;
@@ -1050,6 +1057,8 @@ export interface SystemModule {
   last_sync_status: string | null;
   row_count: number;
   config_synced: boolean;
+  /** Unverified extraction sources of this module; empty when all are verified. */
+  preview_sources?: PreviewSource[];
 }
 
 export interface ConfigSnapshot {

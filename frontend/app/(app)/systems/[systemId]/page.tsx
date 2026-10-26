@@ -17,6 +17,7 @@ import { HEALTH_LABEL, dqsTrend, latestDqs } from "../_health";
 import { DqsScore } from "@/components/insight/dqs-score";
 import { ConfigurationTab } from "./config-tab";
 import { CustomObjectsTab } from "./custom-objects-tab";
+import { PreviewBadge } from "@/components/systems/preview-badge";
 import { ConfigLoadPanel } from "./config-load-panel";
 import { TrendPanel } from "./trend-panel";
 import { getSystemModules, getSystems, testConnection } from "@/lib/api/connectivity";
@@ -606,7 +607,12 @@ function Objects({ id, system, modules, versions, canSync, canAnalyse, onChanged
       header: "Object",
       // Carry the run whose score this page shows. Without it the object page resolves its own
       // newest run - possibly another system's - so the same row opened on two tabs showed two runs.
-      cell: ({ row }) => <Link href={`/objects/${row.original.module}${latest?.id ? `?run=${latest.id}` : ""}`} className="underline">{formatModuleName(row.original.module)}</Link>,
+      cell: ({ row }) => (
+        <span className="inline-flex items-center gap-2">
+          <Link href={`/objects/${row.original.module}${latest?.id ? `?run=${latest.id}` : ""}`} className="underline">{formatModuleName(row.original.module)}</Link>
+          <PreviewBadge sources={row.original.preview_sources} />
+        </span>
+      ),
     },
     { id: "enabled", header: "Enabled", cell: ({ row }) => (row.original.enabled ? "Yes" : "No") },
     { id: "rows", header: "Records", cell: ({ row }) => <DrillLink href={`/objects/${row.original.module}${latest?.id ? `?run=${latest.id}` : ""}`}>{row.original.row_count.toLocaleString()}</DrillLink> },
