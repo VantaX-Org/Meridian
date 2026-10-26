@@ -1,6 +1,6 @@
 import { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from "axios";
 import { describe, expect, it, vi } from "vitest";
-import apiClient, { isRetryable } from "../client";
+import apiClient, { isRetryable, licenceLockFrom } from "../client";
 
 // axios doesn't publicly type the interceptor manager's internal handler
 // list, but it's the only way to invoke the request interceptor directly
@@ -122,5 +122,39 @@ describe("apiClient retry of an idempotent GET", () => {
     expect(isRetryable({ code: "ECONNABORTED", config: { method: "get" } })).toBe(false);
     expect(isRetryable({ config: { method: "get" }, response: { status: 404, data: { detail: "nf" } } })).toBe(false);
     expect(isRetryable({ config: { method: "get", retried: true }, response: { status: 503 } })).toBe(false);
+  });
+});
+
+describe("apiClient licence lock", () => {
+  const locked = (status: number, data: unknown) => ({ config: { url: "/api/v1/me/permissions", method: "get" }, response: { status, data } });
+
+  function stubLocation(pathname: string): { href: string } {
+    const loc = { href: `http://localhost${pathname}`, pathname, origin: "http://localhost" };
+    Object.defineProperty(window, "location", { value: loc, configurable: true, writable: true });
+    return loc;
+  }
+
+  it("reads only the whole-app locks, never a single feature's 402 or an RBAC 403", () => {
+    expect(licenceLockFrom(403, { error: "licence_unverified", reason: "licence_server_unreachable" })).toBe("licence_unverified");
+    expect(licenceLockFrom(402, { error: "licence_invalid", reason: "expired" })).toBe("licence_invalid");
+    expect(licenceLockFrom(403, { error: "licence_server_cutoff" })).toBe("licence_server_cutoff");
+    expect(licenceLockFrom(402, { error: "feature_not_licenced", feature: "export_reports" })).toBeNull();
+    expect(licenceLockFrom(403, { detail: { detail: "forbidden", action: "view" } })).toBeNull();
+    expect(licenceLockFrom(500, { error: "licence_invalid" })).toBeNull();
+  });
+
+  it("sends the app to /licence-error with the reason instead of failing each page on its own", async () => {
+    const original = window.location;
+    try {
+      const loc = stubLocation("/home/lead");
+      await runResponseErrorInterceptors(apiClient, locked(403, { error: "licence_unverified", reason: "licence_server_unreachable", detail: "x" }));
+      expect(loc.href).toBe("http://localhost/licence-error?reason=licence_unverified");
+
+      const onPage = stubLocation("/licence-error");
+      await runResponseErrorInterceptors(apiClient, locked(402, { error: "licence_invalid", reason: "expired" }));
+      expect(onPage.href).toBe("http://localhost/licence-error"); // no redirect loop
+    } finally {
+      Object.defineProperty(window, "location", { value: original, configurable: true, writable: true });
+    }
   });
 });
