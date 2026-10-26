@@ -306,12 +306,19 @@ export interface AlertThresholds {
   readiness_waves: Record<string, string[]>;
 }
 
+/** One cost spec (checks/cost_model.yaml): a fixed amount per failing record, or a field of the failing records, either scaled by `factor`. */
+export interface CostSpec {
+  per_record?: number;
+  field?: string;
+  factor?: number;
+}
+
 /** Cost model used to price findings and features (spec 8.2's value-at-risk). */
 export interface CostModel {
   currency: string;
-  severity: Record<string, number>;
-  modules: Record<string, number>;
-  rules: Record<string, number>;
+  severity: Record<string, CostSpec>;
+  modules: Record<string, CostSpec>;
+  rules: Record<string, CostSpec>;
   /** feature name (e.g. "MIGO") → value per blocked record */
   features: Record<string, number>;
 }

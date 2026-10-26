@@ -27,13 +27,25 @@ const warningColumns: ColumnDef<EarlyWarning>[] = [
     header: "Verdict",
     cell: ({ row }) => <Status kind="verdict" value={SIGNAL_VERDICT[row.original.signal]} />,
   },
-  { accessorKey: "message", header: "Message" },
+  { id: "message", header: "Message", cell: ({ row }) => warningMessage(row.original) },
   { accessorKey: "recommended_action", header: "Recommended action" },
   {
     id: "open", header: "", enableSorting: false, size: 90,
     cell: ({ row }) => <Link href={`/objects/${row.original.module_id}`} aria-label={`Open ${formatModuleName(row.original.module_id)}`} className="m-ink-accent underline-offset-2 hover:underline">Open</Link>,
   },
 ];
+
+/** An early warning in words, with the object's name (never its id) and the threshold it is held to. */
+export function warningMessage(w: EarlyWarning): string {
+  const name = formatModuleName(w.module_id);
+  const below = w.threshold != null ? ` of ${Math.round(w.threshold * 10) / 10}` : "";
+  if (w.signal === "red") return `${name} is below its threshold${below}`;
+  if (w.signal === "amber") return w.threshold != null ? `${name} is projected to drop below ${Math.round(w.threshold * 10) / 10} within 30 days` : `${name} is projected to drop below its threshold within 30 days`;
+  return `${name} is holding its score`;
+}
+
+/** The open early warnings: amber and red only; a green row is an object holding its score, not a warning. */
+export const openWarnings = (all: readonly EarlyWarning[]): EarlyWarning[] => all.filter((w) => w.signal !== "green");
 
 /** The verdict of a forecast: its early warning's signal when one is open, else what its trend says. */
 const forecastVerdict = (f: DqsForecast, warnings: EarlyWarning[]): string => {
@@ -126,7 +138,8 @@ export default function ForecastPage() {
     queryFn: () => getPredictiveAnalytics(),
   });
   const forecasts = useMemo(() => data?.forecasts ?? [], [data]);
-  const warnings = data?.early_warnings ?? [];
+  const signals = useMemo(() => data?.early_warnings ?? [], [data]);
+  const warnings = useMemo(() => openWarnings(signals), [signals]);
 
   const [moduleId, setModuleId] = useState("");
   const selected: DqsForecast | undefined = useMemo(
@@ -159,7 +172,7 @@ export default function ForecastPage() {
       insight={{
         situation: {
           sentence: worst && worstAt
-            ? `${formatModuleName(worst.module_id)} is predicted at ${worstAt.value} in ${worstAt.days} days (range ${Math.round(worstAt.low)}–${Math.round(worstAt.high)}): ${statusLabel("verdict", forecastVerdict(worst, warnings))}`
+            ? `${formatModuleName(worst.module_id)} is predicted at ${worstAt.value} in ${worstAt.days} days (range ${Math.round(worstAt.low)}–${Math.round(worstAt.high)}): ${statusLabel("verdict", forecastVerdict(worst, signals))}`
             : "Not enough runs to forecast",
           tone: declining.length ? "at-risk" : "go",
         },
@@ -217,7 +230,7 @@ export default function ForecastPage() {
         {warnings.length === 0 ? (
           <EmptyState title="No early warnings" detail="Every object is holding its score." action={<Button render={<Link href="/objects">Open objects</Link>} />} />
         ) : (
-        <DataTable columns={warningColumns} data={warnings} getRowId={(w) => `${w.module_id}-${w.signal}-${w.message}`} hideToolbar height="auto" />
+        <DataTable columns={warningColumns} data={warnings} getRowId={(w) => `${w.module_id}-${w.signal}`} hideToolbar height="auto" />
         )}
       </Card>
     </InsightFrame>

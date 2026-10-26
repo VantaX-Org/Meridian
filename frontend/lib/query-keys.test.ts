@@ -15,6 +15,9 @@ describe("queryKeys", () => {
     expect(queryKeys.inbox({ owner: "me" })).toEqual(["inbox", { owner: "me" }]);
     expect(queryKeys.systems()).toEqual(["systems"]);
     expect(queryKeys.shellCounts()).toEqual(["shell-counts"]);
+    // a value map is per target field: two fields of one object never share cached rows
+    expect(queryKeys.migrationValueMap("business_partner", "BUT000.BU_GROUP")).toEqual(["migration", "value-map", "business_partner", "BUT000.BU_GROUP"]);
+    expect(queryKeys.migrationValueMap("business_partner", "A")).not.toEqual(queryKeys.migrationValueMap("business_partner", "B"));
     expect(queryKeys.insights("readiness", "v1")).toEqual(["insights", "readiness", "v1"]);
     expect(queryKeys.insights("impact")).toEqual(["insights", "impact"]);
     expect(queryKeys.insights("duplicates", "material_master/000101")).toEqual([

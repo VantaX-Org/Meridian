@@ -36,6 +36,17 @@ export async function getCostModel(): Promise<CostModel> {
   return data.effective;
 }
 
+/** A feature a value per blocked record can be set for: every target feature of the config impact rules. */
+export interface CostModelFeature {
+  feature: string;
+  l1: string | null;
+}
+
+export async function getCostModelFeatures(): Promise<CostModelFeature[]> {
+  const { data } = await apiClient.get<{ features: CostModelFeature[] }>("/api/v1/settings/cost-model/features");
+  return data.features;
+}
+
 export async function updateCostModel(model: CostModel): Promise<void> {
   await apiClient.put("/api/v1/settings/cost-model", model);
 }

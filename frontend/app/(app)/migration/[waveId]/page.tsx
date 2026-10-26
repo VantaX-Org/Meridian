@@ -99,7 +99,8 @@ export default function WaveCockpitPage() {
     return <ErrorState {...apiErrorState(cockpit.error)} onRetry={() => void cockpit.refetch()} />;
   const c = cockpit.data;
   const w = c.wave;
-  const run = c.source_version_id ?? c.run_id;
+  // the analysis version the wave scored; a migration run id is not a run the objects pages can open
+  const run = c.source_version_id;
   const funnel = (["go", "at_risk", "no_go"] as const).map((v) => ({
     x: statusLabel("verdict", v), y: c.objects.filter((o) => o.verdict === v).length,
   }));
@@ -180,7 +181,7 @@ export default function WaveCockpitPage() {
                 <Bar label="Objects by readiness verdict" height={96} data={funnel} />
               </div>
             ) : <EmptyState title="No objects in this wave" detail="Add the SAP objects this wave moves, then run it to score their readiness." action={wavesAction} /> },
-          { value: "blockers", label: "Blockers", content: <BlockersTab waveId={waveId} runId={c.run_id} blockers={c.blockers} runAction={runAction} /> },
+          { value: "blockers", label: "Blockers", content: <BlockersTab waveId={waveId} runId={c.run_id} versionId={c.source_version_id} blockers={c.blockers} runAction={runAction} /> },
           { value: "mapping", label: "Mapping", content: (
               <MappingTab modules={w.modules} destType={c.dest_system_type} runAction={runAction} wavesAction={wavesAction} />) },
           { value: "s4", label: "S/4 areas", content: <S4Tab versionId={c.source_version_id} runAction={runAction} /> },

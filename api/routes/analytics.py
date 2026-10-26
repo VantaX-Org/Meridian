@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services.rbac import has_permission
+from api.services.scoring import scoring_config
 from api.services.version_status import FINISHED, finished_sql
 from api.services.analytics_engine import (
     planner_config,
@@ -141,8 +142,8 @@ async def get_predictive_analytics(
                 "runs_seen": runs_seen, "days_seen": days_seen}
 
     forecasts = predictive.forecast_dqs(history)
-    thresholds = {}  # Could load from tenant.alert_thresholds
-    warnings = predictive.generate_early_warnings(forecasts, thresholds)
+    floors, warning_band = await _forecast_thresholds(db, tenant)
+    warnings = predictive.generate_early_warnings(forecasts, floors, warning_band)
 
     out = {"forecasts": forecasts, "early_warnings": warnings, "runs_seen": runs_seen, "days_seen": days_seen}
     if not forecasts:
@@ -225,6 +226,18 @@ async def get_prescriptive_analytics(
         "basis": {"version_id": str(version_row[0].id) if version_row else None,
                   "findings": len(findings_data), "cleaning_items": len(queue_data), "exceptions": len(exc_data)},
     }
+
+
+async def _forecast_thresholds(db: AsyncSession, tenant: Tenant) -> tuple[dict[str, float], float]:
+    """The thresholds early warnings hold each object to: its score floor (Rules, Scoring and
+    alerts, ``alert_thresholds.module_floors``), else the tenant's warning band (``dqs_weights``)."""
+    row = (await db.execute(
+        text("SELECT dqs_weights, alert_thresholds FROM tenants WHERE id = :tid"), {"tid": str(tenant.id)}
+    )).fetchone()
+    scoring = (row[0] if row else None) or {}
+    alerts = (row[1] if row else None) or {}
+    floors = {m: float(v) for m, v in (alerts.get("module_floors") or {}).items() if isinstance(v, (int, float))}
+    return floors, float(scoring_config(scoring)["thresholds"]["warning"])
 
 
 async def _planner_inputs(db: AsyncSession, tenant: Tenant) -> tuple[dict, dict]:

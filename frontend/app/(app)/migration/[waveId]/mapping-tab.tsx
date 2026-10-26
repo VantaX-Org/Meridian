@@ -74,7 +74,7 @@ const labelOfOrigin = (o: string) => ORIGIN_LABEL[o] ?? formatModuleName(o);
 function ValueMap({ module, targetField }: { module: string; targetField: string }) {
   const qc = useQueryClient();
   const { can } = useRole();
-  const key = queryKeys.migrationValueMap(module);
+  const key = queryKeys.migrationValueMap(module, targetField);
   const entries = useQuery({ queryKey: key, queryFn: () => getValueMap(module, targetField) });
   const [src, setSrc] = useState("");
   const [dst, setDst] = useState("");

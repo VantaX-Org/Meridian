@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as analyticsApi from "@/lib/api/analytics";
 import type { DqsForecast } from "@/lib/api/analytics";
-import ForecastPage, { dayLabel, forecastDetail, forecastEmptyDetail, forecastSeries, forecastTicks, headlineHorizon, horizonOf } from "../page";
+import ForecastPage, { dayLabel, openWarnings, warningMessage, forecastDetail, forecastEmptyDetail, forecastSeries, forecastTicks, headlineHorizon, horizonOf } from "../page";
 
 // The shared InsightActions bar (Run analysis) reads the role; no auth provider is mounted here.
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
@@ -37,6 +37,37 @@ describe("ForecastPage", () => {
     });
     renderWithQuery(<ForecastPage />);
     await waitFor(() => expect(analyticsApi.getPredictiveAnalytics).toHaveBeenCalled());
+  });
+
+  it("lists and counts only amber and red warnings, worded with the object's name and its threshold", async () => {
+    const f = (module_id: string): DqsForecast => ({ module_id, current_score: 80, forecast_7d: 81, forecast_30d: 82, forecast_90d: null, trend: "stable", confidence: 70, points: 5, span_days: 20, contributing_factors: [] });
+    vi.spyOn(analyticsApi, "getPredictiveAnalytics").mockResolvedValue({
+      forecasts: [f("material_master"), f("fi_gl")],
+      early_warnings: [
+        { module_id: "material_master", signal: "green", reason: "healthy", threshold: 75, message: "Score is healthy and stable", recommended_action: "Keep monitoring" },
+        { module_id: "fi_gl", signal: "amber", reason: "projected_below_threshold", threshold: 85, message: "x", recommended_action: "Schedule a review" },
+      ],
+    });
+    renderWithQuery(<ForecastPage />);
+    expect(await screen.findByText("1 early warning is open")).toBeInTheDocument();
+    expect(screen.getByText("FI general ledger is projected to drop below 85 within 30 days")).toBeInTheDocument();
+    expect(screen.queryByText(/material_master|fi_gl/)).toBeNull();
+    expect(screen.queryByText("Keep monitoring")).toBeNull();
+  });
+
+  it("shows the empty state when every object is green", async () => {
+    vi.spyOn(analyticsApi, "getPredictiveAnalytics").mockResolvedValue({
+      forecasts: [{ ...base, module_id: "ap", trend: "stable" }],
+      early_warnings: [{ module_id: "ap", signal: "green", threshold: 75, message: "Score is healthy and stable", recommended_action: "Keep monitoring" }],
+    });
+    renderWithQuery(<ForecastPage />);
+    expect(await screen.findByText("No early warnings")).toBeInTheDocument();
+    expect(screen.getByText("No early warning is open")).toBeInTheDocument();
+  });
+
+  it("words a red warning with its threshold and filters green rows out", () => {
+    expect(warningMessage({ module_id: "fi_gl", signal: "red", threshold: 75, message: "", recommended_action: "" })).toBe("FI general ledger is below its threshold of 75");
+    expect(openWarnings([{ module_id: "a", signal: "green", message: "", recommended_action: "" }])).toEqual([]);
   });
 
   it("shows an empty state when there is no forecast yet", async () => {

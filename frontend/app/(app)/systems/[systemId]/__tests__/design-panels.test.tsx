@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as sourceDesign from "@/lib/api/source-design";
-import { TablesTab } from "../design-panels";
+import { CoverageTab, TablesTab, coveragePartLabel, sourceShort, sourceWords } from "../design-panels";
 
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams() }));
 
@@ -24,5 +24,26 @@ describe("data dictionary", () => {
     await userEvent.keyboard("{Enter}");
     expect(await screen.findByRole("dialog", { name: "MARA" })).toBeInTheDocument();
     expect(sourceDesign.getDesignTable).toHaveBeenCalledWith("s1", "MARA");
+  });
+});
+
+describe("coverage and configuration copy", () => {
+  it("titles each coverage part in words, never its key", async () => {
+    vi.spyOn(sourceDesign, "getDesignCoverage").mockResolvedValue({
+      snapshot_id: "x", coverage: { ddic: [{ table: "MARA", status: "live", rows: 3 }], config: [{ table: "T001", status: "failed" }] },
+    });
+    renderWithQuery(<CoverageTab id="s1" />);
+    expect(await screen.findByText("Data dictionary")).toBeInTheDocument();
+    expect(screen.getByText("Configuration tables")).toBeInTheDocument();
+    expect(screen.queryByText("ddic")).toBeNull();
+  });
+
+  it("says where configuration values came from in words", () => {
+    expect(sourceShort("live")).toBe("live");
+    expect(sourceShort("reference")).toBe("SAP reference");
+    expect(sourceWords("reference")).toBe("from the SAP reference values");
+    expect(sourceWords("some_upload")).toBe("from some upload");
+    expect(coveragePartLabel("metadata")).toBe("Metadata");
+    expect(coveragePartLabel("new_part")).toBe("New part");
   });
 });

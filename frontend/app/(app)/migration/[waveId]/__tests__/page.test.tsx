@@ -80,6 +80,24 @@ describe("WaveCockpitPage", () => {
     }));
   });
 
+  it("drills a blocker's records into the analysis version, never the migration run id", async () => {
+    search = new URLSearchParams("tab=blockers");
+    vi.spyOn(migrationApi, "getWaveCockpit").mockResolvedValue(COCKPIT);
+    renderWithQuery(<WaveCockpitPage />);
+    await screen.findByText("BUT000.BU_GROUP");
+    const drill = screen.getAllByRole("link", { name: "3" }).find((a) => a.getAttribute("href")?.includes("tab=records"));
+    expect(drill).toHaveAttribute("href", "/objects/accounts_payable?run=v1&tab=records");
+  });
+
+  it("reads a blocker's count as plain text when the run has no analysis version", async () => {
+    search = new URLSearchParams("tab=blockers");
+    vi.spyOn(migrationApi, "getWaveCockpit").mockResolvedValue({ ...COCKPIT, source_version_id: null });
+    renderWithQuery(<WaveCockpitPage />);
+    await screen.findByText("BUT000.BU_GROUP");
+    expect(screen.queryAllByRole("link").filter((a) => a.getAttribute("href")?.includes("run=r2"))).toHaveLength(0);
+    expect(screen.queryAllByRole("link", { name: "3" }).filter((a) => a.getAttribute("href")?.includes("tab=records"))).toHaveLength(0);
+  });
+
   it("offers sign-off when the verdict is go", async () => {
     search = new URLSearchParams();
     vi.spyOn(migrationApi, "getWaveCockpit").mockResolvedValue({ ...COCKPIT, verdict: "go" });

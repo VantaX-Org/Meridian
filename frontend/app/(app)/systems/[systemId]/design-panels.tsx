@@ -145,6 +145,16 @@ function TableDrawer({ id, table, onClose }: { id: string; table: string | null;
   );
 }
 
+/** Where a configuration table's values came from (`config_snapshots.source`), in words. */
+const SOURCE_SHORT: Record<string, string> = { live: "live", reference: "SAP reference", baseline: "baseline" };
+const SOURCE_WORDS: Record<string, string> = { live: "live from the system", reference: "from the SAP reference values", baseline: "from the baseline values" };
+export const sourceShort = (source: string): string => SOURCE_SHORT[source] ?? labelOf(source).toLowerCase();
+export const sourceWords = (source: string): string => SOURCE_WORDS[source] ?? `from ${labelOf(source).toLowerCase()}`;
+
+/** A discovery coverage part (`ddic`, `config`, `metadata`) as a card title. */
+const COVERAGE_PART: Record<string, string> = { ddic: "Data dictionary", config: "Configuration tables", metadata: "Metadata" };
+export const coveragePartLabel = (part: string): string => COVERAGE_PART[part] ?? labelOf(part);
+
 export function ConfigTab({ id, tables }: { id: string; tables: { table: string; scope: string; rows: number; source: string; synced_at: string | null }[] }) {
   const wanted = useSearchParams().get("table");
   const [open, setOpen] = useState(tables.find((t) => t.table === wanted)?.table ?? tables[0]?.table ?? "");
@@ -160,12 +170,12 @@ export function ConfigTab({ id, tables }: { id: string; tables: { table: string;
       <Select
         label="Configuration table"
         value={open} onValueChange={setOpen}
-        options={tables.map((t) => ({ value: t.table, label: `${t.table}, ${t.rows} rows, ${t.source}` }))} />
+        options={tables.map((t) => ({ value: t.table, label: `${t.table}, ${t.rows} rows, ${sourceShort(t.source)}` }))} />
       <QueryGate q={configQ} />
       {data && (
         <>
           <p className={clsx(muted, "m-ink-2")}>
-            {data.total} value{data.total === 1 ? "" : "s"} read {data.source === "live" ? "live from the system" : `(${data.source})`}
+            {data.total} value{data.total === 1 ? "" : "s"} read {sourceWords(data.source)}
             {data.synced_at ? `, ${relativeTime(data.synced_at)}` : ""}. Checks validate against these values, so customer-configured codes count as valid.
           </p>
           <div className="max-h-[480px] overflow-auto">
@@ -227,7 +237,7 @@ export function CoverageTab({ id }: { id: string }) {
       <QueryGate q={coverageQ} />
       {data && parts.length === 0 ? <EmptyState title="Nothing read yet" detail="Coverage fills in after design discovery runs." /> : null}
       {parts.map(([part, items]) => (
-        <Card key={part} title={part}>
+        <Card key={part} title={coveragePartLabel(part)}>
           <div className="flex flex-wrap gap-2">
             {items.map((c) => (
               <span key={c.table} title={c.detail}><Pill tone={tone(c.status)}>
