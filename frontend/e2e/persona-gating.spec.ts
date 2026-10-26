@@ -66,18 +66,10 @@ const PRIMARIES: readonly Primary[] = [
 /**
  * Pages whose API is not in the recording: they show "Could not reach the server" for every role, the default
  * (admin) fixture included, so they are fixture gaps, not persona gaps. Their page checks are fixme until the
- * recording (or a mock in fixtures.ts) answers them.
+ * recording (or a mock in fixtures.ts) answers them. Empty: /process, /process/runs, /home/process, /fix,
+ * /insights/progress, /mdm/golden/merge, /mdm/glossary and /admin/audit are answered by fixtures/mocks-unrecorded.ts.
  */
-const MISSING_FIXTURES: Record<string, string> = {
-  "/process": "GET /process/* (as-is process catalogue) is not in the recording",
-  "/process/runs": "GET /process/runs is not in the recording",
-  "/home/process": "the process home's /process/* calls are not in the recording",
-  "/insights/progress": "GET /work/analytics/* (burndown, time-to-fix, throughput, recurrence, root-causes, proposal-quality, run-change) is not in the recording",
-  "/mdm/golden/merge": "GET /match-scores?band=review is not in the recording",
-  "/mdm/glossary": "GET /glossary?per_page=100&page=1 is not in the recording",
-  "/admin/audit": "GET /audit and GET /audit/summary are not in the recording",
-  "/fix": "GET /work/summary is not in the recording (Records to fix shows its error panel after the retry)",
-};
+const MISSING_FIXTURES: Record<string, string> = {};
 
 /**
  * Each persona's More entries not already opened by an earlier persona (PERSONA_ROLES order): every nav page is
