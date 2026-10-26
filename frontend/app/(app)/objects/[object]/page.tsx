@@ -8,6 +8,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, PageHeader, PageFrame, Card, DataTable, Delta, DrillLink, EmptyState, ErrorState, ExportMenu, Line, Mono, Pager, Pill, SeverityDot, Skeleton, Score, Tabs, emptyExportOptions, isSeverity, entityTabs, Status, statusLabel } from "@/design";
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
+import { NextBestActionCard } from "@/components/insight/next-best-action";
 import { RunScope } from "@/components/run-scope";
 import { useRunScope } from "@/hooks/use-run-scope";
 import { hrefWithRun, runLacksObject, runScopeLabel } from "@/lib/run-scope";
@@ -29,7 +30,7 @@ import { getProfileByVersion, type ShapeCount, type ValueCount } from "@/lib/api
 import { apiErrorState, isNotFound } from "@/lib/error";
 import { getRuleHistoryBatch } from "@/lib/api/rules";
 import { queryKeys } from "@/lib/query-keys";
-import { DIMENSIONS, formatDate, formatModuleName, moduleDescription, plural, shortCapReason } from "@/lib/format";
+import { DIMENSIONS, formatDate, formatModuleName, moduleDescription, passRatePct, plural, shortCapReason } from "@/lib/format";
 
 const RULE_HISTORY_RUNS = 8;
 const TAB_KEYS = ["fix", "overview", "rules", "fields", "records"] as const;
@@ -70,8 +71,9 @@ function ObjectScore({ summary, detail, run }: { summary: ObjectSummary; detail:
         run,
         dimensions: measured.map(([d, v]) => ({ name: DIMENSIONS.find((x) => x.id === d)?.label ?? d, weight: weights[d] / total, score: v })),
         // weight descends with rank so the explainer's recordsFailed * weight sort keeps the records order
-        rules: failing.map((r, i, all) => ({ ruleId: r.check_id, object: detail.module, recordsFailed: r.affected_count, weight: (all.length - i) / all.length })),
+        rules: failing.map((r, i, all) => ({ ruleId: r.check_id, object: detail.module, recordsFailed: r.affected_count, weight: (all.length - i) / all.length, passRate: passRatePct(r.pass_rate) })),
         historyHref: `/objects/${detail.module}?${new URLSearchParams({ run, tab: "history" })}`,
+        recordsHref: `/objects/${detail.module}?${new URLSearchParams({ run, tab: "fix" })}`,
       }}
     />
   );
@@ -516,6 +518,7 @@ export default function ObjectDetailPage() {
       />
       <p className="m-text-body m-ink-2">Records of {summary?.label ?? formatModuleName(object)} that fail a check in this run, worst first. Pick one and fix it.</p>
       <FixStrip object={object} summary={summary} work={workObject} loading={work.isLoading} />
+      {run && <NextBestActionCard run={run} module={object} />}
       <Tabs
         value={tab}
         onValueChange={setTab}

@@ -542,6 +542,15 @@ export function formatPct(p: number | null | undefined): string {
   return p >= 10 ? `${Math.round(p)}%` : `${round1(p)}%`;
 }
 
+/**
+ * A finding's pass rate on the 0..100 scale. `findings.pass_rate` is written 0..100 by the check engine
+ * (checks/base.py) but older rows hold a 0..1 share; a value at or below 1 is read as the share, as FindingDrawer does.
+ */
+export function passRatePct(p: number | null | undefined): number | null {
+  if (!isNum(p)) return null;
+  return p <= 1 ? p * 100 : p;
+}
+
 /** "+2.1" or "−0.8" (U+2212), one decimal; zero is "0.0". */
 export function formatDelta(n: number | null | undefined): string {
   if (!isNum(n)) return NULL_DASH;

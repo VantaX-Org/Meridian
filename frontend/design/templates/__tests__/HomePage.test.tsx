@@ -82,6 +82,13 @@ describe("HomePage data state", () => {
     expect(container.querySelector("svg[role=img]")).toBeNull();
   });
 
+  it("sets the next best action right under the hero, before the four sentences", () => {
+    render(<HomePage persona="lead" state="ready" verdict={{ dqs: 70, sentence: "x" }} run={run} nextAction={<div data-testid="nba" />} cells={<div data-testid="cells" />} />);
+    const nba = screen.getByTestId("nba");
+    expect(screen.getByTestId("home-verdict-row").compareDocumentPosition(nba) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(nba.compareDocumentPosition(screen.getByTestId("cells")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("gives the trend the whole closing row when there is no heatmap", () => {
     render(<HomePage persona="basis" state="ready" verdict={{ dqs: 70, sentence: "x" }} run={run} trend={<div data-testid="t" />} />);
     expect(screen.getByTestId("t").parentElement?.className).toContain("@5xl:col-span-12");

@@ -4,8 +4,11 @@ Grounded means every answer is assembled from figures Meridian already computed,
 
 * **Intents.** A question is matched by keywords to one of a set of intents, each answered from the services the
   Insights, Fix work and Progress pages already use, with the plain-speech builders of ``report_commentary``.
-* **Facts.** Every answer lists the ``facts`` it was assembled from (statement, value, source, link), and
-  ``grounded`` is true only when every number in the answer appears in those facts (``numbers_grounded``).
+* **Facts.** Every answer lists the ``facts`` it was assembled from (statement, value, source, link, and the rule
+  checks a fact speaks to), and ``grounded`` is true only when every number in the answer appears in those facts
+  (``numbers_grounded``). An answer whose numbers no fact backs is not given: it becomes a plain refusal.
+* **Citations.** ``citations`` lists the check ids the facts name, each linked to its failing records, so the
+  reader can open exactly what an answer rests on.
 * **Retrieval, not invention.** When no intent fits, the question's words are matched against the figures of
   every intent (``retrieve``). Enough overlap answers from the matching figures, with ``coverage`` saying how much
   of the question they cover; too little refuses honestly and suggests what to ask.
@@ -52,6 +55,8 @@ INTENTS = ("help", "score", "weakest_objects", "top_rules", "critical", "readine
 #: Retrieval answers from the matching figures only when they cover at least this share of the question's words.
 MIN_COVERAGE = 0.5
 MAX_FACTS = 3
+#: An answer cites at most this many checks (the critical answer may rest on hundreds).
+MAX_CITATIONS = 10
 
 SEVERITIES = ("critical", "high", "medium", "low")
 
@@ -366,9 +371,39 @@ def _lower_first(s: str) -> str:
     return s[:1].lower() + s[1:] if s[1:2].islower() else s
 
 
-def fact(statement: str, source: str, href: Optional[str] = None, value: Optional[float] = None) -> dict:
-    """One figure an answer is assembled from: what it says, where it comes from and the page that shows it."""
-    return {"statement": " ".join(str(statement).split()), "value": value, "source": source, "href": href}
+def check(check_id: Any, module: Any = None) -> dict:
+    """One rule check a fact speaks to: its id and, when the fact names one, the object it fails in."""
+    return {"check_id": str(check_id), "module": str(module) if module else None}
+
+
+def fact(statement: str, source: str, href: Optional[str] = None, value: Optional[float] = None,
+         checks: Optional[list[dict]] = None) -> dict:
+    """One figure an answer is assembled from: what it says, where it comes from, the page that shows it and the
+    rule checks it speaks to (``check``)."""
+    return {"statement": " ".join(str(statement).split()), "value": value, "source": source, "href": href,
+            "checks": [c for c in (checks or []) if c.get("check_id")][:MAX_CITATIONS]}
+
+
+def citation_href(c: dict, run: Optional[str]) -> str:
+    """Where a cited check's failing records are: the object's records filtered to the check (the drill every
+    score explainer uses), else the rule's own page when the fact names no object."""
+    if c.get("module"):
+        return _href(f"/objects/{c['module']}", run, tab="records", check_id=c["check_id"])
+    return _href(f"/rules/{c['check_id']}", run)
+
+
+def citations(facts: list[dict], run: Optional[str]) -> list[dict]:
+    """The checks the facts name, first mention first, one per (check, object), each linked to its records."""
+    out: list[dict] = []
+    seen: set[tuple[str, Optional[str]]] = set()
+    for f in facts:
+        for c in f.get("checks") or []:
+            key = (c["check_id"], c.get("module"))
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append({**c, "href": citation_href(c, run)})
+    return out[:MAX_CITATIONS]
 
 
 def _data_facts(data: Optional[list[dict]], source: str, href: Optional[str]) -> list[dict]:
@@ -416,7 +451,8 @@ def _answer(intent: str, text: str, version_id: Optional[str], *, data: Optional
         logger.warning("assistant answer for intent %s holds a number no fact backs: %r", intent, text)
     return {"answer": text, "intent": intent, "data": data or None,
             "chart": chart if data else None, "links": links or [], "ai": ai, "phrased": ai,
-            "version_id": version_id, "facts": facts, "coverage": round(coverage, 2), "grounded": grounded}
+            "version_id": version_id, "facts": facts, "coverage": round(coverage, 2), "grounded": grounded,
+            "citations": citations(facts, version_id)}
 
 
 def _need(payload: Optional[dict]) -> dict:
@@ -510,7 +546,8 @@ async def _top_rules(src: Sources, vid: Optional[str], m: Match) -> dict:
         return _answer("top_rules", f"No {sev}rule fails{where} in this run.", run, links=[link])
     facts = [fact(f"{r['check_id']} ({rc._short(r.get('name'), r['check_id'])}) fails on {_n(r.get('affected'))} records in "
                   f"{module_name(r['module'])}, severity {r.get('severity')}", "Rule ranking",
-                  _href(f"/rules/{r['check_id']}", run), int(r.get("affected") or 0)) for r in rows]
+                  _href(f"/rules/{r['check_id']}", run), int(r.get("affected") or 0),
+                  checks=[check(r["check_id"], r.get("module"))]) for r in rows]
     top = rows[0]
     text = f"The {sev}rule that costs most{where} is {_rule_phrase(top)}"
     name = rc._short(top.get("name"), "")
@@ -534,7 +571,8 @@ async def _critical(src: Sources, vid: Optional[str], m: Match) -> dict:
     data = [{"label": module_name(k), "value": v}
             for k, v in sorted(by_mod.items(), key=lambda kv: (-kv[1], kv[0]))[:TOP_N]]
     links = [{"label": "Open critical rules", "href": _href("/insights/rules", run, module=m.module, severity="critical")}]
-    facts = [fact(text, "Critical findings", links[0]["href"], len(rows))] + _data_facts(data, "Critical rules per object", links[0]["href"])
+    facts = [fact(text, "Critical findings", links[0]["href"], len(rows),
+                  checks=[check(r["check_id"], r.get("module")) for r in rows])] + _data_facts(data, "Critical rules per object", links[0]["href"])
     return _answer("critical", text, run, data=data, chart="bar", links=links, facts=facts)
 
 
@@ -580,7 +618,8 @@ async def _root_causes(src: Sources, vid: Optional[str], m: Match) -> dict:
     data = [{"label": label(c), "value": int(c.get("records") or 0)} for c in clusters[:TOP_N]]
     links = [{"label": "Open rules by field", "href": _href("/insights/rules", run, module=m.module, axis="field")}]
     facts = [fact(f"{label(c)}: {_n(c.get('records'))} failing records across {len(c.get('rules') or [])} rules "
-                  f"({', '.join(c.get('rules') or [])})", "Root causes", links[0]["href"], int(c.get("records") or 0))
+                  f"({', '.join(c.get('rules') or [])})", "Root causes", links[0]["href"], int(c.get("records") or 0),
+                  checks=[check(cid, c.get("module")) for cid in c.get("rules") or []])
              for c in clusters[:TOP_N]]
     facts += [fact(text, "Root causes", links[0]["href"])] if clusters else []
     return _answer("root_causes", text, run, data=data, chart="bar", links=links, facts=facts)
@@ -664,7 +703,8 @@ async def _changes(src: Sources, vid: Optional[str], m: Match) -> dict:
         w = worse[0]
         text += f" The biggest rise is {w['check_id']} in {module_name(w['module'])}, up {_n(w['delta_affected'])} records."
         facts.append(fact(f"{w['check_id']} in {module_name(w['module'])}: {_n(w['delta_affected'])} more failing records",
-                          "Rule ranking", _href(f"/rules/{w['check_id']}", run), w["delta_affected"]))
+                          "Rule ranking", _href(f"/rules/{w['check_id']}", run), w["delta_affected"],
+                          checks=[check(w["check_id"], w.get("module"))]))
     links = [{"label": "Compare the two runs", "href": cmp_href},
              {"label": "Open trends", "href": _href("/insights/trends", run)}]
     return _answer("changes", text, run, data=data, chart="bar", links=links, facts=facts)
@@ -678,7 +718,8 @@ async def _rule(src: Sources, vid: Optional[str], m: Match) -> dict:
     link = {"label": f"Open {cid}", "href": _href(f"/rules/{cid}", run)}
     if row is None:
         return _answer("rule", f"{cid} does not fail in this run.", run, links=[link],
-                       facts=[fact(f"{cid} has no failing records in this run", "Rule ranking", link["href"])])
+                       facts=[fact(f"{cid} has no failing records in this run", "Rule ranking", link["href"],
+                                   checks=[check(cid)])])
     name = rc._short(row.get("name"), cid)
     n, total = int(row.get("affected") or 0), int(row.get("total") or 0)
     text = f"{cid} fails on {_n(n)} records in {module_name(row['module'])}"
@@ -699,6 +740,8 @@ async def _rule(src: Sources, vid: Optional[str], m: Match) -> dict:
     if row.get("auto_fix_pct"):
         facts.append(fact(f"{row['auto_fix_pct']:.0f}% of its failing records have a proposed fix", "Fix funnel",
                           f"/fix?check={cid}", row["auto_fix_pct"]))
+    cited = [check(cid, row.get("module"))]
+    facts = [{**f, "checks": cited} for f in facts]
     links = [{"label": "Open its records", "href": _href(f"/objects/{row['module']}", run, rule=cid)}, link]
     return _answer("rule", text, run, links=links, facts=facts)
 
@@ -721,10 +764,14 @@ async def _value_at_risk(src: Sources, vid: Optional[str], m: Match) -> dict:
     text = (f"{money(total)} is at risk across {len(rows)} priced {_plural(len(rows), 'feature')}. "
             f"The largest is {_lower_first(str(top['feature']).replace('_', ' '))} at {money(float(top['value_at_risk']))}, "
             f"on {_n(top.get('record_count'))} records.")
+    def causes(r: dict) -> list[dict]:
+        return [check(cid) for cid in r.get("causing_rules") or []]
+
     facts = [fact(f"Total value at risk: {money(total)} across {len(rows)} priced {_plural(len(rows), 'feature')}",
-                  "Value at risk", link["href"], total)]
+                  "Value at risk", link["href"], total, checks=[c for r in rows for c in causes(r)])]
     facts += [fact(f"{str(r['feature']).replace('_', ' ')}: {money(float(r['value_at_risk']))} on {_n(r.get('record_count'))} "
-                   f"records ({r.get('status')})", "Value at risk", link["href"], float(r["value_at_risk"]))
+                   f"records ({r.get('status')})", "Value at risk", link["href"], float(r["value_at_risk"]),
+                   checks=causes(r))
               for r in rows[:TOP_N]]
     data = [{"label": str(r["feature"]).replace("_", " "), "value": round(float(r["value_at_risk"]))} for r in rows[:TOP_N]]
     return _answer("value_at_risk", text, run, data=data, chart="bar", links=[link], facts=facts)
@@ -909,6 +956,16 @@ async def _phrase(assembled: str, facts: list[dict], tenant_id: str) -> Optional
 _NO_RUN = ("There is no finished run yet, so there are no figures to answer from. "
            "Import a file or extract from a system, then ask again.")
 _FAILED = "I could not work that out just now. Try again in a moment, or open Insights for the full picture."
+_UNSUPPORTED = ("Nothing in your findings supports an answer to that, so I will not give one. "
+                "Open the page behind it for the full picture.")
+
+
+def _supported(out: dict) -> dict:
+    """``out`` when every number in it is backed by a fact; else a plain refusal that states no figure."""
+    if out.get("grounded", True):
+        return out
+    refusal = _answer("refused", _UNSUPPORTED, out.get("version_id"), links=out.get("links") or [])
+    return {**refusal, "coverage": 0.0}
 
 
 async def ask(question: str, version_id: Optional[str], module: Optional[str], src: Sources,
@@ -922,8 +979,8 @@ async def ask(question: str, version_id: Optional[str], module: Optional[str], s
         if m.intent == "help":
             return help_answer(version_id)
         if m.intent in _HANDLERS:
-            return await _HANDLERS[m.intent](src, version_id, m)
-        return await _retrieval(src, question, version_id, m, tenant_id)
+            return _supported(await _HANDLERS[m.intent](src, version_id, m))
+        return _supported(await _retrieval(src, question, version_id, m, tenant_id))
     except NoRun:
         return _answer(m.intent or "unknown", _NO_RUN, version_id,
                        links=[{"label": "Import a file", "href": "/import"}, {"label": "Open runs", "href": "/runs"}])

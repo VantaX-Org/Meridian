@@ -89,7 +89,7 @@ const loadingSkeleton = (
  * data-specific piece; this component places it and owns the loading, no-data and error geometry.
  */
 export function HomePage({
-  state, verdict, run, scope, journey, error, aside, dimensions, objects, trend, heatmap, work, lists, headerActions, emptyActions, onboarding, cells, explain, workFirst,
+  state, verdict, run, scope, journey, error, aside, dimensions, objects, trend, heatmap, work, lists, headerActions, emptyActions, onboarding, cells, explain, workFirst, nextAction,
 }: {
   persona: string;
   /** "empty" is a fresh install (no analysis yet): the journey to a first score. */
@@ -125,6 +125,8 @@ export function HomePage({
   explain?: ScoreExplanation;
   /** The persona works a queue (the steward): the work row leads, the score hero follows. */
   workFirst?: boolean;
+  /** Under the hero: the one top-ranked action of the run, its reason and where to act (`NextBestAction`). */
+  nextAction?: ReactNode;
 }) {
   const header = (
     <PageHeader
@@ -201,6 +203,7 @@ export function HomePage({
           )}
         </section>
       )}
+      {state === "ready" && nextAction}
       {state === "ready" && cells}
       {state === "ready" && objects}
       {state === "ready" && onboarding}

@@ -165,6 +165,38 @@ describe("AskMeridian", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
+  it("cites the checks an answer rests on in Mono, each linking to its failing records", async () => {
+    api.askMeridian.mockResolvedValue(answer({
+      answer: "MM003 fails on 1,200 records in Material master.", intent: "rule", data: null, chart: null,
+      citations: [
+        { check_id: "MM003", module: "material_master", href: "/objects/material_master?run=run-1&tab=records&check_id=MM003" },
+        { check_id: "BP010", module: null, href: "/rules/BP010?run=run-1" },
+        { check_id: "XX001", module: null, href: "https://example.com/x" },
+      ],
+    }));
+    await ask("How many records fail MM003?");
+    const list = await screen.findByRole("list", { name: "Checks behind this answer" });
+    expect(screen.getByText("Grounded on")).toBeInTheDocument();
+    const mm = screen.getByText("MM003");
+    expect(mm).toHaveClass("m-mono");
+    expect(mm.closest("a")).toHaveAttribute("href", "/objects/material_master?run=run-1&tab=records&check_id=MM003");
+    expect(list).toHaveTextContent("Material master");
+    expect(screen.getByText("BP010").closest("a")).toHaveAttribute("href", "/rules/BP010?run=run-1");
+    // only in-app routes are followed
+    expect(screen.queryByText("XX001")).not.toBeInTheDocument();
+  });
+
+  it("cites nothing on a refusal", async () => {
+    api.askMeridian.mockResolvedValue(answer({
+      answer: "Nothing in your findings supports an answer to that, so I will not give one.", intent: "refused", coverage: 0,
+      facts: [], links: [], citations: [{ check_id: "MM003", module: "material_master", href: "/objects/material_master?tab=records&check_id=MM003" }],
+    }));
+    await ask("What is the weather?");
+    expect(await screen.findByText(/Nothing in your findings supports an answer/)).toBeInTheDocument();
+    expect(screen.queryByText("Grounded on")).not.toBeInTheDocument();
+    expect(screen.queryByText("MM003")).not.toBeInTheDocument();
+  });
+
   it("never shows an answer the server could not check against the figures", async () => {
     api.askMeridian.mockResolvedValue(answer({ answer: "Material master scores 99.", grounded: false }));
     await ask("Which objects are weakest?");
