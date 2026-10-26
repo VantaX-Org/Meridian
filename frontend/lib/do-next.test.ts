@@ -23,14 +23,14 @@ describe("doNext", () => {
   it("starts with the lowest-scoring object of the scope and the first rule that caps it, in the run it is read from", () => {
     const step = doNext(stateObjects(runs));
     expect(step).toMatchObject({ module: "hcm", rule: "PA021", runId: "hcm", score: 64.5 });
-    expect(step?.sentence).toBe("Start with HCM personnel administration, the lowest score at 64.5: fix PA021, which caps it");
+    expect(step?.sentence).toBe("HCM personnel administration comes first, the lowest score at 64.5: fix PA021, which caps it");
     // The current state needs no ?run=: Fix work opens on it.
     expect(step?.action).toEqual({ label: "Fix PA021", href: "/fix?module=hcm&check=PA021" });
   });
 
   it("keeps a pinned run on the link, and opens the object when no rule caps it", () => {
     const step = doNext(stateObjects([runs[2]]), { pinned: true });
-    expect(step?.sentence).toBe(`Start with ${step?.label}, the lowest score at 82.9`);
+    expect(step?.sentence).toBe(`${step?.label} comes first, the lowest score at 82.9`);
     expect(step?.rule).toBeNull();
     expect(step?.action.href).toBe("/objects/material_master?run=mm");
   });

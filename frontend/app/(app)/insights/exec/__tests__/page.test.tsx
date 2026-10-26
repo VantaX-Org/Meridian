@@ -135,7 +135,7 @@ describe("ExecPage", () => {
     vi.spyOn(insightsApi, "getExec").mockResolvedValue({ version_id: "v1", narrative: "", readiness_cells: [], waterfall: [], impact_rows: [], owner_rows: [], cap: 70, cap_reason: "MM001: material type missing" } as never);
     vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [] } as never);
     renderWithQuery(<ExecPage />);
-    expect(await screen.findByText("Start with Material master, the lowest score at 70.0: fix MM001, which caps it")).toBeInTheDocument();
+    expect(await screen.findByText("Material master comes first, the lowest score at 70.0: fix MM001, which caps it")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Fix MM001" })).toHaveAttribute("href", "/fix?run=v1&module=material_master&check=MM001");
   });
 

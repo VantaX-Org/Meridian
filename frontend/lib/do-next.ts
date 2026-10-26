@@ -38,7 +38,7 @@ export function doNext(objects: readonly StateObject[], { pinned = false }: { pi
     score,
     rule,
     runId: worst.run.id,
-    sentence: rule ? `Start with ${label}, ${at}: fix ${rule}, which caps it` : `Start with ${label}, ${at}`,
+    sentence: rule ? `${label} comes first, ${at}: fix ${rule}, which caps it` : `${label} comes first, ${at}`,
     action: rule
       ? { label: `Fix ${rule}`, href: fixHref({ run, module: worst.module, check: rule }) }
       : { label: `Open ${label}`, href: `/objects/${encodeURIComponent(worst.module)}${run ? `?run=${run}` : ""}` },

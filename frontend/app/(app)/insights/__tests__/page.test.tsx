@@ -225,7 +225,7 @@ describe("InsightsOverviewPage without ?run= (current state)", () => {
     mockCurrent();
     mount();
     // controlling (50.0) is the lowest of 50, 80 and 95: the same step Home's sentences and the summary name.
-    expect(await screen.findByText("Start with Controlling, the lowest score at 50.0")).toBeInTheDocument();
+    expect(await screen.findByText("Controlling comes first, the lowest score at 50.0")).toBeInTheDocument();
   });
 
   it("shows an honest error in each current-state card when its endpoint fails, and keeps the page", async () => {

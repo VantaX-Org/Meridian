@@ -77,7 +77,7 @@ describe("route insight lineage and money", () => {
     expect(h.why.sentence).not.toMatch(/value at risk|4840487383/i);
   });
   it("names the scope's one next step when it is given, the step the overview and the summary name", () => {
-    const doNext = { sentence: "Start with HCM personnel administration, the lowest score at 64.5: fix PA021, which caps it", href: "/fix?module=hcm&check=PA021", label: "Fix PA021" };
+    const doNext = { sentence: "HCM personnel administration comes first, the lowest score at 64.5: fix PA021, which caps it", href: "/fix?module=hcm&check=PA021", label: "Fix PA021" };
     const worst = { module: "employee_central", label: "Employee central", findings: 376, critical: 27 };
     const home = buildInsight("home", { ...empty, hasRun: true, dqs: 72, prevDqs: 72, critical: 1, total: 5, affected: 9, worst, doNext });
     expect(home.next.sentence).toBe(`${doNext.sentence}.`);
