@@ -48,6 +48,8 @@ export interface SurvivorshipLoser {
   key: string;
   value: string;
   reason: string;
+  /** The connected system (name, else id) this record's value came from, when it is known. */
+  system?: string;
 }
 
 export interface AttributeSurvivorship {
@@ -55,6 +57,9 @@ export interface AttributeSurvivorship {
   winner_key: string | null;
   rule: string;
   losers: SurvivorshipLoser[];
+  /** The connected system the surviving value came from (name, else id), when it is known. */
+  winner_system?: string;
+  winner_system_id?: string;
 }
 
 export interface ExplainResponse {

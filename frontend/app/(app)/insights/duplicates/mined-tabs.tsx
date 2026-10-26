@@ -1,13 +1,13 @@
 "use client";
 
-/** Insights › Duplicates: what the miner found for a run, as three tables (duplicate pairs, anomalies, field relationships). */
+/** Insights › Duplicates: what the miner found for a run, as three tables (duplicate pairs, anomalies, field relationships). A pair is reviewed in Match review. */
 
 import { useMemo, type ReactNode } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, DataTable, DrillLink, EmptyState, ErrorState, Mono, Skeleton, Status } from "@/design";
+import { Button, DataTable, DrillLink, EmptyState, ErrorState, Mono, RowAction, Skeleton, Status, actionColumn } from "@/design";
 import { mineLearnedRules } from "@/lib/api/learnedRules";
 import {
   runMining,
@@ -48,6 +48,9 @@ function Feed<T>({ q, run, task, empty, children }: { q: UseQueryResult<T[]>; ru
 }
 
 const recordHref = (module: string, key: string, run: string) => `/objects/${module}/records/${encodeURIComponent(key)}?run=${run}`;
+/** Match review with this pair selected: the record's pairs, and the one with the other record opened. */
+export const matchReviewHref = (d: Pick<MinedDuplicate, "module_id" | "record_a" | "record_b">) =>
+  `/mdm/golden/merge?object=${encodeURIComponent(d.module_id)}&record=${encodeURIComponent(d.record_a)}&with=${encodeURIComponent(d.record_b)}`;
 
 export function MinedDuplicates({ run }: { run: string }) {
   const q = useQuery({ queryKey: ["mining", "duplicates", run], queryFn: () => getMiningDuplicates({ version_id: run || undefined, limit: LIMIT }), enabled: !!run });
@@ -58,6 +61,7 @@ export function MinedDuplicates({ run }: { run: string }) {
     { id: "score", header: "Match score", cell: ({ row }) => pct(row.original.match_score), meta: { numeric: true } },
     { id: "fields", header: "Matched on", cell: ({ row }) => (row.original.matched_fields?.length ? <Mono>{row.original.matched_fields.join(", ")}</Mono> : "—") },
     { id: "at", header: "Found", cell: ({ row }) => formatDate(row.original.detected_at, "date") },
+    actionColumn((d) => <RowAction href={matchReviewHref(d)} label={`Review ${d.record_a} and ${d.record_b} in Match review`}>Review</RowAction>),
   ], []);
   return (
     <Feed q={q} run={run} task="dedup" empty={{ title: "No likely duplicates found yet", detail: "Mining compares the records of the selected run and lists pairs that look like the same thing. Mine the run to find them." }}>

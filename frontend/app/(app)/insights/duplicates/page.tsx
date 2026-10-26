@@ -2,7 +2,7 @@
 "use client";
 
 import { toast } from "sonner";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -15,7 +15,6 @@ import {
   Graph,
   Input,
   Select,
-  Tabs,
   type GraphNode,
 } from "@/design";
 import { createMergeProposals, getDuplicateCluster } from "@/lib/api/insights";
@@ -55,13 +54,11 @@ export default function DuplicatesPage() {
           : pairsNow === pairsBefore
             ? `${plural(pairsNow, "duplicate pair")} mined, as in the previous run`
             : `${Math.abs(pairsNow - pairsBefore).toLocaleString()} ${pairsNow > pairsBefore ? "more" : "fewer"} duplicate pairs mined than in the previous run`;
-  const tab = search.get("tab") ?? "clusters";
-  const setTab = (next: string) => {
-    const params = new URLSearchParams(search.toString());
-    if (next === "clusters") params.delete("tab"); else params.set("tab", next);
-    const qs = params.toString();
-    router.replace(qs ? `?${qs}` : "?");
-  };
+  // The page is one flow (cluster, likely duplicates, anomalies, relationships); an old `?tab=` link scrolls to its part.
+  const tab = search.get("tab");
+  useEffect(() => {
+    if (tab && tab !== "clusters") document.getElementById(`duplicates-${tab}`)?.scrollIntoView?.({ block: "start" });
+  }, [tab]);
 
   const objects = useQuery({
     queryKey: queryKeys.objects(run),
@@ -159,16 +156,11 @@ export default function DuplicatesPage() {
         why: { sentence: picked && !cluster.isLoading ? `${plural(edges.length, "matched pair links", "matched pairs link")} these records` : "A cluster shows which records would merge into one" },
         next: nodes.length
           ? { sentence: "Choose the record to keep, then propose the merge" }
-          : { sentence: "Not sure which record to check? Start from the likely duplicate pairs", action: { label: "Open likely duplicates", onClick: () => setTab("pairs") } },
+          : { sentence: "Not sure which record to check? Review the scored pairs in Match review", action: { label: "Open match review", href: "/mdm/golden/merge" } },
         loading: picked && cluster.isLoading,
       }}
     >
-      <Tabs
-        value={tab}
-        onValueChange={setTab}
-        items={[
-          { value: "clusters", label: "Clusters", content: (
-            <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4">
       <Card title="Find a record's duplicates" meta="Choose the object, then enter the record's key, for example a material or vendor number">
         <div className="flex gap-3 items-end">
           <Field label="Object">
@@ -206,7 +198,7 @@ export default function DuplicatesPage() {
         picked ? (
           <EmptyState title="No duplicates for this record" detail="No other record matches it under the current match rules. Check the key, or loosen the match rules." ghost="grid" action={<Button variant="secondary" render={<Link href="/mdm/match-rules">Open match rules</Link>} />} />
         ) : (
-          <EmptyState title="Choose an object and a record" detail="Its duplicates show here as a cluster. To browse candidates instead, open the likely duplicate pairs." ghost="grid" action={<Button variant="secondary" onClick={() => setTab("pairs")}>Open likely duplicates</Button>} />
+          <EmptyState title="Choose an object and a record" detail="Its duplicates show here as a cluster. To decide on scored pairs instead, open Match review." ghost="grid" action={<Button variant="secondary" render={<Link href="/mdm/golden/merge">Open match review</Link>} />} />
         )
       ) : (
         <Card title="Duplicate cluster" meta="Each dot is a record; a line means two records match. Select the record to keep.">
@@ -222,13 +214,20 @@ export default function DuplicatesPage() {
           </div>
         </Card>
       )}
-            </div>
-          ) },
-          { value: "pairs", label: "Likely duplicates", content: <MinedDuplicates run={run} /> },
-          { value: "anomalies", label: "Anomalies", content: <MinedAnomalies run={run} /> },
-          { value: "relationships", label: "Relationships", content: <MinedRelationships run={run} /> },
-        ]}
-      />
+        <section id="duplicates-pairs" aria-label="Likely duplicates" className="flex flex-col gap-2">
+          <h2 className="m-text-h font-semibold m-ink">Likely duplicates</h2>
+          <p className="m-text-meta m-ink-3">Pairs the miner found in this run. Review takes a pair to Match review, where every merge is decided.</p>
+          <MinedDuplicates run={run} />
+        </section>
+        <section id="duplicates-anomalies" aria-label="Anomalies" className="flex flex-col gap-2">
+          <h2 className="m-text-h font-semibold m-ink">Anomalies</h2>
+          <MinedAnomalies run={run} />
+        </section>
+        <section id="duplicates-relationships" aria-label="Relationships" className="flex flex-col gap-2">
+          <h2 className="m-text-h font-semibold m-ink">Relationships</h2>
+          <MinedRelationships run={run} />
+        </section>
+      </div>
     </InsightFrame>
   );
 }

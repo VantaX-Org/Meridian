@@ -3,45 +3,53 @@
 
 /**
  * MDM › Match review, the one place every duplicate pair is reviewed. Without `?id` it is the review queue,
- * from one of two sources: the match engine's scored pairs (default; uncertain ones first, each opened in a
- * drawer to merge, mark not a match or leave for later) or, with `?source=cleaning`, the cleaning engine's
+ * from one of two sources: the match engine's scored pairs (default) as a split-pane workbench (the pair list on
+ * the left, the selected pair side by side on the right; `j` / `k` move, `m` merges, `n` marks not a match, `s`
+ * skips, and the next pair is selected after each verdict) or, with `?source=cleaning`, the cleaning engine's
  * duplicate candidates (compare and keep one record). `?object=<module>&record=<key>` keeps one record's pairs
- * in either source. With `?id` it lists one golden record's fields with the source system each value came from.
+ * in either source; `&with=<key>` selects the pair of `record` and `with` (Insights › Duplicates links here).
+ * `?id` is the old "compare sources" view of one golden record; its field × source grid now lives on the golden
+ * record's own page, so it redirects there.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ColumnDef } from "@tanstack/react-table";
 import {
-  Button, ChoiceGroup, ConfirmDialog, DataTable, Drawer, EmptyState, ErrorState, ExplorerPage, FilterChip, Mono, PageHeader, Pager, Pill,
+  Button, Card, ChoiceGroup, ConfirmDialog, ExplorerPage, FilterChip, Mono, Notice, PageHeader, Pager, Pill, RankedRow,
   Select, Skeleton, asyncStateOf, toast,
 } from "@/design";
 import { CleaningPairs, cleaningPairsKey } from "@/components/mdm/cleaning-pairs";
-import { LedgerHead, RowButton, actionColumn } from "@/components/mdm/ledger";
-import { contributionSystem, sourceSystems } from "@/components/mdm/golden-status";
 import { BAND_LABEL, pct, whyMatched } from "@/components/mdm/match-review-model";
 import { PairReview, matchReviewKey } from "@/components/mdm/pair-review";
 import { useRole } from "@/hooks/use-role";
 import { getDedupCandidates } from "@/lib/api/cleaning";
-import { getMasterRecord } from "@/lib/api/master-records";
-import { bulkMergePairs, getReviewPairs, type ReviewPair, type ScoreBand } from "@/lib/api/match-review";
-import { apiErrorMessage, apiErrorState } from "@/lib/error";
+import { bulkMergePairs, getReviewPairs, type ScoreBand } from "@/lib/api/match-review";
+import { apiErrorMessage } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
-import { queryKeys } from "@/lib/query-keys";
+import { keyBelongsElsewhere } from "@/lib/inbox-keys";
 
 const PAGE = 50;
 const BULK_LIMIT = 500;
 const BANDS: (ScoreBand | "all")[] = ["review", "auto_merge", "low", "all"];
 const DOMAINS = ["business_partner", "material_master", "sd_customer_master", "accounts_payable", "accounts_receivable", "employee_central"];
-const BAND_TONE: Record<ScoreBand, "info" | "go" | "neutral"> = { review: "info", auto_merge: "go", low: "neutral" };
+const BAND_PILL: Record<ScoreBand, "info" | "go" | "neutral"> = { review: "info", auto_merge: "go", low: "neutral" };
+/** The list row's tone (it draws no bar: the rows are not ranked by a share). */
+const BAND_TONE: Record<ScoreBand, "medium" | "pass" | "low"> = { review: "medium", auto_merge: "pass", low: "low" };
 type Source = "matcher" | "cleaning";
 const SOURCE_LABEL: Record<Source, string> = { matcher: "Match engine", cleaning: "Cleaning engine" };
 
 export default function GoldenRecordMergePage() {
   const id = useSearchParams().get("id");
-  return id ? <CompareSources id={id} /> : <MatchReview />;
+  return id ? <ToGoldenRecord id={id} /> : <MatchReview />;
+}
+
+/** The old `?id` link: the golden record's page holds its field × source grid now. */
+function ToGoldenRecord({ id }: { id: string }) {
+  const router = useRouter();
+  useEffect(() => { router.replace(`/mdm/golden/${encodeURIComponent(id)}`); }, [router, id]);
+  return <Skeleton height={120} />;
 }
 
 /* ---------- Review queue ---------- */
@@ -58,6 +66,8 @@ function MatchReview() {
   const domain = sp.get("object") ?? sp.get("domain") ?? "";
   const record = sp.get("record") ?? "";
   const pairId = sp.get("pair");
+  // From Insights › Duplicates: the pair of `record` and `with`, selected once the list holds it.
+  const withKey = sp.get("with") ?? "";
   const page = Math.max(1, Number(sp.get("page")) || 1);
   const [bulkOpen, setBulkOpen] = useState(false);
 
@@ -95,22 +105,36 @@ function MatchReview() {
   };
   const thresholds = list.data?.thresholds ?? { auto_merge: 0.95, review_floor: 0.3 };
 
-  /** After a verdict, open the next pair in the list (or close when it was the last). */
-  const next = () => {
-    const i = pairs.findIndex((p) => p.id === pairId);
-    const following = i >= 0 ? pairs[i + 1] ?? null : null;
-    setParams({ pair: following?.id ?? null });
+  // The selected pair: the URL's, else the pair of `record` and `with`, else the first listed. Selecting the
+  // first is not written to the URL, so skipping the last pair falls back to the top of the list.
+  const linked = withKey ? pairs.find((p) => p.a === withKey || p.b === withKey) : undefined;
+  const selectedId = pairId ?? linked?.id ?? pairs[0]?.id ?? null;
+  const index = pairs.findIndex((p) => p.id === selectedId);
+  const select = (id: string | null) => setParams({ pair: id, with: null });
+
+  /** After a verdict the pair leaves the queue: select the one below it, else the one above. */
+  const next = () => select((index >= 0 ? pairs[index + 1] ?? pairs[index - 1] : undefined)?.id ?? null);
+  /** Skip saves nothing and moves down, wrapping to the top. */
+  const skip = () => {
+    const following = index >= 0 ? pairs[index + 1] ?? pairs[0] : undefined;
+    select(following && following.id !== selectedId ? following.id : null);
   };
 
-  // Stable columns between URL changes: a cell redefined on every render remounts and drops its click.
-  const columns = useMemo<ColumnDef<ReviewPair>[]>(() => [
-    { id: "pair", header: "Records", cell: ({ row }) => <span className="inline-flex gap-2"><Mono>{row.original.a}</Mono><span className="m-ink-3">and</span><Mono>{row.original.b}</Mono></span> },
-    { id: "object", header: "Object", size: 160, cell: ({ row }) => formatModuleName(row.original.domain) },
-    { id: "score", header: "Score", size: 170, cell: ({ row }) => <span className="inline-flex items-center gap-2 tabular-nums">{pct(row.original.total)}<Pill tone={BAND_TONE[row.original.band]}>{BAND_LABEL[row.original.band]}</Pill></span> },
-    { id: "why", header: "Why", cell: ({ row }) => <span className="m-ink-2">{whyMatched(row.original.explanation)}</span> },
-    actionColumn((r) => <RowButton label={`Review ${r.a} and ${r.b}`} onClick={() => setParams({ pair: r.id })}>Review</RowButton>),
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- setParams only reads the URL, which is the dependency
-  ], [sp]);
+  // j / k (or the arrows) move through the pairs; the pane owns m, n and s. Fields, dialogs and menus keep their keys.
+  useEffect(() => {
+    if (source !== "matcher") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || keyBelongsElsewhere(e) || !pairs.length) return;
+      const down = e.key === "j" || e.key === "ArrowDown";
+      const up = e.key === "k" || e.key === "ArrowUp";
+      if (!down && !up) return;
+      e.preventDefault();
+      const to = pairs[Math.min(pairs.length - 1, Math.max(0, index + (down ? 1 : -1)))];
+      if (to && to.id !== selectedId) select(to.id);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   const filterBar = (
     <div className="flex flex-wrap items-end gap-3">
@@ -181,7 +205,8 @@ function MatchReview() {
         ghost: "table" as const,
       };
 
-  const open = pairs.find((p) => p.id === pairId);
+  const total = list.data?.total ?? 0;
+  const linkMissing = !!withKey && !!record && list.isSuccess && !linked && !pairId;
 
   return (
     <ExplorerPage
@@ -191,25 +216,38 @@ function MatchReview() {
       emptyProps={empty}
       errorProps={{ error: list.error, onRetry: () => void list.refetch() }}
       table={
-        <div className="flex flex-col gap-3">
-          <DataTable columns={columns} data={pairs} getRowId={(r) => r.id} onRowClick={(r) => setParams({ pair: r.id })} tableId="mdm-match-review" />
-          {(list.data?.total ?? 0) > PAGE ? (
-            <Pager page={page} pageCount={Math.ceil((list.data?.total ?? 0) / PAGE)} pageSize={PAGE} total={list.data?.total ?? 0} onPageChange={(n) => setParams({ page: n > 1 ? String(n) : null })} />
-          ) : null}
-        </div>
-      }
-      drawer={
-        <>
-          <Drawer
-            open={!!pairId}
-            onOpenChange={(o) => { if (!o) setParams({ pair: null }); }}
-            title={open ? `${open.a} and ${open.b}` : "Pair"}
-            subtitle={open ? `${formatModuleName(open.domain)}, score ${pct(open.total)}` : undefined}
-          >
-            {pairId ? <PairReview key={pairId} pairId={pairId} onDone={next} onLater={next} /> : null}
-          </Drawer>
+        <div className="grid items-start gap-4 [grid-template-columns:minmax(0,1fr)] lg:[grid-template-columns:360px_minmax(0,1fr)]" data-testid="match-workbench">
+          <Card title="Pairs" meta={`${total.toLocaleString()} waiting, best first`} padding="sm">
+            <ul className="flex flex-col [max-height:calc(100vh-300px)] overflow-y-auto" aria-label="Pairs to review">
+              {pairs.map((p) => (
+                <RankedRow
+                  key={p.id}
+                  tone={BAND_TONE[p.band]}
+                  selected={p.id === selectedId}
+                  onSelect={() => select(p.id)}
+                  testId="match-pair"
+                  label={<span className="inline-flex min-w-0 items-center gap-2"><Mono>{p.a}</Mono><span className="m-ink-3 font-normal">and</span><Mono>{p.b}</Mono></span>}
+                  magnitude={pct(p.total)}
+                  meta={<><span>{formatModuleName(p.domain)}</span><span className="truncate">{whyMatched(p.explanation)}</span></>}
+                  aside={<Pill tone={BAND_PILL[p.band]}>{BAND_LABEL[p.band]}</Pill>}
+                />
+              ))}
+            </ul>
+            {total > PAGE ? (
+              <Pager page={page} pageCount={Math.ceil(total / PAGE)} pageSize={PAGE} total={total} onPageChange={(n) => setParams({ page: n > 1 ? String(n) : null, pair: null })} />
+            ) : null}
+            <p className="px-3 pt-2 m-text-meta m-ink-3">
+              Keys: <kbd className="m-kbd">j</kbd> <kbd className="m-kbd">k</kbd> move, <kbd className="m-kbd">m</kbd> merge, <kbd className="m-kbd">n</kbd> not a match, <kbd className="m-kbd">s</kbd> skip
+            </p>
+          </Card>
+          <div className="m-card min-w-0 lg:sticky lg:top-4">
+            {linkMissing ? (
+              <div className="mb-4"><Notice tone="info">The match engine has not scored <Mono inline>{record}</Mono> against <Mono inline>{withKey}</Mono>. These are the pairs it has for <Mono inline>{record}</Mono>.</Notice></div>
+            ) : null}
+            {selectedId ? <PairReview key={selectedId} pairId={selectedId} onDone={next} onSkip={skip} /> : null}
+          </div>
           <BulkMerge open={bulkOpen} onOpenChange={setBulkOpen} domain={domain} floor={thresholds.auto_merge} />
-        </>
+        </div>
       }
     />
   );
@@ -261,74 +299,5 @@ function BulkMerge({ open, onOpenChange, domain, floor }: { open: boolean; onOpe
         </div>
       }
     />
-  );
-}
-
-/* ---------- One golden record against its sources ---------- */
-
-type SourceFieldRow = { field: string; value: unknown; system: string | null; confidence: number | null };
-
-const sourceFieldCols: ColumnDef<SourceFieldRow>[] = [
-  { id: "field", header: "Field", cell: ({ row }) => <Mono>{row.original.field}</Mono> },
-  { id: "golden", header: "Golden value", accessorFn: (r) => (r.value == null ? "None" : String(r.value)) },
-  { id: "system", header: "Source system", cell: ({ row }) => (row.original.system ? <Mono>{row.original.system}</Mono> : <span className="m-ink-3">Not recorded</span>) },
-  { id: "conf", header: "Confidence", accessorFn: (r) => (r.confidence == null ? "None" : `${Math.round(r.confidence * 100)}%`) },
-];
-
-/** source_contributions is keyed by field (api/services/golden_record_engine.py): each entry is the surviving
- * value, the one source system it came from and the survivorship confidence. The API keeps no other source's
- * value, so the page shows where each golden value came from, not a source-by-source diff. */
-function CompareSources({ id }: { id: string }) {
-  const query = useQuery({ queryKey: queryKeys.masterRecord(id), queryFn: () => getMasterRecord(id) });
-  if (query.isLoading) {
-    return (
-      <div className="flex flex-col gap-2">
-        <Skeleton height={32} />
-        <Skeleton height={120} />
-      </div>
-    );
-  }
-  if (query.isError) return <ErrorState {...apiErrorState(query.error)} onRetry={() => void query.refetch()} />;
-  const record = query.data;
-  if (!record) {
-    return (
-      <EmptyState
-        title="Record not found"
-        detail="It may have been removed or merged already."
-        action={<Button render={<Link href="/mdm/golden">All golden records</Link>} />}
-      />
-    );
-  }
-
-  const fields = Object.entries(record.golden_fields);
-  const rows: SourceFieldRow[] = fields.map(([field, value]) => {
-    const c = record.source_contributions[field];
-    return { field, value, system: contributionSystem(c), confidence: c?.confidence ?? null };
-  });
-  const systems = sourceSystems(record.source_contributions);
-
-  return (
-    <div className="flex flex-col gap-4">
-      <PageHeader
-        title={`Sources of ${record.sap_object_key}`}
-        meta="Each golden field with the source system its value came from and how confident the survivorship rule was."
-        actions={<Button variant="secondary" render={<Link href={`/mdm/golden/${record.id}`}>Back to record</Link>} />}
-      />
-      <section aria-label="Field sources">
-        <LedgerHead title="Field sources" meta={`${fields.length.toLocaleString()} ${fields.length === 1 ? "field" : "fields"} from ${systems.length.toLocaleString()} source ${systems.length === 1 ? "system" : "systems"}`} />
-        {fields.length === 0 ? (
-          <EmptyState
-            title="No golden fields to compare"
-            detail="This record has no consolidated fields yet."
-            action={<Button variant="secondary" render={<Link href={`/mdm/golden/${record.id}`}>Back to record</Link>} />}
-          />
-        ) : (
-          <DataTable columns={sourceFieldCols} getRowId={(r) => r.field} data={rows} height="auto" />
-        )}
-      </section>
-      <div>
-        <Button variant="ghost" render={<Link href="/mdm/golden/merge">Review other match pairs</Link>} />
-      </div>
-    </div>
   );
 }

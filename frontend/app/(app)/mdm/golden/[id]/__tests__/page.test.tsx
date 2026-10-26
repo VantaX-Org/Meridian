@@ -7,7 +7,9 @@ import * as goldenWritebackApi from "@/lib/api/golden-writeback";
 import * as relationshipsApi from "@/lib/api/relationships";
 import * as mergeExplainApi from "@/lib/api/merge-explain";
 import * as matchReviewApi from "@/lib/api/match-review";
-import type { MasterRecordDetail } from "@/types/api";
+import * as systemsApi from "@/lib/api/connectivity";
+import * as versionsApi from "@/lib/api/versions";
+import type { MasterRecordDetail, Version } from "@/types/api";
 import MasterRecordPage from "../page";
 
 vi.mock("next/navigation", () => ({
@@ -47,34 +49,53 @@ describe("MasterRecordPage", () => {
     });
     vi.spyOn(mergeExplainApi, "getClusterGraph").mockResolvedValue({ golden_record_id: "m1", nodes: [], edges: [], weak_chains: [], auto_merge: 0.95 });
     vi.spyOn(mergeExplainApi, "getMergeEvents").mockResolvedValue([]);
+    vi.spyOn(systemsApi, "getSystems").mockResolvedValue([]);
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
   });
 
-  it("renders the record's SAP key and golden fields", async () => {
-    vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue(record);
+  const mocks = () => {
     vi.spyOn(masterRecordsApi, "getMasterRecordHistory").mockResolvedValue([]);
     vi.spyOn(relationshipsApi, "getRelationships").mockResolvedValue({ relationships: [], total: 0 });
+  };
+  const cellOf = (table: HTMLElement, field: string, column: string) => {
+    const headers = within(table).getAllByRole("columnheader");
+    const i = headers.findIndex((h) => h.textContent?.startsWith(column));
+    const row = within(table).getByText(field).closest("tr") as HTMLElement;
+    return row.children[i] as HTMLElement;
+  };
+
+  it("renders the record's SAP key and one field by source grid under one toolbar", async () => {
+    vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue(record);
+    mocks();
     renderWithQuery(<MasterRecordPage />);
     await waitFor(() => expect(screen.getByText("MARA-1000")).toBeInTheDocument());
-    expect(screen.getAllByText("FERT").length).toBeGreaterThan(0);
-    // The merge comparison is reachable from the record.
-    expect(screen.getByRole("link", { name: "Compare sources" })).toHaveAttribute("href", `/mdm/golden/merge?id=${record.id}`);
+    const grid = await screen.findByRole("table", { name: "Fields by source" });
+    expect(within(grid).getAllByText("FERT").length).toBeGreaterThan(0);
+    // One grid and one toolbar: no second ledger repeating the fields, no per-table toolbars.
+    expect(screen.getAllByRole("toolbar", { name: "Golden record" })).toHaveLength(1);
+    expect(screen.queryByRole("region", { name: "Source contributions" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Columns" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Compare sources" })).not.toBeInTheDocument();
   });
 
-  it("counts distinct source systems and lists one source row per field", async () => {
+  it("puts each source in a column and highlights the value it kept", async () => {
     vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue(record);
-    vi.spyOn(masterRecordsApi, "getMasterRecordHistory").mockResolvedValue([]);
-    vi.spyOn(relationshipsApi, "getRelationships").mockResolvedValue({ relationships: [], total: 0 });
+    mocks();
     renderWithQuery(<MasterRecordPage />);
     expect(await screen.findByText(/built from 2 source systems\./)).toBeInTheDocument();
-    const sources = screen.getByRole("region", { name: "Source contributions" });
-    expect(within(sources).getByText("3 fields from 2 systems")).toBeInTheDocument();
-    expect(within(sources).getByRole("columnheader", { name: "Source system" })).toBeInTheDocument();
-    const maktx = within(sources).getByText("MAKTX").closest("tr") as HTMLElement;
-    expect(within(maktx).getByText("S4HANA_CLOUD")).toBeInTheDocument();
-    expect(within(maktx).getByText("80%")).toBeInTheDocument();
+    const grid = await screen.findByRole("table", { name: "Fields by source" });
+    expect(screen.getByText("3 fields from 2 sources")).toBeInTheDocument();
+    expect(within(grid).getByRole("columnheader", { name: "ECC" })).toBeInTheDocument();
+    expect(within(grid).getByRole("columnheader", { name: "S4HANA_CLOUD" })).toBeInTheDocument();
+    const kept = cellOf(grid, "MAKTX", "S4HANA_CLOUD");
+    expect(kept).toHaveTextContent("Bolt");
+    expect(kept).toHaveTextContent("(kept)");
+    expect(cellOf(grid, "MAKTX", "ECC")).toHaveTextContent("Not held");
+    const maktx = within(grid).getByText("MAKTX").closest("tr") as HTMLElement;
+    expect(within(maktx).getByText("80% confidence")).toBeInTheDocument();
   });
 
-  it("shows each value's connected source system, not the upload or merge label", async () => {
+  it("names sources in words and keeps the raw ids beside them in Mono", async () => {
     vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue({
       ...record,
       source_contributions: {
@@ -83,18 +104,51 @@ describe("MasterRecordPage", () => {
         MEINS: { value: "EA", source_system: "upload:bbbb2222", extracted_at: "2026-01-01T00:00:00Z", confidence: 0.7 },
       },
     });
-    vi.spyOn(masterRecordsApi, "getMasterRecordHistory").mockResolvedValue([]);
-    vi.spyOn(relationshipsApi, "getRelationships").mockResolvedValue({ relationships: [], total: 0 });
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [
+      { id: "bbbb2222-0000-4000-8000-000000000000", run_at: "2026-10-16T00:00:00Z", label: "material_master_25k", status: "complete", dqs_summary: null } as Version,
+    ] });
+    vi.spyOn(mergeExplainApi, "getMergeExplanation").mockResolvedValue({
+      golden_record_id: "m1", key: "MARA-1000", domain: "material_master", members: [], golden_fields: {},
+      steward_overrides: {}, pairs: [], thresholds: { auto_merge: 0.95, review_floor: 0.3 },
+      survivorship: { MEINS: { value: "EA", winner_key: "MARA-1000", rule: "source_priority", losers: [] } },
+    });
+    mocks();
     renderWithQuery(<MasterRecordPage />);
-    const sources = await screen.findByRole("region", { name: "Source contributions" });
-    const row = (f: string) => within(sources).getByText(f).closest("tr") as HTMLElement;
-    expect(within(row("MATKL")).getByText("PRD")).toBeInTheDocument();
-    expect(within(row("MAKTX")).getByText("S4P")).toBeInTheDocument();
+    const grid = await screen.findByRole("table", { name: "Fields by source" });
+    const row = (f: string) => within(grid).getByText(f).closest("tr") as HTMLElement;
+    expect(within(grid).getByRole("columnheader", { name: /^PRD/ })).toBeInTheDocument();
+    expect(within(row("MAKTX")).getByText(/from S4P/)).toBeInTheDocument();
     expect(within(row("MAKTX")).getByText("MARA-2000")).toBeInTheDocument();
-    expect(within(row("MAKTX")).getAllByText("None")).toHaveLength(2); // a merged value has no confidence (nor a model pick)
-    // an upload attached to no system keeps its upload label
+    // "Source priority from <upload's run>", not "from upload:bbbb2222"; the raw label stays, in Mono.
+    expect(await within(row("MEINS")).findByText("Source priority from Upload, material_master_25k, 16 Oct 2026")).toBeInTheDocument();
     expect(within(row("MEINS")).getByText("upload:bbbb2222")).toBeInTheDocument();
-    expect(within(sources).getByText("3 fields from 3 systems")).toBeInTheDocument();
+    expect(within(row("MEINS")).queryByText(/from upload:/)).not.toBeInTheDocument();
+  });
+
+  it("gives a merged cluster a column per record, with the losing values and the winner highlighted", async () => {
+    vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue({
+      ...record,
+      golden_fields: { MAKTX: "Bolt" },
+      source_contributions: { MAKTX: { value: "Bolt", source_system: "merge:MARA-2000", source_system_id: "s-prd", merged_from: "MARA-2000", extracted_at: "2026-01-01T00:00:00Z", confidence: null } },
+    });
+    vi.spyOn(systemsApi, "getSystems").mockResolvedValue([{ id: "s-prd", name: "ECC PRD" }, { id: "s-qas", name: "ECC QAS" }] as unknown as Awaited<ReturnType<typeof systemsApi.getSystems>>);
+    vi.spyOn(mergeExplainApi, "getMergeExplanation").mockResolvedValue({
+      golden_record_id: "m1", key: "MARA-1000", domain: "material_master", members: ["MARA-2000"], golden_fields: { MAKTX: "Bolt" },
+      steward_overrides: {}, pairs: [], thresholds: { auto_merge: 0.95, review_floor: 0.3 },
+      survivorship: { MAKTX: { value: "Bolt", winner_key: "MARA-2000", rule: "source_priority", winner_system: "s-prd",
+        losers: [{ key: "MARA-1000", value: "Bolt M8", reason: "lower source priority (rank 1)", system: "s-qas" }] } },
+    });
+    mocks();
+    renderWithQuery(<MasterRecordPage />);
+    const grid = await screen.findByRole("table", { name: "Fields by source" });
+    await waitFor(() => expect(within(grid).getByRole("columnheader", { name: /^ECC QAS/ })).toBeInTheDocument());
+    expect(within(grid).getByRole("columnheader", { name: /^ECC PRD/ })).toHaveTextContent("MARA-2000");
+    expect(cellOf(grid, "MAKTX", "ECC PRD")).toHaveTextContent("(kept)");
+    const loser = cellOf(grid, "MAKTX", "ECC QAS");
+    expect(loser).toHaveTextContent("Bolt M8");
+    expect(loser).not.toHaveTextContent("(kept)");
+    expect(loser).toHaveAttribute("title", "Not kept: lower source priority (rank 1)");
+    expect(within(grid).getByText("Source priority from ECC PRD")).toBeInTheDocument();
   });
 
   it("mounts the SAP write-back for a golden record and opens it with the target systems", async () => {

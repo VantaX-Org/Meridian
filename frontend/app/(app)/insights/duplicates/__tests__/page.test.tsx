@@ -63,10 +63,23 @@ describe("DuplicatesPage mined tabs", () => {
   });
   afterEach(() => { query = "run=v1"; });
 
-  it("switches tab through the query string", async () => {
+  it("is one flow under the page's own tabs: no second tab strip", async () => {
     renderWithQuery(<DuplicatesPage />);
-    fireEvent.click(await screen.findByRole("tab", { name: "Anomalies" }));
-    expect(replace).toHaveBeenCalledWith("?run=v1&tab=anomalies");
+    expect(await screen.findByRole("region", { name: "Likely duplicates" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Anomalies" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Relationships" })).toBeInTheDocument();
+    for (const name of ["Clusters", "Likely duplicates", "Anomalies", "Relationships"]) {
+      expect(screen.queryByRole("tab", { name })).not.toBeInTheDocument();
+    }
+  });
+
+  it("sends a mined pair's review to Match review with the pair selected", async () => {
+    vi.spyOn(miningApi, "getMiningDuplicates").mockResolvedValue([
+      { id: "d1", version_id: "v1", module_id: "material_master", record_a: "000101", record_b: "000102", match_score: 0.97, id_field: "MATNR", matched_fields: ["MAKTX"], detected_at: "2026-10-01T00:00:00Z" },
+    ]);
+    renderWithQuery(<DuplicatesPage />);
+    const review = await screen.findByRole("link", { name: "Review 000101 and 000102 in Match review" });
+    expect(review).toHaveAttribute("href", "/mdm/golden/merge?object=material_master&record=000101&with=000102");
   });
 
   it("lists mined duplicate pairs with a drill to each record", async () => {

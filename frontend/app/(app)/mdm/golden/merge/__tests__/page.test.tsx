@@ -8,7 +8,6 @@ import * as masterRecordsApi from "@/lib/api/master-records";
 import * as matchReviewApi from "@/lib/api/match-review";
 import * as mergeExplainApi from "@/lib/api/merge-explain";
 import type { ReviewPair, ReviewPairDetail } from "@/lib/api/match-review";
-import type { MasterRecordDetail } from "@/types/api";
 import GoldenRecordMergePage from "../page";
 
 const nav = vi.hoisted(() => ({ params: new URLSearchParams(), replace: vi.fn() }));
@@ -19,24 +18,6 @@ vi.mock("next/navigation", () => ({
 }));
 const role = vi.hoisted(() => ({ approve: true }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (p: string) => (p === "approve" ? role.approve : true), loading: false }) }));
-
-const record: MasterRecordDetail = {
-  id: "m1",
-  domain: "material_master",
-  sap_object_key: "MARA-1000",
-  golden_fields: { MATKL: "FERT", MAKTX: "Bolt" },
-  // Keyed by field, as api/services/golden_record_engine.py writes it.
-  source_contributions: {
-    MATKL: { value: "FERT", source_system: "ECC", extracted_at: "2026-01-01T00:00:00Z", confidence: 0.9 },
-    MAKTX: { value: "Bolt", source_system: "S4HANA_CLOUD", extracted_at: "2026-01-01T00:00:00Z", confidence: 0.4 },
-  },
-  overall_confidence: 0.9,
-  status: "golden",
-  promoted_at: null,
-  promoted_by: null,
-  created_at: "2026-01-01T00:00:00Z",
-  updated_at: "2026-01-01T00:00:00Z",
-};
 
 const pair: ReviewPair = {
   id: "p1", domain: "business_partner", a: "BP-1", b: "BP-2", total: 0.72, band: "review", auto_action: "queued",
@@ -240,14 +221,14 @@ describe("Reviewing one pair", () => {
     await waitFor(() => expect(decide).toHaveBeenCalledWith("p1", "reject", "Different firms"));
   });
 
-  it("decide later moves on without saving anything", async () => {
+  it("skip moves on without saving anything", async () => {
     nav.params = new URLSearchParams({ pair: "p1" });
     vi.spyOn(matchReviewApi, "getReviewPairs").mockResolvedValue(list);
     vi.spyOn(matchReviewApi, "getReviewPair").mockResolvedValue(detail);
     vi.spyOn(matchReviewApi, "mergePair").mockResolvedValue(preview("North Mill", "source_priority"));
     const decide = vi.spyOn(mergeExplainApi, "decidePair");
     renderWithQuery(<GoldenRecordMergePage />);
-    fireEvent.click(await screen.findByRole("button", { name: "Decide later" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Skip" }));
     expect(nav.replace).toHaveBeenCalledWith("/mdm/golden/merge", { scroll: false });
     expect(decide).not.toHaveBeenCalled();
   });
@@ -267,34 +248,12 @@ describe("Reviewing one pair", () => {
   });
 });
 
-describe("Comparing one golden record against its sources", () => {
-  it("lists one row per field with its golden value, source system and confidence", async () => {
+describe("The old compare-sources link", () => {
+  it("redirects to the golden record, whose page holds the field by source grid", async () => {
     nav.params = new URLSearchParams({ id: "m1" });
-    vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue(record);
+    const get = vi.spyOn(masterRecordsApi, "getMasterRecord");
     renderWithQuery(<GoldenRecordMergePage />);
-    await screen.findByRole("heading", { name: /Sources of MARA-1000/ });
-    expect(screen.getByText("2 fields from 2 source systems")).toBeInTheDocument();
-    const matkl = screen.getByText("MATKL").closest("tr");
-    expect(matkl).not.toBeNull();
-    expect(within(matkl as HTMLElement).getByText("FERT")).toBeInTheDocument();
-    expect(within(matkl as HTMLElement).getByText("ECC")).toBeInTheDocument();
-    expect(within(matkl as HTMLElement).getByText("90%")).toBeInTheDocument();
-    const maktx = screen.getByText("MAKTX").closest("tr") as HTMLElement;
-    expect(within(maktx).getByText("S4HANA_CLOUD")).toBeInTheDocument();
-    expect(within(maktx).getByText("40%")).toBeInTheDocument();
-    // Field names are never read as systems: no field-by-field grid of differing sources.
-    expect(screen.queryByRole("columnheader", { name: "MATKL" })).not.toBeInTheDocument();
-    expect(screen.queryByText(/differs/)).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Use this value" })).not.toBeInTheDocument();
-  });
-
-  it("shows the API error message and retries on click", async () => {
-    nav.params = new URLSearchParams({ id: "m1" });
-    vi.spyOn(masterRecordsApi, "getMasterRecord").mockRejectedValue(new Error("master record service unavailable"));
-    renderWithQuery(<GoldenRecordMergePage />);
-    await screen.findByText(/could not reach the server/i);
-    const calls = (masterRecordsApi.getMasterRecord as ReturnType<typeof vi.fn>).mock.calls.length;
-    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
-    await waitFor(() => expect((masterRecordsApi.getMasterRecord as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(calls));
+    await waitFor(() => expect(nav.replace).toHaveBeenCalledWith("/mdm/golden/m1"));
+    expect(get).not.toHaveBeenCalled();
   });
 });
