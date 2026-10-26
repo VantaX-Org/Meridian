@@ -1,6 +1,9 @@
 "use client";
 
-/** Me › Preferences: the signed-in user's own display and notification choices. Stored on the server, so they follow the user to any browser. */
+/**
+ * Me › Preferences: the signed-in user's own display and notification choices (stored on the server, so they follow the
+ * user to any browser), their password, and the log of notifications sent to them.
+ */
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -15,6 +18,7 @@ import { apiErrorMessage } from "@/lib/error";
 import { formatDate } from "@/lib/format";
 import { localeOptions, timezoneOptions, type DigestFrequency } from "@/lib/preferences";
 import { queryKeys } from "@/lib/query-keys";
+import { DeliveriesCard, PasswordCard } from "./account-cards";
 
 const THEMES: { value: Theme; label: string }[] = [
   { value: "light", label: "Light" }, { value: "system", label: "System" }, { value: "dark", label: "Dark" },
@@ -79,7 +83,7 @@ export default function PreferencesPage() {
 
   return (
     <PageFrame gap={4}>
-      <PageHeader title="Preferences" meta="How Meridian looks and when it tells you about new work. Changes save at once and follow you to any browser" />
+      <PageHeader title="Preferences" meta="How Meridian looks, when it tells you about new work, and your password. Changes save at once and follow you to any browser" />
       <Card title="Display">
         <div className="grid gap-4 md:grid-cols-2">
           <Field label="Theme"><Select value={theme} onValueChange={(v) => setTheme(v as Theme)} options={THEMES} /></Field>
@@ -107,6 +111,8 @@ export default function PreferencesPage() {
           </div>
         </div>
       </Card>
+      <DeliveriesCard />
+      <PasswordCard />
       <Card title="Guidance and saved views" meta="Show the first-visit tours again, or remove the table filters you saved">
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" onClick={replayTours}>Replay tours</Button>

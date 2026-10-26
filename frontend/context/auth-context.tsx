@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import { isAxiosError } from "axios";
 import apiClient from "@/lib/api/client";
+import { changeOwnPassword } from "@/lib/api/auth";
 import { clearLocalPreferences } from "@/lib/preferences";
 
 export interface AuthUser {
@@ -127,10 +128,7 @@ export function LocalAuthProvider({ children }: { children: ReactNode }) {
 
   const changePassword = useCallback(
     async (currentPassword: string, newPassword: string) => {
-      await apiClient.post(
-        "/api/v1/auth/change-password",
-        { current_password: currentPassword, new_password: newPassword },
-      );
+      await changeOwnPassword(currentPassword, newPassword);
       // Success — clear the gate. Existing token still valid.
       setMustChangePassword(false);
     },

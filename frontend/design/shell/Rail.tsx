@@ -11,15 +11,16 @@ import { useNavLoading, useVisibleNav } from "../../hooks/use-nav";
 import { useRole } from "../../hooks/use-role";
 import { personaForRole, type Persona } from "../../lib/persona";
 import { MeridianMark } from "../icons/Mark";
-import { IconChevronDown } from "../icons";
+import { IconChevronDown, IconGrid } from "../icons";
 import { activeHref, flattenNav, resolveNavHref, splitNav, type NavGroup, type NavItem } from "../../lib/nav";
 import { Badge } from "../primitives/Badge";
 import { Skeleton } from "../primitives/Skeleton";
 
 /**
- * The index bar: the product's top row. The brand, the five places everyone works from (Fix work, Objects,
- * Processes, Progress, Inbox: lib/nav.ts's main group) as one pill strip with live counts, a "More" menu holding
- * every other visible page under its section (Analysis, Master data, Rules, Data in, Admin), and the shell's
+ * The index bar: the product's top row. The brand, the six places everyone works from (Fix work, Objects, Runs,
+ * Processes, Progress, Inbox: lib/nav.ts's main group) as one pill strip with live counts, a "More" menu led by
+ * All features (/features) and holding every other visible page under its section (Analysis, Master data, Rules,
+ * Data in, Admin), and the shell's
  * controls on the right (search, jobs, notifications, help, the user). There is no sidebar, collapsed state or flyout.
  * Links never carry `?run=`: each section opens on its own latest run (lib/run-scope.ts).
  * The process persona's strip leads with Processes and moves Fix work into More (`railSplit`): its day is the
@@ -261,6 +262,15 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
             if (!e.currentTarget.contains(e.relatedTarget as Node | null) && e.relatedTarget !== moreButtonRef.current) setMoreOpen(false);
           }}
         >
+          <Link
+            href="/features"
+            aria-current={pathname === "/features" ? "page" : undefined}
+            className="m-topnav-item m-topnav-all"
+            onClick={() => setMoreOpen(false)}
+          >
+            <IconGrid size={ICON_SIZE} aria-hidden />
+            <span className="truncate">All features</span>
+          </Link>
           {more.map((g) => (
             <div key={g.group} className="m-topnav-group">
               <span className="m-topnav-group-label">{g.group}</span>

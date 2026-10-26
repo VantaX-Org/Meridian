@@ -70,10 +70,11 @@ def test_sidebar_systems_and_data_items():
 
 
 def test_sidebar_quality_items():
-    """Objects is a main entry; Runs sits under Analysis."""
+    """Objects and Runs are main entries (owner: runs must be easy to find), not under Analysis."""
     content = _nav()
     assert _has_item(_group_block(content, "Work"), "/objects", "Objects")
-    assert _has_item(_group_block(content, "Analysis"), "/runs", "Runs")
+    assert _has_item(_group_block(content, "Work"), "/runs", "Runs")
+    assert not _has_item(_group_block(content, "Analysis"), "/runs", "Runs")
 
 
 def test_sidebar_fix_items():

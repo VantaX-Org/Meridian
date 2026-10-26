@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { Suspense, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { AskMeridian, Breadcrumb, Button, JobTray, NotificationBell, Rail, TopBar, CommandPalette, RootPageFrame, ProgressFill, IconChart } from "@/design";
+import { AskMeridian, Breadcrumb, Button, JobTray, NotificationBell, Rail, TopBar, CommandPalette, RootPageFrame, ProgressFill, IconChart, IconGrid } from "@/design";
 import "@/design/print.css";
 import { UserMenu } from "@/components/user-menu";
 import { useAuth } from "@/context/auth-context";
@@ -56,7 +56,9 @@ function CommandPaletteSlot() {
         label: `${v.label}: ${label}`, href, group: insightsGroup, icon: <IconChart size={16} />, shortcut: undefined,
       })))
     : [];
-  const items = [...navItems, ...viewTabs];
+  // All features (/features) lists every page by area; it leads the palette as it leads the More panel.
+  const allFeatures = { label: "All features", href: "/features", group: undefined, icon: <IconGrid size={16} aria-hidden />, shortcut: undefined };
+  const items = [allFeatures, ...navItems, ...viewTabs];
   const objectsQ = useQuery({ queryKey: queryKeys.objects("latest"), queryFn: () => getObjects("latest") });
   const grammar = {
     objects: (objectsQ.data?.objects ?? []).map((o) => ({ module: o.module, label: o.label })),

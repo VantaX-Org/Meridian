@@ -135,14 +135,14 @@ describe("Process entries", () => {
   it("highlights the runs entry on a run detail and the catalogue on an L1 drill", () => {
     expect(activeHref("/process/runs/abc", new URLSearchParams(), flat)).toBe("/process/runs");
     expect(activeHref("/process/PTP", new URLSearchParams(), flat)).toBe("/process");
-    expect(activeHref("/insights/process", new URLSearchParams(), flat)).toBe("/insights/readiness");
+    expect(activeHref("/insights/process", new URLSearchParams(), flat)).toBe("/insights/process");
   });
 });
 
 describe("menu structure", () => {
-  it("has five main entries and five More sections", () => {
+  it("has six main entries and five More sections", () => {
     const main = NAV_GROUPS.filter((g) => g.main);
-    expect(main.flatMap((g) => g.items.map((i) => i.href))).toEqual(["/fix", "/objects", "/process", "/insights/progress", "/inbox"]);
+    expect(main.flatMap((g) => g.items.map((i) => i.href))).toEqual(["/fix", "/objects", "/runs", "/process", "/insights/progress", "/inbox"]);
     expect(NAV_GROUPS.filter((g) => !g.main).map((g) => g.group)).toEqual(["Analysis", "Master data", "Rules", "Data in", "Admin"]);
   });
 
@@ -184,7 +184,7 @@ describe("menu structure", () => {
     const p = permissionsPayload("steward");
     const groups = visibleNav({ can: (a) => p.actions.includes(a), isMenuItemEnabled: () => true, has: (r, a) => p.resources[r]?.[a] === true });
     const { main, more } = splitNav(groups, (h) => resolveNavHref(h, "steward"));
-    expect(main.map((i) => i.label)).toEqual(["Fix work", "Objects", "As-is processes", "Progress", "Inbox"]);
+    expect(main.map((i) => i.label)).toEqual(["Fix work", "Objects", "Runs", "As-is processes", "Progress", "Inbox"]);
     expect(more.flatMap((g) => g.items).some((i) => i.href === "/home/lead")).toBe(false);
   });
 
@@ -202,5 +202,29 @@ describe("menu structure", () => {
     const { main } = splitNav(groups);
     expect(main.map((i) => i.href)).not.toContain("/fix");
     expect(main.map((i) => i.href)).toContain("/objects");
+  });
+});
+
+describe("Reports entry", () => {
+  const flat = flattenNav(NAV_GROUPS.flatMap((g) => g.items));
+
+  it("lists the report library once, under Analysis, gated on export", () => {
+    const found = flat.filter((i) => i.href === "/insights/reports");
+    expect(found).toHaveLength(1);
+    expect(found[0].requires).toEqual({ resource: "reports", action: "export" });
+    expect(found[0].anyOf).toEqual(["export"]);
+    expect(NAV_GROUPS.find((g) => flattenNav(g.items).some((i) => i.href === "/insights/reports"))?.group).toBe("Analysis");
+  });
+
+  it("highlights Reports, not Summary, on the reports page", () => {
+    expect(activeHref("/insights/reports", new URLSearchParams(), flat)).toBe("/insights/reports");
+    expect(getPageTitle("/insights/reports")).toBe("Reports");
+  });
+
+  it("shows Reports in More for a user who can export and hides it otherwise", () => {
+    const more = (can: (p: string) => boolean) =>
+      splitNav(visibleNav({ can, isMenuItemEnabled: () => true })).more.flatMap((g) => g.items.map((i) => i.href));
+    expect(more(() => true)).toContain("/insights/reports");
+    expect(more((p) => p !== "export")).not.toContain("/insights/reports");
   });
 });

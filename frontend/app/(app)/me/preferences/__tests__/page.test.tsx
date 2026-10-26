@@ -25,6 +25,7 @@ function stubHealth(backend: HealthResponse["email_backend"]) {
 beforeEach(() => {
   window.localStorage.clear();
   resetPreferencesCache();
+  vi.spyOn(notifications, "getMyDeliveries").mockResolvedValue([]);
 });
 
 afterEach(() => {

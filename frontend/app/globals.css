@@ -263,6 +263,7 @@
   .m-topnav-right { display: flex; align-items: center; gap: var(--m-space-2); margin-left: auto; white-space: nowrap; }
   /* Fixed under the More button (Rail.tsx sets the anchor): the pill strip scrolls sideways and would clip it. */
   .m-topnav-more { position: fixed; top: var(--rail-more-top, calc(var(--m-topbar-h) + 8px)); left: max(var(--m-space-4), min(var(--rail-more-left, var(--m-space-4)), calc(100vw - 600px - var(--m-space-4)))); z-index: 50; min-width: 600px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--m-space-4); padding: var(--m-space-4); background: var(--m-sheet); border: 1px solid var(--m-line); border-radius: var(--m-radius-sheet); }
+  .m-topnav-all { grid-column: 1 / -1; font-weight: 600; }
   .m-topnav-group { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   .m-topnav-group-label { font-size: var(--m-text-micro); line-height: var(--m-leading-micro); font-weight: 600; color: var(--m-ink-3); padding: 4px 8px; }
   .m-topnav-item { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border-radius: var(--m-radius-control); color: var(--m-ink-2); font-size: var(--m-text-body); font-weight: 500; text-decoration: none; min-width: 0; }
@@ -289,7 +290,7 @@
     .m-topnav-brand, .m-topnav-right { height: var(--m-topbar-h); }
     .m-topnav-nav { order: 3; max-width: 100%; }
     /* Icon-only pills: the label stays in the accessible name, the badge stays visible. */
-    .m-topnav-link { padding: 0 10px; gap: 4px; }
+    .m-topnav-link { padding: 0 8px; gap: 4px; }
     .m-topnav-label { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   }
 
