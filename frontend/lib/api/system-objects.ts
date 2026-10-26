@@ -88,6 +88,11 @@ export async function getSystemObjects(id: string): Promise<{ system_type: strin
   return (await apiClient.get(`${base(id)}/objects`)).data;
 }
 
+/** The job id is `dl-<version_id>`, so the run this download created is known immediately. */
+export function runIdOfDownload(jobId: string): string {
+  return jobId.replace(/^dl-/, "");
+}
+
 export async function startDownload(
   id: string,
   body: { objects: string[]; scope: DownloadScope; label?: string; analyse: boolean }

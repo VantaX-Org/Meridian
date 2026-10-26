@@ -20,11 +20,16 @@ export default function WhatIfPage() {
   const { can } = usePermissions();
   const [picked, setPicked] = useState("");
   const [simId, setSimId] = useState<string | null>(null);
-  const versions = useQuery({ queryKey: ["versions", "what-if"], queryFn: () => getVersions({ limit: 25 }) });
+  // The window and the fallback used to disagree: a ?run= older than the 25 returned kept its id in the
+  // URL while the simulation silently ran the newest run. Ask for enough to contain the URL's run, and
+  // say so when a run is not found rather than switching behind the user's back.
+  const fromUrl = useSearchParams().get("run");
+  const versions = useQuery({ queryKey: ["versions", "what-if", fromUrl], queryFn: () => getVersions({ limit: 100 }) });
   const runs = (versions.data?.versions ?? []).filter(isFinished);
   const runLabels = runChoiceLabels(runs);
-  const fromUrl = useSearchParams().get("run");
-  const versionId = picked || runs.find((v) => v.id === fromUrl)?.id || runs[0]?.id || "";
+  const urlRun = fromUrl ? runs.find((v) => v.id === fromUrl) : undefined;
+  const missingUrlRun = Boolean(fromUrl) && !versions.isLoading && !urlRun;
+  const versionId = picked || urlRun?.id || runs[0]?.id || "";
   const run = useMutation({
     mutationFn: () => createSimulation({ version_id: versionId, all_rule_fixes: true, rank: true }),
     onSuccess: (r) => setSimId(r.simulation_id),
@@ -44,6 +49,11 @@ export default function WhatIfPage() {
   const controls = (
     <div className="flex items-center gap-2">
       {runs.length > 0 && <Select label="Analysis run" value={versionId} onValueChange={(v) => { setPicked(v); setSimId(null); }} options={runs.map((r) => ({ value: r.id, label: runLabels.get(r.id) ?? "Run" }))} placeholder="Run" />}
+      {missingUrlRun ? (
+        <span className="m-text-meta m-ink-3" role="status">
+          That run is not among the latest {runs.length} finished runs; pick one above.
+        </span>
+      ) : null}
       {can("analyse") && <Button pending={run.isPending || running} disabled={!versionId} onClick={() => run.mutate()}>Run simulation</Button>}
       {can("apply") && result ? <CreateBatchFromSimulation simulation={result} /> : null}
     </div>

@@ -299,7 +299,9 @@ function SummaryTab({
     verb: act.type === "finding" ? "Open finding" : act.type === "cleaning" ? "Open cleaning" : "Open exception",
     href: act.type === "finding"
       ? `/runs/${versionId}?tab=findings${act.module ? `&module=${act.module}` : ""}`
-      : act.type === "cleaning" ? `/fix?${new URLSearchParams({ tab: "cleaning", ...(act.module ? { module: act.module } : {}) })}` : "/inbox",
+      // Carry this run: without it the cleaning queue opens across every run (or a stale carried one),
+      // so the user leaves a run and lands somewhere that is not that run.
+      : act.type === "cleaning" ? `/fix?${new URLSearchParams({ tab: "cleaning", run: versionId, ...(act.module ? { module: act.module } : {}) })}` : "/inbox",
     // Plain words from the same action: its records, how many of them are critical, and the effort.
     why: `${plural(act.affected_count, "record")}, ${(act.severity === "critical" ? act.affected_count : 0).toLocaleString()} critical; about ${plural(Math.max(1, Math.round(act.effort_hours)), "hour")}.`,
   }));

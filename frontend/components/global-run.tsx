@@ -155,8 +155,14 @@ export function GlobalRunPicker() {
       router.replace(hrefWithRun(pathname, search, null), { scroll: false });
     }
   }, [run, data, pathname, search, router]);
+  // Three Fix tabs work across all runs - approval batches, monitoring and duplicate clusters are
+  // fleet-level, not per-run. The picker used to show on them anyway, so choosing a run changed
+  // nothing and read as a broken control. Offer it only where a run is actually read.
+  const RUN_BLIND_FIX_TABS = new Set(["batches", "monitor", "dedup"]);
+  const runBlind = pathname === "/fix" && RUN_BLIND_FIX_TABS.has(search.get("tab") ?? "work");
   // A current-state view's own header picker owns its scope ("Current state" or one run): no second run picker.
-  if (!runs.length || ownsRun(pathname) || !isRunScoped(pathname) || isCurrentStateView(pathname)) return null;
+  if (!runs.length || ownsRun(pathname) || !isRunScoped(pathname) || isCurrentStateView(pathname) || runBlind)
+    return null;
   const labels = runChoiceLabels(runs);
   const value = run && runs.some((r) => r.id === run) ? run : LATEST;
   return (
