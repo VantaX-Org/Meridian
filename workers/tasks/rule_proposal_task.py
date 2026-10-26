@@ -273,6 +273,7 @@ def _notify_reviewers(session: Session, tenant_id: str, domain: str, count: int,
                       link: str = "/settings?tab=ai-rules") -> None:
     """Notify reviewer users (admin/steward/ai_reviewer by default) that items await review."""
     from api.services.notifications import create_notification_sync
+    from api.services.rbac import persona_for
 
     reviewers = session.execute(
         text(
@@ -280,7 +281,8 @@ def _notify_reviewers(session: Session, tenant_id: str, domain: str, count: int,
             "WHERE tenant_id = :tid AND role = ANY(:roles) "
             "AND is_active = true"
         ),
-        {"tid": tenant_id, "roles": list(roles)},
+        # users.role holds the persona key now (platform_admin, data_steward, ...): match it as well as the legacy key.
+        {"tid": tenant_id, "roles": sorted(set(roles) | {persona_for(r) for r in roles})},
     ).fetchall()
 
     title = title or f"{count} new AI-proposed match rules"

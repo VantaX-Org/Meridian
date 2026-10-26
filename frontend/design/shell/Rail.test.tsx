@@ -1,6 +1,6 @@
 // frontend/design/shell/Rail.test.tsx
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 let pathname = "/systems";
@@ -111,11 +111,11 @@ describe("Rail (the index bar)", () => {
     expect(current[0]).toHaveTextContent("Objects");
   });
 
-  it("shows the five main entries as pills, in order, and everything else under More", async () => {
+  it("shows the six main entries as pills, in order, and everything else under More", async () => {
     renderRail();
     await screen.findByRole("link", { name: "Objects" });
     const pills = [...screen.getByTestId("rail-nav-items").children].map((li) => li.textContent?.replace(/\d+$/, "").trim());
-    expect(pills).toEqual(["Fix work", "Objects", "Processes", "Progress", "Inbox"]);
+    expect(pills).toEqual(["Fix work", "Objects", "Runs", "Processes", "Progress", "Inbox"]);
     // More sits in the Main nav but outside the scrolling pill strip, so it never scrolls out of reach.
     const more = screen.getByRole("button", { name: "More" });
     expect(screen.getByTestId("rail-nav-items")).not.toContainElement(more);
@@ -124,7 +124,9 @@ describe("Rail (the index bar)", () => {
     const panel = screen.getByRole("group", { name: "More pages" });
     for (const section of ["Analysis", "Master data", "Rules", "Data in", "Admin"]) expect(panel).toHaveTextContent(section);
     expect(panel).toHaveTextContent("Systems");
-    expect(panel).toHaveTextContent("Runs");
+    // Runs is a pill now, so More does not list it twice; All features leads the panel.
+    expect(within(panel).queryByRole("link", { name: "Runs" })).toBeNull();
+    expect(within(panel).getAllByRole("link")[0]).toHaveAttribute("href", "/features");
     expect(panel).not.toHaveTextContent("Fix work");
   });
 

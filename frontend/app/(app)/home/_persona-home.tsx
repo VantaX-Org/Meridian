@@ -161,6 +161,13 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         lists={lists}
         onboarding={<HomeOnboarding />}
         cells={<RouteInsight />}
+        emptyActions={<>
+          {can("upload") && dayOne.step.secondary?.href !== "/import" && dayOne.step.href !== "/import"
+            ? <Button variant="secondary" render={<Link href="/import">Import a file</Link>} /> : null}
+          {(systemsQ.data ?? []).length > 0 ? <RunAnalysis variant="secondary" /> : null}
+          {(systemsQ.data ?? []).length > 0 && can("run_process_discovery")
+            ? <Button variant="secondary" render={<Link href="/process/runs?new=1">Run process discovery</Link>} /> : null}
+        </>}
       />
     );
   }

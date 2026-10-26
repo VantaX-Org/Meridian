@@ -162,6 +162,8 @@ def _forbid_above(caller: Caller, actions: set[str], pairs: set[tuple[str, str]]
                   role_key: Optional[str] = None) -> None:
     if (role_key in _PLATFORM_ADMIN or _PLATFORM_PAIR in pairs) and not caller.platform_admin:
         raise HTTPException(status_code=403, detail="Only an admin or platform admin may grant admin rights")
+    if caller.platform_admin:  # holds every action (rbac.ALL_ACTIONS), so no role or matrix cell sits above it
+        return
     if not (actions <= caller.actions and pairs <= _matrix_pairs(set(caller.actions))):
         raise HTTPException(status_code=403, detail="Exceeds your own permissions")
 

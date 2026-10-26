@@ -317,7 +317,10 @@ export default function RunsPage() {
   const runTotal = all.data?.total ?? allVersions.length;
   const presenting = searchParams?.get("present") === "1";
   const presentHref = `/runs?${new URLSearchParams({ ...Object.fromEntries(searchParams?.entries() ?? []), present: "1" })}`;
+  // The other ways to start a run sit beside Run analysis: import a file, run process discovery.
   const moreItems = [
+    ...(can("upload") ? [{ label: "Import a file", onSelect: () => router.push("/import") }] : []),
+    ...(can("run_process_discovery") ? [{ label: "Run process discovery", onSelect: () => router.push("/process/runs?new=1") }] : []),
     { label: "Review fixes", onSelect: () => router.push("/fix") },
     { label: "Present", onSelect: () => router.push(presentHref) },
     ...(can("analyse")
