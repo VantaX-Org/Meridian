@@ -169,23 +169,25 @@ def test_settings_cards_are_gated():
 # RBAC role administration moved from /settings to /admin (settings is now an
 # index page that delegates user management to /admin).
 def test_settings_has_ai_reviewer_role():
-    """Admin page includes ai_reviewer in the invitable roles."""
-    path = Path("frontend/app/(app)/admin/users/page.tsx")
-    content = path.read_text(encoding="utf-8")
+    """Admin page includes ai_reviewer in the invitable roles (the shared role list it imports)."""
+    page = Path("frontend/app/(app)/admin/users/page.tsx").read_text(encoding="utf-8")
+    assert '@/lib/roles' in page
+    content = Path("frontend/lib/roles.ts").read_text(encoding="utf-8")
     assert "ai_reviewer" in content
     assert "AI Reviewer" in content
 
 
 def test_settings_ai_reviewer_distinct_badge():
-    """ai_reviewer has its own label; roles are plain text, hue is for defects only."""
-    path = Path("frontend/app/(app)/admin/users/page.tsx")
+    """ai_reviewer has its own label; roles are plain text, hue is for defects only. The role names live in one
+    module (frontend/lib/roles.ts) that Admin › Users and the account menu both read."""
+    path = Path("frontend/lib/roles.ts")
     content = path.read_text(encoding="utf-8")
     assert 'ai_reviewer: { label: "AI Reviewer"' in content
 
 
 def test_settings_ai_reviewer_tooltip():
     """ai_reviewer has descriptive tooltip."""
-    path = Path("frontend/app/(app)/admin/users/page.tsx")
+    path = Path("frontend/lib/roles.ts")
     content = path.read_text(encoding="utf-8")
     assert "approve proposed rules" in content
 
