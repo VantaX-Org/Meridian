@@ -194,7 +194,7 @@
     "path": "/mdm",
     "heading": "Overview",
     "knownBad": [
-      "/api/v1/analytics/mdm-health",
+      "/api/v1/mdm-metrics/history",
       "/api/v1/stewardship?item_type=merge_decision"
     ]
   },

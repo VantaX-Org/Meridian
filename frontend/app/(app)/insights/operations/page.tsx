@@ -12,6 +12,7 @@ import { getAssignableUsers } from "@/lib/api/users";
 import {
   getOperational, getSprints, getTeamPerformance, type Bottleneck, type SprintPlan,
 } from "@/lib/api/analytics";
+import { getTriageMetrics, type TriageMetrics } from "@/lib/api/triage";
 import { isListFailure } from "@/lib/error";
 import { fixHref } from "@/lib/drill";
 import { labelOf, plural } from "@/lib/format";
@@ -54,6 +55,44 @@ const sprintColumns: ColumnDef<SprintPlan>[] = [
   { id: "dqs", header: "Score, now to after", cell: ({ row }) => `${row.original.dqs_now ?? "—"} to ${row.original.dqs_projected ?? "—"}` },
   { id: "cost", header: "Estimated cost", cell: ({ row }) => row.original.estimated_cost == null ? "—" : `${row.original.estimated_cost.toLocaleString()} ${row.original.currency}` },
 ];
+
+type OwnerRow = TriageMetrics["backlog_by_owner"][number];
+
+const ownerColumns: ColumnDef<OwnerRow>[] = [
+  { accessorKey: "email", header: "Owner" },
+  { accessorKey: "open", header: "Open", meta: { numeric: true }, cell: ({ row }) => <DrillLink href={`/inbox?assignee=${encodeURIComponent(row.original.user_id)}`}>{row.original.open.toLocaleString()}</DrillLink> },
+  { accessorKey: "at_risk", header: "At risk", meta: { numeric: true }, cell: ({ row }) => row.original.at_risk.toLocaleString() },
+  { accessorKey: "breached", header: "Past due", meta: { numeric: true }, cell: ({ row }) => <span className={row.original.breached ? "m-ink-critical" : undefined}>{row.original.breached.toLocaleString()}</span> },
+];
+
+/** Hours as words: "3.5 h", or "—" before anything was acknowledged or resolved. */
+const hoursOrDash = (h: number | null) => (h == null ? "—" : `${h.toLocaleString(undefined, { maximumFractionDigits: 1 })} h`);
+
+/**
+ * Steward work against its SLA over the last eight weeks (GET /triage/metrics): issues and stewardship tasks
+ * together, with the open backlog per owner. The SLA policies themselves are set in Settings › Triage.
+ */
+function SlaSection() {
+  const q = useQuery({ queryKey: ["triage", "metrics", 8], queryFn: () => getTriageMetrics(8) });
+  const m = q.data;
+  const owners = m?.backlog_by_owner ?? [];
+  return (
+    <Section title="Steward work against the SLA" height={160} query={q} meta={`Issues and stewardship tasks, the last ${m?.weeks ?? 8} weeks`}
+      actions={<Link href="/admin/triage" className="m-text-meta underline underline-offset-2">SLA policies</Link>}>
+      <div className="flex flex-col gap-4">
+        <div className="m-stat-grid">
+          <Stat label="Resolved in time" value={m?.sla_attainment_pct == null ? "—" : pct(m.sla_attainment_pct)}
+            hint={m && m.resolved_total ? `${m.resolved_in_sla.toLocaleString()} of ${m.resolved_total.toLocaleString()} with a due date` : "Nothing with a due date resolved yet"} />
+          <Stat label="Time to acknowledge" value={hoursOrDash(m?.mtta_hours ?? null)} hint="Average, from the SLA start" />
+          <Stat label="Time to close" value={hoursOrDash(m?.mttr_hours ?? null)} hint="Average, from the SLA start" />
+          <Stat label="Breaches" value={m ? m.breach_count.toLocaleString() : "—"} href="/inbox?due=overdue" tone={m && m.breach_count > 0 ? "no-go" : undefined} hint="Open past due, or resolved late" />
+          <Stat label="Unassigned" value={m ? m.unassigned.toLocaleString() : "—"} href="/inbox?view=unassigned" />
+        </div>
+        {owners.length ? <DataTable columns={ownerColumns} data={owners} getRowId={(r) => r.user_id} hideToolbar height="auto" /> : null}
+      </div>
+    </Section>
+  );
+}
 
 function TeamCard() {
   const [userId, setUserId] = useState("");
@@ -171,6 +210,7 @@ export default function OperationsPage() {
           </>
         )}
       </Section>
+      <SlaSection />
       <TeamCard />
       {bottlenecks.length > 0 && (
         <Section title="Bottlenecks" height={120} query={ops} meta="Each waiting stage and what would clear it">

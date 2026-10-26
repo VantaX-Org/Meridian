@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, ChoiceGroup, ConfirmDialog, ErrorState, Input, Mono, Notice, PageHeader, Select, Skeleton, Stat } from "@/design";
+import { Button, ChoiceGroup, ConfirmDialog, ErrorState, Field, Input, Mono, Notice, PageHeader, Select, Skeleton, Stat } from "@/design";
 import { useFindingHref, useLatestVersion } from "@/components/process/shared";
 import { runScopeLabel } from "@/lib/run-scope";
 import {
-  adoptVariant, createModel, getModel, getOverlay, getReference, listModels, listVariants, saveFailure, saveModel,
+  adoptVariant, createModel, deleteModel, getModel, getOverlay, getReference, listModels, listVariants, patchModel, saveFailure, saveModel,
   pptxExportUrl, signavioExportUrl, type SaveFailure,
 } from "@/lib/api/process-designer";
 import { toast } from "sonner";
@@ -167,6 +167,26 @@ function Editor(p: EditorProps) {
     onSuccess: refresh,
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
+  // Rename and delete the open model (PATCH / DELETE /process-designer/models/{id}, permission `analyse`).
+  const modelName = p.models.find((m) => m.id === model)?.name ?? "";
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const rename = useMutation({
+    mutationFn: (name: string) => patchModel(model, { name }),
+    onSuccess: (r) => { setRenaming(null); refresh(); toast.success(`Model renamed to ${r.name}`); },
+    onError: (e) => toast.error(apiErrorMessage(e)),
+  });
+  const remove = useMutation({
+    mutationFn: () => deleteModel(model),
+    onSuccess: () => {
+      setDeleting(false);
+      toast.success(`Model ${modelName} deleted`);
+      void qc.invalidateQueries({ queryKey: queryKeys.processModels() });
+      switchTo("reference");
+    },
+    onError: (e) => toast.error(apiErrorMessage(e)),
+  });
+  const renameTo = renaming?.trim() ?? "";
 
   const saveRef = useRef(() => {});
   useEffect(() => { saveRef.current = () => { if (dirty && editable && !save.isPending) save.mutate(); }; });
@@ -244,6 +264,8 @@ function Editor(p: EditorProps) {
           {!reference ? <VersionsMenu modelId={model} shown={viewingOld ? versionNo : null}
             onPick={(no) => guard("Opening another version drops the edits you have not saved.", "Discard and open", () => go({ v: no ? String(no) : null }))} /> : null}
           {canDesign ? <Button variant={reference ? "primary" : "secondary"} onClick={() => setNaming(naming === null ? "" : null)}>{reference ? "Create a model to edit" : "New model"}</Button> : null}
+          {canDesign && !reference && modelName ? <Button variant="ghost" onClick={() => setRenaming(modelName)}>Rename</Button> : null}
+          {canDesign && !reference && modelName ? <Button variant="ghost" onClick={() => setDeleting(true)}>Delete</Button> : null}
           {canExport ? <Button variant="secondary" disabled={dirty} pending={exportZip.isPending} onClick={() => exportZip.mutate()}>Export to Signavio</Button> : null}
           {canExport ? <Button variant="secondary" disabled={dirty} pending={exportPptx.isPending} onClick={() => exportPptx.mutate()}>Export to PowerPoint</Button> : null}
         </>} />
@@ -252,6 +274,19 @@ function Editor(p: EditorProps) {
         title="Discard unsaved changes?" body={leaving?.body ?? ""}
         confirmLabel={leaving?.confirmLabel ?? "Discard"} cancelLabel="Keep editing" tone="danger"
         onConfirm={() => { const l = leaving; setLeaving(null); setDoc(initial); l?.run(); }} />
+      <ConfirmDialog open={renaming !== null} onOpenChange={(o) => { if (!o) setRenaming(null); }}
+        title="Rename model" confirmLabel="Save name" pending={rename.isPending}
+        confirmDisabled={!renameTo || renameTo === modelName}
+        onConfirm={() => { if (renameTo && renameTo !== modelName) rename.mutate(renameTo); }}
+        body={
+          <Field label="Name">
+            <Input value={renaming ?? ""} autoFocus onChange={(e) => setRenaming(e.target.value)} />
+          </Field>
+        } />
+      <ConfirmDialog open={deleting} onOpenChange={setDeleting} tone="danger"
+        title={`Delete ${modelName}?`} confirmLabel="Delete model" pending={remove.isPending} typeToConfirm={modelName}
+        onConfirm={() => remove.mutate()}
+        body={<p className="m-ink-2">The model and all {currentVersion.toLocaleString()} of its versions are removed for everyone{dirty ? ", with the edits you have not saved" : ""}. This cannot be undone.</p>} />
 
       {naming !== null ? (
         <form className="flex items-center gap-2" onSubmit={(e) => {

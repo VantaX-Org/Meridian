@@ -12,11 +12,18 @@ import { ConfirmDialog, DataTable, ErrorState, Field, Mono, Notice, Skeleton, Te
 import { useRole } from "@/hooks/use-role";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { previewUnmerge } from "@/lib/api/match-review";
-import { getMergeExplanation, revertMergeEvent, unmergeRecords, type PairExplanation } from "@/lib/api/merge-explain";
+import { getClusterGraph, getMergeExplanation, revertMergeEvent, unmergeRecords, type PairExplanation, type WeakChain } from "@/lib/api/merge-explain";
 import { LedgerHead, RowButton, actionColumn } from "./ledger";
 import { pct, show, whyMatched } from "./match-review-model";
 
-type Member = { key: string; pair: PairExplanation | undefined };
+type Member = { key: string; pair: PairExplanation | undefined; links: number | null };
+
+/** Why two members sit in one golden record only through a third (api/services/merge_explain.py cluster_graph). */
+const WEAK_REASON: Record<WeakChain["reason"], string> = {
+  no_direct_score: "they were never scored against each other",
+  direct_score_below_threshold: "their own score is below the auto-merge threshold",
+  do_not_match: "a steward marked them not a match",
+};
 
 /** Fields whose golden value a split would change, as before / after. */
 export function changedFields(before: Record<string, unknown>, after: Record<string, unknown>): { field: string; before: string; after: string }[] {
@@ -30,6 +37,8 @@ export function MergedRecords({ id, onChanged }: { id: string; onChanged: () => 
   const canSplit = useRole().can("approve");
   const key = ["mdm", "merge-explain", id];
   const q = useQuery({ queryKey: key, queryFn: () => getMergeExplanation(id), retry: false, meta: { ignoreError: true } });
+  // The cluster's shape: how many scored links each member has, and members joined only through another.
+  const graph = useQuery({ queryKey: [...key, "cluster-graph"], queryFn: () => getClusterGraph(id), retry: false, meta: { ignoreError: true } });
   const [splitKey, setSplitKey] = useState<string | null>(null);
   const [reason, setReason] = useState("");
 
@@ -55,6 +64,7 @@ export function MergedRecords({ id, onChanged }: { id: string; onChanged: () => 
   // Stable columns: a cell redefined on every render remounts, and its button loses the click.
   const cols = useMemo<ColumnDef<Member>[]>(() => [
     { id: "key", header: "Record", cell: ({ row }) => <Mono>{row.original.key}</Mono> },
+    { id: "links", header: "Links", size: 80, meta: { numeric: true }, cell: ({ row }) => (row.original.links == null ? "" : row.original.links.toLocaleString()) },
     { id: "score", header: "Score", size: 90, meta: { numeric: true }, cell: ({ row }) => (row.original.pair ? pct(row.original.pair.total) : "") },
     { id: "why", header: "Why it was merged", cell: ({ row }) => <span className="m-ink-2">{row.original.pair ? whyMatched(row.original.pair.explanation) : "Merged by a steward"}</span> },
     actionColumn((m) => (canSplit ? <RowButton label={`Split ${m.key} out`} onClick={() => setSplitKey(m.key)}>Split out</RowButton> : null)),
@@ -66,13 +76,28 @@ export function MergedRecords({ id, onChanged }: { id: string; onChanged: () => 
   if (!ex.members.length) return null;
 
   const pairWith = (k: string) => ex.pairs.find((p) => (p.a === k && p.b === ex.key) || (p.b === k && p.a === ex.key)) ?? ex.pairs.find((p) => p.a === k || p.b === k);
-  const rows: Member[] = ex.members.map((k) => ({ key: k, pair: pairWith(k) }));
+  const degree = new Map((graph.data?.nodes ?? []).map((n) => [n.key, n.degree]));
+  const rows: Member[] = ex.members.map((k) => ({ key: k, pair: pairWith(k), links: degree.get(k) ?? null }));
+  const weak = graph.data?.weak_chains ?? [];
   const changes = preview.data ? changedFields(ex.golden_fields, preview.data.golden_fields) : [];
 
   return (
     <section aria-label="Merged records">
       <LedgerHead title="Merged records" meta={`${ex.members.length.toLocaleString()} merged into ${ex.key}`} />
       <DataTable columns={cols} data={rows} getRowId={(r) => r.key} hideToolbar hideSearch height="auto" />
+      {weak.length ? (
+        <div className="mt-2">
+          <Notice tone="warning" title={`${weak.length.toLocaleString()} ${weak.length === 1 ? "pair is" : "pairs are"} joined only through another record`}>
+            <ul className="flex flex-col gap-1">
+              {weak.map((w) => (
+                <li key={`${w.a}|${w.via}|${w.b}`}>
+                  <Mono inline>{w.a}</Mono> and <Mono inline>{w.b}</Mono> are linked through <Mono inline>{w.via}</Mono>: {WEAK_REASON[w.reason] ?? w.reason}
+                </li>
+              ))}
+            </ul>
+          </Notice>
+        </div>
+      ) : null}
       <ConfirmDialog
         open={!!splitKey}
         onOpenChange={(o) => { if (!o) { setSplitKey(null); setReason(""); } }}

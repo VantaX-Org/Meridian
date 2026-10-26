@@ -11,6 +11,8 @@ import { getRelationships } from "@/lib/api/relationships";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { LedgerHead } from "@/components/mdm/ledger";
 import { MergedRecords } from "@/components/mdm/merged-records";
+import { GoldenFields } from "@/components/mdm/golden-fields";
+import { MergeHistory, mergeEventsKey } from "@/components/mdm/merge-history";
 import { GatedPrimary } from "@/components/gated-primary";
 import { GoldenStatusPill, sourceSystems } from "@/components/mdm/golden-status";
 import { useRole } from "@/hooks/use-role";
@@ -21,7 +23,6 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 type Rel = { id: string; relationship_type: string; to_key: string; to_domain: string };
 type Hist = { id: string; changed_at: string; change_type: string; changed_by?: string | null };
-type FieldRow = { field: string; value: unknown };
 /** One golden field and the source system its surviving value came from (source_contributions is keyed by field). */
 type SourceRow = { field: string; system: string; value: unknown; confidence: number; ai: string | null | undefined };
 
@@ -36,10 +37,6 @@ const histCols: ColumnDef<Hist>[] = [
   { id: "when", header: "When", accessorFn: (e) => e.changed_at, cell: ({ row }) => formatDate(row.original.changed_at, "datetime") },
   { id: "type", header: "Change", accessorFn: (e) => labelOf(e.change_type) },
   { id: "by", header: "By", accessorFn: (e) => e.changed_by ?? "System" },
-];
-const fieldCols: ColumnDef<FieldRow>[] = [
-  { id: "field", header: "Field", cell: ({ row }) => <Mono>{row.original.field}</Mono> },
-  { id: "value", header: "Value", accessorFn: (r) => show(r.value) },
 ];
 const sourceCols: ColumnDef<SourceRow>[] = [
   { id: "field", header: "Field", cell: ({ row }) => <Mono>{row.original.field}</Mono> },
@@ -76,6 +73,7 @@ export default function MasterRecordPage() {
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: queryKeys.masterRecord(id) });
     qc.invalidateQueries({ queryKey: queryKeys.masterRecordHistory(id) });
+    qc.invalidateQueries({ queryKey: mergeEventsKey(id) });
   };
   const promote = useMutation({
     mutationFn: () => promoteMasterRecord(id, true),
@@ -137,7 +135,6 @@ export default function MasterRecordPage() {
   const systems = sourceSystems(record.source_contributions);
   const relationships = relationshipsQuery.data?.relationships ?? [];
   const history = historyQuery.data ?? [];
-  const fieldRows: FieldRow[] = fields.map(([field, value]) => ({ field, value }));
   const sourceRows: SourceRow[] = contributions.map(([field, c]) => ({ field, system: c.source_system, value: c.value, confidence: c.confidence, ai: c.ai_recommendation }));
 
   return (
@@ -175,6 +172,7 @@ export default function MasterRecordPage() {
           <DataTable columns={histCols} getRowId={(r) => r.id} data={history as Hist[]} height="auto" />
         )}
       </section>
+      <MergeHistory id={id} />
         </>}
         overview={<>
       <section className="flex items-center gap-2">
@@ -221,14 +219,7 @@ export default function MasterRecordPage() {
         onConfirm={() => writeback.mutate()}
       />
 
-      <section aria-label="Golden fields">
-        <LedgerHead title="Golden fields" meta={String(fields.length)} />
-        {fields.length === 0 ? (
-          <EmptyState variant="inline" title="No golden fields recorded" detail="Fields fill in when the golden record is built from its sources." action={<Link className="m-ink-accent-ink hover:underline" href="/mdm/survivorship">Survivorship rules</Link>} />
-        ) : (
-          <DataTable columns={fieldCols} getRowId={(r) => r.field} data={fieldRows} height="auto" />
-        )}
-      </section>
+      <GoldenFields id={record.id} fields={record.golden_fields} onChanged={invalidate} />
 
       <section aria-label="Source contributions">
         <LedgerHead title="Source contributions" meta={`${contributions.length.toLocaleString()} ${contributions.length === 1 ? "field" : "fields"} from ${systems.length.toLocaleString()} ${systems.length === 1 ? "system" : "systems"}`} />

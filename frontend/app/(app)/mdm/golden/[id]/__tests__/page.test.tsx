@@ -43,6 +43,8 @@ describe("MasterRecordPage", () => {
       golden_record_id: "m1", key: "MARA-1000", domain: "material_master", members: [], golden_fields: {},
       steward_overrides: {}, survivorship: {}, pairs: [], thresholds: { auto_merge: 0.95, review_floor: 0.3 },
     });
+    vi.spyOn(mergeExplainApi, "getClusterGraph").mockResolvedValue({ golden_record_id: "m1", nodes: [], edges: [], weak_chains: [], auto_merge: 0.95 });
+    vi.spyOn(mergeExplainApi, "getMergeEvents").mockResolvedValue([]);
   });
 
   it("renders the record's SAP key and golden fields", async () => {
@@ -203,6 +205,88 @@ describe("MasterRecordPage", () => {
     fireEvent.change(within(dialog).getByRole("textbox"), { target: { value: "Different material" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Split out" }));
     await waitFor(() => expect(unmerge).toHaveBeenCalledWith("m1", ["MARA-2000"], "Different material"));
+  });
+
+  it("shows each member's links and warns about a member joined only through another", async () => {
+    vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue(record);
+    vi.spyOn(masterRecordsApi, "getMasterRecordHistory").mockResolvedValue([]);
+    vi.spyOn(relationshipsApi, "getRelationships").mockResolvedValue({ relationships: [], total: 0 });
+    vi.spyOn(mergeExplainApi, "getMergeExplanation").mockResolvedValue({
+      golden_record_id: "m1", key: "MARA-1000", domain: "material_master", members: ["MARA-2000", "MARA-3000"],
+      golden_fields: {}, steward_overrides: {}, survivorship: {}, pairs: [], thresholds: { auto_merge: 0.95, review_floor: 0.3 },
+    });
+    vi.spyOn(mergeExplainApi, "getClusterGraph").mockResolvedValue({
+      golden_record_id: "m1", auto_merge: 0.95, edges: [],
+      nodes: [{ key: "MARA-1000", degree: 1, is_survivor: true }, { key: "MARA-2000", degree: 2, is_survivor: false }, { key: "MARA-3000", degree: 1, is_survivor: false }],
+      weak_chains: [{ a: "MARA-1000", via: "MARA-2000", b: "MARA-3000", reason: "no_direct_score" }],
+    });
+    renderWithQuery(<MasterRecordPage />);
+    expect(await screen.findByText("1 pair is joined only through another record", undefined, { timeout: 4000 })).toBeInTheDocument();
+    expect(screen.getByText(/they were never scored against each other/)).toBeInTheDocument();
+    const merged = screen.getByRole("region", { name: "Merged records" });
+    expect(within(merged).getByRole("columnheader", { name: "Links" })).toBeInTheDocument();
+    const row = within(merged).getAllByText("MARA-2000").map((el) => el.closest("tr")).find(Boolean) as HTMLElement;
+    expect(within(row).getByText("2")).toBeInTheDocument();
+  });
+
+  it("lists the merge history on the History tab", async () => {
+    vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue(record);
+    vi.spyOn(masterRecordsApi, "getMasterRecordHistory").mockResolvedValue([]);
+    vi.spyOn(relationshipsApi, "getRelationships").mockResolvedValue({ relationships: [], total: 0 });
+    vi.spyOn(mergeExplainApi, "getMergeEvents").mockResolvedValue([
+      { id: "e2", event_type: "unmerge", member_keys: ["MARA-2000"], actor: null, reason: "Different material", before: null, after: null, reverses_event_id: null, reversed: true, created_at: "2026-02-01T10:00:00Z" },
+      { id: "e1", event_type: "merge", member_keys: ["MARA-2000"], actor: null, reason: null, before: null, after: null, reverses_event_id: null, reversed: false, created_at: "2026-01-01T10:00:00Z" },
+    ]);
+    renderWithQuery(<MasterRecordPage />);
+    fireEvent.click(await screen.findByRole("tab", { name: "History" }));
+    const section = await screen.findByRole("region", { name: "Merge history" });
+    expect(await within(section).findByText("Split out")).toBeInTheDocument();
+    expect(within(section).getByText("Reversed")).toBeInTheDocument();
+    expect(within(section).getByText("Different material")).toBeInTheDocument();
+    expect(within(section).getByText("Merged")).toBeInTheDocument();
+  });
+
+  it("lets an approver override a golden field with a reason, and shows who chose each value", async () => {
+    vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue(record);
+    vi.spyOn(masterRecordsApi, "getMasterRecordHistory").mockResolvedValue([]);
+    vi.spyOn(relationshipsApi, "getRelationships").mockResolvedValue({ relationships: [], total: 0 });
+    vi.spyOn(mergeExplainApi, "getMergeExplanation").mockResolvedValue({
+      golden_record_id: "m1", key: "MARA-1000", domain: "material_master", members: [],
+      golden_fields: record.golden_fields, steward_overrides: { MEINS: "EA" },
+      survivorship: {
+        MAKTX: { value: "Bolt", winner_key: "MARA-1000", rule: "source_priority", losers: [] },
+        MEINS: { value: "EA", winner_key: null, rule: "steward_override", losers: [] },
+      },
+      pairs: [], thresholds: { auto_merge: 0.95, review_floor: 0.3 },
+    });
+    const save = vi.spyOn(mergeExplainApi, "setStewardOverrides").mockResolvedValue({
+      golden_record_id: "m1", event_id: "e9", golden_fields: { ...record.golden_fields, MAKTX: "Hex bolt" }, steward_overrides: { MEINS: "EA", MAKTX: "Hex bolt" },
+    });
+    renderWithQuery(<MasterRecordPage />);
+    const fieldsTable = await screen.findByRole("region", { name: "Golden fields" });
+    expect(await within(fieldsTable).findByText("Steward override")).toBeInTheDocument();
+    expect(within(fieldsTable).getByText(/Source priority/)).toBeInTheDocument();
+    expect(within(fieldsTable).getByRole("button", { name: "Clear the override on MEINS" })).toBeInTheDocument();
+    fireEvent.click(within(fieldsTable).getByRole("button", { name: "Override MAKTX" }));
+    const dialog = await screen.findByRole("dialog");
+    const confirm = within(dialog).getByRole("button", { name: "Save override" });
+    fireEvent.change(within(dialog).getByLabelText("New value"), { target: { value: "Hex bolt" } });
+    expect(confirm).toBeDisabled();
+    fireEvent.change(within(dialog).getByLabelText("Reason (required), kept in the merge history"), { target: { value: "Supplier catalogue" } });
+    fireEvent.click(confirm);
+    await waitFor(() => expect(save).toHaveBeenCalledWith("m1", { MAKTX: "Hex bolt" }, "Supplier catalogue"));
+  });
+
+  it("offers no override without approve", async () => {
+    role.denied = new Set(["approve"]);
+    vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue(record);
+    vi.spyOn(masterRecordsApi, "getMasterRecordHistory").mockResolvedValue([]);
+    vi.spyOn(relationshipsApi, "getRelationships").mockResolvedValue({ relationships: [], total: 0 });
+    renderWithQuery(<MasterRecordPage />);
+    const fieldsTable = await screen.findByRole("region", { name: "Golden fields" });
+    await within(fieldsTable).findByText("MAKTX");
+    expect(within(fieldsTable).queryByRole("button", { name: /Override/ })).toBeNull();
+    role.denied = new Set();
   });
 
 });

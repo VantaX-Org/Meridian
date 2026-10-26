@@ -1,5 +1,5 @@
 // frontend/app/(app)/runs/[versionId]/__tests__/page.test.tsx
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as analyticsApi from "@/lib/api/analytics";
@@ -214,6 +214,35 @@ describe("RunDetailPage", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Re-run analysis" })).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: "Re-run analysis" }));
     await waitFor(() => expect(analyse).toHaveBeenCalledWith("v2"));
+  });
+
+  it("re-runs the AI pipeline after the confirm dialog", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue({ ...current, status: "agents_complete" });
+    const agents = vi.spyOn(versionsApi, "runAgents").mockResolvedValue({ version_id: "v2", job_id: "j1", status: "agents_enqueued" });
+    renderWithQuery(<RunDetailPage />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Re-run AI analysis" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Re-run AI analysis" }));
+    expect(agents).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Re-run AI analysis" }));
+    await waitFor(() => expect(agents).toHaveBeenCalledWith("v2"));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("AI analysis started. Progress shows above."));
+  });
+
+  it("hides Re-run AI analysis on a run the route refuses", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue({ ...current, status: "ai_enriched" });
+    renderWithQuery(<RunDetailPage />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Re-run analysis" })).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "Re-run AI analysis" })).toBeNull();
+  });
+
+  it("offers no AI re-run without the analyse permission", async () => {
+    can.mockImplementation((action: string) => action === "export");
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+    renderWithQuery(<RunDetailPage />);
+    await waitFor(() => expect(screen.getByText("Oct 8")).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "Re-run AI analysis" })).toBeNull();
+    can.mockImplementation((action: string) => action === "analyse" || action === "export");
   });
 
   it("shows the Baseline pill and the unpin action for a pinned run", async () => {
