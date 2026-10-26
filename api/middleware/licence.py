@@ -612,6 +612,7 @@ def _check_feature_gate(path: str, licensed_features: list[str]) -> JSONResponse
                     {
                         "error": "feature_not_licenced",
                         "feature": feature,
+                        "detail": "This feature is not included in this deployment's licence.",
                         "upgrade_url": "https://meridian-hq.vantax.co.za/upgrade",
                     },
                     status_code=402,
@@ -722,6 +723,25 @@ async def revalidate() -> tuple[dict | None, str]:
     return result, _record_validation(result)
 
 
+# A licence lock blocks every gated route, so its body says so in ``detail`` (the field every UI surface shows);
+# without it the frontend read a lock as "Could not reach the server." or "You do not have access to this."
+LICENCE_LOCK_DETAIL: dict[str, str] = {
+    "licence_invalid": "This deployment's licence is not valid ({reason}). Ask your administrator to renew it in Meridian HQ.",
+    "licence_unverified": "Meridian could not reach Meridian HQ to validate its licence, so features stay locked "
+                          "until it does. Check that the API can reach the licence server.",
+    "licence_server_cutoff": "Meridian HQ has been unreachable for too long to keep running on the last licence. "
+                             "Check that the API can reach the licence server.",
+}
+
+
+def licence_lock_response(error: str, reason: str | None, status_code: int) -> JSONResponse:
+    """The 402/403 a licence lock answers with: ``error`` and ``reason`` for code, ``detail`` for people."""
+    return JSONResponse(
+        {"error": error, "reason": reason, "detail": LICENCE_LOCK_DETAIL[error].format(reason=reason or "unknown")},
+        status_code=status_code,
+    )
+
+
 class LicenceMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         # Only check /api/v1/* routes
@@ -755,10 +775,7 @@ class LicenceMiddleware(BaseHTTPMiddleware):
                     response.headers["X-Licence-Warning"] = "expired_grace"
                 return response
             else:
-                return JSONResponse(
-                    {"error": "licence_invalid", "reason": cached.get("reason")},
-                    status_code=402,
-                )
+                return licence_lock_response("licence_invalid", cached.get("reason"), 402)
 
         # Cache miss — call licence server
         result, outcome = await revalidate()
@@ -784,21 +801,15 @@ class LicenceMiddleware(BaseHTTPMiddleware):
             logger.error(
                 "Licence server unreachable and no valid cached licence — denying"
             )
-            return JSONResponse(
-                {"error": "licence_unverified", "reason": "licence_server_unreachable"},
-                status_code=403,
-            )
+            return licence_lock_response("licence_unverified", "licence_server_unreachable", 403)
 
         # Task 08: Check cutoff rejection reason
         if outcome == "cutoff":
-            return JSONResponse(
-                {"error": "licence_server_cutoff", "reason": "Licence server unreachable for >2hrs. Please restore connection."},
-                status_code=403,
-            )
+            return licence_lock_response("licence_server_cutoff", "licence_server_unreachable_cutoff", 403)
         if outcome == "grace":
             response = await _serve_entitled(request, call_next, _cache["response"])
             response.headers["X-Licence-Warning"] = "expired_grace"
             return response
         if outcome == "invalid":
-            return JSONResponse({"error": "licence_invalid", "reason": result.get("reason", "unknown")}, status_code=402)
+            return licence_lock_response("licence_invalid", result.get("reason", "unknown"), 402)
         return await _serve_entitled(request, call_next, result)

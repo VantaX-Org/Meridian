@@ -59,6 +59,21 @@ export function accessDeniedFrom(status: number | undefined, data: unknown): Acc
   return { resource: typeof d.resource === "string" ? d.resource : null, action: d.action };
 }
 
+/**
+ * The licence middleware's lock errors (api/middleware/licence.py): every gated route answers one of these, so the
+ * app cannot work and goes to /licence-error, which says why. Before, each page read the lock as its own failure
+ * ("Could not reach the server.", "You do not have access to this.") and the nav emptied with no word of the licence.
+ * `feature_not_licenced` is not a lock: the rest of the app works, so the page handles it.
+ */
+const LICENCE_LOCKS = new Set(["licence_invalid", "licence_unverified", "licence_server_cutoff"]);
+
+/** The lock a response carries (`{"error": "licence_unverified", ...}` on a 402 or 403), else null. */
+export function licenceLockFrom(status: number | undefined, data: unknown): string | null {
+  if ((status !== 402 && status !== 403) || !data || typeof data !== "object") return null;
+  const code = (data as { error?: unknown }).error;
+  return typeof code === "string" && LICENCE_LOCKS.has(code) ? code : null;
+}
+
 const TOKEN_KEY = "mn_auth_token";
 const PER_PAGE_CAP = 100;
 let warnedPerPageCap = false;
@@ -95,6 +110,11 @@ function instrument(client: AxiosInstance): AxiosInstance {
         if (error.response.status === 401 && !String(error.config?.url ?? "").endsWith("/api/v1/auth/login")) {
           localStorage.removeItem(TOKEN_KEY);
           window.location.href = new URL("/sign-in", window.location.origin).href;
+          return Promise.reject(error);
+        }
+        const lock = licenceLockFrom(error.response.status, error.response.data);
+        if (lock && window.location.pathname !== "/licence-error") {
+          window.location.href = new URL(`/licence-error?reason=${lock}`, window.location.origin).href;
           return Promise.reject(error);
         }
         const denied = accessDeniedFrom(error.response.status, error.response.data);
