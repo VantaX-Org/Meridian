@@ -10,6 +10,7 @@ import { HEALTH_LABEL, HEALTH_VERDICT, dqsTrend, latestDqs, nextRun } from "./_h
 import { useUrlState } from "@/hooks/use-url-state";
 import { usePermissions, useSystemScope } from "@/lib/permissions";
 import { ConnectSystemDialog } from "@/components/systems/connect-system-dialog";
+import { RunAnalysis } from "@/app/(app)/insights/_components/RunAnalysis";
 import { getSystemModules, getSystems } from "@/lib/api/connectivity";
 import { getSystemVersions } from "@/lib/api/system-objects";
 import { getSyncProfiles } from "@/lib/api/systems";
@@ -257,6 +258,7 @@ export default function SystemsPage() {
           actions={
             <>
               <ExportMenu options={systems.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} />
+              {systems.length > 0 ? <RunAnalysis variant="secondary" /> : null}
               {canConnect ? <Button onClick={() => openConnect(true)}>Connect system</Button> : null}
             </>
           }

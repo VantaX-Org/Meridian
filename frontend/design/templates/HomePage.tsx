@@ -81,7 +81,7 @@ const loadingSkeleton = (
  * data-specific piece; this component places it and owns the loading, no-data and error geometry.
  */
 export function HomePage({
-  state, verdict, run, scope, journey, error, aside, dimensions, objects, trend, heatmap, work, lists, headerActions, onboarding, cells, explain, workFirst,
+  state, verdict, run, scope, journey, error, aside, dimensions, objects, trend, heatmap, work, lists, headerActions, emptyActions, onboarding, cells, explain, workFirst,
 }: {
   persona: string;
   /** "empty" is a fresh install (no analysis yet): the journey to a first score. */
@@ -107,6 +107,8 @@ export function HomePage({
   work?: ReactNode;
   lists?: ReactNode;
   headerActions?: ReactNode;
+  /** Header actions on a fresh install (state "empty"): the other ways to start a run, beside the journey's step. */
+  emptyActions?: ReactNode;
   /** First-run tour offer and setup checklist, one compact row (components/help/home-onboarding.tsx); shown once the page has loaded. */
   onboarding?: ReactNode;
   /** The four sentences (situation, what changed, why, do next), set under the hero. */
@@ -120,7 +122,7 @@ export function HomePage({
     <PageHeader
       title="Home"
       meta={state === "ready" ? scope : undefined}
-      actions={state === "ready" ? headerActions : undefined}
+      actions={state === "ready" ? headerActions : state === "empty" ? emptyActions : undefined}
     />
   );
   const hasAside = !!(aside || dimensions);

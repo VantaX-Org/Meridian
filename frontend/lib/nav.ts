@@ -23,7 +23,7 @@ import {
   IconActivity, IconBell, IconBook, IconBranch, IconChart, IconCompass, IconContract, IconCube, IconDatabase, IconDraft,
   IconEraser, IconFlag, IconFunnel, IconGauge, IconGear, IconHistory, IconHome, IconImport, IconInbox, IconKey, IconLayers,
   IconList, IconLog, IconMapping, IconMerge, IconMigration, IconModel, IconPeople, IconProcess, IconRules, IconServer,
-  IconShieldAlert, IconSliders, IconTrend, IconUserShield,
+  IconGrid, IconShieldAlert, IconSliders, IconTrend, IconUserShield,
 } from "@/design/icons";
 import type { Role } from "@/hooks/use-role";
 import { homeHrefForRole } from "@/lib/persona";
@@ -145,7 +145,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         anyOf: ["view"],
         keywords: "readiness impact owners duplicates executive summary forecast process lineage mining",
         children: [
-          { href: "/insights/exec", requires: req("reports", "view"), label: "Summary", icon: IconGauge, keywords: "executive summary exec overview narrative board pack reports pdf", aliases: ["/insights/reports"] },
+          { href: "/insights/exec", requires: req("reports", "view"), label: "Summary", icon: IconGauge, keywords: "executive summary exec overview narrative" },
+          { href: "/insights/reports", requires: req("reports", "view"), label: "Reports", icon: IconLog, keywords: "reports board pack pdf excel export download share link" },
           { href: "/insights/rules", requires: req("reports", "view"), label: "Explore", icon: IconCompass, keywords: "rule ranking failing impact pareto root cause field value at risk lineage patterns mining duplicates", aliases: ["/insights/impact", "/insights/lineage", "/insights/mining", "/insights/duplicates"] },
           { href: "/insights/readiness", requires: req("reports", "view"), label: "Readiness", icon: IconFlag, keywords: "waves go no-go blockers migration cutover process readiness process data readiness", aliases: ["/insights/process"] },
           { href: "/insights/owners", requires: req("reports", "view"), label: "Operate", icon: IconPeople, keywords: "owners digest steward operations sprints bottlenecks capacity runs fix queue", aliases: ["/insights/operations"] },
@@ -182,6 +183,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           { href: "/rules/drafts", requires: [req("rules", "edit"), req("rules", "approve")], label: "Rule drafts", icon: IconDraft, anyOf: ["manage_rules", "review_ai_rules"], keywords: "rule authoring draft review ai proposals" },
           { href: "/rules/dictionary", requires: req("rules", "view"), label: "Dictionary", icon: IconBook, anyOf: ["view"], keywords: "ddic data dictionary fields" },
           { href: "/rules/scoring", requires: req("rules", "view"), label: "Scoring and alerts", icon: IconSliders, anyOf: ["view"], keywords: "weights thresholds" },
+          { href: "/rules/learned", requires: req("rules", "view"), label: "Learned rules", icon: IconRules, anyOf: ["view"], keywords: "learned mined proposed rules patterns approve reject" },
         ],
       },
     ],
@@ -191,7 +193,17 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     items: [
       { href: "/systems", requires: req("systems", "view"), label: "Systems", icon: IconServer, keywords: "sap connect ecc s4hana discover objects health sync jobs download history schedule" },
       { href: "/import", requires: req("extraction", "create"), label: "Import file", icon: IconImport, licenceKey: "import", anyOf: ["upload"], keywords: "upload load data file csv xlsx" },
-      { href: "/migration", requires: req("analysis", "run"), label: "Migration", icon: IconMigration, anyOf: ["analyse"], keywords: "source destination transfer wave cutover readiness" },
+      {
+        href: "/migration",
+        requires: req("analysis", "run"),
+        label: "Migration",
+        icon: IconMigration,
+        anyOf: ["analyse"],
+        keywords: "source destination transfer wave cutover readiness",
+        children: [
+          { href: "/migration/dry-run", requires: req("analysis", "run"), label: "Migration dry run", icon: IconBranch, anyOf: ["analyse"], keywords: "dry run rehearsal load simulate migration" },
+        ],
+      },
     ],
   },
   {
@@ -205,9 +217,68 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       { href: "/admin/roles", requires: req("users", "admin"), label: "Roles and access", icon: IconKey, anyOf: ["manage_users"], keywords: "roles grants scopes access requests permissions" },
       { href: "/admin/audit", requires: [req("audit", "view"), req("users", "admin")], label: "Audit log", icon: IconLog, anyOf: ["view_audit", "manage_users"], keywords: "audit log ai decisions role changes" },
       { href: "/admin/settings", requires: req("rules", "view"), label: "Settings", icon: IconGear, anyOf: SETTINGS_PERMISSIONS, keywords: "preferences config", children: SETTINGS_ITEMS },
+      { href: "/admin/billing", requires: req("rules", "admin"), label: "Exception billing", icon: IconList, anyOf: ["manage_settings"], keywords: "billing tiers resolved exceptions cost invoice month" },
+      { href: "/admin/features", requires: req("users", "admin"), label: "All features", icon: IconGrid, anyOf: ["manage_users"], keywords: "all features index every page map sitemap" },
     ],
   },
 ];
+
+/**
+ * Pages opened from inside another page rather than a menu entry: the insight views' tabs, the bell's full list, the
+ * help and user menus, the other personas' homes and the design library. The admin's All features index
+ * (/admin/features) lists them beside the nav, so every page under app/(app) is one click from the More panel.
+ * Gated like nav items; hrefs are never resolved (a persona home here is that persona's page, not the viewer's).
+ */
+export const INDEX_ONLY_GROUPS: readonly NavGroup[] = [
+  {
+    group: "Analysis",
+    items: [
+      { href: "/insights/trends", requires: req("reports", "view"), label: "Trends", icon: IconTrend, anyOf: ["view"] },
+      { href: "/insights/forecast", requires: req("reports", "view"), label: "Forecast", icon: IconTrend, anyOf: ["view"] },
+      { href: "/insights/impact", requires: req("reports", "view"), label: "Value at risk", icon: IconCompass, anyOf: ["view"] },
+      { href: "/insights/lineage", requires: req("reports", "view"), label: "Lineage", icon: IconCompass, anyOf: ["view"] },
+      { href: "/insights/mining", requires: req("reports", "view"), label: "Patterns", icon: IconCompass, anyOf: ["view"] },
+      { href: "/insights/duplicates", requires: req("reports", "view"), label: "Duplicates", icon: IconMerge, anyOf: ["view"] },
+      { href: "/insights/process", requires: req("reports", "view"), label: "Process data readiness", icon: IconFlag, anyOf: ["view"] },
+      { href: "/insights/operations", requires: req("reports", "view"), label: "Operations", icon: IconPeople, anyOf: ["view"] },
+      { href: "/home/steward", requires: req("analysis", "view"), label: "Steward home", icon: IconHome, anyOf: ["view"] },
+      { href: "/home/basis", requires: req("analysis", "view"), label: "SAP Basis home", icon: IconHome, anyOf: ["view"] },
+      { href: "/home/process", requires: req("process", "view"), label: "Process home", icon: IconHome, anyOf: ["view"] },
+    ],
+  },
+  {
+    group: "Help and account",
+    items: [
+      { href: "/inbox/notifications", requires: req("analysis", "view"), label: "Notifications", icon: IconBell, anyOf: ["view"] },
+      { href: "/search", requires: req("analysis", "view"), label: "Search", icon: IconCompass, anyOf: ["view"] },
+      { href: "/docs", requires: req("analysis", "view"), label: "Documentation", icon: IconBook, anyOf: ["view"] },
+      { href: "/me/preferences", requires: req("analysis", "view"), label: "Preferences", icon: IconSliders, anyOf: ["view"] },
+      { href: "/design", requires: req("users", "admin"), label: "Design library", icon: IconLayers, anyOf: ["manage_users"] },
+    ],
+  },
+];
+
+/**
+ * The All features index: every visible nav page (children included, hrefs resolved for the viewer) then every
+ * visible index-only page, grouped by section, each href once.
+ */
+export function featureIndex(
+  gate: NavGate,
+  resolve: (href: string) => string = (h) => h,
+): { group: string; items: NavItem[] }[] {
+  const seen = new Set<string>();
+  const out = new Map<string, NavItem[]>();
+  const push = (group: string, item: NavItem) => {
+    if (seen.has(item.href)) return;
+    seen.add(item.href);
+    out.set(group, [...(out.get(group) ?? []), item]);
+  };
+  for (const g of visibleNav(gate)) {
+    for (const i of flattenNav(g.items)) push(g.group, { ...i, href: resolve(i.href), children: undefined });
+  }
+  for (const g of filterGroups(INDEX_ONLY_GROUPS, gate)) for (const i of g.items) push(g.group, i);
+  return [...out].map(([group, items]) => ({ group, items }));
+}
 
 /**
  * The Rail's split of an already-visible nav: the main groups' top-level items (the pills) and every other
@@ -318,8 +389,12 @@ function filterItems(items: readonly NavItem[], gate: NavGate): NavItem[] {
 
 /** The nav as this user may see it: role and licence filters, empty groups dropped. */
 export function visibleNav(gate: NavGate): NavGroup[] {
+  return filterGroups(NAV_GROUPS, gate);
+}
+
+function filterGroups(groups: readonly NavGroup[], gate: NavGate): NavGroup[] {
   const has = gate.has;
-  return NAV_GROUPS.filter((g) => allowed(g.anyOf, gate.can))
+  return groups.filter((g) => allowed(g.anyOf, gate.can))
     .filter((g) => !has || !g.requiresAny || g.requiresAny.some((r) => has(r.resource, r.action)))
     .map((g) => ({ ...g, items: filterItems(g.items, gate) }))
     .filter((g) => g.items.length > 0);

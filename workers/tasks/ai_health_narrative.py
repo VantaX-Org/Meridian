@@ -274,7 +274,7 @@ def _generate_for_tenant(engine, tenant_id: str) -> None:
                 FROM users u
                 WHERE u.tenant_id = :tid
                   AND u.is_active = true
-                  AND u.role IN ('admin', 'steward')
+                  AND u.role IN ('admin', 'platform_admin', 'steward', 'data_steward')
             """),
             {
                 "tid": tenant_id,

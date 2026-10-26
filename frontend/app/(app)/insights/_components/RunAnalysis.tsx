@@ -30,7 +30,7 @@ export function RunAnalysis({ variant = "secondary" }: { variant?: "primary" | "
         <div className="flex flex-col gap-4">
           <Select label="System" value={chosen} onValueChange={setSystemId} placeholder="Choose a system" options={list.map((s) => ({ value: s.id, label: s.name }))} />
           {systems.isError ? <p role="alert" className="m-text-body">The systems did not load. <button type="button" className="m-ink-accent underline underline-offset-2" onClick={() => void systems.refetch()}>Retry</button></p> : null}
-          {systems.isSuccess && list.length === 0 ? <p className="m-text-body m-ink-2">No SAP system is connected yet. <Link href="/systems" className="m-ink-accent underline underline-offset-2">Connect a system</Link></p> : null}
+          {systems.isSuccess && list.length === 0 ? <p className="m-text-body m-ink-2">No SAP system is connected yet. <Link href="/systems?connect=1" className="m-ink-accent underline underline-offset-2">Connect a system</Link>{can("upload") ? <>, or <Link href="/import" className="m-ink-accent underline underline-offset-2">import a file</Link> to start without one</> : null}.</p> : null}
           {chosen ? <ScopePicker id={chosen} onDownloaded={() => { setOpen(false); router.push("/runs"); }} /> : null}
         </div>
       </Drawer>

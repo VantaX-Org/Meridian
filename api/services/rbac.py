@@ -93,6 +93,12 @@ PERSONA_ROLES: dict[str, set[str]] = {
     "process_analyst": _READ | {"run_process_discovery", "export_process"},
 }
 
+# The admin sees every feature (owner requirement): platform_admin and the legacy admin hold the union of every
+# action any built-in role holds, so an action added to another role later never leaves the admin out.
+ALL_ACTIONS: frozenset[str] = frozenset().union(*PERMISSIONS.values(), *PERSONA_ROLES.values())
+PERMISSIONS["admin"] = set(ALL_ACTIONS)
+PERSONA_ROLES["platform_admin"] = set(ALL_ACTIONS)
+
 # Persona key -> legacy key whose special-cased behaviour it inherits.
 PERSONA_ALIAS: dict[str, str] = {
     "programme_lead": "manager", "data_steward": "steward",
