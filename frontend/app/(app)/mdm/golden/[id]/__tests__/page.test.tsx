@@ -2,8 +2,8 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
-import { toast } from "@/design";
 import * as masterRecordsApi from "@/lib/api/master-records";
+import * as goldenWritebackApi from "@/lib/api/golden-writeback";
 import * as relationshipsApi from "@/lib/api/relationships";
 import * as mergeExplainApi from "@/lib/api/merge-explain";
 import * as matchReviewApi from "@/lib/api/match-review";
@@ -72,41 +72,33 @@ describe("MasterRecordPage", () => {
     expect(within(maktx).getByText("80%")).toBeInTheDocument();
   });
 
-  it("names the real target systems before a write-back and reports the outcome", async () => {
-    vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue(record);
-    const history = vi.spyOn(masterRecordsApi, "getMasterRecordHistory").mockResolvedValue([]);
-    vi.spyOn(relationshipsApi, "getRelationships").mockResolvedValue({ relationships: [], total: 0 });
-    const writeback = vi.spyOn(masterRecordsApi, "writebackMasterRecord").mockResolvedValue({
-      record_id: "m1", domain: "material_master", golden_fields: record.golden_fields, writeback_supported: true, message: "Written",
-    });
-    const success = vi.spyOn(toast, "success");
-    renderWithQuery(<MasterRecordPage />);
-    fireEvent.click(await screen.findByRole("button", { name: "Write back" }));
-    const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText("Target systems: ECC, S4HANA_CLOUD")).toBeInTheDocument();
-    expect(within(dialog).queryByText(/Target systems?: .*MATKL/)).not.toBeInTheDocument();
-    const before = history.mock.calls.length;
-    fireEvent.click(within(dialog).getByRole("button", { name: "Write back" }));
-    await waitFor(() => expect(writeback).toHaveBeenCalledWith("m1"));
-    await waitFor(() => expect(success).toHaveBeenCalledWith("MARA-1000 written back to ECC, S4HANA_CLOUD"));
-    // The history refreshes so the write-back shows up there.
-    await waitFor(() => expect(history.mock.calls.length).toBeGreaterThan(before));
-  });
-
-  it("says when the API only returned the values instead of claiming a write", async () => {
+  it("mounts the SAP write-back for a golden record and opens it with the target systems", async () => {
     vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue(record);
     vi.spyOn(masterRecordsApi, "getMasterRecordHistory").mockResolvedValue([]);
     vi.spyOn(relationshipsApi, "getRelationships").mockResolvedValue({ relationships: [], total: 0 });
-    vi.spyOn(masterRecordsApi, "writebackMasterRecord").mockResolvedValue({
-      record_id: "m1", domain: "material_master", golden_fields: {}, writeback_supported: false, message: "Apply the findings via 4-eyes.",
+    vi.spyOn(goldenWritebackApi, "getWritebackRequests").mockResolvedValue({ requests: [] });
+    const preview = vi.spyOn(goldenWritebackApi, "getWritebackPreview").mockResolvedValue({
+      record_id: "m1", domain: "material_master", sap_object_key: "MARA-1000", golden_fields: record.golden_fields,
+      writeback_supported: false, live_enabled: false, message: "Write-back is not supported for this object.",
+      targets: [{ system_id: "s1", system_name: "ECC PRD", system_type: "ecc", supported: false, method: null,
+        reason: "No verified BAPI_MATERIAL_SAVEDATA parameter mapping", fields: [] }],
+      unresolved_sources: [],
     });
-    const success = vi.spyOn(toast, "success");
-    const info = vi.spyOn(toast, "info");
     renderWithQuery(<MasterRecordPage />);
-    fireEvent.click(await screen.findByRole("button", { name: "Write back" }));
-    fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Write back" }));
-    await waitFor(() => expect(info).toHaveBeenCalledWith("Not written to ECC, S4HANA_CLOUD. Apply the findings via 4-eyes."));
-    expect(success).not.toHaveBeenCalled();
+    fireEvent.click(await screen.findByRole("button", { name: "Write back to SAP" }));
+    const drawer = await screen.findByRole("dialog");
+    await waitFor(() => expect(preview).toHaveBeenCalledWith("m1"));
+    expect(await within(drawer).findByText("ECC PRD")).toBeInTheDocument();
+    expect(within(drawer).getByRole("button", { name: "Simulate" })).toBeDisabled();
+  });
+
+  it("offers no write-back before the record is golden", async () => {
+    vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue({ ...record, status: "candidate" });
+    vi.spyOn(masterRecordsApi, "getMasterRecordHistory").mockResolvedValue([]);
+    vi.spyOn(relationshipsApi, "getRelationships").mockResolvedValue({ relationships: [], total: 0 });
+    renderWithQuery(<MasterRecordPage />);
+    await screen.findByText("MARA-1000");
+    expect(screen.queryByRole("button", { name: "Write back to SAP" })).not.toBeInTheDocument();
   });
 
   it.each([

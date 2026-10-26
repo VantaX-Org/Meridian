@@ -880,6 +880,7 @@ export type StewardshipItemType =
   | "golden_record_review"
   | "exception"
   | "writeback_approval"
+  | "golden_writeback"
   | "contract_breach"
   | "glossary_review"
   | "config_value_match";

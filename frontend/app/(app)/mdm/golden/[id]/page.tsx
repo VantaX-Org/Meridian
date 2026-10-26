@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, ConfirmDialog, DataTable, EntityTabs, EmptyState, ErrorState, Mono, Pill, RecordPage, Skeleton, toast } from "@/design";
-import { getMasterRecord, getMasterRecordHistory, promoteMasterRecord, writebackMasterRecord } from "@/lib/api/master-records";
+import { getMasterRecord, getMasterRecordHistory, promoteMasterRecord } from "@/lib/api/master-records";
 import { getRelationships } from "@/lib/api/relationships";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { LedgerHead } from "@/components/mdm/ledger";
@@ -15,6 +15,7 @@ import { GoldenFields } from "@/components/mdm/golden-fields";
 import { MergeHistory, mergeEventsKey } from "@/components/mdm/merge-history";
 import { GatedPrimary } from "@/components/gated-primary";
 import { GoldenStatusPill, sourceSystems } from "@/components/mdm/golden-status";
+import { GoldenWriteback } from "@/components/mdm/golden-writeback";
 import { useRole } from "@/hooks/use-role";
 import { formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -51,9 +52,7 @@ export default function MasterRecordPage() {
   const qc = useQueryClient();
   const { can } = useRole();
   const canApprove = can("approve");
-  const canApply = can("apply");
   const [confirmPromote, setConfirmPromote] = useState(false);
-  const [confirmWriteback, setConfirmWriteback] = useState(false);
 
   const recordQuery = useQuery<MasterRecordDetail>({
     queryKey: queryKeys.masterRecord(id),
@@ -79,22 +78,6 @@ export default function MasterRecordPage() {
     mutationFn: () => promoteMasterRecord(id, true),
     onSuccess: () => { invalidate(); setConfirmPromote(false); },
     onError: (error) => {
-      toast.error(apiErrorMessage(error));
-    },
-  });
-  const writeback = useMutation({
-    mutationFn: () => writebackMasterRecord(id),
-    onSuccess: (result) => {
-      setConfirmWriteback(false);
-      void qc.invalidateQueries({ queryKey: queryKeys.masterRecordHistory(id) });
-      const targets = sourceSystems(recordQuery.data?.source_contributions ?? {});
-      const named = targets.length ? targets.join(", ") : "SAP";
-      // The API says whether it wrote to SAP; when it only hands back the values, say so rather than claim a write.
-      if (result.writeback_supported) toast.success(`${recordQuery.data?.sap_object_key ?? "Record"} written back to ${named}`);
-      else toast.info(`Not written to ${named}. ${result.message}`);
-    },
-    onError: (error) => {
-      setConfirmWriteback(false);
       toast.error(apiErrorMessage(error));
     },
   });
@@ -178,20 +161,9 @@ export default function MasterRecordPage() {
       <section className="flex items-center gap-2">
         <GoldenStatusPill status={record.status} />
         <Pill tone="neutral">{Math.round(record.overall_confidence * 100)}% confidence</Pill>
-        <GatedPrimary
-          kind="writeback"
-          allowed={canApply}
-          variant="secondary"
-          disabled={writeback.isPending || (writeback.data ? !writeback.data.writeback_supported : false)}
-          onClick={() => setConfirmWriteback(true)}
-        >
-          {writeback.isPending ? "Writing back…" : "Write back"}
-        </GatedPrimary>
+        <GoldenWriteback recordId={record.id} status={record.status} />
         <Button variant="ghost" render={<Link href={`/mdm/golden/merge?id=${record.id}`}>Compare sources</Link>} />
       </section>
-      {writeback.data ? (
-        <p className="m-text-body m-ink-3">{writeback.data.message}</p>
-      ) : null}
 
       <ConfirmDialog
         open={confirmPromote}
@@ -202,21 +174,6 @@ export default function MasterRecordPage() {
         cancelLabel="Keep as is"
         pending={promote.isPending}
         onConfirm={() => promote.mutate()}
-      />
-      <ConfirmDialog
-        open={confirmWriteback}
-        onOpenChange={setConfirmWriteback}
-        title={`Write back ${record.sap_object_key}?`}
-        body={
-          <div className="flex flex-col gap-2 m-text-body m-ink-2">
-            <p>Fields: {fields.length ? fields.map(([f]) => f).join(", ") : "none"}</p>
-            <p>Target system{systems.length === 1 ? "" : "s"}: {systems.length ? systems.join(", ") : "none recorded"}</p>
-          </div>
-        }
-        confirmLabel="Write back"
-        cancelLabel="Keep"
-        pending={writeback.isPending}
-        onConfirm={() => writeback.mutate()}
       />
 
       <GoldenFields id={record.id} fields={record.golden_fields} onChanged={invalidate} />

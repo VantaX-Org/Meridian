@@ -49,6 +49,7 @@ from api.routes.me_notifications import router as me_notifications_router
 from api.routes.systems import router as systems_router
 from api.routes.master_records import router as master_records_router
 from api.routes.merge_explain import router as merge_explain_router
+from api.routes.golden_writeback import router as golden_writeback_router
 from api.routes.ai_feedback import router as ai_feedback_router
 from api.routes.insight_feedback import router as insight_feedback_router
 from api.routes.client_errors import router as client_errors_router
@@ -341,6 +342,7 @@ app.include_router(me_notifications_router)
 app.include_router(systems_router)
 app.include_router(master_records_router)
 app.include_router(merge_explain_router)
+app.include_router(golden_writeback_router)
 app.include_router(ai_feedback_router)
 app.include_router(insight_feedback_router)
 app.include_router(client_errors_router)

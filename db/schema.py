@@ -1577,6 +1577,34 @@ class MasterRecordHistory(Base):
     )
 
 
+class GoldenWritebackRequest(Base):
+    """Four-eyes write-back of a golden record to its SAP source systems (migration 090)."""
+
+    __tablename__ = "golden_writeback_requests"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    master_record_id = Column(UUID(as_uuid=True), ForeignKey("master_records.id", ondelete="CASCADE"), nullable=False)
+    status = Column(Text, nullable=False, server_default="simulating")
+    requested_by = Column(Text, nullable=False)
+    approved_by = Column(Text, nullable=True)
+    rejected_by = Column(Text, nullable=True)
+    golden_snapshot = Column(JSONB, nullable=False, server_default="{}")
+    targets = Column(JSONB, nullable=False, server_default="[]")
+    error = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    simulated_at = Column(DateTime(timezone=True), nullable=True)
+    decided_at = Column(DateTime(timezone=True), nullable=True)
+    applied_at = Column(DateTime(timezone=True), nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        Index("ix_golden_writeback_record", "tenant_id", "master_record_id", "created_at"),
+        Index("uq_golden_writeback_open", "tenant_id", "master_record_id", unique=True,
+              postgresql_where=text("status IN ('pending_approval', 'approved', 'applying')")),
+    )
+
+
 class SurvivorshipRule(Base):
     __tablename__ = "survivorship_rules"
 

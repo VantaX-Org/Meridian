@@ -951,6 +951,14 @@ function approveCopy(t: StewardshipQueueItem, proposal: CleaningQueueItem | null
     }
     return { title: "Approve this write-back?", confirmLabel: "Approve write-back", action: "approve the proposed value", body: "Approves the proposed value. It is applied in the export to SAP; nothing is written to SAP from here." };
   }
+  if (t.item_type === "golden_writeback") {
+    return {
+      title: "Approve this SAP write-back?",
+      confirmLabel: "Approve write-back",
+      action: "approve writing the golden values to SAP",
+      body: "Writes the golden record's values to SAP for the fields its simulation showed as changing. You cannot approve a write-back you requested.",
+    };
+  }
   if (t.item_type === "merge_decision") {
     if (pair) {
       return {
