@@ -16,6 +16,14 @@ export async function acceptInvite(
 }
 
 /**
+ * POST /api/v1/auth/change-password: rotate the signed-in user's own password.
+ * A wrong current password is a 422 (not a 401), so it never signs the user out.
+ */
+export async function changeOwnPassword(currentPassword: string, newPassword: string): Promise<void> {
+  await apiClient.post("/api/v1/auth/change-password", { current_password: currentPassword, new_password: newPassword });
+}
+
+/**
  * Request a password-reset email. Always succeeds — the server never reveals
  * whether the account exists, to prevent enumeration.
  */
