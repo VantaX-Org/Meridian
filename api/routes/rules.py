@@ -446,8 +446,8 @@ async def transition_version(rule_id: str, version: int, body: VersionTransition
     need = lifecycle.TRANSITIONS.get((row[0], body.to))
     if need is None:
         raise HTTPException(status_code=409, detail=f"Cannot move a {row[0]} version to {body.to}.")
-    if not has_permission(role, need):
-        raise HTTPException(status_code=403, detail=f"Role '{role}' does not have '{need}' permission")
+    if not lifecycle.may_transition(row[0], body.to, lambda a: has_permission(role, a)):
+        raise HTTPException(status_code=403, detail=f"Role '{role}' does not have '{' or '.join(need)}' permission")
     me = current_user_label()
     if body.to == "active" and me == row[1] and me != "system":
         raise HTTPException(status_code=403, detail="The author cannot approve their own version.")

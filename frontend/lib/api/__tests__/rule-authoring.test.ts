@@ -50,6 +50,17 @@ describe("rule authoring wrappers", () => {
     expect(allowedVersionTargets("unknown")).toEqual([]);
   });
 
+  it("keeps only the moves the user's permissions allow", () => {
+    const only = (...p: string[]) => (a: string) => p.includes(a);
+    expect(allowedVersionTargets("draft", only("manage_rules"))).toEqual(["in_review"]);
+    expect(allowedVersionTargets("draft", only("approve"))).toEqual([]);
+    expect(allowedVersionTargets("in_review", only("manage_rules"))).toEqual([]);
+    expect(allowedVersionTargets("in_review", only("approve"))).toEqual(["draft", "active"]);
+    expect(allowedVersionTargets("in_review", only("review_ai_rules"))).toEqual(["draft", "active"]);
+    expect(allowedVersionTargets("active", only("approve", "review_ai_rules"))).toEqual([]);
+    expect(allowedVersionTargets("active", only("manage_rules"))).toEqual(["retired"]);
+  });
+
   it("mine posts the version id", async () => {
     await mineLearnedRules("v1");
     expect(client.post).toHaveBeenCalledWith("/api/v1/learned-rules/mine", { version_id: "v1" });

@@ -11,6 +11,7 @@ import * as stewardshipApi from "@/lib/api/stewardship";
 import * as connectivityApi from "@/lib/api/connectivity";
 import * as configLoadApi from "@/lib/api/config-load";
 import * as downloadApi from "@/lib/api/download";
+import * as matchRulesApi from "@/lib/api/match-rules";
 import * as jobsHook from "@/hooks/use-jobs";
 import * as dayOneHook from "@/hooks/use-day-one";
 import type { Version } from "@/types/api";
@@ -19,7 +20,8 @@ import LeadHomePage from "../lead/page";
 import StewardHomePage from "../steward/page";
 import BasisHomePage from "../basis/page";
 
-vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+const perms = vi.hoisted(() => ({ granted: null as Set<string> | null }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (a: string) => perms.granted === null || perms.granted.has(a) }) }));
 vi.mock("@/components/insight/route-insight", () => ({ RouteInsight: () => null }));
 const nav = vi.hoisted(() => ({ search: "" }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), useSearchParams: () => new URLSearchParams(nav.search) }));
@@ -52,6 +54,7 @@ const LATEST: Version = {
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  perms.granted = null;
   // jsdom has no matchMedia; the trend chart's reduced-motion check needs a stub.
   vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
   vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: OBJECTS });
@@ -90,6 +93,42 @@ describe("PersonaHomePage data layout", () => {
     expect(screen.getAllByText("Material master").length).toBeGreaterThan(0);
     // No count tile is a button wrapping a link.
     expect(document.querySelector("button a")).toBeNull();
+  });
+});
+
+describe("PersonaHomePage AI reviewer", () => {
+  const PROPOSAL = {
+    id: "ap1", tenant_id: "t1", domain: "business_partner", rationale: "r", supporting_correction_count: 10,
+    proposed_rule: { field: "BUT000.NAME_ORG1", match_type: "fuzzy" as const, weight: 60, threshold: 0.9 },
+    status: "pending" as const, reviewed_by: null, reviewed_at: null, created_at: "2026-10-20T00:00:00Z",
+  };
+  beforeEach(() => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
+  });
+
+  it("makes Review N proposals the primary action for review_ai_rules without manage_rules", async () => {
+    perms.granted = new Set(["view", "review_ai_rules", "ai_feedback"]);
+    const read = vi.spyOn(matchRulesApi, "getProposedRules").mockResolvedValue({ rules: [PROPOSAL, { ...PROPOSAL, id: "ap2" }], total: 2 });
+    renderWithQuery(<LeadHomePage />);
+    const action = await screen.findByRole("link", { name: "Review 2 proposals" });
+    expect(action).toHaveAttribute("href", "/rules/drafts?tab=ai");
+    expect(read).toHaveBeenCalledWith("pending");
+  });
+
+  it("keeps the lead's action when no proposal waits", async () => {
+    perms.granted = new Set(["view", "review_ai_rules"]);
+    vi.spyOn(matchRulesApi, "getProposedRules").mockResolvedValue({ rules: [], total: 0 });
+    renderWithQuery(<LeadHomePage />);
+    expect(await screen.findByTestId("home-verdict-row")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /^Review \d/ })).toBeNull();
+  });
+
+  it("never reads proposals for a rule writer, whose action stays the objects", async () => {
+    const read = vi.spyOn(matchRulesApi, "getProposedRules").mockResolvedValue({ rules: [PROPOSAL], total: 1 });
+    renderWithQuery(<LeadHomePage />);
+    expect(await screen.findByTestId("home-verdict-row")).toBeInTheDocument();
+    expect(read).not.toHaveBeenCalled();
+    expect(screen.queryByRole("link", { name: /^Review \d/ })).toBeNull();
   });
 });
 
