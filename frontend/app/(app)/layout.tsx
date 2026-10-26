@@ -50,7 +50,7 @@ function CommandPaletteSlot() {
   const navItems = [...byHref.values()];
   // The insight views' tabs are not nav entries; they stay reachable by name from the palette.
   const seen = new Set(navItems.map((i) => i.href));
-  const insightsGroup = groups.find((g) => g.items.some((i) => i.href === "/insights"))?.group;
+  const insightsGroup = groups.find((g) => g.items.some((i) => i.href === "/insights/exec"))?.group;
   const viewTabs = insightsGroup
     ? VIEWS.flatMap((v) => v.tabs.filter(([href]) => href.startsWith("/insights") && !seen.has(href)).map(([href, label]) => ({
         label: `${v.label}: ${label}`, href, group: insightsGroup, icon: <IconChart size={16} />, shortcut: undefined,

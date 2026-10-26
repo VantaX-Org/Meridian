@@ -154,7 +154,7 @@ export default function ReportsPage() {
     >
       <>
       {!can("export") ? (
-        <Card title="Reports"><p className="m-text-body m-ink-2">Downloading reports needs the auditor or analyst role. Ask an admin to add it. <Link href="/insights" className="m-ink-accent underline underline-offset-2">Back to the overview</Link></p></Card>
+        <Card title="Reports"><p className="m-text-body m-ink-2">Downloading reports needs the auditor or analyst role. Ask an admin to add it. <Link href="/insights/exec" className="m-ink-accent underline underline-offset-2">Open the executive summary</Link></p></Card>
       ) : catalogue.isError ? (
         <Card title="Reports">
           <div className="flex items-center gap-3 m-text-body" role="alert">

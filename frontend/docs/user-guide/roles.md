@@ -28,7 +28,7 @@ The person who cleans the data. Holds view, apply, approve, assign, analyse and 
 
 ### Data owner / approver
 
-The second pair of eyes. Holds view, approve and export. Lands on **Fix work**, where they approve the batches stewards prepared, sign off records as **Not an issue** or **Accept risk**, and export approved batches. They cannot enter values, take records or comment.
+The second pair of eyes. Holds view, approve and export. Lands on **Inbox**, **Approvals**, where they approve the fix batches stewards prepared and the SAP write-backs others requested. In **Fix work** they sign off records as **Not an issue** or **Accept risk**, and export approved batches. They cannot enter values, take records or comment.
 
 ### Programme lead / CIO
 

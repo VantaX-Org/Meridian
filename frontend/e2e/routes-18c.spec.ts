@@ -8,6 +8,7 @@ const ROUTES = [
   "/runs/v1?tab=config",
   "/runs/v1?tab=findings",
   "/inbox",
+  // retired into Fix work (routes-b.spec.ts asserts the redirect); it opens the viewer's own records there
   "/inbox?kind=issues",
   "/inbox?kind=sap",
   "/inbox?kind=approvals",
@@ -37,7 +38,6 @@ const CONTENT: Record<string, RegExp> = {
   // the recorded custom-object registry (63 entries); KTEXT and KURZTEXT are two of its field names
   [`/systems/${RECORDED.systemId}?tab=custom`]: /KTEXT|KURZTEXT/,
   "/runs/v1?tab=config": /MM101|MM102|config_driven|data_error/i,
-  "/inbox?kind=issues": /MATNR=100|MM101/,
   "/inbox?kind=sap": /Nightly extract job failed/,
   "/inbox?kind=approvals": /Approve/,
   "/fix?tab=monitor": /MM101|ECC Prod/,

@@ -31,7 +31,8 @@ function liveRoutes(dir = APP, prefix = ""): string[] {
 
 // /home only redirects to the viewer's persona home, which the Home entry opens; /features is All features itself,
 // linked at the top of the More panel and in the command palette.
-const NOT_LISTED = new Set(["/home", "/features"]);
+// /home and /insights only redirect (to the viewer's home; /insights was the retired overview).
+const NOT_LISTED = new Set(["/home", "/features", "/insights"]);
 
 const gateFor = (actions: readonly string[]): NavGate => {
   const matrix = resourceMatrix(actions);
@@ -69,7 +70,9 @@ describe("admin reaches every page", () => {
 
   it("reaches the role-audit entries: Approvals for auditors, Migration for data owners, Triage for leads, Jobs for analysts", () => {
     const hrefsFor = (actions: readonly string[]) => featureIndex(gateFor(actions)).flatMap((a) => a.items.map((i) => i.href));
-    expect(hrefsFor(LEGACY_PERMISSIONS.auditor)).toContain("/fix?tab=batches");
+    // The auditor reads the four-eyes evidence on the one approvals page (view_audit), not a second Fix entry.
+    expect(hrefsFor(LEGACY_PERMISSIONS.auditor)).toContain("/inbox?kind=approvals");
+    expect(hrefsFor(LEGACY_PERMISSIONS.auditor)).not.toContain("/fix?tab=batches");
     expect(hrefsFor(LEGACY_PERMISSIONS.approver)).toContain("/migration");
     expect(hrefsFor(LEGACY_PERMISSIONS.approver)).toContain("/inbox?kind=approvals");
     expect(hrefsFor(LEGACY_PERMISSIONS.manager)).toContain("/admin/triage");

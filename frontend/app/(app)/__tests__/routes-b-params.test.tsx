@@ -45,7 +45,7 @@ describe("wave 10 URL params are whitelisted", () => {
   });
   it("fix ?tab=batches selects batches", async () => {
     await show(fix, "tab=batches");
-    expect(selected()).toMatch(/Approvals and export/);
+    expect(selected()).toMatch(/Batches and export/);
   });
   it.each(GARBAGE)("fix batches ?status=%s and ?sort=%s apply no filter and show no banner", async (g) => {
     await show(fix, `tab=batches&status=${g}&sort=${g}`);

@@ -1,8 +1,8 @@
 # Approvals and export
 
-Every value decided in Fix work waits in a fix batch until a second person approves it. The approved batch is then exported as a file your team loads into SAP, and the next run checks whether each record now passes. This chapter covers that second half of the work: four eyes, export formats, what the next run does, and the **Monitor** and **Duplicates** tabs.
+Every value decided in Fix work waits in a fix batch until a second person approves it. The approved batch is then exported as a file your team loads into SAP, and the next run checks whether each record now passes. This chapter covers that second half of the work: four eyes, export formats, what the next run does, and the **Monitor** tab.
 
-Open **Fix work** and choose the **Approvals and export** tab.
+Batches are approved in one place, **Inbox**, **Approvals**, beside the SAP write-back requests (see [Inbox](/docs?page=inbox)). Data owners land there. The batches and their export live in **Fix work**, on the **Batches and export** tab, which links to the approvals with **Open approvals**.
 
 ## Four eyes
 
@@ -32,7 +32,7 @@ The panel lists who created and approved the batch and when, then:
 
 ## How to approve and export a batch
 
-1. Open the batch.
+1. Open the batch: from **Inbox**, **Approvals** to approve it, or from **Fix work**, **Batches and export**. Both open the same panel.
 2. Read the items. While the batch is a draft you can change a proposed value: select it, type the new value and press `Enter`.
 3. To accept every high-confidence rule proposal at once, select **Accept N high-confidence proposals**.
 4. Select **Approve batch**, then **Approve**. Meridian never posts to SAP; approval is Meridian's record that the values are right. **Not now** backs out.
@@ -71,7 +71,7 @@ After a clean-up, pin the run that shows the cleaned data as the baseline. The *
 
 ## Duplicates
 
-The **Duplicates** tab lists candidate pairs found by the match rules, with **Record A**, **Record B** and their match. Select a pair to compare the two field by field and keep one. Merging needs the approve permission. To tune how pairs are found, see [Master data](/docs?page=mdm).
+Duplicate pairs are reviewed in one place, **Master data**, **Match review**: pairs from the match rules and from the cleaning engine side by side, with **Merge**, **Not a match** and **Skip**. Old links to Fix work's Duplicates tab open it. Merging needs the approve permission. To tune how pairs are found, see [Master data](/docs?page=mdm).
 
 ## Related
 

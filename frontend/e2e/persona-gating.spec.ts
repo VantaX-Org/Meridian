@@ -141,6 +141,11 @@ for (const role of PERSONA_ROLES) {
       await expect.poll(() => { const u = new URL(app.url()); return u.pathname + u.search; }, { timeout: 30_000 }).toBe(home);
     });
 
+    test(`/insights (the retired overview) lands on ${home} too`, async ({ app }) => {
+      await app.goto("/insights", { waitUntil: "load" });
+      await expect.poll(() => { const u = new URL(app.url()); return u.pathname + u.search; }, { timeout: 30_000 }).toBe(home);
+    });
+
     test("index bar shows exactly its pills and More entries", async ({ app }) => {
       await app.goto("/rules/dictionary", { waitUntil: "load" });
       await settle(app);

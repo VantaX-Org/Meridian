@@ -127,7 +127,7 @@ describe("ExecPage", () => {
     // any cost avoided says so there instead of "0x" and "0 months".
     const notYet = await screen.findByTestId("exec-not-yet");
     expect(notYet).toHaveTextContent("Not yet: no migration wave, no owner scored and no cost avoided.");
-    expect(within(notYet).getByRole("link", { name: "Owners in Fix work" })).toHaveAttribute("href", "/fix?run=v1");
+    expect(within(notYet).getByRole("link", { name: "Assign records in Fix work" })).toHaveAttribute("href", "/fix?run=v1");
     expect(within(notYet).getByRole("link", { name: "Review fixes" })).toBeInTheDocument();
     for (const title of ["Readiness by wave", "Owners", "Return on investment"]) expect(screen.queryByRole("heading", { name: title })).toBeNull();
     expect(screen.queryByText("No waves yet")).toBeNull();

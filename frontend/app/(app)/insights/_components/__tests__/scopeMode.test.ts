@@ -23,9 +23,9 @@ const versions = [
 ];
 
 describe("insightScopeMode", () => {
-  it("is the current state on the overview without ?run= or ?module=", () => {
-    expect(insightScopeMode("/insights", {})).toBe("current");
-    expect(insightScopeMode("/insights", { explicit: null, module: null })).toBe("current");
+  it("is the current state on a current-state view without ?run= or ?module=", () => {
+    expect(insightScopeMode("/insights/progress", {})).toBe("current");
+    expect(insightScopeMode("/insights/progress", { explicit: null, module: null })).toBe("current");
   });
 
   it("is the current state on the executive summary too, so it answers with Home's number", () => {
@@ -34,8 +34,8 @@ describe("insightScopeMode", () => {
   });
 
   it("is one run with ?run=, or with an object filter that pins one lineage", () => {
-    expect(insightScopeMode("/insights", { explicit: "co1" })).toBe("run");
-    expect(insightScopeMode("/insights", { module: "material_master" })).toBe("run");
+    expect(insightScopeMode("/insights/progress", { explicit: "co1" })).toBe("run");
+    expect(insightScopeMode("/insights/progress", { module: "material_master" })).toBe("run");
   });
 
   it("is always one run on a view whose endpoint answers one run", () => {

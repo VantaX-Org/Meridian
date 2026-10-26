@@ -58,7 +58,8 @@ async function settle(page: Page): Promise<void> {
     document.getAnimations().every((a) => a.playState !== "running" || a.effect?.getComputedTiming().iterations === Infinity));
 }
 
-for (const r of ROUTES) {
+// A retired route (`redirectsTo`) is the page it lands on, screenshotted under that page's own name.
+for (const r of ROUTES.filter((x) => !x.redirectsTo)) {
   for (const mode of MODES) {
     test(`visual — ${r.name} (${mode})`, async ({ app }, testInfo) => {
       await prepare(app, mode);
@@ -168,7 +169,7 @@ test.describe("visual — overlays", () => {
  * and axe is clean.
  */
 const CHART_ROUTE_NAMES = [
-  "insights", "insights-trends", "insights-rules", "insights-impact", "insights-progress", "insights-exec", "insights-readiness",
+  "insights-trends", "insights-rules", "insights-impact", "insights-progress", "insights-exec", "insights-readiness",
   "home", "runs-detail", "systems-detail",
 ];
 const CHART_ROUTES = CHART_ROUTE_NAMES.map((name) => {

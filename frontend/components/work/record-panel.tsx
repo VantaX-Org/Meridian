@@ -4,8 +4,10 @@ import { Fragment, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Card, ErrorState, Input, Mono, Notice, Pill, SeverityDot, Skeleton, Textarea, isSeverity } from "@/design";
+import { Button, Card, ErrorState, Input, Mono, Notice, Pill, Select, SeverityDot, Skeleton, Textarea, isSeverity } from "@/design";
 import { decide, getWorkRecord, type Decision, type WorkAllowedValue, type WorkIssue, type WorkRecordDetail } from "@/lib/api/work";
+import { updateIssues } from "@/lib/api/issues";
+import { getAssignableUsers } from "@/lib/api/users";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { formatDate, formatModuleName, formatMoney, formatNumber, plural } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -145,7 +147,7 @@ function RecordContext({ rec }: { rec: WorkRecordDetail }) {
   );
 }
 
-/** Where a proposed fix waits: the draft batch under Fix › Approvals and export. */
+/** Where a proposed fix waits: the draft batch under Fix › Batches and export (approved in Inbox › Approvals). */
 export const DRAFT_BATCH_HREF = "/fix?tab=batches";
 
 /** A "waits in your draft batch" toast with the way there. A Link (styled as the toast button) needs no router. */
@@ -180,6 +182,20 @@ function useDecide(module: string, recordKey: string, run: string | undefined, o
 
 type SignOff = "not_an_issue" | "accept_risk";
 
+/**
+ * "Fixed in SAP": the record was corrected in SAP itself, outside a batch. The issue closes as fixed at the source
+ * (record_issues resolution fixed_in_source, which needs `assign`, as the retired Inbox › Issues tab did); the next
+ * run reopens it if the record still fails.
+ */
+function useFixedInSap(onDone?: () => void) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (issueId: string) => updateIssues({ ids: [issueId], status: "resolved", resolution: "fixed_in_source" }),
+    onSuccess: () => { toast.success("Marked fixed in SAP: the next run confirms it"); invalidateAfterDecision(qc); onDone?.(); },
+    onError: (e) => toast.error(apiErrorMessage(e)),
+  });
+}
+
 function IssueCard({ issue, rec, run, onDecided, editing, setEditing }: {
   issue: WorkIssue; rec: WorkRecordDetail; run: string | undefined; onDecided?: () => void;
   editing: boolean; setEditing: (on: boolean) => void;
@@ -188,6 +204,7 @@ function IssueCard({ issue, rec, run, onDecided, editing, setEditing }: {
   const [signOff, setSignOff] = useState<SignOff | null>(null);
   const [reason, setReason] = useState("");
   const m = useDecide(rec.module, rec.record_key, run, onDecided);
+  const fixedInSap = useFixedInSap(onDecided);
   const base = { module: rec.module, record_key: rec.record_key, check_id: issue.check_id };
   const open = issue.status === "to_fix";
   const decided = issue.decision && issue.status !== "fixed" && issue.status !== "not_an_issue";
@@ -266,6 +283,7 @@ function IssueCard({ issue, rec, run, onDecided, editing, setEditing }: {
             <Button variant={issue.suggestion && open ? "secondary" : "primary"} onClick={() => { setValue(issue.decision?.value ?? issue.suggestion?.value ?? issue.current_value ?? ""); setEditing(true); }}>{decided ? "Change value" : "Enter value"}</Button>
             {rec.can.sign_off && open ? <Button variant="ghost" onClick={() => setSignOff("not_an_issue")}>Not an issue</Button> : null}
             {rec.can.sign_off && open ? <Button variant="ghost" onClick={() => setSignOff("accept_risk")}>Accept risk</Button> : null}
+            {rec.can.assign && open && issue.issue_id ? <Button variant="ghost" pending={fixedInSap.isPending} onClick={() => issue.issue_id && fixedInSap.mutate(issue.issue_id)}>Fixed in SAP</Button> : null}
             {decided && issue.status === "proposed" ? <Button variant="ghost" pending={m.isPending} onClick={() => m.mutate([{ ...base, action: "undo" }])}>Undo</Button> : null}
           </div>
         )
@@ -275,6 +293,13 @@ function IssueCard({ issue, rec, run, onDecided, editing, setEditing }: {
       ) : null}
     </section>
   );
+}
+
+/** Colleagues a record can be handed to: everyone assignable but its current assignee. */
+function assignees(list: Awaited<ReturnType<typeof getAssignableUsers>> | undefined, current: string | null): { value: string; label: string }[] {
+  return (Array.isArray(list) ? list : [])
+    .filter((u) => u.id !== current)
+    .map((u) => ({ value: u.id, label: u.name || u.email }));
 }
 
 const EVENT: Record<string, string> = { status: "Status", assign: "Assigned", comment: "Comment", auto_resolved: "Fixed by a run", reopened: "Failed again" };
@@ -313,6 +338,8 @@ export function RecordPanel({ module, recordKey, run, onDecided, footer, fullRec
   const [comment, setComment] = useState("");
   const m = useDecide(module, recordKey, run, onDecided);
   const c = useDecide(module, recordKey, run);
+  // People the record can be handed to (needs `assign`, as the decision does).
+  const people = useQuery({ queryKey: ["users", "assignable"], queryFn: getAssignableUsers, enabled: !!q.data?.can.assign, staleTime: 300_000, meta: { ignoreError: true } });
   if (q.isLoading) return <Card><Skeleton height={320} /></Card>;
   if (q.isError || !q.data) return <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />;
   const rec = q.data;
@@ -344,6 +371,10 @@ export function RecordPanel({ module, recordKey, run, onDecided, footer, fullRec
           {rec.can.assign ? (
             rec.assigned_to ? <Button variant="ghost" pending={c.isPending} onClick={() => c.mutate([{ ...base, action: "assign", assignee: "" }])}>Release</Button>
               : <Button variant="secondary" pending={c.isPending} onClick={() => c.mutate([{ ...base, action: "assign", assignee: "me" }])}>Take it</Button>
+          ) : null}
+          {rec.can.assign && assignees(people.data, rec.assigned_to).length > 0 ? (
+            <Select label="Assign to" value="" placeholder="Assign to…" options={assignees(people.data, rec.assigned_to)}
+              onValueChange={(v) => { if (v) c.mutate([{ ...base, action: "assign", assignee: v }]); }} />
           ) : null}
         </div>
 

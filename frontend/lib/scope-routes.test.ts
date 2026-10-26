@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { isCurrentStateView, isModuleScoped, isRunScoped, opensOnCurrentState } from "./current-state";
 
 describe("isRunScoped", () => {
-  it.each(["/objects", "/objects/material_master", "/objects/material_master/rules/MM-001", "/insights", "/insights/rules", "/fix", "/fix/what-if", "/search", "/rules/learned", "/migration/dry-run"])(
+  it.each(["/objects", "/objects/material_master", "/objects/material_master/rules/MM-001", "/insights/exec", "/insights/rules", "/fix", "/fix/what-if", "/search", "/rules/learned", "/migration/dry-run"])(
     "is true on %s, which reads ?run=",
     (path) => expect(isRunScoped(path)).toBe(true),
   );
@@ -14,7 +14,7 @@ describe("isRunScoped", () => {
 });
 
 describe("isModuleScoped", () => {
-  it.each(["/objects/material_master", "/insights", "/insights/progress", "/fix", "/rules"])(
+  it.each(["/objects/material_master", "/insights/exec", "/insights/progress", "/fix", "/rules"])(
     "is true on %s, which reads ?module=",
     (path) => expect(isModuleScoped(path)).toBe(true),
   );
@@ -25,9 +25,11 @@ describe("isModuleScoped", () => {
 });
 
 describe("current-state views", () => {
-  it("are the homes, the Insights overview, the executive summary, Progress, Value at risk and Process data readiness", () => {
-    expect(["/home", "/home/lead", "/insights", "/insights/exec", "/insights/progress", "/insights/impact", "/insights/process"].every(isCurrentStateView)).toBe(true);
+  it("are the homes, the executive summary, Progress, Value at risk and Process data readiness", () => {
+    expect(["/home", "/home/lead", "/insights/exec", "/insights/progress", "/insights/impact", "/insights/process"].every(isCurrentStateView)).toBe(true);
     expect(isCurrentStateView("/insights/rules")).toBe(false);
+    // /insights itself (the retired overview) only redirects home.
+    expect(isCurrentStateView("/insights")).toBe(false);
     expect(isCurrentStateView("/insights/process/designer")).toBe(false);
   });
 

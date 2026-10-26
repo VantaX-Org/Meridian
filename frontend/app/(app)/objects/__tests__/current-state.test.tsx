@@ -77,7 +77,7 @@ describe("ObjectsPage without ?run=: the current state", () => {
     expect(screen.getAllByText("No-go").map((e) => e.closest("a")).find((a) => a?.getAttribute("href")?.includes("readiness=fail"))).toHaveAttribute("href", "/objects?readiness=fail");
     expect(within(screen.getByText("Critical and high findings").closest("a, div") as HTMLElement).getByText("3")).toBeInTheDocument();
     // across several runs, the tile opens the current-state findings filtered the same way
-    expect(screen.getByText("Critical and high findings").closest("a")).toHaveAttribute("href", "/insights?severity=critical,high");
+    expect(screen.getByText("Critical and high findings").closest("a")).toHaveAttribute("href", "/fix?sev=blocking");
   });
 
   it("?readiness=fail keeps only the not-ready objects of the merged list", async () => {
