@@ -31,7 +31,10 @@ _ECC = ["business_partner", "material_master", "fi_gl", "accounts_payable", "acc
         "quality_management", "sd_customer_master", "sd_sales_orders", "controlling",
         # migration objects a typical ECC -> S/4HANA programme carries that had no module:
         # deliveries/billing documents and CO internal orders (see docs/migration-object-coverage.md)
-        "deliveries_billing", "internal_orders"]
+        "deliveries_billing", "internal_orders",
+        # target-state master data for a move to S/4HANA Cloud: selectable on an ECC source system
+        # too, because that is where the migration is analysed from (9 tables, all present in ECC).
+        "s4hc_master_data"]
 _LOGISTICS = ["batch_management", "ewms_stock", "ewms_transfer_orders", "wm_interface",
               "fleet_management", "transport_management", "mdg_master_data", "grc_compliance",
               "interface_health"]
