@@ -198,7 +198,8 @@ def test_context_module_used_when_question_names_none():
 
 # ── answers ──────────────────────────────────────────────────────────────────
 
-KEYS = {"answer", "intent", "data", "chart", "links", "ai", "phrased", "version_id", "facts", "coverage", "grounded"}
+KEYS = {"answer", "intent", "data", "chart", "links", "ai", "phrased", "version_id", "facts", "coverage", "grounded",
+        "citations"}
 
 
 def _shape(out: dict) -> None:
@@ -209,7 +210,13 @@ def _shape(out: dict) -> None:
     assert out["grounded"] is True, out["answer"]
     assert 0 <= out["coverage"] <= 1
     for f in out["facts"]:
-        assert set(f) == {"statement", "value", "source", "href"} and f["statement"] and f["source"]
+        assert set(f) == {"statement", "value", "source", "href", "checks"} and f["statement"] and f["source"]
+        assert all(set(c) == {"check_id", "module"} and c["check_id"] for c in f["checks"])
+    # every check a fact names is cited, and each citation opens that check's records
+    named = {(c["check_id"], c["module"]) for f in out["facts"] for c in f["checks"]}
+    assert {(c["check_id"], c["module"]) for c in out["citations"]} == named or len(out["citations"]) == a.MAX_CITATIONS
+    for c in out["citations"]:
+        assert c["href"].startswith("/") and c["check_id"] in c["href"]
     assert out["chart"] in (None, "bar", "line")
     assert out["data"] is None or all(set(d) == {"label", "value"} for d in out["data"])
     for link in out["links"]:
@@ -513,3 +520,80 @@ def test_route_passes_the_current_scope(client, monkeypatch):
     assert _post(client, {"question": "How has the score moved?", "scope": "current"}).status_code == 200
     assert ("overview", None, None, True) in src.calls
     assert _post(client, {"question": "score", "scope": "everything"}).status_code == 422
+
+
+def test_route_returns_the_citations(client):
+    body = _post(client, {"question": "How many records fail MM003?", "version_id": RUN}).json()
+    assert body["citations"] == [{"check_id": "MM003", "module": "material_master",
+                                  "href": f"/objects/material_master?run={RUN}&tab=records&check_id=MM003"}]
+    assert body["facts"][0]["checks"] == [{"check_id": "MM003", "module": "material_master"}]
+
+
+# ── citations: the checks an answer rests on ────────────────────────────────
+
+@pytest.mark.parametrize("question, cited", [
+    ("What are the top failing rules?", [("MM003", "material_master"), ("BP010", "business_partner"), ("GL002", "fi_gl")]),
+    ("How many records fail MM003?", [("MM003", "material_master")]),
+    ("How many critical findings are there?", [("MM003", "material_master")]),
+    ("What are the root causes?", [("MM003", "material_master"), ("MM004", "material_master"), ("GL002", "fi_gl")]),
+    ("What changed since the last run?", [("MM003", "material_master")]),
+    ("What is the value at risk?", [("MM003", None), ("BP010", None)]),
+])
+def test_rule_answers_cite_the_checks_they_rest_on(question, cited):
+    out = ask(question)
+    _shape(out)
+    assert [(c["check_id"], c["module"]) for c in out["citations"]] == cited
+
+
+def test_a_citation_opens_the_failing_records_of_its_check():
+    out = ask("How many records fail MM003?")
+    assert out["citations"] == [{"check_id": "MM003", "module": "material_master",
+                                 "href": f"/objects/material_master?run={RUN}&tab=records&check_id=MM003"}]
+    # a check the fact ties to no object opens the rule
+    assert ask("What is the value at risk?")["citations"][0]["href"] == f"/rules/MM003?run={RUN}"
+
+
+def test_a_retrieval_answer_cites_only_the_facts_it_picked():
+    out = ask("Is automatic payment affected?")
+    assert out["intent"] == "retrieval"
+    picked = {c["check_id"] for f in out["facts"] for c in f["checks"]}
+    assert {c["check_id"] for c in out["citations"]} == picked and "BP010" in picked
+
+
+def test_an_answer_no_fact_supports_is_refused_plainly(monkeypatch):
+    """A handler that states a number its facts lack is not passed on: the reader gets a plain refusal."""
+    async def unsupported(src, vid, m):
+        return a._answer("score", "The score is 99.9.", RUN, facts=[a.fact("Material master scores 72.4", "Score")])
+
+    monkeypatch.setitem(a._HANDLERS, "score", unsupported)
+    out = ask("How has the score moved?")
+    _shape(out)
+    assert out["intent"] == "refused" and out["coverage"] == 0 and out["facts"] == [] and out["citations"] == []
+    assert out["answer"].startswith("Nothing in your findings supports an answer to that")
+    assert "99.9" not in out["answer"]
+
+
+def test_the_model_sees_only_aggregated_fact_statements(monkeypatch):
+    """The LLM input is the picked facts' statements and the assembled answer, nothing else: no source row, no
+    record key, no sample value, no field the aggregates carry beside the figures."""
+    class Raw(FakeSources):
+        async def impact(self, vid):
+            out = await super().impact(vid)
+            for r in out["rows"]:
+                r["sample_failing_records"] = [{"LIFNR": SECRET_KEY, "NAME1": SECRET_VALUE}]
+            return out
+
+    sent, _ = _model(monkeypatch, "Automatic payment is degraded, with 15,000 ZAR at stake.")
+    out = ask("Is automatic payment affected?", Raw())
+    (messages, _timeout), = sent
+    system, user = messages
+    assert system == {"role": "system", "content": a.SYSTEM_PROMPT}
+    facts_block, assembled = user["content"].split("\n\nAssembled answer: ")
+    lines = facts_block.split("\n")
+    assert lines[0] == "Facts:"
+    # exactly one line per fact the answer returns as its proof, each that fact's statement and nothing more
+    assert lines[1:] == [f"- {f['statement']}" for f in out["facts"]]
+    assert assembled == " ".join(f["statement"].rstrip(".") + "." for f in out["facts"])
+    prompt = system["content"] + user["content"]
+    for raw in (SECRET_KEY, SECRET_VALUE, "LIFNR", "NAME1", "sample_failing_records", "record_key", "sample_values"):
+        assert raw not in prompt

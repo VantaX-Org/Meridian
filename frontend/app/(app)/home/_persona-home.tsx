@@ -25,6 +25,7 @@ import { RunAnalysis } from "@/app/(app)/insights/_components/RunAnalysis";
 import { useAiProposals } from "@/app/(app)/rules/drafts/ai-proposals";
 import { HomeOnboarding } from "@/components/help/home-onboarding";
 import { RouteInsight } from "@/components/insight/route-insight";
+import { NextBestActionCard } from "@/components/insight/next-best-action";
 import { dqsExplanation, useDqsInputs } from "@/components/insight/dqs-score";
 import { verdictSentence, type NarrativeInput } from "@/lib/home-narrative";
 import {
@@ -520,6 +521,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       lists={lists}
       onboarding={<HomeOnboarding />}
       cells={<RouteInsight />}
+      nextAction={<NextBestActionCard run={pinned?.id ?? newest.id} />}
       headerActions={<>
         <RunAnalysis variant="secondary" />
         <Select

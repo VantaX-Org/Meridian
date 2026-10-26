@@ -5,7 +5,7 @@ import { Score, statusLabel, type ScoreExplanation } from "@/design";
 import { getFindings, type FindingsAggregate } from "@/lib/api/findings";
 import type { Finding } from "@/types/api";
 import { getSettings } from "@/lib/api/settings";
-import { DIMENSIONS, shortCapReason } from "@/lib/format";
+import { DIMENSIONS, passRatePct, shortCapReason } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
 interface DqsSource {
@@ -69,7 +69,9 @@ export function dqsExplanation({ agg, versionId, cap: capValue, capReason }: Dqs
       dimensions: measured.map(([d, score]) => ({ name: DIMENSIONS.find((x) => x.id === d)?.label ?? d, weight: weights[d] / total, score })),
       capReason: cap != null ? (reason ? shortCapReason(reason) : "a critical finding is open") : undefined,
       // weight descends with rank so the explainer's recordsFailed * weight sort keeps the impact order
-      rules: top.map((f, i, all) => ({ ruleId: f.check_id, object: f.module, recordsFailed: f.affected_count, weight: (all.length - i) / all.length })),
+      rules: top.map((f, i, all) => ({ ruleId: f.check_id, object: f.module, recordsFailed: f.affected_count, weight: (all.length - i) / all.length, passRate: passRatePct(f.pass_rate) })),
+      // Every failing record of the run: its findings tab (a current-state score spans runs, so it has none).
+      recordsHref: versionId ? `/runs/${encodeURIComponent(versionId)}?tab=findings` : undefined,
       // "Score history" is the run-by-run trend of this run's system or upload, not the executive summary.
       historyHref: versionId ? `/insights/trends?run=${encodeURIComponent(versionId)}` : "/insights/trends",
       run: versionId,

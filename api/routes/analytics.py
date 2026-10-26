@@ -160,6 +160,9 @@ async def get_prescriptive_analytics(
     type: Optional[str] = Query(None),
     version_id: Optional[uuid.UUID] = Query(None, description="The run whose findings the actions come from; "
                                                               "default the latest finished run."),
+    module: Optional[str] = Query(None, max_length=64,
+                                  description="One object's actions: that object's findings only (cleaning items and "
+                                              "exceptions carry no object, so none are ranked)."),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
@@ -183,31 +186,32 @@ async def get_prescriptive_analytics(
     findings_data: list[dict] = []
     if version_row:
         version = version_row[0]
-        findings_result = await db.execute(
-            select(Finding).where(
-                Finding.tenant_id == tenant.id,
-                Finding.version_id == version.id,
-            )
-        )
+        finding_filter = [Finding.tenant_id == tenant.id, Finding.version_id == version.id]
+        if module:
+            finding_filter.append(Finding.module == module)
+        findings_result = await db.execute(select(Finding).where(*finding_filter))
         findings_data = [_row_to_dict(r) for r in findings_result.all()]
 
-    # Load cleaning queue
-    queue_result = await db.execute(
-        select(CleaningQueue).where(
-            CleaningQueue.tenant_id == tenant.id,
-            CleaningQueue.status.in_(["detected", "recommended"]),
-        ).limit(100)
-    )
-    queue_data = [_row_to_dict(r) for r in queue_result.all()]
+    queue_data: list[dict] = []
+    exc_data: list[dict] = []
+    if not module:
+        # Load cleaning queue
+        queue_result = await db.execute(
+            select(CleaningQueue).where(
+                CleaningQueue.tenant_id == tenant.id,
+                CleaningQueue.status.in_(["detected", "recommended"]),
+            ).limit(100)
+        )
+        queue_data = [_row_to_dict(r) for r in queue_result.all()]
 
-    # Load open exceptions
-    exc_result = await db.execute(
-        select(Exception_).where(
-            Exception_.tenant_id == tenant.id,
-            Exception_.status.in_(["open", "investigating"]),
-        ).limit(100)
-    )
-    exc_data = [_row_to_dict(r) for r in exc_result.all()]
+        # Load open exceptions
+        exc_result = await db.execute(
+            select(Exception_).where(
+                Exception_.tenant_id == tenant.id,
+                Exception_.status.in_(["open", "investigating"]),
+            ).limit(100)
+        )
+        exc_data = [_row_to_dict(r) for r in exc_result.all()]
 
     cfg, weights = await _planner_inputs(db, tenant)
     planner = PrescriptiveAnalytics(cfg)
