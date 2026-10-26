@@ -199,15 +199,22 @@ def survive_cluster(members: list[dict], rules: Optional[dict] = None,
                     overrides: Optional[dict] = None) -> dict:
     """Golden values for a cluster, with the winner, rule and losers per attribute.
 
-    ``members``: ``[{key, fields, extracted_at?, source_system?}]`` in priority order
-    (survivor first, then members in the order they joined). ``rules``:
-    ``{field: {rule_type, trusted_sources}}`` from survivorship_rules. Without a rule
+    ``members``: ``[{key, fields, extracted_at?, source_system?, systems?}]`` in priority order
+    (survivor first, then members in the order they joined). ``systems`` is ``{field: {id, name}}``:
+    the connected system each of the member's values came from (its source_contributions tags);
+    ``source_system`` is a record-level fallback name. ``rules``:
+    ``{field: {rule_type, trusted_sources}}`` from survivorship_rules. A trusted_source rule picks the
+    member whose value came from the highest-ranked system. Without a rule
     the default is source priority = member order, which is exactly what
     ``mdm_merge.fuse`` does (survivor keeps its values, blanks filled in join order).
     """
     rules, overrides = rules or {}, overrides or {}
     order = [m["key"] for m in members]
-    sys_of = {m["key"]: m.get("source_system") or m["key"] for m in members}
+
+    def system_of(m: dict, f: str) -> tuple[Optional[str], Optional[str]]:
+        tag = (m.get("systems") or {}).get(f) or {}
+        return tag.get("id"), tag.get("name") or m.get("source_system")
+
     when = {m["key"]: m.get("extracted_at") or _EPOCH for m in members}
     all_fields: list[str] = []
     for m in members:
@@ -215,7 +222,8 @@ def survive_cluster(members: list[dict], rules: Optional[dict] = None,
     all_fields += [f for f in overrides if f not in all_fields]
 
     contribs = {f: [FieldContribution(None if _blank(m["fields"].get(f)) else m["fields"].get(f),
-                                      m["key"], when[m["key"]]) for m in members] for f in all_fields}
+                                      m["key"], when[m["key"]], 1.0, *system_of(m, f)) for m in members]
+                for f in all_fields}
     blanks = {k: sum(1 for f in all_fields if _blank(next(m for m in members if m["key"] == k)["fields"].get(f)))
               for k in order}
 
@@ -240,9 +248,7 @@ def survive_cluster(members: list[dict], rules: Optional[dict] = None,
             elif rtype == "most_frequent":
                 res = apply_most_frequent(cs)
             elif rtype == "trusted_source" and rule.get("trusted_sources"):
-                ranked = [k for s in rule["trusted_sources"] for k in order if sys_of[k] == s or k == s]
-                res = apply_trusted_source(cs, ranked + [k for k in order if k not in ranked])
-                rtype = "source_priority"
+                res = apply_trusted_source(cs, rule["trusted_sources"])
             if res is None:
                 if rtype not in ("source_priority", "trusted_source"):
                     rtype = f"source_priority ({rtype} undecided)"
@@ -254,6 +260,7 @@ def survive_cluster(members: list[dict], rules: Optional[dict] = None,
         if value is None:
             continue
         fields[f] = value
+        win = next((c for c in cs if c.source_system == winner_key), None)
         losers = []
         for c in cs:
             if c.source_system == winner_key:
@@ -268,14 +275,21 @@ def survive_cluster(members: list[dict], rules: Optional[dict] = None,
                 why = f"older ({c.extracted_at.isoformat()})"
             elif rtype == "most_complete":
                 why = f"less complete source ({blanks[c.source_system]} blank fields)"
+            elif rtype == "trusted_source":
+                why = (f"lower-trust system ({c.system_name or c.system_id})" if c.system_name or c.system_id
+                       else "not from a trusted system")
             elif rtype == "most_frequent":
                 n = sum(1 for x in cs if x.value is not None and
                         str(x.value).strip().lower() == str(c.value).strip().lower())
                 why = f"minority value ({n} of {sum(1 for x in cs if x.value is not None)})"
             else:
                 why = f"lower source priority (rank {order.index(c.source_system) + 1})"
-            losers.append({"key": c.source_system, "value": mask_value(f, c.value), "reason": why})
-        explanation[f] = {"value": mask_value(f, value), "winner_key": winner_key, "rule": rtype, "losers": losers}
+            losers.append({"key": c.source_system, "value": mask_value(f, c.value), "reason": why,
+                           **({"system": c.system_name or c.system_id} if c.system_name or c.system_id else {})})
+        explanation[f] = {"value": mask_value(f, value), "winner_key": winner_key, "rule": rtype, "losers": losers,
+                          **({"winner_system_id": win.system_id} if win and win.system_id else {}),
+                          **({"winner_system": win.system_name or win.system_id}
+                             if win and (win.system_name or win.system_id) else {})}
     return {"fields": fields, "explanation": explanation}
 
 

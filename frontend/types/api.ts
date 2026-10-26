@@ -666,9 +666,15 @@ export type MasterRecordStatus =
 
 export interface SourceContribution {
   value: unknown;
+  /** Provenance label: `upload:<run>`, `merge:<record key>`, `steward_override` or a system name. */
   source_system: string;
+  /** The connected system (sap_systems) the value came from, when the run's system is known. */
+  source_system_id?: string;
+  source_system_name?: string;
+  /** For a value a merge took from another record: that record's key. */
+  merged_from?: string;
   extracted_at: string;
-  confidence: number;
+  confidence: number | null;
   ai_recommendation?: string;
   ai_confidence?: number;
   ai_reasoning?: string;

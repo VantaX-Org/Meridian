@@ -47,6 +47,8 @@ export interface DedupCandidate {
   status: string;
   survivor_key: string | null;
   merged_at: string | null;
+  /** The steward's reason for the merge (dedup_candidates.merge_reason); null before migration 090. */
+  merge_reason?: string | null;
   created_at: string;
 }
 
@@ -163,7 +165,9 @@ export async function mergeDedupCandidate(params: {
   candidate_id: string;
   survivor_key: string;
   field_overrides?: Record<string, unknown>;
-}): Promise<{ id: string; status: string; survivor_key: string; merged_at: string }> {
+  /** Required: kept on the pair and in the golden record's merge history. */
+  reason: string;
+}): Promise<{ id: string; status: string; survivor_key: string; merged_at: string; merge_reason?: string }> {
   const { data } = await apiClient.post("/api/v1/dedup/merge", params);
   return data;
 }

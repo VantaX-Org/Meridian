@@ -92,6 +92,25 @@ describe("survivorship rules page", () => {
     expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
   });
 
+  it("orders the trusted systems, first wins, and saves that order", async () => {
+    perms = new Set(["mdm.write"]);
+    vi.spyOn(api, "getSurvivorshipRules").mockResolvedValue({ rules: [{ ...NAME, trusted_sources: ["ECC", "S4H", "Ariba"] }], total: 1 });
+    const put = vi.spyOn(api, "putSurvivorshipRules").mockResolvedValue({ rules: [], total: 0 });
+    renderWithQuery(<SurvivorshipPage />);
+    const user = userEvent.setup();
+    const group = await screen.findByRole("group", { name: "Trusted systems for NAME_ORG1" });
+    // the first system has no move-up, the last no move-down
+    expect(within(group).queryByRole("button", { name: /Trust ECC above/ })).toBeNull();
+    expect(within(group).queryByRole("button", { name: /Trust Ariba below/ })).toBeNull();
+    await user.click(within(group).getByRole("button", { name: "Trust Ariba above S4H for NAME_ORG1" }));
+    await user.click(within(group).getByRole("button", { name: "Trust ECC below Ariba for NAME_ORG1" }));
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Save rules" }));
+    await waitFor(() => expect(put).toHaveBeenCalledWith("business_partner", [
+      { field: "NAME_ORG1", rule_type: "trusted_source", trusted_sources: ["Ariba", "ECC", "S4H"], weight: 1, active: true },
+    ]));
+  });
+
   it("shows an error toast when the save fails", async () => {
     perms = new Set(["mdm.write"]);
     vi.spyOn(api, "getSurvivorshipRules").mockResolvedValue({ rules: [NAME], total: 1 });

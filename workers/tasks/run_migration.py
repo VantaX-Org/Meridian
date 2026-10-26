@@ -170,7 +170,7 @@ def run_migration(self, tenant_id, run_id, mode, source_system_id, dest_system_i
             if mode == "source_to_source":
                 return _finish(session, run_id, "analysed", None, {})
 
-            from api.services.migration.engine import analyze, seed_mappings
+            from api.services.migration.engine import BLOCKING_SEVERITIES, analyze, seed_mappings
             from api.services.source_design import dictionary_for
             from sap.ddic import get_dictionary
             from workers.dataset import load_dataset
@@ -252,6 +252,8 @@ def run_migration(self, tenant_id, run_id, mode, source_system_id, dest_system_i
                 verdicts.append(res.verdict)
                 summary[module] = {"records": res.records, "blocked_records": res.blocked_records,
                                    "score": res.score, "verdict": res.verdict, "gaps": res.counts,
+                                   # the findings the cockpit's Blockers tab lists (cockpit.BLOCKING_GAP_WHERE)
+                                   "blocking_gaps": sum(1 for g in gaps if g.severity in BLOCKING_SEVERITIES),
                                    "source_tables": tables,
                                    **({"mode": "s4_dry_run", "s4_load": _count_rules(sim)} if dry_run else {})}
 

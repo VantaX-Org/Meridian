@@ -7,9 +7,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.services.insights_readiness import build_wave_cells, wave_verdict
 from api.services.migration import object_label
+from api.services.migration.engine import BLOCKING_SEVERITIES
 
 TOP_BLOCKERS = 20
 TREND_POINTS = 30  # readiness-score history points shown on the cockpit trend chart
+
+# The one definition of a blocking gap: a finding of the run with a blocking severity (the severities
+# that block a record, engine.BLOCKING_SEVERITIES). The Blockers tab lists these, grouped; an object's
+# blocker_count counts them, so the tab's gaps per object add up to its blocker_count.
+BLOCKING_GAP_WHERE = "tenant_id = :t AND run_id = :r AND severity = ANY(:sev)"
+
+
+def _blocking_params(tenant_id: str, run_id: object) -> dict:
+    return {"t": tenant_id, "r": str(run_id), "sev": list(BLOCKING_SEVERITIES)}
 
 
 async def load_cockpit(db: AsyncSession, tenant_id: str, wave) -> dict:
@@ -31,9 +41,15 @@ async def load_cockpit(db: AsyncSession, tenant_id: str, wave) -> dict:
     gap_summary = (run.gap_summary if run else None) or {}
     min_dqs = wave.min_dqs
     cells = build_wave_cells(wave.name, list(wave.modules or []), gap_summary, dqs, wave.min_readiness, min_dqs)
+    blocking: dict[str, int] = {}
+    if run:
+        blocking = {r.module: int(r.n) for r in (await db.execute(text(
+            f"SELECT module, COUNT(*) AS n FROM migration_gap_findings WHERE {BLOCKING_GAP_WHERE} GROUP BY module"),
+            _blocking_params(tenant_id, run.id))).fetchall()}
     objects = [{"module": c.module, "label": object_label(c.module), "verdict": c.verdict, "score": c.score,
                 "records": int((gap_summary.get(c.module) or {}).get("records") or 0),
-                "records_blocked": c.records_blocked, "blocker_count": c.blocker_count, "dqs": c.dqs}
+                "records_blocked": c.records_blocked,
+                "blocker_count": blocking.get(c.module, 0) if run else c.blocker_count, "dqs": c.dqs}
                for c in cells]
 
     trend = (await db.execute(text("""
@@ -45,15 +61,15 @@ async def load_cockpit(db: AsyncSession, tenant_id: str, wave) -> dict:
 
     blockers = []
     if run:
-        blockers = (await db.execute(text("""
+        blockers = (await db.execute(text(f"""
             SELECT module, gap_type, field,
                    (ARRAY_AGG(severity ORDER BY CASE severity WHEN 'critical' THEN 0 ELSE 1 END))[1] AS severity,
                    COUNT(DISTINCT record_key) AS records, COUNT(*) AS gaps
               FROM migration_gap_findings
-             WHERE run_id = :r AND severity IN ('critical', 'high')
+             WHERE {BLOCKING_GAP_WHERE}
              GROUP BY module, gap_type, field
              ORDER BY COUNT(DISTINCT record_key) DESC, COUNT(*) DESC, module, gap_type
-             LIMIT :n"""), {"r": str(run.id), "n": TOP_BLOCKERS})).fetchall()
+             LIMIT :n"""), {**_blocking_params(tenant_id, run.id), "n": TOP_BLOCKERS})).fetchall()
 
     return {
         "wave": dict(wave._mapping),

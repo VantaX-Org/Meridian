@@ -25,7 +25,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Callable, Optional
+from typing import Callable, Optional, Sequence, Union
 
 from sap.deterministic import (
     FieldType,
@@ -51,6 +51,11 @@ class FieldContribution:
     source_system: str
     extracted_at: datetime
     confidence: float = 1.0
+    # The connected SAP system (sap_systems.id / .name) the value came from, when known. ``source_system``
+    # is the provenance label (``upload:<version>``, ``merge:<key>``, a legacy name), which a trusted
+    # system rule also matches for rules written before values carried their system.
+    system_id: Optional[str] = None
+    system_name: Optional[str] = None
 
 
 @dataclass
@@ -60,6 +65,34 @@ class SurvivorshipResult:
     source_system: str
     rule_type: str
     confidence: float
+    system_id: Optional[str] = None
+    system_name: Optional[str] = None
+
+
+def _result(winner: FieldContribution, rule_type: str, confidence: Optional[float] = None) -> SurvivorshipResult:
+    return SurvivorshipResult(
+        value=winner.value,
+        source_system=winner.source_system,
+        rule_type=rule_type,
+        confidence=winner.confidence if confidence is None else confidence,
+        system_id=winner.system_id,
+        system_name=winner.system_name,
+    )
+
+
+# One rank of a trusted_sources list: a system as the rule stores it (its name), or every alias of
+# one system (id, current name, stored entry) as golden_record_engine._load_survivorship_rules resolves it.
+TrustedSource = Union[str, Sequence[str]]
+
+
+def aliases_of(source: TrustedSource) -> tuple[str, ...]:
+    return (source,) if isinstance(source, str) else tuple(source)
+
+
+def matches_source(c: FieldContribution, source: TrustedSource) -> bool:
+    """Whether a trusted_sources rank names this contribution's system: its id, its name or its label."""
+    tags = {t for t in (c.system_id, c.system_name, c.source_system) if t}
+    return any(a in tags for a in aliases_of(source))
 
 
 def apply_most_recent(
@@ -75,12 +108,7 @@ def apply_most_recent(
         return None
 
     winner = max(valid, key=lambda c: c.extracted_at)
-    return SurvivorshipResult(
-        value=winner.value,
-        source_system=winner.source_system,
-        rule_type="most_recent",
-        confidence=winner.confidence,
-    )
+    return _result(winner, "most_recent")
 
 
 def apply_most_complete(
@@ -102,12 +130,7 @@ def apply_most_complete(
     if not all_field_contributions:
         # Fallback: just pick any non-null, prefer most recent
         winner = max(valid, key=lambda c: c.extracted_at)
-        return SurvivorshipResult(
-            value=winner.value,
-            source_system=winner.source_system,
-            rule_type="most_complete",
-            confidence=winner.confidence,
-        )
+        return _result(winner, "most_complete")
 
     # Count nulls per source system across all fields
     null_counts: dict[str, int] = {}
@@ -130,12 +153,7 @@ def apply_most_complete(
 
     best_source = ranked[0]
     winner = next(c for c in valid if c.source_system == best_source)
-    return SurvivorshipResult(
-        value=winner.value,
-        source_system=winner.source_system,
-        rule_type="most_complete",
-        confidence=winner.confidence,
-    )
+    return _result(winner, "most_complete")
 
 
 def apply_most_frequent(
@@ -157,19 +175,17 @@ def apply_most_frequent(
         return None
     top = max(counts, key=counts.__getitem__)
     winner = next(c for c in valid if str(c.value).strip().lower() == top)
-    return SurvivorshipResult(
-        value=winner.value,
-        source_system=winner.source_system,
-        rule_type="most_frequent",
-        confidence=winner.confidence,
-    )
+    return _result(winner, "most_frequent")
 
 
 def apply_trusted_source(
     contributions: list[FieldContribution],
-    trusted_sources: list[str],
+    trusted_sources: Sequence[TrustedSource],
 ) -> Optional[SurvivorshipResult]:
-    """Pick the value from the highest-ranked system in the trusted_sources list."""
+    """Pick the value from the highest-ranked system in the trusted_sources list.
+
+    A rank matches a contribution's source system id, its system name or its provenance label.
+    """
     if not contributions or not trusted_sources:
         return None
 
@@ -177,18 +193,10 @@ def apply_trusted_source(
     if not valid:
         return None
 
-    # Build lookup: source_system -> contribution
-    by_source = {c.source_system: c for c in valid}
-
     for source in trusted_sources:
-        if source in by_source:
-            winner = by_source[source]
-            return SurvivorshipResult(
-                value=winner.value,
-                source_system=winner.source_system,
-                rule_type="trusted_source",
-                confidence=winner.confidence,
-            )
+        winner = next((c for c in valid if matches_source(c, source)), None)
+        if winner is not None:
+            return _result(winner, "trusted_source")
 
     # None of the trusted sources have a value — no winner
     return None
@@ -241,21 +249,11 @@ def apply_canonical(
     canonical_values = {p[0] for p in pairs}
     if len(canonical_values) == 1:
         winner = max(pairs, key=lambda p: p[1].extracted_at)[1]
-        return SurvivorshipResult(
-            value=winner.value,
-            source_system=winner.source_system,
-            rule_type="canonical",
-            confidence=winner.confidence,
-        )
+        return _result(winner, "canonical")
 
     # Disagree: pick the most recent canonicalisable one
     winner = max(pairs, key=lambda p: p[1].extracted_at)[1]
-    return SurvivorshipResult(
-        value=winner.value,
-        source_system=winner.source_system,
-        rule_type="canonical",
-        confidence=max(0.5, winner.confidence * 0.9),
-    )
+    return _result(winner, "canonical", max(0.5, winner.confidence * 0.9))
 
 
 def apply_format_valid(
@@ -280,12 +278,7 @@ def apply_format_valid(
         return None
 
     winner = max(valid, key=lambda c: c.extracted_at)
-    return SurvivorshipResult(
-        value=winner.value,
-        source_system=winner.source_system,
-        rule_type="format_valid",
-        confidence=winner.confidence,
-    )
+    return _result(winner, "format_valid")
 
 
 def apply_longest_non_null(
@@ -322,12 +315,7 @@ def apply_longest_non_null(
         # Tie → not decisive here, let a later rule pick
         return None
     winner = longest[0]
-    return SurvivorshipResult(
-        value=winner.value,
-        source_system=winner.source_system,
-        rule_type="longest_non_null",
-        confidence=winner.confidence,
-    )
+    return _result(winner, "longest_non_null")
 
 
 @dataclass
@@ -340,7 +328,7 @@ class SurvivorshipChain:
 
     field_name: str
     field_type: FieldType
-    trusted_sources: list[str] | None = None
+    trusted_sources: Sequence[TrustedSource] | None = None
     all_field_contributions: dict[str, list[FieldContribution]] | None = None
 
     def evaluate(self, contributions: list[FieldContribution]) -> Optional[SurvivorshipResult]:
@@ -382,7 +370,7 @@ def evaluate_field(
     field_name: str,
     contributions: list[FieldContribution],
     rule_type: str,
-    trusted_sources: list[str] | None = None,
+    trusted_sources: Sequence[TrustedSource] | None = None,
     all_field_contributions: dict[str, list[FieldContribution]] | None = None,
 ) -> Optional[SurvivorshipResult]:
     """Evaluate a single field using the specified survivorship rule.

@@ -145,8 +145,11 @@ describe("One review screen for both sources", () => {
     const dialog = await screen.findByRole("dialog", { name: /Keep record B/ });
     expect(within(dialog).getByText(/cannot be undone/)).toBeInTheDocument();
     expect(merge).not.toHaveBeenCalled();
+    // The reason is required, as for a match-engine merge: Merge stays off until one is given.
+    expect(within(dialog).getByRole("button", { name: "Merge" })).toBeDisabled();
+    fireEvent.change(within(dialog).getByRole("textbox"), { target: { value: " Same supplier, new number " } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Merge" }));
-    await waitFor(() => expect(merge).toHaveBeenCalledWith({ candidate_id: "d1", survivor_key: "7" }));
+    await waitFor(() => expect(merge).toHaveBeenCalledWith({ candidate_id: "d1", survivor_key: "7", reason: "Same supplier, new number" }));
   });
 
   it("keeps Merge in view, disabled with the role that grants it, without approve rights", async () => {

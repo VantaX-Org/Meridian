@@ -65,8 +65,13 @@ def _clean_value(v):
     return v
 
 
-def _rows_to_incoming(group: pd.DataFrame, source_system: str) -> list[dict]:
-    """Turn the upload rows for one object key into engine ``incoming_records``."""
+def _rows_to_incoming(group: pd.DataFrame, source_system: str, system_id: str | None = None,
+                      system_name: str | None = None) -> list[dict]:
+    """Turn the upload rows for one object key into engine ``incoming_records``.
+
+    ``system_id`` / ``system_name``: the connected system the run came from (an extraction, or an
+    upload attached to a system), so every value is tagged with it for trusted-system survivorship.
+    """
     extracted = datetime.now(timezone.utc).isoformat()
     records: list[dict] = []
     for _, row in group.iterrows():
@@ -81,9 +86,22 @@ def _rows_to_incoming(group: pd.DataFrame, source_system: str) -> list[dict]:
                 "extracted_at": extracted,
                 "fields": fields,
                 "confidence": 1.0,
+                **({"source_system_id": system_id} if system_id else {}),
+                **({"source_system_name": system_name} if system_name else {}),
             }
         )
     return records
+
+
+async def _run_system(db, version_id: str, tenant_id: str) -> tuple[str | None, str | None]:
+    """The connected system of a run (metadata.system_id, set by extraction and by an upload attached to
+    a system) and its name; ``(None, None)`` for an upload attached to no system."""
+    row = (await db.execute(text("""
+        SELECT s.id::text, s.name FROM analysis_versions v
+          JOIN sap_systems s ON s.tenant_id = v.tenant_id AND s.id::text = v.metadata->>'system_id'
+         WHERE v.id = CAST(:v AS uuid) AND v.tenant_id = CAST(:t AS uuid)
+    """), {"v": str(version_id), "t": str(tenant_id)})).first()
+    return (row[0], row[1]) if row else (None, None)
 
 
 async def _build_for_module(
@@ -117,12 +135,13 @@ async def _build_for_module(
                 text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant_id)}
             )
             await db.commit()
+            system_id, system_name = await _run_system(db, version_id, tenant_id)
 
             for key_value, group in df.groupby(key_col, sort=False):
                 key_str = str(key_value).strip()
                 if not key_str or key_str.lower() in ("nan", "none", "nat"):
                     continue
-                incoming = _rows_to_incoming(group, source_system)
+                incoming = _rows_to_incoming(group, source_system, system_id, system_name)
                 # process_sync_batch swallows its own errors and returns None,
                 # so one bad object never aborts the rest of the module.
                 record_id = await process_sync_batch(

@@ -173,3 +173,30 @@ async def test_blocker_fix_batch_excludes_other_scopes(seeded, monkeypatch):
         r = await c.post(url, json=body, headers={**H, "X-User-Role": "admin"})
     assert r.status_code == 200, r.text
     assert [i["scope"] for i in captured["issues"]] == [seeded["prd"]]
+
+
+@pytest.mark.anyio
+async def test_blocker_count_is_the_blockers_tab_gap_set(seeded, monkeypatch):
+    """One definition: an object's blocker_count counts exactly the findings the Blockers tab lists
+    (critical / high). The old per-type count also took a medium check_table_value (baseline config)."""
+    with seeded["engine"].begin() as c:
+        c.execute(text("INSERT INTO migration_gap_findings (tenant_id, run_id, module, record_key, field, gap_type, "
+                       "severity) VALUES (:t, :r, 'accounts_payable', 'LIFNR=4', 'LFA1.LAND1', "
+                       "'check_table_value', 'medium'), (:t, :r, 'accounts_payable', 'LIFNR=5', 'LFA1.LIFNR', "
+                       "'target_key_exists', 'high'), (:t, :r, 'accounts_payable', 'LIFNR=6', 'LFA1.NAME1', "
+                       "'case_change', 'low')"), {"t": seeded["tid"], "r": seeded["r2"]})
+        c.execute(text("UPDATE migration_runs SET gap_summary = jsonb_set(gap_summary, '{accounts_payable,gaps}', "
+                       "CAST(:g AS jsonb)) WHERE id = :r"),
+                  {"r": seeded["r2"], "g": json.dumps({"value_unmapped": 3, "unmapped_field": 1, "check_table_value": 1,
+                                                       "target_key_exists": 1, "case_change": 1})})
+    async with await _client(monkeypatch, seeded["tid"]) as c:
+        r = await c.get(f"/api/v1/migration/waves/{seeded['wid']}/cockpit", headers={**H, "X-User-Role": "viewer"})
+    assert r.status_code == 200, r.text
+    b = r.json()
+    tab: dict[str, int] = {}
+    for row in b["blockers"]:
+        tab[row["module"]] = tab.get(row["module"], 0) + row["gaps"]
+    assert {o["module"]: o["blocker_count"] for o in b["objects"]} == {"material_master": 0, "accounts_payable": 4}
+    assert tab == {"accounts_payable": 4}
+    assert {(x["gap_type"], x["severity"]) for x in b["blockers"]} == {("value_unmapped", "critical"),
+                                                                        ("target_key_exists", "high")}

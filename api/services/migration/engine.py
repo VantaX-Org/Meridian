@@ -32,7 +32,9 @@ from sap.ddic import Dictionary, Field
 _DIR = Path(__file__).resolve().parents[3] / "sap" / "dictionaries" / "migration"
 _NUMERIC = {"DEC", "CURR", "QUAN", "INT1", "INT2", "INT4", "INT8", "FLTP", "DF16_DEC", "DF34_DEC"}
 _CHARLIKE = {"CHAR", "NUMC", "CUKY", "UNIT", "LANG", "CLNT", "ACCP", "SSTR", "STRING"}
-_BLOCKING = ("critical", "high")
+# A gap of these severities blocks its record; the cockpit counts a module's blockers by the same set.
+BLOCKING_SEVERITIES = ("critical", "high")
+_BLOCKING = BLOCKING_SEVERITIES
 MAX_FINDINGS_PER_GAP = 50_000
 
 

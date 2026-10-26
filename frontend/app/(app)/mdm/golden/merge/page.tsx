@@ -20,7 +20,7 @@ import {
 } from "@/design";
 import { CleaningPairs, cleaningPairsKey } from "@/components/mdm/cleaning-pairs";
 import { LedgerHead, RowButton, actionColumn } from "@/components/mdm/ledger";
-import { sourceSystems } from "@/components/mdm/golden-status";
+import { contributionSystem, sourceSystems } from "@/components/mdm/golden-status";
 import { BAND_LABEL, pct, whyMatched } from "@/components/mdm/match-review-model";
 import { PairReview, matchReviewKey } from "@/components/mdm/pair-review";
 import { useRole } from "@/hooks/use-role";
@@ -303,7 +303,7 @@ function CompareSources({ id }: { id: string }) {
   const fields = Object.entries(record.golden_fields);
   const rows: SourceFieldRow[] = fields.map(([field, value]) => {
     const c = record.source_contributions[field];
-    return { field, value, system: c?.source_system ?? null, confidence: c?.confidence ?? null };
+    return { field, value, system: contributionSystem(c), confidence: c?.confidence ?? null };
   });
   const systems = sourceSystems(record.source_contributions);
 
