@@ -213,13 +213,26 @@ def test_issue_and_diff_api(app_engine):
             # accepting needs a resolution
             assert (await c.post("/api/v1/issues/bulk", headers=steward,
                                  json={"ids": [open_id], "status": "accepted"})).status_code == 400
+            # a data owner (approve, no assign) signs off acceptance, but may not start work or reassign
+            owner_h = {"X-User-Role": "data_owner"}
+            assert (await c.post("/api/v1/issues/bulk", headers=owner_h,
+                                 json={"ids": [open_id], "status": "in_progress"})).status_code == 403
+            assert (await c.post("/api/v1/issues/bulk", headers=owner_h,
+                                 json={"ids": [open_id], "status": "accepted", "resolution": "accepted_risk",
+                                       "assigned_to": ""})).status_code == 403
+            ok = await c.post("/api/v1/issues/bulk", headers=owner_h,
+                              json={"ids": [open_id], "status": "accepted", "resolution": "accepted_risk"})
+            assert ok.status_code == 200 and ok.json() == {"updated": 1}
+            reopen = await c.post("/api/v1/issues/bulk", headers=steward, json={"ids": [open_id], "status": "open"})
+            assert reopen.json() == {"updated": 1}
             ok = await c.post("/api/v1/issues/bulk", headers=steward,
                               json={"ids": [open_id], "status": "accepted", "resolution": "accepted_risk",
                                     "note": "Signed off by AP lead"})
             assert ok.json() == {"updated": 1}
             d = (await c.get(f"/api/v1/issues/{open_id}", headers=analyst)).json()
             assert d["issue"]["status"] == "accepted"
-            assert [e["action"] for e in d["events"]] == ["comment", "status"]
+            # comment, the data owner's acceptance, the steward's re-open, the steward's acceptance
+            assert [e["action"] for e in d["events"]] == ["comment", "status", "status", "status"]
             with app_eng.begin() as conn:
                 conn.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
                 assert conn.execute(text("SELECT steward_verdict FROM record_issues WHERE id = :i"),

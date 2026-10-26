@@ -19,7 +19,8 @@ import LeadHomePage from "../lead/page";
 import StewardHomePage from "../steward/page";
 import BasisHomePage from "../basis/page";
 
-vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+const perms = vi.hoisted(() => ({ can: (() => true) as (action: string) => boolean }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (a: string) => perms.can(a) }) }));
 vi.mock("@/components/insight/route-insight", () => ({ RouteInsight: () => null }));
 const nav = vi.hoisted(() => ({ search: "" }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), useSearchParams: () => new URLSearchParams(nav.search) }));
@@ -52,6 +53,7 @@ const LATEST: Version = {
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  perms.can = () => true;
   // jsdom has no matchMedia; the trend chart's reduced-motion check needs a stub.
   vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
   vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: OBJECTS });
@@ -151,6 +153,26 @@ describe("PersonaHomePage Brief geometry", () => {
     expect(screen.getByRole("link", { name: "Fix Material master" })).toHaveAttribute("href", "/fix?run=v1&module=material_master&check=MM-001");
     expect(screen.getByRole("link", { name: "Open Controlling" })).toHaveAttribute("href", "/objects/controlling?run=v1");
     expect(screen.queryByRole("link", { name: "Fix Controlling" })).toBeNull();
+  });
+
+  it("offers Open, never Fix, to a role that can neither apply nor approve", async () => {
+    perms.can = (a) => a === "view" || a === "export";
+    vi.spyOn(findingsApi, "getFindings").mockResolvedValue({
+      findings: [find("MM-001", "material_master", { record_fixes: [{ record_id: "1" }] })],
+    } as unknown as Awaited<ReturnType<typeof findingsApi.getFindings>>);
+    renderWithQuery(<LeadHomePage />);
+    await screen.findByRole("link", { name: "MM-001" });
+    expect(screen.queryByRole("link", { name: "Fix Material master" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Open Material master" })).toHaveAttribute("href", "/objects/material_master?run=v1");
+  });
+
+  it("keeps Fix for an approver who cannot apply", async () => {
+    perms.can = (a) => a === "view" || a === "approve";
+    vi.spyOn(findingsApi, "getFindings").mockResolvedValue({
+      findings: [find("MM-001", "material_master", { record_fixes: [{ record_id: "1" }] })],
+    } as unknown as Awaited<ReturnType<typeof findingsApi.getFindings>>);
+    renderWithQuery(<LeadHomePage />);
+    expect(await screen.findByRole("link", { name: "Fix Material master" })).toBeInTheDocument();
   });
 
   it("keeps the onboarding as one row under the ledger, before the work row", async () => {
@@ -453,6 +475,28 @@ describe("PersonaHomePage current state across objects", () => {
     // the blocking rule of an object that is not in the newest run drills into that object's own run
     expect(screen.getByRole("link", { name: "MM045" })).toHaveAttribute("href", "/objects/material_master?run=mm1&tab=records&check_id=MM045");
     expect(screen.getByText("1 of 3 objects capped by critical rules")).toBeInTheDocument();
+  });
+
+  it("gives a data owner (approves, cannot apply) Open approvals as the steward home's next step", async () => {
+    perms.can = (a) => a === "view" || a === "approve" || a === "export";
+    renderWithQuery(<StewardHomePage />);
+    const open = await screen.findByRole("link", { name: "Open approvals" });
+    expect(open).toHaveAttribute("href", "/fix?tab=batches");
+    expect(open).toHaveClass("m-btn-primary");
+    expect(screen.queryByRole("link", { name: "Open worst object" })).toBeNull();
+  });
+
+  it("gives the auditor Open audit log, not the lead's objects below target", async () => {
+    perms.can = (a) => a === "view" || a === "export" || a === "view_audit";
+    renderWithQuery(<LeadHomePage />);
+    expect(await screen.findByRole("link", { name: "Open audit log" })).toHaveAttribute("href", "/admin/audit");
+    expect(screen.queryByRole("link", { name: "Open objects below target" })).toBeNull();
+  });
+
+  it("keeps Open objects below target for a viewer, who has no audit log", async () => {
+    perms.can = (a) => a === "view";
+    renderWithQuery(<LeadHomePage />);
+    expect(await screen.findByRole("link", { name: "Open objects below target" })).toBeInTheDocument();
   });
 
   it("asks the findings endpoints for the current state, not one run", async () => {

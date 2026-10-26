@@ -44,6 +44,7 @@ import { apiErrorState, isListFailure } from "@/lib/error";
 import { openJobTray } from "@/lib/job-tray-bus";
 import { queryKeys } from "@/lib/query-keys";
 import { PERSONA_OPTIONS } from "@/lib/persona";
+import { homeActionFor } from "@/lib/home-action";
 import type { Version } from "@/types/api";
 
 /** The ledger shows this many objects, then a link to all of them; the heatmap draws the same rows. */
@@ -194,15 +195,16 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const systems = systemsQ.data ?? [];
   const activeSystems = systems.filter((s) => s.is_active);
 
-  const action =
-    role === "lead"
-      ? { label: belowTarget.length ? "Open objects below target" : "Open objects", href: objectsHref(belowTarget.length ? { readiness: BELOW_TARGET } : {}) }
-      : role === "steward"
-        ? { label: "Open worst object", href: worst ? `/objects/${worst.module}?run=${worst.run_id}` : objectsHref() }
-        : (() => {
-            const failed = activeSystems.some(isFailing);
-            return { label: failed ? "Open failed system" : "Open systems", href: "/systems" };
-          })();
+  const action = homeActionFor({
+    persona: role,
+    can,
+    belowTarget: belowTarget.length,
+    objectsHref: (filtered) => objectsHref(filtered ? { readiness: BELOW_TARGET } : {}),
+    worstHref: worst ? `/objects/${worst.module}?run=${worst.run_id}` : undefined,
+    systemFailing: activeSystems.some(isFailing),
+  });
+  // The ledger's row action fixes only for a role that can work a fix (apply it, or approve it); else it opens.
+  const canFix = can("apply") || can("approve");
 
   const capReason = cappedReason(merged);
   const cappedObjects = state.filter((o) => o.summary.composite_score != null && o.summary.capped).length;
@@ -322,7 +324,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     },
     {
       id: "action", header: "", enableSorting: false,
-      cell: ({ row: { original: o } }) => o.fixable
+      cell: ({ row: { original: o } }) => o.fixable && canFix
         // The blocking rule's records in the run that found them, the rule this row names.
         ? <Link href={fixHref({ run: o.run_id, module: o.module, check: o.blocking })} className="m-ink-accent" aria-label={`Fix ${o.label}`}>Fix</Link>
         : <Link href={objectHref(o)} className="m-ink-accent" aria-label={`Open ${o.label}`}>Open</Link>,

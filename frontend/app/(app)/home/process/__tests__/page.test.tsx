@@ -1,5 +1,5 @@
 // frontend/app/(app)/home/process/__tests__/page.test.tsx
-import { screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as connectivityApi from "@/lib/api/connectivity";
@@ -15,7 +15,8 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/home/process",
   useSearchParams: () => new URLSearchParams(""),
 }));
-vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+const perms = vi.hoisted(() => ({ can: (() => true) as (action: string) => boolean }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (a: string) => perms.can(a) }) }));
 vi.mock("@/components/help/home-onboarding", () => ({ HomeOnboarding: () => null }));
 
 const SYS = { id: "sys-1", name: "KSA PRD", system_type: "S4HANA" } as unknown as SAPSystemExtended;
@@ -38,6 +39,7 @@ const l1 = (id: string, name: string, fields: ReturnType<typeof field>[]): Busin
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  perms.can = () => true;
   vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([SYS]);
   vi.spyOn(pdApi, "getCatalogue").mockResolvedValue([row("PTP", "Procure to pay"), row("R2R", "Record to report")]);
   vi.spyOn(pdApi, "listRuns").mockResolvedValue([]);
@@ -109,5 +111,40 @@ describe("process home", () => {
     renderWithQuery(<ProcessHomePage />);
     expect(await screen.findByText("Go")).toBeInTheDocument();
     expect(screen.getByText("None")).toBeInTheDocument();
+  });
+
+  it("leads with the verdict and the worst no-go process as the next step", async () => {
+    vi.spyOn(connectivityApi, "getBusinessProcess").mockResolvedValue([
+      l1("PTP", "Procure to pay", [field({ dq_status: "red", affected_count: 1234, pass_rate: 40 })]),
+    ]);
+    renderWithQuery(<ProcessHomePage />);
+    const insight = await screen.findByRole("region", { name: "Insight" });
+    expect(within(insight).getByText("1 of 1 scored process cannot run on KSA PRD")).toBeInTheDocument();
+    expect(within(insight).getByText("Procure to pay: Tax number fails 1,234 records")).toBeInTheDocument();
+    expect(within(insight).getByRole("link", { name: "Open Procure to pay" })).toHaveAttribute("href", "/insights/process?l1=PTP&object=accounts_payable&run=v1");
+  });
+
+  it("says every scored process can run, and opens the processes, when none is no-go", async () => {
+    vi.spyOn(connectivityApi, "getBusinessProcess").mockResolvedValue([l1("PTP", "Procure to pay", [field({})])]);
+    renderWithQuery(<ProcessHomePage />);
+    const insight = await screen.findByRole("region", { name: "Insight" });
+    expect(within(insight).getByText("Every scored process can run on KSA PRD")).toBeInTheDocument();
+    expect(within(insight).getByRole("link", { name: "Open processes" })).toHaveAttribute("href", "/process?system=sys-1");
+  });
+
+  it("exports the as-is model with export_process alone, and nothing without either export", async () => {
+    vi.spyOn(connectivityApi, "getBusinessProcess").mockResolvedValue([
+      l1("PTP", "Procure to pay", [field({ dq_status: "red", affected_count: 5, pass_rate: 40 })]),
+    ]);
+    const exportRun = vi.spyOn(pdApi, "exportRun").mockResolvedValue();
+    perms.can = (a) => a === "view" || a === "export_process" || a === "run_process_discovery";
+    const { unmount } = renderWithQuery(<ProcessHomePage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Export" }));
+    await waitFor(() => expect(exportRun).toHaveBeenCalledWith("run-PTP", "PTP", {}));
+    unmount();
+    perms.can = (a) => a === "view";
+    renderWithQuery(<ProcessHomePage />);
+    await screen.findByRole("region", { name: "Insight" });
+    expect(screen.queryByRole("button", { name: /^Export/ })).toBeNull();
   });
 });

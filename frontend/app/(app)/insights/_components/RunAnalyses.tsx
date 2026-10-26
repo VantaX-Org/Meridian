@@ -10,6 +10,7 @@ import type { CleansingStep, RootCauseCluster } from "@/lib/api/insights";
 import type { S4Area } from "@/lib/api/migration";
 import { drillLabel, fixHref, type FixFilter } from "@/lib/drill";
 import { formatModuleName, labelOf } from "@/lib/format";
+import { useRole } from "@/hooks/use-role";
 import { withScope } from "./useInsightScope";
 
 type Cluster = RootCauseCluster & { version_id?: string };
@@ -111,6 +112,8 @@ export const CLEANSING_STAGE_FILTER: Record<CleansingStep["key"], FixFilter> = {
 /** Failing records to applied fixes; each stage opens Fix work at that status. */
 export function CleansingFunnel({ steps, run }: { steps: CleansingStep[]; run?: string }) {
   const router = useRouter();
+  // A batch is built from fixes someone applies: without `apply` the funnel stays a read (its stages still open Fix work).
+  const { can } = useRole();
   if (steps.length === 0 || steps.every((s) => !s.records)) {
     return <p className="m-text-body m-ink-3">No failing records to clean in this scope. <Link href={fixHref({ run })} className="m-ink-accent underline underline-offset-2">Open Fix work</Link></p>;
   }
@@ -125,9 +128,11 @@ export function CleansingFunnel({ steps, run }: { steps: CleansingStep[]; run?: 
           }}
         />
       </div>
-      <div className="mt-3">
-        <Button variant="secondary" render={<Link href={fixHref({ run, sugg: true })}>Create remediation batch</Link>} />
-      </div>
+      {can("apply") ? (
+        <div className="mt-3">
+          <Button variant="secondary" render={<Link href={fixHref({ run, sugg: true })}>Create remediation batch</Link>} />
+        </div>
+      ) : null}
     </>
   );
 }

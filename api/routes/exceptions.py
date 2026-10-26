@@ -3,7 +3,7 @@
 import json
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Awaitable, Callable, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.services.exception_engine import ExceptionBillingCalculator
 from api.services.notifications import create_notification
-from api.services.rbac import has_permission, require_permission
+from api.services.rbac import has_permission, require_any_permission, require_permission
 
 router = APIRouter(prefix="/api/v1", tags=["exceptions"])
 
@@ -82,6 +82,40 @@ class UpdateRuleBody(BaseModel):
 
 async def _set_rls(db: AsyncSession, tenant_id: uuid.UUID) -> None:
     await db.execute(text(f"SET app.tenant_id = '{str(tenant_id)}'"))
+
+
+def require_action_or_sap_source(action: str) -> Callable[..., Awaitable[str]]:
+    """Dependency factory: `action` on any exception, or `manage_systems` on an exception raised from an SAP system
+    (source_system set). SAP Basis owns the SAP monitor's signals (failed jobs, locked records) without holding
+    `assign` or `approve`, so it can claim and resolve those, and only those."""
+    gate = require_any_permission(action, "manage_systems")
+    strict = require_permission(action)
+
+    async def _check(
+        exception_id: str,
+        request: Request,
+        tenant: Tenant = Depends(get_tenant),
+        db: AsyncSession = Depends(get_db),
+    ) -> str:
+        role = await gate(request, tenant, db)
+        try:
+            return await strict(request, tenant, db)
+        except HTTPException:
+            pass  # manage_systems only: the exception must come from an SAP system
+        await _set_rls(db, tenant.id)
+        row = (await db.execute(
+            text("SELECT source_system FROM exceptions WHERE id::text = :eid AND tenant_id = :tid"),
+            {"eid": exception_id, "tid": str(tenant.id)},
+        )).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Exception not found")
+        if not row[0]:
+            raise HTTPException(status_code=403, detail=(
+                f"Role '{role}' does not have '{action}' permission; system managers act only on exceptions "
+                "raised from an SAP system"))
+        return role
+
+    return _check
 
 
 def _row_to_dict(row) -> dict:
@@ -293,7 +327,7 @@ async def create_exception(
 # ── 4. PUT /api/v1/exceptions/{id}/assign ────────────────────────────────────
 
 
-@router.put("/exceptions/{exception_id}/assign", dependencies=[Depends(require_permission("assign"))])
+@router.put("/exceptions/{exception_id}/assign", dependencies=[Depends(require_action_or_sap_source("assign"))])
 async def assign_exception(
     exception_id: str,
     body: AssignBody,
@@ -394,7 +428,7 @@ async def resolve_exception(
     body: ResolveBody,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("approve")),
+    _role: str = Depends(require_action_or_sap_source("approve")),
 ):
     await _set_rls(db, tenant.id)
 

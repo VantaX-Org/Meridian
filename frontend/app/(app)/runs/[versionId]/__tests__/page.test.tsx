@@ -419,4 +419,23 @@ describe("RunDetailPage", () => {
     await waitFor(() => expect(runsApi.getRunSteps).toHaveBeenCalled());
     expect(findingsApi.getFindingsAggregate).toHaveBeenCalled();
   });
+
+  it("offers Import file in the single-run empty state only to a role that may upload", async () => {
+    const single = version({ id: "v2", metadata: { modules: ["material_master"], file_name: "f.csv", row_count: 1 } });
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(single);
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [single] });
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue({ ...EMPTY_AGGREGATE, total: 1 });
+    try {
+      can.mockImplementation((a: string) => a === "view");
+      const viewer = renderWithQuery(<RunDetailPage />);
+      expect(await screen.findByText("Only one run so far")).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Import file" })).toBeNull();
+      viewer.unmount();
+      can.mockImplementation((a: string) => a === "upload");
+      renderWithQuery(<RunDetailPage />);
+      expect(await screen.findByRole("link", { name: "Import file" })).toHaveAttribute("href", "/import");
+    } finally {
+      can.mockImplementation((action: string) => action === "analyse" || action === "export");
+    }
+  });
 });

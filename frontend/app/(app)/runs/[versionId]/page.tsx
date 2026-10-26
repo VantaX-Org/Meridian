@@ -231,6 +231,8 @@ function SummaryTab({
   lineage: Version[];
 }) {
   const router = useRouter();
+  // The empty trend's "Run analysis" (analyse) and "Import file" (upload) are offered only to roles that may do them.
+  const { can } = useRole();
   // Next actions come from this run's findings, not the newest run of the tenant.
   const prescriptive = useQuery({ queryKey: ["prescriptive", "next-actions", versionId], queryFn: () => getPrescriptiveAnalytics({ limit: 5, version_id: versionId }) });
   // Shared with the Objects tab: the score, blocking rule and readiness of each object.
@@ -386,7 +388,9 @@ function SummaryTab({
             variant="inline"
             title="Only one run so far"
             detail={systemId ? "Scores over time appear after a second run of this system." : "Scores over time appear after a second upload of the same objects."}
-            action={<Button render={<Link href={systemId ? `/systems/${systemId}` : "/import"}>{systemId ? "Run analysis" : "Import file"}</Link>} />}
+            action={(systemId ? can("analyse") : can("upload"))
+              ? <Button render={<Link href={systemId ? `/systems/${systemId}` : "/import"}>{systemId ? "Run analysis" : "Import file"}</Link>} />
+              : undefined}
           />
         ) : (
           <Line data={points} label="Composite over runs" height={160} annotations={annotations} onPointClick={(p) => { if (p.runId) router.push(runPageHref(p.runId)); }} />

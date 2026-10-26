@@ -35,15 +35,24 @@ export function personaForRole(role: Role): Persona {
   return PERSONA_BY_ROLE[role];
 }
 
+/** Fix work's approvals tab: where an approver who cannot apply fixes (the data owner) does their work. */
+export const APPROVALS_HREF = "/fix?tab=batches";
+
+/** An approver who cannot apply: every control on "Records to fix" is apply-only, so their work is the approvals tab. */
+export const approvesOnly = (can: (action: string) => boolean): boolean => can("approve") && !can("apply");
+
 /**
  * Where this role lands: its persona page, except stewards, who start on Fix work (the steward home,
  * /home/steward, stays routable and is still what "View as: Steward" opens). A steward whose role may neither
- * approve nor apply (a custom role) cannot open Fix work, so pass `can` and they land on the steward home instead.
+ * approve nor apply (a custom role) cannot open Fix work, so pass `can` and they land on the steward home instead;
+ * one who may approve but not apply (the data owner) lands on Fix work's approvals tab.
  */
 export function homeHrefForRole(role: Role, can?: (action: string) => boolean): string {
   const persona = personaForRole(role);
   if (persona !== "steward") return `/home/${persona}`;
-  return !can || can("approve") || can("apply") ? "/fix" : "/home/steward";
+  if (!can) return "/fix";
+  if (approvesOnly(can)) return APPROVALS_HREF;
+  return can("approve") || can("apply") ? "/fix" : "/home/steward";
 }
 
 /**

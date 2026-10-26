@@ -10,7 +10,7 @@ import { QuickFilters } from "@/components/inbox/quick-filters";
 import { getAssignableUsers } from "@/lib/api/users";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
-import { getSAPMonitor } from "@/lib/api/exceptions";
+import { assignException, getSAPMonitor, resolveException } from "@/lib/api/exceptions";
 import {
   commentIssue, exportIssues, getIssue, getIssues, updateIssues, type IssueStatus, type RecordIssue,
 } from "@/lib/api/issues";
@@ -113,8 +113,10 @@ export function IssuesPanel() {
   const { can } = useRole();
   const { user } = useAuth();
   const qc = useQueryClient();
-  // Status, assignee and resolve changes need `assign` on the server (api/routes/record_issues.py bulk_update).
+  // Status, assignee and resolve changes need `assign` on the server (api/routes/record_issues.py bulk_update);
+  // accepting (an approver's sign-off on the risk) needs `approve` alone, so a data owner can accept.
   const canAssign = can("assign");
+  const canAccept = can("approve");
   const [status, setStatus] = useState<IssueStatus | "">("");
   const [severity, setSeverity] = useState("");
   const [who, setWho] = useState<"all" | "mine" | "unassigned">("all");
@@ -167,15 +169,21 @@ export function IssuesPanel() {
   const filtering = !!(status || severity || search.trim()) || who !== "all" || when !== "any";
   const clear = () => { setStatus(""); setSeverity(""); setSearch(""); setWho("all"); setWhen("any"); };
   const assignees = (Array.isArray(people.data) ? people.data : []).filter((u) => u.id !== user?.id).map((u) => ({ value: u.id, label: u.name || u.email }));
-  const actions = (ids: string[]) => canAssign ? (
+  const accept = (ids: string[]) => bulk.mutate({ ids, status: "accepted", resolution: "accepted_risk" });
+  const actions = (ids: string[]) => canAssign || canAccept ? (
     <>
-      {user ? <Button variant="secondary" size="sm" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids, assigned_to: user.id })}>Claim</Button> : null}
-      <Button variant="secondary" size="sm" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids, assigned_to: "" })}>Release</Button>
-      {assignees.length > 0 ? (
-        <Select label="Reassign to" value="" placeholder="Reassign to…" options={assignees} onValueChange={(v) => { if (v) bulk.mutate({ ids, assigned_to: v }); }} />
+      {canAssign ? (
+        <>
+          {user ? <Button variant="secondary" size="sm" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids, assigned_to: user.id })}>Claim</Button> : null}
+          <Button variant="secondary" size="sm" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids, assigned_to: "" })}>Release</Button>
+          {assignees.length > 0 ? (
+            <Select label="Reassign to" value="" placeholder="Reassign to…" options={assignees} onValueChange={(v) => { if (v) bulk.mutate({ ids, assigned_to: v }); }} />
+          ) : null}
+          <Button variant="secondary" size="sm" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids, status: "in_progress" })}>Start work</Button>
+          <Button variant="secondary" size="sm" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids, status: "resolved", resolution: "fixed_in_source" })}>Fixed in SAP</Button>
+        </>
       ) : null}
-      <Button variant="secondary" size="sm" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids, status: "in_progress" })}>Start work</Button>
-      <Button variant="secondary" size="sm" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids, status: "resolved", resolution: "fixed_in_source" })}>Fixed in SAP</Button>
+      {canAccept ? <Button variant="secondary" size="sm" disabled={bulk.isPending} onClick={() => accept(ids)}>Accept risk</Button> : null}
     </>
   ) : null;
   return (
@@ -234,6 +242,9 @@ export function IssuesPanel() {
                     {canAssign && selected.status !== "resolved" ? (
                       <Button variant="primary" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids: [selected.id], status: "resolved", resolution: "fixed_in_source" })}>Fixed in SAP</Button>
                     ) : null}
+                    {canAccept && selected.status !== "accepted" && selected.status !== "resolved" ? (
+                      <Button variant={canAssign ? "secondary" : "primary"} disabled={bulk.isPending} onClick={() => accept([selected.id])}>Accept risk</Button>
+                    ) : null}
                     {canAssign && user ? (
                       selected.assigned_to === user.id
                         ? <Button variant="ghost" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids: [selected.id], assigned_to: "" })}>Release</Button>
@@ -253,6 +264,75 @@ export function IssuesPanel() {
 }
 
 /* ─── SAP monitor: exceptions raised from live SAP signals ─── */
+
+/** The system the signal's run read and the objects whose findings raised it (api/services/exception_engine.py). */
+export function sapSignalSource(e: Exception): { systemId: string | null; objects: string[] } {
+  const a = e.affected_records ?? {};
+  const systemId = typeof a.system_id === "string" && a.system_id ? a.system_id : null;
+  const objects = Array.isArray(a.modules) ? a.modules.filter((m): m is string => typeof m === "string" && !!m) : [];
+  return { systemId, objects };
+}
+
+/** The system's Extract drawer, opened with the signal's objects picked. */
+export function reExtractHref(systemId: string, objects: string[]): string {
+  const p = new URLSearchParams({ extract: "1" });
+  for (const o of objects) p.append("object", o);
+  return `/systems/${encodeURIComponent(systemId)}?${p}`;
+}
+
+const isClosed = (status: string) => status === "resolved" || status === "verified" || status === "closed";
+
+/**
+ * One SAP signal's detail and what can be done with it. Claim and Resolve need `assign` and `approve`, or
+ * `manage_systems` (SAP Basis), which the server allows on SAP-raised exceptions only (api/routes/exceptions.py
+ * require_action_or_sap_source); Re-extract needs `trigger_sync` and the system the signal's run read.
+ */
+function SapSignal({ e }: { e: Exception }) {
+  const { can } = useRole();
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const [note, setNote] = useState("");
+  const fromSap = !!e.source_system;
+  const basis = fromSap && can("manage_systems");
+  const canClaim = can("assign") || basis;
+  const canResolve = can("approve") || basis;
+  const { systemId, objects } = sapSignalSource(e);
+  const done = (what: string) => { toast.success(what); void qc.invalidateQueries({ queryKey: ["inbox", "sap-monitor"] }); };
+  const claim = useMutation({
+    mutationFn: (me: { id: string; name: string }) => assignException(e.id, { user_id: me.id, user_name: me.name }),
+    onSuccess: () => done("Claimed"),
+    onError: (err) => toast.error(`Not claimed: ${apiErrorMessage(err)}`),
+  });
+  const resolve = useMutation({
+    mutationFn: () => resolveException(e.id, { resolution_type: "steward", resolution_notes: note.trim(), root_cause_category: "system" }),
+    onSuccess: () => { setNote(""); done("Resolved"); },
+    onError: (err) => toast.error(`Not resolved: ${apiErrorMessage(err)}`),
+  });
+  const open = !isClosed(e.status);
+  const mine = !!user && e.assigned_to === user.id;
+  return (
+    <div className="flex flex-col gap-3 m-text-body">
+      <p>{e.description || "SAP sent no further detail for this signal."}</p>
+      {objects.length ? <p className="m-ink-2">Raised from {objects.map(formatModuleName).join(", ")}{e.source_system ? `, ${e.source_system}` : ""}</p> : null}
+      {open && canResolve ? (
+        <Field label="What was done in SAP">
+          <Textarea rows={3} value={note} onChange={(ev) => setNote(ev.target.value)} />
+        </Field>
+      ) : null}
+      <div className="flex flex-wrap items-center gap-2">
+        {open && canResolve ? (
+          <Button variant="primary" disabled={!note.trim() || claim.isPending} pending={resolve.isPending} onClick={() => resolve.mutate()}>Resolve</Button>
+        ) : null}
+        {open && canClaim && user && !mine ? (
+          <Button variant="secondary" disabled={resolve.isPending} pending={claim.isPending} onClick={() => claim.mutate({ id: user.id, name: user.name || user.email })}>Claim</Button>
+        ) : null}
+        {systemId && can("trigger_sync") ? (
+          <Button variant="secondary" render={<Link href={reExtractHref(systemId, objects)} />}>Re-extract</Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 export function SapMonitorPanel() {
   const q = useQuery({ queryKey: ["inbox", "sap-monitor"], queryFn: getSAPMonitor, refetchInterval: 60_000, retry: false });
@@ -277,7 +357,7 @@ export function SapMonitorPanel() {
             {Object.entries(q.data?.by_category ?? {}).map(([k, v]) => <Stat key={k} label={labelOf(k)} value={v.length} />)}
           </div>
           <DataTable columns={cols} data={list} getRowId={(e) => e.id} height={440} exportName="sap-monitor"
-            renderDrawer={(e) => <p className="m-text-body">{e.description || "SAP sent no further detail for this signal."}</p>} />
+            renderDrawer={(e) => <SapSignal key={e.id} e={e} />} />
         </div>
       )}
     </Panel>

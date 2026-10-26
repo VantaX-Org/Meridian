@@ -3,7 +3,7 @@
 /**
  * One system: Overview, Objects, Runs, Health, Pilot tabs. The active tab is
  * controlled from the ?tab= search param, so Stat links and redirects switch it.
- * Edit via a Drawer. `?extract=1` lands with the Extract drawer open.
+ * Edit via a Drawer. `?extract=1` lands with the Extract drawer open, with each `?object=` picked.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -340,7 +340,7 @@ export default function SystemPage() {
 
       {can("trigger_sync") ? (
         <Drawer open={extractOpen} onOpenChange={setExtractOpen} title={`Extract from ${system.name}`}>
-          <ScopePicker id={systemId} system={system} onDownloaded={(jobId) => { setAwaitedJobId(jobId); setExtractOpen(false); refresh(); }} />
+          <ScopePicker id={systemId} system={system} initialObjects={searchParams.getAll("object")} onDownloaded={(jobId) => { setAwaitedJobId(jobId); setExtractOpen(false); refresh(); }} />
         </Drawer>
       ) : null}
 

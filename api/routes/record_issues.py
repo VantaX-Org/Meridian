@@ -188,6 +188,22 @@ async def get_issue(
             "runs": [_row(h) for h in history.fetchall()]}
 
 
+def required_actions(body: BulkUpdate) -> set[str]:
+    """The actions a bulk change needs. Accepting an issue (accepted risk, false positive) is an approver's sign-off,
+    so it needs `approve` alone (a data owner holds no `assign`); every other status change and any (re)assignment
+    needs `assign`; a bare note is a comment and needs `analyse`."""
+    need: set[str] = set()
+    if body.status == "accepted":
+        need.add("approve")
+    elif body.status:
+        need.add("assign")
+    if body.assigned_to is not None:
+        need.add("assign")
+    if body.note and not body.status:  # a note on a status change is that change's reason
+        need.add("analyse")
+    return need
+
+
 @router.post("/bulk")
 async def bulk_update(
     body: BulkUpdate,
@@ -199,12 +215,7 @@ async def bulk_update(
     """Change status / assignee of many issues; every change is an audited event."""
     if body.status is None and body.assigned_to is None and not body.note:
         raise HTTPException(status_code=400, detail="Nothing to change.")
-    need = {"approve"} if body.status == "accepted" else set()
-    if body.status or body.assigned_to is not None:
-        need.add("assign")
-    if body.note and not body.status:  # a note on a status change is that change's reason
-        need.add("analyse")
-    missing = [a for a in need if not has_permission(role, a)]
+    missing = [a for a in required_actions(body) if not has_permission(role, a)]
     if missing:
         raise HTTPException(status_code=403, detail=f"Your role cannot {', '.join(sorted(missing))}.")
     if body.status in _RESOLUTIONS and body.resolution not in _RESOLUTIONS[body.status]:

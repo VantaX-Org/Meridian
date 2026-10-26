@@ -198,3 +198,87 @@ def test_rule_update_and_billing_routes(engines, monkeypatch):
     with owner.begin() as c:
         assert c.execute(text("SELECT count(*) FROM exception_billing WHERE tenant_id = :t AND period = '2026-09'"),
                          {"t": tid}).scalar() == 1
+
+
+def test_monitor_signal_names_its_system_and_objects(engines, monkeypatch):
+    """The SAP monitor's Re-extract needs the system the run read and the objects whose findings raised it."""
+    import json
+
+    from sqlalchemy import text
+
+    import workers.tasks.run_exception_scan as scan
+
+    owner, app = engines
+    tid, vid, sid = (str(uuid.uuid4()) for _ in range(3))
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:t, 'E5')"), {"t": tid})
+        c.execute(text("INSERT INTO analysis_versions (id, tenant_id, status, metadata) "
+                       "VALUES (:v, :t, 'complete', CAST(:m AS jsonb))"),
+                  {"v": vid, "t": tid, "m": json.dumps({"system_id": sid})})
+        c.execute(text("INSERT INTO findings (version_id, tenant_id, module, check_id, severity, dimension, "
+                       "affected_count, total_count, details) VALUES (:v, :t, 'idoc', 'CHK-IDOC', 'high', "
+                       "'validity', 1, 2, CAST(:d AS jsonb))"),
+                  {"v": vid, "t": tid, "d": '{"field_checked": "EDIDC.STATUS"}'})
+    monkeypatch.setattr(scan, "get_sync_engine", lambda: app)
+    assert scan.run_exception_scan(vid, tid)["exceptions"] == 1
+    with app.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        affected = c.execute(text("SELECT affected_records FROM exceptions WHERE type = 'sap_transaction'")).scalar()
+    assert affected["system_id"] == sid and affected["version_id"] == vid
+    assert affected["modules"] == ["idoc"] and affected["matched_fields"] == ["EDIDC.STATUS"]
+
+
+def test_system_manager_claims_and_resolves_only_sap_raised_exceptions(engines, monkeypatch):
+    """sap_basis has manage_systems but neither assign nor approve: it may claim and resolve an exception raised
+    from an SAP system (source_system set), never another; a viewer may do neither."""
+    from fastapi import FastAPI
+    from httpx import ASGITransport, AsyncClient
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from api.deps import Tenant, get_db, get_tenant
+    from api.routes.exceptions import router
+
+    monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")
+    owner, app_eng = engines
+    tid, sap_exc, own_exc = (str(uuid.uuid4()) for _ in range(3))
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:a, 'E6')"), {"a": tid})
+        for eid, src in ((sap_exc, "SAP MM"), (own_exc, None)):
+            c.execute(text("INSERT INTO exceptions (id, tenant_id, type, category, severity, status, title, "
+                           "description, source_system, escalation_tier, created_at) VALUES (:i, :t, "
+                           "'sap_transaction', 'operational', 'high', 'open', 'x', 'd', :s, 1, now())"),
+                      {"i": eid, "t": tid, "s": src})
+
+    aeng = create_async_engine(app_eng.url.set(drivername="postgresql+asyncpg"))
+    factory = async_sessionmaker(aeng, expire_on_commit=False)
+
+    async def _db():
+        async with factory() as s:
+            yield s
+
+    api = FastAPI()
+    api.include_router(router)
+    api.dependency_overrides[get_db] = _db
+    api.dependency_overrides[get_tenant] = lambda: Tenant(uuid.UUID(tid), "E6", [])
+    claim = {"user_id": str(uuid.uuid4()), "user_name": "Basis"}
+    resolve = {"resolution_type": "steward", "resolution_notes": "Job restarted", "root_cause_category": "system"}
+
+    async def scenario():
+        async with AsyncClient(transport=ASGITransport(app=api), base_url="http://t") as c:
+            basis, viewer, steward = ({"X-User-Role": r} for r in ("sap_basis", "viewer", "steward"))
+            for h, code in ((viewer, 403), (basis, 200)):
+                assert (await c.put(f"/api/v1/exceptions/{sap_exc}/assign", headers=h, json=claim)).status_code == code
+            assert (await c.put(f"/api/v1/exceptions/{own_exc}/assign", headers=basis, json=claim)).status_code == 403
+            assert (await c.put(f"/api/v1/exceptions/{own_exc}/resolve", headers=basis, json=resolve)).status_code == 403
+            assert (await c.put(f"/api/v1/exceptions/{sap_exc}/resolve", headers=viewer, json=resolve)).status_code == 403
+            r = await c.put(f"/api/v1/exceptions/{sap_exc}/resolve", headers=basis, json=resolve)
+            assert r.status_code == 200 and r.json()["status"] == "resolved"
+            missing = str(uuid.uuid4())
+            assert (await c.put(f"/api/v1/exceptions/{missing}/resolve", headers=basis, json=resolve)).status_code == 404
+            # assign/approve holders keep acting on every exception
+            assert (await c.put(f"/api/v1/exceptions/{own_exc}/assign", headers=steward, json=claim)).status_code == 200
+            assert (await c.put(f"/api/v1/exceptions/{own_exc}/resolve", headers=steward, json=resolve)).status_code == 200
+        await aeng.dispose()
+
+    asyncio.run(scenario())
