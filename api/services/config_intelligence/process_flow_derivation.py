@@ -19,7 +19,7 @@ from typing import Any, Mapping, Optional
 import pandas as pd
 
 from api.models.process_model import ProcessModelDocument
-from sap.process_definitions import PROCESS_DEFINITIONS, _diagram
+from sap.process_definitions import _diagram, definitions
 from sap.process_templates import DOC_FLOW_L4, PROBES, VARIANT_PROBES, Probe
 
 S4_SYSTEMS = {"s4hana_onprem", "s4hana_cloud"}
@@ -111,7 +111,7 @@ def derive_model(tables: Mapping[str, pd.DataFrame], system_type: str = "ecc") -
     from copy import deepcopy
 
     s4 = system_type in S4_SYSTEMS
-    l1s = deepcopy(PROCESS_DEFINITIONS)
+    l1s = deepcopy(definitions())
     derived = False
     for l1 in l1s:
         for l2 in l1["l2"]:

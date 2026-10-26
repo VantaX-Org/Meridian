@@ -563,7 +563,25 @@ def _build() -> list[L1Process]:
     return out
 
 
-PROCESS_DEFINITIONS: list[L1Process] = _build()
+# Built lazily. _build() parses 87 YAML template files and takes ~97 s - and it used to run at
+# import, so merely importing this module (which extraction_plan does to reach flow_config_tables)
+# paid that cost before any planning happened. That was 97 of the 131 s it took to plan one module's
+# tables, which is why the object catalogue endpoint timed out and modules looked like they had no
+# tables. PEP 562 __getattr__ defers the build to first use.
+_Lazy: dict[str, list[L1Process]] = {}
+
+
+def definitions() -> list[L1Process]:
+    """The built hierarchy, constructed once on first use."""
+    if "v" not in _Lazy:
+        _Lazy["v"] = _build()
+    return _Lazy["v"]
+
+
+def __getattr__(name: str):
+    if name == "PROCESS_DEFINITIONS":
+        return definitions()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 # ---------------------------------------------------------------------------
@@ -573,12 +591,12 @@ PROCESS_DEFINITIONS: list[L1Process] = _build()
 
 def reference_document() -> ProcessModelDocument:
     """The shipped model as a validated document (a fresh copy on every call)."""
-    return ProcessModelDocument.model_validate({"schema_version": 1, "l1": deepcopy(PROCESS_DEFINITIONS)})
+    return ProcessModelDocument.model_validate({"schema_version": 1, "l1": deepcopy(definitions())})
 
 
 def get_process_by_id(process_id: str) -> L1Process | None:
     """Return the L1 process definition matching the given ID, or None."""
-    for proc in PROCESS_DEFINITIONS:
+    for proc in definitions():
         if proc["id"] == process_id:
             return proc
     return None
@@ -610,7 +628,7 @@ def get_all_tcodes() -> set[str]:
     transaction not in this set (e.g. a Z-prefixed variant) is customer-defined.
     """
     codes: set[str] = set()
-    for proc in PROCESS_DEFINITIONS:
+    for proc in definitions():
         for l4 in get_l4_subprocesses(proc["id"]):
             codes.add(l4.get("tcode") or "")
             codes.update(a.get("tcode") or "" for a in l4["activities"])
@@ -623,12 +641,12 @@ def flow_config_tables() -> dict[str, tuple[set[str], set[str]]]:
     from sap.process_templates import DOC_FLOW_TABLES, PROBES, VARIANT_PROBES
 
     out: dict[str, tuple[set[str], set[str]]] = {}
-    otc = next(x for x in PROCESS_DEFINITIONS if x["id"] == "OTC")
+    otc = next(x for x in definitions() if x["id"] == "OTC")
     for t, cols in DOC_FLOW_TABLES.items():
         f, m = out.setdefault(t, (set(), set()))
         f |= set(cols)
         m |= set(otc["modules"])
-    for l1 in PROCESS_DEFINITIONS:
+    for l1 in definitions():
         for l4 in get_l4_subprocesses(l1["id"]):
             probes = [PROBES.get(l4["id"]), *VARIANT_PROBES.get(l4["id"], ()),
                       *(PROBES.get(a["id"]) for a in l4["activities"])]
