@@ -13,20 +13,23 @@ const FAILING: Record<string, RegExp> = {
   "/fix/what-if": /\/api\/v1\/versions(\?.*)?$/,
 };
 
-/** Text each route shows on the recording (31 runs, jobs, audit entries, reference lists; no drafts, channels or survivorship rules). */
+/**
+ * Text each route shows on the recording (31 runs, jobs, audit entries, reference lists; no drafts, channels or
+ * survivorship rules): the page's title, or a line only its loaded data (or its designed empty state) produces.
+ */
 const NEW_ROUTES: [string, string][] = [
   ["/insights/operations", "Operations"],
-  ["/insights/reports", "Latest completed runs"],
+  ["/insights/reports", "Reports are built from controlling_1k; 31 finished runs are available."],
   ["/insights/exec", "Executive summary"],
   ["/mdm", "MDM overview"],
-  ["/mdm/survivorship", "0 rules"],
-  ["/admin/audit", "Who did what, AI calls and role changes"],
-  ["/admin/notifications", "Outbound alert channels"],
-  ["/admin/jobs", "Extractions, analyses, uploads and simulations"],
-  ["/admin/reference", "Postal code and BIC lists held per system"],
+  ["/mdm/survivorship", "No survivorship rules"],
+  ["/admin/audit", "Changes, last 30 days"],
+  ["/admin/notifications", "No alert channels"],
+  ["/admin/jobs", "Jobs"],
+  ["/admin/reference", "Bank codes (SWIFT BIC)"],
   ["/fix/what-if", "Run simulation"],
   ["/rules/drafts", "No drafts"],
-  ["/rules/dictionary", "SAP dictionary entries for TABLE.FIELD names"],
+  ["/rules/dictionary", "Dictionary"],
   ["/rules/scoring", "Cost model (ZAR)"],
 ];
 
@@ -49,6 +52,11 @@ for (const [path, re] of Object.entries(FAILING)) {
   test(`${path} shows its error state when the server fails`, async ({ app }) => {
     await app.route(re, (r) => (r.request().method() === "GET" ? r.fulfill({ status: 500, contentType: "application/json", body: "{}" }) : r.fallback()));
     await app.goto(path, { waitUntil: "load" });
-    await expect(app.getByRole("main").getByText("Could not reach the server.", { exact: true }).first()).toBeVisible({ timeout: 20_000 });
+    // A server that answers, even with a 500, "could not complete the request"; "Could not reach the server." is
+    // only for no answer at all (lib/error.ts).
+    const error = app.getByRole("main").locator("[data-state='error']").first();
+    await expect(error).toBeVisible({ timeout: 20_000 });
+    await expect(error.getByText("The server could not complete the request.", { exact: true })).toBeVisible();
+    await expect(error.getByText("The server answered 500.", { exact: true })).toBeVisible();
   });
 }
