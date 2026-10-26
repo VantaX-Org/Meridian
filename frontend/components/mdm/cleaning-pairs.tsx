@@ -9,7 +9,7 @@ import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, ConfirmDialog, DataTable, Drawer, ExplorerPage, Mono, Notice, Pager, Pill, Skeleton, asyncStateOf, toast } from "@/design";
+import { Button, ConfirmDialog, DataTable, Drawer, ExplorerPage, Field, Mono, Notice, Pager, Pill, Skeleton, Textarea, asyncStateOf, toast } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { GatedPrimary } from "@/components/gated-primary";
 import { getDedupCandidates, getDedupPreview, mergeDedupCandidate, type DedupCandidate } from "@/lib/api/cleaning";
@@ -37,13 +37,15 @@ export function CleaningPairDetail({ pair, onMerged }: { pair: DedupCandidate; o
   const canMerge = useRole().can("approve");
   // The survivor a steward picked, waiting for confirmation: /dedup/merge has no undo route.
   const [keep, setKeep] = useState<string | null>(null);
+  // Required, as for a match-engine merge: kept on the pair and in the golden record's merge history.
+  const [reason, setReason] = useState("");
   const preview = useQuery({
     queryKey: ["dedup", "preview", pair.id],
     queryFn: () => getDedupPreview({ record_key_a: pair.record_key_a, record_key_b: pair.record_key_b, object_type: pair.object_type }),
   });
   const merge = useMutation({
-    mutationFn: (survivor: string) => mergeDedupCandidate({ candidate_id: pair.id, survivor_key: survivor }),
-    onSuccess: (r) => { setKeep(null); toast.success(`Merged. ${r.survivor_key} is the surviving record.`); onMerged(); },
+    mutationFn: (survivor: string) => mergeDedupCandidate({ candidate_id: pair.id, survivor_key: survivor, reason: reason.trim() }),
+    onSuccess: (r) => { setKeep(null); setReason(""); toast.success(`Merged. ${r.survivor_key} is the surviving record.`); onMerged(); },
     onError: (e) => { setKeep(null); toast.error(apiErrorMessage(e)); },
   });
   const fields = Object.entries(preview.data?.merge_preview ?? {});
@@ -63,7 +65,7 @@ export function CleaningPairDetail({ pair, onMerged }: { pair: DedupCandidate; o
         <Notice tone="info">No field values were captured for these records, so they cannot be compared here. Open them in Objects to compare.</Notice>
       )}
       {pair.status === "merged" ? (
-        <Notice tone="info">Already merged.</Notice>
+        <Notice tone="info">{pair.merge_reason ? `Already merged. Reason: ${pair.merge_reason}` : "Already merged."}</Notice>
       ) : canMerge ? (
         <div className="flex flex-wrap gap-2">
           <Button variant="primary" disabled={merge.isPending} onClick={() => setKeep(pair.record_key_a)}>Keep A</Button>
@@ -73,15 +75,22 @@ export function CleaningPairDetail({ pair, onMerged }: { pair: DedupCandidate; o
             onOpenChange={(open) => { if (!open) setKeep(null); }}
             title={`Keep record ${keep === pair.record_key_b ? "B" : "A"} and merge the other into it?`}
             body={
-              <p className="m-text-body m-ink-2">
-                <Mono>{keep === pair.record_key_a ? pair.record_key_b : pair.record_key_a}</Mono> is folded into <Mono>{keep ?? ""}</Mono> in the golden record. This cannot be undone here: the pair is closed for good, and only a split on the golden record&apos;s page separates the records again.
-              </p>
+              <div className="flex flex-col gap-3 m-text-body">
+                <p className="m-ink-2">
+                  <Mono>{keep === pair.record_key_a ? pair.record_key_b : pair.record_key_a}</Mono> is folded into <Mono>{keep ?? ""}</Mono> in the golden record. This cannot be undone here: the pair is closed for good, and only a split on the golden record&apos;s page separates the records again.
+                </p>
+                <Field label="Reason (required), kept in the merge history">
+                  <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="Same tax number and address" aria-required="true" />
+                </Field>
+                {reason.trim() ? null : <p className="m-text-meta m-ink-3">Give a reason to merge</p>}
+              </div>
             }
             confirmLabel="Merge"
             cancelLabel="Keep both"
             tone="danger"
             pending={merge.isPending}
-            onConfirm={() => { if (keep) merge.mutate(keep); }}
+            confirmDisabled={!reason.trim()}
+            onConfirm={() => { if (keep && reason.trim()) merge.mutate(keep); }}
           />
         </div>
       ) : (

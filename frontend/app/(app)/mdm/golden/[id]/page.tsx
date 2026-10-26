@@ -12,7 +12,7 @@ import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { LedgerHead } from "@/components/mdm/ledger";
 import { MergedRecords } from "@/components/mdm/merged-records";
 import { GatedPrimary } from "@/components/gated-primary";
-import { GoldenStatusPill, sourceSystems } from "@/components/mdm/golden-status";
+import { GoldenStatusPill, contributionSystem, sourceSystems } from "@/components/mdm/golden-status";
 import { useRole } from "@/hooks/use-role";
 import { formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -23,7 +23,7 @@ type Rel = { id: string; relationship_type: string; to_key: string; to_domain: s
 type Hist = { id: string; changed_at: string; change_type: string; changed_by?: string | null };
 type FieldRow = { field: string; value: unknown };
 /** One golden field and the source system its surviving value came from (source_contributions is keyed by field). */
-type SourceRow = { field: string; system: string; value: unknown; confidence: number; ai: string | null | undefined };
+type SourceRow = { field: string; system: string | null; via: string | undefined; value: unknown; confidence: number | null; ai: string | null | undefined };
 
 const show = (v: unknown) => (v == null ? "None" : String(v));
 
@@ -43,9 +43,14 @@ const fieldCols: ColumnDef<FieldRow>[] = [
 ];
 const sourceCols: ColumnDef<SourceRow>[] = [
   { id: "field", header: "Field", cell: ({ row }) => <Mono>{row.original.field}</Mono> },
-  { id: "system", header: "Source system", cell: ({ row }) => <Mono>{row.original.system}</Mono> },
+  {
+    id: "system", header: "Source system", accessorFn: (r) => r.system ?? "",
+    cell: ({ row }) => (row.original.system ? (
+      <span><Mono>{row.original.system}</Mono>{row.original.via ? <span className="m-ink-3"> via merge of <Mono>{row.original.via}</Mono></span> : null}</span>
+    ) : <span className="m-ink-3">Not recorded</span>),
+  },
   { id: "value", header: "Value", accessorFn: (r) => show(r.value) },
-  { id: "conf", header: "Confidence", accessorFn: (r) => `${Math.round(r.confidence * 100)}%` },
+  { id: "conf", header: "Confidence", accessorFn: (r) => (r.confidence == null ? "None" : `${Math.round(r.confidence * 100)}%`) },
   { id: "ai", header: "Model recommendation", accessorFn: (r) => r.ai ?? "None" },
 ];
 
@@ -138,7 +143,7 @@ export default function MasterRecordPage() {
   const relationships = relationshipsQuery.data?.relationships ?? [];
   const history = historyQuery.data ?? [];
   const fieldRows: FieldRow[] = fields.map(([field, value]) => ({ field, value }));
-  const sourceRows: SourceRow[] = contributions.map(([field, c]) => ({ field, system: c.source_system, value: c.value, confidence: c.confidence, ai: c.ai_recommendation }));
+  const sourceRows: SourceRow[] = contributions.map(([field, c]) => ({ field, system: contributionSystem(c), via: c.merged_from, value: c.value, confidence: c.confidence, ai: c.ai_recommendation }));
 
   return (
     <RecordPage

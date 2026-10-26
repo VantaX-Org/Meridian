@@ -70,6 +70,29 @@ describe("MasterRecordPage", () => {
     expect(within(maktx).getByText("80%")).toBeInTheDocument();
   });
 
+  it("shows each value's connected source system, not the upload or merge label", async () => {
+    vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue({
+      ...record,
+      source_contributions: {
+        MATKL: { value: "FERT", source_system: "upload:aaaa1111", source_system_id: "s-prd", source_system_name: "PRD", extracted_at: "2026-01-01T00:00:00Z", confidence: 0.9 },
+        MAKTX: { value: "Bolt", source_system: "merge:MARA-2000", source_system_id: "s-s4p", source_system_name: "S4P", merged_from: "MARA-2000", extracted_at: "2026-01-01T00:00:00Z", confidence: null },
+        MEINS: { value: "EA", source_system: "upload:bbbb2222", extracted_at: "2026-01-01T00:00:00Z", confidence: 0.7 },
+      },
+    });
+    vi.spyOn(masterRecordsApi, "getMasterRecordHistory").mockResolvedValue([]);
+    vi.spyOn(relationshipsApi, "getRelationships").mockResolvedValue({ relationships: [], total: 0 });
+    renderWithQuery(<MasterRecordPage />);
+    const sources = await screen.findByRole("region", { name: "Source contributions" });
+    const row = (f: string) => within(sources).getByText(f).closest("tr") as HTMLElement;
+    expect(within(row("MATKL")).getByText("PRD")).toBeInTheDocument();
+    expect(within(row("MAKTX")).getByText("S4P")).toBeInTheDocument();
+    expect(within(row("MAKTX")).getByText("MARA-2000")).toBeInTheDocument();
+    expect(within(row("MAKTX")).getAllByText("None")).toHaveLength(2); // a merged value has no confidence (nor a model pick)
+    // an upload attached to no system keeps its upload label
+    expect(within(row("MEINS")).getByText("upload:bbbb2222")).toBeInTheDocument();
+    expect(within(sources).getByText("3 fields from 3 systems")).toBeInTheDocument();
+  });
+
   it("names the real target systems before a write-back and reports the outcome", async () => {
     vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue(record);
     const history = vi.spyOn(masterRecordsApi, "getMasterRecordHistory").mockResolvedValue([]);

@@ -89,6 +89,17 @@ async def _list(db: AsyncSession, tenant: Tenant, domain: Optional[str]) -> Surv
     return SurvivorshipRulesOut(rules=rules, total=len(rules))
 
 
+def _keeps_ai_flag(stored: Optional[tuple], posted: SurvivorshipRuleBody) -> bool:
+    """``ai_inferred`` of a stored rule ``(rule_type, trusted_sources, weight, active, ai_inferred)``
+    survives a save only when the posted rule is that same rule."""
+    if stored is None:
+        return False
+    rule_type, trusted, weight, active, ai = stored
+    same = (rule_type == posted.rule_type and list(trusted or []) == list(posted.trusted_sources or [])
+            and weight == posted.weight and bool(active) == posted.active)
+    return bool(ai) and same
+
+
 @router.get("/survivorship-rules", response_model=SurvivorshipRulesOut)
 async def list_survivorship_rules(
     domain: Optional[str] = None,
@@ -107,8 +118,20 @@ async def replace_survivorship_rules(
     tenant: Tenant = Depends(get_tenant),
     _role: str = Depends(require_permission("mdm.write")),
 ) -> SurvivorshipRulesOut:
-    """Replace the survivorship rules of one domain with the posted set."""
+    """Replace the survivorship rules of one domain with the posted set.
+
+    A rule posted unchanged (same field, rule type, trusted systems, weight and active flag) keeps its
+    ``ai_inferred`` flag; a rule the user changed or added is the user's own (``ai_inferred`` false).
+    """
     await db.execute(text(f"SET app.tenant_id = '{str(tenant.id)}'"))
+    stored = {
+        r[0]: r[1:]
+        for r in (await db.execute(
+            text("SELECT field, rule_type, trusted_sources, weight, active, ai_inferred "
+                 "FROM survivorship_rules WHERE tenant_id = :tid AND domain = :domain"),
+            {"tid": str(tenant.id), "domain": body.domain},
+        )).fetchall()
+    }
     await db.execute(
         text("DELETE FROM survivorship_rules WHERE tenant_id = :tid AND domain = :domain"),
         {"tid": str(tenant.id), "domain": body.domain},
@@ -117,10 +140,12 @@ async def replace_survivorship_rules(
         await db.execute(
             text(
                 "INSERT INTO survivorship_rules (id, tenant_id, domain, field, rule_type, "
-                "trusted_sources, weight, active) VALUES (:id, :tid, :domain, :field, :rt, :ts, :w, :a)"
+                "trusted_sources, weight, active, ai_inferred) "
+                "VALUES (:id, :tid, :domain, :field, :rt, :ts, :w, :a, :ai)"
             ),
             {"id": str(uuid.uuid4()), "tid": str(tenant.id), "domain": body.domain, "field": r.field,
-             "rt": r.rule_type, "ts": r.trusted_sources, "w": r.weight, "a": r.active},
+             "rt": r.rule_type, "ts": r.trusted_sources, "w": r.weight, "a": r.active,
+             "ai": _keeps_ai_flag(stored.get(r.field), r)},
         )
     out = await _list(db, tenant, body.domain)
     await db.commit()
