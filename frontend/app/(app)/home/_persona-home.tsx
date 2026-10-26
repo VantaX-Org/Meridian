@@ -29,14 +29,14 @@ import { NextBestActionCard } from "@/components/insight/next-best-action";
 import { dqsExplanation, useDqsInputs } from "@/components/insight/dqs-score";
 import { verdictSentence, type NarrativeInput } from "@/lib/home-narrative";
 import {
-  runCap, capRuleCount, capRules, cappedReason, dimensionHeatmapCells, objectRecords, runDqs, runDimensions, trend, readinessOf, isBelowTarget, BELOW_TARGET,
+  runCap, capRuleCount, capRules, cappedReason, dimensionHeatmapCells, runDqs, runDimensions, trend, readinessOf, isBelowTarget, BELOW_TARGET,
   worstObjectsFirst, DIMENSIONS,
 } from "@/lib/home-metrics";
 import {
   criticalHighHref, criticalHighTotal, isScored, latestPerLineage, runObjectsName, stateDqs, stateObjects, stateRows, stateScopeLine, stateSeries, stateSummary,
   type StateRow,
 } from "@/lib/current-state";
-import { formatDate, formatModuleName, labelOf, plural, relativeTime, round1, shortCapReason } from "@/lib/format";
+import { formatModuleName, labelOf, plural, relativeTime, round1, shortCapReason } from "@/lib/format";
 import { previousInLineage, runPageHref } from "@/lib/runs";
 import { fixHref } from "@/lib/drill";
 import { hrefWithRun, runName, runScopeLabel } from "@/lib/run-scope";
@@ -48,6 +48,10 @@ import { queryKeys } from "@/lib/query-keys";
 import { PERSONA_OPTIONS } from "@/lib/persona";
 import { homeActionFor } from "@/lib/home-action";
 import { doNext } from "@/lib/do-next";
+import { getPredictiveAnalytics } from "@/lib/api/analytics";
+import { forecastSentence, overallForecast } from "@/lib/score-forecast";
+import { MINE_PARAM, useObjectOwners } from "@/hooks/use-object-owners";
+import { FilterChips } from "@/app/(app)/objects/_header";
 import type { Version } from "@/types/api";
 
 /** The ledger shows this many objects, then a link to all of them; the heatmap draws the same rows. */
@@ -56,7 +60,7 @@ const TABLE_ROWS = 8;
 // Chart bundles load after first paint; the skeleton has the chart's final height.
 const TREND_HEIGHT = 140;
 const HEAT_CELL = 24;
-const Line = dynamic(() => import("@/design/charts/Line").then((m) => m.Line), { ssr: false, loading: () => <Skeleton height={TREND_HEIGHT} /> });
+const ScoreTrend = dynamic(() => import("@/components/insight/score-trend").then((m) => m.ScoreTrend), { ssr: false, loading: () => <Skeleton height={TREND_HEIGHT} /> });
 const Heatmap = dynamic(() => import("@/design/charts/Heatmap").then((m) => m.Heatmap), { ssr: false, loading: () => <Skeleton height={TABLE_ROWS * (HEAT_CELL + 4) + 32} /> });
 
 
@@ -122,6 +126,10 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     queryFn: () => getFindingsAggregate(pinned?.id),
     enabled: wantsFindings && !!newest,
   });
+  // The forecast behind the trend's band (Insights > Forecast): every object's projection, current state only.
+  const forecastQ = useQuery({ queryKey: queryKeys.analyticsPredictive(), queryFn: () => getPredictiveAnalytics(), enabled: !pinnedId, retry: false, meta: { ignoreError: true } });
+  const owners = useObjectOwners();
+  const mine = search.get(MINE_PARAM) === "1";
   // The weights and costliest rules the hero's "Data quality score ⓘ" breakdown reads (components/insight/dqs-score.tsx).
   const dqsInputs = useDqsInputs(pinned?.id, !!aggregateQ.data);
 
@@ -294,13 +302,12 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   };
   // The ledger: what moves the score, ranked by records affected (an object whose records are not attributed sorts last), then by score.
   const ranked = (role === "steward" ? objects.filter((o) => o.failing_checks > 0) : objects)
-    .filter((o) => o.composite_score !== null)
+    .filter((o) => o.composite_score !== null && (!mine || owners.isMine(o.module)))
     .sort((a, b) => (b.affected_records ?? -1) - (a.affected_records ?? -1) || (a.composite_score ?? 0) - (b.composite_score ?? 0));
   const rows: ObjectRow[] = ranked.slice(0, TABLE_ROWS).map((o) => {
     const blocking = blockingByModule.get(o.module);
     return { ...o, blocking, blockingWords: blocking ? wordsOf(o.module, blocking) : undefined, fixable: isFixable(o.module, blocking) };
   });
-  const runById = new Map(finished.map((v) => [v.id, v]));
   const systemName = (v: Version) => systems.find((x) => x.id === v.metadata?.system_id)?.name;
   const objectHref = (o: Pick<StateRow, "module" | "run_id">) => `/objects/${o.module}?run=${o.run_id}`;
 
@@ -319,11 +326,8 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       ) : "—",
     },
     {
-      id: "run", header: "Run", enableSorting: false,
-      cell: ({ row: { original: o } }) => {
-        const r = runById.get(o.run_id);
-        return r ? <Link href={hrefWithRun(`/home/${role}`, search, r.id)} className="m-ink-3 whitespace-nowrap" title={runLabel(r)} onClick={(e) => e.stopPropagation()}>{[systemName(r), formatDate(r.run_at, "date")].filter(Boolean).join(", ")}</Link> : "—";
-      },
+      id: "owner", header: "Owner", accessorFn: (o) => owners.nameOf(o.module) ?? "",
+      cell: ({ row: { original: o } }) => owners.nameOf(o.module) ?? <span className="m-ink-3">Not set</span>,
     },
     // Summed over the object's failing rules (a record failing two rules counts twice): rule failures, not records.
     { accessorKey: "affected_records", header: "Rule failures", meta: { numeric: true }, cell: ({ row: { original: o } }) => o.affected_records?.toLocaleString() ?? "—" },
@@ -349,7 +353,19 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   ];
 
   const objectsCard = role === "basis" ? undefined : (
-    <Card title="What moves the score" meta="Ranked by records affected" padding="sm">
+    <Card
+      title="What moves the score"
+      meta="Ranked by records affected"
+      padding="sm"
+      actions={owners.hasMine || mine ? (
+        <FilterChips label="Show" value={mine ? "1" : null} options={[{ value: "1", label: "My objects" }]} onChange={(v) => {
+          const params = new URLSearchParams(search.toString());
+          if (v) params.set(MINE_PARAM, "1"); else params.delete(MINE_PARAM);
+          const q = params.toString();
+          router.replace(q ? `/home/${role}?${q}` : `/home/${role}`);
+        }} />
+      ) : undefined}
+    >
       <DataTable
         columns={columns}
         data={rows}
@@ -363,44 +379,53 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         tableId="home-objects"
       />
       <div className="m-text-body px-3 pt-2">
-        <Link href={objectsHref()} className="m-ink-accent">All {objects.length.toLocaleString()} objects</Link>
+        <Link href={objectsHref(mine ? { [MINE_PARAM]: "1" } : {})} className="m-ink-accent">{mine ? "All my objects" : `All ${objects.length.toLocaleString()} objects`}</Link>
       </div>
     </Card>
   );
 
-  // The object map: one tile per object, its area the records, its colour the verdict, its number the score.
+  // The object map: one tile per object, its area what is failing (rule failures, the ledger's count), so the
+  // objects with the most to fix are the largest and come first; its colour the verdict, its number the score.
   const mapItems = objects.map((o) => {
-    const records = objectRecords(runOf.get(o.module), o.module, o.affected_records);
+    const failing = o.affected_records ?? 0;
     return {
       id: o.module,
       label: o.label,
       href: objectHref(o),
       score: o.composite_score,
-      records,
+      records: failing,
       verdict: o.composite_score == null ? ("neutral" as const) : readinessOf(o.composite_score, bands),
-      meta: `${records.toLocaleString()} records`,
+      meta: plural(failing, "rule failure"),
     };
   });
-  const objectMap = mapItems.length ? <ObjectMap items={mapItems} columns={8} rowHeight={52} /> : undefined;
+  const objectMap = mapItems.length ? <ObjectMap items={mapItems} columns={8} rowHeight={52} label="Objects by rule failures and verdict" unit="rule failures" /> : undefined;
 
   const heatRows = scored.slice(0, TABLE_ROWS);
   const heatCells = dimensionHeatmapCells(heatRows, merged, bands);
   // The grid prints each score and tints it by readiness: the number carries the meaning, the hue repeats it.
   const heatTone = new Map(heatCells.map((c) => [`${c.row}:${c.col}`, c.tone]));
+  // The hero's trend: the score over runs with the target and, in the current state, the forecast's band.
+  const forecast = pinned ? [] : overallForecast(forecastQ.data?.forecasts ?? [], new Map(state.flatMap((o) => (o.summary.composite_score == null ? [] : [[o.module, o.summary.composite_score] as const]))));
+  const forecastLine = forecastSentence(forecast);
   const trendCard = (
-      <Card title="Score over runs" meta={pinned ? "Runs of the same source" : "All objects, each at its latest run by then"} padding="sm">
-        {trendPoints.length < 2 ? (
-          <div className="[min-height:140px]"><EmptyState title="The trend starts with the second run" action={can("trigger_sync") ? <Button variant="secondary" render={<Link href="/systems" />}>Run extraction</Button> : undefined} /></div>
-        ) : (
-          <Line
-            data={trendPoints}
-            onPointClick={(point) => { if (point.runId) router.push(runPageHref(point.runId)); }}
-            height={TREND_HEIGHT}
-            dqsThreshold={bands?.target}
-            label={pinned ? "DQS over runs" : "DQS of all objects over runs"}
-          />
-        )}
-      </Card>
+    <div className="flex flex-col gap-1">
+      <p className="m-text-meta m-ink-3">
+        {pinned ? "Score over runs of the same source" : "Score over runs, all objects each at its latest run by then"}
+        {forecastLine ? `. ${forecastLine}` : ""}
+      </p>
+      {trendPoints.length < 2 ? (
+        <EmptyState variant="inline" title="The trend starts with the second run" action={can("trigger_sync") ? <Link href="/systems" className="m-ink-accent">Run extraction</Link> : undefined} />
+      ) : (
+        <ScoreTrend
+          points={trendPoints}
+          target={bands?.target}
+          forecast={forecast}
+          onPointClick={(point) => { if (point.runId) router.push(runPageHref(point.runId)); }}
+          height={TREND_HEIGHT}
+          label={pinned ? "DQS over runs" : "DQS of all objects over runs"}
+        />
+      )}
+    </div>
   );
   const heatmapCard = role !== "basis" && heatCells.length > 0 ? (
         <Card title="Dimensions by object" padding="sm">

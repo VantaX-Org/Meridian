@@ -1,8 +1,9 @@
 import type { VersionComparison } from "@/types/api";
 import type { RecordDiff } from "@/lib/api/versions";
-import { formatModuleName, roundedDelta } from "@/lib/format";
+import { formatModuleName, formatNumber, roundedDelta } from "@/lib/format";
 
-const nf = new Intl.NumberFormat("en-ZA");
+// One number format with the rest of the app: the viewer's locale (lib/format.ts), never a fixed one.
+const nf = { format: (n: number) => formatNumber(n) };
 const score = (n: number) => n.toFixed(1);
 const signed = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}`;
 const plural = (n: number, one: string, many: string) => `${nf.format(n)} ${n === 1 ? one : many}`;

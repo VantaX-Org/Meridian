@@ -36,7 +36,7 @@ import { downloadAuthenticated } from "@/lib/api/download";
 import { createBatch, errorText } from "@/lib/api/remediation";
 import { getComparisonReportUrl } from "@/lib/api/reports";
 import { compareRecordKeys, compareRecords, compareVersions } from "@/lib/api/versions";
-import { formatDate, formatModuleName, plural, roundedDelta } from "@/lib/format";
+import { formatDate, formatModuleName, formatNumber, plural, roundedDelta } from "@/lib/format";
 import { runName, runScopeLabel } from "@/lib/run-scope";
 import { InsightTabs } from "@/app/(app)/insights/_components/InsightViews";
 import { compareNarrative } from "@/lib/narrative";
@@ -46,7 +46,8 @@ import type { CheckChange, Version, VersionComparison } from "@/types/api";
 const KEYS_LIMIT = 50;
 const runLabel = (v: Version) => runScopeLabel(v);
 const change = (c: CheckChange) => c.v2_affected - c.v1_affected;
-const fmtN = (n: number) => n.toLocaleString();
+/** One number format on the page, the viewer's locale (the narrative and the ledger agree). */
+const fmtN = (n: number) => formatNumber(n);
 
 /**
  * The four change sets of a comparison: a rule that flipped (newly failing, fixed) or that failed in both runs
@@ -276,9 +277,10 @@ export default function CompareRunsPage() {
 
   const charts = cmp ? (
     <div className="m-stat-grid">
-      <Stat label={`DQS ${runLabel(cmp.v1)}`} help="dqs" hint={bothHint} value={<span className="tabular-nums">{before.toFixed(1)}</span>} />
+      {/* In the title's order: this run first, then the run it is compared with. */}
       <Stat label={`DQS ${runLabel(cmp.v2)}`} help="dqs" hint={bothHint} value={<span className="tabular-nums">{after.toFixed(1)}</span>} />
-      <Stat label="Change" value={<Delta value={roundedDelta(before, after)} />} />
+      <Stat label={`DQS ${runLabel(cmp.v1)}`} help="dqs" hint={bothHint} value={<span className="tabular-nums">{before.toFixed(1)}</span>} />
+      <Stat label="Change" hint={`${runLabel(cmp.v1)} to ${runLabel(cmp.v2)}`} value={<Delta value={roundedDelta(before, after)} />} />
     </div>
   ) : (
     <div className="m-stat-grid">

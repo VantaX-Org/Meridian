@@ -46,6 +46,17 @@ def test_sql_keeps_material_moves_and_isolates_the_tenant() -> None:
     assert "details->>'message'" in sql
 
 
+def test_sql_names_rules_from_the_tenants_own_rules_only() -> None:
+    """A run whose findings stored no message still reads by rule name: the title from the rules table, and only
+    from this tenant's rules (another tenant's rule of the same id never names this one)."""
+    sql = routes._CHECK_CHANGES_SQL
+    assert "FROM rules r" in sql
+    lateral = sql[sql.index("FROM rules r"):sql.index(") rn ON true")]
+    assert "r.tenant_id = CAST(:tid AS uuid)" in lateral
+    assert "split_part(r.name, ':', 1) = f2.check_id" in lateral
+    assert "rn.title" in sql.split("FROM findings f1")[0]
+
+
 class _Result:
     def __init__(self, one: Any = None, rows: list[Any] | None = None, scalars: list[Any] | None = None) -> None:
         self._one, self._rows, self._scalars = one, rows or [], scalars or []

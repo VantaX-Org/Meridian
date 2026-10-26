@@ -62,6 +62,8 @@ export interface DataTableProps<T> {
   hideSearch?: boolean;
   /** Adds a leading chevron cell; the returned node renders in a full-width panel under the row. */
   renderExpanded?: (row: T) => ReactNode;
+  /** With `renderExpanded`: only rows this accepts get the chevron (and a panel); the others keep an empty cell. */
+  canExpand?: (row: T) => boolean;
   /** Message and action for the single empty body row (header stays). */
   emptyMessage?: ReactNode;
   emptyAction?: ReactNode;
@@ -135,7 +137,7 @@ function PrefetchRow({ prefetchInfo, children, ...rest }: { prefetchInfo?: RowPr
 }
 
 export function DataTable<T>({
-  columns, data, getRowId, onRowClick, renderDrawer, bulkActions: bulkActionsProp, maxHeight: maxHeightProp, height: heightProp, hideSearch = false, renderExpanded, emptyMessage, emptyAction,
+  columns, data, getRowId, onRowClick, renderDrawer, bulkActions: bulkActionsProp, maxHeight: maxHeightProp, height: heightProp, hideSearch = false, renderExpanded, canExpand, emptyMessage, emptyAction,
   sorting: sortingProp, onSortingChange: onSortingChangeProp, dense: denseProp = false,
   tableId, exportOptions = [], exportName = "export", hideToolbar = false, drawerTitle, rowHref, rowPrefetch, dataTour,
   label = "Data table", rowLabel,
@@ -221,7 +223,7 @@ export function DataTable<T>({
     id: EXPAND_COLUMN_ID,
     size: 32,
     header: () => <span className="sr-only">Expand</span>,
-    cell: ({ row }) => (
+    cell: ({ row }) => canExpand && !canExpand(row.original) ? null : (
       <button
         type="button"
         className="m-motion-colors flex items-center justify-center"
@@ -538,7 +540,7 @@ export function DataTable<T>({
                     );
                   })}
                 </PrefetchRow>
-                {renderExpanded && expanded[row.id] && (
+                {renderExpanded && expanded[row.id] && (!canExpand || canExpand(row.original)) && (
                   <tr aria-label="Row detail">
                     <td colSpan={Math.max(1, table.getVisibleLeafColumns().length)} style={{ padding: 0 }}>
                       <div className="m-row-expand">{renderExpanded(row.original)}</div>

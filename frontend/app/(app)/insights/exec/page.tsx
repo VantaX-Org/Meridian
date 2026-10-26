@@ -4,7 +4,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Button, buildDrillHref, Card, DataTable, DrillLink, Delta, EmptyState, Heatmap, Stat, Tabs, Waterfall, type ExportOption, Status, statusLabel, toVerdict, Score } from "@/design";
 import { getRoi } from "@/lib/api/analytics";
@@ -17,7 +17,16 @@ import { cappedReason, runCap } from "@/lib/home-metrics";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getCurrentOverview, getExec, getOverview, getProvenCost, getRuleRanking, l1Label, largestValueAtRisk, valueAtRiskByL1, type ExecWaterfallPoint, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
 import { getBoardReportUrl, getReportJsonExportUrl, getWorkbookUrl } from "@/lib/api/reports";
-import { capRuleIds, deltaSentence, featureLabel, formatCompact, formatModuleName, plural, shortCapReason } from "@/lib/format";
+import { capRuleIds, deltaSentence, featureLabel, formatCompact, formatModuleName, formatMoneyShort, plural, shortCapReason } from "@/lib/format";
+import { getPredictiveAnalytics } from "@/lib/api/analytics";
+import { rankFixFirst } from "@/lib/fix-first";
+import { forecastSentence, overallForecast } from "@/lib/score-forecast";
+import { stateSeries } from "@/lib/current-state";
+import { trend as runTrend } from "@/lib/home-metrics";
+import { MINE_PARAM, useObjectOwners } from "@/hooks/use-object-owners";
+import { ScoreTrend } from "@/components/insight/score-trend";
+import { runPageHref } from "@/lib/runs";
+import { FilterChips } from "@/app/(app)/objects/_header";
 import { reportFilename } from "@/lib/report-filename";
 import { runName } from "@/lib/run-scope";
 import { previousInLineage } from "@/lib/runs";
@@ -31,7 +40,7 @@ import { useFindingOpener } from "../_components/FindingOpener";
 import { Section } from "../_components/Section";
 import { InsightActions } from "../_components/InsightActions";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
-import { CardSkeleton, InsightFrame, formatMoney } from "../_components/InsightFrame";
+import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { PAGE_PURPOSE } from "../_components/InsightViews";
 import { currentFindingColumns, currentFixFirst } from "../_components/CurrentOverview";
 import { useCurrentState } from "../_components/useCurrentState";
@@ -46,8 +55,8 @@ const moneyTick = (currency?: string | null) => (n: number) => (currency ? `${cu
 function waterfallCaption(l1: string, points: readonly ExecWaterfallPoint[], currency?: string | null): string {
   const total = points.reduce((s, p) => s + p.y, 0);
   const top = points.reduce<ExecWaterfallPoint | undefined>((m, p) => (!m || p.y > m.y ? p : m), undefined);
-  const head = `${l1Label(l1)}: ${formatMoney(total, currency)} at risk across ${plural(points.length, "priced feature")}`;
-  return top && points.length > 1 ? `${head}; ${top.x} carries the most, ${formatMoney(top.y, currency)}` : head;
+  const head = `${l1Label(l1)}: ${formatMoneyShort(total, currency)} at risk across ${plural(points.length, "priced feature")}`;
+  return top && points.length > 1 ? `${head}; ${top.x} carries the most, ${formatMoneyShort(top.y, currency)}` : head;
 }
 
 // The object opens its records in Fix work; the gap counts open the wave's gap view (migrationGaps.tsx).
@@ -61,6 +70,20 @@ const readinessColumns = (run: string | undefined, waveIds: ReadonlyMap<string, 
   },
   ...migrationGapColumns(waveIds),
 ];
+
+/** "a, b and c". */
+const listWords = (words: readonly string[]): string =>
+  words.length > 1 ? `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}` : words[0] ?? "";
+
+/** A ledger's columns with the object's owner after its Object column (the owner set in the object header). */
+function withOwner<T>(cols: ColumnDef<T>[], moduleOf: (row: T) => string, nameOf: (module: string) => string | null): ColumnDef<T>[] {
+  const owner: ColumnDef<T> = {
+    id: "owner", header: "Owner", accessorFn: (row) => nameOf(moduleOf(row)) ?? "",
+    cell: ({ row }) => nameOf(moduleOf(row.original)) ?? <span className="m-ink-3">Not set</span>,
+  };
+  const at = cols.findIndex((c) => c.id === "module");
+  return at < 0 ? [...cols, owner] : [...cols.slice(0, at + 1), owner, ...cols.slice(at + 1)];
+}
 
 const ownerColumns = (run?: string): ColumnDef<OwnerCardResponse>[] => [
   { accessorKey: "owner", header: "Owner", cell: ({ row }) => row.original.user_id
@@ -80,14 +103,29 @@ export default function ExecPage() {
   const finding = useFindingOpener(run);
   // One run: that run's rules ranked by impact. The current state: each object's findings from its own latest run,
   // as on the Insights overview (same request and cache entry), never the newest run's rules alone.
-  const rules = useQuery({ queryKey: queryKeys.insights("rules", run, undefined, "top10"), queryFn: () => getRuleRanking({ version_id: run, limit: 10 }), enabled: !!run && !isCurrent });
+  const rules = useQuery({ queryKey: queryKeys.insights("rules", run, undefined, "top10"), queryFn: () => getRuleRanking({ version_id: run, limit: 25 }), enabled: !!run && !isCurrent });
   const current = useCurrentState();
   const currentFindings = useQuery({
     queryKey: ["home-top-findings", "current"],
     queryFn: () => getFindings({ sort: "impact", limit: 100 }),
     enabled: isCurrent && !!current.newest,
   });
-  const currentFix = currentFixFirst(currentFindings.data?.findings ?? [], current.objects, current.modules, 10);
+  const search = useSearchParams();
+  const owners = useObjectOwners();
+  // `?mine=1`: Fix first keeps the rules of the objects the signed-in user owns.
+  const mine = search?.get(MINE_PARAM) === "1";
+  const ownedBy = (module: string) => !mine || owners.isMine(module);
+  // Fix first, ranked by impact (failing records x severity weight, then cost at risk), low severity left out.
+  const currentFix = rankFixFirst(
+    currentFixFirst(currentFindings.data?.findings ?? [], current.objects, current.modules, 100).filter((f) => ownedBy(f.module)),
+    (f) => ({ severity: f.severity, records: f.affected_count, cost: f.cost_at_risk }),
+    10,
+  );
+  const runFix = rankFixFirst(
+    (rules.data?.rows ?? []).filter((r) => ownedBy(r.module)),
+    (r) => ({ severity: r.severity, records: r.affected, cost: r.cost_at_risk }),
+    10,
+  );
   // The change the newest run made to the current state: the same delta Home and the Insights overview show.
   const currentDelta = isCurrent ? stateDelta(current.runs, current.finished, current.modules) : null;
 
@@ -117,7 +155,15 @@ export default function ExecPage() {
   // The current state is scored the way Home and the Insights overview score it: the mean of each object's composite
   // at its latest run (`stateDqs`), its cap (`runCap`) and its tier against the tenant's bands (the objects list's
   // thresholds, the same request and cache entry). One run reads the exec API, and the overview where it is silent.
-  const bandsQ = useQuery({ queryKey: queryKeys.objects("latest"), queryFn: () => getObjects("latest"), enabled: isCurrent });
+  const bandsQ = useQuery({ queryKey: queryKeys.objects("latest"), queryFn: () => getObjects("latest") });
+  // The trend: the current state over runs (Home's line), or this run's lineage; the forecast in current mode only.
+  const pinnedRun = isCurrent ? undefined : current.finished.find((v) => v.id === run);
+  const trendPoints = isCurrent ? stateSeries(current.finished, current.modules) : pinnedRun ? runTrend(current.finished, pinnedRun) : [];
+  const forecastQ = useQuery({ queryKey: queryKeys.analyticsPredictive(), queryFn: () => getPredictiveAnalytics(), enabled: isCurrent, retry: false, meta: { ignoreError: true } });
+  const forecast = isCurrent
+    ? overallForecast(forecastQ.data?.forecasts ?? [], new Map(current.objects.flatMap((o) => (o.summary.composite_score == null ? [] : [[o.module, o.summary.composite_score] as const]))))
+    : [];
+  const target = bandsQ.data?.thresholds?.target;
   const stateSummaryOf = stateSummary(current.objects);
   const stateScore = stateDqs(current.objects);
   const stateCap = runCap(stateSummaryOf);
@@ -158,9 +204,9 @@ export default function ExecPage() {
   const noGo = data?.readiness_cells.filter((c) => c.verdict === "no_go").length ?? 0;
   const atRiskCells = data?.readiness_cells.filter((c) => c.verdict === "at_risk").length ?? 0;
   const goCells = data?.readiness_cells.filter((c) => c.verdict === "go").length ?? 0;
-  const owners = data?.owner_rows ?? [];
-  const up = owners.filter((o) => o.delta > 0).length;
-  const down = owners.filter((o) => o.delta < 0).length;
+  const ownerRows = data?.owner_rows ?? [];
+  const up = ownerRows.filter((o) => o.delta > 0).length;
+  const down = ownerRows.filter((o) => o.delta < 0).length;
   const cells = data?.readiness_cells ?? [];
   const blocked = cells.filter((c) => c.blocker_count > 0 || c.records_blocked > 0).sort((a, b) => b.records_blocked - a.records_blocked);
   const heatRows = [...new Set(cells.map((c) => formatModuleName(c.module)))];
@@ -172,6 +218,14 @@ export default function ExecPage() {
   const topRisk = data ? largestValueAtRisk(valueAtRiskByL1(data.impact_rows)) : null;
   const boardPack = exportVid ? () => void downloadAuthenticated(getBoardReportUrl(exportVid, compareVid), boardFile()).catch((e: unknown) => toast.error(apiErrorMessage(e))) : undefined;
   const pairs = (n: number) => plural(n, "object and wave pair", "object and wave pairs");
+  // No cost can be stated before an approved fix is applied; "0x" and "0 months" would read as a verdict.
+  const noCostAvoided = !!roi.data && !roi.data.roi.risk_mitigated;
+  // The sections with nothing in them yet: named in one line under the rest, each with where to start it.
+  const notYet = [
+    ...(data && cells.length === 0 ? [{ what: "no migration wave", link: "Open migration cockpit", href: "/migration" }] : []),
+    ...(data && ownerRows.length === 0 ? [{ what: "no owner scored", link: "Assign records in Fix work", href: withScope("/fix", { run }) }] : []),
+    ...(noCostAvoided ? [{ what: "no cost avoided", link: "Review fixes", href: withScope("/fix", { run }) }] : []),
+  ];
 
   return (
     <InsightFrame
@@ -208,7 +262,7 @@ export default function ExecPage() {
         stats: data ? [
           { label: "Objects blocked in a wave", value: noGo, hint: cells.length ? `of ${pairs(cells.length)}` : "No wave set up", tone: noGo ? "no-go" : "go", to: withScope("/insights/readiness", { run: vid }) },
           topRisk || !costAtRisk.text
-            ? { label: topRisk ? `Most at risk: ${l1Label(topRisk.l1)}` : "Most at risk", value: topRisk ? formatMoney(topRisk.value_at_risk, currency) : "—", hint: topRisk ? undefined : "No SAP feature priced yet", to: withScope("/insights/impact", { run: vid }) }
+            ? { label: topRisk ? `Most at risk: ${l1Label(topRisk.l1)}` : "Most at risk", value: topRisk ? formatMoneyShort(topRisk.value_at_risk, currency) : "—", hint: topRisk ? undefined : "No SAP feature priced yet", to: withScope("/insights/impact", { run: vid }) }
             : { label: COST_AT_RISK, value: costAtRisk.text, hint: "Failing records; no SAP feature priced yet", to: withScope("/insights/impact", { run: vid }) },
           { label: "Owners improved", value: up, to: withScope("/insights/owners", { run: vid }) },
           { label: "Owners slipped", value: down, tone: down ? "at-risk" : undefined, to: withScope("/insights/owners", { run: vid }) },
@@ -217,10 +271,10 @@ export default function ExecPage() {
           sentence: data?.narrative || (cells.length ? `${noGo} of ${pairs(cells.length)} cannot load` : "No migration wave is set up yet"),
           tone: cells.length === 0 ? "neutral" : noGo ? "no-go" : "go",
         },
-        changed: { sentence: owners.length === 0 ? "Nobody owns an issue yet" : up + down === 0 ? "No owner moved since the last run" : `${plural(up, "owner")} improved, ${down} slipped since the last run` },
+        changed: { sentence: ownerRows.length === 0 ? "Nobody owns an issue yet" : up + down === 0 ? "No owner moved since the last run" : `${plural(up, "owner")} improved, ${down} slipped since the last run` },
         why: {
           sentence: topRisk
-            ? `${l1Label(topRisk.l1)} carries the most value at risk, ${formatMoney(topRisk.value_at_risk, currency)}`
+            ? `${l1Label(topRisk.l1)} carries the most value at risk, ${formatMoneyShort(topRisk.value_at_risk, currency)}`
             : costAtRisk.text ? `No SAP feature is priced yet; the failing records carry ${costAtRisk.text} cost at risk` : "Nothing is priced at risk yet",
           href: withScope("/insights/impact", { run: vid }),
         },
@@ -254,28 +308,59 @@ export default function ExecPage() {
     >
       <div className="grid gap-4 @5xl:grid-cols-12">
         <div className="@5xl:col-span-12">
-          {isCurrent ? (
-            <Section title="Fix first" height={240} query={currentFindings} meta="Highest-impact failing rules, each object at its latest run" actions={<Link href="/insights" className="m-text-body underline-offset-2 hover:underline">Open overview</Link>}>
+          <Card title="Score over runs" meta={forecastSentence(forecast) ?? (isCurrent ? "All objects, each at its latest run by then" : "Runs of the same source")}>
+            {trendPoints.length < 2 ? (
+              <EmptyState variant="inline" title="The trend starts with the second run" action={<Link href="/runs" className="underline-offset-2 hover:underline">Open runs</Link>} />
+            ) : (
+              <ScoreTrend
+                points={trendPoints}
+                target={target}
+                forecast={forecast}
+                height={180}
+                label={isCurrent ? "DQS of all objects over runs" : "DQS over runs"}
+                onPointClick={(p) => { if (p.runId) router.push(runPageHref(p.runId)); }}
+              />
+            )}
+          </Card>
+        </div>
+        <div className="@5xl:col-span-12">
+          <Section
+            title="Fix first"
+            height={240}
+            query={isCurrent ? currentFindings : rules}
+            meta={`Ranked by failing records times severity${isCurrent ? ", each object at its latest run" : ""}; low severity left out`}
+            actions={
+              <span className="inline-flex flex-wrap items-center gap-4">
+                {owners.hasMine || mine ? (
+                  <FilterChips label="Show" value={mine ? "1" : null} options={[{ value: "1", label: "My objects" }]} onChange={(v) => {
+                    const params = new URLSearchParams(search?.toString() ?? "");
+                    if (v) params.set(MINE_PARAM, "1"); else params.delete(MINE_PARAM);
+                    const q = params.toString();
+                    router.replace(q ? `/insights/exec?${q}` : "/insights/exec");
+                  }} />
+                ) : null}
+                {isCurrent
+                  ? <Link href="/insights" className="m-text-body underline-offset-2 hover:underline">Open overview</Link>
+                  : <Link href={withScope("/insights/rules", { run })} className="m-text-body underline-offset-2 hover:underline">See all</Link>}
+              </span>
+            }
+          >
+            {isCurrent ? (
               <DataTable
-                columns={currentFindingColumns}
+                columns={withOwner(currentFindingColumns, (f) => f.module, owners.nameOf)}
                 data={currentFix}
                 getRowId={(f) => f.id}
                 onRowClick={(f) => router.push(buildDrillHref({ object: f.module, ruleId: f.check_id, run: f.version_id }))}
                 hideToolbar height="auto"
               />
-            </Section>
-          ) : (
-            <Section title="Fix first" height={240} query={rules} meta="Ranked by impact on the score" actions={<Link href={withScope("/insights/rules", { run })} className="m-text-body underline-offset-2 hover:underline">See all</Link>}>
-              <DataTable columns={ruleColumns(run, true)} data={rules.data?.rows ?? []} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar height="auto" />
-            </Section>
-          )}
-        </div>
-        <div className="@5xl:col-span-12">
-          <Card title="Readiness by wave" meta={cells.length ? `${goCells} go, ${atRiskCells} at risk, ${noGo} no-go` : undefined} actions={<Link href={withScope("/insights/readiness", { run })} className="m-text-body underline-offset-2 hover:underline">Open waves</Link>}>
-            {cells.length === 0 && (
-              <EmptyState variant="inline" title="No waves yet" detail="Create a wave in the migration cockpit to score objects per wave." action={<Link href="/migration" className="underline-offset-2 hover:underline">Open migration cockpit</Link>} />
+            ) : (
+              <DataTable columns={withOwner(ruleColumns(run, true), (r) => r.module, owners.nameOf)} data={runFix} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar height="auto" />
             )}
-            {cells.length > 0 && (
+          </Section>
+        </div>
+        {cells.length > 0 && (
+          <div className="@5xl:col-span-12">
+            <Card title="Readiness by wave" meta={`${goCells} go, ${atRiskCells} at risk, ${noGo} no-go`} actions={<Link href={withScope("/insights/readiness", { run })} className="m-text-body underline-offset-2 hover:underline">Open waves</Link>}>
               <div role="region" aria-label="Readiness by object and wave" tabIndex={0} className="mb-3 overflow-x-auto">
                 <Heatmap
                   rows={heatRows}
@@ -284,14 +369,14 @@ export default function ExecPage() {
                   rowHref={(row) => withScope(`/objects/${cells.find((c) => formatModuleName(c.module) === row)?.module ?? ""}`, { run })}
                 />
               </div>
-            )}
-            {cells.length === 0 ? null : blocked.length === 0 ? (
-              <EmptyState variant="inline" title="Every object and wave can load" action={<Link href={withScope("/insights/readiness", { run })} className="underline-offset-2 hover:underline">Open waves</Link>} />
-            ) : (
-              <DataTable columns={readinessColumns(run, waveIds)} data={blocked} getRowId={(row) => `${row.module}-${row.wave}`} hideToolbar height="auto" />
-            )}
-          </Card>
-        </div>
+              {blocked.length === 0 ? (
+                <EmptyState variant="inline" title="Every object and wave can load" action={<Link href={withScope("/insights/readiness", { run })} className="underline-offset-2 hover:underline">Open waves</Link>} />
+              ) : (
+                <DataTable columns={readinessColumns(run, waveIds)} data={blocked} getRowId={(row) => `${row.module}-${row.wave}`} hideToolbar height="auto" />
+              )}
+            </Card>
+          </div>
+        )}
         {l1Tabs.length > 0 && (
           <div className="@5xl:col-span-7">
             <Card title="Value at risk by feature" meta="Each step is one priced feature, grouped by the process it serves">
@@ -301,7 +386,7 @@ export default function ExecPage() {
                   label: l1Label(l1),
                   content: (
                     <>
-                      <Waterfall data={points} label={`Value at risk by feature, ${l1Label(l1)}`} formatValue={(n) => formatMoney(n, currency)} formatTick={moneyTick(currency)} />
+                      <Waterfall data={points} label={`Value at risk by feature, ${l1Label(l1)}`} formatValue={(n) => formatMoneyShort(n, currency)} formatTick={moneyTick(currency)} />
                       <p className="mt-2 m-text-body m-ink-2">{waterfallCaption(l1, points, currency)}</p>
                     </>
                   ),
@@ -310,42 +395,46 @@ export default function ExecPage() {
             </Card>
           </div>
         )}
-        <div className={l1Tabs.length > 0 ? "@5xl:col-span-5" : "@5xl:col-span-12"}>
-          <Card title="Owners" actions={<Link href={withScope("/insights/owners", { run })} className="m-text-body underline-offset-2 hover:underline">Open owners</Link>}>
-            {owners.length === 0 ? (
-              <EmptyState variant="inline" title="No owner is scored yet" detail="Owners appear once records in Fix work are assigned to someone." action={<Link href={withScope("/fix", { run })} className="underline-offset-2 hover:underline">Open Fix work</Link>} />
-            ) : (
-              <DataTable columns={ownerColumns(vid)} data={owners} getRowId={(row) => row.owner} hideToolbar height="auto" />
-            )}
-          </Card>
-        </div>
-        <div className="@5xl:col-span-12">
-          <Card title="Return on investment">
+        {ownerRows.length > 0 && (
+          <div className={l1Tabs.length > 0 ? "@5xl:col-span-5" : "@5xl:col-span-12"}>
+            <Card title="Owners" actions={<Link href={withScope("/insights/owners", { run })} className="m-text-body underline-offset-2 hover:underline">Open owners</Link>}>
+              <DataTable columns={ownerColumns(vid)} data={ownerRows} getRowId={(row) => row.owner} hideToolbar height="auto" />
+            </Card>
+          </div>
+        )}
+        {(roi.isError || (roi.data && !noCostAvoided)) && (
+          <div className="@5xl:col-span-12">
+            <Card title="Return on investment">
               {roi.isError ? (
                 <div className="flex items-center gap-3 m-text-body" role="alert">
                   <span>Return on investment did not load. {apiErrorMessage(roi.error)}</span>
                   <Button variant="secondary" onClick={() => void roi.refetch()}>Retry</Button>
                 </div>
-              ) : roi.data && !roi.data.roi.risk_mitigated ? (
-                // No multiple or payback can be stated before any cost is avoided; "0x" and "0 months" would read as a verdict.
-                <div className="m-stat-grid">
-                  <Stat label="Cost avoided" value="No cost avoided yet" hint="Appears once approved fixes are applied" href={withScope("/fix", { run })} />
-                </div>
               ) : roi.data && roi.data.roi.subscription_annual == null ? (
                 // No subscription is configured anywhere, so the multiple, payback and fee are not stated: only the cost avoided.
                 <div className="m-stat-grid">
-                  <Stat label="Cost avoided" value={formatMoney(roi.data.roi.risk_mitigated, roi.data.roi.currency)} />
+                  <Stat label="Cost avoided" value={formatMoneyShort(roi.data.roi.risk_mitigated, roi.data.roi.currency)} />
                 </div>
               ) : (
                 <div className="m-stat-grid">
-                  <Stat label="ROI multiple" loading={roi.isLoading} value={roi.data?.roi.roi_multiple != null ? `${roi.data.roi.roi_multiple}x` : "—"} />
-                  <Stat label="Payback" loading={roi.isLoading} value={roi.data?.roi.payback_months != null ? plural(roi.data.roi.payback_months, "month") : "—"} />
-                  <Stat label="Cost avoided" loading={roi.isLoading} value={roi.data ? formatMoney(roi.data.roi.risk_mitigated, roi.data.roi.currency) : "—"} />
-                  <Stat label="Annual subscription" loading={roi.isLoading} value={roi.data?.roi.subscription_annual != null ? formatMoney(roi.data.roi.subscription_annual, roi.data.roi.currency) : "—"} />
+                  <Stat label="ROI multiple" value={roi.data?.roi.roi_multiple != null ? `${roi.data.roi.roi_multiple}x` : "—"} />
+                  <Stat label="Payback" value={roi.data?.roi.payback_months != null ? plural(roi.data.roi.payback_months, "month") : "—"} />
+                  <Stat label="Cost avoided" value={roi.data ? formatMoneyShort(roi.data.roi.risk_mitigated, roi.data.roi.currency) : "—"} />
+                  <Stat label="Annual subscription" value={roi.data?.roi.subscription_annual != null ? formatMoneyShort(roi.data.roi.subscription_annual, roi.data.roi.currency) : "—"} />
                 </div>
               )}
-          </Card>
-        </div>
+            </Card>
+          </div>
+        )}
+        {notYet.length > 0 && (
+          // The sections with nothing to show yet, in one line instead of one empty card each.
+          <div className="@5xl:col-span-12">
+            <p className="m-text-body m-ink-2 flex flex-wrap items-baseline gap-x-4 gap-y-1" data-testid="exec-not-yet">
+              <span>{`Not yet: ${listWords(notYet.map((x) => x.what))}.`}</span>
+              {notYet.map((x) => <Link key={x.link} href={x.href} className="m-ink-accent underline-offset-2 hover:underline">{x.link}</Link>)}
+            </p>
+          </div>
+        )}
       </div>
       {finding.drawer}
     </InsightFrame>

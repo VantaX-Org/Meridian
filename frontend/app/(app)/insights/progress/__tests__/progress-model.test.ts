@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Burndown } from "@/lib/api/work-analytics";
-import { burndownChart, daysText, finishSentence, PROJECTION_HORIZON_DAYS } from "../progress-model";
+import { burndownChart, daysText, finishSentence, PROJECTION_HORIZON_DAYS, rateText } from "../progress-model";
 
 const burn = (over: Partial<Burndown> = {}): Burndown => ({
   version_id: "v", today: "2026-10-25",
@@ -24,6 +24,17 @@ describe("progress model", () => {
     const far = burndownChart(burn({ pace_per_day: 0.1, projected_finish: "2027-04-14" })).series[1].data;
     expect(far[far.length - 1].x).toBe("2027-01-23");
     expect(far).toHaveLength(Math.ceil(PROJECTION_HORIZON_DAYS / 7) + 1);
+  });
+
+  it("sets the target line at none open only when the projection is drawn", () => {
+    expect(burndownChart(burn()).target).toBe(0);
+    expect(burndownChart(burn({ projected_finish: null, pace_per_day: 0 })).target).toBeUndefined();
+  });
+
+  it("rounds a per-day rate the way a person says it", () => {
+    expect([rateText(0), rateText(0.04), rateText(0.46), rateText(4.333), rateText(12.345678), rateText(-38.6)]).toEqual(["0", "under 0.1", "0.5", "4.3", "12", "39"]);
+    expect(finishSentence(burn({ pace_per_day: 2.3456 }))).toBe("At 2.3 a day net, the backlog clears on 4 Nov 2026");
+    expect(finishSentence(burn({ projected_finish: null, pace_per_day: -12.789 }))).toBe("More is opening than closing: 13 a day net over 28 days");
   });
 
   it("words fix times and the finish", () => {
