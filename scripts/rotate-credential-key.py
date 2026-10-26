@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""Rotate the CREDENTIAL_MASTER_KEY that encrypts SAP system passwords.
+"""Rotate the CREDENTIAL_MASTER_KEY that encrypts SAP system passwords and two-factor secrets.
 
 Reads every row in system_credentials, decrypts with the OLD master key,
 re-encrypts with the NEW master key, and bumps key_version. Safe to re-run
 — already-new-encrypted rows are detected and skipped via key_version.
+
+users.totp_secret (two-factor sign-in, migration 094) is encrypted the same way
+and re-encrypted in the same transaction. It has no key_version: a secret the
+NEW key already opens counts as already new, so a re-run skips it too.
 
 Usage:
     # Dry run — reports what would change, writes nothing
@@ -132,7 +136,40 @@ def rotate(
 
             result.rotated += 1
 
+        _rotate_totp_secrets(conn, old_key, new_key, dry_run, result)
+
     return result
+
+
+def _rotate_totp_secrets(conn, old_key: str, new_key: str, dry_run: bool, result: RotationResult) -> None:
+    """Re-encrypt users.totp_secret (two-factor sign-in) from the OLD to the NEW master key."""
+    has_column = conn.execute(text(
+        "SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'totp_secret'"
+    )).fetchone()
+    if not has_column:
+        return
+    rows = conn.execute(text("SELECT id, tenant_id, totp_secret FROM users WHERE totp_secret IS NOT NULL")).fetchall()
+    logger.info(f"Found {len(rows)} two-factor secret(s) to scan")
+    for user_id, tenant_id, ct in rows:
+        ref = f"user={user_id} totp_secret"
+        try:
+            decrypt_with_key(new_key, str(tenant_id), ct)
+            result.already_new += 1
+            continue
+        except Exception:
+            pass
+        try:
+            new_ct = encrypt_with_key(new_key, str(tenant_id), decrypt_with_key(old_key, str(tenant_id), ct))
+        except Exception as e:
+            logger.error(f"rotate failed for {ref}: {e}")
+            result.failed.append(ref)
+            continue
+        if dry_run:
+            logger.info(f"[DRY RUN] would rotate {ref}")
+        else:
+            conn.execute(text("UPDATE users SET totp_secret = :ct WHERE id = :uid"), {"ct": new_ct, "uid": user_id})
+            logger.info(f"Rotated {ref}")
+        result.rotated += 1
 
 
 def main() -> int:

@@ -42,12 +42,16 @@ def create_access_token(
     role: str,
     secret: str,
     token_version: int = 0,
+    mfa_enrol: bool = False,
 ) -> str:
     """Create a signed JWT access token.
 
     ``tv`` is the user's ``users.token_version`` at issue time. LocalAuthMiddleware rejects a token
     whose ``tv`` is below the user's current value, so bumping the column (password change or reset,
     deactivation) revokes every session issued before it.
+
+    ``mfa_enrol`` marks a session that may only set up two-factor sign-in (the tenant requires it and
+    the user has none yet): LocalAuthMiddleware refuses it on every other route.
     """
     now = datetime.now(timezone.utc)
     payload = {
@@ -59,6 +63,8 @@ def create_access_token(
         "iat": now,
         "exp": now + timedelta(hours=_JWT_EXPIRY_HOURS),
     }
+    if mfa_enrol:
+        payload["mfa_enrol"] = True
     return jwt.encode(payload, secret, algorithm=_JWT_ALGORITHM)
 
 
@@ -108,6 +114,29 @@ def create_password_reset_token(
         "sub": user_id,
         "tenant_id": tenant_id,
         "purpose": "password_reset",
+        "iat": now,
+        "exp": now + timedelta(minutes=ttl_minutes),
+    }
+    return jwt.encode(payload, secret, algorithm=_JWT_ALGORITHM)
+
+
+MFA_PENDING_TTL_MINUTES = 5
+
+
+def create_mfa_pending_token(
+    user_id: str, tenant_id: str, secret: str, token_version: int, ttl_minutes: int = MFA_PENDING_TTL_MINUTES,
+) -> str:
+    """The proof of a correct password while the second step is outstanding. Not a session:
+    the ``purpose`` claim makes LocalAuthMiddleware refuse it everywhere, and only
+    POST /auth/login/2fa reads it. ``tv`` ties it to the sessions in force: a password change or a
+    two-factor reset in the meantime voids it.
+    """
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": user_id,
+        "tenant_id": tenant_id,
+        "purpose": "mfa_pending",
+        "tv": token_version,
         "iat": now,
         "exp": now + timedelta(minutes=ttl_minutes),
     }

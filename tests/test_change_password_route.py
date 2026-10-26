@@ -36,7 +36,7 @@ class _Conn:
         if "jwt_secret" in sql:
             return _Row(("secret",))
         if "password_hash, is_active" in sql:
-            return _Row(("u1", self.password_hash, True, "u1@example.com", "viewer"))
+            return _Row(("u1", self.password_hash, True, "u1@example.com", "viewer", False))
         if sql.startswith("UPDATE users"):
             self.updated = True
             return _Row((1,))

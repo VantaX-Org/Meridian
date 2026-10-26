@@ -77,3 +77,67 @@ export async function getInvitePreview(token: string): Promise<{ email: string; 
   const { data } = await apiClient.post<{ email: string; grants: InviteGrant[] }>("/api/v1/auth/invite/preview", { token });
   return data;
 }
+
+// Two-factor sign-in (api/routes/auth.py).
+
+/** GET /api/v1/auth/2fa: whether the signed-in user has it, and whether the organisation requires it. */
+export interface TwoFactorStatus {
+  enabled: boolean;
+  required: boolean;
+  recovery_codes_left: number;
+}
+
+export async function getTwoFactorStatus(): Promise<TwoFactorStatus> {
+  const { data } = await apiClient.get<TwoFactorStatus>("/api/v1/auth/2fa");
+  return data;
+}
+
+/** A new authenticator secret, not in force until confirmed. `otpauth_uri` is the link an authenticator app reads. */
+export interface TwoFactorSetup {
+  secret: string;
+  otpauth_uri: string;
+}
+
+export async function startTwoFactorSetup(): Promise<TwoFactorSetup> {
+  const { data } = await apiClient.post<TwoFactorSetup>("/api/v1/auth/2fa/setup", {});
+  return data;
+}
+
+/**
+ * Turn two-factor sign-in on with a code from the app. Returns the ten recovery codes (shown once) and a replacement
+ * session (a set-up-only session becomes a full one), which is stored in place of the old token.
+ */
+export async function confirmTwoFactor(code: string): Promise<{ recoveryCodes: string[]; token: string }> {
+  const { data } = await apiClient.post<{ recovery_codes: string[]; token: string }>("/api/v1/auth/2fa/confirm", { code });
+  if (typeof data?.token !== "string" || !data.token) {
+    throw new Error("Two-factor sign-in is on, but no new session came back. Sign in again.");
+  }
+  localStorage.setItem(TOKEN_KEY, data.token);
+  return { recoveryCodes: data.recovery_codes ?? [], token: data.token };
+}
+
+/** Turn it off with the password and a code. Other sessions end; the replacement token is stored and returned. */
+export async function disableTwoFactor(password: string, code: string): Promise<string> {
+  const { data } = await apiClient.post<{ ok: true; token: string }>("/api/v1/auth/2fa/disable", { password, code });
+  if (typeof data?.token !== "string" || !data.token) {
+    throw new Error("Two-factor sign-in was turned off, but no new session came back. Sign in again.");
+  }
+  localStorage.setItem(TOKEN_KEY, data.token);
+  return data.token;
+}
+
+/** The body of POST /login and POST /login/2fa. `mfa_required`: ask for a code, then call `verifyLoginCode`. */
+export interface LoginApiResponse {
+  token: string | null;
+  user: unknown;
+  must_change_password: boolean;
+  mfa_required?: boolean;
+  mfa_token?: string | null;
+  must_enrol_2fa?: boolean;
+}
+
+/** The second sign-in step: the pending token from /login and a six-digit code or a recovery code. */
+export async function verifyLoginCode(mfaToken: string, code: string): Promise<LoginApiResponse> {
+  const { data } = await apiClient.post<LoginApiResponse>("/api/v1/auth/login/2fa", { mfa_token: mfaToken, code });
+  return data;
+}

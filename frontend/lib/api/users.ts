@@ -38,3 +38,20 @@ export async function getAssignableUsers(): Promise<{ id: string; name: string; 
   const { data } = await apiClient.get("/api/v1/users/assignable");
   return data;
 }
+
+/** Clear a user's two-factor sign-in (a lost phone) and end their sessions. Not your own. */
+export async function resetUserTwoFactor(userId: string): Promise<{ id: string; totp_enabled: false }> {
+  const { data } = await apiClient.post<{ id: string; totp_enabled: false }>(`/api/v1/users/${userId}/2fa/reset`);
+  return data;
+}
+
+/** Whether every user must sign in with an authenticator code (GET/PUT /settings/security, manage_users). */
+export async function getSecuritySettings(): Promise<{ require_2fa: boolean }> {
+  const { data } = await apiClient.get<{ require_2fa: boolean }>("/api/v1/settings/security");
+  return data;
+}
+
+export async function updateSecuritySettings(body: { require_2fa: boolean }): Promise<{ require_2fa: boolean }> {
+  const { data } = await apiClient.put<{ require_2fa: boolean }>("/api/v1/settings/security", body);
+  return data;
+}

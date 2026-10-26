@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.roles import LAST_ADMIN_DETAIL, guard_user_access_change, insert_grant, lock_admin_rows
-from api.services.rbac import BUILTIN_NAMES, PERSONA_ALIAS, require_permission, strongest_role
+from api.services.rbac import BUILTIN_NAMES, PERSONA_ALIAS, require_permission, strongest_role, write_audit
 from workers.tasks.send_user_invitation import send_invitation_email
 
 router = APIRouter(prefix="/api/v1", tags=["users"])
@@ -101,7 +101,7 @@ async def list_users(
     result = await db.execute(
         text("""
             SELECT id, tenant_id, email, name, role,
-                   permissions, is_active, last_login, created_at
+                   permissions, is_active, last_login, created_at, totp_enabled
             FROM users
             WHERE tenant_id = :tid
             ORDER BY created_at ASC
@@ -349,3 +349,43 @@ async def delete_user(
         )
 
     return {"id": str(user_id), "status": "deleted"}
+
+
+# ── POST /api/v1/users/{id}/2fa/reset ───────────────────────────────────────
+
+
+@router.post("/users/{user_id}/2fa/reset")
+async def reset_two_factor(
+    user_id: uuid.UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("manage_users")),
+):
+    """Clear a user's two-factor sign-in (a lost phone): the secret, the recovery codes, and every session
+    they hold (users.token_version). They sign in with the password alone next time, and set it up again
+    if the tenant requires it. Not your own (turn it off under Preferences), and only for a user whose
+    roles sit under yours, as for deactivation. Writes ``user.2fa_reset``."""
+    from api.middleware.local_auth import forget_token_version
+    from api.services.two_factor import CLEAR_TWO_FACTOR_SET
+
+    await _set_rls(db, tenant.id)
+    await guard_user_access_change(db, tenant, request, user_id)
+    row = (await db.execute(
+        text("SELECT totp_enabled FROM users WHERE id = :uid AND tenant_id = :tid FOR UPDATE"),
+        {"uid": str(user_id), "tid": str(tenant.id)},
+    )).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="User not found")
+    await db.execute(
+        text(f"UPDATE users SET {CLEAR_TWO_FACTOR_SET}, token_version = token_version + 1 "
+             "WHERE id = :uid AND tenant_id = :tid"),
+        {"uid": str(user_id), "tid": str(tenant.id)},
+    )
+    await db.execute(text("DELETE FROM user_recovery_codes WHERE tenant_id = :tid AND user_id = :uid"),
+                     {"uid": str(user_id), "tid": str(tenant.id)})
+    await write_audit(db, tenant.id, request, "user.2fa_reset", "user", str(user_id),
+                      {"totp_enabled": bool(row[0])}, {"totp_enabled": False})
+    await db.commit()
+    forget_token_version(str(user_id))
+    return {"id": str(user_id), "totp_enabled": False}
