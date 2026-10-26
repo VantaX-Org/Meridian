@@ -18,6 +18,7 @@ RLS tables is not allowed), then one INSERT/UPDATE per step.
 
 from __future__ import annotations
 
+import logging
 import os
 
 import csv
@@ -27,7 +28,9 @@ from typing import Iterable, Iterator
 
 from sqlalchemy import text
 
-from checks.base import record_keys
+from checks.base import record_keys, reraise_soft_limit
+
+logger = logging.getLogger(__name__)
 
 # Row-position keys ("row:17") are not stable across runs → never tracked.
 _UNSTABLE = "row:%"
@@ -180,6 +183,10 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames,
     counts = dict(session.execute(text(
         "SELECT check_id, count(*) FROM finding_records WHERE version_id = :vid GROUP BY check_id",
     ), p).all())
+    # A check that ran but now passes for every record has no finding_records, yet it still needs a
+    # batch: its resolve sweep is the only thing that closes its open issues.
+    for r in results:
+        counts.setdefault(r.check_id, 0)
     budget = max(1000, int(os.getenv("MERIDIAN_LIFECYCLE_RECORDS", "200000")))
     batches: list[list[str]] = []
     current: list[str] = []
@@ -205,7 +212,7 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames,
             continue
         layout_keys[layout] = [(g, k) for g, k in present_keys([r], frames) if (g or "", k) in tracked]
 
-    reopened = created = resolved = 0
+    reopened = created = resolved = reconciled = 0
     for batch in batches:
         bp = {**p, "batch": batch}
         batch_results = [by_check[c] for c in batch if c in by_check]
@@ -287,9 +294,19 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames,
             INSERT INTO record_issue_events (tenant_id, issue_id, action, to_value, version_id, user_label)
             SELECT :tid, id, 'auto_resolved', 'resolved', :vid, 'system' FROM fixed
         """), bp).rowcount
+        # Exported fix batches are reconciled here, per batch, while this batch's tmp_present is still
+        # populated: the commit below drops it, so a reconcile after track could never prove an item fixed.
+        try:
+            from api.services.remediation import reconcile
+            with session.begin_nested():
+                reconciled += reconcile(session, tenant_id, version_id, scope, checks=batch)
+        except Exception as e:
+            reraise_soft_limit(e)
+            logger.error(f"remediation reconcile failed for {version_id}: {e}", exc_info=True)
         session.commit()
 
-    return {"failing_records": failing, "created": created, "reopened": reopened, "auto_resolved": resolved}
+    return {"failing_records": failing, "created": created, "reopened": reopened, "auto_resolved": resolved,
+            "reconciled": reconciled}
 
 
 # ── run-to-run diff ───────────────────────────────────────────────────────────
