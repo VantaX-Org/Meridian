@@ -65,6 +65,35 @@ rules, rather than matching the rule count of `material_master` (679).
 `batch_management` (37) and the EWM modules (44–74) are also thin relative to
 `material_master`, so they are covered rather than deep.
 
+## S/4HANA migration criteria
+
+`s4_readiness` carries the target-directed checks a conversion needs, separate from data-quality
+rules: it now holds **159 rules** and reads 56 data tables.
+
+The 40 added for migration cover the criteria a conversion actually fails on:
+
+* **material master** — MTART / MBRSH / MEINS / MATKL / SPART mandatory, product hierarchy, and
+  the 18-character MATNR limit (no automatic renumbering exists in a conversion)
+* **valuation and the material ledger** — price control present, moving-average and standard price
+  not zero, price unit not zero, ML activation marker, valuation-area currency type
+* **new asset accounting** — asset class, account determination key, capitalisation date,
+  depreciation key, useful life, duplicate depreciation areas
+* **universal journal / cost elements** — chart of accounts, cost element key, cost element
+  category, duplicates within a controlling area
+* **business partner and CVI** — customer and vendor account groups, BP grouping and category,
+  vendor tax number
+* **house banks** — bank key and country, duplicate house bank ids
+* **warehouse to EWM** — quant material and plant, classification object and characteristic
+* **currency, country, units, org data** — company code currency and country, plant country and
+  valuation area, company id
+
+Run it alongside an object's own rules: the object rules judge the data, `s4_readiness` judges
+whether that data can survive the move to S/4HANA.
+
+`s4hc_master_data` is now also selectable on an **ECC** source system (9 data tables: BUT000, the
+CVI links, KNA1, LFA1, MARA, MARC, MBEW), because that is where a move to S/4HANA Cloud is
+analysed from.
+
 ## How to close a gap
 
 1. Add the table definitions to `sap/data_dictionary.py` (fields, keys, types, check refs).
