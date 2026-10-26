@@ -22,10 +22,12 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     Numeric,
     SmallInteger,
     String,
     Text,
+    Time,
     UniqueConstraint,
     text,
 )
@@ -2344,4 +2346,97 @@ class PurgeLog(Base):
         CheckConstraint("kind IN ('version', 'reports', 'audit', 'tenant')", name="ck_purge_log_kind"),
         CheckConstraint("source IN ('nightly', 'preview', 'manual', 'tenant')", name="ck_purge_log_source"),
         Index("ix_purge_log_tenant_created", "tenant_id", "created_at"),
+    )
+
+
+class ReportSchedule(Base):
+    """A report generated on a cadence and sent to users and alert channels (migration 089,
+    api/services/report_history.py, workers/tasks/report_schedules.py)."""
+    __tablename__ = "report_schedules"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    name = Column(Text, nullable=False)
+    kind = Column(Text, nullable=False)  # report_history.REPORT_TYPES
+    format = Column(Text, nullable=False)  # pdf | xlsx | json
+    params = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))  # scope, module
+    cadence = Column(Text, nullable=False)  # daily | weekly | monthly
+    time_of_day = Column(Time, nullable=False, server_default="07:00")
+    weekday = Column(SmallInteger, nullable=True)  # 0 = Monday, weekly only
+    day_of_month = Column(SmallInteger, nullable=True)  # 1-31 (clamped to the month's last day), monthly only
+    timezone = Column(Text, nullable=False, server_default="UTC")
+    recipient_user_ids = Column(ARRAY(UUID(as_uuid=True)), nullable=False, server_default="{}")
+    recipient_channel_ids = Column(ARRAY(UUID(as_uuid=True)), nullable=False, server_default="{}")
+    enabled = Column(Boolean, nullable=False, server_default=text("true"))
+    last_run_at = Column(DateTime(timezone=True), nullable=True)
+    last_status = Column(Text, nullable=True)
+    next_run_at = Column(DateTime(timezone=True), nullable=True)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        CheckConstraint("cadence IN ('daily', 'weekly', 'monthly')", name="ck_report_schedules_cadence"),
+        CheckConstraint("format IN ('pdf', 'xlsx', 'json')", name="ck_report_schedules_format"),
+        CheckConstraint("weekday IS NULL OR weekday BETWEEN 0 AND 6", name="ck_report_schedules_weekday"),
+        CheckConstraint("day_of_month IS NULL OR day_of_month BETWEEN 1 AND 31", name="ck_report_schedules_day_of_month"),
+        Index("ix_report_schedules_due", "tenant_id", "next_run_at", postgresql_where=text("enabled")),
+    )
+
+
+class ReportFile(Base):
+    """One generated report file: a download from /api/v1/reports/* or a scheduled run (migration 089).
+    Bytes in the object store under ``storage_key``; ``content`` only as the capped fallback."""
+    __tablename__ = "report_files"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    kind = Column(Text, nullable=False)
+    name = Column(Text, nullable=False)
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="SET NULL"), nullable=True)
+    format = Column(Text, nullable=False)
+    file_name = Column(Text, nullable=False)
+    content_type = Column(Text, nullable=False)
+    size_bytes = Column(BigInteger, nullable=False)
+    sha256 = Column(Text, nullable=False)
+    storage_key = Column(Text, nullable=True)
+    content = Column(LargeBinary, nullable=True)
+    params = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    source = Column(Text, nullable=False, server_default="download")  # download | schedule | run_now
+    schedule_id = Column(UUID(as_uuid=True), ForeignKey("report_schedules.id", ondelete="SET NULL"), nullable=True)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_by_email = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        CheckConstraint("format IN ('pdf', 'xlsx', 'json')", name="ck_report_files_format"),
+        CheckConstraint("source IN ('download', 'schedule', 'run_now')", name="ck_report_files_source"),
+        CheckConstraint("storage_key IS NOT NULL OR content IS NOT NULL", name="ck_report_files_stored"),
+        Index("ix_report_files_tenant_created", "tenant_id", "created_at"),
+        Index("ix_report_files_kind_created", "tenant_id", "kind", "created_at"),
+    )
+
+
+class ReportScheduleRun(Base):
+    """One slot of a schedule: claimed with ON CONFLICT (schedule_id, due_at) DO NOTHING (migration 089)."""
+    __tablename__ = "report_schedule_runs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    schedule_id = Column(UUID(as_uuid=True), ForeignKey("report_schedules.id", ondelete="CASCADE"), nullable=False)
+    due_at = Column(DateTime(timezone=True), nullable=False)
+    manual = Column(Boolean, nullable=False, server_default=text("false"))
+    status = Column(Text, nullable=False, server_default="running")  # running | sent | partial | failed | skipped
+    report_file_id = Column(UUID(as_uuid=True), ForeignKey("report_files.id", ondelete="SET NULL"), nullable=True)
+    delivered = Column(Integer, nullable=False, server_default="0")
+    failed = Column(Integer, nullable=False, server_default="0")
+    detail = Column(Text, nullable=True)
+    started_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    finished_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("schedule_id", "due_at", name="uq_report_schedule_runs_slot"),
+        CheckConstraint("status IN ('running', 'sent', 'partial', 'failed', 'skipped')",
+                        name="ck_report_schedule_runs_status"),
+        Index("ix_report_schedule_runs_schedule", "tenant_id", "schedule_id", "due_at"),
     )

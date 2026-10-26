@@ -47,15 +47,15 @@ describe("FindingDrawer", () => {
       finding_id: "f1",
       finding,
       impacts: [
-        { category: "procurement", annual_risk_zar: 50000, mitigated_zar: 0, finding_count: 12, calculation_method: "per-record", currency: "ZAR" },
+        { category: "procurement", annual_risk: 50000, mitigated: 0, finding_count: 12, calculation_method: "per-record", currency: "EUR" },
       ],
     });
-    // A EUR tenant: the buckets are priced in rand, so they print as ZAR, never relabelled with the tenant's currency.
+    // A EUR tenant: the API prices the buckets from its cost model and names EUR; the drawer prints what the API says.
     vi.spyOn(settingsApi, "getCostModel").mockResolvedValue({ currency: "EUR" } as Awaited<ReturnType<typeof settingsApi.getCostModel>>);
     renderWithQuery(<FindingDrawer findingId="f1" versionId="v1" onClose={() => {}} />);
     await waitFor(() => expect(screen.getByText("Description is blank.")).toBeInTheDocument());
-    await waitFor(() => expect(screen.getByText(/ZAR\s50,000 a year at risk/)).toBeInTheDocument());
-    expect(screen.queryByText(/EUR/)).toBeNull();
+    await waitFor(() => expect(screen.getByText(/EUR\s50,000 a year at risk/)).toBeInTheDocument());
+    expect(screen.queryByText(/ZAR/)).toBeNull();
     expect(screen.getByText(/12 of 100 records affected/i)).toBeInTheDocument();
     expect(screen.getByText("A missing description blocks procurement.")).toBeInTheDocument();
     await waitFor(() =>

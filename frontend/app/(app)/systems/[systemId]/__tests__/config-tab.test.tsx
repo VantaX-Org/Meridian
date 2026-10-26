@@ -64,4 +64,14 @@ describe("ConfigurationTab", () => {
     await waitFor(() => expect(byModule).toHaveBeenCalledWith("fi_gl"));
     expect((await screen.findAllByText("Company code 2000 unused")).length).toBeGreaterThan(0);
   });
+
+  it("labels the impact column with the currency the API sends, never a fixed one", async () => {
+    vi.spyOn(api, "getConfigHealth").mockResolvedValue({ run_id: "r1", scores: [] });
+    vi.spyOn(api, "getConfigAlignment").mockResolvedValue({ run_id: "r1", currency: "EUR", findings: [{ ...FINDING, estimated_impact_zar: 2500 }] });
+    renderWithQuery(<ConfigurationTab systemId="s1" canPropose={false} />);
+    await userEvent.click(await screen.findByRole("tab", { name: "Alignment" }));
+    expect(await screen.findByRole("columnheader", { name: "Impact (EUR)" })).toBeInTheDocument();
+    expect(screen.getAllByText(/EUR[\u00a0 ]?2[,. \u00a0]?500/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/ZAR/)).toBeNull();
+  });
 });

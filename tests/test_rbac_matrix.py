@@ -55,7 +55,8 @@ def test_every_mutating_route_is_guarded():
                     continue
                 route = d.args[0].value if d.args and isinstance(d.args[0], ast.Constant) else ""
                 sig = ast.get_source_segment(src, node).split(":\n", 1)[0]
-                if "require_permission" in sig or "require_permission" in ast.get_source_segment(src, d):
+                guard = (sig, ast.get_source_segment(src, d))
+                if any(g in part for g in ("require_permission", "require_any_permission") for part in guard):
                     continue
                 if (path.name, route) not in _UNGUARDED_OK:
                     unguarded.append(f"{path.name} {d.func.attr.upper()} {route}")

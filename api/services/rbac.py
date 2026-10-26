@@ -39,25 +39,26 @@ from api.deps import Tenant, get_db, get_tenant
 #   approver     four-eyes approver only
 #   auditor      read-only + audit log
 #   ai_reviewer  reviews AI proposals
+#   (handoff_rule: hand one blocking rule to a steward; every `assign` holder and process_analyst)
 #   viewer       read-only
 
 _READ = {"view", "mdm.read", "view_ai_confidence"}
 
 PERMISSIONS: dict[str, set[str]] = {
     "admin": _READ | {
-        "upload", "analyse", "approve", "apply", "export", "assign",
+        "upload", "analyse", "approve", "apply", "export", "assign", "handoff_rule",
         "manage_users", "manage_rules", "manage_field_mappings", "manage_llm",
         "manage_system", "manage_systems", "manage_settings", "view_audit",
         "ai_feedback", "review_ai_rules", "trigger_ai", "trigger_sync",
         "mdm.write", "run_process_discovery", "export_process",
     },
     "manager": _READ | {
-        "upload", "analyse", "approve", "apply", "export", "assign",
+        "upload", "analyse", "approve", "apply", "export", "assign", "handoff_rule",
         "manage_systems", "view_audit",
         "ai_feedback", "trigger_ai", "trigger_sync", "mdm.write", "export_process",
     },
     "steward": _READ | {
-        "upload", "analyse", "approve", "apply", "export", "assign",
+        "upload", "analyse", "approve", "apply", "export", "assign", "handoff_rule",
         "manage_rules", "ai_feedback", "review_ai_rules", "trigger_ai",
         "trigger_sync", "mdm.write",
     },
@@ -89,8 +90,9 @@ PERSONA_ROLES: dict[str, set[str]] = {
         "manage_systems", "trigger_sync", "manage_field_mappings", "upload", "run_process_discovery",
     },
     "platform_admin": PERMISSIONS["admin"],
-    # Process discovery (process-discovery spec 6.1): read everything, run discovery, export as-is models.
-    "process_analyst": _READ | {"run_process_discovery", "export_process"},
+    # Process discovery (process-discovery spec 6.1): read everything, run discovery, export as-is models,
+    # and hand a blocking rule to a steward (handoff_rule) without general `assign` over the inbox.
+    "process_analyst": _READ | {"run_process_discovery", "export_process", "handoff_rule"},
 }
 
 # Persona key -> legacy key whose special-cased behaviour it inherits.
@@ -277,6 +279,8 @@ LEGACY_ACTION_MAP: dict[str, set[tuple[str, str]]] = {
                 ("analysis", "approve")},
     "apply": {("fixes", "run")},
     "assign": {("stewardship", "edit")},
+    # Create one stewardship task for a blocking rule (POST /stewardship/handoff); every `assign` holder has it too.
+    "handoff_rule": {("stewardship", "create")},
     "export": {("reports", "export"), ("*", "export")},
     "manage_rules": {("rules", "create"), ("rules", "edit"), ("contracts", "create"),
                      ("contracts", "edit"), ("glossary", "edit")},

@@ -283,15 +283,19 @@ DEFAULT_PLANNER = {
     "exception_hours": 2.0,        # resolve one open exception
     "sprint_hours": 40.0,          # capacity per sprint bucket
     "cost_per_record": None,       # optional: the tenant's own cost of one bad record
-    "currency": "ZAR",
+    "currency": "ZAR",             # replaced by the tenant cost model's currency (planner_config)
 }
 
 
-def planner_config(overrides: dict | None) -> dict:
+def planner_config(overrides: dict | None, currency: str | None = None) -> dict:
+    """The planner assumptions; ``currency`` (the tenant cost model's) names every amount, so a
+    planner-level currency left over from older settings never contradicts the cost model."""
     cfg = dict(DEFAULT_PLANNER)
     for k, v in (overrides or {}).items():
         if k in cfg and v is not None and v != "":
             cfg[k] = v
+    if currency:
+        cfg["currency"] = currency
     return cfg
 
 
@@ -434,139 +438,139 @@ class PrescriptiveAnalytics:
 # ── Business Impact Analytics ────────────────────────────────────────────────
 
 
-# The impact buckets and the ROI price risk with fixed rand constants (R8,500 an invoice, R35,000 a warranty claim,
-# a R15,000 monthly subscription), not the tenant cost model, so every amount they return is in rand whatever the
-# tenant's own currency: the payloads say so, and a page prints them as ZAR rather than in the tenant's currency.
-RISK_CURRENCY = "ZAR"
+# The impact buckets and the ROI are priced from the tenant's cost model (``impact`` and
+# ``subscription_monthly`` of checks/cost_model.yaml, overlaid by ``tenants.cost_model``), in that model's
+# currency. The payload keys ``annual_risk_zar`` / ``mitigated_zar`` are historical names (the impact_records
+# columns); ``annual_risk`` / ``mitigated`` carry the same amounts, and ``currency`` names it.
+
+_IMPACT_BASIS = {
+    "duplicate_payment": "affected_count", "warranty_miss": "affected_count",
+    "compliance_penalty": "affected_count", "blocked_invoice": "count", "failed_posting": "count",
+    "inventory_write_off": "affected_count", "labour_displacement": "count", "contract_violation": "count",
+}
+
+
+def _amount(x: float) -> str:
+    return f"{x:,.0f}" if float(x).is_integer() else f"{x:,.2f}"
 
 
 class BusinessImpactAnalytics:
-    """Rand risk quantification across 8 impact categories."""
+    """Risk quantification across 8 impact categories, priced from the tenant cost model."""
+
+    def __init__(self, cost_model: dict | None = None) -> None:
+        from checks import cost
+        model = cost.effective(cost_model)
+        self.currency: str = model["currency"]
+        self.impact: dict[str, dict] = model["impact"]
+        self.subscription_monthly: float | None = model["subscription_monthly"]
+
+    def _unit(self, category: str) -> tuple[float, float]:
+        """(risk of one counted item, share of it mitigated) for a defect type."""
+        spec = self.impact.get(category) or {}
+        unit = float(spec.get("unit_cost") or 0) * float(spec.get("factor", 1))
+        return unit, float(spec.get("mitigation") or 0)
+
+    def _method(self, category: str) -> str:
+        spec = self.impact.get(category) or {}
+        factor = float(spec.get("factor", 1))
+        scale = f" × {factor:g}" if factor != 1 else ""
+        return f"{_IMPACT_BASIS[category]} × {_amount(float(spec.get('unit_cost') or 0))} {self.currency}{scale}"
 
     def quantify_impact(
         self, findings: list[dict], exceptions: list[dict]
     ) -> list[dict]:
-        """Categorise findings/exceptions into 8 impact buckets with ZAR values."""
+        """Categorise findings/exceptions into 8 impact buckets, valued in the tenant currency."""
         buckets: dict[str, dict[str, Any]] = {
-            "duplicate_payment": {"annual_risk_zar": 0, "mitigated_zar": 0, "finding_count": 0, "method": "affected_count × R8,500 × 2.3% × 12"},
-            "warranty_miss": {"annual_risk_zar": 0, "mitigated_zar": 0, "finding_count": 0, "method": "affected_count × R35,000"},
-            "compliance_penalty": {"annual_risk_zar": 0, "mitigated_zar": 0, "finding_count": 0, "method": "affected_count × R25,000"},
-            "blocked_invoice": {"annual_risk_zar": 0, "mitigated_zar": 0, "finding_count": 0, "method": "count × R12,000 × 12"},
-            "failed_posting": {"annual_risk_zar": 0, "mitigated_zar": 0, "finding_count": 0, "method": "count × R5,000 × 12"},
-            "inventory_write_off": {"annual_risk_zar": 0, "mitigated_zar": 0, "finding_count": 0, "method": "affected_count × R8,000"},
-            "labour_displacement": {"annual_risk_zar": 0, "mitigated_zar": 0, "finding_count": 0, "method": "count × 0.25h × R450 × 12"},
-            "contract_violation": {"annual_risk_zar": 0, "mitigated_zar": 0, "finding_count": 0, "method": "count × R15,000"},
+            c: {"annual_risk": 0.0, "mitigated": 0.0, "finding_count": 0} for c in _IMPACT_BASIS
         }
+
+        def add(category: str, count: float) -> None:
+            unit, mitigation = self._unit(category)
+            risk = count * unit
+            buckets[category]["annual_risk"] += risk
+            buckets[category]["mitigated"] += risk * mitigation
+            buckets[category]["finding_count"] += 1
 
         for f in findings:
             dimension = f.get("dimension", "")
-            affected = f.get("affected_count", 0)
+            affected = f.get("affected_count", 0) or 0
             module = f.get("module", "")
             check_id = f.get("check_id", "")
 
             # duplicate_payment — uniqueness dimension findings
             if dimension == "uniqueness":
-                risk = affected * 8500 * 0.023 * 12
-                buckets["duplicate_payment"]["annual_risk_zar"] += risk
-                buckets["duplicate_payment"]["mitigated_zar"] += risk * 0.7
-                buckets["duplicate_payment"]["finding_count"] += 1
+                add("duplicate_payment", affected)
 
             # warranty_miss — completeness findings on warranty/expiry fields
             if dimension == "completeness" and any(
                 kw in (check_id + module).lower()
                 for kw in ["warranty", "expiry", "expiration", "valid_to", "end_date"]
             ):
-                risk = affected * 35000
-                buckets["warranty_miss"]["annual_risk_zar"] += risk
-                buckets["warranty_miss"]["mitigated_zar"] += risk * 0.6
-                buckets["warranty_miss"]["finding_count"] += 1
+                add("warranty_miss", affected)
 
             # compliance_penalty — tax/bbee/regulatory findings
             if any(
                 kw in (check_id + module + f.get("message", "")).lower()
                 for kw in ["tax", "bbee", "regulatory", "compliance", "vat", "legal"]
             ):
-                risk = affected * 25000
-                buckets["compliance_penalty"]["annual_risk_zar"] += risk
-                buckets["compliance_penalty"]["mitigated_zar"] += risk * 0.8
-                buckets["compliance_penalty"]["finding_count"] += 1
+                add("compliance_penalty", affected)
 
             # inventory_write_off — material master completeness findings
             if dimension == "completeness" and "material" in module.lower():
-                risk = affected * 8000
-                buckets["inventory_write_off"]["annual_risk_zar"] += risk
-                buckets["inventory_write_off"]["mitigated_zar"] += risk * 0.5
-                buckets["inventory_write_off"]["finding_count"] += 1
+                add("inventory_write_off", affected)
 
         for ex in exceptions:
             ex_type = ex.get("type", "")
             ex_category = ex.get("category", "")
-            count = 1
+            for category in ("blocked_invoice", "failed_posting", "contract_violation"):
+                if ex_type == category or ex_category == category:
+                    add(category, 1)
 
-            if ex_type == "blocked_invoice" or ex_category == "blocked_invoice":
-                risk = count * 12000 * 12
-                buckets["blocked_invoice"]["annual_risk_zar"] += risk
-                buckets["blocked_invoice"]["mitigated_zar"] += risk * 0.9
-                buckets["blocked_invoice"]["finding_count"] += 1
-
-            if ex_type == "failed_posting" or ex_category == "failed_posting":
-                risk = count * 5000 * 12
-                buckets["failed_posting"]["annual_risk_zar"] += risk
-                buckets["failed_posting"]["mitigated_zar"] += risk * 0.85
-                buckets["failed_posting"]["finding_count"] += 1
-
-            if ex_type == "contract_violation" or ex_category == "contract_violation":
-                risk = count * 15000
-                buckets["contract_violation"]["annual_risk_zar"] += risk
-                buckets["contract_violation"]["mitigated_zar"] += risk * 0.7
-                buckets["contract_violation"]["finding_count"] += 1
-
-        # labour_displacement — auto-resolved cleaning items (from cleaning queue context)
-        # Calculated from cleaning queue items that were auto-approved
-        # This is handled when cleaning_queue data is passed as part of exceptions
+        # labour_displacement — auto-resolved cleaning items, passed in as exceptions
         for ex in exceptions:
             if ex.get("type") == "auto_resolved" or ex.get("category") == "labour_displacement":
-                count = 1
-                risk = count * 0.25 * 450 * 12
-                buckets["labour_displacement"]["annual_risk_zar"] += risk
-                buckets["labour_displacement"]["mitigated_zar"] += risk
-                buckets["labour_displacement"]["finding_count"] += 1
+                add("labour_displacement", 1)
 
         results: list[dict] = []
         for category, data in buckets.items():
+            risk, mitigated = round(data["annual_risk"], 2), round(data["mitigated"], 2)
             results.append(
                 {
                     "category": category,
-                    "annual_risk_zar": round(data["annual_risk_zar"], 2),
-                    "mitigated_zar": round(data["mitigated_zar"], 2),
+                    "annual_risk": risk,
+                    "mitigated": mitigated,
+                    "annual_risk_zar": risk,
+                    "mitigated_zar": mitigated,
                     "finding_count": data["finding_count"],
-                    "calculation_method": data["method"],
-                    "currency": RISK_CURRENCY,
+                    "calculation_method": self._method(category),
+                    "currency": self.currency,
                 }
             )
 
         return results
 
     def calculate_roi(
-        self, impacts: list[dict], monthly_subscription_zar: float | None
+        self, impacts: list[dict], monthly_subscription: float | None = None
     ) -> dict:
-        """Calculate ROI from impact data vs subscription cost.
+        """Calculate ROI from impact data vs the tenant's subscription (cost model ``subscription_monthly``,
+        unless ``monthly_subscription`` is given).
 
         With no subscription configured (None or 0) there is nothing to divide by:
         the subscription, ROI multiple and payback are None, never a made-up fee.
         """
-        total_mitigated = sum(i.get("mitigated_zar", 0) for i in impacts)
+        total_mitigated = sum(float(i.get("mitigated", i.get("mitigated_zar", 0)) or 0) for i in impacts)
+        monthly = monthly_subscription if monthly_subscription is not None else self.subscription_monthly
 
-        if not monthly_subscription_zar or monthly_subscription_zar <= 0:
+        if not monthly or monthly <= 0:
             return {
                 "subscription_annual": None,
                 "risk_mitigated": round(total_mitigated, 2),
                 "roi_multiple": None,
                 "payback_months": None,
-                "currency": RISK_CURRENCY,
+                "currency": self.currency,
             }
 
-        annual_sub = monthly_subscription_zar * 12
+        annual_sub = monthly * 12
         roi_multiple = total_mitigated / annual_sub
         payback_months = (annual_sub / total_mitigated) * 12 if total_mitigated > 0 else None
 
@@ -575,7 +579,7 @@ class BusinessImpactAnalytics:
             "risk_mitigated": round(total_mitigated, 2),
             "roi_multiple": round(roi_multiple, 1),
             "payback_months": round(payback_months, 1) if payback_months is not None else None,
-            "currency": RISK_CURRENCY,
+            "currency": self.currency,
         }
 
 

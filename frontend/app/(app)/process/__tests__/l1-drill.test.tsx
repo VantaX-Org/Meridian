@@ -252,8 +252,13 @@ describe("process L1 drill", () => {
     expect(screen.queryByRole("button", { name: "Run discovery" })).toBeNull();
   });
 
-  it("hides the Cases tab without export_process", async () => {
-    h.can = (a) => a !== "export_process";
+  it("shows the Cases tab with view alone (no export_process), and hides it without view", async () => {
+    h.can = (a) => a === "view";
+    const { unmount } = renderWithQuery(<ProcessL1Page />);
+    expect(await screen.findByRole("tab", { name: "Cases" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Export" })).toBeNull();
+    unmount();
+    h.can = (a) => a !== "view";
     h.qs = "system=sys-1&tab=cases";
     renderWithQuery(<ProcessL1Page />);
     await screen.findByRole("button", { name: "Node Purchasing" });

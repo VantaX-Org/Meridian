@@ -748,7 +748,8 @@ WHERE (CAST(:act AS text) IS NULL OR has_act) AND (CAST(:variant AS text) IS NUL
 ORDER BY first_ts DESC, case_id LIMIT :n OFFSET :o"""
 
 
-@router.get("/runs/{run_id}/cases", dependencies=EXPORT, response_model=CasePage)
+@router.get("/runs/{run_id}/cases", dependencies=VIEW,  # reading cases is viewing; export stays export_process
+           response_model=CasePage)
 async def cases(run_id: str, request: Request, activity: Optional[str] = None, variant: Optional[str] = None,
                 limit: int = Query(50, ge=1, le=500), offset: int = Query(0, ge=0),
                 tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_db)) -> CasePage:
@@ -762,7 +763,7 @@ async def cases(run_id: str, request: Request, activity: Optional[str] = None, v
                     items=[CaseRow.model_validate(dict(r._mapping)) for r in rows])
 
 
-@router.get("/runs/{run_id}/cases/{case_id:path}", dependencies=EXPORT,  # PTP case ids are "EBELN/EBELP"
+@router.get("/runs/{run_id}/cases/{case_id:path}", dependencies=VIEW,  # PTP case ids are "EBELN/EBELP"
             response_model=CaseEvents)
 async def case_events(run_id: str, case_id: str, request: Request, tenant: Tenant = Depends(get_tenant),
                       db: AsyncSession = Depends(get_db)) -> CaseEvents:

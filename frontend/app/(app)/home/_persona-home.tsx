@@ -22,6 +22,7 @@ import { useRole } from "@/hooks/use-role";
 import { exportFindings } from "@/lib/api/findings";
 import { getQueueItems } from "@/lib/api/stewardship";
 import { RunAnalysis } from "@/app/(app)/insights/_components/RunAnalysis";
+import { useAiProposals } from "@/app/(app)/rules/drafts/ai-proposals";
 import { HomeOnboarding } from "@/components/help/home-onboarding";
 import { RouteInsight } from "@/components/insight/route-insight";
 import { dqsExplanation, useDqsInputs } from "@/components/insight/dqs-score";
@@ -96,6 +97,10 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const landscapeQ = useQuery({ queryKey: queryKeys.configLandscape(), queryFn: getConfigLandscape });
   // The steward's queue leads the page: the five open items due first.
   const queueQ = useQuery({ queryKey: ["home-inbox-top"], queryFn: () => getQueueItems({ status: "open", limit: 5 }), enabled: role === "steward", meta: { ignoreError: true } });
+  // A reviewer of AI rules who does not write rules (the AI reviewer): their next action is the proposals waiting.
+  const reviewsAiRules = can("review_ai_rules") && !can("manage_rules");
+  const proposalsQ = useAiProposals(reviewsAiRules);
+  const pendingProposals = reviewsAiRules ? proposalsQ.data?.total ?? 0 : 0;
   const finished = allVersions
     .filter(isScored)
     .sort((a, b) => new Date(b.run_at).getTime() - new Date(a.run_at).getTime());
@@ -195,7 +200,9 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const activeSystems = systems.filter((s) => s.is_active);
 
   const action =
-    role === "lead"
+    pendingProposals > 0
+      ? { label: `Review ${plural(pendingProposals, "proposal")}`, href: "/rules/drafts?tab=ai" }
+      : role === "lead"
       ? { label: belowTarget.length ? "Open objects below target" : "Open objects", href: objectsHref(belowTarget.length ? { readiness: BELOW_TARGET } : {}) }
       : role === "steward"
         ? { label: "Open worst object", href: worst ? `/objects/${worst.module}?run=${worst.run_id}` : objectsHref() }

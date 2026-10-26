@@ -14,6 +14,7 @@ from api.routes.findings import router as findings_router
 from api.routes.analyse import router as analyse_router
 from api.routes.analysis_status import router as analysis_status_router
 from api.routes.reports import router as reports_router
+from api.routes.report_library import router as report_library_router
 from api.routes.user_guide import router as user_guide_router
 from api.routes.settings import router as settings_router
 from api.routes.llm_settings import router as llm_settings_router
@@ -305,6 +306,7 @@ app.include_router(versions_router)
 app.include_router(findings_router)
 app.include_router(analyse_router)
 app.include_router(analysis_status_router)
+app.include_router(report_library_router)  # before reports_router: /reports/history, /reports/schedules
 app.include_router(reports_router)
 app.include_router(user_guide_router)
 app.include_router(settings_router)

@@ -10,6 +10,7 @@ import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { HomeOnboarding } from "@/components/help/home-onboarding";
 import { readinessHref, useProcessReadiness, type L1Readiness } from "@/components/process/shared";
+import { HandToSteward } from "@/components/process/handoff";
 import { getCatalogue, listRuns, type CatalogueRow } from "@/lib/api/process-discovery";
 import { apiErrorState } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
@@ -52,6 +53,9 @@ const columns = (systemId: string, canRun: boolean, versionId: string | undefine
       return (
         <span className="flex items-center gap-1">
           {ready && <Button variant="ghost" render={<Link href={ready}>Can it run</Link>} />}
+          {r.readiness?.worst?.check_id && (
+            <HandToSteward target={{ checkId: r.readiness.worst.check_id, module: r.readiness.module, versionId, process: r.name, field: r.readiness.worst.field }} />
+          )}
           {canRun && r.coverage !== "reference" && !r.in_progress
             && <Button variant="ghost" render={<Link href={`/process/runs?system=${systemId}&new=1&l1=${r.l1}`}>Run discovery</Link>} />}
         </span>

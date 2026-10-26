@@ -26,7 +26,9 @@ def test_who_holds_the_new_actions() -> None:
 
 
 def test_process_analyst_is_read_plus_process() -> None:
-    assert set(permissions_for("process_analyst")) == rbac._READ | NEW
+    # Plus handoff_rule: hand a blocking rule to a steward, without `assign` over the inbox.
+    assert set(permissions_for("process_analyst")) == rbac._READ | NEW | {"handoff_rule"}
+    assert has_permission("process_analyst", "assign") is False
     assert has_permission("process_analyst", "manage_rules") is False
     assert has_permission("process_analyst", "export") is False
     assert "process_analyst" in VALID_ROLES and home_for("process_analyst") == "/home/process"

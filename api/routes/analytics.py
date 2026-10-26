@@ -14,6 +14,7 @@ from api.deps import Tenant, get_db, get_tenant
 from api.services.rbac import has_permission
 from api.services.scoring import scoring_config
 from api.services.version_status import FINISHED, finished_sql
+from api.services.insights_impact import load_tenant_cost_model, tenant_currency
 from api.services.analytics_engine import (
     planner_config,
     BusinessImpactAnalytics,
@@ -38,7 +39,6 @@ logger = logging.getLogger("meridian.analytics")
 
 predictive = PredictiveAnalytics()
 prescriptive = PrescriptiveAnalytics()
-impact_analytics = BusinessImpactAnalytics()
 operational = OperationalAnalytics()
 
 
@@ -247,7 +247,8 @@ async def _planner_inputs(db: AsyncSession, tenant: Tenant) -> tuple[dict, dict]
     )).fetchone()
     weights = {k: v for k, v in ((row[0] if row and row[0] else {}) or {}).items() if k != "notification_config"}
     planner = ((row[1] if row and row[1] else {}) or {}).get("planner") or {}
-    return planner_config(planner), weights
+    currency = tenant_currency(await load_tenant_cost_model(db, str(tenant.id)))
+    return planner_config(planner, currency), weights
 
 
 # ── 3. GET /analytics/impact ─────────────────────────────────────────────────
@@ -259,8 +260,9 @@ async def get_impact_analytics(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    """Business impact quantification across 8 categories."""
+    """Business impact quantification across 8 categories, priced from the tenant cost model."""
     await _set_tenant(db, tenant)
+    impact_analytics = await _impact_analytics(db, tenant)
 
     # Determine version
     if version_id:
@@ -275,7 +277,7 @@ async def get_impact_analytics(
         row = latest.first()
         if not row:
             # No run yet: the same ROI as a run with no impact (no subscription: nulls, never made-up zeros).
-            return {"impacts": [], "roi": impact_analytics.calculate_roi([], _monthly_subscription(tenant))}
+            return {"impacts": [], "roi": impact_analytics.calculate_roi([])}
         vid = row[0].id
 
     # Load findings
@@ -292,7 +294,7 @@ async def get_impact_analytics(
 
     impacts = impact_analytics.quantify_impact(findings_data, exc_data)
 
-    roi = impact_analytics.calculate_roi(impacts, _monthly_subscription(tenant))
+    roi = impact_analytics.calculate_roi(impacts)
 
     return {"impacts": impacts, "roi": roi, "version_id": str(vid)}
 
@@ -318,7 +320,7 @@ async def get_finding_impact(
         raise HTTPException(status_code=404, detail="Finding not found")
 
     finding_data = _row_to_dict(row)
-    impacts = impact_analytics.quantify_impact([finding_data], [])
+    impacts = (await _impact_analytics(db, tenant)).quantify_impact([finding_data], [])
 
     return {
         "finding_id": finding_id,
@@ -462,14 +464,11 @@ async def get_module_forecast(
     }
 
 
-def _monthly_subscription(tenant: Tenant) -> float | None:
-    """The tenant's monthly subscription in rand, or None.
-
-    No tenant column or setting records the subscription a customer pays, so there
-    is none to use: ROI multiple, payback and the annual subscription stay None
-    rather than being computed from an invented fee.
-    """
-    return None
+async def _impact_analytics(db: AsyncSession, tenant: Tenant) -> BusinessImpactAnalytics:
+    """Impact buckets and ROI priced from the tenant's cost model, in its currency. The monthly
+    subscription the ROI divides by is the cost model's ``subscription_monthly``; unset, the ROI
+    multiple, payback and annual subscription stay None rather than come from an invented fee."""
+    return BusinessImpactAnalytics(await load_tenant_cost_model(db, str(tenant.id)))
 
 
 # ── 8. GET /analytics/roi ────────────────────────────────────────────────────
@@ -501,7 +500,7 @@ async def get_roi(
     )
     cost_avoidance = [_row_to_dict(r) for r in ca_result.all()]
 
-    roi = impact_analytics.calculate_roi(impacts, _monthly_subscription(tenant))
+    roi = (await _impact_analytics(db, tenant)).calculate_roi(impacts)
 
     return {
         "roi": roi,

@@ -41,7 +41,14 @@ export interface AlignmentFinding {
   description: string;
   affected_elements: string[];
   remediation: string;
+  /** Priced from the tenant cost model, in the list's `currency` (the name is historical, not rand). */
   estimated_impact_zar: number;
+}
+/** A list of alignment findings with the currency of their estimated impact (the tenant cost model's). */
+export interface AlignmentList {
+  run_id: string;
+  findings: AlignmentFinding[];
+  currency?: string | null;
 }
 export interface ConfigHealthScore {
   module: string;
@@ -71,9 +78,9 @@ const get = async <T>(path: string): Promise<T> => (await apiClient.get(`/api/v1
 
 export const getConfigInventory = () => get<{ run_id: string; elements: ConfigElement[] }>("inventory");
 export const getConfigProcesses = () => get<{ run_id: string; processes: ProcessHealth[] }>("processes");
-export const getConfigAlignment = () => get<{ run_id: string; findings: AlignmentFinding[] }>("alignment");
-export const getConfigGhost = () => get<{ run_id: string; findings: AlignmentFinding[] }>("ghost");
-export const getConfigShadow = () => get<{ run_id: string; findings: AlignmentFinding[] }>("shadow");
+export const getConfigAlignment = () => get<AlignmentList>("alignment");
+export const getConfigGhost = () => get<AlignmentList>("ghost");
+export const getConfigShadow = () => get<AlignmentList>("shadow");
 export const getConfigDrift = () =>
   get<{ current_run_id: string; previous_run_id: string; drift_entries: ConfigDriftEntry[] }>("drift");
 export const getConfigLicence = () => get<{ run_id: string; modules: LicenceUtilisation[] }>("licence-utilisation");

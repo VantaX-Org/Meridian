@@ -9,8 +9,7 @@ import { Button, Card, DataTable, ExplorerPage, InsightHeader, Line, PageHeader,
 import { useScoreBands } from "@/hooks/use-score-bands";
 import { readinessOf } from "@/lib/home-metrics";
 import { actionColumn, LedgerHead, RowLink } from "@/components/mdm/ledger";
-import { getMdmHealth } from "@/lib/api/analytics";
-import { getMdmDashboard } from "@/lib/api/mdm-metrics";
+import { getMdmDashboard, getMdmHistory } from "@/lib/api/mdm-metrics";
 import { getQueueItems } from "@/lib/api/stewardship";
 import { formatModuleName, relativeTime } from "@/lib/format";
 import type { StewardshipQueueItem, StewardshipStatus } from "@/types/api";
@@ -41,7 +40,8 @@ const columns: ColumnDef<StewardshipQueueItem>[] = [
 
 export default function MdmOverviewPage() {
   const dash = useQuery({ queryKey: ["mdm", "dashboard"], queryFn: getMdmDashboard });
-  const health = useQuery({ queryKey: ["mdm", "health"], queryFn: () => getMdmHealth() });
+  // The aggregate snapshots (domain unset) of the last eight weeks, from the same API as the latest one.
+  const health = useQuery({ queryKey: ["mdm", "history", 56], queryFn: () => getMdmHistory({ days: 56 }) });
   // Match work only, in every status the inbox counts as live; the queue API filters one status a call.
   const queues = useQueries({
     queries: LIVE.map((status) => ({
@@ -51,7 +51,7 @@ export default function MdmOverviewPage() {
     })),
   });
   const m = dash.data?.latest ?? null;
-  const points = health.data?.data ?? [];
+  const points = health.data?.history ?? [];
   // A task can change status between the three reads; keep each once.
   const items = [...new Map(queues.flatMap((q) => q.data?.items ?? []).map((t) => [t.id, t])).values()].sort(urgentFirst).slice(0, SHOWN);
   const total = queues.reduce((n, q) => n + (q.data?.total ?? 0), 0);

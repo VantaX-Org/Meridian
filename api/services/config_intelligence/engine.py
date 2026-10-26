@@ -20,10 +20,11 @@ from api.services.config_intelligence.process_detector import ProcessDetector
 class ConfigIntelligenceEngine:
     """Orchestrate all 3 layers of configuration intelligence analysis."""
 
-    def __init__(self) -> None:
+    def __init__(self, cost_model: dict | None = None) -> None:
+        """``cost_model`` is the tenant's (``tenants.cost_model``): it prices alignment findings."""
         self.discovery = ConfigDiscovery()
         self.detector = ProcessDetector()
-        self.validator = AlignmentValidator()
+        self.validator = AlignmentValidator(cost_model)
         self.drift_detector = DriftDetector()
 
     def analyze(self, records: list[dict]) -> ConfigIntelligenceResult:

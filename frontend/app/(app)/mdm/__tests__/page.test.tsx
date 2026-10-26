@@ -1,7 +1,6 @@
 import { screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
-import * as analyticsApi from "@/lib/api/analytics";
 import * as mdmApi from "@/lib/api/mdm-metrics";
 import * as stewardshipApi from "@/lib/api/stewardship";
 import * as objectsApi from "@/lib/api/v1/objects";
@@ -17,7 +16,7 @@ const metric: MdmMetric = {
 describe("MdmOverviewPage", () => {
   it("shows the health figure with its four inputs, then the match work ledger with an Open action", async () => {
     vi.spyOn(mdmApi, "getMdmDashboard").mockResolvedValue({ latest: metric, trend: [metric], active_systems_count: 4 });
-    vi.spyOn(analyticsApi, "getMdmHealth").mockResolvedValue({ data: [{ snapshot_date: "2026-10-01", mdm_health_score: 86 }] } as Awaited<ReturnType<typeof analyticsApi.getMdmHealth>>);
+    const history = vi.spyOn(mdmApi, "getMdmHistory").mockResolvedValue({ history: [metric] });
     vi.spyOn(stewardshipApi, "getQueueItems").mockImplementation(async (f = {}) => (f.status !== "open" ? { items: [], total: 0 } : { items: [{ id: "q1", tenant_id: "t", item_type: "merge_decision", source_id: "s", domain: "material_master", priority: 1, due_at: null, assigned_to: null, status: "open", sla_hours: null, created_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-01T00:00:00Z", ai_recommendation: null, ai_confidence: null }], total: 1 }));
     renderWithQuery(<MdmOverviewPage />);
     expect(await screen.findByText("MDM health")).toBeInTheDocument();
@@ -26,11 +25,14 @@ describe("MdmOverviewPage", () => {
     expect(await screen.findByText("Match work")).toBeInTheDocument();
     expect(await screen.findByText("Merge decision")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open" })).toHaveAttribute("href", "/inbox?type=merge_decision&focus=q1");
+    // The trend reads the aggregate snapshot history of the last eight weeks.
+    expect(history).toHaveBeenCalledWith({ days: 56 });
+    expect(screen.getByText("Health over time")).toBeInTheDocument();
   });
 
   it("draws the health score in the insight hero, with the target and verdict from the tenant's score bands", async () => {
     vi.spyOn(mdmApi, "getMdmDashboard").mockResolvedValue({ latest: metric, trend: [metric], active_systems_count: 4 });
-    vi.spyOn(analyticsApi, "getMdmHealth").mockResolvedValue({ data: [], days: 90 });
+    vi.spyOn(mdmApi, "getMdmHistory").mockResolvedValue({ history: [] });
     vi.spyOn(stewardshipApi, "getQueueItems").mockResolvedValue({ items: [], total: 0 });
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "r1", objects: [], thresholds: { target: 95, warning: 80, critical: 60 } });
     renderWithQuery(<MdmOverviewPage />);
@@ -43,7 +45,7 @@ describe("MdmOverviewPage", () => {
 
   it("counts only merge decisions, in every status the inbox treats as live", async () => {
     vi.spyOn(mdmApi, "getMdmDashboard").mockResolvedValue({ latest: metric, trend: [metric], active_systems_count: 4 });
-    vi.spyOn(analyticsApi, "getMdmHealth").mockResolvedValue({ data: [], days: 90 });
+    vi.spyOn(mdmApi, "getMdmHistory").mockResolvedValue({ history: [] });
     const item: StewardshipQueueItem = { id: "q1", tenant_id: "t", item_type: "merge_decision", source_id: "s", domain: "material_master", priority: 1, due_at: null, assigned_to: null, status: "open", sla_hours: null, created_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-01T00:00:00Z", ai_recommendation: null, ai_confidence: null };
     const spy = vi.spyOn(stewardshipApi, "getQueueItems").mockImplementation(async (f = {}) => (
       f.status === "escalated" ? { items: [{ ...item, id: "q2", status: "escalated" as const }], total: 2 } : f.status === "in_progress" ? { items: [], total: 3 } : { items: [item], total: 4 }
@@ -56,7 +58,7 @@ describe("MdmOverviewPage", () => {
 
   it("prints the four inputs, which the API sends as fractions, as percents", async () => {
     vi.spyOn(mdmApi, "getMdmDashboard").mockResolvedValue({ latest: metric, trend: [metric], active_systems_count: 4 });
-    vi.spyOn(analyticsApi, "getMdmHealth").mockResolvedValue({ data: [], days: 90 });
+    vi.spyOn(mdmApi, "getMdmHistory").mockResolvedValue({ history: [] });
     vi.spyOn(stewardshipApi, "getQueueItems").mockResolvedValue({ items: [], total: 0 });
     renderWithQuery(<MdmOverviewPage />);
     expect(await screen.findByText("100%")).toBeInTheDocument();
@@ -66,7 +68,7 @@ describe("MdmOverviewPage", () => {
 
   it("says so when no match work is open", async () => {
     vi.spyOn(mdmApi, "getMdmDashboard").mockResolvedValue({ latest: metric, trend: [metric], active_systems_count: 4 });
-    vi.spyOn(analyticsApi, "getMdmHealth").mockResolvedValue({ data: [], days: 90 });
+    vi.spyOn(mdmApi, "getMdmHistory").mockResolvedValue({ history: [] });
     vi.spyOn(stewardshipApi, "getQueueItems").mockResolvedValue({ items: [], total: 0 });
     renderWithQuery(<MdmOverviewPage />);
     expect(await screen.findByText("No match work waiting")).toBeInTheDocument();

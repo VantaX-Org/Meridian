@@ -1,11 +1,14 @@
-"""Legacy (role, action) answers are frozen: snapshot of api/services/rbac.py as of wave 13."""
+"""Legacy (role, action) answers are frozen: snapshot of api/services/rbac.py as of wave 13.
+
+Intentional change since: handoff_rule (hand one blocking rule to a steward) is held by every `assign`
+holder, so admin, manager and steward gained it (feat-process-handoff)."""
 
 from api.services.rbac import PERMISSIONS, PERSONA_ROLES, VALID_ROLES, has_permission, permissions_for
 
 LEGACY_SNAPSHOT: dict[str, list[str]] = {
-    "admin": ['ai_feedback', 'analyse', 'apply', 'approve', 'assign', 'export', 'export_process', 'manage_field_mappings', 'manage_llm', 'manage_rules', 'manage_settings', 'manage_system', 'manage_systems', 'manage_users', 'mdm.read', 'mdm.write', 'review_ai_rules', 'run_process_discovery', 'trigger_ai', 'trigger_sync', 'upload', 'view', 'view_ai_confidence', 'view_audit'],
-    "manager": ['ai_feedback', 'analyse', 'apply', 'approve', 'assign', 'export', 'export_process', 'manage_systems', 'mdm.read', 'mdm.write', 'trigger_ai', 'trigger_sync', 'upload', 'view', 'view_ai_confidence', 'view_audit'],
-    "steward": ['ai_feedback', 'analyse', 'apply', 'approve', 'assign', 'export', 'manage_rules', 'mdm.read', 'mdm.write', 'review_ai_rules', 'trigger_ai', 'trigger_sync', 'upload', 'view', 'view_ai_confidence'],
+    "admin": ['ai_feedback', 'analyse', 'apply', 'approve', 'assign', 'export', 'export_process', 'handoff_rule', 'manage_field_mappings', 'manage_llm', 'manage_rules', 'manage_settings', 'manage_system', 'manage_systems', 'manage_users', 'mdm.read', 'mdm.write', 'review_ai_rules', 'run_process_discovery', 'trigger_ai', 'trigger_sync', 'upload', 'view', 'view_ai_confidence', 'view_audit'],
+    "manager": ['ai_feedback', 'analyse', 'apply', 'approve', 'assign', 'export', 'export_process', 'handoff_rule', 'manage_systems', 'mdm.read', 'mdm.write', 'trigger_ai', 'trigger_sync', 'upload', 'view', 'view_ai_confidence', 'view_audit'],
+    "steward": ['ai_feedback', 'analyse', 'apply', 'approve', 'assign', 'export', 'handoff_rule', 'manage_rules', 'mdm.read', 'mdm.write', 'review_ai_rules', 'trigger_ai', 'trigger_sync', 'upload', 'view', 'view_ai_confidence'],
     "analyst": ['analyse', 'export', 'mdm.read', 'trigger_ai', 'trigger_sync', 'upload', 'view', 'view_ai_confidence'],
     "approver": ['approve', 'export', 'mdm.read', 'view', 'view_ai_confidence'],
     "auditor": ['export', 'mdm.read', 'view', 'view_ai_confidence', 'view_audit'],
@@ -46,3 +49,14 @@ def test_sap_basis_is_analyst_plus_integration_actions() -> None:
     # manage_system (platform update) is admin-only; Basis runs process discovery on the systems it connects.
     assert extra == {"manage_systems", "manage_field_mappings", "run_process_discovery"}
     assert not has_permission("sap_basis", "manage_users")
+
+
+def test_handoff_rule_is_implied_by_assign() -> None:
+    """Every role that assigns work can also hand a rule to a steward; process_analyst gets handoff_rule alone."""
+    from api.services.rbac import VALID_ROLES
+    for role in VALID_ROLES:
+        if has_permission(role, "assign"):
+            assert has_permission(role, "handoff_rule"), role
+    holders = {r for r in VALID_ROLES if has_permission(r, "handoff_rule")}
+    assert holders - {r for r in VALID_ROLES if has_permission(r, "assign")} == {"process_analyst"}
+    assert not has_permission("process_analyst", "assign")

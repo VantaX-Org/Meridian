@@ -22,10 +22,11 @@ from api.models.process_model import ProcessModelDocument
 from api.routes.process_designer import _document, _invalid, _model, _rls, _uuid
 from api.services.bpmn_export import BpmnExportError, ExportMeta, Overlay, OverlayActivity, export_zip, slug
 from api.services.process_model_validator import validate_document
-from api.services.rbac import require_permission
+from api.services.rbac import require_any_permission
 from sap.process_definitions import reference_document
 
 logger = logging.getLogger("meridian.process_export")
+# Exports take legacy `export` (owner decision) or export_process, the process owner's own export right.
 router = APIRouter(prefix="/api/v1/process-designer", tags=["process-designer"])
 
 
@@ -84,14 +85,14 @@ async def _respond(request: Request, tenant: Tenant, doc: ProcessModelDocument, 
 
 
 # Owner decision 2026-10-26: Signavio downloads need `export` (spec §6.5 said `view`; overridden).
-@router.get("/reference/export/signavio", dependencies=[Depends(require_permission("export"))])
+@router.get("/reference/export/signavio", dependencies=[Depends(require_any_permission("export", "export_process"))])
 async def export_reference(request: Request, overlay: Optional[str] = None, db: AsyncSession = Depends(get_db),
                            tenant: Tenant = Depends(get_tenant)):
     doc = reference_document()
     return await _respond(request, tenant, doc, "reference", 0, None, await _overlay(db, tenant, doc, overlay))
 
 
-@router.get("/models/{model_id}/export/signavio", dependencies=[Depends(require_permission("export"))])
+@router.get("/models/{model_id}/export/signavio", dependencies=[Depends(require_any_permission("export", "export_process"))])
 async def export_model(model_id: uuid.UUID, request: Request, version: Optional[int] = Query(None, ge=1),
                        overlay: Optional[str] = None, db: AsyncSession = Depends(get_db),
                        tenant: Tenant = Depends(get_tenant)):
@@ -126,13 +127,13 @@ async def _respond_pptx(request: Request, tenant: Tenant, doc: ProcessModelDocum
                     headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 
 
-@router.get("/reference/export/pptx", dependencies=[Depends(require_permission("export"))])
+@router.get("/reference/export/pptx", dependencies=[Depends(require_any_permission("export", "export_process"))])
 async def export_reference_pptx(request: Request, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     doc = reference_document()
     return await _respond_pptx(request, tenant, doc, "reference", 0, None)
 
 
-@router.get("/models/{model_id}/export/pptx", dependencies=[Depends(require_permission("export"))])
+@router.get("/models/{model_id}/export/pptx", dependencies=[Depends(require_any_permission("export", "export_process"))])
 async def export_model_pptx(model_id: uuid.UUID, request: Request, version: Optional[int] = Query(None, ge=1),
                             db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     model = await _model(db, tenant, model_id)

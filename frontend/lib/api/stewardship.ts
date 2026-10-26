@@ -95,3 +95,35 @@ export async function submitAiFeedback(body: {
   const { data } = await apiClient.post(`/api/v1/ai/feedback`, body);
   return data;
 }
+
+/** A person a blocking rule can be handed to: an active user who can fix data (api/routes/stewardship.py). */
+export interface HandoffSteward { id: string; name: string | null; email: string; role: string }
+
+/** One blocking rule handed to a steward: the rule, where it blocks, who fixes it, why and by when. */
+export interface HandoffBody {
+  check_id: string;
+  module: string;
+  assignee_id: string;
+  note: string;
+  /** yyyy-mm-dd, today or later. */
+  due_date: string;
+  version_id?: string;
+  finding_id?: string;
+  /** Where the rule blocks (an L1 process name), for the task title. */
+  process?: string;
+  field?: string;
+}
+
+export interface HandoffResult { task_id: string; exception_id: string; assigned_to: string; due_at: string }
+
+/** Users who can fix, for the hand-off picker. Needs `handoff_rule`, never `assign`. */
+export async function getHandoffStewards(): Promise<HandoffSteward[]> {
+  const { data } = await apiClient.get("/api/v1/stewardship/handoff/stewards");
+  return data;
+}
+
+/** Create the task (an exception on the rule plus its inbox task), assigned to the chosen steward. */
+export async function handoffRule(body: HandoffBody): Promise<HandoffResult> {
+  const { data } = await apiClient.post("/api/v1/stewardship/handoff", body);
+  return data;
+}

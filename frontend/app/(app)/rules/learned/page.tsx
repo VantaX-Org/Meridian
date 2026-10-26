@@ -1,8 +1,8 @@
 "use client";
 
 /** Rules › Learned: house rules the tenant's own data follows for >= 95% of records
- * (checks/house_rules.py). The miner proposes; a person with `approve` turns a
- * proposal into an active rule with a new LR- id; `manage_rules` can reject. */
+ * (checks/house_rules.py). The miner proposes; a person with `approve` (or `review_ai_rules`)
+ * turns a proposal into an active rule with a new LR- id, or rejects it; `manage_rules` can reject too. */
 
 import { useMemo } from "react";
 import { useSearchParams } from "next/navigation";
@@ -50,6 +50,9 @@ function exampleOf(key: string, field: string): string {
 export default function LearnedRulesPage() {
   const qc = useQueryClient();
   const { can } = useRole();
+  // api/routes/learned_rules.py: the checker (approve or review_ai_rules) approves and rejects; manage_rules may reject.
+  const canDecide = can("approve") || can("review_ai_rules");
+  const canReject = canDecide || can("manage_rules");
   const [statusRaw, setStatus] = useUrlState("status", "pending");
   const status = oneOf(statusRaw, ["pending", "approved", "rejected"] as const satisfies readonly LearnedStatus[], "pending");
   const [kindRaw, setKind] = useUrlState("kind", "all");
@@ -98,11 +101,11 @@ export default function LearnedRulesPage() {
     } },
     actionColumn((r) => r.status === "pending" ? (
       <span className="flex gap-3">
-        {can("approve") ? <RowButton onClick={() => approve.mutate(r.id)} disabled={approve.isPending}>Approve</RowButton> : null}
-        {can("manage_rules") ? <RowButton onClick={() => reject.mutate(r.id)} disabled={reject.isPending}>Reject</RowButton> : null}
+        {canDecide ? <RowButton onClick={() => approve.mutate(r.id)} disabled={approve.isPending}>Approve</RowButton> : null}
+        {canReject ? <RowButton onClick={() => reject.mutate(r.id)} disabled={reject.isPending}>Reject</RowButton> : null}
       </span>
     ) : r.rule_id ? <Mono>{r.rule_id}</Mono> : <Pill tone="neutral">{labelOf(r.status)}</Pill>),
-  ], [approve, reject, can]);
+  ], [approve, reject, canDecide, canReject]);
 
   const items = q.data?.items ?? [];
   return (
@@ -118,7 +121,7 @@ export default function LearnedRulesPage() {
         <div className="flex items-end gap-3">
           <Field label="Status"><Select value={status} onValueChange={setStatus} options={STATUS_OPTIONS} /></Field>
           <Field label="Kind"><Select value={kind} onValueChange={setKind} options={KIND_OPTIONS} /></Field>
-          {can("approve") && status === "pending" ? (
+          {canDecide && status === "pending" ? (
             <Field label="Approve as"><Select value={severity} onValueChange={setSeverity} options={SEVERITY_OPTIONS} /></Field>
           ) : null}
         </div>

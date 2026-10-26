@@ -28,7 +28,8 @@ import { ExportDialog } from "../_components/export-dialog";
 import { FlowView } from "../_components/flow-view";
 import { L5Table } from "../_components/l5-table";
 import { DiscoveryStart, NOT_MINABLE, canMine } from "../_components/discovery-start";
-import { readinessHref } from "@/components/process/shared";
+import { readinessHref, useProcessReadiness } from "@/components/process/shared";
+import { HandToSteward } from "@/components/process/handoff";
 import { NoSystem, fitnessTone, fmtCount, fmtFitness, fmtSeconds, l1Href, useProcessSystem } from "../_components/shared";
 import { BodySkeleton, PROCESS_PURPOSE, ProcessFrame, processMeta } from "../_components/process-header";
 import { VariantsTable } from "../_components/variants-table";
@@ -47,6 +48,8 @@ export default function ProcessL1Page() {
   const { l1 } = useParams<{ l1: string }>();
   const { can } = useRole();
   const canExport = can("export_process");
+  // Reading cases is viewing (the cases API needs `view`): every role that runs discovery opens them; export stays export_process.
+  const canCases = can("view");
   const drill = useProcessDrill();
   const { systems, system } = useProcessSystem();
   const [exporting, setExporting] = useState(false);
@@ -87,7 +90,7 @@ export default function ProcessL1Page() {
   const crumbs = trail(doc, l1, drill.node);
   const here = crumbs[crumbs.length - 1];
   const node = here && here.id !== l1 ? here.id : null;
-  const available = TABS.filter((t) => t !== "cases" || canExport);
+  const available = TABS.filter((t) => t !== "cases" || canCases);
   const fallback: Tab = isReference || !discovered ? "reference" : "flow";
   const tab: Tab = (available as readonly string[]).includes(drill.tab) ? (drill.tab as Tab) : fallback;
   const filters: ProcessFilterParams = drill.filters;
@@ -115,7 +118,7 @@ export default function ProcessL1Page() {
     flow: mined(<FlowView runId={runId} doc={doc} node={node} filters={filters} onDrill={(id) => drill.set({ node: id })}
       onUp={crumbs.length > 1 ? () => drill.set({ node: crumbs.length > 2 ? crumbs[crumbs.length - 2].id : null }) : undefined} />),
     bpmn: mined(<BpmnView doc={doc} node={node} onOpenFlow={() => drill.set({ tab: "flow", case: null })} />),
-    variants: mined(<VariantsTable runId={runId} filters={filters} canExport={canExport} onClearFilters={clearFilters}
+    variants: mined(<VariantsTable runId={runId} filters={filters} canOpenCases={canCases} onClearFilters={clearFilters}
       onOpenCase={(id) => drill.set({ tab: "cases", case: id })} />),
     conformance: mined(<ConformanceView runId={runId} filters={filters} rework={r?.stats.rework} onClearFilters={clearFilters} />),
     cases: mined(<CaseExplorer runId={runId} filters={filters} caseId={drill.caseId} onClearFilters={clearFilters} onOpenCase={(id) => drill.set({ case: id })} />),
@@ -129,6 +132,7 @@ export default function ProcessL1Page() {
         reason={isReference ? reason : null} canExport={canExport && discovered} onExport={() => setExporting(true)}
         canRun={canRun && !start} readyHref={readinessHref({ l1 })} />
       {start && startPanel}
+      <BlockingRule l1={l1} systemId={system!.id} name={row.name} />
       <nav aria-label="Process levels">
         <ol className="flex flex-wrap items-center gap-1">
           {crumbs.map((c, i) => (
@@ -148,6 +152,24 @@ export default function ProcessL1Page() {
           nodeName={here?.name ?? l1} filters={filters} />
       )}
     </ProcessFrame>
+  );
+}
+
+/**
+ * The rule that blocks this process most (the red field failing the most records in the system's latest DQ run),
+ * on every tab, with the process owner's one action: hand it to a steward. Nothing when no rule blocks it.
+ */
+function BlockingRule({ l1, systemId, name }: { l1: string; systemId: string; name: string }) {
+  const { byL1, latest } = useProcessReadiness(systemId);
+  const ready = byL1.get(l1);
+  const w = ready?.worst;
+  if (!ready || !w?.check_id) return null;
+  return (
+    <Notice tone="warning" title="Data blocks this process"
+      action={<HandToSteward variant="secondary" target={{ checkId: w.check_id, module: ready.module, versionId: latest?.id, process: name, field: w.field }} />}>
+      <Mono>{w.check_id}</Mono> fails on {ready.failing.toLocaleString()} {ready.failing === 1 ? "record" : "records"}
+      {w.description ? `: ${w.description}` : ""}
+    </Notice>
   );
 }
 

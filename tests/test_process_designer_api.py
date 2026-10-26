@@ -154,6 +154,12 @@ def test_model_api(app_engine, monkeypatch):
             assert r.status_code == 201 and r.json()["version_no"] == 1
             mid = r.json()["model"]["id"]
             assert (await c.post(f"{base}/models", headers=h, json={"name": "Mine", "from": "reference"})).status_code == 409
+            # process owners model through run_process_discovery (no `analyse`); a viewer cannot
+            pa, viewer = {"X-User-Role": "process_analyst"}, {"X-User-Role": "viewer"}
+            r = await c.post(f"{base}/models", headers=pa, json={"name": "Owner model", "from": "reference"})
+            assert r.status_code == 201
+            assert (await c.delete(f"{base}/models/{r.json()['model']['id']}", headers=pa)).status_code == 204
+            assert (await c.post(f"{base}/models", headers=viewer, json={"name": "No", "from": "reference"})).status_code == 403
 
             doc = (await c.get(f"{base}/models/{mid}", headers=h)).json()["document"]
             doc["l1"][0]["l2"][0]["l3"][0]["l4"][0]["activities"][0]["name"] = "Renamed"

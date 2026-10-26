@@ -31,6 +31,8 @@ export const LEGACY_ACTION_MAP: Readonly<Record<string, readonly Pair[]>> = {
   approve: [["fixes", "approve"], ["mdm", "approve"], ["stewardship", "approve"], ["analysis", "approve"]],
   apply: [["fixes", "run"]],
   assign: [["stewardship", "edit"]],
+  // Hand one blocking rule to a steward (one new task); every `assign` holder and process_analyst hold it.
+  handoff_rule: [["stewardship", "create"]],
   export: [["reports", "export"], ["*", "export"]],
   manage_rules: [["rules", "create"], ["rules", "edit"], ["contracts", "create"], ["contracts", "edit"], ["glossary", "edit"]],
   review_ai_rules: [["rules", "approve"]],
@@ -80,6 +82,7 @@ const ACCESS_LABEL: Readonly<Record<string, string>> = {
   "extraction.run": "Run extraction",
   "extraction.create": "Upload data",
   "mdm.edit": "Edit golden records",
+  "stewardship.create": "Hand rules to a steward",
   "process.export_process": "Export process models",
 };
 const VERB: Readonly<Record<string, string>> = {

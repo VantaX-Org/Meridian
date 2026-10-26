@@ -37,7 +37,6 @@ export function RuleVersions({ ruleId }: { ruleId: string }) {
     },
     onError: (e) => { setRetiring(null); toast.error(apiErrorMessage(e)); },
   });
-  const canMove = can("manage_rules") || can("approve");
 
   const columns = useMemo<ColumnDef<RuleVersion>[]>(() => [
     { id: "version", header: "Version", cell: ({ row }) => `v${row.original.version}` },
@@ -50,8 +49,9 @@ export function RuleVersions({ ruleId }: { ruleId: string }) {
       header: "Action",
       cell: ({ row }) => {
         const v = row.original;
-        const targets = allowedVersionTargets(v.state);
-        if (!canMove || targets.length === 0) return null;
+        // Only the moves this user may make: a maker never sees Approve, a checker never sees Retire.
+        const targets = allowedVersionTargets(v.state, can);
+        if (targets.length === 0) return null;
         return (
           <Menu
             trigger={<Button variant="secondary" size="sm" pending={move.isPending && move.variables?.version === v.version}>Transition</Button>}
@@ -63,7 +63,7 @@ export function RuleVersions({ ruleId }: { ruleId: string }) {
         );
       },
     },
-  ], [canMove, move]);
+  ], [can, move]);
 
   const versions = q.data?.versions ?? [];
   return (

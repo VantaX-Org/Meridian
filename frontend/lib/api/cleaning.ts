@@ -50,20 +50,6 @@ export interface DedupCandidate {
   created_at: string;
 }
 
-export interface CleaningMetrics {
-  metrics: Array<Record<string, unknown>>;
-  totals: {
-    detected: number;
-    recommended: number;
-    approved: number;
-    rejected: number;
-    applied: number;
-    verified: number;
-    rolled_back: number;
-    auto_approved: number;
-  };
-}
-
 // ── Cleaning Queue ───────────────────────────────────────────────────────────
 
 export async function getCleaningQueue(params: {
@@ -133,20 +119,8 @@ export async function bulkApprove(params: {
   return data;
 }
 
-export async function applyCleaning(id: string, override_data?: Record<string, unknown>): Promise<{ id: string; status: string; rollback_deadline: string }> {
-  const { data } = await apiClient.post(`/api/v1/cleaning/apply/${id}`, { override_data });
-  return data;
-}
-
-export async function rollbackCleaning(id: string): Promise<{ id: string; status: string }> {
-  const { data } = await apiClient.post(`/api/v1/cleaning/rollback/${id}`);
-  return data;
-}
-
-export async function getCleaningMetrics(period_type?: string): Promise<CleaningMetrics> {
-  const { data } = await apiClient.get("/api/v1/cleaning/metrics", { params: { period_type } });
-  return data;
-}
+// Approved proposals go on to a fix batch (lib/api/remediation.ts: second approval, export, reconciliation),
+// which replaced the per-item apply / rollback; queue figures live in Insights › Operations (/analytics/operational).
 
 export async function getCleaningAudit(params: {
   queue_id?: string;
@@ -225,26 +199,6 @@ export function groupIntoBatches(items: CleaningQueueItem[]): CleaningBatchSumma
 // ── Export ───────────────────────────────────────────────────────────────────
 
 export type ExportFormat = "csv" | "lsmw" | "bapi" | "idoc" | "sf_csv" | "xlsx";
-
-export interface CleaningExportOption {
-  value: string;
-  count: number;
-}
-
-export interface CleaningExportOptions {
-  object_types: CleaningExportOption[];
-  statuses: CleaningExportOption[];
-}
-
-/** Fetch the distinct object_types and statuses actually present in the
- * tenant's cleaning queue, so the export modal can build its dropdowns
- * from real data instead of a hardcoded list. */
-export async function getCleaningExportOptions(): Promise<CleaningExportOptions> {
-  const { data } = await apiClient.get<CleaningExportOptions>(
-    "/api/v1/cleaning/export-options",
-  );
-  return data;
-}
 
 function defaultExtensionFor(format: ExportFormat): string {
   switch (format) {

@@ -15,6 +15,7 @@ from __future__ import annotations
 import difflib
 import hashlib
 import json
+from collections.abc import Callable
 from functools import lru_cache
 
 import yaml
@@ -23,13 +24,21 @@ from sqlalchemy import text
 from checks.base import CheckResult, pass_rate_of
 
 STATES = ("draft", "in_review", "active", "retired")
-# (from, to) -> permission the actor needs (api.services.rbac actions)
-TRANSITIONS = {
-    ("draft", "in_review"): "manage_rules",
-    ("in_review", "draft"): "approve",      # sent back by the reviewer
-    ("in_review", "active"): "approve",
-    ("active", "retired"): "manage_rules",
+# (from, to) -> permissions, any one of which lets the actor make the move (api.services.rbac actions).
+# A review decision (in_review -> active, or back to draft) is the checker's: `approve`, or
+# `review_ai_rules` for the AI reviewer, who signs proposed rules off without writing them.
+REVIEW_PERMISSIONS = ("approve", "review_ai_rules")
+TRANSITIONS: dict[tuple[str, str], tuple[str, ...]] = {
+    ("draft", "in_review"): ("manage_rules",),
+    ("in_review", "draft"): REVIEW_PERMISSIONS,      # sent back by the reviewer
+    ("in_review", "active"): REVIEW_PERMISSIONS,
+    ("active", "retired"): ("manage_rules",),
 }
+
+
+def may_transition(src: str, dst: str, can: Callable[[str], bool]) -> bool:
+    """True when ``can(action)`` holds for any permission the (src, dst) move accepts."""
+    return any(can(a) for a in TRANSITIONS.get((src, dst), ()))
 AUTHORED_REQUIRED = ("module", "check_class", "field", "severity", "message")
 
 

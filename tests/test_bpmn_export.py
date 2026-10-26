@@ -301,6 +301,14 @@ def test_route_viewer_cannot_download_signavio(client):
     assert r.status_code == 403
 
 
+def test_route_process_analyst_downloads_with_export_process(client):
+    # process_analyst holds export_process (its intended export right), not the legacy `export`.
+    pa = {"X-User-Role": "process_analyst"}
+    assert client.c.get("/api/v1/process-designer/reference/export/signavio", headers=pa).status_code == 200
+    assert client.c.get(f"/api/v1/process-designer/models/{client.mine}/export/signavio", headers=pa).status_code == 200
+    assert client.c.get("/api/v1/process-designer/reference/export/pptx", headers=pa).status_code == 200
+
+
 def test_route_viewer_cannot_download_pptx(client):
     # the PowerPoint deck is not one of the exports §6.5 names: it keeps `export`
     r = client.c.get("/api/v1/process-designer/reference/export/pptx", headers={"X-User-Role": "viewer"})

@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as analyticsApi from "@/lib/api/analytics";
+import * as triageApi from "@/lib/api/triage";
 import * as usersApi from "@/lib/api/users";
 import * as versionsApi from "@/lib/api/versions";
 import OperationsPage, { stageLabel } from "../page";
@@ -14,10 +15,16 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
+const EMPTY_METRICS: triageApi.TriageMetrics = {
+  weeks: 8, backlog_by_owner: [], backlog_by_team: [], unassigned: 0, resolved_in_sla: 0, resolved_total: 0,
+  sla_attainment_pct: null, mtta_hours: null, mttr_hours: null, breach_count: 0, weekly: [],
+};
+
 function mount() {
   vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [{ id: "v1", label: "Run 1", status: "complete", run_at: "2026-10-01T00:00:00Z" }] } as never);
   vi.spyOn(usersApi, "getAssignableUsers").mockResolvedValue([]);
   vi.spyOn(analyticsApi, "getSprints").mockResolvedValue({ sprints: [], total_actions: 0 });
+  if (!vi.isMockFunction(triageApi.getTriageMetrics)) vi.spyOn(triageApi, "getTriageMetrics").mockResolvedValue(EMPTY_METRICS);
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={qc}><OperationsPage /></QueryClientProvider>);
 }
@@ -106,5 +113,30 @@ describe("OperationsPage", () => {
     expect(screen.getByText("Nothing processed yet")).toBeInTheDocument();
     expect(screen.getByText("2 stages are holding work")).toBeInTheDocument();
     expect(screen.getByText("Unblock Pending review first")).toBeInTheDocument();
+  });
+
+  it("reports steward work against the SLA with the open backlog per owner", async () => {
+    vi.spyOn(analyticsApi, "getOperational").mockResolvedValue({
+      kpis: {
+        throughput: 0, automation_rate: 0, mttr_hours: 0, sla_compliance_pct: 0, rejection_rate: 0, rollback_rate: 0,
+        items_in_flight: 1, avg_queue_age_hours: 0, top_rule_by_volume: "N/A", total_processed: 0, total_detected: 1,
+      },
+      bottlenecks: [],
+      capacity: { needed: 1, current: 1, surplus_deficit: 0, recommendation: "" },
+    });
+    const metrics = vi.spyOn(triageApi, "getTriageMetrics").mockResolvedValue({
+      ...EMPTY_METRICS, unassigned: 4, resolved_in_sla: 9, resolved_total: 12, sla_attainment_pct: 75, mtta_hours: 2.25, mttr_hours: 30, breach_count: 3,
+      backlog_by_owner: [{ user_id: "u1", email: "ana@x.io", open: 7, breached: 2, at_risk: 1 }],
+    });
+    mount();
+    expect(await screen.findByText("Steward work against the SLA")).toBeInTheDocument();
+    expect(metrics).toHaveBeenCalledWith(8);
+    expect(await screen.findByText("75%")).toBeInTheDocument();
+    expect(screen.getByText("9 of 12 with a due date")).toBeInTheDocument();
+    expect(screen.getByText("2.3 h")).toBeInTheDocument();
+    expect(screen.getByText("30 h")).toBeInTheDocument();
+    expect(screen.getByText("ana@x.io")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "7" })).toHaveAttribute("href", "/inbox?assignee=u1");
+    expect(screen.getByRole("link", { name: "SLA policies" })).toHaveAttribute("href", "/admin/triage");
   });
 });

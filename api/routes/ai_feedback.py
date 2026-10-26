@@ -11,12 +11,12 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.services.rbac import require_permission
+from api.services.rbac import require_permission, write_audit
 
 router = APIRouter(prefix="/api/v1", tags=["ai-feedback"])
 
@@ -58,6 +58,11 @@ class ApproveResponse(BaseModel):
     id: str
     status: str
     match_rule_id: str
+
+
+class RejectBody(BaseModel):
+    """Why the reviewer turned the proposal down; kept in the audit log."""
+    reason: Optional[str] = Field(None, max_length=2000)
 
 
 class RejectResponse(BaseModel):
@@ -249,11 +254,12 @@ async def approve_proposed_rule(
 async def reject_proposed_rule(
     rule_id: str,
     request: Request,
+    body: Optional[RejectBody] = None,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _role: str = Depends(require_permission("review_ai_rules")),
 ):
-    """Reject a proposed rule."""
+    """Reject a proposed rule. The optional reason is written to the audit log."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
     result = await db.execute(
@@ -279,6 +285,9 @@ async def reject_proposed_rule(
         ),
         {"id": rule_id, "uid": reviewer_id},
     )
+    reason = ((body.reason or "").strip() or None) if body else None
+    await write_audit(db, tenant.id, request, "ai_proposed_rule.reject", "ai_proposed_rule", rule_id,
+                      {"status": "pending"}, {"status": "rejected", "reason": reason})
 
     await db.commit()
     return RejectResponse(id=rule_id, status="rejected")

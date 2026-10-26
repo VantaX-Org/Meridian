@@ -5,6 +5,7 @@ import * as licenceApi from "@/lib/api/licence";
 import * as doctorApi from "@/lib/api/admin-doctor";
 import * as notificationsApi from "@/lib/api/notifications";
 import * as retentionApi from "@/lib/api/retention";
+import * as settingsApi from "@/lib/api/settings";
 import type { LicenceManifest } from "@/lib/api/licence";
 import type { DoctorItem } from "@/lib/api/admin-doctor";
 import AdminSettingsPage from "../page";
@@ -17,6 +18,7 @@ function mockRetention() {
     enforcement: { flag_enabled: false, dry_run_until: null, enforced: false },
   });
   vi.spyOn(retentionApi, "getPurgeLog").mockResolvedValue([]);
+  vi.spyOn(settingsApi, "getCostModel").mockResolvedValue({ currency: "ZAR", severity: {}, modules: {}, rules: {}, features: {}, impact: {}, config_alignment: {}, subscription_monthly: null });
 }
 
 const MANIFEST: LicenceManifest = {

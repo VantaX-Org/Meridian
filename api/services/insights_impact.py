@@ -23,6 +23,14 @@ def tenant_currency(cost_model: dict | None) -> str:
     return str((cost_model or {}).get("currency") or DEFAULT_CURRENCY)
 
 
+async def load_tenant_cost_model(db, tenant_id: str) -> dict:
+    """The tenant's own cost model overrides (``tenants.cost_model``); {} when none is stored."""
+    from sqlalchemy import text
+    res = await db.execute(text("SELECT cost_model FROM tenants WHERE id = :t"), {"t": str(tenant_id)})
+    value = res.scalar() if hasattr(res, "scalar") else None
+    return value if isinstance(value, dict) else {}
+
+
 @lru_cache(maxsize=1)
 def feature_l1() -> dict[str, str]:
     """target_feature -> L1 process, from the ``l1`` key of db/seeds/config_impact_rules.yaml."""

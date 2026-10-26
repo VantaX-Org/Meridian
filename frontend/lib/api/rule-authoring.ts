@@ -88,8 +88,21 @@ export const RULE_VERSION_TRANSITIONS: Record<RuleVersionState, RuleVersionState
   retired: [],
 };
 
-export function allowedVersionTargets(state: string): RuleVersionState[] {
-  return RULE_VERSION_TRANSITIONS[state as RuleVersionState] ?? [];
+/** Permissions, any one of which allows the move (checks/lifecycle.py TRANSITIONS): the maker writes
+ * and retires, the checker (approve, or review_ai_rules) decides a review. */
+const REVIEW = ["approve", "review_ai_rules"];
+export const RULE_VERSION_PERMISSIONS: Record<string, string[]> = {
+  "draft>in_review": ["manage_rules"],
+  "in_review>draft": REVIEW,
+  "in_review>active": REVIEW,
+  "active>retired": ["manage_rules"],
+};
+
+/** The moves the lifecycle allows from `state`; with `can`, only those the user's permissions allow. */
+export function allowedVersionTargets(state: string, can?: (action: string) => boolean): RuleVersionState[] {
+  const targets = RULE_VERSION_TRANSITIONS[state as RuleVersionState] ?? [];
+  if (!can) return targets;
+  return targets.filter((to) => (RULE_VERSION_PERMISSIONS[`${state}>${to}`] ?? []).some((a) => can(a)));
 }
 
 /** POST /api/v1/rules/{ruleId}/versions/{version}/transition */

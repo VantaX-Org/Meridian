@@ -6,6 +6,7 @@ import type { Matrix, Pair } from "@/lib/api/roles";
 /** Action keys as words, for matrix headers and confirmations (rbac.py PERMISSIONS). */
 const PERMISSION_LABEL: Record<string, string> = {
   view: "View", upload: "Import files", analyse: "Run analysis", approve: "Approve", apply: "Apply fixes", export: "Export", assign: "Assign work",
+  handoff_rule: "Hand rules to a steward",
   manage_users: "Manage users", manage_rules: "Manage rules", manage_system: "Platform updates and licence", manage_systems: "Manage SAP systems",
   manage_settings: "Manage settings", view_audit: "View the audit log", ai_feedback: "Give AI feedback", review_ai_rules: "Review AI rules",
   trigger_ai: "Run AI", trigger_sync: "Run extractions", manage_field_mappings: "Manage field mapping", manage_llm: "Manage the language model",

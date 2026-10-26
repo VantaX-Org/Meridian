@@ -29,7 +29,8 @@ const DEFAULT_THRESHOLDS: AlertThresholds = {
   readiness_dqs_threshold: 75, readiness_waves: {},
 };
 const DEFAULT_NOTIFY = { email: "", teams_webhook: "", daily_digest: false, weekly_summary: true, monthly_report: true };
-const DEFAULT_PLANNER: PlannerConfig = { minutes_per_record: 3, investigation_hours: 1, cleaning_item_hours: 0.25, exception_hours: 2, sprint_hours: 40, cost_per_record: null, currency: "ZAR" };
+// No currency of its own: planner amounts are named by the cost model's currency (Admin, Settings).
+const DEFAULT_PLANNER: PlannerConfig = { minutes_per_record: 3, investigation_hours: 1, cleaning_item_hours: 0.25, exception_hours: 2, sprint_hours: 40, cost_per_record: null, currency: "" };
 
 /** Stored weights (tenants.dqs_weights) sum to 100; the form edits fractions of 1, so rescale on load. */
 function fromStored(stored: DimensionScores | null): DimensionScores {
@@ -112,6 +113,8 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
   const unfloored = (initial.licensed_modules ?? []).filter((m) => !(m in floors));
   const [notify, setNotify] = useState(initial.notification_config ?? DEFAULT_NOTIFY);
   const [planner, setPlanner] = useState<PlannerConfig>(initial.planner_config ?? DEFAULT_PLANNER);
+  const costModel = useQuery({ queryKey: ["cost-model"], queryFn: getCostModel });
+  const moneyCurrency = costModel.data?.currency;
 
   const sum = DIMS.reduce((a, d) => a + (Number(weights[d]) || 0), 0);
   const normalised = useMemo(() => {
@@ -279,7 +282,8 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); savePlanner.mutate(); }}>
           <p className="m-text-body m-ink-3">
             The next-sprint planner ranks open work by severity-weighted records per hour. Effort comes from these figures.
-            Money appears only when you state what one failing record costs you.
+            Money appears only when you state what one failing record costs you
+            {moneyCurrency ? `, in ${moneyCurrency}, the cost model's currency (Admin, Settings)` : ""}.
           </p>
           <div className="grid grid-cols-3 gap-3">
             <Field label="Minutes per record">
@@ -298,13 +302,9 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
               <Input type="number" min="1" step="1" value={planner.sprint_hours} disabled={!write}
                 onChange={(e) => setPlanner({ ...planner, sprint_hours: Number(e.target.value) })} />
             </Field>
-            <Field label="Cost per failing record">
+            <Field label={moneyCurrency ? `Cost per failing record (${moneyCurrency})` : "Cost per failing record"}>
               <Input type="number" min="0" step="1" value={planner.cost_per_record ?? ""} disabled={!write} placeholder="Not set"
                 onChange={(e) => setPlanner({ ...planner, cost_per_record: e.target.value === "" ? null : Number(e.target.value) })} />
-            </Field>
-            <Field label="Currency">
-              <Input value={planner.currency} maxLength={3} disabled={!write}
-                onChange={(e) => setPlanner({ ...planner, currency: e.target.value.toUpperCase() })} />
             </Field>
           </div>
           {write ? <div><Button type="submit" disabled={savePlanner.isPending}>Save assumptions</Button></div> : null}

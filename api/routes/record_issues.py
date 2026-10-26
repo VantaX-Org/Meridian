@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services.branded_xlsx import ROW_CAP, ColumnSpec, SheetSpec, build_workbook, csv_response, xlsx_filename, xlsx_response
-from api.services.rbac import current_user_id, current_user_label, has_permission, require_permission
+from api.services.rbac import current_user_id, current_user_label, has_permission, require_any_permission, require_permission
 from api.services.version_status import finished_sql
 
 router = APIRouter(prefix="/api/v1/issues", tags=["issues"])
@@ -275,7 +275,8 @@ async def add_comment(
     request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _perm: str = Depends(require_permission("analyse")),
+    # Process owners (run_process_discovery) comment on issues blocking their process.
+    _perm: str = Depends(require_any_permission("analyse", "run_process_discovery")),
 ):
     await _rls(db, tenant)
     res = await db.execute(text("""

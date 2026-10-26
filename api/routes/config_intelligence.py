@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.services.config_intelligence.engine import ConfigIntelligenceEngine
 from api.services.config_intelligence.persistence import ConfigIntelligencePersistence
+from api.services.insights_impact import load_tenant_cost_model, tenant_currency
 from api.services.config_intelligence.serializers import (
     AlignmentListResponse,
     ConfigDiscoverRequest,
@@ -80,7 +81,8 @@ async def discover_config(
     tenant_id = str(tenant.id)
     run_id = str(uuid.uuid4())
 
-    engine = ConfigIntelligenceEngine()
+    cost_model = await load_tenant_cost_model(db, tenant_id)
+    engine = ConfigIntelligenceEngine(cost_model)
     result = engine.analyze(request.records)
 
     await persistence.save_run(db, tenant_id, run_id, result)
@@ -94,7 +96,7 @@ async def discover_config(
             await persistence.save_drift(db, tenant_id, run_id, drift)
     await db.commit()
 
-    return result_to_discover_response(run_id, result)
+    return result_to_discover_response(run_id, result, tenant_currency(cost_model))
 
 
 # ------------------------------------------------------------------
@@ -210,6 +212,7 @@ async def list_alignment_findings(
         run_id=rid,
         total=len(findings),
         findings=[finding_to_response(f) for f in findings],
+        currency=tenant_currency(await load_tenant_cost_model(db, tid)),
     )
 
 
@@ -234,6 +237,7 @@ async def get_alignment_by_module(
         module=module,
         total=len(findings),
         findings=[finding_to_response(f) for f in findings],
+        currency=tenant_currency(await load_tenant_cost_model(db, tid)),
     )
 
 
@@ -256,6 +260,7 @@ async def list_ghost_config(
         run_id=rid,
         total=len(findings),
         findings=[finding_to_response(f) for f in findings],
+        currency=tenant_currency(await load_tenant_cost_model(db, tid)),
     )
 
 
@@ -278,6 +283,7 @@ async def list_shadow_processes(
         run_id=rid,
         total=len(findings),
         findings=[finding_to_response(f) for f in findings],
+        currency=tenant_currency(await load_tenant_cost_model(db, tid)),
     )
 
 
