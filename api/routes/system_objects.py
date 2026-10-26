@@ -62,6 +62,15 @@ def _catalogue(system_id: str, system_type: str, tenant_id: str) -> list[dict]:
 
 
 _CATALOGUE_KEY = "object_catalogue"
+_REBUILD_LOCK = __import__("threading").Lock()
+_REBUILDING: set = set()
+
+
+def get_sync_engine_for_background():
+    """The sync engine, imported here so this module does not need workers at import time."""
+    from workers.db import get_sync_engine
+
+    return get_sync_engine()
 
 
 @lru_cache(maxsize=1)
@@ -90,17 +99,27 @@ def _catalogue_fingerprint() -> str:
     return h.hexdigest()[:16]
 
 
-def _stored_catalogue(session, tenant_id: str, snapshot: Optional[str]) -> Optional[tuple]:
-    """The catalogue saved against this discovery snapshot, if built from the current inputs."""
+def _stored_catalogue(session, tenant_id: str, snapshot: Optional[str],
+                      *, allow_stale: bool = False) -> Optional[tuple]:
+    """The catalogue saved against this discovery snapshot, if built from the current inputs.
+
+    ``allow_stale`` returns the last catalogue even when the inputs changed. The fingerprint covers
+    APP_VERSION, so every update invalidates it - and rebuilding takes minutes, which meant the
+    Objects screen timed out after each deploy until somebody warmed it. Serving the previous
+    catalogue while the new one is built in the background keeps the screen usable; only the very
+    first request on a fresh snapshot has nothing to serve.
+    """
     if not snapshot:
         return None
     row = session.execute(text(
         "SELECT system_info -> :k FROM ddic_snapshots WHERE id = CAST(:s AS uuid) AND tenant_id = CAST(:t AS uuid)"),
         {"k": _CATALOGUE_KEY, "s": snapshot, "t": tenant_id}).scalar()
-    # A bare list is the pre-fingerprint format: stale by definition.
-    if not isinstance(row, dict) or row.get("fingerprint") != _catalogue_fingerprint():
-        return None
-    return tuple(row.get("objects") or ()) or None
+    if not isinstance(row, dict):
+        return None  # a bare list is the pre-fingerprint format: not usable
+    objects = tuple(row.get("objects") or ())
+    if row.get("fingerprint") != _catalogue_fingerprint():
+        return objects if (allow_stale and objects) else None
+    return objects or None
 
 
 def _store_catalogue(session, tenant_id: str, snapshot: Optional[str], payload: tuple) -> None:
@@ -112,6 +131,50 @@ def _store_catalogue(session, tenant_id: str, snapshot: Optional[str], payload: 
         {"k": _CATALOGUE_KEY, "s": snapshot, "t": tenant_id,
          "p": json.dumps({"fingerprint": _catalogue_fingerprint(), "objects": list(payload)})})
     session.commit()
+
+
+def _rebuild_in_background(system_id: str, system_type: str, tenant_id: str,
+                           snapshot: Optional[str]) -> None:
+    """Rebuild the catalogue without blocking the caller (one at a time per process)."""
+    import threading
+
+    with _REBUILD_LOCK:
+        if _REBUILDING:
+            return
+        _REBUILDING.add(snapshot)
+
+    def work() -> None:
+        try:
+            _catalogue_for.cache_clear()
+            with Session(get_sync_engine_for_background()) as s:
+                s.execute(text("SET app.tenant_id = :t"), {"t": tenant_id})
+                from api.services.source_design import dictionary_for
+                from sap.extraction_plan import MODULES_BY_SYSTEM, SCOPE_FIELDS, _windows, plan_modules
+
+                dictionary = dictionary_for(s, system_id, system_type)
+                windows = _windows()
+                out = []
+                for m in MODULES_BY_SYSTEM.get(system_type, []):
+                    plans = plan_modules([m], dictionary)
+                    data = sorted(t for t, p in plans.items() if p.purpose == "data")
+                    out.append({
+                        "object": m,
+                        "tables": data,
+                        "config_tables": sorted(t for t, p in plans.items() if p.purpose == "config"),
+                        "scope_filters": [k for k, f in SCOPE_FIELDS.items()
+                                          if any(dictionary.field(t, f) is not None for t in data)],
+                        "date_window": sorted(t for t in data if (windows.get(t) or {}).get("where")),
+                    })
+                _store_catalogue(s, tenant_id, snapshot, tuple(out))
+        except Exception:  # never let the warm-up break a request
+            import logging
+            logging.getLogger("meridian.system_objects").exception(
+                "catalogue rebuild failed for %s", system_id)
+        finally:
+            with _REBUILD_LOCK:
+                _REBUILDING.discard(snapshot)
+
+    threading.Thread(target=work, name=f"catalogue-{system_id[:8]}", daemon=True).start()
 
 
 @lru_cache(maxsize=64)
@@ -134,7 +197,12 @@ def _catalogue_for(system_id: str, system_type: str, tenant_id: str, snapshot: O
         cached = _stored_catalogue(s, tenant_id, snapshot)
         if cached:
             return cached
+        # Stale but usable: answer now and rebuild off the request path.
+        stale = _stored_catalogue(s, tenant_id, snapshot, allow_stale=True)
         dictionary = dictionary_for(s, system_id, system_type)
+    if stale:
+        _rebuild_in_background(system_id, system_type, tenant_id, snapshot)
+        return stale
     windows = _windows()
     out = []
     for m in MODULES_BY_SYSTEM.get(system_type, []):
