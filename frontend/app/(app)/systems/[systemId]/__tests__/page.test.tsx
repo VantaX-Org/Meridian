@@ -238,11 +238,12 @@ describe("system detail page", () => {
       download: null,
     });
     renderWithQuery(<SystemPage />);
-    const ring = await screen.findByRole("img", { name: "Score 70" });
+    const ring = await screen.findByRole("img", { name: "Score 70.0" });
     const stat = ring.closest("a");
     expect(stat).toHaveTextContent("Score");
     expect(stat).not.toHaveTextContent("Quality score");
-    expect(stat).not.toHaveTextContent("70.0");
+    // The ring prints the one numeral (70.0); no second numeral beside it.
+    expect(stat?.textContent?.match(/70(\.0)?/g)).toHaveLength(1);
   });
 
   it("opens the latest run's Findings tab from the score and open-findings tiles", async () => {
@@ -252,7 +253,7 @@ describe("system detail page", () => {
       download: null,
     });
     renderWithQuery(<SystemPage />);
-    const ring = await screen.findByRole("img", { name: "Score 70" });
+    const ring = await screen.findByRole("img", { name: "Score 70.0" });
     expect(ring.closest("a")).toHaveAttribute("href", "/runs/v1?tab=findings");
     const open = screen.getByText("Open findings").closest("a");
     expect(open).toHaveAttribute("href", "/runs/v1?tab=findings");

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Button } from "../primitives/Button";
 import { Card } from "../primitives/Card";
 import { Delta } from "../primitives/Delta";
-import { Score, type ScoreBands } from "../primitives/Score";
+import { Score, type ScoreBands, type ScoreExplanation } from "../primitives/Score";
 import { PageHeader } from "../primitives/PageHeader";
 import { Skeleton, StatSkeleton } from "../primitives/Skeleton";
 import { Async, type AsyncError, type AsyncState } from "../primitives/Async";
@@ -111,8 +111,8 @@ export function HomePage({
   onboarding?: ReactNode;
   /** The four sentences (situation, what changed, why, do next), set under the hero. */
   cells?: ReactNode;
-  /** Beside the hero score: the score explainer (the ring that opens the breakdown). */
-  explain?: ReactNode;
+  /** The breakdown behind the hero score, opened from its label ("Data quality score ⓘ"); never a second ring. */
+  explain?: ScoreExplanation;
   /** The persona works a queue (the steward): the work row leads, the score hero follows. */
   workFirst?: boolean;
 }) {
@@ -159,7 +159,7 @@ export function HomePage({
       {state === "ready" && verdict && (
         <section className="m-hero grid grid-cols-1 items-start gap-x-10 gap-y-6 @4xl:grid-cols-12" data-testid="home-verdict-row" data-tour="home-verdict">
           <div className={`flex min-w-0 flex-col gap-6 ${hasAside ? "@4xl:col-span-7" : "@4xl:col-span-12"}`}>
-            <div data-testid="home-dqs" data-tour="home-score" className="flex items-start gap-4">
+            <div data-testid="home-dqs" data-tour="home-score">
               <Score
                 size="hero"
                 value={verdict.dqs}
@@ -167,10 +167,10 @@ export function HomePage({
                 criticals={verdict.criticals}
                 bands={verdict.bands}
                 versionId={run?.id}
+                explain={explain}
                 hint={verdict.firstRun ? verdict.firstRunLabel ?? "First run for this object" : verdict.delta != null && verdict.previousLabel ? `vs ${verdict.previousLabel}` : undefined}
                 delta={verdict.delta != null ? <Delta value={verdict.delta} /> : undefined}
               />
-              {explain && <div className="pt-6">{explain}</div>}
             </div>
             <div className="flex min-w-0 flex-col gap-2" style={{ maxWidth: "64ch" }}>
               <p data-testid="home-verdict" className="font-semibold" style={{ fontSize: "var(--m-text-verdict)", lineHeight: "var(--m-leading-verdict)", color: "var(--m-hero-ink)" }}>{verdict.sentence}</p>

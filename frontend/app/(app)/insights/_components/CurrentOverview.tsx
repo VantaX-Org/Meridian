@@ -203,7 +203,6 @@ export function CurrentOverview() {
               value={dqs}
               versionId={newest?.id}
               href={objectsHref()}
-              tone={tone}
               hint={hint}
               delta={delta != null ? <Delta value={delta} /> : undefined}
             />

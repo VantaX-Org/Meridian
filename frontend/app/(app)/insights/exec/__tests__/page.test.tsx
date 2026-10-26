@@ -16,6 +16,8 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(h.qs),
 }));
 vi.mock("@/lib/api/versions", () => ({ getVersions: async () => ({ versions: h.versions }), getVersion: async () => null }));
+// The tenant's score bands, read from the objects list as Home and the Insights overview read them.
+vi.mock("@/lib/api/v1/objects", () => ({ getObjects: async () => ({ run_id: "latest", objects: [], thresholds: { target: 90, warning: 75, critical: 60 } }) }));
 
 const TODAY = (() => {
   const d = new Date();
@@ -152,12 +154,15 @@ describe("ExecPage", () => {
   it("shows the current state, not an empty page, and exports the latest run", async () => {
     h.qs = "";
     h.path = "/insights/exec";
+    // The current state scores as Home does: each object at its latest run, the mean of their composites (64.0 here,
+    // where the exec API's own aggregation says 64.4) and the cap they share.
+    const capped = { composite_score: 64, dimension_scores: {}, critical_count: 1, high_count: 0, medium_count: 0, low_count: 0, total_checks: 10, passing_checks: 9, capped: true, cap_reason: "MM001: material type missing — score capped at 64" };
     h.versions = [
-      { id: "v2", label: "ECC PRD", status: "complete", run_at: "2026-10-24T08:00:00Z", metadata: {}, dqs_summary: {} },
+      { id: "v2", label: "ECC PRD", status: "complete", run_at: "2026-10-24T08:00:00Z", metadata: {}, dqs_summary: { material_master: capped } },
       { id: "v1", label: "Uploads", status: "complete", run_at: "2026-10-01T08:00:00Z", metadata: {}, dqs_summary: {} },
     ];
     const getExec = vi.spyOn(insightsApi, "getExec").mockResolvedValue({
-      version_id: null, latest_version_id: "v2", scope: "current", composite: 64, cap: 64, cap_reason: "MM001: material type missing",
+      version_id: null, latest_version_id: "v2", scope: "current", composite: 64.4, cap: 64, cap_reason: "MM001: material type missing",
       narrative: "Current state narrative.", readiness_cells: [], waterfall: [], impact_rows: [], owner_rows: [],
     });
     const overview = vi.spyOn(insightsApi, "getCurrentOverview").mockResolvedValue({
@@ -171,8 +176,13 @@ describe("ExecPage", () => {
     expect(screen.queryByText("No executive summary yet")).toBeNull();
     expect(getExec).toHaveBeenCalledWith({ scope: "current" });
     expect(overview).toHaveBeenCalled();
-    // The hero reads the current-state composite and cap from the exec payload.
+    // The hero reads the same current-state score, cap and verdict as Home and Insights, never the exec API's composite.
     expect(await screen.findByText("Capped at 64")).toBeInTheDocument();
+    expect(screen.getByLabelText("64.0")).toBeInTheDocument();
+    expect(screen.queryByLabelText("64.4")).toBeNull();
+    // A raw "fail" tier reads in the one vocabulary.
+    expect(within(screen.getByTestId("hero-verdict")).getByText("No-go")).toBeInTheDocument();
+    expect(screen.queryByText("Fail")).toBeNull();
     fireEvent.click(await screen.findByRole("button", { name: /export/i }));
     fireEvent.click(await screen.findByRole("menuitem", { name: /board pack, latest run/i }));
     await waitFor(() => expect(download).toHaveBeenCalledWith(expect.stringContaining("/board/v2"), `Meridian board pack – ECC PRD – ${TODAY}.pdf`));

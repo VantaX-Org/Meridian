@@ -6,14 +6,16 @@ import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Button, buildDrillHref, Card, DataTable, DrillLink, Delta, EmptyState, Heatmap, Stat, Tabs, Waterfall, type ExportOption, Status, toVerdict, Score } from "@/design";
+import { Button, buildDrillHref, Card, DataTable, DrillLink, Delta, EmptyState, Heatmap, Stat, Tabs, Waterfall, type ExportOption, Status, statusLabel, toVerdict, Score } from "@/design";
 import { getRoi } from "@/lib/api/analytics";
 import { getFindings } from "@/lib/api/findings";
-import { stateDelta } from "@/lib/current-state";
+import { getObjects } from "@/lib/api/v1/objects";
+import { stateDelta, stateDqs, stateSummary, tierOf } from "@/lib/current-state";
+import { cappedReason, runCap } from "@/lib/home-metrics";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getCurrentOverview, getExec, getOverview, getProvenCost, getRuleRanking, l1Label, largestValueAtRisk, valueAtRiskByL1, type ExecWaterfallPoint, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
 import { getBoardReportUrl, getReportJsonExportUrl, getWorkbookUrl } from "@/lib/api/reports";
-import { capRuleIds, deltaSentence, featureLabel, formatCompact, formatModuleName, labelOf, plural, shortCapReason } from "@/lib/format";
+import { capRuleIds, deltaSentence, featureLabel, formatCompact, formatModuleName, plural, shortCapReason } from "@/lib/format";
 import { reportFilename } from "@/lib/report-filename";
 import { runName } from "@/lib/run-scope";
 import { previousInLineage } from "@/lib/runs";
@@ -103,13 +105,19 @@ export default function ExecPage() {
   });
   const dqs = overview.data;
   const delta = isCurrent ? currentDelta : dqs?.delta ?? null;
-  const VERDICT_SENTENCE: Record<string, string> = { go: "Go", at_risk: "At risk", no_go: "No-go" };
-  // The score, cap and reason from the exec API (the current-state composite in current mode); the overview's otherwise.
+  // The current state is scored the way Home and the Insights overview score it: the mean of each object's composite
+  // at its latest run (`stateDqs`), its cap (`runCap`) and its tier against the tenant's bands (the objects list's
+  // thresholds, the same request and cache entry). One run reads the exec API, and the overview where it is silent.
+  const bandsQ = useQuery({ queryKey: queryKeys.objects("latest"), queryFn: () => getObjects("latest"), enabled: isCurrent });
+  const stateSummaryOf = stateSummary(current.objects);
+  const stateScore = stateDqs(current.objects);
+  const stateCap = runCap(stateSummaryOf);
   const exec = data;
-  const composite = exec?.composite ?? dqs?.composite;
-  const cap = exec?.cap ?? undefined;
-  const capReason = exec?.cap_reason ?? dqs?.cap_reason ?? null;
-  const capped = cap != null || !!dqs?.capped;
+  const composite = isCurrent ? stateScore : exec?.composite ?? dqs?.composite;
+  const cap = isCurrent ? stateCap?.cap : exec?.cap ?? undefined;
+  const capReason = isCurrent ? cappedReason(stateSummaryOf) : exec?.cap_reason ?? dqs?.cap_reason ?? null;
+  const capped = cap != null || (isCurrent ? capReason != null : !!dqs?.capped);
+  const tier = isCurrent ? tierOf(stateScore, bandsQ.data?.thresholds) : dqs?.tier;
   const capRule = capRuleIds(capReason)[0];
   const currency = cost.data?.currency;
   const roi = useQuery({ queryKey: ["roi"], queryFn: getRoi });
@@ -175,15 +183,16 @@ export default function ExecPage() {
                 hint={cap != null ? `Capped at ${cap}` : undefined}
                 delta={delta != null ? <Delta value={delta} /> : undefined}
               />
-            <Link href="/rules/scoring" className="m-text-body m-ink-accent underline underline-offset-2" data-testid="how-scored">How it is scored</Link>
             <div className="m-hero-verdict" data-testid="hero-verdict">
+              {/* The verdict word from the one vocabulary (a raw "fail" tier reads "No-go"), as on Insights. */}
               <span className="font-semibold m-text-verdict-line m-ink [letter-spacing:var(--m-tracking-title)]">
-                {dqs?.tier ? VERDICT_SENTENCE[dqs.tier] ?? labelOf(dqs.tier) : "Scored"}
+                {toVerdict(tier) ? statusLabel("verdict", tier) : "Scored"}
               </span>
               <span className="m-text-body m-ink-2">
                 {/* The current state moves by the newest run's change (stateDelta), as on Home and the overview. */}
                 {capped && capReason ? `Capped: ${shortCapReason(capReason)}` : isCurrent ? (delta != null ? deltaSentence(delta, "with the latest run") : "Every object at its latest run") : deltaSentence(dqs?.delta)}
               </span>
+              <Link href="/rules/scoring" className="self-start m-text-body m-ink-accent underline underline-offset-2" data-testid="how-scored">How it is scored</Link>
             </div>
           </div>
         ) : undefined,

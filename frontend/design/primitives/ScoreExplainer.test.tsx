@@ -13,7 +13,7 @@ describe("ScoreExplainer links", () => {
         historyHref="/insights/score"
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Explain score 82" }));
+    fireEvent.click(screen.getByRole("button", { name: "Explain score 82.0" }));
     for (const name of ["MM001", "Score history"]) {
       const link = await screen.findByRole("link", { name });
       expect(link).toHaveClass("underline", "underline-offset-2", "m-ink-accent");

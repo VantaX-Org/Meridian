@@ -110,6 +110,22 @@ export function tickText(label: string, dropYear: boolean): string {
   return s.replace(/(\d{1,2}:\d{2}):\d{2}/, "$1");
 }
 
+/**
+ * Each x's tick text, unique: when two points shorten to the same text (runs a minute apart, twins), the first keeps
+ * it and each later one reads by its ordinal in that group ("#2", "#3"), so the axis never repeats a label.
+ */
+export function uniqueTicks(xs: readonly (string | number)[], text: (x: string | number) => string): Map<string | number, string> {
+  const seen = new Map<string, number>();
+  const out = new Map<string | number, string>();
+  for (const x of xs) {
+    const t = text(x);
+    const n = (seen.get(t) ?? 0) + 1;
+    seen.set(t, n);
+    out.set(x, n === 1 ? t : `#${n}`);
+  }
+  return out;
+}
+
 export function Line({
   data,
   onPointClick,
@@ -169,7 +185,8 @@ export function Line({
     return (x: string | number) => m.get(x) ?? String(x);
   }, [multi, data, xDomain]);
   const years = new Set(rows.map((r) => /\b(\d{4})\b/.exec(labelOf(r.x))?.[1]).filter(Boolean));
-  const tickOf = (x: string | number) => tickText(labelOf(x), years.size === 1);
+  const ticks = uniqueTicks(rows.map((r) => r.x), (x) => tickText(labelOf(x), years.size === 1));
+  const tickOf = (x: string | number) => ticks.get(x) ?? tickText(labelOf(x), years.size === 1);
   const rightMargin = lastTickMargin(rows.length ? tickOf(rows[rows.length - 1].x) : undefined);
   const values = rows
     .flatMap((r) => Object.entries(r).filter(([k]) => k !== "x").flatMap(([, v]) => (Array.isArray(v) ? v : [Number(v)])))
@@ -207,7 +224,7 @@ export function Line({
         )}
         {/* Area under the first series only, unless the chart draws bands: then each band is the only fill. */}
         {!hasBand && (
-          <Area type="monotone" dataKey="s0" baseValue={domain[0]} stroke="none" fill={chartTheme.area} isAnimationActive={false} activeDot={false} legendType="none" tooltipType="none" />
+          <Area type="linear" dataKey="s0" baseValue={domain[0]} stroke="none" fill={chartTheme.area} isAnimationActive={false} activeDot={false} legendType="none" tooltipType="none" />
         )}
         {lines.map((sr, i) =>
           sr.band && sr.band.length > 0 ? (
@@ -241,7 +258,8 @@ export function Line({
           return (
             <RLine
               key={key}
-              type="monotone"
+              // Straight segments between measured points: a smoothed curve would draw values no run produced.
+              type="linear"
               dataKey={key}
               name={sr.name}
               stroke={color}
