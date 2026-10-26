@@ -46,7 +46,14 @@ def test_every_mutating_route_is_guarded():
     unguarded = []
     for path in sorted((ROOT / "api" / "routes").glob("*.py")):
         src = path.read_text()
-        for node in ast.walk(ast.parse(src)):
+        tree = ast.parse(src)
+        # A router declared with a permission dependency guards every route on it.
+        router_guarded = any(
+            isinstance(n, ast.Call) and getattr(n.func, "id", "") == "APIRouter"
+            and any(k.arg == "dependencies" and "require_" in ast.get_source_segment(src, k.value) for k in n.keywords)
+            for n in ast.walk(tree)
+        )
+        for node in ast.walk(tree):
             if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 continue
             for d in node.decorator_list:
@@ -56,7 +63,10 @@ def test_every_mutating_route_is_guarded():
                 route = d.args[0].value if d.args and isinstance(d.args[0], ast.Constant) else ""
                 sig = ast.get_source_segment(src, node).split(":\n", 1)[0]
                 guard = (sig, ast.get_source_segment(src, d))
-                if any(g in part for g in ("require_permission", "require_any_permission") for part in guard):
+                if router_guarded or any(
+                    g in part for g in ("require_permission", "require_any_permission", "require_action_or_sap_source")
+                    for part in guard
+                ):
                     continue
                 if (path.name, route) not in _UNGUARDED_OK:
                     unguarded.append(f"{path.name} {d.func.attr.upper()} {route}")
