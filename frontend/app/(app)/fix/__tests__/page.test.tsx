@@ -119,7 +119,7 @@ describe("FixPage", () => {
     const section = await screen.findByRole("combobox", { name: "Section" });
     expect(section).toHaveTextContent("Cleaning proposals");
     expect(section.closest(".sm\\:hidden")).not.toBeNull();
-    expect(screen.getByRole("tablist").closest(".max-\\[639px\\]\\:\\[\\&_\\.m-tabs-list\\]\\:hidden")).not.toBeNull();
+    expect(screen.getByRole("tablist")).toHaveClass("max-sm:hidden");
   });
 });
 

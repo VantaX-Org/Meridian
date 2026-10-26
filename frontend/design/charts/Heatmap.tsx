@@ -56,6 +56,8 @@ export function Heatmap({
   const byKey = new Map(cells.map((c) => [`${c.row}:${c.col}`, c]));
   let cellIndex = 0;
   return (
+    // A narrow card scrolls the grid sideways inside itself rather than cutting columns off.
+    <div className="max-w-full overflow-x-auto">
     <table className="m-text-meta" style={{ borderCollapse: "separate", borderSpacing: 1 }}>
       <thead>
         <tr>
@@ -105,5 +107,6 @@ export function Heatmap({
         ))}
       </tbody>
     </table>
+    </div>
   );
 }

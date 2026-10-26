@@ -221,6 +221,7 @@ export default function SystemPage() {
   const analysable = latest ?? versions[0];
   // Until the connection is known to work, testing it is the next step, not extracting from it.
   const testFirst = system.health_status !== "healthy" && can("trigger_sync");
+  const runsExport = [{ format: "xlsx" as const, label: "Runs (.xlsx)", run: () => exportRuns("xlsx", { system_id: systemId }) }];
 
   return (
     <div className="flex flex-col gap-4">
@@ -228,26 +229,29 @@ export default function SystemPage() {
         title={system.name}
         status={<Pill tone="neutral">{system.role === "target" ? "Target system" : "Source system"}</Pill>}
         meta={`${[systemTypeLabel(system.system_type), system.environment, system.host].filter(Boolean).join(", ")}. Pull data from this system with Extract, then analyse it to score its objects`}
-        actions={
+        secondary={
         <>
           {can("manage_systems") ? <Button variant="ghost" onClick={() => setEditOpen(true)}>Edit</Button> : null}
-          {can("trigger_sync") ? <Button variant={testFirst ? "primary" : "secondary"} disabled={test.isPending} onClick={() => test.mutate()}>{testLabel}</Button> : null}
-          <GatedPrimary kind="extract" allowed={can("trigger_sync")} variant={testFirst ? "secondary" : "primary"} systemId={systemId} scopeLabel={system.name} data-tour="system-extract"
-            onClick={openExtract}>
-            Extract
-          </GatedPrimary>
           {can("analyse") ? (
             <Button variant="secondary" disabled={analyse.isPending || !analysable} onClick={() => setConfirmAnalyse(true)}>
               Analyse
             </Button>
           ) : null}
-          <ExportMenu
-            options={
-              versions.length === 0
-                ? emptyExportOptions([{ format: "xlsx", label: "Runs (.xlsx)", run: () => exportRuns("xlsx", { system_id: systemId }) }])
-                : [{ format: "xlsx", label: "Runs (.xlsx)", run: () => exportRuns("xlsx", { system_id: systemId }) }]
-            }
-          />
+          <ExportMenu options={versions.length === 0 ? emptyExportOptions(runsExport) : runsExport} />
+        </>
+        }
+        more={[
+          ...(can("manage_systems") ? [{ label: "Edit", onSelect: () => setEditOpen(true) }] : []),
+          ...(can("analyse") ? [{ label: "Analyse", onSelect: () => setConfirmAnalyse(true), disabled: analyse.isPending || !analysable }] : []),
+          { label: "Export runs (.xlsx)", onSelect: () => void exportRuns("xlsx", { system_id: systemId }), disabled: versions.length === 0 },
+        ]}
+        actions={
+        <>
+          {can("trigger_sync") ? <Button variant={testFirst ? "primary" : "secondary"} disabled={test.isPending} onClick={() => test.mutate()}>{testLabel}</Button> : null}
+          <GatedPrimary kind="extract" allowed={can("trigger_sync")} variant={testFirst ? "secondary" : "primary"} systemId={systemId} scopeLabel={system.name} data-tour="system-extract"
+            onClick={openExtract}>
+            Extract
+          </GatedPrimary>
         </>
         }
       />

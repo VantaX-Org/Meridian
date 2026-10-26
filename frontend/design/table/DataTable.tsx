@@ -149,6 +149,8 @@ function readPx(name: string, fallback: number): number {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 const SELECT_COLUMN_ID = "__select";
+/** `m-td`: below 640px an identifier in a cell (rule ID, record key) keeps one line and truncates instead of breaking at its hyphens (globals.css). */
+const MONO_NARROW = "m-td";
 const EXPAND_COLUMN_ID = "__expand";
 
 function PrefetchRow({ prefetchInfo, children, ...rest }: { prefetchInfo?: RowPrefetch } & React.ComponentProps<"tr">) {
@@ -581,7 +583,8 @@ export function DataTable<T>({
                     return (
                       <td
                         key={cell.id}
-                        className={`px-2 ${meta?.numeric ? "text-right m-numeric" : ""} ${firstText ? "m-motion-colors group-hover:text-[var(--m-accent)]" : ""} ${heat ?? ""} ${meta?.sticky ? `z-[1] ${row.getIsSelected() ? "bg-[var(--m-accent-soft)]" : "bg-[var(--m-sheet)] group-hover:bg-[var(--m-sheet-raised)]"}` : ""} ${columnLayoutClass(meta)}`}
+                        title={meta?.mono && typeof cell.getValue() === "string" ? (cell.getValue() as string) : undefined}
+                        className={`px-2 ${MONO_NARROW} ${meta?.numeric ? "text-right m-numeric" : ""} ${firstText ? "m-motion-colors group-hover:text-[var(--m-accent)]" : ""} ${heat ?? ""} ${meta?.sticky ? `z-[1] ${row.getIsSelected() ? "bg-[var(--m-accent-soft)]" : "bg-[var(--m-sheet)] group-hover:bg-[var(--m-sheet-raised)]"}` : ""} ${columnLayoutClass(meta)}`}
                       >
                         {bar ? (
                           <span className="flex items-center justify-end gap-2">

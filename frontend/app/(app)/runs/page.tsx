@@ -116,6 +116,7 @@ function makeColumns(allVersions: Version[], earlier: ReadonlyMap<string, Versio
       accessorFn: (v) => v.run_at,
       header: "Day",
       size: 120,
+      meta: { priority: "low" } satisfies CellMeta,
       enableSorting: false,
       cell: ({ row, table }) => {
         const rows = table.getRowModel().rows;
@@ -140,18 +141,19 @@ function makeColumns(allVersions: Version[], earlier: ReadonlyMap<string, Versio
         );
       },
     },
-    { id: "system", header: "System", accessorFn: systemOf, cell: ({ row }) => <span className="whitespace-nowrap">{systemOf(row.original)}</span> },
+    { id: "system", header: "System", meta: { priority: "low" } satisfies CellMeta, accessorFn: systemOf, cell: ({ row }) => <span className="whitespace-nowrap">{systemOf(row.original)}</span> },
     {
-      id: "records", header: "Records", size: 110, meta: { numeric: true } satisfies CellMeta,
+      id: "records", header: "Records", size: 110, meta: { numeric: true, priority: "low" } satisfies CellMeta,
       accessorFn: (v) => v.metadata?.row_count ?? -1,
       cell: ({ row }) => (row.original.metadata?.row_count != null ? formatNumber(row.original.metadata.row_count) : "—"),
     },
-    { id: "triggered", header: "Triggered by", accessorFn: triggeredBy },
+    { id: "triggered", header: "Triggered by", meta: { priority: "low" } satisfies CellMeta, accessorFn: triggeredBy },
     {
       id: "history",
       header: () => <span className="inline-flex items-center gap-1">History <HelpHint term="run" /></span>,
       size: 110,
       enableSorting: false,
+      meta: { priority: "low" } satisfies CellMeta,
       cell: ({ row }) => {
         const series = lineageSeries(row.original, allVersions);
         return series.length > 1 ? <Sparkline data={series} width={88} height={22} /> : <span className="m-ink-3">—</span>;
@@ -161,6 +163,7 @@ function makeColumns(allVersions: Version[], earlier: ReadonlyMap<string, Versio
       id: "status",
       accessorFn: (v) => v.status,
       header: "Status",
+      meta: { priority: "low" } satisfies CellMeta,
       cell: ({ row }) => (
         <span className="inline-flex items-center gap-2">
           <Status kind="lifecycle" value={row.original.status} />
@@ -186,7 +189,7 @@ function makeColumns(allVersions: Version[], earlier: ReadonlyMap<string, Versio
       },
     },
     { id: "critical", accessorFn: (v) => v.severity_counts?.critical ?? -1, header: "Critical", size: 110, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => severityCell(row.original, allVersions, "critical") },
-    { id: "high", accessorFn: (v) => v.severity_counts?.high ?? -1, header: "High", size: 100, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => severityCell(row.original, allVersions, "high") },
+    { id: "high", accessorFn: (v) => v.severity_counts?.high ?? -1, header: "High", size: 100, meta: { numeric: true, priority: "low" } satisfies CellMeta, cell: ({ row }) => severityCell(row.original, allVersions, "high") },
     {
       id: "open",
       header: "",

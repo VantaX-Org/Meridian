@@ -364,15 +364,20 @@
   .m-badge-inverted { background: var(--m-accent-ink); color: var(--m-accent-soft); }
   .m-badge-neutral { background: var(--m-sheet-raised); color: var(--m-ink-2); }
 
-  .m-tabs-list { position: relative; display: flex; border-bottom: 1px solid var(--m-line); }
-  .m-tab { height: 40px; padding: 0 2px; margin-right: 20px; font-size: var(--m-text-body); line-height: var(--m-leading-body); font-weight: 500; color: var(--m-ink-3); cursor: pointer; }
+  /* The base line is an inset shadow, not a border, so a strip wider than its column scrolls sideways (from 640px;
+     below that Tabs shows a Select) without clipping the indicator that sits on the line. */
+  .m-tabs-list { position: relative; display: flex; box-shadow: inset 0 -1px 0 var(--m-line); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; padding-top: 4px; margin-top: -4px; }
+  .m-tab { flex-shrink: 0; white-space: nowrap; height: 40px; padding: 0 2px; margin-right: 20px; font-size: var(--m-text-body); line-height: var(--m-leading-body); font-weight: 500; color: var(--m-ink-3); cursor: pointer; }
   .m-tab:hover { color: var(--m-ink); }
   .m-tab:focus-visible { outline: none; box-shadow: var(--m-elev-focus); border-radius: var(--m-radius-control); }
   .m-tab[data-selected] { color: var(--m-ink); font-weight: 600; }
   .m-tab-count { margin-left: 6px; }
-  .m-tab-indicator { position: absolute; left: 0; bottom: -1px; height: 2px; background: var(--m-accent); }
+  .m-tab-indicator { position: absolute; left: 0; bottom: 0; height: 2px; background: var(--m-accent); }
   /* Link mode: a strip of route links (InsightTabs) wears the same tab; the current page carries the accent rule. */
   a.m-tab { display: inline-flex; align-items: center; text-decoration: none; }
+  @media (max-width: 639px) {
+    .m-td .m-mono { display: inline-block; max-width: 16ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+  }
   .m-tab[aria-current="page"] { color: var(--m-ink); font-weight: 600; box-shadow: inset 0 -2px 0 var(--m-accent); }
 
   .m-mono { font-family: var(--m-font-mono); }

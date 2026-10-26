@@ -52,9 +52,9 @@ describe("MatchRulesPage", () => {
     vi.spyOn(mergeExplainApi, "getPairConstraints").mockResolvedValue([]);
     renderWithQuery(<MatchRulesPage />);
     await waitFor(() => expect(screen.getByText("MATKL")).toBeInTheDocument());
-    expect(screen.getByText("Rules")).toBeInTheDocument();
-    expect(screen.getByText("Tuning")).toBeInTheDocument();
-    expect(screen.getByText("Settled pairs")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Rules" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Tuning" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Settled pairs" })).toBeInTheDocument();
   });
 
   it("shows the API error message for rules and retries on click", async () => {

@@ -314,10 +314,10 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const columns: ColumnDef<ObjectRow>[] = [
     {
       accessorKey: "label", header: "Object",
-      cell: ({ row: { original: o } }) => <span className="inline-flex items-center gap-2 whitespace-nowrap">{o.label}<DomainChip moduleId={o.module} /></span>,
+      cell: ({ row: { original: o } }) => <span className="inline-flex items-center gap-2 sm:whitespace-nowrap">{o.label}<span className="max-sm:hidden"><DomainChip moduleId={o.module} /></span></span>,
     },
     {
-      id: "blocking", header: "Blocking rule", enableSorting: false,
+      id: "blocking", header: "Blocking rule", enableSorting: false, meta: { priority: "low" },
       cell: ({ row: { original: o } }) => o.blocking ? (
         <span className="inline-flex min-w-0 items-baseline gap-2">
           <DrillLink href={buildDrillHref({ object: o.module, ruleId: o.blocking, run: o.run_id })}><Mono>{o.blocking}</Mono></DrillLink>
@@ -326,11 +326,11 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       ) : "—",
     },
     {
-      id: "owner", header: "Owner", accessorFn: (o) => owners.nameOf(o.module) ?? "",
+      id: "owner", header: "Owner", meta: { priority: "low" }, accessorFn: (o) => owners.nameOf(o.module) ?? "",
       cell: ({ row: { original: o } }) => owners.nameOf(o.module) ?? <span className="m-ink-3">Not set</span>,
     },
     // Summed over the object's failing rules (a record failing two rules counts twice): rule failures, not records.
-    { accessorKey: "affected_records", header: "Rule failures", meta: { numeric: true }, cell: ({ row: { original: o } }) => o.affected_records?.toLocaleString() ?? "—" },
+    { accessorKey: "affected_records", header: "Rule failures", meta: { numeric: true, priority: "low" }, cell: ({ row: { original: o } }) => o.affected_records?.toLocaleString() ?? "—" },
     {
       id: "dqs", header: "Score", meta: { numeric: true },
       accessorFn: (o) => o.composite_score ?? -1,

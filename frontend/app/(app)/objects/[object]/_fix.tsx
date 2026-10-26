@@ -9,7 +9,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Card, EmptyState, ErrorState, Input, Mono, Notice, Pill, Select, SeverityDot, Skeleton, Stat, isSeverity } from "@/design";
+import { BELOW_LG, Button, Card, DetailPane, EmptyState, ErrorState, Input, Mono, Notice, Pill, Select, SeverityDot, Skeleton, Stat, isSeverity } from "@/design";
 import { RecordPanel, workRecordKey } from "@/components/work/record-panel";
 import { STATUS, STATUS_ORDER, dueLabel } from "@/components/work/status";
 import { buildWorklist, getWorkGroups, getWorkRecords, type RecordFilter, type WorkObject, type WorkRecord, type WorkRecordDetail, type WorkStatus } from "@/lib/api/work";
@@ -173,6 +173,7 @@ export function RecordsToFix({ object, run }: { object: string; run: string }) {
   const overdue = get("due") === "overdue";
   const [text, setText] = useState("");
   const [q, setQ] = useState("");
+  const [sheet, setSheet] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setQ(text.trim()), 300);
     return () => clearTimeout(t);
@@ -278,8 +279,8 @@ export function RecordsToFix({ object, run }: { object: string; run: string }) {
     ) : null
   ) : (
     <>
-      <ul aria-label="Records to fix" className="flex flex-col overflow-y-auto [max-height:min(70vh,44rem)]">
-        {items.map((r) => <RecordRow key={r.record_key} r={r} on={r.record_key === selected} onSelect={() => select(r.record_key)} />)}
+      <ul aria-label="Records to fix" className="flex flex-col lg:overflow-y-auto lg:[max-height:min(70vh,44rem)]">
+        {items.map((r) => <RecordRow key={r.record_key} r={r} on={r.record_key === selected} onSelect={() => { select(r.record_key); setSheet(true); }} />)}
       </ul>
       {records.hasNextPage ? (
         <div className="px-3 pt-2">
@@ -301,7 +302,7 @@ export function RecordsToFix({ object, run }: { object: string; run: string }) {
   }
 
   return (
-    <div className="grid [gap:var(--m-section-gap)] [grid-template-columns:minmax(0,1fr)] @5xl:[grid-template-columns:400px_minmax(0,1fr)]" data-testid="records-to-fix">
+    <div className="grid [gap:var(--m-section-gap)] [grid-template-columns:minmax(0,1fr)] lg:[grid-template-columns:400px_minmax(0,1fr)]" data-testid="records-to-fix">
       <div className="min-w-0">
         <Card
           title="Records to fix"
@@ -324,7 +325,7 @@ export function RecordsToFix({ object, run }: { object: string; run: string }) {
           {listBody}
         </Card>
       </div>
-      <div className="min-w-0">
+      <DetailPane open={sheet} onOpenChange={setSheet} below={BELOW_LG} title="Record" label="Record">
         {selected ? (
           <RecordPanel
             key={selected}
@@ -332,10 +333,10 @@ export function RecordsToFix({ object, run }: { object: string; run: string }) {
             recordKey={selected}
             run={run}
             onDecided={() => void onDecided()}
-            footer={<p className="m-text-meta m-ink-3">Press j or k to move between records, Enter to open the full record.</p>}
+            footer={<p className="m-text-meta m-ink-3 max-lg:hidden">Press j or k to move between records, Enter to open the full record.</p>}
           />
         ) : null}
-      </div>
+      </DetailPane>
     </div>
   );
 }
