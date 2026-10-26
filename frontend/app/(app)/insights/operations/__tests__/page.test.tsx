@@ -13,7 +13,8 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
   useSearchParams: () => new URLSearchParams("run=v1"),
 }));
-vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+const role = vi.hoisted(() => ({ assign: true }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (p: string) => p !== "assign" || role.assign }) }));
 
 const EMPTY_METRICS: triageApi.TriageMetrics = {
   weeks: 8, backlog_by_owner: [], backlog_by_team: [], unassigned: 0, resolved_in_sla: 0, resolved_total: 0,
@@ -29,7 +30,7 @@ function mount() {
   return render(<QueryClientProvider client={qc}><OperationsPage /></QueryClientProvider>);
 }
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => { vi.restoreAllMocks(); role.assign = true; });
 
 describe("stageLabel", () => {
   it("maps queue stage ids to the steward's words", () => {
@@ -138,5 +139,16 @@ describe("OperationsPage", () => {
     expect(screen.getByText("ana@x.io")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "7" })).toHaveAttribute("href", "/inbox?assignee=u1");
     expect(screen.getByRole("link", { name: "SLA policies" })).toHaveAttribute("href", "/admin/triage");
+  });
+});
+
+describe("OperationsPage without assign", () => {
+  it("leaves out the team member card and never asks for the assignable users (a viewer's 403)", async () => {
+    role.assign = false;
+    vi.spyOn(analyticsApi, "getOperational").mockReturnValue(new Promise(() => {}));
+    mount();
+    expect(await screen.findByText("Throughput and capacity")).toBeInTheDocument();
+    expect(screen.queryByText("Team member")).not.toBeInTheDocument();
+    expect(usersApi.getAssignableUsers).not.toHaveBeenCalled();
   });
 });

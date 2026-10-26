@@ -10,7 +10,8 @@ import AdminAuditPage from "../page";
 let tab = "log";
 vi.mock("@/hooks/use-url-state", () => ({ useUrlState: () => [tab, vi.fn()] }));
 vi.mock("@/lib/permissions", () => ({ usePermissions: () => ({ has: () => true, loading: false }), usePermissionsContext: () => null }));
-vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true, loading: false }) }));
+const role = vi.hoisted(() => ({ manageUsers: true }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (p: string) => p !== "manage_users" || role.manageUsers, loading: false }) }));
 
 const ENTRY: AuditEntry = {
   id: "a1", actor_user_id: "u1", actor_email: "ana@x.io", action: "user.update", entity_type: "user",
@@ -21,6 +22,7 @@ const ENTRY: AuditEntry = {
 
 beforeEach(() => {
   tab = "log";
+  role.manageUsers = true;
   vi.restoreAllMocks();
   vi.spyOn(triageApi, "getTriageSettings").mockResolvedValue({
     timezone: "Africa/Johannesburg", work_days: [1, 2, 3, 4, 5], work_start: "08:00", work_end: "17:00", holidays: [], fallback_user_id: null,
@@ -83,5 +85,15 @@ describe("admin audit page", () => {
     expect(get).toHaveBeenCalledWith({ limit: 100, offset: 0 });
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     await waitFor(() => expect(get).toHaveBeenLastCalledWith({ limit: 100, offset: 100 }));
+  });
+});
+
+describe("admin audit page for an auditor", () => {
+  it("never asks for the user list without manage_users (a 403 for every auditor)", async () => {
+    role.manageUsers = false;
+    vi.spyOn(auditApi, "getAuditEntries").mockResolvedValue({ entries: [ENTRY], total: 1, limit: 100, offset: 0 });
+    renderWithQuery(<AdminAuditPage />);
+    expect(await screen.findByText("3 Jan 2026, 00:00 GMT+2")).toBeInTheDocument();
+    expect(usersApi.getUsers).not.toHaveBeenCalled();
   });
 });

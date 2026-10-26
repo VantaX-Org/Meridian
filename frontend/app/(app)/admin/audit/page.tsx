@@ -11,6 +11,7 @@ import {
   exportAuditEntries, getAuditEntries, getAuditSummary, getLlmAudit, type AuditEntry, type AuditListParams, type AuditSummaryRow, type LlmAuditEntry,
 } from "@/lib/api/audit";
 import { labelOf } from "@/lib/format";
+import { useRole } from "@/hooks/use-role";
 import { getUsers } from "@/lib/api/users";
 import { queryKeys } from "@/lib/query-keys";
 import { useTenantTimezone } from "@/lib/tenant-zone";
@@ -99,7 +100,9 @@ function AuditTable({ params, empty, summary = false }: { params: AuditListParam
   // A kind picked from the summary strip: its action and entity type.
   const [kind, setKind] = useState<AuditSummaryRow | null>(null);
   // Filtering by actor needs the user list; an auditor without user admin simply gets no actor filter.
-  const usersQ = useQuery({ queryKey: queryKeys.users(), queryFn: getUsers, retry: false, meta: { ignoreError: true } });
+  // /users needs manage_users: asking without it is a 403 in every auditor's console.
+  const { can } = useRole();
+  const usersQ = useQuery({ queryKey: queryKeys.users(), queryFn: getUsers, enabled: can("manage_users"), retry: false, meta: { ignoreError: true } });
   const users = usersQ.data?.users ?? [];
   const filters: AuditListParams = {
     ...(actor !== ALL ? { actor_user_id: actor } : {}),

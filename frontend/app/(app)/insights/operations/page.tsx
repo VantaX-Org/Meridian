@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Bar, Button, Card, DataTable, DrillLink, EmptyState, Mono, Select, Stat } from "@/design";
+import { useRole } from "@/hooks/use-role";
 import { getAssignableUsers } from "@/lib/api/users";
 import {
   getOperational, getSprints, getTeamPerformance, type Bottleneck, type SprintPlan,
@@ -139,6 +140,7 @@ function QueueFigure({ label, value, hint, href, critical = false }: { label: st
 
 export default function OperationsPage() {
   const { run } = useInsightScope();
+  const { can } = useRole();
   const ops = useQuery({ queryKey: ["analytics", "operational"], queryFn: getOperational });
   const sprints = useQuery({ queryKey: ["analytics", "sprints"], queryFn: () => getSprints() });
   const k = ops.data?.kpis;
@@ -211,7 +213,8 @@ export default function OperationsPage() {
         )}
       </Section>
       <SlaSection />
-      <TeamCard />
+      {/* The member list is /users/assignable, which needs assign: without it the card has nobody to pick. */}
+      {can("assign") && <TeamCard />}
       {bottlenecks.length > 0 && (
         <Section title="Bottlenecks" height={120} query={ops} meta="Each waiting stage and what would clear it">
           <DataTable columns={bottleneckColumns} data={bottlenecks} getRowId={(r) => r.stage} hideToolbar height="auto" />
