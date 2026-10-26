@@ -5,7 +5,7 @@ import * as settingsApi from "@/lib/api/settings";
 import * as findingsApi from "@/lib/api/findings";
 import type { TenantSettings } from "@/types/api";
 import type { FindingsAggregate } from "@/lib/api/findings";
-import ScoringPage from "../page";
+import ScoringPage, { weightPreview, withFeatureDraft, withSeverityDraft } from "../page";
 
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
@@ -37,7 +37,10 @@ describe("rules scoring page", () => {
     vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue(AGGREGATE);
     renderWithQuery(<ScoringPage />);
     expect(await screen.findByText("Dimension weights", undefined, { timeout: 5000 })).toBeInTheDocument();
-    expect(await screen.findByText("88.5", undefined, { timeout: 5000 })).toBeInTheDocument();
+    // the saved weights preview as the score now, unchanged: no phantom delta on first load
+    // both numerals count up from 0, so wait until both have settled
+    await waitFor(() => expect(screen.getAllByText("88.5")).toHaveLength(2), { timeout: 5000 });
+    expect(screen.getByText("No change")).toBeInTheDocument();
     // Two queries then a form: under full-suite load this takes longer than the 5 s default.
   }, 15_000);
 
@@ -79,9 +82,44 @@ describe("rules scoring page", () => {
     expect(screen.getByLabelText("Low finding cost")).toHaveValue(0);
     fireEvent.change(critical, { target: { value: "500" } });
     fireEvent.click(screen.getByRole("button", { name: "Save cost model" }));
+    // the API stores cost specs, never bare numbers
     await waitFor(() => expect(save).toHaveBeenCalledWith({
-      currency: "ZAR", severity: { critical: 500, high: 0, medium: 0, low: 0 }, modules: {}, rules: {}, features: {},
+      currency: "ZAR", severity: { critical: { per_record: 500 }, high: { per_record: 0 }, medium: { per_record: 0 }, low: { per_record: 0 } },
+      modules: {}, rules: {}, features: {},
     }));
+  });
+
+  it("gives an SAP feature a value per blocked record and saves it with the cost model", async () => {
+    vi.spyOn(settingsApi, "getSettings").mockResolvedValue(SETTINGS);
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue(AGGREGATE);
+    vi.spyOn(settingsApi, "getCostModel").mockResolvedValue({
+      currency: "ZAR", severity: { critical: { per_record: 500 } }, modules: {}, rules: {}, features: { MIGO: 150 },
+    });
+    vi.spyOn(settingsApi, "getCostModelFeatures").mockResolvedValue([{ feature: "MIGO", l1: "procure_to_pay" }, { feature: "VA01", l1: "order_to_cash" }]);
+    const save = vi.spyOn(settingsApi, "updateCostModel").mockResolvedValue();
+    renderWithQuery(<ScoringPage />);
+    const migo = await screen.findByLabelText("MIGO value per record");
+    expect(migo).toHaveValue(150);
+    fireEvent.change(migo, { target: { value: "200" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save cost model" }));
+    await waitFor(() => expect(save).toHaveBeenCalledWith({
+      currency: "ZAR", severity: { critical: { per_record: 500 } }, modules: {}, rules: {}, features: { MIGO: 200 },
+    }));
+  });
+
+  it("previews reweighted scores without a cap and compares like with like", () => {
+    const scores = { completeness: 90, accuracy: 60 };
+    const saved = { completeness: 0.5, accuracy: 0.5, consistency: 0, timeliness: 0, uniqueness: 0, validity: 0 };
+    expect(weightPreview(scores, saved, saved, 70)).toEqual({ value: 70, delta: 0, hint: "No change" });
+    const next = { ...saved, completeness: 0.75, accuracy: 0.25 };
+    // 82.5 against 75 before caps, even though the score now (70) is capped
+    expect(weightPreview(scores, saved, next, 70)).toEqual({ value: 82.5, delta: 7.5, hint: "Up 7.5 points before caps" });
+    expect(weightPreview(scores, saved, next, null).hint).toBe("Needs a scored run");
+  });
+
+  it("lays drafts over the stored cost specs and feature values", () => {
+    expect(withSeverityDraft({ high: { per_record: 1, factor: 2 }, low: { per_record: 3 } }, { high: 5 })).toEqual({ high: { per_record: 5, factor: 2 }, low: { per_record: 3 } });
+    expect(withFeatureDraft({ MIGO: 1, VA01: 2 }, { MIGO: null, ME21N: 4 })).toEqual({ VA01: 2, ME21N: 4 });
   });
 
   it("shows a retryable error when settings fail to load", async () => {

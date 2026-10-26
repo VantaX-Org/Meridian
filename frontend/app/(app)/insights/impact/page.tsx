@@ -205,8 +205,8 @@ function ImpactPanel({
       return (
         <EmptyState
           title="No feature is priced yet"
-          detail="Value at risk multiplies blocked records by a value per record. Give each SAP feature a value under Admin, Settings."
-          action={<Button render={<Link href="/admin/settings">Open settings</Link>} />}
+          detail="Value at risk multiplies blocked records by a value per record. Give each SAP feature a value under Rules, Scoring and alerts, in the cost model."
+          action={<Button render={<Link href="/rules/scoring#feature-values">Set feature values</Link>} />}
         />
       );
     }
@@ -305,7 +305,7 @@ export default function ImpactPage() {
         changed: { sentence: changed, href: previous && run ? `/runs/${run}/vs/${previous.id}` : undefined },
         why: { sentence: "Value at risk is what the blocked records are worth: their count times the value of each" },
         next: unpriced
-          ? { sentence: "Give each SAP feature a value and the defects get a price", action: { label: "Open settings", href: "/admin/settings" } }
+          ? { sentence: "Give each SAP feature a value and the defects get a price", action: { label: "Set feature values", href: "/rules/scoring#feature-values" } }
           : top
           ? top.causing_rules[0]
             ? { sentence: `Fix the rule behind ${featureLabel(top.feature)}`, action: { label: "Open its records", href: ruleRecordsHref(top.causing_rules[0], run) } }

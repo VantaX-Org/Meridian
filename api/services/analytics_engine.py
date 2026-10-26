@@ -223,36 +223,43 @@ class PredictiveAnalytics:
         }
 
     def generate_early_warnings(
-        self, forecasts: list[dict], thresholds: dict | None = None
+        self, forecasts: list[dict], thresholds: dict | None = None, default_threshold: float = 90
     ) -> list[dict]:
-        """Compare current and forecast scores against per-module thresholds."""
-        default_threshold = 90
+        """Compare current and forecast scores against per-module thresholds.
+
+        ``thresholds`` maps a module to its score floor; a module without one is held to
+        ``default_threshold`` (the route passes the tenant's warning band). Every forecast gets a
+        row, green included, with structured fields (``threshold``, ``reason``) so a client can word
+        the message itself; ``message`` is a plain fallback that never embeds the module id."""
         warnings: list[dict] = []
 
         for fc in forecasts:
             module_id = fc["module_id"]
-            threshold = (thresholds or {}).get(module_id, default_threshold)
+            threshold = float((thresholds or {}).get(module_id, default_threshold))
             current = fc["current_score"]
             f7 = fc["forecast_7d"]
-            f30 = fc["forecast_30d"]
+            f30 = fc.get("forecast_30d")
+            shown = int(threshold) if threshold == int(threshold) else threshold
 
             if current < threshold or (f7 is not None and f7 < threshold):
-                signal = "red"
-                message = f"{module_id} DQS is below threshold ({threshold})"
-                action = "Immediate remediation required — review critical findings"
+                signal, reason = "red", "below_threshold"
+                message = f"Score is below its threshold of {shown}"
+                action = "Remediate now: review the critical findings"
             elif f30 is not None and f30 < threshold:
-                signal = "amber"
-                message = f"{module_id} DQS projected to drop below {threshold} within 30 days"
-                action = "Schedule data quality review within the next sprint"
+                signal, reason = "amber", "projected_below_threshold"
+                message = f"Score is projected to drop below {shown} within 30 days"
+                action = "Schedule a data quality review within the next sprint"
             else:
-                signal = "green"
-                message = f"{module_id} DQS is healthy and stable"
-                action = "Continue monitoring — no action needed"
+                signal, reason = "green", "healthy"
+                message = "Score is healthy and stable"
+                action = "Keep monitoring; no action needed"
 
             warnings.append(
                 {
                     "module_id": module_id,
                     "signal": signal,
+                    "reason": reason,
+                    "threshold": threshold,
                     "message": message,
                     "recommended_action": action,
                 }

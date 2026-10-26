@@ -11,7 +11,7 @@ import { downloadAuthenticated } from "@/lib/api/download";
 import { getAuditEntries } from "@/lib/api/audit";
 import { getHeatmap, getOverview, l1Label } from "@/lib/api/insights";
 import { getRecordReportUrl, getReportCatalogue, type CatalogueEntry } from "@/lib/api/reports";
-import { formatDate, formatModuleName, plural, runOptionLabels } from "@/lib/format";
+import { formatDate, formatModuleName, labelOf, plural, runOptionLabels } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { usePermissions } from "@/lib/permissions";
@@ -216,7 +216,7 @@ export default function ReportsPage() {
               <ul className="flex flex-col gap-1 m-text-body">
                 {recent.data?.entries.map((e) => {
                   const kind = (e.after_json as { kind?: string } | null)?.kind ?? "report";
-                  return <li key={e.id}>{`${formatDate(e.created_at, "datetime")}: ${kind} by ${e.actor_email ?? "unknown"}`}</li>;
+                  return <li key={e.id}>{`${formatDate(e.created_at, "datetime")}: ${REPORT_NAME[kind] ?? labelOf(kind)} by ${e.actor_email ?? "unknown"}`}</li>;
                 })}
               </ul>
             )}

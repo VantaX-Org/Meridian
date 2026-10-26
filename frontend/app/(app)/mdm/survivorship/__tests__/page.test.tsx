@@ -77,6 +77,21 @@ describe("survivorship rules page", () => {
     ]);
   });
 
+  it("will not save a trusted system rule left without a system", async () => {
+    perms = new Set(["mdm.write"]);
+    vi.spyOn(api, "getSurvivorshipRules").mockResolvedValue({ rules: [NAME], total: 1 });
+    renderWithQuery(<SurvivorshipPage />);
+    const user = userEvent.setup();
+    await screen.findByRole("group", { name: "Trusted systems for NAME_ORG1" });
+    await user.click(screen.getByRole("button", { name: "Remove ECC from NAME_ORG1" }));
+    expect(await screen.findByText("Pick at least one system")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+    await user.click(await screen.findByRole("combobox", { name: "Add a trusted system for NAME_ORG1" }));
+    await user.click(await screen.findByRole("option", { name: "S4H" }));
+    expect(screen.queryByText("Pick at least one system")).toBeNull();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
+  });
+
   it("shows an error toast when the save fails", async () => {
     perms = new Set(["mdm.write"]);
     vi.spyOn(api, "getSurvivorshipRules").mockResolvedValue({ rules: [NAME], total: 1 });

@@ -121,14 +121,16 @@ describe("ImpactPage", () => {
     expect(screen.getAllByText(/ZAR[\u00a0 ]?6[,. \u00a0]300/).length).toBeGreaterThan(0);
   });
 
-  it("points at Admin, Settings when no feature is priced", async () => {
+  it("points at the feature values on Rules, Scoring and alerts when no feature is priced", async () => {
     vi.spyOn(settingsApi, "getCostModel").mockResolvedValue({ currency: "ZAR", features: {} } as never);
     mockEmptyProvenCost();
     vi.spyOn(insightsApi, "getImpact").mockResolvedValue({ version_id: "v1", rows: [] });
     renderWithQuery(<ImpactPage />);
     expect(await screen.findByText("No feature is priced yet")).toBeInTheDocument();
-    expect(screen.getByText(/under Admin, Settings/)).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "Open settings" })[0]).toHaveAttribute("href", "/admin/settings");
+    expect(screen.getByText(/under Rules, Scoring and alerts/)).toBeInTheDocument();
+    const links = screen.getAllByRole("link", { name: "Set feature values" });
+    expect(links.length).toBeGreaterThanOrEqual(1);
+    links.forEach((l) => expect(l).toHaveAttribute("href", "/rules/scoring#feature-values"));
     expect(screen.queryByText(/no impact results yet/i)).toBeNull();
   });
 

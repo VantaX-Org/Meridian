@@ -20,6 +20,7 @@ import {
   type ImpactRow, type LineageDirection, type LineageNode,
 } from "@/lib/api/lineage";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
+import { formatModuleName } from "@/lib/format";
 import { runScopeLabel } from "@/lib/run-scope";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
@@ -68,7 +69,8 @@ function GuardsPanel({ node, versionId }: { node: string; versionId?: string }) 
   );
 }
 
-function BlastPanel({ checkId, versionId }: { checkId: string; versionId: string }) {
+/** `objectName` names a lineage object id from the traced graph; an id outside it reads through `formatModuleName`. */
+function BlastPanel({ checkId, versionId, objectName }: { checkId: string; versionId: string; objectName?: (id: string) => string | undefined }) {
   const q = useQuery({
     queryKey: queryKeys.lineageBlast(versionId, checkId),
     queryFn: () => getBlastRadius(versionId, checkId),
@@ -86,7 +88,7 @@ function BlastPanel({ checkId, versionId }: { checkId: string; versionId: string
       <h3 className="m-text-h font-semibold m-ink">What this rule reaches</h3>
       <p className="m-text-body m-ink-2">
         {d.failing_records.toLocaleString()} failing {d.failing_records === 1 ? "record" : "records"}{d.keys_truncated ? " (first ones only)" : ""} on{" "}
-        {d.object ?? "an unmapped object"} touch {d.processes_touched.length.toLocaleString()} {d.processes_touched.length === 1 ? "process" : "processes"}.
+        {d.object ? objectName?.(d.object) ?? formatModuleName(d.object) : "an unmapped object"} touch {d.processes_touched.length.toLocaleString()} {d.processes_touched.length === 1 ? "process" : "processes"}.
       </p>
       {d.targets.length ? (
         <ul className="flex flex-col gap-2">
@@ -283,7 +285,8 @@ export default function LineagePage() {
             {sel.type === "kpi" || sel.type === "feature" || sel.type === "process" || sel.type === "step"
               ? <GuardsPanel node={sel.id} versionId={latest?.id} /> : null}
             {sel.type === "check"
-              ? (latest ? <BlastPanel checkId={sel.id.slice("check:".length)} versionId={latest.id} /> : (
+              ? (latest ? <BlastPanel checkId={sel.id.slice("check:".length)} versionId={latest.id}
+                objectName={(id) => graphQ.data?.nodes.find((n) => n.id === `object:${id}`)?.label} /> : (
                 <EmptyState
                   title="Nothing to follow yet"
                   detail="Following a rule to what it reaches needs a completed analysis."

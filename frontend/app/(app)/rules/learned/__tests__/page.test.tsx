@@ -32,6 +32,18 @@ describe("learned rules page", () => {
     await waitFor(() => expect(mine).toHaveBeenCalledWith("v9"));
   });
 
+  it("shows a decided proposal's rule id in mono and a rejected one as a plain label", async () => {
+    vi.spyOn(api, "getLearnedRules").mockResolvedValue({ items: [
+      { ...RULE, status: "approved", rule_id: "LR-000001" },
+      { ...RULE, id: "p2", field: "MARC.DISMM", status: "rejected", rule_id: null },
+    ] });
+    renderWithQuery(<LearnedRulesPage />);
+    expect((await screen.findByText("LR-000001")).closest("code, .m-mono, [class*='mono']")).not.toBeNull();
+    const rejected = screen.getByText("Rejected");
+    expect(rejected.closest("code, .m-mono, [class*='mono']")).toBeNull();
+    expect(screen.queryByText("rejected")).toBeNull();
+  });
+
   it("lists a proposal and approves it", async () => {
     vi.spyOn(api, "getLearnedRules").mockResolvedValue({ items: [RULE] });
     const approve = vi.spyOn(api, "approveLearnedRule").mockResolvedValue({ id: "p1", status: "approved", rule_id: "LR-000001" });

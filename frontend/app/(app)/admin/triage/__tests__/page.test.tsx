@@ -5,7 +5,7 @@ import { renderWithQuery } from "@/__tests__/render";
 import * as triageApi from "@/lib/api/triage";
 import * as usersApi from "@/lib/api/users";
 import type { TriageTeam, AssignmentRule, SlaPolicy, TriageSettings } from "@/lib/api/triage";
-import AdminTriagePage from "../page";
+import AdminTriagePage, { matchText } from "../page";
 
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
@@ -32,6 +32,12 @@ function mockAll() {
 }
 
 describe("admin triage page", () => {
+  it("names a severity-limited rule's severities instead of matching everything", () => {
+    expect(matchText({ severity: ["critical", "high"] })).toBe("Severity: Critical, High");
+    expect(matchText({ severity: ["critical"], module: ["fi_gl"] })).toBe("Severity: Critical; Objects: FI general ledger");
+    expect(matchText({})).toBe("Matches everything");
+  });
+
   it("renders teams, rules and policies once loaded", async () => {
     mockAll();
     renderWithQuery(<AdminTriagePage />);

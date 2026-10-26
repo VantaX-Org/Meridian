@@ -85,7 +85,7 @@ function EntityLinks() {
     }
     const nodes: GraphNode[] = Array.from(stats, ([d, s]) => ({ id: d, size: s.out + s.in, label: formatModuleName(d), domain: domainOf(d) }));
     const edges: GraphEdge[] = Array.from(pairs.values()).sort((a, b) => b.n - a.n).slice(0, MAX_EDGES).map((p) => ({
-      id: `${p.from}>${p.to}>${p.type}`, source: p.from, target: p.to, label: `${p.type}, ${p.n.toLocaleString()}`,
+      id: `${p.from}>${p.to}>${p.type}`, source: p.from, target: p.to, label: `${labelOf(p.type)}, ${p.n.toLocaleString()}`,
     }));
     return { nodes, edges };
   }, [rels]);

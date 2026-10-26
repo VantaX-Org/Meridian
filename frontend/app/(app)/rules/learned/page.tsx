@@ -101,7 +101,7 @@ export default function LearnedRulesPage() {
         {can("approve") ? <RowButton onClick={() => approve.mutate(r.id)} disabled={approve.isPending}>Approve</RowButton> : null}
         {can("manage_rules") ? <RowButton onClick={() => reject.mutate(r.id)} disabled={reject.isPending}>Reject</RowButton> : null}
       </span>
-    ) : <Mono>{r.rule_id ?? r.status}</Mono>),
+    ) : r.rule_id ? <Mono>{r.rule_id}</Mono> : <Pill tone="neutral">{labelOf(r.status)}</Pill>),
   ], [approve, reject, can]);
 
   const items = q.data?.items ?? [];

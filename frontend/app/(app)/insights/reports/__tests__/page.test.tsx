@@ -27,7 +27,7 @@ const entry = (id: string, name: string, url: string | null) => ({
   id, name, format: "PDF" as const, about: `${name} about`, sections: ["Cover", "Scores"], page_estimate: 4, requires: [], url, last_built_at: null,
 });
 
-function mount() {
+function mount(kinds: string[] = ["board"]) {
   vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [
     { id: "v2", label: "Run 2", status: "complete", run_at: "2026-10-16T05:00:00Z", metadata: { modules: ["business_partner"] } },
     { id: "v1", label: "Run 1", status: "complete", run_at: "2026-10-02T05:00:00Z", metadata: { modules: ["business_partner"] } },
@@ -40,7 +40,7 @@ function mount() {
     blockers: { count: 2, previous: null, waves: 1 }, auto_fixable: { records: 0, failing_records: 0, pct: null, high_confidence: 0 },
     value_at_risk: { worst_l1: null, worst_l1_amount: 0, currency: "USD", features_blocked: 0 }, narrative: [],
   });
-  vi.spyOn(auditApi, "getAuditEntries").mockResolvedValue({ total: 1, limit: 5, offset: 0, entries: [{ id: "a1", actor_user_id: null, actor_email: "ana@example.test", action: "report.export", entity_type: "report", entity_id: "v2", method: "GET", path: "/x", status_code: 200, ip: null, user_agent: null, before_json: null, after_json: { kind: "board" }, created_at: "2026-10-12T10:00:00Z" }] });
+  vi.spyOn(auditApi, "getAuditEntries").mockResolvedValue({ total: kinds.length, limit: 5, offset: 0, entries: kinds.map((kind, i) => ({ id: `a${i + 1}`, actor_user_id: null, actor_email: "ana@example.test", action: "report.export", entity_type: "report", entity_id: "v2", method: "GET", path: "/x", status_code: 200, ip: null, user_agent: null, before_json: null, after_json: { kind }, created_at: "2026-10-12T10:00:00Z" })) });
   vi.spyOn(insightsApi, "getHeatmap").mockResolvedValue({ version_id: "v2", dimensions: [], rows: [] });
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={qc}><ReportsPage /></QueryClientProvider>);
@@ -52,14 +52,23 @@ describe("ReportsPage", () => {
   it("lists the recent export audit events", async () => {
     perm.allowed = true;
     mount();
-    expect(await screen.findByText(/board by ana@example.test/)).toBeInTheDocument();
+    expect(await screen.findByText(/Board pack by ana@example.test/)).toBeInTheDocument();
+  });
+
+  it("names each recent export by the library's report name, never its raw kind", async () => {
+    perm.allowed = true;
+    mount(["workbook", "full", "data_contract"]);
+    expect(await screen.findByText(/Comparison workbook by ana/)).toBeInTheDocument();
+    expect(screen.getByText(/Narrative report by ana/)).toBeInTheDocument();
+    expect(screen.getByText(/Data contract by ana/)).toBeInTheDocument();
+    expect(screen.queryByText(/: workbook by|: full by/)).toBeNull();
   });
 
   it.each(["audit.view", "users.admin"])("shows recent exports to a viewer with only %s and no export permission", async (only) => {
     perm.allowed = false;
     perm.only = only;
     mount();
-    expect(await screen.findByText(/board by ana@example.test/)).toBeInTheDocument();
+    expect(await screen.findByText(/Board pack by ana@example.test/)).toBeInTheDocument();
     expect(screen.queryByRole("listbox", { name: "Reports" })).toBeNull();
   });
 

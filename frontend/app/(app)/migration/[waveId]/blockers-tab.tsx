@@ -18,8 +18,11 @@ const GAP_COLUMNS: ColumnDef<MigrationGapFinding>[] = [
   { id: "detail", header: "Detail", cell: ({ row }) => row.original.detail ?? "—" },
 ];
 
-/** `runAction` is the cockpit's Run now, absent without the analyse permission. */
-export function BlockersTab({ waveId, runId, blockers, runAction }: { waveId: string; runId: string | null; blockers: WaveBlocker[]; runAction?: ReactNode }) {
+/**
+ * `runId` is the migration run (its gap list); `versionId` the analysis version it scored, which the records drill
+ * opens (null: the count is plain text). `runAction` is the cockpit's Run now, absent without the analyse permission.
+ */
+export function BlockersTab({ waveId, runId, versionId, blockers, runAction }: { waveId: string; runId: string | null; versionId: string | null; blockers: WaveBlocker[]; runAction?: ReactNode }) {
   const { can } = useRole();
   const [open, setOpen] = useState<WaveBlocker | null>(null);
   const filter = open ? { module: open.module, gap_type: open.gap_type, search: open.field ?? undefined } : {};
@@ -41,7 +44,9 @@ export function BlockersTab({ waveId, runId, blockers, runAction }: { waveId: st
     { id: "sev", header: "Severity", cell: ({ row }) => (
         <Status kind="severity" value={row.original.severity} />) },
     { id: "records", header: "Records", cell: ({ row }) => (
-        <DrillLink href={`/objects/${row.original.module}?run=${runId}&tab=records`}>{row.original.records.toLocaleString()}</DrillLink>
+        versionId
+          ? <DrillLink href={`/objects/${row.original.module}?run=${versionId}&tab=records`}>{row.original.records.toLocaleString()}</DrillLink>
+          : row.original.records.toLocaleString()
       ) },
     { id: "fix", header: "", cell: ({ row }) => can("apply") ? (
         <Button variant="secondary" disabled={fix.isPending}

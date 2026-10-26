@@ -260,7 +260,7 @@ class CostModel(BaseModel):
     rules: dict[str, dict] = {}
     # feature -> ZAR value per blocked record (api/services/insights_impact.py value_at_risk).
     # Plain floats, not cost specs: not routed through validate_spec's per_record/field shapes.
-    features: dict[str, float] = {}
+    features: dict[str, Annotated[float, Field(ge=0)]] = {}
 
 
 @router.get("/cost-model", dependencies=[Depends(require_permission("view"))])
@@ -269,6 +269,14 @@ async def get_cost_model(db: AsyncSession = Depends(get_db), tenant: TenantDep =
     own = (await db.execute(text("SELECT cost_model FROM tenants WHERE id = :tid"),
                             {"tid": str(tenant.id)})).scalar() or {}
     return {"defaults": cost.defaults(), "tenant": own, "effective": cost.effective(own)}
+
+
+@router.get("/cost-model/features", dependencies=[Depends(require_permission("view"))])
+async def get_cost_model_features() -> dict:
+    """The SAP features a value per blocked record can be set for (``features`` of the cost
+    model): every target feature of the config impact rules. Static rule metadata, no tenant data."""
+    from api.services.insights_impact import impact_features
+    return {"features": impact_features()}
 
 
 @router.put("/cost-model", dependencies=[Depends(require_permission("manage_settings"))])

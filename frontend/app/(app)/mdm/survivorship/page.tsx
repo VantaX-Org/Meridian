@@ -41,6 +41,9 @@ const draftOf = (r: SurvivorshipRule): Draft => ({ rule_type: r.rule_type, sourc
 const changed = (r: SurvivorshipRule, d: Draft | undefined) =>
   !!d && (d.rule_type !== r.rule_type || d.sources.join(",") !== (r.trusted_sources ?? []).join(","));
 
+/** A trusted-system or chain rule without a system would fall back to the newest value, so it cannot be saved. */
+export const needsSources = (d: Draft): boolean => USES_SOURCES.has(d.rule_type) && d.sources.length === 0;
+
 const SourceList = ({ sources }: { sources: string[] | null }) =>
   sources?.length ? <>{sources.map((s, i) => <span key={s}>{i ? ", " : ""}<Mono>{s}</Mono></span>)}</> : <>Any system</>;
 
@@ -59,7 +62,12 @@ function SourcesCell({ rule }: { rule: SurvivorshipRule }) {
   const { drafts, edit } = useContext(Drafts);
   const d = drafts[rule.id] ?? draftOf(rule);
   if (!USES_SOURCES.has(d.rule_type)) return <SourceList sources={sourcesOf(d.sources)} />;
-  return <TrustedSystemsPicker field={rule.field} value={d.sources} onChange={(sources) => edit(rule, { sources })} />;
+  return (
+    <div className="flex flex-col gap-1">
+      <TrustedSystemsPicker field={rule.field} value={d.sources} onChange={(sources) => edit(rule, { sources })} />
+      {drafts[rule.id] && needsSources(d) ? <p className="m-text-meta m-ink-critical">Pick at least one system</p> : null}
+    </div>
+  );
 }
 
 export default function SurvivorshipPage() {
@@ -72,6 +80,7 @@ export default function SurvivorshipPage() {
   const [confirming, setConfirming] = useState(false);
   const [adding, setAdding] = useState(false);
   const edited = rules.filter((r) => changed(r, drafts[r.id]));
+  const incomplete = edited.some((r) => needsSources(drafts[r.id] ?? draftOf(r)));
 
   const edit = useCallback((r: SurvivorshipRule, patch: Partial<Draft>) =>
     setDrafts((prev) => ({ ...prev, [r.id]: { ...(prev[r.id] ?? draftOf(r)), ...patch } })), []);
@@ -124,7 +133,7 @@ export default function SurvivorshipPage() {
                 <Button variant="secondary" render={<Link href="/mdm/golden/merge">Review match pairs</Link>} />
                 {editable ? <Button variant={rules.length ? "secondary" : "primary"} onClick={() => setAdding(true)}>New rule</Button> : null}
                 {editable && rules.length > 0 && (
-                  <Button disabled={edited.length === 0} onClick={() => setConfirming(true)}>Save changes</Button>
+                  <Button disabled={edited.length === 0 || incomplete} onClick={() => setConfirming(true)}>Save changes</Button>
                 )}
               </>
             }
@@ -164,8 +173,8 @@ function NewRuleDialog({ rules, onClose, onSaved }: { rules: SurvivorshipRule[];
   const [sources, setSources] = useState<string[]>([]);
   const name = field.trim().toUpperCase();
   const duplicate = !!domain && !!name && rules.some((r) => r.domain === domain && r.field.toUpperCase() === name);
-  const needsSources = USES_SOURCES.has(ruleType) && sources.length === 0;
-  const ready = !!domain && !!name && !duplicate && !needsSources;
+  const missingSources = needsSources({ rule_type: ruleType, sources });
+  const ready = !!domain && !!name && !duplicate && !missingSources;
   const add = useMutation({
     mutationFn: () => putSurvivorshipRules(domain, [
       ...rules.filter((r) => r.domain === domain).map((r) => ({ field: r.field, rule_type: r.rule_type, trusted_sources: r.trusted_sources, weight: r.weight, active: r.active })),
@@ -198,7 +207,7 @@ function NewRuleDialog({ rules, onClose, onSaved }: { rules: SurvivorshipRule[];
           <div className="flex flex-col gap-1.5">
             <span className="m-field-label">Trusted systems, first wins</span>
             <TrustedSystemsPicker field={name || "the new rule"} value={sources} onChange={setSources} />
-            {needsSources ? <p className="m-text-meta m-ink-3">Pick at least one system for this rule type</p> : null}
+            {missingSources ? <p className="m-text-meta m-ink-3">Pick at least one system for this rule type</p> : null}
           </div>
         ) : null}
         <p className="m-text-meta m-ink-3">Golden records pick it up when the next analysis run or merge rebuilds them.</p>

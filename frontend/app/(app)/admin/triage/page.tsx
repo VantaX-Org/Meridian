@@ -203,8 +203,10 @@ function TeamForm({ team, onClose }: { team: TriageTeam | null; onClose: () => v
 
 // ---------------------------------------------------------------- Rules
 
-function matchText(m: RuleMatch): string {
-  const parts = MATCH_FIELDS.filter(([k]) => m[k]?.length).map(([k, label]) => `${label}: ${m[k]!.join(", ")}`);
+/** A rule's match in words: every condition it narrows on, severity included; objects by name, never by id. */
+export function matchText(m: RuleMatch): string {
+  const parts = MATCH_FIELDS.filter(([k]) => m[k]?.length).map(([k, label]) => `${label}: ${m[k]!.map((v) => (k === "module" ? formatModuleName(v) : v)).join(", ")}`);
+  if (m.severity?.length) parts.unshift(`Severity: ${m.severity.map(labelOf).join(", ")}`);
   return parts.length ? parts.join("; ") : "Matches everything";
 }
 
