@@ -9,6 +9,8 @@ Triggers (all times SAST = UTC+2):
 
 Also: board pack by email to the alert channels set to weekly (Monday 07:00 SAST) or
 monthly (the 1st, 07:00 SAST) — workers/tasks/send_report_pack.py.
+Scheduled reports (report_schedules, migration 089): every 15 minutes the due schedules are
+generated, kept in the report history and delivered — workers/tasks/report_schedules.py.
 """
 
 import gzip
@@ -24,6 +26,7 @@ from sqlalchemy.orm import Session
 from workers.celery_app import celery_app
 from workers.db import get_sync_engine
 import workers.tasks.send_report_pack  # noqa: F401 — registers the board pack beat tasks
+import workers.tasks.report_schedules  # noqa: F401 — registers the scheduled report tasks
 
 logger = logging.getLogger("meridian.scheduler")
 
@@ -999,6 +1002,10 @@ celery_app.conf.beat_schedule = {
         "task": "workers.tasks.send_report_pack.send_report_pack",
         "schedule": crontab(hour=5, minute=0, day_of_month=1),  # 1st, 05:00 UTC = 07:00 SAST
         "args": ("monthly",),
+    },
+    "report-schedules-every-15min": {
+        "task": "workers.tasks.report_schedules.run_due_report_schedules",
+        "schedule": crontab(minute="1,16,31,46"),  # due slots are on the quarter hour or later; idempotent per slot
     },
     "forced-update-check-every-15min": {
         "task": "forced_update_check",

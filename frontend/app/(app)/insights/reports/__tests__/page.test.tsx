@@ -42,6 +42,9 @@ function mount(kinds: string[] = ["board"]) {
   });
   vi.spyOn(auditApi, "getAuditEntries").mockResolvedValue({ total: kinds.length, limit: 5, offset: 0, entries: kinds.map((kind, i) => ({ id: `a${i + 1}`, actor_user_id: null, actor_email: "ana@example.test", action: "report.export", entity_type: "report", entity_id: "v2", method: "GET", path: "/x", status_code: 200, ip: null, user_agent: null, before_json: null, after_json: { kind }, created_at: "2026-10-12T10:00:00Z" })) });
   vi.spyOn(insightsApi, "getHeatmap").mockResolvedValue({ version_id: "v2", dimensions: [], rows: [] });
+  vi.spyOn(reportsApi, "getReportHistory").mockResolvedValue({ total: 0, limit: 10, offset: 0, items: [] });
+  vi.spyOn(reportsApi, "getReportSchedules").mockResolvedValue([]);
+  vi.spyOn(reportsApi, "getReportScheduleOptions").mockResolvedValue({ timezone: "UTC", types: [], users: [], channels: [], systems: [], modules: [] });
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={qc}><ReportsPage /></QueryClientProvider>);
 }
@@ -122,6 +125,34 @@ describe("ReportsPage", () => {
     mount();
     expect((await screen.findAllByText(/needs the auditor or analyst role/i)).length).toBeGreaterThan(0);
     expect(screen.queryByRole("listbox")).toBeNull();
+  });
+});
+
+describe("ReportsPage history and schedules", () => {
+  it("shows the History and Schedules sections to a viewer who can export", async () => {
+    perm.allowed = true;
+    mount();
+    expect(await screen.findByText("History")).toBeInTheDocument();
+    expect(screen.getByText("Schedules")).toBeInTheDocument();
+    expect(await screen.findByText(/No report has been kept yet/)).toBeInTheDocument();
+  });
+
+  it("refreshes the history after a library download", async () => {
+    perm.allowed = true;
+    vi.spyOn(downloadApi, "downloadAuthenticated").mockResolvedValue();
+    mount();
+    await screen.findByRole("listbox", { name: "Reports" });
+    const before = vi.mocked(reportsApi.getReportHistory).mock.calls.length;
+    await userEvent.click(screen.getByRole("button", { name: "Download" }));
+    await vi.waitFor(() => expect(vi.mocked(reportsApi.getReportHistory).mock.calls.length).toBeGreaterThan(before));
+  });
+
+  it("hides History and Schedules without the export permission", async () => {
+    perm.allowed = false;
+    mount();
+    await screen.findAllByText(/needs the auditor or analyst role/i);
+    expect(screen.queryByText("Schedules")).toBeNull();
+    expect(reportsApi.getReportHistory).not.toHaveBeenCalled();
   });
 });
 

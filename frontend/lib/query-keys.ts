@@ -128,6 +128,10 @@ export const queryKeys = {
   authRoles: () => ["auth-roles"] as const,
   auditEntries: (limit: number) => ["audit-entries", limit] as const,
   reportExports: (limit: number) => ["report-exports", limit] as const,
+  /** Stored report files (report history), newest first; first element "reports" so one invalidation refreshes the library. */
+  reportHistory: (kind: string | undefined, offset: number) => ["reports", "history", kind ?? "all", offset] as const,
+  reportSchedules: () => ["reports", "schedules"] as const,
+  reportScheduleOptions: () => ["reports", "schedule-options"] as const,
   usersAssignable: () => ["users-assignable"] as const,
   fieldMappings: () => ["field-mappings"] as const,
   llmProviders: () => ["llm-providers"] as const,
