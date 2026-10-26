@@ -16,7 +16,7 @@ Actions: see PERMISSIONS below — it is the single source of truth.
 import json
 import os
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from typing import Optional
 
@@ -144,6 +144,44 @@ def current_user_label() -> str:
 
 # All valid role values accepted by the users table
 VALID_ROLES: set[str] = set(PERMISSIONS.keys()) | set(PERSONA_ROLES.keys())
+
+# Legacy keys a persona replaces (plus ai_reviewer): existing grants of them still work and display,
+# but no new grant or invite may hand one out (api/routes/roles.py insert_grant).
+LEGACY_ROLES: frozenset[str] = frozenset(set(PERMISSIONS) - set(PERSONA_ROLES) - {"analyst", "auditor", "viewer"})
+
+# users.role is derived, never set by hand: the strongest unscoped built-in grant, strongest first.
+# Grants are the only source of a user's role (recompute_users_role); custom keys never become users.role.
+ROLE_RANK: tuple[str, ...] = (
+    "platform_admin", "admin", "programme_lead", "manager", "data_steward", "steward", "sap_basis",
+    "data_owner", "approver", "process_analyst", "analyst", "ai_reviewer", "auditor", "viewer",
+)
+
+
+def persona_for(role: str) -> str:
+    """The persona key that replaces a legacy key (admin -> platform_admin, ...); any other key is itself."""
+    return next((p for p, legacy in PERSONA_ALIAS.items() if legacy == role), role)
+
+
+def strongest_role(keys: Iterable[str]) -> str:
+    """users.role for a set of unscoped grant keys: the highest built-in by ROLE_RANK, else viewer."""
+    held = set(keys)
+    return next((k for k in ROLE_RANK if k in held), "viewer")
+
+
+async def recompute_users_role(db: AsyncSession, tenant_id: uuid.UUID | str, user_id: uuid.UUID | str) -> str:
+    """Set users.role from the user's unscoped grants (strongest built-in, else viewer). Caller commits.
+
+    Run after every grant added or removed and after an invite. users.role is read from the database on
+    every request (_get_user_role), never from the token, so the new value applies at the next request."""
+    await db.execute(text(f"SET LOCAL app.tenant_id = '{uuid.UUID(str(tenant_id))}'"))
+    rows = await db.execute(
+        text("SELECT role_key FROM user_role_scopes WHERE tenant_id = :t AND user_id = :u "
+             "AND system_id IS NULL AND module IS NULL"),
+        {"t": str(tenant_id), "u": str(user_id)})
+    role = strongest_role(r[0] for r in rows.fetchall())
+    await db.execute(text("UPDATE users SET role = :r WHERE id = :u AND tenant_id = :t"),
+                     {"r": role, "u": str(user_id), "t": str(tenant_id)})
+    return role
 
 
 def has_permission(role: str, action: str) -> bool:

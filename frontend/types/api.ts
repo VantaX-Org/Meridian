@@ -562,17 +562,30 @@ export type UserRole =
   | "data_owner"
   | "platform_admin";
 
+/** One role grant as GET /users lists it, names resolved (api/routes/users.py list_users). */
+export interface UserGrant {
+  id: string;
+  role_key: string;
+  role_name: string;
+  system_id: string | null;
+  system_name: string | null;
+  module: string | null;
+}
+
 export interface User {
   id: string;
   tenant_id: string;
   clerk_user_id: string | null;
   email: string;
   name: string;
+  /** Derived by the API from the strongest unscoped grant; never set directly. */
   role: UserRole;
   permissions: Record<string, unknown> | null;
   is_active: boolean;
   last_login: string | null;
   created_at: string;
+  /** The user's grants (GET /users only). */
+  grants?: UserGrant[];
 }
 
 export interface UserListResponse {

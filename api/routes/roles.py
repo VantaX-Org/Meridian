@@ -24,16 +24,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.services.rbac import (
     _as_uuid,
-    ACTIONS, BUILTIN_NAMES, PERMISSIONS, PERSONA_ALIAS, PERSONA_ROLES, RESOURCES, VALID_ROLES,
+    ACTIONS, BUILTIN_NAMES, LEGACY_ROLES, PERSONA_ALIAS, RESOURCES, VALID_ROLES,
     EffectivePermissions, Scope, _get_user_role, actions_for, current_user_id, dev_role_override,
-    effective_actions, effective_permissions, has_permission, legacy_actions_for_pairs, permissions_for,
-    require_permission,
+    effective_actions, effective_permissions, legacy_actions_for_pairs, permissions_for,
+    recompute_users_role, require_permission,
     resource_matrix, user_grants, write_audit,
 )
 
 router = APIRouter(prefix="/api/v1", tags=["rbac"])
 
-_LEGACY = set(PERMISSIONS) - set(PERSONA_ROLES) - {"analyst", "auditor", "viewer"}
+_LEGACY = LEGACY_ROLES
+LEGACY_GRANT_DETAIL = "Legacy roles can no longer be granted. Choose a persona role or a custom role"
+LAST_ADMIN_DETAIL = "This is the last active admin. Make another user an admin before changing this one."
 _SLUG = re.compile(r"[^a-z0-9]+")
 _PLATFORM_ADMIN = {"platform_admin", PERSONA_ALIAS["platform_admin"]}
 _PLATFORM_PAIR = ("licence", "admin")  # manage_system: held only by admin / platform_admin
@@ -197,9 +199,32 @@ async def guard_user_access_change(db: AsyncSession, tenant: Tenant, request: Re
         await enforce_ceiling(db, tenant.id, at, key)
 
 
+async def forbid_last_admin_grant(db: AsyncSession, tenant_id: uuid.UUID, user_id: uuid.UUID,
+                                  grant_id: uuid.UUID, role_key: str) -> None:
+    """409 when revoking this unscoped admin/platform_admin grant leaves the tenant without an active admin.
+
+    users.role is derived from grants, so an admin is an active user holding an unscoped grant of either
+    key; the grant being revoked no longer counts. Revoking from an inactive user takes no admin away."""
+    if role_key not in _PLATFORM_ADMIN:
+        return
+    active = (await db.execute(text("SELECT is_active FROM users WHERE id = :u AND tenant_id = :t"),
+                               {"u": str(user_id), "t": str(tenant_id)})).scalar()
+    if not active:
+        return
+    left = (await db.execute(text(
+        "SELECT count(*) FROM user_role_scopes g JOIN users u ON u.id = g.user_id AND u.tenant_id = g.tenant_id "
+        "WHERE g.tenant_id = :t AND g.id <> :g AND g.system_id IS NULL AND g.module IS NULL "
+        "AND g.role_key = ANY(:keys) AND u.is_active"),
+        {"t": str(tenant_id), "g": str(grant_id), "keys": sorted(_PLATFORM_ADMIN)})).scalar()
+    if not left:
+        raise HTTPException(status_code=409, detail=LAST_ADMIN_DETAIL)
+
+
 async def insert_grant(db: AsyncSession, tenant: Tenant, request: Request, user_id: str, role_key: str,
                        system_id: Optional[uuid.UUID], module: Optional[str]) -> GrantOut:
-    """Validate, guard and insert one grant (idempotent); caller commits."""
+    """Validate, guard and insert one grant (idempotent), then re-derive users.role; caller commits."""
+    if role_key in _LEGACY:
+        raise HTTPException(status_code=422, detail=LEGACY_GRANT_DETAIL)
     if role_key not in VALID_ROLES and not await _custom_role(db, tenant.id, role_key):
         raise HTTPException(status_code=400, detail=f"Invalid role: {role_key}")
     if not (await db.execute(text("SELECT 1 FROM users WHERE id = :u AND tenant_id = :t"),
@@ -224,6 +249,7 @@ async def insert_grant(db: AsyncSession, tenant: Tenant, request: Request, user_
             text("INSERT INTO user_role_scopes (tenant_id, user_id, role_key, system_id, module, granted_by) "
                  "VALUES (:t, :u, :k, CAST(:s AS uuid), :m, :g) RETURNING id"), {**params, "g": caller.user_id})
         gid = ins.scalar_one()
+    await recompute_users_role(db, tenant.id, user_id)
     return GrantOut(id=str(gid), user_id=user_id, role_key=role_key, system_id=params["s"], module=module)
 
 
@@ -401,16 +427,16 @@ async def delete_grant(user_id: uuid.UUID, grant_id: uuid.UUID, request: Request
         {"g": str(grant_id), "u": str(user_id), "t": str(tenant.id)})).fetchone()
     if not found:
         raise HTTPException(status_code=404, detail="Grant not found")
-    key, system_id, module, users_role = found
+    key, system_id, module, _users_role = found
     caller = await resolve_caller(db, tenant, request, Scope(system_id, module))
     forbid_self(caller, str(user_id))
-    if system_id is None and module is None and key == users_role:
-        # require_permission reads users.role first, so deleting its mirror would revoke nothing.
-        raise HTTPException(status_code=409, detail="This grant mirrors the user's role; change the "
-                                                    "user's role field (PUT /users/{id}) instead")
+    if system_id is None and module is None:
+        await forbid_last_admin_grant(db, tenant.id, user_id, grant_id, key)
     await enforce_ceiling(db, tenant.id, caller, key)
     await db.execute(text("DELETE FROM user_role_scopes WHERE id = :g AND tenant_id = :t"),
                      {"g": str(grant_id), "t": str(tenant.id)})
+    # users.role is derived from the unscoped grants: re-derive it so the revoked role stops counting.
+    await recompute_users_role(db, tenant.id, user_id)
     await write_audit(db, tenant.id, request, "grant.delete", "user", str(user_id),
                       {"role_key": key, "system_id": str(system_id) if system_id else None, "module": module},
                       None)

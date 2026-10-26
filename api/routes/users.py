@@ -9,11 +9,13 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.routes.roles import enforce_ceiling, forbid_self, guard_user_access_change, insert_grant, resolve_caller
-from api.services.rbac import PERSONA_ALIAS, Scope, require_permission, VALID_ROLES
+from api.routes.roles import LAST_ADMIN_DETAIL, guard_user_access_change, insert_grant
+from api.services.rbac import BUILTIN_NAMES, PERSONA_ALIAS, require_permission, strongest_role
 from workers.tasks.send_user_invitation import send_invitation_email
 
 router = APIRouter(prefix="/api/v1", tags=["users"])
+
+ROLE_VIA_GRANTS_DETAIL = "Roles are given as grants under Roles and access"
 
 
 def _row_to_dict(row) -> dict:
@@ -25,6 +27,7 @@ async def _set_rls(db: AsyncSession, tenant_id: uuid.UUID) -> None:
 
 
 class UpdateUserBody(BaseModel):
+    # Accepted only to answer 422: users.role is derived from grants (rbac.recompute_users_role).
     role: Optional[str] = None
     is_active: Optional[bool] = None
 
@@ -38,10 +41,10 @@ class InviteGrant(BaseModel):
 class InviteUserBody(BaseModel):
     email: str
     name: str = ""
+    # Shorthand for one unscoped grant of this role, used only when `grants` is empty.
     role: str = "analyst"
-    # Scoped grants. When given, `role` is ignored: users.role (the tenant-wide
-    # fallback every legacy guard reads) becomes the first unscoped grant's role,
-    # else viewer, so a scoped grant never widens into a tenant-wide one.
+    # Scoped grants. When given, `role` is ignored. users.role (the tenant-wide value every legacy guard
+    # reads) is then derived from the unscoped grants, else viewer, so a scoped grant never widens.
     grants: list[InviteGrant] = Field(default_factory=list)
 
 
@@ -53,8 +56,6 @@ _IS_ADMIN_SQL = (
     "(u.role = ANY(:admin_roles) OR EXISTS (SELECT 1 FROM user_role_scopes g WHERE g.tenant_id = u.tenant_id "
     "AND g.user_id = u.id AND g.system_id IS NULL AND g.module IS NULL AND g.role_key = ANY(:admin_roles)))"
 )
-
-LAST_ADMIN_DETAIL = "This is the last active admin. Make another user an admin before changing this one."
 
 
 async def _is_active_admin(db: AsyncSession, tenant_id: uuid.UUID, user_id: uuid.UUID) -> bool:
@@ -107,6 +108,27 @@ async def list_users(
     )
     users = [_row_to_dict(r) for r in result.fetchall()]
 
+    # Each user's grants (role names and scope names resolved) so Admin › Users lists them read-only.
+    grants = await db.execute(
+        text("""
+            SELECT g.user_id, g.id, g.role_key, r.name, g.system_id, s.name, g.module
+            FROM user_role_scopes g
+            LEFT JOIN roles r ON r.tenant_id = g.tenant_id AND r.key = g.role_key
+            LEFT JOIN sap_systems s ON s.tenant_id = g.tenant_id AND s.id = g.system_id
+            WHERE g.tenant_id = :tid
+            ORDER BY g.created_at, g.role_key
+        """),
+        {"tid": str(tenant.id)},
+    )
+    by_user: dict[str, list[dict[str, Optional[str]]]] = {}
+    for uid, gid, key, custom_name, sid, sname, module in grants.fetchall():
+        by_user.setdefault(str(uid), []).append({
+            "id": str(gid), "role_key": key, "role_name": custom_name or BUILTIN_NAMES.get(key, key),
+            "system_id": str(sid) if sid else None, "system_name": sname, "module": module,
+        })
+    for u in users:
+        u["grants"] = by_user.get(str(u["id"]), [])
+
     return {"users": users}
 
 
@@ -122,16 +144,14 @@ async def update_user(
     tenant: Tenant = Depends(get_tenant),
     _role: str = Depends(require_permission("manage_users")),
 ):
+    if body.role is not None:
+        # users.role is derived from the user's grants; it is never set directly.
+        raise HTTPException(status_code=422, detail=ROLE_VIA_GRANTS_DETAIL)
+
     await _set_rls(db, tenant.id)
 
     updates = []
     params: dict = {"uid": str(user_id), "tid": str(tenant.id)}
-
-    if body.role is not None:
-        if body.role not in VALID_ROLES:
-            raise HTTPException(status_code=400, detail=f"Invalid role: {body.role}")
-        updates.append("role = :role")
-        params["role"] = body.role
 
     if body.is_active is not None:
         updates.append("is_active = :is_active")
@@ -147,22 +167,6 @@ async def update_user(
         if body.is_active is False:
             await forbid_last_admin(db, tenant.id, user_id)
 
-    old_role = None
-    if body.role is not None:
-        old = await db.execute(text("SELECT role FROM users WHERE id = :uid AND tenant_id = :tid"),
-                               {"uid": str(user_id), "tid": str(tenant.id)})
-        old_row = old.fetchone()
-        old_role = old_row[0] if old_row else None
-        if old_role and old_role != body.role:
-            # A role change is a grant of the new role and a revocation of the old one: both must sit
-            # under the caller's own permissions, and nobody re-roles themself.
-            caller = await resolve_caller(db, tenant, request, Scope())
-            forbid_self(caller, user_id)
-            await enforce_ceiling(db, tenant.id, caller, body.role)
-            await enforce_ceiling(db, tenant.id, caller, old_role)
-            if body.role not in ADMIN_ROLES:
-                await forbid_last_admin(db, tenant.id, user_id)
-
     set_clause = ", ".join(updates)
     result = await db.execute(
         text(f"UPDATE users SET {set_clause} WHERE id = :uid AND tenant_id = :tid RETURNING id"),
@@ -170,18 +174,6 @@ async def update_user(
     )
     if not result.fetchone():
         raise HTTPException(status_code=404, detail="User not found")
-
-    if body.role is not None and old_role and old_role != body.role:
-        # The unscoped grant mirrors users.role; a stale one would keep the old (maybe higher) role alive.
-        # If the user already holds an unscoped grant of the new role, renaming would hit the unique
-        # index, so drop the old mirror instead.
-        sync = {"new": body.role, "old": old_role, "uid": str(user_id), "tid": str(tenant.id)}
-        unscoped = "tenant_id = :tid AND user_id = :uid AND system_id IS NULL AND module IS NULL"
-        has_new = (await db.execute(text(f"SELECT 1 FROM user_role_scopes WHERE {unscoped} AND role_key = :new"),
-                                    sync)).fetchone()
-        await db.execute(text(f"DELETE FROM user_role_scopes WHERE {unscoped} AND role_key = :old") if has_new
-                         else text(f"UPDATE user_role_scopes SET role_key = :new WHERE {unscoped} AND role_key = :old"),
-                         sync)
 
     await db.commit()
 
@@ -196,20 +188,22 @@ async def update_user(
 # ── POST /api/v1/users/invite ───────────────────────────────────────────────
 
 
+def invite_grants(body: InviteUserBody) -> list[InviteGrant]:
+    """The grants an invite creates: `grants`, or one unscoped grant of `role` when none are given."""
+    return list(body.grants) or [InviteGrant(role_key=body.role)]
+
+
 def invite_users_role(body: InviteUserBody) -> str:
-    """users.role for an invite.
+    """users.role for an invite: the strongest unscoped built-in grant, else viewer (rbac.strongest_role),
+    the same value recompute_users_role derives once the grants are in.
 
     users.role always counts tenant-wide (rbac.require_permission checks it before any grant), so it
-    may only mirror an *unscoped* grant. An invite whose grants are all scoped (a steward for one
+    may only follow an *unscoped* grant. An invite whose grants are all scoped (a steward for one
     system) keeps users.role at viewer: storing the scoped role there would widen it to every system.
-    The persona home follows the strongest granted role instead (frontend lib/persona.ts
-    homeRoleFrom over /me/permissions roles). users.role must also stay a built-in key (legacy
-    guards read it directly); a custom first grant is still granted, and users.role falls back to viewer.
+    users.role also stays a built-in key (legacy guards read it directly): a custom grant is still
+    granted, and users.role falls back to viewer.
     """
-    if not body.grants:
-        return body.role
-    first = next((g.role_key for g in body.grants if g.system_id is None and g.module is None), None)
-    return first if first in VALID_ROLES else "viewer"
+    return strongest_role(g.role_key for g in invite_grants(body) if g.system_id is None and g.module is None)
 
 
 @router.post("/users/invite", status_code=200)
@@ -222,12 +216,9 @@ async def invite_user(
 ):
     await _set_rls(db, tenant.id)
 
+    # Roles come only from grants: insert_grant refuses legacy keys (422) and re-derives users.role.
+    grants = invite_grants(body)
     role = invite_users_role(body)
-    if role not in VALID_ROLES:
-        raise HTTPException(status_code=400, detail=f"Invalid role: {role}")
-    grants = list(body.grants)
-    if not any(g.role_key == role and g.system_id is None and g.module is None for g in grants):
-        grants.append(InviteGrant(role_key=role))  # the unscoped grant mirroring users.role
 
     # Emails are case-insensitive by convention everywhere else in the auth
     # flow (login, forgot-password) — normalise on write so every row is

@@ -20,7 +20,7 @@ vi.mock("@/hooks/use-url-state", async () => {
   return { useUrlState: (key: string, initial = "") => useState(key === "tab" ? tab : key === "user" ? userParam : initial) };
 });
 
-const BUILTIN: rolesApi.Role = { key: "viewer", name: "Viewer", description: null, built_in: true, legacy: true, cloned_from: null, updated_at: null, users: 2 };
+const BUILTIN: rolesApi.Role = { key: "viewer", name: "Viewer", description: null, built_in: true, legacy: false, cloned_from: null, updated_at: null, users: 2 };
 const CUSTOM: rolesApi.Role = { key: "custom:ops", name: "Ops", description: null, built_in: false, legacy: false, cloned_from: "viewer", updated_at: "2026-01-01T00:00:00Z", users: 0 };
 const MATRIX = { findings: { read: true, write: false }, users: { read: false, write: false } };
 
@@ -115,7 +115,7 @@ describe("admin roles page", () => {
     fireEvent.click(await screen.findByText("Ana"));
     await waitFor(() => expect(eff).toHaveBeenCalledWith("u1", {}));
     expect(await screen.findByLabelText("findings read allowed")).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole("button", { name: /Remove viewer/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Remove Viewer, All systems" }));
     expect(rem).not.toHaveBeenCalled(); // removal is confirmed first, naming what the user loses
     fireEvent.click(await screen.findByRole("button", { name: "Remove grant" }));
     await waitFor(() => expect(rem).toHaveBeenCalledWith("u1", "g1"));

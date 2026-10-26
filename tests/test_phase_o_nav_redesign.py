@@ -193,10 +193,12 @@ def test_settings_ai_reviewer_tooltip():
 
 
 def test_settings_permissions_table_comes_from_the_api():
-    """Role capabilities table is the server's matrix (GET /auth/roles), never a local copy."""
+    """Admin › Users keeps no local copy of role capabilities and sets no role: it shows the user's grants
+    from the API (GET /users/{id}/grants) and links to Roles and access, which owns the server's matrix."""
     path = Path("frontend/app/(app)/admin/users/page.tsx")
     content = path.read_text(encoding="utf-8")
-    assert "getRoleMatrix" in content and "ai_feedback" not in content
+    assert "listGrants" in content and "ai_feedback" not in content
+    assert "ROLE_OPTIONS" not in content and "<Select" not in content
 
 
 # ── O.5 Upload page — connected systems banner ─────────────────────────────

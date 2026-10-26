@@ -1,9 +1,11 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
-import { vi, describe, it, expect } from "vitest";
+import { beforeEach, vi, describe, it, expect } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as usersApi from "@/lib/api/users";
 import * as authApi from "@/lib/api/auth";
 import * as auditApi from "@/lib/api/audit";
+import * as rolesApi from "@/lib/api/roles";
+import * as connectivityApi from "@/lib/api/connectivity";
 import type { User } from "@/types/api";
 import AdminUsersPage from "../page";
 
@@ -22,6 +24,23 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/x",
   useSearchParams: () => new URLSearchParams(),
 }));
+
+const ROLE_ROWS: rolesApi.Role[] = [
+  { key: "data_steward", name: "Data steward", description: null, built_in: true, legacy: false, cloned_from: null, updated_at: null, users: 1 },
+  { key: "steward", name: "Steward (legacy)", description: null, built_in: true, legacy: true, cloned_from: null, updated_at: null, users: 1 },
+  { key: "analyst", name: "Analyst", description: null, built_in: true, legacy: false, cloned_from: null, updated_at: null, users: 1 },
+];
+const GRANTS: rolesApi.Grant[] = [
+  { id: "g1", role_key: "data_steward", system_id: null, module: null, user_id: "u1", granted_by: null, created_at: null },
+  { id: "g2", role_key: "steward", system_id: null, module: null, user_id: "u1", granted_by: null, created_at: null },
+  { id: "g3", role_key: "analyst", system_id: "s1", module: "fi_gl", user_id: "u1", granted_by: null, created_at: null },
+];
+
+beforeEach(() => {
+  vi.spyOn(rolesApi, "listGrants").mockResolvedValue(GRANTS);
+  vi.spyOn(rolesApi, "listRoles").mockResolvedValue(ROLE_ROWS);
+  vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([{ id: "s1", name: "ECC prod" }] as Awaited<ReturnType<typeof connectivityApi.getSystems>>);
+});
 
 describe("admin users page", () => {
   it("shows a skeleton, not a refusal, while the grants are still loading", () => {
@@ -58,15 +77,39 @@ describe("admin users page", () => {
 
   it("has no role matrix of its own and deep-links a user's grants to Roles and access", async () => {
     vi.spyOn(usersApi, "getUsers").mockResolvedValue({ users: [USER] });
-    vi.spyOn(authApi, "getRoleMatrix").mockResolvedValue({ steward: ["fix"] });
     renderWithQuery(<AdminUsersPage />);
     fireEvent.click(await screen.findByText("Ana Steward"));
     expect(screen.queryByRole("tab", { name: "Roles" })).toBeNull();
     const dialog = await screen.findByRole("dialog", { name: "Ana Steward" });
-    expect(within(dialog).getByRole("link", { name: "Roles and access" })).toHaveAttribute("href", "/admin/roles?tab=users&user=u1");
+    expect(within(dialog).getByRole("link", { name: "Manage roles" })).toHaveAttribute("href", "/admin/roles?tab=users&user=u1");
   });
 
-  it("locks role, Active and Remove on your own row, with the reason", async () => {
+  it("shows the user's grants read-only with their scope, and no role select", async () => {
+    vi.spyOn(usersApi, "getUsers").mockResolvedValue({ users: [USER] });
+    renderWithQuery(<AdminUsersPage />);
+    fireEvent.click(await screen.findByText("Ana Steward"));
+    const dialog = await screen.findByRole("dialog", { name: "Ana Steward" });
+    const list = await within(dialog).findByRole("list", { name: "Roles granted" });
+    expect(await within(list).findByText("Data steward, All systems")).toBeInTheDocument();
+    expect(within(list).getByText("Steward (legacy), All systems")).toBeInTheDocument();
+    expect(await within(list).findByText("Analyst, ECC prod / FI general ledger")).toBeInTheDocument();
+    expect(within(dialog).queryByRole("combobox")).toBeNull();
+    expect(within(dialog).queryByLabelText("Role")).toBeNull();
+    expect(within(dialog).queryByRole("button", { name: /Remove Data steward/ })).toBeNull();
+  });
+
+  it("lists each user's granted roles in the table", async () => {
+    vi.spyOn(usersApi, "getUsers").mockResolvedValue({ users: [{ ...USER, grants: [
+      { id: "g1", role_key: "data_steward", role_name: "Data steward", system_id: null, system_name: null, module: null },
+      { id: "g3", role_key: "analyst", role_name: "Analyst", system_id: "s1", system_name: "ECC prod", module: "fi_gl" },
+      { id: "g4", role_key: "analyst", role_name: "Analyst", system_id: null, system_name: null, module: "hcm" },
+    ] }] });
+    renderWithQuery(<AdminUsersPage />);
+    expect(await screen.findByText("Data steward, Analyst")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Roles" })).toBeInTheDocument();
+  });
+
+  it("locks Active and Remove on your own row, with the reason", async () => {
     const ME: User = { ...USER, id: "me", name: "Me Admin", email: "me@example.com", role: "admin" };
     vi.spyOn(usersApi, "getUsers").mockResolvedValue({ users: [ME, USER] });
     vi.spyOn(authApi, "getRoleMatrix").mockResolvedValue({ steward: ["fix"] });
@@ -79,7 +122,7 @@ describe("admin users page", () => {
     expect(within(dialog).getByRole("button", { name: /Remove user/ })).toBeDisabled();
   });
 
-  it("leaves another user's role, Active and Remove editable", async () => {
+  it("leaves another user's Active and Remove editable", async () => {
     vi.spyOn(usersApi, "getUsers").mockResolvedValue({ users: [USER] });
     vi.spyOn(authApi, "getRoleMatrix").mockResolvedValue({ steward: ["fix"] });
     renderWithQuery(<AdminUsersPage />);

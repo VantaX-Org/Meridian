@@ -1,5 +1,6 @@
-"""User routes: nobody changes their own access, and the last active admin is never demoted,
-deactivated or removed.
+"""User routes: nobody changes their own access, the last active admin is never deactivated or
+removed, and a role is never set through PUT /users/{id} (roles are grants; see
+tests/test_roles_from_grants.py for revoking grants).
 
 The async DB is a fake that answers the statements update_user / delete_user make; the caller
 resolution and the permission ceiling (proven in tests/test_rbac_escalation_pg.py) are stubbed so
@@ -104,9 +105,9 @@ def _client(monkeypatch: pytest.MonkeyPatch, db: _DB) -> TestClient:
     async def ceiling(*_a: Any, **_k: Any) -> None:
         return None
 
-    for mod in (routes, roles_routes):
-        monkeypatch.setattr(mod, "resolve_caller", caller)
-        monkeypatch.setattr(mod, "enforce_ceiling", ceiling)
+    # The self and ceiling guards live in roles (guard_user_access_change); users calls them there.
+    monkeypatch.setattr(roles_routes, "resolve_caller", caller)
+    monkeypatch.setattr(roles_routes, "enforce_ceiling", ceiling)
     app = FastAPI()
     app.include_router(routes.router)
 
@@ -126,12 +127,14 @@ def _users(**extra: dict[str, Any]) -> dict[str, dict[str, Any]]:
 
 # ── yourself ─────────────────────────────────────────────────────────────────
 
-def test_cannot_change_own_role(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("own", [True, False])
+def test_put_role_is_refused(monkeypatch: pytest.MonkeyPatch, own: bool) -> None:
     other = str(uuid.uuid4())
-    db = _DB(_users(**{other: {"role": "admin", "active": True}}))
-    r = _client(monkeypatch, db).put(f"/api/v1/users/{ME}", json={"role": "viewer"})
-    assert r.status_code == 403 and r.json()["detail"] == "You cannot change your own access"
-    assert db.users[ME]["role"] == "admin" and not db.writes
+    db = _DB(_users(**{other: {"role": "viewer", "active": True}}))
+    target = ME if own else other
+    r = _client(monkeypatch, db).put(f"/api/v1/users/{target}", json={"role": "platform_admin"})
+    assert r.status_code == 422 and r.json()["detail"] == routes.ROLE_VIA_GRANTS_DETAIL
+    assert db.users[target]["role"] == ("admin" if own else "viewer") and not db.writes
 
 
 def test_cannot_deactivate_yourself(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -160,21 +163,6 @@ def _last_admin_db(target_role: str = "admin", admin_grant: bool = False) -> tup
     return db, target
 
 
-@pytest.mark.parametrize("role", ["admin", "platform_admin"])
-def test_cannot_demote_the_last_active_admin(monkeypatch: pytest.MonkeyPatch, role: str) -> None:
-    db, target = _last_admin_db(role)
-    r = _client(monkeypatch, db).put(f"/api/v1/users/{target}", json={"role": "analyst"})
-    assert r.status_code == 409 and r.json()["detail"] == routes.LAST_ADMIN_DETAIL
-    assert db.users[target]["role"] == role and not db.writes
-
-
-def test_admin_to_admin_alias_is_not_a_demotion(monkeypatch: pytest.MonkeyPatch) -> None:
-    db, target = _last_admin_db("admin")
-    r = _client(monkeypatch, db).put(f"/api/v1/users/{target}", json={"role": "platform_admin"})
-    assert r.status_code == 200, r.text
-    assert db.users[target]["role"] == "platform_admin"
-
-
 def test_cannot_deactivate_the_last_active_admin(monkeypatch: pytest.MonkeyPatch) -> None:
     db, target = _last_admin_db()
     r = _client(monkeypatch, db).put(f"/api/v1/users/{target}", json={"is_active": False})
@@ -199,8 +187,8 @@ def test_another_active_admin_lets_the_change_through(monkeypatch: pytest.Monkey
     db, target = _last_admin_db()
     db.users[str(uuid.uuid4())] = {"role": "analyst", "active": True, "admin_grant": True}
     c = _client(monkeypatch, db)
-    assert c.put(f"/api/v1/users/{target}", json={"role": "analyst"}).status_code == 200
-    assert db.users[target]["role"] == "analyst"
+    assert c.put(f"/api/v1/users/{target}", json={"is_active": False}).status_code == 200
+    assert db.users[target]["active"] is False
 
 
 def test_non_admins_are_not_held_by_the_last_admin_rule(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -8,6 +8,7 @@ import { Button, Card, ConfirmDialog, DataTable, Dialog, Drawer, EmptyState, Err
 import { EffectivePermissionsView } from "@/components/admin/effective-permissions";
 import { GrantsPicker, scopeLabel, type GrantRowView } from "@/components/admin/grants-picker";
 import { accessLabel } from "@/lib/rbac";
+import { grantableRoles } from "@/lib/roles";
 import { InviteForm } from "@/components/admin/invite-form";
 import { matrixDiff, matrixToPairs, RoleMatrix } from "@/components/admin/role-matrix";
 import { useRole } from "@/hooks/use-role";
@@ -348,7 +349,7 @@ function RequestsTab({ roles }: { roles: Role[] }) {
       <Dialog open={!!granting} onOpenChange={(o) => { if (!o) setGranting(null); }} title="Grant access">
         <div className="flex flex-col gap-3">
           {granting ? <p className="m-text-body">{who(granting.user_id)}, {accessLabel(granting.resource, granting.action).toLowerCase()}, scope: {where(granting) === "all" ? "all systems" : where(granting)}. The grant is created at this scope</p> : null}
-          <Field label="Role"><Select options={roles.map((r) => ({ value: r.key, label: r.name }))} value={role} onValueChange={setRole} placeholder="Choose a role" /></Field>
+          <Field label="Role"><Select options={grantableRoles(roles).map((r) => ({ value: r.key, label: r.name }))} value={role} onValueChange={setRole} placeholder="Choose a role" /></Field>
           <div className="flex gap-2">
             <Button disabled={!role || decide.isPending} onClick={() => granting && decide.mutate({ id: granting.id, body: { decision: "granted", role_key: role } })}>Grant access</Button>
             <Button variant="secondary" onClick={() => setGranting(null)}>Close</Button>
