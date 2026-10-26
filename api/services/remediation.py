@@ -266,7 +266,14 @@ def reconcile(session, tenant_id: str, version_id: str, scope: str) -> int:
 
     Call right after ``record_issues.track`` in the same transaction: it reads
     ``tmp_present`` (records evaluated in this run). Only runs after the export count.
+
+    ``track`` now builds tmp_present per batch, ON COMMIT DROP, so by the time this runs the table is
+    gone and the query failed with 'relation "tmp_present" does not exist' on every newest run (which
+    also skipped the baseline monitor after it). Without the present set an item can still be proved
+    still failing; one that no longer fails stays unreconciled rather than being assumed fixed.
     """
+    session.execute(text("CREATE TEMP TABLE IF NOT EXISTS tmp_present (grain text, record_key text) "
+                         "ON COMMIT DROP"))
     return session.execute(text("""
         WITH ran AS (
             SELECT check_id FROM findings
