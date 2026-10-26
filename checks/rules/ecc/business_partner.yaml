@@ -624,9 +624,9 @@ rules:
   sap_impact: BP cannot be maintained; CVI sync to vendor/customer fails; all downstream AP/AR process blocked for the BP.
   fix_map:
     __blank__: Assign BU_GROUP at BP creation. Mandatory for all Business Partner records.
-    __other__: Business partner group '{invalid_value}' not in TB003. Reassign via BP (transaction) or configure in SPRO >
+    __other__: Business partner group '{invalid_value}' not in TB001. Reassign via BP (transaction) or configure in SPRO >
       Cross-Application Components > SAP Business Partner > Business Partner > Basic Settings > Business Partner Groupings.
-  record_fix_template: 'Business Partner {BUT000.PARTNER}: BP group ''{actual_value}'' is not in TB003.'
+  record_fix_template: 'Business Partner {BUT000.PARTNER}: BP group ''{actual_value}'' is not in TB001.'
 
 - id: BP043
   field: BUT000.NAME_ORG1
