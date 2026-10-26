@@ -187,8 +187,8 @@ export function PairReview({ pairId, onDone, onSkip }: { pairId: string; onDone:
         </h2>
         <p className="m-text-meta m-ink-3">
           {formatModuleName(d.domain)}
-          {d.record_a.record_id ? <>, <Link className="m-ink-accent-ink hover:underline" href={`/mdm/golden/${d.record_a.record_id}`}>open A</Link></> : null}
-          {d.record_b.record_id ? <>, <Link className="m-ink-accent-ink hover:underline" href={`/mdm/golden/${d.record_b.record_id}`}>open B</Link></> : null}
+          {d.record_a.record_id ? <>, <Link className="m-ink-accent-ink underline" href={`/mdm/golden/${d.record_a.record_id}`}>open A</Link></> : null}
+          {d.record_b.record_id ? <>, <Link className="m-ink-accent-ink underline" href={`/mdm/golden/${d.record_b.record_id}`}>open B</Link></> : null}
         </p>
         <WhyMatched pair={d} />
       </header>
