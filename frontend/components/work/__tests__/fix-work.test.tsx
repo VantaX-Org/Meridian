@@ -8,6 +8,8 @@ import { RecordPanel } from "../record-panel";
 import { dueLabel } from "../status";
 import * as work from "@/lib/api/work";
 import * as versions from "@/lib/api/versions";
+import * as connectivity from "@/lib/api/connectivity";
+import * as configLoad from "@/lib/api/config-load";
 
 const replace = vi.fn();
 const push = vi.fn();
@@ -135,6 +137,17 @@ describe("FixWork", () => {
     vi.mocked(work.getWorkSummary).mockRejectedValue({ response: { status: 404 } });
     renderWithQuery(<FixWork />);
     expect(await screen.findByText("No finished run yet")).toBeInTheDocument();
+  });
+
+  it("offers a steward with no system the day-one step they can take themselves: import a file", async () => {
+    perms = new Set(["apply", "approve", "upload"]);
+    vi.mocked(work.getWorkSummary).mockRejectedValue({ response: { status: 404 } });
+    vi.spyOn(connectivity, "getSystems").mockResolvedValue([]);
+    vi.spyOn(configLoad, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 0 });
+    vi.spyOn(versions, "getVersions").mockResolvedValue({ versions: [] });
+    renderWithQuery(<FixWork />);
+    expect(await screen.findByRole("link", { name: "Import a file" })).toHaveAttribute("href", "/import");
+    expect(screen.getByText(/Connecting a live system needs an administrator/)).toBeInTheDocument();
   });
 
   it("hides fixing for a viewer", async () => {

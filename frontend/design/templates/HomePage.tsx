@@ -15,6 +15,14 @@ import type { DayOneStep } from "../../hooks/use-day-one";
 /** Situation sentence for a fresh install. */
 const NO_DATA_VERDICT = "No analysis yet. Connect a system and run the first extraction.";
 
+/** The situation sentence once the journey is under way: it names the step the tenant is on, not the first one. */
+const STEP_VERDICT: Partial<Record<DayOneStep["key"], string>> = {
+  config: "No analysis yet. Load the system's configuration, then run the first extraction.",
+  extract: "No analysis yet. Run the first extraction to get a score.",
+  running: "The first analysis is running. The score appears here when it finishes.",
+  failed: "The first run did not finish. Open it to see which step failed.",
+};
+
 export interface HomeVerdict {
   /** Run-level DQS; null when no module is scored. */
   dqs: number | null;
@@ -142,7 +150,7 @@ export function HomePage({
       {state === "empty" && (
         <Card padding="lg" title="Get to your first score">
           <div className="flex flex-col gap-6">
-            <p data-testid="home-verdict" className="m-text-h" style={{ color: "var(--m-ink-2)" }}>{NO_DATA_VERDICT}</p>
+            <p data-testid="home-verdict" className="m-text-h" style={{ color: "var(--m-ink-2)" }}>{(journey?.step && STEP_VERDICT[journey.step.key]) ?? NO_DATA_VERDICT}</p>
             {journey && (
               <JourneyStepper
                 systemsConnected={journey.systemsConnected}

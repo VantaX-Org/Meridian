@@ -13,6 +13,9 @@ interface Station {
   icon: Icon;
 }
 
+/** The station each day-one step works on (connect and import keep the first station not done). */
+const STEP_STATION: Partial<Record<DayOneStep["key"], number>> = { config: 1, extract: 2, running: 3, failed: 3 };
+
 /**
  * The day-one ladder: four stations on one rail (System connected, Configuration loaded, Data extracted,
  * First score). Done stations are filled, the current one is ringed in the accent, and the step under the
@@ -40,7 +43,10 @@ export function JourneyStepper({
     { label: "Data extracted", done: extracted, icon: IconImport },
     { label: "First score", done: complete, icon: IconGauge },
   ];
-  const currentIndex = stations.findIndex((s) => !s.done);
+  // The station the day-one step is on: a run already extracting or analysing is past configuration, even when
+  // configuration was skipped, so the ring follows the step rather than the first station not done.
+  const stepStation = step ? STEP_STATION[step.key] : undefined;
+  const currentIndex = stepStation ?? stations.findIndex((s) => !s.done);
 
   return (
     <div className="flex flex-col">
@@ -70,7 +76,9 @@ export function JourneyStepper({
             <p className="m-text-body inline-flex items-center gap-2" style={{ color: "var(--m-ink-2)" }}>
               {runningJob.label} <Status kind="lifecycle" value={runningJob.status} /> {Math.round(runningJob.percent)}%
             </p>
-          ) : !step.actionable || !step.href ? null : (
+          ) : null}
+          {/* The running step keeps its link beside the progress, so the run is one click away while it works. */}
+          {!step.actionable || !step.href ? null : (
             <div className="flex flex-wrap items-center gap-2 self-start">
               <Button render={<Link href={step.href}>{step.actionLabel ?? step.label}</Link>} />
               {step.secondary ? <Button variant="secondary" render={<Link href={step.secondary.href}>{step.secondary.label}</Link>} /> : null}

@@ -49,6 +49,17 @@ const jobColumns: ColumnDef<Job>[] = [
 const link = (href: string, label: string) => <Button variant="secondary" render={<Link href={href}>{label}</Link>} />;
 const healthHref = (s: SAPSystemExtended) => `/systems/${s.id}?tab=health`;
 
+/**
+ * Where "Run extraction" goes: the Extract drawer of the active system extracted longest ago (never first), so
+ * Basis starts an extraction from home in two clicks instead of finding the system on the Systems list.
+ */
+export function extractHref(systems: readonly SAPSystemExtended[]): string {
+  const stalest = systems
+    .filter((s) => s.is_active)
+    .sort((a, b) => (a.last_sync_at ?? "").localeCompare(b.last_sync_at ?? ""))[0];
+  return stalest ? `/systems/${stalest.id}?extract=1` : "/systems";
+}
+
 export function LiveSection() {
   const router = useRouter();
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
@@ -74,7 +85,7 @@ export function LiveSection() {
         {active.length ? (
           <DataTable columns={jobColumns} data={active} getRowId={(j) => j.id} height="auto" hideToolbar tableId="home-jobs" />
         ) : (
-          <EmptyState title="Nothing is running" action={can("trigger_sync") ? link("/systems", "Run extraction") : undefined} />
+          <EmptyState title="Nothing is running" action={can("trigger_sync") ? link(extractHref(systems), "Run extraction") : undefined} />
         )}
       </Card>
     </div>
