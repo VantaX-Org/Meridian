@@ -30,7 +30,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sqlalchemy import create_engine, text
 
 DEV_TENANT_ID = "00000000-0000-0000-0000-000000000001"
-VALID_ROLES = {"admin", "manager", "viewer", "analyst", "steward", "approver", "auditor", "ai_reviewer", "process_analyst"}
+VALID_ROLES = {"admin", "manager", "viewer", "analyst", "steward", "approver", "auditor", "ai_reviewer", "process_analyst",
+               "programme_lead", "data_steward", "data_owner", "sap_basis", "platform_admin"}
+# A legacy --role becomes its persona (api/services/rbac.py persona_for): roles are grants now.
+PERSONA_FOR = {"admin": "platform_admin", "manager": "programme_lead", "steward": "data_steward",
+               "approver": "data_owner"}
 
 
 def get_engine():
@@ -108,7 +112,9 @@ def cmd_create(args):
         user_id = str(uuid.uuid4())
         pw_hash = hash_password(args.password)
         name = args.name or email.split("@")[0]
+        role = PERSONA_FOR.get(args.role, args.role)
 
+        conn.execute(text(f"SET app.tenant_id = '{DEV_TENANT_ID}'"))
         conn.execute(
             text("""
                 INSERT INTO users (id, tenant_id, email, name, role, password_hash, is_active, created_at)
@@ -119,13 +125,19 @@ def cmd_create(args):
                 "tid": DEV_TENANT_ID,
                 "email": email,
                 "name": name,
-                "role": args.role,
+                "role": role,
                 "pw": pw_hash,
                 "now": datetime.now(timezone.utc),
             },
         )
+        # Grants are the only source of a role: users.role mirrors this unscoped grant.
+        conn.execute(
+            text("INSERT INTO user_role_scopes (tenant_id, user_id, role_key) VALUES (:tid, :id, :role) "
+                 "ON CONFLICT DO NOTHING"),
+            {"tid": DEV_TENANT_ID, "id": user_id, "role": role},
+        )
         conn.commit()
-        print(f"User created: {email} (role: {args.role}, id: {user_id})")
+        print(f"User created: {email} (role: {role}, id: {user_id})")
 
 
 def cmd_list(args):

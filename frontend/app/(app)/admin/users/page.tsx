@@ -5,26 +5,34 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, Checkbox, ConfirmDialog, DataTable, Drawer, EmptyState, Field, Menu, Notice, PageHeader, Pill, Select, Skeleton, Stat, Async, IconButton, IconMore, Tooltip, toast } from "@/design";
+import { Button, Checkbox, ConfirmDialog, DataTable, Drawer, EmptyState, Menu, Notice, PageHeader, Pill, Skeleton, Stat, Async, IconButton, IconMore, Tooltip, toast } from "@/design";
 import { useAuth } from "@/context/auth-context";
-import { permissionLabel } from "@/components/admin/role-matrix";
 import { useRole } from "@/hooks/use-role";
 import { downloadCsv } from "@/lib/actions";
-import { getRoleMatrix } from "@/lib/api/auth";
+import { getSystems } from "@/lib/api/connectivity";
+import { listGrants, listRoles } from "@/lib/api/roles";
 import { apiErrorDetail, apiErrorMessage } from "@/lib/error";
 import { deleteUser, getAssignableUsers, getUsers, updateUser } from "@/lib/api/users";
 import { InviteForm } from "@/components/admin/invite-form";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import type { User, UserRole } from "@/types/api";
-import { ROLES, ROLE_META } from "@/lib/roles";
+import type { User } from "@/types/api";
+import { grantLabel, roleLabel } from "@/lib/roles";
 
 // ponytail: getAssignableUsers() is unused here, same as the legacy component it replaces.
 void getAssignableUsers;
 
-const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: ROLE_META[r].label }));
-/** Why your own row's role, Active and Remove are locked (the API refuses them too: api/routes/users.py). */
+/** Why your own row's Active and Remove are locked (the API refuses them too: api/routes/users.py). */
 const SELF_ACCESS_REASON = "You can't change your own access";
+
+/** Roles and access, opened on this user's grants. */
+const manageHref = (id: string) => `/admin/roles?tab=users&user=${encodeURIComponent(id)}`;
+
+/** The table's Roles cell: each granted role once, in grant order; users.role before any grant is listed. */
+function grantNames(u: User): string {
+  const names = Array.from(new Set((u.grants ?? []).map((g) => g.role_name || roleLabel(g.role_key))));
+  return names.length ? names.join(", ") : roleLabel(u.role);
+}
 
 export default function AdminUsersPage() {
   // Old links: ?tab=roles (the retired role matrix) and ?tab=audit point at the pages that own them now.
@@ -47,7 +55,7 @@ export default function AdminUsersPage() {
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Users"
-        meta="Who can sign in and what each person may do. Invite people, change a role, or suspend someone's access"
+        meta="Who can sign in and which roles each person holds. Invite people or suspend someone's access"
         actions={
           <>
             <Button variant="secondary" render={<Link href="/admin/roles">Roles and access</Link>} />
@@ -59,7 +67,7 @@ export default function AdminUsersPage() {
       {tabRaw === "audit" ? <EmptyState variant="inline" title="The audit log has its own page" action={<Button render={<Link href="/admin/audit">Open the audit log</Link>} />} /> : null}
       {tabRaw === "roles" ? <EmptyState variant="inline" title="Roles are managed under Roles and access" action={<Button render={<Link href="/admin/roles">Open roles and access</Link>} />} /> : null}
       <p className="m-text-body m-ink-3">
-        What each role may do, and roles granted for one system or object, are set under <Link href="/admin/roles" className="m-ink-accent underline underline-offset-2">Roles and access</Link>.
+        Roles are given and taken back as grants, for every system or for one system or object, under <Link href="/admin/roles" className="m-ink-accent underline underline-offset-2">Roles and access</Link>.
       </p>
       <UsersView invite={invite} setInvite={setInvite} />
     </div>
@@ -91,7 +99,7 @@ function UsersView({ invite, setInvite }: { invite: boolean; setInvite: (open: b
       id: "user", header: "User",
       cell: ({ row }) => <span><strong>{row.original.name}</strong><div className="m-text-meta m-ink-3">{row.original.email}</div></span>,
     },
-    { id: "role", header: "Role", cell: ({ row }) => <span>{ROLE_META[row.original.role]?.label ?? row.original.role}</span> },
+    { id: "role", header: "Roles", cell: ({ row }) => <span>{grantNames(row.original)}</span> },
     { id: "active", header: "Status", cell: ({ row }) => <Pill tone={row.original.is_active ? "go" : "neutral"}>{row.original.is_active ? "Active" : "Suspended"}</Pill> },
     { id: "login", header: "Last sign-in", cell: ({ row }) => row.original.last_login ? relativeTime(row.original.last_login) : "Never" },
     { id: "since", header: "Member since", cell: ({ row }) => relativeTime(row.original.created_at) },
@@ -124,7 +132,7 @@ function UsersView({ invite, setInvite }: { invite: boolean; setInvite: (open: b
           exportOptions={[{
             format: "csv",
             label: "Export users",
-            run: async () => downloadCsv("meridian-users.csv", users.map((u) => ({ name: u.name, email: u.email, role: u.role, active: u.is_active, last_login: u.last_login ?? "" }))),
+            run: async () => downloadCsv("meridian-users.csv", users.map((u) => ({ name: u.name, email: u.email, roles: grantNames(u), active: u.is_active, last_login: u.last_login ?? "" }))),
           }]}
         />
       ) : (
@@ -149,61 +157,60 @@ function UsersView({ invite, setInvite }: { invite: boolean; setInvite: (open: b
   );
 }
 
-/** The actions a role gains and loses when it changes, in words, for the confirmation. */
-function roleChangeSentence(matrix: Record<string, string[]> | undefined, from: UserRole, to: UserRole): string {
-  const a = new Set(matrix?.[from] ?? []);
-  const b = new Set(matrix?.[to] ?? []);
-  const gained = [...b].filter((x) => !a.has(x)).map(permissionLabel);
-  const lost = [...a].filter((x) => !b.has(x)).map(permissionLabel);
-  const words = (xs: string[]) => xs.slice(0, 6).join(", ") + (xs.length > 6 ? ` and ${xs.length - 6} more` : "");
-  if (!matrix) return "The role's permissions change at once.";
-  return `${gained.length ? `Gains: ${words(gained)}.` : "Gains nothing new."} ${lost.length ? `Loses: ${words(lost)}.` : "Loses nothing."}`;
+/** The user's grants, read-only: each role with where it applies. Changed under Roles and access. */
+function UserGrants({ userId }: { userId: string }) {
+  const grantsQ = useQuery({ queryKey: ["grants", userId], queryFn: () => listGrants(userId) });
+  const rolesQ = useQuery({ queryKey: ["roles"], queryFn: listRoles });
+  const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
+  const roleName = (key: string) => rolesQ.data?.find((r) => r.key === key)?.name;
+  const systemName = (id: string | null) => id ? systemsQ.data?.find((s) => s.id === id)?.name ?? "Unknown system" : null;
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="m-text-label m-ink-3">Roles</span>
+      <Async query={grantsQ} skeleton={32}>{grantsQ.data?.length ? (
+        <ul className="flex flex-wrap gap-2" aria-label="Roles granted">
+          {grantsQ.data.map((g) => (
+            <li key={g.id}><Pill>{grantLabel(roleName(g.role_key), g.role_key, systemName(g.system_id), g.module)}</Pill></li>
+          ))}
+        </ul>
+      ) : (
+        <p className="m-text-meta m-ink-3">No roles granted, this user can view only</p>
+      )}</Async>
+    </div>
+  );
 }
 
 function EditForm({ user, onDone, onRemove, removing }: { user: User; onDone: () => void; onRemove: () => void; removing: boolean }) {
-  const [role, setRole] = useState<UserRole>(user.role);
   const [isActive, setActive] = useState(user.is_active);
   const [confirmSave, setConfirmSave] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const { user: me } = useAuth();
   const self = !!me && me.id === user.id;
-  const matrixQ = useQuery({ queryKey: queryKeys.authRoles(), queryFn: getRoleMatrix });
   const m = useMutation({
-    mutationFn: () => updateUser(user.id, { role, is_active: isActive }),
+    mutationFn: () => updateUser(user.id, { is_active: isActive }),
     onSuccess: () => { toast.success(`${user.name} saved`); setConfirmSave(false); onDone(); },
     onError: (e) => toast.error(`Not saved. ${apiErrorMessage(e)}`),
   });
-  const roleChanged = role !== user.role;
   const suspending = user.is_active && !isActive;
   const reactivating = !user.is_active && isActive;
-  const consequential = roleChanged || suspending;
-  const body = [
-    suspending ? `${user.name} can no longer sign in; their history stays attributed to them.` : reactivating ? `${user.name} can sign in again.` : "",
-    roleChanged ? `Role ${ROLE_META[user.role].label} to ${ROLE_META[role].label}. ${roleChangeSentence(matrixQ.data, user.role, role)}` : "",
-  ].filter(Boolean).join(" ");
+  const body = suspending
+    ? `${user.name} can no longer sign in; their history stays attributed to them.`
+    : reactivating ? `${user.name} can sign in again.` : "";
 
   return (
-    <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); if (consequential) setConfirmSave(true); else m.mutate(); }}>
+    <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); if (suspending) setConfirmSave(true); else m.mutate(); }}>
       <p className="m-text-body m-ink-3">{user.email}</p>
-      {self ? <Notice tone="info">{SELF_ACCESS_REASON}. Another admin can change your role or access.</Notice> : null}
-      {self ? (
-        <div className="flex flex-col gap-1">
-          <span className="m-text-label m-ink-3">Role</span>
-          <span className="m-text-body">{ROLE_META[role]?.label ?? role}</span>
-        </div>
-      ) : (
-        <Field label="Role">
-          <Select options={ROLE_OPTIONS} value={role} onValueChange={(v) => setRole(v as UserRole)} />
-        </Field>
-      )}
-      <p className="m-text-meta m-ink-3">{ROLE_META[role].desc}</p>
-      <p className="m-text-meta m-ink-3">Scoped grants (a role at one system or module) are managed under <Link href={`/admin/roles?tab=users&user=${encodeURIComponent(user.id)}`} className="underline">Roles and access</Link>.</p>
+      {self ? <Notice tone="info">{SELF_ACCESS_REASON}. Another admin can change your roles or access.</Notice> : null}
+      <UserGrants userId={user.id} />
+      <div>
+        <Button type="button" variant="secondary" render={<Link href={manageHref(user.id)}>Manage roles</Link>} />
+      </div>
       <label className="flex items-center gap-2 m-text-body">
         <Checkbox aria-label="Active" checked={isActive} disabled={self} title={self ? SELF_ACCESS_REASON : undefined} onChange={(e) => setActive(e.target.checked)} />
         <span>Active, {isActive ? "this user can sign in" : "sign-in is blocked"}</span>
       </label>
       <div className="flex gap-2">
-        <Button type="submit" pending={m.isPending}>Save</Button>
+        <Button type="submit" pending={m.isPending} disabled={self || isActive === user.is_active}>Save</Button>
         <Button type="button" variant="secondary" onClick={onDone}>Close</Button>
       </div>
       <p className="m-text-meta m-ink-3">To stop someone signing in but keep their name on past work, untick Active and save instead of removing them.</p>
@@ -220,11 +227,11 @@ function EditForm({ user, onDone, onRemove, removing }: { user: User; onDone: ()
       <ConfirmDialog
         open={confirmSave}
         onOpenChange={setConfirmSave}
-        title={suspending ? `Suspend ${user.name}` : `Change the role of ${user.name}`}
+        title={`Suspend ${user.name}`}
         body={body}
-        confirmLabel={suspending ? "Suspend and save" : "Change role"}
+        confirmLabel="Suspend and save"
         cancelLabel="Keep as is"
-        tone={suspending ? "danger" : "default"}
+        tone="danger"
         pending={m.isPending}
         onConfirm={() => m.mutate()}
       />

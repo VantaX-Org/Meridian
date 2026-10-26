@@ -174,13 +174,23 @@ async def lifespan(app: FastAPI):
                     import uuid as _uuid
                     from api.services.local_auth import hash_password
                     default_pw = hash_password("admin")
+                    admin_id = str(_uuid.uuid4())
                     await session.execute(
                         text(
                             "INSERT INTO users (id, tenant_id, email, name, role, password_hash, is_active) "
                             "VALUES (:id, '00000000-0000-0000-0000-000000000001', "
-                            "'admin@meridian.local', 'Admin', 'admin', :pw, true)"
+                            "'admin@meridian.local', 'Admin', 'platform_admin', :pw, true)"
                         ),
-                        {"id": str(_uuid.uuid4()), "pw": default_pw},
+                        {"id": admin_id, "pw": default_pw},
+                    )
+                    # Roles are grants: users.role mirrors this unscoped grant (rbac.recompute_users_role).
+                    await session.execute(
+                        text(
+                            "INSERT INTO user_role_scopes (tenant_id, user_id, role_key) "
+                            "VALUES ('00000000-0000-0000-0000-000000000001', :id, 'platform_admin') "
+                            "ON CONFLICT DO NOTHING"
+                        ),
+                        {"id": admin_id},
                     )
                     await session.commit()
                     logger.info("Default admin user created: admin@meridian.local / admin")

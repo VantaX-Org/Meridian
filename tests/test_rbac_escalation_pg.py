@@ -101,7 +101,9 @@ def test_migration_077_backfill_idempotent_and_downgrade(owner: Engine) -> None:
         for t in ("roles", "role_permissions", "user_role_scopes", "access_requests"):
             assert c.execute(text(f"SELECT to_regclass('{t}')")).scalar() is None
     _alembic("upgrade", "head")
-    assert _unscoped(owner, t1) == want1  # upgrade again backfills the same rows
+    # Upgrade again backfills the same rows; 088 then adds each legacy role's persona grant.
+    from api.services.rbac import persona_for
+    assert _unscoped(owner, t1) == sorted(set(want1) | {(ids1[n], persona_for(r)) for n, r in roles.items()})
 
 
 # ── Routes ───────────────────────────────────────────────────────────────────
@@ -132,6 +134,14 @@ def _grant(owner: Engine, tid: str, uid: str, key: str) -> str:
     with owner.begin() as c:
         return str(c.execute(text("INSERT INTO user_role_scopes (tenant_id, user_id, role_key) "
                                   "VALUES (:t, :u, :k) RETURNING id"), {"t": tid, "u": uid, "k": key}).scalar_one())
+
+
+def _users_role(owner: Engine, tid: str, uid: str) -> str:
+    from sqlalchemy import text
+
+    with owner.connect() as c:
+        return str(c.execute(text("SELECT role FROM users WHERE id = :u AND tenant_id = :t"),
+                             {"u": uid, "t": tid}).scalar_one())
 
 
 def _audit_count(owner: Engine, tid: str) -> int:
@@ -208,9 +218,11 @@ def test_escalation_guards(owner: Engine, monkeypatch: pytest.MonkeyPatch) -> No
         # H1: no self-grant; no grant above the caller's own permissions; platform_admin only by one.
         r = await c.post(grants.format(u["mgr"]), json={"role_key": "platform_admin"}, headers=as_("mgr"))
         assert r.status_code == 403, r.text
-        for key in ("platform_admin", "admin", "data_steward"):
+        for key in ("platform_admin", "data_steward"):
             r = await c.post(grants.format(u["target"]), json={"role_key": key}, headers=as_("mgr"))
             assert r.status_code == 403, (key, r.text)
+        r = await c.post(grants.format(u["target"]), json={"role_key": "admin"}, headers=as_("padmin"))
+        assert r.status_code == 422, r.text  # legacy keys are never granted anew
         r = await c.post(grants.format(u["target"]), json={"role_key": "viewer", "module": "fi_gl"},
                          headers=as_("mgr"))
         assert r.status_code == 201, r.text
@@ -221,18 +233,18 @@ def test_escalation_guards(owner: Engine, monkeypatch: pytest.MonkeyPatch) -> No
         r = await c.post(grants.format(u["target"]), json={"role_key": "sap_basis"}, headers=as_("padmin"))
         assert r.status_code == 201, r.text
 
-        # H1 on role change: no self re-role, no promotion above the caller.
-        r = await c.put(f"/api/v1/users/{u['mgr']}", json={"role": "admin"}, headers=as_("mgr"))
-        assert r.status_code == 403
-        r = await c.put(f"/api/v1/users/{u['padmin']}", json={"role": "viewer"}, headers=as_("padmin"))
-        assert r.status_code == 403
-        r = await c.put(f"/api/v1/users/{u['target']}", json={"role": "admin"}, headers=as_("mgr"))
-        assert r.status_code == 403
+        # H1 on role change: PUT /users/{id} never sets a role (roles are grants), for anyone.
+        for who, target in (("mgr", "mgr"), ("padmin", "padmin"), ("mgr", "target"), ("padmin", "target")):
+            r = await c.put(f"/api/v1/users/{u[target]}", json={"role": "platform_admin"}, headers=as_(who))
+            assert r.status_code == 422, (who, target, r.text)
 
-        # H1 on invite: a custom user admin cannot invite an admin.
-        r = await c.post("/api/v1/users/invite", json={"email": "x@example.test", "role": "admin"},
+        # H1 on invite: a custom user admin cannot invite an admin; nobody invites a legacy key.
+        r = await c.post("/api/v1/users/invite", json={"email": "x@example.test", "role": "platform_admin"},
                          headers=as_("mgr"))
         assert r.status_code == 403, r.text
+        r = await c.post("/api/v1/users/invite", json={"email": "x@example.test", "role": "admin"},
+                         headers=as_("padmin"))
+        assert r.status_code == 422, r.text
 
         # H2: clone and matrix edit stay under the caller.
         r = await c.post("/api/v1/roles", json={"name": "Admin copy", "cloned_from": "admin"}, headers=as_("mgr"))
@@ -272,21 +284,29 @@ def test_escalation_guards(owner: Engine, monkeypatch: pytest.MonkeyPatch) -> No
                          json={"decision": "granted", "role_key": "data_owner"}, headers=as_("padmin"))
         assert r.status_code == 200, r.text
 
-        # M6: the users.role mirror cannot be deleted (it would revoke nothing); no audit row.
+        # M6: users.role follows the grants, so its old mirror can be revoked like any grant (audited).
+        assert _users_role(owner, tid, u["target"]) == "sap_basis"  # the unscoped sap_basis grant above
         listed = (await c.get(grants.format(u["target"]), headers=as_("padmin"))).json()
         mirror = next(g["id"] for g in listed
                       if g["role_key"] == "viewer" and g["system_id"] is None and g["module"] is None)
         before = _audit_count(owner, tid)
         r = await c.delete(f"/api/v1/users/{u['target']}/grants/{mirror}", headers=as_("padmin"))
-        assert r.status_code == 409, r.text
-        assert _audit_count(owner, tid) == before
-
-        # L1: role change onto a role already granted unscoped -> no unique-index 500.
-        _grant(owner, tid, u["target"], "analyst")
-        r = await c.put(f"/api/v1/users/{u['target']}", json={"role": "analyst"}, headers=as_("padmin"))
         assert r.status_code == 200, r.text
+        assert _audit_count(owner, tid) == before + 1
+        assert _users_role(owner, tid, u["target"]) == "sap_basis"
+
+        # L1: granting a role already held unscoped -> no unique-index 500, no duplicate.
+        for _ in range(2):
+            r = await c.post(grants.format(u["target"]), json={"role_key": "analyst"}, headers=as_("padmin"))
+            assert r.status_code == 201, r.text
         keys = [k for i, k in _unscoped(owner, tid) if i == u["target"]]
-        assert keys.count("analyst") == 1 and "viewer" not in keys, keys  # old mirror dropped, no dupe
+        assert keys.count("analyst") == 1 and "viewer" not in keys, keys
+        listed = (await c.get(grants.format(u["target"]), headers=as_("padmin"))).json()
+        basis = next(g["id"] for g in listed if g["role_key"] == "sap_basis")
+        r = await c.delete(f"/api/v1/users/{u['target']}/grants/{basis}", headers=as_("padmin"))
+        assert r.status_code == 200, r.text
+        # Re-derived at once: the unscoped data_owner from the decided request outranks analyst.
+        assert _users_role(owner, tid, u["target"]) == "data_owner"
 
         # L2: no uid -> 401, not a 500 on a "" uuid.
         assert (await c.get("/api/v1/me/permissions")).status_code == 401
@@ -338,11 +358,11 @@ def test_rereview_bypasses(owner: Engine, monkeypatch: pytest.MonkeyPatch) -> No
         assert r.status_code == 201, r.text
 
         # N1: admin is platform-equivalent, so only an admin or platform admin confers it.
-        r = await c.post(grants.format(u["target"]), json={"role_key": "admin"}, headers=as_("clone"))
+        r = await c.post(grants.format(u["target"]), json={"role_key": "platform_admin"}, headers=as_("clone"))
         assert r.status_code == 403, ("P1b", r.text)
-        r = await c.put(f"/api/v1/users/{u['t2']}", json={"role": "admin"}, headers=as_("clone"))
-        assert r.status_code == 403, ("P1d", r.text)
-        r = await c.post("/api/v1/users/invite", json={"email": "p7@example.test", "role": "admin"},
+        r = await c.put(f"/api/v1/users/{u['t2']}", json={"role": "platform_admin"}, headers=as_("clone"))
+        assert r.status_code == 422, ("P1d: no role through PUT", r.text)
+        r = await c.post("/api/v1/users/invite", json={"email": "p7@example.test", "role": "platform_admin"},
                          headers=as_("clone"))
         assert r.status_code == 403, ("P7", r.text)
         r = await c.post(grants.format(u["target"]), json={"role_key": copy}, headers=as_("clone"))
@@ -355,8 +375,8 @@ def test_rereview_bypasses(owner: Engine, monkeypatch: pytest.MonkeyPatch) -> No
         assert r.status_code == 201, r.text  # deviation 2: a legacy admin still may
 
         # N2: a non-canonical UUID does not dodge the self check.
-        r = await c.put(f"/api/v1/users/{u['selfy'].upper()}", json={"role": "data_steward"},
-                        headers=as_("selfy"))
+        r = await c.post(grants.format(u["selfy"].upper()), json={"role_key": "viewer", "module": "hcm"},
+                         headers=as_("selfy"))
         assert r.status_code == 403, ("P2a", r.text)
 
         # N3: deactivate, reactivate and delete are ceiling- and self-checked.

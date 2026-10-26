@@ -44,6 +44,10 @@ describe("InviteForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add grant" }));
     fireEvent.click(screen.getByRole("button", { name: "Send invitation" }));
     await waitFor(() => expect(onDone).toHaveBeenCalled());
+    // Roles only as grants: no role field on the invite.
+    expect(vi.mocked(inviteUser).mock.calls[0]?.[0]).toEqual({
+      email: "new@example.test", name: undefined, grants: [{ role_key: "data_steward", system_id: null, module: null }],
+    });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["users"] });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["access-requests"] });
   });
