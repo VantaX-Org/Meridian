@@ -2,12 +2,11 @@
 "use client";
 
 import { type ReactNode } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePermissions } from "@/lib/permissions";
 import type { ColumnDef } from "@tanstack/react-table";
-import { buildDrillHref, DataTable, DomainChip, useBreadcrumbScope, ExplorerPage, ExportMenu, Mono, ObjectMap, PageHeader, Sparkline, Stat, emptyExportOptions, type CellMeta, type ObjectMapItem, type ScoreBands, Status, Score } from "@/design";
+import { buildDrillHref, DataTable, RowAction, DomainChip, useBreadcrumbScope, ExplorerPage, ExportMenu, Mono, ObjectMap, PageHeader, Sparkline, Stat, emptyExportOptions, type CellMeta, type ObjectMapItem, type ScoreBands, Status, Score } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getAnalysisReportUrl } from "@/lib/api/reports";
@@ -171,16 +170,8 @@ const allColumns = (run: string | undefined, bands: ScoreBands | undefined, open
     header: "Action",
     enableSorting: false,
     size: 72,
-    cell: ({ row }) => (
-      <Link
-        href={openHref(row.original)}
-        className="m-text-meta font-medium m-ink-accent-ink hover:underline"
-        aria-label={`Open ${row.original.label}`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        Open
-      </Link>
-    ),
+    meta: { sticky: "end" },
+    cell: ({ row }) => <RowAction href={openHref(row.original)} label={`Open ${row.original.label}`} />,
   },
 ];
 

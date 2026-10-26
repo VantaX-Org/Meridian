@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DrillLink, Button, Delta, DataTable, ExplorerPage, ExportMenu, FilterChip, Mono, PageHeader, Pill, Score, Skeleton, Stat, Status, emptyExportOptions } from "@/design";
+import { DrillLink, Button, RowAction, Delta, DataTable, ExplorerPage, ExportMenu, FilterChip, Mono, PageHeader, Pill, Score, Skeleton, Stat, Status, emptyExportOptions } from "@/design";
 import { HEALTH_LABEL, HEALTH_VERDICT, dqsTrend, latestDqs, nextRun } from "./_health";
 import { useUrlState } from "@/hooks/use-url-state";
 import { usePermissions, useSystemScope } from "@/lib/permissions";
@@ -220,9 +220,8 @@ export default function SystemsPage() {
       header: "Action",
       enableSorting: false,
       size: 72,
-      cell: ({ row }) => (
-        <Link href={`/systems/${row.original.id}`} className="m-text-meta font-medium m-ink-accent-ink hover:underline" aria-label={`Open ${row.original.name}`} onClick={(e) => e.stopPropagation()}>Open</Link>
-      ),
+      meta: { sticky: "end" },
+      cell: ({ row }) => <RowAction href={`/systems/${row.original.id}`} label={`Open ${row.original.name}`} />,
     },
   ];
 
