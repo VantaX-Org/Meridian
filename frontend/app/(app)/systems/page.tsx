@@ -79,7 +79,12 @@ export default function SystemsPage() {
   const dqsById = new Map(
     systems.map((s, i) => {
       const vs = versionsQ[i]?.data?.versions;
-      return [s.id, vs ? { dqs: latestDqs(vs).dqs, trend: dqsTrend(vs) } : null];
+      if (!vs) return [s.id, null];
+      const { dqs, version } = latestDqs(vs);
+      // A run that read no rows has nothing to score: its rules pass vacuously, so its number would mislead.
+      const rows = version ? Object.values(version.records ?? {}) : [];
+      const readNothing = rows.length > 0 && rows.every((n) => !n);
+      return [s.id, { dqs: readNothing ? null : dqs, trend: readNothing ? null : dqsTrend(vs) }];
     }),
   );
   const modulesQ = useQueries({
@@ -114,12 +119,19 @@ export default function SystemsPage() {
   const isUnhealthy = (h: HealthStatus) => h === "degraded" || h === "unreachable" || h === "auth_failed";
   const matchesHealth = (h: HealthStatus) =>
     !healthFilter || (healthFilter === "unhealthy" ? isUnhealthy(h) : healthFilter === "down" ? isDown(h) : h === healthFilter);
-  const dqsOf = (id: string) => dqsById.get(id)?.dqs ?? null;
+  /** The score, or null when nothing has been loaded: never extracted, no object with rows, or a run that read none. */
+  const scoreOf = (s: SAPSystemExtended) => {
+    const d = dqsById.get(s.id);
+    const o = objectsById.get(s.id);
+    if (!d || d.dqs == null || (!s.last_sync_at && o != null && o.total > 0 && o.loaded === 0)) return null;
+    return d;
+  };
+  const dqsOf = (s: SAPSystemExtended) => scoreOf(s)?.dqs ?? null;
   const shown = systems
     .filter((s) => !configFilter || configById.get(s.id)?.status === configFilter)
     .filter((s) => matchesHealth(s.health_status))
     .sort((a, b) => HEALTH_RANK[a.health_status] - HEALTH_RANK[b.health_status]
-      || (dqsOf(a.id) ?? Infinity) - (dqsOf(b.id) ?? Infinity)
+      || (dqsOf(a) ?? Infinity) - (dqsOf(b) ?? Infinity)
       || a.name.localeCompare(b.name));
 
   const columns: ColumnDef<SAPSystemExtended>[] = [
@@ -162,8 +174,8 @@ export default function SystemsPage() {
       header: "Score",
       size: 190,
       cell: ({ row }) => {
-        const d = dqsById.get(row.original.id);
-        if (!d || d.dqs == null) return "—";
+        const d = scoreOf(row.original);
+        if (!d || d.dqs == null) return <span className="m-ink-3">—</span>;
         const t = d.trend;
         return (
           <span className="inline-flex items-center gap-2">
@@ -205,10 +217,11 @@ export default function SystemsPage() {
     },
     {
       id: "open",
-      header: "",
-      size: 80,
+      header: "Action",
+      enableSorting: false,
+      size: 72,
       cell: ({ row }) => (
-        <Link href={`/systems/${row.original.id}`} className="m-ink-accent-ink underline" aria-label={`Open ${row.original.name}`} onClick={(e) => e.stopPropagation()}>Open</Link>
+        <Link href={`/systems/${row.original.id}`} className="m-text-meta font-medium m-ink-accent-ink hover:underline" aria-label={`Open ${row.original.name}`} onClick={(e) => e.stopPropagation()}>Open</Link>
       ),
     },
   ];
@@ -247,7 +260,7 @@ export default function SystemsPage() {
               {canConnect ? <Button onClick={() => openConnect(true)}>Connect system</Button> : null}
             </>
           }
-          meta={`${isLoading ? "" : `${systems.length} ${systems.length === 1 ? "system" : "systems"}${attention ? `, ${attention} need attention` : ""}. `}The SAP systems Meridian reads from, worst first. Open one to test it, load its configuration or pull data`}
+          meta={`${isLoading ? "" : `${systems.length} ${systems.length === 1 ? "system" : "systems"}${attention ? `, ${attention} ${attention === 1 ? "needs" : "need"} attention` : ""}. `}The SAP systems Meridian reads from, worst first. Open one to test it, load its configuration or pull data`}
         />
       }
       filterBar={
@@ -260,7 +273,8 @@ export default function SystemsPage() {
         ) : undefined
       }
       summary={
-        isLoading || systems.length > 0 ? (
+        // One system's health is its row; the strip only earns its place when there are several to count.
+        isLoading || systems.length > 1 ? (
           <div className="m-stat-grid m-motion-stagger" data-testid="systems-health">
             <Stat label="Healthy" loading={isLoading} value={isLoading ? "" : healthy} tone={isLoading ? undefined : healthy > 0 ? "go" : undefined} href="?health=healthy" />
             <Stat label="Degraded" loading={isLoading} value={isLoading ? "" : degraded} tone={isLoading ? undefined : degraded > 0 ? "at-risk" : undefined} href="?health=degraded" />

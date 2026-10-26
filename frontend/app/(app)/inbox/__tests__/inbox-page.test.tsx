@@ -30,7 +30,7 @@ vi.mock("next/navigation", () => ({
 afterEach(() => { vi.restoreAllMocks(); nav.can = false; nav.qs = "view=mine&type=exception&keep=1"; });
 
 describe("InboxPage counts", () => {
-  it("labels the team counts as all queues, not the inbox list, and groups digits", async () => {
+  it("counts the inbox list only: no all-queues team totals beside it, no tiles repeating the When chips", async () => {
     nav.qs = "keep=1";
     nav.can = true;
     vi.spyOn(stewardship, "getQueueItems").mockImplementation(async (p) => ({
@@ -45,8 +45,30 @@ describe("InboxPage counts", () => {
     vi.spyOn(triage, "getTriageMetrics").mockResolvedValue({ unassigned: 41191, backlog_by_owner: [] } as never);
     renderWithQuery(<InboxPage />);
     expect(await screen.findByText(/^1 open, 0 overdue\. Fixes and matches waiting for a steward/)).toBeTruthy();
-    expect(await screen.findByText("Who holds the work across all queues")).toBeTruthy();
-    expect(screen.getByText("41,191 open across all queues")).toBeTruthy();
+    expect(screen.queryByText(/across all queues/)).toBeNull();
+    expect(screen.queryByText("41,191")).toBeNull();
+    // Overdue and due soon live in the When chips; no Stat tile repeats them.
+    expect(screen.queryByRole("button", { name: /^Overdue 0/ })).toBeNull();
+  });
+
+  it("names a task by its kind alone when its domain is unknown, never \"in Unknown\"", async () => {
+    nav.qs = "keep=1";
+    nav.can = true;
+    vi.spyOn(stewardship, "getQueueItems").mockImplementation(async (p) => ({
+      items: p?.status === "open" ? [{
+        id: "i1", tenant_id: "t", item_type: "exception", source_id: "s", domain: "unknown", priority: 1,
+        due_at: null, assigned_to: null, status: "open", sla_hours: null,
+        created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z", ai_recommendation: null, ai_confidence: null,
+      }] : [],
+      total: p?.status === "open" ? 1 : 0,
+    }));
+    vi.spyOn(stewardship, "getMetrics").mockResolvedValue({ items_by_type: {}, items_by_status: {}, avg_resolution_hours: null, sla_breached: 0 } as never);
+    renderWithQuery(<InboxPage />);
+    const list = await screen.findByRole("list", { name: "Tasks" });
+    expect(within(list).getByRole("button", { name: /^Exception/ })).toBeInTheDocument();
+    expect(screen.queryByText(/in Unknown/)).toBeNull();
+    // A task row carries no ranked bar: the SLA pill already says how late it is.
+    expect(list.querySelector(".m-ranked-track")).toBeNull();
   });
 });
 
@@ -117,6 +139,8 @@ describe("InboxPage workbench", () => {
     const detail = screen.getByRole("region", { name: "Selected item" });
     // The first task is open until another is picked.
     expect(openedSource(detail)).toBe("/inbox?kind=exception&focus=rec-a");
+    // Unassigned, so Claim is the primary and Approve sits beside it.
+    expect(within(detail).getByRole("button", { name: "Claim" })).toHaveClass("m-btn-primary");
     expect(within(detail).getByRole("button", { name: "Approve" })).toBeInTheDocument();
     // The source id is not an SAP record key: it is neither labelled a record nor opened as one.
     expect(within(detail).queryByText("Record")).toBeNull();
@@ -286,7 +310,6 @@ describe("InboxPage workbench", () => {
     vi.spyOn(triage, "getTriageMetrics").mockResolvedValue({ unassigned: 0, backlog_by_owner: [] } as never);
     renderWithQuery(<InboxPage />);
     expect(await screen.findByText(/^500 open, 1 overdue in the newest 1\. /)).toBeInTheDocument();
-    expect(screen.getByText("in the newest 1 loaded")).toBeInTheDocument();
   });
 
   it("takes overdue from the server's count when it sends one", async () => {
@@ -394,7 +417,11 @@ describe("InboxPage urgency and stacked filters", () => {
     mount();
     const assign = vi.spyOn(stewardship, "assignItem").mockResolvedValue({ id: "late", status: "open", assigned_to: null });
     const detail = await screen.findByRole("region", { name: "Selected item" });
-    fireEvent.click(within(detail).getByRole("button", { name: "Release" }));
+    // Owned, so Approve is the primary; Release waits in the menu.
+    expect(within(detail).getByRole("button", { name: "Approve" })).toHaveClass("m-btn-primary");
+    expect(within(detail).queryByRole("button", { name: "Release" })).toBeNull();
+    fireEvent.click(within(detail).getByRole("button", { name: "More actions" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Release" }));
     await waitFor(() => expect(assign).toHaveBeenCalledWith("late", null));
   });
 });

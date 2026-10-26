@@ -21,6 +21,11 @@ const LIVE: StewardshipStatus[] = ["open", "in_progress", "escalated"];
 const MATCH_WORK = "merge_decision";
 const SHOWN = 10;
 
+/** The four health inputs arrive as fractions 0 to 1 (api/services/mdm_scoring.py); the tiles print them as percents. */
+const asPct = (fraction: number) => `${Math.round(fraction * 100)}%`;
+/** The snapshot's backlog counts stewardship tasks of every kind, so it is named apart from the match work below. */
+const backlogText = (n: number) => `${n.toLocaleString()} stewardship ${n === 1 ? "task" : "tasks"} open`;
+
 /** Escalated first, then the earliest due. */
 const urgentFirst = (a: StewardshipQueueItem, b: StewardshipQueueItem) =>
   Number(b.status === "escalated") - Number(a.status === "escalated") ||
@@ -46,7 +51,6 @@ export default function MdmOverviewPage() {
     })),
   });
   const m = dash.data?.latest ?? null;
-  const trend = dash.data?.trend ?? [];
   const points = health.data?.data ?? [];
   // A task can change status between the three reads; keep each once.
   const items = [...new Map(queues.flatMap((q) => q.data?.items ?? []).map((t) => [t.id, t])).values()].sort(urgentFirst).slice(0, SHOWN);
@@ -64,7 +68,7 @@ export default function MdmOverviewPage() {
         <PageHeader
           title="MDM overview"
           meta={m
-            ? `${m.golden_record_count.toLocaleString()} golden records, ${m.backlog_count.toLocaleString()} waiting on a steward`
+            ? `${m.golden_record_count.toLocaleString()} golden records, ${backlogText(m.backlog_count)}`
             : "How complete and consistent your golden records are, and the match work waiting on a steward"}
           actions={<>
             <Button variant="secondary" render={<Link href="/mdm/survivorship">Survivorship rules</Link>} />
@@ -83,15 +87,15 @@ export default function MdmOverviewPage() {
               </div>
               <div className="m-hero-verdict" data-testid="hero-verdict">
                 <span className="font-semibold m-text-verdict-line m-ink [letter-spacing:var(--m-tracking-title)]">{verdict}</span>
-                <span className="m-text-body m-ink-2">{`Target ${bands.target}, ${m.backlog_count.toLocaleString()} waiting on a steward`}</span>
+                <span className="m-text-body m-ink-2">{`Target ${bands.target}, ${backlogText(m.backlog_count)}`}</span>
               </div>
             </div>
           }
           stats={[
-            { label: "Coverage", value: `${m.golden_record_coverage_pct}%`, to: "/mdm/golden", hint: "Weight 40%", spark: trend.map((t) => t.golden_record_coverage_pct) },
-            { label: "Match confidence", value: `${Math.round(m.avg_match_confidence * 100)}%`, to: "/mdm/match-rules", hint: "Weight 30%", spark: trend.map((t) => t.avg_match_confidence * 100) },
-            { label: "Steward SLA", value: `${m.steward_sla_compliance_pct}%`, to: "/inbox", hint: "Weight 20%", spark: trend.map((t) => t.steward_sla_compliance_pct) },
-            { label: "Source consistency", value: `${m.source_consistency_pct}%`, to: "/mdm/golden", hint: "Weight 10%", spark: trend.map((t) => t.source_consistency_pct) },
+            { label: "Coverage", value: asPct(m.golden_record_coverage_pct), to: "/mdm/golden", hint: "Weight 40%" },
+            { label: "Match confidence", value: asPct(m.avg_match_confidence), to: "/mdm/match-rules", hint: "Weight 30%" },
+            { label: "Steward SLA", value: asPct(m.steward_sla_compliance_pct), to: "/inbox", hint: "Weight 20%" },
+            { label: "Source consistency", value: asPct(m.source_consistency_pct), to: "/mdm/golden", hint: "Weight 10%" },
           ]}
           // `bare` sets the score band alone; the cells below are not drawn.
           situation={{ sentence: `MDM health ${m.mdm_health_score}, ${verdict}`, tone }}
@@ -110,7 +114,7 @@ export default function MdmOverviewPage() {
       errorProps={{ error: failed?.error, onRetry: () => { void dash.refetch(); void health.refetch(); } }}
       table={
         <section aria-label="Match work">
-          <LedgerHead title="Match work" meta={total > items.length ? `${items.length.toLocaleString()} of ${total.toLocaleString()} waiting` : `${total.toLocaleString()} waiting`} action={<Link href="/inbox" className="m-text-meta m-ink-accent-ink hover:underline">Open inbox</Link>} />
+          <LedgerHead title="Match work" meta={total > items.length ? `${items.length.toLocaleString()} of ${total.toLocaleString()} merge decisions waiting` : `${total.toLocaleString()} merge ${total === 1 ? "decision" : "decisions"} waiting`} action={<Link href="/inbox" className="m-text-meta m-ink-accent-ink hover:underline">Open inbox</Link>} />
           <DataTable
             columns={columns}
             data={items}

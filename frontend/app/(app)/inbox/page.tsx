@@ -14,7 +14,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { keepPreviousData, useMutation, useQueries, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Button, Card, ConfirmDialog, Drawer, ErrorState, ExplorerPage, Field, FilterChip, Notice, PageHeader, Pill, Select, Skeleton, Stat, Tabs, Textarea, toast, type PillTone, Input, Mono, Status } from "@/design";
+import { Button, Card, ConfirmDialog, Drawer, ErrorState, ExplorerPage, Field, FilterChip, IconButton, IconMore, Menu, Notice, PageHeader, Pill, Select, Skeleton, Tabs, Textarea, toast, type MenuItemDef, type PillTone, Input, Mono, Status } from "@/design";
 import { ProposalCell, proposalOf } from "@/components/fix/proposal";
 import { Fact, Workbench, type WorkbenchItem, type WorkbenchTone } from "@/components/inbox/workbench";
 import { ExceptionThread } from "@/components/inbox/exception-thread";
@@ -23,7 +23,7 @@ import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { assignItem, bulkApprove, escalateItem, getMetrics, getQueueItems, resolveItem, submitAiFeedback } from "@/lib/api/stewardship";
-import { bulkTriage, getTriageMetrics, ownerRungs } from "@/lib/api/triage";
+import { bulkTriage } from "@/lib/api/triage";
 import { getAssignableUsers, getUsers } from "@/lib/api/users";
 import { getCleaningItem, type CleaningQueueItem } from "@/lib/api/cleaning";
 import { getContracts } from "@/lib/api/contracts";
@@ -152,6 +152,13 @@ async function each(ids: string[], fn: (id: string) => Promise<unknown>): Promis
   return { ok, failed: r.length - ok };
 }
 
+/** A task's domain, or null when the queue has none to name ("unknown" or empty). */
+const knownDomain = (d: string | null | undefined) => (d && d.trim() && d.trim().toLowerCase() !== "unknown" ? d : null);
+/** "Merge decision in Material master"; just the kind when the domain is unknown, never "in Unknown". */
+const taskTitle = (t: StewardshipQueueItem) => {
+  const d = knownDomain(t.domain);
+  return d ? `${labelOf(t.item_type)} in ${formatModuleName(d)}` : labelOf(t.item_type);
+};
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
 
 type QueueCache = { items: StewardshipQueueItem[] };
@@ -235,7 +242,6 @@ export default function InboxPage() {
   });
   // Amounts print in the tenant's currency code (the cost model); without it the number stands alone.
   const costModel = useQuery({ queryKey: ["cost-model"], queryFn: getCostModel, enabled: isExceptions, retry: false, meta: { ignoreError: true }, staleTime: 300_000 });
-  const weekQ = useQuery({ queryKey: queryKeys.triageMetrics(8), queryFn: () => getTriageMetrics(8), refetchInterval: 60_000, enabled: !isExceptions });
   const metricsQ = useQuery({ queryKey: queryKeys.stewardshipMetrics(), queryFn: getMetrics, refetchInterval: 60_000, enabled: !isExceptions });
   // The user list needs `manage_users`; without it assignees show as "You" or an id prefix.
   const usersQ = useQuery({ queryKey: queryKeys.users(), queryFn: getUsers, enabled: can("manage_users") });
@@ -524,8 +530,8 @@ export default function InboxPage() {
     const sla = slaOf(t, now);
     return {
       id: t.id,
-      label: `${labelOf(t.item_type)} in ${formatModuleName(t.domain)}, raised ${formatDate(t.created_at, "datetime")}`,
-      title: <>{labelOf(t.item_type)} in {formatModuleName(t.domain)}</>,
+      label: `${taskTitle(t)}, raised ${formatDate(t.created_at, "datetime")}`,
+      title: taskTitle(t),
       meta: `${who(t.assigned_to)}, priority ${t.priority}, raised ${span(now - Date.parse(t.created_at))} ago`,
       aside: <Pill tone={SLA_TONE[sla.state]}>{slaText(sla)}</Pill>,
       tone: SLA_BAR[sla.state],
@@ -614,24 +620,18 @@ export default function InboxPage() {
           : { title: "No tasks match these filters", detail: "Show all tasks to see the rest of the queue", action: <Button variant="secondary" onClick={() => showAll(true)}>Show all</Button> }
       }
       errorProps={{ error: firstError, onRetry: refresh }}
+      // The header carries the open and overdue counts and the When chips carry overdue and due soon, so the only
+      // summary is the "Load more" note when the list is partial.
       summary={
-        <div className="flex flex-col gap-4">
-          <div className="m-stat-grid @5xl:[grid-template-columns:repeat(3,minmax(0,240px))]">
-            <Stat label="Overdue" value={overdue} hint={overdueScope ? `${overdueScope.trim()} loaded` : undefined} tone={overdue > 0 ? "no-go" : undefined} loading={isExceptions ? excMetricsQ.isLoading : isLoading} onClick={isExceptions ? undefined : () => setWhen("overdue")} />
-            {!isExceptions && <Stat label="Due in 24 hours" value={counts.soon} tone={counts.soon > 0 ? "at-risk" : undefined} loading={isLoading} onClick={() => setWhen("soon")} />}
-          </div>
-          {!isExceptions && !isLoading && partial && (
-            <Notice action={<Button variant="secondary" disabled={queueFetching} onClick={() => setPages((n) => n + 1)}>Load more</Button>}>
-              Newest {all.length.toLocaleString()} of {queueTotal.toLocaleString()} loaded
-            </Notice>
-          )}
-          {isExceptions && !excQ.isLoading && excTotal > excLoaded.length && (
-            <Notice action={<Button variant="secondary" disabled={excPageQs.some((q) => q.isFetching)} onClick={() => setExcPages((n) => n + 1)}>Load more</Button>}>
-              {excLoaded.length.toLocaleString()} of {excTotal.toLocaleString()} exceptions loaded
-            </Notice>
-          )}
-          {!isExceptions && canSeeTeam && <TeamPanel rungs={ownerRungs(weekQ.data)} aiAcceptance={metricsQ.data?.ai_acceptance_rate ?? null} />}
-        </div>
+        !isExceptions && !isLoading && partial ? (
+          <Notice action={<Button variant="secondary" disabled={queueFetching} onClick={() => setPages((n) => n + 1)}>Load more</Button>}>
+            Newest {all.length.toLocaleString()} of {queueTotal.toLocaleString()} loaded
+          </Notice>
+        ) : isExceptions && !excQ.isLoading && excTotal > excLoaded.length ? (
+          <Notice action={<Button variant="secondary" disabled={excPageQs.some((q) => q.isFetching)} onClick={() => setExcPages((n) => n + 1)}>Load more</Button>}>
+            {excLoaded.length.toLocaleString()} of {excTotal.toLocaleString()} exceptions loaded
+          </Notice>
+        ) : undefined
       }
       filterBar={
         <div className="flex flex-wrap gap-3 items-end">
@@ -1083,24 +1083,35 @@ function TaskDetail({ t, sla, now, assignee, busy, canApprove, canAssign, canRel
   people: { value: string; label: string }[];
   onApprove: () => void; onReject: () => void; onEscalate: () => void; onAssign: () => void; onRelease: () => void; onReassign: (userId: string) => void;
 }) {
+  const claimFirst = canAssign && !t.assigned_to;
+  // The rarer moves wait in the menu: taking over someone else's task, handing it back, escalating.
+  const more: MenuItemDef[] = [
+    ...(canAssign && !claimFirst ? [{ label: "Claim", onSelect: onAssign }] : []),
+    ...(canRelease ? [{ label: "Release", onSelect: onRelease }] : []),
+    ...(t.status !== "escalated" ? [{ label: "Escalate", onSelect: onEscalate }] : []),
+  ];
   return (
     <Card
-      title={`${labelOf(t.item_type)} in ${formatModuleName(t.domain)}`}
+      title={taskTitle(t)}
       meta={<Pill tone={SLA_TONE[sla.state]}>{slaText(sla)}</Pill>}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          {canApprove && <Button variant="primary" disabled={busy} onClick={onApprove}>Approve</Button>}
+          {/* The primary follows the task's state: an unowned task is claimed first, an owned one decided. */}
+          {claimFirst && <Button variant="primary" disabled={busy} onClick={onAssign}>Claim</Button>}
+          {canApprove && <Button variant={claimFirst ? "secondary" : "primary"} disabled={busy} onClick={onApprove}>Approve</Button>}
           {canApprove && <Button variant="secondary" disabled={busy} onClick={onReject}>Reject</Button>}
-          {canAssign && <Button variant="ghost" disabled={busy} onClick={onAssign}>Claim</Button>}
-          {canRelease && <Button variant="ghost" disabled={busy} onClick={onRelease}>Release</Button>}
           {people.length > 0 && <ReassignSelect people={people} disabled={busy} onPick={onReassign} />}
-          <Button variant="ghost" disabled={busy || t.status === "escalated"} onClick={onEscalate}>Escalate</Button>
+          {more.length > 0 && (
+            busy
+              ? <IconButton size="sm" aria-label="More actions" disabled><IconMore size={16} /></IconButton>
+              : <Menu trigger={<IconButton size="sm" aria-label="More actions"><IconMore size={16} /></IconButton>} items={more} />
+          )}
         </div>
       }
     >
       <div className="flex flex-col gap-4">
         <dl className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
-          <Fact label="Object">{formatModuleName(t.domain)}</Fact>
+          <Fact label="Object">{knownDomain(t.domain) ? formatModuleName(t.domain) : "—"}</Fact>
           <Fact label="Priority">{priorityLabel(t.priority)}</Fact>
           <Fact label="Status"><Pill tone={STATUS_TONE[t.status]}>{labelOf(t.status)}</Pill></Fact>
           <Fact label="Assignee">{assignee}</Fact>
@@ -1163,31 +1174,4 @@ function ExceptionDetail({ e, now, assignee, busy, canResolve, canAssign, curren
 function ReassignSelect({ people, disabled, onPick }: { people: { value: string; label: string }[]; disabled: boolean; onPick: (userId: string) => void }) {
   if (disabled) return <Button variant="ghost" size="sm" disabled>Reassign</Button>;
   return <Select label="Reassign to" value="" placeholder="Reassign to…" options={people} onValueChange={(v) => { if (v) onPick(v); }} />;
-}
-
-/**
- * Replaces the legacy OwnerLadder (not in @/design) with a plain table. Its counts come from the triage
- * metrics, which span every queue (record issues as well as stewardship tasks), so the heading says so
- * rather than reading as a breakdown of the inbox list.
- */
-function TeamPanel({ rungs, aiAcceptance }: { rungs: ReturnType<typeof ownerRungs>; aiAcceptance: number | null }) {
-  return (
-    <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 m-text-body">
-      <span className="font-medium">Who holds the work across all queues</span>
-      {rungs.length ? (
-        rungs.map((r) => (
-          <span key={r.label} className="inline-flex items-baseline gap-3">
-            <span>{r.label}</span>
-            <span className="m-ink-2">{formatInt(r.open)} open across all queues</span>
-            <span className="m-ink-2">{formatInt(r.breached)} overdue</span>
-          </span>
-        ))
-      ) : (
-        <span className="m-ink-3">Nobody holds open work</span>
-      )}
-      {aiAcceptance != null && (
-        <span className="m-ink-3">Suggestion acceptance {Math.round(aiAcceptance * 100)}%</span>
-      )}
-    </div>
-  );
 }

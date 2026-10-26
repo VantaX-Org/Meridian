@@ -205,6 +205,8 @@ export default function SystemPage() {
   const loaded = modules.filter((m) => m.enabled && m.row_count > 0).length;
   const openExtract = () => setExtractOpen(true);
   const analysable = latest ?? versions[0];
+  // Until the connection is known to work, testing it is the next step, not extracting from it.
+  const testFirst = system.health_status !== "healthy" && can("trigger_sync");
 
   return (
     <div className="flex flex-col gap-4">
@@ -215,8 +217,8 @@ export default function SystemPage() {
         actions={
         <>
           {can("manage_systems") ? <Button variant="ghost" onClick={() => setEditOpen(true)}>Edit</Button> : null}
-          {can("trigger_sync") ? <Button variant="secondary" disabled={test.isPending} onClick={() => test.mutate()}>{testLabel}</Button> : null}
-          <GatedPrimary kind="extract" allowed={can("trigger_sync")} systemId={systemId} scopeLabel={system.name} data-tour="system-extract"
+          {can("trigger_sync") ? <Button variant={testFirst ? "primary" : "secondary"} disabled={test.isPending} onClick={() => test.mutate()}>{testLabel}</Button> : null}
+          <GatedPrimary kind="extract" allowed={can("trigger_sync")} variant={testFirst ? "secondary" : "primary"} systemId={systemId} scopeLabel={system.name} data-tour="system-extract"
             onClick={openExtract}>
             Extract
           </GatedPrimary>
@@ -551,7 +553,8 @@ function ObjectSummaryPane({ row, latest, systemId, canSync, canAnalyse, onExtra
           ) : null}
           {s ? (
             <div className="flex flex-col gap-1">
-              <dt className="m-text-label m-ink-3">Records affected</dt>
+              {/* Summed over the failing rules (api/routes/objects.py), so a record failing two rules counts twice. */}
+              <dt className="m-text-label m-ink-3">Rule failures</dt>
               <dd className="m-text-body m-numeric"><DrillLink href={`/objects/${row.module}?run=${latest.id}&tab=records`}>{s.affected_records.toLocaleString()}</DrillLink></dd>
             </div>
           ) : null}

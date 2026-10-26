@@ -15,7 +15,7 @@ export interface RankedRowProps {
   meta?: ReactNode;
   /** Right of the label: the number the list is ranked by (records, open items). */
   magnitude?: ReactNode;
-  /** The bar's length as a percent of the list's largest magnitude; without it the bar runs full width. */
+  /** The bar's length as a percent of the list's largest magnitude; without it the row draws no bar. */
   share?: number;
   selected?: boolean;
   /** Selecting the row navigates (the selection lives in the URL) ... */
@@ -34,20 +34,23 @@ export interface RankedRowProps {
 
 /**
  * One row of a workbench's ranked list (400px column): the label and its magnitude, a severity bar in the
- * `--m-*-fill` hue filled to the row's share of the largest magnitude, and the meta under it. The bar marks
+ * `--m-*-fill` hue filled to the row's share of the largest magnitude (only when the list is ranked by a magnitude,
+ * so a row without `share` draws no bar), and the meta under it. The bar marks
  * severity and size; the accent marks only the selected row. Renders an `<li>`, so it sits in a `<ul>`.
  */
 export function RankedRow({ tone, label, meta, magnitude, share, selected, href, replace, onSelect, lead, aside, testId }: RankedRowProps) {
-  const pct = share === undefined ? 100 : Math.min(100, Math.max(0, Number.isFinite(share) ? share : 0));
+  const pct = share === undefined ? null : Math.min(100, Math.max(0, Number.isFinite(share) ? share : 0));
   const body = (
     <>
       <span className="flex w-full min-w-0 items-center gap-2">
         <span className="m-text-body min-w-0 flex-1 truncate font-medium m-ink">{label}</span>
         {magnitude != null ? <span className="m-numeric shrink-0 font-medium m-ink">{magnitude}</span> : null}
       </span>
-      <span aria-hidden className="m-ranked-track">
-        <span className="m-ranked-fill" data-tone={tone} style={{ width: `${pct}%` }} />
-      </span>
+      {pct !== null ? (
+        <span aria-hidden className="m-ranked-track">
+          <span className="m-ranked-fill" data-tone={tone} style={{ width: `${pct}%` }} />
+        </span>
+      ) : null}
       {meta != null ? <span className="m-text-meta m-ink-3 flex w-full min-w-0 items-center gap-2 truncate">{meta}</span> : null}
     </>
   );

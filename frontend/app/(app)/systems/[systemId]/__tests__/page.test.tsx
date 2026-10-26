@@ -179,6 +179,15 @@ describe("system detail page", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Connection tested" })).toBeInTheDocument());
   });
 
+  it("leads with Test connection, not Extract, until the connection is healthy", async () => {
+    mockHappyPath();
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([{ ...SYSTEM, health_status: "unreachable" } as SAPSystemExtended]);
+    renderWithQuery(<SystemPage />);
+    await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Test connection" })).toHaveClass("m-btn-primary");
+    expect(screen.getAllByRole("button", { name: "Extract" })[0]).toHaveClass("m-btn-secondary");
+  });
+
   it("edits an OAuth system's token URL and sends it with the save", async () => {
     mockHappyPath();
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([{

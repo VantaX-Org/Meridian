@@ -11,9 +11,9 @@ describe("RankedRow", () => {
     expect(screen.getByTestId("row")).toHaveTextContent("MM0411,240Material master");
   });
 
-  it("runs the bar full width without a share and clamps an out-of-range share", () => {
+  it("draws no bar without a share and clamps an out-of-range share", () => {
     const { container, rerender } = render(<ul><RankedRow tone="pass" label="A" onSelect={() => {}} /></ul>);
-    expect(container.querySelector(".m-ranked-fill")).toHaveStyle({ width: "100%" });
+    expect(container.querySelector(".m-ranked-track")).toBeNull();
     rerender(<ul><RankedRow tone="pass" label="A" share={140} onSelect={() => {}} /></ul>);
     expect(container.querySelector(".m-ranked-fill")).toHaveStyle({ width: "100%" });
   });

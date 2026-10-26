@@ -78,6 +78,22 @@ describe("systems list page", () => {
     expect(screen.getAllByRole("link", { name: /^Open / })).toHaveLength(4);
   });
 
+  it("shows no score and no tile strip for a lone system that has loaded nothing, and says one needs attention", async () => {
+    const version = { id: "v1", run_at: "2026-01-02T00:00:00Z", analysed_at: "2026-01-02T00:00:00Z", records: { material_master: 0 }, dqs: { material_master: 70 } } as unknown as SystemVersion;
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([{ ...SYSTEM, health_status: "unreachable" } as SAPSystemExtended]);
+    vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({ versions: [version], download: null });
+    vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 1 });
+    vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([]);
+    vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([]);
+    renderWithQuery(<SystemsPage />);
+    expect(await screen.findByText(/^1 system, 1 needs attention\./)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
+    await waitFor(() => expect(systemObjectsApi.getSystemVersions).toHaveBeenCalled());
+    expect(screen.queryByText("70.0")).toBeNull();
+    expect(screen.queryByTestId("systems-health")).toBeNull();
+    expect(screen.getByRole("link", { name: "Open ECC Prod" })).toHaveClass("hover:underline");
+  });
+
   it("renders systems once loaded", async () => {
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([SYSTEM]);
     vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({ versions: [], download: null });
