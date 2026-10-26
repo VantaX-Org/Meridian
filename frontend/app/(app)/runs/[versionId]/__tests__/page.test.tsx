@@ -154,7 +154,7 @@ describe("RunDetailPage", () => {
     renderWithQuery(<RunDetailPage />);
     expect(await screen.findByRole("link", { name: "2 critical" })).toHaveAttribute("href", "/runs/v2?tab=findings&severity=critical");
     expect(screen.getByRole("link", { name: "3 high" })).toHaveAttribute("href", "/runs/v2?tab=findings&severity=high");
-    expect(await screen.findByText(/ZAR\s?1,500/)).toBeInTheDocument();
+    expect(await screen.findByText(/ZAR\s1\.5\sk/)).toBeInTheDocument();
   });
 
   it("renders the decisive error of a failed step", async () => {

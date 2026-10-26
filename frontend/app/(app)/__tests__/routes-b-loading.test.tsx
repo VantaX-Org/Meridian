@@ -15,7 +15,7 @@ vi.mock("@/hooks/use-day-one", () => ({
   useDayOne: () => ({ status: "ready", step: null, error: null, refetch: () => {} }),
   DayOneAction: () => null,
 }));
-vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: { id: "u1", role: "admin" } }) }));
+vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: { id: "u1", role: "admin" } }), useCurrentUser: () => ({ id: "u1", role: "admin" }) }));
 vi.mock("@/context/update-modal-context", () => ({ useUpdateModal: () => ({ open: vi.fn() }) }));
 vi.mock("@/design/shell/useDrill", async (orig) => ({ ...(await orig<object>()) }));
 

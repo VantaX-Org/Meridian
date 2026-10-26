@@ -101,6 +101,25 @@ export function countDomain(values: readonly number[]): [number, number] {
 }
 
 /**
+ * A count axis fitted to the data: from a round number under the smallest value to one over the largest (a step of
+ * 1, 2 or 5 times a power of ten, about four steps across), never below 0, so a backlog that moves from 2,610 to
+ * 2,540 reads as a slope, not a flat line on a 0 to 5,000 axis. `target` stays inside the window when set.
+ */
+export function fitCountDomain(values: readonly number[], target?: number): [number, number] {
+  const all = target == null ? values : [...values, target];
+  if (all.length === 0) return [0, 1];
+  const lo = Math.min(...all);
+  const hi = Math.max(...all);
+  const span = hi - lo || Math.max(1, Math.abs(hi) * 0.1);
+  const raw = span / 4;
+  const pow = 10 ** Math.floor(Math.log10(raw));
+  const step = ([1, 2, 5, 10].map((m) => m * pow).find((v) => v >= raw) ?? raw);
+  const min = Math.max(0, Math.floor(lo / step) * step);
+  const max = Math.ceil(hi / step) * step;
+  return [min, max > min ? max : min + step];
+}
+
+/**
  * A tick reads short: no year when every point shares one, minutes not seconds, no "#2" twin suffix. The tooltip
  * keeps the full label.
  */
@@ -145,6 +164,7 @@ export function Line({
   counts = false,
   numericX = false,
   highlight,
+  thresholdLabel,
 }: {
   data: ChartPoint[];
   onPointClick?: (point: ChartPoint) => void;
@@ -160,8 +180,13 @@ export function Line({
   series?: LineSeries[];
   /** Every x the axis must show, so sibling charts share one domain even where this series has no value. */
   xDomain?: { x: string | number; label?: string }[];
-  /** Counts, not scores: the y axis runs from 0 to a round number above the largest value. */
-  counts?: boolean;
+  /**
+   * Counts, not scores: the y axis runs from 0 to a round number above the largest value; "fit" fits it to the
+   * data instead (`fitCountDomain`), for a count that moves little against its size.
+   */
+  counts?: boolean | "fit";
+  /** With `dqsThreshold`, the reference line's label; defaults to "Target {value}". */
+  thresholdLabel?: string;
   /**
    * A numeric x axis: points sit at their x value (e.g. days from today), not at equal steps. Ticks are the
    * `xDomain` values when given; labels come from `xDomain` and point labels as on a category axis.
@@ -201,7 +226,7 @@ export function Line({
   const values = rows
     .flatMap((r) => Object.entries(r).filter(([k]) => k !== "x").flatMap(([, v]) => (Array.isArray(v) ? v : [Number(v)])))
     .filter(Number.isFinite);
-  const domain = counts ? countDomain(values) : yDomain(values, dqsThreshold);
+  const domain = counts === "fit" ? fitCountDomain(values, dqsThreshold) : counts ? countDomain(values) : yDomain(values, dqsThreshold);
   const summaryData = multi ? multi.flatMap((sr) => sr.data.map((p) => ({ ...p, x: `${sr.name} ${p.label ?? p.x}`, label: undefined }))) : data;
   // The keyboard path: one button per point, named by series in a multi-series chart.
   const pointSeries = new Map<ChartPoint, string>(multi ? multi.flatMap((sr) => sr.data.map((p) => [p, sr.name] as const)) : []);
@@ -229,7 +254,7 @@ export function Line({
             y={dqsThreshold}
             stroke={chartTheme.axis}
             strokeDasharray="4 4"
-            label={{ value: `Target ${dqsThreshold}`, position: "insideTopRight", fill: chartTheme.axis, fontSize: 12 }}
+            label={{ value: thresholdLabel ?? `Target ${dqsThreshold}`, position: "insideTopRight", fill: chartTheme.axis, fontSize: 12 }}
           />
         )}
         {/* Area under the first series only, unless the chart draws bands: then each band is the only fill. */}

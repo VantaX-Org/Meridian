@@ -89,10 +89,12 @@ describe("HomePage data state", () => {
     expect(nba.compareDocumentPosition(screen.getByTestId("cells")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("gives the trend the whole closing row when there is no heatmap", () => {
+  it("puts the trend in the hero, under the score and its verdict", () => {
     render(<HomePage persona="basis" state="ready" verdict={{ dqs: 70, sentence: "x" }} run={run} trend={<div data-testid="t" />} />);
-    expect(screen.getByTestId("t").parentElement?.className).toContain("@5xl:col-span-12");
-    expect(screen.getByTestId("home-trend")).toBeInTheDocument();
+    const hero = screen.getByTestId("home-verdict-row");
+    expect(hero).toContainElement(screen.getByTestId("home-trend"));
+    expect(screen.getByTestId("home-trend")).toContainElement(screen.getByTestId("t"));
+    expect(screen.getByTestId("home-dqs").compareDocumentPosition(screen.getByTestId("t")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("puts the aside and the dimension bars right of the score in the hero, and nothing there without them", () => {
@@ -110,7 +112,7 @@ describe("HomePage data state", () => {
     expect(screen.queryByTestId("home-hero-aside")).toBeNull();
   });
 
-  it("orders hero, four sentences, ledger, onboarding, work row, then trend beside the heatmap, then lists", () => {
+  it("orders the setup notice, hero (with the trend), four sentences, ledger, work row, heatmap, then lists", () => {
     render(
       <HomePage
         persona="lead"
@@ -126,11 +128,9 @@ describe("HomePage data state", () => {
         lists={<div data-testid="lists" />}
       />,
     );
-    const order = ["home-verdict-row", "cells", "ledger", "onboarding", "work", "trend", "heat", "lists"].map((id) => screen.getByTestId(id));
+    const order = ["onboarding", "home-verdict-row", "cells", "ledger", "work", "heat", "lists"].map((id) => screen.getByTestId(id));
     order.slice(1).forEach((el, i) => expect(order[i].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy());
-    expect(screen.getByTestId("trend").parentElement?.className).toContain("@5xl:col-span-6");
-    expect(screen.getByTestId("heat").parentElement?.className).toContain("@5xl:col-span-6");
-    expect(screen.getByTestId("trend").parentElement?.parentElement).toBe(screen.getByTestId("heat").parentElement?.parentElement);
+    expect(screen.getByTestId("home-verdict-row")).toContainElement(screen.getByTestId("trend"));
   });
 
   it("opsFirst (the Basis home) leads with the work row and the lists, the score after them, each once", () => {

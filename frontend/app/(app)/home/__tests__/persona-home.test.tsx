@@ -12,6 +12,9 @@ import * as connectivityApi from "@/lib/api/connectivity";
 import * as configLoadApi from "@/lib/api/config-load";
 import * as downloadApi from "@/lib/api/download";
 import * as matchRulesApi from "@/lib/api/match-rules";
+import * as ownersApi from "@/lib/api/owners";
+import * as analyticsApi from "@/lib/api/analytics";
+import * as authContext from "@/context/auth-context";
 import * as jobsHook from "@/hooks/use-jobs";
 import * as dayOneHook from "@/hooks/use-day-one";
 import type { Version } from "@/types/api";
@@ -150,12 +153,13 @@ describe("PersonaHomePage Brief geometry", () => {
     const aside = screen.getByTestId("home-hero-aside");
     expect(hero).toContainElement(aside);
     expect(hero).toContainElement(screen.getByTestId("home-dqs"));
-    expect(aside).toContainElement(screen.getByLabelText("Objects by records and verdict"));
+    // sized by what fails (rule failures), not by how many records an object holds
+    expect(aside).toContainElement(screen.getByLabelText("Objects by rule failures and verdict"));
     expect(aside).toContainElement(screen.getByTestId("home-dimensions"));
-    // a tile per object: the score, the records the run holds for it, opening the object at its run
-    const tile = screen.getByRole("link", { name: "Material master, 72.5, 4,000 records" });
+    // a tile per object: the score and its rule failures, opening the object at its run
+    const tile = screen.getByRole("link", { name: /^Material master, 72\.5, [\d,]+ rule failures?$/ });
     expect(tile).toHaveAttribute("href", "/objects/material_master?run=v1");
-    expect(screen.getByRole("link", { name: "Controlling, 95.0, 1,000 records" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^Controlling, 95\.0, [\d,]+ rule failures?$/ })).toBeInTheDocument();
   });
 
   it("sets the ledger after the four sentences and the hero, and ranks it by records affected", async () => {
@@ -174,7 +178,9 @@ describe("PersonaHomePage Brief geometry", () => {
       expect(rows[0]).toHaveTextContent("Controlling");
       expect(rows[1]).toHaveTextContent("Material master");
     });
-    for (const h of ["Object", "Blocking rule", "Rule failures", "Score", "Verdict"]) expect(screen.getByRole("columnheader", { name: new RegExp(h) })).toBeInTheDocument();
+    for (const h of ["Object", "Blocking rule", "Owner", "Rule failures", "Score", "Verdict"]) expect(screen.getByRole("columnheader", { name: new RegExp(h) })).toBeInTheDocument();
+    // the owner replaced the run: every row was read from a run already named in the header
+    expect(screen.queryByRole("columnheader", { name: /^Run/ })).toBeNull();
     expect(screen.getByRole("link", { name: "All 2 objects" })).toHaveAttribute("href", "/objects");
   });
 
@@ -493,7 +499,7 @@ describe("PersonaHomePage current state across objects", () => {
     expect(criticalHigh).toHaveTextContent("8");
     // Several runs: the current-state findings filtered to critical and high, not the objects below target.
     expect(criticalHigh).toHaveAttribute("href", "/insights?severity=critical,high");
-    expect(screen.getByText("All objects, each at its latest run by then")).toBeInTheDocument();
+    expect(screen.getByText(/^Score over runs, all objects each at its latest run by then/)).toBeInTheDocument();
   });
 
   it("opens each object at the run its numbers come from", async () => {
@@ -593,5 +599,53 @@ describe("PersonaHomePage error state", () => {
     const calls = queue.mock.calls.length;
     fireEvent.click(within(alert).getByRole("button", { name: "Retry" }));
     await waitFor(() => expect(queue.mock.calls.length).toBeGreaterThan(calls));
+  });
+});
+
+describe("PersonaHomePage owners and forecast", () => {
+  const SECOND = { ...LATEST.dqs_summary!.material_master, composite_score: 95 };
+  const two: Version = { ...LATEST, dqs_summary: { material_master: LATEST.dqs_summary!.material_master, controlling: SECOND }, metadata: { modules: ["material_master", "controlling"], file_name: "f.csv", row_count: 5000 } };
+  const owner = (ref: string, id: string, name: string) => ({ kind: "object" as const, ref, owner_user_id: id, owner_name: name, steward_user_id: null, steward_name: null, updated_at: null });
+
+  beforeEach(() => {
+    nav.search = "";
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [two] });
+    vi.spyOn(ownersApi, "getOwners").mockResolvedValue([owner("controlling", "u1", "Ann Lead"), owner("material_master", "u2", "Ben Steward")]);
+    vi.spyOn(authContext, "useCurrentUser").mockReturnValue({ id: "u1", email: "ann@example.com", name: "Ann Lead", role: "programme_lead", permissions: [] });
+  });
+
+  it("names each object's owner in the ledger and offers My objects", async () => {
+    renderWithQuery(<LeadHomePage />);
+    expect(await screen.findByRole("cell", { name: "Ann Lead" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "Ben Steward" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "My objects" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("keeps only the signed-in user's objects with ?mine=1", async () => {
+    nav.search = "mine=1";
+    renderWithQuery(<LeadHomePage />);
+    await screen.findByRole("cell", { name: "Ann Lead" });
+    const ledger = screen.getByRole("columnheader", { name: /Owner/ }).closest("table") as HTMLElement;
+    const rows = within(ledger).getAllByRole("row").slice(1);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toHaveTextContent("Controlling");
+    expect(screen.getByRole("button", { name: "My objects" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("link", { name: "All my objects" })).toHaveAttribute("href", "/objects?mine=1");
+  });
+
+  it("puts the trend in the hero and states the forecast to 30 days", async () => {
+    vi.spyOn(analyticsApi, "getPredictiveAnalytics").mockResolvedValue({
+      forecasts: [{
+        module_id: "controlling", current_score: 95, forecast_7d: 93, forecast_30d: 89, forecast_90d: null,
+        forecast_30d_low: 85, forecast_30d_high: 93, trend: "declining", confidence: 80, points: 4, span_days: 12, contributing_factors: [],
+      }],
+      early_warnings: [],
+    });
+    renderWithQuery(<LeadHomePage />);
+    const hero = await screen.findByTestId("home-verdict-row");
+    expect(hero).toContainElement(screen.getByTestId("home-trend"));
+    // (72.5 + 89) / 2, material master holding its score: 80.8; range (72.5 + 85) / 2 to (72.5 + 93) / 2
+    expect(await screen.findByText(/Expected 80\.8 in 30 days if nothing changes \(range 79–83\)/)).toBeInTheDocument();
   });
 });

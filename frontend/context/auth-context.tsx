@@ -144,6 +144,11 @@ export function LocalAuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/** The signed-in user, or null (signed out, or outside the auth provider, as in a component test). Never throws. */
+export function useCurrentUser(): AuthUser | null {
+  return useContext(AuthContext)?.user ?? null;
+}
+
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within LocalAuthProvider");

@@ -18,6 +18,9 @@ vi.mock("@/design", () => ({
   startTour: actions.startTour,
   useActiveTourId: () => state.activeTour,
   Button: ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => <button type="button" onClick={onClick}>{children}</button>,
+  Notice: ({ title, children, action }: { title?: React.ReactNode; children?: React.ReactNode; action?: React.ReactNode }) => (
+    <div role="status" data-testid="notice">{title ? <p>{title}</p> : null}{children}{action}</div>
+  ),
 }));
 
 const item = (id: string, label: string, done = false) => ({ id, label, done, href: `/${id}` });

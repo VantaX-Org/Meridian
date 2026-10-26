@@ -134,6 +134,8 @@ describe("ProgressPage", () => {
     mockAll();
     mount();
     expect(await screen.findByText("Decisions by person")).toBeInTheDocument();
+    // Decisions by person leads, ahead of the burn-down
+    expect(screen.getByText("Decisions by person").compareDocumentPosition(screen.getByText("Burn-down")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(await screen.findByText("Ann")).toBeInTheDocument();
     expect(screen.getByText("Nobody yet")).toBeInTheDocument();
     expect(await screen.findByText("GL002")).toBeInTheDocument();

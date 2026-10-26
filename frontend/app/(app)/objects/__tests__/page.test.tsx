@@ -9,6 +9,8 @@ import * as configLoadApi from "@/lib/api/config-load";
 import * as versionsApi from "@/lib/api/versions";
 import * as objectsApi from "@/lib/api/v1/objects";
 import * as workApi from "@/lib/api/work";
+import * as ownersApi from "@/lib/api/owners";
+import * as authContext from "@/context/auth-context";
 import ObjectsPage from "../page";
 
 let currentSearch = "run=v1";
@@ -170,6 +172,31 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     expect(screen.getByRole("columnheader", { name: "Trend" })).toBeInTheDocument();
   });
 
+  it("names each object's owner from the object header's owner list, and My objects keeps the signed-in user's", async () => {
+    currentSearch = "run=v1";
+    replace.mockClear();
+    const owner = (ref: string, id: string, name: string) => ({ kind: "object" as const, ref, owner_user_id: id, owner_name: name, steward_user_id: null, steward_name: null, updated_at: null });
+    vi.spyOn(ownersApi, "getOwners").mockResolvedValue([owner("a", "u1", "Ann Lead"), owner("b", "u2", "Ben Steward")]);
+    const me = vi.spyOn(authContext, "useCurrentUser").mockReturnValue({ id: "u1", email: "ann@example.com", name: "Ann Lead", role: "programme_lead", permissions: [] });
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: [mk("a", "AAA", "fail", 50), mk("b", "BBB", "warn", 60), mk("c", "CCC", "pass", 95)] });
+    const { unmount } = renderWithQuery(<ObjectsPage />);
+    await waitFor(() => expect(ledger().getByText("Ann Lead")).toBeInTheDocument());
+    expect(ledger().getByText("Ben Steward")).toBeInTheDocument();
+    expect(ledger().getByText("Not set")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "My objects" }));
+    expect(replace).toHaveBeenCalledWith("/objects?run=v1&mine=1");
+    unmount();
+
+    currentSearch = "run=v1&mine=1";
+    renderWithQuery(<ObjectsPage />);
+    await waitFor(() => expect(ledger().getByText("AAA")).toBeInTheDocument());
+    expect(ledger().queryByText("BBB")).toBeNull();
+    expect(ledger().queryByText("CCC")).toBeNull();
+    expect(screen.getByRole("button", { name: "My objects" })).toHaveAttribute("aria-pressed", "true");
+    me.mockRestore();
+    currentSearch = "run=v1";
+  });
+
   it("names Dimension chips in sentence case and keeps the raw id in the URL", async () => {
     currentSearch = "run=v1";
     replace.mockClear();
@@ -225,7 +252,7 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     });
     renderWithQuery(<ObjectsPage />);
     await waitFor(() => expect(ledger().getByText("AAA")).toBeInTheDocument());
-    expect(ledger().getAllByRole("columnheader").map((h) => h.textContent?.trim())).toEqual(["Object", "Blocking rule", "Rule failures", "Score", "Verdict", "Trend", "Action"]);
+    expect(ledger().getAllByRole("columnheader").map((h) => h.textContent?.trim())).toEqual(["Object", "Owner", "Blocking rule", "Rule failures", "Score", "Verdict", "Trend", "Action"]);
     expect(ledger().getByText("Bad data")).toBeInTheDocument();
     expect(ledger().getByRole("link", { name: "Open AAA" })).toHaveAttribute("href", "/objects/a?run=v1&tab=fix");
   });

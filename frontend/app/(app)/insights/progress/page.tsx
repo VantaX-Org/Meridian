@@ -36,7 +36,7 @@ import { DrillCount } from "../_components/DrillCount";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { Section } from "../_components/Section";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
-import { burndownChart, DECISION_LABELS, daysText, finishSentence, pct, sourceLabel } from "./progress-model";
+import { burndownChart, DECISION_LABELS, daysText, finishSentence, pct, rateText, sourceLabel } from "./progress-model";
 
 const PURPOSE = "How fast the data is getting fixed, and what is slowing it down.";
 const n = (x: number) => x.toLocaleString();
@@ -230,7 +230,7 @@ export default function ProgressPage() {
           { label: "Projected finish", value: b?.projected_finish ? formatDate(b.projected_finish) : b && b.open_now === 0 ? "Done" : "No date yet", tone: b?.projected_finish ? "go" : b && b.open_now > 0 ? "at-risk" : undefined, hint: b ? `At the last ${b.pace_window_days} days' pace` : undefined, to: b ? "#burndown" : undefined },
         ],
         situation: { sentence: b ? (b.open_now ? `${plural(b.open_now, "failing record")} open${b.open_records != null ? `, ${plural(b.open_records, "record")} to fix` : ""}` : "Nothing is open") : "—", tone: b && b.open_now === 0 ? "go" : undefined },
-        changed: { sentence: b ? `${plural(b.fixed_7d, "failing record")} fixed in the last 7 days; ${b.pace_per_day >= 0 ? `${b.pace_per_day.toLocaleString()} a day net closed` : `${Math.abs(b.pace_per_day).toLocaleString()} a day net added`} over ${b.pace_window_days} days` : "—" },
+        changed: { sentence: b ? `${plural(b.fixed_7d, "failing record")} fixed in the last 7 days; ${b.pace_per_day >= 0 ? `${rateText(b.pace_per_day)} a day net closed` : `${rateText(b.pace_per_day)} a day net added`} over ${b.pace_window_days} days` : "—" },
         why: { sentence: slowest ? `${formatModuleName(slowest.module)} takes longest to fix: typically ${daysText(slowest.median_days)}` : "No fixes recorded yet, so no fix times", href: slowest ? fix({ module: slowest.module }) : undefined },
         next: b && b.projected_finish
           ? { sentence: finishSentence(b), tone: "go", action: { label: "Open Fix work", href: fixHref } }
@@ -246,28 +246,7 @@ export default function ProgressPage() {
       }}
       errorProps={burn.isError ? { error: burn.error, onRetry: () => void burn.refetch() } : { error: loadError, onRetry: () => { refetchList(); dayOne.refetch(); } }}
     >
-      <div id="burndown" className="scroll-mt-24">
-      <Card
-        title="Burn-down"
-        meta={b && chart ? `Failing records open per day over the last 90 days, at most ${n(chart.peak)}. ${finishSentence(b)}` : undefined}
-        actions={<Link href={fixHref} className={linkClass}>Open Fix work</Link>}
-      >
-        {b && chart && b.days.some((d) => d.open > 0) ? (
-          <div className="flex flex-col gap-4">
-            <Line series={chart.series} data={[]} xDomain={chart.xDomain} height={260} counts label="Failing records open per day" />
-            {b.runs.length > 1 && (
-              <div>
-                <p className="m-text-meta m-ink-3">Failing records in each run of this system</p>
-                <Bar data={b.runs.map((r) => ({ x: r.version_id, y: r.issues, label: runName(r), runId: r.version_id }))} height={Math.max(120, b.runs.length * 28)} label="Failing records per run" onPointClick={(p) => { if (p.runId) router.push(fixLink({ run: p.runId, module })); }} />
-              </div>
-            )}
-          </div>
-        ) : (
-          <EmptyState variant="inline" title="No failing records open in the last 90 days" action={<Link href={runsHref} className={linkClass}>Open runs</Link>} />
-        )}
-      </Card>
-      </div>
-
+      {/* Who decided what leads: the lead's operational view of the work, then the backlog it moves. */}
       <Section title="Decisions by person" height={240} query={thr} meta={thr.data ? `${plural(thr.data.totals.total, "decision")} in the last ${thr.data.window_days} days` : undefined}>
         {thr.data && thr.data.people.length ? (
           <div className="flex flex-col gap-4">
@@ -284,6 +263,28 @@ export default function ProgressPage() {
           </div>
         )}
       </Section>
+
+      <div id="burndown" className="scroll-mt-24">
+      <Card
+        title="Burn-down"
+        meta={b && chart ? `Failing records open per day over the last 90 days, at most ${n(chart.peak)}. ${finishSentence(b)}` : undefined}
+        actions={<Link href={fixHref} className={linkClass}>Open Fix work</Link>}
+      >
+        {b && chart && b.days.some((d) => d.open > 0) ? (
+          <div className="flex flex-col gap-4">
+            <Line series={chart.series} data={[]} xDomain={chart.xDomain} height={260} counts="fit" dqsThreshold={chart.target} thresholdLabel="Target: none open" label="Failing records open per day" />
+            {b.runs.length > 1 && (
+              <div>
+                <p className="m-text-meta m-ink-3">Failing records in each run of this system</p>
+                <Bar data={b.runs.map((r) => ({ x: r.version_id, y: r.issues, label: runName(r), runId: r.version_id }))} height={Math.max(120, b.runs.length * 28)} label="Failing records per run" onPointClick={(p) => { if (p.runId) router.push(fixLink({ run: p.runId, module })); }} />
+              </div>
+            )}
+          </div>
+        ) : (
+          <EmptyState variant="inline" title="No failing records open in the last 90 days" action={<Link href={runsHref} className={linkClass}>Open runs</Link>} />
+        )}
+      </Card>
+      </div>
 
       <div id="time-to-fix" className="scroll-mt-24">
       <Section title="Time to fix" height={240} query={ttf} meta={overall?.fixed ? `Typically ${daysText(overall.median_days)} from first seen to fixed; 9 in 10 within ${daysText(overall.p90_days)}. ${plural(overall.fixed, "fix", "fixes")} in the last ${ttf.data?.window_days ?? 180} days` : undefined}>

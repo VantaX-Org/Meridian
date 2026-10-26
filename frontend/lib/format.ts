@@ -163,10 +163,11 @@ const MONEY_SCALES = [
   { at: 1e12, unit: "tn" },
   { at: 1e9, unit: "bn" },
   { at: 1e6, unit: "m" },
+  { at: 1e3, unit: "k" },
 ] as const;
 
 /**
- * Headline money (stat tiles, sentences): "ZAR 4.84 bn", "ZAR 12.3 m", three significant figures from a million up;
+ * Headline money (stat tiles, sentences): "ZAR 4.84 bn", "ZAR 12.3 m", "ZAR 540 k", three significant figures from a thousand up;
  * below that the full amount as `formatMoney` gives it. Tables and exports keep `formatMoney`'s exact figure.
  */
 export function formatMoneyCompact(n: number | null | undefined, currency?: string | null): string {

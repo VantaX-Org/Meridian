@@ -83,9 +83,9 @@ const loadingSkeleton = (
 );
 
 /**
- * The home page frame, "the Brief": one hero sheet (the score and its verdict left, the object map and the
- * dimension bars right), the four sentences under it, the ledger of what moves the score, one compact onboarding
- * row, the persona's work row, then the trend and the heatmap side by side, smaller. Callers supply every
+ * The home page frame, "the Brief": the setup notice while setup is incomplete, one hero sheet (the score, its
+ * verdict and its trend left, the object map and the dimension bars right), the four sentences under it, the ledger
+ * of what moves the score, the persona's work row, then the heatmap. Callers supply every
  * data-specific piece; this component places it and owns the loading, no-data and error geometry.
  */
 export function HomePage({
@@ -107,9 +107,9 @@ export function HomePage({
   dimensions?: ReactNode;
   /** The ledger, full width under the four sentences: what moves the score, ranked by records affected. */
   objects?: ReactNode;
-  /** Left of the closing panel: the score trend line. */
+  /** In the hero, under the verdict: the score trend with its target line (and forecast, when there is one). */
   trend?: ReactNode;
-  /** Right of the closing panel: the dimension-by-object heatmap. */
+  /** The closing panel: the dimension-by-object heatmap. */
   heatmap?: ReactNode;
   /** The persona's work row of `Stat`s. */
   work?: ReactNode;
@@ -117,7 +117,7 @@ export function HomePage({
   headerActions?: ReactNode;
   /** Header actions on a fresh install (state "empty"): the other ways to start a run, beside the journey's step. */
   emptyActions?: ReactNode;
-  /** First-run tour offer and setup checklist, one compact row (components/help/home-onboarding.tsx); shown once the page has loaded. */
+  /** First-run tour offer and setup checklist, one notice at the top (components/help/home-onboarding.tsx), only while setup is incomplete. */
   onboarding?: ReactNode;
   /** The four sentences (situation, what changed, why, do next), set under the hero. */
   cells?: ReactNode;
@@ -169,6 +169,7 @@ export function HomePage({
       )}
       {state === "empty" && onboarding}
 
+      {state === "ready" && onboarding}
       {state === "ready" && (workFirst || opsFirst) && work}
       {state === "ready" && opsFirst && lists}
       {state === "ready" && verdict && (
@@ -197,6 +198,7 @@ export function HomePage({
                 </div>
               )}
             </div>
+            {trend && <div data-testid="home-trend" data-tour="home-trend" className="min-w-0">{trend}</div>}
           </div>
           {hasAside && (
             <div className="flex min-w-0 flex-col gap-5 @4xl:col-span-5" data-testid="home-hero-aside">
@@ -209,14 +211,8 @@ export function HomePage({
       {state === "ready" && nextAction}
       {state === "ready" && cells}
       {state === "ready" && objects}
-      {state === "ready" && onboarding}
       {state === "ready" && !workFirst && !opsFirst && work}
-      {state === "ready" && (trend || heatmap) && (
-        <div className="grid grid-cols-1 gap-4 @5xl:grid-cols-12">
-          {trend && <div data-testid="home-trend" data-tour="home-trend" className={`min-w-0 ${heatmap ? "@5xl:col-span-6" : "@5xl:col-span-12"}`}>{trend}</div>}
-          {heatmap && <div className={`min-w-0 ${trend ? "@5xl:col-span-6" : "@5xl:col-span-12"}`}>{heatmap}</div>}
-        </div>
-      )}
+      {state === "ready" && heatmap}
       {!(state === "ready" && opsFirst) && lists}
       </div>
     </PageFrame>

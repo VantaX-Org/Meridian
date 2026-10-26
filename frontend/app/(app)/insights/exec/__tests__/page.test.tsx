@@ -123,8 +123,14 @@ describe("ExecPage", () => {
     expect(dl).toHaveBeenCalledWith(expect.stringContaining("v1"), `Meridian board pack – ${TODAY}.pdf`);
     // No subscription is configured, so no fee is printed.
     expect(screen.queryByText("Annual subscription")).toBeNull();
-    // ROI without any cost avoided says so instead of "0x" and "0 months".
-    expect(await screen.findByText("No cost avoided yet")).toBeInTheDocument();
+    // The three sections with nothing in them yet collapse into one line, each with where to start it; ROI without
+    // any cost avoided says so there instead of "0x" and "0 months".
+    const notYet = await screen.findByTestId("exec-not-yet");
+    expect(notYet).toHaveTextContent("Not yet: no migration wave, no owner scored and no cost avoided.");
+    expect(within(notYet).getByRole("link", { name: "Assign records in Fix work" })).toHaveAttribute("href", "/fix?run=v1");
+    expect(within(notYet).getByRole("link", { name: "Review fixes" })).toBeInTheDocument();
+    for (const title of ["Readiness by wave", "Owners", "Return on investment"]) expect(screen.queryByRole("heading", { name: title })).toBeNull();
+    expect(screen.queryByText("No waves yet")).toBeNull();
     expect(screen.queryByText("0x")).toBeNull();
     expect(screen.queryByText(/0 months/)).toBeNull();
   });
@@ -231,8 +237,10 @@ describe("ExecPage", () => {
         { id: "f1", version_id: "co2", module: "controlling", check_id: "CO001", severity: "critical", dimension: "completeness", affected_count: 40, total_count: 100, pass_rate: 60, details: {} },
         { id: "f0", version_id: "co1", module: "controlling", check_id: "CO099", severity: "critical", dimension: "completeness", affected_count: 99, total_count: 100, pass_rate: 1, details: {} },
         { id: "f2", version_id: "mm1", module: "material_master", check_id: "MM045", severity: "high", dimension: "validity", affected_count: 12, total_count: 100, pass_rate: 88, details: {} },
+        { id: "f3", version_id: "mm1", module: "material_master", check_id: "MM050", severity: "medium", dimension: "validity", affected_count: 100, total_count: 100, pass_rate: 0, details: {} },
+        { id: "f4", version_id: "mm1", module: "material_master", check_id: "MM900", severity: "low", dimension: "validity", affected_count: 5000, total_count: 9000, pass_rate: 44, details: {} },
       ],
-      total: 3,
+      total: 5,
     } as never);
     renderWithQuery(<ExecPage />);
     // every object at its latest run, not the newest run's rules alone; CO099 is from an older controlling run
@@ -240,6 +248,12 @@ describe("ExecPage", () => {
     expect(screen.getByText("MM045")).toBeInTheDocument();
     expect(screen.queryByText("CO099")).toBeNull();
     expect(ranking).not.toHaveBeenCalled();
+    // by impact, failing records x severity weight: CO001 40 x 10, MM050 100 x 2, MM045 12 x 5; low severity left out
+    const ids = screen.getAllByText(/^(CO001|MM045|MM050|MM900)$/).map((el) => el.textContent);
+    expect(ids).toEqual(["CO001", "MM050", "MM045"]);
+    expect(screen.getByRole("columnheader", { name: "Owner" })).toBeInTheDocument();
+    // the score over runs, beside the target, in current mode
+    expect(screen.getByRole("heading", { name: "Score over runs" })).toBeInTheDocument();
     // (60 + 80) / 2 against (50 + 80) / 2: up 5 with the latest run, as Home and the overview say
     expect(within(screen.getByTestId("hero-verdict")).getByText("Up 5 with the latest run")).toBeInTheDocument();
   });
@@ -262,9 +276,10 @@ describe("ExecPage", () => {
     vi.spyOn(insightsApi, "getProvenCost").mockResolvedValue({ currency: "EUR" } as never);
     vi.spyOn(analyticsApi, "getRoi").mockResolvedValue({ roi: { subscription_annual: 180000, risk_mitigated: 540000, roi_multiple: 3, payback_months: 4, currency: "ZAR" }, cost_avoidance_history: [] });
     renderWithQuery(<ExecPage />);
-    expect(await screen.findByText(/ZAR\s540,000/)).toBeInTheDocument();
-    expect(screen.getByText(/ZAR\s180,000/)).toBeInTheDocument();
-    expect(screen.queryByText(/EUR\s540,000/)).toBeNull();
+    // Money reads short, as on Home: "ZAR 540 k", never "ZAR 540,000.00".
+    expect(await screen.findByText(/ZAR\s540\sk/)).toBeInTheDocument();
+    expect(screen.getByText(/ZAR\s180\sk/)).toBeInTheDocument();
+    expect(screen.queryByText(/EUR\s540/)).toBeNull();
   });
 
   it("states only the cost avoided when no subscription is configured", async () => {
@@ -273,7 +288,7 @@ describe("ExecPage", () => {
     vi.spyOn(insightsApi, "getProvenCost").mockResolvedValue({ currency: "ZAR" } as never);
     vi.spyOn(analyticsApi, "getRoi").mockResolvedValue({ roi: { subscription_annual: null, risk_mitigated: 540000, roi_multiple: null, payback_months: null, currency: "ZAR" }, cost_avoidance_history: [] });
     renderWithQuery(<ExecPage />);
-    expect(await screen.findByText(/ZAR\s540,000/)).toBeInTheDocument();
+    expect(await screen.findByText(/ZAR\s540\sk/)).toBeInTheDocument();
     expect(screen.getByText("Cost avoided")).toBeInTheDocument();
     expect(screen.queryByText("ROI multiple")).toBeNull();
     expect(screen.queryByText("Payback")).toBeNull();
@@ -292,9 +307,9 @@ describe("ExecPage", () => {
     vi.spyOn(insightsApi, "getProvenCost").mockResolvedValue({ currency: "ZAR" } as never);
     renderWithQuery(<ExecPage />);
     const caption = await screen.findByText(/at risk across 2 priced features/);
-    expect(caption.textContent).toMatch(/ZAR\s5,674,130 at risk across 2 priced features; Invoice posting carries the most, ZAR\s5,672,930$/);
+    expect(caption.textContent).toMatch(/ZAR\s5\.67\sm at risk across 2 priced features; Invoice posting carries the most, ZAR\s5\.67\sm$/);
     const chart = screen.getByRole("img", { name: /Value at risk by feature/ });
-    expect(chart.getAttribute("aria-label")).toMatch(/Invoice posting ZAR\s5,672,930, MIGO ZAR\s1,200/);
+    expect(chart.getAttribute("aria-label")).toMatch(/Invoice posting ZAR\s5\.67\sm, MIGO ZAR\s1\.2\sk/);
   });
 
   it("compares the board pack with the run before, draws one score, and counts migration gaps into the wave", async () => {

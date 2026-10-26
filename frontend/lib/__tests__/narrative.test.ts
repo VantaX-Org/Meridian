@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { VersionComparison } from "@/types/api";
 import type { RecordDiff } from "@/lib/api/versions";
 import { compareNarrative } from "../narrative";
+import { formatNumber } from "../format";
 
-const nf = new Intl.NumberFormat("en-ZA");
+const nf = { format: (n: number) => formatNumber(n) };
 
 const version = (id: string) => ({ id, label: null, status: "complete" as const, run_at: "2026-10-08T00:00:00Z", dqs_summary: null, metadata: null });
 

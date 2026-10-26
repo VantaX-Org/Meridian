@@ -91,12 +91,12 @@ describe("RunsPage", () => {
     });
   });
 
-  it("opens Run analysis as the system-picker drawer, under the Operate view tabs", async () => {
+  it("opens Run analysis as the system-picker drawer, with no view tab strip over the page", async () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer] });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
     renderWithQuery(<RunsPage />);
-    expect(await screen.findByRole("navigation", { name: "Operate views" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Runs" })).toHaveAttribute("aria-current", "page");
+    expect(await screen.findByText("Latest DQS, ECC Prod")).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Operate views" })).toBeNull();
     // One run: the score tile names its system, its run and day, and what the number is a mean of.
     expect(await screen.findByText("Latest DQS, ECC Prod")).toBeInTheDocument();
     expect(await screen.findByText("Oct 8 upload, 8 Oct 2026, mean of 1 object")).toBeInTheDocument();
@@ -129,8 +129,9 @@ describe("RunsPage", () => {
   });
 
   it("groups the ledger by day, newest first: the day is printed on the first run of each day only, and each row ends in Open", async () => {
-    const sameDay = version({ id: "v2b", label: "Oct 8 evening", run_at: "2026-10-08T18:00:00Z", dqs_summary: { material_master: dqs(73.1) } });
-    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [older, newer, sameDay] });
+    const sameDay = version({ id: "v2b", label: "Oct 8 evening", run_at: "2026-10-08T18:00:00Z", dqs_summary: { controlling: dqs(73.1) }, metadata: { modules: ["controlling"], system_id: "sys-1" } });
+    const otherOlder = { ...older, dqs_summary: { fi_gl: dqs(71.2) }, metadata: { modules: ["fi_gl"], system_id: "sys-1" } };
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [otherOlder, newer, sameDay] });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
@@ -143,7 +144,7 @@ describe("RunsPage", () => {
   });
 
   it("compares the newer run against the older one when two rows are selected", async () => {
-    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, older] });
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, { ...older, metadata: { modules: ["fi_gl"], system_id: "sys-1" } }] });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
@@ -157,7 +158,7 @@ describe("RunsPage", () => {
 
   it("compares on c, but not while a dialog, menu or control has the keyboard", async () => {
     push.mockClear();
-    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, older] });
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, { ...older, metadata: { modules: ["fi_gl"], system_id: "sys-1" } }] });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
@@ -174,6 +175,35 @@ describe("RunsPage", () => {
     expect(push).not.toHaveBeenCalled();
     fireEvent.keyDown(document.body, { key: "c" });
     expect(push).toHaveBeenCalledWith("/runs/v2/vs/v1");
+  });
+
+  it("folds re-runs of the same system and objects under the newest, with System, Records and Triggered by", async () => {
+    push.mockClear();
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, older] });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    renderWithQuery(<RunsPage />);
+    await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
+    for (const h of ["System", "Records", "Triggered by"]) expect(screen.getByRole("columnheader", { name: h })).toBeInTheDocument();
+    const body = screen.getAllByRole("row").slice(1);
+    expect(body).toHaveLength(1);
+    expect(body[0]).toHaveTextContent("+1 earlier run");
+    expect(body[0]).toHaveTextContent("ECC Prod");
+    expect(body[0]).toHaveTextContent("File import");
+    expect(screen.queryByText("Oct 1 upload")).toBeNull();
+    fireEvent.click(within(body[0]).getByRole("button", { name: "Expand row" }));
+    const earlier = await screen.findByRole("list", { name: "Earlier runs" });
+    expect(within(earlier).getByText("Oct 1 upload")).toBeInTheDocument();
+    expect(within(earlier).getByRole("link", { name: "Compare with latest" })).toHaveAttribute("href", "/runs/v2/vs/v1");
+    expect(within(earlier).getByRole("link", { name: "Open Oct 1 upload" })).toHaveAttribute("href", "/runs/v1");
+  });
+
+  it("never folds a failed run: it keeps its own row", async () => {
+    const failed = version({ id: "v3", label: "Broken run", status: "failed", run_at: "2026-10-09T00:00:00Z" });
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [failed, newer, older] });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    renderWithQuery(<RunsPage />);
+    await waitFor(() => expect(screen.getByText("Broken run")).toBeInTheDocument());
+    expect(screen.getAllByRole("row").slice(1)).toHaveLength(2);
   });
 
   it("shows live progress on a run that is still being analysed", async () => {
@@ -309,7 +339,8 @@ describe("RunsPage status param", () => {
 
 describe("RunsPage server-side filters and paging", () => {
   const page = (n: number, prefix: string) =>
-    Array.from({ length: n }, (_, i) => version({ id: `${prefix}${i}`, label: `${prefix} run ${i}`, run_at: `2026-09-${String((i % 28) + 1).padStart(2, "0")}T00:00:00Z` }));
+    // each of its own objects, so no run folds under another
+    Array.from({ length: n }, (_, i) => version({ id: `${prefix}${i}`, label: `${prefix} run ${i}`, run_at: `2026-09-${String((i % 28) + 1).padStart(2, "0")}T00:00:00Z`, metadata: { modules: [`m${i}`], system_id: "sys-1" } }));
 
   it("sends the system filter to the server and keeps the pager for a filtered set over one page", async () => {
     searchParams.set("system", "sys-1");

@@ -194,7 +194,8 @@ describe("formatMoneyCompact", () => {
     expect(formatMoneyCompact(1_250_000_000_000, "ZAR")).toBe("ZAR 1.25 tn");
   });
   it("keeps smaller amounts whole, and says nothing for a missing figure", () => {
-    expect(formatMoneyCompact(840_000, "ZAR")).toBe(formatMoney(840_000, "ZAR"));
+    expect(formatMoneyCompact(840_000, "ZAR")).toBe("ZAR 840 k");
+    expect(formatMoneyCompact(950, "ZAR")).toBe(formatMoney(950, "ZAR"));
     expect(formatMoneyCompact(12_300_000)).toBe("12.3 m");
     expect(formatMoneyCompact(null, "ZAR")).toBe("—");
   });
