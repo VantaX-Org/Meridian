@@ -8,6 +8,7 @@
                                  issues opened/resolved — with comparability flags
 """
 
+import json
 import uuid
 from functools import lru_cache
 from typing import Optional
