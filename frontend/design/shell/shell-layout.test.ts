@@ -29,13 +29,20 @@ describe("shell layout", () => {
   it("keeps the More panel out of the scrolling pill strip: fixed to the viewport, not absolute inside it", () => {
     const more = /\.m-topnav-more\s*\{([^}]*)\}/.exec(globals)?.[1] ?? "";
     expect(more).toMatch(/position:\s*fixed/);
-    expect(/\.m-topnav-nav\s*\{([^}]*)\}/.exec(globals)?.[1]).toMatch(/overflow-x:\s*auto/);
+    // The pills scroll in their own strip inside the nav; More sits beside it, outside the scroller.
+    expect(/\.m-topnav-scroll\s*\{([^}]*)\}/.exec(globals)?.[1]).toMatch(/overflow-x:\s*auto/);
+    expect(/\.m-topnav-nav\s*\{([^}]*)\}/.exec(globals)?.[1]).not.toMatch(/overflow-x/);
   });
 
   it("gives presentation mode the same bottom room as the shell, so Exit presentation never covers the last row", () => {
-    const room = "[padding-bottom:calc(var(--m-space-10)+var(--m-space-8))]";
     const mains = layout.match(/<main [^>]*>/g) ?? [];
     expect(mains).toHaveLength(2);
-    for (const main of mains) expect(main).toContain(room);
+    for (const main of mains) expect(main).toMatch(/\bm-shell-main\b/);
+  });
+
+  it("keeps the launcher's height free at the foot of the main scroller, as padding and as scroll padding, above the safe area", () => {
+    const main = /\.m-shell-main\s*\{([^}]*)\}/.exec(globals)?.[1] ?? "";
+    expect(main).toMatch(/padding-bottom:\s*calc\(var\(--m-launcher-clearance\)\s*\+\s*env\(safe-area-inset-bottom\)\)/);
+    expect(main).toMatch(/scroll-padding-bottom:\s*calc\(var\(--m-launcher-clearance\)\s*\+\s*env\(safe-area-inset-bottom\)\)/);
   });
 });

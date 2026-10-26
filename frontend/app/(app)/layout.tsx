@@ -119,11 +119,11 @@ function Presentation({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, searchParams]);
   return (
-    <div className="flex h-screen flex-col" data-present="1">
+    <div className="flex h-dvh flex-col" data-present="1">
       {/* The shell is gone, so the document heading the Breadcrumb owns is kept here, visually hidden. */}
       <div className="sr-only"><Breadcrumb /></div>
       {/* The same bottom room as the shell: "Exit presentation" and the attribution sit over it, never over the last row. */}
-      <main id="main" tabIndex={0} className="flex-1 overflow-auto outline-none [background:var(--m-canvas)] [padding-bottom:calc(var(--m-space-10)+var(--m-space-8))]">
+      <main id="main" tabIndex={0} className="m-shell-main flex-1 overflow-auto outline-none [background:var(--m-canvas)]">
         <RootPageFrame>{children}</RootPageFrame>
       </main>
       <div className="fixed bottom-4 right-4 m-print-hide">
@@ -137,7 +137,7 @@ function Chrome({ children }: { children: ReactNode }) {
   const present = useSearchParams().get("present") === "1";
   if (present) return <Presentation>{children}</Presentation>;
   return (
-      <div className="flex h-screen flex-col m-print-flow">
+      <div className="flex h-dvh flex-col m-print-flow">
         <JobProgressBar />
         <Suspense fallback={<div className="[height:var(--m-topbar-h)]" />}>
           <Rail
@@ -149,8 +149,8 @@ function Chrome({ children }: { children: ReactNode }) {
         </Suspense>
         <Suspense fallback={null}><RunCarrier /></Suspense>
         <TopBar trailing={<><Suspense fallback={null}><GlobalSearch /></Suspense><Suspense fallback={null}><GlobalObjectPicker /></Suspense><Suspense fallback={null}><GlobalRunPicker /></Suspense><ScopedPill /></>} />
-        {/* Bottom room for the Ask Meridian launcher (fixed bottom-right), so the last row of a page never sits under it. */}
-        <main id="main" tabIndex={0} className="flex-1 overflow-auto outline-none m-print-flow [background:var(--m-canvas)] [padding-bottom:calc(var(--m-space-10)+var(--m-space-8))]">
+        {/* m-shell-main keeps room under the Ask Meridian launcher (fixed bottom-right): the last row of a page and a focused control never sit under it. */}
+        <main id="main" tabIndex={0} className="m-shell-main flex-1 overflow-auto outline-none m-print-flow [background:var(--m-canvas)]">
           <RootPageFrame>{children}</RootPageFrame>
         </main>
         <AskMeridian />

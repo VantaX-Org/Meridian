@@ -79,17 +79,18 @@ export function Stat({ label, value, delta, hint, href, onClick, tone, domain, h
       />
       {help && !interactive ? (
         <span className="flex items-center gap-1" style={{ minWidth: 0 }}>
-          <span className="m-text-meta truncate" style={{ color: hero ? "var(--m-hero-ink-2)" : "var(--m-ink-3)" }}>{label}</span>
+          <span className="m-text-meta m-stat-label" style={{ color: hero ? "var(--m-hero-ink-2)" : "var(--m-ink-3)" }}>{label}</span>
           <HelpHint term={help} onHero={hero} />
         </span>
       ) : (
-        <span className="m-text-meta truncate" style={{ color: hero ? "var(--m-hero-ink-2)" : "var(--m-ink-3)" }}>{label}</span>
+        <span className="m-text-meta m-stat-label" style={{ color: hero ? "var(--m-hero-ink-2)" : "var(--m-ink-3)" }}>{label}</span>
       )}
-      <span className="flex items-baseline gap-2">
+      <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
         <span
           className="m-numeric font-semibold"
           style={{
             minWidth: "4ch",
+            overflowWrap: "break-word",
             fontSize: hero ? "var(--m-text-hero)" : "var(--m-text-stat)",
             lineHeight: hero ? "var(--m-leading-hero)" : "var(--m-leading-stat)",
             letterSpacing: "var(--m-tracking-tight)",
