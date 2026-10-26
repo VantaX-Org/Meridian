@@ -519,7 +519,7 @@ describe("PersonaHomePage current state across objects", () => {
     perms.can = (a) => a === "view" || a === "approve" || a === "export";
     renderWithQuery(<StewardHomePage />);
     const open = await screen.findByRole("link", { name: "Open approvals" });
-    expect(open).toHaveAttribute("href", "/fix?tab=batches");
+    expect(open).toHaveAttribute("href", "/inbox?kind=approvals");
     expect(open).toHaveClass("m-btn-primary");
     expect(screen.queryByRole("link", { name: "Open worst object" })).toBeNull();
   });

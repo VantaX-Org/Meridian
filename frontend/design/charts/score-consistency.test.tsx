@@ -36,9 +36,12 @@ describe("ObjectMap layout", () => {
 });
 
 describe("Line ticks", () => {
-  it("never repeats a tick: later points sharing a minute read by their ordinal", () => {
+  it("never repeats a tick and never reads as an ordinal: a later point sharing a minute shows its seconds, else no tick", () => {
     const ticks = uniqueTicks(["a", "b", "c", "d"], (x) => (x === "d" ? "17 Oct, 09:00" : "16 Oct, 05:17"));
-    expect([...ticks.values()]).toEqual(["16 Oct, 05:17", "#2", "#3", "17 Oct, 09:00"]);
+    expect([...ticks.values()]).toEqual(["16 Oct, 05:17", "", "", "17 Oct, 09:00"]);
+    const finer = uniqueTicks(["a", "b", "c"], () => "16 Oct, 05:17", (x) => `16 Oct, 05:17:${x === "a" ? "01" : x === "b" ? "09" : "09"}`);
+    expect([...finer.values()]).toEqual(["16 Oct, 05:17", "16 Oct, 05:17:09", ""]);
+    expect([...finer.values()].some((t) => t.startsWith("#"))).toBe(false);
   });
 });
 

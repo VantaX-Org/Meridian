@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Bar, Button, DataTable, Delta, Heatmap, Line, Pill, Radar, Skeleton, statusLabel, toneOfTier, type ChartPoint, type ExportOption, type HeatmapCell, Score } from "@/design";
+import { Button, DataTable, Delta, DimensionBars, Heatmap, Line, Pill, Skeleton, statusLabel, toneOfTier, type ChartPoint, type ExportOption, type HeatmapCell, Score } from "@/design";
 import { downloadAuthenticated } from "@/lib/api/download";
 import {
   getCleansing, getHeatmap, getOverview, getRootCauses, getRuleRanking, getTrends, l1Label, type RuleRow,
@@ -23,7 +23,7 @@ import { reportFilename } from "@/lib/report-filename";
 import { runName } from "@/lib/run-scope";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
-import { InsightFrame, formatMoney } from "./_components/InsightFrame";
+import { InsightFrame, formatMoneyCompact } from "./_components/InsightFrame";
 import { PAGE_PURPOSE } from "./_components/InsightViews";
 import { scopeTrendRuns, trendPoints } from "./_components/trendLineage";
 import { Section } from "./_components/Section";
@@ -162,7 +162,7 @@ function RunOverview() {
           { label: "Records with a suggested value", value: o?.auto_fixable.records ?? "—", to: fixHref({ run, module, sugg: true }), hint: o?.auto_fixable.pct != null ? `${Math.round(o.auto_fixable.pct)}% of failing records` : undefined, versionId: run },
           {
             label: o?.value_at_risk.worst_l1 ? `Most at risk: ${l1Label(o.value_at_risk.worst_l1)}` : "Most at risk",
-            value: o?.value_at_risk.worst_l1 ? formatMoney(o.value_at_risk.worst_l1_amount, o.value_at_risk.currency) : "—",
+            value: o?.value_at_risk.worst_l1 ? formatMoneyCompact(o.value_at_risk.worst_l1_amount, o.value_at_risk.currency) : "—",
             to: withScope("/insights/impact", { run }),
             hint: o?.value_at_risk.worst_l1 ? plural(o.value_at_risk.features_blocked, "feature blocked", "features blocked") : undefined,
           },
@@ -209,8 +209,8 @@ function RunOverview() {
           <div className="@5xl:col-span-4">
             <Section title="Dimensions" height={180} query={trends} meta="The six measures behind the score">
               {dims.length === 0 ? <p className="m-text-body m-ink-3">This run has no dimension scores. <Link href={withScope("/insights/rules", { run, module })} className="m-ink-accent underline underline-offset-2">Open failing rules</Link></p>
-                : dims.length < 3 ? <Bar data={dims} label="Dimension scores, this run" height={140} />
-                : <Radar data={dims} label="Dimension scores, this run" height={200} />}
+                // The same bars as Home's hero: six rows read faster than a radar, and each opens its objects.
+                : <DimensionBars label="Dimension scores, this run" items={dims.map((d) => ({ key: d.dimension, label: d.x, score: d.y, href: withScope("/objects", { run, dimension: d.dimension }) }))} />}
             </Section>
           </div>
 

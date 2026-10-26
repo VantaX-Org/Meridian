@@ -260,6 +260,12 @@ class PendingApproval(BaseModel):
     records_updated: int = 0
     sap_host: Optional[str] = None
     created_at: Optional[str] = None
+    # Named here so an approver reads the rule and the requester without the findings or users APIs, which a data
+    # owner may not hold (`assign`, `manage_users`); before, the inbox showed a bare finding id and "Unknown user".
+    check_id: Optional[str] = None
+    module: Optional[str] = None
+    rule_message: Optional[str] = None
+    requested_by_name: Optional[str] = None
 
 
 class PendingApprovalList(BaseModel):
@@ -281,10 +287,13 @@ async def list_pending_writebacks(
     await db.execute(text(f"SET app.tenant_id = \'{tenant_id}\'"))
     result = await db.execute(
         text("""
-            SELECT id, finding_id, version_id, requested_by, records_updated, sap_host, created_at
-            FROM write_back_log
-            WHERE tenant_id = :tid AND dry_run = false AND approved_by IS NULL
-            ORDER BY created_at DESC
+            SELECT w.id, w.finding_id, w.version_id, w.requested_by, w.records_updated, w.sap_host, w.created_at,
+                   f.check_id, f.module, f.rule_context->>'message', COALESCE(NULLIF(u.name, ''), u.email)
+            FROM write_back_log w
+            LEFT JOIN findings f ON f.id = w.finding_id AND f.tenant_id = w.tenant_id
+            LEFT JOIN users u ON u.id = w.requested_by AND u.tenant_id = w.tenant_id
+            WHERE w.tenant_id = :tid AND w.dry_run = false AND w.approved_by IS NULL
+            ORDER BY w.created_at DESC
             LIMIT 200
         """),
         {"tid": tenant_id},
@@ -296,6 +305,7 @@ async def list_pending_writebacks(
                 id=str(r[0]), finding_id=str(r[1]) if r[1] else None, version_id=str(r[2]) if r[2] else None,
                 requested_by=str(r[3]) if r[3] else None, records_updated=r[4] or 0, sap_host=r[5],
                 created_at=r[6].isoformat() if r[6] else None,
+                check_id=r[7], module=r[8], rule_message=r[9] or None, requested_by_name=r[10] or None,
             )
             for r in result.fetchall()
         ],

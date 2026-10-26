@@ -1,7 +1,7 @@
 // Builds the four InsightHeader cells for a route from facts the API already returns.
 // Pure: no fetching here, so every sentence is testable and every number traces to a field.
 import type { InsightHeaderProps } from "@/design";
-import { formatMoney } from "@/lib/format";
+import { formatMoneyCompact, formatScore } from "@/lib/format";
 
 export interface InsightFacts {
   hasRun: boolean;
@@ -110,7 +110,8 @@ export function buildInsight(section: Section, f: InsightFacts): Omit<InsightHea
   const delta = dqs !== null && f.prevDqs !== null ? Math.round((dqs - f.prevDqs) * 10) / 10 : null;
   const base = `/objects${q(f.runId)}`;
   const worst = f.worst;
-  const score = dqs === null ? "This run has no score yet" : `Quality is at ${Math.round(dqs)}`;
+  // One decimal, as the hero score prints it ("71.7"), so the sentence never reads "72" under a 71.7.
+  const score = dqs === null ? "This run has no score yet" : `Quality is at ${formatScore(dqs)}`;
 
   let situation = `${score}, with ${n(f.total)} findings across ${n(f.affected)} records.`;
   if (section === "systems") situation = `${n(f.systems)} system${f.systems === 1 ? "" : "s"} connected. ${score}.`;
@@ -138,7 +139,7 @@ export function buildInsight(section: Section, f: InsightFacts): Omit<InsightHea
         : "This run found nothing wrong.";
 
   // Held until the cost model names the currency, so the sentence never reads as a bare number.
-  const risk = f.costAtRisk != null && f.costAtRisk > 0 && f.currency ? ` About ${formatMoney(Math.round(f.costAtRisk), f.currency)} is at risk.` : "";
+  const risk = f.costAtRisk != null && f.costAtRisk > 0 && f.currency ? ` About ${formatMoneyCompact(f.costAtRisk, f.currency)} is at risk.` : "";
   // On the homes the verdict's action is the one next step (it picks the lowest-scoring object, this cell the most
   // findings), so this cell links its object but offers no second button.
   const next =

@@ -58,6 +58,19 @@ const sumRecords = (v: SystemVersion) => Object.values(v.records ?? {}).reduce((
 const findingsHref = (versionId: string, module?: string) =>
   `/runs/${versionId}?tab=findings${module ? `&module=${encodeURIComponent(module)}` : ""}`;
 /** "ECC Prod (Production)": the system and environment every confirmation names. */
+/**
+ * The Health stat's hint. An unhealthy connection says why and when it was last checked ("Connection refused,
+ * checked 5m ago"); a healthy or untested one says when data last came in.
+ */
+function healthHint(s: SAPSystemExtended, hasRuns: boolean): string {
+  const failing = s.health_status !== "healthy" && s.health_status !== "unknown";
+  if (failing) {
+    const reason = s.health_message?.trim() || "No reason recorded";
+    return `${reason}, ${s.last_health_check ? `checked ${relativeTime(s.last_health_check)}` : "never checked"}`;
+  }
+  return s.last_sync_at ? `Last extracted ${relativeTime(s.last_sync_at)}` : hasRuns ? "Runs come from uploads" : "Nothing extracted yet";
+}
+
 const systemScope = (s: { name: string; environment: string }) => `${s.name} (${environmentLabel(s.environment)})`;
 
 /** With `systemId`, each row also links to its extraction log (the Runs tab); without, the overview's short list. */
@@ -276,7 +289,7 @@ export default function SystemPage() {
 
       <div className="m-stat-grid">
         {/* Runs can exist without an extraction (uploads); "nothing extracted" must not sit beside their score. */}
-        <Stat label="Health" value={HEALTH_LABEL[system.health_status]} hint={system.last_sync_at ? `Last extracted ${relativeTime(system.last_sync_at)}` : versions.length ? "Runs come from uploads" : "Nothing extracted yet"} href={`/systems/${systemId}?tab=health`} />
+        <Stat label="Health" value={HEALTH_LABEL[system.health_status]} hint={healthHint(system, versions.length > 0)} href={`/systems/${systemId}?tab=health`} />
         <Stat
           label="Objects loaded"
           loading={modulesQ.isLoading}

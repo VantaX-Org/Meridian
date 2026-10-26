@@ -16,7 +16,7 @@ describe("useRole with persona role keys", () => {
   it.each([
     ["data_steward", "/fix", ["approve", "apply"]],
     // The data owner approves but cannot apply (rbac.py data_owner = approver): their work is the approvals tab.
-    ["data_owner", "/fix?tab=batches", ["approve"]],
+    ["data_owner", "/inbox?kind=approvals", ["approve"]],
     ["data_steward", "/home/steward", []], // a custom steward role that may neither approve nor apply
     ["programme_lead", "/home/lead", []],
     ["platform_admin", "/home/lead", []],

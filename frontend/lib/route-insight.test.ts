@@ -35,7 +35,7 @@ describe("route insight", () => {
       ...empty, hasRun: true, runId: "r1", dqs: 72.4, prevDqs: 70, critical: 3, total: 120, affected: 4500,
       worst: { module: "material_master", label: "Material master", findings: 61, critical: 2 },
     });
-    expect(h.situation.sentence).toBe("Quality is at 72, with 120 findings across 4,500 records.");
+    expect(h.situation.sentence).toBe("Quality is at 72.4, with 120 findings across 4,500 records.");
     expect(h.changed.sentence).toBe("Up 2.4 points since the last run.");
     expect(h.why.sentence).toMatch(/3 critical findings are capping the score/);
     expect(h.next.href).toBe("/objects/material_master?run=r1");
@@ -70,9 +70,9 @@ describe("route insight lineage and money", () => {
     const h = buildInsight("objects", { ...empty, hasRun: true, runId: "r1", dqs: 70, prevDqs: null, firstRun: true, critical: 0, total: 5, affected: 9 });
     expect(h.changed.sentence).toBe("This is the first run of this object, so there is nothing to compare with yet.");
   });
-  it("writes the value at risk through formatMoney with the tenant currency", () => {
+  it("writes the value at risk compactly with the tenant currency", () => {
     const h = buildInsight("objects", { ...empty, hasRun: true, runId: "r1", dqs: 70, prevDqs: 70, critical: 0, total: 5, affected: 9, costAtRisk: 5672930, currency: "ZAR" });
-    expect(h.why.sentence).toMatch(/About ZAR[  ]?5[,.  ]672[,.  ]930 is at risk\./);
+    expect(h.why.sentence).toMatch(/About ZAR 5\.67 m is at risk\./);
     expect(h.why.sentence).not.toMatch(/About 5672930/);
   });
   it("holds the value-at-risk sentence until the currency is known, never a bare number", () => {

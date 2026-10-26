@@ -78,22 +78,44 @@ describe("Rail (the index bar)", () => {
     expect(panel).not.toHaveTextContent("As-is processes");
   });
 
-  it.each(["admin", "platform_admin", "programme_lead", "data_steward", "data_owner", "sap_basis", "analyst", "viewer", "auditor", "steward", "manager"])(
-    "%s: keeps Fix as a pill and shows a Processes pill, with Discovery runs and the designer under More",
-    async (r) => {
-      role = r;
-      renderRail();
-      expect(await screen.findByRole("link", { name: "Processes" })).toHaveAttribute("href", "/process");
-      expect(screen.getByRole("link", { name: /^Fix work/ })).toBeInTheDocument();
-      const pills = [...screen.getByTestId("rail-nav-items").children].filter((li) => li.querySelector("a"));
-      expect(pills.length).toBeLessThanOrEqual(MAX_PILLS);
-      fireEvent.click(screen.getByRole("button", { name: "More" }));
-      const panel = screen.getByRole("group", { name: "More pages" });
-      expect(panel).toHaveTextContent("Discovery runs");
-      expect(panel).toHaveTextContent("Process designer");
-      expect(panel).not.toHaveTextContent("As-is processes");
-    },
-  );
+  const LEAD = ["Home", "Objects", "Fix work", "Inbox", "Progress", "Runs"];
+  const STEWARD = ["Fix work", "Inbox", "Objects", "Match review", "Runs", "Progress"];
+  const OWNER = ["Approvals", "Inbox", "Objects", "Fix work", "Progress", "Runs"];
+  const BASIS = ["Systems", "Jobs", "Runs", "Inbox", "Objects"];
+  it.each([
+    ["admin", LEAD], ["platform_admin", LEAD], ["programme_lead", LEAD], ["manager", LEAD], ["analyst", LEAD], ["viewer", LEAD], ["auditor", LEAD],
+    ["data_steward", STEWARD], ["steward", STEWARD],
+    ["data_owner", OWNER], ["approver", OWNER],
+    ["sap_basis", BASIS],
+  ])("%s: pills by role, with Processes, Discovery runs and the designer under More", async (r, expected) => {
+    role = r;
+    // trigger_sync opens Jobs; the shared set holds every other permission these pills need
+    perms = [...ALL_PERMS, "trigger_sync"];
+    renderRail();
+    await screen.findByRole("link", { name: "Objects" });
+    const pills = [...screen.getByTestId("rail-nav-items").querySelectorAll(":scope > li > a")].map((a) => a.textContent?.replace(/\d+$/, "").trim());
+    expect(pills).toEqual(expected);
+    expect(pills.length).toBeLessThanOrEqual(MAX_PILLS);
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    const panel = screen.getByRole("group", { name: "More pages" });
+    expect(panel).toHaveTextContent("As-is processes");
+    expect(panel).toHaveTextContent("Discovery runs");
+    expect(panel).toHaveTextContent("Process designer");
+    // no page is both a pill and a More entry (a data owner with view_audit still finds Fix work's batch approvals there)
+    const pillHrefs = [...screen.getByTestId("rail-nav-items").querySelectorAll("a")].map((a) => a.getAttribute("href"));
+    for (const a of panel.querySelectorAll("a")) expect(pillHrefs).not.toContain(a.getAttribute("href"));
+  });
+
+  it("lights only the data owner's Approvals pill on Inbox › Approvals, not Inbox as well", async () => {
+    role = "data_owner";
+    perms = ["view", "approve"];
+    pathname = "/inbox";
+    searchParams = new URLSearchParams("kind=approvals");
+    renderRail();
+    const current = await screen.findAllByRole("link", { current: "page" });
+    expect(current.map((a) => a.textContent)).toEqual(["Approvals"]);
+    expect(current[0]).toHaveAttribute("href", "/inbox?kind=approvals");
+  });
 
   it("never carries the page's ?run= onto a nav link", async () => {
     pathname = "/objects/material_master";
@@ -114,11 +136,11 @@ describe("Rail (the index bar)", () => {
     expect(current[0]).toHaveTextContent("Objects");
   });
 
-  it("shows the six main entries as pills, in order, and everything else under More", async () => {
+  it("shows the lead's six pills, in order, and everything else under More", async () => {
     renderRail();
     await screen.findByRole("link", { name: "Objects" });
     const pills = [...screen.getByTestId("rail-nav-items").children].map((li) => li.textContent?.replace(/\d+$/, "").trim());
-    expect(pills).toEqual(["Fix work", "Objects", "Runs", "Processes", "Progress", "Inbox"]);
+    expect(pills).toEqual(["Home", "Objects", "Fix work", "Inbox", "Progress", "Runs"]);
     // More sits in the Main nav but outside the scrolling pill strip, so it never scrolls out of reach.
     const more = screen.getByRole("button", { name: "More" });
     expect(screen.getByTestId("rail-nav-items")).not.toContainElement(more);
@@ -127,9 +149,12 @@ describe("Rail (the index bar)", () => {
     const panel = screen.getByRole("group", { name: "More pages" });
     for (const section of ["Analysis", "Master data", "Rules", "Data in", "Admin"]) expect(panel).toHaveTextContent(section);
     expect(panel).toHaveTextContent("Systems");
-    // Runs is a pill now, so More does not list it twice; All features leads the panel.
+    // Runs and Home are pills, so More does not list them twice; All features leads the panel, then Processes,
+    // the main entry the lead's strip leaves out.
     expect(within(panel).queryByRole("link", { name: "Runs" })).toBeNull();
+    expect(within(panel).queryByRole("link", { name: "Home" })).toBeNull();
     expect(within(panel).getAllByRole("link")[0]).toHaveAttribute("href", "/features");
+    expect(within(panel).getAllByRole("link")[1]).toHaveAttribute("href", "/process");
     expect(panel).not.toHaveTextContent("Fix work");
   });
 
@@ -239,8 +264,8 @@ describe("Rail (the index bar)", () => {
   it.each([
     // A steward who may neither approve nor apply cannot use Fix work: the brand opens the steward home.
     ["data_steward", ["view"], "/home/steward"],
-    // A data owner approves but cannot apply: the brand opens Fix work's approvals tab.
-    ["data_owner", ["view", "approve"], "/fix?tab=batches"],
+    // A data owner approves but cannot apply: the brand opens Inbox › Approvals, where the requests wait.
+    ["data_owner", ["view", "approve"], "/inbox?kind=approvals"],
     ["data_steward", ["view", "approve", "apply"], "/fix"],
     ["admin", ALL_PERMS, "/home/lead"],
   ])("%s with %j: the brand opens %s", async (r, p, href) => {

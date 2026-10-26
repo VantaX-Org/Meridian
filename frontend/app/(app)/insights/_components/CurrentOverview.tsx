@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Bar, buildDrillHref, Card, DataTable, Delta, Heatmap, Line, Mono, Radar, Score, Stat, Status } from "@/design";
+import { buildDrillHref, Card, DataTable, Delta, DimensionBars, Heatmap, Line, Mono, Score, Stat, Status } from "@/design";
 import { getFindings } from "@/lib/api/findings";
 import { getCurrentCleansing, getCurrentOverview, getCurrentRootCauses, l1Label } from "@/lib/api/insights";
 import { getCurrentS4Readiness } from "@/lib/api/migration";
@@ -25,7 +25,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import type { Finding } from "@/types/api";
 import { DrillCount } from "./DrillCount";
-import { InsightFrame, formatMoney } from "./InsightFrame";
+import { InsightFrame, formatMoneyCompact } from "./InsightFrame";
 import { CleansingFunnel, RootCauseList, S4Chart, s4Totals } from "./RunAnalyses";
 import { InsightActions } from "./InsightActions";
 import { PAGE_PURPOSE } from "./InsightViews";
@@ -275,8 +275,8 @@ export function CurrentOverview() {
           <div className="@5xl:col-span-4">
             <Card title="Dimensions" meta="The six measures behind the score, averaged over the objects">
               {dims.length === 0 ? <p className="m-text-body m-ink-3">No object has dimension scores yet. <Link href="/runs" className="m-ink-accent underline underline-offset-2">Open runs</Link></p>
-                : dims.length < 3 ? <Bar data={dims} label="Dimension scores, all objects" height={140} />
-                : <Radar data={dims} label="Dimension scores, all objects" height={200} />}
+                // The same bars as Home's hero: six rows read faster than a radar, and each opens its objects.
+                : <DimensionBars label="Dimension scores, all objects" items={dims.map((d) => ({ key: d.dimension, label: d.x, score: d.y, href: `/objects?dimension=${d.dimension}` }))} />}
             </Card>
           </div>
 
@@ -308,7 +308,7 @@ export function CurrentOverview() {
                   <div className="grid grid-cols-2 gap-3" data-testid="current-value-at-risk">
                     <Stat
                       label={`Most at risk: ${l1Label(ov.value_at_risk.worst_l1)}`}
-                      value={formatMoney(ov.value_at_risk.worst_l1_amount, ov.value_at_risk.currency)}
+                      value={formatMoneyCompact(ov.value_at_risk.worst_l1_amount, ov.value_at_risk.currency)}
                       hint={impactScopeHint}
                       href={impactHref}
                     />

@@ -13,7 +13,9 @@ import { useRole } from "@/hooks/use-role";
 import { DayOneAction, useDayOne } from "@/hooks/use-day-one";
 import { JOBS_HISTORY_QUERY_KEY } from "@/hooks/use-jobs";
 import { getJobs } from "@/lib/api/jobs";
-import { formatDate, labelOf } from "@/lib/format";
+import { getSystems } from "@/lib/api/connectivity";
+import { formatDate, formatDuration, formatInt, labelOf, zoneName } from "@/lib/format";
+import { queryKeys } from "@/lib/query-keys";
 import { explainJobError } from "@/lib/job-error";
 import { TENANT_TIMEZONE_HREF, useTenantTimezone } from "@/lib/tenant-zone";
 import type { Job, JobKind, JobStatus } from "@/types/jobs";
@@ -55,6 +57,23 @@ const STATUS_FILTERS: { value: StatusFilter; label: string; keep: (s: JobStatus)
   { value: "completed", label: "Succeeded", keep: (s) => s === "completed" },
 ];
 
+/**
+ * Rows the job read or checked: its own count, else (an extraction that only reported per table) the tables' sum.
+ * A job that never reported a count shows an em dash, not a 0 that reads as "read nothing".
+ */
+function jobRows(j: Job): number | null {
+  if (j.rows_done > 0) return j.rows_done;
+  const tables = (j.tables ?? []).reduce((n, t) => n + (t.rows || 0), 0);
+  if (tables > 0) return tables;
+  return j.status === "completed" && j.kind === "extraction" ? 0 : null;
+}
+
+/** Wall time from start to finish, or to now while it runs, in ms; the job's times are unix seconds. */
+function jobDuration(j: Job, now = Date.now() / 1000): number | null {
+  const end = j.finished_at ?? (ACTIVE.has(j.status) ? now : null);
+  return end != null && j.started_at ? Math.max(0, end - j.started_at) * 1000 : null;
+}
+
 function ExtractAgain({ job, href }: { job: Job; href: string }) {
   const { can, loading } = useRole();
   if (can("trigger_sync")) return <RowLink href={href} label={`Extract ${job.label} again`}>Extract again</RowLink>;
@@ -85,20 +104,25 @@ export default function JobsPage() {
     queryFn: () => getJobs({ limit: JOBS_KEPT }),
     refetchInterval: (query) => (query.state.data?.some((j) => ACTIVE.has(j.status)) ? 5_000 : false),
   });
+  const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, meta: { ignoreError: true } });
+  const systemName = useMemo(() => new Map((systemsQ.data ?? []).map((s) => [s.id, s.name])), [systemsQ.data]);
   const jobs = useMemo(() => q.data ?? [], [q.data]);
   const kinds = useMemo(() => [...new Set(jobs.map((j) => j.kind))].sort(), [jobs]);
   const keep = STATUS_FILTERS.find((f) => f.value === status)?.keep ?? (() => true);
   const shown = jobs.filter((j) => keep(j.status) && (kind === "all" || j.kind === kind));
 
   const columns = useMemo<ColumnDef<Job>[]>(() => {
-    const when = (s: number) => formatDate(s * 1000, "datetime", tz);
+    // The zone is named once in the header, so a cell is one line ("2 Oct 2026, 07:09"), not a wrapped "UTC".
+    const when = (s: number) => formatDate(s * 1000, "datetime", tz, false);
+    const zone = zoneName(tz);
     return [
       { accessorKey: "label", header: "Job" },
+      { id: "system", header: "System", accessorFn: (j) => (j.system_id ? systemName.get(j.system_id) ?? "" : ""), cell: ({ getValue }) => getValue<string>() || "—" },
       { id: "kind", header: "Kind", accessorFn: (j) => j.kind, cell: ({ row }) => labelOf(row.original.kind) },
       { id: "status", header: "Status", cell: ({ row }) => <Status kind="lifecycle" value={row.original.status} /> },
-      { id: "rows", header: "Rows", cell: ({ row }) => row.original.rows_done.toLocaleString() },
-      { id: "start", header: "Started", cell: ({ row }) => when(row.original.started_at) },
-      { id: "end", header: "Finished", cell: ({ row }) => (row.original.finished_at ? when(row.original.finished_at) : "—") },
+      { id: "start", header: `Started (${zone})`, accessorFn: (j) => j.started_at, cell: ({ row }) => <span className="whitespace-nowrap">{when(row.original.started_at)}</span> },
+      { id: "duration", header: "Duration", meta: { numeric: true }, accessorFn: (j) => jobDuration(j) ?? -1, cell: ({ row }) => formatDuration(jobDuration(row.original)) },
+      { id: "rows", header: "Rows", meta: { numeric: true }, accessorFn: (j) => jobRows(j) ?? -1, cell: ({ row }) => formatInt(jobRows(row.original)) },
       {
         id: "msg", header: "Detail",
         cell: ({ row }) => explainJobError(row.original.status === "failed" ? row.original.error : null)?.summary ?? row.original.message ?? "—",
@@ -113,7 +137,7 @@ export default function JobsPage() {
         );
       }),
     ];
-  }, [tz]);
+  }, [tz, systemName]);
 
   return (
     <ExplorerPage

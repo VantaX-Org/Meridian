@@ -367,11 +367,24 @@ export function SapMonitorPanel() {
 /* ─── Approvals: live write-back requests waiting for a second person ─── */
 
 /** The rule behind a write-back request, from its finding: the check id in mono with the object beside it. */
-function FindingRule({ findingId }: { findingId: string | null }) {
-  const q = useQuery({ queryKey: ["findings", "context", findingId ?? ""], queryFn: () => getFindingReportContext(findingId as string), enabled: !!findingId, retry: false, meta: { ignoreError: true } });
+/**
+ * The rule a write-back request fixes: the check id, its message and object as the approvals API names them; an
+ * older API without them is looked up by finding. Never the bare finding id: an unknown rule reads "Rule not found".
+ */
+function FindingRule({ approval }: { approval: PendingApproval }) {
+  const findingId = approval.finding_id;
+  const named = !!approval.check_id;
+  const q = useQuery({ queryKey: ["findings", "context", findingId ?? ""], queryFn: () => getFindingReportContext(findingId as string), enabled: !!findingId && !named, retry: false, meta: { ignoreError: true } });
+  const checkId = approval.check_id ?? q.data?.check_id;
+  const objectId = approval.module ?? q.data?.module;
   if (!findingId) return <>—</>;
-  if (!q.data) return <Mono>{findingId}</Mono>;
-  return <span className="inline-flex items-baseline gap-2"><Mono>{q.data.check_id}</Mono><span className="m-ink-3">{formatModuleName(q.data.module)}</span></span>;
+  if (!checkId) return <span className="m-ink-3">{q.isLoading ? "…" : "Rule not found"}</span>;
+  return (
+    <span className="inline-flex flex-col items-start">
+      <span className="inline-flex items-baseline gap-2"><Mono>{checkId}</Mono>{objectId ? <span className="m-ink-3">{formatModuleName(objectId)}</span> : null}</span>
+      {approval.rule_message ? <span className="m-text-meta m-ink-2">{approval.rule_message}</span> : null}
+    </span>
+  );
 }
 
 /** The run a write-back request was raised from, by name. */
@@ -394,7 +407,8 @@ export function ApprovalsPanel() {
     () => new Map([...(Array.isArray(assignableQ.data) ? assignableQ.data : []), ...(usersQ.data?.users ?? [])].map((u) => [u.id, u.name || u.email])),
     [usersQ.data, assignableQ.data],
   );
-  const who = (id: string | null) => (!id ? "Unknown user" : id === user?.id ? "You" : names.get(id) ?? "Unknown user");
+  const who = (a: PendingApproval) =>
+    !a.requested_by ? "Unknown user" : a.requested_by === user?.id ? "You" : a.requested_by_name ?? names.get(a.requested_by) ?? "Unknown user";
   const [asking, setAsking] = useState<PendingApproval | null>(null);
   const approve = useMutation({
     mutationFn: (id: string) => approveWriteback(id),
@@ -408,17 +422,19 @@ export function ApprovalsPanel() {
     onError: (e) => { setAsking(null); toast.error(apiErrorMessage(e)); },
   });
   const cols = useMemo<ColumnDef<PendingApproval, unknown>[]>(() => [
-    { id: "finding", header: "Rule", cell: ({ row }) => <FindingRule findingId={row.original.finding_id} /> },
+    { id: "finding", header: "Rule", cell: ({ row }) => <FindingRule approval={row.original} /> },
     { id: "run", header: "Run", cell: ({ row }) => <RunName versionId={row.original.version_id} /> },
     { id: "host", header: "SAP host", cell: ({ row }) => row.original.sap_host ?? "—" },
     { id: "records", header: "Records", cell: ({ row }) => row.original.records_updated.toLocaleString() },
-    { id: "by", header: "Requested by", cell: ({ row }) => who(row.original.requested_by) },
+    { id: "by", header: "Requested by", cell: ({ row }) => who(row.original) },
     { id: "when", header: "Requested", cell: ({ row }) => row.original.created_at ? relativeTime(row.original.created_at) : "—" },
-    { id: "act", header: "", cell: ({ row }) => (
-      <Button variant="secondary" disabled={approve.isPending || !q.data?.live_enabled || (user != null && row.original.requested_by === user.id)}
-        title={user != null && row.original.requested_by === user.id ? "You requested this; another approver must approve it" : undefined}
-        onClick={() => setAsking(row.original)}>Approve</Button>
-    ) },
+    // Approve is the row's one action: a real primary button when it can run, else the reason it cannot, as text,
+    // never a greyed button that reads as broken.
+    { id: "act", header: "", cell: ({ row }) => {
+      if (user != null && row.original.requested_by === user.id) return <span className="m-text-meta m-ink-3">Needs another approver</span>;
+      if (!q.data?.live_enabled) return <span className="m-text-meta m-ink-3">Write-back is off</span>;
+      return <Button disabled={approve.isPending} onClick={() => setAsking(row.original)}>Approve</Button>;
+    } },
   // eslint-disable-next-line react-hooks/exhaustive-deps -- `who` closes over names and user
   ], [approve, q.data?.live_enabled, user, names]);
   const list = q.data?.approvals ?? [];
@@ -439,8 +455,8 @@ export function ApprovalsPanel() {
           title="Write these records back to SAP?"
           body={asking ? (
             <div className="flex flex-col gap-1">
-              <p>Rule: <FindingRule findingId={asking.finding_id} /></p>
-              <p>{asking.records_updated.toLocaleString()} record{asking.records_updated === 1 ? "" : "s"} on {asking.sap_host ?? "the connected SAP system"}, requested by {who(asking.requested_by)}.</p>
+              <div className="inline-flex items-baseline gap-2"><span>Rule:</span> <FindingRule approval={asking} /></div>
+              <p>{asking.records_updated.toLocaleString()} record{asking.records_updated === 1 ? "" : "s"} on {asking.sap_host ?? "the connected SAP system"}, requested by {who(asking)}.</p>
             </div>
           ) : null}
           confirmLabel="Approve and write back"

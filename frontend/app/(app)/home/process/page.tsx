@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, buildDrillHref, Card, DataTable, DrillLink, ErrorState, ExportMenu, InsightHeader, Mono, PageHeader, Select, Skeleton, StatSkeleton, Stat, Status, type ExportOption, type StatTone, PageFrame, runExportOption } from "@/design";
+import { Button, actionColumn, buildDrillHref, Card, DataTable, DrillLink, ErrorState, ExportMenu, InsightHeader, Mono, PageHeader, Select, Skeleton, StatSkeleton, Stat, Status, type ExportOption, type StatTone, PageFrame, runExportOption } from "@/design";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { HomeOnboarding } from "@/components/help/home-onboarding";
@@ -14,7 +14,7 @@ import { HandToSteward } from "@/components/process/handoff";
 import { exportRun, getCatalogue, listRuns } from "@/lib/api/process-discovery";
 import { downloadCsv } from "@/lib/actions";
 import { apiErrorState } from "@/lib/error";
-import { relativeTime } from "@/lib/format";
+import { plural, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { PERSONA_OPTIONS } from "@/lib/persona";
 import { hrefWithRun, runScopeLabel } from "@/lib/run-scope";
@@ -31,7 +31,7 @@ const columns = (systemId: string, canRun: boolean, versionId: string | undefine
   { id: "process", header: "Process", accessorFn: (r) => r.name, cell: ({ row: { original: r } }) => (
       <span className="flex items-baseline gap-2"><DrillLink href={l1Href(r.l1, systemId, r.last_run?.id)}>{r.name}</DrillLink><Mono>{r.l1}</Mono></span>) },
   { id: "verdict", header: "Verdict", accessorFn: (r) => r.readiness?.verdict ?? "",
-    cell: ({ row: { original: r } }) => (r.readiness ? <Status kind="verdict" value={r.readiness.verdict} variant="solid" /> : "—") },
+    cell: ({ row: { original: r } }) => (r.readiness ? <Status kind="verdict" value={r.readiness.verdict} variant="solid" /> : <span className="m-ink-3">Not scored</span>) },
   { id: "rule", header: "Blocking rule", enableSorting: false, cell: ({ row: { original: r } }) => {
       const w = r.readiness?.worst;
       if (!r.readiness) return "—";
@@ -48,12 +48,15 @@ const columns = (systemId: string, canRun: boolean, versionId: string | undefine
   { id: "fitness", header: "Fitness", meta: { numeric: true }, accessorFn: (r) => r.last_run?.fitness ?? -1, cell: ({ row: { original: r } }) => fmtFitness(r.last_run?.fitness) },
   { id: "last", header: "Last run", cell: ({ row: { original: r } }) => (r.last_run?.finished_at ? relativeTime(r.last_run.finished_at) : "Never") },
   {
-    id: "actions", header: "", enableSorting: false,
+    // A fixed, pinned action column wide enough for its buttons on one line: a narrow auto column wrapped them over
+    // three lines, out of the fixed-height row and onto the header.
+    ...actionColumn<Row>(() => null),
+    size: 300,
     cell: ({ row: { original: r } }) => {
       // The object that scored this L1, in the run that scored it: the readiness page reads one object per run.
       const ready = r.readiness && readinessHref({ l1: r.l1, object: r.readiness.module, run: versionId });
       return (
-        <span className="flex items-center gap-1">
+        <span className="flex items-center gap-1 whitespace-nowrap">
           {ready && <Button variant="ghost" render={<Link href={ready}>Can it run</Link>} />}
           {r.readiness?.worst?.check_id && (
             <HandToSteward target={{ checkId: r.readiness.worst.check_id, module: r.readiness.module, versionId, process: r.name, field: r.readiness.worst.field }} />
@@ -102,8 +105,12 @@ export default function ProcessHomePage() {
     );
   }
   const h = headline(rows);
-  const ledger: Row[] = rows.map((r) => ({ ...r, readiness: readiness.byL1.get(r.l1) }));
+  // Scored processes first (in catalogue order), then the ones no analysis scores yet.
+  const ledger: Row[] = rows
+    .map((r) => ({ ...r, readiness: readiness.byL1.get(r.l1) }))
+    .sort((a, b) => Number(!a.readiness) - Number(!b.readiness));
   const noGo = ledger.filter((r) => r.readiness?.verdict === "no-go").length;
+  const scoredCount = ledger.filter((r) => r.readiness).length;
   // The catalogue ranks lowest fitness first, so the tile lands on the ranked list.
   const catalogueHref = `/process?system=${system.id}`;
   const starting = isDayOne(rows) || !canMine(rows);
@@ -139,7 +146,7 @@ export default function ProcessHomePage() {
       {(!starting || readiness.byL1.size > 0) && <InsightHeader {...processHomeInsight(ledger, system, readiness.latest)} />}
       <Card title="Can each process run" padding="sm"
         meta={readiness.latest
-          ? `${noGo} of ${readiness.byL1.size} scored processes no-go, from ${runScopeLabel(readiness.latest)} on ${system.name}`
+          ? `${scoredCount} of ${plural(rows.length, "process", "processes")} scored, ${noGo} no-go, from ${runScopeLabel(readiness.latest)} on ${system.name}`
           : `No finished analysis of ${system.name} to score readiness from`}>
         <DataTable columns={columns(system.id, can("run_process_discovery"), readiness.latest?.id)} data={ledger} getRowId={(r) => r.l1} height="auto" hideToolbar tableId="home-processes" />
       </Card>

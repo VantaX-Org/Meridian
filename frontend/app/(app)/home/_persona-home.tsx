@@ -488,6 +488,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       persona={role}
       state="ready"
       workFirst={role === "steward"}
+      opsFirst={role === "basis"}
       explain={dqsExplanation({ agg: aggregateQ.data, versionId: pinned?.id, cap: cap?.cap, capReason }, dqsInputs)?.explain}
       verdict={{
         dqs,

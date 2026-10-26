@@ -104,24 +104,30 @@ export function countDomain(values: readonly number[]): [number, number] {
  * A tick reads short: no year when every point shares one, minutes not seconds, no "#2" twin suffix. The tooltip
  * keeps the full label.
  */
-export function tickText(label: string, dropYear: boolean): string {
+export function tickText(label: string, dropYear: boolean, seconds = false): string {
   let s = label.replace(/ #\d+$/, "");
   if (dropYear) s = s.replace(/ \d{4}(?=,|$)/, "");
-  return s.replace(/(\d{1,2}:\d{2}):\d{2}/, "$1");
+  return seconds ? s : s.replace(/(\d{1,2}:\d{2}):\d{2}/, "$1");
 }
 
 /**
- * Each x's tick text, unique: when two points shorten to the same text (runs a minute apart, twins), the first keeps
- * it and each later one reads by its ordinal in that group ("#2", "#3"), so the axis never repeats a label.
+ * Each x's tick text, unique and always a date: when two points shorten to the same text (runs a minute apart), a
+ * later one reads by its finer text (`finer`, the time to the second) when that is new on the axis, else its tick
+ * is left blank; the tooltip still names it in full. Never an ordinal: "#3 #2 #3" read as run numbers.
  */
-export function uniqueTicks(xs: readonly (string | number)[], text: (x: string | number) => string): Map<string | number, string> {
-  const seen = new Map<string, number>();
+export function uniqueTicks(
+  xs: readonly (string | number)[],
+  text: (x: string | number) => string,
+  finer?: (x: string | number) => string,
+): Map<string | number, string> {
+  const used = new Set<string>();
   const out = new Map<string | number, string>();
   for (const x of xs) {
     const t = text(x);
-    const n = (seen.get(t) ?? 0) + 1;
-    seen.set(t, n);
-    out.set(x, n === 1 ? t : `#${n}`);
+    const f = finer?.(x);
+    const tick = !used.has(t) ? t : f && !used.has(f) ? f : "";
+    if (tick) used.add(tick);
+    out.set(x, tick);
   }
   return out;
 }
@@ -185,7 +191,11 @@ export function Line({
     return (x: string | number) => m.get(x) ?? String(x);
   }, [multi, data, xDomain]);
   const years = new Set(rows.map((r) => /\b(\d{4})\b/.exec(labelOf(r.x))?.[1]).filter(Boolean));
-  const ticks = uniqueTicks(rows.map((r) => r.x), (x) => tickText(labelOf(x), years.size === 1));
+  const ticks = uniqueTicks(
+    rows.map((r) => r.x),
+    (x) => tickText(labelOf(x), years.size === 1),
+    (x) => tickText(labelOf(x), years.size === 1, true),
+  );
   const tickOf = (x: string | number) => ticks.get(x) ?? tickText(labelOf(x), years.size === 1);
   const rightMargin = lastTickMargin(rows.length ? tickOf(rows[rows.length - 1].x) : undefined);
   const values = rows

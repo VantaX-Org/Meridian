@@ -3,8 +3,9 @@
  * the header page titles. Both surfaces filter it with `visibleNav()`, so a
  * role or licence never sees a page in one place and not the other.
  *
- * Six main entries for everyone (the "Work" group: Fix work, Objects, Runs,
- * Processes, Progress, Inbox) and five "More" sections (Analysis, Master data, Rules,
+ * Six main entries (the "Work" group: Fix work, Objects, Runs, Processes,
+ * Progress, Inbox), shown as pills in each role's own choice and order
+ * (`PERSONA_PILLS`), and five "More" sections (Analysis, Master data, Rules,
  * Data in, Admin), each href appearing exactly once (enforced by nav and Rail
  * tests). `splitNav()` gives the Rail its pills and its More menu. Routes removed from the nav stay
  * routable — their titles live in `OFF_NAV_TITLES` or come from the
@@ -26,7 +27,7 @@ import {
   IconShieldAlert, IconSliders, IconTrend, IconUserShield,
 } from "@/design/icons";
 import type { Role } from "@/hooks/use-role";
-import { homeHrefForRole } from "@/lib/persona";
+import { APPROVALS_HREF, homeHrefForRole, type PillSet } from "@/lib/persona";
 
 export { homeHrefForRole };
 
@@ -122,6 +123,19 @@ export function settingsTabs(groups: readonly NavGroup[]): NavItem[] {
 /** DESIGN.md §1.1: the index bar holds at most this many pills before More (the main group's size). */
 export const MAX_PILLS = 6;
 
+/**
+ * Each pill strip, in order, as nav hrefs (before `resolveNavHref`): each role's strip leads with where its day
+ * starts. An href the viewer cannot see is skipped; main items a strip leaves out move to the top of More
+ * (`railSplit`). The process strip is the main group with Processes first and Fix work in More.
+ */
+export const PERSONA_PILLS: Readonly<Record<PillSet, readonly string[]>> = {
+  lead: ["/home/lead", "/objects", "/fix", "/inbox", "/insights/progress", "/runs"],
+  steward: ["/fix", "/inbox", "/objects", "/mdm/golden/merge", "/runs", "/insights/progress"],
+  owner: [APPROVALS_HREF, "/inbox", "/objects", "/fix", "/insights/progress", "/runs"],
+  basis: ["/systems", "/admin/jobs", "/runs", "/inbox", "/objects"],
+  process: ["/process", "/objects", "/runs", "/insights/progress", "/inbox"],
+};
+
 export const NAV_GROUPS: readonly NavGroup[] = [
   {
     // The six entries everyone works from; the Rail shows them as pills (at most six: DESIGN.md §1.1). Every other
@@ -146,6 +160,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         keywords: "workbench queue triage tasks stewardship steward team assign sla metrics failing records issues",
         children: [
           { href: "/inbox?kind=exception", requires: req("stewardship", "view"), label: "Exceptions", icon: IconShieldAlert, anyOf: ["approve", "assign"], keywords: "escalate sla exception" },
+          // The data owner's Approvals pill (PERSONA_PILLS.owner, labelled by the Rail); the palette keeps the full name.
+          { href: APPROVALS_HREF, requires: req("stewardship", "view"), label: "SAP change approvals", icon: IconLog, anyOf: ["approve"], keywords: "approvals approve four eyes writeback second person change requests" },
         ],
       },
     ],
@@ -306,6 +322,7 @@ export const FEATURE_DESC: Readonly<Record<string, string>> = {
   "/fix/what-if": "Simulate a fix and see the score before and after",
   "/inbox": "Work the stewardship queue: assigned issues, due dates and SLAs",
   "/inbox?kind=exception": "Escalated exceptions waiting for a decision",
+  "/inbox?kind=approvals": "Approve or reject SAP changes another person requested (four eyes)",
   "/inbox/notifications": "Every notification sent to you",
   "/home/lead": "Your home: the score, what changed and what to do next",
   "/home/steward": "The steward's home: the queue first, then the score",

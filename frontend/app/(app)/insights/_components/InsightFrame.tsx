@@ -18,7 +18,7 @@ import { CURRENT_STATE_VIEWS, insightRunChoices } from "./scopeMode";
 import { useCurrentState } from "./useCurrentState";
 import { useInsightScope } from "./useInsightScope";
 
-export { formatMoney } from "@/lib/format";
+export { formatMoney, formatMoneyCompact } from "@/lib/format";
 
 /** Human label for a run id from the run list the shell already loads (or the run read by id), never the raw id. */
 export function useRunLabel(versionId?: string | null): string | undefined {

@@ -25,7 +25,7 @@ describe("homeActionFor", () => {
   });
 
   it("sends the data owner to approvals and the steward to the worst object", () => {
-    expect(homeActionFor({ ...base, persona: "steward", can: canFor("approver") })).toEqual({ label: "Open approvals", href: "/fix?tab=batches" });
+    expect(homeActionFor({ ...base, persona: "steward", can: canFor("approver") })).toEqual({ label: "Open approvals", href: "/inbox?kind=approvals" });
     expect(homeActionFor({ ...base, persona: "steward", can: canFor("steward") })).toEqual({ label: "Open worst object", href: "/objects/fi_gl?run=v1" });
     expect(homeActionFor({ ...base, persona: "steward", can: canFor("steward"), worstHref: undefined }).href).toBe("/objects");
   });

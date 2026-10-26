@@ -21,17 +21,18 @@ vi.mock("next/navigation", () => ({
 afterEach(() => { vi.restoreAllMocks(); perms.can = () => true; });
 
 describe("ApprovalsPanel", () => {
-  it("disables Approve and says why when live write-back is off", async () => {
+  it("says why there is no Approve when live write-back is off, instead of a greyed button", async () => {
     vi.spyOn(writeback, "getPendingApprovals").mockResolvedValue({
       approvals: [{ id: "a1", finding_id: null, version_id: null, requested_by: "someone", records_updated: 4, sap_host: null, created_at: null }],
       live_enabled: false,
     });
     renderWithQuery(<ApprovalsPanel />);
     await screen.findByText(/live sap write-back is off/i);
-    expect(screen.getByRole("button", { name: "Approve" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
+    expect(screen.getByText("Write-back is off")).toBeInTheDocument();
   });
 
-  it("disables Approve on the viewer's own request (4-eyes) and enables it on others'", async () => {
+  it("offers no Approve on the viewer's own request (4-eyes) and a primary Approve on others'", async () => {
     vi.spyOn(writeback, "getPendingApprovals").mockResolvedValue({
       approvals: [
         { id: "a1", finding_id: null, version_id: null, requested_by: "me", records_updated: 1, sap_host: null, created_at: null },
@@ -41,9 +42,24 @@ describe("ApprovalsPanel", () => {
     });
     renderWithQuery(<ApprovalsPanel />);
     const buttons = await screen.findAllByRole("button", { name: "Approve" });
-    expect(buttons[0]).toBeDisabled();
-    expect(buttons[0]).toHaveAttribute("title", expect.stringMatching(/another approver/));
-    expect(buttons[1]).toBeEnabled();
+    expect(buttons).toHaveLength(1);
+    expect(screen.getByText("Needs another approver")).toBeInTheDocument();
+    expect(buttons[0]).toBeEnabled();
+    expect(buttons[0]).toHaveClass("m-btn-primary");
+  });
+
+  it("names the rule and the requester from the approvals payload, never a finding id or Unknown user", async () => {
+    vi.spyOn(writeback, "getPendingApprovals").mockResolvedValue({
+      approvals: [{ id: "a3", finding_id: "f1f1f1f1-0000-4000-8000-000000000001", version_id: null, requested_by: "u-9", records_updated: 14, sap_host: "sap-dev", created_at: null,
+        check_id: "MM101", module: "material_master", rule_message: "Material type not allowed", requested_by_name: "Thandi Nkosi" }],
+      live_enabled: true,
+    });
+    renderWithQuery(<ApprovalsPanel />);
+    expect(await screen.findByText("MM101")).toBeInTheDocument();
+    expect(screen.getByText("Material type not allowed")).toBeInTheDocument();
+    expect(screen.getByText("Thandi Nkosi")).toBeInTheDocument();
+    expect(screen.queryByText(/f1f1f1f1/)).toBeNull();
+    expect(screen.queryByText("Unknown user")).toBeNull();
   });
 
   it("confirms an approval naming the records and the SAP host before writing back", async () => {

@@ -89,7 +89,7 @@ const loadingSkeleton = (
  * data-specific piece; this component places it and owns the loading, no-data and error geometry.
  */
 export function HomePage({
-  state, verdict, run, scope, journey, error, aside, dimensions, objects, trend, heatmap, work, lists, headerActions, emptyActions, onboarding, cells, explain, workFirst, nextAction,
+  state, verdict, run, scope, journey, error, aside, dimensions, objects, trend, heatmap, work, lists, headerActions, emptyActions, onboarding, cells, explain, workFirst, opsFirst, nextAction,
 }: {
   persona: string;
   /** "empty" is a fresh install (no analysis yet): the journey to a first score. */
@@ -125,6 +125,8 @@ export function HomePage({
   explain?: ScoreExplanation;
   /** The persona works a queue (the steward): the work row leads, the score hero follows. */
   workFirst?: boolean;
+  /** The persona runs the landscape (SAP Basis): the work row and `lists` (systems and jobs) lead, the score follows. */
+  opsFirst?: boolean;
   /** Under the hero: the one top-ranked action of the run, its reason and where to act (`NextBestAction`). */
   nextAction?: ReactNode;
 }) {
@@ -167,7 +169,8 @@ export function HomePage({
       )}
       {state === "empty" && onboarding}
 
-      {state === "ready" && workFirst && work}
+      {state === "ready" && (workFirst || opsFirst) && work}
+      {state === "ready" && opsFirst && lists}
       {state === "ready" && verdict && (
         <section className="m-hero grid grid-cols-1 items-start gap-x-10 gap-y-6 @4xl:grid-cols-12" data-testid="home-verdict-row" data-tour="home-verdict">
           <div className={`flex min-w-0 flex-col gap-6 ${hasAside ? "@4xl:col-span-7" : "@4xl:col-span-12"}`}>
@@ -207,14 +210,14 @@ export function HomePage({
       {state === "ready" && cells}
       {state === "ready" && objects}
       {state === "ready" && onboarding}
-      {state === "ready" && !workFirst && work}
+      {state === "ready" && !workFirst && !opsFirst && work}
       {state === "ready" && (trend || heatmap) && (
         <div className="grid grid-cols-1 gap-4 @5xl:grid-cols-12">
           {trend && <div data-testid="home-trend" data-tour="home-trend" className={`min-w-0 ${heatmap ? "@5xl:col-span-6" : "@5xl:col-span-12"}`}>{trend}</div>}
           {heatmap && <div className={`min-w-0 ${trend ? "@5xl:col-span-6" : "@5xl:col-span-12"}`}>{heatmap}</div>}
         </div>
       )}
-      {lists}
+      {!(state === "ready" && opsFirst) && lists}
       </div>
     </PageFrame>
   );

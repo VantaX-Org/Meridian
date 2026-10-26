@@ -233,7 +233,7 @@ describe("resolveNavHref with the viewer's permissions", () => {
   const canOf = (granted: string[]) => (a: string) => granted.includes(a);
   it("sends a home link where the viewer can work, not only where the role points", () => {
     expect(resolveNavHref("/home/lead", "data_steward", canOf(["view"]))).toBe("/home/steward");
-    expect(resolveNavHref("/home/lead", "data_owner", canOf(["approve"]))).toBe("/fix?tab=batches");
+    expect(resolveNavHref("/home/lead", "data_owner", canOf(["approve"]))).toBe("/inbox?kind=approvals");
     expect(resolveNavHref("/home/lead", "data_steward", canOf(["approve", "apply"]))).toBe("/fix");
     expect(resolveNavHref("/home/lead", "admin", canOf([]))).toBe("/home/lead");
     expect(resolveNavHref("/objects", "data_steward", canOf([]))).toBe("/objects");
