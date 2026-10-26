@@ -202,11 +202,12 @@ export function AskMeridian() {
   if (!isMenuItemEnabled(ASK_LICENCE_KEY) || manifest.features?.ask_meridian === false) return null;
 
   return (
-    <div className="m-print-hide fixed bottom-4 right-4 z-40">
+    <div className="m-ask m-print-hide">
       <Popover.Root open={open} onOpenChange={setOpen}>
-        <Popover.Trigger ref={launcherRef} render={<Button variant="secondary" className="m-elev-2" />}>
+        {/* Below 768px the launcher is a 44px icon button; it hides while its own panel is open. */}
+        <Popover.Trigger ref={launcherRef} aria-label="Ask Meridian" render={<Button variant="secondary" className="m-elev-2 m-ask-launcher" />}>
           <MeridianMark size={16} variant="mono" />
-          Ask Meridian
+          <span className="m-ask-label">Ask Meridian</span>
         </Popover.Trigger>
         <Popover.Portal>
           <Popover.Positioner side="top" align="end" sideOffset={8} className="z-50">
@@ -215,7 +216,7 @@ export function AskMeridian() {
               finalFocus={launcherRef}
               aria-label="Ask Meridian"
               className="m-popup m-print-hide flex flex-col"
-              style={{ width: 400, maxWidth: "calc(100vw - 32px)", height: 520, maxHeight: "calc(100vh - 96px)", padding: 0, overflow: "hidden" }}
+              style={{ width: 400, maxWidth: "calc(100vw - 32px)", height: 520, maxHeight: "calc(100dvh - 96px)", padding: 0, overflow: "hidden" }}
             >
               <div className="flex shrink-0 items-start justify-between gap-2 px-4 py-3" style={{ borderBottom: "1px solid var(--m-line)" }}>
                 <div className="min-w-0">

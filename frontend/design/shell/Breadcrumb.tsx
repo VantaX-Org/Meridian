@@ -89,10 +89,11 @@ export function Breadcrumb() {
           <Dot />
         </>
       )}
-      {shown.map((crumb) => (
+      {shown.map((crumb, i) => (
         <span key={crumb.href} className="flex items-center gap-2">
           <Link href={crumb.href} className="m-motion-colors m-ink-3 hover:!text-[var(--m-ink)]">{crumb.label}</Link>
-          <Dot />
+          {/* No dot after the last crumb when the page draws its own title: nothing visible follows it. */}
+          {(i < shown.length - 1 || !pageDrawsTitle) && <Dot />}
         </span>
       ))}
       <h1 className={pageDrawsTitle ? "sr-only" : "m-text-h truncate font-semibold m-ink"}>

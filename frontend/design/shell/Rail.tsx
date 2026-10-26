@@ -93,8 +93,9 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
   const groups = useVisibleNav();
   const navLoading = useNavLoading();
   const { homeRole: role } = useRole();
-  const moreRef = useRef<HTMLLIElement>(null);
+  const moreRef = useRef<HTMLDivElement>(null);
   const moreButtonRef = useRef<HTMLButtonElement>(null);
+  const scrollerRef = useRef<HTMLDivElement>(null);
   const morePanelRef = useRef<HTMLDivElement>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   // The panel is fixed to the viewport under the More button: the pill strip scrolls sideways (overflow-x), which
@@ -150,6 +151,16 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
     };
   }, [moreOpen]);
 
+  // On a narrow screen the pill strip scrolls: bring the current page's pill into view (a jump, so reduced motion needs nothing).
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    const pill = scroller?.querySelector<HTMLElement>('.m-topnav-link[aria-current="page"]');
+    if (!scroller || !pill || scroller.scrollWidth <= scroller.clientWidth) return;
+    const box = scroller.getBoundingClientRect();
+    const at = pill.getBoundingClientRect();
+    scroller.scrollLeft += at.left - box.left - (box.width - at.width) / 2;
+  }, [activeItemHref, navLoading]);
+
   const isActive = (item: NavItem) => item.href === activeItemHref || !!item.children?.some((c) => c.href === activeItemHref);
 
   const hasPip = (item: NavItem) => item.href === "/systems" && healthTone !== null;
@@ -184,7 +195,8 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
           className="m-topnav-link"
         >
           {renderIcon(item)}
-          <span>{PILL_LABEL[item.href] ?? item.label}</span>
+          {/* Below 640px the pill is its icon and badge; the label stays for screen readers. */}
+          <span className="m-topnav-label">{PILL_LABEL[item.href] ?? item.label}</span>
           {count > 0 && (
             <span key={count} className="m-motion-rise" data-severity={critical ? "critical" : undefined}>
               <Badge count={count} tone={critical ? "critical" : undefined} />
@@ -209,10 +221,15 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
             {[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} width={84} height={28} />)}
           </div>
         ) : (
-          <ul data-testid="rail-nav-items" className="m-topnav-list">
-            {primaryItems.map(renderPill)}
+          <>
+            {/* The pills scroll sideways on a narrow screen; More stays pinned outside the scroller. */}
+            <div ref={scrollerRef} className="m-topnav-scroll">
+              <ul data-testid="rail-nav-items" className="m-topnav-list">
+                {primaryItems.map(renderPill)}
+              </ul>
+            </div>
             {more.length > 0 && (
-              <li ref={moreRef} className="relative">
+              <div ref={moreRef} className="m-topnav-morewrap">
                 <button
                   ref={moreButtonRef}
                   type="button"
@@ -225,9 +242,9 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
                   <span>More</span>
                   <IconChevronDown size={14} style={{ transform: moreOpen ? "rotate(180deg)" : undefined }} />
                 </button>
-              </li>
+              </div>
             )}
-          </ul>
+          </>
         )}
       </nav>
       {/* Outside the nav: the pill strip scrolls sideways and would clip the panel. */}

@@ -115,8 +115,12 @@ describe("Rail (the index bar)", () => {
     renderRail();
     await screen.findByRole("link", { name: "Objects" });
     const pills = [...screen.getByTestId("rail-nav-items").children].map((li) => li.textContent?.replace(/\d+$/, "").trim());
-    expect(pills).toEqual(["Fix work", "Objects", "Processes", "Progress", "Inbox", "More"]);
-    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    expect(pills).toEqual(["Fix work", "Objects", "Processes", "Progress", "Inbox"]);
+    // More sits in the Main nav but outside the scrolling pill strip, so it never scrolls out of reach.
+    const more = screen.getByRole("button", { name: "More" });
+    expect(screen.getByTestId("rail-nav-items")).not.toContainElement(more);
+    expect(screen.getByRole("navigation", { name: "Main" })).toContainElement(more);
+    fireEvent.click(more);
     const panel = screen.getByRole("group", { name: "More pages" });
     for (const section of ["Analysis", "Master data", "Rules", "Data in", "Admin"]) expect(panel).toHaveTextContent(section);
     expect(panel).toHaveTextContent("Systems");
