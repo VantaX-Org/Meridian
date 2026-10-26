@@ -9,9 +9,9 @@ import { Button, buildDrillHref, Card, DataTable, DrillLink, ErrorState, ExportM
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { HomeOnboarding } from "@/components/help/home-onboarding";
-import { readinessHref, useProcessReadiness, type L1Readiness } from "@/components/process/shared";
+import { readinessHref, useProcessReadiness } from "@/components/process/shared";
 import { HandToSteward } from "@/components/process/handoff";
-import { exportRun, getCatalogue, listRuns, type CatalogueRow } from "@/lib/api/process-discovery";
+import { exportRun, getCatalogue, listRuns } from "@/lib/api/process-discovery";
 import { downloadCsv } from "@/lib/actions";
 import { apiErrorState } from "@/lib/error";
 import { relativeTime } from "@/lib/format";

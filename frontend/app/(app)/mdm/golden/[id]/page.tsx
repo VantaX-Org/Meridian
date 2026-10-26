@@ -118,7 +118,6 @@ export default function MasterRecordPage() {
   // RecordPage's status speaks the record-quality vocabulary, so it is omitted; the lifecycle Pill is in the overview.
   const promotable = record.status !== "golden" && record.status !== "superseded";
 
-  const fields = Object.entries(record.golden_fields);
   const contributions = Object.entries(record.source_contributions);
   const systems = sourceSystems(record.source_contributions);
   const relationships = relationshipsQuery.data?.relationships ?? [];
