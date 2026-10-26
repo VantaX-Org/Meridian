@@ -31,17 +31,26 @@ def test_migration_088_persona_grants_and_users_role(owner: Engine) -> None:
     roles["u_custom"] = "custom:ops"
     tid, ids = _tenant(owner, roles)
     other, other_ids = _tenant(owner, {"solo": "manager"})
-    _grant(owner, tid, ids["u_admin"], "admin")  # the 077 mirror: kept, still works
+    _grant(owner, tid, ids["u_admin"], "admin")  # the 077 mirror: replaced by its persona
+    with owner.begin() as c:  # a scoped legacy grant keeps its scope under the persona key
+        c.execute(text("INSERT INTO user_role_scopes (tenant_id, user_id, role_key, module) "
+                       "VALUES (:t, :u, 'approver', 'fi_gl')"), {"t": tid, "u": ids["u_viewer"]})
     _grant(owner, tid, ids["u_steward"], "data_steward")  # persona already held: no duplicate
     _alembic("upgrade", "088")
 
-    want = {(ids[n], persona_for(r)) for n, r in roles.items()} | {(ids["u_admin"], "admin")}
+    want = {(ids[n], persona_for(r)) for n, r in roles.items()}
     assert _unscoped(owner, tid) == sorted(want)
     assert _unscoped(owner, other) == [(other_ids["solo"], "programme_lead")]
     for n, r in roles.items():
         assert _users_role(owner, tid, ids[n]) == persona_for(r), n
     assert _users_role(owner, tid, ids["u_custom"]) == "custom:ops"
     assert _users_role(owner, other, other_ids["solo"]) == "programme_lead"
+    with owner.connect() as c:
+        keys = {r[0] for r in c.execute(text("SELECT role_key FROM user_role_scopes WHERE tenant_id = :t"), {"t": tid})}
+        scoped = c.execute(text("SELECT role_key FROM user_role_scopes WHERE tenant_id = :t AND user_id = :u "
+                                "AND module = 'fi_gl'"), {"t": tid, "u": ids["u_viewer"]}).scalars().all()
+    assert not keys & {"admin", "manager", "steward", "approver"}  # nobody holds a role twice
+    assert scoped == ["data_owner"]
 
     spec = importlib.util.spec_from_file_location("m088", os.path.join(ROOT, "db/migrations/versions/088_roles_from_grants.py"))
     assert spec and spec.loader

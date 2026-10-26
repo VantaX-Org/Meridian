@@ -101,9 +101,9 @@ def test_migration_077_backfill_idempotent_and_downgrade(owner: Engine) -> None:
         for t in ("roles", "role_permissions", "user_role_scopes", "access_requests"):
             assert c.execute(text(f"SELECT to_regclass('{t}')")).scalar() is None
     _alembic("upgrade", "head")
-    # Upgrade again backfills the same rows; 088 then adds each legacy role's persona grant.
+    # Upgrade again backfills the same rows; 088 then replaces each legacy grant with its persona.
     from api.services.rbac import persona_for
-    assert _unscoped(owner, t1) == sorted(set(want1) | {(ids1[n], persona_for(r)) for n, r in roles.items()})
+    assert _unscoped(owner, t1) == sorted({(ids1[n], persona_for(r)) for n, r in roles.items()})
 
 
 # ── Routes ───────────────────────────────────────────────────────────────────

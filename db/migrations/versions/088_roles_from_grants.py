@@ -13,11 +13,13 @@ users.role, which is re-derived from the unscoped grants after every grant chang
      approver -> data_owner. Persona keys, analyst, auditor, viewer, ai_reviewer and custom keys keep
      their own key. ON CONFLICT DO NOTHING against uq_user_role_scopes_nullsafe (077), so re-running
      adds nothing;
-  2. sets users.role to that same persona key, so the derived value is consistent.
+  2. sets users.role to that same persona key, so the derived value is consistent;
+  3. replaces every legacy grant (admin, manager, steward, approver; any scope) with its persona at the
+     same scope and deletes the legacy row, so nobody holds a role twice. ai_reviewer has no persona and
+     stays.
 
 No permission is gained or lost: each persona carries its legacy role's action set, except that
-programme_lead and data_steward also run process discovery (owner decision 2026-10-26). The legacy
-grants the 077 backfill made are left in place; they still work and are shown as "(legacy)".
+programme_lead and data_steward also run process discovery (owner decision 2026-10-26).
 
 Data-only, no new tables (so no new RLS policy). users and user_role_scopes are FORCE-RLS, so the tenant
 is set per iteration. Downgrade is a no-op: which persona grants pre-existed cannot be told apart, and
@@ -61,6 +63,13 @@ BACKFILL_SQL = f"""
             ON CONFLICT DO NOTHING;
             UPDATE users u SET role = {_CASE}
             WHERE u.tenant_id = t AND u.role IN ({", ".join(f"'{k}'" for k in PERSONA_FOR)});
+            INSERT INTO user_role_scopes (tenant_id, user_id, role_key, system_id, module, granted_by)
+            SELECT g.tenant_id, g.user_id, {_CASE.replace("u.role", "g.role_key")}, g.system_id, g.module, g.granted_by
+            FROM user_role_scopes g
+            WHERE g.tenant_id = t AND g.role_key IN ({", ".join(f"'{k}'" for k in PERSONA_FOR)})
+            ON CONFLICT DO NOTHING;
+            DELETE FROM user_role_scopes g
+            WHERE g.tenant_id = t AND g.role_key IN ({", ".join(f"'{k}'" for k in PERSONA_FOR)});
         END LOOP;
     END $$
 """
