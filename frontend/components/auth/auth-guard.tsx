@@ -6,6 +6,7 @@ import { ErrorState } from "@/design";
 import { useLoadingTimeout } from "@/design/hooks/useLoadingTimeout";
 import { useAuth } from "@/context/auth-context";
 import { ForcePasswordChange } from "@/components/force-password-change";
+import { ForceTwoFactorSetup } from "@/components/force-two-factor-setup";
 import { UpdateAvailableModal } from "@/components/update-available-modal";
 import { UpdateModalProvider } from "@/context/update-modal-context";
 
@@ -36,12 +37,13 @@ function SessionLoading({ onRetry }: { onRetry: () => void }) {
 
 /**
  * Gate for everything under `app/(app)`: signed-out users go to /sign-in,
- * a seeded password must be rotated first, and the update modal lives here
+ * a seeded password must be rotated first, then two-factor sign-in set up when
+ * the organisation requires it, and the update modal lives here
  * so it can appear over any page. A session check that fails because the
  * server is down (5xx, network) shows an error with Retry and never signs out.
  */
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, isLoading, mustChangePassword, error, retry } = useAuth();
+  const { user, isLoading, mustChangePassword, mustEnrolTwoFactor, error, retry } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -52,6 +54,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const [tries, setTries] = useState(0);
 
   if (user && mustChangePassword) return <ForcePasswordChange />;
+  if (user && mustEnrolTwoFactor) return <ForceTwoFactorSetup />;
   if (isLoading) return <SessionLoading key={tries} onRetry={() => { setTries((n) => n + 1); retry(); }} />;
   if (!user && error) {
     return (

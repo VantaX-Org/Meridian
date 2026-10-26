@@ -3,6 +3,7 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { AxiosError, AxiosHeaders } from "axios";
 import { toast } from "sonner";
 import { renderWithQuery } from "@/__tests__/render";
+import * as authApi from "@/lib/api/auth";
 import * as health from "@/lib/api/health";
 import * as notifications from "@/lib/api/notifications";
 import { resetPreferencesCache, setPreferences } from "@/lib/preferences";
@@ -26,6 +27,7 @@ beforeEach(() => {
   window.localStorage.clear();
   resetPreferencesCache();
   vi.spyOn(notifications, "getMyDeliveries").mockResolvedValue([]);
+  vi.spyOn(authApi, "getTwoFactorStatus").mockResolvedValue({ enabled: false, required: false, recovery_codes_left: 0 });
 });
 
 afterEach(() => {

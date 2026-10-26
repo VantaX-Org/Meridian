@@ -111,42 +111,51 @@ def rate_limit(
 
     async def _dependency(request: Request) -> None:
         key = _resolve_key(request, name, key_by, window_s)
-        if key is None:
-            return
-
-        redis_client = get_redis()
-        if redis_client is None:
-            logger.debug(f"rate_limit[{name}]: Redis unavailable — allowing request")
-            return
-
-        try:
-            count = redis_client.incr(key)
-            if count == 1:
-                # First hit in this window — set the TTL so the key expires
-                # when the window ends, +1s grace to avoid clock-skew edge cases.
-                redis_client.expire(key, window_s + 1)
-        except Exception as e:
-            logger.warning(f"rate_limit[{name}] Redis error: {e} — allowing request")
-            return
-
-        if count > limit:
-            retry_after = window_s - int(time.time() % window_s)
-            # Emit a Prometheus counter if the metrics module is loaded (no-op otherwise).
-            try:
-                from api.utils.metrics import HTTP_REQUESTS_TOTAL  # noqa: F401
-            except Exception:
-                pass
-            raise HTTPException(
-                status_code=429,
-                detail={
-                    "error": "rate_limited",
-                    "limit": limit,
-                    "window_s": window_s,
-                    "retry_after": retry_after,
-                    "name": name,
-                },
-                headers={"Retry-After": str(retry_after)},
-            )
+        if key is not None:
+            _count(key, name, limit, window_s)
 
     _dependency.__name__ = f"rate_limit_{name}"
     return _dependency
+
+
+def _count(key: str, name: str, limit: int, window_s: int) -> None:
+    """Add one hit to the bucket `key`; 429 once it passes `limit`. Fails open without Redis."""
+    redis_client = get_redis()
+    if redis_client is None:
+        logger.debug(f"rate_limit[{name}]: Redis unavailable — allowing request")
+        return
+
+    try:
+        count = redis_client.incr(key)
+        if count == 1:
+            # First hit in this window — set the TTL so the key expires
+            # when the window ends, +1s grace to avoid clock-skew edge cases.
+            redis_client.expire(key, window_s + 1)
+    except Exception as e:
+        logger.warning(f"rate_limit[{name}] Redis error: {e} — allowing request")
+        return
+
+    if count > limit:
+        retry_after = window_s - int(time.time() % window_s)
+        # Emit a Prometheus counter if the metrics module is loaded (no-op otherwise).
+        try:
+            from api.utils.metrics import HTTP_REQUESTS_TOTAL  # noqa: F401
+        except Exception:
+            pass
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "error": "rate_limited",
+                "limit": limit,
+                "window_s": window_s,
+                "retry_after": retry_after,
+                "name": name,
+            },
+            headers={"Retry-After": str(retry_after)},
+        )
+
+
+def limit_identity(name: str, identity: str, *, limit: int, window_s: int = 60) -> None:
+    """The same fixed-window counter for a caller a dependency cannot see: one known only once the
+    handler has read the body (the user behind a pending two-factor sign-in). Raises 429 past `limit`."""
+    _count(f"ratelimit:{name}:id:{identity}:{_current_window(window_s)}", name, limit, window_s)
