@@ -24,7 +24,8 @@ import { useDqsExplanation } from "@/components/insight/dqs-score";
 import { getAnalysisStatus } from "@/lib/api/upload";
 import { analyseVersion } from "@/lib/api/system-objects";
 import { RunProgressBanner } from "@/components/run-progress-banner";
-import { DIMENSIONS, formatDate, formatModuleName, formatMoneyCompact, formatNumber, labelOf, plural, runAxisLabels } from "@/lib/format";
+import { DIMENSIONS, formatDate, formatModuleName, formatMoneyCompact, formatNumber, labelOf, plural } from "@/lib/format";
+import { runAxisTicks } from "@/lib/run-axis";
 import { ConfigMatchesTab } from "./config-matches-tab";
 import { queryKeys } from "@/lib/query-keys";
 import { baselineRunId, isFinished, lineageOf, overallDqs, previousRunId, runPageHref } from "@/lib/runs";
@@ -175,9 +176,11 @@ function RunLedger({ versionId, rows, objects }: { versionId: string; rows: Modu
       cell: ({ row }) => <Score value={objects.get(row.original.module)?.composite_score} size="sm" />,
     },
     {
+      // A phone keeps the object, its score, its failing records and Open; the rule and the counts step aside.
       id: "rule",
       header: "Blocking rule",
       enableSorting: false,
+      meta: { priority: "low" } satisfies CellMeta,
       cell: ({ row }) => {
         const o = objects.get(row.original.module);
         return o?.blocking_rule_id ? (
@@ -189,11 +192,11 @@ function RunLedger({ versionId, rows, objects }: { versionId: string; rows: Modu
       },
     },
     {
-      id: "critical", header: "Critical", accessorFn: (m) => m.critical, meta: { numeric: true } satisfies CellMeta, size: 90,
+      id: "critical", header: "Critical", accessorFn: (m) => m.critical, meta: { numeric: true, priority: "low" } satisfies CellMeta, size: 90,
       cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}&severity=critical`}>{row.original.critical.toLocaleString()}</DrillLink>,
     },
     {
-      id: "high", header: "High", accessorFn: (m) => m.high, meta: { numeric: true } satisfies CellMeta, size: 80,
+      id: "high", header: "High", accessorFn: (m) => m.high, meta: { numeric: true, priority: "low" } satisfies CellMeta, size: 80,
       cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}&severity=high`}>{row.original.high.toLocaleString()}</DrillLink>,
     },
     {
@@ -205,6 +208,7 @@ function RunLedger({ versionId, rows, objects }: { versionId: string; rows: Modu
       header: "",
       size: 90,
       enableSorting: false,
+      meta: { sticky: "end" } satisfies CellMeta,
       cell: ({ row }) => (
         <span onClick={(e) => e.stopPropagation()}>
           <Link href={`/objects/${row.original.module}?run=${versionId}`} aria-label={`Open ${formatModuleName(row.original.module)}`} className="m-ink-accent">Open</Link>
@@ -292,7 +296,7 @@ function SummaryTab({
   const historyRows = systemId != null
     ? [...(history.data?.history ?? [])].reverse().map((h) => ({ id: h.version_id, run_at: h.run_at, composite: h.at_the_time.composite }))
     : [...lineage].sort((a, b) => (a.run_at < b.run_at ? -1 : 1)).map((v) => ({ id: v.id, run_at: v.run_at, composite: overallDqs(v) }));
-  const ticks = runAxisLabels(historyRows);
+  const ticks = runAxisTicks(historyRows);
   const points = historyRows.flatMap((h) => (h.composite == null ? [] : [{ x: h.id, label: ticks.get(h.id), y: Math.round(h.composite * 10) / 10, runId: h.id }]));
   // Mark this run, and any run whose composite fell 5 points or more from the one before it.
   const annotations = points.flatMap((p, i): { x: string; label: string; kind: "event" | "change" }[] => {

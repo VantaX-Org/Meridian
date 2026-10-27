@@ -921,6 +921,10 @@ export interface StewardshipQueueItem {
   sla_paused_at?: string | null;
   snoozed_until?: string | null;
   snooze_reason?: string | null;
+  /** An exception task's exception title, the check its linked finding ran and the object it is about. */
+  source_title?: string | null;
+  source_check_id?: string | null;
+  source_module?: string | null;
 }
 
 export interface StewardshipQueueListResponse {

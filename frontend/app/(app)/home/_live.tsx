@@ -12,7 +12,8 @@ import { useRouter } from "next/navigation";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, Card, DataTable, EmptyState, ErrorState, Pill, Skeleton, Status } from "@/design";
-import { HEALTH_LABEL, HEALTH_VERDICT, nextRun } from "@/app/(app)/systems/_health";
+import { HEALTH_LABEL, HEALTH_VERDICT, healthReason, nextRun } from "@/app/(app)/systems/_health";
+import { HealthPill } from "@/app/(app)/systems/_health-pill";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { getSystems } from "@/lib/api/connectivity";
@@ -32,8 +33,8 @@ interface SystemRow {
   system: SAPSystemExtended;
   /** ISO time of the last successful extraction. */
   lastSuccess: string | null;
-  /** The last failure: when, and why in one line. */
-  lastError: { at: string; reason: string } | null;
+  /** The last failure: when, why in one plain line, and the raw text it was stored as (for the tooltip). */
+  lastError: { at: string; reason: string; raw?: string | null } | null;
   /** ISO time of the next scheduled run; null when it runs manually only, undefined while unknown. */
   next: string | null | undefined;
 }
@@ -54,14 +55,16 @@ export function systemRows(
     const okAt = ok?.finished_at ? iso(ok.finished_at) : null;
     const lastSuccess = okAt ?? (s.last_sync_at && !failedSync(s.last_sync_status) ? s.last_sync_at : null);
     // The connection's own failure (health check) is the newest error when it is newer than any failed job.
+    // A stored reason code ("pyrfc_not_installed: ...") reads as a sentence; the raw text is kept for the tooltip.
+    const why = healthReason(s.health_message);
     const healthError = s.health_status !== "healthy" && s.health_status !== "unknown" && s.last_health_check
-      ? { at: s.last_health_check, reason: s.health_message || HEALTH_LABEL[s.health_status] }
+      ? { at: s.last_health_check, reason: why?.text ?? HEALTH_LABEL[s.health_status], raw: why?.raw ?? null }
       : null;
     const jobError = failed
-      ? { at: iso(failed.finished_at ?? failed.updated_at), reason: explainJobError(failed.error)?.summary ?? failed.message ?? "Failed" }
+      ? { at: iso(failed.finished_at ?? failed.updated_at), reason: explainJobError(failed.error)?.summary ?? failed.message ?? "Failed", raw: failed.error ?? null }
       : null;
     const lastError = [healthError, jobError]
-      .filter((e): e is { at: string; reason: string } => e !== null)
+      .filter((e): e is NonNullable<typeof e> => e !== null)
       .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0] ?? null;
     return { system: s, lastSuccess, lastError, next: nextById.get(s.id) };
   });
@@ -74,9 +77,10 @@ const systemColumns: ColumnDef<SystemRow>[] = [
     cell: ({ row: { original: { system: s } } }) => {
       if (!s.is_active) return <Pill tone="neutral">Inactive</Pill>;
       const verdict = HEALTH_VERDICT[s.health_status ?? "unknown"];
+      // Health words (Healthy, Degraded, Unreachable), never the data's Go / No-go.
       return (
         <span className="inline-flex flex-col items-start">
-          {verdict ? <Status kind="verdict" value={verdict} /> : <span className="m-ink-3">{HEALTH_LABEL.unknown}</span>}
+          <HealthPill status={s.health_status} />
           <span className="m-text-meta m-ink-3">
             {s.last_health_check ? `${verdict && verdict !== "go" ? `${HEALTH_LABEL[s.health_status]}, checked` : "Checked"} ${relativeTime(s.last_health_check)}` : verdict ? "Never checked" : ""}
           </span>
@@ -88,8 +92,8 @@ const systemColumns: ColumnDef<SystemRow>[] = [
   {
     id: "error", header: "Last error",
     cell: ({ row: { original: r } }) => (r.lastError ? (
-      <span className="inline-flex flex-col items-start">
-        <span>{r.lastError.reason}</span>
+      <span className="inline-flex min-w-0 flex-col items-start">
+        <span title={r.lastError.raw && r.lastError.raw !== r.lastError.reason ? r.lastError.raw : undefined}>{r.lastError.reason}</span>
         <span className="m-text-meta m-ink-3">{relativeTime(r.lastError.at)}</span>
       </span>
     ) : <span className="m-ink-3">None</span>),
@@ -107,12 +111,14 @@ const jobDuration = (j: Job) => {
 
 const jobColumns = (systemName: ReadonlyMap<string, string>): ColumnDef<Job>[] => [
   { id: "status", header: "Status", cell: ({ row: { original: j } }) => <Status kind="lifecycle" value={j.status} /> },
-  { accessorKey: "label", header: "Job" },
+  // One line per job: a long name truncates, the whole name in its title.
+  { accessorKey: "label", header: "Job", cell: ({ row: { original: j } }) => <span className="block max-w-[28ch] truncate" title={j.label}>{j.label}</span> },
   { id: "system", header: "System", cell: ({ row: { original: j } }) => (j.system_id ? systemName.get(j.system_id) ?? "—" : "—") },
   { id: "kind", header: "Kind", cell: ({ row: { original: j } }) => labelOf(j.kind) },
   {
-    id: "progress", header: "Progress", meta: { numeric: true },
-    cell: ({ row: { original: j } }) => (j.status === "running" || j.status === "queued" ? `${Math.round(j.percent)}%` : formatDuration(jobDuration(j))),
+    // How long it ran (or has run so far); a queued job has not started, a running one adds how far it is.
+    id: "duration", header: "Duration", meta: { numeric: true },
+    cell: ({ row: { original: j } }) => (j.status === "queued" ? "—" : j.status === "running" ? `${formatDuration(jobDuration(j))}, ${Math.round(j.percent)}%` : formatDuration(jobDuration(j))),
   },
 ];
 

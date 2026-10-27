@@ -55,6 +55,9 @@ describe("RecordFixSheetPage", () => {
     expect(exports).toHaveLength(1);
     expect(exports[0].closest("header")).not.toBeNull();
     expect(screen.getByText("Organisational levels")).toBeInTheDocument();
+    // Stewards see what to fix, not how many MM views the record spans.
+    expect(screen.getByText("Missing fields")).toBeInTheDocument();
+    expect(screen.queryByText("Views")).toBeNull();
   });
 
   it("offers the record sheet PDF and the organisational levels only for a material", async () => {

@@ -174,8 +174,8 @@ export default function RecordFixSheetPage() {
         verdictQuery.isSuccess
           ? { label: "Failing rules", value: materialRules.size, tone: materialRules.size ? "no-go" : "go" }
           : { label: "Failing rules", value: "—" },
+        // No "Views" count: how many MM views the record spans means nothing to a steward fixing it.
         { label: "Missing fields", value: material.views.reduce((n, v) => n + v.cells.filter((c) => c.state === "missing").length, 0), tone: hasMissing ? "no-go" : "go" },
-        { label: "Views", value: material.views.length },
       ] : [
         verdictQuery.isSuccess
           ? { label: "Failing rules", value: failingRules.length, tone: failingRules.length ? "no-go" : "go" }

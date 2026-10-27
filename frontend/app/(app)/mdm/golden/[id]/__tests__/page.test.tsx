@@ -9,6 +9,7 @@ import * as mergeExplainApi from "@/lib/api/merge-explain";
 import * as matchReviewApi from "@/lib/api/match-review";
 import * as systemsApi from "@/lib/api/connectivity";
 import * as versionsApi from "@/lib/api/versions";
+import * as rulesApi from "@/lib/api/rules";
 import type { MasterRecordDetail, Version } from "@/types/api";
 import MasterRecordPage from "../page";
 
@@ -93,6 +94,33 @@ describe("MasterRecordPage", () => {
     expect(cellOf(grid, "MAKTX", "ECC")).toHaveTextContent("Not held");
     const maktx = within(grid).getByText("MAKTX").closest("tr") as HTMLElement;
     expect(within(maktx).getByText("80% confidence")).toBeInTheDocument();
+  });
+
+  it("shows a coded value by its dictionary label with the code beside it in Mono", async () => {
+    vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue({
+      ...record, domain: "business_partner", sap_object_key: "2000103029",
+      golden_fields: { "BUT000.TYPE": "1", "ADRC.COUNTRY": "AU" },
+      source_contributions: {
+        "BUT000.TYPE": { value: "1", source_system: "ECC", extracted_at: "2026-01-01T00:00:00Z", confidence: 1 },
+        "ADRC.COUNTRY": { value: "AU", source_system: "ECC", extracted_at: "2026-01-01T00:00:00Z", confidence: 1 },
+      },
+    });
+    const ddic = vi.spyOn(rulesApi, "getDdicFields").mockResolvedValue([
+      { table: "ADRC", field: "COUNTRY", description: null, data_element: null, domain: null, type: "CHAR", length: 3, check_table: "T005", check_field: null, check_table_description: null, fixed_values: [], missing: false },
+      { table: "BUT000", field: "TYPE", description: null, data_element: null, domain: "BU_TYPE", type: "CHAR", length: 1, check_table: null, check_field: null, check_table_description: null, fixed_values: [{ value: "1", label: "Person" }, { value: "2", label: "Organization" }], missing: false },
+    ]);
+    mocks();
+    renderWithQuery(<MasterRecordPage />);
+    const grid = await screen.findByRole("table", { name: "Fields by source" });
+    const golden = await waitFor(() => {
+      const cell = cellOf(grid, "BUT000.TYPE", "Golden value");
+      expect(cell).toHaveTextContent("Person1");
+      return cell;
+    });
+    expect(within(golden).getByText("1").closest(".m-mono, code, [class*=mono]")).not.toBeNull();
+    // A field without fixed values keeps its raw value.
+    expect(cellOf(grid, "ADRC.COUNTRY", "Golden value")).toHaveTextContent(/^AU$/);
+    expect(ddic).toHaveBeenCalledWith(["ADRC.COUNTRY", "BUT000.TYPE"]);
   });
 
   it("names sources in words and keeps the raw ids beside them in Mono", async () => {

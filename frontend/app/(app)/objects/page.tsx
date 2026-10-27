@@ -27,7 +27,8 @@ import { useCurrentObjects } from "./_current";
 import { toFixHref, workSummaryQuery } from "./_work";
 import type { WorkObject } from "@/lib/api/work";
 import { BELOW_TARGET } from "@/lib/home-metrics";
-import { MINE_PARAM, useObjectOwners } from "@/hooks/use-object-owners";
+import { MINE_PARAM, useObjectOwners, type ObjectOwners } from "@/hooks/use-object-owners";
+import { OwnerName } from "@/components/owners/OwnerName";
 
 /**
  * A row of the list. With `?run=` every row is that run's; without it (the current state) each row is its object
@@ -64,11 +65,11 @@ type ReadinessFilter = (typeof READINESS_FILTER)[number]["value"];
 const LEGACY_VERDICT: Record<string, ReadinessFilter> = { ready: "pass" };
 
 /** Optional enrichment columns appear only when some row carries the field (older backends omit them). */
-const makeColumns = (run: string | undefined, bands: ScoreBands | undefined, objects: ObjectRow[], openHref: (o: ObjectRow) => string, ownerOf: (o: ObjectRow) => string | null): ColumnDef<ObjectRow>[] => {
+const makeColumns = (run: string | undefined, bands: ScoreBands | undefined, objects: ObjectRow[], openHref: (o: ObjectRow) => string, ownerOf: (o: ObjectRow) => string | null, ownerStatus: ObjectOwners["status"]): ColumnDef<ObjectRow>[] => {
   const hasTrend = objects.some((o) => (o.trend?.length ?? 0) >= 1);
   const hasBlocking = objects.some((o) => o.blocking_rule_id);
   const hasWork = objects.some((o) => o.work !== undefined);
-  return allColumns(run, bands, openHref, ownerOf).filter((c) => (c.id !== "trend" || hasTrend) && (c.id !== "blocking_rule" || hasBlocking) && (!WORK_COLUMNS.has(c.id ?? "") || hasWork));
+  return allColumns(run, bands, openHref, ownerOf, ownerStatus).filter((c) => (c.id !== "trend" || hasTrend) && (c.id !== "blocking_rule" || hasBlocking) && (!WORK_COLUMNS.has(c.id ?? "") || hasWork));
 };
 
 const WORK_COLUMNS = new Set(["work_open", "work_critical", "work_proposed", "work_overdue"]);
@@ -90,14 +91,14 @@ const workColumn = (id: string, header: string, pick: (w: WorkObject) => number,
   cell: ({ row }) => workCell(row.original, run, pick, what, filters),
 });
 
-const allColumns = (run: string | undefined, bands: ScoreBands | undefined, openHref: (o: ObjectRow) => string, ownerOf: (o: ObjectRow) => string | null): ColumnDef<ObjectRow>[] => [
+const allColumns = (run: string | undefined, bands: ScoreBands | undefined, openHref: (o: ObjectRow) => string, ownerOf: (o: ObjectRow) => string | null, ownerStatus: ObjectOwners["status"]): ColumnDef<ObjectRow>[] => [
   { accessorKey: "label", header: "Object", cell: ({ row }) => <DomainChip moduleId={row.original.module} label={row.original.label} /> },
   {
     id: "owner",
     header: "Owner",
     size: 140,
     accessorFn: (o) => ownerOf(o) ?? "",
-    cell: ({ row }) => ownerOf(row.original) ?? <span className="m-ink-3">Not set</span>,
+    cell: ({ row }) => <OwnerName name={ownerOf(row.original)} status={ownerStatus} />,
   },
   {
     id: "blocking_rule",
@@ -346,7 +347,7 @@ export default function ObjectsPage() {
   // without ?run= opens the object's own latest run.
   const openHref = (row: ObjectRow) => toFixHref(row.module, current ? undefined : runId ?? run);
   const objectHref = openHref;
-  const columns = makeColumns(current ? undefined : runId, bands, objects, openHref, ownerOf); // React Compiler memoizes on run and thresholds
+  const columns = makeColumns(current ? undefined : runId, bands, objects, openHref, ownerOf, owners.status); // React Compiler memoizes on run and thresholds
 
   // The map is drawn from the rows the ledger shows: the same filters, the same objects.
   // Tiles are sized by distinct failing records when every shown object's work list is built; otherwise by the

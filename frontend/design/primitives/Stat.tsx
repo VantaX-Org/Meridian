@@ -70,7 +70,9 @@ export function Stat({ label, value, delta, hint, href, onClick, tone, domain, h
   const interactive = Boolean(href || onClick);
   // A text value wraps only between words; a single token too wide for the tile truncates (full text in its title).
   const textValue = typeof value === "string" && !loading;
-  const wordValue = textValue && !/\s/.test(value);
+  // Money ("ZAR 4.79 m", "ZAR 1,234") is one token too: currency, figure and scale never wrap apart.
+  const moneyValue = textValue && /^[A-Z]{3}\s[-\d.,\s]+(?:\s(?:k|m|bn|tn))?$/.test(value as string);
+  const wordValue = textValue && (!/\s/.test(value) || moneyValue);
   const body = (
     <>
       <span
@@ -91,7 +93,7 @@ export function Stat({ label, value, delta, hint, href, onClick, tone, domain, h
       <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
         {/* Text never breaks mid-word ("Unreachabl" / "e"). */}
         <span
-          className={clsx("m-numeric font-semibold", wordValue && "min-w-0 max-w-full truncate")}
+          className={clsx("m-numeric font-semibold", wordValue && "min-w-0 max-w-full truncate whitespace-nowrap")}
           title={wordValue ? value : undefined}
           style={{
             minWidth: wordValue ? undefined : "4ch",

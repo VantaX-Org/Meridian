@@ -3,7 +3,8 @@ import type { DQSSummary, Version } from "@/types/api";
 import type { ObjectSummary } from "@/lib/api/v1/objects";
 import type { FindingsAggregate } from "@/lib/api/findings";
 import { DEFAULT_SCORE_BANDS, type ScoreBands } from "@/design/primitives/ScoreRing";
-import { formatDate, formatModuleName, plural, round1, runAxisLabels } from "@/lib/format";
+import { formatDate, formatModuleName, plural, round1 } from "@/lib/format";
+import { runAxisTicks } from "@/lib/run-axis";
 import { isFinished, lineageOf, previousInLineage } from "@/lib/runs";
 import { runDqs, type TrendPoint } from "@/lib/home-metrics";
 
@@ -318,7 +319,7 @@ export function criticalHighHref(runs: readonly Pick<Version, "id">[], module?: 
  */
 export function stateSeries(versions: readonly Version[], modules?: ReadonlySet<string> | null): TrendPoint[] {
   const runs = [...versions].filter(isScored).sort((a, b) => -newestFirst(a, b));
-  const ticks = runAxisLabels(runs);
+  const ticks = runAxisTicks(runs);
   const atLineage = new Map<string, Version>();
   const out: TrendPoint[] = [];
   for (const run of runs) {

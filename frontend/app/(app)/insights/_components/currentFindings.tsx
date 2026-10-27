@@ -8,6 +8,7 @@ import { buildDrillHref, Mono, Status } from "@/design";
 import type { StateObject } from "@/lib/current-state";
 import { checkClassLabel, formatModuleName } from "@/lib/format";
 import { drillLabel, fixHref } from "@/lib/drill";
+import { useRuleNames } from "@/lib/rule-name";
 import type { Finding } from "@/types/api";
 import { DrillCount } from "./DrillCount";
 
@@ -23,22 +24,30 @@ export function currentFixFirst(findings: readonly Finding[], objects: readonly 
   return findings.filter((f) => (!modules || modules.has(f.module)) && f.version_id === runOf.get(f.module)).slice(0, limit);
 }
 
+/**
+ * A finding's rule in words: its stored message, else the rule's name from the catalogue (DDIC conformance checks,
+ * which the catalogue does not hold, named from their id), else the kind of check; the check id sits under them.
+ */
+function RuleWordsCell({ finding: f }: { finding: Finding }) {
+  const message = f.details?.message || null;
+  const nameOf = useRuleNames(!message);
+  const words = message || nameOf(f.check_id) || (f.check_class ? checkClassLabel(f.check_class) : null);
+  return (
+    <span className="flex flex-col [min-width:14rem]">
+      {words ? <span className="line-clamp-2" title={words}>{words}</span> : null}
+      <span className={words ? "m-text-meta m-ink-3" : undefined}>
+        <DrillCount href={findingRecords(f)} label={drillLabel({ what: "failing records", check: f.check_id, module: f.module })}><Mono>{f.check_id}</Mono></DrillCount>
+      </span>
+    </span>
+  );
+}
+
 /** The Fix first ledger's columns over current-state findings (Insights overview and executive summary). */
 export const currentFindingColumns: ColumnDef<Finding>[] = [
   {
     accessorKey: "check_id", header: "Rule",
-    // Plain words first (the finding's message, else the kind of check), the check id under them.
-    cell: ({ row }) => {
-      const words = row.original.details?.message || (row.original.check_class ? checkClassLabel(row.original.check_class) : null);
-      return (
-        <span className="flex flex-col [min-width:14rem]">
-          {words ? <span className="line-clamp-2" title={words}>{words}</span> : null}
-          <span className={words ? "m-text-meta m-ink-3" : undefined}>
-            <DrillCount href={findingRecords(row.original)} label={drillLabel({ what: "failing records", check: row.original.check_id, module: row.original.module })}><Mono>{row.original.check_id}</Mono></DrillCount>
-          </span>
-        </span>
-      );
-    },
+    // Plain words first (the finding's message, else the rule's name, else the kind of check), the check id under them.
+    cell: ({ row }) => <RuleWordsCell finding={row.original} />,
   },
   {
     id: "module", header: "Object", accessorFn: (f) => formatModuleName(f.module),

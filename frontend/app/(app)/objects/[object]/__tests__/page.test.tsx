@@ -24,6 +24,7 @@ vi.mock("next/navigation", () => ({
   useParams: () => ({ object: "material_master" }),
   useRouter: () => ({ push, replace }),
   useSearchParams: () => searchParams,
+  usePathname: () => "/objects/material_master",
 }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
@@ -189,13 +190,65 @@ describe("ObjectDetailPage", () => {
     expect(screen.getAllByText("mm_missing_desc")).toHaveLength(1);
   });
 
-  it("lists rules on the rules tab and navigates to the records tab on row click", async () => {
+  it("makes Records to fix the Fix work queue with this object and run fixed, without the strip repeating its tiles", async () => {
+    searchParams = new URLSearchParams("run=v1&tab=fix&sev=critical");
+    const summaryApi = vi.spyOn(workApi, "getWorkSummary").mockResolvedValue({
+      version_id: "v1", scope: "s", built: true,
+      objects: [{ module: "material_master", records: 1, open: 1, issues: 1, critical: 1, proposed: 0, overdue: 0, statuses: { to_fix: 1 } }],
+      totals: { records: 1, open: 1, issues: 1, critical: 1, proposed: 0, overdue: 0 },
+    });
+    const records = vi.spyOn(workApi, "getWorkRecords").mockResolvedValue({
+      version_id: "v1", total: 1, total_capped: false, next: null,
+      items: [{ module: "material_master", version_id: "v1", record_key: "MATNR=1", name: "Bolt", issues: 1, severity: "critical", checks: ["mm_missing_desc"], proposed: 0,
+        status: "to_fix", due_at: null, assigned_to: null, assignee_email: null, top_message: "Description is missing", top_field: "MAKT.MAKTX" }],
+    } as never);
+    renderWithQuery(<ObjectDetailPage />);
+    expect(await screen.findByTestId("fix-work")).toBeInTheDocument();
+    await waitFor(() => expect(records).toHaveBeenCalledWith(expect.objectContaining({ module: "material_master", version_id: "v1", severity: "critical" })));
+    expect(summaryApi).toHaveBeenCalledWith("v1", expect.objectContaining({ module: "material_master" }));
+    expect(screen.queryByTestId("fix-strip")).toBeNull();
+  });
+
+  it("lists rules on the rules tab and opens a rule's records on the same tab on row click", async () => {
     renderWithQuery(<ObjectDetailPage />);
     await waitFor(() => expect(screen.getByRole("tab", { name: "Rules" })).toBeInTheDocument());
     fireEvent.click(screen.getByRole("tab", { name: "Rules" }));
     await waitFor(() => expect(screen.getByText("mm_missing_desc")).toBeInTheDocument());
+    replace.mockClear();
     fireEvent.click(screen.getByText("mm_missing_desc"));
-    expect(push).toHaveBeenCalledWith("/objects/material_master?run=v1&tab=records&check_id=mm_missing_desc");
+    expect(replace).toHaveBeenCalledWith("/objects/material_master?run=v1&tab=rules&check_id=mm_missing_desc", { scroll: false });
+  });
+
+  it("keeps five tabs or fewer in view; Related, History and Audit sit under More", async () => {
+    renderWithQuery(<ObjectDetailPage />);
+    await screen.findByRole("tab", { name: "Rules" });
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Records to fix", "Overview", "Rules", "Fields"]);
+    expect(screen.queryByRole("tab", { name: "Records by rule" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "More sections" }));
+    for (const name of ["Related", "History", "Audit"]) expect(await screen.findByRole("menuitem", { name })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("menuitem", { name: "History" }));
+    expect(push).toHaveBeenLastCalledWith("/objects/material_master?run=v1&tab=history");
+  });
+
+  it("names the open overflow section on the More trigger (?tab=audit deep link)", async () => {
+    searchParams = new URLSearchParams("run=v1&tab=audit");
+    renderWithQuery(<ObjectDetailPage />);
+    expect(await screen.findByRole("button", { name: "More sections, Audit open" })).toHaveTextContent("More: Audit");
+  });
+
+  it("shows the selected rule's records beside the rules list, and closes them", async () => {
+    searchParams = new URLSearchParams("run=v1&tab=rules&check_id=mm_missing_desc");
+    vi.spyOn(versionsApi, "getFindingRecords").mockResolvedValue({
+      version_id: "v1", check_id: "mm_missing_desc", total: 1,
+      records: [{ record_key: "MATNR=100001", grain: "MATNR", module: "material_master", field_values: null }],
+    });
+    renderWithQuery(<ObjectDetailPage />);
+    const pane = await screen.findByRole("region", { name: "Failing records of the selected rule" });
+    await waitFor(() => expect(within(pane).getByText("MATNR=100001")).toBeInTheDocument());
+    expect(screen.getByRole("tab", { name: "Rules", selected: true })).toBeInTheDocument();
+    replace.mockClear();
+    fireEvent.click(within(pane).getByRole("button", { name: "Close" }));
+    expect(replace).toHaveBeenCalledWith("/objects/material_master?run=v1&tab=rules", { scroll: false });
   });
 
   it("fetches rule history on the rules tab with a single batch call, not one per rule", async () => {
@@ -264,12 +317,11 @@ describe("ObjectDetailPage", () => {
     expect(getProfile).toHaveBeenCalledWith("v1", "material_master");
   });
 
-  it("prompts to pick a rule on the records tab when no check_id is set", async () => {
+  it("opens an old ?tab=records link without a rule on the rules list", async () => {
+    searchParams = new URLSearchParams("run=v1&tab=records");
     renderWithQuery(<ObjectDetailPage />);
-    fireEvent.click(await screen.findByRole("tab", { name: "Records by rule" }));
-    await waitFor(() =>
-      expect(screen.getByText(/choose a rule to see its failing records/i)).toBeInTheDocument(),
-    );
+    expect(await screen.findByRole("tab", { name: "Rules", selected: true })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Failing records of the selected rule" })).toBeNull();
   });
 
   it("renders failing records on the records tab when check_id is set", async () => {
@@ -337,7 +389,7 @@ describe("ObjectDetailPage", () => {
   it("preserves check_id when switching tabs away from and back to records", async () => {
     searchParams = new URLSearchParams("run=v1&tab=records&check_id=mm_missing_desc");
     renderWithQuery(<ObjectDetailPage />);
-    await waitFor(() => expect(screen.getByRole("tab", { name: "Records by rule", selected: true })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Rules", selected: true })).toBeInTheDocument());
     fireEvent.click(screen.getByRole("tab", { name: "Overview" }));
     expect(push).toHaveBeenLastCalledWith("/objects/material_master?run=v1&tab=overview&check_id=mm_missing_desc");
   });
@@ -433,15 +485,18 @@ describe("ObjectDetailPage", () => {
 });
 
 describe("ObjectDetailPage keyboard and gating", () => {
-  it("keys 1-5 switch tabs", async () => {
+  it("keys 1-4 switch the tabs in view", async () => {
     renderWithQuery(<ObjectDetailPage />);
     await screen.findByText("Material master");
     fireEvent.keyDown(document.body, { key: "2" });
     expect(push).toHaveBeenCalledWith(expect.stringContaining("tab=overview"));
     fireEvent.keyDown(document.body, { key: "3" });
     expect(push).toHaveBeenLastCalledWith(expect.stringContaining("tab=rules"));
+    fireEvent.keyDown(document.body, { key: "4" });
+    expect(push).toHaveBeenLastCalledWith(expect.stringContaining("tab=fields"));
+    const calls = push.mock.calls.length;
     fireEvent.keyDown(document.body, { key: "5" });
-    expect(push).toHaveBeenLastCalledWith(expect.stringContaining("tab=records"));
+    expect(push.mock.calls.length).toBe(calls);
   });
 
   it("1-5 ignored while typing in an input", async () => {
@@ -503,7 +558,7 @@ describe("ObjectDetailPage keyboard and gating", () => {
     searchParams = new URLSearchParams("run=v1&tab=records&check_id=mm_missing_desc");
     renderWithQuery(<ObjectDetailPage />);
     expect(await screen.findByText("All records pass this rule")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open rules" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
   });
 
   it("shows the header counts and affected records from a complete payload", async () => {

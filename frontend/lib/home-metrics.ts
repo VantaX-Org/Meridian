@@ -4,7 +4,8 @@ import type { Version } from "@/types/api";
 /** What the per-run metrics read: a run, or the merged summary of several (lib/current-state.ts). */
 export type Scored = Pick<Version, "dqs_summary">;
 import type { ObjectSummary } from "@/lib/api/v1/objects";
-import { capRuleIds, round1, formatDate, formatModuleName, runAxisLabels } from "@/lib/format";
+import { capRuleIds, round1, formatDate, formatModuleName } from "@/lib/format";
+import { runAxisTicks } from "@/lib/run-axis";
 import { lineageOf } from "@/lib/runs";
 import { DEFAULT_SCORE_BANDS, type ScoreBands } from "@/design/primitives/ScoreRing";
 
@@ -73,7 +74,7 @@ export function trend(versions: Version[], current?: Version): TrendPoint[] {
     .filter((v) => runDqs(v) != null && (lineage === null || lineageOf(v) === lineage))
     .slice()
     .sort((a, b) => new Date(a.run_at).getTime() - new Date(b.run_at).getTime());
-  const ticks = runAxisLabels(runs);
+  const ticks = runAxisTicks(runs);
   return runs.map((v) => ({ x: v.id, label: ticks.get(v.id) ?? formatDate(v.run_at, "date"), y: runDqs(v)!, runId: v.id }));
 }
 

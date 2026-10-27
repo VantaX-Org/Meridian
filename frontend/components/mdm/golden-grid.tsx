@@ -20,6 +20,7 @@ import { useRole } from "@/hooks/use-role";
 import { getSystems } from "@/lib/api/connectivity";
 import { getMergeExplanation, setStewardOverrides, type ExplainResponse } from "@/lib/api/merge-explain";
 import { getVersions } from "@/lib/api/versions";
+import { getDdicFields } from "@/lib/api/rules";
 import { apiErrorMessage } from "@/lib/error";
 import { labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -166,7 +167,36 @@ function useSourceLookups(record: MasterRecordDetail, ex: ExplainResponse | unde
 /** One editing session: the field, and whether the steward is setting a value or clearing their override. */
 type Editing = { field: string; current: unknown; clear: boolean };
 
-const valueText = (v: unknown): ReactNode => show(v) || <span className="m-ink-3">blank</span>;
+/** Code → label of each TABLE.FIELD whose dictionary domain has fixed values. */
+type ValueLabels = ReadonlyMap<string, ReadonlyMap<string, string>>;
+const TABLE_FIELD = /^[A-Z0-9_/]+\.[A-Z0-9_/]+$/;
+
+/**
+ * The value labels of the grid's fields from the data dictionary (GET /ddic/fields, the domain's fixed values), so a
+ * code reads as words: BUT000.TYPE 1 is "Person". Fields without fixed values, or a failed read, keep the raw code.
+ */
+export function useValueLabels(fields: readonly string[]): ValueLabels {
+  const names = [...new Set(fields.map((f) => f.toUpperCase()).filter((f) => TABLE_FIELD.test(f)))].sort().slice(0, 100);
+  const q = useQuery({
+    queryKey: ["ddic-fields", names],
+    queryFn: () => getDdicFields(names),
+    enabled: names.length > 0,
+    staleTime: 60 * 60_000,
+    retry: false,
+    meta: { ignoreError: true },
+  });
+  return useMemo(() => new Map((q.data ?? [])
+    .filter((f) => f.fixed_values?.length)
+    .map((f) => [`${f.table}.${f.field}`, new Map(f.fixed_values!.map((v) => [v.value, v.label]))])), [q.data]);
+}
+
+/** A value as the grid shows it: its dictionary label with the code beside it in Mono, else the value; "blank" when empty. */
+export function valueText(v: unknown, labels?: ReadonlyMap<string, string>): ReactNode {
+  const text = show(v);
+  if (!text) return <span className="m-ink-3">blank</span>;
+  const label = labels?.get(text.trim());
+  return label ? <span className="inline-flex flex-wrap items-baseline gap-x-2"><span>{label}</span><Mono>{text}</Mono></span> : text;
+}
 
 export function GoldenGrid({ record, toolbar, onChanged }: { record: MasterRecordDetail; toolbar?: ReactNode; onChanged: () => void }) {
   const qc = useQueryClient();
@@ -192,6 +222,7 @@ export function GoldenGrid({ record, toolbar, onChanged }: { record: MasterRecor
   });
 
   const { sources, rows } = buildGoldenGrid(record, ex.data, lookups);
+  const valueLabels = useValueLabels(rows.map((r) => r.field));
   const q = filter.trim().toLowerCase();
   const shown = q ? rows.filter((r) => r.field.toLowerCase().includes(q) || show(r.value).toLowerCase().includes(q)) : rows;
   const editable = canOverride && ex.isSuccess;
@@ -235,13 +266,13 @@ export function GoldenGrid({ record, toolbar, onChanged }: { record: MasterRecor
             {shown.map((r) => (
               <tr key={r.field}>
                 <th scope="row" className={`${TD} text-left font-normal`}><Mono>{r.field}</Mono></th>
-                <td className={TD}>{valueText(r.value)}</td>
+                <td className={TD}>{valueText(r.value, valueLabels.get(r.field.toUpperCase()))}</td>
                 {sources.map((s) => {
                   const cell = r.cells[s.id];
                   if (!cell) return <td key={s.id} className={TD}><span className="m-ink-3">Not held</span></td>;
                   return (
                     <td key={s.id} className={`${TD} ${cell.kept ? TD_KEPT : ""}`} title={cell.reason ? `Not kept: ${cell.reason}` : undefined}>
-                      {valueText(cell.value)}
+                      {valueText(cell.value, valueLabels.get(r.field.toUpperCase()))}
                       {cell.kept ? <span className="sr-only"> (kept)</span> : null}
                     </td>
                   );

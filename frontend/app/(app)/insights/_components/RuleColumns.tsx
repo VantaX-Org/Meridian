@@ -6,6 +6,7 @@ import { Mono, Pill, type PillTone, Status } from "@/design";
 import type { RuleRow } from "@/lib/api/insights";
 import { drillLabel, fixHref } from "@/lib/drill";
 import { formatModuleName, labelOf } from "@/lib/format";
+import { ddicRuleName } from "@/lib/rule-name";
 import { DrillCount } from "./DrillCount";
 
 const S4_TONE: Record<string, PillTone> = { blocking: "no-go", warning: "at-risk" };
@@ -19,15 +20,19 @@ export function ruleColumns(run: string | undefined, compact = false): ColumnDef
   const cols: ColumnDef<RuleRow>[] = [
     // Plain words first, the check id under them as the secondary key.
     {
-      id: "rule", header: "Rule", accessorFn: (r) => r.name || r.check_id,
-      cell: ({ row }) => (
-        <span className="flex flex-col [min-width:14rem]">
-          <span className="line-clamp-2" title={row.original.name || row.original.check_id}>
-            <DrillCount href={recordsHref(row.original)} count={row.original.affected} label={drillLabel({ what: "failing records", check: row.original.check_id, module: row.original.module })}>{row.original.name || row.original.check_id}</DrillCount>
+      // A DDIC conformance check has no catalogue name: its id names the table and the kind of check.
+      id: "rule", header: "Rule", accessorFn: (r) => r.name || ddicRuleName(r.check_id) || r.check_id,
+      cell: ({ row }) => {
+        const name = row.original.name || ddicRuleName(row.original.check_id);
+        return (
+          <span className="flex flex-col [min-width:14rem]">
+            <span className="line-clamp-2" title={name || row.original.check_id}>
+              <DrillCount href={recordsHref(row.original)} count={row.original.affected} label={drillLabel({ what: "failing records", check: row.original.check_id, module: row.original.module })}>{name || row.original.check_id}</DrillCount>
+            </span>
+            {name ? <span className="m-text-meta m-ink-3"><Mono>{row.original.check_id}</Mono></span> : null}
           </span>
-          {row.original.name ? <span className="m-text-meta m-ink-3"><Mono>{row.original.check_id}</Mono></span> : null}
-        </span>
-      ),
+        );
+      },
     },
     {
       id: "module", header: "Object", accessorFn: (r) => formatModuleName(r.module),

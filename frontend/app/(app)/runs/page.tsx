@@ -18,7 +18,8 @@ import { exportRuns } from "@/lib/api/v1/runs";
 import { blockedReasonOf, deleteVersion } from "@/lib/api/retention";
 import { getAnalysisStatus } from "@/lib/api/upload";
 import { archiveVersions, compareVersions, getVersions, restoreVersions } from "@/lib/api/versions";
-import { formatDate, formatNumber, plural, runAxisLabels } from "@/lib/format";
+import { formatDate, formatNumber, plural } from "@/lib/format";
+import { runAxisTicks } from "@/lib/run-axis";
 import { queryKeys } from "@/lib/query-keys";
 import { isFinished, lineageOf, lineageSeries, overallDqs, previousRunId, runPageHref, scopeOf } from "@/lib/runs";
 import { runName, runScopeLabel } from "@/lib/run-scope";
@@ -352,7 +353,7 @@ export default function RunsPage() {
   const points = useMemo(() => {
     // Keyed by run id with a disambiguated date as the tick, so two runs on one day never merge into one point.
     const scoped = headScoped.filter((v) => isFinished(v) && scopeOf(v) === chartScope);
-    const ticks = runAxisLabels(scoped);
+    const ticks = runAxisTicks(scoped);
     return scoped
       .flatMap((v) => { const y = overallDqs(v); return y === null ? [] : [{ x: v.id, label: ticks.get(v.id), y: Math.round(y * 10) / 10, runId: v.id }]; })
       .reverse();

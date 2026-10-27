@@ -96,6 +96,42 @@ describe("InboxPage counts", () => {
     expect(within(detail).getByText("Material master")).toBeInTheDocument();
     expect(within(detail).queryByText("—")).toBeNull();
   });
+
+  it("names an exception task from the source the queue sends when the exceptions list is out of reach", async () => {
+    nav.qs = "keep=1";
+    nav.can = true;
+    vi.spyOn(stewardship, "getQueueItems").mockImplementation(async (p) => ({
+      items: p?.status === "open" ? [
+        {
+          id: "i1", tenant_id: "t", item_type: "exception", source_id: "e1", domain: "Financial", priority: 1,
+          due_at: null, assigned_to: null, status: "open", sla_hours: null,
+          created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z", ai_recommendation: null, ai_confidence: null,
+          source_title: null, source_check_id: "MM045", source_module: "material_master",
+        },
+        {
+          id: "i2", tenant_id: "t", item_type: "exception", source_id: "e2", domain: "Financial", priority: 2,
+          due_at: null, assigned_to: null, status: "open", sla_hours: null,
+          created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z", ai_recommendation: null, ai_confidence: null,
+          source_title: null, source_check_id: null, source_module: null,
+        },
+      ] : [],
+      total: p?.status === "open" ? 2 : 0,
+    }));
+    vi.spyOn(stewardship, "getMetrics").mockResolvedValue({ items_by_type: {}, items_by_status: {}, ai_acceptance_rate: 0, sla_breached: 0 } as never);
+    vi.spyOn(exceptions, "getExceptions").mockRejectedValue(new Error("down"));
+    vi.spyOn(exceptions, "getException").mockRejectedValue(new Error("down"));
+    vi.spyOn(rules, "getRules").mockResolvedValue({ rules: [{ id: "MM045", name: "Material description is missing" }], total: 1, limit: 1000, offset: 0 } as never);
+    renderWithQuery(<InboxPage />);
+    const list = await screen.findByRole("list", { name: "Tasks" });
+    expect(await within(list).findByText("Material description is missing in Material master")).toBeInTheDocument();
+    // A source system ("Financial") is not an object: the task without a source is just "Exception", no "in Financial".
+    expect(screen.queryByText(/in Financial/)).toBeNull();
+    const detail = screen.getByRole("region", { name: "Selected item" });
+    expect(within(detail).getByText("Material master")).toBeInTheDocument();
+    expect(screen.queryByText("Not named")).toBeNull();
+    // The purpose and the acceptance are separate sentences.
+    expect(screen.getByText(/approve or reject it\. Suggestion acceptance: 0%\.$/)).toBeInTheDocument();
+  });
 });
 
 describe("InboxPage show all", () => {

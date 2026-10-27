@@ -23,7 +23,8 @@ import { rankFixFirst } from "@/lib/fix-first";
 import { forecastSentence, overallForecast } from "@/lib/score-forecast";
 import { stateSeries } from "@/lib/current-state";
 import { trend as runTrend } from "@/lib/home-metrics";
-import { MINE_PARAM, useObjectOwners } from "@/hooks/use-object-owners";
+import { MINE_PARAM, useObjectOwners, type ObjectOwners } from "@/hooks/use-object-owners";
+import { OwnerName } from "@/components/owners/OwnerName";
 import { ScoreTrend } from "@/components/insight/score-trend";
 import { runPageHref } from "@/lib/runs";
 import { FilterChips } from "@/app/(app)/objects/_header";
@@ -77,10 +78,10 @@ const listWords = (words: readonly string[]): string =>
   words.length > 1 ? `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}` : words[0] ?? "";
 
 /** A ledger's columns with the object's owner after its Object column (the owner set in the object header). */
-function withOwner<T>(cols: ColumnDef<T>[], moduleOf: (row: T) => string, nameOf: (module: string) => string | null): ColumnDef<T>[] {
+function withOwner<T>(cols: ColumnDef<T>[], moduleOf: (row: T) => string, owners: Pick<ObjectOwners, "nameOf" | "status">): ColumnDef<T>[] {
   const owner: ColumnDef<T> = {
-    id: "owner", header: "Owner", accessorFn: (row) => nameOf(moduleOf(row)) ?? "",
-    cell: ({ row }) => nameOf(moduleOf(row.original)) ?? <span className="m-ink-3">Not set</span>,
+    id: "owner", header: "Owner", accessorFn: (row) => owners.nameOf(moduleOf(row)) ?? "",
+    cell: ({ row }) => <OwnerName name={owners.nameOf(moduleOf(row.original))} status={owners.status} />,
   };
   const at = cols.findIndex((c) => c.id === "module");
   return at < 0 ? [...cols, owner] : [...cols.slice(0, at + 1), owner, ...cols.slice(at + 1)];
@@ -349,14 +350,14 @@ export default function ExecPage() {
           >
             {isCurrent ? (
               <DataTable
-                columns={withOwner(currentFindingColumns, (f) => f.module, owners.nameOf)}
+                columns={withOwner(currentFindingColumns, (f) => f.module, owners)}
                 data={currentFix}
                 getRowId={(f) => f.id}
                 onRowClick={(f) => router.push(buildDrillHref({ object: f.module, ruleId: f.check_id, run: f.version_id }))}
                 hideToolbar height="auto"
               />
             ) : (
-              <DataTable columns={withOwner(ruleColumns(run, true), (r) => r.module, owners.nameOf)} data={runFix} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar height="auto" />
+              <DataTable columns={withOwner(ruleColumns(run, true), (r) => r.module, owners)} data={runFix} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar height="auto" />
             )}
           </Section>
         </div>

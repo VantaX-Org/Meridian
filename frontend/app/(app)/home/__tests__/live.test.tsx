@@ -50,9 +50,10 @@ describe("LiveSection", () => {
     renderWithQuery(<LiveSection />);
 
     expect(await screen.findByText("ECC Prod")).toBeInTheDocument();
-    // Connection health reads as the verdict vocabulary, and the row opens the system's Health tab.
-    expect(await screen.findByText("Go")).toBeInTheDocument();
-    expect(screen.getByText("Go").closest("[data-status]")).toHaveAttribute("data-status", "verdict");
+    // Connection health in its own words, never the data's Go / No-go verdict.
+    expect(await screen.findByText("Healthy")).toBeInTheDocument();
+    expect(screen.queryByText("Go")).toBeNull();
+    expect(screen.getByText("Healthy").closest("[data-status=verdict]")).toBeNull();
     expect(await screen.findByText("Nothing is running")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Run extraction" })).toBeInTheDocument();
   });
@@ -113,10 +114,39 @@ describe("LiveSection", () => {
       { id: "p1", system_id: "sys-1", domain: "vendors", tables: [], schedule_cron: "0 2 * * *", active: true, last_run_at: null, next_run_at: "2026-10-27T02:00:00Z", extraction_mode: "full" },
     ]);
     renderWithQuery(<LiveSection />);
-    expect(await screen.findByText("Connection refused by sap.example:3300")).toBeInTheDocument();
+    // The reason in plain words, the raw text in its tooltip.
+    expect(await screen.findByText("Meridian could not reach the SAP system")).toHaveAttribute("title", "Connection refused by sap.example:3300");
+    expect(screen.getByText("Unreachable")).toBeInTheDocument();
+    expect(screen.queryByText("No-go")).toBeNull();
     for (const h of ["Last success", "Last error", "Next scheduled"]) expect(screen.getByRole("columnheader", { name: new RegExp(`^${h}`) })).toBeInTheDocument();
     expect(await screen.findByText(/27 Oct 2026/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "All jobs" })).toHaveAttribute("href", "/admin/jobs");
+  });
+
+  it("reads a stored reason code as a sentence, keeping the raw code in the tooltip", async () => {
+    const raw = "pyrfc_not_installed: build the API image with INSTALL_PYRFC=true";
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([
+      { ...system, health_status: "unreachable", health_message: raw, last_health_check: "2026-10-26T08:00:00Z" },
+    ]);
+    vi.spyOn(jobsApi, "getJobs").mockResolvedValue([]);
+    renderWithQuery(<LiveSection />);
+    expect(await screen.findByText("SAP RFC library not installed on the server")).toHaveAttribute("title", raw);
+    expect(screen.queryByText(/pyrfc_not_installed/)).toBeNull();
+  });
+
+  it("labels job times as Duration and keeps a long job name on one line with its title", async () => {
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    const label = "Re-analysis | KMZ-SIM vendors and every partner function of the company code";
+    vi.spyOn(jobsApi, "getJobs").mockResolvedValue([{
+      id: "j1", kind: "analysis", status: "completed", label, stage: null, stages: [], percent: 100, rows_done: 0, rows_total: 0,
+      message: null, tables: [], error: null, result: null, started_at: 1_792_000_000, updated_at: 1_792_000_010, finished_at: 1_792_000_010, system_id: null,
+    } as unknown as Job]);
+    renderWithQuery(<LiveSection />);
+    expect(await screen.findByRole("columnheader", { name: /^Duration/ })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: /^Progress/ })).toBeNull();
+    const name = screen.getByText(label);
+    expect(name).toHaveClass("truncate");
+    expect(name).toHaveAttribute("title", label);
   });
 
   it("takes the last error from a failed extraction when it is newer than the health check", () => {

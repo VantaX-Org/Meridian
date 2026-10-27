@@ -6,7 +6,8 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Button, Card, DataTable, DrillLink, EmptyState, ErrorState, Pill, Skeleton, Sparkline } from "@/design";
 import { getTrends, type TrendFlag, type TrendSummary } from "@/lib/api/system-objects";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
-import { formatModuleName, runAxisLabels } from "@/lib/format";
+import { formatModuleName } from "@/lib/format";
+import { runAxisTicks } from "@/lib/run-axis";
 import { queryKeys } from "@/lib/query-keys";
 import { runPageHref } from "@/lib/runs";
 
@@ -73,7 +74,7 @@ export function TrendPanel({ systemId }: { systemId: string }) {
   // Keyed by run id with the date as the label, so the sparkline's title names dates, never raw timestamps or upload labels.
   const rows: TrendRow[] = summary.map((s) => {
     const scored = (series[s.object] ?? []).filter((p) => p.dqs !== null);
-    const ticks = runAxisLabels(scored.map((p) => ({ id: p.version_id, run_at: p.run_at })));
+    const ticks = runAxisTicks(scored.map((p) => ({ id: p.version_id, run_at: p.run_at })));
     return { s, pts: scored.map((p) => ({ x: p.version_id, label: ticks.get(p.version_id), y: p.dqs as number })) };
   });
   return (

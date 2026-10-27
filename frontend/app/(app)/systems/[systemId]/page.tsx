@@ -27,7 +27,8 @@ import { discoverSystem, getDesign } from "@/lib/api/source-design";
 import { analyseVersion, downloadPollMs, getSystemVersions, objectsLoaded, startDownload, type SystemVersion } from "@/lib/api/system-objects";
 import { deleteSystem, getSyncProfiles, testEditedConnection, updateSystem } from "@/lib/api/systems";
 import { exportRuns } from "@/lib/api/versions";
-import { formatDate, formatModuleName, labelOf, relativeTime, runAxisLabels, systemTypeLabel } from "@/lib/format";
+import { formatDate, formatModuleName, labelOf, relativeTime, systemTypeLabel } from "@/lib/format";
+import { runAxisTicks } from "@/lib/run-axis";
 import { GatedPrimary, primaryRole } from "@/components/gated-primary";
 import { ConnectionFields, ENVIRONMENTS, RFC_TYPES, TestOutcome, authFor, connectionKey, connectionOf, environmentLabel, schemaFor, testBlockedHint, type ConnectionValues, type TestOutcomeValue } from "@/components/systems/connect-system-dialog";
 import { useRole } from "@/hooks/use-role";
@@ -429,7 +430,7 @@ function Overview({ systemId, modules, versions, latest, canSync, canAnalyse, on
 
   const scored = versions.filter((v) => meanDqs(v) !== null).slice(0, 12).reverse();
   // Ticks are dates (with the time when two runs share a day); the run id is the key so a click opens the right run.
-  const tickOf = runAxisLabels(scored.map((v) => ({ id: v.id, run_at: v.run_at })));
+  const tickOf = runAxisTicks(scored.map((v) => ({ id: v.id, run_at: v.run_at })));
   const byRows = [...modules].filter((m) => m.row_count > 0).sort((a, b) => b.row_count - a.row_count).slice(0, 12);
   const runCols = useMemo(() => runColumns(), []);
   // Every "Extract" in an empty state opens the one Extract drawer.

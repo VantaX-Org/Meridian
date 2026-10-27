@@ -30,6 +30,16 @@ describe("RankedRow", () => {
     expect(onSelect).toHaveBeenCalled();
   });
 
+  it("ellipsises a text meta in a block of its own and keeps the whole text in its title", () => {
+    const meta = "Unassigned. Priority 1. Raised 16d ago.";
+    render(<ul><RankedRow tone="low" label="Exception in Material master" meta={meta} onSelect={() => {}} /></ul>);
+    const el = screen.getByText(meta);
+    expect(el).toHaveClass("block", "truncate", "min-w-0");
+    expect(el).not.toHaveClass("flex");
+    expect(el).toHaveAttribute("title", meta);
+    expect(screen.getByText("Exception in Material master")).toHaveAttribute("title", "Exception in Material master");
+  });
+
   it("selects through a link when given an href", () => {
     render(<ul><RankedRow tone="low" label="Rule" href="/objects/x?rule=r" replace /></ul>);
     expect(screen.getByRole("link", { name: /Rule/ })).toHaveAttribute("href", "/objects/x?rule=r");

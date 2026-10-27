@@ -147,3 +147,11 @@ def test_ddic_fields(client):
     many = ",".join(f"MARA.F{i}" for i in range(101))
     assert client.get(f"/api/v1/ddic/fields?fields={many}").status_code == 400
 
+
+def test_ddic_fields_carry_fixed_value_labels(client):
+    """A domain's fixed values come with their text, so the golden record grid can read BUT000.TYPE 1 as Person."""
+    j = client.get("/api/v1/ddic/fields?fields=BUT000.TYPE,ADRC.COUNTRY").json()["fields"]
+    assert {"value": "1", "label": "Person"} in j[0]["fixed_values"]
+    assert {v["value"] for v in j[0]["fixed_values"]} >= {"1", "2", "3"}
+    assert j[1]["fixed_values"] == []  # a check table, not fixed values
+

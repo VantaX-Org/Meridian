@@ -20,8 +20,12 @@ export function recordCount(total: number, capped: boolean): string {
   return `${total.toLocaleString()} ${total === 1 ? "record" : "records"}`;
 }
 
-/** The object page's Records to fix tab, optionally filtered (`sev`, `suggested`, `due`). `run` undefined opens the object's own latest run. */
+/** The tab is the Fix work queue, so its filters take Fix work's URL keys; the older names map onto them. */
+const FIX_KEY: Record<string, string> = { issue: "check", suggested: "sugg", status: "st" };
+
+/** The object page's Records to fix tab, optionally filtered (`sev`, `sugg`, `due`, `check`). `run` undefined opens the object's own latest run. */
 export function toFixHref(module: string, run: string | undefined, filters: Record<string, string> = {}): string {
-  const q = new URLSearchParams({ ...(run ? { run } : {}), tab: "fix", ...filters });
+  const keyed = Object.fromEntries(Object.entries(filters).map(([k, v]) => [Object.hasOwn(FIX_KEY, k) ? FIX_KEY[k] : k, v]));
+  const q = new URLSearchParams({ ...(run ? { run } : {}), tab: "fix", ...keyed });
   return `/objects/${module}?${q.toString()}`;
 }

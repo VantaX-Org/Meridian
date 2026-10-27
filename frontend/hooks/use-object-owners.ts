@@ -6,14 +6,19 @@ import { getOwners, type DataOwner } from "@/lib/api/owners";
 import { queryKeys } from "@/lib/query-keys";
 
 export interface ObjectOwners {
-  /** The owner row of an object (by module id); undefined when nobody owns it. */
+  /** The owner row of an object (by module id); undefined when nobody owns it or the list did not load. */
   ownerOf: (module: string) => DataOwner | undefined;
-  /** The owner's name, or null when the object has none. */
+  /** The owner's name, or null when the object has none (or the list did not load: see `status`). */
   nameOf: (module: string) => string | null;
   /** The object is owned by the signed-in user. */
   isMine: (module: string) => boolean;
   /** The signed-in user owns at least one object. */
   hasMine: boolean;
+  /**
+   * Whether the owners list was read: "error" means nobody can say who owns an object (show "Owner unavailable"),
+   * "ready" with no owner means nobody does ("Not set"), "loading" means it is not known yet.
+   */
+  status: "loading" | "error" | "ready";
 }
 
 /** `?mine=1`: a list keeps only the signed-in user's objects. */
@@ -22,7 +27,8 @@ export const MINE_PARAM = "mine";
 /**
  * Who owns each object: the tenant's `data_owners` rows of kind "object" (GET /api/v1/owners?kind=object, the list
  * the object header's OwnerPicker reads and writes, under the same cache key), and which of them the signed-in
- * user owns. Read-only and never blocking: a failed read leaves every object unowned.
+ * user owns. Read-only and never blocking: a failed read names no owner and says so through `status`, so a page
+ * shows "Owner unavailable" rather than claiming every object is unowned.
  */
 export function useObjectOwners(): ObjectOwners {
   const me = useCurrentUser();
@@ -34,5 +40,6 @@ export function useObjectOwners(): ObjectOwners {
     nameOf: (module) => byModule.get(module)?.owner_name ?? null,
     isMine: (module) => !!me && byModule.get(module)?.owner_user_id === me.id,
     hasMine: !!me && rows.some((o) => o.owner_user_id === me.id),
+    status: q.isError ? "error" : q.isSuccess ? "ready" : "loading",
   };
 }

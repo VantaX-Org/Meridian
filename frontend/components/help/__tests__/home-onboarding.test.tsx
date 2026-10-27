@@ -2,8 +2,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HomeOnboarding } from "../home-onboarding";
 
-const state = vi.hoisted(() => ({ allowed: true, tourDone: false, dismissed: false, activeTour: null as string | null, items: [] as { id: string; label: string; done: boolean; href: string }[] }));
-const actions = vi.hoisted(() => ({ startTour: vi.fn(), markTourDone: vi.fn(), dismissChecklist: vi.fn() }));
+const state = vi.hoisted(() => ({ allowed: true, tourDone: false, offerClosed: false, offered: false, dismissed: false, activeTour: null as string | null, items: [] as { id: string; label: string; done: boolean; href: string }[] }));
+const actions = vi.hoisted(() => ({ startTour: vi.fn(), closeTourOffer: vi.fn(), dismissChecklist: vi.fn(), markOffered: vi.fn() }));
 
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => state.allowed }) }));
 vi.mock("@/hooks/use-first-run-checklist", () => ({ useFirstRunChecklist: () => ({ loading: false, items: state.items }) }));
@@ -11,7 +11,10 @@ vi.mock("@/lib/help/storage", () => ({
   dismissChecklist: actions.dismissChecklist,
   isChecklistDismissed: () => state.dismissed,
   isTourDone: () => state.tourDone,
-  markTourDone: actions.markTourDone,
+  isTourOfferClosed: () => state.offerClosed,
+  closeTourOffer: actions.closeTourOffer,
+  wasTourOfferedThisSession: () => state.offered,
+  markTourOfferedThisSession: (id: string) => { state.offered = true; actions.markOffered(id); },
   subscribeStorage: () => () => {},
 }));
 vi.mock("@/design", () => ({
@@ -26,7 +29,7 @@ vi.mock("@/design", () => ({
 const item = (id: string, label: string, done = false) => ({ id, label, done, href: `/${id}` });
 
 beforeEach(() => {
-  Object.assign(state, { allowed: true, tourDone: true, dismissed: false, activeTour: null, items: [item("fix", "Create a first fix batch")] });
+  Object.assign(state, { allowed: true, tourDone: true, offerClosed: false, offered: false, dismissed: false, activeTour: null, items: [item("fix", "Create a first fix batch")] });
   vi.clearAllMocks();
 });
 
@@ -67,8 +70,28 @@ describe("HomeOnboarding", () => {
     expect(screen.getAllByTestId("home-onboarding")).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "Take the tour" }));
     expect(actions.startTour).toHaveBeenCalledWith("first-run");
+    // Taking the tour closes the offer as putting it off does.
+    expect(actions.closeTourOffer).toHaveBeenCalledWith("first-run");
+    actions.closeTourOffer.mockClear();
     fireEvent.click(screen.getByRole("button", { name: "Not now" }));
-    expect(actions.markTourDone).toHaveBeenCalledWith("first-run");
+    expect(actions.closeTourOffer).toHaveBeenCalledWith("first-run");
+  });
+
+  it("offers the tour once per session: the next home leaves it out", () => {
+    state.tourDone = false;
+    state.items = [];
+    const first = render(<HomeOnboarding />);
+    expect(screen.getByText(/A short tour shows where things are/)).toBeInTheDocument();
+    expect(actions.markOffered).toHaveBeenCalledWith("first-run");
+    first.unmount();
+    expect(render(<HomeOnboarding />).container).toBeEmptyDOMElement();
+  });
+
+  it("stays closed on this device when the account-wide save did not land", () => {
+    state.tourDone = false;
+    state.offerClosed = true;
+    state.items = [];
+    expect(render(<HomeOnboarding />).container).toBeEmptyDOMElement();
   });
 
   it("shows nothing once the tour is done and the checklist dismissed, or every step is done", () => {

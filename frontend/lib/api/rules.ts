@@ -226,6 +226,8 @@ export interface DdicField {
   check_table: string | null;
   check_field: string | null;
   check_table_description: string | null;
+  /** The domain's fixed values with their short text ("1" -> "Person"); absent from an older server. */
+  fixed_values?: { value: string; label: string }[];
   missing: boolean;
 }
 

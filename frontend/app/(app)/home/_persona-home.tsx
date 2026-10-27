@@ -51,6 +51,7 @@ import { doNext } from "@/lib/do-next";
 import { getPredictiveAnalytics } from "@/lib/api/analytics";
 import { forecastSentence, overallForecast } from "@/lib/score-forecast";
 import { MINE_PARAM, useObjectOwners } from "@/hooks/use-object-owners";
+import { OwnerName } from "@/components/owners/OwnerName";
 import { FilterChips } from "@/app/(app)/objects/_header";
 import type { Version } from "@/types/api";
 
@@ -327,7 +328,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     },
     {
       id: "owner", header: "Owner", meta: { priority: "low" }, accessorFn: (o) => owners.nameOf(o.module) ?? "",
-      cell: ({ row: { original: o } }) => owners.nameOf(o.module) ?? <span className="m-ink-3">Not set</span>,
+      cell: ({ row: { original: o } }) => <OwnerName name={owners.nameOf(o.module)} status={owners.status} />,
     },
     // Summed over the object's failing rules (a record failing two rules counts twice): rule failures, not records.
     { accessorKey: "affected_records", header: "Rule failures", meta: { numeric: true, priority: "low" }, cell: ({ row: { original: o } }) => o.affected_records?.toLocaleString() ?? "—" },

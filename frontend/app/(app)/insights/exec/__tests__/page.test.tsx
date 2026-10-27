@@ -7,6 +7,8 @@ import * as analyticsApi from "@/lib/api/analytics";
 import * as downloadApi from "@/lib/api/download";
 import * as findingsApi from "@/lib/api/findings";
 import * as migrationApi from "@/lib/api/migration";
+import * as ownersApi from "@/lib/api/owners";
+import * as rulesApi from "@/lib/api/rules";
 import ExecPage from "../page";
 
 const h = vi.hoisted(() => ({ qs: "run=v1", path: "/insights", versions: [] as unknown[] }));
@@ -256,6 +258,34 @@ describe("ExecPage", () => {
     expect(screen.getByRole("heading", { name: "Score over runs" })).toBeInTheDocument();
     // (60 + 80) / 2 against (50 + 80) / 2: up 5 with the latest run, as Home and the overview say
     expect(within(screen.getByTestId("hero-verdict")).getByText("Up 5 with the latest run")).toBeInTheDocument();
+  });
+
+  it("names DDIC and message-less rules in Fix first, and says the owner is unavailable when owners fail to load", async () => {
+    h.qs = "";
+    h.path = "/insights/exec";
+    const sum = (score: number) => ({ composite_score: score, dimension_scores: {}, critical_count: 1, high_count: 0, medium_count: 0, low_count: 0, total_checks: 10, passing_checks: 9, capped: false, cap_reason: null });
+    h.versions = [{ id: "mm1", label: "material_master_25k", status: "complete", run_at: "2026-10-16T03:00:00Z", metadata: { modules: ["material_master"] }, dqs_summary: { material_master: sum(70) } }];
+    vi.spyOn(insightsApi, "getExec").mockResolvedValue({
+      version_id: null, latest_version_id: "mm1", scope: "current", composite: 70, cap: null, cap_reason: null,
+      narrative: "", readiness_cells: [], waterfall: [], impact_rows: [], owner_rows: [],
+    });
+    vi.spyOn(insightsApi, "getCurrentOverview").mockResolvedValue({ dqs: { composite: 70, previous: null, delta: null, tier: "at_risk", capped: false, cap_reason: null } } as never);
+    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "mm1", rows: [] } as never);
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockRejectedValue(new Error("not under test"));
+    vi.spyOn(findingsApi, "getFindings").mockResolvedValue({
+      findings: [
+        { id: "f1", version_id: "mm1", module: "material_master", check_id: "DDIC-MARA-TYPE", severity: "high", dimension: "validity", affected_count: 400, total_count: 1000, pass_rate: 60, details: { kind: "type", table: "MARA" } },
+        { id: "f2", version_id: "mm1", module: "material_master", check_id: "MM045", severity: "critical", dimension: "completeness", affected_count: 40, total_count: 100, pass_rate: 60, details: {} },
+      ],
+      total: 2,
+    } as never);
+    vi.spyOn(rulesApi, "getRules").mockResolvedValue({ rules: [{ id: "MM045", name: "Material description is missing" }], total: 1, limit: 1000, offset: 0 } as never);
+    vi.spyOn(ownersApi, "getOwners").mockRejectedValue(new Error("owners down"));
+    renderWithQuery(<ExecPage />);
+    expect(await screen.findByText("Value does not match the field's SAP data type (MARA)")).toBeInTheDocument();
+    expect(await screen.findByText("Material description is missing")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByText("Owner unavailable").length).toBe(2));
+    expect(screen.queryByText("Not set")).toBeNull();
   });
 
   it("is empty only when the tenant has no run at all", async () => {

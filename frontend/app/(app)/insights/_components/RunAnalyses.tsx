@@ -72,6 +72,13 @@ export function s4Totals(areas: readonly S4Area[]): { blocking: number; warning:
 }
 
 /** Blocking failing rules per S/4 area, each bar opening that area on the readiness page. */
+/** The longest category label that fits the bar chart's widest axis (180px at 12px) on one line. */
+const AXIS_LABEL_CHARS = 24;
+/** A category label cut to one axis line, with an ellipsis where it was cut. */
+export function axisLabel(label: string, max = AXIS_LABEL_CHARS): string {
+  return label.length <= max ? label : `${label.slice(0, max - 1).trimEnd()}…`;
+}
+
 export function S4Chart({ areas, run }: { areas: S4Area[]; run?: string }) {
   const router = useRouter();
   if (areas.length === 0) {
@@ -84,10 +91,12 @@ export function S4Chart({ areas, run }: { areas: S4Area[]; run?: string }) {
   return (
     <>
       <Bar
-        data={failing.map((a) => ({ x: a.label, y: a.blocking_failing }))}
+        // A long area name ("Warehouse Management to EWM") wrapped onto its neighbours' rows: the tick shows it cut to
+        // one line (`label`), the tooltip and the drill keep the whole name (`x`).
+        data={failing.map((a) => ({ x: a.label, y: a.blocking_failing, label: axisLabel(a.label) }))}
         label="Blocking failing rules per S/4 area"
         // One row per area so the labels never collide, however many areas fail.
-        height={Math.max(160, failing.length * 24)}
+        height={Math.max(160, failing.length * 28)}
         onPointClick={(p) => router.push(withScope("/insights/readiness", { run, area: areas.find((a) => a.label === p.x)?.area }))}
       />
       <p className="mt-2 m-text-body">

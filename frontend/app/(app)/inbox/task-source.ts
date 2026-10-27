@@ -23,6 +23,34 @@ export function exceptionObject(e: Pick<Exception, "affected_records" | "categor
   return isObject(linked) ? linked : null;
 }
 
+type TaskSourceFields = Pick<StewardshipQueueItem, "item_type" | "domain" | "source_title" | "source_check_id" | "source_module">;
+
+/**
+ * The object a task is about. An exception task reads it from its exception when loaded, else from the source the
+ * queue sends with it (`source_module`, its linked finding's object); its `domain` is the exception's source
+ * system ("Financial"), so it counts only when it is itself an object. Any other task's domain is its object.
+ */
+export function taskObject(t: TaskSourceFields, exc?: Exception | null): string | null {
+  const domain = t.domain?.trim();
+  if (t.item_type !== "exception") return domain && domain.toLowerCase() !== "unknown" ? domain : null;
+  const fromExc = exc ? exceptionObject(exc) : null;
+  if (fromExc) return fromExc;
+  if (isObject(t.source_module)) return t.source_module;
+  return isObject(domain) ? domain : null;
+}
+
+/**
+ * What an exception task checks, in words: its exception's title, else the title the queue sends, else the name of
+ * its linked finding's check (`ruleName`, from the rule catalogue), else that check's id. Null when none is known.
+ */
+export function exceptionTaskName(t: TaskSourceFields, exc?: Exception | null, ruleName?: (checkId: string) => string | undefined): string | null {
+  if (t.item_type !== "exception") return null;
+  const title = exc?.title?.trim() || t.source_title?.trim();
+  if (title) return title;
+  const check = t.source_check_id?.trim();
+  return check ? ruleName?.(check) ?? check : null;
+}
+
 /** The exceptions API returns at most 100 a page (api/routes/exceptions.py). */
 export const EXC_PAGE = 100;
 

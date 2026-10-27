@@ -76,14 +76,14 @@ const serverSorting = (s: SortingState): SortingState => {
 };
 
 
-function useFilters() {
+function useFilters(fixed: FixWorkScope = {}) {
   const search = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
   const get = (k: string) => search?.get(k) ?? "";
   const filter: RecordFilter = {
-    version_id: get("run") || undefined,
-    module: get("module") || get("object") || undefined,
+    version_id: fixed.run || get("run") || undefined,
+    module: fixed.module || get("module") || get("object") || undefined,
     check_id: get("check") || undefined,
     severity: get("sev") || undefined,
     status: get("st") || "open",
@@ -103,7 +103,16 @@ function useFilters() {
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }, [search, router, pathname]);
   const viewParams = Object.fromEntries(VIEW_KEYS.map((k) => [k, get(k)]).filter(([, v]) => v));
-  return { filter, selected: splitRecord(search?.get("record") ?? null), set, sorting: decodeSort(get("sort")), viewParams, fromObject: !get("module") && !!get("object") };
+  return { filter, selected: splitRecord(search?.get("record") ?? null), set, sorting: decodeSort(get("sort")), viewParams, fromObject: !fixed.module && !get("module") && !!get("object") };
+}
+
+/**
+ * A page that embeds the queue for one object (the object page's Records to fix) fixes the object, and the run the
+ * page shows; neither is a filter the viewer can clear there. Every other filter still lives on the URL.
+ */
+export interface FixWorkScope {
+  module?: string;
+  run?: string;
 }
 
 function GroupList({ groups, active, onPick }: { groups: WorkGroup[]; active: string | undefined; onPick: (check: string | null) => void }) {
@@ -272,12 +281,12 @@ function NoRunYet() {
  * sort and the record are in the URL. Keyboard: j / k move, a accepts the suggested values, t takes the record, u
  * undoes, Enter opens it.
  */
-export function FixWork() {
+export function FixWork({ module: fixedModule, run: fixedRun }: FixWorkScope = {}) {
   const qc = useQueryClient();
   const { can } = useRole();
   const canFix = can("apply");
   const canSignOff = can("approve");
-  const { filter, selected, set, sorting: urlSorting, viewParams, fromObject } = useFilters();
+  const { filter, selected, set, sorting: urlSorting, viewParams, fromObject } = useFilters({ module: fixedModule, run: fixedRun });
   const sorting = serverSorting(urlSorting);
   const sort = encodeSort(sorting);
   const router = useRouter();

@@ -94,6 +94,21 @@ describe("RunDetailPage", () => {
       expect(screen.queryByText("No next actions for this run")).toBeNull();
     });
 
+    it("keeps the object ledger inside a phone: rule and counts step aside, Open stays pinned", async () => {
+      withFindings();
+      vi.spyOn(analyticsApi, "getPrescriptiveAnalytics").mockResolvedValue({
+        actions: [], sprints: [], basis: { version_id: "v2", findings: 0, cleaning_items: 0, exceptions: 0 },
+      } as unknown as Awaited<ReturnType<typeof analyticsApi.getPrescriptiveAnalytics>>);
+      renderWithQuery(<RunDetailPage />);
+      await screen.findByText("Objects in this run");
+      for (const h of ["Blocking rule", "Critical", "High"]) {
+        expect(await screen.findByRole("columnheader", { name: new RegExp(`^${h}`) })).toHaveClass("max-[640px]:hidden");
+      }
+      for (const h of ["Object", "Score", "Failing records"]) {
+        expect(screen.getByRole("columnheader", { name: new RegExp(`^${h}`) })).not.toHaveClass("max-[640px]:hidden");
+      }
+    });
+
     it("opens a cleaning action on the object's cleaning tab and explains it in plain words", async () => {
       vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
       vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue({

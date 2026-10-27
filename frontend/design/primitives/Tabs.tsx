@@ -3,7 +3,9 @@
 import { useState, type ReactNode } from "react";
 import { Tabs as BaseTabs } from "@base-ui/react/tabs";
 import { Badge } from "./Badge";
+import { Menu } from "./Menu";
 import { Select } from "./Select";
+import { IconChevronDown } from "../icons";
 
 export interface TabItem {
   value: string;
@@ -11,11 +13,15 @@ export interface TabItem {
   content: ReactNode;
   /** Optional neutral count shown after the label. */
   count?: number;
+  /** Kept out of the strip: listed under one "More" menu at its end (the phone Select still lists every item). */
+  overflow?: boolean;
 }
 
 /**
  * A tab strip over its panels. Below 640px the strip would wrap or run off the screen, so a Select named
  * `label` picks the panel instead and the strip steps aside (CSS only: both share one value, nothing remounts).
+ * Items marked `overflow` sit under one "More" menu after the strip, so a detail page keeps five tabs or fewer in
+ * view; while one of them is open the menu's trigger names it and carries the selected style.
  */
 export function Tabs({
   items, value, defaultValue, onValueChange, onTabHover, label = "Section",
@@ -34,6 +40,9 @@ export function Tabs({
     setOwn(v);
     onValueChange?.(v);
   };
+  const strip = items.filter((i) => !i.overflow);
+  const more = items.filter((i) => i.overflow);
+  const openOverflow = more.find((i) => i.value === current);
   return (
     <BaseTabs.Root value={current} onValueChange={(v) => change(v as string)}>
       <div className="sm:hidden" data-testid="tabs-select">
@@ -45,24 +54,45 @@ export function Tabs({
           className="m-input inline-flex w-full items-center justify-between gap-2"
         />
       </div>
-      <BaseTabs.List className="m-tabs-list max-sm:hidden">
-        {items.map((item) => (
-          <BaseTabs.Tab
-            key={item.value}
-            value={item.value}
-            className="m-tab m-motion-colors"
-            onPointerEnter={() => onTabHover?.(item.value)}
-            onFocus={() => onTabHover?.(item.value)}
-          >
-            {item.label}
-            {item.count !== undefined && item.count > 0 && <span className="m-tab-count"><Badge count={item.count} tone="neutral" /></span>}
-          </BaseTabs.Tab>
-        ))}
-        <BaseTabs.Indicator
-          className="m-tab-indicator m-motion-slide"
-          style={{ width: "var(--active-tab-width)", transform: "translateX(var(--active-tab-left))" }}
-        />
-      </BaseTabs.List>
+      <div className="m-tabs-bar max-sm:hidden">
+        <BaseTabs.List className="m-tabs-list max-sm:hidden">
+          {strip.map((item) => (
+            <BaseTabs.Tab
+              key={item.value}
+              value={item.value}
+              className="m-tab m-motion-colors"
+              onPointerEnter={() => onTabHover?.(item.value)}
+              onFocus={() => onTabHover?.(item.value)}
+            >
+              {item.label}
+              {item.count !== undefined && item.count > 0 && <span className="m-tab-count"><Badge count={item.count} tone="neutral" /></span>}
+            </BaseTabs.Tab>
+          ))}
+          {/* With an overflow item open no strip tab is selected, so there is no indicator to draw. */}
+          {openOverflow ? null : (
+            <BaseTabs.Indicator
+              className="m-tab-indicator m-motion-slide"
+              style={{ width: "var(--active-tab-width)", transform: "translateX(var(--active-tab-left))" }}
+            />
+          )}
+        </BaseTabs.List>
+        {more.length > 0 ? (
+          <Menu
+            trigger={
+              <button
+                type="button"
+                className="m-tab m-tab-more m-motion-colors"
+                data-selected={openOverflow ? "" : undefined}
+                aria-label={openOverflow ? `More sections, ${openOverflow.label} open` : "More sections"}
+              >
+                {openOverflow ? `More: ${openOverflow.label}` : "More"}
+                <IconChevronDown size={14} />
+              </button>
+            }
+            items={more.map((i) => ({ label: i.label, onSelect: () => change(i.value) }))}
+          />
+        ) : null}
+      </div>
       {items.map((item) => (
         <BaseTabs.Panel key={item.value} value={item.value} className="pt-4">
           {item.content}

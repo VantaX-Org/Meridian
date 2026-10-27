@@ -50,7 +50,7 @@ import { MODULE_LABELS, formatDate, formatInt, formatModuleName, formatMoney, la
 import { inboxKeyHandler, keyBelongsElsewhere } from "@/lib/inbox-keys";
 import { queryKeys } from "@/lib/query-keys";
 import { ApprovalsPanel, SapMonitorPanel } from "./inbox-panels";
-import { EXC_PAGE, RECORD_ISSUES_HREF, exceptionObject, taskSourceLink } from "./task-source";
+import { EXC_PAGE, RECORD_ISSUES_HREF, exceptionObject, exceptionTaskName, taskObject, taskSourceLink } from "./task-source";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import type { Exception, ExceptionRule, ExceptionStatus, Severity, StewardshipQueueItem, StewardshipStatus } from "@/types/api";
 
@@ -154,19 +154,22 @@ async function each(ids: string[], fn: (id: string) => Promise<unknown>): Promis
   return { ok, failed: r.length - ok };
 }
 
-/** A task's domain, or null when the queue has none to name ("unknown" or empty). */
-const knownDomain = (d: string | null | undefined) => (d && d.trim() && d.trim().toLowerCase() !== "unknown" ? d : null);
-/** The object a task is about: its domain, else (an exception task) the object its exception names. */
-const taskObject = (t: StewardshipQueueItem, exc?: Exception | null) => knownDomain(t.domain) ?? (exc ? exceptionObject(exc) : null);
+type RuleNameOf = (checkId: string) => string | undefined;
 /**
  * "Merge decision in Material master"; an exception task is named by its check, "Custom Rule: Blank material group
- * in Material master", never a bare "Exception". Just the name when the object is unknown, never "in Unknown".
+ * in Material master" (its exception's title, else the queue's source title, else its check's name), never a bare
+ * "Exception" when anything names it. Just the name when the object is unknown, never "in Unknown".
  */
-const taskTitle = (t: StewardshipQueueItem, exc?: Exception | null) => {
-  const what = t.item_type === "exception" && exc?.title ? exc.title : labelOf(t.item_type);
+const taskTitle = (t: StewardshipQueueItem, exc?: Exception | null, ruleName?: RuleNameOf) => {
+  const what = exceptionTaskName(t, exc, ruleName) ?? labelOf(t.item_type);
   const d = taskObject(t, exc);
   return d ? `${what} in ${formatModuleName(d)}` : what;
 };
+/** The rule catalogue's names by check id (one cached request, shared with the task source pane). */
+function useRuleNameOf(enabled: boolean): RuleNameOf {
+  const rules = useQuery({ queryKey: ["rules", "names"], queryFn: () => getRules({ limit: 1000 }), enabled, staleTime: 300_000, meta: { ignoreError: true } });
+  return useCallback((id: string) => rules.data?.rules.find((r) => r.id === id)?.name ?? undefined, [rules.data]);
+}
 /** An exception named by its check and object, as its task is. */
 const exceptionTitle = (e: Exception) => {
   const d = exceptionObject(e);
@@ -286,6 +289,8 @@ export default function InboxPage() {
   });
   const excById = useMemo(() => new Map((excIndexQ.data?.exceptions ?? []).map((e) => [e.id, e])), [excIndexQ.data]);
   const excOf = useCallback((t: StewardshipQueueItem) => (t.item_type === "exception" ? excById.get(t.source_id) ?? null : null), [excById]);
+  // A task whose exception has no title is named by its linked check: the catalogue names it.
+  const ruleNameOf = useRuleNameOf(queues.some((q) => q.data?.items?.some((t) => t.item_type === "exception" && !t.source_title && !!t.source_check_id)));
   const excLoaded = useMemo(() => excPageQs.flatMap((q) => q.data?.exceptions ?? []), [excPageQs]);
   const excTotal = excQ.data?.total ?? 0;
   const excMetricsQ = useQuery({ queryKey: queryKeys.exceptionMetrics(), queryFn: () => getExceptionMetrics(), enabled: isExceptions });
@@ -353,11 +358,11 @@ export default function InboxPage() {
       if (prio !== null && t.priority !== prio) return false;
       if (assigneeIds && !(t.assigned_to && assigneeIds.has(t.assigned_to))) return false;
       if (!matchesWho(t, view) || !matchesWhen(t, when)) return false;
-      return !q || [t.id, t.source_id, t.domain, t.item_type, who(t.assigned_to), taskTitle(t, excOf(t))].some((v) => v.toLowerCase().includes(q));
+      return !q || [t.id, t.source_id, t.domain, t.item_type, who(t.assigned_to), taskTitle(t, excOf(t), ruleNameOf)].some((v) => v.toLowerCase().includes(q));
     });
     const due = (t: StewardshipQueueItem) => slaOf(t, now).remaining ?? NO_DUE;
     return rows.sort((x, y) => due(x) - due(y) || x.priority - y.priority);
-  }, [all, type, prio, view, when, search, now, who, matchesWho, matchesWhen, assigneeIds, excOf]);
+  }, [all, type, prio, view, when, search, now, who, matchesWho, matchesWhen, assigneeIds, excOf, ruleNameOf]);
 
   const excItems = useMemo(() => {
     const excAll = excLoaded;
@@ -558,14 +563,14 @@ export default function InboxPage() {
     const sla = slaOf(t, now);
     return {
       id: t.id,
-      label: `${taskTitle(t, excOf(t))}, raised ${formatDate(t.created_at, "datetime")}`,
-      title: taskTitle(t, excOf(t)),
+      label: `${taskTitle(t, excOf(t), ruleNameOf)}, raised ${formatDate(t.created_at, "datetime")}`,
+      title: taskTitle(t, excOf(t), ruleNameOf),
       // Separate sentences: who holds it, how urgent, how old.
       meta: `${who(t.assigned_to)}. Priority ${t.priority}. Raised ${span(now - Date.parse(t.created_at))} ago.`,
       aside: <Pill tone={SLA_TONE[sla.state]}>{slaText(sla)}</Pill>,
       tone: SLA_BAR[sla.state],
     };
-  }), [items, now, who, excOf]);
+  }), [items, now, who, excOf, ruleNameOf]);
   const excRows = useMemo<WorkbenchItem[]>(() => excItems.map((e) => {
     const sla = excSla(e.sla_deadline, now);
     return {
@@ -601,7 +606,7 @@ export default function InboxPage() {
   const serverOverdue = metricsQ.data?.overdue_count;
   const aiAcceptance = metricsQ.data?.ai_acceptance_rate ?? null;
   // Suggestion acceptance across all queues, for roles that assign work.
-  const acceptance = !isExceptions && canSeeTeam && aiAcceptance != null ? ` Suggestion acceptance ${Math.round(aiAcceptance * 100)}%.` : "";
+  const acceptance = !isExceptions && canSeeTeam && aiAcceptance != null ? ` Suggestion acceptance: ${Math.round(aiAcceptance * 100)}%.` : "";
   const overdue = isExceptions ? excMetricsQ.data?.overdue_count ?? 0 : serverOverdue ?? counts.overdue;
   const openCount = isExceptions ? excMetricsQ.data?.open_count ?? excItems.length : queueTotal;
   const overdueScope = !isExceptions && partial && serverOverdue == null ? ` in the newest ${formatInt(all.length)}` : "";
@@ -610,7 +615,8 @@ export default function InboxPage() {
   const header = (
     <PageHeader
       title="Inbox"
-      meta={counted ? `${formatInt(openCount)} open, ${formatInt(overdue)} overdue${overdueScope}. ${PURPOSE[kind]}${acceptance}` : PURPOSE[kind]}
+      // Each part its own sentence: counts, then what the list is for, then the suggestion acceptance.
+      meta={counted ? `${formatInt(openCount)} open, ${formatInt(overdue)} overdue${overdueScope}. ${PURPOSE[kind]}.${acceptance}` : PURPOSE[kind]}
       tabs={kindToggle}
       actions={
         isExceptions
@@ -1135,6 +1141,7 @@ function TaskDetail({ t, exc, sla, now, assignee, busy, canApprove, canAssign, c
   const excDetail = useQuery({ queryKey: ["exceptions", "detail", t.source_id], queryFn: () => getException(t.source_id), enabled: t.item_type === "exception" && !exc, retry: false, meta: { ignoreError: true } });
   const source = exc ?? excDetail.data ?? null;
   const object = taskObject(t, source);
+  const ruleNameOf = useRuleNameOf(t.item_type === "exception" && !source?.title && !t.source_title && !!t.source_check_id);
   // The rarer moves wait in the menu: taking over someone else's task, handing it back, escalating.
   const more: MenuItemDef[] = [
     ...(canAssign && !claimFirst ? [{ label: "Claim", onSelect: onAssign }] : []),
@@ -1143,7 +1150,7 @@ function TaskDetail({ t, exc, sla, now, assignee, busy, canApprove, canAssign, c
   ];
   return (
     <Card
-      title={taskTitle(t, source)}
+      title={taskTitle(t, source, ruleNameOf)}
       meta={<Pill tone={SLA_TONE[sla.state]}>{slaText(sla)}</Pill>}
       actions={
         <div className="flex flex-wrap items-center gap-2">
@@ -1162,7 +1169,8 @@ function TaskDetail({ t, exc, sla, now, assignee, busy, canApprove, canAssign, c
     >
       <div className="flex flex-col gap-4">
         <dl className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
-          <Fact label="Object">{object ? formatModuleName(object) : "Not named"}</Fact>
+          {/* No "Not named" placeholder: a task whose source names no object leaves the fact out. */}
+          {object ? <Fact label="Object">{formatModuleName(object)}</Fact> : null}
           <Fact label="Priority">{priorityLabel(t.priority)}</Fact>
           <Fact label="Status"><Pill tone={STATUS_TONE[t.status]}>{labelOf(t.status)}</Pill></Fact>
           <Fact label="Assignee">{assignee}</Fact>
