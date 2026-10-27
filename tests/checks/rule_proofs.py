@@ -663,10 +663,12 @@ def _prove_reconciliation(rule, dictionary, cand, live) -> tuple[str, str]:
     """The source total must agree with the target's. One run agrees, one does not (expected:
     2 rows in scope, 1 failing - the whole population is one group, so every row carries it).
 
-    The target total is supplied the way the runner supplies it (`_target_total`), because the
-    proof runs the rule without a real target table. Without this the check correctly refuses -
-    no target total, nothing judged - and every reconciliation rule would be reported
-    `never_fails` and could never ship (which is exactly what happened before this existed).
+    The target table is put into the frames as the real runner sees it, and the RAW rule goes
+    to run_rule: since the wiring fix (checks/runner.py, the branch that sat unreachable inside
+    the exists_check case) the runner resolves `_target_total` itself through _with_target_sums.
+    Injecting the total here — which this function did while the branch was dead, precisely so
+    the proof could route around it — is now re-resolved and replaced by the frame's real sum,
+    so the proof runs the ship path instead of around it.
     """
     aw = rule.get("applies_when") or {}
     row = {c: cand[c][0] for c in cand if c in aw}
@@ -675,14 +677,15 @@ def _prove_reconciliation(rule, dictionary, cand, live) -> tuple[str, str]:
     df = _rows(rule, dictionary, rows)
     tol = float(rule.get("tolerance", 0.01))
 
-    def _run(target_total):
-        resolved = {**rule, "_target_total": target_total}
-        _, r = run_rule(resolved, TableFrames.from_flat(df, dictionary, module=rule.get("module")),
-                        live or {})
+    def _run(target_amounts: list[str]):
+        tf = TableFrames.from_flat(df, dictionary, module=rule.get("module"))
+        t = rule["target_table"]
+        tf.frames[t] = pd.DataFrame({f"{t}.{rule['target_field']}": target_amounts})
+        _, r = run_rule(dict(rule), tf, live or {})
         return r
 
-    agree = _run(20.0)                      # 10 + 10 == 20
-    differ = _run(20.0 + max(tol * 100, 50))  # comfortably outside tolerance
+    agree = _run(["20.0"])                          # 10 + 10 == 20
+    differ = _run([str(20.0 + max(tol * 100, 50))])  # comfortably outside tolerance
     if agree is None or differ is None:
         return "not_applicable", "no result on the proof records"
     if agree.error or differ.error:
