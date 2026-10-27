@@ -118,8 +118,8 @@ describe("ProgressPage without ?run=: the current state", () => {
     burndown.mockResolvedValue({ ...BURN, version_id: null });
     mount();
     expect(await screen.findByText("Records to fix")).toBeInTheDocument();
-    expect(screen.queryByText("Failing records in each run of this system")).toBeNull();
-    expect(screen.queryByRole("img", { name: "Failing records per run" })).toBeNull();
+    expect(screen.queryByText("Rule failures in each run of this system")).toBeNull();
+    expect(screen.queryByRole("img", { name: "Rule failures per run" })).toBeNull();
   });
 });
 
@@ -137,7 +137,7 @@ describe("ProgressPage", () => {
     expect(burndown).toHaveBeenCalledWith({ versionId: "bp2", module: undefined });
     expect(change).toHaveBeenCalledWith({ versionId: "bp2", module: undefined });
     expect(screen.getAllByText(/At 2 a day net, the backlog clears on 5 Nov 2026/).length).toBeGreaterThan(0);
-    expect(screen.getByRole("img", { name: /Failing records open per day/ })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /Rule failures open per day/ })).toBeInTheDocument();
     expect(screen.getByText(/FI general ledger takes longest to fix: typically 28 days/)).toBeInTheDocument();
   });
 
@@ -151,7 +151,7 @@ describe("ProgressPage", () => {
     expect(screen.getByText("Nobody yet")).toBeInTheDocument();
     expect(await screen.findByText("GL002")).toBeInTheDocument();
     expect(screen.getByText("MM001")).toBeInTheDocument();
-    expect(screen.getByText(/2 failing records failed again after a fix: 25% of 8 tracked/)).toBeInTheDocument();
+    expect(screen.getByText(/2 rule failures failed again after a fix: 25% of 8 tracked/)).toBeInTheDocument();
     expect(screen.getByText(/Plant: 2 failing records across 2 values/)).toBeInTheDocument();
     expect(screen.getByText("Rule suggestion")).toBeInTheDocument();
     const change = screen.getByText("Change since the previous run").closest("section, div") as HTMLElement;
@@ -200,7 +200,11 @@ describe("ProgressPage", () => {
     expect(screen.getByText("Fixed this week").closest("a")?.getAttribute("href")).toBe("/fix?run=bp2&st=fixed");
     expect(screen.getByText("Records to fix").closest("a")?.getAttribute("href")).toBe("/fix?run=bp2");
     // Fix work has no date filter: the tile says its drill opens every fixed record, and one noun is used throughout.
-    expect(screen.getByText("Last 7 days; opens all fixed records")).toBeInTheDocument();
+    expect(screen.getByText("Rule failures fixed in the last 7 days; opens all fixed records")).toBeInTheDocument();
+    // lib/help/glossary.ts: the burn-down counts rule failures; records to fix are the distinct records they sit on.
+    expect(screen.getAllByText(/^[\d,]+ rule failures? open on [\d,]+ records? to fix$/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/open rule failures? on them$/)).toBeInTheDocument();
+    expect(screen.queryByText(/failing records? open/)).toBeNull();
     expect(screen.queryByText(/\d issues?\b/)).toBeNull();
     expect(screen.queryAllByRole("link", { name: /fix list|fix queue/i })).toHaveLength(0);
     expect(screen.getByText("Projected finish").closest("a")?.getAttribute("href")).toBe("#burndown");

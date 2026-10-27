@@ -57,6 +57,21 @@ async def _latest_version_ids(db: AsyncSession, tenant: Tenant) -> list[uuid.UUI
     """), {"tid": str(tenant.id)})).scalars().all())
 
 
+async def _current_pairs(db: AsyncSession, tenant: Tenant) -> list[tuple[uuid.UUID, str]]:
+    """Current state as (run, object) pairs: each object once, from the newest of the lineages' latest runs that
+    measured it (insights_aggregate.current_objects), the set Home's "Current state of N objects", the objects list
+    and every insight view count. Reading every finding of ``_latest_version_ids`` instead counted an object twice
+    when two lineages measured it (accounts payable read from a system and also uploaded): Home said 343,209 rule
+    failures beside an objects list summing to 343,176."""
+    from api.services.insights_aggregate import current_objects
+
+    ids = await _latest_version_ids(db, tenant)
+    if not ids:
+        return []
+    objects = await db.run_sync(lambda s: current_objects(s, str(tenant.id), ids))
+    return [(uuid.UUID(o["version_id"]), o["module"]) for o in objects]
+
+
 def composite_dqs(summaries: list[dict], *, scoring: dict | None) -> dict:
     """One DQS over several modules/versions: module scores weighted by the tenant's
     module weight (default 1); a module with no executed rule (composite None) is not measured
@@ -227,7 +242,9 @@ async def aggregate_findings(
     say "6 critical, 2 high" where the runs list says "4 critical, 0 high" for the same run. Pass rates average over
     every evaluated rule."""
     await db.execute(text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": str(tenant.id)})
-    ids = [uuid.UUID(version_id)] if version_id else await _latest_version_ids(db, tenant)
+    # Current state (no version_id): each object at its own latest run, never one object from two lineages.
+    pairs = None if version_id else await _current_pairs(db, tenant)
+    ids = [uuid.UUID(version_id)] if version_id else sorted({v for v, _ in pairs or []}, key=str)
     if not ids:
         return {"version_ids": [], "total": 0, "affected_records": 0,
                 "severity": {"critical": 0, "high": 0, "medium": 0, "low": 0}, "by_module": [], "by_dimension": [], "avg_pass_rate": None,
@@ -237,6 +254,12 @@ async def aggregate_findings(
     p = {"ids": [str(i) for i in ids], "tid": str(tenant.id)}
     narrow = {k: v for k, v in (("module", module), ("dimension", dimension), ("check_id", check_id)) if v}
     where = "".join(f" AND {k} = :{k}" for k in narrow)
+    if pairs is not None:
+        # (run, object) pairs: an object a newer run of another lineage also measured is read from that run only.
+        narrow.update({f"pv{i}": str(v) for i, (v, _) in enumerate(pairs)})
+        narrow.update({f"pm{i}": m for i, (_, m) in enumerate(pairs)})
+        where += " AND (version_id, module) IN (" + ", ".join(
+            f"(CAST(:pv{i} AS uuid), :pm{i})" for i in range(len(pairs))) + ")"
     if severity:
         # A comma list ("critical,high") matches any of them.
         sevs = {f"sev{i}": s for i, s in enumerate(x for x in severity.split(",") if x)}
@@ -274,9 +297,13 @@ async def aggregate_findings(
         entry["avg_pass_rate"] = round(sum(v * n for v, n in pairs) / sum(n for _, n in pairs), 2) if pairs else None
         return entry
 
-    summaries = (await db.execute(text(
-        "SELECT dqs_summary FROM analysis_versions WHERE tenant_id = CAST(:tid AS uuid) AND id = ANY(CAST(:ids AS uuid[]))"),
-        p)).scalars().all()
+    rows_s = (await db.execute(text(
+        "SELECT id, dqs_summary FROM analysis_versions WHERE tenant_id = CAST(:tid AS uuid) AND id = ANY(CAST(:ids AS uuid[]))"),
+        p)).all()
+    owned = {(str(v), m) for v, m in pairs} if pairs is not None else None
+    # The current state scores each object from the run it is read from, as the counts above do.
+    summaries = [s if owned is None or not isinstance(s, dict) else {m: r for m, r in s.items() if (str(vid), m) in owned}
+                 for vid, s in rows_s]
     # the run before each of these in its own lineage, for the delta
     previous = (await db.execute(text(f"""
         SELECT DISTINCT ON (lineage) dqs_summary FROM (
@@ -371,7 +398,8 @@ async def list_findings(
         base = base.where(Finding.version_id == vid)
         filters_applied["version_id"] = version_id
     else:
-        base = base.where(Finding.version_id.in_(await _latest_version_ids(db, tenant)))
+        # The current state: each object at its own latest run (``_current_pairs``), as the aggregate counts it.
+        base = base.where(tuple_(Finding.version_id, Finding.module).in_(await _current_pairs(db, tenant) or [(uuid.UUID(int=0), "")]))
         filters_applied["version_id"] = "latest"
     if check_id:
         base = base.where(Finding.check_id == check_id)
@@ -547,7 +575,7 @@ async def export_findings(
             raise HTTPException(422, "version_id must be a UUID")
         base = base.where(Finding.version_id == version_uuid)
     else:
-        base = base.where(Finding.version_id.in_(await _latest_version_ids(db, tenant)))
+        base = base.where(tuple_(Finding.version_id, Finding.module).in_(await _current_pairs(db, tenant) or [(uuid.UUID(int=0), "")]))
     if check_id:
         base = base.where(Finding.check_id == check_id)
     if finding_type:

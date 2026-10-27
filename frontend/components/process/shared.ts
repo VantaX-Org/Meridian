@@ -5,6 +5,7 @@ import { buildDrillHref, type Verdict } from "@/design";
 import { getBusinessProcess } from "@/lib/api/connectivity";
 import { getFindings } from "@/lib/api/findings";
 import { useRunListWith } from "@/hooks/use-run-list";
+import { plural } from "@/lib/format";
 import { isFinished } from "@/lib/runs";
 import { queryKeys } from "@/lib/query-keys";
 import type { BusinessProcessL1, BusinessProcessL4, BusinessProcessL5Field, Version } from "@/types/api";
@@ -137,6 +138,35 @@ export const sev = (f: BusinessProcessL5Field): "critical" | "high" | "medium" =
 export const verdictOf = (blocking: number, pct: number | null): Verdict =>
   blocking ? "no-go" : pct == null || pct >= 90 ? "go" : "at-risk";
 
+/**
+ * The red fields once each. One field (with the rule failing it) is written by several steps, so the step-by-step
+ * list repeats it: AP016 on vendor onboarding, invoice verification and the payment run is one field failing one
+ * record, never "3 blocking fields fail on 3 records".
+ */
+export function distinctReds(fs: BusinessProcessL5Field[]): BusinessProcessL5Field[] {
+  const byKey = new Map<string, BusinessProcessL5Field>();
+  for (const f of fs) {
+    if (f.dq_status !== "red") continue;
+    const key = `${f.check_id ?? ""}|${f.field}`;
+    const seen = byKey.get(key);
+    if (!seen || f.affected_count > seen.affected_count) byKey.set(key, f);
+  }
+  return [...byKey.values()].sort((a, b) => b.affected_count - a.affected_count);
+}
+
+/**
+ * The blocking fields in words (lib/help/glossary.ts): with one failing rule, its failing records; with several,
+ * their rule failures, since a record can fail more than one of them. Null when nothing blocks.
+ */
+export function blockingSentence(fs: BusinessProcessL5Field[]): string | null {
+  const reds = distinctReds(fs);
+  if (!reds.length) return null;
+  const fields = plural(reds.length, "blocking field fails", "blocking fields fail");
+  const rules = new Set(reds.map((f) => f.check_id ?? f.field));
+  if (rules.size === 1) return `${fields} on ${plural(Math.max(...reds.map((f) => f.affected_count)), "record")}.`;
+  return `${fields}: ${plural(reds.reduce((a, f) => a + f.affected_count, 0), "rule failure")} between them.`;
+}
+
 export interface L1Readiness {
   l1: BusinessProcessL1;
   module: string;
@@ -144,12 +174,14 @@ export interface L1Readiness {
   pct: number | null;
   /** The red field failing the most records. */
   worst: BusinessProcessL5Field | null;
+  /** Rule failures of the distinct red fields (a field several steps write counts once). */
   failing: number;
 }
 
 export function l1Readiness(l1: BusinessProcessL1, module: string): L1Readiness {
   const fs = l1Fields(l1);
-  const reds = fs.filter((f) => f.dq_status === "red").sort((a, b) => b.affected_count - a.affected_count);
+  // Each red field once (a field several steps write is one field): its rule failures summed over distinct rules.
+  const reds = distinctReds(fs);
   const pct = score(fs);
   return { l1, module, pct, verdict: verdictOf(reds.length, pct), worst: reds[0] ?? null, failing: reds.reduce((a, f) => a + f.affected_count, 0) };
 }

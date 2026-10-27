@@ -17,6 +17,7 @@ import {
 } from "@/lib/api/work";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { formatDate, formatModuleName, plural } from "@/lib/format";
+import { GLOSSARY } from "@/lib/help/glossary";
 import { getVersion } from "@/lib/api/versions";
 import { queryKeys } from "@/lib/query-keys";
 import { RunScope } from "@/components/run-scope";
@@ -150,22 +151,24 @@ function GroupList({ groups, active, onPick }: { groups: WorkGroup[]; active: st
 const DASH = <span className="m-ink-3">—</span>;
 
 /** The queue's columns: Record, Rule, Severity, Age, Due, Assignee, Suggested value. Severity and Age sort on the server. */
-function queueColumns(now: number): ColumnDef<WorkRecord>[] {
+function queueColumns(now: number, wide: boolean): ColumnDef<WorkRecord>[] {
   return [
     {
       id: "record", header: "Record", accessorFn: (r) => r.name ?? r.record_key, enableSorting: false, meta: { sticky: "start" } satisfies CellMeta,
       cell: ({ row: { original: r } }) => (
-        // The name on one line, the full key under it (wrapped, never cut): at phone width a truncated key is unreadable.
-        <span className="flex w-[200px] min-w-0 flex-col" title={r.name ? `${r.name} ${r.record_key}` : r.record_key}>
+        // The name on one line, the key on its own line in Mono, cut with an ellipsis (never broken mid-key); the
+        // full key is in the title and in the record panel beside the list.
+        <span className="flex w-[150px] min-w-0 flex-col max-[640px]:w-[132px]" title={r.name ? `${r.name}, ${r.record_key}` : r.record_key}>
           {r.name ? <span className="truncate">{r.name}</span> : null}
-          <span className="break-all m-text-meta m-ink-3" data-testid="work-record-key"><Mono inline>{r.record_key}</Mono></span>
+          {/* Not <Mono>: inside a table cell it caps itself at 16ch; here the key takes the column's width. */}
+          <span className="block min-w-0 truncate whitespace-nowrap m-text-meta m-ink-3" style={{ fontFamily: "var(--m-font-mono)" }} data-testid="work-record-key">{r.record_key}</span>
         </span>
       ),
     },
     {
       id: "rule", header: "Rule", accessorFn: (r) => r.top_message ?? r.checks[0] ?? "", enableSorting: false,
       cell: ({ row: { original: r } }) => (
-        <span className="flex w-[210px] min-w-0 items-baseline gap-2" title={r.top_message ?? undefined}>
+        <span className="flex w-[160px] min-w-0 items-baseline gap-2" title={r.top_message ?? undefined}>
           <span className="min-w-0 shrink truncate">{r.top_message ?? r.checks[0]}</span>
           <span className="shrink-0 m-text-meta m-ink-3"><Mono inline>{r.checks[0]}</Mono>{r.issues > 1 ? ` +${r.issues - 1}` : null}</span>
         </span>
@@ -198,16 +201,19 @@ function queueColumns(now: number): ColumnDef<WorkRecord>[] {
     },
     {
       id: "assignee", header: "Assignee", accessorFn: (r) => r.assignee_email ?? "", enableSorting: false, meta: { priority: "low" } satisfies CellMeta,
-      cell: ({ row: { original: r } }) => (r.assignee_email ? <span className="block max-w-[150px] truncate" title={r.assignee_email}>{r.assignee_email}</span> : DASH),
+      cell: ({ row: { original: r } }) => (r.assignee_email ? <span className="block max-w-[88px] truncate" title={r.assignee_email}>{r.assignee_email}</span> : DASH),
     },
-    {
+    ...(wide ? [suggestedColumn] : []),
+  ];
+}
+
+/** Suggested value: only on screens wide enough for it beside the panes (the record panel shows it at every width). */
+const suggestedColumn: ColumnDef<WorkRecord> = {
       id: "suggested", header: "Suggested value", accessorFn: (r) => r.suggested_value ?? "", enableSorting: false, meta: { priority: "low" } satisfies CellMeta,
       cell: ({ row: { original: r } }) => (r.suggested_value != null
         ? <span className="block max-w-[120px] truncate" title={r.suggested_value}><Mono inline>{r.suggested_value}</Mono></span>
         : r.proposed ? <span className="m-ink-3">{plural(r.proposed, "suggestion")}</span> : DASH),
-    },
-  ];
-}
+};
 
 function SignOffDialog({ open, onOpenChange, count, pending, onConfirm }: {
   open: boolean; onOpenChange: (o: boolean) => void; count: number; pending: boolean; onConfirm: (reason: string) => void;
@@ -300,7 +306,9 @@ export function FixWork({ module: fixedModule, run: fixedRun }: FixWorkScope = {
   const [sheetOpen, setSheetOpen] = useState(false);
   // Ages are counted from one moment per mount, so a re-render never reorders the queue under the cursor.
   const [now] = useState(() => Date.now());
-  const columns = useMemo(() => queueColumns(now), [now]);
+  // Suggested value fits beside the three panes only from 1600px; below, the record panel shows it.
+  const wide = useMediaQuery("(min-width: 1600px)");
+  const columns = useMemo(() => queueColumns(now, wide), [now, wide]);
 
   const summary = useQuery({ queryKey: ["work", "summary", run ?? "current"], queryFn: () => getWorkSummary(run), retry: false });
   // The run the counts belong to, named above them; the current state names its objects and newest run instead.
@@ -462,7 +470,9 @@ export function FixWork({ module: fixedModule, run: fixedRun }: FixWorkScope = {
       ) : null}
       {isCurrent && s.unbuilt?.length ? buildNotice : null}
       <div className="m-stat-grid @5xl:[grid-template-columns:repeat(4,minmax(0,1fr))]">
-        <Stat label="Records to fix" value={tile(t?.open)} hint={t ? `${plural(t.issues, "issue")} across ${plural(s.objects.length, "object")}${filtered ? ", these filters" : ""}` : undefined} onClick={() => set({ st: null, sev: null, sugg: null, due: null })} />
+        {/* lib/help/glossary.ts: records to fix (distinct records on the list) and the rule failures on them. With a
+            filter both come from /work/summary asked with the list's own filters, so they count exactly the rows below. */}
+        <Stat label={GLOSSARY.recordsToFix.term} help="recordsToFix" value={tile(t?.open)} hint={t ? `${plural(t.issues, "rule failure")} on them, ${filtered ? "these filters" : `across ${plural(s.objects.length, "object")}`}` : undefined} onClick={() => set({ st: null, sev: null, sugg: null, due: null })} />
         <Stat label="Critical" value={tile(t?.critical)} tone={t ? (t.critical ? "no-go" : "go") : undefined} hint="critical severity" onClick={() => set({ sev: "critical" })} />
         <Stat label="With a suggested value" value={tile(t?.proposed)} hint="accept in one step" onClick={() => set({ sugg: "1" })} />
         <Stat label="Overdue" value={tile(t?.overdue)} tone={t?.overdue ? "at-risk" : undefined} hint="past their due date" onClick={() => set({ due: "overdue" })} />
@@ -497,7 +507,7 @@ export function FixWork({ module: fixedModule, run: fixedRun }: FixWorkScope = {
       ) : null}
 
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_minmax(0,380px)] 2xl:grid-cols-[320px_minmax(0,1fr)_minmax(0,460px)]">
-        <Card title="Issues" meta={groups.data ? `${groups.data.total.toLocaleString()} ${isCurrent ? `across ${plural(s.objects.length, "object")}` : "in this run"}` : undefined} padding="sm">
+        <Card title="Issues" meta={groups.data ? `${plural(groups.data.total, "failing rule")} ${isCurrent ? `across ${plural(s.objects.length, "object")}` : "in this run"}` : undefined} padding="sm">
           {groups.isLoading ? <Skeleton height={240} /> : groups.isError ? <ErrorState {...apiErrorState(groups.error)} onRetry={() => groups.refetch()} />
             : groups.data && groups.data.groups.length ? (
               <div className="max-h-[40vh] overflow-auto lg:max-h-[70vh]"><GroupList groups={groups.data.groups} active={filter.check_id} onPick={(c) => set({ check: c, record: null })} /></div>

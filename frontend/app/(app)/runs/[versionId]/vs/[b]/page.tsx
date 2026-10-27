@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import {
   Button,
   buildDrillHref,
+  Card,
   DataTable,
   DrillLink,
   Delta,
@@ -38,7 +39,6 @@ import { getComparisonReportUrl } from "@/lib/api/reports";
 import { compareRecordKeys, compareRecords, compareVersions } from "@/lib/api/versions";
 import { formatDate, formatModuleName, formatNumber, plural, roundedDelta } from "@/lib/format";
 import { runName, runScopeLabel } from "@/lib/run-scope";
-import { InsightTabs } from "@/app/(app)/insights/_components/InsightViews";
 import { compareNarrative } from "@/lib/narrative";
 import { queryKeys } from "@/lib/query-keys";
 import type { CheckChange, Version, VersionComparison } from "@/types/api";
@@ -95,8 +95,9 @@ const columnsFor = (versionId: string): ColumnDef<ChangeRow>[] => [
   },
   { id: "kind", header: "Change set", accessorFn: (c) => setOf(c.kind).label, cell: ({ row }) => <Pill tone={setOf(row.original.kind).tone}>{setOf(row.original.kind).label}</Pill> },
   { id: "module", header: "Object", accessorFn: (c) => formatModuleName(c.module) },
-  { id: "before", header: "Records before", accessorFn: (c) => c.v1_affected, cell: ({ row }) => fmtN(row.original.v1_affected) },
-  { id: "after", header: "Records after", accessorFn: (c) => c.v2_affected, cell: ({ row }) => fmtN(row.original.v2_affected) },
+  // Per rule: the records failing that one rule in each run (glossary "Failing records", for a single rule).
+  { id: "before", header: "Failing records before", accessorFn: (c) => c.v1_affected, cell: ({ row }) => fmtN(row.original.v1_affected) },
+  { id: "after", header: "Failing records after", accessorFn: (c) => c.v2_affected, cell: ({ row }) => fmtN(row.original.v2_affected) },
   {
     id: "delta",
     header: "Change",
@@ -257,7 +258,6 @@ export default function CompareRunsPage() {
       title={`${runLabel(cmp.v2)} vs ${runLabel(cmp.v1)}`}
       meta={`${formatDate(cmp.v2.run_at, "datetime")} and ${formatDate(cmp.v1.run_at, "datetime")}`}
       status={b === "baseline" ? <Pill>Baseline</Pill> : undefined}
-      tabs={<InsightTabs view="progress" run={versionId} />}
     />
   ) : (
     <Skeleton height={48} width={320} />
@@ -288,7 +288,13 @@ export default function CompareRunsPage() {
     </div>
   );
 
+  // The ledger is per rule; the narrative's rule-failure totals cover every rule, so the card says which is which.
+  const fixedRules = rows.filter((r) => r.kind === "fixed").length;
   const tables = cmp && !loading ? (
+    <Card
+      title="Rules that changed"
+      meta={`${plural(rows.length, "rule")}${fixedRules ? `, ${fixedRules.toLocaleString()} fixed` : ""}; each row counts the records failing that one rule, not the rule-failure totals above`}
+    >
     <DataTable
       columns={columns}
       data={rows}
@@ -305,6 +311,7 @@ export default function CompareRunsPage() {
       }
       renderDrawer={(c) => <RuleDrawer rule={c} versionId={versionId} v1={diff?.v1 ?? v1Param} canFix={can("apply")} />}
     />
+    </Card>
   ) : (
     <div className="flex flex-col gap-1" aria-busy="true">
       {Array.from({ length: 8 }, (_, i) => <div key={i} className="[height:36px]"><Skeleton height="100%" /></div>)}

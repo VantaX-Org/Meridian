@@ -104,7 +104,7 @@ describe("RunDetailPage", () => {
       for (const h of ["Blocking rule", "Critical", "High"]) {
         expect(await screen.findByRole("columnheader", { name: new RegExp(`^${h}`) })).toHaveClass("max-[640px]:hidden");
       }
-      for (const h of ["Object", "Score", "Failing records"]) {
+      for (const h of ["Object", "Score", "Rule failures"]) {
         expect(screen.getByRole("columnheader", { name: new RegExp(`^${h}`) })).not.toHaveClass("max-[640px]:hidden");
       }
     });
@@ -383,8 +383,8 @@ describe("RunDetailPage", () => {
     expect(row).toHaveTextContent("mm_missing_desc");
     expect(row).toHaveTextContent("Description missing");
     expect(screen.getByRole("link", { name: "2" })).toHaveAttribute("href", "/runs/v2?tab=findings&module=material_master&severity=critical");
-    // Affected counts are "Failing records"; "Records" is kept for totals.
-    expect(screen.getByRole("columnheader", { name: "Failing records" })).toBeInTheDocument();
+    // An object's affected count sums its failing rules: "Rule failures" (lib/help/glossary.ts); "Records" is kept for totals.
+    expect(screen.getByRole("columnheader", { name: "Rule failures" })).toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "Records" })).toBeNull();
   });
 

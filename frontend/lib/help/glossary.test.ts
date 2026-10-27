@@ -61,6 +61,29 @@ describe("glossary", () => {
   });
 });
 
+describe("the four counts of what fails", () => {
+  it("defines each once, with its own term", () => {
+    const terms = [GLOSSARY.failingRules, GLOSSARY.ruleFailures, GLOSSARY.failingRecords, GLOSSARY.recordsToFix].map((e) => e.term);
+    expect(terms).toEqual(["Failing rules", "Rule failures", "Failing records", "Records to fix"]);
+    expect(GLOSSARY.ruleFailures.short).toMatch(/three times/);
+    expect(GLOSSARY.failingRecords.short).toMatch(/once/);
+  });
+
+  // A label that once named one quantity with another's word. Each pattern is a label next to the field it counted.
+  const MISLABELS: [RegExp, string][] = [
+    [/header: "Failing records"[^\n]*(affected_records|m\.affected\b)/, "a sum over rules labelled failing records"],
+    [/label="Open findings"/, "failing rules labelled open findings"],
+    [/plural\([^)]*, "issue"\)} across/, "rule failures labelled issues"],
+    [/plural\(b\.(open_now|fixed_7d), "failing record"\)/, "the burn-down's rule failures labelled failing records"],
+    [/records resolved and/, "resolved rule failures labelled records"],
+  ];
+  it.each(MISLABELS)("no page labels %s (%s)", (pattern) => {
+    const hits = [...sourceFiles("app"), ...sourceFiles("components"), ...sourceFiles("lib")]
+      .filter((f) => pattern.test(readFileSync(path.join(ROOT, f), "utf8")));
+    expect(hits).toEqual([]);
+  });
+});
+
 describe("glossary coverage", () => {
   it("has an entry for every help= and HelpHint key used in app/ and design/", () => {
     const used = [...usedKeys("app"), ...usedKeys("design")];

@@ -19,6 +19,7 @@ import { hrefWithRun } from "@/lib/run-scope";
 import { RecordPanel, workRecordKey } from "@/components/work/record-panel";
 import { getWorkRecord } from "@/lib/api/work";
 import { FieldSheet, sheetFields } from "./_field-sheet";
+import { identityValue, missingFields } from "./_record-facts";
 
 function SectionError({ what, query }: { what: string; query: UseQueryResult }) {
   return (
@@ -130,10 +131,17 @@ export default function RecordFixSheetPage() {
     );
   }
 
-  const hasMissing = material.views.some((view) => view.cells.some((cell) => cell.state === "missing"));
+  const missingViews = material.views.reduce((n, v) => n + v.cells.filter((c) => c.state === "missing").length, 0);
+  // Blank required fields: a field a failing rule reads that holds no value (the rule fails because it is required),
+  // from the findings and from the work list's issues, each field once. Plus view cells the views report missing.
+  const missing = missingFields(findingsQuery.data?.by_view ?? [], workQuery.data?.issues ?? []);
+  const missingCount = missing.size + missingViews;
+  const hasMissing = missingCount > 0;
   const failingRules = genericFindingsQuery.data?.failing ?? [];
   // A material fails on a missing field or on any rule its findings report, whichever view it sits in.
   const materialRules = new Set((findingsQuery.data?.by_view ?? []).flatMap((view) => view.failing.map((rule) => rule.check_id)));
+  // The fix panel lists every failing rule of the record with its decision; the page then does not list them again.
+  const panelListsRules = workQuery.isSuccess && (workQuery.data?.issues.length ?? 0) > 0;
   const failing = isMaterial ? hasMissing || materialRules.size > 0 : failingRules.length > 0;
   // The verdict waits on the findings: never "passing" while they load or when they could not be read.
   const verdictQuery = isMaterial ? findingsQuery : genericFindingsQuery;
@@ -175,7 +183,7 @@ export default function RecordFixSheetPage() {
           ? { label: "Failing rules", value: materialRules.size, tone: materialRules.size ? "no-go" : "go" }
           : { label: "Failing rules", value: "—" },
         // No "Views" count: how many MM views the record spans means nothing to a steward fixing it.
-        { label: "Missing fields", value: material.views.reduce((n, v) => n + v.cells.filter((c) => c.state === "missing").length, 0), tone: hasMissing ? "no-go" : "go" },
+        { label: "Missing fields", value: missingCount, hint: "required fields left blank", tone: hasMissing ? "no-go" : "go" },
       ] : [
         verdictQuery.isSuccess
           ? { label: "Failing rules", value: failingRules.length, tone: failingRules.length ? "no-go" : "go" }
@@ -191,12 +199,13 @@ export default function RecordFixSheetPage() {
           <dd>{material.description ?? "—"}</dd>
           {isMaterial ? (
             <>
+              {/* The label when configuration names the value, else the value itself, as the field sheet below shows it. */}
               <dt className="m-ink-3">Material type</dt>
-              <dd>{material.labels.MTART ?? "—"}</dd>
+              <dd>{identityValue(material, "MTART")}</dd>
               <dt className="m-ink-3">Material group</dt>
-              <dd>{material.labels.MATKL ?? "—"}</dd>
+              <dd>{identityValue(material, "MATKL")}</dd>
               <dt className="m-ink-3">Base unit</dt>
-              <dd>{material.labels.MEINS ?? "—"}</dd>
+              <dd>{identityValue(material, "MEINS")}</dd>
             </>
           ) : (
             Object.entries(material.labels).map(([field, fieldValue]) => (
@@ -230,7 +239,7 @@ export default function RecordFixSheetPage() {
         </Card>
       ) : null}
 
-      {!isMaterial && (
+      {!isMaterial && !panelListsRules && (
         <Card title="Failing rules">
           {genericFindingsQuery.isError ? (
             <SectionError what="this record's findings" query={genericFindingsQuery} />
@@ -253,7 +262,7 @@ export default function RecordFixSheetPage() {
 
       <FieldSheet fields={sheet} />
 
-      {isMaterial && (
+      {isMaterial && !panelListsRules && (
         <Card title="Failing rules">
           {findingsQuery.isError ? (
             <SectionError what="this record's findings" query={findingsQuery} />

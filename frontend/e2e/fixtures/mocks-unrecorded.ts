@@ -84,6 +84,8 @@ interface WorkRow {
   name: string | null;
   checks: string[];
   values: Record<string, string>;
+  /** Nobody: the recording has no assigned issue (GET /insights/owners is empty), and Owners, the Executive summary
+   * and Progress read the one owner definition (record_issues.assigned_to). */
   assigned?: typeof STEWARD;
 }
 
@@ -131,9 +133,9 @@ const CONTROLLING: Run = {
       impact: "FI postings to the number cannot be mirrored to controlling." },
   ],
   rows: [
-    { record_key: "KOKRS=1000|KOSTL=0000001007", name: "Maintenance workshop", checks: ["CO003", "CO043"], assigned: STEWARD,
+    { record_key: "KOKRS=1000|KOSTL=0000001007", name: "Maintenance workshop", checks: ["CO003", "CO043"],
       values: { "CSKS.KOKRS": "1000", "CSKS.KOSTL": "0000001007", "CSKS.DATAB": "", "CSKS.BUKRS": "2000" } },
-    { record_key: "KOKRS=1000|KOSTL=0000001019", name: "Quality control", checks: ["CO003"], assigned: STEWARD,
+    { record_key: "KOKRS=1000|KOSTL=0000001019", name: "Quality control", checks: ["CO003"],
       values: { "CSKS.KOKRS": "1000", "CSKS.KOSTL": "0000001019", "CSKS.DATAB": "" } },
     { record_key: "KOKRS=1000|KSTAR=0000400100", name: "Raw material consumption", checks: ["CO020", "CO021"],
       values: { "CSKB.KOKRS": "1000", "CSKB.KSTAR": "0000400100", "CSKB.DATAB": "", "CSKB.KATYP": "" } },
@@ -206,12 +208,34 @@ function runFor(route: Route): [string, Run] | undefined {
 
 // ── /work (api/routes/work.py) ───────────────────────────────────────────────
 
-/** GET /work/summary: per object of the run, records and issues by work status. */
-function summary(vid: string, run: Run) {
+/** The /work/records filters (work.py `_records_where`); with any of them, /work/summary's totals count that list. */
+const RECORD_FILTERS = ["module", "check_id", "severity", "status", "assigned", "proposed", "due", "part", "system", "q"];
+const filteredBy = (q: URLSearchParams) => RECORD_FILTERS.some((k) => q.has(k));
+
+/** The totals of the list GET /work/records answers for `q`: its records, their rule failures, the critical ones. */
+function listTotals(run: Run, q: URLSearchParams) {
+  const page = records("", run, q);
+  // Narrowed to the object only (an object page's queue), the list is the run's whole work list.
+  const narrowing = ["check_id", "severity", "assigned", "proposed", "due", "part", "system", "q"].some((k) => q.has(k))
+    || !["open", "to_fix", "all", null].includes(q.get("status"));
+  if (!narrowing) {
+    const mine = !q.get("module") || q.get("module") === run.module;
+    return { records: mine ? run.records : 0, open: mine ? run.records : 0, issues: mine ? run.issues : 0, critical: mine ? run.critical : 0, proposed: 0, overdue: 0 };
+  }
+  const check = q.get("check_id");
+  const rule = check ? ruleOf(run, check) : undefined;
+  // A check's whole failing list is longer than the page modelled here: count it as the rule does.
+  const issues = rule ? rule.records : page.items.reduce((n, i) => n + i.issues, 0);
+  const critical = rule ? (rule.severity === "critical" ? page.total : 0) : page.items.filter((i) => i.severity === "critical").length;
+  return { records: page.total, open: page.total, issues, critical, proposed: 0, overdue: 0 };
+}
+
+/** GET /work/summary: per object of the run, records and issues by work status; with a filter, the list's totals. */
+function summary(vid: string, run: Run, q: URLSearchParams = new URLSearchParams()) {
   const o = { module: run.module, records: run.records, open: run.records, issues: run.issues, critical: run.critical,
     proposed: 0, overdue: 0, statuses: { to_fix: run.records } };
   return { version_id: vid, scope: run.scope, built: true, objects: [o],
-    totals: { records: o.records, open: o.open, issues: o.issues, critical: o.critical, proposed: 0, overdue: 0 } };
+    totals: filteredBy(q) ? listTotals(run, q) : { records: o.records, open: o.open, issues: o.issues, critical: o.critical, proposed: 0, overdue: 0 } };
 }
 
 /** GET /work/groups: one row per check, worst first. */
@@ -318,7 +342,7 @@ async function mockWork(page: Router, actions: () => Promise<readonly string[]>)
         : route.fulfill(json(body));
     });
   const params = (route: Route) => new URL(route.request().url()).searchParams;
-  await get(/\/api\/v1\/work\/summary(\?.*)?$/, (_r, vid, run) => summary(vid, run));
+  await get(/\/api\/v1\/work\/summary(\?.*)?$/, (r, vid, run) => summary(vid, run, params(r)));
   await get(/\/api\/v1\/work\/groups(\?.*)?$/, (r, vid, run) => groups(vid, run, params(r)));
   await get(/\/api\/v1\/work\/records(\?.*)?$/, (r, vid, run) => records(vid, run, params(r)));
   await get(/\/api\/v1\/work\/records\/[^/?]+\/[^?]+(\?.*)?$/, async (r, vid, run) => {
@@ -331,9 +355,11 @@ async function mockWork(page: Router, actions: () => Promise<readonly string[]>)
     page.route(re, (route) => (route.request().method() === "GET" && params(route).get("scope") === "current"
       ? route.fulfill(json(merge(Object.entries(RUNS), params(route))))
       : route.fallback()));
-  await current(/\/api\/v1\/work\/summary(\?.*)?$/, (parts) => {
+  await current(/\/api\/v1\/work\/summary(\?.*)?$/, (parts, q) => {
     const objects = parts.map(([vid, run]) => ({ ...summary(vid, run).objects[0], version_id: vid }));
-    const sum = (k: "records" | "open" | "issues" | "critical") => objects.reduce((n, o) => n + o[k], 0);
+    // With the list's filters, the totals of exactly that list (each run's, added up), as work.py answers.
+    const totals = parts.map(([vid, run]) => summary(vid, run, q).totals);
+    const sum = (k: "records" | "open" | "issues" | "critical") => totals.reduce((n, t) => n + t[k], 0);
     return { version_id: null, scope: null, mode: "current", version_ids: parts.map(([vid]) => vid), unbuilt: [], built: true, objects,
       totals: { records: sum("records"), open: sum("open"), issues: sum("issues"), critical: sum("critical"), proposed: 0, overdue: 0 } };
   });
@@ -343,7 +369,12 @@ async function mockWork(page: Router, actions: () => Promise<readonly string[]>)
   });
   await current(/\/api\/v1\/work\/records(\?.*)?$/, (parts, q) => {
     const pages = parts.map(([vid, run]) => ({ vid, page: records(vid, run, q) }));
-    const items = pages.flatMap(({ vid, page }) => page.items.map((i) => ({ ...i, version_id: vid })));
+    // One list over every object, in the server's order (work.py: the sort, then module, then key), never one run's
+    // rows after the other's: that read Critical, High, Critical under "Severity ascending".
+    const desc = (q.get("sort") ?? "severity").split(",").includes("-severity");
+    const items = pages.flatMap(({ vid, page }) => page.items.map((i) => ({ ...i, version_id: vid })))
+      .sort((a, b) => (desc ? -1 : 1) * (sevRank(a.severity as Severity) - sevRank(b.severity as Severity))
+        || a.module.localeCompare(b.module) || a.record_key.localeCompare(b.record_key));
     return { version_id: null, total: pages.reduce((n, p) => n + p.page.total, 0), total_capped: false, next: null, items };
   });
 }
@@ -352,10 +383,14 @@ async function mockWork(page: Router, actions: () => Promise<readonly string[]>)
 
 const day = (offset: number) => new Date(Date.parse(`${TODAY}T00:00:00Z`) + offset * 86_400_000).toISOString().slice(0, 10);
 
-/** Issues opened and closed per day: the vendor runs of 2 October, the controlling uploads of 16 October and the fixes since. */
+/**
+ * Issues (rule failures: one record failing one rule) opened and closed per day: the vendor runs of 2 October, the
+ * controlling and material master uploads of 16 October and the fixes since. They close at the work lists' rule
+ * failures: today's open count is the current state's /work/summary issues (3,120 controlling + 26,943 material).
+ */
 const FLOWS: Record<string, [opened: number, closed: number]> = {
   "2026-10-02": [14, 0], "2026-10-07": [0, 3],
-  "2026-10-16": [3260, 40], "2026-10-17": [0, 52], "2026-10-18": [0, 38], "2026-10-19": [0, 21],
+  "2026-10-16": [3260 + 26943, 40], "2026-10-17": [0, 52], "2026-10-18": [0, 38], "2026-10-19": [0, 21],
 };
 
 /**
@@ -374,11 +409,15 @@ function burndown(q: URLSearchParams) {
   });
   const openNow = days[89].open;
   const pace = Math.round(((days[89 - 28].open - openNow) / 28) * 100) / 100;
+  // Records to fix: the run's open work records; under the current state every modelled object's, as Fix work's
+  // "Records to fix" counts them (work_analytics.burndown_current), never the latest run's alone.
+  const current = q.get("scope") === "current";
   const run = {
-    version_id: LATEST as string | null, today: TODAY, days, open_now: openNow, open_records: CONTROLLING.records, fixed_7d: 151,
+    version_id: LATEST as string | null, today: TODAY, days, open_now: openNow,
+    open_records: current ? Object.values(RUNS).reduce((n, r) => n + r.records, 0) : CONTROLLING.records, fixed_7d: 151,
     pace_per_day: pace, pace_window_days: 28,
     projected_finish: pace > 0 ? day(Math.ceil(openNow / pace)) : null,
-    ...(q.get("scope") === "current" ? { version_id: null, scope: "current", version_ids: [LATEST, MATERIAL], runs: [] } : {}),
+    ...(current ? { version_id: null, scope: "current", version_ids: [LATEST, MATERIAL], runs: [] } : {}),
   };
   return q.get("scope") === "current" ? run : { ...run, runs: [
       { version_id: "461c63cf-06f6-4e18-8bac-22305823bdce", label: "controlling_1k", run_at: "2026-10-16T05:17:42.514161+00:00", issues: 3120, open_records: null },
@@ -403,6 +442,10 @@ const TIME_TO_FIX = {
   by_severity: [{ severity: "critical", ...fixTime(154, 1.2, 2.8) }],
 };
 
+/** Today's open rule failures (the burn-down's last day) and the critical ones, over the modelled work lists. */
+const OPEN_ISSUES = Object.values(FLOWS).reduce((n, [o, c]) => n + o - c, 0);
+const CRITICAL_ISSUES = Object.values(RUNS).flatMap((r) => r.rules).filter((r) => r.severity === "critical").reduce((n, r) => n + r.records, 0);
+
 /** GET /work/analytics/throughput: decisions per day and person over 30 days, open work per assignee. */
 function throughput() {
   const PER_DAY: Record<string, Record<string, number>> = {
@@ -423,10 +466,10 @@ function throughput() {
   return {
     window_days: 30, days, people,
     totals: Object.fromEntries(kinds.map((k) => [k, people.reduce((a, p) => a + p[k], 0)])),
-    workload: [
-      { assignee_id: STEWARD.id, name: STEWARD.name, email: STEWARD.email, open: 125, critical: 125, overdue: 0 },
-      { assignee_id: null, name: null, email: null, open: 875, critical: 166, overdue: 0 },
-    ],
+    // Open rule failures per assignee (work_analytics._WORKLOAD_SQL, record_issues.assigned_to): nobody's, since the
+    // recording assigns none (GET /insights/owners is empty and Owners reads the same column). It used to say
+    // "Sim steward, 125 open" beside Owners' "No issues are assigned yet".
+    workload: [{ assignee_id: null, name: null, email: null, open: OPEN_ISSUES, critical: CRITICAL_ISSUES, overdue: 0 }],
   };
 }
 

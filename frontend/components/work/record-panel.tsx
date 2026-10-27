@@ -219,7 +219,8 @@ function IssueCard({ issue, rec, run, onDecided, editing, setEditing }: {
           <p className="m-text-body font-medium m-ink">{issue.message}</p>
           <p className="m-text-meta m-ink-3">{issue.field ? <Mono inline>{issue.field}</Mono> : null} <Mono inline>{issue.check_id}</Mono></p>
         </div>
-        <Pill tone={STATUS[issue.status].tone}>{STATUS[issue.status].label}</Pill>
+        {/* The record's status sits once in the panel's header; an issue repeats it only where it differs. */}
+        {issue.status !== rec.status ? <Pill tone={STATUS[issue.status].tone}>{STATUS[issue.status].label}</Pill> : null}
         {due ? <Pill tone={due.tone}>{due.label}</Pill> : null}
       </header>
       <IssueFacts issue={issue} rec={rec} run={run} />
@@ -389,7 +390,8 @@ export function RecordPanel({ module, recordKey, run, onDecided, footer, fullRec
           <summary className="cursor-pointer m-text-body m-ink-accent">History</summary>
           <div className="mt-2"><History rec={rec} /></div>
         </details>
-        {Object.keys(rec.values).length ? (
+        {/* On the full record page the field sheet below lists every field, these included. */}
+        {fullRecordLink && Object.keys(rec.values).length ? (
           <details>
             <summary className="cursor-pointer m-text-body m-ink-accent">Fields the checks read</summary>
             <dl className="mt-2 grid grid-cols-[minmax(120px,max-content)_1fr] gap-x-3 gap-y-1 m-text-body">

@@ -66,16 +66,20 @@ describe("CompareRunsPage", () => {
     expect(screen.getByText("MM041").closest("a")).toHaveAttribute("href", "/objects/material_master?run=v2&tab=records&check_id=MM041");
   });
 
-  it("narrows the ledger to the newly failing or the fixed rules from ?change=, under the Progress view tabs", async () => {
+  it("narrows the ledger to the newly failing or the fixed rules from ?change=, with no stray view tabs", async () => {
     searchParams.set("change", "new");
     try {
       renderWithQuery(<CompareRunsPage />);
       await waitFor(() => expect(screen.getByText("MM041")).toBeInTheDocument());
       expect(screen.queryByText("MM002")).toBeNull();
       expect(screen.getByRole("combobox", { name: "Change" })).toHaveTextContent("Newly failing");
-      // A lead can step back to the Progress view, the compared run carried along.
-      expect(screen.getByRole("navigation", { name: "Progress views" })).toBeInTheDocument();
-      expect(screen.getByRole("link", { name: "Progress" })).toHaveAttribute("href", "/insights/progress?run=v2");
+      // A comparison of two runs is not a view of Progress: no Progress / Trends / Forecast strip above it.
+      expect(screen.queryByRole("navigation", { name: "Progress views" })).toBeNull();
+      expect(screen.queryByRole("link", { name: "Forecast" })).toBeNull();
+      // The ledger says it counts per rule, apart from the narrative's rule-failure totals.
+      expect(screen.getByText("Rules that changed")).toBeInTheDocument();
+      expect(screen.getByText(/each row counts the records failing that one rule, not the rule-failure totals above/)).toBeInTheDocument();
+      expect(screen.getByRole("columnheader", { name: /^Failing records before/ })).toBeInTheDocument();
       expect(screen.getAllByText("Mean of 1 object in both runs; objects in only one run are left out").length).toBe(2);
     } finally {
       searchParams.delete("change");

@@ -291,6 +291,46 @@ async def test_records_filter_blocking_every_status_and_source_system(run, clien
 
 
 @pytest.mark.anyio
+async def test_summary_tiles_count_exactly_what_the_list_shows_for_every_filter(run, client_for):
+    """Fix work sends the list's own filters to /work/summary (frontend/components/work/fix-work.tsx): with Mine on,
+    the tiles must count the records the list shows, never the run's whole work list."""
+    owner, tid, vid, _ = run
+    deps, client = client_for(tid)
+    await deps.engine.dispose()
+    async with client:
+        params = lambda **f: {"version_id": vid, **f}
+        summary = lambda **f: client.get("/api/v1/work/summary", params=params(**f), headers=HEADERS)
+        records = lambda **f: client.get("/api/v1/work/records", params=params(**f), headers=HEADERS)
+        # one record assigned to the caller, so "mine" is neither everything nor nothing
+        r = await client.post("/api/v1/work/decide", json={"version_id": vid, "items": [
+            {"module": "material_master", "record_key": "MATNR=2", "action": "assign", "assignee": "me"}]}, headers=HEADERS)
+        assert r.status_code == 200, r.text
+        filters = [{"assigned": "me"}, {"assigned": "unassigned"}, {"severity": "critical"}, {"severity": "medium"},
+                   {"check_id": "MM002"}, {"status": "all"}, {"proposed": "true"}, {"q": "nu"},
+                   {"module": "material_master", "assigned": "me", "severity": "critical"}]
+        for f in filters:
+            t = (await summary(**f)).json()["totals"]
+            listed = (await records(**f)).json()
+            assert t["open"] == t["records"] == listed["total"], f
+            assert t["issues"] == sum(i["issues"] for i in listed["items"]), f
+        assert (await summary(assigned="me")).json()["totals"]["open"] == 1
+    # Tenant isolation: another tenant cannot read this run's work list, filtered or not.
+    other = str(uuid.uuid4())
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:id, :id)"), {"id": other})
+    try:
+        deps, client = client_for(other)
+        await deps.engine.dispose()
+        async with client:
+            for f in ({}, {"assigned": "me"}):
+                r = await client.get("/api/v1/work/summary", params={"version_id": vid, **f}, headers=HEADERS)
+                assert r.status_code == 404 or r.json()["totals"]["records"] == 0, (f, r.text)
+    finally:
+        with owner.begin() as c:
+            c.execute(text("DELETE FROM tenants WHERE id = :id"), {"id": other})
+
+
+@pytest.mark.anyio
 async def test_accept_all_keeps_entered_values_and_cleaning_suggestions_can_be_accepted(run, client_for):
     owner, tid, vid, _ = run
     with owner.begin() as c:

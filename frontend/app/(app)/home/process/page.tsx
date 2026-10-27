@@ -42,7 +42,8 @@ const columns = (systemId: string, canRun: boolean, versionId: string | undefine
         : <Mono>{w.field}</Mono>;
       return <span className="flex items-baseline gap-2">{id}<span className="line-clamp-1">{w.description}</span></span>;
     } },
-  { id: "failing", header: "Failing records", meta: { numeric: true }, accessorFn: (r) => r.readiness?.failing ?? -1,
+  // The distinct blocking fields' failing records summed over their rules: rule failures (lib/help/glossary.ts).
+  { id: "failing", header: "Rule failures", meta: { numeric: true }, accessorFn: (r) => r.readiness?.failing ?? -1,
     cell: ({ row: { original: r } }) => (r.readiness ? r.readiness.failing.toLocaleString() : "—") },
   { id: "coverage", header: "Coverage", cell: ({ row: { original: r } }) => <CoveragePill coverage={r.coverage} /> },
   { id: "fitness", header: "Fitness", meta: { numeric: true }, accessorFn: (r) => r.last_run?.fitness ?? -1, cell: ({ row: { original: r } }) => fmtFitness(r.last_run?.fitness) },

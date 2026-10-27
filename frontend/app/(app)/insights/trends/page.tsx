@@ -52,7 +52,7 @@ function runColumns(current: string | undefined): ColumnDef<TrendRun>[] {
     { id: "high", header: "High", accessorFn: (r) => r.high, meta: num, cell: ({ row }) => <DrillCount href={severityFindingsHref(row.original.version_id, "high")} count={row.original.high} label={`${drillLabel({ count: row.original.high, sev: "high", what: "failing rules" })} of run ${runName(row.original)}`}>{count(row.original.high)}</DrillCount> },
     { id: "fixed", header: "Rules fixed", accessorFn: (r) => r.rules_fixed ?? -1, meta: num, cell: ({ row }) => (row.original.rules_fixed == null ? "—" : row.original.rules_fixed > 0 ? <Delta value={row.original.rules_fixed} /> : "0") },
     { id: "new", header: "Newly failing", accessorFn: (r) => r.rules_new ?? -1, meta: num, cell: ({ row }) => (row.original.rules_new == null ? "—" : row.original.rules_new > 0 ? <Delta value={row.original.rules_new} invert /> : "0") },
-    { id: "records", header: "Failing records", accessorFn: (r) => r.affected_records, meta: num, cell: ({ row }) => <DrillCount href={fixHref({ run: row.original.version_id })} count={row.original.affected_records} label={`${drillLabel({ count: row.original.affected_records, what: "failing records" })} of run ${runName(row.original)}`}>{count(row.original.affected_records)}</DrillCount> },
+    { id: "records", header: "Rule failures", accessorFn: (r) => r.affected_records, meta: num, cell: ({ row }) => <DrillCount href={fixHref({ run: row.original.version_id })} count={row.original.affected_records} label={`${drillLabel({ count: row.original.affected_records, what: "rule failures" })} of run ${runName(row.original)}`}>{count(row.original.affected_records)}</DrillCount> },
   ];
 }
 

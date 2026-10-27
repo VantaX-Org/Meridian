@@ -18,6 +18,10 @@ test("lead reaches a failing record through the object's rules", async ({ app })
   await objectCell.click();
   await expect(app).toHaveURL(/\/objects\/material_master\?/);
   await app.getByRole("tab", { name: "Rules" }).click();
+  // Wait for the Rules tab itself: MM045 is already visible on Records to fix, whose rows match the rule too, and the
+  // tab switch is a navigation (router.push), so clicking on at once picked a record in the queue instead.
+  await expect(app).toHaveURL(/[?&]tab=rules/);
+  await expect(app.getByRole("tab", { name: "Rules" })).toHaveAttribute("aria-selected", "true");
   await expect(app.getByText(RULE).first()).toBeVisible();
 
   // Click 2: rule row -> that rule's failing records, beside the rule list. The whole row is the click target.

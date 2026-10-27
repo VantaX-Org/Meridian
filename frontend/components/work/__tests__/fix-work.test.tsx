@@ -84,6 +84,28 @@ describe("FixWork", () => {
     expect(screen.queryByText("24,712")).toBeNull();
   });
 
+  it.each([
+    ["mine=1", { assigned: "me" }],
+    ["sev=critical&st=all", { severity: "critical", status: "all" }],
+    ["check=MM001&sugg=1", { check_id: "MM001", proposed: true }],
+    ["object=material_master&mine=1&due=overdue&q=bolt", { module: "material_master", assigned: "me", due: "overdue", q: "bolt" }],
+    ["run=R1&assignee=u-7&part=WERKS%3D1000", { assigned: "u-7", part: "WERKS=1000" }],
+  ])("asks /work/summary with exactly the list's filters (%s)", async (qs, expected) => {
+    search = new URLSearchParams(qs);
+    renderWithQuery(<FixWork />);
+    await screen.findAllByTestId("work-record");
+    await waitFor(() => expect(vi.mocked(work.getWorkSummary).mock.calls.some(([, f]) => f !== undefined)).toBe(true));
+    const [run, tileFilter] = vi.mocked(work.getWorkSummary).mock.calls.find(([, f]) => f !== undefined)!;
+    const { version_id, ...rest } = vi.mocked(work.getWorkRecords).mock.calls.at(-1)![0];
+    // The page's own keys (sort, cursor, size) are not filters.
+    const listFilter = Object.fromEntries(Object.entries(rest).filter(([k]) => !["sort", "after", "limit"].includes(k)));
+    // The same run and the same filters, key for key: the tiles can only count the rows the list shows.
+    expect(run).toBe(version_id);
+    const defined = (o: object) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined));
+    expect(defined(tileFilter ?? {})).toEqual(defined(listFilter));
+    expect(defined(listFilter)).toEqual(expect.objectContaining(expected));
+  });
+
   it("asks for no filtered summary without a filter: the plain totals are the list's", async () => {
     renderWithQuery(<FixWork />);
     await screen.findAllByTestId("work-record");
@@ -187,7 +209,7 @@ describe("FixWork", () => {
     it("counts every object, says so, and reads no run", async () => {
       renderWithQuery(<FixWork />);
       expect(await screen.findByTestId("fix-scope")).toHaveTextContent("each object at its own latest run");
-      expect(screen.getByText("2 issues across 2 objects")).toBeInTheDocument();
+      expect(screen.getByText("2 rule failures on them, across 2 objects")).toBeInTheDocument();
       expect(work.getWorkSummary).toHaveBeenCalledWith(undefined);
       expect(work.getWorkRecords).toHaveBeenCalledWith(expect.objectContaining({ version_id: undefined }));
     });
@@ -277,6 +299,7 @@ describe("FixWork", () => {
     });
 
     it("shows Record, Rule, Severity, Age, Due, Assignee and Suggested value, asking the server for severity, then the oldest", async () => {
+      vi.stubGlobal("matchMedia", (q: string) => ({ matches: true, media: q, addEventListener: () => undefined, removeEventListener: () => undefined }));
       renderWithQuery(<FixWork />);
       const rows = await screen.findAllByTestId("work-record");
       const headers = within(screen.getByRole("grid", { name: "Records to fix" })).getAllByRole("columnheader").map((h) => h.textContent);
@@ -292,6 +315,7 @@ describe("FixWork", () => {
       // j walks the table's order.
       fireEvent.keyDown(window, { key: "j" });
       expect(replace).toHaveBeenLastCalledWith("/fix?record=material_master%7CMATNR%3D2", { scroll: false });
+      vi.unstubAllGlobals();
     });
 
     it("sends the URL's sort to the server and sorts only the columns the server pages by", async () => {
@@ -313,14 +337,31 @@ describe("FixWork", () => {
       expect(work.getWorkRecords).toHaveBeenCalledWith(expect.objectContaining({ sort: "severity,-age" }));
     });
 
-    it("shows a record's whole key, wrapped rather than cut", async () => {
+    it("shows a record's key on its own line in Mono, cut with an ellipsis (never mid-key) and whole in the title", async () => {
       vi.mocked(work.getWorkRecords).mockResolvedValue({ version_id: "R1", total: 1, total_capped: false, next: null,
         items: [rec("MATNR=MAT000012345678|WERKS=1000", { name: "Bolt" })] });
       renderWithQuery(<FixWork />);
       const key = (await screen.findAllByTestId("work-record-key"))[0];
       expect(key).toHaveTextContent("MATNR=MAT000012345678|WERKS=1000");
-      expect(key).toHaveClass("break-all");
-      expect(key).not.toHaveClass("truncate");
+      expect(key).toHaveClass("truncate", "whitespace-nowrap", "block");
+      expect(key).not.toHaveClass("break-all");
+      expect(key.style.fontFamily).toBe("var(--m-font-mono)");
+      expect(key.parentElement).toHaveAttribute("title", "Bolt, MATNR=MAT000012345678|WERKS=1000");
+    });
+
+    it("keeps Suggested value off the queue below 1600px, where the panes leave no room for it", async () => {
+      const wide = (on: boolean) => vi.stubGlobal("matchMedia", (q: string) => ({ matches: on && q === "(min-width: 1600px)", media: q,
+        addEventListener: () => undefined, removeEventListener: () => undefined }));
+      wide(true);
+      const { unmount } = renderWithQuery(<FixWork />);
+      await screen.findAllByTestId("work-record");
+      expect(within(screen.getByRole("grid", { name: "Records to fix" })).getAllByRole("columnheader").map((h) => h.textContent)).toContain("Suggested value");
+      unmount();
+      wide(false);
+      renderWithQuery(<FixWork />);
+      await screen.findAllByTestId("work-record");
+      expect(within(screen.getByRole("grid", { name: "Records to fix" })).getAllByRole("columnheader").map((h) => h.textContent)).not.toContain("Suggested value");
+      vi.unstubAllGlobals();
     });
 
     it("ships saved views that set the queue's filters in the URL", async () => {

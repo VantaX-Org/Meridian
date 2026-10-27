@@ -269,7 +269,7 @@ describe("system detail page", () => {
     expect(stat?.textContent?.match(/70(\.0)?/g)).toHaveLength(1);
   });
 
-  it("opens the latest run's Findings tab from the score and open-findings tiles", async () => {
+  it("opens the latest run's Findings tab from the score and failing-rules tiles", async () => {
     mockHappyPath();
     vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({
       versions: [{ id: "v1", run_at: "2026-10-01T00:00:00Z", label: null, status: "complete", objects: ["material_master"], scope: {}, records: {}, analysed_at: "2026-10-01T00:00:00Z", rule_set: null, baseline: false, analysable: true, dqs: { material_master: 70 } }] as never,
@@ -278,7 +278,7 @@ describe("system detail page", () => {
     renderWithQuery(<SystemPage />);
     const ring = await screen.findByRole("img", { name: "Score 70.0" });
     expect(ring.closest("a")).toHaveAttribute("href", "/runs/v1?tab=findings");
-    const open = screen.getByText("Open findings").closest("a");
+    const open = screen.getByText("Failing rules").closest("a");
     expect(open).toHaveAttribute("href", "/runs/v1?tab=findings");
   });
 
@@ -315,6 +315,23 @@ describe("system detail page", () => {
     const empty = within(bench).getByText("Not analysed yet").closest("[data-state='empty']") as HTMLElement;
     expect(within(empty).getByRole("link", { name: "Analyse" })).toHaveAttribute("href", "/systems/s1?tab=objects");
     expect(within(bench).getAllByRole("link")).toHaveLength(1);
+  });
+
+  it("charts the same record counts as the list, says how many objects are loaded, and never 'no rows' beside 7 records", async () => {
+    mockHappyPath();
+    const mod = (module: string, row_count: number) => ({ module, system_type: "ecc", enabled: true, last_synced_at: null, last_sync_status: null, row_count, config_synced: false });
+    vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([mod("accounts_payable", 0), mod("fi_gl", 0), mod("material_master", 0)] as never);
+    // Records come from the latest run only (an uploaded or analysed run), not from an extraction.
+    vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({
+      versions: [{ id: "v1", run_at: "2026-10-01T00:00:00Z", label: null, status: "complete", objects: ["accounts_payable"], scope: {}, records: { accounts_payable: 7 }, analysed_at: "2026-10-01T00:00:00Z", rule_set: null, baseline: false, analysable: true, dqs: { accounts_payable: 70 } }] as never,
+      download: null,
+    });
+    renderWithQuery(<SystemPage />);
+    const bench = await screen.findByTestId("system-workbench");
+    expect(within(bench).getByText("3 objects, 1 loaded; most records first")).toBeInTheDocument();
+    expect(within(bench).getAllByText("7 records").length).toBeGreaterThan(0);
+    const chart = screen.getByText("Objects by records").closest("section, div[class]")!.parentElement as HTMLElement;
+    expect(within(chart).queryByText("No rows loaded yet")).toBeNull();
   });
 
   it("offers Extract from the empty summary of an object with no records", async () => {

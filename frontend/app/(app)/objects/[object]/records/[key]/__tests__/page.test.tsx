@@ -257,4 +257,40 @@ describe("RecordFixSheetPage", () => {
     await waitFor(() => expect(screen.queryByTestId("record-panel")).toBeNull());
     expect(screen.queryByText(/could not reach the server/i)).toBeNull();
   });
+
+  it("reads Identity from the same values as the field sheet, counts the blank required field and lists each rule and status once", async () => {
+    // As the recording answers MAT00000010: no configured labels, MTART and MEINS in MARA, MAKTX blank and failing MM045.
+    vi.spyOn(objectsApi, "getObjectRecord").mockResolvedValue({
+      ...material, description: null, views: [], labels: { MTART: null, MATKL: null, MEINS: null },
+      mara: { MATNR: "100001", MTART: "FERT", MEINS: "PC" },
+    });
+    vi.spyOn(materialsApi, "getMaterialFindings").mockResolvedValue({
+      matnr: "100001", version_id: "v1", rules_total: 1,
+      by_view: [{ view: "basic", label: "Basic data", rules: 1, passing_count: 0, not_evaluated: [],
+        failing: [{ check_id: "MM045", message: "Material description is missing", severity: "critical", field: "MAKT.MAKTX", level: "client", actual_value: "", record_key: "MATNR=100001", issue_id: null, issue_status: null, record_fix: null }] }],
+    });
+    vi.spyOn(materialsApi, "getMaterialSupersession").mockResolvedValue({ matnr: "100001", plants: [], bom_usage: null });
+    vi.spyOn(materialsApi, "getMaterialDuplicates").mockResolvedValue({ matnr: "100001", algorithm: "exact", threshold: 1, source: "makt", items: [] });
+    vi.spyOn(workApi, "getWorkRecord").mockResolvedValue({
+      version_id: "v1", module: "material_master", record_key: "100001", name: null, status: "to_fix",
+      assigned_to: null, assignee_email: null, values: { "MAKT.MAKTX": "" }, events: [], can: { fix: true, sign_off: true, assign: true, comment: true },
+      issues: [{
+        check_id: "MM045", severity: "critical", dimension: "completeness", message: "Material description is missing", field: "MAKT.MAKTX",
+        current_value: "", instruction: null, why_it_matters: null, sap_impact: null, suggestion: null, status: "to_fix", issue_id: null,
+        resolution: null, first_seen_at: null, reopened_count: 0, due_at: null, sla_state: null, decision: null,
+      }],
+    });
+    renderWithQuery(<RecordFixSheetPage />);
+    const panel = await screen.findByTestId("record-panel");
+    const identity = screen.getByText("Identity").closest("section, div[class]")!.parentElement as HTMLElement;
+    await waitFor(() => expect(within(identity).getByText("Material type").nextElementSibling).toHaveTextContent("FERT"));
+    expect(within(identity).getByText("Base unit").nextElementSibling).toHaveTextContent("PC");
+    // MAKTX is blank and a rule fails on it: one missing field.
+    await waitFor(() => expect(screen.getByText("Missing fields").parentElement).toHaveTextContent("1"));
+    // The panel lists MM045; the page does not list it a second time, and "To fix" shows once, in the panel's header.
+    await waitFor(() => expect(within(panel).getByText("Material description is missing")).toBeInTheDocument());
+    expect(screen.getAllByText("Material description is missing")).toHaveLength(1);
+    expect(screen.queryByText("Failing rules", { selector: "h2, h3, [class*=title]" })).toBeNull();
+    expect(screen.getAllByText("To fix")).toHaveLength(1);
+  });
 });

@@ -257,7 +257,9 @@ def test_findings_aggregate(app_engine):
         h = {"X-User-Role": "analyst"}
         async with AsyncClient(transport=ASGITransport(app=api), base_url="http://t") as c:
             latest = (await c.get("/api/v1/findings/aggregate", headers=h)).json()
-            assert set(latest["version_ids"]) == {v2, vx, vu}          # one per system + the upload lineage
+            # The current state: each object from the newest latest-run-of-its-lineage that measured it. vx and vu
+            # are their lineages' latest runs but measured nothing (no summary, no findings), so only v2 is read.
+            assert set(latest["version_ids"]) == {v2}
             # Failing rules only: v2's CHK-C passed (affected 0), so it is evaluated but not a finding.
             assert latest["total"] == 4 and latest["severity"] == {"critical": 0, "high": 4, "medium": 0, "low": 0}
             assert latest["affected_records"] == 4

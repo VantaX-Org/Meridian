@@ -24,7 +24,7 @@ import { Button, buildDrillHref, Card, DataTable, Drawer, EmptyState, ErrorState
 import { LedgerHead } from "@/components/mdm/ledger";
 import { HandToSteward, type HandoffTarget } from "@/components/process/handoff";
 import { apiErrorState } from "@/lib/error";
-import { PROCESS_MODULES, asIsHref, currentProcessObjects, firstWithProcesses, isCompleteVersion, l1Fields, l4Fields, modulesOfL1, red, score, sev, systemOfVersion, useFindingHref, useLatestVersion, verdictOf } from "@/components/process/shared";
+import { PROCESS_MODULES, asIsHref, blockingSentence, currentProcessObjects, distinctReds, firstWithProcesses, isCompleteVersion, l1Fields, l4Fields, modulesOfL1, red, score, sev, systemOfVersion, useFindingHref, useLatestVersion, verdictOf } from "@/components/process/shared";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { useSystemScope } from "@/lib/permissions";
@@ -340,7 +340,8 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
       href: f.check_id ? findingHref(object, f.check_id) ?? buildDrillHref({ object, ruleId: f.check_id, run: latest?.id }) : rulesHref,
       handoff: f.check_id ? { checkId: f.check_id, module: object, versionId: latest?.id, process: l1.l1_name, field: f.field } : null,
     }))))).sort((a, b) => b.affected - a.affected) : []), [l1, object, findingHref, latest?.id, rulesHref]);
-  const failing = blockingFindings.reduce((a, b) => a + b.affected, 0);
+  // Each blocking field once, however many steps write it (components/process/shared.ts distinctReds).
+  const blockingWhy = blockingSentence(all);
   const firstHref = blockingFindings[0]?.href ?? rulesHref;
   const worst = [...gates].sort((a, b) => b.blocking - a.blocking)[0];
   const loading = versionsLoading || probing || bp.isLoading || dayOne.status === "loading";
@@ -372,12 +373,12 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
         tone: verdictOf(blockedGates, pct),
       },
       changed: { sentence: `From ${runScopeLabel(latest)}; it changes when the next run of this object finishes.` },
-      why: { sentence: blocking ? `${plural(blocking, "blocking field fails", "blocking fields fail")} on ${records(failing)}.` : "No field blocks go-live.", tone: blocking ? "no-go" : "go" },
+      why: { sentence: blockingWhy ?? "No field blocks go-live.", tone: blockingWhy ? "no-go" : "go" },
       next: blockedGates && worst
         ? { sentence: `Clear the failing fields in ${worst.l3.l3_name}.`, action: { label: "Open failing records", href: firstHref ?? withScope(`/objects/${object}`, { run: latest.id, tab: "rules" }) } }
         : { sentence: "No step is blocked; keep an eye on the amber fields.", action: { label: "Open failing rules", href: withScope("/insights/rules", { run: latest.id, module: object }) } },
     });
-  }, [loading, isCurrent, modules.length, bp.isError, latest, l1, l1Missing, l1Choice, object, blockedGates, gates.length, pct, blocking, failing, worst, firstHref, onInsight]);
+  }, [loading, isCurrent, modules.length, bp.isError, latest, l1, l1Missing, l1Choice, object, blockedGates, gates.length, pct, blockingWhy, worst, firstHref, onInsight]);
 
   if (loading) return <ViewSkeleton stats={4} />;
   if (versionsError) return <ErrorState {...apiErrorState(versionsError)} onRetry={() => void refetchVersions()} />;
@@ -446,14 +447,16 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
     .filter((l3) => l3.overall_readiness !== "green")
     .map((l3) => {
       const f3 = l3.l4_subprocesses.flatMap(l4Fields);
-      const reds = f3.filter((f) => f.dq_status === "red");
+      const reds = distinctReds(f3);
+      const rules = Array.from(new Set(reds.map((f) => f.check_id).filter(Boolean)));
       const recs = reds.reduce((a, f) => a + f.affected_count, 0);
       return {
         id: l3.l3_id,
-        label: reds.length ? `Clear ${reds.length} failing field${reds.length === 1 ? "" : "s"} in ${l3.l3_name}`
+        label: reds.length ? `Clear ${plural(reds.length, "failing field")} in ${l3.l3_name}`
           : `Review the amber fields in ${l3.l3_name}`,
+        // One rule: its failing records. Several: their rule failures (a record can fail more than one of them).
         rationale: reds.length
-          ? `${recs.toLocaleString()} records fail ${Array.from(new Set(reds.map((f) => f.check_id).filter(Boolean))).join(", ")}`
+          ? rules.length <= 1 ? `${records(recs)} ${recs === 1 ? "fails" : "fail"} ${rules[0] ?? reds[0].field}` : `${plural(recs, "rule failure")} on ${rules.join(", ")}`
           : "No field is red; amber fields have partial pass rates.",
       };
     }));

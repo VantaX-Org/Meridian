@@ -27,7 +27,7 @@ import { discoverSystem, getDesign } from "@/lib/api/source-design";
 import { analyseVersion, downloadPollMs, getSystemVersions, objectsLoaded, startDownload, type SystemVersion } from "@/lib/api/system-objects";
 import { deleteSystem, getSyncProfiles, testEditedConnection, updateSystem } from "@/lib/api/systems";
 import { exportRuns } from "@/lib/api/versions";
-import { formatDate, formatModuleName, labelOf, relativeTime, systemTypeLabel } from "@/lib/format";
+import { formatDate, formatModuleName, labelOf, plural, relativeTime, systemTypeLabel } from "@/lib/format";
 import { runAxisTicks } from "@/lib/run-axis";
 import { GatedPrimary, primaryRole } from "@/components/gated-primary";
 import { ConnectionFields, ENVIRONMENTS, RFC_TYPES, TestOutcome, authFor, connectionKey, connectionOf, environmentLabel, schemaFor, testBlockedHint, type ConnectionValues, type TestOutcomeValue } from "@/components/systems/connect-system-dialog";
@@ -310,7 +310,8 @@ export default function SystemPage() {
           value={dqs === null ? "—" : aggQ.data ? <DqsScore agg={aggQ.data} versionId={latest?.id} /> : <Score value={dqs} />}
           href={latest ? findingsHref(latest.id) : undefined}
         />
-        <Stat label="Open findings" loading={versionsQ.isLoading || aggQ.isLoading} value={latest ? aggQ.data?.total ?? "—" : "—"} href={latest ? findingsHref(latest.id) : undefined} />
+        {/* The aggregate's total is failing rules (rules with a failing record), the overview's "Failing rules" too. */}
+        <Stat label="Failing rules" help="failingRules" hint={latest ? "in the latest run" : undefined} loading={versionsQ.isLoading || aggQ.isLoading} value={latest ? aggQ.data?.total ?? "—" : "—"} href={latest ? findingsHref(latest.id) : undefined} />
       </div>
 
       <Tabs
@@ -431,7 +432,10 @@ function Overview({ systemId, modules, versions, latest, canSync, canAnalyse, on
   const scored = versions.filter((v) => meanDqs(v) !== null).slice(0, 12).reverse();
   // Ticks are dates (with the time when two runs share a day); the run id is the key so a click opens the right run.
   const tickOf = runAxisTicks(scored.map((v) => ({ id: v.id, run_at: v.run_at })));
-  const byRows = [...modules].filter((m) => m.row_count > 0).sort((a, b) => b.row_count - a.row_count).slice(0, 12);
+  // The same record counts as the list beside it (extracted rows, else the latest run's records), so the chart never
+  // says "no rows loaded" next to an object listed with 7 records.
+  const byRows = rows.filter((r) => r.records > 0).slice(0, 12);
+  const loaded = rows.filter((r) => r.records > 0).length;
   const runCols = useMemo(() => runColumns(), []);
   // Every "Extract" in an empty state opens the one Extract drawer.
   const extract = canSync ? <Button onClick={onExtract}>Extract</Button> : undefined;
@@ -439,7 +443,7 @@ function Overview({ systemId, modules, versions, latest, canSync, canAnalyse, on
     <div className="flex flex-col [gap:var(--m-section-gap)]">
       {rows.length ? (
         <div className="grid items-start [gap:var(--m-section-gap)] @5xl:grid-cols-[400px_minmax(0,1fr)]" data-testid="system-workbench">
-          <Card title="Objects" meta={`${rows.length.toLocaleString()} by records`} padding="sm">
+          <Card title="Objects" meta={`${plural(rows.length, "object")}, ${loaded.toLocaleString()} loaded; most records first`} padding="sm">
             <ul className="flex max-h-[560px] flex-col overflow-y-auto" aria-label="Objects of this system, ranked by records">
               {rows.map((r) => (
                 <li key={r.module}>
@@ -493,9 +497,9 @@ function Overview({ systemId, modules, versions, latest, canSync, canAnalyse, on
           ) : (
             <Bar
               height={160}
-              data={byRows.map((m) => ({ x: formatModuleName(m.module), y: m.row_count }))}
+              data={byRows.map((m) => ({ x: m.name, y: m.records }))}
               onPointClick={(p) => {
-                const m = byRows.find((b) => formatModuleName(b.module) === p.x);
+                const m = byRows.find((b) => b.name === p.x);
                 if (m) router.push(`/objects/${m.module}`);
               }}
             />

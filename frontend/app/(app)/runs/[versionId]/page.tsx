@@ -112,8 +112,9 @@ function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; hi
       cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{formatNumber(row.original.failing_checks)}</DrillLink>,
     },
     {
+      // Summed over the object's failing rules (a record failing two rules counts twice): rule failures.
       accessorKey: "affected_records",
-      header: "Failing records",
+      header: "Rule failures",
       cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{formatNumber(row.original.affected_records)}</DrillLink>,
     },
     {
@@ -200,7 +201,8 @@ function RunLedger({ versionId, rows, objects }: { versionId: string; rows: Modu
       cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}&severity=high`}>{row.original.high.toLocaleString()}</DrillLink>,
     },
     {
-      id: "records", header: "Failing records", accessorFn: (m) => m.affected ?? 0, meta: { numeric: true } satisfies CellMeta,
+      // The aggregate's per-object sum over failing rules: rule failures, never distinct records.
+      id: "records", header: "Rule failures", accessorFn: (m) => m.affected ?? 0, meta: { numeric: true } satisfies CellMeta,
       cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{(row.original.affected ?? 0).toLocaleString()}</DrillLink>,
     },
     {

@@ -72,8 +72,8 @@ describe("TrendsPage", () => {
     expect(rows[0]).toHaveTextContent("+10");
     expect(rows[0]).toHaveTextContent("900");
     expect(rows[1]).toHaveTextContent("first run");
-    // Each run's counts open that run's failing records in Fix work.
-    expect(screen.getByRole("link", { name: "Open the 900 failing records of run v2" })).toHaveAttribute("href", "/fix?run=v2");
+    // Each run's counts open that run's records in Fix work; the sum over rules is rule failures.
+    expect(screen.getByRole("link", { name: "Open the 900 rule failures of run v2" })).toHaveAttribute("href", "/fix?run=v2");
     expect(screen.getByRole("link", { name: "Open the 1 critical failing rule of run v2" })).toHaveAttribute("href", "/runs/v2?tab=findings&severity=critical");
     expect(screen.getByRole("link", { name: "Open the 2 high failing rules of run v1" })).toHaveAttribute("href", "/runs/v1?tab=findings&severity=high");
     expect(screen.queryByRole("link", { name: /critical failing (rule|record)s? of run v1/ })).toBeNull();
