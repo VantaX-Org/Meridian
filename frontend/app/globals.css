@@ -360,6 +360,13 @@
   .m-pill-no-go { background: var(--m-no-go-soft); color: var(--m-no-go-ink); }
   .m-pill-no-go .m-pill-dot { background: var(--m-no-go); }
   .m-pill-info { background: var(--m-info-soft); color: var(--m-info-ink); }
+  /* Status variant="dot": the verdict as its dot and short label, no fill, for a phone column. */
+  .m-status-dot { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; flex-shrink: 0; font-size: var(--m-text-meta); line-height: var(--m-leading-meta); font-weight: 500; color: var(--m-ink-2); }
+  .m-status-dot .m-pill-dot { background: var(--m-ink-3); }
+  .m-status-dot[data-tone="go"] .m-pill-dot { background: var(--m-go); }
+  .m-status-dot[data-tone="at-risk"] .m-pill-dot { background: var(--m-at-risk); }
+  .m-status-dot[data-tone="no-go"] .m-pill-dot { background: var(--m-no-go); }
+  .m-status-dot[data-tone="info"] .m-pill-dot { background: var(--m-info); }
 
   .m-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--m-radius-pill); font-family: var(--m-font-mono); font-size: var(--m-text-micro); line-height: var(--m-leading-micro); font-weight: 600; background: var(--m-accent); color: var(--m-ink-on-accent); }
   .m-badge-inverted { background: var(--m-accent-ink); color: var(--m-accent-soft); }

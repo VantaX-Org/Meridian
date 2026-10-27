@@ -37,7 +37,7 @@ export function dateInDays(days: number, from: Date = new Date()): string {
 
 const personLabel = (s: HandoffSteward) => `${s.name || s.email}, ${roleLabel(s.role)}`;
 
-function HandoffDialog({ target, open, onOpenChange, onDone }: {
+export function HandoffDialog({ target, open, onOpenChange, onDone }: {
   target: HandoffTarget; open: boolean; onOpenChange: (open: boolean) => void; onDone: (name: string) => void;
 }) {
   const qc = useQueryClient();

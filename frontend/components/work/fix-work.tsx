@@ -26,6 +26,7 @@ import { stateScopeLine } from "@/lib/current-state";
 import { keyBelongsElsewhere } from "@/lib/inbox-keys";
 import { RecordPanel, invalidateAfterDecision, toastDraftBatch } from "./record-panel";
 import { STATUS, STATUS_ORDER, dueLabel } from "./status";
+import { issuesView } from "./issues";
 
 /** Records per request; the queue loads the next page as the table nears its end (or `j` passes the last row). */
 const PAGE = 200;
@@ -150,7 +151,7 @@ function GroupList({ groups, active, onPick }: { groups: WorkGroup[]; active: st
 
 const DASH = <span className="m-ink-3">—</span>;
 
-/** The queue's columns: Record, Rule, Severity, Age, Due, Assignee, Suggested value. Severity and Age sort on the server. */
+/** The queue's columns: Record, Rule, Severity, Age, Due (from 1600px Assignee and Suggested value). Severity and Age sort on the server. */
 function queueColumns(now: number, wide: boolean): ColumnDef<WorkRecord>[] {
   return [
     {
@@ -166,11 +167,14 @@ function queueColumns(now: number, wide: boolean): ColumnDef<WorkRecord>[] {
       ),
     },
     {
+      // Two lines, as the record beside it: the rule's name across the column's whole width, its check id (and how
+      // many more rules the record fails) in Mono below. The column takes the queue's spare width, so a typical name
+      // (up to about 40 characters) reads whole at 1440px.
       id: "rule", header: "Rule", accessorFn: (r) => r.top_message ?? r.checks[0] ?? "", enableSorting: false,
       cell: ({ row: { original: r } }) => (
-        <span className="flex w-[160px] min-w-0 items-baseline gap-2" title={r.top_message ?? undefined}>
-          <span className="min-w-0 shrink truncate">{r.top_message ?? r.checks[0]}</span>
-          <span className="shrink-0 m-text-meta m-ink-3"><Mono inline>{r.checks[0]}</Mono>{r.issues > 1 ? ` +${r.issues - 1}` : null}</span>
+        <span className="flex w-max min-w-[180px] max-w-[300px] flex-col" title={r.top_message ?? undefined}>
+          <span className="truncate" data-testid="work-rule-name">{r.top_message ?? r.checks[0]}</span>
+          <span className="truncate m-text-meta m-ink-3"><Mono inline>{r.checks[0]}</Mono>{r.issues > 1 ? ` and ${r.issues - 1} more` : null}</span>
         </span>
       ),
     },
@@ -199,15 +203,18 @@ function queueColumns(now: number, wide: boolean): ColumnDef<WorkRecord>[] {
         return r.due_at ? <span className="whitespace-nowrap">{formatDate(r.due_at)}</span> : DASH;
       },
     },
-    {
-      id: "assignee", header: "Assignee", accessorFn: (r) => r.assignee_email ?? "", enableSorting: false, meta: { priority: "low" } satisfies CellMeta,
-      cell: ({ row: { original: r } }) => (r.assignee_email ? <span className="block max-w-[88px] truncate" title={r.assignee_email}>{r.assignee_email}</span> : DASH),
-    },
-    ...(wide ? [suggestedColumn] : []),
+    ...(wide ? [assigneeColumn, suggestedColumn] : []),
   ];
 }
 
-/** Suggested value: only on screens wide enough for it beside the panes (the record panel shows it at every width). */
+/**
+ * Assignee and Suggested value: only on screens wide enough for them beside the panes. Below 1600px the rule takes
+ * their width; the record panel shows both (who has the record, and the value to accept) at every width.
+ */
+const assigneeColumn: ColumnDef<WorkRecord> = {
+  id: "assignee", header: "Assignee", accessorFn: (r) => r.assignee_email ?? "", enableSorting: false, meta: { priority: "low" } satisfies CellMeta,
+  cell: ({ row: { original: r } }) => (r.assignee_email ? <span className="block max-w-[88px] truncate" title={r.assignee_email}>{r.assignee_email}</span> : DASH),
+};
 const suggestedColumn: ColumnDef<WorkRecord> = {
       id: "suggested", header: "Suggested value", accessorFn: (r) => r.suggested_value ?? "", enableSorting: false, meta: { priority: "low" } satisfies CellMeta,
       cell: ({ row: { original: r } }) => (r.suggested_value != null
@@ -306,7 +313,7 @@ export function FixWork({ module: fixedModule, run: fixedRun }: FixWorkScope = {
   const [sheetOpen, setSheetOpen] = useState(false);
   // Ages are counted from one moment per mount, so a re-render never reorders the queue under the cursor.
   const [now] = useState(() => Date.now());
-  // Suggested value fits beside the three panes only from 1600px; below, the record panel shows it.
+  // Assignee and Suggested value fit beside the three panes only from 1600px; below, the record panel shows them.
   const wide = useMediaQuery("(min-width: 1600px)");
   const columns = useMemo(() => queueColumns(now, wide), [now, wide]);
 
@@ -328,8 +335,8 @@ export function FixWork({ module: fixedModule, run: fixedRun }: FixWorkScope = {
     placeholderData: keepPreviousData,
   });
   const groups = useQuery({
-    queryKey: ["work", "groups", run ?? "current", filter.module ?? "", filter.severity ?? ""],
-    queryFn: () => getWorkGroups({ version_id: run, module: filter.module, severity: filter.severity }),
+    queryKey: ["work", "groups", run ?? "current", filter.module ?? "", filter.severity ?? "", !!filter.proposed],
+    queryFn: () => getWorkGroups({ version_id: run, module: filter.module, severity: filter.severity, proposed: filter.proposed }),
     enabled: summary.isSuccess,
   });
   const records = useInfiniteQuery({
@@ -345,6 +352,9 @@ export function FixWork({ module: fixedModule, run: fixedRun }: FixWorkScope = {
   const total = records.data?.pages[0]?.total ?? 0;
   const capped = records.data?.pages[0]?.total_capped ?? false;
   const activeGroup = groups.data?.groups.find((g) => g.check_id === filter.check_id);
+  // The Issues pane follows the list's filters: counted on the list's own records when the groups endpoint cannot
+  // filter as the list does and the whole list is loaded, else it says which filters it does not follow.
+  const issues = issuesView(groups.data?.groups ?? [], filter, items, records.isSuccess && !records.hasNextPage);
   const loadMore = useCallback(() => {
     if (records.hasNextPage && !records.isFetchingNextPage) void records.fetchNextPage();
   }, [records]);
@@ -506,12 +516,18 @@ export function FixWork({ module: fixedModule, run: fixedRun }: FixWorkScope = {
         </div>
       ) : null}
 
-      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_minmax(0,380px)] 2xl:grid-cols-[320px_minmax(0,1fr)_minmax(0,460px)]">
-        <Card title="Issues" meta={groups.data ? `${plural(groups.data.total, "failing rule")} ${isCurrent ? `across ${plural(s.objects.length, "object")}` : "in this run"}` : undefined} padding="sm">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[260px_minmax(0,1fr)_minmax(0,380px)] 2xl:grid-cols-[320px_minmax(0,1fr)_minmax(0,460px)]">
+        <Card title="Issues" padding="sm"
+          meta={!groups.data ? undefined
+            : issues.mode === "list" ? `${plural(issues.groups.length, "failing rule")} on these records`
+            : `${plural(groups.data.total, "failing rule")} ${isCurrent ? `across ${plural(s.objects.length, "object")}` : "in this run"}`}>
+          {issues.mode === "unfiltered" ? (
+            <p className="px-3 pb-2 m-text-meta m-ink-3" data-testid="work-issues-scope">Every open issue: these counts do not follow {issues.ignores.join(", ")}.</p>
+          ) : null}
           {groups.isLoading ? <Skeleton height={240} /> : groups.isError ? <ErrorState {...apiErrorState(groups.error)} onRetry={() => groups.refetch()} />
-            : groups.data && groups.data.groups.length ? (
-              <div className="max-h-[40vh] overflow-auto lg:max-h-[70vh]"><GroupList groups={groups.data.groups} active={filter.check_id} onPick={(c) => set({ check: c, record: null })} /></div>
-            ) : <p className="m-text-body m-ink-3">No failing checks.</p>}
+            : issues.groups.length ? (
+              <div className="max-h-[40vh] overflow-auto lg:max-h-[70vh]"><GroupList groups={issues.groups} active={filter.check_id} onPick={(c) => set({ check: c, record: null })} /></div>
+            ) : <p className="px-3 m-text-body m-ink-3">{issues.mode === "list" ? "No issues on the records these filters show." : "No failing checks."}</p>}
         </Card>
 
         <section aria-label="Records to fix" className="flex min-w-0 flex-col gap-2">

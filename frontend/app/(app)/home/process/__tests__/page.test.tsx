@@ -67,6 +67,32 @@ describe("process home", () => {
     expect(runs).toContain("/process/runs?system=sys-1&new=1&l1=R2R");
   });
 
+  it("on a phone keeps the process and its verdict, and folds the actions into one named menu button in a narrow column", async () => {
+    vi.stubGlobal("matchMedia", vi.fn((q: string) => ({ matches: q === "(max-width: 639px)", media: q, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    vi.spyOn(connectivityApi, "getBusinessProcess").mockResolvedValue([
+      l1("PTP", "Procure to pay", [field({ dq_status: "red", affected_count: 1234, pass_rate: 40 })]),
+    ]);
+    renderWithQuery(<ProcessHomePage />);
+    const verdict = await screen.findByText("No-go");
+    expect(verdict.closest("[data-status='verdict']")).toHaveClass("m-status-dot");
+    expect(screen.getByRole("link", { name: "Procure to pay" })).toBeInTheDocument();
+    // No row of buttons: one compact menu per row, named for its process.
+    expect(screen.queryByRole("link", { name: "Can it run" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Hand AP001 to a steward/ })).toBeNull();
+    const menu = screen.getByRole("button", { name: "Actions for Procure to pay" });
+    const grid = screen.getAllByRole("grid")[0];
+    const actionHeader = within(grid).getAllByRole("columnheader").at(-1)!;
+    expect(actionHeader.style.width).toBe("48px");
+    // The low-priority columns hide below 640px.
+    for (const name of ["Blocking rule", "Rule failures", "Coverage", "Fitness", "Last run"]) {
+      expect(within(grid).getAllByRole("columnheader").find((h) => h.textContent === name)).toHaveClass("max-[640px]:hidden");
+    }
+    fireEvent.click(menu);
+    expect(await screen.findByRole("menuitem", { name: "Can it run" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Hand to a steward" })).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
   it("scores readiness from the selected system's newest run, never a newer run of another system", async () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [
       { id: "v-other", label: "other_sys", status: "complete", run_at: "2026-10-12T00:00:00Z", dqs_summary: { accounts_payable: 10 }, metadata: { system_id: "sys-2" } } as never,

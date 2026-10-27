@@ -126,11 +126,14 @@ export function Stat({ label, value, delta, hint, href, onClick, tone, domain, h
         </span>
       )}
       {hint != null && (
-        <span className="truncate" style={{ fontSize: "var(--m-text-micro)", lineHeight: "var(--m-leading-micro)", color: hero ? "var(--m-hero-ink-3)" : "var(--m-ink-3)" }}>{hint}</span>
+        // The hint wraps between words inside the tile; it never runs on one line past the tile into the next one.
+        <span data-stat-hint className="min-w-0 break-words" style={{ fontSize: "var(--m-text-micro)", lineHeight: "var(--m-leading-micro)", color: hero ? "var(--m-hero-ink-3)" : "var(--m-ink-3)" }}>{hint}</span>
       )}
     </>
   );
-  const cls = clsx("m-stat relative flex flex-col overflow-hidden", hero && "m-stat-hero", !hero && rule && bar != null && "m-stat-ruled", interactive && "m-stat-link m-motion-colors");
+  // `w-full text-left`: a button tile is otherwise only as wide as its content (a button shrinks to fit), so a long
+  // hint widened it past its grid cell, over the next tile.
+  const cls = clsx("m-stat relative flex w-full flex-col overflow-hidden text-left", hero && "m-stat-hero", !hero && rule && bar != null && "m-stat-ruled", interactive && "m-stat-link m-motion-colors");
   const minHeight = undefined;
   const tile = href
     ? <Link href={href} className={cls} style={{ minHeight }} {...prefetch}>{body}</Link>

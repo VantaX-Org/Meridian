@@ -16,9 +16,15 @@ export function categoryAxisWidth(labels: readonly (string | number)[], min = 60
   return Math.min(max, Math.max(min, Math.ceil(longest * 7) + 12));
 }
 
+/**
+ * A zero bar has no width, and recharts draws no value label on it, so "0" read as a missing value: a hair of
+ * width (far under a pixel, so no bar shows) keeps its "0" label.
+ */
+export const zeroBarMinSize = (value: number | null | undefined): number => (value === 0 ? 0.01 : 0);
+
 const tick = (v: number) => formatNumber(v, { maximumFractionDigits: 1 });
 
-/** Characters a category label line holds on a wide chart (two lines) and on a phone-width one (one line). */
+/** Characters a category label line holds on a wide chart (up to three lines) and on a phone-width one (one line). */
 export const LABEL_LINE_CHARS = 24;
 export const NARROW_LABEL_CHARS = 18;
 /** The phone viewport, where category labels keep to one line with an ellipsis; every wider screen wraps them. */
@@ -27,11 +33,12 @@ export const PHONE = "(max-width: 639px)";
 const cut = (s: string, max: number) => (s.length <= max ? s : `${s.slice(0, max - 1).trimEnd()}…`);
 
 /**
- * A category label as the lines its tick draws: on a wide chart up to `lines` lines of `max` characters, broken
+ * A category label as the lines its tick draws: on a wide chart up to `lines` (three) lines of `max` characters, broken
  * between words, the last line cut with an ellipsis only when the name still does not fit; on a narrow one, one
  * line cut with an ellipsis. The tooltip and the point's actions keep the whole name.
  */
-export function wrapCategoryLabel(label: string, narrow = false, max = narrow ? NARROW_LABEL_CHARS : LABEL_LINE_CHARS, lines = narrow ? 1 : 2): string[] {
+export const WIDE_LABEL_LINES = 3;
+export function wrapCategoryLabel(label: string, narrow = false, max = narrow ? NARROW_LABEL_CHARS : LABEL_LINE_CHARS, lines = narrow ? 1 : WIDE_LABEL_LINES): string[] {
   const words = label.trim().split(/\s+/).filter(Boolean);
   const out: string[] = [];
   let i = 0;
@@ -48,7 +55,8 @@ export function wrapCategoryLabel(label: string, narrow = false, max = narrow ? 
 /**
  * The category axis: every category keeps its label (`interval` 0; recharts otherwise drops every other one when a
  * short chart, such as the radar's fallback, runs out of height), at the width of the longest label line. A long
- * name wraps to two lines on a wide chart; on a narrow one it is cut to one line with an ellipsis.
+ * name wraps to up to three lines on a wide chart; on a narrow one it is cut to one line with an ellipsis.
+ * `rowHeight` is the height a category needs for its tallest label (40px for two lines, 52px for three).
  */
 export function categoryAxisProps(data: readonly ChartPoint[], narrow = false) {
   const text = (x: string | number) => data.find((p) => p.x === x)?.label ?? String(x);
@@ -59,6 +67,7 @@ export function categoryAxisProps(data: readonly ChartPoint[], narrow = false) {
     tickFormatter: (x: string | number) => lines(x).join(" "),
     lines,
     wraps: data.some((p) => lines(p.x).length > 1),
+    rowHeight: data.some((p) => lines(p.x).length > 2) ? 52 : 40,
   };
 }
 
@@ -94,9 +103,9 @@ export function Bar({
 }) {
   const animate = draw && !reducedMotion();
   const narrow = useMediaQuery(PHONE);
-  const { lines, wraps, ...axis } = categoryAxisProps(data, narrow);
-  // Two-line labels need a taller row so they never touch the next category's.
-  const chartHeight = wraps ? Math.max(height, data.length * 40) : height;
+  const { lines, wraps, rowHeight, ...axis } = categoryAxisProps(data, narrow);
+  // Wrapped labels need a taller row so they never touch the next category's.
+  const chartHeight = wraps ? Math.max(height, data.length * rowHeight) : height;
   return (
     <>
     <div role="img" aria-label={chartSummary(data, label)} data-labels={narrow ? "one-line" : "wrap"}>
@@ -113,6 +122,7 @@ export function Bar({
           radius={[0, 3, 3, 0]}
           activeBar={hoverBar}
           onClick={(_, index) => onPointClick?.(data[index])}
+          minPointSize={zeroBarMinSize}
           isAnimationActive={animate}
           animationDuration={mMotion.draw}
           animationEasing="ease-out"

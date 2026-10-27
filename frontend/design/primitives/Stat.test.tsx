@@ -12,6 +12,17 @@ describe("Stat", () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
+  it("wraps a long hint inside the tile, and a button tile fills its grid cell instead of growing past it", () => {
+    render(<Stat label="Records to fix" value={25712} hint="30,063 rule failures on them, across 2 objects" onClick={() => undefined} />);
+    const btn = screen.getByRole("button");
+    expect(btn).toHaveClass("w-full", "overflow-hidden", "text-left");
+    const hint = btn.querySelector("[data-stat-hint]")!;
+    expect(hint).toHaveTextContent("30,063 rule failures on them, across 2 objects");
+    expect(hint).not.toHaveClass("truncate");
+    expect(hint).not.toHaveClass("whitespace-nowrap");
+    expect(hint).toHaveClass("min-w-0", "break-words");
+  });
+
   it("hides the value while loading", () => {
     render(<Stat label="Open" value="42" loading />);
     expect(screen.queryByText("42")).not.toBeInTheDocument();

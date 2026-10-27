@@ -33,6 +33,14 @@ import { rampStep } from "../tokens";
 import { readPrefs, subscribePreferences } from "../../lib/preferences";
 
 const SEVERITIES = ["critical", "high", "medium", "low", "pass"] as const;
+
+/** The secondary sorts in words ("age"), for the primary sort header's title: a string header lower-cased, else the column id. */
+function sortingThenLabel<T>(rest: SortingState, table: { getColumn: (id: string) => { columnDef: ColumnDef<T> } | undefined }): string {
+  return rest.map((s) => {
+    const header = table.getColumn(s.id)?.columnDef.header;
+    return (typeof header === "string" && header ? header : s.id).toLowerCase();
+  }).join(", then ");
+}
 const DIV_STEPS = ["neg-2", "neg-1", "mid", "pos-1", "pos-2"] as const;
 
 /** Heat class for a numeric value, or undefined when the value is not a finite number. */
@@ -509,7 +517,11 @@ export function DataTable<T>({
               <tr key={hg.id} aria-rowindex={1}>
                 {hg.headers.map((h) => {
                   const sortable = h.column.getCanSort();
-                  const sorted = h.column.getIsSorted();
+                  // Only the primary sort column shows its direction (and aria-sort, which one column of a grid
+                  // carries); a secondary sort ("then age") is a tie-break, named in the primary header's title.
+                  const primary = h.column.getSortIndex() === 0;
+                  const sorted = primary ? h.column.getIsSorted() : false;
+                  const thenBy = primary ? sortingThenLabel(table.getState().sorting.slice(1), table) : "";
                   const headMeta = layoutMeta(h.column.id, h.column.columnDef.meta as CellMeta | undefined);
                   const headHeat = headMeta?.heat;
                   return (
@@ -527,6 +539,7 @@ export function DataTable<T>({
                         <button
                           type="button"
                           onClick={h.column.getToggleSortingHandler()}
+                          title={thenBy ? `Sorted by this column, then ${thenBy}` : undefined}
                           // A numeric header sits over right-aligned figures: the button fills the cell and packs to the right.
                           className={`flex items-center gap-1 select-none ${headMeta?.numeric ? "w-full justify-end" : ""}`}
                         >

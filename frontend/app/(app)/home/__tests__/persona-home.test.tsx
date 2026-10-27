@@ -199,6 +199,21 @@ describe("PersonaHomePage Brief geometry", () => {
     expect(screen.queryByRole("link", { name: "Fix Controlling" })).toBeNull();
   });
 
+  it("on a phone shows the ledger's verdict as its dot and short label, and the score as its figure, so the action covers neither", async () => {
+    vi.stubGlobal("matchMedia", vi.fn((q: string) => ({ matches: q === "(max-width: 639px)", addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    renderWithQuery(<LeadHomePage />);
+    const ledger = (await screen.findByText("What moves the score")).closest("section, .m-card") as HTMLElement;
+    const grid = await within(ledger).findByRole("grid");
+    const verdicts = grid.querySelectorAll("[data-status='verdict']");
+    expect(verdicts.length).toBeGreaterThan(0);
+    verdicts.forEach((v) => {
+      expect(v).toHaveClass("m-status-dot");
+      expect(v).not.toHaveClass("m-pill");
+    });
+    // No inline ruler beside the score on a phone: the figure alone.
+    expect(grid.querySelector("[data-rule='inline']")).toBeNull();
+  });
+
   it("offers Open, never Fix, to a role that can neither apply nor approve", async () => {
     perms.can = (a) => a === "view" || a === "export";
     vi.spyOn(findingsApi, "getFindings").mockResolvedValue({

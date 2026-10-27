@@ -1,7 +1,7 @@
 // recharts does not lay out under jsdom, so the category axis contract is tested on the props Bar gives it:
 // every category keeps its label (interval 0), and the axis is as wide as the longest label so none is clipped.
 import { describe, expect, it } from "vitest";
-import { LABEL_LINE_CHARS, categoryAxisProps, categoryAxisWidth, wrapCategoryLabel } from "./Bar";
+import { LABEL_LINE_CHARS, categoryAxisProps, categoryAxisWidth, wrapCategoryLabel, zeroBarMinSize } from "./Bar";
 
 describe("Bar category axis", () => {
   it("labels every category, never every other one, at the width of the longest label", () => {
@@ -28,11 +28,20 @@ describe("Bar category labels", () => {
     expect(axis.wraps).toBe(true);
   });
 
-  it("cuts with an ellipsis only what two lines cannot hold", () => {
-    const lines = wrapCategoryLabel("Purchasing info records and source lists for every plant");
-    expect(lines).toHaveLength(2);
+  it("wraps a long name to up to three whole lines, with the taller row it needs", () => {
+    const name = "HCM compatibility pack and employee Business Partner";
+    expect(wrapCategoryLabel(name)).toEqual(["HCM compatibility pack", "and employee Business", "Partner"]);
+    const axis = categoryAxisProps([{ x: name, y: 6 }, { x: "Business Partner / CVI", y: 7 }]);
+    expect(axis.lines(name).join(" ")).toBe(name);
+    expect(axis.rowHeight).toBe(52);
+    expect(categoryAxisProps([{ x: "Universal Journal / General Ledger", y: 3 }]).rowHeight).toBe(40);
+  });
+
+  it("cuts with an ellipsis only what three lines cannot hold", () => {
+    const lines = wrapCategoryLabel("Purchasing info records and source lists for every plant in every company code");
+    expect(lines).toHaveLength(3);
     expect(lines[0]).toBe("Purchasing info records");
-    expect(lines[1].endsWith("…")).toBe(true);
+    expect(lines[2].endsWith("…")).toBe(true);
     for (const l of lines) expect(l.length).toBeLessThanOrEqual(LABEL_LINE_CHARS);
   });
 
@@ -41,5 +50,14 @@ describe("Bar category labels", () => {
     const axis = categoryAxisProps([{ x: "Universal Journal / General Ledger", y: 3 }], true);
     expect(axis.wraps).toBe(false);
     expect(axis.tickFormatter("Universal Journal / General Ledger")).toBe("Universal Journal…");
+  });
+});
+
+describe("Bar zero values", () => {
+  it("gives a zero bar a hair of width so its 0 label is drawn, and leaves other bars as they are", () => {
+    expect(zeroBarMinSize(0)).toBeGreaterThan(0);
+    expect(zeroBarMinSize(0)).toBeLessThan(1);
+    expect(zeroBarMinSize(3)).toBe(0);
+    expect(zeroBarMinSize(null)).toBe(0);
   });
 });

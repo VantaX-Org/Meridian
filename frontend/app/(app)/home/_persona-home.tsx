@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { buildDrillHref, Button, Card, DataTable, DimensionBars, DomainChip, DrillLink, EmptyState, ExportMenu, HomePage, Mono, ObjectMap, Pill, Select, Skeleton, Stat, type HeatmapCell, Status, Score } from "@/design";
+import { buildDrillHref, Button, Card, DataTable, DimensionBars, DomainChip, DrillLink, EmptyState, ExportMenu, HomePage, Mono, ObjectMap, Pill, Select, Skeleton, Stat, type HeatmapCell, Status, Score, useMediaQuery } from "@/design";
 import { getObjects } from "@/lib/api/v1/objects";
 import { getFindings, getFindingsAggregate } from "@/lib/api/findings";
 import { useRunListWith } from "@/hooks/use-run-list";
@@ -91,6 +91,9 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const { can } = useRole();
   const { scopeFilter } = usePermissions();
   const wantsFindings = role !== "basis";
+  // A phone: the ledger's verdict is its dot and short label, and the score its figure alone, so the row's name,
+  // score, verdict and action all fit the card with nothing under the pinned action.
+  const phone = useMediaQuery("(max-width: 639px)");
 
   // No ?run=: the current state of every object. A ?run= deep link pins one run. The objects list answers the
   // tenant's score bands (and the page's loading and error state).
@@ -335,14 +338,14 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     {
       id: "dqs", header: "Score", meta: { numeric: true },
       accessorFn: (o) => o.composite_score ?? -1,
-      cell: ({ row: { original: o } }) => o.composite_score === null ? "—" : (
-        <Score size="sm" value={o.composite_score} bands={bands} />
-      ),
+      cell: ({ row: { original: o } }) => o.composite_score === null ? "—" : phone
+        ? <span className="m-numeric">{o.composite_score.toFixed(1)}</span>
+        : <Score size="sm" value={o.composite_score} bands={bands} />,
     },
     {
       id: "readiness", header: "Verdict",
       accessorFn: (o) => o.composite_score ?? -1,
-      cell: ({ row: { original: o } }) => o.composite_score === null ? <Pill>Not analysed</Pill> : <Status kind="verdict" value={readinessOf(o.composite_score, bands)} />,
+      cell: ({ row: { original: o } }) => o.composite_score === null ? <Pill>Not analysed</Pill> : <Status kind="verdict" value={readinessOf(o.composite_score, bands)} variant={phone ? "dot" : "soft"} />,
     },
     {
       id: "action", header: "", enableSorting: false,

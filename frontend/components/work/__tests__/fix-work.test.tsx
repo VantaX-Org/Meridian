@@ -141,7 +141,7 @@ describe("FixWork", () => {
     expect(await screen.findAllByTestId("work-group")).toHaveLength(1);
     const rows = await screen.findAllByTestId("work-record");
     expect(rows.map((r) => within(r).getAllByText(/Bolt|Nut/)[0].textContent)).toEqual(["Bolt", "Nut"]);
-    expect(rows[1]).toHaveTextContent("MM001 +1");
+    expect(rows[1]).toHaveTextContent("MM001 and 1 more");
     expect(await screen.findByTestId("record-panel")).toBeInTheDocument();
     // The record opens in the run it was found in (the current state names each object's run).
     expect(work.getWorkRecord).toHaveBeenCalledWith("material_master", "MATNR=1", "R1");
@@ -364,6 +364,33 @@ describe("FixWork", () => {
       vi.unstubAllGlobals();
     });
 
+    it("gives the rule its own two-line cell below 1600px: the whole name, its check id under it, no Assignee column", async () => {
+      vi.mocked(work.getWorkRecords).mockResolvedValue({ version_id: "R1", total: 1, total_capped: false, next: null,
+        items: [rec("MATNR=1", { name: "Bolt", issues: 3, top_message: "Cost centre validity start date is mandatory", checks: ["CO003"] })] });
+      renderWithQuery(<FixWork />);
+      const [row] = await screen.findAllByTestId("work-record");
+      const headers = within(screen.getByRole("grid", { name: "Records to fix" })).getAllByRole("columnheader").map((h) => h.textContent);
+      expect(headers).toEqual(["", "Record", "Rule", "Severity", "Age", "Due"]);
+      const name = within(row).getByTestId("work-rule-name");
+      expect(name).toHaveTextContent(/^Cost centre validity start date is mandatory$/);
+      // The name is alone on its line (the id is on the next), in a cell up to 300px wide: no "Cost centre …" at 1440px.
+      expect(name.parentElement).toHaveClass("flex-col", "max-w-[300px]");
+      expect(name.parentElement).not.toHaveClass("w-[160px]");
+      expect(name.nextElementSibling).toHaveTextContent("CO003 and 2 more");
+    });
+
+    it("marks only the primary sort column: Severity shows its arrow, the age tie-break none", async () => {
+      renderWithQuery(<FixWork />);
+      await screen.findAllByTestId("work-record");
+      const grid = screen.getByRole("grid", { name: "Records to fix" });
+      const header = (n: string) => within(grid).getAllByRole("columnheader").find((h) => h.textContent === n)!;
+      expect(header("Severity")).toHaveAttribute("aria-sort", "ascending");
+      expect(header("Severity").querySelector("svg")).not.toBeNull();
+      expect(header("Age")).toHaveAttribute("aria-sort", "none");
+      expect(header("Age").querySelector("svg")).toBeNull();
+      expect(within(header("Severity")).getByRole("button")).toHaveAttribute("title", "Sorted by this column, then age");
+    });
+
     it("ships saved views that set the queue's filters in the URL", async () => {
       search = new URLSearchParams("run=R1&sev=low");
       renderWithQuery(<FixWork />);
@@ -386,6 +413,56 @@ describe("FixWork", () => {
       await waitFor(() => expect(work.downloadFixSheetByObject).toHaveBeenCalledWith(expect.objectContaining({ status: "open" })));
       expect(screen.getByRole("button", { name: "Import fix sheet" })).toBeInTheDocument();
     });
+  });
+});
+
+describe("FixWork Issues pane under the list's filters", () => {
+  const group = (check_id: string, open: number, severity: work.WorkSeverity = "critical"): work.WorkGroup => ({
+    check_id, module: "material_master", severity, dimension: "completeness", message: `Rule ${check_id}`, field: null,
+    records: open, population: 100, proposed: 0, truncated: false, statuses: { to_fix: open }, open,
+  });
+  beforeEach(() => {
+    vi.mocked(work.getWorkGroups).mockResolvedValue({ version_id: "R1", built: true, total: 3,
+      groups: [group("MM001", 50), group("MM002", 40), group("MM003", 30, "high")] });
+  });
+
+  it("with Mine and none of my records, lists no issues instead of every rule's count", async () => {
+    search = new URLSearchParams("mine=1");
+    vi.mocked(work.getWorkRecords).mockResolvedValue({ version_id: "R1", total: 0, total_capped: false, next: null, items: [] });
+    renderWithQuery(<FixWork />);
+    expect(await screen.findByText("No issues on the records these filters show.")).toBeInTheDocument();
+    expect(screen.queryAllByTestId("work-group")).toHaveLength(0);
+    expect(screen.getByText("0 failing rules on these records")).toBeInTheDocument();
+  });
+
+  it("with Mine and the whole list loaded, counts each issue on my records only", async () => {
+    search = new URLSearchParams("mine=1");
+    vi.mocked(work.getWorkRecords).mockResolvedValue({ version_id: "R1", total: 2, total_capped: false, next: null, items: [
+      rec("MATNR=1", { checks: ["MM003"], severity: "high" }), rec("MATNR=2", { checks: ["MM003", "MM002"] }),
+    ] });
+    renderWithQuery(<FixWork />);
+    await waitFor(() => expect(screen.getAllByTestId("work-group")).toHaveLength(2));
+    const groups = screen.getAllByTestId("work-group").map((g) => g.textContent);
+    // Worst first: the critical MM002 (1 of my records), then the high MM003 (2); MM001 is on none of mine.
+    expect(groups[0]).toMatch(/Rule MM002.*1/);
+    expect(groups[1]).toMatch(/Rule MM003.*2/);
+    expect(screen.getByText("2 failing rules on these records")).toBeInTheDocument();
+  });
+
+  it("says it lists every open issue when the filtered list is longer than what is loaded", async () => {
+    search = new URLSearchParams("st=all");
+    vi.mocked(work.getWorkRecords).mockResolvedValue({ version_id: "R1", total: 900, total_capped: false, next: "c1", items: [rec("MATNR=1")] });
+    renderWithQuery(<FixWork />);
+    expect(await screen.findByTestId("work-issues-scope")).toHaveTextContent("Every open issue: these counts do not follow the status.");
+    expect(await screen.findAllByTestId("work-group")).toHaveLength(3);
+  });
+
+  it("asks the groups for Has a suggestion, which they filter themselves", async () => {
+    search = new URLSearchParams("sugg=1");
+    renderWithQuery(<FixWork />);
+    await screen.findAllByTestId("work-record");
+    expect(work.getWorkGroups).toHaveBeenCalledWith(expect.objectContaining({ proposed: true }));
+    expect(screen.queryByTestId("work-issues-scope")).toBeNull();
   });
 });
 
