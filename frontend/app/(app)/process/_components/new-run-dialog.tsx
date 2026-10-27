@@ -30,7 +30,10 @@ export function NewRunDialog({ open, onOpenChange, systemId, systemName, rows, o
   const urlOnly = useSearchParams().get("l1");
   const only = onlyProp ?? urlOnly;
   const hasCompleted = rows.some((r) => r.last_run && r.coverage !== "reference");
-  const [l1s, setL1s] = useState<string[]>(() => (only && rows.some((r) => r.l1 === only) ? [only] : rows.map((r) => r.l1)));
+  // Licence-blocked L1s are never on by default: selecting one made every default "Start run" 402 on a
+  // tenant whose licence lacks its event-log modules (QM/PS on Komatsu), and the dialog read that as
+  // "Could not reach the server." They stay listed, disabled, so the offer and the refusal match.
+  const [l1s, setL1s] = useState<string[]>(() => (only && rows.some((r) => r.l1 === only) ? [only] : rows.filter((r) => !r.licence_blocked).map((r) => r.l1)));
   const [mode, setMode] = useState<RunMode>(hasCompleted ? "incremental" : "full");
   const [periodFrom, setPeriodFrom] = useState("");
   const start = useMutation({
@@ -58,8 +61,9 @@ export function NewRunDialog({ open, onOpenChange, systemId, systemName, rows, o
           <div className="grid grid-cols-2 gap-1">
             {rows.map((r) => (
               <label key={r.l1} className="flex items-center gap-2">
-                <Checkbox aria-label={`Include ${r.l1}`} checked={l1s.includes(r.l1)} onChange={() => toggle(r.l1)} />
+                <Checkbox aria-label={`Include ${r.l1}`} disabled={!!r.licence_blocked} checked={l1s.includes(r.l1)} onChange={() => toggle(r.l1)} />
                 <Mono>{r.l1}</Mono> {r.name}
+                {r.licence_blocked && <span className="m-text-meta m-ink-3">— not in this licence</span>}
               </label>
             ))}
           </div>

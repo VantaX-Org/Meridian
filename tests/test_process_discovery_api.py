@@ -131,6 +131,7 @@ def test_process_discovery_api(app_engine, monkeypatch):  # noqa: F811
             assert {"table": "EKKO", "rows": 1, "partial": False} in by["PTP"]["sources"]
             assert by["SFX"]["coverage"] == "reference" and by["SFX"]["last_run"] is None
             assert by["SFX"]["reason"].startswith("Connect the SuccessFactors")
+            assert all(not r["licence_blocked"] for r in cat)  # no licence state on the request: nothing flagged
             assert (await c.get(f"{BASE}/systems/{uuid.uuid4()}/catalogue", headers=h)).status_code == 404
 
             # start: PTP incremental from the watermark, SFX completes as reference without a job
@@ -159,6 +160,19 @@ def test_process_discovery_api(app_engine, monkeypatch):  # noqa: F811
             r = await c.post(f"{BASE}/systems/{sid}/runs", json={"l1s": ["PTP"]}, headers={**h, "X-Test-Licensed": "fi_gl"})
             assert r.status_code == 402 and rpd.lock_key(tid, sid) not in redis.data
             assert len((await c.get(f"{BASE}/systems/{sid}/runs", headers=viewer)).json()) == n_runs
+
+            # the same rule, readable: a Komatsu-like licence (29 modules minus QM/PS) shows its blocked
+            # processes in the catalogue and its 402 names the module instead of faking a network fault
+            kom = ("fi_gl,mm_purchasing,sd_sales_orders,plant_maintenance,production_planning,"
+                   "ewms_transfer_orders,employee_central,mdg_master_data")
+            cat = {x["l1"]: x for x in (await c.get(f"{BASE}/systems/{sid}/catalogue",
+                                                    headers={**viewer, "X-Test-Licensed": kom})).json()}
+            assert cat["QM"]["licence_blocked"] and cat["PS"]["licence_blocked"]
+            assert not any(cat[l1]["licence_blocked"] for l1 in ("PTP", "OTC", "R2R", "PP", "PM", "WH", "HTR", "MDG"))
+            assert not cat["SFX"]["licence_blocked"]  # no event source on ECC: not minable, but not licence-blocked
+            r = await c.post(f"{BASE}/systems/{sid}/runs", json={"l1s": ["QM", "PTP"]}, headers={**h, "X-Test-Licensed": kom})
+            assert r.status_code == 402 and rpd.lock_key(tid, sid) not in redis.data
+            assert "quality_management" in r.json()["detail"]["detail"]
 
             runs = (await c.get(f"{BASE}/systems/{sid}/runs", headers=viewer, params={"l1": "SFX"})).json()
             assert runs[0]["status"] == "completed" and runs[0]["coverage"] == "reference"

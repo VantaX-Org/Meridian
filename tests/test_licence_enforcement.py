@@ -36,6 +36,17 @@ def test_unlicensed_module_rejected():
     assert ei.value.detail["modules"] == ["material_master"]  # only the unlicensed one
 
 
+def test_entitlement_402_carries_a_human_sentence():
+    # An object detail with only machine keys reads as "Could not reach the server." in every UI
+    # surface — a licence gate disguised as a network fault. The sentence lives in detail["detail"].
+    req = _Req(licensed_modules=["material_master"])
+    with pytest.raises(HTTPException) as ei:
+        enforce_licensed_modules(req, ["quality_management", "material_master"])
+    d = ei.value.detail
+    assert d["error"] == "module_not_licenced" and d["modules"] == ["quality_management"]
+    assert isinstance(d["detail"], str) and "quality_management" in d["detail"]
+
+
 def test_licensed_modules_pass():
     req = _Req(licensed_modules=["business_partner", "material_master"])
     enforce_licensed_modules(req, ["material_master"])  # no raise
