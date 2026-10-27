@@ -13,14 +13,11 @@ export async function getSystems(): Promise<SAPSystemExtended[]> {
   return data;
 }
 
-export async function testConnection(
-  systemId: string
-): Promise<{ status: string; message: string; latency_ms: number }> {
-  const { data } = await apiClient.post(
-    `/api/v1/connectivity/health-check/${systemId}`
-  );
-  return data;
-}
+// testConnection once lived here pointing at POST /connectivity/health-check/{id} — a Celery
+// dispatcher whose only answer is {job_id, status:"queued"}, typed as {status, message, latency_ms}.
+// The system page's button read that as a failed health check, so a healthy system could never
+// pass its own "Test connection". The honest client is lib/api/systems.testConnection (POST
+// /systems/{id}/test, returns the outcome); this module must not resurrect a second vocabulary.
 
 export async function getSystemModules(
   systemId: string
