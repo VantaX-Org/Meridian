@@ -6,14 +6,15 @@
  * Edit via a Drawer. `?extract=1` lands with the Extract drawer open, with each `?object=` picked.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { clsx } from "clsx";
 import { Bar, Button, Card, Checkbox, ConfirmDialog, DataTable, Delta, Drawer, DrillLink, EmptyState, ErrorState, ExportMenu, Field, Input, Line, Mono, Notice, PageHeader, Pill, Select, Skeleton, Stat, Status, Tabs, Tooltip, emptyExportOptions, type Verdict, entityTabs, toVerdict, toast, useBreadcrumbTitle, Score } from "@/design";
-import { HEALTH_LABEL, dqsTrend, latestDqs } from "../_health";
+import { HEALTH_LABEL, dqsTrend, healthReason, latestDqs } from "../_health";
+import { HealthReason } from "../_health-pill";
 import { DqsScore } from "@/components/insight/dqs-score";
 import { ConfigurationTab } from "./config-tab";
 import { CustomObjectsTab } from "./custom-objects-tab";
@@ -63,11 +64,12 @@ const findingsHref = (versionId: string, module?: string) =>
  * The Health stat's hint. An unhealthy connection says why and when it was last checked ("Connection refused,
  * checked 5m ago"); a healthy or untested one says when data last came in.
  */
-function healthHint(s: SAPSystemExtended, hasRuns: boolean): string {
+function healthHint(s: SAPSystemExtended, hasRuns: boolean): ReactNode {
   const failing = s.health_status !== "healthy" && s.health_status !== "unknown";
   if (failing) {
-    const reason = s.health_message?.trim() || "No reason recorded";
-    return `${reason}, ${s.last_health_check ? `checked ${relativeTime(s.last_health_check)}` : "never checked"}`;
+    // The stored reason as its sentence ("SAP RFC library not installed on the server"), the raw code in a tooltip.
+    const checked = s.last_health_check ? `checked ${relativeTime(s.last_health_check)}` : "never checked";
+    return s.health_message?.trim() ? <><HealthReason message={s.health_message} />, {checked}</> : `No reason recorded, ${checked}`;
   }
   return s.last_sync_at ? `Last extracted ${relativeTime(s.last_sync_at)}` : hasRuns ? "Runs read, nothing extracted through the connection yet" : "Nothing extracted yet";
 }
@@ -173,7 +175,8 @@ export default function SystemPage() {
       } else {
         // The cause is the message; the fix is usually the credentials: one click away for whoever may edit
         // the system, a pointer to an admin for everyone else.
-        const cause = `${HEALTH_LABEL[r.status as keyof typeof HEALTH_LABEL] ?? labelOf(r.status)}${r.message ? `: ${r.message}` : ""}`;
+        const reason = healthReason(r.message);
+        const cause = `${HEALTH_LABEL[r.status as keyof typeof HEALTH_LABEL] ?? labelOf(r.status)}${reason ? `: ${reason.text}` : ""}`;
         toast.error(cause, can("manage_systems")
           ? { action: { label: "Update credentials", onClick: () => setEditOpen(true) } }
           : { description: "Ask an admin to update the credentials." });
@@ -781,9 +784,11 @@ function Health({ id, system, canSync, canManage, onChanged, test, testLabel }: 
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
 
-  const verdict = system.health_status === "healthy"
+  const verdict: ReactNode = system.health_status === "healthy"
     ? `The connection is healthy${system.last_health_check ? `, checked ${relativeTime(system.last_health_check)}` : ""}.`
-    : `The connection is ${HEALTH_LABEL[system.health_status].toLowerCase()}${system.health_message ? `: ${system.health_message}` : ""}.`;
+    : system.health_message?.trim()
+      ? <>The connection is {HEALTH_LABEL[system.health_status].toLowerCase()}: <HealthReason message={system.health_message} />.</>
+      : `The connection is ${HEALTH_LABEL[system.health_status].toLowerCase()}.`;
 
   return (
     <div className="flex flex-col gap-4">

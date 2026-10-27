@@ -18,10 +18,24 @@ export interface CellMeta {
   priority?: "low";
 }
 
-/** Classes DataTable puts on a column's header and body cells for `sticky` and `priority`. */
+/** Column ids that hold a row's action ("Open", "Fix"): DataTable pins them to the right edge unless told otherwise. */
+const ACTION_COLUMN_IDS = new Set(["action", "actions"]);
+
+/**
+ * A column's meta as DataTable lays it out: an action column (id `action` or `actions`) is pinned to the right
+ * edge by default, so on a phone a table wider than its card scrolls under the action and never clips it ("Ope").
+ */
+export function layoutMeta(id: string, meta: CellMeta | undefined): CellMeta | undefined {
+  return ACTION_COLUMN_IDS.has(id) && meta?.sticky === undefined ? { ...meta, sticky: "end" } : meta;
+}
+
+/**
+ * Classes DataTable puts on a column's header and body cells for `sticky` and `priority`. A pinned action keeps to
+ * one line, so "Open" never breaks or wraps beside a long name.
+ */
 export function columnLayoutClass(meta: CellMeta | undefined): string {
   return [
-    meta?.sticky === "start" ? "sticky left-0" : meta?.sticky === "end" ? "sticky right-0" : "",
+    meta?.sticky === "start" ? "sticky left-0" : meta?.sticky === "end" ? "sticky right-0 whitespace-nowrap" : "",
     meta?.priority === "low" ? "max-[640px]:hidden" : "",
   ].filter(Boolean).join(" ");
 }

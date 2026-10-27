@@ -678,6 +678,8 @@
 
 /* DataTable keyboard cursor */
 .m-row-active { outline: 2px solid var(--m-accent); outline-offset: -2px; }
+/* A table wider than its card: the pinned action column carries a divider, so what scrolls under it reads as scrolled. */
+.m-table-scroll[data-overflow-x="true"] :is(td, th).sticky.right-0 { box-shadow: inset 1px 0 0 var(--m-line-strong); }
 .m-stat-link { text-align: left; cursor: pointer; }
 
 /* ---------- Ink and type utilities for app/ (pages carry no inline style; DESIGN.md "No inline style").

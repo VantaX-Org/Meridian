@@ -20,6 +20,14 @@ describe("data-display primitives", () => {
     expect(screen.getByLabelText("critical")).toBeInTheDocument();
   });
 
+  it("SeverityDot labelled shows the severity word beside the shape from sm up, named once for assistive tech", () => {
+    render(<SeverityDot severity="high" labelled />);
+    const word = screen.getByText("High");
+    expect(word).toHaveClass("hidden", "sm:inline");
+    expect(word).toHaveAttribute("aria-hidden");
+    expect(screen.getAllByLabelText("high")).toHaveLength(1);
+  });
+
   it("Delta renders a signed value", () => {
     render(<Delta value={-3} />);
     expect(screen.getByText("-3.0")).toBeInTheDocument();

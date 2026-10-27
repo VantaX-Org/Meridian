@@ -210,7 +210,7 @@ export function Workbench({ object, run }: { object: string; run: string }) {
                     testId="workbench-rule-row"
                     label={
                       <span className="flex min-w-0 items-center gap-2">
-                        {isSeverity(r.severity) ? <SeverityDot severity={r.severity} /> : null}
+                        {isSeverity(r.severity) ? <SeverityDot severity={r.severity} labelled /> : null}
                         <Mono>{r.check_id}</Mono>
                         {r.name ? <span className="min-w-0 flex-1 truncate font-normal m-ink-2">{r.name}</span> : null}
                       </span>

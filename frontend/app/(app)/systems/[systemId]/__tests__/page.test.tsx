@@ -397,6 +397,16 @@ describe("system detail page", () => {
     await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
   });
 
+  it("says why the connection fails as a sentence, with the stored reason code only in the tooltip", async () => {
+    mockHappyPath();
+    const raw = "pyrfc_not_installed: build the API image with the SAP NW RFC SDK";
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([{ ...SYSTEM, health_status: "unreachable", health_message: raw } as SAPSystemExtended]);
+    renderWithQuery(<SystemPage />);
+    const sentence = await screen.findByText("SAP RFC library not installed on the server");
+    expect(sentence).toHaveAttribute("title", raw);
+    expect(screen.queryByText(new RegExp("pyrfc_not_installed"))).not.toBeInTheDocument();
+  });
+
   it("lands on the pilot tab when ?tab=pilot is present", async () => {
     tab = "pilot";
     mockHappyPath();

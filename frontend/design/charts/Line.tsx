@@ -130,24 +130,25 @@ export function tickText(label: string, dropYear: boolean, seconds = false): str
 }
 
 /**
- * Each x's tick text, unique and always a date: when two points shorten to the same text (runs a minute apart), a
- * later one reads by its finer text (`finer`, the time to the second) when that is new on the axis, else its tick
- * is left blank; the tooltip still names it in full. Never an ordinal: "#3 #2 #3" read as run numbers.
+ * Each x's tick text in ONE format for the whole axis: the short text (`text`, minutes) when every point reads
+ * differently by it, else the finer text (`finer`, the time to the second) for every point. A point whose tick
+ * would still repeat one already on the axis is left blank; the tooltip still names it in full. Never an ordinal
+ * ("#3 #2 #3" read as run numbers), never "16 Oct, 03:01" beside "16 Oct, 03:01:48".
  */
 export function uniqueTicks(
   xs: readonly (string | number)[],
   text: (x: string | number) => string,
   finer?: (x: string | number) => string,
 ): Map<string | number, string> {
+  const coarse = xs.map(text);
+  const pick = new Set(coarse).size === coarse.length || !finer ? coarse : xs.map(finer);
   const used = new Set<string>();
   const out = new Map<string | number, string>();
-  for (const x of xs) {
-    const t = text(x);
-    const f = finer?.(x);
-    const tick = !used.has(t) ? t : f && !used.has(f) ? f : "";
-    if (tick) used.add(tick);
-    out.set(x, tick);
-  }
+  xs.forEach((x, i) => {
+    const t = pick[i];
+    out.set(x, used.has(t) ? "" : t);
+    used.add(t);
+  });
   return out;
 }
 

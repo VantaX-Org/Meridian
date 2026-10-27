@@ -157,7 +157,7 @@ export function PairReview({ pairId, onDone, onSkip }: { pairId: string; onDone:
         label={text || "blank"}
         checked={picks[r.field] === side}
         onChange={() => setUserPicks((p) => ({ ...p, [r.field]: side }))}
-        aria-label={`Use ${side === "a" ? "record A" : "record B"} value for ${r.field}`}
+        aria-label={`Keep ${r.field} from record ${side === "a" ? "A" : "B"}`}
       />
     );
   };
@@ -237,8 +237,8 @@ export function PairReview({ pairId, onDone, onSkip }: { pairId: string; onDone:
         {decidable ? (
           <div className="flex flex-wrap items-center gap-4 m-text-body" role="radiogroup" aria-label="Record that keeps its key">
             <span className="m-ink-3">Keeps its key</span>
-            <Radio name="survivor" label={`Record A ${d.a}`} checked={survivor === "a"} onChange={() => { setSurvivorPick("a"); setUserPicks({}); }} />
-            <Radio name="survivor" label={`Record B ${d.b}`} checked={survivor === "b"} onChange={() => { setSurvivorPick("b"); setUserPicks({}); }} />
+            <Radio name="survivor" label={`Record A ${d.a}`} aria-label={`Keep the key of record A, ${d.a}`} checked={survivor === "a"} onChange={() => { setSurvivorPick("a"); setUserPicks({}); }} />
+            <Radio name="survivor" label={`Record B ${d.b}`} aria-label={`Keep the key of record B, ${d.b}`} checked={survivor === "b"} onChange={() => { setSurvivorPick("b"); setUserPicks({}); }} />
           </div>
         ) : null}
         {preview.isError ? (

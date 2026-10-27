@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { formatDate } from "@/lib/format";
-import { runAxisTicks } from "@/lib/run-axis";
+import { runAxisTicks, runOptionLabels } from "@/lib/run-axis";
 
 const run = (id: string, run_at: string) => ({ id, run_at });
 
@@ -30,5 +30,22 @@ describe("runAxisTicks", () => {
     const t = runAxisTicks([run("b", "2026-10-16T03:01:18Z"), run("a", "2026-10-16T03:01:18Z")]);
     expect(new Set(t.values()).size).toBe(2);
     expect([...t.values()].every((v) => / #[12]$/.test(v))).toBe(true);
+  });
+});
+
+describe("runOptionLabels", () => {
+  it("keeps a unique label, and tells runs that share a label apart in one date format", () => {
+    const labels = runOptionLabels([
+      { id: "a", label: "controlling_1k", run_at: "2026-10-16T05:17:01Z" },
+      { id: "b", label: "controlling_1k", run_at: "2026-10-16T05:17:02Z" },
+      { id: "c", label: "controlling_1k", run_at: "2026-10-15T08:00:00Z" },
+      { id: "d", label: "fi_gl_1k", run_at: "2026-10-16T05:17:01Z" },
+      { id: "e", label: null, run_at: "2026-10-14T10:00:00Z" },
+    ]);
+    expect(labels.get("a")).toBe("controlling_1k, 16 Oct 2026, 05:17:01");
+    expect(labels.get("b")).toBe("controlling_1k, 16 Oct 2026, 05:17:02");
+    expect(labels.get("c")).toBe("controlling_1k, 15 Oct 2026, 08:00:00");
+    expect(labels.get("d")).toBe("fi_gl_1k");
+    expect(labels.get("e")).toBe("14 Oct 2026, 10:00");
   });
 });

@@ -191,9 +191,11 @@ describe("Reviewing one pair", () => {
     const merge = vi.spyOn(matchReviewApi, "mergePair").mockImplementation(async (_id, body) =>
       body.overrides && Object.keys(body.overrides).length ? preview("North Mill Ltd", "steward_override") : preview("North Mill", "source_priority"));
     renderWithQuery(<GoldenRecordMergePage />);
-    const pick = await screen.findByRole("radio", { name: "Use record B value for NAME_ORG1" });
+    const pick = await screen.findByRole("radio", { name: "Keep NAME_ORG1 from record B" });
     await waitFor(() => expect(merge).toHaveBeenCalledWith("p1", { survivor: "BP-1", dry_run: true }));
-    expect(screen.getByRole("radio", { name: "Use record A value for NAME_ORG1" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Keep NAME_ORG1 from record A" })).toBeChecked();
+    // The survivor choice is named too, never a bare radio.
+    expect(screen.getByRole("radio", { name: "Keep the key of record A, BP-1" })).toBeChecked();
     fireEvent.click(pick);
     await waitFor(() => expect(merge).toHaveBeenCalledWith("p1", { survivor: "BP-1", overrides: { NAME_ORG1: "North Mill Ltd" }, dry_run: true }));
     expect(await screen.findByText("Your pick")).toBeInTheDocument();

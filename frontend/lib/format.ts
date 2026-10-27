@@ -206,56 +206,6 @@ export function systemTypeLabel(type: string | null | undefined): string {
   return SYSTEM_TYPE_LABELS[type] ?? labelOf(type);
 }
 
-/**
- * Axis labels for a run series keyed by run id: the date, or date and time when two runs share a day, with seconds
- * when two share a minute, and an ordinal ("#2", in run order) when even the second is shared.
- * Run labels are user-supplied upload names, so they never become ticks; this is the one tick formatter.
- */
-export function runAxisLabels(runs: readonly { id: string; run_at: string | null | undefined }[]): Map<string, string> {
-  const kinds = ["date", "datetime", "seconds"] as const;
-  const tally = kinds.map((k) => {
-    const m = new Map<string, number>();
-    for (const r of runs) {
-      const key = formatDate(r.run_at, k);
-      m.set(key, (m.get(key) ?? 0) + 1);
-    }
-    return m;
-  });
-  const out = new Map<string, string>();
-  const ordinal = new Map<string, number>();
-  const ordered = [...runs].sort((a, b) => (a.run_at ?? "").localeCompare(b.run_at ?? ""));
-  for (const r of ordered) {
-    const level = kinds.findIndex((k, i) => (tally[i].get(formatDate(r.run_at, k)) ?? 0) <= 1);
-    if (level >= 0) {
-      out.set(r.id, formatDate(r.run_at, kinds[level]));
-      continue;
-    }
-    const key = formatDate(r.run_at, "seconds");
-    const n = (ordinal.get(key) ?? 0) + 1;
-    ordinal.set(key, n);
-    out.set(r.id, key === "—" ? key : `${key} #${n}`);
-  }
-  return out;
-}
-
-/**
- * Option labels for a run picker: the run's label, and where two runs share a label, the label with the run's
- * date (disambiguated as on the axis), so 19 runs of "controlling_1k" read as 19 different options.
- */
-export function runOptionLabels(runs: readonly { id: string; label?: string | null; run_at: string | null | undefined }[]): Map<string, string> {
-  const base = (r: (typeof runs)[number]) => r.label || formatDate(r.run_at, "datetime");
-  const groups = new Map<string, (typeof runs)[number][]>();
-  for (const r of runs) groups.set(base(r), [...(groups.get(base(r)) ?? []), r]);
-  const out = new Map<string, string>();
-  for (const [name, group] of groups) {
-    if (group.length === 1) { out.set(group[0].id, name); continue; }
-    const when = runAxisLabels(group);
-    // A label that already is the date is replaced by the finer date, never repeated beside it.
-    for (const r of group) out.set(r.id, r.label ? `${name}, ${when.get(r.id)}` : when.get(r.id) ?? name);
-  }
-  return out;
-}
-
 /** Rule ids named in a DQS cap reason ("2 critical failures over tolerance (MM140: 3.2% of MARA rows; ...)"). */
 export function capRuleIds(reason: string | null | undefined): string[] {
   if (!reason) return [];

@@ -137,6 +137,8 @@ describe("ObjectDetailPage", () => {
     const rules = await screen.findAllByTestId("workbench-rule-row");
     expect(rules.map((r) => r.textContent)).toEqual([expect.stringContaining("mm_missing_desc"), expect.stringContaining("mm_bad_uom")]);
     expect(rules[0]).toHaveAttribute("aria-current", "true");
+    // Each rule says its severity in words beside the shape, not by shape alone.
+    for (const r of rules) expect(within(r).getByText(/^(Critical|High|Medium|Low)$/)).toHaveClass("sm:inline");
     expect(screen.getByTestId("dimension-bars")).toBeInTheDocument();
   });
 
@@ -188,6 +190,9 @@ describe("ObjectDetailPage", () => {
     renderWithQuery(<ObjectDetailPage />);
     expect(await screen.findByText("Description is mandatory")).toBeInTheDocument();
     expect(screen.getAllByText("mm_missing_desc")).toHaveLength(1);
+    // The severity column says the word beside the shape, not the shape alone.
+    const row = screen.getByText("Description is mandatory").closest("tr")!;
+    expect(within(row).getByText(/^(Critical|High|Medium|Low)$/)).toHaveClass("sm:inline");
   });
 
   it("makes Records to fix the Fix work queue with this object and run fixed, without the strip repeating its tiles", async () => {

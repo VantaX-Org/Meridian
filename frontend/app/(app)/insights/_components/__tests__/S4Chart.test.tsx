@@ -9,19 +9,14 @@ vi.mock("@/design", async (orig) => ({
   Bar: ({ data, height }: { data: ChartPoint[]; height: number }) => { seen.data = data; seen.height = height; return null; },
 }));
 
-import { S4Chart, axisLabel } from "../RunAnalyses";
+import { S4Chart } from "../RunAnalyses";
 
 describe("S4Chart axis labels", () => {
-  it("cuts a long area name to one axis line and keeps the whole name as the point", () => {
+  it("hands Bar the whole area name, which Bar wraps to two lines rather than cutting it", () => {
     const area = (label: string, n: number) => ({ area: label, label, failing: n, blocking_failing: n, warning_failing: 0 }) as never;
-    render(<S4Chart areas={[area("Warehouse Management to EWM", 7), area("Purchasing info records and source lists", 2), area("Quality management", 1)]} />);
-    expect(seen.data.map((p) => p.x)).toEqual(["Warehouse Management to EWM", "Purchasing info records and source lists", "Quality management"]);
-    expect(seen.data.map((p) => p.label)).toEqual(["Warehouse Management to…", "Purchasing info records…", "Quality management"]);
-    for (const p of seen.data) expect((p.label ?? "").length).toBeLessThanOrEqual(24);
+    render(<S4Chart areas={[area("Universal Journal / General Ledger", 7), area("Purchasing info records and source lists", 2), area("Quality management", 1)]} />);
+    expect(seen.data.map((p) => p.x)).toEqual(["Universal Journal / General Ledger", "Purchasing info records and source lists", "Quality management"]);
+    expect(seen.data.every((p) => p.label === undefined)).toBe(true);
     expect(seen.height).toBeGreaterThanOrEqual(3 * 28);
-  });
-
-  it("leaves a short label whole", () => {
-    expect(axisLabel("Business Partner / CVI")).toBe("Business Partner / CVI");
   });
 });

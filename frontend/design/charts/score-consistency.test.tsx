@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { ObjectMap, mapLayout } from "./ObjectMap";
-import { uniqueTicks } from "./Line";
+import { tickText, uniqueTicks } from "./Line";
 import { heroLabels } from "../primitives/Rule";
 
 describe("ObjectMap layout", () => {
@@ -36,12 +36,26 @@ describe("ObjectMap layout", () => {
 });
 
 describe("Line ticks", () => {
-  it("never repeats a tick and never reads as an ordinal: a later point sharing a minute shows its seconds, else no tick", () => {
+  it("never repeats a tick and never reads as an ordinal: a repeat is left blank", () => {
     const ticks = uniqueTicks(["a", "b", "c", "d"], (x) => (x === "d" ? "17 Oct, 09:00" : "16 Oct, 05:17"));
     expect([...ticks.values()]).toEqual(["16 Oct, 05:17", "", "", "17 Oct, 09:00"]);
-    const finer = uniqueTicks(["a", "b", "c"], () => "16 Oct, 05:17", (x) => `16 Oct, 05:17:${x === "a" ? "01" : x === "b" ? "09" : "09"}`);
-    expect([...finer.values()]).toEqual(["16 Oct, 05:17", "16 Oct, 05:17:09", ""]);
+    const finer = uniqueTicks(["a", "b", "c"], () => "16 Oct, 05:17", (x) => `16 Oct, 05:17:${x === "a" ? "01" : "09"}`);
+    expect([...finer.values()]).toEqual(["16 Oct, 05:17:01", "16 Oct, 05:17:09", ""]);
     expect([...finer.values()].some((t) => t.startsWith("#"))).toBe(false);
+  });
+  it("uses one precision for the whole axis: every tick to the second when two runs share a minute", () => {
+    const labels: Record<string, string> = {
+      a: "2 Oct, 05:08:12", b: "16 Oct, 03:00:45", c: "16 Oct, 03:01:18", d: "16 Oct, 03:01:39", e: "16 Oct, 05:17:46",
+    };
+    const ticks = [...uniqueTicks(Object.keys(labels), (x) => tickText(labels[x], true), (x) => tickText(labels[x], true, true)).values()];
+    expect(ticks).toEqual(["2 Oct, 05:08:12", "16 Oct, 03:00:45", "16 Oct, 03:01:18", "16 Oct, 03:01:39", "16 Oct, 05:17:46"]);
+    const shape = (t: string) => t.replace(/\d/g, "9").replace(/^9 /, "99 ");
+    expect(new Set(ticks.map(shape)).size).toBe(1);
+  });
+  it("keeps minutes for every tick when minutes already tell the runs apart", () => {
+    const labels: Record<string, string> = { a: "2 Oct, 05:08:12", b: "16 Oct, 03:00:45", c: "16 Oct, 03:05:18" };
+    const ticks = [...uniqueTicks(Object.keys(labels), (x) => tickText(labels[x], true), (x) => tickText(labels[x], true, true)).values()];
+    expect(ticks).toEqual(["2 Oct, 05:08", "16 Oct, 03:00", "16 Oct, 03:05"]);
   });
 });
 
