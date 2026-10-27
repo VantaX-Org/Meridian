@@ -176,6 +176,8 @@ export async function getPrescriptiveAnalytics(params?: {
   type?: NextBestAction["type"];
   /** The run whose findings the actions come from; default the latest finished run. */
   version_id?: string;
+  /** One object's actions: its findings only (no cleaning item or exception names an object). */
+  module?: string;
 }): Promise<PrescriptiveResponse> {
   const { data } = await apiClient.get<PrescriptiveResponse>(
     "/api/v1/analytics/prescriptive",

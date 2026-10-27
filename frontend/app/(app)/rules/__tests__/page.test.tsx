@@ -159,27 +159,49 @@ describe("rules page state param", () => {
   });
 });
 
-describe("rule enable switch", () => {
-  it("toggles optimistically and rolls back when the update fails", async () => {
+describe("rule on/off row action", () => {
+  it("has no inline switch; Turn off asks first and does nothing until confirmed", async () => {
+    vi.spyOn(rulesApi, "getRules").mockResolvedValue({ rules: [RULE], total: 1, limit: 1000, offset: 0 });
+    vi.spyOn(rulesApi, "getRulesSummary").mockResolvedValue({ summary: [] });
+    const update = vi.spyOn(rulesApi, "updateRule").mockResolvedValue({ ...RULE, enabled: false });
+    renderWithQuery(<RulesPage />);
+    const action = await screen.findByRole("button", { name: "Turn off Vendor number is mandatory" });
+    expect(screen.queryByRole("switch")).toBeNull();
+    const user = userEvent.setup();
+    await user.click(action);
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("Turn this rule off?");
+    expect(update).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "Keep as is" }));
+    expect(update).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Turn off Vendor number is mandatory" }));
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Turn off" }));
+    expect(update).toHaveBeenCalledWith("r1", { enabled: false });
+  });
+
+  it("rolls back when the confirmed update fails", async () => {
     vi.spyOn(rulesApi, "getRules").mockResolvedValue({ rules: [RULE], total: 1, limit: 1000, offset: 0 });
     vi.spyOn(rulesApi, "getRulesSummary").mockResolvedValue({ summary: [] });
     const update = vi.spyOn(rulesApi, "updateRule").mockRejectedValue(new Error("nope"));
     renderWithQuery(<RulesPage />);
-    const sw = await screen.findByRole("switch", { name: "On: Vendor number is mandatory" });
-    expect(sw).toHaveAttribute("aria-checked", "true");
-    await userEvent.setup().click(sw);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Turn off Vendor number is mandatory" }));
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Turn off" }));
     expect(update).toHaveBeenCalledWith("r1", { enabled: false });
-    await waitFor(() => expect(screen.getByRole("switch", { name: /: Vendor number is mandatory$/ })).toHaveAttribute("aria-checked", "true"));
+    expect(await screen.findByRole("button", { name: "Turn off Vendor number is mandatory" })).toBeInTheDocument();
   });
 
-  it("flips the switch state when the update succeeds", async () => {
-    let enabled = true;
-    vi.spyOn(rulesApi, "getRules").mockImplementation(async () => ({ rules: [{ ...RULE, enabled }], total: 1, limit: 1000, offset: 0 }));
+  it("ranks by records affected, with Failing records and Last run columns", async () => {
+    const few: Rule = { ...RULE, id: "r2", name: "AP002: Few failures", last_pass_rate: 0, last_affected_count: 3, last_run_at: "2026-10-01T00:00:00Z" };
+    const many: Rule = { ...RULE, id: "r3", name: "AP003: Many failures", last_pass_rate: 50, last_affected_count: 1200, last_run_at: "2026-10-01T00:00:00Z" };
+    vi.spyOn(rulesApi, "getRules").mockResolvedValue({ rules: [few, many], total: 2, limit: 1000, offset: 0 });
     vi.spyOn(rulesApi, "getRulesSummary").mockResolvedValue({ summary: [] });
-    vi.spyOn(rulesApi, "updateRule").mockImplementation(async () => { enabled = false; return { ...RULE, enabled }; });
     renderWithQuery(<RulesPage />);
-    const sw = await screen.findByRole("switch", { name: /: Vendor number is mandatory$/ });
-    await userEvent.setup().click(sw);
-    await waitFor(() => expect(screen.getByRole("switch", { name: "Off: Vendor number is mandatory" })).toHaveAttribute("aria-checked", "false"));
+    await screen.findByText("Many failures");
+    expect(screen.getByRole("columnheader", { name: /Failing records/ })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: /Last run/ })).toBeInTheDocument();
+    const names = screen.getAllByText(/^(Many|Few) failures$/).map((n) => n.textContent);
+    expect(names).toEqual(["Many failures", "Few failures"]);
+    expect(screen.getByText("1,200")).toBeInTheDocument();
   });
 });

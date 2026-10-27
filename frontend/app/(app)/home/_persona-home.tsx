@@ -4,9 +4,10 @@ import { useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { buildDrillHref, Button, Card, DataTable, DimensionBars, DomainChip, DrillLink, EmptyState, ExportMenu, HomePage, Mono, ObjectMap, Pill, Select, Skeleton, Stat, type HeatmapCell, Status, Score } from "@/design";
+import { buildDrillHref, Button, Card, DataTable, DimensionBars, DomainChip, DrillLink, EmptyState, ExportMenu, HomePage, Mono, ObjectMap, Pill, Select, Skeleton, Stat, type HeatmapCell, Status, Score, useMediaQuery } from "@/design";
+import { RuleCell } from "@/components/fix/rule-cell";
 import { getObjects } from "@/lib/api/v1/objects";
 import { getFindings, getFindingsAggregate } from "@/lib/api/findings";
 import { useRunListWith } from "@/hooks/use-run-list";
@@ -25,17 +26,18 @@ import { RunAnalysis } from "@/app/(app)/insights/_components/RunAnalysis";
 import { useAiProposals } from "@/app/(app)/rules/drafts/ai-proposals";
 import { HomeOnboarding } from "@/components/help/home-onboarding";
 import { RouteInsight } from "@/components/insight/route-insight";
+import { NextBestActionCard } from "@/components/insight/next-best-action";
 import { dqsExplanation, useDqsInputs } from "@/components/insight/dqs-score";
 import { verdictSentence, type NarrativeInput } from "@/lib/home-narrative";
 import {
-  runCap, capRuleCount, capRules, cappedReason, dimensionHeatmapCells, objectRecords, runDqs, runDimensions, trend, readinessOf, isBelowTarget, BELOW_TARGET,
+  runCap, capSentence, capSummary, cappedReason, dimensionHeatmapCells, runDqs, runDimensions, trend, readinessOf, isBelowTarget, BELOW_TARGET,
   worstObjectsFirst, DIMENSIONS,
 } from "@/lib/home-metrics";
 import {
   criticalHighHref, criticalHighTotal, isScored, latestPerLineage, runObjectsName, stateDqs, stateObjects, stateRows, stateScopeLine, stateSeries, stateSummary,
   type StateRow,
 } from "@/lib/current-state";
-import { formatDate, formatModuleName, labelOf, plural, relativeTime, round1, shortCapReason } from "@/lib/format";
+import { formatModuleName, labelOf, plural, relativeTime, round1 } from "@/lib/format";
 import { previousInLineage, runPageHref } from "@/lib/runs";
 import { fixHref } from "@/lib/drill";
 import { hrefWithRun, runName, runScopeLabel } from "@/lib/run-scope";
@@ -46,6 +48,12 @@ import { openJobTray } from "@/lib/job-tray-bus";
 import { queryKeys } from "@/lib/query-keys";
 import { PERSONA_OPTIONS } from "@/lib/persona";
 import { homeActionFor } from "@/lib/home-action";
+import { doNext } from "@/lib/do-next";
+import { getPredictiveAnalytics } from "@/lib/api/analytics";
+import { forecastSentence, overallForecast } from "@/lib/score-forecast";
+import { MINE_PARAM, useObjectOwners } from "@/hooks/use-object-owners";
+import { OwnerName } from "@/components/owners/OwnerName";
+import { FilterChips } from "@/app/(app)/objects/_header";
 import type { Version } from "@/types/api";
 
 /** The ledger shows this many objects, then a link to all of them; the heatmap draws the same rows. */
@@ -54,7 +62,7 @@ const TABLE_ROWS = 8;
 // Chart bundles load after first paint; the skeleton has the chart's final height.
 const TREND_HEIGHT = 140;
 const HEAT_CELL = 24;
-const Line = dynamic(() => import("@/design/charts/Line").then((m) => m.Line), { ssr: false, loading: () => <Skeleton height={TREND_HEIGHT} /> });
+const ScoreTrend = dynamic(() => import("@/components/insight/score-trend").then((m) => m.ScoreTrend), { ssr: false, loading: () => <Skeleton height={TREND_HEIGHT} /> });
 const Heatmap = dynamic(() => import("@/design/charts/Heatmap").then((m) => m.Heatmap), { ssr: false, loading: () => <Skeleton height={TABLE_ROWS * (HEAT_CELL + 4) + 32} /> });
 
 
@@ -84,6 +92,9 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const { can } = useRole();
   const { scopeFilter } = usePermissions();
   const wantsFindings = role !== "basis";
+  // A phone: the ledger's verdict is its dot and short label, and the score its figure alone, so the row's name,
+  // score, verdict and action all fit the card with nothing under the pinned action.
+  const phone = useMediaQuery("(max-width: 639px)");
 
   // No ?run=: the current state of every object. A ?run= deep link pins one run. The objects list answers the
   // tenant's score bands (and the page's loading and error state).
@@ -115,11 +126,20 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     queryFn: () => getFindings({ ...(pinned ? { version_id: pinned.id } : {}), sort: "impact", limit: 100 }),
     enabled: wantsFindings && !!newest,
   });
+  // Each object's list from its own run, the requests (and cache entries) the Objects page reads: the blocking rule
+  // the ledger names is the objects API's, so Home and Objects never name two different rules for one object.
+  const objectListsQ = useQueries({
+    queries: scopeRuns.map((r) => ({ queryKey: queryKeys.objects(r.id), queryFn: () => getObjects(r.id), retry: false, meta: { ignoreError: true } })),
+  });
   const aggregateQ = useQuery({
     queryKey: queryKeys.findingsAggregate(pinned?.id ?? "current"),
     queryFn: () => getFindingsAggregate(pinned?.id),
     enabled: wantsFindings && !!newest,
   });
+  // The forecast behind the trend's band (Insights > Forecast): every object's projection, current state only.
+  const forecastQ = useQuery({ queryKey: queryKeys.analyticsPredictive(), queryFn: () => getPredictiveAnalytics(), enabled: !pinnedId, retry: false, meta: { ignoreError: true } });
+  const owners = useObjectOwners();
+  const mine = search.get(MINE_PARAM) === "1";
   // The weights and costliest rules the hero's "Data quality score ⓘ" breakdown reads (components/insight/dqs-score.tsx).
   const dqsInputs = useDqsInputs(pinned?.id, !!aggregateQ.data);
 
@@ -198,6 +218,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   // Pinned: the run's lineage. Current state: every object at its latest run as of each run, so the last step is the delta.
   const trendPoints = pinned ? trend(finished, pinned) : stateSeries(finished, scopeFilter.modules);
   const cap = runCap(merged);
+  const step = doNext(state, { pinned: !!pinned });
   const findings = (findingsQ.data?.findings ?? []).filter((f) => (!scopeFilter.modules || scopeFilter.modules.has(f.module)) && f.version_id === runOf.get(f.module)?.id);
   const scored = worstObjectsFirst(objects);
   const worst = scored[0];
@@ -221,39 +242,32 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const canFix = can("apply") || can("approve");
 
   const capReason = cappedReason(merged);
-  const cappedObjects = state.filter((o) => o.summary.composite_score != null && o.summary.capped).length;
-  const measuredObjects = state.filter((o) => o.summary.composite_score != null).length;
-  // The rules the cap reasons name (else the distinct critical rules of the loaded findings): one list gives both
-  // the count and the names, so "by N critical rules: A, B and M more" always adds up.
-  const reasonRules = capRules(merged);
+  // The cap in the one unit every page uses (lib/home-metrics.ts capSentence): the critical failing rules over
+  // tolerance, each once, and the objects they cap out of those measured. "M more" comes from the same total.
+  const capInfo = capSummary(merged);
+  const reasonRules = capInfo.named;
+  // A reason that names no rule (older runs) names the distinct critical rules of the loaded findings instead.
   const criticalRules = reasonRules.length
     ? reasonRules
     : [...new Map(findings.filter((f) => f.severity === "critical").map((f) => [f.check_id, { check_id: f.check_id, module: f.module }])).values()];
-  // Each capped object counts the rules its reason names, or its critical count when the reason names none, so an
-  // unparsable reason never drops rules; "M more" is derived from this one total, so the line always adds up.
-  const reasonTotal = capRuleCount(merged);
-  const capTotal = reasonTotal || Math.max(cap?.criticals ?? 0, criticalRules.length);
+  const capHead = capSentence(capInfo);
   const namedRules = criticalRules.slice(0, 2);
-  const moreRules = capTotal - namedRules.length;
-  const capLine = cap || capReason ? (
+  const moreRules = capInfo.rules - namedRules.length;
+  const capLine = capHead ? (
     <>
-      {cap ? (
+      {capHead}
+      {namedRules.length > 0 && (
         <>
-          Capped at {cap.cap} by {plural(capTotal, "critical rule")}
-          {namedRules.length > 0 && (
-            <>
-              {": "}
-              {namedRules.map((f, i) => (
-                <span key={f.check_id}>
-                  {i > 0 && ", "}
-                  <DrillLink href={buildDrillHref({ object: f.module, ruleId: f.check_id, run: runIdOf(f.module) })}><Mono>{f.check_id}</Mono></DrillLink>
-                </span>
-              ))}
-              {moreRules > 0 && ` and ${moreRules} more`}
-            </>
-          )}
+          {": "}
+          {namedRules.map((f, i) => (
+            <span key={f.check_id}>
+              {i > 0 && ", "}
+              <DrillLink href={buildDrillHref({ object: f.module, ruleId: f.check_id, run: runIdOf(f.module) })}><Mono>{f.check_id}</Mono></DrillLink>
+            </span>
+          ))}
+          {moreRules > 0 && ` and ${moreRules} more`}
         </>
-      ) : measuredObjects > 1 ? `${cappedObjects} of ${plural(measuredObjects, "object")} capped by critical rules` : `Capped: ${shortCapReason(capReason)}`}
+      )}
     </>
   ) : undefined;
 
@@ -273,13 +287,18 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     </div>
   );
 
-  // Each object's blocking rule: its highest-impact critical finding, else the first rule its cap reason names, else the
-  // rule the objects list names. The words are the finding's own message, else the objects list's rule name.
+  // Each object's blocking rule is the one the Objects page names: the objects API's `blocking_rule_id` from the list
+  // of the object's own run. Only while that list has not loaded (or failed) does Home fall back to the first rule
+  // its cap reason names, then its highest-impact critical finding. The words are the finding's message, else the
+  // list's rule name.
+  const listed = new Map<string, NonNullable<typeof objectsQ.data>["objects"][number]>();
+  scopeRuns.forEach((r, i) => {
+    for (const o of objectListsQ[i]?.data?.objects ?? []) if (runOf.get(o.module)?.id === r.id) listed.set(o.module, o);
+  });
   const blockingByModule = new Map<string, string>();
-  for (const f of findings) if (f.severity === "critical" && !blockingByModule.has(f.module)) blockingByModule.set(f.module, f.check_id);
-  for (const r of reasonRules) if (!blockingByModule.has(r.module)) blockingByModule.set(r.module, r.check_id);
-  const listed = new Map((objectsQ.data?.objects ?? []).map((o) => [o.module, o]));
-  for (const [module, o] of listed) if (o.blocking_rule_id && !blockingByModule.has(module)) blockingByModule.set(module, o.blocking_rule_id);
+  for (const [module, o] of listed) if (o.blocking_rule_id) blockingByModule.set(module, o.blocking_rule_id);
+  for (const r of reasonRules) if (!listed.has(r.module) && !blockingByModule.has(r.module)) blockingByModule.set(r.module, r.check_id);
+  for (const f of findings) if (f.severity === "critical" && !listed.has(f.module) && !blockingByModule.has(f.module)) blockingByModule.set(f.module, f.check_id);
   const findingOf = (module: string, checkId: string) => findings.find((f) => f.module === module && f.check_id === checkId);
   const wordsOf = (module: string, checkId: string): string | undefined => {
     const words = findingOf(module, checkId)?.details?.message ?? (listed.get(module)?.blocking_rule_id === checkId ? listed.get(module)?.blocking_rule_name : undefined);
@@ -289,52 +308,46 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     const f = checkId ? findingOf(module, checkId) : undefined;
     return !!f && (Object.keys(f.value_fix_map ?? {}).length > 0 || (f.record_fixes ?? []).length > 0);
   };
-  // The ledger: what moves the score, ranked by records affected (an object whose records are not attributed sorts last), then by score.
+  // The ledger: what moves the score, ranked by rule failures (an object whose records are not attributed sorts last), then by score.
   const ranked = (role === "steward" ? objects.filter((o) => o.failing_checks > 0) : objects)
-    .filter((o) => o.composite_score !== null)
+    .filter((o) => o.composite_score !== null && (!mine || owners.isMine(o.module)))
     .sort((a, b) => (b.affected_records ?? -1) - (a.affected_records ?? -1) || (a.composite_score ?? 0) - (b.composite_score ?? 0));
   const rows: ObjectRow[] = ranked.slice(0, TABLE_ROWS).map((o) => {
     const blocking = blockingByModule.get(o.module);
     return { ...o, blocking, blockingWords: blocking ? wordsOf(o.module, blocking) : undefined, fixable: isFixable(o.module, blocking) };
   });
-  const runById = new Map(finished.map((v) => [v.id, v]));
   const systemName = (v: Version) => systems.find((x) => x.id === v.metadata?.system_id)?.name;
   const objectHref = (o: Pick<StateRow, "module" | "run_id">) => `/objects/${o.module}?run=${o.run_id}`;
 
   const columns: ColumnDef<ObjectRow>[] = [
     {
       accessorKey: "label", header: "Object",
-      cell: ({ row: { original: o } }) => <span className="inline-flex items-center gap-2 whitespace-nowrap">{o.label}<DomainChip moduleId={o.module} /></span>,
+      cell: ({ row: { original: o } }) => <span className="inline-flex items-center gap-2 sm:whitespace-nowrap">{o.label}<span className="max-sm:hidden"><DomainChip moduleId={o.module} /></span></span>,
     },
     {
-      id: "blocking", header: "Blocking rule", enableSorting: false,
+      id: "blocking", header: "Blocking rule", enableSorting: false, meta: { priority: "low" },
+      // The shared RuleCell: the id whole on its own line (never broken mid-id), the words under it in two lines.
       cell: ({ row: { original: o } }) => o.blocking ? (
-        <span className="inline-flex min-w-0 items-baseline gap-2">
-          <DrillLink href={buildDrillHref({ object: o.module, ruleId: o.blocking, run: o.run_id })}><Mono>{o.blocking}</Mono></DrillLink>
-          {o.blockingWords && <span className="m-ink-3 truncate [max-width:46ch]" title={o.blockingWords}>{o.blockingWords}</span>}
-        </span>
+        <RuleCell id={o.blocking} fallback={o.blockingWords} href={buildDrillHref({ object: o.module, ruleId: o.blocking, run: o.run_id })} className="[max-width:46ch]" />
       ) : "—",
     },
     {
-      id: "run", header: "Run", enableSorting: false,
-      cell: ({ row: { original: o } }) => {
-        const r = runById.get(o.run_id);
-        return r ? <Link href={hrefWithRun(`/home/${role}`, search, r.id)} className="m-ink-3 whitespace-nowrap" title={runLabel(r)} onClick={(e) => e.stopPropagation()}>{[systemName(r), formatDate(r.run_at, "date")].filter(Boolean).join(", ")}</Link> : "—";
-      },
+      id: "owner", header: "Owner", meta: { priority: "low" }, accessorFn: (o) => owners.nameOf(o.module) ?? "",
+      cell: ({ row: { original: o } }) => <OwnerName name={owners.nameOf(o.module)} status={owners.status} />,
     },
     // Summed over the object's failing rules (a record failing two rules counts twice): rule failures, not records.
-    { accessorKey: "affected_records", header: "Rule failures", meta: { numeric: true }, cell: ({ row: { original: o } }) => o.affected_records?.toLocaleString() ?? "—" },
+    { accessorKey: "affected_records", header: "Rule failures", meta: { numeric: true, priority: "low" }, cell: ({ row: { original: o } }) => o.affected_records?.toLocaleString() ?? "—" },
     {
       id: "dqs", header: "Score", meta: { numeric: true },
       accessorFn: (o) => o.composite_score ?? -1,
-      cell: ({ row: { original: o } }) => o.composite_score === null ? "—" : (
-        <Score size="sm" value={o.composite_score} bands={bands} />
-      ),
+      cell: ({ row: { original: o } }) => o.composite_score === null ? "—" : phone
+        ? <span className="m-numeric">{o.composite_score.toFixed(1)}</span>
+        : <Score size="sm" value={o.composite_score} bands={bands} />,
     },
     {
       id: "readiness", header: "Verdict",
       accessorFn: (o) => o.composite_score ?? -1,
-      cell: ({ row: { original: o } }) => o.composite_score === null ? <Pill>Not analysed</Pill> : <Status kind="verdict" value={readinessOf(o.composite_score, bands)} />,
+      cell: ({ row: { original: o } }) => o.composite_score === null ? <Pill>Not analysed</Pill> : <Status kind="verdict" value={readinessOf(o.composite_score, bands)} variant={phone ? "dot" : "soft"} />,
     },
     {
       id: "action", header: "", enableSorting: false,
@@ -346,7 +359,19 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   ];
 
   const objectsCard = role === "basis" ? undefined : (
-    <Card title="What moves the score" meta="Ranked by records affected" padding="sm">
+    <Card
+      title="What moves the score"
+      meta="Ranked by rule failures"
+      padding="sm"
+      actions={owners.hasMine || mine ? (
+        <FilterChips label="Show" value={mine ? "1" : null} options={[{ value: "1", label: "My objects" }]} onChange={(v) => {
+          const params = new URLSearchParams(search.toString());
+          if (v) params.set(MINE_PARAM, "1"); else params.delete(MINE_PARAM);
+          const q = params.toString();
+          router.replace(q ? `/home/${role}?${q}` : `/home/${role}`);
+        }} />
+      ) : undefined}
+    >
       <DataTable
         columns={columns}
         data={rows}
@@ -360,47 +385,57 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         tableId="home-objects"
       />
       <div className="m-text-body px-3 pt-2">
-        <Link href={objectsHref()} className="m-ink-accent">All {objects.length.toLocaleString()} objects</Link>
+        <Link href={objectsHref(mine ? { [MINE_PARAM]: "1" } : {})} className="m-ink-accent">{mine ? "All my objects" : `All ${objects.length.toLocaleString()} objects`}</Link>
       </div>
     </Card>
   );
 
-  // The object map: one tile per object, its area the records, its colour the verdict, its number the score.
+  // The object map: one tile per object, its area what is failing (rule failures, the ledger's count), so the
+  // objects with the most to fix are the largest and come first; its colour the verdict, its number the score.
   const mapItems = objects.map((o) => {
-    const records = objectRecords(runOf.get(o.module), o.module, o.affected_records);
+    const failing = o.affected_records ?? 0;
     return {
       id: o.module,
       label: o.label,
       href: objectHref(o),
       score: o.composite_score,
-      records,
+      records: failing,
       verdict: o.composite_score == null ? ("neutral" as const) : readinessOf(o.composite_score, bands),
-      meta: `${records.toLocaleString()} records`,
+      meta: plural(failing, "rule failure"),
     };
   });
-  const objectMap = mapItems.length ? <ObjectMap items={mapItems} columns={8} rowHeight={52} /> : undefined;
+  const objectMap = mapItems.length ? <ObjectMap items={mapItems} columns={8} rowHeight={52} label="Objects by rule failures and verdict" unit="rule failures" /> : undefined;
 
-  const heatRows = scored.slice(0, TABLE_ROWS);
+  // Every object with a scored run (not only the ledger's top rows): the grid is the whole picture by dimension.
+  const heatRows = scored;
   const heatCells = dimensionHeatmapCells(heatRows, merged, bands);
   // The grid prints each score and tints it by readiness: the number carries the meaning, the hue repeats it.
   const heatTone = new Map(heatCells.map((c) => [`${c.row}:${c.col}`, c.tone]));
+  // The hero's trend: the score over runs with the target and, in the current state, the forecast's band.
+  const forecast = pinned ? [] : overallForecast(forecastQ.data?.forecasts ?? [], new Map(state.flatMap((o) => (o.summary.composite_score == null ? [] : [[o.module, o.summary.composite_score] as const]))));
+  const forecastLine = forecastSentence(forecast);
   const trendCard = (
-      <Card title="Score over runs" meta={pinned ? "Runs of the same source" : "All objects, each at its latest run by then"} padding="sm">
-        {trendPoints.length < 2 ? (
-          <div className="[min-height:140px]"><EmptyState title="The trend starts with the second run" action={can("trigger_sync") ? <Button variant="secondary" render={<Link href="/systems" />}>Run extraction</Button> : undefined} /></div>
-        ) : (
-          <Line
-            data={trendPoints}
-            onPointClick={(point) => { if (point.runId) router.push(runPageHref(point.runId)); }}
-            height={TREND_HEIGHT}
-            dqsThreshold={bands?.target}
-            label={pinned ? "DQS over runs" : "DQS of all objects over runs"}
-          />
-        )}
-      </Card>
+    <div className="flex flex-col gap-1">
+      <p className="m-text-meta m-ink-3">
+        {pinned ? "Score over runs of the same source" : "Score over runs, all objects each at its latest run by then"}
+        {forecastLine ? `. ${forecastLine}` : ""}
+      </p>
+      {trendPoints.length < 2 ? (
+        <EmptyState variant="inline" title="The trend starts with the second run" action={can("trigger_sync") ? <Link href="/systems" className="m-ink-accent">Run extraction</Link> : undefined} />
+      ) : (
+        <ScoreTrend
+          points={trendPoints}
+          target={bands?.target}
+          forecast={forecast}
+          onPointClick={(point) => { if (point.runId) router.push(runPageHref(point.runId)); }}
+          height={TREND_HEIGHT}
+          label={pinned ? "DQS over runs" : "DQS of all objects over runs"}
+        />
+      )}
+    </div>
   );
   const heatmapCard = role !== "basis" && heatCells.length > 0 ? (
-        <Card title="Dimensions by object" padding="sm">
+        <Card title="Dimensions by object" meta="– Not measured" padding="sm">
           <Heatmap
             rows={heatRows.map((o) => o.label)}
             cols={DIMENSIONS.map(formatModuleName)}
@@ -451,7 +486,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     role === "lead" ? (
       <WorkRow>
         <Stat label="Objects below target" value={belowTarget.length} hint={`of ${objects.length}`} tone={belowTargetTone} href={objectsHref({ readiness: BELOW_TARGET })} />
-        <Stat label="Critical and high findings" value={criticalHigh.toLocaleString()} hint={criticalHigh ? "failing rules" : "none"} tone={criticalHigh ? "no-go" : "go"} href={criticalHighLink} />
+        <Stat label="Critical and high failing rules" value={criticalHigh.toLocaleString()} hint={criticalHigh ? undefined : "none"} tone={criticalHigh ? "no-go" : "go"} href={criticalHighLink} />
         <Stat label="Open inbox" value={countsReady ? counts.inbox : "—"} hint={countsReady && !counts.inbox ? "clear" : undefined} href="/inbox" />
       </WorkRow>
     ) : role === "steward" ? (
@@ -487,11 +522,12 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       persona={role}
       state="ready"
       workFirst={role === "steward"}
+      opsFirst={role === "basis"}
       explain={dqsExplanation({ agg: aggregateQ.data, versionId: pinned?.id, cap: cap?.cap, capReason }, dqsInputs)?.explain}
       verdict={{
         dqs,
         cap: cap?.cap,
-        criticals: cap?.criticals,
+        criticals: cap ? capInfo.rules : undefined,
         bands,
         delta: dqs != null && previousDqs != null ? round1(dqs - previousDqs) : null,
         previousLabel: previous ? (pinned ? runLabel(previous) : "before the latest run") : undefined,
@@ -520,6 +556,9 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       lists={lists}
       onboarding={<HomeOnboarding />}
       cells={<RouteInsight />}
+      // The planner's action for the same step the four sentences name (lib/do-next.ts): in the current state, its
+      // object at the run it is read from, never the newest run's object.
+      nextAction={pinned || !step ? <NextBestActionCard run={pinned?.id ?? newest.id} /> : <NextBestActionCard run={step.runId} module={step.module} />}
       headerActions={<>
         <RunAnalysis variant="secondary" />
         <Select

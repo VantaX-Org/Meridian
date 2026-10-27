@@ -78,18 +78,28 @@ const DOT: ReadonlySet<Tone> = new Set(["go", "at-risk", "no-go"]);
 
 /**
  * `<Status kind="verdict" value="at_risk" />`. `variant="solid"` is for the row's primary verdict or severity
- * (one column per table); never mix soft and solid in one column.
+ * (one column per table); never mix soft and solid in one column. `variant="dot"` is the narrow form for a phone
+ * column: the tone's dot and the same short label, no fill, so it fits beside a name without a pinned column covering it.
  */
 export function Status({ kind, value, variant = "soft", count }: {
   kind: StatusKind;
   value: string | null | undefined;
-  variant?: "soft" | "solid";
+  variant?: "soft" | "solid" | "dot";
   /** A count of items in this state, shown after the label ("Critical: 3"). */
   count?: number;
 }) {
   const v = SETS[kind].norm(value);
   const tone: Tone = v ? SETS[kind].map[v].tone : "neutral";
   const solid = variant === "solid";
+  if (variant === "dot") {
+    return (
+      <span className="m-status-dot" data-tone={tone} data-status={kind} data-value={v ?? "unknown"}>
+        {kind === "severity" && v ? <span aria-hidden className="inline-flex"><SeverityDot severity={v as SeverityLevel} /></span>
+          : <span className="m-pill-dot" aria-hidden="true" />}
+        {statusLabel(kind, value)}{count != null ? `: ${count.toLocaleString()}` : null}
+      </span>
+    );
+  }
   return (
     <span className={clsx("m-pill", solid ? `m-pill-solid-${tone}` : `m-pill-${tone}`)} data-status={kind} data-value={v ?? "unknown"}>
       {!solid && kind === "severity" && v ? <span aria-hidden className="inline-flex"><SeverityDot severity={v as SeverityLevel} /></span> : null}

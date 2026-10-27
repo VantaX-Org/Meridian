@@ -7,12 +7,18 @@ import { LEGACY_ROLES, permissionsPayload } from "../../e2e/fixtures/legacy-perm
 describe("nav vs legacy redirects", () => {
   it("never points a nav item at a path that redirects elsewhere", async () => {
     const redirects = await nextConfig.redirects!();
-    const sources = new Set(redirects.map((r) => r.source));
+    // A rule gated on a query (`has`: /inbox?kind=issues) fires only when the href carries that query.
+    const fires = (href: string) => {
+      const [path, query] = href.split("?");
+      const params = new URLSearchParams(query);
+      return redirects.some((r) => r.source === path
+        && (r.has ?? []).every((h) => h.type === "query" && params.get(h.key) === (h.value ?? params.get(h.key)) && params.has(h.key)));
+    };
 
-    const hrefs = NAV_GROUPS.flatMap((g) => flattenNav(g.items).map((i) => i.href.split("?")[0]));
+    const hrefs = NAV_GROUPS.flatMap((g) => flattenNav(g.items).map((i) => i.href));
 
     for (const href of hrefs) {
-      expect(sources.has(href)).toBe(false);
+      expect(fires(href), href).toBe(false);
     }
   });
 });
@@ -233,7 +239,7 @@ describe("resolveNavHref with the viewer's permissions", () => {
   const canOf = (granted: string[]) => (a: string) => granted.includes(a);
   it("sends a home link where the viewer can work, not only where the role points", () => {
     expect(resolveNavHref("/home/lead", "data_steward", canOf(["view"]))).toBe("/home/steward");
-    expect(resolveNavHref("/home/lead", "data_owner", canOf(["approve"]))).toBe("/fix?tab=batches");
+    expect(resolveNavHref("/home/lead", "data_owner", canOf(["approve"]))).toBe("/inbox?kind=approvals");
     expect(resolveNavHref("/home/lead", "data_steward", canOf(["approve", "apply"]))).toBe("/fix");
     expect(resolveNavHref("/home/lead", "admin", canOf([]))).toBe("/home/lead");
     expect(resolveNavHref("/objects", "data_steward", canOf([]))).toBe("/objects");

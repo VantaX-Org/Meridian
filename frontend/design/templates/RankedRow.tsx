@@ -43,7 +43,7 @@ export function RankedRow({ tone, label, meta, magnitude, share, selected, href,
   const body = (
     <>
       <span className="flex w-full min-w-0 items-center gap-2">
-        <span className="m-text-body min-w-0 flex-1 truncate font-medium m-ink">{label}</span>
+        <span className="m-text-body min-w-0 flex-1 truncate font-medium m-ink" title={typeof label === "string" ? label : undefined}>{label}</span>
         {magnitude != null ? <span className="m-numeric shrink-0 font-medium m-ink">{magnitude}</span> : null}
       </span>
       {pct !== null ? (
@@ -51,7 +51,12 @@ export function RankedRow({ tone, label, meta, magnitude, share, selected, href,
           <span className="m-ranked-fill" data-tone={tone} style={{ width: `${pct}%` }} />
         </span>
       ) : null}
-      {meta != null ? <span className="m-text-meta m-ink-3 flex w-full min-w-0 items-center gap-2 truncate">{meta}</span> : null}
+      {/* Text meta ellipsises in its own block (a flex box would clip it without the ellipsis) and keeps the whole in its title. */}
+      {meta == null ? null : typeof meta === "string" ? (
+        <span className="m-text-meta m-ink-3 block w-full min-w-0 truncate" title={meta}>{meta}</span>
+      ) : (
+        <span className="m-text-meta m-ink-3 flex w-full min-w-0 items-center gap-2 truncate">{meta}</span>
+      )}
     </>
   );
   const current = selected ? "true" : undefined;

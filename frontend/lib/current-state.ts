@@ -3,7 +3,8 @@ import type { DQSSummary, Version } from "@/types/api";
 import type { ObjectSummary } from "@/lib/api/v1/objects";
 import type { FindingsAggregate } from "@/lib/api/findings";
 import { DEFAULT_SCORE_BANDS, type ScoreBands } from "@/design/primitives/ScoreRing";
-import { formatDate, formatModuleName, plural, round1, runAxisLabels } from "@/lib/format";
+import { formatDate, formatModuleName, plural, round1 } from "@/lib/format";
+import { runAxisTicks } from "@/lib/run-axis";
 import { isFinished, lineageOf, previousInLineage } from "@/lib/runs";
 import { runDqs, type TrendPoint } from "@/lib/home-metrics";
 
@@ -17,17 +18,42 @@ import { runDqs, type TrendPoint } from "@/lib/home-metrics";
  */
 
 /**
- * Screens that describe the current state when no `?run=` pins one: every home (`/home`, `/home/<persona>`), the
- * Insights overview and the executive summary (`insights/_components/scopeMode.ts` CURRENT_STATE_VIEWS). A chosen
- * run is never carried onto them (components/global-run.tsx), and they name their scope "Current state".
+ * The insight views that describe the current state when no `?run=` pins one: the executive summary,
+ * Progress, Value at risk, Process data readiness, Waves and Duplicates (`insights/_components/scopeMode.ts` reads this
+ * list). Their own header picker names the scope "Current state" and offers one run instead.
+ */
+export const CURRENT_STATE_INSIGHTS: readonly string[] = ["/insights/exec", "/insights/progress", "/insights/impact", "/insights/process", "/insights/readiness", "/insights/duplicates"];
+
+/**
+ * Screens that describe the current state when no `?run=` pins one: every home (`/home`, `/home/<persona>`) and the
+ * insight views in `CURRENT_STATE_INSIGHTS`. A chosen run is never carried onto them (components/global-run.tsx), and
+ * they name their scope "Current state".
  */
 export function isCurrentStateView(pathname: string): boolean {
-  return pathname === "/home" || pathname.startsWith("/home/") || pathname === "/insights" || pathname === "/insights/exec";
+  return pathname === "/home" || pathname.startsWith("/home/") || CURRENT_STATE_INSIGHTS.includes(pathname);
+}
+
+/**
+ * Screens whose default (no `?run=`) is the current state: the current-state views, the objects list and an object
+ * (its own latest run) and Fix work. The scope bar's run picker names that default "Current state", never
+ * "Latest run": every cross-object screen opens on the same scope as Home.
+ */
+export function opensOnCurrentState(pathname: string): boolean {
+  return isCurrentStateView(pathname) || pathname === "/objects" || pathname.startsWith("/objects/") || pathname === "/fix";
+}
+
+/**
+ * Cross-object screens: every screen whose default (no `?run=`, no `?module=`) spans more than one object, i.e. the
+ * current-state views, the objects list and an object (its own latest run), Fix work, every insight view and the
+ * rules list. A run or object chosen on another screen is never carried onto them (components/global-run.tsx): they
+ * open on their default unless the link the user followed names a run or an object itself.
+ */
+export function isCrossObjectView(pathname: string): boolean {
+  return opensOnCurrentState(pathname) || pathname === "/insights" || pathname.startsWith("/insights/") || pathname === "/rules";
 }
 
 /** The insight pages that take their scope from `useInsightScope` (`?run=` and `?module=`); not lineage nor the process designer. */
 const INSIGHT_SCOPED = [
-  "/insights",
   "/insights/duplicates",
   "/insights/exec",
   "/insights/forecast",
@@ -263,7 +289,7 @@ export function currentObjectRows(
 }
 
 /**
- * Failing critical and high checks across the objects: the "Critical and high findings" tile of the current state.
+ * Failing critical and high checks across the objects: the "Critical and high failing rules" tile of the current state.
  * Not "blocking findings": the insights overview's blockers (`blockers.count`) are failing rules that are critical
  * or that the S/4 readiness pack counts as blocking, a different set.
  */
@@ -274,13 +300,16 @@ export function criticalHighTotal(objects: readonly StateObject[]): number {
 /** The `severity` value that lists the findings behind `criticalHighTotal`. */
 export const CRITICAL_AND_HIGH = "critical,high";
 
+/** The current state's critical and high failing records, by rule: Fix work's "Critical and high" severity. */
+export const CRITICAL_AND_HIGH_WORK = "/fix?sev=blocking";
+
 /**
  * The findings behind `criticalHighTotal`: one run's findings tab filtered to critical and high, or (several runs)
- * the current-state findings on the Insights overview, filtered the same way. `module` narrows one run's tab to an
- * object, for a count taken over that object alone.
+ * Fix work's current state filtered to critical and high (`sev=blocking`), grouped by rule. `module` narrows one
+ * run's tab to an object, for a count taken over that object alone.
  */
 export function criticalHighHref(runs: readonly Pick<Version, "id">[], module?: string): string {
-  if (runs.length !== 1) return `/insights?severity=${CRITICAL_AND_HIGH}`;
+  if (runs.length !== 1) return CRITICAL_AND_HIGH_WORK;
   return `/runs/${runs[0].id}?tab=findings${module ? `&module=${encodeURIComponent(module)}` : ""}&severity=${CRITICAL_AND_HIGH}`;
 }
 
@@ -290,7 +319,7 @@ export function criticalHighHref(runs: readonly Pick<Version, "id">[], module?: 
  */
 export function stateSeries(versions: readonly Version[], modules?: ReadonlySet<string> | null): TrendPoint[] {
   const runs = [...versions].filter(isScored).sort((a, b) => -newestFirst(a, b));
-  const ticks = runAxisLabels(runs);
+  const ticks = runAxisTicks(runs);
   const atLineage = new Map<string, Version>();
   const out: TrendPoint[] = [];
   for (const run of runs) {

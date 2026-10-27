@@ -18,6 +18,15 @@ class _Res:
     def scalar(self):
         return self.value
 
+    def scalars(self):
+        return self
+
+    def mappings(self):
+        return self
+
+    def all(self):
+        return self.value
+
 
 class _Db:
     def __init__(self, fix_count, inbox_count, latest=None, to_fix=None):
@@ -29,10 +38,10 @@ class _Db:
     async def execute(self, stmt, params=None):
         sql = str(stmt)
         self.calls.append((sql, params or {}))
-        if "worklist_built_at" in sql:  # the run's work list finished building
-            return _Res(self.to_fix is not None)
-        if "FROM analysis_versions" in sql:
-            return _Res(self.latest)
+        if "jsonb_object_keys" in sql:  # the current state: one object, read from the latest run
+            return _Res([{"module": "material_master", "version_id": self.latest}] if self.latest else [])
+        if "worklist_built_at" in sql:  # the runs whose work list finished building
+            return _Res([self.latest] if self.to_fix is not None else [])
         if "FROM work_records" in sql:
             return _Res(self.to_fix)
         if "cleaning_queue" in sql:
@@ -100,12 +109,17 @@ def test_shell_counts_none_scalar_yields_zero(monkeypatch):
     assert res.json() == {"fix": 0, "fix_source": "cleaning", "inbox": 0}
 
 
-def test_fix_counts_records_to_fix_of_the_latest_run(monkeypatch):
-    db = _Db(fix_count=99, inbox_count=0, latest=str(uuid.uuid4()), to_fix=7)
+def test_fix_counts_records_to_fix_of_the_current_state(monkeypatch):
+    latest = str(uuid.uuid4())
+    db = _Db(fix_count=99, inbox_count=0, latest=latest, to_fix=7)
     res = _get(_app(db, monkeypatch), "/api/v1/shell/counts")
     assert res.json()["fix"] == 7
     assert res.json()["fix_source"] == "work"
     assert not any("cleaning_queue" in s for s, _ in db.calls)
+    # the count reads each object of the current state at its own run, as Fix work does without ?run=
+    sql, params = next((s, p) for s, p in db.calls if "FROM work_records" in s)
+    assert "unnest(CAST(:cm AS text[]), CAST(:cv AS uuid[]))" in sql
+    assert params["cm"] == ["material_master"] and params["cv"] == [latest] and params["tid"] == str(TID)
 
 
 def test_fix_falls_back_to_cleaning_proposals_without_a_work_list(monkeypatch):

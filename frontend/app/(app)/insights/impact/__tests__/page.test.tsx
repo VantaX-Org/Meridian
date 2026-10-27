@@ -3,13 +3,16 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as insightsApi from "@/lib/api/insights";
 import * as settingsApi from "@/lib/api/settings";
+import * as findingsApi from "@/lib/api/findings";
+import * as versionsApi from "@/lib/api/versions";
 import ImpactPage, { impactRows } from "../page";
 
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+const nav = vi.hoisted(() => ({ path: "/insights", qs: "run=v1" }));
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/insights",
+  usePathname: () => nav.path,
   useRouter: () => ({ push: () => {}, replace: () => {}, prefetch: () => {} }),
-  useSearchParams: () => new URLSearchParams("run=v1"),
+  useSearchParams: () => new URLSearchParams(nav.qs),
 }));
 
 // useDayOne() needs LocalAuthProvider context, which this test does not set up;
@@ -34,7 +37,29 @@ function mockEmptyProvenCost() {
   });
 }
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => { nav.path = "/insights"; nav.qs = "run=v1"; vi.restoreAllMocks(); });
+
+describe("ImpactPage without ?run=: the current state", () => {
+  it("reads value at risk over every object at its latest run, and names the failing records' cost at risk beside it", async () => {
+    nav.path = "/insights/impact";
+    nav.qs = "";
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [
+      { id: "v2", label: "ECC PRD", status: "complete", run_at: "2026-10-16T00:00:00Z", metadata: {}, dqs_summary: { material_master: { composite_score: 70 } } },
+    ] } as never);
+    const impact = vi.spyOn(insightsApi, "getImpact").mockResolvedValue({ version_id: null, rows: [] });
+    const proven = mockEmptyProvenCost();
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue({ cost_at_risk: 4840487383 } as never);
+    vi.spyOn(settingsApi, "getCostModel").mockResolvedValue({ currency: "ZAR", features: {} } as never);
+    renderWithQuery(<ImpactPage />);
+    await waitFor(() => expect(impact).toHaveBeenCalledWith({ scope: "current" }));
+    expect(proven).toHaveBeenCalledWith({ scope: "current" });
+    // Two figures, each named: no feature is priced, and the failing records still carry a cost.
+    const figures = await screen.findByTestId("money-figures");
+    await waitFor(() => expect(figures).toHaveTextContent("ZAR 4.84 bn"));
+    expect(figures).toHaveTextContent("Cost at risk");
+    expect(figures).toHaveTextContent("no feature priced yet");
+  });
+});
 
 describe("ImpactPage", () => {
   it("renders one row per feature with its value at risk", async () => {

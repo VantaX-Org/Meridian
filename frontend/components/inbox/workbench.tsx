@@ -1,7 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { Checkbox, RankedRow, type RankedTone } from "@/design";
+import { useState, type ReactNode } from "react";
+import { BELOW_LG, Checkbox, DetailPane, RankedRow, type RankedTone } from "@/design";
 
 /** The severity bar a row carries: the severity of an item, or its SLA state mapped onto the same scale. */
 export type WorkbenchTone = RankedTone;
@@ -21,8 +21,9 @@ export interface WorkbenchItem {
 
 /**
  * The inbox's list with a detail: the ranked list on the left (400px, a severity bar and a checkbox per row), the
- * selected item on the right. Below the container's reading width the two stack. The selection is the caller's
- * (the URL or the j/k focus), so the same state drives the keyboard and the pointer.
+ * selected item on the right. Below lg there is no room for both: the list keeps the page and a picked row opens
+ * its detail as a sheet. The selection is the caller's (the URL or the j/k focus), so the same state drives the
+ * keyboard and the pointer.
  */
 export function Workbench({
   items, selectedId, onSelect, checked, onCheck, onCheckAll, bulk, listLabel, detail, empty,
@@ -43,8 +44,9 @@ export function Workbench({
   empty?: ReactNode;
 }) {
   const ticked = items.filter((i) => checked.has(i.id)).map((i) => i.id);
+  const [sheet, setSheet] = useState(false);
   return (
-    <div className="grid items-start gap-4 [grid-template-columns:minmax(0,1fr)] @5xl:[grid-template-columns:400px_minmax(0,1fr)]" data-testid="inbox-workbench">
+    <div className="grid items-start gap-4 [grid-template-columns:minmax(0,1fr)] lg:[grid-template-columns:400px_minmax(0,1fr)]" data-testid="inbox-workbench">
       <section aria-label={listLabel} className="m-card m-card-sm flex min-w-0 flex-col gap-2">
         {onCheckAll && items.length > 1 ? (
           <label className="flex items-center gap-2 pl-3 m-text-meta m-ink-3">
@@ -62,13 +64,13 @@ export function Workbench({
             {bulk(ticked)}
           </div>
         ) : null}
-        <ul className="flex flex-col [max-height:calc(100vh-260px)] overflow-y-auto" aria-label={listLabel} data-tour="inbox-queue">
+        <ul className="flex flex-col lg:[max-height:calc(100vh-260px)] lg:overflow-y-auto" aria-label={listLabel} data-tour="inbox-queue">
           {items.map((item) => (
             <RankedRow
               key={item.id}
               tone={item.tone}
               selected={item.id === selectedId}
-              onSelect={() => onSelect(item.id)}
+              onSelect={() => { onSelect(item.id); setSheet(true); }}
               lead={<Checkbox aria-label={`Select ${item.label}`} checked={checked.has(item.id)} onChange={(e) => onCheck(item.id, e.target.checked)} />}
               label={item.title}
               meta={item.meta}
@@ -77,9 +79,9 @@ export function Workbench({
           ))}
         </ul>
       </section>
-      <section aria-label="Selected item" className="min-w-0">
-        {selectedId ? detail : empty ?? null}
-      </section>
+      <DetailPane open={sheet} onOpenChange={setSheet} below={BELOW_LG} title={items.find((i) => i.id === selectedId)?.label ?? listLabel} empty={empty}>
+        {selectedId ? detail : null}
+      </DetailPane>
     </div>
   );
 }

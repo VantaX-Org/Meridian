@@ -166,7 +166,8 @@ def update_job(tenant_id: str, job_id: str, *, stage: Optional[str] = None, perc
 
 
 def finish_job(tenant_id: str, job_id: str, status: str = "completed", *, error: Optional[str] = None,
-               result: Optional[dict] = None, message: Optional[str] = None) -> None:
+               result: Optional[dict] = None, message: Optional[str] = None,
+               rows_done: Optional[int] = None, rows_total: Optional[int] = None) -> None:
     client = _redis_client()
     if client is None:
         return
@@ -178,6 +179,11 @@ def finish_job(tenant_id: str, job_id: str, status: str = "completed", *, error:
         job.update({"status": status, "error": (error or None) and str(error)[:500], "result": result,
                     "finished_at": _now(), "percent": job["percent"] if failed else 100,
                     "message": message or ("Failed" if failed else "Complete")})
+        # The final progress payload carries the run's row count; without it every finished job read Rows 0.
+        if rows_done is not None:
+            job["rows_done"] = int(rows_done)
+        if rows_total is not None:
+            job["rows_total"] = int(rows_total)
         if failed:
             job["stages"] = _stages(job["kind"], job.get("stage"), failed=True)
         else:
@@ -242,9 +248,11 @@ def mirror_progress(progress_key: str, payload: dict) -> None:
         tenant_id, job_id = json.loads(raw)
         status = payload.get("status")
         if status == "completed":
-            finish_job(tenant_id, job_id, "completed", message=payload.get("current_step") or None)
+            finish_job(tenant_id, job_id, "completed", message=payload.get("current_step") or None,
+                       rows_done=payload.get("rows_processed"), rows_total=payload.get("total_rows"))
         elif status == "failed":
-            finish_job(tenant_id, job_id, "failed", error=payload.get("error") or payload.get("current_step"))
+            finish_job(tenant_id, job_id, "failed", error=payload.get("error") or payload.get("current_step"),
+                       rows_done=payload.get("rows_processed"), rows_total=payload.get("total_rows"))
         else:
             job = get_job(tenant_id, job_id)
             if job is None:

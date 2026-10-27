@@ -7,12 +7,15 @@ import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, Card, DataTable, DrillLink, EmptyState, Heatmap, Skeleton, Status, statusLabel } from "@/design";
 import { drillLabel, fixHref } from "@/lib/drill";
-import { getS4Readiness, type S4Area } from "@/lib/api/migration";
+import { getCurrentS4Readiness, getS4Readiness, type S4Area } from "@/lib/api/migration";
 import { getReadiness, type ReadinessCell } from "@/lib/api/insights";
 import { isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { formatModuleName, plural } from "@/lib/format";
 import { previousInLineage } from "@/lib/runs";
+import { stateObjects, stateRows } from "@/lib/current-state";
+import { verdictSentence } from "@/lib/home-narrative";
+import { useScoreBands } from "@/hooks/use-score-bands";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { useRole } from "@/hooks/use-role";
 import { DrillCount } from "../_components/DrillCount";
@@ -20,6 +23,8 @@ import { migrationGapColumns, useWaveIds } from "../_components/migrationGaps";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { PAGE_PURPOSE } from "../_components/InsightViews";
+import { s4Totals } from "../_components/RunAnalyses";
+import { useCurrentState } from "../_components/useCurrentState";
 
 
 const HEAT: Record<ReadinessCell["verdict"], "go" | "at-risk" | "no-go"> = { go: "go", at_risk: "at-risk", no_go: "no-go" };
@@ -53,7 +58,7 @@ const areaColumns = (run?: string): ColumnDef<S4Area>[] => [
   { accessorKey: "label", header: "S/4 area" },
   { accessorKey: "blocking_failing", header: "S/4 blocking rules", meta: { numeric: true }, cell: ({ row }) => <DrillLink href={withScope("/insights/rules", { run, s4: "blocking" })}>{row.original.blocking_failing.toLocaleString()}</DrillLink> },
   { accessorKey: "warning_failing", header: "Warning rules", meta: { numeric: true }, cell: ({ row }) => <DrillLink href={withScope("/insights/rules", { run, s4: "warning" })}>{row.original.warning_failing.toLocaleString()}</DrillLink> },
-  { accessorKey: "failing_records", header: "Records failing", meta: { numeric: true }, cell: ({ row }) => row.original.failing_records.toLocaleString() },
+  { accessorKey: "failing_records", header: "Failing records", meta: { numeric: true }, cell: ({ row }) => row.original.failing_records.toLocaleString() },
   { id: "action", header: "", enableSorting: false, cell: () => <Link href={withScope("/insights/rules", { run, s4: "yes" })} className="m-ink-accent underline underline-offset-2">Open rules</Link> },
 ];
 
@@ -62,17 +67,24 @@ export default function ReadinessPage() {
   // Waves are created in the migration cockpit with `analyse`; without it the page opens the cockpit to read.
   const { can } = useRole();
   const canCreateWave = can("analyse");
-  const { run, runs, versions, error: listError, refetch: refetchList } = useInsightScope();
+  const { run: scopedRun, mode, runs, versions, error: listError, refetch: refetchList } = useInsightScope();
+  // No ?run=: the current state, every object at its own latest run and every wave at its own latest migration run
+  // (Home's and the executive summary's scope, so the blockers and verdicts match theirs). ?run= reads that run.
+  const isCurrent = mode === "current";
+  const run = isCurrent ? undefined : scopedRun;
   const dayOne = useDayOne();
   // No run because the run list (or the day-one sources) failed: an error, never "No readiness data yet".
-  const loadError = run ? null : listError ?? (dayOne.status === "error" ? dayOne.error : null);
+  const loadError = scopedRun ? null : listError ?? (dayOne.status === "error" ? dayOne.error : null);
   const waveIds = useWaveIds();
+  const stateNow = useCurrentState();
+  const { bands } = useScoreBands();
 
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: queryKeys.insights("readiness", run),
-    queryFn: () => getReadiness({ version_id: run }),
+    queryKey: queryKeys.insights("readiness", run ?? "current"),
+    queryFn: () => getReadiness(isCurrent ? { scope: "current" } : { version_id: run }),
   });
-  // What changed: the same cells at the run before this one in its lineage (same system, or uploads of the same objects).
+  // What changed: the same cells at the run before this one in its lineage (same system, or uploads of the same
+  // objects). The current state spans lineages, so it names no single previous run.
   const current = runs.find((r) => r.id === run);
   const previous = current ? previousInLineage(current, runs) : null;
   const prevQ = useQuery({
@@ -81,20 +93,20 @@ export default function ReadinessPage() {
     enabled: !!previous,
   });
 
-  // The S/4 strip follows the run even when no wave is defined yet.
-  const s4Run = data?.version_id ?? run;
-  const s4 = useQuery({
-    queryKey: queryKeys.insights("s4-readiness", s4Run),
-    queryFn: () => getS4Readiness(s4Run ?? ""),
-    enabled: !!s4Run,
+  // The S/4 strip follows the scope even when no wave is defined yet: Home's query (same key) for the current state.
+  const s4Run = isCurrent ? undefined : data?.version_id ?? run;
+  const hasRun = isCurrent ? !!scopedRun : !!s4Run;
+  const s4 = useQuery<{ areas: S4Area[] }>({
+    queryKey: queryKeys.insights("s4-readiness", s4Run ?? "current"),
+    queryFn: () => (isCurrent ? getCurrentS4Readiness() : getS4Readiness(s4Run ?? "")),
+    enabled: hasRun,
   });
   const areas = s4.data?.areas ?? [];
-  let s4BlockingRules = 0;
-  let s4WarningRules = 0;
-  for (const a of areas) {
-    s4BlockingRules += a.blocking_failing;
-    s4WarningRules += a.warning_failing;
-  }
+  // Counted as Home's S/4 migration card counts them.
+  const { blocking: s4BlockingRules, warning: s4WarningRules } = s4Totals(areas);
+  // Each object's go-live verdict, worded as Home words it: the current state's objects, or the shown run's.
+  const goLiveObjects = isCurrent ? stateNow.objects : stateObjects([current], stateNow.modules);
+  const goLive = goLiveObjects.length ? verdictSentence(stateRows(goLiveObjects, bands)) : null;
   const failingAreas = areas.filter((a) => a.failing > 0).sort((a, b) => b.blocking_failing - a.blocking_failing || b.failing_records - a.failing_records);
 
   let state: "loading" | "empty" | "error" | undefined;
@@ -102,7 +114,7 @@ export default function ReadinessPage() {
     state = "loading";
   } else if (isListFailure({ isError, error }) || (loadError && (!data || data.cells.length === 0))) {
     state = "error";
-  } else if (data && data.cells.length === 0 && !s4Run) {
+  } else if (data && data.cells.length === 0 && !hasRun) {
     // Nothing to score at all: no run and no waves. With a run, the S/4 strip still renders below.
     state = "empty";
   }
@@ -117,27 +129,32 @@ export default function ReadinessPage() {
   const noGo = cells.filter((c) => c.verdict === "no_go").length;
   const blocked = cells.reduce((n, c) => n + c.records_blocked, 0);
   const prevNoGo = prevQ.data ? prevQ.data.cells.filter((c) => c.verdict === "no_go").length : null;
-  const changed = versions.isLoading || (previous && prevQ.isLoading)
+  const changed = isCurrent
+    ? "Every object at its own latest run; pick a run to compare it with the run before"
+    : versions.isLoading || (previous && prevQ.isLoading)
     ? <Skeleton height={16} />
     : !previous
       ? "First run of this system"
-      : prevNoGo == null
+      // Only a previous run that exists and failed to load.
+      : prevQ.isError || prevNoGo == null
         ? "The previous run could not be read"
-        : noGo === prevNoGo
+        : cells.length === 0 && prevNoGo === 0
+          ? "No wave is set up, so there is nothing to compare"
+          : noGo === prevNoGo
           ? `${plural(noGo, "object and wave pair")} blocked, as in the previous run`
           : `${Math.abs(noGo - prevNoGo).toLocaleString()} ${noGo > prevNoGo ? "more" : "fewer"} object and wave pairs blocked than in the previous run`;
 
   const waveEmpty = !configured ? (
     <EmptyState
       title="Readiness is not set up yet"
-      detail="Readiness needs a wave: the set of objects you move together. Create one in the migration cockpit and set its minimum readiness there. Each object then gets a go or no-go here."
+      detail="Readiness needs a wave: the set of objects you move together. Create one in the migration cockpit and set its minimum readiness there. Each object in it then gets a go or no-go for loading in that wave here."
       action={<Button render={<Link href="/migration">Open migration cockpit</Link>} />}
       ghost="grid"
     />
   ) : (
     <EmptyState
       title="No waves yet"
-      detail="A wave is the set of objects you move together. Create one in the migration cockpit and every object in it gets a go or no-go here."
+      detail="A wave is the set of objects you move together. Create one in the migration cockpit and every object in it gets a go or no-go for loading in that wave here."
       action={<Button render={<Link href="/migration">{canCreateWave ? "Create wave" : "Open migration cockpit"}</Link>} />}
       ghost="grid"
     />
@@ -156,8 +173,11 @@ export default function ReadinessPage() {
             : s4.data ? `${plural(s4BlockingRules, "rule")} would block an S/4 load, and no wave is set up yet` : "No waves set up yet",
           tone: noGo || s4BlockingRules ? "no-go" : "go",
         },
-        changed: { sentence: changed, href: previous ? `/runs/${run}/vs/${previous.id}` : undefined },
-        why: { sentence: cells.length ? `${plural(blocked, "record is", "records are")} blocked from loading${typeof data?.threshold === "number" ? `; an object needs ${data.threshold}% of its records passing to load` : ""}` : "Until there is a wave, no object gets a go or no-go" },
+        changed: { sentence: changed, href: previous && !isCurrent ? `/runs/${run}/vs/${previous.id}` : undefined },
+        why: { sentence: cells.length
+          ? `${plural(blocked, "record is", "records are")} blocked from loading${typeof data?.threshold === "number" ? `; an object needs ${data.threshold}% of its records passing to load` : ""}`
+          // No wave yet: each object's go-live verdict, the one Home and the executive summary give.
+          : goLive ? `${goLive.replace(/\.$/, "")}; no wave groups them for loading yet` : "No object has been analysed yet" },
         next: worst
           ? { sentence: `Fix blockers in ${formatModuleName(worst.module)}, ${worst.wave} first`, action: { label: "Open object", href: withScope(`/objects/${worst.module}`, { run, tab: "rules", blocking: "true" }) } }
           : cells.length
@@ -201,7 +221,7 @@ export default function ReadinessPage() {
             <DataTable columns={areaColumns(run)} data={failingAreas} getRowId={(a) => a.area} hideToolbar height="auto" />
           </div>
         ) : (
-          <EmptyState variant="inline" title="No blockers in this run" detail={cells.length ? "Every object can load in its wave." : "No failing rule would stop an S/4 load."} action={<Link href={withScope("/objects", { run })} className="underline-offset-2 hover:underline">Open objects</Link>} />
+          <EmptyState variant="inline" title={isCurrent ? "No blockers in any object's latest run" : "No blockers in this run"} detail={cells.length ? "Every object can load in its wave." : "No failing rule would stop an S/4 load."} action={<Link href={withScope("/objects", { run })} className="underline-offset-2 hover:underline">Open objects</Link>} />
         )}
       </Card>
       <Card title="Which waves are blocked" meta="Go, at risk or no-go for every object in every wave">

@@ -5,14 +5,21 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { withScope } from "./useInsightScope";
 
-export interface InsightView { id: string; label: string; question: string; tabs: [href: string, label: string][] }
+export interface InsightView {
+  id: string; label: string; question: string; tabs: [href: string, label: string][];
+  /**
+   * False: the view draws no tab strip. Operate's pages (Owners, Operations, Runs, Fix work, Data contracts) are
+   * separate places reached from the nav, not tabs of one page; Runs and Fix work dropped the strip, so all do.
+   */
+  strip?: boolean;
+}
 
 export const VIEWS: InsightView[] = [
-  { id: "summary", label: "Summary", question: "How are we, since when, what next", tabs: [["/insights/exec", "Executive summary"], ["/insights", "Overview"], ["/insights/reports", "Reports"]] },
+  { id: "summary", label: "Summary", question: "How are we, since when, what next", tabs: [["/insights/exec", "Executive summary"], ["/insights/reports", "Reports"]] },
   { id: "progress", label: "Progress", question: "Did it get better, and why", tabs: [["/insights/progress", "Progress"], ["/insights/trends", "Trends"], ["/insights/forecast", "Forecast"]] },
   { id: "explore", label: "Explore", question: "Where exactly is it, from every angle", tabs: [["/insights/rules", "Failing rules"], ["/insights/impact", "Value at risk"], ["/insights/lineage", "Lineage"], ["/insights/mining", "Patterns"], ["/insights/duplicates", "Duplicates"]] },
   { id: "readiness", label: "Readiness", question: "Can we load, can we run the process", tabs: [["/insights/readiness", "Waves"], ["/insights/process", "Process data readiness"], ["/migration", "Migration cockpit"]] },
-  { id: "operate", label: "Operate", question: "Who does what today", tabs: [["/insights/owners", "Owners"], ["/insights/operations", "Operations"], ["/runs", "Runs"], ["/fix", "Fix work"], ["/rules/contracts", "Data contracts"]] },
+  { id: "operate", label: "Operate", question: "Who does what today", tabs: [["/insights/owners", "Owners"], ["/insights/operations", "Operations"], ["/runs", "Runs"], ["/fix", "Fix work"], ["/rules/contracts", "Data contracts"]], strip: false },
 ];
 
 /**
@@ -20,7 +27,6 @@ export const VIEWS: InsightView[] = [
  * Pages pass it to `InsightFrame purpose`.
  */
 export const PAGE_PURPOSE = {
-  "/insights": "Where your SAP data stands, what holds the score down, and which failing rules to fix first.",
   "/insights/exec": "The one-page view for leadership: score, readiness by wave, value at risk and owners. Download the board pack to share it.",
   "/insights/reports": "Ready-made reports for the selected run. Pick a report, check the preview, then download it or copy a link.",
   "/insights/trends": "How the score moved from run to run for the same system or upload, and which rules drove the change.",
@@ -51,7 +57,7 @@ export function InsightTabs({ view: viewId, run: runId }: { view?: string; run?:
   const search = useSearchParams();
   const run = runId ?? search?.get("run") ?? undefined;
   const view = viewId ? VIEWS.find((v) => v.id === viewId) : viewOf(pathname);
-  if (!view || search?.get("present") === "1") return null;
+  if (!view || view.strip === false || search?.get("present") === "1") return null;
   return (
     <nav aria-label={`${view.label} views`} data-tour="insight-views" className="m-tabs-list flex-wrap">
       {view.tabs.map(([href, label]) => {

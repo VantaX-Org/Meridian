@@ -228,11 +228,11 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
       <SettingsSection title="When to alert">
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); saveThresholds.mutate(); }}>
           <div className="grid grid-cols-3 gap-3">
-            <Field label="Critical findings">
+            <Field label="Critical failing rules">
               <Input type="number" min="0" value={thresholds.critical_threshold} disabled={!write}
                 onChange={(e) => setThresholds({ ...thresholds, critical_threshold: Number(e.target.value) })} />
             </Field>
-            <Field label="High findings">
+            <Field label="High failing rules">
               <Input type="number" min="0" value={thresholds.high_threshold} disabled={!write}
                 onChange={(e) => setThresholds({ ...thresholds, high_threshold: Number(e.target.value) })} />
             </Field>
@@ -242,7 +242,7 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
             </Field>
           </div>
           <p className="m-text-meta m-ink-3">
-            Alert when a run has at least this many critical or high findings, or an object&rsquo;s score falls by more than this against the previous run.
+            Alert when a run has at least this many critical or high failing rules, or an object&rsquo;s score falls by more than this against the previous run.
           </p>
 
           <div>

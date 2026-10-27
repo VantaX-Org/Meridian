@@ -6,27 +6,31 @@
  * Edit via a Drawer. `?extract=1` lands with the Extract drawer open, with each `?object=` picked.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { clsx } from "clsx";
 import { Bar, Button, Card, Checkbox, ConfirmDialog, DataTable, Delta, Drawer, DrillLink, EmptyState, ErrorState, ExportMenu, Field, Input, Line, Mono, Notice, PageHeader, Pill, Select, Skeleton, Stat, Status, Tabs, Tooltip, emptyExportOptions, type Verdict, entityTabs, toVerdict, toast, useBreadcrumbTitle, Score } from "@/design";
-import { HEALTH_LABEL, dqsTrend, latestDqs } from "../_health";
+import { HEALTH_LABEL, dqsTrend, healthReason, latestDqs } from "../_health";
+import { HealthReason } from "../_health-pill";
 import { DqsScore } from "@/components/insight/dqs-score";
 import { ConfigurationTab } from "./config-tab";
 import { CustomObjectsTab } from "./custom-objects-tab";
+import { PreviewBadge } from "@/components/systems/preview-badge";
 import { ConfigLoadPanel } from "./config-load-panel";
 import { TrendPanel } from "./trend-panel";
 import { getSystemModules, getSystems, testConnection } from "@/lib/api/connectivity";
 import { getFindingsAggregate } from "@/lib/api/findings";
 import { getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
 import { discoverSystem, getDesign } from "@/lib/api/source-design";
-import { analyseVersion, downloadPollMs, getSystemVersions, startDownload, type SystemVersion } from "@/lib/api/system-objects";
+import { analyseVersion, downloadPollMs, getSystemVersions, objectsLoaded, startDownload, type SystemVersion } from "@/lib/api/system-objects";
 import { deleteSystem, getSyncProfiles, testEditedConnection, updateSystem } from "@/lib/api/systems";
 import { exportRuns } from "@/lib/api/versions";
-import { formatDate, formatModuleName, labelOf, relativeTime, runAxisLabels, systemTypeLabel } from "@/lib/format";
+import { RuleName } from "@/components/fix/rule-cell";
+import { formatDate, formatModuleName, labelOf, plural, relativeTime, systemTypeLabel } from "@/lib/format";
+import { runAxisTicks } from "@/lib/run-axis";
 import { GatedPrimary, primaryRole } from "@/components/gated-primary";
 import { ConnectionFields, ENVIRONMENTS, RFC_TYPES, TestOutcome, authFor, connectionKey, connectionOf, environmentLabel, schemaFor, testBlockedHint, type ConnectionValues, type TestOutcomeValue } from "@/components/systems/connect-system-dialog";
 import { useRole } from "@/hooks/use-role";
@@ -57,6 +61,20 @@ const sumRecords = (v: SystemVersion) => Object.values(v.records ?? {}).reduce((
 const findingsHref = (versionId: string, module?: string) =>
   `/runs/${versionId}?tab=findings${module ? `&module=${encodeURIComponent(module)}` : ""}`;
 /** "ECC Prod (Production)": the system and environment every confirmation names. */
+/**
+ * The Health stat's hint. An unhealthy connection says why and when it was last checked ("Connection refused,
+ * checked 5m ago"); a healthy or untested one says when data last came in.
+ */
+function healthHint(s: SAPSystemExtended, hasRuns: boolean): ReactNode {
+  const failing = s.health_status !== "healthy" && s.health_status !== "unknown";
+  if (failing) {
+    // The stored reason as its sentence ("SAP RFC library not installed on the server"), the raw code in a tooltip.
+    const checked = s.last_health_check ? `checked ${relativeTime(s.last_health_check)}` : "never checked";
+    return s.health_message?.trim() ? <><HealthReason message={s.health_message} />, {checked}</> : `No reason recorded, ${checked}`;
+  }
+  return s.last_sync_at ? `Last extracted ${relativeTime(s.last_sync_at)}` : hasRuns ? "Runs read, nothing extracted through the connection yet" : "Nothing extracted yet";
+}
+
 const systemScope = (s: { name: string; environment: string }) => `${s.name} (${environmentLabel(s.environment)})`;
 
 /** With `systemId`, each row also links to its extraction log (the Runs tab); without, the overview's short list. */
@@ -158,7 +176,8 @@ export default function SystemPage() {
       } else {
         // The cause is the message; the fix is usually the credentials: one click away for whoever may edit
         // the system, a pointer to an admin for everyone else.
-        const cause = `${HEALTH_LABEL[r.status as keyof typeof HEALTH_LABEL] ?? labelOf(r.status)}${r.message ? `: ${r.message}` : ""}`;
+        const reason = healthReason(r.message);
+        const cause = `${HEALTH_LABEL[r.status as keyof typeof HEALTH_LABEL] ?? labelOf(r.status)}${reason ? `: ${reason.text}` : ""}`;
         toast.error(cause, can("manage_systems")
           ? { action: { label: "Update credentials", onClick: () => setEditOpen(true) } }
           : { description: "Ask an admin to update the credentials." });
@@ -202,11 +221,11 @@ export default function SystemPage() {
     );
   }
 
-  const loaded = modules.filter((m) => m.enabled && m.row_count > 0).length;
   const openExtract = () => setExtractOpen(true);
   const analysable = latest ?? versions[0];
   // Until the connection is known to work, testing it is the next step, not extracting from it.
   const testFirst = system.health_status !== "healthy" && can("trigger_sync");
+  const runsExport = [{ format: "xlsx" as const, label: "Runs (.xlsx)", run: () => exportRuns("xlsx", { system_id: systemId }) }];
 
   return (
     <div className="flex flex-col gap-4">
@@ -214,26 +233,29 @@ export default function SystemPage() {
         title={system.name}
         status={<Pill tone="neutral">{system.role === "target" ? "Target system" : "Source system"}</Pill>}
         meta={`${[systemTypeLabel(system.system_type), system.environment, system.host].filter(Boolean).join(", ")}. Pull data from this system with Extract, then analyse it to score its objects`}
-        actions={
+        secondary={
         <>
           {can("manage_systems") ? <Button variant="ghost" onClick={() => setEditOpen(true)}>Edit</Button> : null}
-          {can("trigger_sync") ? <Button variant={testFirst ? "primary" : "secondary"} disabled={test.isPending} onClick={() => test.mutate()}>{testLabel}</Button> : null}
-          <GatedPrimary kind="extract" allowed={can("trigger_sync")} variant={testFirst ? "secondary" : "primary"} systemId={systemId} scopeLabel={system.name} data-tour="system-extract"
-            onClick={openExtract}>
-            Extract
-          </GatedPrimary>
           {can("analyse") ? (
             <Button variant="secondary" disabled={analyse.isPending || !analysable} onClick={() => setConfirmAnalyse(true)}>
               Analyse
             </Button>
           ) : null}
-          <ExportMenu
-            options={
-              versions.length === 0
-                ? emptyExportOptions([{ format: "xlsx", label: "Runs (.xlsx)", run: () => exportRuns("xlsx", { system_id: systemId }) }])
-                : [{ format: "xlsx", label: "Runs (.xlsx)", run: () => exportRuns("xlsx", { system_id: systemId }) }]
-            }
-          />
+          <ExportMenu options={versions.length === 0 ? emptyExportOptions(runsExport) : runsExport} />
+        </>
+        }
+        more={[
+          ...(can("manage_systems") ? [{ label: "Edit", onSelect: () => setEditOpen(true) }] : []),
+          ...(can("analyse") ? [{ label: "Analyse", onSelect: () => setConfirmAnalyse(true), disabled: analyse.isPending || !analysable }] : []),
+          { label: "Export runs (.xlsx)", onSelect: () => void exportRuns("xlsx", { system_id: systemId }), disabled: versions.length === 0 },
+        ]}
+        actions={
+        <>
+          {can("trigger_sync") ? <Button variant={testFirst ? "primary" : "secondary"} disabled={test.isPending} onClick={() => test.mutate()}>{testLabel}</Button> : null}
+          <GatedPrimary kind="extract" allowed={can("trigger_sync")} variant={testFirst ? "secondary" : "primary"} systemId={systemId} scopeLabel={system.name} data-tour="system-extract"
+            onClick={openExtract}>
+            Extract
+          </GatedPrimary>
         </>
         }
       />
@@ -275,12 +297,12 @@ export default function SystemPage() {
 
       <div className="m-stat-grid">
         {/* Runs can exist without an extraction (uploads); "nothing extracted" must not sit beside their score. */}
-        <Stat label="Health" value={HEALTH_LABEL[system.health_status]} hint={system.last_sync_at ? `Last extracted ${relativeTime(system.last_sync_at)}` : versions.length ? "Runs come from uploads" : "Nothing extracted yet"} href={`/systems/${systemId}?tab=health`} />
+        <Stat label="Health" value={HEALTH_LABEL[system.health_status]} hint={healthHint(system, versions.length > 0)} href={`/systems/${systemId}?tab=health`} />
         <Stat
           label="Objects loaded"
           loading={modulesQ.isLoading}
-          value={loaded > 0 ? `${loaded} of ${modules.length}` : "—"}
-          hint={loaded > 0 ? undefined : versions.length ? "Runs come from uploads" : modules.length ? `${modules.length} objects not extracted yet` : undefined}
+          value={objectsLoaded(modules, versions[0]).value}
+          hint={objectsLoaded(modules, versions[0]).hint}
           href={`/systems/${systemId}?tab=objects`}
         />
         <Stat
@@ -292,7 +314,8 @@ export default function SystemPage() {
           value={dqs === null ? "—" : aggQ.data ? <DqsScore agg={aggQ.data} versionId={latest?.id} /> : <Score value={dqs} />}
           href={latest ? findingsHref(latest.id) : undefined}
         />
-        <Stat label="Open findings" loading={versionsQ.isLoading || aggQ.isLoading} value={latest ? aggQ.data?.total ?? "—" : "—"} href={latest ? findingsHref(latest.id) : undefined} />
+        {/* The aggregate's total is failing rules (rules with a failing record), the overview's "Failing rules" too. */}
+        <Stat label="Failing rules" help="failingRules" hint={latest ? "in the latest run" : undefined} loading={versionsQ.isLoading || aggQ.isLoading} value={latest ? aggQ.data?.total ?? "—" : "—"} href={latest ? findingsHref(latest.id) : undefined} />
       </div>
 
       <Tabs
@@ -412,8 +435,11 @@ function Overview({ systemId, modules, versions, latest, canSync, canAnalyse, on
 
   const scored = versions.filter((v) => meanDqs(v) !== null).slice(0, 12).reverse();
   // Ticks are dates (with the time when two runs share a day); the run id is the key so a click opens the right run.
-  const tickOf = runAxisLabels(scored.map((v) => ({ id: v.id, run_at: v.run_at })));
-  const byRows = [...modules].filter((m) => m.row_count > 0).sort((a, b) => b.row_count - a.row_count).slice(0, 12);
+  const tickOf = runAxisTicks(scored.map((v) => ({ id: v.id, run_at: v.run_at })));
+  // The same record counts as the list beside it (extracted rows, else the latest run's records), so the chart never
+  // says "no rows loaded" next to an object listed with 7 records.
+  const byRows = rows.filter((r) => r.records > 0).slice(0, 12);
+  const loaded = rows.filter((r) => r.records > 0).length;
   const runCols = useMemo(() => runColumns(), []);
   // Every "Extract" in an empty state opens the one Extract drawer.
   const extract = canSync ? <Button onClick={onExtract}>Extract</Button> : undefined;
@@ -421,7 +447,7 @@ function Overview({ systemId, modules, versions, latest, canSync, canAnalyse, on
     <div className="flex flex-col [gap:var(--m-section-gap)]">
       {rows.length ? (
         <div className="grid items-start [gap:var(--m-section-gap)] @5xl:grid-cols-[400px_minmax(0,1fr)]" data-testid="system-workbench">
-          <Card title="Objects" meta={`${rows.length.toLocaleString()} by records`} padding="sm">
+          <Card title="Objects" meta={`${plural(rows.length, "object")}, ${loaded.toLocaleString()} loaded; most records first`} padding="sm">
             <ul className="flex max-h-[560px] flex-col overflow-y-auto" aria-label="Objects of this system, ranked by records">
               {rows.map((r) => (
                 <li key={r.module}>
@@ -475,9 +501,9 @@ function Overview({ systemId, modules, versions, latest, canSync, canAnalyse, on
           ) : (
             <Bar
               height={160}
-              data={byRows.map((m) => ({ x: formatModuleName(m.module), y: m.row_count }))}
+              data={byRows.map((m) => ({ x: m.name, y: m.records }))}
               onPointClick={(p) => {
-                const m = byRows.find((b) => formatModuleName(b.module) === p.x);
+                const m = byRows.find((b) => b.name === p.x);
                 if (m) router.push(`/objects/${m.module}`);
               }}
             />
@@ -535,7 +561,7 @@ function ObjectSummaryPane({ row, latest, systemId, canSync, canAnalyse, onExtra
             <dt className="m-text-label m-ink-3">Blocking rule</dt>
             <dd className="m-text-body">
               {s?.blocking_rule_id ? (
-                <><Mono>{s.blocking_rule_id}</Mono>{s.blocking_rule_name ? <span className="m-ink-2"> {s.blocking_rule_name}</span> : null}</>
+                <><Mono>{s.blocking_rule_id}</Mono>{" "}<RuleName id={s.blocking_rule_id} fallback={s.blocking_rule_name} /></>
               ) : s && s.failing_checks === 0 ? "None" : "—"}
             </dd>
           </div>
@@ -606,7 +632,12 @@ function Objects({ id, system, modules, versions, canSync, canAnalyse, onChanged
       header: "Object",
       // Carry the run whose score this page shows. Without it the object page resolves its own
       // newest run - possibly another system's - so the same row opened on two tabs showed two runs.
-      cell: ({ row }) => <Link href={`/objects/${row.original.module}${latest?.id ? `?run=${latest.id}` : ""}`} className="underline">{formatModuleName(row.original.module)}</Link>,
+      cell: ({ row }) => (
+        <span className="inline-flex items-center gap-2">
+          <Link href={`/objects/${row.original.module}${latest?.id ? `?run=${latest.id}` : ""}`} className="underline">{formatModuleName(row.original.module)}</Link>
+          <PreviewBadge sources={row.original.preview_sources} />
+        </span>
+      ),
     },
     { id: "enabled", header: "Enabled", cell: ({ row }) => (row.original.enabled ? "Yes" : "No") },
     { id: "rows", header: "Records", cell: ({ row }) => <DrillLink href={`/objects/${row.original.module}${latest?.id ? `?run=${latest.id}` : ""}`}>{row.original.row_count.toLocaleString()}</DrillLink> },
@@ -754,9 +785,11 @@ function Health({ id, system, canSync, canManage, onChanged, test, testLabel }: 
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
 
-  const verdict = system.health_status === "healthy"
+  const verdict: ReactNode = system.health_status === "healthy"
     ? `The connection is healthy${system.last_health_check ? `, checked ${relativeTime(system.last_health_check)}` : ""}.`
-    : `The connection is ${HEALTH_LABEL[system.health_status].toLowerCase()}${system.health_message ? `: ${system.health_message}` : ""}.`;
+    : system.health_message?.trim()
+      ? <>The connection is {HEALTH_LABEL[system.health_status].toLowerCase()}: <HealthReason message={system.health_message} />.</>
+      : `The connection is ${HEALTH_LABEL[system.health_status].toLowerCase()}.`;
 
   return (
     <div className="flex flex-col gap-4">

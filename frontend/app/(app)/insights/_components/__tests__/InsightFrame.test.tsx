@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as versionsApi from "@/lib/api/versions";
 import { InsightFrame } from "../InsightFrame";
 
-let path = "/insights";
+let path = "/insights/exec";
 let query = "";
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
@@ -35,8 +35,8 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe("InsightFrame scope line", () => {
-  it("describes the current state of every object on the overview without ?run=", async () => {
-    path = "/insights";
+  it.each(["/insights/exec", "/insights/readiness"])("describes the current state of every object on %s without ?run=", async (p) => {
+    path = p;
     query = "";
     mount();
     const line = await screen.findByTestId("insight-scope");
@@ -49,7 +49,7 @@ describe("InsightFrame scope line", () => {
   });
 
   it("names one run, with the picker, when ?run= pins it, and offers the way back to the current state", async () => {
-    path = "/insights";
+    path = "/insights/exec";
     query = "run=co1";
     mount();
     const line = await screen.findByTestId("insight-scope");
@@ -57,12 +57,12 @@ describe("InsightFrame scope line", () => {
     expect(line).toHaveTextContent("One run");
     expect(line).toHaveTextContent("As of");
     expect(screen.getByRole("combobox", { name: "Showing run" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Back to current state" })).toHaveAttribute("href", "/insights");
+    expect(screen.getByRole("link", { name: "Back to current state" })).toHaveAttribute("href", "/insights/exec");
     expect(line).not.toHaveTextContent(/all objects|current state of/i);
   });
 
   it("names the object's latest run when ?module= pins one lineage", async () => {
-    path = "/insights";
+    path = "/insights/exec";
     query = "module=material_master";
     mount();
     const line = await screen.findByTestId("insight-scope");
@@ -80,7 +80,7 @@ describe("InsightFrame scope line", () => {
   });
 
   it("hides the scope pickers and the way back in presentation mode", async () => {
-    path = "/insights";
+    path = "/insights/exec";
     query = "run=co1&present=1";
     mount();
     const line = await screen.findByTestId("insight-scope");
@@ -90,7 +90,7 @@ describe("InsightFrame scope line", () => {
     expect(screen.queryByRole("link", { name: "Present" })).toBeNull();
   });
 
-  it.each(["/insights/trends", "/insights/rules", "/insights/readiness"])("labels %s as one run even without ?run=", async (p) => {
+  it.each(["/insights/trends", "/insights/rules"])("labels %s as one run even without ?run=", async (p) => {
     path = p;
     query = "";
     mount();

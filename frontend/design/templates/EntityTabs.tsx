@@ -40,6 +40,8 @@ export interface EntityTabsOptions {
   auditPath?: string;
   /** Tabs the page already renders itself; they are not added again. */
   skip?: EntityTabValue[];
+  /** Puts Related, History and Audit under the strip's "More" menu, for a page with tabs of its own to show. */
+  overflow?: boolean;
 }
 
 const ID_LIKE = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|\d+)$/i;
@@ -81,7 +83,7 @@ export function AuditTab({ entityType, entityId, auditPath }: { entityType: stri
 }
 
 /** Related, History and Audit tab items. Append to a page's own tabs after its Overview. */
-export function entityTabs({ entityType, entityId, related, history, auditPath, audit, skip = [] }: EntityTabsOptions): TabItem[] {
+export function entityTabs({ entityType, entityId, related, history, auditPath, audit, skip = [], overflow = false }: EntityTabsOptions): TabItem[] {
   const items: TabItem[] = [
     {
       value: "related", label: "Related",
@@ -93,7 +95,7 @@ export function entityTabs({ entityType, entityId, related, history, auditPath, 
     },
     { value: "audit", label: "Audit", content: audit ?? <AuditTab entityType={entityType} entityId={entityId} auditPath={auditPath} /> },
   ];
-  return items.filter((i) => !skip.includes(i.value as EntityTabValue));
+  return items.filter((i) => !skip.includes(i.value as EntityTabValue)).map((i) => (overflow ? { ...i, overflow: true } : i));
 }
 
 /** Overview/Related/History/Audit tab set for detail pages that have no tabs of their own. */

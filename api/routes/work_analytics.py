@@ -9,9 +9,12 @@
   GET /work/analytics/run-change        per object: new, fixed, still failing since the previous run
 
 All tenant-scoped (RLS), `view` permission, optional `module`; the run-bound ones take `version_id` and fall
-back to the latest finished run. An empty tenant answers 200 with empty lists.
+back to the latest finished run, or with `scope=current` read the current state: every object at the latest
+complete run of its lineage, each from its own run (api/services/current_state.py). An empty tenant answers 200
+with empty lists.
 """
 import uuid
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import text
@@ -20,12 +23,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _rls
 from api.services import work_analytics as wa
+from api.services.current_state import current_pairs
 from api.services.rbac import require_permission
 from api.services.run_context import latest_run
 
 router = APIRouter(prefix="/api/v1/work/analytics", tags=["work-analytics"])
 
 _MODULE = Query(None, max_length=100, pattern=r"^[a-z0-9_]+$")
+Scope = Literal["run", "current"]
+_SCOPE = Query("run", description="current: every object at the latest complete run of its lineage; "
+                                  "exclusive with version_id")
+
+
+async def _pairs(db: AsyncSession, tenant: Tenant, version_id: uuid.UUID | None, module: str | None) -> list[dict]:
+    if version_id is not None:
+        raise HTTPException(status_code=422, detail="version_id and scope=current are exclusive")
+    return await current_pairs(db, tenant.id, module)
 
 
 async def _run(db: AsyncSession, tenant: Tenant, version_id: uuid.UUID | None, module: str | None) -> str | None:
@@ -42,11 +55,14 @@ async def _run(db: AsyncSession, tenant: Tenant, version_id: uuid.UUID | None, m
 async def burndown(
     version_id: uuid.UUID | None = None,
     module: str | None = _MODULE,
+    scope: Scope = _SCOPE,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _perm: str = Depends(require_permission("view")),
 ):
     await _rls(db, tenant)
+    if scope == "current":
+        return await wa.burndown_current(db, tenant.id, await _pairs(db, tenant, version_id, module), module)
     return await wa.burndown(db, tenant.id, await _run(db, tenant, version_id, module), module)
 
 
@@ -88,11 +104,14 @@ async def recurrence(
 async def root_causes(
     version_id: uuid.UUID | None = None,
     module: str | None = _MODULE,
+    scope: Scope = _SCOPE,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _perm: str = Depends(require_permission("view")),
 ):
     await _rls(db, tenant)
+    if scope == "current":
+        return await wa.root_causes_current(db, tenant.id, await _pairs(db, tenant, version_id, module), module)
     return await wa.root_causes(db, tenant.id, await _run(db, tenant, version_id, module), module)
 
 
@@ -111,9 +130,12 @@ async def proposal_quality(
 async def run_change(
     version_id: uuid.UUID | None = None,
     module: str | None = _MODULE,
+    scope: Scope = _SCOPE,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _perm: str = Depends(require_permission("view")),
 ):
     await _rls(db, tenant)
+    if scope == "current":
+        return await wa.run_change_current(db, tenant.id, await _pairs(db, tenant, version_id, module), module)
     return await wa.run_change(db, tenant.id, await _run(db, tenant, version_id, module), module)

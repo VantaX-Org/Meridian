@@ -30,6 +30,7 @@ from sap.rfc import PAYROLL_FUNCTION, PAYROLL_TABLE
 from sap.extraction_registry import (
     get_extraction_targets,
     get_available_modules,
+    preview_sources,
     ExtractionTarget,
 )
 
@@ -487,7 +488,24 @@ class ConnectivityManager:
             except Exception:
                 pass
             connector.close()
+        coverage.extend(self._preview_coverage(system_type, modules))
         return frames, coverage
+
+    @staticmethod
+    def _preview_coverage(system_type: str, modules: list[str]) -> list[dict]:
+        """One ``preview`` entry in the extraction log per unverified registry source of ``modules``.
+
+        Such a source (sap/extraction_registry.py, ``status="preview"``) is never counted as a
+        verified read: the log names it with its reason so a gap in the module is visible, and a
+        warning is written for whoever reads the worker log."""
+        entries = []
+        for p in (p for m in dict.fromkeys(modules) for p in preview_sources(system_type, m)):
+            logger.warning("Preview source %s of %s on %s: source name not yet verified against SAP; "
+                           "extraction may fail. %s", p["source"], p["module"], system_type, p["reason"])
+            entries.append({"table": p["source"], "status": "preview", "entity": p["source"],
+                            "module": p["module"],
+                            "detail": f"Source name not yet verified against SAP; extraction may fail. {p['reason']}"})
+        return entries
 
     @staticmethod
     def _is_complete(truncated: bool, dup_keys: object, source_rows: Optional[int], n: int) -> bool:
@@ -996,6 +1014,11 @@ class ConnectivityManager:
             connector = self._get_connector(system_type, params)
             try:
                 for target in targets:
+                    if not target.verified:
+                        # Attempted, but never as if verified: say so before the read and on failure.
+                        logger.warning("Extracting preview source %s (%s, %s): source name not yet verified "
+                                       "against SAP; extraction may fail. %s", target.source, system_type,
+                                       module, target.status_reason)
                     try:
                         df = self._extract_target(connector, system_type, target, max_rows)
                         if df.empty:
@@ -1013,7 +1036,8 @@ class ConnectivityManager:
 
                         logger.info(f"Extracted {len(df)} rows from {target.source}")
                     except Exception as e:
-                        logger.warning(f"Failed to extract {target.source}: {e}")
+                        preview = "" if target.verified else " (preview source, name not verified against SAP)"
+                        logger.warning(f"Failed to extract {target.source}{preview}: {e}")
                         continue
             finally:
                 connector.close()
@@ -1374,6 +1398,10 @@ class ConnectivityManager:
             for r in result.fetchall()
         }
 
+        preview: dict[str, list[dict]] = {}
+        for p in preview_sources(system_row.system_type):
+            preview.setdefault(p["module"], []).append({"source": p["source"], "reason": p["reason"]})
+
         return [
             {
                 "module": m,
@@ -1381,6 +1409,7 @@ class ConnectivityManager:
                 **status_map.get(m, {"enabled": True, "last_synced_at": None,
                                       "last_sync_status": None, "row_count": 0,
                                       "config_synced": False}),
+                "preview_sources": preview.get(m, []),
             }
             for m in modules
         ]

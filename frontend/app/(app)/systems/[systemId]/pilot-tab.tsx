@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "@/design";
+import { RuleCell } from "@/components/fix/rule-cell";
 import { Button, Card, DataTable, EmptyState, ErrorState, Mono, Notice, Pill, Skeleton, Stat } from "@/design";
 import { apiErrorState } from "@/lib/error";
 import { getScorecard, uploadKnownIssues, type KnownIssue, type RuleScore } from "@/lib/api/pilot";
@@ -38,7 +39,7 @@ export function PilotTab({ id }: { id: string }) {
   const ruleCols = useMemo<ColumnDef<RuleScore, unknown>[]>(() => [
     { id: "rule", header: "Rule", cell: ({ row }) => (
       <span className="flex flex-col">
-        <Link href={`/objects/${encodeURIComponent(row.original.module)}/rules/${encodeURIComponent(row.original.check_id)}`} className="m-ink-accent"><Mono>{row.original.check_id}</Mono></Link>
+        <Link href={`/objects/${encodeURIComponent(row.original.module)}/rules/${encodeURIComponent(row.original.check_id)}`} className="m-ink-accent"><RuleCell id={row.original.check_id} /></Link>
         <span className="m-text-meta m-ink-3">{formatModuleName(row.original.module)}{row.original.message ? `. ${row.original.message}` : ""}</span>
       </span>) },
     { id: "flagged", header: "Flagged", cell: ({ row }) => n(row.original.flagged) },

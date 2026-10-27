@@ -1,14 +1,14 @@
 // frontend/app/(app)/runs/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
 import { PageHeader, DrillLink, FilterChip, Button, ConfirmDialog, DataTable, Delta, EmptyState, ExplorerPage, ExportMenu, emptyExportOptions, Field, HelpHint, Input, Line, Menu, Pager, Pill, RowAction, Score, Select, Skeleton, Sparkline, Stat, StatSkeleton, Tooltip, usePrefetch, type CellMeta, Status, toLifecycle, ProgressFill } from "@/design";
 import { RunAnalysis } from "@/app/(app)/insights/_components/RunAnalysis";
-import { InsightTabs } from "@/app/(app)/insights/_components/InsightViews";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
@@ -18,12 +18,14 @@ import { exportRuns } from "@/lib/api/v1/runs";
 import { blockedReasonOf, deleteVersion } from "@/lib/api/retention";
 import { getAnalysisStatus } from "@/lib/api/upload";
 import { archiveVersions, compareVersions, getVersions, restoreVersions } from "@/lib/api/versions";
-import { formatDate, plural, runAxisLabels } from "@/lib/format";
+import { formatDate, formatNumber, plural } from "@/lib/format";
+import { runAxisTicks } from "@/lib/run-axis";
 import { queryKeys } from "@/lib/query-keys";
-import { isFinished, lineageSeries, overallDqs, previousRunId, runPageHref, scopeOf } from "@/lib/runs";
+import { isFinished, lineageOf, lineageSeries, overallDqs, previousRunId, runPageHref, scopeOf } from "@/lib/runs";
 import { runName, runScopeLabel } from "@/lib/run-scope";
 import type { Version } from "@/types/api";
 import { isListFailure } from "@/lib/error";
+import { BREAK_AT_SEPARATORS, breakAtUnderscores } from "@/lib/break-name";
 
 const IN_PROGRESS = new Set(["pending", "running", "agents_enqueued", "agents_running"]);
 
@@ -73,7 +75,42 @@ function severityCell(v: Version, all: Version[], key: "critical" | "high") {
   );
 }
 
-function makeColumns(allVersions: Version[], onDelete?: (v: Version) => void): ColumnDef<Version>[] {
+/**
+ * Re-runs of the same lineage and objects (the system, or uploads of the same objects): the newest finished run is
+ * the ledger's row and the earlier finished ones fold under it. A run still in progress or failed keeps its own row,
+ * so nothing that needs attention is folded away. Returns the rows, newest first, and each row's earlier runs.
+ */
+export function groupReruns(versions: readonly Version[]): { rows: Version[]; earlier: Map<string, Version[]> } {
+  const keyOf = (v: Version) => `${lineageOf(v)}|${[...(v.metadata?.modules ?? Object.keys(v.dqs_summary ?? {}))].sort().join("+")}`;
+  const sorted = [...versions].sort((a, b) => (a.run_at < b.run_at ? 1 : a.run_at > b.run_at ? -1 : 0));
+  const head = new Map<string, Version>();
+  const earlier = new Map<string, Version[]>();
+  const rows: Version[] = [];
+  for (const v of sorted) {
+    if (!isFinished(v)) {
+      rows.push(v);
+      continue;
+    }
+    const first = head.get(keyOf(v));
+    if (!first) {
+      head.set(keyOf(v), v);
+      rows.push(v);
+      earlier.set(v.id, []);
+    } else {
+      earlier.get(first.id)?.push(v);
+    }
+  }
+  return { rows, earlier };
+}
+
+/** Who or what started a run, from what the run records: a file someone imported, or a download from a system. */
+export function triggeredBy(v: Version): string {
+  if (v.metadata?.file_name) return "File import";
+  if (v.metadata?.source === "extraction") return "System download";
+  return "—";
+}
+
+function makeColumns(allVersions: Version[], earlier: ReadonlyMap<string, Version[]>, systemOf: (v: Version) => string, onDelete?: (v: Version) => void): ColumnDef<Version>[] {
   return [
     {
       // The ledger is grouped by day: the label sits on the first run of each day and is blank under it.
@@ -81,6 +118,7 @@ function makeColumns(allVersions: Version[], onDelete?: (v: Version) => void): C
       accessorFn: (v) => v.run_at,
       header: "Day",
       size: 120,
+      meta: { priority: "low" } satisfies CellMeta,
       enableSorting: false,
       cell: ({ row, table }) => {
         const rows = table.getRowModel().rows;
@@ -93,19 +131,33 @@ function makeColumns(allVersions: Version[], onDelete?: (v: Version) => void): C
       id: "label",
       accessorFn: runName,
       header: "Run",
-      cell: ({ row }) => (
-        <span className="inline-flex items-center gap-2" title={formatDate(row.original.run_at, "datetime")}>
-          <span>{runName(row.original)}</span>
-          {row.original.metadata?.baseline === true ? <Pill>Baseline</Pill> : null}
-          {row.original.metadata?.archived ? <Pill>Archived</Pill> : null}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const more = earlier.get(row.original.id)?.length ?? 0;
+        return (
+          // Wraps on a phone: the note drops under the name rather than running under the pinned Open.
+          <span className="inline-flex flex-wrap items-center gap-x-2" title={formatDate(row.original.run_at, "datetime")}>
+            {/* One line from 1280px, where the ledger has room; narrower, it wraps after an underscore, never mid-word. */}
+            <span className={`min-w-0 xl:whitespace-nowrap ${BREAK_AT_SEPARATORS}`} data-testid="run-name">{breakAtUnderscores(runName(row.original), "xl:hidden")}</span>
+            {more > 0 ? <span className="m-text-meta m-ink-3 whitespace-nowrap">{`+${plural(more, "earlier run")}`}</span> : null}
+            {row.original.metadata?.baseline === true ? <Pill>Baseline</Pill> : null}
+            {row.original.metadata?.archived ? <Pill>Archived</Pill> : null}
+          </span>
+        );
+      },
     },
+    { id: "system", header: "System", meta: { priority: "low" } satisfies CellMeta, accessorFn: systemOf, cell: ({ row }) => <span className="whitespace-nowrap">{systemOf(row.original)}</span> },
+    {
+      id: "records", header: "Records", size: 110, meta: { numeric: true, priority: "low" } satisfies CellMeta,
+      accessorFn: (v) => v.metadata?.row_count ?? -1,
+      cell: ({ row }) => (row.original.metadata?.row_count != null ? formatNumber(row.original.metadata.row_count) : "—"),
+    },
+    { id: "triggered", header: "Triggered by", meta: { priority: "low" } satisfies CellMeta, accessorFn: triggeredBy },
     {
       id: "history",
       header: () => <span className="inline-flex items-center gap-1">History <HelpHint term="run" /></span>,
       size: 110,
       enableSorting: false,
+      meta: { priority: "low" } satisfies CellMeta,
       cell: ({ row }) => {
         const series = lineageSeries(row.original, allVersions);
         return series.length > 1 ? <Sparkline data={series} width={88} height={22} /> : <span className="m-ink-3">—</span>;
@@ -115,6 +167,7 @@ function makeColumns(allVersions: Version[], onDelete?: (v: Version) => void): C
       id: "status",
       accessorFn: (v) => v.status,
       header: "Status",
+      meta: { priority: "low" } satisfies CellMeta,
       cell: ({ row }) => (
         <span className="inline-flex items-center gap-2">
           <Status kind="lifecycle" value={row.original.status} />
@@ -131,16 +184,17 @@ function makeColumns(allVersions: Version[], onDelete?: (v: Version) => void): C
         if (dqs === null) return "—";
         const prev = allVersions.find((r) => r.id === previousRunId(row.original, allVersions));
         const before = prev ? overallDqs(prev) : null;
+        // The change since the previous run wraps under the score on a phone, never under the pinned Open.
         return (
-          <span className="inline-flex items-center gap-2">
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <Score value={dqs} size="sm"><DrillLink href={`/runs/${row.original.id}`}>{dqs.toFixed(1)}</DrillLink></Score>
             {before !== null ? <Delta value={Math.round((dqs - before) * 10) / 10} /> : null}
           </span>
         );
       },
     },
-    { id: "critical", accessorFn: (v) => v.severity_counts?.critical ?? -1, header: "Critical", size: 110, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => severityCell(row.original, allVersions, "critical") },
-    { id: "high", accessorFn: (v) => v.severity_counts?.high ?? -1, header: "High", size: 100, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => severityCell(row.original, allVersions, "high") },
+    { id: "critical", accessorFn: (v) => v.severity_counts?.critical ?? -1, header: "Critical failing rules", size: 130, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => severityCell(row.original, allVersions, "critical") },
+    { id: "high", accessorFn: (v) => v.severity_counts?.high ?? -1, header: "High failing rules", size: 130, meta: { numeric: true, priority: "low" } satisfies CellMeta, cell: ({ row }) => severityCell(row.original, allVersions, "high") },
     {
       id: "open",
       header: "",
@@ -159,6 +213,32 @@ function makeColumns(allVersions: Version[], onDelete?: (v: Version) => void): C
       ),
     },
   ];
+}
+
+/** The earlier runs folded under a ledger row: each with its time, status and score, a compare with the row's run, and Open. */
+function EarlierRuns({ head, runs, all }: { head: Version; runs: readonly Version[]; all: Version[] }) {
+  return (
+    <ul className="flex flex-col" aria-label="Earlier runs">
+      {runs.map((v) => {
+        const dqs = overallDqs(v);
+        const prev = all.find((r) => r.id === previousRunId(v, all));
+        const before = prev ? overallDqs(prev) : null;
+        return (
+          <li key={v.id} className="flex flex-wrap items-center gap-4 border-b py-1 m-text-body [border-color:var(--m-line)]">
+            <span className="m-ink-2 m-numeric [min-width:9rem]">{formatDate(v.run_at, "datetime")}</span>
+            <span className={`[min-width:12rem] ${BREAK_AT_SEPARATORS}`}>{breakAtUnderscores(runName(v))}</span>
+            <Status kind="lifecycle" value={v.status} />
+            <span className="inline-flex items-center gap-2 m-numeric">
+              {dqs === null ? "—" : dqs.toFixed(1)}
+              {dqs !== null && before !== null ? <Delta value={Math.round((dqs - before) * 10) / 10} /> : null}
+            </span>
+            <Link href={`/runs/${head.id}/vs/${v.id}`} className="m-ink-accent underline-offset-2 hover:underline">Compare with latest</Link>
+            <RowAction href={`/runs/${v.id}`} label={`Open ${runName(v)}`} />
+          </li>
+        );
+      })}
+    </ul>
+  );
 }
 
 /** Where `c` is someone else's key: a field, a control, or a dialog, listbox or menu that owns the keyboard. */
@@ -240,9 +320,12 @@ export default function RunsPage() {
   const allVersions = useMemo(() => all.data?.versions ?? [], [all.data]);
   const [deleteTarget, setDeleteTarget] = useState<Version | null>(null);
   const canPurge = can("manage_settings");
+  // Re-runs of one lineage and object set fold under the newest (expand the row to see them).
+  const grouped = useMemo(() => groupReruns(allVersions), [allVersions]);
+  const systemOf = useCallback((v: Version) => (scopeOf(v) === "upload" ? "Upload" : systemName.get(scopeOf(v)) ?? "—"), [systemName]);
   const columns = useMemo(
-    () => makeColumns(allVersions, canPurge ? setDeleteTarget : undefined),
-    [allVersions, canPurge],
+    () => makeColumns(allVersions, grouped.earlier, systemOf, canPurge ? setDeleteTarget : undefined),
+    [allVersions, grouped, systemOf, canPurge],
   );
   // Every connected system, not only the ones on the current page. The upload scope has no system_id to filter by.
   const systemOptions = useMemo(
@@ -253,11 +336,8 @@ export default function RunsPage() {
   const headScoped = useMemo(() => head.data?.versions ?? [], [head.data]);
   const headVersions = headScoped;
   const failedCount = headScoped.filter((v) => toLifecycle(v.status) === "failed").length;
-  // Newest first, so the day groups of the ledger read top-down.
-  const rows = useMemo(
-    () => [...allVersions].sort((a, b) => (a.run_at < b.run_at ? 1 : a.run_at > b.run_at ? -1 : 0)),
-    [allVersions],
-  );
+  // Newest first, so the day groups of the ledger read top-down; one row per lineage and object set.
+  const rows = grouped.rows;
 
   // Empty only when the filtered set is: a page past the end steps back above instead of reading as "No runs match".
   const state = all.isLoading ? "loading" : isListFailure(all) ? "error" : rows.length === 0 && total === 0 ? "empty" : undefined;
@@ -277,7 +357,7 @@ export default function RunsPage() {
   const points = useMemo(() => {
     // Keyed by run id with a disambiguated date as the tick, so two runs on one day never merge into one point.
     const scoped = headScoped.filter((v) => isFinished(v) && scopeOf(v) === chartScope);
-    const ticks = runAxisLabels(scoped);
+    const ticks = runAxisTicks(scoped);
     return scoped
       .flatMap((v) => { const y = overallDqs(v); return y === null ? [] : [{ x: v.id, label: ticks.get(v.id), y: Math.round(y * 10) / 10, runId: v.id }]; })
       .reverse();
@@ -312,7 +392,7 @@ export default function RunsPage() {
       toast.error(blocked ? `Not deleted: ${blocked}` : errorText(e));
     },
   });
-  // Runs is a tab of the Operate view, under the view tabs. Run analysis is the one primary action and Export the one
+  // Runs stands on its own (no view tabs: it is in the index bar). Run analysis is the one primary action and Export the one
   // secondary; Review fixes, Present and archiving wait in "More". The run count is the header meta, not a tile.
   const runTotal = all.data?.total ?? allVersions.length;
   const presenting = searchParams?.get("present") === "1";
@@ -337,7 +417,6 @@ export default function RunsPage() {
           {all.isLoading || runTotal === 0 ? "Every analysis" : plural(runTotal, "run")}, newest first; change is against the previous run of the same system <HelpHint term="previous_run" />
         </span>
       }
-      tabs={<InsightTabs />}
       actions={presenting ? undefined : (
         <>
           <Menu trigger={<Button variant="ghost" pending={restore.isPending}>More</Button>} items={moreItems} />
@@ -461,6 +540,8 @@ export default function RunsPage() {
           rowHref={(row) => `/runs/${row.id}`}
           onRowClick={(row) => router.push(`/runs/${row.id}`)}
           bulkActions={(selected) => <CompareBar selected={selected} onCompare={compare} />}
+          canExpand={(row) => (grouped.earlier.get(row.id)?.length ?? 0) > 0}
+          renderExpanded={(row) => <EarlierRuns head={row} runs={grouped.earlier.get(row.id) ?? []} all={allVersions} />}
         />
         {total > PAGE_SIZE && (
           <Pager page={page} pageCount={pageCount} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />

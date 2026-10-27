@@ -11,7 +11,8 @@ import { downloadAuthenticated } from "@/lib/api/download";
 import { getAuditEntries } from "@/lib/api/audit";
 import { getHeatmap, getOverview, l1Label } from "@/lib/api/insights";
 import { getRecordReportUrl, getReportCatalogue, type CatalogueEntry } from "@/lib/api/reports";
-import { formatDate, formatModuleName, labelOf, plural, runOptionLabels } from "@/lib/format";
+import { formatDate, formatModuleName, labelOf, plural } from "@/lib/format";
+import { runOptionLabels } from "@/lib/run-axis";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { usePermissions } from "@/lib/permissions";
@@ -154,7 +155,7 @@ export default function ReportsPage() {
     >
       <>
       {!can("export") ? (
-        <Card title="Reports"><p className="m-text-body m-ink-2">Downloading reports needs the auditor or analyst role. Ask an admin to add it. <Link href="/insights" className="m-ink-accent underline underline-offset-2">Back to the overview</Link></p></Card>
+        <Card title="Reports"><p className="m-text-body m-ink-2">Downloading reports needs the auditor or analyst role. Ask an admin to add it. <Link href="/insights/exec" className="m-ink-accent underline underline-offset-2">Open the executive summary</Link></p></Card>
       ) : catalogue.isError ? (
         <Card title="Reports">
           <div className="flex items-center gap-3 m-text-body" role="alert">

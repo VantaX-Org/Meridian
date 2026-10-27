@@ -159,6 +159,36 @@ export function formatMoney(n: number, currency?: string | null): string {
   }
 }
 
+const MONEY_SCALES = [
+  { at: 1e12, unit: "tn" },
+  { at: 1e9, unit: "bn" },
+  { at: 1e6, unit: "m" },
+  { at: 1e3, unit: "k" },
+] as const;
+
+/**
+ * Headline money (stat tiles, sentences): "ZAR 4.84 bn", "ZAR 12.3 m", "ZAR 540 k", three significant figures from a thousand up;
+ * below that the full amount as `formatMoney` gives it. Tables and exports keep `formatMoney`'s exact figure.
+ */
+export function formatMoneyCompact(n: number | null | undefined, currency?: string | null): string {
+  if (typeof n !== "number" || !Number.isFinite(n)) return "—";
+  // Round to the displayed three significant figures before picking the unit, so 999,999 reads "1 m", not "1,000 k".
+  const rounded = Number(n.toPrecision(3));
+  const scale = MONEY_SCALES.find((s) => Math.abs(rounded) >= s.at);
+  if (!scale) return formatMoney(Math.round(n), currency);
+  const value = new Intl.NumberFormat(formatPrefs.locale, { maximumSignificantDigits: 3 }).format(rounded / scale.at);
+  return `${currency ? `${currency} ` : ""}${value} ${scale.unit}`;
+}
+
+/** The short name of a time zone ("UTC", "GMT+2"), for a column header that states the zone once instead of every cell. */
+export function zoneName(tz: string, at: Date = new Date()): string {
+  try {
+    return intl({ timeZoneName: "short" }, tz).formatToParts(at).find((p) => p.type === "timeZoneName")?.value ?? tz;
+  } catch {
+    return tz;
+  }
+}
+
 const SYSTEM_TYPE_LABELS: Record<string, string> = {
   ecc: "ECC",
   s4hana_onprem: "S/4HANA on premise",
@@ -174,56 +204,6 @@ const SYSTEM_TYPE_LABELS: Record<string, string> = {
 export function systemTypeLabel(type: string | null | undefined): string {
   if (!type) return "—";
   return SYSTEM_TYPE_LABELS[type] ?? labelOf(type);
-}
-
-/**
- * Axis labels for a run series keyed by run id: the date, or date and time when two runs share a day, with seconds
- * when two share a minute, and an ordinal ("#2", in run order) when even the second is shared.
- * Run labels are user-supplied upload names, so they never become ticks; this is the one tick formatter.
- */
-export function runAxisLabels(runs: readonly { id: string; run_at: string | null | undefined }[]): Map<string, string> {
-  const kinds = ["date", "datetime", "seconds"] as const;
-  const tally = kinds.map((k) => {
-    const m = new Map<string, number>();
-    for (const r of runs) {
-      const key = formatDate(r.run_at, k);
-      m.set(key, (m.get(key) ?? 0) + 1);
-    }
-    return m;
-  });
-  const out = new Map<string, string>();
-  const ordinal = new Map<string, number>();
-  const ordered = [...runs].sort((a, b) => (a.run_at ?? "").localeCompare(b.run_at ?? ""));
-  for (const r of ordered) {
-    const level = kinds.findIndex((k, i) => (tally[i].get(formatDate(r.run_at, k)) ?? 0) <= 1);
-    if (level >= 0) {
-      out.set(r.id, formatDate(r.run_at, kinds[level]));
-      continue;
-    }
-    const key = formatDate(r.run_at, "seconds");
-    const n = (ordinal.get(key) ?? 0) + 1;
-    ordinal.set(key, n);
-    out.set(r.id, key === "—" ? key : `${key} #${n}`);
-  }
-  return out;
-}
-
-/**
- * Option labels for a run picker: the run's label, and where two runs share a label, the label with the run's
- * date (disambiguated as on the axis), so 19 runs of "controlling_1k" read as 19 different options.
- */
-export function runOptionLabels(runs: readonly { id: string; label?: string | null; run_at: string | null | undefined }[]): Map<string, string> {
-  const base = (r: (typeof runs)[number]) => r.label || formatDate(r.run_at, "datetime");
-  const groups = new Map<string, (typeof runs)[number][]>();
-  for (const r of runs) groups.set(base(r), [...(groups.get(base(r)) ?? []), r]);
-  const out = new Map<string, string>();
-  for (const [name, group] of groups) {
-    if (group.length === 1) { out.set(group[0].id, name); continue; }
-    const when = runAxisLabels(group);
-    // A label that already is the date is replaced by the finer date, never repeated beside it.
-    for (const r of group) out.set(r.id, r.label ? `${name}, ${when.get(r.id)}` : when.get(r.id) ?? name);
-  }
-  return out;
 }
 
 /** Rule ids named in a DQS cap reason ("2 critical failures over tolerance (MM140: 3.2% of MARA rows; ...)"). */
@@ -365,15 +345,16 @@ export function browserTimezone(): string {
 
 /** The one date style: "2 Oct 2026" or "2 Oct 2026, 05:09", in the user's chosen zone, else the tenant's, else
  * UTC. With an explicit IANA `tz` (schedule and sign-off times, read in the tenant's zone) the time is shown in
- * that zone and labelled with it: "2 Oct 2026, 07:09 GMT+2". An unparseable value is an em dash. */
-export function formatDate(iso: string | number | Date | null | undefined, kind: "date" | "datetime" | "seconds" = "date", tz?: string): string {
+ * that zone and labelled with it: "2 Oct 2026, 07:09 GMT+2", unless `zoneLabel` is false (a table that names the zone
+ * in its header, `zoneName`). An unparseable value is an em dash. */
+export function formatDate(iso: string | number | Date | null | undefined, kind: "date" | "datetime" | "seconds" = "date", tz?: string, zoneLabel = true): string {
   if (iso === null || iso === undefined || iso === "") return "—";
   const d = iso instanceof Date ? iso : new Date(typeof iso === "string" && /^\d{4}-\d{2}-\d{2}T[\d:.]+$/.test(iso) ? `${iso}Z` : iso);
   if (Number.isNaN(d.getTime())) return "—";
   const opts = kind === "date" ? DATE_OPTS : kind === "seconds" ? SECONDS_OPTS : DATETIME_OPTS;
   if (!tz) return intl(opts, formatPrefs.timezone ?? tenantZone ?? "UTC").format(d);
   const text = intl(opts, tz).format(d);
-  if (kind === "date") return text;
+  if (kind === "date" || !zoneLabel) return text;
   const zone = intl({ timeZoneName: "short" }, tz).formatToParts(d).find((p) => p.type === "timeZoneName")?.value;
   return zone ? `${text} ${zone}` : text;
 }
@@ -540,6 +521,15 @@ export function formatPct(p: number | null | undefined): string {
   if (p === 0) return "0%";
   if (p > 0 && p < 0.1) return "<0.1%";
   return p >= 10 ? `${Math.round(p)}%` : `${round1(p)}%`;
+}
+
+/**
+ * A finding's pass rate on the 0..100 scale, or null when unknown. `findings.pass_rate` is always 0..100
+ * (checks/base.py pass_rate_of; migration 094 rescaled the one legacy 0..1 writer), so a value at or below 1
+ * is a rule that is almost entirely failing, never a share to rescale.
+ */
+export function passRatePct(p: number | null | undefined): number | null {
+  return isNum(p) ? p : null;
 }
 
 /** "+2.1" or "−0.8" (U+2212), one decimal; zero is "0.0". */

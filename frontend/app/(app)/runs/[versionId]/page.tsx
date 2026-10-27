@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, Card, ConfirmDialog, DataTable, Delta, Dialog, DimensionBars, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, FilterChip, FindingDrawer, Input, InsightHeader, Line, Mono, Pager, Pill, Tooltip, DrillLink, Score, Select, SeverityDot, Skeleton, Sparkline, Tabs, isSeverity, entityTabs, NextActions, PageHeader, Status, asyncStateOf, type CellMeta } from "@/design";
+import { Button, Card, ConfirmDialog, DataTable, Delta, Dialog, DimensionBars, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, FilterChip, FindingDrawer, Input, InsightHeader, Line, Pager, Pill, Tooltip, DrillLink, Score, Select, SeverityDot, Skeleton, Sparkline, Tabs, isSeverity, entityTabs, NextActions, PageHeader, Status, Switch, asyncStateOf, type CellMeta } from "@/design";
 import { getPrescriptiveAnalytics } from "@/lib/api/analytics";
 import { useRole } from "@/hooks/use-role";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -24,18 +24,21 @@ import { useDqsExplanation } from "@/components/insight/dqs-score";
 import { getAnalysisStatus } from "@/lib/api/upload";
 import { analyseVersion } from "@/lib/api/system-objects";
 import { RunProgressBanner } from "@/components/run-progress-banner";
-import { DIMENSIONS, formatDate, formatModuleName, formatMoney, formatNumber, labelOf, plural, runAxisLabels } from "@/lib/format";
+import { DIMENSIONS, formatDate, formatModuleName, formatMoneyCompact, formatNumber, labelOf, plural } from "@/lib/format";
+import { runAxisTicks } from "@/lib/run-axis";
+import { capSummary } from "@/lib/home-metrics";
 import { ConfigMatchesTab } from "./config-matches-tab";
 import { queryKeys } from "@/lib/query-keys";
 import { baselineRunId, isFinished, lineageOf, overallDqs, previousRunId, runPageHref } from "@/lib/runs";
 import { latestFinishedRun, lineageChoices, runName } from "@/lib/run-scope";
 import { RunScope } from "@/components/run-scope";
+import { RuleCell } from "@/components/fix/rule-cell";
 import type { Finding, Version } from "@/types/api";
 import { clsx } from "clsx";
 
 const SEVERITY_OPTIONS = [
   { value: "", label: "All severities" },
-  // The Home and Insights "Critical and high findings" tiles drill here with both.
+  // The Home and Insights "Critical and high failing rules" tiles drill here with both.
   { value: "critical,high", label: "Critical and high" },
   { value: "critical", label: "Critical" },
   { value: "high", label: "High" },
@@ -80,7 +83,7 @@ const FINDINGS_PAGE = 100;
 function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; history: History; onOpenSteps: () => void }) {
   const { can } = useRole();
   const objects = useQuery({ queryKey: queryKeys.objects(versionId), queryFn: () => getObjects(versionId) });
-  // Ranked by records affected, the same order as the overview ledger.
+  // Ranked by rule failures, the same order as the overview ledger.
   const rows = [...(objects.data?.objects ?? [])].sort((x, y) => y.affected_records - x.affected_records);
   const modules = history.data?.modules ?? {};
 
@@ -107,16 +110,19 @@ function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; hi
     {
       accessorKey: "failing_checks",
       header: "Failing rules",
+      meta: { priority: "low" } satisfies CellMeta,
       cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{formatNumber(row.original.failing_checks)}</DrillLink>,
     },
     {
+      // Summed over the object's failing rules (a record failing two rules counts twice): rule failures.
       accessorKey: "affected_records",
-      header: "Failing records",
+      header: "Rule failures",
       cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{formatNumber(row.original.affected_records)}</DrillLink>,
     },
     {
       id: "trend",
       header: "Trend",
+      meta: { priority: "low" } satisfies CellMeta,
       cell: ({ row }) => {
         const series = modules[row.original.module];
         if (!series || series.length < 2) return "—";
@@ -128,6 +134,7 @@ function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; hi
       header: "",
       size: 90,
       enableSorting: false,
+      meta: { priority: "low" } satisfies CellMeta,
       cell: ({ row }) => (
         <span onClick={(e) => e.stopPropagation()}>
           <Link href={`/objects/${row.original.module}?run=${versionId}`} aria-label={`Open ${formatModuleName(row.original.module)}`} className="m-ink-accent">Open</Link>
@@ -172,29 +179,27 @@ function RunLedger({ versionId, rows, objects }: { versionId: string; rows: Modu
       cell: ({ row }) => <Score value={objects.get(row.original.module)?.composite_score} size="sm" />,
     },
     {
+      // A phone keeps the object, its score, its failing records and Open; the rule and the counts step aside.
       id: "rule",
       header: "Blocking rule",
       enableSorting: false,
+      meta: { priority: "low" } satisfies CellMeta,
       cell: ({ row }) => {
         const o = objects.get(row.original.module);
-        return o?.blocking_rule_id ? (
-          <span className="inline-flex min-w-0 items-baseline gap-2">
-            <Mono>{o.blocking_rule_id}</Mono>
-            {o.blocking_rule_name ? <span className="m-ink-2 truncate">{o.blocking_rule_name}</span> : null}
-          </span>
-        ) : <span className="m-ink-3">—</span>;
+        return o?.blocking_rule_id ? <RuleCell id={o.blocking_rule_id} fallback={o.blocking_rule_name} /> : <span className="m-ink-3">—</span>;
       },
     },
     {
-      id: "critical", header: "Critical", accessorFn: (m) => m.critical, meta: { numeric: true } satisfies CellMeta, size: 90,
+      id: "critical", header: "Critical", accessorFn: (m) => m.critical, meta: { numeric: true, priority: "low" } satisfies CellMeta, size: 90,
       cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}&severity=critical`}>{row.original.critical.toLocaleString()}</DrillLink>,
     },
     {
-      id: "high", header: "High", accessorFn: (m) => m.high, meta: { numeric: true } satisfies CellMeta, size: 80,
+      id: "high", header: "High", accessorFn: (m) => m.high, meta: { numeric: true, priority: "low" } satisfies CellMeta, size: 80,
       cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}&severity=high`}>{row.original.high.toLocaleString()}</DrillLink>,
     },
     {
-      id: "records", header: "Failing records", accessorFn: (m) => m.affected ?? 0, meta: { numeric: true } satisfies CellMeta,
+      // The aggregate's per-object sum over failing rules: rule failures, never distinct records.
+      id: "records", header: "Rule failures", accessorFn: (m) => m.affected ?? 0, meta: { numeric: true } satisfies CellMeta,
       cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{(row.original.affected ?? 0).toLocaleString()}</DrillLink>,
     },
     {
@@ -202,6 +207,7 @@ function RunLedger({ versionId, rows, objects }: { versionId: string; rows: Modu
       header: "",
       size: 90,
       enableSorting: false,
+      meta: { sticky: "end" } satisfies CellMeta,
       cell: ({ row }) => (
         <span onClick={(e) => e.stopPropagation()}>
           <Link href={`/objects/${row.original.module}?run=${versionId}`} aria-label={`Open ${formatModuleName(row.original.module)}`} className="m-ink-accent">Open</Link>
@@ -224,15 +230,15 @@ function RunLedger({ versionId, rows, objects }: { versionId: string; rows: Modu
 }
 
 function SummaryTab({
-  versionId, aggregate, history, systemId, versionLoading, lineage,
+  versionId, aggregate, history, systemId, versionLoading, lineage, inProgress = false,
 }: {
   versionId: string; aggregate: UseQueryResult<FindingsAggregate>; history: History; systemId?: string; versionLoading: boolean;
+  /** The run is still extracting or analysing: no findings yet means "not scored yet", not "nothing failed". */
+  inProgress?: boolean;
   /** Scored runs of this run's lineage (uploads of the same objects), used for the composite line when there is no system history. */
   lineage: Version[];
 }) {
   const router = useRouter();
-  // The empty trend's "Run analysis" (analyse) and "Import file" (upload) are offered only to roles that may do them.
-  const { can } = useRole();
   // Next actions come from this run's findings, not the newest run of the tenant.
   const prescriptive = useQuery({ queryKey: ["prescriptive", "next-actions", versionId], queryFn: () => getPrescriptiveAnalytics({ limit: 5, version_id: versionId }) });
   // Shared with the Objects tab: the score, blocking rule and readiness of each object.
@@ -255,6 +261,15 @@ function SummaryTab({
   if (aggregate.isError || !aggregate.data) {
     return <ErrorState message={errorText(aggregate.error)} onRetry={() => aggregate.refetch()} />;
   }
+  if (inProgress && aggregate.data.total === 0) {
+    return (
+      <EmptyState
+        title="Analysis is running"
+        detail="The score, objects and findings appear here when it finishes. Steps shows how far it has got."
+        action={<Button variant="secondary" render={<Link href={`/runs/${versionId}?tab=steps`}>Open steps</Link>} />}
+      />
+    );
+  }
 
   const a = aggregate.data;
   // A run with nothing failing still has a score: the hero stays, the ledger and next actions give way.
@@ -266,6 +281,10 @@ function SummaryTab({
   // page shows, and the one the delta compares), and the ruler draws the measured value as a ghost beyond it.
   const raw = a.dqs.raw ?? composite;
   const capped = a.dqs.capped === true && composite != null && raw != null && raw > composite;
+  // "Capped at 70, N critical" counts the critical failing rules that cap (over tolerance), as Home and the executive
+  // summary do (lib/home-metrics.ts capSummary); a run outside the lineage list falls back to its critical failing rules.
+  const thisRun = lineage.find((v) => v.id === versionId);
+  const capRules = thisRun ? capSummary(thisRun).rules || a.severity.critical : a.severity.critical;
 
   // Only the dimensions this run measured: an unmeasured one is not a gap in the data.
   const dimensions = DIMENSIONS.filter((d) => a.dqs.dimension_scores[d.id] != null).map((d) => ({
@@ -280,7 +299,7 @@ function SummaryTab({
   const historyRows = systemId != null
     ? [...(history.data?.history ?? [])].reverse().map((h) => ({ id: h.version_id, run_at: h.run_at, composite: h.at_the_time.composite }))
     : [...lineage].sort((a, b) => (a.run_at < b.run_at ? -1 : 1)).map((v) => ({ id: v.id, run_at: v.run_at, composite: overallDqs(v) }));
-  const ticks = runAxisLabels(historyRows);
+  const ticks = runAxisTicks(historyRows);
   const points = historyRows.flatMap((h) => (h.composite == null ? [] : [{ x: h.id, label: ticks.get(h.id), y: Math.round(h.composite * 10) / 10, runId: h.id }]));
   // Mark this run, and any run whose composite fell 5 points or more from the one before it.
   const annotations = points.flatMap((p, i): { x: string; label: string; kind: "event" | "change" }[] => {
@@ -319,7 +338,7 @@ function SummaryTab({
               value={composite}
               measured={capped ? raw : undefined}
               cap={capped ? composite ?? undefined : undefined}
-              criticals={a.severity.critical}
+              criticals={capRules}
               versionId={versionId}
               explain={explained?.explain}
               delta={delta != null ? <Delta value={delta} run="previous run" /> : undefined}
@@ -331,7 +350,7 @@ function SummaryTab({
         stats={[
           // The findings list filters by one severity, so the two that block are two drills.
           {
-            label: "Critical and high findings",
+            label: "Critical and high failing rules",
             value: blocking.toLocaleString(),
             tone: blocking > 0 ? "no-go" : undefined,
             hint: (
@@ -341,8 +360,9 @@ function SummaryTab({
               </span>
             ),
           },
-          { label: "Affected records", value: a.affected_records.toLocaleString(), to: `/runs/${versionId}?tab=findings` },
-          ...(cost != null ? [{ label: "Cost at risk", value: formatMoney(Math.round(cost), costModel.data?.currency), to: `/runs/${versionId}?tab=findings` }] : []),
+          // Summed over the failing rules (a record failing two rules counts twice): rule failures, the ledger's column.
+          { label: "Rule failures", value: a.affected_records.toLocaleString(), hint: "records failing a rule, per rule", to: `/runs/${versionId}?tab=findings` },
+          ...(cost != null ? [{ label: "Cost at risk", value: formatMoneyCompact(cost, costModel.data?.currency), to: `/runs/${versionId}?tab=findings` }] : []),
         ]}
         // `bare` sets the score band alone; the cells below are not drawn.
         situation={{ sentence: "" }}
@@ -370,29 +390,24 @@ function SummaryTab({
             <h2 className="font-semibold m-text-h">Objects in this run</h2>
             <RunLedger versionId={versionId} rows={ledgerRows} objects={objectByModule} />
           </section>
-          <section className={clsx("flex flex-col gap-2", prescriptive.isLoading && "[min-height:124px]")} data-testid="next-actions-slot">
-            <h2 className="font-semibold m-text-h">Next actions</h2>
-            {prescriptive.isLoading ? (
-              <Skeleton height={96} />
-            ) : next.length > 0 ? (
-              <NextActions actions={next} />
-            ) : (
-              <EmptyState variant="inline" title="No next actions for this run" />
-            )}
-          </section>
+          {/* A run with no prescribed action shows no section, not a heading over "No next actions". */}
+          {prescriptive.isLoading || next.length > 0 ? (
+            <section className={clsx("flex flex-col gap-2", prescriptive.isLoading && "[min-height:124px]")} data-testid="next-actions-slot">
+              <h2 className="font-semibold m-text-h">Next actions</h2>
+              {prescriptive.isLoading ? <Skeleton height={96} /> : <NextActions actions={next} />}
+            </section>
+          ) : null}
         </>
       )}
       <Card title="Composite over runs">
         {versionLoading || (systemId != null && history.isLoading) ? (
           <Skeleton height={160} />
         ) : points.length <= 1 ? (
+          // A note, not a call to action: reading a run is no moment to import a file or start another analysis.
           <EmptyState
             variant="inline"
             title="Only one run so far"
             detail={systemId ? "Scores over time appear after a second run of this system." : "Scores over time appear after a second upload of the same objects."}
-            action={(systemId ? can("analyse") : can("upload"))
-              ? <Button render={<Link href={systemId ? `/systems/${systemId}` : "/import"}>{systemId ? "Run analysis" : "Import file"}</Link>} />
-              : undefined}
           />
         ) : (
           <Line data={points} label="Composite over runs" height={160} annotations={annotations} onPointClick={(p) => { if (p.runId) router.push(runPageHref(p.runId)); }} />
@@ -402,15 +417,17 @@ function SummaryTab({
   );
 }
 
-const findingsKey = (versionId: string, severity: string, dimension: string, moduleFilter: string, page: number) =>
-  [...queryKeys.run(versionId), "findings", severity, dimension, moduleFilter, page] as const;
+const findingsKey = (versionId: string, severity: string, dimension: string, moduleFilter: string, page: number, passing = false) =>
+  [...queryKeys.run(versionId), "findings", severity, dimension, moduleFilter, page, passing ? "all" : "failing"] as const;
 
-const findingsFetch = (versionId: string, severity: string, dimension: string, moduleFilter: string, page: number) =>
+/** The "Failing rules" tab: rules with failing records only, unless the reader asks for passing rules too. */
+const findingsFetch = (versionId: string, severity: string, dimension: string, moduleFilter: string, page: number, passing = false) =>
   getFindings({
     version_id: versionId,
     severity: severity || undefined,
     dimension: dimension || undefined,
     module: moduleFilter || undefined,
+    failing: passing ? undefined : true,
     sort: "severity",
     limit: FINDINGS_PAGE,
     offset: (page - 1) * FINDINGS_PAGE,
@@ -425,6 +442,8 @@ function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenStep
   const moduleFilter = searchParams.get("module") ?? "";
   const findingId = searchParams.get("finding");
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
+  // A rule evaluated with 0 failing records is not a failing rule: listed only when asked for.
+  const passing = searchParams.get("passing") === "1";
 
   const push = (params: URLSearchParams) => router.push(`/runs/${versionId}?${params.toString()}`);
   const setFilter = (key: string, value: string) => {
@@ -454,10 +473,11 @@ function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenStep
     severity: severity || undefined,
     dimension: dimension || undefined,
     module: moduleFilter || undefined,
+    failing: passing ? undefined : true,
   };
   const findings = useQuery({
-    queryKey: findingsKey(versionId, severity, dimension, moduleFilter, page),
-    queryFn: () => findingsFetch(versionId, severity, dimension, moduleFilter, page),
+    queryKey: findingsKey(versionId, severity, dimension, moduleFilter, page, passing),
+    queryFn: () => findingsFetch(versionId, severity, dimension, moduleFilter, page, passing),
     placeholderData: (prev) => prev,
   });
   const rows = findings.data?.findings ?? [];
@@ -476,9 +496,10 @@ function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenStep
         </span>
       ),
     },
-    { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
-    { id: "module", header: "Object", accessorFn: (f) => formatModuleName(f.module) },
-    { id: "dimension", header: "Dimension", accessorFn: (f) => labelOf(f.dimension) },
+    // The rule's words (catalogue name, else the finding's message) beside its id; the message column is gone with it.
+    { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <RuleCell id={row.original.check_id} fallback={row.original.details.message} /> },
+    { id: "module", header: "Object", meta: { priority: "low" } satisfies CellMeta, accessorFn: (f) => formatModuleName(f.module) },
+    { id: "dimension", header: "Dimension", meta: { priority: "low" } satisfies CellMeta, accessorFn: (f) => labelOf(f.dimension) },
     {
       id: "affected",
       header: "Failing records",
@@ -489,7 +510,6 @@ function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenStep
         </DrillLink>
       ),
     },
-    { id: "message", header: "Message", accessorFn: (f) => f.details.message ?? "—", cell: ({ row }) => <span className="block max-w-[360px] truncate">{row.original.details.message ?? "—"}</span> },
   ];
 
   return (
@@ -501,6 +521,7 @@ function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenStep
           {severity ? <FilterChip label="Severity" value={severityFilterLabel(severity)} onRemove={() => setFilter("severity", "")} /> : null}
           {dimension ? <FilterChip label="Dimension" value={DIMENSIONS.find((d) => d.id === dimension)?.label ?? labelOf(dimension)} onRemove={() => setFilter("dimension", "")} /> : null}
           {moduleFilter ? <FilterChip label="Object" value={formatModuleName(moduleFilter)} onRemove={() => setFilter("module", "")} /> : null}
+          <Switch checked={passing} onCheckedChange={(on) => setFilter("passing", on ? "1" : "")} label="Show passing rules too" />
         </div>
       }
       toolbarEnd={
@@ -521,8 +542,8 @@ function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenStep
       state={asyncStateOf(findings, () => rows.length === 0, true)}
       emptyProps={
         filtered
-          ? { title: "No findings match", detail: "Try removing a filter.", action: <Button onClick={clearFilters}>Clear filters</Button> }
-          : { title: "No findings in this run", detail: "Open steps to see what ran.", action: <Button onClick={onOpenSteps}>Open steps</Button> }
+          ? { title: "No failing rules match", detail: "Try removing a filter.", action: <Button onClick={clearFilters}>Clear filters</Button> }
+          : { title: "No failing rules in this run", detail: "Open steps to see what ran.", action: <Button onClick={onOpenSteps}>Open steps</Button> }
       }
       errorProps={{ message: errorText(findings.error), onRetry: () => findings.refetch() }}
       drawer={<FindingDrawer findingId={findingId} versionId={versionId} onClose={() => openFinding(null)} />}
@@ -696,18 +717,8 @@ export default function RunDetailPage() {
           {isBaseline ? <Pill>Baseline</Pill> : null}
         </>
       }
-      actions={
+      secondary={
         <>
-          {prevId ? (
-            <Tooltip label="What changed since the run before this one" render={<Button variant="secondary" render={<Link href={`/runs/${versionId}/vs/${prevId}`} />} />}>
-              Compare with previous
-            </Tooltip>
-          ) : null}
-          {baseId ? (
-            <Tooltip label="What changed since the pinned baseline run" render={<Button variant="secondary" render={<Link href={`/runs/${versionId}/vs/baseline`} />} />}>
-              Compare with baseline
-            </Tooltip>
-          ) : null}
           {can("analyse") ? (
             <>
               <Tooltip label="Give this run a name you will recognise in lists and comparisons" render={<Button variant="ghost" onClick={openRename} />}>
@@ -736,6 +747,26 @@ export default function RunDetailPage() {
                 </Tooltip>
               ) : null}
             </>
+          ) : null}
+        </>
+      }
+      more={can("analyse") ? [
+        { label: "Rename", onSelect: openRename },
+        { label: isBaseline ? "Unpin baseline" : "Pin as baseline", onSelect: () => pin.mutate(), disabled: pin.isPending },
+        { label: "Re-run analysis", onSelect: () => rerun.mutate(), disabled: running || rerun.isPending },
+        ...(AI_RERUN_STATUSES.includes(v.status) ? [{ label: "Re-run AI analysis", onSelect: () => setAiOpen(true), disabled: running }] : []),
+      ] : undefined}
+      actions={
+        <>
+          {prevId ? (
+            <Tooltip label="What changed since the run before this one" render={<Button variant="secondary" render={<Link href={`/runs/${versionId}/vs/${prevId}`} />} />}>
+              Compare with previous
+            </Tooltip>
+          ) : null}
+          {baseId ? (
+            <Tooltip label="What changed since the pinned baseline run" render={<Button variant="secondary" render={<Link href={`/runs/${versionId}/vs/baseline`} />} />}>
+              Compare with baseline
+            </Tooltip>
           ) : null}
           {can("export") ? <ExportMenu options={exportOptions} /> : null}
         </>
@@ -790,9 +821,9 @@ export default function RunDetailPage() {
         value={tab}
         onValueChange={setTab}
         items={[
-          { value: "overview", label: "Overview", content: <SummaryTab versionId={versionId} aggregate={aggregate} history={history} systemId={systemId} versionLoading={version.isLoading} lineage={v ? runs.filter((r) => lineageOf(r) === lineageOf(v) && isFinished(r)) : []} /> },
+          { value: "overview", label: "Overview", content: <SummaryTab versionId={versionId} aggregate={aggregate} history={history} systemId={systemId} versionLoading={version.isLoading} lineage={v ? runs.filter((r) => lineageOf(r) === lineageOf(v) && isFinished(r)) : []} inProgress={running || v?.status === "pending" || v?.status === "running"} /> },
           { value: "objects", label: "Objects", content: <ObjectsTab versionId={versionId} history={history} onOpenSteps={openSteps} /> },
-          { value: "findings", label: "Findings", content: <FindingsTab versionId={versionId} onOpenSteps={openSteps} /> },
+          { value: "findings", label: "Failing rules", content: <FindingsTab versionId={versionId} onOpenSteps={openSteps} /> },
           {
             value: "steps",
             label: "Steps",

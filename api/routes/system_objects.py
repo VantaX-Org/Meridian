@@ -235,7 +235,13 @@ async def list_objects(system_id: uuid.UUID, db: AsyncSession = Depends(get_db),
          WHERE v.metadata->>'system_id' = :sid
          ORDER BY m.module, v.run_at DESC
     """), {"sid": str(system_id)})).fetchall()}
+    from sap.extraction_registry import preview_sources
+    preview: dict[str, list[dict]] = {}
+    for p in preview_sources(st):
+        preview.setdefault(p["module"], []).append({"source": p["source"], "reason": p["reason"]})
     for o in objects:
+        # registry sources whose names are not yet verified against SAP (Preview badge)
+        o["preview_sources"] = preview.get(o["object"], [])
         r = last.get(o["object"])
         o["last_download"] = None if not r else {"version_id": str(r.id), "at": r.run_at.isoformat(),
                                                  "status": r.status, "records": r.records}

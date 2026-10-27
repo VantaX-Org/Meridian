@@ -5,6 +5,7 @@ import { buildDrillHref, type Verdict } from "@/design";
 import { getBusinessProcess } from "@/lib/api/connectivity";
 import { getFindings } from "@/lib/api/findings";
 import { useRunListWith } from "@/hooks/use-run-list";
+import { plural } from "@/lib/format";
 import { isFinished } from "@/lib/runs";
 import { queryKeys } from "@/lib/query-keys";
 import type { BusinessProcessL1, BusinessProcessL4, BusinessProcessL5Field, Version } from "@/types/api";
@@ -25,6 +26,31 @@ export const PROCESS_L1_MODULES: Readonly<Record<string, readonly string[]>> = {
   PTP: ["accounts_payable", "mm_purchasing", "material_master", "fi_gl"],
   OTC: ["accounts_receivable", "sd_customer_master", "sd_sales_orders", "fi_gl"],
 };
+
+/** The process objects in definition order (procure to pay, then order to cash), each once. */
+const PROCESS_ORDER: readonly string[] = [...new Set(Object.values(PROCESS_L1_MODULES).flat())];
+
+/**
+ * The process objects of the current state, in definition order, each with the run it is read from (its own latest
+ * run). Objects without an L1 to L5 definition are left out: the current state never offers an object it cannot
+ * score.
+ */
+export function currentProcessObjects<T extends { module: string }>(objects: readonly T[]): T[] {
+  return PROCESS_ORDER.map((m) => objects.find((o) => o.module === m)).filter((o): o is T => !!o);
+}
+
+/**
+ * The object the current state opens on: the first process object whose own run has a process document, so the page
+ * never opens on an empty object while another has readiness. Undefined while a read that comes first is pending;
+ * the first object when none has a document.
+ */
+export function firstWithProcesses(modules: readonly string[], reads: readonly { data?: readonly unknown[]; isLoading: boolean }[]): string | undefined {
+  for (let i = 0; i < modules.length; i++) {
+    if (reads[i]?.isLoading) return undefined;
+    if (reads[i]?.data?.length) return modules[i];
+  }
+  return modules[0];
+}
 
 /** The objects of `modules` that carry `l1`'s definition, in definition order; empty for an L1 without one. */
 export const modulesOfL1 = (l1: string, modules: readonly string[]): string[] =>
@@ -112,6 +138,74 @@ export const sev = (f: BusinessProcessL5Field): "critical" | "high" | "medium" =
 export const verdictOf = (blocking: number, pct: number | null): Verdict =>
   blocking ? "no-go" : pct == null || pct >= 90 ? "go" : "at-risk";
 
+/**
+ * The red fields once each. One field (with the rule failing it) is written by several steps, so the step-by-step
+ * list repeats it: AP016 on vendor onboarding, invoice verification and the payment run is one field failing one
+ * record, never "3 blocking fields fail on 3 records".
+ */
+export function distinctReds(fs: BusinessProcessL5Field[]): BusinessProcessL5Field[] {
+  const byKey = new Map<string, BusinessProcessL5Field>();
+  for (const f of fs) {
+    if (f.dq_status !== "red") continue;
+    const key = `${f.check_id ?? ""}|${f.field}`;
+    const seen = byKey.get(key);
+    if (!seen || f.affected_count > seen.affected_count) byKey.set(key, f);
+  }
+  return [...byKey.values()].sort((a, b) => b.affected_count - a.affected_count);
+}
+
+const SEV_RANK = { critical: 0, high: 1, medium: 2 } as const;
+
+/** One failing rule of a process, once, with every step and field it blocks (`redsByRule`). */
+export interface RedRule {
+  /** The rule's check id, or `field:<TABLE.FIELD>` for a red field no rule names. */
+  key: string;
+  checkId: string | null;
+  /** What fails, in words: the finding's message, else the first field's description. */
+  title: string;
+  /** The worst severity among its red fields. */
+  severity: ReturnType<typeof sev>;
+  /** The fields it fails, each once, in process order. */
+  fields: string[];
+  /** The L3 steps it blocks, each once, in process order. */
+  steps: string[];
+  /** Its failing records: the most any of its fields reports (the same records, however many steps write them). */
+  affected: number;
+}
+
+/**
+ * The red fields of a process grouped by the rule failing them, most records first. One rule written by several steps
+ * (AP016 on vendor onboarding, invoice verification and the payment run) is one row naming its steps and fields, never
+ * three rows of the same rule and the same records.
+ */
+export function redsByRule(l1: BusinessProcessL1): RedRule[] {
+  const byKey = new Map<string, RedRule>();
+  for (const l2 of l1.l2_groups) for (const l3 of l2.l3_processes) for (const f of l3.l4_subprocesses.flatMap(l4Fields)) {
+    if (f.dq_status !== "red") continue;
+    const key = f.check_id ?? `field:${f.field}`;
+    const row = byKey.get(key) ?? { key, checkId: f.check_id ?? null, title: f.finding_message || f.description, severity: sev(f), fields: [], steps: [], affected: 0 };
+    if (!row.fields.includes(f.field)) row.fields.push(f.field);
+    if (!row.steps.includes(l3.l3_name)) row.steps.push(l3.l3_name);
+    if (SEV_RANK[sev(f)] < SEV_RANK[row.severity]) row.severity = sev(f);
+    row.affected = Math.max(row.affected, f.affected_count);
+    byKey.set(key, row);
+  }
+  return [...byKey.values()].sort((a, b) => b.affected - a.affected || SEV_RANK[a.severity] - SEV_RANK[b.severity]);
+}
+
+/**
+ * The blocking fields in words (lib/help/glossary.ts): with one failing rule, its failing records; with several,
+ * their rule failures, since a record can fail more than one of them. Null when nothing blocks.
+ */
+export function blockingSentence(fs: BusinessProcessL5Field[]): string | null {
+  const reds = distinctReds(fs);
+  if (!reds.length) return null;
+  const fields = plural(reds.length, "blocking field fails", "blocking fields fail");
+  const rules = new Set(reds.map((f) => f.check_id ?? f.field));
+  if (rules.size === 1) return `${fields} on ${plural(Math.max(...reds.map((f) => f.affected_count)), "record")}.`;
+  return `${fields}: ${plural(reds.reduce((a, f) => a + f.affected_count, 0), "rule failure")} between them.`;
+}
+
 export interface L1Readiness {
   l1: BusinessProcessL1;
   module: string;
@@ -119,12 +213,14 @@ export interface L1Readiness {
   pct: number | null;
   /** The red field failing the most records. */
   worst: BusinessProcessL5Field | null;
+  /** Rule failures of the distinct red fields (a field several steps write counts once). */
   failing: number;
 }
 
 export function l1Readiness(l1: BusinessProcessL1, module: string): L1Readiness {
   const fs = l1Fields(l1);
-  const reds = fs.filter((f) => f.dq_status === "red").sort((a, b) => b.affected_count - a.affected_count);
+  // Each red field once (a field several steps write is one field): its rule failures summed over distinct rules.
+  const reds = distinctReds(fs);
   const pct = score(fs);
   return { l1, module, pct, verdict: verdictOf(reds.length, pct), worst: reds[0] ?? null, failing: reds.reduce((a, f) => a + f.affected_count, 0) };
 }

@@ -7,6 +7,8 @@ export interface TableView {
   visibility: VisibilityState;
   dense: boolean;
   sorting: SortingState;
+  /** The page's own filters (its URL parameters) when the table was saved with `viewParams`; the page applies them. */
+  params?: Record<string, string>;
 }
 
 /** Where views lived before they moved into the preferences document; read once as a fallback, removed on the next write. */

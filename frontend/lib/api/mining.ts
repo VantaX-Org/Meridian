@@ -104,9 +104,15 @@ export interface MinedAnomaly {
   module_id: string;
   field_name: string;
   field_value: number | null;
+  /** The row's position in the extracted frame; names the row only where `record_key` is null. */
   record_index: number | null;
+  /** The record the outlier sits on, keyed as the record page and Fix work key it; null for rows mined before it was kept. */
+  record_key?: string | null;
   detection_method: string;
   z_score: number | null;
+  /** The usual range the value falls outside of (interquartile method); null for z-score rows. */
+  lower_bound?: number | null;
+  upper_bound?: number | null;
   severity: "critical" | "high" | "medium" | "low";
   detected_at: string;
 }
@@ -122,7 +128,8 @@ export interface MinedRelationship {
   detected_at: string;
 }
 
-interface MinedParams { version_id?: string; module_id?: string; limit?: number }
+/** One run (`version_id`), every run (neither), or the current state (`scope: "current"`: each object at its own latest run). */
+interface MinedParams { version_id?: string; module_id?: string; limit?: number; scope?: "current" }
 
 /** GET /api/v1/mining/duplicates: record pairs the miner scored as likely duplicates, best match first. */
 export async function getMiningDuplicates(params?: MinedParams & { min_score?: number }): Promise<MinedDuplicate[]> {

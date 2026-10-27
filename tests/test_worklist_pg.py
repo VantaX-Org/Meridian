@@ -291,6 +291,46 @@ async def test_records_filter_blocking_every_status_and_source_system(run, clien
 
 
 @pytest.mark.anyio
+async def test_summary_tiles_count_exactly_what_the_list_shows_for_every_filter(run, client_for):
+    """Fix work sends the list's own filters to /work/summary (frontend/components/work/fix-work.tsx): with Mine on,
+    the tiles must count the records the list shows, never the run's whole work list."""
+    owner, tid, vid, _ = run
+    deps, client = client_for(tid)
+    await deps.engine.dispose()
+    async with client:
+        params = lambda **f: {"version_id": vid, **f}
+        summary = lambda **f: client.get("/api/v1/work/summary", params=params(**f), headers=HEADERS)
+        records = lambda **f: client.get("/api/v1/work/records", params=params(**f), headers=HEADERS)
+        # one record assigned to the caller, so "mine" is neither everything nor nothing
+        r = await client.post("/api/v1/work/decide", json={"version_id": vid, "items": [
+            {"module": "material_master", "record_key": "MATNR=2", "action": "assign", "assignee": "me"}]}, headers=HEADERS)
+        assert r.status_code == 200, r.text
+        filters = [{"assigned": "me"}, {"assigned": "unassigned"}, {"severity": "critical"}, {"severity": "medium"},
+                   {"check_id": "MM002"}, {"status": "all"}, {"proposed": "true"}, {"q": "nu"},
+                   {"module": "material_master", "assigned": "me", "severity": "critical"}]
+        for f in filters:
+            t = (await summary(**f)).json()["totals"]
+            listed = (await records(**f)).json()
+            assert t["open"] == t["records"] == listed["total"], f
+            assert t["issues"] == sum(i["issues"] for i in listed["items"]), f
+        assert (await summary(assigned="me")).json()["totals"]["open"] == 1
+    # Tenant isolation: another tenant cannot read this run's work list, filtered or not.
+    other = str(uuid.uuid4())
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:id, :id)"), {"id": other})
+    try:
+        deps, client = client_for(other)
+        await deps.engine.dispose()
+        async with client:
+            for f in ({}, {"assigned": "me"}):
+                r = await client.get("/api/v1/work/summary", params={"version_id": vid, **f}, headers=HEADERS)
+                assert r.status_code == 404 or r.json()["totals"]["records"] == 0, (f, r.text)
+    finally:
+        with owner.begin() as c:
+            c.execute(text("DELETE FROM tenants WHERE id = :id"), {"id": other})
+
+
+@pytest.mark.anyio
 async def test_accept_all_keeps_entered_values_and_cleaning_suggestions_can_be_accepted(run, client_for):
     owner, tid, vid, _ = run
     with owner.begin() as c:
@@ -367,3 +407,55 @@ async def test_fix_sheet_sign_offs_need_the_approve_permission(run, client_for, 
     with owner.begin() as c:
         assert c.execute(text("SELECT count(*) FROM record_issues WHERE tenant_id = :t AND status = 'accepted'"),
                          {"t": tid}).scalar() == 0
+
+
+@pytest.mark.anyio
+async def test_records_carry_age_and_suggested_value(run, client_for):
+    """Each listed record says when the oldest of its failing issues was first seen (the queue's Age) and the first
+    suggested value of its checks (the rule's fix for the record, else for its current value), read per page."""
+    owner, tid, vid, _ = run
+    with owner.begin() as c:
+        c.execute(text("UPDATE record_issues SET first_seen_at = now() - CASE check_id WHEN 'MM001' "
+                       "THEN interval '9 days' ELSE interval '30 days' END WHERE tenant_id = :t"), {"t": tid})
+    deps, client = client_for(tid)
+    await deps.engine.dispose()
+    async with client:
+        items = (await client.get("/api/v1/work/records", params={"version_id": vid}, headers=HEADERS)).json()["items"]
+    by = {i["record_key"]: i for i in items}
+    assert by["MATNR=1"]["suggested_value"] == "EA"  # MM001's fix for the record
+    assert by["MATNR=2"]["suggested_value"] == "FERT"  # MM001 has none for it: MM002's fix for the value XX
+    now = pd.Timestamp.now(tz="UTC")
+    assert (now - pd.Timestamp(by["MATNR=1"]["first_seen_at"])).days == 9
+    assert (now - pd.Timestamp(by["MATNR=2"]["first_seen_at"])).days == 30  # the older of its two issues
+
+
+@pytest.mark.anyio
+async def test_records_sort_on_the_server_and_page_by_that_sort(run, client_for):
+    """The queue's sort goes to the server: "oldest first" is global, not a sort of the loaded page, and the
+    keyset pages by the sort, so a later page never holds a record that belongs before an earlier one."""
+    owner, tid, vid, _ = run
+    with owner.begin() as c:
+        c.execute(text("UPDATE record_issues SET first_seen_at = now() - CASE check_id WHEN 'MM001' "
+                       "THEN interval '9 days' ELSE interval '30 days' END WHERE tenant_id = :t"), {"t": tid})
+    deps, client = client_for(tid)
+    await deps.engine.dispose()
+    async with client:
+        get = lambda **params: client.get("/api/v1/work/records", params={"version_id": vid, "limit": 1, **params},
+                                          headers=HEADERS)
+
+        async def walk(sort=None):
+            keys, after = [], None
+            while True:
+                body = (await get(**({"sort": sort} if sort else {}), **({"after": after} if after else {}))).json()
+                keys += [i["record_key"] for i in body["items"]]
+                assert body["total"] == 2
+                if not (after := body["next"]):
+                    return keys
+
+        assert await walk() == ["MATNR=1", "MATNR=2"]  # severity (both critical), then the key
+        assert await walk("-age") == ["MATNR=2", "MATNR=1"]  # the oldest first: MATNR=2 has a 30-day issue
+        assert await walk("severity,-age") == ["MATNR=2", "MATNR=1"]
+        assert await walk("age") == ["MATNR=1", "MATNR=2"]  # the newest first
+        first = (await get(sort="-age")).json()
+        assert (await get(sort="age", after=first["next"])).status_code == 422  # a cursor of another order
+        assert (await get(sort="due")).status_code == 422

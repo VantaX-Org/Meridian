@@ -6,8 +6,10 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, PageHeader, PageFrame, Card, DataTable, Delta, DrillLink, EmptyState, ErrorState, ExportMenu, Line, Mono, Pager, Pill, SeverityDot, Skeleton, Score, Tabs, emptyExportOptions, isSeverity, entityTabs, Status, statusLabel } from "@/design";
+import { Button, PageHeader, PageFrame, Card, DataTable, Delta, DrillLink, EmptyState, ErrorState, ExportMenu, Line, Mono, Pager, Pill, SeverityDot, Skeleton, Score, Tabs, emptyExportOptions, isSeverity, entityTabs, Status, statusLabel, type CellMeta } from "@/design";
+import { RuleCell } from "@/components/fix/rule-cell";
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
+import { NextBestActionCard } from "@/components/insight/next-best-action";
 import { RunScope } from "@/components/run-scope";
 import { useRunScope } from "@/hooks/use-run-scope";
 import { hrefWithRun, runLacksObject, runScopeLabel } from "@/lib/run-scope";
@@ -15,7 +17,8 @@ import { FilterChips } from "../_header";
 import { FindingContextPanel } from "./rules/[ruleId]/finding-context-panel";
 import { RootCauseSection } from "./rules/[ruleId]/root-cause";
 import { Workbench, useRuleDetails } from "./_workbench";
-import { FixStrip, RecordsToFix } from "./_fix";
+import { FixStrip } from "./_fix";
+import { FixWork } from "@/components/work/fix-work";
 import { workSummaryQuery } from "../_work";
 import { PAGE_SIZE, STALE_MS, fixSheetHref, isBlocking, objectQuery, recordsQuery, useFixShortcut, useRecordColumns } from "./_shared";
 import { exportObject, getObject, type ObjectDetail, type ObjectRule, type ObjectSummary } from "@/lib/api/v1/objects";
@@ -29,10 +32,12 @@ import { getProfileByVersion, type ShapeCount, type ValueCount } from "@/lib/api
 import { apiErrorState, isNotFound } from "@/lib/error";
 import { getRuleHistoryBatch } from "@/lib/api/rules";
 import { queryKeys } from "@/lib/query-keys";
-import { DIMENSIONS, formatDate, formatModuleName, moduleDescription, plural, shortCapReason } from "@/lib/format";
+import { rankedName, useRuleNames } from "@/lib/rule-name";
+import { DIMENSIONS, formatDate, formatModuleName, moduleDescription, passRatePct, plural, shortCapReason } from "@/lib/format";
 
 const RULE_HISTORY_RUNS = 8;
-const TAB_KEYS = ["fix", "overview", "rules", "fields", "records"] as const;
+/** The tabs in view, keyed 1 to 4; Related, History and Audit sit under the strip's "More" menu. */
+const TAB_KEYS = ["fix", "overview", "rules", "fields"] as const;
 const SEVERITIES = ["critical", "high", "medium", "low"].map((v) => ({ value: v, label: v[0].toUpperCase() + v.slice(1) }));
 
 const historyQuery = (object: string, run: string) => ({
@@ -70,8 +75,9 @@ function ObjectScore({ summary, detail, run }: { summary: ObjectSummary; detail:
         run,
         dimensions: measured.map(([d, v]) => ({ name: DIMENSIONS.find((x) => x.id === d)?.label ?? d, weight: weights[d] / total, score: v })),
         // weight descends with rank so the explainer's recordsFailed * weight sort keeps the records order
-        rules: failing.map((r, i, all) => ({ ruleId: r.check_id, object: detail.module, recordsFailed: r.affected_count, weight: (all.length - i) / all.length })),
+        rules: failing.map((r, i, all) => ({ ruleId: r.check_id, object: detail.module, recordsFailed: r.affected_count, weight: (all.length - i) / all.length, passRate: passRatePct(r.pass_rate) })),
         historyHref: `/objects/${detail.module}?${new URLSearchParams({ run, tab: "history" })}`,
+        recordsHref: `/objects/${detail.module}?${new URLSearchParams({ run, tab: "fix" })}`,
       }}
     />
   );
@@ -90,7 +96,11 @@ function topValues(values: ValueCount[] | null): string {
   return values.slice(0, 3).map((v) => `${v.value} (${v.count})`).join(", ");
 }
 
-function RulesTab({ object, run }: { object: string; run: string }) {
+/**
+ * The object's rules, ranked by failing records. Picking a rule opens its failing records beside the list (below it
+ * on a narrow screen) on this same tab, `?check_id=` naming the rule, so a rule and its records are read together.
+ */
+function RulesTab({ object, run, checkId }: { object: string; run: string; checkId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const dimension = searchParams.get("dimension");
@@ -110,7 +120,9 @@ function RulesTab({ object, run }: { object: string; run: string }) {
   const { data, isLoading, isError, error, refetch } = useQuery(objectQuery(object, run));
   const batch = useQuery(historyQuery(object, run));
   const details = useRuleDetails(object, run);
-  const nameOf = new Map((details.data?.rows ?? []).map((r) => [r.check_id, r.name]));
+  // The ranking names the rules it ranks; the catalogue (and the DDIC checks it does not hold) names the rest.
+  const catalogueName = useRuleNames(data?.rules.map((r) => r.check_id) ?? []);
+  const nameOf = { get: (id: string): string | undefined => catalogueName(id, rankedName(details.data?.rows, id)) };
 
   const rulesRanked = data
     ? [...data.rules]
@@ -122,51 +134,72 @@ function RulesTab({ object, run }: { object: string; run: string }) {
 
   const delta = (checkId: string): number | null => {
     const runs = batch.data?.history[checkId];
-    if (!runs || runs.length < 2 || runs[0].pass_rate == null || runs[1].pass_rate == null) return null;
-    return runs[0].pass_rate - runs[1].pass_rate;
+    const [now, before] = [passRatePct(runs?.[0]?.pass_rate), passRatePct(runs?.[1]?.pass_rate)];
+    // Points of pass rate between the two newest runs (findings.pass_rate is 0 to 100).
+    return now == null || before == null ? null : now - before;
   };
-  const recordsHref = (checkId: string) => `/objects/${object}?run=${run}&tab=records&check_id=${checkId}`;
+  // The rule's records open on this tab; the filters stay, the older `check` spelling gives way to `check_id`.
+  const recordsHref = (id: string) => {
+    const next = new URLSearchParams(searchParams.toString());
+    next.set("run", run);
+    next.set("tab", "rules");
+    next.delete("check");
+    next.set("check_id", id);
+    return `/objects/${object}?${next.toString()}`;
+  };
+  const selectRule = (id: string) => router.replace(recordsHref(id), { scroll: false });
+  const closeRule = () => {
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("check");
+    next.delete("check_id");
+    router.replace(`/objects/${object}?${next.toString()}`, { scroll: false });
+  };
+  // With a rule open the list is half the width: it keeps the rule, its failing records and its pass rate.
+  const compact = !!checkId;
 
-  const columns: ColumnDef<ObjectRule>[] = [
+  const allColumns: ColumnDef<ObjectRule>[] = [
     {
       accessorKey: "severity",
       header: "Severity",
       cell: ({ row }) =>
-        isSeverity(row.original.severity) ? <SeverityDot severity={row.original.severity} /> : row.original.severity,
+        isSeverity(row.original.severity) ? <SeverityDot severity={row.original.severity} labelled /> : row.original.severity,
     },
     {
       accessorKey: "check_id",
       header: "Rule",
-      cell: ({ row }) => {
-        const name = nameOf.get(row.original.check_id);
-        return <span className="inline-flex min-w-0 items-baseline gap-2"><Mono>{row.original.check_id}</Mono>{name ? <span className="truncate">{name}</span> : null}</span>;
-      },
+      size: 380,
+      // The shared RuleCell: the id on its own line, the words (as `nameOf` ranks them) under it in two lines.
+      cell: ({ row }) => <RuleCell id={row.original.check_id} fallback={nameOf.get(row.original.check_id)} className="[min-width:14rem]" />,
     },
-    { accessorKey: "dimension", header: "Dimension", cell: ({ row }) => (row.original.dimension ? formatModuleName(row.original.dimension) : "—") },
+    { id: "dimension", accessorKey: "dimension", header: "Dimension", meta: { priority: "low" } satisfies CellMeta, cell: ({ row }) => (row.original.dimension ? formatModuleName(row.original.dimension) : "—") },
     {
       accessorKey: "affected_count",
-      header: "Records failing",
+      header: "Failing records",
       cell: ({ row }) => <DrillLink href={recordsHref(row.original.check_id)}>{row.original.affected_count.toLocaleString()}</DrillLink>,
     },
     {
       accessorKey: "pass_rate",
       header: "Pass rate",
-      cell: ({ row }) => (row.original.pass_rate == null ? "—" : `${(row.original.pass_rate * 100).toFixed(1)}%`),
+      // pass_rate is already a percentage (0 to 100), as the rules export reads it.
+      cell: ({ row }) => (row.original.pass_rate == null ? "—" : `${row.original.pass_rate.toFixed(1)}%`),
     },
     {
       id: "trend",
       header: "Trend",
+      meta: { priority: "low" } satisfies CellMeta,
       cell: ({ row }) => {
         const d = delta(row.original.check_id);
-        return d == null ? "—" : <Delta value={d * 100} run="previous run" />;
+        return d == null ? "—" : <Delta value={d} run="previous run" />;
       },
     },
     {
       id: "open",
       header: "Action",
-      cell: ({ row }) => <Button variant="ghost" size="sm" render={<Link href={recordsHref(row.original.check_id)} onClick={(e) => e.stopPropagation()}>Open records</Link>} />,
+      meta: { priority: "low" } satisfies CellMeta,
+      cell: ({ row }) => <Button variant="ghost" size="sm" className="whitespace-nowrap" render={<Link href={recordsHref(row.original.check_id)} scroll={false} onClick={(e) => e.stopPropagation()}>Show records</Link>} />,
     },
   ];
+  const columns = compact ? allColumns.filter((c) => !["dimension", "trend", "open"].includes(c.id ?? "")) : allColumns;
 
   if (isLoading) return <div aria-busy="true"><Skeleton height={320} /></div>;
   if (isError) return <ErrorState {...apiErrorState(error)} onRetry={() => refetch()} />;
@@ -198,14 +231,24 @@ function RulesTab({ object, run }: { object: string; run: string }) {
           action={<Button variant="secondary" onClick={clearFilters}>Clear filters</Button>}
         />
       ) : (
-        <DataTable
-          columns={columns}
-          data={rulesRanked}
-          getRowId={(row) => row.check_id}
-          dataTour="object-rules"
-          rowHref={(row) => recordsHref(row.check_id)}
-          onRowClick={(row) => router.push(recordsHref(row.check_id))}
-        />
+        <div className={compact ? "grid items-start [gap:var(--m-section-gap)] [grid-template-columns:minmax(0,1fr)] xl:[grid-template-columns:minmax(0,2fr)_minmax(0,3fr)]" : undefined}>
+          <DataTable
+            columns={columns}
+            data={rulesRanked}
+            getRowId={(row) => row.check_id}
+            dataTour="object-rules"
+            label="Rules"
+            activeRowId={checkId || null}
+            onActiveRowChange={(row) => selectRule(row.check_id)}
+            rowHref={(row) => recordsHref(row.check_id)}
+            onRowClick={(row) => selectRule(row.check_id)}
+          />
+          {compact ? (
+            <section aria-label="Failing records of the selected rule" className="min-w-0">
+              <RuleRecords object={object} run={run} checkId={checkId} onClose={closeRule} />
+            </section>
+          ) : null}
+        </div>
       )}
     </div>
   );
@@ -309,23 +352,26 @@ function FieldsTab({ object, run }: { object: string; run: string }) {
   );
 }
 
-function RecordsTab({ object, run, checkId }: { object: string; run: string; checkId: string }) {
+/** The failing records of the rule picked on the Rules tab, with what the rule reads and its likely root cause. */
+function RuleRecords({ object, run, checkId, onClose }: { object: string; run: string; checkId: string; onClose: () => void }) {
   const router = useRouter();
   const [page, setPage] = useState(1);
   const { data, isLoading, isError, error, refetch } = useQuery(recordsQuery(run, checkId, page));
   useFixShortcut(object, run, data?.records[0]?.record_key);
   const columns = useRecordColumns(object, run, data?.records);
   const details = useRuleDetails(object, run);
-  const ruleName = details.data?.rows.find((r) => r.check_id === checkId)?.name ?? null;
+  const catalogueName = useRuleNames([checkId]);
+  const ruleName = catalogueName(checkId, rankedName(details.data?.rows, checkId)) ?? null;
 
   if (isLoading) return <div aria-busy="true"><Skeleton height={240} /></div>;
   if (isError) return <ErrorState {...apiErrorState(error)} onRetry={() => refetch()} />;
   if (!data || data.records.length === 0) {
     return (
       <EmptyState
+        variant="inline"
         title="All records pass this rule"
         detail="Every record passed this check in this run."
-        action={<Button render={<Link href={`/objects/${object}?run=${run}&tab=rules`}>Open rules</Link>} />}
+        action={<Button variant="secondary" onClick={onClose}>Close</Button>}
       />
     );
   }
@@ -348,6 +394,7 @@ function RecordsTab({ object, run, checkId }: { object: string; run: string; che
           <>
             <Button render={<Link href={fixSheetHref(object, run, data.records[0].record_key)}>Open record</Link>} />
             <ExportMenu options={exportOptions} />
+            <Button variant="ghost" onClick={onClose}>Close</Button>
           </>
         }
       >
@@ -375,7 +422,9 @@ export default function ObjectDetailPage() {
   const scope = useRunScope({ object });
   const run = scope.runId ?? "";
   // Records to fix is the default tab; an older `?rule=` link (no tab) still opens the Overview workbench on that rule.
-  const tab = search.get("tab") ?? (search.get("rule") ? "overview" : "fix");
+  // `?tab=records` (the retired Records by rule tab, still in older links) opens Rules with that rule's records beside.
+  const rawTab = search.get("tab") ?? (search.get("rule") ? "overview" : "fix");
+  const tab = rawTab === "records" ? "rules" : rawTab;
   // `check` is the shared drill parameter (rule tables link with it); `check_id` is the older spelling.
   const checkId = search.get("check") ?? search.get("check_id") ?? "";
 
@@ -412,7 +461,7 @@ export default function ObjectDetailPage() {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (e.repeat || e.metaKey || e.ctrlKey || e.altKey || t?.closest("input,textarea,select,[contenteditable],[role=dialog]")) return;
-      const i = ["1", "2", "3", "4", "5"].indexOf(e.key);
+      const i = ["1", "2", "3", "4"].indexOf(e.key);
       if (i >= 0) setTab(TAB_KEYS[i]);
     };
     window.addEventListener("keydown", onKey);
@@ -515,29 +564,19 @@ export default function ObjectDetailPage() {
         }
       />
       <p className="m-text-body m-ink-2">Records of {summary?.label ?? formatModuleName(object)} that fail a check in this run, worst first. Pick one and fix it.</p>
-      <FixStrip object={object} summary={summary} work={workObject} loading={work.isLoading} />
+      {/* On Records to fix the queue's own tiles count the same records; the strip would say it twice. */}
+      {tab === "fix" ? null : <FixStrip object={object} summary={summary} work={workObject} loading={work.isLoading} />}
+      {run && <NextBestActionCard run={run} module={object} />}
       <Tabs
         value={tab}
         onValueChange={setTab}
         items={[
-          { value: "fix", label: "Records to fix", count: workObject?.open, content: <RecordsToFix object={object} run={run} /> },
+          // The same queue as Fix work, with this object and this page's run fixed: one triage surface, not two.
+          { value: "fix", label: "Records to fix", count: workObject?.open, content: <FixWork module={object} run={run} /> },
           { value: "overview", label: "Overview", content: <Workbench object={object} run={run} /> },
-          { value: "rules", label: "Rules", content: <RulesTab object={object} run={run} /> },
+          { value: "rules", label: "Rules", content: <RulesTab object={object} run={run} checkId={checkId} /> },
           { value: "fields", label: "Fields", content: <FieldsTab object={object} run={run} /> },
-          {
-            value: "records",
-            label: "Records by rule",
-            content: checkId ? (
-              <RecordsTab object={object} run={run} checkId={checkId} />
-            ) : (
-              <EmptyState
-                title="No rule selected"
-                detail="Choose a rule to see its failing records."
-                action={<Button render={<Link href={`/objects/${object}?run=${run}&tab=rules`}>Open rules</Link>} />}
-              />
-            ),
-          },
-          ...entityTabs({ entityType: "objects", entityId: object, auditPath: `/objects/${object}`, history: <HistoryTab object={object} run={run} systemId={version?.metadata?.system_id} /> }),
+          ...entityTabs({ entityType: "objects", entityId: object, auditPath: `/objects/${object}`, overflow: true, history: <HistoryTab object={object} run={run} systemId={version?.metadata?.system_id} /> }),
         ]}
       />
     </PageFrame>

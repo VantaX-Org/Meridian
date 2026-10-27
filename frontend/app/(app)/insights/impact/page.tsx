@@ -11,6 +11,7 @@ import {
   l1Label,
   largestCost,
   largestValueAtRisk,
+  valueAtRiskByL1,
   type ImpactResponse,
   type ImpactRow,
   type ProvenCostItem,
@@ -25,6 +26,7 @@ import { previousInLineage } from "@/lib/runs";
 import { isListFailure, apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
+import { COST_AT_RISK, COST_AT_RISK_HINT, VALUE_AT_RISK_HINT, useCostAtRisk } from "@/hooks/use-cost-at-risk";
 import { DrillCount } from "../_components/DrillCount";
 import { CardSkeleton, InsightFrame, formatMoney } from "../_components/InsightFrame";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
@@ -222,18 +224,24 @@ function ImpactPanel({
 }
 
 export default function ImpactPage() {
-  const { run, runs, resolving, error: listError, refetch: refetchList } = useInsightScope();
+  const { run: scopedRun, mode, runs, resolving, error: listError, refetch: refetchList } = useInsightScope();
+  // No ?run=: the current state, every object at its own latest run (Home's scope), each feature from the newest run
+  // that computed it. ?run= reads that run and compares it with the run before it.
+  const isCurrent = mode === "current";
+  const run = isCurrent ? undefined : scopedRun;
   const dayOne = useDayOne();
   // No run because the run list (or the day-one sources) failed: an error, never "No value at risk yet".
-  const loadError = run ? null : listError ?? (dayOne.status === "error" ? dayOne.error : null);
+  const loadError = scopedRun ? null : listError ?? (dayOne.status === "error" ? dayOne.error : null);
+  const scope = isCurrent ? { scope: "current" as const } : { version_id: run };
 
-  // Both follow the run the header names; they wait for it rather than read whatever run the API thinks is latest.
+  // Both follow the scope the header names; they wait for it rather than read whatever run the API thinks is latest.
   const impactQuery = useQuery({
-    queryKey: queryKeys.insights("impact", run),
-    queryFn: () => getImpact({ version_id: run }),
-    enabled: !!run,
+    queryKey: queryKeys.insights("impact", run ?? "current"),
+    queryFn: () => getImpact(scope),
+    enabled: !!scopedRun,
   });
-  // What changed: the same features at the run before this one in its lineage (same system, or uploads of the same objects).
+  // What changed: the same features at the run before this one in its lineage (same system, or uploads of the same
+  // objects). The current state spans lineages, so it names no single previous run.
   const current = runs.find((r) => r.id === run);
   const previous = current ? previousInLineage(current, runs) : null;
   const prevQuery = useQuery({
@@ -242,10 +250,12 @@ export default function ImpactPage() {
     enabled: !!previous,
   });
   const provenCostQuery = useQuery({
-    queryKey: queryKeys.insights("proven-cost", run),
-    queryFn: () => getProvenCost({ version_id: run }),
-    enabled: !!run,
+    queryKey: queryKeys.insights("proven-cost", run ?? "current"),
+    queryFn: () => getProvenCost(scope),
+    enabled: !!scopedRun,
   });
+  // The other money figure, with its own name: what the failing records cost (Home's sentence reads the same hook).
+  const cost = useCostAtRisk(run, !!scopedRun);
 
   // The cost model says whether any feature is priced; without pricing, zero value at risk is expected, not a finding.
   const costModel = useQuery({ queryKey: ["cost-model"], queryFn: getCostModel, retry: false, meta: { ignoreError: true }, staleTime: 300_000 });
@@ -256,9 +266,12 @@ export default function ImpactPage() {
   const currency = provenCostQuery.data?.currency ?? costModel.data?.currency;
   const byFeature = rows.filter((r) => r.value_at_risk > 0).map((r) => ({ x: featureLabel(r.feature), y: r.value_at_risk, domain: domainOf(r.feature) }));
   const prevRows = impactRows(prevQuery.data?.rows ?? []);
+  const topL1 = largestValueAtRisk(valueAtRiskByL1(rows));
   const atRisk = rows.reduce((n, r) => n + r.value_at_risk, 0);
   const prevAtRisk = prevRows.reduce((n, r) => n + r.value_at_risk, 0);
-  const changed = previous && prevQuery.isLoading
+  const changed = isCurrent
+    ? "Every object at its own latest run; pick a run to compare it with the run before"
+    : previous && prevQuery.isLoading
     ? <Skeleton height={16} />
     : !previous
       ? "First run of this system"
@@ -271,7 +284,7 @@ export default function ImpactPage() {
             : `${Math.abs(rows.length - prevRows.length).toLocaleString()} ${rows.length > prevRows.length ? "more" : "fewer"} features blocked than in the previous run`;
 
   // Each card follows its own query, so proven cost shows while a large impact query is still running.
-  const state: "loading" | "empty" | "error" | undefined = dayOne.status === "loading" || resolving ? "loading" : loadError ? "error" : !run ? "empty" : undefined;
+  const state: "loading" | "empty" | "error" | undefined = dayOne.status === "loading" || resolving ? "loading" : loadError ? "error" : !scopedRun ? "empty" : undefined;
 
   return (
     <InsightFrame
@@ -299,7 +312,8 @@ export default function ImpactPage() {
         situation: {
           sentence: top && top.value_at_risk > 0
             ? `${formatMoney(top.value_at_risk, currency)} at risk in ${featureLabel(top.feature)}, the largest of ${plural(rows.length, "blocked SAP feature")}`
-            : rows.length ? `${plural(rows.length, "feature is", "features are")} blocked, but none is priced yet` : "No feature carries value at risk",
+            : rows.length ? `${plural(rows.length, "feature is", "features are")} blocked, but none is priced yet`
+              : cost.text ? `No SAP feature is priced yet; the failing records carry ${cost.text} cost at risk` : "No feature carries value at risk",
           tone: top && top.value_at_risk > 0 ? "at-risk" : rows.length ? "at-risk" : "go",
         },
         changed: { sentence: changed, href: previous && run ? `/runs/${run}/vs/${previous.id}` : undefined },
@@ -313,6 +327,13 @@ export default function ImpactPage() {
           : { sentence: "Nothing is blocked; keep the score where it is", action: { label: "Open failing rules", href: withScope("/insights/rules", { run }) } },
       }}
     >
+      <Card title="Two figures, two meanings" meta="Value at risk prices blocked SAP features; cost at risk prices every failing record">
+        <div className="m-stat-grid" data-testid="money-figures">
+          {/* Value at risk is never summed across end-to-end processes: the tile names the process with the most. */}
+          <Stat label={topL1 ? `Value at risk: ${l1Label(topL1.l1)}` : "Value at risk"} help="valueAtRisk" value={topL1 && topL1.value_at_risk > 0 ? formatMoney(topL1.value_at_risk, currency) : "—"} hint={topL1 && topL1.value_at_risk > 0 ? VALUE_AT_RISK_HINT : `${VALUE_AT_RISK_HINT}; no feature priced yet`} />
+          <Stat label={COST_AT_RISK} help="costAtRisk" value={cost.text ?? (cost.loading ? "…" : "—")} hint={COST_AT_RISK_HINT} />
+        </div>
+      </Card>
       <Card title="SAP features at risk" meta="Ranked by value at risk: blocked records times the value of each">
         <ImpactPanel query={impactQuery} dayOne={dayOne} currency={currency} unpriced={unpriced} run={run} />
       </Card>

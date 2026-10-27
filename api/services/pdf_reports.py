@@ -489,6 +489,9 @@ def _extraction_issues(coverage: list[dict]) -> list[dict]:
                         "text": "Not available in this system; checks that need it were skipped."})
         elif st == "no_rule_mapping":
             out.append({"level": "Warning", "table": t, "text": redact(c.get("detail"))})
+        elif st == "preview":
+            out.append({"level": "Warning", "table": t,
+                        "text": "Preview source: name not yet verified against SAP; extraction may fail."})
         elif st == "live":
             if c.get("truncated"):
                 out.append({"level": "Warning", "table": t,

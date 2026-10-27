@@ -39,6 +39,33 @@ LABELS = {"postal": "postal code", "tax1": "tax number 1", "tax2": "tax number 2
           "bank_account": "bank account number", "bank_number": "bank key"}
 
 
+def message(code: str, t: str, f: str, kind: str) -> str:
+    """The words a generated country rule carries (its finding ``message``), by family code, table, field and kind."""
+    col = f"{t}.{f}"
+    return {
+        "CF": f"{LABELS.get(kind, kind).capitalize()} ({col}) does not match the format this system defines for its "
+              f"country (T005)",
+        "CR": f"Postal code ({col}) is missing although the country requires one for a street address (T005-XPLZS)",
+        "PX": f"Postal code ({col}) is not in the official postal code list for its country",
+        "BK": f"Bank key ({col}) does not exist in the system's bank directory (BNKA)",
+        "BX": f"SWIFT/BIC ({col}) is not in the SWIFT directory loaded for its country",
+    }[code]
+
+
+def rule_name(check_id: str) -> str | None:
+    """A generated country rule's words by check id (``CF-LFA1-PSTLZ``, ``BK-LFBK``, ``BX-BNKA``); None otherwise."""
+    if check_id == "BX-BNKA":
+        return message("BX", "BNKA", "SWIFT", "bic")
+    code, _, rest = (check_id or "").partition("-")
+    for t, f, _country, kind, street in TARGETS:
+        if code in ("CF", "PX", "CR") and rest == f"{t}-{f}":
+            if code == "CF" or (kind == "postal" and (code == "PX" or street)):
+                return message(code, t, f, kind)
+        if code == "BK" and rest == t and kind == "bank_number":
+            return message(code, t, f, kind)
+    return None
+
+
 def violates(value: str, length: int, rule: str) -> bool:
     """SAP's own country check (as in the T005 rule domain)."""
     if rule in NO_GAPS and " " in value:
@@ -94,8 +121,7 @@ def generate(module: str, static_rules: list[dict], config: dict[str, list[dict]
             rules.append({**base, "id": f"CF-{t}-{f}", "family": "format", "field": col, "country_field": country,
                           "specs": {c: list(v) for c, v in sorted(by_kind[kind].items())},
                           "severity": "medium", "dimension": "validity",
-                          "message": f"{LABELS[kind].capitalize()} ({col}) does not match the format this system "
-                                     f"defines for its country (T005)",
+                          "message": message("CF", t, f, kind),
                           "why_it_matters": "SAP checks this format on entry; a value that fails it was loaded around "
                                             "the check and is rejected by every process that validates it again "
                                             "(payment media, tax reporting, address validation)."})
@@ -103,8 +129,7 @@ def generate(module: str, static_rules: list[dict], config: dict[str, list[dict]
             rules.append({**base, "id": f"CR-{t}-{f}", "family": "required", "field": col, "country_field": country,
                           "street_field": street, "countries": required, "severity": "medium",
                           "dimension": "completeness",
-                          "message": f"Postal code ({col}) is missing although the country requires one for a "
-                                     f"street address (T005-XPLZS)",
+                          "message": message("CR", t, f, kind),
                           "why_it_matters": "The system's own country settings make the postal code mandatory for "
                                             "street addresses; deliveries, tax jurisdictions and carriers depend on it."})
         if kind == "postal" and config.get("REF_POSTAL"):
@@ -114,7 +139,7 @@ def generate(module: str, static_rules: list[dict], config: dict[str, list[dict]
                           "keys": keys, "countries": sorted({k.split("|")[0] for k in keys}),
                           "reference": "REF_POSTAL", "rule_authority": "customer_reference_data",
                           "severity": "medium", "dimension": "accuracy",
-                          "message": f"Postal code ({col}) is not in the official postal code list for its country",
+                          "message": message("PX", t, f, kind),
                           "why_it_matters": "A postal code that does not exist cannot be delivered to and puts the "
                                             "address in the wrong tax jurisdiction and carrier zone. Judged only "
                                             "for countries whose official list is loaded."})
@@ -124,7 +149,7 @@ def generate(module: str, static_rules: list[dict], config: dict[str, list[dict]
             rules.append({**base, "id": f"BK-{t}", "family": "exists", "field": col, "country_field": country,
                           "keys": keys, "countries": sorted({k.split("|")[0] for k in keys}),
                           "severity": "high", "dimension": "accuracy",
-                          "message": f"Bank key ({col}) does not exist in the system's bank directory (BNKA)",
+                          "message": message("BK", t, f, kind),
                           "why_it_matters": "Payment runs read the bank's SWIFT code and address from the bank "
                                             "directory; a bank key that is not there fails the payment medium."})
     if config.get("REF_BIC") and "BNKA" in tables and dictionary.field("BNKA", "SWIFT") is not None:
@@ -132,7 +157,7 @@ def generate(module: str, static_rules: list[dict], config: dict[str, list[dict]
         rules.append({**base, "id": "BX-BNKA", "family": "bic", "field": "BNKA.SWIFT", "country_field": "BNKA.BANKS",
                       "keys": keys, "countries": sorted({k[4:6] for k in keys}), "reference": "REF_BIC",
                       "rule_authority": "customer_reference_data", "severity": "high", "dimension": "accuracy",
-                      "message": "SWIFT/BIC (BNKA.SWIFT) is not in the SWIFT directory loaded for its country",
+                      "message": message("BX", "BNKA", "SWIFT", "bic"),
                       "why_it_matters": "A well-formed BIC can still belong to no bank, or to a closed one. Payment "
                                         "media carry it unchanged and the bank rejects the transfer. Judged only "
                                         "for countries the loaded directory covers.",

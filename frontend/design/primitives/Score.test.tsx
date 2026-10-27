@@ -11,7 +11,7 @@ describe("Score hero", () => {
     // The fill stops at the cap; the measured run beyond it is the dashed ghost.
     expect(container.querySelector("rect.m-bar-fill")).toHaveAttribute("width", "70%");
     expect(container.querySelector("rect[stroke-dasharray]")).not.toBeNull();
-    expect(hero.textContent).toContain("Capped at 70, 2 critical");
+    expect(hero.textContent).toContain("Capped at 70, 2 critical failing rules");
     // The numeral is the composite, never the measured value.
     expect(hero.textContent).not.toMatch(/82\.4/);
   });

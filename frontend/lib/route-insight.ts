@@ -1,7 +1,8 @@
 // Builds the four InsightHeader cells for a route from facts the API already returns.
 // Pure: no fetching here, so every sentence is testable and every number traces to a field.
 import type { InsightHeaderProps } from "@/design";
-import { formatMoney } from "@/lib/format";
+import { formatMoneyCompact, formatScore, plural } from "@/lib/format";
+import { capSentence, type CapSummary } from "@/lib/home-metrics";
 
 export interface InsightFacts {
   hasRun: boolean;
@@ -10,10 +11,14 @@ export interface InsightFacts {
   dqs: number | null;
   prevDqs: number | null;
   critical: number;
+  /** What caps the score (lib/home-metrics.ts capSummary), the same unit and scope as Home's hero and the executive summary. */
+  cap?: CapSummary;
   total: number;
   affected: number;
-  /** findings/aggregate cost_at_risk, when the tenant has a cost rate configured */
+  /** findings/aggregate cost_at_risk: failing records times their cost per record (hooks/use-cost-at-risk.ts). */
   costAtRisk?: number;
+  /** The scope's one next step (lib/do-next.ts): the cell names it instead of the object with most findings. */
+  doNext?: { sentence: string; href: string; label: string };
   /** Tenant currency code for `costAtRisk`; plain digits when unknown. */
   currency?: string;
   /** True when no earlier run exists in this run's lineage (same system, or same upload objects): there is nothing to compare with. */
@@ -110,9 +115,12 @@ export function buildInsight(section: Section, f: InsightFacts): Omit<InsightHea
   const delta = dqs !== null && f.prevDqs !== null ? Math.round((dqs - f.prevDqs) * 10) / 10 : null;
   const base = `/objects${q(f.runId)}`;
   const worst = f.worst;
-  const score = dqs === null ? "This run has no score yet" : `Quality is at ${Math.round(dqs)}`;
+  // One decimal, as the hero score prints it ("71.7"), so the sentence never reads "72" under a 71.7.
+  const score = dqs === null ? "This run has no score yet" : `Quality is at ${formatScore(dqs)}`;
 
-  let situation = `${score}, with ${n(f.total)} findings across ${n(f.affected)} records.`;
+  // `affected` sums each failing rule's records, so a record failing three rules counts three times: rule failures,
+  // never "records" (it sat beside a cleansing funnel of distinct failing records and read as the same number).
+  let situation = `${score}, with ${n(f.total)} failing rules and ${n(f.affected)} rule failures.`;
   if (section === "systems") situation = `${n(f.systems)} system${f.systems === 1 ? "" : "s"} connected. ${score}.`;
   if (section === "migration") situation = `${n(f.waves)} migration wave${f.waves === 1 ? "" : "s"} defined. ${score}.`;
   if ((section === "inbox" || section === "mdm") && f.backlog !== null) situation = `${n(f.backlog)} item${f.backlog === 1 ? "" : "s"} waiting for a steward. ${score}.`;
@@ -130,21 +138,31 @@ export function buildInsight(section: Section, f: InsightFacts): Omit<InsightHea
 
   const changed = moves ? (delta === null || delta === 0 ? moves : `${scoreChanged.replace(/ since the last run\.$/, "")}; ${moves}`) : scoreChanged;
 
+  // The cap in the one unit Home's hero and the executive summary use: critical failing rules over tolerance and the
+  // objects they cap. A critical rule within tolerance (or on an object already scored below the cap) caps nothing.
+  const capped = f.cap ? capSentence(f.cap) : null;
   const why =
-    f.critical > 0
-      ? `${n(f.critical)} critical finding${f.critical === 1 ? " is" : "s are"} capping the score and could stop go-live.`
+    capped
+      ? `${capped} and could stop go-live.`
+      : f.critical > 0
+      ? f.cap ? `${plural(f.critical, "critical failing rule")}, none capping the score.` : `${plural(f.critical, "critical failing rule")} could stop go-live.`
       : f.total > 0
         ? "Nothing critical, so nothing caps the score."
         : "This run found nothing wrong.";
 
-  // Held until the cost model names the currency, so the sentence never reads as a bare number.
-  const risk = f.costAtRisk != null && f.costAtRisk > 0 && f.currency ? ` About ${formatMoney(Math.round(f.costAtRisk), f.currency)} is at risk.` : "";
-  // On the homes the verdict's action is the one next step (it picks the lowest-scoring object, this cell the most
-  // findings), so this cell links its object but offers no second button.
-  const next =
-    worst && f.total > 0
+  // Held until the cost model names the currency, so the sentence never reads as a bare number. Named "cost at
+  // risk" (failing records times their cost), never "value at risk" (blocked SAP features), a different figure.
+  const risk = f.costAtRisk != null && f.costAtRisk > 0 && f.currency ? ` Cost at risk of the failing records: ${formatMoneyCompact(f.costAtRisk, f.currency)}.` : "";
+  // On the homes the verdict's action is the one button, so this cell links its step but offers no second button.
+  const next = f.doNext
+    ? {
+        sentence: `${f.doNext.sentence}.`,
+        href: f.doNext.href,
+        ...(section === "home" ? {} : { action: { label: f.doNext.label, href: f.doNext.href } }),
+      }
+    : worst && f.total > 0
       ? {
-          sentence: `${worst.label} needs the most work: ${n(worst.findings)} findings${worst.critical ? `, ${n(worst.critical)} of them critical` : ""}.`,
+          sentence: `${worst.label} needs the most work: ${n(worst.findings)} failing rules${worst.critical ? `, ${n(worst.critical)} of them critical` : ""}.`,
           href: `/objects/${worst.module}${q(f.runId)}`,
           ...(section === "home" ? {} : { action: { label: "Open object", href: `/objects/${worst.module}${q(f.runId)}` } }),
         }

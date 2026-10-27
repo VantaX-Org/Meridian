@@ -29,6 +29,25 @@ describe("HomePage no-data state", () => {
     expect(screen.queryByTestId("home-dqs")).toBeNull();
     expect(screen.queryAllByRole("link")).toHaveLength(1); // only the step sheet's primary action
   });
+
+  it("names the step under way: a running first run says so and rings First score, even with configuration skipped", () => {
+    render(
+      <HomePage
+        persona="lead"
+        state="empty"
+        journey={{
+          systemsConnected: true,
+          configLoaded: false,
+          extracted: true,
+          complete: false,
+          step: { key: "running", href: "/runs/r1", label: "Analysis is running", detail: "Wait.", actionable: true, actionLabel: "Open the job" },
+        }}
+      />,
+    );
+    expect(screen.getByTestId("home-verdict")).toHaveTextContent("The first analysis is running.");
+    expect(screen.getByText(", current step").parentElement).toHaveTextContent("First score");
+    expect(screen.getByRole("link", { name: "Open the job" })).toHaveAttribute("href", "/runs/r1");
+  });
 });
 
 describe("HomePage data state", () => {
@@ -63,10 +82,19 @@ describe("HomePage data state", () => {
     expect(container.querySelector("svg[role=img]")).toBeNull();
   });
 
-  it("gives the trend the whole closing row when there is no heatmap", () => {
+  it("sets the next best action right under the hero, before the four sentences", () => {
+    render(<HomePage persona="lead" state="ready" verdict={{ dqs: 70, sentence: "x" }} run={run} nextAction={<div data-testid="nba" />} cells={<div data-testid="cells" />} />);
+    const nba = screen.getByTestId("nba");
+    expect(screen.getByTestId("home-verdict-row").compareDocumentPosition(nba) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(nba.compareDocumentPosition(screen.getByTestId("cells")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("puts the trend in the hero, under the score and its verdict", () => {
     render(<HomePage persona="basis" state="ready" verdict={{ dqs: 70, sentence: "x" }} run={run} trend={<div data-testid="t" />} />);
-    expect(screen.getByTestId("t").parentElement?.className).toContain("@5xl:col-span-12");
-    expect(screen.getByTestId("home-trend")).toBeInTheDocument();
+    const hero = screen.getByTestId("home-verdict-row");
+    expect(hero).toContainElement(screen.getByTestId("home-trend"));
+    expect(screen.getByTestId("home-trend")).toContainElement(screen.getByTestId("t"));
+    expect(screen.getByTestId("home-dqs").compareDocumentPosition(screen.getByTestId("t")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("puts the aside and the dimension bars right of the score in the hero, and nothing there without them", () => {
@@ -84,7 +112,7 @@ describe("HomePage data state", () => {
     expect(screen.queryByTestId("home-hero-aside")).toBeNull();
   });
 
-  it("orders hero, four sentences, ledger, onboarding, work row, then trend beside the heatmap, then lists", () => {
+  it("orders the setup notice, hero (with the trend), four sentences, ledger, work row, heatmap, then lists", () => {
     render(
       <HomePage
         persona="lead"
@@ -100,11 +128,28 @@ describe("HomePage data state", () => {
         lists={<div data-testid="lists" />}
       />,
     );
-    const order = ["home-verdict-row", "cells", "ledger", "onboarding", "work", "trend", "heat", "lists"].map((id) => screen.getByTestId(id));
+    const order = ["onboarding", "home-verdict-row", "cells", "ledger", "work", "heat", "lists"].map((id) => screen.getByTestId(id));
     order.slice(1).forEach((el, i) => expect(order[i].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy());
-    expect(screen.getByTestId("trend").parentElement?.className).toContain("@5xl:col-span-6");
-    expect(screen.getByTestId("heat").parentElement?.className).toContain("@5xl:col-span-6");
-    expect(screen.getByTestId("trend").parentElement?.parentElement).toBe(screen.getByTestId("heat").parentElement?.parentElement);
+    expect(screen.getByTestId("home-verdict-row")).toContainElement(screen.getByTestId("trend"));
+  });
+
+  it("opsFirst (the Basis home) leads with the work row and the lists, the score after them, each once", () => {
+    render(
+      <HomePage
+        persona="basis"
+        state="ready"
+        opsFirst
+        verdict={{ dqs: 70, sentence: "x" }}
+        run={run}
+        cells={<div data-testid="cells" />}
+        work={<div data-testid="work" />}
+        lists={<div data-testid="lists" />}
+      />,
+    );
+    const order = ["work", "lists", "home-verdict-row", "cells"].map((id) => screen.getByTestId(id));
+    order.slice(1).forEach((el, i) => expect(order[i].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy());
+    expect(screen.getAllByTestId("lists")).toHaveLength(1);
+    expect(screen.getAllByTestId("work")).toHaveLength(1);
   });
 
   it("loading shows skeletons only", () => {

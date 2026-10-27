@@ -68,6 +68,11 @@ export function Stat({ label, value, delta, hint, href, onClick, tone, domain, h
   const animate = (countUp ?? hero) && typeof value === "number";
   const sparkColor = hero ? "var(--m-hero-ink-2)" : tone ? `var(--m-${tone})` : "var(--m-accent)";
   const interactive = Boolean(href || onClick);
+  // A text value wraps only between words; a single token too wide for the tile truncates (full text in its title).
+  const textValue = typeof value === "string" && !loading;
+  // Money ("ZAR 4.79 m", "ZAR 1,234") is one token too: currency, figure and scale never wrap apart.
+  const moneyValue = textValue && /^[A-Z]{3}\s[-\d.,\s]+(?:\s(?:k|m|bn|tn))?$/.test(value as string);
+  const wordValue = textValue && (!/\s/.test(value) || moneyValue);
   const body = (
     <>
       <span
@@ -86,12 +91,16 @@ export function Stat({ label, value, delta, hint, href, onClick, tone, domain, h
         <span className="m-text-meta m-stat-label" style={{ color: hero ? "var(--m-hero-ink-2)" : "var(--m-ink-3)" }}>{label}</span>
       )}
       <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+        {/* Text never breaks mid-word ("Unreachabl" / "e"). */}
         <span
-          className="m-numeric font-semibold"
+          className={clsx("m-numeric font-semibold", wordValue && "min-w-0 max-w-full truncate whitespace-nowrap")}
+          title={wordValue ? value : undefined}
           style={{
-            minWidth: "4ch",
-            overflowWrap: "break-word",
-            fontSize: hero ? "var(--m-text-hero)" : "var(--m-text-stat)",
+            minWidth: wordValue ? undefined : "4ch",
+            overflowWrap: textValue ? "normal" : "break-word",
+            hyphens: "none",
+            // A long word ("Unreachable") steps down to the verdict size so it fits a phone or tablet tile whole.
+            fontSize: hero ? "var(--m-text-hero)" : wordValue && (value as string).length > 8 ? "var(--m-text-verdict)" : "var(--m-text-stat)",
             lineHeight: hero ? "var(--m-leading-hero)" : "var(--m-leading-stat)",
             letterSpacing: "var(--m-tracking-tight)",
             color: hero ? "var(--m-hero-ink)" : "var(--m-ink)",
@@ -117,11 +126,14 @@ export function Stat({ label, value, delta, hint, href, onClick, tone, domain, h
         </span>
       )}
       {hint != null && (
-        <span className="truncate" style={{ fontSize: "var(--m-text-micro)", lineHeight: "var(--m-leading-micro)", color: hero ? "var(--m-hero-ink-3)" : "var(--m-ink-3)" }}>{hint}</span>
+        // The hint wraps between words inside the tile; it never runs on one line past the tile into the next one.
+        <span data-stat-hint className="min-w-0 break-words" style={{ fontSize: "var(--m-text-micro)", lineHeight: "var(--m-leading-micro)", color: hero ? "var(--m-hero-ink-3)" : "var(--m-ink-3)" }}>{hint}</span>
       )}
     </>
   );
-  const cls = clsx("m-stat relative flex flex-col overflow-hidden", hero && "m-stat-hero", !hero && rule && bar != null && "m-stat-ruled", interactive && "m-stat-link m-motion-colors");
+  // `w-full text-left`: a button tile is otherwise only as wide as its content (a button shrinks to fit), so a long
+  // hint widened it past its grid cell, over the next tile.
+  const cls = clsx("m-stat relative flex w-full flex-col overflow-hidden text-left", hero && "m-stat-hero", !hero && rule && bar != null && "m-stat-ruled", interactive && "m-stat-link m-motion-colors");
   const minHeight = undefined;
   const tile = href
     ? <Link href={href} className={cls} style={{ minHeight }} {...prefetch}>{body}</Link>

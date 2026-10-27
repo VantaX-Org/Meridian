@@ -7,6 +7,7 @@ import * as downloadApi from "@/lib/api/download";
 import * as findingsApi from "@/lib/api/findings";
 import { getAnalysisReportUrl, getReportDownloadUrl } from "@/lib/api/reports";
 import * as objectsApi from "@/lib/api/v1/objects";
+import * as rulesApi from "@/lib/api/rules";
 import * as runsApi from "@/lib/api/v1/runs";
 import * as settingsApi from "@/lib/api/settings";
 import * as versionsApi from "@/lib/api/versions";
@@ -82,14 +83,31 @@ describe("RunDetailPage", () => {
       expect(slot).toHaveClass("[min-height:124px]");
     });
 
-    it("shows a muted line when there are no actions", async () => {
+    it("leaves the section out when there are no actions, rather than a dead heading", async () => {
+      withFindings();
+      const prescriptive = vi.spyOn(analyticsApi, "getPrescriptiveAnalytics").mockResolvedValue({
+        actions: [], sprints: [], basis: { version_id: "v2", findings: 0, cleaning_items: 0, exceptions: 0 },
+      } as unknown as Awaited<ReturnType<typeof analyticsApi.getPrescriptiveAnalytics>>);
+      renderWithQuery(<RunDetailPage />);
+      expect(await screen.findByText("Objects in this run")).toBeInTheDocument();
+      await waitFor(() => expect(prescriptive).toHaveBeenCalled());
+      await waitFor(() => expect(screen.queryByTestId("next-actions-slot")).toBeNull());
+      expect(screen.queryByText("No next actions for this run")).toBeNull();
+    });
+
+    it("keeps the object ledger inside a phone: rule and counts step aside, Open stays pinned", async () => {
       withFindings();
       vi.spyOn(analyticsApi, "getPrescriptiveAnalytics").mockResolvedValue({
         actions: [], sprints: [], basis: { version_id: "v2", findings: 0, cleaning_items: 0, exceptions: 0 },
       } as unknown as Awaited<ReturnType<typeof analyticsApi.getPrescriptiveAnalytics>>);
       renderWithQuery(<RunDetailPage />);
-      expect(await screen.findByText("No next actions for this run")).toBeInTheDocument();
-      expect(screen.getByTestId("next-actions-slot")).toBeInTheDocument();
+      await screen.findByText("Objects in this run");
+      for (const h of ["Blocking rule", "Critical", "High"]) {
+        expect(await screen.findByRole("columnheader", { name: new RegExp(`^${h}`) })).toHaveClass("max-[640px]:hidden");
+      }
+      for (const h of ["Object", "Score", "Rule failures"]) {
+        expect(screen.getByRole("columnheader", { name: new RegExp(`^${h}`) })).not.toHaveClass("max-[640px]:hidden");
+      }
     });
 
     it("opens a cleaning action on the object's cleaning tab and explains it in plain words", async () => {
@@ -131,6 +149,15 @@ describe("RunDetailPage", () => {
     expect(screen.queryByText("Next actions")).toBeNull();
   });
 
+  it("says a run still analysing is running, not that nothing failed, and points to its steps", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(version({ id: "v2", label: "Oct 8", status: "running" }));
+    vi.spyOn(analyticsApi, "getPrescriptiveAnalytics").mockResolvedValue({ actions: [], sprints: [], basis: { version_id: "v2", findings: 0, cleaning_items: 0, exceptions: 0 } } as unknown as Awaited<ReturnType<typeof analyticsApi.getPrescriptiveAnalytics>>);
+    renderWithQuery(<RunDetailPage />);
+    expect(await screen.findByText("Analysis is running")).toBeInTheDocument();
+    expect(screen.queryByText("Nothing failed in this run")).toBeNull();
+    expect(screen.getByRole("link", { name: "Open steps" })).toHaveAttribute("href", "/runs/v2?tab=steps");
+  });
+
   it("drills blocking findings to critical and to high, and prices cost at risk in the tenant currency", async () => {
     vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
     vi.spyOn(settingsApi, "getCostModel").mockResolvedValue({ currency: "ZAR" } as never);
@@ -143,7 +170,7 @@ describe("RunDetailPage", () => {
     renderWithQuery(<RunDetailPage />);
     expect(await screen.findByRole("link", { name: "2 critical" })).toHaveAttribute("href", "/runs/v2?tab=findings&severity=critical");
     expect(screen.getByRole("link", { name: "3 high" })).toHaveAttribute("href", "/runs/v2?tab=findings&severity=high");
-    expect(await screen.findByText(/ZAR\s?1,500/)).toBeInTheDocument();
+    expect(await screen.findByText(/ZAR\s1\.5\sk/)).toBeInTheDocument();
   });
 
   it("renders the decisive error of a failed step", async () => {
@@ -267,10 +294,27 @@ describe("RunDetailPage", () => {
   it("shows the no-findings empty state on the findings tab", async () => {
     vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
     renderWithQuery(<RunDetailPage />);
-    await waitFor(() => expect(screen.getByRole("tab", { name: "Findings" })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("tab", { name: "Findings" }));
-    await waitFor(() => expect(screen.getByText("No findings in this run")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Failing rules" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("tab", { name: "Failing rules" }));
+    await waitFor(() => expect(screen.getByText("No failing rules in this run")).toBeInTheDocument());
     expect(screen.getByRole("button", { name: "Open steps" })).toBeInTheDocument();
+  });
+
+  it("lists only rules with failing records under Failing rules, and passing rules too when asked", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+    const spy = vi.spyOn(findingsApi, "getFindings").mockResolvedValue({ findings: [], total: 0, filters_applied: {} });
+    searchParams = new URLSearchParams("tab=findings");
+    renderWithQuery(<RunDetailPage />);
+    await waitFor(() => expect(spy).toHaveBeenCalledWith(expect.objectContaining({ version_id: "v2", failing: true })));
+    const toggle = await screen.findByRole("switch", { name: "Show passing rules too" });
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    fireEvent.click(toggle);
+    expect(push).toHaveBeenLastCalledWith("/runs/v2?tab=findings&passing=1");
+    searchParams = new URLSearchParams("tab=findings&passing=1");
+    spy.mockClear();
+    renderWithQuery(<RunDetailPage />);
+    await waitFor(() => expect(spy).toHaveBeenCalledWith(expect.objectContaining({ version_id: "v2", failing: undefined })));
+    searchParams = new URLSearchParams();
   });
 
   it("lists objects on the objects tab and navigates to the object page on row click", async () => {
@@ -296,7 +340,7 @@ describe("RunDetailPage", () => {
     renderWithQuery(<RunDetailPage />);
     const hero = await screen.findByTestId("score-hero");
     expect(screen.getByRole("img", { name: /score 82\.4, capped at 70/i })).toBeInTheDocument();
-    expect(hero).toHaveTextContent("Capped at 70, 2 critical");
+    expect(hero).toHaveTextContent("Capped at 70, 2 critical failing rules");
     expect(hero.textContent).not.toMatch(/82\.4/);
   });
 
@@ -357,8 +401,8 @@ describe("RunDetailPage", () => {
     expect(row).toHaveTextContent("mm_missing_desc");
     expect(row).toHaveTextContent("Description missing");
     expect(screen.getByRole("link", { name: "2" })).toHaveAttribute("href", "/runs/v2?tab=findings&module=material_master&severity=critical");
-    // Affected counts are "Failing records"; "Records" is kept for totals.
-    expect(screen.getByRole("columnheader", { name: "Failing records" })).toBeInTheDocument();
+    // An object's affected count sums its failing rules: "Rule failures" (lib/help/glossary.ts); "Records" is kept for totals.
+    expect(screen.getByRole("columnheader", { name: "Rule failures" })).toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "Records" })).toBeNull();
   });
 
@@ -419,9 +463,30 @@ describe("RunDetailPage", () => {
       filters_applied: {},
     });
     renderWithQuery(<RunDetailPage />);
-    await waitFor(() => expect(screen.getByRole("tab", { name: "Findings" })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("tab", { name: "Findings" }));
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Failing rules" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("tab", { name: "Failing rules" }));
     await waitFor(() => expect(screen.getByText("mm_missing_desc")).toBeInTheDocument());
+  });
+
+  it("opens Failing rules from the ?tab=findings link and names each rule, a DDIC check included, never a bare dash", async () => {
+    searchParams = new URLSearchParams("tab=findings");
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+    const names = vi.spyOn(rulesApi, "getRuleNames").mockResolvedValue({ names: { MM045: "Material type is mandatory" }, generated: {} });
+    const finding = (id: string, check_id: string) => ({
+      id, version_id: "v2", module: "material_master", check_id, severity: "high", dimension: "validity",
+      affected_count: 5, total_count: 50, pass_rate: 0.9, details: {}, remediation_text: "", rule_context: null,
+      value_fix_map: null, record_fixes: null, created_at: "2026-01-01T00:00:00Z",
+    });
+    vi.spyOn(findingsApi, "getFindings").mockResolvedValue({
+      findings: [finding("f1", "MM045"), finding("f2", "DDIC-MARA-TYPE")], total: 2, filters_applied: {},
+    } as never);
+    renderWithQuery(<RunDetailPage />);
+    expect(await screen.findByRole("tab", { name: "Failing rules", selected: true })).toBeInTheDocument();
+    expect(await screen.findByText("Material type is mandatory")).toBeInTheDocument();
+    expect(screen.getByText("Value does not match the field's SAP data type (MARA)")).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Message" })).toBeNull();
+    expect(names).toHaveBeenCalledWith(["MM045"]);
+    searchParams = new URLSearchParams();
   });
 
   it("filters the findings by critical and high together, with a plain chip and a matching Severity value", async () => {
@@ -451,7 +516,7 @@ describe("RunDetailPage", () => {
     expect(findingsApi.getFindingsAggregate).toHaveBeenCalled();
   });
 
-  it("offers Import file in the single-run empty state only to a role that may upload", async () => {
+  it("offers no Import file or Run analysis in the single-run empty state, whoever reads the run", async () => {
     const single = version({ id: "v2", metadata: { modules: ["material_master"], file_name: "f.csv", row_count: 1 } });
     vi.spyOn(versionsApi, "getVersion").mockResolvedValue(single);
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [single] });
@@ -462,9 +527,11 @@ describe("RunDetailPage", () => {
       expect(await screen.findByText("Only one run so far")).toBeInTheDocument();
       expect(screen.queryByRole("link", { name: "Import file" })).toBeNull();
       viewer.unmount();
-      can.mockImplementation((a: string) => a === "upload");
+      can.mockImplementation((a: string) => a === "upload" || a === "analyse");
       renderWithQuery(<RunDetailPage />);
-      expect(await screen.findByRole("link", { name: "Import file" })).toHaveAttribute("href", "/import");
+      expect(await screen.findByText("Only one run so far")).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Import file" })).toBeNull();
+      expect(screen.queryByRole("link", { name: "Run analysis" })).toBeNull();
     } finally {
       can.mockImplementation((action: string) => action === "analyse" || action === "export");
     }

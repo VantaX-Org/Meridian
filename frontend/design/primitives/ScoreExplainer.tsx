@@ -21,6 +21,16 @@ export interface ScoreRule {
   object: string;
   recordsFailed: number;
   weight: number;
+  /** The check's record-level pass rate, 0..100 as `findings.pass_rate` stores it; omitted when unknown. */
+  passRate?: number | null;
+}
+
+/** The composite's critical caps (api/services/scoring.py `_cap`): one failing critical rule caps at 85, two or more at 70. */
+export const CRITICAL_CAPS = { one: 85, twoOrMore: 70 } as const;
+
+/** A 0..100 pass rate as the explainer prints it: one decimal, rounded down, so a near pass never reads as 100%. */
+function formatPassRate(p: number): string {
+  return p >= 100 ? "100%" : `${(Math.floor(p * 10) / 10).toFixed(1)}%`;
 }
 
 /** What `Score size="md" explain` opens: the band, the weighted inputs, the cap reason and the rules costing the most. */
@@ -32,6 +42,8 @@ export interface ScoreExplanation {
   rules: ScoreRule[];
   historyHref: string;
   run?: string;
+  /** Every failing record behind the score (the run's findings, the object's records to fix). */
+  recordsHref?: string;
 }
 
 /**
@@ -39,7 +51,7 @@ export interface ScoreExplanation {
  * label and its info glyph, so the number is drawn once. The popover names the band and the cap; it does not draw the
  * score again.
  */
-export function ScoreExplainer({ score, cap, band, dimensions, capReason, rules, historyHref, run, label }: ScoreExplanation & {
+export function ScoreExplainer({ score, cap, band, dimensions, capReason, rules, historyHref, run, recordsHref, label }: ScoreExplanation & {
   score: number;
   cap?: number;
   /** Hero: the label the trigger reads as ("Data quality score"), with the info glyph after it. */
@@ -89,6 +101,11 @@ export function ScoreExplainer({ score, cap, band, dimensions, capReason, rules,
               </tbody>
             </table>
             {cap != null && score > cap && <p className="mt-2 flex items-center gap-1" style={{ color: "var(--m-ink-2)" }}>Capped at {formatScore(cap)}{capReason ? `: ${capReason}` : ""}<HelpHint term="cap" /></p>}
+            {/* The cap rule in words, applied or not, so the reader knows what a critical failure does to the score. */}
+            <p className="mt-1 m-text-meta m-ink-3" data-testid="score-caps">
+              {cap != null && score > cap ? "Critical caps: " : "No cap applied. Critical caps: "}
+              one critical failure caps the score at {CRITICAL_CAPS.one}, two or more at {CRITICAL_CAPS.twoOrMore}.
+            </p>
             {top.length > 0 && (
               <>
                 <p className="mt-3" style={{ color: "var(--m-ink-3)" }}>Rules costing the most</p>
@@ -99,12 +116,16 @@ export function ScoreExplainer({ score, cap, band, dimensions, capReason, rules,
                         <Mono>{r.ruleId}</Mono>
                       </Link>{" "}
                       <span className="tabular-nums" style={{ color: "var(--m-ink-2)" }}>{r.recordsFailed.toLocaleString()} records</span>
+                      {r.passRate != null && <span className="tabular-nums m-ink-3">, {formatPassRate(r.passRate)} pass</span>}
                     </li>
                   ))}
                 </ul>
               </>
             )}
-            <Link href={historyHref} className="mt-3 inline-block m-ink-accent underline underline-offset-2">Score history</Link>
+            <span className="mt-3 flex flex-wrap gap-x-4">
+              {recordsHref && <Link href={recordsHref} className="m-ink-accent underline underline-offset-2">Open failing records</Link>}
+              <Link href={historyHref} className="m-ink-accent underline underline-offset-2">Score history</Link>
+            </span>
           </Popover.Popup>
         </Popover.Positioner>
       </Popover.Portal>

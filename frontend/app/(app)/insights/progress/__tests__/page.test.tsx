@@ -8,10 +8,11 @@ import type { Burndown } from "@/lib/api/work-analytics";
 import type { Version } from "@/types/api";
 import ProgressPage from "../page";
 
+const nav = vi.hoisted(() => ({ qs: "run=bp2" }));
 vi.mock("next/navigation", () => ({
   usePathname: () => "/insights/progress",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
-  useSearchParams: () => new URLSearchParams("run=bp2"),
+  useSearchParams: () => new URLSearchParams(nav.qs),
 }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 vi.mock("@/hooks/use-day-one", () => ({
@@ -86,7 +87,41 @@ function mount() {
   return render(<QueryClientProvider client={qc}><ProgressPage /></QueryClientProvider>);
 }
 
-afterEach(() => { vi.restoreAllMocks(); });
+afterEach(() => { nav.qs = "run=bp2"; vi.restoreAllMocks(); });
+
+describe("ProgressPage without ?run=: the current state", () => {
+  it("reads every object at its own latest run, drills into Fix work in the same scope and pins no baseline", async () => {
+    nav.qs = "";
+    const { burndown, change } = mockAll({ assignee: true });
+    change.mockResolvedValue({
+      version_id: null, previous: null,
+      compared: [{ version_id: "bp2", previous: { version_id: "bp1", label: "material_master_1k", run_at: "2026-10-02T05:00:00Z" } }],
+      objects: [{ module: "material_master", new: 1, fixed: 2, still_failing: 1, not_comparable_checks: 0 }],
+      totals: { new: 1, fixed: 2, still_failing: 1 }, not_comparable_checks: 0,
+    });
+    burndown.mockResolvedValue({ ...BURN, version_id: null, runs: [] });
+    mount();
+    expect(await screen.findByText("Records to fix")).toBeInTheDocument();
+    expect(burndown).toHaveBeenCalledWith({ versionId: undefined, module: undefined });
+    expect(change).toHaveBeenCalledWith({ versionId: undefined, module: undefined });
+    // Every drill opens Fix work on the same current state: no ?run= of the newest run.
+    expect(screen.getByText("Records to fix").closest("a")?.getAttribute("href")).toBe("/fix");
+    expect(screen.getByRole("link", { name: "Open the records assigned to Bea" }).getAttribute("href")).toBe("/fix?assignee=u-7");
+    expect(screen.queryByTestId("baseline-line")).toBeNull();
+    expect(await screen.findByText(/Each object compared with the run before its own latest run \(1 run\): 2 fixed, 1 new, 1 still failing/)).toBeInTheDocument();
+  });
+
+  it("never shows one run's figures under the current-state header, even if a run's bars come back", async () => {
+    nav.qs = "";
+    const { burndown } = mockAll();
+    // An answer for one run (the e2e mock used to send this for scope=current): its per-run bars must not show.
+    burndown.mockResolvedValue({ ...BURN, version_id: null });
+    mount();
+    expect(await screen.findByText("Records to fix")).toBeInTheDocument();
+    expect(screen.queryByText("Rule failures in each run of this system")).toBeNull();
+    expect(screen.queryByRole("img", { name: "Rule failures per run" })).toBeNull();
+  });
+});
 
 describe("ProgressPage", () => {
   it("says what the page is for and shows the lead's four numbers for the scoped run", async () => {
@@ -102,7 +137,7 @@ describe("ProgressPage", () => {
     expect(burndown).toHaveBeenCalledWith({ versionId: "bp2", module: undefined });
     expect(change).toHaveBeenCalledWith({ versionId: "bp2", module: undefined });
     expect(screen.getAllByText(/At 2 a day net, the backlog clears on 5 Nov 2026/).length).toBeGreaterThan(0);
-    expect(screen.getByRole("img", { name: /Failing records open per day/ })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /Rule failures open per day/ })).toBeInTheDocument();
     expect(screen.getByText(/FI general ledger takes longest to fix: typically 28 days/)).toBeInTheDocument();
   });
 
@@ -110,11 +145,13 @@ describe("ProgressPage", () => {
     mockAll();
     mount();
     expect(await screen.findByText("Decisions by person")).toBeInTheDocument();
+    // Decisions by person leads, ahead of the burn-down
+    expect(screen.getByText("Decisions by person").compareDocumentPosition(screen.getByText("Burn-down")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(await screen.findByText("Ann")).toBeInTheDocument();
     expect(screen.getByText("Nobody yet")).toBeInTheDocument();
     expect(await screen.findByText("GL002")).toBeInTheDocument();
     expect(screen.getByText("MM001")).toBeInTheDocument();
-    expect(screen.getByText(/2 failing records failed again after a fix: 25% of 8 tracked/)).toBeInTheDocument();
+    expect(screen.getByText(/2 rule failures failed again after a fix: 25% of 8 tracked/)).toBeInTheDocument();
     expect(screen.getByText(/Plant: 2 failing records across 2 values/)).toBeInTheDocument();
     expect(screen.getByText("Rule suggestion")).toBeInTheDocument();
     const change = screen.getByText("Change since the previous run").closest("section, div") as HTMLElement;
@@ -163,7 +200,11 @@ describe("ProgressPage", () => {
     expect(screen.getByText("Fixed this week").closest("a")?.getAttribute("href")).toBe("/fix?run=bp2&st=fixed");
     expect(screen.getByText("Records to fix").closest("a")?.getAttribute("href")).toBe("/fix?run=bp2");
     // Fix work has no date filter: the tile says its drill opens every fixed record, and one noun is used throughout.
-    expect(screen.getByText("Last 7 days; opens all fixed records")).toBeInTheDocument();
+    expect(screen.getByText("Rule failures fixed in the last 7 days; opens all fixed records")).toBeInTheDocument();
+    // lib/help/glossary.ts: the burn-down counts rule failures; records to fix are the distinct records they sit on.
+    expect(screen.getAllByText(/^[\d,]+ rule failures? open on [\d,]+ records? to fix$/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/open rule failures? on them$/)).toBeInTheDocument();
+    expect(screen.queryByText(/failing records? open/)).toBeNull();
     expect(screen.queryByText(/\d issues?\b/)).toBeNull();
     expect(screen.queryAllByRole("link", { name: /fix list|fix queue/i })).toHaveLength(0);
     expect(screen.getByText("Projected finish").closest("a")?.getAttribute("href")).toBe("#burndown");

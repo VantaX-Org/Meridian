@@ -257,12 +257,15 @@ def test_findings_aggregate(app_engine):
         h = {"X-User-Role": "analyst"}
         async with AsyncClient(transport=ASGITransport(app=api), base_url="http://t") as c:
             latest = (await c.get("/api/v1/findings/aggregate", headers=h)).json()
-            assert set(latest["version_ids"]) == {v2, vx, vu}          # one per system + the upload lineage
-            assert latest["total"] == 5 and latest["severity"] == {"critical": 0, "high": 5, "medium": 0, "low": 0}
+            # The current state: each object from the newest latest-run-of-its-lineage that measured it. vx and vu
+            # are their lineages' latest runs but measured nothing (no summary, no findings), so only v2 is read.
+            assert set(latest["version_ids"]) == {v2}
+            # Failing rules only: v2's CHK-C passed (affected 0), so it is evaluated but not a finding.
+            assert latest["total"] == 4 and latest["severity"] == {"critical": 0, "high": 4, "medium": 0, "low": 0}
             assert latest["affected_records"] == 4
             assert [(m["module"], m["findings"], m["affected"]) for m in latest["by_module"]] == [
-                ("accounts_payable", 4, 3), ("business_partner", 1, 1)]
-            assert latest["by_dimension"] == [{"dimension": "completeness", "findings": 5, "avg_pass_rate": None}]
+                ("accounts_payable", 3, 3), ("business_partner", 1, 1)]
+            assert latest["by_dimension"] == [{"dimension": "completeness", "findings": 4, "avg_pass_rate": None}]
             assert latest["dqs"]["composite"] == 77.75                   # (85.5 + 70) / 2, one check each
             assert latest["dqs"]["modules"] == {"accounts_payable": 85.5, "business_partner": 70.0}
             assert latest["dqs"]["dimension_scores"] == {"completeness": 80.0, "validity": 88.0}
@@ -272,7 +275,8 @@ def test_findings_aggregate(app_engine):
             assert bp["total"] == 1 and bp["affected_records"] == 1 and bp["dqs"]["composite"] == 77.75
 
             one = (await c.get("/api/v1/findings/aggregate", headers=h, params={"version_id": v1})).json()
-            assert one["version_ids"] == [v1] and one["total"] == 5 and one["dqs"]["composite"] == 80.0
+            # v1: CHK-A and CHK-C fail; CHK-B, the errored CHK-E and BP-1 have no failing record.
+            assert one["version_ids"] == [v1] and one["total"] == 2 and one["dqs"]["composite"] == 80.0
             assert one["previous_dqs"] is None                           # nothing before v1 on that system
 
             none = (await c.get("/api/v1/findings/aggregate", headers=h, params={"version_id": str(uuid.uuid4())})).json()

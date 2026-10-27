@@ -31,6 +31,32 @@ export const GLOSSARY = {
     long: "Every rule belongs to one of six DAMA dimensions. Completeness asks whether values are present, accuracy whether they are right, consistency whether systems agree, timeliness whether they are current, uniqueness whether records repeat and validity whether they follow the format.",
     href: "/docs?page=objects",
   },
+  // The four counts of what fails. Each figure on every page carries exactly one of these labels (or says which of
+  // them it is in its hint), so two different quantities never share a label and one quantity never has two.
+  failingRules: {
+    term: "Failing rules",
+    short: "Rules with at least one failing record; a rule failing on 500 records counts once",
+    long: "Failing rules counts rules, not records: each rule that fails on at least one record of the run counts once. Rules that pass are not counted, though they still weigh in the score. Under the current state each object is read from its own latest run.",
+    href: "/docs?page=rules",
+  },
+  ruleFailures: {
+    term: "Rule failures",
+    short: "Every failing record of every rule added up: a record failing three rules counts three times",
+    long: "Rule failures adds up each failing rule's failing records, so one record that fails three rules counts three times. It measures how much is wrong, not how many records are wrong; that is failing records. Open rule failures are the ones on the work list nobody has fixed yet.",
+    href: "/docs?page=rules",
+  },
+  failingRecords: {
+    term: "Failing records",
+    short: "Distinct records failing at least one rule; a record failing three rules counts once",
+    long: "Failing records counts each record once, however many rules it fails. For a single rule it is that rule's failing records. Where the run could not tie every rule to one record of the object, the count falls back to rule failures and says so.",
+    href: "/docs?page=rules",
+  },
+  recordsToFix: {
+    term: "Records to fix",
+    short: "Distinct records still open on the work list in Fix work, each once however many rules it fails",
+    long: "Records to fix counts the work list in Fix work: each record failing at least one rule, once, while it still waits for a value, a sign-off or a fix. It covers the objects whose work list is built, so it can be smaller than failing records.",
+    href: "/fix",
+  },
   basis: {
     term: "Basis",
     short: "What a figure is measured against: the rules that apply and the records they cover",
@@ -84,6 +110,18 @@ export const GLOSSARY = {
     short: "Money measured on posted documents that broke a rule, not an estimate",
     long: "Proven cost is calculated from real documents in SAP that were posted with a defective value, such as a payment sent twice or a price off by a tolerance. It is shown per top-level process in the tenant currency and is never summed across processes.",
     href: "/docs?page=analysis",
+  },
+  valueAtRisk: {
+    term: "Value at risk",
+    short: "Records blocking an SAP feature, times the value you give that feature",
+    long: "Value at risk prices the SAP features that failing records block or degrade, such as vendor payments or MRP: the blocked records times the value per record you set for each feature in the cost model. A feature you have not priced adds nothing, so it reads nothing until you price one. It is a different figure from cost at risk.",
+    href: "/rules/scoring#feature-values",
+  },
+  costAtRisk: {
+    term: "Cost at risk",
+    short: "Every failing record, times its cost per record in the cost model",
+    long: "Cost at risk prices each failing record by its rule, object and severity in the cost model (the default model until you set your own). It counts from the first run, so it can show an amount while value at risk, which prices only blocked SAP features you have valued, shows none.",
+    href: "/rules/scoring",
   },
   variant: {
     term: "Variant",

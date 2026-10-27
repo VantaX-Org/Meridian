@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
+import type { ComponentType } from "react";
 import { Button, DataTable, ExplorerPage, ExportMenu, FilterChip, PageHeader, Stat, Tabs, emptyExportOptions, type CellMeta } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { downloadCleaningExport, getCleaningGroups, type CleaningGroup } from "@/lib/api/cleaning";
@@ -102,15 +103,26 @@ function CleaningQueueTab() {
   );
 }
 
+const TABS: { value: string; label: string; Content: ComponentType }[] = [
+  { value: "work", label: "Records to fix", Content: FixWork },
+  { value: "cleaning", label: "Cleaning proposals", Content: CleaningQueueTab },
+  // Approving is done in Inbox › Approvals (the one approvals page); this tab keeps the batches and their export.
+  { value: "batches", label: "Batches and export", Content: BatchesTab },
+  { value: "monitor", label: "Monitor", Content: MonitorTab },
+];
+/** Old tab names that now live elsewhere: duplicate pairs are reviewed in MDM › Match review (DedupTab redirects). */
+const MOVED_TABS = ["dedup", "duplicates"];
+
 export default function FixPage() {
   // An approver who may not apply has every control disabled on "Records to fix", so the nav entry
   // used to drop them on a dead screen. Land them where their work is, unless the URL says otherwise.
   const { can, homeRole } = useRole();
   const approverOnly = approvesOnly(can);
   const [tabRaw, setTab] = useUrlState("tab", approverOnly ? "batches" : "work");
-  const tab = oneOf(tabRaw, ["work", "cleaning", "batches", "monitor", "dedup"], "work");
+  const tab = oneOf(tabRaw, TABS.map((t) => t.value), "work");
   // Stewards land here rather than on a persona home (lib/persona.ts homeHrefForRole), so the first-run offer is here too.
   const steward = !!homeRole && personaForRole(homeRole) === "steward";
+  if (MOVED_TABS.includes(tabRaw)) return <DedupTab />;
 
   return (
     <div className="flex flex-col gap-4">
@@ -123,13 +135,7 @@ export default function FixPage() {
     <Tabs
       value={tab}
       onValueChange={setTab}
-      items={[
-        { value: "work", label: "Records to fix", content: <FixWork /> },
-        { value: "cleaning", label: "Cleaning proposals", content: <CleaningQueueTab /> },
-        { value: "batches", label: "Approvals and export", content: <BatchesTab /> },
-        { value: "monitor", label: "Monitor", content: <MonitorTab /> },
-        { value: "dedup", label: "Duplicates", content: <DedupTab /> },
-      ]}
+      items={TABS.map(({ value, label, Content }) => ({ value, label, content: <Content /> }))}
     />
     </div>
   );

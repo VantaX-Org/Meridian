@@ -241,6 +241,8 @@ class DdicField(BaseModel):
     check_table: Optional[str] = None
     check_field: Optional[str] = None
     check_table_description: Optional[str] = None
+    #: The domain's fixed values (DD07L) with their short text, so a code reads as its label ("1" -> "Person").
+    fixed_values: list[dict[str, str]] = []
     missing: bool = False
 
 
@@ -266,5 +268,7 @@ async def ddic_fields(fields: str = Query(..., description="Comma separated TABL
         out.append(DdicField(
             table=table, field=name, description=f.description or None, data_element=f.data_element,
             domain=f.domain, type=f.type, length=f.length, check_table=f.check_table,
-            check_field=f.check_field, check_table_description=ct.description if ct else None))
+            check_field=f.check_field, check_table_description=ct.description if ct else None,
+            # single values only: a range (low..high) has no one code to label
+            fixed_values=[{"value": v.low, "label": v.text} for v in f.fixed_values if not v.high and v.text]))
     return DdicFieldsResponse(fields=out)

@@ -64,6 +64,11 @@ class QueueItemOut(BaseModel):
     sla_paused_at: Optional[str] = None
     snoozed_until: Optional[str] = None
     snooze_reason: Optional[str] = None
+    #: What an exception task is about, read from its exception (and the finding it links): the inbox names the
+    #: task by them ("Material description is missing in Material master") instead of a bare "Exception".
+    source_title: Optional[str] = None
+    source_check_id: Optional[str] = None
+    source_module: Optional[str] = None
 
 
 class QueueListResponse(BaseModel):
@@ -136,6 +141,55 @@ QUEUE_COLUMNS = (
 )
 _TRIAGE_COLS = ("assigned_team_id", "acknowledged_at", "resolved_at", "ack_due_at", "sla_state", "sla_paused_at",
                 "snoozed_until", "snooze_reason")
+
+
+def exception_source_module(linked_module: Optional[str], affected_records: object, exc_type: Optional[str],
+                            category: Optional[str]) -> Optional[str]:
+    """The SAP object an exception is about: its linked finding's module, else the first object its SAP signal
+    names (``affected_records.modules``), else a custom business rule's object type (its category). The same
+    order the inbox reads an exception it has loaded in full (frontend/app/(app)/inbox/task-source.ts)."""
+    if linked_module:
+        return linked_module
+    if isinstance(affected_records, dict):
+        modules = affected_records.get("modules")
+        if isinstance(modules, list):
+            first = next((m for m in modules if isinstance(m, str) and m.strip()), None)
+            if first:
+                return first
+    if exc_type == "custom_business" and category:
+        return category
+    return None
+
+
+def apply_exception_sources(items: list[QueueItemOut], sources: dict[str, dict]) -> list[QueueItemOut]:
+    """Copy each exception task's title, check and object from its exception (by ``source_id``) onto the task."""
+    for item in items:
+        src = sources.get(item.source_id) if item.item_type == "exception" else None
+        if src:
+            item.source_title = (src.get("title") or "").strip() or None
+            item.source_check_id = src.get("check_id") or None
+            item.source_module = src.get("module") or None
+    return items
+
+
+async def _exception_sources(db: AsyncSession, tid: str, ids: list[str]) -> dict[str, dict]:
+    """Title, check and object of the given exceptions, by id. Best effort: a failed read names no task."""
+    if not ids:
+        return {}
+    try:
+        # A savepoint, so a failed read leaves the request's transaction usable.
+        async with db.begin_nested():
+            rows = (await db.execute(text("""
+                SELECT e.id::text, e.title, e.type, e.category, e.affected_records, f.check_id, f.module
+                  FROM exceptions e
+                  LEFT JOIN findings f ON f.id = e.linked_finding_id AND f.tenant_id = e.tenant_id
+                 WHERE e.tenant_id = :tid AND e.id::text = ANY(:ids)"""), {"tid": tid, "ids": ids})).fetchall()
+    except Exception:  # noqa: BLE001 — naming is a nicety; the list itself must still load
+        return {}
+    return {
+        r[0]: {"title": r[1], "check_id": r[5], "module": exception_source_module(r[6], r[4], r[2], r[3])}
+        for r in rows
+    }
 
 
 async def _resolve_user_id(db: AsyncSession, tenant: Tenant, request: Request) -> str:
@@ -230,9 +284,12 @@ async def list_queue_items(
         {**params, "limit": limit, "offset": offset},
     )
     rows = result.fetchall()
+    items = [_row_to_item(r) for r in rows]
+    exc_ids = [i.source_id for i in items if i.item_type == "exception"]
+    apply_exception_sources(items, await _exception_sources(db, str(tenant.id), exc_ids))
 
     return QueueListResponse(
-        items=[_row_to_item(r) for r in rows],
+        items=items,
         total=total,
     )
 
@@ -407,7 +464,10 @@ async def get_queue_item(
     if not row:
         raise HTTPException(status_code=404, detail="Queue item not found")
 
-    return _row_to_item(row)
+    item = _row_to_item(row)
+    if item.item_type == "exception":
+        apply_exception_sources([item], await _exception_sources(db, str(tenant.id), [item.source_id]))
+    return item
 
 
 # ── Rule hand-off (process owner -> steward) ─────────────────────────────────

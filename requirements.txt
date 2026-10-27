@@ -1,5 +1,5 @@
 # FastAPI
-fastapi>=0.115.0
+fastapi>=0.118.0  # StreamingResponse + yield-dependency teardown after the stream (api/routes/audit.py)
 uvicorn[standard]>=0.49.0
 python-multipart>=0.0.18
 pydantic-settings>=2.7.0

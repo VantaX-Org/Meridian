@@ -9,6 +9,8 @@ import userEvent from "@testing-library/user-event";
 import { renderWithQuery } from "../../../__tests__/render";
 import { RecordPanel, invalidateAfterDecision, toastDraftBatch, historyLine, issueAnchor, lastRunLine, populationLine, ruleHref, sameIssueHref } from "../record-panel";
 import * as work from "@/lib/api/work";
+import * as issuesApi from "@/lib/api/issues";
+import * as usersApi from "@/lib/api/users";
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() } }));
 vi.mock("@/lib/api/work", async () => {
@@ -136,5 +138,36 @@ describe("after a proposed fix", () => {
     const invalidate = vi.spyOn(qc, "invalidateQueries");
     invalidateAfterDecision(qc);
     expect(invalidate.mock.calls.map(([f]) => f?.queryKey)).toEqual([["work"], ["remediation", "batches"], ["shell-counts"], ["home-inbox-top"]]);
+  });
+});
+
+// What the retired Inbox › Issues tab did, now on the record panel: mark an issue fixed in SAP, hand the record over.
+describe("Fixed in SAP and Assign to", () => {
+  it("marks one open issue fixed at the source, as the Issues tab did", async () => {
+    const update = vi.spyOn(issuesApi, "updateIssues").mockResolvedValue({ updated: 1 });
+    vi.spyOn(usersApi, "getAssignableUsers").mockResolvedValue([]);
+    renderWithQuery(<RecordPanel module="material_master" recordKey="MATNR=2" run="R2" />);
+    const [mm002] = await screen.findAllByTestId("work-issue");
+    await userEvent.click(within(mm002!).getByRole("button", { name: "Fixed in SAP" }));
+    expect(update).toHaveBeenCalledWith({ ids: ["i2"], status: "resolved", resolution: "fixed_in_source" });
+  });
+
+  it("offers neither without the assign permission", async () => {
+    vi.mocked(work.getWorkRecord).mockResolvedValue(detail({ can: { fix: true, sign_off: true, assign: false, comment: true } }));
+    const people = vi.spyOn(usersApi, "getAssignableUsers").mockResolvedValue([]);
+    renderWithQuery(<RecordPanel module="material_master" recordKey="MATNR=2" run="R2" />);
+    await screen.findAllByTestId("work-issue");
+    expect(screen.queryByRole("button", { name: "Fixed in SAP" })).toBeNull();
+    expect(screen.queryByText("Assign to")).toBeNull();
+    expect(people).not.toHaveBeenCalled();
+  });
+
+  it("hands the record to a colleague", async () => {
+    vi.spyOn(usersApi, "getAssignableUsers").mockResolvedValue([{ id: "u-sam", name: "Sam Steward", email: "sam@example.test", role: "steward" }]);
+    vi.mocked(work.decide).mockResolvedValue({ updated: 2, draft_batch_id: null });
+    renderWithQuery(<RecordPanel module="material_master" recordKey="MATNR=2" run="R2" />);
+    await userEvent.click(await screen.findByRole("combobox", { name: "Assign to" }));
+    await userEvent.click(await screen.findByRole("option", { name: "Sam Steward" }));
+    expect(work.decide).toHaveBeenCalledWith([{ module: "material_master", record_key: "MATNR=2", action: "assign", assignee: "u-sam" }], "R2");
   });
 });

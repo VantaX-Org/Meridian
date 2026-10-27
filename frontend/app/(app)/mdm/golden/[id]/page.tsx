@@ -11,10 +11,10 @@ import { getRelationships } from "@/lib/api/relationships";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { LedgerHead } from "@/components/mdm/ledger";
 import { MergedRecords } from "@/components/mdm/merged-records";
-import { GoldenFields } from "@/components/mdm/golden-fields";
+import { GoldenGrid } from "@/components/mdm/golden-grid";
 import { MergeHistory, mergeEventsKey } from "@/components/mdm/merge-history";
 import { GatedPrimary } from "@/components/gated-primary";
-import { GoldenStatusPill, contributionSystem, sourceSystems } from "@/components/mdm/golden-status";
+import { GoldenStatusPill, sourceSystems } from "@/components/mdm/golden-status";
 import { GoldenWriteback } from "@/components/mdm/golden-writeback";
 import { useRole } from "@/hooks/use-role";
 import { formatDate, formatModuleName, labelOf } from "@/lib/format";
@@ -24,11 +24,6 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 type Rel = { id: string; relationship_type: string; to_key: string; to_domain: string };
 type Hist = { id: string; changed_at: string; change_type: string; changed_by?: string | null };
-/** One golden field and the source system its surviving value came from (source_contributions is keyed by field). */
-type SourceRow = { field: string; system: string | null; via: string | undefined; value: unknown; confidence: number | null; ai: string | null | undefined };
-
-const show = (v: unknown) => (v == null ? "None" : String(v));
-
 const relCols: ColumnDef<Rel>[] = [
   { id: "type", header: "Relationship", accessorFn: (r) => r.relationship_type.replace(/_/g, " ") },
   { id: "to", header: "To", cell: ({ row }) => <Mono>{row.original.to_key}</Mono> },
@@ -39,19 +34,6 @@ const histCols: ColumnDef<Hist>[] = [
   { id: "type", header: "Change", accessorFn: (e) => labelOf(e.change_type) },
   { id: "by", header: "By", accessorFn: (e) => e.changed_by ?? "System" },
 ];
-const sourceCols: ColumnDef<SourceRow>[] = [
-  { id: "field", header: "Field", cell: ({ row }) => <Mono>{row.original.field}</Mono> },
-  {
-    id: "system", header: "Source system", accessorFn: (r) => r.system ?? "",
-    cell: ({ row }) => (row.original.system ? (
-      <span><Mono>{row.original.system}</Mono>{row.original.via ? <span className="m-ink-3"> via merge of <Mono>{row.original.via}</Mono></span> : null}</span>
-    ) : <span className="m-ink-3">Not recorded</span>),
-  },
-  { id: "value", header: "Value", accessorFn: (r) => show(r.value) },
-  { id: "conf", header: "Confidence", accessorFn: (r) => (r.confidence == null ? "None" : `${Math.round(r.confidence * 100)}%`) },
-  { id: "ai", header: "Model recommendation", accessorFn: (r) => r.ai ?? "None" },
-];
-
 export default function MasterRecordPage() {
   const { id } = useParams<{ id: string }>();
   const qc = useQueryClient();
@@ -118,11 +100,9 @@ export default function MasterRecordPage() {
   // RecordPage's status speaks the record-quality vocabulary, so it is omitted; the lifecycle Pill is in the overview.
   const promotable = record.status !== "golden" && record.status !== "superseded";
 
-  const contributions = Object.entries(record.source_contributions);
   const systems = sourceSystems(record.source_contributions);
   const relationships = relationshipsQuery.data?.relationships ?? [];
   const history = historyQuery.data ?? [];
-  const sourceRows: SourceRow[] = contributions.map(([field, c]) => ({ field, system: contributionSystem(c), via: c.merged_from, value: c.value, confidence: c.confidence, ai: c.ai_recommendation }));
 
   return (
     <RecordPage
@@ -154,7 +134,7 @@ export default function MasterRecordPage() {
         {historyQuery.isLoading ? <Skeleton height={80} /> : historyQuery.isError ? (
           <ErrorState {...apiErrorState(historyQuery.error)} onRetry={() => void historyQuery.refetch()} />
         ) : history.length === 0 ? (
-          <EmptyState variant="inline" title="No changes recorded" detail="Promotions, merges and steward picks are listed here." action={<Link className="m-ink-accent-ink hover:underline" href={`/mdm/golden/merge?id=${record.id}`}>Compare sources</Link>} />
+          <EmptyState variant="inline" title="No changes recorded" detail="Promotions, merges and steward picks are listed here." action={<Link className="m-ink-accent-ink hover:underline" href={`/mdm/golden/merge?object=${encodeURIComponent(record.domain)}&record=${encodeURIComponent(record.sap_object_key)}`}>Review this record&apos;s match pairs</Link>} />
         ) : (
           <DataTable columns={histCols} getRowId={(r) => r.id} data={history as Hist[]} height="auto" />
         )}
@@ -162,13 +142,6 @@ export default function MasterRecordPage() {
       <MergeHistory id={id} />
         </>}
         overview={<>
-      <section className="flex items-center gap-2">
-        <GoldenStatusPill status={record.status} />
-        <Pill tone="neutral">{Math.round(record.overall_confidence * 100)}% confidence</Pill>
-        <GoldenWriteback recordId={record.id} status={record.status} />
-        <Button variant="ghost" render={<Link href={`/mdm/golden/merge?id=${record.id}`}>Compare sources</Link>} />
-      </section>
-
       <ConfirmDialog
         open={confirmPromote}
         onOpenChange={setConfirmPromote}
@@ -180,16 +153,16 @@ export default function MasterRecordPage() {
         onConfirm={() => promote.mutate()}
       />
 
-      <GoldenFields id={record.id} fields={record.golden_fields} onChanged={invalidate} />
-
-      <section aria-label="Source contributions">
-        <LedgerHead title="Source contributions" meta={`${contributions.length.toLocaleString()} ${contributions.length === 1 ? "field" : "fields"} from ${systems.length.toLocaleString()} ${systems.length === 1 ? "system" : "systems"}`} />
-        {contributions.length === 0 ? (
-          <EmptyState variant="inline" title="No sources recorded" detail="A source is added each time an extraction carries this key." action={<Link className="m-ink-accent-ink hover:underline" href="/systems">Open systems</Link>} />
-        ) : (
-          <DataTable columns={sourceCols} getRowId={(r) => r.field} data={sourceRows} height="auto" />
-        )}
-      </section>
+      {/* One toolbar for the record: its lifecycle, its confidence and the write-back, above its one grid. */}
+      <GoldenGrid
+        record={record}
+        onChanged={invalidate}
+        toolbar={<>
+          <GoldenStatusPill status={record.status} />
+          <Pill tone="neutral">{Math.round(record.overall_confidence * 100)}% confidence</Pill>
+          <GoldenWriteback recordId={record.id} status={record.status} />
+        </>}
+      />
 
       <MergedRecords id={record.id} onChanged={invalidate} />
 

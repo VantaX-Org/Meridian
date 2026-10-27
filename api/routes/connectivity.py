@@ -37,8 +37,11 @@ async def list_system_modules(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    """List available modules for a system with sync status."""
-    from sap.extraction_registry import get_available_modules
+    """List available modules for a system with sync status.
+
+    ``preview_sources`` lists the module's registry sources whose names are not yet verified
+    against SAP (sap/extraction_registry.py, ``status="preview"``); empty when all are verified."""
+    from sap.extraction_registry import get_available_modules, preview_sources
 
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
@@ -67,6 +70,10 @@ async def list_system_modules(
         for r in status_result.fetchall()
     }
 
+    preview: dict[str, list[dict]] = {}
+    for p in preview_sources(system_type):
+        preview.setdefault(p["module"], []).append({"source": p["source"], "reason": p["reason"]})
+
     return [
         {
             "module": m,
@@ -74,6 +81,7 @@ async def list_system_modules(
             **status_map.get(m, {"enabled": True, "last_synced_at": None,
                                   "last_sync_status": None, "row_count": 0,
                                   "config_synced": False}),
+            "preview_sources": preview.get(m, []),
         }
         for m in modules
     ]

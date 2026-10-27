@@ -37,12 +37,24 @@ class AnswerLink(BaseModel):
     href: str
 
 
+class CheckRef(BaseModel):
+    """A rule check a fact speaks to; ``module`` is None when the fact names no object."""
+    check_id: str
+    module: Optional[str] = None
+
+
+class Citation(CheckRef):
+    """A check the answer rests on, linked to its failing records."""
+    href: str
+
+
 class Fact(BaseModel):
     """One figure the answer was assembled from."""
     statement: str
     value: Optional[float] = None
     source: str
     href: Optional[str] = None
+    checks: list[CheckRef] = []
 
 
 class AskAnswer(BaseModel):
@@ -60,6 +72,8 @@ class AskAnswer(BaseModel):
     coverage: float = 1.0
     #: every number in ``answer`` appears in ``facts``
     grounded: bool = True
+    #: the checks the facts name, each linked to its failing records; empty when no fact speaks to a check
+    citations: list[Citation] = []
 
 
 @router.post("/ask", response_model=AskAnswer, dependencies=[Depends(require_permission("view"))])

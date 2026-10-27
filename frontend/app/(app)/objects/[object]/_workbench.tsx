@@ -7,7 +7,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Button, Card, DataTable, DimensionBars, EmptyState, ErrorState, ExportMenu, Mono, Pager, RankedRow, SeverityDot, Skeleton, Stat, Status, isSeverity, toast } from "@/design";
+import { BELOW_LG, Button, Card, DataTable, DetailPane, DimensionBars, EmptyState, ErrorState, ExportMenu, Mono, Pager, RankedRow, SeverityDot, Skeleton, Stat, Status, isSeverity, toast } from "@/design";
+import { RuleCell } from "@/components/fix/rule-cell";
 import { useRole } from "@/hooks/use-role";
 import { exportFindingRecords } from "@/lib/api/findings";
 import { createBatch } from "@/lib/api/remediation";
@@ -16,6 +17,7 @@ import type { ObjectRule } from "@/lib/api/v1/objects";
 import { apiErrorState } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { rankedName, useRuleNames } from "@/lib/rule-name";
 import { FilterChips } from "../_header";
 import { PAGE_SIZE, STALE_MS, fixSheetHref, isBlocking, objectQuery, recordsQuery, useFixShortcut, useRecordColumns } from "./_shared";
 
@@ -82,7 +84,7 @@ function RulePane({ object, run, rule }: { object: string; run: string; rule: Wo
     >
       <div className="flex flex-col gap-4" data-testid="workbench-rule">
         <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 m-text-meta m-ink-3">
-          <span><span className="m-numeric m-text-stat m-ink">{rule.affected_count.toLocaleString()}</span> records affected</span>
+          <span><span className="m-numeric m-text-stat m-ink">{rule.affected_count.toLocaleString()}</span> failing records</span>
           {rule.name ? <Mono>{rule.check_id}</Mono> : null}
           {rule.field ? <Mono>{rule.field}</Mono> : null}
           {rule.dimension ? <span>{formatModuleName(rule.dimension)}</span> : null}
@@ -118,8 +120,11 @@ function RulePane({ object, run, rule }: { object: string; run: string; rule: Wo
 
 export function Workbench({ object, run }: { object: string; run: string }) {
   const search = useSearchParams();
+  const router = useRouter();
   const { data, isLoading, isError, error, refetch } = useQuery(objectQuery(object, run));
   const details = useRuleDetails(object, run);
+  // The ranking names the rules it ranks; the catalogue (and the DDIC checks it does not hold) names the rest.
+  const catalogueName = useRuleNames(data?.rules.filter((r) => r.affected_count > 0).map((r) => r.check_id) ?? []);
 
   if (isLoading) return <div aria-busy="true"><Skeleton height={320} /></div>;
   if (isError) return <ErrorState {...apiErrorState(error)} onRetry={() => refetch()} />;
@@ -129,7 +134,7 @@ export function Workbench({ object, run }: { object: string; run: string }) {
   const byId = new Map((details.data?.rows ?? []).map((r: RuleRow) => [r.check_id, r]));
   const failing: WorkRule[] = data.rules
     .filter((r) => r.affected_count > 0)
-    .map((r) => ({ ...r, name: byId.get(r.check_id)?.name ?? null, field: byId.get(r.check_id)?.field ?? null, autoFixPct: byId.get(r.check_id)?.auto_fix_pct ?? null }))
+    .map((r) => ({ ...r, name: catalogueName(r.check_id, rankedName(details.data?.rows, r.check_id)) ?? null, field: byId.get(r.check_id)?.field ?? null, autoFixPct: byId.get(r.check_id)?.auto_fix_pct ?? null }))
     .sort((a, b) => b.affected_count - a.affected_count || (SEVERITY_RANK[a.severity] ?? 4) - (SEVERITY_RANK[b.severity] ?? 4));
   const listed = failing.filter((r) => !dimension || r.dimension === dimension);
   const wanted = search.get("rule");
@@ -170,7 +175,7 @@ export function Workbench({ object, run }: { object: string; run: string }) {
       <div className="m-stat-grid">
         <Stat label="Failing rules" value={data.failing_checks.toLocaleString()} href={rulesHref} />
         {/* `?blocking=true` keeps the critical and high rules (isBlocking), not the blocking findings of the readiness view. */}
-        <Stat label="Critical and high" value={blockingRules} hint="failing rules" tone={blockingRules > 0 ? "no-go" : "go"} href={`${rulesHref}&blocking=true`} />
+        <Stat label="Critical and high failing rules" value={blockingRules} tone={blockingRules > 0 ? "no-go" : "go"} href={`${rulesHref}&blocking=true`} />
         {/* Summed over the failing rules (a record failing two rules counts twice): rule failures, as the header says. */}
         <Stat label="Rule failures" value={data.affected_records.toLocaleString()} hint="records failing a rule, per rule" href={tabHref("fix")} />
         <Stat
@@ -180,8 +185,8 @@ export function Workbench({ object, run }: { object: string; run: string }) {
           href={autoRecords != null ? `/insights/rules?run=${run}&module=${object}&auto=yes` : undefined}
         />
       </div>
-      <div className="grid [gap:var(--m-section-gap)] [grid-template-columns:minmax(0,1fr)] @5xl:[grid-auto-rows:min-content] @5xl:[grid-template-columns:400px_minmax(0,1fr)]" data-testid="workbench">
-        <div className="min-w-0 @5xl:col-start-1">
+      <div className="grid [gap:var(--m-section-gap)] [grid-template-columns:minmax(0,1fr)] lg:[grid-auto-rows:min-content] lg:[grid-template-columns:400px_minmax(0,1fr)]" data-testid="workbench">
+        <div className="min-w-0 lg:col-start-1">
           <Card title="Failing rules" meta={`${listed.length.toLocaleString()} of ${failing.length.toLocaleString()}`} padding="sm">
             {dimension && listed.length > 0 ? (
               <div className="px-3 pb-2">
@@ -198,7 +203,7 @@ export function Workbench({ object, run }: { object: string; run: string }) {
                 action={<Button variant="secondary" render={<Link href={hrefWith({ dimension: null })}>Clear filter</Link>} />}
               />
             ) : (
-              <ul aria-label="Failing rules" className="flex flex-col overflow-y-auto [max-height:min(60vh,32rem)]">
+              <ul aria-label="Failing rules" className="flex flex-col lg:overflow-y-auto lg:[max-height:min(60vh,32rem)]">
                 {listed.map((r) => (
                   <RankedRow
                     key={r.check_id}
@@ -208,10 +213,10 @@ export function Workbench({ object, run }: { object: string; run: string }) {
                     selected={r.check_id === selected?.check_id}
                     testId="workbench-rule-row"
                     label={
-                      <span className="flex min-w-0 items-center gap-2">
-                        {isSeverity(r.severity) ? <SeverityDot severity={r.severity} /> : null}
-                        <Mono>{r.check_id}</Mono>
-                        {r.name ? <span className="min-w-0 flex-1 truncate font-normal m-ink-2">{r.name}</span> : null}
+                      // The id whole, the rule's words under it in up to two lines (RuleCell), never cut to "Value does not m…".
+                      <span className="flex min-w-0 items-start gap-2">
+                        {isSeverity(r.severity) ? <SeverityDot severity={r.severity} labelled /> : null}
+                        <RuleCell id={r.check_id} fallback={r.name} className="flex-1 font-normal" />
                       </span>
                     }
                     magnitude={r.affected_count.toLocaleString()}
@@ -228,10 +233,18 @@ export function Workbench({ object, run }: { object: string; run: string }) {
             )}
           </Card>
         </div>
-        <div className="min-w-0 @5xl:col-start-2 @5xl:row-span-2 @5xl:row-start-1">
+        {/* Below lg a picked rule (?rule=) opens as a sheet over the list; closing it drops the pick. */}
+        <DetailPane
+          open={!!wanted}
+          onOpenChange={(o) => { if (!o) router.replace(hrefWith({ rule: null }), { scroll: false }); }}
+          below={BELOW_LG}
+          title={selected?.check_id ?? "Rule"}
+          label="Selected rule"
+          className="min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1"
+        >
           {selected ? <RulePane key={selected.check_id} object={object} run={run} rule={selected} /> : null}
-        </div>
-        <div className="min-w-0 @5xl:col-start-1">
+        </DetailPane>
+        <div className="min-w-0 lg:col-start-1">
           <Card title="Score by dimension" padding="sm">
             {dimensionItems.length === 0 ? (
               <EmptyState

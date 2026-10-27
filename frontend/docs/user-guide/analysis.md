@@ -6,13 +6,13 @@ The **Analysis** section of the **More** menu holds the pages for understanding 
 
 **Home** answers how healthy your SAP data is and what to do next. Each role lands on its own version: the data lead page, the Basis page or the process page. Stewards land on Fix work instead, and can still open the steward Home with **View as**, **Steward**. **View as** changes the layout only, never your rights.
 
-The page shows the score on its ruler with the verdict (**Go**, **At risk** or **No-go**) and any cap, the object map, the four sentences (**Situation**, **What changed**, **Why it matters**, **Do next**), the objects holding the score back, and your own work. **Run analysis** opens a panel to extract and analyse a system's objects, for roles that may start extractions. From anywhere, press Ctrl K (⌘K) and then Ctrl 1 (⌘1) to go Home.
+The page shows the score on its ruler with the verdict (**Go**, **At risk** or **No-go**) and any cap, the object map, the four sentences (**Situation**, **What changed**, **Why it matters**, **Do next**), the objects holding the score back, and your own work. On the data lead page, **Root causes**, **S/4 migration** and **Cleansing opportunity** follow, each for the same scope. They came from the old Insights overview, which repeated Home and now opens Home. **Run analysis** opens a panel to extract and analyse a system's objects, for roles that may start extractions. From anywhere, press Ctrl K (⌘K) and then Ctrl 1 (⌘1) to go Home.
 
 ## Insights
 
 **Insights** turns findings into answers for the people who decide. Its views, listed under **Insights** in the **More** menu, each have tabs under the title:
 
-- **Summary**: the **Executive summary**, the overview with **Fix first** and the object heatmap, and **Reports**, the report library with the board pack, analyst workbook, run comparison, object and owner reports, each with a preview and **Download**.
+- **Summary**: the **Executive summary** and **Reports**, the report library with the board pack, analyst workbook, run comparison, object and owner reports, each with a preview and **Download**.
 - **Progress**: the burn-down page (see [Progress](/docs?page=progress)), **Trends**, which re-scores one system's runs under today's weights so the line compares like with like, and **Forecast**, which projects each object's score 7, 30 and 90 days ahead once there are runs on three different days.
 - **Explore**: **Failing rules** grouped by rule, object, field, dimension or severity and ranked by impact; **Value at risk** for priced SAP features; **Lineage**; **Patterns**; and **Duplicates**, where you create merge proposals from a cluster.
 - **Readiness**: **Waves**, a grid of objects against migration waves, and **Processes**, the readiness of each procure to pay or order to cash step.

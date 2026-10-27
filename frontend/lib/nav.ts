@@ -3,8 +3,9 @@
  * the header page titles. Both surfaces filter it with `visibleNav()`, so a
  * role or licence never sees a page in one place and not the other.
  *
- * Six main entries for everyone (the "Work" group: Fix work, Objects, Runs,
- * Processes, Progress, Inbox) and five "More" sections (Analysis, Master data, Rules,
+ * Six main entries (the "Work" group: Fix work, Objects, Runs, Processes,
+ * Progress, Inbox), shown as pills in each role's own choice and order
+ * (`PERSONA_PILLS`), and five "More" sections (Analysis, Master data, Rules,
  * Data in, Admin), each href appearing exactly once (enforced by nav and Rail
  * tests). `splitNav()` gives the Rail its pills and its More menu. Routes removed from the nav stay
  * routable — their titles live in `OFF_NAV_TITLES` or come from the
@@ -20,13 +21,13 @@
  */
 import type { Icon } from "@/design/icons";
 import {
-  IconActivity, IconBell, IconBook, IconBranch, IconChart, IconCompass, IconContract, IconCube, IconDatabase, IconDraft,
+  IconActivity, IconBell, IconBook, IconBranch, IconCompass, IconContract, IconCube, IconDatabase, IconDraft,
   IconEraser, IconFlag, IconFunnel, IconGauge, IconGear, IconHistory, IconHome, IconImport, IconInbox, IconKey, IconLayers,
   IconList, IconLog, IconMapping, IconMerge, IconMigration, IconModel, IconPeople, IconProcess, IconRules, IconServer,
   IconShieldAlert, IconSliders, IconTrend, IconUserShield,
 } from "@/design/icons";
 import type { Role } from "@/hooks/use-role";
-import { homeHrefForRole } from "@/lib/persona";
+import { APPROVALS_HREF, homeHrefForRole, type PillSet } from "@/lib/persona";
 
 export { homeHrefForRole };
 
@@ -122,6 +123,19 @@ export function settingsTabs(groups: readonly NavGroup[]): NavItem[] {
 /** DESIGN.md §1.1: the index bar holds at most this many pills before More (the main group's size). */
 export const MAX_PILLS = 6;
 
+/**
+ * Each pill strip, in order, as nav hrefs (before `resolveNavHref`): each role's strip leads with where its day
+ * starts. An href the viewer cannot see is skipped; main items a strip leaves out move to the top of More
+ * (`railSplit`). The process strip is the main group with Processes first and Fix work in More.
+ */
+export const PERSONA_PILLS: Readonly<Record<PillSet, readonly string[]>> = {
+  lead: ["/home/lead", "/objects", "/fix", "/inbox", "/insights/progress", "/runs"],
+  steward: ["/fix", "/inbox", "/objects", "/mdm/golden/merge", "/runs", "/insights/progress"],
+  owner: [APPROVALS_HREF, "/inbox", "/objects", "/fix", "/insights/progress", "/runs"],
+  basis: ["/systems", "/admin/jobs", "/runs", "/inbox", "/objects"],
+  process: ["/process", "/objects", "/runs", "/insights/progress", "/inbox"],
+};
+
 export const NAV_GROUPS: readonly NavGroup[] = [
   {
     // The six entries everyone works from; the Rail shows them as pills (at most six: DESIGN.md §1.1). Every other
@@ -146,6 +160,9 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         keywords: "workbench queue triage tasks stewardship steward team assign sla metrics failing records issues",
         children: [
           { href: "/inbox?kind=exception", requires: req("stewardship", "view"), label: "Exceptions", icon: IconShieldAlert, anyOf: ["approve", "assign"], keywords: "escalate sla exception" },
+          // The one approvals page: fix batches and SAP write-backs waiting for a second person. The data owner's
+          // Approvals pill (PERSONA_PILLS.owner). view_audit reads the four-eyes evidence there, as it read Fix's batches.
+          { href: APPROVALS_HREF, requires: [req("stewardship", "view"), req("fixes", "view")], label: "Approvals", icon: IconLog, anyOf: ["approve", "view_audit"], keywords: "approvals approve four eyes fix batches evidence approved writeback second person change requests audit" },
         ],
       },
     ],
@@ -155,14 +172,15 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     items: [
       { href: "/home/lead", requires: req("analysis", "view"), label: "Home", icon: IconHome, licenceKey: "dashboard", keywords: "overview home dqs verdict command centre", shortcut: "⌘1" },
       {
-        href: "/insights",
+        // The Insights overview repeated Home and was retired (/insights redirects to the viewer's home); the insight
+        // views are listed by their own pages, the executive summary first.
+        href: "/insights/exec",
         requires: req("reports", "view"),
-        label: "Insights",
-        icon: IconChart,
+        label: "Summary",
+        icon: IconGauge,
         anyOf: ["view"],
-        keywords: "readiness impact owners duplicates executive summary forecast process lineage mining",
+        keywords: "insights executive summary exec overview narrative readiness impact owners duplicates forecast process lineage mining",
         children: [
-          { href: "/insights/exec", requires: req("reports", "view"), label: "Summary", icon: IconGauge, keywords: "executive summary exec overview narrative" },
           // Every insight view is its own More entry (owner: a page that is only a tab reads as a missing feature).
           // Reports is gated on export: the page's downloads need it (api/services/rbac.py maps export to reports/export).
           { href: "/insights/reports", requires: req("reports", "export"), label: "Reports", icon: IconLog, anyOf: ["export"], keywords: "reports report library pdf board pack executive workbook xlsx json download export trend owners rule catalogue dictionary extraction cleaning record fix sheet comparison" },
@@ -179,7 +197,6 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           { href: "/insights/operations", requires: req("reports", "view"), label: "Operations", icon: IconPeople, keywords: "operations sprints bottlenecks capacity fix queue" },
         ],
       },
-      { href: "/fix?tab=batches", requires: req("fixes", "view"), label: "Approvals", icon: IconLog, anyOf: ["view_audit"], keywords: "approvals four eyes batches evidence approved applied audit" },
       { href: "/fix/what-if", requires: req("fixes", "view"), label: "What-if", icon: IconBranch, anyOf: ["approve", "apply"], keywords: "simulation simulate score before after fix" },
       { href: "/insights/process/designer", requires: req("process", "view"), label: "Process designer", icon: IconDraft, anyOf: ["view"], keywords: "bpmn designer model reference l1 l5 signavio export processes" },
       { href: "/process/runs", requires: req("process", "view"), label: "Discovery runs", icon: IconHistory, anyOf: ["view"], keywords: "process discovery run runs processes incremental extraction" },
@@ -302,10 +319,10 @@ export function featureArea(href: string): FeatureArea {
 /** One line per page: what you do there. Keyed by the nav href as written (before persona resolution). */
 export const FEATURE_DESC: Readonly<Record<string, string>> = {
   "/fix": "Review and apply proposed fixes to failing records, in batches",
-  "/fix?tab=batches": "Read-only four-eyes evidence: who approved and applied each fix batch",
   "/fix/what-if": "Simulate a fix and see the score before and after",
-  "/inbox": "Work the stewardship queue: assigned issues, due dates and SLAs",
+  "/inbox": "Work the stewardship queue and exceptions: due dates and SLAs",
   "/inbox?kind=exception": "Escalated exceptions waiting for a decision",
+  "/inbox?kind=approvals": "Approve fix batches and SAP write-backs another person requested (four eyes)",
   "/inbox/notifications": "Every notification sent to you",
   "/home/lead": "Your home: the score, what changed and what to do next",
   "/home/steward": "The steward's home: the queue first, then the score",
@@ -316,7 +333,6 @@ export const FEATURE_DESC: Readonly<Record<string, string>> = {
   "/me/preferences": "Your density, time zone, theme and notifications",
   "/objects": "Each SAP object's score, failing checks and records",
   "/runs": "Every analysis run: start one, compare two, archive old ones",
-  "/insights": "Where the data stands and which failing rules to fix first",
   "/insights/progress": "Did the score get better since the baseline, and why",
   "/insights/exec": "The one-page leadership view and the board pack",
   "/insights/reports": "Download reports: board pack, workbook, owners, rule catalogue and more",
@@ -434,7 +450,8 @@ const OFF_NAV_TITLES: Record<string, string> = {
   "/me/preferences": "Preferences",
   "/rules/learned": "Learned rules",
   "/inbox/notifications": "Notifications",
-  // Insight views carry short rail labels; the pages keep their full titles.
+  // Insight views carry short rail labels; the pages keep their full titles. /insights itself redirects home.
+  "/insights": "Insights",
   "/insights/exec": "Executive summary",
   "/insights/progress": "Progress",
   "/insights/trends": "Trends",

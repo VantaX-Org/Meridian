@@ -63,7 +63,7 @@ describe("ProcessInsightsPage", () => {
     expect(screen.getByRole("button", { name: "Readiness" })).toHaveAttribute("aria-pressed", "true");
     expect(document.querySelectorAll(".m-tabs-list").length).toBeLessThanOrEqual(1);
     // The blocking ledger is not a card inside a card, and step verdicts use the one Status vocabulary.
-    expect(screen.getByRole("region", { name: "Blocking findings" }).closest(".m-card")).toBeNull();
+    expect(screen.getByRole("region", { name: "Blocking rules" }).closest(".m-card")).toBeNull();
     expect(screen.queryByText("Ready")).toBeNull();
   });
 
@@ -145,10 +145,92 @@ describe("ProcessInsightsPage blocking ledger", () => {
     expect(screen.getByText("No fields mapped")).toBeInTheDocument();
     expect(screen.getAllByText("No-go").length).toBeGreaterThan(0);
   });
+
+  it("lists a rule three steps write once, in Blocking rules and in What to clear first, naming its steps and fields", async () => {
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [LATEST as never] });
+    const f = (field: string) => ({ field, description: "Payment terms", mandatory: true, config_source: "", check_id: "AP016",
+      dq_status: "red" as const, pass_rate: 99, affected_count: 1, finding_message: "Payment terms missing" });
+    const step = (id: string, name: string, field: string) => ({
+      l3_id: id, l3_name: name, description: "", overall_readiness: "red" as const,
+      l4_subprocesses: [{ l4_id: `${id}-4`, l4_name: name, tcode: "FK01", description: "", config_dependency: null, step_status: "red" as const,
+        activities: [{ l5_id: `${id}-5`, l5_name: "Enter", description: "", tcode: "FK01", fields: [f(field)], check_ids: [], activity_status: "red" as const }] }],
+    });
+    vi.spyOn(connectivityApi, "getBusinessProcess").mockResolvedValue([{
+      l1_id: "PTP", l1_name: "Procure to pay", l1_description: "", system: "ecc",
+      l2_groups: [{ l2_id: "l2", l2_name: "Vendors", l3_processes: [
+        step("g1", "Vendor onboarding", "LFB1.ZTERM"), step("g2", "Invoice verification", "RBKP.ZTERM"), step("g3", "Payment run", "LFB1.ZTERM"),
+      ] }],
+    }]);
+    vi.spyOn(connectivityApi, "getConfigImpact").mockResolvedValue({ results: [], summary: { total_features_assessed: 0, features_blocked: 0, features_degraded: 0, features_ok: 0, top_blocked_features: [] } });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
+    renderWithQuery(<ProcessInsightsPage />);
+    const ledger = await screen.findByRole("region", { name: "Blocking rules" });
+    await waitFor(() => expect(within(ledger).getAllByText("AP016")).toHaveLength(1));
+    const row = within(ledger).getByText("AP016").closest("tr") as HTMLElement;
+    expect(row).toHaveTextContent("Vendor onboarding, Invoice verification, Payment run");
+    expect(row).toHaveTextContent("LFB1.ZTERM, RBKP.ZTERM");
+    expect(within(ledger).getAllByRole("link", { name: "Fix AP016" })).toHaveLength(1);
+    // What to clear first: the rule once, its steps and fields named, its one failing record counted once
+    expect(screen.getByText("Clear AP016 in Vendor onboarding, Invoice verification and Payment run")).toBeInTheDocument();
+    expect(screen.getByText("1 record fails it on LFB1.ZTERM and RBKP.ZTERM")).toBeInTheDocument();
+    expect(screen.queryByText(/Clear 1 failing field/)).toBeNull();
+  });
 });
 
 describe("ProcessInsightsPage without a process definition", () => {
+  afterEach(() => { nav.qs = ""; vi.restoreAllMocks(); });
+
+  it("opens on the current state: the process object of an older run, read from its own run", async () => {
+    const bp = { id: "bp", label: "business_partner_1k", status: "complete", run_at: "2026-10-02T00:00:00Z", dqs_summary: { business_partner: 90 } };
+    const ap = { id: "ap", label: "accounts_payable_1k", status: "complete", run_at: "2026-10-01T00:00:00Z", dqs_summary: { accounts_payable: 80 } };
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [bp as never, ap as never] });
+    const read = vi.spyOn(connectivityApi, "getBusinessProcess").mockResolvedValue([]);
+    vi.spyOn(connectivityApi, "getConfigImpact").mockResolvedValue({ results: [], summary: { total_features_assessed: 0, features_blocked: 0, features_degraded: 0, features_ok: 0, top_blocked_features: [] } });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
+    renderWithQuery(<ProcessInsightsPage />);
+    // The newest run (business partner) carries no process; the current state still offers accounts payable.
+    await waitFor(() => expect(read).toHaveBeenCalledWith("ap", "accounts_payable"));
+    expect(read).not.toHaveBeenCalledWith("bp", expect.anything());
+  });
+
+  it("in the current state opens on the first process object that has readiness, from its own run, never a run picker", async () => {
+    const co = { id: "co", label: "controlling_1k", status: "complete", run_at: "2026-10-16T05:00:00Z", dqs_summary: { controlling: 70 } };
+    const ap = { id: "ap", label: "accounts_payable_p02", status: "complete", run_at: "2026-10-16T03:01:00Z", dqs_summary: { accounts_payable: 80 } };
+    const mm = { id: "mm", label: "material_master_25k", status: "complete", run_at: "2026-10-16T03:05:00Z", dqs_summary: { material_master: 70 } };
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [co as never, mm as never, ap as never] });
+    const doc = [{ l1_id: "PTP", l1_name: "Procure to pay", l1_description: "", system: "ecc", l2_groups: [{ l2_id: "l2", l2_name: "Materials", l3_processes: [{
+      l3_id: "l3", l3_name: "Material master step", description: "", overall_readiness: "green" as const,
+      l4_subprocesses: [{ l4_id: "l4", l4_name: "MM01", tcode: "MM01", description: "", config_dependency: null, step_status: "green" as const,
+        activities: [{ l5_id: "l5", l5_name: "Create", description: "", tcode: "MM01", fields: [], check_ids: [], activity_status: "green" as const }] }] }] }] }];
+    const read = vi.spyOn(connectivityApi, "getBusinessProcess").mockImplementation(async (run, module) => (module === "material_master" ? doc : []));
+    vi.spyOn(connectivityApi, "getConfigImpact").mockResolvedValue({ results: [], summary: { total_features_assessed: 0, features_blocked: 0, features_degraded: 0, features_ok: 0, top_blocked_features: [] } });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
+    renderWithQuery(<ProcessInsightsPage />);
+    expect(await screen.findByText("Material master step", undefined, { timeout: 5000 })).toBeInTheDocument();
+    expect(read).toHaveBeenCalledWith("mm", "material_master");
+    expect(read).toHaveBeenCalledWith("ap", "accounts_payable");
+    expect(read).not.toHaveBeenCalledWith("co", expect.anything());
+    // The header names the current state, never the newest run (controlling_1k), and offers no run to choose.
+    expect(screen.getByTestId("insight-scope")).toHaveAttribute("data-scope", "current");
+    expect(screen.queryByText(/As of controlling_1k/)).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "Runs with a process definition" })).toBeNull();
+  });
+
+  it("in the current state says a read failed, with Retry, rather than that the object has no definition", async () => {
+    nav.qs = "object=accounts_payable";
+    const ap = { id: "ap", label: "accounts_payable_p02", status: "complete", run_at: "2026-10-16T03:01:00Z", dqs_summary: { accounts_payable: 80 } };
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [ap as never] });
+    vi.spyOn(connectivityApi, "getBusinessProcess").mockRejectedValue(new Error("boom"));
+    vi.spyOn(connectivityApi, "getConfigImpact").mockResolvedValue({ results: [], summary: { total_features_assessed: 0, features_blocked: 0, features_degraded: 0, features_ok: 0, top_blocked_features: [] } });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
+    renderWithQuery(<ProcessInsightsPage />);
+    expect(await screen.findByRole("button", { name: /retry/i }, { timeout: 5000 })).toBeInTheDocument();
+    expect(screen.queryByText("Accounts payable has no process definition")).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "Runs with a process definition" })).toBeNull();
+  });
+
   it("offers the finished runs that cover a process object instead of a dead end, with the header and actions at page level", async () => {
+    nav.qs = "run=bp";
     const bp = { id: "bp", label: "business_partner_1k", status: "complete", run_at: "2026-10-02T00:00:00Z", dqs_summary: { business_partner: 90 } };
     const ap = { id: "ap", label: "accounts_payable_1k", status: "complete", run_at: "2026-10-01T00:00:00Z", dqs_summary: { accounts_payable: 80 } };
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [bp as never, ap as never] });

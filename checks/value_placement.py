@@ -371,11 +371,34 @@ def generate(module: str, static_rules: list[dict], dictionary) -> list[dict]:
     tables = tables_of(cols)
     formatted = {r.get("field") for r in static_rules if r.get("check_class") in _FORMAT_CLASSES}
     rules: list[dict] = []
-    base = {"module": module, "check_class": "value_placement_check", "rule_authority": "generated_value_placement"}
     for t in tables:
-        tdef = dictionary.table(t)
-        if tdef is None:
-            continue
+        rules += table_rules(module, t, dictionary, formatted)
+    return rules
+
+
+_FAMILY_PREFIXES = ("VP", "PH", "DT", "DO", "VT", "ND", "FZ", "SW", "ST")
+
+
+def rule_name(check_id: str, dictionary) -> str | None:
+    """The words the check engine gives a generated rule (its ``message``), by check id; None for any other id.
+
+    The table is the id's second part (``DT-MARA-ERSDA`` → MARA); the rules ``table_rules`` generates for it are the
+    ones a run judges, so the name is the message the run's finding carries."""
+    prefix, _, rest = (check_id or "").partition("-")
+    if prefix not in _FAMILY_PREFIXES or not rest:
+        return None
+    table = rest.split("-")[0]
+    if dictionary.table(table) is None:
+        return None
+    return next((r["message"] for r in table_rules("", table, dictionary) if r["id"] == check_id), None)
+
+
+def table_rules(module: str, t: str, dictionary, formatted: set | frozenset = frozenset()) -> list[dict]:
+    """The rules generated for one table (``generate`` per table): fields in ``formatted`` get no VP/PH rule."""
+    rules: list[dict] = []
+    base = {"module": module, "check_class": "value_placement_check", "rule_authority": "generated_value_placement"}
+    tdef = dictionary.table(t)
+    if tdef is not None:
         for f in tdef.fields.values():
             col, kind = f"{t}.{f.name}", KIND_BY_DATA_ELEMENT.get((f.data_element or "").upper())
             if not kind or col in formatted:
@@ -397,9 +420,10 @@ def generate(module: str, static_rules: list[dict], dictionary) -> list[dict]:
         created = [f"{t}.{f.name}" for f in tdef.fields.values() if (f.data_element or "").upper() in CREATED_DE]
         changed = [f"{t}.{f.name}" for f in tdef.fields.values() if (f.data_element or "").upper() in CHANGED_DE]
         for col in created + changed:
+            what = "Creation date" if col in created else "Change date"
             rules.append({**base, "id": f"DT-{t}-{col.split('.')[1]}", "family": "date_range", "field": col,
                           "severity": "medium", "dimension": "validity",
-                          "message": f"{col} is before 1970 or in the future",
+                          "message": f"{what} ({col}) is before 1970 or in the future",
                           "why_it_matters": "A record cannot be created or changed in the future or before the "
                                             "system existed: the date was loaded wrongly, and every age, aging and "
                                             "audit report built on it is wrong."})

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Popover } from "@base-ui/react/popover";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { askMeridian, type AskAnswer, type AskFact } from "../../lib/api/assistant";
+import { askMeridian, type AskAnswer, type AskCitation, type AskFact } from "../../lib/api/assistant";
 import { getVersion } from "../../lib/api/versions";
 import { queryKeys } from "../../lib/query-keys";
 import { runScopeLabel } from "../../lib/run-scope";
@@ -16,6 +16,7 @@ import { Line } from "../charts/Line";
 import type { ChartPoint } from "../charts/theme";
 import { Button } from "../primitives/Button";
 import { IconButton } from "../primitives/IconButton";
+import { Mono } from "../primitives/Mono";
 import { Notice } from "../primitives/Notice";
 import { IconArrowUp, IconClose } from "../icons";
 import { MeridianMark } from "../icons/Mark";
@@ -105,6 +106,30 @@ function AnswerFacts({ facts, onNavigate }: { facts: AskFact[]; onNavigate: () =
   );
 }
 
+/** "Grounded on": the checks the answer rests on, each opening its failing records. Check ids are SAP identifiers (Mono). */
+function AnswerCitations({ citations, onNavigate }: { citations: AskCitation[]; onNavigate: () => void }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="m-text-meta m-ink-3">Grounded on</span>
+      <ul aria-label="Checks behind this answer" className="flex flex-wrap gap-x-3 gap-y-1">
+        {citations.map((c) => (
+          <li key={`${c.check_id}|${c.module ?? ""}`} className="m-text-meta">
+            <Link
+              href={c.href}
+              onClick={onNavigate}
+              aria-label={c.module ? `${c.check_id} in ${formatModuleName(c.module)}: open failing records` : `${c.check_id}: open rule`}
+              className="m-ink-accent underline underline-offset-2"
+            >
+              <Mono>{c.check_id}</Mono>
+            </Link>
+            {c.module && <span className="m-ink-3"> {formatModuleName(c.module)}</span>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function AnswerBubble({ message, onNavigate }: { message: Extract<Message, { role: "assistant" }>; onNavigate: () => void }) {
   const a = message.answer;
   const links = (a?.links ?? []).filter((l) => internal(l.href));
@@ -112,6 +137,7 @@ function AnswerBubble({ message, onNavigate }: { message: Extract<Message, { rol
   const refused = a?.intent === "refused";
   const unchecked = a?.grounded === false;
   const facts = refused || unchecked ? [] : (a?.facts ?? []);
+  const cited = refused || unchecked ? [] : (a?.citations ?? []).filter((c) => internal(c.href));
   const coverage = a?.coverage ?? 1;
   return (
     <li className="flex flex-col gap-2" data-role="assistant">
@@ -120,6 +146,7 @@ function AnswerBubble({ message, onNavigate }: { message: Extract<Message, { rol
       <p className="m-text-body m-ink">{unchecked ? "This answer could not be checked against your figures" : message.text}</p>
       {a && !refused && !unchecked && <AnswerChart answer={a} />}
       {facts.length > 0 && coverage > 0 && coverage < 1 && <Notice tone="info" compact>Covers part of your question</Notice>}
+      {cited.length > 0 && <AnswerCitations citations={cited} onNavigate={onNavigate} />}
       {facts.length > 0 && <AnswerFacts facts={facts} onNavigate={onNavigate} />}
       {links.length > 0 && (
         <ul className="flex flex-wrap gap-x-4 gap-y-1">

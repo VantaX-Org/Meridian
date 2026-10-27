@@ -11,6 +11,7 @@ import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { clsx } from "clsx";
 import { getSystemObjects, runIdOfDownload, startDownload, type DownloadScope, type ScopeKey } from "@/lib/api/system-objects";
 import { formatModuleName, relativeTime } from "@/lib/format";
+import { PreviewBadge } from "@/components/systems/preview-badge";
 import { queryKeys } from "@/lib/query-keys";
 
 const SCOPE_LABEL: Record<ScopeKey, string> = {
@@ -73,10 +74,18 @@ export function ScopePicker({ id, system, onDownloaded, initialObjects = [] }: {
   const columns = useMemo<ColumnDef<Obj, unknown>[]>(() => [
     { id: "pick", header: "", cell: ({ row }) => (
       <Checkbox checked={picked.has(row.original.object)} readOnly aria-label={`Select ${formatModuleName(row.original.object)}`} />) },
-    { id: "object", header: "Object", cell: ({ row }) => formatModuleName(row.original.object) },
+    { id: "object", header: "Object", cell: ({ row }) => (
+      <span className="inline-flex items-center gap-2">{formatModuleName(row.original.object)}<PreviewBadge sources={row.original.preview_sources} /></span>
+    ) },
     { id: "tables", header: "Tables", cell: ({ row }) => {
       const t = row.original.tables;
-      return <Mono>{t.slice(0, 5).join(", ")}{t.length > 5 ? ` +${t.length - 5}` : ""}</Mono>;
+      const preview = row.original.preview_sources ?? [];
+      return (
+        <span className="inline-flex flex-wrap items-center gap-2">
+          {t.length ? <Mono>{t.slice(0, 5).join(", ")}{t.length > 5 ? ` +${t.length - 5}` : ""}</Mono> : null}
+          {preview.length ? <><Mono>{preview.map((p) => p.source).join(", ")}</Mono><PreviewBadge sources={preview} /></> : null}
+        </span>
+      );
     } },
     { id: "last", header: "Last extracted", cell: ({ row }) => (row.original.last_download ? relativeTime(row.original.last_download.at) : "Never") },
     { id: "records", header: "Rows", cell: ({ row }) => row.original.last_download?.records?.toLocaleString() ?? "—" },

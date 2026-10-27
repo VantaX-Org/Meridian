@@ -56,5 +56,33 @@ export const resetTour = (id: string): void => {
 export const readSeenVersion = (): string | null => readPrefs().seen_version ?? null;
 export const writeSeenVersion = (version: string): void => setPreferences({ seen_version: version });
 
-export const isChecklistDismissed = (): boolean => read(CHECKLIST_DISMISSED_KEY) === "dismissed";
+/**
+ * The first-run tour offer, closed on this device ("Not now" or "Take the tour"). The account-wide record is the
+ * `tours_done` preference; this local copy keeps the offer closed when that save did not reach the server.
+ */
+export const TOUR_OFFER_CLOSED_PREFIX = "m-tour-offer-closed:";
+export const isTourOfferClosed = (id: string): boolean => read(`${TOUR_OFFER_CLOSED_PREFIX}${id}`) === "1";
+export const closeTourOffer = (id: string): void => {
+  write(`${TOUR_OFFER_CLOSED_PREFIX}${id}`, "1");
+  markTourDone(id);
+};
+
+/** The tour offer was already shown in this browser session: it is offered once per session at most. */
+export const TOUR_OFFERED_PREFIX = "m-tour-offered:";
+export function wasTourOfferedThisSession(id: string): boolean {
+  try {
+    return window.sessionStorage.getItem(`${TOUR_OFFERED_PREFIX}${id}`) === "1";
+  } catch {
+    return false;
+  }
+}
+export function markTourOfferedThisSession(id: string): void {
+  try {
+    window.sessionStorage.setItem(`${TOUR_OFFERED_PREFIX}${id}`, "1");
+  } catch {
+    /* storage unavailable: the offer may show again on the next page load */
+  }
+}
+
+export const isChecklistDismissed =(): boolean => read(CHECKLIST_DISMISSED_KEY) === "dismissed";
 export const dismissChecklist = (): void => write(CHECKLIST_DISMISSED_KEY, "dismissed");

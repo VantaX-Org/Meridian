@@ -26,11 +26,13 @@ import routes from "./routes.json";
 import depth from "./fixtures/depth.json";
 import { mockRoutes18c } from "./fixtures/mocks-18c";
 import { mockUnrecorded } from "./fixtures/mocks-unrecorded";
+import { correctRecording } from "./fixtures/recording-corrections";
 
 export const HAR = path.join(__dirname, "fixtures", "api.har.gz");
 /** The instant the HAR was recorded; Date.now() in the page returns this. */
 export const RECORDED_AT = new Date("2026-10-19T04:21:43.777Z");
-export const ROUTES: ReadonlyArray<{ name: string; path: string; heading: string; mocked?: boolean; knownBad?: string[] }> = routes;
+/** `redirectsTo`: a retired route; it is asserted to land there (routes-b.spec.ts) and is not screenshotted again. */
+export const ROUTES: ReadonlyArray<{ name: string; path: string; heading: string; mocked?: boolean; knownBad?: string[]; redirectsTo?: string }> = routes;
 
 /** Ids as in the recording. */
 export const RECORDED = {
@@ -66,14 +68,22 @@ async function mockCurrentStateExec(page: Page, har: string) {
     r.request().method() === "GET" ? r.fulfill({ status: 200, contentType: "application/json", body }) : r.fallback());
 }
 
-/** The recording is stored gzipped against http://localhost:3000; replay it on whatever origin the suite runs. */
+/**
+ * The recording is stored gzipped against http://localhost:3000; replay it on whatever origin the suite runs, with
+ * the responses whose counting rule the API has since changed corrected from the recording's own figures
+ * (fixtures/recording-corrections.ts). `CORRECTIONS` is in the file name so a copy unpacked before a correction is
+ * never reused.
+ */
+const CORRECTIONS = 1;
 function harFor(origin: string): string {
-  const out = path.join(__dirname, "..", "test-results", `api.${origin.replace(/\W+/g, "_")}.har`);
+  const out = path.join(__dirname, "..", "test-results", `api.c${CORRECTIONS}.${origin.replace(/\W+/g, "_")}.har`);
   if (!fs.existsSync(out)) {
     fs.mkdirSync(path.dirname(out), { recursive: true });
     // write then rename: a parallel worker must never read a half-written copy
     const tmp = `${out}.${process.pid}`;
-    fs.writeFileSync(tmp, zlib.gunzipSync(fs.readFileSync(HAR)).toString("utf8").replaceAll("http://localhost:3000/", `${origin}/`));
+    const har = JSON.parse(zlib.gunzipSync(fs.readFileSync(HAR)).toString("utf8").replaceAll("http://localhost:3000/", `${origin}/`));
+    correctRecording(har);
+    fs.writeFileSync(tmp, JSON.stringify(har));
     fs.renameSync(tmp, out);
   }
   return out;

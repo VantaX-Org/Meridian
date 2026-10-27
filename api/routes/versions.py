@@ -166,9 +166,18 @@ CHANGE_MIN_RECORDS = 10
 # (newly failing, fixed) or when it failed in both and its failing records moved materially (worse, better).
 _CHECK_CHANGES_SQL = """
     SELECT f2.check_id, f2.module, f2.severity, f1.affected_count AS v1_affected, f2.affected_count AS v2_affected,
-           COALESCE(NULLIF(f2.details->>'message', ''), NULLIF(f1.details->>'message', '')) AS message
+           COALESCE(NULLIF(f2.details->>'message', ''), NULLIF(f1.details->>'message', ''), rn.title) AS message
       FROM findings f1
       JOIN findings f2 ON f2.check_id = f1.check_id AND f2.version_id = :v2 AND f2.tenant_id = CAST(:tid AS uuid)
+      -- the rule's title from the tenant's rules ("AP203: Vendor has no ..."), for runs whose findings stored no message
+      LEFT JOIN LATERAL (
+          SELECT trim(substr(r.name, strpos(r.name, ':') + 1)) AS title
+            FROM rules r
+           WHERE r.tenant_id = CAST(:tid AS uuid) AND strpos(r.name, ':') > 0
+             AND split_part(r.name, ':', 1) = f2.check_id
+           ORDER BY (r.module = f2.module) DESC, r.module
+           LIMIT 1
+      ) rn ON true
      WHERE f1.version_id = :v1 AND f1.tenant_id = CAST(:tid AS uuid)
        AND f1.details->>'error' IS NULL AND f2.details->>'error' IS NULL
        AND ((f1.affected_count > 0) <> (f2.affected_count > 0)

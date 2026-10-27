@@ -161,3 +161,78 @@ def test_roi_without_a_subscription_states_no_multiple_payback_or_fee() -> None:
     # The routes use no hard-coded fee: the default cost model has none.
     assert BusinessImpactAnalytics().subscription_monthly is None
     assert "15000" not in inspect.getsource(analytics_routes)
+
+
+def test_prescriptive_for_one_object_ranks_only_that_objects_findings(monkeypatch) -> None:
+    """GET /analytics/prescriptive?module=: the object page's next best action comes from that object's findings
+    of the named run, never another object's, a cleaning item or an exception."""
+    import uuid
+
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from api.deps import Tenant, get_db, get_tenant
+    from api.routes import analytics as routes
+    from db.schema import AnalysisVersion, Finding
+
+    monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")
+    tid, vid = uuid.uuid4(), uuid.uuid4()
+    rows = [Finding(id=uuid.uuid4(), tenant_id=tid, version_id=vid, module=m, check_id=c, severity="high",
+                    dimension="validity", affected_count=n, total_count=1000)
+            for m, c, n in (("material_master", "MM003", 40), ("business_partner", "BP010", 900))]
+
+    class Res:
+        def __init__(self, items):
+            self.items = items
+
+        def first(self):
+            return self.items[0] if self.items else None
+
+        def all(self):
+            return self.items
+
+        def fetchone(self):
+            return None
+
+        def scalar(self):
+            return None
+
+    class Db:
+        def __init__(self):
+            self.sql: list[str] = []
+
+        async def execute(self, stmt, params=None):
+            try:
+                sql = str(stmt.compile(compile_kwargs={"literal_binds": True}))
+            except Exception:
+                sql = str(stmt)
+            self.sql.append(sql)
+            if "FROM analysis_versions" in sql:
+                return Res([(AnalysisVersion(id=vid, tenant_id=tid),)])
+            if "FROM findings" in sql:
+                return Res([(f,) for f in rows if f"findings.module = '{f.module}'" in sql
+                            or "findings.module" not in sql.split("WHERE", 1)[-1]])
+            if "FROM cleaning_queue" in sql:
+                return Res([])
+            return Res([])
+
+    db = Db()
+    app = FastAPI()
+    app.include_router(routes.router)
+
+    async def _db():
+        yield db
+
+    app.dependency_overrides[get_db] = _db
+    app.dependency_overrides[get_tenant] = lambda: Tenant(tid, "T", [])
+    c = TestClient(app)
+    h = {"X-User-Role": "viewer"}
+
+    body = c.get(f"/api/v1/analytics/prescriptive?version_id={vid}&module=material_master&limit=1", headers=h).json()
+    assert [(a["module"], a["check_id"]) for a in body["actions"]] == [("material_master", "MM003")]
+    assert body["basis"] == {"version_id": str(vid), "findings": 1, "cleaning_items": 0, "exceptions": 0}
+    assert not any("cleaning_queue" in s or "FROM exceptions" in s for s in db.sql)
+
+    # without an object every object's findings rank, the larger first
+    body = c.get(f"/api/v1/analytics/prescriptive?version_id={vid}", headers=h).json()
+    assert [a["check_id"] for a in body["actions"]][:2] == ["BP010", "MM003"]

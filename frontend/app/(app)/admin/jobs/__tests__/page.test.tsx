@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as jobsApi from "@/lib/api/jobs";
 import * as connectivityApi from "@/lib/api/connectivity";
+import * as configLoadApi from "@/lib/api/config-load";
+import * as versionsApi from "@/lib/api/versions";
 import type { Job } from "@/types/jobs";
 import JobsPage from "../page";
 
@@ -96,5 +98,34 @@ describe("admin jobs page", () => {
     renderWithQuery(<JobsPage />);
     expect(await screen.findByText(/^The newest 200 extractions, analyses, uploads and simulations, latest first; older jobs are not kept, and the filters apply to these\./)).toBeInTheDocument();
     expect(get).toHaveBeenCalledWith({ limit: 200 });
+  });
+
+  it("with no job yet, offers the next day-one step: extract from the connected system", async () => {
+    perms = new Set(["trigger_sync"]);
+    vi.spyOn(jobsApi, "getJobs").mockResolvedValue([]);
+    vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 1, total: 1 });
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
+    renderWithQuery(<JobsPage />);
+    expect(await screen.findByText("No jobs have run yet")).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Run an extraction" })).toHaveAttribute("href", "/systems/s-1?extract=1");
+  });
+
+  it("names the system, the duration and the rows, with the time zone in the header and not in each cell", async () => {
+    vi.spyOn(jobsApi, "getJobs").mockResolvedValue([
+      { ...BASE, id: "j3", status: "completed", label: "Vendors", kind: "extraction", started_at: 1_790_000_000, finished_at: 1_790_000_125,
+        rows_done: 0, tables: [{ table: "LFA1", status: "live", rows: 1200, expected: 1200 }, { table: "LFB1", status: "live", rows: 300, expected: 300 }] },
+      { ...BASE, id: "j4", status: "completed", label: "Analysis", kind: "analysis", system_id: undefined, started_at: 1_790_000_000, finished_at: 1_790_000_009, rows_done: 4200 },
+      { ...BASE, id: "j5", status: "completed", label: "Old upload", kind: "upload", system_id: undefined, rows_done: 0 },
+    ]);
+    renderWithQuery(<JobsPage />);
+    await screen.findByText("Vendors");
+    for (const h of ["System", "Duration", "Rows"]) expect(screen.getByRole("columnheader", { name: new RegExp(`^${h}`) })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: /^Started \(UTC\)/ })).toBeInTheDocument();
+    expect(await screen.findByText("ECC PRD")).toBeInTheDocument();
+    // An extraction that only reported per table sums its tables; a job that never counted reads a dash, not 0.
+    expect(screen.getByText("1,500")).toBeInTheDocument();
+    expect(screen.getByText("4,200")).toBeInTheDocument();
+    expect(screen.getByText("2m 05s")).toBeInTheDocument();
+    expect(screen.queryByText(/ UTC$/)).toBeNull();
   });
 });

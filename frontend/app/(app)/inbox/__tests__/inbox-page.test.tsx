@@ -70,6 +70,68 @@ describe("InboxPage counts", () => {
     // A task row carries no ranked bar: the SLA pill already says how late it is.
     expect(list.querySelector(".m-ranked-track")).toBeNull();
   });
+
+  it("titles an exception task by its check and object, with the meta as separate sentences and the Object named", async () => {
+    nav.qs = "keep=1";
+    nav.can = true;
+    vi.spyOn(stewardship, "getQueueItems").mockImplementation(async (p) => ({
+      items: p?.status === "open" ? [{
+        id: "i1", tenant_id: "t", item_type: "exception", source_id: "e1", domain: "unknown", priority: 2,
+        due_at: null, assigned_to: null, status: "open", sla_hours: null,
+        created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z", ai_recommendation: null, ai_confidence: null,
+      }] : [],
+      total: p?.status === "open" ? 1 : 0,
+    }));
+    vi.spyOn(stewardship, "getMetrics").mockResolvedValue({ items_by_type: {}, items_by_status: {}, avg_resolution_hours: null, sla_breached: 0 } as never);
+    vi.spyOn(exceptions, "getExceptions").mockResolvedValue({
+      exceptions: [{ id: "e1", title: "Custom Rule: Blank material group", category: "material_master", type: "custom_business", status: "open", assigned_to: null, sla_deadline: null, affected_records: null }],
+      total: 1,
+    } as never);
+    vi.spyOn(exceptions, "getException").mockRejectedValue(new Error("not needed"));
+    renderWithQuery(<InboxPage />);
+    const list = await screen.findByRole("list", { name: "Tasks" });
+    expect(await within(list).findByText("Custom Rule: Blank material group in Material master")).toBeInTheDocument();
+    expect(within(list).getByText(/^Unassigned\. Priority 2\. Raised \S+ ago\.$/)).toBeInTheDocument();
+    const detail = screen.getByRole("region", { name: "Selected item" });
+    expect(within(detail).getByText("Material master")).toBeInTheDocument();
+    expect(within(detail).queryByText("—")).toBeNull();
+  });
+
+  it("names an exception task from the source the queue sends when the exceptions list is out of reach", async () => {
+    nav.qs = "keep=1";
+    nav.can = true;
+    vi.spyOn(stewardship, "getQueueItems").mockImplementation(async (p) => ({
+      items: p?.status === "open" ? [
+        {
+          id: "i1", tenant_id: "t", item_type: "exception", source_id: "e1", domain: "Financial", priority: 1,
+          due_at: null, assigned_to: null, status: "open", sla_hours: null,
+          created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z", ai_recommendation: null, ai_confidence: null,
+          source_title: null, source_check_id: "MM045", source_module: "material_master",
+        },
+        {
+          id: "i2", tenant_id: "t", item_type: "exception", source_id: "e2", domain: "Financial", priority: 2,
+          due_at: null, assigned_to: null, status: "open", sla_hours: null,
+          created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z", ai_recommendation: null, ai_confidence: null,
+          source_title: null, source_check_id: null, source_module: null,
+        },
+      ] : [],
+      total: p?.status === "open" ? 2 : 0,
+    }));
+    vi.spyOn(stewardship, "getMetrics").mockResolvedValue({ items_by_type: {}, items_by_status: {}, ai_acceptance_rate: 0, sla_breached: 0 } as never);
+    vi.spyOn(exceptions, "getExceptions").mockRejectedValue(new Error("down"));
+    vi.spyOn(exceptions, "getException").mockRejectedValue(new Error("down"));
+    vi.spyOn(rules, "getRuleNames").mockResolvedValue({ names: { MM045: "Material description is missing" }, generated: {} });
+    renderWithQuery(<InboxPage />);
+    const list = await screen.findByRole("list", { name: "Tasks" });
+    expect(await within(list).findByText("Material description is missing in Material master")).toBeInTheDocument();
+    // A source system ("Financial") is not an object: the task without a source is just "Exception", no "in Financial".
+    expect(screen.queryByText(/in Financial/)).toBeNull();
+    const detail = screen.getByRole("region", { name: "Selected item" });
+    expect(within(detail).getByText("Material master")).toBeInTheDocument();
+    expect(screen.queryByText("Not named")).toBeNull();
+    // The purpose and the acceptance are separate sentences.
+    expect(screen.getByText(/approve or reject it\. Suggestion acceptance: 0%\.$/)).toBeInTheDocument();
+  });
 });
 
 describe("InboxPage show all", () => {
@@ -92,8 +154,9 @@ describe("InboxPage show all", () => {
     expect(nav.replace.mock.calls[0]?.[0]).toBe("/inbox?keep=1");
   });
 
-  it("clears the search from the exceptions empty state", async () => {
-    nav.qs = "kind=exception";
+  it("keeps the search in the URL and clears it from the exceptions empty state", async () => {
+    nav.qs = "kind=exception&q=zzzz";
+    nav.replace.mockClear();
     vi.spyOn(stewardship, "getQueueItems").mockResolvedValue({ items: [], total: 0 });
     vi.spyOn(stewardship, "getMetrics").mockResolvedValue({ items_by_type: {}, items_by_status: {}, avg_resolution_hours: null, sla_breached: 0 } as never);
     vi.spyOn(triage, "getTriageMetrics").mockResolvedValue({} as never);
@@ -103,10 +166,9 @@ describe("InboxPage show all", () => {
       total: 1,
     } as never);
     renderWithQuery(<InboxPage />);
-    fireEvent.change(await screen.findByLabelText("Search exceptions"), { target: { value: "zzzz" } });
+    expect(await screen.findByLabelText("Search exceptions")).toHaveValue("zzzz");
     fireEvent.click(await screen.findByRole("button", { name: "Clear search" }));
-    await waitFor(() => expect(screen.queryByText("No exceptions in this view")).toBeNull());
-    expect(screen.getByLabelText("Search exceptions")).toHaveValue("");
+    expect(nav.replace).toHaveBeenCalledWith("/inbox?kind=exception", { scroll: false });
   });
 });
 
@@ -184,15 +246,27 @@ describe("InboxPage workbench", () => {
     await waitFor(() => expect(resolve).toHaveBeenCalledWith("b", "approve"));
   });
 
-  it("ignores the keys on the tabs that own their own tables", async () => {
+  it("sends the retired Issues tab to Fix work, on the viewer's own records", async () => {
     nav.qs = "kind=issues";
+    nav.replace.mockClear();
+    vi.spyOn(stewardship, "getQueueItems").mockResolvedValue({ items: [], total: 0 });
+    vi.spyOn(stewardship, "getMetrics").mockResolvedValue({} as never);
+    renderWithQuery(<InboxPage />);
+    await waitFor(() => expect(nav.replace).toHaveBeenCalledWith("/fix?mine=1"));
+    // Tasks, Approvals and SAP monitor; exceptions are a view of Tasks, and Issues is gone.
+    expect(screen.queryByRole("tab", { name: "Issues" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Exceptions" })).toBeNull();
+  });
+
+  it("ignores the keys on the tabs that own their own tables", async () => {
+    nav.qs = "kind=sap";
     nav.can = true;
     const resolve = vi.spyOn(stewardship, "resolveItem").mockResolvedValue({ id: "a", status: "resolved", action: "approve" });
     vi.spyOn(stewardship, "getQueueItems").mockResolvedValue({ items: [task("a", "material_master")], total: 1 } as never);
     vi.spyOn(stewardship, "getMetrics").mockResolvedValue({} as never);
     vi.spyOn(triage, "getTriageMetrics").mockResolvedValue({} as never);
     renderWithQuery(<InboxPage />);
-    await screen.findByText(/Each row is one SAP record that fails a rule/);
+    await screen.findByText(/Live signals from SAP/);
     fireEvent.keyDown(window, { key: "r" });
     fireEvent.keyDown(window, { key: "Enter" });
     expect(resolve).not.toHaveBeenCalled();
@@ -343,6 +417,17 @@ describe("InboxPage workbench", () => {
     expect(detail).toHaveTextContent("Critical");
     expect(detail).toHaveTextContent("over");
     expect(within(detail).getByRole("button", { name: "Resolve" })).toBeInTheDocument();
+  });
+
+  it("states no open or overdue counts above an exceptions list that failed to load", async () => {
+    nav.qs = "kind=exception";
+    vi.spyOn(stewardship, "getQueueItems").mockResolvedValue({ items: [], total: 0 });
+    vi.spyOn(stewardship, "getMetrics").mockResolvedValue({ items_by_type: {}, items_by_status: {}, avg_resolution_hours: null, sla_breached: 0 } as never);
+    vi.spyOn(exceptions, "getExceptionMetrics").mockResolvedValue({ open_count: 0, overdue_count: 0 } as never);
+    vi.spyOn(exceptions, "getExceptions").mockRejectedValue(new Error("down"));
+    renderWithQuery(<InboxPage />);
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /retry/i }).length).toBeGreaterThan(0));
+    expect(screen.queryByText(/\d+ open, \d+ overdue/)).toBeNull();
   });
 });
 
@@ -547,7 +632,7 @@ describe("InboxPage task sources", () => {
 
   it("shows a write-back's rule by its check id and message, linked to the rule, not by its row id", async () => {
     vi.spyOn(cleaning, "getCleaningItem").mockResolvedValue({ id: "cq1", object_type: "material_master", record_key: "100001", rule_id: "6f1c-uuid", record_data_before: null, record_data_after: null } as never);
-    vi.spyOn(rules, "getRules").mockResolvedValue({ rules: [{ id: "6f1c-uuid", name: "MM101: Base unit is not allowed" }], total: 1, limit: 1000, offset: 0 } as never);
+    vi.spyOn(rules, "getRule").mockResolvedValue({ id: "6f1c-uuid", name: "MM101: Base unit is not allowed" } as never);
     const detail = await mountOne({ item_type: "writeback_approval", source_id: "cq1" });
     const link = await within(detail).findByRole("link", { name: "MM101" });
     expect(link).toHaveAttribute("href", "/rules/6f1c-uuid");

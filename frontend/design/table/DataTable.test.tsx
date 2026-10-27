@@ -319,6 +319,58 @@ describe("DataTable toolbar", () => {
     expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
   });
 
+  it("offers shipped views beside the viewer's own and hands a view's page filters to the page", () => {
+    window.localStorage.clear();
+    const onApplyView = vi.fn();
+    render(<DataTable columns={two} data={rows} getRowId={(r) => r.id} tableId="t-preset" viewParams={{ sev: "high" }} onApplyView={onApplyView}
+      presetViews={[{ name: "Critical", visibility: {}, dense: true, sorting: [], params: { sev: "critical" } }]} />);
+    fireEvent.click(screen.getByRole("button", { name: "Views (1)" }));
+    expect(screen.queryByRole("button", { name: "Delete view Critical" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Critical" }));
+    expect(onApplyView).toHaveBeenLastCalledWith(expect.objectContaining({ params: { sev: "critical" } }));
+    fireEvent.change(screen.getByLabelText("View name"), { target: { value: "High" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save view" }));
+    expect(JSON.parse(window.localStorage.getItem("meridian:prefs") ?? "{}").saved_views["t-preset"][0].params).toEqual({ sev: "high" });
+  });
+
+  it("takes a controlled active row, selection and order from a caller that owns them", () => {
+    const onActive = vi.fn();
+    const onSelection = vi.fn();
+    render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} manualSorting rowTestId="r" activeRowId="1"
+      onActiveRowChange={onActive} selection={{ "2": true }} onSelectionChange={onSelection} bulkActions={() => null} />);
+    const trs = screen.getAllByTestId("r");
+    // manualSorting: the caller's order stands.
+    expect(trs.map((r) => r.textContent)).toEqual(["Bravo", "Alpha"]);
+    expect(trs[1]).toHaveClass("m-row-active");
+    expect(screen.getByRole("checkbox", { name: "Select Bravo" })).toBeChecked();
+    fireEvent.keyDown(screen.getByRole("grid"), { key: "ArrowUp" });
+    expect(onActive).toHaveBeenCalledWith(rows[0]);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Alpha" }));
+    expect(onSelection).toHaveBeenCalledWith({ "2": true, "1": true });
+  });
+
+  it("scrolls to a controlled active row when it changes, not on mount and not when rows load around it", () => {
+    const scroll = vi.fn();
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = scroll;
+    try {
+      // The row the table mounts with (an auto-selection) is not scrolled to: the page stays at its top.
+      const { rerender } = render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} manualSorting activeRowId="1" />);
+      expect(scroll).not.toHaveBeenCalled();
+      // The viewer moves the active row (j / k, arrows, a click): that one is followed.
+      rerender(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} manualSorting activeRowId="2" />);
+      expect(scroll).toHaveBeenCalledTimes(1);
+      // The next page arrives and lands above the active row: its index moves, the viewer's scroll stays.
+      const more = [{ id: "3", name: "Charlie" }, { id: "4", name: "Delta" }, ...rows];
+      rerender(<DataTable columns={columns} data={more} getRowId={(r) => r.id} manualSorting activeRowId="2" />);
+      expect(scroll).toHaveBeenCalledTimes(1);
+      rerender(<DataTable columns={columns} data={more} getRowId={(r) => r.id} manualSorting activeRowId="4" />);
+      expect(scroll).toHaveBeenCalledTimes(2);
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
+  });
+
   it("shows a filtered-empty row with a Clear filter button", () => {
     render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} />);
     fireEvent.change(screen.getByLabelText("Filter rows"), { target: { value: "zzz" } });
@@ -404,6 +456,21 @@ describe("DataTable layout features", () => {
     expect(open).toHaveAttribute("href", "/x/1");
     expect(open.className).toBe(ROW_ACTION_CLASS);
     const cell = open.closest("td");
-    expect(cell).toHaveClass("sticky", "right-0", "bg-[var(--m-sheet)]");
+    expect(cell).toHaveClass("sticky", "right-0", "bg-[var(--m-sheet)]", "whitespace-nowrap");
+    expect(open).toHaveClass("whitespace-nowrap");
+  });
+
+  it("pins a plain action column to the right edge on one line, so a phone never clips Open to Ope", () => {
+    const cols = [
+      textColumn<Row>("name", "Name"),
+      { id: "action", header: "", cell: ({ row }: { row: { original: Row } }) => <a href={`/x/${row.original.id}`}>Open</a> },
+    ];
+    render(<DataTable columns={cols} data={rows} getRowId={(r) => r.id} hideToolbar />);
+    const head = screen.getAllByRole("columnheader");
+    expect(head[1]).toHaveClass("sticky", "right-0", "whitespace-nowrap");
+    const cell = screen.getAllByRole("link", { name: "Open" })[0].closest("td");
+    expect(cell).toHaveClass("sticky", "right-0", "whitespace-nowrap", "bg-[var(--m-sheet)]");
+    // An ordinary column is never pinned.
+    expect(head[0]).not.toHaveClass("sticky");
   });
 });

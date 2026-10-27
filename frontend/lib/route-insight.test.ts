@@ -35,11 +35,20 @@ describe("route insight", () => {
       ...empty, hasRun: true, runId: "r1", dqs: 72.4, prevDqs: 70, critical: 3, total: 120, affected: 4500,
       worst: { module: "material_master", label: "Material master", findings: 61, critical: 2 },
     });
-    expect(h.situation.sentence).toBe("Quality is at 72, with 120 findings across 4,500 records.");
+    expect(h.situation.sentence).toBe("Quality is at 72.4, with 120 failing rules and 4,500 rule failures.");
     expect(h.changed.sentence).toBe("Up 2.4 points since the last run.");
-    expect(h.why.sentence).toMatch(/3 critical findings are capping the score/);
+    expect(h.why.sentence).toMatch(/^3 critical failing rules could stop go-live/);
     expect(h.next.href).toBe("/objects/material_master?run=r1");
-    expect(h.next.sentence).toBe("Material master needs the most work: 61 findings, 2 of them critical.");
+    expect(h.next.sentence).toBe("Material master needs the most work: 61 failing rules, 2 of them critical.");
+  });
+  it("names the cap in the unit Home's hero and the executive summary use: capping rules and capped objects", () => {
+    const base = { ...empty, hasRun: true, dqs: 64, prevDqs: null, critical: 74, total: 300, affected: 9000 };
+    const capped = buildInsight("home", { ...base, cap: { rules: 8, named: [], capped: 11, measured: 15, cap: null } });
+    expect(capped.why.sentence).toMatch(/^8 critical failing rules cap 11 of 15 objects and could stop go-live\./);
+    expect(capped.why.sentence).not.toMatch(/74/);
+    // critical rules within tolerance cap nothing, and the cell says so instead of claiming a cap
+    const none = buildInsight("home", { ...base, critical: 2, cap: { rules: 0, named: [], capped: 0, measured: 15, cap: null } });
+    expect(none.why.sentence).toMatch(/^2 critical failing rules, none capping the score\./);
   });
   it("offers no second button on the homes, where the verdict's action is the next step", () => {
     const facts: InsightFacts = {
@@ -70,10 +79,22 @@ describe("route insight lineage and money", () => {
     const h = buildInsight("objects", { ...empty, hasRun: true, runId: "r1", dqs: 70, prevDqs: null, firstRun: true, critical: 0, total: 5, affected: 9 });
     expect(h.changed.sentence).toBe("This is the first run of this object, so there is nothing to compare with yet.");
   });
-  it("writes the value at risk through formatMoney with the tenant currency", () => {
-    const h = buildInsight("objects", { ...empty, hasRun: true, runId: "r1", dqs: 70, prevDqs: 70, critical: 0, total: 5, affected: 9, costAtRisk: 5672930, currency: "ZAR" });
-    expect(h.why.sentence).toMatch(/About ZAR[  ]?5[,.  ]672[,.  ]930 is at risk\./);
-    expect(h.why.sentence).not.toMatch(/About 5672930/);
+  it("names the cost at risk as cost at risk, short, in the tenant currency", () => {
+    const h = buildInsight("objects", { ...empty, hasRun: true, runId: "r1", dqs: 70, prevDqs: 70, critical: 0, total: 5, affected: 9, costAtRisk: 4840487383, currency: "ZAR" });
+    // Cost at risk (failing records times their cost), never "value at risk" (blocked SAP features), a different figure.
+    expect(h.why.sentence).toContain("Cost at risk of the failing records: ZAR 4.84 bn.");
+    expect(h.why.sentence).not.toMatch(/value at risk|4840487383/i);
+  });
+  it("names the scope's one next step when it is given, the step the overview and the summary name", () => {
+    const doNext = { sentence: "HCM personnel administration comes first, the lowest score at 64.5: fix PA021, which caps it", href: "/fix?module=hcm&check=PA021", label: "Fix PA021" };
+    const worst = { module: "employee_central", label: "Employee central", findings: 376, critical: 27 };
+    const home = buildInsight("home", { ...empty, hasRun: true, dqs: 72, prevDqs: 72, critical: 1, total: 5, affected: 9, worst, doNext });
+    expect(home.next.sentence).toBe(`${doNext.sentence}.`);
+    expect(home.next.href).toBe(doNext.href);
+    // The home's verdict carries the one button; other sections get the step's own action.
+    expect(home.next.action).toBeUndefined();
+    expect(buildInsight("objects", { ...empty, hasRun: true, dqs: 72, prevDqs: 72, critical: 1, total: 5, affected: 9, worst, doNext }).next.action)
+      .toEqual({ label: "Fix PA021", href: doNext.href });
   });
   it("holds the value-at-risk sentence until the currency is known, never a bare number", () => {
     const h = buildInsight("objects", { ...empty, hasRun: true, runId: "r1", dqs: 70, prevDqs: 70, critical: 0, total: 5, affected: 9, costAtRisk: 1008920, currency: undefined });

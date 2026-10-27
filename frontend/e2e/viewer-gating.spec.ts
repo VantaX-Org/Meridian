@@ -4,8 +4,9 @@
  * Routes are every nav href in lib/nav.ts (read from the source, so the spec
  * needs no React/icon imports) plus the recorded detail routes in
  * routes.json, which are where the gated primaries live. The only mutating
- * labels allowed in the DOM are the four primaries (Approve, Write back,
- * Sign off, Extract now), and only disabled.
+ * labels allowed in the DOM are the primaries components/gated-primary.tsx
+ * keeps visible (Approve, Write back, Sign off, Extract now, plus Run
+ * discovery and the golden record's Promote, an approval), and only disabled.
  */
 
 import fs from "node:fs";
@@ -21,7 +22,8 @@ const NAV_HREFS = [...NAV_SOURCE.matchAll(/href: "([^"]+)"/g)].map((m) => m[1]);
 const PATHS = [...new Set([...NAV_HREFS, ...ROUTES.map((r) => r.path), "/fix?tab=batches"])].filter((p) => p !== "/design");
 
 const MUTATING = /^(approve|reject|write ?back|sign off|extract( now)?|apply|accept|assign|merge|delete|remove|create|new|add|upload|import|run|re-run|rerun|sync|test|save|edit|discover|start|generate|invite|promote|publish|retry|resolve|dismiss|claim|export|bulk|deactivate|revoke|grant|decline)\b/i;
-const PRIMARY = /^(approve|write back|sign off|extract( now)?)\b/i;
+// A GatedPrimary names itself "<label>. Needs <role> on <scope> — Request access" when not permitted.
+const PRIMARY = /^(approve|write back|sign off|extract( now)?|run discovery|promote|merge)\. Needs .+ — Request access$/i;
 
 /**
  * Routes where a viewer still sees a control whose label starts with a mutating verb, each expected to fail here
@@ -79,10 +81,16 @@ test.describe("viewer gating", () => {
         els
           .filter((el) => {
             const r = (el as HTMLElement).getBoundingClientRect();
-            // a picker (the scope bar's run and object choice) changes what is shown, not the data; an error
-            // state's Retry reads the data again (pages whose API is not in the recording show one)
+            // a picker (the scope bar's run and object choice, a ChoiceGroup filter pill such as the jobs
+            // page's Kind "Upload") changes what is shown, not the data; a chart's point buttons (the keyboard
+            // path into its marks, design/charts/PointActions.tsx) are named after the data, e.g. the S/4 area
+            // "New Asset Accounting, 2", and open a page; an error state's Retry reads the data again (pages
+            // whose API is not in the recording show one)
             return r.width > 0 && r.height > 0 && !el.closest("th, [role='columnheader']") && !el.classList.contains("m-stat")
-              && el.getAttribute("role") !== "combobox" && !el.closest("[data-state='error']");
+              && el.getAttribute("role") !== "combobox" && !el.classList.contains("m-choice")
+              && !el.closest("[data-chart-points]") && !el.closest("[data-state='error']")
+              // a filter chip's "Remove filter Assigned" (FilterChip's .m-chip-x) narrows the list back, as a picker does
+              && !el.classList.contains("m-chip-x");
           })
           .map((el) => ({
             name: (el.getAttribute("aria-label") ?? el.textContent ?? "").trim(),

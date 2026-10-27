@@ -273,3 +273,49 @@ async def test_current_scope_rejects_a_version_id(current_tenant, monkeypatch):
                      "/api/v1/findings/s4-readiness"):
             r = await client.get(f"{path}?scope=current&version_id={ids['upload']}", headers=HEADERS)
             assert r.status_code == 422, (path, r.text)
+
+
+@pg
+@pytest.mark.anyio
+async def test_readiness_current_reads_each_object_at_its_own_run(current_tenant, monkeypatch):
+    """Waves under scope=current: each wave its own latest migration run, each object's DQS from the run of the
+    current state that measured it (accounts payable from the upload, material master from the system), as Home;
+    the executive summary's readiness cells answer the same."""
+    t, empty, ids = current_tenant
+    engine = create_engine(os.environ["MERIDIAN_TEST_DB_URL"])
+    wave = str(uuid.uuid4())
+    with engine.begin() as c:
+        c.execute(text("INSERT INTO migration_waves (id, tenant_id, name, modules, min_readiness, min_dqs) "
+                       "VALUES (:id, :t, 'Wave 1', '{accounts_payable,material_master}', 90, 85)"),
+                  {"id": wave, "t": t})
+        c.execute(text("INSERT INTO migration_runs (tenant_id, mode, wave_id, status, completed_at, gap_summary) "
+                       "VALUES (:t, 'source_to_destination', :w, 'analysed', now(), CAST(:g AS jsonb))"),
+                  {"t": t, "w": wave, "g": json.dumps({
+                      "accounts_payable": {"verdict": "go", "score": 100.0, "blocked_records": 0, "gaps": {}},
+                      "material_master": {"verdict": "go", "score": 100.0, "blocked_records": 0, "gaps": {}}})})
+    try:
+        body = await _get(monkeypatch, t, "/api/v1/insights/readiness?scope=current")
+        assert body["version_id"] is None and body["scope"] == "current"
+        assert body["version_ids"] == [ids["upload"], ids["sys_new"]]
+        cells = {c["module"]: c for c in body["cells"]}
+        assert cells["accounts_payable"]["dqs"] == 90.0 and cells["accounts_payable"]["verdict"] == "go"
+        assert cells["material_master"]["dqs"] == 80.0 and cells["material_master"]["verdict"] == "at_risk"
+        # one run, unchanged: that run's id and no current-state fields
+        one = await _get(monkeypatch, t, f"/api/v1/insights/readiness?version_id={ids['sys_new']}")
+        assert one["version_id"] == ids["sys_new"] and "scope" not in one and "version_ids" not in one
+        # the executive summary's current state carries the same cells
+        ex = await _get(monkeypatch, t, "/api/v1/insights/exec?scope=current")
+        assert ex["readiness_cells"] == body["cells"]
+        # another tenant sees none of this tenant's waves
+        other = await _get(monkeypatch, empty, "/api/v1/insights/readiness?scope=current")
+        assert other["cells"] == [] and other["configured"] is False and other["version_ids"] == []
+        _patch_tenant(monkeypatch, t)
+        await api_deps.engine.dispose()
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            r = await client.get(f"/api/v1/insights/readiness?scope=current&version_id={ids['upload']}",
+                                 headers=HEADERS)
+        assert r.status_code == 422, r.text
+    finally:
+        with engine.begin() as c:
+            c.execute(text("DELETE FROM migration_runs WHERE tenant_id = :t"), {"t": t})
+            c.execute(text("DELETE FROM migration_waves WHERE tenant_id = :t"), {"t": t})

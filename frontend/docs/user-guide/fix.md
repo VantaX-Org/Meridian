@@ -2,7 +2,9 @@
 
 Fix work is where failing records get cleaned. It lists every record that fails a check in the chosen run, worst first, says what is wrong with each one and what the value should be, and puts your decisions into a fix batch that a second person approves before anything goes to SAP. Data stewards start here every day; data owners use it to sign records off and approve batches.
 
-Open it with the **Fix work** pill in the index bar. The page is titled **Fix** and has five tabs: **Records to fix**, **Cleaning proposals**, **Approvals and export**, **Monitor** and **Duplicates**. This chapter covers **Records to fix** and the cleaning proposals; the other tabs are in [Approvals and export](/docs?page=approvals).
+Open it with the **Fix work** pill in the index bar. The page is titled **Fix** and has four tabs: **Records to fix**, **Cleaning proposals**, **Batches and export** and **Monitor**. This chapter covers **Records to fix** and the cleaning proposals; the other tabs are in [Approvals and export](/docs?page=approvals). Batches are approved in **Inbox**, **Approvals**, and duplicate pairs are reviewed in **Master data**, **Match review**.
+
+Fix work is the one place to fix a failing record: the Inbox's old **Issues** tab moved here, and `/inbox?kind=issues` opens Fix work on your own records (**Mine**). On the record panel, **Take it** or **Release** the record, hand it to a colleague with **Assign to**, and mark an issue **Fixed in SAP** when you corrected it in SAP itself; the next run confirms it, or reopens it if the record still fails. Taking, assigning and **Fixed in SAP** need the assign permission.
 
 ## Step 1: pick the run
 

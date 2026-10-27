@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { VersionComparison } from "@/types/api";
 import type { RecordDiff } from "@/lib/api/versions";
 import { compareNarrative } from "../narrative";
+import { formatNumber } from "../format";
 
-const nf = new Intl.NumberFormat("en-ZA");
+const nf = { format: (n: number) => formatNumber(n) };
 
 const version = (id: string) => ({ id, label: null, status: "complete" as const, run_at: "2026-10-08T00:00:00Z", dqs_summary: null, metadata: null });
 
@@ -44,15 +45,35 @@ describe("compareNarrative", () => {
     expect(compareNarrative(cmp(), diff)).toEqual([
       "DQS moved from 71.2 to 74.8 (+3.6) across 2 modules.",
       "Material master improved most (+6.1), driven by validity (+9.0).",
-      `2 checks newly fail: MM041 (critical, ${nf.format(1240)} records), MM077 (high, ${nf.format(88)} records).`,
-      `2 checks fixed, ${nf.format(3410)} records resolved.`,
-      "2 checks did not run cleanly in both runs; their deltas are excluded.",
+      `2 rules newly fail: MM041 (critical, ${nf.format(1240)} records), MM077 (high, ${nf.format(88)} records).`,
+      `2 rules fixed, which had 20 rule failures; across every rule, ${nf.format(3410)} rule failures resolved and ${nf.format(1328)} new.`,
+      "2 rules did not run cleanly in both runs; their deltas are excluded.",
     ]);
   });
 
   it("omits empty sentences and handles the null diff", () => {
     const out = compareNarrative(cmp({ delta: {}, checks: { newly_failing: [], fixed: [cmp().checks.fixed[0]] } }), null);
-    expect(out).toEqual(["1 check fixed."]);
+    expect(out).toEqual(["1 rule fixed, which had 10 rule failures."]);
+  });
+
+  it("never puts every check's resolved records beside the fixed checks as if they were theirs", () => {
+    // accounts_payable_p06 vs p02: 4 fixed checks held 6 records; 10,521 records were resolved across every check.
+    const fixed = [1, 1, 2, 2].map((n, i) => ({ check_id: `F${i}`, module: "accounts_payable", severity: "medium", v1_affected: n, v2_affected: 0 }));
+    const out = compareNarrative(cmp({ delta: {}, checks: { newly_failing: [], fixed } }), { ...diff, totals: { new: 11151, resolved: 10521, persisting: 34301 }, checks: [] });
+    expect(out[0]).toBe(`4 rules fixed, which had 6 rule failures; across every rule, ${nf.format(10521)} rule failures resolved and ${nf.format(11151)} new.`);
+  });
+
+  it("names a driver that moved the same way as the score, and one that moved against it as such", () => {
+    // accounts_payable_p02 vs p06: +0.4 with uniqueness -0.9 the largest dimension move. It read "improved most
+    // (+0.4), driven by uniqueness (-0.9)".
+    const delta = { accounts_payable: { dqs_change: 0.4, v1_score: 82.5, v2_score: 82.9, dimensions: {
+      uniqueness: { v1: 80, v2: 79.1, change: -0.9 }, validity: { v1: 90, v2: 90.6, change: 0.6 }, accuracy: { v1: 85, v2: 85, change: 0 },
+    } } };
+    const out = compareNarrative(cmp({ delta, checks: { newly_failing: [], fixed: [] } }), null);
+    expect(out[1]).toBe("Accounts payable improved most (+0.4), driven by validity (+0.6) despite uniqueness (-0.9).");
+    // No dimension moved with the score: no driver is named rather than a contradicting one.
+    const against = { accounts_payable: { ...delta.accounts_payable, dimensions: { uniqueness: { v1: 80, v2: 79.1, change: -0.9 } } } };
+    expect(compareNarrative(cmp({ delta: against, checks: { newly_failing: [], fixed: [] } }), null)[1]).toBe("Accounts payable improved most (+0.4).");
   });
 
   it("names a decline and caps the regression list at three", () => {
@@ -63,7 +84,7 @@ describe("compareNarrative", () => {
     );
     expect(out[0]).toBe("DQS moved from 70.0 to 68.0 (-2.0) across 1 module.");
     expect(out[1]).toBe("FI general ledger declined most (-2.0), driven by accuracy (-4.0).");
-    expect(out[2]).toBe("5 checks newly fail: C0 (low, 10 records), C1 (low, 9 records), C2 (low, 8 records), and 2 more.");
+    expect(out[2]).toBe("5 rules newly fail: C0 (low, 10 records), C1 (low, 9 records), C2 (low, 8 records), and 2 more.");
     expect(out).toHaveLength(3);
   });
 });

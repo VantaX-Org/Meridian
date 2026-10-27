@@ -16,6 +16,7 @@ import { isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { criticalHighHref, stateObjects, stateScopeLine } from "@/lib/current-state";
 import { fixHref } from "@/lib/drill";
+import { RuleName } from "@/components/fix/rule-cell";
 import { formatModuleName, plural } from "@/lib/format";
 import { DrillCount } from "@/app/(app)/insights/_components/DrillCount";
 import { bySeverity } from "../_severity-sort";
@@ -27,6 +28,8 @@ import { useCurrentObjects } from "./_current";
 import { toFixHref, workSummaryQuery } from "./_work";
 import type { WorkObject } from "@/lib/api/work";
 import { BELOW_TARGET } from "@/lib/home-metrics";
+import { MINE_PARAM, useObjectOwners, type ObjectOwners } from "@/hooks/use-object-owners";
+import { OwnerName } from "@/components/owners/OwnerName";
 
 /**
  * A row of the list. With `?run=` every row is that run's; without it (the current state) each row is its object
@@ -63,11 +66,11 @@ type ReadinessFilter = (typeof READINESS_FILTER)[number]["value"];
 const LEGACY_VERDICT: Record<string, ReadinessFilter> = { ready: "pass" };
 
 /** Optional enrichment columns appear only when some row carries the field (older backends omit them). */
-const makeColumns = (run: string | undefined, bands: ScoreBands | undefined, objects: ObjectRow[], openHref: (o: ObjectRow) => string): ColumnDef<ObjectRow>[] => {
+const makeColumns = (run: string | undefined, bands: ScoreBands | undefined, objects: ObjectRow[], openHref: (o: ObjectRow) => string, ownerOf: (o: ObjectRow) => string | null, ownerStatus: ObjectOwners["status"]): ColumnDef<ObjectRow>[] => {
   const hasTrend = objects.some((o) => (o.trend?.length ?? 0) >= 1);
   const hasBlocking = objects.some((o) => o.blocking_rule_id);
   const hasWork = objects.some((o) => o.work !== undefined);
-  return allColumns(run, bands, openHref).filter((c) => (c.id !== "trend" || hasTrend) && (c.id !== "blocking_rule" || hasBlocking) && (!WORK_COLUMNS.has(c.id ?? "") || hasWork));
+  return allColumns(run, bands, openHref, ownerOf, ownerStatus).filter((c) => (c.id !== "trend" || hasTrend) && (c.id !== "blocking_rule" || hasBlocking) && (!WORK_COLUMNS.has(c.id ?? "") || hasWork));
 };
 
 const WORK_COLUMNS = new Set(["work_open", "work_critical", "work_proposed", "work_overdue"]);
@@ -89,8 +92,15 @@ const workColumn = (id: string, header: string, pick: (w: WorkObject) => number,
   cell: ({ row }) => workCell(row.original, run, pick, what, filters),
 });
 
-const allColumns = (run: string | undefined, bands: ScoreBands | undefined, openHref: (o: ObjectRow) => string): ColumnDef<ObjectRow>[] => [
+const allColumns = (run: string | undefined, bands: ScoreBands | undefined, openHref: (o: ObjectRow) => string, ownerOf: (o: ObjectRow) => string | null, ownerStatus: ObjectOwners["status"]): ColumnDef<ObjectRow>[] => [
   { accessorKey: "label", header: "Object", cell: ({ row }) => <DomainChip moduleId={row.original.module} label={row.original.label} /> },
+  {
+    id: "owner",
+    header: "Owner",
+    size: 140,
+    accessorFn: (o) => ownerOf(o) ?? "",
+    cell: ({ row }) => <OwnerName name={ownerOf(row.original)} status={ownerStatus} />,
+  },
   {
     id: "blocking_rule",
     header: "Blocking rule",
@@ -106,7 +116,7 @@ const allColumns = (run: string | undefined, bands: ScoreBands | undefined, open
           <DrillCount href={toFixHref(row.original.module, run, { issue: id })} label={`Open the records of ${row.original.label} failing rule ${id}`}>
             <Mono>{id}</Mono>
           </DrillCount>
-          {words && words !== id ? <span className="m-ink-2">{" "}{words}</span> : null}
+          {" "}<RuleName id={id} fallback={words} />
         </span>
       );
     },
@@ -126,8 +136,8 @@ const allColumns = (run: string | undefined, bands: ScoreBands | undefined, open
     },
   },
   workColumn("work_open", "To fix", (w) => w.open, run, ["record to fix", "records to fix"]),
-  workColumn("work_critical", "Critical", (w) => w.critical, run, ["critical record", "critical records"], { sev: "critical" }),
-  workColumn("work_proposed", "With a suggestion", (w) => w.proposed, run, ["record with a suggestion", "records with a suggestion"], { suggested: "1" }),
+  workColumn("work_critical", "Critical records", (w) => w.critical, run, ["critical record", "critical records"], { sev: "critical" }),
+  workColumn("work_proposed", "With a suggested value", (w) => w.proposed, run, ["record with a suggested value", "records with a suggested value"], { suggested: "1" }),
   workColumn("work_overdue", "Overdue", (w) => w.overdue, run, ["overdue record", "overdue records"], { due: "overdue" }),
   {
     accessorKey: "composite_score",
@@ -186,6 +196,9 @@ export default function ObjectsPage() {
   const dayOne = useDayOne();
   // Ruling 7: objects outside a module-scoped user's grants are hidden (UI filter; the API enforces scope).
   const { scopeFilter } = usePermissions();
+  const owners = useObjectOwners();
+  // The owner a row shows: the data_owners row (what the object header's picker sets), else the list's own field.
+  const ownerOf = (o: ObjectRow) => owners.nameOf(o.module) ?? o.owner ?? null;
 
   const single = useQuery({
     queryKey: queryKeys.objects(run),
@@ -272,16 +285,18 @@ export default function ObjectsPage() {
   const readiness: ReadinessFilter | null = READINESS_FILTER.find((f) => f.value === rawReadiness)?.value ?? null;
   const dimension = search.get("dimension");
   const owner = search.get("owner");
+  const mine = search.get(MINE_PARAM) === "1";
   const shownObjs = objects
+    .filter((o) => !mine || owners.isMine(o.module))
     .filter((o) => !readiness || (o.readiness != null && readiness.split(",").includes(o.readiness)))
     .filter((o) => !dimension || o.worst_dimension === dimension)
-    .filter((o) => !owner || o.owner === owner)
+    .filter((o) => !owner || ownerOf(o) === owner)
     .sort(ranked);
   const distinct = (pick: (o: ObjectRow) => string | null | undefined, label: (v: string) => string = (v) => v) =>
     [...new Set(objects.map(pick).filter((v): v is string => !!v))].sort().map((v) => ({ value: v, label: label(v) }));
   // Chips name the dimension ("Accuracy"); the URL keeps the raw id (`?dimension=accuracy`).
   const dimensionOptions = distinct((o) => o.worst_dimension, formatModuleName);
-  const ownerOptions = distinct((o) => o.owner);
+  const ownerOptions = distinct(ownerOf);
   const setParam = (key: string, next: string | null) => {
     const params = new URLSearchParams(search.toString());
     if (key === "readiness") params.delete("verdict");
@@ -317,12 +332,13 @@ export default function ObjectsPage() {
         <Stat label="Go" value={go} tone={go > 0 ? "go" : undefined} href={listHref({ readiness: "pass" })} />
         <Stat label="At risk" value={atRisk} tone={atRisk > 0 ? "at-risk" : "go"} href={listHref({ readiness: "warn" })} />
         <Stat label="No-go" value={notReady} tone={notReady > 0 ? "no-go" : "go"} href={listHref({ readiness: "fail" })} />
-        <Stat label="Failing rules" value={failingChecks.toLocaleString()} hint="across all objects" href={current ? "/insights/rules" : `/insights/rules?${new URLSearchParams({ run })}`} />
-        {blockingFindings != null ? <Stat label="Critical and high findings" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} hint="failing rules" href={criticalHighFindingsHref} /> : <Stat label="Rule failures" value={recordsAffected.toLocaleString()} hint="records failing a rule, per rule" href={current ? "/insights/rules" : fixHref({ run })} />}
+        <Stat label="Failing rules" value={failingChecks.toLocaleString()} hint="per object, generated checks included" href={current ? "/insights/rules" : `/insights/rules?${new URLSearchParams({ run })}`} />
+        {blockingFindings != null ? <Stat label="Critical and high failing rules" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} href={criticalHighFindingsHref} /> : <Stat label="Rule failures" value={recordsAffected.toLocaleString()} hint="records failing a rule, per rule" href={current ? "/insights/rules" : fixHref({ run })} />}
       </div>
       <div className="flex flex-wrap items-center gap-4">
         <FilterChips label="Readiness" value={readiness} options={[...READINESS_FILTER]} onChange={(v) => setParam("readiness", v)} />
         {dimensionOptions.length > 1 ? <FilterChips label="Dimension" value={dimension} options={dimensionOptions} onChange={(v) => setParam("dimension", v)} /> : null}
+        {owners.hasMine || mine ? <FilterChips label="Show" value={mine ? "1" : null} options={[{ value: "1", label: "My objects" }]} onChange={(v) => setParam(MINE_PARAM, v)} /> : null}
         {ownerOptions.length > 1 ? <FilterChips label="Owner" value={owner} options={ownerOptions} onChange={(v) => setParam("owner", v)} /> : null}
       </div>
     </div>
@@ -332,7 +348,7 @@ export default function ObjectsPage() {
   // without ?run= opens the object's own latest run.
   const openHref = (row: ObjectRow) => toFixHref(row.module, current ? undefined : runId ?? run);
   const objectHref = openHref;
-  const columns = makeColumns(current ? undefined : runId, bands, objects, openHref); // React Compiler memoizes on run and thresholds
+  const columns = makeColumns(current ? undefined : runId, bands, objects, openHref, ownerOf, owners.status); // React Compiler memoizes on run and thresholds
 
   // The map is drawn from the rows the ledger shows: the same filters, the same objects.
   // Tiles are sized by distinct failing records when every shown object's work list is built; otherwise by the

@@ -22,18 +22,19 @@ The [overview](/mdm) shows **MDM health** out of 100: **Healthy** at 85 or more,
 ### How to review a golden record
 
 1. Open a record. Read its status and confidence on **Overview**.
-2. Check **Golden fields**, then **Source contributions**: each source system, the value it holds and its confidence.
-3. Select **Compare sources** to see every field's golden value beside each source; values that differ are shown in red.
-4. Select **Promote** to make it golden. The merged values replace the current golden fields, and this cannot be undone. Promoting needs the approve permission.
+2. Check **Golden fields**: one grid with a row per field and a column per source (a column per merged record once records are merged). The value the golden record kept is highlighted, and **Chosen by** says why in words, such as "Source priority from PRD", with the record key or upload label beside it. Approvers can **Override** a field there, with a reason.
+3. Select **Promote** to make it golden. The merged values replace the current golden fields, and this cannot be undone. Promoting needs the approve permission.
 
 **Related**, **History** and **Audit** list linked records, each change and every logged action.
 
 ## Duplicates and merging
 
-The match rules find candidate pairs. They are worked in three places:
+The match rules find candidate pairs. Every pair is decided in **Master data**, [**Match review**](/mdm/golden/merge): the pairs are listed on the left, and the selected pair is shown on the right with the two records side by side, the fields that differ highlighted and the identical ones folded away. Give a reason, then select **Merge**, **Not a match** or **Skip**; the next pair opens on its own. On the keyboard, **j** and **k** move between pairs, **m** merges, **n** marks not a match and **s** skips (without a reason, **m** and **n** put you in the reason box; press Ctrl Enter, or ⌘ Enter on a Mac, to send). Merging and marking not a match need the approve permission.
 
-- **Fix work**, **Duplicates**: compare a pair field by field and keep one (see [Approvals and export](/docs?page=approvals)).
-- **Insights**, **Explore**, **Duplicates**: pick an object and a record, see its cluster, choose the surviving record and select **Create merge proposal**.
+Pairs also reach you from:
+
+- **Match review**: every duplicate pair, from the match rules and the cleaning engine, compared field by field; keep one or mark it not a match. Old links to Fix work's Duplicates tab open it.
+- **Insights**, **Explore**, **Duplicates**: pick an object and a record, see its cluster, choose the surviving record and select **Create merge proposal**. Below it are the miner's **Likely duplicates**, **Anomalies** and **Relationships**; **Review** on a likely duplicate opens it in Match review.
 - The [Inbox](/docs?page=inbox): each merge decision waits there. Approving keeps the record with the higher confidence, fills its blank fields from the other and marks the other **Superseded**. Rejecting records the pair as "do not match".
 
 Creating merge proposals and merging need the approve permission.

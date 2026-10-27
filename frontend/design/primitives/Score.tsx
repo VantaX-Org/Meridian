@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { GlossaryKey } from "@/lib/help/glossary";
-import { ScoreRing, DEFAULT_SCORE_BANDS as BANDS, type ScoreBands } from "./ScoreRing";
+import { ScoreRing, DEFAULT_SCORE_BANDS as BANDS, criticalRules, type ScoreBands } from "./ScoreRing";
 import { Rule } from "./Rule";
 import { ScoreExplainer, type ScoreExplanation } from "./ScoreExplainer";
 import { Stat } from "./Stat";
@@ -83,7 +83,7 @@ export function Score({ value, measured, size = "md", cap, criticals, bands, exp
           versionId={versionId}
           loading={loading}
           href={href}
-          hint={hint ?? (capped ? `Capped at ${cap}${criticals ? `, ${criticals} critical` : ""}` : undefined)}
+          hint={hint ?? (capped ? `Capped at ${cap}${criticals ? `, ${criticalRules(criticals)}` : ""}` : undefined)}
           delta={delta}
         />
         {explain && ruled != null && !loading && (

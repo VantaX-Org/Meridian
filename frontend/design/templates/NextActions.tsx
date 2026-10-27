@@ -16,6 +16,36 @@ export interface NextAction {
   why: string;
 }
 
+/**
+ * The single top-ranked action for a scope (a home, an object): what to do, why it ranks first in plain words, and
+ * one button that opens exactly where to act. `action` undefined while it loads; null when there is nothing to do.
+ */
+export function NextBestAction({ action, loading = false, empty = "Nothing to fix in this run." }: {
+  action: Pick<NextAction, "title" | "why" | "verb" | "href"> | null | undefined;
+  loading?: boolean;
+  /** What an empty scope says. */
+  empty?: string;
+}) {
+  return (
+    <section aria-label="Next best action" data-testid="next-best-action" className="m-card m-card-sm flex flex-wrap items-center gap-x-6 gap-y-3">
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <span className="m-text-label m-ink-3">Next best action</span>
+        {loading ? (
+          <span className="m-text-body m-ink-3" aria-busy="true">Ranking the open work</span>
+        ) : action ? (
+          <>
+            <span className="m-text-body font-semibold m-ink">{action.title}</span>
+            <span className="m-text-body m-ink-2">{action.why}</span>
+          </>
+        ) : (
+          <span className="m-text-body m-ink-2">{empty}</span>
+        )}
+      </div>
+      {!loading && action?.href && <Button render={<Link href={action.href}>{action.verb}</Link>} />}
+    </section>
+  );
+}
+
 export function NextActions({ actions }: { actions: NextAction[] }) {
   const shown = actions.slice(0, 5);
   if (shown.length === 0) {

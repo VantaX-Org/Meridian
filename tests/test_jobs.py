@@ -133,6 +133,16 @@ def test_analysis_progress_mirrors_onto_the_job(redis):
     task_progress.update_task_progress("unknown", status="processing", current_step="x", step_number=3)
 
 
+def test_completed_progress_keeps_the_row_count(redis):
+    """The final payload's rows land on the finished job; before, a finished analysis read Rows 0 on Jobs."""
+    jobs.start_job("t1", "v8", "analysis", "Analysis", status="queued", progress_key="v8", version_id="v8")
+    task_progress.update_task_progress("v8", status="completed", current_step="Analysis complete",
+                                       step_number=6, total_steps=6, rows_processed=4200, total_rows=4200,
+                                       percent_complete=100)
+    j = jobs.get_job("t1", "v8")
+    assert j["status"] == "completed" and j["rows_done"] == 4200 and j["rows_total"] == 4200
+
+
 def test_index_keeps_only_the_newest(redis):
     for i in range(jobs.INDEX_KEEP + 5):
         jobs.start_job("t1", f"j{i}", "analysis", "A")

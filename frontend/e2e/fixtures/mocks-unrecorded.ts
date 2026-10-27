@@ -10,12 +10,15 @@
  *    (api/routes/audit.py);
  *  - the glossary list, /glossary (api/routes/glossary.py): the seeded glossary is empty;
  *  - the run the Fix page names, /versions/{latest} (api/routes/versions.py): the recording holds it only in the list;
+ *  - the current state (`scope=current`) of Fix work's /work reads, and of /insights/impact, /insights/proven-cost
+ *    and /insights/readiness (Waves), and the readiness of the run before the latest;
  *  - the report library, /reports/history, /reports/schedules, /reports/schedules/options
  *    (api/routes/report_library.py), and the catalogue with `compare` (the recording holds it without);
  *  - the caller's delivery log, /me/notifications/deliveries (api/routes/me_notifications.py);
  *  - the features a cost per blocked record can be set for, /settings/cost-model/features (api/routes/settings.py);
  *  - process discovery's catalogue and run list, /process-discovery/systems/{id}/catalogue and /runs
  *    (api/routes/process_discovery.py): the seeded tenant has no discovery runs;
+ *  - rule names by check id, /rules/names (api/routes/rules.py), from the recorded rule lists;
  *  - the accounts payable process document of the vendor run, /business-process/{run}/accounts_payable
  *    (api/routes/business_process.py), which the process home reads.
  *
@@ -83,6 +86,8 @@ interface WorkRow {
   name: string | null;
   checks: string[];
   values: Record<string, string>;
+  /** Nobody: the recording has no assigned issue (GET /insights/owners is empty), and Owners, the Executive summary
+   * and Progress read the one owner definition (record_issues.assigned_to). */
   assigned?: typeof STEWARD;
 }
 
@@ -130,9 +135,9 @@ const CONTROLLING: Run = {
       impact: "FI postings to the number cannot be mirrored to controlling." },
   ],
   rows: [
-    { record_key: "KOKRS=1000|KOSTL=0000001007", name: "Maintenance workshop", checks: ["CO003", "CO043"], assigned: STEWARD,
+    { record_key: "KOKRS=1000|KOSTL=0000001007", name: "Maintenance workshop", checks: ["CO003", "CO043"],
       values: { "CSKS.KOKRS": "1000", "CSKS.KOSTL": "0000001007", "CSKS.DATAB": "", "CSKS.BUKRS": "2000" } },
-    { record_key: "KOKRS=1000|KOSTL=0000001019", name: "Quality control", checks: ["CO003"], assigned: STEWARD,
+    { record_key: "KOKRS=1000|KOSTL=0000001019", name: "Quality control", checks: ["CO003"],
       values: { "CSKS.KOKRS": "1000", "CSKS.KOSTL": "0000001019", "CSKS.DATAB": "" } },
     { record_key: "KOKRS=1000|KSTAR=0000400100", name: "Raw material consumption", checks: ["CO020", "CO021"],
       values: { "CSKB.KOKRS": "1000", "CSKB.KSTAR": "0000400100", "CSKB.DATAB": "", "CSKB.KATYP": "" } },
@@ -161,9 +166,9 @@ const MATERIAL_RUN: Run = {
       impact: "Material cannot be used in MM, PP, SD, or FI without a valid material type." },
     { check_id: "DDIC-MARA-TYPE", severity: "high", dimension: "validity", message: "Value does not match the field's SAP data type (MARA)", field: null,
       records: 24576, population: 25000, authority: "sap_hard_constraint", instruction: null, why: null, impact: null },
-    { check_id: "DDIC-MARA-LENGTH", severity: "high", dimension: "validity", message: "Value exceeds the field's SAP length / precision (MARA)", field: null,
+    { check_id: "DDIC-MARA-LENGTH", severity: "high", dimension: "validity", message: "Value exceeds the field's SAP length or precision (MARA)", field: null,
       records: 145, population: 25000, authority: "sap_hard_constraint", instruction: null, why: null, impact: null },
-    { check_id: "DT-MARA-ERSDA", severity: "medium", dimension: "validity", message: "Creation date is before 1970 or in the future", field: "MARA.ERSDA",
+    { check_id: "DT-MARA-ERSDA", severity: "medium", dimension: "validity", message: "Creation date (MARA.ERSDA) is before 1970 or in the future", field: "MARA.ERSDA",
       records: 424, population: 25000, authority: "best_practice", instruction: null, why: null, impact: null },
     { check_id: "MM453", severity: "medium", dimension: "validity", message: "Material creation date is in the future", field: "MARA.ERSDA",
       records: 424, population: 25000, authority: "best_practice", instruction: null,
@@ -205,12 +210,34 @@ function runFor(route: Route): [string, Run] | undefined {
 
 // ── /work (api/routes/work.py) ───────────────────────────────────────────────
 
-/** GET /work/summary: per object of the run, records and issues by work status. */
-function summary(vid: string, run: Run) {
+/** The /work/records filters (work.py `_records_where`); with any of them, /work/summary's totals count that list. */
+const RECORD_FILTERS = ["module", "check_id", "severity", "status", "assigned", "proposed", "due", "part", "system", "q"];
+const filteredBy = (q: URLSearchParams) => RECORD_FILTERS.some((k) => q.has(k));
+
+/** The totals of the list GET /work/records answers for `q`: its records, their rule failures, the critical ones. */
+function listTotals(run: Run, q: URLSearchParams) {
+  const page = records("", run, q);
+  // Narrowed to the object only (an object page's queue), the list is the run's whole work list.
+  const narrowing = ["check_id", "severity", "assigned", "proposed", "due", "part", "system", "q"].some((k) => q.has(k))
+    || !["open", "to_fix", "all", null].includes(q.get("status"));
+  if (!narrowing) {
+    const mine = !q.get("module") || q.get("module") === run.module;
+    return { records: mine ? run.records : 0, open: mine ? run.records : 0, issues: mine ? run.issues : 0, critical: mine ? run.critical : 0, proposed: 0, overdue: 0 };
+  }
+  const check = q.get("check_id");
+  const rule = check ? ruleOf(run, check) : undefined;
+  // A check's whole failing list is longer than the page modelled here: count it as the rule does.
+  const issues = rule ? rule.records : page.items.reduce((n, i) => n + i.issues, 0);
+  const critical = rule ? (rule.severity === "critical" ? page.total : 0) : page.items.filter((i) => i.severity === "critical").length;
+  return { records: page.total, open: page.total, issues, critical, proposed: 0, overdue: 0 };
+}
+
+/** GET /work/summary: per object of the run, records and issues by work status; with a filter, the list's totals. */
+function summary(vid: string, run: Run, q: URLSearchParams = new URLSearchParams()) {
   const o = { module: run.module, records: run.records, open: run.records, issues: run.issues, critical: run.critical,
     proposed: 0, overdue: 0, statuses: { to_fix: run.records } };
   return { version_id: vid, scope: run.scope, built: true, objects: [o],
-    totals: { records: o.records, open: o.open, issues: o.issues, critical: o.critical, proposed: 0, overdue: 0 } };
+    totals: filteredBy(q) ? listTotals(run, q) : { records: o.records, open: o.open, issues: o.issues, critical: o.critical, proposed: 0, overdue: 0 } };
 }
 
 /** GET /work/groups: one row per check, worst first. */
@@ -317,12 +344,40 @@ async function mockWork(page: Router, actions: () => Promise<readonly string[]>)
         : route.fulfill(json(body));
     });
   const params = (route: Route) => new URL(route.request().url()).searchParams;
-  await get(/\/api\/v1\/work\/summary(\?.*)?$/, (_r, vid, run) => summary(vid, run));
+  await get(/\/api\/v1\/work\/summary(\?.*)?$/, (r, vid, run) => summary(vid, run, params(r)));
   await get(/\/api\/v1\/work\/groups(\?.*)?$/, (r, vid, run) => groups(vid, run, params(r)));
   await get(/\/api\/v1\/work\/records(\?.*)?$/, (r, vid, run) => records(vid, run, params(r)));
   await get(/\/api\/v1\/work\/records\/[^/?]+\/[^?]+(\?.*)?$/, async (r, vid, run) => {
     const [object, key] = new URL(r.request().url()).pathname.split("/").slice(-2).map(decodeURIComponent);
     return record(vid, run, object, key, await actions());
+  });
+  // scope=current (Fix work without ?run=): every modelled object at its own run, each row naming its run. Registered
+  // last so it answers first; a call for one run falls through to the handlers above.
+  const current = (re: RegExp, merge: (parts: [string, Run][], q: URLSearchParams) => unknown) =>
+    page.route(re, (route) => (route.request().method() === "GET" && params(route).get("scope") === "current"
+      ? route.fulfill(json(merge(Object.entries(RUNS), params(route))))
+      : route.fallback()));
+  await current(/\/api\/v1\/work\/summary(\?.*)?$/, (parts, q) => {
+    const objects = parts.map(([vid, run]) => ({ ...summary(vid, run).objects[0], version_id: vid }));
+    // With the list's filters, the totals of exactly that list (each run's, added up), as work.py answers.
+    const totals = parts.map(([vid, run]) => summary(vid, run, q).totals);
+    const sum = (k: "records" | "open" | "issues" | "critical") => totals.reduce((n, t) => n + t[k], 0);
+    return { version_id: null, scope: null, mode: "current", version_ids: parts.map(([vid]) => vid), unbuilt: [], built: true, objects,
+      totals: { records: sum("records"), open: sum("open"), issues: sum("issues"), critical: sum("critical"), proposed: 0, overdue: 0 } };
+  });
+  await current(/\/api\/v1\/work\/groups(\?.*)?$/, (parts, q) => {
+    const all = parts.flatMap(([vid, run]) => groups(vid, run, q).groups.map((g) => ({ ...g, version_id: vid })));
+    return { version_id: null, built: true, total: all.length, groups: all };
+  });
+  await current(/\/api\/v1\/work\/records(\?.*)?$/, (parts, q) => {
+    const pages = parts.map(([vid, run]) => ({ vid, page: records(vid, run, q) }));
+    // One list over every object, in the server's order (work.py: the sort, then module, then key), never one run's
+    // rows after the other's: that read Critical, High, Critical under "Severity ascending".
+    const desc = (q.get("sort") ?? "severity").split(",").includes("-severity");
+    const items = pages.flatMap(({ vid, page }) => page.items.map((i) => ({ ...i, version_id: vid })))
+      .sort((a, b) => (desc ? -1 : 1) * (sevRank(a.severity as Severity) - sevRank(b.severity as Severity))
+        || a.module.localeCompare(b.module) || a.record_key.localeCompare(b.record_key));
+    return { version_id: null, total: pages.reduce((n, p) => n + p.page.total, 0), total_capped: false, next: null, items };
   });
 }
 
@@ -330,14 +385,23 @@ async function mockWork(page: Router, actions: () => Promise<readonly string[]>)
 
 const day = (offset: number) => new Date(Date.parse(`${TODAY}T00:00:00Z`) + offset * 86_400_000).toISOString().slice(0, 10);
 
-/** Issues opened and closed per day: the vendor runs of 2 October, the controlling uploads of 16 October and the fixes since. */
+/**
+ * Issues (rule failures: one record failing one rule) opened and closed per day: the vendor runs of 2 October, the
+ * controlling and material master uploads of 16 October and the fixes since. They close at the work lists' rule
+ * failures: today's open count is the current state's /work/summary issues (3,120 controlling + 26,943 material).
+ */
 const FLOWS: Record<string, [opened: number, closed: number]> = {
   "2026-10-02": [14, 0], "2026-10-07": [0, 3],
-  "2026-10-16": [3260, 40], "2026-10-17": [0, 52], "2026-10-18": [0, 38], "2026-10-19": [0, 21],
+  "2026-10-16": [3260 + 26943, 40], "2026-10-17": [0, 52], "2026-10-18": [0, 38], "2026-10-19": [0, 21],
 };
 
-/** GET /work/analytics/burndown: 90 days, with the server's projection (pace over the last 28 days). */
-function burndown() {
+/**
+ * GET /work/analytics/burndown: 90 days, with the server's projection (pace over the last 28 days). With
+ * `scope=current` (Progress without ?run=) it answers as api/services/work_analytics.burndown_current does: the same
+ * tenant-wide flows, no run of its own and no per-run bars. It used to answer the latest run's shape for every
+ * scope, so Progress showed controlling_1k's per-run bars under "Current state of 15 objects".
+ */
+function burndown(q: URLSearchParams) {
   let open = 0;
   const days = Array.from({ length: 90 }, (_, i) => {
     const d = day(i - 89);
@@ -347,17 +411,22 @@ function burndown() {
   });
   const openNow = days[89].open;
   const pace = Math.round(((days[89 - 28].open - openNow) / 28) * 100) / 100;
-  return {
-    version_id: LATEST, today: TODAY, days, open_now: openNow, open_records: CONTROLLING.records, fixed_7d: 151,
+  // Records to fix: the run's open work records; under the current state every modelled object's, as Fix work's
+  // "Records to fix" counts them (work_analytics.burndown_current), never the latest run's alone.
+  const current = q.get("scope") === "current";
+  const run = {
+    version_id: LATEST as string | null, today: TODAY, days, open_now: openNow,
+    open_records: current ? Object.values(RUNS).reduce((n, r) => n + r.records, 0) : CONTROLLING.records, fixed_7d: 151,
     pace_per_day: pace, pace_window_days: 28,
     projected_finish: pace > 0 ? day(Math.ceil(openNow / pace)) : null,
-    runs: [
+    ...(current ? { version_id: null, scope: "current", version_ids: [LATEST, MATERIAL], runs: [] } : {}),
+  };
+  return q.get("scope") === "current" ? run : { ...run, runs: [
       { version_id: "461c63cf-06f6-4e18-8bac-22305823bdce", label: "controlling_1k", run_at: "2026-10-16T05:17:42.514161+00:00", issues: 3120, open_records: null },
       { version_id: "52fadc1b-9bf5-448e-87fa-4cc7544bc983", label: "controlling_1k", run_at: "2026-10-16T05:17:43.343933+00:00", issues: 3120, open_records: null },
       { version_id: PREVIOUS, label: "controlling_1k", run_at: "2026-10-16T05:17:44.399026+00:00", issues: 3120, open_records: null },
       { version_id: LATEST, label: "controlling_1k", run_at: CONTROLLING.run_at, issues: 3120, open_records: CONTROLLING.records },
-    ],
-  };
+    ] };
 }
 
 const fixTime = (fixed: number, median: number | null, p90: number | null) => ({ fixed, median_days: median, p90_days: p90 });
@@ -374,6 +443,10 @@ const TIME_TO_FIX = {
   ],
   by_severity: [{ severity: "critical", ...fixTime(154, 1.2, 2.8) }],
 };
+
+/** Today's open rule failures (the burn-down's last day) and the critical ones, over the modelled work lists. */
+const OPEN_ISSUES = Object.values(FLOWS).reduce((n, [o, c]) => n + o - c, 0);
+const CRITICAL_ISSUES = Object.values(RUNS).flatMap((r) => r.rules).filter((r) => r.severity === "critical").reduce((n, r) => n + r.records, 0);
 
 /** GET /work/analytics/throughput: decisions per day and person over 30 days, open work per assignee. */
 function throughput() {
@@ -395,10 +468,10 @@ function throughput() {
   return {
     window_days: 30, days, people,
     totals: Object.fromEntries(kinds.map((k) => [k, people.reduce((a, p) => a + p[k], 0)])),
-    workload: [
-      { assignee_id: STEWARD.id, name: STEWARD.name, email: STEWARD.email, open: 125, critical: 125, overdue: 0 },
-      { assignee_id: null, name: null, email: null, open: 875, critical: 166, overdue: 0 },
-    ],
+    // Open rule failures per assignee (work_analytics._WORKLOAD_SQL, record_issues.assigned_to): nobody's, since the
+    // recording assigns none (GET /insights/owners is empty and Owners reads the same column). It used to say
+    // "Sim steward, 125 open" beside Owners' "No issues are assigned yet".
+    workload: [{ assignee_id: null, name: null, email: null, open: OPEN_ISSUES, critical: CRITICAL_ISSUES, overdue: 0 }],
   };
 }
 
@@ -435,23 +508,31 @@ function proposalQuality() {
   return { sources, totals: Object.fromEntries(keys.map((k) => [k, sources.reduce((a, s) => a + s[k], 0)])) };
 }
 
-/** GET /work/analytics/run-change: per object, new / fixed / still failing since the previous run. */
+/**
+ * GET /work/analytics/run-change: per object, new / fixed / still failing since the previous run. With
+ * `scope=current` each object of the current state is compared with the run before its own run (only controlling
+ * has one here), as api/services/work_analytics.run_change_current answers.
+ */
 const RUN_CHANGE = {
   version_id: LATEST, previous: { version_id: PREVIOUS, label: "controlling_1k", run_at: "2026-10-16T05:17:44.399026+00:00" },
   objects: [{ module: "controlling", new: 12, fixed: 40, still_failing: 3068, not_comparable_checks: 0 }],
   totals: { new: 12, fixed: 40, still_failing: 3068 }, not_comparable_checks: 0,
 };
+const runChange = (q: URLSearchParams) => (q.get("scope") === "current"
+  ? { ...RUN_CHANGE, version_id: null, scope: "current", compared: [{ version_id: LATEST, previous: RUN_CHANGE.previous }] }
+  : RUN_CHANGE);
 
 async function mockWorkAnalytics(page: Router) {
-  const get = (name: string, body: () => unknown) =>
-    page.route(new RegExp(`/api/v1/work/analytics/${name}(\\?.*)?$`), (r) => (r.request().method() === "GET" ? r.fulfill(json(body())) : r.fallback()));
+  const get = (name: string, body: (q: URLSearchParams) => unknown) =>
+    page.route(new RegExp(`/api/v1/work/analytics/${name}(\\?.*)?$`), (r) => (r.request().method() === "GET"
+      ? r.fulfill(json(body(new URL(r.request().url()).searchParams))) : r.fallback()));
   await get("burndown", burndown);
   await get("time-to-fix", () => TIME_TO_FIX);
   await get("throughput", throughput);
   await get("recurrence", () => RECURRENCE);
   await get("root-causes", () => ROOT_CAUSES);
   await get("proposal-quality", proposalQuality);
-  await get("run-change", () => RUN_CHANGE);
+  await get("run-change", runChange);
 }
 
 // ── MDM (api/routes/merge_explain.py) ────────────────────────────────────────
@@ -543,6 +624,14 @@ async function mockMdm(page: Router) {
   await get(new RegExp(`/api/v1/master-records/${GOLDEN_ID}/merge-events(\\?.*)?$`), []);
   await page.route(/\/api\/v1\/match-scores(\?.*)?$/, (r) =>
     r.request().method() === "GET" ? r.fulfill(json(matchScores(new URL(r.request().url()).searchParams))) : r.fallback());
+  // GET /match-scores/{id} (ReviewPairDetail): the pair plus both records' compared fields
+  for (const p of REVIEW_PAIRS) {
+    const side = (key: string, id: string, v: "value_a" | "value_b") =>
+      ({ key, record_id: id, confidence: null, fields: Object.fromEntries(p.explanation.attributes.map((x) => [x.field, x[v]])) });
+    await get(`**/api/v1/match-scores/${p.id}`, {
+      ...p, record_a: side(p.a, p.a_record_id, "value_a"), record_b: side(p.b, p.b_record_id, "value_b"), default_survivor: p.a,
+    });
+  }
 }
 
 // ── Audit (api/routes/audit.py) ─────────────────────────────────────────────
@@ -610,6 +699,71 @@ async function mockLatestRun(page: Router, har: string) {
   const run = (JSON.parse(text) as { versions: { id: string }[] }).versions.find((v) => v.id === LATEST);
   if (!run) return;
   await page.route(new RegExp(`/api/v1/versions/${LATEST}$`), (r) => (r.request().method() === "GET" ? r.fulfill(json(run)) : r.fallback()));
+}
+
+/**
+ * Rule names by check id, GET /rules/names?check_ids=… (api/routes/rules.py `rule_names`), which the recording
+ * predates: the recorded rule lists' names ("MM045: Material type is missing") by the check id before the ':', the
+ * words after it, for the ids asked that the catalogue names.
+ */
+async function mockRuleNames(page: Router, har: string) {
+  const names = new Map<string, string>();
+  for (const e of entriesOf(har)) {
+    if (e.request.method !== "GET" || !/\/api\/v1\/rules(\?|$)/.test(e.request.url) || !e.response.content.text) continue;
+    const { text, encoding } = e.response.content;
+    const rules = (JSON.parse(encoding === "base64" ? Buffer.from(text, "base64").toString("utf8") : text) as { rules?: { name?: string | null }[] }).rules ?? [];
+    for (const { name } of rules) {
+      const at = name ? name.indexOf(":") : -1;
+      if (name && at > 0 && !names.has(name.slice(0, at))) names.set(name.slice(0, at), name.slice(at + 1).trim());
+    }
+  }
+  // Generated checks (DT-, VP-, DDIC- …) have no catalogue rule: the API names them by the engine's own words, which are
+  // the messages their findings carry here.
+  const generated = new Map<string, string>();
+  for (const run of Object.values(RUNS)) for (const rule of run.rules) if (!names.has(rule.check_id)) generated.set(rule.check_id, rule.message);
+  await page.route(/\/api\/v1\/rules\/names\?/, (r) => {
+    if (r.request().method() !== "GET") return r.fallback();
+    const ids = (new URL(r.request().url()).searchParams.get("check_ids") ?? "").split(",").filter(Boolean);
+    const pick = (m: Map<string, string>) => Object.fromEntries(ids.filter((id) => m.has(id)).map((id) => [id, m.get(id)]));
+    return r.fulfill(json({ names: pick(names), generated: pick(generated) }));
+  });
+}
+
+/**
+ * A run's "Failing rules" tab asks GET /findings?…&failing=true (api/routes/findings.py), which the recording predates:
+ * the recorded answer to the same query without the flag, its rules with 0 failing records left out.
+ */
+async function mockFailingFindings(page: Router, har: string) {
+  const entries = entriesOf(har);
+  await page.route(/\/api\/v1\/findings\?(.*&)?failing=true/, (r) => {
+    if (r.request().method() !== "GET") return r.fallback();
+    const url = new URL(r.request().url());
+    url.searchParams.delete("failing");
+    const want = pathOf(url.toString());
+    const hit = entries.find((e) => e.request.method === "GET" && pathOf(e.request.url) === want)?.response.content;
+    if (!hit?.text) return r.fallback();
+    const body = JSON.parse(hit.encoding === "base64" ? Buffer.from(hit.text, "base64").toString("utf8") : hit.text) as
+      { findings: { affected_count: number }[]; total: number; filters_applied?: Record<string, unknown> };
+    const failing = body.findings.filter((f) => f.affected_count > 0);
+    return r.fulfill(json({ ...body, findings: failing, total: body.total - (body.findings.length - failing.length),
+      filters_applied: { ...body.filters_applied, failing: true } }));
+  });
+}
+
+/**
+ * Value at risk and proven cost of the current state (`scope=current`, api/routes/insights.py), which Value at risk
+ * and the executive summary read without ?run=: the recording holds them without a scope, which for the recorded
+ * tenant (no priced feature, no proven cost) is the same answer.
+ */
+async function mockCurrentMoney(page: Router, har: string) {
+  const entries = entriesOf(har);
+  for (const name of ["impact", "proven-cost"]) {
+    const hit = entries.find((e) => new RegExp(`/api/v1/insights/${name}$`).test(e.request.url))?.response.content;
+    if (!hit?.text) continue;
+    const body = JSON.parse(hit.encoding === "base64" ? Buffer.from(hit.text, "base64").toString("utf8") : hit.text) as object;
+    await page.route(new RegExp(`/api/v1/insights/${name}\\?scope=current$`), (r) =>
+      (r.request().method() === "GET" ? r.fulfill(json({ ...body, version_id: null, scope: "current" })) : r.fallback()));
+  }
 }
 
 // ── Report library (api/routes/report_library.py) ────────────────────────────
@@ -750,6 +904,8 @@ const CATALOGUE = L1S.map(([l1, name, reason]) => ({
  * run's five recorded findings (GET /findings?version_id=…&limit=5), without SPRO config or config impact rows.
  */
 const VENDOR_RUN = "65988d5a-0243-4f9b-bdff-52779e71c6ed";
+/** accounts_payable_p02: the newest accounts payable run, the one the current state reads the object from. */
+const CURRENT_AP_RUN = "ae5e43c7-e11d-4f1c-866d-6881cc3d50ce";
 
 async function mockProcess(page: Router) {
   const get = (re: RegExp, body: unknown) => page.route(re, (r) => (r.request().method() === "GET" ? r.fulfill(json(body)) : r.fallback()));
@@ -757,6 +913,62 @@ async function mockProcess(page: Router) {
   // list[RunSummary]: no runs, whatever the l1 and limit
   await get(new RegExp(`/api/v1/process-discovery/systems/${SYSTEM_ID}/runs(\\?.*)?$`), []);
   await get(new RegExp(`/api/v1/business-process/${VENDOR_RUN}/accounts_payable$`), businessProcessAp);
+  // Process data readiness opens on the current state, where accounts payable is read from its own latest run
+  // (accounts_payable_p02). The recording holds no process document for that run; the vendor run's document stands in
+  // for it (same object and process definition, the vendor run's findings), named for the run it answers.
+  await get(new RegExp(`/api/v1/business-process/${CURRENT_AP_RUN}/accounts_payable$`), { ...businessProcessAp, version_id: CURRENT_AP_RUN });
+}
+
+type RecordedRun = { id: string; run_at: string; status: string; dqs_summary: Record<string, unknown> | null };
+const textOf = (c: { text?: string; encoding?: string }) => (c.encoding === "base64" ? Buffer.from(c.text ?? "", "base64").toString("utf8") : c.text ?? "");
+
+/**
+ * The current state's (object, run) pairs of the recording: each object once, from the newest finished run that scored
+ * it (api/services/current_state.py; on this recording every lineage's latest run is also the newest run of its
+ * objects).
+ */
+function currentPairs(har: string): Map<string, string> {
+  const list = entriesOf(har).find((e) => /\/api\/v1\/versions\?limit=100&offset=0$/.test(e.request.url))?.response.content;
+  const runs = list?.text ? (JSON.parse(textOf(list)) as { versions: RecordedRun[] }).versions : [];
+  const out = new Map<string, string>();
+  for (const r of [...runs].sort((a, b) => (a.run_at < b.run_at ? 1 : -1))) {
+    for (const m of Object.keys(r.dqs_summary ?? {})) if (!out.has(m)) out.set(m, r.id);
+  }
+  return out;
+}
+
+/**
+ * GET /mining/{duplicates,anomalies,relationships}?scope=current (Insights › Duplicates without ?run=): the recorded
+ * tenant-wide lists (no version_id) kept to the current state's (object, run) pairs, as api/routes/mining.py filters.
+ */
+async function mockMiningCurrent(page: Router, har: string) {
+  const pairs = currentPairs(har);
+  const entries = entriesOf(har);
+  for (const feed of ["duplicates", "anomalies", "relationships"]) {
+    const hit = entries.find((e) => new RegExp(`/api/v1/mining/${feed}\\?limit=500$`).test(e.request.url))?.response.content;
+    const rows = hit?.text ? (JSON.parse(textOf(hit)) as { module_id: string; version_id: string }[]) : [];
+    const current = rows.filter((r) => pairs.get(r.module_id) === r.version_id);
+    await page.route(new RegExp(`/api/v1/mining/${feed}\\?(.*&)?scope=current(&|$)`), (r) =>
+      (r.request().method() === "GET" ? r.fulfill(json(current)) : r.fallback()));
+  }
+}
+
+/**
+ * GET /insights/readiness?scope=current (Waves without ?run=, api/routes/insights.py:get_readiness) and the readiness
+ * of the run before the latest (Waves with ?run=<latest> compares with it). Waves belong to the tenant, not a run, and
+ * the recorded tenant has none, so both answer as the recorded /insights/readiness does (no wave, not configured);
+ * the current state names the runs its objects are read from, newest first.
+ */
+async function mockReadiness(page: Router, har: string) {
+  const hit = entriesOf(har).find((e) => /\/api\/v1\/insights\/readiness$/.test(e.request.url))?.response.content;
+  if (!hit?.text) return;
+  const body = JSON.parse(textOf(hit)) as object;
+  const list = entriesOf(har).find((e) => /\/api\/v1\/versions\?limit=100&offset=0$/.test(e.request.url))?.response.content;
+  const runAt = new Map((list?.text ? (JSON.parse(textOf(list)) as { versions: RecordedRun[] }).versions : []).map((r) => [r.id, r.run_at]));
+  const ids = [...new Set(currentPairs(har).values())].sort((a, b) => ((runAt.get(a) ?? "") < (runAt.get(b) ?? "") ? 1 : -1));
+  const get = (re: RegExp, answer: unknown) => page.route(re, (r) => (r.request().method() === "GET" ? r.fulfill(json(answer)) : r.fallback()));
+  await get(/\/api\/v1\/insights\/readiness\?scope=current$/, { ...body, version_id: null, scope: "current", version_ids: ids });
+  await get(new RegExp(`/api/v1/insights/readiness\\?version_id=${PREVIOUS}$`), body);
 }
 
 /** `har`: the decompressed recording the page replays (fixtures.ts harFor). */
@@ -768,8 +980,13 @@ export async function mockUnrecorded(page: Page, har: string) {
   await mockAudit(router);
   await mockGlossary(router);
   await mockLatestRun(router, har);
+  await mockCurrentMoney(router, har);
   await mockReports(router);
   await mockMe(router);
   await mockCostModel(router);
   await mockProcess(router);
+  await mockMiningCurrent(router, har);
+  await mockReadiness(router, har);
+  await mockRuleNames(router, har);
+  await mockFailingFindings(router, har);
 }

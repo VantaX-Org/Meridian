@@ -6,13 +6,14 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, DataTable, Drawer, DrillLink, EmptyState, ErrorState, Mono, Skeleton, Stat, Status } from "@/design";
+import { Button, DataTable, Drawer, DrillLink, EmptyState, ErrorState, Skeleton, Stat, Status } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { apiErrorState } from "@/lib/error";
 import { getS4Readiness, type S4Area, type S4Check } from "@/lib/api/migration";
 import { createBatch, errorText } from "@/lib/api/remediation";
 import { getRuleByCode } from "@/lib/api/rules";
 import { queryKeys } from "@/lib/query-keys";
+import { RuleCell } from "@/components/fix/rule-cell";
 
 const n = (v: number) => v.toLocaleString();
 const topFailing = (a: S4Area): S4Check | undefined => a.checks.find((c) => c.affected_count > 0);
@@ -33,7 +34,7 @@ function AreaDrawer({ area, versionId, onClose, onFix, fixing, canFix }: {
     })),
   });
   const columns = useMemo<ColumnDef<S4Check>[]>(() => [
-    { id: "check", header: "Check", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
+    { id: "check", header: "Check", cell: ({ row }) => <RuleCell id={row.original.check_id} /> },
     { id: "impact", header: "Impact", cell: ({ row }) => <Status kind="verdict" value={row.original.impact} /> },
     {
       id: "records", header: "Failing records", meta: { numeric: true },
@@ -69,7 +70,7 @@ function AreaDrawer({ area, versionId, onClose, onFix, fixing, canFix }: {
                   return (
                     <div key={c.check_id} className="flex flex-col gap-1 m-text-body">
                       <div className="flex items-center justify-between gap-2">
-                        <span><Mono>{c.check_id}</Mono> <Status kind="verdict" value={c.impact} /></span>
+                        <span><RuleCell id={c.check_id} /> <Status kind="verdict" value={c.impact} /></span>
                         {canFix ? (
                           <Button variant="secondary" size="sm" onClick={() => onFix(area, c)} pending={fixing === c.check_id}>Create fix batch</Button>
                         ) : null}

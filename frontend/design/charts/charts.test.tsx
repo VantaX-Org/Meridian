@@ -31,6 +31,9 @@ describe("charts onPointClick contract", () => {
     render(<Heatmap rows={["material_master"]} cols={["FI", "MM", "SD"]} cells={cells} onPointClick={onPointClick} />);
     expect(screen.getByLabelText("material_master FI: go")).toBeEnabled();
     expect(screen.getByLabelText("material_master SD: not measured")).toBeDisabled();
+    // a blank cell says so: titled "Not measured" with a dash, never an empty square
+    expect(screen.getByLabelText("material_master SD: not measured")).toHaveAttribute("title", "Not measured");
+    expect(screen.getByLabelText("material_master SD: not measured")).toHaveTextContent("–");
     fireEvent.click(screen.getByLabelText("material_master MM: no-go"));
     expect(onPointClick).toHaveBeenCalledTimes(1);
     expect(onPointClick).toHaveBeenCalledWith(cells[1]);
@@ -331,9 +334,9 @@ describe("run-keyed line charts and axis sizing", () => {
 
   it("categoryAxisWidth grows with the longest label within its bounds", () => {
     expect(categoryAxisWidth(["Go"])).toBe(60);
-    expect(categoryAxisWidth(["Business Partner / CVI", "Go"])).toBe(Math.ceil(22 * 6.5) + 12);
+    expect(categoryAxisWidth(["Business Partner / CVI", "Go"])).toBe(Math.ceil(22 * 7) + 12);
     expect(categoryAxisWidth(["x".repeat(80)])).toBe(180);
-    expect(categoryAxisWidth([1234, 5], 36, 72)).toBe(Math.ceil(4 * 6.5) + 12);
+    expect(categoryAxisWidth([1234, 5], 36, 72)).toBe(Math.ceil(4 * 7) + 12);
     expect(categoryAxisWidth([5], 36, 72)).toBe(36);
   });
 

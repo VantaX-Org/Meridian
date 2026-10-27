@@ -114,9 +114,9 @@ describe("criticalHighTotal", () => {
     expect(criticalHighTotal(objects)).toBe(6);
   });
 
-  it("opens the findings behind the count: one run's findings tab, else the current-state findings", () => {
+  it("opens the findings behind the count: one run's findings tab, else Fix work's current-state critical and high records", () => {
     expect(criticalHighHref([{ id: "r1" }])).toBe("/runs/r1?tab=findings&severity=critical,high");
-    expect(criticalHighHref([{ id: "r1" }, { id: "r2" }])).toBe("/insights?severity=critical,high");
+    expect(criticalHighHref([{ id: "r1" }, { id: "r2" }])).toBe("/fix?sev=blocking");
     // a count over one object of one run opens that object's findings only
     expect(criticalHighHref([{ id: "r1" }], "fi_gl")).toBe("/runs/r1?tab=findings&module=fi_gl&severity=critical,high");
   });

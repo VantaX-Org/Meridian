@@ -124,7 +124,14 @@
   {
     "name": "insights",
     "path": "/insights",
-    "heading": "Insights"
+    "heading": "Home",
+    "redirectsTo": "/home/lead"
+  },
+  {
+    "name": "inbox-issues",
+    "path": "/inbox?kind=issues",
+    "heading": "Fix",
+    "redirectsTo": "/fix?mine=1"
   },
   {
     "name": "insights-duplicates",

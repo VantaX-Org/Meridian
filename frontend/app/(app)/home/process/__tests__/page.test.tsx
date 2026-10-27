@@ -17,7 +17,7 @@ vi.mock("next/navigation", () => ({
 }));
 const perms = vi.hoisted(() => ({ can: (() => true) as (action: string) => boolean }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (a: string) => perms.can(a) }) }));
-vi.mock("@/components/help/home-onboarding", () => ({ HomeOnboarding: () => null }));
+vi.mock("@/components/help/home-onboarding", () => ({ HomeOnboarding: () => <div data-testid="home-onboarding" /> }));
 
 const SYS = { id: "sys-1", name: "KSA PRD", system_type: "S4HANA" } as unknown as SAPSystemExtended;
 const row = (l1: string, name: string): CatalogueRow => ({
@@ -50,7 +50,7 @@ beforeEach(() => {
 });
 
 describe("process home", () => {
-  it("leads with each L1's verdict, its blocking rule and a Can it run link; unscored L1s read as a dash", async () => {
+  it("leads with each L1's verdict, its blocking rule and a Can it run link; unscored L1s read Not scored", async () => {
     vi.spyOn(connectivityApi, "getBusinessProcess").mockResolvedValue([
       l1("PTP", "Procure to pay", [field({ dq_status: "red", affected_count: 1234, pass_rate: 40 }), field({ check_id: "AP002" })]),
     ]);
@@ -60,10 +60,37 @@ describe("process home", () => {
     expect(screen.getByText("AP001").closest("a")).toHaveAttribute("href", "/objects/accounts_payable?run=v1&tab=records&check_id=AP001");
     expect(screen.getByText("1,234")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Can it run" }).getAttribute("href")).toBe("/insights/process?l1=PTP&object=accounts_payable&run=v1");
-    expect(screen.getByText(/^1 of 1 scored processes no-go, from ap_1k, .* on KSA PRD$/)).toBeInTheDocument();
+    expect(screen.getByText(/^1 of 2 processes scored, 1 no-go, from ap_1k, .* on KSA PRD$/)).toBeInTheDocument();
+    expect(screen.getByText("Not scored")).toBeInTheDocument();
     const runs = screen.getAllByRole("link", { name: "Run discovery" }).map((a) => a.getAttribute("href"));
     expect(runs).toContain("/process/runs?system=sys-1&new=1&l1=PTP");
     expect(runs).toContain("/process/runs?system=sys-1&new=1&l1=R2R");
+  });
+
+  it("on a phone keeps the process and its verdict, and folds the actions into one named menu button in a narrow column", async () => {
+    vi.stubGlobal("matchMedia", vi.fn((q: string) => ({ matches: q === "(max-width: 639px)", media: q, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    vi.spyOn(connectivityApi, "getBusinessProcess").mockResolvedValue([
+      l1("PTP", "Procure to pay", [field({ dq_status: "red", affected_count: 1234, pass_rate: 40 })]),
+    ]);
+    renderWithQuery(<ProcessHomePage />);
+    const verdict = await screen.findByText("No-go");
+    expect(verdict.closest("[data-status='verdict']")).toHaveClass("m-status-dot");
+    expect(screen.getByRole("link", { name: "Procure to pay" })).toBeInTheDocument();
+    // No row of buttons: one compact menu per row, named for its process.
+    expect(screen.queryByRole("link", { name: "Can it run" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Hand AP001 to a steward/ })).toBeNull();
+    const menu = screen.getByRole("button", { name: "Actions for Procure to pay" });
+    const grid = screen.getAllByRole("grid")[0];
+    const actionHeader = within(grid).getAllByRole("columnheader").at(-1)!;
+    expect(actionHeader.style.width).toBe("48px");
+    // The low-priority columns hide below 640px.
+    for (const name of ["Blocking rule", "Rule failures", "Coverage", "Fitness", "Last run"]) {
+      expect(within(grid).getAllByRole("columnheader").find((h) => h.textContent === name)).toHaveClass("max-[640px]:hidden");
+    }
+    fireEvent.click(menu);
+    expect(await screen.findByRole("menuitem", { name: "Can it run" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Hand to a steward" })).toBeInTheDocument();
+    vi.unstubAllGlobals();
   });
 
   it("scores readiness from the selected system's newest run, never a newer run of another system", async () => {
@@ -99,6 +126,19 @@ describe("process home", () => {
     expect(screen.getByText(/^Discovery reads the document and change tables of each process from KSA PRD/)).toBeInTheDocument();
   });
 
+  it("offers the tour at the top, under the header and before the start panel, as on the other homes", async () => {
+    const never = (l: string, n: string): CatalogueRow => ({ ...row(l, n), coverage: "reference", last_run: null });
+    vi.spyOn(pdApi, "getCatalogue").mockResolvedValue([never("PTP", "Procure to pay")]);
+    vi.spyOn(connectivityApi, "getBusinessProcess").mockResolvedValue([]);
+    renderWithQuery(<ProcessHomePage />);
+    const start = await screen.findByText("No discovery run yet");
+    const tour = screen.getByTestId("home-onboarding");
+    const heading = screen.getByRole("heading", { name: "Home" });
+    expect(heading.compareDocumentPosition(tour) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(tour.compareDocumentPosition(start) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(tour.compareDocumentPosition(screen.getByText("Can each process run")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("leaves the start panel out once a process is discovered", async () => {
     vi.spyOn(connectivityApi, "getBusinessProcess").mockResolvedValue([l1("PTP", "Procure to pay", [field({})])]);
     renderWithQuery(<ProcessHomePage />);
@@ -119,7 +159,7 @@ describe("process home", () => {
     ]);
     renderWithQuery(<ProcessHomePage />);
     const insight = await screen.findByRole("region", { name: "Insight" });
-    expect(within(insight).getByText("1 of 1 scored process cannot run on KSA PRD")).toBeInTheDocument();
+    expect(within(insight).getByText("1 of 2 processes cannot run on KSA PRD; 1 not scored yet")).toBeInTheDocument();
     expect(within(insight).getByText("Procure to pay: Tax number fails 1,234 records")).toBeInTheDocument();
     expect(within(insight).getByRole("link", { name: "Open Procure to pay" })).toHaveAttribute("href", "/insights/process?l1=PTP&object=accounts_payable&run=v1");
   });
@@ -128,7 +168,7 @@ describe("process home", () => {
     vi.spyOn(connectivityApi, "getBusinessProcess").mockResolvedValue([l1("PTP", "Procure to pay", [field({})])]);
     renderWithQuery(<ProcessHomePage />);
     const insight = await screen.findByRole("region", { name: "Insight" });
-    expect(within(insight).getByText("Every scored process can run on KSA PRD")).toBeInTheDocument();
+    expect(within(insight).getByText("Every scored process can run on KSA PRD; 1 not scored yet")).toBeInTheDocument();
     expect(within(insight).getByRole("link", { name: "Open processes" })).toHaveAttribute("href", "/process?system=sys-1");
   });
 

@@ -7,6 +7,8 @@ import * as analyticsApi from "@/lib/api/analytics";
 import * as downloadApi from "@/lib/api/download";
 import * as findingsApi from "@/lib/api/findings";
 import * as migrationApi from "@/lib/api/migration";
+import * as ownersApi from "@/lib/api/owners";
+import * as rulesApi from "@/lib/api/rules";
 import ExecPage from "../page";
 
 const h = vi.hoisted(() => ({ qs: "run=v1", path: "/insights", versions: [] as unknown[] }));
@@ -115,7 +117,9 @@ describe("ExecPage", () => {
     expect(screen.queryByText("No executive summary yet")).toBeNull();
     expect(screen.getByText("No migration wave is set up yet")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open migration cockpit" })).toHaveAttribute("href", "/migration");
-    expect(screen.getAllByText("Nobody owns an issue yet").length).toBeGreaterThan(0);
+    // Nobody owning an issue is said under the owners' figure; What changed describes a change, never ownership.
+    expect(screen.getByText("Nobody owns an issue yet").closest("a")?.getAttribute("href")).toBe("/insights/owners?run=v1");
+    expect(screen.getByText("First scored run: nothing to compare yet")).toBeInTheDocument();
     // The hero's figures open the same run they count, and with nothing blocked the next step is the board pack.
     expect(screen.getByText("Objects blocked in a wave").closest("a")?.getAttribute("href")).toBe("/insights/readiness?run=v1");
     const dl = vi.spyOn(downloadApi, "downloadAuthenticated").mockResolvedValue(undefined);
@@ -123,13 +127,43 @@ describe("ExecPage", () => {
     expect(dl).toHaveBeenCalledWith(expect.stringContaining("v1"), `Meridian board pack – ${TODAY}.pdf`);
     // No subscription is configured, so no fee is printed.
     expect(screen.queryByText("Annual subscription")).toBeNull();
-    // ROI without any cost avoided says so instead of "0x" and "0 months".
-    expect(await screen.findByText("No cost avoided yet")).toBeInTheDocument();
+    // The three sections with nothing in them yet collapse into one line, each with where to start it; ROI without
+    // any cost avoided says so there instead of "0x" and "0 months".
+    const notYet = await screen.findByTestId("exec-not-yet");
+    expect(notYet).toHaveTextContent("Not yet: no migration wave, no owner scored and no cost avoided.");
+    expect(within(notYet).getByRole("link", { name: "Assign records in Fix work" })).toHaveAttribute("href", "/fix?run=v1");
+    expect(within(notYet).getByRole("link", { name: "Review fixes" })).toBeInTheDocument();
+    for (const title of ["Readiness by wave", "Owners", "Return on investment"]) expect(screen.queryByRole("heading", { name: title })).toBeNull();
+    expect(screen.queryByText("No waves yet")).toBeNull();
     expect(screen.queryByText("0x")).toBeNull();
     expect(screen.queryByText(/0 months/)).toBeNull();
   });
 
-  it("leads Do next with the cap when the exec payload carries one, and reads the cap from the API", async () => {
+  it("names the one Do next: the run's lowest-scoring object and the rule that caps it, as Home and the overview do", async () => {
+    const capped = { composite_score: 70, dimension_scores: {}, critical_count: 1, high_count: 0, medium_count: 0, low_count: 0, total_checks: 10, passing_checks: 9, capped: true, cap_reason: "MM001: material type missing — score capped at 70" };
+    h.versions = [{ id: "v1", label: "ECC PRD", status: "complete", run_at: "2026-10-20T08:00:00Z", metadata: {}, dqs_summary: { material_master: capped, accounts_payable: { ...capped, composite_score: 88, capped: false, cap_reason: null } } }];
+    vi.spyOn(insightsApi, "getExec").mockResolvedValue({ version_id: "v1", narrative: "", readiness_cells: [], waterfall: [], impact_rows: [], owner_rows: [], composite: 70, cap: 70, cap_reason: "MM001: material type missing" } as never);
+    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [] } as never);
+    renderWithQuery(<ExecPage />);
+    expect(await screen.findByText("Material master comes first, the lowest score at 70.0: fix MM001, which caps it")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Fix MM001" })).toHaveAttribute("href", "/fix?run=v1&module=material_master&check=MM001");
+    // The cap in Home's unit and scope: capping rules and capped objects out of those measured, never one object's reason.
+    expect(screen.getByText("1 critical failing rule caps 1 of 2 objects: MM001")).toBeInTheDocument();
+  });
+
+  it("names no feature price it does not have, and shows the failing records' cost at risk instead", async () => {
+    vi.spyOn(insightsApi, "getExec").mockResolvedValue({ version_id: "v1", narrative: "", readiness_cells: [], waterfall: [], impact_rows: [], owner_rows: [] } as never);
+    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [] } as never);
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue({ cost_at_risk: 4840487383 } as never);
+    const settings = await import("@/lib/api/settings");
+    vi.spyOn(settings, "getCostModel").mockResolvedValue({ currency: "ZAR" } as never);
+    renderWithQuery(<ExecPage />);
+    expect(await screen.findByText("No SAP feature is priced yet; the failing records carry ZAR 4.84 bn cost at risk")).toBeInTheDocument();
+    expect(screen.getByText("Cost at risk")).toBeInTheDocument();
+    expect(screen.queryByText("Nothing is priced at risk yet")).toBeNull();
+  });
+
+  it("falls back to the cap from the API when the run's scores are not in the run list", async () => {
     vi.spyOn(insightsApi, "getExec").mockResolvedValue({ version_id: "v1", narrative: "", readiness_cells: [], waterfall: [], impact_rows: [], owner_rows: [], cap: 70, cap_reason: "MM001: material type missing — score capped at 70" } as never);
     vi.spyOn(insightsApi, "getOverview").mockResolvedValue({
       version_id: "v1", run_label: "Run 1", run_at: null, previous_version_id: null,
@@ -209,8 +243,10 @@ describe("ExecPage", () => {
         { id: "f1", version_id: "co2", module: "controlling", check_id: "CO001", severity: "critical", dimension: "completeness", affected_count: 40, total_count: 100, pass_rate: 60, details: {} },
         { id: "f0", version_id: "co1", module: "controlling", check_id: "CO099", severity: "critical", dimension: "completeness", affected_count: 99, total_count: 100, pass_rate: 1, details: {} },
         { id: "f2", version_id: "mm1", module: "material_master", check_id: "MM045", severity: "high", dimension: "validity", affected_count: 12, total_count: 100, pass_rate: 88, details: {} },
+        { id: "f3", version_id: "mm1", module: "material_master", check_id: "MM050", severity: "medium", dimension: "validity", affected_count: 100, total_count: 100, pass_rate: 0, details: {} },
+        { id: "f4", version_id: "mm1", module: "material_master", check_id: "MM900", severity: "low", dimension: "validity", affected_count: 5000, total_count: 9000, pass_rate: 44, details: {} },
       ],
-      total: 3,
+      total: 5,
     } as never);
     renderWithQuery(<ExecPage />);
     // every object at its latest run, not the newest run's rules alone; CO099 is from an older controlling run
@@ -218,8 +254,42 @@ describe("ExecPage", () => {
     expect(screen.getByText("MM045")).toBeInTheDocument();
     expect(screen.queryByText("CO099")).toBeNull();
     expect(ranking).not.toHaveBeenCalled();
+    // by impact, failing records x severity weight: CO001 40 x 10, MM050 100 x 2, MM045 12 x 5; low severity left out
+    const ids = screen.getAllByText(/^(CO001|MM045|MM050|MM900)$/).map((el) => el.textContent);
+    expect(ids).toEqual(["CO001", "MM050", "MM045"]);
+    expect(screen.getByRole("columnheader", { name: "Owner" })).toBeInTheDocument();
+    // the score over runs, beside the target, in current mode
+    expect(screen.getByRole("heading", { name: "Score over runs" })).toBeInTheDocument();
     // (60 + 80) / 2 against (50 + 80) / 2: up 5 with the latest run, as Home and the overview say
     expect(within(screen.getByTestId("hero-verdict")).getByText("Up 5 with the latest run")).toBeInTheDocument();
+  });
+
+  it("names DDIC and message-less rules in Fix first, and says the owner is unavailable when owners fail to load", async () => {
+    h.qs = "";
+    h.path = "/insights/exec";
+    const sum = (score: number) => ({ composite_score: score, dimension_scores: {}, critical_count: 1, high_count: 0, medium_count: 0, low_count: 0, total_checks: 10, passing_checks: 9, capped: false, cap_reason: null });
+    h.versions = [{ id: "mm1", label: "material_master_25k", status: "complete", run_at: "2026-10-16T03:00:00Z", metadata: { modules: ["material_master"] }, dqs_summary: { material_master: sum(70) } }];
+    vi.spyOn(insightsApi, "getExec").mockResolvedValue({
+      version_id: null, latest_version_id: "mm1", scope: "current", composite: 70, cap: null, cap_reason: null,
+      narrative: "", readiness_cells: [], waterfall: [], impact_rows: [], owner_rows: [],
+    });
+    vi.spyOn(insightsApi, "getCurrentOverview").mockResolvedValue({ dqs: { composite: 70, previous: null, delta: null, tier: "at_risk", capped: false, cap_reason: null } } as never);
+    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "mm1", rows: [] } as never);
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockRejectedValue(new Error("not under test"));
+    vi.spyOn(findingsApi, "getFindings").mockResolvedValue({
+      findings: [
+        { id: "f1", version_id: "mm1", module: "material_master", check_id: "DDIC-MARA-TYPE", severity: "high", dimension: "validity", affected_count: 400, total_count: 1000, pass_rate: 60, details: { kind: "type", table: "MARA" } },
+        { id: "f2", version_id: "mm1", module: "material_master", check_id: "MM045", severity: "critical", dimension: "completeness", affected_count: 40, total_count: 100, pass_rate: 60, details: {} },
+      ],
+      total: 2,
+    } as never);
+    vi.spyOn(rulesApi, "getRuleNames").mockResolvedValue({ names: { MM045: "MM045: Material description is missing" }, generated: {} });
+    vi.spyOn(ownersApi, "getOwners").mockRejectedValue(new Error("owners down"));
+    renderWithQuery(<ExecPage />);
+    expect(await screen.findByText("Value does not match the field's SAP data type (MARA)")).toBeInTheDocument();
+    expect(await screen.findByText("Material description is missing")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByText("Owner unavailable").length).toBe(2));
+    expect(screen.queryByText("Not set")).toBeNull();
   });
 
   it("is empty only when the tenant has no run at all", async () => {
@@ -240,9 +310,10 @@ describe("ExecPage", () => {
     vi.spyOn(insightsApi, "getProvenCost").mockResolvedValue({ currency: "EUR" } as never);
     vi.spyOn(analyticsApi, "getRoi").mockResolvedValue({ roi: { subscription_annual: 180000, risk_mitigated: 540000, roi_multiple: 3, payback_months: 4, currency: "ZAR" }, cost_avoidance_history: [] });
     renderWithQuery(<ExecPage />);
-    expect(await screen.findByText(/ZAR\s540,000/)).toBeInTheDocument();
-    expect(screen.getByText(/ZAR\s180,000/)).toBeInTheDocument();
-    expect(screen.queryByText(/EUR\s540,000/)).toBeNull();
+    // Money reads short, as on Home: "ZAR 540 k", never "ZAR 540,000.00".
+    expect(await screen.findByText(/ZAR\s540\sk/)).toBeInTheDocument();
+    expect(screen.getByText(/ZAR\s180\sk/)).toBeInTheDocument();
+    expect(screen.queryByText(/EUR\s540/)).toBeNull();
   });
 
   it("states only the cost avoided when no subscription is configured", async () => {
@@ -251,7 +322,7 @@ describe("ExecPage", () => {
     vi.spyOn(insightsApi, "getProvenCost").mockResolvedValue({ currency: "ZAR" } as never);
     vi.spyOn(analyticsApi, "getRoi").mockResolvedValue({ roi: { subscription_annual: null, risk_mitigated: 540000, roi_multiple: null, payback_months: null, currency: "ZAR" }, cost_avoidance_history: [] });
     renderWithQuery(<ExecPage />);
-    expect(await screen.findByText(/ZAR\s540,000/)).toBeInTheDocument();
+    expect(await screen.findByText(/ZAR\s540\sk/)).toBeInTheDocument();
     expect(screen.getByText("Cost avoided")).toBeInTheDocument();
     expect(screen.queryByText("ROI multiple")).toBeNull();
     expect(screen.queryByText("Payback")).toBeNull();
@@ -270,9 +341,9 @@ describe("ExecPage", () => {
     vi.spyOn(insightsApi, "getProvenCost").mockResolvedValue({ currency: "ZAR" } as never);
     renderWithQuery(<ExecPage />);
     const caption = await screen.findByText(/at risk across 2 priced features/);
-    expect(caption.textContent).toMatch(/ZAR\s5,674,130 at risk across 2 priced features; Invoice posting carries the most, ZAR\s5,672,930$/);
+    expect(caption.textContent).toMatch(/ZAR\s5\.67\sm at risk across 2 priced features; Invoice posting carries the most, ZAR\s5\.67\sm$/);
     const chart = screen.getByRole("img", { name: /Value at risk by feature/ });
-    expect(chart.getAttribute("aria-label")).toMatch(/Invoice posting ZAR\s5,672,930, MIGO ZAR\s1,200/);
+    expect(chart.getAttribute("aria-label")).toMatch(/Invoice posting ZAR\s5\.67\sm, MIGO ZAR\s1\.2\sk/);
   });
 
   it("compares the board pack with the run before, draws one score, and counts migration gaps into the wave", async () => {
@@ -287,7 +358,7 @@ describe("ExecPage", () => {
     } as never);
     vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [] } as never);
     vi.spyOn(migrationApi, "getWaves").mockResolvedValue([{ id: "w1", name: "Wave 1" }] as never);
-    const aggregate = vi.spyOn(findingsApi, "getFindingsAggregate");
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue({ cost_at_risk: 0 } as never);
     const download = vi.spyOn(downloadApi, "downloadAuthenticated").mockResolvedValue();
     h.versions = [
       { id: "v1", label: "ECC PRD", status: "complete", run_at: "2026-10-20T08:00:00Z", metadata: { modules: ["material_master"] }, dqs_summary: {} },
@@ -295,9 +366,10 @@ describe("ExecPage", () => {
     ];
     renderWithQuery(<ExecPage />);
     expect(await screen.findByText("One wave is blocked.")).toBeInTheDocument();
-    // One score: the hero with a way to how it is scored, no second ring from the findings aggregate.
+    // One score: the hero with a way to how it is scored, no second ring. The findings aggregate is read for the
+    // cost at risk only (hooks/use-cost-at-risk.ts), never for a score.
     expect(screen.getByTestId("how-scored")).toHaveAttribute("href", "/rules/scoring");
-    expect(aggregate).not.toHaveBeenCalled();
+    expect(screen.getAllByTestId("hero-verdict")).toHaveLength(1);
     // blocker_count is migration gaps, opened on the wave's gap view.
     expect(screen.getByRole("columnheader", { name: /Migration gaps/ })).toBeInTheDocument();
     expect(screen.queryByText("Blocking rules")).toBeNull();

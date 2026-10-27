@@ -142,6 +142,32 @@ def _find_anomalies(df: pd.DataFrame, module: str, method: str = "iqr") -> list[
     return anomalies[:500]  # Cap at 500 anomalies per module
 
 
+def _record_key_of(df: pd.DataFrame, col: str, idx) -> Optional[str]:
+    """The record an outlier sits on, keyed as the check engine keys it (``PERNR=00001001|SUBTY=0001``):
+    the DDIC key fields of the column's table (``PA0007.EMPCT`` -> PA0007). None when the column has no
+    table prefix or the frame holds none of the table's key fields, so the row is named by its position."""
+    from checks.base import record_keys
+    from sap.ddic import get_dictionary
+
+    if "." not in col:
+        return None
+    table = col.split(".", 1)[0]
+    key_cols = [f"{table}.{k}" for k in get_dictionary().keys(table) if f"{table}.{k}" in df.columns]
+    if not key_cols:
+        return None
+    return str(record_keys(df.loc[[idx]], key_cols).iloc[0])
+
+
+def _with_record_keys(df: pd.DataFrame, anomalies: list[dict]) -> list[dict]:
+    """Each anomaly with its ``record_key`` (None where the record cannot be keyed)."""
+    for a in anomalies:
+        try:
+            a["record_key"] = _record_key_of(df, a["field"], a["record_index"])
+        except (KeyError, IndexError):
+            a["record_key"] = None
+    return anomalies
+
+
 def _compute_severity(value: float, series: pd.Series) -> str:
     """Compute severity based on distance from typical values."""
     mean = series.mean()
@@ -187,7 +213,7 @@ def run_anomaly(self, version_id: str, tenant_id: str, module: str, parquet_path
         logger.info(f"Loaded {len(df)} records for anomaly detection")
         
         # Find anomalies
-        anomalies = _find_anomalies(df, module, method)
+        anomalies = _with_record_keys(df, _find_anomalies(df, module, method))
         
         # Record anomalies in DB
         import json as _json
@@ -199,12 +225,12 @@ def run_anomaly(self, version_id: str, tenant_id: str, module: str, parquet_path
                     text("""
                         INSERT INTO data_anomalies (
                             id, tenant_id, version_id, module_id,
-                            field_name, field_value, record_index,
+                            field_name, field_value, record_index, record_key,
                             detection_method, z_score, severity,
                             bounds_json, detected_at
                         ) VALUES (
                             gen_random_uuid(), :tid, :vid, :mod,
-                            :field, :value, :record_idx,
+                            :field, :value, :record_idx, :record_key,
                             :method, :z_score, :severity,
                             CAST(:bounds AS jsonb), now()
                         )
@@ -217,6 +243,7 @@ def run_anomaly(self, version_id: str, tenant_id: str, module: str, parquet_path
                         "field": anomaly["field"],
                         "value": anomaly["value"],
                         "record_idx": anomaly["record_index"],
+                        "record_key": anomaly.get("record_key"),
                         "method": anomaly["detection_method"],
                         "z_score": anomaly.get("z_score"),
                         "severity": anomaly["severity"],

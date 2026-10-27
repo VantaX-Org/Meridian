@@ -238,16 +238,18 @@ describe("system detail page", () => {
     expect(box).not.toBeChecked();
   });
 
-  it("writes the system type as its product name and says runs come from uploads when nothing was extracted", async () => {
+  it("writes the system type as its product name and counts the latest run's objects when nothing was extracted", async () => {
     mockHappyPath();
     vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({
-      versions: [{ id: "v1", run_at: "2026-10-01T00:00:00Z", label: null, status: "complete", objects: ["material_master"], scope: {}, records: {}, analysed_at: "2026-10-01T00:00:00Z", rule_set: null, baseline: false, analysable: true, dqs: { material_master: 70 } }] as never,
+      versions: [{ id: "v1", run_at: "2026-10-01T00:00:00Z", label: null, status: "complete", objects: ["material_master"], scope: {}, records: { material_master: 7 }, analysed_at: "2026-10-01T00:00:00Z", rule_set: null, baseline: false, analysable: true, dqs: { material_master: 70 } }] as never,
       download: null,
     });
     renderWithQuery(<SystemPage />);
     await waitFor(() => expect(screen.getByText(/ECC, PRD/)).toBeInTheDocument());
     expect(screen.queryByText(/Ecc/)).toBeNull();
-    expect(screen.getAllByText("Runs come from uploads").length).toBeGreaterThan(0);
+    // KMZ-SIM said "Objects loaded —, Runs come from uploads" beside a run of 7 records and its findings.
+    expect(screen.getAllByText("7 records in the latest run").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Runs come from uploads")).toBeNull();
     expect(screen.queryByText("Nothing extracted yet")).toBeNull();
     expect(screen.queryByText(/0 of /)).toBeNull();
   });
@@ -267,7 +269,7 @@ describe("system detail page", () => {
     expect(stat?.textContent?.match(/70(\.0)?/g)).toHaveLength(1);
   });
 
-  it("opens the latest run's Findings tab from the score and open-findings tiles", async () => {
+  it("opens the latest run's Findings tab from the score and failing-rules tiles", async () => {
     mockHappyPath();
     vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({
       versions: [{ id: "v1", run_at: "2026-10-01T00:00:00Z", label: null, status: "complete", objects: ["material_master"], scope: {}, records: {}, analysed_at: "2026-10-01T00:00:00Z", rule_set: null, baseline: false, analysable: true, dqs: { material_master: 70 } }] as never,
@@ -276,7 +278,7 @@ describe("system detail page", () => {
     renderWithQuery(<SystemPage />);
     const ring = await screen.findByRole("img", { name: "Score 70.0" });
     expect(ring.closest("a")).toHaveAttribute("href", "/runs/v1?tab=findings");
-    const open = screen.getByText("Open findings").closest("a");
+    const open = screen.getByText("Failing rules").closest("a");
     expect(open).toHaveAttribute("href", "/runs/v1?tab=findings");
   });
 
@@ -315,6 +317,23 @@ describe("system detail page", () => {
     expect(within(bench).getAllByRole("link")).toHaveLength(1);
   });
 
+  it("charts the same record counts as the list, says how many objects are loaded, and never 'no rows' beside 7 records", async () => {
+    mockHappyPath();
+    const mod = (module: string, row_count: number) => ({ module, system_type: "ecc", enabled: true, last_synced_at: null, last_sync_status: null, row_count, config_synced: false });
+    vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([mod("accounts_payable", 0), mod("fi_gl", 0), mod("material_master", 0)] as never);
+    // Records come from the latest run only (an uploaded or analysed run), not from an extraction.
+    vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({
+      versions: [{ id: "v1", run_at: "2026-10-01T00:00:00Z", label: null, status: "complete", objects: ["accounts_payable"], scope: {}, records: { accounts_payable: 7 }, analysed_at: "2026-10-01T00:00:00Z", rule_set: null, baseline: false, analysable: true, dqs: { accounts_payable: 70 } }] as never,
+      download: null,
+    });
+    renderWithQuery(<SystemPage />);
+    const bench = await screen.findByTestId("system-workbench");
+    expect(within(bench).getByText("3 objects, 1 loaded; most records first")).toBeInTheDocument();
+    expect(within(bench).getAllByText("7 records").length).toBeGreaterThan(0);
+    const chart = screen.getByText("Objects by records").closest("section, div[class]")!.parentElement as HTMLElement;
+    expect(within(chart).queryByText("No rows loaded yet")).toBeNull();
+  });
+
   it("offers Extract from the empty summary of an object with no records", async () => {
     mockHappyPath();
     vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([
@@ -341,6 +360,20 @@ describe("system detail page", () => {
     expect(analyseBtn).toBeDisabled();
   });
 
+  it("on the Objects tab, badges an object whose extraction source is unverified as Preview", async () => {
+    tab = "objects";
+    mockHappyPath();
+    vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([
+      { module: "fi_gl", system_type: "successfactors", enabled: true, last_synced_at: null, last_sync_status: null, row_count: 10, config_synced: false, preview_sources: [] },
+      { module: "learning_management", system_type: "successfactors", enabled: true, last_synced_at: null, last_sync_status: null, row_count: 5, config_synced: false,
+        preview_sources: [{ source: "LearningHistoryV1", reason: "not in canonical/successfactors.yaml" }] },
+    ] as never);
+    renderWithQuery(<SystemPage />);
+    const badge = await screen.findByLabelText("Preview: LearningHistoryV1. Source name not yet verified against SAP; extraction may fail");
+    expect(badge).toHaveTextContent("Preview");
+    expect(screen.getAllByText("Preview")).toHaveLength(1); // only the unverified object
+  });
+
   it("shows the system role in the header", async () => {
     mockHappyPath();
     renderWithQuery(<SystemPage />);
@@ -362,6 +395,16 @@ describe("system detail page", () => {
     refetch.mockResolvedValue([SYSTEM]);
     retry.click();
     await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
+  });
+
+  it("says why the connection fails as a sentence, with the stored reason code only in the tooltip", async () => {
+    mockHappyPath();
+    const raw = "pyrfc_not_installed: build the API image with the SAP NW RFC SDK";
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([{ ...SYSTEM, health_status: "unreachable", health_message: raw } as SAPSystemExtended]);
+    renderWithQuery(<SystemPage />);
+    const sentence = await screen.findByText("SAP RFC library not installed on the server");
+    expect(sentence).toHaveAttribute("title", raw);
+    expect(screen.queryByText(new RegExp("pyrfc_not_installed"))).not.toBeInTheDocument();
   });
 
   it("lands on the pilot tab when ?tab=pilot is present", async () => {

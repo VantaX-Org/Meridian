@@ -9,26 +9,26 @@ import { getSystems } from "../../lib/api/connectivity";
 import { queryKeys } from "../../lib/query-keys";
 import { useNavLoading, useVisibleNav } from "../../hooks/use-nav";
 import { useRole } from "../../hooks/use-role";
-import { personaForRole, type Persona } from "../../lib/persona";
+import { APPROVALS_HREF, pillSetFor, type PillSet } from "../../lib/persona";
 import { MeridianMark } from "../icons/Mark";
 import { IconChevronDown, IconGrid } from "../icons";
-import { SETTINGS_HREF, activeHref, flattenNav, resolveNavHref, splitNav, type NavGroup, type NavItem } from "../../lib/nav";
+import { PERSONA_PILLS, SETTINGS_HREF, activeHref, flattenNav, resolveNavHref, splitNav, type NavGroup, type NavItem } from "../../lib/nav";
 import { Badge } from "../primitives/Badge";
 import { Skeleton } from "../primitives/Skeleton";
 
 /**
- * The index bar: the product's top row. The brand, the six places everyone works from (Fix work, Objects, Runs,
- * Processes, Progress, Inbox: lib/nav.ts's main group) as one pill strip with live counts, a "More" menu led by
+ * The index bar: the product's top row. The brand, the role's own pills (at most six, from lib/nav.ts PERSONA_PILLS:
+ * a lead's Home, Objects, Fix work, Inbox, Progress, Runs, and so on) as one pill strip with live counts, a "More" menu led by
  * All features (/features) and holding every other visible page under its section (Analysis, Master data, Rules,
  * Data in, Admin), and the shell's
  * controls on the right (search, jobs, notifications, help, the user). There is no sidebar, collapsed state or flyout.
  * Links never carry `?run=`: each section opens on its own latest run (lib/run-scope.ts).
- * The process persona's strip leads with Processes and moves Fix work into More (`railSplit`): its day is the
- * catalogue, not the fix queue.
+ * Each role picks and orders its pills (lib/nav.ts PERSONA_PILLS via `railSplit`): a lead starts on Home, a steward
+ * on Fix work, a data owner on Approvals, Basis on Systems and Jobs, the process analyst on Processes.
  */
 
 /** The pill label where the nav label is too long for the strip. */
-const PILL_LABEL: Record<string, string> = { "/process": "Processes" };
+const PILL_LABEL: Record<string, string> = { "/process": "Processes", [APPROVALS_HREF]: "Approvals" };
 /** Items whose children are tabs of the item's own page, so the More panel lists the item once and not its tabs. */
 const FOLDED = new Set([SETTINGS_HREF]);
 const MORE_PANEL_ID = "topnav-more";
@@ -51,14 +51,14 @@ const HEALTH_PIP_COLOR: Record<"critical" | "high" | "pass", string> = {
 type MoreGroup = { group: string; items: NavItem[] };
 
 /**
- * The pills and the More panel for one persona: main's split (lib/nav.ts `splitNav`), then two adjustments.
- * A folded item (Settings) stands for its tabs, so its children leave the panel. The process persona's day is
- * the catalogue, not the fix queue: its strip leads with As-is processes (labelled Processes), and Fix work moves
- * to the top of More.
+ * The pills and the More panel for one pill set (lib/persona.ts `pillSetFor`): the nav's split (lib/nav.ts
+ * `splitNav`), then the set's own pills (`PERSONA_PILLS`, in order, skipping what the viewer cannot see). A pill
+ * taken from More leaves More, along with any entry that opens the same page; main items the set leaves out move
+ * to the top of More. A folded item (Settings) stands for its tabs, so its children leave the panel.
  */
 export function railSplit(
   groups: readonly NavGroup[],
-  persona: Persona,
+  pillSet: PillSet,
   resolve: (href: string) => string = (h) => h,
 ): { main: NavItem[]; more: MoreGroup[] } {
   const split = splitNav(groups, resolve);
@@ -67,16 +67,19 @@ export function railSplit(
       .filter((i) => FOLDED.has(i.href))
       .flatMap((i) => (i.children ?? []).map((c) => c.href)),
   );
-  let main = split.main;
-  let more: MoreGroup[] = split.more.map((g) => ({ group: g.group, items: g.items.filter((i) => !folded.has(i.href)) }));
-  const processItem = persona === "process" ? main.find((i) => i.href === "/process") : undefined;
-  if (processItem) {
-    const fixItem = main.find((i) => i.href === "/fix");
-    main = [processItem, ...main.filter((i) => i !== processItem && i !== fixItem)];
-    if (fixItem) {
-      const [first, ...rest] = more;
-      more = first ? [{ group: first.group, items: [fixItem, ...first.items] }, ...rest] : [{ group: "Work", items: [fixItem] }];
-    }
+  const moreItems = split.more.flatMap((g) => g.items);
+  // A pill may be a main item, a main item's child (the data owner's Approvals) or a More entry (Home, Systems).
+  const candidates = [...flattenNav(split.main), ...moreItems];
+  const main = PERSONA_PILLS[pillSet]
+    .map((href) => candidates.find((i) => i.href === href))
+    .filter((i): i is NavItem => i !== undefined);
+  const taken = new Set(main.map((i) => resolve(i.href)));
+  const displaced = split.main.filter((i) => !main.includes(i));
+  const keep = (i: NavItem) => !main.includes(i) && !folded.has(i.href) && !taken.has(resolve(i.href));
+  let more: MoreGroup[] = split.more.map((g) => ({ group: g.group, items: g.items.filter(keep) }));
+  if (displaced.length) {
+    const [first, ...rest] = more;
+    more = first ? [{ group: first.group, items: [...displaced, ...first.items] }, ...rest] : [{ group: "Work", items: displaced }];
   }
   return { main, more: more.filter((g) => g.items.length > 0) };
 }
@@ -117,10 +120,13 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
   );
 
   const { main: primaryItems, more } = useMemo(
-    () => railSplit(groups, personaForRole(role), (href) => resolveNavHref(href, role, can)),
+    () => railSplit(groups, pillSetFor(role), (href) => resolveNavHref(href, role, can)),
     [groups, role, can],
   );
-  const isActive = (item: NavItem) => item.href === activeItemHref || !!item.children?.some((c) => c.href === activeItemHref);
+  // A child that is a pill of its own (the data owner's Approvals under Inbox) lights its own pill, not its parent's too.
+  const pillHrefs = new Set(primaryItems.map((i) => i.href));
+  const isActive = (item: NavItem) =>
+    item.href === activeItemHref || !!item.children?.some((c) => c.href === activeItemHref && !pillHrefs.has(c.href));
   // A More entry is current on its own page, and a folded one (Settings) also on its tabs, which the panel does not list.
   const isMoreItemActive = (item: NavItem) => item.href === activeItemHref || (FOLDED.has(item.href) && isActive(item));
   const moreActive = more.some((g) => g.items.some(isMoreItemActive));

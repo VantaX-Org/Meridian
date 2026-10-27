@@ -2,6 +2,8 @@
 import type { Verdict } from "@/design";
 import type { SystemVersion } from "@/lib/api/system-objects";
 import type { HealthStatus, SyncProfile } from "@/types/api";
+import { labelOf } from "@/lib/format";
+import { explainJobError } from "@/lib/job-error";
 
 export const HEALTH_LABEL: Record<HealthStatus, string> = {
   healthy: "Healthy",
@@ -20,7 +22,30 @@ export const HEALTH_VERDICT: Record<HealthStatus, Verdict | null> = {
   unknown: null,
 };
 
-const meanDqs = (v: SystemVersion): number | null => {
+/** Reason codes a health check stores (sap/rfc.py, api/services/connectivity_manager.py), as plain sentences. */
+const HEALTH_REASONS: Record<string, string> = {
+  pyrfc_not_installed: "SAP RFC library not installed on the server",
+  "ping failed": "The system did not answer the connection test",
+  "connection successful": "Connection successful",
+};
+
+/**
+ * Why a connection is in its state, in words, with the raw text the check stored for a tooltip: a known reason code
+ * ("pyrfc_not_installed: build the API image ...") reads as its sentence; a recognisable SAP or network error as the
+ * job-error summary; anything else keeps its own text. Null when the check stored no reason.
+ */
+export function healthReason(raw: string | null | undefined): { text: string; raw: string } | null {
+  const detail = raw?.trim();
+  if (!detail) return null;
+  const code = detail.split(":")[0].trim().toLowerCase();
+  if (Object.hasOwn(HEALTH_REASONS, code)) return { text: HEALTH_REASONS[code], raw: detail };
+  const job = explainJobError(detail);
+  if (job && job.kind !== "other") return { text: job.summary, raw: detail };
+  // An unknown snake_case code reads as words; the raw text stays in the tooltip.
+  return { text: /^[a-z0-9]+(?:_[a-z0-9]+)+$/.test(code) ? labelOf(code) : detail, raw: detail };
+}
+
+const meanDqs =(v: SystemVersion): number | null => {
   const vals = Object.values(v.dqs ?? {}).filter((x): x is number => typeof x === "number");
   return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
 };

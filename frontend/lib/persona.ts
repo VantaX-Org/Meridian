@@ -35,8 +35,21 @@ export function personaForRole(role: Role): Persona {
   return PERSONA_BY_ROLE[role];
 }
 
-/** Fix work's approvals tab: where an approver who cannot apply fixes (the data owner) does their work. */
-export const APPROVALS_HREF = "/fix?tab=batches";
+/**
+ * Which pill strip a role gets (lib/nav.ts PERSONA_PILLS): its persona's, except the data owner (and the legacy
+ * approver it maps to), who shares the steward home but whose day is approving, not fixing.
+ */
+export type PillSet = Persona | "owner";
+
+export function pillSetFor(role: Role): PillSet {
+  return role === "data_owner" || role === "approver" ? "owner" : personaForRole(role);
+}
+
+/**
+ * Inbox › Approvals: where an approver who cannot apply fixes (the data owner) does their work. The pending SAP
+ * change requests sit here; Fix work's batches tab needs view_audit, which a data owner does not hold.
+ */
+export const APPROVALS_HREF = "/inbox?kind=approvals";
 
 /** An approver who cannot apply: every control on "Records to fix" is apply-only, so their work is the approvals tab. */
 export const approvesOnly = (can: (action: string) => boolean): boolean => can("approve") && !can("apply");
@@ -45,7 +58,7 @@ export const approvesOnly = (can: (action: string) => boolean): boolean => can("
  * Where this role lands: its persona page, except stewards, who start on Fix work (the steward home,
  * /home/steward, stays routable and is still what "View as: Steward" opens). A steward whose role may neither
  * approve nor apply (a custom role) cannot open Fix work, so pass `can` and they land on the steward home instead;
- * one who may approve but not apply (the data owner) lands on Fix work's approvals tab.
+ * one who may approve but not apply (the data owner) lands on Inbox › Approvals.
  */
 export function homeHrefForRole(role: Role, can?: (action: string) => boolean): string {
   const persona = personaForRole(role);

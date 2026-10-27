@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Button, DataTable, EmptyState, ErrorState, Mono, Pill, Skeleton, Stat, type PillTone } from "@/design";
+import { RuleCell } from "@/components/fix/rule-cell";
 import { exportConfigMatches, getConfigMatches, type ConfigMatch } from "@/lib/api/config-matches";
 import { errorText } from "@/lib/api/remediation";
 import { analyseVersion } from "@/lib/api/system-objects";
@@ -35,7 +36,7 @@ export function ConfigMatchesTab({ versionId }: { versionId: string }) {
   });
   const cols = useMemo<ColumnDef<ConfigMatch, unknown>[]>(() => [
     { id: "module", header: "Object", cell: ({ row }) => formatModuleName(row.original.module) },
-    { id: "check", header: "Check", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
+    { id: "check", header: "Check", cell: ({ row }) => <RuleCell id={row.original.check_id} /> },
     { id: "record", header: "Record", cell: ({ row }) => <Mono>{dash(row.original.record_key)}</Mono> },
     { id: "field", header: "Field", cell: ({ row }) => dash(row.original.field) },
     { id: "actual", header: "Actual", cell: ({ row }) => <Mono>{dash(row.original.actual_value)}</Mono> },

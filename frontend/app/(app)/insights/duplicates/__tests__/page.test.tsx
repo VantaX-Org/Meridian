@@ -7,6 +7,7 @@ import * as mergeExplainApi from "@/lib/api/merge-explain";
 import * as objectsApi from "@/lib/api/v1/objects";
 import * as miningApi from "@/lib/api/mining";
 import * as learnedRulesApi from "@/lib/api/learnedRules";
+import * as versionsApi from "@/lib/api/versions";
 import { Toaster } from "@/design";
 import DuplicatesPage from "../page";
 
@@ -16,9 +17,10 @@ vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 const push = vi.fn();
 const replace = vi.fn();
 let query = "run=v1";
+let pathname = "/insights";
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/insights",
+  usePathname: () => pathname,
   useSearchParams: () => new URLSearchParams(query),
   useRouter: () => ({ push, replace }),
 }));
@@ -63,10 +65,23 @@ describe("DuplicatesPage mined tabs", () => {
   });
   afterEach(() => { query = "run=v1"; });
 
-  it("switches tab through the query string", async () => {
+  it("is one flow under the page's own tabs: no second tab strip", async () => {
     renderWithQuery(<DuplicatesPage />);
-    fireEvent.click(await screen.findByRole("tab", { name: "Anomalies" }));
-    expect(replace).toHaveBeenCalledWith("?run=v1&tab=anomalies");
+    expect(await screen.findByRole("region", { name: "Likely duplicates" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Anomalies" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Relationships" })).toBeInTheDocument();
+    for (const name of ["Clusters", "Likely duplicates", "Anomalies", "Relationships"]) {
+      expect(screen.queryByRole("tab", { name })).not.toBeInTheDocument();
+    }
+  });
+
+  it("sends a mined pair's review to Match review with the pair selected", async () => {
+    vi.spyOn(miningApi, "getMiningDuplicates").mockResolvedValue([
+      { id: "d1", version_id: "v1", module_id: "material_master", record_a: "000101", record_b: "000102", match_score: 0.97, id_field: "MATNR", matched_fields: ["MAKTX"], detected_at: "2026-10-01T00:00:00Z" },
+    ]);
+    renderWithQuery(<DuplicatesPage />);
+    const review = await screen.findByRole("link", { name: "Review 000101 and 000102 in Match review" });
+    expect(review).toHaveAttribute("href", "/mdm/golden/merge?object=material_master&record=000101&with=000102");
   });
 
   it("lists mined duplicate pairs with a drill to each record", async () => {
@@ -88,7 +103,26 @@ describe("DuplicatesPage mined tabs", () => {
     ]);
     renderWithQuery(<DuplicatesPage />);
     expect(await screen.findByText("NTGEW")).toBeInTheDocument();
-    expect(screen.getByText("6.2")).toBeInTheDocument();
+    expect(screen.getByText("z 6.2")).toBeInTheDocument();
+    // mined before the key was kept: named by its row, opening the object's fields
+    expect(screen.getByText("Row 5")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Material master fields" })).toHaveAttribute("href", "/objects/material_master?run=v1&tab=fields");
+  });
+
+  it("names each anomaly's record in Mono with its value and usual range, and opens the record", async () => {
+    query = "run=v1&tab=anomalies";
+    const row = (id: string, key: string, value: number) => ({
+      id, version_id: "v1", module_id: "hcm", field_name: "PA0007.EMPCT", field_value: value, record_index: 3, record_key: key,
+      detection_method: "iqr", z_score: null, lower_bound: 40, upper_bound: 100, severity: "high" as const, detected_at: "2026-10-01T00:00:00Z",
+    });
+    vi.spyOn(miningApi, "getMiningAnomalies").mockResolvedValue([row("a1", "PERNR=00001001|SUBTY=0001", 400), row("a2", "PERNR=00001002|SUBTY=0001", 380)]);
+    renderWithQuery(<DuplicatesPage />);
+    const key = await screen.findByText("PERNR=00001001|SUBTY=0001");
+    expect(key.closest("a")).toHaveAttribute("href", "/objects/hcm/records/PERNR%3D00001001%7CSUBTY%3D0001?run=v1");
+    expect(screen.getByText("PERNR=00001002|SUBTY=0001")).toBeInTheDocument();
+    expect(screen.getByText("400")).toBeInTheDocument();
+    expect(screen.getAllByText("usual 40 to 100")).toHaveLength(2);
+    expect(screen.getByRole("link", { name: "Open record PERNR=00001002|SUBTY=0001" })).toHaveAttribute("href", "/objects/hcm/records/PERNR%3D00001002%7CSUBTY%3D0001?run=v1");
   });
 
   it("lists mined relationships and shows an empty state when there are none", async () => {
@@ -112,14 +146,49 @@ describe("DuplicatesPage mined tabs", () => {
   });
 });
 
+const summary = (score: number) => ({ composite_score: score, critical_count: 0, high_count: 0, medium_count: 0, low_count: 0 });
+
+describe("DuplicatesPage in the current state", () => {
+  afterEach(() => { query = "run=v1"; pathname = "/insights"; });
+
+  it("opens on the current state without ?run=: every object's own latest run, and one empty state when nothing is mined", async () => {
+    query = "";
+    pathname = "/insights/duplicates";
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [
+      { id: "co", label: "controlling_1k", status: "complete", run_at: "2026-10-16T05:00:00Z", dqs_summary: { controlling: summary(70) } },
+      { id: "mm", label: "material_master_25k", status: "complete", run_at: "2026-10-16T03:00:00Z", dqs_summary: { material_master: summary(70) } },
+    ] as never });
+    const objects = vi.spyOn(objectsApi, "getObjects");
+    const dup = vi.spyOn(miningApi, "getMiningDuplicates").mockResolvedValue([]);
+    const anom = vi.spyOn(miningApi, "getMiningAnomalies").mockResolvedValue([]);
+    const rel = vi.spyOn(miningApi, "getMiningRelationships").mockResolvedValue([]);
+    renderWithQuery(<DuplicatesPage />);
+    expect(await screen.findByText("Nothing mined yet")).toBeInTheDocument();
+    for (const get of [dup, anom, rel]) expect(get).toHaveBeenCalledWith({ scope: "current", limit: 500 });
+    // One empty state for the page, not one for the cluster and one per mined feed.
+    expect(screen.queryByText(/choose an object and a record/i)).toBeNull();
+    expect(screen.queryByRole("region", { name: "Likely duplicates" })).toBeNull();
+    expect(screen.queryByText("No likely duplicates found yet")).toBeNull();
+    // The record lookup offers every object of the current state, not only the newest run's.
+    expect(objects).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("combobox", { name: "Object" }));
+    expect(await screen.findByRole("option", { name: "Material master" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Controlling" })).toBeInTheDocument();
+  });
+});
+
 describe("DuplicatesPage", () => {
-  it("shows an empty state before an object and record are chosen", async () => {
+  it("shows one empty state before a record is chosen when the run has nothing mined", async () => {
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({
       run_id: "v1",
       objects: [{ module: "material_master", label: "Material master", composite_score: 72, readiness: "fail", failing_checks: 3, affected_records: 2 }],
     });
+    vi.spyOn(miningApi, "getMiningDuplicates").mockResolvedValue([]);
+    vi.spyOn(miningApi, "getMiningAnomalies").mockResolvedValue([]);
+    vi.spyOn(miningApi, "getMiningRelationships").mockResolvedValue([]);
     renderWithQuery(<DuplicatesPage />);
-    expect(await screen.findByText(/choose an object and a record/i)).toBeInTheDocument();
+    expect(await screen.findByText("Nothing mined in this run yet")).toBeInTheDocument();
+    expect(screen.queryByText("No anomalies found yet")).toBeNull();
   });
 
   it("renders the cluster graph and lets the user pick a master record", async () => {

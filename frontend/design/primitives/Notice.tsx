@@ -18,7 +18,7 @@ export function Notice({ tone = "info", title, children, action, compact = false
   const urgent = tone === "danger" || tone === "warning";
   return (
     <div
-      className={compact ? "flex items-start justify-between gap-2 px-2 py-1 m-text-meta" : "flex items-start justify-between gap-3 px-3 py-2 m-text-body"}
+      className={compact ? "flex items-start justify-between gap-2 px-2 py-1 m-text-meta" : "flex items-start justify-between gap-3 px-3 py-2 m-text-body max-sm:flex-wrap"}
       style={{ background: t.bg, borderLeft: `3px solid ${t.bar}`, color: "var(--m-ink-2)", borderRadius: "var(--m-radius-control)" }}
       role={urgent ? "alert" : "status"}
     >
@@ -26,7 +26,8 @@ export function Notice({ tone = "info", title, children, action, compact = false
         {title ? <p className="font-medium" style={{ color: t.ink }}>{title}</p> : null}
         {children ? <div className={title ? "mt-1" : undefined}>{children}</div> : null}
       </div>
-      {action ? <span className="flex shrink-0 gap-2">{action}</span> : null}
+      {/* Below 640px the actions take their own row instead of squeezing the text into a narrow column. */}
+      {action ? <span className={compact ? "flex shrink-0 gap-2" : "flex shrink-0 flex-wrap gap-2 max-sm:basis-full"}>{action}</span> : null}
     </div>
   );
 }

@@ -4,16 +4,16 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, Card, ConfirmDialog, DataTable, EmptyState, ErrorState, ExportMenu, Field, Mono, Notice, Pill, Select, Skeleton, Stat, Textarea, toast, type PillTone, Input, Status } from "@/design";
-import { Workbench, type WorkbenchItem, type WorkbenchTone } from "@/components/inbox/workbench";
+import { Button, Card, ConfirmDialog, DataTable, Drawer, EmptyState, ErrorState, Field, Mono, Notice, Skeleton, Stat, Textarea, toast, Status } from "@/design";
+import { RuleName } from "@/components/fix/rule-cell";
 import { QuickFilters } from "@/components/inbox/quick-filters";
 import { getAssignableUsers } from "@/lib/api/users";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { assignException, getSAPMonitor, resolveException } from "@/lib/api/exceptions";
-import {
-  commentIssue, exportIssues, getIssue, getIssues, updateIssues, type IssueStatus, type RecordIssue,
-} from "@/lib/api/issues";
+import { STATUS_LABEL, getBatchDiff, listBatches, type BatchStatus, type BatchSummary } from "@/lib/api/remediation";
+import { oneOf, useUrlState } from "@/hooks/use-url-state";
+import { BatchDetailBody } from "@/app/(app)/fix/batches-tab";
 import { approveWriteback, getPendingApprovals, type PendingApproval } from "@/lib/api/writeback";
 import { getFindingReportContext } from "@/lib/api/findings";
 import { getVersion } from "@/lib/api/versions";
@@ -21,246 +21,15 @@ import { getRules } from "@/lib/api/rules";
 import { getUsers } from "@/lib/api/users";
 import { writeBackModeSentence } from "@/lib/api/remediation";
 import { apiErrorMessage, isNotFound, apiErrorState } from "@/lib/error";
-import { formatModuleName, labelOf, relativeTime } from "@/lib/format";
+import { formatInt, formatModuleName, labelOf, relativeTime } from "@/lib/format";
 import { runName } from "@/lib/run-scope";
 import { queryKeys } from "@/lib/query-keys";
 import type { Exception } from "@/types/api";
-
-const STATUSES: IssueStatus[] = ["open", "in_progress", "waiting_sap", "waiting_requester", "accepted", "resolved"];
-const SEVERITIES = ["critical", "high", "medium", "low"] as const;
-const HOUR = 3_600_000;
-const DAY = 24 * HOUR;
-/** How many issues the list loads at a time; "Load more" widens it. */
-const ISSUE_PAGE = 200;
-
-/** 45m, 5h, 3d */
-function span(ms: number): string {
-  const h = Math.abs(ms) / HOUR;
-  if (h < 1) return `${Math.max(1, Math.round(h * 60))}m`;
-  return h < 48 ? `${Math.round(h)}h` : `${Math.round(h / 24)}d`;
-}
-
-type Urgency = "overdue" | "soon" | "ok" | "none";
-/** Overdue is red, due inside the next 24 hours (or flagged at risk by the server) is amber, the rest green. */
-function urgencyOf(i: RecordIssue, now: number): { state: Urgency; tone: PillTone; text: string } {
-  const due = i.due_at ? Date.parse(i.due_at) : NaN;
-  const left = Number.isNaN(due) ? null : due - now;
-  if (i.sla_state === "breached" || (left !== null && left < 0)) return { state: "overdue", tone: "no-go", text: left !== null ? `${span(left)} overdue` : "Overdue" };
-  if (i.sla_paused_at) return { state: "ok", tone: "neutral", text: "Clock paused" };
-  if (i.sla_state === "at_risk" || (left !== null && left < DAY)) return { state: "soon", tone: "at-risk", text: left !== null ? `Due in ${span(left)}` : "Due soon" };
-  if (left === null) return { state: "none", tone: "neutral", text: "No due date" };
-  return { state: "ok", tone: "go", text: `Due in ${span(left)}` };
-}
 
 function Panel({ q, children }: { q: { isLoading: boolean; error: unknown; refetch: () => unknown }; children: React.ReactNode }) {
   if (q.isLoading) return <Skeleton height={240} />;
   if (q.error && !isNotFound(q.error)) return <ErrorState {...apiErrorState(q.error)} onRetry={() => q.refetch()} />;
   return <>{children}</>;
-}
-
-/* ─── Issues: one row per failing SAP record, with its event thread in a Drawer ─── */
-
-function IssueThread({ issue }: { issue: RecordIssue }) {
-  const { can } = useRole();
-  const qc = useQueryClient();
-  const [text, setText] = useState("");
-  const q = useQuery({ queryKey: ["issues", "detail", issue.id], queryFn: () => getIssue(issue.id) });
-  const post = useMutation({
-    mutationFn: () => commentIssue(issue.id, text.trim()),
-    onSuccess: () => { setText(""); void qc.invalidateQueries({ queryKey: ["issues"] }); },
-    onError: (e) => toast.error(apiErrorMessage(e)),
-  });
-  return (
-    <div className="flex flex-col gap-3 m-text-body">
-      <p>{issue.message ?? "No message"}</p>
-      <p className="m-ink-2">Record <Mono>{issue.record_key}</Mono>{issue.field ? <>, field <Mono>{issue.field}</Mono></> : null}</p>
-      {q.isLoading ? <Skeleton height={80} /> : q.error ? <ErrorState {...apiErrorState(q.error)} onRetry={() => void q.refetch()} /> : (
-        <ol className="flex flex-col gap-2">
-          {(q.data?.events ?? []).length === 0 ? <li className="m-ink-2">No activity yet. Comments and status changes appear here.</li> : null}
-          {(q.data?.events ?? []).map((e, i) => (
-            <li key={`${e.created_at}-${i}`} className="border-l-2 pl-3">
-              <span className="font-medium">{labelOf(e.action)}</span>
-              {e.to_value ? <> to {labelOf(e.to_value)}</> : null}
-              <span className="m-ink-2"> by {e.user_label ?? "System"}, {relativeTime(e.created_at)}</span>
-              {e.note ? <p>{e.note}</p> : null}
-            </li>
-          ))}
-        </ol>
-      )}
-      {can("analyse") ? (
-        <Field label="Add a comment">
-          <Textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} />
-        </Field>
-      ) : null}
-      {can("analyse") ? <div><Button variant="secondary" disabled={!text.trim()} pending={post.isPending} onClick={() => post.mutate()}>Post comment</Button></div> : null}
-    </div>
-  );
-}
-
-/** The issue's rule by name when the rule library has it, with the check id in mono beside it. */
-function IssueTitle({ issue, name }: { issue: RecordIssue; name?: string }) {
-  return (
-    <span className="inline-flex flex-wrap items-baseline gap-2">
-      <span>{name ?? "Rule"} in {formatModuleName(issue.module)}</span>
-      <Mono>{issue.check_id}</Mono>
-    </span>
-  );
-}
-
-const issueTone = (sev: string): WorkbenchTone => (sev === "critical" || sev === "high" || sev === "medium" ? sev : "low");
-
-export function IssuesPanel() {
-  const { can } = useRole();
-  const { user } = useAuth();
-  const qc = useQueryClient();
-  // Status, assignee and resolve changes need `assign` on the server (api/routes/record_issues.py bulk_update);
-  // accepting (an approver's sign-off on the risk) needs `approve` alone, so a data owner can accept.
-  const canAssign = can("assign");
-  const canAccept = can("approve");
-  const [status, setStatus] = useState<IssueStatus | "">("");
-  const [severity, setSeverity] = useState("");
-  const [who, setWho] = useState<"all" | "mine" | "unassigned">("all");
-  const [when, setWhen] = useState<"any" | "overdue" | "soon">("any");
-  const [search, setSearch] = useState("");
-  const [picked, setPicked] = useState<string | null>(null);
-  const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
-  const [limit, setLimit] = useState(ISSUE_PAGE);
-  const filter = {
-    status: status || undefined, severity: severity || undefined, search: search.trim() || undefined,
-    assigned_to: who === "mine" ? "me" : who === "unassigned" ? "unassigned" : undefined,
-  };
-  const q = useQuery({ queryKey: ["issues", "list", filter, limit], queryFn: () => getIssues({ ...filter, limit }), retry: false, placeholderData: (prev) => prev });
-  // Rule names for the detail title; the check id stays beside the name.
-  const rules = useQuery({ queryKey: ["rules", "names"], queryFn: () => getRules({ limit: 1000 }), staleTime: 300_000, meta: { ignoreError: true } });
-  const people = useQuery({ queryKey: ["users", "assignable"], queryFn: getAssignableUsers, enabled: canAssign, staleTime: 300_000 });
-  const bulk = useMutation({
-    mutationFn: (v: { ids: string[]; status?: IssueStatus; resolution?: string; assigned_to?: string }) => updateIssues(v),
-    onSuccess: (r) => { toast.success(`${r.updated.toLocaleString()} ${r.updated === 1 ? "issue" : "issues"} updated`); void qc.invalidateQueries({ queryKey: ["issues"] }); },
-    onError: (e) => toast.error(apiErrorMessage(e)),
-  });
-  const now = q.dataUpdatedAt;
-  const loaded = useMemo(() => q.data?.items ?? [], [q.data]);
-  const total = q.data?.total ?? 0;
-  const partial = total > loaded.length;
-  // The urgency filter runs on the loaded page: the list endpoint filters by owner, status and severity, not by due date.
-  const items = useMemo(() => (when === "any" ? loaded : loaded.filter((i) => urgencyOf(i, now).state === when)), [loaded, when, now]);
-  const urgentCounts = useMemo(() => ({
-    overdue: loaded.filter((i) => urgencyOf(i, now).state === "overdue").length,
-    soon: loaded.filter((i) => urgencyOf(i, now).state === "soon").length,
-  }), [loaded, now]);
-  // The first issue is open until another is picked, so the right pane is never empty beside a full list.
-  const selected = items.find((i) => i.id === picked) ?? items[0];
-  const rows = useMemo<WorkbenchItem[]>(() => items.map((i) => {
-    const u = urgencyOf(i, now);
-    return {
-      id: i.id,
-      label: `${i.check_id} ${i.record_key}`,
-      title: <>{i.message ?? i.check_id} in {formatModuleName(i.module)}</>,
-      meta: `${i.record_key}, ${labelOf(i.status)}, ${i.assignee_email ?? "Unassigned"}, seen ${relativeTime(i.last_seen_at)}`,
-      aside: <Pill tone={u.tone}>{u.text}</Pill>,
-      tone: u.state === "overdue" ? "critical" : issueTone(i.severity),
-    };
-  }), [items, now]);
-  const onCheck = (id: string, on: boolean) => setChecked((prev) => {
-    const next = new Set(prev);
-    if (on) next.add(id); else next.delete(id);
-    return next;
-  });
-  const filtering = !!(status || severity || search.trim()) || who !== "all" || when !== "any";
-  const clear = () => { setStatus(""); setSeverity(""); setSearch(""); setWho("all"); setWhen("any"); };
-  const assignees = (Array.isArray(people.data) ? people.data : []).filter((u) => u.id !== user?.id).map((u) => ({ value: u.id, label: u.name || u.email }));
-  const accept = (ids: string[]) => bulk.mutate({ ids, status: "accepted", resolution: "accepted_risk" });
-  const actions = (ids: string[]) => canAssign || canAccept ? (
-    <>
-      {canAssign ? (
-        <>
-          {user ? <Button variant="secondary" size="sm" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids, assigned_to: user.id })}>Claim</Button> : null}
-          <Button variant="secondary" size="sm" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids, assigned_to: "" })}>Release</Button>
-          {assignees.length > 0 ? (
-            <Select label="Reassign to" value="" placeholder="Reassign to…" options={assignees} onValueChange={(v) => { if (v) bulk.mutate({ ids, assigned_to: v }); }} />
-          ) : null}
-          <Button variant="secondary" size="sm" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids, status: "in_progress" })}>Start work</Button>
-          <Button variant="secondary" size="sm" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids, status: "resolved", resolution: "fixed_in_source" })}>Fixed in SAP</Button>
-        </>
-      ) : null}
-      {canAccept ? <Button variant="secondary" size="sm" disabled={bulk.isPending} onClick={() => accept(ids)}>Accept risk</Button> : null}
-    </>
-  ) : null;
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-2">
-        <QuickFilters label="Who" value={who} onChange={(v) => setWho(v as typeof who)}
-          options={[{ value: "all", label: "Everyone" }, { value: "mine", label: "Mine" }, { value: "unassigned", label: "Unassigned" }]} />
-        <QuickFilters label="When" value={when} onChange={(v) => setWhen(v as typeof when)}
-          options={[{ value: "any", label: "Any time" }, { value: "overdue", label: "Overdue", count: urgentCounts.overdue }, { value: "soon", label: "Due in 24 hours", count: urgentCounts.soon }]} />
-      </div>
-      <div className="flex flex-wrap items-end gap-4">
-        <Stat label="Issues" value={q.isLoading ? "…" : (q.data?.total ?? 0).toLocaleString()} />
-        <Field label="Status">
-          <Select value={status} onValueChange={(v) => setStatus((v || "") as IssueStatus | "")} placeholder="All statuses"
-            options={[{ value: "", label: "All statuses" }, ...STATUSES.map((s) => ({ value: s, label: `${labelOf(s)}${q.data?.counts[s] ? ` (${q.data.counts[s]})` : ""}` }))]} />
-        </Field>
-        <Field label="Severity">
-          <Select value={severity} onValueChange={setSeverity} placeholder="All severities"
-            options={[{ value: "", label: "All severities" }, ...SEVERITIES.map((s) => ({ value: s, label: labelOf(s) }))]} />
-        </Field>
-        <Field label="Search">
-          <Input aria-label="Search issues" placeholder="Record key" value={search} onChange={(e) => setSearch(e.target.value)} />
-        </Field>
-        {filtering ? <Button variant="ghost" size="sm" onClick={clear}>Clear filters</Button> : null}
-        <ExportMenu options={[{ format: "xlsx", label: "Issues (.xlsx)", run: () => exportIssues("xlsx", filter) }]} />
-      </div>
-      {!q.isLoading && partial ? (
-        <Notice action={<Button variant="secondary" disabled={q.isFetching} onClick={() => setLimit((n) => n + ISSUE_PAGE)}>Load more</Button>}>
-          {loaded.length.toLocaleString()} of {total.toLocaleString()} issues loaded, and the Overdue and Due in 24 hours counts cover only these
-        </Notice>
-      ) : null}
-      <Panel q={q}>
-        {items.length === 0 ? (
-          filtering ? (
-            <EmptyState title="No issues match these filters" detail="Clear the filters to see every open record issue." action={<Button variant="secondary" onClick={clear}>Clear filters</Button>} />
-          ) : (
-            <EmptyState title="No record issues" detail="Issues open when an analysis finds a failing SAP record, and close when it passes." action={<Button variant="secondary" render={<Link href="/runs">Open runs</Link>} />} />
-          )
-        ) : (
-          <Workbench
-            items={rows}
-            selectedId={selected?.id ?? null}
-            onSelect={setPicked}
-            checked={checked}
-            onCheck={onCheck}
-            onCheckAll={(on) => setChecked(new Set(on ? items.map((i) => i.id) : []))}
-            listLabel="Issues"
-            bulk={actions}
-            detail={selected ? (
-              <Card
-                title={<IssueTitle issue={selected} name={rules.data?.rules.find((r) => r.id === selected.check_id)?.name} />}
-                meta={<span className="inline-flex items-center gap-2"><Status kind="severity" value={selected.severity} /><Pill tone={urgencyOf(selected, now).tone}>{urgencyOf(selected, now).text}</Pill></span>}
-                actions={
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button variant="secondary" render={<Link href={`/objects/${encodeURIComponent(selected.module)}/records/${encodeURIComponent(selected.record_key)}`} />}>Open record</Button>
-                    {canAssign && selected.status !== "resolved" ? (
-                      <Button variant="primary" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids: [selected.id], status: "resolved", resolution: "fixed_in_source" })}>Fixed in SAP</Button>
-                    ) : null}
-                    {canAccept && selected.status !== "accepted" && selected.status !== "resolved" ? (
-                      <Button variant={canAssign ? "secondary" : "primary"} disabled={bulk.isPending} onClick={() => accept([selected.id])}>Accept risk</Button>
-                    ) : null}
-                    {canAssign && user ? (
-                      selected.assigned_to === user.id
-                        ? <Button variant="ghost" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids: [selected.id], assigned_to: "" })}>Release</Button>
-                        : <Button variant="secondary" disabled={bulk.isPending} onClick={() => bulk.mutate({ ids: [selected.id], assigned_to: user.id })}>Claim</Button>
-                    ) : null}
-                  </div>
-                }
-              >
-                <IssueThread key={selected.id} issue={selected} />
-              </Card>
-            ) : null}
-          />
-        )}
-      </Panel>
-    </div>
-  );
 }
 
 /* ─── SAP monitor: exceptions raised from live SAP signals ─── */
@@ -364,14 +133,27 @@ export function SapMonitorPanel() {
   );
 }
 
-/* ─── Approvals: live write-back requests waiting for a second person ─── */
+/* ─── Approvals: every change that waits for a second person, fix batches and live write-backs ─── */
 
 /** The rule behind a write-back request, from its finding: the check id in mono with the object beside it. */
-function FindingRule({ findingId }: { findingId: string | null }) {
-  const q = useQuery({ queryKey: ["findings", "context", findingId ?? ""], queryFn: () => getFindingReportContext(findingId as string), enabled: !!findingId, retry: false, meta: { ignoreError: true } });
+/**
+ * The rule a write-back request fixes: the check id, its message and object as the approvals API names them; an
+ * older API without them is looked up by finding. Never the bare finding id: an unknown rule reads "Rule not found".
+ */
+function FindingRule({ approval }: { approval: PendingApproval }) {
+  const findingId = approval.finding_id;
+  const named = !!approval.check_id;
+  const q = useQuery({ queryKey: ["findings", "context", findingId ?? ""], queryFn: () => getFindingReportContext(findingId as string), enabled: !!findingId && !named, retry: false, meta: { ignoreError: true } });
+  const checkId = approval.check_id ?? q.data?.check_id;
+  const objectId = approval.module ?? q.data?.module;
   if (!findingId) return <>—</>;
-  if (!q.data) return <Mono>{findingId}</Mono>;
-  return <span className="inline-flex items-baseline gap-2"><Mono>{q.data.check_id}</Mono><span className="m-ink-3">{formatModuleName(q.data.module)}</span></span>;
+  if (!checkId) return <span className="m-ink-3">{q.isLoading ? "…" : "Rule not found"}</span>;
+  return (
+    <span className="inline-flex flex-col items-start">
+      <span className="inline-flex items-baseline gap-2"><Mono>{checkId}</Mono>{objectId ? <span className="m-ink-3">{formatModuleName(objectId)}</span> : null}</span>
+      <RuleName id={checkId} fallback={approval.rule_message} className="m-text-meta m-ink-2" />
+    </span>
+  );
 }
 
 /** The run a write-back request was raised from, by name. */
@@ -381,7 +163,114 @@ function RunName({ versionId }: { versionId: string | null }) {
   return <>{q.data ? runName(q.data) : "Run"}</>;
 }
 
+/**
+ * Inbox › Approvals, the one approvals page: the fix batches Fix work drafted (approve them here, export them under
+ * Fix › Batches and export) and the live SAP write-back requests. Batches need `approve` to decide and are read with
+ * `view_audit` (the four-eyes evidence); write-backs need `approve`, as their API does.
+ */
 export function ApprovalsPanel() {
+  const { can } = useRole();
+  return (
+    <div className="flex flex-col gap-6">
+      <BatchApprovals />
+      {can("approve") ? <WritebackApprovals /> : null}
+    </div>
+  );
+}
+
+const BATCH_SHOW = [
+  { value: "draft", label: "Waiting for approval" }, { value: "approved", label: "Approved" },
+  { value: "exported", label: "Exported" }, { value: "all", label: "All" },
+] as const;
+type BatchShow = (typeof BATCH_SHOW)[number]["value"];
+
+/** A rules row is named "<check id>: <message>"; the message, for the check ids a batch fixes. */
+function ruleMessages(names: readonly string[] | undefined): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const n of names ?? []) {
+    const at = n.indexOf(":");
+    if (at > 0) out.set(n.slice(0, at).trim(), n.slice(at + 1).trim());
+  }
+  return out;
+}
+
+/** What a batch changes, from its diff: the rules it fixes by name, and its first change as before and after. */
+function BatchPreview({ batch, messages }: { batch: BatchSummary; messages: Map<string, string> }) {
+  const q = useQuery({ queryKey: queryKeys.remediationDiff(batch.id), queryFn: () => getBatchDiff(batch.id), retry: false, meta: { ignoreError: true } });
+  const changes = (q.data?.records ?? []).flatMap((r) => r.changes.map((c) => ({ ...c, record_key: r.record_key, table: r.table })));
+  const rules = [...new Set(changes.map((c) => c.rule))];
+  if (rules.length === 0 && batch.filter.check_id) rules.push(batch.filter.check_id);
+  const first = changes[0];
+  if (q.isLoading) return <span className="m-ink-3">…</span>;
+  if (!first && rules.length === 0) return <span className="m-ink-3">No changes yet</span>;
+  const message = rules[0] ? messages.get(rules[0]) : undefined;
+  return (
+    <span className="inline-flex flex-col items-start gap-0.5" data-testid="batch-preview">
+      {rules[0] ? (
+        <span className="inline-flex flex-wrap items-baseline gap-2">
+          <Mono>{rules[0]}</Mono>
+          {message ? <span>{message}</span> : null}
+          {rules.length > 1 ? <span className="m-ink-3">and {formatInt(rules.length - 1)} more</span> : null}
+        </span>
+      ) : null}
+      {first ? (
+        <span className="m-text-meta m-ink-2">
+          <Mono>{first.table}.{first.field}</Mono> on <Mono>{first.record_key}</Mono>: {first.before ? <Mono>{first.before}</Mono> : "blank"} to <Mono>{first.after}</Mono>
+          {changes.length > 1 ? `, and ${formatInt(changes.length - 1)} more` : ""}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+function BatchApprovals() {
+  const { user } = useAuth();
+  const { can } = useRole();
+  const [showRaw, setShow] = useUrlState("batches", "draft");
+  const show: BatchShow = oneOf(showRaw, BATCH_SHOW.map((s) => s.value), "draft");
+  const [batchId, setBatchId] = useUrlState("batch", "");
+  const q = useQuery({ queryKey: queryKeys.remediationBatches(), queryFn: listBatches, retry: false });
+  const rulesQ = useQuery({ queryKey: ["rules", "names"], queryFn: () => getRules({ limit: 1000 }), staleTime: 300_000, meta: { ignoreError: true } });
+  const messages = useMemo(() => ruleMessages(rulesQ.data?.rules.map((r) => r.name)), [rulesQ.data]);
+  const batches = useMemo(() => q.data?.items ?? [], [q.data]);
+  const count = (s: BatchShow) => (s === "all" ? batches.length : batches.filter((b) => b.status === s).length);
+  const rows = show === "all" ? batches : batches.filter((b) => b.status === show);
+  const selected = batchId ? batches.find((b) => b.id === batchId) ?? null : null;
+  const cols = useMemo<ColumnDef<BatchSummary, unknown>[]>(() => [
+    { id: "name", header: "Batch", cell: ({ row }) => row.original.name },
+    { id: "change", header: "Rules and change", enableSorting: false, cell: ({ row }) => <BatchPreview batch={row.original} messages={messages} /> },
+    { id: "by", header: "Requested by", cell: ({ row }) => row.original.created_by_label ?? "Meridian monitor" },
+    { id: "items", header: "Records", meta: { numeric: true }, cell: ({ row }) => formatInt(row.original.items) },
+    { id: "status", header: "Status", cell: ({ row }) => STATUS_LABEL[row.original.status as BatchStatus] },
+    { id: "when", header: "Requested", cell: ({ row }) => relativeTime(row.original.created_at) },
+    { id: "act", header: "", enableSorting: false, size: 90, cell: ({ row }) => <Button variant="ghost" aria-label={`Review ${row.original.name}`}>Review</Button> },
+  ], [messages]);
+  return (
+    <Card title="Fix batches" meta="Values decided in Fix work. A second person approves each batch before it is exported for SAP">
+      <Panel q={q}>
+        <div className="flex flex-col gap-3">
+          <QuickFilters label="Show" value={show} onChange={(v) => setShow(v === "draft" ? "" : v)}
+            options={BATCH_SHOW.map((s) => ({ value: s.value, label: s.label, count: count(s.value) }))} />
+          {rows.length === 0 ? (
+            <EmptyState
+              title={show === "draft" ? "No batches waiting for approval" : "No batches in this view"}
+              detail="A steward's accepted and entered values collect in a draft batch until someone approves it"
+              action={<Button variant="secondary" render={<Link href="/fix">Open Fix work</Link>} />}
+            />
+          ) : (
+            <DataTable columns={cols} data={rows} getRowId={(b) => b.id} onRowClick={(b) => setBatchId(b.id)} height={380} exportName="fix-batch-approvals" />
+          )}
+        </div>
+      </Panel>
+      <Drawer open={!!selected} onOpenChange={(open) => { if (!open) setBatchId(""); }} title={selected?.name ?? "Batch"}>
+        {selected ? <BatchDetailBody batchId={selected.id} currentUserId={user?.id ?? null} canApprove={can("approve")} canExport={can("export")} /> : null}
+      </Drawer>
+    </Card>
+  );
+}
+
+/** Live write-back requests waiting for a second person. */
+function WritebackApprovals() {
   const { user } = useAuth();
   const { can } = useRole();
   const qc = useQueryClient();
@@ -394,7 +283,8 @@ export function ApprovalsPanel() {
     () => new Map([...(Array.isArray(assignableQ.data) ? assignableQ.data : []), ...(usersQ.data?.users ?? [])].map((u) => [u.id, u.name || u.email])),
     [usersQ.data, assignableQ.data],
   );
-  const who = (id: string | null) => (!id ? "Unknown user" : id === user?.id ? "You" : names.get(id) ?? "Unknown user");
+  const who = (a: PendingApproval) =>
+    !a.requested_by ? "Unknown user" : a.requested_by === user?.id ? "You" : a.requested_by_name ?? names.get(a.requested_by) ?? "Unknown user";
   const [asking, setAsking] = useState<PendingApproval | null>(null);
   const approve = useMutation({
     mutationFn: (id: string) => approveWriteback(id),
@@ -408,28 +298,30 @@ export function ApprovalsPanel() {
     onError: (e) => { setAsking(null); toast.error(apiErrorMessage(e)); },
   });
   const cols = useMemo<ColumnDef<PendingApproval, unknown>[]>(() => [
-    { id: "finding", header: "Rule", cell: ({ row }) => <FindingRule findingId={row.original.finding_id} /> },
+    { id: "finding", header: "Rule", cell: ({ row }) => <FindingRule approval={row.original} /> },
     { id: "run", header: "Run", cell: ({ row }) => <RunName versionId={row.original.version_id} /> },
     { id: "host", header: "SAP host", cell: ({ row }) => row.original.sap_host ?? "—" },
     { id: "records", header: "Records", cell: ({ row }) => row.original.records_updated.toLocaleString() },
-    { id: "by", header: "Requested by", cell: ({ row }) => who(row.original.requested_by) },
+    { id: "by", header: "Requested by", cell: ({ row }) => who(row.original) },
     { id: "when", header: "Requested", cell: ({ row }) => row.original.created_at ? relativeTime(row.original.created_at) : "—" },
-    { id: "act", header: "", cell: ({ row }) => (
-      <Button variant="secondary" disabled={approve.isPending || !q.data?.live_enabled || (user != null && row.original.requested_by === user.id)}
-        title={user != null && row.original.requested_by === user.id ? "You requested this; another approver must approve it" : undefined}
-        onClick={() => setAsking(row.original)}>Approve</Button>
-    ) },
+    // Approve is the row's one action: a real primary button when it can run, else the reason it cannot, as text,
+    // never a greyed button that reads as broken.
+    { id: "act", header: "", cell: ({ row }) => {
+      if (user != null && row.original.requested_by === user.id) return <span className="m-text-meta m-ink-3">Needs another approver</span>;
+      if (!q.data?.live_enabled) return <span className="m-text-meta m-ink-3">Write-back is off</span>;
+      return <Button disabled={approve.isPending} onClick={() => setAsking(row.original)}>Approve</Button>;
+    } },
   // eslint-disable-next-line react-hooks/exhaustive-deps -- `who` closes over names and user
   ], [approve, q.data?.live_enabled, user, names]);
   const list = q.data?.approvals ?? [];
   return (
+    <Card title="SAP write-backs" meta="Live changes to SAP. You cannot approve a write-back you asked for">
     <Panel q={q}>
       <div className="flex flex-col gap-3">
         <Notice>
           {writeBackModeSentence(q.data?.live_enabled)}
           {q.data && !q.data.live_enabled ? " Live SAP write-back is off on this deployment. Export fixes as an LSMW or BAPI file and load them in SAP." : ""}
         </Notice>
-        <p className="m-text-body m-ink-2">Each request needs a second person: you cannot approve a write-back you asked for.</p>
         {list.length === 0 ? <EmptyState title="No write-backs waiting" detail="Approved fixes queue here before they reach SAP" action={<Button variant="secondary" render={<Link href="/fix">Open fixes</Link>} />} /> : (
           <DataTable columns={cols} data={list} getRowId={(a) => a.id} height={380} exportName="writeback-approvals" />
         )}
@@ -439,8 +331,8 @@ export function ApprovalsPanel() {
           title="Write these records back to SAP?"
           body={asking ? (
             <div className="flex flex-col gap-1">
-              <p>Rule: <FindingRule findingId={asking.finding_id} /></p>
-              <p>{asking.records_updated.toLocaleString()} record{asking.records_updated === 1 ? "" : "s"} on {asking.sap_host ?? "the connected SAP system"}, requested by {who(asking.requested_by)}.</p>
+              <div className="inline-flex items-baseline gap-2"><span>Rule:</span> <FindingRule approval={asking} /></div>
+              <p>{asking.records_updated.toLocaleString()} record{asking.records_updated === 1 ? "" : "s"} on {asking.sap_host ?? "the connected SAP system"}, requested by {who(asking)}.</p>
             </div>
           ) : null}
           confirmLabel="Approve and write back"
@@ -450,5 +342,6 @@ export function ApprovalsPanel() {
         />
       </div>
     </Panel>
+    </Card>
   );
 }

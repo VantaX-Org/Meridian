@@ -20,6 +20,8 @@ export interface Rule {
   /** Pass rate of the rule's most recent finding; null when it has not run yet. */
   last_pass_rate?: number | null;
   last_run_at?: string | null;
+  /** Records failing the rule's most recent finding; null when it has not run yet. The list ranks by it. */
+  last_affected_count?: number | null;
 }
 
 export interface RulesListResponse {
@@ -52,6 +54,27 @@ export async function getRules(params?: {
     params,
   });
   return data;
+}
+
+/**
+ * GET /api/v1/rules/names — plain rule names ("Material type missing", no "MM045: " prefix) by check id, for this
+ * tenant. Ids the catalogue does not name are left out. At most 500 ids per call.
+ */
+/**
+ * GET /api/v1/rules/names: `names` are the tenant's rule catalogue words by check id; `generated` names the ids the
+ * catalogue does not (generated checks by the engine's own words, else the tenant's latest finding message).
+ * lib/rule-name.ts `resolveRuleName` ranks them.
+ */
+export interface RuleNames {
+  names: Record<string, string>;
+  generated: Record<string, string>;
+}
+
+export async function getRuleNames(checkIds: readonly string[]): Promise<RuleNames> {
+  const { data } = await apiClient.get<Partial<RuleNames>>("/api/v1/rules/names", {
+    params: { check_ids: checkIds.join(",") },
+  });
+  return { names: data.names ?? {}, generated: data.generated ?? {} };
 }
 
 export async function getRulesSummary(): Promise<{ summary: RulesSummaryItem[] }> {
@@ -224,6 +247,8 @@ export interface DdicField {
   check_table: string | null;
   check_field: string | null;
   check_table_description: string | null;
+  /** The domain's fixed values with their short text ("1" -> "Person"); absent from an older server. */
+  fixed_values?: { value: string; label: string }[];
   missing: boolean;
 }
 

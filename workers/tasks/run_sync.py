@@ -222,34 +222,7 @@ def run_sync(self, profile_id: str, tenant_id: str):
     # Add batch-level warning if AI quality score is low
     if ai_quality_score < 0.6:
         logger.warning(f"Low AI quality score ({ai_quality_score}) — batch warning added")
-        with Session(engine) as session:
-            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
-            session.execute(
-                text("""
-                    INSERT INTO findings (
-                        id, version_id, tenant_id, module, check_id, severity,
-                        dimension, affected_count, total_count, pass_rate, details
-                    ) VALUES (
-                        gen_random_uuid(), :vid, :tid, :module, 'SYNC_QUALITY_WARNING',
-                        'warning', 'completeness', :affected, :total, :rate,
-                        CAST(:details AS jsonb)
-                    )
-                    ON CONFLICT (version_id, check_id, tenant_id) DO NOTHING
-                """),
-                {
-                    "vid": version_id,
-                    "tid": tenant_id,
-                    "module": domain,
-                    "affected": total_rows,
-                    "total": total_rows,
-                    "rate": ai_quality_score,
-                    "details": json.dumps({
-                        "message": f"Batch quality score below threshold: {ai_quality_score}",
-                        "anomaly_flags": anomaly_flags,
-                    }),
-                },
-            )
-            session.commit()
+        _write_quality_warning(engine, tenant_id, version_id, domain, total_rows, ai_quality_score, anomaly_flags)
 
     logger.info(f"run_sync complete: profile_id={profile_id}, sync_run_id={sync_run_id}")
     return {
@@ -259,6 +232,40 @@ def run_sync(self, profile_id: str, tenant_id: str):
         "rows_extracted": total_rows,
         "ai_quality_score": ai_quality_score,
     }
+
+
+def _write_quality_warning(engine, tenant_id: str, version_id: str, domain: str, total_rows: int,
+                           ai_quality_score: float, anomaly_flags: list) -> None:
+    """The batch-level SYNC_QUALITY_WARNING finding. findings.pass_rate is 0..100 (checks/base.py
+    pass_rate_of), so the 0..1 quality score is written as a percentage."""
+    with Session(engine) as session:
+        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        session.execute(
+            text("""
+                INSERT INTO findings (
+                    id, version_id, tenant_id, module, check_id, severity,
+                    dimension, affected_count, total_count, pass_rate, details
+                ) VALUES (
+                    gen_random_uuid(), :vid, :tid, :module, 'SYNC_QUALITY_WARNING',
+                    'warning', 'completeness', :affected, :total, :rate,
+                    CAST(:details AS jsonb)
+                )
+                ON CONFLICT (version_id, check_id, tenant_id) DO NOTHING
+            """),
+            {
+                "vid": version_id,
+                "tid": tenant_id,
+                "module": domain,
+                "affected": total_rows,
+                "total": total_rows,
+                "rate": round(float(ai_quality_score) * 100, 2),
+                "details": json.dumps({
+                    "message": f"Batch quality score below threshold: {ai_quality_score}",
+                    "anomaly_flags": anomaly_flags,
+                }),
+            },
+        )
+        session.commit()
 
 
 def _fail_sync_run(engine, tenant_id: str, sync_run_id: str, error_detail: str,

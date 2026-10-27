@@ -57,7 +57,8 @@ describe("CompareRunsPage", () => {
   it("renders the narrative, three stats and the changed-rule table", async () => {
     renderWithQuery(<CompareRunsPage />);
     await waitFor(() => expect(screen.getByText("DQS moved from 71.2 to 74.8 (+3.6) across 1 module.")).toBeInTheDocument());
-    expect(screen.getByText(/^Oct 8, .* vs Oct 1, /)).toBeInTheDocument();
+    // The direction in the header: from the run compared with to this run, to the second when they share the minute.
+    expect(screen.getByText(/^Oct 1 \(8 Oct 2026, [0-9:]+:[0-9]{2}:[0-9]{2}.*\) to Oct 8 \(/)).toBeInTheDocument();
     expect(screen.getAllByText("74.8").length).toBeGreaterThan(0);
     expect(screen.getByText(/^DQS Oct 1, /)).toBeInTheDocument();
     const rules = screen.getAllByRole("row").map((r) => r.textContent ?? "");
@@ -66,16 +67,20 @@ describe("CompareRunsPage", () => {
     expect(screen.getByText("MM041").closest("a")).toHaveAttribute("href", "/objects/material_master?run=v2&tab=records&check_id=MM041");
   });
 
-  it("narrows the ledger to the newly failing or the fixed rules from ?change=, under the Progress view tabs", async () => {
+  it("narrows the ledger to the newly failing or the fixed rules from ?change=, with no stray view tabs", async () => {
     searchParams.set("change", "new");
     try {
       renderWithQuery(<CompareRunsPage />);
       await waitFor(() => expect(screen.getByText("MM041")).toBeInTheDocument());
       expect(screen.queryByText("MM002")).toBeNull();
       expect(screen.getByRole("combobox", { name: "Change" })).toHaveTextContent("Newly failing");
-      // A lead can step back to the Progress view, the compared run carried along.
-      expect(screen.getByRole("navigation", { name: "Progress views" })).toBeInTheDocument();
-      expect(screen.getByRole("link", { name: "Progress" })).toHaveAttribute("href", "/insights/progress?run=v2");
+      // A comparison of two runs is not a view of Progress: no Progress / Trends / Forecast strip above it.
+      expect(screen.queryByRole("navigation", { name: "Progress views" })).toBeNull();
+      expect(screen.queryByRole("link", { name: "Forecast" })).toBeNull();
+      // The ledger says it counts per rule, apart from the narrative's rule-failure totals.
+      expect(screen.getByText("Rules that changed")).toBeInTheDocument();
+      expect(screen.getByText(/each row counts the records failing that one rule, not the rule-failure totals above/)).toBeInTheDocument();
+      expect(screen.getByRole("columnheader", { name: /^Failing records before/ })).toBeInTheDocument();
       expect(screen.getAllByText("Mean of 1 object in both runs; objects in only one run are left out").length).toBe(2);
     } finally {
       searchParams.delete("change");
@@ -168,7 +173,7 @@ describe("CompareRunsPage", () => {
   it("hides fix batch actions without the apply permission", async () => {
     can.mockImplementation(() => false);
     renderWithQuery(<CompareRunsPage />);
-    await waitFor(() => expect(screen.getByText(/^Oct 8, .* vs Oct 1, /)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/^Oct 1 \(.*\) to Oct 8 \(/)).toBeInTheDocument());
     expect(screen.queryByRole("button", { name: /Create fix batch/ })).toBeNull();
   });
 
@@ -202,7 +207,7 @@ describe("CompareRunsPage", () => {
       .spyOn(versionsApi, "compareVersions")
       .mockImplementation((_v1, _v2, module) => Promise.resolve(module ? cmp : multiModuleCmp));
     renderWithQuery(<CompareRunsPage />);
-    await waitFor(() => expect(screen.getByText(/^Oct 8, .* vs Oct 1, /)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/^Oct 1 \(.*\) to Oct 8 \(/)).toBeInTheDocument());
 
     const user = userEvent.setup();
     await user.click(screen.getByRole("combobox", { name: "Object" }));
@@ -256,6 +261,33 @@ describe("CompareRunsPage", () => {
     await user.type(screen.getByLabelText("Filter record keys"), "zzz");
     await waitFor(() => expect(screen.getByText("No records match")).toBeInTheDocument());
     expect(keys).toHaveBeenCalledWith("MM041", expect.objectContaining({ search: "zzz", offset: 0 }));
+  });
+
+  it("lists the rules failing in both runs that records newly fail as a second section, with rule names beside ids", async () => {
+    const rulesApi = await import("@/lib/api/rules");
+    vi.spyOn(rulesApi, "getRuleNames").mockResolvedValue({ names: { MM041: "MM041: Material type is mandatory", MM077: "Base unit matches the type" }, generated: {} });
+    vi.spyOn(versionsApi, "compareRecords").mockResolvedValue({
+      ...diff,
+      totals: { new: 11_151 + 1240, resolved: 7, persisting: 40 },
+      checks: [
+        ...diff.checks,
+        { check_id: "MM077", module: "material_master", severity: "high", new: 11_000, resolved: 10_900, persisting: 20, comparable: true },
+        { check_id: "DDIC-MARA-TYPE", module: "material_master", severity: "medium", new: 151, resolved: 0, persisting: 3, comparable: true },
+        { check_id: "MM099", module: "material_master", severity: "low", new: 5, resolved: 0, persisting: 0, comparable: false },
+      ],
+    });
+    renderWithQuery(<CompareRunsPage />);
+    expect(await screen.findByText("Rules with new failures")).toBeInTheDocument();
+    expect(await screen.findByText(/2 rules failing in both runs that some records newly fail, most first; together 11,151 new rule failures/)).toBeInTheDocument();
+    // the rule's catalogue name beside its id, and a DDIC check's own words; the newly failing rule stays in the first ledger only
+    expect(await screen.findByText("Base unit matches the type")).toBeInTheDocument();
+    expect(screen.getByText("Value does not match the field's SAP data type (MARA)")).toBeInTheDocument();
+    expect(screen.getAllByText("MM041")).toHaveLength(1);
+    expect(screen.getByText("Material type is mandatory")).toBeInTheDocument();
+    // a rule that did not run cleanly in both runs is left out, as the narrative excludes it
+    expect(screen.queryByText("MM099")).toBeNull();
+    const rows = screen.getAllByRole("row").map((r) => r.textContent ?? "");
+    expect(rows.findIndex((t) => t.includes("MM077"))).toBeLessThan(rows.findIndex((t) => t.includes("DDIC-MARA-TYPE")));
   });
 
   it("shows a loading skeleton while the comparison loads", async () => {

@@ -101,28 +101,54 @@ export function countDomain(values: readonly number[]): [number, number] {
 }
 
 /**
- * A tick reads short: no year when every point shares one, minutes not seconds, no "#2" twin suffix. The tooltip
- * keeps the full label.
+ * A count axis fitted to the data: from a round number under the smallest value to one over the largest (a step of
+ * 1, 2 or 5 times a power of ten, about four steps across), never below 0, so a backlog that moves from 2,610 to
+ * 2,540 reads as a slope, not a flat line on a 0 to 5,000 axis. `target` stays inside the window when set.
  */
-export function tickText(label: string, dropYear: boolean): string {
-  let s = label.replace(/ #\d+$/, "");
-  if (dropYear) s = s.replace(/ \d{4}(?=,|$)/, "");
-  return s.replace(/(\d{1,2}:\d{2}):\d{2}/, "$1");
+export function fitCountDomain(values: readonly number[], target?: number): [number, number] {
+  const all = target == null ? values : [...values, target];
+  if (all.length === 0) return [0, 1];
+  const lo = Math.min(...all);
+  const hi = Math.max(...all);
+  const span = hi - lo || Math.max(1, Math.abs(hi) * 0.1);
+  const raw = span / 4;
+  const pow = 10 ** Math.floor(Math.log10(raw));
+  const step = ([1, 2, 5, 10].map((m) => m * pow).find((v) => v >= raw) ?? raw);
+  const min = Math.max(0, Math.floor(lo / step) * step);
+  const max = Math.ceil(hi / step) * step;
+  return [min, max > min ? max : min + step];
 }
 
 /**
- * Each x's tick text, unique: when two points shorten to the same text (runs a minute apart, twins), the first keeps
- * it and each later one reads by its ordinal in that group ("#2", "#3"), so the axis never repeats a label.
+ * A tick reads short: no year when every point shares one, minutes not seconds, no "#2" twin suffix. The tooltip
+ * keeps the full label.
  */
-export function uniqueTicks(xs: readonly (string | number)[], text: (x: string | number) => string): Map<string | number, string> {
-  const seen = new Map<string, number>();
+export function tickText(label: string, dropYear: boolean, seconds = false): string {
+  let s = label.replace(/ #\d+$/, "");
+  if (dropYear) s = s.replace(/ \d{4}(?=,|$)/, "");
+  return seconds ? s : s.replace(/(\d{1,2}:\d{2}):\d{2}/, "$1");
+}
+
+/**
+ * Each x's tick text in ONE format for the whole axis: the short text (`text`, minutes) when every point reads
+ * differently by it, else the finer text (`finer`, the time to the second) for every point. A point whose tick
+ * would still repeat one already on the axis is left blank; the tooltip still names it in full. Never an ordinal
+ * ("#3 #2 #3" read as run numbers), never "16 Oct, 03:01" beside "16 Oct, 03:01:48".
+ */
+export function uniqueTicks(
+  xs: readonly (string | number)[],
+  text: (x: string | number) => string,
+  finer?: (x: string | number) => string,
+): Map<string | number, string> {
+  const coarse = xs.map(text);
+  const pick = new Set(coarse).size === coarse.length || !finer ? coarse : xs.map(finer);
+  const used = new Set<string>();
   const out = new Map<string | number, string>();
-  for (const x of xs) {
-    const t = text(x);
-    const n = (seen.get(t) ?? 0) + 1;
-    seen.set(t, n);
-    out.set(x, n === 1 ? t : `#${n}`);
-  }
+  xs.forEach((x, i) => {
+    const t = pick[i];
+    out.set(x, used.has(t) ? "" : t);
+    used.add(t);
+  });
   return out;
 }
 
@@ -139,6 +165,7 @@ export function Line({
   counts = false,
   numericX = false,
   highlight,
+  thresholdLabel,
 }: {
   data: ChartPoint[];
   onPointClick?: (point: ChartPoint) => void;
@@ -154,8 +181,13 @@ export function Line({
   series?: LineSeries[];
   /** Every x the axis must show, so sibling charts share one domain even where this series has no value. */
   xDomain?: { x: string | number; label?: string }[];
-  /** Counts, not scores: the y axis runs from 0 to a round number above the largest value. */
-  counts?: boolean;
+  /**
+   * Counts, not scores: the y axis runs from 0 to a round number above the largest value; "fit" fits it to the
+   * data instead (`fitCountDomain`), for a count that moves little against its size.
+   */
+  counts?: boolean | "fit";
+  /** With `dqsThreshold`, the reference line's label; defaults to "Target {value}". */
+  thresholdLabel?: string;
   /**
    * A numeric x axis: points sit at their x value (e.g. days from today), not at equal steps. Ticks are the
    * `xDomain` values when given; labels come from `xDomain` and point labels as on a category axis.
@@ -185,13 +217,17 @@ export function Line({
     return (x: string | number) => m.get(x) ?? String(x);
   }, [multi, data, xDomain]);
   const years = new Set(rows.map((r) => /\b(\d{4})\b/.exec(labelOf(r.x))?.[1]).filter(Boolean));
-  const ticks = uniqueTicks(rows.map((r) => r.x), (x) => tickText(labelOf(x), years.size === 1));
+  const ticks = uniqueTicks(
+    rows.map((r) => r.x),
+    (x) => tickText(labelOf(x), years.size === 1),
+    (x) => tickText(labelOf(x), years.size === 1, true),
+  );
   const tickOf = (x: string | number) => ticks.get(x) ?? tickText(labelOf(x), years.size === 1);
   const rightMargin = lastTickMargin(rows.length ? tickOf(rows[rows.length - 1].x) : undefined);
   const values = rows
     .flatMap((r) => Object.entries(r).filter(([k]) => k !== "x").flatMap(([, v]) => (Array.isArray(v) ? v : [Number(v)])))
     .filter(Number.isFinite);
-  const domain = counts ? countDomain(values) : yDomain(values, dqsThreshold);
+  const domain = counts === "fit" ? fitCountDomain(values, dqsThreshold) : counts ? countDomain(values) : yDomain(values, dqsThreshold);
   const summaryData = multi ? multi.flatMap((sr) => sr.data.map((p) => ({ ...p, x: `${sr.name} ${p.label ?? p.x}`, label: undefined }))) : data;
   // The keyboard path: one button per point, named by series in a multi-series chart.
   const pointSeries = new Map<ChartPoint, string>(multi ? multi.flatMap((sr) => sr.data.map((p) => [p, sr.name] as const)) : []);
@@ -219,7 +255,7 @@ export function Line({
             y={dqsThreshold}
             stroke={chartTheme.axis}
             strokeDasharray="4 4"
-            label={{ value: `Target ${dqsThreshold}`, position: "insideTopRight", fill: chartTheme.axis, fontSize: 12 }}
+            label={{ value: thresholdLabel ?? `Target ${dqsThreshold}`, position: "insideTopRight", fill: chartTheme.axis, fontSize: 12 }}
           />
         )}
         {/* Area under the first series only, unless the chart draws bands: then each band is the only fill. */}

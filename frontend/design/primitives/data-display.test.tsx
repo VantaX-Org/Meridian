@@ -20,6 +20,14 @@ describe("data-display primitives", () => {
     expect(screen.getByLabelText("critical")).toBeInTheDocument();
   });
 
+  it("SeverityDot labelled shows the severity word beside the shape from sm up, named once for assistive tech", () => {
+    render(<SeverityDot severity="high" labelled />);
+    const word = screen.getByText("High");
+    expect(word).toHaveClass("hidden", "sm:inline");
+    expect(word).toHaveAttribute("aria-hidden");
+    expect(screen.getAllByLabelText("high")).toHaveLength(1);
+  });
+
   it("Delta renders a signed value", () => {
     render(<Delta value={-3} />);
     expect(screen.getByText("-3.0")).toBeInTheDocument();
@@ -89,8 +97,8 @@ describe("wave 6 readings", () => {
     const { container } = render(<ScoreRing score={96} cap={85} criticals={1} size={160} />);
     expect(container.querySelector("[data-cap]")).toBeTruthy();
     expect(container.querySelector("[data-ghost]")).toBeTruthy();
-    expect(screen.getByText("Capped at 85.0, 1 critical")).toBeInTheDocument();
-    expect(screen.getByLabelText("Score 85.0, capped from 96.0, 1 critical")).toBeInTheDocument();
+    expect(screen.getByText("Capped at 85.0, 1 critical failing rule")).toBeInTheDocument();
+    expect(screen.getByLabelText("Score 85.0, capped from 96.0, 1 critical failing rule")).toBeInTheDocument();
   });
 
   it("Counter uses the hero token by default", () => {

@@ -1,6 +1,6 @@
 // Scopes a trend series to the current run's lineage so a chart never mixes objects.
 import type { TrendRun } from "@/lib/api/insights";
-import { runAxisLabels } from "@/lib/format";
+import { runAxisTicks } from "@/lib/run-axis";
 import type { ChartPoint } from "@/design";
 import type { Version } from "@/types/api";
 
@@ -45,7 +45,7 @@ export function scopedComparisons(all: TrendRun[], scoped: TrendRun[]): TrendRun
 
 /** Points keyed by run id with the date (or date and time) as the display label; run labels are never ticks. */
 export function trendPoints(runs: TrendRun[], value: (r: TrendRun) => number | null | undefined): ChartPoint[] {
-  const labels = runAxisLabels(runs.map((r) => ({ id: r.version_id, run_at: r.run_at })));
+  const labels = runAxisTicks(runs.map((r) => ({ id: r.version_id, run_at: r.run_at })));
   return runs.flatMap((r) => {
     const y = value(r);
     return typeof y === "number" ? [{ x: r.version_id, label: labels.get(r.version_id), y, runId: r.version_id }] : [];
@@ -54,6 +54,6 @@ export function trendPoints(runs: TrendRun[], value: (r: TrendRun) => number | n
 
 /** The full x domain of a run series, for sibling charts that must line up. */
 export function trendDomain(runs: TrendRun[]): { x: string; label?: string }[] {
-  const labels = runAxisLabels(runs.map((r) => ({ id: r.version_id, run_at: r.run_at })));
+  const labels = runAxisTicks(runs.map((r) => ({ id: r.version_id, run_at: r.run_at })));
   return runs.map((r) => ({ x: r.version_id, label: labels.get(r.version_id) }));
 }

@@ -1,6 +1,9 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { readPrefs, resetPreferencesCache } from "@/lib/preferences";
-import { isTourDone, markTourDone, readSeenVersion, resetTour, writeSeenVersion } from "./storage";
+import {
+  closeTourOffer, isTourDone, isTourOfferClosed, markTourDone, markTourOfferedThisSession, readSeenVersion, resetTour,
+  wasTourOfferedThisSession, writeSeenVersion,
+} from "./storage";
 
 beforeEach(() => {
   localStorage.clear();
@@ -30,5 +33,31 @@ describe("help storage on user preferences", () => {
     expect(readSeenVersion()).toBeNull();
     writeSeenVersion("1.2.3");
     expect(readSeenVersion()).toBe("1.2.3");
+  });
+});
+
+describe("first-run tour offer", () => {
+  beforeEach(() => sessionStorage.clear());
+
+  it("closes the offer on the account and on this device", () => {
+    expect(isTourOfferClosed("first-run")).toBe(false);
+    closeTourOffer("first-run");
+    expect(isTourOfferClosed("first-run")).toBe(true);
+    expect(isTourDone("first-run")).toBe(true);
+  });
+
+  it("remembers the offer was shown in this session", () => {
+    expect(wasTourOfferedThisSession("first-run")).toBe(false);
+    markTourOfferedThisSession("first-run");
+    expect(wasTourOfferedThisSession("first-run")).toBe(true);
+  });
+
+  it("treats blocked session storage as never shown, without throwing", () => {
+    const get = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("blocked"); });
+    const set = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("blocked"); });
+    expect(() => markTourOfferedThisSession("first-run")).not.toThrow();
+    expect(wasTourOfferedThisSession("first-run")).toBe(false);
+    get.mockRestore();
+    set.mockRestore();
   });
 });

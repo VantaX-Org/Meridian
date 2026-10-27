@@ -38,10 +38,10 @@ describe("scopeTrendRuns", () => {
 });
 
 describe("trendPoints and trendDomain", () => {
-  it("keys x by run id and labels with the date, adding the time where two runs share a day", () => {
+  it("keys x by run id and labels every run in one format: date and time on every tick when two runs share a day", () => {
     const pts = trendPoints(runs, (r) => r.composite);
     expect(pts.map((p) => p.x)).toEqual(["co1", "bp1", "hcm", "bp2"]);
-    expect(pts.map((p) => p.label)).toEqual(["2 Oct 2026", "16 Oct 2026, 05:00", "16 Oct 2026, 06:00", "16 Oct 2026, 17:30"]);
+    expect(pts.map((p) => p.label)).toEqual(["2 Oct 2026, 09:00", "16 Oct 2026, 05:00", "16 Oct 2026, 06:00", "16 Oct 2026, 17:30"]);
     expect(pts.map((p) => p.label)).not.toContain("business_partner_100k");
     expect(pts[3]).toMatchObject({ y: 81.8, runId: "bp2" });
   });
@@ -49,7 +49,7 @@ describe("trendPoints and trendDomain", () => {
     const withGap = [...runs, tr("gap", "2026-10-17T00:00:00Z", null, ["business_partner"])];
     expect(trendPoints(withGap, (r) => r.dimensions.completeness).map((p) => p.x)).toEqual(["co1", "bp1", "hcm", "bp2"]);
     expect(trendDomain(withGap).map((d) => d.x)).toEqual(["co1", "bp1", "hcm", "bp2", "gap"]);
-    expect(trendDomain(withGap)[4].label).toBe("17 Oct 2026");
+    expect(trendDomain(withGap)[4].label).toBe("17 Oct 2026, 00:00");
   });
 });
 

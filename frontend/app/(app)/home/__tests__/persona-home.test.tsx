@@ -12,6 +12,9 @@ import * as connectivityApi from "@/lib/api/connectivity";
 import * as configLoadApi from "@/lib/api/config-load";
 import * as downloadApi from "@/lib/api/download";
 import * as matchRulesApi from "@/lib/api/match-rules";
+import * as ownersApi from "@/lib/api/owners";
+import * as analyticsApi from "@/lib/api/analytics";
+import * as authContext from "@/context/auth-context";
 import * as jobsHook from "@/hooks/use-jobs";
 import * as dayOneHook from "@/hooks/use-day-one";
 import type { Version } from "@/types/api";
@@ -27,7 +30,7 @@ const nav = vi.hoisted(() => ({ search: "" }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), useSearchParams: () => new URLSearchParams(nav.search) }));
 
 const OBJECTS: ObjectSummary[] = [
-  { module: "material_master", label: "Material master", composite_score: 72.5, readiness: "warn", failing_checks: 1, affected_records: 120 },
+  { module: "material_master", label: "Material master", composite_score: 72.5, readiness: "warn", failing_checks: 1, affected_records: 120, blocking_rule_id: "MM-001" },
 ];
 
 const LATEST: Version = {
@@ -150,12 +153,13 @@ describe("PersonaHomePage Brief geometry", () => {
     const aside = screen.getByTestId("home-hero-aside");
     expect(hero).toContainElement(aside);
     expect(hero).toContainElement(screen.getByTestId("home-dqs"));
-    expect(aside).toContainElement(screen.getByLabelText("Objects by records and verdict"));
+    // sized by what fails (rule failures), not by how many records an object holds
+    expect(aside).toContainElement(screen.getByLabelText("Objects by rule failures and verdict"));
     expect(aside).toContainElement(screen.getByTestId("home-dimensions"));
-    // a tile per object: the score, the records the run holds for it, opening the object at its run
-    const tile = screen.getByRole("link", { name: "Material master, 72.5, 4,000 records" });
+    // a tile per object: the score and its rule failures, opening the object at its run
+    const tile = screen.getByRole("link", { name: /^Material master, 72\.5, [\d,]+ rule failures?$/ });
     expect(tile).toHaveAttribute("href", "/objects/material_master?run=v1");
-    expect(screen.getByRole("link", { name: "Controlling, 95.0, 1,000 records" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^Controlling, 95\.0, [\d,]+ rule failures?$/ })).toBeInTheDocument();
   });
 
   it("sets the ledger after the four sentences and the hero, and ranks it by records affected", async () => {
@@ -174,7 +178,12 @@ describe("PersonaHomePage Brief geometry", () => {
       expect(rows[0]).toHaveTextContent("Controlling");
       expect(rows[1]).toHaveTextContent("Material master");
     });
-    for (const h of ["Object", "Blocking rule", "Rule failures", "Score", "Verdict"]) expect(screen.getByRole("columnheader", { name: new RegExp(h) })).toBeInTheDocument();
+    for (const h of ["Object", "Blocking rule", "Owner", "Rule failures", "Score", "Verdict"]) expect(screen.getByRole("columnheader", { name: new RegExp(h) })).toBeInTheDocument();
+    // the ledger says what it is ranked by in the unit of its column: rule failures, not "records affected"
+    expect(screen.getByText("Ranked by rule failures")).toBeInTheDocument();
+    expect(screen.queryByText(/records affected/)).toBeNull();
+    // the owner replaced the run: every row was read from a run already named in the header
+    expect(screen.queryByRole("columnheader", { name: /^Run/ })).toBeNull();
     expect(screen.getByRole("link", { name: "All 2 objects" })).toHaveAttribute("href", "/objects");
   });
 
@@ -186,11 +195,25 @@ describe("PersonaHomePage Brief geometry", () => {
       ],
     } as unknown as Awaited<ReturnType<typeof findingsApi.getFindings>>);
     renderWithQuery(<LeadHomePage />);
-    const link = await screen.findByRole("link", { name: "MM-001" });
-    expect(link.closest("tr")).toHaveTextContent("Material description is missing");
+    await waitFor(() => expect(screen.getAllByRole("link", { name: "MM-001" }).map((l) => l.closest("tr")).find(Boolean)).toHaveTextContent("Material description is missing"));
     expect(screen.getByRole("link", { name: "Fix Material master" })).toHaveAttribute("href", "/fix?run=v1&module=material_master&check=MM-001");
     expect(screen.getByRole("link", { name: "Open Controlling" })).toHaveAttribute("href", "/objects/controlling?run=v1");
     expect(screen.queryByRole("link", { name: "Fix Controlling" })).toBeNull();
+  });
+
+  it("on a phone shows the ledger's verdict as its dot and short label, and the score as its figure, so the action covers neither", async () => {
+    vi.stubGlobal("matchMedia", vi.fn((q: string) => ({ matches: q === "(max-width: 639px)", addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    renderWithQuery(<LeadHomePage />);
+    const ledger = (await screen.findByText("What moves the score")).closest("section, .m-card") as HTMLElement;
+    const grid = await within(ledger).findByRole("grid");
+    const verdicts = grid.querySelectorAll("[data-status='verdict']");
+    expect(verdicts.length).toBeGreaterThan(0);
+    verdicts.forEach((v) => {
+      expect(v).toHaveClass("m-status-dot");
+      expect(v).not.toHaveClass("m-pill");
+    });
+    // No inline ruler beside the score on a phone: the figure alone.
+    expect(grid.querySelector("[data-rule='inline']")).toBeNull();
   });
 
   it("offers Open, never Fix, to a role that can neither apply nor approve", async () => {
@@ -210,7 +233,19 @@ describe("PersonaHomePage Brief geometry", () => {
       findings: [find("MM-001", "material_master", { record_fixes: [{ record_id: "1" }] })],
     } as unknown as Awaited<ReturnType<typeof findingsApi.getFindings>>);
     renderWithQuery(<LeadHomePage />);
-    expect(await screen.findByRole("link", { name: "Fix Material master" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("link", { name: "Fix Material master" })).toBeInTheDocument());
+  });
+
+  it("names the blocking rule the Objects page names: the objects API's, from the object's own run", async () => {
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: [{ ...OBJECTS[0], blocking_rule_id: "DDIC-ADR6-TYPE", blocking_rule_name: "Address type" }] });
+    vi.spyOn(findingsApi, "getFindings").mockResolvedValue({
+      findings: [find("MM-001", "material_master")],
+    } as unknown as Awaited<ReturnType<typeof findingsApi.getFindings>>);
+    renderWithQuery(<LeadHomePage />);
+    await waitFor(() => expect(objectsApi.getObjects).toHaveBeenCalledWith("v1"));
+    const link = await screen.findByRole("link", { name: "DDIC-ADR6-TYPE" });
+    expect(link.closest("tr")).toHaveTextContent("Address type");
+    expect(screen.queryByRole("link", { name: "MM-001" })).toBeNull();
   });
 
   it("keeps the onboarding as one row under the ledger, before the work row", async () => {
@@ -230,6 +265,29 @@ describe("PersonaHomePage lineage and heatmap", () => {
     expect(cell).toHaveTextContent("95");
     expect(screen.getByLabelText("Material master Completeness: 80, at risk")).toHaveTextContent("80");
     expect(screen.getByLabelText(/Material master Timeliness: 60, /)).toHaveTextContent("60");
+  });
+
+  it("shows every scored object in the dimensions grid, not only the ledger's first eight, and marks unmeasured cells", async () => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
+    const modules = ["material_master", "controlling", "fi_gl", "accounts_payable", "accounts_receivable", "asset_accounting", "hcm", "mm_purchasing", "plant_maintenance", "project_system"];
+    const base = LATEST.dqs_summary!.material_master;
+    const many: Version = {
+      ...LATEST,
+      dqs_summary: Object.fromEntries(modules.map((m, i) => [m, {
+        ...base, composite_score: 60 + i,
+        // timeliness: no rule measured it on accounts payable
+        ...(m === "accounts_payable" ? { dimension_coverage: { completeness: 1, accuracy: 1, consistency: 1, timeliness: 0, uniqueness: 1, validity: 1 } } : {}),
+      }])),
+      metadata: { ...LATEST.metadata!, modules },
+    };
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [many] });
+    renderWithQuery(<LeadHomePage />);
+    await screen.findByLabelText(/^Material master Uniqueness: /);
+    const grid = screen.getByText("Dimensions by object").closest(".m-card") as HTMLElement;
+    expect(grid).toHaveTextContent("– Not measured");
+    // ten objects, ten rows of the grid
+    expect(within(grid).getAllByLabelText(/ Uniqueness: /)).toHaveLength(10);
+    expect(within(grid).getByLabelText("Accounts payable Timeliness: not measured")).toHaveAttribute("title", "Not measured");
   });
 
   it("calls the only run of its lineage the first run instead of comparing with another object's run", async () => {
@@ -281,7 +339,7 @@ describe("PersonaHomePage blocking and loading states", () => {
     renderWithQuery(<LeadHomePage />);
 
     await screen.findAllByRole("link", { name: "MM-001" });
-    expect(screen.getByText(/Capped at 60 by 3 critical rules/)).toHaveTextContent(/and 1 more/);
+    expect(screen.getByText(/3 critical failing rules cap the score at 60/)).toHaveTextContent(/and 1 more/);
   });
 
   it("takes count and names from the cap reason, so the line always adds up, even before findings load", async () => {
@@ -293,8 +351,8 @@ describe("PersonaHomePage blocking and loading states", () => {
 
     renderWithQuery(<LeadHomePage />);
 
-    const line = await screen.findByText(/Capped at 70 by 4 critical rules/);
-    expect(line).toHaveTextContent("Capped at 70 by 4 critical rules: BP019, BP002 and 2 more");
+    const line = await screen.findByText(/4 critical failing rules cap the score at 70/);
+    expect(line).toHaveTextContent("4 critical failing rules cap the score at 70: BP019, BP002 and 2 more");
     // the cap line, and the objects table's blocking rule until the findings name a higher-impact one
     for (const link of screen.getAllByRole("link", { name: "BP019" })) {
       expect(link).toHaveAttribute("href", "/objects/material_master?run=v1&tab=records&check_id=BP019");
@@ -313,7 +371,7 @@ describe("PersonaHomePage blocking and loading states", () => {
 
     renderWithQuery(<LeadHomePage />);
 
-    expect(await screen.findByText(/Capped at 85 by 2 critical rules/)).toHaveTextContent("Capped at 85 by 2 critical rules: BP019 and 1 more");
+    expect(await screen.findByText(/2 critical failing rules cap 2 of 2 objects at 85/)).toHaveTextContent("2 critical failing rules cap 2 of 2 objects at 85: BP019 and 1 more");
   });
 
   it("shows plain cap text while findings load", async () => {
@@ -323,8 +381,9 @@ describe("PersonaHomePage blocking and loading states", () => {
 
     renderWithQuery(<LeadHomePage />);
 
-    expect(await screen.findByText(/Capped at 60 by 3 critical rules/)).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /MM-/ })).toBeNull();
+    const line = await screen.findByText(/3 critical failing rules cap the score at 60/);
+    // the cap line names no rule until the findings name one (the objects table's blocking rule is the list's own)
+    expect(within(line).queryByRole("link", { name: /MM-/ })).toBeNull();
   });
 
   it("counts critical plus high findings and links one run's count to its findings, critical and high", async () => {
@@ -332,7 +391,7 @@ describe("PersonaHomePage blocking and loading states", () => {
 
     renderWithQuery(<LeadHomePage />);
 
-    const stat = (await screen.findByText("Critical and high findings")).closest("a");
+    const stat = (await screen.findByText("Critical and high failing rules")).closest("a");
     expect(stat).toHaveAttribute("href", "/runs/v1?tab=findings&severity=critical,high");
     expect(stat).toHaveTextContent("1");
   });
@@ -489,11 +548,11 @@ describe("PersonaHomePage current state across objects", () => {
     expect(notReady).toHaveTextContent(/2\s*of 3/);
     expect(notReady).toHaveAttribute("href", "/objects?readiness=warn%2Cfail");
     // critical and high: controlling 2 + 1, material master 1, accounts payable 4
-    const criticalHigh = (screen.getByText("Critical and high findings")).closest("a");
+    const criticalHigh = (screen.getByText("Critical and high failing rules")).closest("a");
     expect(criticalHigh).toHaveTextContent("8");
-    // Several runs: the current-state findings filtered to critical and high, not the objects below target.
-    expect(criticalHigh).toHaveAttribute("href", "/insights?severity=critical,high");
-    expect(screen.getByText("All objects, each at its latest run by then")).toBeInTheDocument();
+    // Several runs: Fix work's current state filtered to critical and high, not the objects below target.
+    expect(criticalHigh).toHaveAttribute("href", "/fix?sev=blocking");
+    expect(screen.getByText(/^Score over runs, all objects each at its latest run by then/)).toBeInTheDocument();
   });
 
   it("opens each object at the run its numbers come from", async () => {
@@ -511,15 +570,15 @@ describe("PersonaHomePage current state across objects", () => {
     expect(screen.getByRole("link", { name: "Open worst object" })).toHaveClass("m-btn-primary");
     expect(screen.getByRole("button", { name: "Run analysis" })).toHaveClass("m-btn-secondary");
     // the blocking rule of an object that is not in the newest run drills into that object's own run
-    expect(screen.getByRole("link", { name: "MM045" })).toHaveAttribute("href", "/objects/material_master?run=mm1&tab=records&check_id=MM045");
-    expect(screen.getByText("1 of 3 objects capped by critical rules")).toBeInTheDocument();
+    for (const link of screen.getAllByRole("link", { name: "MM045" })) expect(link).toHaveAttribute("href", "/objects/material_master?run=mm1&tab=records&check_id=MM045");
+    expect(screen.getByText(/1 critical failing rule caps 1 of 3 objects/)).toHaveTextContent("1 critical failing rule caps 1 of 3 objects: MM045");
   });
 
   it("gives a data owner (approves, cannot apply) Open approvals as the steward home's next step", async () => {
     perms.can = (a) => a === "view" || a === "approve" || a === "export";
     renderWithQuery(<StewardHomePage />);
     const open = await screen.findByRole("link", { name: "Open approvals" });
-    expect(open).toHaveAttribute("href", "/fix?tab=batches");
+    expect(open).toHaveAttribute("href", "/inbox?kind=approvals");
     expect(open).toHaveClass("m-btn-primary");
     expect(screen.queryByRole("link", { name: "Open worst object" })).toBeNull();
   });
@@ -593,5 +652,53 @@ describe("PersonaHomePage error state", () => {
     const calls = queue.mock.calls.length;
     fireEvent.click(within(alert).getByRole("button", { name: "Retry" }));
     await waitFor(() => expect(queue.mock.calls.length).toBeGreaterThan(calls));
+  });
+});
+
+describe("PersonaHomePage owners and forecast", () => {
+  const SECOND = { ...LATEST.dqs_summary!.material_master, composite_score: 95 };
+  const two: Version = { ...LATEST, dqs_summary: { material_master: LATEST.dqs_summary!.material_master, controlling: SECOND }, metadata: { modules: ["material_master", "controlling"], file_name: "f.csv", row_count: 5000 } };
+  const owner = (ref: string, id: string, name: string) => ({ kind: "object" as const, ref, owner_user_id: id, owner_name: name, steward_user_id: null, steward_name: null, updated_at: null });
+
+  beforeEach(() => {
+    nav.search = "";
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [two] });
+    vi.spyOn(ownersApi, "getOwners").mockResolvedValue([owner("controlling", "u1", "Ann Lead"), owner("material_master", "u2", "Ben Steward")]);
+    vi.spyOn(authContext, "useCurrentUser").mockReturnValue({ id: "u1", email: "ann@example.com", name: "Ann Lead", role: "programme_lead", permissions: [] });
+  });
+
+  it("names each object's owner in the ledger and offers My objects", async () => {
+    renderWithQuery(<LeadHomePage />);
+    expect(await screen.findByRole("cell", { name: "Ann Lead" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "Ben Steward" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "My objects" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("keeps only the signed-in user's objects with ?mine=1", async () => {
+    nav.search = "mine=1";
+    renderWithQuery(<LeadHomePage />);
+    await screen.findByRole("cell", { name: "Ann Lead" });
+    const ledger = screen.getByRole("columnheader", { name: /Owner/ }).closest("table") as HTMLElement;
+    const rows = within(ledger).getAllByRole("row").slice(1);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toHaveTextContent("Controlling");
+    expect(screen.getByRole("button", { name: "My objects" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("link", { name: "All my objects" })).toHaveAttribute("href", "/objects?mine=1");
+  });
+
+  it("puts the trend in the hero and states the forecast to 30 days", async () => {
+    vi.spyOn(analyticsApi, "getPredictiveAnalytics").mockResolvedValue({
+      forecasts: [{
+        module_id: "controlling", current_score: 95, forecast_7d: 93, forecast_30d: 89, forecast_90d: null,
+        forecast_30d_low: 85, forecast_30d_high: 93, trend: "declining", confidence: 80, points: 4, span_days: 12, contributing_factors: [],
+      }],
+      early_warnings: [],
+    });
+    renderWithQuery(<LeadHomePage />);
+    const hero = await screen.findByTestId("home-verdict-row");
+    expect(hero).toContainElement(screen.getByTestId("home-trend"));
+    // (72.5 + 89) / 2, material master holding its score: 80.8; range (72.5 + 85) / 2 to (72.5 + 93) / 2
+    expect(await screen.findByText(/Expected 80\.8 in 30 days if nothing changes \(range 79–83\)/)).toBeInTheDocument();
   });
 });

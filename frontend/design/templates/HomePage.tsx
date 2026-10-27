@@ -15,6 +15,14 @@ import type { DayOneStep } from "../../hooks/use-day-one";
 /** Situation sentence for a fresh install. */
 const NO_DATA_VERDICT = "No analysis yet. Connect a system and run the first extraction.";
 
+/** The situation sentence once the journey is under way: it names the step the tenant is on, not the first one. */
+const STEP_VERDICT: Partial<Record<DayOneStep["key"], string>> = {
+  config: "No analysis yet. Load the system's configuration, then run the first extraction.",
+  extract: "No analysis yet. Run the first extraction to get a score.",
+  running: "The first analysis is running. The score appears here when it finishes.",
+  failed: "The first run did not finish. Open it to see which step failed.",
+};
+
 export interface HomeVerdict {
   /** Run-level DQS; null when no module is scored. */
   dqs: number | null;
@@ -75,13 +83,13 @@ const loadingSkeleton = (
 );
 
 /**
- * The home page frame, "the Brief": one hero sheet (the score and its verdict left, the object map and the
- * dimension bars right), the four sentences under it, the ledger of what moves the score, one compact onboarding
- * row, the persona's work row, then the trend and the heatmap side by side, smaller. Callers supply every
+ * The home page frame, "the Brief": the setup notice while setup is incomplete, one hero sheet (the score, its
+ * verdict and its trend left, the object map and the dimension bars right), the four sentences under it, the ledger
+ * of what moves the score, the persona's work row, then the heatmap. Callers supply every
  * data-specific piece; this component places it and owns the loading, no-data and error geometry.
  */
 export function HomePage({
-  state, verdict, run, scope, journey, error, aside, dimensions, objects, trend, heatmap, work, lists, headerActions, emptyActions, onboarding, cells, explain, workFirst,
+  state, verdict, run, scope, journey, error, aside, dimensions, objects, trend, heatmap, work, lists, headerActions, emptyActions, onboarding, cells, explain, workFirst, opsFirst, nextAction,
 }: {
   persona: string;
   /** "empty" is a fresh install (no analysis yet): the journey to a first score. */
@@ -99,9 +107,9 @@ export function HomePage({
   dimensions?: ReactNode;
   /** The ledger, full width under the four sentences: what moves the score, ranked by records affected. */
   objects?: ReactNode;
-  /** Left of the closing panel: the score trend line. */
+  /** In the hero, under the verdict: the score trend with its target line (and forecast, when there is one). */
   trend?: ReactNode;
-  /** Right of the closing panel: the dimension-by-object heatmap. */
+  /** The closing panel: the dimension-by-object heatmap. */
   heatmap?: ReactNode;
   /** The persona's work row of `Stat`s. */
   work?: ReactNode;
@@ -109,7 +117,7 @@ export function HomePage({
   headerActions?: ReactNode;
   /** Header actions on a fresh install (state "empty"): the other ways to start a run, beside the journey's step. */
   emptyActions?: ReactNode;
-  /** First-run tour offer and setup checklist, one compact row (components/help/home-onboarding.tsx); shown once the page has loaded. */
+  /** First-run tour offer and setup checklist, one notice at the top (components/help/home-onboarding.tsx), only while setup is incomplete. */
   onboarding?: ReactNode;
   /** The four sentences (situation, what changed, why, do next), set under the hero. */
   cells?: ReactNode;
@@ -117,6 +125,10 @@ export function HomePage({
   explain?: ScoreExplanation;
   /** The persona works a queue (the steward): the work row leads, the score hero follows. */
   workFirst?: boolean;
+  /** The persona runs the landscape (SAP Basis): the work row and `lists` (systems and jobs) lead, the score follows. */
+  opsFirst?: boolean;
+  /** Under the hero: the one top-ranked action of the run, its reason and where to act (`NextBestAction`). */
+  nextAction?: ReactNode;
 }) {
   const header = (
     <PageHeader
@@ -142,7 +154,7 @@ export function HomePage({
       {state === "empty" && (
         <Card padding="lg" title="Get to your first score">
           <div className="flex flex-col gap-6">
-            <p data-testid="home-verdict" className="m-text-h" style={{ color: "var(--m-ink-2)" }}>{NO_DATA_VERDICT}</p>
+            <p data-testid="home-verdict" className="m-text-h" style={{ color: "var(--m-ink-2)" }}>{(journey?.step && STEP_VERDICT[journey.step.key]) ?? NO_DATA_VERDICT}</p>
             {journey && (
               <JourneyStepper
                 systemsConnected={journey.systemsConnected}
@@ -157,7 +169,9 @@ export function HomePage({
       )}
       {state === "empty" && onboarding}
 
-      {state === "ready" && workFirst && work}
+      {state === "ready" && onboarding}
+      {state === "ready" && (workFirst || opsFirst) && work}
+      {state === "ready" && opsFirst && lists}
       {state === "ready" && verdict && (
         <section className="m-hero grid grid-cols-1 items-start gap-x-10 gap-y-6 @4xl:grid-cols-12" data-testid="home-verdict-row" data-tour="home-verdict">
           <div className={`flex min-w-0 flex-col gap-6 ${hasAside ? "@4xl:col-span-7" : "@4xl:col-span-12"}`}>
@@ -184,6 +198,7 @@ export function HomePage({
                 </div>
               )}
             </div>
+            {trend && <div data-testid="home-trend" data-tour="home-trend" className="min-w-0">{trend}</div>}
           </div>
           {hasAside && (
             <div className="flex min-w-0 flex-col gap-5 @4xl:col-span-5" data-testid="home-hero-aside">
@@ -193,17 +208,12 @@ export function HomePage({
           )}
         </section>
       )}
+      {state === "ready" && nextAction}
       {state === "ready" && cells}
       {state === "ready" && objects}
-      {state === "ready" && onboarding}
-      {state === "ready" && !workFirst && work}
-      {state === "ready" && (trend || heatmap) && (
-        <div className="grid grid-cols-1 gap-4 @5xl:grid-cols-12">
-          {trend && <div data-testid="home-trend" data-tour="home-trend" className={`min-w-0 ${heatmap ? "@5xl:col-span-6" : "@5xl:col-span-12"}`}>{trend}</div>}
-          {heatmap && <div className={`min-w-0 ${trend ? "@5xl:col-span-6" : "@5xl:col-span-12"}`}>{heatmap}</div>}
-        </div>
-      )}
-      {lists}
+      {state === "ready" && !workFirst && !opsFirst && work}
+      {state === "ready" && heatmap}
+      {!(state === "ready" && opsFirst) && lists}
       </div>
     </PageFrame>
   );

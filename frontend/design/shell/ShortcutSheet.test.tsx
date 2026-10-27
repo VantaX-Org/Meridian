@@ -23,7 +23,7 @@ describe("ShortcutSheet", () => {
   it("shows the inbox keys from the registry", () => {
     render(<ShortcutSheet open onOpenChange={() => {}} />);
     for (const s of INBOX_SHORTCUTS) expect(screen.getAllByText(s.keys).length).toBeGreaterThan(0);
-    expect(screen.getAllByText("j / k")).toHaveLength(2); // Inbox and Fix work
+    expect(screen.getAllByText("j / k")).toHaveLength(3); // Inbox, Match review and Fix work
   });
 
   it("puts the page's own group first", () => {
@@ -39,7 +39,7 @@ describe("ShortcutSheet", () => {
 
   it("takes navigation shortcuts from the nav definition", () => {
     expect(navShortcuts()).toContainEqual({ group: "Navigation", keys: "⌘1", description: "Go to Home, with the command palette open" });
-    expect(shortcutSections().map((s) => s.group)).toEqual(["Navigation", "Fix work", "Tables", "Inbox", "Designer", "Global"]);
+    expect(shortcutSections().map((s) => s.group)).toEqual(["Navigation", "Fix work", "Tables", "Inbox", "Match review", "Designer", "Global"]);
   });
 
   it("lists no key for collapsing the navigation (there is no sidebar to collapse)", () => {

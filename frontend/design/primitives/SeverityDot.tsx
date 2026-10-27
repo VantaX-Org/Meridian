@@ -1,7 +1,20 @@
 import type { Severity } from "../tokens";
 import { severityColor, severityShape } from "../tokens";
 
-export function SeverityDot({ severity }: { severity: Severity }) {
+/**
+ * A severity's shape in its colour. With `labelled`, the severity word follows it from the sm breakpoint up, so a
+ * reader who cannot tell the shapes apart still reads the severity; on a phone the shape stays alone (its
+ * accessible name still says the word).
+ */
+export function SeverityDot({ severity, labelled = false }: { severity: Severity; labelled?: boolean }) {
+  if (labelled) {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1">
+        <SeverityDot severity={severity} />
+        <span aria-hidden className="hidden sm:inline m-text-meta m-ink-2 font-normal">{severity.charAt(0).toUpperCase() + severity.slice(1)}</span>
+      </span>
+    );
+  }
   const color = severityColor[severity];
   const shape = severityShape[severity];
   const common = { width: 10, height: 10, display: "inline-block" } as const;

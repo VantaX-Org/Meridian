@@ -38,18 +38,22 @@ export function processHomeInsight(rows: readonly ProcessHomeRow[], system: { id
       next: { sentence: `Analyse a run of ${system.name} to score each process`, action: { label: "Open system", href: `/systems/${encodeURIComponent(system.id)}` } },
     };
   }
+  // Counted over every process, so "1 of 1" never sits over a table of thirteen; the unscored rest is named.
+  const unscored = rows.length - scored.length;
+  const rest = unscored > 0 ? `; ${unscored} not scored yet` : "";
   return {
     situation: {
       sentence: noGo.length
-        ? `${noGo.length} of ${plural(scored.length, "scored process", "scored processes")} cannot run on ${system.name}`
+        ? `${noGo.length} of ${plural(rows.length, "process", "processes")} cannot run on ${system.name}${rest}`
         : atRisk.length
-          ? `${atRisk.length} of ${plural(scored.length, "scored process", "scored processes")} at risk on ${system.name}, none no-go`
-          : `Every scored process can run on ${system.name}`,
+          ? `${atRisk.length} of ${plural(rows.length, "process", "processes")} at risk on ${system.name}, none no-go${rest}`
+          : `Every scored process can run on ${system.name}${rest}`,
       tone: noGo.length ? "no-go" : atRisk.length ? "at-risk" : "go",
     },
     changed: { sentence: `Scored from ${runScopeLabel(latest)}` },
     why: worst && blocking
-      ? { sentence: `${worst.name}: ${blocking.description || blocking.field} fails ${plural(worst.readiness?.failing ?? 0, "record")}`, tone: "no-go" }
+      // The field's own failing records, not the process's rule failures over every blocking field.
+      ? { sentence: `${worst.name}: ${blocking.description || blocking.field} fails ${plural(blocking.affected_count, "record")}`, tone: "no-go" }
       : { sentence: noGo.length ? "Required fields fail on the objects these processes use" : "No required field blocks a scored process" },
     next: worst
       ? { sentence: `Clear what blocks ${worst.name} first`, action: { label: `Open ${worst.name}`, href: processHref(worst, system.id, latest.id) } }
@@ -64,7 +68,7 @@ export function readinessExportRows(rows: readonly ProcessHomeRow[]): Record<str
     l1: r.l1,
     verdict: r.readiness?.verdict ?? "",
     blocking_rule: r.readiness?.worst?.check_id ?? r.readiness?.worst?.field ?? "",
-    failing_records: r.readiness?.failing ?? "",
+    rule_failures: r.readiness?.failing ?? "",
     coverage: r.coverage,
     fitness: r.last_run?.fitness ?? "",
   }));

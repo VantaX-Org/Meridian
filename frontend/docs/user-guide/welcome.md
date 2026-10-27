@@ -49,7 +49,7 @@ The **?** button offers **Tour this page** (where a guided tour exists), **Keybo
 ## Your first day
 
 - **Data steward**: open **Fix work**, switch on **Mine** or pick an object, and work the list from the top. See [Fix work](/docs?page=fix).
-- **Data owner or approver**: open **Fix work**, then the **Approvals and export** tab, and approve the batches your stewards prepared. See [Approvals and export](/docs?page=approvals).
+- **Data owner or approver**: you land on **Inbox**, **Approvals**: approve the fix batches your stewards prepared and the SAP write-backs others requested. See [Approvals and export](/docs?page=approvals).
 - **Lead**: open **Progress** to see how fast the backlog is falling and what slows it. See [Progress](/docs?page=progress).
 - **Analyst or SAP Basis**: open **More**, **Data in**, **Systems** to connect a system and run the first extraction, or **Import file** to load an export. See [Data in](/docs?page=data-in).
 

@@ -5,6 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Button, DataTable, ExplorerPage, Mono, Pill, asyncStateOf } from "@/design";
+import { RuleCell } from "@/components/fix/rule-cell";
 import { actionColumn, RowButton } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { endRuleSuppression, getRuleFeedback, getRuleSuppressions, type RuleFeedbackRow, type RuleSuppression } from "@/lib/api/rules";
@@ -22,7 +23,7 @@ export function SuppressionsPanel() {
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const columns: ColumnDef<RuleSuppression>[] = [
-    { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
+    { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <RuleCell id={row.original.check_id} /> },
     { id: "scope", header: "Scope", cell: ({ row }) => row.original.record_key ? <Mono>{row.original.record_key}</Mono> : <Pill tone="at-risk">Whole rule</Pill> },
     { accessorKey: "reason", header: "Reason" },
     { id: "exp", header: "Expires", cell: ({ row }) => formatDate(row.original.expires_at, "date") },
@@ -41,7 +42,7 @@ export function SuppressionsPanel() {
 }
 
 const feedbackColumns: ColumnDef<RuleFeedbackRow>[] = [
-  { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
+  { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <RuleCell id={row.original.check_id} /> },
   { accessorKey: "flagged", header: "Flagged" },
   { accessorKey: "real", header: "Confirmed real" },
   { accessorKey: "false_positive", header: "False positive" },

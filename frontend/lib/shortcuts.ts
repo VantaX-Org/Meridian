@@ -9,9 +9,9 @@
 import { useSyncExternalStore } from "react";
 import { NAV_GROUPS, flattenNav } from "@/lib/nav";
 
-export type ShortcutGroup = "Navigation" | "Fix work" | "Tables" | "Inbox" | "Designer" | "Global";
+export type ShortcutGroup = "Navigation" | "Fix work" | "Tables" | "Inbox" | "Match review" | "Designer" | "Global";
 
-export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = ["Navigation", "Fix work", "Tables", "Inbox", "Designer", "Global"];
+export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = ["Navigation", "Fix work", "Tables", "Inbox", "Match review", "Designer", "Global"];
 
 /**
  * The registry writes a modifier shortcut as "⌘K"; `shortcutLabel` spells it for the viewer's platform
@@ -64,6 +64,15 @@ export const FIX_SHORTCUTS: readonly Shortcut[] = [
   { group: "Fix work", keys: "1 to 5", description: "Switch tabs on an object page" },
 ];
 
+/** app/(app)/mdm/golden/merge/page.tsx (j / k) and components/mdm/pair-review.tsx (m, n, s). */
+export const MATCH_REVIEW_SHORTCUTS: readonly Shortcut[] = [
+  { group: "Match review", keys: "j / k", description: "Next or previous pair" },
+  { group: "Match review", keys: "m", description: "Merge the pair (asks for a reason first)" },
+  { group: "Match review", keys: "n", description: "Mark the pair not a match (asks for a reason first)" },
+  { group: "Match review", keys: "s", description: "Skip to the next pair" },
+  { group: "Match review", keys: "⌘Enter", description: "In the reason box: send the verdict m or n started" },
+];
+
 /** app/(app)/insights/process/designer/page.tsx key handler. */
 export const DESIGNER_SHORTCUTS: readonly Shortcut[] = [
   { group: "Designer", keys: "⌘S", description: "Save model" },
@@ -87,7 +96,7 @@ export function navShortcuts(): Shortcut[] {
 }
 
 export function shortcutRegistry(): Shortcut[] {
-  return [...navShortcuts(), ...FIX_SHORTCUTS, ...TABLE_SHORTCUTS, ...INBOX_SHORTCUTS, ...DESIGNER_SHORTCUTS, ...GLOBAL_SHORTCUTS];
+  return [...navShortcuts(), ...FIX_SHORTCUTS, ...TABLE_SHORTCUTS, ...INBOX_SHORTCUTS, ...MATCH_REVIEW_SHORTCUTS, ...DESIGNER_SHORTCUTS, ...GLOBAL_SHORTCUTS];
 }
 
 export interface ShortcutSection {

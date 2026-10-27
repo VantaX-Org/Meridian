@@ -1,7 +1,7 @@
 "use client";
 
-// The bodies of the Root causes, S/4 migration and Cleansing opportunity cards, shared by the one-run overview
-// (`RunOverview` in ../page.tsx) and the current-state overview (`CurrentOverview`). `run` pins the links to one run;
+// The bodies of the Root causes, S/4 migration and Cleansing opportunity cards on the lead home (home/_analyses.tsx,
+// which took them from the retired Insights overview). `run` pins the links to one run;
 // without it they open the current state. A root cause of the current state carries the run it was computed in.
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -43,7 +43,7 @@ export function RootCauseList({ clusters, run, empty }: { clusters: Cluster[]; r
                   {`${c.rules.length} ${c.rules.length === 1 ? "rule" : "rules"}, ${labelOf(c.dimension).toLowerCase()}, ${labelOf(c.severity).toLowerCase()}`}
                 </span>
                 <span className="m-text-meta m-ink-3">
-                  {`Impact on score ${c.impact.toLocaleString()}${c.auto_fix_pct != null ? `, ${Math.round(c.auto_fix_pct)}% auto-fixable` : ""}`}
+                  {`${c.impact.toLocaleString()} weighted failures (failing records × severity weight: critical 8, high 4, medium 2, low 1)${c.auto_fix_pct != null ? `, ${Math.round(c.auto_fix_pct)}% auto-fixable` : ""}`}
                 </span>
                 <span className="flex gap-3 m-text-body">
                   <Link href={withScope("/insights/rules", { run: at, module: c.module, field: c.field ?? undefined })} className="underline-offset-2 hover:underline">Open rules</Link>
@@ -72,6 +72,7 @@ export function s4Totals(areas: readonly S4Area[]): { blocking: number; warning:
 }
 
 /** Blocking failing rules per S/4 area, each bar opening that area on the readiness page. */
+
 export function S4Chart({ areas, run }: { areas: S4Area[]; run?: string }) {
   const router = useRouter();
   if (areas.length === 0) {
@@ -84,10 +85,12 @@ export function S4Chart({ areas, run }: { areas: S4Area[]; run?: string }) {
   return (
     <>
       <Bar
+        // The whole area name: Bar wraps a long one ("Universal Journal / General Ledger") to two tick lines on a wide
+        // chart and cuts it to one line only at phone width; the tooltip and the drill keep it whole.
         data={failing.map((a) => ({ x: a.label, y: a.blocking_failing }))}
         label="Blocking failing rules per S/4 area"
         // One row per area so the labels never collide, however many areas fail.
-        height={Math.max(160, failing.length * 24)}
+        height={Math.max(160, failing.length * 28)}
         onPointClick={(p) => router.push(withScope("/insights/readiness", { run, area: areas.find((a) => a.label === p.x)?.area }))}
       />
       <p className="mt-2 m-text-body">
@@ -110,6 +113,15 @@ export const CLEANSING_STAGE_FILTER: Record<CleansingStep["key"], FixFilter> = {
 };
 
 /** Failing records to applied fixes; each stage opens Fix work at that status. */
+/**
+ * The funnel's stage names, one vocabulary with Fix work's tiles (lib/help/glossary.ts): records with a machine value
+ * waiting are "with a suggested value". The API's own label names a stage this list does not know.
+ */
+const CLEANSING_STAGE_LABEL: Record<string, string> = {
+  failing: "Failing records", proposed: "With a suggested value", high: "High confidence", approved: "Approved", applied: "Applied",
+};
+const stageLabel = (s: CleansingStep) => CLEANSING_STAGE_LABEL[s.key] ?? s.label;
+
 export function CleansingFunnel({ steps, run }: { steps: CleansingStep[]; run?: string }) {
   const router = useRouter();
   // A batch is built from fixes someone applies: without `apply` the funnel stays a read (its stages still open Fix work).
@@ -121,9 +133,9 @@ export function CleansingFunnel({ steps, run }: { steps: CleansingStep[]; run?: 
     <>
       <div aria-label="Cleansing funnel, failing records to applied fixes" role="group">
         <Funnel
-          stages={steps.map((s) => ({ label: s.label, value: s.records }))}
+          stages={steps.map((s) => ({ label: stageLabel(s), value: s.records }))}
           onStageClick={(st) => {
-            const key = steps.find((s) => s.label === st.label)?.key;
+            const key = steps.find((s) => stageLabel(s) === st.label)?.key;
             router.push(fixHref({ run, ...(key ? CLEANSING_STAGE_FILTER[key] : {}) }));
           }}
         />

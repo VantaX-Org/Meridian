@@ -21,7 +21,7 @@ import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
-import { DrillLink, Button, Card, DataTable, DomainChip, Drawer, EmptyState, ErrorState, Field, Input, Mono, Notice, PageHeader, Pill, Score, Select, Skeleton, Stat, Switch, Tabs, Textarea, Status, buildDrillHref, toast, type CellMeta, PageFrame } from "@/design";
+import { DrillLink, Button, Card, ConfirmDialog, DataTable, DomainChip, Drawer, EmptyState, ErrorState, Field, Input, Mono, Notice, PageHeader, Pill, RowActionButton, Score, Select, Skeleton, Stat, Tabs, Textarea, Status, buildDrillHref, toast, type CellMeta, PageFrame } from "@/design";
 import { actionColumn, LedgerHead, RowLink } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
@@ -31,7 +31,7 @@ import { useSystemScope } from "@/lib/permissions";
 import { getSystems } from "@/lib/api/connectivity";
 import { getConfigAwareScore, type ConfigAwareModule } from "@/lib/api/config-load";
 import { apiErrorState } from "@/lib/error";
-import { checkClassLabel, DIMENSIONS, formatModuleName, formatDate, formatPct, labelOf } from "@/lib/format";
+import { checkClassLabel, DIMENSIONS, formatModuleName, formatDate, formatInt, formatPct, labelOf, relativeTime } from "@/lib/format";
 import { MM_VIEWS } from "@/lib/material-views";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
@@ -64,8 +64,15 @@ const sevOf = (s: Rule["severity"]) => (s === "info" ? "low" : s);
 /** A rule's last pass rate on the 0 to 100 scale (the API sends a fraction or a percent). */
 const rateOf = (r: Rule): number | null => (r.last_pass_rate == null ? null : r.last_pass_rate <= 1 ? r.last_pass_rate * 100 : r.last_pass_rate);
 const SEV_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 3 };
-/** The ledger's rank: lowest pass rate first (the rules failing most records), rules not run yet last, then severity. */
-const byFailing = (a: Rule, b: Rule) => (rateOf(a) ?? 101) - (rateOf(b) ?? 101) || (SEV_RANK[a.severity] ?? 4) - (SEV_RANK[b.severity] ?? 4);
+/**
+ * The ledger's rank: most failing records first (a pass-rate sort tied the top 40 rules at 0.0), then severity, then
+ * the lower pass rate; rules not run yet last.
+ */
+const affectedOf = (r: Rule): number | null => (r.last_affected_count == null ? null : r.last_affected_count);
+const byFailing = (a: Rule, b: Rule) =>
+  (affectedOf(b) ?? -1) - (affectedOf(a) ?? -1)
+  || (SEV_RANK[a.severity] ?? 4) - (SEV_RANK[b.severity] ?? 4)
+  || (rateOf(a) ?? 101) - (rateOf(b) ?? 101);
 /** The API sends a fraction or a percent; one formatter either way. */
 const pct = (v: number) => formatPct(v * (v <= 1 ? 100 : 1));
 const matches = (r: Rule, q: string) => !q || [r.id, r.name, r.description ?? "", r.module, r.severity, ...(r.tags ?? [])].join(" ").toLowerCase().includes(q.toLowerCase());
@@ -177,6 +184,8 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
   });
 
   const toggleRule = toggle.mutate;
+  // Turning a rule on or off changes every later score, so the row action asks first (no inline switch on 10,000 rows).
+  const [confirming, setConfirming] = useState<Rule | null>(null);
   // Per-rule applicability comes from the same coverage query (not_applicable_rules); no extra request.
   const naReason = useMemo(() => new Map((awareQ.data?.modules ?? []).flatMap((m) => m.not_applicable_rules.map((n) => [n.check_id, n.reason] as const))), [awareQ.data]);
   const columns = useMemo<ColumnDef<Rule>[]>(() => [
@@ -205,25 +214,31 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
       },
     },
     {
-      id: "state", header: "State",
-      cell: ({ row }) => {
-        const r = row.original;
-        return canManage
-          ? (
-            <span onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-              <Switch
-                checked={r.enabled}
-                label={r.enabled ? "On" : "Off"}
-                aria-label={`${r.enabled ? "On" : "Off"}: ${nameOf(r)}`} className="[min-width:24px] [min-height:24px]"
-                onCheckedChange={(enabled) => toggleRule({ id: r.id, enabled })}
-              />
-            </span>
-          )
-          : <Pill tone={r.enabled ? "go" : "neutral"}>{labelOf(r.enabled ? "enabled" : "disabled")}</Pill>;
-      },
+      id: "failing", header: "Failing records", meta: { numeric: true }, accessorFn: (r) => affectedOf(r) ?? -1,
+      cell: ({ row }) => formatInt(affectedOf(row.original)),
     },
-    actionColumn((r) => <RowLink href={`/rules/${r.id}`} label={`Open ${nameOf(r)}`}>Open</RowLink>),
-  ], [canManage, toggleRule, naReason]);
+    {
+      id: "last", header: "Last run", accessorFn: (r) => r.last_run_at ?? "",
+      cell: ({ row }) => (row.original.last_run_at ? relativeTime(row.original.last_run_at) : <span className="m-ink-3">Never</span>),
+    },
+    {
+      id: "state", header: "State", accessorFn: (r) => (r.enabled ? 1 : 0),
+      cell: ({ row }) => <Pill tone={row.original.enabled ? "go" : "neutral"}>{labelOf(row.original.enabled ? "enabled" : "disabled")}</Pill>,
+    },
+    {
+      ...actionColumn<Rule>((r) => (
+        <span className="inline-flex items-center gap-3 whitespace-nowrap">
+          <RowLink href={`/rules/${r.id}`} label={`Open ${nameOf(r)}`}>Open</RowLink>
+          {canManage ? (
+            <RowActionButton onClick={() => setConfirming(r)} label={`${r.enabled ? "Turn off" : "Turn on"} ${nameOf(r)}`}>
+              {r.enabled ? "Turn off" : "Turn on"}
+            </RowActionButton>
+          ) : null}
+        </span>
+      )),
+      size: canManage ? 170 : 120,
+    },
+  ], [canManage, naReason, setConfirming]);
 
   const coverageRows = useMemo(
     () => facets.modules.map((m) => ({ module: m, total: rules.filter((r) => r.module === m).length, aware: awareByModule.get(m) })),
@@ -343,7 +358,7 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
       {!canManage ? <Notice tone="info">Enabling, disabling or writing a rule needs the manage-rules permission. The library is read-only for you.</Notice> : null}
       <div className="m-stat-grid">
         {/* A failed read has no counts: "—", never zeros above the error. */}
-        <Stat label="Failing" value={rulesQ.isError ? "—" : failingCount.toLocaleString()} href={rulesQ.isError ? undefined : "/rules?state=failing"} tone={!rulesQ.isError && failingCount ? "at-risk" : undefined} hint="Last pass rate under 100" loading={rulesQ.isLoading} />
+        <Stat label="Failing" value={rulesQ.isError ? "—" : failingCount.toLocaleString()} href={rulesQ.isError ? undefined : "/rules?state=failing"} tone={!rulesQ.isError && failingCount ? "at-risk" : undefined} hint="Library rules whose last run failed; Objects also counts generated checks, once per object" loading={rulesQ.isLoading} />
         <Stat label="Disabled" value={rulesQ.isError ? "—" : disabledCount.toLocaleString()} href={rulesQ.isError ? undefined : "/rules?state=disabled"} loading={rulesQ.isLoading} />
         <Stat label="Not run yet" value={rulesQ.isError ? "—" : notRunCount.toLocaleString()} href={rulesQ.isError ? undefined : "/rules?state=not_run"} loading={rulesQ.isLoading} />
       </div>
@@ -355,8 +370,28 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
         <ErrorState {...apiErrorState(rulesQ.error)} onRetry={() => rulesQ.refetch()} />
       ) : visible.length ? (
         <section aria-label="Rule catalogue">
-          <LedgerHead title="Rules, lowest pass rate first" meta={`${visible.length.toLocaleString()} of ${rules.length.toLocaleString()}`} />
+          <LedgerHead title="Rules, most failing records first" meta={`${visible.length.toLocaleString()} of ${rules.length.toLocaleString()}`} />
           <DataTable columns={columns} data={visible} getRowId={(r) => r.id} onRowClick={(r) => setSelectedId(r.id)} rowHref={(r) => `/rules/${r.id}`} tableId="rules-library" hideSearch exportOptions={exportOptions} exportName="rules" />
+          <ConfirmDialog
+            open={confirming !== null}
+            onOpenChange={(open) => { if (!open) setConfirming(null); }}
+            title={confirming?.enabled ? "Turn this rule off?" : "Turn this rule on?"}
+            body={confirming ? (
+              <p>
+                <Mono>{codeOf(confirming) || confirming.id}</Mono> {nameOf(confirming)}.{" "}
+                {confirming.enabled
+                  ? "The next analysis stops checking it, and scores no longer count its failures."
+                  : "The next analysis checks it again, and its failures count in the scores."}
+              </p>
+            ) : null}
+            confirmLabel={confirming?.enabled ? "Turn off" : "Turn on"}
+            cancelLabel="Keep as is"
+            tone={confirming?.enabled ? "danger" : "default"}
+            onConfirm={() => {
+              if (confirming) toggleRule({ id: confirming.id, enabled: !confirming.enabled });
+              setConfirming(null);
+            }}
+          />
         </section>
       ) : filtered ? (
         <EmptyState

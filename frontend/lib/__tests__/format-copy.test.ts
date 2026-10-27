@@ -3,8 +3,8 @@
 // run-axis ticks that never show a user-supplied label, and the delta and trend sentences.
 import { describe, expect, it } from "vitest";
 import {
-  capRuleIds, deltaSentence, formatModuleName, formatMoney, MODULE_LABELS, plural, runAxisLabels, runOptionLabels, shortCapReason, shortList,
-  systemTypeLabel, trendSentence,
+  capRuleIds, deltaSentence, formatModuleName, formatMoney, formatMoneyCompact, MODULE_LABELS, passRatePct, plural, shortCapReason, shortList,
+  systemTypeLabel, trendSentence, zoneName,
 } from "../format";
 
 describe("plural", () => {
@@ -98,59 +98,6 @@ describe("display names", () => {
   });
 });
 
-describe("runAxisLabels", () => {
-  it("ticks are dates, and date with time only where two runs share a day", () => {
-    const labels = runAxisLabels([
-      { id: "a", run_at: "2026-10-02T09:00:00Z" },
-      { id: "b", run_at: "2026-10-16T05:00:00Z" },
-      { id: "c", run_at: "2026-10-16T17:30:00Z" },
-    ]);
-    expect(labels.get("a")).toBe("2 Oct 2026");
-    expect(labels.get("b")).toBe("16 Oct 2026, 05:00");
-    expect(labels.get("c")).toBe("16 Oct 2026, 17:30");
-  });
-  it("never carries the run's upload label", () => {
-    const labels = runAxisLabels([{ id: "business_partner_100k", run_at: "2026-10-02T09:00:00Z" }]);
-    expect([...labels.values()]).toEqual(["2 Oct 2026"]);
-  });
-  it("gives a dash for a missing date", () => {
-    expect(runAxisLabels([{ id: "x", run_at: null }]).get("x")).toBe("—");
-  });
-  it("adds seconds when two runs share a minute, and an ordinal in run order when they share a second", () => {
-    const labels = runAxisLabels([
-      { id: "d", run_at: "2026-10-16T05:17:03.900Z" },
-      { id: "a", run_at: "2026-10-16T05:17:01Z" },
-      { id: "b", run_at: "2026-10-16T05:17:02Z" },
-      { id: "c", run_at: "2026-10-16T05:17:03.100Z" },
-      { id: "e", run_at: "2026-10-16T09:00:00Z" },
-    ]);
-    expect(labels.get("a")).toBe("16 Oct 2026, 05:17:01");
-    expect(labels.get("b")).toBe("16 Oct 2026, 05:17:02");
-    expect(labels.get("c")).toBe("16 Oct 2026, 05:17:03 #1");
-    expect(labels.get("d")).toBe("16 Oct 2026, 05:17:03 #2");
-    expect(labels.get("e")).toBe("16 Oct 2026, 09:00");
-    // Ten runs inside one minute never share a tick.
-    expect(new Set(labels.values()).size).toBe(5);
-  });
-});
-
-describe("runOptionLabels", () => {
-  it("keeps a unique label, and tells runs that share a label apart by date and time", () => {
-    const labels = runOptionLabels([
-      { id: "a", label: "controlling_1k", run_at: "2026-10-16T05:17:01Z" },
-      { id: "b", label: "controlling_1k", run_at: "2026-10-16T05:17:02Z" },
-      { id: "c", label: "controlling_1k", run_at: "2026-10-15T08:00:00Z" },
-      { id: "d", label: "fi_gl_1k", run_at: "2026-10-16T05:17:01Z" },
-      { id: "e", label: null, run_at: "2026-10-14T10:00:00Z" },
-    ]);
-    expect(labels.get("a")).toBe("controlling_1k, 16 Oct 2026, 05:17:01");
-    expect(labels.get("b")).toBe("controlling_1k, 16 Oct 2026, 05:17:02");
-    expect(labels.get("c")).toBe("controlling_1k, 15 Oct 2026");
-    expect(labels.get("d")).toBe("fi_gl_1k");
-    expect(labels.get("e")).toBe("14 Oct 2026, 10:00");
-  });
-});
-
 describe("cap reasons", () => {
   const reason = "6 critical failures over tolerance (CO003: 6.3% of CSKS rows; CO020: 6.1% of CSKB rows; CO021: 5.1% of CSKB rows; CO028: 5.5% of CEPC rows; CO043: 6.4% of CSKS rows; CO126: 5.0% of CSKS rows) — score capped at 70";
   it("reads the rule ids out of the scoring engine's cap reason", () => {
@@ -184,5 +131,46 @@ describe("trendSentence", () => {
   it("says rose or fell otherwise, with the run count agreed", () => {
     expect(trendSentence(60, 70, 2)).toBe("Composite score rose from 60 to 70 over 2 runs.");
     expect(trendSentence(82.5, 70, 4, "Completeness")).toBe("Completeness fell from 82.5 to 70 over 4 runs.");
+  });
+});
+
+describe("formatMoneyCompact", () => {
+  it("shortens headline money to three significant figures from a million up", () => {
+    expect(formatMoneyCompact(4_840_487_383, "ZAR")).toBe("ZAR 4.84 bn");
+    expect(formatMoneyCompact(4_793_500, "ZAR")).toBe("ZAR 4.79 m");
+    expect(formatMoneyCompact(1_250_000_000_000, "ZAR")).toBe("ZAR 1.25 tn");
+  });
+  it("keeps smaller amounts whole, and says nothing for a missing figure", () => {
+    expect(formatMoneyCompact(840_000, "ZAR")).toBe("ZAR 840 k");
+    expect(formatMoneyCompact(950, "ZAR")).toBe(formatMoney(950, "ZAR"));
+    expect(formatMoneyCompact(12_300_000)).toBe("12.3 m");
+    expect(formatMoneyCompact(null, "ZAR")).toBe("—");
+  });
+  it("rounds before picking the unit, stepping up when the rounded figure reaches a thousand", () => {
+    expect(formatMoneyCompact(999_999, "ZAR")).toBe("ZAR 1 m");
+    expect(formatMoneyCompact(999_499, "ZAR")).toBe("ZAR 999 k");
+    expect(formatMoneyCompact(999_499_999, "ZAR")).toBe("ZAR 999 m");
+    expect(formatMoneyCompact(999_500_000, "ZAR")).toBe("ZAR 1 bn");
+    expect(formatMoneyCompact(999_999_999_999, "ZAR")).toBe("ZAR 1 tn");
+    expect(formatMoneyCompact(-999_999, "ZAR")).toBe("ZAR -1 m");
+  });
+});
+
+describe("passRatePct", () => {
+  it("passes the stored 0..100 rate through, so a nearly failing rule is not read as a 0..1 share", () => {
+    expect(passRatePct(0.5)).toBe(0.5);
+    expect(passRatePct(1)).toBe(1);
+    expect(passRatePct(0)).toBe(0);
+    expect(passRatePct(98.46)).toBe(98.46);
+    expect(passRatePct(null)).toBeNull();
+    expect(passRatePct(undefined)).toBeNull();
+    expect(passRatePct(Number.NaN)).toBeNull();
+  });
+});
+
+describe("zoneName", () => {
+  it("names a zone once for a column header", () => {
+    expect(zoneName("UTC")).toBe("UTC");
+    expect(zoneName("Africa/Johannesburg", new Date("2026-01-03T00:00:00Z"))).toBe("GMT+2");
   });
 });

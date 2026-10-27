@@ -9,6 +9,8 @@ import * as configLoadApi from "@/lib/api/config-load";
 import * as versionsApi from "@/lib/api/versions";
 import * as objectsApi from "@/lib/api/v1/objects";
 import * as workApi from "@/lib/api/work";
+import * as ownersApi from "@/lib/api/owners";
+import * as authContext from "@/context/auth-context";
 import ObjectsPage from "../page";
 
 let currentSearch = "run=v1";
@@ -162,12 +164,37 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     });
     renderWithQuery(<ObjectsPage />);
     await waitFor(() => expect(ledger().getByText("mm_bad")).toBeInTheDocument());
-    expect(ledger().getByText("mm_bad").closest("a")).toHaveAttribute("href", "/objects/a?run=v1&tab=fix&issue=mm_bad");
+    expect(ledger().getByText("mm_bad").closest("a")).toHaveAttribute("href", "/objects/a?run=v1&tab=fix&check=mm_bad");
     // per run, the tile opens exactly the run's critical and high findings
-    expect(screen.getByText("Critical and high findings").closest("a")).toHaveAttribute("href", "/runs/v1?tab=findings&severity=critical,high");
+    expect(screen.getByText("Critical and high failing rules").closest("a")).toHaveAttribute("href", "/runs/v1?tab=findings&severity=critical,high");
     expect(screen.getByRole("button", { name: "Accuracy" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "ann" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Trend" })).toBeInTheDocument();
+  });
+
+  it("names each object's owner from the object header's owner list, and My objects keeps the signed-in user's", async () => {
+    currentSearch = "run=v1";
+    replace.mockClear();
+    const owner = (ref: string, id: string, name: string) => ({ kind: "object" as const, ref, owner_user_id: id, owner_name: name, steward_user_id: null, steward_name: null, updated_at: null });
+    vi.spyOn(ownersApi, "getOwners").mockResolvedValue([owner("a", "u1", "Ann Lead"), owner("b", "u2", "Ben Steward")]);
+    const me = vi.spyOn(authContext, "useCurrentUser").mockReturnValue({ id: "u1", email: "ann@example.com", name: "Ann Lead", role: "programme_lead", permissions: [] });
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: [mk("a", "AAA", "fail", 50), mk("b", "BBB", "warn", 60), mk("c", "CCC", "pass", 95)] });
+    const { unmount } = renderWithQuery(<ObjectsPage />);
+    await waitFor(() => expect(ledger().getByText("Ann Lead")).toBeInTheDocument());
+    expect(ledger().getByText("Ben Steward")).toBeInTheDocument();
+    expect(ledger().getByText("Not set")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "My objects" }));
+    expect(replace).toHaveBeenCalledWith("/objects?run=v1&mine=1");
+    unmount();
+
+    currentSearch = "run=v1&mine=1";
+    renderWithQuery(<ObjectsPage />);
+    await waitFor(() => expect(ledger().getByText("AAA")).toBeInTheDocument());
+    expect(ledger().queryByText("BBB")).toBeNull();
+    expect(ledger().queryByText("CCC")).toBeNull();
+    expect(screen.getByRole("button", { name: "My objects" })).toHaveAttribute("aria-pressed", "true");
+    me.mockRestore();
+    currentSearch = "run=v1";
   });
 
   it("names Dimension chips in sentence case and keeps the raw id in the URL", async () => {
@@ -214,7 +241,7 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     expect(wrap).toHaveAttribute("title", "DDIC-ADR6-TYPE");
     expect(wrap).toHaveClass("block", "truncate", "whitespace-nowrap");
     expect(wrap?.getAttribute("style")).toBeNull();
-    expect(id.closest("a")).toHaveAttribute("href", "/objects/a?run=v1&tab=fix&issue=DDIC-ADR6-TYPE");
+    expect(id.closest("a")).toHaveAttribute("href", "/objects/a?run=v1&tab=fix&check=DDIC-ADR6-TYPE");
   });
 
   it("lists the ledger columns in order and closes each row with an Open link to its records to fix", async () => {
@@ -225,7 +252,7 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     });
     renderWithQuery(<ObjectsPage />);
     await waitFor(() => expect(ledger().getByText("AAA")).toBeInTheDocument());
-    expect(ledger().getAllByRole("columnheader").map((h) => h.textContent?.trim())).toEqual(["Object", "Blocking rule", "Rule failures", "Score", "Verdict", "Trend", "Action"]);
+    expect(ledger().getAllByRole("columnheader").map((h) => h.textContent?.trim())).toEqual(["Object", "Owner", "Blocking rule", "Rule failures", "Score", "Verdict", "Trend", "Action"]);
     expect(ledger().getByText("Bad data")).toBeInTheDocument();
     expect(ledger().getByRole("link", { name: "Open AAA" })).toHaveAttribute("href", "/objects/a?run=v1&tab=fix");
   });
@@ -257,7 +284,7 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     expect(screen.queryByRole("columnheader", { name: "Blocking rule" })).toBeNull();
   });
 
-  it("shows each object's records to fix, critical, with a suggestion and overdue from the work list, worst first, each opening Records to fix", async () => {
+  it("shows each object's records to fix, critical records, with a suggested value and overdue from the work list, worst first, each opening Records to fix", async () => {
     currentSearch = "run=v1";
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: [
       mk("a", "AAA", "fail", 40, { critical_checks: 3, high_checks: 0 }),
@@ -274,14 +301,14 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     renderWithQuery(<ObjectsPage />);
     await waitFor(() => expect(ledger().getByRole("columnheader", { name: "To fix" })).toBeInTheDocument());
     expect(summary).toHaveBeenCalledWith("v1");
-    for (const h of ["Critical", "With a suggestion", "Overdue"]) expect(ledger().getByRole("columnheader", { name: h })).toBeInTheDocument();
+    for (const h of ["Critical records", "With a suggested value", "Overdue"]) expect(ledger().getByRole("columnheader", { name: h })).toBeInTheDocument();
     // BBB has the most critical records to fix, so it leads although AAA has more blocking checks; CCC has none.
     const order = rowLabels().join("|");
     expect(order.indexOf("BBB")).toBeLessThan(order.indexOf("AAA"));
     expect(order.indexOf("AAA")).toBeLessThan(order.indexOf("CCC"));
     expect(ledger().getByRole("link", { name: "Open the 2,400 records to fix of BBB" })).toHaveAttribute("href", "/objects/b?run=v1&tab=fix");
     expect(ledger().getByRole("link", { name: "Open the 900 critical records of BBB" })).toHaveAttribute("href", "/objects/b?run=v1&tab=fix&sev=critical");
-    expect(ledger().getByRole("link", { name: "Open the 1,200 records with a suggestion of BBB" })).toHaveAttribute("href", "/objects/b?run=v1&tab=fix&suggested=1");
+    expect(ledger().getByRole("link", { name: "Open the 1,200 records with a suggested value of BBB" })).toHaveAttribute("href", "/objects/b?run=v1&tab=fix&sugg=1");
     expect(ledger().getByRole("link", { name: "Open the 7 overdue records of BBB" })).toHaveAttribute("href", "/objects/b?run=v1&tab=fix&due=overdue");
   });
 
