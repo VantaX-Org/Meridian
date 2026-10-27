@@ -25,6 +25,8 @@ export async function getFindings(params: {
   check_id?: string;
   baseline?: string;
   type?: "rule" | "anomaly";
+  /** Only rules with at least one failing record (affected_count > 0). */
+  failing?: boolean;
   sort?: "severity" | "impact";
   limit?: number;
   offset?: number;
@@ -92,7 +94,7 @@ export async function deleteSavedView(id: string): Promise<void> {
   await apiClient.delete(`/api/v1/saved-views/${id}`);
 }
 
-export type FindingsExportFilter = FindingsFilter & { baseline?: string; sort?: "severity" | "impact"; type?: "rule" | "anomaly" };
+export type FindingsExportFilter = FindingsFilter & { baseline?: string; sort?: "severity" | "impact"; type?: "rule" | "anomaly"; failing?: boolean };
 
 /** GET /api/v1/findings/export — same filters as getFindings, CSV or XLSX. */
 export function exportFindings(format: "csv" | "xlsx", filter: FindingsExportFilter): Promise<void> {

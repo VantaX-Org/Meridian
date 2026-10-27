@@ -2,32 +2,31 @@
 
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Mono, Pill, type PillTone, Status } from "@/design";
+import { Pill, type PillTone, Status } from "@/design";
 import type { RuleRow } from "@/lib/api/insights";
 import { drillLabel, fixHref } from "@/lib/drill";
 import { formatModuleName, labelOf } from "@/lib/format";
-import { ddicRuleName, ruleWords, useRuleNames } from "@/lib/rule-name";
+import { ddicRuleName, ruleWords } from "@/lib/rule-name";
+import { RuleCell } from "@/components/fix/rule-cell";
 import { DrillCount } from "./DrillCount";
 
 const S4_TONE: Record<string, PillTone> = { blocking: "no-go", warning: "at-risk" };
 
 const n = (v: number) => v.toLocaleString();
 
-/** The ranking's own words for a rule (a YAML message, never the bare id), else the DDIC check's. */
+/** The ranking's own words for a rule (a YAML message, never the bare id), else the DDIC check's: the sort key. */
 const rowWords = (r: RuleRow) => ruleWords(r.check_id, r.name) ?? ddicRuleName(r.check_id) ?? undefined;
 
 /**
- * The rule in plain words (the tenant catalogue's name, else the ranking's words), the check id under them; the id
- * alone when nothing names it.
+ * The rule as every ledger names it (RuleCell: the check id on its own line, the words under it by the one
+ * precedence: catalogue name, then the ranking's message, then generated words), linked to its failing records.
  */
 function RuleWordsCell({ row, href }: { row: RuleRow; href: string }) {
-  const name = useRuleNames([row.check_id])(row.check_id) ?? rowWords(row);
   return (
-    <span className="flex flex-col [min-width:14rem]">
-      <span className="line-clamp-2" title={name || row.check_id}>
-        <DrillCount href={href} count={row.affected} label={drillLabel({ what: "failing records", check: row.check_id, module: row.module })}>{name || row.check_id}</DrillCount>
-      </span>
-      {name ? <span className="m-text-meta m-ink-3"><Mono>{row.check_id}</Mono></span> : null}
+    <span className="flex [min-width:14rem]">
+      <DrillCount href={href} count={row.affected} label={drillLabel({ what: "failing records", check: row.check_id, module: row.module })}>
+        <RuleCell id={row.check_id} fallback={row.name} />
+      </DrillCount>
     </span>
   );
 }
@@ -37,7 +36,7 @@ export function ruleColumns(run: string | undefined, compact = false): ColumnDef
   const recordsHref = (r: RuleRow) => fixHref({ run, module: r.module, check: r.check_id });
   const objectHref = (r: RuleRow) => `/objects/${r.module}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", check: r.check_id })}`;
   const cols: ColumnDef<RuleRow>[] = [
-    // Plain words first, the check id under them as the secondary key.
+    // The check id, the rule's words under it (RuleCell), as on every other ledger.
     {
       // A DDIC conformance check has no catalogue name: its id names the table and the kind of check.
       id: "rule", header: "Rule", accessorFn: (r) => rowWords(r) ?? r.check_id,

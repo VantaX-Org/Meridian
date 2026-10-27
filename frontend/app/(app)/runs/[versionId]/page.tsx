@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, Card, ConfirmDialog, DataTable, Delta, Dialog, DimensionBars, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, FilterChip, FindingDrawer, Input, InsightHeader, Line, Pager, Pill, Tooltip, DrillLink, Score, Select, SeverityDot, Skeleton, Sparkline, Tabs, isSeverity, entityTabs, NextActions, PageHeader, Status, asyncStateOf, type CellMeta } from "@/design";
+import { Button, Card, ConfirmDialog, DataTable, Delta, Dialog, DimensionBars, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, FilterChip, FindingDrawer, Input, InsightHeader, Line, Pager, Pill, Tooltip, DrillLink, Score, Select, SeverityDot, Skeleton, Sparkline, Tabs, isSeverity, entityTabs, NextActions, PageHeader, Status, Switch, asyncStateOf, type CellMeta } from "@/design";
 import { getPrescriptiveAnalytics } from "@/lib/api/analytics";
 import { useRole } from "@/hooks/use-role";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -417,15 +417,17 @@ function SummaryTab({
   );
 }
 
-const findingsKey = (versionId: string, severity: string, dimension: string, moduleFilter: string, page: number) =>
-  [...queryKeys.run(versionId), "findings", severity, dimension, moduleFilter, page] as const;
+const findingsKey = (versionId: string, severity: string, dimension: string, moduleFilter: string, page: number, passing = false) =>
+  [...queryKeys.run(versionId), "findings", severity, dimension, moduleFilter, page, passing ? "all" : "failing"] as const;
 
-const findingsFetch = (versionId: string, severity: string, dimension: string, moduleFilter: string, page: number) =>
+/** The "Failing rules" tab: rules with failing records only, unless the reader asks for passing rules too. */
+const findingsFetch = (versionId: string, severity: string, dimension: string, moduleFilter: string, page: number, passing = false) =>
   getFindings({
     version_id: versionId,
     severity: severity || undefined,
     dimension: dimension || undefined,
     module: moduleFilter || undefined,
+    failing: passing ? undefined : true,
     sort: "severity",
     limit: FINDINGS_PAGE,
     offset: (page - 1) * FINDINGS_PAGE,
@@ -440,6 +442,8 @@ function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenStep
   const moduleFilter = searchParams.get("module") ?? "";
   const findingId = searchParams.get("finding");
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
+  // A rule evaluated with 0 failing records is not a failing rule: listed only when asked for.
+  const passing = searchParams.get("passing") === "1";
 
   const push = (params: URLSearchParams) => router.push(`/runs/${versionId}?${params.toString()}`);
   const setFilter = (key: string, value: string) => {
@@ -469,10 +473,11 @@ function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenStep
     severity: severity || undefined,
     dimension: dimension || undefined,
     module: moduleFilter || undefined,
+    failing: passing ? undefined : true,
   };
   const findings = useQuery({
-    queryKey: findingsKey(versionId, severity, dimension, moduleFilter, page),
-    queryFn: () => findingsFetch(versionId, severity, dimension, moduleFilter, page),
+    queryKey: findingsKey(versionId, severity, dimension, moduleFilter, page, passing),
+    queryFn: () => findingsFetch(versionId, severity, dimension, moduleFilter, page, passing),
     placeholderData: (prev) => prev,
   });
   const rows = findings.data?.findings ?? [];
@@ -516,6 +521,7 @@ function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenStep
           {severity ? <FilterChip label="Severity" value={severityFilterLabel(severity)} onRemove={() => setFilter("severity", "")} /> : null}
           {dimension ? <FilterChip label="Dimension" value={DIMENSIONS.find((d) => d.id === dimension)?.label ?? labelOf(dimension)} onRemove={() => setFilter("dimension", "")} /> : null}
           {moduleFilter ? <FilterChip label="Object" value={formatModuleName(moduleFilter)} onRemove={() => setFilter("module", "")} /> : null}
+          <Switch checked={passing} onCheckedChange={(on) => setFilter("passing", on ? "1" : "")} label="Show passing rules too" />
         </div>
       }
       toolbarEnd={

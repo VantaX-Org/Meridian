@@ -360,7 +360,7 @@ def trend_annotations(versions: list[dict]) -> list[dict]:
 
 def cleansing_steps(failing_n: int, proposed: int, high: int, approved: int, applied: int) -> list[dict]:
     return [{"key": k, "label": label, "records": n} for k, label, n in (
-        ("failing", "Failing records", failing_n), ("proposed", "With a proposed value", proposed),
+        ("failing", "Failing records", failing_n), ("proposed", "With a suggested value", proposed),
         ("high", "High confidence", high), ("approved", "Approved", approved), ("applied", "Applied", applied))]
 
 

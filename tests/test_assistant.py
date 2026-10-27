@@ -81,7 +81,7 @@ class FakeSources:
     async def cleansing(self, vid, module):
         return {"version_id": RUN, "steps": [
             {"key": "failing", "label": "Failing records", "records": 1000},
-            {"key": "proposed", "label": "With a proposed value", "records": 600},
+            {"key": "proposed", "label": "With a suggested value", "records": 600},
             {"key": "high", "label": "High confidence", "records": 300},
             {"key": "approved", "label": "Approved", "records": 200},
             {"key": "applied", "label": "Applied", "records": 50},

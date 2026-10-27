@@ -203,7 +203,7 @@ describe("ObjectDetailPage", () => {
     ] });
     // The ranking repeats the bare id when its YAML has no message; the catalogue names the rule by check id, not by row UUID.
     vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ rows: [{ check_id: "MM045", name: "MM045" }] } as never);
-    const names = vi.spyOn(rulesApi, "getRuleNames").mockResolvedValue({ MM045: "Material type is mandatory" });
+    const names = vi.spyOn(rulesApi, "getRuleNames").mockResolvedValue({ names: { MM045: "Material type is mandatory" }, generated: {} });
     renderWithQuery(<ObjectDetailPage />);
     const name = await screen.findByText("Material type is mandatory");
     expect(within(name.closest("tr")!).getByText("MM045")).toBeInTheDocument();

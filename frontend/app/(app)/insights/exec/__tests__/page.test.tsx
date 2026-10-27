@@ -283,7 +283,7 @@ describe("ExecPage", () => {
       ],
       total: 2,
     } as never);
-    vi.spyOn(rulesApi, "getRuleNames").mockResolvedValue({ MM045: "MM045: Material description is missing" });
+    vi.spyOn(rulesApi, "getRuleNames").mockResolvedValue({ names: { MM045: "MM045: Material description is missing" }, generated: {} });
     vi.spyOn(ownersApi, "getOwners").mockRejectedValue(new Error("owners down"));
     renderWithQuery(<ExecPage />);
     expect(await screen.findByText("Value does not match the field's SAP data type (MARA)")).toBeInTheDocument();

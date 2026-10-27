@@ -198,6 +198,9 @@ describe("RunsPage", () => {
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
     for (const h of ["System", "Records", "Triggered by"]) expect(screen.getByRole("columnheader", { name: h })).toBeInTheDocument();
+    // each severity column says its unit: failing rules, never a bare "High"
+    for (const h of ["Critical failing rules", "High failing rules"]) expect(screen.getByRole("columnheader", { name: new RegExp(h) })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: /^High$/ })).toBeNull();
     const body = screen.getAllByRole("row").slice(1);
     expect(body).toHaveLength(1);
     expect(body[0]).toHaveTextContent("+1 earlier run");

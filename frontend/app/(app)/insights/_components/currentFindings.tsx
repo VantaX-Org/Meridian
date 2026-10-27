@@ -4,11 +4,11 @@
 // of its lineage (lib/current-state.ts), highest impact first. It came from the retired Insights overview.
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
-import { buildDrillHref, Mono, Status } from "@/design";
+import { buildDrillHref, Status } from "@/design";
 import type { StateObject } from "@/lib/current-state";
-import { checkClassLabel, formatModuleName } from "@/lib/format";
+import { formatModuleName } from "@/lib/format";
 import { drillLabel, fixHref } from "@/lib/drill";
-import { useRuleNames } from "@/lib/rule-name";
+import { RuleCell } from "@/components/fix/rule-cell";
 import type { Finding } from "@/types/api";
 import { DrillCount } from "./DrillCount";
 
@@ -25,19 +25,15 @@ export function currentFixFirst(findings: readonly Finding[], objects: readonly 
 }
 
 /**
- * A finding's rule in words: its stored message, else the rule's name from the catalogue (DDIC conformance checks,
- * which the catalogue does not hold, named from their id), else the kind of check; the check id sits under them.
+ * A finding's rule as every ledger names it (RuleCell: the check id on its own line, the words under it by the one
+ * precedence: catalogue name, then the finding's message, then generated words), linked to its failing records.
  */
 function RuleWordsCell({ finding: f }: { finding: Finding }) {
-  const message = f.details?.message || null;
-  const nameOf = useRuleNames([f.check_id], !message);
-  const words = message || nameOf(f.check_id) || (f.check_class ? checkClassLabel(f.check_class) : null);
   return (
-    <span className="flex flex-col [min-width:14rem]">
-      {words ? <span className="line-clamp-2" title={words}>{words}</span> : null}
-      <span className={words ? "m-text-meta m-ink-3" : undefined}>
-        <DrillCount href={findingRecords(f)} label={drillLabel({ what: "failing records", check: f.check_id, module: f.module })}><Mono>{f.check_id}</Mono></DrillCount>
-      </span>
+    <span className="flex [min-width:14rem]">
+      <DrillCount href={findingRecords(f)} label={drillLabel({ what: "failing records", check: f.check_id, module: f.module })}>
+        <RuleCell id={f.check_id} fallback={f.details?.message || null} />
+      </DrillCount>
     </span>
   );
 }
@@ -46,7 +42,7 @@ function RuleWordsCell({ finding: f }: { finding: Finding }) {
 export const currentFindingColumns: ColumnDef<Finding>[] = [
   {
     accessorKey: "check_id", header: "Rule",
-    // Plain words first (the finding's message, else the rule's name, else the kind of check), the check id under them.
+    // The check id, the rule's words under it (RuleCell), as on every other ledger.
     cell: ({ row }) => <RuleWordsCell finding={row.original} />,
   },
   {

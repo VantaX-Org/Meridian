@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { buildDrillHref, Button, Card, DataTable, DimensionBars, DomainChip, DrillLink, EmptyState, ExportMenu, HomePage, Mono, ObjectMap, Pill, Select, Skeleton, Stat, type HeatmapCell, Status, Score, useMediaQuery } from "@/design";
-import { RuleName } from "@/components/fix/rule-cell";
+import { RuleCell } from "@/components/fix/rule-cell";
 import { getObjects } from "@/lib/api/v1/objects";
 import { getFindings, getFindingsAggregate } from "@/lib/api/findings";
 import { useRunListWith } from "@/hooks/use-run-list";
@@ -326,11 +326,9 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     },
     {
       id: "blocking", header: "Blocking rule", enableSorting: false, meta: { priority: "low" },
+      // The shared RuleCell: the id whole on its own line (never broken mid-id), the words under it in two lines.
       cell: ({ row: { original: o } }) => o.blocking ? (
-        <span className="inline-flex min-w-0 items-baseline gap-2">
-          <DrillLink href={buildDrillHref({ object: o.module, ruleId: o.blocking, run: o.run_id })}><Mono>{o.blocking}</Mono></DrillLink>
-          <RuleName id={o.blocking} fallback={o.blockingWords} className="m-ink-3 truncate [max-width:46ch]" />
-        </span>
+        <RuleCell id={o.blocking} fallback={o.blockingWords} href={buildDrillHref({ object: o.module, ruleId: o.blocking, run: o.run_id })} className="[max-width:46ch]" />
       ) : "—",
     },
     {
@@ -408,7 +406,8 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   });
   const objectMap = mapItems.length ? <ObjectMap items={mapItems} columns={8} rowHeight={52} label="Objects by rule failures and verdict" unit="rule failures" /> : undefined;
 
-  const heatRows = scored.slice(0, TABLE_ROWS);
+  // Every object with a scored run (not only the ledger's top rows): the grid is the whole picture by dimension.
+  const heatRows = scored;
   const heatCells = dimensionHeatmapCells(heatRows, merged, bands);
   // The grid prints each score and tints it by readiness: the number carries the meaning, the hue repeats it.
   const heatTone = new Map(heatCells.map((c) => [`${c.row}:${c.col}`, c.tone]));
@@ -436,7 +435,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     </div>
   );
   const heatmapCard = role !== "basis" && heatCells.length > 0 ? (
-        <Card title="Dimensions by object" padding="sm">
+        <Card title="Dimensions by object" meta="– Not measured" padding="sm">
           <Heatmap
             rows={heatRows.map((o) => o.label)}
             cols={DIMENSIONS.map(formatModuleName)}

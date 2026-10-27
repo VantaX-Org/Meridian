@@ -84,6 +84,7 @@ export function Heatmap({
                     onClick={() => cell && onPointClick?.(cell)}
                     disabled={!cell}
                     aria-label={cell ? `${r} ${c}: ${look?.label}` : `${r} ${c}: not measured`}
+                    title={cell ? undefined : "Not measured"}
                     className={`m-heat-cell flex items-center justify-center border-0 p-0 ${draw ? "m-motion-rise" : ""}`}
                     style={{
                       width: cellSize,
@@ -98,7 +99,9 @@ export function Heatmap({
                       animationDelay: draw ? `calc(var(--m-motion-duration) * ${index / 10})` : undefined,
                     }}
                   >
-                    {look && typeof cell?.value === "number" && String(Math.round(cell.value))}
+                    {look && typeof cell?.value === "number" ? String(Math.round(cell.value)) : null}
+                    {/* A cell nothing measured says so (title "Not measured", the legend under the grid), never a bare blank. */}
+                    {cell ? null : <span aria-hidden="true" style={{ color: "var(--m-ink-3)" }}>–</span>}
                   </button>
                 </td>
               );

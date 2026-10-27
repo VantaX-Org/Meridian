@@ -99,8 +99,9 @@ describe("the four counts of what fails", () => {
     // Figures next to each other say their unit: critical records to fix beside critical and high failing rules.
     [/\n\s+label="Critical"\n/, "a count labelled critical with no unit"],
     [/label="Critical and high" value=/, "critical and high failing rules with no unit in the label"],
-    // One wording for records that carry a suggested value (Fix work's tile).
+    // One wording for records that carry a suggested value (Fix work's tile, the cleansing funnel's stage).
     [/"With a suggestion"/, "records with a suggested value called with a suggestion"],
+    [/With a proposed value/, "records with a suggested value called with a proposed value"],
     // What changed describes a change; who owns an issue is said under the owners.
     [/changed: \{ sentence: [^\n]*Nobody owns/, "ownership stated as what changed"],
   ];
@@ -108,6 +109,17 @@ describe("the four counts of what fails", () => {
     const hits = [...sourceFiles("app"), ...sourceFiles("components"), ...sourceFiles("lib")]
       .filter((f) => pattern.test(readFileSync(path.join(ROOT, f), "utf8")));
     expect(hits).toEqual([]);
+  });
+
+  // Labels the API sends for a page to show verbatim (the cleansing funnel's stages) keep the same vocabulary.
+  const API_LABELS = ["../api/services/insights_aggregate.py"];
+  it.each(MISLABELS)("no API label %s (%s)", (pattern) => {
+    expect(API_LABELS.filter((f) => pattern.test(readFileSync(path.join(ROOT, f), "utf8")))).toEqual([]);
+  });
+
+  it("names the cleansing funnel's stage of records with a suggested value as Fix work does", () => {
+    const src = readFileSync(path.join(ROOT, "app/(app)/insights/_components/RunAnalyses.tsx"), "utf8");
+    expect(src).toMatch(/proposed: "With a suggested value"/);
   });
 });
 

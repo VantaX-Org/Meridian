@@ -25,7 +25,7 @@ import {
 import { CoveragePill } from "../../process/_components/coverage-pill";
 import { DiscoveryStart, canMine, isDayOne } from "../../process/_components/discovery-start";
 import { processHomeInsight, readinessExportRows, worstNoGo, type ProcessHomeRow } from "./insight";
-import { RuleName } from "@/components/fix/rule-cell";
+import { RuleCell } from "@/components/fix/rule-cell";
 
 type Row = ProcessHomeRow;
 
@@ -83,7 +83,8 @@ const columns = (systemId: string, canRun: boolean, versionId: string | undefine
   { id: "process", header: "Process", accessorFn: (r) => r.name, cell: ({ row: { original: r } }) => (
       // On a phone the name wraps and the L1 code steps aside, so the name reads whole beside its verdict.
       phone ? <DrillLink href={l1Href(r.l1, systemId, r.last_run?.id)}>{r.name}</DrillLink>
-        : <span className="flex items-baseline gap-2"><DrillLink href={l1Href(r.l1, systemId, r.last_run?.id)}>{r.name}</DrillLink><Mono>{r.l1}</Mono></span>) },
+        // The name, the L1 code on its own line under it: a two-word name never pushes the code to the right.
+        : <span className="flex flex-col"><DrillLink href={l1Href(r.l1, systemId, r.last_run?.id)}>{r.name}</DrillLink><span className="m-text-meta m-ink-3"><Mono>{r.l1}</Mono></span></span>) },
   { id: "verdict", header: "Verdict", accessorFn: (r) => r.readiness?.verdict ?? "",
     cell: ({ row: { original: r } }) => (r.readiness
       ? <Status kind="verdict" value={r.readiness.verdict} variant={phone ? "dot" : "solid"} />
@@ -92,11 +93,17 @@ const columns = (systemId: string, canRun: boolean, versionId: string | undefine
       const w = r.readiness?.worst;
       if (!r.readiness) return "—";
       if (!w) return "None";
-      // The rule opens its failing records on the object that scored this process, in the run that scored it.
-      const id = w.check_id
-        ? <DrillLink href={buildDrillHref({ object: r.readiness.module, ruleId: w.check_id, run: versionId })}><Mono>{w.check_id}</Mono></DrillLink>
-        : <Mono>{w.field}</Mono>;
-      return <span className="flex items-baseline gap-2">{id}{w.check_id ? <RuleName id={w.check_id} fallback={w.description} className="line-clamp-1" /> : <span className="line-clamp-1">{w.description}</span>}</span>;
+      // The rule opens its failing records on the object that scored this process, in the run that scored it: the id
+      // on its own line, its words under it in at most two lines (RuleCell).
+      if (w.check_id) {
+        return <RuleCell id={w.check_id} fallback={w.description} href={buildDrillHref({ object: r.readiness.module, ruleId: w.check_id, run: versionId })} className="[min-width:14rem]" />;
+      }
+      return (
+        <span className="flex min-w-0 flex-col [min-width:14rem]" title={w.description ?? undefined}>
+          <span className="whitespace-nowrap"><Mono>{w.field}</Mono></span>
+          {w.description ? <span className="m-ink-2 line-clamp-2">{w.description}</span> : null}
+        </span>
+      );
     } },
   // The distinct blocking fields' failing records summed over their rules: rule failures (lib/help/glossary.ts).
   { id: "failing", header: "Rule failures", meta: { numeric: true, priority: "low" }, accessorFn: (r) => r.readiness?.failing ?? -1,

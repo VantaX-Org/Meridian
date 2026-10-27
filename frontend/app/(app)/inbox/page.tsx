@@ -32,7 +32,7 @@ import { getMasterRecord } from "@/lib/api/master-records";
 import { getReviewPair, type ReviewPair } from "@/lib/api/match-review";
 import { getException } from "@/lib/api/exceptions";
 import { getRule } from "@/lib/api/rules";
-import { useRuleNames } from "@/lib/rule-name";
+import { type RuleNameOf, useRuleNames } from "@/lib/rule-name";
 import { getCostModel } from "@/lib/api/settings";
 import type { RootCauseType } from "@/lib/api/config-intelligence";
 import { HIGH_CONFIDENCE_LABEL } from "@/lib/api/remediation";
@@ -155,7 +155,6 @@ async function each(ids: string[], fn: (id: string) => Promise<unknown>): Promis
   return { ok, failed: r.length - ok };
 }
 
-type RuleNameOf = (checkId: string) => string | undefined;
 /**
  * "Merge decision in Material master"; an exception task is named by its check, "Custom Rule: Blank material group
  * in Material master" (its exception's title, else the queue's source title, else its check's name), never a bare

@@ -1,6 +1,6 @@
 // The analyses only the retired Insights overview had, now on the lead home: root causes, S/4 migration and the
 // cleansing funnel, for the current state (or the run ?run= pins), each card failing on its own.
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as insightsApi from "@/lib/api/insights";
@@ -72,6 +72,9 @@ describe("HomeAnalyses", () => {
     expect(await screen.findByText("2 blocking, 1 warning")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open waves" })).toHaveAttribute("href", "/insights/readiness");
     expect(screen.getByRole("group", { name: /Cleansing funnel/ })).toBeInTheDocument();
+    // one vocabulary with Fix work: the stage is named by its key, whatever words an older API sends
+    expect(within(screen.getByRole("group", { name: /Cleansing funnel/ })).getAllByText(/With a suggested value/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/With a proposed value/)).toBeNull();
     // only the scope=current wrappers are read, never the one-run ones
     expect(insightsApi.getRootCauses).not.toHaveBeenCalled();
     expect(insightsApi.getCleansing).not.toHaveBeenCalled();

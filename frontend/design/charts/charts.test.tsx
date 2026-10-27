@@ -31,6 +31,9 @@ describe("charts onPointClick contract", () => {
     render(<Heatmap rows={["material_master"]} cols={["FI", "MM", "SD"]} cells={cells} onPointClick={onPointClick} />);
     expect(screen.getByLabelText("material_master FI: go")).toBeEnabled();
     expect(screen.getByLabelText("material_master SD: not measured")).toBeDisabled();
+    // a blank cell says so: titled "Not measured" with a dash, never an empty square
+    expect(screen.getByLabelText("material_master SD: not measured")).toHaveAttribute("title", "Not measured");
+    expect(screen.getByLabelText("material_master SD: not measured")).toHaveTextContent("–");
     fireEvent.click(screen.getByLabelText("material_master MM: no-go"));
     expect(onPointClick).toHaveBeenCalledTimes(1);
     expect(onPointClick).toHaveBeenCalledWith(cells[1]);

@@ -383,6 +383,7 @@ async def list_findings(
     baseline: Optional[str] = Query(None, pattern="^(live_config|sap_standard|s4_target)$"),
     sort: Literal["severity", "impact"] = Query("severity", description="impact = $ at risk × blocked SAP features × severity"),
     finding_type: Optional[str] = Query(None, alias="type", description="rule | anomaly"),
+    failing: bool = Query(False, description="Only rules with at least one failing record (affected_count > 0)"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -408,6 +409,9 @@ async def list_findings(
     if finding_type:
         base = base.where(Finding.finding_type == finding_type)
         filters_applied["type"] = finding_type
+    if failing:
+        base = base.where(Finding.affected_count > 0)
+        filters_applied["failing"] = True
     if module:
         base = base.where(Finding.module == module)
         filters_applied["module"] = module
@@ -555,6 +559,7 @@ async def export_findings(
     baseline: Optional[str] = Query(None, pattern="^(live_config|sap_standard|s4_target)$"),
     sort: Literal["severity", "impact"] = Query("severity"),
     finding_type: Optional[str] = Query(None, alias="type"),
+    failing: bool = Query(False),
     format: Literal["csv", "xlsx"] = Query("xlsx"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
@@ -580,6 +585,8 @@ async def export_findings(
         base = base.where(Finding.check_id == check_id)
     if finding_type:
         base = base.where(Finding.finding_type == finding_type)
+    if failing:
+        base = base.where(Finding.affected_count > 0)
     if module:
         base = base.where(Finding.module == module)
     if severity:

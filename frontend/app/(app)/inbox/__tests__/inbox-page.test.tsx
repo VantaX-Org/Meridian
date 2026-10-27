@@ -120,7 +120,7 @@ describe("InboxPage counts", () => {
     vi.spyOn(stewardship, "getMetrics").mockResolvedValue({ items_by_type: {}, items_by_status: {}, ai_acceptance_rate: 0, sla_breached: 0 } as never);
     vi.spyOn(exceptions, "getExceptions").mockRejectedValue(new Error("down"));
     vi.spyOn(exceptions, "getException").mockRejectedValue(new Error("down"));
-    vi.spyOn(rules, "getRuleNames").mockResolvedValue({ MM045: "Material description is missing" });
+    vi.spyOn(rules, "getRuleNames").mockResolvedValue({ names: { MM045: "Material description is missing" }, generated: {} });
     renderWithQuery(<InboxPage />);
     const list = await screen.findByRole("list", { name: "Tasks" });
     expect(await within(list).findByText("Material description is missing in Material master")).toBeInTheDocument();

@@ -270,22 +270,38 @@ async def rules_history_batch(
 _MAX_NAME_IDS = 500
 
 
+def generated_rule_name(check_id: str) -> Optional[str]:
+    """The words the check engine gives a generated check (no catalogue rule), from the same deterministic source
+    that writes its finding message: value placement (VP-, PH-, DT-, DO-, VT-, ND-, FZ-, SW-, ST-; the SAP-standard
+    dictionary), country rules (CF-, CR-, PX-, BK-, BX-) and DDIC conformance (DDIC-). None for any other id."""
+    from checks import country_rules, ddic_conformance, value_placement
+    from sap.ddic import get_dictionary
+
+    return (ddic_conformance.rule_name(check_id) or country_rules.rule_name(check_id)
+            or value_placement.rule_name(check_id, get_dictionary("s4hana")))
+
+
 @router.get("/rules/names", dependencies=[Depends(require_permission("view"))])
 async def rule_names(
     check_ids: list[str] = Query(..., description="Check ids (repeat the parameter, or comma-separate)"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ) -> dict[str, dict[str, str]]:
-    """Plain rule names by check id for this tenant: ``{"names": {"MM045": "Material type missing"}}``.
+    """Plain rule names by check id for this tenant:
+    ``{"names": {"MM045": "Material type missing"}, "generated": {"DT-MARA-ERSDA": "Creation date (…) is …"}}``.
 
-    A rule's catalogue name is ``"<check id>: <words>"``; the check id is the part before the ':' (the key findings use).
-    Only the words are returned. Ids with no named rule are left out (the caller falls back to the id).
-    Same read access as the rules list: any role that can view."""
+    ``names`` is the tenant's rule catalogue: a rule's catalogue name is ``"<check id>: <words>"``; the check id is the
+    part before the ':' (the key findings use). Only the words are returned.
+    ``generated`` names the ids the catalogue does not: generated checks by their deterministic source
+    (``generated_rule_name``), else the message of this tenant's latest finding for the id (config-driven families
+    such as KS-, TC-, FS- whose words depend on the system's configuration). The caller ranks them: catalogue name,
+    then a finding's own message, then the generated words (frontend/lib/rule-name.ts). Ids nothing names are left
+    out (the caller falls back to the id). Same read access as the rules list: any role that can view."""
     ids = sorted({part.strip() for raw in check_ids for part in raw.split(",") if part.strip()})
     if len(ids) > _MAX_NAME_IDS:
         raise HTTPException(422, f"At most {_MAX_NAME_IDS} check ids per request")
     if not ids:
-        return {"names": {}}
+        return {"names": {}, "generated": {}}
     await _set_rls(db, tenant.id)
     rows = (await db.execute(text("""
         SELECT DISTINCT ON (split_part(name, ':', 1)) split_part(name, ':', 1) AS check_id,
@@ -294,7 +310,24 @@ async def rule_names(
          WHERE tenant_id = :tid AND strpos(name, ':') > 0 AND split_part(name, ':', 1) = ANY(:ids)
          ORDER BY split_part(name, ':', 1), updated_at DESC NULLS LAST, module
     """), {"tid": str(tenant.id), "ids": ids})).all()
-    return {"names": {r.check_id: r.name for r in rows if r.name}}
+    names = {r.check_id: r.name for r in rows if r.name}
+    generated: dict[str, str] = {}
+    for cid in ids:
+        if cid not in names and (words := generated_rule_name(cid)):
+            generated[cid] = words
+    rest = [cid for cid in ids if cid not in names and cid not in generated]
+    if rest:
+        found = (await db.execute(text("""
+            SELECT DISTINCT ON (check_id) check_id, rule_context->>'message' AS message
+              FROM findings
+             WHERE tenant_id = :tid AND check_id = ANY(:ids) AND coalesce(rule_context->>'message', '') <> ''
+             ORDER BY check_id, created_at DESC
+        """), {"tid": str(tenant.id), "ids": rest})).all()
+        for r in found:
+            words = r.message.split(":", 1)[1].strip() if r.message.startswith(f"{r.check_id}:") else r.message.strip()
+            if words and words != r.check_id:
+                generated[r.check_id] = words
+    return {"names": names, "generated": generated}
 
 
 # ── GET /api/v1/rules/{rule_id} ───────────────────────────────────────────────

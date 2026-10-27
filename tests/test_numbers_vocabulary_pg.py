@@ -120,3 +120,17 @@ async def test_current_state_aggregate_counts_each_object_once_as_the_objects_li
     # Tenant isolation: b sees its own run only, a's runs are not in its current state.
     other = await get(b, "/api/v1/findings/aggregate")
     assert (other["version_ids"], other["total"], other["affected_records"]) == ([ids["b_ap"]], 1, 999)
+
+
+@pytest.mark.anyio
+async def test_findings_failing_only_lists_rules_with_failing_records(tenants, get):
+    """A run's "Failing rules" tab asks GET /findings?failing=true: a rule evaluated and passing (0 failing records,
+    AP021) is not a failing rule. Without the flag every evaluated rule is listed. Tenant-scoped like the rest."""
+    a, b, ids = tenants
+    every = await get(a, "/api/v1/findings", version_id=ids["up_ap"], limit=100)
+    assert {f["check_id"] for f in every["findings"]} == {"AP016", "AP020", "AP021"}
+    failing = await get(a, "/api/v1/findings", version_id=ids["up_ap"], failing="true", limit=100)
+    assert {f["check_id"] for f in failing["findings"]} == {"AP016", "AP020"}
+    assert failing["total"] == 2 and failing["filters_applied"]["failing"] is True
+    # Another tenant's run is not readable through the filter
+    assert (await get(b, "/api/v1/findings", version_id=ids["up_ap"], failing="true"))["findings"] == []

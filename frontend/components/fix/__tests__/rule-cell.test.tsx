@@ -8,7 +8,7 @@ afterEach(() => vi.restoreAllMocks());
 
 describe("RuleCell", () => {
   it("names a rule from the catalogue by its check id, without the 'ID: ' prefix", async () => {
-    vi.spyOn(rulesApi, "getRuleNames").mockResolvedValue({ MM045: "MM045: Material type is mandatory" });
+    vi.spyOn(rulesApi, "getRuleNames").mockResolvedValue({ names: { MM045: "MM045: Material type is mandatory" }, generated: {} });
     renderWithQuery(<RuleCell id="MM045" fallback="row message" />);
     expect(screen.getByText("MM045")).toBeInTheDocument();
     expect(await screen.findByText("Material type is mandatory")).toBeInTheDocument();
@@ -16,7 +16,7 @@ describe("RuleCell", () => {
   });
 
   it("falls back to the row's own words while the catalogue does not name the rule, never repeating the id", async () => {
-    vi.spyOn(rulesApi, "getRuleNames").mockResolvedValue({});
+    vi.spyOn(rulesApi, "getRuleNames").mockResolvedValue({ names: {}, generated: {} });
     renderWithQuery(<><RuleCell id="ZZ1" fallback="Vendor is blocked" /><RuleCell id="ZZ2" fallback="ZZ2" /></>);
     expect(await screen.findByText("Vendor is blocked")).toBeInTheDocument();
     expect(screen.getAllByText("ZZ2")).toHaveLength(1);

@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as rulesApi from "@/lib/api/rules";
-import { ddicRuleName, loadRuleName, plainRuleName, rankedName, ruleWords, useRuleNames } from "@/lib/rule-name";
+import { ddicRuleName, loadRuleName, plainRuleName, rankedName, resolveRuleName, ruleWords, useRuleNames } from "@/lib/rule-name";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -47,13 +47,32 @@ describe("plain rule names", () => {
   });
 });
 
+describe("resolveRuleName: the one precedence", () => {
+  it("ranks the catalogue name, then the finding's message, then generated words, then a DDIC check's words", () => {
+    const all = { catalogue: "BP number must be exactly 10-digit numeric", message: "BP number must be 1-10 uppercase letters or digits", generated: "Generated words" };
+    expect(resolveRuleName("BP002", all)).toBe("BP number must be exactly 10-digit numeric");
+    expect(resolveRuleName("BP002", { ...all, catalogue: null })).toBe("BP number must be 1-10 uppercase letters or digits");
+    expect(resolveRuleName("BP002", { generated: "Generated words" })).toBe("Generated words");
+    expect(resolveRuleName("DDIC-MARA-TYPE", {})).toBe("Value does not match the field's SAP data type (MARA)");
+    expect(resolveRuleName("DDIC-MARA-TYPE", { message: "DDIC-MARA-TYPE: Stored words" })).toBe("Stored words");
+    // a step that only repeats the id says nothing; nothing at all leaves the id alone
+    expect(resolveRuleName("ZZ1", { catalogue: "ZZ1", message: "ZZ1: ", generated: "" })).toBeUndefined();
+  });
+});
+
 describe("loadRuleName", () => {
   it("sends the ids asked for in one tick as one request and resolves each with its plain name", async () => {
-    const get = vi.spyOn(rulesApi, "getRuleNames").mockResolvedValue({ MM045: "Material type missing", AP001: "AP001: Vendor blocked" });
-    const names = await Promise.all([loadRuleName("MM045"), loadRuleName("AP001"), loadRuleName("ZZ999"), loadRuleName("MM045")]);
-    expect(names).toEqual(["Material type missing", "Vendor blocked", null, "Material type missing"]);
+    const get = vi.spyOn(rulesApi, "getRuleNames").mockResolvedValue({
+      names: { MM045: "Material type missing", AP001: "AP001: Vendor blocked" },
+      generated: { "DT-MARA-ERSDA": "Creation date (MARA.ERSDA) is before 1970 or in the future" },
+    });
+    const names = await Promise.all([loadRuleName("MM045"), loadRuleName("AP001"), loadRuleName("ZZ999"), loadRuleName("MM045"), loadRuleName("DT-MARA-ERSDA")]);
+    expect(names).toEqual([
+      { name: "Material type missing", generated: null }, { name: "Vendor blocked", generated: null }, { name: null, generated: null },
+      { name: "Material type missing", generated: null }, { name: null, generated: "Creation date (MARA.ERSDA) is before 1970 or in the future" },
+    ]);
     expect(get).toHaveBeenCalledTimes(1);
-    expect([...get.mock.calls[0][0]].sort()).toEqual(["AP001", "MM045", "ZZ999"]);
+    expect([...get.mock.calls[0][0]].sort()).toEqual(["AP001", "DT-MARA-ERSDA", "MM045", "ZZ999"]);
   });
 
   it("rejects the waiting ids when the request fails", async () => {
@@ -65,11 +84,14 @@ describe("loadRuleName", () => {
 describe("useRuleNames", () => {
   it("names the ids a page shows from the names endpoint (never the 1,000-row rules list) and DDIC ids locally", async () => {
     const list = vi.spyOn(rulesApi, "getRules");
-    const get = vi.spyOn(rulesApi, "getRuleNames").mockResolvedValue({ MM045: "Material type missing" });
+    const get = vi.spyOn(rulesApi, "getRuleNames").mockResolvedValue({ names: { MM045: "Material type missing" }, generated: {} });
     const { result } = renderHook(() => useRuleNames(["MM045", "DDIC-MARA-TYPE", "ZZ999", null, "MM045"]), { wrapper: wrapper() });
     expect(result.current("DDIC-MARA-TYPE")).toBe("Value does not match the field's SAP data type (MARA)");
     await waitFor(() => expect(result.current("MM045")).toBe("Material type missing"));
     expect(result.current("ZZ999")).toBeUndefined();
+    // the row's message names an id the catalogue does not, never one it does
+    expect(result.current("ZZ999", "Row words")).toBe("Row words");
+    expect(result.current("MM045", "Row words")).toBe("Material type missing");
     // a DDIC id is never sent; each other id once
     expect(get).toHaveBeenCalledTimes(1);
     expect([...get.mock.calls[0][0]].sort()).toEqual(["MM045", "ZZ999"]);
@@ -77,7 +99,7 @@ describe("useRuleNames", () => {
   });
 
   it("asks for nothing while disabled", async () => {
-    const get = vi.spyOn(rulesApi, "getRuleNames").mockResolvedValue({});
+    const get = vi.spyOn(rulesApi, "getRuleNames").mockResolvedValue({ names: {}, generated: {} });
     const { result } = renderHook(() => useRuleNames(["MM045"], false), { wrapper: wrapper() });
     await new Promise((r) => setTimeout(r, 10));
     expect(get).not.toHaveBeenCalled();

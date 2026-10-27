@@ -7,6 +7,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, PageHeader, PageFrame, Card, DataTable, Delta, DrillLink, EmptyState, ErrorState, ExportMenu, Line, Mono, Pager, Pill, SeverityDot, Skeleton, Score, Tabs, emptyExportOptions, isSeverity, entityTabs, Status, statusLabel, type CellMeta } from "@/design";
+import { RuleCell } from "@/components/fix/rule-cell";
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
 import { NextBestActionCard } from "@/components/insight/next-best-action";
 import { RunScope } from "@/components/run-scope";
@@ -121,7 +122,7 @@ function RulesTab({ object, run, checkId }: { object: string; run: string; check
   const details = useRuleDetails(object, run);
   // The ranking names the rules it ranks; the catalogue (and the DDIC checks it does not hold) names the rest.
   const catalogueName = useRuleNames(data?.rules.map((r) => r.check_id) ?? []);
-  const nameOf = { get: (id: string): string | undefined => catalogueName(id) ?? rankedName(details.data?.rows, id) };
+  const nameOf = { get: (id: string): string | undefined => catalogueName(id, rankedName(details.data?.rows, id)) };
 
   const rulesRanked = data
     ? [...data.rules]
@@ -166,10 +167,9 @@ function RulesTab({ object, run, checkId }: { object: string; run: string; check
     {
       accessorKey: "check_id",
       header: "Rule",
-      cell: ({ row }) => {
-        const name = nameOf.get(row.original.check_id);
-        return <span className="inline-flex min-w-0 items-baseline gap-2" title={name ?? undefined}><Mono>{row.original.check_id}</Mono>{name ? <span className="truncate">{name}</span> : null}</span>;
-      },
+      size: 380,
+      // The shared RuleCell: the id on its own line, the words (as `nameOf` ranks them) under it in two lines.
+      cell: ({ row }) => <RuleCell id={row.original.check_id} fallback={nameOf.get(row.original.check_id)} className="[min-width:14rem]" />,
     },
     { id: "dimension", accessorKey: "dimension", header: "Dimension", meta: { priority: "low" } satisfies CellMeta, cell: ({ row }) => (row.original.dimension ? formatModuleName(row.original.dimension) : "—") },
     {
@@ -196,7 +196,7 @@ function RulesTab({ object, run, checkId }: { object: string; run: string; check
       id: "open",
       header: "Action",
       meta: { priority: "low" } satisfies CellMeta,
-      cell: ({ row }) => <Button variant="ghost" size="sm" render={<Link href={recordsHref(row.original.check_id)} scroll={false} onClick={(e) => e.stopPropagation()}>Show records</Link>} />,
+      cell: ({ row }) => <Button variant="ghost" size="sm" className="whitespace-nowrap" render={<Link href={recordsHref(row.original.check_id)} scroll={false} onClick={(e) => e.stopPropagation()}>Show records</Link>} />,
     },
   ];
   const columns = compact ? allColumns.filter((c) => !["dimension", "trend", "open"].includes(c.id ?? "")) : allColumns;
@@ -361,7 +361,7 @@ function RuleRecords({ object, run, checkId, onClose }: { object: string; run: s
   const columns = useRecordColumns(object, run, data?.records);
   const details = useRuleDetails(object, run);
   const catalogueName = useRuleNames([checkId]);
-  const ruleName = catalogueName(checkId) ?? rankedName(details.data?.rows, checkId) ?? null;
+  const ruleName = catalogueName(checkId, rankedName(details.data?.rows, checkId)) ?? null;
 
   if (isLoading) return <div aria-busy="true"><Skeleton height={240} /></div>;
   if (isError) return <ErrorState {...apiErrorState(error)} onRetry={() => refetch()} />;

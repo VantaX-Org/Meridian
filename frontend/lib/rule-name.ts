@@ -49,7 +49,29 @@ export function ruleWords(checkId: string, name: string | null | undefined): str
   return plain && plain !== checkId ? plain : undefined;
 }
 
-type Waiter ={ resolve: (name: string | null) => void; reject: (e: unknown) => void };
+/**
+ * THE one precedence for a rule's words, used by every surface (RuleCell, RuleName, useRuleWords, useRuleNames):
+ *  1. the tenant's rule catalogue name (GET /rules/names `names`);
+ *  2. the finding's own message (what the row on screen carries);
+ *  3. generated words: the check engine's own words for a generated check (GET /rules/names `generated`), or a DDIC
+ *     conformance check's words (`ddicRuleName`).
+ * Each step is taken only when it says more than the id. Undefined when nothing names the rule (the id alone shows).
+ */
+export function resolveRuleName(
+  checkId: string,
+  { catalogue, message, generated }: { catalogue?: string | null; message?: string | null; generated?: string | null },
+): string | undefined {
+  return ruleWords(checkId, catalogue) ?? ruleWords(checkId, message) ?? ruleWords(checkId, generated)
+    ?? ddicRuleName(checkId) ?? undefined;
+}
+
+/** One check id's names as GET /rules/names gives them: the catalogue's and the generated words. */
+export interface RuleNameSources {
+  name: string | null;
+  generated: string | null;
+}
+
+type Waiter ={ resolve: (names: RuleNameSources) => void; reject: (e: unknown) => void };
 const BATCH = 200;
 let queue = new Map<string, Waiter[]>();
 let scheduled = false;
@@ -62,8 +84,11 @@ async function flush(): Promise<void> {
   for (let i = 0; i < ids.length; i += BATCH) {
     const chunk = ids.slice(i, i + BATCH);
     try {
-      const names = await getRuleNames(chunk);
-      for (const id of chunk) for (const w of waiting.get(id) ?? []) w.resolve(plainRuleName(id, names[id]));
+      const { names, generated } = await getRuleNames(chunk);
+      for (const id of chunk) {
+        const found = { name: plainRuleName(id, names[id]), generated: plainRuleName(id, generated[id]) };
+        for (const w of waiting.get(id) ?? []) w.resolve(found);
+      }
     } catch (e) {
       for (const id of chunk) for (const w of waiting.get(id) ?? []) w.reject(e);
     }
@@ -71,10 +96,10 @@ async function flush(): Promise<void> {
 }
 
 /**
- * One check id's catalogue name. Ids asked for in the same tick go out as one request (every RuleCell on a page asks
- * for its own id; the page sends one GET /rules/names), and React Query caches each id on its own.
+ * One check id's catalogue and generated names. Ids asked for in the same tick go out as one request (every RuleCell
+ * on a page asks for its own id; the page sends one GET /rules/names), and React Query caches each id on its own.
  */
-export function loadRuleName(checkId: string): Promise<string | null> {
+export function loadRuleName(checkId: string): Promise<RuleNameSources> {
   return new Promise((resolve, reject) => {
     const waiting = queue.get(checkId);
     if (waiting) waiting.push({ resolve, reject });
@@ -86,15 +111,19 @@ export function loadRuleName(checkId: string): Promise<string | null> {
   });
 }
 
+/** A rule-name lookup: a check id's words by `resolveRuleName`, given the message the row carries (if any). */
+export type RuleNameOf = (checkId: string, message?: string | null) => string | undefined;
+
 /**
- * Rule names for the check ids a page shows: DDIC conformance checks by `ddicRuleName`, every other id from the
- * tenant's rule catalogue (GET /rules/names, batched, cached per id, without the "ID: " prefix). The lookup returns
- * undefined while loading or for an id the catalogue does not name; callers then show the id alone.
+ * Rule names for the check ids a page shows, by `resolveRuleName`: the tenant's catalogue name and the generated words
+ * from GET /rules/names (batched, cached per id; DDIC conformance ids are named locally and never asked), and the
+ * message the caller passes for the row. The lookup returns undefined while loading or when nothing names the id;
+ * callers then show the id alone.
  */
 export function useRuleNames(
   checkIds: readonly (string | null | undefined)[],
   enabled = true,
-): (checkId: string) => string | undefined {
+): RuleNameOf {
   const key = [...new Set(checkIds.filter((id): id is string => !!id && !ddicRuleName(id)))].sort().join("\n");
   const ids = useMemo(() => (key ? key.split("\n") : []), [key]);
   const found = useQueries({
@@ -109,8 +138,16 @@ export function useRuleNames(
     combine: (results) => JSON.stringify(results.map((r) => r.data ?? null)),
   });
   const byId = useMemo(() => {
-    const names = JSON.parse(found) as (string | null)[];
+    const names = JSON.parse(found) as (RuleNameSources | null)[];
     return new Map(ids.map((id, i) => [id, names[i]]));
   }, [found, ids]);
-  return useCallback((checkId: string) => ddicRuleName(checkId) ?? byId.get(checkId) ?? undefined, [byId]);
+  return useCallback<RuleNameOf>((checkId, message) => {
+    const sources = byId.get(checkId);
+    return resolveRuleName(checkId, { catalogue: sources?.name, message, generated: sources?.generated });
+  }, [byId]);
+}
+
+/** One rule's words by `resolveRuleName`: its catalogue name, else `message` (the row's own), else generated words. */
+export function useRuleWords(id: string, message?: string | null): string | undefined {
+  return useRuleNames([id])(id, message);
 }

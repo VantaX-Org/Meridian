@@ -300,6 +300,23 @@ describe("RunDetailPage", () => {
     expect(screen.getByRole("button", { name: "Open steps" })).toBeInTheDocument();
   });
 
+  it("lists only rules with failing records under Failing rules, and passing rules too when asked", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+    const spy = vi.spyOn(findingsApi, "getFindings").mockResolvedValue({ findings: [], total: 0, filters_applied: {} });
+    searchParams = new URLSearchParams("tab=findings");
+    renderWithQuery(<RunDetailPage />);
+    await waitFor(() => expect(spy).toHaveBeenCalledWith(expect.objectContaining({ version_id: "v2", failing: true })));
+    const toggle = await screen.findByRole("switch", { name: "Show passing rules too" });
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    fireEvent.click(toggle);
+    expect(push).toHaveBeenLastCalledWith("/runs/v2?tab=findings&passing=1");
+    searchParams = new URLSearchParams("tab=findings&passing=1");
+    spy.mockClear();
+    renderWithQuery(<RunDetailPage />);
+    await waitFor(() => expect(spy).toHaveBeenCalledWith(expect.objectContaining({ version_id: "v2", failing: undefined })));
+    searchParams = new URLSearchParams();
+  });
+
   it("lists objects on the objects tab and navigates to the object page on row click", async () => {
     vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({
@@ -454,7 +471,7 @@ describe("RunDetailPage", () => {
   it("opens Failing rules from the ?tab=findings link and names each rule, a DDIC check included, never a bare dash", async () => {
     searchParams = new URLSearchParams("tab=findings");
     vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
-    const names = vi.spyOn(rulesApi, "getRuleNames").mockResolvedValue({ MM045: "Material type is mandatory" });
+    const names = vi.spyOn(rulesApi, "getRuleNames").mockResolvedValue({ names: { MM045: "Material type is mandatory" }, generated: {} });
     const finding = (id: string, check_id: string) => ({
       id, version_id: "v2", module: "material_master", check_id, severity: "high", dimension: "validity",
       affected_count: 5, total_count: 50, pass_rate: 0.9, details: {}, remediation_text: "", rule_context: null,

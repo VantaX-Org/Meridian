@@ -267,6 +267,29 @@ describe("PersonaHomePage lineage and heatmap", () => {
     expect(screen.getByLabelText(/Material master Timeliness: 60, /)).toHaveTextContent("60");
   });
 
+  it("shows every scored object in the dimensions grid, not only the ledger's first eight, and marks unmeasured cells", async () => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
+    const modules = ["material_master", "controlling", "fi_gl", "accounts_payable", "accounts_receivable", "asset_accounting", "hcm", "mm_purchasing", "plant_maintenance", "project_system"];
+    const base = LATEST.dqs_summary!.material_master;
+    const many: Version = {
+      ...LATEST,
+      dqs_summary: Object.fromEntries(modules.map((m, i) => [m, {
+        ...base, composite_score: 60 + i,
+        // timeliness: no rule measured it on accounts payable
+        ...(m === "accounts_payable" ? { dimension_coverage: { completeness: 1, accuracy: 1, consistency: 1, timeliness: 0, uniqueness: 1, validity: 1 } } : {}),
+      }])),
+      metadata: { ...LATEST.metadata!, modules },
+    };
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [many] });
+    renderWithQuery(<LeadHomePage />);
+    await screen.findByLabelText(/^Material master Uniqueness: /);
+    const grid = screen.getByText("Dimensions by object").closest(".m-card") as HTMLElement;
+    expect(grid).toHaveTextContent("– Not measured");
+    // ten objects, ten rows of the grid
+    expect(within(grid).getAllByLabelText(/ Uniqueness: /)).toHaveLength(10);
+    expect(within(grid).getByLabelText("Accounts payable Timeliness: not measured")).toHaveAttribute("title", "Not measured");
+  });
+
   it("calls the only run of its lineage the first run instead of comparing with another object's run", async () => {
     vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     const other: Version = {

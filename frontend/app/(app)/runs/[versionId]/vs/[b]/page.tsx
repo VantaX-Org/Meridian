@@ -13,7 +13,7 @@ import {
   buildDrillHref,
   Card,
   DataTable,
-  DrillLink,
+  type CellMeta,
   Delta,
   EmptyState,
   ErrorState,
@@ -42,6 +42,7 @@ import { runName, runScopeLabel } from "@/lib/run-scope";
 import { compareNarrative } from "@/lib/narrative";
 import { queryKeys } from "@/lib/query-keys";
 import { useRuleNames } from "@/lib/rule-name";
+import { RuleCell } from "@/components/fix/rule-cell";
 import { compareTimes } from "@/lib/run-axis";
 import type { CheckChange, Version, VersionComparison } from "@/types/api";
 
@@ -83,38 +84,40 @@ function comparisonFilename(a: Version, b: Version, on: Date = new Date()): stri
   return `Meridian run comparison – ${clean(runName(a))} vs ${clean(runName(b))} – ${day}.pdf`;
 }
 
-/** The rule cell of both ledgers: the id in Mono (opening its failing records in `versionId`) and the rule's name. */
-function RuleCell({ checkId, module, versionId, name }: { checkId: string; module: string; versionId: string; name?: string | null }) {
-  return (
-    <span className="inline-flex min-w-0 items-baseline gap-2">
-      <DrillLink href={buildDrillHref({ object: module, ruleId: checkId, run: versionId })}><Mono>{checkId}</Mono></DrillLink>
-      {name ? <span className="truncate m-ink-2" title={name}>{name}</span> : null}
-    </span>
-  );
-}
+/** The rule cell of both ledgers: the shared RuleCell, its id opening the rule's failing records in `versionId`. */
+const ruleCell = (checkId: string, module: string, versionId: string, message?: string | null) => (
+  <RuleCell id={checkId} fallback={message} href={buildDrillHref({ object: module, ruleId: checkId, run: versionId })} />
+);
+
+/** Fixed widths for the figures, so a long rule name wraps in its own column and never pushes them off the card. */
+const NUM = { size: 112, meta: { numeric: true } satisfies CellMeta };
+/** A column a phone hides (below 640px): the rule, its change set and its change stay in view. */
+const SECONDARY = { meta: { priority: "low" } satisfies CellMeta };
 
 /**
  * The ledger's columns; the rule opens its failing records in this run (`versionId`, the newer of the two). The words
- * beside the id are the rule's name (the catalogue's, or the DDIC check's), else the rule's stored message.
+ * under the id come from the one precedence (lib/rule-name.ts): catalogue name, the rule's stored message, generated.
  */
-const columnsFor = (versionId: string, nameOf: (id: string) => string | undefined): ColumnDef<ChangeRow>[] => [
+const columnsFor = (versionId: string): ColumnDef<ChangeRow>[] => [
   {
     accessorKey: "check_id",
     header: "Rule",
-    cell: ({ row }) => <RuleCell checkId={row.original.check_id} module={row.original.module} versionId={versionId} name={nameOf(row.original.check_id) ?? row.original.message} />,
+    size: 440,
+    cell: ({ row }) => ruleCell(row.original.check_id, row.original.module, versionId, row.original.message),
   },
-  { id: "kind", header: "Change set", accessorFn: (c) => setOf(c.kind).label, cell: ({ row }) => <Pill tone={setOf(row.original.kind).tone}>{setOf(row.original.kind).label}</Pill> },
-  { id: "module", header: "Object", accessorFn: (c) => formatModuleName(c.module) },
+  { id: "kind", header: "Change set", size: 128, accessorFn: (c) => setOf(c.kind).label, cell: ({ row }) => <Pill tone={setOf(row.original.kind).tone}>{setOf(row.original.kind).label}</Pill> },
+  { id: "module", header: "Object", size: 160, ...SECONDARY, accessorFn: (c) => formatModuleName(c.module) },
   // Per rule: the records failing that one rule in each run (glossary "Failing records", for a single rule).
-  { id: "before", header: "Failing records before", accessorFn: (c) => c.v1_affected, cell: ({ row }) => fmtN(row.original.v1_affected) },
-  { id: "after", header: "Failing records after", accessorFn: (c) => c.v2_affected, cell: ({ row }) => fmtN(row.original.v2_affected) },
+  { id: "before", header: "Failing records before", ...NUM, meta: { numeric: true, priority: "low" }, accessorFn: (c) => c.v1_affected, cell: ({ row }) => fmtN(row.original.v1_affected) },
+  { id: "after", header: "Failing records after", ...NUM, meta: { numeric: true, priority: "low" }, accessorFn: (c) => c.v2_affected, cell: ({ row }) => fmtN(row.original.v2_affected) },
   {
     id: "delta",
     header: "Change",
+    ...NUM,
     accessorFn: change,
     cell: ({ row }) => {
       const d = change(row.original);
-      return <span className="tabular-nums">{d > 0 ? "+" : ""}{fmtN(d)}</span>;
+      return <span className="tabular-nums whitespace-nowrap">{d > 0 ? "+" : ""}{fmtN(d)}</span>;
     },
   },
 ];
@@ -131,17 +134,18 @@ function worseRows(checks: readonly RecordDiffCheck[], listed: ReadonlySet<strin
     .sort((a, b) => b.new - a.new || a.check_id.localeCompare(b.check_id));
 }
 
-const worseColumnsFor = (versionId: string, nameOf: (id: string) => string | undefined): ColumnDef<RecordDiffCheck>[] => [
+const worseColumnsFor = (versionId: string): ColumnDef<RecordDiffCheck>[] => [
   {
     accessorKey: "check_id",
     header: "Rule",
-    cell: ({ row }) => <RuleCell checkId={row.original.check_id} module={row.original.module} versionId={versionId} name={nameOf(row.original.check_id)} />,
+    size: 440,
+    cell: ({ row }) => ruleCell(row.original.check_id, row.original.module, versionId),
   },
-  { id: "module", header: "Object", accessorFn: (c) => formatModuleName(c.module) },
+  { id: "module", header: "Object", size: 160, ...SECONDARY, accessorFn: (c) => formatModuleName(c.module) },
   // Per rule: records failing it in the later run that did not before, those that no longer fail it, those failing it in both.
-  { id: "new", header: "Newly failing records", accessorFn: (c) => c.new, cell: ({ row }) => fmtN(row.original.new) },
-  { id: "resolved", header: "Records resolved", accessorFn: (c) => c.resolved, cell: ({ row }) => fmtN(row.original.resolved) },
-  { id: "persisting", header: "Failing in both", accessorFn: (c) => c.persisting, cell: ({ row }) => fmtN(row.original.persisting) },
+  { id: "new", header: "Newly failing records", ...NUM, accessorFn: (c) => c.new, cell: ({ row }) => fmtN(row.original.new) },
+  { id: "resolved", header: "Records resolved", ...NUM, meta: { numeric: true, priority: "low" }, accessorFn: (c) => c.resolved, cell: ({ row }) => fmtN(row.original.resolved) },
+  { id: "persisting", header: "Failing in both", ...NUM, meta: { numeric: true, priority: "low" }, accessorFn: (c) => c.persisting, cell: ({ row }) => fmtN(row.original.persisting) },
 ];
 
 function RuleDrawer({ rule, versionId, v1, canFix, name }: { rule: ChangeRow; versionId: string; v1: string | undefined; canFix: boolean; name?: string }) {
@@ -264,9 +268,9 @@ export default function CompareRunsPage() {
     const listed = new Set([...cmp.checks.newly_failing, ...(cmp.checks.worse ?? [])].map((c) => `${c.module}:${c.check_id}`));
     return worseRows(diff?.checks ?? [], listed);
   }, [cmp, diff, changeFilter]);
-  const nameOf = useRuleNames([...rows, ...worse].map((r) => r.check_id));
-  const columns = useMemo(() => columnsFor(versionId, nameOf), [versionId, nameOf]);
-  const worseColumns = useMemo(() => worseColumnsFor(versionId, nameOf), [versionId, nameOf]);
+  const nameOf = useRuleNames(rows.map((r) => r.check_id));
+  const columns = useMemo(() => columnsFor(versionId), [versionId]);
+  const worseColumns = useMemo(() => worseColumnsFor(versionId), [versionId]);
 
   const moduleOptions: SelectOption[] = Object.keys(allModulesQ.data?.delta ?? cmp?.delta ?? {}).map((m) => ({
     value: m,
@@ -357,7 +361,7 @@ export default function CompareRunsPage() {
             }
           : undefined
       }
-      renderDrawer={(c) => <RuleDrawer rule={c} versionId={versionId} v1={diff?.v1 ?? v1Param} canFix={can("apply")} name={nameOf(c.check_id)} />}
+      renderDrawer={(c) => <RuleDrawer rule={c} versionId={versionId} v1={diff?.v1 ?? v1Param} canFix={can("apply")} name={nameOf(c.check_id, c.message)} />}
     />
     </Card>
     {worse.length > 0 ? (

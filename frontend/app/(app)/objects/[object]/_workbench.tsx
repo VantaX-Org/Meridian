@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { BELOW_LG, Button, Card, DataTable, DetailPane, DimensionBars, EmptyState, ErrorState, ExportMenu, Mono, Pager, RankedRow, SeverityDot, Skeleton, Stat, Status, isSeverity, toast } from "@/design";
+import { RuleCell } from "@/components/fix/rule-cell";
 import { useRole } from "@/hooks/use-role";
 import { exportFindingRecords } from "@/lib/api/findings";
 import { createBatch } from "@/lib/api/remediation";
@@ -133,7 +134,7 @@ export function Workbench({ object, run }: { object: string; run: string }) {
   const byId = new Map((details.data?.rows ?? []).map((r: RuleRow) => [r.check_id, r]));
   const failing: WorkRule[] = data.rules
     .filter((r) => r.affected_count > 0)
-    .map((r) => ({ ...r, name: catalogueName(r.check_id) ?? rankedName(details.data?.rows, r.check_id) ?? null, field: byId.get(r.check_id)?.field ?? null, autoFixPct: byId.get(r.check_id)?.auto_fix_pct ?? null }))
+    .map((r) => ({ ...r, name: catalogueName(r.check_id, rankedName(details.data?.rows, r.check_id)) ?? null, field: byId.get(r.check_id)?.field ?? null, autoFixPct: byId.get(r.check_id)?.auto_fix_pct ?? null }))
     .sort((a, b) => b.affected_count - a.affected_count || (SEVERITY_RANK[a.severity] ?? 4) - (SEVERITY_RANK[b.severity] ?? 4));
   const listed = failing.filter((r) => !dimension || r.dimension === dimension);
   const wanted = search.get("rule");
@@ -212,10 +213,10 @@ export function Workbench({ object, run }: { object: string; run: string }) {
                     selected={r.check_id === selected?.check_id}
                     testId="workbench-rule-row"
                     label={
-                      <span className="flex min-w-0 items-center gap-2">
+                      // The id whole, the rule's words under it in up to two lines (RuleCell), never cut to "Value does not m…".
+                      <span className="flex min-w-0 items-start gap-2">
                         {isSeverity(r.severity) ? <SeverityDot severity={r.severity} labelled /> : null}
-                        <Mono>{r.check_id}</Mono>
-                        {r.name ? <span className="min-w-0 flex-1 truncate font-normal m-ink-2">{r.name}</span> : null}
+                        <RuleCell id={r.check_id} fallback={r.name} className="flex-1 font-normal" />
                       </span>
                     }
                     magnitude={r.affected_count.toLocaleString()}

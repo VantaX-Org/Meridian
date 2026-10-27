@@ -166,9 +166,9 @@ const MATERIAL_RUN: Run = {
       impact: "Material cannot be used in MM, PP, SD, or FI without a valid material type." },
     { check_id: "DDIC-MARA-TYPE", severity: "high", dimension: "validity", message: "Value does not match the field's SAP data type (MARA)", field: null,
       records: 24576, population: 25000, authority: "sap_hard_constraint", instruction: null, why: null, impact: null },
-    { check_id: "DDIC-MARA-LENGTH", severity: "high", dimension: "validity", message: "Value exceeds the field's SAP length / precision (MARA)", field: null,
+    { check_id: "DDIC-MARA-LENGTH", severity: "high", dimension: "validity", message: "Value exceeds the field's SAP length or precision (MARA)", field: null,
       records: 145, population: 25000, authority: "sap_hard_constraint", instruction: null, why: null, impact: null },
-    { check_id: "DT-MARA-ERSDA", severity: "medium", dimension: "validity", message: "Creation date is before 1970 or in the future", field: "MARA.ERSDA",
+    { check_id: "DT-MARA-ERSDA", severity: "medium", dimension: "validity", message: "Creation date (MARA.ERSDA) is before 1970 or in the future", field: "MARA.ERSDA",
       records: 424, population: 25000, authority: "best_practice", instruction: null, why: null, impact: null },
     { check_id: "MM453", severity: "medium", dimension: "validity", message: "Material creation date is in the future", field: "MARA.ERSDA",
       records: 424, population: 25000, authority: "best_practice", instruction: null,
@@ -717,10 +717,36 @@ async function mockRuleNames(page: Router, har: string) {
       if (name && at > 0 && !names.has(name.slice(0, at))) names.set(name.slice(0, at), name.slice(at + 1).trim());
     }
   }
+  // Generated checks (DT-, VP-, DDIC- …) have no catalogue rule: the API names them by the engine's own words, which are
+  // the messages their findings carry here.
+  const generated = new Map<string, string>();
+  for (const run of Object.values(RUNS)) for (const rule of run.rules) if (!names.has(rule.check_id)) generated.set(rule.check_id, rule.message);
   await page.route(/\/api\/v1\/rules\/names\?/, (r) => {
     if (r.request().method() !== "GET") return r.fallback();
     const ids = (new URL(r.request().url()).searchParams.get("check_ids") ?? "").split(",").filter(Boolean);
-    return r.fulfill(json({ names: Object.fromEntries(ids.filter((id) => names.has(id)).map((id) => [id, names.get(id)])) }));
+    const pick = (m: Map<string, string>) => Object.fromEntries(ids.filter((id) => m.has(id)).map((id) => [id, m.get(id)]));
+    return r.fulfill(json({ names: pick(names), generated: pick(generated) }));
+  });
+}
+
+/**
+ * A run's "Failing rules" tab asks GET /findings?…&failing=true (api/routes/findings.py), which the recording predates:
+ * the recorded answer to the same query without the flag, its rules with 0 failing records left out.
+ */
+async function mockFailingFindings(page: Router, har: string) {
+  const entries = entriesOf(har);
+  await page.route(/\/api\/v1\/findings\?(.*&)?failing=true/, (r) => {
+    if (r.request().method() !== "GET") return r.fallback();
+    const url = new URL(r.request().url());
+    url.searchParams.delete("failing");
+    const want = pathOf(url.toString());
+    const hit = entries.find((e) => e.request.method === "GET" && pathOf(e.request.url) === want)?.response.content;
+    if (!hit?.text) return r.fallback();
+    const body = JSON.parse(hit.encoding === "base64" ? Buffer.from(hit.text, "base64").toString("utf8") : hit.text) as
+      { findings: { affected_count: number }[]; total: number; filters_applied?: Record<string, unknown> };
+    const failing = body.findings.filter((f) => f.affected_count > 0);
+    return r.fulfill(json({ ...body, findings: failing, total: body.total - (body.findings.length - failing.length),
+      filters_applied: { ...body.filters_applied, failing: true } }));
   });
 }
 
@@ -962,4 +988,5 @@ export async function mockUnrecorded(page: Page, har: string) {
   await mockMiningCurrent(router, har);
   await mockReadiness(router, har);
   await mockRuleNames(router, har);
+  await mockFailingFindings(router, har);
 }

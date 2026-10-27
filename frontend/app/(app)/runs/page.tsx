@@ -184,8 +184,9 @@ function makeColumns(allVersions: Version[], earlier: ReadonlyMap<string, Versio
         if (dqs === null) return "—";
         const prev = allVersions.find((r) => r.id === previousRunId(row.original, allVersions));
         const before = prev ? overallDqs(prev) : null;
+        // The change since the previous run wraps under the score on a phone, never under the pinned Open.
         return (
-          <span className="inline-flex items-center gap-2">
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <Score value={dqs} size="sm"><DrillLink href={`/runs/${row.original.id}`}>{dqs.toFixed(1)}</DrillLink></Score>
             {before !== null ? <Delta value={Math.round((dqs - before) * 10) / 10} /> : null}
           </span>
@@ -193,7 +194,7 @@ function makeColumns(allVersions: Version[], earlier: ReadonlyMap<string, Versio
       },
     },
     { id: "critical", accessorFn: (v) => v.severity_counts?.critical ?? -1, header: "Critical failing rules", size: 130, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => severityCell(row.original, allVersions, "critical") },
-    { id: "high", accessorFn: (v) => v.severity_counts?.high ?? -1, header: "High", size: 100, meta: { numeric: true, priority: "low" } satisfies CellMeta, cell: ({ row }) => severityCell(row.original, allVersions, "high") },
+    { id: "high", accessorFn: (v) => v.severity_counts?.high ?? -1, header: "High failing rules", size: 130, meta: { numeric: true, priority: "low" } satisfies CellMeta, cell: ({ row }) => severityCell(row.original, allVersions, "high") },
     {
       id: "open",
       header: "",

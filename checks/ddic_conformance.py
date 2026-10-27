@@ -33,13 +33,24 @@ _NUMERIC = {"DEC", "CURR", "QUAN", "INT1", "INT2", "INT4", "INT8", "FLTP", "DF16
 _CHARLIKE = {"CHAR", "NUMC", "CUKY", "UNIT", "LANG", "CLNT", "ACCP", "SSTR"}
 _KINDS = {
     "type": ("high", "Value does not match the field's SAP data type"),
-    "length": ("high", "Value exceeds the field's SAP length / precision"),
+    "length": ("high", "Value exceeds the field's SAP length or precision"),
     "case": ("medium", "Lower-case value in an upper-case SAP field"),
     "fixed_value": ("high", "Value is not one of the domain's fixed values"),
     "check_table": ("high", "Value does not exist in the source system's check table"),
 }
 # Values SAP stores outside the check table: a condition's rate unit is a currency or '%'
 _ALSO_VALID = {"KONWA": {"%"}}
+
+
+def rule_name(check_id: str) -> str | None:
+    """A DDIC conformance check's words by check id (``DDIC-MARA-TYPE`` → its kind's message and the table)."""
+    if not (check_id or "").startswith("DDIC-"):
+        return None
+    for kind, (_sev, msg) in _KINDS.items():
+        suffix = f"-{kind.upper()}"
+        if check_id.endswith(suffix) and len(check_id) > len("DDIC-") + len(suffix):
+            return f"{msg} ({check_id[len('DDIC-'):-len(suffix)]})"
+    return None
 
 
 def _violations(values: pd.Series, f, check_values: set[str] | None) -> dict[str, pd.Series]:

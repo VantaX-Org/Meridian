@@ -113,6 +113,15 @@ export const CLEANSING_STAGE_FILTER: Record<CleansingStep["key"], FixFilter> = {
 };
 
 /** Failing records to applied fixes; each stage opens Fix work at that status. */
+/**
+ * The funnel's stage names, one vocabulary with Fix work's tiles (lib/help/glossary.ts): records with a machine value
+ * waiting are "with a suggested value". The API's own label names a stage this list does not know.
+ */
+const CLEANSING_STAGE_LABEL: Record<string, string> = {
+  failing: "Failing records", proposed: "With a suggested value", high: "High confidence", approved: "Approved", applied: "Applied",
+};
+const stageLabel = (s: CleansingStep) => CLEANSING_STAGE_LABEL[s.key] ?? s.label;
+
 export function CleansingFunnel({ steps, run }: { steps: CleansingStep[]; run?: string }) {
   const router = useRouter();
   // A batch is built from fixes someone applies: without `apply` the funnel stays a read (its stages still open Fix work).
@@ -124,9 +133,9 @@ export function CleansingFunnel({ steps, run }: { steps: CleansingStep[]; run?: 
     <>
       <div aria-label="Cleansing funnel, failing records to applied fixes" role="group">
         <Funnel
-          stages={steps.map((s) => ({ label: s.label, value: s.records }))}
+          stages={steps.map((s) => ({ label: stageLabel(s), value: s.records }))}
           onStageClick={(st) => {
-            const key = steps.find((s) => s.label === st.label)?.key;
+            const key = steps.find((s) => stageLabel(s) === st.label)?.key;
             router.push(fixHref({ run, ...(key ? CLEANSING_STAGE_FILTER[key] : {}) }));
           }}
         />
