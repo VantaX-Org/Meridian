@@ -660,7 +660,11 @@ def enforce_licensed_modules(request: Request, requested: list[str]) -> None:
     module-scoped data ENTERS the system (extract, upload). "*" entitles all.
 
     Raises HTTPException(402) listing the unlicensed modules. Caller is a route,
-    so the short message is safe to surface (no stack trace).
+    so the short message is safe to surface (no stack trace). ``detail`` carries
+    the human sentence inside the object: an object with only machine keys read
+    as "Could not reach the server." in every UI surface, hiding an entitlement
+    refusal behind a fake network fault (a discovery run on a licence without
+    quality_management looked like the server being down).
     """
     from fastapi import HTTPException
 
@@ -673,6 +677,8 @@ def enforce_licensed_modules(request: Request, requested: list[str]) -> None:
             status_code=402,
             detail={
                 "error": "module_not_licenced",
+                "detail": f"This deployment's licence does not include: {', '.join(unlicensed)}. "
+                          "Ask your administrator to add it in Meridian HQ.",
                 "modules": unlicensed,
                 "upgrade_url": "https://meridian-hq.vantax.co.za/upgrade",
             },

@@ -32,6 +32,8 @@ export interface CatalogueRow {
   dq_defects?: number | null;
   /** The analysis version dq_defects was counted from; null/absent: no DQ run. */
   dq_version_id?: string | null;
+  /** The licence holds none of the modules this L1's event log reads: selecting it and starting a run 402s. */
+  licence_blocked?: boolean;
   last_run: {
     id: string;
     status: RunStatus;

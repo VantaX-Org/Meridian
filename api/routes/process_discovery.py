@@ -180,6 +180,7 @@ class CatalogueEntry(BaseModel):
     failed: Optional[RunRef] = None       # the newest run, when it failed after the last completed one
     dq_defects: Optional[int] = None      # failing findings on the DQ modules this process touches; None: no mapping or no DQ run
     dq_version_id: Optional[str] = None   # the analysis_versions id dq_defects was counted from; None: no DQ run
+    licence_blocked: bool = False         # the licence entitles none of the modules this L1's event log reads: it 402s, so the dialog must not offer it
     sources: list[SourceTable]
 
 
@@ -423,8 +424,22 @@ def _node_modules(node: Union[L1, L2, L3, L4, L5]) -> set[str]:
 # --- catalogue and runs ---------------------------------------------------------------------------------------
 
 
+def l1_unlicensed(l1: str, system_type: str, licensed: Optional[list[str]]) -> tuple[str, ...]:
+    """The licence modules ``l1``'s event log needs that this tenant does not hold; ``()`` when it may run.
+
+    Same rule ``start_runs`` enforces and the catalogue reports, in one place: an L1 runs when the licence
+    holds at least one of the DQ modules whose tables it reads (``licence_modules``). Unknown licence
+    (None / dev mode), a wildcard, and L1s this system type cannot mine at all (they are sourced out)
+    all return ``()`` — they are not blocked *by the licence*.
+    """
+    if licensed is None or "*" in licensed or l1 not in L1S_BY_SYSTEM.get(system_type, ()):
+        return ()
+    mods = licence_modules(l1, system_type)
+    return () if not mods or any(m in licensed for m in mods) else mods
+
+
 @router.get("/systems/{system_id}/catalogue", dependencies=VIEW, response_model=list[CatalogueEntry])
-async def catalogue(system_id: str, tenant: Tenant = Depends(get_tenant),
+async def catalogue(system_id: str, request: Request, tenant: Tenant = Depends(get_tenant),
                     db: AsyncSession = Depends(get_db)) -> list[CatalogueEntry]:
     system_type, _ = await _system(db, tenant, _id(system_id))
     params = {"t": str(tenant.id), "s": _id(system_id)}
@@ -440,6 +455,7 @@ async def catalogue(system_id: str, tenant: Tenant = Depends(get_tenant),
     names = {k: v.name for k, v in ref_l1.items()}
     defects = await _defects_by_module(db, tenant, _id(system_id))
     out: list[CatalogueEntry] = []
+    licensed = getattr(request.state, "licensed_modules", None)
     for l1 in L1S:
         r, n = done.get(l1), newest.get(l1)
         stats = RunStats.model_validate(r.stats) if r else RunStats()
@@ -451,6 +467,7 @@ async def catalogue(system_id: str, tenant: Tenant = Depends(get_tenant),
             dq_version_id=defects and defects.version_id,
             coverage=r.coverage if r else "reference",
             reason=reason(l1, system_type),
+            licence_blocked=bool(l1_unlicensed(l1, system_type, licensed)),
             last_run=None if r is None else LastRun(
                 id=r.id, status=r.status, finished_at=r.finished_at,
                 cases=stats.case_types.get(primary_case_type(l1, system_type)), variants=stats.variants,
@@ -473,12 +490,13 @@ async def start_runs(system_id: str, body: RunRequest, request: Request, tenant:
     system_id = _id(system_id)
     system_type, tz = await _system(db, tenant, system_id)
     # the entitlement boundary for module data entering the system, as on /extract: only the L1s that extract
-    # an L1 runs when the tenant holds any DQ module whose tables its event log reads
+    # an L1 runs when the tenant holds any DQ module whose tables its event log reads (l1_unlicensed —
+    # the same rule the catalogue reports as licence_blocked, so the dialog never offers an L1 that 402s)
     licensed = getattr(request.state, "licensed_modules", None)
     if licensed is not None and "*" not in licensed:
         for l1 in body.l1s:
-            mods = licence_modules(l1, system_type) if l1 in L1S_BY_SYSTEM.get(system_type, ()) else ()
-            if mods and not any(m in licensed for m in mods):
+            mods = l1_unlicensed(l1, system_type, licensed)
+            if mods:
                 enforce_licensed_modules(request, list(mods))
     client = _redis_client()
     if client is None:

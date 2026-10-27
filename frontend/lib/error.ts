@@ -18,6 +18,12 @@ export function apiErrorDetail(error: unknown): string | null {
   if (detail && typeof detail === "object" && Array.isArray((detail as { errors?: unknown }).errors)) {
     return (detail as { errors: unknown[] }).errors.map(String).join("; ");
   }
+  // A structured entitlement error ({"detail": {"error": "module_not_licenced", "detail": "…", "modules": […]}})
+  // carries its human sentence inside the object; without this branch a 402 licence refusal read as
+  // "Could not reach the server." — a licensing gate disguised as a network outage.
+  if (detail && typeof detail === "object" && typeof (detail as { detail?: unknown }).detail === "string") {
+    return (detail as { detail: string }).detail;
+  }
   return null;
 }
 
