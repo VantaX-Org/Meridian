@@ -30,7 +30,7 @@ export function currentFixFirst(findings: readonly Finding[], objects: readonly 
  */
 function RuleWordsCell({ finding: f }: { finding: Finding }) {
   const message = f.details?.message || null;
-  const nameOf = useRuleNames(!message);
+  const nameOf = useRuleNames([f.check_id], !message);
   const words = message || nameOf(f.check_id) || (f.check_class ? checkClassLabel(f.check_class) : null);
   return (
     <span className="flex flex-col [min-width:14rem]">

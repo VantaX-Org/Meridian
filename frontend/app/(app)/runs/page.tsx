@@ -192,7 +192,7 @@ function makeColumns(allVersions: Version[], earlier: ReadonlyMap<string, Versio
         );
       },
     },
-    { id: "critical", accessorFn: (v) => v.severity_counts?.critical ?? -1, header: "Critical", size: 110, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => severityCell(row.original, allVersions, "critical") },
+    { id: "critical", accessorFn: (v) => v.severity_counts?.critical ?? -1, header: "Critical failing rules", size: 130, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => severityCell(row.original, allVersions, "critical") },
     { id: "high", accessorFn: (v) => v.severity_counts?.high ?? -1, header: "High", size: 100, meta: { numeric: true, priority: "low" } satisfies CellMeta, cell: ({ row }) => severityCell(row.original, allVersions, "high") },
     {
       id: "open",

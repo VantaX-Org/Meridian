@@ -16,6 +16,7 @@ import { isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { criticalHighHref, stateObjects, stateScopeLine } from "@/lib/current-state";
 import { fixHref } from "@/lib/drill";
+import { RuleName } from "@/components/fix/rule-cell";
 import { formatModuleName, plural } from "@/lib/format";
 import { DrillCount } from "@/app/(app)/insights/_components/DrillCount";
 import { bySeverity } from "../_severity-sort";
@@ -115,7 +116,7 @@ const allColumns = (run: string | undefined, bands: ScoreBands | undefined, open
           <DrillCount href={toFixHref(row.original.module, run, { issue: id })} label={`Open the records of ${row.original.label} failing rule ${id}`}>
             <Mono>{id}</Mono>
           </DrillCount>
-          {words && words !== id ? <span className="m-ink-2">{" "}{words}</span> : null}
+          {" "}<RuleName id={id} fallback={words} />
         </span>
       );
     },
@@ -135,8 +136,8 @@ const allColumns = (run: string | undefined, bands: ScoreBands | undefined, open
     },
   },
   workColumn("work_open", "To fix", (w) => w.open, run, ["record to fix", "records to fix"]),
-  workColumn("work_critical", "Critical", (w) => w.critical, run, ["critical record", "critical records"], { sev: "critical" }),
-  workColumn("work_proposed", "With a suggestion", (w) => w.proposed, run, ["record with a suggestion", "records with a suggestion"], { suggested: "1" }),
+  workColumn("work_critical", "Critical records", (w) => w.critical, run, ["critical record", "critical records"], { sev: "critical" }),
+  workColumn("work_proposed", "With a suggested value", (w) => w.proposed, run, ["record with a suggested value", "records with a suggested value"], { suggested: "1" }),
   workColumn("work_overdue", "Overdue", (w) => w.overdue, run, ["overdue record", "overdue records"], { due: "overdue" }),
   {
     accessorKey: "composite_score",

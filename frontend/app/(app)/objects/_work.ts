@@ -4,7 +4,7 @@ import { getWorkSummary } from "@/lib/api/work";
 /** The work list's record counts are capped server-side at this many (api/routes/work.py COUNT_CAP). */
 export const WORK_COUNT_CAP = 100_000;
 
-/** Per object of a run: records to fix, critical, with a suggestion, overdue. Shares the ["work"] prefix decisions invalidate. */
+/** Per object of a run: records to fix, critical, with a suggested value, overdue. Shares the ["work"] prefix decisions invalidate. */
 export const workSummaryQuery = (run: string | undefined) => ({
   queryKey: ["work", "summary", run ?? "latest"],
   queryFn: () => getWorkSummary(run),

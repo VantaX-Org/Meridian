@@ -31,7 +31,8 @@ import { getGlossaryTerm } from "@/lib/api/glossary";
 import { getMasterRecord } from "@/lib/api/master-records";
 import { getReviewPair, type ReviewPair } from "@/lib/api/match-review";
 import { getException } from "@/lib/api/exceptions";
-import { getRules } from "@/lib/api/rules";
+import { getRule } from "@/lib/api/rules";
+import { useRuleNames } from "@/lib/rule-name";
 import { getCostModel } from "@/lib/api/settings";
 import type { RootCauseType } from "@/lib/api/config-intelligence";
 import { HIGH_CONFIDENCE_LABEL } from "@/lib/api/remediation";
@@ -165,11 +166,9 @@ const taskTitle = (t: StewardshipQueueItem, exc?: Exception | null, ruleName?: R
   const d = taskObject(t, exc);
   return d ? `${what} in ${formatModuleName(d)}` : what;
 };
-/** The rule catalogue's names by check id (one cached request, shared with the task source pane). */
-function useRuleNameOf(enabled: boolean): RuleNameOf {
-  const rules = useQuery({ queryKey: ["rules", "names"], queryFn: () => getRules({ limit: 1000 }), enabled, staleTime: 300_000, meta: { ignoreError: true } });
-  return useCallback((id: string) => rules.data?.rules.find((r) => r.id === id)?.name ?? undefined, [rules.data]);
-}
+/** The checks the catalogue has to name: an exception task with no title of its own is named by its check. */
+const unnamedChecks = (items: readonly StewardshipQueueItem[]) =>
+  items.filter((t) => t.item_type === "exception" && !t.source_title && !!t.source_check_id).map((t) => t.source_check_id);
 /** An exception named by its check and object, as its task is. */
 const exceptionTitle = (e: Exception) => {
   const d = exceptionObject(e);
@@ -290,7 +289,7 @@ export default function InboxPage() {
   const excById = useMemo(() => new Map((excIndexQ.data?.exceptions ?? []).map((e) => [e.id, e])), [excIndexQ.data]);
   const excOf = useCallback((t: StewardshipQueueItem) => (t.item_type === "exception" ? excById.get(t.source_id) ?? null : null), [excById]);
   // A task whose exception has no title is named by its linked check: the catalogue names it.
-  const ruleNameOf = useRuleNameOf(queues.some((q) => q.data?.items?.some((t) => t.item_type === "exception" && !t.source_title && !!t.source_check_id)));
+  const ruleNameOf: RuleNameOf = useRuleNames(queues.flatMap((q) => unnamedChecks(q.data?.items ?? [])));
   const excLoaded = useMemo(() => excPageQs.flatMap((q) => q.data?.exceptions ?? []), [excPageQs]);
   const excTotal = excQ.data?.total ?? 0;
   const excMetricsQ = useQuery({ queryKey: queryKeys.exceptionMetrics(), queryFn: () => getExceptionMetrics(), enabled: isExceptions });
@@ -610,8 +609,9 @@ export default function InboxPage() {
   const overdue = isExceptions ? excMetricsQ.data?.overdue_count ?? 0 : serverOverdue ?? counts.overdue;
   const openCount = isExceptions ? excMetricsQ.data?.open_count ?? excItems.length : queueTotal;
   const overdueScope = !isExceptions && partial && serverOverdue == null ? ` in the newest ${formatInt(all.length)}` : "";
-  // Counts belong to the tasks and exceptions lists; the other tabs load their own and say only what they are for.
-  const counted = kind === "task" || kind === "exception";
+  // Counts belong to the tasks and exceptions lists, and only once the list has loaded: a list that failed (or is still
+  // loading) states no "0 open, 0 overdue" above its error panel. The other tabs say only what they are for.
+  const counted = (kind === "task" || kind === "exception") && state !== "error" && state !== "loading";
   const header = (
     <PageHeader
       title="Inbox"
@@ -1047,7 +1047,7 @@ function TaskSource({ t }: { t: StewardshipQueueItem }) {
   const term = useQuery({ queryKey: ["glossary", "term", t.source_id], queryFn: () => getGlossaryTerm(t.source_id), enabled: t.item_type === "glossary_review", ...opts });
   const contracts = useQuery({ queryKey: ["contracts", "active"], queryFn: () => getContracts("active"), enabled: t.item_type === "contract_breach", staleTime: 60_000, ...opts });
   const ruleId = proposal.data?.rule_id ?? null;
-  const rules = useQuery({ queryKey: ["rules", "names"], queryFn: () => getRules({ limit: 1000 }), enabled: !!ruleId, staleTime: 300_000, meta: { ignoreError: true } });
+  const rule = useQuery({ queryKey: queryKeys.ruleDetail(ruleId ?? ""), queryFn: () => getRule(ruleId as string), enabled: !!ruleId, staleTime: 300_000, meta: { ignoreError: true } });
   const loading = [proposal, exception, pair, golden, term, contracts].some((q) => q.isLoading);
   if (loading) return <Skeleton height={64} />;
   const facts = (children: React.ReactNode) => (
@@ -1057,7 +1057,7 @@ function TaskSource({ t }: { t: StewardshipQueueItem }) {
     if (!proposal.data) return null;
     const p = proposalOf(proposal.data);
     // A rules row is named "<check id>: <message>"; ruleId is its UUID, which no steward reads.
-    const name = ruleId ? rules.data?.rules.find((r) => r.id === ruleId)?.name : undefined;
+    const name = ruleId ? rule.data?.name : undefined;
     const split = name ? name.indexOf(":") : -1;
     const checkId = name ? (split >= 0 ? name.slice(0, split).trim() : name) : null;
     const message = name && split >= 0 ? name.slice(split + 1).trim() : null;
@@ -1141,7 +1141,7 @@ function TaskDetail({ t, exc, sla, now, assignee, busy, canApprove, canAssign, c
   const excDetail = useQuery({ queryKey: ["exceptions", "detail", t.source_id], queryFn: () => getException(t.source_id), enabled: t.item_type === "exception" && !exc, retry: false, meta: { ignoreError: true } });
   const source = exc ?? excDetail.data ?? null;
   const object = taskObject(t, source);
-  const ruleNameOf = useRuleNameOf(t.item_type === "exception" && !source?.title && !t.source_title && !!t.source_check_id);
+  const ruleNameOf: RuleNameOf = useRuleNames(unnamedChecks([t]), !source?.title);
   // The rarer moves wait in the menu: taking over someone else's task, handing it back, escalating.
   const more: MenuItemDef[] = [
     ...(canAssign && !claimFirst ? [{ label: "Claim", onSelect: onAssign }] : []),

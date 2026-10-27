@@ -265,6 +265,38 @@ async def rules_history_batch(
     return {"version_id": version_id, "module": module, "history": out}
 
 
+# ── GET /api/v1/rules/names ───────────────────────────────────────────────────
+
+_MAX_NAME_IDS = 500
+
+
+@router.get("/rules/names", dependencies=[Depends(require_permission("view"))])
+async def rule_names(
+    check_ids: list[str] = Query(..., description="Check ids (repeat the parameter, or comma-separate)"),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+) -> dict[str, dict[str, str]]:
+    """Plain rule names by check id for this tenant: ``{"names": {"MM045": "Material type missing"}}``.
+
+    A rule's catalogue name is ``"<check id>: <words>"``; the check id is the part before the ':' (the key findings use).
+    Only the words are returned. Ids with no named rule are left out (the caller falls back to the id).
+    Same read access as the rules list: any role that can view."""
+    ids = sorted({part.strip() for raw in check_ids for part in raw.split(",") if part.strip()})
+    if len(ids) > _MAX_NAME_IDS:
+        raise HTTPException(422, f"At most {_MAX_NAME_IDS} check ids per request")
+    if not ids:
+        return {"names": {}}
+    await _set_rls(db, tenant.id)
+    rows = (await db.execute(text("""
+        SELECT DISTINCT ON (split_part(name, ':', 1)) split_part(name, ':', 1) AS check_id,
+               trim(substr(name, strpos(name, ':') + 1)) AS name
+          FROM rules
+         WHERE tenant_id = :tid AND strpos(name, ':') > 0 AND split_part(name, ':', 1) = ANY(:ids)
+         ORDER BY split_part(name, ':', 1), updated_at DESC NULLS LAST, module
+    """), {"tid": str(tenant.id), "ids": ids})).all()
+    return {"names": {r.check_id: r.name for r in rows if r.name}}
+
+
 # ── GET /api/v1/rules/{rule_id} ───────────────────────────────────────────────
 
 

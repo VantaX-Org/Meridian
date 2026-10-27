@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, Card, ConfirmDialog, DataTable, Delta, Dialog, DimensionBars, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, FilterChip, FindingDrawer, Input, InsightHeader, Line, Mono, Pager, Pill, Tooltip, DrillLink, Score, Select, SeverityDot, Skeleton, Sparkline, Tabs, isSeverity, entityTabs, NextActions, PageHeader, Status, asyncStateOf, type CellMeta } from "@/design";
+import { Button, Card, ConfirmDialog, DataTable, Delta, Dialog, DimensionBars, EmptyState, ErrorState, ExplorerPage, ExportMenu, Field, FilterChip, FindingDrawer, Input, InsightHeader, Line, Pager, Pill, Tooltip, DrillLink, Score, Select, SeverityDot, Skeleton, Sparkline, Tabs, isSeverity, entityTabs, NextActions, PageHeader, Status, asyncStateOf, type CellMeta } from "@/design";
 import { getPrescriptiveAnalytics } from "@/lib/api/analytics";
 import { useRole } from "@/hooks/use-role";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -32,6 +32,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { baselineRunId, isFinished, lineageOf, overallDqs, previousRunId, runPageHref } from "@/lib/runs";
 import { latestFinishedRun, lineageChoices, runName } from "@/lib/run-scope";
 import { RunScope } from "@/components/run-scope";
+import { RuleCell } from "@/components/fix/rule-cell";
 import type { Finding, Version } from "@/types/api";
 import { clsx } from "clsx";
 
@@ -82,7 +83,7 @@ const FINDINGS_PAGE = 100;
 function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; history: History; onOpenSteps: () => void }) {
   const { can } = useRole();
   const objects = useQuery({ queryKey: queryKeys.objects(versionId), queryFn: () => getObjects(versionId) });
-  // Ranked by records affected, the same order as the overview ledger.
+  // Ranked by rule failures, the same order as the overview ledger.
   const rows = [...(objects.data?.objects ?? [])].sort((x, y) => y.affected_records - x.affected_records);
   const modules = history.data?.modules ?? {};
 
@@ -185,12 +186,7 @@ function RunLedger({ versionId, rows, objects }: { versionId: string; rows: Modu
       meta: { priority: "low" } satisfies CellMeta,
       cell: ({ row }) => {
         const o = objects.get(row.original.module);
-        return o?.blocking_rule_id ? (
-          <span className="inline-flex min-w-0 items-baseline gap-2">
-            <Mono>{o.blocking_rule_id}</Mono>
-            {o.blocking_rule_name ? <span className="m-ink-2 truncate">{o.blocking_rule_name}</span> : null}
-          </span>
-        ) : <span className="m-ink-3">—</span>;
+        return o?.blocking_rule_id ? <RuleCell id={o.blocking_rule_id} fallback={o.blocking_rule_name} /> : <span className="m-ink-3">—</span>;
       },
     },
     {
@@ -495,7 +491,8 @@ function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenStep
         </span>
       ),
     },
-    { accessorKey: "check_id", header: "Rule", meta: { mono: true } satisfies CellMeta },
+    // The rule's words (catalogue name, else the finding's message) beside its id; the message column is gone with it.
+    { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <RuleCell id={row.original.check_id} fallback={row.original.details.message} /> },
     { id: "module", header: "Object", meta: { priority: "low" } satisfies CellMeta, accessorFn: (f) => formatModuleName(f.module) },
     { id: "dimension", header: "Dimension", meta: { priority: "low" } satisfies CellMeta, accessorFn: (f) => labelOf(f.dimension) },
     {
@@ -508,7 +505,6 @@ function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenStep
         </DrillLink>
       ),
     },
-    { id: "message", header: "Message", meta: { priority: "low" } satisfies CellMeta, accessorFn: (f) => f.details.message ?? "—", cell: ({ row }) => <span className="block max-w-[360px] truncate">{row.original.details.message ?? "—"}</span> },
   ];
 
   return (
@@ -540,8 +536,8 @@ function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenStep
       state={asyncStateOf(findings, () => rows.length === 0, true)}
       emptyProps={
         filtered
-          ? { title: "No findings match", detail: "Try removing a filter.", action: <Button onClick={clearFilters}>Clear filters</Button> }
-          : { title: "No findings in this run", detail: "Open steps to see what ran.", action: <Button onClick={onOpenSteps}>Open steps</Button> }
+          ? { title: "No failing rules match", detail: "Try removing a filter.", action: <Button onClick={clearFilters}>Clear filters</Button> }
+          : { title: "No failing rules in this run", detail: "Open steps to see what ran.", action: <Button onClick={onOpenSteps}>Open steps</Button> }
       }
       errorProps={{ message: errorText(findings.error), onRetry: () => findings.refetch() }}
       drawer={<FindingDrawer findingId={findingId} versionId={versionId} onClose={() => openFinding(null)} />}
@@ -821,7 +817,7 @@ export default function RunDetailPage() {
         items={[
           { value: "overview", label: "Overview", content: <SummaryTab versionId={versionId} aggregate={aggregate} history={history} systemId={systemId} versionLoading={version.isLoading} lineage={v ? runs.filter((r) => lineageOf(r) === lineageOf(v) && isFinished(r)) : []} inProgress={running || v?.status === "pending" || v?.status === "running"} /> },
           { value: "objects", label: "Objects", content: <ObjectsTab versionId={versionId} history={history} onOpenSteps={openSteps} /> },
-          { value: "findings", label: "Findings", content: <FindingsTab versionId={versionId} onOpenSteps={openSteps} /> },
+          { value: "findings", label: "Failing rules", content: <FindingsTab versionId={versionId} onOpenSteps={openSteps} /> },
           {
             value: "steps",
             label: "Steps",

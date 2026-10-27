@@ -38,14 +38,14 @@ export function FixStrip({ object, summary, work, loading }: {
     <div className="m-stat-grid" data-testid="fix-strip">
       <Stat label={work || loading ? "Records to fix" : "Rule failures"} value={failing == null ? "—" : failing.toLocaleString()} href={fix({})} loading={loading && !work} />
       <Stat
-        label="Critical"
+        label="Critical records to fix"
         value={work ? work.critical.toLocaleString() : "—"}
         tone={work ? (work.critical > 0 ? "no-go" : "go") : undefined}
         href={work && work.critical > 0 ? fix({ sev: "critical" }) : undefined}
         loading={loading && !work}
       />
       <Stat
-        label="With a suggestion"
+        label="With a suggested value"
         value={work ? work.proposed.toLocaleString() : "—"}
         hint={work && work.open > 0 ? `${Math.round((work.proposed / work.open) * 100)}% of records to fix` : undefined}
         href={work && work.proposed > 0 ? fix({ sugg: "1" }) : undefined}

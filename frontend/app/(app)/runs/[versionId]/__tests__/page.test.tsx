@@ -7,6 +7,7 @@ import * as downloadApi from "@/lib/api/download";
 import * as findingsApi from "@/lib/api/findings";
 import { getAnalysisReportUrl, getReportDownloadUrl } from "@/lib/api/reports";
 import * as objectsApi from "@/lib/api/v1/objects";
+import * as rulesApi from "@/lib/api/rules";
 import * as runsApi from "@/lib/api/v1/runs";
 import * as settingsApi from "@/lib/api/settings";
 import * as versionsApi from "@/lib/api/versions";
@@ -293,9 +294,9 @@ describe("RunDetailPage", () => {
   it("shows the no-findings empty state on the findings tab", async () => {
     vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
     renderWithQuery(<RunDetailPage />);
-    await waitFor(() => expect(screen.getByRole("tab", { name: "Findings" })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("tab", { name: "Findings" }));
-    await waitFor(() => expect(screen.getByText("No findings in this run")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Failing rules" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("tab", { name: "Failing rules" }));
+    await waitFor(() => expect(screen.getByText("No failing rules in this run")).toBeInTheDocument());
     expect(screen.getByRole("button", { name: "Open steps" })).toBeInTheDocument();
   });
 
@@ -322,7 +323,7 @@ describe("RunDetailPage", () => {
     renderWithQuery(<RunDetailPage />);
     const hero = await screen.findByTestId("score-hero");
     expect(screen.getByRole("img", { name: /score 82\.4, capped at 70/i })).toBeInTheDocument();
-    expect(hero).toHaveTextContent("Capped at 70, 2 critical");
+    expect(hero).toHaveTextContent("Capped at 70, 2 critical failing rules");
     expect(hero.textContent).not.toMatch(/82\.4/);
   });
 
@@ -445,9 +446,30 @@ describe("RunDetailPage", () => {
       filters_applied: {},
     });
     renderWithQuery(<RunDetailPage />);
-    await waitFor(() => expect(screen.getByRole("tab", { name: "Findings" })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("tab", { name: "Findings" }));
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Failing rules" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("tab", { name: "Failing rules" }));
     await waitFor(() => expect(screen.getByText("mm_missing_desc")).toBeInTheDocument());
+  });
+
+  it("opens Failing rules from the ?tab=findings link and names each rule, a DDIC check included, never a bare dash", async () => {
+    searchParams = new URLSearchParams("tab=findings");
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+    const names = vi.spyOn(rulesApi, "getRuleNames").mockResolvedValue({ MM045: "Material type is mandatory" });
+    const finding = (id: string, check_id: string) => ({
+      id, version_id: "v2", module: "material_master", check_id, severity: "high", dimension: "validity",
+      affected_count: 5, total_count: 50, pass_rate: 0.9, details: {}, remediation_text: "", rule_context: null,
+      value_fix_map: null, record_fixes: null, created_at: "2026-01-01T00:00:00Z",
+    });
+    vi.spyOn(findingsApi, "getFindings").mockResolvedValue({
+      findings: [finding("f1", "MM045"), finding("f2", "DDIC-MARA-TYPE")], total: 2, filters_applied: {},
+    } as never);
+    renderWithQuery(<RunDetailPage />);
+    expect(await screen.findByRole("tab", { name: "Failing rules", selected: true })).toBeInTheDocument();
+    expect(await screen.findByText("Material type is mandatory")).toBeInTheDocument();
+    expect(screen.getByText("Value does not match the field's SAP data type (MARA)")).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Message" })).toBeNull();
+    expect(names).toHaveBeenCalledWith(["MM045"]);
+    searchParams = new URLSearchParams();
   });
 
   it("filters the findings by critical and high together, with a plain chip and a matching Severity value", async () => {

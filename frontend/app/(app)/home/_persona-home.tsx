@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { buildDrillHref, Button, Card, DataTable, DimensionBars, DomainChip, DrillLink, EmptyState, ExportMenu, HomePage, Mono, ObjectMap, Pill, Select, Skeleton, Stat, type HeatmapCell, Status, Score, useMediaQuery } from "@/design";
+import { RuleName } from "@/components/fix/rule-cell";
 import { getObjects } from "@/lib/api/v1/objects";
 import { getFindings, getFindingsAggregate } from "@/lib/api/findings";
 import { useRunListWith } from "@/hooks/use-run-list";
@@ -307,7 +308,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     const f = checkId ? findingOf(module, checkId) : undefined;
     return !!f && (Object.keys(f.value_fix_map ?? {}).length > 0 || (f.record_fixes ?? []).length > 0);
   };
-  // The ledger: what moves the score, ranked by records affected (an object whose records are not attributed sorts last), then by score.
+  // The ledger: what moves the score, ranked by rule failures (an object whose records are not attributed sorts last), then by score.
   const ranked = (role === "steward" ? objects.filter((o) => o.failing_checks > 0) : objects)
     .filter((o) => o.composite_score !== null && (!mine || owners.isMine(o.module)))
     .sort((a, b) => (b.affected_records ?? -1) - (a.affected_records ?? -1) || (a.composite_score ?? 0) - (b.composite_score ?? 0));
@@ -328,7 +329,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       cell: ({ row: { original: o } }) => o.blocking ? (
         <span className="inline-flex min-w-0 items-baseline gap-2">
           <DrillLink href={buildDrillHref({ object: o.module, ruleId: o.blocking, run: o.run_id })}><Mono>{o.blocking}</Mono></DrillLink>
-          {o.blockingWords && <span className="m-ink-3 truncate [max-width:46ch]" title={o.blockingWords}>{o.blockingWords}</span>}
+          <RuleName id={o.blocking} fallback={o.blockingWords} className="m-ink-3 truncate [max-width:46ch]" />
         </span>
       ) : "—",
     },
@@ -362,7 +363,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const objectsCard = role === "basis" ? undefined : (
     <Card
       title="What moves the score"
-      meta="Ranked by records affected"
+      meta="Ranked by rule failures"
       padding="sm"
       actions={owners.hasMine || mine ? (
         <FilterChips label="Show" value={mine ? "1" : null} options={[{ value: "1", label: "My objects" }]} onChange={(v) => {

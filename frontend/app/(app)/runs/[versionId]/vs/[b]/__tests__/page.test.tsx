@@ -265,7 +265,7 @@ describe("CompareRunsPage", () => {
 
   it("lists the rules failing in both runs that records newly fail as a second section, with rule names beside ids", async () => {
     const rulesApi = await import("@/lib/api/rules");
-    vi.spyOn(rulesApi, "getRules").mockResolvedValue({ rules: [{ id: "MM041", name: "Material type is mandatory" }, { id: "MM077", name: "Base unit matches the type" }], total: 2 } as never);
+    vi.spyOn(rulesApi, "getRuleNames").mockResolvedValue({ MM041: "MM041: Material type is mandatory", MM077: "Base unit matches the type" });
     vi.spyOn(versionsApi, "compareRecords").mockResolvedValue({
       ...diff,
       totals: { new: 11_151 + 1240, resolved: 7, persisting: 40 },

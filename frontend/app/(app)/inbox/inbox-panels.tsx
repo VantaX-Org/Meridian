@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { Button, Card, ConfirmDialog, DataTable, Drawer, EmptyState, ErrorState, Field, Mono, Notice, Skeleton, Stat, Textarea, toast, Status } from "@/design";
+import { RuleName } from "@/components/fix/rule-cell";
 import { QuickFilters } from "@/components/inbox/quick-filters";
 import { getAssignableUsers } from "@/lib/api/users";
 import { useAuth } from "@/context/auth-context";
@@ -150,7 +151,7 @@ function FindingRule({ approval }: { approval: PendingApproval }) {
   return (
     <span className="inline-flex flex-col items-start">
       <span className="inline-flex items-baseline gap-2"><Mono>{checkId}</Mono>{objectId ? <span className="m-ink-3">{formatModuleName(objectId)}</span> : null}</span>
-      {approval.rule_message ? <span className="m-text-meta m-ink-2">{approval.rule_message}</span> : null}
+      <RuleName id={checkId} fallback={approval.rule_message} className="m-text-meta m-ink-2" />
     </span>
   );
 }

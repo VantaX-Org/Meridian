@@ -41,6 +41,7 @@ import { useCurrentState } from "../_components/useCurrentState";
 import { PAGE_PURPOSE } from "../_components/InsightViews";
 
 import type { BusinessProcessL3, ConfigImpactResult } from "@/types/api";
+import { RuleCell } from "@/components/fix/rule-cell";
 
 /** Loading body at final height: stat row, one card (the four-sentence header is the page frame's). */
 function ViewSkeleton({ stats }: { stats: number }) {
@@ -158,7 +159,7 @@ function NotApplicableList({ title, t, findingHref }: {
           <li key={na.check_id} className="flex items-center gap-3">
             {na.severity ? <Status kind="severity" value={na.severity} /> : <Pill>Unrated</Pill>}
             <Link className="flex-1 underline" href={findingHref(na.module, na.check_id) ?? ruleHref(na.module)}>
-              <Mono>{na.check_id}</Mono>
+              <RuleCell id={na.check_id} />
             </Link>
             <span className="m-text-body m-ink-2">
               {na.reason ?? "Not used by the loaded configuration"}
@@ -203,7 +204,7 @@ function RulesBlock({ title, t, findingHref, configuredIn, run }: {
                 href={fixHref({ run, module: f.module, check: f.check_id })}
                 aria-label={drillLabel({ count: f.affected_count, what: "failing records", check: f.check_id, module: f.module })}
               >
-                <Mono>{f.check_id}</Mono>
+                <RuleCell id={f.check_id} />
               </Link>
               <span className="m-text-body">{records(f.affected_count)}</span>
             </li>

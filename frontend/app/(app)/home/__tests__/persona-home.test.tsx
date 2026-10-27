@@ -179,6 +179,9 @@ describe("PersonaHomePage Brief geometry", () => {
       expect(rows[1]).toHaveTextContent("Material master");
     });
     for (const h of ["Object", "Blocking rule", "Owner", "Rule failures", "Score", "Verdict"]) expect(screen.getByRole("columnheader", { name: new RegExp(h) })).toBeInTheDocument();
+    // the ledger says what it is ranked by in the unit of its column: rule failures, not "records affected"
+    expect(screen.getByText("Ranked by rule failures")).toBeInTheDocument();
+    expect(screen.queryByText(/records affected/)).toBeNull();
     // the owner replaced the run: every row was read from a run already named in the header
     expect(screen.queryByRole("columnheader", { name: /^Run/ })).toBeNull();
     expect(screen.getByRole("link", { name: "All 2 objects" })).toHaveAttribute("href", "/objects");

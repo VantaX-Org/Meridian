@@ -16,7 +16,7 @@ import type { ObjectRule } from "@/lib/api/v1/objects";
 import { apiErrorState } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import { useRuleNames } from "@/lib/rule-name";
+import { rankedName, useRuleNames } from "@/lib/rule-name";
 import { FilterChips } from "../_header";
 import { PAGE_SIZE, STALE_MS, fixSheetHref, isBlocking, objectQuery, recordsQuery, useFixShortcut, useRecordColumns } from "./_shared";
 
@@ -123,7 +123,7 @@ export function Workbench({ object, run }: { object: string; run: string }) {
   const { data, isLoading, isError, error, refetch } = useQuery(objectQuery(object, run));
   const details = useRuleDetails(object, run);
   // The ranking names the rules it ranks; the catalogue (and the DDIC checks it does not hold) names the rest.
-  const catalogueName = useRuleNames();
+  const catalogueName = useRuleNames(data?.rules.filter((r) => r.affected_count > 0).map((r) => r.check_id) ?? []);
 
   if (isLoading) return <div aria-busy="true"><Skeleton height={320} /></div>;
   if (isError) return <ErrorState {...apiErrorState(error)} onRetry={() => refetch()} />;
@@ -133,7 +133,7 @@ export function Workbench({ object, run }: { object: string; run: string }) {
   const byId = new Map((details.data?.rows ?? []).map((r: RuleRow) => [r.check_id, r]));
   const failing: WorkRule[] = data.rules
     .filter((r) => r.affected_count > 0)
-    .map((r) => ({ ...r, name: byId.get(r.check_id)?.name ?? catalogueName(r.check_id) ?? null, field: byId.get(r.check_id)?.field ?? null, autoFixPct: byId.get(r.check_id)?.auto_fix_pct ?? null }))
+    .map((r) => ({ ...r, name: catalogueName(r.check_id) ?? rankedName(details.data?.rows, r.check_id) ?? null, field: byId.get(r.check_id)?.field ?? null, autoFixPct: byId.get(r.check_id)?.auto_fix_pct ?? null }))
     .sort((a, b) => b.affected_count - a.affected_count || (SEVERITY_RANK[a.severity] ?? 4) - (SEVERITY_RANK[b.severity] ?? 4));
   const listed = failing.filter((r) => !dimension || r.dimension === dimension);
   const wanted = search.get("rule");
@@ -174,7 +174,7 @@ export function Workbench({ object, run }: { object: string; run: string }) {
       <div className="m-stat-grid">
         <Stat label="Failing rules" value={data.failing_checks.toLocaleString()} href={rulesHref} />
         {/* `?blocking=true` keeps the critical and high rules (isBlocking), not the blocking findings of the readiness view. */}
-        <Stat label="Critical and high" value={blockingRules} hint="failing rules" tone={blockingRules > 0 ? "no-go" : "go"} href={`${rulesHref}&blocking=true`} />
+        <Stat label="Critical and high failing rules" value={blockingRules} tone={blockingRules > 0 ? "no-go" : "go"} href={`${rulesHref}&blocking=true`} />
         {/* Summed over the failing rules (a record failing two rules counts twice): rule failures, as the header says. */}
         <Stat label="Rule failures" value={data.affected_records.toLocaleString()} hint="records failing a rule, per rule" href={tabHref("fix")} />
         <Stat

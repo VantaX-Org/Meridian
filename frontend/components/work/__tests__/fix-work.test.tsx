@@ -131,7 +131,7 @@ describe("FixWork", () => {
     renderWithQuery(<FixWork />);
     expect(await screen.findByText("As of material_master_25k, 16 Oct 2026")).toBeInTheDocument();
     expect(getVersion).toHaveBeenCalledWith("R1");
-    expect(screen.getByText("critical severity")).toBeInTheDocument();
+    expect(screen.getByText("records with a critical rule failure")).toBeInTheDocument();
     expect(screen.queryByText("block SAP processes")).toBeNull();
   });
 

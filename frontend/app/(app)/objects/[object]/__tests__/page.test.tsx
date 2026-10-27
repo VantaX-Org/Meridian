@@ -133,7 +133,7 @@ describe("ObjectDetailPage", () => {
     renderWithQuery(<ObjectDetailPage />);
     expect(await screen.findByRole("img", { name: "Score 72.5" })).toBeInTheDocument();
     expect(screen.getByText("Material master")).toBeInTheDocument();
-    for (const label of ["Failing rules", "Critical and high", "Rule failures", "Auto-fixable"]) expect((await screen.findAllByText(label)).length).toBeGreaterThan(0);
+    for (const label of ["Failing rules", "Critical and high failing rules", "Rule failures", "Auto-fixable"]) expect((await screen.findAllByText(label)).length).toBeGreaterThan(0);
     const rules = await screen.findAllByTestId("workbench-rule-row");
     expect(rules.map((r) => r.textContent)).toEqual([expect.stringContaining("mm_missing_desc"), expect.stringContaining("mm_bad_uom")]);
     expect(rules[0]).toHaveAttribute("aria-current", "true");
@@ -201,12 +201,15 @@ describe("ObjectDetailPage", () => {
       { check_id: "MM045", severity: "critical", dimension: "completeness", affected_count: 658, total_count: 25000, pass_rate: 97.4 },
       { check_id: "DDIC-MARA-TYPE", severity: "high", dimension: "validity", affected_count: 24576, total_count: 25000, pass_rate: 1.7 },
     ] });
-    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ rows: [] } as never);
-    vi.spyOn(rulesApi, "getRules").mockResolvedValue({ rules: [{ id: "MM045", name: "Material type is mandatory" }], total: 1 } as never);
+    // The ranking repeats the bare id when its YAML has no message; the catalogue names the rule by check id, not by row UUID.
+    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ rows: [{ check_id: "MM045", name: "MM045" }] } as never);
+    const names = vi.spyOn(rulesApi, "getRuleNames").mockResolvedValue({ MM045: "Material type is mandatory" });
     renderWithQuery(<ObjectDetailPage />);
     const name = await screen.findByText("Material type is mandatory");
     expect(within(name.closest("tr")!).getByText("MM045")).toBeInTheDocument();
     expect(screen.getByText("Value does not match the field's SAP data type (MARA)")).toBeInTheDocument();
+    // one names request for the ids on the page; the DDIC id is named locally and never sent
+    expect(names).toHaveBeenCalledWith(["MM045"]);
   });
 
   it("calls the strip's work-list figure Records to fix", async () => {
@@ -217,6 +220,11 @@ describe("ObjectDetailPage", () => {
     await waitFor(() => expect(within(strip).getByText("Records to fix")).toBeInTheDocument());
     expect(within(strip).queryByText("Records failing")).toBeNull();
     expect(within(strip).getByText("25% of records to fix")).toBeInTheDocument();
+    // each figure says its unit: critical records to fix, never a bare "Critical"; one wording for suggested values
+    expect(within(strip).getByText("Critical records to fix")).toBeInTheDocument();
+    expect(within(strip).getByText("With a suggested value")).toBeInTheDocument();
+    expect(within(strip).queryByText("Critical")).toBeNull();
+    expect(within(strip).queryByText("With a suggestion")).toBeNull();
   });
 
   it("makes Records to fix the Fix work queue with this object and run fixed, without the strip repeating its tiles", async () => {

@@ -120,7 +120,7 @@ describe("InboxPage counts", () => {
     vi.spyOn(stewardship, "getMetrics").mockResolvedValue({ items_by_type: {}, items_by_status: {}, ai_acceptance_rate: 0, sla_breached: 0 } as never);
     vi.spyOn(exceptions, "getExceptions").mockRejectedValue(new Error("down"));
     vi.spyOn(exceptions, "getException").mockRejectedValue(new Error("down"));
-    vi.spyOn(rules, "getRules").mockResolvedValue({ rules: [{ id: "MM045", name: "Material description is missing" }], total: 1, limit: 1000, offset: 0 } as never);
+    vi.spyOn(rules, "getRuleNames").mockResolvedValue({ MM045: "Material description is missing" });
     renderWithQuery(<InboxPage />);
     const list = await screen.findByRole("list", { name: "Tasks" });
     expect(await within(list).findByText("Material description is missing in Material master")).toBeInTheDocument();
@@ -418,6 +418,17 @@ describe("InboxPage workbench", () => {
     expect(detail).toHaveTextContent("over");
     expect(within(detail).getByRole("button", { name: "Resolve" })).toBeInTheDocument();
   });
+
+  it("states no open or overdue counts above an exceptions list that failed to load", async () => {
+    nav.qs = "kind=exception";
+    vi.spyOn(stewardship, "getQueueItems").mockResolvedValue({ items: [], total: 0 });
+    vi.spyOn(stewardship, "getMetrics").mockResolvedValue({ items_by_type: {}, items_by_status: {}, avg_resolution_hours: null, sla_breached: 0 } as never);
+    vi.spyOn(exceptions, "getExceptionMetrics").mockResolvedValue({ open_count: 0, overdue_count: 0 } as never);
+    vi.spyOn(exceptions, "getExceptions").mockRejectedValue(new Error("down"));
+    renderWithQuery(<InboxPage />);
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /retry/i }).length).toBeGreaterThan(0));
+    expect(screen.queryByText(/\d+ open, \d+ overdue/)).toBeNull();
+  });
 });
 
 describe("InboxPage urgency and stacked filters", () => {
@@ -621,7 +632,7 @@ describe("InboxPage task sources", () => {
 
   it("shows a write-back's rule by its check id and message, linked to the rule, not by its row id", async () => {
     vi.spyOn(cleaning, "getCleaningItem").mockResolvedValue({ id: "cq1", object_type: "material_master", record_key: "100001", rule_id: "6f1c-uuid", record_data_before: null, record_data_after: null } as never);
-    vi.spyOn(rules, "getRules").mockResolvedValue({ rules: [{ id: "6f1c-uuid", name: "MM101: Base unit is not allowed" }], total: 1, limit: 1000, offset: 0 } as never);
+    vi.spyOn(rules, "getRule").mockResolvedValue({ id: "6f1c-uuid", name: "MM101: Base unit is not allowed" } as never);
     const detail = await mountOne({ item_type: "writeback_approval", source_id: "cq1" });
     const link = await within(detail).findByRole("link", { name: "MM101" });
     expect(link).toHaveAttribute("href", "/rules/6f1c-uuid");

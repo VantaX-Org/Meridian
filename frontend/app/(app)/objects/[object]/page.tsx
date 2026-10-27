@@ -31,7 +31,7 @@ import { getProfileByVersion, type ShapeCount, type ValueCount } from "@/lib/api
 import { apiErrorState, isNotFound } from "@/lib/error";
 import { getRuleHistoryBatch } from "@/lib/api/rules";
 import { queryKeys } from "@/lib/query-keys";
-import { useRuleNames } from "@/lib/rule-name";
+import { rankedName, useRuleNames } from "@/lib/rule-name";
 import { DIMENSIONS, formatDate, formatModuleName, moduleDescription, passRatePct, plural, shortCapReason } from "@/lib/format";
 
 const RULE_HISTORY_RUNS = 8;
@@ -120,8 +120,8 @@ function RulesTab({ object, run, checkId }: { object: string; run: string; check
   const batch = useQuery(historyQuery(object, run));
   const details = useRuleDetails(object, run);
   // The ranking names the rules it ranks; the catalogue (and the DDIC checks it does not hold) names the rest.
-  const catalogueName = useRuleNames();
-  const nameOf = { get: (id: string): string | undefined => details.data?.rows.find((r) => r.check_id === id)?.name ?? catalogueName(id) };
+  const catalogueName = useRuleNames(data?.rules.map((r) => r.check_id) ?? []);
+  const nameOf = { get: (id: string): string | undefined => catalogueName(id) ?? rankedName(details.data?.rows, id) };
 
   const rulesRanked = data
     ? [...data.rules]
@@ -360,8 +360,8 @@ function RuleRecords({ object, run, checkId, onClose }: { object: string; run: s
   useFixShortcut(object, run, data?.records[0]?.record_key);
   const columns = useRecordColumns(object, run, data?.records);
   const details = useRuleDetails(object, run);
-  const catalogueName = useRuleNames();
-  const ruleName = details.data?.rows.find((r) => r.check_id === checkId)?.name ?? catalogueName(checkId) ?? null;
+  const catalogueName = useRuleNames([checkId]);
+  const ruleName = catalogueName(checkId) ?? rankedName(details.data?.rows, checkId) ?? null;
 
   if (isLoading) return <div aria-busy="true"><Skeleton height={240} /></div>;
   if (isError) return <ErrorState {...apiErrorState(error)} onRetry={() => refetch()} />;

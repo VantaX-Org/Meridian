@@ -25,6 +25,7 @@ import {
 import { CoveragePill } from "../../process/_components/coverage-pill";
 import { DiscoveryStart, canMine, isDayOne } from "../../process/_components/discovery-start";
 import { processHomeInsight, readinessExportRows, worstNoGo, type ProcessHomeRow } from "./insight";
+import { RuleName } from "@/components/fix/rule-cell";
 
 type Row = ProcessHomeRow;
 
@@ -95,7 +96,7 @@ const columns = (systemId: string, canRun: boolean, versionId: string | undefine
       const id = w.check_id
         ? <DrillLink href={buildDrillHref({ object: r.readiness.module, ruleId: w.check_id, run: versionId })}><Mono>{w.check_id}</Mono></DrillLink>
         : <Mono>{w.field}</Mono>;
-      return <span className="flex items-baseline gap-2">{id}<span className="line-clamp-1">{w.description}</span></span>;
+      return <span className="flex items-baseline gap-2">{id}{w.check_id ? <RuleName id={w.check_id} fallback={w.description} className="line-clamp-1" /> : <span className="line-clamp-1">{w.description}</span>}</span>;
     } },
   // The distinct blocking fields' failing records summed over their rules: rule failures (lib/help/glossary.ts).
   { id: "failing", header: "Rule failures", meta: { numeric: true, priority: "low" }, accessorFn: (r) => r.readiness?.failing ?? -1,

@@ -123,6 +123,7 @@ export const queryKeys = {
   rules: (filters: Record<string, unknown>) => ["rules", normalizeFilters(filters)] as const,
   learnedRules: (filters: Record<string, unknown>) => ["learned-rules", normalizeFilters(filters)] as const,
   rulesSummary: () => ["rules", "summary"] as const,
+  ruleName: (checkId: string) => ["rules", "name", checkId] as const,
   ruleDetail: (ruleId: string) => ["rule-detail", ruleId] as const,
   ruleApplicability: (module: string, checkId: string) => ["rule-applicability", module, checkId] as const,
   authRoles: () => ["auth-roles"] as const,

@@ -117,7 +117,9 @@ describe("ExecPage", () => {
     expect(screen.queryByText("No executive summary yet")).toBeNull();
     expect(screen.getByText("No migration wave is set up yet")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open migration cockpit" })).toHaveAttribute("href", "/migration");
-    expect(screen.getAllByText("Nobody owns an issue yet").length).toBeGreaterThan(0);
+    // Nobody owning an issue is said under the owners' figure; What changed describes a change, never ownership.
+    expect(screen.getByText("Nobody owns an issue yet").closest("a")?.getAttribute("href")).toBe("/insights/owners?run=v1");
+    expect(screen.getByText("First scored run: nothing to compare yet")).toBeInTheDocument();
     // The hero's figures open the same run they count, and with nothing blocked the next step is the board pack.
     expect(screen.getByText("Objects blocked in a wave").closest("a")?.getAttribute("href")).toBe("/insights/readiness?run=v1");
     const dl = vi.spyOn(downloadApi, "downloadAuthenticated").mockResolvedValue(undefined);
@@ -281,7 +283,7 @@ describe("ExecPage", () => {
       ],
       total: 2,
     } as never);
-    vi.spyOn(rulesApi, "getRules").mockResolvedValue({ rules: [{ id: "MM045", name: "Material description is missing" }], total: 1, limit: 1000, offset: 0 } as never);
+    vi.spyOn(rulesApi, "getRuleNames").mockResolvedValue({ MM045: "MM045: Material description is missing" });
     vi.spyOn(ownersApi, "getOwners").mockRejectedValue(new Error("owners down"));
     renderWithQuery(<ExecPage />);
     expect(await screen.findByText("Value does not match the field's SAP data type (MARA)")).toBeInTheDocument();

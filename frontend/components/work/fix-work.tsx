@@ -512,7 +512,7 @@ export function FixWork({ module: fixedModule, run: fixedRun }: FixWorkScope = {
         {/* lib/help/glossary.ts: records to fix (distinct records on the list) and the rule failures on them. With a
             filter both come from /work/summary asked with the list's own filters, so they count exactly the rows below. */}
         <Stat label={GLOSSARY.recordsToFix.term} help="recordsToFix" value={tile(t?.open)} hint={t ? `${plural(t.issues, "rule failure")} on them, ${filtered ? "these filters" : `across ${plural(s.objects.length, "object")}`}` : undefined} onClick={() => set({ st: null, sev: null, sugg: null, due: null })} />
-        <Stat label="Critical" value={tile(t?.critical)} tone={t ? (t.critical ? "no-go" : "go") : undefined} hint="critical severity" onClick={() => set({ sev: "critical" })} />
+        <Stat label="Critical records" value={tile(t?.critical)} tone={t ? (t.critical ? "no-go" : "go") : undefined} hint="records with a critical rule failure" onClick={() => set({ sev: "critical" })} />
         <Stat label="With a suggested value" value={tile(t?.proposed)} hint="accept in one step" onClick={() => set({ sugg: "1" })} />
         <Stat label="Overdue" value={tile(t?.overdue)} tone={t?.overdue ? "at-risk" : undefined} hint="past their due date" onClick={() => set({ due: "overdue" })} />
       </div>

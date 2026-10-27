@@ -284,7 +284,7 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     expect(screen.queryByRole("columnheader", { name: "Blocking rule" })).toBeNull();
   });
 
-  it("shows each object's records to fix, critical, with a suggestion and overdue from the work list, worst first, each opening Records to fix", async () => {
+  it("shows each object's records to fix, critical records, with a suggested value and overdue from the work list, worst first, each opening Records to fix", async () => {
     currentSearch = "run=v1";
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: [
       mk("a", "AAA", "fail", 40, { critical_checks: 3, high_checks: 0 }),
@@ -301,14 +301,14 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     renderWithQuery(<ObjectsPage />);
     await waitFor(() => expect(ledger().getByRole("columnheader", { name: "To fix" })).toBeInTheDocument());
     expect(summary).toHaveBeenCalledWith("v1");
-    for (const h of ["Critical", "With a suggestion", "Overdue"]) expect(ledger().getByRole("columnheader", { name: h })).toBeInTheDocument();
+    for (const h of ["Critical records", "With a suggested value", "Overdue"]) expect(ledger().getByRole("columnheader", { name: h })).toBeInTheDocument();
     // BBB has the most critical records to fix, so it leads although AAA has more blocking checks; CCC has none.
     const order = rowLabels().join("|");
     expect(order.indexOf("BBB")).toBeLessThan(order.indexOf("AAA"));
     expect(order.indexOf("AAA")).toBeLessThan(order.indexOf("CCC"));
     expect(ledger().getByRole("link", { name: "Open the 2,400 records to fix of BBB" })).toHaveAttribute("href", "/objects/b?run=v1&tab=fix");
     expect(ledger().getByRole("link", { name: "Open the 900 critical records of BBB" })).toHaveAttribute("href", "/objects/b?run=v1&tab=fix&sev=critical");
-    expect(ledger().getByRole("link", { name: "Open the 1,200 records with a suggestion of BBB" })).toHaveAttribute("href", "/objects/b?run=v1&tab=fix&sugg=1");
+    expect(ledger().getByRole("link", { name: "Open the 1,200 records with a suggested value of BBB" })).toHaveAttribute("href", "/objects/b?run=v1&tab=fix&sugg=1");
     expect(ledger().getByRole("link", { name: "Open the 7 overdue records of BBB" })).toHaveAttribute("href", "/objects/b?run=v1&tab=fix&due=overdue");
   });
 
