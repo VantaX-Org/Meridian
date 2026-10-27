@@ -37,9 +37,18 @@ describe("route insight", () => {
     });
     expect(h.situation.sentence).toBe("Quality is at 72.4, with 120 failing rules and 4,500 rule failures.");
     expect(h.changed.sentence).toBe("Up 2.4 points since the last run.");
-    expect(h.why.sentence).toMatch(/3 critical findings are capping the score/);
+    expect(h.why.sentence).toMatch(/^3 critical failing rules could stop go-live/);
     expect(h.next.href).toBe("/objects/material_master?run=r1");
-    expect(h.next.sentence).toBe("Material master needs the most work: 61 findings, 2 of them critical.");
+    expect(h.next.sentence).toBe("Material master needs the most work: 61 failing rules, 2 of them critical.");
+  });
+  it("names the cap in the unit Home's hero and the executive summary use: capping rules and capped objects", () => {
+    const base = { ...empty, hasRun: true, dqs: 64, prevDqs: null, critical: 74, total: 300, affected: 9000 };
+    const capped = buildInsight("home", { ...base, cap: { rules: 8, named: [], capped: 11, measured: 15, cap: null } });
+    expect(capped.why.sentence).toMatch(/^8 critical failing rules cap 11 of 15 objects and could stop go-live\./);
+    expect(capped.why.sentence).not.toMatch(/74/);
+    // critical rules within tolerance cap nothing, and the cell says so instead of claiming a cap
+    const none = buildInsight("home", { ...base, critical: 2, cap: { rules: 0, named: [], capped: 0, measured: 15, cap: null } });
+    expect(none.why.sentence).toMatch(/^2 critical failing rules, none capping the score\./);
   });
   it("offers no second button on the homes, where the verdict's action is the next step", () => {
     const facts: InsightFacts = {

@@ -195,6 +195,30 @@ describe("ObjectDetailPage", () => {
     expect(within(row).getByText(/^(Critical|High|Medium|Low)$/)).toHaveClass("sm:inline");
   });
 
+  it("names a rule the ranking leaves unnamed from the rule catalogue, and a DDIC check by its own words", async () => {
+    searchParams = new URLSearchParams("run=v1&tab=rules");
+    vi.spyOn(objectsApi, "getObject").mockResolvedValue({ ...OBJECT, rules: [
+      { check_id: "MM045", severity: "critical", dimension: "completeness", affected_count: 658, total_count: 25000, pass_rate: 97.4 },
+      { check_id: "DDIC-MARA-TYPE", severity: "high", dimension: "validity", affected_count: 24576, total_count: 25000, pass_rate: 1.7 },
+    ] });
+    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ rows: [] } as never);
+    vi.spyOn(rulesApi, "getRules").mockResolvedValue({ rules: [{ id: "MM045", name: "Material type is mandatory" }], total: 1 } as never);
+    renderWithQuery(<ObjectDetailPage />);
+    const name = await screen.findByText("Material type is mandatory");
+    expect(within(name.closest("tr")!).getByText("MM045")).toBeInTheDocument();
+    expect(screen.getByText("Value does not match the field's SAP data type (MARA)")).toBeInTheDocument();
+  });
+
+  it("calls the strip's work-list figure Records to fix", async () => {
+    searchParams = new URLSearchParams("run=v1&tab=overview");
+    vi.spyOn(workApi, "getWorkSummary").mockResolvedValue({ version_id: "v1", scope: "s", built: true, objects: [{ module: "material_master", records: 30, open: 24, issues: 40, critical: 3, proposed: 6, overdue: 0, statuses: {} }], totals: { records: 30, open: 24, issues: 40, critical: 3, proposed: 6, overdue: 0 } });
+    renderWithQuery(<ObjectDetailPage />);
+    const strip = await screen.findByTestId("fix-strip");
+    await waitFor(() => expect(within(strip).getByText("Records to fix")).toBeInTheDocument());
+    expect(within(strip).queryByText("Records failing")).toBeNull();
+    expect(within(strip).getByText("25% of records to fix")).toBeInTheDocument();
+  });
+
   it("makes Records to fix the Fix work queue with this object and run fixed, without the strip repeating its tiles", async () => {
     searchParams = new URLSearchParams("run=v1&tab=fix&sev=critical");
     const summaryApi = vi.spyOn(workApi, "getWorkSummary").mockResolvedValue({

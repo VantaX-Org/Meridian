@@ -103,7 +103,26 @@ describe("DuplicatesPage mined tabs", () => {
     ]);
     renderWithQuery(<DuplicatesPage />);
     expect(await screen.findByText("NTGEW")).toBeInTheDocument();
-    expect(screen.getByText("6.2")).toBeInTheDocument();
+    expect(screen.getByText("z 6.2")).toBeInTheDocument();
+    // mined before the key was kept: named by its row, opening the object's fields
+    expect(screen.getByText("Row 5")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Material master fields" })).toHaveAttribute("href", "/objects/material_master?run=v1&tab=fields");
+  });
+
+  it("names each anomaly's record in Mono with its value and usual range, and opens the record", async () => {
+    query = "run=v1&tab=anomalies";
+    const row = (id: string, key: string, value: number) => ({
+      id, version_id: "v1", module_id: "hcm", field_name: "PA0007.EMPCT", field_value: value, record_index: 3, record_key: key,
+      detection_method: "iqr", z_score: null, lower_bound: 40, upper_bound: 100, severity: "high" as const, detected_at: "2026-10-01T00:00:00Z",
+    });
+    vi.spyOn(miningApi, "getMiningAnomalies").mockResolvedValue([row("a1", "PERNR=00001001|SUBTY=0001", 400), row("a2", "PERNR=00001002|SUBTY=0001", 380)]);
+    renderWithQuery(<DuplicatesPage />);
+    const key = await screen.findByText("PERNR=00001001|SUBTY=0001");
+    expect(key.closest("a")).toHaveAttribute("href", "/objects/hcm/records/PERNR%3D00001001%7CSUBTY%3D0001?run=v1");
+    expect(screen.getByText("PERNR=00001002|SUBTY=0001")).toBeInTheDocument();
+    expect(screen.getByText("400")).toBeInTheDocument();
+    expect(screen.getAllByText("usual 40 to 100")).toHaveLength(2);
+    expect(screen.getByRole("link", { name: "Open record PERNR=00001002|SUBTY=0001" })).toHaveAttribute("href", "/objects/hcm/records/PERNR%3D00001002%7CSUBTY%3D0001?run=v1");
   });
 
   it("lists mined relationships and shows an empty state when there are none", async () => {

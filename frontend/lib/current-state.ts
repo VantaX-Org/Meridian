@@ -289,7 +289,7 @@ export function currentObjectRows(
 }
 
 /**
- * Failing critical and high checks across the objects: the "Critical and high findings" tile of the current state.
+ * Failing critical and high checks across the objects: the "Critical and high failing rules" tile of the current state.
  * Not "blocking findings": the insights overview's blockers (`blockers.count`) are failing rules that are critical
  * or that the S/4 readiness pack counts as blocking, a different set.
  */

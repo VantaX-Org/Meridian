@@ -15,7 +15,8 @@ import { doNext } from "@/lib/do-next";
 import { useRunListWith } from "@/hooks/use-run-list";
 import { formatModuleName } from "@/lib/format";
 import { isFinished, lineageOf, overallDqs } from "@/lib/runs";
-import { latestPerLineage, stateDqs, stateObjects } from "@/lib/current-state";
+import { latestPerLineage, stateDqs, stateObjects, stateSummary } from "@/lib/current-state";
+import { capSummary } from "@/lib/home-metrics";
 import { usePermissions } from "@/lib/permissions";
 import { queryKeys } from "@/lib/query-keys";
 import { buildInsight, sectionOf, showsRouteInsight, type InsightFacts } from "@/lib/route-insight";
@@ -89,6 +90,8 @@ export function RouteInsight() {
     firstRun,
     currency: cost.currency,
     critical: agg?.severity.critical ?? 0,
+    // The cap over the same scope as the score: the current state's objects, or the pinned run's.
+    cap: state ? capSummary(stateSummary(state)) : current ? capSummary(stateSummary(stateObjects([current], scopeFilter.modules))) : undefined,
     total: agg?.total ?? 0,
     affected: agg?.affected_records ?? 0,
     costAtRisk: cost.amount ?? undefined,

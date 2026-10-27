@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { formatDate } from "@/lib/format";
-import { runAxisTicks, runOptionLabels } from "@/lib/run-axis";
+import { compareTimes, runAxisTicks, runOptionLabels } from "@/lib/run-axis";
 
 const run = (id: string, run_at: string) => ({ id, run_at });
 
@@ -47,5 +47,15 @@ describe("runOptionLabels", () => {
     expect(labels.get("c")).toBe("controlling_1k, 15 Oct 2026, 08:00:00");
     expect(labels.get("d")).toBe("fi_gl_1k");
     expect(labels.get("e")).toBe("14 Oct 2026, 10:00");
+  });
+});
+
+describe("compareTimes", () => {
+  it("adds seconds only when both runs share the minute", () => {
+    const [a, b] = compareTimes("2026-10-16T03:01:12Z", "2026-10-16T03:01:48Z");
+    expect(a).toBe(formatDate("2026-10-16T03:01:12Z", "seconds"));
+    expect(b).toBe(formatDate("2026-10-16T03:01:48Z", "seconds"));
+    expect(a).not.toBe(b);
+    expect(compareTimes("2026-10-16T03:01:12Z", "2026-10-16T03:04:00Z")).toEqual([formatDate("2026-10-16T03:01:12Z", "datetime"), formatDate("2026-10-16T03:04:00Z", "datetime")]);
   });
 });

@@ -104,15 +104,43 @@ export function detectionMethodLabel(method: string | null | undefined): string 
   return Object.hasOwn(DETECTION_METHODS, key) ? DETECTION_METHODS[key] : labelOf(method);
 }
 
+/**
+ * How far out a value is, in the words of the method that found it: its z-score, or the usual range (interquartile
+ * method) it falls outside of. "—" when the miner kept neither.
+ */
+export function anomalyScore(a: Pick<MinedAnomaly, "z_score" | "lower_bound" | "upper_bound">): string {
+  if (a.z_score != null) return `z ${a.z_score.toFixed(1)}`;
+  if (a.lower_bound != null && a.upper_bound != null) return `usual ${a.lower_bound.toLocaleString()} to ${a.upper_bound.toLocaleString()}`;
+  return "—";
+}
+
+/** The anomaly's record key; null for rows mined before the key was kept (the table names their row instead). */
+const anomalyRecord = (a: MinedAnomaly): string | null => a.record_key ?? null;
+
 export function MinedAnomalies({ q, scope }: { q: UseQueryResult<MinedAnomaly[]>; scope: MinedScope }) {
   const columns = useMemo<ColumnDef<MinedAnomaly>[]>(() => [
     { id: "module", header: "Object", cell: ({ row }) => <DrillLink object={row.original.module_id} run={row.original.version_id}>{formatModuleName(row.original.module_id)}</DrillLink> },
+    {
+      // The record the value sits on, opening it; eleven outliers of one field are eleven different records.
+      id: "record", header: "Record", accessorFn: (a) => a.record_key ?? "",
+      cell: ({ row }) => {
+        const key = anomalyRecord(row.original);
+        if (key) return <DrillLink href={recordHref(row.original.module_id, key, row.original.version_id)}><Mono>{key}</Mono></DrillLink>;
+        return row.original.record_index == null ? "—" : <span className="m-ink-3">Row {(row.original.record_index + 1).toLocaleString()}</span>;
+      },
+    },
     { id: "field", header: "Field", cell: ({ row }) => <Mono>{row.original.field_name}</Mono> },
-    { id: "value", header: "Value", cell: ({ row }) => (row.original.field_value === null ? "—" : row.original.field_value.toLocaleString()), meta: { numeric: true } },
-    { id: "method", header: "Method", cell: ({ row }) => detectionMethodLabel(row.original.detection_method) },
-    { id: "z", header: "How unusual (z-score)", cell: ({ row }) => (row.original.z_score === null ? "—" : row.original.z_score.toFixed(1)), meta: { numeric: true } },
+    { id: "value", header: "Value", cell: ({ row }) => (row.original.field_value === null ? "—" : <Mono>{row.original.field_value.toLocaleString()}</Mono>), meta: { numeric: true } },
+    { id: "z", header: "How unusual", cell: ({ row }) => anomalyScore(row.original), meta: { numeric: true } },
+    { id: "method", header: "Method", meta: { priority: "low" }, cell: ({ row }) => detectionMethodLabel(row.original.detection_method) },
     { id: "severity", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} /> },
-    { id: "at", header: "Found", cell: ({ row }) => formatDate(row.original.detected_at, "date") },
+    { id: "at", header: "Found", meta: { priority: "low" }, cell: ({ row }) => formatDate(row.original.detected_at, "date") },
+    actionColumn((a) => {
+      const key = anomalyRecord(a);
+      return key
+        ? <RowAction href={recordHref(a.module_id, key, a.version_id)} label={`Open record ${key}`}>Open</RowAction>
+        : <RowAction href={`/objects/${a.module_id}?run=${a.version_id}&tab=fields`} label={`Open ${formatModuleName(a.module_id)} fields`}>Open</RowAction>;
+    }),
   ], []);
   return (
     <Feed q={q} scope={scope} task="anomaly" empty={{ title: "No anomalies found yet", detail: "Mining flags values far outside the usual range. Mine the run to look for them." }}>

@@ -49,3 +49,12 @@ export function runOptionLabels(runs: readonly { id: string; label?: string | nu
   }
   return out;
 }
+
+/**
+ * The two times of a comparison in one format: date and time to the minute, or to the second when both runs share
+ * the minute ("16 Oct 2026, 03:01:12" beside "16 Oct 2026, 03:01:48"), so a header never names two identical times.
+ */
+export function compareTimes(a: string | null | undefined, b: string | null | undefined): [string, string] {
+  const kind = formatDate(a, "datetime") === formatDate(b, "datetime") ? "seconds" : "datetime";
+  return [formatDate(a, kind), formatDate(b, kind)];
+}

@@ -36,11 +36,13 @@ import { useUrlState } from "@/hooks/use-url-state";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { createBatch, errorText } from "@/lib/api/remediation";
 import { getComparisonReportUrl } from "@/lib/api/reports";
-import { compareRecordKeys, compareRecords, compareVersions } from "@/lib/api/versions";
-import { formatDate, formatModuleName, formatNumber, plural, roundedDelta } from "@/lib/format";
+import { compareRecordKeys, compareRecords, compareVersions, type RecordDiffCheck } from "@/lib/api/versions";
+import { formatModuleName, formatNumber, plural, roundedDelta } from "@/lib/format";
 import { runName, runScopeLabel } from "@/lib/run-scope";
 import { compareNarrative } from "@/lib/narrative";
 import { queryKeys } from "@/lib/query-keys";
+import { useRuleNames } from "@/lib/rule-name";
+import { compareTimes } from "@/lib/run-axis";
 import type { CheckChange, Version, VersionComparison } from "@/types/api";
 
 const KEYS_LIMIT = 50;
@@ -81,17 +83,25 @@ function comparisonFilename(a: Version, b: Version, on: Date = new Date()): stri
   return `Meridian run comparison – ${clean(runName(a))} vs ${clean(runName(b))} – ${day}.pdf`;
 }
 
-/** The ledger's columns; the rule opens its failing records in this run (`versionId`, the newer of the two). */
-const columnsFor = (versionId: string): ColumnDef<ChangeRow>[] => [
+/** The rule cell of both ledgers: the id in Mono (opening its failing records in `versionId`) and the rule's name. */
+function RuleCell({ checkId, module, versionId, name }: { checkId: string; module: string; versionId: string; name?: string | null }) {
+  return (
+    <span className="inline-flex min-w-0 items-baseline gap-2">
+      <DrillLink href={buildDrillHref({ object: module, ruleId: checkId, run: versionId })}><Mono>{checkId}</Mono></DrillLink>
+      {name ? <span className="truncate m-ink-2" title={name}>{name}</span> : null}
+    </span>
+  );
+}
+
+/**
+ * The ledger's columns; the rule opens its failing records in this run (`versionId`, the newer of the two). The words
+ * beside the id are the rule's name (the catalogue's, or the DDIC check's), else the rule's stored message.
+ */
+const columnsFor = (versionId: string, nameOf: (id: string) => string | undefined): ColumnDef<ChangeRow>[] => [
   {
     accessorKey: "check_id",
     header: "Rule",
-    cell: ({ row }) => (
-      <span className="inline-flex min-w-0 items-baseline gap-2">
-        <DrillLink href={buildDrillHref({ object: row.original.module, ruleId: row.original.check_id, run: versionId })}><Mono>{row.original.check_id}</Mono></DrillLink>
-        {row.original.message ? <span className="truncate m-ink-2">{row.original.message}</span> : null}
-      </span>
-    ),
+    cell: ({ row }) => <RuleCell checkId={row.original.check_id} module={row.original.module} versionId={versionId} name={nameOf(row.original.check_id) ?? row.original.message} />,
   },
   { id: "kind", header: "Change set", accessorFn: (c) => setOf(c.kind).label, cell: ({ row }) => <Pill tone={setOf(row.original.kind).tone}>{setOf(row.original.kind).label}</Pill> },
   { id: "module", header: "Object", accessorFn: (c) => formatModuleName(c.module) },
@@ -109,7 +119,32 @@ const columnsFor = (versionId: string): ColumnDef<ChangeRow>[] => [
   },
 ];
 
-function RuleDrawer({ rule, versionId, v1, canFix }: { rule: ChangeRow; versionId: string; v1: string | undefined; canFix: boolean }) {
+/**
+ * The rules with new failures in the later run that the change sets above do not list, from the record diff, most
+ * first. Most of the narrative's "new" rule failures sit on rules that fail in both runs with records churning (some
+ * resolved, others newly failing), which the change sets (counts that flipped, or moved by 10% and 10 records) leave
+ * out; the newly failing and worse rules are already rows of the ledger above.
+ */
+function worseRows(checks: readonly RecordDiffCheck[], listed: ReadonlySet<string>): RecordDiffCheck[] {
+  return checks
+    .filter((c) => c.comparable && c.new > 0 && !listed.has(`${c.module}:${c.check_id}`))
+    .sort((a, b) => b.new - a.new || a.check_id.localeCompare(b.check_id));
+}
+
+const worseColumnsFor = (versionId: string, nameOf: (id: string) => string | undefined): ColumnDef<RecordDiffCheck>[] => [
+  {
+    accessorKey: "check_id",
+    header: "Rule",
+    cell: ({ row }) => <RuleCell checkId={row.original.check_id} module={row.original.module} versionId={versionId} name={nameOf(row.original.check_id)} />,
+  },
+  { id: "module", header: "Object", accessorFn: (c) => formatModuleName(c.module) },
+  // Per rule: records failing it in the later run that did not before, those that no longer fail it, those failing it in both.
+  { id: "new", header: "Newly failing records", accessorFn: (c) => c.new, cell: ({ row }) => fmtN(row.original.new) },
+  { id: "resolved", header: "Records resolved", accessorFn: (c) => c.resolved, cell: ({ row }) => fmtN(row.original.resolved) },
+  { id: "persisting", header: "Failing in both", accessorFn: (c) => c.persisting, cell: ({ row }) => fmtN(row.original.persisting) },
+];
+
+function RuleDrawer({ rule, versionId, v1, canFix, name }: { rule: ChangeRow; versionId: string; v1: string | undefined; canFix: boolean; name?: string }) {
   const router = useRouter();
   const qc = useQueryClient();
   const regressed = change(rule) > 0;
@@ -141,7 +176,8 @@ function RuleDrawer({ rule, versionId, v1, canFix }: { rule: ChangeRow; versionI
       <h2 className="font-semibold m-text-title">
         <Mono>{rule.check_id}</Mono>
       </h2>
-      {rule.message ? <p className="m-ink-2">{rule.message}</p> : null}
+      {name ? <p className="m-ink">{name}</p> : null}
+      {rule.message && rule.message !== name ? <p className="m-ink-2">{rule.message}</p> : null}
       <Pill tone={setOf(rule.kind).tone}>{setOf(rule.kind).label}</Pill>
       {regressed ? (
         <>
@@ -222,7 +258,15 @@ export default function CompareRunsPage() {
   const diff = diffQ.data ?? null;
   const sentences = useMemo(() => (cmp ? compareNarrative(cmp, diff) : []), [cmp, diff]);
   const rows = useMemo(() => (cmp ? changeRows(cmp, changeFilter) : []), [cmp, changeFilter]);
-  const columns = useMemo(() => columnsFor(versionId), [versionId]);
+  const nameOf = useRuleNames();
+  const columns = useMemo(() => columnsFor(versionId, nameOf), [versionId, nameOf]);
+  const worseColumns = useMemo(() => worseColumnsFor(versionId, nameOf), [versionId, nameOf]);
+  // Shown with every change, or with the sets that got worse; a filter to the fixed or better rules hides it.
+  const worse = useMemo(() => {
+    if (!cmp || (changeFilter && changeFilter !== "new" && changeFilter !== "worse")) return [];
+    const listed = new Set([...cmp.checks.newly_failing, ...(cmp.checks.worse ?? [])].map((c) => `${c.module}:${c.check_id}`));
+    return worseRows(diff?.checks ?? [], listed);
+  }, [cmp, diff, changeFilter]);
 
   const moduleOptions: SelectOption[] = Object.keys(allModulesQ.data?.delta ?? cmp?.delta ?? {}).map((m) => ({
     value: m,
@@ -253,10 +297,13 @@ export default function CompareRunsPage() {
   // The API compares only objects scored in both runs; an object only one run measured is left out of both means.
   const bothHint = `Mean of ${plural(deltas.length, "object")} in both runs; objects in only one run are left out`;
 
+  // The direction in words: from the run compared with (A) to this run (B), each with its time, to the second when
+  // both share the minute. Every figure below reads A to B.
+  const [timeA, timeB] = cmp ? compareTimes(cmp.v1.run_at, cmp.v2.run_at) : ["", ""];
   const header = cmp ? (
     <PageHeader
-      title={`${runLabel(cmp.v2)} vs ${runLabel(cmp.v1)}`}
-      meta={`${formatDate(cmp.v2.run_at, "datetime")} and ${formatDate(cmp.v1.run_at, "datetime")}`}
+      title={`${runName(cmp.v1)} (${timeA}) to ${runName(cmp.v2)} (${timeB})`}
+      meta="Changes read from the first run to the second"
       status={b === "baseline" ? <Pill>Baseline</Pill> : undefined}
     />
   ) : (
@@ -277,9 +324,9 @@ export default function CompareRunsPage() {
 
   const charts = cmp ? (
     <div className="m-stat-grid">
-      {/* In the title's order: this run first, then the run it is compared with. */}
-      <Stat label={`DQS ${runLabel(cmp.v2)}`} help="dqs" hint={bothHint} value={<span className="tabular-nums">{after.toFixed(1)}</span>} />
+      {/* In the title's order: the run compared with, then this run. */}
       <Stat label={`DQS ${runLabel(cmp.v1)}`} help="dqs" hint={bothHint} value={<span className="tabular-nums">{before.toFixed(1)}</span>} />
+      <Stat label={`DQS ${runLabel(cmp.v2)}`} help="dqs" hint={bothHint} value={<span className="tabular-nums">{after.toFixed(1)}</span>} />
       <Stat label="Change" hint={`${runLabel(cmp.v1)} to ${runLabel(cmp.v2)}`} value={<Delta value={roundedDelta(before, after)} />} />
     </div>
   ) : (
@@ -291,6 +338,7 @@ export default function CompareRunsPage() {
   // The ledger is per rule; the narrative's rule-failure totals cover every rule, so the card says which is which.
   const fixedRules = rows.filter((r) => r.kind === "fixed").length;
   const tables = cmp && !loading ? (
+    <div className="flex flex-col gap-4">
     <Card
       title="Rules that changed"
       meta={`${plural(rows.length, "rule")}${fixedRules ? `, ${fixedRules.toLocaleString()} fixed` : ""}; each row counts the records failing that one rule, not the rule-failure totals above`}
@@ -309,9 +357,18 @@ export default function CompareRunsPage() {
             }
           : undefined
       }
-      renderDrawer={(c) => <RuleDrawer rule={c} versionId={versionId} v1={diff?.v1 ?? v1Param} canFix={can("apply")} />}
+      renderDrawer={(c) => <RuleDrawer rule={c} versionId={versionId} v1={diff?.v1 ?? v1Param} canFix={can("apply")} name={nameOf(c.check_id)} />}
     />
     </Card>
+    {worse.length > 0 ? (
+      <Card
+        title="Rules with new failures"
+        meta={`${plural(worse.length, "rule")} failing in both runs that some records newly fail, most first; together ${plural(worse.reduce((a, c) => a + c.new, 0), "new rule failure")}. Newly failing and worse rules are above.`}
+      >
+        <DataTable columns={worseColumns} data={worse} getRowId={(c) => `${c.module}:${c.check_id}`} tableId="compare-worse" />
+      </Card>
+    ) : null}
+    </div>
   ) : (
     <div className="flex flex-col gap-1" aria-busy="true">
       {Array.from({ length: 8 }, (_, i) => <div key={i} className="[height:36px]"><Skeleton height="100%" /></div>)}

@@ -76,6 +76,19 @@ describe("the four counts of what fails", () => {
     [/plural\([^)]*, "issue"\)} across/, "rule failures labelled issues"],
     [/plural\(b\.(open_now|fixed_7d), "failing record"\)/, "the burn-down's rule failures labelled failing records"],
     [/records resolved and/, "resolved rule failures labelled records"],
+    // "Affected records" sat beside "Rule failures" on one figure; a figure takes one of the four labels.
+    [/(label|header)[=:] ?\{?["'`][^"'`\n]*[Aa]ffected records/, "a figure labelled affected records"],
+    [/\} affected records, \{/, "rule failures labelled affected records in a sentence"],
+    // Counts of rules are failing rules, never "findings".
+    [/(label|header)[=:] ?\{?["'`](Critical|High|Medium|Low|Critical and high) findings["'`]/, "failing rules labelled findings"],
+    [/label="Findings (resolved|introduced)"/, "failing rules cleared or introduced labelled findings"],
+    [/Critical findings cleared/, "critical failing rules cleared labelled findings"],
+    [/needs the most work: \$\{[^}]*\} findings/, "an object's failing rules labelled findings"],
+    // The work list's figure is records to fix; one rule's records are failing records. "Records failing" was both.
+    [/"Records failing"/, "a figure labelled records failing"],
+    // The cap in one unit: critical failing rules over tolerance and the objects they cap (lib/home-metrics.ts capSentence).
+    [/critical finding\S* (is|are) capping/, "the cap counted in critical findings"],
+    [/capped by critical rules/, "the cap counted in capped objects alone"],
   ];
   it.each(MISLABELS)("no page labels %s (%s)", (pattern) => {
     const hits = [...sourceFiles("app"), ...sourceFiles("components"), ...sourceFiles("lib")]

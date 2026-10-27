@@ -73,8 +73,13 @@ class AnomalyItem(BaseModel):
     field_name: str
     field_value: Optional[float] = None
     record_index: Optional[int] = None
+    # The record the outlier sits on, keyed as the record page and Fix work key it; None for rows mined before 095.
+    record_key: Optional[str] = None
     detection_method: str
     z_score: Optional[float] = None
+    # The usual range the value falls outside of (interquartile method); None for z-score rows.
+    lower_bound: Optional[float] = None
+    upper_bound: Optional[float] = None
     severity: str
     detected_at: str
 
@@ -226,7 +231,8 @@ async def list_anomalies(
         text(f"""
             SELECT id::text, version_id::text, module_id, field_name,
                    field_value::float, record_index, detection_method,
-                   z_score::float, severity, detected_at::text
+                   z_score::float, severity, detected_at::text, record_key,
+                   (bounds_json->>'lower')::float, (bounds_json->>'upper')::float
             FROM data_anomalies
             WHERE {' AND '.join(clauses)}
             ORDER BY CASE severity
@@ -242,7 +248,8 @@ async def list_anomalies(
         AnomalyItem(
             id=r[0], version_id=r[1], module_id=r[2], field_name=r[3],
             field_value=r[4], record_index=r[5], detection_method=r[6],
-            z_score=r[7], severity=r[8], detected_at=r[9],
+            z_score=r[7], severity=r[8], detected_at=r[9], record_key=r[10],
+            lower_bound=r[11], upper_bound=r[12],
         )
         for r in rows
     ]

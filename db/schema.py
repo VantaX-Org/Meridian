@@ -1767,6 +1767,7 @@ class DataAnomaly(Base):
     field_name = Column(Text, nullable=False)
     field_value = Column(Float, nullable=True)
     record_index = Column(Integer, nullable=True)
+    record_key = Column(Text, nullable=True)  # the record as the check engine keys it (DDIC key fields); NULL before 095
     detection_method = Column(Text, nullable=False)
     z_score = Column(Float, nullable=True)
     severity = Column(Text, nullable=False)

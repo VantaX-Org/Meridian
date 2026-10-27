@@ -16,6 +16,7 @@ import type { ObjectRule } from "@/lib/api/v1/objects";
 import { apiErrorState } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { useRuleNames } from "@/lib/rule-name";
 import { FilterChips } from "../_header";
 import { PAGE_SIZE, STALE_MS, fixSheetHref, isBlocking, objectQuery, recordsQuery, useFixShortcut, useRecordColumns } from "./_shared";
 
@@ -82,7 +83,7 @@ function RulePane({ object, run, rule }: { object: string; run: string; rule: Wo
     >
       <div className="flex flex-col gap-4" data-testid="workbench-rule">
         <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 m-text-meta m-ink-3">
-          <span><span className="m-numeric m-text-stat m-ink">{rule.affected_count.toLocaleString()}</span> records affected</span>
+          <span><span className="m-numeric m-text-stat m-ink">{rule.affected_count.toLocaleString()}</span> failing records</span>
           {rule.name ? <Mono>{rule.check_id}</Mono> : null}
           {rule.field ? <Mono>{rule.field}</Mono> : null}
           {rule.dimension ? <span>{formatModuleName(rule.dimension)}</span> : null}
@@ -121,6 +122,8 @@ export function Workbench({ object, run }: { object: string; run: string }) {
   const router = useRouter();
   const { data, isLoading, isError, error, refetch } = useQuery(objectQuery(object, run));
   const details = useRuleDetails(object, run);
+  // The ranking names the rules it ranks; the catalogue (and the DDIC checks it does not hold) names the rest.
+  const catalogueName = useRuleNames();
 
   if (isLoading) return <div aria-busy="true"><Skeleton height={320} /></div>;
   if (isError) return <ErrorState {...apiErrorState(error)} onRetry={() => refetch()} />;
@@ -130,7 +133,7 @@ export function Workbench({ object, run }: { object: string; run: string }) {
   const byId = new Map((details.data?.rows ?? []).map((r: RuleRow) => [r.check_id, r]));
   const failing: WorkRule[] = data.rules
     .filter((r) => r.affected_count > 0)
-    .map((r) => ({ ...r, name: byId.get(r.check_id)?.name ?? null, field: byId.get(r.check_id)?.field ?? null, autoFixPct: byId.get(r.check_id)?.auto_fix_pct ?? null }))
+    .map((r) => ({ ...r, name: byId.get(r.check_id)?.name ?? catalogueName(r.check_id) ?? null, field: byId.get(r.check_id)?.field ?? null, autoFixPct: byId.get(r.check_id)?.auto_fix_pct ?? null }))
     .sort((a, b) => b.affected_count - a.affected_count || (SEVERITY_RANK[a.severity] ?? 4) - (SEVERITY_RANK[b.severity] ?? 4));
   const listed = failing.filter((r) => !dimension || r.dimension === dimension);
   const wanted = search.get("rule");

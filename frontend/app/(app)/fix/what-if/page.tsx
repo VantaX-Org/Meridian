@@ -85,8 +85,8 @@ export default function WhatIfPage() {
             <div className="m-stat-grid">
               <Stat label="Score before" value={o.before ?? 0} decimals={1} />
               <Stat label="Score after" value={o.after ?? 0} decimals={1} tone={(o.after ?? 0) >= (o.before ?? 0) ? "go" : "at-risk"} delta={delta != null ? <Delta value={delta} /> : undefined} />
-              <Stat label="Findings resolved" value={result.findings.resolved.toLocaleString()} />
-              <Stat label="Findings introduced" value={result.findings.introduced.toLocaleString()} />
+              <Stat label="Failing rules cleared" value={result.findings.resolved.toLocaleString()} />
+              <Stat label="Failing rules introduced" value={result.findings.introduced.toLocaleString()} />
               <Stat label="Cells changed" value={result.fixes.cells_changed.toLocaleString()} />
               <Stat label="Records fixed" value={result.records.resolved.toLocaleString()} />
             </div>

@@ -13,7 +13,7 @@ import { getObjects } from "@/lib/api/v1/objects";
 import { stateDelta, stateDqs, stateObjects, stateSummary, tierOf } from "@/lib/current-state";
 import { doNext } from "@/lib/do-next";
 import { COST_AT_RISK, useCostAtRisk } from "@/hooks/use-cost-at-risk";
-import { cappedReason, runCap } from "@/lib/home-metrics";
+import { capSentenceNamed, capSummary, cappedReason, runCap } from "@/lib/home-metrics";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getCurrentOverview, getExec, getOverview, getProvenCost, getRuleRanking, l1Label, largestValueAtRisk, valueAtRiskByL1, type ExecWaterfallPoint, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
 import { getBoardReportUrl, getReportJsonExportUrl, getWorkbookUrl } from "@/lib/api/reports";
@@ -175,6 +175,10 @@ export default function ExecPage() {
   const cap = isCurrent ? stateCap?.cap : exec?.cap ?? undefined;
   const capReason = isCurrent ? cappedReason(stateSummaryOf) : exec?.cap_reason ?? dqs?.cap_reason ?? null;
   const capped = cap != null || (isCurrent ? capReason != null : !!dqs?.capped);
+  // The cap in the unit Home uses (lib/home-metrics.ts capSentence): critical failing rules over tolerance and the
+  // objects they cap. A pinned run outside the run list falls back to the API's own reason.
+  const capScope = isCurrent ? stateSummaryOf : pinnedRun ? stateSummary(stateObjects([pinnedRun], current.modules)) : null;
+  const capText = capScope ? capSentenceNamed(capSummary(capScope)) : capped && capReason ? `Capped: ${shortCapReason(capReason)}` : null;
   const tier = isCurrent ? tierOf(stateScore, bandsQ.data?.thresholds) : dqs?.tier;
   const step = doNext(isCurrent ? current.objects : stateObjects(runs.filter((r) => r.id === run), current.modules), { pinned: !isCurrent });
   const currency = cost.data?.currency;
@@ -256,7 +260,7 @@ export default function ExecPage() {
               </span>
               <span className="m-text-body m-ink-2">
                 {/* The current state moves by the newest run's change (stateDelta), as on Home and the overview. */}
-                {capped && capReason ? `Capped: ${shortCapReason(capReason)}` : isCurrent ? (delta != null ? deltaSentence(delta, "with the latest run") : "Every object at its latest run") : deltaSentence(dqs?.delta)}
+                {capText ? capText : isCurrent ? (delta != null ? deltaSentence(delta, "with the latest run") : "Every object at its latest run") : deltaSentence(dqs?.delta)}
               </span>
               <Link href="/rules/scoring" className="self-start m-text-body m-ink-accent underline underline-offset-2" data-testid="how-scored">How it is scored</Link>
             </div>

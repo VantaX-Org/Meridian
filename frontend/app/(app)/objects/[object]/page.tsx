@@ -31,6 +31,7 @@ import { getProfileByVersion, type ShapeCount, type ValueCount } from "@/lib/api
 import { apiErrorState, isNotFound } from "@/lib/error";
 import { getRuleHistoryBatch } from "@/lib/api/rules";
 import { queryKeys } from "@/lib/query-keys";
+import { useRuleNames } from "@/lib/rule-name";
 import { DIMENSIONS, formatDate, formatModuleName, moduleDescription, passRatePct, plural, shortCapReason } from "@/lib/format";
 
 const RULE_HISTORY_RUNS = 8;
@@ -118,7 +119,9 @@ function RulesTab({ object, run, checkId }: { object: string; run: string; check
   const { data, isLoading, isError, error, refetch } = useQuery(objectQuery(object, run));
   const batch = useQuery(historyQuery(object, run));
   const details = useRuleDetails(object, run);
-  const nameOf = new Map((details.data?.rows ?? []).map((r) => [r.check_id, r.name]));
+  // The ranking names the rules it ranks; the catalogue (and the DDIC checks it does not hold) names the rest.
+  const catalogueName = useRuleNames();
+  const nameOf = { get: (id: string): string | undefined => details.data?.rows.find((r) => r.check_id === id)?.name ?? catalogueName(id) };
 
   const rulesRanked = data
     ? [...data.rules]
@@ -165,13 +168,13 @@ function RulesTab({ object, run, checkId }: { object: string; run: string; check
       header: "Rule",
       cell: ({ row }) => {
         const name = nameOf.get(row.original.check_id);
-        return <span className="inline-flex min-w-0 items-baseline gap-2" title={name ?? undefined}><Mono>{row.original.check_id}</Mono>{name ? <span className="truncate max-sm:hidden">{name}</span> : null}</span>;
+        return <span className="inline-flex min-w-0 items-baseline gap-2" title={name ?? undefined}><Mono>{row.original.check_id}</Mono>{name ? <span className="truncate">{name}</span> : null}</span>;
       },
     },
     { id: "dimension", accessorKey: "dimension", header: "Dimension", meta: { priority: "low" } satisfies CellMeta, cell: ({ row }) => (row.original.dimension ? formatModuleName(row.original.dimension) : "—") },
     {
       accessorKey: "affected_count",
-      header: "Records failing",
+      header: "Failing records",
       cell: ({ row }) => <DrillLink href={recordsHref(row.original.check_id)}>{row.original.affected_count.toLocaleString()}</DrillLink>,
     },
     {
@@ -357,7 +360,8 @@ function RuleRecords({ object, run, checkId, onClose }: { object: string; run: s
   useFixShortcut(object, run, data?.records[0]?.record_key);
   const columns = useRecordColumns(object, run, data?.records);
   const details = useRuleDetails(object, run);
-  const ruleName = details.data?.rows.find((r) => r.check_id === checkId)?.name ?? null;
+  const catalogueName = useRuleNames();
+  const ruleName = details.data?.rows.find((r) => r.check_id === checkId)?.name ?? catalogueName(checkId) ?? null;
 
   if (isLoading) return <div aria-busy="true"><Skeleton height={240} /></div>;
   if (isError) return <ErrorState {...apiErrorState(error)} onRetry={() => refetch()} />;

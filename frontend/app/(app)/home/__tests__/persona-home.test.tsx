@@ -30,7 +30,7 @@ const nav = vi.hoisted(() => ({ search: "" }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), useSearchParams: () => new URLSearchParams(nav.search) }));
 
 const OBJECTS: ObjectSummary[] = [
-  { module: "material_master", label: "Material master", composite_score: 72.5, readiness: "warn", failing_checks: 1, affected_records: 120 },
+  { module: "material_master", label: "Material master", composite_score: 72.5, readiness: "warn", failing_checks: 1, affected_records: 120, blocking_rule_id: "MM-001" },
 ];
 
 const LATEST: Version = {
@@ -192,8 +192,7 @@ describe("PersonaHomePage Brief geometry", () => {
       ],
     } as unknown as Awaited<ReturnType<typeof findingsApi.getFindings>>);
     renderWithQuery(<LeadHomePage />);
-    const link = await screen.findByRole("link", { name: "MM-001" });
-    expect(link.closest("tr")).toHaveTextContent("Material description is missing");
+    await waitFor(() => expect(screen.getAllByRole("link", { name: "MM-001" }).map((l) => l.closest("tr")).find(Boolean)).toHaveTextContent("Material description is missing"));
     expect(screen.getByRole("link", { name: "Fix Material master" })).toHaveAttribute("href", "/fix?run=v1&module=material_master&check=MM-001");
     expect(screen.getByRole("link", { name: "Open Controlling" })).toHaveAttribute("href", "/objects/controlling?run=v1");
     expect(screen.queryByRole("link", { name: "Fix Controlling" })).toBeNull();
@@ -231,7 +230,19 @@ describe("PersonaHomePage Brief geometry", () => {
       findings: [find("MM-001", "material_master", { record_fixes: [{ record_id: "1" }] })],
     } as unknown as Awaited<ReturnType<typeof findingsApi.getFindings>>);
     renderWithQuery(<LeadHomePage />);
-    expect(await screen.findByRole("link", { name: "Fix Material master" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("link", { name: "Fix Material master" })).toBeInTheDocument());
+  });
+
+  it("names the blocking rule the Objects page names: the objects API's, from the object's own run", async () => {
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: [{ ...OBJECTS[0], blocking_rule_id: "DDIC-ADR6-TYPE", blocking_rule_name: "Address type" }] });
+    vi.spyOn(findingsApi, "getFindings").mockResolvedValue({
+      findings: [find("MM-001", "material_master")],
+    } as unknown as Awaited<ReturnType<typeof findingsApi.getFindings>>);
+    renderWithQuery(<LeadHomePage />);
+    await waitFor(() => expect(objectsApi.getObjects).toHaveBeenCalledWith("v1"));
+    const link = await screen.findByRole("link", { name: "DDIC-ADR6-TYPE" });
+    expect(link.closest("tr")).toHaveTextContent("Address type");
+    expect(screen.queryByRole("link", { name: "MM-001" })).toBeNull();
   });
 
   it("keeps the onboarding as one row under the ledger, before the work row", async () => {
@@ -302,7 +313,7 @@ describe("PersonaHomePage blocking and loading states", () => {
     renderWithQuery(<LeadHomePage />);
 
     await screen.findAllByRole("link", { name: "MM-001" });
-    expect(screen.getByText(/Capped at 60 by 3 critical rules/)).toHaveTextContent(/and 1 more/);
+    expect(screen.getByText(/3 critical failing rules cap the score at 60/)).toHaveTextContent(/and 1 more/);
   });
 
   it("takes count and names from the cap reason, so the line always adds up, even before findings load", async () => {
@@ -314,8 +325,8 @@ describe("PersonaHomePage blocking and loading states", () => {
 
     renderWithQuery(<LeadHomePage />);
 
-    const line = await screen.findByText(/Capped at 70 by 4 critical rules/);
-    expect(line).toHaveTextContent("Capped at 70 by 4 critical rules: BP019, BP002 and 2 more");
+    const line = await screen.findByText(/4 critical failing rules cap the score at 70/);
+    expect(line).toHaveTextContent("4 critical failing rules cap the score at 70: BP019, BP002 and 2 more");
     // the cap line, and the objects table's blocking rule until the findings name a higher-impact one
     for (const link of screen.getAllByRole("link", { name: "BP019" })) {
       expect(link).toHaveAttribute("href", "/objects/material_master?run=v1&tab=records&check_id=BP019");
@@ -334,7 +345,7 @@ describe("PersonaHomePage blocking and loading states", () => {
 
     renderWithQuery(<LeadHomePage />);
 
-    expect(await screen.findByText(/Capped at 85 by 2 critical rules/)).toHaveTextContent("Capped at 85 by 2 critical rules: BP019 and 1 more");
+    expect(await screen.findByText(/2 critical failing rules cap 2 of 2 objects at 85/)).toHaveTextContent("2 critical failing rules cap 2 of 2 objects at 85: BP019 and 1 more");
   });
 
   it("shows plain cap text while findings load", async () => {
@@ -344,8 +355,9 @@ describe("PersonaHomePage blocking and loading states", () => {
 
     renderWithQuery(<LeadHomePage />);
 
-    expect(await screen.findByText(/Capped at 60 by 3 critical rules/)).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /MM-/ })).toBeNull();
+    const line = await screen.findByText(/3 critical failing rules cap the score at 60/);
+    // the cap line names no rule until the findings name one (the objects table's blocking rule is the list's own)
+    expect(within(line).queryByRole("link", { name: /MM-/ })).toBeNull();
   });
 
   it("counts critical plus high findings and links one run's count to its findings, critical and high", async () => {
@@ -353,7 +365,7 @@ describe("PersonaHomePage blocking and loading states", () => {
 
     renderWithQuery(<LeadHomePage />);
 
-    const stat = (await screen.findByText("Critical and high findings")).closest("a");
+    const stat = (await screen.findByText("Critical and high failing rules")).closest("a");
     expect(stat).toHaveAttribute("href", "/runs/v1?tab=findings&severity=critical,high");
     expect(stat).toHaveTextContent("1");
   });
@@ -510,7 +522,7 @@ describe("PersonaHomePage current state across objects", () => {
     expect(notReady).toHaveTextContent(/2\s*of 3/);
     expect(notReady).toHaveAttribute("href", "/objects?readiness=warn%2Cfail");
     // critical and high: controlling 2 + 1, material master 1, accounts payable 4
-    const criticalHigh = (screen.getByText("Critical and high findings")).closest("a");
+    const criticalHigh = (screen.getByText("Critical and high failing rules")).closest("a");
     expect(criticalHigh).toHaveTextContent("8");
     // Several runs: Fix work's current state filtered to critical and high, not the objects below target.
     expect(criticalHigh).toHaveAttribute("href", "/fix?sev=blocking");
@@ -532,8 +544,8 @@ describe("PersonaHomePage current state across objects", () => {
     expect(screen.getByRole("link", { name: "Open worst object" })).toHaveClass("m-btn-primary");
     expect(screen.getByRole("button", { name: "Run analysis" })).toHaveClass("m-btn-secondary");
     // the blocking rule of an object that is not in the newest run drills into that object's own run
-    expect(screen.getByRole("link", { name: "MM045" })).toHaveAttribute("href", "/objects/material_master?run=mm1&tab=records&check_id=MM045");
-    expect(screen.getByText("1 of 3 objects capped by critical rules")).toBeInTheDocument();
+    for (const link of screen.getAllByRole("link", { name: "MM045" })) expect(link).toHaveAttribute("href", "/objects/material_master?run=mm1&tab=records&check_id=MM045");
+    expect(screen.getByText(/1 critical failing rule caps 1 of 3 objects/)).toHaveTextContent("1 critical failing rule caps 1 of 3 objects: MM045");
   });
 
   it("gives a data owner (approves, cannot apply) Open approvals as the steward home's next step", async () => {

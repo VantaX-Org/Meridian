@@ -140,11 +140,13 @@ describe("ExecPage", () => {
   it("names the one Do next: the run's lowest-scoring object and the rule that caps it, as Home and the overview do", async () => {
     const capped = { composite_score: 70, dimension_scores: {}, critical_count: 1, high_count: 0, medium_count: 0, low_count: 0, total_checks: 10, passing_checks: 9, capped: true, cap_reason: "MM001: material type missing — score capped at 70" };
     h.versions = [{ id: "v1", label: "ECC PRD", status: "complete", run_at: "2026-10-20T08:00:00Z", metadata: {}, dqs_summary: { material_master: capped, accounts_payable: { ...capped, composite_score: 88, capped: false, cap_reason: null } } }];
-    vi.spyOn(insightsApi, "getExec").mockResolvedValue({ version_id: "v1", narrative: "", readiness_cells: [], waterfall: [], impact_rows: [], owner_rows: [], cap: 70, cap_reason: "MM001: material type missing" } as never);
+    vi.spyOn(insightsApi, "getExec").mockResolvedValue({ version_id: "v1", narrative: "", readiness_cells: [], waterfall: [], impact_rows: [], owner_rows: [], composite: 70, cap: 70, cap_reason: "MM001: material type missing" } as never);
     vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [] } as never);
     renderWithQuery(<ExecPage />);
     expect(await screen.findByText("Material master comes first, the lowest score at 70.0: fix MM001, which caps it")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Fix MM001" })).toHaveAttribute("href", "/fix?run=v1&module=material_master&check=MM001");
+    // The cap in Home's unit and scope: capping rules and capped objects out of those measured, never one object's reason.
+    expect(screen.getByText("1 critical failing rule caps 1 of 2 objects: MM001")).toBeInTheDocument();
   });
 
   it("names no feature price it does not have, and shows the failing records' cost at risk instead", async () => {

@@ -24,7 +24,7 @@ import { Button, buildDrillHref, Card, DataTable, Drawer, EmptyState, ErrorState
 import { LedgerHead } from "@/components/mdm/ledger";
 import { HandToSteward, type HandoffTarget } from "@/components/process/handoff";
 import { apiErrorState } from "@/lib/error";
-import { PROCESS_MODULES, asIsHref, blockingSentence, currentProcessObjects, distinctReds, firstWithProcesses, isCompleteVersion, l1Fields, l4Fields, modulesOfL1, red, score, sev, systemOfVersion, useFindingHref, useLatestVersion, verdictOf } from "@/components/process/shared";
+import { PROCESS_MODULES, asIsHref, blockingSentence, currentProcessObjects, distinctReds, firstWithProcesses, redsByRule, isCompleteVersion, l1Fields, l4Fields, modulesOfL1, red, score, sev, systemOfVersion, useFindingHref, useLatestVersion, verdictOf } from "@/components/process/shared";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { useSystemScope } from "@/lib/permissions";
@@ -99,6 +99,8 @@ const ORDER = { blocked: 0, degraded: 1, ok: 2 } as const;
 
 const fmt1 = (n: number) => n.toFixed(1);
 const records = (n: number) => plural(n, "record");
+/** "A", "A and B", "A, B and C". */
+const andList = (xs: readonly string[]) => (xs.length <= 1 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
 /** "87%" or, with nothing mapped to score, the reason. */
 const pctLabel = (n: number | null) => (n == null ? "No fields mapped" : `${n}%`);
 
@@ -213,18 +215,27 @@ function RulesBlock({ title, t, findingHref, configuredIn, run }: {
   );
 }
 
-interface BlockingRow { id: string; severity: ReturnType<typeof sev>; checkId: string | null; field: string; title: string; gate: string; affected: number; href: string;
+interface BlockingRow { id: string; severity: ReturnType<typeof sev>; checkId: string | null; fields: string[]; title: string; steps: string[]; affected: number; href: string;
   /** The rule as a hand-off to a steward (process owners hold handoff_rule, not apply); none for a field with no rule. */
   handoff: HandoffTarget | null }
 const blockingColumns: ColumnDef<BlockingRow>[] = [
   { id: "severity", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} variant="solid" /> },
-  { id: "rule", header: "Rule", accessorFn: (b) => b.checkId ?? "", cell: ({ row }) => <Mono>{row.original.checkId ?? row.original.field}</Mono> },
-  { id: "finding", header: "Finding", cell: ({ row }) => <span className="line-clamp-2 [min-width:14rem]" title={row.original.title}>{row.original.title}</span> },
-  { id: "gate", header: "Process step", accessorFn: (b) => b.gate },
-  { accessorKey: "affected", header: "Records", meta: { numeric: true }, cell: ({ row }) => row.original.affected.toLocaleString() },
+  // One row per rule: its id, and the fields it fails (each once) beneath it.
+  {
+    id: "rule", header: "Rule", accessorFn: (b) => b.checkId ?? "",
+    cell: ({ row }) => (
+      <span className="flex flex-col">
+        <Mono>{row.original.checkId ?? row.original.fields[0]}</Mono>
+        {row.original.checkId ? <span className="m-text-meta m-ink-3">{row.original.fields.map((f, i) => <span key={f}>{i > 0 ? ", " : null}<Mono>{f}</Mono></span>)}</span> : null}
+      </span>
+    ),
+  },
+  { id: "finding", header: "What fails", cell: ({ row }) => <span className="line-clamp-2 [min-width:14rem]" title={row.original.title}>{row.original.title}</span> },
+  { id: "gate", header: "Process steps", accessorFn: (b) => b.steps.join(", ") },
+  { accessorKey: "affected", header: "Failing records", meta: { numeric: true }, cell: ({ row }) => row.original.affected.toLocaleString() },
   actionColumn<BlockingRow>((b) => (
     <span className="flex items-center gap-1">
-      {b.href ? <RowAction href={b.href} label={`Fix ${b.checkId ?? b.field}`}>Fix</RowAction> : null}
+      {b.href ? <RowAction href={b.href} label={`Fix ${b.checkId ?? b.fields[0]}`}>Fix</RowAction> : null}
       {b.handoff ? <HandToSteward target={b.handoff} /> : null}
     </span>
   ), ""),
@@ -333,16 +344,16 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
     })) : []), [l1]);
   const blockedGates = gates.filter((g) => g.blocking).length;
   const rulesHref = `/objects/${object}?run=${encodeURIComponent(latest?.id ?? "")}&tab=rules`;
-  const blockingFindings = useMemo<BlockingRow[]>(() => (l1 ? l1.l2_groups.flatMap((l2) => l2.l3_processes.flatMap((l3) =>
-    l3.l4_subprocesses.flatMap((l4) => l4Fields(l4).filter((f) => f.dq_status === "red").map((f) => ({
-      id: `${l3.l3_id}-${l4.l4_id}-${f.field}`, severity: sev(f), checkId: f.check_id, field: f.field,
-      title: f.finding_message || f.description, gate: l3.l3_name, affected: f.affected_count,
-      href: f.check_id ? findingHref(object, f.check_id) ?? buildDrillHref({ object, ruleId: f.check_id, run: latest?.id }) : rulesHref,
-      handoff: f.check_id ? { checkId: f.check_id, module: object, versionId: latest?.id, process: l1.l1_name, field: f.field } : null,
-    }))))).sort((a, b) => b.affected - a.affected) : []), [l1, object, findingHref, latest?.id, rulesHref]);
+  // One row per failing rule (components/process/shared.ts redsByRule): a rule several steps write is listed once,
+  // naming its steps and fields, never once per step with the same records.
+  const blockingRules = useMemo<BlockingRow[]>(() => (l1 ? redsByRule(l1).map((r) => ({
+    id: r.key, severity: r.severity, checkId: r.checkId, fields: r.fields, title: r.title, steps: r.steps, affected: r.affected,
+    href: r.checkId ? findingHref(object, r.checkId) ?? buildDrillHref({ object, ruleId: r.checkId, run: latest?.id }) : rulesHref,
+    handoff: r.checkId ? { checkId: r.checkId, module: object, versionId: latest?.id, process: l1.l1_name, field: r.fields[0] } : null,
+  })) : []), [l1, object, findingHref, latest?.id, rulesHref]);
   // Each blocking field once, however many steps write it (components/process/shared.ts distinctReds).
   const blockingWhy = blockingSentence(all);
-  const firstHref = blockingFindings[0]?.href ?? rulesHref;
+  const firstHref = blockingRules[0]?.href ?? rulesHref;
   const worst = [...gates].sort((a, b) => b.blocking - a.blocking)[0];
   const loading = versionsLoading || probing || bp.isLoading || dayOne.status === "loading";
 
@@ -443,23 +454,19 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
 
   const awareL1: ConfigAwareL1 | undefined = aware.data?.processes.find((p) => p.l1 === l1.l1_id || p.name === l1.l1_name);
 
-  const recommendations = l1.l2_groups.flatMap((l2) => l2.l3_processes
-    .filter((l3) => l3.overall_readiness !== "green")
-    .map((l3) => {
-      const f3 = l3.l4_subprocesses.flatMap(l4Fields);
-      const reds = distinctReds(f3);
-      const rules = Array.from(new Set(reds.map((f) => f.check_id).filter(Boolean)));
-      const recs = reds.reduce((a, f) => a + f.affected_count, 0);
-      return {
-        id: l3.l3_id,
-        label: reds.length ? `Clear ${plural(reds.length, "failing field")} in ${l3.l3_name}`
-          : `Review the amber fields in ${l3.l3_name}`,
-        // One rule: its failing records. Several: their rule failures (a record can fail more than one of them).
-        rationale: reds.length
-          ? rules.length <= 1 ? `${records(recs)} ${recs === 1 ? "fails" : "fail"} ${rules[0] ?? reds[0].field}` : `${plural(recs, "rule failure")} on ${rules.join(", ")}`
-          : "No field is red; amber fields have partial pass rates.",
-      };
-    }));
+  // One item per failing rule, most records first, naming the steps it blocks and the fields it fails; a rule three
+  // steps write is cleared once. Steps with no red field but amber ones follow as reviews.
+  const amberSteps = l1.l2_groups.flatMap((l2) => l2.l3_processes
+    .filter((l3) => l3.overall_readiness !== "green" && distinctReds(l3.l4_subprocesses.flatMap(l4Fields)).length === 0));
+  const recommendations = [
+    ...redsByRule(l1).map((r) => ({
+      id: r.key,
+      label: `Clear ${r.checkId ?? r.fields[0]} in ${andList(r.steps)}`,
+      // The rule's failing records (the same records in every step that writes the field), and the fields it fails.
+      rationale: `${records(r.affected)} ${r.affected === 1 ? "fails" : "fail"} it on ${andList(r.fields)}`,
+    })),
+    ...amberSteps.map((l3) => ({ id: l3.l3_id, label: `Review the amber fields in ${l3.l3_name}`, rationale: "No field is red; amber fields have partial pass rates." })),
+  ];
 
   return (
     <div className="flex flex-col gap-4">
@@ -488,11 +495,11 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
         </span>
       </div>
 
-      {/* The ledger: the blocking findings ranked by records affected, each with its one action. The table is its own sheet, never a card in a card. */}
-      <section aria-label="Blocking findings" data-tour="process-readiness">
-        <LedgerHead title="Blocking findings" meta={`Fields that stop a process step, most records first${blockingFindings.length > 10 ? `; top 10 of ${blockingFindings.length.toLocaleString()}` : ""}`} />
-        {blockingFindings.length ? (
-          <DataTable columns={blockingColumns} data={blockingFindings.slice(0, 10)} getRowId={(b) => b.id} hideToolbar height="auto" />
+      {/* The ledger: the blocking rules ranked by failing records, each once with its steps, and its one action. The table is its own sheet, never a card in a card. */}
+      <section aria-label="Blocking rules" data-tour="process-readiness">
+        <LedgerHead title="Blocking rules" meta={`Rules whose fields stop a process step, each once with the steps it blocks, most records first${blockingRules.length > 10 ? `; top 10 of ${blockingRules.length.toLocaleString()}` : ""}`} />
+        {blockingRules.length ? (
+          <DataTable columns={blockingColumns} data={blockingRules.slice(0, 10)} getRowId={(b) => b.id} hideToolbar height="auto" />
         ) : <Card><EmptyState title="Nothing blocks go-live" detail="No mandatory field fails in this process." action={<Button variant="secondary" render={<Link href={withScope("/insights/rules", { run: latest.id, module: object })}>Open failing rules</Link>} />} /></Card>}
       </section>
 
@@ -679,7 +686,7 @@ function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) 
           <div className="flex flex-col gap-2">
             <Status kind="verdict" value={picked.step_status} />
             <p>
-              {picked.tcode ? <><Mono>{picked.tcode}</Mono>, </> : null}{picked.affected_records.toLocaleString()} affected records, {picked.finding_count.toLocaleString()} findings
+              {picked.tcode ? <><Mono>{picked.tcode}</Mono>, </> : null}{picked.affected_records.toLocaleString()} rule failures, {picked.finding_count.toLocaleString()} failing rules
               {picked.avg_pass_rate != null ? `, ${Math.round(picked.avg_pass_rate)}% pass rate` : ""}.
             </p>
             {active ? (

@@ -1,7 +1,8 @@
 // Builds the four InsightHeader cells for a route from facts the API already returns.
 // Pure: no fetching here, so every sentence is testable and every number traces to a field.
 import type { InsightHeaderProps } from "@/design";
-import { formatMoneyCompact, formatScore } from "@/lib/format";
+import { formatMoneyCompact, formatScore, plural } from "@/lib/format";
+import { capSentence, type CapSummary } from "@/lib/home-metrics";
 
 export interface InsightFacts {
   hasRun: boolean;
@@ -10,6 +11,8 @@ export interface InsightFacts {
   dqs: number | null;
   prevDqs: number | null;
   critical: number;
+  /** What caps the score (lib/home-metrics.ts capSummary), the same unit and scope as Home's hero and the executive summary. */
+  cap?: CapSummary;
   total: number;
   affected: number;
   /** findings/aggregate cost_at_risk: failing records times their cost per record (hooks/use-cost-at-risk.ts). */
@@ -135,9 +138,14 @@ export function buildInsight(section: Section, f: InsightFacts): Omit<InsightHea
 
   const changed = moves ? (delta === null || delta === 0 ? moves : `${scoreChanged.replace(/ since the last run\.$/, "")}; ${moves}`) : scoreChanged;
 
+  // The cap in the one unit Home's hero and the executive summary use: critical failing rules over tolerance and the
+  // objects they cap. A critical rule within tolerance (or on an object already scored below the cap) caps nothing.
+  const capped = f.cap ? capSentence(f.cap) : null;
   const why =
-    f.critical > 0
-      ? `${n(f.critical)} critical finding${f.critical === 1 ? " is" : "s are"} capping the score and could stop go-live.`
+    capped
+      ? `${capped} and could stop go-live.`
+      : f.critical > 0
+      ? f.cap ? `${plural(f.critical, "critical failing rule")}, none capping the score.` : `${plural(f.critical, "critical failing rule")} could stop go-live.`
       : f.total > 0
         ? "Nothing critical, so nothing caps the score."
         : "This run found nothing wrong.";
@@ -154,7 +162,7 @@ export function buildInsight(section: Section, f: InsightFacts): Omit<InsightHea
       }
     : worst && f.total > 0
       ? {
-          sentence: `${worst.label} needs the most work: ${n(worst.findings)} findings${worst.critical ? `, ${n(worst.critical)} of them critical` : ""}.`,
+          sentence: `${worst.label} needs the most work: ${n(worst.findings)} failing rules${worst.critical ? `, ${n(worst.critical)} of them critical` : ""}.`,
           href: `/objects/${worst.module}${q(f.runId)}`,
           ...(section === "home" ? {} : { action: { label: "Open object", href: `/objects/${worst.module}${q(f.runId)}` } }),
         }
