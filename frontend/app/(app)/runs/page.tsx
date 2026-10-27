@@ -1,7 +1,7 @@
 // frontend/app/(app)/runs/page.tsx
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -25,6 +25,7 @@ import { isFinished, lineageOf, lineageSeries, overallDqs, previousRunId, runPag
 import { runName, runScopeLabel } from "@/lib/run-scope";
 import type { Version } from "@/types/api";
 import { isListFailure } from "@/lib/error";
+import { BREAK_AT_SEPARATORS, breakAtUnderscores } from "@/lib/break-name";
 
 const IN_PROGRESS = new Set(["pending", "running", "agents_enqueued", "agents_running"]);
 
@@ -135,7 +136,8 @@ function makeColumns(allVersions: Version[], earlier: ReadonlyMap<string, Versio
         return (
           // Wraps on a phone: the note drops under the name rather than running under the pinned Open.
           <span className="inline-flex flex-wrap items-center gap-x-2" title={formatDate(row.original.run_at, "datetime")}>
-            <span className="min-w-0">{breakAtUnderscores(runName(row.original))}</span>
+            {/* One line from 1280px, where the ledger has room; narrower, it wraps after an underscore, never mid-word. */}
+            <span className={`min-w-0 xl:whitespace-nowrap ${BREAK_AT_SEPARATORS}`} data-testid="run-name">{breakAtUnderscores(runName(row.original), "xl:hidden")}</span>
             {more > 0 ? <span className="m-text-meta m-ink-3 whitespace-nowrap">{`+${plural(more, "earlier run")}`}</span> : null}
             {row.original.metadata?.baseline === true ? <Pill>Baseline</Pill> : null}
             {row.original.metadata?.archived ? <Pill>Archived</Pill> : null}
@@ -212,12 +214,6 @@ function makeColumns(allVersions: Version[], earlier: ReadonlyMap<string, Versio
   ];
 }
 
-/** An upload name ("quality_management_1k") that may wrap after each underscore on a phone, never mid-word. */
-function breakAtUnderscores(name: string): ReactNode {
-  const parts = name.split("_");
-  return parts.map((p, i) => (i < parts.length - 1 ? <Fragment key={i}>{p}_<wbr /></Fragment> : <Fragment key={i}>{p}</Fragment>));
-}
-
 /** The earlier runs folded under a ledger row: each with its time, status and score, a compare with the row's run, and Open. */
 function EarlierRuns({ head, runs, all }: { head: Version; runs: readonly Version[]; all: Version[] }) {
   return (
@@ -229,7 +225,7 @@ function EarlierRuns({ head, runs, all }: { head: Version; runs: readonly Versio
         return (
           <li key={v.id} className="flex flex-wrap items-center gap-4 border-b py-1 m-text-body [border-color:var(--m-line)]">
             <span className="m-ink-2 m-numeric [min-width:9rem]">{formatDate(v.run_at, "datetime")}</span>
-            <span className="[min-width:12rem]">{runName(v)}</span>
+            <span className={`[min-width:12rem] ${BREAK_AT_SEPARATORS}`}>{breakAtUnderscores(runName(v))}</span>
             <Status kind="lifecycle" value={v.status} />
             <span className="inline-flex items-center gap-2 m-numeric">
               {dqs === null ? "—" : dqs.toFixed(1)}

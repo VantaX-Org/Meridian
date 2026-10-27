@@ -35,8 +35,8 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe("InsightFrame scope line", () => {
-  it("describes the current state of every object on a current-state view without ?run=", async () => {
-    path = "/insights/exec";
+  it.each(["/insights/exec", "/insights/readiness"])("describes the current state of every object on %s without ?run=", async (p) => {
+    path = p;
     query = "";
     mount();
     const line = await screen.findByTestId("insight-scope");
@@ -90,7 +90,7 @@ describe("InsightFrame scope line", () => {
     expect(screen.queryByRole("link", { name: "Present" })).toBeNull();
   });
 
-  it.each(["/insights/trends", "/insights/rules", "/insights/readiness"])("labels %s as one run even without ?run=", async (p) => {
+  it.each(["/insights/trends", "/insights/rules"])("labels %s as one run even without ?run=", async (p) => {
     path = p;
     query = "";
     mount();

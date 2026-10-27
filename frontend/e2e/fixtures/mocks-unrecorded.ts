@@ -10,7 +10,8 @@
  *    (api/routes/audit.py);
  *  - the glossary list, /glossary (api/routes/glossary.py): the seeded glossary is empty;
  *  - the run the Fix page names, /versions/{latest} (api/routes/versions.py): the recording holds it only in the list;
- *  - the current state (`scope=current`) of Fix work's /work reads, and of /insights/impact and /insights/proven-cost;
+ *  - the current state (`scope=current`) of Fix work's /work reads, and of /insights/impact, /insights/proven-cost
+ *    and /insights/readiness (Waves), and the readiness of the run before the latest;
  *  - the report library, /reports/history, /reports/schedules, /reports/schedules/options
  *    (api/routes/report_library.py), and the catalogue with `compare` (the recording holds it without);
  *  - the caller's delivery log, /me/notifications/deliveries (api/routes/me_notifications.py);
@@ -902,6 +903,24 @@ async function mockMiningCurrent(page: Router, har: string) {
   }
 }
 
+/**
+ * GET /insights/readiness?scope=current (Waves without ?run=, api/routes/insights.py:get_readiness) and the readiness
+ * of the run before the latest (Waves with ?run=<latest> compares with it). Waves belong to the tenant, not a run, and
+ * the recorded tenant has none, so both answer as the recorded /insights/readiness does (no wave, not configured);
+ * the current state names the runs its objects are read from, newest first.
+ */
+async function mockReadiness(page: Router, har: string) {
+  const hit = entriesOf(har).find((e) => /\/api\/v1\/insights\/readiness$/.test(e.request.url))?.response.content;
+  if (!hit?.text) return;
+  const body = JSON.parse(textOf(hit)) as object;
+  const list = entriesOf(har).find((e) => /\/api\/v1\/versions\?limit=100&offset=0$/.test(e.request.url))?.response.content;
+  const runAt = new Map((list?.text ? (JSON.parse(textOf(list)) as { versions: RecordedRun[] }).versions : []).map((r) => [r.id, r.run_at]));
+  const ids = [...new Set(currentPairs(har).values())].sort((a, b) => ((runAt.get(a) ?? "") < (runAt.get(b) ?? "") ? 1 : -1));
+  const get = (re: RegExp, answer: unknown) => page.route(re, (r) => (r.request().method() === "GET" ? r.fulfill(json(answer)) : r.fallback()));
+  await get(/\/api\/v1\/insights\/readiness\?scope=current$/, { ...body, version_id: null, scope: "current", version_ids: ids });
+  await get(new RegExp(`/api/v1/insights/readiness\\?version_id=${PREVIOUS}$`), body);
+}
+
 /** `har`: the decompressed recording the page replays (fixtures.ts harFor). */
 export async function mockUnrecorded(page: Page, har: string) {
   const router = unrecordedOnly(page, har);
@@ -917,4 +936,5 @@ export async function mockUnrecorded(page: Page, har: string) {
   await mockCostModel(router);
   await mockProcess(router);
   await mockMiningCurrent(router, har);
+  await mockReadiness(router, har);
 }

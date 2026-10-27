@@ -21,9 +21,16 @@ export interface ReadinessResponse {
   cells: ReadinessCell[];
   /** False when the tenant has not set readiness_waves under Settings > Alert Thresholds. */
   configured: boolean;
+  /** `scope=current` only: "current" and the runs the objects' scores come from, newest first. */
+  scope?: "current";
+  version_ids?: string[];
 }
 
-export async function getReadiness(params?: { version_id?: string }): Promise<ReadinessResponse> {
+/**
+ * One run (`version_id`, default the latest), or `scope: "current"`: each wave at its own latest migration run and
+ * each object's score from its own latest run, the scope of Home and the executive summary.
+ */
+export async function getReadiness(params?: { version_id?: string; scope?: "current" }): Promise<ReadinessResponse> {
   const { data } = await apiClient.get<ReadinessResponse>("/api/v1/insights/readiness", { params });
   return data;
 }

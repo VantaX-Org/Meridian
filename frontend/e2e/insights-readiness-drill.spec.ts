@@ -19,3 +19,19 @@ test("clicking a no-go readiness cell drills into the failing rows", async ({ ap
   await expect(app).toHaveURL(/\/objects\//);
   await expect(app.getByRole("grid")).toBeVisible();
 });
+
+/**
+ * Without ?run=, Waves describes the current state (each object at its own latest run), Home's scope: its S/4
+ * blockers are Home's S/4 card's (the recorded /findings/s4-readiness?scope=current: 27 blocking), and with no wave it
+ * gives each object Home's go-live verdict instead of saying no object gets one. No previous run is compared.
+ */
+test("Waves opens on the current state, with Home's blockers and verdicts", async ({ app }) => {
+  await app.goto("/insights/readiness", { waitUntil: "load" });
+  await expect(app.getByTestId("insight-scope")).toHaveAttribute("data-scope", "current");
+  await expect(app.getByText("27 rules would block an S/4 load, and no wave is set up yet")).toBeVisible();
+  await expect(app.getByTestId("s4-strip")).toContainText("Blockers27");
+  await expect(app.getByText(/objects? (is|are) not ready for go-live.*; no wave groups them for loading yet/)).toBeVisible();
+  await expect(app.getByText("The previous run could not be read")).toHaveCount(0);
+  await expect(app.getByText(/no object gets a go or no-go/)).toHaveCount(0);
+  await expect(app.getByText("No blockers in this run")).toHaveCount(0);
+});

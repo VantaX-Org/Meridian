@@ -19,10 +19,10 @@ import { runDqs, type TrendPoint } from "@/lib/home-metrics";
 
 /**
  * The insight views that describe the current state when no `?run=` pins one: the executive summary,
- * Progress, Value at risk, Process data readiness and Duplicates (`insights/_components/scopeMode.ts` reads this
+ * Progress, Value at risk, Process data readiness, Waves and Duplicates (`insights/_components/scopeMode.ts` reads this
  * list). Their own header picker names the scope "Current state" and offers one run instead.
  */
-export const CURRENT_STATE_INSIGHTS: readonly string[] = ["/insights/exec", "/insights/progress", "/insights/impact", "/insights/process", "/insights/duplicates"];
+export const CURRENT_STATE_INSIGHTS: readonly string[] = ["/insights/exec", "/insights/progress", "/insights/impact", "/insights/process", "/insights/readiness", "/insights/duplicates"];
 
 /**
  * Screens that describe the current state when no `?run=` pins one: every home (`/home`, `/home/<persona>`) and the

@@ -143,6 +143,20 @@ describe("RunsPage", () => {
     expect(screen.getByRole("link", { name: "Open Oct 8 upload" })).toHaveAttribute("href", "/runs/v2");
   });
 
+  it("breaks a run name only after an underscore, never mid-word, and keeps it on one line on a wide screen", async () => {
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [version({ id: "v9", label: "sd_customer_master_1k", dqs_summary: { sd_customer_master: dqs(70) } })] });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    renderWithQuery(<RunsPage />);
+    const name = await screen.findByTestId("run-name");
+    expect(name).toHaveTextContent(/^sd_customer_master_1k$/);
+    expect(name.querySelectorAll("wbr")).toHaveLength(3);
+    for (const w of name.querySelectorAll("wbr")) expect(w.previousSibling?.textContent).toMatch(/_$/);
+    expect(name).toHaveClass("[overflow-wrap:normal]", "[word-break:normal]", "xl:whitespace-nowrap");
+    expect(name).not.toHaveClass("break-all");
+    // Chrome breaks at a <wbr> even under nowrap, so from 1280px the breaks are hidden: one line.
+    for (const w of name.querySelectorAll("wbr")) expect(w).toHaveClass("xl:hidden");
+  });
+
   it("compares the newer run against the older one when two rows are selected", async () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, { ...older, metadata: { modules: ["fi_gl"], system_id: "sys-1" } }] });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);

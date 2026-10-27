@@ -139,6 +139,11 @@ describe("FixWork", () => {
     renderWithQuery(<FixWork />);
     expect((await screen.findAllByText("Records to fix")).length).toBeGreaterThan(0);
     expect(await screen.findAllByTestId("work-group")).toHaveLength(1);
+    // An issue's name wraps to two lines in the pane rather than cutting at one, whole in its title.
+    const groupName = screen.getByTestId("work-group-name");
+    expect(groupName).toHaveClass("line-clamp-2");
+    expect(groupName).not.toHaveClass("truncate");
+    expect(groupName).toHaveAttribute("title", groupName.textContent);
     const rows = await screen.findAllByTestId("work-record");
     expect(rows.map((r) => within(r).getAllByText(/Bolt|Nut/)[0].textContent)).toEqual(["Bolt", "Nut"]);
     expect(rows[1]).toHaveTextContent("MM001 and 1 more");
@@ -377,6 +382,33 @@ describe("FixWork", () => {
       expect(name.parentElement).toHaveClass("flex-col", "max-w-[300px]");
       expect(name.parentElement).not.toHaveClass("w-[160px]");
       expect(name.nextElementSibling).toHaveTextContent("CO003 and 2 more");
+    });
+
+    it("names each record's assignee below 1600px as an initials chip in the Record cell, without narrowing the rule", async () => {
+      vi.mocked(work.getWorkRecords).mockResolvedValue({ version_id: "R1", total: 3, total_capped: false, next: null, items: [
+        rec("MATNR=1", { name: "Bolt", assignee_email: "ann.lee@example.com", top_message: "Cost centre validity start date is mandatory" }),
+        rec("MATNR=2", { assignee_email: "bob@example.com" }),
+        rec("MATNR=3", { name: "Washer" }),
+      ] });
+      renderWithQuery(<FixWork />);
+      const rows = await screen.findAllByTestId("work-record");
+      const chip = within(rows[0]).getByRole("img", { name: "Assigned to ann.lee@example.com" });
+      expect(chip).toHaveTextContent(/^AL$/);
+      expect(chip).toHaveAttribute("title", "Assigned to ann.lee@example.com");
+      // A record without a name carries the chip on its key line; an unassigned record has none.
+      expect(within(rows[1]).getByRole("img", { name: "Assigned to bob@example.com" })).toHaveTextContent(/^BO$/);
+      expect(within(rows[2]).queryByTestId("work-assignee-chip")).toBeNull();
+      // The rule keeps its own cell, up to 300px, whole name.
+      expect(within(rows[0]).getByTestId("work-rule-name").parentElement).toHaveClass("max-w-[300px]");
+    });
+
+    it("leaves the chip to the Assignee column from 1600px", async () => {
+      vi.stubGlobal("matchMedia", (q: string) => ({ matches: q === "(min-width: 1600px)", media: q, addEventListener: () => undefined, removeEventListener: () => undefined }));
+      renderWithQuery(<FixWork />);
+      const rows = await screen.findAllByTestId("work-record");
+      expect(rows[0]).toHaveTextContent("ann@example.com");
+      expect(screen.queryByTestId("work-assignee-chip")).toBeNull();
+      vi.unstubAllGlobals();
     });
 
     it("marks only the primary sort column: Severity shows its arrow, the age tie-break none", async () => {

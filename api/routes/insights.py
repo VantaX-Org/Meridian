@@ -64,8 +64,16 @@ async def get_readiness(
     version_id: Optional[uuid.UUID] = None,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
+    scope: Scope = _SCOPE,
 ):
+    """Go / at risk / no-go for every object in every migration wave. One run (``version_id``, default the
+    latest), or ``scope=current`` (the scope of Home): each wave reads its own latest analysed migration run and each
+    object's DQS comes from that object's own latest run (api/services/current_state.py), so the grid answers with
+    the same objects and scores as Home and the executive summary."""
     await _rls(db, tenant)
+    current = scope == "current"
+    if current and version_id is not None:
+        raise HTTPException(422, "version_id and scope=current are exclusive")
     alerts, scoring = (await db.execute(
         text("SELECT alert_thresholds, dqs_weights FROM tenants WHERE id = :t"),
         {"t": str(tenant.id)},
@@ -75,8 +83,11 @@ async def get_readiness(
     waves = (await db.execute(text(
         "SELECT id, name, modules, min_readiness, min_dqs FROM migration_waves "
         "WHERE tenant_id = :t ORDER BY target_date NULLS LAST, name"), {"t": str(tenant.id)})).fetchall()
+    pairs = await current_pairs(db, tenant.id) if current else []
+    scope_fields = {"scope": "current", "version_ids": run_ids(pairs)} if current else {}
     if not waves:
-        return {"version_id": None, "threshold": dqs_threshold, "waves": [], "cells": [], "configured": False}
+        return {"version_id": None, "threshold": dqs_threshold, "waves": [], "cells": [], "configured": False,
+                **scope_fields}
 
     # A wave reads its own latest analysed run; a wave without one falls back to the tenant's
     # latest analysed run (optionally pinned by version_id), so grids built from settings still show.
@@ -106,20 +117,34 @@ async def get_readiness(
         )).fetchone()
         return {m: (d or {}).get("composite_score") for m, d in ((row[0] if row else {}) or {}).items()}
 
+    async def current_dqs() -> dict[str, float | None]:
+        # Each object's composite from its own run of the current state.
+        by_run: dict[str, list[str]] = {}
+        for p in pairs:
+            by_run.setdefault(p["version_id"], []).append(p["module"])
+        out: dict[str, float | None] = {}
+        for run_id, modules in by_run.items():
+            scores = await dqs_for(uuid.UUID(run_id))
+            out.update({m: scores.get(m) for m in modules})
+        return out
+
+    state_dqs = await current_dqs() if current else None
     cells = []
     for w in waves:
         run = (await db.execute(text(run_sql), {"t": str(tenant.id), "wid": str(w.id), "vid": vid})).fetchone() or fallback
-        cells += build_wave_cells(w.name, list(w.modules or []), (run[0] if run else {}) or {},
-                                  await dqs_for(run[1] if run else None), w.min_readiness,
-                                  w.min_dqs if w.min_dqs is not None else dqs_threshold)
+        dqs = state_dqs if state_dqs is not None else await dqs_for(run[1] if run else None)
+        cells += build_wave_cells(w.name, list(w.modules or []), (run[0] if run else {}) or {}, dqs,
+                                  w.min_readiness, w.min_dqs if w.min_dqs is not None else dqs_threshold)
     resolved = fallback[1] if fallback else version_id
     return {
         # Not a single source-of-truth version: each cell may read its own wave's latest run.
-        # This is the tenant's latest analysed version (or the requested one), for drill links only.
-        "version_id": str(resolved) if resolved else None,
+        # This is the tenant's latest analysed version (or the requested one), for drill links only;
+        # null under scope=current, which is no one run's.
+        "version_id": None if current else (str(resolved) if resolved else None),
         "threshold": dqs_threshold,
         "cells": [c.__dict__ for c in cells],
         "configured": True,
+        **scope_fields,
     }
 
 
@@ -454,7 +479,10 @@ async def get_exec(
     # get_readiness no longer raises 409 for unconfigured waves (it returns
     # {"cells": [], "configured": False} instead), so no HTTPException catch
     # is needed here any more.
-    readiness = await get_readiness(version_id, db, tenant)
+    # The current state's readiness is read the way /readiness?scope=current reads it, so the summary and Waves give
+    # every object one verdict.
+    readiness = (await get_readiness(None, db, tenant, "current") if current
+                 else await get_readiness(version_id, db, tenant, "run"))
     # The current state's value at risk and proven cost are read the way /impact?scope=current reads them, so the
     # summary and the Value at risk page answer with one figure.
     impact = await get_impact(None, db, tenant, "current") if current else await get_impact(version_id, db, tenant)

@@ -134,9 +134,10 @@ function GroupList({ groups, active, onPick }: { groups: WorkGroup[]; active: st
             selected={active === g.check_id}
             testId="work-group"
             label={
-              <span className="flex min-w-0 items-center gap-2">
-                <SeverityDot severity={isSeverity(g.severity) ? g.severity : "low"} />
-                <span className="min-w-0 flex-1 truncate">{g.message ?? g.check_id}</span>
+              // The rule's name on up to two lines (a typical name reads whole in the pane), the rest in its title.
+              <span className="flex min-w-0 items-start gap-2 whitespace-normal">
+                <span className="mt-[0.4em] inline-flex shrink-0"><SeverityDot severity={isSeverity(g.severity) ? g.severity : "low"} /></span>
+                <span className="min-w-0 flex-1 line-clamp-2 [overflow-wrap:break-word]" title={g.message ?? g.check_id} data-testid="work-group-name">{g.message ?? g.check_id}</span>
               </span>
             }
             magnitude={g.open.toLocaleString()}
@@ -151,20 +152,48 @@ function GroupList({ groups, active, onPick }: { groups: WorkGroup[]; active: st
 
 const DASH = <span className="m-ink-3">—</span>;
 
+/** "AS" for ana.silva@example.com: the initials of an assignee's address, for the queue's compact chip. */
+export function assigneeInitials(email: string): string {
+  const parts = email.split("@")[0].split(/[._\-+\s]+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return (parts[0] ?? email).slice(0, 2).toUpperCase();
+}
+
+/** Who has the record, as initials in a round chip; the address in its accessible name and title. */
+function AssigneeChip({ email }: { email: string }) {
+  return (
+    <span
+      role="img"
+      aria-label={`Assigned to ${email}`}
+      title={`Assigned to ${email}`}
+      data-testid="work-assignee-chip"
+      className="inline-flex size-5 shrink-0 items-center justify-center rounded-full border m-text-label font-medium m-ink-2"
+      style={{ background: "var(--m-sheet-sunken)", borderColor: "var(--m-line)" }}
+    >
+      {assigneeInitials(email)}
+    </span>
+  );
+}
+
 /** The queue's columns: Record, Rule, Severity, Age, Due (from 1600px Assignee and Suggested value). Severity and Age sort on the server. */
 function queueColumns(now: number, wide: boolean): ColumnDef<WorkRecord>[] {
   return [
     {
       id: "record", header: "Record", accessorFn: (r) => r.name ?? r.record_key, enableSorting: false, meta: { sticky: "start" } satisfies CellMeta,
-      cell: ({ row: { original: r } }) => (
+      cell: ({ row: { original: r } }) => {
         // The name on one line, the key on its own line in Mono, cut with an ellipsis (never broken mid-key); the
-        // full key is in the title and in the record panel beside the list.
-        <span className="flex w-[150px] min-w-0 flex-col max-[640px]:w-[132px]" title={r.name ? `${r.name}, ${r.record_key}` : r.record_key}>
-          {r.name ? <span className="truncate">{r.name}</span> : null}
-          {/* Not <Mono>: inside a table cell it caps itself at 16ch; here the key takes the column's width. */}
-          <span className="block min-w-0 truncate whitespace-nowrap m-text-meta m-ink-3" style={{ fontFamily: "var(--m-font-mono)" }} data-testid="work-record-key">{r.record_key}</span>
-        </span>
-      ),
+        // full key is in the title and in the record panel beside the list. Below 1600px, where the Assignee column
+        // does not fit, the assignee's initials sit at the end of the first line (the full name in the record panel).
+        const chip = !wide && r.assignee_email ? <AssigneeChip email={r.assignee_email} /> : null;
+        const key = <span className="block min-w-0 truncate whitespace-nowrap m-text-meta m-ink-3" style={{ fontFamily: "var(--m-font-mono)" }} data-testid="work-record-key">{r.record_key}</span>;
+        return (
+          <span className={`flex min-w-0 flex-col max-[640px]:w-[132px] ${chip ? "w-[172px]" : "w-[150px]"}`} title={r.name ? `${r.name}, ${r.record_key}` : r.record_key}>
+            {r.name ? <span className="flex min-w-0 items-center gap-1.5"><span className="min-w-0 flex-1 truncate">{r.name}</span>{chip}</span> : null}
+            {/* Not <Mono>: inside a table cell it caps itself at 16ch; here the key takes the column's width. */}
+            {r.name || !chip ? key : <span className="flex min-w-0 items-center gap-1.5"><span className="min-w-0 flex-1">{key}</span>{chip}</span>}
+          </span>
+        );
+      },
     },
     {
       // Two lines, as the record beside it: the rule's name across the column's whole width, its check id (and how

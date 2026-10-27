@@ -11,9 +11,9 @@ export type InsightScopeMode = "current" | "run";
 
 /**
  * Views that describe the current state across objects when nothing pins a run: the overview, the executive
- * summary, Progress, Value at risk, Process data readiness and Duplicates, so they answer with Home's scope (every object at
- * its own latest run) and never with the newest run's one object. Every other view that takes its scope from the
- * frame reads an endpoint that answers one run (`/insights/rules`, wave readiness, the trends of one lineage), so it
+ * summary, Progress, Value at risk, Process data readiness, Waves and Duplicates, so they answer with Home's scope (every
+ * object at its own latest run) and never with the newest run's one object. Every other view that takes its scope from
+ * the frame reads an endpoint that answers one run (`/insights/rules`, the trends of one lineage), so it
  * always shows one run and says so.
  */
 export const CURRENT_STATE_VIEWS: readonly string[] = CURRENT_STATE_INSIGHTS;
@@ -23,7 +23,6 @@ export const ONE_RUN_VIEWS: readonly string[] = [
   "/insights/trends",
   "/insights/rules",
   "/insights/mining",
-  "/insights/readiness",
 ];
 
 /**
