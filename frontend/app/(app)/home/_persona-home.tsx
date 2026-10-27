@@ -4,7 +4,7 @@ import { useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { buildDrillHref, Button, Card, DataTable, DimensionBars, DomainChip, DrillLink, EmptyState, ExportMenu, HomePage, Mono, ObjectMap, Pill, Select, Skeleton, Stat, type HeatmapCell, Status, Score } from "@/design";
 import { getObjects } from "@/lib/api/v1/objects";
@@ -29,14 +29,14 @@ import { NextBestActionCard } from "@/components/insight/next-best-action";
 import { dqsExplanation, useDqsInputs } from "@/components/insight/dqs-score";
 import { verdictSentence, type NarrativeInput } from "@/lib/home-narrative";
 import {
-  runCap, capRuleCount, capRules, cappedReason, dimensionHeatmapCells, runDqs, runDimensions, trend, readinessOf, isBelowTarget, BELOW_TARGET,
+  runCap, capSentence, capSummary, cappedReason, dimensionHeatmapCells, runDqs, runDimensions, trend, readinessOf, isBelowTarget, BELOW_TARGET,
   worstObjectsFirst, DIMENSIONS,
 } from "@/lib/home-metrics";
 import {
   criticalHighHref, criticalHighTotal, isScored, latestPerLineage, runObjectsName, stateDqs, stateObjects, stateRows, stateScopeLine, stateSeries, stateSummary,
   type StateRow,
 } from "@/lib/current-state";
-import { formatModuleName, labelOf, plural, relativeTime, round1, shortCapReason } from "@/lib/format";
+import { formatModuleName, labelOf, plural, relativeTime, round1 } from "@/lib/format";
 import { previousInLineage, runPageHref } from "@/lib/runs";
 import { fixHref } from "@/lib/drill";
 import { hrefWithRun, runName, runScopeLabel } from "@/lib/run-scope";
@@ -121,6 +121,11 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     queryKey: ["home-top-findings", pinned?.id ?? "current"],
     queryFn: () => getFindings({ ...(pinned ? { version_id: pinned.id } : {}), sort: "impact", limit: 100 }),
     enabled: wantsFindings && !!newest,
+  });
+  // Each object's list from its own run, the requests (and cache entries) the Objects page reads: the blocking rule
+  // the ledger names is the objects API's, so Home and Objects never name two different rules for one object.
+  const objectListsQ = useQueries({
+    queries: scopeRuns.map((r) => ({ queryKey: queryKeys.objects(r.id), queryFn: () => getObjects(r.id), retry: false, meta: { ignoreError: true } })),
   });
   const aggregateQ = useQuery({
     queryKey: queryKeys.findingsAggregate(pinned?.id ?? "current"),
@@ -233,39 +238,32 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const canFix = can("apply") || can("approve");
 
   const capReason = cappedReason(merged);
-  const cappedObjects = state.filter((o) => o.summary.composite_score != null && o.summary.capped).length;
-  const measuredObjects = state.filter((o) => o.summary.composite_score != null).length;
-  // The rules the cap reasons name (else the distinct critical rules of the loaded findings): one list gives both
-  // the count and the names, so "by N critical rules: A, B and M more" always adds up.
-  const reasonRules = capRules(merged);
+  // The cap in the one unit every page uses (lib/home-metrics.ts capSentence): the critical failing rules over
+  // tolerance, each once, and the objects they cap out of those measured. "M more" comes from the same total.
+  const capInfo = capSummary(merged);
+  const reasonRules = capInfo.named;
+  // A reason that names no rule (older runs) names the distinct critical rules of the loaded findings instead.
   const criticalRules = reasonRules.length
     ? reasonRules
     : [...new Map(findings.filter((f) => f.severity === "critical").map((f) => [f.check_id, { check_id: f.check_id, module: f.module }])).values()];
-  // Each capped object counts the rules its reason names, or its critical count when the reason names none, so an
-  // unparsable reason never drops rules; "M more" is derived from this one total, so the line always adds up.
-  const reasonTotal = capRuleCount(merged);
-  const capTotal = reasonTotal || Math.max(cap?.criticals ?? 0, criticalRules.length);
+  const capHead = capSentence(capInfo);
   const namedRules = criticalRules.slice(0, 2);
-  const moreRules = capTotal - namedRules.length;
-  const capLine = cap || capReason ? (
+  const moreRules = capInfo.rules - namedRules.length;
+  const capLine = capHead ? (
     <>
-      {cap ? (
+      {capHead}
+      {namedRules.length > 0 && (
         <>
-          Capped at {cap.cap} by {plural(capTotal, "critical rule")}
-          {namedRules.length > 0 && (
-            <>
-              {": "}
-              {namedRules.map((f, i) => (
-                <span key={f.check_id}>
-                  {i > 0 && ", "}
-                  <DrillLink href={buildDrillHref({ object: f.module, ruleId: f.check_id, run: runIdOf(f.module) })}><Mono>{f.check_id}</Mono></DrillLink>
-                </span>
-              ))}
-              {moreRules > 0 && ` and ${moreRules} more`}
-            </>
-          )}
+          {": "}
+          {namedRules.map((f, i) => (
+            <span key={f.check_id}>
+              {i > 0 && ", "}
+              <DrillLink href={buildDrillHref({ object: f.module, ruleId: f.check_id, run: runIdOf(f.module) })}><Mono>{f.check_id}</Mono></DrillLink>
+            </span>
+          ))}
+          {moreRules > 0 && ` and ${moreRules} more`}
         </>
-      ) : measuredObjects > 1 ? `${cappedObjects} of ${plural(measuredObjects, "object")} capped by critical rules` : `Capped: ${shortCapReason(capReason)}`}
+      )}
     </>
   ) : undefined;
 
@@ -285,13 +283,18 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     </div>
   );
 
-  // Each object's blocking rule: its highest-impact critical finding, else the first rule its cap reason names, else the
-  // rule the objects list names. The words are the finding's own message, else the objects list's rule name.
+  // Each object's blocking rule is the one the Objects page names: the objects API's `blocking_rule_id` from the list
+  // of the object's own run. Only while that list has not loaded (or failed) does Home fall back to the first rule
+  // its cap reason names, then its highest-impact critical finding. The words are the finding's message, else the
+  // list's rule name.
+  const listed = new Map<string, NonNullable<typeof objectsQ.data>["objects"][number]>();
+  scopeRuns.forEach((r, i) => {
+    for (const o of objectListsQ[i]?.data?.objects ?? []) if (runOf.get(o.module)?.id === r.id) listed.set(o.module, o);
+  });
   const blockingByModule = new Map<string, string>();
-  for (const f of findings) if (f.severity === "critical" && !blockingByModule.has(f.module)) blockingByModule.set(f.module, f.check_id);
-  for (const r of reasonRules) if (!blockingByModule.has(r.module)) blockingByModule.set(r.module, r.check_id);
-  const listed = new Map((objectsQ.data?.objects ?? []).map((o) => [o.module, o]));
-  for (const [module, o] of listed) if (o.blocking_rule_id && !blockingByModule.has(module)) blockingByModule.set(module, o.blocking_rule_id);
+  for (const [module, o] of listed) if (o.blocking_rule_id) blockingByModule.set(module, o.blocking_rule_id);
+  for (const r of reasonRules) if (!listed.has(r.module) && !blockingByModule.has(r.module)) blockingByModule.set(r.module, r.check_id);
+  for (const f of findings) if (f.severity === "critical" && !listed.has(f.module) && !blockingByModule.has(f.module)) blockingByModule.set(f.module, f.check_id);
   const findingOf = (module: string, checkId: string) => findings.find((f) => f.module === module && f.check_id === checkId);
   const wordsOf = (module: string, checkId: string): string | undefined => {
     const words = findingOf(module, checkId)?.details?.message ?? (listed.get(module)?.blocking_rule_id === checkId ? listed.get(module)?.blocking_rule_name : undefined);
@@ -480,7 +483,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     role === "lead" ? (
       <WorkRow>
         <Stat label="Objects below target" value={belowTarget.length} hint={`of ${objects.length}`} tone={belowTargetTone} href={objectsHref({ readiness: BELOW_TARGET })} />
-        <Stat label="Critical and high findings" value={criticalHigh.toLocaleString()} hint={criticalHigh ? "failing rules" : "none"} tone={criticalHigh ? "no-go" : "go"} href={criticalHighLink} />
+        <Stat label="Critical and high failing rules" value={criticalHigh.toLocaleString()} hint={criticalHigh ? undefined : "none"} tone={criticalHigh ? "no-go" : "go"} href={criticalHighLink} />
         <Stat label="Open inbox" value={countsReady ? counts.inbox : "—"} hint={countsReady && !counts.inbox ? "clear" : undefined} href="/inbox" />
       </WorkRow>
     ) : role === "steward" ? (
@@ -521,7 +524,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       verdict={{
         dqs,
         cap: cap?.cap,
-        criticals: cap?.criticals,
+        criticals: cap ? capInfo.rules : undefined,
         bands,
         delta: dqs != null && previousDqs != null ? round1(dqs - previousDqs) : null,
         previousLabel: previous ? (pinned ? runLabel(previous) : "before the latest run") : undefined,

@@ -148,7 +148,7 @@ export function CostModelPanel() {
           </p>
 
           <h3 className="m-text-body font-semibold">Business impact, by defect type</h3>
-          <p className="m-text-meta m-ink-3">A year&rsquo;s risk is the affected records (or items) × unit cost × factor; the mitigated share is what fixing them avoids.</p>
+          <p className="m-text-meta m-ink-3">A year&rsquo;s risk is the failing records (or items) × unit cost × factor; the mitigated share is what fixing them avoids.</p>
           <table className="m-table">
             <thead><tr><th>Defect type</th><th>Unit cost ({cur})</th><th>Factor</th><th>Mitigated (%)</th></tr></thead>
             <tbody>

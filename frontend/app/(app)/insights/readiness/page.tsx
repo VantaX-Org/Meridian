@@ -53,7 +53,7 @@ const areaColumns = (run?: string): ColumnDef<S4Area>[] => [
   { accessorKey: "label", header: "S/4 area" },
   { accessorKey: "blocking_failing", header: "S/4 blocking rules", meta: { numeric: true }, cell: ({ row }) => <DrillLink href={withScope("/insights/rules", { run, s4: "blocking" })}>{row.original.blocking_failing.toLocaleString()}</DrillLink> },
   { accessorKey: "warning_failing", header: "Warning rules", meta: { numeric: true }, cell: ({ row }) => <DrillLink href={withScope("/insights/rules", { run, s4: "warning" })}>{row.original.warning_failing.toLocaleString()}</DrillLink> },
-  { accessorKey: "failing_records", header: "Records failing", meta: { numeric: true }, cell: ({ row }) => row.original.failing_records.toLocaleString() },
+  { accessorKey: "failing_records", header: "Failing records", meta: { numeric: true }, cell: ({ row }) => row.original.failing_records.toLocaleString() },
   { id: "action", header: "", enableSorting: false, cell: () => <Link href={withScope("/insights/rules", { run, s4: "yes" })} className="m-ink-accent underline underline-offset-2">Open rules</Link> },
 ];
 

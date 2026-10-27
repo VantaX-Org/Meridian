@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { Version } from "@/types/api";
 import {
   capRules,
+  capSentence,
+  capSentenceNamed,
+  capSummary,
   cappedReason,
   delta,
   dimensionBarPoints,
@@ -229,5 +232,34 @@ describe("dimensionBarPoints weights", () => {
     const v = version("v1", "2026-01-01", { a: 80 });
     expect(dimensionBarPoints(v).map((p) => p.x)).toContain("Completeness (25%)");
     expect(dimensionBarPoints(v, { completeness: 1, accuracy: 1, consistency: 1, timeliness: 1, uniqueness: 1, validity: 1 })[0].x).toMatch(/17%\)$/);
+  });
+});
+
+describe("capSummary / capSentence: one unit and scope for the cap on every page", () => {
+  it("counts the capping rules once across objects and the objects they cap out of those measured", () => {
+    // 3 objects capped: two name their rules (BP019 shared), one names none and counts its critical failing rules;
+    // the uncapped object has many critical rules within tolerance, which cap nothing and are not counted.
+    const v = version("v1", "2026-01-01", { business_partner: 70, fi_gl: 70, ar: 85, mm: 60 });
+    Object.assign(v.dqs_summary!.business_partner, { capped: true, critical_count: 5, cap_reason: "2 critical failures over tolerance (BP019: 4.0% of BUT000 rows; BP002: 3.1% of BUT000 rows) — score capped at 70" });
+    Object.assign(v.dqs_summary!.fi_gl, { capped: true, critical_count: 2, cap_reason: "2 critical failures over tolerance (GL024: 2.0% of SKA1 rows; BP019: 1.0% of BUT000 rows) — score capped at 70" });
+    Object.assign(v.dqs_summary!.ar, { capped: true, critical_count: 1, cap_reason: "1 critical failure — score capped at 85" });
+    Object.assign(v.dqs_summary!.mm, { capped: false, critical_count: 60 });
+    const c = capSummary(v);
+    expect(c).toMatchObject({ rules: 4, capped: 3, measured: 4, cap: null });
+    expect(capSentence(c)).toBe("4 critical failing rules cap 3 of 4 objects");
+    expect(capSentenceNamed(c)).toBe("4 critical failing rules cap 3 of 4 objects: BP019, BP002 and 2 more");
+  });
+
+  it("names the shared ceiling when every object is capped at it, and the score for one object", () => {
+    const one = version("v1", "2026-01-01", { ar: 70 });
+    Object.assign(one.dqs_summary!.ar, { capped: true, critical_count: 9, cap_reason: "2 critical failures over tolerance (AR002: 3% of KNA1 rows; AR003: 2% of KNA1 rows) — score capped at 70" });
+    expect(capSentence(capSummary(one))).toBe("2 critical failing rules cap the score at 70");
+    const single = version("v1", "2026-01-01", { ar: 85 });
+    Object.assign(single.dqs_summary!.ar, { capped: true, critical_count: 1, cap_reason: "AR002: 3.0% of KNA1 rows — score capped at 85" });
+    expect(capSentenceNamed(capSummary(single))).toBe("1 critical failing rule caps the score at 85: AR002");
+  });
+
+  it("is null when nothing is capped", () => {
+    expect(capSentence(capSummary(version("v1", "2026-01-01", { a: 90 })))).toBeNull();
   });
 });

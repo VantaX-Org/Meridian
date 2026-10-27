@@ -4,7 +4,7 @@ import type { Version } from "@/types/api";
 /** What the per-run metrics read: a run, or the merged summary of several (lib/current-state.ts). */
 export type Scored = Pick<Version, "dqs_summary">;
 import type { ObjectSummary } from "@/lib/api/v1/objects";
-import { capRuleIds, round1, formatDate, formatModuleName } from "@/lib/format";
+import { capRuleIds, plural, round1, formatDate, formatModuleName } from "@/lib/format";
 import { runAxisTicks } from "@/lib/run-axis";
 import { lineageOf } from "@/lib/runs";
 import { DEFAULT_SCORE_BANDS, type ScoreBands } from "@/design/primitives/ScoreRing";
@@ -129,6 +129,53 @@ export function capRuleCount(v: Scored): number {
     else unnamed += m.critical_count ?? 0;
   }
   return named.size + unnamed;
+}
+
+/**
+ * What caps the score, in one unit for every page (Home's hero and verdict cell, the executive summary): the critical
+ * failing rules over tolerance that cap an object (`capRuleCount`, each rule once), the objects they cap, out of the
+ * objects measured. `cap` is the one ceiling when every measured object is capped at the same value (`runCap`).
+ */
+export interface CapSummary {
+  rules: number;
+  /** The rules the cap reasons name, in reason order (may be fewer than `rules` when a reason names none). */
+  named: { check_id: string; module: string }[];
+  capped: number;
+  measured: number;
+  cap: number | null;
+}
+
+export function capSummary(v: Scored): CapSummary {
+  const mods = Object.values(v.dqs_summary ?? {}).filter((m) => m.composite_score != null);
+  return {
+    rules: capRuleCount(v),
+    named: capRules(v),
+    capped: mods.filter((m) => m.capped).length,
+    measured: mods.length,
+    cap: runCap(v)?.cap ?? null,
+  };
+}
+
+/**
+ * "8 critical failing rules cap 11 of 15 objects", "2 critical failing rules cap the score at 70" (one object), or
+ * null when nothing is capped. The one sentence every page uses for the cap, so the count and its scope never differ.
+ */
+export function capSentence(c: CapSummary): string | null {
+  if (c.capped === 0) return null;
+  const rules = c.rules > 0 ? plural(c.rules, "critical failing rule") : "Critical failing rules";
+  const verb = c.rules === 1 ? "caps" : "cap";
+  const at = c.cap != null ? ` at ${c.cap}` : "";
+  return c.measured > 1 ? `${rules} ${verb} ${c.capped} of ${plural(c.measured, "object")}${at}` : `${rules} ${verb} the score${at}`;
+}
+
+/** `capSentence` with the first rules named: "8 critical failing rules cap 11 of 15 objects: AR002, AR003 and 6 more". */
+export function capSentenceNamed(c: CapSummary, shown = 2): string | null {
+  const head = capSentence(c);
+  if (!head) return null;
+  const ids = c.named.slice(0, shown).map((r) => r.check_id);
+  if (!ids.length) return head;
+  const more = Math.max(0, c.rules - ids.length);
+  return `${head}: ${ids.join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
 }
 
 export function cappedReason(v: Scored): string | null {

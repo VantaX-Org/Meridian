@@ -154,6 +154,45 @@ export function distinctReds(fs: BusinessProcessL5Field[]): BusinessProcessL5Fie
   return [...byKey.values()].sort((a, b) => b.affected_count - a.affected_count);
 }
 
+const SEV_RANK = { critical: 0, high: 1, medium: 2 } as const;
+
+/** One failing rule of a process, once, with every step and field it blocks (`redsByRule`). */
+export interface RedRule {
+  /** The rule's check id, or `field:<TABLE.FIELD>` for a red field no rule names. */
+  key: string;
+  checkId: string | null;
+  /** What fails, in words: the finding's message, else the first field's description. */
+  title: string;
+  /** The worst severity among its red fields. */
+  severity: ReturnType<typeof sev>;
+  /** The fields it fails, each once, in process order. */
+  fields: string[];
+  /** The L3 steps it blocks, each once, in process order. */
+  steps: string[];
+  /** Its failing records: the most any of its fields reports (the same records, however many steps write them). */
+  affected: number;
+}
+
+/**
+ * The red fields of a process grouped by the rule failing them, most records first. One rule written by several steps
+ * (AP016 on vendor onboarding, invoice verification and the payment run) is one row naming its steps and fields, never
+ * three rows of the same rule and the same records.
+ */
+export function redsByRule(l1: BusinessProcessL1): RedRule[] {
+  const byKey = new Map<string, RedRule>();
+  for (const l2 of l1.l2_groups) for (const l3 of l2.l3_processes) for (const f of l3.l4_subprocesses.flatMap(l4Fields)) {
+    if (f.dq_status !== "red") continue;
+    const key = f.check_id ?? `field:${f.field}`;
+    const row = byKey.get(key) ?? { key, checkId: f.check_id ?? null, title: f.finding_message || f.description, severity: sev(f), fields: [], steps: [], affected: 0 };
+    if (!row.fields.includes(f.field)) row.fields.push(f.field);
+    if (!row.steps.includes(l3.l3_name)) row.steps.push(l3.l3_name);
+    if (SEV_RANK[sev(f)] < SEV_RANK[row.severity]) row.severity = sev(f);
+    row.affected = Math.max(row.affected, f.affected_count);
+    byKey.set(key, row);
+  }
+  return [...byKey.values()].sort((a, b) => b.affected - a.affected || SEV_RANK[a.severity] - SEV_RANK[b.severity]);
+}
+
 /**
  * The blocking fields in words (lib/help/glossary.ts): with one failing rule, its failing records; with several,
  * their rule failures, since a record can fail more than one of them. Null when nothing blocks.

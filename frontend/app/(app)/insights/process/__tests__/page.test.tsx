@@ -63,7 +63,7 @@ describe("ProcessInsightsPage", () => {
     expect(screen.getByRole("button", { name: "Readiness" })).toHaveAttribute("aria-pressed", "true");
     expect(document.querySelectorAll(".m-tabs-list").length).toBeLessThanOrEqual(1);
     // The blocking ledger is not a card inside a card, and step verdicts use the one Status vocabulary.
-    expect(screen.getByRole("region", { name: "Blocking findings" }).closest(".m-card")).toBeNull();
+    expect(screen.getByRole("region", { name: "Blocking rules" }).closest(".m-card")).toBeNull();
     expect(screen.queryByText("Ready")).toBeNull();
   });
 
@@ -144,6 +144,36 @@ describe("ProcessInsightsPage blocking ledger", () => {
     expect(screen.getAllByRole("link", { name: /^Fix / }).length).toBeGreaterThan(0);
     expect(screen.getByText("No fields mapped")).toBeInTheDocument();
     expect(screen.getAllByText("No-go").length).toBeGreaterThan(0);
+  });
+
+  it("lists a rule three steps write once, in Blocking rules and in What to clear first, naming its steps and fields", async () => {
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [LATEST as never] });
+    const f = (field: string) => ({ field, description: "Payment terms", mandatory: true, config_source: "", check_id: "AP016",
+      dq_status: "red" as const, pass_rate: 99, affected_count: 1, finding_message: "Payment terms missing" });
+    const step = (id: string, name: string, field: string) => ({
+      l3_id: id, l3_name: name, description: "", overall_readiness: "red" as const,
+      l4_subprocesses: [{ l4_id: `${id}-4`, l4_name: name, tcode: "FK01", description: "", config_dependency: null, step_status: "red" as const,
+        activities: [{ l5_id: `${id}-5`, l5_name: "Enter", description: "", tcode: "FK01", fields: [f(field)], check_ids: [], activity_status: "red" as const }] }],
+    });
+    vi.spyOn(connectivityApi, "getBusinessProcess").mockResolvedValue([{
+      l1_id: "PTP", l1_name: "Procure to pay", l1_description: "", system: "ecc",
+      l2_groups: [{ l2_id: "l2", l2_name: "Vendors", l3_processes: [
+        step("g1", "Vendor onboarding", "LFB1.ZTERM"), step("g2", "Invoice verification", "RBKP.ZTERM"), step("g3", "Payment run", "LFB1.ZTERM"),
+      ] }],
+    }]);
+    vi.spyOn(connectivityApi, "getConfigImpact").mockResolvedValue({ results: [], summary: { total_features_assessed: 0, features_blocked: 0, features_degraded: 0, features_ok: 0, top_blocked_features: [] } });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
+    renderWithQuery(<ProcessInsightsPage />);
+    const ledger = await screen.findByRole("region", { name: "Blocking rules" });
+    await waitFor(() => expect(within(ledger).getAllByText("AP016")).toHaveLength(1));
+    const row = within(ledger).getByText("AP016").closest("tr") as HTMLElement;
+    expect(row).toHaveTextContent("Vendor onboarding, Invoice verification, Payment run");
+    expect(row).toHaveTextContent("LFB1.ZTERM, RBKP.ZTERM");
+    expect(within(ledger).getAllByRole("link", { name: "Fix AP016" })).toHaveLength(1);
+    // What to clear first: the rule once, its steps and fields named, its one failing record counted once
+    expect(screen.getByText("Clear AP016 in Vendor onboarding, Invoice verification and Payment run")).toBeInTheDocument();
+    expect(screen.getByText("1 record fails it on LFB1.ZTERM and RBKP.ZTERM")).toBeInTheDocument();
+    expect(screen.queryByText(/Clear 1 failing field/)).toBeNull();
   });
 });
 

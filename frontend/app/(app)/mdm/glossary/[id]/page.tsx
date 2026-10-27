@@ -31,7 +31,7 @@ const ruleCols: ColumnDef<Rule>[] = [
   { id: "rule", header: "Rule", cell: ({ row }) => <DrillLink href={`/rules/${encodeURIComponent(row.original.rule_id)}`}><Mono>{row.original.rule_id}</Mono></DrillLink> },
   { id: "sev", header: "Severity", cell: ({ row }) => (row.original.severity ? <Status kind="severity" value={row.original.severity} /> : "") },
   { id: "pass", header: "Pass rate", accessorFn: (r) => (r.pass_rate != null ? `${r.pass_rate.toFixed(1)}%` : "") },
-  { id: "aff", header: "Records failing", accessorFn: (r) => `${(r.affected_count ?? 0).toLocaleString()}${r.total_count != null ? ` of ${r.total_count.toLocaleString()}` : ""}` },
+  { id: "aff", header: "Failing records", accessorFn: (r) => `${(r.affected_count ?? 0).toLocaleString()}${r.total_count != null ? ` of ${r.total_count.toLocaleString()}` : ""}` },
   actionColumn((r) => <RowLink href={buildDrillHref({ object: r.domain, ruleId: r.rule_id })} label={`See records failing ${r.rule_id}`}>Fix</RowLink>),
 ];
 const changeCols: ColumnDef<Change>[] = [

@@ -26,6 +26,7 @@ import { analyseVersion } from "@/lib/api/system-objects";
 import { RunProgressBanner } from "@/components/run-progress-banner";
 import { DIMENSIONS, formatDate, formatModuleName, formatMoneyCompact, formatNumber, labelOf, plural } from "@/lib/format";
 import { runAxisTicks } from "@/lib/run-axis";
+import { capSummary } from "@/lib/home-metrics";
 import { ConfigMatchesTab } from "./config-matches-tab";
 import { queryKeys } from "@/lib/query-keys";
 import { baselineRunId, isFinished, lineageOf, overallDqs, previousRunId, runPageHref } from "@/lib/runs";
@@ -36,7 +37,7 @@ import { clsx } from "clsx";
 
 const SEVERITY_OPTIONS = [
   { value: "", label: "All severities" },
-  // The Home and Insights "Critical and high findings" tiles drill here with both.
+  // The Home and Insights "Critical and high failing rules" tiles drill here with both.
   { value: "critical,high", label: "Critical and high" },
   { value: "critical", label: "Critical" },
   { value: "high", label: "High" },
@@ -284,6 +285,10 @@ function SummaryTab({
   // page shows, and the one the delta compares), and the ruler draws the measured value as a ghost beyond it.
   const raw = a.dqs.raw ?? composite;
   const capped = a.dqs.capped === true && composite != null && raw != null && raw > composite;
+  // "Capped at 70, N critical" counts the critical failing rules that cap (over tolerance), as Home and the executive
+  // summary do (lib/home-metrics.ts capSummary); a run outside the lineage list falls back to its critical failing rules.
+  const thisRun = lineage.find((v) => v.id === versionId);
+  const capRules = thisRun ? capSummary(thisRun).rules || a.severity.critical : a.severity.critical;
 
   // Only the dimensions this run measured: an unmeasured one is not a gap in the data.
   const dimensions = DIMENSIONS.filter((d) => a.dqs.dimension_scores[d.id] != null).map((d) => ({
@@ -337,7 +342,7 @@ function SummaryTab({
               value={composite}
               measured={capped ? raw : undefined}
               cap={capped ? composite ?? undefined : undefined}
-              criticals={a.severity.critical}
+              criticals={capRules}
               versionId={versionId}
               explain={explained?.explain}
               delta={delta != null ? <Delta value={delta} run="previous run" /> : undefined}
@@ -349,7 +354,7 @@ function SummaryTab({
         stats={[
           // The findings list filters by one severity, so the two that block are two drills.
           {
-            label: "Critical and high findings",
+            label: "Critical and high failing rules",
             value: blocking.toLocaleString(),
             tone: blocking > 0 ? "no-go" : undefined,
             hint: (
@@ -359,7 +364,8 @@ function SummaryTab({
               </span>
             ),
           },
-          { label: "Affected records", value: a.affected_records.toLocaleString(), to: `/runs/${versionId}?tab=findings` },
+          // Summed over the failing rules (a record failing two rules counts twice): rule failures, the ledger's column.
+          { label: "Rule failures", value: a.affected_records.toLocaleString(), hint: "records failing a rule, per rule", to: `/runs/${versionId}?tab=findings` },
           ...(cost != null ? [{ label: "Cost at risk", value: formatMoneyCompact(cost, costModel.data?.currency), to: `/runs/${versionId}?tab=findings` }] : []),
         ]}
         // `bare` sets the score band alone; the cells below are not drawn.

@@ -22,7 +22,7 @@ function useHrefWith(object: string) {
 }
 
 /**
- * The compact strip above the object's tabs: its records failing a check, how many of those are critical, how many
+ * The compact strip above the object's tabs: its records to fix (the work list), how many of those are critical, how many
  * carry a suggested value and how many are overdue (the DQS is the header's ring). The counts come from the work
  * list; before it is built, the first tile shows the run's rule failures (summed over rules) and says so. Each tile
  * opens Records to fix with its filter. On that tab the queue's own tiles say the same, so the page hides this strip.
@@ -36,7 +36,7 @@ export function FixStrip({ object, summary, work, loading }: {
   const failing = work?.open ?? (loading ? undefined : summary?.affected_records);
   return (
     <div className="m-stat-grid" data-testid="fix-strip">
-      <Stat label={work || loading ? "Records failing" : "Rule failures"} value={failing == null ? "—" : failing.toLocaleString()} href={fix({})} loading={loading && !work} />
+      <Stat label={work || loading ? "Records to fix" : "Rule failures"} value={failing == null ? "—" : failing.toLocaleString()} href={fix({})} loading={loading && !work} />
       <Stat
         label="Critical"
         value={work ? work.critical.toLocaleString() : "—"}
@@ -47,7 +47,7 @@ export function FixStrip({ object, summary, work, loading }: {
       <Stat
         label="With a suggestion"
         value={work ? work.proposed.toLocaleString() : "—"}
-        hint={work && work.open > 0 ? `${Math.round((work.proposed / work.open) * 100)}% of records failing` : undefined}
+        hint={work && work.open > 0 ? `${Math.round((work.proposed / work.open) * 100)}% of records to fix` : undefined}
         href={work && work.proposed > 0 ? fix({ sugg: "1" }) : undefined}
         loading={loading && !work}
       />
