@@ -53,6 +53,24 @@ def failing_records(findings: list[dict]) -> int:
     return sum(int(f.get("affected_count") or 0) for f in failing_rows(findings))
 
 
+def distinct_failing_records(findings: list[dict], dqs_summary: Optional[dict]) -> dict[str, int]:
+    """Distinct failing records per module: the run's ``clean_records.failing_records`` (records of the driving object
+    failing at least one rule, ``api.services.scoring``) where scoring could attribute them, else the module's rule
+    failures (the sum of its failing rules' affected counts, an upper bound). ``failing_records`` counts a record once
+    per rule it fails, so it is never a count of records: the cleansing funnel's first step read 343,176 "failing
+    records" against 343,209 records analysed."""
+    failures: dict[str, int] = {}
+    for f in failing_rows(findings):
+        failures[f["module"]] = failures.get(f["module"], 0) + int(f.get("affected_count") or 0)
+    out: dict[str, int] = {}
+    for module, n in failures.items():
+        summary = (dqs_summary or {}).get(module) if isinstance(dqs_summary, dict) else None
+        cr = (summary or {}).get("clean_records") if isinstance(summary, dict) else None
+        known = cr.get("failing_records") if isinstance(cr, dict) else None
+        out[module] = int(known) if isinstance(known, (int, float)) and not cr.get("unattributed_rules") else n
+    return out
+
+
 def is_blocker(f: dict, members: dict[str, tuple[str, str]]) -> bool:
     """A failing rule that is critical or counted as blocking by the S/4 readiness pack."""
     return failing(f) and (f.get("severity") == "critical"
@@ -567,14 +585,13 @@ def cleansing(s: Session, tid: str, vid: Optional[str], module: Optional[str]) -
         s, "SELECT module, count(DISTINCT record_id) AS n FROM record_fixes WHERE tenant_id = :t "
            "AND version_id = CAST(:v AS uuid) AND COALESCE(suggested_value, '') <> '' "
            "AND (CAST(:m AS text) IS NULL OR module = CAST(:m AS text)) GROUP BY module", t=tid, v=vid, m=module)}
-    fail_by_module: dict[str, int] = {}
-    for f in failing_rows(findings):
-        fail_by_module[f["module"]] = fail_by_module.get(f["module"], 0) + int(f["affected_count"])
+    # Records, not rule failures: the later steps (proposed, approved, applied) count records too.
+    fail_by_module = distinct_failing_records(findings, v.get("dqs_summary"))
     by_rule = sorted(({"check_id": c, "proposed": n, "high": high_by_rule.get(c, 0), "auto": n > 0}
                       for c, n in fixes.items()), key=lambda r: (-r["proposed"], r["check_id"]))[:20]
     return {
         "version_id": vid, "currency": tenant_currency(load_cost_model(s, tid)),
-        "steps": cleansing_steps(failing_records(findings), load_fix_records(s, tid, vid, module),
+        "steps": cleansing_steps(sum(fail_by_module.values()), load_fix_records(s, tid, vid, module),
                                  sum(high_by_rule.values()), int(queue.get("approved") or 0),
                                  int(queue.get("applied") or 0)),
         "by_module": [{"module": m, "failing": n, "proposed": proposed_by_module.get(m, 0),

@@ -148,7 +148,7 @@ export default function RulesPage() {
     { accessorKey: "affected", header: "Failing records", meta: { numeric: true }, cell: ({ row }) => (
       <DrillCount href={groupHref(row.original.key)} count={row.original.affected} label={groupDrillLabel(row.original, row.original.affected)}>{row.original.affected.toLocaleString()}</DrillCount>
     ) },
-    { accessorKey: "impact", header: "Impact on score", meta: { numeric: true }, cell: ({ row }) => row.original.impact.toLocaleString() },
+    { accessorKey: "impact", header: "Weighted failures", meta: { numeric: true }, cell: ({ row }) => row.original.impact.toLocaleString() },
     { accessorKey: "autoFix", header: "Auto-fixable", meta: { numeric: true }, cell: ({ row }) => `${Math.round(row.original.autoFix)}%` },
     { accessorKey: "worst", header: "Worst severity", cell: ({ row }) => (row.original.worst ? <Status kind="severity" value={row.original.worst} variant="solid" /> : "—") },
   // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -122,7 +122,8 @@ export interface MinedRelationship {
   detected_at: string;
 }
 
-interface MinedParams { version_id?: string; module_id?: string; limit?: number }
+/** One run (`version_id`), every run (neither), or the current state (`scope: "current"`: each object at its own latest run). */
+interface MinedParams { version_id?: string; module_id?: string; limit?: number; scope?: "current" }
 
 /** GET /api/v1/mining/duplicates: record pairs the miner scored as likely duplicates, best match first. */
 export async function getMiningDuplicates(params?: MinedParams & { min_score?: number }): Promise<MinedDuplicate[]> {

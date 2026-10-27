@@ -43,7 +43,7 @@ export function RootCauseList({ clusters, run, empty }: { clusters: Cluster[]; r
                   {`${c.rules.length} ${c.rules.length === 1 ? "rule" : "rules"}, ${labelOf(c.dimension).toLowerCase()}, ${labelOf(c.severity).toLowerCase()}`}
                 </span>
                 <span className="m-text-meta m-ink-3">
-                  {`Impact on score ${c.impact.toLocaleString()}${c.auto_fix_pct != null ? `, ${Math.round(c.auto_fix_pct)}% auto-fixable` : ""}`}
+                  {`${c.impact.toLocaleString()} weighted failures (failing records × severity weight: critical 8, high 4, medium 2, low 1)${c.auto_fix_pct != null ? `, ${Math.round(c.auto_fix_pct)}% auto-fixable` : ""}`}
                 </span>
                 <span className="flex gap-3 m-text-body">
                   <Link href={withScope("/insights/rules", { run: at, module: c.module, field: c.field ?? undefined })} className="underline-offset-2 hover:underline">Open rules</Link>

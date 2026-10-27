@@ -330,7 +330,7 @@ export default function ObjectsPage() {
         <Stat label="Go" value={go} tone={go > 0 ? "go" : undefined} href={listHref({ readiness: "pass" })} />
         <Stat label="At risk" value={atRisk} tone={atRisk > 0 ? "at-risk" : "go"} href={listHref({ readiness: "warn" })} />
         <Stat label="No-go" value={notReady} tone={notReady > 0 ? "no-go" : "go"} href={listHref({ readiness: "fail" })} />
-        <Stat label="Failing rules" value={failingChecks.toLocaleString()} hint="across all objects" href={current ? "/insights/rules" : `/insights/rules?${new URLSearchParams({ run })}`} />
+        <Stat label="Failing rules" value={failingChecks.toLocaleString()} hint="per object, generated checks included" href={current ? "/insights/rules" : `/insights/rules?${new URLSearchParams({ run })}`} />
         {blockingFindings != null ? <Stat label="Critical and high findings" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} hint="failing rules" href={criticalHighFindingsHref} /> : <Stat label="Rule failures" value={recordsAffected.toLocaleString()} hint="records failing a rule, per rule" href={current ? "/insights/rules" : fixHref({ run })} />}
       </div>
       <div className="flex flex-wrap items-center gap-4">

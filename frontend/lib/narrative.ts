@@ -41,11 +41,18 @@ function regressionSentence(cmp: VersionComparison): string | null {
   return `${head}: ${listed.join(", ")}${more}.`;
 }
 
+/**
+ * The fixed checks and the records they held, which the table's fixed rows sum to; then, when the record diff is
+ * read, the records resolved across every check (most of them by checks that still fail). The two used to share one
+ * clause ("4 checks fixed, 10,521 records resolved") under a table of fixed rows summing to 6.
+ */
 function fixedSentence(cmp: VersionComparison, diff: RecordDiff | null): string | null {
   const n = cmp.checks.fixed.length;
   if (n === 0) return null;
-  const head = plural(n, "check fixed", "checks fixed");
-  return diff ? `${head}, ${nf.format(diff.totals.resolved)} records resolved.` : `${head}.`;
+  const held = cmp.checks.fixed.reduce((a, c) => a + c.v1_affected, 0);
+  const head = `${plural(n, "check", "checks")} fixed (${plural(held, "record", "records")} they failed)`;
+  if (!diff) return `${head}.`;
+  return `${head}; across every check, ${plural(diff.totals.resolved, "record", "records")} resolved and ${nf.format(diff.totals.new)} newly failing.`;
 }
 
 function excludedSentence(diff: RecordDiff | null): string | null {

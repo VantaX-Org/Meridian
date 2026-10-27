@@ -115,7 +115,9 @@ export function buildInsight(section: Section, f: InsightFacts): Omit<InsightHea
   // One decimal, as the hero score prints it ("71.7"), so the sentence never reads "72" under a 71.7.
   const score = dqs === null ? "This run has no score yet" : `Quality is at ${formatScore(dqs)}`;
 
-  let situation = `${score}, with ${n(f.total)} findings across ${n(f.affected)} records.`;
+  // `affected` sums each failing rule's records, so a record failing three rules counts three times: rule failures,
+  // never "records" (it sat beside a cleansing funnel of distinct failing records and read as the same number).
+  let situation = `${score}, with ${n(f.total)} failing rules and ${n(f.affected)} rule failures.`;
   if (section === "systems") situation = `${n(f.systems)} system${f.systems === 1 ? "" : "s"} connected. ${score}.`;
   if (section === "migration") situation = `${n(f.waves)} migration wave${f.waves === 1 ? "" : "s"} defined. ${score}.`;
   if ((section === "inbox" || section === "mdm") && f.backlog !== null) situation = `${n(f.backlog)} item${f.backlog === 1 ? "" : "s"} waiting for a steward. ${score}.`;

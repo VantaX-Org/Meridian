@@ -273,7 +273,8 @@ export default function ProgressPage() {
         {b && chart && b.days.some((d) => d.open > 0) ? (
           <div className="flex flex-col gap-4">
             <Line series={chart.series} data={[]} xDomain={chart.xDomain} height={260} counts="fit" dqsThreshold={chart.target} thresholdLabel="Target: none open" label="Failing records open per day" />
-            {b.runs.length > 1 && (
+            {/* One run's lineage only: the current state spans every object's own run, so it has no per-run bars. */}
+            {!isCurrent && b.runs.length > 1 && (
               <div>
                 <p className="m-text-meta m-ink-3">Failing records in each run of this system</p>
                 <Bar data={b.runs.map((r) => ({ x: r.version_id, y: r.issues, label: runName(r), runId: r.version_id }))} height={Math.max(120, b.runs.length * 28)} label="Failing records per run" onPointClick={(p) => { if (p.runId) router.push(fixLink({ run: p.runId, module })); }} />

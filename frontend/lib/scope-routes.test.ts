@@ -1,6 +1,7 @@
 // The scope bar's run and object pickers show, and carry their choice, only on screens that read them.
 import { describe, expect, it } from "vitest";
-import { isCurrentStateView, isModuleScoped, isRunScoped, opensOnCurrentState } from "./current-state";
+import { isCrossObjectView, isCurrentStateView, isModuleScoped, isRunScoped, opensOnCurrentState } from "./current-state";
+import { RECORD_ISSUES_HREF } from "@/app/(app)/inbox/task-source";
 
 describe("isRunScoped", () => {
   it.each(["/objects", "/objects/material_master", "/objects/material_master/rules/MM-001", "/insights/exec", "/insights/rules", "/fix", "/fix/what-if", "/search", "/rules/learned", "/migration/dry-run"])(
@@ -36,5 +37,24 @@ describe("current-state views", () => {
   it("include every cross-object screen that opens on the current state, Fix work and the objects among them", () => {
     expect(["/fix", "/objects", "/objects/material_master", "/insights/progress", "/home/steward"].every(opensOnCurrentState)).toBe(true);
     expect(["/insights/rules", "/insights/trends", "/search", "/fix/what-if"].some(opensOnCurrentState)).toBe(false);
+  });
+
+  it("include Duplicates, which reads every object's own latest run", () => {
+    expect(isCurrentStateView("/insights/duplicates")).toBe(true);
+  });
+});
+
+describe("isCrossObjectView", () => {
+  it.each(["/fix", "/objects", "/objects/material_master", "/insights", "/insights/progress", "/insights/impact", "/insights/process", "/insights/duplicates", "/insights/rules", "/insights/trends", "/rules", "/home/lead"])(
+    "is true on %s, which opens on the current state unless its link names a run",
+    (path) => expect(isCrossObjectView(path)).toBe(true),
+  );
+  it.each(["/search", "/rules/learned", "/migration/dry-run", "/fix/what-if"])("is false on the one-run screen %s", (path) => expect(isCrossObjectView(path)).toBe(false));
+});
+
+describe("the retired Inbox › Issues", () => {
+  it("redirects to plain Fix work for my records, with no run or object", () => {
+    expect(RECORD_ISSUES_HREF).toBe("/fix?mine=1");
+    expect(isCrossObjectView(RECORD_ISSUES_HREF.split("?")[0])).toBe(true);
   });
 });

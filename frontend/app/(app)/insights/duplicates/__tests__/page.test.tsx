@@ -7,6 +7,7 @@ import * as mergeExplainApi from "@/lib/api/merge-explain";
 import * as objectsApi from "@/lib/api/v1/objects";
 import * as miningApi from "@/lib/api/mining";
 import * as learnedRulesApi from "@/lib/api/learnedRules";
+import * as versionsApi from "@/lib/api/versions";
 import { Toaster } from "@/design";
 import DuplicatesPage from "../page";
 
@@ -16,9 +17,10 @@ vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 const push = vi.fn();
 const replace = vi.fn();
 let query = "run=v1";
+let pathname = "/insights";
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/insights",
+  usePathname: () => pathname,
   useSearchParams: () => new URLSearchParams(query),
   useRouter: () => ({ push, replace }),
 }));
@@ -125,14 +127,49 @@ describe("DuplicatesPage mined tabs", () => {
   });
 });
 
+const summary = (score: number) => ({ composite_score: score, critical_count: 0, high_count: 0, medium_count: 0, low_count: 0 });
+
+describe("DuplicatesPage in the current state", () => {
+  afterEach(() => { query = "run=v1"; pathname = "/insights"; });
+
+  it("opens on the current state without ?run=: every object's own latest run, and one empty state when nothing is mined", async () => {
+    query = "";
+    pathname = "/insights/duplicates";
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [
+      { id: "co", label: "controlling_1k", status: "complete", run_at: "2026-10-16T05:00:00Z", dqs_summary: { controlling: summary(70) } },
+      { id: "mm", label: "material_master_25k", status: "complete", run_at: "2026-10-16T03:00:00Z", dqs_summary: { material_master: summary(70) } },
+    ] as never });
+    const objects = vi.spyOn(objectsApi, "getObjects");
+    const dup = vi.spyOn(miningApi, "getMiningDuplicates").mockResolvedValue([]);
+    const anom = vi.spyOn(miningApi, "getMiningAnomalies").mockResolvedValue([]);
+    const rel = vi.spyOn(miningApi, "getMiningRelationships").mockResolvedValue([]);
+    renderWithQuery(<DuplicatesPage />);
+    expect(await screen.findByText("Nothing mined yet")).toBeInTheDocument();
+    for (const get of [dup, anom, rel]) expect(get).toHaveBeenCalledWith({ scope: "current", limit: 500 });
+    // One empty state for the page, not one for the cluster and one per mined feed.
+    expect(screen.queryByText(/choose an object and a record/i)).toBeNull();
+    expect(screen.queryByRole("region", { name: "Likely duplicates" })).toBeNull();
+    expect(screen.queryByText("No likely duplicates found yet")).toBeNull();
+    // The record lookup offers every object of the current state, not only the newest run's.
+    expect(objects).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("combobox", { name: "Object" }));
+    expect(await screen.findByRole("option", { name: "Material master" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Controlling" })).toBeInTheDocument();
+  });
+});
+
 describe("DuplicatesPage", () => {
-  it("shows an empty state before an object and record are chosen", async () => {
+  it("shows one empty state before a record is chosen when the run has nothing mined", async () => {
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({
       run_id: "v1",
       objects: [{ module: "material_master", label: "Material master", composite_score: 72, readiness: "fail", failing_checks: 3, affected_records: 2 }],
     });
+    vi.spyOn(miningApi, "getMiningDuplicates").mockResolvedValue([]);
+    vi.spyOn(miningApi, "getMiningAnomalies").mockResolvedValue([]);
+    vi.spyOn(miningApi, "getMiningRelationships").mockResolvedValue([]);
     renderWithQuery(<DuplicatesPage />);
-    expect(await screen.findByText(/choose an object and a record/i)).toBeInTheDocument();
+    expect(await screen.findByText("Nothing mined in this run yet")).toBeInTheDocument();
+    expect(screen.queryByText("No anomalies found yet")).toBeNull();
   });
 
   it("renders the cluster graph and lets the user pick a master record", async () => {

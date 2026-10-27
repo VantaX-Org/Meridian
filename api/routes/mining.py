@@ -8,6 +8,10 @@ Endpoints (all prefixed /api/v1):
     GET    /mining/duplicates              — list detected duplicate pairs
     GET    /mining/anomalies               — list detected anomalies
     GET    /mining/relationships           — list detected field relationships
+
+The three lists read one run (``version_id``), every run (neither), or with ``scope=current`` the current state:
+each object (module) at the latest complete run of its lineage, from that run only (api/services/current_state.py),
+so Insights › Duplicates without ``?run=`` lists what every object's own latest run mined.
     GET    /mining/summary/{version_id}    — aggregated counts per module
 
 Tenant isolation enforced via RLS — every query passes through an AsyncSession
@@ -17,7 +21,7 @@ that already has `app.tenant_id` set by the tenant middleware.
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -25,6 +29,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services.current_state import current_pairs
 from api.services.rbac import require_permission
 
 router = APIRouter(prefix="/api/v1", tags=["mining"])
@@ -126,6 +131,25 @@ async def trigger_mining(
 
 # ── Listing endpoints ────────────────────────────────────────────────────────
 
+Scope = Literal["run", "current"]
+_SCOPE = Query("run", description="current: each object at the latest complete run of its lineage; exclusive "
+                                  "with version_id")
+
+
+async def _scope_clause(db: AsyncSession, tenant: Tenant, scope: str, version_id: Optional[str],
+                        module_id: Optional[str], params: dict) -> Optional[str]:
+    """The WHERE part that keeps the current state's (module_id, version_id) pairs, or None for one run / every run.
+    No current pair keeps nothing."""
+    if scope != "current":
+        return None
+    if version_id:
+        raise HTTPException(status_code=422, detail="version_id and scope=current are exclusive")
+    pairs = await current_pairs(db, tenant.id, module_id)
+    params["cur_m"] = [p["module"] for p in pairs]
+    params["cur_v"] = [p["version_id"] for p in pairs]
+    return ("(module_id, version_id) IN (SELECT m, v FROM unnest(CAST(:cur_m AS text[]), "
+            "CAST(:cur_v AS uuid[])) AS cur(m, v))")
+
 
 @router.get("/mining/duplicates", response_model=list[DuplicatePair])
 async def list_duplicates(
@@ -133,6 +157,7 @@ async def list_duplicates(
     module_id: Optional[str] = Query(None),
     min_score: float = Query(0.0, ge=0.0, le=1.0),
     limit: int = Query(200, ge=1, le=1000),
+    scope: Scope = _SCOPE,
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
     _: None = Depends(require_permission("mdm.read")),
@@ -145,6 +170,9 @@ async def list_duplicates(
     if module_id:
         clauses.append("module_id = :mod")
         params["mod"] = module_id
+    current = await _scope_clause(db, tenant, scope, version_id, module_id, params)
+    if current:
+        clauses.append(current)
 
     result = await db.execute(
         text(f"""
@@ -174,6 +202,7 @@ async def list_anomalies(
     module_id: Optional[str] = Query(None),
     severity: Optional[str] = Query(None, pattern="^(low|medium|high|critical)$"),
     limit: int = Query(200, ge=1, le=2000),
+    scope: Scope = _SCOPE,
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
     _: None = Depends(require_permission("mdm.read")),
@@ -186,6 +215,9 @@ async def list_anomalies(
     if module_id:
         clauses.append("module_id = :mod")
         params["mod"] = module_id
+    current = await _scope_clause(db, tenant, scope, version_id, module_id, params)
+    if current:
+        clauses.append(current)
     if severity:
         clauses.append("severity = :sev")
         params["sev"] = severity
@@ -222,6 +254,7 @@ async def list_relationships(
     module_id: Optional[str] = Query(None),
     min_strength: float = Query(0.3, ge=0.0, le=1.0),
     limit: int = Query(100, ge=1, le=500),
+    scope: Scope = _SCOPE,
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
     _: None = Depends(require_permission("mdm.read")),
@@ -234,6 +267,9 @@ async def list_relationships(
     if module_id:
         clauses.append("module_id = :mod")
         params["mod"] = module_id
+    current = await _scope_clause(db, tenant, scope, version_id, module_id, params)
+    if current:
+        clauses.append(current)
 
     result = await db.execute(
         text(f"""

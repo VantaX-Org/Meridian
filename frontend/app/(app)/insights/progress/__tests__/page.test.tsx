@@ -110,6 +110,17 @@ describe("ProgressPage without ?run=: the current state", () => {
     expect(screen.queryByTestId("baseline-line")).toBeNull();
     expect(await screen.findByText(/Each object compared with the run before its own latest run \(1 run\): 2 fixed, 1 new, 1 still failing/)).toBeInTheDocument();
   });
+
+  it("never shows one run's figures under the current-state header, even if a run's bars come back", async () => {
+    nav.qs = "";
+    const { burndown } = mockAll();
+    // An answer for one run (the e2e mock used to send this for scope=current): its per-run bars must not show.
+    burndown.mockResolvedValue({ ...BURN, version_id: null });
+    mount();
+    expect(await screen.findByText("Records to fix")).toBeInTheDocument();
+    expect(screen.queryByText("Failing records in each run of this system")).toBeNull();
+    expect(screen.queryByRole("img", { name: "Failing records per run" })).toBeNull();
+  });
 });
 
 describe("ProgressPage", () => {

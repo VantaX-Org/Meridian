@@ -358,8 +358,13 @@ const FLOWS: Record<string, [opened: number, closed: number]> = {
   "2026-10-16": [3260, 40], "2026-10-17": [0, 52], "2026-10-18": [0, 38], "2026-10-19": [0, 21],
 };
 
-/** GET /work/analytics/burndown: 90 days, with the server's projection (pace over the last 28 days). */
-function burndown() {
+/**
+ * GET /work/analytics/burndown: 90 days, with the server's projection (pace over the last 28 days). With
+ * `scope=current` (Progress without ?run=) it answers as api/services/work_analytics.burndown_current does: the same
+ * tenant-wide flows, no run of its own and no per-run bars. It used to answer the latest run's shape for every
+ * scope, so Progress showed controlling_1k's per-run bars under "Current state of 15 objects".
+ */
+function burndown(q: URLSearchParams) {
   let open = 0;
   const days = Array.from({ length: 90 }, (_, i) => {
     const d = day(i - 89);
@@ -369,17 +374,18 @@ function burndown() {
   });
   const openNow = days[89].open;
   const pace = Math.round(((days[89 - 28].open - openNow) / 28) * 100) / 100;
-  return {
-    version_id: LATEST, today: TODAY, days, open_now: openNow, open_records: CONTROLLING.records, fixed_7d: 151,
+  const run = {
+    version_id: LATEST as string | null, today: TODAY, days, open_now: openNow, open_records: CONTROLLING.records, fixed_7d: 151,
     pace_per_day: pace, pace_window_days: 28,
     projected_finish: pace > 0 ? day(Math.ceil(openNow / pace)) : null,
-    runs: [
+    ...(q.get("scope") === "current" ? { version_id: null, scope: "current", version_ids: [LATEST, MATERIAL], runs: [] } : {}),
+  };
+  return q.get("scope") === "current" ? run : { ...run, runs: [
       { version_id: "461c63cf-06f6-4e18-8bac-22305823bdce", label: "controlling_1k", run_at: "2026-10-16T05:17:42.514161+00:00", issues: 3120, open_records: null },
       { version_id: "52fadc1b-9bf5-448e-87fa-4cc7544bc983", label: "controlling_1k", run_at: "2026-10-16T05:17:43.343933+00:00", issues: 3120, open_records: null },
       { version_id: PREVIOUS, label: "controlling_1k", run_at: "2026-10-16T05:17:44.399026+00:00", issues: 3120, open_records: null },
       { version_id: LATEST, label: "controlling_1k", run_at: CONTROLLING.run_at, issues: 3120, open_records: CONTROLLING.records },
-    ],
-  };
+    ] };
 }
 
 const fixTime = (fixed: number, median: number | null, p90: number | null) => ({ fixed, median_days: median, p90_days: p90 });
@@ -457,23 +463,31 @@ function proposalQuality() {
   return { sources, totals: Object.fromEntries(keys.map((k) => [k, sources.reduce((a, s) => a + s[k], 0)])) };
 }
 
-/** GET /work/analytics/run-change: per object, new / fixed / still failing since the previous run. */
+/**
+ * GET /work/analytics/run-change: per object, new / fixed / still failing since the previous run. With
+ * `scope=current` each object of the current state is compared with the run before its own run (only controlling
+ * has one here), as api/services/work_analytics.run_change_current answers.
+ */
 const RUN_CHANGE = {
   version_id: LATEST, previous: { version_id: PREVIOUS, label: "controlling_1k", run_at: "2026-10-16T05:17:44.399026+00:00" },
   objects: [{ module: "controlling", new: 12, fixed: 40, still_failing: 3068, not_comparable_checks: 0 }],
   totals: { new: 12, fixed: 40, still_failing: 3068 }, not_comparable_checks: 0,
 };
+const runChange = (q: URLSearchParams) => (q.get("scope") === "current"
+  ? { ...RUN_CHANGE, version_id: null, scope: "current", compared: [{ version_id: LATEST, previous: RUN_CHANGE.previous }] }
+  : RUN_CHANGE);
 
 async function mockWorkAnalytics(page: Router) {
-  const get = (name: string, body: () => unknown) =>
-    page.route(new RegExp(`/api/v1/work/analytics/${name}(\\?.*)?$`), (r) => (r.request().method() === "GET" ? r.fulfill(json(body())) : r.fallback()));
+  const get = (name: string, body: (q: URLSearchParams) => unknown) =>
+    page.route(new RegExp(`/api/v1/work/analytics/${name}(\\?.*)?$`), (r) => (r.request().method() === "GET"
+      ? r.fulfill(json(body(new URL(r.request().url()).searchParams))) : r.fallback()));
   await get("burndown", burndown);
   await get("time-to-fix", () => TIME_TO_FIX);
   await get("throughput", throughput);
   await get("recurrence", () => RECURRENCE);
   await get("root-causes", () => ROOT_CAUSES);
   await get("proposal-quality", proposalQuality);
-  await get("run-change", () => RUN_CHANGE);
+  await get("run-change", runChange);
 }
 
 // ── MDM (api/routes/merge_explain.py) ────────────────────────────────────────
@@ -796,6 +810,8 @@ const CATALOGUE = L1S.map(([l1, name, reason]) => ({
  * run's five recorded findings (GET /findings?version_id=…&limit=5), without SPRO config or config impact rows.
  */
 const VENDOR_RUN = "65988d5a-0243-4f9b-bdff-52779e71c6ed";
+/** accounts_payable_p02: the newest accounts payable run, the one the current state reads the object from. */
+const CURRENT_AP_RUN = "ae5e43c7-e11d-4f1c-866d-6881cc3d50ce";
 
 async function mockProcess(page: Router) {
   const get = (re: RegExp, body: unknown) => page.route(re, (r) => (r.request().method() === "GET" ? r.fulfill(json(body)) : r.fallback()));
@@ -803,6 +819,44 @@ async function mockProcess(page: Router) {
   // list[RunSummary]: no runs, whatever the l1 and limit
   await get(new RegExp(`/api/v1/process-discovery/systems/${SYSTEM_ID}/runs(\\?.*)?$`), []);
   await get(new RegExp(`/api/v1/business-process/${VENDOR_RUN}/accounts_payable$`), businessProcessAp);
+  // Process data readiness opens on the current state, where accounts payable is read from its own latest run
+  // (accounts_payable_p02). The recording holds no process document for that run; the vendor run's document stands in
+  // for it (same object and process definition, the vendor run's findings), named for the run it answers.
+  await get(new RegExp(`/api/v1/business-process/${CURRENT_AP_RUN}/accounts_payable$`), { ...businessProcessAp, version_id: CURRENT_AP_RUN });
+}
+
+type RecordedRun = { id: string; run_at: string; status: string; dqs_summary: Record<string, unknown> | null };
+const textOf = (c: { text?: string; encoding?: string }) => (c.encoding === "base64" ? Buffer.from(c.text ?? "", "base64").toString("utf8") : c.text ?? "");
+
+/**
+ * The current state's (object, run) pairs of the recording: each object once, from the newest finished run that scored
+ * it (api/services/current_state.py; on this recording every lineage's latest run is also the newest run of its
+ * objects).
+ */
+function currentPairs(har: string): Map<string, string> {
+  const list = entriesOf(har).find((e) => /\/api\/v1\/versions\?limit=100&offset=0$/.test(e.request.url))?.response.content;
+  const runs = list?.text ? (JSON.parse(textOf(list)) as { versions: RecordedRun[] }).versions : [];
+  const out = new Map<string, string>();
+  for (const r of [...runs].sort((a, b) => (a.run_at < b.run_at ? 1 : -1))) {
+    for (const m of Object.keys(r.dqs_summary ?? {})) if (!out.has(m)) out.set(m, r.id);
+  }
+  return out;
+}
+
+/**
+ * GET /mining/{duplicates,anomalies,relationships}?scope=current (Insights › Duplicates without ?run=): the recorded
+ * tenant-wide lists (no version_id) kept to the current state's (object, run) pairs, as api/routes/mining.py filters.
+ */
+async function mockMiningCurrent(page: Router, har: string) {
+  const pairs = currentPairs(har);
+  const entries = entriesOf(har);
+  for (const feed of ["duplicates", "anomalies", "relationships"]) {
+    const hit = entries.find((e) => new RegExp(`/api/v1/mining/${feed}\\?limit=500$`).test(e.request.url))?.response.content;
+    const rows = hit?.text ? (JSON.parse(textOf(hit)) as { module_id: string; version_id: string }[]) : [];
+    const current = rows.filter((r) => pairs.get(r.module_id) === r.version_id);
+    await page.route(new RegExp(`/api/v1/mining/${feed}\\?(.*&)?scope=current(&|$)`), (r) =>
+      (r.request().method() === "GET" ? r.fulfill(json(current)) : r.fallback()));
+  }
 }
 
 /** `har`: the decompressed recording the page replays (fixtures.ts harFor). */
@@ -819,4 +873,5 @@ export async function mockUnrecorded(page: Page, har: string) {
   await mockMe(router);
   await mockCostModel(router);
   await mockProcess(router);
+  await mockMiningCurrent(router, har);
 }

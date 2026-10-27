@@ -358,7 +358,7 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
       {!canManage ? <Notice tone="info">Enabling, disabling or writing a rule needs the manage-rules permission. The library is read-only for you.</Notice> : null}
       <div className="m-stat-grid">
         {/* A failed read has no counts: "—", never zeros above the error. */}
-        <Stat label="Failing" value={rulesQ.isError ? "—" : failingCount.toLocaleString()} href={rulesQ.isError ? undefined : "/rules?state=failing"} tone={!rulesQ.isError && failingCount ? "at-risk" : undefined} hint="Last pass rate under 100" loading={rulesQ.isLoading} />
+        <Stat label="Failing" value={rulesQ.isError ? "—" : failingCount.toLocaleString()} href={rulesQ.isError ? undefined : "/rules?state=failing"} tone={!rulesQ.isError && failingCount ? "at-risk" : undefined} hint="Library rules whose last run failed; Objects also counts generated checks, once per object" loading={rulesQ.isLoading} />
         <Stat label="Disabled" value={rulesQ.isError ? "—" : disabledCount.toLocaleString()} href={rulesQ.isError ? undefined : "/rules?state=disabled"} loading={rulesQ.isLoading} />
         <Stat label="Not run yet" value={rulesQ.isError ? "—" : notRunCount.toLocaleString()} href={rulesQ.isError ? undefined : "/rules?state=not_run"} loading={rulesQ.isLoading} />
       </div>

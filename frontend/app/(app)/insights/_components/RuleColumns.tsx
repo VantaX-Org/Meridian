@@ -49,7 +49,7 @@ export function ruleColumns(run: string | undefined, compact = false): ColumnDef
     );
   }
   cols.push(
-    { accessorKey: "impact", header: "Impact on score", meta: { numeric: true }, cell: ({ row }) => n(row.original.impact) },
+    { accessorKey: "impact", header: "Weighted failures", meta: { numeric: true }, cell: ({ row }) => n(row.original.impact) },
     { accessorKey: "auto_fix_pct", header: "Auto-fixable", meta: { numeric: true }, cell: ({ row }) => `${Math.round(row.original.auto_fix_pct)}%` },
     { accessorKey: "s4", header: "S/4 load", cell: ({ row }) => <Pill tone={S4_TONE[row.original.s4] ?? "neutral"}>{labelOf(row.original.s4)}</Pill> },
   );

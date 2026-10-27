@@ -163,6 +163,42 @@ describe("ProcessInsightsPage without a process definition", () => {
     expect(read).not.toHaveBeenCalledWith("bp", expect.anything());
   });
 
+  it("in the current state opens on the first process object that has readiness, from its own run, never a run picker", async () => {
+    const co = { id: "co", label: "controlling_1k", status: "complete", run_at: "2026-10-16T05:00:00Z", dqs_summary: { controlling: 70 } };
+    const ap = { id: "ap", label: "accounts_payable_p02", status: "complete", run_at: "2026-10-16T03:01:00Z", dqs_summary: { accounts_payable: 80 } };
+    const mm = { id: "mm", label: "material_master_25k", status: "complete", run_at: "2026-10-16T03:05:00Z", dqs_summary: { material_master: 70 } };
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [co as never, mm as never, ap as never] });
+    const doc = [{ l1_id: "PTP", l1_name: "Procure to pay", l1_description: "", system: "ecc", l2_groups: [{ l2_id: "l2", l2_name: "Materials", l3_processes: [{
+      l3_id: "l3", l3_name: "Material master step", description: "", overall_readiness: "green" as const,
+      l4_subprocesses: [{ l4_id: "l4", l4_name: "MM01", tcode: "MM01", description: "", config_dependency: null, step_status: "green" as const,
+        activities: [{ l5_id: "l5", l5_name: "Create", description: "", tcode: "MM01", fields: [], check_ids: [], activity_status: "green" as const }] }] }] }] }];
+    const read = vi.spyOn(connectivityApi, "getBusinessProcess").mockImplementation(async (run, module) => (module === "material_master" ? doc : []));
+    vi.spyOn(connectivityApi, "getConfigImpact").mockResolvedValue({ results: [], summary: { total_features_assessed: 0, features_blocked: 0, features_degraded: 0, features_ok: 0, top_blocked_features: [] } });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
+    renderWithQuery(<ProcessInsightsPage />);
+    expect(await screen.findByText("Material master step", undefined, { timeout: 5000 })).toBeInTheDocument();
+    expect(read).toHaveBeenCalledWith("mm", "material_master");
+    expect(read).toHaveBeenCalledWith("ap", "accounts_payable");
+    expect(read).not.toHaveBeenCalledWith("co", expect.anything());
+    // The header names the current state, never the newest run (controlling_1k), and offers no run to choose.
+    expect(screen.getByTestId("insight-scope")).toHaveAttribute("data-scope", "current");
+    expect(screen.queryByText(/As of controlling_1k/)).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "Runs with a process definition" })).toBeNull();
+  });
+
+  it("in the current state says a read failed, with Retry, rather than that the object has no definition", async () => {
+    nav.qs = "object=accounts_payable";
+    const ap = { id: "ap", label: "accounts_payable_p02", status: "complete", run_at: "2026-10-16T03:01:00Z", dqs_summary: { accounts_payable: 80 } };
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [ap as never] });
+    vi.spyOn(connectivityApi, "getBusinessProcess").mockRejectedValue(new Error("boom"));
+    vi.spyOn(connectivityApi, "getConfigImpact").mockResolvedValue({ results: [], summary: { total_features_assessed: 0, features_blocked: 0, features_degraded: 0, features_ok: 0, top_blocked_features: [] } });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
+    renderWithQuery(<ProcessInsightsPage />);
+    expect(await screen.findByRole("button", { name: /retry/i }, { timeout: 5000 })).toBeInTheDocument();
+    expect(screen.queryByText("Accounts payable has no process definition")).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "Runs with a process definition" })).toBeNull();
+  });
+
   it("offers the finished runs that cover a process object instead of a dead end, with the header and actions at page level", async () => {
     nav.qs = "run=bp";
     const bp = { id: "bp", label: "business_partner_1k", status: "complete", run_at: "2026-10-02T00:00:00Z", dqs_summary: { business_partner: 90 } };

@@ -18,10 +18,10 @@ import { runDqs, type TrendPoint } from "@/lib/home-metrics";
 
 /**
  * The insight views that describe the current state when no `?run=` pins one: the executive summary,
- * Progress, Value at risk and Process data readiness (`insights/_components/scopeMode.ts` reads this list). Their
- * own header picker names the scope "Current state" and offers one run instead.
+ * Progress, Value at risk, Process data readiness and Duplicates (`insights/_components/scopeMode.ts` reads this
+ * list). Their own header picker names the scope "Current state" and offers one run instead.
  */
-export const CURRENT_STATE_INSIGHTS: readonly string[] = ["/insights/exec", "/insights/progress", "/insights/impact", "/insights/process"];
+export const CURRENT_STATE_INSIGHTS: readonly string[] = ["/insights/exec", "/insights/progress", "/insights/impact", "/insights/process", "/insights/duplicates"];
 
 /**
  * Screens that describe the current state when no `?run=` pins one: every home (`/home`, `/home/<persona>`) and the
@@ -39,6 +39,16 @@ export function isCurrentStateView(pathname: string): boolean {
  */
 export function opensOnCurrentState(pathname: string): boolean {
   return isCurrentStateView(pathname) || pathname === "/objects" || pathname.startsWith("/objects/") || pathname === "/fix";
+}
+
+/**
+ * Cross-object screens: every screen whose default (no `?run=`, no `?module=`) spans more than one object, i.e. the
+ * current-state views, the objects list and an object (its own latest run), Fix work, every insight view and the
+ * rules list. A run or object chosen on another screen is never carried onto them (components/global-run.tsx): they
+ * open on their default unless the link the user followed names a run or an object itself.
+ */
+export function isCrossObjectView(pathname: string): boolean {
+  return opensOnCurrentState(pathname) || pathname === "/insights" || pathname.startsWith("/insights/") || pathname === "/rules";
 }
 
 /** The insight pages that take their scope from `useInsightScope` (`?run=` and `?module=`); not lineage nor the process designer. */
