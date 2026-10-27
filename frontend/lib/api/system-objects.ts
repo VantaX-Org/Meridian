@@ -49,7 +49,30 @@ export interface SystemVersion {
   outliers: Record<string, { label: string; outliers: number; checked: number }>;
 }
 
-export type TrendFlag = "scope_changed" | "rules_changed" | "volume_shift" | "incomplete_extract";
+/**
+ * The system page's "Objects loaded" stat. Extracted objects (connectivity modules with rows) when there are any;
+ * else the objects the system's latest run read, with its records, since a run tagged with the system holds that
+ * system's data however it arrived. It used to say "—, Runs come from uploads" beside a run of 7 records and its
+ * findings.
+ */
+export function objectsLoaded(
+  modules: readonly { enabled: boolean; row_count: number }[],
+  latest: Pick<SystemVersion, "objects" | "records"> | undefined,
+): { value: string; hint: string | undefined } {
+  const loaded = modules.filter((m) => m.enabled && m.row_count > 0).length;
+  if (loaded > 0) return { value: `${loaded} of ${modules.length}`, hint: undefined };
+  const objects = latest?.objects ?? [];
+  if (objects.length) {
+    const records = Object.values(latest?.records ?? {}).reduce((a, n) => a + (n ?? 0), 0);
+    return {
+      value: objects.length.toLocaleString(),
+      hint: `${records.toLocaleString()} ${records === 1 ? "record" : "records"} in the latest run`,
+    };
+  }
+  return { value: "—", hint: modules.length ? `${modules.length} objects not extracted yet` : undefined };
+}
+
+export type TrendFlag ="scope_changed" | "rules_changed" | "volume_shift" | "incomplete_extract";
 
 export interface TrendPoint {
   version_id: string;

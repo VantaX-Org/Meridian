@@ -1,7 +1,9 @@
-// One run for every screen: a ?run= is kept, carried onto the next screen, and cleared by going back to latest.
+// A chosen run is kept for this tab, carried only onto one-run screens, and cleared by going back to latest;
+// cross-object screens open on the current state unless the link names a run or an object.
 import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { GlobalObjectPicker, GlobalRunPicker, OBJECT_KEY, RUN_KEY, RunCarrier, readSelectedObject, readSelectedRun } from "../global-run";
+import { GlobalObjectPicker, GlobalRunPicker, OBJECT_KEY, RUN_KEY, RunCarrier, pickerObjects, readSelectedObject, readSelectedRun } from "../global-run";
+import type { Version } from "@/types/api";
 
 const replace = vi.fn();
 let pathname = "/objects";
@@ -12,12 +14,14 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => search,
 }));
 
-vi.mock("@tanstack/react-query", () => ({
-  useQuery: () => ({ data: { objects: [{ module: "material_master", label: "Material master" }] } }),
-}));
-
+const summary = (score: number) => ({ composite_score: score, critical_count: 0, high_count: 0, medium_count: 0, low_count: 0 });
+// The newest run measured controlling only; material master is current from an older run of its own lineage.
+const VERSIONS = [
+  { id: "r1", label: "Run 1", status: "complete", run_at: "2026-10-16T00:00:00Z", dqs_summary: { controlling: summary(70) }, metadata: {} },
+  { id: "r0", label: "Run 0", status: "complete", run_at: "2026-10-15T00:00:00Z", dqs_summary: { material_master: summary(80) }, metadata: {} },
+];
 vi.mock("@/hooks/use-run-list", () => ({
-  useRunList: () => ({ data: { versions: [{ id: "r1", label: "Run 1", status: "complete", run_at: "2026-10-16T00:00:00Z", dqs_summary: {}, metadata: {} }] } }),
+  useRunList: () => ({ data: { versions: VERSIONS } }),
 }));
 
 const at = (path: string, query = "") => { pathname = path; search = new URLSearchParams(query); };
@@ -46,11 +50,24 @@ describe("RunCarrier", () => {
     expect(readSelectedRun()).toBeNull();
   });
 
-  it("still carries the chosen run onto a one-run insight view", () => {
-    window.sessionStorage.setItem(RUN_KEY, "r1");
-    at("/insights/rules");
+  it.each(["/fix", "/fix?tab=cleaning", "/fix?mine=1", "/insights/rules", "/insights/duplicates", "/insights/readiness", "/insights/trends", "/objects", "/objects/controlling", "/rules"])(
+    "never carries a run or an object from the page before onto the cross-object screen %s",
+    (href) => {
+      // The steward opened material master's 25k run, then followed a plain link here.
+      window.sessionStorage.setItem(RUN_KEY, "r1");
+      window.sessionStorage.setItem(OBJECT_KEY, "material_master");
+      const [path, query = ""] = href.split("?");
+      at(path, query);
+      render(<RunCarrier />);
+      expect(replace).not.toHaveBeenCalled();
+    },
+  );
+
+  it("keeps a run the link names on a cross-object screen", () => {
+    at("/fix", "run=r1&module=material_master");
     render(<RunCarrier />);
-    expect(replace).toHaveBeenCalledWith("/insights/rules?run=r1", { scroll: false });
+    expect(replace).not.toHaveBeenCalled();
+    expect(readSelectedRun()).toBe("r1");
   });
 
   it("keeps the run on the URL as the chosen run", () => {
@@ -60,11 +77,11 @@ describe("RunCarrier", () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
-  it("carries the chosen run onto a screen opened without one", () => {
+  it("carries the chosen run onto a one-run screen opened without one", () => {
     window.sessionStorage.setItem(RUN_KEY, "r1");
-    at("/fix", "tab=batches");
+    at("/rules/learned");
     render(<RunCarrier />);
-    expect(replace).toHaveBeenCalledWith("/fix?tab=batches&run=r1", { scroll: false });
+    expect(replace).toHaveBeenCalledWith("/rules/learned?run=r1", { scroll: false });
   });
 
   it("goes back to the latest when the run is removed on the same screen", () => {
@@ -82,14 +99,6 @@ describe("RunCarrier", () => {
     render(<RunCarrier />);
     expect(readSelectedRun()).toBe("r1");
     expect(replace).not.toHaveBeenCalled();
-  });
-
-  it("carries the chosen object along with the run", () => {
-    window.sessionStorage.setItem(RUN_KEY, "r1");
-    window.sessionStorage.setItem(OBJECT_KEY, "material_master");
-    at("/insights/rules");
-    render(<RunCarrier />);
-    expect(replace).toHaveBeenCalledWith("/insights/rules?run=r1&module=material_master", { scroll: false });
   });
 
   it("makes an object page's object the choice, without adding it to the URL", () => {
@@ -115,14 +124,6 @@ describe("RunCarrier", () => {
     expect(replace).toHaveBeenCalledWith("/search?q=abc&run=r1", { scroll: false });
   });
 
-  it("carries only the object onto a screen that reads the object but not the run", () => {
-    window.sessionStorage.setItem(RUN_KEY, "r1");
-    window.sessionStorage.setItem(OBJECT_KEY, "material_master");
-    at("/rules");
-    render(<RunCarrier />);
-    expect(replace).toHaveBeenCalledWith("/rules?module=material_master", { scroll: false });
-  });
-
   it("does not let a stray ?run= on a screen that ignores it become the choice", () => {
     at("/admin/users", "run=r9");
     render(<RunCarrier />);
@@ -135,6 +136,23 @@ describe("RunCarrier", () => {
     at("/fix");
     rerender(<RunCarrier />);
     expect(readSelectedObject()).toBeNull();
+  });
+});
+
+describe("GlobalObjectPicker", () => {
+  it("names the object applied on the URL, never \"Every object\"", () => {
+    at("/fix", "module=material_master");
+    const { getByTestId } = render(<GlobalObjectPicker />);
+    expect(getByTestId("global-object")).toHaveTextContent("Material master");
+    expect(getByTestId("global-object")).not.toHaveTextContent("Every object");
+  });
+
+  it("offers every object of the current state, not only the newest run's", () => {
+    expect(pickerObjects(VERSIONS as unknown as Version[], null).map((o) => o.module)).toEqual(["controlling", "material_master"]);
+  });
+
+  it("adds an applied object no current run measured, so it is still named", () => {
+    expect(pickerObjects(VERSIONS as unknown as Version[], "hcm").map((o) => o.module)).toContain("hcm");
   });
 });
 

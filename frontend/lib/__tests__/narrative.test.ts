@@ -46,14 +46,21 @@ describe("compareNarrative", () => {
       "DQS moved from 71.2 to 74.8 (+3.6) across 2 modules.",
       "Material master improved most (+6.1), driven by validity (+9.0).",
       `2 checks newly fail: MM041 (critical, ${nf.format(1240)} records), MM077 (high, ${nf.format(88)} records).`,
-      `2 checks fixed, ${nf.format(3410)} records resolved.`,
+      `2 checks fixed (20 records they failed); across every check, ${nf.format(3410)} records resolved and ${nf.format(1328)} newly failing.`,
       "2 checks did not run cleanly in both runs; their deltas are excluded.",
     ]);
   });
 
   it("omits empty sentences and handles the null diff", () => {
     const out = compareNarrative(cmp({ delta: {}, checks: { newly_failing: [], fixed: [cmp().checks.fixed[0]] } }), null);
-    expect(out).toEqual(["1 check fixed."]);
+    expect(out).toEqual(["1 check fixed (10 records they failed)."]);
+  });
+
+  it("never puts every check's resolved records beside the fixed checks as if they were theirs", () => {
+    // accounts_payable_p06 vs p02: 4 fixed checks held 6 records; 10,521 records were resolved across every check.
+    const fixed = [1, 1, 2, 2].map((n, i) => ({ check_id: `F${i}`, module: "accounts_payable", severity: "medium", v1_affected: n, v2_affected: 0 }));
+    const out = compareNarrative(cmp({ delta: {}, checks: { newly_failing: [], fixed } }), { ...diff, totals: { new: 11151, resolved: 10521, persisting: 34301 }, checks: [] });
+    expect(out[0]).toBe(`4 checks fixed (6 records they failed); across every check, ${nf.format(10521)} records resolved and ${nf.format(11151)} newly failing.`);
   });
 
   it("names a decline and caps the regression list at three", () => {

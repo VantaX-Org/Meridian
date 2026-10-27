@@ -21,29 +21,36 @@ import { createMergeProposals, getDuplicateCluster } from "@/lib/api/insights";
 import { getMiningDuplicates } from "@/lib/api/mining";
 import { previousInLineage } from "@/lib/runs";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
-import { plural } from "@/lib/format";
+import { formatModuleName, plural } from "@/lib/format";
 import { Skeleton } from "@/design";
 import { getMergeExplanation } from "@/lib/api/merge-explain";
 import { getObjects } from "@/lib/api/v1/objects";
 import { queryKeys } from "@/lib/query-keys";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { useInsightScope } from "../_components/useInsightScope";
+import { useCurrentState } from "../_components/useCurrentState";
 import { PAGE_PURPOSE } from "../_components/InsightViews";
-import { MinedAnomalies, MinedDuplicates, MinedRelationships } from "./mined-tabs";
+import { MinedAnomalies, MinedDuplicates, MinedRelationships, useMinedFeeds } from "./mined-tabs";
 
 export default function DuplicatesPage() {
   const search = useSearchParams();
   const router = useRouter();
   const scope = useInsightScope();
-  const run = scope.run ?? "";
+  // Without ?run= (or ?module=) the page reads the current state: every object at its own latest run, as Home does.
+  const isCurrent = scope.mode === "current";
+  const state = useCurrentState();
+  const run = isCurrent ? "" : scope.run ?? "";
+  const feeds = useMinedFeeds({ run, current: isCurrent });
   // What changed: pairs mined in this run against the run before it in its lineage (same key as the Mined pairs tab).
   const current = scope.runs.find((r) => r.id === run);
   const previous = current ? previousInLineage(current, scope.runs) : null;
-  const minedNow = useQuery({ queryKey: ["mining", "duplicates", run], queryFn: () => getMiningDuplicates({ version_id: run || undefined, limit: 500 }), enabled: !!run && !!previous });
+  const minedNow = feeds.duplicates;
   const minedBefore = useQuery({ queryKey: ["mining", "duplicates", previous?.id ?? ""], queryFn: () => getMiningDuplicates({ version_id: previous?.id, limit: 500 }), enabled: !!previous });
   const pairsNow = minedNow.data?.length ?? 0;
   const pairsBefore = minedBefore.data?.length ?? 0;
-  const changed = !run || !current
+  const changed = isCurrent
+    ? minedNow.isLoading ? <Skeleton height={16} /> : `${plural(pairsNow, "likely duplicate pair")} mined across ${plural(state.objects.length, "object")}, each from its own latest run`
+    : !run || !current
     ? "First run of this system"
     : !previous
       ? "First run of this system"
@@ -65,6 +72,10 @@ export default function DuplicatesPage() {
     queryFn: () => getObjects(run),
     enabled: !!run,
   });
+  // The objects a record can be looked up in: the current state's, or the shown run's.
+  const objectOptions = isCurrent
+    ? state.objects.map((o) => ({ value: o.module, label: formatModuleName(o.module) }))
+    : (objects.data?.objects ?? []).map((o) => ({ value: o.module, label: o.label }));
 
   const [object, setObject] = useState("");
   const [recordId, setRecordId] = useState("");
@@ -140,16 +151,19 @@ export default function DuplicatesPage() {
     }
   }
 
-  const state: "loading" | "empty" | "error" | undefined =
-    objects.isLoading ? "loading" : !object || !recordId ? "empty" : cluster.isLoading ? "loading" : cluster.isError ? "error" : nodes.length === 0 ? "empty" : undefined;
+  const clusterState: "loading" | "empty" | "error" | undefined =
+    (isCurrent ? state.loading : objects.isLoading) ? "loading" : !object || !recordId ? "empty" : cluster.isLoading ? "loading" : cluster.isError ? "error" : nodes.length === 0 ? "empty" : undefined;
 
   const picked = !!object && !!recordId;
+  const noRun = isCurrent ? !state.loading && !state.objects.length : !run && !scope.resolving;
+  // Nothing picked and nothing mined: one empty state for the page, not one per section.
+  const nothing = !picked && feeds.allEmpty;
   return (
     <InsightFrame
       title="Duplicates"
       purpose={PAGE_PURPOSE["/insights/duplicates"]}
       scope
-      run={run || undefined}
+      run={isCurrent ? undefined : run || undefined}
       insight={{
         situation: { sentence: !picked ? "Pick a record to see its cluster" : cluster.isLoading ? "Reading the cluster" : `${plural(nodes.length, "record is", "records are")} in this cluster` },
         changed: { sentence: changed, href: previous && run ? `/runs/${run}/vs/${previous.id}` : undefined },
@@ -170,7 +184,7 @@ export default function DuplicatesPage() {
                 setObject(v);
                 setMasterId(null);
               }}
-              options={(objects.data?.objects ?? []).map((o) => ({ value: o.module, label: o.label }))}
+              options={objectOptions}
               placeholder="Choose an object"
             />
           </Field>
@@ -186,20 +200,26 @@ export default function DuplicatesPage() {
           </Field>
         </div>
       </Card>
-      {!run && !scope.resolving ? (
+      {noRun ? (
         <EmptyState title="No finished run yet" detail="Duplicates are found in the records of a finished run." ghost="grid" action={<Button render={<Link href="/runs">Open runs</Link>}/>} />
-      ) : objects.isError ? (
+      ) : nothing ? (
+        <EmptyState
+          title={isCurrent ? "Nothing mined yet" : "Nothing mined in this run yet"}
+          detail="Look up a record above to see its duplicates. Likely duplicate pairs, anomalies and field relationships show here once a run is mined; to decide on scored pairs instead, open Match review."
+          ghost="grid"
+          action={<Button variant="secondary" render={<Link href="/mdm/golden/merge">Open match review</Link>} />}
+        />
+      ) : !isCurrent && objects.isError ? (
         <ErrorState {...apiErrorState(objects.error)} onRetry={() => void objects.refetch()} />
-      ) : state === "loading" ? (
-        <div aria-busy="true"><CardSkeleton height={320} /></div>
-      ) : state === "error" ? (
+      ) : clusterState === "loading" ? (
+        picked ? <div aria-busy="true"><CardSkeleton height={320} /></div> : null
+      ) : clusterState === "error" ? (
         <ErrorState {...apiErrorState(cluster.error)} onRetry={() => void cluster.refetch()} />
-      ) : state === "empty" ? (
+      ) : clusterState === "empty" ? (
+        // Before a record is picked the lookup card says what to do; only a picked record without matches needs a state.
         picked ? (
           <EmptyState title="No duplicates for this record" detail="No other record matches it under the current match rules. Check the key, or loosen the match rules." ghost="grid" action={<Button variant="secondary" render={<Link href="/mdm/match-rules">Open match rules</Link>} />} />
-        ) : (
-          <EmptyState title="Choose an object and a record" detail="Its duplicates show here as a cluster. To decide on scored pairs instead, open Match review." ghost="grid" action={<Button variant="secondary" render={<Link href="/mdm/golden/merge">Open match review</Link>} />} />
-        )
+        ) : null
       ) : (
         <Card title="Duplicate cluster" meta="Each dot is a record; a line means two records match. Select the record to keep.">
           <div className="flex flex-col gap-4">
@@ -214,19 +234,23 @@ export default function DuplicatesPage() {
           </div>
         </Card>
       )}
+      {nothing || noRun ? null : (
+        <>
         <section id="duplicates-pairs" aria-label="Likely duplicates" className="flex flex-col gap-2">
           <h2 className="m-text-h font-semibold m-ink">Likely duplicates</h2>
-          <p className="m-text-meta m-ink-3">Pairs the miner found in this run. Review takes a pair to Match review, where every merge is decided.</p>
-          <MinedDuplicates run={run} />
+          <p className="m-text-meta m-ink-3">{isCurrent ? "Pairs the miner found in each object's latest run." : "Pairs the miner found in this run."} Review takes a pair to Match review, where every merge is decided.</p>
+          <MinedDuplicates q={feeds.duplicates} scope={{ run, current: isCurrent }} />
         </section>
         <section id="duplicates-anomalies" aria-label="Anomalies" className="flex flex-col gap-2">
           <h2 className="m-text-h font-semibold m-ink">Anomalies</h2>
-          <MinedAnomalies run={run} />
+          <MinedAnomalies q={feeds.anomalies} scope={{ run, current: isCurrent }} />
         </section>
         <section id="duplicates-relationships" aria-label="Relationships" className="flex flex-col gap-2">
           <h2 className="m-text-h font-semibold m-ink">Relationships</h2>
-          <MinedRelationships run={run} />
+          <MinedRelationships q={feeds.relationships} scope={{ run, current: isCurrent }} />
         </section>
+        </>
+      )}
       </div>
     </InsightFrame>
   );

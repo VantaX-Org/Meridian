@@ -17,14 +17,14 @@
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, buildDrillHref, Card, DataTable, Drawer, EmptyState, ErrorState, Graph, Mono, Notice, Pill, Select, Skeleton, RowAction, RowActionButton, Stat, actionColumn, type InsightHeaderProps, Status } from "@/design";
 import { LedgerHead } from "@/components/mdm/ledger";
 import { HandToSteward, type HandoffTarget } from "@/components/process/handoff";
 import { apiErrorState } from "@/lib/error";
-import { PROCESS_MODULES, asIsHref, isCompleteVersion, l1Fields, l4Fields, modulesOfL1, red, score, sev, systemOfVersion, useFindingHref, useLatestVersion, verdictOf } from "@/components/process/shared";
+import { PROCESS_MODULES, asIsHref, currentProcessObjects, firstWithProcesses, isCompleteVersion, l1Fields, l4Fields, modulesOfL1, red, score, sev, systemOfVersion, useFindingHref, useLatestVersion, verdictOf } from "@/components/process/shared";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { useSystemScope } from "@/lib/permissions";
@@ -261,25 +261,41 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
   const isCurrent = mode === "current";
   const state = useCurrentState();
   const versionsLoading = isCurrent ? state.loading : runLoading;
+  const processObjects = useMemo(() => (isCurrent ? currentProcessObjects(state.objects) : []), [isCurrent, state.objects]);
   const modules = useMemo(
-    () => (isCurrent ? state.objects.map((o) => o.module) : pinnedRun?.dqs_summary ? Object.keys(pinnedRun.dqs_summary) : []),
-    [isCurrent, state.objects, pinnedRun],
+    () => (isCurrent ? processObjects.map((o) => o.module) : pinnedRun?.dqs_summary ? Object.keys(pinnedRun.dqs_summary) : []),
+    [isCurrent, processObjects, pinnedRun],
   );
   const [objectChoice, setObject] = useUrlState("object", "");
   const [l1Choice, setL1] = useUrlState("l1", "");
+  // The current state without a chosen object reads every process object (each from its own run, the same reads the
+  // page makes for one) and opens on the first that has a process document.
+  const probe = isCurrent && !objectChoice && !l1Choice;
+  const probes = useQueries({
+    queries: (probe ? processObjects : []).map((o) => ({
+      queryKey: queryKeys.businessProcess(o.run.id, o.module),
+      queryFn: () => getBusinessProcess(o.run.id, o.module),
+      retry: false,
+      meta: { ignoreError: true },
+    })),
+  });
+  const firstReady = probe ? firstWithProcesses(modules, probes) : undefined;
   // `?l1=` names the L1; the object read must carry that L1's definition, since the API returns one object's processes.
   // A `?object=` of another L1 (or one this run lacks) moves to the first object of that L1 the run covers.
   const l1Objects = useMemo(() => (l1Choice ? modulesOfL1(l1Choice, modules) : []), [l1Choice, modules]);
   const object = l1Objects.length
     ? oneOf(objectChoice, l1Objects, l1Objects[0])
-    : oneOf(objectChoice, modules, modules.find((m) => PROCESS_MODULES.has(m)) || modules[0] || "");
+    : oneOf(objectChoice, modules, (probe ? firstReady : undefined) ?? (modules.find((m) => PROCESS_MODULES.has(m)) || modules[0] || ""));
+  const probing = probe && firstReady === undefined && modules.length > 0;
   // The run the object is read from: its own latest run in the current state, else the pinned run.
-  const latest = isCurrent ? state.objects.find((o) => o.module === object)?.run : pinnedRun;
+  const latest = isCurrent ? processObjects.find((o) => o.module === object)?.run : pinnedRun;
 
   const bp = useQuery({
     queryKey: queryKeys.businessProcess(latest?.id, object),
     queryFn: () => getBusinessProcess(latest!.id, object),
-    enabled: !!latest && !!object,
+    enabled: !!latest && !!object && !probing,
+    retry: false,
+    meta: { ignoreError: true },
   });
   const impact = useQuery({
     queryKey: queryKeys.configImpact(latest?.id),
@@ -327,21 +343,26 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
   const failing = blockingFindings.reduce((a, b) => a + b.affected, 0);
   const firstHref = blockingFindings[0]?.href ?? rulesHref;
   const worst = [...gates].sort((a, b) => b.blocking - a.blocking)[0];
-  const loading = versionsLoading || bp.isLoading || dayOne.status === "loading";
+  const loading = versionsLoading || probing || bp.isLoading || dayOne.status === "loading";
 
   useEffect(() => {
     if (loading) { onInsight({ loading: true, situation: { sentence: "" }, changed: { sentence: "" }, why: { sentence: "" }, next: { sentence: "" } }); return; }
     if (!latest || !l1) {
+      const noProcessObject = isCurrent && !modules.length;
       onInsight({
         situation: {
-          sentence: !latest ? "No finished run to read process readiness from."
+          sentence: noProcessObject ? "No object of the current state carries a process definition."
+            : !latest ? "No finished run to read process readiness from."
+            : bp.isError ? `${formatModuleName(object)}'s process readiness could not be read.`
             : l1Missing ? `This run has no ${l1Choice} object, so ${l1Choice} readiness cannot be read from it.`
               : `${formatModuleName(object)} has no L1 to L5 process definition.`,
           tone: "neutral",
         },
-        changed: { sentence: "Readiness is scored per step from the run you choose." },
+        changed: { sentence: isCurrent ? "Readiness is scored per step from each object's own latest run." : "Readiness is scored per step from the run you choose." },
         why: { sentence: "Only procure to pay and order to cash objects carry a process definition." },
-        next: { sentence: !latest ? "Run an analysis first." : "Pick a run that covers a process object.", action: !latest ? { label: "Open runs", href: "/runs" } : undefined },
+        next: noProcessObject || !latest
+          ? { sentence: "Run an analysis of a procure to pay or order to cash object.", action: { label: "Open runs", href: "/runs" } }
+          : { sentence: isCurrent ? "Choose another process object." : "Pick a run that covers a process object." },
       });
       return;
     }
@@ -356,11 +377,15 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
         ? { sentence: `Clear the failing fields in ${worst.l3.l3_name}.`, action: { label: "Open failing records", href: firstHref ?? withScope(`/objects/${object}`, { run: latest.id, tab: "rules" }) } }
         : { sentence: "No step is blocked; keep an eye on the amber fields.", action: { label: "Open failing rules", href: withScope("/insights/rules", { run: latest.id, module: object }) } },
     });
-  }, [loading, latest, l1, l1Missing, l1Choice, object, blockedGates, gates.length, pct, blocking, failing, worst, firstHref, onInsight]);
+  }, [loading, isCurrent, modules.length, bp.isError, latest, l1, l1Missing, l1Choice, object, blockedGates, gates.length, pct, blocking, failing, worst, firstHref, onInsight]);
 
   if (loading) return <ViewSkeleton stats={4} />;
   if (versionsError) return <ErrorState {...apiErrorState(versionsError)} onRetry={() => void refetchVersions()} />;
   if (!latest && dayOne.status === "error") return <ErrorState {...apiErrorState(dayOne.error)} onRetry={dayOne.refetch} />;
+  if (isCurrent && !modules.length && state.objects.length) {
+    return <EmptyState title="No process object in the current state" detail="Readiness covers objects with an L1 to L5 definition: procure to pay (vendors, purchasing, materials, general ledger) and order to cash (customers, sales orders, receivables). Run an analysis of one of them."
+      action={<Button variant="secondary" render={<Link href="/runs">Open runs</Link>} />} />;
+  }
   if (!latest) {
     return <EmptyState title="No process readiness yet" detail={dayOne.step?.detail ?? "Readiness is read from the latest completed analysis. Sync a system and run an analysis."}
       action={<DayOneAction step={dayOne.step} fallbackHref="/systems" fallbackLabel="Open systems" />} />;
@@ -371,10 +396,22 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
       onValueChange={(m) => { setObject(m); setL1(""); }} />
   );
 
+  // In the current state every process object is already on offer, each from its own run: no run to choose.
+  const pickers = <div className="flex gap-3 items-center flex-wrap">{objectPicker}{isCurrent ? null : <RunsWithProcess exclude={latest.id} />}</div>;
+
+  if (bp.isError) {
+    return (
+      <div className="flex flex-col gap-4">
+        {pickers}
+        <ErrorState {...apiErrorState(bp.error)} onRetry={() => void bp.refetch()} />
+      </div>
+    );
+  }
+
   if (l1Missing) {
     return (
       <div className="flex flex-col gap-4">
-        <div className="flex gap-3 items-center flex-wrap">{objectPicker}<RunsWithProcess exclude={latest.id} /></div>
+        {pickers}
         <Notice tone="warning" title={`No ${l1Choice} object in this run`}>
           {`${runScopeLabel(latest)} covers ${formatModuleName(object)}, which carries ${processes.map((p) => p.l1_name).join(" and ")}, not ${l1Choice}. Choose a run above that covers a ${l1Choice} object, or read the process this object carries.`}
         </Notice>
@@ -386,13 +423,18 @@ function ReadinessView({ onInsight }: { onInsight: (i: ViewInsight | null) => vo
   }
 
   if (!l1) {
+    const other = isCurrent ? modules.find((m) => m !== object) : undefined;
     return (
       <div className="flex flex-col gap-4">
-        <div className="flex gap-3 items-center flex-wrap">{objectPicker}<RunsWithProcess exclude={latest.id} /></div>
+        {pickers}
         <EmptyState
           title={`${formatModuleName(object)} has no process definition`}
-          detail="Readiness covers objects with an L1 to L5 definition: procure to pay (vendors, purchasing, materials, general ledger) and order to cash (customers, sales orders, receivables). Choose one of the runs above that covers such an object."
-          action={<Button variant="secondary" render={<Link href="/runs">Open runs</Link>} />}
+          detail={isCurrent
+            ? `${runScopeLabel(latest)} produced no process document for ${formatModuleName(object)}. Choose another process object above; each is read from its own latest run.`
+            : "Readiness covers objects with an L1 to L5 definition: procure to pay (vendors, purchasing, materials, general ledger) and order to cash (customers, sales orders, receivables). Choose one of the runs above that covers such an object."}
+          action={other
+            ? <Button variant="secondary" onClick={() => { setObject(other); setL1(""); }}>{`Show ${formatModuleName(other)}`}</Button>
+            : <Button variant="secondary" render={<Link href="/runs">Open runs</Link>} />}
         />
       </div>
     );
@@ -652,18 +694,22 @@ function MapView({ onInsight }: { onInsight: (i: ViewInsight | null) => void }) 
 export default function ProcessInsightsPage() {
   const [tabRaw, setTab] = useUrlState("tab", "readiness");
   const tab = (["readiness", "map"] as string[]).includes(tabRaw) ? tabRaw : "readiness";
-  const { run } = useInsightScope();
+  const { run, mode } = useInsightScope();
   const { latest } = useLatestVersion();
   // The active view publishes its four sentences; the frame renders them once, above the tabs.
   const [insight, setInsight] = useState<ViewInsight | null>(null);
   const onInsight = useCallback((i: ViewInsight | null) => setInsight(i), []);
   const placeholder: ViewInsight = { loading: true, situation: { sentence: "" }, changed: { sentence: "" }, why: { sentence: "" }, next: { sentence: "" } };
+  // Readiness takes the frame's scope: the current state (each object at its own run) or one run. The map mines the
+  // latest run alone, so it names that run.
+  const readiness = tab === "readiness";
   return (
     <InsightFrame
       title="Process data readiness"
       purpose={PAGE_PURPOSE["/insights/process"]}
-      meta={latest ? `As of ${runScopeLabel(latest)}` : "No finished run yet"}
-      run={run ?? latest?.id}
+      scope={readiness}
+      meta={readiness ? undefined : latest ? `As of ${runScopeLabel(latest)}` : "No finished run yet"}
+      run={readiness && mode === "current" ? undefined : run ?? latest?.id}
       insight={insight ?? placeholder}
     >
       {/* The frame already draws the view's tab strip; Readiness and Map switch with a pair of toggle buttons, not a second strip. */}

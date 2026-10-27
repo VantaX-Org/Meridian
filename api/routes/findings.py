@@ -219,14 +219,22 @@ async def aggregate_findings(
 ):
     """Severity, module and dimension totals plus the composite DQS, computed server-side
     over the whole result set — the figures the Command Centre headline is built from.
-    The same filters as GET /findings narrow the totals (not the DQS, a version figure)."""
+    The same filters as GET /findings narrow the totals (not the DQS, a version figure).
+
+    A finding row is stored for every rule a run evaluated, passing ones included (affected_count 0). The counts
+    (``total``, ``severity``, each module's and dimension's ``findings`` and severities) are failing rules only, the
+    set the run's score counts (``dqs_summary.critical_count`` ..., ``api.services.scoring``): a run page must never
+    say "6 critical, 2 high" where the runs list says "4 critical, 0 high" for the same run. Pass rates average over
+    every evaluated rule."""
     await db.execute(text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": str(tenant.id)})
     ids = [uuid.UUID(version_id)] if version_id else await _latest_version_ids(db, tenant)
     if not ids:
         return {"version_ids": [], "total": 0, "affected_records": 0,
                 "severity": {"critical": 0, "high": 0, "medium": 0, "low": 0}, "by_module": [], "by_dimension": [], "avg_pass_rate": None,
                 "dqs": composite_dqs([], scoring=await _scoring_raw(db, tenant)), "previous_dqs": None}
-    p = {"ids": [str(i) for i in ids]}
+    # tenant_id on every read, not only RLS: a superuser connection bypasses the policy, and another tenant's run id
+    # must read as empty.
+    p = {"ids": [str(i) for i in ids], "tid": str(tenant.id)}
     narrow = {k: v for k, v in (("module", module), ("dimension", dimension), ("check_id", check_id)) if v}
     where = "".join(f" AND {k} = :{k}" for k in narrow)
     if severity:
@@ -235,9 +243,10 @@ async def aggregate_findings(
         where += f" AND severity IN ({', '.join(':' + k for k in sevs)})"
         narrow.update(sevs)
     rows = (await db.execute(text(f"""
-        SELECT module, severity, dimension, count(*) AS n, COALESCE(sum(affected_count), 0) AS affected,
+        SELECT module, severity, dimension, count(*) AS n, count(*) FILTER (WHERE affected_count > 0) AS failing,
+               COALESCE(sum(affected_count), 0) AS affected,
                avg(pass_rate) AS avg_pass, COALESCE(sum(cost_at_risk) FILTER (WHERE affected_count > 0), 0) AS cost
-          FROM findings WHERE version_id = ANY(CAST(:ids AS uuid[])){where}
+          FROM findings WHERE tenant_id = CAST(:tid AS uuid) AND version_id = ANY(CAST(:ids AS uuid[])){where}
          GROUP BY module, severity, dimension
     """), {**p, **narrow})).mappings().all()
     sev = {"critical": 0, "high": 0, "medium": 0, "low": 0}
@@ -245,16 +254,17 @@ async def aggregate_findings(
     by_dim: dict[str, dict] = {}
     for r in rows:
         n = int(r["n"])
-        sev[r["severity"]] = sev.get(r["severity"], 0) + n
+        failing = int(r["failing"])
+        sev[r["severity"]] = sev.get(r["severity"], 0) + failing
         m = by_module.setdefault(r["module"], {"module": r["module"], "findings": 0, "affected": 0,
                                                "critical": 0, "high": 0, "medium": 0, "low": 0, "_pass": [],
                                                "cost_at_risk": 0.0})
-        m["findings"] += n
+        m["findings"] += failing
         m["cost_at_risk"] = round(m["cost_at_risk"] + float(r["cost"]), 2)
         m["affected"] += int(r["affected"])
-        m[r["severity"]] = m.get(r["severity"], 0) + n
+        m[r["severity"]] = m.get(r["severity"], 0) + failing
         d = by_dim.setdefault(r["dimension"], {"dimension": r["dimension"], "findings": 0, "_pass": []})
-        d["findings"] += n
+        d["findings"] += failing
         if r["avg_pass"] is not None:
             m["_pass"].append((float(r["avg_pass"]), n))
             d["_pass"].append((float(r["avg_pass"]), n))
@@ -265,7 +275,8 @@ async def aggregate_findings(
         return entry
 
     summaries = (await db.execute(text(
-        "SELECT dqs_summary FROM analysis_versions WHERE id = ANY(CAST(:ids AS uuid[]))"), p)).scalars().all()
+        "SELECT dqs_summary FROM analysis_versions WHERE tenant_id = CAST(:tid AS uuid) AND id = ANY(CAST(:ids AS uuid[]))"),
+        p)).scalars().all()
     # the run before each of these in its own lineage, for the delta
     previous = (await db.execute(text(f"""
         SELECT DISTINCT ON (lineage) dqs_summary FROM (
@@ -275,7 +286,7 @@ async def aggregate_findings(
                AND {lineage_sql('cur')} = {lineage_sql('av')}
              WHERE av.tenant_id = :tid AND av.{_COMPLETE} AND av.run_at < cur.run_at AND av.id <> cur.id
         ) x ORDER BY lineage, run_at DESC
-    """), {**p, "tid": str(tenant.id)})).scalars().all()
+    """), p)).scalars().all()
     scoring = await _scoring_raw(db, tenant)
     prev = composite_dqs(list(previous), scoring=scoring)
     overall = _avg({"_pass": [pair for d in by_dim.values() for pair in d["_pass"]]})

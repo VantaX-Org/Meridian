@@ -35,7 +35,7 @@ describe("route insight", () => {
       ...empty, hasRun: true, runId: "r1", dqs: 72.4, prevDqs: 70, critical: 3, total: 120, affected: 4500,
       worst: { module: "material_master", label: "Material master", findings: 61, critical: 2 },
     });
-    expect(h.situation.sentence).toBe("Quality is at 72.4, with 120 findings across 4,500 records.");
+    expect(h.situation.sentence).toBe("Quality is at 72.4, with 120 failing rules and 4,500 rule failures.");
     expect(h.changed.sentence).toBe("Up 2.4 points since the last run.");
     expect(h.why.sentence).toMatch(/3 critical findings are capping the score/);
     expect(h.next.href).toBe("/objects/material_master?run=r1");

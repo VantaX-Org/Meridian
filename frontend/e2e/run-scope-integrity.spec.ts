@@ -7,7 +7,7 @@
  */
 
 import type { Page } from "@playwright/test";
-import { expect, json, test } from "./fixtures";
+import { RECORDED, expect, json, test } from "./fixtures";
 
 const SYSTEM_S1 = {
   id: "s1", name: "ECC Prod", system_type: "ecc", host: null, client: null, sysnr: null, username: null,
@@ -59,4 +59,18 @@ test("the run picker is offered where a run is read, and not where it would do n
   // Approvals, Monitor and Duplicates work across every run, so a picker there changed nothing.
   await app.goto("/fix?tab=batches");
   await expect(app.getByTestId("global-run")).toHaveCount(0);
+});
+
+test("a run and object opened on an object page are never carried onto the cross-object pages", async ({ app }) => {
+  // The steward opens material master's 25k run, then follows plain links: Fix work, the retired Inbox › Issues
+  // and an insight view open on the current state, not on that run and object ("No records match").
+  await app.goto(`/objects/material_master?run=${RECORDED.materialRunId}`);
+  await expect(app).toHaveURL(new RegExp(`run=${RECORDED.materialRunId}`));
+  for (const [href, landed] of [["/fix", /\/fix$/], ["/inbox?kind=issues", /\/fix\?mine=1$/], ["/insights/progress", /\/insights\/progress$/]] as const) {
+    await app.goto(href);
+    await expect(app).toHaveURL(landed);
+    await app.waitForTimeout(500);
+    expect(new URL(app.url()).searchParams.get("run"), href).toBeNull();
+    expect(new URL(app.url()).searchParams.get("module"), href).toBeNull();
+  }
 });

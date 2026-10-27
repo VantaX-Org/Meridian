@@ -26,6 +26,31 @@ export const PROCESS_L1_MODULES: Readonly<Record<string, readonly string[]>> = {
   OTC: ["accounts_receivable", "sd_customer_master", "sd_sales_orders", "fi_gl"],
 };
 
+/** The process objects in definition order (procure to pay, then order to cash), each once. */
+const PROCESS_ORDER: readonly string[] = [...new Set(Object.values(PROCESS_L1_MODULES).flat())];
+
+/**
+ * The process objects of the current state, in definition order, each with the run it is read from (its own latest
+ * run). Objects without an L1 to L5 definition are left out: the current state never offers an object it cannot
+ * score.
+ */
+export function currentProcessObjects<T extends { module: string }>(objects: readonly T[]): T[] {
+  return PROCESS_ORDER.map((m) => objects.find((o) => o.module === m)).filter((o): o is T => !!o);
+}
+
+/**
+ * The object the current state opens on: the first process object whose own run has a process document, so the page
+ * never opens on an empty object while another has readiness. Undefined while a read that comes first is pending;
+ * the first object when none has a document.
+ */
+export function firstWithProcesses(modules: readonly string[], reads: readonly { data?: readonly unknown[]; isLoading: boolean }[]): string | undefined {
+  for (let i = 0; i < modules.length; i++) {
+    if (reads[i]?.isLoading) return undefined;
+    if (reads[i]?.data?.length) return modules[i];
+  }
+  return modules[0];
+}
+
 /** The objects of `modules` that carry `l1`'s definition, in definition order; empty for an L1 without one. */
 export const modulesOfL1 = (l1: string, modules: readonly string[]): string[] =>
   (PROCESS_L1_MODULES[l1] ?? []).filter((m) => modules.includes(m));

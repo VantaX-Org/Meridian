@@ -238,16 +238,18 @@ describe("system detail page", () => {
     expect(box).not.toBeChecked();
   });
 
-  it("writes the system type as its product name and says runs come from uploads when nothing was extracted", async () => {
+  it("writes the system type as its product name and counts the latest run's objects when nothing was extracted", async () => {
     mockHappyPath();
     vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({
-      versions: [{ id: "v1", run_at: "2026-10-01T00:00:00Z", label: null, status: "complete", objects: ["material_master"], scope: {}, records: {}, analysed_at: "2026-10-01T00:00:00Z", rule_set: null, baseline: false, analysable: true, dqs: { material_master: 70 } }] as never,
+      versions: [{ id: "v1", run_at: "2026-10-01T00:00:00Z", label: null, status: "complete", objects: ["material_master"], scope: {}, records: { material_master: 7 }, analysed_at: "2026-10-01T00:00:00Z", rule_set: null, baseline: false, analysable: true, dqs: { material_master: 70 } }] as never,
       download: null,
     });
     renderWithQuery(<SystemPage />);
     await waitFor(() => expect(screen.getByText(/ECC, PRD/)).toBeInTheDocument());
     expect(screen.queryByText(/Ecc/)).toBeNull();
-    expect(screen.getAllByText("Runs come from uploads").length).toBeGreaterThan(0);
+    // KMZ-SIM said "Objects loaded —, Runs come from uploads" beside a run of 7 records and its findings.
+    expect(screen.getAllByText("7 records in the latest run").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Runs come from uploads")).toBeNull();
     expect(screen.queryByText("Nothing extracted yet")).toBeNull();
     expect(screen.queryByText(/0 of /)).toBeNull();
   });

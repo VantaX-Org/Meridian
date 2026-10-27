@@ -24,7 +24,7 @@ import { getSystemModules, getSystems, testConnection } from "@/lib/api/connecti
 import { getFindingsAggregate } from "@/lib/api/findings";
 import { getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
 import { discoverSystem, getDesign } from "@/lib/api/source-design";
-import { analyseVersion, downloadPollMs, getSystemVersions, startDownload, type SystemVersion } from "@/lib/api/system-objects";
+import { analyseVersion, downloadPollMs, getSystemVersions, objectsLoaded, startDownload, type SystemVersion } from "@/lib/api/system-objects";
 import { deleteSystem, getSyncProfiles, testEditedConnection, updateSystem } from "@/lib/api/systems";
 import { exportRuns } from "@/lib/api/versions";
 import { formatDate, formatModuleName, labelOf, relativeTime, runAxisLabels, systemTypeLabel } from "@/lib/format";
@@ -68,7 +68,7 @@ function healthHint(s: SAPSystemExtended, hasRuns: boolean): string {
     const reason = s.health_message?.trim() || "No reason recorded";
     return `${reason}, ${s.last_health_check ? `checked ${relativeTime(s.last_health_check)}` : "never checked"}`;
   }
-  return s.last_sync_at ? `Last extracted ${relativeTime(s.last_sync_at)}` : hasRuns ? "Runs come from uploads" : "Nothing extracted yet";
+  return s.last_sync_at ? `Last extracted ${relativeTime(s.last_sync_at)}` : hasRuns ? "Runs read, nothing extracted through the connection yet" : "Nothing extracted yet";
 }
 
 const systemScope = (s: { name: string; environment: string }) => `${s.name} (${environmentLabel(s.environment)})`;
@@ -216,7 +216,6 @@ export default function SystemPage() {
     );
   }
 
-  const loaded = modules.filter((m) => m.enabled && m.row_count > 0).length;
   const openExtract = () => setExtractOpen(true);
   const analysable = latest ?? versions[0];
   // Until the connection is known to work, testing it is the next step, not extracting from it.
@@ -297,8 +296,8 @@ export default function SystemPage() {
         <Stat
           label="Objects loaded"
           loading={modulesQ.isLoading}
-          value={loaded > 0 ? `${loaded} of ${modules.length}` : "—"}
-          hint={loaded > 0 ? undefined : versions.length ? "Runs come from uploads" : modules.length ? `${modules.length} objects not extracted yet` : undefined}
+          value={objectsLoaded(modules, versions[0]).value}
+          hint={objectsLoaded(modules, versions[0]).hint}
           href={`/systems/${systemId}?tab=objects`}
         />
         <Stat
