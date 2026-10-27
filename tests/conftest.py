@@ -41,4 +41,9 @@ def _session_revocation_off(request: pytest.FixtureRequest, monkeypatch: pytest.
     so the lookup answers "version 0" for them. Tests marked ``session_revocation`` keep the real one."""
     if request.node.get_closest_marker("session_revocation"):
         return
+    try:
+        import api.middleware.local_auth  # noqa: F401
+    except ModuleNotFoundError:
+        return  # engine-only environments (the 400k perf bench installs no web stack) have
+        # no auth middleware and run no route tests — there is nothing here to neutralise.
     monkeypatch.setattr("api.middleware.local_auth._current_token_version", lambda _uid, _tid: 0)
