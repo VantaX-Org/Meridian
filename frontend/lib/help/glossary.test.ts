@@ -89,6 +89,20 @@ describe("the four counts of what fails", () => {
     // The cap in one unit: critical failing rules over tolerance and the objects they cap (lib/home-metrics.ts capSentence).
     [/critical finding\S* (is|are) capping/, "the cap counted in critical findings"],
     [/capped by critical rules/, "the cap counted in capped objects alone"],
+    // The cap's count carries its noun: "4 critical failing rules", never a bare "4 critical".
+    [/\$\{criticals\} critical`/, "the cap's critical failing rules without a noun"],
+    // A ledger of rule failures is ranked by rule failures; one rule's records are its failing records.
+    [/Ranked by records affected/, "a ranking over a rule failures column called records affected"],
+    [/most records affected first/, "a rule ledger ranked by failing records called records affected"],
+    // The run's list of failing rules is "Failing rules" (the ?tab=findings link stays).
+    [/label: "Findings", content: <FindingsTab/, "the run's failing rules tab labelled findings"],
+    // Figures next to each other say their unit: critical records to fix beside critical and high failing rules.
+    [/\n\s+label="Critical"\n/, "a count labelled critical with no unit"],
+    [/label="Critical and high" value=/, "critical and high failing rules with no unit in the label"],
+    // One wording for records that carry a suggested value (Fix work's tile).
+    [/"With a suggestion"/, "records with a suggested value called with a suggestion"],
+    // What changed describes a change; who owns an issue is said under the owners.
+    [/changed: \{ sentence: [^\n]*Nobody owns/, "ownership stated as what changed"],
   ];
   it.each(MISLABELS)("no page labels %s (%s)", (pattern) => {
     const hits = [...sourceFiles("app"), ...sourceFiles("components"), ...sourceFiles("lib")]

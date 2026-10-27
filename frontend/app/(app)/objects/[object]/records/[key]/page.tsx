@@ -20,6 +20,7 @@ import { RecordPanel, workRecordKey } from "@/components/work/record-panel";
 import { getWorkRecord } from "@/lib/api/work";
 import { FieldSheet, sheetFields } from "./_field-sheet";
 import { identityValue, missingFields } from "./_record-facts";
+import { RuleName } from "@/components/fix/rule-cell";
 
 function SectionError({ what, query }: { what: string; query: UseQueryResult }) {
   return (
@@ -249,7 +250,7 @@ export default function RecordFixSheetPage() {
                 <li key={rule.check_id} className="flex flex-wrap items-baseline gap-2">
                   <Status kind="severity" value={rule.severity} />
                   <Link href={hrefWithRun(`/objects/${object}/rules/${encodeURIComponent(rule.check_id)}`, null, scope.explicit ?? null)} className="m-ink-accent underline underline-offset-2"><Mono>{rule.check_id}</Mono></Link>
-                  <span>{rule.message ?? ""}</span>
+                  <RuleName id={rule.check_id} fallback={rule.message} className="" />
                   {rule.field ? <Mono>{rule.field}</Mono> : null}
                 </li>
               ))}
@@ -273,7 +274,7 @@ export default function RecordFixSheetPage() {
                   <li key={`${view.view}-${rule.check_id}`} className="flex flex-wrap items-baseline gap-2">
                     <Status kind="severity" value={rule.severity} />
                     <Link href={hrefWithRun(`/objects/${object}/rules/${encodeURIComponent(rule.check_id)}`, null, scope.explicit ?? null)} className="m-ink-accent underline underline-offset-2"><Mono>{rule.check_id}</Mono></Link>
-                    <span>{rule.message}</span>
+                    <RuleName id={rule.check_id} fallback={rule.message} className="" />
                   </li>
                 )),
               )}

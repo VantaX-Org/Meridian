@@ -11,6 +11,7 @@ import { Button, Card, DataTable, Dialog, Drawer, DrillLink, EmptyState, Field, 
 import { createBatchFromSimulation, errorText } from "@/lib/api/remediation";
 import type { RuleChange, RuleDelta, SimulatedRecordFix, SimulationCompleted } from "@/lib/api/simulation";
 import { formatModuleName } from "@/lib/format";
+import { RuleCell } from "@/components/fix/rule-cell";
 
 const CHANGE_TONE: Record<RuleChange, PillTone> = {
   resolved: "go", improved: "go", newly_evaluated: "neutral", unchanged: "neutral", not_evaluated: "neutral",
@@ -27,7 +28,7 @@ function RuleTable({ title, rules, onOpen, versionId, name }: {
   title: string; rules: RuleDelta[]; onOpen: (r: RuleDelta) => void; versionId: string; name: string;
 }) {
   const columns = useMemo<ColumnDef<RuleDelta>[]>(() => [
-    { id: "rule", header: "Rule", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
+    { id: "rule", header: "Rule", cell: ({ row }) => <RuleCell id={row.original.check_id} /> },
     { id: "object", header: "Object", cell: ({ row }) => formatModuleName(row.original.module) },
     { id: "field", header: "Field", cell: ({ row }) => <Mono>{row.original.field}</Mono> },
     { id: "status", header: "Result", cell: ({ row }) => <Pill tone={CHANGE_TONE[row.original.status]}>{CHANGE_LABEL[row.original.status]}</Pill> },

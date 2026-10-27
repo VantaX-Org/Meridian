@@ -17,6 +17,7 @@
  *  - the features a cost per blocked record can be set for, /settings/cost-model/features (api/routes/settings.py);
  *  - process discovery's catalogue and run list, /process-discovery/systems/{id}/catalogue and /runs
  *    (api/routes/process_discovery.py): the seeded tenant has no discovery runs;
+ *  - rule names by check id, /rules/names (api/routes/rules.py), from the recorded rule lists;
  *  - the accounts payable process document of the vendor run, /business-process/{run}/accounts_payable
  *    (api/routes/business_process.py), which the process home reads.
  *
@@ -700,6 +701,29 @@ async function mockLatestRun(page: Router, har: string) {
 }
 
 /**
+ * Rule names by check id, GET /rules/names?check_ids=… (api/routes/rules.py `rule_names`), which the recording
+ * predates: the recorded rule lists' names ("MM045: Material type is missing") by the check id before the ':', the
+ * words after it, for the ids asked that the catalogue names.
+ */
+async function mockRuleNames(page: Router, har: string) {
+  const names = new Map<string, string>();
+  for (const e of entriesOf(har)) {
+    if (e.request.method !== "GET" || !/\/api\/v1\/rules(\?|$)/.test(e.request.url) || !e.response.content.text) continue;
+    const { text, encoding } = e.response.content;
+    const rules = (JSON.parse(encoding === "base64" ? Buffer.from(text, "base64").toString("utf8") : text) as { rules?: { name?: string | null }[] }).rules ?? [];
+    for (const { name } of rules) {
+      const at = name ? name.indexOf(":") : -1;
+      if (name && at > 0 && !names.has(name.slice(0, at))) names.set(name.slice(0, at), name.slice(at + 1).trim());
+    }
+  }
+  await page.route(/\/api\/v1\/rules\/names\?/, (r) => {
+    if (r.request().method() !== "GET") return r.fallback();
+    const ids = (new URL(r.request().url()).searchParams.get("check_ids") ?? "").split(",").filter(Boolean);
+    return r.fulfill(json({ names: Object.fromEntries(ids.filter((id) => names.has(id)).map((id) => [id, names.get(id)])) }));
+  });
+}
+
+/**
  * Value at risk and proven cost of the current state (`scope=current`, api/routes/insights.py), which Value at risk
  * and the executive summary read without ?run=: the recording holds them without a scope, which for the recorded
  * tenant (no priced feature, no proven cost) is the same answer.
@@ -917,4 +941,5 @@ export async function mockUnrecorded(page: Page, har: string) {
   await mockCostModel(router);
   await mockProcess(router);
   await mockMiningCurrent(router, har);
+  await mockRuleNames(router, har);
 }

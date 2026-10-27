@@ -28,6 +28,7 @@ import { discoverSystem, getDesign } from "@/lib/api/source-design";
 import { analyseVersion, downloadPollMs, getSystemVersions, objectsLoaded, startDownload, type SystemVersion } from "@/lib/api/system-objects";
 import { deleteSystem, getSyncProfiles, testEditedConnection, updateSystem } from "@/lib/api/systems";
 import { exportRuns } from "@/lib/api/versions";
+import { RuleName } from "@/components/fix/rule-cell";
 import { formatDate, formatModuleName, labelOf, plural, relativeTime, systemTypeLabel } from "@/lib/format";
 import { runAxisTicks } from "@/lib/run-axis";
 import { GatedPrimary, primaryRole } from "@/components/gated-primary";
@@ -560,7 +561,7 @@ function ObjectSummaryPane({ row, latest, systemId, canSync, canAnalyse, onExtra
             <dt className="m-text-label m-ink-3">Blocking rule</dt>
             <dd className="m-text-body">
               {s?.blocking_rule_id ? (
-                <><Mono>{s.blocking_rule_id}</Mono>{s.blocking_rule_name ? <span className="m-ink-2"> {s.blocking_rule_name}</span> : null}</>
+                <><Mono>{s.blocking_rule_id}</Mono>{" "}<RuleName id={s.blocking_rule_id} fallback={s.blocking_rule_name} /></>
               ) : s && s.failing_checks === 0 ? "None" : "—"}
             </dd>
           </div>

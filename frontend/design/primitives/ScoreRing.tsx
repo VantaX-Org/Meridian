@@ -24,6 +24,11 @@ export function scoreHue(score: number, bands: ScoreBands = DEFAULT_SCORE_BANDS)
 }
 
 /** A score as every surface prints it: one decimal ("71.7", "70.0"); a full score reads "100". */
+/** "4 critical failing rules": the cap's count always carries its noun (lib/help/glossary.ts, failing rules). */
+export function criticalRules(n: number): string {
+  return `${n.toLocaleString()} critical failing rule${n === 1 ? "" : "s"}`;
+}
+
 export function formatScore(n: number): string {
   const r = Math.round(n * 10) / 10;
   return r >= 100 ? "100" : r.toFixed(1);
@@ -69,7 +74,7 @@ export function ScoreRing({
   const capB = capV !== undefined ? point(capV, r + stroke / 2) : null;
 
   const svg = (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={capped ? `Score ${formatScore(shown)}, capped from ${formatScore(measured)}${criticals ? `, ${criticals} critical` : ""}` : `Score ${formatScore(shown)}`}>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={capped ? `Score ${formatScore(shown)}, capped from ${formatScore(measured)}${criticals ? `, ${criticalRules(criticals)}` : ""}` : `Score ${formatScore(shown)}`}>
       <circle cx={c} cy={c} r={r} fill="none" stroke="var(--m-dqs-track)" strokeWidth={stroke} strokeLinecap="round" transform={rot} {...arc(0, 100)} />
       {big && <line x1={c} x2={c} y1={stroke / 2} y2={size - stroke / 2} stroke="var(--m-line-strong)" strokeWidth={1} />}
       {capped && capV !== undefined && (
@@ -98,7 +103,7 @@ export function ScoreRing({
     <div className="inline-flex flex-col items-center gap-1">
       {svg}
       <span className="m-text-meta" style={{ color: "var(--m-ink-2)" }}>
-        {`Capped at ${formatScore(capV)}${criticals ? `, ${criticals} critical` : ""}`}
+        {`Capped at ${formatScore(capV)}${criticals ? `, ${criticalRules(criticals)}` : ""}`}
       </span>
     </div>
   );

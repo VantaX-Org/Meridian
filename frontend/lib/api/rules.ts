@@ -56,6 +56,17 @@ export async function getRules(params?: {
   return data;
 }
 
+/**
+ * GET /api/v1/rules/names — plain rule names ("Material type missing", no "MM045: " prefix) by check id, for this
+ * tenant. Ids the catalogue does not name are left out. At most 500 ids per call.
+ */
+export async function getRuleNames(checkIds: readonly string[]): Promise<Record<string, string>> {
+  const { data } = await apiClient.get<{ names: Record<string, string> }>("/api/v1/rules/names", {
+    params: { check_ids: checkIds.join(",") },
+  });
+  return data.names;
+}
+
 export async function getRulesSummary(): Promise<{ summary: RulesSummaryItem[] }> {
   const { data } = await apiClient.get("/api/v1/rules/summary");
   return data;

@@ -38,6 +38,7 @@ import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { Section } from "../_components/Section";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 import { burndownChart, DECISION_LABELS, daysText, finishSentence, pct, rateText, sourceLabel } from "./progress-model";
+import { RuleCell } from "@/components/fix/rule-cell";
 
 const PURPOSE = "How fast the data is getting fixed, and what is slowing it down.";
 const n = (x: number) => x.toLocaleString();
@@ -127,7 +128,7 @@ export default function ProgressPage() {
   ], [fix]);
 
   const ttfColumns = useMemo<ColumnDef<CheckFix>[]>(() => [
-    { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <DrillCount href={fix({ module: row.original.module, check: row.original.check_id })} label={drillLabel({ what: "open records", check: row.original.check_id, module: row.original.module })}><Mono>{row.original.check_id}</Mono></DrillCount> },
+    { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <DrillCount href={fix({ module: row.original.module, check: row.original.check_id })} label={drillLabel({ what: "open records", check: row.original.check_id, module: row.original.module })}><RuleCell id={row.original.check_id} /></DrillCount> },
     { id: "module", header: "Object", accessorFn: (r) => formatModuleName(r.module), cell: ({ row }) => <DrillCount href={fix({ module: row.original.module })} label={drillLabel({ what: "open records", module: row.original.module })}>{formatModuleName(row.original.module)}</DrillCount> },
     { accessorKey: "fixed", header: "Fixed", meta: { numeric: true }, cell: ({ row }) => <DrillCount href={fix({ module: row.original.module, check: row.original.check_id, st: "fixed" })} count={row.original.fixed} label={drillLabel({ what: "fixed records", check: row.original.check_id, module: row.original.module, of: "this run" })}>{n(row.original.fixed)}</DrillCount> },
     { accessorKey: "median_days", header: "Typical time", meta: { numeric: true }, cell: ({ row }) => daysText(row.original.median_days) },
@@ -135,7 +136,7 @@ export default function ProgressPage() {
   ], [fix]);
 
   const recurColumns = useMemo<ColumnDef<CheckRecurrence>[]>(() => [
-    { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <DrillCount href={fix({ module: row.original.module, check: row.original.check_id })} label={drillLabel({ what: "open records", check: row.original.check_id, module: row.original.module })}><Mono>{row.original.check_id}</Mono></DrillCount> },
+    { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <DrillCount href={fix({ module: row.original.module, check: row.original.check_id })} label={drillLabel({ what: "open records", check: row.original.check_id, module: row.original.module })}><RuleCell id={row.original.check_id} /></DrillCount> },
     { id: "module", header: "Object", accessorFn: (r) => formatModuleName(r.module), cell: ({ row }) => <DrillCount href={fix({ module: row.original.module })} label={drillLabel({ what: "open records", module: row.original.module })}>{formatModuleName(row.original.module)}</DrillCount> },
     { accessorKey: "reopened", header: "Came back", meta: { numeric: true }, cell: ({ row }) => <DrillCount href={fix({ module: row.original.module, check: row.original.check_id })} count={row.original.reopened} label={`${drillLabel({ what: "open records", check: row.original.check_id, module: row.original.module })}; ${n(row.original.reopened)} came back after a fix`}>{n(row.original.reopened)}</DrillCount> },
     { accessorKey: "issues", header: "Tracked", meta: { numeric: true }, cell: ({ row }) => n(row.original.issues) },

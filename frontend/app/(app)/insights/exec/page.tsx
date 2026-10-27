@@ -78,6 +78,13 @@ const listWords = (words: readonly string[]): string =>
   words.length > 1 ? `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}` : words[0] ?? "";
 
 /** A ledger's columns with the object's owner after its Object column (the owner set in the object header). */
+/** "Score up 2.1 since the last run" (the current state: "with the latest run"); the first run has nothing to compare. */
+function scoreChange(delta: number | null | undefined, isCurrent: boolean): string {
+  if (delta == null) return "First scored run: nothing to compare yet";
+  const s = deltaSentence(delta, isCurrent ? "with the latest run" : undefined);
+  return `Score ${s.charAt(0).toLowerCase()}${s.slice(1)}`;
+}
+
 function withOwner<T>(cols: ColumnDef<T>[], moduleOf: (row: T) => string, owners: Pick<ObjectOwners, "nameOf" | "status">): ColumnDef<T>[] {
   const owner: ColumnDef<T> = {
     id: "owner", header: "Owner", accessorFn: (row) => owners.nameOf(moduleOf(row)) ?? "",
@@ -271,14 +278,16 @@ export default function ExecPage() {
           topRisk || !costAtRisk.text
             ? { label: topRisk ? `Most at risk: ${l1Label(topRisk.l1)}` : "Most at risk", value: topRisk ? formatMoneyCompact(topRisk.value_at_risk, currency) : "—", hint: topRisk ? undefined : "No SAP feature priced yet", to: withScope("/insights/impact", { run: vid }) }
             : { label: COST_AT_RISK, value: costAtRisk.text, hint: "Failing records; no SAP feature priced yet", to: withScope("/insights/impact", { run: vid }) },
-          { label: "Owners improved", value: up, to: withScope("/insights/owners", { run: vid }) },
+          // Whether anyone owns an issue is said here, under the owners, not as a change.
+          { label: "Owners improved", value: up, hint: ownerRows.length === 0 ? "Nobody owns an issue yet" : undefined, to: withScope("/insights/owners", { run: vid }) },
           { label: "Owners slipped", value: down, tone: down ? "at-risk" : undefined, to: withScope("/insights/owners", { run: vid }) },
         ] : undefined,
         situation: {
           sentence: data?.narrative || (cells.length ? `${noGo} of ${pairs(cells.length)} cannot load` : "No migration wave is set up yet"),
           tone: cells.length === 0 ? "neutral" : noGo ? "no-go" : "go",
         },
-        changed: { sentence: ownerRows.length === 0 ? "Nobody owns an issue yet" : up + down === 0 ? "No owner moved since the last run" : `${plural(up, "owner")} improved, ${down} slipped since the last run` },
+        // What changed is a change: owners who moved, else the score's move since the run before.
+        changed: { sentence: up + down > 0 ? `${plural(up, "owner")} improved, ${down} slipped since the last run` : scoreChange(delta, isCurrent) },
         why: {
           sentence: topRisk
             ? `${l1Label(topRisk.l1)} carries the most value at risk, ${formatMoneyCompact(topRisk.value_at_risk, currency)}`

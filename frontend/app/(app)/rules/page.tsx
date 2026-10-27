@@ -65,7 +65,7 @@ const sevOf = (s: Rule["severity"]) => (s === "info" ? "low" : s);
 const rateOf = (r: Rule): number | null => (r.last_pass_rate == null ? null : r.last_pass_rate <= 1 ? r.last_pass_rate * 100 : r.last_pass_rate);
 const SEV_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 3 };
 /**
- * The ledger's rank: most records affected first (a pass-rate sort tied the top 40 rules at 0.0), then severity, then
+ * The ledger's rank: most failing records first (a pass-rate sort tied the top 40 rules at 0.0), then severity, then
  * the lower pass rate; rules not run yet last.
  */
 const affectedOf = (r: Rule): number | null => (r.last_affected_count == null ? null : r.last_affected_count);
@@ -370,7 +370,7 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
         <ErrorState {...apiErrorState(rulesQ.error)} onRetry={() => rulesQ.refetch()} />
       ) : visible.length ? (
         <section aria-label="Rule catalogue">
-          <LedgerHead title="Rules, most records affected first" meta={`${visible.length.toLocaleString()} of ${rules.length.toLocaleString()}`} />
+          <LedgerHead title="Rules, most failing records first" meta={`${visible.length.toLocaleString()} of ${rules.length.toLocaleString()}`} />
           <DataTable columns={columns} data={visible} getRowId={(r) => r.id} onRowClick={(r) => setSelectedId(r.id)} rowHref={(r) => `/rules/${r.id}`} tableId="rules-library" hideSearch exportOptions={exportOptions} exportName="rules" />
           <ConfirmDialog
             open={confirming !== null}

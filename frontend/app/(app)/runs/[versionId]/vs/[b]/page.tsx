@@ -258,15 +258,15 @@ export default function CompareRunsPage() {
   const diff = diffQ.data ?? null;
   const sentences = useMemo(() => (cmp ? compareNarrative(cmp, diff) : []), [cmp, diff]);
   const rows = useMemo(() => (cmp ? changeRows(cmp, changeFilter) : []), [cmp, changeFilter]);
-  const nameOf = useRuleNames();
-  const columns = useMemo(() => columnsFor(versionId, nameOf), [versionId, nameOf]);
-  const worseColumns = useMemo(() => worseColumnsFor(versionId, nameOf), [versionId, nameOf]);
   // Shown with every change, or with the sets that got worse; a filter to the fixed or better rules hides it.
   const worse = useMemo(() => {
     if (!cmp || (changeFilter && changeFilter !== "new" && changeFilter !== "worse")) return [];
     const listed = new Set([...cmp.checks.newly_failing, ...(cmp.checks.worse ?? [])].map((c) => `${c.module}:${c.check_id}`));
     return worseRows(diff?.checks ?? [], listed);
   }, [cmp, diff, changeFilter]);
+  const nameOf = useRuleNames([...rows, ...worse].map((r) => r.check_id));
+  const columns = useMemo(() => columnsFor(versionId, nameOf), [versionId, nameOf]);
+  const worseColumns = useMemo(() => worseColumnsFor(versionId, nameOf), [versionId, nameOf]);
 
   const moduleOptions: SelectOption[] = Object.keys(allModulesQ.data?.delta ?? cmp?.delta ?? {}).map((m) => ({
     value: m,

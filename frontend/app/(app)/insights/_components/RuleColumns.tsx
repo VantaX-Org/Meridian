@@ -6,12 +6,31 @@ import { Mono, Pill, type PillTone, Status } from "@/design";
 import type { RuleRow } from "@/lib/api/insights";
 import { drillLabel, fixHref } from "@/lib/drill";
 import { formatModuleName, labelOf } from "@/lib/format";
-import { ddicRuleName } from "@/lib/rule-name";
+import { ddicRuleName, ruleWords, useRuleNames } from "@/lib/rule-name";
 import { DrillCount } from "./DrillCount";
 
 const S4_TONE: Record<string, PillTone> = { blocking: "no-go", warning: "at-risk" };
 
 const n = (v: number) => v.toLocaleString();
+
+/** The ranking's own words for a rule (a YAML message, never the bare id), else the DDIC check's. */
+const rowWords = (r: RuleRow) => ruleWords(r.check_id, r.name) ?? ddicRuleName(r.check_id) ?? undefined;
+
+/**
+ * The rule in plain words (the tenant catalogue's name, else the ranking's words), the check id under them; the id
+ * alone when nothing names it.
+ */
+function RuleWordsCell({ row, href }: { row: RuleRow; href: string }) {
+  const name = useRuleNames([row.check_id])(row.check_id) ?? rowWords(row);
+  return (
+    <span className="flex flex-col [min-width:14rem]">
+      <span className="line-clamp-2" title={name || row.check_id}>
+        <DrillCount href={href} count={row.affected} label={drillLabel({ what: "failing records", check: row.check_id, module: row.module })}>{name || row.check_id}</DrillCount>
+      </span>
+      {name ? <span className="m-text-meta m-ink-3"><Mono>{row.check_id}</Mono></span> : null}
+    </span>
+  );
+}
 
 /** Columns of the failing-rules table. `compact` is the overview and exec subset. */
 export function ruleColumns(run: string | undefined, compact = false): ColumnDef<RuleRow>[] {
@@ -21,18 +40,8 @@ export function ruleColumns(run: string | undefined, compact = false): ColumnDef
     // Plain words first, the check id under them as the secondary key.
     {
       // A DDIC conformance check has no catalogue name: its id names the table and the kind of check.
-      id: "rule", header: "Rule", accessorFn: (r) => r.name || ddicRuleName(r.check_id) || r.check_id,
-      cell: ({ row }) => {
-        const name = row.original.name || ddicRuleName(row.original.check_id);
-        return (
-          <span className="flex flex-col [min-width:14rem]">
-            <span className="line-clamp-2" title={name || row.original.check_id}>
-              <DrillCount href={recordsHref(row.original)} count={row.original.affected} label={drillLabel({ what: "failing records", check: row.original.check_id, module: row.original.module })}>{name || row.original.check_id}</DrillCount>
-            </span>
-            {name ? <span className="m-text-meta m-ink-3"><Mono>{row.original.check_id}</Mono></span> : null}
-          </span>
-        );
-      },
+      id: "rule", header: "Rule", accessorFn: (r) => rowWords(r) ?? r.check_id,
+      cell: ({ row }) => <RuleWordsCell row={row.original} href={recordsHref(row.original)} />,
     },
     {
       id: "module", header: "Object", accessorFn: (r) => formatModuleName(r.module),

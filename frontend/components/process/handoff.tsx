@@ -14,6 +14,7 @@ import { apiErrorMessage } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { roleLabel } from "@/lib/roles";
+import { RuleCell } from "@/components/fix/rule-cell";
 
 export interface HandoffTarget {
   checkId: string;
@@ -71,7 +72,7 @@ export function HandoffDialog({ target, open, onOpenChange, onDone }: {
       </>}>
       <div className="grid gap-4">
         <p>
-          <Mono>{target.checkId}</Mono> on {formatModuleName(target.module)}
+          <RuleCell id={target.checkId} /> on {formatModuleName(target.module)}
           {target.process ? `, blocking ${target.process}` : ""}
           {target.field ? <> (<Mono>{target.field}</Mono>)</> : null}
         </p>

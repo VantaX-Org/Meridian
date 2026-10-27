@@ -28,6 +28,7 @@ import { ExportDialog } from "../_components/export-dialog";
 import { FlowView } from "../_components/flow-view";
 import { L5Table } from "../_components/l5-table";
 import { DiscoveryStart, NOT_MINABLE, canMine } from "../_components/discovery-start";
+import { ruleWords, useRuleNames } from "@/lib/rule-name";
 import { readinessHref, useProcessReadiness } from "@/components/process/shared";
 import { HandToSteward } from "@/components/process/handoff";
 import { NoSystem, fitnessTone, fmtCount, fmtFitness, fmtSeconds, l1Href, useProcessSystem } from "../_components/shared";
@@ -163,12 +164,15 @@ function BlockingRule({ l1, systemId, name }: { l1: string; systemId: string; na
   const { byL1, latest } = useProcessReadiness(systemId);
   const ready = byL1.get(l1);
   const w = ready?.worst;
+  // The rule's catalogue name (DDIC checks named from their id), else the readiness row's description.
+  const nameOf = useRuleNames([w?.check_id]);
   if (!ready || !w?.check_id) return null;
+  const words = nameOf(w.check_id) ?? ruleWords(w.check_id, w.description);
   return (
     <Notice tone="warning" title="Data blocks this process"
       action={<HandToSteward variant="secondary" target={{ checkId: w.check_id, module: ready.module, versionId: latest?.id, process: name, field: w.field }} />}>
       <Mono>{w.check_id}</Mono> fails on {ready.failing.toLocaleString()} {ready.failing === 1 ? "record" : "records"}
-      {w.description ? `: ${w.description}` : ""}
+      {words ? `: ${words}` : ""}
     </Notice>
   );
 }
