@@ -95,12 +95,21 @@ export function MinedDuplicates({ q, scope }: { q: UseQueryResult<MinedDuplicate
   );
 }
 
+/** The anomaly miner's detection methods (workers/tasks/mining/anomaly.py) in words; "Iqr" named nothing. */
+const DETECTION_METHODS: Record<string, string> = { iqr: "Interquartile range", zscore: "Z-score", z_score: "Z-score" };
+
+/** A detection method as a reader says it; an unknown one reads as words. */
+export function detectionMethodLabel(method: string | null | undefined): string {
+  const key = (method ?? "").toLowerCase();
+  return Object.hasOwn(DETECTION_METHODS, key) ? DETECTION_METHODS[key] : labelOf(method);
+}
+
 export function MinedAnomalies({ q, scope }: { q: UseQueryResult<MinedAnomaly[]>; scope: MinedScope }) {
   const columns = useMemo<ColumnDef<MinedAnomaly>[]>(() => [
     { id: "module", header: "Object", cell: ({ row }) => <DrillLink object={row.original.module_id} run={row.original.version_id}>{formatModuleName(row.original.module_id)}</DrillLink> },
     { id: "field", header: "Field", cell: ({ row }) => <Mono>{row.original.field_name}</Mono> },
     { id: "value", header: "Value", cell: ({ row }) => (row.original.field_value === null ? "—" : row.original.field_value.toLocaleString()), meta: { numeric: true } },
-    { id: "method", header: "Method", cell: ({ row }) => labelOf(row.original.detection_method) },
+    { id: "method", header: "Method", cell: ({ row }) => detectionMethodLabel(row.original.detection_method) },
     { id: "z", header: "How unusual (z-score)", cell: ({ row }) => (row.original.z_score === null ? "—" : row.original.z_score.toFixed(1)), meta: { numeric: true } },
     { id: "severity", header: "Severity", cell: ({ row }) => <Status kind="severity" value={row.original.severity} /> },
     { id: "at", header: "Found", cell: ({ row }) => formatDate(row.original.detected_at, "date") },

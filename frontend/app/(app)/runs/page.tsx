@@ -1,7 +1,7 @@
 // frontend/app/(app)/runs/page.tsx
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -133,8 +133,9 @@ function makeColumns(allVersions: Version[], earlier: ReadonlyMap<string, Versio
       cell: ({ row }) => {
         const more = earlier.get(row.original.id)?.length ?? 0;
         return (
-          <span className="inline-flex items-center gap-2" title={formatDate(row.original.run_at, "datetime")}>
-            <span>{runName(row.original)}</span>
+          // Wraps on a phone: the note drops under the name rather than running under the pinned Open.
+          <span className="inline-flex flex-wrap items-center gap-x-2" title={formatDate(row.original.run_at, "datetime")}>
+            <span className="min-w-0">{breakAtUnderscores(runName(row.original))}</span>
             {more > 0 ? <span className="m-text-meta m-ink-3 whitespace-nowrap">{`+${plural(more, "earlier run")}`}</span> : null}
             {row.original.metadata?.baseline === true ? <Pill>Baseline</Pill> : null}
             {row.original.metadata?.archived ? <Pill>Archived</Pill> : null}
@@ -209,6 +210,12 @@ function makeColumns(allVersions: Version[], earlier: ReadonlyMap<string, Versio
       ),
     },
   ];
+}
+
+/** An upload name ("quality_management_1k") that may wrap after each underscore on a phone, never mid-word. */
+function breakAtUnderscores(name: string): ReactNode {
+  const parts = name.split("_");
+  return parts.map((p, i) => (i < parts.length - 1 ? <Fragment key={i}>{p}_<wbr /></Fragment> : <Fragment key={i}>{p}</Fragment>));
 }
 
 /** The earlier runs folded under a ledger row: each with its time, status and score, a compare with the row's run, and Open. */

@@ -158,7 +158,7 @@ function RulesTab({ object, run, checkId }: { object: string; run: string; check
       accessorKey: "severity",
       header: "Severity",
       cell: ({ row }) =>
-        isSeverity(row.original.severity) ? <SeverityDot severity={row.original.severity} /> : row.original.severity,
+        isSeverity(row.original.severity) ? <SeverityDot severity={row.original.severity} labelled /> : row.original.severity,
     },
     {
       accessorKey: "check_id",

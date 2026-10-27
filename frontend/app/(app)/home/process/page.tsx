@@ -141,6 +141,8 @@ export default function ProcessHomePage() {
         />
         {exportAction}
       </>} />
+      {/* The tour offer sits under the header, as on every other home, never between the stats and the runs. */}
+      <HomeOnboarding />
       {starting && <DiscoveryStart system={system} rows={rows} />}
       {/* After day one (or once an analysis scores the processes) the page leads with its verdict and next step. */}
       {(!starting || readiness.byL1.size > 0) && <InsightHeader {...processHomeInsight(ledger, system, readiness.latest)} />}
@@ -155,7 +157,6 @@ export default function ProcessHomePage() {
         <Stat label="Median fitness" help="fitness" value={fmtFitness(h.fitness)} href={catalogueHref}
           tone={h.fitness == null ? undefined : (fitnessTone(h.fitness) as StatTone)} />
       </div>
-      <HomeOnboarding />
       <Card title="Latest runs">
         {runs.isError
           ? <ErrorState {...apiErrorState(runs.error)} onRetry={() => runs.refetch()} />

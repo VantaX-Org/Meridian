@@ -17,7 +17,7 @@ vi.mock("next/navigation", () => ({
 }));
 const perms = vi.hoisted(() => ({ can: (() => true) as (action: string) => boolean }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (a: string) => perms.can(a) }) }));
-vi.mock("@/components/help/home-onboarding", () => ({ HomeOnboarding: () => null }));
+vi.mock("@/components/help/home-onboarding", () => ({ HomeOnboarding: () => <div data-testid="home-onboarding" /> }));
 
 const SYS = { id: "sys-1", name: "KSA PRD", system_type: "S4HANA" } as unknown as SAPSystemExtended;
 const row = (l1: string, name: string): CatalogueRow => ({
@@ -98,6 +98,19 @@ describe("process home", () => {
     expect(await screen.findByText("No discovery run yet")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Run discovery" })).toHaveLength(1);
     expect(screen.getByText(/^Discovery reads the document and change tables of each process from KSA PRD/)).toBeInTheDocument();
+  });
+
+  it("offers the tour at the top, under the header and before the start panel, as on the other homes", async () => {
+    const never = (l: string, n: string): CatalogueRow => ({ ...row(l, n), coverage: "reference", last_run: null });
+    vi.spyOn(pdApi, "getCatalogue").mockResolvedValue([never("PTP", "Procure to pay")]);
+    vi.spyOn(connectivityApi, "getBusinessProcess").mockResolvedValue([]);
+    renderWithQuery(<ProcessHomePage />);
+    const start = await screen.findByText("No discovery run yet");
+    const tour = screen.getByTestId("home-onboarding");
+    const heading = screen.getByRole("heading", { name: "Home" });
+    expect(heading.compareDocumentPosition(tour) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(tour.compareDocumentPosition(start) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(tour.compareDocumentPosition(screen.getByText("Can each process run")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("leaves the start panel out once a process is discovered", async () => {

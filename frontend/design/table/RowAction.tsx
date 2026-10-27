@@ -8,7 +8,7 @@ import type { CellMeta } from "./columns";
 const stop = (e: MouseEvent) => e.stopPropagation();
 
 /** The one style of a row's action, link or button: medium accent ink, underlined on hover. */
-export const ROW_ACTION_CLASS = "m-text-body font-medium m-ink-accent-ink underline-offset-2 hover:underline";
+export const ROW_ACTION_CLASS = "whitespace-nowrap m-text-body font-medium m-ink-accent-ink underline-offset-2 hover:underline";
 
 /**
  * The row's one action as a link ("Open", "Fix", "Review"). The row's own click opens the same place, so the link

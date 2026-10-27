@@ -456,6 +456,21 @@ describe("DataTable layout features", () => {
     expect(open).toHaveAttribute("href", "/x/1");
     expect(open.className).toBe(ROW_ACTION_CLASS);
     const cell = open.closest("td");
-    expect(cell).toHaveClass("sticky", "right-0", "bg-[var(--m-sheet)]");
+    expect(cell).toHaveClass("sticky", "right-0", "bg-[var(--m-sheet)]", "whitespace-nowrap");
+    expect(open).toHaveClass("whitespace-nowrap");
+  });
+
+  it("pins a plain action column to the right edge on one line, so a phone never clips Open to Ope", () => {
+    const cols = [
+      textColumn<Row>("name", "Name"),
+      { id: "action", header: "", cell: ({ row }: { row: { original: Row } }) => <a href={`/x/${row.original.id}`}>Open</a> },
+    ];
+    render(<DataTable columns={cols} data={rows} getRowId={(r) => r.id} hideToolbar />);
+    const head = screen.getAllByRole("columnheader");
+    expect(head[1]).toHaveClass("sticky", "right-0", "whitespace-nowrap");
+    const cell = screen.getAllByRole("link", { name: "Open" })[0].closest("td");
+    expect(cell).toHaveClass("sticky", "right-0", "whitespace-nowrap", "bg-[var(--m-sheet)]");
+    // An ordinary column is never pinned.
+    expect(head[0]).not.toHaveClass("sticky");
   });
 });

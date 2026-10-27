@@ -28,7 +28,7 @@ import { Menu } from "../primitives/Menu";
 import { exportOptionLabel, runExportOption, type ExportOption } from "../primitives/ExportMenu";
 import { deleteView, loadViews, saveView, toCsv, type TableView } from "./views";
 export type { TableView } from "./views";
-import { barFill, columnLayoutClass, type CellMeta } from "./columns";
+import { barFill, columnLayoutClass, layoutMeta, type CellMeta } from "./columns";
 import { rampStep } from "../tokens";
 import { readPrefs, subscribePreferences } from "../../lib/preferences";
 
@@ -214,6 +214,23 @@ export function DataTable<T>({
   const rowH = dense ? rowHeights.dense : rowHeights.comfortable;
   const uid = useId();
   const parentRef = useRef<HTMLDivElement>(null);
+  // Whether the table is wider than its card: then the pinned action column draws a divider, so a cell running
+  // under it reads as scrolled, not as clipped by the action. Written straight to the scroller's data attribute:
+  // a state update here re-rendered the page around the table and replayed its entry animations.
+  useEffect(() => {
+    const el = parentRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const check = () => {
+      const over = el.scrollWidth > el.clientWidth + 1;
+      if (over) el.dataset.overflowX = "true"; else delete el.dataset.overflowX;
+    };
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    const table = el.firstElementChild;
+    if (table) ro.observe(table);
+    return () => ro.disconnect();
+  }, []);
 
   // A checkbox reads "Select Plant 1000", never "Select row 3f2a…": the caller's name, else the first text cell.
   const nameOfRow = (row: Row<T>): string => {
@@ -493,7 +510,7 @@ export function DataTable<T>({
                 {hg.headers.map((h) => {
                   const sortable = h.column.getCanSort();
                   const sorted = h.column.getIsSorted();
-                  const headMeta = h.column.columnDef.meta as CellMeta | undefined;
+                  const headMeta = layoutMeta(h.column.id, h.column.columnDef.meta as CellMeta | undefined);
                   const headHeat = headMeta?.heat;
                   return (
                     <th
@@ -580,7 +597,7 @@ export function DataTable<T>({
                   }}
                 >
                   {row.getVisibleCells().map((cell) => {
-                    const meta = cell.column.columnDef.meta as CellMeta | undefined;
+                    const meta = layoutMeta(cell.column.id, cell.column.columnDef.meta as CellMeta | undefined);
                     const content = flexRender(cell.column.columnDef.cell, cell.getContext());
                     const heat = meta?.heat ? heatClass(meta.heat, cell.getValue(), heatRanges.get(cell.column.id) ?? [0, 1]) : undefined;
                     const firstText = onRowClick && cell.column.id === firstTextColumnId;

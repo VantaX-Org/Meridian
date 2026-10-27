@@ -31,3 +31,21 @@ export function runAxisTicks(runs: readonly { id: string; run_at: string | null 
   }
   return out;
 }
+
+/**
+ * Option labels for a run picker: the run's label, and where two runs share a label, the label with the run's
+ * date in the axis's one format for that group, so 19 runs of "controlling_1k" read as 19 different options.
+ */
+export function runOptionLabels(runs: readonly { id: string; label?: string | null; run_at: string | null | undefined }[]): Map<string, string> {
+  const base = (r: (typeof runs)[number]) => r.label || formatDate(r.run_at, "datetime");
+  const groups = new Map<string, (typeof runs)[number][]>();
+  for (const r of runs) groups.set(base(r), [...(groups.get(base(r)) ?? []), r]);
+  const out = new Map<string, string>();
+  for (const [name, group] of groups) {
+    if (group.length === 1) { out.set(group[0].id, name); continue; }
+    const when = runAxisTicks(group);
+    // A label that already is the date is replaced by the finer date, never repeated beside it.
+    for (const r of group) out.set(r.id, r.label ? `${name}, ${when.get(r.id)}` : when.get(r.id) ?? name);
+  }
+  return out;
+}
