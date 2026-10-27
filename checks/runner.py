@@ -370,7 +370,11 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
         return rule, None  # decided from the columns alone: nothing decoded for a rule that cannot apply
     if rule.get("check_class") in ("referential_check", "domain_value_check"):
         rule = _with_reference(rule, frames.dictionary, reference_values or {})
-    if rule.get("check_class") == "exists_check":
+    if rule.get("check_class") in ("exists_check", "reconciliation_check"):
+        # reconciliation used to sit inside the exists_check branch, where its ternary could
+        # never select _with_target_sums: the class then saw no _target_total, returned an
+        # empty population, and scored 100 % — a silent PASS on an unchecked ledger. The unit
+        # tests injected the total themselves, so only the runner path hid it (test_reconciliation_wiring).
         resolved = _with_target_sums(rule, frames, as_of) if rule.get("check_class") == "reconciliation_check" \
             else _with_targets(rule, frames, as_of)
         if resolved is None:

@@ -11,6 +11,7 @@ import pandas as pd
 
 from checks.frames import TableFrames
 from checks.runner import _with_target_sums, run_rule
+from checks.types.reconciliation_check import ReconciliationCheck
 from sap.ddic import get_dictionary
 
 D = get_dictionary("ecc6")
@@ -36,7 +37,14 @@ def _resolved(rule, target_amounts):
 
 
 def _result(resolved, source):
-    return run_rule(resolved, _frames(source=source), {})[1]
+    """Run the resolved rule the way the runner now runs it: with the target table present,
+    since run_rule re-resolves _target_total from the frames (it used to touch nothing, which
+    is what made the dead wiring invisible here — the injected total simply survived)."""
+    tables = {"BSIK": source}
+    total = resolved.get("_target_total")
+    if total is not None:
+        tables["BSEG"] = pd.DataFrame({"BSEG.DMBTR": [str(total)]})
+    return run_rule(resolved, TableFrames(tables, D, module="accounts_payable"), {})[1]
 
 
 def test_equal_totals_pass():
@@ -79,11 +87,32 @@ def test_a_missing_target_column_is_not_judged():
     assert _with_target_sums({**BASE_RULE}, frames, None) is None
 
 
-def test_without_a_target_total_nothing_is_condemned():
-    """Defensive: if the runner ever fails to resolve the target, every row must not fail."""
-    res = _result({**BASE_RULE}, pd.DataFrame({"BSIK.DMBTR": ["100.00"]}))
-    assert res.affected_count == 0
-    assert res.details.get("skipped") == "target total unavailable"
+def test_without_a_target_total_the_runner_refuses_to_judge():
+    """Semantics hardened by the wiring fix: with no target table to resolve, run_rule returns
+    NO result (nothing evaluated, nothing scored) instead of reaching the class blind. The
+    class-level defence still holds when the check is invoked directly: nothing is condemned."""
+    rule, res = run_rule(dict(BASE_RULE), _frames(source=pd.DataFrame({"BSIK.DMBTR": ["100.00"]})), {})
+    assert res is None
+    direct = ReconciliationCheck(dict(BASE_RULE)).run(pd.DataFrame({"BSIK.DMBTR": ["100.00"]}))
+    assert direct is not None and direct.affected_count == 0
+    assert direct.details.get("skipped") == "target total unavailable"
+
+
+def test_the_runner_wires_the_target_total_end_to_end():
+    """Regression: the reconciliation branch sat inside the exists_check case in
+    checks/runner.py, so run_rule never called _with_target_sums for this class. The check then
+    saw no _target_total, returned an empty population — and pass_rate_of(0, 0) scored a 100 %
+    PASS on an unchecked ledger. Every other test in this file injects the total itself, so only
+    the runner path exposes the wiring; this test is that path."""
+    frames = TableFrames({"BSIK": pd.DataFrame({"BSIK.DMBTR": ["100.00", "50.00"]}),
+                          "BSEG": pd.DataFrame({"BSEG.DMBTR": ["100.00"]})},
+                         D, module="accounts_payable")
+    rule, res = run_rule(dict(BASE_RULE), frames, {})
+    assert res is not None
+    assert res.total_count == 2 and res.affected_count == 2      # judged, and failing
+    assert res.pass_rate == 0.0                                   # was 100.0 while the wiring was dead
+    assert res.details["target_total"] == 100.0 and res.details["difference"] == 50.0
+    assert "skipped" not in res.details
 
 
 # ── the constraint that stops the first shipped rule ────────────────────────────────────────────
