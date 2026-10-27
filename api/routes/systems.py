@@ -4,6 +4,7 @@ CRUD for sap_systems and sync_profiles.
 All endpoints apply require_permission checks.
 """
 
+import asyncio
 import logging
 import re
 import uuid
@@ -537,8 +538,12 @@ async def delete_sync_profile(
     await db.commit()
 
 
-def _run_connection_test(system_type: str, params: dict, secrets_to_mask: list[str]) -> TestConnectionResponse:
-    """Connect + ping with the given params, masking any secret that leaks into an error message."""
+def _connection_test_once(system_type: str, params: dict, secrets_to_mask: list[str]) -> TestConnectionResponse:
+    """Connect + ping with the given params, masking any secret that leaks into an error message.
+
+    Synchronous and blocking by nature (pyRFC gives no timeout parameter; cloud clients
+    default to 120 s) — callers must run it off the event loop, see _run_connection_test.
+    """
     from sap.base import SAPConnectorError
 
     def mask(message: str) -> str:
@@ -558,9 +563,51 @@ def _run_connection_test(system_type: str, params: dict, secrets_to_mask: list[s
         if "pyrfc_not_installed" in str(e):
             return TestConnectionResponse(connected=False, message="PyRFC is not installed")
         return TestConnectionResponse(connected=False, message=f"Connection failed: {mask(str(e))}")
+    except Exception as e:
+        # A missing endpoint field raised AttributeError inside the connector constructor,
+        # outside SAPConnectorError's reach: the route 500'd and every UI surface read that as
+        # "Could not reach the server." — our own defect disguised as a network outage. Name it
+        # as a parameter problem and log the real cause for ops; never 500 a connection test.
+        logger.exception("connection test crashed on malformed params (%s)", system_type)
+        return TestConnectionResponse(
+            connected=False,
+            message="Connection failed: the stored or entered connection parameters are incomplete.",
+        )
     finally:
         if connector is not None:
             connector.close()
+
+
+# A "Test connection" click must answer in seconds, not when the TCP stack gives up. pyRFC accepts
+# no timeout, so the wall-clock bound is enforced here. The thread cannot be killed on timeout — the
+# socket dies with pyRFC's own retries — but the event loop is released, which is the point: these
+# probes used to run inline in `async def` handlers, so one filtered host froze every tenant's API.
+_CONNECTION_TEST_TIMEOUT_S = 45.0
+
+
+async def _run_connection_test(system_type: str, params: dict, secrets_to_mask: list[str]) -> TestConnectionResponse:
+    """Run _connection_test_once on a worker thread with a hard timeout, off FastAPI's event loop."""
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(_connection_test_once, system_type, params, secrets_to_mask),
+            timeout=_CONNECTION_TEST_TIMEOUT_S,
+        )
+    except asyncio.TimeoutError:
+        return TestConnectionResponse(
+            connected=False,
+            message=f"Connection attempt timed out after {int(_CONNECTION_TEST_TIMEOUT_S)} seconds — the system did not answer.",
+        )
+
+
+def _require_endpoint_fields(system_type: str, params: dict) -> None:
+    """400 when a connection cannot even be attempted: the check POST /systems applies on register,
+    so the test routes — which validated nothing — could only fail as a 500 or a confusing ping error."""
+    if system_type in RFC_SYSTEM_TYPES:
+        if not (params.get("host") and params.get("client") and params.get("sysnr")):
+            raise HTTPException(status_code=400, detail="host, client and sysnr are required for this system_type")
+    elif system_type in CLOUD_SYSTEM_TYPES:
+        if not params.get("base_url"):
+            raise HTTPException(status_code=400, detail="base_url is required for this system_type")
 
 
 _SECRET_KEYS = ("password", "client_id", "client_secret", "api_key")
@@ -657,7 +704,8 @@ async def test_draft_connection(
 
     secrets = {k: body.credentials.get(k, "") for k in _SECRET_KEYS}
     params = _draft_params(body, body.system_type, secrets)
-    return _run_connection_test(body.system_type, params, [secrets["password"], secrets["client_secret"], secrets["api_key"]])
+    _require_endpoint_fields(body.system_type, params)
+    return await _run_connection_test(body.system_type, params, [secrets["password"], secrets["client_secret"], secrets["api_key"]])
 
 
 @router.post("/systems/{system_id}/test-connection", response_model=TestConnectionResponse)
@@ -708,7 +756,8 @@ async def test_edited_connection(
     # The type is the stored one (an edit cannot change it); an absent auth type keeps the stored one.
     draft = body.model_copy(update={"auth_type": auth_type})
     params = _draft_params(draft, system_type, secrets)
-    return _run_connection_test(system_type, params, [secrets["password"], secrets["client_secret"], secrets["api_key"]])
+    _require_endpoint_fields(system_type, params)
+    return await _run_connection_test(system_type, params, [secrets["password"], secrets["client_secret"], secrets["api_key"]])
 
 
 @router.post("/systems/{system_id}/test", response_model=TestConnectionResponse)
@@ -772,7 +821,7 @@ async def test_connection(
         "api_key": api_key,
         "token_url": token_url or "",
     }
-    result = _run_connection_test(system_type, params, [password, client_secret, api_key])
+    result = await _run_connection_test(system_type, params, [password, client_secret, api_key])
     if result.connected and not discovery_status:
         enqueue_discovery(str(tenant.id), system_id)  # first successful connect → learn the design
     if result.connected:

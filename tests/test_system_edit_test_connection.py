@@ -44,7 +44,7 @@ class _DB:
 def captured(monkeypatch):
     seen: dict = {}
 
-    def fake_run(system_type: str, params: dict, secrets: list[str]) -> ConnResult:
+    async def fake_run(system_type: str, params: dict, secrets: list[str]) -> ConnResult:
         seen.update(system_type=system_type, params=params, secrets=secrets)
         return ConnResult(connected=True, message="Connection successful")
 
@@ -181,3 +181,62 @@ async def test_a_stored_secret_that_cannot_be_decrypted_says_so_without_detail(c
     assert not res.connected
     assert "abc123" not in res.message
     assert captured == {}
+
+
+# --- the #498 class: a test must answer as itself, never as a 500 or a silent loop stall ---
+
+
+@pytest.mark.asyncio
+async def test_draft_cloud_test_without_base_url_is_a_400_not_a_crash(captured):
+    """The connector dereferenced base_url outside SAPConnectorError's reach: an omitted field was
+    an AttributeError → 500 → "Could not reach the server." The route now names the missing field."""
+    body = RegisterSystemRequest(name="SF", system_type="successfactors", username="svc", credentials={})
+    with pytest.raises(HTTPException) as e:
+        await systems.test_draft_connection(body, role="admin")
+    assert e.value.status_code == 400
+    assert "base_url" in e.value.detail
+    assert captured == {}
+
+
+@pytest.mark.asyncio
+async def test_draft_rfc_test_without_sysnr_is_a_400_not_a_ping_failure(captured):
+    body = _body(host="h", client="200", credentials={"password": "p"})
+    with pytest.raises(HTTPException) as e:
+        await systems.test_draft_connection(body, role="admin")
+    assert e.value.status_code == 400
+    assert "sysnr" in e.value.detail
+
+
+@pytest.mark.asyncio
+async def test_unexpected_connector_crash_is_masked_as_a_failed_test(monkeypatch):
+    class _Boom:
+        def ping(self):
+            raise AttributeError("'NoneType' object has no attribute 'rstrip'")
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(systems, "connect_sap_system", lambda t, p: _Boom())
+    res = await systems._run_connection_test("successfactors", {}, [])
+    assert not res.connected
+    assert "incomplete" in res.message
+    assert "NoneType" not in res.message  # internals never reach the caller
+
+
+@pytest.mark.asyncio
+async def test_connection_test_times_out_off_the_event_loop(monkeypatch):
+    import time as _time
+
+    class _Stall:
+        def ping(self):
+            _time.sleep(5)
+            return True
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(systems, "connect_sap_system", lambda t, p: _Stall())
+    monkeypatch.setattr(systems, "_CONNECTION_TEST_TIMEOUT_S", 0.05)
+    res = await systems._run_connection_test("ecc", {}, [])
+    assert not res.connected
+    assert "timed out" in res.message

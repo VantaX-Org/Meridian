@@ -81,7 +81,7 @@ describe("system detail page", () => {
     };
 
     it("tries the edited host, not the stored connection, with the secret left for the API to fill in", async () => {
-      const stored = vi.spyOn(connectivityApi, "testConnection");
+      const stored = vi.spyOn(systemsApi, "testConnection");
       const draft = vi.spyOn(systemsApi, "testEditedConnection").mockResolvedValue({ connected: false, message: "Connection failed: host not found" });
       const host = await openEdit();
       fireEvent.change(host, { target: { value: "new.internal" } });
@@ -130,7 +130,7 @@ describe("system detail page", () => {
     it("offers no edit drawer and points a failed test to an admin", async () => {
       denied = new Set(["manage_systems"]);
       mockHappyPath();
-      vi.spyOn(connectivityApi, "testConnection").mockResolvedValue({ status: "auth_failed", message: "Logon failed", latency_ms: 10 });
+      vi.spyOn(systemsApi, "testConnection").mockResolvedValue({ connected: false, message: "Connection failed: Logon failed" });
       const error = vi.spyOn(toast, "error").mockReturnValue(1);
       renderWithQuery(<SystemPage />);
       await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
@@ -144,7 +144,7 @@ describe("system detail page", () => {
 
     it("offers Update credentials on a failed test to whoever may edit the system", async () => {
       mockHappyPath();
-      vi.spyOn(connectivityApi, "testConnection").mockResolvedValue({ status: "auth_failed", message: "Logon failed", latency_ms: 10 });
+      vi.spyOn(systemsApi, "testConnection").mockResolvedValue({ connected: false, message: "Connection failed: Logon failed" });
       const error = vi.spyOn(toast, "error").mockReturnValue(1);
       renderWithQuery(<SystemPage />);
       await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
@@ -183,7 +183,7 @@ describe("system detail page", () => {
 
   it("header Test connection runs the shared mutation", async () => {
     mockHappyPath();
-    const spy = vi.spyOn(connectivityApi, "testConnection").mockResolvedValue({ status: "healthy", latency_ms: 12 } as never);
+    const spy = vi.spyOn(systemsApi, "testConnection").mockResolvedValue({ connected: true, message: "Connection successful" });
     renderWithQuery(<SystemPage />);
     await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: "Test connection" }));

@@ -13,7 +13,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { clsx } from "clsx";
 import { Bar, Button, Card, Checkbox, ConfirmDialog, DataTable, Delta, Drawer, DrillLink, EmptyState, ErrorState, ExportMenu, Field, Input, Line, Mono, Notice, PageHeader, Pill, Select, Skeleton, Stat, Status, Tabs, Tooltip, emptyExportOptions, type Verdict, entityTabs, toVerdict, toast, useBreadcrumbTitle, Score } from "@/design";
-import { HEALTH_LABEL, dqsTrend, healthReason, latestDqs } from "../_health";
+import { HEALTH_LABEL, dqsTrend, latestDqs } from "../_health";
 import { HealthReason } from "../_health-pill";
 import { DqsScore } from "@/components/insight/dqs-score";
 import { ConfigurationTab } from "./config-tab";
@@ -21,12 +21,12 @@ import { CustomObjectsTab } from "./custom-objects-tab";
 import { PreviewBadge } from "@/components/systems/preview-badge";
 import { ConfigLoadPanel } from "./config-load-panel";
 import { TrendPanel } from "./trend-panel";
-import { getSystemModules, getSystems, testConnection } from "@/lib/api/connectivity";
+import { getSystemModules, getSystems } from "@/lib/api/connectivity";
 import { getFindingsAggregate } from "@/lib/api/findings";
 import { getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
 import { discoverSystem, getDesign } from "@/lib/api/source-design";
 import { analyseVersion, downloadPollMs, getSystemVersions, objectsLoaded, startDownload, type SystemVersion } from "@/lib/api/system-objects";
-import { deleteSystem, getSyncProfiles, testEditedConnection, updateSystem } from "@/lib/api/systems";
+import { deleteSystem, getSyncProfiles, testConnection, testEditedConnection, updateSystem } from "@/lib/api/systems";
 import { exportRuns } from "@/lib/api/versions";
 import { RuleName } from "@/components/fix/rule-cell";
 import { formatDate, formatModuleName, labelOf, plural, relativeTime, systemTypeLabel } from "@/lib/format";
@@ -169,16 +169,18 @@ export default function SystemPage() {
   };
 
   const test = useMutation({
-    mutationFn: () => testConnection(systemId),
-    onSuccess: (r) => {
-      if (r.status === "healthy") {
-        toast.success(`Connection healthy, ${r.latency_ms} ms`);
+    mutationFn: async () => {
+      const t0 = performance.now();
+      const r = await testConnection(systemId);
+      return { r, ms: Math.max(1, Math.round(performance.now() - t0)) };
+    },
+    onSuccess: ({ r, ms }) => {
+      if (r.connected) {
+        toast.success(`Connection successful, ${ms} ms`);
       } else {
-        // The cause is the message; the fix is usually the credentials: one click away for whoever may edit
-        // the system, a pointer to an admin for everyone else.
-        const reason = healthReason(r.message);
-        const cause = `${HEALTH_LABEL[r.status as keyof typeof HEALTH_LABEL] ?? labelOf(r.status)}${reason ? `: ${reason.text}` : ""}`;
-        toast.error(cause, can("manage_systems")
+        // The endpoint's own message is the test result — show it verbatim. The old client read a
+        // queued Celery job as if it were the answer, so every healthy system failed this button.
+        toast.error(r.message, can("manage_systems")
           ? { action: { label: "Update credentials", onClick: () => setEditOpen(true) } }
           : { description: "Ask an admin to update the credentials." });
       }
@@ -188,7 +190,7 @@ export default function SystemPage() {
   });
   const testLabel = test.isPending
     ? "Testing"
-    : test.isError || (test.data && test.data.status !== "healthy")
+    : test.isError || (test.data && !test.data.r.connected)
       ? "Test failed, retry"
       : test.data
         ? "Connection tested"
