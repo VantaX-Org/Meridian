@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { buildDrillHref, Button, Card, DataTable, DimensionBars, DomainChip, DrillLink, EmptyState, ExportMenu, HomePage, Mono, ObjectMap, Pill, Select, Skeleton, Stat, type HeatmapCell, Status, Score, useMediaQuery } from "@/design";
+import { buildDrillHref, Button, Card, DataTable, DimensionBars, DomainChip, DrillLink, EmptyState, ErrorState, ExportMenu, HomePage, Mono, ObjectMap, Pill, Select, Skeleton, Stat, type HeatmapCell, Status, Score, useMediaQuery } from "@/design";
 import { RuleCell } from "@/components/fix/rule-cell";
 import { getObjects } from "@/lib/api/v1/objects";
 import { getFindings, getFindingsAggregate } from "@/lib/api/findings";
@@ -490,9 +490,8 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const inboxCard = role === "steward" ? (
     <Card title="Inbox" meta={countsReady ? `${plural(counts.inbox, "open item")}` : undefined} padding="sm">
       {queueQ.isLoading ? <Skeleton height={120} /> : queueQ.isError ? (
-        <div role="alert" data-state="error" className="flex flex-wrap items-center gap-3 m-text-body" data-testid="home-inbox-error">
-          <span>{`The inbox did not load. ${apiErrorState(queueQ.error).title}`}</span>
-          <Button variant="secondary" onClick={() => void queueQ.refetch()}>Retry</Button>
+        <div data-testid="home-inbox-error">
+          <ErrorState title="The inbox did not load" message={apiErrorState(queueQ.error).title} onRetry={() => void queueQ.refetch()} />
         </div>
       ) : queueItems.length === 0 ? (
         <EmptyState variant="inline" title="Nothing waits in the inbox" action={<Link href="/fix?sugg=1" className="underline-offset-2 hover:underline">{`Open records ${COUNT_DEFS.suggested.label.toLowerCase()}`}</Link>} />
