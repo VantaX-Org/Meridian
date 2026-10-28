@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, chartSummary, DataTable, EmptyState, ErrorState, Card, Mono, Pareto, Pill, Skeleton, Stat, Status } from "@/design";
+import { chartSummary, DataTable, EmptyState, ErrorState, Card, Mono, Pareto, Pill, Skeleton, Stat, Status } from "@/design";
 import {
   getImpact,
   getProvenCost,
@@ -128,6 +128,22 @@ const provenCostColumns = (run?: string): ColumnDef<ProvenCostRow>[] => [
   },
 ];
 
+/** The headline figures of the proven-cost answer, each only when it is above zero: a zero is not measured, so no tile. */
+function provenHeadlines(data: ProvenCostResponse | undefined) {
+  const topCost = largestCost(data?.cost_by_l1 ?? []);
+  const topRisk = largestValueAtRisk(data?.value_at_risk_by_l1 ?? []);
+  return {
+    topCost: topCost && topCost.amount > 0 ? topCost : null,
+    topRisk: topRisk && topRisk.value_at_risk > 0 ? topRisk : null,
+  };
+}
+
+/** True when the proven-cost answer holds anything to show; until it does the Proven cost card is left out. */
+function hasProvenData(data: ProvenCostResponse | undefined): boolean {
+  const { topCost, topRisk } = provenHeadlines(data);
+  return (data?.rows.length ?? 0) > 0 || !!topCost || !!topRisk;
+}
+
 /** Each insight query renders its own loading/error/empty state, so one query
  * failing or still loading never hides the other section's data. */
 function ProvenCostPanel({ query, run }: { query: UseQueryResult<ProvenCostResponse, Error>; run?: string }) {
@@ -143,24 +159,29 @@ function ProvenCostPanel({ query, run }: { query: UseQueryResult<ProvenCostRespo
 
   const rows = query.data?.rows ?? [];
   const currency = query.data?.currency ?? "";
-  const topCost = largestCost(query.data?.cost_by_l1 ?? []);
-  const topRisk = largestValueAtRisk(query.data?.value_at_risk_by_l1 ?? []);
+  const { topCost, topRisk } = provenHeadlines(query.data);
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="m-stat-grid">
-        <Stat
-          label="Largest proven cost, one process"
-          help="provenCost"
-          value={topCost ? formatMoney(topCost.amount, currency) : "—"}
-          hint={topCost ? `${l1Label(topCost.l1)}, across ${topCost.processes} ${topCost.processes === 1 ? "process" : "processes"}` : undefined}
-        />
-        <Stat
-          label={topRisk ? `Most at risk: ${l1Label(topRisk.l1)}` : "Most at risk"}
-          value={topRisk ? formatMoney(topRisk.value_at_risk, currency) : "—"}
-          hint={topRisk ? `Across ${topRisk.processes} ${topRisk.processes === 1 ? "process" : "processes"}` : undefined}
-        />
-      </div>
+      {topCost || topRisk ? (
+        <div className="m-stat-grid">
+          {topCost ? (
+            <Stat
+              label="Largest proven cost, one process"
+              help="provenCost"
+              value={formatMoney(topCost.amount, currency)}
+              hint={`${l1Label(topCost.l1)}, across ${topCost.processes} ${topCost.processes === 1 ? "process" : "processes"}`}
+            />
+          ) : null}
+          {topRisk ? (
+            <Stat
+              label={`Most at risk: ${l1Label(topRisk.l1)}`}
+              value={formatMoney(topRisk.value_at_risk, currency)}
+              hint={`Across ${topRisk.processes} ${topRisk.processes === 1 ? "process" : "processes"}`}
+            />
+          ) : null}
+        </div>
+      ) : null}
       {rows.length === 0 ? (
         <EmptyState title="No proven cost yet" detail="Proven cost appears once a run finds posted documents that break a rule." action={<Link href="/rules" className="underline-offset-2 hover:underline">Open rules</Link>} />
       ) : (
@@ -208,7 +229,6 @@ function ImpactPanel({
         <EmptyState
           title="No feature is priced yet"
           detail="Value at risk multiplies blocked records by a value per record. Give each SAP feature a value under Rules, Scoring, in the cost model."
-          action={<Button render={<Link href="/rules/scoring#feature-values">Set feature values</Link>} />}
         />
       );
     }
@@ -314,7 +334,8 @@ export default function ImpactPage() {
             ? `${formatMoney(top.value_at_risk, currency)} at risk in ${featureLabel(top.feature)}, the largest of ${plural(rows.length, "blocked SAP feature")}`
             : rows.length ? `${plural(rows.length, "feature is", "features are")} blocked, but none is priced yet`
               : cost.text ? `No SAP feature is priced yet; the failing records carry ${cost.text} cost at risk` : "No feature carries value at risk",
-          tone: top && top.value_at_risk > 0 ? "at-risk" : rows.length ? "at-risk" : "go",
+          // Green only when the features are priced and nothing is blocked; with nothing priced, "nothing at risk" is unknown.
+          tone: rows.length ? "at-risk" : unpriced || cost.text ? "neutral" : "go",
         },
         changed: { sentence: changed, href: previous && run ? `/runs/${run}/vs/${previous.id}` : undefined },
         why: { sentence: "Value at risk is what the blocked records are worth: their count times the value of each" },
@@ -330,8 +351,8 @@ export default function ImpactPage() {
       <Card title="Two figures, two meanings" meta="Value at risk prices blocked SAP features; cost at risk prices every failing record">
         <div className="m-stat-grid" data-testid="money-figures">
           {/* Value at risk is never summed across end-to-end processes: the tile names the process with the most. */}
-          <Stat label={topL1 ? `Value at risk: ${l1Label(topL1.l1)}` : "Value at risk"} help="valueAtRisk" value={topL1 && topL1.value_at_risk > 0 ? formatMoney(topL1.value_at_risk, currency) : "—"} hint={topL1 && topL1.value_at_risk > 0 ? VALUE_AT_RISK_HINT : `${VALUE_AT_RISK_HINT}; no feature priced yet`} />
           <Stat label={COST_AT_RISK} help="costAtRisk" value={cost.text ?? (cost.loading ? "…" : "—")} hint={COST_AT_RISK_HINT} />
+          <Stat label={topL1 ? `Value at risk: ${l1Label(topL1.l1)}` : "Value at risk"} help="valueAtRisk" value={topL1 && topL1.value_at_risk > 0 ? formatMoney(topL1.value_at_risk, currency) : "—"} hint={topL1 && topL1.value_at_risk > 0 ? VALUE_AT_RISK_HINT : `${VALUE_AT_RISK_HINT}; no feature priced yet`} />
         </div>
       </Card>
       <Card title="SAP features at risk" meta="Ranked by value at risk: blocked records times the value of each">
@@ -342,9 +363,12 @@ export default function ImpactPage() {
           <div role="img" aria-label={chartSummary(byFeature, "Value at risk by feature")}><Pareto data={byFeature} height={180} /></div>
         </Card>
       )}
-      <Card title="Proven cost" meta="Money already lost in posted documents that break a rule">
-        <ProvenCostPanel query={provenCostQuery} run={run} />
-      </Card>
+      {/* Until a run has proven money lost, the card says nothing: no zero tiles, no empty ledger. */}
+      {provenCostQuery.isSuccess && !hasProvenData(provenCostQuery.data) ? null : (
+        <Card title="Proven cost" meta="Money already lost in posted documents that break a rule">
+          <ProvenCostPanel query={provenCostQuery} run={run} />
+        </Card>
+      )}
     </InsightFrame>
   );
 }

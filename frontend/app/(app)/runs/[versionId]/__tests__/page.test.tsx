@@ -83,7 +83,7 @@ describe("RunDetailPage", () => {
       expect(slot).toHaveClass("[min-height:124px]");
     });
 
-    it("leaves the section out when there are no actions, rather than a dead heading", async () => {
+    it("says there are no next actions once the query has answered empty, instead of a bare heading or a skeleton", async () => {
       withFindings();
       const prescriptive = vi.spyOn(analyticsApi, "getPrescriptiveAnalytics").mockResolvedValue({
         actions: [], sprints: [], basis: { version_id: "v2", findings: 0, cleaning_items: 0, exceptions: 0 },
@@ -91,8 +91,9 @@ describe("RunDetailPage", () => {
       renderWithQuery(<RunDetailPage />);
       expect(await screen.findByText("Objects in this run")).toBeInTheDocument();
       await waitFor(() => expect(prescriptive).toHaveBeenCalled());
-      await waitFor(() => expect(screen.queryByTestId("next-actions-slot")).toBeNull());
-      expect(screen.queryByText("No next actions for this run")).toBeNull();
+      const slot = await screen.findByTestId("next-actions-slot");
+      expect(await within(slot).findByText("No next actions for this run")).toBeInTheDocument();
+      expect(slot).not.toHaveAttribute("aria-busy", "true");
     });
 
     it("keeps the object ledger inside a phone: rule and counts step aside, Open stays pinned", async () => {
@@ -138,6 +139,18 @@ describe("RunDetailPage", () => {
     const spy = vi.spyOn(analyticsApi, "getPrescriptiveAnalytics").mockResolvedValue({ actions: [], sprints: [], basis: { version_id: "v2", findings: 0, cleaning_items: 0, exceptions: 0 } } as unknown as Awaited<ReturnType<typeof analyticsApi.getPrescriptiveAnalytics>>);
     renderWithQuery(<RunDetailPage />);
     await waitFor(() => expect(spy).toHaveBeenCalledWith({ limit: 5, version_id: "v2" }));
+  });
+
+  it("gives the next actions an empty state, an error with Retry, and never a skeleton for ever", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue({ ...EMPTY_AGGREGATE, total: 1 });
+    const spy = vi.spyOn(analyticsApi, "getPrescriptiveAnalytics").mockRejectedValue(new Error("down"));
+    renderWithQuery(<RunDetailPage />);
+    const slot = await screen.findByTestId("next-actions-slot");
+    expect(await within(slot).findByRole("alert")).toHaveTextContent("Next actions did not load.");
+    spy.mockResolvedValue({ actions: [], sprints: [], basis: { version_id: "v2", findings: 0, cleaning_items: 0, exceptions: 0 } } as unknown as Awaited<ReturnType<typeof analyticsApi.getPrescriptiveAnalytics>>);
+    fireEvent.click(within(slot).getByRole("button", { name: "Retry" }));
+    expect(await within(slot).findByText("No next actions for this run")).toBeInTheDocument();
   });
 
   it("keeps the hero score on a run with nothing failing", async () => {

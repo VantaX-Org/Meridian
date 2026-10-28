@@ -55,6 +55,8 @@ export interface InsightFrameProps {
   module?: string;
   /** Extra export formats added before the failing-records list. */
   exportOptions?: ExportOption[];
+  /** False hides the Export menu, for a page with nothing to export yet. Default true. */
+  exportable?: boolean;
   insight?: InsightHeaderProps;
   /** The body's state (`Async`); default "ready". */
   state?: AsyncState;
@@ -144,7 +146,7 @@ function InsightScopeLine({ present }: { present: boolean }) {
 export { SLOW_LOAD_MESSAGE } from "@/design";
 
 export function InsightFrame({
-  title, purpose, meta, scope, actions, controls, toolbar, run, module, exportOptions, insight, state, emptyProps, errorProps, skeleton, children,
+  title, purpose, meta, scope, actions, controls, toolbar, run, module, exportOptions, exportable = true, insight, state, emptyProps, errorProps, skeleton, children,
 }: InsightFrameProps) {
   // A skeleton that never resolves becomes an error with Retry after the shared timeout (inside Async); the
   // header gives way with it.
@@ -167,7 +169,7 @@ export function InsightFrame({
   const actionBar = actions ?? (
     <div className="flex flex-wrap items-center gap-2">
       {controls}
-      <InsightActions run={run} module={module} options={exportOptions} />
+      <InsightActions run={run} module={module} options={exportOptions} exportable={exportable} />
     </div>
   );
   const line = scope ? (

@@ -29,7 +29,6 @@ import {
 import { drillLabel, fixHref as fixLink, type FixStatus } from "@/lib/drill";
 import { apiErrorMessage } from "@/lib/error";
 import { formatDate, formatModuleName, plural } from "@/lib/format";
-import { GLOSSARY } from "@/lib/help/glossary";
 import { queryKeys } from "@/lib/query-keys";
 import { lineageOf } from "@/lib/runs";
 import { runName, runScopeLabel } from "@/lib/run-scope";
@@ -38,6 +37,7 @@ import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { Section } from "../_components/Section";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 import { burndownChart, DECISION_LABELS, daysText, finishSentence, pct, rateText, sourceLabel } from "./progress-model";
+import { COUNT_DEFS } from "@/lib/counts";
 import { RuleCell } from "@/components/fix/rule-cell";
 
 const PURPOSE = "How fast the data is getting fixed, and what is slowing it down.";
@@ -199,7 +199,7 @@ export default function ProgressPage() {
     : burn.isError || (neverRan && loadError) ? "error" : neverRan ? "empty" : undefined;
   // lib/help/glossary.ts: the burn-down counts rule failures (one record failing one rule); records to fix are the
   // distinct records open on the work list. Never "failing records" for either: that is distinct records failing.
-  const openLabel = b?.open_records != null ? GLOSSARY.recordsToFix.term : GLOSSARY.ruleFailures.term;
+  const openLabel = b?.open_records != null ? COUNT_DEFS.records_to_fix.label : COUNT_DEFS.rule_failures.label;
   const openValue = b ? (b.open_records ?? b.open_now) : "—";
 
   return (
@@ -227,7 +227,7 @@ export default function ProgressPage() {
         stats: [
           { label: openLabel, value: openValue, hint: b && b.open_records != null ? `${plural(b.open_now, "open rule failure")} on them` : "open", to: fixHref },
           // Fix work has no date filter, so the count says the last 7 days and the drill says it opens every fixed record.
-          { label: "Fixed this week", value: b?.fixed_7d ?? "—", tone: b?.fixed_7d ? "go" : undefined, hint: "Rule failures fixed in the last 7 days; opens all fixed records", to: fix({ st: "fixed" }) },
+          { label: `${COUNT_DEFS.rule_failures.label} fixed this week`, value: b?.fixed_7d ?? "—", tone: b?.fixed_7d ? "go" : undefined, hint: "Rule failures fixed in the last 7 days; opens all fixed records", to: fix({ st: "fixed" }) },
           { label: "Median time to fix", value: overall ? daysText(overall.median_days) : "—", hint: overall?.fixed ? `Over ${plural(overall.fixed, "fix", "fixes")}` : undefined, to: overall?.fixed ? "#time-to-fix" : undefined },
           { label: "Projected finish", value: b?.projected_finish ? formatDate(b.projected_finish) : b && b.open_now === 0 ? "Done" : "No date yet", tone: b?.projected_finish ? "go" : b && b.open_now > 0 ? "at-risk" : undefined, hint: b ? `At the last ${b.pace_window_days} days' pace` : undefined, to: b ? "#burndown" : undefined },
         ],
@@ -320,7 +320,7 @@ export default function ProgressPage() {
         )}
       </Section>
 
-      <Section
+      {roots.isSuccess && !activeDim ? null : <Section
         title="Where the failing records sit"
         height={240}
         query={roots}
@@ -334,9 +334,9 @@ export default function ProgressPage() {
             <DataTable columns={rootColumns} data={activeDim.top} getRowId={(r) => r.value} hideToolbar height="auto" />
           </div>
         ) : (
-          <EmptyState variant="inline" title="No organisational unit in the failing records' keys" action={<Link href={withScope("/insights/rules", { run })} className={linkClass}>Explore by rule</Link>} />
+          <EmptyState variant="inline" title="Where the failing records sit is not available" action={<Link href={withScope("/insights/rules", { run })} className={linkClass}>Explore by rule</Link>} />
         )}
-      </Section>
+      </Section>}
 
       <Section title="How good the proposals are" height={240} query={prop} meta={prop.data?.totals.proposed ? `${plural(prop.data.totals.proposed, "value")} proposed; checked against the next run after the SAP load` : undefined}>
         {prop.data && prop.data.totals.proposed ? (

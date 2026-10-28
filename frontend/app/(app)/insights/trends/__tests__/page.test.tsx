@@ -54,7 +54,8 @@ describe("TrendsPage", () => {
     expect(screen.getByRole("img", { name: "Score per run: 16 Oct 2026, 05:00 70, 16 Oct 2026, 17:30 70" })).toBeInTheDocument();
     expect(screen.queryByRole("img", { name: /business_partner_100k/ })).toBeNull();
     // The change heatmap is keyed the same way.
-    expect(screen.getByLabelText("Completeness 16 Oct 2026, 17:30: 0")).toBeInTheDocument();
+    expect(screen.getByText("No change across 2 runs")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Completeness 16 Oct 2026, 17:30: 0")).toBeNull();
     expect(screen.getByText("The score has not moved across these runs.")).toBeInTheDocument();
   });
 
@@ -77,6 +78,22 @@ describe("TrendsPage", () => {
     expect(screen.getByRole("link", { name: "Open the 1 critical failing rule of run v2" })).toHaveAttribute("href", "/runs/v2?tab=findings&severity=critical");
     expect(screen.getByRole("link", { name: "Open the 2 high failing rules of run v1" })).toHaveAttribute("href", "/runs/v1?tab=findings&severity=high");
     expect(screen.queryByRole("link", { name: /critical failing (rule|record)s? of run v1/ })).toBeNull();
+  });
+
+  it("computes a run's change against the run before it and points the action at that comparison", async () => {
+    const r1 = run("v1", 60);
+    const r2 = { ...run("v2", 65), baseline: false };
+    const r3 = run("v3", 70);
+    vi.spyOn(insightsApi, "getTrends").mockResolvedValue({ lineage: "l", runs: [{ ...r1, baseline: true }, r2, r3], annotations: [] });
+    mount();
+    await screen.findAllByText(/rose from 60 to 70/);
+    const rows = screen.getAllByRole("row").filter((r) => /^v[123]/.test(r.textContent ?? ""));
+    expect(rows[0]).toHaveTextContent("+5");
+    expect(rows[1]).toHaveTextContent("+5");
+    expect(rows[2]).toHaveTextContent("first run");
+    expect(screen.getByText("Compare the latest run with its baseline.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Compare with baseline" })).toHaveAttribute("href", "/runs/v3/vs/v1");
+    expect(screen.queryByRole("link", { name: "Open progress" })).toBeNull();
   });
 
   it("shows the empty state", async () => {

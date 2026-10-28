@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, Card, DataTable, Delta, EmptyState, Heatmap, HelpHint, Line, Pill, Select, type CellMeta, type ChartPoint, type HeatmapCell } from "@/design";
+import { Button, Card, DataTable, Delta, EmptyState, Heatmap, HelpHint, Line, Pill, Select, yDomain, type CellMeta, type ChartPoint, type HeatmapCell } from "@/design";
 import { getRuleRanking, getTrends, type RuleRow, type TrendRun } from "@/lib/api/insights";
 import { isListFailure } from "@/lib/error";
 import { drillLabel, fixHref } from "@/lib/drill";
@@ -33,7 +33,7 @@ const count = (n: number | null | undefined) => (typeof n === "number" ? n.toLoc
 const severityFindingsHref = (versionId: string, severity: "critical" | "high") => `/runs/${versionId}?tab=findings&severity=${severity}`;
 
 /** The run-by-run ledger: each run's results and what changed from the run before. Newest first. */
-function runColumns(current: string | undefined): ColumnDef<TrendRun>[] {
+function runColumns(current: string | undefined, firstRunId: string | undefined): ColumnDef<TrendRun>[] {
   return [
     {
       id: "run", header: "Run", accessorFn: (r) => r.run_at ?? "", enableSorting: false, size: 260,
@@ -47,7 +47,7 @@ function runColumns(current: string | undefined): ColumnDef<TrendRun>[] {
     },
     { id: "score", header: COUNT_DEFS.score.label, accessorFn: (r) => r.composite ?? -1, meta: num, cell: ({ row }) => (row.original.composite == null ? "—" : row.original.composite.toFixed(1)) },
     // Not sortable: the ledger reads in run order, and a sort button cannot hold the hint's own button.
-    { id: "change", header: () => <span className="inline-flex items-center gap-1">Change <HelpHint term="previous_run" /></span>, accessorFn: (r) => r.change ?? 0, meta: num, enableSorting: false, cell: ({ row }) => (row.original.change == null ? <span className="m-ink-3">first run</span> : <Delta value={row.original.change} />) },
+    { id: "change", header: () => <span className="inline-flex items-center gap-1">Change <HelpHint term="previous_run" /></span>, accessorFn: (r) => r.change ?? 0, meta: num, enableSorting: false, cell: ({ row }) => (row.original.change == null ? <span className="m-ink-3">{row.original.version_id === firstRunId ? "first run" : "—"}</span> : <Delta value={row.original.change} />) },
     // Each count is that run's failing rules at that severity, and opens exactly those rules on the run's findings tab.
     { id: "critical", header: "Critical", accessorFn: (r) => r.critical, meta: num, cell: ({ row }) => <DrillCount href={severityFindingsHref(row.original.version_id, "critical")} count={row.original.critical} label={`${drillLabel({ count: row.original.critical, sev: "critical", what: "failing rules" })} of run ${runName(row.original)}`}>{count(row.original.critical)}</DrillCount> },
     { id: "high", header: "High", accessorFn: (r) => r.high, meta: num, cell: ({ row }) => <DrillCount href={severityFindingsHref(row.original.version_id, "high")} count={row.original.high} label={`${drillLabel({ count: row.original.high, sev: "high", what: "failing rules" })} of run ${runName(row.original)}`}>{count(row.original.high)}</DrillCount> },
@@ -73,13 +73,21 @@ export default function TrendsPage() {
   const current = runs.find((r) => r.id === run);
   const trend = useMemo(() => {
     const all = q.data?.runs ?? [];
-    return scopedComparisons(all, scopeTrendRuns(all, current, run));
+    const scoped = scopedComparisons(all, scopeTrendRuns(all, current, run));
+    // A run's change is against the run before it in this series when the API gave none: never "first run" on every row.
+    return scoped.map((r, i) => {
+      const before = i > 0 ? scoped[i - 1] : undefined;
+      return r.change == null && before && typeof r.composite === "number" && typeof before.composite === "number"
+        ? { ...r, change: Math.round((r.composite - before.composite) * 10) / 10 } : r;
+    });
   }, [q.data, current, run]);
   const domain = useMemo(() => trendDomain(trend), [trend]);
   const labelByRun = new Map(domain.map((d) => [d.x, d.label ?? d.x]));
   const composite = useMemo(() => trendPoints(trend, (r) => r.composite), [trend]);
   const annotations = (q.data?.annotations ?? []).flatMap((a) => (labelByRun.has(a.version_id) ? [{ x: a.version_id, label: a.label, kind: a.kind }] : []));
   const dimLine = (d: string) => trendPoints(trend, (r) => r.dimensions[d]);
+  // One y window for the six dimension charts, so a dimension that sits lower reads lower.
+  const dimRange = yDomain(DIMENSIONS.flatMap((d) => dimLine(d).map((p) => p.y)));
   const deltas: HeatmapCell[] = [];
   for (const d of DIMENSIONS) {
     for (let i = 1; i < trend.length; i++) {
@@ -90,7 +98,9 @@ export default function TrendsPage() {
   }
   const movedRows = (moved.data?.rows ?? []).filter((r) => r.delta_affected).sort((a, b) => Math.abs(b.delta_affected ?? 0) - Math.abs(a.delta_affected ?? 0)).slice(0, 15);
   const movedCols = useMemo<ColumnDef<RuleRow>[]>(() => ruleColumns(run, true), [run]);
-  const runCols = useMemo(() => runColumns(run), [run]);
+  // Only a series that reaches back to the lineage's start (fewer runs than the window holds) has a true first run.
+  const firstRunId = trend.length > 0 && trend.length < Number(win) ? trend[0].version_id : undefined;
+  const runCols = useMemo(() => runColumns(run, firstRunId), [run, firstRunId]);
   const byRun = useMemo(() => [...trend].reverse(), [trend]);
   const fixedTotal = trend.reduce((n, r) => n + (r.rules_fixed ?? 0), 0);
   const newTotal = trend.reduce((n, r) => n + (r.rules_new ?? 0), 0);
@@ -100,6 +110,13 @@ export default function TrendsPage() {
   const narrative = last && first && composite.length > 1 ? trendSentence(first.y, last.y, composite.length) : "A trend needs at least two scored runs.";
   const change = last && first && composite.length > 1 ? Math.round((last.y - first.y) * 10) / 10 : null;
   const biggestMove = movedRows[0];
+  // The action is the comparison the sentence names: the latest run against its pinned baseline, else the run before it.
+  const latestRun = trend[trend.length - 1];
+  const baselineRun = trend.find((r) => r.baseline && r.version_id !== latestRun?.version_id);
+  const compareWith = baselineRun ?? (trend.length > 1 ? trend[trend.length - 2] : undefined);
+  const compareNext = latestRun && compareWith
+    ? { sentence: baselineRun ? "Compare the latest run with its baseline." : "Compare the latest run with the one before it.", action: { label: baselineRun ? "Compare with baseline" : "Compare with previous run", href: `/runs/${latestRun.version_id}/vs/${compareWith.version_id}` } }
+    : { sentence: "Run the same system again to start a comparison.", action: { label: "Open runs", href: "/runs" } };
   const state = resolving || q.isLoading || versions.isLoading ? "loading" : loadError || isListFailure(q) ? "error" : !run || trend.length === 0 ? "empty" : undefined;
 
   return (
@@ -119,7 +136,7 @@ export default function TrendsPage() {
         situation: { sentence: narrative, tone: change === null ? "neutral" : change > 0 ? "go" : change < 0 ? "at-risk" : "neutral", href: withScope("/insights/progress", { run }) },
         changed: { sentence: change === null ? "Change appears after the second run." : change === 0 ? "The score has not moved across these runs." : `${change > 0 ? "Up" : "Down"} ${Math.abs(change)} points from the first to the latest run.` },
         why: { sentence: biggestMove ? `${biggestMove.name || biggestMove.check_id} moved most, ${Math.abs(biggestMove.delta_affected ?? 0).toLocaleString()} records ${(biggestMove.delta_affected ?? 0) > 0 ? "more" : "fewer"} failing.` : "No rule changed its failing records.", href: withScope("/insights/rules", { run }) },
-        next: { sentence: "Compare the latest run with its baseline.", action: { label: "Open progress", href: withScope("/insights/progress", { run }) } },
+        next: compareNext,
       }}
       state={state}
       skeleton={<><CardSkeleton height={240} /><CardSkeleton height={140} /></>}
@@ -154,14 +171,16 @@ export default function TrendsPage() {
               <Card title={labelOf(d)}>
                 {points.length === 0
                   ? <EmptyState variant="inline" title="Not measured in these runs" detail="No rule of this dimension ran on these objects." action={<Link href="/rules" className="underline-offset-2 hover:underline">Open rules</Link>} />
-                  : <Line data={points} xDomain={domain} label={`${labelOf(d)} score per run`} height={140} onPointClick={openRun} />}
+                  : <Line data={points} xDomain={domain} label={`${labelOf(d)} score per run`} height={140} onPointClick={openRun} yRange={dimRange} />}
               </Card>
             </div>
           );
         })}
         <div className="@5xl:col-span-12">
           <Card title="Change per run" meta="Dimension score change from the run before, in points">
-            {deltas.length === 0 ? (
+            {deltas.length > 0 && deltas.every((c) => c.value === 0) ? (
+              <p className="m-text-body m-ink-2">{`No change across ${plural(trend.length, "run")}`}</p>
+            ) : deltas.length === 0 ? (
               <EmptyState variant="inline" title="Change appears after the second run" detail="Run the same system or upload again to compare." action={<Link href="/runs" className="underline-offset-2 hover:underline">Open runs</Link>} />
             ) : (
               <div role="region" aria-label="Dimension score change between runs" tabIndex={0} className="overflow-x-auto">

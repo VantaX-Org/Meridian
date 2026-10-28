@@ -44,3 +44,17 @@ describe("progress model", () => {
     expect(finishSentence(burn({ open_now: 0 }))).toBe("Nothing is open");
   });
 });
+
+describe("burn-down start", () => {
+  it("starts the series at the first measurement instead of drawing unmeasured days as zero", () => {
+    const days = [
+      { day: "2026-07-22", open: 0, opened: 0, closed: 0 },
+      { day: "2026-07-23", open: 0, opened: 0, closed: 0 },
+      { day: "2026-10-14", open: 30000, opened: 30000, closed: 0 },
+      { day: "2026-10-15", open: 29000, opened: 0, closed: 1000 },
+    ];
+    const c = burndownChart(burn({ days, projected_finish: null, pace_per_day: 0 }));
+    expect(c.series[0].data.map((p) => p.x)).toEqual(["2026-10-14", "2026-10-15"]);
+    expect(c.xDomain).toHaveLength(2);
+  });
+});

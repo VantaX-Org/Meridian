@@ -479,12 +479,17 @@ function Overview({ systemId, modules, versions, latest, canSync, canAnalyse, on
       ) : null}
       <div className="grid [gap:var(--m-section-gap)] @5xl:grid-cols-2">
         <Card title="Score per run" meta="Mean of the objects, newest twelve runs">
-          {scored.length < 2 ? (
+          {scored.length === 0 ? (
             <EmptyState
               title="No trend yet"
-              detail="Two analysed runs are needed to draw a trend."
+              detail="Three analysed runs are needed to draw a trend."
               action={extract}
             />
+          ) : scored.length < 3 ? (
+            // Two points make a line that says nothing: the value in one sentence until a third run exists.
+            <p className="m-text-body m-ink-2" data-testid="score-per-run-value">
+              {`Mean score ${Number((meanDqs(scored[scored.length - 1]) ?? 0).toFixed(1))} in the latest run${scored.length === 2 ? `, ${Number((meanDqs(scored[0]) ?? 0).toFixed(1))} in the run before` : ""}. A chart appears after a third analysed run.`}
+            </p>
           ) : (
             <Line
               height={160}
@@ -501,6 +506,11 @@ function Overview({ systemId, modules, versions, latest, canSync, canAnalyse, on
               detail="Extract an object to see how many rows it holds."
               action={extract}
             />
+          ) : byRows.length < 2 ? (
+            // One bar compares nothing: the figure in one sentence.
+            <p className="m-text-body m-ink-2" data-testid="objects-by-records-value">
+              {`${byRows[0].name} holds ${byRows[0].records.toLocaleString()} records. A chart appears once a second object is loaded.`}
+            </p>
           ) : (
             <Bar
               height={160}

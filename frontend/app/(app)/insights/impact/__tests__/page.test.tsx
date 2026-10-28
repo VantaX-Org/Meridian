@@ -153,9 +153,13 @@ describe("ImpactPage", () => {
     renderWithQuery(<ImpactPage />);
     expect(await screen.findByText("No feature is priced yet")).toBeInTheDocument();
     expect(screen.getByText(/under Rules, Scoring/)).toBeInTheDocument();
+    // The setup prompt is shown once (the Do next action), not again inside the empty state.
     const links = screen.getAllByRole("link", { name: "Set feature values" });
-    expect(links.length).toBeGreaterThanOrEqual(1);
-    links.forEach((l) => expect(l).toHaveAttribute("href", "/rules/scoring#feature-values"));
+    expect(links).toHaveLength(1);
+    expect(links[0]).toHaveAttribute("href", "/rules/scoring#feature-values");
+    // Nothing is proven or priced: no Proven cost card with zero tiles.
+    expect(screen.queryByText("Proven cost")).toBeNull();
+    expect(screen.queryByText("Largest proven cost, one process")).toBeNull();
     expect(screen.queryByText(/no impact results yet/i)).toBeNull();
   });
 

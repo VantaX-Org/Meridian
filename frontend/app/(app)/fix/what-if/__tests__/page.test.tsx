@@ -48,6 +48,14 @@ const COMPLETED: simApi.SimulationCompleted = {
 beforeEach(() => { vi.restoreAllMocks(); push.mockReset(); });
 
 describe("WhatIfPage", () => {
+  it("shows a static empty state before any simulation and says how to start it once", async () => {
+    const { container } = mount();
+    expect(await screen.findByText("No simulation yet")).toBeInTheDocument();
+    expect(screen.getAllByText(/Pick a run and press Run simulation/)).toHaveLength(1);
+    // A chart ghost, not the ring that reads as a spinner.
+    expect(container.querySelector("svg circle")).toBeNull();
+  });
+
   it("sends the user to Runs when there is no finished run to simulate", async () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] } as never);
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
