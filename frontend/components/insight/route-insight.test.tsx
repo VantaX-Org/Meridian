@@ -15,9 +15,9 @@ vi.mock("@/lib/api/findings", () => ({
 
 import { RouteInsight } from "./route-insight";
 
-function mount() {
+function mount(props: React.ComponentProps<typeof RouteInsight> = {}) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={qc}><RouteInsight /></QueryClientProvider>);
+  return render(<QueryClientProvider client={qc}><RouteInsight {...props} /></QueryClientProvider>);
 }
 
 describe("RouteInsight gating", () => {
@@ -69,6 +69,13 @@ describe("RouteInsight gating", () => {
     m.compare.mockResolvedValue({ v1: { id: "r1" }, v2: { id: "r3" }, delta: {}, checks: {} });
     mount();
     await waitFor(() => expect(m.compare).toHaveBeenCalledWith("r1", "r3"));
+  });
+
+  it("names the given to-do item as the do next step instead of the score's", async () => {
+    m.llm.mockResolvedValue({ llm_available: false });
+    mount({ doNext: { sentence: "KSA PRD cannot be reached", href: "/systems/s1", label: "Open system" } });
+    expect(await screen.findByText(/KSA PRD cannot be reached\./)).toBeTruthy();
+    expect(document.querySelector('a[href="/systems/s1"]')).toBeTruthy();
   });
 
   it("skips compare when there is no earlier finished run", async () => {

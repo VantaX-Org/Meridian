@@ -1,11 +1,11 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
-import { vi, describe, it, expect } from "vitest";
+import { vi, describe, it, expect, beforeEach } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as settingsApi from "@/lib/api/settings";
 import * as findingsApi from "@/lib/api/findings";
 import type { TenantSettings } from "@/types/api";
 import type { FindingsAggregate } from "@/lib/api/findings";
-import ScoringPage, { weightPreview, withFeatureDraft, withSeverityDraft } from "../page";
+import ScoringPage, { toStored, weightPreview, withFeatureDraft, withSeverityDraft } from "../page";
 
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
@@ -31,7 +31,38 @@ const AGGREGATE: FindingsAggregate = {
   previous_dqs: null,
 };
 
+const SCORING: settingsApi.ScoringResponse = {
+  dimension_weights: { completeness: 0.25, accuracy: 0.25, consistency: 0.2, timeliness: 0.1, uniqueness: 0.1, validity: 0.1 },
+  module_weights: { material_master: 2 },
+  thresholds: { target: 90, warning: 75, critical: 60 },
+  severity_weights: { critical: 4, high: 3, medium: 2, low: 1 },
+  severity_multipliers: { critical: 2 },
+  critical_tolerance: { critical: 0 },
+  defaults: {
+    dimension_weights: { completeness: 0.25, accuracy: 0.25, consistency: 0.2, timeliness: 0.1, uniqueness: 0.1, validity: 0.1 },
+    module_weights: {}, thresholds: { target: 90, warning: 75, critical: 60 }, severity_weights: {}, severity_multipliers: {}, critical_tolerance: {},
+  },
+};
+
+beforeEach(() => {
+  vi.restoreAllMocks();
+  vi.spyOn(settingsApi, "getScoring").mockResolvedValue(SCORING);
+});
+
 describe("rules scoring page", () => {
+  it("is titled Scoring, links to Alerts and has no alert controls", async () => {
+    vi.spyOn(settingsApi, "getSettings").mockResolvedValue(SETTINGS);
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue(AGGREGATE);
+    renderWithQuery(<ScoringPage />);
+    await screen.findByText("Dimension weights");
+    expect(screen.getByRole("heading", { name: "Scoring" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Alerts" })).toHaveAttribute("href", "/admin/alerts");
+    expect(screen.getByText("Score bands")).toBeInTheDocument();
+    for (const gone of ["When to alert", "Reports by email and Teams", "Score floors per object", "Critical failing rules", "Save thresholds", "Save notifications", "Teams webhook"]) {
+      expect(screen.queryByText(gone)).toBeNull();
+    }
+  });
+
   it("renders the settings form once loaded", async () => {
     vi.spyOn(settingsApi, "getSettings").mockResolvedValue(SETTINGS);
     vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue(AGGREGATE);
@@ -39,28 +70,50 @@ describe("rules scoring page", () => {
     expect(await screen.findByText("Dimension weights", undefined, { timeout: 5000 })).toBeInTheDocument();
     // the saved weights preview as the score now, unchanged: no phantom delta on first load
     // both numerals count up from 0, so wait until both have settled
-    await waitFor(() => expect(screen.getAllByText("88.5")).toHaveLength(2), { timeout: 5000 });
+    await waitFor(() => expect(screen.getAllByText("88.5")).toHaveLength(2), { timeout: 12_000 });
     expect(screen.getByText("No change")).toBeInTheDocument();
     // Two queries then a form: under full-suite load this takes longer than the 5 s default.
-  }, 15_000);
+  }, 25_000);
 
-  it("saves weights on the 100 scale the API stores", async () => {
+  it("saves weights through PUT /settings/scoring on the 100 scale, keeping the rest of the config", async () => {
     vi.spyOn(settingsApi, "getSettings").mockResolvedValue(SETTINGS);
     vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue(AGGREGATE);
-    const save = vi.spyOn(settingsApi, "updateDqsWeights").mockResolvedValue();
+    const save = vi.spyOn(settingsApi, "putScoring").mockResolvedValue();
     renderWithQuery(<ScoringPage />);
     fireEvent.click(await screen.findByRole("button", { name: "Save weights" }));
     await waitFor(() => expect(save).toHaveBeenCalled());
     const sent = save.mock.calls[0][0];
-    expect(sent.completeness).toBeCloseTo(25);
-    expect(sent.consistency).toBeCloseTo(20);
-    expect(Object.values(sent).reduce((a, b) => a + b, 0)).toBeCloseTo(100);
+    expect(sent.dimension_weights.completeness).toBeCloseTo(25);
+    expect(sent.dimension_weights.consistency).toBeCloseTo(20);
+    expect(Object.values(sent.dimension_weights).reduce((a, b) => a + b, 0)).toBeCloseTo(100, 5);
+    expect(sent.module_weights).toEqual({ material_master: 2 });
+    expect(sent.thresholds).toEqual({ target: 90, warning: 75, critical: 60 });
+    expect(sent.severity_multipliers).toEqual({ critical: 2 });
   });
 
-  it("reads stored weights that sum to 100 as fractions and lets them be saved", async () => {
-    vi.spyOn(settingsApi, "getSettings").mockResolvedValue({
-      ...SETTINGS,
-      dqs_weights: { completeness: 40, accuracy: 20, consistency: 20, timeliness: 10, uniqueness: 5, validity: 5 },
+  it("saves the bands and refuses an order the API would reject", async () => {
+    vi.spyOn(settingsApi, "getSettings").mockResolvedValue(SETTINGS);
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue(AGGREGATE);
+    const save = vi.spyOn(settingsApi, "putScoring").mockResolvedValue();
+    renderWithQuery(<ScoringPage />);
+    fireEvent.change(await screen.findByLabelText("Warning"), { target: { value: "95" } });
+    expect(screen.getByRole("button", { name: "Save bands" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Warning"), { target: { value: "80" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save bands" }));
+    await waitFor(() => expect(save).toHaveBeenCalled());
+    expect(save.mock.calls[0][0].thresholds).toEqual({ target: 90, warning: 80, critical: 60 });
+    expect(save.mock.calls[0][0].dimension_weights).toEqual(SCORING.dimension_weights);
+  });
+
+  it("rounds weights to exactly 100 for the API", () => {
+    const third = { completeness: 1 / 3, accuracy: 1 / 3, consistency: 1 / 3, timeliness: 0, uniqueness: 0, validity: 0 };
+    expect(Object.values(toStored(third)).reduce((a, b) => a + b, 0)).toBeCloseTo(100, 8);
+  });
+
+  it("reads the normalised weights from /settings/scoring and lets them be saved", async () => {
+    vi.spyOn(settingsApi, "getSettings").mockResolvedValue(SETTINGS);
+    vi.spyOn(settingsApi, "getScoring").mockResolvedValue({
+      ...SCORING, dimension_weights: { completeness: 0.4, accuracy: 0.2, consistency: 0.2, timeliness: 0.1, uniqueness: 0.05, validity: 0.05 },
     });
     vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue(AGGREGATE);
     renderWithQuery(<ScoringPage />);

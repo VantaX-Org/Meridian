@@ -20,6 +20,8 @@ export interface HomeActionInput {
   worstHref?: string;
   /** Basis: an active system reports failed or degraded health. */
   systemFailing: boolean;
+  /** The viewer's top to-do item as a button (lib/attention.ts `attentionAction`, tier 3 or better). It wins when present. */
+  attention?: HomeAction;
 }
 
 /** Actions that change something: a role holding none of them has nothing on the home to act on. */
@@ -40,7 +42,8 @@ export function readOnlyLeadAction(can: (action: string) => boolean): HomeAction
   return null;
 }
 
-export function homeActionFor({ persona, can, belowTarget, objectsHref, worstHref, systemFailing }: HomeActionInput): HomeAction {
+export function homeActionFor({ persona, can, belowTarget, objectsHref, worstHref, systemFailing, attention }: HomeActionInput): HomeAction {
+  if (attention) return attention;
   if (persona === "lead") {
     return readOnlyLeadAction(can)
       ?? { label: belowTarget ? "Open objects below target" : "Open objects", href: objectsHref(belowTarget > 0) };

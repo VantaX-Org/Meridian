@@ -26,6 +26,11 @@ _EXCLUDED_PATHS = {
     "/api/v1/auth/forgot-password",
     "/api/v1/auth/reset-password",
     "/api/v1/auth/invite/preview",
+    # OIDC sign-in: the browser is signed out until the callback, so these three are public (the callback
+    # authenticates through the IdP; start and callback bind to a signed, 10-minute state cookie).
+    "/api/v1/auth/oidc/config",
+    "/api/v1/auth/oidc/start",
+    "/api/v1/auth/oidc/callback",
     "/api/v1/licence",
     "/health",
 }

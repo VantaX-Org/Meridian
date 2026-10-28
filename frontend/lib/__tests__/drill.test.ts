@@ -21,6 +21,11 @@ describe("fixHref", () => {
     expect(fixHref({ module: "fi_gl", part: { field: "WERKS", value: "30 00" } })).toBe("/fix?module=fi_gl&part=WERKS%3D30+00");
   });
 
+  it("carries the baseline run after the key part and before the search", () => {
+    expect(fixHref({ run: "v2", module: "fi_gl", part: "BUKRS=1000", since: "v1", q: "ab" })).toBe("/fix?run=v2&module=fi_gl&part=BUKRS%3D1000&since=v1&q=ab");
+    expect(fixHref({ since: "" })).toBe("/fix");
+  });
+
   it("carries blocking severity, every status and a source system", () => {
     expect(fixHref({ sev: "blocking", st: "all", system: "S1" })).toBe("/fix?sev=blocking&st=all&system=S1");
   });

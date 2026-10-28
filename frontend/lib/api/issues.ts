@@ -87,12 +87,13 @@ export async function getIssues(
   return (await apiClient.get("/api/v1/issues", { params })).data;
 }
 
+/** GET /api/v1/issues/{id}: the issue, its events (comments among them) and the runs it was seen in. A person opens it, so a scoped 403 opens the request-access dialog. */
 export async function getIssue(id: string): Promise<{
   issue: RecordIssue;
   events: IssueEvent[];
   runs: { version_id: string; run_at: string; failing: boolean }[];
 }> {
-  return (await apiClient.get(`/api/v1/issues/${id}`)).data;
+  return (await apiClient.get(`/api/v1/issues/${encodeURIComponent(id)}`, { requestAccess: true })).data;
 }
 
 export async function updateIssues(body: {
@@ -105,8 +106,9 @@ export async function updateIssues(body: {
   return (await apiClient.post("/api/v1/issues/bulk", body)).data;
 }
 
+/** POST /api/v1/issues/{id}/comments (needs `analyse`; a 403 opens the request-access dialog). The text is at most 4000 characters. */
 export async function commentIssue(id: string, text: string): Promise<void> {
-  await apiClient.post(`/api/v1/issues/${id}/comments`, { body: text });
+  await apiClient.post(`/api/v1/issues/${encodeURIComponent(id)}/comments`, { body: text });
 }
 
 export function exportIssues(format: "csv" | "xlsx", filter: IssueFilter): Promise<void> {

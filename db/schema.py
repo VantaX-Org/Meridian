@@ -65,6 +65,9 @@ class Tenant(Base):
     jwt_secret = Column(Text, nullable=True)
     default_role = Column(Text, nullable=True, server_default="analyst")
     llm_config = Column(JSONB, nullable=True)
+    # OIDC sign-in (migration 098; api/services/oidc.py): issuer, client_id, client_secret_encrypted, display_name,
+    # allowed_domains, default_role, enforce. NULL until an admin configures it.
+    sso_config = Column(JSONB, nullable=True)
 
     versions = relationship("AnalysisVersion", back_populates="tenant")
     findings = relationship("Finding", back_populates="tenant")
@@ -584,6 +587,10 @@ class ContractComplianceHistory(Base):
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (
+        Index("uq_users_tenant_external_subject", "tenant_id", "external_subject", unique=True,
+              postgresql_where=text("external_subject IS NOT NULL")),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
@@ -612,6 +619,8 @@ class User(Base):
     failed_login_count = Column(Integer, nullable=False, server_default="0")
     locked_until = Column(DateTime(timezone=True), nullable=True)
     password_changed_at = Column(DateTime(timezone=True), nullable=True)
+    # OIDC `sub` of the linked identity (migration 098); unique per tenant where set.
+    external_subject = Column(Text, nullable=True)
     # Validated by api/routes/preferences.py (theme, density, locale, saved views, ...).
     preferences = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     created_at = Column(

@@ -212,3 +212,57 @@ export function exportRun(runId: string, l1: string, params: ProcessFilterParams
     ? downloadBlob(`${BASE}/runs/${runId}/export/bpmn/${encodeURIComponent(nodeId)}`, params, `${nodeId}.bpmn`)
     : downloadBlob(`${BASE}/runs/${runId}/export/signavio`, params, `meridian-asis-${l1}.zip`);
 }
+
+/* ---------- schedules and health (api/routes/process_discovery.py, api/services/process_discovery/health.py) ---------- */
+
+/** One cron schedule per (system, L1): the beat task starts an incremental run when it is due. */
+export interface ProcessSchedule {
+  id: string;
+  system_id: string;
+  l1: string;
+  schedule_cron: string;
+  active: boolean;
+  mode: string;
+  last_run_at: string | null;
+  next_run_at: string | null;
+  created_at: string;
+}
+
+export interface ProcessScheduleBody { l1: string; schedule_cron: string; active?: boolean }
+export interface ProcessSchedulePatch { schedule_cron?: string; active?: boolean }
+
+/** `api/services/cadence.py` Freshness, as the health route returns it. */
+export type ProcessFreshness = "fresh" | "due" | "stale" | "failed" | "paused" | "manual";
+
+/** Per L1 of a system: the latest finished run, the fitness change since the run before and the schedule's freshness. */
+export interface ProcessHealth {
+  l1: string;
+  last_run: { id: string; status: string; finished_at: string | null; fitness: number | null } | null;
+  previous_fitness: number | null;
+  /** Fitness of the latest completed run minus the one before, as a 0 to 1 ratio; null with fewer than two. */
+  fitness_drift: number | null;
+  schedule: { id: string; cron: string; active: boolean; next_run_at: string | null } | null;
+  freshness: ProcessFreshness;
+}
+
+/** Query keys of this module's reads, kept here so a mutation and its readers agree. */
+export const processScheduleKeys = {
+  schedules: (systemId: string) => ["process", "schedules", systemId] as const,
+  health: (systemId: string) => ["process", "health", systemId] as const,
+};
+
+export async function listProcessSchedules(systemId: string): Promise<ProcessSchedule[]> {
+  return (await apiClient.get<ProcessSchedule[]>(`${BASE}/systems/${systemId}/schedules`)).data;
+}
+export async function createProcessSchedule(systemId: string, body: ProcessScheduleBody): Promise<ProcessSchedule> {
+  return (await apiClient.post<ProcessSchedule>(`${BASE}/systems/${systemId}/schedules`, body)).data;
+}
+export async function updateProcessSchedule(systemId: string, scheduleId: string, body: ProcessSchedulePatch): Promise<ProcessSchedule> {
+  return (await apiClient.patch<ProcessSchedule>(`${BASE}/systems/${systemId}/schedules/${scheduleId}`, body)).data;
+}
+export async function deleteProcessSchedule(systemId: string, scheduleId: string): Promise<void> {
+  await apiClient.delete(`${BASE}/systems/${systemId}/schedules/${scheduleId}`);
+}
+export async function getProcessHealth(systemId: string): Promise<ProcessHealth[]> {
+  return (await apiClient.get<ProcessHealth[]>(`${BASE}/systems/${systemId}/health`)).data;
+}

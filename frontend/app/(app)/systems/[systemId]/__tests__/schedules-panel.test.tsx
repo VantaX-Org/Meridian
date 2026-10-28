@@ -5,9 +5,34 @@ import * as systemsApi from "@/lib/api/systems";
 import * as systemObjectsApi from "@/lib/api/system-objects";
 import * as triageApi from "@/lib/api/triage";
 import * as objectsApi from "@/lib/api/v1/objects";
+import * as pdApi from "@/lib/api/process-discovery";
 import { SchedulesPanel } from "../schedules-panel";
 
+const role = vi.hoisted(() => ({ actions: new Set<string>() }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (a: string) => role.actions.has(a) }) }));
+
 describe("SchedulesPanel", () => {
+  it("adds a Process discovery section with the system's process schedules, gated by run_process_discovery", async () => {
+    vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([]);
+    vi.spyOn(systemObjectsApi, "getSystemObjects").mockResolvedValue({ system_type: "ecc", objects: [] });
+    vi.spyOn(pdApi, "getCatalogue").mockResolvedValue([]);
+    vi.spyOn(pdApi, "getProcessHealth").mockResolvedValue([
+      { l1: "PTP", last_run: null, previous_fitness: null, fitness_drift: null, freshness: "manual",
+        schedule: { id: "p1", cron: "0 2 * * *", active: true, next_run_at: null } }]);
+    vi.spyOn(pdApi, "listProcessSchedules").mockResolvedValue([
+      { id: "p1", system_id: "s1", l1: "PTP", schedule_cron: "0 2 * * *", active: true, mode: "incremental", last_run_at: null,
+        next_run_at: null, created_at: "2026-10-01T00:00:00Z" }]);
+    role.actions = new Set();
+    const { unmount } = renderWithQuery(<SchedulesPanel id="s1" canManage />);
+    expect(await screen.findByText("Process discovery")).toBeInTheDocument();
+    expect(await screen.findByText("PTP")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Pause the PTP schedule" })).toBeNull();
+    unmount();
+    role.actions = new Set(["run_process_discovery"]);
+    renderWithQuery(<SchedulesPanel id="s1" canManage={false} />);
+    expect(await screen.findByRole("button", { name: "Pause the PTP schedule" })).toBeInTheDocument();
+  });
+
   it("shows each schedule's download mode", async () => {
     vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([
       { id: "p1", system_id: "s1", domain: "material_master", tables: ["MARA"], schedule_cron: "0 2 * * *",
@@ -28,7 +53,8 @@ describe("SchedulesPanel", () => {
     ]);
     vi.spyOn(systemObjectsApi, "getSystemObjects").mockResolvedValue({ system_type: "ecc", objects: [] });
     renderWithQuery(<SchedulesPanel id="s1" canManage={false} />);
-    const link = await screen.findByRole("link", { name: "Africa/Johannesburg" });
+    // the process discovery section beneath carries the same zone link
+    const link = (await screen.findAllByRole("link", { name: "Africa/Johannesburg" }))[0];
     expect(link).toHaveAttribute("href", "/admin/triage#calendar");
     // The zone beside each schedule and its next run only exist once the profiles have loaded; the
     // link above renders before them, so waiting on the link alone counted one occurrence.
@@ -52,7 +78,7 @@ describe("SchedulesPanel", () => {
     });
     vi.spyOn(objectsApi, "getObjectsMonitor").mockResolvedValue([row("material_master", "p1", "stale"), row("fi_gl", "p2", "fresh")]);
     renderWithQuery(<SchedulesPanel id="s1" canManage={false} />);
-    expect(await screen.findByRole("columnheader", { name: "Freshness" })).toBeInTheDocument();
+    expect((await screen.findAllByRole("columnheader", { name: "Freshness" }))[0]).toBeInTheDocument();
     const rowOf = (name: string) => screen.getByText(name).closest("tr") as HTMLElement;
     await waitFor(() => expect(rowOf("Material master")).toHaveTextContent("Stale"));
     expect(rowOf("FI general ledger")).toHaveTextContent("Fresh");

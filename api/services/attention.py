@@ -16,7 +16,7 @@ viewer's effective actions at the item's scope (system, module), so a scoped use
 admin items need tenant-wide ``manage_users``. Deterministic SQL and Python; every query is tenant-filtered and runs
 after ``app.tenant_id`` is set.
 
-Not here yet: ``discovery_due`` (process schedules) and ``api_key_expiring`` (API keys) come with their work packages.
+Not here yet: ``api_key_expiring`` (API keys) comes with its work package.
 """
 from __future__ import annotations
 
@@ -76,6 +76,7 @@ KINDS: dict[str, tuple[int, str, str]] = {
     "object_no_go": (4, "view", "Open object"),
     "discovery_failed": (3, "run_process_discovery", "Open run"),
     "fitness_drop": (2, "run_process_discovery", "Open process"),
+    "discovery_due": (3, "run_process_discovery", "Run discovery"),
     "rule_review": (4, "review_ai_rules", "Review rules"),
     "contract_breach": (4, "manage_rules", "Open contracts"),
     "access_requests": (5, "manage_users", "Review requests"),
@@ -452,6 +453,42 @@ async def _discovery(c: _Ctx) -> list[Item]:
     return out
 
 
+async def _discovery_due(c: _Ctx) -> list[Item]:
+    """An active process discovery schedule whose latest finished run is older than its cadence allows
+    (``cadence.freshness``). A schedule that never ran is due, not stale; a failed latest run is discovery_failed."""
+    from api.services import cadence
+
+    rows = await c.q("""
+        SELECT s.system_id::text AS system_id, s.l1, s.schedule_cron, s.active, s.next_run_at,
+               r.status AS last_status, d.finished_at AS done_at
+          FROM process_discovery_schedules s
+          LEFT JOIN LATERAL (SELECT status FROM process_discovery_runs r
+                              WHERE r.tenant_id = s.tenant_id AND r.system_id = s.system_id AND r.l1 = s.l1
+                                AND r.status IN ('completed', 'failed')
+                              ORDER BY r.started_at DESC, r.id DESC LIMIT 1) r ON true
+          LEFT JOIN LATERAL (SELECT COALESCE(finished_at, started_at) AS finished_at FROM process_discovery_runs d
+                              WHERE d.tenant_id = s.tenant_id AND d.system_id = s.system_id AND d.l1 = s.l1
+                                AND d.status = 'completed'
+                              ORDER BY d.started_at DESC, d.id DESC LIMIT 1) d ON true
+         WHERE s.tenant_id = CAST(:t AS uuid) AND s.active AND s.schedule_cron IS NOT NULL""")
+    tz = await object_monitor.tenant_timezone(c.db, c.t)
+    stale: dict[str, list] = {}
+    for r in rows:
+        if r.done_at is not None and cadence.freshness(r.done_at, r.schedule_cron, r.active, r.last_status, c.now, tz,
+                                                       r.next_run_at) == "stale":
+            stale.setdefault(r.system_id, []).append(r)
+    out = []
+    for sid, rs in stale.items():
+        rs.sort(key=lambda r: r.done_at)
+        names = ", ".join(r.l1.upper() for r in rs)
+        out.append(_item("discovery_due", severity="medium", count=len(rs), system_id=sid, system_name=c.name(sid),
+                         since=rs[0].done_at,
+                         title=f"Process discovery on {c.name(sid) or 'a system'} has not run on schedule",
+                         detail=f"The last run for {names} was {_ago(rs[0].done_at, c.now)}. Run it again.",
+                         href=f"/process/runs?system={sid}"))
+    return out
+
+
 async def _rules(c: _Ctx) -> list[Item]:
     r = (await c.q("""
         SELECT (SELECT count(*) FROM ai_proposed_rules WHERE tenant_id = CAST(:t AS uuid) AND status = 'draft'
@@ -544,6 +581,7 @@ _SOURCES: list[tuple[str, Callable[[_Ctx], Awaitable[list[Item]]]]] = [
     ("connection", _connection), ("config_missing", _config_missing), ("config_drift", _config_drift),
     ("monitor", _monitor), ("schedules", _schedules), ("jobs", _failed_jobs), ("overdue_records", _overdue_records),
     ("object_no_go", _no_go), ("approvals", _approvals), ("sla_breach", _sla), ("discovery", _discovery),
+    ("discovery_due", _discovery_due),
     ("rules", _rules), ("contracts", _contracts), ("admin", _admin),
 ]
 

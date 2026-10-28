@@ -168,6 +168,14 @@ def login(body: LoginRequest, response: Response):
             {"email": (body.email or "").strip(), "tid": DEV_TENANT_ID},
         ).fetchone()
 
+        # SSO enforced (api/routes/auth_oidc.py): password sign-in is for administrators only (break-glass). Unknown
+        # emails get the same answer as non-administrators, so this reveals nothing about who has an account.
+        from api.services import oidc as _oidc
+
+        if _oidc.is_enforced(_oidc.load_config(conn, DEV_TENANT_ID)) and not _oidc.holds_break_glass(
+                conn, DEV_TENANT_ID, str(row[0]) if row else None, row[3] if row else None):
+            raise HTTPException(status_code=403, detail="Your organisation requires single sign-on. Use Continue with single sign-on.")
+
         if not row or not row[5]:  # not found or inactive
             raise HTTPException(status_code=401, detail="Invalid credentials")
 

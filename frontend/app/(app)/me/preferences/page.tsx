@@ -6,10 +6,12 @@
  */
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
 import { Button, Card, ConfirmDialog, Field, Notice, PageFrame, PageHeader, Select, Switch, toast } from "@/design";
 import { resetSavedViews } from "@/design/table/views";
+import { useRole } from "@/hooks/use-role";
 import { useAuroraPrefs, type DensityTier, type Theme } from "@/hooks/use-theme";
 import { usePreferences } from "@/hooks/use-preferences";
 import { getHealth } from "@/lib/api/health";
@@ -38,6 +40,7 @@ const NO_EMAIL_NOTICE = "Email is not configured on this deployment; you will ge
 export default function PreferencesPage() {
   const { theme, density, setTheme, setDensity } = useAuroraPrefs();
   const { prefs, update } = usePreferences();
+  const { can } = useRole();
   const health = useQuery({ queryKey: queryKeys.health(), queryFn: getHealth, staleTime: 60_000, retry: false });
   const [testing, setTesting] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -103,6 +106,10 @@ export default function PreferencesPage() {
           <Field label="Digest of your open items">
             <Select value={digest} onValueChange={(v) => update({ notifications: { digest: v as DigestFrequency } })} options={DIGESTS} />
           </Field>
+          <p className="m-text-meta m-ink-3">
+            This is your own digest. The default digest for the tenant is set by an administrator in Alerts.
+            {can("manage_settings") ? <> <Link className="underline" href="/admin/alerts">Alerts for everyone</Link></> : null}
+          </p>
           <Switch label="Tell me at once about critical findings" checked={critical} onCheckedChange={(on) => update({ notifications: { immediate_critical: on } })} />
           <Switch label="Also email me" checked={email} onCheckedChange={(on) => update({ notifications: { channels: { email: on } } })} />
           <div className="flex flex-wrap items-center gap-3">

@@ -544,3 +544,37 @@ describe("dueLabel", () => {
     expect(dueLabel(null, now)).toBeNull();
   });
 });
+
+describe("FixWork new since baseline", () => {
+  it("asks the API for exactly the records new since the baseline run and names it in a chip", async () => {
+    search = new URLSearchParams("run=R2&module=material_master&since=R1");
+    vi.spyOn(versions, "getVersion").mockResolvedValue({ id: "R1", label: "Oct 12", status: "complete", run_at: "2026-10-12T05:00:00Z", dqs_summary: null, metadata: {} });
+    renderWithQuery(<FixWork />);
+    await screen.findByTestId("fix-work");
+    await waitFor(() => expect(work.getWorkRecords).toHaveBeenCalledWith(expect.objectContaining({ version_id: "R2", since: "R1", module: "material_master" })));
+    expect(work.getWorkSummary).toHaveBeenCalledWith("R2", expect.objectContaining({ since: "R1" }));
+    const chip = await screen.findByText("New since");
+    expect(chip.parentElement).toHaveTextContent("New since12 Oct 2026");
+  });
+
+  it("removes the baseline with its chip, and Clear filters resets it", async () => {
+    search = new URLSearchParams("run=R2&module=material_master&since=R1&sev=critical");
+    vi.spyOn(versions, "getVersion").mockResolvedValue({ id: "R1", label: "Oct 12", status: "complete", run_at: "2026-10-12T05:00:00Z", dqs_summary: null, metadata: {} });
+    renderWithQuery(<FixWork />);
+    await userEvent.click(await screen.findByRole("button", { name: "Remove filter New since" }));
+    expect(replace).toHaveBeenLastCalledWith("/fix?run=R2&module=material_master&sev=critical", { scroll: false });
+    replace.mockClear();
+    await userEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+    const next = new URLSearchParams(String(replace.mock.calls[0][0]).split("?")[1] ?? "");
+    expect(next.has("since")).toBe(false);
+  });
+
+  it("ignores a baseline without a run: the current state is not one run to compare", async () => {
+    search = new URLSearchParams("since=R1");
+    renderWithQuery(<FixWork />);
+    await screen.findByTestId("fix-work");
+    await waitFor(() => expect(work.getWorkRecords).toHaveBeenCalled());
+    expect(work.getWorkRecords).toHaveBeenCalledWith(expect.not.objectContaining({ since: "R1" }));
+    expect(screen.queryByText("New since")).toBeNull();
+  });
+});

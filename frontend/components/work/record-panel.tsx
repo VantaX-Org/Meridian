@@ -11,6 +11,7 @@ import { getAssignableUsers } from "@/lib/api/users";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { formatDate, formatModuleName, formatMoney, formatNumber, plural } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { RaiseException } from "./raise-exception";
 import { SOURCE, STATUS, dueLabel } from "./status";
 
 export const workRecordKey = (module: string, key: string, run?: string) => ["work", "record", module, key, run ?? "latest"];
@@ -377,6 +378,7 @@ export function RecordPanel({ module, recordKey, run, onDecided, footer, fullRec
             <Select label="Assign to" value="" placeholder="Assign to…" options={assignees(people.data, rec.assigned_to)}
               onValueChange={(v) => { if (v) c.mutate([{ ...base, action: "assign", assignee: v }]); }} />
           ) : null}
+          <RaiseException rec={rec} />
         </div>
 
         {rec.can.comment ? (

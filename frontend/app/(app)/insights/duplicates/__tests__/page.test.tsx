@@ -49,12 +49,12 @@ function explainWithMembers(members: string[]): mergeExplainApi.ExplainResponse 
 // race it. Hover the option and wait for the highlight, then click: no timing
 // dependence, so no inflated timeouts.
 async function pickObjectAndRecord() {
-  fireEvent.click(screen.getByRole("combobox"));
+  fireEvent.click(screen.getByRole("combobox", { name: "Object" }));
   const option = await screen.findByRole("option", { name: "Material master" });
   fireEvent.mouseMove(option);
   await waitFor(() => expect(option).toHaveAttribute("data-highlighted"));
   fireEvent.click(option);
-  await waitFor(() => expect(screen.getByRole("combobox")).toHaveTextContent("Material master"));
+  await waitFor(() => expect(screen.getByRole("combobox", { name: "Object" })).toHaveTextContent("Material master"));
   fireEvent.change(screen.getByLabelText("Record key"), { target: { value: "000101" } });
 }
 

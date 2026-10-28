@@ -30,6 +30,7 @@ import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { useInsightScope } from "../_components/useInsightScope";
 import { useCurrentState } from "../_components/useCurrentState";
 import { PAGE_PURPOSE } from "../_components/InsightViews";
+import { ScoredPairs } from "./scored-pairs";
 import { MinedAnomalies, MinedDuplicates, MinedRelationships, useMinedFeeds } from "./mined-tabs";
 
 export default function DuplicatesPage() {
@@ -233,6 +234,13 @@ export default function DuplicatesPage() {
             </div>
           </div>
         </Card>
+      )}
+      {noRun ? null : (
+        <section id="duplicates-scored" aria-label="Scored pairs" className="flex flex-col gap-2">
+          <h2 className="m-text-h font-semibold m-ink">Scored pairs</h2>
+          <p className="m-text-meta m-ink-3">The matcher&apos;s pending candidate pairs for one object. Review opens the pair in Match review.</p>
+          <ScoredPairs objects={objectOptions} />
+        </section>
       )}
       {nothing || noRun ? null : (
         <>

@@ -15,6 +15,10 @@ vi.mock("@/context/auth-context", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+vi.mock("@/lib/api/sso", () => ({
+  getOidcPublicConfig: vi.fn().mockResolvedValue({ enabled: false, display_name: null, enforce: false }),
+}));
+
 vi.mock("@/lib/api/auth", () => ({
   requestPasswordReset: vi.fn(),
   resetPassword: vi.fn(),

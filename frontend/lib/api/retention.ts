@@ -102,3 +102,53 @@ export function blockedReasonOf(error: unknown): string | null {
   }
   return null;
 }
+
+/* ─── Whole-tenant purge (api/routes/retention.py): two steps, 24 hours apart ─── */
+
+/** Step one: a token that becomes usable at `executes_after`. Nothing is deleted yet. */
+export interface TenantPurgeRequest {
+  token: string;
+  executes_after: string;
+}
+
+/** POST /api/v1/admin/purge-tenant without a token (manage_settings; 5 per hour). */
+export async function requestTenantPurge(): Promise<TenantPurgeRequest> {
+  const { data } = await apiClient.post<TenantPurgeRequest>("/api/v1/admin/purge-tenant", {});
+  return data;
+}
+
+/** The message a failed blob response carries (`detail` as text, or `detail.message`), else null. */
+async function blobDetail(data: unknown): Promise<string | null> {
+  if (!(data instanceof Blob)) return null;
+  try {
+    const detail = (JSON.parse(await data.text()) as { detail?: unknown }).detail;
+    if (typeof detail === "string") return detail;
+    const message = (detail as { message?: unknown } | undefined)?.message;
+    return typeof message === "string" ? message : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Step two: purge every run, report and audit row with the token, then save the deletion certificate (a PDF) the
+ * API returns. A refusal (token unknown, or not usable yet) surfaces as an Error with the API's sentence.
+ */
+export async function executeTenantPurge(token: string): Promise<void> {
+  let response;
+  try {
+    response = await apiClient.post<Blob>("/api/v1/admin/purge-tenant", { token }, { responseType: "blob" });
+  } catch (err: unknown) {
+    const detail = await blobDetail((err as { response?: { data?: unknown } }).response?.data);
+    if (detail) throw new Error(detail);
+    throw err;
+  }
+  const url = window.URL.createObjectURL(response.data);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "deletion-certificate.pdf";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}

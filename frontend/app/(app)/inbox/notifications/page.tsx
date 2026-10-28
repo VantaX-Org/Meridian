@@ -57,7 +57,7 @@ export default function NotificationsPage() {
       errorProps={{ error: q.error, onRetry: () => void q.refetch() }}
       table={
         <Card padding="sm">
-          <ul>{items.map((n) => <NotificationRow key={n.id} n={n} showBody onOpen={onOpen} />)}</ul>
+          <ul>{items.map((n) => <NotificationRow key={n.id} n={n} showBody onOpen={onOpen} onMarkRead={(x) => markRead.mutate(x.id)} />)}</ul>
           {items.length < total && (
             <div className="px-3 pt-2">
               <Button variant="secondary" onClick={() => setLimit((l) => l + PAGE)}>Show more</Button>

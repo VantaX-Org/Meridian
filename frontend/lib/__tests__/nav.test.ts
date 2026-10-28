@@ -98,7 +98,7 @@ describe("activeHref", () => {
 
 describe("wave 18b gap routes", () => {
   const items = flattenNav(NAV_GROUPS.flatMap((g) => g.items));
-  const hrefs = ["/insights/owners", "/insights/exec", "/mdm", "/mdm/survivorship", "/admin/audit", "/admin/notifications", "/admin/jobs", "/admin/reference", "/fix/what-if", "/rules/drafts", "/rules/dictionary"];
+  const hrefs = ["/insights/owners", "/insights/exec", "/mdm", "/mdm/survivorship", "/admin/audit", "/admin/alerts", "/admin/sign-in", "/admin/jobs", "/admin/reference", "/fix/what-if", "/rules/drafts", "/rules/dictionary"];
 
   it("lists every new route once, with a requires", () => {
     for (const h of hrefs) {

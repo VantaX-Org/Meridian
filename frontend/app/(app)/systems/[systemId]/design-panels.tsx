@@ -197,30 +197,51 @@ export function ConfigTab({ id, tables }: { id: string; tables: { table: string;
 }
 
 /** Live check-table values against the SAP-standard lists the rules fall back to. */
-function DeviationPanel({ id }: { id: string }) {
-  const { data } = useQuery({ queryKey: queryKeys.designConfigDeviation(id), queryFn: () => getConfigDeviation(id) });
-  if (!data?.tables.length) return null;
+export function DeviationPanel({ id }: { id: string }) {
+  const q = useQuery({ queryKey: queryKeys.designConfigDeviation(id), queryFn: () => getConfigDeviation(id) });
   const list = (vals: string[]) => (vals.length ? vals.slice(0, 12).join(", ") + (vals.length > 12 ? ` +${vals.length - 12}` : "") : "—");
   return (
     <Card title="Deviation from SAP standard">
-      <table className="m-table">
-        <thead><tr>
-          <th>Check table</th>
-          <th>Custom (not in SAP standard)</th>
-          <th>SAP standard, not configured</th>
-        </tr></thead>
-        <tbody>
-          {data.tables.map((t) => (
-            <tr key={t.reference}>
-              <td className="font-mono">{t.reference}</td>
-              <td className="font-mono">{list(t.custom)}</td>
-              <td className="font-mono">{list(t.missing)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <QueryGate q={q} height={96} />
+      {q.data && q.data.tables.length === 0 ? (
+        <EmptyState variant="inline" title="No deviation to compare" detail="Configuration tables read live from the system are compared with SAP standard values here. Run discovery again to read them." />
+      ) : null}
+      {q.data && q.data.tables.length > 0 ? (
+        <table className="m-table">
+          <thead><tr>
+            <th>Check table</th>
+            <th className="text-right">In this system</th>
+            <th className="text-right">SAP standard</th>
+            <th>Custom (not in SAP standard)</th>
+            <th>SAP standard, not configured</th>
+          </tr></thead>
+          <tbody>
+            {q.data.tables.map((t) => (
+              <tr key={t.reference}>
+                <td className="font-mono">{t.reference}</td>
+                <td className="text-right">{t.live_count.toLocaleString()}</td>
+                <td className="text-right">{t.standard_count.toLocaleString()}</td>
+                <td className="font-mono">{list(t.custom)}</td>
+                <td className="font-mono">{list(t.missing)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : null}
     </Card>
   );
+}
+
+/** "142 tables read, 6 not found, 2 failed": the coverage in one sentence. */
+export function coverageSummary(items: { status: string }[]): string {
+  const count = (pred: (s: string) => boolean) => items.filter((i) => pred(i.status)).length;
+  const notFound = count((s) => s === "not_found");
+  const failed = count((s) => s === "failed" || s === "unreachable");
+  const read = items.length - notFound - failed;
+  const parts = [`${read.toLocaleString()} ${read === 1 ? "table" : "tables"} read`];
+  if (notFound) parts.push(`${notFound.toLocaleString()} not found`);
+  if (failed) parts.push(`${failed.toLocaleString()} failed`);
+  return parts.join(", ");
 }
 
 export function CoverageTab({ id }: { id: string }) {
@@ -236,6 +257,7 @@ export function CoverageTab({ id }: { id: string }) {
       </p>
       <QueryGate q={coverageQ} />
       {data && parts.length === 0 ? <EmptyState title="Nothing read yet" detail="Coverage fills in after design discovery runs." /> : null}
+      {parts.length > 0 ? <p className={clsx(muted, "m-ink-2")} data-testid="coverage-summary">{coverageSummary(parts.flatMap(([, items]) => items))}</p> : null}
       {parts.map(([part, items]) => (
         <Card key={part} title={coveragePartLabel(part)}>
           <div className="flex flex-wrap gap-2">
@@ -259,13 +281,15 @@ export function SnapshotsTab({ id }: { id: string }) {
   const [to, setTo] = useState("");
   const a = from || done[1]?.id || "";
   const b = to || done[0]?.id || "";
-  const { data: diff } = useQuery({ queryKey: queryKeys.designDiff(id, a, b), queryFn: () => getDesignDiff(id, a, b), enabled: Boolean(a && b && a !== b) });
+  const diffQ = useQuery({ queryKey: queryKeys.designDiff(id, a, b), queryFn: () => getDesignDiff(id, a, b), enabled: Boolean(a && b && a !== b) });
+  const diff = diffQ.data;
   const opts = done.map((s) => ({ value: s.id, label: `${s.started_at ? formatDate(s.started_at, "datetime") : s.id}, ${s.tables} tables` }));
   if (snapsQ.isLoading || snapsQ.isError) return <QueryGate q={snapsQ} />;
   return (
     <div className="flex flex-col gap-4">
       <p className={clsx(muted, "m-ink-2")}>Each time Meridian read this system&apos;s design. Compare two to see which tables and fields changed.</p>
-      <table className="m-table">
+      {snaps.length === 0 ? <EmptyState title="No snapshot yet" detail="Run design discovery from the Connection card above to take the first one." /> : null}
+      {snaps.length > 0 ? <table className="m-table">
         <thead><tr>
           <th>Started</th><th>Status</th>
           <th className="text-right">Tables</th>
@@ -283,13 +307,15 @@ export function SnapshotsTab({ id }: { id: string }) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table> : null}
       {done.length > 1 ? (
         <Card title="Design drift">
           <div className="flex gap-2">
             <Select label="Compare from" value={a} options={opts} onValueChange={setFrom} />
             <Select label="Compare to" value={b} options={opts} onValueChange={setTo} />
           </div>
+          {a === b ? <p className={clsx(muted, "m-ink-2")}>Choose two different snapshots to compare.</p> : null}
+          {a !== b ? <QueryGate q={diffQ} height={96} /> : null}
           {diff && (diff.changes.length === 0 ? <p className={clsx(muted, "m-ink-2")}>No dictionary changes between these snapshots.</p> : (
             <table className="m-table">
               <thead><tr>
@@ -311,7 +337,7 @@ export function SnapshotsTab({ id }: { id: string }) {
             </table>
           ))}
         </Card>
-      ) : <p className={clsx(muted, "m-ink-2")}>Drift appears once the system has been discovered twice.</p>}
+      ) : snaps.length > 0 ? <p className={clsx(muted, "m-ink-2")}>Drift appears once the system has been discovered twice.</p> : null}
     </div>
   );
 }

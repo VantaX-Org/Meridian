@@ -108,8 +108,9 @@ describe("ObjectMonitorStrip", () => {
       show(monitor());
       const s = await strip();
       const newRecords = await s.findByRole("link", { name: "Open the 14 new failing records of Material master" });
-      expect(newRecords).toHaveAttribute("href", fixHref({ run: "v2", module: "material_master", check: "MM_001" }));
-      expect(newRecords).toHaveAttribute("href", "/fix?run=v2&module=material_master&check=MM_001");
+      expect(newRecords).toHaveAttribute("href", fixHref({ run: "v2", module: "material_master", check: "MM_001", since: "v1" }));
+      // since names the baseline run, so the list holds exactly the records the count counts
+      expect(newRecords).toHaveAttribute("href", "/fix?run=v2&module=material_master&check=MM_001&since=v1");
       const recovered = s.getByRole("link", { name: /5 recovered records/ });
       expect(recovered).toHaveAttribute("href", "/runs/v2/vs/v1");
     });
@@ -117,7 +118,7 @@ describe("ObjectMonitorStrip", () => {
     it("leaves the rule off the fix link when several rules newly fail", async () => {
       show(monitor({ drift: { ...monitor().drift, newly_failing_rule_count: 3, newly_failing_rules: [{ check_id: "MM_001" }, { check_id: "MM_003" }, { check_id: "MM_004" }] } }));
       const link = await (await strip()).findByRole("link", { name: "Open the 14 new failing records of Material master" });
-      expect(link).toHaveAttribute("href", "/fix?run=v2&module=material_master");
+      expect(link).toHaveAttribute("href", "/fix?run=v2&module=material_master&since=v1");
     });
 
     it("links no zero count", async () => {

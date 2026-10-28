@@ -16,6 +16,11 @@
     "heading": "Inbox"
   },
   {
+    "name": "attention",
+    "path": "/attention",
+    "heading": "To do"
+  },
+  {
     "name": "systems-extraction",
     "path": "/systems/c7a18906-1555-40ba-a1b2-caf83188238e/extractions/64afe257-80b0-48b9-8b9a-397e29a7dfe6",
     "heading": "Systems"

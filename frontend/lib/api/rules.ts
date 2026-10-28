@@ -232,7 +232,7 @@ export interface ModuleCoverage {
 }
 
 export async function getModuleCoverage(module: string, params?: { enabled?: boolean }): Promise<ModuleCoverage> {
-  const { data } = await apiClient.get<ModuleCoverage>(`/api/v1/rules/coverage/${encodeURIComponent(module)}`, { params });
+  const { data } = await apiClient.get<ModuleCoverage>(`/api/v1/rules/coverage/${encodeURIComponent(module)}`, { params, requestAccess: true });
   return data;
 }
 
@@ -290,6 +290,39 @@ export interface RuleVersion {
 export async function getRuleVersions(ruleUuid: string): Promise<{ rule_id: string; shipped: { source: string; hash: string; app_version: string; rule: Record<string, unknown> } | null; versions: RuleVersion[] }> {
   const { data } = await apiClient.get(`/api/v1/rules/${ruleUuid}/versions`);
   return data;
+}
+
+/** GET /api/v1/rules/{ruleId}/versions/{version}/diff: the effective rule at `version` against the version before it (or the shipped rule). */
+export interface RuleVersionDiff {
+  rule_id: string;
+  /** Label of the older side: "v2", or "shipped@<hash>" when `version` is the first tenant version. */
+  from: string;
+  to: string;
+  /** A unified diff of the two effective rules as YAML; empty when they are identical. */
+  diff: string;
+}
+
+/** A user opens the diff, so a scoped 403 opens the request-access dialog like any click would. */
+export async function getRuleVersionDiff(ruleId: string, version: number): Promise<RuleVersionDiff> {
+  const { data } = await apiClient.get<RuleVersionDiff>(
+    `/api/v1/rules/${encodeURIComponent(ruleId)}/versions/${version}/diff`,
+    { requestAccess: true },
+  );
+  return data;
+}
+
+export type DiffChange = "added" | "removed";
+export interface DiffRow { change: DiffChange; line: string }
+
+/** The added and removed lines of a unified diff, in order. File headers and hunk markers are dropped. */
+export function diffRows(unified: string): DiffRow[] {
+  const rows: DiffRow[] = [];
+  for (const raw of unified.split("\n")) {
+    if (raw.startsWith("+++") || raw.startsWith("---") || raw.startsWith("@@")) continue;
+    if (raw.startsWith("+")) rows.push({ change: "added", line: raw.slice(1).trimEnd() });
+    else if (raw.startsWith("-")) rows.push({ change: "removed", line: raw.slice(1).trimEnd() });
+  }
+  return rows;
 }
 
 /** GET /api/v1/rules/export — same filters as getRules, CSV or XLSX. */

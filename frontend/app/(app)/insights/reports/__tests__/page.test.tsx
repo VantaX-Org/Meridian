@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -27,13 +27,13 @@ const entry = (id: string, name: string, url: string | null) => ({
   id, name, format: "PDF" as const, about: `${name} about`, sections: ["Cover", "Scores"], page_estimate: 4, requires: [], url, last_built_at: null,
 });
 
-function mount(kinds: string[] = ["board"]) {
+function mount(kinds: string[] = ["board"], catalogue?: reportsApi.CatalogueEntry[]) {
   vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [
     { id: "v2", label: "Run 2", status: "complete", run_at: "2026-10-16T05:00:00Z", metadata: { modules: ["business_partner"] } },
     { id: "v1", label: "Run 1", status: "complete", run_at: "2026-10-02T05:00:00Z", metadata: { modules: ["business_partner"] } },
     { id: "co", label: "controlling_1k", status: "complete", run_at: "2026-10-03T05:00:00Z", metadata: { modules: ["controlling"] } },
   ] } as never);
-  vi.spyOn(reportsApi, "getReportCatalogue").mockResolvedValue([entry("board", "Board pack", "/api/v1/reports/board/v2.pdf"), entry("compare", "Run comparison", "/api/v1/reports/compare/v2.pdf"), { ...entry("record", "Record fix sheet", null), requires: ["record"] }]);
+  vi.spyOn(reportsApi, "getReportCatalogue").mockResolvedValue(catalogue ?? [entry("board", "Board pack", "/api/v1/reports/board/v2.pdf"), entry("compare", "Run comparison", "/api/v1/reports/compare/v2.pdf"), { ...entry("record", "Record fix sheet", null), requires: ["record"] }]);
   vi.spyOn(insightsApi, "getOverview").mockResolvedValue({
     version_id: "v2", run_label: "Run 2", run_at: null, previous_version_id: null,
     dqs: { composite: 80, previous: null, delta: null, tier: "go", capped: false, cap_reason: null },
@@ -97,6 +97,28 @@ describe("ReportsPage", () => {
     // Named by the report, the run and the day, never the run id.
     expect(dl).toHaveBeenCalledWith("/api/v1/reports/compare/v2.pdf", reportFilename({ name: "Comparison report", ext: "pdf" }, "Run 2"));
     expect(dl.mock.calls[0][1]).toMatch(/^Meridian comparison report – Run 2 – \d{4}-\d{2}-\d{2}\.pdf$/);
+  });
+
+  it("lists all seven server reports (extraction, trend, rules, dictionary, owners, board, workbook), each downloadable", async () => {
+    perm.allowed = true;
+    const dl = vi.spyOn(downloadApi, "downloadAuthenticated").mockResolvedValue();
+    const seven = [
+      entry("extraction", "Extraction report", "/api/v1/reports/extraction/v2.pdf"),
+      entry("trend", "Trend report", "/api/v1/reports/trend.pdf"),
+      entry("rules", "Rule catalogue", "/api/v1/reports/rules.pdf?module=business_partner"),
+      entry("dictionary", "Data dictionary", "/api/v1/reports/dictionary.pdf"),
+      entry("owners", "Owner workload", "/api/v1/reports/owners/v2.pdf"),
+      entry("board", "Board pack", "/api/v1/reports/board/v2.pdf"),
+      { ...entry("workbook", "Analyst workbook", "/api/v1/reports/v2/workbook.xlsx"), format: "XLSX" as const },
+    ];
+    mount(["board"], seven);
+    const list = await screen.findByRole("listbox", { name: "Reports" });
+    const names = ["Extraction report", "Progress report", "Rule catalogue", "Data dictionary", "Owner workload", "Board pack", "Comparison workbook"];
+    for (const n of names) expect(await within(list).findByRole("option", { name: new RegExp(n) })).toBeInTheDocument();
+    expect(within(list).getAllByRole("option")).toHaveLength(7);
+    await userEvent.click(within(list).getByRole("option", { name: /Owner workload/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Download" }));
+    expect(dl.mock.calls[0][0]).toBe("/api/v1/reports/owners/v2.pdf");
   });
 
   it("moves the selection with the arrow keys", async () => {

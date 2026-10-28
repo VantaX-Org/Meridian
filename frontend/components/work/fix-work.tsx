@@ -25,6 +25,7 @@ import { useRunList } from "@/hooks/use-run-list";
 import { stateScopeLine } from "@/lib/current-state";
 import { keyBelongsElsewhere } from "@/lib/inbox-keys";
 import { RecordPanel, invalidateAfterDecision, toastDraftBatch } from "./record-panel";
+import { IssueComments } from "./issue-comments";
 import { STATUS, STATUS_ORDER, dueLabel } from "./status";
 import { issuesView } from "./issues";
 
@@ -94,6 +95,8 @@ function useFilters(fixed: FixWorkScope = {}) {
     due: get("due") === "overdue" ? "overdue" : undefined,
     system: get("system") || undefined,
     part: get("part") || undefined,
+    // A baseline only means something against one run: without ?run= the queue is the current state of several.
+    since: (fixed.run || get("run")) && get("since") ? get("since") : undefined,
     q: get("q") || undefined,
   };
   const set = useCallback((patch: Record<string, string | null>) => {
@@ -350,6 +353,8 @@ export function FixWork({ module: fixedModule, run: fixedRun }: FixWorkScope = {
   // The run the counts belong to, named above them; the current state names its objects and newest run instead.
   const shownRunId = summary.data?.version_id ?? undefined;
   const shownRun = useQuery({ queryKey: queryKeys.run(shownRunId ?? ""), queryFn: () => getVersion(shownRunId ?? ""), enabled: !!shownRunId, meta: { ignoreError: true } });
+  // The baseline of a "New since" filter, named by its date in the chip.
+  const sinceRun = useQuery({ queryKey: queryKeys.run(filter.since ?? ""), queryFn: () => getVersion(filter.since ?? ""), enabled: !!filter.since, meta: { ignoreError: true } });
   const runList = useRunList();
   const stateIds = new Set(run ? [] : summary.data?.version_ids ?? []);
   const newestOfState = (runList.data?.versions ?? []).filter((v) => stateIds.has(v.id)).sort((a, b) => (a.run_at < b.run_at ? 1 : -1))[0];
@@ -476,6 +481,7 @@ export function FixWork({ module: fixedModule, run: fixedRun }: FixWorkScope = {
   const tile = (n: number | undefined) => (n === undefined ? "—" : n.toLocaleString());
   // The scope bar holds the object and the record search; a chip only for what it does not show.
   const chips: { label: string; value: string; key: string }[] = [
+    filter.since ? { label: "New since", value: sinceRun.data?.run_at ? formatDate(sinceRun.data.run_at, "date") : "the baseline run", key: "since" } : null,
     fromObject && filter.module ? { label: "Object", value: formatModuleName(filter.module), key: "object" } : null,
     filter.check_id ? { label: "Issue", value: activeGroup?.message ?? filter.check_id, key: "check" } : null,
     filter.severity ? { label: "Severity", value: SEVERITY_LABEL[filter.severity] ?? filter.severity, key: "sev" } : null,
@@ -486,7 +492,7 @@ export function FixWork({ module: fixedModule, run: fixedRun }: FixWorkScope = {
     filter.due ? { label: "Due", value: "overdue", key: "due" } : null,
     filter.q ? { label: "Search", value: filter.q, key: "q" } : null,
   ].filter((c): c is { label: string; value: string; key: string } => !!c);
-  const clearFilters = () => set({ object: null, check: null, sev: null, mine: null, assignee: null, system: null, part: null, sugg: null, due: null, q: null, st: null, record: null });
+  const clearFilters = () => set({ object: null, check: null, sev: null, mine: null, assignee: null, system: null, part: null, since: null, sugg: null, due: null, q: null, st: null, record: null });
   const applyView = (v: TableView) => set({
     ...Object.fromEntries(VIEW_KEYS.map((k) => [k, null])),
     ...v.params,
@@ -494,7 +500,12 @@ export function FixWork({ module: fixedModule, run: fixedRun }: FixWorkScope = {
     record: null,
   });
   const open = (r: WorkRecord) => { pick(r); if (narrow) setSheetOpen(true); };
-  const panel = current ? <RecordPanel module={current.module} recordKey={current.record_key} run={versionOf(current.module)} onDecided={next} /> : null;
+  const panel = current ? (
+    <div className="flex flex-col gap-2">
+      <RecordPanel module={current.module} recordKey={current.record_key} run={versionOf(current.module)} onDecided={next} />
+      <IssueComments module={current.module} recordKey={current.record_key} run={versionOf(current.module)} />
+    </div>
+  ) : null;
 
   return (
     <div className="flex min-w-0 flex-col gap-4" data-testid="fix-work">

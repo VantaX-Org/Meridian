@@ -32,7 +32,7 @@ import { useRuleNames } from "@/lib/rule-name";
 import { readinessHref, useProcessReadiness } from "@/components/process/shared";
 import { HandToSteward } from "@/components/process/handoff";
 import { NoSystem, fitnessTone, fmtCount, fmtFitness, fmtSeconds, l1Href, useProcessSystem } from "../_components/shared";
-import { BodySkeleton, PROCESS_PURPOSE, ProcessFrame, processMeta } from "../_components/process-header";
+import { BodySkeleton, PROCESS_PURPOSE, ProcessFrame, ProcessHeaderTiles, processMeta } from "../_components/process-header";
 import { VariantsTable } from "../_components/variants-table";
 
 const TAB_LABEL: Record<Tab, string> = {
@@ -132,6 +132,7 @@ export default function ProcessL1Page() {
       <Header l1={l1} name={row.name} systemName={system!.name} systemId={system!.id} run={discovered ? r : undefined}
         reason={isReference ? reason : null} canExport={canExport && discovered} onExport={() => setExporting(true)}
         canRun={canRun && !start} readyHref={readinessHref({ l1 })} />
+      {!start && <ProcessHeaderTiles systemId={system!.id} l1={l1} />}
       {start && startPanel}
       <BlockingRule l1={l1} systemId={system!.id} name={row.name} />
       <nav aria-label="Process levels">

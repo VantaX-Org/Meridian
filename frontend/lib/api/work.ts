@@ -202,6 +202,8 @@ export interface RecordFilter {
   system?: string;
   /** One part of the record key, FIELD=VALUE (BUKRS=1000): one company code, plant or sales org. */
   part?: string;
+  /** A baseline run id: only records failing a check they did not fail in that run (the monitoring strip's new failing records). Needs one run. */
+  since?: string;
   q?: string;
 }
 

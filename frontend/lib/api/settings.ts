@@ -26,6 +26,43 @@ export async function saveNotificationSettings(config: {
   await apiClient.post("/api/v1/settings/notifications", config);
 }
 
+/** The tenant's default digest and report schedule (POST /settings/notifications). */
+export type NotificationConfig = Parameters<typeof saveNotificationSettings>[0];
+
+/** The DQS bands: at or above target is on target, at or above warning is at risk, below critical is failing. */
+export interface ScoringBands {
+  target: number;
+  warning: number;
+  critical: number;
+}
+
+/**
+ * GET/PUT /settings/scoring. Dimension weights come back normalised to 1 and go back summing to 100; the PUT
+ * replaces module weights and the severity tables, so a save sends back what the GET returned.
+ */
+export interface ScoringConfig {
+  dimension_weights: DimensionScores;
+  module_weights: Record<string, number>;
+  thresholds: ScoringBands;
+  severity_weights: Record<string, number>;
+  severity_multipliers: Record<string, number>;
+  critical_tolerance: Record<string, number>;
+}
+
+export interface ScoringResponse extends ScoringConfig {
+  /** The built-in config, for "use defaults". */
+  defaults: ScoringConfig;
+}
+
+export async function getScoring(): Promise<ScoringResponse> {
+  const { data } = await apiClient.get<ScoringResponse>("/api/v1/settings/scoring");
+  return data;
+}
+
+export async function putScoring(config: ScoringConfig): Promise<void> {
+  await apiClient.put("/api/v1/settings/scoring", config);
+}
+
 export async function savePlannerConfig(config: PlannerConfig): Promise<void> {
   await apiClient.post("/api/v1/settings/planner", config);
 }
