@@ -60,10 +60,12 @@ export function forecastEmptyDetail(d: Pick<PredictiveResponse, "reason" | "runs
   const days = d?.days_seen;
   if (d?.reason === "needs_three_days" || (typeof days === "number" && days < 3)) {
     const cover = typeof days === "number" ? `; ${typeof runs === "number" ? `these ${plural(runs, "run")} cover` : "the runs cover"} ${plural(days, "day")}` : "";
-    return `A forecast needs runs on three different days${cover}.`;
+    const left = typeof days === "number" ? 3 - days : 1;
+    const when = left <= 1 ? "after another run on a new day" : `after runs on ${left} more new days`;
+    return `A forecast needs runs on three different days${cover}. It can start ${when}.`;
   }
   if (typeof runs === "number" && runs === 0) return "A forecast needs finished runs, and none exists yet.";
-  return "A forecast needs runs on three different days.";
+  return "A forecast needs runs on three different days. It can start after another run on a new day.";
 }
 
 /** The projected horizons in days, each with the history span the API needs before it projects that far. */
@@ -133,7 +135,9 @@ export function forecastDetail(f: DqsForecast): string {
  * the header names what it saw ("Every object, 6 runs on 1 day") rather than a run.
  */
 export default function ForecastPage() {
-  const { run } = useInsightScope();
+  const { run, runs } = useInsightScope();
+  // The system whose schedule would add the missing days: the scoped run's, else the newest run that came from one.
+  const systemId = runs.find((r) => r.id === run)?.metadata?.system_id ?? runs.find((r) => r.metadata?.system_id)?.metadata?.system_id;
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: queryKeys.analyticsPredictive(),
     queryFn: () => getPredictiveAnalytics(),
@@ -170,6 +174,7 @@ export default function ForecastPage() {
       purpose={PAGE_PURPOSE["/insights/forecast"]}
       meta={seen ? `Every object, from ${seen}` : undefined}
       run={run}
+      exportable={forecasts.length > 0}
       insight={{
         situation: {
           sentence: worst && worstAt
@@ -192,7 +197,10 @@ export default function ForecastPage() {
         title: "Not enough runs to forecast",
         detail: forecastEmptyDetail(data),
         ghost: "chart",
-        action: <Button render={<Link href="/runs">Open runs</Link>} />,
+        // Opening runs cannot add a day: scheduling can. The system's Health tab holds its schedules.
+        action: systemId
+          ? <Button render={<Link href={`/systems/${systemId}?tab=health`}>Schedule runs</Link>} />
+          : <Button render={<Link href="/systems">Open systems</Link>} />,
       }}
       errorProps={{ error: error, onRetry: () => void refetch() }}
     >

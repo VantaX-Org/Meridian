@@ -166,6 +166,7 @@ export function Line({
   numericX = false,
   highlight,
   thresholdLabel,
+  yRange,
 }: {
   data: ChartPoint[];
   onPointClick?: (point: ChartPoint) => void;
@@ -186,6 +187,8 @@ export function Line({
    * data instead (`fitCountDomain`), for a count that moves little against its size.
    */
   counts?: boolean | "fit";
+  /** A fixed y window, so sibling charts of one family share one scale (compute it once with `yDomain` over all their values). Ignored by `counts`. */
+  yRange?: [number, number];
   /** With `dqsThreshold`, the reference line's label; defaults to "Target {value}". */
   thresholdLabel?: string;
   /**
@@ -227,7 +230,7 @@ export function Line({
   const values = rows
     .flatMap((r) => Object.entries(r).filter(([k]) => k !== "x").flatMap(([, v]) => (Array.isArray(v) ? v : [Number(v)])))
     .filter(Number.isFinite);
-  const domain = counts === "fit" ? fitCountDomain(values, dqsThreshold) : counts ? countDomain(values) : yDomain(values, dqsThreshold);
+  const domain = yRange && !counts ? yRange : counts === "fit" ? fitCountDomain(values, dqsThreshold) : counts ? countDomain(values) : yDomain(values, dqsThreshold);
   const summaryData = multi ? multi.flatMap((sr) => sr.data.map((p) => ({ ...p, x: `${sr.name} ${p.label ?? p.x}`, label: undefined }))) : data;
   // The keyboard path: one button per point, named by series in a multi-series chart.
   const pointSeries = new Map<ChartPoint, string>(multi ? multi.flatMap((sr) => sr.data.map((p) => [p, sr.name] as const)) : []);

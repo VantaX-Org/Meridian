@@ -11,7 +11,7 @@ import { withScope } from "./useInsightScope";
 import { RunAnalysis } from "./RunAnalysis";
 
 /** `current`: the page shows the current state across objects, so the failing-records list is the current state's too. */
-export function InsightActions({ run, module, options = [], current = false }: { run?: string; module?: string; options?: ExportOption[]; current?: boolean }) {
+export function InsightActions({ run, module, options = [], current = false, exportable = true }: { run?: string; module?: string; options?: ExportOption[]; current?: boolean; exportable?: boolean }) {
   const pathname = usePathname() ?? "";
   const search = useSearchParams();
   const presentHref = `${pathname}?${new URLSearchParams({ ...Object.fromEntries(search?.entries() ?? []), present: "1" })}`;
@@ -27,7 +27,8 @@ export function InsightActions({ run, module, options = [], current = false }: {
       <RunAnalysis variant="secondary" />
       <Button variant="ghost" render={<Link href={withScope("/fix", { run })}>Review fixes</Link>} />
       <Button variant="ghost" render={<Link href={presentHref}>Present</Link>} />
-      <ExportMenu options={list} />
+      {/* A page with nothing of its own to export (an empty forecast) leaves the menu out. */}
+      {exportable ? <ExportMenu options={list} /> : null}
     </div>
   );
 }

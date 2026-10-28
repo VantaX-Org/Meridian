@@ -20,6 +20,7 @@ import { exportRunSteps, getRunSteps, type RunStep } from "@/lib/api/v1/runs";
 import { getSystems } from "@/lib/api/connectivity";
 import { getCostModel } from "@/lib/api/settings";
 import { AI_RERUN_STATUSES, getVersion, getVersions, patchVersionLabel, pinBaseline, runAgents } from "@/lib/api/versions";
+import { useLoadingTimeout } from "@/design/hooks/useLoadingTimeout";
 import { useDqsExplanation } from "@/components/insight/dqs-score";
 import { getAnalysisStatus } from "@/lib/api/upload";
 import { analyseVersion } from "@/lib/api/system-objects";
@@ -255,6 +256,8 @@ function SummaryTab({
   const router = useRouter();
   // Next actions come from this run's findings, not the newest run of the tenant.
   const prescriptive = useQuery({ queryKey: ["prescriptive", "next-actions", versionId], queryFn: () => getPrescriptiveAnalytics({ limit: 5, version_id: versionId }) });
+  // A query that never answers is an error with Retry after the shared timeout, never a skeleton for ever.
+  const nextStuck = useLoadingTimeout(prescriptive.isLoading);
   // Shared with the Objects tab: the score, blocking rule and readiness of each object.
   const objects = useQuery({ queryKey: queryKeys.objects(versionId), queryFn: () => getObjects(versionId) });
   const objectByModule = new Map((objects.data?.objects ?? []).map((o) => [o.module, o]));
@@ -404,13 +407,22 @@ function SummaryTab({
             <h2 className="font-semibold m-text-h">Objects in this run</h2>
             <RunLedger versionId={versionId} rows={ledgerRows} objects={objectByModule} />
           </section>
-          {/* A run with no prescribed action shows no section, not a heading over "No next actions". */}
-          {prescriptive.isLoading || next.length > 0 ? (
-            <section className={clsx("flex flex-col gap-2", prescriptive.isLoading && "[min-height:124px]")} data-testid="next-actions-slot">
-              <h2 className="font-semibold m-text-h">Next actions</h2>
-              {prescriptive.isLoading ? <Skeleton height={96} /> : <NextActions actions={next} />}
-            </section>
-          ) : null}
+          {/* Loading holds the slot's height; stuck or failed offers Retry; loaded lists the actions, or says there are none. */}
+          <section className={clsx("flex flex-col gap-2", prescriptive.isLoading && !nextStuck && "[min-height:124px]")} data-testid="next-actions-slot">
+            <h2 className="font-semibold m-text-h">Next actions</h2>
+            {prescriptive.isLoading && !nextStuck ? (
+              <Skeleton height={96} />
+            ) : nextStuck || prescriptive.isError ? (
+              <div role="alert" className="flex flex-wrap items-center gap-3 m-text-body">
+                <span>{nextStuck ? "Next actions are taking longer than expected." : `Next actions did not load. ${errorText(prescriptive.error)}`}</span>
+                <Button variant="secondary" onClick={() => void prescriptive.refetch()}>Retry</Button>
+              </div>
+            ) : next.length > 0 ? (
+              <NextActions actions={next} />
+            ) : (
+              <EmptyState variant="inline" title="No next actions for this run" detail="Nothing here has a prescribed fix yet." />
+            )}
+          </section>
         </>
       )}
       <Card title="Composite over runs">

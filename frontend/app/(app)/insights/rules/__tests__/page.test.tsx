@@ -19,6 +19,13 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(query),
 }));
 
+const stuck = vi.hoisted(() => ({ on: false }));
+// The real hook, plus a switch that makes a still-loading query read as timed out.
+vi.mock("@/design/hooks/useLoadingTimeout", async (orig) => {
+  const m = await orig<typeof import("@/design/hooks/useLoadingTimeout")>();
+  return { ...m, useLoadingTimeout: (loading: boolean, ms?: number) => m.useLoadingTimeout(loading, ms) || (stuck.on && loading) };
+});
+
 const row = (id: string, impact: number) => ({
   check_id: id, name: `Rule ${id}`, module: "material_master", severity: "high", dimension: "validity", field: "MTART",
   affected: impact, total: 100, pass_rate: 0.5, impact, auto_fix_pct: 10, s4: "none", delta_affected: null, cost_at_risk: null,
@@ -30,7 +37,7 @@ function mount() {
   return render(<QueryClientProvider client={qc}><RulesPage /></QueryClientProvider>);
 }
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => { vi.restoreAllMocks(); stuck.on = false; });
 
 describe("rulesFor80", () => {
   it("counts the rules that reach 80 percent", () => {
@@ -120,6 +127,31 @@ describe("RulesPage", () => {
     expect(await screen.findByTestId("page-purpose")).toHaveTextContent("Which checks cost the most, and where to start.");
     expect(screen.queryByRole("columnheader", { name: "Name" })).toBeNull();
     expect((await screen.findAllByText("A1")).length).toBeGreaterThan(0);
+  });
+
+  it("hides columns that hold one value on every row, and shows them when the rows differ", async () => {
+    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [row("A1", 80), row("A2", 20)] });
+    const { unmount } = mount();
+    expect(await screen.findByRole("columnheader", { name: "Failing records" })).toBeInTheDocument();
+    for (const name of ["Auto-fixable", "S/4 load", "Change since last run"]) expect(screen.queryByRole("columnheader", { name })).toBeNull();
+    unmount();
+    vi.restoreAllMocks();
+    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [row("A1", 80), { ...row("A2", 20), auto_fix_pct: 60, s4: "blocking", delta_affected: 4 }] });
+    mount();
+    for (const name of ["Auto-fixable", "S/4 load", "Change since last run"]) expect(await screen.findByRole("columnheader", { name })).toBeInTheDocument();
+  });
+
+  it("gives What changed an error with Retry when the previous run never answers, not a skeleton for ever", async () => {
+    stuck.on = true;
+    vi.spyOn(insightsApi, "getRuleRanking").mockImplementation(async (p) => (p?.version_id === "v0" ? new Promise(() => {}) : { version_id: "v1", rows: [row("A1", 80)] }));
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [
+      { id: "v1", label: "Run 1", status: "complete", run_at: "2026-10-02T00:00:00Z", metadata: { system_id: "s1" } },
+      { id: "v0", label: "Run 0", status: "complete", run_at: "2026-10-01T00:00:00Z", metadata: { system_id: "s1" } },
+    ] } as never);
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={qc}><RulesPage /></QueryClientProvider>);
+    expect(await screen.findByText(/The previous run is taking longer than expected/)).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Retry" }).length).toBeGreaterThan(0);
   });
 
   it("shows an error with retry", async () => {

@@ -332,6 +332,12 @@ describe("system detail page", () => {
     expect(within(bench).getAllByText("7 records").length).toBeGreaterThan(0);
     const chart = screen.getByText("Objects by records").closest("section, div[class]")!.parentElement as HTMLElement;
     expect(within(chart).queryByText("No rows loaded yet")).toBeNull();
+    // One object is one bar, which compares nothing: the figure is written as a sentence instead.
+    expect(within(chart).getByTestId("objects-by-records-value")).toHaveTextContent("Accounts payable holds 7 records.");
+    expect(within(chart).queryByRole("img")).toBeNull();
+    // One analysed run is not a trend either.
+    expect(screen.getByTestId("score-per-run-value")).toHaveTextContent("Mean score 70 in the latest run.");
+    expect(screen.queryByRole("img", { name: /Score per run/ })).toBeNull();
   });
 
   it("offers Extract from the empty summary of an object with no records", async () => {

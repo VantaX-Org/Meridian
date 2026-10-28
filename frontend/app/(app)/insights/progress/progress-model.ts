@@ -66,11 +66,14 @@ export interface BurndownChart {
  * The burn-down in open issues per day, with the projection at the recent pace from today to the finish date, weekly, at most PROJECTION_HORIZON_DAYS ahead.
  */
 export function burndownChart(b: Burndown): BurndownChart {
-  const peak = Math.max(1, ...b.days.map((d) => d.open));
+  // Days before the first measurement are not zero, they are unmeasured: the series starts at the first day with anything open or opened.
+  const first = b.days.findIndex((d) => d.open > 0 || d.opened > 0 || d.closed > 0);
+  const days = first > 0 ? b.days.slice(first) : b.days;
+  const peak = Math.max(1, ...days.map((d) => d.open));
   const share = (n: number) => Math.max(0, Math.round(n));
   const label = (day: string) => formatDate(day);
-  const open: ChartPoint[] = b.days.map((d) => ({ x: d.day, y: share(d.open), label: label(d.day) }));
-  const xDomain = b.days.map((d) => ({ x: d.day, label: label(d.day) }));
+  const open: ChartPoint[] = days.map((d) => ({ x: d.day, y: share(d.open), label: label(d.day) }));
+  const xDomain = days.map((d) => ({ x: d.day, label: label(d.day) }));
   const series: LineSeries[] = [{ name: "Open", data: open }];
   if (b.projected_finish && b.pace_per_day > 0 && b.open_now > 0) {
     const ahead = Math.min(daysBetween(b.today, b.projected_finish), PROJECTION_HORIZON_DAYS);

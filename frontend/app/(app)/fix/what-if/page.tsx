@@ -107,7 +107,8 @@ export default function WhatIfPage() {
         ) : sim.isError ? (
           <ErrorState message="This simulation has expired. Run it again." onRetry={() => run.mutate()} />
         ) : (
-          <EmptyState title={running ? "Simulating" : "No simulation yet"} detail={running ? "Applying every rule fix to a copy of the data." : "Pick a run and press Run simulation. Nothing is written to your system"} ghost="ring" />
+          // The ring is a progress shape: only while a simulation runs. At rest a static chart ghost; the instruction is the narrative above, once.
+          <EmptyState title={running ? "Simulating" : "No simulation yet"} detail={running ? "Applying every rule fix to a copy of the data." : undefined} ghost={running ? "ring" : "chart"} />
         )
       }
       tables={result ? <RuleImpact result={result} /> : undefined}

@@ -99,6 +99,8 @@ export interface DataTableProps<T> {
   rowPrefetch?: (row: T) => RowPrefetch | undefined;
   /** Hide the views / columns / density / export toolbar. */
   hideToolbar?: boolean;
+  /** Columns hidden when the table first renders (column id to false); the Columns menu brings them back. */
+  initialColumnVisibility?: VisibilityState;
   /** `data-tour` value on the table card, so a guided tour can spotlight it (lib/help/tours.ts). */
   dataTour?: string;
   /** Accessible name of the grid, e.g. "Rules". Defaults to "Data table". */
@@ -171,7 +173,7 @@ export function DataTable<T>({
   sorting: sortingProp, onSortingChange: onSortingChangeProp, dense: denseProp = false,
   tableId, exportOptions = [], exportName = "export", hideToolbar = false, drawerTitle, rowHref, rowPrefetch, dataTour,
   label = "Data table", rowLabel, manualSorting = false, selection: selectionProp, onSelectionChange, activeRowId, onActiveRowChange,
-  onEndReached, rowTestId, presetViews = [], viewParams, onApplyView, hideExport = false,
+  onEndReached, rowTestId, presetViews = [], viewParams, onApplyView, hideExport = false, initialColumnVisibility,
 }: DataTableProps<T>) {
   "use no memo";
   const maxHeight = maxHeightProp ?? heightProp ?? "calc(100vh - 240px)";
@@ -186,7 +188,7 @@ export function DataTable<T>({
         onSortingChangeProp(typeof updater === "function" ? updater(sorting) : updater)
     : setInternalSorting;
   const [dense, setDense] = useState(denseProp);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(initialColumnVisibility ?? {});
   const viewsKey = tableId ?? columns.map((c, i) => c.id ?? ("accessorKey" in c ? String(c.accessorKey) : String(i))).join("|");
   const [views, setViews] = useState<TableView[]>([]);
   const [viewName, setViewName] = useState("");

@@ -232,6 +232,9 @@ export default function ExecPage() {
   const l1Tabs = [...byL1].sort(([a], [b]) => a.localeCompare(b));
   const topRisk = data ? largestValueAtRisk(valueAtRiskByL1(data.impact_rows)) : null;
   const boardPack = exportVid ? () => void downloadAuthenticated(getBoardReportUrl(exportVid, compareVid), boardFile()).catch((e: unknown) => toast.error(apiErrorMessage(e))) : undefined;
+  // The Owner column is left out when the owners list loaded and none of the listed objects has one: "Not set" on every row says nothing.
+  const fixModules = isCurrent ? currentFix.map((f) => f.module) : runFix.map((r) => r.module);
+  const showOwnerColumn = owners.status !== "ready" || fixModules.some((m) => owners.nameOf(m) != null);
   const pairs = (n: number) => plural(n, "object and wave pair", "object and wave pairs");
   // No cost can be stated before an approved fix is applied; "0x" and "0 months" would read as a verdict.
   const noCostAvoided = !!roi.data && !roi.data.roi.risk_mitigated;
@@ -275,13 +278,15 @@ export default function ExecPage() {
           </div>
         ) : undefined,
         stats: data ? [
-          { label: "Objects blocked in a wave", value: noGo, hint: cells.length ? `of ${pairs(cells.length)}` : "No wave set up", tone: noGo ? "no-go" : "go", to: withScope("/insights/readiness", { run: vid }) },
+          // A tile for something not set up (no wave, no owner) would read 0; the setup line under the cards names them instead.
+          ...(cells.length ? [{ label: "Objects blocked in a wave", value: noGo, hint: `of ${pairs(cells.length)}`, tone: noGo ? "no-go" as const : "go" as const, to: withScope("/insights/readiness", { run: vid }) }] : []),
           topRisk || !costAtRisk.text
             ? { label: topRisk ? `Most at risk: ${l1Label(topRisk.l1)}` : "Most at risk", value: topRisk ? formatMoneyCompact(topRisk.value_at_risk, currency) : "—", hint: topRisk ? undefined : "No SAP feature priced yet", to: withScope("/insights/impact", { run: vid }) }
             : { label: COST_AT_RISK, value: costAtRisk.text, hint: "Failing records; no SAP feature priced yet", to: withScope("/insights/impact", { run: vid }) },
-          // Whether anyone owns an issue is said here, under the owners, not as a change.
-          { label: "Owners improved", value: up, hint: ownerRows.length === 0 ? "Nobody owns an issue yet" : undefined, to: withScope("/insights/owners", { run: vid }) },
-          { label: "Owners slipped", value: down, tone: down ? "at-risk" : undefined, to: withScope("/insights/owners", { run: vid }) },
+          ...(ownerRows.length ? [
+            { label: "Owners improved", value: up, to: withScope("/insights/owners", { run: vid }) },
+            { label: "Owners slipped", value: down, tone: down ? "at-risk" as const : undefined, to: withScope("/insights/owners", { run: vid }) },
+          ] : []),
         ] : undefined,
         situation: {
           sentence: data?.narrative || (cells.length ? `${noGo} of ${pairs(cells.length)} cannot load` : "No migration wave is set up yet"),
@@ -364,14 +369,14 @@ export default function ExecPage() {
           >
             {isCurrent ? (
               <DataTable
-                columns={withOwner(currentFindingColumns, (f) => f.module, owners)}
+                columns={showOwnerColumn ? withOwner(currentFindingColumns, (f) => f.module, owners) : currentFindingColumns}
                 data={currentFix}
                 getRowId={(f) => f.id}
                 onRowClick={(f) => router.push(buildDrillHref({ object: f.module, ruleId: f.check_id, run: f.version_id }))}
                 hideToolbar height="auto"
               />
             ) : (
-              <DataTable columns={withOwner(ruleColumns(run, true), (r) => r.module, owners)} data={runFix} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar height="auto" />
+              <DataTable columns={showOwnerColumn ? withOwner(ruleColumns(run, true), (r) => r.module, owners) : ruleColumns(run, true)} data={runFix} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar height="auto" />
             )}
           </Section>
         </div>
