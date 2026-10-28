@@ -1173,6 +1173,29 @@ class ProcessDiscoverySchedule(Base):
     )
 
 
+class ApiKey(Base):
+    """A key for a service account — migration 099, api/routes/api_keys.py. ``key_prefix`` is the public part of
+    ``mk_<prefix>.<secret>``; ``key_hash`` is the SHA-256 of the secret (the secret itself is never stored)."""
+    __tablename__ = "api_keys"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    name = Column(Text, nullable=False)
+    key_prefix = Column(Text, nullable=False, unique=True)
+    key_hash = Column(Text, nullable=False)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    last_used_at = Column(DateTime(timezone=True), nullable=True)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_api_keys_tenant_id", "tenant_id"),
+        Index("ix_api_keys_user_id", "user_id"),
+    )
+
+
 class ProcessDiscoveryRun(Base):
     """One process-discovery run per (system, L1) — migration 079, spec §2.1."""
     __tablename__ = "process_discovery_runs"

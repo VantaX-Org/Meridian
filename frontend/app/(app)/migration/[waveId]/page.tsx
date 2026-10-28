@@ -22,6 +22,7 @@ import { useState } from "react";
 import { BlockersTab } from "./blockers-tab";
 import { MappingTab } from "./mapping-tab";
 import { S4Tab } from "./s4-tab";
+import { COUNT_DEFS } from "@/lib/counts";
 
 const pct = (v: number | null) => (v == null ? "—" : `${v.toFixed(1)}%`);
 
@@ -31,7 +32,7 @@ const objectColumns = (run: string | null, waveId: string): ColumnDef<WaveObject
   return [
   // The object's name from formatModuleName, never the API's label ("Sd Sales Orders").
   { id: "object", header: "Object", accessorFn: (o) => formatModuleName(o.module) },
-  { id: "verdict", header: "Verdict", cell: ({ row }) => (
+  { id: "verdict", header: COUNT_DEFS.verdict.label, cell: ({ row }) => (
       <Status kind="verdict" value={row.original.verdict} />) },
   { id: "score", header: "Readiness", cell: ({ row }) => drill(row.original.module, "overview", pct(row.original.score)) },
   { id: "records", header: "Records", cell: ({ row }) => drill(row.original.module, "records", row.original.records.toLocaleString()) },
@@ -40,7 +41,7 @@ const objectColumns = (run: string | null, waveId: string): ColumnDef<WaveObject
   { id: "gaps", header: "Migration gaps", cell: ({ row }) => (row.original.blocker_count > 0
       ? <DrillLink href={`/migration/${waveId}?tab=blockers`}>{row.original.blocker_count.toLocaleString()}</DrillLink>
       : "0") },
-  { id: "dqs", header: "Score", cell: ({ row }) => (row.original.dqs == null ? "—" : drill(row.original.module, "overview", row.original.dqs.toFixed(1))) },
+  { id: "dqs", header: COUNT_DEFS.score.label, cell: ({ row }) => (row.original.dqs == null ? "—" : drill(row.original.module, "overview", row.original.dqs.toFixed(1))) },
   { id: "open", header: "", size: 80, cell: ({ row }) => (
       <Link href={run ? `/objects/${row.original.module}?run=${run}` : `/objects/${row.original.module}`} className="m-ink-accent-ink underline" onClick={(e) => e.stopPropagation()}>Open</Link>
     ) },

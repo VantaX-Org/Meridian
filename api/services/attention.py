@@ -15,8 +15,6 @@ signal changes. ``visible_to`` then filters per viewer: an item shows when its `
 viewer's effective actions at the item's scope (system, module), so a scoped user sees only their slice and the
 admin items need tenant-wide ``manage_users``. Deterministic SQL and Python; every query is tenant-filtered and runs
 after ``app.tenant_id`` is set.
-
-Not here yet: ``api_key_expiring`` (API keys) comes with its work package.
 """
 from __future__ import annotations
 
@@ -35,6 +33,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.middleware.cache import _build_cache_key, get_redis, invalidate_tenant_cache
 from api.routes.sync_trigger import module_label
 from api.services import jobs, object_monitor
+from api.services.api_keys import NOT_SERVICE_USER_SQL
 from api.services.current_state import pairs_clause
 from api.services.rbac import Scope, _scope_matches, actions_for, grants_for, user_grants
 from api.services.scoring import scoring_config, tier as score_tier
@@ -56,6 +55,9 @@ FITNESS_DROP = 0.05  # fitness is a 0..1 ratio: 5 points
 SEAT_WARN = 0.9
 LICENCE_WARN_DAYS = 30
 GRANT_WARN_DAYS = 14
+KEY_WARN_DAYS = 14
+# Service accounts never sign in: they are neither pending invitations nor dormant users.
+NOT_SERVICE = NOT_SERVICE_USER_SQL.format(col="email")
 INVITE_STALE_DAYS = 7
 DORMANT_DAYS = 90
 DORMANT_NEVER_DAYS = 30
@@ -84,6 +86,7 @@ KINDS: dict[str, tuple[int, str, str]] = {
     "seats": (5, "manage_users", "Open licence"),
     "grants_expiring": (5, "manage_users", "Review grants"),
     "dormant_users": (5, "manage_users", "Review users"),
+    "api_key_expiring": (5, "manage_users", "Review API keys"),
 }
 
 Item = dict[str, Any]
@@ -533,9 +536,9 @@ async def _admin(c: _Ctx) -> list[Item]:
         out.append(_item("access_requests", severity="high", count=r.n, since=r.since,
                          title=f"{_n(r.n, 'access request')} {_is(r.n)} waiting for a decision",
                          detail="People are waiting to be granted access.", href="/admin/roles?tab=requests"))
-    r = (await c.q("""
+    r = (await c.q(f"""
         SELECT count(*) AS n, min(COALESCE(invited_at, created_at)) AS since FROM users
-         WHERE tenant_id = CAST(:t AS uuid) AND is_active
+         WHERE tenant_id = CAST(:t AS uuid) AND is_active AND {NOT_SERVICE}
            AND ((password_hash IS NULL AND invited_at < CAST(:now AS timestamptz) - CAST(:d AS interval))
                 OR invite_status = 'failed')""", d=timedelta(days=INVITE_STALE_DAYS)))[0]
     if r.n:
@@ -563,9 +566,9 @@ async def _admin(c: _Ctx) -> list[Item]:
         out.append(_item("grants_expiring", severity="low", count=r.n, since=r.since,
                          title=f"{_n(r.n, 'access grant')} will expire within 14 days",
                          detail="Renew them or let them lapse.", href="/admin/roles?tab=users&expiring=1"))
-    r = (await c.q("""
+    r = (await c.q(f"""
         SELECT count(*) AS n, min(COALESCE(last_login, invited_at, created_at)) AS since FROM users
-         WHERE tenant_id = CAST(:t AS uuid) AND is_active AND (
+         WHERE tenant_id = CAST(:t AS uuid) AND is_active AND {NOT_SERVICE} AND (
                last_login < CAST(:now AS timestamptz) - CAST(:d AS interval)
             OR (last_login IS NULL AND password_hash IS NOT NULL
                 AND COALESCE(invited_at, created_at) < CAST(:now AS timestamptz) - CAST(:never AS interval)))""",
@@ -574,6 +577,15 @@ async def _admin(c: _Ctx) -> list[Item]:
         out.append(_item("dormant_users", severity="low", count=r.n, since=r.since,
                          title=f"{_n(r.n, 'user')} {'has' if r.n == 1 else 'have'} not signed in for 90 days",
                          detail="Consider suspending their accounts.", href="/admin/users?status=dormant"))
+    r = (await c.q("""
+        SELECT count(*) AS n, min(expires_at) AS since FROM api_keys
+         WHERE tenant_id = CAST(:t AS uuid) AND revoked_at IS NULL AND expires_at > CAST(:now AS timestamptz)
+           AND expires_at < CAST(:now AS timestamptz) + CAST(:d AS interval)""", d=timedelta(days=KEY_WARN_DAYS)))[0]
+    if r.n:
+        out.append(_item("api_key_expiring", severity="low", count=r.n, since=r.since,
+                         title=f"{_n(r.n, 'API key')} will expire within 14 days",
+                         detail="Create a replacement before the scripts using it stop working.",
+                         href="/admin/roles?tab=keys"))
     return out
 
 

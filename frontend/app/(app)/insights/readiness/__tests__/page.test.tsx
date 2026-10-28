@@ -118,7 +118,7 @@ describe("ReadinessPage", () => {
     vi.spyOn(insightsApi, "getReadiness").mockResolvedValue({ version_id: null, threshold: 70, cells: [], configured: false });
     renderWithQuery(<ReadinessPage />);
     await waitFor(() => expect(screen.getByText(/readiness is not set up yet/i)).toBeInTheDocument());
-    // Waves are what readiness needs, and they are created in the migration cockpit (not under Scoring and alerts).
+    // Waves are what readiness needs, and they are created in the migration cockpit (not under Scoring).
     expect(screen.getByRole("link", { name: "Open migration cockpit" })).toHaveAttribute("href", "/migration");
     expect(screen.queryByText(/scoring and alerts/i)).not.toBeInTheDocument();
   });

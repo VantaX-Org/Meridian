@@ -101,17 +101,20 @@ describe("legacy route redirects", () => {
 
   it("sends the retired Fix work Monitor tab to the Objects list's monitoring view", async () => {
     const redirects = await nextConfig.redirects!();
-    const rules = redirects.filter((r) => r.source === "/fix");
+    const rules = redirects.filter((r) => r.source === "/fix" && r.has?.some((h) => "value" in h && h.value === "monitor"));
     expect(rules).toHaveLength(1);
     expect(rules[0].has).toEqual([{ type: "query", key: "tab", value: "monitor" }]);
     expect(rules[0].destination).toBe("/objects?view=monitoring");
   });
 
-  // TODO (later work packages, each with the page it needs; add the rule to EXPECTED when it lands):
-  //  - /fix?tab=cleaning -> /fix?sugg=1 (after the cleaning-proposal parity check passes)
-  it("does not redirect /fix?tab=cleaning yet", async () => {
+  it("sends the retired Cleaning proposals tab to the records with a suggested value, without looping on the carried tab", async () => {
     const redirects = await nextConfig.redirects!();
-    expect(redirects.some((r) => r.source === "/fix" && r.has?.some((h) => h.type === "query" && "value" in h && h.value === "cleaning"))).toBe(false);
+    const rules = redirects.filter((r) => r.source === "/fix" && r.has?.some((h) => "value" in h && h.value === "cleaning"));
+    expect(rules).toHaveLength(1);
+    expect(rules[0].has).toEqual([{ type: "query", key: "tab", value: "cleaning" }]);
+    expect(rules[0].permanent).toBe(false);
+    // Next carries the request's query into the destination; the destination's own tab wins, so it no longer matches.
+    expect(rules[0].destination).toBe("/fix?sugg=1&tab=work");
   });
 
   it("sends legacy /workbench?tab=batches deep links to /fix?tab=batches, ahead of the generic /workbench rule", async () => {

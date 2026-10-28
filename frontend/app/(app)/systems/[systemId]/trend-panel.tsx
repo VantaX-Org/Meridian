@@ -10,6 +10,7 @@ import { formatModuleName } from "@/lib/format";
 import { runAxisTicks } from "@/lib/run-axis";
 import { queryKeys } from "@/lib/query-keys";
 import { runPageHref } from "@/lib/runs";
+import { COUNT_DEFS } from "@/lib/counts";
 
 const FLAG_LABEL: Record<TrendFlag, string> = {
   scope_changed: "Scope changed",
@@ -28,7 +29,7 @@ type TrendRow = { s: TrendSummary; pts: TrendPoint[] };
 const columns: ColumnDef<TrendRow>[] = [
   { id: "object", header: "Object", accessorFn: (r) => formatModuleName(r.s.object) },
   {
-    id: "score", header: "Score", meta: { numeric: true }, accessorFn: (r) => r.s.dqs ?? -1,
+    id: "score", header: COUNT_DEFS.score.label, meta: { numeric: true }, accessorFn: (r) => r.s.dqs ?? -1,
     cell: ({ row: { original: { s } } }) => (s.dqs == null ? "—" : <DrillLink href={`/objects/${s.object}`}>{s.dqs.toFixed(1)}</DrillLink>),
   },
   {

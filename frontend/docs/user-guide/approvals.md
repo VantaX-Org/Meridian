@@ -1,6 +1,6 @@
 # Approvals and export
 
-Every value decided in Fix work waits in a fix batch until a second person approves it. The approved batch is then exported as a file your team loads into SAP, and the next run checks whether each record now passes. This chapter covers that second half of the work: four eyes, export formats, what the next run does, and the **Monitor** tab.
+Every value decided in Fix work waits in a fix batch until a second person approves it. The approved batch is then exported as a file your team loads into SAP, and the next run checks whether each record now passes. This chapter covers that second half of the work: four eyes, export formats, what the next run does, and what happens after a clean-up, which is covered under monitoring.
 
 Batches are approved in one place, **Inbox**, **Approvals**, beside the SAP write-back requests (see [Inbox](/docs?page=inbox)). Data owners land there. The batches and their export live in **Fix work**, on the **Batches and export** tab, which links to the approvals with **Open approvals**.
 
@@ -15,7 +15,7 @@ When a steward accepts suggestions or enters values in Fix work, they land in th
 
 ## What you see
 
-A notice at the top sums up monitoring, such as which systems regressed since their baseline, with **Open monitor**. Three figures follow, and each filters the list:
+Three figures follow, and each filters the list:
 
 - **Draft batches**: waiting for proposals to be accepted and approved.
 - **Waiting for export**: approved, not exported yet.
@@ -65,9 +65,9 @@ The next run of the same system, or the next import of the same objects, checks 
 
 Once a run has finished since the export, **Before vs after** on the batch opens the comparison of the latest run with the run the batch was cut from.
 
-## Monitor
+## Monitoring after a clean-up
 
-After a clean-up, pin the run that shows the cleaned data as the baseline. The **Monitor** tab then compares every later run with it, one card per system, with a pill: **Holding**, a count of rules that regressed, or **Stale check**. Each card shows **Baseline score**, **Latest score**, **New failing records**, **Resolved since baseline** and **Regressed rules**. Regressed records are drafted into a fix batch for you, and you are notified. **Re-check now** starts an extraction and **Pin latest as baseline** moves the baseline forward.
+After a clean-up, pin the run that shows the cleaned data as the baseline, with **Pin this run as baseline** on the object page. Later runs of that object are then compared with it: the object page shows the rules that started failing again and the records that came back, and when a critical or high rule regresses, Meridian drafts the returned records into a fix batch for you and sends a **Regression** notification. Re-checking, schedules and freshness are explained in [Monitoring](/docs?page=monitoring).
 
 ## Duplicates
 

@@ -28,6 +28,7 @@ import { RecordPanel, invalidateAfterDecision, toastDraftBatch } from "./record-
 import { IssueComments } from "./issue-comments";
 import { STATUS, STATUS_ORDER, dueLabel } from "./status";
 import { issuesView } from "./issues";
+import { COUNT_DEFS } from "@/lib/counts";
 
 /** Records per request; the queue loads the next page as the table nears its end (or `j` passes the last row). */
 const PAGE = 200;
@@ -523,8 +524,8 @@ export function FixWork({ module: fixedModule, run: fixedRun }: FixWorkScope = {
         {/* lib/help/glossary.ts: records to fix (distinct records on the list) and the rule failures on them. With a
             filter both come from /work/summary asked with the list's own filters, so they count exactly the rows below. */}
         <Stat label={GLOSSARY.recordsToFix.term} help="recordsToFix" value={tile(t?.open)} hint={t ? `${plural(t.issues, "rule failure")} on them, ${filtered ? "these filters" : `across ${plural(s.objects.length, "object")}`}` : undefined} onClick={() => set({ st: null, sev: null, sugg: null, due: null })} />
-        <Stat label="Critical records" value={tile(t?.critical)} tone={t ? (t.critical ? "no-go" : "go") : undefined} hint="records with a critical rule failure" onClick={() => set({ sev: "critical" })} />
-        <Stat label="With a suggested value" value={tile(t?.proposed)} hint="accept in one step" onClick={() => set({ sugg: "1" })} />
+        <Stat label={COUNT_DEFS.critical_records.label} value={tile(t?.critical)} tone={t ? (t.critical ? "no-go" : "go") : undefined} hint="records with a critical rule failure" onClick={() => set({ sev: "critical" })} />
+        <Stat label={COUNT_DEFS.suggested.label} value={tile(t?.proposed)} hint="accept in one step" onClick={() => set({ sugg: "1" })} />
         <Stat label="Overdue" value={tile(t?.overdue)} tone={t?.overdue ? "at-risk" : undefined} hint="past their due date" onClick={() => set({ due: "overdue" })} />
       </div>
 
@@ -570,7 +571,7 @@ export function FixWork({ module: fixedModule, run: fixedRun }: FixWorkScope = {
             ) : <p className="px-3 m-text-body m-ink-3">{issues.mode === "list" ? "No issues on the records these filters show." : "No failing checks."}</p>}
         </Card>
 
-        <section aria-label="Records to fix" className="flex min-w-0 flex-col gap-2">
+        <section aria-label={COUNT_DEFS.records_to_fix.label} className="flex min-w-0 flex-col gap-2">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="m-text-h font-semibold m-ink">{activeGroup ? activeGroup.message ?? activeGroup.check_id : "Records to fix"}</h2>
             {records.data ? (
@@ -596,7 +597,7 @@ export function FixWork({ module: fixedModule, run: fixedRun }: FixWorkScope = {
             ) : (
               <>
                 <DataTable
-                  label="Records to fix"
+                  label={COUNT_DEFS.records_to_fix.label}
                   tableId="fix-work-queue"
                   columns={columns}
                   data={items}

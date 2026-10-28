@@ -6,15 +6,19 @@ signed with the tenant's jwt_secret.
 
 import contextvars
 import logging
+import os
 import threading
 import time
 import uuid
 
+from fastapi import HTTPException
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
+from api.services.api_keys import KEY_SCHEME, KeyRejected, resolve_key_sync
 from api.services.local_auth import decode_access_token, token_version_claim
+from api.services.rate_limiter import rate_limit
 
 logger = logging.getLogger("meridian.local_auth")
 
@@ -34,6 +38,10 @@ _EXCLUDED_PATHS = {
     "/api/v1/licence",
     "/health",
 }
+
+# Requests per minute per API key (a scheduler polling a job, not a bulk client).
+_API_KEY_RATE_LIMIT = max(1, int(os.environ.get("API_KEY_RATE_LIMIT_PER_MIN", "600")))
+_api_key_rate_limit = rate_limit("api_key", limit=_API_KEY_RATE_LIMIT, window_s=60, key_by="api_key")
 
 # Cache jwt_secret in memory to avoid DB hit on every request
 _jwt_secret_cache: dict[str, str] = {}
@@ -157,6 +165,8 @@ class LocalAuthMiddleware(BaseHTTPMiddleware):
 
         # Extract Bearer token (header first, cookie fallback for download links)
         auth_header = request.headers.get("authorization", "")
+        if auth_header.startswith("Bearer " + KEY_SCHEME):
+            return await self._dispatch_api_key(request, call_next, auth_header[7:])
         if auth_header.startswith("Bearer "):
             token = auth_header[7:]
         else:
@@ -216,4 +226,33 @@ class LocalAuthMiddleware(BaseHTTPMiddleware):
         request.state.local_user_role = payload.get("role")
         _current_user.set({"id": payload.get("sub"), "email": payload.get("email")})
 
+        return await call_next(request)
+
+
+    async def _dispatch_api_key(self, request, call_next, token: str):
+        """Authenticate ``Bearer mk_<prefix>.<secret>`` as the key's service user.
+
+        Sets the same request state as a session, so every guard (require_permission, scopes) reads the service
+        user's own grants from the database; a key adds no permission of its own and has no cookie or token
+        version. Revoked, expired and suspended keys answer 401 with a plain sentence."""
+        try:
+            key = await run_in_threadpool(resolve_key_sync, token, DEV_TENANT_ID)
+        except KeyRejected as e:
+            return JSONResponse(status_code=401, content={"detail": e.detail})
+        except Exception as e:  # noqa: BLE001 - database down or not migrated: the server's fault, not a 401
+            logger.warning(f"Could not check API key: {type(e).__name__}")
+            return JSONResponse(status_code=503, content={"detail": "Authentication check unavailable"})
+
+        request.state.api_key_id = key.key_id
+        request.state.tenant_id = uuid.UUID(key.tenant_id)
+        try:
+            await _api_key_rate_limit(request)
+        except HTTPException as e:
+            return JSONResponse(status_code=e.status_code, headers=e.headers,
+                                content={"detail": "Too many requests for this API key. Try again in a minute."})
+
+        request.state.local_user_id = key.user_id
+        request.state.local_user_email = key.email
+        request.state.local_user_role = key.role
+        _current_user.set({"id": key.user_id, "email": key.email})
         return await call_next(request)

@@ -1,6 +1,6 @@
 """A locked SAP user must be reported as a lock, with the action required - not as a bad password.
 
-The ECC user was locked on the Komatsu sandbox ("Password logon no longer possible - too many
+The ECC user was locked on a pilot customer's sandbox ("Password logon no longer possible - too many
 failed attempts") after repeated extraction restarts, and the only message anyone saw was the raw
 RFC text. A locked user and a wrong password look identical there, and the wrong response - retry,
 or re-enter the password - extends the lock, because SAP counts every failed attempt.

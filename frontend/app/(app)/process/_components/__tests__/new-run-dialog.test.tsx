@@ -18,7 +18,7 @@ const row = (l1: string, over: Partial<CatalogueRow> = {}): CatalogueRow => ({
   last_run: null, in_progress: null, failed: null, sources: [], ...over,
 });
 
-// Komatsu's reality: ECC licensed for everything except the quality_management and project_system modules.
+// A pilot customer's reality: ECC licensed for everything except the quality_management and project_system modules.
 const rows = [
   row("PTP"), row("OTC"), row("R2R"),
   row("QM", { licence_blocked: true }),
@@ -27,7 +27,7 @@ const rows = [
 ];
 
 const mount = () => renderWithQuery(
-  <NewRunDialog open onOpenChange={() => {}} systemId="s1" systemName="Sanbox (KMZ)" rows={rows} />,
+  <NewRunDialog open onOpenChange={() => {}} systemId="s1" systemName="Sanbox (ERP)" rows={rows} />,
 );
 
 beforeEach(() => vi.restoreAllMocks());

@@ -5,6 +5,7 @@ import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/rea
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { Button, Card, Choice, ConfirmDialog, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, IconButton, Input, Menu, Mono, Notice, PageHeader, Pill, Select, Skeleton, Tabs, Textarea, IconMore, toast } from "@/design";
+import { ApiKeysTab } from "@/components/admin/api-keys-tab";
 import { EffectivePermissionsView } from "@/components/admin/effective-permissions";
 import { GrantDiff } from "@/components/admin/grant-diff";
 import { GrantsPicker, scopeLabel, type GrantRowView } from "@/components/admin/grants-picker";
@@ -33,7 +34,7 @@ import { hasExpiringGrant, isPast, nextGrantExpiry } from "@/lib/users";
 import type { User } from "@/types/api";
 import { auditSentence, When } from "../_lib/audit-sentence";
 
-const TABS = ["roles", "matrix", "users", "invite", "requests", "history"] as const;
+const TABS = ["roles", "matrix", "users", "invite", "requests", "keys", "history"] as const;
 
 export default function AdminRolesPage() {
   const { can, loading } = useRole();
@@ -63,6 +64,7 @@ export default function AdminRolesPage() {
           { value: "users", label: "Users & scopes", content: <UsersTab roles={roles} onInvite={() => setTab("invite")} /> },
           { value: "invite", label: "Invite", content: <InviteTab /> },
           { value: "requests", label: "Requests", content: <RequestsTab roles={roles} /> },
+          { value: "keys", label: "API keys", content: <ApiKeysTab /> },
           { value: "history", label: "History", content: <HistoryTab /> },
         ]}
       />
@@ -400,7 +402,7 @@ function RequestsTab({ roles }: { roles: Role[] }) {
   );
 }
 
-const HISTORY_ACTIONS = ["role.create", "role.update", "role.delete", "grant.create", "grant.delete", "access_request.create", "access_request.decide"];
+const HISTORY_ACTIONS = ["role.create", "role.update", "role.delete", "grant.create", "grant.delete", "access_request.create", "access_request.decide", "api_key.create", "api_key.revoke", "api_key.delete"];
 
 function HistoryTab() {
   const tz = useTenantTimezone();

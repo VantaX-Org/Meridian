@@ -14,7 +14,7 @@ def _frames():
     lfa1 = pd.DataFrame({
         "LFA1.LIFNR": ["0000100001", "0000100002", "0000100003"],
         "LFA1.KTOKK": ["KRED", "LIEF", "KRED"],
-        "LFA1.NAME1": ["Acme Mining Supplies", "x" * 41, "Komatsu Parts"],
+        "LFA1.NAME1": ["Acme Mining Supplies", "x" * 41, "Northwind Parts"],
         "LFA1.LAND1": ["ZA", "ZA", "ZA"],
         "LFA1.ERDAT": ["20200101", "20201340", "20210505"],
         "LFA1.ZZRISK": ["A", "", "B"],

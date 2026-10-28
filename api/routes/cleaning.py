@@ -210,7 +210,7 @@ async def list_cleaning_queue(
     where = " AND ".join(where_clauses)
 
     # The list itself is an index scan that stops after one page; an exact COUNT(*) of the
-    # same predicate is not — it walks every matching index entry. On the Komatsu
+    # same predicate is not — it walks every matching index entry. On a pilot customer
     # deployment that is 1.59 M rows and ~380 ms, paid on every request for a screen the
     # user pages through, purely to render "N of total". Exact counts are cached for
     # _TOTAL_TTL_S per distinct filter (a paging session reuses one), which keeps the

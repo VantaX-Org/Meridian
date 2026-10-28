@@ -22,6 +22,7 @@ import { useInsightScope, withScope } from "../_components/useInsightScope";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { PAGE_PURPOSE } from "../_components/InsightViews";
 import { scopeTrendRuns, scopedComparisons, trendDomain, trendPoints } from "../_components/trendLineage";
+import { COUNT_DEFS } from "@/lib/counts";
 
 const WINDOWS = [{ value: "6", label: "Last 6 runs" }, { value: "12", label: "Last 12 runs" }, { value: "24", label: "Last 24 runs" }];
 const DIMENSIONS = ["completeness", "validity", "uniqueness", "consistency", "timeliness", "accuracy"];
@@ -44,7 +45,7 @@ function runColumns(current: string | undefined): ColumnDef<TrendRun>[] {
         </span>
       ),
     },
-    { id: "score", header: "Score", accessorFn: (r) => r.composite ?? -1, meta: num, cell: ({ row }) => (row.original.composite == null ? "—" : row.original.composite.toFixed(1)) },
+    { id: "score", header: COUNT_DEFS.score.label, accessorFn: (r) => r.composite ?? -1, meta: num, cell: ({ row }) => (row.original.composite == null ? "—" : row.original.composite.toFixed(1)) },
     // Not sortable: the ledger reads in run order, and a sort button cannot hold the hint's own button.
     { id: "change", header: () => <span className="inline-flex items-center gap-1">Change <HelpHint term="previous_run" /></span>, accessorFn: (r) => r.change ?? 0, meta: num, enableSorting: false, cell: ({ row }) => (row.original.change == null ? <span className="m-ink-3">first run</span> : <Delta value={row.original.change} />) },
     // Each count is that run's failing rules at that severity, and opens exactly those rules on the run's findings tab.
@@ -52,7 +53,7 @@ function runColumns(current: string | undefined): ColumnDef<TrendRun>[] {
     { id: "high", header: "High", accessorFn: (r) => r.high, meta: num, cell: ({ row }) => <DrillCount href={severityFindingsHref(row.original.version_id, "high")} count={row.original.high} label={`${drillLabel({ count: row.original.high, sev: "high", what: "failing rules" })} of run ${runName(row.original)}`}>{count(row.original.high)}</DrillCount> },
     { id: "fixed", header: "Rules fixed", accessorFn: (r) => r.rules_fixed ?? -1, meta: num, cell: ({ row }) => (row.original.rules_fixed == null ? "—" : row.original.rules_fixed > 0 ? <Delta value={row.original.rules_fixed} /> : "0") },
     { id: "new", header: "Newly failing", accessorFn: (r) => r.rules_new ?? -1, meta: num, cell: ({ row }) => (row.original.rules_new == null ? "—" : row.original.rules_new > 0 ? <Delta value={row.original.rules_new} invert /> : "0") },
-    { id: "records", header: "Rule failures", accessorFn: (r) => r.affected_records, meta: num, cell: ({ row }) => <DrillCount href={fixHref({ run: row.original.version_id })} count={row.original.affected_records} label={`${drillLabel({ count: row.original.affected_records, what: "rule failures" })} of run ${runName(row.original)}`}>{count(row.original.affected_records)}</DrillCount> },
+    { id: "records", header: COUNT_DEFS.rule_failures.label, accessorFn: (r) => r.affected_records, meta: num, cell: ({ row }) => <DrillCount href={fixHref({ run: row.original.version_id })} count={row.original.affected_records} label={`${drillLabel({ count: row.original.affected_records, what: "rule failures" })} of run ${runName(row.original)}`}>{count(row.original.affected_records)}</DrillCount> },
   ];
 }
 

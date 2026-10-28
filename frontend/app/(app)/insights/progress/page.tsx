@@ -167,9 +167,9 @@ export default function ProgressPage() {
   }, [field, fix, isCurrent]);
 
   const sourceColumns = useMemo<ColumnDef<ProposalSourceStat>[]>(() => [
-    // Fix work has no filter by proposal source: cleaning proposals have their own tab, every other value waits for approval in Inbox › Approvals.
+    // Fix work has no filter by proposal source: cleaning values are records with a suggested value, every other value waits for approval in Inbox › Approvals.
     { id: "source", header: "Where the value came from", accessorFn: (r) => sourceLabel(r.source), cell: ({ row }) => (
-      <DrillCount href={row.original.source === "cleaning" ? "/fix?tab=cleaning" : "/fix?tab=batches"} label={row.original.source === "cleaning" ? "Open the cleaning proposals" : `Open approvals and export for ${sourceLabel(row.original.source).toLowerCase()} values`}>{sourceLabel(row.original.source)}</DrillCount>
+      <DrillCount href={row.original.source === "cleaning" ? fix({ sugg: true }) : "/fix?tab=batches"} label={row.original.source === "cleaning" ? "Open the records with a suggested value" : `Open approvals and export for ${sourceLabel(row.original.source).toLowerCase()} values`}>{sourceLabel(row.original.source)}</DrillCount>
     ) },
     { accessorKey: "proposed", header: "Proposed", meta: { numeric: true }, cell: ({ row }) => n(row.original.proposed) },
     { accessorKey: "approval_rate_pct", header: "Approved", meta: { numeric: true }, cell: ({ row }) => `${n(row.original.approved)} (${pct(row.original.approval_rate_pct)})` },
@@ -177,7 +177,7 @@ export default function ProgressPage() {
     { accessorKey: "fixed", header: "Fixed", meta: { numeric: true }, cell: ({ row }) => n(row.original.fixed) },
     { accessorKey: "still_failing", header: "Still failing", meta: { numeric: true }, cell: ({ row }) => n(row.original.still_failing) },
     { accessorKey: "fix_rate_pct", header: "Fix rate", meta: { numeric: true }, cell: ({ row }) => pct(row.original.fix_rate_pct) },
-  ], []);
+  ], [fix]);
 
   const changeColumns = useMemo<ColumnDef<RunChangeObject>[]>(() => [
     { id: "module", header: "Object", accessorFn: (r) => formatModuleName(r.module), cell: ({ row }) => <DrillCount href={fixLink({ run, module: row.original.module })} label={drillLabel({ what: "open records", module: row.original.module })}>{formatModuleName(row.original.module)}</DrillCount> },

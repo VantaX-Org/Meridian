@@ -347,17 +347,17 @@
   {
     "name": "systems-detail",
     "path": "/systems/c7a18906-1555-40ba-a1b2-caf83188238e",
-    "heading": "KMZ-SIM"
+    "heading": "ERP-SIM"
   },
   {
     "name": "systems-detail-config",
     "path": "/systems/c7a18906-1555-40ba-a1b2-caf83188238e?tab=config",
-    "heading": "KMZ-SIM"
+    "heading": "ERP-SIM"
   },
   {
     "name": "systems-detail-custom-objects",
     "path": "/systems/c7a18906-1555-40ba-a1b2-caf83188238e?tab=custom",
-    "heading": "KMZ-SIM"
+    "heading": "ERP-SIM"
   },
   {
     "name": "insights-duplicates-pairs",

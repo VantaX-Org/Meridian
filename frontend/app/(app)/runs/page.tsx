@@ -27,6 +27,7 @@ import { runName, runScopeLabel } from "@/lib/run-scope";
 import type { Version } from "@/types/api";
 import { isListFailure } from "@/lib/error";
 import { BREAK_AT_SEPARATORS, breakAtUnderscores } from "@/lib/break-name";
+import { COUNT_DEFS } from "@/lib/counts";
 
 const IN_PROGRESS = new Set(["pending", "running", "agents_enqueued", "agents_running"]);
 
@@ -172,7 +173,7 @@ function makeColumns(allVersions: Version[], earlier: ReadonlyMap<string, Versio
     {
       id: "dqs",
       accessorFn: (v) => overallDqs(v) ?? -1,
-      header: "Score",
+      header: COUNT_DEFS.score.label,
       cell: ({ row }) => {
         const dqs = overallDqs(row.original);
         if (dqs === null) return "—";

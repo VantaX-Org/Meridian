@@ -31,7 +31,7 @@ export function NewRunDialog({ open, onOpenChange, systemId, systemName, rows, o
   const only = onlyProp ?? urlOnly;
   const hasCompleted = rows.some((r) => r.last_run && r.coverage !== "reference");
   // Licence-blocked L1s are never on by default: selecting one made every default "Start run" 402 on a
-  // tenant whose licence lacks its event-log modules (QM/PS on Komatsu), and the dialog read that as
+  // tenant whose licence lacks its event-log modules (QM/PS on a pilot tenant), and the dialog read that as
   // "Could not reach the server." They stay listed, disabled, so the offer and the refusal match.
   const [l1s, setL1s] = useState<string[]>(() => (only && rows.some((r) => r.l1 === only) ? [only] : rows.filter((r) => !r.licence_blocked).map((r) => r.l1)));
   const [mode, setMode] = useState<RunMode>(hasCompleted ? "incremental" : "full");

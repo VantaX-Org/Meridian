@@ -18,6 +18,7 @@ import { fixHref } from "@/lib/drill";
 import { formatDate, formatModuleName, plural, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { TENANT_TIMEZONE_HREF, useTenantTimezone } from "@/lib/tenant-zone";
+import { COUNT_DEFS } from "@/lib/counts";
 
 /** What the freshness pill means, in a line under it. */
 function freshnessHint(m: ObjectMonitor): string {
@@ -130,7 +131,7 @@ export function ObjectMonitorStrip({ object, run }: { object: string; run: strin
         {hasBaseline ? (
           <>
             <Stat
-              label="Newly failing rules"
+              label={COUNT_DEFS.newly_failing_rules.label}
               value={drift.newly_failing_rule_count.toLocaleString()}
               tone={drift.newly_failing_rule_count > 0 ? "no-go" : "go"}
               hint={
@@ -153,7 +154,7 @@ export function ObjectMonitorStrip({ object, run }: { object: string; run: strin
               }
             />
             <Stat
-              label="Recovered rules"
+              label={COUNT_DEFS.recovered_rules.label}
               value={drift.recovered_rule_count.toLocaleString()}
               tone={drift.recovered_rule_count > 0 ? "go" : undefined}
               hint={
@@ -181,9 +182,9 @@ export function ObjectMonitorStrip({ object, run }: { object: string; run: strin
           >
             Re-check now
           </GatedPrimary>
-        ) : (
+        ) : can("upload") ? (
           <Button variant="secondary" render={<Link href="/import">Upload a new file</Link>} />
-        )}
+        ) : null}
         {!scheduled && systemHref && can("manage_systems") ? <Button variant="secondary" render={<Link href={systemHref}>Set schedule</Link>} /> : null}
         {scheduled && m.system_id && cadence.profile_id && can("manage_systems") ? (
           <Button variant="ghost" onClick={() => setEditing((v) => !v)} aria-expanded={editing}>Change schedule</Button>

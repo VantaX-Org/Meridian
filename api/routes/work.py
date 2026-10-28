@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _rls
 from api.services import work_analytics, worklist
+from api.services.worklist import CLEANING_VALUE_MATCH
 from api.services.current_state import current_pairs, pairs_clause, run_ids
 from api.services.rbac import (Scope, _grants_allow, actions_for, current_user_id, current_user_label,
                                dev_role_override, grants_for, has_permission, require_permission)
@@ -471,15 +472,19 @@ async def _row_extras(db: AsyncSession, tenant: Tenant, rows) -> dict[tuple[str,
                    AND ri.check_id = ANY(w.checks)) AS first_seen_at,
                CASE WHEN w.proposed > 0 THEN (
                  SELECT COALESCE(a.value, CASE WHEN jsonb_typeof(f.value_fix_map) = 'object' THEN
-                          f.value_fix_map -> (fr.field_values ->> (f.details->>'field_checked')) ->> 'suggested_value' END)
+                          f.value_fix_map -> (fr.field_values ->> (f.details->>'field_checked')) ->> 'suggested_value' END, cl.value)
                    FROM unnest(w.checks) WITH ORDINALITY c(check_id, n)
                    JOIN findings f ON f.version_id = w.version_id AND f.check_id = c.check_id
                    LEFT JOIN finding_records fr ON fr.version_id = w.version_id AND fr.check_id = c.check_id
                                                AND fr.module = w.module AND fr.record_key = w.record_key
                    LEFT JOIN auto a ON a.version_id = w.version_id AND a.check_id = c.check_id
                                    AND a.record_key = w.record_key
+                   LEFT JOIN LATERAL (SELECT COALESCE(cq.record_data_after ->> (f.details->>'field_checked'),
+                                                      cq.record_data_after ->> substring(f.details->>'field_checked' from '[^.]*$')) AS value
+                                        FROM cleaning_queue cq
+                                       WHERE """ + CLEANING_VALUE_MATCH + """ ORDER BY cq.detected_at DESC LIMIT 1) cl ON true
                   WHERE COALESCE(a.value, CASE WHEN jsonb_typeof(f.value_fix_map) = 'object' THEN
-                          f.value_fix_map -> (fr.field_values ->> (f.details->>'field_checked')) ->> 'suggested_value' END)
+                          f.value_fix_map -> (fr.field_values ->> (f.details->>'field_checked')) ->> 'suggested_value' END, cl.value)
                         IS NOT NULL
                   ORDER BY c.n LIMIT 1) END AS suggested_value
           FROM pw w"""), keys)).fetchall()
@@ -519,6 +524,7 @@ async def _cleaning_rows(db: AsyncSession, p: dict) -> list:
         SELECT record_data_after, confidence, check_id, field FROM cleaning_queue
          WHERE tenant_id = :t AND object_type = :m AND record_key = :k AND status IN ('detected', 'pending', 'approved')
            AND record_data_after IS NOT NULL AND record_data_after <> '{}'::jsonb
+           AND COALESCE(NULLIF(merge_preview, 'null'::jsonb), '{}'::jsonb) = '{}'::jsonb  -- duplicate proposals are not values
          ORDER BY detected_at DESC LIMIT 5"""), p)).mappings().all()
 
 

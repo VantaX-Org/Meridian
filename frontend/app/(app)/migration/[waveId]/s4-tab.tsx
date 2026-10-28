@@ -14,6 +14,7 @@ import { createBatch, errorText } from "@/lib/api/remediation";
 import { getRuleByCode } from "@/lib/api/rules";
 import { queryKeys } from "@/lib/query-keys";
 import { RuleCell } from "@/components/fix/rule-cell";
+import { COUNT_DEFS } from "@/lib/counts";
 
 const n = (v: number) => v.toLocaleString();
 const topFailing = (a: S4Area): S4Check | undefined => a.checks.find((c) => c.affected_count > 0);
@@ -53,7 +54,7 @@ function AreaDrawer({ area, versionId, onClose, onFix, fixing, canFix }: {
       {area ? (
         <div className="flex flex-col gap-5">
           <div className="m-stat-grid">
-            <Stat label="Failing rules" value={n(area.failing)} />
+            <Stat label={COUNT_DEFS.failing_rules.label} value={n(area.failing)} />
             <Stat label="Blocking" value={n(area.blocking_failing)} />
             <Stat label="Warnings" value={n(area.warning_failing)} />
             <Stat label="Failing records" value={n(area.failing_records)} />
@@ -133,7 +134,7 @@ export function S4Tab({ versionId, runAction }: { versionId: string | null; runA
       { accessorKey: "label", header: "Area" },
       { id: "status", header: "Status", cell: ({ row }) => <Status kind="verdict" value={row.original.status} /> },
       { id: "rules", header: "Rules", meta: { numeric: true }, cell: ({ row }) => n(row.original.rules) },
-      { id: "failing", header: "Failing rules", meta: { numeric: true }, cell: ({ row }) => <DrillLink href={findingsHref(row.original)}>{n(row.original.failing)}</DrillLink> },
+      { id: "failing", header: COUNT_DEFS.failing_rules.label, meta: { numeric: true }, cell: ({ row }) => <DrillLink href={findingsHref(row.original)}>{n(row.original.failing)}</DrillLink> },
       { id: "blocking", header: "Blocking", meta: { numeric: true }, cell: ({ row }) => <DrillLink href={findingsHref(row.original)}>{n(row.original.blocking_failing)}</DrillLink> },
       { id: "records", header: "Failing records", meta: { numeric: true }, cell: ({ row }) => <DrillLink href={findingsHref(row.original)}>{n(row.original.failing_records)}</DrillLink> },
       {

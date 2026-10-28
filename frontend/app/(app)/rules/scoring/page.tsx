@@ -26,7 +26,6 @@ const DIMS = ["completeness", "accuracy", "consistency", "timeliness", "uniquene
 type Dim = (typeof DIMS)[number];
 const DEFAULT: DimensionScores = { completeness: 0.25, accuracy: 0.25, consistency: 0.2, timeliness: 0.1, uniqueness: 0.1, validity: 0.1 };
 // GET /settings/scoring; inline because lib/query-keys.ts has no key for it
-const SCORING_KEY = ["scoring-config"] as const;
 const DEFAULT_BANDS: ScoringBands = { target: 90, warning: 75, critical: 60 };
 // No currency of its own: planner amounts are named by the cost model's currency (Admin, Settings).
 const DEFAULT_PLANNER: PlannerConfig = { minutes_per_record: 3, investigation_hours: 1, cleaning_item_hours: 0.25, exception_hours: 2, sprint_hours: 40, cost_per_record: null, currency: "" };
@@ -84,7 +83,7 @@ export function weightPreview(
 
 export default function ScoringPage() {
   const settings = useQuery({ queryKey: queryKeys.scoringSettings(), queryFn: getSettings });
-  const scoring = useQuery({ queryKey: SCORING_KEY, queryFn: getScoring });
+  const scoring = useQuery({ queryKey: queryKeys.scoringConfig(), queryFn: getScoring });
   if (!settings.data || !scoring.data) {
     const failed = settings.isError ? settings : scoring.isError ? scoring : null;
     return (
@@ -133,7 +132,7 @@ function ScoringForm({ initial, scoring }: { initial: TenantSettings; scoring: S
     severity_weights: scoring.severity_weights, severity_multipliers: scoring.severity_multipliers, critical_tolerance: scoring.critical_tolerance,
     ...patch,
   });
-  const afterSave = () => { void qc.invalidateQueries({ queryKey: SCORING_KEY }); void qc.invalidateQueries({ queryKey: queryKeys.scoringSettings() }); };
+  const afterSave = () => { void qc.invalidateQueries({ queryKey: queryKeys.scoringConfig() }); void qc.invalidateQueries({ queryKey: queryKeys.scoringSettings() }); };
   const saveWeights = useMutation({
     mutationFn: () => putScoring(put({ dimension_weights: toStored(normalised) })),
     onSuccess: () => { afterSave(); toast.success("Weights saved. They apply from the next analysis run"); },

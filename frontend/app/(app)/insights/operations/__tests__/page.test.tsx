@@ -71,12 +71,12 @@ describe("OperationsPage", () => {
     // The queue counts are the cleaning queue: they open Fix work's Cleaning proposals tab, not the inbox.
     // Four headline tiles; the other figures are a definition list whose values drill.
     for (const label of ["Processed", "In progress"]) {
-      expect(screen.getByText(label).closest("a")).toHaveAttribute("href", "/fix?tab=cleaning");
+      expect(screen.getByText(label).closest("a")).toHaveAttribute("href", "/fix?sugg=1");
     }
     for (const label of ["Throughput", "Time to resolve", "Average queue age"]) {
       const term = screen.getByText(label);
       expect(term.tagName).toBe("DT");
-      expect(term.nextElementSibling?.querySelector("a")).toHaveAttribute("href", "/fix?tab=cleaning");
+      expect(term.nextElementSibling?.querySelector("a")).toHaveAttribute("href", "/fix?sugg=1");
     }
     expect(document.querySelectorAll(".m-stat-grid .m-stat").length).toBe(4);
     expect(document.querySelector('a[href="/inbox"]')).toBeNull();

@@ -18,6 +18,7 @@ from starlette.requests import Request
 from api.deps import Tenant, get_db, get_tenant
 from api.middleware import licence as licence_mw
 from api.middleware.licence import get_cached_manifest
+from api.services.api_keys import NOT_SERVICE_USER_SQL
 from api.services.rbac import require_permission
 
 router = APIRouter(prefix="/api/v1", tags=["licence"])
@@ -54,9 +55,10 @@ async def seats_for(db: AsyncSession, tenant: Tenant) -> tuple[int, Optional[int
     """(seats in use, seat limit or None for no limit).
 
     In use = the tenant's active users, invited ones included (they will sign in), suspended ones not.
+    Service accounts (API keys, api/services/api_keys.py) never sign in and are not seats.
     The limit is the manifest's ``seats``, else ``max_users``."""
     await db.execute(text(f"SET app.tenant_id = '{str(tenant.id)}'"))
-    used = await db.execute(text("SELECT COUNT(*) FROM users WHERE tenant_id = :tid AND is_active"), {"tid": str(tenant.id)})
+    used = await db.execute(text(f"SELECT COUNT(*) FROM users WHERE tenant_id = :tid AND is_active AND {NOT_SERVICE_USER_SQL.format(col='email')}"), {"tid": str(tenant.id)})
     manifest = get_cached_manifest()
     limit = manifest.get("seats", manifest.get("max_users"))
     return int(used.scalar() or 0), int(limit) if isinstance(limit, (int, float)) and limit > 0 else None

@@ -131,6 +131,6 @@ describe("OwnersPage", () => {
   it("links to where digests are scheduled", async () => {
     vi.spyOn(insightsApi, "getOwners").mockResolvedValue({ owners: [JANE] });
     renderWithQuery(<OwnersPage />);
-    expect(await screen.findByRole("link", { name: "Schedule digests" })).toHaveAttribute("href", "/rules/scoring");
+    expect(await screen.findByRole("link", { name: "Schedule digests" })).toHaveAttribute("href", "/admin/alerts");
   });
 });

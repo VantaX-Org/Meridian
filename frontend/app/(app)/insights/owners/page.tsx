@@ -17,13 +17,14 @@ import { queryKeys } from "@/lib/query-keys";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { useInsightScope } from "../_components/useInsightScope";
 import { PAGE_PURPOSE } from "../_components/InsightViews";
+import { COUNT_DEFS } from "@/lib/counts";
 
 
 const openCount = (o: OwnerCardResponse) => Object.values(o.open_by_severity).reduce((a, b) => a + b, 0);
 
 const scoreColumns: ColumnDef<OwnerCardResponse>[] = [
   { accessorKey: "owner", header: "Owner" },
-  { accessorKey: "score", header: "Score", meta: { numeric: true, heat: "seq", heatRange: [0, 100] } },
+  { accessorKey: "score", header: COUNT_DEFS.score.label, meta: { numeric: true, heat: "seq", heatRange: [0, 100] } },
   // Open record issues assigned to the owner across every run. No list shows exactly these (Fix work lists the
   // latest run's records, not issues), so the count is plain; the row's "Open inbox" is its action.
   { id: "open", header: "Open issues", accessorFn: openCount, meta: { numeric: true }, cell: ({ row }) => openCount(row.original).toLocaleString() },
@@ -101,7 +102,7 @@ export default function OwnersPage() {
       title="Owners"
       purpose={PAGE_PURPOSE["/insights/owners"]}
       run={run}
-      controls={<Button variant="ghost" render={<Link href="/rules/scoring">Schedule digests</Link>} />}
+      controls={<Button variant="ghost" render={<Link href="/admin/alerts">Schedule digests</Link>} />}
       insight={{
         situation: { sentence: below === undefined ? `${plural(owners.length, "owner")} with open issues` : `${below} of ${plural(owners.length, "owner is", "owners are")} below the target of ${target}`, tone: below === undefined ? undefined : below ? "at-risk" : "go" },
         changed: { sentence: `${plural(owners.filter((o) => o.delta < 0).length, "owner")} lost ground in the last 7 days` },

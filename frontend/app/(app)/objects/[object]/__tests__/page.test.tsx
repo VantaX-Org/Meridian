@@ -221,7 +221,7 @@ describe("ObjectDetailPage", () => {
     expect(within(strip).queryByText("Records failing")).toBeNull();
     expect(within(strip).getByText("25% of records to fix")).toBeInTheDocument();
     // each figure says its unit: critical records to fix, never a bare "Critical"; one wording for suggested values
-    expect(within(strip).getByText("Critical records to fix")).toBeInTheDocument();
+    expect(within(strip).getByText("Critical records")).toBeInTheDocument();
     expect(within(strip).getByText("With a suggested value")).toBeInTheDocument();
     expect(within(strip).queryByText("Critical")).toBeNull();
     expect(within(strip).queryByText("With a suggestion")).toBeNull();

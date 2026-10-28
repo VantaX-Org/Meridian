@@ -29,9 +29,9 @@ Every page has the same frame. There is no sidebar.
 The top row is the index bar. From left to right:
 
 - The Meridian mark, which opens your Home page.
-- Four pills, the places you work from every day: **Fix work**, **Objects**, **Progress** and **Inbox**. **Fix work** carries the number of cleaning proposals waiting for review, and **Inbox** the number of open stewardship tasks. You see only the pills your role allows.
+- Four pills, the places you work from every day: **Fix work**, **Objects**, **Progress** and **Inbox**. **Fix work** carries the number of records to fix (no number appears until a run's work list is built), and **Inbox** the number of open stewardship tasks. You see only the pills your role allows.
 - **More**, which opens every other page you may use, grouped as **Analysis**, **Master data**, **Rules**, **Data in** and **Admin**. Press Escape or select outside the panel to close it.
-- On the right: **Search or jump to...** (Ctrl K, or ⌘K on a Mac), the jobs tray, the notification bell, the help menu (**?**) and your user menu.
+- On the right: **Search or jump to...** (Ctrl K, or ⌘K on a Mac), the jobs tray, the **To do** flag with the number of critical and high items waiting for you (see [To do](/docs?page=todo)), the notification bell, the help menu (**?**) and your user menu.
 
 ### The scope bar
 

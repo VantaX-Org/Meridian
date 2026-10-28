@@ -39,7 +39,7 @@ export const stageLabel = (stage: string) => STAGE_LABEL[stage] ?? labelOf(stage
 const hours = (h: number) => `${Math.round(h).toLocaleString()} h`;
 const pct = (p: number) => `${Math.round(p)}%`;
 /** The cleaning queue these figures count: Fix work's Cleaning proposals tab, not the steward inbox. */
-const CLEANING = "/fix?tab=cleaning";
+const CLEANING = fixHref({ sugg: true });
 
 const bottleneckColumns: ColumnDef<Bottleneck>[] = [
   { id: "stage", header: "Stage", accessorFn: (b) => stageLabel(b.stage) },
@@ -170,7 +170,7 @@ export default function OperationsPage() {
         situation: { sentence: `${plural(k?.items_in_flight ?? 0, "item")} in progress, ${k ? pct(k.sla_compliance_pct) : "—"} handled within the agreed time` },
         changed: { sentence: bottlenecks.length ? `${plural(bottlenecks.length, "stage is", "stages are")} holding work` : "No stage is holding work" },
         why: { sentence: cap?.recommendation || "—" },
-        next: { sentence: worst ? `Unblock ${stageLabel(worst.stage)} first` : "Nothing is blocked", action: { label: "Open cleaning proposals", href: CLEANING } },
+        next: { sentence: worst ? `Unblock ${stageLabel(worst.stage)} first` : "Nothing is blocked", action: { label: "Open records with a suggested value", href: CLEANING } },
       }}
       skeleton={
         <>
@@ -180,7 +180,7 @@ export default function OperationsPage() {
         </>
       }
       state={loading ? "loading" : failed ? "error" : empty ? "empty" : undefined}
-      emptyProps={{ title: "No queue activity yet", detail: "Throughput, bottlenecks and sprint plans appear once cleaning items exist.", ghost: "chart", action: <Button render={<Link href={CLEANING}>Open cleaning proposals</Link>} /> }}
+      emptyProps={{ title: "No queue activity yet", detail: "Throughput, bottlenecks and sprint plans appear once cleaning items exist.", ghost: "chart", action: <Button render={<Link href={CLEANING}>Open records with a suggested value</Link>} /> }}
       errorProps={{ error: failed?.error, onRetry: () => { void ops.refetch(); void sprints.refetch(); } }}
     >
       <Section title="Throughput and capacity" height={160} query={ops}>
@@ -204,7 +204,7 @@ export default function OperationsPage() {
       </Section>
       <Section title="Queue age by stage" height={160} query={ops}>
         {bottlenecks.length === 0 ? (
-          <EmptyState title="No stage is holding work" detail="Queue age shows here once items wait in a stage." action={<Button render={<Link href={CLEANING}>Open cleaning proposals</Link>} />} />
+          <EmptyState title="No stage is holding work" detail="Queue age shows here once items wait in a stage." action={<Button render={<Link href={CLEANING}>Open records with a suggested value</Link>} />} />
         ) : (
           <>
             <Bar data={bottlenecks.map((b) => ({ x: b.stage, label: stageLabel(b.stage), y: Math.round(b.avg_age_hours) }))} label="Average age by stage in hours" height={Math.max(120, bottlenecks.length * 40)} />

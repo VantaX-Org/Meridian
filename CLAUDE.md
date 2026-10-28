@@ -119,9 +119,9 @@ meridian/
 │   │   └── ...                      ← cleaning, sync, PDF, notifications, etc.
 │   └── scheduler.py                 ← 12 beat tasks inc. health check every 30min
 │
-├── db/                              ← SQLAlchemy schema + Alembic migrations (043)
+├── db/                              ← SQLAlchemy schema + Alembic migrations (099)
 │   ├── schema.py                    ← all models inc. ConfigImpactResult, ConfigSnapshot, SystemModuleMap
-│   ├── migrations/versions/         ← 41 migrations (head 043)
+│   ├── migrations/versions/         ← 97 migrations (head 099)
 │   └── seeds/config_impact_rules.yaml ← 52 feature impact rules
 │
 ├── llm/provider.py                  ← swappable LLM with request_timeout=120
@@ -280,7 +280,8 @@ disagree, follow DESIGN.md.
   motion and duration literals outside that one file.
   `frontend/scripts/lint-tokens.allow.txt` is empty. Never add a line to it.
 - **Routes**: live pages are under `frontend/app/(app)/` (home, systems,
-  objects, runs, rules, insights, mdm, inbox, fix, import, admin, design).
+  objects, runs, rules, insights, mdm, inbox, fix, attention, import, admin
+  incl. sign-in and alerts, design).
   Every legacy URL redirects into this tree via `next.config.ts`.
 
 ---

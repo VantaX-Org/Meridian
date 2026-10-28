@@ -43,6 +43,7 @@ from api.routes.contracts import router as contracts_router
 from api.routes.notifications import router as notifications_router
 from api.routes.users import router as users_router
 from api.routes.roles import router as roles_router
+from api.routes.api_keys import router as api_keys_router
 from api.routes.me import router as me_router
 from api.routes.preferences import router as preferences_router
 from api.routes.me_notifications import router as me_notifications_router
@@ -337,6 +338,7 @@ app.include_router(contracts_router)
 app.include_router(notifications_router)
 app.include_router(users_router)
 app.include_router(roles_router)
+app.include_router(api_keys_router)
 app.include_router(me_router)
 app.include_router(preferences_router)
 app.include_router(me_notifications_router)

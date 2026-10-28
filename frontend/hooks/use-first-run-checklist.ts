@@ -42,7 +42,7 @@ export function useFirstRunChecklist(): { items: ChecklistItem[]; loading: boole
     items.push({ id: "team", label: "Invite your team", done: usersQ.data.users.length > 1, href: "/admin/users" });
   }
   if (channelsQ.data) {
-    items.push({ id: "alerts", label: "Set an alert channel", done: channelsQ.data.length > 0, href: "/admin/notifications" });
+    items.push({ id: "alerts", label: "Set an alert channel", done: channelsQ.data.length > 0, href: "/admin/alerts" });
   }
   const pending = [systemsQ, versionsQ, batchesQ, usersQ, channelsQ].some((q) => q.isLoading);
   return { items, loading: pending };

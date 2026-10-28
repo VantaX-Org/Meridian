@@ -64,8 +64,8 @@ const PREVIOUS = "23b6a2e3-a2f7-43e4-b2cb-f5a3af560370";
 const MATERIAL = "c1f752b7-ab20-441e-9b13-f47754f0e910";
 /** The recorded tenant's users (GET /users). */
 const DEV_ADMIN = { id: "06f708aa-2f01-412d-91f8-4d8ac5da7934", name: "Admin", email: "admin@meridian.local" };
-const STEWARD = { id: "d5a97ed1-b4a7-4e12-bbf5-70a256502c97", name: "Sim steward", email: "steward@kmz-sim.local" };
-const ADMIN = { id: "765803d5-b17d-4f3a-8e5a-77a61ee85fda", name: "Sim admin", email: "admin@kmz-sim.local" };
+const STEWARD = { id: "d5a97ed1-b4a7-4e12-bbf5-70a256502c97", name: "Sim steward", email: "steward@erp-sim.local" };
+const ADMIN = { id: "765803d5-b17d-4f3a-8e5a-77a61ee85fda", name: "Sim admin", email: "admin@erp-sim.local" };
 
 const SEVERITIES = ["critical", "high", "medium", "low"] as const;
 type Severity = (typeof SEVERITIES)[number];
@@ -488,7 +488,7 @@ const RECURRENCE = {
   ],
   by_system: [
     { scope: "upload", name: "Uploads", version_id: LATEST, issues: 151, reopened: 3, reopens: 3, rate_pct: 2.0 },
-    { scope: SYSTEM_ID, name: "KMZ-SIM", version_id: "65988d5a-0243-4f9b-bdff-52779e71c6ed", issues: 3, reopened: 1, reopens: 1, rate_pct: 33.3 },
+    { scope: SYSTEM_ID, name: "ERP-SIM", version_id: "65988d5a-0243-4f9b-bdff-52779e71c6ed", issues: 3, reopened: 1, reopens: 1, rate_pct: 33.3 },
   ],
 };
 
@@ -823,7 +823,7 @@ const SCHEDULE_OPTIONS = {
   types: TYPES.map(([id, name, format, needs_run, needs_module]) => ({ id, name, format, needs_run, needs_module })),
   users: [DEV_ADMIN, ADMIN, STEWARD].map((u) => ({ id: u.id, label: u.name, detail: u.email })),
   channels: [],
-  systems: [{ id: SYSTEM_ID, label: "KMZ-SIM" }],
+  systems: [{ id: SYSTEM_ID, label: "ERP-SIM" }],
   modules: ["accounts_payable", "business_partner", "controlling", "material_master"],
 };
 

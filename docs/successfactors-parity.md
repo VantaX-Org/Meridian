@@ -156,7 +156,7 @@ built-in default, then canonical. See `sap/dictionaries/overrides/README.md`.
 
 The original problem is kept here for the record: **those per-tenant corrections had
 nowhere to live**. Today a tenant-specific spelling has to be written into the shared
-canonical file, which is what this document had to do for Komatsu. The next step is a
+canonical file, which is what this document had to do for the pilot customer. The next step is a
 tenant override layer — a `source:` remap keyed by system id, applied in
 `_extract_successfactors` alongside the existing `field_status` overlay — so the canonical
 map stays generic and each customer's quirks stay theirs. Until that exists, treat a new

@@ -124,8 +124,8 @@ describe("RunDetailPage", () => {
       } as unknown as Awaited<ReturnType<typeof analyticsApi.getPrescriptiveAnalytics>>);
       renderWithQuery(<RunDetailPage />);
       // The run is carried: leaving a run for the cleaning queue must not drop it and open every run.
-      expect(await screen.findByRole("link", { name: "Open cleaning" }))
-        .toHaveAttribute("href", "/fix?tab=cleaning&run=v2&module=material_master");
+      expect(await screen.findByRole("link", { name: "Open suggested values" }))
+        .toHaveAttribute("href", "/fix?run=v2&module=material_master&sugg=1");
       fireEvent.click(screen.getByText("Why?"));
       expect(await screen.findByText("120 records, 120 critical; about 4 hours.")).toBeInTheDocument();
       expect(screen.queryByText(/impact points per hour/)).toBeNull();

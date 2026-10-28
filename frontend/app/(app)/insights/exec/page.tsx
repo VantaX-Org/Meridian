@@ -47,6 +47,7 @@ import { PAGE_PURPOSE } from "../_components/InsightViews";
 import { currentFindingColumns, currentFixFirst } from "../_components/currentFindings";
 import { useCurrentState } from "../_components/useCurrentState";
 import { migrationGapColumns, useWaveIds } from "../_components/migrationGaps";
+import { COUNT_DEFS } from "@/lib/counts";
 
 
 
@@ -67,7 +68,7 @@ const readinessColumns = (run: string | undefined, waveIds: ReadonlyMap<string, 
   { accessorKey: "wave", header: "Wave" },
   {
     accessorKey: "verdict",
-    header: "Verdict",
+    header: COUNT_DEFS.verdict.label,
     cell: ({ row }) => <Status kind="verdict" value={row.original.verdict} />,
   },
   ...migrationGapColumns(waveIds),
@@ -97,7 +98,7 @@ function withOwner<T>(cols: ColumnDef<T>[], moduleOf: (row: T) => string, owners
 const ownerColumns = (run?: string): ColumnDef<OwnerCardResponse>[] => [
   { accessorKey: "owner", header: "Owner", cell: ({ row }) => row.original.user_id
     ? <DrillLink href={fixHref({ assignee: row.original.user_id, run })}>{row.original.owner}</DrillLink> : row.original.owner },
-  { accessorKey: "score", header: "Score", cell: ({ row }) => <DrillLink href={withScope("/insights/owners", { run })}>{row.original.score}</DrillLink> },
+  { accessorKey: "score", header: COUNT_DEFS.score.label, cell: ({ row }) => <DrillLink href={withScope("/insights/owners", { run })}>{row.original.score}</DrillLink> },
   { accessorKey: "delta", header: "Change", cell: ({ row }) => <Delta value={row.original.delta} /> },
 ];
 

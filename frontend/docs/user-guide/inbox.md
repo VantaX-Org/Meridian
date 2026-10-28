@@ -14,6 +14,10 @@ The page reads **Inbox** and has three tabs, each with a line that says what it 
 
 You can link straight to exceptions as `/inbox?kind=exception`; it is also listed as **Inbox**, **Exceptions** for roles that approve or assign. The search is kept in the address (`?q=`), so a searched list can be shared or reloaded.
 
+Exceptions also arrive from Fix work: **Raise an exception** on a failing record opens a tracked exception here, with its own owner and due date, for a record the team will not fix in this run.
+
+What in the Inbox needs you most also appears on the [To do](/docs?page=todo) list, as approvals waiting and as items past their due time. The flag next to the bell opens it.
+
 Failing SAP records are not worked here. The old **Issues** tab moved to Fix work: `/inbox?kind=issues` opens [Fix work](/docs?page=fix) on your own records (**Mine**), where the record panel offers **Take it**, **Assign to**, **Accept risk**, **Not an issue** and **Fixed in SAP**.
 
 ## Tasks

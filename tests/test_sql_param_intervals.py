@@ -7,7 +7,7 @@ sends an int where the concatenation needs text and fails with
 
 Under psycopg2 the same SQL works, which is why this survived: the workers use the sync driver,
 so only the async path broke and only in production. It made ``GET /api/v1/analytics/mdm-health``
-return 500 on every call on the Komatsu deployment.
+return 500 on every call on a pilot deployment.
 
 ``make_interval(days => :days)`` takes the int directly. ``(:days)::text || ' days'`` also works.
 """

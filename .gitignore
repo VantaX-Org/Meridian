@@ -63,3 +63,4 @@ vendor/nwrfcsdk/*
 !vendor/nwrfcsdk/.gitkeep
 !vendor/nwrfcsdk/README.md
 *.har.recording.tmp
+.playwright-mcp/

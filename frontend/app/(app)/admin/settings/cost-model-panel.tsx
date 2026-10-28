@@ -104,7 +104,7 @@ const label = (labels: Record<string, string>, key: string) => labels[key] ?? ke
 /**
  * The tenant's cost model for risk and ROI: the currency every amount is in, the monthly subscription the ROI divides
  * by, the unit cost of each business-impact defect type and of each configuration finding type. Severity and feature
- * values are set under Rules, Scoring and alerts.
+ * values are set under Rules, Scoring.
  */
 export function CostModelPanel() {
   const qc = useQueryClient();

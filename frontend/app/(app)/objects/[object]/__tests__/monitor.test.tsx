@@ -151,10 +151,17 @@ describe("ObjectMonitorStrip", () => {
     });
 
     it("offers an upload instead of a re-check for an object with no system", async () => {
-      granted.set = new Set(["trigger_sync"]);
+      granted.set = new Set(["trigger_sync", "upload"]);
       show(monitor({ system_id: null, freshness: "manual", cadence: { cron: null, active: null, interval_seconds: null, profile_id: null }, trigger: "upload" }));
       expect(await screen.findByRole("link", { name: "Upload a new file" })).toHaveAttribute("href", "/import");
       expect(screen.queryByRole("button", { name: /Re-check now/ })).toBeNull();
+    });
+
+    it("hides the upload link from someone who may not upload", async () => {
+      granted.set = new Set(["trigger_sync"]);
+      show(monitor({ system_id: null, freshness: "manual", cadence: { cron: null, active: null, interval_seconds: null, profile_id: null }, trigger: "upload" }));
+      expect(await screen.findByRole("region", { name: /Monitor of/ })).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Upload a new file" })).toBeNull();
     });
 
     it("offers Set schedule when there is none, to those who manage systems", async () => {

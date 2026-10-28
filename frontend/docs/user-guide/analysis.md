@@ -30,7 +30,7 @@ Every Insights page has the same build: the header with **Export** and **Present
 
 - Tick two runs and press `c`, or use **Compare with previous** on a run's page, to see which rules and records were fixed or newly fail.
 - Open a run to read its objects, findings, steps and configuration. **Re-run analysis** checks the stored data again with today's rules.
-- **Rename** a run, **Pin as baseline** (the reference for the Monitor and for comparisons), and archive older runs.
+- **Rename** a run, **Pin as baseline** (the reference that later runs of the object are compared with, see [Monitoring](/docs?page=monitoring)), and archive older runs.
 
 Pinning and archiving need the analyse permission.
 

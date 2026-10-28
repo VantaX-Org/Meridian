@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.licence import seats_for
+from api.services.api_keys import is_service_email, IS_SERVICE_EMAIL_SQL, NOT_SERVICE_USER_SQL
 from api.routes.roles import (
     LAST_ADMIN_DETAIL, LEGACY_GRANT_DETAIL, _custom_role, enforce_ceiling, guard_user_access_change,
     insert_grant, lock_admin_rows, resolve_caller,
@@ -40,6 +41,7 @@ router = APIRouter(prefix="/api/v1", tags=["users"])
 
 ROLE_VIA_GRANTS_DETAIL = "Roles are given as grants under Roles and access"
 NOT_INVITED_DETAIL = "This user has already set a password"
+SERVICE_ACCOUNT_DETAIL = "This is a service account. Manage it under Roles and access, API keys."
 NO_PASSWORD_DETAIL = "This user has not set a password yet. Resend the invite instead."
 IMPORT_MAX_ROWS = 500
 IMPORT_MAX_BYTES = 256 * 1024
@@ -147,6 +149,16 @@ async def forbid_last_admin(db: AsyncSession, tenant_id: uuid.UUID, user_id: uui
         raise HTTPException(status_code=409, detail=LAST_ADMIN_DETAIL)
 
 
+async def forbid_service_account(db: AsyncSession, tenant_id: uuid.UUID, user_id: uuid.UUID) -> None:
+    """409 when `user_id` is a service account (api/services/api_keys.py): it has no password and is never a
+    person, so invites, password resets and suspend/delete go through the API keys routes only."""
+    hit = (await db.execute(text(f"SELECT 1 FROM users WHERE id = :u AND tenant_id = :t AND "
+                                 f"{IS_SERVICE_EMAIL_SQL.format(col='email')}"),
+                            {"u": str(user_id), "t": str(tenant_id)})).fetchone()
+    if hit:
+        raise HTTPException(status_code=409, detail=SERVICE_ACCOUNT_DETAIL)
+
+
 async def require_seats(db: AsyncSession, tenant: Tenant, needed: int = 1) -> None:
     """409 when `needed` more active users would not fit the licence's seats (invited users hold a seat)."""
     used, limit = await seats_for(db, tenant)
@@ -211,6 +223,7 @@ async def list_users(
     status: Optional[UserStatus] = None,
     role: Optional[str] = Query(default=None, max_length=120),
     system_id: Optional[uuid.UUID] = None,
+    include_service: bool = False,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
@@ -220,6 +233,8 @@ async def list_users(
     await _set_rls(db, tenant.id)
     where = ["u.tenant_id = :tid"]
     params: dict[str, Any] = {"tid": str(tenant.id)}
+    if not include_service:  # service accounts (API keys) are listed under Roles and access, API keys
+        where.append(NOT_SERVICE_USER_SQL.format(col="u.email"))
     if q and q.strip():
         escaped = q.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         where.append("(u.email ILIKE :q OR u.name ILIKE :q)")
@@ -246,13 +261,14 @@ async def list_users(
 
 
 @router.get("/users/{user_id}", dependencies=[Depends(require_permission("manage_users"))])
-async def get_user(user_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+async def get_user(user_id: uuid.UUID, include_service: bool = False, db: AsyncSession = Depends(get_db),
+                   tenant: Tenant = Depends(get_tenant)):
     """One user with the derived `status`, the invite and lockout fields, and grants."""
     await _set_rls(db, tenant.id)
     row = (await db.execute(
         text(f"SELECT {_USER_COLUMNS} FROM users u WHERE u.id = :uid AND u.tenant_id = :tid"),
         {"uid": str(user_id), "tid": str(tenant.id)})).fetchone()
-    if not row:
+    if not row or (not include_service and is_service_email(row.email)):
         raise HTTPException(status_code=404, detail="User not found")
     out = _user_view(_row_to_dict(row))
     out["grants"] = (await _grants_by_user(db, tenant.id, user_id)).get(str(user_id), [])
@@ -269,6 +285,7 @@ async def set_user_active(db: AsyncSession, tenant: Tenant, request: Request, us
     Suspending ends every session (token_version + 1: LocalAuthMiddleware rejects tokens issued below
     it) and is refused for yourself, a user above your own permissions and the last active admin.
     Reactivating needs a free licence seat and clears any lockout."""
+    await forbid_service_account(db, tenant.id, user_id)
     await guard_user_access_change(db, tenant, request, user_id)
     if not active:
         await forbid_last_admin(db, tenant.id, user_id)
@@ -368,6 +385,8 @@ async def create_invited_user(db: AsyncSession, tenant: Tenant, request: Request
     """Seat check, insert the user and its grants, audit, commit and queue the email. Shared by
     POST /users/invite and the CSV import. Raises HTTPException (nothing is left half-created)."""
     # Roles come only from grants: insert_grant refuses legacy keys (422) and re-derives users.role.
+    if is_service_email(body.email.strip()):
+        raise HTTPException(status_code=409, detail=SERVICE_ACCOUNT_DETAIL)
     grants = invite_grants(body)
     role = invite_users_role(body)
 
@@ -459,6 +478,7 @@ async def _renew_invite(db: AsyncSession, tenant: Tenant, user_id: uuid.UUID, *,
 
 async def resend_invite(db: AsyncSession, tenant: Tenant, request: Request, user_id: uuid.UUID) -> dict[str, Any]:
     """New token, new 7 days, status queued, email re-queued; commits."""
+    await forbid_service_account(db, tenant.id, user_id)
     row = await _pending_invite(db, tenant, user_id)
     token, expires = await _renew_invite(db, tenant, user_id, queued=True)
     await write_audit(db, tenant.id, request, "user.invite_resend", "user", str(user_id), None,
@@ -484,6 +504,7 @@ async def invite_link(user_id: uuid.UUID, request: Request, db: AsyncSession = D
     invite_expires_at to match) without emailing. The URL is in this response only; the audit row
     ("user.invite_link_copied") records that it was taken, not the link."""
     await _set_rls(db, tenant.id)
+    await forbid_service_account(db, tenant.id, user_id)
     row = await _pending_invite(db, tenant, user_id)
     token, expires = await _renew_invite(db, tenant, user_id, queued=False)
     if not token:
@@ -502,6 +523,7 @@ async def reset_user_password(db: AsyncSession, tenant: Tenant, request: Request
     """Force a password change: must_change_password, every session revoked (token_version + 1), any lockout
     cleared, and either the reset email queued or a one-time link returned. Not yourself; not a user above
     your own permissions. The link carries the new token_version, so it works once. Commits."""
+    await forbid_service_account(db, tenant.id, user_id)
     await guard_user_access_change(db, tenant, request, user_id)
     row = (await db.execute(
         text("SELECT email, name, is_active, (password_hash IS NOT NULL) FROM users WHERE id = :u AND tenant_id = :t"),
@@ -622,6 +644,9 @@ async def _preview_rows(db: AsyncSession, tenant: Tenant, request: Request, raw:
         if not _EMAIL.match(email):
             row["error"] = "Not a valid email address"
             continue
+        if is_service_email(email):
+            row["error"] = SERVICE_ACCOUNT_DETAIL
+            continue
         if email in seen:
             row["error"] = f"Duplicate of line {seen[email]}"
             continue
@@ -728,6 +753,7 @@ async def delete_user(
     from sqlalchemy.exc import IntegrityError
 
     await _set_rls(db, tenant.id)
+    await forbid_service_account(db, tenant.id, user_id)
     await guard_user_access_change(db, tenant, request, user_id)
     await forbid_last_admin(db, tenant.id, user_id)
 

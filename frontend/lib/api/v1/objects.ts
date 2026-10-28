@@ -144,17 +144,13 @@ export function startedBy(trigger: MonitorTrigger | null | undefined, requestedB
   }
 }
 
-/** The run's `metadata.trigger` and `metadata.requested_by_label` (api/services/object_monitor.py), absent on runs from before they were stamped. */
-type StampedMetadata = { trigger?: MonitorTrigger | null; requested_by_label?: string | null };
-
 /**
  * Who or what started a run, for the Runs list and the run page: "Schedule", the person's name, "Upload" or
  * "Re-check". Runs from before the trigger was stamped fall back to what they record: a file someone imported,
  * or a download from a system.
  */
 export function startedByRun(v: Pick<Version, "metadata">): string {
-  const m = v.metadata as StampedMetadata | null;
-  const stamped = startedBy(m?.trigger, m?.requested_by_label);
+  const stamped = startedBy(v.metadata?.trigger, v.metadata?.requested_by_label);
   if (stamped) return stamped;
   if (v.metadata?.file_name) return "Upload";
   if (v.metadata?.source === "extraction") return "System download";

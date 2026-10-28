@@ -157,6 +157,10 @@ export const queryKeys = {
   contracts: (filters: Record<string, unknown>) => ["contracts", normalizeFilters(filters)] as const,
   contractCompliance: (id: string) => ["contract-compliance", id] as const,
   scoringSettings: () => ["scoring-settings"] as const,
+  /** The weights, bands and cost model of /rules/scoring (GET /scoring). */
+  scoringConfig: () => ["scoring-config"] as const,
+  /** The tenant's single sign-on configuration (GET /admin/sso). */
+  ssoConfig: () => ["admin", "sso"] as const,
   findingsAggregate: (versionId: string) => ["findings-aggregate", versionId] as const,
   scoreHistory: (systemId?: string) => ["score-history", systemId ?? ""] as const,
   ruleHistory: (ruleId: string) => ["rule-history", ruleId] as const,

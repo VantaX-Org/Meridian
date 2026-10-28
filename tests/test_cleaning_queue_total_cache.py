@@ -2,7 +2,7 @@
 
 The list query is an index scan that stops after one page; an exact COUNT(*) of the same
 predicate walks every matching index entry instead — 1.59 M rows and ~380 ms on the
-Komatsu deployment, paid on every request purely to render "N of total". These are pure
+a pilot deployment, paid on every request purely to render "N of total". These are pure
 unit tests of the cache, so they need no database (the batch-filter tests next to them do,
 and are skipped without MERIDIAN_TEST_DB_URL).
 """

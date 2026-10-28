@@ -7,7 +7,9 @@ Your role decides which pages you see and what you can change on them. This chap
 - Every user has one main role, for every system and object.
 - An administrator can add grants: a further role for one system, one object, or one object on one system. What you can do is the sum of your main role and every grant that covers the record in front of you.
 - Pages and buttons you cannot use are hidden, so the menus never offer a dead end. The server checks the same permissions on every request.
+- A grant can carry an expiry date. It stops working that day, and the access review lists the ones that end within 30 days.
 - Your licence can switch pages off for every role.
+- Someone who signs in through your identity provider for the first time is a viewer with no grants until an administrator gives them access.
 
 ## The six permissions behind fixing data
 
@@ -54,6 +56,10 @@ Everything the analyst can do, plus connecting and editing SAP systems and their
 
 Older role names (Admin, Manager, Steward, Approver, AI reviewer) still work and carry the rights of the matching role above.
 
+## See what a role can do
+
+Administrators do not have to guess. Open **Roles and access**, then **Matrix** for a grid of what every role may do on each kind of data; built-in roles are read only, so clone one to change it. Select a role to read **What this role sees**: the pages a person holding only that role could open. It is a preview, and nobody is impersonated. **Show legacy actions** adds the older permission names.
+
 ## What each role sees
 
 - **Objects**, **Progress** and **Inbox**: every role.
@@ -62,13 +68,21 @@ Older role names (Admin, Manager, Steward, Approver, AI reviewer) still work and
 - **More**, **Analysis**, **Master data**, **Rules** and **Data in**, **Systems**: every role.
 - **Import file**: roles that may upload. **Migration**: roles with analyse.
 - **Rules**, **Drafts**: roles that maintain rules (Platform admin, Data steward).
-- **Users and audit**: Platform admin. **Audit log**: Platform admin, Programme lead and Auditor.
+- **Users**, **Sign-in** and **Roles and access**: Platform admin. **Audit log**: Platform admin, Programme lead and Auditor. **Alerts**: roles that manage settings.
 
 Tables follow the same rule: a role that can change nothing gets no selection boxes and no bulk actions. In the record panel such a role reads "Your role can view this record. Fixing it needs the apply permission."
 
 ## Scoped access
 
 A grant for one system or object counts only on records of that system or object; elsewhere your main role applies. When any grant is scoped, the scope bar shows a pill such as "Scoped: PRD ECC, Material master", with "+2" for two more.
+
+## Grants, expiry and review
+
+On **Users & scopes**, an administrator adds a grant by choosing a role, a system, a module (blank for all) and an optional **Expires** date. Before the grant is saved, a preview states what changes, including that it stops working on its expiry date. **Effective permissions** shows the sum of a person's main role and every grant. **Expiring within 30 days** lists the people whose grants end soon so access is reviewed instead of lingering. Removing a grant takes effect at once. Every change is in the **History** tab and the audit log.
+
+## What the To do list shows you
+
+The [To do](/docs?page=todo) list follows the same grants. You see an item only when you hold the permission to act on it, on that system and object. Admin chores, such as access requests, invitations, seats and expiring grants, need the permission to manage users everywhere.
 
 ## How to ask for access
 
@@ -81,4 +95,5 @@ A grant for one system or object counts only on records of that system or object
 - [Fix work](/docs?page=fix)
 - [Approvals and export](/docs?page=approvals)
 - [Administration](/docs?page=admin)
+- [To do](/docs?page=todo)
 - [Troubleshooting](/docs?page=troubleshooting)

@@ -33,7 +33,7 @@ from api.middleware.cache import get_redis
 
 logger = logging.getLogger("meridian.rate_limit")
 
-KeyBy = Literal["tenant", "ip", "user"]
+KeyBy = Literal["tenant", "ip", "user", "api_key"]
 
 
 def _current_window(window_s: int) -> int:
@@ -63,6 +63,13 @@ def _resolve_key(request: Request, name: str, key_by: KeyBy, window_s: int) -> s
         uid = getattr(request.state, "local_user_id", None)
         if uid:
             return f"ratelimit:{name}:user:{uid}:{window}"
+        return _resolve_key(request, name, "tenant", window_s)
+
+    if key_by == "api_key":
+        # Set by LocalAuthMiddleware once a Bearer mk_... key has authenticated; one bucket per key.
+        key_id = getattr(request.state, "api_key_id", None)
+        if key_id:
+            return f"ratelimit:{name}:api_key:{key_id}:{window}"
         return _resolve_key(request, name, "tenant", window_s)
 
     return None
@@ -106,7 +113,8 @@ def rate_limit(
       raises 429 with a Retry-After header pointing at the next window edge.
     - `key_by="tenant"` is per-tenant (falls back to IP for unauth calls);
       `key_by="ip"` is strict per-IP for login-style endpoints;
-      `key_by="user"` is per authenticated user (falls back to the tenant key).
+      `key_by="user"` is per authenticated user (falls back to the tenant key);
+      `key_by="api_key"` is per API key (request.state.api_key_id; falls back to the tenant key).
     """
 
     async def _dependency(request: Request) -> None:

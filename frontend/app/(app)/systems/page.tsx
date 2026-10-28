@@ -21,6 +21,7 @@ import { isListFailure } from "@/lib/error";
 import { browserTimezone, formatDate, relativeTime, systemTypeLabel } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { HealthStatus, SAPSystemExtended } from "@/types/api";
+import { COUNT_DEFS } from "@/lib/counts";
 
 /** Worst first, so the ledger leads with what needs a hand. */
 const HEALTH_RANK: Record<HealthStatus, number> = { unreachable: 0, auth_failed: 0, degraded: 1, unknown: 2, healthy: 3 };
@@ -172,7 +173,7 @@ export default function SystemsPage() {
     },
     {
       id: "dqs",
-      header: "Score",
+      header: COUNT_DEFS.score.label,
       size: 190,
       cell: ({ row }) => {
         const d = scoreOf(row.original);
