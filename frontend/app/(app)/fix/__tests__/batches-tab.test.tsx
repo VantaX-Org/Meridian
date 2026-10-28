@@ -111,7 +111,7 @@ describe("BatchesTab", () => {
     vi.spyOn(remediationApi, "getMonitor").mockResolvedValue({ items: [monitorItem] });
     renderWithQuery(<BatchesTab />);
     expect(await screen.findByText("ECC Prod regressed since the baseline.")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open monitor" })).toHaveAttribute("href", "?tab=monitor");
+    expect(screen.getByRole("link", { name: "Open the monitoring view" })).toHaveAttribute("href", "/objects?view=monitoring");
   });
 
   it("disables approve without the matching permission", async () => {

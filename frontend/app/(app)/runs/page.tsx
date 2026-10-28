@@ -15,6 +15,7 @@ import { useUrlState } from "@/hooks/use-url-state";
 import { errorText } from "@/lib/api/remediation";
 import { getSystems } from "@/lib/api/connectivity";
 import { exportRuns } from "@/lib/api/v1/runs";
+import { startedByRun } from "@/lib/api/v1/objects";
 import { blockedReasonOf, deleteVersion } from "@/lib/api/retention";
 import { getAnalysisStatus } from "@/lib/api/upload";
 import { archiveVersions, compareVersions, getVersions, restoreVersions } from "@/lib/api/versions";
@@ -103,13 +104,6 @@ export function groupReruns(versions: readonly Version[]): { rows: Version[]; ea
   return { rows, earlier };
 }
 
-/** Who or what started a run, from what the run records: a file someone imported, or a download from a system. */
-export function triggeredBy(v: Version): string {
-  if (v.metadata?.file_name) return "File import";
-  if (v.metadata?.source === "extraction") return "System download";
-  return "—";
-}
-
 function makeColumns(allVersions: Version[], earlier: ReadonlyMap<string, Version[]>, systemOf: (v: Version) => string, onDelete?: (v: Version) => void): ColumnDef<Version>[] {
   return [
     {
@@ -151,7 +145,7 @@ function makeColumns(allVersions: Version[], earlier: ReadonlyMap<string, Versio
       accessorFn: (v) => v.metadata?.row_count ?? -1,
       cell: ({ row }) => (row.original.metadata?.row_count != null ? formatNumber(row.original.metadata.row_count) : "—"),
     },
-    { id: "triggered", header: "Triggered by", meta: { priority: "low" } satisfies CellMeta, accessorFn: triggeredBy },
+    { id: "started_by", header: "Started by", meta: { priority: "low" } satisfies CellMeta, accessorFn: startedByRun },
     {
       id: "history",
       header: () => <span className="inline-flex items-center gap-1">History <HelpHint term="run" /></span>,

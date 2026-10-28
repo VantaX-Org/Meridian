@@ -21,6 +21,10 @@ export const queryKeys = {
   /** List row seeded on row click so the detail header paints before the detail fetch lands. */
   objectSummary: (id: string, run: string) => ["object-summary", id, run] as const,
   objects: (run: string) => ["object", "list", run] as const,
+  /** Cadence, freshness and drift of every object of the current state. */
+  objectsMonitor: () => ["object", "monitor"] as const,
+  /** One object's monitor at a run (`latest` when the URL pins none). */
+  objectMonitor: (id: string, run: string) => ["object", id, "monitor", run] as const,
   record: (object: string, key: string, run: string) => ["object", object, "record", key, run] as const,
   rule: (id: string, run: string) => ["rule", id, run] as const,
   records: (object: string, filters: Record<string, unknown>) =>

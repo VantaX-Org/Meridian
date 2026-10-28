@@ -91,6 +91,26 @@ describe("RunsPage", () => {
     });
   });
 
+  it("names who or what started each run: Schedule, the person, Upload or Re-check", async () => {
+    const stamped = (id: string, module: string, trigger: string | null, by?: string): Version =>
+      version({ id, label: `${module} run`, metadata: { modules: [module], row_count: 10, system_id: "sys-1", ...(trigger ? { trigger } : {}), ...(by ? { requested_by_label: by } : {}) } as Version["metadata"] });
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({
+      versions: [
+        stamped("a", "mod_a", "scheduled"),
+        stamped("b", "mod_b", "manual", "Jane Doe"),
+        stamped("c", "mod_c", "upload"),
+        stamped("d", "mod_d", "recheck", "Jane Doe"),
+      ],
+    });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    renderWithQuery(<RunsPage />);
+    await waitFor(() => expect(screen.getAllByRole("row").length).toBe(5));
+    const startedCol = screen.getAllByRole("columnheader").findIndex((h) => h.textContent === "Started by");
+    expect(startedCol).toBeGreaterThanOrEqual(0);
+    const cells = screen.getAllByRole("row").slice(1).map((r) => within(r).getAllByRole("cell")[startedCol]?.textContent);
+    expect(cells).toEqual(["Schedule", "Jane Doe", "Upload", "Re-check"]);
+  });
+
   it("opens Run analysis as the system-picker drawer, with no view tab strip over the page", async () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer] });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
@@ -191,13 +211,13 @@ describe("RunsPage", () => {
     expect(push).toHaveBeenCalledWith("/runs/v2/vs/v1");
   });
 
-  it("folds re-runs of the same system and objects under the newest, with System, Records and Triggered by", async () => {
+  it("folds re-runs of the same system and objects under the newest, with System, Records and Started by", async () => {
     push.mockClear();
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, older] });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
-    for (const h of ["System", "Records", "Triggered by"]) expect(screen.getByRole("columnheader", { name: h })).toBeInTheDocument();
+    for (const h of ["System", "Records", "Started by"]) expect(screen.getByRole("columnheader", { name: h })).toBeInTheDocument();
     // each severity column says its unit: failing rules, never a bare "High"
     for (const h of ["Critical failing rules", "High failing rules"]) expect(screen.getByRole("columnheader", { name: new RegExp(h) })).toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: /^High$/ })).toBeNull();
@@ -205,7 +225,7 @@ describe("RunsPage", () => {
     expect(body).toHaveLength(1);
     expect(body[0]).toHaveTextContent("+1 earlier run");
     expect(body[0]).toHaveTextContent("ECC Prod");
-    expect(body[0]).toHaveTextContent("File import");
+    expect(body[0]).toHaveTextContent("Upload");
     expect(screen.queryByText("Oct 1 upload")).toBeNull();
     fireEvent.click(within(body[0]).getByRole("button", { name: "Expand row" }));
     const earlier = await screen.findByRole("list", { name: "Earlier runs" });

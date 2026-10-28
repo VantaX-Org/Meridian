@@ -6,6 +6,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Card, ConfirmDialog, ErrorState, Input, Select, Skeleton, Status, toast } from "@/design";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { getSystemObjects } from "@/lib/api/system-objects";
+import { getObjectsMonitor } from "@/lib/api/v1/objects";
+import { FreshnessPill } from "@/app/(app)/objects/_freshness";
 import { createSyncProfile, deleteSyncProfile, getSyncProfiles, updateSyncProfile } from "@/lib/api/systems";
 import type { SyncProfile } from "@/types/api";
 import { TENANT_TIMEZONE_HREF, useTenantTimezone } from "@/lib/tenant-zone";
@@ -49,7 +51,7 @@ export function cronError(cron: string): string | undefined {
   return undefined;
 }
 
-function CronPicker({ value, onChange, disabled }: { value: string; onChange: (cron: string) => void; disabled?: boolean }) {
+export function CronPicker({ value, onChange, disabled }: { value: string; onChange: (cron: string) => void; disabled?: boolean }) {
   const [custom, setCustom] = useState(!PRESETS.some((p) => p.value === value));
   const [text, setText] = useState(value);
   const error = custom && text.trim() ? cronError(text) : undefined;
@@ -82,6 +84,9 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
   const tz = useTenantTimezone();
   const profilesQ = useQuery({ queryKey: queryKeys.syncProfiles(id), queryFn: () => getSyncProfiles(id) });
   const profiles = profilesQ.data ?? [];
+  // How fresh each scheduled object is against its own cadence, joined to its schedule by profile; no row reads "—".
+  const monitorQ = useQuery({ queryKey: queryKeys.objectsMonitor(), queryFn: getObjectsMonitor, retry: false, meta: { ignoreError: true } });
+  const freshnessOf = (p: SyncProfile) => monitorQ.data?.find((m) => m.cadence.profile_id === p.id || (m.system_id === id && m.module === p.domain))?.freshness;
   const { data: catalogue } = useQuery({ queryKey: queryKeys.systemObjects(id), queryFn: () => getSystemObjects(id), enabled: canManage });
   const [adding, setAdding] = useState("");
   const [cron, setCron] = useState(PRESETS[1].value);
@@ -128,7 +133,7 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
               <th>Object</th><th>Schedule</th>
               <th>Mode</th>
               <th>Last run</th><th>Next run</th>
-              <th>Status</th><th />
+              <th>Freshness</th><th>Status</th><th />
             </tr></thead>
             <tbody>
               {profiles.map((p) => (
@@ -151,6 +156,7 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
                   </td>
                   <td>{p.last_run_at ? <span title={formatDate(p.last_run_at, "datetime", tz)}>{relativeTime(p.last_run_at)}</span> : "Never"}</td>
                   <td>{p.active && p.next_run_at ? formatDate(p.next_run_at, "datetime", tz) : "—"}</td>
+                  <td>{freshnessOf(p) ? <FreshnessPill value={freshnessOf(p) as string} /> : "—"}</td>
                   <td><Status kind="lifecycle" value={p.active ? "active" : "paused"} /></td>
                   <td>
                     {canManage && (

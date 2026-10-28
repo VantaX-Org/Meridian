@@ -10,14 +10,14 @@ import { buildDrillHref, DataTable, RowAction, DomainChip, useBreadcrumbScope, E
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getAnalysisReportUrl } from "@/lib/api/reports";
-import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
+import { exportObjects, getObjects, getObjectsMonitor, type Freshness, type ObjectMonitor, type ObjectSummary } from "@/lib/api/v1/objects";
 import { getVersion } from "@/lib/api/versions";
 import { isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { criticalHighHref, stateObjects, stateScopeLine } from "@/lib/current-state";
 import { fixHref } from "@/lib/drill";
 import { RuleName } from "@/components/fix/rule-cell";
-import { formatModuleName, plural } from "@/lib/format";
+import { formatModuleName, plural, relativeTime } from "@/lib/format";
 import { DrillCount } from "@/app/(app)/insights/_components/DrillCount";
 import { bySeverity } from "../_severity-sort";
 import { RunScope } from "@/components/run-scope";
@@ -30,13 +30,15 @@ import type { WorkObject } from "@/lib/api/work";
 import { BELOW_TARGET } from "@/lib/home-metrics";
 import { MINE_PARAM, useObjectOwners, type ObjectOwners } from "@/hooks/use-object-owners";
 import { OwnerName } from "@/components/owners/OwnerName";
+import { FreshnessPill } from "./_freshness";
+import { cadenceText } from "./[object]/_monitor";
 
 /**
  * A row of the list. With `?run=` every row is that run's; without it (the current state) each row is its object
  * at its own latest run, and links to the object without `?run=` (the object page opens that run itself).
  * `affected_records` is null only when a current-state row's run could not be read and its records not attributed.
  */
-type ObjectRow = Omit<ObjectSummary, "affected_records"> & { affected_records: number | null; run_id?: string; work?: WorkObject | null };
+type ObjectRow = Omit<ObjectSummary, "affected_records"> & { affected_records: number | null; run_id?: string; work?: WorkObject | null; monitor?: ObjectMonitor };
 
 /** The score drills to the object's rules tab; `run` undefined drills to the object's own latest run. */
 const drill = (o: ObjectRow, run: string | undefined, n: number | string) => (
@@ -62,16 +64,33 @@ const READINESS_FILTER = [
   { value: "pass", label: "Go" },
 ] as const;
 type ReadinessFilter = (typeof READINESS_FILTER)[number]["value"];
+const FRESHNESS_FILTER: { value: Freshness; label: string }[] = [
+  { value: "stale", label: "Stale" },
+  { value: "failed", label: "Failed" },
+  { value: "manual", label: "Manual" },
+];
 /** `?verdict=` is the legacy form of `?readiness=` (ready means pass; not_ready has no equivalent and is ignored). */
 const LEGACY_VERDICT: Record<string, ReadinessFilter> = { ready: "pass" };
 
 /** Optional enrichment columns appear only when some row carries the field (older backends omit them). */
-const makeColumns = (run: string | undefined, bands: ScoreBands | undefined, objects: ObjectRow[], openHref: (o: ObjectRow) => string, ownerOf: (o: ObjectRow) => string | null, ownerStatus: ObjectOwners["status"]): ColumnDef<ObjectRow>[] => {
+const makeColumns = (run: string | undefined, bands: ScoreBands | undefined, objects: ObjectRow[], openHref: (o: ObjectRow) => string, ownerOf: (o: ObjectRow) => string | null, ownerStatus: ObjectOwners["status"], view: ListView): ColumnDef<ObjectRow>[] => {
   const hasTrend = objects.some((o) => (o.trend?.length ?? 0) >= 1);
   const hasBlocking = objects.some((o) => o.blocking_rule_id);
   const hasWork = objects.some((o) => o.work !== undefined);
-  return allColumns(run, bands, openHref, ownerOf, ownerStatus).filter((c) => (c.id !== "trend" || hasTrend) && (c.id !== "blocking_rule" || hasBlocking) && (!WORK_COLUMNS.has(c.id ?? "") || hasWork));
+  const monitoring = view === "monitoring";
+  return allColumns(run, bands, openHref, ownerOf, ownerStatus).filter((c) => {
+    const id = c.id ?? "";
+    // The monitoring view is Checked, Cadence, Freshness and Change beside the score; the work columns step aside.
+    if (monitoring) return !HIDDEN_WHEN_MONITORING.has(id) && id !== "trend";
+    if (MONITOR_ONLY.has(id)) return false;
+    return (id !== "trend" || hasTrend) && (id !== "blocking_rule" || hasBlocking) && (!WORK_COLUMNS.has(id) || hasWork);
+  });
 };
+
+/** `?view=monitoring` swaps the work columns for the monitor's; the default view keeps today's columns plus Freshness. */
+type ListView = "work" | "monitoring";
+const MONITOR_ONLY = new Set(["checked", "cadence", "change"]);
+const HIDDEN_WHEN_MONITORING = new Set(["owner", "blocking_rule", "affected_records", "work_open", "work_critical", "work_proposed", "work_overdue"]);
 
 const WORK_COLUMNS = new Set(["work_open", "work_critical", "work_proposed", "work_overdue"]);
 
@@ -91,6 +110,21 @@ const workColumn = (id: string, header: string, pick: (w: WorkObject) => number,
   meta: { numeric: true } satisfies CellMeta,
   cell: ({ row }) => workCell(row.original, run, pick, what, filters),
 });
+
+/** Newly failing rules since the baseline as a signed count; the title carries the records behind it. */
+function ChangeCell({ m }: { m: ObjectMonitor | undefined }) {
+  if (!m || m.baseline.kind == null) return <span className="m-ink-3">First run</span>;
+  const { drift } = m;
+  const title = `${plural(drift.new_failing, "new failing record")}, ${plural(drift.recovered, "recovered record")} since the baseline`;
+  if (drift.newly_failing_rule_count === 0 && drift.recovered_rule_count === 0) return <span className="m-ink-3" title={title}>No change</span>;
+  return (
+    <span className="whitespace-nowrap" title={title}>
+      {drift.newly_failing_rule_count > 0 ? <span className="m-ink-critical m-numeric">{`+${drift.newly_failing_rule_count.toLocaleString()} failing`}</span> : null}
+      {drift.newly_failing_rule_count > 0 && drift.recovered_rule_count > 0 ? ", " : null}
+      {drift.recovered_rule_count > 0 ? <span className="m-numeric">{`${drift.recovered_rule_count.toLocaleString()} recovered`}</span> : null}
+    </span>
+  );
+}
 
 const allColumns = (run: string | undefined, bands: ScoreBands | undefined, openHref: (o: ObjectRow) => string, ownerOf: (o: ObjectRow) => string | null, ownerStatus: ObjectOwners["status"]): ColumnDef<ObjectRow>[] => [
   { accessorKey: "label", header: "Object", cell: ({ row }) => <DomainChip moduleId={row.original.module} label={row.original.label} /> },
@@ -164,6 +198,37 @@ const allColumns = (run: string | undefined, bands: ScoreBands | undefined, open
     },
   },
   {
+    id: "checked",
+    header: "Checked",
+    size: 130,
+    accessorFn: (o) => o.monitor?.last_run_at ?? "",
+    cell: ({ row }) => {
+      const at = row.original.monitor?.last_run_at;
+      return at ? <span className="whitespace-nowrap">{relativeTime(at)}</span> : <span className="m-ink-3">Not checked yet</span>;
+    },
+  },
+  {
+    id: "cadence",
+    header: "Cadence",
+    size: 170,
+    accessorFn: (o) => (o.monitor ? cadenceText(o.monitor) : ""),
+    cell: ({ row }) => (row.original.monitor ? cadenceText(row.original.monitor) : "—"),
+  },
+  {
+    id: "freshness",
+    header: "Freshness",
+    size: 110,
+    accessorFn: (o) => o.monitor?.freshness ?? "",
+    cell: ({ row }) => (row.original.monitor ? <FreshnessPill value={row.original.monitor.freshness} /> : "—"),
+  },
+  {
+    id: "change",
+    header: "Change",
+    size: 190,
+    enableSorting: false,
+    cell: ({ row }) => <ChangeCell m={row.original.monitor} />,
+  },
+  {
     id: "trend",
     header: "Trend",
     size: 96,
@@ -228,7 +293,11 @@ export default function ObjectsPage() {
   const workRuns = current ? [...new Set(baseRows.map((o) => o.run_id).filter((id): id is string => !!id))] : runId ? [runId] : [];
   const workQs = useQueries({ queries: workRuns.map((id) => workSummaryQuery(id)) });
   const workByRun = new Map(workRuns.map((id, i) => [id, workQs[i]?.data]));
-  const objects: ObjectRow[] = baseRows.map((o) => {
+  // Cadence, freshness and drift of each object's current state, joined by module; a failed read leaves the columns "—".
+  const monitorQ = useQuery({ queryKey: queryKeys.objectsMonitor(), queryFn: getObjectsMonitor, retry: false, meta: { ignoreError: true } });
+  const monitorOf = new Map((monitorQ.data ?? []).map((m) => [m.module, m]));
+  const objects: ObjectRow[] = baseRows.map((withoutMonitor) => {
+    const o: ObjectRow = { ...withoutMonitor, monitor: monitorOf.get(withoutMonitor.module) };
     const summary = workByRun.get((current ? o.run_id : runId) ?? "");
     if (!summary?.built) return o;
     return { ...o, work: summary.objects.find((w) => w.module === o.module) ?? { module: o.module, records: 0, open: 0, issues: 0, critical: 0, proposed: 0, overdue: 0, statuses: {} } };
@@ -285,12 +354,15 @@ export default function ObjectsPage() {
   const readiness: ReadinessFilter | null = READINESS_FILTER.find((f) => f.value === rawReadiness)?.value ?? null;
   const dimension = search.get("dimension");
   const owner = search.get("owner");
+  const view: ListView = search.get("view") === "monitoring" ? "monitoring" : "work";
+  const freshness = FRESHNESS_FILTER.find((f) => f.value === search.get("freshness"))?.value ?? null;
   const mine = search.get(MINE_PARAM) === "1";
   const shownObjs = objects
     .filter((o) => !mine || owners.isMine(o.module))
     .filter((o) => !readiness || (o.readiness != null && readiness.split(",").includes(o.readiness)))
     .filter((o) => !dimension || o.worst_dimension === dimension)
     .filter((o) => !owner || ownerOf(o) === owner)
+    .filter((o) => !freshness || o.monitor?.freshness === freshness)
     .sort(ranked);
   const distinct = (pick: (o: ObjectRow) => string | null | undefined, label: (v: string) => string = (v) => v) =>
     [...new Set(objects.map(pick).filter((v): v is string => !!v))].sort().map((v) => ({ value: v, label: label(v) }));
@@ -336,6 +408,8 @@ export default function ObjectsPage() {
         {blockingFindings != null ? <Stat label="Critical and high failing rules" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} href={criticalHighFindingsHref} /> : <Stat label="Rule failures" value={recordsAffected.toLocaleString()} hint="records failing a rule, per rule" href={current ? "/insights/rules" : fixHref({ run })} />}
       </div>
       <div className="flex flex-wrap items-center gap-4">
+        <FilterChips label="View" value={view === "monitoring" ? "monitoring" : null} options={[{ value: "monitoring", label: "Monitoring" }]} onChange={(v) => setParam("view", v)} />
+        <FilterChips label="Freshness" value={freshness} options={FRESHNESS_FILTER} onChange={(v) => setParam("freshness", v)} />
         <FilterChips label="Readiness" value={readiness} options={[...READINESS_FILTER]} onChange={(v) => setParam("readiness", v)} />
         {dimensionOptions.length > 1 ? <FilterChips label="Dimension" value={dimension} options={dimensionOptions} onChange={(v) => setParam("dimension", v)} /> : null}
         {owners.hasMine || mine ? <FilterChips label="Show" value={mine ? "1" : null} options={[{ value: "1", label: "My objects" }]} onChange={(v) => setParam(MINE_PARAM, v)} /> : null}
@@ -348,7 +422,7 @@ export default function ObjectsPage() {
   // without ?run= opens the object's own latest run.
   const openHref = (row: ObjectRow) => toFixHref(row.module, current ? undefined : runId ?? run);
   const objectHref = openHref;
-  const columns = makeColumns(current ? undefined : runId, bands, objects, openHref, ownerOf, owners.status); // React Compiler memoizes on run and thresholds
+  const columns = makeColumns(current ? undefined : runId, bands, objects, openHref, ownerOf, owners.status, view); // React Compiler memoizes on run and thresholds
 
   // The map is drawn from the rows the ledger shows: the same filters, the same objects.
   // Tiles are sized by distinct failing records when every shown object's work list is built; otherwise by the

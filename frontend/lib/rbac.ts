@@ -41,6 +41,8 @@ export const LEGACY_ACTION_MAP: Readonly<Record<string, readonly Pair[]>> = {
   manage_systems: [["systems", "create"], ["systems", "edit"], ["systems", "admin"], ["credentials", "edit"]],
   manage_system: [["licence", "admin"]],
   manage_settings: [["analysis", "admin"], ["reports", "admin"], ["rules", "admin"]],
+  // Triage teams, assignment rules and SLA policies; business hours and holidays stay manage_settings.
+  manage_triage: [["stewardship", "admin"]],
   manage_llm: [["llm", "admin"]],
   manage_users: [["users", "admin"]],
   view_audit: [["audit", "view"], ["audit", "export"]],

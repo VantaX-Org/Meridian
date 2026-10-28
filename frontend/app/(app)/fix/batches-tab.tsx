@@ -46,14 +46,14 @@ function pct(n: number, total: number): number {
 }
 
 /** "scope" is a system id or "upload"; show the system's own name instead. */
-/** One line on what monitoring found; the full picture lives on the Monitor tab. */
+/** One line on what monitoring found; the full picture is the Objects monitoring view. */
 function MonitorSummaryNotice() {
   const monitor = useQuery({ queryKey: queryKeys.remediationMonitor(), queryFn: getMonitor, staleTime: 60_000 });
   const items = monitor.data?.items ?? [];
   if (!items.length) return null;
   const regressed = items.filter((m) => (m.monitor?.regressed_check_count ?? 0) > 0);
   return (
-    <Notice tone={regressed.length ? "warning" : "info"} action={<Button variant="secondary" render={<Link href="?tab=monitor">Open monitor</Link>} />}>
+    <Notice tone={regressed.length ? "warning" : "info"} action={<Button variant="secondary" render={<Link href="/objects?view=monitoring">Open the monitoring view</Link>} />}>
       {regressed.length
         ? `${regressed.map(scopeLabel).join(", ")} regressed since the baseline.`
         : `${items.length} scope${items.length === 1 ? "" : "s"} holding since the baseline.`}
@@ -399,7 +399,7 @@ export function BatchDetailBody({ batchId, currentUserId, canApprove, canExport 
         <div><dt className="m-ink-2">With proposal</dt><dd>{items.filter((i) => i.proposed_value !== null).length.toLocaleString()}</dd></div>
         <div><dt className="m-ink-2">Accepted</dt><dd>{items.filter((i) => i.accepted).length.toLocaleString()}</dd></div>
         <div><dt className="m-ink-2">Auto-approvable</dt><dd>{items.filter((i) => i.auto_approvable).length.toLocaleString()}</dd></div>
-        <div><dt className="m-ink-2">Created by</dt><dd>{batch.created_by_label ?? "Meridian monitor"}</dd></div>
+        <div><dt className="m-ink-2">Created by</dt><dd>{batch.created_by_label ?? "Meridian"}</dd></div>
         <div><dt className="m-ink-2">Created</dt><dd>{formatDate(batch.created_at, "datetime")}</dd></div>
         <div><dt className="m-ink-2">Approved by</dt><dd>{batch.approved_by_label ?? "—"}</dd></div>
         <div><dt className="m-ink-2">Approved</dt><dd>{batch.approved_at ? formatDate(batch.approved_at, "datetime") : "—"}</dd></div>

@@ -157,3 +157,25 @@ describe("FixPage under a chosen run", () => {
     }
   });
 });
+
+describe("FixPage monitor tab", () => {
+  it("has no Monitor tab: monitoring is per object", async () => {
+    vi.mocked(getCleaningGroups).mockResolvedValue({ groups: [], records: 0, confident: 0, runs: 0 });
+    renderWithQuery(<FixPage />);
+    const tabs = await screen.findAllByRole("tab");
+    expect(tabs.map((t) => t.textContent)).toEqual(["Records to fix", "Cleaning proposals", "Batches and export"]);
+    expect(screen.queryByRole("tab", { name: "Monitor" })).toBeNull();
+  });
+
+  it("sends ?tab=monitor to the Objects list's monitoring view", async () => {
+    searchParams.set("tab", "monitor");
+    replace.mockClear();
+    try {
+      renderWithQuery(<FixPage />);
+      await waitFor(() => expect(replace).toHaveBeenCalledWith("/objects?view=monitoring"));
+      expect(screen.queryByRole("tablist")).toBeNull();
+    } finally {
+      searchParams.set("tab", "cleaning");
+    }
+  });
+});

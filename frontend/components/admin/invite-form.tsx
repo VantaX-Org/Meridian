@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Field, Select, toast } from "@/design";
+import { Button, Field, Notice, Select, toast } from "@/design";
 import { getSystems } from "@/lib/api/connectivity";
 import { queryKeys } from "@/lib/query-keys";
 import { listRoles, type GrantInput } from "@/lib/api/roles";
@@ -10,7 +10,9 @@ import { inviteUser } from "@/lib/api/users";
 import { apiErrorMessage } from "@/lib/error";
 import { email as emailRule, length, required, useFormErrors, type Schema } from "@/lib/forms";
 import { ROLE_META, grantableRoles } from "@/lib/roles";
+import { seatsFull, seatsFullSentence, seatsNearlyFull, seatsSentence } from "@/lib/users";
 import { GrantsPicker, type GrantRowView } from "./grants-picker";
+import { useSeats } from "./use-seats";
 
 const SCHEMA: Schema<{ email: string; name: string }> = {
   email: [required("Enter an email address"), emailRule()],
@@ -27,6 +29,8 @@ export function InviteForm({ onDone }: { onDone: () => void }) {
   const [role, setRole] = useState("");
   const [grants, setGrants] = useState<(GrantRowView & GrantInput)[]>([]);
   const values = { email, name };
+  const seats = useSeats();
+  const full = !!seats && seatsFull(seats);
   const form = useFormErrors(SCHEMA, values);
   const qc = useQueryClient();
   const rolesQ = useQuery({ queryKey: ["roles"], queryFn: listRoles });
@@ -50,7 +54,11 @@ export function InviteForm({ onDone }: { onDone: () => void }) {
     onError: (e) => toast.error(`Invitation not sent. ${apiErrorMessage(e)}`),
   });
   return (
-    <form noValidate className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); form.touchAll(); if (form.valid && allGrants.length) m.mutate(); }}>
+    <form noValidate className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); form.touchAll(); if (form.valid && allGrants.length && !full) m.mutate(); }}>
+      {seats ? (
+        full ? <Notice tone="danger">{seatsFullSentence(seats)}</Notice>
+          : <p className="m-text-meta m-ink-3" data-testid="invite-seats">{seatsSentence(seats)}{seatsNearlyFull(seats) ? ". An invited person takes a seat at once" : ""}</p>
+      ) : null}
       <Field label="Email" error={form.error("email")}><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} onBlur={() => form.blur("email")} /></Field>
       <Field label="Name" error={form.error("name")}><input value={name} onChange={(e) => setName(e.target.value)} onBlur={() => form.blur("name")} /></Field>
       <Field label="Role">
@@ -71,7 +79,7 @@ export function InviteForm({ onDone }: { onDone: () => void }) {
       </details>
       {allGrants.length === 0 ? <p className="m-text-meta m-ink-3">Choose a role, or add access for one system, to invite.</p> : null}
       <div className="flex gap-2">
-        <Button type="submit" disabled={!form.valid || allGrants.length === 0 || m.isPending}>Send invitation</Button>
+        <Button type="submit" disabled={!form.valid || allGrants.length === 0 || m.isPending || full}>Send invitation</Button>
         <Button type="button" variant="secondary" onClick={onDone}>Close</Button>
       </div>
     </form>

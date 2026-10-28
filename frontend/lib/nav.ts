@@ -80,12 +80,16 @@ export const SETTINGS_PERMISSIONS = [
   "manage_llm",
   "manage_settings",
   "manage_system",
+  // Triage: programme leads and data stewards edit teams, assignment rules and SLA policies.
+  "manage_triage",
   // Triage: programme leads set up teams and assignment rules (assign).
   "assign",
 ] as const;
 
 export const SETTINGS_ITEMS: readonly NavItem[] = [
-  { href: "/admin/triage", requires: [req("rules", "edit"), req("stewardship", "edit")], label: "Triage", icon: IconFunnel, anyOf: ["manage_rules", "manage_settings", "assign"], keywords: "teams assignment rules sla business hours holidays" },
+  // manage_triage (programme lead, data steward), manage_settings (admin) and manage_rules edit it (api/routes/triage.py);
+  // `assign` keeps the legacy manager's read-only view of the page.
+  { href: "/admin/triage", requires: [req("rules", "edit"), req("stewardship", "edit"), req("stewardship", "admin")], label: "Triage", icon: IconFunnel, anyOf: ["manage_triage", "manage_settings", "manage_rules", "assign"], keywords: "teams assignment rules sla business hours holidays" },
   { href: "/admin/mappings", requires: req("extraction", "edit"), label: "Field mapping", icon: IconMapping, anyOf: ["manage_field_mappings"], licenceKey: "field_mapping", keywords: "sap fields columns" },
   { href: "/admin/ai", requires: req("llm", "admin"), label: "AI settings", icon: IconModel, anyOf: ["manage_llm"], keywords: "ollama model provider llm" },
   // rules/edit is here only so the legacy steward keeps Settings › Licence: no legacy role is granted
@@ -255,9 +259,9 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     group: "Admin",
     // rbac.md §5: users ★ | llm ★ | licence V | audit V.
     // rules/edit keeps the legacy steward's Admin › Settings nav.
-    // stewardship/edit lets a programme lead (assign) reach Settings › Triage.
+    // stewardship/edit lets a programme lead (assign) reach Settings › Triage; stewardship/admin (manage_triage) does too.
     // extraction/edit lets SAP Basis (manage_field_mappings) reach Settings › Field mapping, Jobs and Reference data.
-    requiresAny: [req("users", "admin"), req("llm", "admin"), req("licence", "view"), req("audit", "view"), req("rules", "edit"), req("extraction", "edit"), req("stewardship", "edit")],
+    requiresAny: [req("users", "admin"), req("llm", "admin"), req("licence", "view"), req("audit", "view"), req("rules", "edit"), req("extraction", "edit"), req("stewardship", "edit"), req("stewardship", "admin")],
     items: [
       { href: "/admin/users", requires: req("users", "admin"), label: "Users", icon: IconUserShield, anyOf: ["manage_users"], keywords: "admin users invite suspend" },
       { href: "/admin/roles", requires: req("users", "admin"), label: "Roles and access", icon: IconKey, anyOf: ["manage_users"], keywords: "roles grants scopes access requests permissions" },

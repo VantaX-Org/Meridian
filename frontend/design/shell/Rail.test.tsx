@@ -175,13 +175,13 @@ describe("Rail (the index bar)", () => {
     expect(screen.getByRole("link", { name: "Inbox" })).not.toHaveTextContent("0");
   });
 
-  it("a Fix count of cleaning proposals opens the Cleaning tab as a neutral count", async () => {
-    vi.mocked(getShellCounts).mockResolvedValueOnce({ fix: 4, fix_source: "cleaning", inbox: 0 });
+  it("hides the Fix badge when no work list is built (the count is null)", async () => {
+    vi.mocked(getShellCounts).mockResolvedValueOnce({ fix: null, inbox: 2 });
     renderRail();
-    const badge = await screen.findByText("4");
-    const fix = badge.closest("a");
-    expect(fix).toHaveAttribute("href", "/fix?tab=cleaning");
-    expect(badge.closest("[data-severity='critical']")).toBeNull();
+    const fix = await screen.findByRole("link", { name: /^Fix work/ });
+    await screen.findByText("2");
+    expect(fix).not.toHaveTextContent(/\d/);
+    expect(fix).toHaveAttribute("href", "/fix");
   });
 
   it("every nav href is unique across the pills and the More panel", async () => {

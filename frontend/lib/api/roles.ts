@@ -25,8 +25,10 @@ export interface Grant {
   user_id: string | null;
   granted_by: string | null;
   created_at: string | null;
+  /** ISO time the grant stops authorising; null for no expiry. */
+  expires_at?: string | null;
 }
-export interface GrantInput { role_key: string; system_id?: string | null; module?: string | null }
+export interface GrantInput { role_key: string; system_id?: string | null; module?: string | null; expires_at?: string | null }
 
 export interface ConvertResult { converted: string[]; skipped: string[]; kept: string[]; cleared: boolean; confirmed: boolean }
 
@@ -75,5 +77,42 @@ export async function convertObjectApprovals(userId: string, confirm: boolean): 
 }
 export async function getUserEffective(userId: string, params?: ScopeQuery): Promise<EffectivePermissions> {
   const { data } = await apiClient.get<EffectivePermissions>(`/api/v1/users/${userId}/effective`, { params });
+  return data;
+}
+
+/* ─── Matrix of every role (GET /roles/matrix) ─── */
+
+export interface MatrixRole {
+  key: string;
+  name: string;
+  built_in: boolean;
+  legacy: boolean;
+  matrix: Matrix;
+  /** The legacy action strings the role implies (the ones `can()` and the nav read). */
+  legacy_actions: string[];
+}
+export interface RolesMatrix { resources: string[]; actions: string[]; roles: MatrixRole[] }
+
+export async function getRolesMatrix(): Promise<RolesMatrix> {
+  const { data } = await apiClient.get<RolesMatrix>("/api/v1/roles/matrix");
+  return data;
+}
+
+/* ─── Preview a grant before it is saved (GET /users/{id}/effective?with_grant=) ─── */
+
+export interface GrantDiff {
+  added_actions: string[];
+  /** [resource, action] cells that become allowed. */
+  added_pairs: [string, string][];
+  /** Scope of each role the grant adds; both null means every system. */
+  widened_scopes: { system_id: string | null; module: string | null }[];
+}
+export interface GrantPreview { before: EffectivePermissions; after: EffectivePermissions; diff: GrantDiff }
+
+export async function previewGrant(userId: string, grant: { role_key: string; system_id?: string | null; module?: string | null }): Promise<GrantPreview> {
+  const params: Record<string, string> = { with_grant: grant.role_key };
+  if (grant.system_id) params.system_id = grant.system_id;
+  if (grant.module) params.module = grant.module;
+  const { data } = await apiClient.get<GrantPreview>(`/api/v1/users/${enc(userId)}/effective`, { params });
   return data;
 }

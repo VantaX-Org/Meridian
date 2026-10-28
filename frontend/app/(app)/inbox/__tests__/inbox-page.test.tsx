@@ -253,7 +253,7 @@ describe("InboxPage workbench", () => {
     vi.spyOn(stewardship, "getMetrics").mockResolvedValue({} as never);
     renderWithQuery(<InboxPage />);
     await waitFor(() => expect(nav.replace).toHaveBeenCalledWith("/fix?mine=1"));
-    // Tasks, Approvals and SAP monitor; exceptions are a view of Tasks, and Issues is gone.
+    // Tasks, Approvals and SAP signals; exceptions are a view of Tasks, and Issues is gone.
     expect(screen.queryByRole("tab", { name: "Issues" })).toBeNull();
     expect(screen.queryByRole("tab", { name: "Exceptions" })).toBeNull();
   });
@@ -267,6 +267,8 @@ describe("InboxPage workbench", () => {
     vi.spyOn(triage, "getTriageMetrics").mockResolvedValue({} as never);
     renderWithQuery(<InboxPage />);
     await screen.findByText(/Live signals from SAP/);
+    expect(screen.getByRole("tab", { name: "SAP signals" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: /monitor/i })).toBeNull();
     fireEvent.keyDown(window, { key: "r" });
     fireEvent.keyDown(window, { key: "Enter" });
     expect(resolve).not.toHaveBeenCalled();

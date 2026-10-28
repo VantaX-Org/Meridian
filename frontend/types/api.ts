@@ -589,7 +589,17 @@ export interface UserGrant {
   system_id: string | null;
   system_name: string | null;
   module: string | null;
+  /** ISO time the grant stops authorising; null for no expiry. */
+  expires_at?: string | null;
+  /** True once `expires_at` has passed (the nightly purge has not removed it yet). */
+  expired?: boolean;
 }
+
+/** The derived status of a user (api/routes/users.py user_status; labels in lib/users.ts). */
+export type UserStatus = "invited" | "invite_expired" | "active" | "locked" | "suspended";
+
+/** Delivery state of the invitation email. */
+export type InviteStatus = "queued" | "sent" | "failed" | "accepted";
 
 export interface User {
   id: string;
@@ -605,6 +615,15 @@ export interface User {
   created_at: string;
   /** The user's grants (GET /users only). */
   grants?: UserGrant[];
+  /** Derived by the API; lib/users.ts userStatus() derives the same value when it is absent. */
+  status?: UserStatus;
+  must_change_password?: boolean;
+  invited_at?: string | null;
+  invite_sent_at?: string | null;
+  invite_status?: InviteStatus | null;
+  invite_expires_at?: string | null;
+  locked_until?: string | null;
+  password_changed_at?: string | null;
 }
 
 export interface UserListResponse {
