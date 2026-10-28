@@ -604,6 +604,14 @@ class User(Base):
     # LocalAuthMiddleware rejects a lower one. Password change/reset and deactivation add one.
     token_version = Column(Integer, nullable=False, server_default="0")
     last_login = Column(DateTime(timezone=True), nullable=True)
+    # Invite lifecycle and per-account lockout (migration 096). invite_status: queued|sent|failed|accepted.
+    invited_at = Column(DateTime(timezone=True), nullable=True)
+    invite_sent_at = Column(DateTime(timezone=True), nullable=True)
+    invite_status = Column(Text, nullable=True)
+    invite_expires_at = Column(DateTime(timezone=True), nullable=True)
+    failed_login_count = Column(Integer, nullable=False, server_default="0")
+    locked_until = Column(DateTime(timezone=True), nullable=True)
+    password_changed_at = Column(DateTime(timezone=True), nullable=True)
     # Validated by api/routes/preferences.py (theme, density, locale, saved views, ...).
     preferences = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     created_at = Column(
@@ -2004,10 +2012,13 @@ class UserRoleScope(Base):
     module = Column(Text, nullable=True)
     granted_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    # Migration 096: the grant stops authorising at this instant; the nightly purge deletes it. NULL = no expiry.
+    expires_at = Column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
         UniqueConstraint("user_id", "role_key", "system_id", "module", name="uq_user_role_scopes_grant"),
         Index("ix_user_role_scopes_user", "tenant_id", "user_id"),
+        Index("ix_user_role_scopes_expires", "tenant_id", "expires_at"),
         # The plain constraint treats NULLs as distinct; this one does not (migration 077).
         Index("uq_user_role_scopes_nullsafe", "user_id", "role_key",
               text("COALESCE(system_id, '00000000-0000-0000-0000-000000000000'::uuid)"),

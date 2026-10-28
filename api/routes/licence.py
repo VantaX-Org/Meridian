@@ -8,6 +8,8 @@ Used by the customer frontend to:
 - Show expiry countdown
 """
 
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -48,12 +50,21 @@ async def validate_licence(db: AsyncSession = Depends(get_db), tenant: Tenant = 
     return await _with_seats(db, tenant)
 
 
+async def seats_for(db: AsyncSession, tenant: Tenant) -> tuple[int, Optional[int]]:
+    """(seats in use, seat limit or None for no limit).
+
+    In use = the tenant's active users, invited ones included (they will sign in), suspended ones not.
+    The limit is the manifest's ``seats``, else ``max_users``."""
+    await db.execute(text(f"SET app.tenant_id = '{str(tenant.id)}'"))
+    used = await db.execute(text("SELECT COUNT(*) FROM users WHERE tenant_id = :tid AND is_active"), {"tid": str(tenant.id)})
+    manifest = get_cached_manifest()
+    limit = manifest.get("seats", manifest.get("max_users"))
+    return int(used.scalar() or 0), int(limit) if isinstance(limit, (int, float)) and limit > 0 else None
+
+
 async def _with_seats(db: AsyncSession, tenant: Tenant) -> dict:
     """The cached manifest with the tenant's seats in use."""
     manifest = dict(get_cached_manifest())
-    # Seats in use: active users of this tenant. ``seats`` comes from the manifest when the licence sets one.
-    await db.execute(text(f"SET app.tenant_id = '{str(tenant.id)}'"))
-    used = await db.execute(text("SELECT COUNT(*) FROM users WHERE tenant_id = :tid AND is_active"), {"tid": str(tenant.id)})
-    manifest["seats_used"] = int(used.scalar() or 0)
+    manifest["seats_used"], _ = await seats_for(db, tenant)
     manifest.setdefault("seats", manifest.get("max_users"))
     return manifest

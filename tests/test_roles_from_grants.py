@@ -73,7 +73,8 @@ def test_migration_is_idempotent_and_null_safe() -> None:
 def test_persona_grant_loses_nothing(legacy: str) -> None:
     before, after = set(permissions_for(legacy)), set(permissions_for(persona_for(legacy)))
     assert before <= after
-    assert after - before <= {"run_process_discovery"}  # owner decision 2026-10-26
+    # run_process_discovery: owner decision 2026-10-26; manage_triage: leads and stewards edit triage teams and rules
+    assert after - before <= {"run_process_discovery", "manage_triage"}
 
 
 # ── ranking ──────────────────────────────────────────────────────────────────

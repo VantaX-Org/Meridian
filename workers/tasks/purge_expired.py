@@ -5,7 +5,10 @@ api/services/purge.py:
 
 * versions the policy selects are purged one by one;
 * report rows (and their PDF objects) older than ``reports_days`` are removed;
-* audit rows older than ``audit_days`` are removed.
+* audit rows older than ``audit_days`` are removed;
+* grants past their ``expires_at`` are deleted (access hygiene, not retention: no dry-run gate), each with an
+  audit row (``grant.expire``). An expired grant stops authorising at its instant either way
+  (api/services/rbac.ACTIVE_GRANT_SQL); this removes the row.
 
 Dry-run gate. Every run writes purge_log rows with ``source = 'nightly'``. Real
 deletes happen only when ``MERIDIAN_PURGE_ENABLED=true`` *and* the tenant's oldest
@@ -103,6 +106,38 @@ def _purge_audit(session: Any, tenant_id: str, days: int, now: datetime, dry_run
     return {"rows_by_table": {"audit_log": n}, "purge_log_id": log_id}
 
 
+def purge_expired_grants(session: Any, tenant_id: str) -> int:
+    """Delete this tenant's expired grants, one ``grant.expire`` audit row each; returns how many.
+
+    users.role follows the unscoped grants, so a user whose role came from a deleted unscoped grant gets the
+    strongest remaining unexpired one (else viewer). A role no grant backed (written before grants) stays.
+    Idempotent: a second run finds nothing. Caller commits."""
+    from api.services.purge import write_audit_row
+    from api.services.rbac import ACTIVE_GRANT_SQL, strongest_role
+
+    tid = str(tenant_id)
+    rows = session.execute(text(
+        "DELETE FROM user_role_scopes WHERE tenant_id = :t AND expires_at IS NOT NULL AND expires_at <= now() "
+        "RETURNING user_id, role_key, system_id, module, expires_at"), {"t": tid}).fetchall()
+    users: set[str] = set()
+    for uid, key, system_id, module, expires_at in rows:
+        write_audit_row(session, tid, None, "grant.expire", "user", str(uid),
+                        {"role_key": key, "system_id": str(system_id) if system_id else None, "module": module,
+                         "expires_at": expires_at.isoformat()})
+        if system_id is None and module is None:
+            users.add(str(uid))
+    for uid in users:
+        left = [r[0] for r in session.execute(text(
+            f"SELECT role_key FROM user_role_scopes WHERE tenant_id = :t AND user_id = :u "
+            f"AND system_id IS NULL AND module IS NULL AND {ACTIVE_GRANT_SQL}"), {"t": tid, "u": uid}).fetchall()]
+        held = session.execute(text("SELECT role FROM users WHERE id = :u AND tenant_id = :t"),
+                               {"u": uid, "t": tid}).scalar()
+        if held and held not in left and held in {r[1] for r in rows if str(r[0]) == uid}:
+            session.execute(text("UPDATE users SET role = :r WHERE id = :u AND tenant_id = :t"),
+                            {"r": strongest_role(left), "u": uid, "t": tid})
+    return len(rows)
+
+
 def run_for_tenant(session: Any, tenant_id: str, now: Optional[datetime] = None,
                    flag_enabled: Optional[bool] = None) -> dict[str, Any]:
     """Apply the policy for one tenant on an open tenant session. Returns a summary."""
@@ -139,6 +174,14 @@ def purge_expired() -> dict[str, Any]:
         tenant_ids = [str(r[0]) for r in session.execute(text("SELECT id FROM tenants")).fetchall()]
     out: dict[str, Any] = {"tenants": 0, "versions": 0, "blocked": 0, "dry_run_tenants": 0}
     for tid in tenant_ids:
+        try:
+            with tenant_session(engine, tid) as session:
+                expired = purge_expired_grants(session, tid)
+                session.commit()
+                if expired:
+                    logger.info("purge_expired tenant=%s expired_grants=%d", tid, expired)
+        except Exception:  # noqa: BLE001 — retention below still runs
+            logger.exception("expired grant purge failed for tenant %s", tid)
         try:
             with tenant_session(engine, tid) as session:
                 s = run_for_tenant(session, tid)

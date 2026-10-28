@@ -112,8 +112,8 @@ def _build_invitation_email(
     return subject, body
 
 
-def _send_email_smtp(recipient: str, subject: str, body: str):
-    """Send email via local SMTP relay (air-gapped deployments)."""
+def _send_email_smtp(recipient: str, subject: str, body: str) -> bool:
+    """Send email via local SMTP relay (air-gapped deployments). True when the relay accepted it."""
     msg = MIMEMultipart()
     msg["From"] = os.getenv("SMTP_FROM", "noreply@meridian.local")
     msg["To"] = recipient
@@ -127,16 +127,18 @@ def _send_email_smtp(recipient: str, subject: str, body: str):
                 smtp.login(os.getenv("SMTP_USER"), os.getenv("SMTP_PASSWORD", ""))
             smtp.sendmail(msg["From"], recipient, msg.as_string())
         logger.info(f"Invitation email sent via SMTP to {recipient}")
+        return True
     except Exception as e:
         logger.error(f"SMTP send failed for {recipient}: {e}")
+        return False
 
 
-def _send_email_resend(recipient: str, subject: str, body: str):
-    """Send email via Resend API (standard mode)."""
+def _send_email_resend(recipient: str, subject: str, body: str) -> bool:
+    """Send email via Resend API (standard mode). True when Resend accepted it."""
     api_key = os.getenv("RESEND_API_KEY", "")
     if not api_key:
         logger.info("Skipping email — no RESEND_API_KEY configured")
-        return
+        return False
 
     try:
         resp = requests.post(
@@ -154,8 +156,10 @@ def _send_email_resend(recipient: str, subject: str, body: str):
             timeout=10,
         )
         logger.info(f"Invitation email sent via Resend to {recipient}: status={resp.status_code}")
+        return resp.ok
     except Exception as e:
         logger.error(f"Resend email send failed for {recipient}: {e}")
+        return False
 
 
 def _send_invitation_email(
@@ -164,8 +168,8 @@ def _send_invitation_email(
     role: str,
     tenant_name: str,
     invite_token: str = "",
-):
-    """Send invitation email via Microsoft Graph, SMTP, or Resend API."""
+) -> bool:
+    """Send invitation email via Microsoft Graph, SMTP, or Resend API. True when a backend accepted it."""
     subject, body = _build_invitation_email(
         recipient_email, recipient_name, role, tenant_name, invite_token=invite_token,
     )
@@ -174,14 +178,23 @@ def _send_invitation_email(
     graph_client = create_graph_client()
     if graph_client:
         if graph_client.send_email(recipient_email, subject, body, sender_name="Meridian"):
-            return
+            return True
         logger.warning("Microsoft Graph email send failed, falling back to SMTP/Resend")
 
     # Fall back to SMTP or Resend
     if os.getenv("SMTP_HOST"):
-        _send_email_smtp(recipient_email, subject, body)
-    else:
-        _send_email_resend(recipient_email, subject, body)
+        return _send_email_smtp(recipient_email, subject, body)
+    return _send_email_resend(recipient_email, subject, body)
+
+
+def _record_invite_status(session: Session, tenant_id: str, user_id: str, status: str) -> None:
+    """users.invite_status = sent|failed (and invite_sent_at on sent). An accepted invite is never rewritten."""
+    session.execute(
+        text("UPDATE users SET invite_status = :s, "
+             "invite_sent_at = CASE WHEN :s = 'sent' THEN now() ELSE invite_sent_at END "
+             "WHERE id = CAST(:u AS uuid) AND tenant_id = CAST(:t AS uuid) AND invite_status IS DISTINCT FROM 'accepted'"),
+        {"s": status, "u": user_id, "t": tenant_id})
+    session.commit()
 
 
 @celery_app.task(bind=True, name="workers.tasks.send_user_invitation.send_invitation_email",
@@ -220,16 +233,22 @@ def send_invitation_email(
 
             tenant_name = config.get("tenant_name", "Meridian")
 
-            _send_invitation_email(
+            sent = _send_invitation_email(
                 recipient_email,
                 recipient_name,
                 role,
                 tenant_name,
                 invite_token=invite_token,
             )
-
-            logger.info(f"Invitation email sent for user={user_id}")
+            _record_invite_status(session, tenant_id, user_id, "sent" if sent else "failed")
+            logger.info(f"Invitation email {'sent' if sent else 'failed'} for user={user_id}")
 
     except Exception as e:
         logger.error(f"send_invitation_email failed: {e}")
+        try:
+            with Session(get_sync_engine()) as session:
+                session.execute(text(f"SET LOCAL app.tenant_id = '{str(tenant_id)}'"))
+                _record_invite_status(session, tenant_id, user_id, "failed")
+        except Exception as e2:  # noqa: BLE001
+            logger.error(f"could not record invite failure: {e2}")
         # Never raise — email failures must not affect user creation

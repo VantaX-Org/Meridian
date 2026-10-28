@@ -18,9 +18,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services import triage
-from api.services.rbac import current_user_id, current_user_label, require_permission
+from api.services.rbac import current_user_id, current_user_label, require_any_permission, require_permission
 
 router = APIRouter(prefix="/api/v1/triage", tags=["triage"])
+
+# Teams, assignment rules and SLA policies: manage_triage (programme lead, data steward) or manage_settings
+# (admin). manage_rules, which these routes required before manage_triage existed, still passes so the legacy
+# steward and custom roles built on it keep their access. Business hours, holidays and the tenant clock
+# (PUT /settings) stay manage_settings only.
+_EDIT_TRIAGE = ("manage_triage", "manage_settings", "manage_rules")
 
 Severity = Literal["critical", "high", "medium", "low"]
 Kind = Literal["issue", "queue"]
@@ -291,7 +297,7 @@ async def list_teams(db: AsyncSession = Depends(get_db), tenant: Tenant = Depend
 
 @router.post("/teams", response_model=TeamOut, status_code=201)
 async def create_team(body: TeamIn, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),
-                      _r: str = Depends(require_permission("manage_rules"))):
+                      _r: str = Depends(require_any_permission(*_EDIT_TRIAGE))):
     tid = await _rls(db, tenant)
     await _active_users(db, tid, [body.lead_user_id])
     if (await db.execute(text("SELECT 1 FROM triage_teams WHERE tenant_id = CAST(:tid AS uuid) AND name = :n"),
@@ -308,7 +314,7 @@ async def create_team(body: TeamIn, db: AsyncSession = Depends(get_db), tenant: 
 
 @router.patch("/teams/{team_id}", response_model=TeamOut)
 async def update_team(team_id: uuid.UUID, body: TeamPatch, db: AsyncSession = Depends(get_db),
-                      tenant: Tenant = Depends(get_tenant), _r: str = Depends(require_permission("manage_rules"))):
+                      tenant: Tenant = Depends(get_tenant), _r: str = Depends(require_any_permission(*_EDIT_TRIAGE))):
     tid = await _rls(db, tenant)
     await _team_exists(db, tid, team_id)
     fields = body.model_dump(exclude_unset=True)
@@ -328,7 +334,7 @@ async def update_team(team_id: uuid.UUID, body: TeamPatch, db: AsyncSession = De
 @router.put("/teams/{team_id}/members", response_model=TeamOut)
 async def set_team_members(team_id: uuid.UUID, body: MembersIn, db: AsyncSession = Depends(get_db),
                            tenant: Tenant = Depends(get_tenant),
-                           _r: str = Depends(require_permission("manage_rules"))):
+                           _r: str = Depends(require_any_permission(*_EDIT_TRIAGE))):
     tid = await _rls(db, tenant)
     await _team_exists(db, tid, team_id)
     await _set_members(db, tid, team_id, body.user_ids)
@@ -338,7 +344,7 @@ async def set_team_members(team_id: uuid.UUID, body: MembersIn, db: AsyncSession
 
 @router.delete("/teams/{team_id}", status_code=204)
 async def delete_team(team_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),
-                      _r: str = Depends(require_permission("manage_rules"))):
+                      _r: str = Depends(require_any_permission(*_EDIT_TRIAGE))):
     tid = await _rls(db, tenant)
     # rules pointing at the team are removed with it (FK cascade); items keep their owner
     res = await db.execute(text("DELETE FROM triage_teams WHERE id = :id AND tenant_id = CAST(:tid AS uuid)"),
@@ -374,7 +380,7 @@ async def list_rules(db: AsyncSession = Depends(get_db), tenant: Tenant = Depend
 
 @router.post("/rules", response_model=RuleOut, status_code=201)
 async def create_rule(body: RuleIn, request: Request, db: AsyncSession = Depends(get_db),
-                      tenant: Tenant = Depends(get_tenant), _r: str = Depends(require_permission("manage_rules"))):
+                      tenant: Tenant = Depends(get_tenant), _r: str = Depends(require_any_permission(*_EDIT_TRIAGE))):
     tid = await _rls(db, tenant)
     await _validate_rule(db, tid, body)
     if body.position is None:  # append
@@ -398,7 +404,7 @@ async def create_rule(body: RuleIn, request: Request, db: AsyncSession = Depends
 
 @router.patch("/rules/{rule_id}", response_model=RuleOut)
 async def update_rule(rule_id: uuid.UUID, body: RuleIn, db: AsyncSession = Depends(get_db),
-                      tenant: Tenant = Depends(get_tenant), _r: str = Depends(require_permission("manage_rules"))):
+                      tenant: Tenant = Depends(get_tenant), _r: str = Depends(require_any_permission(*_EDIT_TRIAGE))):
     """Full replace of name / match / target / enabled; position changes go through /rules/reorder."""
     tid = await _rls(db, tenant)
     await _validate_rule(db, tid, body)
@@ -417,7 +423,7 @@ async def update_rule(rule_id: uuid.UUID, body: RuleIn, db: AsyncSession = Depen
 
 @router.delete("/rules/{rule_id}", status_code=204)
 async def delete_rule(rule_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),
-                      _r: str = Depends(require_permission("manage_rules"))):
+                      _r: str = Depends(require_any_permission(*_EDIT_TRIAGE))):
     tid = await _rls(db, tenant)
     res = await db.execute(text("DELETE FROM assignment_rules WHERE id = :id AND tenant_id = CAST(:tid AS uuid)"),
                            {"id": rule_id, "tid": tid})
@@ -428,7 +434,7 @@ async def delete_rule(rule_id: uuid.UUID, db: AsyncSession = Depends(get_db), te
 
 @router.post("/rules/reorder", response_model=list[RuleOut])
 async def reorder_rules(body: ReorderIn, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),
-                        _r: str = Depends(require_permission("manage_rules"))):
+                        _r: str = Depends(require_any_permission(*_EDIT_TRIAGE))):
     """`ids` must list every rule of the tenant exactly once, in the new evaluation order."""
     tid = await _rls(db, tenant)
     have = {r[0] for r in await db.execute(text(
@@ -464,7 +470,7 @@ async def list_policies(db: AsyncSession = Depends(get_db), tenant: Tenant = Dep
 
 @router.put("/sla-policies", response_model=PolicyOut)
 async def upsert_policy(body: PolicyIn, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),
-                        _r: str = Depends(require_permission("manage_rules"))):
+                        _r: str = Depends(require_any_permission(*_EDIT_TRIAGE))):
     """Create or replace the policy for (severity, module). Applies to clocks started from now on."""
     tid = await _rls(db, tenant)
     row = (await db.execute(text("""
@@ -482,7 +488,7 @@ async def upsert_policy(body: PolicyIn, db: AsyncSession = Depends(get_db), tena
 
 @router.delete("/sla-policies/{policy_id}", status_code=204)
 async def delete_policy(policy_id: uuid.UUID, db: AsyncSession = Depends(get_db),
-                        tenant: Tenant = Depends(get_tenant), _r: str = Depends(require_permission("manage_rules"))):
+                        tenant: Tenant = Depends(get_tenant), _r: str = Depends(require_any_permission(*_EDIT_TRIAGE))):
     tid = await _rls(db, tenant)
     res = await db.execute(text("DELETE FROM sla_policies WHERE id = :id AND tenant_id = CAST(:tid AS uuid)"),
                            {"id": policy_id, "tid": tid})

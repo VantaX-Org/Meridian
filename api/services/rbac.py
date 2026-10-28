@@ -81,8 +81,9 @@ PERMISSIONS: dict[str, set[str]] = {
 
 PERSONA_ROLES: dict[str, set[str]] = {
     # Leads and stewards run process discovery (owner decision 2026-10-26); the legacy keys stay unchanged.
-    "programme_lead": PERMISSIONS["manager"] | {"run_process_discovery"},
-    "data_steward": PERMISSIONS["steward"] | {"run_process_discovery"},
+    # manage_triage: edit teams, assignment rules and SLA policies (not the tenant clock, which stays manage_settings).
+    "programme_lead": PERMISSIONS["manager"] | {"run_process_discovery", "manage_triage"},
+    "data_steward": PERMISSIONS["steward"] | {"run_process_discovery", "manage_triage"},
     "data_owner": PERMISSIONS["approver"],
     # No manage_system: in code it gates platform update/restart and admin doctor
     # (system_update.py, admin_doctor.py), not SAP systems. manage_systems covers those.
@@ -183,8 +184,8 @@ async def recompute_users_role(db: AsyncSession, tenant_id: uuid.UUID | str, use
     every request (_get_user_role), never from the token, so the new value applies at the next request."""
     await db.execute(text(f"SET LOCAL app.tenant_id = '{uuid.UUID(str(tenant_id))}'"))
     rows = await db.execute(
-        text("SELECT role_key FROM user_role_scopes WHERE tenant_id = :t AND user_id = :u "
-             "AND system_id IS NULL AND module IS NULL"),
+        text(f"SELECT role_key FROM user_role_scopes WHERE tenant_id = :t AND user_id = :u "
+             f"AND system_id IS NULL AND module IS NULL AND {ACTIVE_GRANT_SQL}"),
         {"t": str(tenant_id), "u": str(user_id)})
     role = strongest_role(r[0] for r in rows.fetchall())
     await db.execute(text("UPDATE users SET role = :r WHERE id = :u AND tenant_id = :t"),
@@ -231,6 +232,17 @@ def dev_role_override(request: Request) -> Optional[str]:
     return role if role in VALID_ROLES else None
 
 
+async def _role_after_expiry(db: AsyncSession, tenant_id: uuid.UUID, user_id: str, role: str) -> str:
+    """users.role when a grant of that very key has expired but the nightly purge has not yet re-derived it:
+    the role stays only if an unexpired unscoped grant still backs it, else the strongest unexpired one."""
+    rows = await db.execute(
+        text(f"SELECT role_key FROM user_role_scopes WHERE tenant_id = :t AND user_id = :u "
+             f"AND system_id IS NULL AND module IS NULL AND {ACTIVE_GRANT_SQL}"),
+        {"t": str(tenant_id), "u": user_id})
+    keys = [r[0] for r in rows.fetchall()]
+    return role if role in keys else strongest_role(keys)
+
+
 async def _get_user_role(
     tenant: Tenant, db: AsyncSession, request: Request
 ) -> str:
@@ -246,13 +258,18 @@ async def _get_user_role(
         if local_user_id:
             await db.execute(text(f"SET LOCAL app.tenant_id = '{str(tenant.id)}'"))
             result = await db.execute(
-                text("SELECT role, is_active FROM users WHERE id = :uid AND tenant_id = :tid"),
+                text("SELECT u.role, u.is_active, EXISTS (SELECT 1 FROM user_role_scopes g "
+                     "WHERE g.tenant_id = u.tenant_id AND g.user_id = u.id AND g.role_key = u.role "
+                     "AND g.system_id IS NULL AND g.module IS NULL AND g.expires_at <= now()) "
+                     "FROM users u WHERE u.id = :uid AND u.tenant_id = :tid"),
                 {"uid": local_user_id, "tid": str(tenant.id)},
             )
             row = result.fetchone()
             if row:
                 if not row[1]:
                     raise HTTPException(status_code=403, detail="User account is deactivated")
+                if row[2]:
+                    return await _role_after_expiry(db, tenant.id, local_user_id, row[0])
                 return row[0]
         # No authenticated user — fail closed (was: return "admin", a privilege
         # escalation if middleware ever failed to populate local_user_id).
@@ -299,6 +316,8 @@ LEGACY_ACTION_MAP: dict[str, set[tuple[str, str]]] = {
     # custom role derived from a lesser role (or ticked with systems pairs) reaches it.
     "manage_system": {("licence", "admin")},
     "manage_settings": {("analysis", "admin"), ("reports", "admin"), ("rules", "admin")},
+    # Triage teams, assignment rules and SLA policies; business hours and holidays stay manage_settings.
+    "manage_triage": {("stewardship", "admin")},
     "manage_llm": {("llm", "admin")},
     "manage_users": {("users", "admin")},
     "view_audit": {("audit", "view"), ("audit", "export")},
@@ -380,14 +399,19 @@ async def grants_for(db: AsyncSession, user_id: str, tenant_id: uuid.UUID,
     """user_role_scopes rows; falls back to [(fallback_role, Scope())] when none exist."""
     await db.execute(text(f"SET LOCAL app.tenant_id = '{str(tenant_id)}'"))
     rows = await db.execute(
-        text("SELECT role_key, system_id, module FROM user_role_scopes "
-             "WHERE user_id = :uid AND tenant_id = :tid"),
+        text(f"SELECT role_key, system_id, module FROM user_role_scopes "
+             f"WHERE user_id = :uid AND tenant_id = :tid AND {ACTIVE_GRANT_SQL}"),
         {"uid": user_id, "tid": str(tenant_id)},
     )
     grants = [(r[0], Scope(r[1], r[2])) for r in rows.fetchall()]
     if not grants and fallback_role:
         return [(fallback_role, Scope())]
     return grants
+
+
+# A grant authorises until its expires_at (migration 096); NULL never expires. Used by every query that asks
+# who holds what; the nightly purge (workers/tasks/purge_expired.py) deletes the rows afterwards.
+ACTIVE_GRANT_SQL = "(expires_at IS NULL OR expires_at > now())"
 
 
 def _as_uuid(v: Optional[str]) -> Optional[uuid.UUID]:
@@ -646,8 +670,8 @@ def active_users_holding_sync(session, tenant_id: uuid.UUID | str, user_ids: Ite
              "AND id = ANY(CAST(:ids AS uuid[]))"), {"t": tid, "ids": ids}).fetchall()
     grants: dict[str, set[str]] = {}
     for uid, key in session.execute(
-            text("SELECT user_id::text, role_key FROM user_role_scopes WHERE tenant_id = CAST(:t AS uuid) "
-                 "AND user_id = ANY(CAST(:ids AS uuid[])) AND system_id IS NULL AND module IS NULL"),
+            text(f"SELECT user_id::text, role_key FROM user_role_scopes WHERE tenant_id = CAST(:t AS uuid) "
+            f"AND user_id = ANY(CAST(:ids AS uuid[])) AND system_id IS NULL AND module IS NULL AND {ACTIVE_GRANT_SQL}"),
             {"t": tid, "ids": ids}).fetchall():
         grants.setdefault(uid, set()).add(key)
     custom: dict[str, set[str]] = {}
@@ -678,13 +702,16 @@ async def effective_actions(db: AsyncSession, tenant_id: uuid.UUID, user_id: str
 async def effective_permissions(
     db: AsyncSession, tenant_id: uuid.UUID, user_id: str | None, user_role: str,
     system_id: uuid.UUID | None = None, module: str | None = None, narrowed: bool = False,
+    extra: Iterable[Grant] = (),
 ) -> EffectivePermissions:
     """The /me/permissions shape. Not narrowed: union of every grant (what the nav needs).
-    Narrowed: only grants covering (system_id, module)."""
+    Narrowed: only grants covering (system_id, module). `extra` are proposed grants added to the user's
+    own (the "after" of a grant preview); nothing is written."""
     grants = await user_grants(db, tenant_id, user_id, user_role)
     if narrowed:
         want = Scope(system_id, module)
         grants = [g for g in grants if _scope_matches(g[1], want)]
+    grants = [*grants, *extra]
     actions: set[str] = set()
     names: dict[str, str] = {}
     for key, _ in grants:
@@ -707,6 +734,26 @@ async def effective_permissions(
     )
 
 
+def grant_diff(before: EffectivePermissions, after: EffectivePermissions) -> dict[str, list]:
+    """What a proposed grant adds. Pure: compares two EffectivePermissions and touches nothing else.
+
+    added_actions  legacy actions in `after` and not in `before`
+    added_pairs    (resource, action) cells newly true, as [resource, action]
+    widened_scopes the scope of each role `after` holds that `before` did not (same key at the same scope
+                   counts as held); both null means tenant-wide
+    All lists are sorted, so equal inputs give equal output."""
+    cells = {(r, a) for r, acts in after.resources.items() for a, ok in acts.items() if ok}
+    had = {(r, a) for r, acts in before.resources.items() for a, ok in acts.items() if ok}
+    held = {(x.key, x.system_id, x.module) for x in before.roles}
+    new = {(x.system_id, x.module) for x in after.roles if (x.key, x.system_id, x.module) not in held}
+    return {
+        "added_actions": sorted(set(after.actions) - set(before.actions)),
+        "added_pairs": [list(p) for p in sorted(cells - had)],
+        "widened_scopes": [ScopeRef(system_id=s, module=m).model_dump()
+                           for s, m in sorted(new, key=lambda t: (t[0] or "", t[1] or ""))],
+    }
+
+
 def unscoped_actions_sync(conn: Connection, tenant_id: str, user_id: str, user_role: str) -> list[str]:
     """Sync twin of the tenant-wide check for /auth/me: users.role plus unscoped grants
     (custom ones resolved through role_permissions). Pre-077 DBs: users.role only."""
@@ -717,7 +764,8 @@ def unscoped_actions_sync(conn: Connection, tenant_id: str, user_id: str, user_r
         text("SELECT s.role_key, rp.resource, rp.action FROM user_role_scopes s "
              "LEFT JOIN roles r ON r.tenant_id = s.tenant_id AND r.key = s.role_key "
              "LEFT JOIN role_permissions rp ON rp.role_id = r.id "
-             "WHERE s.tenant_id = :t AND s.user_id = :u AND s.system_id IS NULL AND s.module IS NULL"),
+             "WHERE s.tenant_id = :t AND s.user_id = :u AND s.system_id IS NULL AND s.module IS NULL "
+             "AND (s.expires_at IS NULL OR s.expires_at > now())"),
         {"t": tenant_id, "u": user_id}).fetchall()
     custom: dict[str, set[tuple[str, str]]] = {}
     for key, res, act in rows:
