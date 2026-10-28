@@ -376,7 +376,7 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
                 {"vid": version_id, "tid": tenant_id, "st": "pending" if analyse else "extracted",
                  "label": label, "sysid": system_id, "mods": json.dumps(modules),
                  "meta": json.dumps({
-                    "modules": modules, "source": "extraction", "system_id": system_id,
+                    "modules": modules, "source": "extraction", "trigger": "manual", "system_id": system_id,
                     "config_basis": config_basis,
                     "scope": scope or {}, **({"purpose": purpose} if purpose else {}),
                     "started_at": started["started_at"],

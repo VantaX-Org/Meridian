@@ -20,6 +20,7 @@ import os
 from datetime import datetime, timedelta, timezone
 
 from celery.schedules import crontab
+from croniter import croniter
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -896,7 +897,7 @@ def sync_profile_scheduler():
 
                     # Enqueue sync task
                     from workers.tasks.run_sync import run_sync
-                    run_sync.delay(profile_id, tid)
+                    run_sync.delay(profile_id, tid, trigger="scheduled")
                     logger.info(f"  tenant={tid}: enqueued run_sync for profile={profile_id}")
 
                     # Compute next run time from cron expression
@@ -918,13 +919,8 @@ def sync_profile_scheduler():
 def _compute_next_run(cron_expression: str):
     """Compute next run time from a cron expression. Returns datetime or None."""
     try:
-        from croniter import croniter
-        cron = croniter(cron_expression, datetime.now(SAST))
-        return cron.get_next(datetime)
-    except ImportError:
-        # croniter not installed — fall back to 24h default
-        return datetime.now(SAST) + timedelta(hours=24)
-    except Exception:
+        return croniter(cron_expression, datetime.now(SAST)).get_next(datetime)
+    except Exception:  # an expression croniter rejects: retry in a day rather than every tick
         return datetime.now(SAST) + timedelta(hours=24)
 
 

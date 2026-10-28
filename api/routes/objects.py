@@ -6,12 +6,14 @@ from findings, for one run. No new scoring logic — see api/services/scoring.py
 for tier()/scoring_config(), which this reuses unchanged.
 """
 import uuid
-from typing import Optional
+from datetime import datetime
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+from api.services import object_monitor
 from api.services.run_context import latest_run
 from api.services.run_lineage import lineage_sql
 
@@ -196,6 +198,64 @@ async def list_objects(run: str = Query(..., alias="run"),
             "blocking_findings_total": blocking_total}
 
 
+class MonitorCadenceOut(BaseModel):
+    cron: Optional[str] = None             # sync_profiles.schedule_cron; None: checked by hand
+    active: Optional[bool] = None          # False: paused; None: no sync profile (an upload, or never scheduled)
+    interval_seconds: Optional[int] = None  # the longest gap between runs in the tenant time zone; None: manual
+    profile_id: Optional[str] = None
+
+
+class MonitorBaselineOut(BaseModel):
+    kind: Optional[Literal["pinned", "previous"]] = None  # None: the object has fewer than two runs
+    version_id: Optional[str] = None
+    run_at: Optional[datetime] = None
+
+
+class NewlyFailingRuleOut(BaseModel):
+    check_id: str
+    severity: Optional[str] = None
+    new: int = 0  # records failing now
+
+
+class RecoveredRuleOut(BaseModel):
+    check_id: str
+
+
+class MonitorDriftOut(BaseModel):
+    new_failing: int = 0                    # records failing now that passed in the baseline
+    recovered: int = 0                      # records that failed in the baseline and pass now
+    newly_failing_rules: list[NewlyFailingRuleOut] = []   # worst severity first, at most 50
+    recovered_rules: list[RecoveredRuleOut] = []       # at most 50
+    newly_failing_rule_count: int = 0       # the uncapped totals
+    recovered_rule_count: int = 0
+
+
+class ObjectMonitorOut(BaseModel):
+    module: str
+    system_id: Optional[str] = None
+    last_run_at: Optional[datetime] = None
+    last_version_id: Optional[str] = None
+    trigger: Optional[str] = None           # scheduled, manual, recheck or upload; None for runs before it was stamped
+    requested_by_label: Optional[str] = None
+    cadence: MonitorCadenceOut
+    next_run_at: Optional[datetime] = None
+    freshness: Literal["fresh", "due", "stale", "failed", "paused", "manual"]
+    baseline: MonitorBaselineOut
+    drift: MonitorDriftOut
+
+
+class ObjectsMonitorOut(BaseModel):
+    objects: list[ObjectMonitorOut]
+
+
+@router.get("/monitor", response_model=ObjectsMonitorOut,
+            dependencies=[Depends(require_permission("view", scope=scope_from_path))])
+async def monitor_objects(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """Cadence, freshness, trigger, baseline and drift of every object of the current state, one row each."""
+    await _rls(db, tenant)
+    return {"objects": await object_monitor.for_current_state(db, tenant.id)}
+
+
 _OBJECTS_EXPORT_COLUMNS = [
     ColumnSpec("module", "Module"),
     ColumnSpec("label", "Label"),
@@ -284,6 +344,18 @@ async def get_object(module: str, run: uuid.UUID = Query(..., alias="run"),
             for r in rows
         ],
     }
+
+
+@router.get("/{module}/monitor", response_model=ObjectMonitorOut,
+            dependencies=[Depends(require_permission("view", scope=scope_from_path))])
+async def monitor_object(module: str, run: Optional[uuid.UUID] = Query(None, alias="run"),
+                         db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """One object's monitor: at run ``run``, else at its own latest run."""
+    await _rls(db, tenant)
+    row = await object_monitor.for_module(db, tenant.id, module, str(run) if run else None)
+    if row is None:
+        raise HTTPException(404, "Object not found")
+    return row
 
 
 _OBJECT_RULES_EXPORT_COLUMNS = [

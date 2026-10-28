@@ -235,9 +235,14 @@ async def test_analytics_numbers(seeded, client_for):
 
         ch = await _get(client, "/run-change")
         assert ch["previous"]["version_id"] == s["v1"]
+        # rules: MM003 and GL001 fail now and were absent; MM002 failed and is gone; MM001 fails in both (no flip)
         assert ch["objects"] == [
-            {"module": "material_master", "new": 1, "fixed": 2, "still_failing": 1, "not_comparable_checks": 2},
-            {"module": "fi_gl", "new": 0, "fixed": 0, "still_failing": 0, "not_comparable_checks": 1}]
+            {"module": "material_master", "new": 1, "fixed": 2, "still_failing": 1, "not_comparable_checks": 2,
+             "rules": {"newly_failing": [{"check_id": "MM003", "severity": "high", "new": 1}],
+                       "recovered": [{"check_id": "MM002"}], "newly_failing_total": 1, "recovered_total": 1}},
+            {"module": "fi_gl", "new": 0, "fixed": 0, "still_failing": 0, "not_comparable_checks": 1,
+             "rules": {"newly_failing": [{"check_id": "GL001", "severity": "low", "new": 1}],
+                       "recovered": [], "newly_failing_total": 1, "recovered_total": 0}}]
         assert ch["totals"] == {"new": 1, "fixed": 2, "still_failing": 1} and ch["not_comparable_checks"] == 3
         first = await _get(client, "/run-change", version_id=s["v1"])  # the first run: nothing earlier
         assert first["previous"] is None and first["objects"] == []

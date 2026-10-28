@@ -12,7 +12,7 @@ import json
 import re
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -26,7 +26,7 @@ from api.services.rbac import (
     _as_uuid,
     ACTIONS, BUILTIN_NAMES, LEGACY_ROLES, PERSONA_ALIAS, RESOURCES, VALID_ROLES,
     EffectivePermissions, Scope, _get_user_role, actions_for, current_user_id, dev_role_override,
-    effective_actions, effective_permissions, legacy_actions_for_pairs, permissions_for,
+    effective_actions, effective_permissions, grant_diff, legacy_actions_for_pairs, permissions_for,
     recompute_users_role, require_permission,
     resource_matrix, user_grants, write_audit,
 )
@@ -65,6 +65,8 @@ class GrantBody(BaseModel):
     role_key: str
     system_id: Optional[uuid.UUID] = None
     module: Optional[str] = None
+    # The grant stops authorising at this instant and the nightly purge deletes it. None = no expiry.
+    expires_at: Optional[datetime] = None
 
 
 class RoleOut(BaseModel):
@@ -97,6 +99,7 @@ class GrantOut(BaseModel):
     user_id: Optional[str] = None
     granted_by: Optional[str] = None
     created_at: Optional[str] = None
+    expires_at: Optional[str] = None
 
 
 class GrantDeleted(BaseModel):
@@ -211,7 +214,8 @@ async def lock_admin_rows(db: AsyncSession, tenant_id: uuid.UUID) -> None:
     await db.execute(text(
         "SELECT u.id FROM users u WHERE u.tenant_id = :t AND u.is_active AND (u.role = ANY(:keys) OR EXISTS ("
         "SELECT 1 FROM user_role_scopes g WHERE g.tenant_id = u.tenant_id AND g.user_id = u.id "
-        "AND g.system_id IS NULL AND g.module IS NULL AND g.role_key = ANY(:keys))) "
+        "AND g.system_id IS NULL AND g.module IS NULL AND g.role_key = ANY(:keys) "
+        "AND (g.expires_at IS NULL OR g.expires_at > now()))) "
         "ORDER BY u.id FOR UPDATE OF u"),
         {"t": str(tenant_id), "keys": sorted(_PLATFORM_ADMIN)})
 
@@ -232,15 +236,22 @@ async def forbid_last_admin_grant(db: AsyncSession, tenant_id: uuid.UUID, user_i
     left = (await db.execute(text(
         "SELECT count(*) FROM user_role_scopes g JOIN users u ON u.id = g.user_id AND u.tenant_id = g.tenant_id "
         "WHERE g.tenant_id = :t AND g.id <> :g AND g.system_id IS NULL AND g.module IS NULL "
-        "AND g.role_key = ANY(:keys) AND u.is_active"),
+        "AND g.role_key = ANY(:keys) AND u.is_active AND (g.expires_at IS NULL OR g.expires_at > now())"),
         {"t": str(tenant_id), "g": str(grant_id), "keys": sorted(_PLATFORM_ADMIN)})).scalar()
     if not left:
         raise HTTPException(status_code=409, detail=LAST_ADMIN_DETAIL)
 
 
 async def insert_grant(db: AsyncSession, tenant: Tenant, request: Request, user_id: str, role_key: str,
-                       system_id: Optional[uuid.UUID], module: Optional[str]) -> GrantOut:
-    """Validate, guard and insert one grant (idempotent), then re-derive users.role; caller commits."""
+                       system_id: Optional[uuid.UUID], module: Optional[str],
+                       expires_at: Optional[datetime] = None) -> GrantOut:
+    """Validate, guard and insert one grant (idempotent; a repeat sets the latest expiry), then re-derive
+    users.role; caller commits."""
+    if expires_at is not None:
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at <= datetime.now(timezone.utc):
+            raise HTTPException(status_code=422, detail="The expiry must be in the future")
     if role_key in _LEGACY:
         raise HTTPException(status_code=422, detail=LEGACY_GRANT_DETAIL)
     if role_key not in VALID_ROLES and not await _custom_role(db, tenant.id, role_key):
@@ -255,20 +266,24 @@ async def insert_grant(db: AsyncSession, tenant: Tenant, request: Request, user_
     forbid_self(caller, user_id)
     await enforce_ceiling(db, tenant.id, caller, role_key)
     params = {"t": str(tenant.id), "u": user_id, "k": role_key,
-              "s": str(system_id) if system_id else None, "m": module}
+              "s": str(system_id) if system_id else None, "m": module, "x": expires_at}
     existing = await db.execute(
         text("SELECT id FROM user_role_scopes WHERE tenant_id = :t AND user_id = :u AND role_key = :k "
              "AND system_id IS NOT DISTINCT FROM CAST(:s AS uuid) AND module IS NOT DISTINCT FROM :m"), params)
     row = existing.fetchone()
     if row:
         gid = row[0]
+        await db.execute(text("UPDATE user_role_scopes SET expires_at = :x WHERE id = :g AND tenant_id = :t"),
+                         {"x": expires_at, "g": str(gid), "t": str(tenant.id)})
     else:
         ins = await db.execute(
-            text("INSERT INTO user_role_scopes (tenant_id, user_id, role_key, system_id, module, granted_by) "
-                 "VALUES (:t, :u, :k, CAST(:s AS uuid), :m, :g) RETURNING id"), {**params, "g": caller.user_id})
+            text("INSERT INTO user_role_scopes (tenant_id, user_id, role_key, system_id, module, granted_by, "
+                 "expires_at) VALUES (:t, :u, :k, CAST(:s AS uuid), :m, :g, :x) RETURNING id"),
+            {**params, "g": caller.user_id})
         gid = ins.scalar_one()
     await recompute_users_role(db, tenant.id, user_id)
-    return GrantOut(id=str(gid), user_id=user_id, role_key=role_key, system_id=params["s"], module=module)
+    return GrantOut(id=str(gid), user_id=user_id, role_key=role_key, system_id=params["s"], module=module,
+                    expires_at=expires_at.isoformat() if expires_at else None)
 
 
 # ── Roles ────────────────────────────────────────────────────────────────────
@@ -415,11 +430,12 @@ async def list_grants(user_id: uuid.UUID, db: AsyncSession = Depends(get_db),
                       tenant: Tenant = Depends(get_tenant)) -> list[GrantOut]:
     await _rls(db, tenant)
     rows = await db.execute(
-        text("SELECT id, role_key, system_id, module, granted_by, created_at FROM user_role_scopes "
+        text("SELECT id, role_key, system_id, module, granted_by, created_at, expires_at FROM user_role_scopes "
              "WHERE tenant_id = :t AND user_id = :u ORDER BY created_at"),
         {"t": str(tenant.id), "u": str(user_id)})
     return [GrantOut(id=str(r[0]), role_key=r[1], system_id=str(r[2]) if r[2] else None, module=r[3],
-                     granted_by=str(r[4]) if r[4] else None, created_at=r[5].isoformat())
+                     granted_by=str(r[4]) if r[4] else None, created_at=r[5].isoformat(),
+                     expires_at=r[6].isoformat() if r[6] else None)
             for r in rows.fetchall()]
 
 
@@ -428,7 +444,8 @@ async def list_grants(user_id: uuid.UUID, db: AsyncSession = Depends(get_db),
 async def add_grant(user_id: uuid.UUID, body: GrantBody, request: Request, db: AsyncSession = Depends(get_db),
                     tenant: Tenant = Depends(get_tenant)) -> GrantOut:
     await _rls(db, tenant)
-    out = await insert_grant(db, tenant, request, str(user_id), body.role_key, body.system_id, body.module)
+    out = await insert_grant(db, tenant, request, str(user_id), body.role_key, body.system_id, body.module,
+                             body.expires_at)
     await write_audit(db, tenant.id, request, "grant.create", "user", str(user_id), None, out.model_dump())
     await db.commit()
     return out
@@ -507,18 +524,69 @@ async def convert_object_approvals(user_id: uuid.UUID, body: ConvertBody, reques
     return out
 
 
-@router.get("/users/{user_id}/effective", dependencies=[Depends(require_permission("view"))])
+@router.get("/users/{user_id}/effective", dependencies=[Depends(require_permission("view"))], response_model=None)
 async def user_effective(user_id: uuid.UUID, request: Request, system_id: Optional[uuid.UUID] = None,
-                         module: Optional[str] = None, db: AsyncSession = Depends(get_db),
-                         tenant: Tenant = Depends(get_tenant)) -> EffectivePermissions:
-    """Same shape as /me/permissions. manage_users, or the user themself."""
+                         module: Optional[str] = None, with_grant: Optional[str] = None,
+                         db: AsyncSession = Depends(get_db),
+                         tenant: Tenant = Depends(get_tenant)) -> EffectivePermissions | dict[str, object]:
+    """Same shape as /me/permissions. manage_users, or the user themself.
+
+    With `with_grant=<role key>` (manage_users only; `system_id`/`module` are then the proposed grant's
+    scope) it previews that grant without writing it: {before, after, diff} where `after` is `before` plus
+    the grant and `diff` is rbac.grant_diff(before, after): added_actions, added_pairs, widened_scopes."""
     caller = await resolve_caller(db, tenant, request, Scope())
-    if "manage_users" not in caller.actions and _as_uuid(caller.user_id) != user_id:
+    if "manage_users" not in caller.actions and (with_grant or _as_uuid(caller.user_id) != user_id):
         raise HTTPException(status_code=403, detail="Not permitted")
     await _rls(db, tenant)
     row = (await db.execute(text("SELECT role FROM users WHERE id = :u AND tenant_id = :t"),
                             {"u": str(user_id), "t": str(tenant.id)})).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="User not found")
-    return await effective_permissions(db, tenant.id, str(user_id), row[0], system_id, module,
-                                       narrowed=system_id is not None or module is not None)
+    if with_grant is None:
+        return await effective_permissions(db, tenant.id, str(user_id), row[0], system_id, module,
+                                           narrowed=system_id is not None or module is not None)
+    if with_grant in _LEGACY:
+        raise HTTPException(status_code=422, detail=LEGACY_GRANT_DETAIL)
+    if with_grant not in VALID_ROLES and not await _custom_role(db, tenant.id, with_grant):
+        raise HTTPException(status_code=404, detail="Role not found")
+    before = await effective_permissions(db, tenant.id, str(user_id), row[0])
+    after = await effective_permissions(db, tenant.id, str(user_id), row[0],
+                                        extra=[(with_grant, Scope(system_id, module))])
+    return {"before": before, "after": after, "diff": grant_diff(before, after)}
+
+
+class MatrixRole(BaseModel):
+    key: str
+    name: str
+    built_in: bool
+    legacy: bool = False
+    matrix: dict[str, dict[str, bool]]
+    legacy_actions: list[str]
+
+
+class RolesMatrixOut(BaseModel):
+    resources: list[str]
+    actions: list[str]
+    roles: list[MatrixRole]
+
+
+@router.get("/roles/matrix", dependencies=[Depends(require_permission("manage_users"))])
+async def roles_matrix(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> RolesMatrixOut:
+    """Every built-in and custom role against RESOURCES x ACTIONS, plus the legacy action strings it implies."""
+    await _rls(db, tenant)
+    roles = [MatrixRole(key=k, name=BUILTIN_NAMES.get(k, k), built_in=True, legacy=k in _LEGACY,
+                        matrix=resource_matrix(set(permissions_for(k))), legacy_actions=permissions_for(k))
+             for k in sorted(VALID_ROLES)]
+    custom = (await db.execute(text(
+        "SELECT r.key, r.name, rp.resource, rp.action FROM roles r LEFT JOIN role_permissions rp ON rp.role_id = r.id "
+        "WHERE r.tenant_id = :t ORDER BY r.key"), {"t": str(tenant.id)})).fetchall()
+    pairs: dict[str, set[tuple[str, str]]] = {}
+    names: dict[str, str] = {}
+    for key, name, res, act in custom:
+        names[key] = name
+        pairs.setdefault(key, set())
+        if res:
+            pairs[key].add((res, act))
+    roles += [MatrixRole(key=k, name=names[k], built_in=False, matrix=_matrix(p),
+                         legacy_actions=sorted(legacy_actions_for_pairs(p))) for k, p in sorted(pairs.items())]
+    return RolesMatrixOut(resources=list(RESOURCES), actions=list(ACTIONS), roles=roles)

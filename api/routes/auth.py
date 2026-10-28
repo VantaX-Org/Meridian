@@ -18,7 +18,9 @@ from api.deps import get_sync_engine_or_create
 from api.services.local_auth import (
     create_access_token,
     decode_access_token,
+    MIN_PASSWORD_LENGTH,
     generate_jwt_secret,
+    validate_password,
     verify_password,
 )
 from api.middleware.local_auth import forget_token_version
@@ -38,6 +40,11 @@ _invite_preview_rate_limit = rate_limit("auth_invite_preview", limit=5, window_s
 _change_password_rate_limit = rate_limit("auth_change_password", limit=5, window_s=60, key_by="user")
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
+
+# Per-account lockout (on top of the IP rate limit): this many wrong passwords in a row lock the account for
+# LOCKOUT_MINUTES. Success resets the count; an admin reset or the lock running out also clears it.
+LOCKOUT_THRESHOLD = 10
+LOCKOUT_MINUTES = 15
 
 DEV_TENANT_ID = "00000000-0000-0000-0000-000000000001"
 _column_exists_cache: dict[tuple[str, str], bool] = {}
@@ -154,7 +161,8 @@ def login(body: LoginRequest, response: Response):
         must_change_select = "must_change_password" if supports_must_change else "false as must_change_password"
         row = conn.execute(
             text(
-                f"SELECT id, email, name, role, password_hash, is_active, {must_change_select}, token_version "
+                f"SELECT id, email, name, role, password_hash, is_active, {must_change_select}, token_version, "
+                "CASE WHEN locked_until > now() THEN CEIL(EXTRACT(EPOCH FROM (locked_until - now())) / 60)::int END "
                 "FROM users WHERE LOWER(email) = LOWER(:email) AND tenant_id = :tid"
             ),
             {"email": (body.email or "").strip(), "tid": DEV_TENANT_ID},
@@ -166,7 +174,22 @@ def login(body: LoginRequest, response: Response):
         if not row[4]:  # no password_hash set
             raise HTTPException(status_code=401, detail="Invalid credentials")
 
+        if row[8]:  # locked: refused before the password is looked at, so a guesser learns nothing from it
+            raise HTTPException(
+                status_code=423,
+                detail=f"This account is locked after too many failed sign-ins. Try again in {row[8]} "
+                       f"minute{'' if row[8] == 1 else 's'}.")
+
         if not verify_password(body.password, row[4]):
+            # Atomic count; the lock starts on the LOCKOUT_THRESHOLD-th failure, the next attempt gets 423.
+            # A count left over from an expired lock restarts at one.
+            conn.execute(
+                text("UPDATE users SET "
+                     "failed_login_count = CASE WHEN locked_until <= now() THEN 1 ELSE failed_login_count + 1 END, "
+                     "locked_until = CASE WHEN (CASE WHEN locked_until <= now() THEN 1 ELSE failed_login_count + 1 END) "
+                     ">= :n THEN now() + make_interval(mins => :m) ELSE locked_until END WHERE id = :uid"),
+                {"n": LOCKOUT_THRESHOLD, "m": LOCKOUT_MINUTES, "uid": str(row[0])})
+            conn.commit()
             raise HTTPException(status_code=401, detail="Invalid credentials")
 
         must_change = bool(row[6])
@@ -199,7 +222,7 @@ def login(body: LoginRequest, response: Response):
 
         # Update last_login
         conn.execute(
-            text("UPDATE users SET last_login = :now WHERE id = :uid"),
+            text("UPDATE users SET last_login = :now, failed_login_count = 0, locked_until = NULL WHERE id = :uid"),
             {"now": datetime.now(timezone.utc), "uid": user_id},
         )
         conn.commit()
@@ -269,10 +292,9 @@ def me(request: Request):
 
 # ── Password rotation ────────────────────────────────────────────────────────
 
-# Password policy — loose on purpose (we're not a password manager; the
-# point here is "not `admin`"). Operators can plug in something stricter
+# Password policy (api/services/local_auth.validate_password): 12+ characters, not the email's name, not on the
+# bundled common list, not the current password. Operators can plug in something stricter
 # by configuring their identity provider and bypassing local auth.
-_MIN_PASSWORD_LENGTH = 12
 
 
 @router.post("/change-password", response_model=ChangePasswordResponse,
@@ -295,16 +317,8 @@ def change_password(body: ChangePasswordRequest, request: Request, response: Res
     token = auth_header[7:]
 
     new_password = (body.new_password or "").strip()
-    if len(new_password) < _MIN_PASSWORD_LENGTH:
-        raise HTTPException(
-            status_code=422,
-            detail=f"New password must be at least {_MIN_PASSWORD_LENGTH} characters",
-        )
     if new_password == body.current_password:
-        raise HTTPException(
-            status_code=422,
-            detail="New password must differ from the current one",
-        )
+        raise HTTPException(status_code=422, detail="New password must differ from the current one.")
 
     from api.services.local_auth import hash_password
 
@@ -334,10 +348,15 @@ def change_password(body: ChangePasswordRequest, request: Request, response: Res
             # 422 like the other input errors here: a 401 would sign the user out (frontend/lib/api/client.ts)
             raise HTTPException(status_code=422, detail="Current password is incorrect")
 
+        reason = validate_password(new_password, row[3])
+        if reason:
+            raise HTTPException(status_code=422, detail=reason)
+
         version = conn.execute(
             text(
                 "UPDATE users "
-                "SET password_hash = :ph, must_change_password = false, token_version = token_version + 1 "
+                "SET password_hash = :ph, must_change_password = false, token_version = token_version + 1, "
+                "password_changed_at = now() "
                 "WHERE id = :uid RETURNING token_version"
             ),
             {"ph": hash_password(new_password), "uid": str(row[0])},
@@ -377,11 +396,8 @@ def accept_invite(body: AcceptInviteRequest):
     rejected so a leaked email link can't reset an active account.
     """
     new_password = (body.password or "").strip()
-    if len(new_password) < _MIN_PASSWORD_LENGTH:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Password must be at least {_MIN_PASSWORD_LENGTH} characters",
-        )
+    if len(new_password) < MIN_PASSWORD_LENGTH:
+        raise HTTPException(status_code=422, detail=f"Password must be at least {MIN_PASSWORD_LENGTH} characters.")
 
     from api.services.local_auth import hash_password
 
@@ -408,12 +424,23 @@ def accept_invite(body: AcceptInviteRequest):
 
         conn.execute(text(f"SET app.tenant_id = '{str(DEV_TENANT_ID)}'"))
 
+        pending = conn.execute(
+            text("SELECT email FROM users WHERE id = :uid AND tenant_id = :tid AND password_hash IS NULL "
+                 "AND is_active = true"),
+            {"uid": user_id, "tid": DEV_TENANT_ID},
+        ).fetchone()
+        if pending:
+            reason = validate_password(new_password, pending[0])
+            if reason:
+                raise HTTPException(status_code=422, detail=reason)
+
         # Atomic: only succeeds if no password set yet. Replay after the user
         # has activated returns 409 instead of silently overwriting.
         result = conn.execute(
             text(
                 "UPDATE users "
-                "SET password_hash = :ph, must_change_password = false "
+                "SET password_hash = :ph, must_change_password = false, invite_status = 'accepted', "
+                "password_changed_at = now() "
                 "WHERE id = :uid AND tenant_id = :tid AND password_hash IS NULL AND is_active = true "
                 "RETURNING id, email"
             ),
@@ -508,7 +535,7 @@ def forgot_password(body: ForgotPasswordRequest):
         conn.execute(text(f"SET app.tenant_id = '{str(DEV_TENANT_ID)}'"))
         row = conn.execute(
             text(
-                "SELECT id, name FROM users "
+                "SELECT id, name, token_version FROM users "
                 "WHERE LOWER(email) = :em AND tenant_id = :tid "
                 "  AND is_active = true AND password_hash IS NOT NULL"
             ),
@@ -519,7 +546,7 @@ def forgot_password(body: ForgotPasswordRequest):
             from api.services.local_auth import create_password_reset_token
 
             reset_token = create_password_reset_token(
-                str(row[0]), DEV_TENANT_ID, secret_row[0]
+                str(row[0]), DEV_TENANT_ID, secret_row[0], token_version=int(row[2])
             )
             try:
                 from workers.tasks.send_password_reset import send_password_reset_email
@@ -549,11 +576,8 @@ class ResetPasswordRequest(BaseModel):
 def reset_password(body: ResetPasswordRequest):
     """Reset a user's password from an emailed reset token."""
     new_password = (body.password or "").strip()
-    if len(new_password) < _MIN_PASSWORD_LENGTH:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Password must be at least {_MIN_PASSWORD_LENGTH} characters",
-        )
+    if len(new_password) < MIN_PASSWORD_LENGTH:
+        raise HTTPException(status_code=422, detail=f"Password must be at least {MIN_PASSWORD_LENGTH} characters.")
 
     from api.services.local_auth import hash_password
 
@@ -580,10 +604,27 @@ def reset_password(body: ResetPasswordRequest):
 
         conn.execute(text(f"SET app.tenant_id = '{str(DEV_TENANT_ID)}'"))
 
+        current = conn.execute(
+            text("SELECT email, password_hash, token_version FROM users WHERE id = :uid AND tenant_id = :tid "
+                 "AND is_active = true"),
+            {"uid": user_id, "tid": DEV_TENANT_ID},
+        ).fetchone()
+        if current:
+            # A link carrying the version it was minted at works once: the reset bumps token_version.
+            if "tv" in payload and payload["tv"] != current[2]:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Reset link is invalid or has expired. Request a new one from the Forgot password page.",
+                )
+            reason = validate_password(new_password, current[0], current[1])
+            if reason:
+                raise HTTPException(status_code=422, detail=reason)
+
         result = conn.execute(
             text(
                 "UPDATE users "
-                "SET password_hash = :ph, must_change_password = false, token_version = token_version + 1 "
+                "SET password_hash = :ph, must_change_password = false, token_version = token_version + 1, "
+                "password_changed_at = now(), failed_login_count = 0, locked_until = NULL "
                 "WHERE id = :uid AND tenant_id = :tid AND is_active = true "
                 "RETURNING id, email"
             ),

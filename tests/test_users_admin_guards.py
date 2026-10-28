@@ -81,6 +81,13 @@ class _DB:
             if "is_active" in p:
                 u["active"] = p["is_active"]
             return _Result([(p["uid"],)])
+        if sql.startswith("INSERT INTO audit_log"):
+            self.audit = getattr(self, "audit", []) + [p["a"]]
+            return _Result([])
+        if sql.startswith("SELECT COUNT(*) FROM users WHERE tenant_id"):  # licence seats in use (no limit set)
+            return _Result([(len(self.users),)])
+        if sql.startswith("SELECT email, (password_hash IS NULL) FROM users"):
+            return _Result([("u@example.test", False)])
         if sql.startswith("SELECT 1 FROM user_role_scopes"):
             return _Result([])
         if sql.startswith(("UPDATE user_role_scopes", "DELETE FROM user_role_scopes")):
