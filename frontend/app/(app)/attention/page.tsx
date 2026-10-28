@@ -11,7 +11,7 @@ import { Button, ChoiceGroup, DataTable, ExplorerPage, PageHeader, RowAction, St
 import { useAttention } from "@/hooks/use-attention";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getSystems } from "@/lib/api/connectivity";
-import type { AttentionItem } from "@/lib/api/attention";
+import { attentionBadge, type AttentionItem } from "@/lib/api/attention";
 import { TIERS, TIER_LABELS, asOfTime, itemObject, kindLabel, scopeSentence } from "@/lib/attention";
 import { formatModuleName, relativeTime } from "@/lib/format";
 import { usePermissions } from "@/lib/permissions";
@@ -66,8 +66,10 @@ export default function AttentionPage() {
   const scopeLine = permissions.loading ? null : `Your scope is ${scopeSentence(permissions.scopes, systemNames)}.`;
 
   const total = q.data ? q.data.counts.critical + q.data.counts.high + q.data.counts.medium + q.data.counts.low : 0;
+  // The index bar's flag counts only the critical and high items of this list: say how many those are.
+  const urgent = q.data ? attentionBadge(q.data.counts) : 0;
   const meta = q.data
-    ? `${total.toLocaleString()} ${total === 1 ? "item" : "items"} in your scope, as of ${asOfTime(q.data.generated_at)}`
+    ? `${total.toLocaleString()} ${total === 1 ? "item" : "items"} in your scope, ${urgent.toLocaleString()} critical or high, as of ${asOfTime(q.data.generated_at)}`
     : "What needs a person now in your scope";
 
   return (

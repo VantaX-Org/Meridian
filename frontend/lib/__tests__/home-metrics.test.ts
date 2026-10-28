@@ -247,7 +247,7 @@ describe("capSummary / capSentence: one unit and scope for the cap on every page
     const c = capSummary(v);
     expect(c).toMatchObject({ rules: 4, capped: 3, measured: 4, cap: null });
     expect(capSentence(c)).toBe("4 critical failing rules cap 3 of 4 objects");
-    expect(capSentenceNamed(c)).toBe("4 critical failing rules cap 3 of 4 objects: BP019, BP002 and 2 more");
+    expect(capSentenceNamed(c)).toBe("4 critical failing rules (BP019, BP002 and 2 more) cap 3 of 4 objects");
   });
 
   it("names the shared ceiling when every object is capped at it, and the score for one object", () => {
@@ -256,7 +256,7 @@ describe("capSummary / capSentence: one unit and scope for the cap on every page
     expect(capSentence(capSummary(one))).toBe("2 critical failing rules cap the score at 70");
     const single = version("v1", "2026-01-01", { ar: 85 });
     Object.assign(single.dqs_summary!.ar, { capped: true, critical_count: 1, cap_reason: "AR002: 3.0% of KNA1 rows — score capped at 85" });
-    expect(capSentenceNamed(capSummary(single))).toBe("1 critical failing rule caps the score at 85: AR002");
+    expect(capSentenceNamed(capSummary(single))).toBe("1 critical failing rule (AR002) caps the score at 85");
   });
 
   it("is null when nothing is capped", () => {

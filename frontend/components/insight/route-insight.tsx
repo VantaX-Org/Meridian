@@ -24,9 +24,10 @@ import { buildInsight, sectionOf, showsRouteInsight, type InsightFacts } from "@
 
 /**
  * The four sentences inside the persona home hero (situation, what changed, why it matters, do next). Every other page carries its own InsightHeader.
- * `doNext` replaces the score-based step with the viewer's top to-do item, so the sentence names what the verdict button opens.
+ * `doNext` replaces the score-based step with the home's one step (lib/home-action.ts `homeStep`), so the sentence names
+ * what the verdict button opens. `embedded` sets the cells inside the Home hero, under its hairline.
  */
-export function RouteInsight({ doNext: override }: { doNext?: { sentence: string; href: string; label: string } } = {}) {
+export function RouteInsight({ doNext: override, embedded }: { doNext?: { sentence: string; href: string; label: string }; embedded?: boolean } = {}) {
   const pathname = usePathname();
   const run = useSearchParams().get("run") ?? undefined;
   const section = showsRouteInsight(pathname) ? sectionOf(pathname) : null;
@@ -121,6 +122,7 @@ export function RouteInsight({ doNext: override }: { doNext?: { sentence: string
     <div className="min-w-0">
       <InsightHeader
         {...cells}
+        embedded={embedded}
         aiSummary={aiOn ? {
           llmOk: true,
           text: execQ.data?.narrative,

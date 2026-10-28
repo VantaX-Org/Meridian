@@ -157,25 +157,37 @@ export function capSummary(v: Scored): CapSummary {
 }
 
 /**
- * "8 critical failing rules cap 11 of 15 objects", "2 critical failing rules cap the score at 70" (one object), or
- * null when nothing is capped. The one sentence every page uses for the cap, so the count and its scope never differ.
+ * The cap sentence in two parts, so a page can set the named rules (as links) between them:
+ * `rules` "8 critical failing rules", `rest` "cap 11 of 15 objects". Null when nothing is capped.
  */
-export function capSentence(c: CapSummary): string | null {
+export function capParts(c: CapSummary): { rules: string; rest: string } | null {
   if (c.capped === 0) return null;
   const rules = c.rules > 0 ? plural(c.rules, "critical failing rule") : "Critical failing rules";
   const verb = c.rules === 1 ? "caps" : "cap";
   const at = c.cap != null ? ` at ${c.cap}` : "";
-  return c.measured > 1 ? `${rules} ${verb} ${c.capped} of ${plural(c.measured, "object")}${at}` : `${rules} ${verb} the score${at}`;
+  return { rules, rest: c.measured > 1 ? `${verb} ${c.capped} of ${plural(c.measured, "object")}${at}` : `${verb} the score${at}` };
 }
 
-/** `capSentence` with the first rules named: "8 critical failing rules cap 11 of 15 objects: AR002, AR003 and 6 more". */
-export function capSentenceNamed(c: CapSummary, shown = 2): string | null {
-  const head = capSentence(c);
-  if (!head) return null;
+/**
+ * "8 critical failing rules cap 11 of 15 objects", "2 critical failing rules cap the score at 70" (one object), or
+ * null when nothing is capped. The one sentence every page uses for the cap, so the count and its scope never differ.
+ */
+export function capSentence(c: CapSummary): string | null {
+  const p = capParts(c);
+  return p ? `${p.rules} ${p.rest}` : null;
+}
+
+/** How many rules a named cap line shows before "and N more". */
+export const CAP_NAMED_SHOWN = 2;
+
+/** `capSentence` with the first rules named as rules: "8 critical failing rules (AR002, AR003 and 6 more) cap 11 of 15 objects". */
+export function capSentenceNamed(c: CapSummary, shown = CAP_NAMED_SHOWN): string | null {
+  const p = capParts(c);
+  if (!p) return null;
   const ids = c.named.slice(0, shown).map((r) => r.check_id);
-  if (!ids.length) return head;
+  if (!ids.length) return `${p.rules} ${p.rest}`;
   const more = Math.max(0, c.rules - ids.length);
-  return `${head}: ${ids.join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
+  return `${p.rules} (${ids.join(", ")}${more > 0 ? ` and ${more} more` : ""}) ${p.rest}`;
 }
 
 export function cappedReason(v: Scored): string | null {

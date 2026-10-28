@@ -95,9 +95,11 @@ export function railSplit(
 export function AttentionControl() {
   const { data } = useAttentionCount();
   const n = data ? attentionBadge(data) : 0;
+  // The badge counts critical and high items only; the To do page lists every item, so the control says which it counts.
+  const counted = `${n.toLocaleString()} critical or high to-do ${n === 1 ? "item" : "items"}`;
   return (
     <div className="relative inline-flex" data-tour="attention">
-      <Link href="/attention" aria-label="To do" aria-describedby={n > 0 ? "rail-attention-count" : undefined} className="m-iconbtn m-motion-colors">
+      <Link href="/attention" aria-label={n > 0 ? `To do, ${counted}` : "To do"} title={n > 0 ? counted : "To do"} className="m-iconbtn m-motion-colors">
         <IconFlag size={16} />
       </Link>
       {n > 0 && data && (
@@ -105,7 +107,6 @@ export function AttentionControl() {
           <span aria-hidden="true" className="pointer-events-none absolute" style={{ top: -4, right: -4 }} data-testid="attention-badge">
             <Badge count={n} tone={data.critical > 0 ? "critical" : "neutral"} />
           </span>
-          <span id="rail-attention-count" className="sr-only">{`${n} critical or high`}</span>
         </>
       )}
     </div>
