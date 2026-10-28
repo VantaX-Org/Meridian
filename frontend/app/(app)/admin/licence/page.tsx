@@ -79,7 +79,6 @@ export default function AdminLicencePage() {
               <dt className="m-ink-3">Days remaining</dt><dd className={days !== undefined && days !== null && days < 30 ? "[color:var(--m-medium)]" : undefined}>{days ?? "—"}</dd>
               <dt className="m-ink-3">Renews</dt><dd>{l.expiry_date ? formatDate(l.expiry_date) : "Not set"}</dd>
               <dt className="m-ink-3">Last validated</dt><dd>{l.last_validated ? formatDate(l.last_validated, "datetime") : "Not validated yet"}</dd>
-              <dt className="m-ink-3">Language-model tier</dt><dd>{l.llm_config ? `tier ${l.llm_config.tier}, ${l.llm_config.model}` : "Not set"}</dd>
             </dl>
           </SettingsSection>
 

@@ -15,10 +15,9 @@ import { AlertChannelsPanel } from "./alert-channels-panel";
 import { CostModelPanel } from "./cost-model-panel";
 import { RetentionPanel } from "./retention-panel";
 
-// ponytail: FIX_HREF kept local to this page (only consumer); legacy version lived in
-// the legacy admin surface, pointing at hash-tab routes (/admin?tab=ai, /admin?tab=licence)
-// which no longer exist — updated to the real standalone pages built in Task 15.
-const FIX_HREF: Record<string, string> = { llm: "/admin/ai", licence: "/admin/licence" };
+const FIX_HREF: Record<string, string> = { licence: "/admin/licence" };
+// The language model is set at install time and not shown in the app.
+const HIDDEN_CHECKS = new Set(["llm"]);
 const doctorLabel = (s: string) => s.replace(/\s*\(\s*\)/g, "").trim();
 const doctorDetail = (s: string) => humanizeIds(s
   .replace(/no api key\s*[-—]\s*AI features degrade/i, "No API key stored, AI features are reduced")
@@ -65,7 +64,6 @@ export default function AdminSettingsPage() {
             <dt className="m-ink-3">Tenant</dt><dd>{l?.company_name ?? "Not set"}</dd>
             <dt className="m-ink-3">Licence tier</dt><dd>{l?.tier ? labelOf(l.tier) : "Not validated yet"}</dd>
             <dt className="m-ink-3">Licence status</dt><dd>{l ? labelOf(l.status) : "Loading"}</dd>
-            <dt className="m-ink-3">Language model</dt><dd>{l?.llm_config ? `${l.llm_config.model}, tier ${l.llm_config.tier}` : "Not configured"}</dd>
           </dl>
         </SettingsSection>
 
@@ -84,7 +82,7 @@ export default function AdminSettingsPage() {
         {can("manage_system") && doctor.data ? (
           <SettingsSection title="Health checks" meta={`Last checked ${formatDate(doctor.data.last_checked, "datetime")}`}>
             {(() => {
-              const items = doctor.data.items;
+              const items = doctor.data.items.filter((i) => !HIDDEN_CHECKS.has(i.id));
               const warn = items.filter((i) => i.status === "warn").length;
               const fail = items.filter((i) => i.status === "fail").length;
               const ok = items.length - warn - fail;
@@ -95,7 +93,7 @@ export default function AdminSettingsPage() {
               );
             })()}
             <ul className="flex flex-col gap-2">
-              {doctor.data.items.map((i) => (
+              {doctor.data.items.filter((i) => !HIDDEN_CHECKS.has(i.id)).map((i) => (
                 <li key={i.id} className="flex items-center gap-3">
                   <Pill tone={DOCTOR_TONE[i.status]}>{doctorLabel(i.label)}</Pill>
                   {i.detail ? <span className="m-text-meta m-ink-3">{doctorDetail(i.detail)}</span> : null}

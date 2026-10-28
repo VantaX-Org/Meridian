@@ -21,7 +21,7 @@ const LINK_ALLOWLIST = new Set([
   "/insights/exec", "/insights/owners", "/insights/reports",
   "/mdm", "/mdm/golden", "/mdm/golden/merge", "/mdm/survivorship", "/mdm/match-rules", "/mdm/glossary",
   "/admin/users", "/admin/roles", "/admin/settings", "/admin/licence", "/admin/audit", "/admin/triage",
-  "/admin/jobs", "/admin/ai", "/admin/notifications", "/admin/reference", "/admin/billing", "/admin/mappings",
+  "/admin/jobs", "/admin/notifications", "/admin/reference", "/admin/billing", "/admin/mappings",
   "/me/preferences", "/search", "/docs", "/help", "/features",
 ]);
 

@@ -117,7 +117,7 @@ def test_sidebar_reports_and_admin_items():
     assert '"/rules"' in _group_block(content, "Rules")
     admin = _group_block(content, "Admin")
     assert '"/admin/users"' in admin and '"/admin/settings"' in admin
-    for href in ("/admin/triage", "/admin/mappings", "/admin/ai", "/admin/licence"):
+    for href in ("/admin/triage", "/admin/mappings", "/admin/licence"):
         assert f'"{href}"' in content
 
 

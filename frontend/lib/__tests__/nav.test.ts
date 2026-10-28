@@ -165,7 +165,7 @@ describe("menu structure", () => {
     expect(sectionOf("/systems")).toBe("Data in");
     expect(sectionOf("/import")).toBe("Data in");
     expect(sectionOf("/migration")).toBe("Data in");
-    expect(sectionOf("/admin/ai")).toBe("Admin");
+    expect(sectionOf("/admin/alerts")).toBe("Admin");
     expect(sectionOf("/admin/users")).toBe("Admin");
   });
 

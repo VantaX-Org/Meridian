@@ -23,7 +23,7 @@ function mount(props: React.ComponentProps<typeof RouteInsight> = {}) {
 describe("RouteInsight gating", () => {
   beforeEach(() => { m.llm.mockReset(); m.exec.mockReset(); m.path.v = "/home/lead"; m.compare.mockReset(); m.versions.v = [{ id: "r1", status: "complete" }]; });
 
-  it.each(["/objects", "/runs/r1", "/inbox", "/systems/s1", "/insights", "/insights/trends", "/admin/ai"])("renders nothing on %s", (path) => {
+  it.each(["/objects", "/runs/r1", "/inbox", "/systems/s1", "/insights", "/insights/trends", "/admin/alerts"])("renders nothing on %s", (path) => {
     m.path.v = path;
     m.llm.mockResolvedValue({ llm_available: false });
     const { container } = mount();

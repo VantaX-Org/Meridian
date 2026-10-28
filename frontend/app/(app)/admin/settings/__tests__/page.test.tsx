@@ -26,7 +26,7 @@ const MANIFEST: LicenceManifest = {
   features: { ask_meridian: true, export_reports: true, run_sync: true, field_mapping_self_service: true, max_users: 10 },
   days_remaining: 120,
 };
-const ITEM: DoctorItem = { id: "llm", label: "Language model", status: "ok", detail: null };
+const ITEM: DoctorItem = { id: "database", label: "Database", status: "ok", detail: null };
 
 describe("admin settings page", () => {
   it("renders licence and health checks once loaded", async () => {
@@ -35,7 +35,7 @@ describe("admin settings page", () => {
     vi.spyOn(licenceApi, "getLicenceManifest").mockResolvedValue(MANIFEST);
     vi.spyOn(doctorApi, "getDoctor").mockResolvedValue({ items: [ITEM], last_checked: "2026-01-01T00:00:00Z" });
     renderWithQuery(<AdminSettingsPage />);
-    await waitFor(() => expect(screen.getAllByText("Language model").length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getAllByText("Database").length).toBeGreaterThan(0));
   });
 
   it("shows a retryable error when the licence fails to load", async () => {
@@ -48,6 +48,6 @@ describe("admin settings page", () => {
     const retry = screen.getByRole("button", { name: /retry/i });
     spy.mockResolvedValue(MANIFEST);
     retry.click();
-    await waitFor(() => expect(screen.getAllByText("Language model").length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getAllByText("Database").length).toBeGreaterThan(0));
   });
 });

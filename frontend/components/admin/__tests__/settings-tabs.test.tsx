@@ -21,7 +21,7 @@ describe("Settings tab strip", () => {
     const nav = screen.getByRole("navigation", { name: "Settings pages" });
     const links = within(nav).getAllByRole("link");
     expect(links.map((a) => a.getAttribute("href"))).toEqual([
-      "/admin/settings", "/admin/triage", "/admin/mappings", "/admin/ai", "/admin/alerts", "/admin/reference", "/admin/billing", "/admin/licence",
+      "/admin/settings", "/admin/triage", "/admin/mappings", "/admin/alerts", "/admin/reference", "/admin/billing", "/admin/licence",
     ]);
     expect(links[0]).toHaveTextContent("Overview");
     expect(within(nav).getByRole("link", { current: "page" })).toHaveTextContent("Triage");
