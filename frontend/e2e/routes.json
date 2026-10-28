@@ -67,9 +67,14 @@
     "heading": "Field mapping"
   },
   {
-    "name": "admin-notifications",
-    "path": "/admin/notifications",
-    "heading": "Notifications"
+    "name": "admin-alerts",
+    "path": "/admin/alerts",
+    "heading": "Alerts"
+  },
+  {
+    "name": "admin-sign-in",
+    "path": "/admin/sign-in",
+    "heading": "Sign-in"
   },
   {
     "name": "admin-reference",
@@ -312,7 +317,7 @@
   {
     "name": "rules-scoring",
     "path": "/rules/scoring",
-    "heading": "Scoring and alerts"
+    "heading": "Scoring"
   },
   {
     "name": "runs",

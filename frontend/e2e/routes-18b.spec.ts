@@ -24,7 +24,7 @@ const NEW_ROUTES: [string, string][] = [
   ["/mdm", "MDM overview"],
   ["/mdm/survivorship", "No survivorship rules"],
   ["/admin/audit", "Changes, last 30 days"],
-  ["/admin/notifications", "No alert channels"],
+  ["/admin/alerts", "No alert channels"],
   ["/admin/jobs", "Jobs"],
   ["/admin/reference", "Bank codes (SWIFT BIC)"],
   ["/fix/what-if", "Run simulation"],
