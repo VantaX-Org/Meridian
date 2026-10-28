@@ -17,7 +17,8 @@
  *  - the caller's delivery log, /me/notifications/deliveries (api/routes/me_notifications.py);
  *  - the features a cost per blocked record can be set for, /settings/cost-model/features (api/routes/settings.py);
  *  - the effective scoring config, /settings/scoring (api/routes/settings.py): the shipped defaults;
- *  - process discovery's catalogue and run list, /process-discovery/systems/{id}/catalogue and /runs
+ *  - process discovery's catalogue, run list, schedules and health, /process-discovery/systems/{id}/catalogue, /runs,
+ *    /schedules and /health
  *    (api/routes/process_discovery.py): the seeded tenant has no discovery runs;
  *  - rule names by check id, /rules/names (api/routes/rules.py), from the recorded rule lists;
  *  - the accounts payable process document of the vendor run, /business-process/{run}/accounts_payable
@@ -929,6 +930,9 @@ async function mockProcess(page: Router) {
   await get(new RegExp(`/api/v1/process-discovery/systems/${SYSTEM_ID}/catalogue$`), CATALOGUE);
   // list[RunSummary]: no runs, whatever the l1 and limit
   await get(new RegExp(`/api/v1/process-discovery/systems/${SYSTEM_ID}/runs(\\?.*)?$`), []);
+  // list[Schedule] and list[L1Health] (api/routes/process_discovery.py): no schedules, and no L1 has run discovery
+  await get(new RegExp(`/api/v1/process-discovery/systems/${SYSTEM_ID}/schedules$`), []);
+  await get(new RegExp(`/api/v1/process-discovery/systems/${SYSTEM_ID}/health$`), []);
   await get(new RegExp(`/api/v1/business-process/${VENDOR_RUN}/accounts_payable$`), businessProcessAp);
   // Process data readiness opens on the current state, where accounts payable is read from its own latest run
   // (accounts_payable_p02). The recording holds no process document for that run; the vendor run's document stands in
