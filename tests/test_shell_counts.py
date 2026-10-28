@@ -1,4 +1,5 @@
-"""GET /api/v1/shell/counts returns tenant-scoped Fix and Inbox badge counts."""
+"""GET /api/v1/shell/counts returns tenant-scoped Fix and Inbox badge counts. Fix is records to fix, or null when
+no work list is built (never cleaning proposals)."""
 import asyncio
 import uuid
 
@@ -68,20 +69,22 @@ def _get(app, url):
 
 
 def test_shell_counts_shape_and_values(monkeypatch):
-    db = _Db(fix_count=3, inbox_count=5)
+    latest = str(uuid.uuid4())
+    db = _Db(fix_count=99, inbox_count=5, latest=latest, to_fix=3)
     app = _app(db, monkeypatch)
 
     res = _get(app, "/api/v1/shell/counts")
 
     assert res.status_code == 200
     body = res.json()
-    assert set(body.keys()) == {"fix", "fix_source", "inbox"}
+    assert set(body.keys()) == {"fix", "inbox"}  # fix_source is gone
     assert body["fix"] == 3
     assert body["inbox"] == 5
 
 
 def test_shell_counts_queries_are_tenant_scoped(monkeypatch):
-    db = _Db(fix_count=1, inbox_count=1)
+    latest = str(uuid.uuid4())
+    db = _Db(fix_count=1, inbox_count=1, latest=latest, to_fix=1)
     app = _app(db, monkeypatch)
 
     _get(app, "/api/v1/shell/counts")
@@ -92,21 +95,18 @@ def test_shell_counts_queries_are_tenant_scoped(monkeypatch):
         assert "tenant_id = :tid" in sql
         assert params["tid"] == str(TID)
 
-    fix_sql = next(s for s, _ in count_calls if "cleaning_queue" in s)
-    assert "status = 'detected'" in fix_sql
-
     inbox_sql = next(s for s, _ in count_calls if "stewardship_queue" in s)
     # the inbox lists open, in-progress and escalated items; the badge counts the same three
     assert "status IN ('open', 'in_progress', 'escalated')" in inbox_sql
 
 
 def test_shell_counts_none_scalar_yields_zero(monkeypatch):
-    db = _Db(fix_count=None, inbox_count=None)
+    db = _Db(fix_count=None, inbox_count=None, latest=str(uuid.uuid4()), to_fix=None)
     app = _app(db, monkeypatch)
 
     res = _get(app, "/api/v1/shell/counts")
 
-    assert res.json() == {"fix": 0, "fix_source": "cleaning", "inbox": 0}
+    assert res.json() == {"fix": None, "inbox": 0}
 
 
 def test_fix_counts_records_to_fix_of_the_current_state(monkeypatch):
@@ -114,7 +114,6 @@ def test_fix_counts_records_to_fix_of_the_current_state(monkeypatch):
     db = _Db(fix_count=99, inbox_count=0, latest=latest, to_fix=7)
     res = _get(_app(db, monkeypatch), "/api/v1/shell/counts")
     assert res.json()["fix"] == 7
-    assert res.json()["fix_source"] == "work"
     assert not any("cleaning_queue" in s for s, _ in db.calls)
     # the count reads each object of the current state at its own run, as Fix work does without ?run=
     sql, params = next((s, p) for s, p in db.calls if "FROM work_records" in s)
@@ -122,8 +121,14 @@ def test_fix_counts_records_to_fix_of_the_current_state(monkeypatch):
     assert params["cm"] == ["material_master"] and params["cv"] == [latest] and params["tid"] == str(TID)
 
 
-def test_fix_falls_back_to_cleaning_proposals_without_a_work_list(monkeypatch):
-    db = _Db(fix_count=4, inbox_count=0, latest=str(uuid.uuid4()), to_fix=None)
+def test_fix_is_null_without_a_work_list_and_never_cleaning_proposals(monkeypatch):
+    # a run exists, its work list is not built: the badge is hidden (null), not the 4 cleaning proposals
+    db = _Db(fix_count=4, inbox_count=2, latest=str(uuid.uuid4()), to_fix=None)
     body = _get(_app(db, monkeypatch), "/api/v1/shell/counts").json()
-    # the count is cleaning proposals, and says so
-    assert body["fix"] == 4 and body["fix_source"] == "cleaning"
+    assert body == {"fix": None, "inbox": 2}
+    assert not any("cleaning_queue" in s or "FROM work_records" in s for s, _ in db.calls)
+
+
+def test_fix_is_null_without_any_run(monkeypatch):
+    db = _Db(fix_count=4, inbox_count=0)
+    assert _get(_app(db, monkeypatch), "/api/v1/shell/counts").json() == {"fix": None, "inbox": 0}

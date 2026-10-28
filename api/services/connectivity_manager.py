@@ -21,6 +21,8 @@ import pandas as pd
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from api.middleware.cache import invalidate_tenant_cache
+
 from sap.base import (
     SAPConnectionParams,
     CloudConnectionParams,
@@ -1367,6 +1369,7 @@ class ConnectivityManager:
                 {"s": status, "m": message, "sid": system_id},
             )
         self.session.commit()
+        invalidate_tenant_cache(str(self.tenant_id), "attention")  # a connection signal changed
 
     # -- Helpers ---------------------------------------------------------------
 

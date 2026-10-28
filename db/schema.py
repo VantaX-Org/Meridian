@@ -1140,6 +1140,30 @@ PD_STATUSES: tuple[str, ...] = ("queued", "waiting", "extracting", "building", "
 PD_COVERAGE: tuple[str, ...] = ("discovered", "partial", "reference")
 
 
+class ProcessDiscoverySchedule(Base):
+    """A cron schedule for incremental process discovery of one (system, L1) — migration 097,
+    workers/tasks/process_schedules.py."""
+    __tablename__ = "process_discovery_schedules"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id", ondelete="CASCADE"), nullable=False)
+    l1 = Column(Text, nullable=False)
+    schedule_cron = Column(Text, nullable=False)
+    active = Column(Boolean, nullable=False, server_default=text("true"))
+    last_run_at = Column(DateTime(timezone=True), nullable=True)
+    next_run_at = Column(DateTime(timezone=True), nullable=True)
+    mode = Column(Text, nullable=False, server_default="incremental")
+    coverage = Column(JSONB, nullable=True)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "system_id", "l1", name="uq_process_discovery_schedules_l1"),
+        Index("ix_process_discovery_schedules_due", "tenant_id", "next_run_at", postgresql_where=text("active")),
+    )
+
+
 class ProcessDiscoveryRun(Base):
     """One process-discovery run per (system, L1) — migration 079, spec §2.1."""
     __tablename__ = "process_discovery_runs"

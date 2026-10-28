@@ -15,15 +15,17 @@ import asyncio
 import json
 import logging
 import uuid
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from typing import Annotated, Iterable, Literal, NamedTuple, Optional, Sequence, Union
 from zoneinfo import ZoneInfo
 
 from celery import chain
+from croniter import croniter
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, BeforeValidator, JsonValue, field_validator
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
@@ -36,11 +38,13 @@ from api.routes.objects import FINISHED as _FINISHED_RUNS
 from api.routes.process_designer import _invalid, _reference, _rls
 from api.services import jobs
 from api.services.bpmn_export import BpmnExportError, ExportMeta, export_node, export_zip, landscape_counts
-from api.services.process_discovery import L1S, L1S_BY_SYSTEM, MODULE_OF, licence_modules, primary_case_type, reason
+from api.services.process_discovery import L1S, L1S_BY_SYSTEM, licence_modules, primary_case_type, reason
 from api.services.process_discovery.builders import builder
+from api.services.process_discovery.dispatch import incremental_window, scope_of, start_chain, take_lock
 from api.services.process_discovery.events import DEFAULT_TZ
 from api.services.process_discovery.filters import ProcessFilter, case_filter_sql
 from api.services.process_discovery.generate import EDGE_THRESHOLD, generate, reference_model
+from api.services.process_discovery.health import L1Health, system_health
 from api.services.process_discovery.mining import END as MINED_END
 from api.services.process_discovery.mining import (CACHE_TTL, CASE_TYPES_SQL, OTHER_HASH, CaseTypeResult, MiningResult,
                                                    Scope, Variant, cache_key, mine_case_type)
@@ -56,8 +60,6 @@ router = APIRouter(prefix="/api/v1/process-discovery", tags=["process-discovery"
 
 VIEW = [Depends(require_permission("view", scope=scope_from_path))]
 EXPORT = [Depends(require_permission("export_process", scope=scope_from_path))]
-
-OVERLAP_DAYS = 14  # spec §8.2 step 3: incremental scope starts at watermark - 14 days
 
 RUN_COLS = ("id, l1, mode, status, coverage, window_from, window_to, watermark, extraction_version_id, job_id, "
             "filters, stats, error, started_at, finished_at")
@@ -305,6 +307,53 @@ class CaseEvents(BaseModel):
     events: list[CaseEvent]
 
 
+class ScheduleBody(BaseModel):
+    l1: str
+    schedule_cron: str
+    active: bool = True
+
+    @field_validator("l1")
+    @classmethod
+    def _known_l1(cls, v: str) -> str:
+        if v not in L1S:
+            raise ValueError(f"unknown L1: {v}")
+        return v
+
+    @field_validator("schedule_cron")
+    @classmethod
+    def _valid_cron(cls, v: str) -> str:
+        return _cron(v)
+
+
+class SchedulePatch(BaseModel):
+    schedule_cron: Optional[str] = None
+    active: Optional[bool] = None
+
+    @field_validator("schedule_cron")
+    @classmethod
+    def _valid_cron(cls, v: Optional[str]) -> Optional[str]:
+        return None if v is None else _cron(v)
+
+
+class ScheduleOut(BaseModel):
+    id: UuidStr
+    system_id: UuidStr
+    l1: str
+    schedule_cron: str
+    active: bool
+    mode: str
+    last_run_at: Optional[datetime] = None
+    next_run_at: Optional[datetime] = None
+    created_at: datetime
+
+
+def _cron(v: str) -> str:
+    v = v.strip()
+    if not v or len(v) > 100 or not croniter.is_valid(v):
+        raise ValueError("Not a valid cron expression")
+    return v
+
+
 # --- lookups --------------------------------------------------------------------------------------------------
 
 
@@ -483,9 +532,7 @@ async def catalogue(system_id: str, request: Request, tenant: Tenant = Depends(g
              response_model=RunStarted)
 async def start_runs(system_id: str, body: RunRequest, request: Request, tenant: Tenant = Depends(get_tenant),
                      db: AsyncSession = Depends(get_db)) -> RunStarted:
-    from workers.tasks.run_extraction import run_extraction
-    from workers.tasks.run_process_discovery import (
-        LOCK_TTL, PURPOSE, abort_runs, discover_process, lock_key, release_lock)
+    from workers.tasks.run_process_discovery import release_lock
 
     system_id = _id(system_id)
     system_type, tz = await _system(db, tenant, system_id)
@@ -502,8 +549,8 @@ async def start_runs(system_id: str, body: RunRequest, request: Request, tenant:
     if client is None:
         raise HTTPException(status_code=503, detail="Job queue unavailable")
     tid = str(tenant.id)
-    token = uuid.uuid4().hex
-    if not client.set(lock_key(tid, system_id), token, nx=True, ex=LOCK_TTL):
+    token = take_lock(client, tid, system_id)
+    if token is None:
         raise HTTPException(status_code=409, detail="A process discovery run is already active for this system")
     try:
         sourced = [l1 for l1 in body.l1s if l1 in L1S_BY_SYSTEM.get(system_type, ())]
@@ -515,8 +562,7 @@ async def start_runs(system_id: str, body: RunRequest, request: Request, tenant:
                 wm = (await db.execute(text(
                     "SELECT max(watermark) FROM process_discovery_runs WHERE tenant_id = :t AND system_id = :s "
                     "AND l1 = :l1 AND status = 'completed'"), {"t": tid, "s": system_id, "l1": l1})).scalar()
-            window[l1] = (wm.astimezone(ZoneInfo(tz)).date() - timedelta(days=OVERLAP_DAYS)) if wm \
-                else body.period_from
+            window[l1] = incremental_window(wm, tz, body.period_from)
         version_id = str(uuid.uuid4()) if sourced else None
         run_ids: list[str] = []
         base = await _reference(db, tenant) if len(sourced) < len(body.l1s) else None
@@ -553,19 +599,10 @@ async def start_runs(system_id: str, body: RunRequest, request: Request, tenant:
         release_lock(tid, system_id, token)
         return RunStarted(job_id=None, run_ids=run_ids)
     starts = [w for w in window.values() if w]
-    scope = {"date_from": min(starts).isoformat(), "date_to": today.isoformat()} if starts else None
     try:
-        jobs.start_job(tid, job_id, "process_discovery", f"Process discovery: {', '.join(sourced)}",
-                       system_id=system_id, run_ids=queued, version_id=version_id)
-        jobs.update_job(tid, job_id, stage="extraction", percent=0, message="Extracting event tables")
-        chain(run_extraction.si(tid, system_id, [MODULE_OF[l1] for l1 in sourced], include_config=False,
-                                sync_type="data", scope=scope, analyse=False, label="Process discovery",
-                                version_id=version_id, purpose=PURPOSE),
-              discover_process.si(tid, system_id, queued, version_id, token)).apply_async(
-            link_error=abort_runs.si(tid, system_id, queued, version_id, token))
+        start_chain(tid, system_id, sourced, queued, version_id, token, job_id, scope_of(starts, today), chain)
     except Exception:  # broker down: free the lock and fail the queued runs so the UI is not stuck
         logger.exception("Process discovery dispatch failed for %s", job_id)
-        release_lock(tid, system_id, token)
         await _rls(db, tenant)
         await db.execute(text("UPDATE process_discovery_runs SET status = 'failed', error = :e, finished_at = now() "
                               "WHERE tenant_id = :t AND id = ANY(CAST(:ids AS uuid[])) AND status = 'queued'"),
@@ -588,6 +625,107 @@ async def list_runs(system_id: str, l1: Optional[str] = None, limit: int = Query
           AND (CAST(:l1 AS text) IS NULL OR l1 = :l1) ORDER BY started_at DESC, l1, id LIMIT :n"""),
         {"t": str(tenant.id), "s": _id(system_id), "l1": l1, "n": limit})
     return [_summary(r) for r in rows]
+
+
+# --- schedules and health -------------------------------------------------------------------------------------
+
+SCHEDULE_COLS = "id, system_id, l1, schedule_cron, active, mode, last_run_at, next_run_at, created_at"
+
+
+async def _tenant_tz(db: AsyncSession, tenant: Tenant) -> str:
+    await _rls(db, tenant)
+    return (await db.execute(text("SELECT timezone FROM triage_settings WHERE tenant_id = :t"),
+                             {"t": str(tenant.id)})).scalar() or "UTC"
+
+
+def _next_run(cron: str, tz: str) -> datetime:
+    from workers.tasks.process_schedules import next_run
+
+    return next_run(cron, tz, datetime.now(timezone.utc))
+
+
+def _schedule(r: Row) -> ScheduleOut:
+    return ScheduleOut.model_validate(dict(r._mapping))
+
+
+@router.get("/systems/{system_id}/schedules", dependencies=VIEW, response_model=list[ScheduleOut])
+async def list_schedules(system_id: str, tenant: Tenant = Depends(get_tenant),
+                         db: AsyncSession = Depends(get_db)) -> list[ScheduleOut]:
+    await _system(db, tenant, _id(system_id))
+    rows = await db.execute(text(f"SELECT {SCHEDULE_COLS} FROM process_discovery_schedules "
+                                 "WHERE tenant_id = :t AND system_id = :s ORDER BY l1"),
+                            {"t": str(tenant.id), "s": _id(system_id)})
+    return [_schedule(r) for r in rows]
+
+
+@router.post("/systems/{system_id}/schedules", dependencies=[Depends(require_permission("run_process_discovery", scope=scope_from_path))], response_model=ScheduleOut,
+             status_code=201)
+async def create_schedule(system_id: str, body: ScheduleBody, request: Request, tenant: Tenant = Depends(get_tenant),
+                          db: AsyncSession = Depends(get_db)) -> ScheduleOut:
+    system_id = _id(system_id)
+    system_type, _ = await _system(db, tenant, system_id)
+    if body.l1 not in L1S_BY_SYSTEM.get(system_type, ()):
+        raise HTTPException(status_code=422, detail=reason(body.l1, system_type) or "This process cannot be mined here")
+    licensed = getattr(request.state, "licensed_modules", None)
+    if licensed is not None and "*" not in licensed:
+        mods = l1_unlicensed(body.l1, system_type, licensed)
+        if mods:
+            enforce_licensed_modules(request, list(mods))
+    nxt = _next_run(body.schedule_cron, await _tenant_tz(db, tenant)) if body.active else None
+    try:
+        row = (await db.execute(text(
+            "INSERT INTO process_discovery_schedules (tenant_id, system_id, l1, schedule_cron, active, next_run_at, "
+            f"created_by) VALUES (:t, :s, :l1, :c, :a, :n, :u) RETURNING {SCHEDULE_COLS}"),
+            {"t": str(tenant.id), "s": system_id, "l1": body.l1, "c": body.schedule_cron, "a": body.active, "n": nxt,
+             "u": getattr(request.state, "local_user_id", None)})).one()
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="This process already has a schedule on this system") from None
+    return _schedule(row)
+
+
+@router.patch("/systems/{system_id}/schedules/{schedule_id}", dependencies=[Depends(require_permission("run_process_discovery", scope=scope_from_path))], response_model=ScheduleOut)
+async def update_schedule(system_id: str, schedule_id: str, body: SchedulePatch,
+                          tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_db)) -> ScheduleOut:
+    tz = await _tenant_tz(db, tenant)
+    params = {"id": _id(schedule_id), "t": str(tenant.id), "s": _id(system_id)}
+    cur = (await db.execute(text(f"SELECT {SCHEDULE_COLS} FROM process_discovery_schedules "
+                                 "WHERE id = :id AND tenant_id = :t AND system_id = :s FOR UPDATE"), params)).first()
+    if cur is None:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+    cron = body.schedule_cron or cur.schedule_cron
+    active = cur.active if body.active is None else body.active
+    # a new cadence, or a resume, recomputes the next slot; a pause keeps the old one (ignored while paused)
+    recompute = active and (cron != cur.schedule_cron or not cur.active or cur.next_run_at is None)
+    row = (await db.execute(text(
+        "UPDATE process_discovery_schedules SET schedule_cron = :c, active = :a, "
+        "next_run_at = CASE WHEN CAST(:re AS boolean) THEN CAST(:n AS timestamptz) ELSE next_run_at END "
+        f"WHERE id = :id AND tenant_id = :t AND system_id = :s RETURNING {SCHEDULE_COLS}"),
+        {**params, "c": cron, "a": active, "re": recompute, "n": _next_run(cron, tz) if recompute else None})).one()
+    await db.commit()
+    return _schedule(row)
+
+
+@router.delete("/systems/{system_id}/schedules/{schedule_id}", dependencies=[Depends(require_permission("run_process_discovery", scope=scope_from_path))], status_code=204)
+async def delete_schedule(system_id: str, schedule_id: str, tenant: Tenant = Depends(get_tenant),
+                          db: AsyncSession = Depends(get_db)) -> Response:
+    await _rls(db, tenant)
+    deleted = (await db.execute(text("DELETE FROM process_discovery_schedules "
+                                     "WHERE id = :id AND tenant_id = :t AND system_id = :s RETURNING id"),
+                                {"id": _id(schedule_id), "t": str(tenant.id), "s": _id(system_id)})).first()
+    await db.commit()
+    if deleted is None:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+    return Response(status_code=204)
+
+
+@router.get("/systems/{system_id}/health", dependencies=VIEW, response_model=list[L1Health])
+async def health(system_id: str, tenant: Tenant = Depends(get_tenant),
+                 db: AsyncSession = Depends(get_db)) -> list[L1Health]:
+    """Per L1: the last finished run, fitness and its change since the run before, the schedule and freshness."""
+    system_type, _ = await _system(db, tenant, _id(system_id))
+    return await system_health(db, str(tenant.id), _id(system_id), L1S_BY_SYSTEM.get(system_type, ()))
 
 
 @router.get("/runs/{run_id}", dependencies=VIEW, response_model=RunDetail)

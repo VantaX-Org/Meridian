@@ -17,6 +17,7 @@ from celery.exceptions import SoftTimeLimitExceeded
 from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
 
+from api.middleware.cache import invalidate_tenant_cache
 from api.services.run_steps import record_step
 from checks.base import reraise_soft_limit
 from api.services.task_progress import (
@@ -1158,6 +1159,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                 },
             )
             session.commit()
+        invalidate_tenant_cache(str(tenant_id), "attention")  # the Action centre reads this run's state
 
         # dqs_history: one row per system, module and day (latest run wins)
         with Session(engine) as session:

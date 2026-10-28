@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _row, _rls, _where
-from api.services import remediation, worklist
+from api.services import attention, remediation, worklist
 from api.services.rbac import current_user_id, current_user_label, require_permission, scope_from_path
 
 router = APIRouter(prefix="/api/v1/remediation", tags=["remediation"])
@@ -342,6 +342,7 @@ async def approve_batch(
     await _event(db, tenant, batch_id, "approved", request)
     await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), batch_id))
     await db.commit()
+    attention.invalidate(tenant.id)
     return {"id": str(batch_id), "status": "approved", "approved_by": current_user_label()}
 
 
