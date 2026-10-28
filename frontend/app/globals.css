@@ -325,6 +325,13 @@
   @media (max-width: 1023px) { .m-page { padding: var(--m-page-pad-sm); } }
   .m-reading { max-width: var(--m-page-max-reading); }
 
+  /* Help-centre training videos: the frame holds the 16:9 player; the slot is its honest
+     stand-in while a journey's recording has not shipped. Tokens only, no raw values. */
+  .m-video-frame { margin: 0; display: grid; gap: var(--m-space-2); }
+  .m-video { display: block; width: 100%; aspect-ratio: 16 / 9; background: var(--m-sheet-sunken); border: 1px solid var(--m-line); border-radius: var(--m-radius-control); }
+  .m-video-slot { margin: 0; display: grid; place-items: center; gap: var(--m-space-2); aspect-ratio: 16 / 9; max-width: 640px; color: var(--m-ink-3); border: 1px dashed var(--m-line-strong); border-radius: var(--m-radius-control); }
+  .m-video-slot-icon { display: inline-flex; width: var(--m-space-12); height: var(--m-space-12); color: var(--m-ink-4); }
+
   /* The tile grows rather than clip: a long value wraps and the label may take two lines. */
   .m-stat { position: relative; background: transparent; border-left: 1px solid var(--m-line-strong); padding: var(--m-stat-pad); min-height: var(--m-stat-h); min-width: 0; }
   .m-stat-hero { height: auto; min-height: var(--m-stat-hero-h); }

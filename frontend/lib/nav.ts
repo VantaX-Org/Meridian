@@ -23,7 +23,7 @@ import type { Icon } from "@/design/icons";
 import {
   IconActivity, IconBell, IconBook, IconBranch, IconCompass, IconContract, IconCube, IconDatabase, IconDraft,
   IconEraser, IconFlag, IconFunnel, IconGauge, IconGear, IconHistory, IconHome, IconImport, IconInbox, IconKey, IconLayers,
-  IconList, IconLog, IconMapping, IconMerge, IconMigration, IconModel, IconPeople, IconProcess, IconRules, IconServer,
+  IconList, IconLog, IconMapping, IconMerge, IconMigration, IconModel, IconPeople, IconPlay, IconProcess, IconRules, IconServer,
   IconShieldAlert, IconSliders, IconTrend, IconUserShield,
 } from "@/design/icons";
 import type { Role } from "@/hooks/use-role";
@@ -287,6 +287,7 @@ export const INDEX_ONLY_GROUPS: readonly NavGroup[] = [
     items: [
       { href: "/inbox/notifications", requires: req("analysis", "view"), label: "Notifications", icon: IconBell, anyOf: ["view"] },
       { href: "/search", requires: req("analysis", "view"), label: "Search", icon: IconCompass, anyOf: ["view"] },
+      { href: "/help", requires: req("analysis", "view"), label: "Help centre", icon: IconPlay, anyOf: ["view"] },
       { href: "/docs", requires: req("analysis", "view"), label: "Documentation", icon: IconBook, anyOf: ["view"] },
       { href: "/me/preferences", requires: req("analysis", "view"), label: "Preferences", icon: IconSliders, anyOf: ["view"] },
       { href: "/design", requires: req("users", "admin"), label: "Design library", icon: IconLayers, anyOf: ["manage_users"] },
@@ -329,6 +330,7 @@ export const FEATURE_DESC: Readonly<Record<string, string>> = {
   "/home/basis": "The SAP Basis home: systems, connections and live jobs",
   "/home/process": "The process home: discovered processes and their runs",
   "/search": "Find pages, systems, objects, rules, terms and runs",
+  "/help": "Guides and training recordings for the work each role does here",
   "/docs": "The user guide",
   "/me/preferences": "Your density, time zone, theme and notifications",
   "/objects": "Each SAP object's score, failing checks and records",
@@ -446,6 +448,7 @@ const OFF_NAV_TITLES: Record<string, string> = {
   "/features": "All features",
   "/design": "Design library",
   "/search": "Search",
+  "/help": "Help centre",
   "/docs": "Documentation",
   "/me/preferences": "Preferences",
   "/rules/learned": "Learned rules",

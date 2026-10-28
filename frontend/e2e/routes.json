@@ -371,6 +371,11 @@
     "mocked": true
   },
   {
+    "name": "help",
+    "path": "/help",
+    "heading": "Help centre"
+  },
+  {
     "name": "docs",
     "path": "/docs",
     "heading": "Documentation"

@@ -42,6 +42,8 @@ COPY checks/ checks/
 COPY templates/ templates/
 # the user guide's chapters (the app shows them at /docs; the API renders them as the PDF manual)
 COPY frontend/docs/user-guide/ docs/user-guide/
+# help-centre training recordings (the app shows the chapters at /help; the API serves the videos)
+COPY frontend/docs/help-videos/ docs/help-videos/
 
 # Compile all Python source to .pyc bytecode (exclude migrations - they must stay as .py)
 RUN python -m compileall -b -f \

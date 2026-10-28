@@ -26,7 +26,26 @@ export default defineConfig({
     screenshot: "only-on-failure",
     launchOptions: process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {},
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    // guided-tours.spec.ts is the help-centre recording script: it only runs under the
+    // `recording` project (RECORD_HELP=1), never in the acceptance suite.
+    { name: "chromium", use: { ...devices["Desktop Chrome"] }, testIgnore: /guided-tours\.spec\.ts/ },
+    ...(process.env.RECORD_HELP === "1"
+      ? [{
+          name: "recording",
+          testMatch: /guided-tours\.spec\.ts/,
+          fullyParallel: false,
+          retries: 0,
+          // raw captures land in help-videos-raw/<test-title>/*.webm; the workflow converts to mp4
+          outputDir: "help-videos-raw",
+          use: {
+            ...devices["Desktop Chrome"],
+            viewport: { width: 1440, height: 900 },
+            video: { mode: "on" as const, size: { width: 1440, height: 900 } },
+          },
+        }]
+      : []),
+  ],
   webServer: process.env.PLAYWRIGHT_BASE_URL
     ? undefined
     : {
