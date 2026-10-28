@@ -93,7 +93,12 @@ def test_process_discovery_api(app_engine, monkeypatch):  # noqa: F811
                                  "VALUES (:t, :s, 'PTP', 'full', 'queued') RETURNING id"),
                             {"t": tid, "s": sid}).scalar())
     s = tenant_session(owner, tid)
-    assert rpd.discover(s, tid, sid, [rid], vid, frames_for=_frames, today=date(2026, 10, 11)) == {rid: "completed"}
+    # guard pinned to zero usage: the default MemoryGuard reads this process's RSS/peak, which a
+    # long serial run inflates regardless of the run under test — correctness tests must not
+    # inherit the process's memory history; run_process_discovery_jobs tests the guard itself.
+    pin = rpd.MemoryGuard(rss=lambda: 0)
+    assert rpd.discover(s, tid, sid, [rid], vid, frames_for=_frames, today=date(2026, 10, 11),
+                        guard=pin) == {rid: "completed"}
     s.close()
     with owner.connect() as c:
         watermark = c.execute(text("SELECT watermark FROM process_discovery_runs WHERE id = :r"), {"r": rid}).scalar()
@@ -197,7 +202,7 @@ def test_process_discovery_api(app_engine, monkeypatch):  # noqa: F811
 
             sess = tenant_session(owner, tid)
             assert rpd.discover(sess, tid, sid, [started_ids[0]], vid, frames_for=_frames,
-                                today=date(2026, 10, 11)) == {started_ids[0]: "failed"}
+                                today=date(2026, 10, 11), guard=pin) == {started_ids[0]: "failed"}
             sess.close()
             bodies = [(await c.get(f"{BASE}/runs/{started_ids[0]}", headers=viewer)).text,
                       (await c.get(f"{BASE}/systems/{sid}/runs", headers=viewer)).text,
