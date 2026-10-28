@@ -25,6 +25,7 @@ import { test as base, expect, type Page } from "@playwright/test";
 import routes from "./routes.json";
 import depth from "./fixtures/depth.json";
 import { mockRoutes18c } from "./fixtures/mocks-18c";
+import { mockMonitoringDefaults } from "./fixtures/mocks-monitoring";
 import { mockUnrecorded } from "./fixtures/mocks-unrecorded";
 import { correctRecording } from "./fixtures/recording-corrections";
 
@@ -110,6 +111,7 @@ export const test = base.extend<{ app: Page }>({
     await mockGlossaryTerm(page);
     await mockWrites(page);
     await mockRoutes18c(page);
+    await mockMonitoringDefaults(page);
     await mockUnrecorded(page, harFor(origin));
     await mockCurrentStateExec(page, harFor(origin));
     await provide(page);

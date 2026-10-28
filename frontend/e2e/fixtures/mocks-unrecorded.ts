@@ -17,6 +17,8 @@
  *  - the caller's delivery log, /me/notifications/deliveries (api/routes/me_notifications.py);
  *  - the features a cost per blocked record can be set for, /settings/cost-model/features (api/routes/settings.py);
  *  - the effective scoring config, /settings/scoring (api/routes/settings.py): the shipped defaults;
+ *  - the steward home's five newest open inbox items, /stewardship?status=open&limit=5 (api/routes/stewardship.py),
+ *    cut from the recorded ten;
  *  - process discovery's catalogue, run list, schedules and health, /process-discovery/systems/{id}/catalogue, /runs,
  *    /schedules and /health
  *    (api/routes/process_discovery.py): the seeded tenant has no discovery runs;
@@ -940,6 +942,16 @@ async function mockProcess(page: Router) {
   await get(new RegExp(`/api/v1/business-process/${CURRENT_AP_RUN}/accounts_payable$`), { ...businessProcessAp, version_id: CURRENT_AP_RUN });
 }
 
+/** GET /stewardship?status=open&limit=5&offset=0 (the steward home's inbox card): the first five of the recorded
+ * ten-item page, with the recorded total. */
+async function mockInboxTop(page: Router, har: string) {
+  const ten = entriesOf(har).find((e) => /\/api\/v1\/stewardship\?status=open&limit=10&offset=0$/.test(e.request.url))?.response.content;
+  if (!ten?.text) return;
+  const page10 = JSON.parse(textOf(ten)) as { items: unknown[] };
+  await page.route(/\/api\/v1\/stewardship\?status=open&limit=5&offset=0$/, (r) =>
+    r.request().method() === "GET" ? r.fulfill(json({ ...page10, items: page10.items.slice(0, 5) })) : r.fallback());
+}
+
 type RecordedRun = { id: string; run_at: string; status: string; dqs_summary: Record<string, unknown> | null };
 const textOf = (c: { text?: string; encoding?: string }) => (c.encoding === "base64" ? Buffer.from(c.text ?? "", "base64").toString("utf8") : c.text ?? "");
 
@@ -1006,6 +1018,7 @@ export async function mockUnrecorded(page: Page, har: string) {
   await mockMe(router);
   await mockCostModel(router);
   await mockScoring(router);
+  await mockInboxTop(router, har);
   await mockProcess(router);
   await mockMiningCurrent(router, har);
   await mockReadiness(router, har);
