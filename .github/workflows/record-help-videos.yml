@@ -61,15 +61,27 @@ jobs:
       - name: Convert webm captures to mp4
         run: |
           mkdir -p docs/help-videos
-          n=0
-          while IFS= read -r f; do
-            key=$(echo "$f" | grep -oE 'help-[a-z0-9-]+' | head -1)
-            [ -z "$key" ] && continue
-            ffmpeg -y -loglevel error -i "$f" -c:v libx264 -preset slow -crf 23 \
-              -pix_fmt yuv420p -movflags +faststart -an "docs/help-videos/$key.mp4"
-            n=$((n+1))
-          done < <(find help-videos-raw -name '*.webm' 2>/dev/null)
-          echo "converted $n recordings"
+          out_root="$PWD/docs/help-videos"
+          n=0; bad=0
+          # -print0/null-read: immune to any path oddity; -nostdin: ffmpeg must not eat the
+          # loop's input stream; key from the test-title directory (guided-tours-<key>-recording),
+          # validated; absolute output; one bad capture warns instead of killing the step.
+          while IFS= read -r -d '' f; do
+            key=$(basename "$(dirname "$f")" | sed -E 's/^guided-tours-//; s/-recording$//')
+            if ! echo "$key" | grep -qE '^help-[a-z0-9-]+$'; then
+              echo "SKIP (no video key in path): $f"; bad=$((bad+1)); continue
+            fi
+            if ffmpeg -nostdin -y -loglevel error -i "$f" -c:v libx264 -preset slow -crf 23 \
+                 -pix_fmt yuv420p -movflags +faststart -an "$out_root/$key.mp4"; then
+              d=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$out_root/$key.mp4" 2>/dev/null || echo "?")
+              s=$(stat -c %s "$out_root/$key.mp4" 2>/dev/null || echo "?")
+              echo "OK  $key  duration=${d}s bytes=$s"
+              n=$((n+1))
+            else
+              echo "FAIL to convert: $f"; bad=$((bad+1))
+            fi
+          done < <(find "$PWD/help-videos-raw" -name '*.webm' -print0 2>/dev/null)
+          echo "converted=$n skipped_or_failed=$bad"
           [ "$n" -gt 0 ] || { echo "no recordings produced"; exit 1; }
           ls -la docs/help-videos/
 
