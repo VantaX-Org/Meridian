@@ -41,6 +41,14 @@ jobs:
 
       - run: npx playwright install --with-deps chromium
 
+      # ubuntu-latest does not carry ffmpeg; the conversion step needs it
+      - name: Install ffmpeg
+        run: |
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+          fi
+          ffmpeg -version | head -1
+
       - name: Record the guided tours
         run: |
           if [ -n "${{ github.event.inputs.journeys }}" ]; then
