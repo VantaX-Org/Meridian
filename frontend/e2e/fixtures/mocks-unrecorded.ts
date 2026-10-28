@@ -16,6 +16,7 @@
  *    (api/routes/report_library.py), and the catalogue with `compare` (the recording holds it without);
  *  - the caller's delivery log, /me/notifications/deliveries (api/routes/me_notifications.py);
  *  - the features a cost per blocked record can be set for, /settings/cost-model/features (api/routes/settings.py);
+ *  - the effective scoring config, /settings/scoring (api/routes/settings.py): the shipped defaults;
  *  - process discovery's catalogue and run list, /process-discovery/systems/{id}/catalogue and /runs
  *    (api/routes/process_discovery.py): the seeded tenant has no discovery runs;
  *  - rule names by check id, /rules/names (api/routes/rules.py), from the recorded rule lists;
@@ -881,6 +882,22 @@ async function mockCostModel(page: Router) {
     r.request().method() === "GET" ? r.fulfill(json({ features })) : r.fallback());
 }
 
+/** GET /settings/scoring: scoring_config({}) of api/services/scoring.py (the shipped defaults), as the recorded tenant
+ * has no weights of its own, plus the same defaults under `defaults`. */
+const SCORING_DEFAULTS = {
+  dimension_weights: { completeness: 0.25, accuracy: 0.25, consistency: 0.2, timeliness: 0.1, uniqueness: 0.1, validity: 0.1 },
+  module_weights: {},
+  thresholds: { target: 90, warning: 75, critical: 60 },
+  severity_weights: { critical: 4, high: 3, medium: 2, low: 1 },
+  severity_multipliers: { critical: 5, high: 2, medium: 1, low: 1 },
+  critical_tolerance: { pct: 0.1, rows: 25 },
+};
+
+async function mockScoring(page: Router) {
+  await page.route(/\/api\/v1\/settings\/scoring$/, (r) =>
+    r.request().method() === "GET" ? r.fulfill(json({ ...SCORING_DEFAULTS, defaults: SCORING_DEFAULTS })) : r.fallback());
+}
+
 // ── Process discovery (api/routes/process_discovery.py) ──────────────────────
 
 /**
@@ -984,6 +1001,7 @@ export async function mockUnrecorded(page: Page, har: string) {
   await mockReports(router);
   await mockMe(router);
   await mockCostModel(router);
+  await mockScoring(router);
   await mockProcess(router);
   await mockMiningCurrent(router, har);
   await mockReadiness(router, har);
