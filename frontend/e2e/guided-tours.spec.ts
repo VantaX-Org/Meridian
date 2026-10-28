@@ -47,7 +47,7 @@ const JOURNEYS = [
   { video: "help-admin-rules", role: "platform_admin" as PersonaRole, steps: ["/rules", "/rules/scoring", "/rules/learned", "/rules/dictionary"] },
   { video: "help-admin-runs", role: "platform_admin" as PersonaRole, steps: ["/systems", "/runs", "/admin/jobs", "/process"] },
   { video: "help-admin-assigning-work", role: "platform_admin" as PersonaRole, steps: ["/admin/triage", "/admin/notifications", "/insights/owners", "/insights/reports"] },
-  { video: "help-admin-best-practices", role: "platform_admin" as PersonaRole, steps: ["/admin/licence", "/admin/audit", "/admin/settings", "/admin/ai"] },
+  { video: "help-admin-best-practices", role: "platform_admin" as PersonaRole, steps: ["/admin/licence", "/admin/audit", "/admin/settings"] },
 ] as const;
 
 for (const journey of JOURNEYS) {

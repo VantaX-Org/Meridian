@@ -39,7 +39,6 @@ function RequestDetail({ e }: { e: AuditEntry }) {
 const llmColumns = (tz: string): ColumnDef<LlmAuditEntry>[] => [
   { id: "when", header: "When", cell: ({ row }) => <When iso={row.original.called_at} tz={tz} /> },
   { accessorKey: "service_name", header: "Service" },
-  { id: "model", header: "Model", cell: ({ row }) => row.original.model_version ?? "—" },
   { id: "tokens", header: "Tokens", cell: ({ row }) => row.original.token_count ?? "—" },
   { id: "ms", header: "Latency (ms)", cell: ({ row }) => row.original.latency_ms ?? "—" },
   {
@@ -184,7 +183,7 @@ function LlmAudit() {
         </p>
       ) : undefined}
       state={asyncStateOf(q, () => entries.length === 0, true)}
-      emptyProps={{ title: "No AI calls recorded", detail: "Every call to a model is listed here with its latency and outcome", action: <Button variant="secondary" render={<Link href="/admin/ai">Open AI settings</Link>} /> }}
+      emptyProps={{ title: "No AI calls recorded", detail: "Every AI call is listed here with its latency and outcome" }}
       errorProps={{ error: q.error, onRetry: () => void q.refetch() }}
       table={
         <div className="flex flex-col gap-2">

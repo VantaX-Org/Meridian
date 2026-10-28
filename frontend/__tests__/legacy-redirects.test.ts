@@ -59,15 +59,16 @@ const EXPECTED: Record<string, string> = {
   "/remediation": "/fix?tab=batches",
   "/fix/:id((?!what-if$|proposals$|proposals/).*)": "/fix/proposals/:id",
   "/settings/field-mapping": "/admin/mappings",
-  "/settings/ai": "/admin/ai",
+  "/settings/ai": "/admin/settings",
   "/settings/licence": "/admin/licence",
   "/settings": "/admin/settings",
   "/admin": "/admin/users",
   "/admin/notifications": "/admin/alerts",
+  "/admin/ai": "/admin/settings",
 };
 
 // Retired pages whose redirect is a 301; every other legacy route is a 307 until its replacement settles.
-const PERMANENT = new Set(["/admin/notifications"]);
+const PERMANENT = new Set(["/admin/notifications", "/admin/ai"]);
 
 describe("legacy route redirects", () => {
   it("redirects every legacy route to its replacement, and nothing else", async () => {

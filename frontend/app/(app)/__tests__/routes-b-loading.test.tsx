@@ -46,7 +46,6 @@ const ROUTES: ReadonlyArray<readonly [string, () => Promise<{ default: Component
   ["/inbox", () => import("../inbox/page")],
   ["/fix", () => import("../fix/page")],
   ["/fix/proposals/[runId]", () => import("../fix/proposals/[runId]/page")],
-  ["/admin/ai", () => import("../admin/ai/page")],
   ["/admin/billing", () => import("../admin/billing/page")],
   ["/admin/licence", () => import("../admin/licence/page")],
   ["/admin/mappings", () => import("../admin/mappings/page")],

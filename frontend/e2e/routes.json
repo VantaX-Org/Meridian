@@ -37,11 +37,6 @@
     "mocked": true
   },
   {
-    "name": "admin-ai",
-    "path": "/admin/ai",
-    "heading": "AI settings"
-  },
-  {
     "name": "admin-audit",
     "path": "/admin/audit",
     "heading": "Audit log"

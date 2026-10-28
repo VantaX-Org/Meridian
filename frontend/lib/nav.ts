@@ -23,7 +23,7 @@ import type { Icon } from "@/design/icons";
 import {
   IconActivity, IconBell, IconBook, IconBranch, IconCompass, IconContract, IconCube, IconDatabase, IconDraft,
   IconEraser, IconFlag, IconFunnel, IconGauge, IconGear, IconHistory, IconHome, IconImport, IconInbox, IconKey, IconLayers,
-  IconList, IconLog, IconMapping, IconMerge, IconMigration, IconModel, IconPeople, IconPlay, IconProcess, IconRules, IconServer,
+  IconList, IconLog, IconMapping, IconMerge, IconMigration, IconPeople, IconPlay, IconProcess, IconRules, IconServer,
   IconShieldAlert, IconSliders, IconTrend, IconUserShield,
 } from "@/design/icons";
 import type { Role } from "@/hooks/use-role";
@@ -91,7 +91,6 @@ export const SETTINGS_ITEMS: readonly NavItem[] = [
   // `assign` keeps the legacy manager's read-only view of the page.
   { href: "/admin/triage", requires: [req("rules", "edit"), req("stewardship", "edit"), req("stewardship", "admin")], label: "Triage", icon: IconFunnel, anyOf: ["manage_triage", "manage_settings", "manage_rules", "assign"], keywords: "teams assignment rules sla business hours holidays" },
   { href: "/admin/mappings", requires: req("extraction", "edit"), label: "Field mapping", icon: IconMapping, anyOf: ["manage_field_mappings"], licenceKey: "field_mapping", keywords: "sap fields columns" },
-  { href: "/admin/ai", requires: req("llm", "admin"), label: "AI settings", icon: IconModel, anyOf: ["manage_llm"], keywords: "ollama model provider llm" },
   // rules/edit is here only so the legacy steward keeps Settings › Licence: no legacy role is granted
   // licence/view (it is in NO_VIEW), and the steward reaches Settings through manage_rules alone.
   { href: "/admin/alerts", requires: req("rules", "admin"), label: "Alerts", icon: IconBell, anyOf: ["manage_settings"], keywords: "notifications thresholds channels slack teams email webhook digest" },
@@ -381,7 +380,6 @@ export const FEATURE_DESC: Readonly<Record<string, string>> = {
   "/admin/settings": "This deployment: licence, alert channels, retention, the cost model and health checks",
   "/admin/triage": "Teams, assignment rules, SLAs and business hours",
   "/admin/mappings": "Map file columns to SAP fields",
-  "/admin/ai": "The language model provider and its settings",
   "/admin/alerts": "Who gets told about what, and when: thresholds, channels and the default digest",
   "/admin/sign-in": "How people sign in: single sign-on, password policy and lockout",
   "/admin/jobs": "Every extraction, analysis and upload job, and why one failed",

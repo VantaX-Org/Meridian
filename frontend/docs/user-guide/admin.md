@@ -2,7 +2,7 @@
 
 The admin pages are where the people who run Meridian manage access, routing, alerts, retention, the language model and the installation. Open **More**, **Admin**. You see only the pages your role allows; a page opened without the right permission says which one it needs, such as "Needs the `manage_users` permission".
 
-The **Admin** section lists **Users**, **Roles and access**, **Audit log** and **Settings**. Under **Settings** sit **Triage**, **Field mapping**, **AI settings**, **Alerts**, **Sign-in**, **Jobs**, **Reference data** and **Licence**. When the right-hand side of the index bar shows a number on the **To do** flag, admin chores such as access requests, pending invitations, seats and expiring grants are in it; see [To do](/docs?page=todo).
+The **Admin** section lists **Users**, **Roles and access**, **Audit log** and **Settings**. Under **Settings** sit **Triage**, **Field mapping**, **Alerts**, **Sign-in**, **Jobs**, **Reference data** and **Licence**. When the right-hand side of the index bar shows a number on the **To do** flag, admin chores such as access requests, pending invitations, seats and expiring grants are in it; see [To do](/docs?page=todo).
 
 ## Users
 
@@ -90,9 +90,9 @@ How the score itself is weighted is a different page: see **Scoring** in [Rules]
 
 **Field mapping** tells Meridian which column of an imported file holds each standard field. Type the file's header in **Customer column** and **Save**. A standard field with no column is skipped by every check that needs it.
 
-## AI settings
+## Language model
 
-**AI settings** chooses the language model that writes narrative and remediation text: a cloud provider, a hosted service, the model bundled with the installation, or your own endpoint. It needs `manage_llm`. The model never sees SAP data: it receives aggregated finding summaries only, and every score, count and suggested value comes from deterministic checks. Choose the provider and model, select **Test connection**, then **Save settings**. The bundled model needs a request timeout of 120 seconds.
+Meridian runs its own language model inside the installation to write narrative and remediation text. It is set when Meridian is installed and has no settings page. It never sees SAP data: it receives aggregated finding summaries only, and every score, count and suggested value comes from deterministic checks. The **AI audit** tab of the audit log lists every call it answered.
 
 ## Jobs, reference data and licence
 

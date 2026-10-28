@@ -143,8 +143,6 @@ export const queryKeys = {
   reportScheduleOptions: () => ["reports", "schedule-options"] as const,
   usersAssignable: () => ["users-assignable"] as const,
   fieldMappings: () => ["field-mappings"] as const,
-  llmProviders: () => ["llm-providers"] as const,
-  llmConfig: () => ["llm-config"] as const,
   licenceManifest: () => ["licence-manifest"] as const,
   systemUpdateStatus: () => ["system-update-status"] as const,
   triageTeams: () => ["triage-teams"] as const,
@@ -223,8 +221,6 @@ export type TouchedEntity =
   | "report-exports"
   | "users-assignable"
   | "field-mappings"
-  | "llm-providers"
-  | "llm-config"
   | "licence-manifest"
   | "system-update-status"
   | "triage-teams"

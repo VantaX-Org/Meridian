@@ -8,7 +8,7 @@ This guide is written for the people who do that work: data stewards who clean r
 
 Meridian runs inside your organisation's own environment. SAP data, findings and reports are stored there and do not leave it. The only call Meridian makes to the outside on its own is licence validation, which carries no SAP data.
 
-Every score, count and suggested value comes from a fixed rule, so the same data always gives the same result. If your administrator connects a language model under **AI settings**, it receives summaries of findings for written commentary, never raw SAP records, and any text it writes is labelled as such.
+Every score, count and suggested value comes from a fixed rule, so the same data always gives the same result. The built-in language model receives summaries of findings for written commentary, never raw SAP records, and any text it writes is labelled as such.
 
 ## Signing in
 

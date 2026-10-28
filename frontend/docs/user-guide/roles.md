@@ -38,7 +38,7 @@ Runs the programme. Holds view, apply, approve, assign, analyse and export, plus
 
 ### Platform admin
 
-Full access, including users and roles, rules, settings, AI settings, the licence and updates. Lands on the data lead Home page.
+Full access, including users and roles, rules, settings, the licence and updates. Lands on the data lead Home page.
 
 ### Analyst
 
