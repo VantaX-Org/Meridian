@@ -32,7 +32,9 @@ describe("To do control in the index bar", () => {
     const badge = await screen.findByTestId("attention-badge");
     expect(badge).toHaveTextContent("5");
     expect(badge.querySelector(".m-badge-critical")).not.toBeNull();
-    expect(screen.getByRole("link", { name: "To do" })).toHaveAccessibleDescription("5 critical or high");
+    // The badge counts critical and high only: the control's name and tooltip say so.
+    const link = screen.getByRole("link", { name: "To do, 5 critical or high to-do items" });
+    expect(link).toHaveAttribute("title", "5 critical or high to-do items");
   });
 
   it("is neutral with only high items, and absent when nothing is critical or high", async () => {

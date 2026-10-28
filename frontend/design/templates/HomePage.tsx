@@ -43,8 +43,8 @@ export interface HomeVerdict {
   bands?: ScoreBands;
   /** "Capped at 70 by 3 critical rules ...", with DrillLinks; omitted when not capped. */
   capLine?: ReactNode;
-  /** The one next action. */
-  action?: { label: string; href: string };
+  /** The one next action: the hero's only primary button. `sentence` is the step in words, set as "Next: ..." right above it. */
+  action?: { label: string; href: string; sentence?: string };
 }
 
 export interface HomeRunInfo {
@@ -84,7 +84,7 @@ const loadingSkeleton = (
 
 /**
  * The home page frame, "the Brief": the setup notice while setup is incomplete, one hero sheet (the score, its
- * verdict and its trend left, the object map and the dimension bars right), the four sentences under it, the ledger
+ * verdict and its trend left, the object map and the dimension bars right), the four sentences inside it under one hairline, the ledger
  * of what moves the score, the persona's work row, then the heatmap. Callers supply every
  * data-specific piece; this component places it and owns the loading, no-data and error geometry.
  */
@@ -119,7 +119,7 @@ export function HomePage({
   emptyActions?: ReactNode;
   /** First-run tour offer and setup checklist, one notice at the top (components/help/home-onboarding.tsx), only while setup is incomplete. */
   onboarding?: ReactNode;
-  /** The four sentences (situation, what changed, why, do next), set under the hero. */
+  /** The four sentences (situation, what changed, why, do next), set inside the hero under a hairline (render them `embedded`). */
   cells?: ReactNode;
   /** The breakdown behind the hero score, opened from its label ("Data quality score ⓘ"); never a second ring. */
   explain?: ScoreExplanation;
@@ -190,10 +190,11 @@ export function HomePage({
             </div>
             <div className="flex min-w-0 flex-col gap-2" style={{ maxWidth: "64ch" }}>
               <p data-testid="home-verdict" className="font-semibold" style={{ fontSize: "var(--m-text-verdict)", lineHeight: "var(--m-leading-verdict)", color: "var(--m-hero-ink)" }}>{verdict.sentence}</p>
-              {verdict.capLine && <p className="m-text-body" style={{ color: "var(--m-hero-ink-2)" }}>{verdict.capLine}</p>}
+              {verdict.capLine && <p data-testid="home-cap-line" className="m-text-body" style={{ color: "var(--m-hero-ink-2)" }}>{verdict.capLine}</p>}
               {verdict.action && (
-                <div className="pt-2">
+                <div className="flex flex-col gap-2 pt-2">
                   {/* The verdict's next step is the home's one primary action; Run analysis in the header is secondary. */}
+                  {verdict.action.sentence && <p data-testid="home-next" className="m-text-body" style={{ color: "var(--m-hero-ink-2)" }}>{`Next: ${verdict.action.sentence}.`}</p>}
                   <Button render={<Link href={verdict.action.href}>{verdict.action.label}</Link>} />
                 </div>
               )}
@@ -206,10 +207,12 @@ export function HomePage({
               {dimensions}
             </div>
           )}
+          {/* The four sentences belong to the hero: under one hairline, above the To do card, never a card of their own. */}
+          {cells && <div className="min-w-0 col-span-full" data-testid="home-cells">{cells}</div>}
         </section>
       )}
       {state === "ready" && nextAction}
-      {state === "ready" && cells}
+      {state === "ready" && !verdict && cells}
       {state === "ready" && objects}
       {state === "ready" && !workFirst && !opsFirst && work}
       {state === "ready" && heatmap}

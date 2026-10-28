@@ -148,7 +148,7 @@ describe("ExecPage", () => {
     expect(await screen.findByText("Material master comes first, the lowest score at 70.0: fix MM001, which caps it")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Fix MM001" })).toHaveAttribute("href", "/fix?run=v1&module=material_master&check=MM001");
     // The cap in Home's unit and scope: capping rules and capped objects out of those measured, never one object's reason.
-    expect(screen.getByText("1 critical failing rule caps 1 of 2 objects: MM001")).toBeInTheDocument();
+    expect(screen.getByText("1 critical failing rule (MM001) caps 1 of 2 objects")).toBeInTheDocument();
   });
 
   it("names no feature price it does not have, and shows the failing records' cost at risk instead", async () => {
@@ -222,6 +222,20 @@ describe("ExecPage", () => {
     await waitFor(() => expect(download).toHaveBeenCalledWith(expect.stringContaining("/board/v2"), `Meridian board pack – ECC PRD – ${TODAY}.pdf`));
   });
 
+  it("makes Do next name the top Fix first row, not the lowest-scoring object", async () => {
+    const sum = (score: number) => ({ composite_score: score, dimension_scores: {}, critical_count: 1, high_count: 0, medium_count: 0, low_count: 0, total_checks: 10, passing_checks: 9, capped: false, cap_reason: null });
+    h.versions = [{ id: "v1", label: "ECC PRD", status: "complete", run_at: "2026-10-20T08:00:00Z", metadata: {}, dqs_summary: { hcm: sum(64.5), material_master: sum(80) } }];
+    vi.spyOn(insightsApi, "getExec").mockResolvedValue({ version_id: "v1", narrative: "", readiness_cells: [], waterfall: [], impact_rows: [], owner_rows: [], composite: 72, cap: null, cap_reason: null } as never);
+    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [
+      { check_id: "MM045", name: "Material type missing", module: "material_master", severity: "critical", dimension: "validity", field: null, affected: 24576, total: 30000, pass_rate: 0.18, impact: 1, auto_fix_pct: 0, s4: "", delta_affected: null, cost_at_risk: null },
+    ] } as never);
+    renderWithQuery(<ExecPage />);
+    // the Fix first list ranks Material master first; Do next must not name HCM, the lowest score
+    expect(await screen.findByText("Fix MM045 on Material master first: 24,576 failing records")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Fix MM045" })).toHaveAttribute("href", "/fix?run=v1&module=material_master&check=MM045");
+    expect(screen.queryByText(/comes first, the lowest score/)).toBeNull();
+  });
+
   it("ranks Fix first from each object's current findings and shows the current state's delta", async () => {
     h.qs = "";
     h.path = "/insights/exec";
@@ -258,6 +272,9 @@ describe("ExecPage", () => {
     const ids = screen.getAllByText(/^(CO001|MM045|MM050|MM900)$/).map((el) => el.textContent);
     expect(ids).toEqual(["CO001", "MM050", "MM045"]);
     expect(screen.getByRole("columnheader", { name: "Owner" })).toBeInTheDocument();
+    // Do next names the top row of the Fix first list, with a Fix action to that rule's records
+    expect(screen.getByText("Fix CO001 on Controlling first: 40 failing records")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Fix CO001" })).toHaveAttribute("href", "/fix?run=co2&module=controlling&check=CO001");
     // the score over runs, beside the target, in current mode
     expect(screen.getByRole("heading", { name: "Score over runs" })).toBeInTheDocument();
     // (60 + 80) / 2 against (50 + 80) / 2: up 5 with the latest run, as Home and the overview say

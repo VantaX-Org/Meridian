@@ -188,7 +188,18 @@ export default function ExecPage() {
   const capScope = isCurrent ? stateSummaryOf : pinnedRun ? stateSummary(stateObjects([pinnedRun], current.modules)) : null;
   const capText = capScope ? capSentenceNamed(capSummary(capScope)) : capped && capReason ? `Capped: ${shortCapReason(capReason)}` : null;
   const tier = isCurrent ? tierOf(stateScore, bandsQ.data?.thresholds) : dqs?.tier;
-  const step = doNext(isCurrent ? current.objects : stateObjects(runs.filter((r) => r.id === run), current.modules), { pinned: !isCurrent });
+  // Do next names the top row of the Fix first list below it (never a different object); only without such a row
+  // is it the scope's score step (lib/do-next.ts).
+  const fixTop = isCurrent
+    ? currentFix[0] && { check: currentFix[0].check_id, module: currentFix[0].module, records: currentFix[0].affected_count, run: currentFix[0].version_id }
+    : runFix[0] && { check: runFix[0].check_id, module: runFix[0].module, records: runFix[0].affected, run };
+  const fixNext = fixTop
+    ? {
+        sentence: `Fix ${fixTop.check} on ${formatModuleName(fixTop.module)} first: ${fixTop.records.toLocaleString("en-US")} failing ${fixTop.records === 1 ? "record" : "records"}`,
+        action: { label: `Fix ${fixTop.check}`, href: fixHref({ run: fixTop.run, module: fixTop.module, check: fixTop.check }) },
+      }
+    : null;
+  const step = fixNext ?? doNext(isCurrent ? current.objects : stateObjects(runs.filter((r) => r.id === run), current.modules), { pinned: !isCurrent });
   const currency = cost.data?.currency;
   const roi = useQuery({ queryKey: ["roi"], queryFn: getRoi });
   // The run the summary describes (null in current mode, which spans runs) and the run its exports are built from:

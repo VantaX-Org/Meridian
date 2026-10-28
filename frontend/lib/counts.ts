@@ -36,6 +36,8 @@ export interface CountDef {
   hint: string;
   /** The singular noun counted, for "3 rule failures" style sentences. */
   unit: string;
+  /** Which severities the count spans, as a phrase after the noun ("of all severities"), where a sentence sets it beside a narrower count. */
+  scope?: string;
 }
 
 export const COUNT_DEFS: Readonly<Record<CountKey, CountDef>> = {
@@ -56,6 +58,7 @@ export const COUNT_DEFS: Readonly<Record<CountKey, CountDef>> = {
     label: "Failing rules",
     hint: "Rules that failed on at least one record in the run.",
     unit: "failing rule",
+    scope: "of all severities",
   },
   /** Source: failing rules of severity critical or high (`BLOCKING_SEVERITIES` in api/services/severity.py). Never "blocking findings" in copy. */
   blocking_rules: {
