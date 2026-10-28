@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services.config_pairing import enqueue_config_load, pair_error
-from api.services.rbac import Scope, _as_uuid, require_permission, require_scope, scope_from_path
+from api.services.rbac import Scope, _as_uuid, current_user_label, require_permission, require_scope, scope_from_path
 from api.services.version_status import finished_sql
 from api.services.connectivity_manager import (
     RFC_SYSTEM_TYPES,
@@ -864,7 +864,7 @@ async def trigger_sync(
     from workers.tasks.run_sync import run_sync
     job_ids = []
     for p in profiles:
-        result = run_sync.delay(str(p[0]), str(tenant.id))
+        result = run_sync.delay(str(p[0]), str(tenant.id), trigger="manual", requested_by=current_user_label())
         job_ids.append(str(result.id))
 
     return {"status": "enqueued", "profile_count": len(profiles), "job_ids": job_ids}

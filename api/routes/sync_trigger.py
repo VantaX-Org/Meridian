@@ -3,7 +3,7 @@
 import logging
 import os
 import re
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,7 +12,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import get_session, get_tenant_id
-from api.services.rbac import require_permission
+from api.services.rbac import current_user_label, require_permission
 
 logger = logging.getLogger("meridian.sync_trigger")
 
@@ -152,6 +152,8 @@ MODULE_REGISTRY: dict[str, dict[str, str]] = {
 
 class TriggerRequest(BaseModel):
     module_ids: list[str]
+    # "recheck" is the object page's Re-check now; both are a person's request, unlike a scheduled run.
+    trigger: Literal["manual", "recheck"] = "manual"
 
 
 class ModuleStatus(BaseModel):
@@ -268,6 +270,13 @@ async def trigger_modules(
             continue
 
         try:
+            await db.execute(
+                text("UPDATE analysis_versions SET metadata = COALESCE(metadata, '{}'::jsonb) "
+                     "|| jsonb_build_object('trigger', CAST(:trig AS text), 'requested_by_label', CAST(:who AS text)) "
+                     "WHERE id = :vid AND tenant_id = :tid"),
+                {"trig": body.trigger, "who": current_user_label(), "vid": row.id, "tid": str(tenant_id)},
+            )
+            await db.commit()
             run_checks.delay(
                 str(row.id),
                 str(tenant_id),

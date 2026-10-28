@@ -42,8 +42,9 @@ def _anchor_frame(tenant_id: str, prefix: str, domain: str, coverage: list[dict]
 
 @celery_app.task(bind=True, name="workers.tasks.run_sync.run_sync",
                  soft_time_limit=EXTRACT_TIME_LIMIT, time_limit=EXTRACT_TIME_LIMIT + 60)
-def run_sync(self, profile_id: str, tenant_id: str):
-    """Execute a full sync cycle for one sync profile."""
+def run_sync(self, profile_id: str, tenant_id: str, trigger: str = "scheduled", requested_by: str | None = None):
+    """Execute a full sync cycle for one sync profile. ``trigger`` (scheduled, manual or recheck) and the
+    requester's label are stamped on the run's metadata, so a run says how it started and who asked."""
     logger.info(f"run_sync started: profile_id={profile_id}, tenant_id={tenant_id}")
 
     engine = get_sync_engine()
@@ -149,7 +150,8 @@ def run_sync(self, profile_id: str, tenant_id: str):
             """),
             {"vid": version_id, "tid": tenant_id, "meta": json.dumps({
                 "source": "sync", "sync_run_id": sync_run_id, "system_name": system_name,
-                "domain": domain, "parquet_path": prefix,
+                "domain": domain, "parquet_path": prefix, "trigger": trigger,
+                **({"requested_by_label": requested_by} if requested_by else {}),
             })},
         )
         session.commit()

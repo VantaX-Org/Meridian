@@ -459,22 +459,71 @@ _PREVIOUS_SQL = f"""
 """
 
 
-async def run_change(db: AsyncSession, tenant_id: Any, version_id: str | None, module: str | None) -> dict:
+# Rules that flipped between two runs: failing (affected_count > 0) in one, passing or absent in the other.
+_RULE_FLIP_SQL = """
+    SELECT COALESCE(f2.module, f1.module) AS module, COALESCE(f2.check_id, f1.check_id) AS check_id,
+           COALESCE(f2.severity, f1.severity) AS severity, f2.affected_count AS now_count,
+           f1.check_id IS NULL AS is_new
+      FROM (SELECT * FROM findings WHERE version_id = CAST(:v1 AS uuid) AND tenant_id = CAST(:t AS uuid)
+               AND affected_count > 0) f1
+      FULL JOIN (SELECT * FROM findings WHERE version_id = CAST(:v2 AS uuid) AND tenant_id = CAST(:t AS uuid)
+               AND affected_count > 0) f2 ON f2.check_id = f1.check_id
+     WHERE f1.check_id IS NULL OR f2.check_id IS NULL
+"""
+RULES_CAP = 50
+
+
+def _rule_flips(rows: list, module: str | None) -> dict[str, dict]:
+    """``{module: {newly_failing: [{check_id, severity, new}], recovered: [{check_id}], newly_failing_total,
+    recovered_total}}``: worst severity first, each list capped, the totals uncapped."""
+    by: dict[str, dict[str, list]] = {}
+    for r in rows:
+        if module and r.module != module:
+            continue
+        by.setdefault(r.module, {"up": [], "down": []})["up" if r.is_new else "down"].append(r)
+    rank = {s: i for i, s in enumerate(_SEVERITY_ORDER)}
+    out = {}
+    for m, d in by.items():
+        up = sorted(d["up"], key=lambda r: (rank.get(r.severity, len(rank)), -(r.now_count or 0), r.check_id))
+        down = sorted(d["down"], key=lambda r: r.check_id)
+        out[m] = {"newly_failing": [{"check_id": r.check_id, "severity": r.severity, "new": int(r.now_count or 0)}
+                                    for r in up[:RULES_CAP]],
+                  "recovered": [{"check_id": r.check_id} for r in down[:RULES_CAP]],
+                  "newly_failing_total": len(up), "recovered_total": len(down)}
+    return out
+
+
+_NO_RULES = {"newly_failing": [], "recovered": [], "newly_failing_total": 0, "recovered_total": 0}
+_SEVERITY_ORDER = ("critical", "high", "medium", "low")
+
+
+async def run_change(db: AsyncSession, tenant_id: Any, version_id: str | None, module: str | None,
+                     baseline_id: str | None = None) -> dict:
+    """New, fixed and still failing records per object, and the rules that flipped, between a run and
+    ``baseline_id`` (a pinned baseline) or, when none is given, the run before it in its lineage."""
     empty = {"version_id": version_id, "previous": None, "objects": [],
              "totals": {"new": 0, "fixed": 0, "still_failing": 0}, "not_comparable_checks": 0}
     if not version_id:
         return empty
-    prev = (await db.execute(text(_PREVIOUS_SQL), {"t": str(tenant_id), "v": version_id})).fetchone()
+    t = {"t": str(tenant_id), "v": version_id}
+    if baseline_id:
+        prev = (await db.execute(text("SELECT id::text AS id, label, run_at FROM analysis_versions "
+                                      "WHERE id = CAST(:b AS uuid) AND tenant_id = CAST(:t AS uuid)"),
+                                 {**t, "b": baseline_id})).fetchone()
+    else:
+        prev = (await db.execute(text(_PREVIOUS_SQL), t)).fetchone()
     if not prev:
         return empty
     rows = (await db.execute(text(DIFF_SQL), {"v1": prev.id, "v2": version_id})).fetchall()
+    flips = _rule_flips((await db.execute(text(_RULE_FLIP_SQL), {"v1": prev.id, "v2": version_id, "t": t["t"]})).fetchall(),
+                        module)
     objects: dict[str, dict] = {}
     skipped = 0
     for r in rows:
         if module and r.module != module:
             continue
         o = objects.setdefault(r.module, {"module": r.module, "new": 0, "fixed": 0, "still_failing": 0,
-                                          "not_comparable_checks": 0})
+                                          "not_comparable_checks": 0, "rules": flips.get(r.module, _NO_RULES)})
         if r.ran_v1 and r.ran_v2 and not r.truncated:
             o["new"] += int(r.new)
             o["fixed"] += int(r.resolved)
@@ -482,6 +531,9 @@ async def run_change(db: AsyncSession, tenant_id: Any, version_id: str | None, m
         else:
             o["not_comparable_checks"] += 1
             skipped += 1
+    for m, rules in flips.items():  # a rule flipped on an object with no failing record in either run
+        objects.setdefault(m, {"module": m, "new": 0, "fixed": 0, "still_failing": 0, "not_comparable_checks": 0,
+                               "rules": rules})
     out = sorted(objects.values(), key=lambda o: (-o["new"], -o["still_failing"], o["module"]))
     return {"version_id": version_id,
             "previous": {"version_id": prev.id, "label": prev.label,
