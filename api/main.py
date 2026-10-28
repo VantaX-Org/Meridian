@@ -16,6 +16,7 @@ from api.routes.analysis_status import router as analysis_status_router
 from api.routes.reports import router as reports_router
 from api.routes.report_library import router as report_library_router
 from api.routes.user_guide import router as user_guide_router
+from api.routes.help_videos import router as help_videos_router
 from api.routes.settings import router as settings_router
 from api.routes.llm_settings import router as llm_settings_router
 from api.routes.connect import router as connect_router
@@ -311,6 +312,7 @@ app.include_router(analysis_status_router)
 app.include_router(report_library_router)  # before reports_router: /reports/history, /reports/schedules
 app.include_router(reports_router)
 app.include_router(user_guide_router)
+app.include_router(help_videos_router)
 app.include_router(settings_router)
 app.include_router(llm_settings_router)
 app.include_router(connect_router)

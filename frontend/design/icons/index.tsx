@@ -128,6 +128,7 @@ export const IconLock = glyph("lock", <><rect x="4.5" y="10.5" width="15" height
 export const IconLogOut = glyph("logOut", <><path d="M9.5 20.5H6a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2h3.5" /><path d="m15 16.5 4.5-4.5L15 7.5" /><path d="M19.5 12h-10" /></>);
 export const IconPanel = glyph("panel", <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16" /></>);
 export const IconGrid = glyph("grid", <><rect x="3.5" y="3.5" width="7" height="7" rx="1.25" /><rect x="13.5" y="3.5" width="7" height="7" rx="1.25" /><rect x="3.5" y="13.5" width="7" height="7" rx="1.25" /><rect x="13.5" y="13.5" width="7" height="7" rx="1.25" /></>);
+export const IconPlay = glyph("play", <><circle cx="12" cy="12" r="8.5" /><path d="m10 8.25 6 3.75-6 3.75z" /></>);
 
 /** Every icon by name, for the gallery sheet and for lookups by string. */
 export const ICONS: Readonly<Record<string, Icon>> = {
@@ -141,5 +142,5 @@ export const ICONS: Readonly<Record<string, Icon>> = {
   chevronRight: IconChevronRight, arrowUp: IconArrowUp, arrowDown: IconArrowDown, arrowRight: IconArrowRight,
   arrowUpRight: IconArrowUpRight, more: IconMore, plus: IconPlus, minus: IconMinus, trash: IconTrash, pencil: IconPencil,
   eye: IconEye, eyeOff: IconEyeOff, sun: IconSun, moon: IconMoon, monitor: IconMonitor, search: IconSearch, help: IconHelp,
-  info: IconInfo, lock: IconLock, logOut: IconLogOut, panel: IconPanel, grid: IconGrid,
+  info: IconInfo, lock: IconLock, logOut: IconLogOut, panel: IconPanel, grid: IconGrid, play: IconPlay,
 };

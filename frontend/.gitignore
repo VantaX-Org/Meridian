@@ -44,3 +44,5 @@ next-env.d.ts
 test-results/
 playwright-report/
 playwright/.cache/
+# raw help-centre recordings (webm) before conversion; the mp4s live in docs/help-videos/
+help-videos-raw/

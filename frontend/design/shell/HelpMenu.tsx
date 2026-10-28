@@ -68,19 +68,22 @@ export interface HelpMenuProps {
   onWhatsNew: () => void;
   /** The newest release has not been seen yet. */
   hasNew: boolean;
+  /** Open the help centre (/help): per-role guides with training recordings. */
+  onHelp: () => void;
   onDocs: () => void;
   context: ReportContext;
   /** The customer's support address (NEXT_PUBLIC_SUPPORT_EMAIL). Unset, the dialog says to ask the administrator. */
   supportEmail?: string;
 }
 
-/** The `?` button in the top bar: tour, shortcuts, what's new, documentation, report a problem. */
-export function HelpMenu({ hasTour, onTour, onShortcuts, onWhatsNew, hasNew, onDocs, context, supportEmail }: HelpMenuProps) {
+/** The `?` button in the top bar: tour, shortcuts, what's new, help centre, documentation, report a problem. */
+export function HelpMenu({ hasTour, onTour, onShortcuts, onWhatsNew, hasNew, onHelp, onDocs, context, supportEmail }: HelpMenuProps) {
   const [reporting, setReporting] = useState(false);
   const items: MenuItemDef[] = [
     ...(hasTour ? [{ label: "Tour this page", onSelect: onTour }] : []),
     { label: "Keyboard shortcuts", onSelect: onShortcuts },
     { label: "What's new", onSelect: onWhatsNew, dot: hasNew },
+    { label: "Help centre", onSelect: onHelp },
     { label: "Documentation", onSelect: onDocs },
     { label: "Report a problem", onSelect: () => setReporting(true) },
   ];

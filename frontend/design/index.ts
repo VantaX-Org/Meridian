@@ -32,6 +32,7 @@ export * from "./primitives/Mono";
 export * from "./primitives/Delta";
 export * from "./primitives/Stat";
 export * from "./primitives/HelpHint";
+export * from "./primitives/VideoPlayer";
 export * from "./primitives/PageHeader";
 export * from "./primitives/Checkbox";
 export * from "./primitives/FilterChip";
