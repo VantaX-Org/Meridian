@@ -18,7 +18,7 @@ def _summary(score: float) -> str:
     return json.dumps({"material_master": {"composite_score": score, "dimension_scores":
                                            {"completeness": 90.0, "validity": 40.0, "uniqueness": 10.0},
                                            "dimension_coverage": {"uniqueness": 0}},
-                       "vendor": {"composite_score": 70.0, "dimension_scores": {}}})
+                       "vendor": {"composite_score": 70.0, "raw_score": 83.5, "capped": True, "dimension_scores": {}}})
 
 
 @pytest.fixture
@@ -87,6 +87,9 @@ async def test_objects_list_enrichment(seeded, monkeypatch):
     vendor = by["vendor"]
     assert vendor["blocking_rule_id"] == "V-CRIT" and vendor["blocking_rule_name"] is None
     assert vendor["worst_dimension"] is None and vendor["owner"] is None
+    # the list carries the uncapped score so the cap can be drawn as a tick
+    assert (vendor["raw_score"], vendor["capped"]) == (83.5, True)
+    assert (by["material_master"]["raw_score"], by["material_master"]["capped"]) == (None, False)
     assert len(vendor["trend"]) == 8
 
 

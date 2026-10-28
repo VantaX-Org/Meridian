@@ -14,7 +14,6 @@ import {
   Card,
   DataTable,
   type CellMeta,
-  Delta,
   EmptyState,
   ErrorState,
   Field,
@@ -58,11 +57,11 @@ const fmtN = (n: number) => formatNumber(n);
  * `filter` is the `?change=` value that narrows the ledger to the set.
  */
 type ChangeKind = "newly_failing" | "worse" | "better" | "fixed";
-const CHANGE_SETS: { kind: ChangeKind; filter: string; label: string; tone: "no-go" | "at-risk" | "neutral" }[] = [
+const CHANGE_SETS: { kind: ChangeKind; filter: string; label: string; tone: "no-go" | "at-risk" | "go" }[] = [
   { kind: "newly_failing", filter: "new", label: "Newly failing", tone: "no-go" },
   { kind: "worse", filter: "worse", label: "Worse", tone: "at-risk" },
-  { kind: "better", filter: "better", label: "Better", tone: "neutral" },
-  { kind: "fixed", filter: "resolved", label: "Fixed", tone: "neutral" },
+  { kind: "better", filter: "better", label: "Better", tone: "go" },
+  { kind: "fixed", filter: "resolved", label: "Fixed", tone: "go" },
 ];
 type ChangeRow = CheckChange & { kind: ChangeKind };
 const setOf = (kind: ChangeKind) => CHANGE_SETS.find((c) => c.kind === kind)!;
@@ -299,6 +298,7 @@ export default function CompareRunsPage() {
   const before = mean(deltas.map((d) => d.v1_score));
   const after = mean(deltas.map((d) => d.v2_score));
   // The API compares only objects scored in both runs; an object only one run measured is left out of both means.
+  const scoreChange = roundedDelta(before, after);
   const bothHint = `Mean of ${plural(deltas.length, "object")} in both runs; objects in only one run are left out`;
 
   // The direction in words: from the run compared with (A) to this run (B), each with its time, to the second when
@@ -331,7 +331,13 @@ export default function CompareRunsPage() {
       {/* In the title's order: the run compared with, then this run. */}
       <Stat label={`DQS ${runLabel(cmp.v1)}`} help="dqs" hint={bothHint} value={<span className="tabular-nums">{before.toFixed(1)}</span>} />
       <Stat label={`DQS ${runLabel(cmp.v2)}`} help="dqs" hint={bothHint} value={<span className="tabular-nums">{after.toFixed(1)}</span>} />
-      <Stat label="Change" hint={`${runLabel(cmp.v1)} to ${runLabel(cmp.v2)}`} value={<Delta value={roundedDelta(before, after)} />} />
+      {/* The same size as the two scores it is the difference of. */}
+      <Stat
+        label="Change"
+        hint={`${runLabel(cmp.v1)} to ${runLabel(cmp.v2)}`}
+        tone={scoreChange > 0 ? "go" : scoreChange < 0 ? "no-go" : undefined}
+        value={<span className="tabular-nums" data-testid="score-change">{scoreChange > 0 ? "+" : scoreChange < 0 ? "-" : "±"}{Math.abs(scoreChange).toFixed(1)}</span>}
+      />
     </div>
   ) : (
     <div className="m-stat-grid">

@@ -252,7 +252,7 @@ describe("ObjectsPage sort, filter and enrichment", () => {
     });
     renderWithQuery(<ObjectsPage />);
     await waitFor(() => expect(ledger().getByText("AAA")).toBeInTheDocument());
-    expect(ledger().getAllByRole("columnheader").map((h) => h.textContent?.trim())).toEqual(["Object", "Owner", "Blocking rule", "Rule failures", "Score", "Verdict", "Freshness", "Trend", "Action"]);
+    expect(ledger().getAllByRole("columnheader").map((h) => h.textContent?.trim())).toEqual(["Object", "Owner", "Rule failures (all rules)", "Score", "Verdict", "Blocking rule", "Freshness", "Trend", "Action"]);
     expect(ledger().getByText("Bad data")).toBeInTheDocument();
     expect(ledger().getByRole("link", { name: "Open AAA" })).toHaveAttribute("href", "/objects/a?run=v1&tab=fix");
   });

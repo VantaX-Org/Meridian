@@ -224,13 +224,16 @@ function RulesTab({ object, run, checkId }: { object: string; run: string; check
   }
   if (batch.isError) return <ErrorState {...apiErrorState(batch.error)} onRetry={() => batch.refetch()} />;
 
+  const ranCount = data.rules.length;
+  const failingRules = rulesRanked.filter((r) => r.affected_count > 0);
+  const passingRules = rulesRanked.filter((r) => r.affected_count === 0);
   const dimensions = [...new Set(data.rules.map((r) => r.dimension).filter((d): d is string => !!d))].map((d) => ({ value: d, label: formatModuleName(d) }));
   return (
     <div className="flex flex-col gap-3">
       {coverage.data ? (
         <p className="m-text-body m-ink-2" data-testid="rules-coverage">
-          {`${(coverage.data.totals.rules - coverage.data.totals.never_run).toLocaleString()} of ${coverage.data.totals.rules.toLocaleString()} catalogue rules ran`}
-          {coverage.data.totals.never_run > 0 ? ", the rest have not produced a finding yet. " : ". "}
+          {/* The rules this run measured are the list below; the catalogue's own "never produced a finding" count spans every run, so it cannot be set against this run's list. */}
+          {`${ranCount.toLocaleString()} of ${Math.max(ranCount, coverage.data.totals.rules).toLocaleString()} catalogue rules ran in this run. `}
           <Link href={`/rules?module=${encodeURIComponent(object)}`} className="underline underline-offset-2">Open the catalogue</Link>
         </p>
       ) : null}
@@ -248,17 +251,36 @@ function RulesTab({ object, run, checkId }: { object: string; run: string; check
         />
       ) : (
         <div className={compact ? "grid items-start [gap:var(--m-section-gap)] [grid-template-columns:minmax(0,1fr)] xl:[grid-template-columns:minmax(0,2fr)_minmax(0,3fr)]" : undefined}>
-          <DataTable
-            columns={columns}
-            data={rulesRanked}
-            getRowId={(row) => row.check_id}
-            dataTour="object-rules"
-            label="Rules"
-            activeRowId={checkId || null}
-            onActiveRowChange={(row) => selectRule(row.check_id)}
-            rowHref={(row) => recordsHref(row.check_id)}
-            onRowClick={(row) => selectRule(row.check_id)}
-          />
+          <div className="flex min-w-0 flex-col gap-3">
+            {failingRules.length > 0 || passingRules.length === 0 ? (
+              <DataTable
+                columns={columns}
+                data={failingRules}
+                getRowId={(row) => row.check_id}
+                dataTour="object-rules"
+                label="Rules"
+                activeRowId={checkId || null}
+                onActiveRowChange={(row) => selectRule(row.check_id)}
+                rowHref={(row) => recordsHref(row.check_id)}
+                onRowClick={(row) => selectRule(row.check_id)}
+              />
+            ) : null}
+            {passingRules.length > 0 ? (
+              <details data-testid="passing-rules" open={failingRules.length === 0 || passingRules.some((r) => r.check_id === checkId)}>
+                <summary className="m-text-body m-ink-2 cursor-pointer">{`Passing (${passingRules.length.toLocaleString()})`}</summary>
+                <DataTable
+                  columns={columns}
+                  data={passingRules}
+                  getRowId={(row) => row.check_id}
+                  label="Passing rules"
+                  activeRowId={checkId || null}
+                  onActiveRowChange={(row) => selectRule(row.check_id)}
+                  rowHref={(row) => recordsHref(row.check_id)}
+                  onRowClick={(row) => selectRule(row.check_id)}
+                />
+              </details>
+            ) : null}
+          </div>
           {compact ? (
             <section aria-label="Failing records of the selected rule" className="min-w-0">
               <RuleRecords object={object} run={run} checkId={checkId} onClose={closeRule} />
@@ -621,7 +643,6 @@ export default function ObjectDetailPage() {
           </>
         }
       />
-      <p className="m-text-body m-ink-2">Records of {summary?.label ?? formatModuleName(object)} that fail a check in this run, worst first. Pick one and fix it.</p>
       <ObjectMonitorStrip object={object} run={run} />
       <AttentionCard object={object} />
       {/* On Records to fix the queue's own tiles count the same records; the strip would say it twice. */}
@@ -631,7 +652,12 @@ export default function ObjectDetailPage() {
         onValueChange={setTab}
         items={[
           // The same queue as Fix work, with this object and this page's run fixed: one triage surface, not two.
-          { value: "fix", label: COUNT_DEFS.records_to_fix.label, count: workObject?.open, content: <FixWork module={object} run={run} /> },
+          { value: "fix", label: COUNT_DEFS.records_to_fix.label, count: workObject?.open, content: (
+            <div className="flex flex-col gap-3">
+              <p className="m-text-body m-ink-2">Records of {summary?.label ?? formatModuleName(object)} that fail a check in this run, worst first. Pick one and fix it.</p>
+              <FixWork module={object} run={run} />
+            </div>
+          ) },
           { value: "overview", label: "Overview", content: <><ObjectProcesses object={object} run={run} /><Workbench object={object} run={run} /></> },
           { value: "rules", label: "Rules", content: <RulesTab object={object} run={run} checkId={checkId} /> },
           { value: "fields", label: "Fields", content: <FieldsTab object={object} run={run} /> },

@@ -7,7 +7,8 @@ import type { TenantSettings } from "@/types/api";
 import type { FindingsAggregate } from "@/lib/api/findings";
 import ScoringPage, { toStored, weightPreview, withFeatureDraft, withSeverityDraft } from "../page";
 
-vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+const role = vi.hoisted(() => ({ write: true }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => role.write }) }));
 
 const SETTINGS: TenantSettings = {
   name: "Acme",
@@ -45,6 +46,7 @@ const SCORING: settingsApi.ScoringResponse = {
 };
 
 beforeEach(() => {
+  role.write = true;
   vi.restoreAllMocks();
   vi.spyOn(settingsApi, "getScoring").mockResolvedValue(SCORING);
 });
@@ -68,10 +70,10 @@ describe("rules scoring page", () => {
     vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue(AGGREGATE);
     renderWithQuery(<ScoringPage />);
     expect(await screen.findByText("Dimension weights", undefined, { timeout: 5000 })).toBeInTheDocument();
-    // the saved weights preview as the score now, unchanged: no phantom delta on first load
-    // both numerals count up from 0, so wait until both have settled
-    await waitFor(() => expect(screen.getAllByText("88.5")).toHaveLength(2), { timeout: 12_000 });
-    expect(screen.getByText("No change")).toBeInTheDocument();
+    // the saved weights have nothing to preview: one score, and "No change" in place of a second, identical ruler
+    await waitFor(() => expect(screen.getAllByText("88.5")).toHaveLength(1), { timeout: 12_000 });
+    expect(screen.getByTestId("preview-unchanged")).toHaveTextContent("No change");
+    expect(screen.getAllByTestId("score-hero")).toHaveLength(1);
     // Two queries then a form: under full-suite load this takes longer than the 5 s default.
   }, 25_000);
 
@@ -163,7 +165,8 @@ describe("rules scoring page", () => {
   it("previews reweighted scores without a cap and compares like with like", () => {
     const scores = { completeness: 90, accuracy: 60 };
     const saved = { completeness: 0.5, accuracy: 0.5, consistency: 0, timeliness: 0, uniqueness: 0, validity: 0 };
-    expect(weightPreview(scores, saved, saved, 70)).toEqual({ value: 70, delta: 0, hint: "No change" });
+    // the saved weights: the figure is the same sum the contribution table prints (75), not the capped score now (70)
+    expect(weightPreview(scores, saved, saved, 70)).toEqual({ value: 75, delta: 0, hint: "No change" });
     const next = { ...saved, completeness: 0.75, accuracy: 0.25 };
     // 82.5 against 75 before caps, even though the score now (70) is capped
     expect(weightPreview(scores, saved, next, 70)).toEqual({ value: 82.5, delta: 7.5, hint: "Up 7.5 points before caps" });
@@ -180,5 +183,42 @@ describe("rules scoring page", () => {
     vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue(AGGREGATE);
     renderWithQuery(<ScoringPage />);
     await waitFor(() => expect(screen.getByText(/could not be loaded/i)).toBeInTheDocument());
+  });
+});
+
+describe("rules scoring page, caps and read-only", () => {
+  const CAPPED: FindingsAggregate = {
+    ...AGGREGATE,
+    dqs: { composite: 71.8, raw: 79.8, capped: true, dimension_scores: { completeness: 87.4, accuracy: 85, consistency: 64.3, timeliness: 65.4, uniqueness: 86.3, validity: 86.4 }, modules: {} },
+  };
+
+  it("says that the contributions are before caps and why the score now is lower", async () => {
+    vi.spyOn(settingsApi, "getSettings").mockResolvedValue(SETTINGS);
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue(CAPPED);
+    renderWithQuery(<ScoringPage />);
+    const note = await screen.findByTestId("caps-note");
+    expect(note).toHaveTextContent("The contributions below add up to 79.8, the score before caps.");
+    expect(note).toHaveTextContent("The score now is 71.8 because critical failures hold some objects at a cap");
+    expect(screen.getByText("After caps. Before caps 79.8")).toBeInTheDocument();
+  });
+
+  it("draws the preview ruler only once a weight differs", async () => {
+    vi.spyOn(settingsApi, "getSettings").mockResolvedValue({ ...SETTINGS });
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue(CAPPED);
+    renderWithQuery(<ScoringPage />);
+    fireEvent.change(await screen.findByLabelText("completeness weight"), { target: { value: "0.4" } });
+    expect(await screen.findByText("With these weights, before caps")).toBeInTheDocument();
+    expect(screen.queryByTestId("preview-unchanged")).toBeNull();
+  });
+
+  it("disables every input and offers no save when the settings are read only", async () => {
+    role.write = false;
+    vi.spyOn(settingsApi, "getSettings").mockResolvedValue(SETTINGS);
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue(CAPPED);
+    renderWithQuery(<ScoringPage />);
+    expect(await screen.findByText("These settings are read only for your role")).toBeInTheDocument();
+    for (const name of ["completeness weight", "accuracy weight"]) expect(screen.getByLabelText(name)).toBeDisabled();
+    expect(screen.getByLabelText("Warning")).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Save weights" })).toBeNull();
   });
 });

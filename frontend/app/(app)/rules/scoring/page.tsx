@@ -64,19 +64,19 @@ function composite(scores: Record<string, number>, weights: DimensionScores): nu
 const sameWeights = (a: DimensionScores, b: DimensionScores) => DIMS.every((d) => Math.abs((Number(a[d]) || 0) - (Number(b[d]) || 0)) < 1e-4);
 
 /**
- * The "With these weights" figure. With the saved weights it is the score now, unchanged. Otherwise it reweights the
- * latest dimension scores, and the delta compares it with the saved weights over the same scores, so both sides
- * ignore caps alike: the backend caps per object by critical rules over tolerance, which a client-side average
- * cannot reproduce.
+ * The "With these weights" figure: the latest dimension scores reweighted, before caps. It is the same sum the
+ * contribution table prints, so the table and the figure agree. The delta compares it with the saved weights over
+ * the same scores, so both sides are before caps alike: the backend caps per object by critical rules over
+ * tolerance, which a client-side average cannot reproduce. With the saved weights there is nothing to preview.
  */
 export function weightPreview(
   scores: Record<string, number>, saved: DimensionScores, weights: DimensionScores, current: number | null,
 ): { value: number | null; delta: number | null; hint: string } {
   if (current === null) return { value: null, delta: null, hint: "Needs a scored run" };
-  if (sameWeights(saved, weights)) return { value: current, delta: 0, hint: "No change" };
   const next = composite(scores, weights);
   const now = composite(scores, saved);
   if (next === null || now === null) return { value: null, delta: null, hint: "Needs a scored run" };
+  if (sameWeights(saved, weights)) return { value: next, delta: 0, hint: "No change" };
   const delta = Math.round((next - now) * 10) / 10;
   return { value: next, delta, hint: delta === 0 ? "No change before caps" : `${delta > 0 ? "Up" : "Down"} ${Math.abs(delta)} points before caps` };
 }
@@ -125,6 +125,10 @@ function ScoringForm({ initial, scoring }: { initial: TenantSettings; scoring: S
   const saved = useMemo(() => fromStored(scoring.dimension_weights), [scoring.dimension_weights]);
   const preview = weightPreview(scores, saved, normalised, current);
   const capped = agg.data?.dqs.capped;
+  // The score before caps at the saved weights: what the contribution column adds up to.
+  const beforeCaps = composite(scores, saved);
+  const unchanged = preview.delta === 0 && preview.hint === "No change";
+  const sumOfContributions = DIMS.reduce((a, d) => a + (scores[d] == null ? 0 : scores[d] * normalised[d]), 0);
 
   // The PUT replaces the whole config, so each save sends the server's current values for the part not being edited.
   const put = (patch: Partial<ScoringConfig>): ScoringConfig => ({
@@ -169,16 +173,23 @@ function ScoringForm({ initial, scoring }: { initial: TenantSettings; scoring: S
           label="Score now"
           loading={agg.isLoading}
           value={current}
-          hint={capped ? "A severity cap is in force" : current === null ? "No analysis has run yet" : "From the latest run"}
+          hint={capped ? `After caps${beforeCaps != null ? `. Before caps ${beforeCaps.toFixed(1)}` : ""}` : current === null ? "No analysis has run yet" : "From the latest run"}
         />
-        <Score
-          size="hero"
-          label="With these weights"
-          loading={agg.isLoading}
-          value={preview.value}
-          tone={preview.delta !== null && preview.delta < 0 ? "at-risk" : undefined}
-          hint={preview.hint}
-        />
+        {unchanged ? (
+          <div className="flex flex-1 flex-col gap-1" data-testid="preview-unchanged">
+            <span className="m-text-meta m-ink-3">With these weights</span>
+            <span className="m-text-title font-semibold">No change</span>
+            <span className="m-text-meta m-ink-3">These are the saved weights. Edit a weight to preview the score before caps.</span>
+          </div>
+        ) : (
+          <Score
+            size="hero"
+            label="With these weights, before caps"
+            loading={agg.isLoading}
+            value={preview.value}
+            hint={preview.hint}
+          />
+        )}
         <div className="flex flex-col gap-1">
           <span className="m-text-meta m-ink-3">Weights sum</span>
           <span className={clsx("m-text-title font-semibold", !sumOk && "m-ink-critical")}>{sum.toFixed(2)}</span>
@@ -188,7 +199,11 @@ function ScoringForm({ initial, scoring }: { initial: TenantSettings; scoring: S
       )}
 
       {!agg.isError && current !== null ? (
-        <p className="m-text-meta m-ink-3">The preview reweights the latest run&rsquo;s dimension scores and ignores caps; caps apply per object when a run is scored.</p>
+        <p className="m-text-meta m-ink-3" data-testid="caps-note">
+          {`The contributions below add up to ${sumOfContributions.toFixed(1)}, the score before caps. `}
+          {capped ? `The score now is ${current?.toFixed(1)} because critical failures hold some objects at a cap (85 for one, 70 for two or more). ` : ""}
+          The preview reweights the latest run&rsquo;s dimension scores before caps; caps are fixed and apply per object when a run is scored.
+        </p>
       ) : null}
 
       {Object.keys(scores).length > 0 ? (

@@ -43,12 +43,27 @@ const diff: RecordDiff = {
 describe("compareNarrative", () => {
   it("writes every sentence in order", () => {
     expect(compareNarrative(cmp(), diff)).toEqual([
-      "DQS moved from 71.2 to 74.8 (+3.6) across 2 modules.",
+      "DQS moved from 71.2 to 74.8 (+3.6) across 2 objects.",
       "Material master improved most (+6.1), driven by validity (+9.0).",
       `2 rules newly fail: MM041 (critical, ${nf.format(1240)} records), MM077 (high, ${nf.format(88)} records).`,
       `2 rules fixed, which had 20 rule failures; across every rule, ${nf.format(3410)} rule failures resolved and ${nf.format(1328)} new.`,
+      "Net, rule failures fell by 2,082.",
       "2 rules did not run cleanly in both runs; their deltas are excluded.",
     ]);
+  });
+
+  it("explains a score that improved while rule failures rose, and one that fell while they fell", () => {
+    // accounts_payable_p06 vs p02: DQS +0.4 beside 10,521 resolved and 11,151 new rule failures (630 more).
+    const delta = { accounts_payable: { dqs_change: 0.4, v1_score: 82.5, v2_score: 82.9, dimensions: {} } };
+    const base = cmp({ delta, checks: { newly_failing: [], fixed: [] } });
+    const rose = compareNarrative(base, { ...diff, totals: { new: 11151, resolved: 10521, persisting: 0 }, checks: [] });
+    expect(rose).toContain(`Net, rule failures rose by 630 while the score improved: the score weighs each object's rule pass rates and is held down by caps, so it does not move with the count of failures.`);
+    const down = { accounts_payable: { dqs_change: -0.4, v1_score: 82.9, v2_score: 82.5, dimensions: {} } };
+    const fell = compareNarrative(cmp({ delta: down, checks: { newly_failing: [], fixed: [] } }), { ...diff, totals: { new: 10, resolved: 20, persisting: 0 }, checks: [] });
+    expect(fell).toContain("Net, rule failures fell by 10 while the score declined: the score weighs each object's rule pass rates and is held down by caps, so it does not move with the count of failures.");
+    // Moving together, or no net change: no explanation is needed.
+    expect(compareNarrative(base, { ...diff, totals: { new: 5, resolved: 20, persisting: 0 }, checks: [] })).toContain("Net, rule failures fell by 15.");
+    expect(compareNarrative(base, { ...diff, totals: { new: 5, resolved: 5, persisting: 0 }, checks: [] }).some((l) => l.startsWith("Net,"))).toBe(false);
   });
 
   it("omits empty sentences and handles the null diff", () => {
@@ -82,7 +97,7 @@ describe("compareNarrative", () => {
       cmp({ delta: { fi_gl: { dqs_change: -2, v1_score: 70, v2_score: 68, dimensions: { accuracy: { v1: 50, v2: 46, change: -4 } } } }, checks: { newly_failing: many, fixed: [] } }),
       null,
     );
-    expect(out[0]).toBe("DQS moved from 70.0 to 68.0 (-2.0) across 1 module.");
+    expect(out[0]).toBe("DQS moved from 70.0 to 68.0 (-2.0) across 1 object.");
     expect(out[1]).toBe("FI general ledger declined most (-2.0), driven by accuracy (-4.0).");
     expect(out[2]).toBe("5 rules newly fail: C0 (low, 10 records), C1 (low, 9 records), C2 (low, 8 records), and 2 more.");
     expect(out).toHaveLength(3);
