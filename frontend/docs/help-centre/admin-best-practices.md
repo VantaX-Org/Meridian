@@ -48,7 +48,7 @@ Check in this order, and stop as soon as an answer appears.
 2. System health: is the connection in the state its last test reported, and has the configuration been loaded since the SAP change?
 3. Audit: did someone change a rule, a grant or a threshold at the moment the number moved?
 
-Most surprises end at step three, and the audit log is where they end fastest.
+Most surprises end at step three.
 
 ## Next steps
 

@@ -1,6 +1,6 @@
 # Executing runs: analysis, discovery and baselines
 
-A run is a measurement, taken at a moment, of the records Meridian holds. Every score, queue and comparison downstream reads it, so the craft is in starting the right run, watching it finish, and pinning the one that marks your baseline.
+A run is a measurement, taken at a moment, of the records Meridian holds. Every score, queue and comparison downstream reads it, so the craft is starting the right one, watching it finish, and pinning the one that marks your baseline.
 
 ## What a run does, in order
 
@@ -8,7 +8,7 @@ Extraction reads the tables behind the objects you selected, filtered by the sco
 
 Statuses mean different things: extracted is stored but unchecked; complete and its enriched variants have findings to read; partial means some checks were skipped; failed has nothing to read.
 
-Re-running an analysis over data you already extracted is a separate action, on the run page and the system page. It re-checks the stored records with the current rules, replaces the findings, and keeps the run's name, baseline and history. That is the cheap way to test a rule change: it costs no SAP read.
+Re-running an analysis over data you already extracted is a separate action, on the run page and the system page. It re-checks the stored records with the current rules, replaces the findings, and keeps the run's name, baseline and history. It is the cheap way to test a rule change: no SAP read.
 
 ## Scopes, periods and schedules
 
@@ -18,9 +18,9 @@ Scheduled extracts pull an object again on a timetable: pick the object, a prese
 
 ## Jobs, retries and failed extractions
 
-The jobs page holds the newest two hundred extractions, analyses, uploads, configuration loads and discovery runs with status, duration, rows and a detail line. Expand a failed job for the error in one sentence, the next step, and the raw text underneath. Retry repeats a failed extraction, analysis, configuration load or discovery run, and needs the permission that starting it needed; an extraction a discovery run chained cannot be repeated there and sends you back to the system's Extract drawer. The run page's steps tab lists every step with its own status and message.
+The jobs page holds the newest two hundred extractions, analyses, uploads, configuration loads and discovery runs with status, duration, rows and a detail line. Expand a failed job for the error in one sentence, the next step, and the raw text underneath. Retry repeats a failed extraction, analysis, configuration load or discovery run, and needs the permission that starting it needed; an extraction a discovery run chained cannot be repeated there and sends you back to the system's Extract drawer. The run page's steps tab lists every step with its own status.
 
-Read failures by cause. A sign-in refusal is credentials. Unreachable is host, port or route. A refused authorisation means the connection user cannot read one of the tables, which is a request to your SAP team. A missing library means the SAP connector is not on the worker. A timeout means the read was too big for the window: retry at a quieter time, take fewer objects, or move the object to changes only.
+Read failures by cause. A sign-in refusal is credentials. Unreachable is host, port or route. A refused authorisation means the connection user cannot read one of the tables, which is a request to your SAP team. A missing library means the SAP connector is not on the worker. A timeout means the read was too big for the window: retry at a quieter time, take fewer objects, or use changes only.
 
 ## Baselines and the regression monitor
 
