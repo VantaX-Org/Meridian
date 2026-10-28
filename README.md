@@ -1,13 +1,13 @@
 # Meridian — SAP Data Quality & Master Data Management Platform
 
-Meridian is a customer-deployed SAP Data Quality and Master Data Management platform. It analyses data quality across **45 modules** with **8,114 validation rules**, each proved against fixtures, connects to **7 SAP system types** (ECC, S/4HANA Cloud, SuccessFactors, Concur, Ariba, eWMS, BTP), and provides a full MDM governance layer — all running entirely inside the customer's own environment.
+Meridian is a customer-deployed SAP Data Quality and Master Data Management platform. It analyses data quality across **45 modules** with **8,380 validation rules**, each proved against fixtures, connects to **7 SAP system types** (ECC, S/4HANA Cloud, SuccessFactors, Concur, Ariba, eWMS, BTP), and provides a full MDM governance layer — all running entirely inside the customer's own environment.
 
 SAP data, findings, and reports **never leave the customer boundary**.
 
 ## Key Features
 
 ### Data Quality Engine
-- **8,000+ validation rules** — 5,300+ hand-authored plus 2,700+ derived from the SAP DDIC, the SuccessFactors canonical schemas, and the ordering/sign invariants declared in the Ariba and Concur dictionaries (see [`scripts/generate_ddic_rules.py`](scripts/generate_ddic_rules.py)); derived rules ship disabled until a tenant enables them
+- **8,380 validation rules** — 5,623 hand-authored plus 2,757 derived from the SAP DDIC, the SuccessFactors canonical schemas, and the ordering/sign invariants declared in the Ariba and Concur dictionaries (see [`scripts/generate_ddic_rules.py`](scripts/generate_ddic_rules.py)); derived rules ship disabled until a tenant enables them
 - **Record-level DQS scoring** — DAMA DMBOK composite with 6 dimensions (completeness, accuracy, consistency, timeliness, uniqueness, validity)
 - **Grain-correct check engine** — every rule evaluated at its SAP record grain (DDIC keys + join graph), exact counts, full failing-record keys
 - **LangGraph AI agents** — 6-node pipeline: analyst, config matching, config impact, remediation, readiness, report
@@ -105,7 +105,7 @@ Access: Dashboard at `http://localhost:3000`, API at `http://localhost:8000`
 
 Rule counts include both hand-authored packs and the derived rules in each module's `<module>.generated.yaml` sidecar. Derived rules ship with `enabled: false` and are seeded off.
 
-**Total: 45 modules, 8,114 validation rules, 52 config impact rules**
+**Total: 45 modules, 8,380 validation rules, 52 config impact rules**
 
 Every rule is proved against fixtures (fails at least one record, passes at least one) and
 every field it reads is resolved in the SAP dictionary, both enforced by
