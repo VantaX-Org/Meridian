@@ -83,6 +83,19 @@ const nextConfig: NextConfig = {
       { source: "/config-impact", destination: "/insights/impact", permanent: false },
       { source: "/reports", destination: "/insights/reports", permanent: false },
       { source: "/cleaning", destination: "/fix", permanent: false },
+      // Monitoring is per object now: the Fix work Monitor tab is the Objects list's monitoring view. Next carries the
+      // other query keys through, so `?tab=monitor` rides along harmlessly.
+      {
+        source: "/fix",
+        has: [{ type: "query", key: "tab", value: "monitor" }],
+        destination: "/objects?view=monitoring",
+        permanent: false,
+      },
+      // TODO (later work packages, add each rule together with the page it needs):
+      //  - /admin/notifications -> /admin/alerts when the Alerts page exists (thresholds, channels and the default
+      //    digest in one place).
+      //  - /fix?tab=cleaning -> /fix?sugg=1 once the work list is confirmed to carry every cleaning proposal as a
+      //    record with a suggested value (the parity check); until then the Cleaning tab stays.
       { source: "/remediation", destination: "/fix?tab=batches", permanent: false },
       // The proposals page moved under /fix/proposals/; the regex keeps /fix/what-if and /fix/proposals/* themselves out.
       { source: "/fix/:id((?!what-if$|proposals$|proposals/).*)", destination: "/fix/proposals/:id", permanent: false },

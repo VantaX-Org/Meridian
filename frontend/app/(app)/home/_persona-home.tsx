@@ -12,6 +12,8 @@ import { getObjects } from "@/lib/api/v1/objects";
 import { getFindings, getFindingsAggregate } from "@/lib/api/findings";
 import { useRunListWith } from "@/hooks/use-run-list";
 import { getShellCounts } from "@/lib/api/shell";
+import { getWorkSummary } from "@/lib/api/work";
+import { COUNT_DEFS } from "@/lib/counts";
 import { getSystems } from "@/lib/api/connectivity";
 import { usePermissions } from "@/lib/permissions";
 import { getConfigLandscape } from "@/lib/api/config-load";
@@ -105,6 +107,17 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const { list: versionsQ, versions: allVersions, resolving } = useRunListWith(pinnedId);
   // Same key as the rail's counts, so this is not a second request; Basis has no inbox tile.
   const shellCountsQ = useQuery({ queryKey: queryKeys.shellCounts(), queryFn: getShellCounts, enabled: wantsFindings });
+  // The work list's records to fix per object. Once built it replaces rule failures in the ledger and the map; the key
+  // is the one the object screens read (objects/_work.ts), so this is not a second request. An unbuilt or failed
+  // read leaves the page on rule failures.
+  const workQ = useQuery({
+    queryKey: ["work", "summary", pinnedId ?? "latest"],
+    queryFn: () => getWorkSummary(pinnedId ?? undefined),
+    enabled: wantsFindings,
+    staleTime: 30_000,
+    retry: false,
+    meta: { ignoreError: true },
+  });
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const landscapeQ = useQuery({ queryKey: queryKeys.configLandscape(), queryFn: getConfigLandscape });
   // The steward's queue leads the page: the five open items due first.
@@ -308,10 +321,15 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     const f = checkId ? findingOf(module, checkId) : undefined;
     return !!f && (Object.keys(f.value_fix_map ?? {}).length > 0 || (f.record_fixes ?? []).length > 0);
   };
-  // The ledger: what moves the score, ranked by rule failures (an object whose records are not attributed sorts last), then by score.
+  // The ledger: what moves the score. Ranked by records to fix once the work list is built, else by rule failures
+  // (an object whose records are not attributed sorts last), then by score.
+  const workBuilt = workQ.data?.built === true;
+  const toFixOf = new Map((workQ.data?.objects ?? []).map((w) => [w.module, w.statuses.to_fix ?? 0]));
+  const measure = (o: { module: string; affected_records: number | null }): number | null => (workBuilt ? toFixOf.get(o.module) ?? 0 : o.affected_records);
+  const measureDef = workBuilt ? COUNT_DEFS.records_to_fix : COUNT_DEFS.rule_failures;
   const ranked = (role === "steward" ? objects.filter((o) => o.failing_checks > 0) : objects)
     .filter((o) => o.composite_score !== null && (!mine || owners.isMine(o.module)))
-    .sort((a, b) => (b.affected_records ?? -1) - (a.affected_records ?? -1) || (a.composite_score ?? 0) - (b.composite_score ?? 0));
+    .sort((a, b) => (measure(b) ?? -1) - (measure(a) ?? -1) || (a.composite_score ?? 0) - (b.composite_score ?? 0));
   const rows: ObjectRow[] = ranked.slice(0, TABLE_ROWS).map((o) => {
     const blocking = blockingByModule.get(o.module);
     return { ...o, blocking, blockingWords: blocking ? wordsOf(o.module, blocking) : undefined, fixable: isFixable(o.module, blocking) };
@@ -335,17 +353,18 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       id: "owner", header: "Owner", meta: { priority: "low" }, accessorFn: (o) => owners.nameOf(o.module) ?? "",
       cell: ({ row: { original: o } }) => <OwnerName name={owners.nameOf(o.module)} status={owners.status} />,
     },
-    // Summed over the object's failing rules (a record failing two rules counts twice): rule failures, not records.
-    { accessorKey: "affected_records", header: "Rule failures", meta: { numeric: true, priority: "low" }, cell: ({ row: { original: o } }) => o.affected_records?.toLocaleString() ?? "—" },
+    // Records to fix once the work list is built (distinct records). Before that, rule failures: summed over the
+    // object's failing rules, so a record failing two rules counts twice.
+    { id: "affected_records", header: measureDef.label, accessorFn: (o) => measure(o) ?? -1, meta: { numeric: true, priority: "low" }, cell: ({ row: { original: o } }) => measure(o)?.toLocaleString() ?? "—" },
     {
-      id: "dqs", header: "Score", meta: { numeric: true },
+      id: "dqs", header: COUNT_DEFS.score.label, meta: { numeric: true },
       accessorFn: (o) => o.composite_score ?? -1,
       cell: ({ row: { original: o } }) => o.composite_score === null ? "—" : phone
         ? <span className="m-numeric">{o.composite_score.toFixed(1)}</span>
         : <Score size="sm" value={o.composite_score} bands={bands} />,
     },
     {
-      id: "readiness", header: "Verdict",
+      id: "readiness", header: COUNT_DEFS.verdict.label,
       accessorFn: (o) => o.composite_score ?? -1,
       cell: ({ row: { original: o } }) => o.composite_score === null ? <Pill>Not analysed</Pill> : <Status kind="verdict" value={readinessOf(o.composite_score, bands)} variant={phone ? "dot" : "soft"} />,
     },
@@ -361,7 +380,9 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const objectsCard = role === "basis" ? undefined : (
     <Card
       title="What moves the score"
-      meta="Ranked by rule failures"
+      meta={workBuilt
+        ? `Ranked by ${COUNT_DEFS.records_to_fix.label.toLowerCase()}, now that the work list is built. It replaces ${COUNT_DEFS.rule_failures.label.toLowerCase()}: ${COUNT_DEFS.rule_failures.hint.charAt(0).toLowerCase()}${COUNT_DEFS.rule_failures.hint.slice(1)}`
+        : `Ranked by ${COUNT_DEFS.rule_failures.label.toLowerCase()}`}
       padding="sm"
       actions={owners.hasMine || mine ? (
         <FilterChips label="Show" value={mine ? "1" : null} options={[{ value: "1", label: "My objects" }]} onChange={(v) => {
@@ -390,10 +411,10 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     </Card>
   );
 
-  // The object map: one tile per object, its area what is failing (rule failures, the ledger's count), so the
+  // The object map: one tile per object, its area what is failing (the ledger's count: records to fix, else rule failures), so the
   // objects with the most to fix are the largest and come first; its colour the verdict, its number the score.
   const mapItems = objects.map((o) => {
-    const failing = o.affected_records ?? 0;
+    const failing = measure(o) ?? 0;
     return {
       id: o.module,
       label: o.label,
@@ -401,10 +422,10 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       score: o.composite_score,
       records: failing,
       verdict: o.composite_score == null ? ("neutral" as const) : readinessOf(o.composite_score, bands),
-      meta: plural(failing, "rule failure"),
+      meta: plural(failing, measureDef.unit),
     };
   });
-  const objectMap = mapItems.length ? <ObjectMap items={mapItems} columns={8} rowHeight={52} label="Objects by rule failures and verdict" unit="rule failures" /> : undefined;
+  const objectMap = mapItems.length ? <ObjectMap items={mapItems} columns={8} rowHeight={52} label={`Objects by ${measureDef.label.toLowerCase()} and verdict`} unit={workBuilt ? "records" : "rule failures"} /> : undefined;
 
   // Every object with a scored run (not only the ledger's top rows): the grid is the whole picture by dimension.
   const heatRows = scored;
@@ -468,7 +489,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
           <Button variant="secondary" onClick={() => void queueQ.refetch()}>Retry</Button>
         </div>
       ) : queueItems.length === 0 ? (
-        <EmptyState variant="inline" title="Nothing waits in the inbox" action={<Link href="/fix?tab=cleaning" className="underline-offset-2 hover:underline">Open cleaning proposals</Link>} />
+        <EmptyState variant="inline" title="Nothing waits in the inbox" action={<Link href="/fix?sugg=1" className="underline-offset-2 hover:underline">{`Open records ${COUNT_DEFS.suggested.label.toLowerCase()}`}</Link>} />
       ) : (
         <ul className="flex flex-col" data-testid="home-inbox-items">
           {queueItems.map((it) => (
@@ -485,20 +506,21 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const work =
     role === "lead" ? (
       <WorkRow>
-        <Stat label="Objects below target" value={belowTarget.length} hint={`of ${objects.length}`} tone={belowTargetTone} href={objectsHref({ readiness: BELOW_TARGET })} />
-        <Stat label="Critical and high failing rules" value={criticalHigh.toLocaleString()} hint={criticalHigh ? undefined : "none"} tone={criticalHigh ? "no-go" : "go"} href={criticalHighLink} />
-        <Stat label="Open inbox" value={countsReady ? counts.inbox : "—"} hint={countsReady && !counts.inbox ? "clear" : undefined} href="/inbox" />
+        <Stat label={COUNT_DEFS.objects_below_target.label} value={belowTarget.length} hint={`of ${objects.length}`} tone={belowTargetTone} href={objectsHref({ readiness: BELOW_TARGET })} />
+        <Stat label={COUNT_DEFS.blocking_rules.label} value={criticalHigh.toLocaleString()} hint={criticalHigh ? undefined : "none"} tone={criticalHigh ? "no-go" : "go"} href={criticalHighLink} />
+        <Stat label={COUNT_DEFS.inbox_open.label} value={countsReady ? counts.inbox : "—"} hint={countsReady && !counts.inbox ? "clear" : undefined} href="/inbox" />
       </WorkRow>
     ) : role === "steward" ? (
       <>
         <WorkRow>
-          <Stat label="Open inbox" value={countsReady ? counts.inbox : "—"} hint={countsReady && !counts.inbox ? "clear" : undefined} href="/inbox" />
-          {/* counts.fix is the latest run's records to fix, or cleaning proposals when that run has no work list: fix_source says which. */}
-          {countsReady && counts.fix_source === "cleaning" ? (
-            <Stat label="Cleaning proposals to review" value={counts.fix.toLocaleString()} hint={!counts.fix ? "clear" : "no work list for the latest run"} href="/fix?tab=cleaning" />
-          ) : (
-            <Stat label="Records to fix" value={countsReady ? counts.fix.toLocaleString() : "—"} hint={countsReady && !counts.fix ? "clear" : undefined} href="/fix" />
-          )}
+          <Stat label={COUNT_DEFS.inbox_open.label} value={countsReady ? counts.inbox : "—"} hint={countsReady && !counts.inbox ? "clear" : undefined} href="/inbox" />
+          {/* counts.fix is the latest run's records to fix, or null when no work list is built: then the tile opens Fix work, which offers to build it. */}
+          <Stat
+            label={COUNT_DEFS.records_to_fix.label}
+            value={countsReady && counts.fix != null ? counts.fix.toLocaleString() : "—"}
+            hint={!countsReady ? undefined : counts.fix == null ? "no work list for the latest run" : !counts.fix ? "clear" : undefined}
+            href="/fix"
+          />
           <Stat
             label="Worst object"
             value={worst?.composite_score?.toFixed(1) ?? "—"}

@@ -15,7 +15,7 @@ import { downloadAuthenticated } from "@/lib/api/download";
 import { exportFindings, getFindings, getFindingsAggregate, getScoreHistory, type FindingsAggregate } from "@/lib/api/findings";
 import { errorText } from "@/lib/api/remediation";
 import { getAnalysisReportUrl, getReportDownloadUrl } from "@/lib/api/reports";
-import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
+import { exportObjects, getObjects, startedByRun, type ObjectSummary } from "@/lib/api/v1/objects";
 import { exportRunSteps, getRunSteps, type RunStep } from "@/lib/api/v1/runs";
 import { getSystems } from "@/lib/api/connectivity";
 import { getCostModel } from "@/lib/api/settings";
@@ -35,6 +35,18 @@ import { RunScope } from "@/components/run-scope";
 import { RuleCell } from "@/components/fix/rule-cell";
 import type { Finding, Version } from "@/types/api";
 import { clsx } from "clsx";
+
+/** The run's starter as a phrase for the header meta: "on a schedule", "from an upload", "as a re-check", "by Jane Doe". */
+function startedPhrase(starter: string): string | null {
+  switch (starter) {
+    case "—": return null;
+    case "Schedule": return "on a schedule";
+    case "Upload": return "from an upload";
+    case "Re-check": return "as a re-check";
+    case "System download": return "from a system download";
+    default: return `by ${starter}`;
+  }
+}
 
 const SEVERITY_OPTIONS = [
   { value: "", label: "All severities" },
@@ -705,7 +717,7 @@ export default function RunDetailPage() {
       title={runName(v)}
       meta={
         <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span>{["Started " + formatDate(v.run_at, "datetime"), systemName, duration].filter(Boolean).join(", ")}</span>
+          <span>{["Started " + formatDate(v.run_at, "datetime"), startedPhrase(startedByRun(v)), systemName, duration].filter(Boolean).join(", ")}</span>
           {(choices.length > 1 || runScope.pinned) && (
             <RunScope scope={runScope} picker hrefFor={(id) => runPageHref(id ?? latestOfLineage?.id ?? versionId)} />
           )}

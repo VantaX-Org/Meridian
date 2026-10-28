@@ -4,9 +4,13 @@ import { useMemo, useState } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, Card, ConfirmDialog, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, IconButton, Input, Menu, Mono, Notice, PageHeader, Pill, Select, Skeleton, Tabs, Textarea, IconMore, toast } from "@/design";
+import { Button, Card, Choice, ConfirmDialog, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, IconButton, Input, Menu, Mono, Notice, PageHeader, Pill, Select, Skeleton, Tabs, Textarea, IconMore, toast } from "@/design";
 import { EffectivePermissionsView } from "@/components/admin/effective-permissions";
+import { GrantDiff } from "@/components/admin/grant-diff";
 import { GrantsPicker, scopeLabel, type GrantRowView } from "@/components/admin/grants-picker";
+import { MatrixTab } from "@/components/admin/matrix-tab";
+import { RoleNavPreview } from "@/components/admin/role-nav-preview";
+import { UserStatusPill } from "@/components/admin/user-status-pill";
 import { accessLabel } from "@/lib/rbac";
 import { grantableRoles } from "@/lib/roles";
 import { InviteForm } from "@/components/admin/invite-form";
@@ -18,17 +22,18 @@ import { getSystems } from "@/lib/api/connectivity";
 import { decideAccessRequest, listAccessRequests, type AccessRequest } from "@/lib/api/me";
 import {
   addGrant, cloneRole, convertObjectApprovals, deleteGrant, deleteRole, getRolePermissions, listGrants, listRoles,
-  putRolePermissions, updateRole, type ConvertResult, type Matrix, type Role,
+  putRolePermissions, updateRole, type ConvertResult, type GrantInput, type Matrix, type Role,
 } from "@/lib/api/roles";
 import { getUsers } from "@/lib/api/users";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
-import { formatModuleName, labelOf, relativeTime } from "@/lib/format";
+import { formatDate, formatModuleName, labelOf, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { useTenantTimezone } from "@/lib/tenant-zone";
+import { hasExpiringGrant, isPast, nextGrantExpiry } from "@/lib/users";
 import type { User } from "@/types/api";
 import { auditSentence, When } from "../_lib/audit-sentence";
 
-const TABS = ["roles", "users", "invite", "requests", "history"] as const;
+const TABS = ["roles", "matrix", "users", "invite", "requests", "history"] as const;
 
 export default function AdminRolesPage() {
   const { can, loading } = useRole();
@@ -54,6 +59,7 @@ export default function AdminRolesPage() {
         value={tab} onValueChange={setTab}
         items={[
           { value: "roles", label: "Roles", content: <RolesTab roles={roles} loading={rolesQ.isLoading} error={rolesQ.isError ? rolesQ.error : null} retry={() => rolesQ.refetch()} /> },
+          { value: "matrix", label: "Matrix", content: <MatrixTab /> },
           { value: "users", label: "Users & scopes", content: <UsersTab roles={roles} onInvite={() => setTab("invite")} /> },
           { value: "invite", label: "Invite", content: <InviteTab /> },
           { value: "requests", label: "Requests", content: <RequestsTab roles={roles} /> },
@@ -163,6 +169,7 @@ function RoleDrawer({ role, onClone, onSaved }: { role: Role; onClone: () => voi
           <Button variant="secondary" disabled={!draft} onClick={() => setDraft(null)}>Reset</Button>
         </div>
       ) : null}
+      <RoleNavPreview roleKey={role.key} />
     </div>
   );
 }
@@ -222,22 +229,40 @@ function EditForm({ role, onClose, onDone }: { role: Role; onClose: () => void; 
 function UsersTab({ roles, onInvite }: { roles: Role[]; onInvite: () => void }) {
   // ?user=<id> (from Admin › Users) opens that person's grants; the URL holds the selection.
   const [selId, setSelId] = useUrlState("user", "");
+  // ?expiring=1 lists people with a grant that has expired or ends within 30 days (the access review).
+  const [expiring, setExpiring] = useUrlState("expiring", "");
+  const onlyExpiring = expiring === "1";
   const usersQ = useQuery({ queryKey: queryKeys.users(), queryFn: getUsers });
-  const users = usersQ.data?.users ?? [];
-  const sel = selId ? users.find((u) => u.id === selId) ?? null : null;
+  const all = useMemo(() => usersQ.data?.users ?? [], [usersQ.data]);
+  const users = useMemo(() => (onlyExpiring ? all.filter((u) => hasExpiringGrant(u)) : all), [all, onlyExpiring]);
+  const sel = selId ? all.find((u) => u.id === selId) ?? null : null;
   const setSel = (u: User | null) => setSelId(u?.id ?? "");
   const columns = useMemo<ColumnDef<User, unknown>[]>(() => [
     { id: "email", header: "Email", cell: ({ row }) => row.original.email },
     { id: "name", header: "Name", cell: ({ row }) => row.original.name },
     { id: "role", header: "Base role", cell: ({ row }) => labelOf(row.original.role) },
-    { id: "status", header: "Status", cell: ({ row }) => <Pill tone={row.original.is_active ? "go" : "neutral"}>{row.original.is_active ? "Active" : "Suspended"}</Pill> },
+    { id: "status", header: "Status", cell: ({ row }) => <UserStatusPill user={row.original} /> },
+    {
+      id: "expires", header: "Expires",
+      cell: ({ row }) => {
+        const next = nextGrantExpiry(row.original);
+        if (!next) return <span className="m-ink-3">Never</span>;
+        return isPast(next) ? <Pill tone="at-risk">Expired {formatDate(next)}</Pill> : <span>{formatDate(next)}</span>;
+      },
+    },
   ], []);
   if (usersQ.isError) return <ErrorState {...apiErrorState(usersQ.error)} onRetry={() => usersQ.refetch()} />;
   if (usersQ.isLoading) return <Skeleton height={240} />;
-  if (!users.length) return <EmptyState title="No users yet" detail="Invite the first one from the Invite tab." ghost="list" action={<Button onClick={() => onInvite()}>Invite user</Button>} />;
+  if (!all.length) return <EmptyState title="No users yet" detail="Invite the first one from the Invite tab." ghost="list" action={<Button onClick={() => onInvite()}>Invite user</Button>} />;
   return (
     <>
-      <DataTable columns={columns} data={users} getRowId={(u) => u.id} onRowClick={setSel} />
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <Choice pressed={onlyExpiring} onClick={() => setExpiring(onlyExpiring ? "" : "1")}>Expiring within 30 days</Choice>
+      </div>
+      <DataTable
+        columns={columns} data={users} getRowId={(u) => u.id} onRowClick={setSel}
+        emptyMessage={onlyExpiring ? "No one has a grant that expires within 30 days" : undefined}
+      />
       <Drawer open={!!sel} onOpenChange={(o) => { if (!o) setSel(null); }} title={sel?.name ?? "User"}>
         {sel ? <UserScopes key={sel.id} user={sel} roles={roles} /> : null}
       </Drawer>
@@ -250,12 +275,14 @@ function UserScopes({ user, roles }: { user: User; roles: Role[] }) {
   const [result, setResult] = useState<ConvertResult | null>(null);
   const [converted, setConverted] = useState(false);
   const [removing, setRemoving] = useState<GrantRowView | null>(null);
+  // The grant being reviewed: written only after its diff has been shown and Save pressed.
+  const [draft, setDraft] = useState<GrantInput | null>(null);
   const grantsQ = useQuery({ queryKey: ["grants", user.id], queryFn: () => listGrants(user.id) });
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const systems = systemsQ.data ?? [];
   // A grant changes what the Users list shows for this person (their roles and scope), so it refetches too.
   const done = () => { qc.invalidateQueries({ queryKey: ["grants", user.id] }); qc.invalidateQueries({ queryKey: ["user-effective", user.id] }); qc.invalidateQueries({ queryKey: queryKeys.users() }); };
-  const add = useMutation({ mutationFn: (g: Parameters<typeof addGrant>[1]) => addGrant(user.id, g), onSuccess: done, onError: (e) => toast.error(`Grant not added. ${apiErrorMessage(e)}`) });
+  const add = useMutation({ mutationFn: (g: Parameters<typeof addGrant>[1]) => addGrant(user.id, g), onSuccess: () => { setDraft(null); done(); }, onError: (e) => toast.error(`Grant not added. ${apiErrorMessage(e)}`) });
   const rem = useMutation({ mutationFn: (id: string) => deleteGrant(user.id, id), onSuccess: () => { setRemoving(null); done(); }, onError: (e) => toast.error(`Grant not removed. ${apiErrorMessage(e)}`) });
   const conv = useMutation({
     mutationFn: (confirm: boolean) => convertObjectApprovals(user.id, confirm),
@@ -269,8 +296,11 @@ function UserScopes({ user, roles }: { user: User; roles: Role[] }) {
       <Card title="Grants">
         <GrantsPicker
           grants={grantsQ.data ?? []} roles={roles} systems={systems} busy={add.isPending || rem.isPending}
-          onAdd={(g) => add.mutate(g)} onRemove={setRemoving}
+          onAdd={setDraft} onRemove={setRemoving} withExpiry addLabel="Review grant"
         />
+        {draft ? (
+          <GrantDiff userId={user.id} grant={draft} systems={systems} saving={add.isPending} onSave={() => add.mutate(draft)} onClose={() => setDraft(null)} />
+        ) : null}
       </Card>
       <ConfirmDialog
         open={!!removing}

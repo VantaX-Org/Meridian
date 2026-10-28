@@ -89,6 +89,7 @@ from api.routes.audit import router as audit_router
 from api.routes.survivorship_rules import router as survivorship_rules_router
 from api.routes.prom_metrics import router as prom_metrics_router
 from api.routes.shell import router as shell_router
+from api.routes.attention import router as attention_router
 from api.routes.system_update import router as system_update_router
 from api.routes.retention import router as retention_router
 
@@ -382,6 +383,7 @@ app.include_router(audit_router)
 app.include_router(survivorship_rules_router)
 app.include_router(prom_metrics_router)
 app.include_router(shell_router)
+app.include_router(attention_router)
 app.include_router(system_update_router)
 app.include_router(retention_router)
 

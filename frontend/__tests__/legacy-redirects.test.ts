@@ -88,6 +88,23 @@ describe("legacy route redirects", () => {
     expect("/fix/proposals/R1").not.toMatch(pattern);
   });
 
+  it("sends the retired Fix work Monitor tab to the Objects list's monitoring view", async () => {
+    const redirects = await nextConfig.redirects!();
+    const rules = redirects.filter((r) => r.source === "/fix");
+    expect(rules).toHaveLength(1);
+    expect(rules[0].has).toEqual([{ type: "query", key: "tab", value: "monitor" }]);
+    expect(rules[0].destination).toBe("/objects?view=monitoring");
+  });
+
+  // TODO (later work packages, each with the page it needs; add the rule to EXPECTED when it lands):
+  //  - /admin/notifications -> /admin/alerts (the Alerts page, wave 4)
+  //  - /fix?tab=cleaning -> /fix?sugg=1 (after the cleaning-proposal parity check passes)
+  it("does not redirect /admin/notifications or /fix?tab=cleaning yet", async () => {
+    const redirects = await nextConfig.redirects!();
+    expect(redirects.some((r) => r.source === "/admin/notifications")).toBe(false);
+    expect(redirects.some((r) => r.source === "/fix" && r.has?.some((h) => h.type === "query" && "value" in h && h.value === "cleaning"))).toBe(false);
+  });
+
   it("sends legacy /workbench?tab=batches deep links to /fix?tab=batches, ahead of the generic /workbench rule", async () => {
     const redirects = await nextConfig.redirects!();
     const workbenchRules = redirects.filter((r) => r.source === "/workbench");

@@ -42,7 +42,8 @@ export const NOTIFICATION_TYPE_LABEL: Record<NotificationType, string> = {
   approval: "Approval",
   digest: "Digest",
   warning: "Warning",
-  monitor: "Monitor",
+  // The stored type string stays `monitor`; people read it as a regression (a score that fell between runs).
+  monitor: "Regression",
   daily_digest: "Daily digest",
   report: "Report",
   dq_alert: "Quality alert",

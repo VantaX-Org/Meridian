@@ -52,8 +52,10 @@ function Section({ title, action, children, id }: { title: string; action?: Reac
 
 export default function AdminTriagePage() {
   const { can } = useRole();
-  const rules = can("manage_rules");
+  // Teams, assignment rules and SLA policies: manage_triage (programme lead, data steward), manage_settings or
+  // manage_rules (api/routes/triage.py). The working calendar is the tenant clock and stays manage_settings.
   const settings = can("manage_settings");
+  const rules = can("manage_triage") || settings || can("manage_rules");
   const teams = useQuery({ queryKey: queryKeys.triageTeams(), queryFn: getTeams });
   const ruleQ = useQuery({ queryKey: queryKeys.triageRules(), queryFn: getRules });
   const sla = useQuery({ queryKey: queryKeys.triageSla(), queryFn: getSlaPolicies });

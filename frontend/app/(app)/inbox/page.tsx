@@ -64,7 +64,7 @@ const EXC_STATUS_TONE: Record<ExceptionStatus, PillTone> = { open: "neutral", in
 const KINDS = [
   { value: "task", label: "Tasks" },
   { value: "approvals", label: "Approvals" },
-  { value: "sap", label: "SAP monitor" },
+  { value: "sap", label: "SAP signals" },
 ];
 /** Every kind a URL may name. */
 const KIND_VALUES = ["task", "exception", "approvals", "sap"] as const;

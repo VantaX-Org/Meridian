@@ -1,11 +1,12 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import type { ComponentType } from "react";
-import { Button, DataTable, ExplorerPage, ExportMenu, FilterChip, PageHeader, Stat, Tabs, emptyExportOptions, type CellMeta } from "@/design";
+import { Button, DataTable, ExplorerPage, ExportMenu, FilterChip, PageHeader, Skeleton, Stat, Tabs, emptyExportOptions, type CellMeta } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { downloadCleaningExport, getCleaningGroups, type CleaningGroup } from "@/lib/api/cleaning";
 import { KindLabel, groupHref, kindText } from "@/components/fix/kind";
@@ -15,7 +16,6 @@ import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { HIGH_CONFIDENCE_LABEL } from "@/lib/api/remediation";
 import { BatchesTab } from "./batches-tab";
 import { DedupTab } from "./monitor-dedup-tabs";
-import { MonitorTab } from "./monitor-tab";
 import { FixWork } from "@/components/work/fix-work";
 import { HomeOnboarding } from "@/components/help/home-onboarding";
 import { useRole } from "@/hooks/use-role";
@@ -108,10 +108,11 @@ const TABS: { value: string; label: string; Content: ComponentType }[] = [
   { value: "cleaning", label: "Cleaning proposals", Content: CleaningQueueTab },
   // Approving is done in Inbox › Approvals (the one approvals page); this tab keeps the batches and their export.
   { value: "batches", label: "Batches and export", Content: BatchesTab },
-  { value: "monitor", label: "Monitor", Content: MonitorTab },
 ];
 /** Old tab names that now live elsewhere: duplicate pairs are reviewed in MDM › Match review (DedupTab redirects). */
 const MOVED_TABS = ["dedup", "duplicates"];
+/** The Monitor tab is gone: monitoring is per object, on the object page and the Objects list's monitoring view. */
+const MONITOR_HREF = "/objects?view=monitoring";
 
 export default function FixPage() {
   // An approver who may not apply has every control disabled on "Records to fix", so the nav entry
@@ -122,6 +123,12 @@ export default function FixPage() {
   const tab = oneOf(tabRaw, TABS.map((t) => t.value), "work");
   // Stewards land here rather than on a persona home (lib/persona.ts homeHrefForRole), so the first-run offer is here too.
   const steward = !!homeRole && personaForRole(homeRole) === "steward";
+  const router = useRouter();
+  const monitorMoved = tabRaw === "monitor";
+  useEffect(() => {
+    if (monitorMoved) router.replace(MONITOR_HREF);
+  }, [monitorMoved, router]);
+  if (monitorMoved) return <div aria-busy="true"><Skeleton height={240} /></div>;
   if (MOVED_TABS.includes(tabRaw)) return <DedupTab />;
 
   return (

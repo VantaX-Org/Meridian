@@ -7,6 +7,7 @@ import * as objectsApi from "@/lib/api/v1/objects";
 import * as findingsApi from "@/lib/api/findings";
 import * as versionsApi from "@/lib/api/versions";
 import * as shellApi from "@/lib/api/shell";
+import * as workApi from "@/lib/api/work";
 import * as stewardshipApi from "@/lib/api/stewardship";
 import * as connectivityApi from "@/lib/api/connectivity";
 import * as configLoadApi from "@/lib/api/config-load";
@@ -64,6 +65,7 @@ beforeEach(() => {
   vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: OBJECTS });
   vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [LATEST] });
   vi.spyOn(shellApi, "getShellCounts").mockResolvedValue({ fix: 0, inbox: 0 });
+  vi.spyOn(workApi, "getWorkSummary").mockResolvedValue({ version_id: null, scope: null, built: false, objects: [], totals: { records: 0, open: 0, issues: 0, critical: 0, proposed: 0, overdue: 0 } });
   vi.spyOn(stewardshipApi, "getQueueItems").mockResolvedValue({ items: [], total: 0 } as unknown as Awaited<ReturnType<typeof stewardshipApi.getQueueItems>>);
   vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
   vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 0 });
@@ -409,7 +411,7 @@ describe("PersonaHomePage blocking and loading states", () => {
     // Each item opens that task in the inbox, not every task of its type.
     expect(within(items).getByRole("link", { name: /Merge decision/ })).toHaveAttribute("href", "/inbox?focus=q1");
     const hero = screen.getByTestId("home-verdict-row");
-    const inbox = screen.getByText("Open inbox").closest("a") as HTMLElement;
+    const inbox = screen.getByText("Open inbox items").closest("a") as HTMLElement;
     expect(inbox.compareDocumentPosition(hero) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(items.compareDocumentPosition(hero) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
@@ -418,7 +420,7 @@ describe("PersonaHomePage blocking and loading states", () => {
     vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     renderWithQuery(<LeadHomePage />);
     const hero = await screen.findByTestId("home-verdict-row");
-    const inbox = screen.getByText("Open inbox").closest("a") as HTMLElement;
+    const inbox = screen.getByText("Open inbox items").closest("a") as HTMLElement;
     expect(hero.compareDocumentPosition(inbox) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
@@ -428,20 +430,36 @@ describe("PersonaHomePage blocking and loading states", () => {
 
     renderWithQuery(<StewardHomePage />);
 
-    const inbox = (await screen.findByText("Open inbox")).closest("a");
+    const inbox = (await screen.findByText("Open inbox items")).closest("a");
     expect(inbox).toHaveTextContent("—");
     expect(inbox).not.toHaveTextContent(/clear|0/);
     expect((await screen.findByText("Records to fix")).closest("a")).not.toHaveTextContent(/clear/);
   });
 
-  it("labels the steward's fix tile as cleaning proposals when the latest run has no work list", async () => {
+  it("shows the steward's records to fix tile as a dash, never as proposals, when no work list is built", async () => {
     vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
-    vi.spyOn(shellApi, "getShellCounts").mockResolvedValue({ fix: 4, fix_source: "cleaning", inbox: 0 });
+    vi.spyOn(shellApi, "getShellCounts").mockResolvedValue({ fix: null, inbox: 0 });
     renderWithQuery(<StewardHomePage />);
-    const tile = (await screen.findByText("Cleaning proposals to review")).closest("a");
-    expect(tile).toHaveAttribute("href", "/fix?tab=cleaning");
-    expect(tile).toHaveTextContent("4");
-    expect(screen.queryByText("Records to fix")).toBeNull();
+    const tile = (await screen.findByText("Records to fix")).closest("a");
+    await waitFor(() => expect(tile).toHaveTextContent("no work list for the latest run"));
+    expect(tile).toHaveAttribute("href", "/fix");
+    expect(tile).toHaveTextContent("—");
+    expect(screen.queryByText(/cleaning proposals/i)).toBeNull();
+  });
+
+  it("ranks the ledger by records to fix, and says so, once the work list is built", async () => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
+    vi.spyOn(workApi, "getWorkSummary").mockResolvedValue({
+      version_id: null, scope: null, built: true,
+      objects: [{ module: "material_master", records: 40, open: 40, issues: 55, critical: 0, proposed: 0, overdue: 0, statuses: { to_fix: 37 } }],
+      totals: { records: 40, open: 40, issues: 55, critical: 0, proposed: 0, overdue: 0 },
+    });
+    renderWithQuery(<LeadHomePage />);
+    expect(await screen.findByRole("columnheader", { name: /Records to fix/ })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: /Rule failures/ })).toBeNull();
+    expect(screen.getByText(/^Ranked by records to fix, now that the work list is built/)).toHaveTextContent("a record failing two rules counts twice");
+    expect(await screen.findByText("37")).toBeInTheDocument();
+    expect(screen.getByLabelText("Objects by records to fix and verdict")).toBeInTheDocument();
   });
 });
 

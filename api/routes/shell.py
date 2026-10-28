@@ -15,14 +15,13 @@ async def shell_counts(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _role: str = Depends(require_permission("view")),
-) -> dict[str, int | str]:
+) -> dict[str, int | None]:
     """Fix = records still to fix in the current state's work lists, each object from its own latest run (the
-    scope Fix work opens on; api/services/current_state.py), or cleaning proposals awaiting review when none of
-    those runs has a work list; Inbox = open, in-progress and escalated stewardship items (the statuses the inbox
-    lists). ``fix_source`` says which of the two ``fix`` counts: "work" (records to fix) or "cleaning" (proposals
-    to review), so a caller never labels one as the other."""
+    scope Fix work opens on; api/services/current_state.py), or null when no run of the current state has a work
+    list built: the badge is then hidden and Fix offers to build the list. It is never substituted by cleaning
+    proposals. Inbox = open, in-progress and escalated stewardship items (the statuses the inbox lists)."""
     pairs = await current_pairs(db, tenant.id)
-    fix_result = None
+    fix: int | None = None
     built = set((await db.execute(text(
         "SELECT id::text FROM analysis_versions WHERE tenant_id = :tid AND id = ANY(CAST(:ids AS uuid[])) "
         "AND COALESCE(metadata, '{}'::jsonb) ? 'worklist_built_at'"),
@@ -30,20 +29,13 @@ async def shell_counts(
     pairs = [p for p in pairs if p["version_id"] in built]
     if pairs:
         params: dict = {"tid": str(tenant.id)}
-        fix_result = await db.execute(
+        fix = (await db.execute(
             text(f"SELECT COUNT(*) FROM work_records w WHERE w.tenant_id = :tid AND {pairs_clause('w', pairs, params)} "
                  "AND w.status = 'to_fix'"),
             params,
-        )
-    fix_source = "work"
-    if fix_result is None:
-        fix_source = "cleaning"
-        fix_result = await db.execute(
-            text("SELECT COUNT(*) FROM cleaning_queue WHERE tenant_id = :tid AND status = 'detected'"),
-            {"tid": str(tenant.id)},
-        )
+        )).scalar() or 0
     inbox_result = await db.execute(
         text("SELECT COUNT(*) FROM stewardship_queue WHERE tenant_id = :tid AND status IN ('open', 'in_progress', 'escalated')"),
         {"tid": str(tenant.id)},
     )
-    return {"fix": fix_result.scalar() or 0, "fix_source": fix_source, "inbox": inbox_result.scalar() or 0}
+    return {"fix": fix, "inbox": inbox_result.scalar() or 0}

@@ -10,7 +10,7 @@ The page reads **Inbox** and has three tabs, each with a line that says what it 
 
 - **Tasks**: fixes and matches waiting for a steward, and the business exceptions your exception rules raised. **Show** switches between **Queue tasks** and **Exceptions**.
 - **Approvals**: fix batches and SAP write-backs that wait for a second person. Approve the ones you did not request.
-- **SAP monitor**: live signals from SAP, such as failed jobs and locked records.
+- **SAP signals**: live signals from SAP, such as failed jobs and locked records.
 
 You can link straight to exceptions as `/inbox?kind=exception`; it is also listed as **Inbox**, **Exceptions** for roles that approve or assign. The search is kept in the address (`?q=`), so a searched list can be shared or reloaded.
 
@@ -46,9 +46,9 @@ To act on several, tick them and choose **Claim**, **Approve**, **Reject with re
 
 Choose **Show**, **Exceptions** on the Tasks tab. Exceptions are sorted by deadline. Each shows its title, category, status, assignee and severity. Select one to read its source and estimated impact, then **Resolve** (with notes on what was done), **Claim** or **Escalate**. Escalating moves it up one tier with a shorter deadline. Tick several to **Claim**, **Escalate** or **Resolve with notes** together. Roles that manage rules see **Manage exception rules**, where each rule is switched on or off and new ones are added.
 
-## SAP monitor
+## SAP signals
 
-**SAP monitor** lists signals by category, severity, status, source and time raised; select **Review** to read one.
+**SAP signals** lists signals by category, severity, status, source and time raised; select **Review** to read one.
 
 ## Approvals
 

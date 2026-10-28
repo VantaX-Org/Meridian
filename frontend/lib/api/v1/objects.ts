@@ -4,6 +4,7 @@ import type { ScoreBands } from "@/design/primitives/ScoreRing";
 import type { Material360 } from "../materials";
 import { optional } from "../optional";
 import { formatModuleName } from "@/lib/format";
+import type { Version } from "@/types/api";
 
 export interface ObjectSummary {
   module: string;
@@ -89,4 +90,73 @@ export function exportObjects(run: string, format: "csv" | "xlsx" = "xlsx"): Pro
 /** GET /api/v1/objects/{module}/export — the rules table behind one object, as CSV or XLSX. */
 export function exportObject(module: string, run: string, format: "csv" | "xlsx" = "xlsx"): Promise<void> {
   return downloadBlob(`/api/v1/objects/${encodeURIComponent(module)}/export`, { run, format }, `${module}.${format}`);
+}
+
+/** How fresh an object's score is against its own cadence (api/services/cadence.py). */
+export type Freshness = "fresh" | "due" | "stale" | "failed" | "paused" | "manual";
+/** How a run started; null for runs from before it was stamped. */
+export type MonitorTrigger = "scheduled" | "manual" | "recheck" | "upload";
+
+export interface MonitorRule { check_id: string; severity?: string | null; new?: number }
+
+/** GET /api/v1/objects/{module}/monitor and the rows of GET /api/v1/objects/monitor. */
+export interface ObjectMonitor {
+  module: string;
+  system_id: string | null;
+  last_run_at: string | null;
+  last_version_id: string | null;
+  trigger: MonitorTrigger | null;
+  requested_by_label: string | null;
+  cadence: { cron: string | null; active: boolean | null; interval_seconds: number | null; profile_id: string | null };
+  next_run_at: string | null;
+  freshness: Freshness;
+  baseline: { kind: "pinned" | "previous" | null; version_id: string | null; run_at: string | null };
+  drift: {
+    new_failing: number;
+    recovered: number;
+    newly_failing_rules: MonitorRule[];
+    recovered_rules: { check_id: string }[];
+    newly_failing_rule_count: number;
+    recovered_rule_count: number;
+  };
+}
+
+/** Cadence, freshness, trigger, baseline and drift of every object of the current state, one row each. */
+export const getObjectsMonitor = async (): Promise<ObjectMonitor[]> =>
+  (await optional(() => get<{ objects: ObjectMonitor[] }>("/api/v1/objects/monitor")))?.objects ?? [];
+
+/** One object's monitor at `run`, else at its own latest run; null when the API has no such object (never run, never scheduled). */
+export const getObjectMonitor = (module: string, run?: string): Promise<ObjectMonitor | null> =>
+  optional(() => get<ObjectMonitor>(`/api/v1/objects/${encodeURIComponent(module)}/monitor`, { run }));
+
+/** POST /api/v1/sync-trigger/trigger with trigger "recheck": extracts and checks this object again now. */
+export const recheckObject = async (module: string): Promise<{ queued: string[]; skipped: string[] }> =>
+  (await apiClient.post<{ queued: string[]; skipped: string[] }>("/api/v1/sync-trigger/trigger", { module_ids: [module], trigger: "recheck" })).data;
+
+/** Who or what started a run, for the Runs list: "Schedule", the person's name, "Upload" or "Re-check"; null when the run did not record it. */
+export function startedBy(trigger: MonitorTrigger | null | undefined, requestedByLabel?: string | null): string | null {
+  switch (trigger) {
+    case "scheduled": return "Schedule";
+    case "upload": return "Upload";
+    case "recheck": return "Re-check";
+    case "manual": return requestedByLabel || "Manual";
+    default: return null;
+  }
+}
+
+/** The run's `metadata.trigger` and `metadata.requested_by_label` (api/services/object_monitor.py), absent on runs from before they were stamped. */
+type StampedMetadata = { trigger?: MonitorTrigger | null; requested_by_label?: string | null };
+
+/**
+ * Who or what started a run, for the Runs list and the run page: "Schedule", the person's name, "Upload" or
+ * "Re-check". Runs from before the trigger was stamped fall back to what they record: a file someone imported,
+ * or a download from a system.
+ */
+export function startedByRun(v: Pick<Version, "metadata">): string {
+  const m = v.metadata as StampedMetadata | null;
+  const stamped = startedBy(m?.trigger, m?.requested_by_label);
+  if (stamped) return stamped;
+  if (v.metadata?.file_name) return "Upload";
+  if (v.metadata?.source === "extraction") return "System download";
+  return "—";
 }

@@ -15,7 +15,6 @@ vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true, homeRole
 vi.mock("@/components/work/fix-work", () => ({ FixWork: () => null }));
 vi.mock("@/components/help/home-onboarding", () => ({ HomeOnboarding: () => <div data-testid="home-onboarding" /> }));
 vi.mock("../batches-tab", () => ({ BatchesTab: () => null }));
-vi.mock("../monitor-tab", () => ({ MonitorTab: () => null }));
 vi.mock("../monitor-dedup-tabs", () => ({ DedupTab: () => null }));
 
 describe("Fix work onboarding", () => {

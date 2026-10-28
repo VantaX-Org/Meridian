@@ -74,6 +74,15 @@ describe("NotificationBell", () => {
     expect(screen.getByRole("link", { name: "Open notification: New analysis complete: 172 findings in Accounts payable" })).toBeInTheDocument();
   });
 
+  it("shows the stored monitor type as Regression", async () => {
+    api.getUnreadCount.mockResolvedValue(1);
+    api.getNotifications.mockResolvedValue({ items: [note({ type: "monitor", title: "Score fell" })], total: 1 });
+    renderBell();
+    fireEvent.click(await screen.findByRole("button", { name: /Notifications/ }));
+    expect(await screen.findByText("Regression")).toBeInTheDocument();
+    expect(screen.queryByText("Monitor")).toBeNull();
+  });
+
   it("marks a notification read when it is opened", async () => {
     api.getUnreadCount.mockResolvedValue(1);
     api.getNotifications.mockResolvedValue({ items: [note({})], total: 1 });

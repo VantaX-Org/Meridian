@@ -32,7 +32,7 @@ function Panel({ q, children }: { q: { isLoading: boolean; error: unknown; refet
   return <>{children}</>;
 }
 
-/* ─── SAP monitor: exceptions raised from live SAP signals ─── */
+/* ─── SAP signals: exceptions raised from live SAP signals ─── */
 
 /** The system the signal's run read and the objects whose findings raised it (api/services/exception_engine.py). */
 export function sapSignalSource(e: Exception): { systemId: string | null; objects: string[] } {
@@ -239,7 +239,7 @@ function BatchApprovals() {
   const cols = useMemo<ColumnDef<BatchSummary, unknown>[]>(() => [
     { id: "name", header: "Batch", cell: ({ row }) => row.original.name },
     { id: "change", header: "Rules and change", enableSorting: false, cell: ({ row }) => <BatchPreview batch={row.original} messages={messages} /> },
-    { id: "by", header: "Requested by", cell: ({ row }) => row.original.created_by_label ?? "Meridian monitor" },
+    { id: "by", header: "Requested by", cell: ({ row }) => row.original.created_by_label ?? "Meridian" },
     { id: "items", header: "Records", meta: { numeric: true }, cell: ({ row }) => formatInt(row.original.items) },
     { id: "status", header: "Status", cell: ({ row }) => STATUS_LABEL[row.original.status as BatchStatus] },
     { id: "when", header: "Requested", cell: ({ row }) => relativeTime(row.original.created_at) },

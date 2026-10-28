@@ -28,6 +28,7 @@ from workers.celery_app import celery_app
 from workers.db import get_sync_engine
 import workers.tasks.send_report_pack  # noqa: F401 — registers the board pack beat tasks
 import workers.tasks.report_schedules  # noqa: F401 — registers the scheduled report tasks
+import workers.tasks.process_schedules  # noqa: F401 — registers the process discovery schedule tick
 
 logger = logging.getLogger("meridian.scheduler")
 
@@ -1002,6 +1003,10 @@ celery_app.conf.beat_schedule = {
     "report-schedules-every-15min": {
         "task": "workers.tasks.report_schedules.run_due_report_schedules",
         "schedule": crontab(minute="1,16,31,46"),  # due slots are on the quarter hour or later; idempotent per slot
+    },
+    "process-discovery-schedules-every-5min": {
+        "task": "workers.tasks.process_schedules.run_due_process_schedules",
+        "schedule": crontab(minute="2-59/5"),  # offset from the :00 ticks; a due slot is claimed under a row lock, one run per slot
     },
     "forced-update-check-every-15min": {
         "task": "forced_update_check",

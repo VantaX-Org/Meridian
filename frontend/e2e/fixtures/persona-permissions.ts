@@ -12,8 +12,9 @@ const READ = ["view", "mdm.read", "view_ai_confidence"];
 
 /** rbac.py PERSONA_ROLES before platform_admin is widened to ALL_ACTIONS. */
 const PERSONA_BASE = {
-  programme_lead: [...LEGACY_PERMISSIONS.manager, "run_process_discovery"],
-  data_steward: [...LEGACY_PERMISSIONS.steward, "run_process_discovery"],
+  // manage_triage: teams, assignment rules and SLA policies (rbac.py PERSONA_ROLES).
+  programme_lead: [...LEGACY_PERMISSIONS.manager, "run_process_discovery", "manage_triage"],
+  data_steward: [...LEGACY_PERMISSIONS.steward, "run_process_discovery", "manage_triage"],
   data_owner: [...LEGACY_PERMISSIONS.approver],
   sap_basis: [...LEGACY_PERMISSIONS.analyst, "manage_systems", "trigger_sync", "manage_field_mappings", "upload", "run_process_discovery"],
   platform_admin: [...LEGACY_PERMISSIONS.admin],

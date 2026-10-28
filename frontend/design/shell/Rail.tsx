@@ -190,14 +190,13 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
     const active = isActive(item);
     const count = item.badgeKey ? counts?.[item.badgeKey] ?? 0 : 0;
     const showPip = hasPip(item);
-    // The Fix count is records to fix, or cleaning proposals awaiting review when the newest run has no work list
-    // (`fix_source`): then it opens the Cleaning tab and is a neutral count, not failing records.
-    const cleaning = item.badgeKey === "fix" && counts?.fix_source === "cleaning";
-    const critical = item.badgeKey === "fix" && !cleaning;
+    // The Fix badge is records to fix, drawn as failing records. With no work list built the count is null and the
+    // badge is hidden (it is never swapped for another number).
+    const critical = item.badgeKey === "fix";
     return (
       <li key={item.href}>
         <Link
-          href={cleaning ? "/fix?tab=cleaning" : resolveNavHref(item.href, role, can)}
+          href={resolveNavHref(item.href, role, can)}
           aria-current={active ? "page" : undefined}
           // With a health pip the name starts with the visible pill text and keeps the badge count, then the health.
           aria-label={showPip && healthLabel ? `${PILL_LABEL[item.href] ?? item.label}${count > 0 ? ` ${count > 99 ? "99+" : count}` : ""}, ${healthLabel}` : undefined}

@@ -201,11 +201,13 @@ def test_settings_ai_reviewer_tooltip():
 
 def test_settings_permissions_table_comes_from_the_api():
     """Admin › Users keeps no local copy of role capabilities and sets no role: it shows the user's grants
-    from the API (GET /users/{id}/grants) and links to Roles and access, which owns the server's matrix."""
+    from the API (GET /users/{id}/grants) and links to Roles and access, which owns the server's matrix.
+    A role select may filter the list; it never writes a role."""
     path = Path("frontend/app/(app)/admin/users/page.tsx")
     content = path.read_text(encoding="utf-8")
     assert "listGrants" in content and "ai_feedback" not in content
-    assert "ROLE_OPTIONS" not in content and "<Select" not in content
+    assert "ROLE_OPTIONS" not in content
+    assert not re.search(r"updateUser\([^)]*\brole\b", content)
 
 
 # ── O.5 Upload page — connected systems banner ─────────────────────────────

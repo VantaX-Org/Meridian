@@ -18,6 +18,7 @@ import { FindingContextPanel } from "./rules/[ruleId]/finding-context-panel";
 import { RootCauseSection } from "./rules/[ruleId]/root-cause";
 import { Workbench, useRuleDetails } from "./_workbench";
 import { FixStrip } from "./_fix";
+import { ObjectMonitorStrip } from "./_monitor";
 import { FixWork } from "@/components/work/fix-work";
 import { workSummaryQuery } from "../_work";
 import { PAGE_SIZE, STALE_MS, fixSheetHref, isBlocking, objectQuery, recordsQuery, useFixShortcut, useRecordColumns } from "./_shared";
@@ -564,6 +565,7 @@ export default function ObjectDetailPage() {
         }
       />
       <p className="m-text-body m-ink-2">Records of {summary?.label ?? formatModuleName(object)} that fail a check in this run, worst first. Pick one and fix it.</p>
+      <ObjectMonitorStrip object={object} run={run} />
       {/* On Records to fix the queue's own tiles count the same records; the strip would say it twice. */}
       {tab === "fix" ? null : <FixStrip object={object} summary={summary} work={workObject} loading={work.isLoading} />}
       {run && <NextBestActionCard run={run} module={object} />}

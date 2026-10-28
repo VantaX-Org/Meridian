@@ -79,3 +79,22 @@ describe("InviteForm", () => {
     });
   });
 });
+
+describe("InviteForm seats", () => {
+  it("shows the seat count and refuses the invite at full", async () => {
+    const licence = await import("@/lib/api/licence");
+    vi.spyOn(licence, "getLicenceManifest").mockResolvedValue({ ...licence.DEFAULT_MANIFEST, seats_used: 50, seats: 50 });
+    renderWithQuery(<InviteForm onDone={() => {}} />);
+    expect(await screen.findByText("Licence seats are full (50 of 50). Suspend a user or raise the licence.")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "new@example.test" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add grant" }));
+    expect(screen.getByRole("button", { name: "Send invitation" })).toBeDisabled();
+  });
+
+  it("shows how many seats are in use while there is room", async () => {
+    const licence = await import("@/lib/api/licence");
+    vi.spyOn(licence, "getLicenceManifest").mockResolvedValue({ ...licence.DEFAULT_MANIFEST, seats_used: 41, seats: 50 });
+    renderWithQuery(<InviteForm onDone={() => {}} />);
+    expect(await screen.findByTestId("invite-seats")).toHaveTextContent("41 of 50 seats");
+  });
+});

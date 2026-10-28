@@ -11,6 +11,7 @@ from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services import attention
 from api.services.rbac import (
     LEGACY_ACTION_MAP, EffectivePermissions, Scope, _get_user_role, actions_for, current_user_id,
     dev_role_override, effective_permissions, require_permission, resource_matrix, write_audit,
@@ -171,4 +172,5 @@ async def decide_access_request(
     await write_audit(db, tenant.id, request, "access_request.decide", "access_request",
                       str(request_id), before.model_dump(), after.model_dump())
     await db.commit()
+    attention.invalidate(tenant.id)
     return after

@@ -2,15 +2,20 @@
 
 import { useId, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Field, Pill, Select, IconClose } from "@/design";
+import { Button, Field, Input, Pill, Select, IconClose } from "@/design";
+import { formatDate } from "@/lib/format";
+import { isPast } from "@/lib/users";
 import { getSystemModules } from "@/lib/api/connectivity";
 import type { GrantInput, Role } from "@/lib/api/roles";
 import { grantLabel, grantableRoles } from "@/lib/roles";
 
 export interface SystemRef { id: string; name: string }
-export interface GrantRowView { id: string; role_key: string; system_id: string | null; module: string | null }
+export interface GrantRowView { id: string; role_key: string; system_id: string | null; module: string | null; expires_at?: string | null }
 
 const ALL = "__all__";
+
+/** The first day a grant may expire on: the API refuses an expiry in the past. */
+const tomorrow = (): string => new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
 
 export function scopeLabel(systemId: string | null | undefined, module: string | null | undefined, systems: SystemRef[]): string {
   const sys = systemId ? systems.find((s) => s.id === systemId)?.name ?? systemId : null;
@@ -18,7 +23,7 @@ export function scopeLabel(systemId: string | null | undefined, module: string |
 }
 
 /** Role + scope editor over a list of grants. Presentational: the caller persists (or just collects) them. */
-export function GrantsPicker({ grants, roles, systems, onAdd, onRemove, busy, preset }: {
+export function GrantsPicker({ grants, roles, systems, onAdd, onRemove, busy, preset, withExpiry = false, addLabel = "Add grant" }: {
   grants: GrantRowView[];
   roles: Role[];
   systems: SystemRef[];
@@ -26,10 +31,14 @@ export function GrantsPicker({ grants, roles, systems, onAdd, onRemove, busy, pr
   onRemove: (g: GrantRowView) => void;
   busy?: boolean;
   preset?: Partial<GrantInput>;
+  /** Offer an optional expiry date; the grant stops working at the end of that day (UTC). */
+  withExpiry?: boolean;
+  addLabel?: string;
 }) {
   const [role, setRole] = useState(preset?.role_key ?? "");
   const [system, setSystem] = useState(preset?.system_id ?? ALL);
   const [modKey, setModKey] = useState(preset?.module ?? "");
+  const [expires, setExpires] = useState("");
   const listId = useId();
   // Module suggestions come from the chosen system (native datalist); any module key may still be typed.
   const modulesQ = useQuery({ queryKey: ["system-modules", system], queryFn: () => getSystemModules(system), enabled: system !== ALL });
@@ -48,6 +57,7 @@ export function GrantsPicker({ grants, roles, systems, onAdd, onRemove, busy, pr
         {grants.map((g) => (
           <li key={g.id} className="inline-flex items-center gap-1">
             <Pill>{label(g)}</Pill>
+            {g.expires_at ? <Pill tone={isPast(g.expires_at) ? "at-risk" : "neutral"}>{isPast(g.expires_at) ? "Expired" : "Expires"} {formatDate(g.expires_at)}</Pill> : null}
             <button type="button" aria-label={`Remove ${label(g)}`} disabled={busy} onClick={() => onRemove(g)}>
               <IconClose size={14} />
             </button>
@@ -62,11 +72,17 @@ export function GrantsPicker({ grants, roles, systems, onAdd, onRemove, busy, pr
           <input list={listId} value={modKey} onChange={(e) => setModKey(e.target.value.trim())} />
         </Field>
         <datalist id={listId}>{modules.map((m) => <option key={m} value={m} />)}</datalist>
+        {withExpiry ? (
+          <Field label="Expires (optional)"><Input type="date" value={expires} min={tomorrow()} onChange={(e) => setExpires(e.target.value)} /></Field>
+        ) : null}
         <Button
           type="button" variant="secondary" disabled={!role || busy}
-          onClick={() => onAdd({ role_key: role, system_id: system === ALL ? null : system, module: modKey || null })}
+          onClick={() => onAdd({
+            role_key: role, system_id: system === ALL ? null : system, module: modKey || null,
+            ...(withExpiry && expires ? { expires_at: `${expires}T23:59:59Z` } : {}),
+          })}
         >
-          Add grant
+          {addLabel}
         </Button>
       </div>
     </div>

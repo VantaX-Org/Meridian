@@ -17,6 +17,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services import attention
 from api.services.config_pairing import enqueue_config_load, pair_error
 from api.services.rbac import Scope, _as_uuid, current_user_label, require_permission, require_scope, scope_from_path
 from api.services.version_status import finished_sql
@@ -536,6 +537,7 @@ async def delete_sync_profile(
     if not result.fetchone():
         raise HTTPException(status_code=404, detail="Schedule not found")
     await db.commit()
+    attention.invalidate(tenant.id)
 
 
 def _connection_test_once(system_type: str, params: dict, secrets_to_mask: list[str]) -> TestConnectionResponse:
@@ -911,6 +913,7 @@ async def create_sync_profile(
     )
     row = result.fetchone()
     await db.commit()
+    attention.invalidate(tenant.id)
 
     return SyncProfileResponse(
         id=str(row[0]), system_id=str(row[1]), domain=row[2],
@@ -993,6 +996,7 @@ async def update_sync_profile(
     if not row:
         raise HTTPException(status_code=404, detail="Sync profile not found")
     await db.commit()
+    attention.invalidate(tenant.id)
     return SyncProfileResponse(
         id=str(row[0]), system_id=str(row[1]), domain=row[2],
         tables=row[3], schedule_cron=row[4], active=row[5],

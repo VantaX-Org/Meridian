@@ -246,6 +246,78 @@ Sending an approved change straight into SAP instead of exporting a file, offere
 
 A customer-defined table, field or program in SAP, named with a Z or Y prefix. Meridian finds them, lists who owns them and whether they are documented, and flags unusual values in them. See [Data in](/docs?page=data-in).
 
+## Numbers on screen
+
+Every number Meridian shows has one name and one meaning, listed here in the order they appear in the product.
+
+### Score
+
+The data quality score of the object or run, from 0 to 100, held down when a critical rule fails.
+
+### Verdict
+
+Go, At risk or No-go, from the score and your score bands.
+
+### Failing rules
+
+Rules that failed on at least one record in the run.
+
+### Critical and high failing rules
+
+Failing rules of critical or high severity, the ones that stand in the way of a Go verdict.
+
+### Rule failures
+
+Failing records summed over every failing rule: a record failing two rules counts twice.
+
+### Records to fix
+
+Distinct records in the work list that still need a decision, however many rules they fail.
+
+### Critical records
+
+Records to fix whose worst failing rule is critical.
+
+### With a suggested value
+
+Records to fix that already carry a suggested value you can accept.
+
+### Overdue records
+
+Records to fix that are past their due date.
+
+### Approvals waiting
+
+Fix batches and SAP write-backs that wait for a second person to approve.
+
+### Open inbox items
+
+Inbox items that are open, in progress or escalated.
+
+### Overdue inbox items
+
+Open inbox items that are past their due time.
+
+### Objects below target
+
+Objects whose verdict is At risk or No-go.
+
+### New failing records
+
+Records that fail in this run and passed in the baseline.
+
+### Recovered records
+
+Records that failed in the baseline and pass now.
+
+### Newly failing rules
+
+Rules that fail now and did not fail in the baseline.
+
+### Recovered rules
+
+Rules that failed in the baseline and have no failures now.
+
 ## Related
 
 - [Key concepts](/docs?page=concepts)
