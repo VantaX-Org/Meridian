@@ -82,7 +82,7 @@ export default function GoldenRecordsPage() {
       header={
         <PageHeader
           title="Golden records"
-          meta={`${query.data ? `${query.data.total.toLocaleString()} records. ` : ""}One trusted version of each SAP record, merged from every system that holds it.`}
+          meta={`${query.data ? `${query.data.total.toLocaleString()} ${status === "all" ? "master records" : `${STATUS_OPTIONS.find((o) => o.value === status)?.label.toLowerCase() ?? status} records`}. ` : ""}${status === "all" ? "Only records marked Golden are promoted. " : ""}One trusted version of each SAP record, merged from every system that holds it.`}
           actions={<Button render={<Link href="/mdm/golden/merge">Review match pairs</Link>} />}
         />
       }

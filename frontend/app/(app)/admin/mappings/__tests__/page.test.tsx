@@ -31,6 +31,34 @@ describe("admin field mappings page", () => {
     await waitFor(() => expect(screen.getByText("LFA1.STCD1")).toBeInTheDocument());
   });
 
+  it("shows the shipped column as a placeholder, not a value, on an unmapped row", async () => {
+    vi.spyOn(mappingsApi, "getFieldMappings").mockResolvedValue({
+      mappings: [{ ...MAPPING, customer_field: "LFA1.STCD1", customer_label: "Tax number", is_mapped: false }], total: 1, self_service_enabled: true,
+    });
+    renderWithQuery(<AdminMappingsPage />);
+    const input = await screen.findByLabelText("LFA1.STCD1 customer column");
+    expect(input).toHaveValue("");
+    expect(input).toHaveAttribute("placeholder", "Default LFA1.STCD1");
+    expect(screen.getByText("Not mapped")).toBeInTheDocument();
+    expect(screen.getAllByPlaceholderText(/search/i)).toHaveLength(1);
+  });
+
+  it("offers one Save changes bar for every edited row", async () => {
+    role.write = true;
+    try {
+      vi.spyOn(mappingsApi, "getFieldMappings").mockResolvedValue({ mappings: [{ ...MAPPING, customer_field: null, is_mapped: false }], total: 1, self_service_enabled: true });
+      const update = vi.spyOn(mappingsApi, "updateFieldMapping").mockResolvedValue({ ...MAPPING });
+      renderWithQuery(<AdminMappingsPage />);
+      expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
+      fireEvent.change(await screen.findByLabelText("LFA1.STCD1 customer column"), { target: { value: "tax_no" } });
+      expect(screen.getByText("1 unsaved change")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+      await waitFor(() => expect(update).toHaveBeenCalledWith("m1", expect.objectContaining({ customer_field: "tax_no", is_mapped: true })));
+    } finally {
+      role.write = false;
+    }
+  });
+
   it("keeps spaces while a column header is typed and trims it only on save", async () => {
     role.write = true;
     try {

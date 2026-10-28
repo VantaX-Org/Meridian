@@ -145,6 +145,15 @@ describe("rule detail page", () => {
     expect(screen.queryByText("Not run yet")).not.toBeInTheDocument();
   });
 
+  it("asks for the run history by check id, not by the rule's row id", async () => {
+    vi.spyOn(rulesApi, "getRule").mockResolvedValue(RULE);
+    vi.spyOn(configLoadApi, "getRuleApplicability").mockResolvedValue(APPLICABILITY);
+    const history = vi.spyOn(rulesApi, "getRuleHistory").mockResolvedValue({ rule_id: "AP001", runs: [] });
+    renderWithQuery(<RulePage />);
+    await waitFor(() => expect(history).toHaveBeenCalled());
+    expect(history).toHaveBeenCalledWith("AP001", expect.anything());
+  });
+
   it("says in plain words what the rule checks, why it matters and how many records fail now", async () => {
     vi.spyOn(rulesApi, "getRule").mockResolvedValue(RULE);
     vi.spyOn(configLoadApi, "getRuleApplicability").mockResolvedValue(APPLICABILITY);

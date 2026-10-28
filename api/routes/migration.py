@@ -435,12 +435,13 @@ async def list_waves(
     await _set_rls(db, tenant.id)
     rows = await db.execute(text(f"""
         SELECT w.{_WAVE_COLS.replace(', ', ', w.')},
-               last.id AS last_run_id, last.readiness_verdict AS last_verdict,
+               last.id AS last_run_id, last.gap_summary AS last_gap_summary,
+               last.source_version_id AS last_version_id,
                last.readiness_score AS last_score, last.completed_at AS last_completed_at,
                COALESCE(trend.scores, '{{}}') AS trend
           FROM migration_waves w
           LEFT JOIN LATERAL (
-                SELECT id, readiness_verdict, readiness_score, completed_at FROM migration_runs
+                SELECT id, gap_summary, source_version_id, readiness_score, completed_at FROM migration_runs
                  WHERE wave_id = w.id AND status = 'analysed' ORDER BY completed_at DESC LIMIT 1) last ON true
           LEFT JOIN LATERAL (
                 SELECT array_agg(readiness_score ORDER BY completed_at) AS scores FROM (
@@ -450,7 +451,13 @@ async def list_waves(
          WHERE w.tenant_id = :t
          ORDER BY w.target_date NULLS LAST, w.name
     """), {"t": str(tenant.id)})
-    return {"waves": [_row(r) for r in rows.fetchall()]}
+    from api.services.migration.cockpit import list_wave_verdicts
+
+    waves = [_row(r) for r in rows.fetchall()]
+    # The list's verdict is the cockpit's: one definition (the wave's thresholds over its latest run), not the
+    # engine's own run verdict, which the cockpit does not show.
+    await list_wave_verdicts(db, str(tenant.id), waves)
+    return {"waves": waves}
 
 
 @router.post("/waves")

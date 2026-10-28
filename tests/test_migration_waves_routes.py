@@ -79,7 +79,7 @@ async def test_wave_crud_is_tenant_isolated(tenants, monkeypatch):
         r = await c.patch(f"/api/v1/migration/waves/{wid}", headers=H, json={"stage": "mock2", "min_dqs": 75})
         assert r.status_code == 200 and r.json()["stage"] == "mock2" and r.json()["min_dqs"] == 75.0
         waves = (await c.get("/api/v1/migration/waves", headers=H)).json()["waves"]
-        assert [w["name"] for w in waves] == ["Wave 1"] and waves[0]["trend"] == []
+        assert [w["name"] for w in waves] == ["Wave 1"] and waves[0]["trend"] == [] and waves[0]["last_verdict"] is None and "last_gap_summary" not in waves[0]
     async with await _as(monkeypatch, t2) as c:
         assert (await c.get("/api/v1/migration/waves", headers=H)).json()["waves"] == []
         assert (await c.patch(f"/api/v1/migration/waves/{wid}", headers=H, json={"stage": "dress"})).status_code == 404

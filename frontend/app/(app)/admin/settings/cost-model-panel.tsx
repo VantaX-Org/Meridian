@@ -143,7 +143,7 @@ export function CostModelPanel() {
             </Field>
           </div>
           <p className="m-text-meta m-ink-3">
-            Without a subscription the ROI states the cost avoided only: no multiple or payback is worked out from a made-up fee.
+            The subscription is the monthly cost the ROI divides by, as you enter it here. It is not read from the Meridian base fee under Exception billing, which is what Meridian bills. Without a subscription the ROI states the cost avoided only: no multiple or payback is worked out from a made-up fee.
             Changing the currency relabels the amounts; it does not convert them, so restate the unit costs in the new currency.
           </p>
 

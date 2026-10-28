@@ -16,15 +16,33 @@ import { queryKeys } from "@/lib/query-keys";
 type Draft = Pick<FieldMapping, "customer_field" | "customer_label" | "notes">;
 interface DraftCtx { drafts: Record<string, Draft>; set: (m: FieldMapping, patch: Partial<Draft>) => void; write: boolean; onSaved: (id: string) => void }
 const DraftsContext = createContext<DraftCtx>({ drafts: {}, set: () => {}, write: false, onSaved: () => {} });
-const draftOf = (drafts: Record<string, Draft>, m: FieldMapping): Draft => drafts[m.id] ?? { customer_field: m.customer_field, customer_label: m.customer_label, notes: m.notes };
-const isDirty = (d: Draft, m: FieldMapping) => d.customer_field !== m.customer_field || d.customer_label !== m.customer_label || d.notes !== m.notes;
+// An unmapped row carries the shipped column and label as its stored value. Those are defaults, not the customer's
+// mapping, so they are shown as placeholders and the inputs start empty.
+const isDefault = (m: FieldMapping, key: "customer_field" | "customer_label") =>
+  !m.is_mapped && m[key] === (key === "customer_field" ? m.standard_field : m.standard_label);
+const savedOf = (m: FieldMapping): Draft => ({
+  customer_field: isDefault(m, "customer_field") ? null : m.customer_field,
+  customer_label: isDefault(m, "customer_label") ? null : m.customer_label,
+  notes: m.notes,
+});
+const draftOf = (drafts: Record<string, Draft>, m: FieldMapping): Draft => drafts[m.id] ?? savedOf(m);
+const isDirty = (d: Draft, m: FieldMapping) => {
+  const s = savedOf(m);
+  return (d.customer_field ?? "") !== (s.customer_field ?? "") || (d.customer_label ?? "") !== (s.customer_label ?? "") || (d.notes ?? "") !== (s.notes ?? "");
+};
+const toPatch = (d: Draft) => {
+  // The column header is kept as typed (spaces inside it included) and trimmed only when saved.
+  const column = d.customer_field?.trim() || undefined;
+  return { customer_field: column, customer_label: d.customer_label ?? undefined, notes: d.notes ?? undefined, is_mapped: !!column };
+};
 
 function DraftInput({ m, field, label, mono }: { m: FieldMapping; field: keyof Draft; label: string; mono?: boolean }) {
   const { drafts, set, write } = useContext(DraftsContext);
   const d = draftOf(drafts, m);
   return (
     <Input value={d[field] ?? ""} aria-label={`${m.standard_field} ${label}`} disabled={!write} className={mono ? "font-mono" : undefined}
-      placeholder={field === "customer_field" ? "Column header in the file" : undefined}
+      placeholder={field === "customer_field" ? (isDefault(m, "customer_field") ? `Default ${m.customer_field}` : "Column header in the file")
+        : field === "customer_label" && isDefault(m, "customer_label") ? `Default ${m.customer_label}` : undefined}
       onChange={(e) => set(m, { [field]: e.target.value || null })} />
   );
 }
@@ -32,13 +50,8 @@ function DraftInput({ m, field, label, mono }: { m: FieldMapping; field: keyof D
 function SaveCell({ m }: { m: FieldMapping }) {
   const { drafts, write, onSaved } = useContext(DraftsContext);
   const d = draftOf(drafts, m);
-  // The column header is kept as typed (spaces inside it included) and trimmed only when saved.
-  const column = d.customer_field?.trim() || undefined;
   const save = useMutation({
-    mutationFn: () => updateFieldMapping(m.id, {
-      customer_field: column, customer_label: d.customer_label ?? undefined,
-      notes: d.notes ?? undefined, is_mapped: !!column,
-    }),
+    mutationFn: () => updateFieldMapping(m.id, toPatch(d)),
     onSuccess: () => { onSaved(m.id); toast.success(`${m.standard_field} saved`); },
     onError: (e) => toast.error(`${m.standard_field} not saved. ${apiErrorMessage(e)}`),
   });
@@ -75,6 +88,23 @@ export default function AdminMappingsPage() {
   const refresh = () => qc.invalidateQueries({ queryKey: queryKeys.fieldMappings() });
   const set = useCallback((m: FieldMapping, patch: Partial<Draft>) => setDrafts((p) => ({ ...p, [m.id]: { ...draftOf(p, m), ...patch } })), []);
   const onSaved = useCallback((id: string) => { setDrafts((p) => { const n = { ...p }; delete n[id]; return n; }); void qc.invalidateQueries({ queryKey: queryKeys.fieldMappings() }); }, [qc]);
+  const dirty = useMemo(() => mappings.filter((m) => drafts[m.id] && isDirty(drafts[m.id], m)), [mappings, drafts]);
+  const saveAll = useMutation({
+    mutationFn: async () => {
+      const done: string[] = [];
+      try {
+        for (const m of dirty) { await updateFieldMapping(m.id, toPatch(drafts[m.id])); done.push(m.id); }
+      } finally {
+        if (done.length) {
+          setDrafts((p) => { const n = { ...p }; for (const id of done) delete n[id]; return n; });
+          void qc.invalidateQueries({ queryKey: queryKeys.fieldMappings() });
+        }
+      }
+      return done.length;
+    },
+    onSuccess: (n) => toast.success(`${n} ${n === 1 ? "mapping" : "mappings"} saved`),
+    onError: (e) => toast.error(`Some mappings not saved. ${apiErrorMessage(e)}`),
+  });
   const ctx = useMemo(() => ({ drafts, set, write, onSaved }), [drafts, set, write, onSaved]);
   const columns = useMemo(() => (object ? baseColumns.filter((c) => c.id !== "object") : baseColumns), [object]);
   const reset = useMutation({
@@ -85,7 +115,7 @@ export default function AdminMappingsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader tabs={<SettingsTabs />} title="Field mapping" meta="Which column in your files holds each standard SAP field. Type your column header next to a field and save the row" />
+      <PageHeader tabs={<SettingsTabs />} title="Field mapping" meta="Which column in your files holds each standard SAP field. Type your column header next to a field then save the row or save all changes" />
       <Notice tone="info">A standard field with no customer column is skipped by every check that needs it.</Notice>
 
       <div className="flex gap-4">
@@ -93,7 +123,7 @@ export default function AdminMappingsPage() {
       </div>
 
       <div className="flex items-end gap-2 flex-wrap">
-        <Field label="Search"><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search fields" /></Field>
+        <Field label="Search"><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search fields" aria-label="Search fields" /></Field>
         <Select
           label="Object"
           value={object}
@@ -126,8 +156,17 @@ export default function AdminMappingsPage() {
           <section aria-label="Field mappings">
             <LedgerHead title={`${object ? formatModuleName(object) : "All objects"}`} meta={`${mapped} of ${shown.length} mapped`} />
             <DraftsContext.Provider value={ctx}>
-              <DataTable columns={columns} data={shown} getRowId={(m) => m.id} />
+              <DataTable columns={columns} data={shown} getRowId={(m) => m.id} hideSearch />
             </DraftsContext.Provider>
+            {write && dirty.length ? (
+              <div className="sticky bottom-0 z-10 mt-2 flex items-center justify-between gap-3 rounded-lg border border-[var(--m-line)] bg-[var(--m-sheet)] p-3" role="region" aria-label="Unsaved changes">
+                <span className="m-text-meta">{dirty.length} unsaved {dirty.length === 1 ? "change" : "changes"}</span>
+                <div className="flex gap-2">
+                  <Button variant="secondary" onClick={() => setDrafts({})} disabled={saveAll.isPending}>Discard</Button>
+                  <Button onClick={() => saveAll.mutate()} disabled={saveAll.isPending}>Save changes</Button>
+                </div>
+              </div>
+            ) : null}
           </section>
         )}</Async>
     </div>

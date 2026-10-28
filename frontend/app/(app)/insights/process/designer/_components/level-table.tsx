@@ -10,11 +10,13 @@ import type { TreeActions } from "./tree";
 interface Row { item: TreeItem; level: Level; activities: number; blocked: number; degraded: number; index: number; count: number }
 
 /** The children of an L1 to L3 item (or the L1s when nothing is selected), with their counts. */
-export function LevelTable({ doc, parent, parentLevel, colour, actions, onOpen, editable, onBlocked, canDesign = true }: {
+export function LevelTable({ doc, parent, parentLevel, colour, hasData = true, actions, onOpen, editable, onBlocked, canDesign = true }: {
   doc: Doc;
   parent: TreeItem | null;
   parentLevel: Level | 0;
   colour: (activityId: string) => DqColour | undefined;
+  /** False when no run is shown on the model: the No-go and At risk counts are unknown, not zero. */
+  hasData?: boolean;
   actions: TreeActions;
   onOpen: (id: string) => void;
   editable: boolean;
@@ -40,8 +42,8 @@ export function LevelTable({ doc, parent, parentLevel, colour, actions, onOpen, 
     ) },
     { id: "activities", header: "Activities", accessorFn: (r) => r.activities },
     // The same counts as the page's No-go and At risk stats, under the same words.
-    { id: "blocked", header: "No-go", accessorFn: (r) => r.blocked },
-    { id: "degraded", header: "At risk", accessorFn: (r) => r.degraded },
+    { id: "blocked", header: "No-go", accessorFn: (r) => (hasData ? r.blocked : null), cell: ({ row }) => (hasData ? row.original.blocked : "—") },
+    { id: "degraded", header: "At risk", accessorFn: (r) => (hasData ? r.degraded : null), cell: ({ row }) => (hasData ? row.original.degraded : "—") },
     { id: "actions", header: "Actions", enableSorting: false, cell: ({ row }) => {
       const r = row.original;
       return (
