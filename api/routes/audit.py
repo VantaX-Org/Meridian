@@ -268,7 +268,12 @@ async def audit_summary(
         {"tid": str(tenant.id)},
     )
     rows = [dict(r._mapping) for r in result.fetchall()]
-    return {"summary": rows}
+    # The exact count of every recorded event in the window: the kinds above are capped, so their sum can fall short.
+    total = (await db.execute(
+        text("SELECT COUNT(*) FROM audit_log WHERE tenant_id = :tid AND created_at >= now() - interval '30 days'"),
+        {"tid": str(tenant.id)},
+    )).scalar() or 0
+    return {"summary": rows, "total": total}
 
 
 class LlmAuditEntry(BaseModel):

@@ -212,6 +212,12 @@ async function mockSteward(page: Page) {
     return check ? r.fulfill(json({ findings: check === FINDING.check_id ? [FINDING] : [], total: check === FINDING.check_id ? 1 : 0, filters_applied: {} })) : r.fallback();
   });
   // only XREC001: the material master records (MM045) are in the recording
+  // The rule page's run history, by check id: the one run of the finding above (the glossary term reads the same finding).
+  await page.route(/\/api\/v1\/rules\/XREC001\/history(\?.*)?$/, (r) =>
+    r.fulfill(json({ rule_id: "XREC001", runs: [{
+      version_id: VERSION_ID, run_at: FINDING.created_at, module: FINDING.module, severity: FINDING.severity,
+      affected_count: FINDING.affected_count, total_count: FINDING.total_count, pass_rate: FINDING.pass_rate, suppressed: false, hit_rate: 16.67,
+    }] })));
   await page.route(/\/api\/v1\/versions\/[^/]+\/findings\/XREC001\/records/, (r) =>
     r.fulfill(json({ version_id: VERSION_ID, check_id: FINDING.check_id, total: 1, records: [{ record_key: ISSUE.record_key, grain: "LFB1", module: FINDING.module, field_values: { "LFB1.AKONT": "0000113100", "LFB1.LIFNR": "V3" } }] })));
   await page.route(`**/api/v1/issues/${ISSUE_ID}`, (r) =>

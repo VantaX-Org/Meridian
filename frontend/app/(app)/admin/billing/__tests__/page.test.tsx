@@ -40,6 +40,13 @@ describe("admin billing page", () => {
     expect(screen.getByText("Amount (USD)")).toBeInTheDocument();
   });
 
+  it("names the Meridian base fee and the currency of the amounts, apart from the ROI subscription", async () => {
+    vi.spyOn(exceptionsApi, "getExceptionBilling").mockResolvedValue(BILLING);
+    renderWithQuery(<ExceptionBillingPage />);
+    expect(await screen.findByText("Meridian base fee")).toBeInTheDocument();
+    expect(screen.getByText("All amounts in ZAR")).toBeInTheDocument();
+  });
+
   it("falls back to the plain number for an unknown currency code", async () => {
     vi.spyOn(exceptionsApi, "getExceptionBilling").mockResolvedValue({ ...BILLING, currency: "nope" });
     renderWithQuery(<ExceptionBillingPage />);

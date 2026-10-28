@@ -535,8 +535,18 @@ async def transition_version(rule_id: str, version: int, body: VersionTransition
 @router.get("/rules/{rule_id}/history", dependencies=[Depends(require_permission("view"))])
 async def rule_history(rule_id: str, limit: int = Query(50, ge=1, le=500),
                        db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
-    """Hit rate of one rule per analysis run, newest first."""
+    """Hit rate of one rule per analysis run, newest first. `rule_id` is the check id findings are stored under
+    (what the glossary reads); a rule's row id is accepted too and resolved to its check id."""
     await _set_rls(db, tenant.id)
+    try:
+        row_id = uuid.UUID(rule_id)
+    except ValueError:
+        row_id = None
+    if row_id is not None:
+        name = (await db.execute(text("SELECT name FROM rules WHERE id = :r AND tenant_id = :t"),
+                                 {"r": str(row_id), "t": str(tenant.id)})).scalar()
+        if name:
+            rule_id = name.split(":", 1)[0].strip()
     rows = (await db.execute(text("""
         SELECT av.id AS version_id, av.run_at, f.module, f.severity, f.affected_count, f.total_count,
                f.pass_rate, COALESCE((f.details->>'suppressed')::boolean, false) AS suppressed

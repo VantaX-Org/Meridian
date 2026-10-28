@@ -15,11 +15,9 @@ import { apiErrorMessage } from "@/lib/error";
 import { getWaves, runWave, startMigration } from "@/lib/api/migration";
 import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import type { MigrationWave, TransferVerdict, WaveVerdict } from "@/types/api";
+import type { MigrationWave } from "@/types/api";
 import { CreateWaveDialog, STAGE_LABEL } from "./create-wave-dialog";
 import { COUNT_DEFS } from "@/lib/counts";
-
-const FROM_ENGINE: Record<TransferVerdict, WaveVerdict> = { go: "go", conditional: "at_risk", "no-go": "no_go" };
 
 export default function MigrationPage() {
   const router = useRouter();
@@ -61,7 +59,7 @@ export default function MigrationPage() {
     {
       id: "verdict", header: COUNT_DEFS.verdict.label,
       cell: ({ row }) => {
-        const v = row.original.last_verdict ? FROM_ENGINE[row.original.last_verdict] : null;
+        const v = row.original.last_verdict ?? null;
         return v ? <Status kind="verdict" value={v} /> : <Pill>Not run</Pill>;
       },
     },
@@ -100,7 +98,7 @@ export default function MigrationPage() {
   ];
 
   const data = waves.data ?? [];
-  const verdictOf = (w: MigrationWave) => (w.last_verdict ? FROM_ENGINE[w.last_verdict] : null);
+  const verdictOf = (w: MigrationWave) => (w.last_verdict ?? null);
   const goWaves = data.filter((w) => verdictOf(w) === "go");
   const atRiskWaves = data.filter((w) => verdictOf(w) === "at_risk");
   const noGoWaves = data.filter((w) => verdictOf(w) === "no_go");
@@ -118,7 +116,7 @@ export default function MigrationPage() {
         summary={data.length > 0 ? (
           <div className="m-stat-grid">
             <Stat label="Waves" help="wave" value={data.length} />
-            <Stat label="Go" value={goCount} tone="go" href="/migration?verdict=go" />
+            <Stat label="Go" value={goCount} tone={goCount > 0 ? "go" : undefined} href="/migration?verdict=go" />
             <Stat label="At risk" value={atRiskCount} tone={atRiskCount > 0 ? "at-risk" : undefined} href="/migration?verdict=at_risk" />
             <Stat label="No-go" value={noGoCount} tone={noGoCount > 0 ? "no-go" : undefined} href="/migration?verdict=no_go" />
           </div>

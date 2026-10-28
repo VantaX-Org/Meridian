@@ -160,6 +160,9 @@ export function S4Tab({ versionId, runAction }: { versionId: string | null; runA
   if (s4.isError) return <ErrorState {...apiErrorState(s4.error)} onRetry={() => void s4.refetch()} />;
   if (s4.isLoading || !s4.data) return <Skeleton height={240} />;
   const d = s4.data;
+  // No area was evaluated: zero blockers and zero failing records would read as a clean result, so say it is unscored.
+  if (d.evaluated === 0)
+    return <EmptyState title="Not evaluated" detail="Run the wave to check its S/4 areas. Until then there are no blockers or failing records to show." action={runAction} />;
   const blockingAreas = d.areas.filter((a) => a.blocking_failing > 0).length;
   const findingsRoot = `/runs/${versionId}?tab=findings`;
   const openArea = d.areas.find((a) => a.area === open) ?? null;

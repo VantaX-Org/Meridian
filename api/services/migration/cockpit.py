@@ -22,6 +22,26 @@ def _blocking_params(tenant_id: str, run_id: object) -> dict:
     return {"t": tenant_id, "r": str(run_id), "sev": list(BLOCKING_SEVERITIES)}
 
 
+async def list_wave_verdicts(db: AsyncSession, tenant_id: str, waves: list[dict]) -> None:
+    """Sets ``last_verdict`` on each wave row of the list to the verdict the cockpit shows for it (None when the
+    wave has no analysed run), and drops the run's raw gap summary from the row."""
+    version_ids = {str(w["last_version_id"]) for w in waves if w.get("last_version_id")}
+    summaries: dict[str, dict] = {}
+    if version_ids:
+        summaries = {str(r.id): (r.dqs_summary or {}) for r in (await db.execute(
+            text("SELECT id, dqs_summary FROM analysis_versions WHERE tenant_id = :t AND id = ANY(CAST(:v AS uuid[]))"),
+            {"t": tenant_id, "v": sorted(version_ids)})).fetchall()}
+    for w in waves:
+        gap_summary = w.pop("last_gap_summary", None)
+        version_id = w.pop("last_version_id", None)
+        if not w.get("last_run_id"):
+            w["last_verdict"] = None
+            continue
+        dqs = {m: (d or {}).get("composite_score") for m, d in summaries.get(str(version_id), {}).items()}
+        cells = build_wave_cells(w["name"], list(w["modules"] or []), gap_summary or {}, dqs, w["min_readiness"], w["min_dqs"])
+        w["last_verdict"] = wave_verdict(cells)
+
+
 async def load_cockpit(db: AsyncSession, tenant_id: str, wave) -> dict:
     run = (await db.execute(text("""
         SELECT id, gap_summary, readiness_score, records_total, records_blocked, source_version_id

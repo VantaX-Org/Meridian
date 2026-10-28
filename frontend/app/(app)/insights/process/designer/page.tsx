@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, ChoiceGroup, ConfirmDialog, ErrorState, Field, Input, Mono, Notice, PageHeader, Select, Skeleton, Stat } from "@/design";
 import { useFindingHref, useLatestVersion } from "@/components/process/shared";
 import { runScopeLabel } from "@/lib/run-scope";
+import { useCurrentState } from "../../_components/useCurrentState";
 import {
   adoptVariant, createModel, deleteModel, getModel, getOverlay, getReference, listModels, listVariants, patchModel, saveFailure, saveModel,
   pptxExportUrl, signavioExportUrl, type SaveFailure,
@@ -16,7 +17,7 @@ import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useRole } from "@/hooks/use-role";
 import { domainOf } from "@/design/tokens";
-import type { L4, ModelOverlay, ModelSummary, NodeType, ProcessModelDocument, ProcessVariant } from "@/types/process-model";
+import type { DqColour, L4, ModelOverlay, ModelSummary, NodeType, ProcessModelDocument, ProcessVariant } from "@/types/process-model";
 import "./designer.css";
 import { AttributeDrawer } from "./_components/attributes";
 import { DesignerCanvas } from "./_components/canvas";
@@ -25,6 +26,27 @@ import * as D from "./_components/doc";
 import { LevelTable } from "./_components/level-table";
 import { ProcessTree, type TreeActions } from "./_components/tree";
 import { OldVersionBanner, VersionsMenu } from "./_components/versions";
+
+const RANK: Record<DqColour, number> = { green: 0, amber: 1, red: 2 };
+
+/** The overlays of several runs as one: each step takes the worst colour any run gives it. */
+function mergeOverlays(all: (ModelOverlay | undefined)[]): ModelOverlay | null {
+  const got = all.filter((o): o is ModelOverlay => !!o);
+  if (got.length === 0) return null;
+  if (got.length === 1) return got[0];
+  const out: ModelOverlay = { activities: {}, l4: {}, variants: got[0].variants };
+  for (const o of got) {
+    for (const [id, a] of Object.entries(o.activities)) {
+      const cur = out.activities[id];
+      if (!cur || RANK[a.dq_status] > RANK[cur.dq_status]) out.activities[id] = a;
+    }
+    for (const [id, s] of Object.entries(o.l4)) {
+      const cur = out.l4[id];
+      if (!cur || RANK[s.step_status] > RANK[cur.step_status]) out.l4[id] = s;
+    }
+  }
+  return out;
+}
 
 const NEW_NAME = ["New process", "New process area", "New process group", "New sub-process"];
 
@@ -45,17 +67,32 @@ export default function ProcessDesigner() {
     queryKey: queryKeys.processModel(model, v ?? undefined), queryFn: () => getModel(model, v ? Number(v) : undefined), enabled: !reference,
   });
   const { latest } = useLatestVersion();
-  const overlay = useQuery({
-    queryKey: queryKeys.processOverlay(model, latest?.id), enabled: !reference && !!latest && overlayOn, retry: false, meta: { ignoreError: true },
-    queryFn: () => getOverlay(model, latest!.id),
+  const doc = reference ? ref.data : saved.data?.document;
+  // The data on the model is the readiness page's: without ?run= each object of the model is read from its own
+  // latest run (the current state), and a step takes the worst colour any of those runs gives it. With ?run= it is
+  // that one run, as on the readiness page.
+  const state = useCurrentState();
+  const explicitRun = sp.get("run");
+  const overlayRuns = useMemo(() => {
+    if (!latest) return [];
+    if (explicitRun) return [latest];
+    const modules = new Set(doc?.l1.flatMap((x) => x.modules) ?? []);
+    const runs = new Map(state.objects.filter((o) => modules.has(o.module)).map((o) => [o.run.id, o.run]));
+    return runs.size ? [...runs.values()] : [latest];
+  }, [latest, explicitRun, doc, state.objects]);
+  const overlays = useQueries({
+    queries: overlayRuns.map((run) => ({
+      queryKey: queryKeys.processOverlay(model, run.id), enabled: !reference && overlayOn, retry: false, meta: { ignoreError: true },
+      queryFn: () => getOverlay(model, run.id),
+    })),
   });
+  const overlay = mergeOverlays(overlays.map((q) => q.data));
   const variants = useQuery({
     queryKey: queryKeys.processVariants(latest?.id), enabled: !!latest, retry: false, meta: { ignoreError: true },
     queryFn: () => listVariants(latest!.id),
   });
   const findingHref = useFindingHref(latest?.id);
 
-  const doc = reference ? ref.data : saved.data?.document;
   const versionNo = reference ? 0 : saved.data?.version_no ?? 0;
   const currentVersion = reference ? 0 : saved.data?.model.current_version ?? 0;
   const failed = reference ? ref.error : saved.error;
@@ -73,8 +110,9 @@ export default function ProcessDesigner() {
   return (
     <Editor key={`${model}:${v ?? ""}:${versionNo}`}
       model={model} initial={doc} versionNo={versionNo} currentVersion={currentVersion} viewingOld={!reference && versionNo !== currentVersion}
-      models={models.data ?? []} overlay={overlayOn ? overlay.data ?? null : null} overlayOn={overlayOn}
-      variants={variants.data ?? []} latestId={latest?.id} latestLabel={latest ? runScopeLabel(latest) : undefined} findingHref={findingHref} />
+      models={models.data ?? []} overlay={overlayOn ? overlay : null} overlayOn={overlayOn}
+      variants={variants.data ?? []} latestId={latest?.id}
+      latestLabel={overlayRuns.length > 1 ? "the latest run of each object" : latest ? runScopeLabel(latest) : undefined} findingHref={findingHref} />
   );
 }
 
@@ -338,13 +376,14 @@ function Editor(p: EditorProps) {
         options={[{ value: "run", label: "Selected run" }, { value: "none", label: "None" }]}
       />
 
-      <div className="flex gap-6 flex-wrap">
-        <Stat label="Activities" value={acts.length} delta={`${D.allL4(doc).length} sub-processes in ${doc.l1.length} processes.`} />
-        <Stat label="No-go" value={ov ? count("red") : "—"} delta={noOverlay ?? (count("red") ? "Activities with a blocking failure." : "No activity is blocked.")} />
-        <Stat label="At risk" value={ov ? count("amber") : "—"} delta={noOverlay ?? (count("amber") ? "Activities with some failing fields." : "No activity is at risk.")} />
-        <Stat label="Discovered variants" value={p.latestId ? p.variants.length : "—"} delta={p.latestId ? "Document types found in the data." : "Run an analysis to discover variants."} />
+      {/* One row: five short tiles, so the model starts above the fold. */}
+      <div className="m-stat-grid" data-testid="designer-stats">
+        <Stat label="Activities" value={acts.length} delta={`${D.allL4(doc).length} sub-processes in ${doc.l1.length} processes`} />
+        <Stat label="No-go" value={ov ? count("red") : "—"} delta={noOverlay ?? (count("red") ? "Blocking failure" : "None blocked")} />
+        <Stat label="At risk" value={ov ? count("amber") : "—"} delta={noOverlay ?? (count("amber") ? "Some failing fields" : "None at risk")} />
+        <Stat label="Discovered variants" value={p.latestId ? p.variants.length : "—"} delta={p.latestId ? "Document types in the data" : "Run an analysis first"} />
         <Stat label="Unmapped" value={p.latestId ? unmapped.length : "—"}
-          delta={p.latestId ? (unmapped.length ? "Found in the data, not on any sub-process." : "Every variant sits on a sub-process.") : "Run an analysis to find unmapped variants."} />
+          delta={p.latestId ? (unmapped.length ? "On no sub-process" : "All on a sub-process") : "Run an analysis first"} />
       </div>
 
       <div className="flex flex-col gap-4 md:flex-row">
@@ -376,7 +415,7 @@ function Editor(p: EditorProps) {
                 onLayout={() => edit((d) => D.autoLayout(d, l4.id))} />
             </>
           ) : (
-            <LevelTable doc={doc} parent={parent} parentLevel={parentLevel} colour={actColour} actions={actions} editable={editable} canDesign={canDesign} onBlocked={blocked}
+            <LevelTable doc={doc} parent={parent} parentLevel={parentLevel} colour={actColour} hasData={!!ov} actions={actions} editable={editable} canDesign={canDesign} onBlocked={blocked}
               onOpen={(id) => go({ node: id, attr: null })} />
           )}
         </section>

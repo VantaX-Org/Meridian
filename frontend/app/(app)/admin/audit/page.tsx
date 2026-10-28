@@ -71,18 +71,18 @@ const kindLabel = (r: { action: string; entity_type: string | null }): string =>
 const SUMMARY_KINDS = 50;
 
 /**
- * The last 30 days at a glance (GET /audit/summary): the changes counted and the three most
- * frequent kinds; each kind filters the log below.
+ * The last 30 days at a glance (GET /audit/summary): every recorded event counted (reads such as exports
+ * included, as the log lists them) and the three most frequent kinds; each kind filters the log below.
  */
 function AuditSummaryStrip({ onPick }: { onPick: (r: AuditSummaryRow) => void }) {
   const q = useQuery({ queryKey: ["audit", "summary"], queryFn: getAuditSummary });
   const rows = q.data?.summary ?? [];
   if (q.isError || (q.isSuccess && rows.length === 0)) return null;
-  const total = rows.reduce((n, r) => n + r.count, 0);
+  const total = q.data?.total ?? rows.reduce((n, r) => n + r.count, 0);
   return (
     <div className="m-stat-grid" data-testid="audit-summary">
-      <Stat label="Changes, last 30 days" value={total.toLocaleString()} loading={q.isLoading}
-        hint={rows.length >= SUMMARY_KINDS ? `Across the ${SUMMARY_KINDS} most frequent kinds` : `${rows.length.toLocaleString()} kinds of change`} />
+      <Stat label="Recorded events, last 30 days" value={total.toLocaleString()} loading={q.isLoading}
+        hint={`${rows.length >= SUMMARY_KINDS ? `The ${SUMMARY_KINDS} most frequent` : rows.length.toLocaleString()} kinds. The log below lists older events too`} />
       {rows.slice(0, 3).map((r) => (
         <Stat key={`${r.action}:${r.entity_type ?? ""}`} label={kindLabel(r)} value={r.count.toLocaleString()} hint="Show these in the log" onClick={() => onPick(r)} />
       ))}

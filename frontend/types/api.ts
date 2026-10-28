@@ -1220,9 +1220,9 @@ export interface MigrationWave {
   signed_off_at: string | null;
   created_at: string;
   updated_at: string;
-  /** List view only: the latest analysed run (engine verdict) and its recent scores. */
+  /** List view only: the latest analysed run, its wave verdict (the one the cockpit shows) and its recent scores. */
   last_run_id?: string | null;
-  last_verdict?: TransferVerdict | null;
+  last_verdict?: WaveVerdict | null;
   last_score?: number | null;
   last_completed_at?: string | null;
   trend?: number[];
