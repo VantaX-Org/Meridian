@@ -226,7 +226,11 @@ def test_discover_builds_mines_and_stores_the_model(engine, app) -> None:
     tid, sid, vid, (rid,) = _seed(engine, [("PTP", "full", None)])
     stages = []
     s = tenant_session(app, tid)
+    # rss pinned to 0: these tests assert build/mine/store correctness, not the memory budget
+    # (test_guard_* covers the budget); the default guard reads this process's RSS/peak, which a
+    # long serial pytest run inflates independently of the run under test.
     out = rpd.discover(s, tid, sid, [rid], vid, frames_for=_frames, today=date(2026, 10, 11),
+                       guard=rpd.MemoryGuard(rss=lambda: 0),
                        progress=lambda stage, pct, msg: stages.append((stage, pct)))
     s.close()
     assert out == {rid: "completed"}
@@ -252,13 +256,15 @@ def test_incremental_keeps_history_before_the_window(engine, app) -> None:
 
     tid, sid, vid, (full,) = _seed(engine, [("PTP", "full", None)])
     s = tenant_session(app, tid)
-    rpd.discover(s, tid, sid, [full], vid, frames_for=_frames, today=date(2026, 10, 11))
+    pin = rpd.MemoryGuard(rss=lambda: 0)  # see test_discover_builds_mines_and_stores_the_model
+    rpd.discover(s, tid, sid, [full], vid, frames_for=_frames, today=date(2026, 10, 11), guard=pin)
     with engine.begin() as c:
         inc = str(c.execute(text(
             "INSERT INTO process_discovery_runs (tenant_id, system_id, l1, mode, status, window_from) "
             "VALUES (:t, :s, 'PTP', 'incremental', 'queued', '2026-01-11') RETURNING id"),
             {"t": tid, "s": sid}).scalar())
-    assert rpd.discover(s, tid, sid, [inc], vid, frames_for=_frames, today=date(2026, 10, 11)) == {inc: "completed"}
+    assert rpd.discover(s, tid, sid, [inc], vid, frames_for=_frames, today=date(2026, 10, 11),
+                        guard=pin) == {inc: "completed"}
     s.close()
     since = rpd.window_start(date(2026, 1, 11), "Africa/Johannesburg")
     with engine.connect() as c:
