@@ -152,6 +152,15 @@ export async function getDedupCandidates(params: {
   return data;
 }
 
+/** One object's candidate pairs, best first (api/routes/cleaning.py): `min_score` 0..100, `status` defaults to pending. */
+export async function getDedupCandidatesByObject(
+  objectType: string,
+  params: { min_score?: number; status?: string } = {},
+): Promise<{ items: DedupCandidate[]; total: number }> {
+  const { data } = await apiClient.get(`/api/v1/dedup/candidates/${encodeURIComponent(objectType)}`, { params });
+  return data;
+}
+
 export async function getDedupPreview(params: {
   record_key_a: string;
   record_key_b: string;

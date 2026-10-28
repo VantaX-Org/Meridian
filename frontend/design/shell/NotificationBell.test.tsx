@@ -92,6 +92,30 @@ describe("NotificationBell", () => {
     await waitFor(() => expect(api.markNotificationRead.mock.calls[0]?.[0]).toBe("n1"));
   });
 
+  it("marks one notification read from its own button, without opening it", async () => {
+    api.getUnreadCount.mockResolvedValue(1);
+    api.getNotifications.mockResolvedValue({ items: [note({}), note({ id: "n2", is_read: true, title: "Old one" })], total: 2 });
+    renderBell();
+    fireEvent.click(await screen.findByRole("button", { name: /Notifications/ }));
+    // Only the unread row offers it.
+    expect(screen.queryByRole("button", { name: "Mark read: Old one" })).toBeNull();
+    fireEvent.click(await screen.findByRole("button", { name: "Mark read: New critical finding" }));
+    await waitFor(() => expect(api.markNotificationRead.mock.calls[0]?.[0]).toBe("n1"));
+    // The panel stays open so the rest can be read.
+    expect(screen.getByRole("button", { name: "Mark all read" })).toBeInTheDocument();
+  });
+
+  it("keeps the unread state and says so when marking read fails", async () => {
+    api.getUnreadCount.mockResolvedValue(1);
+    api.getNotifications.mockResolvedValue({ items: [note({})], total: 1 });
+    api.markAllNotificationsRead.mockRejectedValue(new Error("boom"));
+    renderBell();
+    fireEvent.click(await screen.findByRole("button", { name: /Notifications/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Mark all read" }));
+    await waitFor(() => expect(api.markAllNotificationsRead).toHaveBeenCalled());
+    expect(screen.getByText("New critical finding")).toBeInTheDocument();
+  });
+
   it("marks everything read", async () => {
     api.getUnreadCount.mockResolvedValue(2);
     api.getNotifications.mockResolvedValue({ items: [note({})], total: 1 });

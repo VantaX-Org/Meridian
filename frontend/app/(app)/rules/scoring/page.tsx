@@ -1,39 +1,38 @@
 "use client";
 
 /**
- * Rules, Scoring and alerts: the tenant's DQS weights (with the composite
- * recomputed live against the latest run's dimension scores before saving),
- * the alert thresholds, the planner assumptions, and report delivery.
+ * Rules › Scoring: the tenant's DQS dimension weights (with the composite recomputed live against the latest run's
+ * dimension scores before saving) and the score bands, read and written through GET/PUT /settings/scoring. The planner
+ * assumptions and the cost model stay here. Alert thresholds, channels and digests are on Admin › Alerts.
  * Saves need manage_settings; everyone else can read.
  */
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Radar, Select, Skeleton, Score } from "@/design";
 import { SettingsSection, SettingsSheet } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { getFindingsAggregate } from "@/lib/api/findings";
-import { getCostModel, getCostModelFeatures, getSettings, saveNotificationSettings, updateCostModel, savePlannerConfig, updateAlertThresholds, updateDqsWeights } from "@/lib/api/settings";
+import { getCostModel, getCostModelFeatures, getScoring, getSettings, putScoring, updateCostModel, savePlannerConfig, type ScoringBands, type ScoringConfig, type ScoringResponse } from "@/lib/api/settings";
 import { apiErrorMessage } from "@/lib/error";
 import { featureLabel, formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import type { AlertThresholds, CostModel, CostSpec, DimensionScores, PlannerConfig, TenantSettings } from "@/types/api";
+import type { CostModel, CostSpec, DimensionScores, PlannerConfig, TenantSettings } from "@/types/api";
 import { clsx } from "clsx";
 
 const DIMS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"] as const;
 type Dim = (typeof DIMS)[number];
 const DEFAULT: DimensionScores = { completeness: 0.25, accuracy: 0.25, consistency: 0.2, timeliness: 0.1, uniqueness: 0.1, validity: 0.1 };
-const DEFAULT_THRESHOLDS: AlertThresholds = {
-  critical_threshold: 1, high_threshold: 10, dqs_drop_threshold: 5, module_floors: {},
-  readiness_dqs_threshold: 75, readiness_waves: {},
-};
-const DEFAULT_NOTIFY = { email: "", teams_webhook: "", daily_digest: false, weekly_summary: true, monthly_report: true };
+// GET /settings/scoring; inline because lib/query-keys.ts has no key for it
+const SCORING_KEY = ["scoring-config"] as const;
+const DEFAULT_BANDS: ScoringBands = { target: 90, warning: 75, critical: 60 };
 // No currency of its own: planner amounts are named by the cost model's currency (Admin, Settings).
 const DEFAULT_PLANNER: PlannerConfig = { minutes_per_record: 3, investigation_hours: 1, cleaning_item_hours: 0.25, exception_hours: 2, sprint_hours: 40, cost_per_record: null, currency: "" };
 
-/** Stored weights (tenants.dqs_weights) sum to 100; the form edits fractions of 1, so rescale on load. */
-function fromStored(stored: DimensionScores | null): DimensionScores {
+/** The API returns dimension weights normalised to 1; a missing or empty set is the default. */
+function fromStored(stored: DimensionScores | null | undefined): DimensionScores {
   const total = stored ? DIMS.reduce((a, d) => a + (Number(stored[d]) || 0), 0) : 0;
   if (!stored || total <= 0) return DEFAULT;
   const out = { ...stored };
@@ -41,10 +40,16 @@ function fromStored(stored: DimensionScores | null): DimensionScores {
   return out;
 }
 
-/** The PATCH accepts weights that sum to 100, the scale the API stores and validates. */
-function toStored(fractions: DimensionScores): DimensionScores {
+/**
+ * The PUT takes weights that sum to 100 (within 0.01). Each is rounded to two places and the rounding residue goes to
+ * the largest weight, so the sum is exact whatever the fractions were.
+ */
+export function toStored(fractions: DimensionScores): DimensionScores {
   const out = { ...fractions };
-  DIMS.forEach((d) => { out[d] = fractions[d] * 100; });
+  DIMS.forEach((d) => { out[d] = Math.round(fractions[d] * 10000) / 100; });
+  const residue = Math.round((100 - DIMS.reduce((a, d) => a + out[d], 0)) * 100) / 100;
+  const largest = DIMS.reduce((m, d) => (out[d] > out[m] ? d : m), DIMS[0]);
+  out[largest] = Math.round((out[largest] + residue) * 100) / 100;
   return out;
 }
 
@@ -79,12 +84,14 @@ export function weightPreview(
 
 export default function ScoringPage() {
   const settings = useQuery({ queryKey: queryKeys.scoringSettings(), queryFn: getSettings });
-  if (!settings.data) {
+  const scoring = useQuery({ queryKey: SCORING_KEY, queryFn: getScoring });
+  if (!settings.data || !scoring.data) {
+    const failed = settings.isError ? settings : scoring.isError ? scoring : null;
     return (
       <div className="flex flex-col gap-4">
-        <PageHeader title="Scoring and alerts" meta="How the quality score is weighted, when an alert fires and who is told" />
-        {settings.isError ? (
-          <ErrorState title="Settings could not be loaded." message={apiErrorMessage(settings.error)} onRetry={() => void settings.refetch()} />
+        <PageHeader title="Scoring" meta="How the quality score is weighted and where its bands fall" />
+        {failed ? (
+          <ErrorState title="Settings could not be loaded." message={apiErrorMessage(failed.error)} onRetry={() => { void settings.refetch(); void scoring.refetch(); }} />
         ) : (
           <div className="flex flex-col gap-2"><Skeleton height={32} /><Skeleton height={32} /><Skeleton height={32} /></div>
         )}
@@ -92,26 +99,17 @@ export default function ScoringPage() {
     );
   }
   // keyed on the fetch so a saved value re-seeds the form without a setState-in-effect
-  return <ScoringForm key={settings.dataUpdatedAt} initial={settings.data} />;
+  return <ScoringForm key={`${settings.dataUpdatedAt}-${scoring.dataUpdatedAt}`} initial={settings.data} scoring={scoring.data} />;
 }
 
-function ScoringForm({ initial }: { initial: TenantSettings }) {
+function ScoringForm({ initial, scoring }: { initial: TenantSettings; scoring: ScoringResponse }) {
   const qc = useQueryClient();
   const { can } = useRole();
   const write = can("manage_settings");
   const agg = useQuery({ queryKey: queryKeys.findingsAggregate("current"), queryFn: () => getFindingsAggregate() });
 
-  const [weights, setWeights] = useState<DimensionScores>(() => fromStored(initial.dqs_weights));
-  const [thresholds, setThresholds] = useState<AlertThresholds>({ ...DEFAULT_THRESHOLDS, ...initial.alert_thresholds });
-  const floors = thresholds.module_floors ?? {};
-  const setFloor = (module: string, value: number | null) => {
-    const next = { ...floors };
-    if (value == null) delete next[module];
-    else next[module] = value;
-    setThresholds({ ...thresholds, module_floors: next });
-  };
-  const unfloored = (initial.licensed_modules ?? []).filter((m) => !(m in floors));
-  const [notify, setNotify] = useState(initial.notification_config ?? DEFAULT_NOTIFY);
+  const [weights, setWeights] = useState<DimensionScores>(() => fromStored(scoring.dimension_weights));
+  const [bands, setBands] = useState<ScoringBands>({ ...DEFAULT_BANDS, ...scoring.thresholds });
   const [planner, setPlanner] = useState<PlannerConfig>(initial.planner_config ?? DEFAULT_PLANNER);
   const costModel = useQuery({ queryKey: ["cost-model"], queryFn: getCostModel });
   const moneyCurrency = costModel.data?.currency;
@@ -125,34 +123,38 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
   const sumOk = Math.abs(sum - 1) < 0.005;
   const scores = agg.data?.dqs.dimension_scores ?? {};
   const current = agg.data?.dqs.composite ?? null;
-  const saved = useMemo(() => fromStored(initial.dqs_weights), [initial.dqs_weights]);
+  const saved = useMemo(() => fromStored(scoring.dimension_weights), [scoring.dimension_weights]);
   const preview = weightPreview(scores, saved, normalised, current);
   const capped = agg.data?.dqs.capped;
 
-  const saveWeights = useMutation({
-    mutationFn: () => updateDqsWeights(toStored(normalised)),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.scoringSettings() }); toast.success("Weights saved. They apply from the next analysis run"); },
-    onError: (e) => toast.error((e as Error).message || "Weights not saved"),
+  // The PUT replaces the whole config, so each save sends the server's current values for the part not being edited.
+  const put = (patch: Partial<ScoringConfig>): ScoringConfig => ({
+    dimension_weights: scoring.dimension_weights, module_weights: scoring.module_weights, thresholds: scoring.thresholds,
+    severity_weights: scoring.severity_weights, severity_multipliers: scoring.severity_multipliers, critical_tolerance: scoring.critical_tolerance,
+    ...patch,
   });
-  const saveThresholds = useMutation({
-    mutationFn: () => updateAlertThresholds(thresholds),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.scoringSettings() }); toast.success("Alert thresholds saved"); },
-    onError: (e) => toast.error((e as Error).message || "Thresholds not saved"),
+  const afterSave = () => { void qc.invalidateQueries({ queryKey: SCORING_KEY }); void qc.invalidateQueries({ queryKey: queryKeys.scoringSettings() }); };
+  const saveWeights = useMutation({
+    mutationFn: () => putScoring(put({ dimension_weights: toStored(normalised) })),
+    onSuccess: () => { afterSave(); toast.success("Weights saved. They apply from the next analysis run"); },
+    onError: (e) => toast.error(`Weights not saved. ${apiErrorMessage(e)}`),
+  });
+  const bandsOk = bands.critical <= bands.warning && bands.warning <= bands.target;
+  const saveBands = useMutation({
+    mutationFn: () => putScoring(put({ thresholds: bands })),
+    onSuccess: () => { afterSave(); toast.success("Score bands saved. They apply from the next analysis run"); },
+    onError: (e) => toast.error(`Bands not saved. ${apiErrorMessage(e)}`),
   });
   const savePlanner = useMutation({
     mutationFn: () => savePlannerConfig(planner),
     onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.scoringSettings() }); qc.invalidateQueries({ queryKey: ["analytics.prescriptive"] }); toast.success("Planner assumptions saved"); },
     onError: (e) => toast.error((e as Error).message || "Assumptions not saved"),
   });
-  const saveNotify = useMutation({
-    mutationFn: () => saveNotificationSettings(notify),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.scoringSettings() }); toast.success("Notification settings saved"); },
-    onError: (e) => toast.error((e as Error).message || "Notification settings not saved"),
-  });
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Scoring and alerts" meta="How the quality score is weighted, when an alert fires and who is told" />
+      <PageHeader title="Scoring" meta="How the quality score is weighted and where its bands fall" />
+      <p className="m-text-body m-ink-3">When an alert fires and who is told is set in <Link className="underline" href="/admin/alerts">Alerts</Link>.</p>
       {!write ? <Notice tone="info">These settings are read only for your role</Notice> : null}
 
       {!agg.isError && !agg.isLoading && current === null ? (
@@ -225,56 +227,23 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
         ) : null}
       </SettingsSection>
 
-      <SettingsSection title="When to alert">
-        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); saveThresholds.mutate(); }}>
+      <SettingsSection title="Score bands" hint="A score at or above target is on target, at or above warning is at risk, and below that it is failing. Critical marks the line below which an object is failing badly">
+        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); saveBands.mutate(); }}>
           <div className="grid grid-cols-3 gap-3">
-            <Field label="Critical failing rules">
-              <Input type="number" min="0" value={thresholds.critical_threshold} disabled={!write}
-                onChange={(e) => setThresholds({ ...thresholds, critical_threshold: Number(e.target.value) })} />
-            </Field>
-            <Field label="High failing rules">
-              <Input type="number" min="0" value={thresholds.high_threshold} disabled={!write}
-                onChange={(e) => setThresholds({ ...thresholds, high_threshold: Number(e.target.value) })} />
-            </Field>
-            <Field label="Score drop, points">
-              <Input type="number" min="0" step="0.5" value={thresholds.dqs_drop_threshold} disabled={!write}
-                onChange={(e) => setThresholds({ ...thresholds, dqs_drop_threshold: Number(e.target.value) })} />
-            </Field>
+            {(["target", "warning", "critical"] as const).map((k) => (
+              <Field key={k} label={k[0].toUpperCase() + k.slice(1)}>
+                <Input type="number" min="0" max="100" step="1" value={bands[k]} disabled={!write}
+                  onChange={(e) => setBands({ ...bands, [k]: Math.min(100, Math.max(0, Number(e.target.value))) })} />
+              </Field>
+            ))}
           </div>
-          <p className="m-text-meta m-ink-3">
-            Alert when a run has at least this many critical or high failing rules, or an object&rsquo;s score falls by more than this against the previous run.
-          </p>
-
-          <div>
-            <h3 className="m-text-body font-semibold mb-1">Score floors per object</h3>
-            <p className="m-text-meta mb-2 m-ink-3">An analysis that scores an object below its floor raises an in-app alert, and an email or Teams message when configured.</p>
-            <table className="m-table [max-width:480px]">
-              <thead><tr><th>Object</th><th>Floor</th><th /></tr></thead>
-              <tbody>
-                {Object.entries(floors).sort(([a], [b]) => a.localeCompare(b)).map(([m, v]) => (
-                  <tr key={m}>
-                    <td>{formatModuleName(m)}</td>
-                    <td>
-                      <Input type="number" min="0" max="100" step="1" value={v} disabled={!write} aria-label={`${formatModuleName(m)} floor`}
-                        onChange={(e) => setFloor(m, Math.min(100, Math.max(0, Number(e.target.value))))} />
-                    </td>
-                    <td>{write ? <Button type="button" variant="ghost" onClick={() => setFloor(m, null)}>Remove</Button> : null}</td>
-                  </tr>
-                ))}
-                {!Object.keys(floors).length ? <tr><td colSpan={3} className="m-text-meta m-ink-3">No floors set</td></tr> : null}
-              </tbody>
-            </table>
-            {write && unfloored.length ? (
-              <div className="mt-2 [max-width:260px]">
-                <Select
-                  label="Add a floor for"
-                  value="" placeholder="Add a floor for"
-                  options={unfloored.map((m) => ({ value: m, label: formatModuleName(m) }))}
-                  onValueChange={(m) => m && setFloor(m, 80)} />
-              </div>
-            ) : null}
-          </div>
-          {write ? <div><Button type="submit" disabled={saveThresholds.isPending}>Save thresholds</Button></div> : null}
+          {!bandsOk ? <p className="m-field-error">Critical must not exceed warning, and warning must not exceed target</p> : null}
+          {write ? (
+            <div className="flex items-center gap-3">
+              <Button type="submit" pending={saveBands.isPending} disabled={!bandsOk}>Save bands</Button>
+              <Button type="button" variant="ghost" onClick={() => setBands(scoring.defaults.thresholds)}>Use default bands</Button>
+            </div>
+          ) : null}
         </form>
       </SettingsSection>
 
@@ -311,30 +280,6 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
         </form>
       </SettingsSection>
 
-      <SettingsSection title="Reports by email and Teams">
-        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); saveNotify.mutate(); }}>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Email">
-              <Input type="email" value={notify.email} disabled={!write} placeholder="dq-team@company.com"
-                onChange={(e) => setNotify({ ...notify, email: e.target.value })} />
-            </Field>
-            <Field label="Teams webhook">
-              <Input type="url" value={notify.teams_webhook} disabled={!write}
-                onChange={(e) => setNotify({ ...notify, teams_webhook: e.target.value })} />
-            </Field>
-          </div>
-          <fieldset className="flex gap-4 [border:0] [margin:0] [padding:0]">
-            <legend className="sr-only">Scheduled reports</legend>
-            {([["daily_digest", "Daily digest"], ["weekly_summary", "Weekly summary"], ["monthly_report", "Monthly report"]] as const).map(([k, label]) => (
-              <label key={k} className="flex items-center gap-2 m-text-body">
-                <input type="checkbox" checked={notify[k]} disabled={!write} onChange={(e) => setNotify({ ...notify, [k]: e.target.checked })} />
-                {label}
-              </label>
-            ))}
-          </fieldset>
-          {write ? <div><Button type="submit" disabled={saveNotify.isPending}>Save notifications</Button></div> : null}
-        </form>
-      </SettingsSection>
       <CostModelCard write={write} />
       </SettingsSheet>
     </div>

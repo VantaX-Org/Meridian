@@ -183,7 +183,7 @@ export default function WaveCockpitPage() {
             ) : <EmptyState title="No objects in this wave" detail="Add the SAP objects this wave moves, then run it to score their readiness." action={wavesAction} /> },
           { value: "blockers", label: "Blockers", content: <BlockersTab waveId={waveId} runId={c.run_id} versionId={c.source_version_id} blockers={c.blockers} runAction={runAction} /> },
           { value: "mapping", label: "Mapping", content: (
-              <MappingTab modules={w.modules} destType={c.dest_system_type} runAction={runAction} wavesAction={wavesAction} />) },
+              <MappingTab modules={w.modules} destType={c.dest_system_type} runAction={runAction} wavesAction={wavesAction} versionId={c.source_version_id} runId={c.run_id} />) },
           { value: "s4", label: "S/4 areas", content: <S4Tab versionId={c.source_version_id} runAction={runAction} /> },
           ...entityTabs({ entityType: "migration", entityId: waveId, auditPath: `/migration/waves/${waveId}` }),
         ]}

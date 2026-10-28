@@ -16,7 +16,11 @@
  *    (api/routes/report_library.py), and the catalogue with `compare` (the recording holds it without);
  *  - the caller's delivery log, /me/notifications/deliveries (api/routes/me_notifications.py);
  *  - the features a cost per blocked record can be set for, /settings/cost-model/features (api/routes/settings.py);
- *  - process discovery's catalogue and run list, /process-discovery/systems/{id}/catalogue and /runs
+ *  - the effective scoring config, /settings/scoring (api/routes/settings.py): the shipped defaults;
+ *  - the steward home's five newest open inbox items, /stewardship?status=open&limit=5 (api/routes/stewardship.py),
+ *    cut from the recorded ten;
+ *  - process discovery's catalogue, run list, schedules and health, /process-discovery/systems/{id}/catalogue, /runs,
+ *    /schedules and /health
  *    (api/routes/process_discovery.py): the seeded tenant has no discovery runs;
  *  - rule names by check id, /rules/names (api/routes/rules.py), from the recorded rule lists;
  *  - the accounts payable process document of the vendor run, /business-process/{run}/accounts_payable
@@ -881,6 +885,22 @@ async function mockCostModel(page: Router) {
     r.request().method() === "GET" ? r.fulfill(json({ features })) : r.fallback());
 }
 
+/** GET /settings/scoring: scoring_config({}) of api/services/scoring.py (the shipped defaults), as the recorded tenant
+ * has no weights of its own, plus the same defaults under `defaults`. */
+const SCORING_DEFAULTS = {
+  dimension_weights: { completeness: 0.25, accuracy: 0.25, consistency: 0.2, timeliness: 0.1, uniqueness: 0.1, validity: 0.1 },
+  module_weights: {},
+  thresholds: { target: 90, warning: 75, critical: 60 },
+  severity_weights: { critical: 4, high: 3, medium: 2, low: 1 },
+  severity_multipliers: { critical: 5, high: 2, medium: 1, low: 1 },
+  critical_tolerance: { pct: 0.1, rows: 25 },
+};
+
+async function mockScoring(page: Router) {
+  await page.route(/\/api\/v1\/settings\/scoring$/, (r) =>
+    r.request().method() === "GET" ? r.fulfill(json({ ...SCORING_DEFAULTS, defaults: SCORING_DEFAULTS })) : r.fallback());
+}
+
 // ── Process discovery (api/routes/process_discovery.py) ──────────────────────
 
 /**
@@ -912,11 +932,24 @@ async function mockProcess(page: Router) {
   await get(new RegExp(`/api/v1/process-discovery/systems/${SYSTEM_ID}/catalogue$`), CATALOGUE);
   // list[RunSummary]: no runs, whatever the l1 and limit
   await get(new RegExp(`/api/v1/process-discovery/systems/${SYSTEM_ID}/runs(\\?.*)?$`), []);
+  // list[Schedule] and list[L1Health] (api/routes/process_discovery.py): no schedules, and no L1 has run discovery
+  await get(new RegExp(`/api/v1/process-discovery/systems/${SYSTEM_ID}/schedules$`), []);
+  await get(new RegExp(`/api/v1/process-discovery/systems/${SYSTEM_ID}/health$`), []);
   await get(new RegExp(`/api/v1/business-process/${VENDOR_RUN}/accounts_payable$`), businessProcessAp);
   // Process data readiness opens on the current state, where accounts payable is read from its own latest run
   // (accounts_payable_p02). The recording holds no process document for that run; the vendor run's document stands in
   // for it (same object and process definition, the vendor run's findings), named for the run it answers.
   await get(new RegExp(`/api/v1/business-process/${CURRENT_AP_RUN}/accounts_payable$`), { ...businessProcessAp, version_id: CURRENT_AP_RUN });
+}
+
+/** GET /stewardship?status=open&limit=5&offset=0 (the steward home's inbox card): the first five of the recorded
+ * ten-item page, with the recorded total. */
+async function mockInboxTop(page: Router, har: string) {
+  const ten = entriesOf(har).find((e) => /\/api\/v1\/stewardship\?status=open&limit=10&offset=0$/.test(e.request.url))?.response.content;
+  if (!ten?.text) return;
+  const page10 = JSON.parse(textOf(ten)) as { items: unknown[] };
+  await page.route(/\/api\/v1\/stewardship\?status=open&limit=5&offset=0$/, (r) =>
+    r.request().method() === "GET" ? r.fulfill(json({ ...page10, items: page10.items.slice(0, 5) })) : r.fallback());
 }
 
 type RecordedRun = { id: string; run_at: string; status: string; dqs_summary: Record<string, unknown> | null };
@@ -984,6 +1017,8 @@ export async function mockUnrecorded(page: Page, har: string) {
   await mockReports(router);
   await mockMe(router);
   await mockCostModel(router);
+  await mockScoring(router);
+  await mockInboxTop(router, har);
   await mockProcess(router);
   await mockMiningCurrent(router, har);
   await mockReadiness(router, har);

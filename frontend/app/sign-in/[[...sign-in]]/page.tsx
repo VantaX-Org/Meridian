@@ -6,6 +6,9 @@ import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
 import { AuthFrame, PasswordField, authFormClass, authLinkClass } from "@/components/auth/auth-frame";
 import { Button, Field, Notice } from "@/design";
+import { SsoSignInButton } from "@/components/auth/sso-sign-in";
+import { ssoErrorSentence, takeSsoSession } from "@/components/auth/sso";
+import { getOidcPublicConfig, type OidcPublicConfig } from "@/lib/api/sso";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -32,7 +35,27 @@ export default function SignInPage() {
   const [error, setError] = useState<LoginError | null>(null);
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState("");
+  // Single sign-on (null until /auth/oidc/config answers; a failure leaves the password form as the only way in).
+  const [sso, setSso] = useState<OidcPublicConfig | null>(null);
+  const [ssoError, setSsoError] = useState<string | null>(null);
+  const [adminForm, setAdminForm] = useState(false);
+  const [next, setNext] = useState<string | null>(null);
   const noticeRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Back from the identity provider: the callback leaves the session token in the URL fragment.
+    const landed = takeSsoSession();
+    if (landed) {
+      window.location.replace(landed);
+      return;
+    }
+    const query = new URLSearchParams(window.location.search);
+    setSsoError(ssoErrorSentence(query.get("sso_error")));
+    setNext(query.get("next"));
+    let live = true;
+    getOidcPublicConfig().then((c) => { if (live) setSso(c); }).catch(() => undefined);
+    return () => { live = false; };
+  }, []);
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
@@ -74,31 +97,42 @@ export default function SignInPage() {
     }
   };
 
+  const showForm = !sso?.enforce || adminForm;
+
   return (
     <AuthFrame title="Sign in">
-      <form className={authFormClass} onSubmit={handleSubmit} noValidate>
-        {notice && !error ? <Notice tone="info">{notice}</Notice> : null}
-        {error ? (
-          <div ref={noticeRef} tabIndex={-1}>
-            <Notice tone="danger" title={error.title}>
-              {error.title === "Email or password is wrong."
-                ? error.detail ?? "Check your email and password and try again."
-                : null}
-            </Notice>
-          </div>
-        ) : null}
-        <Field label="Work email" error={emailError}>
-          <input className="m-input w-full" type="email" required autoComplete="username"
-            inputMode="email" autoFocus readOnly={loading} placeholder="you@company.com"
-            value={email} onChange={(e) => setEmail(e.target.value)} />
-        </Field>
-        <PasswordField label="Password" value={password} onChange={setPassword} autoComplete="current-password"
-          error={passwordError} readOnly={loading} />
-        <div className="flex items-center">
-          <Link className={authLinkClass} href="/forgot-password">Forgot password?</Link>
-        </div>
-        <Button type="submit" pending={loading} className="w-full">Sign in</Button>
-      </form>
+      <div className={authFormClass}>
+        {ssoError ? <Notice tone="danger">{ssoError}</Notice> : null}
+        {sso?.enabled ? <SsoSignInButton displayName={sso.display_name ?? "single sign-on"} next={next} /> : null}
+        {sso?.enabled && showForm ? <p className="m-text-meta m-ink-3">Or use your email and password</p> : null}
+        {showForm ? (
+          <form className={authFormClass} onSubmit={handleSubmit} noValidate>
+            {notice && !error ? <Notice tone="info">{notice}</Notice> : null}
+            {error ? (
+              <div ref={noticeRef} tabIndex={-1}>
+                <Notice tone="danger" title={error.title}>
+                  {error.title === "Email or password is wrong."
+                    ? error.detail ?? "Check your email and password and try again."
+                    : null}
+                </Notice>
+              </div>
+            ) : null}
+            <Field label="Work email" error={emailError}>
+              <input className="m-input w-full" type="email" required autoComplete="username"
+                inputMode="email" autoFocus readOnly={loading} placeholder="you@company.com"
+                value={email} onChange={(e) => setEmail(e.target.value)} />
+            </Field>
+            <PasswordField label="Password" value={password} onChange={setPassword} autoComplete="current-password"
+              error={passwordError} readOnly={loading} />
+            <div className="flex items-center">
+              <Link className={authLinkClass} href="/forgot-password">Forgot password?</Link>
+            </div>
+            <Button type="submit" pending={loading} className="w-full">Sign in</Button>
+          </form>
+        ) : (
+          <button type="button" className={`${authLinkClass} self-start`} onClick={() => setAdminForm(true)}>Administrator sign-in</button>
+        )}
+      </div>
     </AuthFrame>
   );
 }

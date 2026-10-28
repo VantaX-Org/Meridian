@@ -32,7 +32,8 @@ function liveRoutes(dir = APP, prefix = ""): string[] {
 // /home only redirects to the viewer's persona home, which the Home entry opens; /features is All features itself,
 // linked at the top of the More panel and in the command palette.
 // /home and /insights only redirect (to the viewer's home; /insights was the retired overview).
-const NOT_LISTED = new Set(["/home", "/features", "/insights"]);
+// /admin/notifications only redirects to /admin/alerts (Settings, Alerts).
+const NOT_LISTED = new Set(["/home", "/features", "/insights", "/admin/notifications"]);
 
 const gateFor = (actions: readonly string[]): NavGate => {
   const matrix = resourceMatrix(actions);

@@ -13,6 +13,7 @@ export function recordLevelFilters(f: RecordFilter): string[] {
     f.status && f.status !== "open" ? "the status" : null,
     f.due ? "overdue" : null,
     f.part ? "the key part" : null,
+    f.since ? "the baseline" : null,
     f.system ? "the source system" : null,
     f.q ? "the search" : null,
   ].filter((x): x is string => !!x);

@@ -92,10 +92,10 @@ const nextConfig: NextConfig = {
         permanent: false,
       },
       // TODO (later work packages, add each rule together with the page it needs):
-      //  - /admin/notifications -> /admin/alerts when the Alerts page exists (thresholds, channels and the default
-      //    digest in one place).
       //  - /fix?tab=cleaning -> /fix?sugg=1 once the work list is confirmed to carry every cleaning proposal as a
       //    record with a suggested value (the parity check); until then the Cleaning tab stays.
+      // Alerts: thresholds, channels and the default digest in one place.
+      { source: "/admin/notifications", destination: "/admin/alerts", permanent: true },
       { source: "/remediation", destination: "/fix?tab=batches", permanent: false },
       // The proposals page moved under /fix/proposals/; the regex keeps /fix/what-if and /fix/proposals/* themselves out.
       { source: "/fix/:id((?!what-if$|proposals$|proposals/).*)", destination: "/fix/proposals/:id", permanent: false },

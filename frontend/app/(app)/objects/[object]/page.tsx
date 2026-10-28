@@ -4,9 +4,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, PageHeader, PageFrame, Card, DataTable, Delta, DrillLink, EmptyState, ErrorState, ExportMenu, Line, Mono, Pager, Pill, SeverityDot, Skeleton, Score, Tabs, emptyExportOptions, isSeverity, entityTabs, Status, statusLabel, type CellMeta } from "@/design";
+import { Button, PageHeader, PageFrame, Card, DataTable, Delta, DrillLink, EmptyState, ErrorState, ExportMenu, Line, Mono, Pager, Pill, SeverityDot, Skeleton, Score, Tabs, toast, emptyExportOptions, isSeverity, entityTabs, Status, statusLabel, type CellMeta } from "@/design";
 import { RuleCell } from "@/components/fix/rule-cell";
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
 import { NextBestActionCard } from "@/components/insight/next-best-action";
@@ -15,10 +15,14 @@ import { useRunScope } from "@/hooks/use-run-scope";
 import { hrefWithRun, runLacksObject, runScopeLabel } from "@/lib/run-scope";
 import { FilterChips } from "../_header";
 import { FindingContextPanel } from "./rules/[ruleId]/finding-context-panel";
+import { WhatThisBlocks } from "./rules/[ruleId]/what-this-blocks";
+import { ObjectForecast } from "./_forecast";
 import { RootCauseSection } from "./rules/[ruleId]/root-cause";
 import { Workbench, useRuleDetails } from "./_workbench";
 import { FixStrip } from "./_fix";
 import { ObjectMonitorStrip } from "./_monitor";
+import { AttentionCard } from "@/components/attention/attention-card";
+import { ObjectProcesses } from "./_processes";
 import { FixWork } from "@/components/work/fix-work";
 import { workSummaryQuery } from "../_work";
 import { PAGE_SIZE, STALE_MS, fixSheetHref, isBlocking, objectQuery, recordsQuery, useFixShortcut, useRecordColumns } from "./_shared";
@@ -29,9 +33,11 @@ import { exportFindingRecords, getScoreHistory } from "@/lib/api/findings";
 import { getSettings } from "@/lib/api/settings";
 import { SCORE_HISTORY_LIMIT } from "@/lib/runs";
 import { getVersion } from "@/lib/api/versions";
-import { getProfileByVersion, type ShapeCount, type ValueCount } from "@/lib/api/field-profile";
+import { acceptDependency, getProfileByVersion, type FieldDependency, type ShapeCount, type ValueCount } from "@/lib/api/field-profile";
 import { apiErrorState, isNotFound } from "@/lib/error";
-import { getRuleHistoryBatch } from "@/lib/api/rules";
+import { getModuleCoverage, getRuleHistoryBatch } from "@/lib/api/rules";
+import { useRole } from "@/hooks/use-role";
+import { RowButton } from "@/components/mdm/ledger";
 import { queryKeys } from "@/lib/query-keys";
 import { rankedName, useRuleNames } from "@/lib/rule-name";
 import { DIMENSIONS, formatDate, formatModuleName, moduleDescription, passRatePct, plural, shortCapReason } from "@/lib/format";
@@ -121,6 +127,8 @@ function RulesTab({ object, run, checkId }: { object: string; run: string; check
   const { data, isLoading, isError, error, refetch } = useQuery(objectQuery(object, run));
   const batch = useQuery(historyQuery(object, run));
   const details = useRuleDetails(object, run);
+  // How much of the catalogue has run for this object: rules that never produced a finding are the gap.
+  const coverage = useQuery({ queryKey: ["rules", "coverage", object], queryFn: () => getModuleCoverage(object), retry: false, meta: { ignoreError: true } });
   // The ranking names the rules it ranks; the catalogue (and the DDIC checks it does not hold) names the rest.
   const catalogueName = useRuleNames(data?.rules.map((r) => r.check_id) ?? []);
   const nameOf = { get: (id: string): string | undefined => catalogueName(id, rankedName(details.data?.rows, id)) };
@@ -219,6 +227,13 @@ function RulesTab({ object, run, checkId }: { object: string; run: string; check
   const dimensions = [...new Set(data.rules.map((r) => r.dimension).filter((d): d is string => !!d))].map((d) => ({ value: d, label: formatModuleName(d) }));
   return (
     <div className="flex flex-col gap-3">
+      {coverage.data ? (
+        <p className="m-text-body m-ink-2" data-testid="rules-coverage">
+          {`${(coverage.data.totals.rules - coverage.data.totals.never_run).toLocaleString()} of ${coverage.data.totals.rules.toLocaleString()} catalogue rules ran`}
+          {coverage.data.totals.never_run > 0 ? ", the rest have not produced a finding yet. " : ". "}
+          <Link href={`/rules?module=${encodeURIComponent(object)}`} className="underline underline-offset-2">Open the catalogue</Link>
+        </p>
+      ) : null}
       <div className="flex flex-wrap items-center gap-4">
         <FilterChips label="Severity" value={severity} options={SEVERITIES} onChange={(v) => setParam("severity", v)} />
         {dimensions.length > 1 ? <FilterChips label="Dimension" value={dimension} options={dimensions} onChange={(v) => setParam("dimension", v)} /> : null}
@@ -285,6 +300,7 @@ function HistoryTab({ object, run, systemId }: { object: string; run: string; sy
       <Card title="Score over time" meta={`${points.length} runs, ${points[0].y} to ${points[points.length - 1].y}`}>
         <Line data={points.map((p) => ({ x: p.x, y: p.y }))} label={`${formatModuleName(object)} composite score per run`} />
       </Card>
+      <ObjectForecast object={object} />
       <Card title="Runs">
         <DataTable columns={columns} data={[...points].reverse()} getRowId={(p) => p.version_id} hideToolbar height="auto" />
       </Card>
@@ -298,8 +314,22 @@ const profileQuery = (object: string, run: string) => ({
   enabled: !!run,
   staleTime: STALE_MS,
 });
+/** The same SAP field, whether the profile names it bare or with its table. */
+const sameField = (a: string, b: string) => a.split(".").pop()?.toUpperCase() === b.split(".").pop()?.toUpperCase();
+
 function FieldsTab({ object, run }: { object: string; run: string }) {
   const { data, isLoading, isError, error, refetch } = useQuery(profileQuery(object, run));
+  const qc = useQueryClient();
+  const canManage = useRole().can("manage_rules");
+  // A dependency the profile found (one field decides another) becomes a check on every later analysis.
+  const confirm = useMutation({
+    mutationFn: (d: FieldDependency) => acceptDependency({ module: object, determinant: d.determinant, dependent: d.dependent }),
+    onSuccess: () => {
+      toast.success("Dependency confirmed. It runs as a check from the next analysis");
+      void qc.invalidateQueries({ queryKey: queryKeys.versionProfileByVersion(run, object) });
+    },
+    onError: (e) => toast.error((e as Error).message || "Dependency not confirmed"),
+  });
 
   if (isLoading) return <div aria-busy="true"><Skeleton height={240} /></div>;
   if (isError) return <ErrorState {...apiErrorState(error)} onRetry={() => refetch()} />;
@@ -315,7 +345,9 @@ function FieldsTab({ object, run }: { object: string; run: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      {data.tables.map((table) => (
+      {data.tables.map((table) => {
+        const deps = (data.dependencies ?? []).filter((d) => d.table === table.table);
+        return (
         <Card key={table.table} title={<Mono>{table.table}</Mono>} meta={`${table.fields.length} fields`} padding="sm">
           <DataTable
             columns={[
@@ -343,12 +375,36 @@ function FieldsTab({ object, run }: { object: string; run: string }) {
                     topValues(row.original.stats.top_values)
                   ),
               },
+              ...(deps.length ? [{
+                id: "dependency",
+                header: "Action",
+                cell: ({ row }: { row: { original: (typeof table.fields)[number] } }) => {
+                  const mine = deps.filter((d) => sameField(d.dependent, row.original.field));
+                  return mine.length === 0 ? null : (
+                    <span className="flex flex-wrap gap-3">
+                      {mine.map((d) => d.accepted ? (
+                        <Pill key={d.determinant} tone="neutral">Check added</Pill>
+                      ) : canManage ? (
+                        <RowButton
+                          key={d.determinant}
+                          label={`Confirm dependency: ${d.determinant} decides ${d.dependent}`}
+                          onClick={() => confirm.mutate(d)}
+                          disabled={confirm.isPending}
+                        >
+                          Confirm dependency
+                        </RowButton>
+                      ) : null)}
+                    </span>
+                  );
+                },
+              }] : []),
             ]}
             data={table.fields}
             getRowId={(f) => f.field}
           />
         </Card>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -388,6 +444,7 @@ function RuleRecords({ object, run, checkId, onClose }: { object: string; run: s
         moduleId={data.records[0]?.module ?? ""}
         fields={Object.keys(data.records[0]?.field_values ?? {})}
       />
+      <WhatThisBlocks run={run} object={object} checkId={checkId} />
       <Card
         title={ruleName ?? <Mono>{checkId}</Mono>}
         meta={<>{ruleName ? <><Mono>{checkId}</Mono>, </> : null}{data.total.toLocaleString()} record{data.total === 1 ? "" : "s"}</>}
@@ -566,6 +623,7 @@ export default function ObjectDetailPage() {
       />
       <p className="m-text-body m-ink-2">Records of {summary?.label ?? formatModuleName(object)} that fail a check in this run, worst first. Pick one and fix it.</p>
       <ObjectMonitorStrip object={object} run={run} />
+      <AttentionCard object={object} />
       {/* On Records to fix the queue's own tiles count the same records; the strip would say it twice. */}
       {tab === "fix" ? null : <FixStrip object={object} summary={summary} work={workObject} loading={work.isLoading} />}
       {run && <NextBestActionCard run={run} module={object} />}
@@ -575,7 +633,7 @@ export default function ObjectDetailPage() {
         items={[
           // The same queue as Fix work, with this object and this page's run fixed: one triage surface, not two.
           { value: "fix", label: "Records to fix", count: workObject?.open, content: <FixWork module={object} run={run} /> },
-          { value: "overview", label: "Overview", content: <Workbench object={object} run={run} /> },
+          { value: "overview", label: "Overview", content: <><ObjectProcesses object={object} run={run} /><Workbench object={object} run={run} /></> },
           { value: "rules", label: "Rules", content: <RulesTab object={object} run={run} checkId={checkId} /> },
           { value: "fields", label: "Fields", content: <FieldsTab object={object} run={run} /> },
           ...entityTabs({ entityType: "objects", entityId: object, auditPath: `/objects/${object}`, overflow: true, history: <HistoryTab object={object} run={run} systemId={version?.metadata?.system_id} /> }),

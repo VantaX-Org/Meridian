@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { buildDrillHref, Button, Card, DataTable, DimensionBars, DomainChip, DrillLink, EmptyState, ExportMenu, HomePage, Mono, ObjectMap, Pill, Select, Skeleton, Stat, type HeatmapCell, Status, Score, useMediaQuery } from "@/design";
+import { buildDrillHref, Button, Card, DataTable, DimensionBars, DomainChip, DrillLink, EmptyState, ErrorState, ExportMenu, HomePage, Mono, ObjectMap, Pill, Select, Skeleton, Stat, type HeatmapCell, Status, Score, useMediaQuery } from "@/design";
 import { RuleCell } from "@/components/fix/rule-cell";
 import { getObjects } from "@/lib/api/v1/objects";
 import { getFindings, getFindingsAggregate } from "@/lib/api/findings";
@@ -28,7 +28,9 @@ import { RunAnalysis } from "@/app/(app)/insights/_components/RunAnalysis";
 import { useAiProposals } from "@/app/(app)/rules/drafts/ai-proposals";
 import { HomeOnboarding } from "@/components/help/home-onboarding";
 import { RouteInsight } from "@/components/insight/route-insight";
-import { NextBestActionCard } from "@/components/insight/next-best-action";
+import { AttentionCard } from "@/components/attention/attention-card";
+import { useAttentionCount } from "@/hooks/use-attention";
+import { attentionAction } from "@/lib/attention";
 import { dqsExplanation, useDqsInputs } from "@/components/insight/dqs-score";
 import { verdictSentence, type NarrativeInput } from "@/lib/home-narrative";
 import {
@@ -50,7 +52,6 @@ import { openJobTray } from "@/lib/job-tray-bus";
 import { queryKeys } from "@/lib/query-keys";
 import { PERSONA_OPTIONS } from "@/lib/persona";
 import { homeActionFor } from "@/lib/home-action";
-import { doNext } from "@/lib/do-next";
 import { getPredictiveAnalytics } from "@/lib/api/analytics";
 import { forecastSentence, overallForecast } from "@/lib/score-forecast";
 import { MINE_PARAM, useObjectOwners } from "@/hooks/use-object-owners";
@@ -126,6 +127,11 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const reviewsAiRules = can("review_ai_rules") && !can("manage_rules");
   const proposalsQ = useAiProposals(reviewsAiRules);
   const pendingProposals = reviewsAiRules ? proposalsQ.data?.total ?? 0 : 0;
+  // The viewer's top to-do item (the card's first row) is the verdict button and the "do next" sentence when it is
+  // blocked work, a regression or freshness. The steward's home leads with the queue, so it keeps its own action.
+  const attentionTop = useAttentionCount().data?.top ?? null;
+  const toDo = role === "steward" ? undefined : attentionAction(attentionTop);
+  const toDoNext = toDo && attentionTop ? { sentence: attentionTop.title.replace(/\.$/, ""), href: toDo.href, label: toDo.label } : undefined;
   const finished = allVersions
     .filter(isScored)
     .sort((a, b) => new Date(b.run_at).getTime() - new Date(a.run_at).getTime());
@@ -193,7 +199,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         }}
         lists={lists}
         onboarding={<HomeOnboarding />}
-        cells={<RouteInsight />}
+        cells={<RouteInsight doNext={toDoNext} />}
         emptyActions={<>
           {can("upload") && dayOne.step.secondary?.href !== "/import" && dayOne.step.href !== "/import"
             ? <Button variant="secondary" render={<Link href="/import">Import a file</Link>} /> : null}
@@ -231,7 +237,6 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   // Pinned: the run's lineage. Current state: every object at its latest run as of each run, so the last step is the delta.
   const trendPoints = pinned ? trend(finished, pinned) : stateSeries(finished, scopeFilter.modules);
   const cap = runCap(merged);
-  const step = doNext(state, { pinned: !!pinned });
   const findings = (findingsQ.data?.findings ?? []).filter((f) => (!scopeFilter.modules || scopeFilter.modules.has(f.module)) && f.version_id === runOf.get(f.module)?.id);
   const scored = worstObjectsFirst(objects);
   const worst = scored[0];
@@ -241,7 +246,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const systems = systemsQ.data ?? [];
   const activeSystems = systems.filter((s) => s.is_active);
 
-  const action = pendingProposals > 0
+  const action = pendingProposals > 0 && !toDo
     ? { label: `Review ${plural(pendingProposals, "proposal")}`, href: "/rules/drafts?tab=ai" }
     : homeActionFor({
     persona: role,
@@ -250,6 +255,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     objectsHref: (filtered) => objectsHref(filtered ? { readiness: BELOW_TARGET } : {}),
     worstHref: worst ? `/objects/${worst.module}?run=${worst.run_id}` : undefined,
     systemFailing: activeSystems.some(isFailing),
+    attention: toDo,
   });
   // The ledger's row action fixes only for a role that can work a fix (apply it, or approve it); else it opens.
   const canFix = can("apply") || can("approve");
@@ -484,9 +490,8 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const inboxCard = role === "steward" ? (
     <Card title="Inbox" meta={countsReady ? `${plural(counts.inbox, "open item")}` : undefined} padding="sm">
       {queueQ.isLoading ? <Skeleton height={120} /> : queueQ.isError ? (
-        <div role="alert" className="flex flex-wrap items-center gap-3 m-text-body" data-testid="home-inbox-error">
-          <span>{`The inbox did not load. ${apiErrorState(queueQ.error).title}`}</span>
-          <Button variant="secondary" onClick={() => void queueQ.refetch()}>Retry</Button>
+        <div data-testid="home-inbox-error">
+          <ErrorState title="The inbox did not load" message={apiErrorState(queueQ.error).title} onRetry={() => void queueQ.refetch()} />
         </div>
       ) : queueItems.length === 0 ? (
         <EmptyState variant="inline" title="Nothing waits in the inbox" action={<Link href="/fix?sugg=1" className="underline-offset-2 hover:underline">{`Open records ${COUNT_DEFS.suggested.label.toLowerCase()}`}</Link>} />
@@ -577,10 +582,8 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       work={work}
       lists={lists}
       onboarding={<HomeOnboarding />}
-      cells={<RouteInsight />}
-      // The planner's action for the same step the four sentences name (lib/do-next.ts): in the current state, its
-      // object at the run it is read from, never the newest run's object.
-      nextAction={pinned || !step ? <NextBestActionCard run={pinned?.id ?? newest.id} /> : <NextBestActionCard run={step.runId} module={step.module} />}
+      cells={<RouteInsight doNext={toDoNext} />}
+      nextAction={<AttentionCard />}
       headerActions={<>
         <RunAnalysis variant="secondary" />
         <Select

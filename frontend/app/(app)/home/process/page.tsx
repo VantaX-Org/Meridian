@@ -10,6 +10,7 @@ import { Button, IconButton, IconMore, Menu, type MenuItemDef, useMediaQuery, ac
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { HomeOnboarding } from "@/components/help/home-onboarding";
+import { AttentionCard } from "@/components/attention/attention-card";
 import { readinessHref, useProcessReadiness } from "@/components/process/shared";
 import { HandToSteward, HandoffDialog, type HandoffTarget } from "@/components/process/handoff";
 import { exportRun, getCatalogue, listRuns } from "@/lib/api/process-discovery";
@@ -201,6 +202,7 @@ export default function ProcessHomePage() {
       {starting && <DiscoveryStart system={system} rows={rows} />}
       {/* After day one (or once an analysis scores the processes) the page leads with its verdict and next step. */}
       {(!starting || readiness.byL1.size > 0) && <InsightHeader {...processHomeInsight(ledger, system, readiness.latest)} />}
+      <AttentionCard />
       <Card title="Can each process run" padding="sm"
         meta={readiness.latest
           ? `${scoredCount} of ${plural(rows.length, "process", "processes")} scored, ${noGo} no-go, from ${runScopeLabel(readiness.latest)} on ${system.name}`

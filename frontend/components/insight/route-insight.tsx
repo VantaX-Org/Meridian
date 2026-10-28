@@ -22,8 +22,11 @@ import { queryKeys } from "@/lib/query-keys";
 import { buildInsight, sectionOf, showsRouteInsight, type InsightFacts } from "@/lib/route-insight";
 
 
-/** The four sentences inside the persona home hero (situation, what changed, why it matters, do next). Every other page carries its own InsightHeader. */
-export function RouteInsight() {
+/**
+ * The four sentences inside the persona home hero (situation, what changed, why it matters, do next). Every other page carries its own InsightHeader.
+ * `doNext` replaces the score-based step with the viewer's top to-do item, so the sentence names what the verdict button opens.
+ */
+export function RouteInsight({ doNext: override }: { doNext?: { sentence: string; href: string; label: string } } = {}) {
   const pathname = usePathname();
   const run = useSearchParams().get("run") ?? undefined;
   const section = showsRouteInsight(pathname) ? sectionOf(pathname) : null;
@@ -95,7 +98,7 @@ export function RouteInsight() {
     total: agg?.total ?? 0,
     affected: agg?.affected_records ?? 0,
     costAtRisk: cost.amount ?? undefined,
-    doNext: next ? { sentence: next.sentence, href: next.action.href, label: next.action.label } : undefined,
+    doNext: override ?? (next ? { sentence: next.sentence, href: next.action.href, label: next.action.label } : undefined),
     moved: cmp
       ? {
           count: movers.length,

@@ -26,6 +26,8 @@ export interface FixFilter {
   system?: string;
   /** A key field value of the record, as "FIELD=VALUE" or { field, value }. */
   part?: string | { field: string; value: string };
+  /** A baseline run id: only the records that fail a check they did not fail in that run. Pair it with `run`. */
+  since?: string;
   q?: string;
   /** The record to open: module and record key. */
   record?: { module: string; key: string };
@@ -34,7 +36,7 @@ export interface FixFilter {
 /** "Material master" reads "material master" mid-sentence; "FI general ledger" keeps its acronym. */
 const inSentence = (s: string): string => (/^[A-Z][A-Z0-9]/.test(s) ? s : s.charAt(0).toLowerCase() + s.slice(1));
 
-const ORDER = ["run", "module", "check", "sev", "st", "mine", "assignee", "sugg", "due", "system", "part", "q", "record"] as const;
+const ORDER = ["run", "module", "check", "sev", "st", "mine", "assignee", "sugg", "due", "system", "part", "since", "q", "record"] as const;
 
 /** `/fix?module=material_master&check=MM_001&sev=critical`: Fix work filtered to exactly these records. */
 export function fixHref(filter: FixFilter = {}): string {
@@ -50,6 +52,7 @@ export function fixHref(filter: FixFilter = {}): string {
     due: filter.due,
     system: filter.system || undefined,
     part: typeof filter.part === "string" ? filter.part || undefined : filter.part ? `${filter.part.field}=${filter.part.value}` : undefined,
+    since: filter.since || undefined,
     q: filter.q || undefined,
     record: filter.record ? `${filter.record.module}|${filter.record.key}` : undefined,
   };

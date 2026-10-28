@@ -94,7 +94,8 @@ export const SETTINGS_ITEMS: readonly NavItem[] = [
   { href: "/admin/ai", requires: req("llm", "admin"), label: "AI settings", icon: IconModel, anyOf: ["manage_llm"], keywords: "ollama model provider llm" },
   // rules/edit is here only so the legacy steward keeps Settings › Licence: no legacy role is granted
   // licence/view (it is in NO_VIEW), and the steward reaches Settings through manage_rules alone.
-  { href: "/admin/notifications", requires: req("rules", "admin"), label: "Notifications", icon: IconBell, anyOf: ["manage_settings"], keywords: "alerts channels slack teams email webhook digest" },
+  { href: "/admin/alerts", requires: req("rules", "admin"), label: "Alerts", icon: IconBell, anyOf: ["manage_settings"], keywords: "notifications thresholds channels slack teams email webhook digest" },
+  { href: "/admin/sign-in", requires: req("users", "admin"), label: "Sign-in", icon: IconUserShield, anyOf: ["manage_users"], keywords: "sso oidc single sign-on password policy lockout" },
   { href: "/admin/reference", requires: req("systems", "view"), label: "Reference data", icon: IconList, anyOf: ["view"], keywords: "postal codes bic directory lists" },
   { href: "/admin/billing", requires: req("rules", "admin"), label: "Exception billing", icon: IconList, anyOf: ["manage_settings"], keywords: "billing tiers resolved exceptions cost invoice month" },
   { href: "/admin/licence", requires: [req("licence", "view"), req("licence", "admin"), req("rules", "edit"), req("stewardship", "edit")], label: "Licence", icon: IconKey, anyOf: ["view"], licenceKey: "licence", keywords: "seats modules tier" },
@@ -289,6 +290,7 @@ export const INDEX_ONLY_GROUPS: readonly NavGroup[] = [
   {
     group: "Help and account",
     items: [
+      { href: "/attention", requires: req("analysis", "view"), label: "To do", icon: IconFlag, anyOf: ["view"], keywords: "attention action centre what needs a person failed overdue regressions" },
       { href: "/inbox/notifications", requires: req("analysis", "view"), label: "Notifications", icon: IconBell, anyOf: ["view"] },
       { href: "/search", requires: req("analysis", "view"), label: "Search", icon: IconCompass, anyOf: ["view"] },
       { href: "/docs", requires: req("analysis", "view"), label: "Documentation", icon: IconBook, anyOf: ["view"] },
@@ -328,6 +330,7 @@ export const FEATURE_DESC: Readonly<Record<string, string>> = {
   "/inbox?kind=exception": "Escalated exceptions waiting for a decision",
   "/inbox?kind=approvals": "Approve fix batches and SAP write-backs another person requested (four eyes)",
   "/inbox/notifications": "Every notification sent to you",
+  "/attention": "What needs a person now in your scope, ranked, with the one action for each",
   "/home/lead": "Your home: the score, what changed and what to do next",
   "/home/steward": "The steward's home: the queue first, then the score",
   "/home/basis": "The SAP Basis home: systems, connections and live jobs",
@@ -377,7 +380,8 @@ export const FEATURE_DESC: Readonly<Record<string, string>> = {
   "/admin/triage": "Teams, assignment rules, SLAs and business hours",
   "/admin/mappings": "Map file columns to SAP fields",
   "/admin/ai": "The language model provider and its settings",
-  "/admin/notifications": "Alert channels: email, Slack, Teams and webhooks",
+  "/admin/alerts": "Who gets told about what, and when: thresholds, channels and the default digest",
+  "/admin/sign-in": "How people sign in: single sign-on, password policy and lockout",
   "/admin/jobs": "Every extraction, analysis and upload job, and why one failed",
   "/admin/reference": "Postal code and bank code lists per system",
   "/admin/licence": "Seats, modules and tier",
@@ -454,6 +458,7 @@ const OFF_NAV_TITLES: Record<string, string> = {
   "/me/preferences": "Preferences",
   "/rules/learned": "Learned rules",
   "/inbox/notifications": "Notifications",
+  "/attention": "To do",
   // Insight views carry short rail labels; the pages keep their full titles. /insights itself redirects home.
   "/insights": "Insights",
   "/insights/exec": "Executive summary",

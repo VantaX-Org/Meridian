@@ -63,7 +63,11 @@ const EXPECTED: Record<string, string> = {
   "/settings/licence": "/admin/licence",
   "/settings": "/admin/settings",
   "/admin": "/admin/users",
+  "/admin/notifications": "/admin/alerts",
 };
+
+// Retired pages whose redirect is a 301; every other legacy route is a 307 until its replacement settles.
+const PERMANENT = new Set(["/admin/notifications"]);
 
 describe("legacy route redirects", () => {
   it("redirects every legacy route to its replacement, and nothing else", async () => {
@@ -75,7 +79,7 @@ describe("legacy route redirects", () => {
     const plain = redirects.filter((r) => !r.has);
     const actual = Object.fromEntries(plain.map((r) => [r.source, r.destination]));
     expect(actual).toEqual(EXPECTED);
-    for (const r of redirects) expect(r.permanent).toBe(false);
+    for (const r of redirects) expect(r.permanent).toBe(PERMANENT.has(r.source));
   });
 
   it("sends old /fix/{run} links to /fix/proposals/{run} without catching /fix/what-if or the new path", async () => {
@@ -88,6 +92,13 @@ describe("legacy route redirects", () => {
     expect("/fix/proposals/R1").not.toMatch(pattern);
   });
 
+  it("sends /admin/notifications permanently to the Alerts page", async () => {
+    const redirects = await nextConfig.redirects!();
+    expect(redirects.filter((r) => r.source === "/admin/notifications")).toEqual([
+      { source: "/admin/notifications", destination: "/admin/alerts", permanent: true },
+    ]);
+  });
+
   it("sends the retired Fix work Monitor tab to the Objects list's monitoring view", async () => {
     const redirects = await nextConfig.redirects!();
     const rules = redirects.filter((r) => r.source === "/fix");
@@ -97,11 +108,9 @@ describe("legacy route redirects", () => {
   });
 
   // TODO (later work packages, each with the page it needs; add the rule to EXPECTED when it lands):
-  //  - /admin/notifications -> /admin/alerts (the Alerts page, wave 4)
   //  - /fix?tab=cleaning -> /fix?sugg=1 (after the cleaning-proposal parity check passes)
-  it("does not redirect /admin/notifications or /fix?tab=cleaning yet", async () => {
+  it("does not redirect /fix?tab=cleaning yet", async () => {
     const redirects = await nextConfig.redirects!();
-    expect(redirects.some((r) => r.source === "/admin/notifications")).toBe(false);
     expect(redirects.some((r) => r.source === "/fix" && r.has?.some((h) => h.type === "query" && "value" in h && h.value === "cleaning"))).toBe(false);
   });
 

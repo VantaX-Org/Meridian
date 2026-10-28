@@ -39,6 +39,8 @@ PAGE = 50
 COUNT_CAP = 100_000
 MAX_ACCEPT = 50_000
 SEVERITIES = ("critical", "high", "medium", "low")
+_SINCE_DESC = ("a baseline run id: only records failing a check they did not fail in that run (the monitor's new "
+               "failing records); needs one run, not scope=current")
 
 
 async def _run(db: AsyncSession, tenant: Tenant, version_id: Optional[uuid.UUID]) -> tuple[str, str]:
@@ -177,6 +179,7 @@ async def summary(
     part: Optional[str] = Query(None, max_length=200),
     system: Optional[str] = Query(None, max_length=100),
     q: Optional[str] = Query(None, max_length=200),
+    since: Optional[uuid.UUID] = Query(None, description=_SINCE_DESC),
     scope: WorkScope = _SCOPE,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
@@ -212,10 +215,11 @@ async def summary(
     unbuilt = await _unbuilt(db, tenant, sel)
     ids = run_ids(sel.pairs) if sel.pairs is not None else [sel.vid]
     totals = {k: sum(o[k] for o in out) for k in ("records", "open", "issues", "critical", "proposed", "overdue")}
-    filters = (module, check_id, severity, status, assigned, proposed, due, part, system, q)
+    filters = (module, check_id, severity, status, assigned, proposed, due, part, system, q, since)
     if any(f is not None for f in filters):
         where, fp = _records_where(tenant, sel, request, module, check_id, severity, status or "open", assigned,
                                    proposed, q, due, part, system)
+        await _since(db, tenant, sel, since, module, where, fp)
         f = (await db.execute(text(f"""
             SELECT count(*) AS records, COALESCE(sum(w.issues), 0) AS issues,
                    count(*) FILTER (WHERE w.sev_rank = 0) AS critical, count(*) FILTER (WHERE w.proposed > 0) AS proposed,
@@ -335,6 +339,46 @@ def _records_where(tenant: Tenant, sel: "_Rows | str", request: Request, module,
     return where, p
 
 
+# The checks both runs evaluated in full: the ones the run compare (DIFF_SQL) counts, so "new" here is "new" there.
+_COMPARABLE_SQL = """
+    SELECT f2.check_id FROM findings f2
+      JOIN findings f1 ON f1.version_id = CAST(:since AS uuid) AND f1.check_id = f2.check_id
+     WHERE f2.version_id = CAST(:v AS uuid) AND f2.tenant_id = CAST(:t AS uuid) AND f1.tenant_id = f2.tenant_id
+       AND f1.details->>'error' IS NULL AND f2.details->>'error' IS NULL
+       AND NOT COALESCE((f1.details->>'failing_keys_truncated')::boolean, false)
+       AND NOT COALESCE((f2.details->>'failing_keys_truncated')::boolean, false)
+       AND (CAST(:m AS text) IS NULL OR f2.module = CAST(:m AS text))
+"""
+
+
+async def _since(db: AsyncSession, tenant: Tenant, sel: _Rows, since: Optional[uuid.UUID], module: Optional[str],
+                 where: list[str], p: dict) -> None:
+    """Narrow ``where`` to the records of the run that fail a check they did not fail in run ``since``.
+
+    Read from ``finding_records`` of both runs, whose primary key (version_id, check_id, record_key) makes each probe
+    an index lookup: the failing keys of the run's comparable checks, minus the baseline's. It never reads
+    ``work_records`` beyond the rows the other filters leave, and never the findings' payloads."""
+    if since is None:
+        return
+    if sel.current or not sel.vid:
+        raise HTTPException(status_code=422, detail="since compares one run: pass version_id, not scope=current")
+    known = (await db.execute(text("SELECT 1 FROM analysis_versions WHERE id = :s AND tenant_id = :t"),
+                              {"s": since, "t": str(tenant.id)})).scalar()
+    if not known:
+        raise HTTPException(status_code=404, detail="Baseline run not found.")
+    checks = list((await db.execute(text(_COMPARABLE_SQL), {"since": str(since), "v": sel.vid, "t": str(tenant.id),
+                                                            "m": module})).scalars().all())
+    if str(since) == sel.vid or not checks:
+        where.append("FALSE")
+        return
+    where.append("""EXISTS (SELECT 1 FROM finding_records fr
+                     WHERE fr.version_id = w.version_id AND fr.check_id = ANY(CAST(:since_checks AS text[]))
+                       AND fr.record_key = w.record_key AND fr.module = w.module
+                       AND NOT EXISTS (SELECT 1 FROM finding_records b WHERE b.version_id = CAST(:since AS uuid)
+                                         AND b.check_id = fr.check_id AND b.record_key = fr.record_key))""")
+    p.update(since=str(since), since_checks=checks)
+
+
 @router.get("/records")
 async def records(
     request: Request,
@@ -353,6 +397,7 @@ async def records(
     limit: int = Query(PAGE, ge=1, le=500),
     sort: Optional[str] = Query(None, max_length=50, description="severity and/or age, comma separated, a leading minus "
                                                                  "for descending (-age: the oldest first); default severity"),
+    since: Optional[uuid.UUID] = Query(None, description=_SINCE_DESC),
     scope: WorkScope = _SCOPE,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
@@ -366,6 +411,7 @@ async def records(
     order = _parse_sort(sort)
     where, p = _records_where(tenant, sel, request, module, check_id, severity, status, assigned, proposed, q, due, part,
                               system)
+    await _since(db, tenant, sel, since, module, where, p)
     exprs = [_SORT_KEYS[k] for k in order]
     page_where = list(where)
     if after:
@@ -1105,6 +1151,7 @@ async def export_sheet(
     part: Optional[str] = Query(None, max_length=200),
     system: Optional[str] = Query(None, max_length=100),
     q: Optional[str] = Query(None, max_length=200),
+    since: Optional[uuid.UUID] = Query(None, description=_SINCE_DESC),
     scope: WorkScope = _SCOPE,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
@@ -1119,6 +1166,7 @@ async def export_sheet(
     vid = sel.vid or "current"
     where, p = _records_where(tenant, sel, request, module, check_id, severity, status, assigned, proposed, q, due, part,
                               system)
+    await _since(db, tenant, sel, since, module, where, p)
     check_filter = "AND fr.check_id = :c" if check_id else ""
     rows = (await db.execute(text(f"""
         WITH auto AS (
@@ -1171,6 +1219,7 @@ async def export_per_object(
     part: Optional[str] = Query(None, max_length=200),
     system: Optional[str] = Query(None, max_length=100),
     q: Optional[str] = Query(None, max_length=200),
+    since: Optional[uuid.UUID] = Query(None, description=_SINCE_DESC),
     scope: WorkScope = _SCOPE,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
@@ -1193,6 +1242,7 @@ async def export_per_object(
     vid = sel.vid or "current"
     where, p = _records_where(tenant, sel, request, None, check_id, severity, status, assigned, proposed, q, due, part,
                               system)
+    await _since(db, tenant, sel, since, None, where, p)
     check_filter = "AND fr.check_id = :c" if check_id else ""
     rows = (await db.execute(text(f"""
         WITH auto AS (

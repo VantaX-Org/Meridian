@@ -1,6 +1,31 @@
 "use client";
 
+import { useEffect } from "react";
+import { useParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, ProgressFill } from "@/design";
+import { TERMINAL_EVENTS, streamRunEvents } from "@/lib/api/run-events";
+import { queryKeys } from "@/lib/query-keys";
+
+/**
+ * Follows a run's server-sent progress (GET /events/{versionId}) and refetches the run's status the moment the server
+ * says something, instead of waiting for the next poll. The page's poll stays on as the fallback: with no stream
+ * (the server publishes none, a proxy buffers it, the connection drops) nothing changes but the delay.
+ */
+export function useRunEvents(versionId: string | undefined): void {
+  const qc = useQueryClient();
+  useEffect(() => {
+    if (!versionId) return;
+    return streamRunEvents(
+      versionId,
+      (e) => {
+        // A finished run changes more than its status: its scores, findings and steps.
+        void qc.invalidateQueries({ queryKey: TERMINAL_EVENTS.has(e.event) ? queryKeys.run(versionId) : [...queryKeys.run(versionId), "status"] });
+      },
+      () => {},
+    );
+  }, [qc, versionId]);
+}
 
 /**
  * Inline progress banner for a running analysis or extraction, shown on the
@@ -12,6 +37,7 @@ export function RunProgressBanner({
   label,
   step,
   detail,
+  versionId,
 }: {
   /** 0..100. */
   percent: number;
@@ -21,7 +47,11 @@ export function RunProgressBanner({
   step?: string;
   /** Secondary line, e.g. rows processed / ETA. */
   detail?: string;
+  /** The run to follow live; on a /runs/[versionId] page it is that run. */
+  versionId?: string;
 }) {
+  const params = useParams<{ versionId?: string }>();
+  useRunEvents(versionId ?? params?.versionId);
   const pct = Math.min(100, Math.max(0, Math.round(percent)));
   return (
     <Card padding="sm">

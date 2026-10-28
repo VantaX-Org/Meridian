@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Card, ConfirmDialog, ErrorState, Input, Select, Skeleton, Status, toast } from "@/design";
+import { Button, Card, ConfirmDialog, ErrorState, Select, Skeleton, Status, toast } from "@/design";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { getSystemObjects } from "@/lib/api/system-objects";
 import { getObjectsMonitor } from "@/lib/api/v1/objects";
@@ -13,17 +13,12 @@ import type { SyncProfile } from "@/types/api";
 import { TENANT_TIMEZONE_HREF, useTenantTimezone } from "@/lib/tenant-zone";
 import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { ProcessSchedules } from "@/app/(app)/process/_components/schedules-card";
+import { useRole } from "@/hooks/use-role";
+import { CronPicker, PRESETS, cronError, presetLabel } from "./cron-picker";
 
-const CUSTOM = "custom";
-const PRESETS = [
-  { value: "0 2 * * *", label: "Daily at 02:00" },
-  { value: "0 2 * * 1", label: "Weekly, Monday 02:00" },
-  { value: "0 2 1 * *", label: "Monthly, 1st at 02:00" },
-  { value: "0 * * * *", label: "Hourly" },
-  { value: CUSTOM, label: "Custom cron…" },
-];
-export const presetLabel = (cron: string | null) =>
-  !cron ? "Manual only" : PRESETS.find((p) => p.value === cron)?.label ?? cron;
+// The picker lives in cron-picker.tsx so the process schedules card can use it without importing this panel.
+export { CronPicker, cronError, presetLabel };
 
 const MODES = [
   { value: "full", label: "Full extraction" },
@@ -31,54 +26,18 @@ const MODES = [
 ];
 const modeLabel = (m: string | undefined) => MODES.find((x) => x.value === m)?.label ?? "Full extraction";
 
-/** Five cron fields, each a number, range, list, step or star within its bounds; nothing fancier is accepted. */
-const FIELD = (min: number, max: number) => {
-  const n = `(?:${min === 0 ? "[0-9]|[1-5][0-9]" : "[0-9]|[1-9][0-9]"})`;
-  const item = `(?:\\*|${n}(?:-${n})?)(?:/[1-9][0-9]?)?`;
-  return { re: new RegExp(`^${item}(?:,${item})*$`), min, max };
-};
-const FIELDS = [FIELD(0, 59), FIELD(0, 23), FIELD(1, 31), FIELD(1, 12), FIELD(0, 7)];
-/** The reason a cron expression is rejected, or undefined when it is valid. */
-export function cronError(cron: string): string | undefined {
-  const parts = cron.trim().split(/\s+/);
-  if (parts.length !== 5) return "Enter five fields: minute, hour, day, month, weekday";
-  const bad = parts.findIndex((p, i) => {
-    const f = FIELDS[i]!;
-    if (!f.re.test(p)) return true;
-    return p.split(/[,\-/]/).some((x) => /^\d+$/.test(x) && (Number(x) < f.min || Number(x) > f.max));
-  });
-  if (bad >= 0) return `${["Minute", "Hour", "Day", "Month", "Weekday"][bad]} is out of range`;
-  return undefined;
-}
-
-export function CronPicker({ value, onChange, disabled }: { value: string; onChange: (cron: string) => void; disabled?: boolean }) {
-  const [custom, setCustom] = useState(!PRESETS.some((p) => p.value === value));
-  const [text, setText] = useState(value);
-  const error = custom && text.trim() ? cronError(text) : undefined;
-  const commit = () => { const t = text.trim(); if (t && !cronError(t) && t !== value) onChange(t); };
+/** Extract schedules, then the process discovery schedules of the same system as a second section. */
+export function SchedulesPanel({ id, canManage }: { id: string; canManage: boolean }) {
+  const { can } = useRole();
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex gap-2">
-        <div className="[width:200px]">
-          <Select
-            label="Schedule"
-            options={PRESETS} value={custom ? CUSTOM : value}
-            onValueChange={(v) => { setCustom(v === CUSTOM); if (v !== CUSTOM) onChange(v); }} />
-        </div>
-        {custom && (
-          <Input aria-label="Cron expression" placeholder="min hour day month weekday" disabled={disabled}
-            className="font-mono" aria-invalid={!!error}
-            value={text} onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") commit(); }}
-            onBlur={commit} />
-        )}
-      </div>
-      {error ? <p className="m-field-error">{error}</p> : null}
+    <div className="flex flex-col gap-4">
+      <ExtractSchedules id={id} canManage={canManage} />
+      <ProcessSchedules systemId={id} canManage={can("run_process_discovery")} title="Process discovery" />
     </div>
   );
 }
 
-export function SchedulesPanel({ id, canManage }: { id: string; canManage: boolean }) {
+function ExtractSchedules({ id, canManage }: { id: string; canManage: boolean }) {
   const qc = useQueryClient();
   // Schedules run on the tenant's clock (Admin › Triage settings), so their times are shown in it.
   const tz = useTenantTimezone();

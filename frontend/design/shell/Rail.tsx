@@ -8,10 +8,12 @@ import { getShellCounts } from "../../lib/api/shell";
 import { getSystems } from "../../lib/api/connectivity";
 import { queryKeys } from "../../lib/query-keys";
 import { useNavLoading, useVisibleNav } from "../../hooks/use-nav";
+import { useAttentionCount } from "../../hooks/use-attention";
+import { attentionBadge } from "../../lib/api/attention";
 import { useRole } from "../../hooks/use-role";
 import { APPROVALS_HREF, pillSetFor, type PillSet } from "../../lib/persona";
 import { MeridianMark } from "../icons/Mark";
-import { IconChevronDown, IconGrid } from "../icons";
+import { IconChevronDown, IconFlag, IconGrid } from "../icons";
 import { PERSONA_PILLS, SETTINGS_HREF, activeHref, flattenNav, resolveNavHref, splitNav, type NavGroup, type NavItem } from "../../lib/nav";
 import { Badge } from "../primitives/Badge";
 import { Skeleton } from "../primitives/Skeleton";
@@ -82,6 +84,32 @@ export function railSplit(
     more = first ? [{ group: first.group, items: [...displaced, ...first.items] }, ...rest] : [{ group: "Work", items: displaced }];
   }
   return { main, more: more.filter((g) => g.items.length > 0) };
+}
+
+/**
+ * The To do control, before the notifications bell: a flag that opens /attention with the number of items that
+ * need a person soon (critical and high, for this viewer: the server has already filtered the list to what they may
+ * act on). The badge is critical when any item is critical, else neutral, and is absent while the count loads and when
+ * it is zero, so nothing flashes a number the viewer may not see.
+ */
+export function AttentionControl() {
+  const { data } = useAttentionCount();
+  const n = data ? attentionBadge(data) : 0;
+  return (
+    <div className="relative inline-flex" data-tour="attention">
+      <Link href="/attention" aria-label="To do" aria-describedby={n > 0 ? "rail-attention-count" : undefined} className="m-iconbtn m-motion-colors">
+        <IconFlag size={16} />
+      </Link>
+      {n > 0 && data && (
+        <>
+          <span aria-hidden="true" className="pointer-events-none absolute" style={{ top: -4, right: -4 }} data-testid="attention-badge">
+            <Badge count={n} tone={data.critical > 0 ? "critical" : "neutral"} />
+          </span>
+          <span id="rail-attention-count" className="sr-only">{`${n} critical or high`}</span>
+        </>
+      )}
+    </div>
+  );
 }
 
 export interface RailProps {
@@ -301,6 +329,7 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
 
       <div className="m-topnav-right">
         <div data-tour="command-palette" className="flex items-center">{commandPalette}</div>
+        <AttentionControl />
         {notifications}
         {helpMenu}
         {userMenu}

@@ -51,6 +51,10 @@ export const queryKeys = {
   migrationValueMap: (module: string, targetField: string) => ["migration", "value-map", module, targetField] as const,
   s4Readiness: (versionId: string) => ["s4-readiness", versionId] as const,
   shellCounts: () => ["shell-counts"] as const,
+  /** The viewer's to-do list (GET /attention): `kinds`, `object`, `system_id` and `limit` are the filters. */
+  attention: (filters: Record<string, unknown>) => ["attention", "list", normalizeFilters(filters)] as const,
+  /** The Rail badge and the home verdict button (GET /attention/count). */
+  attentionCount: () => ["attention", "count"] as const,
   insights: (
     kind: "readiness" | "impact" | "owners" | "duplicates" | "exec" | "proven-cost" | "overview" | "rules" | "root-causes" | "heatmap" | "trends" | "cleansing" | "s4-readiness",
     run?: string,

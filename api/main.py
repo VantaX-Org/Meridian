@@ -389,3 +389,7 @@ app.include_router(retention_router)
 
 from api.routes.auth import router as auth_router
 app.include_router(auth_router)
+
+from api.routes.auth_oidc import admin_router as sso_admin_router, router as auth_oidc_router
+app.include_router(auth_oidc_router)
+app.include_router(sso_admin_router)

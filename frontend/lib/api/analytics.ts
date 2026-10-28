@@ -153,12 +153,41 @@ export interface FindingImpact {
 /** GET /api/v1/analytics/impact/{findingId} — one finding's cost-at-risk breakdown. Null when the finding has no impact model (404) or an empty breakdown. */
 export async function getFindingImpact(findingId: string): Promise<FindingImpact | null> {
   try {
-    const { data } = await apiClient.get<FindingImpact>(`/api/v1/analytics/impact/${encodeURIComponent(findingId)}`);
+    // The rule view opens it, so a scoped 403 opens the request-access dialog.
+    const { data } = await apiClient.get<FindingImpact>(`/api/v1/analytics/impact/${encodeURIComponent(findingId)}`, { requestAccess: true });
     return data.impacts.length ? data : null;
   } catch (err) {
     if (isAxiosError(err) && err.response?.status === 404) return null;
     throw err;
   }
+}
+
+/** One day of an object's score history, as GET /analytics/forecast/{module} returns it (a row per day, runs of one day averaged). */
+export interface ForecastDay {
+  module_id?: string;
+  /** The day, ISO. The rest of the row is the SQL's own columns. */
+  day?: string;
+  avg_score?: number;
+  [column: string]: unknown;
+}
+
+export interface ModuleForecast {
+  module_id: string;
+  /** Null until the object has scores on three different days. */
+  forecast: DqsForecast | null;
+  /** The daily scores the fit read. */
+  history: ForecastDay[];
+  /** Why there is no forecast ("Need at least 3 data points ..."). */
+  message?: string;
+}
+
+/**
+ * GET /api/v1/analytics/forecast/{moduleId}: one object's projected score with its 95% ranges. The fit is a
+ * deterministic regression on the daily scores, so it is a projection of the runs so far, never a measurement.
+ */
+export async function getModuleForecast(moduleId: string): Promise<ModuleForecast> {
+  const { data } = await apiClient.get<ModuleForecast>(`/api/v1/analytics/forecast/${encodeURIComponent(moduleId)}`, { requestAccess: true });
+  return data;
 }
 
 export async function getPredictiveAnalytics(

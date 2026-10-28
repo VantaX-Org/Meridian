@@ -20,6 +20,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { actionColumn, LedgerHead, RowLink } from "@/components/mdm/ledger";
 import { ConditionList, ThresholdTable } from "../rule-ui";
 import { RuleVersions } from "./rule-versions";
+import { RuleVersionDiff } from "./rule-version-diff";
 
 const APPLIES_TONE: Record<string, "go" | "no-go" | "neutral"> = {
   applies: "go",
@@ -341,8 +342,10 @@ export default function RulePage() {
       />
       <EntityTabs entityType="rules" entityId={data.id}
         exportOptions={[{ format: "xlsx", label: "Rule run history (.xlsx)", run: () => exportRuleHistory(ruleId, "xlsx") }]}
-        history={history.data && history.data.runs.length > 0 ? (
-          <DataTable
+        history={
+          <div className="flex flex-col gap-6">
+            {history.data && history.data.runs.length > 0 ? (
+            <DataTable
             columns={[
               { accessorKey: "run_at", header: "Run", cell: (i) => formatDate(i.getValue<string>(), "datetime") },
               { accessorKey: "module", header: "Object", cell: (i) => formatModuleName(i.getValue<string>()) },
@@ -352,8 +355,11 @@ export default function RulePage() {
             getRowId={(r) => r.version_id}
             tableId="rule-history"
             height={320}
-          />
-        ) : undefined}
+            />
+            ) : null}
+            <RuleVersionDiff ruleId={checkId} />
+          </div>
+        }
         overview={<>
       <WhatItChecks rule={data} checkId={checkId} latest={history.data?.runs[0]} historyLoading={history.isLoading} />
 

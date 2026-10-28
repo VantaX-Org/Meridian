@@ -1,8 +1,10 @@
 // A process owner (process_analyst: run_process_discovery + export_process, no `analyse` or `export`) models and
 // exports in the designer; a viewer does neither. Mirrors api/routes/process_designer.py and process_export.py.
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
+import * as downloadApi from "@/lib/api/download";
 import * as designerApi from "@/lib/api/process-designer";
 import * as versionsApi from "@/lib/api/versions";
 import type { ProcessModelDocument } from "@/types/process-model";
@@ -39,6 +41,14 @@ describe("process designer for a process owner", () => {
     expect(await screen.findByRole("button", { name: "New model" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Export to Signavio" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Export to PowerPoint" })).toBeInTheDocument();
+  });
+
+  it("downloads the model as a PowerPoint deck from its export button", async () => {
+    h.actions = new Set(["view", "run_process_discovery", "export_process"]);
+    const download = vi.spyOn(downloadApi, "downloadAuthenticated").mockResolvedValue();
+    renderWithQuery(<ProcessDesigner />);
+    await userEvent.click(await screen.findByRole("button", { name: "Export to PowerPoint" }));
+    await waitFor(() => expect(download).toHaveBeenCalledWith(designerApi.pptxExportUrl("m1"), "process-model.pptx"));
   });
 
   it("offers neither to a viewer", async () => {

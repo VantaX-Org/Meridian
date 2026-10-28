@@ -9,6 +9,8 @@ import { resetPreferencesCache, setPreferences } from "@/lib/preferences";
 import type { HealthResponse } from "@/types/api";
 import PreferencesPage from "../page";
 
+let manage = false;
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (a: string) => manage && a === "manage_settings" }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const HEALTH: HealthResponse = {
@@ -35,6 +37,19 @@ afterEach(() => {
 });
 
 describe("Preferences page", () => {
+  it("links to Alerts for everyone only for users who manage settings, and says where the default digest is set", () => {
+    stubHealth("smtp");
+    manage = false;
+    const first = renderWithQuery(<PreferencesPage />);
+    expect(screen.getByText(/The default digest for the tenant is set by an administrator in Alerts/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Alerts for everyone" })).toBeNull();
+    first.unmount();
+    manage = true;
+    renderWithQuery(<PreferencesPage />);
+    expect(screen.getByRole("link", { name: "Alerts for everyone" })).toHaveAttribute("href", "/admin/alerts");
+  });
+
+
   it("shows display, notification and guidance cards", async () => {
     stubHealth("smtp");
     renderWithQuery(<PreferencesPage />);

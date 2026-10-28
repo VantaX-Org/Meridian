@@ -33,4 +33,13 @@ describe("homeActionFor", () => {
   it("keeps the basis action on systems", () => {
     expect(homeActionFor({ ...base, persona: "basis", can: canFor("analyst"), systemFailing: true })).toEqual({ label: "Open failed system", href: "/systems" });
   });
+
+  it("takes the to-do action when one is given, for every persona and role", () => {
+    const attention = { label: "Retry", href: "/admin/jobs?job=j1" };
+    for (const persona of ["lead", "steward", "basis"] as const) {
+      expect(homeActionFor({ ...base, persona, can: canFor("admin"), attention })).toEqual(attention);
+    }
+    expect(homeActionFor({ ...base, persona: "lead", can: canFor("auditor"), attention })).toEqual(attention);
+    expect(homeActionFor({ ...base, persona: "lead", can: canFor("admin"), attention: undefined }).label).toBe("Open objects below target");
+  });
 });

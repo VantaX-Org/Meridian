@@ -137,7 +137,7 @@ export function ObjectMonitorStrip({ object, run }: { object: string; run: strin
                 <>
                   <DrillCount
                     count={drift.new_failing}
-                    href={fixHref({ run: runId, module: object, check: onlyRule })}
+                    href={fixHref({ run: runId, module: object, check: onlyRule, since: baseline.version_id ?? undefined })}
                     label={`Open the ${plural(drift.new_failing, "new failing record")} of ${name}`}
                   >
                     {plural(drift.new_failing, "new failing record")}

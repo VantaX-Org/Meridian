@@ -10,6 +10,7 @@ import { ACTIVE_RUN, getCatalogue, listRuns } from "@/lib/api/process-discovery"
 import { apiErrorState } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { PROCESS_PURPOSE, ProcessFrame, RowsSkeleton, processMeta } from "../_components/process-header";
+import { ProcessSchedules } from "../_components/schedules-card";
 import { NewRunDialog } from "../_components/new-run-dialog";
 import { DiscoveryStart, canMine } from "../_components/discovery-start";
 import { NoSystem, RunsTable, SystemSelect, useProcessSystem } from "../_components/shared";
@@ -59,6 +60,7 @@ export default function ProcessRunsPage() {
           catalogue.isError ? <ErrorState {...apiErrorState(catalogue.error)} onRetry={() => catalogue.refetch()} />
             : catalogue.data ? <DiscoveryStart system={system} rows={catalogue.data} /> : <RowsSkeleton />
         ) : <RunsTable runs={runs.data} jobs={jobs} systemName={system.name} names={names} />}
+      <ProcessSchedules systemId={system.id} canManage={can("run_process_discovery")} />
       {catalogue.data && (
         <NewRunDialog open={newRun === "1"} onOpenChange={(o) => setNewRun(o ? "1" : "")}
           systemId={system.id} systemName={system.name} rows={catalogue.data} />

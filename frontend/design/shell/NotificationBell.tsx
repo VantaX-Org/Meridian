@@ -15,6 +15,8 @@ import { IconButton } from "../primitives/IconButton";
 import { Pill, type PillTone } from "../primitives/Pill";
 import { Skeleton } from "../primitives/Skeleton";
 import { IconBell } from "../icons";
+import { toast } from "./Toaster";
+import { apiErrorMessage } from "../../lib/error";
 
 /** Pill tone per notification type: warnings read as at-risk, approvals as info, everything else neutral. */
 const TONE: Record<NotificationType, PillTone> = {
@@ -66,13 +68,25 @@ export function useNotificationMutations() {
     void qc.invalidateQueries({ queryKey: queryKeys.unreadNotifications() });
     void qc.invalidateQueries({ queryKey: ["inbox", "notifications"] });
   };
-  const markRead = useMutation({ mutationFn: markNotificationRead, onSuccess: refresh });
-  const markAllRead = useMutation({ mutationFn: markAllNotificationsRead, onSuccess: refresh });
+  const markRead = useMutation({
+    mutationFn: markNotificationRead,
+    onSuccess: refresh,
+    onError: (e) => toast.error("Could not mark the notification read", { description: apiErrorMessage(e) }),
+  });
+  const markAllRead = useMutation({
+    mutationFn: markAllNotificationsRead,
+    onSuccess: refresh,
+    onError: (e) => toast.error("Could not mark the notifications read", { description: apiErrorMessage(e) }),
+  });
   return { markRead, markAllRead };
 }
 
 /** One notification: unread dot, type pill, title (a link when it has an in-app target), body and age. */
-export function NotificationRow({ n, showBody, onOpen }: { n: Notification; showBody?: boolean; onOpen: (n: Notification) => void }) {
+export function NotificationRow({ n, showBody, onOpen, onMarkRead }: {
+  n: Notification; showBody?: boolean; onOpen: (n: Notification) => void;
+  /** Marks this one read without opening it; the row shows "Mark read" while it is unread. */
+  onMarkRead?: (n: Notification) => void;
+}) {
   const href = internalHref(n.link);
   const titleText = humanizeIds(n.title);
   const title = <span className="m-text-body font-medium m-ink">{titleText}</span>;
@@ -96,6 +110,9 @@ export function NotificationRow({ n, showBody, onOpen }: { n: Notification; show
         )}
         {showBody && <p className="m-text-body m-ink-2">{humanizeIds(n.body)}</p>}
       </div>
+      {onMarkRead && !n.is_read && (
+        <Button variant="ghost" size="sm" onClick={() => onMarkRead(n)} aria-label={`Mark read: ${titleText}`}>Mark read</Button>
+      )}
     </li>
   );
 }
@@ -162,7 +179,7 @@ export function NotificationBell() {
               ) : items.length === 0 ? (
                 <p className="m-text-body p-3 m-ink-3">You are all caught up</p>
               ) : (
-                <ul>{items.map((n) => <NotificationRow key={n.id} n={n} onOpen={onOpen} />)}</ul>
+                <ul>{items.map((n) => <NotificationRow key={n.id} n={n} onOpen={onOpen} onMarkRead={(x) => markRead.mutate(x.id)} />)}</ul>
               )}
             </div>
             <div className="px-3 py-2" style={{ borderTop: "1px solid var(--m-line)" }}>
