@@ -40,7 +40,7 @@ describe("Objects list monitoring", () => {
     renderWithQuery(<ObjectsPage />);
     await waitFor(() => expect(ledger().getByText("Stale")).toBeInTheDocument());
     expect(ledger().getByText("Fresh")).toBeInTheDocument();
-    expect(headers()).toEqual(expect.arrayContaining(["Freshness", "Rule failures", "Score", "Verdict"]));
+    expect(headers()).toEqual(expect.arrayContaining(["Freshness", "Rule failures (all rules)", "Score", "Verdict"]));
     expect(headers()).not.toContain("Checked");
     expect(headers()).not.toContain("Cadence");
   });

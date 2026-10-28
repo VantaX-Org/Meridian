@@ -73,7 +73,8 @@ describe("Rules tab coverage", () => {
     searchParams = new URLSearchParams("run=v1&tab=rules");
     renderWithQuery(<ObjectDetailPage />);
     const line = await screen.findByTestId("rules-coverage");
-    expect(line).toHaveTextContent("34 of 40 catalogue rules ran");
+    // the rules this run measured (the list below: one here), out of the catalogue's 40
+    expect(line).toHaveTextContent("1 of 40 catalogue rules ran in this run.");
     expect(rulesApi.getModuleCoverage).toHaveBeenCalledWith("material_master");
     expect(within(line).getByRole("link", { name: "Open the catalogue" })).toHaveAttribute("href", "/rules?module=material_master");
   });
@@ -165,5 +166,26 @@ describe("Fields tab Confirm dependency", () => {
     renderWithQuery(<ObjectDetailPage />);
     await screen.findByText("MARA.MBRSH");
     expect(screen.queryByRole("button", { name: /Confirm dependency/ })).toBeNull();
+  });
+});
+
+describe("Rules tab, passing rules", () => {
+  it("lists failing rules and folds the rules with no failures under Passing (N)", async () => {
+    vi.spyOn(objectsApi, "getObject").mockResolvedValue({
+      ...OBJECT,
+      rules: [
+        ...OBJECT.rules,
+        { check_id: "mm_ok_a", severity: "low", dimension: "validity", affected_count: 0, total_count: 100, pass_rate: 100 },
+        { check_id: "mm_ok_b", severity: "low", dimension: "validity", affected_count: 0, total_count: 100, pass_rate: 100 },
+      ],
+    });
+    searchParams = new URLSearchParams("run=v1&tab=rules");
+    renderWithQuery(<ObjectDetailPage />);
+    await screen.findByText("mm_missing_desc");
+    const passing = await screen.findByTestId("passing-rules");
+    expect(within(passing).getByText("Passing (2)")).toBeInTheDocument();
+    expect(passing).not.toHaveAttribute("open");
+    // the catalogue line counts the rules this run measured, never "0 of N" above a list of rules
+    expect(screen.getByTestId("rules-coverage")).toHaveTextContent("3 of 40 catalogue rules ran in this run.");
   });
 });

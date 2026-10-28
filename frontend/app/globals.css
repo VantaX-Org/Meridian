@@ -223,6 +223,9 @@
 
   .m-input { height: var(--m-control-h); padding: 0 10px; border: 1px solid var(--m-line-strong); border-radius: var(--m-radius-control); background: var(--m-sheet); color: var(--m-ink); font-size: var(--m-text-body); line-height: var(--m-leading-body); }
   .m-input::placeholder { color: var(--m-ink-3); }
+  /* A disabled field reads as read only: sunken, quiet ink, no hover cue. */
+  .m-input:disabled { background: var(--m-sheet-sunken); border-color: var(--m-line); color: var(--m-ink-3); cursor: not-allowed; }
+  .m-input:disabled:hover { border-color: var(--m-line); }
   .m-input:hover { border-color: var(--m-ink-3); }
   .m-input:focus, .m-input:focus-visible { outline: none; border-color: var(--m-accent); box-shadow: var(--m-elev-focus); }
   .m-input[aria-invalid="true"], .m-input[data-invalid] { border-color: var(--m-critical); }

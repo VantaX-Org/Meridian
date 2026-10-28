@@ -202,6 +202,8 @@ export function stateRows(
       module,
       label: formatModuleName(module),
       composite_score: s.composite_score,
+      raw_score: s.raw_score,
+      capped: s.capped,
       readiness: tierOf(s.composite_score, bands),
       failing_checks: s.critical_count + s.high_count + s.medium_count + s.low_count,
       critical_checks: s.critical_count,

@@ -24,12 +24,15 @@ import { RunScope } from "@/components/run-scope";
 import { useRunScope } from "@/hooks/use-run-scope";
 import { hrefWithRun } from "@/lib/run-scope";
 import { FilterChips } from "./_header";
+import { cappedScore } from "./_cap";
 import { useCurrentObjects } from "./_current";
 import { toFixHref, workSummaryQuery } from "./_work";
 import type { WorkObject } from "@/lib/api/work";
 import { BELOW_TARGET } from "@/lib/home-metrics";
 import { MINE_PARAM, useObjectOwners, type ObjectOwners } from "@/hooks/use-object-owners";
 import { OwnerName } from "@/components/owners/OwnerName";
+import { getAssignableUsers } from "@/lib/api/users";
+import Link from "next/link";
 import { FreshnessPill } from "./_freshness";
 import { cadenceText } from "./[object]/_monitor";
 import { COUNT_DEFS } from "@/lib/counts";
@@ -79,8 +82,11 @@ const makeColumns = (run: string | undefined, bands: ScoreBands | undefined, obj
   const hasBlocking = objects.some((o) => o.blocking_rule_id);
   const hasWork = objects.some((o) => o.work !== undefined);
   const monitoring = view === "monitoring";
+  // Owner is a column only when someone owns an object (or it cannot be told): "Not set" on every row says nothing.
+  const noOwners = ownerStatus === "ready" && objects.every((o) => !ownerOf(o));
   return allColumns(run, bands, openHref, ownerOf, ownerStatus).filter((c) => {
     const id = c.id ?? "";
+    if (id === "owner" && noOwners) return false;
     // The monitoring view is Checked, Cadence, Freshness and Change beside the score; the work columns step aside.
     if (monitoring) return !HIDDEN_WHEN_MONITORING.has(id) && id !== "trend";
     if (MONITOR_ONLY.has(id)) return false;
@@ -136,6 +142,55 @@ const allColumns = (run: string | undefined, bands: ScoreBands | undefined, open
     accessorFn: (o) => ownerOf(o) ?? "",
     cell: ({ row }) => <OwnerName name={ownerOf(row.original)} status={ownerStatus} />,
   },
+  workColumn("work_open", "To fix", (w) => w.open, run, ["record to fix", "records to fix"]),
+  workColumn("work_critical", "Critical records", (w) => w.critical, run, ["critical record", "critical records"], { sev: "critical" }),
+  workColumn("work_proposed", "With a suggested value", (w) => w.proposed, run, ["record with a suggested value", "records with a suggested value"], { suggested: "1" }),
+  workColumn("work_overdue", "Overdue", (w) => w.overdue, run, ["overdue record", "overdue records"], { due: "overdue" }),
+  {
+    // Rule failures sits with the counts, not beside the blocking rule: it is the object's total over every rule.
+    id: "affected_records",
+    accessorFn: (o) => o.affected_records ?? -1,
+    // Summed over the object's failing rules: a record failing two rules counts twice, so this is rule failures, not
+    // records (the distinct records are the work list's "To fix").
+    header: () => <span title={COUNT_DEFS.rule_failures.hint}>{`${COUNT_DEFS.rule_failures.label} (all rules)`}</span>,
+    size: 130,
+    meta: { numeric: true } satisfies CellMeta,
+    cell: ({ row }) => {
+      const n = row.original.affected_records;
+      if (n == null) return "—";
+      return <DrillCount href={toFixHref(row.original.module, run)} count={n} label={`Open the records behind the ${plural(n, "rule failure")} of ${row.original.label}`}>{n.toLocaleString()}</DrillCount>;
+    },
+  },
+  {
+    id: "composite_score",
+    // Ranks on the uncapped score, so objects held at the same cap still order.
+    accessorFn: (o) => { const c = cappedScore(o); return c ? c.shown : null; },
+    header: COUNT_DEFS.score.label,
+    size: 150,
+    cell: ({ row }) => {
+      const c = cappedScore(row.original);
+      if (!c) return "—";
+      return (
+        <span className="inline-flex flex-col" data-testid="score-cell">
+          <Score size="sm" value={c.shown} cap={c.cap} bands={bands}>{drill(row.original, run, c.shown.toFixed(1))}</Score>
+          {c.cap != null ? <span className="m-text-meta m-ink-3">{`Capped at ${c.cap}`}</span> : null}
+        </span>
+      );
+    },
+  },
+  {
+    id: "readiness",
+    // Severity-mapped value drives the row bar; the cell still shows the verdict word.
+    accessorFn: (o) => (o.readiness === "fail" ? "critical" : o.readiness === "warn" ? "medium" : o.readiness === "pass" ? "pass" : ""),
+    header: COUNT_DEFS.verdict.label,
+    sortingFn: bySeverity,
+    meta: { severity: true } satisfies CellMeta,
+    cell: ({ row }) => {
+      const readiness = row.original.readiness;
+      if (!readiness) return "—";
+      return <Status kind="verdict" value={readiness} variant="solid" />;
+    },
+  },
   {
     id: "blocking_rule",
     header: "Blocking rule",
@@ -154,48 +209,6 @@ const allColumns = (run: string | undefined, bands: ScoreBands | undefined, open
           {" "}<RuleName id={id} fallback={words} />
         </span>
       );
-    },
-  },
-  {
-    id: "affected_records",
-    accessorFn: (o) => o.affected_records ?? -1,
-    // Summed over the object's failing rules: a record failing two rules counts twice, so this is rule failures, not
-    // records (the distinct records are the work list's "To fix").
-    header: COUNT_DEFS.rule_failures.label,
-    size: 110,
-    meta: { numeric: true } satisfies CellMeta,
-    cell: ({ row }) => {
-      const n = row.original.affected_records;
-      if (n == null) return "—";
-      return <DrillCount href={toFixHref(row.original.module, run)} count={n} label={`Open the records behind the ${plural(n, "rule failure")} of ${row.original.label}`}>{n.toLocaleString()}</DrillCount>;
-    },
-  },
-  workColumn("work_open", "To fix", (w) => w.open, run, ["record to fix", "records to fix"]),
-  workColumn("work_critical", "Critical records", (w) => w.critical, run, ["critical record", "critical records"], { sev: "critical" }),
-  workColumn("work_proposed", "With a suggested value", (w) => w.proposed, run, ["record with a suggested value", "records with a suggested value"], { suggested: "1" }),
-  workColumn("work_overdue", "Overdue", (w) => w.overdue, run, ["overdue record", "overdue records"], { due: "overdue" }),
-  {
-    accessorKey: "composite_score",
-    header: COUNT_DEFS.score.label,
-    cell: ({ row }) => {
-      const score = row.original.composite_score;
-      if (score == null) return "—";
-      return (
-        <Score size="sm" value={score} bands={bands}>{drill(row.original, run, score.toFixed(1))}</Score>
-      );
-    },
-  },
-  {
-    id: "readiness",
-    // Severity-mapped value drives the row bar; the cell still shows the verdict word.
-    accessorFn: (o) => (o.readiness === "fail" ? "critical" : o.readiness === "warn" ? "medium" : o.readiness === "pass" ? "pass" : ""),
-    header: COUNT_DEFS.verdict.label,
-    sortingFn: bySeverity,
-    meta: { severity: true } satisfies CellMeta,
-    cell: ({ row }) => {
-      const readiness = row.original.readiness;
-      if (!readiness) return "—";
-      return <Status kind="verdict" value={readiness} variant="solid" />;
     },
   },
   {
@@ -265,6 +278,8 @@ export default function ObjectsPage() {
   const owners = useObjectOwners();
   // The owner a row shows: the data_owners row (what the object header's picker sets), else the list's own field.
   const ownerOf = (o: ObjectRow) => owners.nameOf(o.module) ?? o.owner ?? null;
+  // Listing users needs the assign permission, so a result means this person may assign owners.
+  const assignable = useQuery({ queryKey: queryKeys.usersAssignable(), queryFn: getAssignableUsers, retry: false, meta: { ignoreError: true } });
 
   const single = useQuery({
     queryKey: queryKeys.objects(run),
@@ -399,6 +414,9 @@ export default function ObjectsPage() {
   const go = objects.filter((o) => o.readiness === "pass").length;
   // The map already draws the object count, each object's records and its verdict tint, so the stats here carry
   // what it does not: how many objects sit in each verdict, and the totals behind the ledger.
+  // Nobody owns any object: the Owner column steps aside and, for someone who may assign owners (the same read the
+  // object page's picker makes), one prompt takes its place.
+  const assignOwners = objects.length > 0 && owners.status === "ready" && objects.every((o) => !ownerOf(o)) && !!assignable.data;
   const stats = objects.length > 0 && (
     <div className="flex flex-col gap-3">
       <div className="m-stat-grid m-motion-stagger">
@@ -416,6 +434,13 @@ export default function ObjectsPage() {
         {owners.hasMine || mine ? <FilterChips label="Show" value={mine ? "1" : null} options={[{ value: "1", label: "My objects" }]} onChange={(v) => setParam(MINE_PARAM, v)} /> : null}
         {ownerOptions.length > 1 ? <FilterChips label="Owner" value={owner} options={ownerOptions} onChange={(v) => setParam("owner", v)} /> : null}
       </div>
+      {assignOwners ? (
+        <p className="m-text-body m-ink-2" data-testid="assign-owners">
+          Nobody owns these objects yet.{" "}
+          <Link href={toFixHref((shownObjs[0] ?? objects[0]).module, current ? undefined : runId ?? run)}className="m-ink-accent underline underline-offset-2">Assign owners</Link>
+          {" "}from each object&rsquo;s page.
+        </p>
+      ) : null}
     </div>
   );
 

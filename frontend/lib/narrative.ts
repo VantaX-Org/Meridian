@@ -17,7 +17,7 @@ function overallSentence(cmp: VersionComparison): string | null {
   const delta = roundedDelta(before, after);
   // Guard against "-0.0"
   const deltaFormatted = delta === 0 ? "+0.0" : signed(delta);
-  return `DQS moved from ${score(before)} to ${score(after)} (${deltaFormatted}) across ${plural(deltas.length, "module", "modules")}.`;
+  return `DQS moved from ${score(before)} to ${score(after)} (${deltaFormatted}) across ${plural(deltas.length, "object", "objects")}.`;
 }
 
 function moverSentence(cmp: VersionComparison): string | null {
@@ -63,6 +63,25 @@ function fixedSentence(cmp: VersionComparison, diff: RecordDiff | null): string 
   return `${head}; across every rule, ${plural(diff.totals.resolved, "rule failure", "rule failures")} resolved and ${nf.format(diff.totals.new)} new.`;
 }
 
+/**
+ * The net change in rule failures across every rule, said plainly beside the score's move. The score is a weighted
+ * average of rule pass rates per object (and a critical failure holds it at a cap), not a count of failures, so the
+ * two can move apart: "DQS +0.4" beside "failures rose by 630" needs the one sentence that says why.
+ */
+function netSentence(cmp: VersionComparison, diff: RecordDiff | null): string | null {
+  if (!diff) return null;
+  const net = diff.totals.new - diff.totals.resolved;
+  if (net === 0) return null;
+  const deltas = Object.values(cmp.delta);
+  const mean = (pick: (d: (typeof deltas)[number]) => number) => deltas.reduce((a, d) => a + pick(d), 0) / deltas.length;
+  const dqs = deltas.length === 0 ? 0 : roundedDelta(mean((d) => d.v1_score), mean((d) => d.v2_score));
+  const head = `Net, rule failures ${net > 0 ? "rose" : "fell"} by ${nf.format(Math.abs(net))}`;
+  if ((net > 0 && dqs > 0) || (net < 0 && dqs < 0)) {
+    return `${head} while the score ${dqs > 0 ? "improved" : "declined"}: the score weighs each object's rule pass rates and is held down by caps, so it does not move with the count of failures.`;
+  }
+  return `${head}.`;
+}
+
 function excludedSentence(diff: RecordDiff | null): string | null {
   const n = diff?.checks.filter((c) => !c.comparable).length ?? 0;
   if (n === 0) return null;
@@ -73,6 +92,6 @@ function excludedSentence(diff: RecordDiff | null): string | null {
 
 /** Template sentences describing a comparison. Pure; every number comes from the API payloads. */
 export function compareNarrative(cmp: VersionComparison, diff: RecordDiff | null): string[] {
-  return [overallSentence(cmp), moverSentence(cmp), regressionSentence(cmp), fixedSentence(cmp, diff), excludedSentence(diff)]
+  return [overallSentence(cmp), moverSentence(cmp), regressionSentence(cmp), fixedSentence(cmp, diff), netSentence(cmp, diff), excludedSentence(diff)]
     .filter((s): s is string => s !== null);
 }
