@@ -11,9 +11,9 @@ import {
   getSsoConfig, removeSsoConfig, saveSsoConfig, testSsoConfig,
   type SsoConfig, type SsoConfigInput, type SsoTestResult,
 } from "@/lib/api/sso";
+import { queryKeys } from "@/lib/query-keys";
 import { apiErrorMessage } from "@/lib/error";
 
-const SSO_KEY = ["admin", "sso"] as const;
 
 interface FormState {
   issuer: string;
@@ -41,7 +41,7 @@ export default function AdminSignInPage() {
   const { can, loading } = useRole();
   const canManage = can("manage_users");
   const qc = useQueryClient();
-  const q = useQuery({ queryKey: SSO_KEY, queryFn: getSsoConfig, enabled: canManage && !loading });
+  const q = useQuery({ queryKey: queryKeys.ssoConfig(), queryFn: getSsoConfig, enabled: canManage && !loading });
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [loadedFrom, setLoadedFrom] = useState<SsoConfig | null>(null);
   const [confirmEnforce, setConfirmEnforce] = useState(false);
@@ -73,7 +73,7 @@ export default function AdminSignInPage() {
   const save = useMutation({
     mutationFn: () => saveSsoConfig(input),
     onSuccess: (c) => {
-      qc.setQueryData(SSO_KEY, c);
+      qc.setQueryData(queryKeys.ssoConfig(), c);
       setConfirmEnforce(false);
       setTestResult(null);
       toast("Sign-in settings saved");
@@ -83,7 +83,7 @@ export default function AdminSignInPage() {
   const remove = useMutation({
     mutationFn: removeSsoConfig,
     onSuccess: (c) => {
-      qc.setQueryData(SSO_KEY, c);
+      qc.setQueryData(queryKeys.ssoConfig(), c);
       setLoadedFrom(null);
       setConfirmRemove(false);
       setTestResult(null);

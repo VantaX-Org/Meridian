@@ -5,7 +5,7 @@ commands with `ssh meridian`.
 
 ## 0. Before the purge — two decisions, not engineering
 
-The SuccessFactors mapping now resolves 353 of its 472 declared sources against the Komatsu
+The SuccessFactors mapping now resolves 353 of its 472 declared sources against the pilot customer's
 tenant. The remaining 119 are concentrated where the tenant does not serve the data
 (`docs/successfactors-parity.md`). Two of those are commercial decisions:
 
@@ -37,7 +37,7 @@ read:
 
 ```
 [PASS] connections        2 system(s); missing credentials: none
-[FAIL] systems reachable  Sanbox (KMZ): RFC_LOGON_FAILURE ... "too many failed attempts" ... (SU01)
+[FAIL] systems reachable  Sanbox (ERP): RFC_LOGON_FAILURE ... "too many failed attempts" ... (SU01)
 ```
 
 Credentials present, account locked. Without this check the only way to find out is to launch a

@@ -35,6 +35,8 @@ import { RunScope } from "@/components/run-scope";
 import { RuleCell } from "@/components/fix/rule-cell";
 import type { Finding, Version } from "@/types/api";
 import { clsx } from "clsx";
+import { COUNT_DEFS } from "@/lib/counts";
+import { fixHref } from "@/lib/drill";
 
 /** The run's starter as a phrase for the header meta: "on a schedule", "from an upload", "as a re-check", "by Jane Doe". */
 function startedPhrase(starter: string): string | null {
@@ -108,7 +110,7 @@ function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; hi
     },
     {
       id: "composite",
-      header: "Score",
+      header: COUNT_DEFS.score.label,
       cell: ({ row }) => (row.original.composite_score == null ? "—" : (
         <DrillLink object={row.original.module} run={versionId}>{row.original.composite_score.toFixed(1)}</DrillLink>
       )),
@@ -121,14 +123,14 @@ function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; hi
     },
     {
       accessorKey: "failing_checks",
-      header: "Failing rules",
+      header: COUNT_DEFS.failing_rules.label,
       meta: { priority: "low" } satisfies CellMeta,
       cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{formatNumber(row.original.failing_checks)}</DrillLink>,
     },
     {
       // Summed over the object's failing rules (a record failing two rules counts twice): rule failures.
       accessorKey: "affected_records",
-      header: "Rule failures",
+      header: COUNT_DEFS.rule_failures.label,
       cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{formatNumber(row.original.affected_records)}</DrillLink>,
     },
     {
@@ -186,7 +188,7 @@ function RunLedger({ versionId, rows, objects }: { versionId: string; rows: Modu
     },
     {
       id: "score",
-      header: "Score",
+      header: COUNT_DEFS.score.label,
       accessorFn: (m) => objects.get(m.module)?.composite_score ?? -1,
       cell: ({ row }) => <Score value={objects.get(row.original.module)?.composite_score} size="sm" />,
     },
@@ -211,7 +213,7 @@ function RunLedger({ versionId, rows, objects }: { versionId: string; rows: Modu
     },
     {
       // The aggregate's per-object sum over failing rules: rule failures, never distinct records.
-      id: "records", header: "Rule failures", accessorFn: (m) => m.affected ?? 0, meta: { numeric: true } satisfies CellMeta,
+      id: "records", header: COUNT_DEFS.rule_failures.label, accessorFn: (m) => m.affected ?? 0, meta: { numeric: true } satisfies CellMeta,
       cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{(row.original.affected ?? 0).toLocaleString()}</DrillLink>,
     },
     {
@@ -327,12 +329,12 @@ function SummaryTab({
     id: act.id,
     title: act.title,
     impact: [`${act.affected_count.toLocaleString()} records`, `${act.impact_points.toLocaleString()} impact points`],
-    verb: act.type === "finding" ? "Open finding" : act.type === "cleaning" ? "Open cleaning" : "Open exception",
+    verb: act.type === "finding" ? "Open finding" : act.type === "cleaning" ? "Open suggested values" : "Open exception",
     href: act.type === "finding"
       ? `/runs/${versionId}?tab=findings${act.module ? `&module=${act.module}` : ""}`
       // Carry this run: without it the cleaning queue opens across every run (or a stale carried one),
       // so the user leaves a run and lands somewhere that is not that run.
-      : act.type === "cleaning" ? `/fix?${new URLSearchParams({ tab: "cleaning", run: versionId, ...(act.module ? { module: act.module } : {}) })}` : "/inbox",
+      : act.type === "cleaning" ? fixHref({ run: versionId, module: act.module || undefined, sugg: true }) : "/inbox",
     // Plain words from the same action: its records, how many of them are critical, and the effort.
     why: `${plural(act.affected_count, "record")}, ${(act.severity === "critical" ? act.affected_count : 0).toLocaleString()} critical; about ${plural(Math.max(1, Math.round(act.effort_hours)), "hour")}.`,
   }));
@@ -362,7 +364,7 @@ function SummaryTab({
         stats={[
           // The findings list filters by one severity, so the two that block are two drills.
           {
-            label: "Critical and high failing rules",
+            label: COUNT_DEFS.blocking_rules.label,
             value: blocking.toLocaleString(),
             tone: blocking > 0 ? "no-go" : undefined,
             hint: (
@@ -373,7 +375,7 @@ function SummaryTab({
             ),
           },
           // Summed over the failing rules (a record failing two rules counts twice): rule failures, the ledger's column.
-          { label: "Rule failures", value: a.affected_records.toLocaleString(), hint: "records failing a rule, per rule", to: `/runs/${versionId}?tab=findings` },
+          { label: COUNT_DEFS.rule_failures.label, value: a.affected_records.toLocaleString(), hint: "records failing a rule, per rule", to: `/runs/${versionId}?tab=findings` },
           ...(cost != null ? [{ label: "Cost at risk", value: formatMoneyCompact(cost, costModel.data?.currency), to: `/runs/${versionId}?tab=findings` }] : []),
         ]}
         // `bare` sets the score band alone; the cells below are not drawn.
@@ -835,7 +837,7 @@ export default function RunDetailPage() {
         items={[
           { value: "overview", label: "Overview", content: <SummaryTab versionId={versionId} aggregate={aggregate} history={history} systemId={systemId} versionLoading={version.isLoading} lineage={v ? runs.filter((r) => lineageOf(r) === lineageOf(v) && isFinished(r)) : []} inProgress={running || v?.status === "pending" || v?.status === "running"} /> },
           { value: "objects", label: "Objects", content: <ObjectsTab versionId={versionId} history={history} onOpenSteps={openSteps} /> },
-          { value: "findings", label: "Failing rules", content: <FindingsTab versionId={versionId} onOpenSteps={openSteps} /> },
+          { value: "findings", label: COUNT_DEFS.failing_rules.label, content: <FindingsTab versionId={versionId} onOpenSteps={openSteps} /> },
           {
             value: "steps",
             label: "Steps",

@@ -31,7 +31,7 @@ export interface EarlyWarning {
   signal: "red" | "amber" | "green";
   /** Why the signal: below the threshold now (or in 7 days), projected below it in 30 days, or healthy. */
   reason?: "below_threshold" | "projected_below_threshold" | "healthy";
-  /** The score the object is held to: its floor under Rules, Scoring and alerts, else the warning band. */
+  /** The score the object is held to: its floor under Rules, Scoring, else the warning band. */
   threshold?: number;
   /** A plain fallback; the page words its own message from `signal` and `threshold`. */
   message: string;

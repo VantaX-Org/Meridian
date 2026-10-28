@@ -16,7 +16,7 @@ import type { ObjectMonitor } from "../../lib/api/v1/objects";
 /** Ids as in the recording (fixtures.ts RECORDED); not imported, because fixtures.ts imports this file. */
 const RECORDED = {
   systemId: "c7a18906-1555-40ba-a1b2-caf83188238e",
-  systemName: "KMZ-SIM",
+  systemName: "ERP-SIM",
   latestRunId: "d3229ded-0708-4967-9dfb-1b7f4fada953",
   materialRunId: "c1f752b7-ab20-441e-9b13-f47754f0e910",
 } as const;

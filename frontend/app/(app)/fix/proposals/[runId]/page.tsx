@@ -67,9 +67,9 @@ function decisionOf(status: string): { label: string; tone: PillTone } {
   return Object.hasOwn(DECISION, status) ? DECISION[status] : { label: labelOf(status), tone: "neutral" };
 }
 
-/** The cleaning proposals tab of the fix page, keeping the object and run the visit was scoped to. */
+/** Fix work's records with a suggested value (the cleaning proposals tab retired into it), keeping the object and run the visit was scoped to. */
 function cleaningQueueHref(params: URLSearchParams | null): string {
-  const qs = new URLSearchParams({ tab: "cleaning" });
+  const qs = new URLSearchParams({ sugg: "1" });
   for (const k of ["module", "run"]) { const v = params?.get(k); if (v) qs.set(k, v); }
   return `/fix?${qs.toString()}`;
 }
@@ -84,7 +84,7 @@ function BatchAudit({ runId, backHref }: { runId: string | undefined; backHref: 
   if (q.isLoading) return <Skeleton height={120} />;
   if (q.isError) return <ErrorState {...apiErrorState(q.error)} onRetry={() => void q.refetch()} />;
   const rows = q.data?.items ?? [];
-  if (rows.length === 0) return <EmptyState title="No changes recorded" detail="Approvals and rejections of these proposals are logged here." ghost="list" action={<Button variant="secondary" render={<Link href={backHref}>Back to the cleaning queue</Link>} />} />;
+  if (rows.length === 0) return <EmptyState title="No changes recorded" detail="Approvals and rejections of these proposals are logged here." ghost="list" action={<Button variant="secondary" render={<Link href={backHref}>Back to records with a suggestion</Link>} />} />;
   return <DataTable columns={AUDIT_COLUMNS} data={rows} getRowId={(r) => r.id} tableId="batch-audit" exportName="batch-audit" height={360} />;
 }
 
@@ -284,11 +284,11 @@ export default function ProposalsPage() {
       emptyProps={runMissing ? {
         title: "Run not found",
         detail: "This run was deleted or never existed, so it has no proposals to review.",
-        action: <Button render={<Link href={backHref}>Back to the cleaning queue</Link>} />,
+        action: <Button render={<Link href={backHref}>Back to records with a suggestion</Link>} />,
       } : {
         title: "No proposals waiting",
         detail: "Every proposal here has been approved, rejected or drafted into a fix batch.",
-        action: <Button render={<Link href={backHref}>Back to the cleaning queue</Link>} />,
+        action: <Button render={<Link href={backHref}>Back to records with a suggestion</Link>} />,
       }}
       errorProps={{ error: error, onRetry: refetch }}
       summary={items.length > 0 ? (

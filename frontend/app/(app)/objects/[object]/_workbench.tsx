@@ -20,6 +20,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { rankedName, useRuleNames } from "@/lib/rule-name";
 import { FilterChips } from "../_header";
 import { PAGE_SIZE, STALE_MS, fixSheetHref, isBlocking, objectQuery, recordsQuery, useFixShortcut, useRecordColumns } from "./_shared";
+import { COUNT_DEFS } from "@/lib/counts";
 
 const SEVERITY_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 
@@ -173,11 +174,11 @@ export function Workbench({ object, run }: { object: string; run: string }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="m-stat-grid">
-        <Stat label="Failing rules" value={data.failing_checks.toLocaleString()} href={rulesHref} />
+        <Stat label={COUNT_DEFS.failing_rules.label} value={data.failing_checks.toLocaleString()} href={rulesHref} />
         {/* `?blocking=true` keeps the critical and high rules (isBlocking), not the blocking findings of the readiness view. */}
-        <Stat label="Critical and high failing rules" value={blockingRules} tone={blockingRules > 0 ? "no-go" : "go"} href={`${rulesHref}&blocking=true`} />
+        <Stat label={COUNT_DEFS.blocking_rules.label} value={blockingRules} tone={blockingRules > 0 ? "no-go" : "go"} href={`${rulesHref}&blocking=true`} />
         {/* Summed over the failing rules (a record failing two rules counts twice): rule failures, as the header says. */}
-        <Stat label="Rule failures" value={data.affected_records.toLocaleString()} hint="records failing a rule, per rule" href={tabHref("fix")} />
+        <Stat label={COUNT_DEFS.rule_failures.label} value={data.affected_records.toLocaleString()} hint="records failing a rule, per rule" href={tabHref("fix")} />
         <Stat
           label="Auto-fixable"
           value={autoRecords == null ? "—" : autoRecords.toLocaleString()}
@@ -203,7 +204,7 @@ export function Workbench({ object, run }: { object: string; run: string }) {
                 action={<Button variant="secondary" render={<Link href={hrefWith({ dimension: null })}>Clear filter</Link>} />}
               />
             ) : (
-              <ul aria-label="Failing rules" className="flex flex-col lg:overflow-y-auto lg:[max-height:min(60vh,32rem)]">
+              <ul aria-label={COUNT_DEFS.failing_rules.label} className="flex flex-col lg:overflow-y-auto lg:[max-height:min(60vh,32rem)]">
                 {listed.map((r) => (
                   <RankedRow
                     key={r.check_id}

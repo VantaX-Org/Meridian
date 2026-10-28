@@ -2,7 +2,7 @@
 
 Fix work is where failing records get cleaned. It lists every record that fails a check in the chosen run, worst first, says what is wrong with each one and what the value should be, and puts your decisions into a fix batch that a second person approves before anything goes to SAP. Data stewards start here every day; data owners use it to sign records off and approve batches.
 
-Open it with the **Fix work** pill in the index bar. The page is titled **Fix** and has four tabs: **Records to fix**, **Cleaning proposals**, **Batches and export** and **Monitor**. This chapter covers **Records to fix** and the cleaning proposals; the other tabs are in [Approvals and export](/docs?page=approvals). Batches are approved in **Inbox**, **Approvals**, and duplicate pairs are reviewed in **Master data**, **Match review**.
+Open it with the **Fix work** pill in the index bar. The page is titled **Fix** and has two tabs: **Records to fix** and **Batches and export**. This chapter covers **Records to fix**, including the values Meridian suggests; the batches are in [Approvals and export](/docs?page=approvals). Checking whether clean data stays clean is no longer a tab here: it is per object, in [Monitoring](/docs?page=monitoring). Batches are approved in **Inbox**, **Approvals**, and duplicate pairs are reviewed in **Master data**, **Match review**.
 
 Fix work is the one place to fix a failing record: the Inbox's old **Issues** tab moved here, and `/inbox?kind=issues` opens Fix work on your own records (**Mine**). On the record panel, **Take it** or **Release** the record, hand it to a colleague with **Assign to**, and mark an issue **Fixed in SAP** when you corrected it in SAP itself; the next run confirms it, or reopens it if the record still fails. Taking, assigning and **Fixed in SAP** need the assign permission.
 
@@ -16,12 +16,12 @@ If no run has finished yet the page reads **No finished run yet**. If the run ha
 
 Four figures sit at the top. Each one filters the list when you select it:
 
-- **Records to fix**: open records, with how many issues across how many objects.
-- **Critical**: records with a critical issue. These block SAP processes.
+- **Records to fix**: distinct records that still need a decision, however many rules they fail, with how many issues across how many objects.
+- **Critical records**: records with a critical issue. These block SAP processes.
 - **With a suggested value**: records you can accept in one step.
-- **Overdue**: records past their due date.
+- **Overdue records**: records past their due date.
 
-Under them are the filters: **Object**, **Severity**, **Status** (**Still open** by default, or one of the six statuses), the **Mine** switch for records assigned to you, the **Has a suggestion** switch, and **Find a record by key or name** (type, then press Enter). Every active filter shows as a chip; select a chip to remove it, or **Clear filters**.
+Under them are the filters: **Object**, **Severity**, **Status** (**Still open** by default, or one of the six statuses), the **Mine** switch for records assigned to you, the **Has a suggestion** switch, and **Find a record by key or name** (type, then press Enter). Every active filter shows as a chip, including **New since** followed by a date; select a chip to remove it, or **Clear filters**.
 
 The screen then has three panes:
 
@@ -84,9 +84,21 @@ Downloading needs the export permission and importing the apply permission. A fi
 
 The keys work while you are not typing in a box: `j` and `k` (or the arrow keys) move, `a` accepts the record's suggestions, `t` takes it, `u` undoes, and `Enter` opens the full record.
 
-## Cleaning proposals
+## New since the baseline
 
-The **Cleaning proposals** tab lists values the cleaning engine proposes, grouped by object and kind, with their confidence and how many are at 85% or higher. Select **Review** on a group to approve or reject each proposal, or **Accept N at 85% or higher**, then draft a fix batch from the approved ones. Approving needs the approve permission.
+When a rule starts failing again, Meridian links to Fix work with **New since** and the date of the baseline run. The list then holds only the records that fail in this run and passed in the baseline, so you see what came back and nothing else. Select the chip to remove the filter. Where the link comes from a single newly failing rule, the list is narrowed to that rule as well. The baseline is explained in [Monitoring](/docs?page=monitoring).
+
+## Suggested values
+
+There is no separate tab of cleaning proposals. A value Meridian proposes belongs to the record it would fix, so it appears on that record's panel and in the **With a suggested value** figure. Select the figure, or switch on **Has a suggestion**, to list only those records. Then accept a suggestion one record at a time, or take a whole issue at once as described above. Accepting needs the apply permission; approving the batch later needs the approve permission. Old links to the Cleaning proposals tab open Records to fix with the suggestion filter already on.
+
+## Comments on a record
+
+Every record panel has **Comments**. Write a note, such as why a value is right or who you asked, and select **Add comment**. Comments are kept in order, oldest first, with the record's issue. Adding one needs the analyse permission; without it you can read the thread. A record with no issue yet reads "No issue to comment on".
+
+## Raise an exception
+
+Some records will not be fixed in this run: the value is right for a legal reason, or SAP will be changed later. Select **Raise an exception** in the record panel, choose the **Severity**, write the reason and select **Raise exception**. The record is tracked under **Exceptions** in the [Inbox](/docs?page=inbox) with its own owner and due date. The button appears for people with the analyse permission.
 
 ## Related
 

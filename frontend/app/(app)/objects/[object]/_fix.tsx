@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Stat } from "@/design";
 import type { WorkObject } from "@/lib/api/work";
 import type { ObjectSummary } from "@/lib/api/v1/objects";
+import { COUNT_DEFS } from "@/lib/counts";
 
 /** Fix work's filter keys (and its selected record), cleared when a tile sets its own. */
 const FIX_KEYS = ["check", "sev", "st", "mine", "assignee", "sugg", "due", "system", "part", "q", "record"] as const;
@@ -36,23 +37,23 @@ export function FixStrip({ object, summary, work, loading }: {
   const failing = work?.open ?? (loading ? undefined : summary?.affected_records);
   return (
     <div className="m-stat-grid" data-testid="fix-strip">
-      <Stat label={work || loading ? "Records to fix" : "Rule failures"} value={failing == null ? "—" : failing.toLocaleString()} href={fix({})} loading={loading && !work} />
+      <Stat label={work || loading ? COUNT_DEFS.records_to_fix.label : COUNT_DEFS.rule_failures.label} value={failing == null ? "—" : failing.toLocaleString()} href={fix({})} loading={loading && !work} />
       <Stat
-        label="Critical records to fix"
+        label={COUNT_DEFS.critical_records.label}
         value={work ? work.critical.toLocaleString() : "—"}
         tone={work ? (work.critical > 0 ? "no-go" : "go") : undefined}
         href={work && work.critical > 0 ? fix({ sev: "critical" }) : undefined}
         loading={loading && !work}
       />
       <Stat
-        label="With a suggested value"
+        label={COUNT_DEFS.suggested.label}
         value={work ? work.proposed.toLocaleString() : "—"}
         hint={work && work.open > 0 ? `${Math.round((work.proposed / work.open) * 100)}% of records to fix` : undefined}
         href={work && work.proposed > 0 ? fix({ sugg: "1" }) : undefined}
         loading={loading && !work}
       />
       <Stat
-        label="Overdue"
+        label={COUNT_DEFS.overdue_records.label}
         value={work ? work.overdue.toLocaleString() : "—"}
         tone={work ? (work.overdue > 0 ? "no-go" : "go") : undefined}
         href={work && work.overdue > 0 ? fix({ due: "overdue" }) : undefined}

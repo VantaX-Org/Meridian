@@ -1,6 +1,6 @@
 # Analysis throughput: the lifecycle step is the wall
 
-A full analysis of the Komatsu sandbox currently cannot finish inside the worker's
+A full analysis of a pilot customer's sandbox currently cannot finish inside the worker's
 time limit. This records what was measured, what it blocks, and the concrete place
 to look next, so it is not rediscovered from scratch.
 

@@ -9,7 +9,6 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Button, PageHeader, PageFrame, Card, DataTable, Delta, DrillLink, EmptyState, ErrorState, ExportMenu, Line, Mono, Pager, Pill, SeverityDot, Skeleton, Score, Tabs, toast, emptyExportOptions, isSeverity, entityTabs, Status, statusLabel, type CellMeta } from "@/design";
 import { RuleCell } from "@/components/fix/rule-cell";
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
-import { NextBestActionCard } from "@/components/insight/next-best-action";
 import { RunScope } from "@/components/run-scope";
 import { useRunScope } from "@/hooks/use-run-scope";
 import { hrefWithRun, runLacksObject, runScopeLabel } from "@/lib/run-scope";
@@ -41,6 +40,7 @@ import { RowButton } from "@/components/mdm/ledger";
 import { queryKeys } from "@/lib/query-keys";
 import { rankedName, useRuleNames } from "@/lib/rule-name";
 import { DIMENSIONS, formatDate, formatModuleName, moduleDescription, passRatePct, plural, shortCapReason } from "@/lib/format";
+import { COUNT_DEFS } from "@/lib/counts";
 
 const RULE_HISTORY_RUNS = 8;
 /** The tabs in view, keyed 1 to 4; Related, History and Audit sit under the strip's "More" menu. */
@@ -289,7 +289,7 @@ function HistoryTab({ object, run, systemId }: { object: string; run: string; sy
   type Point = (typeof points)[number];
   const columns: ColumnDef<Point>[] = [
     { accessorKey: "x", header: "Run", cell: ({ row }) => <Link href={`/objects/${object}?run=${row.original.version_id}`} className="underline-offset-2 hover:underline">{row.original.x}{row.original.version_id === run ? " (this run)" : ""}</Link> },
-    { accessorKey: "y", header: "Score", meta: { numeric: true } },
+    { accessorKey: "y", header: COUNT_DEFS.score.label, meta: { numeric: true } },
     { accessorKey: "change", header: "Change", meta: { numeric: true }, cell: ({ row }) => (row.original.change === null ? "—" : <Delta value={row.original.change} />) },
   ];
   if (q.isLoading) return <Skeleton height={240} />;
@@ -626,13 +626,12 @@ export default function ObjectDetailPage() {
       <AttentionCard object={object} />
       {/* On Records to fix the queue's own tiles count the same records; the strip would say it twice. */}
       {tab === "fix" ? null : <FixStrip object={object} summary={summary} work={workObject} loading={work.isLoading} />}
-      {run && <NextBestActionCard run={run} module={object} />}
       <Tabs
         value={tab}
         onValueChange={setTab}
         items={[
           // The same queue as Fix work, with this object and this page's run fixed: one triage surface, not two.
-          { value: "fix", label: "Records to fix", count: workObject?.open, content: <FixWork module={object} run={run} /> },
+          { value: "fix", label: COUNT_DEFS.records_to_fix.label, count: workObject?.open, content: <FixWork module={object} run={run} /> },
           { value: "overview", label: "Overview", content: <><ObjectProcesses object={object} run={run} /><Workbench object={object} run={run} /></> },
           { value: "rules", label: "Rules", content: <RulesTab object={object} run={run} checkId={checkId} /> },
           { value: "fields", label: "Fields", content: <FieldsTab object={object} run={run} /> },

@@ -46,6 +46,7 @@ import { PilotTab } from "./pilot-tab";
 import { ScopePicker } from "./scope-picker";
 import { ReferencePanel } from "./reference-panel";
 import { SchedulesPanel } from "./schedules-panel";
+import { COUNT_DEFS } from "@/lib/counts";
 
 /** Longest to wait for a just-started download to report progress. */
 const AWAIT_DOWNLOAD_MS = 120_000;
@@ -95,7 +96,7 @@ function runColumns(systemId?: string): ColumnDef<SystemVersion>[] {
     { id: "analysed", header: "Analysed", cell: ({ row }) => when(row.original.analysed_at) },
     {
       id: "dqs",
-      header: "Score",
+      header: COUNT_DEFS.score.label,
       cell: ({ row }) => {
         const d = meanDqs(row.original);
         return d === null ? "—" : (
@@ -308,7 +309,7 @@ export default function SystemPage() {
           href={`/systems/${systemId}?tab=objects`}
         />
         <Stat
-          label="Score"
+          label={COUNT_DEFS.score.label}
           help="dqs"
           loading={versionsQ.isLoading}
           delta={dqsTrend(versions) != null && Math.abs(dqsTrend(versions) ?? 0) >= 0.05 ? <Delta value={dqsTrend(versions) ?? 0} run="the previous run" /> : undefined}
@@ -317,7 +318,7 @@ export default function SystemPage() {
           href={latest ? findingsHref(latest.id) : undefined}
         />
         {/* The aggregate's total is failing rules (rules with a failing record), the overview's "Failing rules" too. */}
-        <Stat label="Failing rules" help="failingRules" hint={latest ? "in the latest run" : undefined} loading={versionsQ.isLoading || aggQ.isLoading} value={latest ? aggQ.data?.total ?? "—" : "—"} href={latest ? findingsHref(latest.id) : undefined} />
+        <Stat label={COUNT_DEFS.failing_rules.label} help="failingRules" hint={latest ? "in the latest run" : undefined} loading={versionsQ.isLoading || aggQ.isLoading} value={latest ? aggQ.data?.total ?? "—" : "—"} href={latest ? findingsHref(latest.id) : undefined} />
       </div>
 
       <Tabs
@@ -646,7 +647,7 @@ function Objects({ id, system, modules, versions, canSync, canAnalyse, onChanged
     { id: "synced", header: "Last extracted", cell: ({ row }) => when(row.original.last_synced_at) },
     {
       id: "dqs",
-      header: "Score",
+      header: COUNT_DEFS.score.label,
       cell: ({ row }) => {
         const d = latest?.dqs?.[row.original.module];
         return typeof d === "number" && latest ? (

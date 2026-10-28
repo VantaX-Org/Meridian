@@ -61,8 +61,20 @@ _STATUS_ROWS = f"""
      WHERE fr.version_id = CAST(:vid AS uuid) {{where}}
 """
 
-# (check, record) pairs of the run with a machine-proposed value: a self-verified auto_fix, or the
-# rule's value fix for the record's current value.
+# An open cleaning-engine proposal that carries a value for the failing field of a (check, record):
+# api.routes.work._cleaning_rows/_cleaning_value's rule in SQL. ``fr``, ``f`` are the finding_records and findings
+# rows. Duplicate and match proposals (a merge preview, or a pair key) carry no field value: they stay in Match review.
+CLEANING_VALUE_MATCH = """
+       cq.tenant_id = fr.tenant_id AND cq.object_type = fr.module AND cq.record_key = fr.record_key
+       AND cq.status IN ('detected', 'pending', 'approved')
+       AND cq.record_data_after IS NOT NULL AND cq.record_data_after <> '{}'::jsonb
+       AND COALESCE(NULLIF(cq.merge_preview, 'null'::jsonb), '{}'::jsonb) = '{}'::jsonb  -- a duplicate has a merge preview
+       AND (cq.check_id IS NULL OR cq.check_id = fr.check_id)
+       AND COALESCE(cq.record_data_after ->> (f.details->>'field_checked'),
+                    cq.record_data_after ->> substring(f.details->>'field_checked' from '[^.]*$')) IS NOT NULL"""
+
+# (check, record) pairs of the run with a machine-proposed value: a self-verified auto_fix, the rule's
+# value fix for the record's current value, or a value from an open cleaning-engine proposal.
 _PROPOSED_ROWS = """
     SELECT f.check_id, e->>'record_key' AS record_key
       FROM findings f, jsonb_array_elements(CASE WHEN jsonb_typeof(f.record_fixes) = 'array' THEN f.record_fixes ELSE '[]'::jsonb END) e
@@ -72,6 +84,11 @@ _PROPOSED_ROWS = """
       FROM finding_records fr JOIN findings f ON f.version_id = fr.version_id AND f.check_id = fr.check_id
      WHERE fr.version_id = CAST(:vid AS uuid) AND jsonb_typeof(f.value_fix_map) = 'object'
        AND f.value_fix_map -> (fr.field_values ->> (f.details->>'field_checked')) ->> 'suggested_value' IS NOT NULL
+    UNION
+    SELECT fr.check_id, fr.record_key
+      FROM finding_records fr JOIN findings f ON f.version_id = fr.version_id AND f.check_id = fr.check_id
+     WHERE fr.version_id = CAST(:vid AS uuid) AND fr.tenant_id = CAST(:tid AS uuid)
+       AND EXISTS (SELECT 1 FROM cleaning_queue cq WHERE """ + CLEANING_VALUE_MATCH + """)
 """
 
 # The SAP key field a record is named by, and where its name lives. Composite keys are named by

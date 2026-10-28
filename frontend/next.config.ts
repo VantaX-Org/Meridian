@@ -91,9 +91,15 @@ const nextConfig: NextConfig = {
         destination: "/objects?view=monitoring",
         permanent: false,
       },
-      // TODO (later work packages, add each rule together with the page it needs):
-      //  - /fix?tab=cleaning -> /fix?sugg=1 once the work list is confirmed to carry every cleaning proposal as a
-      //    record with a suggested value (the parity check); until then the Cleaning tab stays.
+      // The Cleaning proposals tab retired into Fix work: its value proposals are records with a suggested value. The
+      // destination sets tab so the carried-over tab=cleaning cannot match this rule again. (Duplicate and match
+      // proposals are in MDM › Match review.) The Fix page also redirects ?tab=cleaning itself, keeping run and module.
+      {
+        source: "/fix",
+        has: [{ type: "query", key: "tab", value: "cleaning" }],
+        destination: "/fix?sugg=1&tab=work",
+        permanent: false,
+      },
       // Alerts: thresholds, channels and the default digest in one place.
       { source: "/admin/notifications", destination: "/admin/alerts", permanent: true },
       { source: "/remediation", destination: "/fix?tab=batches", permanent: false },

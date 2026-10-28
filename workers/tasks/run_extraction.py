@@ -125,7 +125,7 @@ def _acquire_version_lock(version_id: str) -> bool:
     worker died, and a restart - every deploy - therefore re-runs an extraction that may already
     be hours in. Two concurrent extractions of the same version then compete: they double the SAP
     reads and, worse, each opens its own RFC sessions. Repeated logons against a strict SAP user
-    lock it ("too many failed attempts"), which is exactly what happened on the Komatsu sandbox.
+    lock it ("too many failed attempts"), which is exactly what happened on a pilot customer's sandbox.
 
     A Redis key per version makes the redelivered copy exit immediately instead. The TTL is the
     extraction limit, so a genuinely dead run frees the lock without operator action.

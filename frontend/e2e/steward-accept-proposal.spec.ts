@@ -1,17 +1,14 @@
 /**
  * Steward accepts a proposal and sees the batch (spec section 13).
  *
- * The cleaning proposals tab (Fix opens on Records to fix) groups open proposals by the run that found them and what they fix
- * (fixtures.ts mockFixBatch: run "B1", field LFA1.NAME1); a row opens that run's review page.
+ * Proposals are records with a suggested value in Fix work (/fix?sugg=1); a group of one run's proposals is a drill page
+ * (fixtures.ts mockFixBatch: run "B1", field LFA1.NAME1), which this opens directly.
  */
 
 import { expect, test } from "./fixtures";
 
 test("steward accepts a proposal and sees the batch", async ({ app }) => {
-  await app.goto("/fix?tab=cleaning", { waitUntil: "load" });
-
-  // app/(app)/fix/page.tsx: one row per run and kind, with a Review link to the run's page.
-  await app.getByRole("link", { name: "Review Fix LFA1.NAME1 from business_partner_100k" }).click();
+  await app.goto("/fix/proposals/B1?kind=LFA1.NAME1", { waitUntil: "load" });
   await expect(app).toHaveURL(/\/fix\/proposals\/B1\?kind=LFA1\.NAME1/);
 
   // app/(app)/fix/[batchId]/page.tsx: per-row "Approve" button, fires approveCleaning.

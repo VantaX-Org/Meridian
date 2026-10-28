@@ -247,7 +247,7 @@ describe("system detail page", () => {
     renderWithQuery(<SystemPage />);
     await waitFor(() => expect(screen.getByText(/ECC, PRD/)).toBeInTheDocument());
     expect(screen.queryByText(/Ecc/)).toBeNull();
-    // KMZ-SIM said "Objects loaded —, Runs come from uploads" beside a run of 7 records and its findings.
+    // ERP-SIM said "Objects loaded —, Runs come from uploads" beside a run of 7 records and its findings.
     expect(screen.getAllByText("7 records in the latest run").length).toBeGreaterThan(0);
     expect(screen.queryByText("Runs come from uploads")).toBeNull();
     expect(screen.queryByText("Nothing extracted yet")).toBeNull();

@@ -17,6 +17,7 @@ import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { MigrationWave, TransferVerdict, WaveVerdict } from "@/types/api";
 import { CreateWaveDialog, STAGE_LABEL } from "./create-wave-dialog";
+import { COUNT_DEFS } from "@/lib/counts";
 
 const FROM_ENGINE: Record<TransferVerdict, WaveVerdict> = { go: "go", conditional: "at_risk", "no-go": "no_go" };
 
@@ -58,7 +59,7 @@ export default function MigrationPage() {
       cell: ({ row }) => (row.original.target_date ? formatDate(row.original.target_date, "date") : "Not set"),
     },
     {
-      id: "verdict", header: "Verdict",
+      id: "verdict", header: COUNT_DEFS.verdict.label,
       cell: ({ row }) => {
         const v = row.original.last_verdict ? FROM_ENGINE[row.original.last_verdict] : null;
         return v ? <Status kind="verdict" value={v} /> : <Pill>Not run</Pill>;
@@ -125,7 +126,7 @@ export default function MigrationPage() {
         filterBar={
           verdict ? (
             <div className="flex items-center gap-2 m-text-body">
-              <FilterChip label="Verdict" value={statusLabel("verdict", verdict)} onRemove={() => setVerdict("")} />
+              <FilterChip label={COUNT_DEFS.verdict.label} value={statusLabel("verdict", verdict)} onRemove={() => setVerdict("")} />
             </div>
           ) : undefined
         }

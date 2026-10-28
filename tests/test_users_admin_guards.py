@@ -54,6 +54,8 @@ class _DB:
         p = params or {}
         if sql.startswith("SET app.tenant_id"):
             return _Result([])
+        if "service.meridian.invalid" in sql:  # forbid_service_account: none of these users is a service account
+            return _Result([])
         if sql.startswith("SELECT role FROM users WHERE id"):
             u = self.users.get(p.get("u") or p.get("uid"))
             return _Result([(u["role"],)] if u else [])

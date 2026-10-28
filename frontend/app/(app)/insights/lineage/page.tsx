@@ -27,6 +27,7 @@ import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { atRiskSentence, findingsHref, pct } from "./links";
 import { PAGE_PURPOSE } from "../_components/InsightViews";
+import { COUNT_DEFS } from "@/lib/counts";
 
 // ponytail: the layered chart past this many nodes gets taller than a screen. Narrow the trace depth to see the rest.
 const MAX_NODES = 150;
@@ -173,7 +174,7 @@ export default function LineagePage() {
     { id: "type", header: "Type", accessorFn: (r) => TYPE_LABEL[r.type], size: 120 },
     { id: "hops", header: "Steps away", accessorFn: (r) => r.min_hops, size: 96, meta: { numeric: true } },
     {
-      id: "findings", header: "Failing rules", accessorFn: (r) => r.findings, size: 96, meta: { numeric: true },
+      id: "findings", header: COUNT_DEFS.failing_rules.label, accessorFn: (r) => r.findings, size: 96, meta: { numeric: true },
       cell: ({ row }) => {
         const ids = row.original.check_ids;
         const href = findingsHref(ids, latest?.id, (id) => moduleByCheck.get(id));

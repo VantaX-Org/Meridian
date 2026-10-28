@@ -64,6 +64,10 @@ export interface Version {
     source?: string;
     /** Records downloaded per object (system downloads). */
     object_rows?: Record<string, number>;
+    /** What started the run (api/services/object_monitor.py); absent on runs from before it was stamped. */
+    trigger?: "scheduled" | "manual" | "recheck" | "upload" | null;
+    /** The person's name for a manual start or a re-check. */
+    requested_by_label?: string | null;
   } | null;
   /** Open findings per severity; set by the list endpoint only. */
   severity_counts?: { critical: number; high: number; medium: number; low: number } | null;

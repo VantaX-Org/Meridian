@@ -12,6 +12,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 import { PAGE_PURPOSE } from "../_components/InsightViews";
+import { COUNT_DEFS } from "@/lib/counts";
 
 /** The API's traffic-light signal in the product's one verdict vocabulary. */
 const SIGNAL_VERDICT: Record<EarlyWarning["signal"], string> = { red: "no-go", amber: "at-risk", green: "go" };
@@ -24,7 +25,7 @@ const warningColumns: ColumnDef<EarlyWarning>[] = [
   { accessorKey: "module_id", header: "Object", cell: ({ row }) => formatModuleName(row.original.module_id) },
   {
     accessorKey: "signal",
-    header: "Verdict",
+    header: COUNT_DEFS.verdict.label,
     cell: ({ row }) => <Status kind="verdict" value={SIGNAL_VERDICT[row.original.signal]} />,
   },
   { id: "message", header: "Message", cell: ({ row }) => warningMessage(row.original) },

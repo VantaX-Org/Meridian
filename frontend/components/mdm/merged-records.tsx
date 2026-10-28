@@ -65,7 +65,7 @@ export function MergedRecords({ id, onChanged }: { id: string; onChanged: () => 
   const cols = useMemo<ColumnDef<Member>[]>(() => [
     { id: "key", header: "Record", cell: ({ row }) => <Mono>{row.original.key}</Mono> },
     { id: "links", header: "Links", size: 80, meta: { numeric: true }, cell: ({ row }) => (row.original.links == null ? "" : row.original.links.toLocaleString()) },
-    { id: "score", header: "Score", size: 90, meta: { numeric: true }, cell: ({ row }) => (row.original.pair ? pct(row.original.pair.total) : "") },
+    { id: "score", header: "Score", size: 90, meta: { numeric: true }, cell: ({ row }) => (row.original.pair ? pct(row.original.pair.total) : "") }, // counts-ok: a match score, not the data quality score
     { id: "why", header: "Why it was merged", cell: ({ row }) => <span className="m-ink-2">{row.original.pair ? whyMatched(row.original.pair.explanation) : "Merged by a steward"}</span> },
     actionColumn((m) => (canSplit ? <RowButton label={`Split ${m.key} out`} onClick={() => setSplitKey(m.key)}>Split out</RowButton> : null)),
   ], [canSplit]);

@@ -21,6 +21,7 @@ import { getWorkRecord } from "@/lib/api/work";
 import { FieldSheet, sheetFields } from "./_field-sheet";
 import { identityValue, missingFields } from "./_record-facts";
 import { RuleName } from "@/components/fix/rule-cell";
+import { COUNT_DEFS } from "@/lib/counts";
 
 function SectionError({ what, query }: { what: string; query: UseQueryResult }) {
   return (
@@ -181,14 +182,14 @@ export default function RecordFixSheetPage() {
       actions={exportOptions.length > 0 ? <ExportMenu options={exportOptions} /> : undefined}
       stats={isMaterial ? [
         verdictQuery.isSuccess
-          ? { label: "Failing rules", value: materialRules.size, tone: materialRules.size ? "no-go" : "go" }
-          : { label: "Failing rules", value: "—" },
+          ? { label: COUNT_DEFS.failing_rules.label, value: materialRules.size, tone: materialRules.size ? "no-go" : "go" }
+          : { label: COUNT_DEFS.failing_rules.label, value: "—" },
         // No "Views" count: how many MM views the record spans means nothing to a steward fixing it.
         { label: "Missing fields", value: missingCount, hint: "required fields left blank", tone: hasMissing ? "no-go" : "go" },
       ] : [
         verdictQuery.isSuccess
-          ? { label: "Failing rules", value: failingRules.length, tone: failingRules.length ? "no-go" : "go" }
-          : { label: "Failing rules", value: "—" },
+          ? { label: COUNT_DEFS.failing_rules.label, value: failingRules.length, tone: failingRules.length ? "no-go" : "go" }
+          : { label: COUNT_DEFS.failing_rules.label, value: "—" },
         { label: "Fields with a value", value: fieldRows.length },
       ]}
     >

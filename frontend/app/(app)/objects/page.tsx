@@ -32,6 +32,7 @@ import { MINE_PARAM, useObjectOwners, type ObjectOwners } from "@/hooks/use-obje
 import { OwnerName } from "@/components/owners/OwnerName";
 import { FreshnessPill } from "./_freshness";
 import { cadenceText } from "./[object]/_monitor";
+import { COUNT_DEFS } from "@/lib/counts";
 
 /**
  * A row of the list. With `?run=` every row is that run's; without it (the current state) each row is its object
@@ -160,7 +161,7 @@ const allColumns = (run: string | undefined, bands: ScoreBands | undefined, open
     accessorFn: (o) => o.affected_records ?? -1,
     // Summed over the object's failing rules: a record failing two rules counts twice, so this is rule failures, not
     // records (the distinct records are the work list's "To fix").
-    header: "Rule failures",
+    header: COUNT_DEFS.rule_failures.label,
     size: 110,
     meta: { numeric: true } satisfies CellMeta,
     cell: ({ row }) => {
@@ -175,7 +176,7 @@ const allColumns = (run: string | undefined, bands: ScoreBands | undefined, open
   workColumn("work_overdue", "Overdue", (w) => w.overdue, run, ["overdue record", "overdue records"], { due: "overdue" }),
   {
     accessorKey: "composite_score",
-    header: "Score",
+    header: COUNT_DEFS.score.label,
     cell: ({ row }) => {
       const score = row.original.composite_score;
       if (score == null) return "—";
@@ -188,7 +189,7 @@ const allColumns = (run: string | undefined, bands: ScoreBands | undefined, open
     id: "readiness",
     // Severity-mapped value drives the row bar; the cell still shows the verdict word.
     accessorFn: (o) => (o.readiness === "fail" ? "critical" : o.readiness === "warn" ? "medium" : o.readiness === "pass" ? "pass" : ""),
-    header: "Verdict",
+    header: COUNT_DEFS.verdict.label,
     sortingFn: bySeverity,
     meta: { severity: true } satisfies CellMeta,
     cell: ({ row }) => {
@@ -404,8 +405,8 @@ export default function ObjectsPage() {
         <Stat label="Go" value={go} tone={go > 0 ? "go" : undefined} href={listHref({ readiness: "pass" })} />
         <Stat label="At risk" value={atRisk} tone={atRisk > 0 ? "at-risk" : "go"} href={listHref({ readiness: "warn" })} />
         <Stat label="No-go" value={notReady} tone={notReady > 0 ? "no-go" : "go"} href={listHref({ readiness: "fail" })} />
-        <Stat label="Failing rules" value={failingChecks.toLocaleString()} hint="per object, generated checks included" href={current ? "/insights/rules" : `/insights/rules?${new URLSearchParams({ run })}`} />
-        {blockingFindings != null ? <Stat label="Critical and high failing rules" value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} href={criticalHighFindingsHref} /> : <Stat label="Rule failures" value={recordsAffected.toLocaleString()} hint="records failing a rule, per rule" href={current ? "/insights/rules" : fixHref({ run })} />}
+        <Stat label={COUNT_DEFS.failing_rules.label} value={failingChecks.toLocaleString()} hint="per object, generated checks included" href={current ? "/insights/rules" : `/insights/rules?${new URLSearchParams({ run })}`} />
+        {blockingFindings != null ? <Stat label={COUNT_DEFS.blocking_rules.label} value={blockingFindings.toLocaleString()} tone={blockingFindings > 0 ? "no-go" : "go"} href={criticalHighFindingsHref} /> : <Stat label={COUNT_DEFS.rule_failures.label} value={recordsAffected.toLocaleString()} hint="records failing a rule, per rule" href={current ? "/insights/rules" : fixHref({ run })} />}
       </div>
       <div className="flex flex-wrap items-center gap-4">
         <FilterChips label="View" value={view === "monitoring" ? "monitoring" : null} options={[{ value: "monitoring", label: "Monitoring" }]} onChange={(v) => setParam("view", v)} />

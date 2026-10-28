@@ -136,7 +136,7 @@ describe("LiveSection", () => {
 
   it("labels job times as Duration and keeps a long job name on one line with its title", async () => {
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
-    const label = "Re-analysis | KMZ-SIM vendors and every partner function of the company code";
+    const label = "Re-analysis | ERP-SIM vendors and every partner function of the company code";
     vi.spyOn(jobsApi, "getJobs").mockResolvedValue([{
       id: "j1", kind: "analysis", status: "completed", label, stage: null, stages: [], percent: 100, rows_done: 0, rows_total: 0,
       message: null, tables: [], error: null, result: null, started_at: 1_792_000_000, updated_at: 1_792_000_010, finished_at: 1_792_000_010, system_id: null,

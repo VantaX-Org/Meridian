@@ -18,6 +18,7 @@ from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
 
 from api.middleware.cache import invalidate_tenant_cache
+from api.services.run_events import publish_progress_write, publish_run_event
 from api.services.run_steps import record_step
 from checks.base import reraise_soft_limit
 from api.services.task_progress import (
@@ -46,6 +47,12 @@ def throttled(fn, interval: float = PROGRESS_THROTTLE_S):
             last[0] = now
             fn(*a)
     return wrapper
+
+
+def _progress(tenant_id: str, version_id: str, **progress) -> None:
+    """update_task_progress, and the same write as a live run event (best effort: events:{tenant}:{version})."""
+    update_task_progress(version_id, **progress)
+    publish_progress_write(tenant_id, version_id, **progress)
 
 
 def start_heartbeat(version_id: str, last: dict, stop: threading.Event, interval: float = HEARTBEAT_S) -> threading.Thread:
@@ -224,7 +231,7 @@ def rule_set_fingerprint(modules: list[str], overrides: dict, generated: list[di
 # The default is 24 h, not 6, because the ceiling has to clear the *whole* run, and the
 # tail of a run is the cross-run issue lifecycle (api/services/record_issues.py::track),
 # whose cost scales with the system's accumulated record_issues rather than with the
-# rules. Measured on the Komatsu sandbox (8-core Xeon, 30 GB): SuccessFactors finished
+# rules. Measured on a pilot customer's sandbox (8-core Xeon, 30 GB): SuccessFactors finished
 # that step in ~2 minutes against 235K failing records, while the ECC system — 2.78M
 # record_issues rows, 1.94M of them left by an earlier material_master run — took over
 # 5 h 50 m and was killed at the old 6 h limit, leaving a `partial` version whose DQS
@@ -324,7 +331,8 @@ def _mark_failed(engine: Engine, tenant_id: str, version_id: str, error: str) ->
         session.commit()
     record_step(engine, tenant_id, version_id, check_step_num, check_step_name, status="failed",
                 error_detail=error)
-    update_task_progress(
+    _progress(
+        tenant_id,
         version_id,
         status="failed",
         current_step="Data quality checks failed",
@@ -562,7 +570,8 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
     # Announce "Running data quality checks" as soon as the worker picks up the job.
     check_step_num, check_step_name = STEP_RUN_CHECKS
     record_step(engine, tenant_id, version_id, check_step_num, check_step_name, status="running")
-    update_task_progress(
+    _progress(
+        tenant_id,
         version_id,
         status="processing",
         current_step=check_step_name,
@@ -647,7 +656,8 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
             'progress': 10,
         })
         record_step(engine, tenant_id, version_id, check_step_num, check_step_name, status="running")
-        update_task_progress(
+        _progress(
+            tenant_id,
             version_id,
             current_step=check_step_name,
             step_number=check_step_num,
@@ -840,13 +850,13 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                 last_progress.update(
                     current_step=f"{check_step_name} — {module_name} | rule {done}/{total} | {rule_id}",
                     rows_processed=int((idx + done / max(total, 1)) / module_count * row_count))
-                update_task_progress(version_id, **last_progress)
+                _progress(tenant_id, version_id, **last_progress)
 
             on_rule = throttled(publish_rule)
 
             last_progress.update(current_step=f"{check_step_name} — {module_name}",
                                  rows_processed=rows_done_before, total_rows=row_count)
-            update_task_progress(version_id, **last_progress)
+            _progress(tenant_id, version_id, **last_progress)
             results = execute_checks(module_name, frames, tenant_id, reference_values=live_refs,
                                      overrides=rule_overrides, extra_rules=fs_rules, suppressed=fs_suppressed,
                                      cost_model=cost_model, as_of=as_of,
@@ -897,7 +907,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
             rows_done_after = int(((idx + 1) / module_count) * row_count)
             record_step(engine, tenant_id, version_id, check_step_num, check_step_name, status="running")
             last_progress.update(current_step=f"{check_step_name} — {module_name}", rows_processed=rows_done_after)
-            update_task_progress(version_id, **last_progress)
+            _progress(tenant_id, version_id, **last_progress)
 
         hb_stop.set()  # checks stage over; later stages publish their own progress
         checkpointed = len(all_results)  # results from here on are the post-passes' (Z-table, DDIC)
@@ -979,7 +989,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                             f"in {time.monotonic() - t0:.1f}s")
                 try:  # the heartbeat thread is stopped by now
                     last_progress.update(current_step="DDIC conformance")
-                    update_task_progress(version_id, **last_progress)
+                    _progress(tenant_id, version_id, **last_progress)
                 except Exception as exc:
                     reraise_soft_limit(exc)
                     logger.warning("progress update failed: %s", exc)
@@ -1024,6 +1034,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
             # Checks finished + deterministic report ready — mark as completed.
             final_step_num, final_step_name = STEP_FINALISE
             record_step(engine, tenant_id, version_id, final_step_num, final_step_name, status="running")
+            # No run event here: the complete event follows the commit of status 'complete' below.
             update_task_progress(
                 version_id,
                 status="completed",
@@ -1160,6 +1171,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
             )
             session.commit()
         invalidate_tenant_cache(str(tenant_id), "attention")  # the Action centre reads this run's state
+        publish_run_event(tenant_id, version_id, "complete", "Analysis complete", 100)  # status is 'complete' now
 
         # dqs_history: one row per system, module and day (latest run wins)
         with Session(engine) as session:

@@ -137,7 +137,7 @@ describe("lineage", () => {
     expect(labelFamily("business_partner_100k")).toBe("business_partner");
     expect(labelFamily("Vendors 25k records")).toBe("vendors");
     expect(labelFamily("controlling_1k")).toBe("controlling");
-    expect(labelFamily("KMZ-SIM vendors")).toBe("kmz-sim vendors");
+    expect(labelFamily("ERP-SIM vendors")).toBe("erp-sim vendors");
     expect(labelFamily(null)).toBe("");
   });
 

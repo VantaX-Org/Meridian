@@ -7,7 +7,7 @@
  *    ones included, so the system page said "172" failing rules beside its one object's 29, and Home "2,661" beside
  *    the objects list's 1,366. It now counts failing rules only: per object, the run's `dqs_summary` severity counts
  *    (the runs list's numbers). Without `version_id` (the current state) it read every lineage's latest run, so
- *    accounts payable counted twice (the KMZ-SIM system run of 2 October and the upload of 16 October): 343,209 rule
+ *    accounts payable counted twice (the ERP-SIM system run of 2 October and the upload of 16 October): 343,209 rule
  *    failures beside an objects list summing to 343,176. It now reads each object once, from its own latest run, the
  *    objects the recorded current state lists (GET /insights/cleansing?scope=current `objects`).
  *  - GET /insights/cleansing?scope=current (api/services/insights_aggregate.py `distinct_failing_records`). Its first

@@ -122,7 +122,7 @@ None of these block a provisional; all of them should be closed before PCT.
 
 ## 6. Questions that decide the filing (answer before drafting)
 
-1. **Disclosure history.** Has any of A–D been shown outside the company without an NDA (Komatsu pilot, demos, conference, website, LinkedIn, the public repo)? Europe and South Africa require absolute novelty; the US has a one-year grace period. The exact earliest date matters.
+1. **Disclosure history.** Has any of A–D been shown outside the company without an NDA (pilot customer, demos, conference, website, LinkedIn, the public repo)? Europe and South Africa require absolute novelty; the US has a one-year grace period. The exact earliest date matters.
 2. **Inventors.** Who conceived each mechanism (people, not the company)? Patents require named human inventors; code written with AI assistance is fine but the inventive contribution must be attributable to a person.
 3. **Applicant.** Which legal entity files (VantaX? a subsidiary?) and do all inventors have signed IP assignments?
 4. **Jurisdictions and budget.** SA provisional only, or SA provisional + PCT at 12 months? Target countries for national phase (EP, US, DE, UK, AU, IN?).

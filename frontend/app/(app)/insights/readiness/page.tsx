@@ -25,6 +25,7 @@ import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { PAGE_PURPOSE } from "../_components/InsightViews";
 import { s4Totals } from "../_components/RunAnalyses";
 import { useCurrentState } from "../_components/useCurrentState";
+import { COUNT_DEFS } from "@/lib/counts";
 
 
 const HEAT: Record<ReadinessCell["verdict"], "go" | "at-risk" | "no-go"> = { go: "go", at_risk: "at-risk", no_go: "no-go" };
@@ -37,7 +38,7 @@ const blockerColumns = (run: string | undefined, waveIds: ReadonlyMap<string, st
     <DrillCount href={fixHref({ run, module: row.original.module })} label={drillLabel({ what: "open records", module: row.original.module })}>{formatModuleName(row.original.module)}</DrillCount>
   ) },
   { accessorKey: "wave", header: "Wave" },
-  { id: "verdict", header: "Verdict", accessorFn: (c) => statusLabel("verdict", c.verdict), cell: ({ row }) => (
+  { id: "verdict", header: COUNT_DEFS.verdict.label, accessorFn: (c) => statusLabel("verdict", c.verdict), cell: ({ row }) => (
       <DrillLink href={`/objects/${row.original.module}?${new URLSearchParams({ ...(run ? { run } : {}), tab: "rules", blocking: "true" })}`}>
         <span aria-label={`${formatModuleName(row.original.module)}, wave ${row.original.wave}: ${statusLabel("verdict", row.original.verdict)}`}>
           <Status kind="verdict" value={row.original.verdict} />

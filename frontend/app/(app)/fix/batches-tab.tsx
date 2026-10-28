@@ -235,8 +235,8 @@ export function BatchesTab() {
       ) : batches.length === 0 ? (
         <EmptyState
           title="No batches"
-          detail="Approve proposals in the cleaning queue to create a batch."
-          action={<Button render={<Link href="/fix?tab=cleaning">Cleaning queue</Link>} />}
+          detail="Accept suggested values in Records to fix to create a batch."
+          action={<Button render={<Link href="/fix?sugg=1">Records with a suggestion</Link>} />}
         />
       ) : visible.length === 0 ? (
         <EmptyState title="Nothing in this view" action={<Button variant="ghost" onClick={clearFilters}>Show everything</Button>} />

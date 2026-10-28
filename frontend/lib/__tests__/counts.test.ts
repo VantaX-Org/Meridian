@@ -45,31 +45,6 @@ function sitesIn(file: string): Record<string, number> {
  * verdict); an owner either switches them or marks the line `counts-ok`.
  */
 const DEBT: Record<string, Record<string, number>> = {
-  "app/(app)/fix/page.tsx": { "Records to fix": 1 },
-  "app/(app)/home/process/page.tsx": { "Verdict": 1, "Rule failures": 1 },
-  "app/(app)/import/page.tsx": { "Score": 1 },
-  "app/(app)/insights/exec/page.tsx": { "Verdict": 1, "Score": 1 },
-  "app/(app)/insights/forecast/page.tsx": { "Verdict": 1 },
-  "app/(app)/insights/lineage/page.tsx": { "Failing rules": 1 },
-  "app/(app)/insights/owners/page.tsx": { "Score": 1 },
-  "app/(app)/insights/readiness/page.tsx": { "Verdict": 1 },
-  "app/(app)/insights/trends/page.tsx": { "Score": 1, "Rule failures": 1 },
-  "app/(app)/migration/[waveId]/page.tsx": { "Verdict": 1, "Score": 1 },
-  "app/(app)/migration/[waveId]/s4-tab.tsx": { "Failing rules": 2 },
-  "app/(app)/migration/page.tsx": { "Verdict": 2 },
-  "app/(app)/objects/[object]/_fix.tsx": { "With a suggested value": 1 },
-  "app/(app)/objects/[object]/_monitor.tsx": { "Newly failing rules": 1, "Recovered rules": 1 },
-  "app/(app)/objects/[object]/_workbench.tsx": { "Failing rules": 2, "Critical and high failing rules": 1, "Rule failures": 1 },
-  "app/(app)/objects/[object]/page.tsx": { "Score": 1, "Records to fix": 1 },
-  "app/(app)/objects/[object]/records/[key]/page.tsx": { "Failing rules": 4 },
-  "app/(app)/objects/page.tsx": { "Rule failures": 2, "Score": 1, "Verdict": 1, "Failing rules": 1, "Critical and high failing rules": 1 },
-  "app/(app)/runs/[versionId]/page.tsx": { "Score": 2, "Failing rules": 2, "Rule failures": 3, "Critical and high failing rules": 1 },
-  "app/(app)/runs/page.tsx": { "Score": 1 },
-  "app/(app)/systems/[systemId]/page.tsx": { "Score": 3, "Failing rules": 1 },
-  "app/(app)/systems/[systemId]/trend-panel.tsx": { "Score": 1 },
-  "app/(app)/systems/page.tsx": { "Score": 1 },
-  "components/mdm/merged-records.tsx": { "Score": 1 },
-  "components/work/fix-work.tsx": { "Critical records": 1, "With a suggested value": 1, "Records to fix": 2 },
 };
 
 describe("count labels come from COUNT_DEFS", () => {

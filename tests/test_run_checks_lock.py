@@ -115,7 +115,7 @@ def test_a_queued_run_is_never_dropped_for_waiting_on_the_checks_slot():
 def test_the_run_ceiling_clears_the_issue_lifecycle_and_stays_configurable():
     """The limit has to clear the whole run, and the tail is the issue lifecycle.
 
-    On the Komatsu sandbox the ECC system needed over 5 h 50 m in
+    On a pilot customer's sandbox the ECC system needed over 5 h 50 m in
     api/services/record_issues.py::track (2.78M record_issues rows) and was killed at
     the old 6 h default, leaving a `partial` version whose scores were never written
     out even though all four modules had finished. The default must leave headroom

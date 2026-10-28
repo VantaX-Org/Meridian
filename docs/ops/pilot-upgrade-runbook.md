@@ -1,4 +1,4 @@
-# Komatsu — upgrade runbook
+# Pilot deployment — upgrade runbook
 
 | | |
 |---|---|
@@ -39,7 +39,7 @@ of anything changed locally).
 sudo bash scripts/preflight.sh --sap-host <SAP application server> --sap-sysnr <NN>
 ```
 
-Fix every FAIL before continuing. Typical ones at Komatsu:
+Fix every FAIL before continuing. Typical ones at the pilot customer:
 
 - **Containers cannot resolve the SAP host.** Containers use 8.8.8.8 by
   default. Set the internal DNS in `.env`:
@@ -116,7 +116,7 @@ SAP user and authorisations: `docs/sap-connector.md`.
 - **Extract & analyse** one module, then check that **Issues** and **Versions**
   fill in.
 
-## 5. Pilot scorecard: is Meridian right about Komatsu's data?
+## 5. Pilot scorecard: is Meridian right about the pilot customer's data?
 
 After the first **Extract & analyse**, open the system and click **Pilot scorecard**.
 

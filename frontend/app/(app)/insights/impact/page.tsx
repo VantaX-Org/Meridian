@@ -207,7 +207,7 @@ function ImpactPanel({
       return (
         <EmptyState
           title="No feature is priced yet"
-          detail="Value at risk multiplies blocked records by a value per record. Give each SAP feature a value under Rules, Scoring and alerts, in the cost model."
+          detail="Value at risk multiplies blocked records by a value per record. Give each SAP feature a value under Rules, Scoring, in the cost model."
           action={<Button render={<Link href="/rules/scoring#feature-values">Set feature values</Link>} />}
         />
       );

@@ -5,7 +5,7 @@ Revises: 083
 Create Date: 2026-10-16
 
 The cleaning worklist is the slowest screen on the box. Its first page sorted the whole
-table to take 50 rows: measured on the Komatsu deployment (1.59 M rows, 2.5 GB) it read
+table to take 50 rows: measured on a pilot deployment (1.59 M rows, 2.5 GB) it read
 298,687 buffers — about 2.3 GB — from disk and took 1.67 s, and it did that on every load
 because there was no index on the column it orders by:
 
@@ -40,7 +40,7 @@ Note for deploying this: build it while the cleaning task is idle. A plain ``CRE
 takes a ``ShareLock`` and will block behind any open write transaction on the table (a
 ``CONCURRENTLY`` build does not block writers, but it cannot run inside alembic's
 transaction and will itself wait minutes for a snapshot when a long writer is open — both
-were tried on the Komatsu deployment).
+were tried on a pilot deployment).
 """
 from typing import Sequence, Union
 

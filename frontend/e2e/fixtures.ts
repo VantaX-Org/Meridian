@@ -39,7 +39,7 @@ export const ROUTES: ReadonlyArray<{ name: string; path: string; heading: string
 export const RECORDED = {
   /** The one SAP system of the seeded tenant. */
   systemId: "c7a18906-1555-40ba-a1b2-caf83188238e",
-  systemName: "KMZ-SIM",
+  systemName: "ERP-SIM",
   /** The newest finished run: the default scope of every cross-object page without ?run=. */
   latestRunId: "d3229ded-0708-4967-9dfb-1b7f4fada953",
   /** The 100k-row business partner run (the run detail route). */

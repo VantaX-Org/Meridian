@@ -16,8 +16,8 @@ describe("breakAtUnderscores", () => {
   });
 
   it("leaves a name without underscores as it is", () => {
-    const { container } = render(<span>{breakAtUnderscores("KMZ-SIM vendors")}</span>);
+    const { container } = render(<span>{breakAtUnderscores("ERP-SIM vendors")}</span>);
     expect(container.querySelectorAll("wbr")).toHaveLength(0);
-    expect(container).toHaveTextContent("KMZ-SIM vendors");
+    expect(container).toHaveTextContent("ERP-SIM vendors");
   });
 });

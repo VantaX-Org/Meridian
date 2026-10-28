@@ -1,6 +1,6 @@
 """A locked SAP user must not be retried by Meridian, whatever triggers the attempt.
 
-The Komatsu sandbox user was locked twice. The mechanism was not a wrong password: the extraction
+The pilot sandbox user was locked twice. The mechanism was not a wrong password: the extraction
 task is declared ``acks_late=True, reject_on_worker_lost=True``, so every worker restart (every
 deploy) requeued a running extraction. The redelivered task logged on again, and each additional
 attempt is another failed logon as far as SAP is concerned until the user locks.

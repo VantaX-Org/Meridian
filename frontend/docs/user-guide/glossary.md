@@ -26,6 +26,10 @@ What a figure is measured against: which rules were counted, which records they 
 
 A failing rule that stands in the way of a Go verdict. On Home and on object pages it is a failing rule of critical or high severity. The readiness views count failing critical rules and the rules the S/4HANA readiness rule map marks as blocking. Also called a blocker. See [Key concepts](/docs?page=concepts).
 
+### Cadence
+
+How often an object is checked by itself, such as daily at 02:00, or manual only when nobody scheduled it. Freshness is judged against it. See [Monitoring](/docs?page=monitoring).
+
 ### Cap
 
 A ceiling on an object's score when critical rules fail. One critical rule over tolerance caps the score at 85; two or more cap it at 70. The score shows the capped value, the measured value beyond it and the rules that caused the cap, so you can see what to fix to lift it. See [Key concepts](/docs?page=concepts).
@@ -97,6 +101,10 @@ The status of a record a later run showed passing. Only a run can mark a record 
 ### Four eyes
 
 The rule that two people handle every fix: one decides the value, another approves the batch. The person who drafted a batch cannot approve or export it. See [Approvals and export](/docs?page=approvals).
+
+### Freshness
+
+Whether an object has been checked as often as its cadence promises: Fresh, Due, Stale, Failed, Paused or Manual. Stale means older than one and a half times the cadence. See [Monitoring](/docs?page=monitoring).
 
 ### Ghost configuration
 
@@ -213,6 +221,10 @@ The value Meridian proposes for a failing field: the rule's own fix, checked by 
 ### Survivorship
 
 The rules that choose, field by field, which source value a golden record keeps when sources disagree: for example the most recent, the most complete, the trusted system or the most frequent. Rules suggested by the AI take effect only once a person activates them. See [Master data](/docs?page=mdm).
+
+### To do
+
+The ranked list of what needs a person now in your scope, opened from the flag in the index bar. Each item has one button that opens its fix. See [To do](/docs?page=todo).
 
 ### To fix
 

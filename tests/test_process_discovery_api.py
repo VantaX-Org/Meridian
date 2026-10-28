@@ -166,7 +166,7 @@ def test_process_discovery_api(app_engine, monkeypatch):  # noqa: F811
             assert r.status_code == 402 and rpd.lock_key(tid, sid) not in redis.data
             assert len((await c.get(f"{BASE}/systems/{sid}/runs", headers=viewer)).json()) == n_runs
 
-            # the same rule, readable: a Komatsu-like licence (29 modules minus QM/PS) shows its blocked
+            # the same rule, readable: a pilot-like licence (29 modules minus QM/PS) shows its blocked
             # processes in the catalogue and its 402 names the module instead of faking a network fault
             kom = ("fi_gl,mm_purchasing,sd_sales_orders,plant_maintenance,production_planning,"
                    "ewms_transfer_orders,employee_central,mdg_master_data")

@@ -27,6 +27,7 @@ import { CoveragePill } from "../../process/_components/coverage-pill";
 import { DiscoveryStart, canMine, isDayOne } from "../../process/_components/discovery-start";
 import { processHomeInsight, readinessExportRows, worstNoGo, type ProcessHomeRow } from "./insight";
 import { RuleCell } from "@/components/fix/rule-cell";
+import { COUNT_DEFS } from "@/lib/counts";
 
 type Row = ProcessHomeRow;
 
@@ -86,7 +87,7 @@ const columns = (systemId: string, canRun: boolean, versionId: string | undefine
       phone ? <DrillLink href={l1Href(r.l1, systemId, r.last_run?.id)}>{r.name}</DrillLink>
         // The name, the L1 code on its own line under it: a two-word name never pushes the code to the right.
         : <span className="flex flex-col"><DrillLink href={l1Href(r.l1, systemId, r.last_run?.id)}>{r.name}</DrillLink><span className="m-text-meta m-ink-3"><Mono>{r.l1}</Mono></span></span>) },
-  { id: "verdict", header: "Verdict", accessorFn: (r) => r.readiness?.verdict ?? "",
+  { id: "verdict", header: COUNT_DEFS.verdict.label, accessorFn: (r) => r.readiness?.verdict ?? "",
     cell: ({ row: { original: r } }) => (r.readiness
       ? <Status kind="verdict" value={r.readiness.verdict} variant={phone ? "dot" : "solid"} />
       : <span className="m-ink-3">Not scored</span>) },
@@ -107,7 +108,7 @@ const columns = (systemId: string, canRun: boolean, versionId: string | undefine
       );
     } },
   // The distinct blocking fields' failing records summed over their rules: rule failures (lib/help/glossary.ts).
-  { id: "failing", header: "Rule failures", meta: { numeric: true, priority: "low" }, accessorFn: (r) => r.readiness?.failing ?? -1,
+  { id: "failing", header: COUNT_DEFS.rule_failures.label, meta: { numeric: true, priority: "low" }, accessorFn: (r) => r.readiness?.failing ?? -1,
     cell: ({ row: { original: r } }) => (r.readiness ? r.readiness.failing.toLocaleString() : "—") },
   { id: "coverage", header: "Coverage", meta: { priority: "low" }, cell: ({ row: { original: r } }) => <CoveragePill coverage={r.coverage} /> },
   { id: "fitness", header: "Fitness", meta: { numeric: true, priority: "low" }, accessorFn: (r) => r.last_run?.fitness ?? -1, cell: ({ row: { original: r } }) => fmtFitness(r.last_run?.fitness) },

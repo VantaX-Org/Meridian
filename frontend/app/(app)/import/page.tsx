@@ -22,6 +22,7 @@ import { formatSize, readHeaderSample } from "@/lib/upload-preview";
 import type { Version } from "@/types/api";
 import type { Job as TrackedJob } from "@/types/jobs";
 import { clsx } from "clsx";
+import { COUNT_DEFS } from "@/lib/counts";
 
 /** Backend step ids to the label shown under the progress bar. */
 const STEP_LABEL: Record<string, string> = {
@@ -178,7 +179,7 @@ export default function ImportPage() {
     },
     { id: "modules", header: "Objects", cell: ({ row }) => (row.original.metadata?.modules ?? []).map(formatModuleName).join(", ") },
     { id: "rows", header: "Records", cell: ({ row }) => (row.original.metadata?.row_count != null ? <DrillLink href={`/runs/${row.original.id}`}>{row.original.metadata.row_count.toLocaleString()}</DrillLink> : "") },
-    { id: "dqs", header: "Score", cell: ({ row }) => { const d = versionDqs(row.original); return d === null ? "" : <Score size="sm" value={d}><DrillLink href={`/runs/${row.original.id}`}>{d.toFixed(1)}</DrillLink></Score>; } },
+    { id: "dqs", header: COUNT_DEFS.score.label, cell: ({ row }) => { const d = versionDqs(row.original); return d === null ? "" : <Score size="sm" value={d}><DrillLink href={`/runs/${row.original.id}`}>{d.toFixed(1)}</DrillLink></Score>; } },
     {
       id: "status", header: "Status",
       cell: ({ row }) => {

@@ -75,12 +75,12 @@ describe("ProposalsPage", () => {
     expect(screen.getAllByRole("button", { name: /^reject$/i })).toHaveLength(1);
   });
 
-  it("sends Back to the cleaning queue to the proposals tab, keeping the object and run", async () => {
+  it("sends Back to records with a suggestion to the records with a suggestion, keeping the object and run", async () => {
     searchParams = new URLSearchParams("kind=MARA.MEINS&module=material_master&run=R1");
     queue([]);
     renderWithQuery(<ProposalsPage />);
     expect(await screen.findByText("No proposals waiting")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Back to the cleaning queue" })).toHaveAttribute("href", "/fix?tab=cleaning&module=material_master&run=R1");
+    expect(screen.getByRole("link", { name: "Back to records with a suggestion" })).toHaveAttribute("href", "/fix?sugg=1&module=material_master&run=R1");
     searchParams = new URLSearchParams("kind=MARA.MEINS");
   });
 
@@ -221,7 +221,7 @@ describe("ProposalsPage paging and missing runs", () => {
     renderWithQuery(<ProposalsPage />);
     expect(await screen.findByText("Run not found")).toBeInTheDocument();
     expect(screen.queryByText("No proposals waiting")).toBeNull();
-    expect(screen.getByRole("link", { name: "Back to the cleaning queue" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back to records with a suggestion" })).toBeInTheDocument();
   });
 
   it("disables every row decision while an approval is in flight", async () => {
