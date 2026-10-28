@@ -490,7 +490,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const inboxCard = role === "steward" ? (
     <Card title="Inbox" meta={countsReady ? `${plural(counts.inbox, "open item")}` : undefined} padding="sm">
       {queueQ.isLoading ? <Skeleton height={120} /> : queueQ.isError ? (
-        <div role="alert" className="flex flex-wrap items-center gap-3 m-text-body" data-testid="home-inbox-error">
+        <div role="alert" data-state="error" className="flex flex-wrap items-center gap-3 m-text-body" data-testid="home-inbox-error">
           <span>{`The inbox did not load. ${apiErrorState(queueQ.error).title}`}</span>
           <Button variant="secondary" onClick={() => void queueQ.refetch()}>Retry</Button>
         </div>
