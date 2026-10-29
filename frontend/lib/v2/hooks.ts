@@ -7,13 +7,13 @@ import { useRole } from "@/hooks/use-role";
 import { personaForRole } from "@/lib/persona";
 import { fixtureParam, useFixture, withFixture } from "@/lib/api/v2/fixture";
 
-export type OpenKind = "record" | "rule" | "run" | "system" | "feature";
+export type OpenKind = "record" | "rule" | "run" | "system" | "feature" | "job";
 export interface OpenItem {
   kind: OpenKind;
   id: string;
 }
 
-const KINDS: readonly OpenKind[] = ["record", "rule", "run", "system", "feature"];
+const KINDS: readonly OpenKind[] = ["record", "rule", "run", "system", "feature", "job"];
 
 /** Parses `?open=<kind>:<id>`. The id may itself contain colons (a record id is module:key). Null for anything else. */
 export function parseOpen(value: string | null | undefined): OpenItem | null {

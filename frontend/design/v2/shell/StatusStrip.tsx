@@ -2,9 +2,14 @@
 
 import { Fragment } from "react";
 import { formatDate } from "@/lib/format";
-import { useStatus } from "@/lib/v2/queries";
+import { useOpenItem } from "@/lib/v2/hooks";
+import { firstSentence, JOB_KIND_LABEL, jobObject, openFailures } from "@/lib/v2/jobs";
+import { useLandscape, useStatus } from "@/lib/v2/queries";
+import { useV2Jobs } from "@/lib/v2/runs-queries";
+import { useCanvasRun } from "@/lib/v2/scope";
 import { int } from "@/lib/v2/score";
-import { Dot } from "../parts";
+import { SeverityMark } from "../marks";
+import { Dot, V2Link } from "../parts";
 
 /** "11 m 42 s" from seconds; a dash is the caller's job for a missing value. */
 export function duration(seconds: number): string {
@@ -13,10 +18,34 @@ export function duration(seconds: number): string {
   return m > 0 ? `${m} m ${s} s` : `${s} s`;
 }
 
-/** The status strip under the canvas: what the numbers on screen were made from. */
+/** The newest failed job that no later success replaced, as one line with a way into its inspector. */
+function FailureLine() {
+  const { jobs } = useV2Jobs();
+  const { hrefFor } = useOpenItem();
+  const failed = openFailures(jobs)[0];
+  if (!failed) return null;
+  const why = firstSentence(failed.error);
+  return (
+    <span className="m2-fail" data-testid="status-failure">
+      <SeverityMark severity="critical" />
+      <span>
+        {`${JOB_KIND_LABEL[failed.kind]} of ${jobObject(failed)} failed${why ? `: ${why}` : ""}`}{" "}
+        <V2Link href={hrefFor({ kind: "job", id: failed.id })}>Open</V2Link>
+      </span>
+    </span>
+  );
+}
+
+/**
+ * The status strip under the canvas: what the numbers on screen were made from. When the canvas is scoped to a run
+ * (`?run=` or a run page) the figures are that run's. A failed job adds one line at the end.
+ */
 export function StatusStrip() {
-  const q = useStatus();
-  const s = q.data;
+  const run = useCanvasRun();
+  const current = useStatus();
+  const scoped = useLandscape(run);
+  const q = run ? scoped : current;
+  const s = run ? scoped.data?.status_strip : current.data;
   const parts: string[] = s
     ? [
         s.run_at ? `Run ${formatDate(s.run_at, "datetime")}` : "No run yet",
@@ -43,6 +72,7 @@ export function StatusStrip() {
           <span className="m2-skel" style={{ width: 360, height: 12 }} aria-hidden="true" />
         )}
       </span>
+      <FailureLine />
     </div>
   );
 }

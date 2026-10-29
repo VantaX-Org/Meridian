@@ -8,6 +8,7 @@ import { Inspector, InspectorFrame } from "../Inspector";
 import { getUrl, setUrl } from "./nav-store";
 
 vi.mock("next/navigation", async () => (await import("./nav-store")).navigationMock);
+vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
 
 const ECC = landscapeFixture.systems[0];
 const SF = landscapeFixture.systems[2];
@@ -89,7 +90,7 @@ describe("<Inspector>", () => {
     setUrl(`/v2?open=system:${SF.id}`);
     renderWithQuery(<Harness />);
     expect(await screen.findByText("Not extracted yet")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Extract SuccessFactors" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Extract" })).toBeInTheDocument();
     expect(screen.getByText("Never")).toBeInTheDocument();
   });
 
@@ -131,7 +132,7 @@ describe("focus handling", () => {
     const dialog = await screen.findByRole("dialog");
     const close = screen.getByRole("button", { name: "Close inspector" });
     await waitFor(() => expect(close).toHaveFocus());
-    await waitFor(() => expect(screen.getByRole("link", { name: /Extract ECC production/ })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Test connection" })).toBeInTheDocument());
     const focusables = Array.from(dialog.querySelectorAll<HTMLElement>('a[href],button:not([disabled])'));
     const last = focusables[focusables.length - 1];
     expect(focusables[0]).toBe(close);

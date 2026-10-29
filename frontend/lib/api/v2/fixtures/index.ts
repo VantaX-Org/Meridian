@@ -5,6 +5,7 @@ import runsJson from "./runs.json";
 import rulesJson from "./rules.json";
 import type { CommandGroup, CommandResult, Landscape, Receipt, RuleRow, RunList, StatusStrip, WorkPage } from "../types";
 import { moduleSlug, systemSlug } from "@/lib/v2/score";
+import { NONE, runsFixtureResponse } from "./runs";
 
 /**
  * Fixture answers for the step 0 contract, built from the approved prototype's numbers: 3 systems (ECC production
@@ -90,6 +91,8 @@ function command(q: string): CommandResult {
 
 /** The answer to one v2 read in fixture mode. Throws a 404-shaped error for a path the contract does not have. */
 export function fixtureResponse<T>(path: string, params: Params): T {
+  const runsStep = runsFixtureResponse(path, params);
+  if (runsStep !== NONE) return runsStep as T;
   const out = ((): unknown => {
     if (path === "/landscape") return landscapeFixture;
     if (path === "/status") return landscapeFixture.status_strip as StatusStrip;

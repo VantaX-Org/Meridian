@@ -1,5 +1,5 @@
-import { NotYetCanvas } from "@/design/v2/screens/routes";
+import { RunsCanvas } from "@/design/v2/screens/Runs";
 
 export default function RunsPage() {
-  return <NotYetCanvas kind="runs" />;
+  return <RunsCanvas />;
 }

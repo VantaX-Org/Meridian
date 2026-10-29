@@ -11,7 +11,7 @@ import { setUiCookie, UI_V2 } from "@/lib/v2/switch";
 import { CommandLine } from "../CommandLine";
 import { Inspector } from "../Inspector";
 import { ShortcutSheet } from "../ShortcutSheet";
-import { JobLine, LiveJobLine } from "./JobLine";
+import { FixtureJobLine, LiveJobLine } from "./JobLine";
 import { MapPane } from "./MapPane";
 import { StatusStrip } from "./StatusStrip";
 import { TopBar } from "./TopBar";
@@ -95,7 +95,7 @@ function Chrome({ children, fixture }: { children: ReactNode; fixture: boolean }
         Skip to content
       </a>
       <TopBar onOpenCommand={() => setCommandOpen(true)} onToggleMap={toggleMap} onShortcuts={() => setSheetOpen(true)} mapOpen={mapOpen} />
-      {fixture ? <JobLine percent={null} /> : <LiveJobLine />}
+      {fixture ? <FixtureJobLine /> : <LiveJobLine />}
       <div className="m2-main">
         <MapPane open={mapOpen} onClose={() => setMapOpen(false)} phone={phone} />
         {phone && mapOpen ? <div className="m2-scrim" onClick={() => setMapOpen(false)} aria-hidden="true" /> : null}

@@ -2,13 +2,13 @@
 
 import { useEffect, useId, useMemo, useRef, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { formatDate, systemTypeLabel } from "@/lib/format";
-import type { Landscape, LandscapeSystem, Receipt } from "@/lib/api/v2/types";
+import type { Landscape, Receipt } from "@/lib/api/v2/types";
 import { useOpenItem, type OpenItem } from "@/lib/v2/hooks";
 import { useLandscape, v2Keys } from "@/lib/v2/queries";
-import { int, moduleSlug, systemSlug } from "@/lib/v2/score";
+import { moduleSlug, systemSlug } from "@/lib/v2/score";
 import { IconClose } from "./marks";
 import { EmptyFrame, Mono, V2Link } from "./parts";
+import { extensionFor } from "./inspector/registry";
 
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
@@ -103,39 +103,6 @@ export function Actions({ children }: { children: ReactNode }) {
   );
 }
 
-const STATE_WORD: Record<LandscapeSystem["state"], string> = {
-  analysed: "Analysed",
-  extracted: "Extracted, not analysed",
-  not_extracted: "Not extracted yet",
-};
-
-function SystemBody({ system }: { system: LandscapeSystem }) {
-  const next =
-    system.state === "not_extracted"
-      ? { label: `Extract ${system.name}`, why: "Extraction reads the system's tables so rules can run on them." }
-      : system.state === "extracted"
-        ? { label: `Run analysis on ${system.name}`, why: "The data is extracted; no rule has run on it yet." }
-        : { label: `Extract ${system.name} again`, why: "Reads the system's tables again, then an analysis scores them." };
-  return (
-    <>
-      <Facts>
-        <Fact label="Type">{systemTypeLabel(system.system_type)}</Fact>
-        <Fact label="Version">{system.version ?? "—"}</Fact>
-        <Fact label="Client">{system.client ?? "—"}</Fact>
-        <Fact label="State">{STATE_WORD[system.state]}</Fact>
-        <Fact label="Last extraction">{system.last_extracted_at ? formatDate(system.last_extracted_at, "datetime") : "Never"}</Fact>
-        <Fact label="Records">{int(system.records)}</Fact>
-      </Facts>
-      <Actions>
-        <V2Link href={`/systems/${system.id}`} className="m2-btn m2-strong">
-          {next.label}
-        </V2Link>
-      </Actions>
-      <p className="m2-prov">{next.why} Connection settings stay in the current interface for now.</p>
-    </>
-  );
-}
-
 function RuleBody({ id, landscape }: { id: string; landscape: Landscape | undefined }) {
   const qc = useQueryClient();
   const name = useMemo(() => {
@@ -212,28 +179,9 @@ function RecordBody({ id }: { id: string }) {
   );
 }
 
-function RunBody({ id }: { id: string }) {
-  return (
-    <>
-      <Facts>
-        <Fact label="Run">
-          <Mono>{id}</Mono>
-        </Fact>
-      </Facts>
-      <h3>What changed</h3>
-      <EmptyFrame>What moved since the run before it, by rule and by object, fills here in the next step.</EmptyFrame>
-    </>
-  );
-}
-
-function titleFor(item: OpenItem, landscape: Landscape | undefined): { title: ReactNode; status: ReactNode } {
-  if (item.kind === "system") {
-    const s = landscape?.systems.find((x) => x.id === item.id);
-    return { title: s?.name ?? "System", status: s ? `${s.version ?? ""}${s.client ? `, client ${s.client}` : ""}`.replace(/^, /, "") : "Not found in this tenant" };
-  }
+function titleFor(item: OpenItem): { title: ReactNode; status: ReactNode } {
   if (item.kind === "rule") return { title: <Mono>{item.id}</Mono>, status: "Rule" };
   if (item.kind === "record") return { title: <Mono>{recordTitle(item.id).key}</Mono>, status: "Record" };
-  if (item.kind === "run") return { title: "Run", status: <Mono>{item.id}</Mono> };
   return { title: item.id, status: "Feature" };
 }
 
@@ -242,20 +190,15 @@ export function Inspector() {
   const { open, close } = useOpenItem();
   const landscape = useLandscape(null).data;
   if (!open) return null;
-  const { title, status } = titleFor(open, landscape);
+  const extension = extensionFor(open, close);
+  if (extension) return extension;
+  const { title, status } = titleFor(open);
   return (
     <InspectorFrame title={title} status={status} onClose={close}>
-      {open.kind === "system" ? (
-        (() => {
-          const s = landscape?.systems.find((x) => x.id === open.id);
-          return s ? <SystemBody system={s} /> : <EmptyFrame>This system is not in the tenant. It may have been removed.</EmptyFrame>;
-        })()
-      ) : open.kind === "rule" ? (
+      {open.kind === "rule" ? (
         <RuleBody id={open.id} landscape={landscape} />
       ) : open.kind === "record" ? (
         <RecordBody id={open.id} />
-      ) : open.kind === "run" ? (
-        <RunBody id={open.id} />
       ) : (
         <EmptyFrame>Feature impact fills here in the next step.</EmptyFrame>
       )}

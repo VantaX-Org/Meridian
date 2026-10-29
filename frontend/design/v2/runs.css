@@ -1,0 +1,96 @@
+/*
+ * Meridian 2, step 3: the run timeline, the Run, Compare and Runs canvases, jobs and the System canvas. Scoped under
+ * .m2-root, token colours only, no motion (tokens.css owns it).
+ */
+
+/* Run timeline overlay and chart */
+.m2-root .m2-pop { position: fixed; z-index: 80; width: min(560px, calc(100vw - 16px)); background: var(--m2-sheet); border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); box-shadow: var(--m2-shadow); padding: var(--m2-s3) var(--m2-s4) var(--m2-s4); font-size: var(--m2-fs-13); }
+.m2-root .m2-pop-h { margin: 0 0 var(--m2-s2); font-size: var(--m2-fs-13); font-weight: 600; }
+.m2-root .m2-pop-p { margin: var(--m2-s1) 0 0; color: var(--m2-ink-2); font-size: var(--m2-fs-13); line-height: var(--m2-lh-13); }
+.m2-root .m2-pop-cmp { display: flex; gap: var(--m2-s2); align-items: center; flex-wrap: wrap; margin-top: var(--m2-s3); }
+.m2-root .m2-pop-cmp label { color: var(--m2-meta); }
+.m2-root .m2-sel { height: 28px; max-width: 100%; border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); background: var(--m2-sheet); color: var(--m2-fg); font: inherit; font-size: var(--m2-fs-13); padding: 0 var(--m2-s2); }
+.m2-root .m2-tl-box { width: 100%; min-width: 0; }
+.m2-root .m2-tl { display: block; max-width: 100%; height: auto; overflow: visible; }
+.m2-root .m2-tl-ax { stroke: var(--m2-line-2); stroke-width: 1; }
+.m2-root .m2-tl-base { stroke: var(--m2-ink-3); stroke-width: 1; }
+.m2-root .m2-tl-t { fill: var(--m2-meta); font-size: var(--m2-fs-12); font-family: var(--m2-font); }
+.m2-root .m2-tl-hit { fill: transparent; }
+.m2-root .m2-tl-mk { fill: var(--m2-ink-3); }
+.m2-root .m2-tl-r { cursor: pointer; outline: none; }
+.m2-root .m2-tl-r:hover .m2-tl-mk { fill: var(--m2-fg); }
+.m2-root .m2-tl-r.m2-on .m2-tl-mk { fill: var(--m2-data); }
+.m2-root .m2-tl-r.m2-on .m2-tl-t { fill: var(--m2-fg); font-weight: 600; }
+.m2-root .m2-tl-r:focus-visible .m2-tl-hit { stroke: var(--m2-data); stroke-width: 2; }
+
+/* Result frames: what an action returned, in place of a toast */
+.m2-root .m2-result { margin: var(--m2-s3) 0 0; padding: var(--m2-s2) var(--m2-s3); border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); font-size: var(--m2-fs-13); line-height: var(--m2-lh-13); color: var(--m2-ink-2); display: flex; flex-direction: column; gap: var(--m2-s1); }
+.m2-root .m2-result .m2-result-t { color: var(--m2-fg); display: inline-flex; align-items: center; gap: 6px; }
+.m2-root .m2-result a { text-decoration: underline; text-underline-offset: 2px; }
+.m2-root .m2-result[data-tone="fail"] { border-color: var(--m2-crit); }
+.m2-root .m2-result[data-tone="ok"] { border-color: var(--m2-pass); }
+
+/* Page-level switch between two views (Runs and Jobs) and a filter row */
+.m2-root .m2-views { display: inline-flex; gap: var(--m2-s1); padding: 2px; border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); }
+.m2-root .m2-views a { display: inline-flex; align-items: center; height: 28px; padding: 0 var(--m2-s3); border-radius: var(--m2-r1); color: var(--m2-ink-2) !important; font-size: var(--m2-fs-13); }
+.m2-root .m2-views a:hover { text-decoration: none !important; background: var(--m2-hover); }
+.m2-root .m2-views a[aria-current="page"] { background: var(--m2-inverse); color: var(--m2-on-inverse) !important; font-weight: 500; }
+.m2-root .m2-filters { display: flex; flex-wrap: wrap; gap: var(--m2-s3); align-items: center; margin: var(--m2-s3) 0; font-size: var(--m2-fs-13); color: var(--m2-meta); }
+.m2-root .m2-filters label { display: inline-flex; gap: var(--m2-s2); align-items: center; }
+
+/* Table cells that carry a link, a mark and a word */
+.m2-root .m2-tbl td a, .m2-root .m2-tbl th a { color: var(--m2-fg); }
+.m2-root .m2-tbl td a.m2-rowlink, .m2-root .m2-tbl th a.m2-rowlink { text-decoration: underline; text-underline-offset: 2px; }
+.m2-root .m2-tbl tfoot th, .m2-root .m2-tbl tfoot td { font-weight: 500; border-top: 1px solid var(--m2-line-2); background: var(--m2-sheet); height: 32px; padding: 0 10px; }
+.m2-root .m2-tbl .m2-u { color: var(--m2-meta); }
+.m2-root .m2-tbl tbody tr[data-open="true"] td, .m2-root .m2-tbl tbody tr[data-open="true"] th { background: var(--m2-active); }
+.m2-root .m2-tbl td.m2-up, .m2-root .m2-tbl td.m2-dn { font-weight: 500; }
+.m2-only-narrow { display: none; }
+
+/* Diverging bar of a score change: the zero line in the middle, green to the right, red to the left, sign beside it */
+.m2-root .m2-dbar { display: block; }
+.m2-root .m2-dbar .m2-z { stroke: var(--m2-ink-3); stroke-width: 1; }
+.m2-root .m2-dbar .m2-up { fill: var(--m2-pass); }
+.m2-root .m2-dbar .m2-dn { fill: var(--m2-crit); }
+.m2-root .m2-chg-v { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; }
+
+/* "What changed": four lists side by side, one column on a phone */
+.m2-root .m2-chg { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--m2-s6); }
+.m2-root .m2-chg h3 { display: flex; justify-content: space-between; gap: var(--m2-s2); margin: 0 0 var(--m2-s2); font-size: var(--m2-fs-14); font-weight: 600; }
+.m2-root .m2-chg h3 .m2-n { color: var(--m2-meta); font-weight: 400; }
+.m2-root .m2-chg ul { list-style: none; margin: 0; padding: 0; }
+.m2-root .m2-chg li { display: grid; gap: 2px; padding: var(--m2-s2) 0; border-bottom: 1px solid var(--m2-rule); font-size: var(--m2-fs-13); }
+.m2-root .m2-chg li .m2-s { color: var(--m2-meta); font-size: var(--m2-fs-12); }
+.m2-root .m2-chg .m2-more { padding-top: var(--m2-s2); font-size: var(--m2-fs-12); color: var(--m2-meta); }
+.m2-root .m2-chg .m2-linkbtn { color: var(--m2-fg); text-decoration: underline; text-underline-offset: 2px; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
+
+/* Progress */
+.m2-root .m2-prog { height: 4px; border-radius: var(--m2-r1); background: var(--m2-track); overflow: hidden; }
+.m2-root .m2-prog > span { display: block; height: 100%; background: var(--m2-data); }
+.m2-root .m2-stages { list-style: none; margin: 0; padding: 0; }
+.m2-root .m2-stages li { display: flex; align-items: center; gap: var(--m2-s2); padding: 6px 0; border-bottom: 1px solid var(--m2-rule); font-size: var(--m2-fs-13); }
+.m2-root .m2-stages li .m2-meta { margin-left: auto; }
+.m2-root .m2-jtbl { width: 100%; border-collapse: collapse; font-size: var(--m2-fs-13); }
+.m2-root .m2-jtbl th { text-align: left; font-weight: 400; font-size: var(--m2-fs-12); color: var(--m2-meta); padding: 4px 0; border-bottom: 1px solid var(--m2-line-2); }
+.m2-root .m2-jtbl td { padding: 6px 0; border-bottom: 1px solid var(--m2-rule); }
+.m2-root .m2-jtbl .m2-r { text-align: right; }
+
+/* Inline picker in the inspector (objects to extract) */
+.m2-root .m2-pick { list-style: none; margin: var(--m2-s2) 0; padding: 0; max-height: 260px; overflow: auto; border: 1px solid var(--m2-line); border-radius: var(--m2-r2); }
+.m2-root .m2-pick li { border-bottom: 1px solid var(--m2-rule); }
+.m2-root .m2-pick li:last-child { border-bottom: 0; }
+.m2-root .m2-pick label { display: grid; grid-template-columns: auto 1fr auto; gap: var(--m2-s2); align-items: center; padding: 6px var(--m2-s3); cursor: pointer; font-size: var(--m2-fs-13); }
+.m2-root .m2-pick label:hover { background: var(--m2-hover); }
+.m2-root .m2-check { display: flex; gap: var(--m2-s2); align-items: center; font-size: var(--m2-fs-13); margin: var(--m2-s2) 0; }
+
+/* Tabs of the System canvas reuse .m2-tabs; the "current interface" frame is a quiet bordered block */
+.m2-root .m2-handoff { border: 1px dashed var(--m2-line-2); border-radius: var(--m2-r2); padding: var(--m2-s4); display: flex; flex-direction: column; gap: var(--m2-s3); align-items: flex-start; }
+.m2-root .m2-handoff p { margin: 0; max-width: 70ch; color: var(--m2-ink-2); font-size: var(--m2-fs-14); line-height: var(--m2-lh-14); }
+.m2-root .m2-job-lbl a { color: var(--m2-ink-2); text-decoration: underline; text-underline-offset: 2px; }
+.m2-root .m2-fail { display: inline-flex; align-items: center; gap: 6px; color: var(--m2-fg); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m2-root .m2-fail a { text-decoration: underline; text-underline-offset: 2px; }
+
+@media (max-width: 760px) {
+  .m2-only-narrow { display: block; }
+  .m2-root .m2-pop { left: 8px !important; right: 8px; width: auto; }
+}
