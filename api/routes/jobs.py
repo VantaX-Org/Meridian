@@ -29,7 +29,15 @@ CANNOT_RETRY = "This kind of job cannot be retried; start it again from its page
 @router.get("")
 async def list_jobs(active: bool = Query(False, description="Only queued and running jobs"),
                     limit: int = Query(50, ge=1, le=200), tenant: Tenant = Depends(get_tenant)):
-    return {"jobs": jobs.list_jobs(str(tenant.id), active_only=active, limit=limit)}
+    from api.services.run_prediction import with_queue_positions
+
+    listed = jobs.list_jobs(str(tenant.id), active_only=active, limit=limit)
+    # queue_position on every queued job: 1 + the tenant's queued jobs registered before it
+    if active or len(listed) < limit:
+        return {"jobs": with_queue_positions(listed)}
+    queued = with_queue_positions(jobs.list_jobs(str(tenant.id), active_only=True, limit=200))
+    pos = {j["id"]: j.get("queue_position") for j in queued}
+    return {"jobs": [{**j, "queue_position": pos.get(j["id"])} if j.get("status") == "queued" else j for j in listed]}
 
 
 @router.get("/events")
@@ -51,6 +59,11 @@ async def get_job(job_id: str, tenant: Tenant = Depends(get_tenant)):
     job = jobs.get_job(str(tenant.id), job_id)
     if job is None:
         raise HTTPException(404, "Job not found")
+    if job.get("status") == "queued":
+        from api.services.run_prediction import with_queue_positions
+        pos = {j["id"]: j.get("queue_position") for j in
+               with_queue_positions(jobs.list_jobs(str(tenant.id), active_only=True, limit=200))}
+        job = {**job, "queue_position": pos.get(job["id"])}
     return job
 
 
