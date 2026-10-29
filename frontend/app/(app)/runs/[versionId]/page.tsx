@@ -162,7 +162,7 @@ function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; hi
     <ExplorerPage
       toolbarEnd={can("export") ? <ExportMenu options={[{ format: "xlsx", run: () => exportObjects(versionId, "xlsx") }]} /> : undefined}
       table={
-        <DataTable
+        <DataTable hideExport
           columns={columns}
           data={rows}
           getRowId={(o) => o.module}

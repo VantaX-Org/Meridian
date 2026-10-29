@@ -15,7 +15,7 @@ export function SettingsTabs() {
   const tabs = settingsTabs(useVisibleNav());
   if (tabs.length < 2) return null;
   return (
-    <nav aria-label="Settings pages" className="m-tabs-list flex-wrap">
+    <nav aria-label="Settings pages" className="m-tabs-list sm:flex-wrap">
       {tabs.map((t) => (
         <Link
           key={t.href}

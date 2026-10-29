@@ -197,7 +197,7 @@ export default function SearchPage() {
         </div>
       }
       table={
-        <DataTable
+        <DataTable hideExport
           columns={columns}
           data={results}
           getRowId={(r) => `${r.kind}:${r.id}`}

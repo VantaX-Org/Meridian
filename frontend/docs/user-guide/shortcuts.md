@@ -6,7 +6,7 @@ Press `?` on any page, or choose **Keyboard shortcuts** in the help menu, to see
 
 ## Everywhere
 
-- `/`: jump into **Find a record by key or name** in the scope bar.
+- `/`: open the search (the same as `Ctrl+K`), where typing a record key or name lists the failing records it matches.
 - Ctrl K (⌘K): open **Search or jump to...**, for any page, object, rule or record key.
 - `?`: show the keyboard shortcuts.
 - Ctrl 1 (⌘1), with **Search or jump to...** open: go to your Home page. Outside it, Ctrl or ⌘ with a number is left to your browser for switching tabs.
@@ -54,12 +54,12 @@ On **Runs**, with two runs ticked, `c` opens their comparison.
 
 ## Finding a record
 
-**Find a record by key or name** sits in the scope bar on every page. It searches the failing records of the run you are viewing.
+The search in the top bar finds records as well as pages. It searches the failing records of the run you are viewing.
 
-1. Press `/`, or select the box.
+1. Press `/`, or select **Search or jump to...**.
 2. Type at least two characters of a record key or a name, such as a material number or a vendor name.
-3. Move through the matches with the arrow keys. Each shows its name or key, its object and its status.
-4. Press `Enter` to open the record in its object, on **Records to fix**, with the record picked. `Escape` closes the list.
+3. Move through the matches under **Records** with the arrow keys. Each shows its name or key, its object and its issue count.
+4. Press `Enter` to open the record in its object, on **Records to fix**, with the record picked. `Escape` closes the search.
 
 Only records that fail a check in the run are listed. To find a record that passes, open the object and use its search, or the search page below.
 

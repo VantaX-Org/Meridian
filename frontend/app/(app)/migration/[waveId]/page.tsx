@@ -176,7 +176,7 @@ export default function WaveCockpitPage() {
         onValueChange={(v) => router.replace(`/migration/${waveId}?tab=${v}`)}
         items={[
           { value: "overview", label: "Overview", content: c.objects.length ? (
-              <DataTable columns={objectColumns(run, waveId)} data={ranked} getRowId={(o) => o.module} />
+              <DataTable hideExport columns={objectColumns(run, waveId)} data={ranked} getRowId={(o) => o.module} />
             ) : <EmptyState title="No objects in this wave" detail="Add the SAP objects this wave moves, then run it to score their readiness." action={wavesAction} /> },
           { value: "blockers", label: "Blockers", content: <BlockersTab waveId={waveId} runId={c.run_id} versionId={c.source_version_id} blockers={c.blockers} runAction={runAction} /> },
           { value: "mapping", label: "Mapping", content: (

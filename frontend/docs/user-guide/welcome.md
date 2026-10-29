@@ -37,7 +37,7 @@ The top row is the index bar. From left to right:
 
 Under the index bar is the scope bar. It names the page you are on and, on the right, holds two controls you will use all day:
 
-- **Find a record by key or name**: type a record key or a name, pick one of the failing records it matches, and the record opens in its object. Press `/` from anywhere to jump into it.
+- **Search**: type a record key or a name, pick one of the failing records it matches, and the record opens in its object. Press `/` from anywhere to open the search.
 - **Run**: the run every screen shows. **Latest run** follows the newest finished run. Pick an older run and Meridian keeps it as you move between screens, in this browser, until you pick **Latest run** again.
 
 When your access is limited to one system or object, a pill such as "Scoped: PRD ECC, Material master" sits beside them.

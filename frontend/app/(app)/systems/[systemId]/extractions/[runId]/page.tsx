@@ -144,7 +144,7 @@ export default function ExtractionPage() {
           />
         ) : null
       }
-      tables={<DataTable columns={columns} data={stepRows} getRowId={(row) => stepId(row, stepRows.indexOf(row))} />}
+      tables={<DataTable hideExport columns={columns} data={stepRows} getRowId={(row) => stepId(row, stepRows.indexOf(row))} />}
       state={steps.isLoading ? "loading" : stepRows.length === 0 ? "empty" : undefined}
       emptyProps={{
         title: "No step history yet",

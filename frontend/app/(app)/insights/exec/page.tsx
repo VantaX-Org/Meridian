@@ -261,7 +261,7 @@ export default function ExecPage() {
       title="Executive summary"
       purpose={PAGE_PURPOSE["/insights/exec"]}
       scope
-      actions={<InsightActions run={vid} current={isCurrent} options={exportOptions} />}
+      actions={<InsightActions run={vid} current={isCurrent} options={exportOptions} hasData={state !== "empty" && state !== "error"} />}
       insight={{
         hero: true,
         lead: typeof composite === "number" ? (

@@ -18,6 +18,9 @@ const rows: Row[] = [
 
 const columns = [textColumn<Row>("name", "Name")];
 
+// The toolbar and the filter box appear above ten rows (TOOLBAR_MIN_ROWS); these tests exercise them.
+const padded: Row[] = [...rows, ...Array.from({ length: 10 }, (_, i) => ({ id: `f${i}`, name: `Filler ${i}` }))];
+
 describe("DataTable", () => {
   it("sorts a column on header click", () => {
     render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} />);
@@ -39,7 +42,7 @@ describe("DataTable", () => {
   });
 
   it("filters rows via the global filter input", () => {
-    render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} />);
+    render(<DataTable columns={columns} data={padded} getRowId={(r) => r.id} />);
     fireEvent.change(screen.getByPlaceholderText("Type to filter rows"), { target: { value: "Bravo" } });
     expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
     expect(screen.getByText("Bravo")).toBeInTheDocument();
@@ -181,7 +184,7 @@ describe("DataTable", () => {
   });
 
   it("keeps the active row on the same record after a sort and drops it when filtered out", () => {
-    render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} />);
+    render(<DataTable columns={columns} data={padded} getRowId={(r) => r.id} />);
     const grid = screen.getByRole("grid");
     fireEvent.keyDown(grid, { key: "ArrowDown" });
     const bravoId = (screen.getByText("Bravo").closest("tr") as HTMLTableRowElement).id;
@@ -192,7 +195,7 @@ describe("DataTable", () => {
   });
 
   it("clears selection on Escape from a focused row checkbox, and select-all covers only filtered rows", () => {
-    render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} bulkActions={() => null} />);
+    render(<DataTable columns={columns} data={padded} getRowId={(r) => r.id} bulkActions={() => null} />);
     fireEvent.change(screen.getByLabelText("Filter rows"), { target: { value: "Alpha" } });
     fireEvent.click(screen.getByLabelText("Select all rows"));
     expect(screen.getByLabelText("Select Alpha")).toBeChecked();
@@ -288,14 +291,14 @@ describe("DataTable toolbar", () => {
   const two = [textColumn<Row>("id", "Id"), textColumn<Row>("name", "Name")];
 
   it("hides a column from the chooser", () => {
-    render(<DataTable columns={two} data={rows} getRowId={(r) => r.id} tableId="t-cols" />);
+    render(<DataTable columns={two} data={padded} getRowId={(r) => r.id} tableId="t-cols" />);
     fireEvent.click(screen.getByText("Columns"));
     fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Name" }));
     expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
   });
 
   it("toggles density", () => {
-    render(<DataTable columns={two} data={rows} getRowId={(r) => r.id} tableId="t-dense" dense={false} />);
+    render(<DataTable columns={two} data={padded} getRowId={(r) => r.id} tableId="t-dense" dense={false} />);
     const btn = screen.getByRole("button", { name: "Compact rows" });
     fireEvent.click(btn);
     expect(screen.getByRole("button", { name: "Comfortable rows" })).toHaveAttribute("aria-pressed", "true");
@@ -303,7 +306,7 @@ describe("DataTable toolbar", () => {
 
   it("saves and re-applies a view, keyed by table id", () => {
     window.localStorage.clear();
-    render(<DataTable columns={two} data={rows} getRowId={(r) => r.id} tableId="t-views" />);
+    render(<DataTable columns={two} data={padded} getRowId={(r) => r.id} tableId="t-views" />);
     fireEvent.click(screen.getByText("Columns"));
     fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Name" }));
     fireEvent.click(screen.getByText("Views"));
@@ -322,7 +325,7 @@ describe("DataTable toolbar", () => {
   it("offers shipped views beside the viewer's own and hands a view's page filters to the page", () => {
     window.localStorage.clear();
     const onApplyView = vi.fn();
-    render(<DataTable columns={two} data={rows} getRowId={(r) => r.id} tableId="t-preset" viewParams={{ sev: "high" }} onApplyView={onApplyView}
+    render(<DataTable columns={two} data={padded} getRowId={(r) => r.id} tableId="t-preset" viewParams={{ sev: "high" }} onApplyView={onApplyView}
       presetViews={[{ name: "Critical", visibility: {}, dense: true, sorting: [], params: { sev: "critical" } }]} />);
     fireEvent.click(screen.getByRole("button", { name: "Views (1)" }));
     expect(screen.queryByRole("button", { name: "Delete view Critical" })).toBeNull();
@@ -372,7 +375,7 @@ describe("DataTable toolbar", () => {
   });
 
   it("shows a filtered-empty row with a Clear filter button", () => {
-    render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} />);
+    render(<DataTable columns={columns} data={padded} getRowId={(r) => r.id} />);
     fireEvent.change(screen.getByLabelText("Filter rows"), { target: { value: "zzz" } });
     expect(screen.getByText("No rows match this filter")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Clear filter" }));
@@ -386,9 +389,9 @@ describe("DataTable toolbar", () => {
   });
 
   it("offers CSV export and can hide the toolbar", () => {
-    const { rerender } = render(<DataTable columns={two} data={rows} getRowId={(r) => r.id} />);
+    const { rerender } = render(<DataTable columns={two} data={padded} getRowId={(r) => r.id} />);
     expect(screen.getByRole("toolbar")).toBeInTheDocument();
-    rerender(<DataTable columns={two} data={rows} getRowId={(r) => r.id} hideToolbar />);
+    rerender(<DataTable columns={two} data={padded} getRowId={(r) => r.id} hideToolbar />);
     expect(screen.queryByRole("toolbar")).not.toBeInTheDocument();
   });
 });

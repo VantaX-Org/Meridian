@@ -478,7 +478,7 @@ function RuleRecords({ object, run, checkId, onClose }: { object: string; run: s
           </>
         }
       >
-        <DataTable
+        <DataTable hideExport
           columns={columns}
           data={data.records}
           getRowId={(row) => row.record_key}

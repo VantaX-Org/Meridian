@@ -20,17 +20,18 @@ describe("Aletheia attribution (licence section 6: on every screen)", () => {
     }
   });
 
-  it("never draws over a dialog, drawer or menu (z 50) and never takes a click", () => {
+  it("sits in the document flow at the foot of the page, never fixed over content", () => {
     const css = readFileSync(join(root, "design/tokens.css"), "utf8");
     const rule = /\.m-attribution\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
-    const z = Number(/z-index:\s*(\d+)/.exec(rule)?.[1]);
-    expect(z).toBeLessThan(50);
-    // still above the page, the BulkBar (z 10) and the Ask launcher (z 40)
-    expect(z).toBeGreaterThan(40);
-    expect(rule).toMatch(/pointer-events:\s*none/);
-    for (const file of ["design/primitives/Dialog.tsx", "design/primitives/Drawer.tsx"]) {
-      expect(readFileSync(join(root, file), "utf8"), file).toMatch(/fixed z-50/);
-    }
+    expect(rule).not.toMatch(/position:\s*(fixed|absolute|sticky)/);
+    expect(rule).not.toMatch(/z-index/);
+    expect(rule).toMatch(/height:\s*var\(--m-attribution-h\)/);
+  });
+
+  it("is reserved out of the shell's height, so the app shell and the strip fit one screen", () => {
+    const layout = readFileSync(join(root, "app/(app)/layout.tsx"), "utf8");
+    expect(layout.match(/calc\(100dvh-var\(--m-attribution-h\)\)/g)).toHaveLength(2);
+    expect(layout).not.toMatch(/h-dvh/);
   });
 
   it("ships Aletheia's own mark file, byte for byte", () => {

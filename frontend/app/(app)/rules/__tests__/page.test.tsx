@@ -49,7 +49,9 @@ describe("rules page", () => {
   });
 
   it("has one search and one export, with the secondary filters behind Filters", async () => {
-    vi.spyOn(rulesApi, "getRules").mockResolvedValue({ rules: [RULE], total: 1, limit: 1000, offset: 0 });
+    // The table toolbar (with its export) appears above ten rows.
+    const many = Array.from({ length: 11 }, (_, n) => ({ ...RULE, id: `r${n + 1}`, name: n ? `AP00${n}: Other rule ${n}` : RULE.name }));
+    vi.spyOn(rulesApi, "getRules").mockResolvedValue({ rules: many, total: 11, limit: 1000, offset: 0 });
     vi.spyOn(rulesApi, "getRulesSummary").mockResolvedValue({ summary: [] });
     renderWithQuery(<RulesPage />);
     await waitFor(() => expect(screen.getByText("Vendor number is mandatory")).toBeInTheDocument());

@@ -542,7 +542,7 @@ export default function RunsPage() {
       summary={summary}
       table={
         <>
-        <DataTable
+        <DataTable hideExport
           columns={columns}
           data={rows}
           getRowId={(row) => row.id}

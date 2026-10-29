@@ -28,7 +28,8 @@ import { Menu } from "../primitives/Menu";
 import { exportOptionLabel, runExportOption, type ExportOption } from "../primitives/ExportMenu";
 import { deleteView, loadViews, saveView, toCsv, type TableView } from "./views";
 export type { TableView } from "./views";
-import { barFill, columnLayoutClass, layoutMeta, type CellMeta } from "./columns";
+import { barFill, columnLayoutClass, isActionColumn, isStatusColumn, layoutMeta, type CellMeta } from "./columns";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import { rampStep } from "../tokens";
 import { readPrefs, subscribePreferences } from "../../lib/preferences";
 
@@ -126,6 +127,12 @@ export interface DataTableProps<T> {
   onApplyView?: (view: TableView) => void;
   /** Hides the toolbar's export menu, for a page that offers its exports beside the table. */
   hideExport?: boolean;
+  /** Below 640px: "cards" (default) shows each row as a card (first column as the title, then the status and the
+   * action, the rest as label and value lines); "table" keeps the table and scrolls it sideways. */
+  phoneLayout?: "cards" | "table";
+  /** Hides columns whose value is empty in every row (accessor columns only; the action and status columns stay).
+   * A column the viewer turns on from "Columns" stays on. */
+  hideEmptyColumns?: boolean;
 }
 
 export interface RowPrefetch {
@@ -138,6 +145,10 @@ export interface RowPrefetch {
 const ROW_H_FALLBACK = 40;
 const ROW_H_DENSE_FALLBACK = 32;
 const VIRTUALIZE_ABOVE = 200;
+/** The toolbar (columns, views, density, export) appears above this many rows; a short table has nothing to tune. */
+export const TOOLBAR_MIN_ROWS = 10;
+const PHONE_QUERY = "(max-width: 639px)";
+const isBlank = (v: unknown): boolean => v === null || v === undefined || v === "";
 
 /** True while the page is being printed: paper needs every row, not the virtualised window. */
 function subscribePrint(cb: () => void): () => void {
@@ -173,7 +184,7 @@ export function DataTable<T>({
   sorting: sortingProp, onSortingChange: onSortingChangeProp, dense: denseProp = false,
   tableId, exportOptions = [], exportName = "export", hideToolbar = false, drawerTitle, rowHref, rowPrefetch, dataTour,
   label = "Data table", rowLabel, manualSorting = false, selection: selectionProp, onSelectionChange, activeRowId, onActiveRowChange,
-  onEndReached, rowTestId, presetViews = [], viewParams, onApplyView, hideExport = false, initialColumnVisibility,
+  onEndReached, rowTestId, presetViews = [], viewParams, onApplyView, hideExport = false, initialColumnVisibility, phoneLayout = "cards", hideEmptyColumns = false,
 }: DataTableProps<T>) {
   "use no memo";
   const maxHeight = maxHeightProp ?? heightProp ?? "calc(100vh - 240px)";
@@ -189,6 +200,8 @@ export function DataTable<T>({
     : setInternalSorting;
   const [dense, setDense] = useState(denseProp);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(initialColumnVisibility ?? {});
+  const phone = useMediaQuery(PHONE_QUERY);
+  const cards = phone && phoneLayout === "cards";
   const viewsKey = tableId ?? columns.map((c, i) => c.id ?? ("accessorKey" in c ? String(c.accessorKey) : String(i))).join("|");
   const [views, setViews] = useState<TableView[]>([]);
   const [viewName, setViewName] = useState("");
@@ -199,7 +212,13 @@ export function DataTable<T>({
   const [globalFilter, setGlobalFilter] = useState("");
   // An embedded table (hideToolbar) shows its filter box only once it has eight rows or a filter is typed; a bare
   // box above three rows is noise. Full explorer tables always keep it.
-  const showSearch = !hideSearch && (!hideToolbar || data.length >= 8 || globalFilter !== "");
+  const showSearch = !hideSearch && (globalFilter !== "" || data.length > (hideToolbar ? 7 : TOOLBAR_MIN_ROWS));
+  // The toolbar is for tables long enough to tune. It stays while the viewer has tuned something (a filter, hidden
+  // columns, compact rows), so they can always undo it.
+  const tuned = globalFilter !== "" || Object.values(columnVisibility).some((v) => v === false) || dense !== denseProp;
+  const showToolbar = !hideToolbar && (data.length > TOOLBAR_MIN_ROWS || tuned || presetViews.length > 0);
+  // A short table drops the view options but keeps its one export, unless the page offers its own.
+  const exportOnly = !showToolbar && !hideToolbar && !hideExport && data.length > 0;
   const [internalSelection, setInternalSelection] = useState<RowSelectionState>({});
   const rowSelection = selectionProp ?? internalSelection;
   const setRowSelection = onSelectionChange
@@ -293,6 +312,15 @@ export function DataTable<T>({
     ),
     enableSorting: false,
   };
+  const emptyColumnIds = hideEmptyColumns && data.length > 0
+    ? columns.flatMap((c) => {
+        const key = "accessorKey" in c && c.accessorKey !== undefined ? String(c.accessorKey) : undefined;
+        const id = c.id ?? key;
+        if (!key || !id || isActionColumn(id) || isStatusColumn(id, c.meta as CellMeta | undefined)) return [];
+        return data.every((r) => isBlank((r as Record<string, unknown>)[key])) ? [id] : [];
+      })
+    : [];
+  const effectiveVisibility: VisibilityState = { ...Object.fromEntries(emptyColumnIds.map((id) => [id, false])), ...columnVisibility };
   const allColumns = [...(bulkActions ? [selectColumn] : []), ...(renderExpanded ? [expandColumn] : []), ...columns];
 
   // TanStack Table's hook returns functions React Compiler cannot memoize; this is the single wrapper around it.
@@ -300,7 +328,7 @@ export function DataTable<T>({
   const table = useReactTable({
     data,
     columns: allColumns,
-    state: { sorting, globalFilter, rowSelection, columnVisibility },
+    state: { sorting, globalFilter, rowSelection, columnVisibility: effectiveVisibility },
     onColumnVisibilityChange: setColumnVisibility,
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
@@ -315,7 +343,7 @@ export function DataTable<T>({
 
   const rowModel = table.getRowModel().rows;
   const printing = usePrintMedia();
-  const shouldVirtualize = !printing && rowModel.length > VIRTUALIZE_ABOVE;
+  const shouldVirtualize = !printing && !cards && rowModel.length > VIRTUALIZE_ABOVE;
   const virtualizer = useVirtualizer({
     count: shouldVirtualize ? rowModel.length : 0,
     getScrollElement: () => parentRef.current,
@@ -400,7 +428,7 @@ export function DataTable<T>({
   });
 
   const onScroll = onEndReached
-    ? (e: React.UIEvent<HTMLDivElement>) => {
+    ? (e: React.UIEvent<HTMLElement>) => {
         const el = e.currentTarget;
         if (el.scrollHeight - el.scrollTop - el.clientHeight < rowH * 10) onEndReached();
       }
@@ -436,7 +464,7 @@ export function DataTable<T>({
 
   return (
     <div>
-      {(showSearch || !hideToolbar) && (
+      {(showSearch || showToolbar || exportOnly) && (
         <div className="m-text-meta mb-2 flex flex-wrap items-center gap-2" style={{ minHeight: 32 }}>
           {showSearch && (
             <Input
@@ -447,8 +475,9 @@ export function DataTable<T>({
               style={{ width: 240 }}
             />
           )}
-          {!hideToolbar && (
+          {(showToolbar || exportOnly) && (
             <div className="ml-auto flex flex-wrap items-center gap-2" role="toolbar" aria-label="Table options">
+          {showToolbar && <>
           <Menu
             trigger={<button type="button" className="m-btn m-btn-secondary m-btn-sm">Columns</button>}
             items={dataColumns.map((c) => ({ label: colLabel(c), checked: c.getIsVisible(), onSelect: () => c.toggleVisibility() }))}
@@ -492,6 +521,7 @@ export function DataTable<T>({
           <button type="button" className="m-btn m-btn-secondary m-btn-sm" aria-pressed={dense} onClick={() => setDense((d) => !d)}>
             {dense ? "Comfortable rows" : "Compact rows"}
           </button>
+          </>}
           {!hideExport && (!perms || perms.can("export")) && (
             <Menu
               trigger={<button type="button" className="m-btn m-btn-secondary m-btn-sm">Export table</button>}
@@ -502,6 +532,108 @@ export function DataTable<T>({
           )}
         </div>
       )}
+      {cards ? (
+      <div className="m-card m-table-card" style={{ padding: 0, overflow: "hidden" }} onKeyDown={onRegionKeyDown} data-tour={dataTour}>
+        <ul
+          role="list"
+          aria-label={label}
+          data-testid="table-cards"
+          className="m-table-scroll flex flex-col"
+          onScroll={onScroll}
+          style={{ maxHeight: maxHeight === "auto" ? undefined : maxHeight, overflow: "auto" }}
+        >
+          {rowModel.length === 0 && (
+            <li className="px-3 py-6 text-center" style={{ color: "var(--m-ink-3)" }}>
+              {globalFilter ? (
+                <>
+                  <span className="mr-2">No rows match this filter</span>
+                  <Button variant="ghost" size="sm" onClick={() => setGlobalFilter("")}>Clear filter</Button>
+                </>
+              ) : (
+                <>
+                  <span className="mr-2">{emptyMessage ?? "No rows"}</span>
+                  {emptyAction}
+                </>
+              )}
+            </li>
+          )}
+          {rowModel.map((row) => {
+            const cells = row.getVisibleCells().filter((c) => c.column.id !== SELECT_COLUMN_ID && c.column.id !== EXPAND_COLUMN_ID);
+            const metaOf = (c: (typeof cells)[number]) => layoutMeta(c.column.id, c.column.columnDef.meta as CellMeta | undefined);
+            const actionCell = cells.find((c) => isActionColumn(c.column.id));
+            const statusCell = cells.find((c) => c !== actionCell && isStatusColumn(c.column.id, metaOf(c)));
+            const titleCell = cells.find((c) => c !== actionCell && c !== statusCell && !metaOf(c)?.numeric) ?? cells.find((c) => c !== actionCell && c !== statusCell);
+            const lines = cells.filter((c) => c !== actionCell && c !== statusCell && c !== titleCell);
+            const render = (c: (typeof cells)[number]) => {
+              const m = metaOf(c);
+              const content = flexRender(c.column.columnDef.cell, c.getContext());
+              return m?.mono ? <Mono>{content}</Mono> : content;
+            };
+            const activate = onRowClick || renderDrawer
+              ? () => {
+                  setActiveId(row.id);
+                  onRowClick?.(row.original);
+                  if (renderDrawer) setOpenRow(row.original);
+                }
+              : undefined;
+            const expandable = !!renderExpanded && (!canExpand || canExpand(row.original));
+            const sevValue = severityColumnId ? String(row.getValue(severityColumnId) ?? "").toLowerCase() : "";
+            const sevClass = (SEVERITIES as readonly string[]).includes(sevValue) ? `m-row-severity-${sevValue}` : "";
+            return (
+              <li
+                key={row.id}
+                data-testid={rowTestId}
+                data-selected={bulkActions ? row.getIsSelected() : undefined}
+                tabIndex={activate ? 0 : undefined}
+                onClick={activate}
+                onKeyDown={activate ? (e) => { if (e.key === "Enter" && e.target === e.currentTarget) { e.preventDefault(); activate(); } } : undefined}
+                className={`flex flex-col gap-1 border-b px-3 py-3 ${row.getIsSelected() ? "bg-[var(--m-accent-soft)]" : ""} ${row.id === activeId ? "m-row-active" : ""} ${sevClass}`}
+                style={{ borderColor: "var(--m-line)", cursor: activate ? "pointer" : undefined }}
+              >
+                <div className="flex items-start gap-2">
+                  {bulkActions && (
+                    <Checkbox
+                      aria-label={`Select ${nameOfRow(row)}`}
+                      checked={row.getIsSelected()}
+                      onChange={row.getToggleSelectedHandler()}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  )}
+                  <div className="min-w-0 flex-1 font-medium break-words">{titleCell ? render(titleCell) : null}</div>
+                  {expandable && (
+                    <button
+                      type="button"
+                      className="m-btn m-btn-secondary m-btn-sm"
+                      aria-expanded={!!expanded[row.id]}
+                      onClick={(e) => { e.stopPropagation(); setExpanded((x) => ({ ...x, [row.id]: !x[row.id] })); }}
+                    >
+                      {expanded[row.id] ? "Hide detail" : "Show detail"}
+                    </button>
+                  )}
+                  {actionCell && <div className="shrink-0 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>{render(actionCell)}</div>}
+                </div>
+                {statusCell && <div>{render(statusCell)}</div>}
+                {lines.length > 0 && (
+                  <dl className="m-text-meta flex flex-col gap-1">
+                    {lines.flatMap((c) => {
+                      // A column with a value accessor and nothing in it adds a bare label; skip it.
+                      if (c.column.accessorFn && isBlank(c.getValue())) return [];
+                      return [(
+                        <div key={c.id} className="flex items-baseline justify-between gap-3">
+                          <dt style={{ color: "var(--m-ink-3)" }}>{colLabel(c.column)}</dt>
+                          <dd className="min-w-0 text-right break-words" style={{ color: "var(--m-ink)" }}>{render(c)}</dd>
+                        </div>
+                      )];
+                    })}
+                  </dl>
+                )}
+                {expandable && expanded[row.id] && <div className="m-row-expand">{renderExpanded?.(row.original)}</div>}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+      ) : (
       <div className="m-card m-table-card" style={{ padding: 0, overflow: "hidden" }} onKeyDown={onRegionKeyDown} data-tour={dataTour}>
       <div ref={parentRef} className="m-table-scroll" onScroll={onScroll} style={{ maxHeight: maxHeight === "auto" ? undefined : maxHeight, overflow: "auto" }}>
         <table
@@ -652,6 +784,7 @@ export function DataTable<T>({
         </table>
       </div>
       </div>
+      )}
       {bulkActions && selectedRows.length > 0 && (
         <BulkBar count={selectedRows.length} actions={bulkActions(selectedRows)} />
       )}

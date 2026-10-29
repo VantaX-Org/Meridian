@@ -169,7 +169,7 @@ export function InsightFrame({
   const actionBar = actions ?? (
     <div className="flex flex-wrap items-center gap-2">
       {controls}
-      <InsightActions run={run} module={module} options={exportOptions} exportable={exportable} />
+      <InsightActions run={run} module={module} options={exportOptions} exportable={exportable} hasData={state !== "empty" && state !== "error"} />
     </div>
   );
   const line = scope ? (
