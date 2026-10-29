@@ -17,6 +17,7 @@ import { Actions, Fact, Facts, InspectorFrame } from "../Inspector";
 import { VerdictMark } from "../marks";
 import { EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../parts";
 import { ResultFrame, useOutcome } from "./shared";
+import { DryRunBlock } from "./governance";
 
 const ABAP = new Set(["ecc", "s4hana_onprem", "ewm"]);
 
@@ -113,6 +114,7 @@ function ExtractPicker({ system, allowAnalyse, onDone }: { system: LandscapeSyst
               {pending === "extract" ? "Starting…" : picked.size ? `Extract ${picked.size} ${picked.size === 1 ? "object" : "objects"}` : "Choose objects to extract"}
             </button>
           </div>
+          <DryRunBlock systemId={system.id} objects={[...picked]} />
         </>
       ) : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}

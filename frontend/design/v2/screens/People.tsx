@@ -9,6 +9,7 @@ import { PEOPLE_SORT_LABEL, objectsLine, roleWord, slaMet, sortPeople, type Peop
 import { usePeople } from "@/lib/v2/approvals-queries";
 import { int } from "@/lib/v2/score";
 import { Dash, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../parts";
+import { PeopleActions } from "./PeopleActions";
 
 const n = (x: number): string => x.toLocaleString("en-US");
 const SLA_NOTE = "Share of their open work that is not yet past its due date.";
@@ -85,6 +86,7 @@ export function PeopleCanvas() {
       <p className="m2-prov">
         Counts are read from the work assigned in the latest state. <V2Link href={hrefFor({ kind: "triage", id: "" })}>Triage and SLA</V2Link>
       </p>
+      <PeopleActions />
       {phone ? (
         <ul className="m2-plist" aria-label="People">
           {rows.map((p) => {

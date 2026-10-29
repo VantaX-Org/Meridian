@@ -8,10 +8,11 @@ import { failureText } from "@/lib/v2/errors";
 import { formatDate, labelOf } from "@/lib/format";
 import { useOpenItem } from "@/lib/v2/hooks";
 import { useReportHistory, useScheduleOptions, useSchedules } from "@/lib/v2/admin-queries";
-import { Grid, type GridColumn } from "../Grid";
+import { type GridColumn } from "../Grid";
 import { Dash, EmptyFrame, ErrorFrame, PageTitle } from "../parts";
 import { StatusWord, useCan } from "../admin/kit";
 import { SCHEDULE_TONE, SCHEDULE_WORD, sizeText } from "../inspector/reports";
+import { ToolGrid } from "../GridTools";
 
 const SOURCE: Record<ReportFile["source"], string> = { download: "Downloaded", schedule: "Scheduled", run_now: "On request" };
 
@@ -109,7 +110,8 @@ export function ReportsCanvas() {
         <div className="m2-sechead">
           <h2 className="m2-h2">Reports</h2>
         </div>
-        <Grid<ReportFile>
+        <ToolGrid<ReportFile>
+          toolsTitle="Report history"
           id="reports-files"
           ariaLabel="Reports"
           columns={reportColumns((f) => void download(f), busy)}
@@ -128,7 +130,8 @@ export function ReportsCanvas() {
           <h2 className="m2-h2">Schedules</h2>
           <span className="m2-sub">Each builds a report from the latest run and sends it.</span>
         </div>
-        <Grid<ReportSchedule>
+        <ToolGrid<ReportSchedule>
+          toolsTitle="Report schedules"
           id="reports-schedules"
           ariaLabel="Schedules"
           columns={scheduleColumns(users, channels)}

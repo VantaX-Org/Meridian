@@ -10,10 +10,11 @@ import { apiErrorMessage } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 import { useOpenItem } from "@/lib/v2/hooks";
 import { refreshAdmin, useChannels, useTenantSettings } from "@/lib/v2/admin-queries";
-import { Grid, type GridColumn } from "../Grid";
+import { type GridColumn } from "../Grid";
 import { EmptyFrame, ErrorFrame } from "../parts";
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import { AdminPage, Block, Fld, Loaded, Note, StatusWord, Sw, useCan, useDone } from "./kit";
+import { ToolGrid } from "../GridTools";
 
 export const KIND_LABEL: Record<AlertChannel["kind"], string> = { email: "Email", slack: "Slack", teams: "Microsoft Teams", webhook: "Webhook (signed)" };
 export const DIGEST_LABEL: Record<AlertChannel["digest"], string> = { daily: "Daily digest", weekly: "Weekly digest", off: "No digest" };
@@ -157,7 +158,8 @@ export function AlertsSection() {
       {!write ? <Note>These settings are read only for your role.</Note> : null}
       {none ? <Note tone="warn">Alerts stay in the app: no channel is set up. Nobody is emailed or messaged when an alert fires or a digest is due. Add email, Slack, Teams or a webhook to send them out.</Note> : null}
       <Block title="Channels" hint="Where alerts and digests go outside the app. A board pack channel gets the board pack and the analyst workbook for the latest finished run, weekly on Monday mornings or monthly on the 1st.">
-        <Grid<AlertChannel>
+        <ToolGrid<AlertChannel>
+          toolsTitle="Alert channels"
           id="admin-channels"
           ariaLabel="Alert channels"
           columns={CHANNEL_COLUMNS}

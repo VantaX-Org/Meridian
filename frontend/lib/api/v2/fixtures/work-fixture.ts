@@ -662,10 +662,13 @@ const BUILTIN: [string, Record<string, string>, "compact" | "comfortable"][] = [
   ["Critical and unassigned", { severity: "critical", assigned: "unassigned", status: "open" }, "comfortable"],
   ["Overdue", { due: "overdue", status: "open" }, "compact"],
 ];
-export function views(route: string): { route: string; views: SavedView[] } {
+export function views(route: string): { route: string; views: SavedView[]; columns: string[] | null } {
   const slug = (n: string) => n.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const builtin: SavedView[] = BUILTIN.map(([name, filters, density]) => ({ id: `builtin:${route}:${slug(name)}`, route, name, filters, columns: null, density, builtin: true, created_at: null }));
-  return { route, views: [...builtin, ...state.views.filter((v) => v.route === route)] };
+  const mine = state.views.filter((v) => v.route === route);
+  // The reserved `_columns` row is the person's remembered columns, never a view (api/routes/views.py).
+  const columns = mine.find((v) => v.name === "_columns")?.columns ?? null;
+  return { route, views: [...builtin, ...mine.filter((v) => !v.name.startsWith("_"))], columns };
 }
 
 // Writes ----------------------------------------------------------------------------------------------------------
@@ -936,12 +939,12 @@ export function batchEventsFixture(id: string): { items: (Omit<BatchEvent, "acti
   return { items };
 }
 
-export function putViewFixture(body: { route: string; name: string; filters: Record<string, string>; columns: string[] | null; density: "compact" | "comfortable" | null }): SavedView {
+export function putViewFixture(body: { route: string; name: string; filters?: Record<string, string>; columns?: string[] | null; density?: "compact" | "comfortable" | null; shared?: boolean }): SavedView {
   const name = body.name.trim();
   if (!name) fail(422, "Name is required");
   if (views(body.route).views.some((v) => v.builtin && v.name.toLowerCase() === name.toLowerCase())) fail(409, `'${name}' is a built-in view of this page; save yours under another name.`);
   const existing = state.views.find((v) => v.route === body.route && v.name === name);
-  const view: SavedView = { id: existing?.id ?? `fx-view-${state.views.length + 1}`, route: body.route, name, filters: body.filters, columns: body.columns, density: body.density, builtin: false, created_at: "2026-10-16T09:00:00Z" };
+  const view: SavedView = { id: existing?.id ?? `fx-view-${state.views.length + 1}`, route: body.route, name, filters: body.filters ?? {}, columns: body.columns ?? null, density: body.density ?? null, builtin: false, created_at: "2026-10-16T09:00:00Z", ...(body.shared ? { shared: true } : {}) };
   state.views = existing ? state.views.map((v) => (v === existing ? view : v)) : [...state.views, view];
   return view;
 }

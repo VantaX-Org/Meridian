@@ -23,6 +23,9 @@ import { ConfigInspector } from "./config";
 import { ScheduleInspector as SyncScheduleInspector } from "./schedule";
 import { ZObjectInspector } from "./zobject";
 import { SurvivorshipInspector } from "./survivorship";
+import { BalancePanel } from "./balance";
+import { ContractInspector, ContractsPanel } from "./contract";
+import { OutOfOfficePanel } from "./delegation";
 
 interface BodyProps {
   id: string;
@@ -61,6 +64,10 @@ export const INSPECTOR_BODIES: Partial<Record<OpenKind, ComponentType<BodyProps>
   syncschedule: SyncScheduleInspector,
   zobject: ZObjectInspector,
   survivorship: SurvivorshipInspector,
+  contract: ContractInspector,
+  contracts: ContractsPanel,
+  balance: BalancePanel,
+  away: OutOfOfficePanel,
 };
 
 export function extensionFor(item: OpenItem, onClose: () => void): ReactNode {

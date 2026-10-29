@@ -11,6 +11,7 @@ import { DqWord } from "../../inspector/step";
 import "../../mdm.css";
 import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../../parts";
 import { ScrollFrame } from "./ScrollFrame";
+import { WhatIfPanel } from "./WhatIf";
 
 /** The process designer of an object: a canvas of its own under the object. */
 export const designerHref = (system: string, module: string): string => `/v2/o/${system}/${module}/processes/design`;
@@ -166,6 +167,7 @@ export function ProcessesTab({ system, module: moduleSegment }: { system: string
         <L1Block key={l1.l1_id} l1={l1} steps={steps.filter((s) => s.l1Id === l1.l1_id)} module={apiModule} openId={openId} />
       ))}
       <p className="m2-prov">A step is blocked when a field it writes fails a critical or high rule, or passes under 70%. Failing counts are records, and a record can fail several rules.</p>
+      <WhatIfPanel steps={steps} receipt={receiptQ.data} label={label} />
       {designer}
     </div>
   );

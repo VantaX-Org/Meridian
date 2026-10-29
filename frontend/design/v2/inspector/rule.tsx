@@ -15,6 +15,7 @@ import { Explain } from "../Explain";
 import "../object.css";
 import { SeverityMark, type SeverityKey } from "../marks";
 import { Dash, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
+import { CollabSections } from "./collab";
 
 /**
  * Everything the rule inspector and the rule canvas say about one rule, read from GET /rules/{id}/scope, the receipts
@@ -585,6 +586,7 @@ export function RuleInspectorBody({ id, landscape }: { id: string; landscape?: L
       <RuleContract view={v} />
       <RuleActions view={v} />
       <RuleHistory view={v} />
+      <CollabSections kind="rule" id={v.id} label={`rule ${v.id}`} />
     </SectionLevel>
   );
 }

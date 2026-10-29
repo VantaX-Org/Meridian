@@ -550,6 +550,7 @@ class Contract(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
     activated_at = Column(DateTime(timezone=True), nullable=True)
     expires_at = Column(DateTime(timezone=True), nullable=True)
+    version = Column(Integer, nullable=False, server_default="1")  # the live version; history in contract_versions (104)
 
     compliance_history = relationship("ContractComplianceHistory", back_populates="contract")
 
@@ -939,6 +940,7 @@ class SavedView(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
     columns = Column(JSONB, nullable=True)   # column keys in order; NULL = the page's default (migration 101)
     density = Column(Text, nullable=True)    # compact|comfortable; NULL = the page's default (migration 101)
+    shared = Column(Boolean, nullable=False, server_default=text("false"))  # every user sees it (migration 104)
 
     __table_args__ = (UniqueConstraint("tenant_id", "user_id", "route", "name", name="uq_saved_views_user_route_name"),)
 
@@ -2653,3 +2655,157 @@ class HealthSample(Base):
         UniqueConstraint("tenant_id", "sampled_at", "component", name="uq_health_samples_slot"),
         Index("ix_health_samples_tenant_time", "tenant_id", "sampled_at"),
     )
+# ── Role capabilities (migration 104, docs/roles-and-features.md) ─────────
+
+
+class Comment(Base):
+    """A comment on a record, rule, batch, contract, wave or object; ``mentions`` are user ids notified."""
+    __tablename__ = "comments"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    target_kind = Column(Text, nullable=False)
+    target_id = Column(Text, nullable=False)
+    body = Column(Text, nullable=False)
+    author_id = Column(Text, nullable=False)
+    author_label = Column(Text, nullable=False)
+    mentions = Column(ARRAY(Text), nullable=False, server_default="{}")
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (Index("ix_comments_target", "tenant_id", "target_kind", "target_id", "created_at"),)
+
+
+class Watch(Base):
+    """A user watching one target for the listed events."""
+    __tablename__ = "watches"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Text, nullable=False)
+    target_kind = Column(Text, nullable=False)
+    target_id = Column(Text, nullable=False)
+    events = Column(ARRAY(Text), nullable=False, server_default="{}")
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (UniqueConstraint("tenant_id", "user_id", "target_kind", "target_id", name="uq_watches_user_target"),)
+
+
+class NotificationSubscription(Base):
+    """A user's choice for one event kind; no row means the event's default."""
+    __tablename__ = "notification_subscriptions"
+
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True)
+    user_id = Column(Text, primary_key=True)
+    event = Column(Text, primary_key=True)
+    enabled = Column(Boolean, nullable=False)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+
+class Delegation(Base):
+    """Out of office: approvals and assigned work of ``from_user_id`` go to ``to_user_id`` between two dates."""
+    __tablename__ = "delegations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    from_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    to_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    starts_on = Column(Date, nullable=False)
+    ends_on = Column(Date, nullable=False)
+    reason = Column(Text, nullable=True)
+    created_by = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class EscalationStep(Base):
+    """One level of the escalation chain after an SLA breach."""
+    __tablename__ = "escalation_steps"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    level = Column(SmallInteger, nullable=False)
+    after_minutes = Column(Integer, nullable=False)
+    target = Column(Text, nullable=False)  # team_lead | fallback | user
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (UniqueConstraint("tenant_id", "level", name="uq_escalation_steps_level"),)
+
+
+class ContractVersion(Base):
+    """A snapshot of a data contract, written each time it is revised."""
+    __tablename__ = "contract_versions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    contract_id = Column(UUID(as_uuid=True), ForeignKey("contracts.id", ondelete="CASCADE"), nullable=False)
+    version = Column(Integer, nullable=False)
+    snapshot = Column(JSONB, nullable=False)
+    note = Column(Text, nullable=True)
+    created_by = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (UniqueConstraint("contract_id", "version", name="uq_contract_versions"),)
+
+
+class WaveGate(Base):
+    """The gate a migration wave passes before it moves."""
+    __tablename__ = "wave_gates"
+
+    wave_id = Column(UUID(as_uuid=True), ForeignKey("migration_waves.id", ondelete="CASCADE"), primary_key=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    min_score = Column(Float, nullable=True)
+    zero_criticals = Column(Boolean, nullable=False, server_default=text("true"))
+    contracts_met = Column(Boolean, nullable=False, server_default=text("false"))
+    updated_by = Column(Text, nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+
+class ShareLink(Base):
+    """A read-only link to one canvas state, opened under the viewer role until it expires or is revoked."""
+    __tablename__ = "share_links"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    token_hash = Column(Text, nullable=False, unique=True)
+    route = Column(Text, nullable=False)
+    state = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    role = Column(Text, nullable=False, server_default="viewer")
+    label = Column(Text, nullable=True)
+    created_by = Column(Text, nullable=False)
+    created_by_label = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    last_opened_at = Column(DateTime(timezone=True), nullable=True)
+    open_count = Column(Integer, nullable=False, server_default="0")
+
+
+class AssignmentTemplate(Base):
+    """The tenant's saved steward assignment template (migration 105); no row = sap/steward_template.yaml."""
+    __tablename__ = "assignment_templates"
+
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True)
+    template = Column(JSONB, nullable=False)
+    updated_by = Column(Text, nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+
+class StewardAssignment(Base):
+    """One steward per (object, slice kind, slice value) (migration 105); the owner stays in data_owners."""
+    __tablename__ = "steward_assignments"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    module = Column(Text, nullable=False)
+    slice_kind = Column(Text, nullable=False)
+    slice_value = Column(Text, nullable=False)
+    steward_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    deputy_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    source = Column(Text, nullable=False, server_default="manual")
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (UniqueConstraint("tenant_id", "module", "slice_kind", "slice_value",
+                                       name="uq_steward_assignments_slice"),)

@@ -1,0 +1,117 @@
+# Object relationship map: which Meridian objects to govern together, and in which order to fix them.
+# Source: "Steward assignment and related objects", version 1, October 2026 (approved best practice), section 3
+# (related objects) and section 4 (fixing order). Read by api/services/stewardship.py.
+#
+#   tier      the fixing-order tier of the object (1 reference data, 2 business partner and G/L, 3 material, vendor
+#             and customer, 4 controlling, assets and plant maintenance structures, 5 transactional and dependent)
+#   related   object -> relation kind, from this object's point of view:
+#               upstream          the related object feeds this one; fix it first
+#               downstream        this object feeds the related one
+#               shared-reference  both read the same reference values (payment terms, units, tax codes, ...)
+#
+# Only module ids Meridian knows are listed. A relation is declared once per pair where it reads naturally; the
+# service mirrors it (upstream <-> downstream; shared-reference both ways), so a pair never disagrees.
+
+tiers:
+  banking_tax: 1
+  business_partner: 2
+  fi_gl: 2
+  material_master: 3
+  accounts_payable: 3
+  sd_customer_master: 3
+  accounts_receivable: 3
+  controlling: 4
+  asset_accounting: 4
+  plant_maintenance: 4
+  employee_central: 4
+  hcm: 4
+  mm_purchasing: 5
+  sd_sales_orders: 5
+  production_planning: 5
+  project_system: 5
+  quality_management: 5
+  batch_management: 5
+  ewms_stock: 5
+  ewms_transfer_orders: 5
+  wm_interface: 5
+  fleet_management: 5
+  transport_management: 5
+  payroll_integration: 5
+  time_attendance: 5
+  compensation: 5
+  benefits: 5
+  performance_goals: 5
+  succession_planning: 5
+  recruiting_onboarding: 5
+  learning_management: 5
+  mdg_master_data: 2
+  grc_compliance: 5
+  cross_system_integration: 5
+
+related:
+  material_master:
+    mm_purchasing: downstream
+    sd_sales_orders: downstream
+    production_planning: downstream
+    batch_management: downstream
+    ewms_stock: downstream
+    quality_management: downstream
+    plant_maintenance: downstream
+    fleet_management: downstream
+  business_partner:
+    sd_customer_master: downstream
+    accounts_payable: downstream
+    hcm: shared-reference
+    grc_compliance: downstream
+  sd_customer_master:
+    sd_sales_orders: downstream
+    accounts_receivable: shared-reference
+  accounts_payable:
+    mm_purchasing: downstream
+    quality_management: downstream
+    fleet_management: downstream
+    banking_tax: upstream
+  fi_gl:
+    controlling: downstream
+    asset_accounting: downstream
+    accounts_payable: downstream
+    accounts_receivable: downstream
+  controlling:
+    asset_accounting: shared-reference
+    hcm: downstream
+    employee_central: downstream
+    project_system: downstream
+  asset_accounting:
+    plant_maintenance: shared-reference
+    project_system: shared-reference
+  accounts_receivable:
+    sd_sales_orders: shared-reference
+    banking_tax: upstream
+  mm_purchasing:
+    project_system: shared-reference
+  production_planning:
+    quality_management: downstream
+  batch_management:
+    ewms_stock: shared-reference
+    quality_management: shared-reference
+  ewms_stock:
+    ewms_transfer_orders: downstream
+    wm_interface: downstream
+  employee_central:
+    payroll_integration: downstream
+    time_attendance: downstream
+    compensation: downstream
+    benefits: downstream
+    performance_goals: downstream
+    succession_planning: downstream
+    recruiting_onboarding: shared-reference
+    learning_management: shared-reference
+    business_partner: shared-reference
+  mdg_master_data:
+    material_master: downstream
+    business_partner: downstream
+    sd_customer_master: downstream
+    accounts_payable: downstream
+    fi_gl: downstream
+  plant_maintenance:
+    fleet_management: downstream

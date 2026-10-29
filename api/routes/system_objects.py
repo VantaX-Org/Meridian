@@ -36,6 +36,10 @@ class DownloadBody(BaseModel):
     scope: dict = {}
     label: Optional[str] = Field(default=None, max_length=120)
     analyse: bool = False
+    # Read nothing: answer the tables, their last known row counts and a duration estimate (role capability audit).
+    dry_run: bool = False
+    # Re-read only what SAP's change documents say changed since the last download of the same objects and scope.
+    delta: bool = False
 
 
 async def _rls(db: AsyncSession, tenant: Tenant) -> None:
@@ -266,15 +270,49 @@ async def start_download(system_id: uuid.UUID, body: DownloadBody, request: Requ
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     enforce_licensed_modules(request, body.objects)
+    if body.dry_run:
+        return await _dry_run(db, tenant, system_id, st, body.objects, scope)
     version_id = str(uuid.uuid4())
     jobs.start_job(str(tenant.id), f"dl-{version_id}", "extraction", body.label or ", ".join(body.objects),
                    status="queued", system_id=str(system_id), modules=body.objects, version_id=version_id,
                    retry={"via": "downloads", "body": body.model_dump(mode="json")})
     task = run_extraction.delay(str(tenant.id), str(system_id), body.objects, True, "both",
-                                scope, body.analyse, body.label, version_id)
+                                scope, body.analyse, body.label, version_id, **({"delta": True} if body.delta else {}))
     jobs.set_task_ids(str(tenant.id), f"dl-{version_id}", [getattr(task, "id", None)])
     return {"job_id": f"dl-{version_id}", "version_id": version_id, "status": "queued", "objects": body.objects,
-            "scope": scope, "analyse": body.analyse}
+            "scope": scope, "analyse": body.analyse, "delta": body.delta}
+
+
+async def _delta_state(db: AsyncSession, tenant: Tenant, system_id: uuid.UUID, objects: list[str],
+                       scope: dict) -> dict:
+    """Whether a delta download is possible now, and why not when it is not."""
+    from datetime import datetime, timezone
+
+    from workers.tasks.run_extraction import DELTA_FULL_DAYS, delta_baseline, delta_plan
+
+    base = await db.run_sync(lambda s: delta_baseline(s, str(tenant.id), str(system_id), objects, scope))
+    if not base:
+        return {"available": False, "reason": "No earlier download of these objects with this scope to build on."}
+    if delta_plan(base, datetime.now(timezone.utc), DELTA_FULL_DAYS) is None:
+        return {"available": False,
+                "reason": f"The last full read is older than {DELTA_FULL_DAYS} days, so the next download reads in full."}
+    return {"available": True, "reason": "Only records that SAP's change documents name since the last download are "
+                                         "read; tables without change documents are read in full."}
+
+
+async def _dry_run(db: AsyncSession, tenant: Tenant, system_id: uuid.UUID, st: str, objects: list[str],
+                   scope: dict) -> dict:
+    """What a download of ``objects`` would read: tables, last known row counts, an estimate. Nothing is queued."""
+    from api.services import extraction_dry_run as dr
+
+    catalogue = await run_in_threadpool(_catalogue, str(system_id), st, str(tenant.id))
+    counts = {r[0]: int(r[1]) for r in (await db.execute(text("""
+        SELECT DISTINCT ON (table_name) table_name, row_count FROM table_profiles
+         WHERE tenant_id = :t AND system_id = :s ORDER BY table_name, created_at DESC"""),
+        {"t": str(tenant.id), "s": str(system_id)})).fetchall()}
+    rate = dr.throughput(jobs.list_jobs(str(tenant.id), limit=50), str(system_id))
+    return {"dry_run": True, "objects": objects, "scope": scope, **dr.plan(catalogue, objects, counts, rate),
+            "delta": await _delta_state(db, tenant, system_id, objects, scope)}
 
 
 @router.get("/{system_id}/versions", dependencies=[Depends(require_permission("view"))])

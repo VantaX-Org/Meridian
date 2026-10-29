@@ -10,10 +10,11 @@ import { useOpenItem } from "@/lib/v2/hooks";
 import { refreshAdmin, useDoctor, useHealth, useUpdateStatus } from "@/lib/v2/admin-queries";
 import { JOB_KIND_LABEL, JOB_STATUS_LABEL, jobDoing, jobSeconds } from "@/lib/v2/jobs";
 import { useV2Jobs } from "@/lib/v2/runs-queries";
-import { Grid, type GridColumn } from "../Grid";
+import { type GridColumn } from "../Grid";
 import { EmptyFrame, ErrorFrame, Mono } from "../parts";
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import { AdminPage, Block, Confirm, Fld, Kv, Loaded, Note, StatusWord, useCan } from "./kit";
+import { ToolGrid } from "../GridTools";
 
 const JOB_TONE: Record<Job["status"], "go" | "at-risk" | "no-go" | "neutral"> = { queued: "neutral", running: "at-risk", completed: "go", failed: "no-go" };
 const DOCTOR_TONE = { ok: "go", warn: "at-risk", fail: "no-go" } as const;
@@ -185,7 +186,8 @@ export function SystemSection() {
             </select>
           </Fld>
         </div>
-        <Grid<Job>
+        <ToolGrid<Job>
+          toolsTitle="Background jobs"
           id="admin-jobs"
           ariaLabel="Jobs"
           columns={JOB_COLUMNS}

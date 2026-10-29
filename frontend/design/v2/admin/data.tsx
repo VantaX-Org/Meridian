@@ -14,10 +14,11 @@ import { useOpenItem } from "@/lib/v2/hooks";
 import { refreshAdmin, useAudit, useMappings, useReference, useUsers } from "@/lib/v2/admin-queries";
 import { useSystemsExtended } from "@/lib/v2/runs-queries";
 import { int } from "@/lib/v2/score";
-import { Grid, type GridColumn } from "../Grid";
+import { type GridColumn } from "../Grid";
 import { Dash, EmptyFrame, ErrorFrame, Mono } from "../parts";
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import { AdminPage, Block, Confirm, Fld, Loaded, NeedsPermission, Note, Pager, StatusWord, since, useCan } from "./kit";
+import { ToolGrid } from "../GridTools";
 
 /* ── Field mappings ── */
 
@@ -77,7 +78,8 @@ export function MappingsSection() {
       {!write ? <Note>Read only for your role. Changing mappings needs the manage field mappings permission.</Note> : !selfService ? <Note tone="warn">Field mapping self-service is not part of this licence, so mappings are read only.</Note> : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       <Block>
-        <Grid<FieldMapping>
+        <ToolGrid<FieldMapping>
+          toolsTitle="Field mappings"
           id="admin-mappings"
           ariaLabel="Field mappings"
           columns={MAP_COLUMNS}
@@ -391,7 +393,8 @@ export function AuditSection() {
             </button>
           ) : null}
         </div>
-        <Grid<AuditEntry>
+        <ToolGrid<AuditEntry>
+          toolsTitle="Audit log"
           id="admin-audit"
           ariaLabel="Audit log"
           columns={columns}

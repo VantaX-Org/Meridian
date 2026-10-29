@@ -48,6 +48,8 @@ import type { Outcome } from "../inspector/shared";
 import { BATCH_STATUS_LABEL, batchLabel, groupByBatch, sentLine, type BatchRow } from "@/lib/v2/batches";
 import { useBatches } from "@/lib/v2/approvals-queries";
 import { BulkActions, CurrentValue, DecisionCell, NewValueCell, OwnerCell, PossibleValuesCell, PromptDialog, keyValue, rowKeyOf, type LedgerHandlers } from "./work-parts";
+import { GridTools, useGridKey } from "../GridTools";
+import { FixOrderHint } from "./object/Related";
 
 // The rows of the grid: records, and in "By rule" the rule headings and a "show more" line under each.
 type Item =
@@ -349,6 +351,7 @@ export function WorkCanvas() {
   }, [targets, can, actions, doExport, needRows, open, openItem]);
 
   // Words ------------------------------------------------------------------------------------------------------
+  const [gridKey, bumpGrid] = useGridKey(COLUMNS_ID);
   const objectLabel = state.module ? objectName(state.module, labels) : null;
   const text = sentence({ persona: session.persona, chip: state.chip, summary, objectLabel, module: state.module });
   const topGroup = (groupsQ.data?.groups ?? []).find((g) => g.proposed > 0 && (!state.module || g.module === state.module));
@@ -636,6 +639,7 @@ export function WorkCanvas() {
           {text}
         </p>
       ) : null}
+      <FixOrderHint module={state.module} />
       <p className="m2-prov m2-only-wide">{`Rows are read from the latest run of each object${status?.cost_model ? `. Value at risk is from cost model ${status.cost_model}` : ""}.`}</p>
       {session.persona === "steward" && can.apply && topGroup && state.chip !== "approvals" && state.chip !== "exceptions" ? (
         <div className="m2-cta">
@@ -722,7 +726,9 @@ export function WorkCanvas() {
         <LedgerList items={items} loading={loading} failed={failed} empty={empty} onRetry={() => void (grouped ? groupsQ.refetch() : rowsQ.refetch())} exceptions={state.chip === "exceptions"} headers={headers} openId={open?.kind === "record" ? open.id : null} onOpen={(row) => openItem({ kind: "record", id: recordItemId(row) })} spanRow={spanRow} />
       ) : (
         <Grid<Item>
+          key={gridKey}
           id={COLUMNS_ID}
+          toolbar={<GridTools gridId={COLUMNS_ID} route="work" title="Work" columns={columns} rows={items} filters={Object.fromEntries(Object.entries({ module: state.module, rule: state.rule, severity: state.severity, assigned: state.assigned }).filter(([, v]) => v)) as Record<string, string>} onColumns={bumpGrid} />}
           handleRef={gridHandle}
           ariaLabel="Work ledger"
           columns={columns}

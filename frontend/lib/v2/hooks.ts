@@ -3,22 +3,25 @@
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
-import { useRole } from "@/hooks/use-role";
+import { isRole, useRole } from "@/hooks/use-role";
 import { personaForRole, pillSetFor } from "@/lib/persona";
 import { fixtureParam, useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { usePersonaOverride } from "./prefs";
+import { actionsOf, useShareMode, useViewAs } from "./view-as";
 
 export type OpenKind = "record" | "rule" | "run" | "system" | "feature" | "job" | "batch" | "person" | "inbox" | "triage" | "golden" | "term" | "step" | "connection" | "config" | "syncschedule" | "zobject" | "survivorship" | AdminKind;
 /** The administration, report and panel kinds: `?open=user:<id>` and so on. `preferences`, `help` and `waves` carry no id. */
-export type AdminKind = "user" | "role" | "apikey" | "audit" | "channel" | "mapping" | "report" | "schedule" | "preferences" | "help" | "waves";
+export type AdminKind = "user" | "role" | "apikey" | "audit" | "channel" | "mapping" | "report" | "schedule" | "preferences" | "help" | "waves" | RoleKind;
+/** Step 6c: a data contract (`contract:<id>`), and the bare panels: contracts, balance work, out of office. */
+export type RoleKind = "contract" | "contracts" | "balance" | "away";
 /** Kinds written without an id: `?open=preferences`. */
-export const BARE_KINDS: readonly OpenKind[] = ["inbox", "triage", "preferences", "help", "waves"];
+export const BARE_KINDS: readonly OpenKind[] = ["inbox", "triage", "preferences", "help", "waves", "contracts", "balance", "away"];
 export interface OpenItem {
   kind: OpenKind;
   id: string;
 }
 
-const KINDS: readonly OpenKind[] = ["record", "rule", "run", "system", "feature", "job", "batch", "person", "golden", "term", "step", "user", "role", "apikey", "audit", "channel", "mapping", "report", "schedule", "connection", "config", "syncschedule", "zobject", "survivorship"];
+const KINDS: readonly OpenKind[] = ["record", "rule", "run", "system", "feature", "job", "batch", "person", "golden", "term", "step", "user", "role", "apikey", "audit", "channel", "mapping", "report", "schedule", "connection", "config", "syncschedule", "zobject", "survivorship", "contract"];
 
 /** Parses `?open=<kind>:<id>`. The id may itself contain colons (a record id is module:key). Null for anything else. */
 export function parseOpen(value: string | null | undefined): OpenItem | null {
@@ -77,6 +80,17 @@ export interface V2Session {
   id: string | null;
   can: (action: string) => boolean;
   fixture: boolean;
+  /** The role an administrator is viewing as (support), or null. Writes are refused while it is set. */
+  viewAs: string | null;
+  /** True on a page opened from a share link: read-only, viewer role. */
+  shared: boolean;
+}
+
+/** Persona of a role key, the way the live session derives it. */
+function personaOf(role: string): V2Persona {
+  if (!isRole(role)) return "lead";
+  const p = personaForRole(role);
+  return pillSetFor(role) === "owner" ? "owner" : p === "steward" ? "steward" : p === "basis" ? "basis" : p === "process" ? "process" : "lead";
 }
 
 /** Who is looking: the persona the first screen is shaped for, from the role (fixture mode: `?persona=`). */
@@ -85,16 +99,24 @@ export function useV2Session(): V2Session {
   const { user } = useAuth();
   const { role, can } = useRole();
   const chosen = usePersonaOverride();
+  const viewAs = useViewAs();
+  const share = useShareMode();
   return useMemo(() => {
+    const shared = share !== null;
     if (fixture) {
+      // `?role=` gives fixture mode one role's permissions (the role tests walk each role's jobs this way).
+      const asRole = shared ? "viewer" : (viewAs ?? fixtureParam("role"));
       const asked = fixtureParam("persona");
-      const persona: V2Persona = asked === "steward" || asked === "basis" || asked === "owner" || asked === "process" ? asked : (chosen ?? "lead");
-      return { persona, label: PERSONA_LABEL[persona], name: "Demo user", email: null, id: FIXTURE_ME, can: () => true, fixture };
+      const persona: V2Persona = asked === "steward" || asked === "basis" || asked === "owner" || asked === "process" || asked === "lead" ? asked : asRole ? personaOf(asRole) : (chosen ?? "lead");
+      const allowed = asRole ? new Set(actionsOf(asRole)) : null;
+      return { persona, label: PERSONA_LABEL[persona], name: "Demo user", email: null, id: FIXTURE_ME, can: allowed ? (a: string) => allowed.has(a) : () => true, fixture, viewAs, shared };
     }
-    const p = personaForRole(role);
-    const persona: V2Persona = chosen ?? (pillSetFor(role) === "owner" ? "owner" : p === "steward" ? "steward" : p === "basis" ? "basis" : p === "process" ? "process" : "lead");
-    return { persona, label: PERSONA_LABEL[persona], name: user?.name ?? "", email: user?.email ?? null, id: user?.id ?? null, can, fixture };
-  }, [fixture, role, can, user, chosen]);
+    // Live: a view-as role is narrowed by the server (/me/permissions answers for it); a share link narrows here.
+    const viewer = new Set(actionsOf("viewer"));
+    const live = shared ? (a: string) => viewer.has(a) && can(a) : can;
+    const persona: V2Persona = chosen ?? personaOf(viewAs ?? role);
+    return { persona, label: PERSONA_LABEL[persona], name: user?.name ?? "", email: user?.email ?? null, id: user?.id ?? null, can: live, fixture, viewAs, shared };
+  }, [fixture, role, can, user, chosen, viewAs, share]);
 }
 
 /** The run the page is pinned to (`?run=`), or null for the current state. */

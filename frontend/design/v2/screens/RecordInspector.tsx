@@ -20,6 +20,8 @@ import { SeverityMark, type SeverityKey } from "../marks";
 import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { useToast } from "../Toast";
 import { PromptDialog } from "./work-parts";
+import { CollabSections } from "../inspector/collab";
+import { FixOrderHint } from "./object/Related";
 
 export function parseRecordId(id: string): { module: string; key: string } {
   const at = id.indexOf(":");
@@ -437,6 +439,8 @@ export function RecordInspector({ id, onClose }: { id: string; onClose: () => vo
       ) : (
         <p className="m2-meta">{links ? "No changes have been made to this record yet." : ""}</p>
       )}
+      <FixOrderHint module={module} />
+      <CollabSections kind="record" id={id} label="this record" />
     </>
   );
 

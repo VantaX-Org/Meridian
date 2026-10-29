@@ -111,6 +111,15 @@ from api.routes.status_page import router as status_page_router
 from api.routes.diagnostics import router as diagnostics_router
 from api.routes.theme import router as theme_router
 from api.routes.compliance import router as compliance_router
+# Role capability audit (step 6c, docs/roles-and-features.md).
+from api.routes.admin_tools import router as admin_tools_router
+from api.routes.balance import router as balance_router
+from api.routes.collab import router as collab_router
+from api.routes.delegations import router as delegations_router
+from api.routes.governance import router as governance_router
+from api.routes.grid_export import router as grid_export_router
+from api.routes.share_links import router as share_links_router
+from api.routes.stewardship_template import router as stewardship_template_router
 
 from api.utils.structured_logging import configure_logging
 
@@ -458,6 +467,9 @@ app.include_router(status_page_router)
 app.include_router(diagnostics_router)
 app.include_router(theme_router)
 app.include_router(compliance_router)
+for _r in (admin_tools_router, balance_router, collab_router, delegations_router, governance_router,
+           grid_export_router, share_links_router, stewardship_template_router):
+    app.include_router(_r)
 
 from api.routes.auth import router as auth_router
 app.include_router(auth_router)

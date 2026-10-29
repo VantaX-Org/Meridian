@@ -1,0 +1,381 @@
+{
+ "_source": "sap/object_relationships.yaml and sap/steward_template.yaml through api/services/stewardship.py (fixture mode only)",
+ "relationships": {
+  "material_master": {
+   "mm_purchasing": "downstream",
+   "sd_sales_orders": "downstream",
+   "production_planning": "downstream",
+   "batch_management": "downstream",
+   "ewms_stock": "downstream",
+   "quality_management": "downstream",
+   "plant_maintenance": "downstream",
+   "fleet_management": "downstream",
+   "mdg_master_data": "upstream"
+  },
+  "mm_purchasing": {
+   "material_master": "upstream",
+   "accounts_payable": "upstream",
+   "project_system": "shared-reference"
+  },
+  "sd_sales_orders": {
+   "material_master": "upstream",
+   "sd_customer_master": "upstream",
+   "accounts_receivable": "shared-reference"
+  },
+  "production_planning": {
+   "material_master": "upstream",
+   "quality_management": "downstream"
+  },
+  "batch_management": {
+   "material_master": "upstream",
+   "ewms_stock": "shared-reference",
+   "quality_management": "shared-reference"
+  },
+  "ewms_stock": {
+   "material_master": "upstream",
+   "batch_management": "shared-reference",
+   "ewms_transfer_orders": "downstream",
+   "wm_interface": "downstream"
+  },
+  "quality_management": {
+   "material_master": "upstream",
+   "accounts_payable": "upstream",
+   "production_planning": "upstream",
+   "batch_management": "shared-reference"
+  },
+  "plant_maintenance": {
+   "material_master": "upstream",
+   "asset_accounting": "shared-reference",
+   "fleet_management": "downstream"
+  },
+  "fleet_management": {
+   "material_master": "upstream",
+   "accounts_payable": "upstream",
+   "plant_maintenance": "upstream"
+  },
+  "business_partner": {
+   "sd_customer_master": "downstream",
+   "accounts_payable": "downstream",
+   "hcm": "shared-reference",
+   "grc_compliance": "downstream",
+   "employee_central": "shared-reference",
+   "mdg_master_data": "upstream"
+  },
+  "sd_customer_master": {
+   "business_partner": "upstream",
+   "sd_sales_orders": "downstream",
+   "accounts_receivable": "shared-reference",
+   "mdg_master_data": "upstream"
+  },
+  "accounts_payable": {
+   "business_partner": "upstream",
+   "mm_purchasing": "downstream",
+   "quality_management": "downstream",
+   "fleet_management": "downstream",
+   "banking_tax": "upstream",
+   "fi_gl": "upstream",
+   "mdg_master_data": "upstream"
+  },
+  "hcm": {
+   "business_partner": "shared-reference",
+   "controlling": "upstream"
+  },
+  "grc_compliance": {
+   "business_partner": "upstream"
+  },
+  "accounts_receivable": {
+   "sd_customer_master": "shared-reference",
+   "fi_gl": "upstream",
+   "sd_sales_orders": "shared-reference",
+   "banking_tax": "upstream"
+  },
+  "banking_tax": {
+   "accounts_payable": "downstream",
+   "accounts_receivable": "downstream"
+  },
+  "fi_gl": {
+   "controlling": "downstream",
+   "asset_accounting": "downstream",
+   "accounts_payable": "downstream",
+   "accounts_receivable": "downstream",
+   "mdg_master_data": "upstream"
+  },
+  "controlling": {
+   "fi_gl": "upstream",
+   "asset_accounting": "shared-reference",
+   "hcm": "downstream",
+   "employee_central": "downstream",
+   "project_system": "downstream"
+  },
+  "asset_accounting": {
+   "fi_gl": "upstream",
+   "controlling": "shared-reference",
+   "plant_maintenance": "shared-reference",
+   "project_system": "shared-reference"
+  },
+  "employee_central": {
+   "controlling": "upstream",
+   "payroll_integration": "downstream",
+   "time_attendance": "downstream",
+   "compensation": "downstream",
+   "benefits": "downstream",
+   "performance_goals": "downstream",
+   "succession_planning": "downstream",
+   "recruiting_onboarding": "shared-reference",
+   "learning_management": "shared-reference",
+   "business_partner": "shared-reference"
+  },
+  "project_system": {
+   "controlling": "upstream",
+   "asset_accounting": "shared-reference",
+   "mm_purchasing": "shared-reference"
+  },
+  "ewms_transfer_orders": {
+   "ewms_stock": "upstream"
+  },
+  "wm_interface": {
+   "ewms_stock": "upstream"
+  },
+  "payroll_integration": {
+   "employee_central": "upstream"
+  },
+  "time_attendance": {
+   "employee_central": "upstream"
+  },
+  "compensation": {
+   "employee_central": "upstream"
+  },
+  "benefits": {
+   "employee_central": "upstream"
+  },
+  "performance_goals": {
+   "employee_central": "upstream"
+  },
+  "succession_planning": {
+   "employee_central": "upstream"
+  },
+  "recruiting_onboarding": {
+   "employee_central": "shared-reference"
+  },
+  "learning_management": {
+   "employee_central": "shared-reference"
+  },
+  "mdg_master_data": {
+   "material_master": "downstream",
+   "business_partner": "downstream",
+   "sd_customer_master": "downstream",
+   "accounts_payable": "downstream",
+   "fi_gl": "downstream"
+  }
+ },
+ "tiers": {
+  "banking_tax": 1,
+  "business_partner": 2,
+  "fi_gl": 2,
+  "material_master": 3,
+  "accounts_payable": 3,
+  "sd_customer_master": 3,
+  "accounts_receivable": 3,
+  "controlling": 4,
+  "asset_accounting": 4,
+  "plant_maintenance": 4,
+  "employee_central": 4,
+  "hcm": 4,
+  "mm_purchasing": 5,
+  "sd_sales_orders": 5,
+  "production_planning": 5,
+  "project_system": 5,
+  "quality_management": 5,
+  "batch_management": 5,
+  "ewms_stock": 5,
+  "ewms_transfer_orders": 5,
+  "wm_interface": 5,
+  "fleet_management": 5,
+  "transport_management": 5,
+  "payroll_integration": 5,
+  "time_attendance": 5,
+  "compensation": 5,
+  "benefits": 5,
+  "performance_goals": 5,
+  "succession_planning": 5,
+  "recruiting_onboarding": 5,
+  "learning_management": 5,
+  "mdg_master_data": 2,
+  "grc_compliance": 5,
+  "cross_system_integration": 5
+ },
+ "template": {
+  "reference_data_steward": "Reference-data steward (payment terms, Incoterms, tax codes, units, countries, currencies)",
+  "span": {
+   "max_open_records": 2000,
+   "max_objects": 3
+  },
+  "objects": {
+   "material_master": {
+    "owner_role": "Supply chain or MDM lead",
+    "slice": "plant",
+    "stewards": "MDM team by material type; plant planners for plant and MRP views; finance for valuation and costing views"
+   },
+   "business_partner": {
+    "owner_role": "MDM lead",
+    "slice": "none",
+    "stewards": "Shared MDM team for general data; role-specific stewards from customer and vendor"
+   },
+   "sd_customer_master": {
+    "owner_role": "Head of sales operations",
+    "slice": "sales_org",
+    "stewards": "Sales operations by sales organisation; credit team for credit data; finance for the company-code view"
+   },
+   "accounts_receivable": {
+    "owner_role": "AR manager",
+    "slice": "company_code",
+    "stewards": "AR by company code; credit team"
+   },
+   "accounts_payable": {
+    "owner_role": "Head of procurement",
+    "slice": "purchasing_org",
+    "stewards": "Procurement by purchasing organisation; accounts payable for the company-code view and bank data"
+   },
+   "fi_gl": {
+    "owner_role": "Group controller",
+    "slice": "none",
+    "stewards": "Finance master data team by chart of accounts"
+   },
+   "controlling": {
+    "owner_role": "Head of controlling",
+    "slice": "none",
+    "stewards": "Controlling team by controlling area"
+   },
+   "asset_accounting": {
+    "owner_role": "Fixed assets manager",
+    "slice": "company_code",
+    "stewards": "Finance by company code"
+   },
+   "mm_purchasing": {
+    "owner_role": "Procurement operations lead",
+    "slice": "purchasing_org",
+    "stewards": "Buyers by purchasing group"
+   },
+   "sd_sales_orders": {
+    "owner_role": "Order management lead",
+    "slice": "sales_org",
+    "stewards": "Order desk by sales organisation"
+   },
+   "plant_maintenance": {
+    "owner_role": "Maintenance manager",
+    "slice": "plant",
+    "stewards": "Reliability engineers by plant"
+   },
+   "production_planning": {
+    "owner_role": "Plant manager",
+    "slice": "plant",
+    "stewards": "Production planners by plant"
+   },
+   "project_system": {
+    "owner_role": "PMO lead",
+    "slice": "company_code",
+    "stewards": "Project controllers"
+   },
+   "quality_management": {
+    "owner_role": "Quality manager",
+    "slice": "plant",
+    "stewards": "Quality planners by plant"
+   },
+   "hcm": {
+    "owner_role": "HR director",
+    "slice": "company_code",
+    "stewards": "HR shared services by country; payroll by legal entity"
+   },
+   "employee_central": {
+    "owner_role": "HR director",
+    "slice": "company_code",
+    "stewards": "HR shared services by country"
+   },
+   "payroll_integration": {
+    "owner_role": "HR director",
+    "slice": "company_code",
+    "stewards": "Payroll by legal entity"
+   },
+   "time_attendance": {
+    "owner_role": "HR director",
+    "slice": "company_code",
+    "stewards": "HR shared services by country"
+   },
+   "compensation": {
+    "owner_role": "HR director",
+    "slice": "none",
+    "stewards": "Talent team"
+   },
+   "benefits": {
+    "owner_role": "HR director",
+    "slice": "company_code",
+    "stewards": "HR shared services by country"
+   },
+   "performance_goals": {
+    "owner_role": "HR director",
+    "slice": "none",
+    "stewards": "Talent team"
+   },
+   "succession_planning": {
+    "owner_role": "HR director",
+    "slice": "none",
+    "stewards": "Talent team"
+   },
+   "recruiting_onboarding": {
+    "owner_role": "HR director",
+    "slice": "none",
+    "stewards": "Talent team"
+   },
+   "learning_management": {
+    "owner_role": "HR director",
+    "slice": "none",
+    "stewards": "Talent team"
+   },
+   "ewms_stock": {
+    "owner_role": "Warehouse manager",
+    "slice": "plant",
+    "stewards": "Warehouse supervisors by warehouse"
+   },
+   "ewms_transfer_orders": {
+    "owner_role": "Warehouse manager",
+    "slice": "plant",
+    "stewards": "Warehouse supervisors by warehouse"
+   },
+   "wm_interface": {
+    "owner_role": "Warehouse manager",
+    "slice": "plant",
+    "stewards": "Warehouse supervisors by warehouse"
+   },
+   "batch_management": {
+    "owner_role": "Quality or supply chain lead",
+    "slice": "plant",
+    "stewards": "Plant planners"
+   },
+   "mdg_master_data": {
+    "owner_role": "MDM lead",
+    "slice": "none",
+    "stewards": "MDM team"
+   },
+   "grc_compliance": {
+    "owner_role": "Compliance lead",
+    "slice": "none",
+    "stewards": "Compliance team with Basis for user and role data"
+   },
+   "cross_system_integration": {
+    "owner_role": "Integration lead",
+    "slice": "none",
+    "stewards": "Basis and the integration team"
+   },
+   "fleet_management": {
+    "owner_role": "Logistics manager",
+    "slice": "none",
+    "stewards": "Dispatchers"
+   },
+   "transport_management": {
+    "owner_role": "Logistics manager",
+    "slice": "none",
+    "stewards": "Dispatchers"
+   }
+  }
+ }
+}

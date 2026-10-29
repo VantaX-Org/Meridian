@@ -544,8 +544,10 @@ def evaluate(session, tid: str) -> dict[str, Any]:
 
 def run_tenant(session, tid: str) -> dict[str, Any]:
     """Everything the beat task does for one tenant."""
+    from api.services.escalation import escalate_chain  # the chain levels after the first escalation (migration 104)
+
     return {"assigned": auto_assign(session, tid), "sla_started": apply_sla(session, tid),
-            **evaluate(session, tid)}
+            **evaluate(session, tid), "escalated": escalate_chain(session, tid)}
 
 
 # ── ranking + queue ───────────────────────────────────────────────────────────

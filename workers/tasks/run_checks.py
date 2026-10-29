@@ -1265,6 +1265,9 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                     link=f"/findings?version_id={version_id}",
                     session=session,
                 )
+                # Watchers of the objects, systems and rules this run touched (migration 104; never raises).
+                from api.services.collab import fire_run_events
+                fire_run_events(session, str(tenant_id), version_id)
                 session.commit()
         except Exception as e:
             reraise_soft_limit(e)

@@ -13,6 +13,7 @@ import { Actions, InspectorFrame } from "../Inspector";
 import { EmptyFrame, ErrorFrame, Skeleton } from "../parts";
 import { Confirm, useDone } from "../admin/kit";
 import { ResultFrame, useOutcome } from "./shared";
+import { WaveGateEditor } from "./governance";
 
 export const STAGES: { value: WaveStage; label: string }[] = [
   { value: "plan", label: "Plan" },
@@ -102,6 +103,7 @@ export function WavesPanel({ onClose }: { onClose: () => void }) {
           <span className="m2-prov" style={{ margin: 0 }}>
             {w.signed_off_at ? `Signed off ${formatDate(w.signed_off_at)}. Any change clears the sign-off.` : "Not signed off."}
           </span>
+          <WaveGateEditor waveId={w.id} />
           {allowed ? (
             <button type="button" className="m2-linkbtn" style={{ justifySelf: "start" }} onClick={() => setRemoving(w.id)}>
               {`Delete ${w.name}`}

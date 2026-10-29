@@ -41,12 +41,12 @@ async function open(): Promise<HTMLElement> {
 const section = (d: HTMLElement, name: RegExp | string) => within(d).getByRole("region", { name });
 
 describe("the rule inspector", () => {
-  it("is named by the rule id and draws the sections in order: facts, definition, authority, scope, blocks, lineage, versions, contract, actions, history", async () => {
+  it("is named by the rule id and draws the sections in order: facts, definition, authority, scope, blocks, lineage, versions, contract, actions, history, watch, comments", async () => {
     const d = await open();
     expect(d).toHaveAccessibleName("MM014");
     expect(within(d).getByTestId("rule-name")).toHaveTextContent("Base unit of measure not valid");
     const names = within(d).getAllByRole("region").map((r) => r.getAttribute("aria-label"));
-    expect(names).toEqual(["Facts", "Definition", "Authority", "Scope: 2 objects, 1 system", "Blocks: 3 S/4 features", "Lineage", "Versions", "Contract", "Actions", "History"]);
+    expect(names).toEqual(["Facts", "Definition", "Authority", "Scope: 2 objects, 1 system", "Blocks: 3 S/4 features", "Lineage", "Versions", "Contract", "Actions", "History", "Watch", "Comments"]);
     expect(within(d).getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual(names);
   });
 

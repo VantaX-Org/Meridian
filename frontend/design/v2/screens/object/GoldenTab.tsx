@@ -8,9 +8,10 @@ import { useGoldenRecords, useMatchPairs, useSurvivorship } from "@/lib/v2/mdm-q
 import { useNarrow } from "@/lib/v2/narrow";
 import { useLandscape } from "@/lib/v2/queries";
 import { int, moduleFromSlug } from "@/lib/v2/score";
-import { Grid, type GridColumn } from "../../Grid";
+import { type GridColumn } from "../../Grid";
 import "../../mdm.css";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../../parts";
+import { ToolGrid } from "../../GridTools";
 
 export const RULE_LABEL: Record<string, string> = {
   most_recent: "Most recent",
@@ -189,7 +190,8 @@ export function GoldenTab({ module: moduleSegment }: { system: string; module: s
             </ul>
           )
         ) : (
-          <Grid<GoldenRow>
+          <ToolGrid<GoldenRow>
+          toolsTitle="Golden records"
             id="object-golden"
             ariaLabel={`Golden records of ${label}`}
             columns={columns}

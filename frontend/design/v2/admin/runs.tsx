@@ -13,12 +13,13 @@ import { useSystemConfigLoad, useSystemExtractions, useSystemObjectList, useSyst
 import { useFixture } from "@/lib/api/v2/fixture";
 import { useQuery } from "@tanstack/react-query";
 import type { Job } from "@/types/jobs";
-import { Grid, type GridColumn } from "../Grid";
+import { type GridColumn } from "../Grid";
 import { EmptyFrame, ErrorFrame } from "../parts";
 import { canRetry } from "../inspector/job";
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import { describeCron } from "../screens/System";
 import { AdminPage, Block, Confirm, Dialog, Fld, NeedsPermission, StatusWord, useCan, useDone } from "./kit";
+import { ToolGrid } from "../GridTools";
 
 const list = (s: string): string[] | undefined => {
   const v = s.split(/[\s,;]+/).filter(Boolean);
@@ -347,7 +348,8 @@ function Schedules({ system }: { system: string }) {
   return (
     <Block title="Scheduled runs" hint="Objects this system extracts on a rhythm. A paused schedule keeps its settings.">
       {outcome ? <ResultFrame outcome={outcome} /> : null}
-      <Grid<SyncProfile>
+      <ToolGrid<SyncProfile>
+          toolsTitle="Schedules"
         id="admin-profiles"
         ariaLabel="Scheduled runs"
         columns={columns}
@@ -434,7 +436,8 @@ function RecentJobs() {
   return (
     <Block title="Recent jobs" hint="Open a job for its stages and tables. A failed job that recorded how it started can be retried; a running job cannot be cancelled, because the API has no cancel.">
       {outcome ? <ResultFrame outcome={outcome} /> : null}
-      <Grid<Job>
+      <ToolGrid<Job>
+          toolsTitle="Jobs"
         id="admin-runs-jobs"
         ariaLabel="Recent jobs"
         columns={columns}

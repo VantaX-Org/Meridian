@@ -7,11 +7,12 @@ import * as api from "@/lib/api/v2/admin";
 import { apiErrorMessage } from "@/lib/error";
 import { useOpenItem } from "@/lib/v2/hooks";
 import { refreshAdmin, useAccessRequests, useAudit, useRoles, useRolesMatrix, useUsers } from "@/lib/v2/admin-queries";
-import { Grid, type GridColumn } from "../Grid";
+import { type GridColumn } from "../Grid";
 import { EmptyFrame, ErrorFrame, Mono } from "../parts";
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import { AdminPage, Block, Dialog, Loaded, NeedsPermission, StatusWord, since, useCan } from "./kit";
 import { auditSentence } from "@/lib/v2/audit-sentence";
+import { ToolGrid } from "../GridTools";
 
 export const matrixToPairs = (m: Matrix): Pair[] => Object.entries(m).flatMap(([resource, acts]) => Object.entries(acts).filter(([, on]) => on).map(([action]) => ({ resource, action })));
 
@@ -218,7 +219,8 @@ export function RolesSection() {
       }
     >
       <Block>
-        <Grid<Role>
+        <ToolGrid<Role>
+          toolsTitle="Roles"
           id="admin-roles"
           ariaLabel="Roles"
           columns={COLUMNS}

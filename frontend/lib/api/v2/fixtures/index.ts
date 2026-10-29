@@ -12,6 +12,7 @@ import * as wf from "./work-fixture";
 import * as ap from "./approvals";
 import { adminFixtureResponse, adminFixtureWrite, NONE_ADMIN } from "./admin";
 import { NOT_MINE, resetSys6b, sys6bRead, sys6bWrite, withSystems } from "./sys6b";
+import { NONE_ROLES, resetRolesFixture, rolesFixtureResponse, rolesFixtureWrite } from "./roles";
 
 /**
  * Fixture answers for the step 0 contract, built from the approved prototype's numbers: 3 systems (ECC production
@@ -104,6 +105,8 @@ function withOpenDelta(l: Landscape): Landscape {
 
 /** A write in fixture mode (POST, PUT, DELETE): applied to the in-memory work fixture. */
 export function fixtureWrite<T>(method: string, path: string, body: unknown, params: Params): T {
+  const roles = rolesFixtureWrite(method, path, body, params);
+  if (roles !== NONE_ROLES) return roles as T;
   const out = ((): unknown => {
     const s6 = sys6bWrite(method, path, body);
     if (s6 !== NOT_MINE) return s6;
@@ -137,10 +140,13 @@ export const resetWorkFixture = (): void => {
   wf.resetWorkFixture();
   ap.resetApprovalsFixture();
   resetSys6b();
+  resetRolesFixture();
 };
 
 /** The answer to one v2 read in fixture mode. Throws a 404-shaped error for a path the contract does not have. */
 export function fixtureResponse<T>(path: string, params: Params): T {
+  const rolesStep = rolesFixtureResponse(path, params);
+  if (rolesStep !== NONE_ROLES) return rolesStep as T;
   const adminStep = adminFixtureResponse(path, params);
   if (adminStep !== NONE_ADMIN) return adminStep as T;
   const s6 = sys6bRead(path, params);
