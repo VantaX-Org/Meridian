@@ -458,4 +458,4 @@ async def test_records_sort_on_the_server_and_page_by_that_sort(run, client_for)
         assert await walk("age") == ["MATNR=1", "MATNR=2"]  # the newest first
         first = (await get(sort="-age")).json()
         assert (await get(sort="age", after=first["next"])).status_code == 422  # a cursor of another order
-        assert (await get(sort="due")).status_code == 422
+        assert (await get(sort="colour")).status_code == 422
