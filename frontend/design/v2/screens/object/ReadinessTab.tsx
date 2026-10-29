@@ -11,6 +11,7 @@ import { useLandscape, useReceipt } from "@/lib/v2/queries";
 import { f1, int, moduleFromSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { VerdictMark } from "../../marks";
 import { Dash, EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../../parts";
+import { ObjectMoney } from "../step9/Money";
 import { t, tn } from "@/lib/v2/i18n";
 
 const VERDICT: Record<CellVerdict, Verdict> = { go: "go", at_risk: "at-risk", no_go: "no-go" };
@@ -170,6 +171,7 @@ export function ReadinessTab({ module: moduleSegment }: { system: string; module
           </>
         )}
       </section>
+      <ObjectMoney module={apiModule} label={label} />
     </div>
   );
 }

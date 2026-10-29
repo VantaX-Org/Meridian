@@ -68,6 +68,9 @@ export interface LandscapeCell {
   rules_measured: number | null;
   open_work: number | null;
   dimensions: Record<DimensionKey, number | null>;
+  /** Step 9: thresholds of active data contracts this cell breaches, and how many of them are enforced. */
+  contract_breaches?: number;
+  enforced_contract_breaches?: number;
 }
 
 export interface LandscapeSentence {
@@ -136,6 +139,8 @@ export interface Receipt {
   features_blocked: number | null;
   features_degraded: number | null;
   open_work: number | null;
+  /** Step 9: the thresholds of active data contracts the object breaches on this run. */
+  contract_breaches?: { contract_id: string; name: string | null; enforce: boolean; metric: string; threshold: number; actual: number | null }[];
 }
 
 export type CommandKind = "record" | "rule" | "object" | "run" | "person" | "action";

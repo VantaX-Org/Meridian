@@ -16,6 +16,41 @@ import { ResultFrame, useOutcome } from "../inspector/shared";
 import { kindWord } from "../RunTimeline";
 import { duration } from "../shell/StatusStrip";
 import { t as tr, lc } from "@/lib/v2/i18n";
+import { baselineRefusalOf, type BaselineRefusal } from "@/lib/api/v2/step9";
+import { breachWords } from "@/lib/v2/step9";
+import { moduleText } from "@/lib/v2/labels";
+
+/** A refused pin: the server's reason, the enforced contract breaches behind it, and "Pin anyway" with a reason. */
+function PinRefusal({ refusal, canForce, pending, onForce }: { refusal: BaselineRefusal; canForce: boolean; pending: boolean; onForce: (reason: string) => void }) {
+  const [reason, setReason] = useState("");
+  return (
+    <div className="m2-result" role="alert" data-tone="fail" data-testid="pin-refusal">
+      <span className="m2-result-t">
+        <VerdictMark verdict="no-go" />
+        {refusal.detail}
+      </span>
+      <ul className="m2-breaches">
+        {refusal.breaches.map((b, i) => (
+          <li key={`${b.contract_id ?? ""}:${b.module ?? ""}:${b.metric}:${i}`}>
+            <span>{b.module ? tr("{name}, {object}", { name: b.name ?? tr("Data contract"), object: moduleText(b.module) }) : (b.name ?? tr("Data contract"))}</span>
+            <span className="m2-meta">{breachWords(b)}</span>
+          </li>
+        ))}
+      </ul>
+      {canForce ? (
+        <span style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+          <label className="m2-sr" htmlFor="pin-reason">
+            {tr("Why this run is pinned anyway")}
+          </label>
+          <input id="pin-reason" className="m2-inp" placeholder={tr("Why pin it anyway (audited)")} value={reason} maxLength={2000} onChange={(e) => setReason(e.target.value)} />
+          <button type="button" className="m2-btn m2-sm" disabled={!reason.trim() || pending} onClick={() => onForce(reason.trim())}>
+            {tr("Pin anyway")}
+          </button>
+        </span>
+      ) : null}
+    </div>
+  );
+}
 
 /** The "Compare with" control: the other runs of the scope, newest first, and the link that opens the pair. */
 export function CompareControl({ id, runs }: { id: string; runs: readonly TimelineRun[] }) {
@@ -178,6 +213,7 @@ export function RunCanvas({ id }: { id: string }) {
   const labelOf = (m: string) => L?.objects.find((o) => o.module === m)?.label ?? m;
   const cells = (L?.cells ?? []).filter((c) => !systemId || c.system_id === systemId);
   const baseline = Boolean(v?.metadata?.baseline);
+  const [refusal, setRefusal] = useState<BaselineRefusal | null>(null);
   const archived = Boolean(v?.metadata?.archived);
   const canChange = session.can("analyse");
   const strip = L?.status_strip;
@@ -256,7 +292,16 @@ export function RunCanvas({ id }: { id: string }) {
           disabled={!canChange || pending !== null || !v}
           onClick={() =>
             void run("pin", async () => {
-              const r = await pinBaseline(id, !baseline);
+              setRefusal(null);
+              let r: { baseline: boolean };
+              try {
+                r = await pinBaseline(id, !baseline);
+              } catch (e) {
+                const refused = baselineRefusalOf(e);
+                if (!refused) throw e;
+                setRefusal(refused);
+                return { tone: "fail", title: tr("Not pinned"), detail: refused.detail };
+              }
               refresh();
               return { tone: "ok", title: r.baseline ? tr("Pinned as the baseline") : tr("Baseline unpinned"), detail: r.baseline ? tr("Later runs of this system compare with it by default.") : tr("Later runs compare with the run before them.") };
             })
@@ -315,6 +360,21 @@ export function RunCanvas({ id }: { id: string }) {
       </div>
       {!canChange ? <p className="m2-prov">{tr("Pinning, archiving and restoring need the analyse permission.")}</p> : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
+      {refusal ? (
+        <PinRefusal
+          refusal={refusal}
+          canForce={canChange}
+          pending={pending !== null}
+          onForce={(reason) =>
+            void run("pin", async () => {
+              const r = await pinBaseline(id, true, { reason });
+              setRefusal(null);
+              refresh();
+              return { tone: "ok", title: r.baseline ? tr("Pinned as the baseline, with the breach on record") : tr("Not pinned"), detail: tr("The reason and the breaches it overrode are in the audit log.") };
+            })
+          }
+        />
+      ) : null}
 
       <section className="m2-sec" aria-label={tr("By object")}>
         <div className="m2-sechead">

@@ -1,6 +1,6 @@
 import { t } from "@/lib/v2/i18n";
 /** The sections of the Admin canvas, in the order the left index lists them, with the permission each one needs. */
-export type AdminSlug = "users" | "roles" | "sso" | "signin" | "apikeys" | "licence" | "billing" | "settings" | "mappings" | "reference" | "audit" | "alerts" | "notifications" | "runs" | "system" | CapabilitySlug;
+export type AdminSlug = "users" | "roles" | "sso" | "signin" | "apikeys" | "licence" | "billing" | "settings" | "mappings" | "reference" | "audit" | "alerts" | "notifications" | "webhooks" | "runs" | "system" | CapabilitySlug;
 /** Step 6c, the role capability audit (design/v2/admin/capabilities.tsx). */
 export type CapabilitySlug = "stewardship" | "configbundle" | "viewas" | "rulesio" | "sharelinks" | "delegations";
 
@@ -34,6 +34,7 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
   { slug: "audit", get label() { return t("Audit log"); }, get group() { return t("Data"); }, get lead() { return t("Every change made through the product, by whom and when."); }, needs: ["view_audit", "manage_users"] },
   { slug: "alerts", get label() { return t("Alerts"); }, get group() { return t("Notifications"); }, get lead() { return t("When an alert fires and which channels carry it."); }, needs: ["manage_settings", "view"] },
   { slug: "notifications", get label() { return t("Notifications"); }, get group() { return t("Notifications"); }, get lead() { return t("The tenant's default digest."); }, needs: ["manage_settings", "view"] },
+  { slug: "webhooks", get label() { return t("Webhooks"); }, get group() { return t("Notifications"); }, get lead() { return t("Signed events to Slack, Teams or any https endpoint, the delivery log, and what runs by itself."); }, needs: ["manage_settings"] },
   { slug: "runs", get label() { return t("Runs and jobs"); }, get group() { return t("Operations"); }, get lead() { return t("Start an extraction, an analysis or a configuration load, schedule them, and retry what failed."); }, needs: ["trigger_sync", "analyse", "manage_systems"] },
   { slug: "system", get label() { return t("Jobs and system update"); }, get group() { return t("Operations"); }, get lead() { return t("Background jobs, the platform version and health checks."); }, needs: ["manage_system", "view"] },
 ];

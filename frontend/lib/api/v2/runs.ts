@@ -19,6 +19,7 @@ import type { SAPSystemExtended, SyncProfile, TestConnectionResponse } from "@/t
 import { fixtureActive } from "./fixture";
 import { v2Get } from "./client";
 import { fixtureAction } from "./fixtures/runs";
+import { baselineGateFixture } from "./fixtures/step9";
 
 // ── Runs ────────────────────────────────────────────────────────────────────
 
@@ -161,10 +162,18 @@ export function getVersionsPage(q: VersionsQuery = {}): Promise<VersionPage> {
   return v2Get<VersionPage>("/versions", { limit: q.limit ?? 50, system_id: q.system_id, include_archived: q.include_archived || undefined, status: q.status });
 }
 
-/** POST /versions/{id}/baseline: pin (or unpin) the run as its lineage's baseline. Needs analyse. */
-export async function pinBaseline(id: string, pinned: boolean): Promise<{ version_id: string; baseline: boolean }> {
-  if (fixtureActive()) return fixtureAction("pin", { id, pinned }) as { version_id: string; baseline: boolean };
-  const { data } = await apiClient.post<{ version_id: string; baseline: boolean }>(`/api/v1/versions/${id}/baseline`, null, { params: { pinned } });
+/**
+ * POST /versions/{id}/baseline: pin (or unpin) the run as its lineage's baseline. Needs analyse. A run that breaches
+ * an enforced data contract is refused with 409 (`baselineRefusalOf` reads it) unless `force` comes with a reason,
+ * which the server audits.
+ */
+export async function pinBaseline(id: string, pinned: boolean, force?: { reason: string }): Promise<{ version_id: string; baseline: boolean }> {
+  const body = force ? { force: true, reason: force.reason } : null;
+  if (fixtureActive()) {
+    baselineGateFixture(id, pinned, body ?? undefined);
+    return fixtureAction("pin", { id, pinned }) as { version_id: string; baseline: boolean };
+  }
+  const { data } = await apiClient.post<{ version_id: string; baseline: boolean }>(`/api/v1/versions/${id}/baseline`, body, { params: { pinned } });
   return data;
 }
 
@@ -266,7 +275,7 @@ export function getSystemProfiles(id: string): Promise<SyncProfile[]> {
 }
 
 /** POST /systems/{id}/downloads: extracts the chosen objects into a new run, optionally analysing straight after. */
-export async function extractObjects(id: string, objects: string[], analyse: boolean, scope: DownloadScope = {}, label?: string): Promise<{ job_id: string; status: string }> {
-  if (fixtureActive()) return fixtureAction("extract", { id, objects, analyse, scope, label }) as { job_id: string; status: string };
-  return liveStartDownload(id, { objects, scope, label, analyse });
+export async function extractObjects(id: string, objects: string[], analyse: boolean, scope: DownloadScope = {}, label?: string, delta = false): Promise<{ job_id: string; status: string }> {
+  if (fixtureActive()) return fixtureAction("extract", { id, objects, analyse, scope, label, delta }) as { job_id: string; status: string };
+  return liveStartDownload(id, { objects, scope, label, analyse, ...(delta ? { delta: true } : {}) });
 }

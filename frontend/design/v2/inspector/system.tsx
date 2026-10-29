@@ -51,6 +51,7 @@ function ExtractPicker({ system, allowAnalyse, onDone }: { system: LandscapeSyst
   const q = useSystemObjectList(system.id);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [analyse, setAnalyse] = useState(allowAnalyse);
+  const [delta, setDelta] = useState(false);
   const [scopeDraft, setScopeDraft] = useState<ScopeDraft>(EMPTY_SCOPE);
   const [label, setLabel] = useState("");
   const { outcome, pending, run } = useOutcome();
@@ -69,11 +70,11 @@ function ExtractPicker({ system, allowAnalyse, onDone }: { system: LandscapeSyst
     });
   const go = () =>
     void run("extract", async () => {
-      const r = await extractObjects(system.id, [...picked], analyse, scope, label.trim() || undefined);
+      const r = delta ? await extractObjects(system.id, [...picked], analyse, scope, label.trim() || undefined, true) : await extractObjects(system.id, [...picked], analyse, scope, label.trim() || undefined);
       void qc.invalidateQueries({ queryKey: ["v2"] });
       void qc.invalidateQueries({ queryKey: ["jobs"] });
       onDone({ job: r.job_id, text: t("{size} {size, plural, one {object} other {objects}}", { size: picked.size }) });
-      return { tone: "ok", title: t("Extraction started"), detail: t("{size} {size, plural, one {object} other {objects}} from {name}{value}.", { size: picked.size, name: system.name, value: analyse ? t(", analysed straight after") : "" }), job: r.job_id };
+      return { tone: "ok", title: delta ? t("Extraction of changes started") : t("Extraction started"), detail: t("{size} {size, plural, one {object} other {objects}} from {name}{value}.", { size: picked.size, name: system.name, value: `${delta ? t(", changes only since the last full download") : ""}${analyse ? t(", analysed straight after") : ""}` }), job: r.job_id };
     });
   return (
     <div data-testid="extract-picker">
@@ -103,6 +104,11 @@ function ExtractPicker({ system, allowAnalyse, onDone }: { system: LandscapeSyst
             <input type="checkbox" checked={analyse} disabled={!allowAnalyse} onChange={(e) => setAnalyse(e.target.checked)} />
             {t("Analyse straight after extracting")}
           </label>
+          <label className="m2-check">
+            <input type="checkbox" checked={delta} onChange={(e) => setDelta(e.target.checked)} data-testid="extract-delta" />
+            {t("Changes only since last full download")}
+          </label>
+          {delta ? <p className="m2-prov">{t("Only records whose SAP change date is after the last full download of the same objects and scope are read; tables without change dates are read in full. The change log of the download shows what changed, table by table, under Extractions.")}</p> : null}
           {chosen.length > 0 ? (
             <>
               <ScopeEditor draft={scopeDraft} onChange={setScopeDraft} filters={filters} windowed={windowObjects.length > 0} windowObjects={windowObjects} />

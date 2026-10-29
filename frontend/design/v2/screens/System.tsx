@@ -12,6 +12,9 @@ import { HealthWord, protocolOf } from "../inspector/system";
 import { Configuration } from "./system/Configuration";
 import { CustomObjects } from "./system/CustomObjects";
 import { Schedules } from "./system/Schedules";
+import { useState } from "react";
+import { ChangeLog } from "./step9/ChangeLog";
+import { ConfigChanges } from "./step9/Drift";
 import { VerdictMark } from "../marks";
 import { Dash, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../parts";
 import { t as tr } from "@/lib/v2/i18n";
@@ -20,6 +23,7 @@ export const SYSTEM_TABS = [
   { key: "overview", get label() { return tr("Overview"); }, old: "overview" },
   { key: "extractions", get label() { return tr("Extractions"); }, old: "runs" },
   { key: "configuration", get label() { return tr("Configuration"); }, old: "config" },
+  { key: "changes", get label() { return tr("Configuration changes"); }, old: "changes" },
   { key: "schedules", get label() { return tr("Schedules"); }, old: "health" },
   { key: "custom-objects", get label() { return tr("Custom objects"); }, old: "custom" },
 ] as const;
@@ -125,11 +129,14 @@ function Overview({ id }: { id: string }) {
 
 function Extractions({ id }: { id: string }) {
   const q = useSystemExtractions(id);
+  const [shown, setShown] = useState<string | null>(null);
   if (q.isLoading) return <Skeleton width="100%" height={160} />;
   if (q.isError) return <ErrorFrame onRetry={() => void q.refetch()}>{tr("The extractions of this system could not be read.")}</ErrorFrame>;
   const versions = q.data?.versions ?? [];
   if (versions.length === 0) return <EmptyFrame>{tr("This system has not been extracted yet. Open the inspector and choose Extract.")}</EmptyFrame>;
+  const chosen = versions.find((v) => v.id === shown) ?? versions[0];
   return (
+    <>
     <div className="m2-frame">
       <table className="m2-tbl" data-testid="system-extractions">
         <thead>
@@ -143,6 +150,9 @@ function Extractions({ id }: { id: string }) {
               {tr("Records")}
             </th>
             <th scope="col">{tr("Analysis")}</th>
+            <th scope="col">
+              <span className="m2-sr">{tr("Change log")}</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -167,12 +177,19 @@ function Extractions({ id }: { id: string }) {
                     <span className="m2-meta">{v.analysable ? tr("Not analysed") : tr("Cannot be analysed")}</span>
                   )}
                 </td>
+                <td>
+                  <button type="button" className="m2-linkbtn" aria-pressed={chosen.id === v.id} aria-label={tr("Change log of the download of {when}", { when: formatDate(v.run_at, "datetime") })} onClick={() => setShown(v.id)}>
+                    {tr("Change log")}
+                  </button>
+                </td>
               </tr>
             );
           })}
         </tbody>
       </table>
     </div>
+    <ChangeLog key={chosen.id} versionId={chosen.id} when={chosen.run_at} />
+    </>
   );
 }
 
@@ -247,7 +264,7 @@ export function SystemCanvas({ id }: { id: string }) {
         ))}
       </nav>
       <div className="m2-tabpanel">
-        {tab === "overview" ? <Overview id={id} /> : tab === "extractions" ? <Extractions id={id} /> : tab === "configuration" ? <Configuration id={id} /> : tab === "schedules" ? <Schedules id={id} /> : <CustomObjects id={id} />}
+        {tab === "overview" ? <Overview id={id} /> : tab === "extractions" ? <Extractions id={id} /> : tab === "configuration" ? <Configuration id={id} /> : tab === "changes" ? <ConfigChanges systemId={id} /> : tab === "schedules" ? <Schedules id={id} /> : <CustomObjects id={id} />}
       </div>
     </>
   );

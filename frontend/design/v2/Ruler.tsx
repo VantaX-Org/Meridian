@@ -25,6 +25,20 @@ export interface RulerProps {
   showScore?: boolean;
   /** An object with no run: the bar is drawn empty with a dash. */
   empty?: boolean;
+  /** Step 9: the data contract mark (lib/v2/step9 contractMark). One mark, filled when a breached contract is enforced. */
+  contract?: { count: number; enforced: number; title: string } | null;
+}
+
+/** The contract breach mark: one diamond, outlined when the breached contracts only report, filled when one is enforced. */
+export function ContractMark({ mark }: { mark: { count: number; enforced: number; title: string } }) {
+  const strong = mark.enforced > 0;
+  return (
+    <span className="m2-cmark" data-enforced={strong ? "true" : "false"} role="img" aria-label={mark.title} title={mark.title} data-testid="contract-mark">
+      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" focusable="false">
+        <path d="M5 0.9 9.1 5 5 9.1 0.9 5Z" />
+      </svg>
+    </span>
+  );
 }
 
 /**
@@ -110,7 +124,10 @@ export function Ruler(props: RulerProps) {
         <span className="m2-ruler-num">
           <span className="m2-sc" data-testid="ruler-score">{empty ? DASH : f1(score)}</span>
           {!empty && capped ? <span className="m2-capword">{t("capped")}</span> : null}
+          {!empty && props.contract ? <ContractMark mark={props.contract} /> : null}
         </span>
+      ) : !empty && props.contract ? (
+        <ContractMark mark={props.contract} />
       ) : null}
     </span>
   );

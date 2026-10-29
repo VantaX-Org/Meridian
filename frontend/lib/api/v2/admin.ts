@@ -207,10 +207,10 @@ export const sendTestNotification = (): Promise<{ email: "sent" | "no_backend" |
 export type { SyncProfile, DownloadScope };
 
 /** POST /systems/{id}/downloads: extract the chosen objects within a scope, optionally analysing straight after. */
-export async function startExtraction(systemId: string, objects: string[], analyse: boolean, scope: DownloadScope): Promise<{ job_id: string; status: string }> {
-  if (fixtureActive()) return fixtureAction("extract", { id: systemId, objects, analyse, scope }) as { job_id: string; status: string };
+export async function startExtraction(systemId: string, objects: string[], analyse: boolean, scope: DownloadScope, delta = false): Promise<{ job_id: string; status: string }> {
+  if (fixtureActive()) return fixtureAction("extract", { id: systemId, objects, analyse, scope, delta }) as { job_id: string; status: string };
   const { startDownload } = await import("@/lib/api/system-objects");
-  return startDownload(systemId, { objects, scope, analyse });
+  return startDownload(systemId, { objects, scope, analyse, ...(delta ? { delta: true } : {}) });
 }
 
 export const listProfiles = (systemId: string): Promise<SyncProfile[]> => v2Get(`/systems/${enc(systemId)}/profiles`);

@@ -14,6 +14,7 @@ import { InspectorFrame } from "../Inspector";
 import { SeverityMark } from "../marks";
 import { EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../parts";
 import { MentionCount } from "./collab";
+import { DriftInbox } from "../screens/step9/Drift";
 import { t as tr } from "@/lib/v2/i18n";
 import { v2Locale } from "@/lib/v2/format";
 
@@ -155,6 +156,7 @@ export function InboxPanel({ onClose }: { onClose: () => void }) {
           </a>
           <MentionCount />
         </div>
+        <DriftInbox />
         {all.isError || one.isError ? <ErrorFrame>{tr("The change could not be saved. Try again.")}</ErrorFrame> : null}
         {q.isLoading ? (
           <Skeleton width="100%" height={160} />

@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import type { WorkRow } from "@/lib/api/v2/types";
 import type { DecideKind, RowRef } from "@/lib/v2/work-actions";
 import { initials, possibleValues, splitKey } from "@/lib/v2/work";
 import { MenuButton } from "../Menu";
 import { Dash, Mono } from "../parts";
+import { recordsByModule } from "@/lib/v2/step9";
+import { moduleText } from "@/lib/v2/labels";
+import { SimulateDialog } from "./step9/Simulation";
 import { t } from "@/lib/v2/i18n";
 
 /** What the cells and the bulk bar call. The ledger supplies them; they are read when an event fires, never while drawing. */
@@ -234,6 +238,24 @@ export function PromptDialog({
 // Bulk bar ------------------------------------------------------------------------------------------------------
 
 /** The actions of the bulk bar: they act on the rows selected, and clear the selection when they succeed. */
+/** "Simulate fixing" for the selected rows: one object at a time, the one with the most rows selected. Read-only. */
+function SimulateSelected({ rows }: { rows: WorkRow[] }) {
+  const [open, setOpen] = useState(false);
+  const groups = recordsByModule(rows);
+  const first = groups[0];
+  if (!first) return null;
+  const label = moduleText(first.module);
+  return (
+    <>
+      <button type="button" className="m2-btn m2-sm" onClick={() => setOpen(true)} title={groups.length > 1 ? t("Simulates the {count} rows of {label}: a simulation rescores one object at a time", { count: first.records.length, label }) : undefined}>
+        {t("Simulate fixing")}
+      </button>
+      {/* The bulk bar is drawn in the inverse colours: the dialog goes to the canvas root so it reads in the page's own. */}
+      {open ? createPortal(<SimulateDialog module={first.module} label={label} records={first.records} onClose={() => setOpen(false)} />, document.querySelector(".m2-root") ?? document.body) : null}
+    </>
+  );
+}
+
 export function BulkActions({ rows, clear, h, onReason }: { rows: WorkRow[]; clear: () => void; h: LedgerHandlers; onReason: (rows: WorkRow[], kind: "not_an_issue" | "accept_risk", clear: () => void) => void }) {
   const [setting, setSetting] = useState(false);
   const [value, setValue] = useState("");
@@ -248,6 +270,7 @@ export function BulkActions({ rows, clear, h, onReason }: { rows: WorkRow[]; cle
   };
   return (
     <>
+      <SimulateSelected rows={rows} />
       {h.can.apply ? (
         <button type="button" className="m2-btn m2-sm" onClick={() => { h.decide(rows, "accept"); clear(); }}>
           {t("Accept suggested")}{" "}<kbd className="m2-kb">a</kbd>

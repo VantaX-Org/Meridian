@@ -14,6 +14,7 @@ import { NOT_MINE, resetSys6b, sys6bRead, sys6bWrite, withSystems } from "./sys6
 import { NONE_ROLES, resetRolesFixture, rolesFixtureResponse, rolesFixtureWrite } from "./roles";
 import { adminFixtureResponse, adminFixtureWrite, fixtureDownload as adminFixtureDownload, NONE_ADMIN } from "./admin";
 import { enterpriseFixtureDownload, enterpriseFixtureResponse, enterpriseFixtureWrite, NONE_ENTERPRISE } from "./enterprise";
+import { NONE_STEP9, receiptContractBreaches, resetStep9Fixture, step9Download, step9Read, step9Write, withContractMarks } from "./step9";
 
 /**
  * Fixture answers for the step 0 contract, built from the approved prototype's numbers: 3 systems (ECC production
@@ -106,6 +107,8 @@ function withOpenDelta(l: Landscape): Landscape {
 
 /** A write in fixture mode (POST, PUT, DELETE): applied to the in-memory work fixture. */
 export function fixtureWrite<T>(method: string, path: string, body: unknown, params: Params): T {
+  const step9 = step9Write(method, path, body);
+  if (step9 !== NONE_STEP9) return step9 as T;
   const roles = rolesFixtureWrite(method, path, body, params);
   if (roles !== NONE_ROLES) return roles as T;
   const out = ((): unknown => {
@@ -139,9 +142,9 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
 export { resetAdminFixture } from "./admin";
 export { resetEnterpriseFixture } from "./enterprise";
 
-/** A file in fixture mode: the enterprise stand-ins first, then the admin area's. */
+/** A file in fixture mode: the step 9 certificate PDF, the enterprise stand-ins, then the admin area's. */
 export function fixtureDownload(path: string, params: Record<string, unknown>, fallback: string): { name: string; text: string } {
-  return enterpriseFixtureDownload(path) ?? adminFixtureDownload(path, params, fallback);
+  return step9Download(path) ?? enterpriseFixtureDownload(path) ?? adminFixtureDownload(path, params, fallback);
 }
 export const fixtureExport = wf.exportFixture;
 export const fixtureImport = wf.importFixture;
@@ -150,10 +153,14 @@ export const resetWorkFixture = (): void => {
   ap.resetApprovalsFixture();
   resetSys6b();
   resetRolesFixture();
+  resetStep9Fixture();
 };
+export { resetStep9Fixture };
 
 /** The answer to one v2 read in fixture mode. Throws a 404-shaped error for a path the contract does not have. */
 export function fixtureResponse<T>(path: string, params: Params): T {
+  const step9 = step9Read(path, params);
+  if (step9 !== NONE_STEP9) return step9 as T;
   const rolesStep = rolesFixtureResponse(path, params);
   if (rolesStep !== NONE_ROLES) return rolesStep as T;
   const ent = enterpriseFixtureResponse(path);
@@ -165,13 +172,13 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   const runsStep = runsFixtureResponse(path, params);
   if (runsStep !== NONE) return runsStep as T;
   const out = ((): unknown => {
-    if (path === "/landscape") return withSystems(withOpenDelta(landscapeFixture));
+    if (path === "/landscape") return withContractMarks(withSystems(withOpenDelta(landscapeFixture)));
     if (path === "/status") return landscapeFixture.status_strip as StatusStrip;
     const receipt = /^\/objects\/([^/]+)\/receipt$/.exec(path);
     if (receipt) {
       const r = receipts[decodeURIComponent(receipt[1])];
       if (!r) throw new FixtureNotFound(path);
-      return r;
+      return { ...r, contract_breaches: receiptContractBreaches(r.module) };
     }
     if (path === "/command") return command(String(params.q ?? ""));
     if (path === "/versions") return { ...runs, versions: runs.versions.slice(0, Number(params.limit ?? 8)) };
