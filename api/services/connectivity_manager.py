@@ -1197,6 +1197,9 @@ class ConnectivityManager:
         except Exception as e:  # drift is a report; it never costs the load
             logger.warning(f"config drift for load {load_id} failed: {e}")
             self.session.rollback()
+        else:  # owners of the objects whose rules depend on what changed are told; those objects are re-scored
+            from api.services.drift_alerts import process_safe
+            process_safe(self.session, str(self.tenant_id), system_id, str(load_id), "config_load")
         return {"load_id": load_id, "system_type": system_type, "objects": snap.summary(), "items": len(rows),
                 "origin": origin, "flows_derived": derivation is not None,
                 "table_logging_off": bool(history.get("table_logging_off"))}
@@ -1218,6 +1221,8 @@ class ConnectivityManager:
         results = {}
         live = baseline = 0
         connection_failed = False
+        # live snapshots replaced in this sync are diffed into config_drift_log under this id (drift alerts)
+        self._drift_run, self._drift_rows = str(uuid.uuid4()), 0
 
         for module in modules:
             targets = get_extraction_targets(system_type, module, include_config=True)
@@ -1266,6 +1271,10 @@ class ConnectivityManager:
             {"sid": system_id, "st": status},
         )
         self.session.commit()
+        if self._drift_rows:
+            from api.services.drift_alerts import process_safe
+            process_safe(self.session, str(self.tenant_id), system_id, self._drift_run, "config_sync")
+        self._drift_run = None
         return {"status": status, "modules": results}
 
     def _store_config_snapshots(self, system_id: str, module: str,
@@ -1276,6 +1285,16 @@ class ConnectivityManager:
     def _store_config_snapshot(self, system_id: str, module: str,
                                table_name: str, df: pd.DataFrame, source: str):
         data = df.to_dict(orient="records")
+        if source == "live" and getattr(self, "_drift_run", None):
+            prev = self.session.execute(text(
+                "SELECT config_data, source FROM config_snapshots WHERE tenant_id = :tid AND system_id = :sid "
+                "AND module = :mod AND config_table = :tbl"),
+                {"tid": self.tenant_id, "sid": system_id, "mod": module, "tbl": table_name}).fetchone()
+            if prev is not None and prev[1] == "live":  # a first live read after the baseline is not drift
+                from api.services.drift_alerts import log_snapshot_drift
+                self._drift_rows += log_snapshot_drift(
+                    self.session, str(self.tenant_id), self._drift_run, module, table_name,
+                    list(prev[0] or []), json.loads(json.dumps(data, default=str)))
         self.session.execute(
             text("""
                 INSERT INTO config_snapshots

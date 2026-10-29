@@ -87,6 +87,7 @@ from api.routes.simulate import router as simulate_router
 from api.routes.wave_certificates import router as wave_certificates_router
 from api.routes.impact_money import router as impact_money_router
 from api.routes.webhooks import router as webhooks_router
+from api.routes.drift_alerts import router as drift_alerts_router
 from api.routes.mining import router as mining_router
 from api.routes.process_mining import router as process_mining_router
 from api.routes.process_designer import router as process_designer_router
@@ -447,6 +448,7 @@ app.include_router(simulate_router)
 app.include_router(wave_certificates_router)
 app.include_router(impact_money_router)
 app.include_router(webhooks_router)
+app.include_router(drift_alerts_router)
 app.include_router(mining_router)
 app.include_router(process_mining_router)
 app.include_router(process_designer_router)

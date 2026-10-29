@@ -2900,3 +2900,27 @@ class WebhookDelivery(Base):
         Index("ix_webhook_deliveries_webhook", "tenant_id", "webhook_id", "created_at"),
         Index("ix_webhook_deliveries_due", "next_attempt_at", postgresql_where=text("status IN ('pending', 'retrying')")),
     )
+
+
+class ConfigDriftAlert(Base):
+    """One config load or sync that changed what rules depend on (migration 108, api/services/drift_alerts.py)."""
+    __tablename__ = "config_drift_alerts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id", ondelete="CASCADE"), nullable=False)
+    source = Column(Text, nullable=False)  # config_load | config_sync
+    run_id = Column(UUID(as_uuid=True), nullable=False)
+    areas = Column(JSONB, nullable=False, server_default="[]")
+    rules = Column(ARRAY(Text), nullable=False, server_default="{}")
+    objects = Column(ARRAY(Text), nullable=False, server_default="{}")
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="SET NULL"), nullable=True)
+    notified = Column(Integer, nullable=False, server_default="0")
+    rescore_queued = Column(Boolean, nullable=False, server_default=text("false"))
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        CheckConstraint("source IN ('config_load', 'config_sync')", name="ck_config_drift_alerts_source"),
+        UniqueConstraint("tenant_id", "run_id", name="uq_config_drift_alerts_run"),
+        Index("ix_config_drift_alerts_tenant_created", "tenant_id", "created_at"),
+    )
