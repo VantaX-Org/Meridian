@@ -94,7 +94,7 @@ describe("Admin: runs and jobs", () => {
     page();
     await waitFor(() => expect(rows("Scheduled runs")).toHaveLength(2));
     expect(rows("Scheduled runs")[0]).toHaveTextContent("Mondays at 04:00 UTC");
-    expect(rows("Scheduled runs")[1]).toHaveTextContent("Paused");
+    expect(rows("Scheduled runs")[1]).not.toHaveTextContent("Paused");
 
     fireEvent.click(screen.getByRole("button", { name: "Schedule a run" }));
     const dialog = await screen.findByRole("dialog", { name: "Schedule a run" });
@@ -107,22 +107,22 @@ describe("Admin: runs and jobs", () => {
     await waitFor(() => expect(create).toHaveBeenCalledWith(ECC, expect.objectContaining({ schedule_cron: "0 4 * * 1", active: true, extraction_mode: "full" })));
     await waitFor(() => expect(rows("Scheduled runs")).toHaveLength(3));
 
-    fireEvent.click(screen.getByRole("button", { name: "Resume Business partner" }));
-    await waitFor(() => expect(update).toHaveBeenCalledWith(ECC, "pf-2", { active: true }));
-    await waitFor(() => expect(rows("Scheduled runs")[1]).not.toHaveTextContent("Paused"));
+    fireEvent.click(screen.getByRole("button", { name: "Pause Business partner" }));
+    await waitFor(() => expect(update).toHaveBeenCalledWith(ECC, "p-ecc-2", { active: false }));
+    await waitFor(() => expect(rows("Scheduled runs")[1]).toHaveTextContent("Paused"));
 
     fireEvent.click(screen.getByRole("button", { name: "Edit Material master" }));
     const edit = await screen.findByRole("dialog", { name: "Edit the schedule of Material master" });
     fireEvent.change(within(edit).getByLabelText(/Cron line/), { target: { value: "0 5 * * 2" } });
     fireEvent.click(within(edit).getByRole("button", { name: "Save the schedule" }));
-    await waitFor(() => expect(update).toHaveBeenCalledWith(ECC, "pf-1", { schedule_cron: "0 5 * * 2", extraction_mode: "delta" }));
+    await waitFor(() => expect(update).toHaveBeenCalledWith(ECC, "p-ecc-1", { schedule_cron: "0 5 * * 2", extraction_mode: "delta" }));
     await waitFor(() => expect(rows("Scheduled runs")[0]).toHaveTextContent("Tuesdays at 05:00 UTC"));
 
     fireEvent.click(screen.getByRole("button", { name: "Delete Business partner" }));
     const confirm = await screen.findByRole("dialog", { name: "Delete the schedule of Business partner" });
     expect(del).not.toHaveBeenCalled();
     fireEvent.click(within(confirm).getByRole("button", { name: "Delete the schedule" }));
-    await waitFor(() => expect(del).toHaveBeenCalledWith(ECC, "pf-2"));
+    await waitFor(() => expect(del).toHaveBeenCalledWith(ECC, "p-ecc-2"));
     await waitFor(() => expect(rows("Scheduled runs")).toHaveLength(2));
   });
 

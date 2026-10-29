@@ -184,25 +184,29 @@ describe("the system canvas", () => {
     expect(norm(rows[2])).toContain("Baseline");
   });
 
-  it("Schedules lists the profiles with their cron in words, and hands over to the current interface to edit", async () => {
+  it("Schedules lists the profiles with their cron in words and offers to add one", async () => {
+    h.allowed = new Set(["manage_systems"]);
     canvas("&tab=schedules");
     const table = await screen.findByTestId("system-schedules");
     expect(norm(within(table).getAllByRole("row")[1])).toContain("Mondays at 04:00 UTC");
-    expect(screen.getByRole("link", { name: "Edit schedules in the current interface" })).toHaveAttribute("href", `/systems/${ECC.id}?tab=health`);
+    expect(screen.getByRole("form", { name: "Add a schedule" })).toBeInTheDocument();
+    expect(screen.queryByTestId("handoff")).toBeNull();
   });
 
-  it("Configuration reads the latest load and says the area views are still in the current interface", async () => {
+  it("Configuration reads the latest load and lists its areas with the objects behind each", async () => {
     canvas("&tab=configuration");
     expect(await screen.findByText("11 of 12")).toBeInTheDocument();
-    const frame = screen.getByTestId("handoff");
-    expect(frame).toHaveTextContent("still in the current interface");
-    expect(within(frame).getByRole("link")).toHaveAttribute("href", `/systems/${ECC.id}?tab=config`);
+    const areas = await screen.findByTestId("config-areas");
+    expect(within(areas).getAllByRole("link")).toHaveLength(12);
+    expect(within(areas).getByRole("link", { name: "Human resources" })).toHaveAttribute("href", expect.stringContaining("open=config%3A"));
+    expect(screen.queryByTestId("handoff")).toBeNull();
   });
 
-  it("Custom objects is a designed frame with the way into the current interface", async () => {
+  it("Custom objects lists the registry of Z objects", async () => {
     canvas("&tab=custom-objects");
-    const frame = await screen.findByTestId("handoff");
-    expect(within(frame).getByRole("link", { name: "Open custom objects in the current interface" })).toHaveAttribute("href", `/systems/${ECC.id}?tab=custom`);
+    const table = await screen.findByTestId("z-registry");
+    expect(within(table).getAllByRole("row")).toHaveLength(6);
+    expect(screen.queryByTestId("handoff")).toBeNull();
   });
 
   it("a system that is not in the tenant is explained inside the canvas", async () => {

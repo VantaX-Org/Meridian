@@ -6,7 +6,10 @@ import { formatDate, labelOf, systemTypeLabel } from "@/lib/format";
 import { analyseRun, extractObjects, loadSystemConfig, testSystemConnection } from "@/lib/api/v2/runs";
 import type { LandscapeSystem } from "@/lib/api/v2/types";
 import type { SAPSystemExtended } from "@/types/api";
-import { useV2Session } from "@/lib/v2/hooks";
+import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
+import { buildScope, EMPTY_SCOPE, type ScopeDraft } from "@/lib/v2/extract-scope";
+import { ScopeEditor } from "../screens/system/ScopeEditor";
+import { Field } from "../forms";
 import { useLandscape } from "@/lib/v2/queries";
 import { useSystemConfigLoad, useSystemExtractions, useSystemObjectList, useSystemsExtended } from "@/lib/v2/runs-queries";
 import { int } from "@/lib/v2/score";
@@ -45,8 +48,15 @@ function ExtractPicker({ system, allowAnalyse, onDone }: { system: LandscapeSyst
   const q = useSystemObjectList(system.id);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [analyse, setAnalyse] = useState(allowAnalyse);
+  const [scopeDraft, setScopeDraft] = useState<ScopeDraft>(EMPTY_SCOPE);
+  const [label, setLabel] = useState("");
   const { outcome, pending, run } = useOutcome();
   const objects = q.data?.objects ?? [];
+  const chosen = objects.filter((o) => picked.has(o.object));
+  const filters = [...new Set(chosen.flatMap((o) => o.scope_filters))];
+  const windowObjects = chosen.filter((o) => o.date_window.length > 0).map((o) => o.object);
+  const scope = buildScope(scopeDraft, filters, windowObjects.length > 0);
+  const badDates = scopeDraft.date_from && scopeDraft.date_to && scopeDraft.date_to < scopeDraft.date_from;
   const toggle = (o: string) =>
     setPicked((p) => {
       const n = new Set(p);
@@ -56,7 +66,7 @@ function ExtractPicker({ system, allowAnalyse, onDone }: { system: LandscapeSyst
     });
   const go = () =>
     void run("extract", async () => {
-      const r = await extractObjects(system.id, [...picked], analyse);
+      const r = await extractObjects(system.id, [...picked], analyse, scope, label.trim() || undefined);
       void qc.invalidateQueries({ queryKey: ["v2"] });
       void qc.invalidateQueries({ queryKey: ["jobs"] });
       onDone({ job: r.job_id, text: `${picked.size} ${picked.size === 1 ? "object" : "objects"}` });
@@ -90,14 +100,18 @@ function ExtractPicker({ system, allowAnalyse, onDone }: { system: LandscapeSyst
             <input type="checkbox" checked={analyse} disabled={!allowAnalyse} onChange={(e) => setAnalyse(e.target.checked)} />
             Analyse straight after extracting
           </label>
-          <p className="m2-prov">Scope is everything, no organisational filter. Set company codes, plants or dates in the current interface.</p>
+          {chosen.length > 0 ? (
+            <>
+              <ScopeEditor draft={scopeDraft} onChange={setScopeDraft} filters={filters} windowed={windowObjects.length > 0} windowObjects={windowObjects} />
+              <Field label="Run label (optional)">{(p) => <input {...p} value={label} maxLength={120} onChange={(e) => setLabel(e.target.value)} />}</Field>
+            </>
+          ) : (
+            <p className="m2-prov">Choose objects to set the scope: company codes, plants, organisations and a date window.</p>
+          )}
           <div className="m2-acts" style={{ marginTop: 8 }}>
-            <button type="button" className="m2-btn m2-strong" disabled={picked.size === 0 || pending !== null} onClick={go}>
+            <button type="button" className="m2-btn m2-strong" disabled={picked.size === 0 || pending !== null || Boolean(badDates)} onClick={go}>
               {pending === "extract" ? "Starting…" : picked.size ? `Extract ${picked.size} ${picked.size === 1 ? "object" : "objects"}` : "Choose objects to extract"}
             </button>
-            <V2Link href={`/systems/${system.id}?extract=1`} className="m2-btn">
-              Set scope
-            </V2Link>
           </div>
         </>
       ) : null}
@@ -109,8 +123,10 @@ function ExtractPicker({ system, allowAnalyse, onDone }: { system: LandscapeSyst
 function SystemBody({ system, ext }: { system: LandscapeSystem; ext: SAPSystemExtended | undefined }) {
   const qc = useQueryClient();
   const session = useV2Session();
+  const { hrefFor } = useOpenItem();
   const { outcome, pending, run } = useOutcome();
   const [picker, setPicker] = useState(false);
+  const noConnection = Boolean(ext) && !ext?.host && !ext?.base_url;
   const config = useSystemConfigLoad(system.id);
   const extractions = useSystemExtractions(system.id);
   const sync = session.can("trigger_sync");
@@ -181,7 +197,15 @@ function SystemBody({ system, ext }: { system: LandscapeSystem; ext: SAPSystemEx
         <V2Link href={`/v2/s/${system.id}?tab=schedules`} className="m2-btn">
           Schedule
         </V2Link>
+        <V2Link href={hrefFor({ kind: "connection", id: system.id })} className={`m2-btn${noConnection ? " m2-strong" : ""}`}>
+          Connection settings
+        </V2Link>
       </Actions>
+      {noConnection ? (
+        <p className="m2-prov" data-testid="no-connection">
+          This system has no connection settings yet, so there is nothing to extract from. Open the connection settings to enter the host or base URL and the credentials.
+        </p>
+      ) : null}
       {!sync ? <p className="m2-prov">Testing, loading and extracting need the trigger sync permission on this system.</p> : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       {picker ? (

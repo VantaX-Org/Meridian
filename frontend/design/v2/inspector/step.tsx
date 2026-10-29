@@ -5,6 +5,7 @@ import { useOpenItem, useRunParam } from "@/lib/v2/hooks";
 import { useProcessDocument } from "@/lib/v2/mdm-queries";
 import { DQ_VERDICT, DQ_WORD, parseStepRef, stepsOf } from "@/lib/v2/process-tree";
 import { useReceipt } from "@/lib/v2/queries";
+import { useDesignerHref } from "@/lib/v2/sys-queries";
 import { f1, int } from "@/lib/v2/score";
 import { Fact, InspectorFrame } from "../Inspector";
 import { FactList, Sec } from "./mdm-parts";
@@ -26,6 +27,7 @@ export function StepInspector({ id, onClose }: { id: string; onClose: () => void
   const run = useRunParam();
   const ref = parseStepRef(id);
   const mod = ref?.module ?? "";
+  const designer = useDesignerHref(mod);
   const receipt = useReceipt(mod, run, Boolean(ref));
   const doc = useProcessDocument(receipt.data?.run_id, mod, Boolean(ref));
   const step = useMemo(() => stepsOf(doc.data?.processes ?? []).find((s) => s.id === ref?.step), [doc.data, ref?.step]);
@@ -107,7 +109,7 @@ export function StepInspector({ id, onClose }: { id: string; onClose: () => void
                   <>Fix <Mono>{r.checkId}</Mono> in Work</>
                 </V2Link>
               ))}
-              <V2Link href="/insights/process/designer" className="m2-btn m2-ghost">
+              <V2Link href={designer} className="m2-btn m2-ghost">
                 Open the designer
               </V2Link>
             </div>

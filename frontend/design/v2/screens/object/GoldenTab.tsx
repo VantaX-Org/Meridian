@@ -42,6 +42,7 @@ export const shortKey = (k: string): string => k.replace(/=0+(?=\d)/, "=");
 export const confidencePct = (c: number): string => `${Math.round(c * 100)}%`;
 
 function Survivorship({ module }: { module: string }) {
+  const { hrefFor } = useOpenItem();
   const q = useSurvivorship(module);
   if (q.isPending) return <Skeleton width="50%" height={14} />;
   if (q.isError) return <ErrorFrame onRetry={() => void q.refetch()}>The survivorship rules could not be read.</ErrorFrame>;
@@ -50,10 +51,10 @@ function Survivorship({ module }: { module: string }) {
     <section aria-label="Survivorship rules" className="m2-sec">
       <div className="m2-sechead">
         <h2 className="m2-h2">Survivorship rules</h2>
-        <V2Link href="/mdm/survivorship">Edit in the current interface</V2Link>
+        <V2Link href={hrefFor({ kind: "survivorship", id: module })}>Edit the rules</V2Link>
       </div>
       {rules.length === 0 ? (
-        <p className="m2-rp m2-meta">No survivorship rule is set for this object, so a merge keeps the survivor&apos;s value for every field. Set one in the current interface.</p>
+        <p className="m2-rp m2-meta">No survivorship rule is set for this object, so a merge keeps the survivor&apos;s value for every field. Add one with Edit the rules.</p>
       ) : (
         <ul className="m2-flist" aria-label="Survivorship rules by field">
           {rules.map((r) => (
@@ -73,7 +74,8 @@ function Survivorship({ module }: { module: string }) {
 
 function Candidates({ module, label }: { module: string; label: string }) {
   const { hrefFor, open } = useOpenItem();
-  const q = useMatchPairs(module, 5);
+  const [limit, setLimit] = useState(5);
+  const q = useMatchPairs(module, limit);
   const waiting = q.data?.bands.review ?? q.data?.total ?? 0;
   return (
     <section aria-label="Match candidates" className="m2-sec">
@@ -104,7 +106,11 @@ function Candidates({ module, label }: { module: string; label: string }) {
           </ul>
           <p className="m2-prov">
             {waiting > q.data.pairs.length ? `Showing the first ${q.data.pairs.length} of ${int(waiting)}, best score first. ` : ""}
-            <V2Link href={`/mdm/golden/merge?domain=${encodeURIComponent(module)}`}>Open the whole queue in the current interface</V2Link>
+            {waiting > q.data.pairs.length ? (
+              <button type="button" className="m2-linkbtn" onClick={() => setLimit((n) => n + 20)}>
+                Show 20 more
+              </button>
+            ) : null}
           </p>
         </>
       )}
@@ -150,7 +156,7 @@ export function GoldenTab({ module: moduleSegment }: { system: string; module: s
   const pairsWaiting = pairsQ.data?.bands.review ?? 0;
   if (!q.isPending && total === 0 && !pairsQ.isPending && pairsWaiting === 0) {
     return (
-      <EmptyFrame action={<V2Link href="/mdm/match-rules" className="m2-btn">Open match rules</V2Link>}>
+      <EmptyFrame>
         {`No golden records for ${label} yet. A match run groups the records that describe the same thing, scores each pair, and a steward approves the survivor; the golden records and the pairs to review land here.`}
       </EmptyFrame>
     );

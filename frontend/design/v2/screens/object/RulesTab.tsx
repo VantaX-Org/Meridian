@@ -481,7 +481,7 @@ function DraftsTable({ module, items, onChanged }: { module: string; items: Rule
   if (items.length === 0) {
     return (
       <>
-        <EmptyFrame action={<V2Link href={`/rules/drafts?module=${encodeURIComponent(module)}`} className="m2-btn">Open rule authoring</V2Link>}>{`No drafts for ${module.replace(/_/g, " ")}. Write one in rule authoring or describe it in plain English there; a dry run shows what it would find before it is published.`}</EmptyFrame>
+        <EmptyFrame action={<V2Link href={`/v2/rules?view=drafts&module=${encodeURIComponent(module)}`} className="m2-btn">Open rule authoring</V2Link>}>{`No drafts for ${module.replace(/_/g, " ")}. Write one in rule authoring or describe it in plain English there; a dry run shows what it would find before it is published.`}</EmptyFrame>
         {note ? <p role="status" className="m2-prov">{note}</p> : null}
       </>
     );

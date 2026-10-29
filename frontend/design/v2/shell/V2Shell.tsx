@@ -144,7 +144,7 @@ function PreferencesSync() {
 
 /**
  * The v2 shell: top bar, map, canvas, inspector, job line and status strip. In fixture mode (`?fixture=1`) it renders
- * with no session; otherwise it sits behind the same sign-in and permissions as the current interface.
+ * with no session; otherwise it sits behind the same sign-in and permissions as the rest of the app.
  */
 export function V2Shell({ children }: { children: ReactNode }) {
   const fixture = useFixture();

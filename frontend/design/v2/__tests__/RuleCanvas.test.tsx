@@ -95,7 +95,7 @@ describe("the rule canvas /v2/r/{check_id}", () => {
     const alert = await screen.findByTestId("error-frame");
     expect(alert).toHaveTextContent("This rule could not be read.");
     expect(within(alert).getByRole("button", { name: "Retry" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open rules" })).toHaveAttribute("href", expect.stringContaining("/rules"));
+    expect(screen.getByRole("link", { name: "Open the rules library" })).toHaveAttribute("href", expect.stringContaining("/v2/rules"));
   });
 
   it("holds the layout while the rule loads", () => {

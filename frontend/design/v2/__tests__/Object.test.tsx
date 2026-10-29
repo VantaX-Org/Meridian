@@ -142,9 +142,9 @@ describe("tabs as route segments", () => {
     ["fixes", /No fix batches for Material master yet/, "Open Work"],
     ["runs", /Material master has no run history here yet/, "Open the runs"],
     ["readiness", /Feature impact for Material master is calculated from the rules that fail/, "Open the capping rules"],
-    ["lineage", /Lineage fills when a field map is loaded/, "Open Systems"],
-    ["glossary", /No glossary terms are linked to Material master yet/, "Open the glossary"],
-    ["golden", /No golden records for Material master yet/, "Open golden records"],
+    ["lineage", /Lineage fills when a field map is loaded/, "Open the landscape"],
+    ["glossary", /No glossary terms are linked to Material master yet/, "Open the rules"],
+    ["golden", /No golden records for Material master yet/, "Open the rules"],
   ] as const)("the %s tab is a designed empty frame with one action", async (tab, copy, action) => {
     renderWithQuery(
       <ObjectFrame system="ecc-production" module="material-master">

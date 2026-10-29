@@ -66,10 +66,10 @@ describe("the Processes tab", () => {
     expect(within(migo).getByRole("link", { name: "Open the step Post Goods Receipt" })).toHaveAttribute("href", expect.stringContaining("open=step%3Amaterial_master%3APTP-GR-MIGO"));
   });
 
-  it("frames the way into the process designer of the current interface, without embedding it", async () => {
+  it("leads to the process designer canvas, without embedding it", async () => {
     tab();
     const frame = await screen.findByRole("region", { name: "Process designer" });
-    expect(within(frame).getByRole("link", { name: "Open the designer" })).toHaveAttribute("href", "/insights/process/designer");
+    expect(within(frame).getByRole("link", { name: "Open the designer" })).toHaveAttribute("href", "/v2/o/ecc-production/material-master/processes/design?fixture=1");
     expect(document.querySelector("iframe")).toBeNull();
   });
 
@@ -77,7 +77,7 @@ describe("the Processes tab", () => {
     tab("purchasing");
     const empty = await screen.findByTestId("empty-frame");
     expect(empty).toHaveTextContent(/No process step reads the fields of Purchasing/);
-    expect(within(empty).getByRole("link", { name: "Open the designer" })).toHaveAttribute("href", "/insights/process/designer");
+    expect(within(empty).getByRole("link", { name: "Open the designer" })).toHaveAttribute("href", "/v2/o/ecc-production/purchasing/processes/design?fixture=1");
   });
 
   it("says when no step is blocked", async () => {
@@ -119,7 +119,7 @@ describe("the step inspector", () => {
     const fix = within(d).getByRole("link", { name: "Fix MM014 in Work" });
     expect(fix).toHaveAttribute("href", expect.stringContaining("/v2/work?rule=MM014&module=material_master"));
     expect(within(d).getByRole("link", { name: "Fix MM031 in Work" })).toHaveAttribute("href", expect.stringContaining("rule=MM031"));
-    expect(within(d).getByRole("link", { name: "Open the designer" })).toHaveAttribute("href", "/insights/process/designer");
+    expect(within(d).getByRole("link", { name: "Open the designer" })).toHaveAttribute("href", expect.stringContaining("/processes/design"));
   });
 
   it("a ready step has no rule failing and no fix link", async () => {

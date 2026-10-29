@@ -138,18 +138,10 @@ export function TermInspector({ id, onClose }: { id: string; onClose: () => void
                 <button type="button" className="m2-btn m2-strong" disabled={pending !== null} onClick={approve}>
                   {pending === "approve" ? "Approving…" : t.status === "active" ? "Mark as reviewed" : "Approve"}
                 </button>
-                <V2Link href={`/mdm/glossary/${encodeURIComponent(id)}`} className="m2-btn m2-ghost">
-                  Open in the current interface
-                </V2Link>
               </div>
             ) : (
               <>
                 <p className="m2-rp m2-meta">Editing and approving a term needs the approve permission. A data owner can do both.</p>
-                <div className="m2-acts">
-                  <V2Link href={`/mdm/glossary/${encodeURIComponent(id)}`} className="m2-btn m2-ghost">
-                    Open in the current interface
-                  </V2Link>
-                </div>
               </>
             )}
             {outcome ? <ResultFrame outcome={outcome} /> : null}

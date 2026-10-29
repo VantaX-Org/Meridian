@@ -101,7 +101,7 @@ describe("the Glossary tab", () => {
     tab();
     await gridRows();
     expect(screen.queryByRole("button", { name: /Add terms/ })).toBeNull();
-    expect(screen.getByRole("link", { name: "Open the glossary" })).toHaveAttribute("href", "/mdm/glossary");
+    expect(screen.queryByRole("link", { name: "Open the glossary" })).toBeNull();
   });
 
   it("is a designed empty state for an object with no terms, with what would put rows here", async () => {

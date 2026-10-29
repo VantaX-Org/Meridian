@@ -17,6 +17,8 @@ const PLACES: CommandGroup = {
     { id: "work", title: "Work", href: "/v2/work" },
     { id: "runs", title: "Runs", href: "/v2/runs" },
     { id: "people", title: "People", href: "/v2/people" },
+    { id: "rules", title: "Rules", href: "/v2/rules" },
+    { id: "connect", title: "Connect a system", href: "/v2/s/new" },
   ],
 };
 

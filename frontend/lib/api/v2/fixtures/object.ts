@@ -257,7 +257,7 @@ const LEARNED: LearnedProposal[] = [
   { id: "lp-002", module: MM, kind: "value_set", table_name: "MARA", determinant: null, field: "MARA.SPART", confidence: 0.99, support_rows: 60410, violations: 188, sample_keys: ["MATNR=000000000000000342"], status: "pending" },
 ];
 
-const DRAFTS: RuleDraft[] = [
+export const DRAFTS: RuleDraft[] = [
   {
     id: "dr-001",
     domain: `dq_rule:${MM}`,

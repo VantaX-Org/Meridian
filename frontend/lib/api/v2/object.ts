@@ -1,6 +1,6 @@
 import apiClient from "@/lib/api/client";
 import { fixtureActive } from "./fixture";
-import { v2Get } from "./client";
+import { v2Get, v2Send } from "./client";
 import { fixturePost } from "./fixtures/object";
 import type { DimensionKey } from "./types";
 
@@ -356,7 +356,7 @@ export function dryRunDraft(draft: RuleDraft): Promise<DraftDryRun> {
 }
 
 export function publishDraft(id: string): Promise<{ id: string; name: string; module: string; severity: string; enabled: boolean; draft_id: string }> {
-  return v2Post(`/rule-authoring/drafts/${encodeURIComponent(id)}/publish`);
+  return v2Send("POST", `/rule-authoring/drafts/${encodeURIComponent(id)}/publish`);
 }
 
 /* ---- rule actions: suppress, hand off ---- */

@@ -12,7 +12,8 @@ import "../../mdm.css";
 import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../../parts";
 import { ScrollFrame } from "./ScrollFrame";
 
-export const DESIGNER_HREF = "/insights/process/designer";
+/** The process designer of an object: a canvas of its own under the object. */
+export const designerHref = (system: string, module: string): string => `/v2/o/${system}/${module}/processes/design`;
 
 function StepBlock({ step, module, openId }: { step: StepView; module: string; openId: string | null }) {
   const { hrefFor } = useOpenItem();
@@ -110,7 +111,7 @@ function L1Block({ l1, steps, module, openId }: { l1: BusinessProcessL1; steps: 
 }
 
 /** The Processes tab: the L1 to L5 readiness of the processes that read the object's fields, as a tree of steps. */
-export function ProcessesTab({ module: moduleSegment }: { system: string; module: string }) {
+export function ProcessesTab({ system, module: moduleSegment }: { system: string; module: string }) {
   const run = useRunParam();
   const apiModule = moduleFromSlug(moduleSegment);
   const L = useLandscape(run);
@@ -127,9 +128,9 @@ export function ProcessesTab({ module: moduleSegment }: { system: string; module
     <section aria-label="Process designer" className="m2-sec m2-dframe">
       <div>
         <h2 className="m2-h2">Process designer</h2>
-        <p className="m2-rp">Edit the process model, its steps and the fields each step reads in the designer of the current interface. Changes there show here on the next run.</p>
+        <p className="m2-rp">Edit the process model, its steps and the fields each step reads in the process designer. Changes there show here on the next run.</p>
       </div>
-      <V2Link href={DESIGNER_HREF} className="m2-btn">
+      <V2Link href={designerHref(system, moduleSegment)} className="m2-btn">
         Open the designer
       </V2Link>
     </section>
@@ -148,7 +149,7 @@ export function ProcessesTab({ module: moduleSegment }: { system: string; module
   if (processes.length === 0) {
     return (
       <>
-        <EmptyFrame action={<V2Link href={DESIGNER_HREF} className="m2-btn">Open the designer</V2Link>}>
+        <EmptyFrame action={<V2Link href={designerHref(system, moduleSegment)} className="m2-btn">Open the designer</V2Link>}>
           {`No process step reads the fields of ${label}. Process readiness fills for objects that a step of the process model reads, such as Material master in Procure to Pay; add the object to a step in the designer.`}
         </EmptyFrame>
       </>

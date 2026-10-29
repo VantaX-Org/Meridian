@@ -2,16 +2,18 @@
 
 import { useSearchParams } from "next/navigation";
 import { formatDate, systemTypeLabel } from "@/lib/format";
-import type { SyncProfile } from "@/types/api";
 import { useOpenItem } from "@/lib/v2/hooks";
+import { describeCron } from "@/lib/v2/cron";
 import { JOB_KIND_LABEL, JOB_STATUS_LABEL, jobObject } from "@/lib/v2/jobs";
 import { useLandscape } from "@/lib/v2/queries";
-import { useSystemConfigLoad, useSystemExtractions, useSystemProfiles, useSystemsExtended, useV2Jobs } from "@/lib/v2/runs-queries";
+import { useSystemExtractions, useSystemsExtended, useV2Jobs } from "@/lib/v2/runs-queries";
 import { f1, int, moduleSlug, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { HealthWord, protocolOf } from "../inspector/system";
+import { Configuration } from "./system/Configuration";
+import { CustomObjects } from "./system/CustomObjects";
+import { Schedules } from "./system/Schedules";
 import { VerdictMark } from "../marks";
 import { Dash, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../parts";
-import { Fact, Facts } from "../Inspector";
 
 export const SYSTEM_TABS = [
   { key: "overview", label: "Overview", old: "overview" },
@@ -22,28 +24,7 @@ export const SYSTEM_TABS = [
 ] as const;
 type TabKey = (typeof SYSTEM_TABS)[number]["key"];
 
-const WEEKDAY = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
-
-/** A cron in words for the common shapes (daily, weekly), else the cron itself. Times are UTC, as the scheduler runs. */
-export function describeCron(cron: string | null): string {
-  if (!cron) return "No schedule";
-  const [m, h, dom, mon, dow] = cron.trim().split(/\s+/);
-  if (![m, h, dom, mon, dow].every(Boolean) || !/^\d+$/.test(m) || !/^\d+$/.test(h) || dom !== "*" || mon !== "*") return cron;
-  const at = `${h.padStart(2, "0")}:${m.padStart(2, "0")} UTC`;
-  if (dow === "*") return `Every day at ${at}`;
-  return /^\d$/.test(dow) ? `${WEEKDAY[Number(dow) % 7]} at ${at}` : cron;
-}
-
-function Handoff({ children, href, action }: { children: string; href: string; action: string }) {
-  return (
-    <div className="m2-handoff" data-testid="handoff">
-      <p>{children}</p>
-      <V2Link href={href} className="m2-btn">
-        {action}
-      </V2Link>
-    </div>
-  );
-}
+export { describeCron };
 
 function Overview({ id }: { id: string }) {
   const land = useLandscape(null);
@@ -194,92 +175,9 @@ function Extractions({ id }: { id: string }) {
   );
 }
 
-function Configuration({ id }: { id: string }) {
-  const q = useSystemConfigLoad(id);
-  const c = q.data;
-  return (
-    <>
-      {q.isLoading ? (
-        <Skeleton width="100%" height={80} />
-      ) : q.isError ? (
-        <ErrorFrame onRetry={() => void q.refetch()}>The configuration status could not be read.</ErrorFrame>
-      ) : !c ? (
-        <EmptyFrame>No configuration has been loaded from this system. Open the inspector and choose Load configuration.</EmptyFrame>
-      ) : (
-        <Facts>
-          <Fact label="Status">{c.status === "completed" ? "Loaded" : c.status === "running" ? "Loading" : "Failed"}</Fact>
-          <Fact label="Areas loaded">{`${c.areas_loaded} of ${c.areas_total}`}</Fact>
-          <Fact label="Loaded">{c.finished_at ? formatDate(c.finished_at, "datetime") : "Still running"}</Fact>
-          <Fact label="Objects">{Object.entries(c.summary).map(([k, n]) => `${n} ${k.replace(/_/g, " ")}`).join(", ") || "—"}</Fact>
-          <Fact label="Change history">{c.history.detail || "—"}</Fact>
-        </Facts>
-      )}
-      <div style={{ marginTop: 16 }}>
-        <Handoff href={`/systems/${id}?tab=config`} action="Open the configuration in the current interface">
-          The configuration views, area by area with the objects behind each and the comparison with a target system, are still in the current interface. They arrive here in a later step.
-        </Handoff>
-      </div>
-    </>
-  );
-}
-
-function Schedules({ id }: { id: string }) {
-  const q = useSystemProfiles(id);
-  if (q.isLoading) return <Skeleton width="100%" height={120} />;
-  if (q.isError) return <ErrorFrame onRetry={() => void q.refetch()}>The schedules could not be read.</ErrorFrame>;
-  const profiles: SyncProfile[] = q.data ?? [];
-  return (
-    <>
-      {profiles.length === 0 ? (
-        <EmptyFrame>Nothing is scheduled for this system. A schedule extracts its objects on a timetable.</EmptyFrame>
-      ) : (
-        <div className="m2-frame">
-          <table className="m2-tbl" data-testid="system-schedules">
-            <thead>
-              <tr>
-                <th scope="col">Object</th>
-                <th scope="col">Schedule</th>
-                <th scope="col">Mode</th>
-                <th scope="col">Next</th>
-                <th scope="col">Last</th>
-                <th scope="col">State</th>
-              </tr>
-            </thead>
-            <tbody>
-              {profiles.map((p) => (
-                <tr key={p.id}>
-                  <th scope="row">{p.domain.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())}</th>
-                  <td>{describeCron(p.schedule_cron)}</td>
-                  <td>{p.extraction_mode === "delta" ? "Changes only" : "Full"}</td>
-                  <td>{p.next_run_at ? formatDate(p.next_run_at, "datetime") : <Dash />}</td>
-                  <td>{p.last_run_at ? formatDate(p.last_run_at, "datetime") : <Dash />}</td>
-                  <td>{p.active ? "On" : "Off"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      <div style={{ marginTop: 16 }}>
-        <Handoff href={`/systems/${id}?tab=health`} action="Edit schedules in the current interface">
-          Adding, changing and pausing a schedule is still done in the current interface.
-        </Handoff>
-      </div>
-    </>
-  );
-}
-
-function CustomObjects({ id }: { id: string }) {
-  return (
-    <Handoff href={`/systems/${id}?tab=custom`} action="Open custom objects in the current interface">
-      Custom Z objects, their profiles, dormant fields and anomalies are still in the current interface. They arrive here in a later step.
-    </Handoff>
-  );
-}
-
 /**
  * `/v2/s/{id}`: one system. Overview, Extractions, Configuration, Schedules and Custom objects as views of the one page
- * (`?tab=`). The heavy configuration and custom-object views hand over to the current interface, in a frame that says so.
+ * (`?tab=`). Configuration, Schedules and Custom objects are views of their own, with the verbs the viewer may use.
  */
 export function SystemCanvas({ id }: { id: string }) {
   const params = useSearchParams();
@@ -335,8 +233,8 @@ export function SystemCanvas({ id }: { id: string }) {
         <V2Link href={hrefFor({ kind: "system", id })} className="m2-btn m2-next">
           Test, load or extract
         </V2Link>
-        <V2Link href={`/systems/${id}`} className="m2-btn">
-          Open in the current interface
+        <V2Link href={hrefFor({ kind: "connection", id })} className="m2-btn">
+          Connection settings
         </V2Link>
       </div>
 

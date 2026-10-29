@@ -4,6 +4,7 @@ import { renderWithQuery } from "@/__tests__/render";
 import * as objectApi from "@/lib/api/v2/object";
 import * as landscapeApi from "@/lib/api/v2/landscape";
 import { resetObjectFixture } from "@/lib/api/v2/fixtures/object";
+import { resetWorkFixture } from "@/lib/api/v2/fixtures";
 import { RulesTab } from "../screens/object/RulesTab";
 import { getUrl, setUrl } from "./nav-store";
 
@@ -23,6 +24,7 @@ beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
   granted = "all";
   resetObjectFixture();
+  resetWorkFixture();
   setUrl("/v2/o/ecc-production/material-master?fixture=1");
 });
 afterEach(() => {

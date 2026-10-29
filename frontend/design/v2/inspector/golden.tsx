@@ -11,7 +11,7 @@ import { describeField } from "@/lib/v2/sap-fields";
 import { int } from "@/lib/v2/score";
 import { Fact, InspectorFrame } from "../Inspector";
 import { FactList, Sec } from "./mdm-parts";
-import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
+import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
 import { RULE_LABEL, confidencePct, shortKey } from "../screens/object/GoldenTab";
 import { ResultFrame, useOutcome } from "./shared";
 
@@ -156,20 +156,12 @@ function GoldenBody({ id, onClose }: { id: string; onClose: () => void }) {
                   <button type="button" className="m2-btn m2-strong" disabled={picked.size === 0 || reason.trim() === "" || pending !== null} onClick={split}>
                     {pending === "split" ? "Splitting…" : picked.size ? `Split out ${picked.size} ${picked.size === 1 ? "record" : "records"}` : "Choose records to split out"}
                   </button>
-                  <V2Link href={`/mdm/golden/${encodeURIComponent(id)}`} className="m2-btn">
-                    Open in the current interface
-                  </V2Link>
                 </div>
                 {outcome ? <ResultFrame outcome={outcome} /> : null}
               </div>
             ) : (
               <>
                 <p className="m2-rp m2-meta">Splitting a golden record needs the approve permission. A data owner can do it.</p>
-                <div className="m2-acts">
-                  <V2Link href={`/mdm/golden/${encodeURIComponent(id)}`} className="m2-btn">
-                    Open in the current interface
-                  </V2Link>
-                </div>
               </>
             )}
           </Sec>
@@ -346,11 +338,6 @@ function PairBody({ pairId, onClose }: { pairId: string; onClose: () => void }) 
               </div>
             )}
             {outcome ? <ResultFrame outcome={outcome} /> : null}
-            <div className="m2-acts">
-              <V2Link href={`/mdm/golden/merge?pair=${encodeURIComponent(pairId)}`} className="m2-btn m2-ghost">
-                Open in the current interface
-              </V2Link>
-            </div>
           </Sec>
         </>
       )}

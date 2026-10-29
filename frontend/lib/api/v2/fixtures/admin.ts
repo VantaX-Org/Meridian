@@ -515,8 +515,6 @@ export function adminFixtureResponse(path: string, params: Record<string, unknow
   if (path === "/reports/schedules") return clone(s.schedules);
   if (path === "/reports/schedules/options") return scheduleOptions();
   if (path === "/migration/waves") return { waves: clone(s.waves) };
-  const prof = /^\/systems\/([^/]+)\/profiles$/.exec(path);
-  if (prof) return clone(s.profiles[decodeURIComponent(prof[1])] ?? []);
   return NONE_ADMIN;
 }
 
@@ -834,33 +832,6 @@ export function adminFixtureWrite(method: string, path: string, body: unknown, p
     }
     if (method === "DELETE") {
       s.schedules = s.schedules.filter((x) => x.id !== id);
-      return undefined;
-    }
-  }
-  const pCreate = /^\/systems\/([^/]+)\/profiles$/.exec(path);
-  if (pCreate && method === "POST") {
-    const sid = decodeURIComponent(pCreate[1]);
-    const p: Profile = { id: nextId("pf"), system_id: sid, domain: text(b.domain), tables: (b.tables as string[]) ?? [], schedule_cron: (b.schedule_cron as string | null) ?? null, active: b.active !== false, last_run_at: null, next_run_at: soon(1), extraction_mode: (b.extraction_mode as Profile["extraction_mode"]) ?? "full" };
-    (s.profiles[sid] ??= []).push(p);
-    return clone(p);
-  }
-  const pOne = /^\/systems\/([^/]+)\/profiles\/([^/]+)$/.exec(path);
-  if (pOne) {
-    const sid = decodeURIComponent(pOne[1]);
-    const p = (s.profiles[sid] ?? []).find((x) => x.id === decodeURIComponent(pOne[2]));
-    if (!p) throw new AdminNotFound(path);
-    if (method === "PATCH") {
-      if (typeof b.schedule_cron === "string") {
-        if (b.schedule_cron.trim() && b.schedule_cron.trim().split(/\s+/).length !== 5) throw new AdminRefused(422, "Invalid cron expression");
-        p.schedule_cron = b.schedule_cron.trim() || null;
-      }
-      if (typeof b.active === "boolean") p.active = b.active;
-      if (b.extraction_mode) p.extraction_mode = b.extraction_mode as Profile["extraction_mode"];
-      p.next_run_at = p.active && p.schedule_cron ? soon(1) : null;
-      return clone(p);
-    }
-    if (method === "DELETE") {
-      s.profiles[sid] = (s.profiles[sid] ?? []).filter((x) => x.id !== p.id);
       return undefined;
     }
   }
