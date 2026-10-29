@@ -11,7 +11,7 @@ import uuid
 from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,6 +47,18 @@ class Preferences(_Strict):
     tours_done: Optional[list[str]] = Field(default=None, max_length=50)
     seen_version: Optional[str] = Field(default=None, max_length=40)
     notifications: Optional[NotificationPrefs] = None
+    # the persona whose home screen opens at sign-in, instead of the one the user's role implies
+    start_screen: Optional[str] = Field(default=None, min_length=1, max_length=40)
+    # show keyboard shortcut hints next to actions
+    keyboard_hints: Optional[bool] = None
+
+    @field_validator("start_screen")
+    @classmethod
+    def _persona(cls, v: Optional[str]) -> Optional[str]:
+        from api.services.rbac import PERSONA_HOME
+        if v is not None and v not in PERSONA_HOME:
+            raise ValueError(f"start_screen must be one of {sorted(PERSONA_HOME)}")
+        return v
 
 
 def _merge(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:

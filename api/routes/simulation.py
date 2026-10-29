@@ -78,7 +78,8 @@ async def create_simulation(body: SimulationRequest, db: AsyncSession = Depends(
     sid = str(uuid.uuid4())
     jobs.start_job(str(tenant.id), sid, "simulation", f"Fix simulation{f' | {row[2]}' if row[2] else ''}",
                    status="queued", version_id=str(body.version_id), system_id=row[1])
-    run_simulation.delay(str(tenant.id), sid, str(body.version_id), body.model_dump(mode="json"))
+    task = run_simulation.delay(str(tenant.id), sid, str(body.version_id), body.model_dump(mode="json"))
+    jobs.set_task_ids(str(tenant.id), sid, [getattr(task, "id", None)])
     return SimulationQueued(simulation_id=sid, job_id=sid, status="queued")
 
 

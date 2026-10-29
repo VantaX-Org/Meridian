@@ -63,7 +63,7 @@ function WithoutTerm({ module, terms, label }: { module: string; terms: readonly
               </li>
             ))}
           </ul>
-          <p className="m2-prov">The fields are those read by the failing rules of this object in the latest run. A data owner links a term to each in the current interface, or drafts them from the rule library above.</p>
+          <p className="m2-prov">The fields are those read by the failing rules of this object in the latest run. Terms are drafted from the rule library with Add terms from the rule library, and a data owner approves each.</p>
         </>
       )}
     </section>
@@ -120,9 +120,7 @@ export function GlossaryTab({ module: moduleSegment }: { system: string; module:
             <button type="button" className="m2-btn" onClick={populate} disabled={pending !== null}>
               {pending === "populate" ? "Drafting…" : "Draft terms from the rule library"}
             </button>
-          ) : (
-            <V2Link href="/mdm/glossary" className="m2-btn">Open the glossary</V2Link>
-          )
+          ) : undefined
         }
       >
         {`No business terms are linked to ${label} yet. A data owner links a term to a field, or drafts them from the rules of the object, and they appear here with the rules that cite them.`}
@@ -142,7 +140,6 @@ export function GlossaryTab({ module: moduleSegment }: { system: string; module:
               {pending === "populate" ? "Drafting…" : "Add terms from the rule library"}
             </button>
           ) : null}
-          <V2Link href="/mdm/glossary" className="m2-btn m2-ghost">Open the glossary</V2Link>
         </div>
       </div>
       {outcome ? <ResultFrame outcome={outcome} /> : null}

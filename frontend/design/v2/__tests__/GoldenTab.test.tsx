@@ -77,20 +77,20 @@ describe("the Golden records tab", () => {
     expect(screen.getByText(/Showing the first 5 of 148, best score first/)).toBeInTheDocument();
   });
 
-  it("summarises the survivorship rules and links to edit them in the current interface", async () => {
+  it("summarises the survivorship rules and opens the editor from the inspector", async () => {
     tab();
     const sec = await screen.findByRole("region", { name: "Survivorship rules" });
     const list = await within(sec).findByRole("list", { name: "Survivorship rules by field" });
     expect(within(list).getAllByRole("listitem")).toHaveLength(5);
     expect(norm(within(list).getAllByRole("listitem")[1])).toBe("MARA-MEINSTrusted source, ECC production");
-    expect(within(sec).getByRole("link", { name: "Edit in the current interface" })).toHaveAttribute("href", "/mdm/survivorship");
+    expect(within(sec).getByRole("link", { name: "Edit the rules" })).toHaveAttribute("href", expect.stringContaining("open=survivorship%3Amaterial_master"));
   });
 
   it("is a designed empty state, with what would put rows here, for an object without golden records", async () => {
     tab("purchasing");
     const empty = await screen.findByTestId("empty-frame");
     expect(empty).toHaveTextContent(/No golden records for Purchasing yet\. A match run groups the records that describe the same thing/);
-    expect(within(empty).getByRole("link", { name: "Open match rules" })).toHaveAttribute("href", "/mdm/match-rules");
+    expect(within(empty).queryByRole("link")).toBeNull();
   });
 
   it("shows a dash for the name when the list does not carry one", async () => {
@@ -146,13 +146,13 @@ describe("the golden record inspector", () => {
     expect(split).toHaveBeenCalledWith("gr-3", ["MATNR=000000000000020003"], "Different pack size");
   });
 
-  it("without the approve permission there is no split control, only the way into the current interface", async () => {
+  it("without the approve permission there is no split control", async () => {
     granted = [];
     const d = await open();
     expect(within(d).queryByRole("checkbox")).toBeNull();
     expect(within(d).queryByRole("button", { name: /Split/ })).toBeNull();
     expect(within(d).getByText(/Splitting a golden record needs the approve permission/)).toBeInTheDocument();
-    expect(within(d).getByRole("link", { name: "Open in the current interface" })).toHaveAttribute("href", "/mdm/golden/gr-3");
+    expect(within(d).queryByRole("link", { name: /current interface/ })).toBeNull();
   });
 });
 

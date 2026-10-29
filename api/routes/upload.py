@@ -351,6 +351,7 @@ async def _enqueue_checks(db: AsyncSession, tenant_id: uuid.UUID, version_id: uu
 
     try:
         job = run_checks.delay(str(version_id), str(tenant_id), parquet_path)
+        jobs.set_task_ids(str(tenant_id), str(version_id), [getattr(job, "id", None)])
     except Exception as e:
         logger.exception(f"Failed to enqueue run_checks for version {version_id}: {e}")
         reason = f"Could not queue the analysis: {type(e).__name__}"

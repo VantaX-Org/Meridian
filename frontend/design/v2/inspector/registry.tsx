@@ -18,6 +18,11 @@ import { GoldenInspector } from "./golden";
 import { TermInspector } from "./term";
 import { FeatureInspector } from "./feature";
 import { StepInspector } from "./step";
+import { ConnectionInspector } from "./connection";
+import { ConfigInspector } from "./config";
+import { ScheduleInspector as SyncScheduleInspector } from "./schedule";
+import { ZObjectInspector } from "./zobject";
+import { SurvivorshipInspector } from "./survivorship";
 
 interface BodyProps {
   id: string;
@@ -51,6 +56,11 @@ export const INSPECTOR_BODIES: Partial<Record<OpenKind, ComponentType<BodyProps>
   preferences: PreferencesPanel,
   help: HelpPanel,
   waves: WavesPanel,
+  connection: ConnectionInspector,
+  config: ConfigInspector,
+  syncschedule: SyncScheduleInspector,
+  zobject: ZObjectInspector,
+  survivorship: SurvivorshipInspector,
 };
 
 export function extensionFor(item: OpenItem, onClose: () => void): ReactNode {

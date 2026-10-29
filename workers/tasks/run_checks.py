@@ -605,6 +605,10 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
             session.commit()
         metadata = (meta_row[0] if meta_row else None) or {}
         modules = metadata.get("modules", [])
+        # POST /versions/{id}/analyse may limit the run to some of the version's modules (analysis_options)
+        only = (metadata.get("analysis_options") or {}).get("modules")
+        if only:
+            modules = [m for m in modules if m in only]
         tenant_weights = (tenant_row[0] if tenant_row else None) or {}
         cost_model = (tenant_row[1] if tenant_row else None) or {}
 

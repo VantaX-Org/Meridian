@@ -350,7 +350,7 @@ export function RuleContract({ view }: { view: RuleView }) {
         <ul className="m2-lk">
           {c.map((x, i) => (
             <li key={`${x.id}:${i}`}>
-              <V2Link href="/rules/contracts">{x.name}</V2Link>
+              <span>{x.name}</span>
               <span className="m2-meta">{x.via === "names_rule" ? `${STATE_WORD[x.status] ?? x.status}, names this rule` : `${STATE_WORD[x.status] ?? x.status}, minimum ${x.threshold}${view.scope.definition.dimension ? ` for ${view.scope.definition.dimension}` : ""}`}</span>
             </li>
           ))}
@@ -521,7 +521,7 @@ export function RuleActions({ view, canvas }: { view: RuleView; canvas?: boolean
           </button>
         ) : null}
         {canEdit ? (
-          <V2Link href={`/rules/drafts?module=${encodeURIComponent(mod)}`} className="m2-btn">
+          <V2Link href={`/v2/rules?view=drafts&module=${encodeURIComponent(mod)}`} className="m2-btn">
             Edit in authoring
           </V2Link>
         ) : null}

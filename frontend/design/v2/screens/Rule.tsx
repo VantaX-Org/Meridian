@@ -47,8 +47,8 @@ export function RuleCanvas({ id }: { id: string }) {
         <div className="m2-sec">
           <ErrorFrame onRetry={state.refetch}>This rule could not be read. It may not exist in this tenant, or the API may be unreachable.</ErrorFrame>
           <div style={{ marginTop: 16 }}>
-            <EmptyFrame action={<V2Link href="/rules" className="m2-btn">Open rules</V2Link>}>
-              Rules are listed in the current interface until the rule library moves here.
+            <EmptyFrame action={<V2Link href="/v2/rules" className="m2-btn">Open the rules library</V2Link>}>
+              The rules library lists every rule of the tenant; search it by code or name.
             </EmptyFrame>
           </div>
         </div>
@@ -75,6 +75,9 @@ export function RuleCanvas({ id }: { id: string }) {
         {ruleStatLine(v).map((t) => (
           <span key={t}>{t}</span>
         ))}
+      </p>
+      <p className="m2-prov">
+        <V2Link href="/v2/rules">All rules</V2Link>
       </p>
       <nav className="m2-tabs" aria-label={`Views of ${id}`}>
         {TABS.map((t) => (

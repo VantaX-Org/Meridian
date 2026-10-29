@@ -147,7 +147,7 @@ export function InboxPanel({ onClose }: { onClose: () => void }) {
           <button type="button" className="m2-btn m2-sm" disabled={count === 0 || all.isPending} onClick={() => all.mutate()}>
             Mark all read
           </button>
-          <a href="/me/preferences" className="m2-meta">
+          <a href="?open=preferences" className="m2-meta">
             Notification settings
           </a>
         </div>

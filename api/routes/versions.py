@@ -1,11 +1,12 @@
+import json
 import logging
 import uuid
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
 from api.services.rbac import require_permission, scope_from_path
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -471,9 +472,40 @@ async def export_finding_records(
     return xlsx_response(data, xlsx_filename(f"records-{check_id}", str(version_id)))
 
 
+class AnalyseOptions(BaseModel):
+    """Optional body of POST /versions/{id}/analyse."""
+    model_config = ConfigDict(extra="forbid")
+    rule_set_id: Optional[str] = Field(None, min_length=1, max_length=120)
+    modules: Optional[list[str]] = Field(None, min_length=1, max_length=100)
+
+
+async def _analysis_options(db: AsyncSession, vid: uuid.UUID, tenant_id: uuid.UUID, body: Optional[AnalyseOptions]) -> Optional[dict]:
+    """The options to store on the version ({rule_set_id?, modules?}), or None for a default run. 422 for a module
+    the version does not hold."""
+    if body is None or (body.rule_set_id is None and body.modules is None):
+        return None
+    out: dict = {}
+    if body.rule_set_id is not None:
+        out["rule_set_id"] = body.rule_set_id.strip()
+    if body.modules is not None:
+        held = (await db.execute(text("SELECT metadata->'modules' FROM analysis_versions WHERE id = :v AND tenant_id = :t"),
+                                 {"v": vid, "t": str(tenant_id)})).scalar() or []
+        wanted = list(dict.fromkeys(body.modules))
+        unknown = [m for m in wanted if m not in held]
+        if unknown:
+            raise HTTPException(status_code=422, detail=f"Not modules of this version: {', '.join(unknown)}")
+        out["modules"] = wanted
+    return out
+
+
 @router.post("/versions/{version_id}/analyse", status_code=202, dependencies=[Depends(require_permission("analyse", scope=scope_from_path))])
-async def analyse_version(version_id: str, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
-    """Run (or re-run, e.g. after a rule change) the analysis on a stored version's data."""
+async def analyse_version(version_id: str, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),
+                          body: Optional[AnalyseOptions] = Body(None)):
+    """Run (or re-run, e.g. after a rule change) the analysis on a stored version's data.
+
+    The optional body ``{rule_set_id?, modules?}`` limits the run: ``modules`` must be modules of the version and only
+    those are checked; ``rule_set_id`` is recorded with the run (metadata.analysis_options). Without a body the run is
+    exactly as before."""
     from workers.tasks.run_checks import run_checks
 
     await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
@@ -481,7 +513,8 @@ async def analyse_version(version_id: str, db: AsyncSession = Depends(get_db), t
     # Extractions store the data under ``dataset_path``; uploads under ``parquet_path`` (api/routes/upload.py).
     row = (await db.execute(text("SELECT status, COALESCE(metadata->>'dataset_path', metadata->>'parquet_path'), "
                                  "metadata->>'system_id', label, metadata->>'purpose' "
-                                 "FROM analysis_versions WHERE id = :v"), {"v": vid})).fetchone()
+                                 "FROM analysis_versions WHERE id = :v AND tenant_id = :t"),
+                          {"v": vid, "t": str(tenant.id)})).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Version not found")
     if row[4] == "process_discovery":
@@ -490,12 +523,21 @@ async def analyse_version(version_id: str, db: AsyncSession = Depends(get_db), t
         raise HTTPException(status_code=409, detail="This version has no stored dataset to analyse.")
     if row[0] in ("pending", "running"):
         raise HTTPException(status_code=409, detail="An analysis of this version is already running.")
-    await db.execute(text("UPDATE analysis_versions SET status = 'pending' WHERE id = :v"), {"v": vid})
+    options = await _analysis_options(db, vid, tenant.id, body)
+    if options is None:  # a default run clears the options an earlier limited run left
+        await db.execute(text("UPDATE analysis_versions SET status = 'pending', "
+                              "metadata = COALESCE(metadata, '{}'::jsonb) - 'analysis_options' WHERE id = :v AND tenant_id = :t"),
+                         {"v": vid, "t": str(tenant.id)})
+    else:
+        await db.execute(text("UPDATE analysis_versions SET status = 'pending', metadata = COALESCE(metadata, '{}'::jsonb) "
+                              "|| jsonb_build_object('analysis_options', CAST(:o AS jsonb)) WHERE id = :v AND tenant_id = :t"),
+                         {"v": vid, "t": str(tenant.id), "o": json.dumps(options)})
     await db.commit()
     jobs.start_job(str(tenant.id), version_id, "analysis",
                    f"{'Analysis' if row[0] == 'extracted' else 'Re-analysis'}{f' | {row[3]}' if row[3] else ''}",
                    status="queued", progress_key=version_id, version_id=version_id, system_id=row[2])
     job = run_checks.delay(version_id, str(tenant.id), row[1], reanalyse=row[0] != "extracted")
+    jobs.set_task_ids(str(tenant.id), version_id, [job.id])
     return {"version_id": version_id, "task_id": job.id, "job_id": version_id, "status": "pending"}
 
 

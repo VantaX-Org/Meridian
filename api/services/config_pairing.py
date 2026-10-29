@@ -399,6 +399,7 @@ async def enqueue_config_load(db: AsyncSession, tid: str, sid: str, force: bool 
         jobs.start_job(tid, job_id, "config_load", f"Configuration load: {st}", status="queued",
                        system_id=sid, load_id=load_id)
         run_load_config.apply_async(args=(tid, sid, load_id, job_id), task_id=load_id)
+        jobs.set_task_ids(tid, job_id, [load_id])
         queued = True
         return {"job_id": job_id, "load_id": load_id, "status": "queued", "system_type": st}
     except Exception as e:

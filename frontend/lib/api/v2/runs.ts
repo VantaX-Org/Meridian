@@ -13,7 +13,7 @@ import { downloadAuthenticated } from "@/lib/api/download";
 import { getReportDownloadUrl } from "@/lib/api/reports";
 import { startConfigLoad as liveStartConfigLoad, type ConfigLoad } from "@/lib/api/config-load";
 import { retryJob as liveRetryJob } from "@/lib/api/jobs";
-import { startDownload as liveStartDownload, type SystemObject, type SystemVersion, type DownloadProgress } from "@/lib/api/system-objects";
+import { startDownload as liveStartDownload, type DownloadScope, type SystemObject, type SystemVersion, type DownloadProgress } from "@/lib/api/system-objects";
 import type { Job } from "@/types/jobs";
 import type { SAPSystemExtended, SyncProfile, TestConnectionResponse } from "@/types/api";
 import { fixtureActive } from "./fixture";
@@ -266,7 +266,7 @@ export function getSystemProfiles(id: string): Promise<SyncProfile[]> {
 }
 
 /** POST /systems/{id}/downloads: extracts the chosen objects into a new run, optionally analysing straight after. */
-export async function extractObjects(id: string, objects: string[], analyse: boolean): Promise<{ job_id: string; status: string }> {
-  if (fixtureActive()) return fixtureAction("extract", { id, objects, analyse }) as { job_id: string; status: string };
-  return liveStartDownload(id, { objects, scope: {}, analyse });
+export async function extractObjects(id: string, objects: string[], analyse: boolean, scope: DownloadScope = {}, label?: string): Promise<{ job_id: string; status: string }> {
+  if (fixtureActive()) return fixtureAction("extract", { id, objects, analyse, scope, label }) as { job_id: string; status: string };
+  return liveStartDownload(id, { objects, scope, label, analyse });
 }

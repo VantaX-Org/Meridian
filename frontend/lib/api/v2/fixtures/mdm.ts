@@ -152,7 +152,7 @@ function goldenEvents(id: string): MergeEvent[] {
   ];
 }
 
-const SURVIVORSHIP: SurvivorshipRule[] = [
+export const SURVIVORSHIP: SurvivorshipRule[] = [
   { id: "sv-1", domain: MM, field: "MAKT-MAKTX", rule_type: "most_complete", trusted_sources: null, weight: 1, active: true, ai_inferred: false },
   { id: "sv-2", domain: MM, field: "MARA-MEINS", rule_type: "trusted_source", trusted_sources: [ECC_NAME], weight: 1, active: true, ai_inferred: false },
   { id: "sv-3", domain: MM, field: "MARA-MTART", rule_type: "trusted_source", trusted_sources: [ECC_NAME], weight: 1, active: true, ai_inferred: false },

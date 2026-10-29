@@ -8,7 +8,7 @@ import { personaForRole, pillSetFor } from "@/lib/persona";
 import { fixtureParam, useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { usePersonaOverride } from "./prefs";
 
-export type OpenKind = "record" | "rule" | "run" | "system" | "feature" | "job" | "batch" | "person" | "inbox" | "triage" | "golden" | "term" | "step" | AdminKind;
+export type OpenKind = "record" | "rule" | "run" | "system" | "feature" | "job" | "batch" | "person" | "inbox" | "triage" | "golden" | "term" | "step" | "connection" | "config" | "syncschedule" | "zobject" | "survivorship" | AdminKind;
 /** The administration, report and panel kinds: `?open=user:<id>` and so on. `preferences`, `help` and `waves` carry no id. */
 export type AdminKind = "user" | "role" | "apikey" | "audit" | "channel" | "mapping" | "report" | "schedule" | "preferences" | "help" | "waves";
 /** Kinds written without an id: `?open=preferences`. */
@@ -18,7 +18,7 @@ export interface OpenItem {
   id: string;
 }
 
-const KINDS: readonly OpenKind[] = ["record", "rule", "run", "system", "feature", "job", "batch", "person", "golden", "term", "step", "user", "role", "apikey", "audit", "channel", "mapping", "report", "schedule"];
+const KINDS: readonly OpenKind[] = ["record", "rule", "run", "system", "feature", "job", "batch", "person", "golden", "term", "step", "user", "role", "apikey", "audit", "channel", "mapping", "report", "schedule", "connection", "config", "syncschedule", "zobject", "survivorship"];
 
 /** Parses `?open=<kind>:<id>`. The id may itself contain colons (a record id is module:key). Null for anything else. */
 export function parseOpen(value: string | null | undefined): OpenItem | null {

@@ -71,8 +71,8 @@ export function LedgerSlot({ label, scope, loader = defaultLoader }: { label: st
     );
   }
   return (
-    <EmptyFrame action={<V2Link href="/fix" className="m2-btn">Open fix work</V2Link>}>
-      {`The ledger of failing records for ${label} arrives with Work: one row per record and failing field, ranked by value at risk, with the current value, the suggested value and the decision on the row. Until then, fix work stays in the current interface.`}
+    <EmptyFrame action={<V2Link href={scope.module ? `/v2/work?module=${encodeURIComponent(scope.module)}` : "/v2/work"} className="m2-btn">Open Work</V2Link>}>
+      {`The ledger of failing records for ${label} could not be loaded here. Work lists every record and failing field, ranked by value at risk, with the current value, the suggested value and the decision on the row.`}
     </EmptyFrame>
   );
 }

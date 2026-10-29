@@ -240,7 +240,7 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
     <nav className="m2-tabs" aria-label={`Views of ${label}`}>
       {TABS.map((t) => {
         const href = `${base}${t.segment}${query}`;
-        const active = t.key === "rules" ? pathname === base || pathname === `${base}/rules` : pathname === `${base}${t.segment}`;
+        const active = t.key === "rules" ? pathname === base || pathname === `${base}/rules` : (pathname === `${base}${t.segment}` || pathname.startsWith(`${base}${t.segment}/`));
         const count = t.key === "rules" ? receipt?.rules_measured : t.key === "records" ? receipt?.open_work : null;
         return (
           <V2Link key={t.key} href={href} className="m2-tab" aria-current={active ? "page" : undefined}>
@@ -332,15 +332,15 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
 /** The Rules tab lives in object/RulesTab.tsx; it is re-exported here so the object screen keeps one front door. */
 export { RulesTab } from "./object/RulesTab";
 
-const EMPTY: Record<Exclude<TabKey, "rules">, { text: (label: string) => string; action: string; href: (module: string) => string }> = {
+const EMPTY: Record<Exclude<TabKey, "rules">, { text: (label: string) => string; action: string; href: (system: string, module: string) => string }> = {
   records: { text: (l) => `No failing records are listed for ${l} yet. Rows appear when an analysis finds rules with a fixable or suggested value.`, action: "Open Work", href: () => "/v2/work" },
   fixes: { text: (l) => `No fix batches for ${l} yet. A batch starts when a steward accepts suggested values or imports a filled fix sheet.`, action: "Open Work", href: () => "/v2/work" },
   runs: { text: (l) => `${l} has no run history here yet. Each run adds a point once two runs have scored this object.`, action: "Open the runs", href: () => "/v2/runs" },
   readiness: { text: (l) => `Feature impact for ${l} is calculated from the rules that fail. It fills when the impact model has run for this object.`, action: "Open the capping rules", href: () => "" },
-  processes: { text: (l) => `No process step reads ${l} yet. Process readiness fills when a step of the process model reads the fields of the object.`, action: "Open the designer", href: () => "/insights/process/designer" },
-  lineage: { text: (l) => `Lineage fills when a field map is loaded for ${l}: it shows where its fields come from and which rules read them.`, action: "Open Systems", href: () => "/systems" },
-  glossary: { text: (l) => `No glossary terms are linked to ${l} yet. A data owner links a term to a field and it appears here.`, action: "Open the glossary", href: () => "/mdm/glossary" },
-  golden: { text: (l) => `No golden records for ${l} yet. A match run creates them from the records that describe the same thing.`, action: "Open golden records", href: () => "/mdm/golden" },
+  processes: { text: (l) => `No process step reads ${l} yet. Process readiness fills when a step of the process model reads the fields of the object.`, action: "Open the designer", href: (s, m) => `/v2/o/${s}/${m}/processes/design` },
+  lineage: { text: (l) => `Lineage fills when a field map is loaded for ${l}: it shows where its fields come from and which rules read them.`, action: "Open the landscape", href: () => "/v2" },
+  glossary: { text: (l) => `No glossary terms are linked to ${l} yet. A data owner links a term to a field and it appears here.`, action: "Open the rules", href: (s, m) => `/v2/o/${s}/${m}` },
+  golden: { text: (l) => `No golden records for ${l} yet. A match run creates them from the records that describe the same thing.`, action: "Open the rules", href: (s, m) => `/v2/o/${s}/${m}` },
 };
 
 /** A tab that has no data behind it in this step: a designed empty frame with its one action. */
@@ -348,7 +348,7 @@ export function EmptyTab({ tab, system: systemSegment, module: moduleSegment }: 
   const run = useRunParam();
   const { label } = resolve(useLandscape(run).data, systemSegment, moduleSegment);
   const def = EMPTY[tab];
-  const href = tab === "readiness" ? `/v2/o/${systemSegment}/${moduleSegment}` : def.href(moduleFromSlug(moduleSegment));
+  const href = tab === "readiness" ? `/v2/o/${systemSegment}/${moduleSegment}` : def.href(systemSegment, moduleSegment);
   return (
     <EmptyFrame
       action={

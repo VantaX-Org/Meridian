@@ -17,7 +17,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.services import attention
+from api.services import attention, run_schedules
 from api.services.config_pairing import enqueue_config_load, pair_error
 from api.services.rbac import Scope, _as_uuid, current_user_label, require_permission, require_scope, scope_from_path
 from api.services.version_status import finished_sql
@@ -529,13 +529,7 @@ async def delete_sync_profile(
     """Delete one extraction schedule (sync profile). Its extraction log (sync_runs) cascades; analysis runs stay."""
     if not _as_uuid(system_id) or not _as_uuid(profile_id):
         raise HTTPException(status_code=404, detail="Schedule not found")  # never reaches the uuid cast
-    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
-    result = await db.execute(
-        text("DELETE FROM sync_profiles WHERE id = :pid AND system_id = :sid AND tenant_id = :tid RETURNING id"),
-        {"pid": profile_id, "sid": system_id, "tid": str(tenant.id)},
-    )
-    if not result.fetchone():
-        raise HTTPException(status_code=404, detail="Schedule not found")
+    await run_schedules.delete_schedule(db, tenant.id, profile_id, system_id)
     await db.commit()
     attention.invalidate(tenant.id)
 
@@ -875,6 +869,22 @@ async def trigger_sync(
 # ── Sync Profile CRUD ───────────────────────────────────────────────────────
 
 
+async def _profile_response(db: AsyncSession, tenant: Tenant, profile_id: str) -> SyncProfileResponse:
+    row = (await db.execute(
+        text("""
+            SELECT id, system_id, domain, tables, schedule_cron, active,
+                   last_run_at::text, next_run_at::text, extraction_mode
+            FROM sync_profiles WHERE id = :pid AND tenant_id = :tid
+        """),
+        {"pid": profile_id, "tid": str(tenant.id)},
+    )).fetchone()
+    return SyncProfileResponse(
+        id=str(row[0]), system_id=str(row[1]), domain=row[2],
+        tables=row[3], schedule_cron=row[4], active=row[5],
+        last_run_at=row[6], next_run_at=row[7], extraction_mode=row[8] or "full",
+    )
+
+
 @router.post("/systems/{system_id}/profiles", response_model=SyncProfileResponse)
 async def create_sync_profile(
     system_id: str,
@@ -883,43 +893,14 @@ async def create_sync_profile(
     tenant: Tenant = Depends(get_tenant),
     role: str = Depends(require_permission("manage_systems", scope=scope_from_path)),
 ):
-    """Create a sync profile for an SAP system."""
-    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
-
-    # Verify system exists
-    result = await db.execute(
-        text("SELECT id FROM sap_systems WHERE id = :sid AND tenant_id = :tid"),
-        {"sid": system_id, "tid": str(tenant.id)},
-    )
-    if not result.fetchone():
-        raise HTTPException(status_code=404, detail="System not found")
-
-    result = await db.execute(
-        text("""
-            INSERT INTO sync_profiles (id, tenant_id, system_id, domain, tables, schedule_cron, active, extraction_mode)
-            VALUES (gen_random_uuid(), :tid, :sid, :domain, :tables, :cron, :active, :mode)
-            RETURNING id, system_id, domain, tables, schedule_cron, active,
-                      last_run_at::text, next_run_at::text, extraction_mode
-        """),
-        {
-            "tid": str(tenant.id),
-            "sid": system_id,
-            "domain": body.domain,
-            "tables": body.tables,
-            "cron": body.schedule_cron,
-            "active": body.active,
-            "mode": body.extraction_mode,
-        },
-    )
-    row = result.fetchone()
+    """Create a sync profile for an SAP system. The same service as POST /api/v1/schedules; the first run is left to
+    the beat task's next pass (next_run_at stays empty)."""
+    row = await run_schedules.create_schedule(
+        db, tenant.id, system_id=system_id, domain=body.domain, tables=body.tables, cron=body.schedule_cron,
+        active=body.active, extraction_mode=body.extraction_mode, run_at_next_tick=True)
     await db.commit()
     attention.invalidate(tenant.id)
-
-    return SyncProfileResponse(
-        id=str(row[0]), system_id=str(row[1]), domain=row[2],
-        tables=row[3], schedule_cron=row[4], active=row[5],
-        last_run_at=row[6], next_run_at=row[7], extraction_mode=row[8] or "full",
-    )
+    return await _profile_response(db, tenant, str(row.id))
 
 
 @router.get("/systems/{system_id}/profiles", response_model=list[SyncProfileResponse])
@@ -964,44 +945,26 @@ async def update_sync_profile(
 ):
     """Change a profile's re-evaluation schedule or pause it. The next run is
     recomputed from the new cron so a change never fires an immediate sync."""
-    from croniter import croniter
-    from workers.scheduler import _compute_next_run
-
-    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
-    sets, params = [], {"pid": profile_id, "sid": system_id, "tid": str(tenant.id)}
+    changes: dict = {}
     if body.schedule_cron is not None:
-        cron = body.schedule_cron.strip() or None
-        if cron and not croniter.is_valid(cron):
-            raise HTTPException(status_code=422, detail="Invalid cron expression")
-        sets += ["schedule_cron = :cron", "next_run_at = :next"]
-        params |= {"cron": cron, "next": _compute_next_run(cron) if cron else None}
+        changes["cron"] = body.schedule_cron
     if body.active is not None:
-        sets.append("active = :active")
-        params["active"] = body.active
+        changes["active"] = body.active
     if body.extraction_mode is not None:
-        sets.append("extraction_mode = :mode")
-        params["mode"] = body.extraction_mode
-    if not sets:
+        changes["extraction_mode"] = body.extraction_mode
+    if not changes:
         raise HTTPException(status_code=422, detail="Nothing to update")
-
-    row = (await db.execute(
-        text(f"""
-            UPDATE sync_profiles SET {", ".join(sets)}
-            WHERE id = :pid AND system_id = :sid AND tenant_id = :tid
-            RETURNING id, system_id, domain, tables, schedule_cron, active,
-                      last_run_at::text, next_run_at::text, extraction_mode
-        """),
-        params,
-    )).fetchone()
-    if not row:
+    if not _as_uuid(system_id) or not _as_uuid(profile_id):
         raise HTTPException(status_code=404, detail="Sync profile not found")
+    try:
+        row = await run_schedules.update_schedule(db, tenant.id, profile_id, changes, system_id=system_id)
+    except HTTPException as e:
+        if e.status_code == 404:
+            raise HTTPException(status_code=404, detail="Sync profile not found")
+        raise
     await db.commit()
     attention.invalidate(tenant.id)
-    return SyncProfileResponse(
-        id=str(row[0]), system_id=str(row[1]), domain=row[2],
-        tables=row[3], schedule_cron=row[4], active=row[5],
-        last_run_at=row[6], next_run_at=row[7], extraction_mode=row[8] or "full",
-    )
+    return await _profile_response(db, tenant, str(row.id))
 
 
 # ── Sync Runs ────────────────────────────────────────────────────────────────

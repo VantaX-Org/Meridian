@@ -26,8 +26,8 @@ describe("the ledger slot", () => {
     const absent: LedgerLoader = () => Promise.reject(new Error("Cannot find module"));
     renderWithQuery(<LedgerSlot label="Material master" scope={{ module: "material_master" }} loader={absent} />);
     const frame = await screen.findByTestId("empty-frame");
-    expect(frame).toHaveTextContent("The ledger of failing records for Material master arrives with Work");
-    expect(screen.getByRole("link", { name: "Open fix work" })).toHaveAttribute("href", "/fix");
+    expect(frame).toHaveTextContent("The ledger of failing records for Material master could not be loaded here");
+    expect(screen.getByRole("link", { name: "Open Work" })).toHaveAttribute("href", expect.stringContaining("/v2/work?module=material_master"));
     expect(screen.queryByRole("alert")).toBeNull();
   });
 

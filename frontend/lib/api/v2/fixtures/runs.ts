@@ -445,7 +445,7 @@ function startedJob(kind: Job["kind"], id: string, label: string, systemId: stri
 
 // ── Systems ──────────────────────────────────────────────────────────────────────────────────
 
-function systemsExtended(): SAPSystemExtended[] {
+export function systemsExtended(): SAPSystemExtended[] {
   const base = { sysnr: null, username: null, company_id: null, auth_type: null, token_url: null, description: null, is_active: true, config_last_synced_at: null, config_sync_status: null, created_at: "2026-06-01T08:00:00Z", updated_at: "2026-10-16T04:41:00Z", last_sync_at: null, last_sync_status: null, discovery_status: null, discovered_at: null, base_url: null, host: null, last_health_check: null, sap_release: null, last_analysis_at: null, role: "source", target_system_id: null } as const;
   return [
     { ...base, id: ECC.id, name: ECC.name, system_type: "ecc", host: "ecc-prd.example.internal", client: "100", sysnr: "00", auth_type: "rfc", environment: "PRD", health_status: "healthy", health_message: "RFC connection succeeded (client 100, 41 ms)", last_health_check: "2026-10-29T06:30:00Z", config_last_synced_at: "2026-10-12T06:03:20Z", config_sync_status: "completed", last_sync_at: "2026-10-16T04:41:00Z", last_sync_status: "completed" },
@@ -466,7 +466,7 @@ const TABLES: Record<string, string[]> = {
   sales_orders: ["VBAK", "VBAP"],
 };
 
-function objectsOf(systemId: string): { system_type: string; objects: SystemObject[] } {
+export function objectsOf(systemId: string): { system_type: string; objects: SystemObject[] } {
   const sys = systemsExtended().find((s) => s.id === systemId);
   if (!sys) throw new FixtureNotFound(`/systems/${systemId}/objects`);
   const analysed = systemId === ECC.id;
@@ -521,7 +521,7 @@ function extractionsOf(systemId: string): { versions: SystemVersion[]; download:
   return { versions: [], download: null };
 }
 
-function profilesOf(systemId: string): SyncProfile[] {
+export function profilesOf(systemId: string): SyncProfile[] {
   if (systemId === ECC.id) {
     return [
       { id: "p-ecc-1", system_id: ECC.id, domain: "material_master", tables: ["MARA", "MAKT", "MARC", "MBEW"], schedule_cron: "0 4 * * 1", active: true, last_run_at: "2026-10-16T04:41:00Z", next_run_at: "2026-10-30T04:00:00Z", extraction_mode: "delta" },

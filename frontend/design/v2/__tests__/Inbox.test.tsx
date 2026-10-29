@@ -142,7 +142,7 @@ describe("the inbox panel", () => {
   it("links to the existing notification preferences", async () => {
     mount();
     const panel = await openPanel();
-    expect(within(panel).getByRole("link", { name: "Notification settings" }).getAttribute("href")).toBe("/me/preferences");
+    expect(within(panel).getByRole("link", { name: "Notification settings" }).getAttribute("href")).toBe("?open=preferences");
   });
 
   it("Esc closes it and the address loses it", async () => {

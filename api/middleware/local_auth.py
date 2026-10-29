@@ -37,6 +37,11 @@ _EXCLUDED_PATHS = {
     "/api/v1/auth/oidc/callback",
     "/api/v1/licence",
     "/health",
+    # Public before sign-in: the sign-in page's theme and logo, and the status page (api/routes/theme.py,
+    # api/routes/status_page.py). They resolve the deployment's tenant themselves and disclose no user or record.
+    "/api/v1/theme",
+    "/api/v1/theme/logo",
+    "/api/v1/status/page",
 }
 
 # Requests per minute per API key (a scheduler polling a job, not a bulk client).

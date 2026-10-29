@@ -757,6 +757,11 @@ class SyncProfile(Base):
     extraction_mode = Column(Text, server_default="full", nullable=True)  # full, delta, sample
     max_rows = Column(Integer, server_default="0", nullable=True)  # 0 = unlimited
 
+    # Run schedule (migration 102): a label, the cadence preset chosen (NULL: custom cron) and the extraction scope
+    name = Column(Text, nullable=True)
+    preset = Column(Text, nullable=True)
+    scope = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+
     system = relationship("SAPSystem", back_populates="sync_profiles")
     runs = relationship("SyncRun", back_populates="profile", cascade="all, delete-orphan")
 
@@ -1050,6 +1055,10 @@ class WorkRecord(Base):
         Index("ix_work_records_rank", "tenant_id", "version_id", "module", "sev_rank", "record_key"),
         Index("ix_work_records_all", "tenant_id", "version_id", "sev_rank", "module", "record_key"),
         Index("ix_work_records_assignee", "tenant_id", "version_id", "assigned_to", "status"),
+        # Migration 103 (v2 load test): the current-scope Fix work page in order, and index-only open-work counts.
+        Index("ix_work_records_tenant_rank", "tenant_id", "sev_rank", "module", "record_key"),
+        Index("ix_work_records_status_cover", "tenant_id", "version_id", "module", "status",
+              postgresql_include=["sev_rank", "issues", "proposed", "due_at"]),
     )
 
 
@@ -2536,4 +2545,111 @@ class ReportScheduleRun(Base):
         CheckConstraint("status IN ('running', 'sent', 'partial', 'failed', 'skipped')",
                         name="ck_report_schedule_runs_status"),
         Index("ix_report_schedule_runs_schedule", "tenant_id", "schedule_id", "due_at"),
+    )
+
+
+# ── Enterprise readiness (migration 103) ──────────────────────────────────────
+
+
+class ScimToken(Base):
+    """The tenant's SCIM bearer token (api/routes/scim_admin.py). Only the SHA-256 of the secret is stored."""
+    __tablename__ = "scim_tokens"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    token_prefix = Column(Text, nullable=False, unique=True)
+    token_hash = Column(Text, nullable=False)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    last_used_at = Column(DateTime(timezone=True), nullable=True)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("uq_scim_tokens_live", "tenant_id", unique=True, postgresql_where=text("revoked_at IS NULL")),
+    )
+
+
+class ScimUser(Base):
+    """SCIM attributes of a users row; ``managed_roles`` are the grants the group-to-role map made."""
+    __tablename__ = "scim_users"
+
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    external_id = Column(Text, nullable=True)
+    user_name = Column(Text, nullable=False)
+    given_name = Column(Text, nullable=True)
+    family_name = Column(Text, nullable=True)
+    display_name = Column(Text, nullable=True)
+    managed_roles = Column(ARRAY(Text), nullable=False, server_default="{}")
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        Index("uq_scim_users_user_name", "tenant_id", text("lower(user_name)"), unique=True),
+        Index("uq_scim_users_external_id", "tenant_id", "external_id", unique=True,
+              postgresql_where=text("external_id IS NOT NULL")),
+    )
+
+
+class ScimGroup(Base):
+    __tablename__ = "scim_groups"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    display_name = Column(Text, nullable=False)
+    external_id = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (Index("uq_scim_groups_name", "tenant_id", text("lower(display_name)"), unique=True),)
+
+
+class ScimGroupMember(Base):
+    __tablename__ = "scim_group_members"
+
+    group_id = Column(UUID(as_uuid=True), ForeignKey("scim_groups.id", ondelete="CASCADE"), primary_key=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+
+    __table_args__ = (Index("ix_scim_group_members_user", "tenant_id", "user_id"),)
+
+
+class ScimGroupRoleMap(Base):
+    """SCIM group displayName (lower-cased in ``group_key``) -> role key."""
+    __tablename__ = "scim_group_role_map"
+
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True)
+    group_key = Column(Text, primary_key=True)
+    display_name = Column(Text, nullable=False)
+    role_key = Column(Text, nullable=False)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+
+class TenantSetting(Base):
+    """One JSON value per (tenant, key): ``theme``, ``maintenance`` (api/services/tenant_settings.py)."""
+    __tablename__ = "tenant_settings"
+
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True)
+    key = Column(Text, primary_key=True)
+    value = Column(JSONB, nullable=False)
+    updated_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+
+class HealthSample(Base):
+    """One component's health every 5 minutes (workers/tasks/health_samples.py); the status page's uptime."""
+    __tablename__ = "health_samples"
+
+    id = Column(BigInteger, primary_key=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    sampled_at = Column(DateTime(timezone=True), nullable=False)
+    component = Column(Text, nullable=False)
+    status = Column(Text, nullable=False)  # up | degraded | down | not_configured
+    latency_ms = Column(Integer, nullable=True)
+    detail = Column(JSONB, nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("status IN ('up', 'degraded', 'down', 'not_configured')", name="ck_health_samples_status"),
+        UniqueConstraint("tenant_id", "sampled_at", "component", name="uq_health_samples_slot"),
+        Index("ix_health_samples_tenant_time", "tenant_id", "sampled_at"),
     )

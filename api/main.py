@@ -81,6 +81,7 @@ from api.routes.lineage import router as lineage_router
 from api.routes.business_process import router as business_process_router
 from api.routes.events import router as events_router
 from api.routes.jobs import router as jobs_router
+from api.routes.schedules import router as schedules_router
 from api.routes.simulation import router as simulation_router
 from api.routes.mining import router as mining_router
 from api.routes.process_mining import router as process_mining_router
@@ -104,6 +105,12 @@ from api.routes.record_links import router as record_links_router
 from api.routes.rule_scope import router as rule_scope_router
 from api.routes.run_timeline import router as run_timeline_router
 from api.routes.views import router as views_router
+from api.routes.scim import router as scim_router
+from api.routes.scim_admin import router as scim_admin_router
+from api.routes.status_page import router as status_page_router
+from api.routes.diagnostics import router as diagnostics_router
+from api.routes.theme import router as theme_router
+from api.routes.compliance import router as compliance_router
 
 from api.utils.structured_logging import configure_logging
 
@@ -279,6 +286,20 @@ app = FastAPI(title="Meridian API", version="1.0.0", lifespan=lifespan)
 # Unexpected exceptions only; HTTPException keeps FastAPI's own handler.
 app.add_exception_handler(Exception, unhandled_exception_handler)
 
+
+async def _scim_error_handler(request, exc):  # type: ignore[no-untyped-def]
+    from fastapi.responses import JSONResponse as _JSON
+
+    from api.services.scim import MEDIA_TYPE
+
+    return _JSON(status_code=exc.status, content=exc.body(), media_type=MEDIA_TYPE)
+
+
+from api.services.scim import ScimError
+
+# SCIM routes answer every error in the SCIM error schema (RFC 7644 section 3.12).
+app.add_exception_handler(ScimError, _scim_error_handler)
+
 # Security headers middleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -407,6 +428,7 @@ app.include_router(lineage_router)
 app.include_router(business_process_router)
 app.include_router(events_router)
 app.include_router(jobs_router)
+app.include_router(schedules_router)
 app.include_router(simulation_router)
 app.include_router(mining_router)
 app.include_router(process_mining_router)
@@ -430,6 +452,12 @@ app.include_router(record_links_router)
 app.include_router(rule_scope_router)
 app.include_router(run_timeline_router)
 app.include_router(views_router)
+app.include_router(scim_router)
+app.include_router(scim_admin_router)
+app.include_router(status_page_router)
+app.include_router(diagnostics_router)
+app.include_router(theme_router)
+app.include_router(compliance_router)
 
 from api.routes.auth import router as auth_router
 app.include_router(auth_router)

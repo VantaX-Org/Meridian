@@ -11,6 +11,7 @@ import { mdmFixture, mdmFixtureWrite } from "./mdm";
 import * as wf from "./work-fixture";
 import * as ap from "./approvals";
 import { adminFixtureResponse, adminFixtureWrite, NONE_ADMIN } from "./admin";
+import { NOT_MINE, resetSys6b, sys6bRead, sys6bWrite, withSystems } from "./sys6b";
 
 /**
  * Fixture answers for the step 0 contract, built from the approved prototype's numbers: 3 systems (ECC production
@@ -104,6 +105,8 @@ function withOpenDelta(l: Landscape): Landscape {
 /** A write in fixture mode (POST, PUT, DELETE): applied to the in-memory work fixture. */
 export function fixtureWrite<T>(method: string, path: string, body: unknown, params: Params): T {
   const out = ((): unknown => {
+    const s6 = sys6bWrite(method, path, body);
+    if (s6 !== NOT_MINE) return s6;
     if (method === "POST" && path === "/work/decide") return wf.decideFixture(body as { items: never[] });
     const group = /^\/work\/groups\/([^/]+)\/(accept-all|set-value)$/.exec(path);
     if (method === "POST" && group) return group[2] === "accept-all" ? wf.acceptAllFixture(decodeURIComponent(group[1])) : wf.setValueFixture(decodeURIComponent(group[1]), body as { value: string });
@@ -133,16 +136,19 @@ export const fixtureImport = wf.importFixture;
 export const resetWorkFixture = (): void => {
   wf.resetWorkFixture();
   ap.resetApprovalsFixture();
+  resetSys6b();
 };
 
 /** The answer to one v2 read in fixture mode. Throws a 404-shaped error for a path the contract does not have. */
 export function fixtureResponse<T>(path: string, params: Params): T {
   const adminStep = adminFixtureResponse(path, params);
   if (adminStep !== NONE_ADMIN) return adminStep as T;
+  const s6 = sys6bRead(path, params);
+  if (s6 !== NOT_MINE) return s6 as T;
   const runsStep = runsFixtureResponse(path, params);
   if (runsStep !== NONE) return runsStep as T;
   const out = ((): unknown => {
-    if (path === "/landscape") return withOpenDelta(landscapeFixture);
+    if (path === "/landscape") return withSystems(withOpenDelta(landscapeFixture));
     if (path === "/status") return landscapeFixture.status_strip as StatusStrip;
     const receipt = /^\/objects\/([^/]+)\/receipt$/.exec(path);
     if (receipt) {

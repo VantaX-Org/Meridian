@@ -18,6 +18,12 @@ _UNGUARDED_OK = {
     # router-wide "view", then in the handler require_scope with the permission of the job kind's start endpoint
     # (the kind is only known once the job is read); pinned by tests/test_jobs_retry.py
     ("jobs.py", "/{job_id}/retry"),
+    # SCIM 2.0 lives outside /api: every route is guarded by the tenant's SCIM bearer token (the scim_context dependency on
+    # each handler), not by a user permission; pinned by tests/test_m2_scim_pg.py
+    ("scim.py", "/Users"),
+    ("scim.py", "/Users/{user_id}"),
+    ("scim.py", "/Groups"),
+    ("scim.py", "/Groups/{group_id}"),
 }
 
 

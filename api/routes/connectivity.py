@@ -104,8 +104,9 @@ async def extract_modules(
     jobs.start_job(str(tenant.id), f"dl-{version_id}", "extraction", ", ".join(body.modules), status="queued",
                    system_id=body.system_id, modules=body.modules, version_id=version_id,
                    retry={"via": "extract", "body": body.model_dump(mode="json")})
-    run_extraction.delay(str(tenant.id), body.system_id, body.modules, body.include_config, body.sync_type,
-                         None, True, None, version_id)
+    task = run_extraction.delay(str(tenant.id), body.system_id, body.modules, body.include_config, body.sync_type,
+                                None, True, None, version_id)
+    jobs.set_task_ids(str(tenant.id), f"dl-{version_id}", [getattr(task, "id", None)])
     return {"job_id": f"dl-{version_id}", "version_id": version_id, "status": "queued", "modules": body.modules}
 
 
@@ -126,6 +127,7 @@ async def sync_config(
     jobs.start_job(str(tenant.id), f"cfg-{task_id}", "config_sync", f"Configuration: {', '.join(body.modules)}",
                    status="queued", system_id=body.system_id, modules=body.modules)
     run_config_sync.apply_async(args=(str(tenant.id), body.system_id, body.modules), task_id=task_id)
+    jobs.set_task_ids(str(tenant.id), f"cfg-{task_id}", [task_id])
     return {"job_id": f"cfg-{task_id}", "status": "queued"}
 
 

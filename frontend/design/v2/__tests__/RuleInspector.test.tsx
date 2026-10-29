@@ -134,7 +134,7 @@ describe("the rule inspector", () => {
   it("shows the contracts that name the rule or set a threshold on its dimension", async () => {
     const d = await open();
     const c = section(d, "Contract");
-    expect(within(c).getAllByRole("link", { name: "MD-MATERIAL, version 3" })).toHaveLength(2);
+    expect(within(c).getAllByText("MD-MATERIAL, version 3")).toHaveLength(2);
     expect(norm(c)).toContain("names this rule");
     expect(norm(c)).toContain("minimum 90 for validity");
   });
@@ -158,7 +158,7 @@ describe("actions by role", () => {
     expect(within(a).getByRole("link", { name: "Open the rule" })).toHaveAttribute("href", expect.stringContaining("/v2/r/MM014"));
     expect(within(a).getByRole("link", { name: "Open failing records" })).toHaveAttribute("href", expect.stringContaining("/v2/r/MM014?tab=failing"));
     expect(within(a).getByRole("button", { name: "Suppress" })).toBeInTheDocument();
-    expect(within(a).getByRole("link", { name: "Edit in authoring" })).toHaveAttribute("href", expect.stringContaining("/rules/drafts?module=material_master"));
+    expect(within(a).getByRole("link", { name: "Edit in authoring" })).toHaveAttribute("href", expect.stringContaining("/v2/rules?view=drafts&module=material_master"));
     expect(within(a).getByRole("button", { name: "Hand to a steward" })).toBeInTheDocument();
   });
 

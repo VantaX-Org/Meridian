@@ -13,12 +13,12 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.services.rbac import require_permission
+from api.services.rbac import require_permission, write_audit
 
 router = APIRouter(prefix="/api/v1", tags=["field-mappings"])
 
@@ -39,6 +39,18 @@ class UpdateMappingBody(BaseModel):
     customer_label: Optional[str] = None
     data_type: Optional[str] = None
     is_mapped: Optional[bool] = None
+    notes: Optional[str] = None
+
+
+class CreateMappingBody(BaseModel):
+    """A mapping for a field the standard catalogue does not hold (or that a tenant removed)."""
+    module: str = Field(min_length=1, max_length=100)
+    standard_field: str = Field(min_length=1, max_length=255)
+    standard_label: Optional[str] = Field(None, max_length=255)
+    customer_field: Optional[str] = Field(None, max_length=255)
+    customer_label: Optional[str] = Field(None, max_length=255)
+    data_type: str = "string"
+    is_mapped: bool = False
     notes: Optional[str] = None
 
 
@@ -251,6 +263,90 @@ async def update_field_mapping(
     if mapping.get("updated_at"):
         mapping["updated_at"] = mapping["updated_at"].isoformat()
     return mapping
+
+
+_COLUMNS = ("id, module, standard_field, standard_label, customer_field, customer_label, data_type, is_mapped, "
+            "notes, updated_at")
+
+
+def _public(row) -> dict:
+    out = _row_to_dict(row)
+    out["id"] = str(out["id"])
+    if out.get("updated_at"):
+        out["updated_at"] = out["updated_at"].isoformat()
+    return out
+
+
+# ── POST /api/v1/field-mappings ───────────────────────────────────────────────
+
+
+@router.post("/field-mappings", status_code=201)
+async def create_field_mapping(
+    body: CreateMappingBody,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("manage_field_mappings")),
+):
+    """Create a field mapping. One per module and standard field (409 when it exists). customer_field defaults to the
+    standard field. Requires self-service enabled, like the update."""
+    if not _is_self_service_enabled(request):
+        raise HTTPException(status_code=403, detail="Field mapping self-service is not enabled for this tenant")
+    if body.data_type not in ALLOWED_DATA_TYPES:
+        raise HTTPException(status_code=400, detail=f"Invalid data_type. Allowed: {sorted(ALLOWED_DATA_TYPES)}")
+    module, field = body.module.strip(), body.standard_field.strip()
+    if not module or not field:
+        raise HTTPException(status_code=422, detail="module and standard_field cannot be blank")
+    await _set_rls(db, tenant.id)
+    row = (await db.execute(
+        text(f"""
+            INSERT INTO field_mappings (tenant_id, module, standard_field, standard_label, customer_field,
+                                        customer_label, data_type, is_mapped, notes)
+            VALUES (:tid, :module, :field, :label, :cfield, :clabel, :dtype, :mapped, :notes)
+            ON CONFLICT (tenant_id, module, standard_field) DO NOTHING
+            RETURNING {_COLUMNS}
+        """),
+        {"tid": str(tenant.id), "module": module, "field": field, "label": body.standard_label,
+         "cfield": body.customer_field or field, "clabel": body.customer_label or body.standard_label,
+         "dtype": body.data_type, "mapped": body.is_mapped, "notes": body.notes},
+    )).fetchone()
+    if row is None:
+        raise HTTPException(status_code=409, detail="A mapping for this module and field already exists")
+    mapping = _public(row)
+    await write_audit(db, tenant.id, request, "field_mapping.create", "field_mapping", mapping["id"], None, mapping)
+    await db.commit()
+    return mapping
+
+
+# ── DELETE /api/v1/field-mappings/{id} ────────────────────────────────────────
+
+
+@router.delete("/field-mappings/{mapping_id}")
+async def delete_field_mapping(
+    mapping_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("manage_field_mappings")),
+):
+    """Delete a field mapping. Requires self-service enabled, like the update."""
+    if not _is_self_service_enabled(request):
+        raise HTTPException(status_code=403, detail="Field mapping self-service is not enabled for this tenant")
+    try:
+        uid = uuid.UUID(mapping_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid mapping ID")
+    await _set_rls(db, tenant.id)
+    row = (await db.execute(
+        text(f"DELETE FROM field_mappings WHERE id = :uid AND tenant_id = :tid RETURNING {_COLUMNS}"),
+        {"uid": str(uid), "tid": str(tenant.id)},
+    )).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Field mapping not found")
+    mapping = _public(row)
+    await write_audit(db, tenant.id, request, "field_mapping.delete", "field_mapping", mapping["id"], mapping, None)
+    await db.commit()
+    return {"id": mapping["id"], "status": "deleted"}
 
 
 # ── POST /api/v1/field-mappings/reset ────────────────────────────────────────

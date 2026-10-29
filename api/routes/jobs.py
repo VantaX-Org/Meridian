@@ -1,6 +1,9 @@
 """Jobs: what is running and what just finished, for every task type, plus one
 live stream and a retry for failed jobs. See api/services/jobs.py for the shape."""
 
+import asyncio
+import json
+import logging
 import uuid
 from typing import Any, Awaitable, Callable
 
@@ -12,9 +15,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.events import _subscribe_redis
 from api.services import jobs
-from api.services.rbac import Scope, _as_uuid, require_permission, require_scope
+from api.services.rbac import (
+    Scope, _as_uuid, current_user_id, current_user_label, require_permission, require_scope, write_audit,
+)
 
 router = APIRouter(prefix="/api/v1/jobs", tags=["jobs"], dependencies=[Depends(require_permission("view"))])
+
+logger = logging.getLogger("meridian.jobs")
 
 CANNOT_RETRY = "This kind of job cannot be retried; start it again from its page"
 
@@ -63,8 +70,11 @@ async def _extraction(job: dict, request: Request, db: AsyncSession, tenant: Ten
 
 
 async def _analysis(job: dict, request: Request, db: AsyncSession, tenant: Tenant) -> Any:
-    from api.routes.versions import analyse_version
-    return await analyse_version(job["version_id"], db, tenant)
+    from api.routes.versions import AnalyseOptions, analyse_version
+    await db.execute(text("SELECT set_config('app.tenant_id', :t, false)"), {"t": str(tenant.id)})
+    kept = (await db.execute(text("SELECT metadata->'analysis_options' FROM analysis_versions WHERE id = :v AND tenant_id = :t"),
+                             {"v": job["version_id"], "t": str(tenant.id)})).scalar()  # a limited run is retried as limited
+    return await analyse_version(job["version_id"], db, tenant, AnalyseOptions(**kept) if kept else None)
 
 
 async def _config_load(job: dict, request: Request, db: AsyncSession, tenant: Tenant) -> Any:
@@ -126,3 +136,50 @@ async def retry_job(job_id: str, request: Request, tenant: Tenant = Depends(get_
     action, dispatch = RETRY[job["kind"]]
     await require_scope(request, db, tenant, action, Scope(_as_uuid(job.get("system_id")), None))
     return await dispatch(job, request, db, tenant)
+
+
+# ── Cancel: stop a queued or running job ──────────────────────────────────────────────────
+
+def _revoke(task_ids: list[str]) -> bool:
+    """Revoke the Celery tasks behind a job and terminate those already running. False when the broker could not be
+    told (the job is still marked cancelled: its later progress writes are dropped)."""
+    try:
+        from workers.celery_app import celery_app
+        celery_app.control.revoke(task_ids, terminate=True, signal="SIGTERM")
+        return True
+    except Exception as exc:
+        logger.warning("revoke %s failed: %s", task_ids, type(exc).__name__)
+        return False
+
+
+@router.post("/{job_id}/cancel", dependencies=[Depends(require_permission("manage_settings"))])
+async def cancel_job(job_id: str, request: Request, tenant: Tenant = Depends(get_tenant),
+                     db: AsyncSession = Depends(get_db)):
+    """Cancel a queued or running job: revoke its Celery tasks (terminating a running one), mark it ``cancelled`` with who
+    and when, and publish it on the jobs stream. An analysis or upload also ends its version as ``failed`` with
+    ``metadata.cancelled``, so the run can be started again. 404 for an unknown job, 409 once it has finished."""
+    job = jobs.get_job(str(tenant.id), job_id)
+    if job is None:
+        raise HTTPException(404, "Job not found")
+    if job.get("status") not in jobs.ACTIVE:
+        raise HTTPException(409, "This job has already finished")
+    task_ids = [t for t in job.get("task_ids") or [] if isinstance(t, str)]
+    revoked = await asyncio.to_thread(_revoke, task_ids) if task_ids else False
+    saved = jobs.mark_cancelled(str(tenant.id), job_id, by=current_user_id(request), by_label=current_user_label())
+    if saved is None:
+        raise HTTPException(503, "The job registry is not reachable")
+    await db.execute(text("SELECT set_config('app.tenant_id', :t, false)"), {"t": str(tenant.id)})
+    version_id = job.get("version_id")
+    if job.get("kind") in ("analysis", "upload") and _as_uuid(version_id):
+        await db.execute(text(
+            "UPDATE analysis_versions SET status = 'failed', metadata = COALESCE(metadata, '{}'::jsonb) "
+            "|| jsonb_build_object('cancelled', CAST(:c AS jsonb)) "
+            "WHERE id = :v AND tenant_id = :t AND status IN ('pending', 'running')"),
+            {"v": version_id, "t": str(tenant.id),
+             "c": json.dumps({"by": saved["cancelled_by"], "by_label": saved["cancelled_by_label"],
+                              "at": saved["cancelled_at"]})})
+    await write_audit(db, tenant.id, request, "job.cancel", "job", job_id,
+                      {"status": job.get("status"), "kind": job.get("kind"), "label": job.get("label")},
+                      {"status": "cancelled", "kind": job.get("kind"), "tasks_revoked": revoked if task_ids else None})
+    await db.commit()
+    return {**saved, "tasks_revoked": revoked if task_ids else None}
