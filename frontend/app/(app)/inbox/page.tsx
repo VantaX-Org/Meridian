@@ -51,7 +51,7 @@ import { MODULE_LABELS, formatDate, formatInt, formatModuleName, formatMoney, la
 import { inboxKeyHandler, keyBelongsElsewhere } from "@/lib/inbox-keys";
 import { queryKeys } from "@/lib/query-keys";
 import { ApprovalsPanel, SapMonitorPanel } from "./inbox-panels";
-import { EXC_PAGE, RECORD_ISSUES_HREF, exceptionObject, exceptionTaskName, taskObject, taskSourceLink } from "./task-source";
+import { EXC_PAGE, RECORD_ISSUES_HREF, exceptionObject, taskObject, taskSourceLink, taskTitle, unnamedTaskChecks } from "./task-source";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import type { Exception, ExceptionRule, ExceptionStatus, Severity, StewardshipQueueItem, StewardshipStatus } from "@/types/api";
 
@@ -155,19 +155,6 @@ async function each(ids: string[], fn: (id: string) => Promise<unknown>): Promis
   return { ok, failed: r.length - ok };
 }
 
-/**
- * "Merge decision in Material master"; an exception task is named by its check, "Custom Rule: Blank material group
- * in Material master" (its exception's title, else the queue's source title, else its check's name), never a bare
- * "Exception" when anything names it. Just the name when the object is unknown, never "in Unknown".
- */
-const taskTitle = (t: StewardshipQueueItem, exc?: Exception | null, ruleName?: RuleNameOf) => {
-  const what = exceptionTaskName(t, exc, ruleName) ?? labelOf(t.item_type);
-  const d = taskObject(t, exc);
-  return d ? `${what} in ${formatModuleName(d)}` : what;
-};
-/** The checks the catalogue has to name: an exception task with no title of its own is named by its check. */
-const unnamedChecks = (items: readonly StewardshipQueueItem[]) =>
-  items.filter((t) => t.item_type === "exception" && !t.source_title && !!t.source_check_id).map((t) => t.source_check_id);
 /** An exception named by its check and object, as its task is. */
 const exceptionTitle = (e: Exception) => {
   const d = exceptionObject(e);
@@ -288,7 +275,7 @@ export default function InboxPage() {
   const excById = useMemo(() => new Map((excIndexQ.data?.exceptions ?? []).map((e) => [e.id, e])), [excIndexQ.data]);
   const excOf = useCallback((t: StewardshipQueueItem) => (t.item_type === "exception" ? excById.get(t.source_id) ?? null : null), [excById]);
   // A task whose exception has no title is named by its linked check: the catalogue names it.
-  const ruleNameOf: RuleNameOf = useRuleNames(queues.flatMap((q) => unnamedChecks(q.data?.items ?? [])));
+  const ruleNameOf: RuleNameOf = useRuleNames(queues.flatMap((q) => unnamedTaskChecks(q.data?.items ?? [])));
   const excLoaded = useMemo(() => excPageQs.flatMap((q) => q.data?.exceptions ?? []), [excPageQs]);
   const excTotal = excQ.data?.total ?? 0;
   const excMetricsQ = useQuery({ queryKey: queryKeys.exceptionMetrics(), queryFn: () => getExceptionMetrics(), enabled: isExceptions });
@@ -1152,7 +1139,7 @@ function TaskDetail({ t, exc, sla, now, assignee, busy, canApprove, canAssign, c
   const excDetail = useQuery({ queryKey: ["exceptions", "detail", t.source_id], queryFn: () => getException(t.source_id), enabled: t.item_type === "exception" && !exc, retry: false, meta: { ignoreError: true } });
   const source = exc ?? excDetail.data ?? null;
   const object = taskObject(t, source);
-  const ruleNameOf: RuleNameOf = useRuleNames(unnamedChecks([t]), !source?.title);
+  const ruleNameOf: RuleNameOf = useRuleNames(unnamedTaskChecks([t]), !source?.title);
   // The rarer moves wait in the menu: taking over someone else's task, handing it back, escalating.
   const more: MenuItemDef[] = [
     ...(canAssign && !claimFirst ? [{ label: "Claim", onSelect: onAssign }] : []),

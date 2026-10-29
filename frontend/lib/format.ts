@@ -370,7 +370,8 @@ export function labelOf(value: string | null | undefined): string {
   if (!value) return "—";
   if (Object.hasOwn(LABEL_OVERRIDES, value)) return LABEL_OVERRIDES[value];
   const s = value.replace(/[_-]+/g, " ").trim().toLowerCase();
-  return s.charAt(0).toUpperCase() + s.slice(1);
+  // System names are acronyms: "ecc" reads "ECC", never "Ecc".
+  return (s.charAt(0).toUpperCase() + s.slice(1)).replace(/\b(ecc|ewm|btp)\b/gi, (m) => m.toUpperCase());
 }
 
 /** A config impact feature's display name: a machine id reads as words; a transaction code (MIGO) keeps its case. */

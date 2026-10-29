@@ -15,6 +15,7 @@ import { JOBS_HISTORY_QUERY_KEY } from "@/hooks/use-jobs";
 import { getJobs } from "@/lib/api/jobs";
 import { getSystems } from "@/lib/api/connectivity";
 import { formatDate, formatDuration, formatInt, labelOf, zoneName } from "@/lib/format";
+import { jobName } from "@/lib/run-scope";
 import { queryKeys } from "@/lib/query-keys";
 import { explainJobError } from "@/lib/job-error";
 import { TENANT_TIMEZONE_HREF, useTenantTimezone } from "@/lib/tenant-zone";
@@ -76,9 +77,9 @@ function jobDuration(j: Job, now = Date.now() / 1000): number | null {
 
 function ExtractAgain({ job, href }: { job: Job; href: string }) {
   const { can, loading } = useRole();
-  if (can("trigger_sync")) return <RowLink href={href} label={`Extract ${job.label} again`}>Extract again</RowLink>;
+  if (can("trigger_sync")) return <RowLink href={href} label={`Extract ${jobName(job.label)} again`}>Extract again</RowLink>;
   if (loading) return null;
-  return <DisabledJobAction action="trigger_sync" label={`Extract ${job.label} again`}>Extract again</DisabledJobAction>;
+  return <DisabledJobAction action="trigger_sync" label={`Extract ${jobName(job.label)} again`}>Extract again</DisabledJobAction>;
 }
 
 function Chips<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: { value: T; label: string }[]; onChange: (v: T) => void }) {
@@ -116,7 +117,7 @@ export default function JobsPage() {
     const when = (s: number) => formatDate(s * 1000, "datetime", tz, false);
     const zone = zoneName(tz);
     return [
-      { accessorKey: "label", header: "Job" },
+      { id: "label", header: "Job", accessorFn: (j) => jobName(j.label), cell: ({ row }) => <span title={row.original.label}>{jobName(row.original.label)}</span> },
       { id: "system", header: "System", accessorFn: (j) => (j.system_id ? systemName.get(j.system_id) ?? "" : ""), cell: ({ getValue }) => getValue<string>() || "—" },
       { id: "kind", header: "Kind", accessorFn: (j) => j.kind, cell: ({ row }) => labelOf(row.original.kind) },
       { id: "status", header: "Status", cell: ({ row }) => <Status kind="lifecycle" value={row.original.status} /> },
@@ -131,7 +132,7 @@ export default function JobsPage() {
         const again = extractHref(j);
         return (
           <span className="inline-flex items-center gap-3">
-            <RowLink href={jobHref(j)} label={`Open ${j.label}`}>Open</RowLink>
+            <RowLink href={jobHref(j)} label={`Open ${jobName(j.label)}`}>Open</RowLink>
             {again ? <ExtractAgain job={j} href={again} /> : <RetryJobButton job={j} />}
           </span>
         );

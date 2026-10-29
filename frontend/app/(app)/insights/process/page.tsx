@@ -70,7 +70,7 @@ function RunsWithProcess({ exclude }: { exclude?: string }) {
   const withProcess = (q.data?.versions ?? [])
     .filter((v) => v.id !== exclude && isCompleteVersion(v) && Object.keys(v.dqs_summary ?? {}).some((m) => PROCESS_MODULES.has(m)));
   const options = withProcess
-    .map((v) => ({ value: v.id, label: `${runName(v)}, ${Object.keys(v.dqs_summary ?? {}).filter((m) => PROCESS_MODULES.has(m)).map(formatModuleName).join(", ")}` }));
+    .map((v) => ({ value: v.id, label: runName(v) }));
   if (q.isLoading) return <Skeleton height={32} width={280} />;
   if (!options.length) {
     return <EmptyState title="No finished run covers a procure to pay or order to cash object yet" action={openLink("Open runs", "/runs")} />;

@@ -33,11 +33,11 @@ const LIMIT = 500;
 export function MineNow({ run, task, variant = "primary" }: { run?: string; task?: MiningTask; variant?: "primary" | "secondary" }) {
   const mine = useMutation({
     mutationFn: async () => { await (task ? runMining(run as string, [task]) : mineLearnedRules(run as string)); },
-    onSuccess: () => toast.success("Mining started. Results appear here when it finishes; progress shows in the job tray."),
+    onSuccess: () => toast.success(`${task ? "Search" : "Mining"} started. Results appear here when it finishes; progress shows in the job tray.`),
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
   if (!run) return <Button variant="secondary" render={<Link href="/runs">Open runs</Link>} />;
-  return <Button variant={variant} onClick={() => mine.mutate()} pending={mine.isPending}>Mine now</Button>;
+  return <Button variant={variant} onClick={() => mine.mutate()} pending={mine.isPending}>{task ? "Search now" : "Mine now"}</Button>;
 }
 
 /** What the feeds read: one run, or the current state (every object at its own latest run). */
@@ -65,7 +65,7 @@ export function useMinedFeeds(scope: MinedScope) {
 function Feed<T>({ q, scope, task, empty, children }: { q: UseQueryResult<T[]>; scope: MinedScope; task: MiningTask; empty: { title: string; detail: string }; children: (rows: T[]) => ReactNode }) {
   // Mining runs on one run: in the current state there is no single run to start it on, so the action opens the runs.
   const mineRun = scope.current ? undefined : scope.run || undefined;
-  if (!scope.current && !scope.run) return <EmptyState variant="inline" title="No finished run yet" detail="Mining reads the records of a finished run." action={<MineNow run={mineRun} task={task} />} />;
+  if (!scope.current && !scope.run) return <EmptyState variant="inline" title="No finished run yet" detail="The search reads the records of a finished run." action={<MineNow run={mineRun} task={task} />} />;
   if (q.isLoading) return <div aria-busy="true"><Skeleton height={240} /></div>;
   if (q.isError) return <ErrorState {...apiErrorState(q.error)} onRetry={() => void q.refetch()} />;
   const rows = q.data ?? [];
@@ -89,7 +89,7 @@ export function MinedDuplicates({ q, scope }: { q: UseQueryResult<MinedDuplicate
     actionColumn((d) => <RowAction href={matchReviewHref(d)} label={`Review ${d.record_a} and ${d.record_b} in Match review`}>Review</RowAction>),
   ], []);
   return (
-    <Feed q={q} scope={scope} task="dedup" empty={{ title: "No likely duplicates found yet", detail: "Mining compares the records of a run and lists pairs that look like the same thing. Mine the run to find them." }}>
+    <Feed q={q} scope={scope} task="dedup" empty={{ title: "No likely duplicates found yet", detail: "The search compares the records of a run and lists pairs that look like the same thing. Mine the run to find them." }}>
       {(rows) => <DataTable columns={columns} data={rows} getRowId={(d) => d.id} tableId="mined-duplicates" exportName="mined-duplicates" height={480} />}
     </Feed>
   );
@@ -114,7 +114,7 @@ export function anomalyScore(a: Pick<MinedAnomaly, "z_score" | "lower_bound" | "
   return "—";
 }
 
-/** The anomaly's record key; null for rows mined before the key was kept (the table names their row instead). */
+/** The anomaly's record key; null for rows found before the key was kept (the table names their row instead). */
 const anomalyRecord = (a: MinedAnomaly): string | null => a.record_key ?? null;
 
 export function MinedAnomalies({ q, scope }: { q: UseQueryResult<MinedAnomaly[]>; scope: MinedScope }) {
@@ -126,7 +126,7 @@ export function MinedAnomalies({ q, scope }: { q: UseQueryResult<MinedAnomaly[]>
       cell: ({ row }) => {
         const key = anomalyRecord(row.original);
         if (key) return <DrillLink href={recordHref(row.original.module_id, key, row.original.version_id)}><Mono>{key}</Mono></DrillLink>;
-        return row.original.record_index == null ? "—" : <span className="m-ink-3">Row {(row.original.record_index + 1).toLocaleString()}</span>;
+        return row.original.record_index == null ? "—" : <span className="m-ink-3">Record {(row.original.record_index + 1).toLocaleString()}</span>;
       },
     },
     { id: "field", header: "Field", cell: ({ row }) => <Mono>{row.original.field_name}</Mono> },
@@ -143,7 +143,7 @@ export function MinedAnomalies({ q, scope }: { q: UseQueryResult<MinedAnomaly[]>
     }),
   ], []);
   return (
-    <Feed q={q} scope={scope} task="anomaly" empty={{ title: "No anomalies found yet", detail: "Mining flags values far outside the usual range. Mine the run to look for them." }}>
+    <Feed q={q} scope={scope} task="anomaly" empty={{ title: "No anomalies found yet", detail: "The search flags values far outside the usual range. Search the run to look for them." }}>
       {(rows) => <DataTable columns={columns} data={rows} getRowId={(a) => a.id} tableId="mined-anomalies" exportName="mined-anomalies" height={480} />}
     </Feed>
   );
@@ -159,7 +159,7 @@ export function MinedRelationships({ q, scope }: { q: UseQueryResult<MinedRelati
     { id: "at", header: "Found", cell: ({ row }) => formatDate(row.original.detected_at, "date") },
   ], []);
   return (
-    <Feed q={q} scope={scope} task="relationship" empty={{ title: "No field relationships found yet", detail: "Mining finds fields whose values move together. Mine the run to look for them." }}>
+    <Feed q={q} scope={scope} task="relationship" empty={{ title: "No field relationships found yet", detail: "The search finds fields whose values move together. Search the run to look for them." }}>
       {(rows) => <DataTable columns={columns} data={rows} getRowId={(r) => r.id} tableId="mined-relationships" exportName="mined-relationships" height={480} />}
     </Feed>
   );

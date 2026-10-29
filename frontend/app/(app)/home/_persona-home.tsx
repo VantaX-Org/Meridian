@@ -41,7 +41,9 @@ import {
   criticalHighHref, criticalHighTotal, isScored, latestPerLineage, runObjectsName, stateDqs, stateObjects, stateRows, stateScopeLine, stateSeries, stateSummary,
   type StateRow,
 } from "@/lib/current-state";
-import { formatModuleName, labelOf, plural, relativeTime, round1 } from "@/lib/format";
+import { formatModuleName, plural, round1 } from "@/lib/format";
+import { useRuleNames } from "@/lib/rule-name";
+import { taskDueText, taskTitle, unnamedTaskChecks } from "../inbox/task-source";
 import { previousInLineage, runPageHref } from "@/lib/runs";
 import { fixHref } from "@/lib/drill";
 import { hrefWithRun, runName, runScopeLabel } from "@/lib/run-scope";
@@ -124,6 +126,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const landscapeQ = useQuery({ queryKey: queryKeys.configLandscape(), queryFn: getConfigLandscape });
   // The steward's queue leads the page: the five open items due first.
   const queueQ = useQuery({ queryKey: ["home-inbox-top"], queryFn: () => getQueueItems({ status: "open", limit: 5 }), enabled: role === "steward", meta: { ignoreError: true } });
+  const inboxRuleName = useRuleNames(unnamedTaskChecks(queueQ.data?.items ?? []), role === "steward");
   // A reviewer of AI rules who does not write rules (the AI reviewer): their next action is the proposals waiting.
   const reviewsAiRules = can("review_ai_rules") && !can("manage_rules");
   const proposalsQ = useAiProposals(reviewsAiRules);
@@ -511,13 +514,15 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         <EmptyState variant="inline" title="Nothing waits in the inbox" action={<Link href="/fix?sugg=1" className="underline-offset-2 hover:underline">{`Open records ${COUNT_DEFS.suggested.label.toLowerCase()}`}</Link>} />
       ) : (
         <ul className="flex flex-col" data-testid="home-inbox-items">
-          {queueItems.map((it) => (
-            <li key={it.id} className="flex items-center gap-3 border-b py-2 [border-color:var(--m-line)] m-text-body">
-              <Link href={`/inbox?focus=${encodeURIComponent(it.id)}`} className="flex-1 underline-offset-2 hover:underline">{labelOf(it.item_type)}, {formatModuleName(it.domain)}</Link>
-              {it.sla_state === "breached" && <Pill tone="no-go">Overdue</Pill>}
-              <span className="m-ink-3">{it.due_at ? `due ${relativeTime(it.due_at)}` : `opened ${relativeTime(it.created_at)}`}</span>
-            </li>
-          ))}
+          {queueItems.map((it) => {
+            const due = taskDueText(it);
+            return (
+              <li key={it.id} className="flex items-center gap-3 border-b py-2 [border-color:var(--m-line)] m-text-body">
+                <Link href={`/inbox?focus=${encodeURIComponent(it.id)}`} className="flex-1 underline-offset-2 hover:underline">{taskTitle(it, null, inboxRuleName)}</Link>
+                {due.overdue ? <Pill tone="no-go">{due.text}</Pill> : <span className="m-ink-3">{due.text}</span>}
+              </li>
+            );
+          })}
         </ul>
       )}
     </Card>

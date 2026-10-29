@@ -241,7 +241,7 @@ describe("ProcessInsightsPage without a process definition", () => {
     expect(await screen.findByText("Business partner has no process definition")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Runs with a process definition" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("combobox", { name: "Runs with a process definition" }));
-    expect(await screen.findByRole("option", { name: /accounts_payable_1k, Accounts payable/ })).toBeInTheDocument();
+    expect(await screen.findByRole("option", { name: /^Accounts payable, 1 Oct/ })).toBeInTheDocument();
     // The four sentences come from the frame, once, with the shared action bar beside the title.
     expect(screen.getByText("Business partner has no L1 to L5 process definition.")).toBeInTheDocument();
   });

@@ -129,7 +129,7 @@ describe("FixWork", () => {
     search = new URLSearchParams("run=R1");
     const getVersion = vi.spyOn(versions, "getVersion").mockResolvedValue({ id: "R1", label: "material_master_25k", status: "complete", run_at: "2026-10-16T05:00:00Z", dqs_summary: null, metadata: {} });
     renderWithQuery(<FixWork />);
-    expect(await screen.findByText("As of material_master_25k, 16 Oct 2026")).toBeInTheDocument();
+    expect(await screen.findByText("As of Material master, 16 Oct, 05:00")).toBeInTheDocument();
     expect(getVersion).toHaveBeenCalledWith("R1");
     expect(screen.getByText("records with a critical rule failure")).toBeInTheDocument();
     expect(screen.queryByText("block SAP processes")).toBeNull();

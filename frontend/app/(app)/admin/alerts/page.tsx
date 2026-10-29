@@ -116,6 +116,7 @@ function AlertsForm({ initial, header }: { initial: TenantSettings; header: Reac
             <div>
               <h3 className="m-text-body font-semibold mb-1">Score floors per object</h3>
               <p className="m-text-meta mb-2 m-ink-3">An analysis that scores an object below its floor raises an in-app alert, and a message on each channel below that takes alerts.</p>
+              {!Object.keys(floors).length ? <p className="m-text-meta m-ink-3">No floors set</p> : (
               <table className="m-table [max-width:480px]">
                 <thead><tr><th>Object</th><th>Floor</th><th /></tr></thead>
                 <tbody>
@@ -129,9 +130,9 @@ function AlertsForm({ initial, header }: { initial: TenantSettings; header: Reac
                       <td>{write ? <Button type="button" variant="ghost" onClick={() => setFloor(m, null)}>Remove</Button> : null}</td>
                     </tr>
                   ))}
-                  {!Object.keys(floors).length ? <tr><td colSpan={3} className="m-text-meta m-ink-3">No floors set</td></tr> : null}
                 </tbody>
               </table>
+              )}
               {write && unfloored.length ? (
                 <div className="mt-2 [max-width:260px]">
                   <Select

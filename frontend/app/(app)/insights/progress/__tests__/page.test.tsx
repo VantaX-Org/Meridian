@@ -155,7 +155,7 @@ describe("ProgressPage", () => {
     expect(screen.getByText(/Plant: 2 failing records across 2 values/)).toBeInTheDocument();
     expect(screen.getByText("Rule suggestion")).toBeInTheDocument();
     const change = screen.getByText("Change since the previous run").closest("section, div") as HTMLElement;
-    expect(within(change.parentElement ?? change).getByText(/Compared with material_master_1k: 2 fixed, 1 new, 1 still failing; 2 rules not in both runs left out/)).toBeInTheDocument();
+    expect(within(change.parentElement ?? change).getByText(/Compared with Material master, 2 Oct, 05:00: 2 fixed, 1 new, 1 still failing; 2 rules not in both runs left out/)).toBeInTheDocument();
   });
 
   it("says there is nothing earlier to compare with on the first run, with an action", async () => {
@@ -238,7 +238,7 @@ describe("ProgressPage", () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [{ ...RUNS[0], metadata: { ...RUNS[0].metadata, baseline: true } }, RUNS[1]] });
     const pin = vi.spyOn(versionsApi, "pinBaseline").mockResolvedValue({ baseline: false });
     mount();
-    expect(await screen.findByText("Baseline: material_master_100k, 16 Oct 2026")).toBeInTheDocument();
+    expect(await screen.findByText("Baseline: Material master, 16 Oct, 05:00")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Unpin baseline" }));
     await waitFor(() => expect(pin).toHaveBeenCalledWith("bp2", false));
   });

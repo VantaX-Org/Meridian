@@ -61,7 +61,7 @@ describe("admin audit page", () => {
     renderWithQuery(<AdminAuditPage />);
     expect(await screen.findByText("Recorded events, last 30 days")).toBeInTheDocument();
     expect(await screen.findByText("15")).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole("button", { name: /Create user/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Users created/ }));
     await waitFor(() => expect(get).toHaveBeenLastCalledWith(expect.objectContaining({ action: "create", entity_type: "user", offset: 0 })));
     fireEvent.click(screen.getByRole("button", { name: "Remove filter Kind" }));
     await waitFor(() => expect(get.mock.lastCall?.[0]?.action).toBeUndefined());
