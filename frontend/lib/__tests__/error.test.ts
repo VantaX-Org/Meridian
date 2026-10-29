@@ -9,7 +9,9 @@ describe("apiErrorMessage", () => {
   it("prefers the API detail, names a gateway timeout, and falls back for the rest", () => {
     expect(apiErrorMessage(failed(422, { detail: "Field required" }))).toBe("Field required");
     expect(apiErrorMessage(failed(503))).toBe("The server is busy and did not answer in time. Try again.");
-    expect(apiErrorMessage(failed(500))).toBe("Could not reach the server.");
+    // the server answered: a crash is not an outage
+    expect(apiErrorMessage(failed(500))).toBe("The server could not complete the request. Try again.");
+    expect(apiErrorMessage(new AxiosError("timeout", "ECONNABORTED"))).toBe("The server took too long to answer. Try again.");
     expect(apiErrorMessage(new Error("network down"))).toBe("Could not reach the server.");
   });
 
@@ -17,6 +19,6 @@ describe("apiErrorMessage", () => {
     const sentence = "This deployment's licence does not include: quality_management. Ask your administrator to add it in Meridian HQ.";
     expect(apiErrorMessage(failed(402, { detail: { error: "module_not_licenced", detail: sentence, modules: ["quality_management"] } }))).toBe(sentence);
     // an object detail without a human string still falls back — the branch must not stringify junk
-    expect(apiErrorMessage(failed(402, { detail: { error: "module_not_licenced" } }))).toBe("Could not reach the server.");
+    expect(apiErrorMessage(failed(402, { detail: { error: "module_not_licenced" } }))).toBe("The server could not complete the request. Try again.");
   });
 });

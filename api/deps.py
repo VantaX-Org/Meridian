@@ -7,8 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from api.config import settings
 
-engine = create_async_engine(settings.database_url, echo=False, pool_size=settings.db_pool_size,
-                             max_overflow=settings.db_max_overflow, pool_timeout=settings.db_pool_timeout)
+# Each API process gets its share of the configured pool, so N workers never open more connections than one did.
+_share = max(1, settings.api_workers)
+engine = create_async_engine(
+    settings.database_url, echo=False, pool_size=max(5, settings.db_pool_size // _share),
+    max_overflow=max(5, settings.db_max_overflow // _share), pool_timeout=settings.db_pool_timeout,
+    connect_args={"server_settings": {"statement_timeout": str(settings.db_statement_timeout_ms)}},
+)
 async_session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
 # Lazy-initialised sync engine for local auth endpoints

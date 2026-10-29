@@ -18,6 +18,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import Response
 from openpyxl import Workbook
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.drawing.image import Image as XLImage
 from openpyxl.formatting.rule import CellIsRule, ColorScaleRule, DataBarRule
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -182,6 +183,10 @@ def _unique_title(title: str, used: set[str]) -> str:
 
 
 def _cell_value_and_format(raw: object, kind: ColumnKind, scale: float) -> tuple[object, Optional[str]]:
+    # SAP texts can carry control characters (vertical tab, NUL) that Excel cannot store: openpyxl raises on them
+    # and the whole export fails, so they are dropped.
+    if isinstance(raw, str):
+        raw = ILLEGAL_CHARACTERS_RE.sub("", raw)
     if raw is None or raw == "":
         return (None, None)
     if kind == "int":

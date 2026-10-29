@@ -15,4 +15,5 @@ alembic upgrade head
 echo "✅ Migrations complete!"
 
 echo "🚀 Starting API server..."
-exec uvicorn api.main:app --host 0.0.0.0 --port 8000
+# Several processes: a slow request or blocking work (an export, a large page) holds one, not the whole API.
+exec uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers "${API_WORKERS:-3}"

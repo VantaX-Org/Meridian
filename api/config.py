@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     db_pool_size: int = Field(default=20, validation_alias="MERIDIAN_DB_POOL_SIZE")
     db_max_overflow: int = Field(default=20, validation_alias="MERIDIAN_DB_MAX_OVERFLOW")
     db_pool_timeout: int = Field(default=30, validation_alias="MERIDIAN_DB_POOL_TIMEOUT")
+    # API processes (docker/entrypoint.api.sh starts this many uvicorn workers): one slow or blocking request then
+    # holds one process, not the whole API. The pool above is shared out between them, so the total stays the same.
+    api_workers: int = Field(default=3, ge=1, validation_alias="API_WORKERS")
+    # Longest a single API query may run. A page gives up after 30s and an export after 300s, but Postgres kept
+    # running the abandoned query, and every Retry piled another on; past this it is cancelled instead.
+    db_statement_timeout_ms: int = Field(default=300_000, ge=0, validation_alias="MERIDIAN_DB_STATEMENT_TIMEOUT_MS")
 
     # Redis
     redis_url: str = "redis://redis:6379/0"

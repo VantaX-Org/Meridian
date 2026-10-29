@@ -1,4 +1,4 @@
-import apiClient from "./client";
+import { uploadApiClient } from "./client";
 
 function getFilenameFromDisposition(contentDisposition?: string): string | null {
   if (!contentDisposition) return null;
@@ -16,7 +16,8 @@ export const downloadAuthenticated = (url: string, fallbackFilename: string): Pr
 export async function downloadBlob(url: string, params: object, fallbackFilename: string): Promise<void> {
   let response;
   try {
-    response = await apiClient.get<Blob>(url, { responseType: "blob", params });
+    // Exports build the whole file before answering: the 300s client, not the 30s one meant for page data.
+    response = await uploadApiClient.get<Blob>(url, { responseType: "blob", params });
   } catch (err: unknown) {
     const data = (err as { response?: { data?: unknown } }).response?.data;
     if (data instanceof Blob) {

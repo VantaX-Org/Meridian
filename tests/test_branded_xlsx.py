@@ -257,3 +257,12 @@ def test_cover_sheet_list_guards_formula_titles_and_escapes_apostrophes():
     assert any(c.value == "'=SUM(1)" for c in cells)
     assert any(c.hyperlink.target == "#'It''s'!A1" for c in cells)
     assert bx._MARK_PATH.name == "mark-light.png"  # anchored on the white B2 cell
+
+
+@pytest.mark.parametrize("kind", ["text", "mono", "raw"])
+def test_control_characters_in_sap_text_are_dropped_not_fatal(kind):
+    """A SAP description with a vertical tab or NUL used to raise IllegalCharacterError and fail the whole export."""
+    spec = SheetSpec(title="Records", columns=[ColumnSpec(key="name", header="Name", kind=kind)],
+                     rows=[{"name": "Hex\x0bbolt\x00 M8"}])
+    data = build_workbook(tenant_name="T", run_label=None, run_id="r", title="Fix sheet", sheets=[spec])
+    assert _load(data)["Records"]["A2"].value == "Hexbolt M8"

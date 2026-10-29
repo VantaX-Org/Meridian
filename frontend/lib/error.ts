@@ -38,10 +38,18 @@ export function apiErrorReason(error: unknown): string | null {
   return null;
 }
 
-/** The API's detail, else a gateway-timeout sentence for 502–504, else "Could not reach the server." */
+/**
+ * The API's detail, else what actually happened: a gateway timeout (502–504), any other answer without a detail
+ * (a server error), a request that ran out of time, and only then "Could not reach the server."
+ */
 export function apiErrorMessage(error: unknown): string {
+  const detail = apiErrorDetail(error);
+  if (detail) return detail;
   const status = isAxiosError(error) ? error.response?.status ?? 0 : 0;
-  return apiErrorDetail(error) ?? (status >= 502 && status <= 504 ? "The server is busy and did not answer in time. Try again." : "Could not reach the server.");
+  if (status >= 502 && status <= 504) return "The server is busy and did not answer in time. Try again.";
+  if (status) return "The server could not complete the request. Try again.";
+  if (isAxiosError(error) && error.code === "ECONNABORTED") return "The server took too long to answer. Try again.";
+  return "Could not reach the server.";
 }
 
 /**

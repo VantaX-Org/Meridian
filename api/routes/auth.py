@@ -131,12 +131,20 @@ def _ensure_local_auth_schema(conn) -> None:
     )
 
 
-def _set_auth_cookie(response: Response, token: str) -> None:
-    """Cookie fallback for browser-initiated downloads (anchor/open-in-new-tab)
-    where custom Authorization headers are not reliably attached. httponly
-    so JS can't read the JWT (the browser still sends it on downloads);
-    secure by default — set AUTH_COOKIE_SECURE=false only for local HTTP dev."""
-    cookie_secure = os.getenv("AUTH_COOKIE_SECURE", "true").lower() != "false"
+def cookie_secure(request: Request) -> bool:
+    """Whether to mark auth cookies Secure. AUTH_COOKIE_SECURE=true or false forces it; by default it follows the
+    address the browser used (nginx's X-Forwarded-Proto). A Secure cookie on a plain http:// install is never
+    stored, so the help videos and other cookie-signed requests were refused."""
+    forced = os.getenv("AUTH_COOKIE_SECURE", "auto").lower()
+    if forced in ("true", "false"):
+        return forced == "true"
+    proto = request.headers.get("x-forwarded-proto", "").split(",")[0].strip().lower()
+    return (proto or request.url.scheme) == "https"
+
+
+def _set_auth_cookie(response: Response, token: str, request: Request) -> None:
+    """Cookie fallback for browser-initiated requests (anchor downloads, the help centre's <video>) where custom
+    Authorization headers are not attached. httponly so JS can't read the JWT; Secure on HTTPS (`cookie_secure`)."""
     response.set_cookie(
         key="mn_auth_token",
         value=token,
@@ -144,12 +152,12 @@ def _set_auth_cookie(response: Response, token: str) -> None:
         path="/",
         samesite="lax",
         httponly=True,
-        secure=cookie_secure,
+        secure=cookie_secure(request),
     )
 
 
 @router.post("/login", response_model=LoginResponse, dependencies=[Depends(_login_rate_limit)])
-def login(body: LoginRequest, response: Response):
+def login(body: LoginRequest, request: Request, response: Response):
     """Authenticate with email/password and receive a JWT."""
     engine = get_sync_engine_or_create()
     with engine.connect() as conn:
@@ -226,7 +234,7 @@ def login(body: LoginRequest, response: Response):
             secret=jwt_secret,
             token_version=int(row[7]),
         )
-        _set_auth_cookie(response, token)
+        _set_auth_cookie(response, token, request)
 
         # Update last_login
         conn.execute(
@@ -385,7 +393,7 @@ def change_password(body: ChangePasswordRequest, request: Request, response: Res
             secret=secret_row[0],
             token_version=int(version[0]),
         )
-    _set_auth_cookie(response, token)
+    _set_auth_cookie(response, token, request)
     return ChangePasswordResponse(token=token)
 
 
