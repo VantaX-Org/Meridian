@@ -81,6 +81,8 @@ class LandscapeCellOut(BaseModel):
     rules_measured: Optional[int] = None
     open_work: Optional[int] = None            # null while the run's work list is not built
     dimensions: dict[str, float] = {}
+    contract_breaches: int = 0                 # breaches of the active data contracts covering the cell (any enforce)
+    enforced_contract_breaches: int = 0        # of those, breaches of enforced contracts
 
 
 class LandscapeSentenceOut(BaseModel):
@@ -256,9 +258,12 @@ async def get_landscape(scope: Literal["current", "run"] = Query("current"),
             "SELECT version_id::text, module, max(total_count) FROM findings WHERE tenant_id = :t "
             "AND version_id = ANY(CAST(:ids AS uuid[])) GROUP BY 1, 2"), p)).fetchall() if r[2]}
 
+    from api.services import contract_enforcement as ce
+    contracts = await ce.active(db, t)
     cells: list[dict] = []
     for sid, module, rid in triples:
         m = summaries[rid][module]
+        cb = ce.breaches_of(contracts, {module: m}, [module]) if contracts else []
         score = m.get("composite_score")
         cov = m.get("coverage")
         cells.append({
@@ -271,6 +276,7 @@ async def get_landscape(scope: Literal["current", "run"] = Query("current"),
             "rules_measured": m.get("total_checks") if isinstance(m.get("total_checks"), int) else None,
             "open_work": open_work.get((rid, module), 0) if rid in built else None,
             "dimensions": _measured_dimensions(m),
+            "contract_breaches": len(cb), "enforced_contract_breaches": sum(1 for b in cb if b["enforce"]),
             "critical_over_tolerance": critical_over_tolerance(m),  # for the sentence; not part of a cell
         })
     sentence = sentence_of(cells)

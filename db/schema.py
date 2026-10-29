@@ -544,6 +544,9 @@ class Contract(Base):
     quality_contract = Column(JSONB, nullable=True)
     freshness_contract = Column(JSONB, nullable=True)
     volume_contract = Column(JSONB, nullable=True)
+    # migration 110: an enforced contract's breaches block pinning a baseline; thresholds per object
+    enforce = Column(Boolean, nullable=False, server_default=text("false"))
+    thresholds = Column(JSONB, nullable=True)
     status = Column(Text, nullable=False, server_default="draft")
     created_by = Column(UUID(as_uuid=True), nullable=True)
     approved_by = Column(UUID(as_uuid=True), nullable=True)
@@ -2925,4 +2928,26 @@ class ConfigDriftAlert(Base):
         CheckConstraint("source IN ('config_load', 'config_sync')", name="ck_config_drift_alerts_source"),
         UniqueConstraint("tenant_id", "run_id", name="uq_config_drift_alerts_run"),
         Index("ix_config_drift_alerts_tenant_created", "tenant_id", "created_at"),
+    )
+
+
+class ContractBreach(Base):
+    """One object of a finished run below a contract's threshold (migration 110, api/services/contract_enforcement.py)."""
+    __tablename__ = "contract_breaches"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    contract_id = Column(UUID(as_uuid=True), ForeignKey("contracts.id", ondelete="CASCADE"), nullable=False)
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="CASCADE"), nullable=False)
+    module = Column(Text, nullable=False)
+    metric = Column(Text, nullable=False)  # score | critical_breaches | <dimension>
+    threshold = Column(Float, nullable=True)
+    actual = Column(Float, nullable=True)
+    enforced = Column(Boolean, nullable=False, server_default=text("false"))
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint("contract_id", "version_id", "module", "metric", name="uq_contract_breaches_metric"),
+        Index("ix_contract_breaches_contract", "tenant_id", "contract_id", "created_at"),
+        Index("ix_contract_breaches_version", "tenant_id", "version_id"),
     )

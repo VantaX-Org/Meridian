@@ -109,23 +109,27 @@ async def _exceptions(db: AsyncSession, tenant_id: str, modules: list[str]) -> l
 
 
 async def _contracts(db: AsyncSession, tenant_id: str, objects: list[dict]) -> list[dict]:
-    """Active contracts covering a wave object, with their latest compliance record."""
+    """Active contracts covering a wave object: the latest compliance record and the contract's breaches on the runs
+    the objects were measured on (api/services/contract_enforcement.py)."""
+    from api.services import contract_enforcement as ce
     from api.services.contract_compliance import scope_modules
 
     modules = [o["module"] for o in objects]
     out = []
-    for c in (await db.execute(text(
-            "SELECT * FROM contracts WHERE tenant_id = :t AND status = 'active' ORDER BY name, id"),
-            {"t": tenant_id})).mappings().all():
-        covered = scope_modules(dict(c), modules)
+    for c in await ce.active(db, tenant_id):
+        covered = scope_modules(c, modules)
         if not covered:
             continue
         last = (await db.execute(text(
             "SELECT overall_compliant, recorded_at FROM contract_compliance_history WHERE tenant_id = :t "
             "AND contract_id = :c ORDER BY recorded_at DESC LIMIT 1"), {"t": tenant_id, "c": c["id"]})).fetchone()
-        out.append({"contract_id": str(c["id"]), "name": c["name"], "modules": covered,
+        breaches = 0
+        for o in objects:
+            if o["module"] in covered and o["run_id"]:
+                breaches += len(await ce.breaches_for_run(db, tenant_id, c, o["run_id"], [o["module"]]))
+        out.append({"contract_id": str(c["id"]), "name": c["name"], "modules": covered, "enforce": bool(c.get("enforce")),
                     "compliant": None if last is None else bool(last[0]),
-                    "checked_at": last[1].isoformat() if last else None})
+                    "checked_at": last[1].isoformat() if last else None, "breaches": breaches})
     return out
 
 

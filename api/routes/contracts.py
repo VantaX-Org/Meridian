@@ -8,7 +8,7 @@ from typing import Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from api.services.rbac import current_user_id, require_permission
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,6 +20,19 @@ router = APIRouter(prefix="/api/v1", tags=["contracts"])
 # ── Pydantic models ──────────────────────────────────────────────────────────
 
 
+class Thresholds(BaseModel):
+    """Per object of the contract's scope (api/services/contract_enforcement.py)."""
+    min_score: Optional[float] = Field(None, ge=0, le=100)
+    max_critical_breaches: Optional[int] = Field(None, ge=0)
+    dimensions: Optional[dict[Literal["completeness", "accuracy", "consistency", "timeliness", "uniqueness",
+                                      "validity"], float]] = None
+
+
+class EnforcementBody(BaseModel):
+    enforce: bool
+    thresholds: Optional[Thresholds] = None
+
+
 class CreateContractBody(BaseModel):
     name: str
     description: Optional[str] = None
@@ -29,6 +42,8 @@ class CreateContractBody(BaseModel):
     quality_contract: Optional[dict] = None
     freshness_contract: Optional[dict] = None
     volume_contract: Optional[dict] = None
+    enforce: bool = False
+    thresholds: Optional[Thresholds] = None
 
 
 class UpdateContractBody(BaseModel):
@@ -115,11 +130,11 @@ async def create_contract(
         text("""
             INSERT INTO contracts (id, tenant_id, name, description, producer, consumer,
                 schema_contract, quality_contract, freshness_contract, volume_contract,
-                status, created_by, created_at)
+                status, created_by, created_at, enforce, thresholds)
             VALUES (:id, :tid, :name, :desc, :producer, :consumer,
                 CAST(:schema_c AS jsonb), CAST(:quality_c AS jsonb),
                 CAST(:freshness_c AS jsonb), CAST(:volume_c AS jsonb),
-                'draft', CAST(:uid AS uuid), now())
+                'draft', CAST(:uid AS uuid), now(), :enforce, CAST(:thresholds AS jsonb))
         """),
         {
             "id": new_id,
@@ -133,6 +148,8 @@ async def create_contract(
             "freshness_c": json.dumps(body.freshness_contract) if body.freshness_contract else None,
             "volume_c": json.dumps(body.volume_contract) if body.volume_contract else None,
             "uid": current_user_id(request),
+            "enforce": body.enforce,
+            "thresholds": body.thresholds.model_dump_json(exclude_none=True) if body.thresholds else None,
         },
     )
     await db.commit()
@@ -272,3 +289,32 @@ async def get_contract_compliance(
     )
     history = [_row_to_dict(r) for r in result.fetchall()]
     return {"contract_id": contract_id, "compliance_history": history}
+
+
+# ── 6. PUT /api/v1/contracts/{id}/enforcement — enforce and thresholds ──────
+
+
+@router.put("/contracts/{contract_id}/enforcement", dependencies=[Depends(require_permission("manage_rules"))])
+async def set_enforcement(
+    contract_id: uuid.UUID,
+    body: EnforcementBody,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Turn enforcement on or off and set the per-object thresholds, in any status (audited)."""
+    from api.services.rbac import write_audit
+
+    await _set_rls(db, tenant.id)
+    before = (await db.execute(text("SELECT enforce, thresholds FROM contracts WHERE id = :c AND tenant_id = :t"),
+                               {"c": str(contract_id), "t": str(tenant.id)})).fetchone()
+    if before is None:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    thresholds = body.thresholds.model_dump(exclude_none=True) if body.thresholds else None
+    await db.execute(text("UPDATE contracts SET enforce = :e, thresholds = CAST(:th AS jsonb) WHERE id = :c AND tenant_id = :t"),
+                     {"e": body.enforce, "th": json.dumps(thresholds) if thresholds else None, "c": str(contract_id),
+                      "t": str(tenant.id)})
+    await write_audit(db, tenant.id, request, "contract_enforcement", "contract", str(contract_id),
+                      {"enforce": before[0], "thresholds": before[1]}, {"enforce": body.enforce, "thresholds": thresholds})
+    await db.commit()
+    return {"id": str(contract_id), "enforce": body.enforce, "thresholds": thresholds}

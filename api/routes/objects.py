@@ -417,6 +417,15 @@ class ReceiptToleranceOut(BaseModel):
     rows: float
 
 
+class ReceiptContractBreachOut(BaseModel):
+    contract_id: str
+    name: Optional[str] = None
+    enforce: bool = False
+    metric: str                               # score | critical_breaches | a dimension
+    threshold: Optional[float] = None
+    actual: Optional[float] = None
+
+
 class ObjectReceiptOut(BaseModel):
     module: str
     label: str
@@ -443,6 +452,8 @@ class ObjectReceiptOut(BaseModel):
     features_blocked: Optional[int] = None
     features_degraded: Optional[int] = None
     open_work: Optional[int] = None
+    # data contracts covering the object that this run breaches (api/services/contract_enforcement.py)
+    contract_breaches: list[ReceiptContractBreachOut] = []
 
 
 def reweigh(mod_summary: dict, configured: dict[str, float]) -> tuple[dict[str, float], Optional[float], Optional[float], bool]:
@@ -539,6 +550,10 @@ async def get_object_receipt(module: str, run: Optional[uuid.UUID] = Query(None,
         "SELECT count(*) FROM work_records WHERE version_id = :v AND tenant_id = :t AND module = :m "
         "AND status = ANY(:open)"), {**t, "open": list(_OPEN_WORK)})).scalar() if built else None
 
+    from api.services import contract_enforcement as ce
+    contract_breaches = [{k: b[k] for k in ("contract_id", "name", "enforce", "metric", "threshold", "actual")}
+                         for b in ce.breaches_of(await ce.active(db, t["t"]), {module: mod_summary}, [module])]
+
     w = {d: round(configured[d], 4) for d in _DIMENSION_ORDER}
     formula = "DQS = " + " + ".join(f"{w[d]:.2f}·{_DIMENSION_SHORT[d]}" for d in _DIMENSION_ORDER)
     coverage = mod_summary.get("coverage")
@@ -557,6 +572,7 @@ async def get_object_receipt(module: str, run: Optional[uuid.UUID] = Query(None,
         "features_blocked": sum(1 for r in impact if r[0] == "blocked" and _touches(r[1])),
         "features_degraded": sum(1 for r in impact if r[0] == "degraded" and _touches(r[1])),
         "open_work": int(open_work) if open_work is not None else None,
+        "contract_breaches": contract_breaches,
     }
 
 
