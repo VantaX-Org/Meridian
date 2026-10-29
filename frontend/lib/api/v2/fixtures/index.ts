@@ -7,6 +7,7 @@ import type { CommandGroup, CommandResult, Landscape, Receipt, RuleRow, RunList,
 import { moduleSlug, systemSlug } from "@/lib/v2/score";
 import { NONE, runsFixtureResponse } from "./runs";
 import { objectFixture } from "./object";
+import * as wf from "./work-fixture";
 
 /**
  * Fixture answers for the step 0 contract, built from the approved prototype's numbers: 3 systems (ECC production
@@ -81,8 +82,8 @@ function command(q: string): CommandResult {
     .map((o) => ({ id: o.module, title: `${o.label} on ${ecc.name}`, href: `/v2/o/${sys}/${moduleSlug(o.module)}` }));
   if (objItems.length) groups.push({ kind: "object", label: "Objects", items: objItems });
   const actions: { id: string; title: string; href: string; kw: string }[] = [
-    { id: "approvals", title: "Approvals waiting 612", href: "/v2/work?status=waiting", kw: "approve approval approvals waiting" },
-    { id: "export", title: "Export fix sheet", href: "/v2/work?export=1", kw: "export fix sheet" },
+    { id: "approvals", title: `Approvals waiting ${wf.workRecords({ status: "proposed", limit: 1 }).total.toLocaleString("en-US")}`, href: "/v2/work?filter=approvals", kw: "approve approval approvals waiting" },
+    { id: "export-fix-sheet", title: "Export fix sheet", href: "/v2/work?export=1", kw: "export fix sheet" },
     { id: "extract", title: `Extract ${ecc.name}`, href: `/v2?open=system:${ecc.id}`, kw: "extract extraction system" },
   ];
   const actItems = actions.filter((a) => text.length >= 2 && text.split(/\s+/).every((t) => a.kw.includes(t))).map(({ id, title, href }) => ({ id, title, href }));
@@ -90,12 +91,39 @@ function command(q: string): CommandResult {
   return { groups };
 }
 
+/** The landscape with the open work of Material master following the decisions made on the ledger. */
+function withOpenDelta(l: Landscape): Landscape {
+  const delta = wf.workOpenDelta();
+  if (delta === 0) return l;
+  return { ...l, cells: l.cells.map((c) => (c.module === "material_master" && c.open_work != null ? { ...c, open_work: c.open_work + delta } : c)) };
+}
+
+/** A write in fixture mode (POST, PUT, DELETE): applied to the in-memory work fixture. */
+export function fixtureWrite<T>(method: string, path: string, body: unknown, params: Params): T {
+  const out = ((): unknown => {
+    if (method === "POST" && path === "/work/decide") return wf.decideFixture(body as { items: never[] });
+    const group = /^\/work\/groups\/([^/]+)\/(accept-all|set-value)$/.exec(path);
+    if (method === "POST" && group) return group[2] === "accept-all" ? wf.acceptAllFixture(decodeURIComponent(group[1])) : wf.setValueFixture(decodeURIComponent(group[1]), body as { value: string });
+    if (method === "POST" && path === "/actions/undo") return wf.undoFixture(body as { action_id: string });
+    const batch = /^\/remediation\/batches\/[^/]+\/(approve|send-back)$/.exec(path);
+    if (method === "POST" && batch) return wf.batchFixture(batch[1] as "approve" | "send-back");
+    if (method === "PUT" && path === "/views") return wf.putViewFixture(body as never);
+    void params;
+    throw new FixtureNotFound(`${method} ${path}`);
+  })();
+  return out as T;
+}
+
+export const fixtureExport = wf.exportFixture;
+export const fixtureImport = wf.importFixture;
+export const resetWorkFixture = wf.resetWorkFixture;
+
 /** The answer to one v2 read in fixture mode. Throws a 404-shaped error for a path the contract does not have. */
 export function fixtureResponse<T>(path: string, params: Params): T {
   const runsStep = runsFixtureResponse(path, params);
   if (runsStep !== NONE) return runsStep as T;
   const out = ((): unknown => {
-    if (path === "/landscape") return landscapeFixture;
+    if (path === "/landscape") return withOpenDelta(landscapeFixture);
     if (path === "/status") return landscapeFixture.status_strip as StatusStrip;
     const receipt = /^\/objects\/([^/]+)\/receipt$/.exec(path);
     if (receipt) {
@@ -105,8 +133,15 @@ export function fixtureResponse<T>(path: string, params: Params): T {
     }
     if (path === "/command") return command(String(params.q ?? ""));
     if (path === "/versions") return { ...runs, versions: runs.versions.slice(0, Number(params.limit ?? 8)) };
-    if (path === "/work/records") return { ...work, items: work.items.slice(0, Number(params.limit ?? work.items.length)) };
-    if (path === "/shell/counts") return { fix: work.total, inbox: 7 };
+    if (path === "/work/records") return wf.workRecords(params);
+    if (path === "/work/summary") return wf.workSummary(params);
+    if (path === "/work/groups") return wf.workGroups(params);
+    const detail = /^\/work\/records\/([^/]+)\/(.+)$/.exec(path);
+    if (detail) return wf.workRecord(decodeURIComponent(detail[1]), decodeURIComponent(detail[2]));
+    const links = /^\/records\/([^/]+)\/(.+)\/links$/.exec(path);
+    if (links) return wf.recordLinks(decodeURIComponent(links[1]), decodeURIComponent(links[2]));
+    if (path === "/views") return wf.views(String(params.route ?? "work"));
+    if (path === "/shell/counts") return { fix: work.total + wf.workOpenDelta(), inbox: 7 };
     if (path === "/findings") {
       const rows = Number(params.rows ?? 0);
       if (rows > 0) return { rules: syntheticRules(Math.min(rows, 200000)) };

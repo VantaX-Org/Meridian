@@ -168,6 +168,8 @@ export interface RunList {
   total?: number;
 }
 
+export type WorkStatus = "to_fix" | "proposed" | "approved" | "sent" | "not_an_issue" | "fixed";
+
 /** One row of GET /work/records. `value_at_risk` is the step 0 addition; absent on a server from before it. */
 export interface WorkRow {
   module: string;
@@ -178,11 +180,27 @@ export interface WorkRow {
   severity: "critical" | "high" | "medium" | "low" | "info";
   checks: string[];
   proposed: number;
-  status: string;
+  status: WorkStatus;
   top_message: string | null;
   top_field: string | null;
   suggested_value?: string | null;
   value_at_risk?: number | null;
+  due_at?: string | null;
+  assigned_to?: string | null;
+  assignee_email?: string | null;
+  first_seen_at?: string | null;
+  /**
+   * Not in GET /work/records yet (the ledger asks the backend for them; a row without them shows a dash):
+   * the field's current value, the rule's possible values (value and meaning), how many more there are, the field's
+   * business description and, for an exception, whether the sign-off was "not an issue" or "accept risk".
+   */
+  current_value?: string | null;
+  possible_values?: { value: string; label: string | null }[] | null;
+  possible_values_total?: number | null;
+  field_description?: string | null;
+  /** The value waiting in the user's draft fix batch for this record (status proposed). */
+  new_value?: string | null;
+  resolution?: "false_positive" | "accepted_risk" | null;
 }
 
 export interface WorkPage {

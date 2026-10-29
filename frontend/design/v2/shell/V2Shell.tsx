@@ -1,12 +1,12 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { PermissionsProvider } from "@/lib/permissions";
 import { useFixture } from "@/lib/api/v2/fixture";
-import { createDispatcher, gridRegistry, type GoDestination, type KeyContext } from "@/lib/v2/keys";
-import { useOpenItem, useV2Href } from "@/lib/v2/hooks";
+import { createDispatcher, gridRegistry, ledgerRegistry, type GoDestination, type KeyContext } from "@/lib/v2/keys";
+import { useOpenItem, usePhone, useV2Href } from "@/lib/v2/hooks";
 import { setUiCookie, UI_V2 } from "@/lib/v2/switch";
 import { CommandLine } from "../CommandLine";
 import { Inspector } from "../Inspector";
@@ -14,27 +14,15 @@ import { ShortcutSheet } from "../ShortcutSheet";
 import { FixtureJobLine, LiveJobLine } from "./JobLine";
 import { MapPane } from "./MapPane";
 import { StatusStrip } from "./StatusStrip";
+import { ToastProvider, useToast } from "../Toast";
 import { TopBar } from "./TopBar";
 
-const PHONE = "(max-width: 760px)";
-const subscribePhone = (cb: () => void) => {
-  const mq = window.matchMedia(PHONE);
-  mq.addEventListener("change", cb);
-  return () => mq.removeEventListener("change", cb);
-};
-
-/** True at phone width, where the map is a bottom sheet and the inspector fills the screen. */
-export function usePhone(): boolean {
-  return useSyncExternalStore(
-    subscribePhone,
-    () => window.matchMedia(PHONE).matches,
-    () => false,
-  );
-}
+export { usePhone };
 
 const DESTINATION: Record<GoDestination, string> = { landscape: "/v2", work: "/v2/work", runs: "/v2/runs", people: "/v2/people" };
 
-function Chrome({ children, fixture }: { children: ReactNode; fixture: boolean }) {
+function ChromeBody({ children }: { children: ReactNode }) {
+  const fixture = useFixture();
   const router = useRouter();
   const pathname = usePathname();
   const href = useV2Href();
@@ -43,6 +31,7 @@ function Chrome({ children, fixture }: { children: ReactNode; fixture: boolean }
   const [commandOpen, setCommandOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
+  const toast = useToast();
 
   // The cookie that says "this browser prefers the new interface" is set by arriving here.
   useEffect(() => setUiCookie(UI_V2), []);
@@ -67,9 +56,14 @@ function Chrome({ children, fixture }: { children: ReactNode; fixture: boolean }
         return false;
       },
       stepInspector: (dir) => {
+        if (ledgerRegistry.get()?.step(dir)) return;
         const g = gridRegistry.get();
         g?.move(dir, false);
         g?.open();
+      },
+      undoLast: () => void toast.undoLast(),
+      get ledger() {
+        return ledgerRegistry.get();
       },
       get grid() {
         const at = document.activeElement;
@@ -90,7 +84,7 @@ function Chrome({ children, fixture }: { children: ReactNode; fixture: boolean }
 
   const toggleMap = useCallback(() => setMapOpen((v) => !v), []);
   return (
-    <div className="m2-root" data-m2="" data-fixture={fixture ? "1" : undefined}>
+    <>
       <a className="m2-skip" href="#m2-canvas">
         Skip to content
       </a>
@@ -111,6 +105,17 @@ function Chrome({ children, fixture }: { children: ReactNode; fixture: boolean }
       </div>
       {commandOpen ? <CommandLine onClose={() => setCommandOpen(false)} /> : null}
       {sheetOpen ? <ShortcutSheet onClose={() => setSheetOpen(false)} /> : null}
+    </>
+  );
+}
+
+/** The root of the v2 interface: its tokens are scoped to it, so the change notices live inside it too. */
+function Chrome({ children, fixture }: { children: ReactNode; fixture: boolean }) {
+  return (
+    <div className="m2-root" data-m2="" data-fixture={fixture ? "1" : undefined}>
+      <ToastProvider>
+        <ChromeBody>{children}</ChromeBody>
+      </ToastProvider>
     </div>
   );
 }

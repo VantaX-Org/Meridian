@@ -5,6 +5,7 @@ import { renderWithQuery } from "@/__tests__/render";
 import { formatOpen, parseOpen, useOpenItem } from "@/lib/v2/hooks";
 import { landscapeFixture } from "@/lib/api/v2/fixtures";
 import { Inspector, InspectorFrame } from "../Inspector";
+import { ToastProvider } from "../Toast";
 import { getUrl, setUrl } from "./nav-store";
 
 vi.mock("next/navigation", async () => (await import("./nav-store")).navigationMock);
@@ -104,11 +105,15 @@ describe("<Inspector>", () => {
     expect(within(dialog).getByRole("link", { name: "Open the rule" })).toBeInTheDocument();
   });
 
-  it("opens a record by its key parts, with a designed frame for what comes in the next step", async () => {
+  it("opens a record by its key: the title is the key in mono and the body is the record (see RecordInspector.test)", async () => {
     setUrl("/v2?open=record:material_master%3AMATNR%3D000000000000000101");
-    renderWithQuery(<Harness />);
-    expect(await screen.findByText("000000000000000101")).toBeInTheDocument();
-    expect(screen.getByTestId("empty-frame")).toBeInTheDocument();
+    renderWithQuery(
+      <ToastProvider>
+        <Harness />
+      </ToastProvider>,
+    );
+    expect(await screen.findByRole("heading", { level: 2, name: "000000000000000101" })).toBeInTheDocument();
+    expect(await screen.findByTestId("record-facts")).toBeInTheDocument();
   });
 
   it("renders nothing when nothing is open", () => {
