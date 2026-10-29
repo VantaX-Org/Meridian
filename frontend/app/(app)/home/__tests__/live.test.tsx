@@ -159,4 +159,20 @@ describe("LiveSection", () => {
     expect(row.lastSuccess).toBe(new Date(1_791_000_000 * 1000).toISOString());
     expect(row.next).toBeNull();
   });
+
+  it("turns Run extraction off with the reason, and links the install step, while the system to read has no RFC library", async () => {
+    allowed = true;
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([
+      { ...system, id: "sys-4", name: "No RFC", last_sync_at: null, health_status: "unreachable", health_message: "pyrfc_not_installed: build the API image" },
+    ]);
+    vi.spyOn(jobsApi, "getJobs").mockResolvedValue([]);
+
+    renderWithQuery(<LiveSection />);
+
+    await screen.findByText("No RFC");
+    expect(screen.getByRole("button", { name: /^Run extraction\. The SAP RFC library is not installed/ })).toBeDisabled();
+    expect(screen.queryByRole("link", { name: "Run extraction" })).toBeNull();
+    expect(screen.getByRole("link", { name: "How to install it" })).toHaveAttribute("href", "/docs?page=data-in");
+  });
+
 });

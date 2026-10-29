@@ -65,4 +65,25 @@ describe("Alerts page", () => {
     expect(screen.queryByRole("button", { name: "Save digest" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Add channel" })).toBeNull();
   });
+
+  it("warns at the top that alerts stay in the app when no channel is set up, and Add channel opens the dialog", async () => {
+    renderWithQuery(<AlertsPage />);
+    const warning = await screen.findByRole("alert");
+    expect(warning).toHaveTextContent("Alerts stay in the app: no channel is set up");
+    const add = within(warning).getByRole("button", { name: "Add channel" });
+    expect(add).toHaveClass("m-btn-secondary");
+    fireEvent.click(add);
+    expect(await screen.findByRole("dialog", { name: "Add a channel" })).toBeInTheDocument();
+  });
+
+  it("shows no warning once a channel exists", async () => {
+    vi.spyOn(notificationsApi, "getAlertChannels").mockResolvedValue([
+      { id: "c1", kind: "email", target: "dq@acme.com", digest: "daily", immediate_critical: true, enabled: true, report_pack: "off" } as never,
+    ]);
+    renderWithQuery(<AlertsPage />);
+    await screen.findByRole("region", { name: "When to alert" });
+    await screen.findByText("dq@acme.com");
+    expect(screen.queryByText("Alerts stay in the app: no channel is set up")).toBeNull();
+  });
+
 });

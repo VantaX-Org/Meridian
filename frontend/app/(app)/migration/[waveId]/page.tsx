@@ -13,7 +13,7 @@ import {
   downloadMigrationExport, downloadMigrationGaps, downloadWaveReport, getWaveCockpit, runWave, signoffWave,
 } from "@/lib/api/migration";
 import { downloadRealignment } from "@/lib/api/config-pairing";
-import { browserTimezone, formatDate, formatModuleName, trendSentence } from "@/lib/format";
+import { browserTimezone, formatDate, formatModuleName, plural, trendSentence } from "@/lib/format";
 import { getTriageSettings } from "@/lib/api/triage";
 import { queryKeys } from "@/lib/query-keys";
 import type { WaveObject } from "@/types/api";
@@ -138,6 +138,9 @@ export default function WaveCockpitPage() {
         meta={`${STAGE_LABEL[w.stage]}, target ${w.target_date ? formatDate(w.target_date, "date") : "not set"}, ${w.signed_off_at ? `signed off ${formatDate(w.signed_off_at, "datetime", tenantTz)}` : "not signed off"}. Clear the blockers until readiness reaches ${w.min_readiness}%, then sign the wave off`}
         actions={
           <>
+            {c.blockers.length > 0 && !signable ? (
+              <Button render={<Link href={`/migration/${waveId}?tab=blockers`}>{`Review ${plural(c.blockers.length, "blocker")}`}</Link>} />
+            ) : null}
             {can("analyse") ? <Button variant="ghost" onClick={() => setEditing(true)}>Edit wave</Button> : null}
             {signable ? (
               <GatedPrimary kind="signoff" allowed={can("approve")} disabled={signoff.isPending} onClick={() => signoff.mutate()}>Sign off</GatedPrimary>

@@ -487,4 +487,28 @@ describe("system detail page", () => {
       expect(versions.mock.calls.length).toBe(settled);
     });
   });
+
+  it("names the RFC install step as the primary and turns Extract off with the reason while the library is missing", async () => {
+    mockHappyPath();
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([{ ...SYSTEM, health_status: "unreachable", health_message: "pyrfc_not_installed: build the API image", last_health_check: "2026-01-01T00:00:00Z" } as SAPSystemExtended]);
+    renderWithQuery(<SystemPage />);
+    const install = await screen.findByRole("link", { name: "Install the RFC library" });
+    expect(install).toHaveAttribute("href", "/docs?page=data-in");
+    expect(install).toHaveClass("m-btn-primary");
+    expect(screen.getByText("scripts/build-rfc-overlay.sh")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Read the steps" })).toHaveAttribute("href", "/docs?page=data-in");
+    expect(screen.getByRole("button", { name: "Test connection" })).toHaveClass("m-btn-secondary");
+    const extract = screen.getByRole("button", { name: /^Extract\. The SAP RFC library is not installed/ });
+    expect(extract).toBeDisabled();
+  });
+
+  it("shows no RFC step for another connection failure", async () => {
+    mockHappyPath();
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([{ ...SYSTEM, health_status: "unreachable", health_message: "ping failed" } as SAPSystemExtended]);
+    renderWithQuery(<SystemPage />);
+    await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
+    expect(screen.queryByRole("link", { name: "Install the RFC library" })).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Extract" })[0]).toBeEnabled();
+  });
+
 });

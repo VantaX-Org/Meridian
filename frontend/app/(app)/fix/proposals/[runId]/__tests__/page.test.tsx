@@ -235,4 +235,41 @@ describe("ProposalsPage paging and missing runs", () => {
       for (const b of screen.getAllByRole("button", { name: /^(approve|reject)$/i })) expect(b).toBeDisabled();
     });
   });
+
+  it("leads with Review N waiting while proposals wait, and drafts the batch as a secondary", async () => {
+    queue([item({})], 1);
+    renderWithQuery(<ProposalsPage />);
+    const review = await screen.findByRole("link", { name: "Review 1,200 waiting" });
+    expect(review).toHaveClass("m-btn-primary");
+    expect(review).toHaveAttribute("href", "#waiting-proposals");
+    expect(screen.getByRole("button", { name: "Draft fix batch from 1 approved" })).toHaveClass("m-btn-secondary");
+  });
+
+  it("makes the fix batch the primary once nothing waits", async () => {
+    vi.mocked(getCleaningGroups).mockResolvedValue({ groups: [], records: 0, confident: 0, runs: 1 });
+    queue([], 3);
+    renderWithQuery(<ProposalsPage />);
+    const draft = await screen.findByRole("button", { name: "Draft fix batch from 3 approved" });
+    expect(draft).toHaveClass("m-btn-primary");
+    expect(screen.queryByRole("link", { name: /^Review .* waiting$/ })).toBeNull();
+  });
+
+  it("shows the current value beside the proposed one", async () => {
+    queue([item({ record_data_before: { MEINS: "ST" }, record_data_after: { MEINS: "PC" } })]);
+    renderWithQuery(<ProposalsPage />);
+    await screen.findByText("100001");
+    expect(screen.getByRole("columnheader", { name: "Current value" })).toBeInTheDocument();
+    expect(screen.getByText("ST")).toBeInTheDocument();
+    expect(screen.getByText("PC")).toBeInTheDocument();
+  });
+
+  it("draws the step the page is on as the current one", async () => {
+    queue([item({})]);
+    renderWithQuery(<ProposalsPage />);
+    const steps = await screen.findByRole("list", { name: "Fix steps" });
+    const current = steps.querySelector("li[data-current='true']");
+    expect(current).toHaveTextContent("1Proposal");
+    expect(steps.querySelectorAll("li[data-current]")).toHaveLength(1);
+  });
+
 });

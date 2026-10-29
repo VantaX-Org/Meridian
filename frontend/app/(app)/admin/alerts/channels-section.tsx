@@ -78,9 +78,12 @@ function AddChannel({ open, onOpenChange }: { open: boolean; onOpenChange: (o: b
 }
 
 /** The channel list with add, test and remove. `canEdit` is `manage_settings`, the permission the API enforces. */
-export function ChannelsSection({ canEdit }: { canEdit: boolean }) {
+export function ChannelsSection({ canEdit, adding: addingProp, onAddingChange }: { canEdit: boolean; adding?: boolean; onAddingChange?: (open: boolean) => void }) {
   const qc = useQueryClient();
-  const [adding, setAdding] = useState(false);
+  // The page may own the Add dialog (its "no channel" notice opens it); alone, the section keeps its own.
+  const [ownAdding, setOwnAdding] = useState(false);
+  const adding = addingProp ?? ownAdding;
+  const setAdding = onAddingChange ?? setOwnAdding;
   const [removing, setRemoving] = useState<AlertChannel | null>(null);
   const q = useQuery({ queryKey: queryKeys.alertChannels(), queryFn: getAlertChannels });
   const refresh = () => void qc.invalidateQueries({ queryKey: queryKeys.alertChannels() });

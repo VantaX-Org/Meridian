@@ -10,7 +10,8 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, DataTable, DrillLink, ExplorerPage, Field, Mono, PageHeader, Pill, Select, asyncStateOf } from "@/design";
+import { Button, DataTable, DrillLink, ExplorerPage, Field, Mono, Notice, PageHeader, Pill, Select, asyncStateOf } from "@/design";
+import { RequestAccessButton } from "@/components/request-access-button";
 import { actionColumn, RowButton } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
@@ -104,12 +105,13 @@ export default function LearnedRulesPage() {
         ? <span title={keys.join("\n")}><Mono>{keys.map((k) => exampleOf(k, row.original.field)).join(", ")}</Mono></span>
         : "—";
     } },
-    actionColumn((r) => r.status === "pending" ? (
+    // Nobody to decide here: the column would be empty on every row, so it is left out and the notice says how to get it.
+    ...(canReject ? [actionColumn<LearnedRule>((r) => r.status === "pending" ? (
       <span className="flex gap-3">
         {canDecide ? <RowButton onClick={() => approve.mutate(r.id)} disabled={approve.isPending}>Approve</RowButton> : null}
         {canReject ? <RowButton onClick={() => reject.mutate(r.id)} disabled={reject.isPending}>Reject</RowButton> : null}
       </span>
-    ) : r.rule_id ? <Mono>{r.rule_id}</Mono> : <Pill tone="neutral">{labelOf(r.status)}</Pill>),
+    ) : r.rule_id ? <Mono>{r.rule_id}</Mono> : <Pill tone="neutral">{labelOf(r.status)}</Pill>)] : []),
   ], [approve, reject, canDecide, canReject]);
 
   const items = q.data?.items ?? [];
@@ -122,6 +124,11 @@ export default function LearnedRulesPage() {
             meta="Patterns your own data follows for at least 95% of records. Approve one to make it a rule; the records that break it then show as findings."
             actions={can("manage_rules") ? <Button onClick={() => mine.mutate()} pending={mine.isPending} disabled={!latestRun}>Mine now</Button> : undefined}
           />
+          {!canReject ? (
+            <Notice tone="info" action={<RequestAccessButton resource="rules" action="approve" />}>
+              Approving or rejecting a proposal needs the review permission, so you can read the proposals but not decide on them.
+            </Notice>
+          ) : null}
           {missingUrlRun ? (
             <span className="m-text-meta m-ink-3" role="status">
               That run is not among the latest {finished.length} finished runs; mining uses the newest instead.

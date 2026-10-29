@@ -245,4 +245,22 @@ describe("WaveCockpitPage not found", () => {
     expect(await screen.findByText("The server could not complete the request.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
+
+  it("makes Review N blockers the primary and opens the Blockers tab", async () => {
+    search = new URLSearchParams();
+    vi.spyOn(migrationApi, "getWaveCockpit").mockResolvedValue(COCKPIT);
+    renderWithQuery(<WaveCockpitPage />);
+    const review = await screen.findByRole("link", { name: `Review ${COCKPIT.blockers.length === 1 ? "1 blocker" : `${COCKPIT.blockers.length} blockers`}` });
+    expect(review).toHaveAttribute("href", "/migration/w1?tab=blockers");
+    expect(review).toHaveClass("m-btn-primary");
+  });
+
+  it("offers no blockers button when there are none", async () => {
+    search = new URLSearchParams();
+    vi.spyOn(migrationApi, "getWaveCockpit").mockResolvedValue({ ...COCKPIT, blockers: [] });
+    renderWithQuery(<WaveCockpitPage />);
+    await screen.findByText("Wave 1");
+    expect(screen.queryByRole("link", { name: /^Review \d+ blockers?$/ })).toBeNull();
+  });
+
 });

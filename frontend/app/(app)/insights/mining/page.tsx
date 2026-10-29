@@ -66,7 +66,7 @@ const MAX_EDGES = 80;
 
 /* ------------------------------------------------------------ Entity links */
 
-function EntityLinks() {
+function EntityLinks({ run }: { run?: string }) {
   const [domain, setDomain] = useState("");
   const dayOne = useDayOne();
   const q = useQuery({ queryKey: queryKeys.relationships({ include_inactive: true }), queryFn: () => getRelationships({ include_inactive: true }) });
@@ -126,7 +126,11 @@ function EntityLinks() {
             <EmptyState
               title="No record links found yet"
               detail={dayOne.step?.detail ?? "They appear once an analysis has linked records across objects."}
-              action={<DayOneAction step={dayOne.step} fallbackHref="/systems" fallbackLabel="Open systems" />}
+              // The page's "Do next" holds the one primary. Links come from mining a finished run, so that is the step
+              // here (setup first when there is no run to mine), never the systems list.
+              action={dayOne.step
+                ? <DayOneAction step={dayOne.step} variant="secondary" fallbackHref="/runs" fallbackLabel="Open runs" />
+                : <MineNow run={run} task="relationship" variant="secondary" />}
             />
           )}
       </div>
@@ -194,7 +198,7 @@ function Dependencies({ run }: { run?: string }) {
       <EmptyState
         title="No SAP systems yet"
         detail={dayOne.step?.detail ?? "Connect a system and analyse a download to mine its dependencies."}
-        action={<DayOneAction step={dayOne.step} fallbackHref="/systems" fallbackLabel="Open systems" />}
+        action={<DayOneAction step={dayOne.step} variant="secondary" fallbackHref="/systems" fallbackLabel="Open systems" />}
       />
     );
   }
@@ -319,7 +323,7 @@ export default function MiningPage() {
       }}
     >
       <Tabs value={tab} onValueChange={setTab} items={[
-        { value: "links", label: "Record links", content: <EntityLinks /> },
+        { value: "links", label: "Record links", content: <EntityLinks run={run} /> },
         { value: "dependencies", label: "Field dependencies", content: <Dependencies run={run} /> },
         { value: "patterns", label: "Patterns", content: <Patterns run={run} /> },
       ]} />

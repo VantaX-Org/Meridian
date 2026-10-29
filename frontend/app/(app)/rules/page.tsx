@@ -21,6 +21,7 @@ import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
+import { RequestAccessButton } from "@/components/request-access-button";
 import { DrillLink, Button, Card, ConfirmDialog, DataTable, DomainChip, Drawer, EmptyState, ErrorState, Field, Input, Mono, Notice, PageHeader, Pill, RowActionButton, Score, Select, Skeleton, Stat, Tabs, Textarea, Status, buildDrillHref, toast, type CellMeta, PageFrame } from "@/design";
 import { actionColumn, LedgerHead, RowLink } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
@@ -355,7 +356,7 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
 
   return (
     <div className="flex flex-col gap-4 py-4">
-      {!canManage ? <Notice tone="info">Enabling, disabling or writing a rule needs the manage-rules permission. The library is read-only for you.</Notice> : null}
+      {!canManage ? <Notice tone="info" action={<RequestAccessButton resource="rules" action="edit" />}>Enabling, disabling or writing a rule needs the manage-rules permission. The library is read-only for you.</Notice> : null}
       <div className="m-stat-grid">
         {/* A failed read has no counts: "—", never zeros above the error. */}
         <Stat label="Failing" value={rulesQ.isError ? "—" : failingCount.toLocaleString()} href={rulesQ.isError ? undefined : "/rules?state=failing"} tone={!rulesQ.isError && failingCount ? "at-risk" : undefined} hint="Library rules whose last run failed; Objects also counts generated checks, once per object" loading={rulesQ.isLoading} />

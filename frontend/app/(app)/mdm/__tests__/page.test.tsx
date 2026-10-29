@@ -112,4 +112,31 @@ describe("MdmOverviewPage", () => {
     renderWithQuery(<MdmOverviewPage />);
     expect(await screen.findByText("No match work waiting")).toBeInTheDocument();
   });
+
+  describe("the primary action is the real next step", () => {
+    const setup = (waiting: boolean, backlog: number) => {
+      vi.spyOn(mdmApi, "getMdmDashboard").mockResolvedValue({ latest: { ...metric, backlog_count: backlog }, trend: [metric], active_systems_count: 4 });
+      vi.spyOn(mdmApi, "getMdmHistory").mockResolvedValue({ history: [] });
+      mockLists({ pairs: pairList(waiting ? [pair("p1")] : []) });
+      renderWithQuery(<MdmOverviewPage />);
+    };
+
+    it("reviews match pairs when pairs are waiting", async () => {
+      setup(true, 38);
+      expect(await screen.findByRole("link", { name: "Review match pairs" })).toHaveAttribute("href", "/mdm/golden/merge");
+    });
+
+    it("opens the stewardship tasks when no pair waits but other tasks do", async () => {
+      setup(false, 38);
+      expect(await screen.findByRole("link", { name: "Open stewardship tasks" })).toHaveAttribute("href", "/inbox");
+      expect(screen.queryByRole("link", { name: "Review match pairs" })).toBeNull();
+    });
+
+    it("sets up match rules when nothing waits at all", async () => {
+      setup(false, 0);
+      expect(await screen.findByRole("link", { name: "Set up match rules" })).toHaveAttribute("href", "/mdm/match-rules");
+      expect(screen.queryByRole("link", { name: "Review match pairs" })).toBeNull();
+    });
+  });
+
 });

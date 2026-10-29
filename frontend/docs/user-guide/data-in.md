@@ -14,6 +14,10 @@ Everything Meridian checks has to come in first: from a connected SAP system, fr
 
 Connecting and editing systems needs a role that manages systems, such as SAP Basis or a programme lead.
 
+### If the SAP RFC library is not installed
+
+A system that connects over RFC (ECC, S/4HANA on premise, Extended Warehouse Management) shows **Unreachable** with the reason "SAP RFC library not installed on the server" until the SAP NW RFC SDK is built into Meridian's images. The licence for the SDK stays with you, so Meridian does not ship it. On the host that runs Meridian, run `sudo bash scripts/build-rfc-overlay.sh --sdk /usr/local/sap/nwrfcsdk` (change the path to where you unpacked the SDK). It builds the API and worker images with the library and restarts them from an overlay file that updates keep. Then open the system and select **Test connection**. **Extract** stays off until the library is there. Importing a file works without it.
+
 ### How to load configuration
 
 On the system's **Health** tab, select **Load configuration**. It tells Meridian which fields and rules apply to this system; until it loads, every rule applies by default. "Configuration loaded with gaps" means some areas could not be read, and **Try again** retries.

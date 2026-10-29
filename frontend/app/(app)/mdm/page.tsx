@@ -63,6 +63,12 @@ export default function MdmOverviewPage() {
   const total = pairBands ? pairBands.review + pairBands.auto_merge + pairBands.low : pairsQ.data?.total ?? 0;
   const goldenCount = goldenQ.data?.total ?? m?.golden_record_count ?? 0;
   const recordTotal = allQ.data?.total;
+  // The real next step: merge decisions if any wait, else the other stewardship tasks, else rules so matching can find pairs.
+  const next = total > 0
+    ? { href: "/mdm/golden/merge", label: "Review match pairs" }
+    : (m?.backlog_count ?? 0) > 0
+      ? { href: "/inbox", label: "Open stewardship tasks" }
+      : { href: "/mdm/match-rules", label: "Set up match rules" };
   const failed = isListFailure(dash) ? dash : isListFailure(health) ? health : null;
   const state = dash.isLoading || health.isLoading ? "loading" : failed ? "error" : !m && points.length === 0 && items.length === 0 ? "empty" : undefined;
   // The tenant's score bands set the target tick and the verdict, as they do for every other score.
@@ -82,7 +88,7 @@ export default function MdmOverviewPage() {
             : "How complete and consistent your golden records are, and the match work waiting on a steward"}
           actions={<>
             <Button variant="secondary" render={<Link href="/mdm/survivorship">Survivorship rules</Link>} />
-            <Button render={<Link href="/mdm/golden/merge">Review match pairs</Link>} />
+            {pairsQ.isLoading || dash.isLoading ? null : <Button render={<Link href={next.href}>{next.label}</Link>} />}
           </>}
         />
       }

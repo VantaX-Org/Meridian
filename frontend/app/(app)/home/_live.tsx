@@ -11,8 +11,8 @@ import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, EmptyState, ErrorState, Pill, Skeleton, Status } from "@/design";
-import { HEALTH_LABEL, HEALTH_VERDICT, healthReason, nextRun } from "@/app/(app)/systems/_health";
+import { Button, Card, DataTable, EmptyState, ErrorState, Pill, Skeleton, Status, Tooltip } from "@/design";
+import { HEALTH_LABEL, HEALTH_VERDICT, RFC_FIX_HREF, RFC_MISSING_REASON, healthReason, nextRun, rfcLibraryMissing } from "@/app/(app)/systems/_health";
 import { HealthPill } from "@/app/(app)/systems/_health-pill";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
@@ -130,10 +130,26 @@ const healthHref = (r: SystemRow) => `/systems/${r.system.id}?tab=health`;
  * Basis starts an extraction from home in two clicks instead of finding the system on the Systems list.
  */
 export function extractHref(systems: readonly SAPSystemExtended[]): string {
-  const stalest = systems
-    .filter((s) => s.is_active)
-    .sort((a, b) => (a.last_sync_at ?? "").localeCompare(b.last_sync_at ?? ""))[0];
+  const stalest = stalestSystem(systems);
   return stalest ? `/systems/${stalest.id}?extract=1` : "/systems";
+}
+
+const stalestSystem = (systems: readonly SAPSystemExtended[]): SAPSystemExtended | undefined =>
+  [...systems].filter((s) => s.is_active).sort((a, b) => (a.last_sync_at ?? "").localeCompare(b.last_sync_at ?? ""))[0];
+
+/** "Run extraction", or the same button off with the reason when the system it would read cannot be read yet. */
+function RunExtraction({ systems }: { systems: readonly SAPSystemExtended[] }) {
+  const target = stalestSystem(systems);
+  if (target && rfcLibraryMissing(target)) {
+    const reason = `${RFC_MISSING_REASON}. Install it first`;
+    return (
+      <span className="inline-flex flex-wrap items-center justify-center gap-2">
+        <Tooltip label={reason} render={<Button variant="secondary" disabled aria-disabled="true" aria-label={`Run extraction. ${reason}`} />}>Run extraction</Tooltip>
+        <Link href={RFC_FIX_HREF} className="m-text-meta underline m-ink-accent">How to install it</Link>
+      </span>
+    );
+  }
+  return link(extractHref(systems), "Run extraction");
 }
 
 export function LiveSection() {
@@ -172,7 +188,7 @@ export function LiveSection() {
           <DataTable columns={jobColumns(systemName)} data={shownJobs} getRowId={(j) => j.id} height="auto" hideToolbar tableId="home-jobs" />
         ) : null}
         {active.length === 0 ? (
-          <EmptyState variant="inline" title="Nothing is running" action={can("trigger_sync") ? link(extractHref(systems), "Run extraction") : undefined} />
+          <EmptyState variant="inline" title="Nothing is running" action={can("trigger_sync") ? <RunExtraction systems={systems} /> : undefined} />
         ) : null}
       </Card>
     </div>

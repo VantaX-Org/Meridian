@@ -12,7 +12,12 @@ const nav = vi.hoisted(() => ({ params: new URLSearchParams("") }));
 vi.mock("next/navigation", () => ({ useSearchParams: () => nav.params, useRouter: () => ({ push: vi.fn(), replace: vi.fn() }), usePathname: () => "/rules/learned" }));
 const perms = vi.hoisted(() => ({ granted: null as Set<string> | null }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (a: string) => perms.granted === null || perms.granted.has(a) }) }));
-beforeEach(() => { perms.granted = null; });
+const access = vi.hoisted(() => ({ requestAccess: null as null | ((t: unknown) => void) }));
+vi.mock("@/lib/permissions", async (orig) => ({
+  ...(await orig<typeof import("@/lib/permissions")>()),
+  usePermissionsContext: () => (access.requestAccess ? { loading: false, can: () => true, has: () => true, requestAccess: access.requestAccess } : null),
+}));
+beforeEach(() => { perms.granted = null; access.requestAccess = null; });
 
 const RULE: LearnedRule = {
   id: "p1", version_id: "v1", module: "material_master", kind: "dependency", table_name: "MARC",
@@ -95,6 +100,27 @@ describe("learned rules page", () => {
     expect(await screen.findByText("MARC.BESKZ")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Reject" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
+    // The Action column would be empty on every row, so it is left out.
+    expect(screen.queryByRole("columnheader", { name: "Action" })).toBeNull();
+  });
+
+  it("tells a viewer why, with Request access for the review permission", async () => {
+    perms.granted = new Set(["view"]);
+    const requestAccess = vi.fn();
+    access.requestAccess = requestAccess;
+    vi.spyOn(api, "getLearnedRules").mockResolvedValue({ items: [RULE] });
+    renderWithQuery(<LearnedRulesPage />);
+    expect(await screen.findByText(/you can read the proposals but not decide on them/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Request access" }));
+    expect(requestAccess).toHaveBeenCalledWith({ resource: "rules", action: "approve" });
+  });
+
+  it("keeps the Action column and shows no notice for someone who can decide", async () => {
+    vi.spyOn(api, "getLearnedRules").mockResolvedValue({ items: [RULE] });
+    renderWithQuery(<LearnedRulesPage />);
+    await screen.findByText("MARC.BESKZ");
+    expect(screen.getByRole("columnheader", { name: "Action" })).toBeInTheDocument();
+    expect(screen.queryByText(/you can read the proposals but not decide on them/)).toBeNull();
   });
 
   it("explains an empty proposal list and offers to mine again", async () => {
