@@ -88,6 +88,7 @@ class LandscapeCellOut(BaseModel):
     dimensions: dict[str, float] = {}
     contract_breaches: int = 0                 # breaches of the active data contracts covering the cell (any enforce)
     enforced_contract_breaches: int = 0        # of those, breaches of enforced contracts
+    policy_breaches: int = 0                   # applied policy-pack classes with a failing critical rule (113)
 
 
 class LandscapeSentenceOut(BaseModel):
@@ -272,7 +273,9 @@ async def _landscape(scope: str, run: uuid.UUID | None, db: AsyncSession, tenant
             "AND version_id = ANY(CAST(:ids AS uuid[])) GROUP BY 1, 2"), p)).fetchall() if r[2]}
 
     from api.services import contract_enforcement as ce
+    from api.services import policy_packs
     contracts = await ce.active(db, t)
+    policy = await policy_packs.breaches(db, t, ids)
     cells: list[dict] = []
     for sid, module, rid in triples:
         m = summaries[rid][module]
@@ -290,6 +293,7 @@ async def _landscape(scope: str, run: uuid.UUID | None, db: AsyncSession, tenant
             "open_work": open_work.get((rid, module), 0) if rid in built else None,
             "dimensions": _measured_dimensions(m),
             "contract_breaches": len(cb), "enforced_contract_breaches": sum(1 for b in cb if b["enforce"]),
+            "policy_breaches": len(policy.get((rid, module), [])),
             "critical_over_tolerance": critical_over_tolerance(m),  # for the sentence; not part of a cell
         })
     sentence = sentence_of(cells)

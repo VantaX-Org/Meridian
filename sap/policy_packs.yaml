@@ -1,0 +1,132 @@
+# Policy packs (api/services/policy_packs.py, GET /api/v1/policy-packs).
+#
+# A pack names field classes, each with the authority it answers to (a regulation article or section, as text) and
+# the rules of the catalogue (checks/rules) whose checked field is one of the class's fields: those rules evidence the
+# class. Applying a pack (POST /api/v1/policy-packs/{id}/apply, manage_rules) materialises its classes for the tenant
+# (policy_field_classes, migration 113); an applied class with a failing critical rule is a policy breach on the
+# landscape cell and the object receipt.
+#
+# ``rules`` is generated from the catalogue: every enabled rule whose ``field`` or ``fields`` names one of the class's
+# fields. tests/test_policy_packs.py fails when a listed rule leaves the catalogue or stops checking a class field.
+# No URLs: authorities are cited by article or section so the text does not rot.
+packs:
+- id: gdpr
+  name: GDPR personal data
+  authority: Regulation (EU) 2016/679, General Data Protection Regulation
+  description: >-
+    Personal data of natural persons held in business partner, HR and SuccessFactors master data. The classes are the fields the regulation's accuracy and rectification duties reach; the rules are the catalogue checks that evidence each class is accurate and complete.
+  classes:
+  - id: identity
+    label: Identity of natural persons
+    authority: GDPR Article 4(1) (personal data) and Article 5(1)(d) (accuracy)
+    fields: [BUT000.NAME_FIRST, BUT000.NAME_LAST, BUT000.BIRTHDT, BUT000.TITLE_ACA1, BUT000.NATIO, BUT000.MARST,
+             BUT000.DEATHDT, PA0002.VORNA, PA0002.NACHN, PA0002.GBDAT, PA0002.GBLND, PA0002.GBDEP, PA0002.GESCH,
+             PA0002.NATIO, PA0002.NATI2, PA0002.NATI3, PA0002.FAMST, PA0002.ANRED, PA0002.TITEL]
+    rules: [BP007, BP008, BP038, BP046, BP048, BP217, BP225, BP268, BP269, BP271, BP274, HCM015, HCM016, HCM017,
+            HCM018, HCM019, HCM020, PA031, PA032, PA033, PA034, PA085, PA087, PA088, PA090, S4C028, S4C029,
+            S4R-HCM-GESCH, S4R-HCM-NACHN]
+  - id: contact
+    label: Contact and address data
+    authority: GDPR Article 5(1)(d) (accuracy) and Article 16 (right to rectification)
+    fields: [ADR6.SMTP_ADDR, ADR2.TEL_NUMBER, ADRC.STREET, ADRC.CITY1, ADRC.POST_CODE1, PA0006.STRAS, PA0006.ORT01,
+             PA0006.PSTLZ, PA0006.LAND1, PA0105.USRID_LONG, PEREMAIL.EMAIL_ADDRESS, PERPHONE.PHONE_NUMBER,
+             PERADDRESS.ADDRESS_LINE1, PERADDRESS.CITY, PERADDRESS.ZIPCODE]
+    rules: [AP009, AP096, AR008, BP017, BP018, BP020, BP021, BP022, BP294, EC017, EC018, EC029, EC031, EC033, EC040,
+            EC061, EC063, EC064, EC065, EC066, EC067, EC068, EC069, EC070, EC071, EC072, EC073, EC074, EC086, EC120,
+            EC149, EC150, EC155, EC156, EC161, EC162, EC163, EC164, EC165, EC166, EC356, HCM022, HCM023, HCM029,
+            PA036, PA091, PA092, PA101, S4R-HCM-LAND1, S4R-HCM-ORT01, SDCM007]
+  - id: national_identifier
+    label: National identification numbers
+    authority: GDPR Article 87 (processing of the national identification number)
+    fields: [PA0002.PERID]
+    rules: [HCM021, PA030, PA035]
+  - id: employee_bank
+    label: Employee bank details
+    authority: GDPR Article 5(1)(d) (accuracy) and Article 5(1)(f) (integrity and confidentiality)
+    fields: [PA0009.BANKS, PA0009.BANKL, PA0009.BANKN, PA0009.IBAN, PA0009.SWIFT, PAYMENTINFO.ACCOUNT_NUMBER,
+             PAYMENTINFO.ACCOUNT_OWNER, PAYMENTINFO.BANK, PAYMENTINFO.BIC, PAYMENTINFO.IBAN]
+    rules: [EC219, EC220, EC221, EC226, EC227, HCM027, HPY042, HPY043, PA025, PA026, PA028, PA029, PA098, PA100,
+            PA110, PAY038, PAY039, PAY043, PAY044, PAY048, PAY052, PAY054, PAY055, PAY056, PAY057, PAY058, PAY059,
+            PAY060, PAY061, PAY062, PAY063, PAY064, PAY065, PAY066, PAY067, PAY068, PAY069, PAY070, PAY071, PAY072,
+            PAY073, PAY074, PAY075, PAY076, PAY077, PAY078, PAY079, PAY080, PAY081, PAY082, PAY083, PAY084, PAY085,
+            PAY086, PAY087, PAY088, PAY089, PAY090, PAY091, PAY092, PAY093, PAY094, PAY095, PAY096, PAY097, PAY098,
+            PAY099, PAY100, PAY101, PAY102, PAY103, PAY104, PAY105, PAY106, PAY107, PAY108, PAY109, PAY110, PAY111,
+            PAY112, PAY113, PAY114, PAY128, PAY129, PAY133, PAY134, PAY136, PAY137, PAY216, S4R-HCM-BANKS]
+  - id: special_category
+    label: Special categories of personal data
+    authority: GDPR Article 9(1) (processing of special categories of personal data)
+    fields: [PA0002.KONFE]
+    rules: []
+- id: sox
+  name: SOX financial controls
+  authority: Sarbanes-Oxley Act of 2002 (United States)
+  description: >-
+    Master data behind financial reporting and payments. The classes are the fields internal control over financial reporting depends on; the rules are the catalogue checks that evidence each class.
+  classes:
+  - id: gl_master
+    label: General ledger accounts
+    authority: SOX Section 404(a) (management assessment of internal control over financial reporting)
+    fields: [SKA1.SAKNR, SKA1.KTOKS, SKA1.KTOPL, SKA1.XBILK, SKA1.XLOEV, SKA1.XSPEB, SKB1.BUKRS, SKB1.WAERS,
+             SKB1.MITKZ, SKB1.XOPVW, SKB1.XKRES, SKB1.FSTAG, SKB1.MWSKZ, SKB1.ZUAWA, SKB1.XLOEB]
+    rules: [GL001, GL002, GL003, GL006, GL009, GL010, GL012, GL013, GL017, GL018, GL019, GL021, GL023, GL024, GL025,
+            GL028, GL030, GL031, GL033, GL034, GL057, GL200, GL201, GL203, GL205, GL206, GL207, GL210, GL212, GL214,
+            GL215, GL216, GL217, GL220, GL222, GL223, GL227, GL228, GL232, GL234, GL235]
+  - id: journal_entries
+    label: Journal entries
+    authority: SOX Section 302 (corporate responsibility for financial reports) and Section 404(a)
+    fields: [BKPF.BLART, BKPF.BUDAT, BKPF.BLDAT, BKPF.USNAM, BKPF.WAERS, BKPF.XBLNR, BKPF.BUKRS, BSEG.HKONT,
+             BSEG.SHKZG, BSEG.DMBTR, BSEG.BSCHL, BSEG.MWSKZ, BSEG.LIFNR, BSEG.KUNNR]
+    rules: [GL029, GL035, GL036, GL037, GL038, GL040, GL041, GL042, GL043, GL044, GL050, GL051, GL052, GL053, GL059,
+            GL060, GL061, GL064, GL066, GL068, GL069, GL260, GL261, XFI001, XP2P003]
+  - id: vendor_bank
+    label: Vendor bank data
+    authority: SOX Section 404(a) (controls over changes to vendor payment data)
+    fields: [LFBK.BANKS, LFBK.BANKL, LFBK.BANKN, LFBK.KOINH, LFBK.BVTYP, BNKA.BANKS, BNKA.BANKL, BNKA.BANKA,
+             BNKA.SWIFT]
+    rules: [AP018, AP019, AP039, AP065, AP087, AP088, AP095, AP200, AP201, AP235, AP237, AP238, AP239, BKT001,
+            BKT002, BKT003, BKT004, BKT005, BKT006, BKT007, BKT008, BKT009, BKT010, BKT011, BKT012, BKT020, BKT022,
+            BKT025, BKT028, BKT029, BKT095, BKT108, XDUP003]
+  - id: customer_bank
+    label: Customer bank data
+    authority: SOX Section 404(a) (controls over receivables and incoming payments)
+    fields: [KNBK.BANKS, KNBK.BANKL, KNBK.BANKN, KNBK.KOINH]
+    rules: [AR049, AR050, AR205, AR261, BKT021, BKT023, BKT024, BKT026, BKT030, BKT031]
+  - id: payment_terms
+    label: Payment terms and reconciliation accounts
+    authority: SOX Section 404(a) (completeness and accuracy of payables and receivables)
+    fields: [LFB1.ZTERM, KNB1.ZTERM, LFM1.ZTERM, LFB1.ZWELS, LFB1.AKONT, KNB1.AKONT]
+    rules: [AP014, AP016, AP017, AP036, AP037, AP042, AP063, AP240, AP241, AP258, AP282, AR018, AR021, AR030, AR041,
+            AR237, BKT072, XREC001, XREC002]
+- id: gxp
+  name: GxP batch and quality
+  authority: 21 CFR Part 211 (Current Good Manufacturing Practice for Finished Pharmaceuticals) and EudraLex Volume 4 (EU GMP)
+  description: >-
+    Batch, shelf life, inspection and deviation data a regulated manufacturer must keep complete and accurate. The rules are the catalogue checks that evidence each class.
+  classes:
+  - id: batch_identity
+    label: Batch identification
+    authority: 21 CFR 211.80(d) (lot identification) and 21 CFR 211.188 (batch production and control records)
+    fields: [MCH1.MATNR, MCH1.CHARG, MCH1.ERSDA, MCH1.LIFNR, MCH1.LWEDT, MCH1.ZUSTD, MCH1.LVORM, MCHA.MATNR,
+             MCHA.WERKS, MCHA.CHAME, MARA.XCHPF, MARC.XCHPF]
+    rules: [BATCH001, BATCH002, BATCH003, BATCH004, BATCH005, BATCH009, BATCH013, BATCH016, BATCH017, BATCH025,
+            BATCH026, BATCH036, BATCH038, BATCH041, BATCH042, MM022, MM232, MM233, MM459, MM460, MM603, MM732, MM859,
+            MM860, MM862, S4R-AR-MCH1-LVORM, S4R-BATCH-MCHA-NOMARC]
+  - id: shelf_life
+    label: Shelf life and expiry
+    authority: 21 CFR 211.137 (expiration dating)
+    fields: [MCH1.VFDAT, MCH1.HSDAT, MCH1.QNDAT, MARA.MHDHB, MARA.MHDRZ, MARA.MHDLP, MARA.IPRKZ]
+    rules: [BATCH006, BATCH008, BATCH015, BATCH021, BATCH022, BATCH024, BATCH027, BATCH033, BATCH034, BATCH039,
+            BATCH040, MM042, MM324, MM326, MM447, MM461, MM463, MM649, MM856, MM857, MM858, MM861, MM863,
+            S4R-AR-MCH1-EXPIRED]
+  - id: quality_inspection
+    label: Quality inspection and release
+    authority: 21 CFR 211.84 (testing and approval of components) and 21 CFR 211.165 (testing and release for distribution)
+    fields: [QALS.ART, QALS.HERKUNFT, QALS.MATNR, QALS.WERK, QALS.ENSTEHDAT, QALS.STAT34, QALS.LOSMENGE, QALS.CHARG,
+             QAVE.VCODE, QAVE.VCODEGRP, QAVE.VBEWERTUNG, QAVE.VKATART, QAVE.VWERKS, QAVE.DBEWERTUNG, MARC.QMATV,
+             MARC.SSQSS]
+    rules: [MM405, MM406, MM412, QM001, QM004, QM075, QM076, QM077, QM078, QM091, QM092, QM093, QM097, QM098, QM105]
+  - id: deviations
+    label: Deviations and complaints
+    authority: 21 CFR 211.192 (production record review) and 21 CFR 211.198 (complaint files)
+    fields: [QMEL.QMDAT, QMEL.QMCOD, QMEL.QMGRP, QMEL.MATNR, QMEL.PHASE, QMEL.QMDAB, QMEL.LTRMN, QMEL.CHARG]
+    rules: [PM348, PM349, PM351, PM352, QM058, QM059, QM060, QM061, QM062, QM063, QM064, QM065, QM066]
