@@ -78,7 +78,6 @@ export function HelpSlot() {
         onWhatsNew={() => { setNewsOpen(true); markSeen(); }}
         hasNew={hasNew}
         onHelp={() => router.push("/help")}
-        onDocs={() => router.push("/docs")}
         context={{ url, runId: run, version: APP_VERSION }}
         supportEmail={SUPPORT_EMAIL}
       />

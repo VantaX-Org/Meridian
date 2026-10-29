@@ -12,10 +12,11 @@ describe("VideoPlayer", () => {
     expect(screen.getByText("Fix your first record")).toBeInTheDocument();
   });
 
-  it("falls back to an honest slot when the recording is not there yet", () => {
+  it("renders nothing when the recording is not there yet, so no empty placeholder shows", () => {
     render(<VideoPlayer name="help-first-fix" title="Fix your first record" />);
     fireEvent.error(screen.getByLabelText("Fix your first record: training video"));
     expect(screen.queryByLabelText("Fix your first record: training video")).toBeNull();
-    expect(screen.getByText("Fix your first record: recording in preparation")).toBeInTheDocument();
+    expect(screen.queryByText(/recording in preparation/)).toBeNull();
+    expect(screen.queryByText("Fix your first record")).toBeNull();
   });
 });

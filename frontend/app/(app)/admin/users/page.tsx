@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import Link from "next/link";
 import { Button, Checkbox, ChoiceGroup, ConfirmDialog, DataTable, Dialog, Drawer, EmptyState, Field, Input, Menu, Notice, PageHeader, Pill, Select, Skeleton, Async, IconButton, IconMore, Tooltip, toast, type CellMeta } from "@/design";
+import { SettingsTabs } from "@/components/admin/settings-tabs";
 import { useAuth } from "@/context/auth-context";
 import { ImportUsersDrawer } from "@/components/admin/import-users-drawer";
 import { useSeats } from "@/components/admin/use-seats";
@@ -84,6 +85,7 @@ export default function AdminUsersPage() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
+        tabs={<SettingsTabs />}
         title="Users"
         meta={usersMeta ? (
           <>

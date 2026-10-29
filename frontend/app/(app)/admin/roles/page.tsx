@@ -5,6 +5,7 @@ import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/rea
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { Button, Card, Choice, ConfirmDialog, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, IconButton, Input, Menu, Mono, Notice, PageHeader, Pill, RowActionButton, Select, Skeleton, Tabs, Textarea, IconMore, toast } from "@/design";
+import { SettingsTabs } from "@/components/admin/settings-tabs";
 import { ApiKeysTab } from "@/components/admin/api-keys-tab";
 import { EffectivePermissionsView } from "@/components/admin/effective-permissions";
 import { GrantDiff } from "@/components/admin/grant-diff";
@@ -56,6 +57,7 @@ export default function AdminRolesPage() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
+        tabs={<SettingsTabs />}
         title="Roles and access"
         meta={`${rolesQ.isLoading ? "" : `${roles.length} roles, ${custom} custom. `}Decide what each role may do and which systems or objects each person reaches`}
         // A new role starts as a copy of an existing one (the API creates roles by cloning), then its permissions are set in the Matrix.

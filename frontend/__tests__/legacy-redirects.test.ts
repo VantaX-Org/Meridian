@@ -52,6 +52,7 @@ const EXPECTED: Record<string, string> = {
   "/notifications": "/inbox",
   "/issues": "/fix?mine=1",
   "/dedup": "/insights/duplicates",
+  "/insights/operations": "/insights/progress",
   "/ai/rules": "/rules",
   "/config-impact": "/insights/impact",
   "/reports": "/insights/reports",
@@ -68,7 +69,7 @@ const EXPECTED: Record<string, string> = {
 };
 
 // Retired pages whose redirect is a 301; every other legacy route is a 307 until its replacement settles.
-const PERMANENT = new Set(["/admin/notifications", "/admin/ai"]);
+const PERMANENT = new Set(["/admin/notifications", "/admin/ai", "/insights/operations", "/insights/duplicates"]);
 
 describe("legacy route redirects", () => {
   it("redirects every legacy route to its replacement, and nothing else", async () => {
@@ -98,6 +99,24 @@ describe("legacy route redirects", () => {
     expect(redirects.filter((r) => r.source === "/admin/notifications")).toEqual([
       { source: "/admin/notifications", destination: "/admin/alerts", permanent: true },
     ]);
+  });
+
+  it("sends the retired Operations page permanently to Progress, where its figures now sit in the Team section", async () => {
+    const redirects = await nextConfig.redirects!();
+    expect(redirects.filter((r) => r.source === "/insights/operations")).toEqual([
+      { source: "/insights/operations", destination: "/insights/progress", permanent: true },
+    ]);
+  });
+
+  it("sends the Duplicates page's Anomalies tab to Patterns and its Relationships tab to Lineage, permanently", async () => {
+    const redirects = await nextConfig.redirects!();
+    const rules = redirects.filter((r) => r.source === "/insights/duplicates");
+    expect(rules).toEqual([
+      { source: "/insights/duplicates", has: [{ type: "query", key: "tab", value: "anomalies" }], destination: "/insights/mining?tab=anomalies", permanent: true },
+      { source: "/insights/duplicates", has: [{ type: "query", key: "tab", value: "relationships" }], destination: "/insights/lineage#relationships", permanent: true },
+    ]);
+    // The plain Duplicates page and its other tabs stay where they are.
+    expect(rules.every((r) => r.has?.length === 1)).toBe(true);
   });
 
   it("sends the retired Fix work Monitor tab to the Objects list's monitoring view", async () => {

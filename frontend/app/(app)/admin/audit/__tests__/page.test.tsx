@@ -12,6 +12,7 @@ vi.mock("@/hooks/use-url-state", () => ({ useUrlState: () => [tab, vi.fn()] }));
 vi.mock("@/lib/permissions", () => ({ usePermissions: () => ({ has: () => true, loading: false }), usePermissionsContext: () => null }));
 const role = vi.hoisted(() => ({ manageUsers: true }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (p: string) => p !== "manage_users" || role.manageUsers, loading: false }) }));
+vi.mock("@/components/admin/settings-tabs", () => ({ SettingsTabs: () => null }));
 
 const ENTRY: AuditEntry = {
   id: "a1", actor_user_id: "u1", actor_email: "ana@x.io", action: "user.update", entity_type: "user",

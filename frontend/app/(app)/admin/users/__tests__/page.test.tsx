@@ -11,6 +11,7 @@ import AdminUsersPage from "../page";
 
 const role = { can: () => true, loading: false };
 vi.mock("@/hooks/use-role", () => ({ useRole: () => role }));
+vi.mock("@/components/admin/settings-tabs", () => ({ SettingsTabs: () => null }));
 const auth = vi.hoisted(() => ({ user: { id: "me" } as { id: string } | null }));
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: auth.user }) }));
 

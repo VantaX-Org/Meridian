@@ -29,7 +29,7 @@ One warning worth taking early: you see the records your scope covers. If a coll
 
 Open the help menu, marked **?**, on any page. Where a guided tour exists, it is offered there. Tours are short and shaped by role: one for stewards, one for leads, one for SAP Basis, one for processes. A tour jumps between pages for you and skips any step whose page has nothing to show yet. Take your role's tour now; every tour can be replayed later from [your preferences](/me/preferences).
 
-The same menu holds the shortcuts sheet, what is new, the documentation library and a report-a-problem dialog. Report a problem copies the page address, the current run and the version for you; opening it sends nothing anywhere.
+The same menu holds the shortcuts sheet, what is new, this help centre with the user guide, and a report-a-problem dialog. Report a problem copies the page address, the current run and the version for you; opening it sends nothing anywhere.
 
 ## Find things without hunting
 

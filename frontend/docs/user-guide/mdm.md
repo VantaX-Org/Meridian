@@ -34,7 +34,7 @@ The match rules find candidate pairs. Every pair is decided in **Master data**, 
 Pairs also reach you from:
 
 - **Match review**: every duplicate pair, from the match rules and the cleaning engine, compared field by field; keep one or mark it not a match. Old links to Fix work's Duplicates tab open it.
-- **Insights**, **Explore**, **Duplicates**: pick an object and a record, see its cluster, choose the surviving record and select **Create merge proposal**. Below it are the miner's **Likely duplicates**, **Anomalies** and **Relationships**; **Review** on a likely duplicate opens it in Match review.
+- **Insights**, **Explore**, **Duplicates**: pick an object and a record, see its cluster, choose the surviving record and select **Create merge proposal**. Below it are the matcher's **Scored pairs** and the miner's **Likely duplicates**; **Review** on a likely duplicate opens it in Match review. Anomalies are under **Patterns** and field relationships under **Lineage**.
 - The [Inbox](/docs?page=inbox): each merge decision waits there. Approving keeps the record with the higher confidence, fills its blank fields from the other and marks the other **Superseded**. Rejecting records the pair as "do not match".
 
 Creating merge proposals and merging need the approve permission.

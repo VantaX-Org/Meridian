@@ -39,7 +39,7 @@ import { useSystemScope } from "@/lib/permissions";
 import { getSystems } from "@/lib/api/connectivity";
 import { formatModuleName, labelOf, plural, relativeTime, formatDate } from "@/lib/format";
 import { miningWhy } from "./sentences";
-import { MineNow } from "../duplicates/mined-tabs";
+import { MineNow, MinedAnomalies, useMinedAnomalies } from "../_components/mined-feeds";
 import { useInsightScope } from "../_components/useInsightScope";
 import { PAGE_PURPOSE } from "../_components/InsightViews";
 import { queryKeys } from "@/lib/query-keys";
@@ -288,10 +288,27 @@ function DataTableWithMaybeEmpty<T>({ columns, data, getRowId, loading, empty, d
   return <DataTable<T> columns={columns} data={data} getRowId={getRowId} />;
 }
 
+/* --------------------------------------------------------------- Anomalies */
+
+/** Values far outside the usual range, mined per run (moved here from Duplicates). */
+function Anomalies({ run, current }: { run: string; current: boolean }) {
+  const scope = { run, current };
+  const q = useMinedAnomalies(scope);
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="m-text-body m-ink-2">{current ? "Values the miner found far outside the usual range in each object's latest run." : "Values the miner found far outside the usual range in this run."}</p>
+      <MinedAnomalies q={q} scope={scope} />
+    </div>
+  );
+}
+
 export default function MiningPage() {
-  const { run } = useInsightScope();
+  const insightScope = useInsightScope();
+  const { run } = insightScope;
+  // Without ?run= (or ?module=) the anomalies read the current state: every object at its own latest run, as Duplicates did.
+  const isCurrent = insightScope.mode === "current";
   const [tabRaw, setTab] = useUrlState("tab", "");
-  const TABS = ["links", "dependencies", "patterns"] as const;
+  const TABS = ["links", "dependencies", "patterns", "anomalies"] as const;
   // Legacy bookmarks used ?lens=; honour it only when ?tab= is absent, through the same whitelist.
   const lens = useSearchParams().get("lens") ?? "";
   const tab = oneOf(tabRaw, TABS, oneOf(lens, TABS, "links"));
@@ -316,7 +333,7 @@ export default function MiningPage() {
         changed: { sentence: anomalies ? `${plural(anomalies, "new anomaly", "new anomalies")} in the last 30 days` : "No new anomalies in the last 30 days" },
         why: { sentence: miningWhy(links, inferred, patternsTotal) },
         next: anomalies
-          ? { sentence: "Review the new anomalies", action: { label: "Open patterns", onClick: () => setTab("patterns") } }
+          ? { sentence: "Review the new anomalies", action: { label: "Open anomalies", onClick: () => setTab("anomalies") } }
           : links
             ? { sentence: "Review the record links", action: { label: "Open links", onClick: () => setTab("links") } }
             : { sentence: "Mine the selected run to find links and patterns", action: { label: "Open patterns", onClick: () => setTab("patterns") } },
@@ -326,6 +343,7 @@ export default function MiningPage() {
         { value: "links", label: "Record links", content: <EntityLinks run={run} /> },
         { value: "dependencies", label: "Field dependencies", content: <Dependencies run={run} /> },
         { value: "patterns", label: "Patterns", content: <Patterns run={run} /> },
+        { value: "anomalies", label: "Anomalies", content: <Anomalies run={isCurrent ? "" : run ?? ""} current={isCurrent} /> },
       ]} />
     </InsightFrame>
   );

@@ -2,6 +2,8 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import * as analyticsApi from "@/lib/api/analytics";
+import * as triageApi from "@/lib/api/triage";
 import * as versionsApi from "@/lib/api/versions";
 import * as wa from "@/lib/api/work-analytics";
 import type { Burndown } from "@/lib/api/work-analytics";
@@ -39,6 +41,20 @@ const BURN: Burndown = {
 
 function mockAll(over: Partial<{ burn: Burndown | Error; previous: boolean; throughput: Error; assignee: boolean }> = {}) {
   vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: RUNS });
+  // The Team section (capacity, queue age, SLA, sprints) has its own queries.
+  vi.spyOn(analyticsApi, "getOperational").mockResolvedValue({
+    kpis: {
+      throughput: 2, automation_rate: 10, mttr_hours: 5, sla_compliance_pct: 90, rejection_rate: 1, rollback_rate: 0,
+      items_in_flight: 4, avg_queue_age_hours: 3, top_rule_by_volume: "N/A", total_processed: 6, total_detected: 10,
+    },
+    bottlenecks: [{ stage: "pending_review", count: 4, avg_age_hours: 30, recommendation: "Add reviewers" }],
+    capacity: { needed: 2, current: 1, surplus_deficit: -1, recommendation: "Add a steward" },
+  });
+  vi.spyOn(analyticsApi, "getSprints").mockResolvedValue({ sprints: [], total_actions: 0 });
+  vi.spyOn(triageApi, "getTriageMetrics").mockResolvedValue({
+    weeks: 8, backlog_by_owner: [], backlog_by_team: [], unassigned: 0, resolved_in_sla: 0, resolved_total: 0,
+    sla_attainment_pct: null, mtta_hours: null, mttr_hours: null, breach_count: 0, weekly: [],
+  });
   const burn = over.burn ?? BURN;
   const burndown = vi.spyOn(wa, "getBurndown");
   if (burn instanceof Error) burndown.mockRejectedValue(burn);
@@ -124,6 +140,15 @@ describe("ProgressPage without ?run=: the current state", () => {
 });
 
 describe("ProgressPage", () => {
+  it("ends with a Team section: capacity, queue age by stage and sprint plans (the retired Operations page)", async () => {
+    mockAll();
+    mount();
+    expect(await screen.findByRole("heading", { name: "Team" })).toBeInTheDocument();
+    expect(await screen.findByText("1 steward short")).toBeInTheDocument();
+    expect(screen.getByText("Queue age by stage")).toBeInTheDocument();
+    expect(screen.getByText("Sprint plans")).toBeInTheDocument();
+  });
+
   it("says what the page is for and shows the lead's four numbers for the scoped run", async () => {
     const { burndown, change } = mockAll();
     mount();

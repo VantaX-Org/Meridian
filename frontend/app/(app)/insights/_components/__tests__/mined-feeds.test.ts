@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectionMethodLabel } from "../mined-tabs";
+import { detectionMethodLabel } from "../mined-feeds";
 
 describe("anomaly detection method labels", () => {
   it("names the miner's methods in words, never Iqr or Zscore", () => {

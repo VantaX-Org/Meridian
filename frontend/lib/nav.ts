@@ -116,12 +116,38 @@ export function resolveNavHref(href: string, role: Role, can?: (action: string) 
 export const SETTINGS_HREF = "/admin/settings";
 
 /**
- * The tab strip of Settings and its children, from the visible nav: the Settings page itself (as Overview) and each
- * child the viewer may open. Empty when the viewer cannot see Settings.
+ * The one admin tab strip, in order: [href, tab label when it differs from the nav label]. Settings is the Overview
+ * (with the needs-setup checklist); its children and the other Admin pages (Users, Roles and access, Audit log) and
+ * Jobs (listed under Data in for SAP Basis) are its other tabs.
+ */
+const ADMIN_TABS: readonly (readonly [href: string, label?: string])[] = [
+  [SETTINGS_HREF, "Overview"],
+  ["/admin/users"],
+  ["/admin/roles"],
+  ["/admin/sign-in"],
+  ["/admin/alerts"],
+  ["/admin/triage"],
+  ["/admin/mappings"],
+  ["/admin/reference"],
+  ["/admin/jobs"],
+  ["/admin/audit"],
+  ["/admin/billing", "Billing"],
+  ["/admin/licence"],
+];
+
+/** Every href the admin tab strip can show. */
+export const ADMIN_TAB_HREFS: readonly string[] = ADMIN_TABS.map(([href]) => href);
+
+/**
+ * The admin tab strip, from the visible nav: each admin page the viewer may open, in the strip's order, so a tab
+ * never leads to a page the role cannot use. Every admin page shows the same strip. Empty when none is visible.
  */
 export function settingsTabs(groups: readonly NavGroup[]): NavItem[] {
-  const settings = flattenNav(groups.flatMap((g) => g.items)).find((i) => i.href === SETTINGS_HREF);
-  return settings ? [{ ...settings, label: "Overview", children: undefined }, ...(settings.children ?? [])] : [];
+  const byHref = new Map(flattenNav(groups.flatMap((g) => g.items)).map((i) => [i.href, i] as const));
+  return ADMIN_TABS.flatMap(([href, label]) => {
+    const item = byHref.get(href);
+    return item ? [{ ...item, label: label ?? item.label, children: undefined }] : [];
+  });
 }
 
 /** DESIGN.md §1.1: the index bar holds at most this many pills before More (the main group's size). */
@@ -195,10 +221,9 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           { href: "/insights/lineage", requires: req("reports", "view"), label: "Lineage", icon: IconBranch, keywords: "lineage field config process kpi" },
           { href: "/insights/mining", requires: req("reports", "view"), label: "Patterns", icon: IconCompass, keywords: "mining patterns anomalies drift likely rules" },
           { href: "/insights/duplicates", requires: req("reports", "view"), label: "Duplicates", icon: IconMerge, keywords: "duplicates same record merge" },
-          { href: "/insights/readiness", requires: req("reports", "view"), label: "Readiness", icon: IconFlag, keywords: "waves go no-go blockers migration cutover readiness" },
+          { href: "/insights/readiness", requires: req("reports", "view"), label: "Waves", icon: IconFlag, keywords: "readiness waves go no-go blockers migration cutover readiness" },
           { href: "/insights/process", requires: req("reports", "view"), label: "Process data readiness", icon: IconFlag, keywords: "process readiness steps blocked failing fields l1 l5" },
           { href: "/insights/owners", requires: req("reports", "view"), label: "Owners", icon: IconPeople, keywords: "owners digest steward follow up" },
-          { href: "/insights/operations", requires: req("reports", "view"), label: "Operations", icon: IconPeople, keywords: "operations sprints bottlenecks capacity fix queue" },
         ],
       },
       { href: "/fix/what-if", requires: req("fixes", "view"), label: "What-if", icon: IconBranch, anyOf: ["approve", "apply"], keywords: "simulation simulate score before after fix" },
@@ -293,7 +318,6 @@ export const INDEX_ONLY_GROUPS: readonly NavGroup[] = [
       { href: "/inbox/notifications", requires: req("analysis", "view"), label: "Notifications", icon: IconBell, anyOf: ["view"] },
       { href: "/search", requires: req("analysis", "view"), label: "Search", icon: IconCompass, anyOf: ["view"] },
       { href: "/help", requires: req("analysis", "view"), label: "Help centre", icon: IconPlay, anyOf: ["view"] },
-      { href: "/docs", requires: req("analysis", "view"), label: "Documentation", icon: IconBook, anyOf: ["view"] },
       { href: "/me/preferences", requires: req("analysis", "view"), label: "Preferences", icon: IconSliders, anyOf: ["view"] },
       { href: "/design", requires: req("users", "admin"), label: "Design library", icon: IconLayers, anyOf: ["manage_users"] },
     ],
@@ -336,8 +360,7 @@ export const FEATURE_DESC: Readonly<Record<string, string>> = {
   "/home/basis": "The SAP Basis home: systems, connections and live jobs",
   "/home/process": "The process home: discovered processes and their runs",
   "/search": "Find pages, systems, objects, rules, terms and runs",
-  "/help": "Guides and training recordings for the work each role does here",
-  "/docs": "The user guide",
+  "/help": "Guides, training recordings and the user guide for the work each role does here",
   "/me/preferences": "Your density, time zone, theme and notifications",
   "/objects": "Each SAP object's score, verdict and failing rules, its records, and how often it is checked (the monitoring view)",
   "/runs": "Every analysis run: start one, compare two, archive old ones",
@@ -354,7 +377,6 @@ export const FEATURE_DESC: Readonly<Record<string, string>> = {
   "/insights/readiness": "Which objects can load in each migration wave",
   "/insights/process": "How ready each business process is to run on this data",
   "/insights/owners": "Each data owner's open issues and their trend",
-  "/insights/operations": "How the cleaning team keeps up: flow, waits and capacity",
   "/process": "The as-is process catalogue, L1 to L5, mined from SAP",
   "/process/runs": "Start and follow process discovery runs",
   "/insights/process/designer": "Model or edit a process and export it as BPMN or Signavio",
@@ -455,7 +477,7 @@ const OFF_NAV_TITLES: Record<string, string> = {
   "/design": "Design library",
   "/search": "Search",
   "/help": "Help centre",
-  "/docs": "Documentation",
+  "/docs": "User guide",
   "/me/preferences": "Preferences",
   "/rules/learned": "Learned rules",
   "/inbox/notifications": "Notifications",
@@ -474,7 +496,6 @@ const OFF_NAV_TITLES: Record<string, string> = {
   "/insights/readiness": "Waves",
   "/insights/process": "Process data readiness",
   "/insights/owners": "Owners",
-  "/insights/operations": "Operations",
 };
 
 /** Items and their sub-pages (Settings tabs, Insights sections, Inbox exceptions) as one flat list. */

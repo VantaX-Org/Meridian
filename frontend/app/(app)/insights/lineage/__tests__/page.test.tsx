@@ -1,7 +1,9 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as lineageApi from "@/lib/api/lineage";
+import * as miningApi from "@/lib/api/mining";
+import * as learnedRulesApi from "@/lib/api/learnedRules";
 import * as versionsApi from "@/lib/api/versions";
 import LineagePage from "../page";
 
@@ -21,6 +23,39 @@ const LATEST = {
   id: "v1", label: "Run 1", status: "complete", run_at: "2026-01-01T00:00:00Z",
   dqs_summary: { material_master: 90 },
 };
+
+// The Relationships card reads the mined feed; most tests here are about the trace, so it answers empty.
+beforeEach(() => { vi.spyOn(miningApi, "getMiningRelationships").mockResolvedValue([]); });
+
+describe("LineagePage relationships", () => {
+  const setup = () => {
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [LATEST as never] });
+    vi.spyOn(lineageApi, "getLineageModel").mockResolvedValue({ model_version: 1, node_counts: {}, edge_count: 0, kpis: [], processes: [], features: [], warnings: [] });
+    vi.spyOn(lineageApi, "getLineageImpact").mockResolvedValue({ version_id: "v1", model_version: 1, cost_available: false, kpis: [], processes: [], features: [], unmapped_checks: [] });
+  };
+
+  it("lists the mined field relationships of the latest run, moved from Duplicates", async () => {
+    setup();
+    const get = vi.spyOn(miningApi, "getMiningRelationships").mockResolvedValue([
+      { id: "r1", version_id: "v1", module_id: "material_master", field_a: "MTART", field_b: "BKLAS", relationship_type: "dependency", strength_score: 0.9, detected_at: "2026-10-01T00:00:00Z" },
+    ]);
+    renderWithQuery(<LineagePage />);
+    expect(await screen.findByText("BKLAS")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Relationships" })).toBeInTheDocument();
+    expect(get).toHaveBeenCalledWith({ version_id: "v1", limit: 500 });
+  });
+
+  it("starts the relationship miner from its empty state", async () => {
+    setup();
+    const houseRules = vi.spyOn(learnedRulesApi, "mineLearnedRules").mockResolvedValue({ queued: true });
+    const mine = vi.spyOn(miningApi, "runMining").mockResolvedValue({ task_id: "t1", version_id: "v1", include: ["relationship"] });
+    renderWithQuery(<LineagePage />);
+    expect(await screen.findByText("No field relationships found yet")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Search now" }));
+    await waitFor(() => expect(mine).toHaveBeenCalledWith("v1", ["relationship"]));
+    expect(houseRules).not.toHaveBeenCalled();
+  });
+});
 
 describe("LineagePage", () => {
   it("renders the model summary and impact rows", async () => {

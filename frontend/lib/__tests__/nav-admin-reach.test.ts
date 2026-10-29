@@ -33,7 +33,9 @@ function liveRoutes(dir = APP, prefix = ""): string[] {
 // linked at the top of the More panel and in the command palette.
 // /home and /insights only redirect (to the viewer's home; /insights was the retired overview).
 // /admin/notifications only redirects to /admin/alerts (Settings, Alerts).
-const NOT_LISTED = new Set(["/home", "/features", "/insights", "/admin/notifications"]);
+// /docs is the reading page of the user guide, whose chapters the Help centre (/help) lists as its "User guide"
+// section; the help centre is the one entry, so /docs has none of its own.
+const NOT_LISTED = new Set(["/home", "/features", "/insights", "/admin/notifications", "/docs"]);
 
 const gateFor = (actions: readonly string[]): NavGate => {
   const matrix = resourceMatrix(actions);
@@ -64,7 +66,7 @@ describe("admin reaches every page", () => {
   });
 
   it("gives every insight view, reports, what-if, the designer, migration and the admin pages their own More entry", () => {
-    for (const h of ["/insights/reports", "/insights/trends", "/insights/forecast", "/insights/impact", "/insights/lineage", "/insights/mining", "/insights/duplicates", "/insights/readiness", "/insights/process", "/insights/operations", "/insights/process/designer", "/migration", "/fix/what-if", "/rules/learned", "/migration/dry-run", "/admin/jobs"]) expect(railHrefs, h).toContain(h);
+    for (const h of ["/insights/reports", "/insights/trends", "/insights/forecast", "/insights/impact", "/insights/lineage", "/insights/mining", "/insights/duplicates", "/insights/readiness", "/insights/process", "/insights/process/designer", "/migration", "/fix/what-if", "/rules/learned", "/migration/dry-run", "/admin/jobs"]) expect(railHrefs, h).toContain(h);
     // Exception billing is a Settings tab (Settings stands for its tabs in More), listed on All features.
     expect(indexHrefs).toContain("/admin/billing");
   });
