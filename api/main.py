@@ -117,102 +117,121 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"MinIO bucket init failed: {e}")
 
-    # Ensure dev tenant exists (local dev mode only)
-    if settings.auth_mode == "local":
-        try:
-            from sqlalchemy import text
-            from api.deps import engine, async_session_factory
+    # Every API worker process runs this startup. One at a time, so two workers never both find no users and each
+    # create the default admin.
+    from sqlalchemy import text as _text
 
-            async with async_session_factory() as session:
-                result = await session.execute(
-                    text("SELECT id FROM tenants WHERE id = '00000000-0000-0000-0000-000000000001'")
-                )
-                if not result.scalar():
-                    await session.execute(
-                        text(
-                            "INSERT INTO tenants (id, name, licensed_modules) "
-                            "VALUES ('00000000-0000-0000-0000-000000000001', 'Dev Tenant', "
-                            "ARRAY['business_partner','material_master','fi_gl','accounts_payable',"
-                            "'accounts_receivable','asset_accounting', 'hcm','mm_purchasing','plant_maintenance',"
-                            "'production_planning','project_system','sd_customer_master','sd_sales_orders','controlling','interface_health','s4_readiness','banking_tax',"
-                            "'employee_central','compensation','benefits','payroll_integration',"
-                            "'performance_goals','succession_planning','recruiting_onboarding',"
-                            "'learning_management','time_attendance',"
-                            "'ewms_stock','ewms_transfer_orders','batch_management','mdg_master_data',"
-                            "'grc_compliance','fleet_management','transport_management','wm_interface',"
-                            "'cross_system_integration','s4hc_master_data','concur_expense',"
-                            "'concur_users','ariba_supplier','ariba_contracts','ariba_procurement'])"
-                        )
-                    )
-                    await session.commit()
-                    logger.info("Dev tenant created")
-                else:
-                    logger.info("Dev tenant exists")
+    from api.deps import engine as _engine
 
-                # Ensure jwt_secret exists on the dev tenant for local auth
-                secret_row = await session.execute(
-                    text("SELECT jwt_secret FROM tenants WHERE id = '00000000-0000-0000-0000-000000000001'")
-                )
-                if not secret_row.scalar():
-                    from api.services.local_auth import generate_jwt_secret
-                    await session.execute(
-                        text(
-                            "UPDATE tenants SET jwt_secret = :secret WHERE id = '00000000-0000-0000-0000-000000000001'"
-                        ),
-                        {"secret": generate_jwt_secret()},
-                    )
-                    await session.commit()
-                    logger.info("Dev tenant jwt_secret generated")
-
-                # Ensure at least one admin user exists for local auth.
-                # Migration 039 FORCEs RLS on `users` — so we MUST set the
-                # tenant context before the COUNT / INSERT, otherwise
-                # current_setting('app.tenant_id') is empty and the ::uuid
-                # cast fails.
-                await session.execute(
-                    text("SET app.tenant_id = '00000000-0000-0000-0000-000000000001'")
-                )
-                user_count = await session.execute(
-                    text("SELECT COUNT(*) FROM users WHERE tenant_id = '00000000-0000-0000-0000-000000000001'")
-                )
-                if user_count.scalar() == 0:
-                    import uuid as _uuid
-                    from api.services.local_auth import hash_password
-                    default_pw = hash_password("admin")
-                    admin_id = str(_uuid.uuid4())
-                    await session.execute(
-                        text(
-                            "INSERT INTO users (id, tenant_id, email, name, role, password_hash, is_active) "
-                            "VALUES (:id, '00000000-0000-0000-0000-000000000001', "
-                            "'admin@meridian.local', 'Admin', 'platform_admin', :pw, true)"
-                        ),
-                        {"id": admin_id, "pw": default_pw},
-                    )
-                    # Roles are grants: users.role mirrors this unscoped grant (rbac.recompute_users_role).
-                    await session.execute(
-                        text(
-                            "INSERT INTO user_role_scopes (tenant_id, user_id, role_key) "
-                            "VALUES ('00000000-0000-0000-0000-000000000001', :id, 'platform_admin') "
-                            "ON CONFLICT DO NOTHING"
-                        ),
-                        {"id": admin_id},
-                    )
-                    await session.commit()
-                    logger.info("Default admin user created: admin@meridian.local / admin")
-        except Exception as e:
-            logger.warning(f"Dev tenant init failed: {e}")
-
-    # Rule catalogue + standard upload fields for every tenant, in step with this release
+    _lock = None
     try:
-        import asyncio as _aio
-
-        from api.services.tenant_seed import seed_all
-        from workers.db import get_sync_engine
-
-        seeded = await _aio.to_thread(seed_all, get_sync_engine())
-        logger.info(f"Tenant catalogues: {seeded}")
+        _lock = await _engine.connect()
+        await _lock.execute(_text("SELECT pg_advisory_lock(72120261)"))
     except Exception as e:
-        logger.warning(f"Tenant catalogue sync failed: {e}")
+        logger.warning(f"Startup lock unavailable: {e}")
+    try:
+        # Ensure dev tenant exists (local dev mode only)
+        if settings.auth_mode == "local":
+            try:
+                from sqlalchemy import text
+                from api.deps import engine, async_session_factory
+
+                async with async_session_factory() as session:
+                    result = await session.execute(
+                        text("SELECT id FROM tenants WHERE id = '00000000-0000-0000-0000-000000000001'")
+                    )
+                    if not result.scalar():
+                        await session.execute(
+                            text(
+                                "INSERT INTO tenants (id, name, licensed_modules) "
+                                "VALUES ('00000000-0000-0000-0000-000000000001', 'Dev Tenant', "
+                                "ARRAY['business_partner','material_master','fi_gl','accounts_payable',"
+                                "'accounts_receivable','asset_accounting', 'hcm','mm_purchasing','plant_maintenance',"
+                                "'production_planning','project_system','sd_customer_master','sd_sales_orders','controlling','interface_health','s4_readiness','banking_tax',"
+                                "'employee_central','compensation','benefits','payroll_integration',"
+                                "'performance_goals','succession_planning','recruiting_onboarding',"
+                                "'learning_management','time_attendance',"
+                                "'ewms_stock','ewms_transfer_orders','batch_management','mdg_master_data',"
+                                "'grc_compliance','fleet_management','transport_management','wm_interface',"
+                                "'cross_system_integration','s4hc_master_data','concur_expense',"
+                                "'concur_users','ariba_supplier','ariba_contracts','ariba_procurement'])"
+                            )
+                        )
+                        await session.commit()
+                        logger.info("Dev tenant created")
+                    else:
+                        logger.info("Dev tenant exists")
+
+                    # Ensure jwt_secret exists on the dev tenant for local auth
+                    secret_row = await session.execute(
+                        text("SELECT jwt_secret FROM tenants WHERE id = '00000000-0000-0000-0000-000000000001'")
+                    )
+                    if not secret_row.scalar():
+                        from api.services.local_auth import generate_jwt_secret
+                        await session.execute(
+                            text(
+                                "UPDATE tenants SET jwt_secret = :secret WHERE id = '00000000-0000-0000-0000-000000000001'"
+                            ),
+                            {"secret": generate_jwt_secret()},
+                        )
+                        await session.commit()
+                        logger.info("Dev tenant jwt_secret generated")
+
+                    # Ensure at least one admin user exists for local auth.
+                    # Migration 039 FORCEs RLS on `users` — so we MUST set the
+                    # tenant context before the COUNT / INSERT, otherwise
+                    # current_setting('app.tenant_id') is empty and the ::uuid
+                    # cast fails.
+                    await session.execute(
+                        text("SET app.tenant_id = '00000000-0000-0000-0000-000000000001'")
+                    )
+                    user_count = await session.execute(
+                        text("SELECT COUNT(*) FROM users WHERE tenant_id = '00000000-0000-0000-0000-000000000001'")
+                    )
+                    if user_count.scalar() == 0:
+                        import uuid as _uuid
+                        from api.services.local_auth import hash_password
+                        default_pw = hash_password("admin")
+                        admin_id = str(_uuid.uuid4())
+                        await session.execute(
+                            text(
+                                "INSERT INTO users (id, tenant_id, email, name, role, password_hash, is_active) "
+                                "VALUES (:id, '00000000-0000-0000-0000-000000000001', "
+                                "'admin@meridian.local', 'Admin', 'platform_admin', :pw, true)"
+                            ),
+                            {"id": admin_id, "pw": default_pw},
+                        )
+                        # Roles are grants: users.role mirrors this unscoped grant (rbac.recompute_users_role).
+                        await session.execute(
+                            text(
+                                "INSERT INTO user_role_scopes (tenant_id, user_id, role_key) "
+                                "VALUES ('00000000-0000-0000-0000-000000000001', :id, 'platform_admin') "
+                                "ON CONFLICT DO NOTHING"
+                            ),
+                            {"id": admin_id},
+                        )
+                        await session.commit()
+                        logger.info("Default admin user created: admin@meridian.local / admin")
+            except Exception as e:
+                logger.warning(f"Dev tenant init failed: {e}")
+
+        # Rule catalogue + standard upload fields for every tenant, in step with this release
+        try:
+            import asyncio as _aio
+
+            from api.services.tenant_seed import seed_all
+            from workers.db import get_sync_engine
+
+            seeded = await _aio.to_thread(seed_all, get_sync_engine())
+            logger.info(f"Tenant catalogues: {seeded}")
+        except Exception as e:
+            logger.warning(f"Tenant catalogue sync failed: {e}")
+    finally:
+        if _lock is not None:
+            try:
+                await _lock.execute(_text("SELECT pg_advisory_unlock(72120261)"))
+            finally:
+                await _lock.close()
 
     # Schedule non-blocking LLM connection test in background
     import asyncio

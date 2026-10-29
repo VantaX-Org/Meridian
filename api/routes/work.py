@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _rls
+from api.routes.sync_trigger import module_label
 from api.services import work_analytics, worklist
 from api.services.worklist import CLEANING_VALUE_MATCH
 from api.services.current_state import current_pairs, pairs_clause, run_ids
@@ -1181,7 +1182,8 @@ async def export_sheet(
                                                          THEN f.record_fixes ELSE '[]'::jsonb END) e
              WHERE {_auto_runs(sel)} AND e->>'proposed_value' IS NOT NULL)
         SELECT w.module, w.record_key, w.name, fr.check_id, f.severity, f.details->>'message' AS message,
-               f.details->>'field_checked' AS field,
+               f.details->>'field_checked' AS field, f.module AS rule_module,
+               f.rule_context->'valid_values_with_labels' AS valid_values,
                fr.field_values ->> (f.details->>'field_checked') AS current_value,
                COALESCE(a.value, CASE WHEN jsonb_typeof(f.value_fix_map) = 'object' THEN
                         f.value_fix_map -> (fr.field_values ->> (f.details->>'field_checked')) ->> 'suggested_value' END)
@@ -1193,23 +1195,60 @@ async def export_sheet(
          WHERE {' AND '.join(where)} {check_filter}
          ORDER BY w.sev_rank, w.module, w.record_key, fr.check_id
          LIMIT :lim"""), {**p, "lim": ROW_CAP + 1})).mappings().all()
+    columns, items = _readable(rows)
     data = build_workbook(
         tenant_name=tenant.name, run_label=None, run_id=vid, title="Fix sheet",
-        sheets=[SheetSpec(
-            title=SHEET, rows=[dict(r) for r in rows],
-            note="Fill in New value (or Decision: fix, not an issue, accept risk, with a Reason) and import it back.",
-            columns=[ColumnSpec(key=k, header=h, kind="mono" if k in ("record_key", "check_id", "field") else "text")
-                     for k, h in _SHEET_COLUMNS])],
+        sheets=[SheetSpec(title=SHEET, rows=items, columns=columns, note=_FILL_NOTE)],
     )
     return xlsx_response(data, xlsx_filename("fix-sheet", vid))
 
 
-_PER_OBJECT_COLUMNS = [
-    ("module", "Object"), ("record_key", "Record"), ("name", "Name"), ("check_id", "Check"),
-    ("severity", "Severity"), ("message", "Issue"), ("field", "Field"), ("current_value", "Current value"),
-    ("suggested_value", "Suggested value"), ("value_at_risk", "Value at risk"),
-    ("new_value", "New value"), ("decision", "Decision"), ("reason", "Reason"),
-]
+_FILL_NOTE = ("Fill in New value (one of the Possible values, its code only), or pick a Decision (fix, not an issue, "
+              "accept risk) with a Reason, then import the workbook back. Keep the grey columns as they are.")
+
+
+def _readable(rows, value_at_risk: bool = False) -> tuple[list, list[dict]]:
+    """Fix-sheet rows in business words (api/services/fix_sheet.py): the key split into SAP-named columns, the
+    record's name under its object's heading, the field's description and the rule's possible values. The ids the
+    import reads stay at the end in grey under their old headers (_SHEET_COLUMNS), so old and new sheets import."""
+    from api.services import fix_sheet as fs
+    from api.services.branded_xlsx import ColumnSpec
+
+    rows = [dict(r) for r in rows]
+    keys = fs.key_columns(rows)
+    for r in rows:
+        allowed = _allowed_values(r.get("valid_values"), r.get("rule_module"), r["check_id"])
+        parts = dict(fs.split_key(r["record_key"]))
+        r.update({f"key:{k}": parts.get(k) for k in keys})
+        r.update(object_name=module_label(r["module"]), record_text=fs.readable_key(r["record_key"]),
+                 field_name=fs.field_label(r["field"]), sap_field=fs.sap_field(r["field"]), current_text=fs.with_meaning(r["current_value"], allowed),
+                 suggested_text=fs.with_meaning(r["suggested_value"], allowed), possible=fs.possible_values(allowed))
+    first = [f for f, _ in fs.split_key(rows[0]["record_key"])] if rows else []
+    cols = [ColumnSpec(key="object_name", header="Object name")] if len({r["module"] for r in rows}) > 1 else []
+    cols += ([ColumnSpec(key=f"key:{k}", header=fs.key_header(k), kind="mono") for k in keys] if keys
+             else [ColumnSpec(key="record_text", header="Key")])
+    cols += [
+        ColumnSpec(key="name", header=fs.name_header(keys or first)),
+        ColumnSpec(key="field_name", header="Field description"),
+        ColumnSpec(key="sap_field", header="SAP field", kind="mono"),
+        ColumnSpec(key="message", header="Problem"),
+        ColumnSpec(key="severity", header="Severity"),
+        ColumnSpec(key="current_text", header="Current value"),
+        ColumnSpec(key="possible", header="Possible values"),
+        ColumnSpec(key="suggested_text", header="Suggested value"),
+    ]
+    if value_at_risk:
+        cols.append(ColumnSpec(key="value_at_risk", header="Value at risk", kind="money"))
+    cols += [
+        ColumnSpec(key="new_value", header="New value", kind="raw"),
+        ColumnSpec(key="decision", header="Decision", choices=tuple(DECISIONS)),
+        ColumnSpec(key="reason", header="Reason"),
+    ]
+    cols += [ColumnSpec(key=k, header=h, kind="mono", muted=True) for k, h in _SHEET_COLUMNS
+             if k in ("module", "record_key", "check_id")]
+    return cols, rows
+
+
 
 
 @router.get("/export/per-object")
@@ -1257,7 +1296,8 @@ async def export_per_object(
                                                          THEN f.record_fixes ELSE '[]'::jsonb END) e
              WHERE {_auto_runs(sel)} AND e->>'proposed_value' IS NOT NULL)
         SELECT w.module, w.record_key, w.name, fr.check_id, f.severity, f.details->>'message' AS message,
-               f.details->>'field_checked' AS field,
+               f.details->>'field_checked' AS field, f.module AS rule_module,
+               f.rule_context->'valid_values_with_labels' AS valid_values,
                fr.field_values ->> (f.details->>'field_checked') AS current_value,
                COALESCE(a.value, CASE WHEN jsonb_typeof(f.value_fix_map) = 'object' THEN
                         f.value_fix_map -> (fr.field_values ->> (f.details->>'field_checked')) ->> 'suggested_value' END)
@@ -1277,9 +1317,6 @@ async def export_per_object(
     for r in rows:
         by_object.setdefault(r["module"], []).append(dict(r))
 
-    cols = [ColumnSpec(key=k, header=h, kind="money" if k == "value_at_risk" else
-                       ("mono" if k in ("record_key", "check_id", "field") else "text"))
-            for k, h in _PER_OBJECT_COLUMNS]
     sheets = [SheetSpec(
         title="Summary",
         note="Records to fix per object, ranked by value at risk. Value at risk is an attribution of "
@@ -1289,7 +1326,7 @@ async def export_per_object(
                  ColumnSpec(key="checks", header="Checks", kind="int"),
                  ColumnSpec(key="critical", header="Critical", kind="int"),
                  ColumnSpec(key="value_at_risk", header="Value at risk", kind="money")],
-        rows=[{"module": m,
+        rows=[{"module": module_label(m),
                "records": len(v),
                "checks": len({x["check_id"] for x in v}),
                "critical": sum(1 for x in v if x["severity"] == "critical"),
@@ -1297,9 +1334,8 @@ async def export_per_object(
               for m, v in sorted(by_object.items(), key=lambda kv: -sum(float(x["value_at_risk"] or 0) for x in kv[1]))],
     )]
     for mod, items in sorted(by_object.items()):
-        sheets.append(SheetSpec(title=mod, rows=items, columns=cols,
-                                note="Fill in New value, or a Decision (fix / not an issue / accept risk) "
-                                     "with a Reason, then import this workbook back."))
+        columns, readable = _readable(items, value_at_risk=True)
+        sheets.append(SheetSpec(title=module_label(mod), rows=readable, columns=columns, note=_FILL_NOTE))
     data = build_workbook(tenant_name=tenant.name, run_label=None, run_id=vid,
                           title="Records to fix by object", sheets=sheets)
     return xlsx_response(data, xlsx_filename("records-to-fix-by-object", vid))

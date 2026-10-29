@@ -28,8 +28,10 @@ def test_engine_is_built_from_the_pool_settings():
     from api.config import settings
     from api.deps import engine
 
-    assert engine.pool.size() == settings.db_pool_size
-    assert engine.pool._max_overflow == settings.db_max_overflow
+    # each API worker process takes its share of the configured pool (at least 5), so N workers open no more in total
+    share = max(1, settings.api_workers)
+    assert engine.pool.size() == max(5, settings.db_pool_size // share)
+    assert engine.pool._max_overflow == max(5, settings.db_max_overflow // share)
     assert engine.pool._timeout == settings.db_pool_timeout
 
 

@@ -36,7 +36,7 @@ from starlette.concurrency import run_in_threadpool
 
 from api.deps import Tenant, get_db, get_sync_engine_or_create, get_tenant
 from api.middleware.licence import get_cached_manifest
-from api.routes.auth import DEV_TENANT_ID, _set_auth_cookie
+from api.routes.auth import DEV_TENANT_ID, _set_auth_cookie, cookie_secure
 from api.services import oidc
 from api.services.crypto import decrypt_api_key, encrypt_api_key
 from api.services.local_auth import create_access_token, generate_jwt_secret
@@ -85,12 +85,6 @@ def _error_redirect(code: str) -> RedirectResponse:
     return resp
 
 
-def _cookie_secure() -> bool:
-    import os
-
-    return os.getenv("AUTH_COOKIE_SECURE", "true").lower() != "false"
-
-
 def _client_secret(cfg: dict[str, Any], jwt_secret: str) -> str:
     return decrypt_api_key(str(cfg.get("client_secret_encrypted") or ""), jwt_secret)
 
@@ -127,7 +121,7 @@ def oidc_config() -> OidcPublicConfig:
 
 
 @router.get("/start", dependencies=[Depends(_oidc_rate_limit)])
-def oidc_start(next: str | None = None) -> RedirectResponse:
+def oidc_start(request: Request, next: str | None = None) -> RedirectResponse:
     """Send the browser to the identity provider."""
     engine = get_sync_engine_or_create()
     with engine.connect() as conn:
@@ -152,7 +146,7 @@ def oidc_start(next: str | None = None) -> RedirectResponse:
                                        state=state, nonce=nonce, code_challenge=challenge)
     resp = RedirectResponse(url, status_code=302)
     resp.set_cookie(STATE_COOKIE, cookie, max_age=oidc.STATE_TTL_SECONDS, path=router.prefix, httponly=True,
-                    samesite="lax", secure=_cookie_secure())
+                    samesite="lax", secure=cookie_secure(request))
     return resp
 
 
@@ -284,7 +278,7 @@ def oidc_callback(request: Request, code: str | None = None, state: str | None =
 
     fragment = urlencode({"sso_token": token, "next": saved.get("nxt") or "/home"})
     resp = RedirectResponse(f"/sign-in#{fragment}", status_code=302)
-    _set_auth_cookie(resp, token)
+    _set_auth_cookie(resp, token, request)
     resp.delete_cookie(STATE_COOKIE, path=router.prefix)
     resp.headers["Cache-Control"] = "no-store"
     return resp

@@ -518,23 +518,28 @@ def _object_label(module: str) -> str:
     return " ".join(w.capitalize() for w in module.split("_"))
 
 
+# Business words first (the field's description beside its SAP name, the values the rule accepts); the ids and
+# bookkeeping a spreadsheet user does not read go to the end, in grey.
 _EXPORT_COLUMNS = [
-    ColumnSpec("id", "ID", kind="mono"),
-    ColumnSpec("module", "Module"),
     ColumnSpec("object_label", "Object"),
-    ColumnSpec("check_id", "Check ID", kind="mono"),
-    ColumnSpec("finding_type", "Type"),
+    ColumnSpec("check_id", "Check", kind="mono"),
+    ColumnSpec("message", "Problem"),
+    ColumnSpec("field_description", "Field description"),
+    ColumnSpec("sap_field", "SAP field", kind="mono"),
     ColumnSpec("severity", "Severity"),
     ColumnSpec("dimension", "Dimension"),
-    ColumnSpec("message", "Message"),
-    ColumnSpec("affected_count", "Affected", kind="int"),
-    ColumnSpec("total_count", "Total", kind="int"),
+    ColumnSpec("affected_count", "Failing records", kind="int"),
+    ColumnSpec("total_count", "Records checked", kind="int"),
     ColumnSpec("pass_rate", "Pass rate", kind="pct", scale=1.0),
+    ColumnSpec("possible_values", "Possible values"),
     ColumnSpec("cost_at_risk", "Cost at risk", kind="money"),
-    ColumnSpec("impact_score", "Impact score"),
-    ColumnSpec("baseline", "Baseline"),
-    ColumnSpec("remediation_text", "Remediation"),
-    ColumnSpec("created_at", "Created", kind="datetime"),
+    ColumnSpec("remediation_text", "How to fix"),
+    ColumnSpec("id", "ID", kind="mono", muted=True),
+    ColumnSpec("module", "Module", muted=True),
+    ColumnSpec("finding_type", "Type", muted=True),
+    ColumnSpec("impact_score", "Impact score", muted=True),
+    ColumnSpec("baseline", "Baseline", muted=True),
+    ColumnSpec("created_at", "Created", kind="datetime", muted=True),
 ]
 
 _SUMMARY_COLUMNS = [
@@ -610,8 +615,18 @@ async def export_findings(
     stmt = base.order_by(*order).limit(_EXPORT_ROW_CAP)
     findings = (await db.execute(stmt)).scalars().all()
 
+    from api.routes.work import _allowed_values
+    from api.services import fix_sheet as fs
+
+    def _field(f) -> Optional[str]:
+        return (f.details or {}).get("field_checked") or (f.rule_context or {}).get("field")
+
     rows = [
         {
+            "field_description": fs.field_label(_field(f)),
+            "sap_field": fs.sap_field(_field(f)),
+            "possible_values": fs.possible_values(_allowed_values(
+                (f.rule_context or {}).get("valid_values_with_labels"), f.module, f.check_id)),
             "id": str(f.id),
             "module": f.module,
             "object_label": _object_label(f.module),
