@@ -116,14 +116,15 @@ describe("the receipt", () => {
 });
 
 describe("tabs as route segments", () => {
-  it("lists Rules, Records, Fixes, Runs, Readiness, Lineage, Glossary and Golden records as links to their segments", async () => {
+  it("lists Rules, Records, Fixes, Runs, Readiness, Processes, Lineage, Glossary and Golden records as links to their segments", async () => {
     frame();
     const nav = await screen.findByRole("navigation", { name: "Views of Material master" });
     const links = within(nav).getAllByRole("link");
-    expect(links.map((l) => (l.firstChild as Text).textContent)).toEqual(["Rules", "Records", "Fixes", "Runs", "Readiness", "Lineage", "Glossary", "Golden records"]);
+    expect(links.map((l) => (l.firstChild as Text).textContent)).toEqual(["Rules", "Records", "Fixes", "Runs", "Readiness", "Processes", "Lineage", "Glossary", "Golden records"]);
     expect(links[0]).toHaveAttribute("href", expect.stringMatching(/^\/v2\/o\/ecc-production\/material-master(\?|$)/));
     expect(links[1]).toHaveAttribute("href", expect.stringContaining("/v2/o/ecc-production/material-master/records"));
-    expect(links[7]).toHaveAttribute("href", expect.stringContaining("/v2/o/ecc-production/material-master/golden"));
+    expect(links[5]).toHaveAttribute("href", expect.stringContaining("/v2/o/ecc-production/material-master/processes"));
+    expect(links[8]).toHaveAttribute("href", expect.stringContaining("/v2/o/ecc-production/material-master/golden"));
     expect(links[0]).toHaveAttribute("aria-current", "page");
     expect(links[1]).not.toHaveAttribute("aria-current");
   });

@@ -234,7 +234,7 @@ function impact(): ImpactResult[] {
     blocking_findings: f.rules.map((id) => ({ check_id: id, affected_count: ruleRow(id)?.affected_count ?? 0, module: MM, severity: ruleRow(id)?.severity ?? "high" })),
     total_affected_records: f.rules.reduce((s, id) => s + (ruleRow(id)?.affected_count ?? 0), 0),
     blocked_transactions: [],
-    opportunity_cost_summary: "",
+    opportunity_cost_summary: f.status === "blocked" ? `${f.feature} cannot go live while ${f.rules.join(" and ")} fail: the load stops at the first record that does not pass.` : `${f.feature} runs with reduced coverage until ${f.rules.join(" and ")} are fixed.`,
   }));
 }
 

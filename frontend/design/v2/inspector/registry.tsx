@@ -9,6 +9,10 @@ import { PersonInspector } from "./person";
 import { RunInspector } from "./run";
 import { SystemInspector } from "./system";
 import { TriagePanel } from "./triage";
+import { GoldenInspector } from "./golden";
+import { TermInspector } from "./term";
+import { FeatureInspector } from "./feature";
+import { StepInspector } from "./step";
 
 interface BodyProps {
   id: string;
@@ -27,6 +31,10 @@ export const INSPECTOR_BODIES: Partial<Record<OpenKind, ComponentType<BodyProps>
   person: PersonInspector,
   inbox: InboxPanel,
   triage: TriagePanel,
+  golden: GoldenInspector,
+  term: TermInspector,
+  feature: FeatureInspector,
+  step: StepInspector,
 };
 
 export function extensionFor(item: OpenItem, onClose: () => void): ReactNode {

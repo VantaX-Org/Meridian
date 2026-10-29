@@ -114,6 +114,14 @@ describe("landscape canvas, fixture mode", () => {
     expect(next).toHaveAttribute("href", expect.stringContaining("/v2/work"));
   });
 
+  it("process analyst: the next step opens the first blocked process step, PTP step 3", async () => {
+    visit("&persona=process");
+    renderWithQuery(<LandscapeCanvas />);
+    const next = await screen.findByRole("link", { name: "Open PTP step 3" });
+    expect(next.getAttribute("href")).toContain("/processes?open=step:material_master:PTP-GR-MIGO");
+    expect(next).toHaveClass("m2-next");
+  });
+
   it("basis: the next step extracts the system that was never extracted, in the system inspector, and lists system tasks instead of rows", async () => {
     visit("&persona=basis");
     renderWithQuery(<LandscapeCanvas />);

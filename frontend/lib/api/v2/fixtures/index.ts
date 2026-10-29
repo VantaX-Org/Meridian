@@ -7,6 +7,7 @@ import type { CommandGroup, CommandResult, Landscape, Receipt, RuleRow, RunList,
 import { moduleSlug, systemSlug } from "@/lib/v2/score";
 import { NONE, runsFixtureResponse } from "./runs";
 import { objectFixture } from "./object";
+import { mdmFixture, mdmFixtureWrite } from "./mdm";
 import * as wf from "./work-fixture";
 import * as ap from "./approvals";
 
@@ -116,6 +117,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
     if (method === "PUT" && path === "/triage/sla-policies") return ap.putPolicyFixture(body as never);
     if (method === "PATCH" && path === "/me/preferences") return ap.patchPreferencesFixture(body as never);
     if (method === "PUT" && path === "/views") return wf.putViewFixture(body as never);
+    const mdm = mdmFixtureWrite(method, path, body);
+    if (mdm !== undefined) return mdm;
     void params;
     throw new FixtureNotFound(`${method} ${path}`);
   })();
@@ -172,6 +175,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
     }
     const more = objectFixture(path, params);
     if (more !== undefined) return more;
+    const mdm = mdmFixture(path, params);
+    if (mdm !== undefined) return mdm;
     throw new FixtureNotFound(path);
   })();
   return out as T;

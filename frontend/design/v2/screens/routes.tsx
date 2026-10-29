@@ -7,6 +7,10 @@ import { EmptyTab, ObjectFrame, RulesTab } from "./Object";
 import { ReadinessTab } from "./object/ReadinessTab";
 import { RecordsTab } from "./object/LedgerSlot";
 import { RunsTab } from "./object/RunsTab";
+import { GoldenTab } from "./object/GoldenTab";
+import { GlossaryTab } from "./object/GlossaryTab";
+import { LineageTab } from "./object/LineageTab";
+import { ProcessesTab } from "./object/ProcessesTab";
 import { RuleCanvas } from "./Rule";
 
 interface ObjectParams {
@@ -30,12 +34,16 @@ export function ObjectRulesRoute() {
   return <RulesTab system={String(p.system)} module={String(p.module)} />;
 }
 
-export function ObjectTabRoute({ tab }: { tab: "records" | "fixes" | "runs" | "readiness" | "lineage" | "glossary" | "golden" }) {
+export function ObjectTabRoute({ tab }: { tab: "records" | "fixes" | "runs" | "readiness" | "processes" | "lineage" | "glossary" | "golden" }) {
   const p = useParams<ObjectParams>();
   const [system, module] = [String(p.system), String(p.module)];
   if (tab === "records") return <RecordsTab system={system} module={module} />;
   if (tab === "runs") return <RunsTab system={system} module={module} />;
   if (tab === "readiness") return <ReadinessTab system={system} module={module} />;
+  if (tab === "processes") return <ProcessesTab system={system} module={module} />;
+  if (tab === "lineage") return <LineageTab system={system} module={module} />;
+  if (tab === "glossary") return <GlossaryTab system={system} module={module} />;
+  if (tab === "golden") return <GoldenTab system={system} module={module} />;
   return <EmptyTab tab={tab} system={system} module={module} />;
 }
 

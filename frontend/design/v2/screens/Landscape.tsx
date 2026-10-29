@@ -14,6 +14,7 @@ import { Grid, type GridColumn } from "../Grid";
 import { VerdictMark } from "../marks";
 import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { Ruler } from "../Ruler";
+import { ProcessNextStep } from "./object/ProcessNext";
 import { dimsOf } from "../shell/MapPane";
 
 const SEL_KEY = "mn_v2_sel";
@@ -116,6 +117,7 @@ export function NextStep({ landscape, persona }: { landscape: Landscape; persona
       </V2Link>
     );
   }
+  if (persona === "process") return <ProcessNextStep landscape={landscape} />;
   if (persona === "basis") {
     const s = landscape.systems.find((x) => x.state === "not_extracted") ?? landscape.systems.find((x) => x.state === "extracted") ?? landscape.systems[0];
     if (!s) return null;

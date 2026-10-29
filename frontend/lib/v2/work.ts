@@ -267,7 +267,7 @@ export const STATUS_LABEL: Record<string, string> = {
 const n = (x: number): string => x.toLocaleString("en-US");
 
 /** The sentence under the title. Numbers are the summary's; nothing here is estimated. */
-export function sentence(opts: { persona: "lead" | "steward" | "basis" | "owner"; chip: ChipId | null; summary: WorkSummary | undefined; objectLabel: string | null; module?: string | null }): string {
+export function sentence(opts: { persona: "lead" | "steward" | "basis" | "owner" | "process"; chip: ChipId | null; summary: WorkSummary | undefined; objectLabel: string | null; module?: string | null }): string {
   const { persona, chip, summary, objectLabel } = opts;
   if (!summary) return "";
   const where = objectLabel ? ` in ${objectLabel}` : "";
