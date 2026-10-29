@@ -211,9 +211,9 @@ describe("actions by permission", () => {
     expect(ok).toBeEnabled();
     expect(screen.getByText(/Approving acts on the whole batch/)).toBeInTheDocument();
     fireEvent.click(ok);
-    await waitFor(() => expect(approve).toHaveBeenCalledWith("fx-batch"));
+    await waitFor(() => expect(approve).toHaveBeenCalledWith("B-241"));
     expect(sendBack).not.toHaveBeenCalled();
-    expect(await screen.findByText("Approved Fixes by Demo user")).toBeInTheDocument();
+    expect(await screen.findByText("Approved Unit of measure and material type")).toBeInTheDocument();
   });
 
   it("an owner sends a batch back with a note", async () => {
@@ -225,7 +225,7 @@ describe("actions by permission", () => {
     const dialog = await screen.findByRole("dialog", { name: "Send the batch back" });
     fireEvent.change(within(dialog).getByLabelText("What the author has to change"), { target: { value: "Plant 2000 is wrong" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Send back" }));
-    await waitFor(() => expect(sendBack).toHaveBeenCalledWith("fx-batch", "Plant 2000 is wrong"));
+    await waitFor(() => expect(sendBack).toHaveBeenCalledWith("B-241", "Plant 2000 is wrong"));
   });
 
   it("an owner cannot approve a record that is not waiting, and is told why", async () => {

@@ -1,5 +1,5 @@
-import { NotYetCanvas } from "@/design/v2/screens/routes";
+import { PeopleCanvas } from "@/design/v2/screens/People";
 
 export default function PeoplePage() {
-  return <NotYetCanvas kind="people" />;
+  return <PeopleCanvas />;
 }

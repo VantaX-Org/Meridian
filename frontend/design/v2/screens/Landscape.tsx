@@ -6,6 +6,8 @@ import { useSearchParams } from "next/navigation";
 import { formatDate } from "@/lib/format";
 import type { Landscape, LandscapeCell, LandscapeSystem, WorkRow } from "@/lib/api/v2/types";
 import { useOpenItem, useRunParam, useV2Session, type V2Persona } from "@/lib/v2/hooks";
+import { useBatches, usePeople } from "@/lib/v2/approvals-queries";
+import { slaMet } from "@/lib/v2/people";
 import { useLandscape, useStatus, useTopWork } from "@/lib/v2/queries";
 import { f1, int, moduleSlug, readingText, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { Grid, type GridColumn } from "../Grid";
@@ -64,9 +66,49 @@ export function LandscapeSentence({ landscape }: { landscape: Landscape }) {
   );
 }
 
+/** The data owner's next step: the oldest batch waiting for their approval, opened in the batch inspector. */
+function OwnerNext() {
+  const { hrefFor } = useOpenItem();
+  const session = useV2Session();
+  const batches = useBatches();
+  // The one with the most at risk first, as the ledger ranks; the longest waiting breaks a tie.
+  const next = batches.rows
+    .filter((b) => b.status === "draft" && b.ownerId !== session.id)
+    .sort((a, b) => (b.valueAtRisk ?? -1) - (a.valueAtRisk ?? -1) || a.createdAt.localeCompare(b.createdAt))[0];
+  if (batches.isLoading) return null;
+  if (!next) {
+    return (
+      <V2Link href="/v2/people" className="m2-btn m2-next">
+        See who holds the work
+      </V2Link>
+    );
+  }
+  return (
+    <V2Link href={hrefFor({ kind: "batch", id: next.id })} className="m2-btn m2-next">
+      {`Approve batch ${next.label}`}
+    </V2Link>
+  );
+}
+
+/** What waits for the owner and how their SLA stands, under the landscape sentence. */
+function OwnerLine() {
+  const people = usePeople().data?.people;
+  const me = people?.find((p) => p.is_me);
+  if (!me) return null;
+  const met = slaMet(me);
+  return (
+    <p className="m2-prov" data-testid="owner-line">
+      {`${int(me.approvals_waiting)} ${me.approvals_waiting === 1 ? "batch waits" : "batches wait"} for your approval`}
+      <Dot />
+      {met == null ? "no open work of yours" : `SLA met on ${met}% of your open work`}
+    </p>
+  );
+}
+
 /** The next-step button, by persona. One per canvas. */
 export function NextStep({ landscape, persona }: { landscape: Landscape; persona: V2Persona }) {
   const { hrefFor } = useOpenItem();
+  if (persona === "owner") return <OwnerNext />;
   if (persona === "steward") {
     return (
       <V2Link href="/v2/work" className="m2-btn m2-next">
@@ -410,6 +452,7 @@ export function LandscapeCanvas() {
         <Dot />
         {first.run_at ? `run ${formatDate(first.run_at, "datetime")}` : "no run yet"}
       </p>
+      {session.persona === "owner" ? <OwnerLine /> : null}
       <div className="m2-cta">
         <NextStep landscape={L} persona={session.persona} />
       </div>

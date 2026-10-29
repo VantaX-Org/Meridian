@@ -20,6 +20,8 @@ export interface WorkFilters {
   proposed?: boolean;
   due?: string;
   q?: string;
+  /** One fix batch (not in GET /work/records yet: the ledger also keeps only the rows that name it). */
+  batch_id?: string;
 }
 
 export interface WorkQuery extends WorkFilters {

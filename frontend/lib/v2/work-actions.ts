@@ -14,7 +14,7 @@ import { clearPatches, dropPatches, setPatches, type Patch } from "./work-overri
 
 export type RowRef = Pick<WorkRow, "module" | "record_key" | "version_id" | "checks" | "suggested_value" | "status"> & Partial<Pick<WorkRow, "new_value">>;
 
-export type DecideKind = "accept" | "edit" | "not_an_issue" | "accept_risk" | "assign";
+export type DecideKind = "accept" | "edit" | "not_an_issue" | "accept_risk" | "assign" | "reopen";
 
 export interface DecideOptions {
   /** The value to use (edit). */
@@ -47,6 +47,8 @@ function patchFor(kind: DecideKind, opts: DecideOptions, r: RowRef, me: string |
       return { status: "not_an_issue", resolution: "accepted_risk" };
     case "assign":
       return opts.assignee === "" ? { assigned_to: null, assignee_email: null } : { assigned_to: opts.assignee ?? "me", assignee_email: me ?? opts.assignee ?? "me" };
+    case "reopen":
+      return { status: "to_fix", resolution: null };
   }
 }
 
@@ -64,6 +66,8 @@ function labelFor(kind: DecideKind, opts: DecideOptions, rows: readonly RowRef[]
       return `Accepted the risk on ${n.toLocaleString("en-US")} ${noun(n)}`;
     case "assign":
       return opts.assignee === "" ? `Unassigned ${n.toLocaleString("en-US")} ${noun(n)}` : `Assigned ${n.toLocaleString("en-US")} ${noun(n)} to you`;
+    case "reopen":
+      return `Reopened ${n.toLocaleString("en-US")} ${noun(n)}`;
   }
 }
 
@@ -109,7 +113,7 @@ export function useWorkActions() {
             module: r.module,
             record_key: r.record_key,
             check_id: kind === "assign" ? null : (r.checks[0] ?? null),
-            action: kind,
+            action: kind === "reopen" ? "undo" : kind,
             value: kind === "edit" ? valueOf(opts, r) : undefined,
             note: opts.note,
             assignee: kind === "assign" ? (opts.assignee ?? "me") : undefined,
