@@ -27,13 +27,13 @@ export default defineConfig({
     launchOptions: process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {},
   },
   projects: [
-    // guided-tours.spec.ts is the help-centre recording script: it only runs under the
-    // `recording` project (RECORD_HELP=1), never in the acceptance suite.
-    { name: "chromium", use: { ...devices["Desktop Chrome"] }, testIgnore: /guided-tours\.spec\.ts/ },
+    // guided-tours.spec.ts (current interface) and guided-tours-v2.spec.ts (Meridian 2) are the help recording
+    // scripts: they only run under the `recording` project (RECORD_HELP=1), never in the acceptance suite.
+    { name: "chromium", use: { ...devices["Desktop Chrome"] }, testIgnore: /guided-tours(-v2)?\.spec\.ts/ },
     ...(process.env.RECORD_HELP === "1"
       ? [{
           name: "recording",
-          testMatch: /guided-tours\.spec\.ts/,
+          testMatch: /guided-tours(-v2)?\.spec\.ts/,
           fullyParallel: false,
           retries: 0,
           // raw captures land in help-videos-raw/<test-title>/*.webm; the workflow converts to mp4
@@ -41,6 +41,7 @@ export default defineConfig({
           use: {
             ...devices["Desktop Chrome"],
             viewport: { width: 1440, height: 900 },
+            colorScheme: "light" as const,
             video: { mode: "on" as const, size: { width: 1440, height: 900 } },
           },
         }]

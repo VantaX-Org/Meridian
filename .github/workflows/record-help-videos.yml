@@ -1,6 +1,7 @@
 name: Record help videos
 
-# Produces the help centre's training recordings: runs e2e/guided-tours.spec.ts under the
+# Produces the help centre's training recordings: runs e2e/guided-tours.spec.ts (current interface) and
+# e2e/guided-tours-v2.spec.ts (Meridian 2, fixture mode, captions as WebVTT) under the
 # `recording` Playwright project (recordVideo on, pinned clock, HAR fixtures — deterministic
 # screens, demo data only), converts the webm captures to faststart mp4, and uploads them as an
 # artifact. A maintainer reviews the artifact and commits the mp4s into frontend/docs/help-videos/
@@ -82,13 +83,30 @@ jobs:
             fi
           done < <(find "$PWD/help-videos-raw" -name '*.webm' -print0 2>/dev/null)
           echo "converted=$n skipped_or_failed=$bad"
-          [ "$n" -gt 0 ] || { echo "no recordings produced"; exit 1; }
+          # Meridian 2 tours (e2e/guided-tours-v2.spec.ts) write caption sidecars; they are converted below.
+          [ "$n" -gt 0 ] || ls help-videos-raw/captions/*.json >/dev/null 2>&1 || { echo "no recordings produced"; exit 1; }
           ls -la docs/help-videos/
+
+      # The Meridian 2 tours: mp4, poster frame (.jpg) and captions (.vtt) per tour, lengths in manifest.json,
+      # then the help index so the panel shows each recording's length.
+      - name: Convert the Meridian 2 tours
+        run: |
+          if ls help-videos-raw/captions/*.json >/dev/null 2>&1; then
+            node scripts/help-videos.mjs
+            node scripts/help-index.mjs
+          else
+            echo "no Meridian 2 tour was recorded"
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
           name: help-videos
-          path: frontend/docs/help-videos/*.mp4
+          path: |
+            frontend/docs/help-videos/*.mp4
+            frontend/docs/help-videos/*.jpg
+            frontend/docs/help-videos/*.vtt
+            frontend/docs/help-videos/manifest.json
+            frontend/lib/v2/help-data.json
           retention-days: 30
 
       - uses: actions/upload-artifact@v4

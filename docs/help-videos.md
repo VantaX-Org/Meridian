@@ -52,3 +52,32 @@ auto-committed: a training video is a published claim about the product.
 1. Add the chapter + `video` key to `frontend/docs/help-centre/index.json` and write the markdown.
 2. Add the matching test to `JOURNEYS` in `guided-tours.spec.ts` (title == video key).
 3. Record (locally or via the workflow), review, commit the mp4.
+
+## Meridian 2 recordings
+
+The new interface's help panel plays one recording per guide chapter (`frontend/docs/guide`), inside the panel,
+with a poster frame and a captions track. Same rules as above; different pieces:
+
+| piece | where |
+|---|---|
+| chapter → video key | `frontend/docs/guide/index.json` (`video` per chapter, `guide2-<slug>`) |
+| recording script | `frontend/docs/guide/tours.json`: per tour the persona (`params`), and per step a caption and one action (`go`, `click`, `point`, `check`, `select`, `fill`, `focus`, `press`, `scroll`) |
+| runner | `frontend/e2e/guided-tours-v2.spec.ts`, fixture mode (`?fixture=1`, every `/api/v1` call answered 404), 1440 x 900, light theme, a drawn cursor that moves slowly to each target |
+| conversion | `node scripts/help-videos.mjs`: H.264 mp4 (CRF 32, 15 fps, faststart, no audio), a poster `.jpg`, the captions as `.vtt` (the step captions with their real times), `manifest.json` with each length and size |
+| index | `node scripts/help-index.mjs` reads the captions from `tours.json` (search finds words said only in a recording) and the lengths from `manifest.json` |
+| serving | `GET /api/v1/docs/help-videos/<key>.mp4`, `.jpg` and `.vtt` (`api/routes/help_videos.py`) |
+| player | the help panel (`frontend/design/v2/inspector/panels.tsx`): `<video poster>` with `<source>` and `<track kind="captions" default>`; "recording in preparation" when the file is missing |
+
+```bash
+cd frontend
+npm run build && PORT=3100 npm run start:standalone &           # or any running build
+RECORD_HELP=1 PLAYWRIGHT_BASE_URL=http://localhost:3100 npx playwright test --project=recording e2e/guided-tours-v2.spec.ts
+npm run help:videos                                                # convert, then rebuild the help index
+TOUR_DRY=1 RECORD_HELP=1 PLAYWRIGHT_BASE_URL=http://localhost:3100 npx playwright test --project=recording e2e/guided-tours-v2.spec.ts   # check every step's target quickly
+```
+
+A tour step that cannot find its target fails the recording rather than filming an empty screen. Change a caption
+and the next `npm run help:index` changes what help search finds; re-record so the `.vtt` matches.
+
+The printable guide is generated from the same chapters: `npm run guide:pdf` writes
+`frontend/docs/guide/meridian-2-guide.pdf` (headless Chromium print to PDF).

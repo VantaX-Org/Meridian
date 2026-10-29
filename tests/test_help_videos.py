@@ -68,3 +68,17 @@ def test_unsatisfiable_range_says_416_with_the_size(video):
     r = asyncio.run(route.help_video("help-first-fix.mp4", _Req({"range": f"bytes={len(video)}-999999"}), tenant=None))
     assert r.status_code == 416
     assert r.headers["Content-Range"] == f"bytes */{len(video)}"
+
+
+def test_the_poster_and_the_captions_are_served_beside_the_recording(video, tmp_path):
+    d = route._CANDIDATES[0]
+    (d / "guide2-work.jpg").write_bytes(b"\xff\xd8\xff\xe0poster")
+    (d / "guide2-work.vtt").write_text("WEBVTT\n\n00:00:00.000 --> 00:00:04.000\nWork is the ledger.\n")
+    jpg = asyncio.run(route.help_video("guide2-work.jpg", _Req(), tenant=None))
+    assert jpg.status_code == 200 and jpg.media_type == "image/jpeg"
+    vtt = asyncio.run(route.help_video("guide2-work.vtt", _Req(), tenant=None))
+    assert vtt.status_code == 200 and vtt.media_type.startswith("text/vtt")
+    assert vtt.body.startswith(b"WEBVTT")
+    for bad in ("guide2-work.png", "guide2-work.vtt.mp4x", "../guide2-work.jpg"):
+        with pytest.raises(HTTPException):
+            asyncio.run(route.help_video(bad, _Req(), tenant=None))
