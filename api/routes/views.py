@@ -1,8 +1,15 @@
 """Saved views for the v2 screens: a name, the filters, the columns and the density of one page.
 
-GET    /api/v1/views?route=<route>  the three built-in views of the route, then the user's own by name
-PUT    /api/v1/views                create or replace the user's view named ``name`` on ``route`` (upsert on route + name)
+GET    /api/v1/views?route=<route>  the three built-in views of the route, then the user's own by name, then the views
+                                    other users shared on the route (``shared: true, mine: false``); plus ``columns``,
+                                    the user's remembered column choice for the route's grid (the reserved ``_columns``
+                                    row, never listed as a view)
+PUT    /api/v1/views                create or replace the user's view named ``name`` on ``route`` (upsert on route + name);
+                                    ``shared: true`` shows it to every user of the tenant (read-only to them)
 DELETE /api/v1/views/{id}           delete one of the user's views (a built-in or another user's view is not deletable)
+
+Any route key works (work, objects, rules, runs, people and every other v2 grid id); unknown routes get the default
+built-ins. A name starting with ``_`` is reserved: ``_columns`` holds the column choice and is never shared.
 
 The same ``saved_views`` table as /findings/saved-views (migration 054), extended with ``columns`` and ``density``
 (migration 101). ``columns`` is the list of column keys in display order and ``density`` the row density; null in
@@ -61,6 +68,7 @@ class ViewIn(BaseModel):
     filters: dict[str, str] = Field(default_factory=dict)
     columns: Optional[list[str]] = Field(None, max_length=80, description="column keys in display order; null: the page's columns")
     density: Optional[Density] = Field(None, description="null: the page's density")
+    shared: bool = Field(False, description="every user of the tenant sees it on this route")
 
 
 class ViewOut(BaseModel):
@@ -72,11 +80,14 @@ class ViewOut(BaseModel):
     density: Optional[str] = None
     builtin: bool = False
     created_at: Optional[datetime] = None      # null for a built-in view
+    shared: bool = False
+    mine: bool = True                          # false for a view another user shared
 
 
 class ViewsOut(BaseModel):
     route: str
     views: list[ViewOut]
+    columns: Optional[list[str]] = None        # the user's remembered columns for this route's grid
 
 
 def builtin_views(route: str) -> list[dict]:
@@ -89,12 +100,14 @@ def _owner(request: Request) -> str:
     return current_user_id(request) or "local"  # AUTH_MODE=local without a login: one shared owner per tenant
 
 
-def _out(r) -> dict:
+def _out(r, mine: bool = True) -> dict:
     return {"id": str(r["id"]), "route": r["route"], "name": r["name"], "filters": r["filters"] or {},
-            "columns": r["columns"], "density": r["density"], "builtin": False, "created_at": r["created_at"]}
+            "columns": r["columns"], "density": r["density"], "builtin": False, "created_at": r["created_at"],
+            "shared": bool(r["shared"]), "mine": mine}
 
 
-_COLS = "id, route, name, filters, columns, density, created_at"
+_COLS = "id, route, name, filters, columns, density, created_at, shared, user_id"
+COLUMNS_ROW = "_columns"
 
 
 @router.get("", response_model=ViewsOut, dependencies=[Depends(require_permission("view"))])
@@ -102,10 +115,13 @@ async def list_views(request: Request, route: str = Query(..., min_length=1, max
                      db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     """The route's built-in views first, then the current user's own, by name."""
     await _rls(db, tenant)
-    rows = (await db.execute(text(f"SELECT {_COLS} FROM saved_views WHERE tenant_id = CAST(:t AS uuid) AND user_id = :u "
-                                  "AND route = :r ORDER BY lower(name), id"),
-                             {"t": str(tenant.id), "u": _owner(request), "r": route})).mappings().all()
-    return {"route": route, "views": builtin_views(route) + [_out(r) for r in rows]}
+    me = _owner(request)
+    rows = (await db.execute(text(f"SELECT {_COLS} FROM saved_views WHERE tenant_id = CAST(:t AS uuid) "
+                                  "AND (user_id = :u OR shared) AND route = :r ORDER BY (user_id = :u) DESC, lower(name), id"),
+                             {"t": str(tenant.id), "u": me, "r": route})).mappings().all()
+    cols = next((r["columns"] for r in rows if r["user_id"] == me and r["name"] == COLUMNS_ROW), None)
+    views = [_out(r, r["user_id"] == me) for r in rows if not r["name"].startswith("_")]
+    return {"route": route, "views": builtin_views(route) + views, "columns": cols}
 
 
 @router.put("", response_model=ViewOut, dependencies=[Depends(require_permission("view"))])
@@ -117,15 +133,19 @@ async def put_view(body: ViewIn, request: Request, db: AsyncSession = Depends(ge
         raise HTTPException(status_code=422, detail="Name is required")
     if any(name.lower() == b["name"].lower() for b in builtin_views(body.route)):
         raise HTTPException(status_code=409, detail=f"'{name}' is a built-in view of this page; save yours under another name.")
+    if name.startswith("_") and (name != COLUMNS_ROW or body.shared):
+        raise HTTPException(status_code=422, detail="A view name cannot start with an underscore.")
     await _rls(db, tenant)
     row = (await db.execute(text(f"""
-        INSERT INTO saved_views (tenant_id, user_id, route, name, filters, columns, density)
-        VALUES (CAST(:t AS uuid), :u, :r, :n, CAST(:f AS jsonb), CAST(:c AS jsonb), :d)
+        INSERT INTO saved_views (tenant_id, user_id, route, name, filters, columns, density, shared)
+        VALUES (CAST(:t AS uuid), :u, :r, :n, CAST(:f AS jsonb), CAST(:c AS jsonb), :d, :s)
         ON CONFLICT (tenant_id, user_id, route, name)
-        DO UPDATE SET filters = EXCLUDED.filters, columns = EXCLUDED.columns, density = EXCLUDED.density
+        DO UPDATE SET filters = EXCLUDED.filters, columns = EXCLUDED.columns, density = EXCLUDED.density,
+                      shared = EXCLUDED.shared
         RETURNING {_COLS}"""),
         {"t": str(tenant.id), "u": _owner(request), "r": body.route, "n": name, "f": json.dumps(body.filters),
-         "c": json.dumps(body.columns) if body.columns is not None else None, "d": body.density})).mappings().one()
+         "c": json.dumps(body.columns) if body.columns is not None else None, "d": body.density,
+         "s": body.shared})).mappings().one()
     await db.commit()
     return _out(row)
 

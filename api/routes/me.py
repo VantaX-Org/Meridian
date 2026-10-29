@@ -14,7 +14,7 @@ from api.deps import Tenant, get_db, get_tenant
 from api.services import attention
 from api.services.rbac import (
     LEGACY_ACTION_MAP, EffectivePermissions, Scope, _get_user_role, actions_for, current_user_id,
-    dev_role_override, effective_permissions, require_permission, resource_matrix, write_audit,
+    dev_role_override, effective_permissions, require_permission, resource_matrix, viewing_as, write_audit,
 )
 
 # Only pairs some legacy action yields can be conferred by a role; asking for any other pair could
@@ -37,6 +37,8 @@ async def my_permissions(
     if not uid and not dev_role_override(request):
         raise HTTPException(status_code=401, detail="Authentication required")
     role = await _get_user_role(tenant, db, request)
+    if viewing_as(request):  # an administrator viewing as another role: that role's actions, no grants
+        uid = None
     return await effective_permissions(db, tenant.id, uid, role, system_id, module,
                                        narrowed=system_id is not None or module is not None)
 

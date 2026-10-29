@@ -1,0 +1,51 @@
+# Default steward assignment template. Source: "Steward assignment and related objects", version 1, October 2026,
+# section 3 (recommended assignment) and section 5 (sizing). Loaded by api/services/stewardship.py as the template of
+# a tenant that has not saved its own (GET/PUT /api/v1/admin/assignment-template).
+#
+#   owner_role      the business role accountable for the object (one person, who approves and does not fix)
+#   slice           the organisational slice stewards are assigned by: company_code, plant, sales_org,
+#                   purchasing_org, or none (one steward team for the whole object)
+#   stewards        the teams that maintain the data, in words
+#
+# People are not part of the default: an administrator (or the object's owner) names them in the template editor,
+# then Apply creates one owner per object and one steward per active slice value.
+
+reference_data_steward: Reference-data steward (payment terms, Incoterms, tax codes, units, countries, currencies)
+span:
+  max_open_records: 2000
+  max_objects: 3
+
+objects:
+  material_master: {owner_role: Supply chain or MDM lead, slice: plant, stewards: MDM team by material type; plant planners for plant and MRP views; finance for valuation and costing views}
+  business_partner: {owner_role: MDM lead, slice: none, stewards: Shared MDM team for general data; role-specific stewards from customer and vendor}
+  sd_customer_master: {owner_role: Head of sales operations, slice: sales_org, stewards: Sales operations by sales organisation; credit team for credit data; finance for the company-code view}
+  accounts_receivable: {owner_role: AR manager, slice: company_code, stewards: AR by company code; credit team}
+  accounts_payable: {owner_role: Head of procurement, slice: purchasing_org, stewards: Procurement by purchasing organisation; accounts payable for the company-code view and bank data}
+  fi_gl: {owner_role: Group controller, slice: none, stewards: Finance master data team by chart of accounts}
+  controlling: {owner_role: Head of controlling, slice: none, stewards: Controlling team by controlling area}
+  asset_accounting: {owner_role: Fixed assets manager, slice: company_code, stewards: Finance by company code}
+  mm_purchasing: {owner_role: Procurement operations lead, slice: purchasing_org, stewards: Buyers by purchasing group}
+  sd_sales_orders: {owner_role: Order management lead, slice: sales_org, stewards: Order desk by sales organisation}
+  plant_maintenance: {owner_role: Maintenance manager, slice: plant, stewards: Reliability engineers by plant}
+  production_planning: {owner_role: Plant manager, slice: plant, stewards: Production planners by plant}
+  project_system: {owner_role: PMO lead, slice: company_code, stewards: Project controllers}
+  quality_management: {owner_role: Quality manager, slice: plant, stewards: Quality planners by plant}
+  hcm: {owner_role: HR director, slice: company_code, stewards: HR shared services by country; payroll by legal entity}
+  employee_central: {owner_role: HR director, slice: company_code, stewards: HR shared services by country}
+  payroll_integration: {owner_role: HR director, slice: company_code, stewards: Payroll by legal entity}
+  time_attendance: {owner_role: HR director, slice: company_code, stewards: HR shared services by country}
+  compensation: {owner_role: HR director, slice: none, stewards: Talent team}
+  benefits: {owner_role: HR director, slice: company_code, stewards: HR shared services by country}
+  performance_goals: {owner_role: HR director, slice: none, stewards: Talent team}
+  succession_planning: {owner_role: HR director, slice: none, stewards: Talent team}
+  recruiting_onboarding: {owner_role: HR director, slice: none, stewards: Talent team}
+  learning_management: {owner_role: HR director, slice: none, stewards: Talent team}
+  ewms_stock: {owner_role: Warehouse manager, slice: plant, stewards: Warehouse supervisors by warehouse}
+  ewms_transfer_orders: {owner_role: Warehouse manager, slice: plant, stewards: Warehouse supervisors by warehouse}
+  wm_interface: {owner_role: Warehouse manager, slice: plant, stewards: Warehouse supervisors by warehouse}
+  batch_management: {owner_role: Quality or supply chain lead, slice: plant, stewards: Plant planners}
+  mdg_master_data: {owner_role: MDM lead, slice: none, stewards: MDM team}
+  grc_compliance: {owner_role: Compliance lead, slice: none, stewards: Compliance team with Basis for user and role data}
+  cross_system_integration: {owner_role: Integration lead, slice: none, stewards: Basis and the integration team}
+  fleet_management: {owner_role: Logistics manager, slice: none, stewards: Dispatchers}
+  transport_management: {owner_role: Logistics manager, slice: none, stewards: Dispatchers}

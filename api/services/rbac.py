@@ -243,7 +243,46 @@ async def _role_after_expiry(db: AsyncSession, tenant_id: uuid.UUID, user_id: st
     return role if role in keys else strongest_role(keys)
 
 
+# View as (support): an administrator sends this header to see the product with another role's permissions. It only
+# narrows: the header is honoured for a caller who holds manage_users, and every request carrying it is read-only
+# (POST /admin/view-as and DELETE /admin/view-as, which start and stop it and write the audit rows, excepted).
+VIEW_AS_HEADER = "x-view-as-role"
+VIEW_AS_PATH = "/api/v1/admin/view-as"
+
+
+def view_as_target(request: Request) -> Optional[str]:
+    """The role asked for by the view-as header, when it is a known built-in role; else None."""
+    role = request.headers.get(VIEW_AS_HEADER)
+    return role if role in VALID_ROLES else None
+
+
+def _apply_view_as(request: Request, role: str) -> str:
+    """The role a request runs under: the view-as role for an administrator, else the caller's own (403 for a
+    caller without manage_users, or for a write made while viewing as another role)."""
+    target = view_as_target(request)
+    if target is None:
+        return role
+    if not has_permission(role, "manage_users"):
+        raise HTTPException(status_code=403, detail="View as is only for administrators who manage users.")
+    if request.method not in ("GET", "HEAD") and request.url.path != VIEW_AS_PATH:
+        raise HTTPException(status_code=403, detail=f"You are viewing as {target}: nothing can be changed until you stop.")
+    request.state.view_as = target
+    return target
+
+
+def viewing_as(request: Request) -> Optional[str]:
+    """The view-as role this request runs under (set by _get_user_role), or None."""
+    return getattr(request.state, "view_as", None)
+
+
 async def _get_user_role(
+    tenant: Tenant, db: AsyncSession, request: Request
+) -> str:
+    """Resolve the current user's role (narrowed to a view-as role for an administrator who asks for one)."""
+    return _apply_view_as(request, await _own_role(tenant, db, request))
+
+
+async def _own_role(
     tenant: Tenant, db: AsyncSession, request: Request
 ) -> str:
     """Resolve the current user's role from the users table or tenant default."""
@@ -508,7 +547,7 @@ async def require_scope(request: Request, db: AsyncSession, tenant: Tenant, acti
     Use for ids in a request body that the path scope does not cover."""
     role = await _get_user_role(tenant, db, request)
     uid = getattr(request.state, "local_user_id", None)
-    if dev_role_override(request) is not None or not uid:
+    if dev_role_override(request) is not None or viewing_as(request) or not uid:
         ok = has_permission(role, action)
     else:
         ok = await _grants_allow(await user_grants(db, tenant.id, uid, role), action, scope, tenant.id, db)
@@ -549,7 +588,7 @@ def require_permission(
         request.state.tenant_id = tenant.id
         role = await _get_user_role(tenant, db, request)
         uid = getattr(request.state, "local_user_id", None)
-        dev = dev_role_override(request) is not None
+        dev = dev_role_override(request) is not None or viewing_as(request) is not None
         req_scope = scope(request) if scope else None
         if scope is scope_from_path and not dev and uid:  # the only resolver that reads a request
             req_scope = await _resolve_scope(request, db, tenant.id, req_scope)

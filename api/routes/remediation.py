@@ -187,6 +187,9 @@ async def create_batch(
     out = await db.run_sync(lambda s: remediation.draft_batch(s, str(tenant.id), body.name, f.model_dump_json(),
                                                               issues, uid, label))
     await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), out["id"]))
+    from api.services.collab import notify_batch_waiting_sync  # watchers of its objects (migration 104)
+    await db.run_sync(lambda s: notify_batch_waiting_sync(s, str(tenant.id), str(out["id"]), body.name,
+                                                          [i["module"] for i in issues], uid))
     await db.commit()
     return out
 
