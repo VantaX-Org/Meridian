@@ -29,8 +29,10 @@ from api.services.branded_xlsx import (
 )
 from api.routes.sync_trigger import module_label
 from api.services.rbac import require_permission, scope_from_path
-from api.services.scoring import DEFAULT_THRESHOLDS, scoring_config, tier
+from api.services.scoring import (DEFAULT_THRESHOLDS, critical_over_tolerance, effective_weights,
+                                  scoring_config, tier)
 from api.services.version_status import FINISHED
+from checks.cost import effective as effective_cost_model
 
 router = APIRouter(prefix="/api/v1/objects", tags=["objects"])
 
@@ -113,6 +115,45 @@ def _measured_dimensions(mod_summary: dict) -> dict[str, float]:
             if v is not None and coverage.get(d) != 0}
 
 
+def breach_ids(mod_summary: dict) -> list[str]:
+    """check_ids of the failing critical rules over tolerance, from dqs_summary ``critical_breaches``
+    ("MM014: 5.9% of MARA rows" -> "MM014"). [] for a summary stored before breaches were recorded."""
+    out: list[str] = []
+    for b in mod_summary.get("critical_breaches") or []:
+        cid = str(b).split(":", 1)[0].strip()
+        if cid and cid not in out:
+            out.append(cid)
+    return out
+
+
+def cap_level_of(mod_summary: dict) -> Optional[int]:
+    """The ceiling a critical failure holds the score at (85 for one rule over tolerance, 70 for two or more,
+    api/services/scoring.py _cap); None when the score is not capped."""
+    if not mod_summary.get("capped"):
+        return None
+    return 70 if critical_over_tolerance(mod_summary) >= 2 else 85
+
+
+def records_checked_of(mod_summary: dict, widest_population: Optional[int] = None) -> Optional[int]:
+    """Records the run checked for an object: the driving object's record count the run stored (clean_records),
+    else ``widest_population`` (the largest rule population in the run's findings); None when neither exists."""
+    n = (mod_summary.get("clean_records") or {}).get("records")
+    if isinstance(n, (int, float)) and not isinstance(n, bool) and n > 0:
+        return int(n)
+    return widest_population if widest_population else None
+
+
+async def rule_names(db: AsyncSession, tenant: Tenant, check_ids: list[str]) -> dict[str, str]:
+    """{check_id: title} from the tenant's rules table (names are stored as "MM014: Base unit not valid")."""
+    if not check_ids:
+        return {}
+    return {r[0]: r[1] for r in (await db.execute(text(
+        "SELECT DISTINCT ON (split_part(name, ':', 1)) split_part(name, ':', 1), trim(substr(name, strpos(name, ':') + 1)) "
+        "FROM rules WHERE tenant_id = :t AND split_part(name, ':', 1) = ANY(:ids) AND strpos(name, ':') > 0 "
+        "ORDER BY split_part(name, ':', 1), module"
+    ), {"t": str(tenant.id), "ids": check_ids})).fetchall()}
+
+
 _SEVERITY_RANK = ("critical", "high", "medium", "low")
 # One definition of "blocking" for the list: used by the per-object blocking rule and the list total.
 BLOCKING_SEVERITIES: tuple[str, ...] = ("critical", "high")
@@ -133,13 +174,7 @@ async def _enrichments(db: AsyncSession, tenant: Tenant, run_id: str) -> tuple[d
     blocking_total = (await db.execute(text(
         "SELECT count(*) FROM findings WHERE version_id = :v AND tenant_id = :t "
         "AND affected_count > 0 AND severity = ANY(:blocking)"), {**t, "blocking": list(BLOCKING_SEVERITIES)})).scalar() or 0
-    names: dict[str, str] = {}
-    if block:
-        names = {r[0]: r[1] for r in (await db.execute(text(
-            "SELECT DISTINCT ON (split_part(name, ':', 1)) split_part(name, ':', 1), trim(substr(name, strpos(name, ':') + 1)) "
-            "FROM rules WHERE tenant_id = :t AND split_part(name, ':', 1) = ANY(:ids) AND strpos(name, ':') > 0 "
-            "ORDER BY split_part(name, ':', 1), module"
-        ), {"t": t["t"], "ids": [r[1] for r in block]})).fetchall()}
+    names = await rule_names(db, tenant, [r[1] for r in block])
     blocking = {r[0]: (r[1], names.get(r[1])) for r in block}
     owners = {r[0]: r[1] for r in (await db.execute(text(
         "SELECT d.ref, u.name FROM data_owners d JOIN users u ON u.id = d.owner_user_id "
@@ -347,6 +382,181 @@ async def get_object(module: str, run: uuid.UUID = Query(..., alias="run"),
              "total_count": r[4], "pass_rate": float(r[5]) if r[5] is not None else None}
             for r in rows
         ],
+    }
+
+
+_DIMENSION_ORDER = ("completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity")
+_DIMENSION_SHORT = {"completeness": "C", "accuracy": "A", "consistency": "Cs", "timeliness": "T",
+                    "uniqueness": "U", "validity": "V"}
+CAP_RULE = "85 at one critical rule over tolerance, 70 at two or more"  # api/services/scoring.py _cap
+_OPEN_WORK = ("to_fix", "proposed", "approved", "sent")  # api/routes/work.py OPEN
+
+
+class ReceiptDimensionOut(BaseModel):
+    key: str
+    label: str
+    weight: Optional[float] = None            # share of the score over the measured dimensions (sums to 1)
+    score: float
+    points: Optional[float] = None            # score x weight, one decimal
+    rules_measured: Optional[int] = None      # rules that backed the dimension's score (dqs_summary dimension_coverage)
+    records_checked: Optional[int] = None     # the largest rule population among the dimension's rules in the run
+    coverage: Optional[float] = None          # not stored per dimension: always null
+
+
+class ReceiptBreachOut(BaseModel):
+    check_id: str
+    name: Optional[str] = None
+    failing: Optional[int] = None
+    pct: Optional[float] = None
+    tolerance_rows: float
+    tolerance_pct: float
+
+
+class ReceiptToleranceOut(BaseModel):
+    pct: float
+    rows: float
+
+
+class ObjectReceiptOut(BaseModel):
+    module: str
+    label: str
+    run_id: str
+    run_at: Optional[datetime] = None
+    records_checked: Optional[int] = None
+    rules_measured: Optional[int] = None
+    coverage: Optional[float] = None
+    low_confidence: bool = False
+    weights: dict[str, float]
+    dimensions: list[ReceiptDimensionOut]
+    weighted: Optional[float] = None          # sum of points; equal to ``measured`` whenever it can be reproduced
+    measured: Optional[float] = None          # the score before the critical cap
+    cap_level: Optional[int] = None
+    capped: bool = False
+    score: Optional[float] = None
+    breaches: list[ReceiptBreachOut]
+    tolerance: ReceiptToleranceOut
+    formula: str
+    severity_weights: dict[str, float]
+    cap_rule: str
+    value_at_risk: Optional[float] = None
+    currency: str
+    features_blocked: Optional[int] = None
+    features_degraded: Optional[int] = None
+    open_work: Optional[int] = None
+
+
+def reweigh(mod_summary: dict, configured: dict[str, float]) -> tuple[dict[str, float], Optional[float], Optional[float], bool]:
+    """(share per measured dimension, weighted, measured, reproduced): the score re-weighted over the measured
+    dimensions exactly as scoring._composite does (weights of the dimensions that have rules, rescaled to 1).
+    The run's own stored ``weights`` win over the tenant's current ones. ``weighted`` is the one-decimal sum;
+    ``measured`` equals it when the stored ``raw_score`` agrees (``reproduced``), else it is the stored
+    ``raw_score`` and ``weighted`` is None -- never a made-up row."""
+    dims = _measured_dimensions(mod_summary)
+    raw = mod_summary.get("raw_score")
+    stored = {d: w for d, w in (mod_summary.get("weights") or {}).items()
+              if isinstance(w, (int, float)) and not isinstance(w, bool) and w > 0}
+    base = stored if dims and all(d in stored for d in dims) else configured
+    total = sum(base.get(d, 0.0) for d in dims)
+    if not dims or total <= 0:
+        return {}, None, raw, False
+    shares = {d: base.get(d, 0.0) / total for d in dims}
+    weighted = round(sum(dims[d] * shares[d] for d in dims), 1)
+    if raw is not None and abs(weighted - raw) > 0.1:  # the stored summary cannot reproduce its own score
+        return shares, None, raw, False
+    return shares, weighted, weighted, True
+
+
+@router.get("/{module}/receipt", response_model=ObjectReceiptOut,
+            dependencies=[Depends(require_permission("view", scope=scope_from_path))])
+async def get_object_receipt(module: str, run: Optional[uuid.UUID] = Query(None, alias="run"),
+                             db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """How one object's score was reached in one run (default: the object's latest): per-dimension points,
+    the re-weighted total, the critical cap and the rules over tolerance that trigger it."""
+    await _rls(db, tenant)
+    run_id = str(run) if run else await latest_run(db, tenant.id, module=module)
+    if run_id is None:
+        raise HTTPException(404, "Object not found")
+    summary, _thresholds = await _version_summary(db, tenant, run_id)
+    mod_summary = summary.get(module) or {}
+    if not mod_summary:
+        raise HTTPException(404, "Object not found for this run")
+    t = {"t": str(tenant.id), "v": run_id, "m": module}
+    tenant_row = (await db.execute(text("SELECT dqs_weights, cost_model FROM tenants WHERE id = :t"),
+                                   {"t": t["t"]})).fetchone()
+    raw_cfg = (tenant_row[0] if tenant_row else None) or {}
+    cfg = scoring_config(raw_cfg)
+    configured = effective_weights(raw_cfg)
+    cost_model = tenant_row[1] if tenant_row and isinstance(tenant_row[1], dict) else None
+    currency = str(effective_cost_model(cost_model)["currency"])
+    run_at = (await db.execute(text("SELECT run_at FROM analysis_versions WHERE id = :v AND tenant_id = :t"), t)).scalar()
+
+    dim_rows = (await db.execute(text(
+        "SELECT dimension, max(total_count) FROM findings WHERE version_id = :v AND tenant_id = :t AND module = :m "
+        "GROUP BY dimension"), t)).fetchall()
+    population = {r[0]: int(r[1]) for r in dim_rows if r[1]}
+    measured_dims = _measured_dimensions(mod_summary)
+    shares, weighted, measured, reproduced = reweigh(mod_summary, configured)
+    coverage_n = mod_summary.get("dimension_coverage") or {}
+    dimensions = [{
+        "key": d, "label": d.capitalize(),
+        "weight": round(shares[d], 4) if reproduced else None,
+        "score": measured_dims[d],
+        "points": round(measured_dims[d] * shares[d], 1) if reproduced else None,
+        "rules_measured": coverage_n.get(d) if isinstance(coverage_n.get(d), int) else None,
+        "records_checked": population.get(d),
+        "coverage": None,
+    } for d in _DIMENSION_ORDER if d in measured_dims]
+
+    ids = breach_ids(mod_summary)
+    tol = cfg["critical_tolerance"]
+    found = {r[0]: r for r in (await db.execute(text(
+        "SELECT check_id, affected_count, total_count FROM findings WHERE version_id = :v AND tenant_id = :t "
+        "AND module = :m AND check_id = ANY(:ids)"), {**t, "ids": ids})).fetchall()} if ids else {}
+    names = await rule_names(db, tenant, ids)
+    breaches = [{
+        "check_id": cid, "name": names.get(cid),
+        "failing": int(found[cid][1]) if cid in found else None,
+        "pct": (round(found[cid][1] / found[cid][2] * 100, 2) if cid in found and found[cid][2] else None),
+        "tolerance_rows": tol["rows"], "tolerance_pct": tol["pct"],
+    } for cid in ids]
+
+    value_at_risk = (await db.execute(text(
+        "SELECT sum(cost_at_risk) FROM findings WHERE version_id = :v AND tenant_id = :t AND module = :m "
+        "AND affected_count > 0"), t)).scalar()
+    own_checks = {r[0] for r in (await db.execute(text(
+        "SELECT check_id FROM findings WHERE version_id = :v AND tenant_id = :t AND module = :m"), t)).fetchall()}
+    impact = (await db.execute(text(
+        "SELECT status, blocking_findings FROM config_impact_results WHERE version_id = :v AND tenant_id = :t "
+        "AND status IN ('blocked', 'degraded')"), t)).fetchall()
+
+    def _touches(blocking: object) -> bool:
+        items = blocking if isinstance(blocking, list) else []
+        return any((i.get("check_id") if isinstance(i, dict) else i) in own_checks for i in items)
+
+    built = (await db.execute(text("SELECT metadata ? 'worklist_built_at' FROM analysis_versions "
+                                   "WHERE id = :v AND tenant_id = :t"), t)).scalar()
+    open_work = (await db.execute(text(
+        "SELECT count(*) FROM work_records WHERE version_id = :v AND tenant_id = :t AND module = :m "
+        "AND status = ANY(:open)"), {**t, "open": list(_OPEN_WORK)})).scalar() if built else None
+
+    w = {d: round(configured[d], 4) for d in _DIMENSION_ORDER}
+    formula = "DQS = " + " + ".join(f"{w[d]:.2f}·{_DIMENSION_SHORT[d]}" for d in _DIMENSION_ORDER)
+    coverage = mod_summary.get("coverage")
+    return {
+        "module": module, "label": _label(module), "run_id": run_id, "run_at": run_at,
+        "records_checked": records_checked_of(mod_summary, max(population.values()) if population else None),
+        "rules_measured": mod_summary.get("total_checks"),
+        "coverage": coverage if isinstance(coverage, (int, float)) else None,
+        "low_confidence": bool(mod_summary.get("low_confidence")),
+        "weights": w, "dimensions": dimensions, "weighted": weighted, "measured": measured,
+        "cap_level": cap_level_of(mod_summary), "capped": bool(mod_summary.get("capped")),
+        "score": mod_summary.get("composite_score"),
+        "breaches": breaches, "tolerance": {"pct": tol["pct"], "rows": tol["rows"]},
+        "formula": formula, "severity_weights": cfg["severity_weights"], "cap_rule": CAP_RULE,
+        "value_at_risk": float(value_at_risk) if value_at_risk is not None else None, "currency": currency,
+        "features_blocked": sum(1 for r in impact if r[0] == "blocked" and _touches(r[1])),
+        "features_degraded": sum(1 for r in impact if r[0] == "degraded" and _touches(r[1])),
+        "open_work": int(open_work) if open_work is not None else None,
     }
 
 
