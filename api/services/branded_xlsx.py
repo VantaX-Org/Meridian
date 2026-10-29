@@ -23,6 +23,7 @@ from openpyxl.drawing.image import Image as XLImage
 from openpyxl.formatting.rule import CellIsRule, ColorScaleRule, DataBarRule
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.worksheet.worksheet import Worksheet
 
 from api.services.report_theme import PRINT_TOKENS
@@ -135,6 +136,8 @@ class ColumnSpec:
     scale: float = 1.0  # pct columns: raw value is already 0-100 (scale=1.0) or 0-1 (scale=100)
     fill_by_value: Optional[Mapping[str, str]] = None  # cell value -> hex fill (no '#')
     width: Optional[int] = None
+    choices: Optional[tuple[str, ...]] = None  # a drop-down of these values on every data cell
+    muted: bool = False  # bookkeeping columns (ids for re-import): grey header and text
 
 
 @dataclass(frozen=True)
@@ -305,6 +308,8 @@ def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
         cell.alignment = header_align
         if col.kind in ("mono", "raw"):
             cell.font = Font(color=_WHITE, bold=True, size=BODY_SIZE, name=MONO_FONT)
+        if col.muted:
+            cell.fill = PatternFill(fill_type="solid", fgColor=_INK3)
     ws.row_dimensions[1].height = 20
     ws.sheet_properties.tabColor = _ACCENT
     wash = PatternFill(fill_type="solid", fgColor=_WASH)
@@ -326,7 +331,9 @@ def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
                 cell.number_format = number_format
             cell.font = _BODY_FONT
             if col.kind in ("mono", "raw"):
-                cell.font = Font(name=MONO_FONT, size=MONO_SIZE, color=_INK)
+                cell.font = Font(name=MONO_FONT, size=MONO_SIZE, color=_INK3 if col.muted else _INK)
+            elif col.muted:
+                cell.font = Font(name=BODY_FONT, size=BODY_SIZE, color=_INK3)
             if row_idx % 2 == 1:  # alternate rows (3, 5, ...) take the wash
                 cell.fill = wash
             if col.fill_by_value and raw in col.fill_by_value:
@@ -340,6 +347,12 @@ def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
         row_count += 1
 
     last_row = row_idx - 1
+    for col_idx, col in enumerate(spec.columns, start=1):
+        if col.choices and last_row >= 2:
+            dv = DataValidation(type="list", formula1='"' + ",".join(col.choices) + '"', allow_blank=True)
+            letter = get_column_letter(col_idx)
+            dv.add(f"{letter}2:{letter}{last_row}")
+            ws.add_data_validation(dv)
     ws.freeze_panes = "A2"
     if last_row >= 1:
         ws.auto_filter.ref = ws.dimensions
