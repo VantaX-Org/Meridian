@@ -29,7 +29,6 @@ from api.services import automation_settings, webhooks
 from api.services.rbac import current_user_id, require_permission, write_audit
 
 router = APIRouter(prefix="/api/v1", tags=["webhooks"])
-_MANAGE = [Depends(require_permission("manage_settings"))]
 Event = Literal["*", "run.finished", "run.failed", "batch.waiting", "batch.approved", "batch.sent", "score.dropped",
                 "breach.new", "config.drift", "certificate.signed"]
 _COLS = "id::text, url, events, active, description, created_by::text, created_at, updated_at"
@@ -106,12 +105,12 @@ async def _one(db: AsyncSession, tenant: Tenant, wid: uuid.UUID):
     return row
 
 
-@router.get("/webhooks/events", dependencies=_MANAGE)
+@router.get("/webhooks/events", dependencies=[Depends(require_permission("manage_settings"))])
 async def list_events() -> dict:
     return {"events": list(webhooks.EVENTS)}
 
 
-@router.get("/webhooks", dependencies=_MANAGE)
+@router.get("/webhooks", dependencies=[Depends(require_permission("manage_settings"))])
 async def list_webhooks(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> dict:
     await _rls(db, tenant)
     rows = (await db.execute(text(f"SELECT {_COLS} FROM webhooks WHERE tenant_id = :t ORDER BY created_at"),
@@ -119,7 +118,7 @@ async def list_webhooks(db: AsyncSession = Depends(get_db), tenant: Tenant = Dep
     return {"webhooks": [_out(r) for r in rows]}
 
 
-@router.post("/webhooks", status_code=201, dependencies=_MANAGE)
+@router.post("/webhooks", status_code=201, dependencies=[Depends(require_permission("manage_settings"))])
 async def create_webhook(body: WebhookCreate, request: Request, db: AsyncSession = Depends(get_db),
                          tenant: Tenant = Depends(get_tenant)) -> dict:
     await _rls(db, tenant)
@@ -136,7 +135,7 @@ async def create_webhook(body: WebhookCreate, request: Request, db: AsyncSession
     return {**out, "secret": secret}  # shown once
 
 
-@router.patch("/webhooks/{webhook_id}", dependencies=_MANAGE)
+@router.patch("/webhooks/{webhook_id}", dependencies=[Depends(require_permission("manage_settings"))])
 async def update_webhook(webhook_id: uuid.UUID, body: WebhookUpdate, request: Request,
                          db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> dict:
     await _rls(db, tenant)
@@ -163,7 +162,7 @@ async def update_webhook(webhook_id: uuid.UUID, body: WebhookUpdate, request: Re
     return out
 
 
-@router.delete("/webhooks/{webhook_id}", status_code=204, dependencies=_MANAGE)
+@router.delete("/webhooks/{webhook_id}", status_code=204, dependencies=[Depends(require_permission("manage_settings"))])
 async def delete_webhook(webhook_id: uuid.UUID, request: Request, db: AsyncSession = Depends(get_db),
                          tenant: Tenant = Depends(get_tenant)) -> None:
     await _rls(db, tenant)
@@ -184,7 +183,7 @@ def _deliver_now(tenant_id: str, delivery_id: str) -> dict | None:
         return out
 
 
-@router.post("/webhooks/{webhook_id}/test", dependencies=_MANAGE)
+@router.post("/webhooks/{webhook_id}/test", dependencies=[Depends(require_permission("manage_settings"))])
 async def test_webhook(webhook_id: uuid.UUID, db: AsyncSession = Depends(get_db),
                        tenant: Tenant = Depends(get_tenant)) -> dict:
     """Queue a signed webhook.test event for this webhook and send it now (one attempt; retried like any other)."""
@@ -198,7 +197,7 @@ async def test_webhook(webhook_id: uuid.UUID, db: AsyncSession = Depends(get_db)
     return {"delivery_id": ids[0], **(out or {"status": "pending"})}
 
 
-@router.get("/webhooks/{webhook_id}/deliveries", dependencies=_MANAGE)
+@router.get("/webhooks/{webhook_id}/deliveries", dependencies=[Depends(require_permission("manage_settings"))])
 async def list_deliveries(webhook_id: uuid.UUID, status: Literal["pending", "retrying", "delivered", "failed"] | None = None,
                           limit: int = Query(50, ge=1, le=500), db: AsyncSession = Depends(get_db),
                           tenant: Tenant = Depends(get_tenant)) -> dict:
@@ -218,7 +217,7 @@ async def get_automation(db: AsyncSession = Depends(get_db), tenant: Tenant = De
     return await automation_settings.load(db, str(tenant.id))
 
 
-@router.put("/settings/automation", dependencies=_MANAGE)
+@router.put("/settings/automation", dependencies=[Depends(require_permission("manage_settings"))])
 async def put_automation(body: AutomationSettings, request: Request, db: AsyncSession = Depends(get_db),
                          tenant: Tenant = Depends(get_tenant)) -> dict:
     from api.services.tenant_settings import put_setting
