@@ -72,14 +72,14 @@ describe("useWhatsNew", () => {
 });
 
 const context = { url: "https://meridian.test/objects?run=r1", runId: "r1", version: "2.0.0" };
-const handlers = { onTour: () => {}, onShortcuts: () => {}, onWhatsNew: () => {}, onHelp: () => {}, onDocs: () => {} };
+const handlers = { onTour: () => {}, onShortcuts: () => {}, onWhatsNew: () => {}, onHelp: () => {} };
 
 describe("HelpMenu", () => {
   it("offers every entry, with a dot on what's new when there is something new", async () => {
     render(<HelpMenu hasTour hasNew context={context} {...handlers} />);
     fireEvent.click(screen.getByRole("button", { name: /^Help/ }));
     expect(await screen.findByRole("menuitem", { name: "Tour this page" })).toBeInTheDocument();
-    for (const name of ["Keyboard shortcuts", "Help centre", "Documentation", "Report a problem"]) {
+    for (const name of ["Keyboard shortcuts", "Help centre", "Report a problem"]) {
       expect(screen.getByRole("menuitem", { name })).toBeInTheDocument();
     }
     expect(screen.getByRole("menuitem", { name: /What's new/ })).toHaveTextContent("(new)");

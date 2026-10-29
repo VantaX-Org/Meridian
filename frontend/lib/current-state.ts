@@ -59,7 +59,6 @@ const INSIGHT_SCOPED = [
   "/insights/forecast",
   "/insights/impact",
   "/insights/mining",
-  "/insights/operations",
   "/insights/owners",
   "/insights/process",
   "/insights/progress",
@@ -106,7 +105,6 @@ function matchesScoped(pathname: string, entries: readonly string[]): boolean {
 export const RUN_BLIND: readonly string[] = [
   "/insights/owners",
   "/insights/forecast",
-  "/insights/operations",
 ];
 
 export function isRunScoped(pathname: string): boolean {

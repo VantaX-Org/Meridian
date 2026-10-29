@@ -121,17 +121,17 @@ An object (a module id such as `fi_gl`) is shown by its name from `formatModuleN
 An id missing from the map is sentence-cased (`new_module` reads "New module"); `lib/__tests__/format-copy.test.ts` fails when a module of the coverage table or a rule file has no name, or when a name breaks the convention.
 
 ## Routes
-Live pages are under `app/(app)/`: `home` (redirects each role to its persona home: lead, steward, basis, process), `systems`, `objects` (tabs: overview, rules, fields, records, history), `runs`, `rules` (children in the nav: Data contracts, Rule drafts, Dictionary, Scoring, Learned rules), `insights`, `process` (As-is processes, the Processes pill; Discovery runs and the Process designer at `/insights/process/designer` sit under More › Analysis), `mdm` (glossary, golden, match-rules, survivorship), `migration`, `inbox`, `fix`, `import`, `search` (pages, systems, objects, rules, glossary terms, batches, runs, processes, discovery runs and process models), `admin` (Users, Roles and access, Audit log, Settings with its tabs: triage, mappings, ai, alerts, sign-in, jobs, reference, licence; billing), `attention` (To do, the Rail flag's page), `features` (All features) and `design` (the component gallery).
+Live pages are under `app/(app)/`: `home` (redirects each role to its persona home: lead, steward, basis, process), `systems`, `objects` (tabs: overview, rules, fields, records, history), `runs`, `rules` (children in the nav: Data contracts, Rule drafts, Dictionary, Scoring, Learned rules), `insights`, `process` (As-is processes, the Processes pill; Discovery runs and the Process designer at `/insights/process/designer` sit under More › Analysis), `mdm` (glossary, golden, match-rules, survivorship), `migration`, `inbox`, `fix`, `import`, `search` (pages, systems, objects, rules, glossary terms, batches, runs, processes, discovery runs and process models), `admin` (one tab strip on every admin page: Overview, Users, Roles and access, Sign-in, Alerts, Triage, Field mapping, Reference data, Jobs, Audit log, Billing, Licence, each shown only to roles that may open it), `attention` (To do, the Rail flag's page), `features` (All features) and `design` (the component gallery).
 
 Insights is five views on one spine. The rail lists the views; every insight page carries the tab strip of its view (`InsightTabs`) under the page header, the same action bar (`InsightActions`: Run analysis, Review fixes, Present, Export with the failing-records list), and the four-sentence `InsightHeader`. A process page's export is the reference model deck (PowerPoint) or the Signavio package of the as-is model.
 
 | View | Question | Tabs |
 |---|---|---|
-| Summary | How are we, since when, what next | `/insights/exec`, `/insights`, `/insights/reports` |
-| Progress | Did it get better, and why | `/insights/progress` (since baseline), `/insights/trends`, `/insights/forecast` |
-| Explore | Where exactly is it, from every angle | `/insights/rules` (pivot by rule, object, field, dimension, severity, S/4; saved views), `/insights/impact`, `/insights/lineage`, `/insights/mining`, `/insights/duplicates` |
+| Summary | How are we, since when, what next | `/insights/exec`, `/insights/reports` (`/insights` itself opens the viewer's home) |
+| Progress | Did it get better, and why | `/insights/progress` (since baseline, ending with the Team section), `/insights/trends`, `/insights/forecast` |
+| Explore | Where exactly is it, from every angle | `/insights/rules` (pivot by rule, object, field, dimension, severity, S/4; saved views), `/insights/impact`, `/insights/lineage`, `/insights/mining` (Anomalies is a tab), `/insights/duplicates` |
 | Readiness | Can we load, can we run the process | `/insights/readiness`, `/insights/process` (Process data readiness: the DQ side of a process; `/process/<l1>` is how it actually runs, and each page links to the other), `/migration` |
-| Operate | Who does what today | `/insights/owners`, `/insights/operations`, `/runs`, `/fix`, `/rules/contracts` |
+| Operate | Who does what today | `/insights/owners`, `/runs`, `/fix`, `/rules/contracts` |
 
 `?present=1` on any page drops the shell for a boardroom screen; Escape or the Exit button returns. Nav items carry `aliases` so the rail stays on a view while one of its tabs is open; `OFF_NAV_TITLES` keeps each tab's full page title.
 

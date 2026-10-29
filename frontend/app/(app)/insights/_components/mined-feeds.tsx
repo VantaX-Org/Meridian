@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * Insights › Duplicates: what the miner found, as three tables (duplicate pairs, anomalies, field relationships). A
- * pair is reviewed in Match review. The feeds read one run (`run`) or, in the current state, every object at its own
- * latest run (`scope=current`, api/routes/mining.py).
+ * What the miner found, as three tables: duplicate pairs (Insights › Duplicates; a pair is reviewed in Match review),
+ * anomalies (Insights › Patterns) and field relationships (Insights › Lineage). The feeds read one run (`run`) or, in
+ * the current state, every object at its own latest run (`scope=current`, api/routes/mining.py).
  */
 
 import { useMemo, type ReactNode } from "react";
@@ -50,16 +50,21 @@ export interface MinedScope {
 const params = ({ run, current }: MinedScope) => (current ? { scope: "current" as const, limit: LIMIT } : { version_id: run || undefined, limit: LIMIT });
 const key = (feed: string, { run, current }: MinedScope) => ["mining", feed, current ? "current" : run];
 
-/** The three mined feeds of a scope, read once for the page so it can tell when all of them are empty. */
-export function useMinedFeeds(scope: MinedScope) {
-  const enabled = scope.current || !!scope.run;
-  const duplicates = useQuery({ queryKey: key("duplicates", scope), queryFn: () => getMiningDuplicates(params(scope)), enabled });
-  const anomalies = useQuery({ queryKey: key("anomalies", scope), queryFn: () => getMiningAnomalies(params(scope)), enabled });
-  const relationships = useQuery({ queryKey: key("relationships", scope), queryFn: () => getMiningRelationships(params(scope)), enabled });
-  const all = [duplicates, anomalies, relationships];
-  /** Every feed answered and none holds a row: the page shows one empty state instead of three. */
-  const allEmpty = enabled && all.every((q) => q.isSuccess && (q.data?.length ?? 0) === 0);
-  return { duplicates, anomalies, relationships, allEmpty };
+const enabledFor = (scope: MinedScope) => scope.current || !!scope.run;
+
+/** The mined duplicate pairs of a scope. */
+export function useMinedDuplicates(scope: MinedScope) {
+  return useQuery({ queryKey: key("duplicates", scope), queryFn: () => getMiningDuplicates(params(scope)), enabled: enabledFor(scope) });
+}
+
+/** The mined anomalies of a scope. */
+export function useMinedAnomalies(scope: MinedScope) {
+  return useQuery({ queryKey: key("anomalies", scope), queryFn: () => getMiningAnomalies(params(scope)), enabled: enabledFor(scope) });
+}
+
+/** The mined field relationships of a scope. */
+export function useMinedRelationships(scope: MinedScope) {
+  return useQuery({ queryKey: key("relationships", scope), queryFn: () => getMiningRelationships(params(scope)), enabled: enabledFor(scope) });
 }
 
 function Feed<T>({ q, scope, task, empty, children }: { q: UseQueryResult<T[]>; scope: MinedScope; task: MiningTask; empty: { title: string; detail: string }; children: (rows: T[]) => ReactNode }) {

@@ -7,6 +7,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { Button, DataTable, EmptyState, ExplorerPage, ExportMenu, Field, FilterChip, Input, Mono, PageHeader, Pager, Pill, Select, Skeleton, Stat, Tabs, asyncStateOf } from "@/design";
+import { SettingsTabs } from "@/components/admin/settings-tabs";
 import {
   exportAuditEntries, getAuditEntries, getAuditSummary, getLlmAudit, type AuditEntry, type AuditListParams, type AuditSummaryRow, type LlmAuditEntry,
 } from "@/lib/api/audit";
@@ -206,7 +207,7 @@ export default function AdminAuditPage() {
   }
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Audit log" meta="A permanent record of who changed what, every call to the language model, and every change to a user. Export it for an auditor" />
+      <PageHeader tabs={<SettingsTabs />} title="Audit log" meta="A permanent record of who changed what, every call to the language model, and every change to a user. Export it for an auditor" />
       <Tabs
         value={["log", "ai", "roles"].includes(tab) ? tab : "log"}
         onValueChange={setTab}

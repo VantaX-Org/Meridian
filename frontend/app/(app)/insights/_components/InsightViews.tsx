@@ -8,7 +8,7 @@ import { withScope } from "./useInsightScope";
 export interface InsightView {
   id: string; label: string; question: string; tabs: [href: string, label: string][];
   /**
-   * False: the view draws no tab strip. Operate's pages (Owners, Operations, Runs, Fix work, Data contracts) are
+   * False: the view draws no tab strip. Operate's pages (Owners, Runs, Fix work, Data contracts) are
    * separate places reached from the nav, not tabs of one page; Runs and Fix work dropped the strip, so all do.
    */
   strip?: boolean;
@@ -19,7 +19,7 @@ export const VIEWS: InsightView[] = [
   { id: "progress", label: "Progress", question: "Did it get better, and why", tabs: [["/insights/progress", "Progress"], ["/insights/trends", "Trends"], ["/insights/forecast", "Forecast"]] },
   { id: "explore", label: "Explore", question: "Where exactly is it, from every angle", tabs: [["/insights/rules", "Failing rules"], ["/insights/impact", "Value at risk"], ["/insights/lineage", "Lineage"], ["/insights/mining", "Patterns"], ["/insights/duplicates", "Duplicates"]] },
   { id: "readiness", label: "Readiness", question: "Can we load, can we run the process", tabs: [["/insights/readiness", "Waves"], ["/insights/process", "Process data readiness"], ["/migration", "Migration cockpit"]] },
-  { id: "operate", label: "Operate", question: "Who does what today", tabs: [["/insights/owners", "Owners"], ["/insights/operations", "Operations"], ["/runs", "Runs"], ["/fix", "Fix work"], ["/rules/contracts", "Data contracts"]], strip: false },
+  { id: "operate", label: "Operate", question: "Who does what today", tabs: [["/insights/owners", "Owners"], ["/runs", "Runs"], ["/fix", "Fix work"], ["/rules/contracts", "Data contracts"]], strip: false },
 ];
 
 /**
@@ -33,13 +33,12 @@ export const PAGE_PURPOSE = {
   "/insights/forecast": "Where each object's score is heading over the next 7, 30 and 90 days. It uses every run so far, not only the selected one.",
   "/insights/rules": "Which checks cost the most, and where to start. Group them by object, field or dimension to see the pattern.",
   "/insights/impact": "What the failing records are worth in blocked SAP features, and which rules to fix to release them.",
-  "/insights/lineage": "Follow a field through configuration, process steps and SAP features to see which business KPIs a failing rule reaches.",
+  "/insights/lineage": "Follow a field through configuration, process steps and SAP features to see which business KPIs a failing rule reaches, and which fields move together.",
   "/insights/mining": "Links between records and patterns found in your data, such as likely rules, anomalies and drift. Mine the selected run to refresh them.",
   "/insights/duplicates": "Records that describe the same thing. Look up one record to see its duplicates, choose the one to keep, then propose the merge.",
   "/insights/readiness": "Which objects can load in each migration wave, and what blocks the rest.",
   "/insights/process": "How ready each business process is to run on this data: the steps blocked by failing fields, and what to clear first.",
   "/insights/owners": "How each data owner's open issues are trending, so you know whom to follow up with. Live, not tied to one run.",
-  "/insights/operations": "How the cleaning team is keeping up: work in flight, where items wait longest, and capacity. Live, not tied to one run.",
 } as const satisfies Record<string, string>;
 
 export function viewOf(pathname: string): InsightView | undefined {

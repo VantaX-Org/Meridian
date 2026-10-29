@@ -13,10 +13,10 @@ The page shows the score on its ruler with the verdict (**Go**, **At risk** or *
 **Insights** turns findings into answers for the people who decide. Its views, listed under **Insights** in the **More** menu, each have tabs under the title:
 
 - **Summary**: the **Executive summary** and **Reports**, the report library with the board pack, analyst workbook, run comparison, object and owner reports, each with a preview and **Download**.
-- **Progress**: the burn-down page (see [Progress](/docs?page=progress)), **Trends**, which re-scores one system's runs under today's weights so the line compares like with like, and **Forecast**, which projects each object's score 7, 30 and 90 days ahead once there are runs on three different days.
-- **Explore**: **Failing rules** grouped by rule, object, field, dimension or severity and ranked by impact; **Value at risk** for priced SAP features; **Lineage**; **Patterns**; and **Duplicates**, where you create merge proposals from a cluster.
+- **Progress**: the burn-down page, which ends with a **Team** section (see [Progress](/docs?page=progress)), **Trends**, which re-scores one system's runs under today's weights so the line compares like with like, and **Forecast**, which projects each object's score 7, 30 and 90 days ahead once there are runs on three different days.
+- **Explore**: **Failing rules** grouped by rule, object, field, dimension or severity and ranked by impact; **Value at risk** for priced SAP features; **Lineage**, which also lists the **Relationships** the miner found between fields; **Patterns**, whose **Anomalies** tab lists values far outside the usual range; and **Duplicates**, where you create merge proposals from a cluster.
 - **Readiness**: **Waves**, a grid of objects against migration waves, and **Processes**, the readiness of each procure to pay or order to cash step.
-- **Operate**: **Owners**, the score and open work per owner with their digest, and **Operations**, throughput, queue age and bottlenecks.
+- **Operate**: **Owners**, the score and open work per owner with their digest. How the cleaning team keeps up (capacity, queue age and bottlenecks) is the **Team** section of Progress.
 
 Every Insights page has the same build: the header with **Export** and **Present**, the four sentences, then the ledger that ranks the work and the charts. Select a rule in a ledger to open the finding beside the page, with what failed, how many, why, the samples and the fix.
 

@@ -18,7 +18,7 @@ Accounts are created by an administrator. There is no self sign-up.
 2. On the sign-in page, enter your **Work email** and **Password**, then select **Sign in**.
 3. Meridian opens the page for your role, or the page you were trying to reach.
 
-Data stewards and data owners land on **Fix work**. Everyone else lands on the Home page for their role, found under **More**, **Analysis**. If you forget your password, select **Forgot password?** and follow the link in the email.
+Where you land depends on your role. Data stewards land on **Fix work**. Data owners and approvers land on **Inbox**, **Approvals**. Leads, analysts, administrators, auditors and viewers land on the data lead Home page, SAP Basis on the Basis Home page and process analysts on the process Home page. The Meridian mark at the left of the index bar always brings you back to your Home page. If you forget your password, select **Forgot password?** and follow the link in the email.
 
 ## The screen
 
@@ -29,8 +29,15 @@ Every page has the same frame. There is no sidebar.
 The top row is the index bar. From left to right:
 
 - The Meridian mark, which opens your Home page.
-- Four pills, the places you work from every day: **Fix work**, **Objects**, **Progress** and **Inbox**. **Fix work** carries the number of records to fix (no number appears until a run's work list is built), and **Inbox** the number of open stewardship tasks. You see only the pills your role allows.
-- **More**, which opens every other page you may use, grouped as **Analysis**, **Master data**, **Rules**, **Data in** and **Admin**. Press Escape or select outside the panel to close it.
+- The pills, the places you work from every day. Each role has its own strip, in the order it works:
+  - Leads, analysts, administrators, auditors and viewers: **Home**, **Objects**, **Fix work**, **Inbox**, **Progress** and **Runs**.
+  - Data stewards: **Fix work**, **Inbox**, **Objects**, **Match review**, **Runs** and **Progress**.
+  - Data owners and approvers: **Approvals**, **Inbox**, **Objects**, **Fix work**, **Progress** and **Runs**.
+  - SAP Basis: **Systems**, **Jobs**, **Runs**, **Inbox** and **Objects**.
+  - Process analysts: **Processes**, **Objects**, **Runs**, **Progress** and **Inbox**.
+
+  **Fix work** carries the number of records to fix (no number appears until a run's work list is built), and **Inbox** the number of open stewardship tasks. You see only the pills your role allows.
+- **More**, which opens every other page you may use, grouped as **Analysis**, **Master data**, **Rules**, **Data in** and **Admin**. A page your role's strip leaves out, such as **Fix work** for a process analyst, is listed first. Press Escape or select outside the panel to close it.
 - On the right: **Search or jump to...** (Ctrl K, or ⌘K on a Mac), the jobs tray, the **To do** flag with the number of critical and high items waiting for you (see [To do](/docs?page=todo)), the notification bell, the help menu (**?**) and your user menu.
 
 ### The scope bar
@@ -44,14 +51,15 @@ When your access is limited to one system or object, a pill such as "Scoped: PRD
 
 ### The help menu
 
-The **?** button offers **Tour this page** (where a guided tour exists), **Keyboard shortcuts**, **What's new**, **Documentation**, which opens this guide, and **Report a problem**. On the guide's page, **Download PDF** gives you a printable copy of every chapter.
+The **?** button offers **Tour this page** (where a guided tour exists), **Keyboard shortcuts**, **What's new**, **Help centre** and **Report a problem**. The **Help centre** is the one place for help: guides for the work each role does, training recordings where one exists, and this user guide, chapter by chapter. In the user guide, **Download PDF** gives you a printable copy of every chapter.
 
 ## Your first day
 
 - **Data steward**: open **Fix work**, switch on **Mine** or pick an object, and work the list from the top. See [Fix work](/docs?page=fix).
 - **Data owner or approver**: you land on **Inbox**, **Approvals**: approve the fix batches your stewards prepared and the SAP write-backs others requested. See [Approvals and export](/docs?page=approvals).
 - **Lead**: open **Progress** to see how fast the backlog is falling and what slows it. See [Progress](/docs?page=progress).
-- **Analyst or SAP Basis**: open **More**, **Data in**, **Systems** to connect a system and run the first extraction, or **Import file** to load an export. See [Data in](/docs?page=data-in).
+- **SAP Basis**: open **Systems** to connect a system and run the first extraction. See [Data in](/docs?page=data-in).
+- **Analyst**: open **More**, **Data in**, **Systems** to connect a system and run the first extraction, or **Import file** to load an export. See [Data in](/docs?page=data-in).
 
 ## Good to know
 

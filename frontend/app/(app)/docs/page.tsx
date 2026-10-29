@@ -30,7 +30,11 @@ export default async function DocsPage({ searchParams }: { searchParams: Promise
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Documentation" meta="The user guide: how each part of Meridian works" actions={<DownloadGuide />} />
+      <PageHeader
+        title="User guide"
+        meta="How each part of Meridian works. Part of the help centre"
+        actions={<><Button variant="secondary" render={<Link href="/help">Help centre</Link>} /><DownloadGuide /></>}
+      />
       <div className="flex flex-col gap-4 md:flex-row">
         <nav aria-label="Guide pages" className="w-full shrink-0 md:w-[220px]">
           {GUIDE_SECTIONS.map((section) => (

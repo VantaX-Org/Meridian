@@ -34,7 +34,7 @@ And it opens the keyboard shortcuts for the page you are on, which is also `?` p
 
 ## The written answers
 
-The documentation library holds the full guide, chapter by chapter, with a printable copy of all of them. It is written for the work, not for the product: each chapter covers one job from start to finish. Open it from the help menu or from [Documentation](/docs), and search it from the palette.
+The user guide, in the help centre, holds the full guide chapter by chapter, with a printable copy of all of them. It is written for the work, not for the product: each chapter covers one job from start to finish. Open it from the help menu or from [the user guide](/docs), and search it from the palette.
 
 Every statistic carries a hint: hover the small mark beside a number and the definition appears, with a link to the chapter that explains it. That is deliberate, because the four counts of what fails, failing rules, rule failures, failing records and records to fix, measure different things and are routinely confused. When two people disagree about a number, check they are reading the same definition before you compare anything else.
 
@@ -42,6 +42,6 @@ Preferences are worth setting once, at [Me, Preferences](/me/preferences): your 
 
 ## Next steps
 
-- Read the full guide at [Documentation](/docs).
+- Read the full guide in [the user guide](/docs).
 - Search across everything at [Search](/search).
 - Set your time zone and density at [Preferences](/me/preferences).

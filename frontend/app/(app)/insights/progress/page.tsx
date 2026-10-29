@@ -3,7 +3,7 @@
 /**
  * Insights > Progress: the lead's screen. How fast the data is getting fixed, and what is slowing it down:
  * the burn-down with its projected finish, decisions per person, time to fix, what keeps coming back, where
- * the failing records sit, how good the proposals are, and what changed since the previous run. Without `?run=`
+ * the failing records sit, how good the proposals are, and what changed since the previous run, then how the team keeps up (capacity, queue age by stage, SLA, sprint plans). Without `?run=`
  * it reads the current state (every object at its own latest run, Home's scope); with `?run=` that run, and the
  * toolbar pins the run later comparisons start from (the baseline).
  * Every number comes from /api/v1/work/analytics (SQL over the work already recorded).
@@ -39,6 +39,7 @@ import { Section } from "../_components/Section";
 import { useInsightScope, withScope } from "../_components/useInsightScope";
 import { burndownChart, DECISION_LABELS, daysText, finishSentence, pct, rateText, sourceLabel } from "./progress-model";
 import { RuleCell } from "@/components/fix/rule-cell";
+import { TeamSection } from "./_team";
 
 const PURPOSE = "How fast the data is getting fixed, and what is slowing it down.";
 const n = (x: number) => x.toLocaleString();
@@ -367,6 +368,7 @@ export default function ProgressPage() {
           <EmptyState variant="inline" title={isCurrent ? "No object has an earlier run to compare with" : "No earlier run of this system to compare with"} detail="The change appears after the next run" action={<Link href={runsHref} className={linkClass}>Open runs</Link>} />
         )}
       </Section>
+      <TeamSection />
     </InsightFrame>
   );
 }

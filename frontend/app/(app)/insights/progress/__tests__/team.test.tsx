@@ -1,20 +1,18 @@
-// frontend/app/(app)/insights/operations/__tests__/page.test.tsx
+// frontend/app/(app)/insights/progress/__tests__/team.test.tsx
+// The Team section of Progress: what the retired Operations page added (capacity, queue age by stage, the SLA,
+// bottlenecks and sprint plans). Throughput, time to fix and work per person are Progress's own sections.
 import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as analyticsApi from "@/lib/api/analytics";
 import * as triageApi from "@/lib/api/triage";
-import * as usersApi from "@/lib/api/users";
-import * as versionsApi from "@/lib/api/versions";
-import OperationsPage, { stageLabel } from "../page";
+import { TeamSection, stageLabel } from "../_team";
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/insights/operations",
+  usePathname: () => "/insights/progress",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
   useSearchParams: () => new URLSearchParams("run=v1"),
 }));
-const role = vi.hoisted(() => ({ assign: true }));
-vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (p: string) => p !== "assign" || role.assign }) }));
 
 const EMPTY_METRICS: triageApi.TriageMetrics = {
   weeks: 8, backlog_by_owner: [], backlog_by_team: [], unassigned: 0, resolved_in_sla: 0, resolved_total: 0,
@@ -22,15 +20,13 @@ const EMPTY_METRICS: triageApi.TriageMetrics = {
 };
 
 function mount() {
-  vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [{ id: "v1", label: "Run 1", status: "complete", run_at: "2026-10-01T00:00:00Z" }] } as never);
-  vi.spyOn(usersApi, "getAssignableUsers").mockResolvedValue([]);
   vi.spyOn(analyticsApi, "getSprints").mockResolvedValue({ sprints: [], total_actions: 0 });
   if (!vi.isMockFunction(triageApi.getTriageMetrics)) vi.spyOn(triageApi, "getTriageMetrics").mockResolvedValue(EMPTY_METRICS);
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={qc}><OperationsPage /></QueryClientProvider>);
+  return render(<QueryClientProvider client={qc}><TeamSection /></QueryClientProvider>);
 }
 
-afterEach(() => { vi.restoreAllMocks(); role.assign = true; });
+afterEach(() => { vi.restoreAllMocks(); });
 
 describe("stageLabel", () => {
   it("maps queue stage ids to the steward's words", () => {
@@ -40,8 +36,8 @@ describe("stageLabel", () => {
   });
 });
 
-describe("OperationsPage", () => {
-  it("shows every KPI the API returns, stage names, whole hours and a capacity gap that cannot contradict itself", async () => {
+describe("TeamSection", () => {
+  it("shows capacity, queue age by stage in whole hours and the queue figures; never repeats Progress's throughput", async () => {
     vi.spyOn(analyticsApi, "getOperational").mockResolvedValue({
       kpis: {
         throughput: 12, automation_rate: 40.4, mttr_hours: 330.4, sla_compliance_pct: 100, rejection_rate: 5, rollback_rate: 0,
@@ -51,14 +47,15 @@ describe("OperationsPage", () => {
       capacity: { needed: 0, current: 1, surplus_deficit: 1, recommendation: "Capacity is fine" },
     });
     mount();
-    expect(await screen.findByText("Processed")).toBeInTheDocument();
-    expect(screen.getByText("of 10 detected")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Team" })).toBeInTheDocument();
+    expect(await screen.findByText("In progress")).toBeInTheDocument();
     expect(screen.getByText("Rejection rate")).toBeInTheDocument();
     expect(screen.getByText("Rollback rate")).toBeInTheDocument();
     expect(screen.getByText("Top rule by volume")).toBeInTheDocument();
     expect(screen.getByText("AP083")).toBeInTheDocument();
-    // Hours are whole with a unit; the stage id never shows raw.
-    expect(screen.getByText("330 h")).toBeInTheDocument();
+    // Progress owns throughput, time to fix and per-person work.
+    for (const label of ["Processed", "Throughput", "Time to resolve", "Team member"]) expect(screen.queryByText(label)).toBeNull();
+    // The stage id never shows raw.
     expect(screen.getAllByText("Detected").length).toBeGreaterThan(0);
     expect(screen.queryByText(/^detected$/)).toBeNull();
     expect(screen.getByRole("img", { name: "Average age by stage in hours: Detected 2" })).toBeInTheDocument();
@@ -66,38 +63,27 @@ describe("OperationsPage", () => {
     // One capacity number: a surplus, with both inputs as the hint.
     expect(screen.getByText("+1 steward")).toBeInTheDocument();
     expect(screen.getByText("1 steward now, 0 needed")).toBeInTheDocument();
-    expect(screen.queryByText("Stewards needed")).toBeNull();
-    expect(screen.getByText("1 stage is holding work")).toBeInTheDocument();
+    expect(screen.getByText("Capacity is fine")).toBeInTheDocument();
     // The queue counts are the cleaning queue: they open Fix work's Cleaning proposals tab, not the inbox.
-    // Four headline tiles; the other figures are a definition list whose values drill.
-    for (const label of ["Processed", "In progress"]) {
-      expect(screen.getByText(label).closest("a")).toHaveAttribute("href", "/fix?sugg=1");
-    }
-    for (const label of ["Throughput", "Time to resolve", "Average queue age"]) {
-      const term = screen.getByText(label);
-      expect(term.tagName).toBe("DT");
-      expect(term.nextElementSibling?.querySelector("a")).toHaveAttribute("href", "/fix?sugg=1");
-    }
-    expect(document.querySelectorAll(".m-stat-grid .m-stat").length).toBe(4);
+    expect(screen.getByText("In progress").closest("a")).toHaveAttribute("href", "/fix?sugg=1");
+    const term = screen.getByText("Average queue age");
+    expect(term.tagName).toBe("DT");
+    expect(term.nextElementSibling?.querySelector("a")).toHaveAttribute("href", "/fix?sugg=1");
     expect(document.querySelector('a[href="/inbox"]')).toBeNull();
   });
 
-  it("shows the parts that loaded while the slow operational query is still on its way, never the whole-page timeout", async () => {
+  it("shows the parts that loaded while the slow operational query is still on its way", async () => {
     vi.spyOn(analyticsApi, "getOperational").mockReturnValue(new Promise(() => {}));
-    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
-    vi.spyOn(usersApi, "getAssignableUsers").mockResolvedValue([]);
     vi.spyOn(analyticsApi, "getSprints").mockResolvedValue({
       sprints: [{ sprint_number: 1, name: "Sprint 1", total_effort_hours: 12, records_fixed: 40, critical_cleared: 2, dqs_now: 70, dqs_projected: 74, estimated_cost: null, currency: "ZAR" }],
       total_actions: 3,
     } as never);
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(<QueryClientProvider client={qc}><OperationsPage /></QueryClientProvider>);
+    render(<QueryClientProvider client={qc}><TeamSection /></QueryClientProvider>);
     expect(await screen.findByText("Sprint 1")).toBeInTheDocument();
-    expect(screen.getAllByText("Team member").length).toBeGreaterThan(0);
-    // The cards fed by the slow query hold a skeleton of their own; the page frame is not in its loading or error state.
-    expect(screen.getByText("Throughput and capacity")).toBeInTheDocument();
+    expect(screen.getByText("Capacity and queue")).toBeInTheDocument();
     expect(screen.queryByText("This is taking longer than expected.")).toBeNull();
-    expect(screen.queryByText("Processed")).toBeNull();
+    expect(screen.queryByText("In progress")).toBeNull();
   });
 
   it("says stewards are short when the queue outgrows the team, and hides the top rule until something is processed", async () => {
@@ -112,8 +98,9 @@ describe("OperationsPage", () => {
     mount();
     expect(await screen.findByText("2 stewards short")).toBeInTheDocument();
     expect(screen.getByText("Nothing processed yet")).toBeInTheDocument();
-    expect(screen.getByText("2 stages are holding work")).toBeInTheDocument();
-    expect(screen.getByText("Unblock Pending review first")).toBeInTheDocument();
+    expect(screen.getByText("Add two stewards")).toBeInTheDocument();
+    expect(screen.getByText(/Pending review holds work longest, at 48 h on average/)).toBeInTheDocument();
+    expect(screen.getByText("Bottlenecks")).toBeInTheDocument();
   });
 
   it("reports steward work against the SLA with the open backlog per owner", async () => {
@@ -139,16 +126,6 @@ describe("OperationsPage", () => {
     expect(screen.getByText("ana@x.io")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "7" })).toHaveAttribute("href", "/inbox?assignee=u1");
     expect(screen.getByRole("link", { name: "SLA policies" })).toHaveAttribute("href", "/admin/triage");
-  });
-});
-
-describe("OperationsPage without assign", () => {
-  it("leaves out the team member card and never asks for the assignable users (a viewer's 403)", async () => {
-    role.assign = false;
-    vi.spyOn(analyticsApi, "getOperational").mockReturnValue(new Promise(() => {}));
-    mount();
-    expect(await screen.findByText("Throughput and capacity")).toBeInTheDocument();
-    expect(screen.queryByText("Team member")).not.toBeInTheDocument();
-    expect(usersApi.getAssignableUsers).not.toHaveBeenCalled();
+    expect(screen.getByText("Balanced")).toBeInTheDocument();
   });
 });

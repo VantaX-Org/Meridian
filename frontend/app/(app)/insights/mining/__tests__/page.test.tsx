@@ -104,3 +104,62 @@ describe("MiningPage patterns", () => {
     query = "";
   });
 });
+
+describe("MiningPage anomalies", () => {
+  const summary = { window_days: 30, total_patterns: 1, new_anomalies: 1, stable_patterns: 0, coverage_pct: 80, runs_total: 2, cost_usd: 0 };
+  const setup = () => {
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [{ id: "v1", label: "Run 1", status: "complete", run_at: "2026-10-01T00:00:00Z" }] } as never);
+    vi.spyOn(relationshipsApi, "getRelationships").mockResolvedValue({ relationships: [], total: 0 });
+    vi.spyOn(miningApi, "getMiningSummary").mockResolvedValue(summary);
+    vi.spyOn(miningApi, "getMiningPatterns").mockResolvedValue({ patterns: [] });
+  };
+
+  it("is a tab of Patterns and lists the mined anomalies, moved from Duplicates", async () => {
+    query = "run=v1&tab=anomalies";
+    setup();
+    const get = vi.spyOn(miningApi, "getMiningAnomalies").mockResolvedValue([
+      { id: "a1", version_id: "v1", module_id: "material_master", field_name: "NTGEW", field_value: 9999, record_index: 4, detection_method: "z_score", z_score: 6.2, severity: "high", detected_at: "2026-10-01T00:00:00Z" },
+    ]);
+    renderWithQuery(<MiningPage />);
+    expect(screen.getByRole("tab", { name: "Anomalies" })).toBeInTheDocument();
+    expect(await screen.findByText("NTGEW")).toBeInTheDocument();
+    expect(get).toHaveBeenCalledWith({ version_id: "v1", limit: 500 });
+    expect(screen.getByText("z 6.2")).toBeInTheDocument();
+    // mined before the key was kept: named by its row, opening the object's fields
+    expect(screen.getByText("Row 5")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Material master fields" })).toHaveAttribute("href", "/objects/material_master?run=v1&tab=fields");
+    query = "";
+  });
+
+  it("names each anomaly's record in Mono with its value and usual range, and opens the record", async () => {
+    query = "run=v1&tab=anomalies";
+    setup();
+    const row = (id: string, key: string, value: number) => ({
+      id, version_id: "v1", module_id: "hcm", field_name: "PA0007.EMPCT", field_value: value, record_index: 3, record_key: key,
+      detection_method: "iqr", z_score: null, lower_bound: 40, upper_bound: 100, severity: "high" as const, detected_at: "2026-10-01T00:00:00Z",
+    });
+    vi.spyOn(miningApi, "getMiningAnomalies").mockResolvedValue([row("a1", "PERNR=00001001|SUBTY=0001", 400), row("a2", "PERNR=00001002|SUBTY=0001", 380)]);
+    renderWithQuery(<MiningPage />);
+    const key = await screen.findByText("PERNR=00001001|SUBTY=0001");
+    expect(key.closest("a")).toHaveAttribute("href", "/objects/hcm/records/PERNR%3D00001001%7CSUBTY%3D0001?run=v1");
+    expect(screen.getByText("PERNR=00001002|SUBTY=0001")).toBeInTheDocument();
+    expect(screen.getByText("400")).toBeInTheDocument();
+    expect(screen.getAllByText("usual 40 to 100")).toHaveLength(2);
+    expect(screen.getByRole("link", { name: "Open record PERNR=00001002|SUBTY=0001" })).toHaveAttribute("href", "/objects/hcm/records/PERNR%3D00001002%7CSUBTY%3D0001?run=v1");
+    query = "";
+  });
+
+  it("starts the anomaly miner, not the learned-rules miner, from its empty state", async () => {
+    query = "run=v1&tab=anomalies";
+    setup();
+    vi.spyOn(miningApi, "getMiningAnomalies").mockResolvedValue([]);
+    const houseRules = vi.spyOn(learnedRulesApi, "mineLearnedRules").mockResolvedValue({ queued: true });
+    const mine = vi.spyOn(miningApi, "runMining").mockResolvedValue({ task_id: "t1", version_id: "v1", include: ["anomaly"] });
+    renderWithQuery(<MiningPage />);
+    expect(await screen.findByText("No anomalies found yet")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Mine now" }));
+    await waitFor(() => expect(mine).toHaveBeenCalledWith("v1", ["anomaly"]));
+    expect(houseRules).not.toHaveBeenCalled();
+    query = "";
+  });
+});

@@ -5,6 +5,7 @@ import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/rea
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { Button, Card, Choice, ConfirmDialog, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, IconButton, Input, Menu, Mono, Notice, PageHeader, Pill, Select, Skeleton, Tabs, Textarea, IconMore, toast } from "@/design";
+import { SettingsTabs } from "@/components/admin/settings-tabs";
 import { ApiKeysTab } from "@/components/admin/api-keys-tab";
 import { EffectivePermissionsView } from "@/components/admin/effective-permissions";
 import { GrantDiff } from "@/components/admin/grant-diff";
@@ -54,7 +55,7 @@ export default function AdminRolesPage() {
   const custom = roles.filter((r) => !r.built_in).length;
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Roles and access" meta={`${rolesQ.isLoading ? "" : `${roles.length} roles, ${custom} custom. `}Decide what each role may do and which systems or objects each person reaches`} />
+      <PageHeader tabs={<SettingsTabs />} title="Roles and access" meta={`${rolesQ.isLoading ? "" : `${roles.length} roles, ${custom} custom. `}Decide what each role may do and which systems or objects each person reaches`} />
       <Notice tone="info">Built-in roles cannot be changed: clone one to make your own. Give a role for one system or object only, so people get just the access their work needs.</Notice>
       <Tabs
         value={tab} onValueChange={setTab}
