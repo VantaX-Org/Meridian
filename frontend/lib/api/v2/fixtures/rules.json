@@ -8,7 +8,11 @@
       "affected_count": 3640,
       "total_count": 61816,
       "pass_rate": 94.11,
-      "value_at_risk": 1184000
+      "value_at_risk": 1184000,
+      "dimension": "validity",
+      "check_class": "domain_value_check",
+      "field_description": "Base unit of measure",
+      "why": "Goods movements and MRP cannot post for a material whose base unit is not an ISO unit."
     },
     {
       "check_id": "MM031",
@@ -18,7 +22,11 @@
       "affected_count": 2904,
       "total_count": 61816,
       "pass_rate": 95.3,
-      "value_at_risk": 902000
+      "value_at_risk": 902000,
+      "dimension": "completeness",
+      "check_class": "null_check",
+      "field_description": "Material type",
+      "why": "Without a material type SAP cannot derive field selection, number range or valuation control."
     },
     {
       "check_id": "MM022",
@@ -28,7 +36,11 @@
       "affected_count": 3118,
       "total_count": 61816,
       "pass_rate": 94.96,
-      "value_at_risk": 611000
+      "value_at_risk": 611000,
+      "dimension": "completeness",
+      "check_class": "null_check",
+      "field_description": "Material group",
+      "why": "Material group drives purchasing analytics, source lists and G/L account determination."
     },
     {
       "check_id": "MM057",
@@ -38,7 +50,11 @@
       "affected_count": 2266,
       "total_count": 61816,
       "pass_rate": 96.33,
-      "value_at_risk": 402000
+      "value_at_risk": 402000,
+      "dimension": "completeness",
+      "check_class": "cross_field_check",
+      "field_description": "Gross weight",
+      "why": "Freight, transport planning and EWM capacity checks need a gross weight."
     },
     {
       "check_id": "MM063",
@@ -48,7 +64,11 @@
       "affected_count": 2712,
       "total_count": 61816,
       "pass_rate": 95.61,
-      "value_at_risk": 338000
+      "value_at_risk": 338000,
+      "dimension": "completeness",
+      "check_class": "null_check",
+      "field_description": "Purchasing group",
+      "why": "MRP-generated purchase requisitions cannot be routed to a buyer without a purchasing group."
     },
     {
       "check_id": "MM078",
@@ -58,7 +78,11 @@
       "affected_count": 1894,
       "total_count": 61816,
       "pass_rate": 96.94,
-      "value_at_risk": 268000
+      "value_at_risk": 268000,
+      "dimension": "consistency",
+      "check_class": "cross_field_check",
+      "field_description": "MRP type",
+      "why": "An MRP type that does not suit the material type stops planning runs from creating proposals."
     },
     {
       "check_id": "MM091",
@@ -68,7 +92,11 @@
       "affected_count": 1420,
       "total_count": 61816,
       "pass_rate": 97.7,
-      "value_at_risk": 241000
+      "value_at_risk": 241000,
+      "dimension": "completeness",
+      "check_class": "null_check",
+      "field_description": "Valuation class",
+      "why": "Without a valuation class, goods movements cannot find the stock account and post to the G/L."
     },
     {
       "check_id": "MM105",
@@ -78,7 +106,11 @@
       "affected_count": 1260,
       "total_count": 61816,
       "pass_rate": 97.96,
-      "value_at_risk": 198000
+      "value_at_risk": 198000,
+      "dimension": "completeness",
+      "check_class": "domain_value_check",
+      "field_description": "Procurement type",
+      "why": "MRP cannot decide between in-house production and external procurement."
     }
   ]
 }

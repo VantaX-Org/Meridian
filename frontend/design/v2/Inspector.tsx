@@ -9,6 +9,7 @@ import { moduleSlug, systemSlug } from "@/lib/v2/score";
 import { IconClose } from "./marks";
 import { EmptyFrame, Mono, V2Link } from "./parts";
 import { extensionFor } from "./inspector/registry";
+import { RuleInspectorBody } from "./inspector/rule";
 
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
@@ -103,7 +104,8 @@ export function Actions({ children }: { children: ReactNode }) {
   );
 }
 
-function RuleBody({ id, landscape }: { id: string; landscape: Landscape | undefined }) {
+/** The step 0 body, kept as the plain fallback and for its tests. */
+export function RuleBody({ id, landscape }: { id: string; landscape: Landscape | undefined }) {
   const qc = useQueryClient();
   const name = useMemo(() => {
     for (const [, data] of qc.getQueriesData<Receipt>({ queryKey: v2Keys.receiptRoot })) {
@@ -196,7 +198,7 @@ export function Inspector() {
   return (
     <InspectorFrame title={title} status={status} onClose={close}>
       {open.kind === "rule" ? (
-        <RuleBody id={open.id} landscape={landscape} />
+        <RuleInspectorBody id={open.id} landscape={landscape} />
       ) : open.kind === "record" ? (
         <RecordBody id={open.id} />
       ) : (

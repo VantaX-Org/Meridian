@@ -1,16 +1,15 @@
 "use client";
 
-import { useMemo, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { formatDate, formatMoneyCompact } from "@/lib/format";
-import { fixtureParam } from "@/lib/api/v2/fixture";
-import type { Landscape, LandscapeCell, LandscapeSystem, Receipt, RuleRow } from "@/lib/api/v2/types";
+import type { Landscape, LandscapeCell, LandscapeSystem, Receipt } from "@/lib/api/v2/types";
 import { useOpenItem, useRunParam } from "@/lib/v2/hooks";
-import { useLandscape, useObjectRules, useReceipt } from "@/lib/v2/queries";
+import { useLandscape, useReceipt } from "@/lib/v2/queries";
 import { f1, findSystem, int, moduleFromSlug, pct1, VERDICT_LABEL } from "@/lib/v2/score";
-import { Grid, type GridColumn } from "../Grid";
-import { SeverityMark, VerdictMark } from "../marks";
-import { Dash, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
+import { Explain } from "../Explain";
+import { VerdictMark } from "../marks";
+import { Dash, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../parts";
 import { Ruler } from "../Ruler";
 import { dimsOf } from "../shell/MapPane";
 
@@ -81,7 +80,9 @@ export function ReceiptTable({ receipt }: { receipt: Receipt }) {
         <tbody>
           {receipt.dimensions.map((d) => (
             <tr key={d.key}>
-              <th scope="row">{d.label}</th>
+              <th scope="row">
+                {d.label} <Explain metric="dimension" label={d.label} module={receipt.module} run={receipt.run_id} dimension={d.key} />
+              </th>
               <td>{`${Math.round(d.weight * 100)}%`}</td>
               <td>{d.score == null ? <Dash why="Not measured" /> : f1(d.score)}</td>
               <td>{d.points == null ? <Dash /> : f1(d.points)}</td>
@@ -92,7 +93,9 @@ export function ReceiptTable({ receipt }: { receipt: Receipt }) {
           ))}
           {receipt.weighted != null ? (
             <tr className="m2-sum">
-              <th scope="row">Weighted</th>
+              <th scope="row">
+                Weighted <Explain metric="dqs" label="the weighted score" module={receipt.module} run={receipt.run_id} />
+              </th>
               <td>100%</td>
               <td />
               <td>{f1(receipt.weighted)}</td>
@@ -102,7 +105,9 @@ export function ReceiptTable({ receipt }: { receipt: Receipt }) {
             </tr>
           ) : null}
           <tr className="m2-sum">
-            <th scope="row">Measured</th>
+            <th scope="row">
+              Measured <Explain metric="dqs" label="the measured score" module={receipt.module} run={receipt.run_id} />
+            </th>
             <td />
             <td />
             <td>{f1(receipt.measured)}</td>
@@ -112,7 +117,9 @@ export function ReceiptTable({ receipt }: { receipt: Receipt }) {
           </tr>
           {receipt.cap_level != null ? (
             <tr>
-              <th scope="row">{`Cap, ${n} critical ${n === 1 ? "rule" : "rules"} over tolerance`}</th>
+              <th scope="row">
+                {`Cap, ${n} critical ${n === 1 ? "rule" : "rules"} over tolerance`} <Explain metric="cap" label="the cap" module={receipt.module} run={receipt.run_id} />
+              </th>
               <td />
               <td />
               <td>{receipt.capped ? `${receipt.cap_level}.0` : "not reached"}</td>
@@ -122,7 +129,9 @@ export function ReceiptTable({ receipt }: { receipt: Receipt }) {
             </tr>
           ) : null}
           <tr className="m2-sum">
-            <th scope="row">Score shown</th>
+            <th scope="row">
+              Score shown <Explain metric="dqs" label="the score shown" module={receipt.module} run={receipt.run_id} />
+            </th>
             <td />
             <td />
             <td>{f1(receipt.score)}</td>
@@ -319,45 +328,8 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
   );
 }
 
-const RULE_COLUMNS: GridColumn<RuleRow>[] = [
-  { id: "id", header: "Rule", width: 120, pin: true, locked: true, cell: (r) => <Mono>{r.check_id}</Mono> },
-  { id: "severity", header: "Severity", width: 100, cell: (r) => <span className="m2-sev"><SeverityMark severity={r.severity} />{r.severity.charAt(0).toUpperCase() + r.severity.slice(1)}</span> },
-  { id: "name", header: "Name", width: 280, cell: (r) => r.name },
-  { id: "field", header: "Field", width: 130, cell: (r) => (r.field ? <Mono>{r.field}</Mono> : <Dash />) },
-  { id: "failing", header: "Failing", width: 90, numeric: true, cell: (r) => int(r.affected_count) },
-  { id: "records", header: "Records", width: 90, numeric: true, cell: (r) => int(r.total_count), defaultHidden: false },
-  { id: "pass", header: "Pass rate", width: 90, numeric: true, cell: (r) => (r.pass_rate == null ? <Dash /> : `${r.pass_rate.toFixed(2)}%`) },
-  { id: "var", header: "Value at risk", width: 130, numeric: true, cell: (r) => (r.value_at_risk == null ? <Dash /> : <>{int(r.value_at_risk)} <span className="m2-meta">ZAR</span></>) },
-];
-
-/** The Rules tab: the object's rules ranked by value at risk, then by failing records. */
-export function RulesTab({ system: systemSegment, module: moduleSegment }: { system: string; module: string }) {
-  const run = useRunParam();
-  const apiModule = moduleFromSlug(moduleSegment);
-  const { open, openItem } = useOpenItem();
-  const rowsParam = Number(fixtureParam("rows") ?? 0);
-  const q = useObjectRules(apiModule, run, Number.isFinite(rowsParam) ? rowsParam : 0);
-  const { label } = resolve(useLandscape(run).data, systemSegment, moduleSegment);
-  const rows = useMemo(() => {
-    const list = q.data ?? [];
-    return [...list].sort((a, b) => (b.value_at_risk ?? -1) - (a.value_at_risk ?? -1) || b.affected_count - a.affected_count);
-  }, [q.data]);
-  return (
-    <Grid<RuleRow>
-      id={`rules-${apiModule}`}
-      ariaLabel={`Rules for ${label}`}
-      columns={RULE_COLUMNS}
-      rows={rows}
-      rowId={(r) => r.check_id}
-      height={480}
-      loading={q.isPending}
-      error={q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>The rules could not be read for this object.</ErrorFrame> : undefined}
-      emptyFrame={<EmptyFrame>{`No rule has run for ${label} in this run. Rules appear here, ranked by value at risk, when an analysis measures this object.`}</EmptyFrame>}
-      onOpen={(r) => openItem({ kind: "rule", id: r.check_id })}
-      openRowId={open?.kind === "rule" ? open.id : null}
-    />
-  );
-}
+/** The Rules tab lives in object/RulesTab.tsx; it is re-exported here so the object screen keeps one front door. */
+export { RulesTab } from "./object/RulesTab";
 
 const EMPTY: Record<Exclude<TabKey, "rules">, { text: (label: string) => string; action: string; href: (module: string) => string }> = {
   records: { text: (l) => `No failing records are listed for ${l} yet. Rows appear when an analysis finds rules with a fixable or suggested value.`, action: "Open Work", href: () => "/v2/work" },

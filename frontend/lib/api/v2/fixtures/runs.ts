@@ -282,10 +282,12 @@ export function fixtureCompare(a: string, b: string): CompareSummary {
   };
 }
 
-function fixtureVersionCompare(v1: string, v2: string): VersionCompare {
+function fixtureVersionCompare(v1: string, v2: string, module?: string): VersionCompare {
   const ka = numberOf(v1);
   const kb = numberOf(v2);
-  return { v1: head(ka), v2: head(kb), delta: {}, checks: changesFor(ka, kb) };
+  const all = changesFor(ka, kb);
+  const checks = module ? (Object.fromEntries(Object.entries(all).map(([k, v]) => [k, v.filter((c) => c.module === module)])) as typeof all) : all;
+  return { v1: head(ka), v2: head(kb), delta: {}, checks };
 }
 
 // ── Jobs ─────────────────────────────────────────────────────────────────────────────────────
@@ -563,7 +565,7 @@ export function runsFixtureResponse(path: string, params: Params): unknown {
   if (path === "/runs/timeline") return fixtureTimeline(params.system_id ? String(params.system_id) : undefined, Number(params.limit ?? 8));
   const vs = /^\/runs\/([^/]+)\/vs\/([^/]+)\/summary$/.exec(path);
   if (vs) return fixtureCompare(decodeURIComponent(vs[1]), decodeURIComponent(vs[2]));
-  if (path === "/versions/compare") return fixtureVersionCompare(String(params.v1), String(params.v2));
+  if (path === "/versions/compare") return fixtureVersionCompare(String(params.v1), String(params.v2), params.module ? String(params.module) : undefined);
   if (path === "/versions") return versionsPage(params);
   const ver = /^\/versions\/([^/]+)$/.exec(path);
   if (ver) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { Explain } from "../Explain";
 import { Fragment, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { formatDate } from "@/lib/format";
@@ -193,6 +194,7 @@ export function Coverage({ landscape, run }: { landscape: Landscape; run: string
               <tr key={o.module}>
                 <th scope="row">
                   <span className="m2-oname">{o.label}</span>
+                  <Explain metric="dqs" label={`the score of ${o.label}`} module={o.module} />
                 </th>
                 {systems.map((s) => {
                   const cell = cellOf(s, o.module);

@@ -4,6 +4,10 @@ import type { ReactNode } from "react";
 import { useParams } from "next/navigation";
 import { EmptyFrame, PageTitle, V2Link } from "../parts";
 import { EmptyTab, ObjectFrame, RulesTab } from "./Object";
+import { ReadinessTab } from "./object/ReadinessTab";
+import { RecordsTab } from "./object/LedgerSlot";
+import { RunsTab } from "./object/RunsTab";
+import { RuleCanvas } from "./Rule";
 
 interface ObjectParams {
   system: string;
@@ -28,7 +32,17 @@ export function ObjectRulesRoute() {
 
 export function ObjectTabRoute({ tab }: { tab: "records" | "fixes" | "runs" | "readiness" | "lineage" | "glossary" | "golden" }) {
   const p = useParams<ObjectParams>();
-  return <EmptyTab tab={tab} system={String(p.system)} module={String(p.module)} />;
+  const [system, module] = [String(p.system), String(p.module)];
+  if (tab === "records") return <RecordsTab system={system} module={module} />;
+  if (tab === "runs") return <RunsTab system={system} module={module} />;
+  if (tab === "readiness") return <ReadinessTab system={system} module={module} />;
+  return <EmptyTab tab={tab} system={system} module={module} />;
+}
+
+/** /v2/r/{check_id}: the rule canvas. */
+export function RuleRoute() {
+  const p = useParams<{ id: string }>();
+  return <RuleCanvas id={decodeURIComponent(String(p.id))} />;
 }
 
 const NOT_YET: Record<string, { title: string; text: string; action: string; href: string }> = {

@@ -203,4 +203,12 @@ export interface RuleRow {
   total_count: number;
   pass_rate: number | null;
   value_at_risk: number | null;
+  /** The rule's dimension; the Rules tab pivots on it. */
+  dimension?: DimensionKey | null;
+  /** The check class (domain_value_check, null_check ...). */
+  check_class?: string | null;
+  /** rule_context.why_it_matters: the one line under the rule name. */
+  why?: string | null;
+  /** The field in business words (the glossary term), beside the SAP field. */
+  field_description?: string | null;
 }

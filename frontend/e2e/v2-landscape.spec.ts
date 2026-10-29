@@ -2,7 +2,7 @@
  * Meridian 2, step 0: the landscape, the object canvas and the inspector in fixture mode (`/v2?fixture=1`), so the
  * spec needs no API and no recording. At 1440 and 390, light and dark: the coverage matrix is there, an object
  * opens, the inspector opens and closes by keyboard, axe finds no critical or serious violation, and a screenshot of
- * each lands in e2e/__screenshots__/v2/. A last test scrolls a 100,000-row Rules grid.
+ * each lands in e2e/__screenshots__/v2/. A last test gives the Rules tab 100,000 rules.
  *
  *   PLAYWRIGHT_BASE_URL=http://localhost:3100 PW_CHROMIUM=/opt/pw-browsers/chromium npx playwright test e2e/v2-landscape.spec.ts
  */
@@ -92,7 +92,7 @@ for (const size of SIZES) {
         await expect(page.getByTestId("receipt")).toBeVisible();
         await expect(page.getByTestId("receipt-footer")).toContainText("tolerance 10% of rows or 25 rows");
         await expect(page.getByRole("navigation", { name: "Views of Material master" }).getByRole("link")).toHaveCount(8);
-        await expect(page.getByRole("grid", { name: "Rules for Material master" })).toBeVisible();
+        await expect(page.getByRole(phone ? "list" : "grid", { name: "Rules for Material master" })).toBeVisible(); // two-line rows on a phone
         await page.waitForLoadState("networkidle");
         await shot(page, "object");
         await axe(page, `object ${size.name} ${scheme}`);
@@ -114,7 +114,7 @@ for (const size of SIZES) {
         await expect(dialog).toBeVisible();
         await expect(page).toHaveURL(/open=rule%3AMM014/);
         await expect(dialog.getByRole("button", { name: "Close inspector" })).toBeFocused();
-        await expect(dialog.getByText("Objects it caps")).toBeVisible();
+        await expect(dialog.getByRole("heading", { name: /^Scope/ })).toBeVisible(NAV);
         if (phone) {
           const box = await dialog.boundingBox();
           expect(box?.width).toBeGreaterThanOrEqual(size.width - 1); // full screen on a phone
@@ -173,10 +173,10 @@ for (const size of SIZES) {
   }
 }
 
-test.describe("data grid at scale", () => {
+test.describe("a long list of rules", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
-  test("a 100,000-row Rules grid draws only what is in view, keeps its header, and scrolls without layout shift", async ({ page }) => {
+  test("100,000 rules draw only the first page, say how many more there are, and cause no layout shift", async ({ page }) => {
     await prepare(page, "light");
     await page.addInitScript(() => {
       (window as unknown as { __cls: number }).__cls = 0;
@@ -187,49 +187,22 @@ test.describe("data grid at scale", () => {
     await page.goto("/v2/o/ecc-production/material-master?fixture=1&rows=100000", { waitUntil: "load", timeout: 90_000 });
     const grid = page.getByRole("grid", { name: "Rules for Material master" });
     await expect(grid).toBeVisible(NAV);
-    await expect(grid).toHaveAttribute("aria-rowcount", "100001");
-    await expect(page.getByText("100,000 rows")).toBeVisible();
-    const drawn = () => grid.getByRole("row").count();
-    expect(await drawn()).toBeLessThan(80);
-
+    await expect(grid).toContainText("and 99,975 more rules");
+    // 25 rules, the header and the two closing rows: the other 99,975 are not in the DOM.
+    expect(await grid.getByRole("row").count()).toBe(28);
     await page.waitForLoadState("networkidle");
-    const clsBefore = await page.evaluate(() => (window as unknown as { __cls: number }).__cls);
-    console.log(`[grid] layout shift while the page loaded: ${clsBefore.toFixed(3)}`);
-    const metrics = await grid.evaluate(async (el) => {
-      const scroller = el as HTMLElement;
-      const head = scroller.querySelector(".m2-ghead") as HTMLElement;
-      const top = scroller.getBoundingClientRect().top;
-      const frame = () => new Promise<number>((r) => requestAnimationFrame(() => r(performance.now())));
-      const t0 = performance.now();
-      const bodyHeights = new Set<number>();
-      let maxRows = 0;
-      let headerDrift = 0;
-      for (const y of [0.1, 0.25, 0.5, 0.75, 0.9, 1].map((f) => f * (scroller.scrollHeight - scroller.clientHeight))) {
-        scroller.scrollTop = y;
-        await frame();
-        await frame();
-        bodyHeights.add((scroller.querySelector(".m2-gbody") as HTMLElement).offsetHeight);
-        maxRows = Math.max(maxRows, scroller.querySelectorAll('[role="row"]').length);
-        headerDrift = Math.max(headerDrift, Math.abs(head.getBoundingClientRect().top - top));
-      }
-      return { ms: performance.now() - t0, bodies: bodyHeights.size, maxRows, headerDrift, last: scroller.querySelector('[role="row"]:last-child [role="gridcell"]')?.textContent };
-    });
-    console.log(`[grid] 100,000 rows: six scroll jumps took ${Math.round(metrics.ms)} ms, at most ${metrics.maxRows} rows in the DOM`);
-    expect(metrics.bodies).toBe(1); // the total height never changes while scrolling
-    expect(metrics.maxRows).toBeLessThan(80);
-    expect(metrics.headerDrift).toBeLessThanOrEqual(1); // sticky header
-    expect(metrics.ms).toBeLessThan(2_000);
-    // Scrolling moves nothing: no layout shift is recorded between the first scroll and the last.
-    expect((await page.evaluate(() => (window as unknown as { __cls: number }).__cls)) - clsBefore).toBe(0);
-    // Scrolled to the end, the last row is drawn.
-    await expect(grid.locator('[aria-rowindex="100001"]')).toBeVisible();
+    const cls = await page.evaluate(() => (window as unknown as { __cls: number }).__cls);
+    console.log(`[rules] layout shift while the page loaded: ${cls.toFixed(3)}`);
+    await page.getByRole("button", { name: "Show 25 more" }).click();
+    expect(await grid.getByRole("row").count()).toBe(53);
+    expect((await page.evaluate(() => (window as unknown as { __cls: number }).__cls)) - cls).toBeLessThan(0.1);
   });
 
-  test("j and k move through the rows and Enter opens one in the inspector", async ({ page }) => {
+  test("j and k move through the rules and Enter opens one in the inspector", async ({ page }) => {
     await prepare(page, "light");
     await page.goto("/v2/o/ecc-production/material-master?fixture=1", { waitUntil: "load", timeout: 90_000 });
     const grid = page.getByRole("grid", { name: "Rules for Material master" });
-    await expect(grid.getByRole("row")).toHaveCount(9, NAV);
+    await expect(grid.getByRole("row")).toHaveCount(11, NAV);
     await grid.focus();
     await page.keyboard.press("j");
     await page.keyboard.press("j");

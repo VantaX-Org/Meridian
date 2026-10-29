@@ -6,6 +6,7 @@ import rulesJson from "./rules.json";
 import type { CommandGroup, CommandResult, Landscape, Receipt, RuleRow, RunList, StatusStrip, WorkPage } from "../types";
 import { moduleSlug, systemSlug } from "@/lib/v2/score";
 import { NONE, runsFixtureResponse } from "./runs";
+import { objectFixture } from "./object";
 
 /**
  * Fixture answers for the step 0 contract, built from the approved prototype's numbers: 3 systems (ECC production
@@ -111,6 +112,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
       if (rows > 0) return { rules: syntheticRules(Math.min(rows, 200000)) };
       return { rules: params.module === "material_master" ? baseRules : [] };
     }
+    const more = objectFixture(path, params);
+    if (more !== undefined) return more;
     throw new FixtureNotFound(path);
   })();
   return out as T;
