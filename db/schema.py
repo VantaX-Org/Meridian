@@ -2809,3 +2809,48 @@ class StewardAssignment(Base):
 
     __table_args__ = (UniqueConstraint("tenant_id", "module", "slice_kind", "slice_value",
                                        name="uq_steward_assignments_slice"),)
+
+
+# ── Step 9: certificates, drift alerts, webhooks, contract enforcement, delta extraction (migrations 106-111) ──
+
+
+class WaveCertificate(Base):
+    """One issued readiness certificate of a migration wave, numbered per wave (migration 106,
+    api/services/readiness_certificate.py). The PDF is a report_files row of kind ``readiness_certificate``."""
+    __tablename__ = "wave_certificates"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    wave_id = Column(UUID(as_uuid=True), ForeignKey("migration_waves.id", ondelete="CASCADE"), nullable=False)
+    version = Column(Integer, nullable=False)
+    status = Column(Text, nullable=False, server_default="issued")  # issued | signed
+    content = Column(JSONB, nullable=False)
+    content_sha256 = Column(Text, nullable=False)
+    report_file_id = Column(UUID(as_uuid=True), ForeignKey("report_files.id", ondelete="SET NULL"), nullable=True)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_by_label = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        CheckConstraint("status IN ('issued', 'signed')", name="ck_wave_certificates_status"),
+        UniqueConstraint("wave_id", "version", name="uq_wave_certificates_version"),
+        Index("ix_wave_certificates_wave", "tenant_id", "wave_id", "version"),
+    )
+
+
+class WaveCertificateSignature(Base):
+    """One owner's signature of a readiness certificate: who, when and the statement signed (migration 106)."""
+    __tablename__ = "wave_certificate_signatures"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    certificate_id = Column(UUID(as_uuid=True), ForeignKey("wave_certificates.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    user_label = Column(Text, nullable=False)
+    statement = Column(Text, nullable=False)
+    signed_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint("certificate_id", "user_id", name="uq_wave_certificate_signatures_user"),
+        Index("ix_wave_certificate_signatures_cert", "tenant_id", "certificate_id"),
+    )

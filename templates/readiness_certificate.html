@@ -1,0 +1,59 @@
+{% extends "_base.html" %}
+{% block body %}
+<p>This certifies that every object of the wave below was measured by Meridian on the runs named here, with no critical rule over tolerance, and that the figures below are the ones the runs stored. Each owner of an object signs this certificate in Meridian; the signatures are kept with it.</p>
+
+<table class="meta">
+<tr><td class="k">Certificate</td><td class="mono">{{ c.certificate_id }}</td></tr>
+<tr><td class="k">Version</td><td>{{ c.version }}</td></tr>
+<tr><td class="k">Wave</td><td>{{ c.wave.name }}</td></tr>
+<tr><td class="k">Issued</td><td>{{ c.issued_at | sast }}</td></tr>
+<tr><td class="k">Issued by</td><td>{{ c.issued_by or "system" }}</td></tr>
+<tr><td class="k">Content SHA-256</td><td class="mono">{{ sha256 }}</td></tr>
+</table>
+
+<h2>Objects</h2>
+<table class="data">
+<thead><tr><th>Object</th><th>Run</th><th>Measured on</th><th class="r">Measured</th><th class="r">Shown</th><th class="r">Cap</th><th class="r">Open critical records</th></tr></thead>
+<tbody>
+{% for o in c.objects %}
+<tr><td>{{ o.label }}<span class="sub mono">{{ o.module }}</span></td><td class="mono">{{ (o.run_id or "")[:8] }}</td>
+    <td>{{ o.run_at | sast }}</td><td class="r">{{ o.measured | n(1) }}</td><td class="r">{{ o.shown | n(1) }}</td>
+    <td class="r">{{ o.cap_level if o.cap_level is not none else "None" }}</td><td class="r">{{ o.open_critical_records | n }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+
+<h2>Critical rules over tolerance</h2>
+<div class="empty">None: the certificate is only issued when no object of the wave has a critical rule over tolerance.</div>
+
+<h2>Signed-off exceptions</h2>
+{% if c.exceptions %}
+<table class="data">
+<thead><tr><th>Object</th><th>Rule</th><th>Decision</th><th>Approver</th><th>Date</th><th class="r">Records</th></tr></thead>
+<tbody>
+{% for e in c.exceptions %}
+<tr><td class="mono">{{ e.module }}</td><td class="mono">{{ e.check_id }}</td><td>{{ e.resolution | module }}</td>
+    <td>{{ e.approver or "—" }}</td><td>{{ e.approved_at | sast }}</td><td class="r">{{ e.records | n }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<div class="empty">No exceptions were signed off for these objects.</div>
+{% endif %}
+
+<h2>Data contracts</h2>
+{% if c.contracts %}
+<table class="data">
+<thead><tr><th>Contract</th><th>Objects</th><th>Status</th><th>Last checked</th></tr></thead>
+<tbody>
+{% for k in c.contracts %}
+<tr><td>{{ k.name }}</td><td class="mono">{{ k.modules | join(", ") }}</td>
+    <td>{% if k.compliant is none %}Not evaluated{% elif k.compliant %}Compliant{% else %}Not compliant{% endif %}{% if k.breaches %} ({{ k.breaches }} enforced breach{{ "es" if k.breaches != 1 else "" }}){% endif %}</td>
+    <td>{{ k.checked_at | sast }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<div class="empty">No active data contract covers these objects.</div>
+{% endif %}
+{% endblock %}
