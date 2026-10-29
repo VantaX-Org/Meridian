@@ -8,7 +8,7 @@ vi.mock("next/navigation", () => ({ usePathname: () => nav.path, useSearchParams
 afterEach(() => { nav.path = "/insights/owners"; });
 
 describe("InsightTabs", () => {
-  it.each(["/insights/owners", "/insights/operations", "/rules/contracts"])("draws no Operate strip on %s (Runs and Fix work dropped it)", (path) => {
+  it.each(["/insights/owners", "/runs", "/rules/contracts"])("draws no Operate strip on %s (Runs and Fix work dropped it)", (path) => {
     nav.path = path;
     const { container } = render(<InsightTabs />);
     expect(container).toBeEmptyDOMElement();

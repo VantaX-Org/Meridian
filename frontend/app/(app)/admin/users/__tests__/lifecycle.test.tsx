@@ -11,6 +11,7 @@ import AdminUsersPage from "../page";
 const toasts = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 vi.mock("sonner", () => ({ toast: toasts, Toaster: () => null }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true, loading: false }) }));
+vi.mock("@/components/admin/settings-tabs", () => ({ SettingsTabs: () => null }));
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: { id: "me" } }) }));
 
 const nav = vi.hoisted(() => ({ search: "", replace: vi.fn() }));

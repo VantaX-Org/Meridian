@@ -171,7 +171,8 @@
   {
     "name": "insights-operations",
     "path": "/insights/operations",
-    "heading": "Operations"
+    "heading": "Progress",
+    "redirectsTo": "/insights/progress"
   },
   {
     "name": "insights-owners",
@@ -362,12 +363,14 @@
   {
     "name": "insights-duplicates-anomalies",
     "path": "/insights/duplicates?tab=anomalies",
-    "heading": "Duplicates"
+    "heading": "Patterns",
+    "redirectsTo": "/insights/mining?tab=anomalies"
   },
   {
     "name": "insights-duplicates-relationships",
     "path": "/insights/duplicates?tab=relationships",
-    "heading": "Duplicates"
+    "heading": "Lineage",
+    "redirectsTo": "/insights/lineage?tab=relationships"
   },
   {
     "name": "migration-wave-s4",
@@ -383,7 +386,7 @@
   {
     "name": "docs",
     "path": "/docs",
-    "heading": "Documentation"
+    "heading": "User guide"
   },
   {
     "name": "me-preferences",

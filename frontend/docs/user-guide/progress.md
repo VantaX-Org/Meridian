@@ -47,6 +47,10 @@ For each object, comparing the run with the run before it from the same system: 
 
 **Export** offers **Proof of progress (PDF)**, the comparison report for the run, and **Comparison workbook (Excel)**. Exporting needs the export permission.
 
+## Team
+
+The last section is about the cleaning team, not one run, so it reads live figures. **In progress** is the cleaning items open now, **Within agreed time (SLA)** the share handled in time, and **Capacity** says whether you have enough stewards for the queue: a balance, a surplus or "N stewards short", with how many you have and how many the queue needs. Under them sit the queue's average age and its automation, rejection and rollback rates. **Queue age by stage** shows where items wait longest, **Steward work against the SLA** the last eight weeks of issues and tasks resolved in time, with the open backlog per owner (the policies are under **Triage** in the admin pages), **Bottlenecks** what would clear each waiting stage, and **Sprint plans** suggested batches of fixes with their effect on the score. The old Operations page now opens here.
+
 ## Good to know
 
 - "Nothing to track yet" means no finished run has found failing records.

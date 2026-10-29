@@ -18,7 +18,6 @@ const FAILING: Record<string, RegExp> = {
  * survivorship rules): the page's title, or a line only its loaded data (or its designed empty state) produces.
  */
 const NEW_ROUTES: [string, string][] = [
-  ["/insights/operations", "Operations"],
   ["/insights/reports", "Reports"],
   ["/insights/exec", "Executive summary"],
   ["/mdm", "MDM overview"],

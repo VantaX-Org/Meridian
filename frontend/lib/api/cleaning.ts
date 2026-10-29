@@ -122,7 +122,7 @@ export async function bulkApprove(params: {
 }
 
 // Approved proposals go on to a fix batch (lib/api/remediation.ts: second approval, export, reconciliation),
-// which replaced the per-item apply / rollback; queue figures live in Insights › Operations (/analytics/operational).
+// which replaced the per-item apply / rollback; queue figures live in Insights › Progress › Team (/analytics/operational).
 
 export async function getCleaningAudit(params: {
   queue_id?: string;

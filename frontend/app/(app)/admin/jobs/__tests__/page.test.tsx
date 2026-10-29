@@ -10,6 +10,7 @@ import JobsPage from "../page";
 
 let perms = new Set<string>();
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (a: string) => perms.has(a), loading: false }) }));
+vi.mock("@/components/admin/settings-tabs", () => ({ SettingsTabs: () => null }));
 
 const BASE: Job = {
   id: "j1", kind: "analysis", status: "failed", label: "Re-analysis", stage: null, stages: [], percent: 40,

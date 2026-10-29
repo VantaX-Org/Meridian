@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { DataTable, DisabledJobAction, ExplorerPage, PageHeader, RetryJobButton, Status, asyncStateOf, retryAction } from "@/design";
+import { SettingsTabs } from "@/components/admin/settings-tabs";
 import { actionColumn, RowLink } from "@/components/mdm/ledger";
 import { JobError } from "@/components/job-error";
 import { useRole } from "@/hooks/use-role";
@@ -144,6 +145,7 @@ export default function JobsPage() {
     <ExplorerPage
       header={
         <PageHeader
+          tabs={<SettingsTabs />}
           title="Jobs"
           meta={<>The newest {JOBS_KEPT} extractions, analyses, uploads and simulations, latest first; older jobs are not kept, and the filters apply to these. Times are in the tenant time zone, <Link href={TENANT_TIMEZONE_HREF} className="m-ink-accent underline underline-offset-2">{tz.replace(/_/g, " ")}</Link>. Expand a failed job to read why it stopped and what to do next</>}
         />

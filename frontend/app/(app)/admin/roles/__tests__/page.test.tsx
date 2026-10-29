@@ -14,6 +14,7 @@ import AdminRolesLoading from "../loading";
 let tab = "roles";
 let userParam = "";
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+vi.mock("@/components/admin/settings-tabs", () => ({ SettingsTabs: () => null }));
 // Each key keeps its own state, seeded from the "URL" the test sets.
 vi.mock("@/hooks/use-url-state", async () => {
   const { useState } = await import("react");

@@ -80,6 +80,23 @@ const nextConfig: NextConfig = {
       // config redirect would carry ?kind=issues along to /fix.
       { source: "/issues", destination: "/fix?mine=1", permanent: false },
       { source: "/dedup", destination: "/insights/duplicates", permanent: false },
+      // Operations folded into Progress (its Team section): same figures, one place.
+      { source: "/insights/operations", destination: "/insights/progress", permanent: true },
+      // Duplicates hosted two tables that are not about duplicates. Anomalies moved to Patterns and Relationships to
+      // Lineage. The destinations name their own tab (or none), so a carried-over tab cannot match these rules again;
+      // the run and object keys ride along. The Duplicates page also sends such a link on from the client.
+      {
+        source: "/insights/duplicates",
+        has: [{ type: "query", key: "tab", value: "anomalies" }],
+        destination: "/insights/mining?tab=anomalies",
+        permanent: true,
+      },
+      {
+        source: "/insights/duplicates",
+        has: [{ type: "query", key: "tab", value: "relationships" }],
+        destination: "/insights/lineage#relationships",
+        permanent: true,
+      },
       { source: "/ai/rules", destination: "/rules", permanent: false },
       { source: "/config-impact", destination: "/insights/impact", permanent: false },
       { source: "/reports", destination: "/insights/reports", permanent: false },

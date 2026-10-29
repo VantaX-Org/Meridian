@@ -1,7 +1,7 @@
 // frontend/lib/__tests__/nav.test.ts
 import { describe, expect, it } from "vitest";
 import nextConfig from "../../next.config";
-import { MAX_PILLS, NAV_GROUPS, flattenNav, getPageTitle, activeHref, homeHrefForRole, isItemVisible, resolveNavHref, splitNav, visibleNav, type NavItem } from "../nav";
+import { INDEX_ONLY_GROUPS, MAX_PILLS, NAV_GROUPS, settingsTabs, flattenNav, getPageTitle, activeHref, homeHrefForRole, isItemVisible, resolveNavHref, splitNav, visibleNav, type NavItem } from "../nav";
 import { LEGACY_ROLES, permissionsPayload } from "../../e2e/fixtures/legacy-permissions";
 
 describe("nav vs legacy redirects", () => {
@@ -243,5 +243,29 @@ describe("resolveNavHref with the viewer's permissions", () => {
     expect(resolveNavHref("/home/lead", "data_steward", canOf(["approve", "apply"]))).toBe("/fix");
     expect(resolveNavHref("/home/lead", "admin", canOf([]))).toBe("/home/lead");
     expect(resolveNavHref("/objects", "data_steward", canOf([]))).toBe("/objects");
+  });
+});
+
+describe("retired and merged pages", () => {
+  const items = NAV_GROUPS.flatMap((g) => flattenNav(g.items));
+  it("has no Operations or Documentation entry: Progress holds the team figures and the Help centre holds the guide", () => {
+    expect(items.map((i) => i.href)).not.toContain("/insights/operations");
+    expect(items.map((i) => i.label)).not.toContain("Operations");
+    expect(INDEX_ONLY_GROUPS.flatMap((g) => g.items).map((i) => i.href)).not.toContain("/docs");
+    expect(INDEX_ONLY_GROUPS.flatMap((g) => g.items).map((i) => i.href)).toContain("/help");
+    expect(getPageTitle("/docs")).toBe("User guide");
+  });
+
+  it("calls the migration waves page Waves in the nav, the tab strip and the title", () => {
+    expect(items.find((i) => i.href === "/insights/readiness")?.label).toBe("Waves");
+    expect(getPageTitle("/insights/readiness")).toBe("Waves");
+  });
+
+  it("orders the admin tab strip: Overview first, then the pages an admin works through", () => {
+    const admin = { can: () => true, isMenuItemEnabled: () => true };
+    expect(settingsTabs(visibleNav(admin)).map((t) => t.label)).toEqual([
+      "Overview", "Users", "Roles and access", "Sign-in", "Alerts", "Triage", "Field mapping",
+      "Reference data", "Jobs", "Audit log", "Billing", "Licence",
+    ]);
   });
 });

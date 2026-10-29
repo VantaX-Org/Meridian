@@ -28,9 +28,17 @@ import { CardSkeleton, InsightFrame } from "../_components/InsightFrame";
 import { atRiskSentence, findingsHref, pct } from "./links";
 import { PAGE_PURPOSE } from "../_components/InsightViews";
 import { COUNT_DEFS } from "@/lib/counts";
+import { MinedRelationships, useMinedRelationships } from "../_components/mined-feeds";
 
 // ponytail: the layered chart past this many nodes gets taller than a screen. Narrow the trace depth to see the rest.
 const MAX_NODES = 150;
+
+/** Fields whose values move together in one run (moved here from Duplicates, where they sat beside unrelated tables). */
+function Relationships({ run }: { run: string }) {
+  const scope = { run, current: false };
+  const q = useMinedRelationships(scope);
+  return <MinedRelationships q={q} scope={scope} />;
+}
 
 const TYPE_LABEL: Record<ImpactRow["type"], string> = { kpi: "KPI", process: "Process", feature: "Feature" };
 
@@ -273,6 +281,11 @@ export default function LineagePage() {
             )
             : <DataTable columns={columns} data={rows} getRowId={(r) => r.id} onRowClick={(r) => trace(r.id)} hideToolbar height="auto" />}</Async>
         </Card>
+        <div id="relationships" className="scroll-mt-24">
+          <Card title="Relationships" meta="Fields whose values move together in the latest run, mined from its records">
+            <Relationships run={latest?.id ?? ""} />
+          </Card>
+        </div>
       </InsightFrame>
 
       <Drawer open={!!sel} onOpenChange={(o) => { if (!o) setSelId(null); }} title={sel?.label ?? ""}

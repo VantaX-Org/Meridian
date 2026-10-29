@@ -57,4 +57,4 @@ Short questions, quickly answered from the batch itself.
 
 - See the work the batch came from in [Fix work](/fix).
 - Check which rules are failing most at [Failing rules](/insights/rules).
-- Read the full approval reference in [Documentation](/docs).
+- Read the full approval reference in [the user guide](/docs).

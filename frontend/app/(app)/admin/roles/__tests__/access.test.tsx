@@ -11,6 +11,7 @@ import AdminRolesPage from "../page";
 
 const url = vi.hoisted(() => ({ tab: "roles", user: "", expiring: "" }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+vi.mock("@/components/admin/settings-tabs", () => ({ SettingsTabs: () => null }));
 vi.mock("@/hooks/use-url-state", async () => {
   const { useState } = await import("react");
   return { useUrlState: (key: string, initial = "") => useState((url as Record<string, string>)[key] ?? initial) };

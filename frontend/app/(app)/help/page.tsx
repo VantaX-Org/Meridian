@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import Link from "next/link";
 import { Button, Card, EmptyState, PageHeader, Pill } from "@/design";
+import { DownloadGuide } from "../docs/download-guide";
 import { Markdown } from "@/lib/help/markdown";
 import { roleLabel } from "@/lib/roles";
 import {
@@ -9,6 +10,7 @@ import {
   type JourneyChapter, type JourneySection,
 } from "@/lib/help/journeys";
 import { VideoPlayer } from "@/design";
+import { GUIDE_SECTIONS } from "@/lib/help/user-guide";
 import { RoleFilter } from "./_role-filter";
 
 // Read from disk on request, like /docs: the chapters ship as markdown beside the app
@@ -41,7 +43,8 @@ function Audience({ chapter }: { chapter: JourneyChapter }) {
 }
 
 /**
- * The help centre: per-role journeys, one markdown chapter per task with its training recording.
+ * The help centre, the one place for help: per-role journeys (one markdown chapter per task, with its training
+ * recording when one exists) and the user guide chapters, which open on /docs?page= for reading.
  * `?journey=` is the chapter (URL is state); `?role=` narrows the contents to one role's chapters.
  */
 export default async function HelpPage({
@@ -62,8 +65,7 @@ export default async function HelpPage({
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Help centre"
-        meta="Guides for the work each role does here, with a training recording per chapter"
-        actions={<Button variant="secondary" render={<Link href={`/docs?page=welcome`}>Documentation library</Link>} />}
+        meta="Guides for the work each role does here, training recordings and the user guide"
         secondary={<RoleFilter />}
       />
       <div className="flex flex-col gap-4 md:flex-row">
@@ -125,6 +127,26 @@ export default async function HelpPage({
           )}
         </div>
       </div>
+      <Card
+        title="User guide"
+        meta="How each part of Meridian works, chapter by chapter"
+        actions={<DownloadGuide />}
+      >
+        <div data-testid="help-user-guide" className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {GUIDE_SECTIONS.map((section) => (
+            <div key={section.title}>
+              <p className="pb-1 m-text-meta m-ink-3 [font-weight:600]">{section.title}</p>
+              <ul className="flex flex-col gap-1">
+                {section.pages.map((p) => (
+                  <li key={p.slug}>
+                    <Link href={`/docs?page=${p.slug}`} className="m-ink-accent m-text-body">{p.title}</Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </Card>
     </div>
   );
 }

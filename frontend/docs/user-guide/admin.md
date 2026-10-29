@@ -2,7 +2,7 @@
 
 The admin pages are where the people who run Meridian manage access, routing, alerts, retention, the language model and the installation. Open **More**, **Admin**. You see only the pages your role allows; a page opened without the right permission says which one it needs, such as "Needs the `manage_users` permission".
 
-The **Admin** section lists **Users**, **Roles and access**, **Audit log** and **Settings**. Under **Settings** sit **Triage**, **Field mapping**, **Alerts**, **Sign-in**, **Jobs**, **Reference data** and **Licence**. When the right-hand side of the index bar shows a number on the **To do** flag, admin chores such as access requests, pending invitations, seats and expiring grants are in it; see [To do](/docs?page=todo).
+The admin pages share one row of tabs under the page title: **Overview** (Settings, with the checklist of what still needs setting up), **Users**, **Roles and access**, **Sign-in**, **Alerts**, **Triage**, **Field mapping**, **Reference data**, **Jobs**, **Audit log**, **Billing** and **Licence**. A tab appears only when your role may open it, so the row is the same on every admin page, and you can move from one to the next without going back to **More**. When the right-hand side of the index bar shows a number on the **To do** flag, admin chores such as access requests, pending invitations, seats and expiring grants are in it; see [To do](/docs?page=todo).
 
 ## Users
 
@@ -57,7 +57,7 @@ The **Audit log** records who did what, with **When**, **Who**, **Action** and *
 
 ## Settings
 
-**Settings** shows the deployment (tenant, licence and language model), then **Alert channels**, **Retention** (how long runs, reports and audit rows are kept; only archived runs are ever purged, never a baseline) and **Health checks** for the database, Redis, object storage, the language model, the licence server and migrations, with **Check again**.
+**Overview**, the Settings page, shows the deployment (tenant, licence and language model), then **Alert channels**, **Retention** (how long runs, reports and audit rows are kept; only archived runs are ever purged, never a baseline) and **Health checks** for the database, Redis, object storage, the language model, the licence server and migrations, with **Check again**.
 
 ## Alerts
 

@@ -31,7 +31,20 @@ import { useInsightScope } from "../_components/useInsightScope";
 import { useCurrentState } from "../_components/useCurrentState";
 import { PAGE_PURPOSE } from "../_components/InsightViews";
 import { ScoredPairs } from "./scored-pairs";
-import { MinedAnomalies, MinedDuplicates, MinedRelationships, useMinedFeeds } from "./mined-tabs";
+import { MinedDuplicates, useMinedDuplicates } from "../_components/mined-feeds";
+
+/** Old `?tab=` values that are now other pages: where each goes, keeping the scope (`run`, `module`) of the link. */
+const MOVED_TABS: Record<string, (search: URLSearchParams) => string> = {
+  anomalies: (s) => moved("/insights/mining", s, "tab=anomalies"),
+  relationships: (s) => `${moved("/insights/lineage", s)}#relationships`,
+};
+
+function moved(path: string, search: URLSearchParams, extra?: string): string {
+  const keep = new URLSearchParams(extra);
+  for (const k of ["run", "module"]) { const v = search.get(k); if (v) keep.set(k, v); }
+  const q = keep.toString();
+  return `${path}${q ? `?${q}` : ""}`;
+}
 
 export default function DuplicatesPage() {
   const search = useSearchParams();
@@ -41,11 +54,10 @@ export default function DuplicatesPage() {
   const isCurrent = scope.mode === "current";
   const state = useCurrentState();
   const run = isCurrent ? "" : scope.run ?? "";
-  const feeds = useMinedFeeds({ run, current: isCurrent });
+  const minedNow = useMinedDuplicates({ run, current: isCurrent });
   // What changed: pairs mined in this run against the run before it in its lineage (same key as the Mined pairs tab).
   const current = scope.runs.find((r) => r.id === run);
   const previous = current ? previousInLineage(current, scope.runs) : null;
-  const minedNow = feeds.duplicates;
   const minedBefore = useQuery({ queryKey: ["mining", "duplicates", previous?.id ?? ""], queryFn: () => getMiningDuplicates({ version_id: previous?.id, limit: 500 }), enabled: !!previous });
   const pairsNow = minedNow.data?.length ?? 0;
   const pairsBefore = minedBefore.data?.length ?? 0;
@@ -62,11 +74,15 @@ export default function DuplicatesPage() {
           : pairsNow === pairsBefore
             ? `${plural(pairsNow, "duplicate pair")} found, as in the previous run`
             : `${Math.abs(pairsNow - pairsBefore).toLocaleString()} ${pairsNow > pairsBefore ? "more" : "fewer"} duplicate pairs found than in the previous run`;
-  // The page is one flow (cluster, likely duplicates, anomalies, relationships); an old `?tab=` link scrolls to its part.
+  // The page is one flow (cluster, scored pairs, likely duplicates); an old `?tab=` link scrolls to its part. Anomalies
+  // moved to Patterns and Relationships to Lineage: next.config.ts redirects those two tabs, and the page does too
+  // should the config rule ever be bypassed (a client-side link to the old address).
   const tab = search.get("tab");
   useEffect(() => {
-    if (tab && tab !== "clusters") document.getElementById(`duplicates-${tab}`)?.scrollIntoView?.({ block: "start" });
-  }, [tab]);
+    const moved = tab ? MOVED_TABS[tab] : undefined;
+    if (moved) router.replace(moved(search));
+    else if (tab && tab !== "clusters") document.getElementById(`duplicates-${tab}`)?.scrollIntoView?.({ block: "start" });
+  }, [tab, search, router]);
 
   const objects = useQuery({
     queryKey: queryKeys.objects(run),
@@ -158,7 +174,7 @@ export default function DuplicatesPage() {
   const picked = !!object && !!recordId;
   const noRun = isCurrent ? !state.loading && !state.objects.length : !run && !scope.resolving;
   // Nothing picked and nothing mined: one empty state for the page, not one per section.
-  const nothing = !picked && feeds.allEmpty;
+  const nothing = !picked && minedNow.isSuccess && (minedNow.data?.length ?? 0) === 0;
   return (
     <InsightFrame
       title="Duplicates"
@@ -206,7 +222,7 @@ export default function DuplicatesPage() {
       ) : nothing ? (
         <EmptyState
           title={isCurrent ? "Nothing found yet" : "Nothing found in this run yet"}
-          detail="Look up a record above to see its duplicates. Likely duplicate pairs, anomalies and field relationships show here once a run is searched; to decide on scored pairs instead, open Match review."
+          detail="Look up a record above to see its duplicates. Likely duplicate pairs show here once a run is searched; to decide on scored pairs instead, open Match review."
           ghost="grid"
           action={<Button variant="secondary" render={<Link href="/mdm/golden/merge">Open match review</Link>} />}
         />
@@ -247,15 +263,7 @@ export default function DuplicatesPage() {
         <section id="duplicates-pairs" aria-label="Likely duplicates" className="flex flex-col gap-2">
           <h2 className="m-text-h font-semibold m-ink">Likely duplicates</h2>
           <p className="m-text-meta m-ink-3">{isCurrent ? "Pairs found in each object's latest run." : "Pairs found in this run."} Review takes a pair to Match review, where every merge is decided.</p>
-          <MinedDuplicates q={feeds.duplicates} scope={{ run, current: isCurrent }} />
-        </section>
-        <section id="duplicates-anomalies" aria-label="Anomalies" className="flex flex-col gap-2">
-          <h2 className="m-text-h font-semibold m-ink">Anomalies</h2>
-          <MinedAnomalies q={feeds.anomalies} scope={{ run, current: isCurrent }} />
-        </section>
-        <section id="duplicates-relationships" aria-label="Relationships" className="flex flex-col gap-2">
-          <h2 className="m-text-h font-semibold m-ink">Relationships</h2>
-          <MinedRelationships q={feeds.relationships} scope={{ run, current: isCurrent }} />
+          <MinedDuplicates q={minedNow} scope={{ run, current: isCurrent }} />
         </section>
         </>
       )}
