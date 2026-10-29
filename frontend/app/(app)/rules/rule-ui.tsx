@@ -6,7 +6,7 @@
 
 import type { ReactNode } from "react";
 import { Mono, IconClose } from "@/design";
-import { checkClassLabel } from "@/lib/format";
+import { checkClassLabel, failsWhen, labelOf } from "@/lib/format";
 
 export type FilterChip = { key: string; label: string; clear: () => void };
 
@@ -47,18 +47,24 @@ export function Rows({ items }: { items: [string, ReactNode][] }) {
 
 const scalar = (v: unknown): string => (typeof v === "string" ? v : Array.isArray(v) ? v.map(scalar).join(", ") : typeof v === "object" && v !== null ? Object.entries(v).map(([k, x]) => `${k}=${scalar(x)}`).join(", ") : String(v));
 
-/** A condition as prose ("Null check on LFA1.STCD1") plus its remaining parameters as key = value lines. */
-export function ConditionList({ conditions }: { conditions: Record<string, unknown>[] }) {
+/** A condition as a sentence ("Fails when STCD1 is blank.") plus its remaining parameters as key = value lines. */
+export function ConditionList({ conditions, message }: { conditions: Record<string, unknown>[]; message?: string | null }) {
   return (
     <ul className="flex flex-col gap-3">
       {conditions.map((c, i) => {
-        const { check_class: cls, field, ...rest } = c;
+        const { check_class: cls, field, dimension: _dimension, ...rest } = c;
+        void _dimension;
         const params = Object.entries(rest).filter(([, v]) => v != null && v !== "");
+        // The rule's real condition, in words, whenever the data has one; a bare `dimension` is not a condition.
+        const states = typeof cls === "string" || rest.fail_when != null;
+        const sentence = states || message
+          ? failsWhen({ ...rest, check_class: typeof cls === "string" ? cls : null, field: typeof field === "string" ? field : null, message: typeof rest.message === "string" ? rest.message : message })
+          : null;
         return (
           <li key={i} className="m-text-body flex flex-col gap-1">
             <span>
-              {typeof cls === "string" ? checkClassLabel(cls) : "Condition"}
-              {typeof field === "string" ? <> on <Mono>{field}</Mono></> : null}
+              {sentence ?? (typeof cls === "string" ? checkClassLabel(cls) : "Condition")}
+              {typeof cls === "string" ? <span className="m-ink-3">{` (${checkClassLabel(cls)}`}{typeof field === "string" ? <> on <Mono>{field}</Mono></> : null}{")"}</span> : null}
             </span>
             {params.length ? (
               <pre className="m-text-meta overflow-auto p-2 [font-family:var(--m-font-mono)]! [background:var(--m-sheet-raised)]! [border-radius:var(--m-radius-control)]!">
@@ -72,22 +78,16 @@ export function ConditionList({ conditions }: { conditions: Record<string, unkno
   );
 }
 
-/** Threshold object as a two-column table. */
+const thresholdEntries = (thresholds: object | null | undefined): [string, unknown][] =>
+  Object.entries(thresholds ?? {}).filter(([, v]) => v != null && v !== "");
+
+/** True when a rule carries at least one threshold with a value: otherwise its card is left out. */
+export const hasThresholds = (thresholds: object | null | undefined): boolean => thresholdEntries(thresholds).length > 0;
+
+/** Each threshold as a name and its actual value, in words ("Max age hours: 24"). */
 export function ThresholdTable({ thresholds }: { thresholds: object }) {
-  const rows = Object.entries(thresholds);
+  const rows = thresholdEntries(thresholds);
   return (
-    <table className="m-table">
-      <thead>
-        <tr><th>Threshold</th><th>Value</th></tr>
-      </thead>
-      <tbody>
-        {rows.map(([k, v]) => (
-          <tr key={k}>
-            <td>{k.replace(/_/g, " ")}</td>
-            <td><Mono>{scalar(v)}</Mono></td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <Rows items={rows.map(([k, v]): [string, ReactNode] => [labelOf(k), <Mono key={k}>{scalar(v)}</Mono>])} />
   );
 }

@@ -60,7 +60,7 @@ describe("process home", () => {
     expect(screen.getByText("AP001").closest("a")).toHaveAttribute("href", "/objects/accounts_payable?run=v1&tab=records&check_id=AP001");
     expect(screen.getByText("1,234")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Can it run" }).getAttribute("href")).toBe("/insights/process?l1=PTP&object=accounts_payable&run=v1");
-    expect(screen.getByText(/^1 of 2 processes scored, 1 no-go, from ap_1k, .* on KSA PRD$/)).toBeInTheDocument();
+    expect(screen.getByText(/^1 of 2 processes scored, 1 no-go, from Accounts payable, .* on KSA PRD$/)).toBeInTheDocument();
     expect(screen.getByText("Not scored")).toBeInTheDocument();
     const runs = screen.getAllByRole("link", { name: "Run discovery" }).map((a) => a.getAttribute("href"));
     expect(runs).toContain("/process/runs?system=sys-1&new=1&l1=PTP");
@@ -100,7 +100,7 @@ describe("process home", () => {
     ] });
     const bp = vi.spyOn(connectivityApi, "getBusinessProcess").mockResolvedValue([l1("PTP", "Procure to pay", [field({})])]);
     renderWithQuery(<ProcessHomePage />);
-    expect(await screen.findByText(/from ap_1k, .* on KSA PRD$/)).toBeInTheDocument();
+    expect(await screen.findByText(/from Accounts payable, .* on KSA PRD$/)).toBeInTheDocument();
     expect(bp.mock.calls.map((c) => c[0])).toEqual(["v1"]);
     expect(screen.getByRole("link", { name: "Can it run" }).getAttribute("href")).toContain("run=v1");
   });

@@ -59,7 +59,7 @@ describe("ProposalsPage", () => {
     await screen.findByText("100001");
     expect(getCleaningQueue).toHaveBeenCalledWith(expect.objectContaining({ version_id: "R1", kind: "MARA.MEINS" }));
     expect(await screen.findByRole("heading", { name: "Fix MARA.MEINS" })).toBeInTheDocument();
-    expect(await screen.findByText(/found by material_master_25k/)).toBeInTheDocument();
+    expect(await screen.findByText(/found by Material master, 16 Oct, 05:17/)).toBeInTheDocument();
   });
 
   it("lists only the waiting proposals, says Waiting, and offers no decision on one already decided", async () => {
@@ -122,7 +122,7 @@ describe("ProposalsPage", () => {
     renderWithQuery(<ProposalsPage />);
 
     await userEvent.click(await screen.findByRole("button", { name: "Draft fix batch from 12 approved" }));
-    await waitFor(() => expect(createBatchFromCleaning).toHaveBeenCalledWith("Fix MARA.MEINS from material_master_25k", { version_id: "R1", kind: "MARA.MEINS" }));
+    await waitFor(() => expect(createBatchFromCleaning).toHaveBeenCalledWith("Fix MARA.MEINS from Material master, 16 Oct, 05:17", { version_id: "R1", kind: "MARA.MEINS" }));
   });
 
   it("cannot draft a batch before anything is approved", async () => {

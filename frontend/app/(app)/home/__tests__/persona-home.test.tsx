@@ -401,13 +401,16 @@ describe("PersonaHomePage blocking and loading states", () => {
   it("sets the steward's work row and inbox items before the score, and the lead's after it", async () => {
     vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     vi.spyOn(stewardshipApi, "getQueueItems").mockResolvedValue({ items: [
-      { id: "q1", tenant_id: "t", item_type: "merge_decision", source_id: "s", domain: "material_master", priority: 1, due_at: null, assigned_to: null, status: "open", sla_hours: null, created_at: "2026-10-08T00:00:00Z", updated_at: "2026-10-08T00:00:00Z", ai_recommendation: null, ai_confidence: null },
+      { id: "q1", tenant_id: "t", item_type: "merge_decision", source_id: "s", domain: "material_master", priority: 1, due_at: "2026-10-01T00:00:00Z", assigned_to: null, status: "open", sla_hours: null, created_at: "2026-10-08T00:00:00Z", updated_at: "2026-10-08T00:00:00Z", ai_recommendation: null, ai_confidence: null },
     ], total: 1 } as unknown as Awaited<ReturnType<typeof stewardshipApi.getQueueItems>>);
 
     renderWithQuery(<StewardHomePage />);
 
     const items = await screen.findByTestId("home-inbox-items");
-    expect(items).toHaveTextContent("Merge decision, Material master");
+    expect(items).toHaveTextContent("Merge decision in Material master");
+    expect(items).not.toHaveTextContent("Unknown");
+    expect(items).toHaveTextContent(/\d+d overdue/);
+    expect(items).not.toHaveTextContent("due ");
     // Each item opens that task in the inbox, not every task of its type.
     expect(within(items).getByRole("link", { name: /Merge decision/ })).toHaveAttribute("href", "/inbox?focus=q1");
     const hero = screen.getByTestId("home-verdict-row");
@@ -631,7 +634,7 @@ describe("PersonaHomePage current state across objects", () => {
       renderWithQuery(<LeadHomePage />);
 
       const scope = await screen.findByTestId("run-scope");
-      expect(scope).toHaveTextContent("controlling_1k, 16 Oct 2026");
+      expect(scope).toHaveTextContent("Controlling, 16 Oct, 05:17");
       expect(screen.queryByTestId("run-sources")).toBeNull();
       expect(screen.getByRole("link", { name: "Back to current state" })).toHaveAttribute("href", "/home/lead");
       expect(screen.getByTestId("home-verdict")).toHaveTextContent("1 of 1 object is not ready for go-live.");

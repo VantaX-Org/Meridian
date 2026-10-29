@@ -105,7 +105,7 @@ describe("DuplicatesPage mined tabs", () => {
     expect(await screen.findByText("NTGEW")).toBeInTheDocument();
     expect(screen.getByText("z 6.2")).toBeInTheDocument();
     // mined before the key was kept: named by its row, opening the object's fields
-    expect(screen.getByText("Row 5")).toBeInTheDocument();
+    expect(screen.getByText("Record 5")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open Material master fields" })).toHaveAttribute("href", "/objects/material_master?run=v1&tab=fields");
   });
 
@@ -139,7 +139,7 @@ describe("DuplicatesPage mined tabs", () => {
     renderWithQuery(<DuplicatesPage />);
     expect(await screen.findByText("No field relationships found yet")).toBeInTheDocument();
     // With a run in scope the empty state starts the miner that fills this feed, not the learned-rules miner.
-    fireEvent.click(screen.getByRole("button", { name: "Mine now" }));
+    fireEvent.click(screen.getByRole("button", { name: "Search now" }));
     await waitFor(() => expect(mine).toHaveBeenCalledWith("v1", ["relationship"]));
     expect(houseRules).not.toHaveBeenCalled();
     expect(screen.queryByRole("link", { name: "Open runs" })).toBeNull();
@@ -163,7 +163,7 @@ describe("DuplicatesPage in the current state", () => {
     const anom = vi.spyOn(miningApi, "getMiningAnomalies").mockResolvedValue([]);
     const rel = vi.spyOn(miningApi, "getMiningRelationships").mockResolvedValue([]);
     renderWithQuery(<DuplicatesPage />);
-    expect(await screen.findByText("Nothing mined yet")).toBeInTheDocument();
+    expect(await screen.findByText("Nothing found yet")).toBeInTheDocument();
     for (const get of [dup, anom, rel]) expect(get).toHaveBeenCalledWith({ scope: "current", limit: 500 });
     // One empty state for the page, not one for the cluster and one per mined feed.
     expect(screen.queryByText(/choose an object and a record/i)).toBeNull();
@@ -187,7 +187,7 @@ describe("DuplicatesPage", () => {
     vi.spyOn(miningApi, "getMiningAnomalies").mockResolvedValue([]);
     vi.spyOn(miningApi, "getMiningRelationships").mockResolvedValue([]);
     renderWithQuery(<DuplicatesPage />);
-    expect(await screen.findByText("Nothing mined in this run yet")).toBeInTheDocument();
+    expect(await screen.findByText("Nothing found in this run yet")).toBeInTheDocument();
     expect(screen.queryByText("No anomalies found yet")).toBeNull();
   });
 

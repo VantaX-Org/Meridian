@@ -91,7 +91,7 @@ describe("admin users page", () => {
     const dialog = await screen.findByRole("dialog", { name: "Ana Steward" });
     const list = await within(dialog).findByRole("list", { name: "Roles granted" });
     expect(await within(list).findByText("Data steward, All systems")).toBeInTheDocument();
-    expect(within(list).getByText("Steward (legacy), All systems")).toBeInTheDocument();
+    expect(within(list).getByText("Steward, All systems")).toBeInTheDocument();
     expect(await within(list).findByText("Analyst, ECC prod / FI general ledger")).toBeInTheDocument();
     expect(within(dialog).queryByRole("combobox")).toBeNull();
     expect(within(dialog).queryByLabelText("Role")).toBeNull();

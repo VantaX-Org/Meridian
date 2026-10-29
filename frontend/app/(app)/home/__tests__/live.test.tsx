@@ -144,7 +144,7 @@ describe("LiveSection", () => {
     renderWithQuery(<LiveSection />);
     expect(await screen.findByRole("columnheader", { name: /^Duration/ })).toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: /^Progress/ })).toBeNull();
-    const name = screen.getByText(label);
+    const name = screen.getByText(label.replace(" | ", " of "));
     expect(name).toHaveClass("truncate");
     expect(name).toHaveAttribute("title", label);
   });

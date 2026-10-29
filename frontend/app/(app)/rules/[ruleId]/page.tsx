@@ -18,7 +18,7 @@ import { apiErrorState } from "@/lib/error";
 import { checkClassLabel, formatDate, formatModuleName, formatPct, labelOf, plural } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { actionColumn, LedgerHead, RowLink } from "@/components/mdm/ledger";
-import { ConditionList, ThresholdTable } from "../rule-ui";
+import { ConditionList, ThresholdTable, hasThresholds } from "../rule-ui";
 import { RuleVersions } from "./rule-versions";
 import { RuleVersionDiff } from "./rule-version-diff";
 
@@ -420,8 +420,8 @@ export default function RulePage() {
         })()}
       </div></Card>
 
-      {conditionList(data.conditions).length ? <Card title="Conditions"><ConditionList conditions={conditionList(data.conditions)} /></Card> : null}
-      {data.thresholds ? <Card title="Thresholds"><ThresholdTable thresholds={data.thresholds} /></Card> : null}
+      {conditionList(data.conditions).length ? <Card title="Conditions"><ConditionList conditions={conditionList(data.conditions)} message={data.description} /></Card> : null}
+      {data.thresholds && hasThresholds(data.thresholds) ? <Card title="Thresholds"><ThresholdTable thresholds={data.thresholds} /></Card> : null}
 
       </>} />
     </div>

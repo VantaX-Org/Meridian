@@ -84,7 +84,7 @@ describe("InsightFrame scope line", () => {
     query = "run=co1&present=1";
     mount();
     const line = await screen.findByTestId("insight-scope");
-    expect(line).toHaveTextContent("As of controlling_1k, 15 Oct 2026");
+    expect(line).toHaveTextContent("As of Controlling, 15 Oct, 05:17");
     expect(screen.queryByRole("combobox", { name: "Showing run" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Back to current state" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Present" })).toBeNull();

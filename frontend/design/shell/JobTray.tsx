@@ -13,6 +13,7 @@ import { Status } from "../primitives/Status";
 import { JobProgress } from "./JobProgress";
 import { RetryJobButton } from "./RetryJob";
 import { IconActivity } from "../icons";
+import { jobName } from "../../lib/run-scope";
 
 /** Where a job's result lives, when it carries an id: its run, its discovery run or its system. */
 export function jobHref(job: Job): string | null {
@@ -62,13 +63,13 @@ export function JobTray() {
             return (
               <li key={job.id} className="flex flex-col gap-1">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="m-text-body font-medium m-ink">{job.label}</span>
+                  <span className="m-text-body font-medium m-ink" title={job.label}>{jobName(job.label)}</span>
                   <span className="m-numeric m-text-meta m-ink-3">{job.percent}%</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Status kind="lifecycle" value={job.status} />
                   {href && (
-                    <Link href={href} onClick={() => setOpen(false)} className="m-text-meta font-medium m-ink-accent-ink hover:underline" aria-label={`Open ${job.label}`}>
+                    <Link href={href} onClick={() => setOpen(false)} className="m-text-meta font-medium m-ink-accent-ink hover:underline" aria-label={`Open ${jobName(job.label)}`}>
                       Open
                     </Link>
                   )}
@@ -79,7 +80,7 @@ export function JobTray() {
                 )}
                 <div
                   role="progressbar"
-                  aria-label={`${job.label} progress`}
+                  aria-label={`${jobName(job.label)} progress`}
                   aria-valuemin={0}
                   aria-valuemax={100}
                   aria-valuenow={job.percent}

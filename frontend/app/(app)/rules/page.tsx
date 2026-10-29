@@ -36,7 +36,7 @@ import { MM_VIEWS } from "@/lib/material-views";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { FeedbackPanel, SuppressionsPanel } from "./rule-panels";
-import { ConditionList, FilterChips, Rows, ThresholdTable, type FilterChip } from "./rule-ui";
+import { ConditionList, FilterChips, Rows, ThresholdTable, hasThresholds, type FilterChip } from "./rule-ui";
 
 const CATEGORY_LABEL: Record<string, string> = { ecc: "ECC", successfactors: "SuccessFactors", warehouse: "Warehouse" };
 const SOURCE_LABEL: Record<string, string> = { yaml: "built-in", hq: "HQ", mined: "mined", custom: "custom" };
@@ -444,10 +444,10 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
                   ["Last run", selected.last_pass_rate != null ? `${pct(selected.last_pass_rate)} pass${selected.last_run_at ? `, ${formatDate(selected.last_run_at, "datetime")}` : ""}` : "Not run yet"],
                 ]} />
                 {selected.tags?.length ? <div className="flex flex-wrap gap-1">{selected.tags.map((t) => <Pill key={t} tone="neutral">{t}</Pill>)}</div> : null}
-                {conditionList(selected).length ? <ConditionList conditions={conditionList(selected)} /> : null}
+                {conditionList(selected).length ? <ConditionList conditions={conditionList(selected)} message={selected.description} /> : null}
               </div>
             </Card>
-            {selected.thresholds ? <Card title="Thresholds" padding="sm"><ThresholdTable thresholds={selected.thresholds} /></Card> : null}
+            {selected.thresholds && hasThresholds(selected.thresholds) ? <Card title="Thresholds" padding="sm"><ThresholdTable thresholds={selected.thresholds} /></Card> : null}
           </div>
         ) : null}
       </Drawer>

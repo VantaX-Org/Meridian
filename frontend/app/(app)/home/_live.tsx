@@ -20,6 +20,7 @@ import { getSystems } from "@/lib/api/connectivity";
 import { getSyncProfiles } from "@/lib/api/systems";
 import { isListFailure } from "@/lib/error";
 import { formatDate, formatDuration, labelOf, relativeTime } from "@/lib/format";
+import { jobName } from "@/lib/run-scope";
 import { explainJobError } from "@/lib/job-error";
 import { queryKeys } from "@/lib/query-keys";
 import type { SAPSystemExtended } from "@/types/api";
@@ -112,7 +113,7 @@ const jobDuration = (j: Job) => {
 const jobColumns = (systemName: ReadonlyMap<string, string>): ColumnDef<Job>[] => [
   { id: "status", header: "Status", cell: ({ row: { original: j } }) => <Status kind="lifecycle" value={j.status} /> },
   // One line per job: a long name truncates, the whole name in its title.
-  { accessorKey: "label", header: "Job", cell: ({ row: { original: j } }) => <span className="block max-w-[28ch] truncate" title={j.label}>{j.label}</span> },
+  { accessorKey: "label", header: "Job", cell: ({ row: { original: j } }) => <span className="block max-w-[28ch] truncate" title={j.label}>{jobName(j.label)}</span> },
   { id: "system", header: "System", cell: ({ row: { original: j } }) => (j.system_id ? systemName.get(j.system_id) ?? "—" : "—") },
   { id: "kind", header: "Kind", cell: ({ row: { original: j } }) => labelOf(j.kind) },
   {

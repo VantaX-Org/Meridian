@@ -30,7 +30,7 @@ import { capSummary } from "@/lib/home-metrics";
 import { ConfigMatchesTab } from "./config-matches-tab";
 import { queryKeys } from "@/lib/query-keys";
 import { baselineRunId, isFinished, lineageOf, overallDqs, previousRunId, runPageHref } from "@/lib/runs";
-import { latestFinishedRun, lineageChoices, runName } from "@/lib/run-scope";
+import { latestFinishedRun, lineageChoices, runFileName, runName } from "@/lib/run-scope";
 import { RunScope } from "@/components/run-scope";
 import { RuleCell } from "@/components/fix/rule-cell";
 import type { Finding, Version } from "@/types/api";
@@ -719,7 +719,7 @@ export default function RunDetailPage() {
       title={runName(v)}
       meta={
         <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span>{["Started " + formatDate(v.run_at, "datetime"), startedPhrase(startedByRun(v)), systemName, duration].filter(Boolean).join(", ")}</span>
+          <span>{["Started " + formatDate(v.run_at, "datetime"), startedPhrase(startedByRun(v)), systemName ?? (runFileName(v) ? `from ${runFileName(v)}` : undefined), duration].filter(Boolean).join(", ")}</span>
           {(choices.length > 1 || runScope.pinned) && (
             <RunScope scope={runScope} picker hrefFor={(id) => runPageHref(id ?? latestOfLineage?.id ?? versionId)} />
           )}

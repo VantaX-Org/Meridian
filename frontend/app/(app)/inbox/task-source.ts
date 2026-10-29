@@ -1,4 +1,5 @@
-import { MODULE_LABELS } from "@/lib/format";
+import { MODULE_LABELS, formatModuleName, labelOf } from "@/lib/format";
+import type { RuleNameOf } from "@/lib/rule-name";
 import type { Exception, StewardshipQueueItem } from "@/types/api";
 
 /**
@@ -49,6 +50,41 @@ export function exceptionTaskName(t: TaskSourceFields, exc?: Exception | null, r
   if (title) return title;
   const check = t.source_check_id?.trim();
   return check ? ruleName?.(check) ?? check : null;
+}
+
+/**
+ * "Custom Rule: Blank material group in Material master": what a task is, from its payload. An exception task is
+ * named by its exception's title, else the queue's source title, else its check's name; any other task by its type.
+ * The object follows, and is left out when unknown, never "in Unknown".
+ */
+export function taskTitle(t: TaskSourceFields, exc?: Exception | null, ruleName?: RuleNameOf): string {
+  const what = exceptionTaskName(t, exc, ruleName) ?? labelOf(t.item_type);
+  const d = taskObject(t, exc);
+  return d ? `${what} in ${formatModuleName(d)}` : what;
+}
+
+/** The check ids the rule catalogue has to name: an exception task with no title of its own is named by its check. */
+export function unnamedTaskChecks(items: readonly Pick<StewardshipQueueItem, "item_type" | "source_title" | "source_check_id">[]): string[] {
+  return items.flatMap((t) => (t.item_type === "exception" && !t.source_title && t.source_check_id ? [t.source_check_id] : []));
+}
+
+const HOUR_MS = 3_600_000;
+
+/** "16d" / "5h" / "12m": a span of time, rounded to one unit. */
+function spanText(ms: number): string {
+  const h = Math.abs(ms) / HOUR_MS;
+  if (h < 1) return `${Math.max(1, Math.round(h * 60))}m`;
+  return h < 48 ? `${Math.round(h)}h` : `${Math.round(h / 24)}d`;
+}
+
+/** "16d overdue" (past due, `overdue` true so a caller shows it in the no-go tone), "due in 3d", else when it was opened. */
+export function taskDueText(t: Pick<StewardshipQueueItem, "due_at" | "created_at">, now: number = Date.now()): { text: string; overdue: boolean } {
+  const due = t.due_at ? Date.parse(t.due_at) : NaN;
+  if (Number.isNaN(due)) {
+    const opened = Date.parse(t.created_at);
+    return { text: Number.isNaN(opened) ? "No due date" : `opened ${spanText(now - opened)} ago`, overdue: false };
+  }
+  return due < now ? { text: `${spanText(now - due)} overdue`, overdue: true } : { text: `due in ${spanText(due - now)}`, overdue: false };
 }
 
 /** The exceptions API returns at most 100 a page (api/routes/exceptions.py). */

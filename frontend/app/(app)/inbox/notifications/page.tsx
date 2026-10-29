@@ -2,11 +2,12 @@
 
 /** Inbox › Notifications: every in-app notification, filterable by type and unread. The bell shows the latest ten. */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Button, Card, ExplorerPage, PageHeader, Select, Switch, NotificationRow, NOTIFICATION_TYPE_LABEL, useNotificationMutations, asyncStateOf } from "@/design";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { getNotifications, getUnreadCount } from "@/lib/api/notifications";
+import { collapseNotifications } from "@/lib/notification-copy";
 import { queryKeys } from "@/lib/query-keys";
 import type { Notification, NotificationType } from "@/types/api";
 
@@ -25,11 +26,18 @@ export default function NotificationsPage() {
   const unread = useQuery({ queryKey: queryKeys.unreadNotifications(), queryFn: getUnreadCount, refetchInterval: 60_000, staleTime: 30_000 });
   const { markRead, markAllRead } = useNotificationMutations();
 
-  const items = q.data?.items ?? [];
+  const items = useMemo(() => q.data?.items ?? [], [q.data]);
   const total = q.data?.total ?? 0;
   const filtering = type !== "all" || unreadOnly;
+  // Identical notifications from one run read as one entry with a count; reading it reads them all.
+  const groups = useMemo(() => collapseNotifications(items), [items]);
+  const idsOf = (n: Notification) => groups.find((g) => g.n.id === n.id)?.ids ?? [n.id];
+  const readAll = (n: Notification) => {
+    const unreadIds = idsOf(n).filter((id) => items.find((i) => i.id === id)?.is_read === false);
+    for (const id of unreadIds.length ? unreadIds : n.is_read ? [] : [n.id]) markRead.mutate(id);
+  };
   const onOpen = (n: Notification) => {
-    if (!n.is_read) markRead.mutate(n.id);
+    if (!n.is_read) readAll(n);
   };
 
   return (
@@ -57,7 +65,7 @@ export default function NotificationsPage() {
       errorProps={{ error: q.error, onRetry: () => void q.refetch() }}
       table={
         <Card padding="sm">
-          <ul>{items.map((n) => <NotificationRow key={n.id} n={n} showBody onOpen={onOpen} onMarkRead={(x) => markRead.mutate(x.id)} />)}</ul>
+          <ul>{groups.map((g) => <NotificationRow key={g.n.id} n={g.n} count={g.count} showBody onOpen={onOpen} onMarkRead={readAll} />)}</ul>
           {items.length < total && (
             <div className="px-3 pt-2">
               <Button variant="secondary" onClick={() => setLimit((l) => l + PAGE)}>Show more</Button>

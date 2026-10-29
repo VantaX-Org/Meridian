@@ -23,7 +23,7 @@ import { formatDate, formatNumber, plural } from "@/lib/format";
 import { runAxisTicks } from "@/lib/run-axis";
 import { queryKeys } from "@/lib/query-keys";
 import { isFinished, lineageOf, lineageSeries, overallDqs, previousRunId, runPageHref, scopeOf } from "@/lib/runs";
-import { runName, runScopeLabel } from "@/lib/run-scope";
+import { runFileName, runName, runScopeLabel } from "@/lib/run-scope";
 import type { Version } from "@/types/api";
 import { isListFailure } from "@/lib/error";
 import { BREAK_AT_SEPARATORS, breakAtUnderscores } from "@/lib/break-name";
@@ -130,7 +130,7 @@ function makeColumns(allVersions: Version[], earlier: ReadonlyMap<string, Versio
         const more = earlier.get(row.original.id)?.length ?? 0;
         return (
           // Wraps on a phone: the note drops under the name rather than running under the pinned Open.
-          <span className="inline-flex flex-wrap items-center gap-x-2" title={formatDate(row.original.run_at, "datetime")}>
+          <span className="inline-flex flex-wrap items-center gap-x-2" title={[formatDate(row.original.run_at, "datetime"), runFileName(row.original)].filter(Boolean).join(", ")}>
             {/* One line from 1280px, where the ledger has room; narrower, it wraps after an underscore, never mid-word. */}
             <span className={`min-w-0 xl:whitespace-nowrap ${BREAK_AT_SEPARATORS}`} data-testid="run-name">{breakAtUnderscores(runName(row.original), "xl:hidden")}</span>
             {more > 0 ? <span className="m-text-meta m-ink-3 whitespace-nowrap">{`+${plural(more, "earlier run")}`}</span> : null}
