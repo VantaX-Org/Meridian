@@ -11,6 +11,7 @@ import { useLandscape, useReceipt } from "@/lib/v2/queries";
 import { f1, int, moduleFromSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { VerdictMark } from "../../marks";
 import { Dash, EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../../parts";
+import { t, tn } from "@/lib/v2/i18n";
 
 const VERDICT: Record<CellVerdict, Verdict> = { go: "go", at_risk: "at-risk", no_go: "no-go" };
 
@@ -31,16 +32,14 @@ function CapStatement({ receipt }: { receipt: Receipt }) {
   const n = ids.length;
   return (
     <p className="m2-rp" data-testid="cap-statement">
-      {!receipt.capped || n === 0 ? (
-        <>No critical rule is holding this score down, so readiness follows the measured score of {f1(receipt.measured)}.</>
-      ) : n === 1 ? (
-        <>Held at {receipt.cap_level} by {link(ids[0])}, one critical rule over tolerance. Measured {f1(receipt.measured)}, shown {f1(receipt.score)}.</>
-      ) : n === 2 ? (
-        <>Held at {receipt.cap_level} by {link(ids[0])} and {link(ids[1])}, two critical rules over tolerance. Measured {f1(receipt.measured)}, shown {f1(receipt.score)}.</>
-      ) : (
-        <>Held at {receipt.cap_level} by {n} critical rules over tolerance, among them {link(ids[0])} and {link(ids[1])}. Measured {f1(receipt.measured)}, shown {f1(receipt.score)}.</>
-      )}{" "}
-      Cap rule: {receipt.cap_rule}.
+      {!receipt.capped || n === 0
+        ? t("No critical rule is holding this score down, so readiness follows the measured score of {measured}.", { measured: f1(receipt.measured) })
+        : n === 1
+          ? tn("Held at {cap} by {rule}, one critical rule over tolerance. Measured {measured}, shown {score}.", { cap: receipt.cap_level, rule: link(ids[0]), measured: f1(receipt.measured), score: f1(receipt.score) })
+          : n === 2
+            ? tn("Held at {cap} by {rule} and {rule2}, two critical rules over tolerance. Measured {measured}, shown {score}.", { cap: receipt.cap_level, rule: link(ids[0]), rule2: link(ids[1]), measured: f1(receipt.measured), score: f1(receipt.score) })
+            : tn("Held at {cap} by {n} critical rules over tolerance, among them {rule} and {rule2}. Measured {measured}, shown {score}.", { cap: receipt.cap_level, n, rule: link(ids[0]), rule2: link(ids[1]), measured: f1(receipt.measured), score: f1(receipt.score) })}{" "}
+      {t("Cap rule: {cap_rule}.", { cap_rule: receipt.cap_rule })}
     </p>
   );
 }
@@ -81,7 +80,7 @@ export function ReadinessTab({ module: moduleSegment }: { system: string; module
   const run = useRunParam();
   const apiModule = moduleFromSlug(moduleSegment);
   const L = useLandscape(run);
-  const label = L.data?.objects.find((o) => o.module === apiModule)?.label ?? apiModule.replace(/_/g, " ");
+  const label = `${L.data?.objects.find((o) => o.module === apiModule)?.label ?? apiModule.replace(/_/g, " ")}`;
   const receiptQ = useReceipt(apiModule, run);
   const readinessQ = useReadiness();
   const impactQ = useConfigImpact(receiptQ.data?.run_id);
@@ -92,7 +91,7 @@ export function ReadinessTab({ module: moduleSegment }: { system: string; module
   const blocked = mine.filter((r) => r.status === "blocked");
   const degraded = mine.filter((r) => r.status === "degraded");
 
-  if (receiptQ.isError) return <ErrorFrame onRetry={() => void receiptQ.refetch()}>{`The readiness of ${label} could not be read for this run.`}</ErrorFrame>;
+  if (receiptQ.isError) return <ErrorFrame onRetry={() => void receiptQ.refetch()}>{t("The readiness of {label} could not be read for this run.", { label })}</ErrorFrame>;
   if (receiptQ.isPending) {
     return (
       <div aria-busy="true" data-testid="readiness-loading">
@@ -103,30 +102,30 @@ export function ReadinessTab({ module: moduleSegment }: { system: string; module
 
   return (
     <div className="m2-readiness">
-      <section aria-label="Waves">
+      <section aria-label={t("Waves")}>
         <div className="m2-sechead">
-          <h2 className="m2-h2">Migration waves</h2>
-          {readinessQ.data?.threshold != null ? <span className="m2-sub">{`Wave threshold ${f1(readinessQ.data.threshold)}`}</span> : null}
+          <h2 className="m2-h2">{t("Migration waves")}</h2>
+          {readinessQ.data?.threshold != null ? <span className="m2-sub">{t("Wave threshold {threshold}", { threshold: f1(readinessQ.data.threshold) })}</span> : null}
         </div>
         {readinessQ.isPending ? (
           <Skeleton width="60%" height={14} />
         ) : readinessQ.isError ? (
-          <ErrorFrame onRetry={() => void readinessQ.refetch()}>The migration waves could not be read.</ErrorFrame>
+          <ErrorFrame onRetry={() => void readinessQ.refetch()}>{t("The migration waves could not be read.")}</ErrorFrame>
         ) : cells.length === 0 ? (
-          <EmptyFrame action={<V2Link href="/migration" className="m2-btn">Open migration waves</V2Link>}>
-            {`${label} is not in a migration wave yet. A lead adds it to a wave, and its verdict appears here.`}
+          <EmptyFrame action={<V2Link href="/migration" className="m2-btn">{t("Open migration waves")}</V2Link>}>
+            {t("{label} is not in a migration wave yet. A lead adds it to a wave, and its verdict appears here.", { label })}
           </EmptyFrame>
         ) : (
-          <ScrollFrame label="Waves, scrollable">
-            <table className="m2-tbl" aria-label={`Waves that include ${label}`}>
+          <ScrollFrame label={t("Waves, scrollable")}>
+            <table className="m2-tbl" aria-label={t("Waves that include {label}", { label })}>
               <thead>
                 <tr>
-                  <th scope="col">Wave</th>
-                  <th scope="col">Verdict</th>
-                  <th scope="col" className="m2-r">Blocking gaps</th>
-                  <th scope="col" className="m2-r">Score</th>
-                  <th scope="col" className="m2-r">Readiness</th>
-                  <th scope="col" className="m2-r">Records blocked</th>
+                  <th scope="col">{t("Wave")}</th>
+                  <th scope="col">{t("Verdict")}</th>
+                  <th scope="col" className="m2-r">{t("Blocking gaps")}</th>
+                  <th scope="col" className="m2-r">{t("Score")}</th>
+                  <th scope="col" className="m2-r">{t("Readiness")}</th>
+                  <th scope="col" className="m2-r">{t("Records blocked")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -152,22 +151,22 @@ export function ReadinessTab({ module: moduleSegment }: { system: string; module
         {receipt ? <CapStatement receipt={receipt} /> : null}
       </section>
 
-      <section aria-label="S/4HANA features" className="m2-sec">
+      <section aria-label={t("S/4HANA features")} className="m2-sec">
         <div className="m2-sechead">
-          <h2 className="m2-h2">What the failing rules do in S/4HANA</h2>
-          {receipt?.run_at ? <span className="m2-sub">{`Run ${formatDate(receipt.run_at, "datetime")}`}</span> : null}
+          <h2 className="m2-h2">{t("What the failing rules do in S/4HANA")}</h2>
+          {receipt?.run_at ? <span className="m2-sub">{t("Run {run_at}", { run_at: formatDate(receipt.run_at, "datetime") })}</span> : null}
         </div>
         {impactQ.isPending && Boolean(receipt?.run_id) ? (
           <Skeleton width="60%" height={14} />
         ) : impactQ.isError ? (
-          <ErrorFrame onRetry={() => void impactQ.refetch()}>The feature impact could not be read for this run.</ErrorFrame>
+          <ErrorFrame onRetry={() => void impactQ.refetch()}>{t("The feature impact could not be read for this run.")}</ErrorFrame>
         ) : (
           <>
             <div className="m2-chg">
-              <FeatureList title="Blocked in S/4HANA" results={blocked} module={apiModule} empty="No S/4 feature is blocked by a rule of this object." />
-              <FeatureList title="Degraded in S/4HANA" results={degraded} module={apiModule} empty="No S/4 feature is degraded by a rule of this object." />
+              <FeatureList title={t("Blocked in S/4HANA")} results={blocked} module={apiModule} empty={t("No S/4 feature is blocked by a rule of this object.")} />
+              <FeatureList title={t("Degraded in S/4HANA")} results={degraded} module={apiModule} empty={t("No S/4 feature is degraded by a rule of this object.")} />
             </div>
-            <p className="m2-prov">Mapped from the rules that fail by the feature impact rules, for the rules of this object in this run.</p>
+            <p className="m2-prov">{t("Mapped from the rules that fail by the feature impact rules, for the rules of this object in this run.")}</p>
           </>
         )}
       </section>

@@ -40,7 +40,7 @@ describe("top bar", () => {
     expect(await screen.findByRole("button", { name: "Run 16 Oct 2026, 05:17" })).toBeInTheDocument();
     const search = screen.getByRole("button", { name: "Search or type a command" });
     expect(search).toHaveTextContent("⌘K");
-    expect(await screen.findByRole("button", { name: "Inbox, 7 unread" })).toHaveTextContent("Inbox 7");
+    expect(await screen.findByRole("button", { name: "Inbox 7, unread" })).toHaveTextContent("Inbox 7");
     expect(screen.getByRole("button", { name: "Account, Programme lead" })).toHaveTextContent("Programme lead");
   });
 

@@ -1,11 +1,12 @@
 import type { DownloadScope, ScopeKey } from "@/lib/api/system-objects";
+import { t, lc } from "@/lib/v2/i18n";
 
 /** The organisational filters an extraction accepts, as the page names them. */
 export const SCOPE_LABEL: Record<ScopeKey, string> = {
-  company_codes: "Company codes",
-  plants: "Plants",
-  sales_orgs: "Sales organisations",
-  purchasing_orgs: "Purchasing organisations",
+  get company_codes() { return t("Company codes"); },
+  get plants() { return t("Plants"); },
+  get sales_orgs() { return t("Sales organisations"); },
+  get purchasing_orgs() { return t("Purchasing organisations"); },
 };
 
 /** What the person typed for each filter and the date window: the editor's state. */
@@ -25,7 +26,7 @@ export function parseList(value: string): string[] {
 
 /** The reason the date window is wrong, or undefined. */
 export function dateError(from: string, to: string): string | undefined {
-  if (from && to && to < from) return "The end date is before the start date";
+  if (from && to && to < from) return t("The end date is before the start date");
   return undefined;
 }
 
@@ -45,9 +46,9 @@ export function buildScope(draft: ScopeDraft, filters: readonly ScopeKey[], wind
 /** One sentence for the confirmation: which filters narrow the read, or that it reads everything. */
 export function scopeSentence(scope: DownloadScope): string {
   const parts = [
-    ...(Object.keys(SCOPE_LABEL) as ScopeKey[]).flatMap((k) => (scope[k]?.length ? [`${SCOPE_LABEL[k].toLowerCase()} ${scope[k]!.join(", ")}`] : [])),
-    ...(scope.date_from || scope.date_to ? [`documents ${scope.date_from ?? "the start"} to ${scope.date_to ?? "today"}`] : []),
-    ...(scope.exclude_deleted ? ["records flagged for deletion skipped"] : []),
+    ...(Object.keys(SCOPE_LABEL) as ScopeKey[]).flatMap((k) => (scope[k]?.length ? [`${lc(SCOPE_LABEL[k])} ${scope[k]!.join(", ")}`] : [])),
+    ...(scope.date_from || scope.date_to ? [t("documents {date_from} to {date_to}", { date_from: scope.date_from ?? t("the start"), date_to: scope.date_to ?? t("today") })] : []),
+    ...(scope.exclude_deleted ? [t("records flagged for deletion skipped")] : []),
   ];
-  return parts.length ? `Scope: ${parts.join("; ")}.` : "Scope: everything, no organisational filter.";
+  return parts.length ? t("Scope: {parts}.", { parts: parts.join("; ") }) : t("Scope: everything, no organisational filter.");
 }

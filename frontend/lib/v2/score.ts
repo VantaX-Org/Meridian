@@ -4,6 +4,7 @@
  */
 import { DIMENSIONS, type DimensionKey, type Verdict } from "@/lib/api/v2/types";
 import { fixed, v2Locale } from "./format";
+import { t } from "@/lib/v2/i18n";
 
 export const DASH = "—";
 
@@ -22,7 +23,7 @@ export function pct1(share: number | null | undefined): string {
   return share == null || Number.isNaN(share) ? DASH : `${fixed(Math.round(share * 1000) / 10, 1)}%`;
 }
 
-export const VERDICT_LABEL: Record<Verdict, string> = { "no-go": "No-go", "at-risk": "At risk", go: "Go" };
+export const VERDICT_LABEL: Record<Verdict, string> = { get "no-go"() { return t("No-go"); }, get "at-risk"() { return t("At risk"); }, get go() { return t("Go"); } };
 
 /** The weight each dimension carries in the score, as whole percentages (25, 25, 20, 10, 10, 10). */
 export const WEIGHT_PERCENT: readonly number[] = DIMENSIONS.map((d) => Math.round(d.weight * 100));
@@ -102,11 +103,11 @@ export function rulerGeometry(size: RulerSize, dims: ReadonlyArray<number | null
   const caps: RulerGeometry["caps"] = [];
   if (large) {
     for (const v of [0, 25, 50, 100]) axis.push({ y: scoreY(v, top, height), value: v, label: String(v), kind: "scale" });
-    axis.push({ y: scoreY(60, top, height), value: 60, label: "60 critical", kind: "band" });
-    axis.push({ y: scoreY(75, top, height), value: 75, label: "75 at risk", kind: "band" });
-    axis.push({ y: scoreY(90, top, height), value: 90, label: "90 go", kind: "band" });
-    caps.push({ y: scoreY(85, top, height), value: 85, label: "cap 1 critical" });
-    caps.push({ y: scoreY(70, top, height), value: 70, label: "cap 2 or more" });
+    axis.push({ y: scoreY(60, top, height), value: 60, label: t("60 critical"), kind: "band" });
+    axis.push({ y: scoreY(75, top, height), value: 75, label: t("75 at risk"), kind: "band" });
+    axis.push({ y: scoreY(90, top, height), value: 90, label: t("90 go"), kind: "band" });
+    caps.push({ y: scoreY(85, top, height), value: 85, label: t("cap 1 critical") });
+    caps.push({ y: scoreY(70, top, height), value: 70, label: t("cap 2 or more") });
   }
   return {
     size,
@@ -144,26 +145,26 @@ export interface Reading {
 /** Names the capping rules: "MM014 and MM031", or the count when there are more than two. */
 export function breachNames(breaches: readonly string[]): string {
   if (breaches.length === 0) return "";
-  if (breaches.length <= 2) return breaches.join(" and ");
-  return `${breaches.length} critical rules over tolerance`;
+  if (breaches.length <= 2) return breaches.join(t(" and "));
+  return t("{breachesCount} critical rules over tolerance", { breachesCount: breaches.length });
 }
 
 /** The full reading of a score, the text of the ruler's title and accessible name. */
 export function readingText(r: Reading): string {
-  const capAt = r.capLevel == null ? "capped" : `capped at ${r.capLevel}`;
-  const cap = r.capped ? `, ${capAt} by ${breachNames(r.breaches)}` : "";
-  const dims = DIMENSIONS.map((d, i) => `${d.label} ${r.dims[i] == null ? "not measured" : Math.round(r.dims[i] as number)}`).join(", ");
-  const tail = `${int(r.records)} records checked, ${int(r.rules)} rules measured, coverage ${pct1(r.coverage)}${r.lowConfidence ? ", low confidence" : ""}.`;
-  return `${r.label}: measured ${f1(r.measured)}, shown ${f1(r.score)}${cap}. ${dims}. ${tail}`;
+  const capAt = r.capLevel == null ? "capped" : t("capped at {capLevel}", { capLevel: r.capLevel });
+  const cap = r.capped ? t(", {capAt} by {breachNames}", { capAt, breachNames: breachNames(r.breaches) }) : "";
+  const dims = DIMENSIONS.map((d, i) => `${d.label} ${r.dims[i] == null ? t("not measured") : Math.round(r.dims[i] as number)}`).join(", ");
+  const tail = t("{records} records checked, {rules} rules measured, coverage {pct1}{value}.", { records: int(r.records), rules: int(r.rules), pct1: pct1(r.coverage), value: r.lowConfidence ? t(", low confidence") : "" });
+  return t("{label}: measured {measured}, shown {score}{cap}. {dims}. {tail}", { label: r.label, measured: f1(r.measured), score: f1(r.score), cap, dims, tail });
 }
 
 /** The sentence under the big score: what caps it, in words, or that nothing does. */
 export function capSentence(capped: boolean, capLevel: number | null, breaches: readonly string[]): string {
-  if (!capped) return breaches.length === 0 ? "No critical rule is over tolerance, so nothing caps this score." : "A critical rule is over tolerance, but the score is already below its cap.";
+  if (!capped) return breaches.length === 0 ? t("No critical rule is over tolerance, so nothing caps this score.") : t("A critical rule is over tolerance, but the score is already below its cap.");
   const n = breaches.length;
-  if (n === 1) return `Capped at ${capLevel} by ${breaches[0]}, one critical rule over tolerance.`;
-  if (n === 2) return `Capped at ${capLevel} by ${breaches[0]} and ${breaches[1]}, two critical rules over tolerance.`;
-  return `Capped at ${capLevel} by ${n} critical rules over tolerance, among them ${breaches[0]} and ${breaches[1]}.`;
+  if (n === 1) return t("Capped at {capLevel} by {breaches}, one critical rule over tolerance.", { capLevel, breaches: breaches[0] });
+  if (n === 2) return t("Capped at {capLevel} by {breaches} and {breaches2}, two critical rules over tolerance.", { capLevel, breaches: breaches[0], breaches2: breaches[1] });
+  return t("Capped at {capLevel} by {n} critical rules over tolerance, among them {breaches} and {breaches2}.", { capLevel, n, breaches: breaches[0], breaches2: breaches[1] });
 }
 
 /** URL segment for a module id: material_master becomes material-master. */

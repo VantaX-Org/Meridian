@@ -5,11 +5,13 @@
 import type { BatchEvent } from "@/lib/api/remediation";
 import type { BatchRowApi } from "@/lib/api/v2/batches";
 import type { WorkRow } from "@/lib/api/v2/types";
+import { t } from "@/lib/v2/i18n";
+import { whole } from "./format";
 
 export type BatchStatus = "draft" | "approved" | "exported";
 
 /** A draft batch waits for a second person; an approved one is ready for SAP; an exported one has gone. */
-export const BATCH_STATUS_LABEL: Record<BatchStatus, string> = { draft: "Waiting for approval", approved: "Approved", exported: "Sent to SAP" };
+export const BATCH_STATUS_LABEL: Record<BatchStatus, string> = { get draft() { return t("Waiting for approval"); }, get approved() { return t("Approved"); }, get exported() { return t("Sent to SAP"); } };
 
 /** "B-1A2B3C" for an id the database made; an id that already reads as a label (B-241) is kept. */
 export function batchLabel(id: string): string {
@@ -89,13 +91,13 @@ export function groupByBatch(batches: readonly BatchRow[], rows: readonly WorkRo
 // The trail ------------------------------------------------------------------------------------------------------
 
 const EVENT_WORD: Record<string, string> = {
-  created: "Drafted",
-  proposed: "Values proposed",
-  accepted: "Suggestions accepted",
-  approved: "Approved",
-  sent_back: "Sent back",
-  exported: "Sent to SAP",
-  reconciled: "Checked against the next run",
+  get created() { return t("Drafted"); },
+  get proposed() { return t("Values proposed"); },
+  get accepted() { return t("Suggestions accepted"); },
+  get approved() { return t("Approved"); },
+  get sent_back() { return t("Sent back"); },
+  get exported() { return t("Sent to SAP"); },
+  get reconciled() { return t("Checked against the next run"); },
 };
 
 /** An event of GET /remediation/batches/{id}/events; the action is a free word (the API also writes sent_back). */
@@ -142,17 +144,17 @@ export function trailOf(events: readonly TrailEvent[]): TrailEntry[] {
   return out;
 }
 
-const n = (x: number): string => x.toLocaleString("en-US");
+const n = (x: number): string => whole(x);
 
 /** "Sent to SAP, 96 records, 9 Oct", the line of a batch that has gone. */
 export function sentLine(b: Pick<BatchRow, "records" | "sentAt">, date: (iso: string | null) => string): string {
-  return `Sent to SAP, ${n(b.records)} ${b.records === 1 ? "record" : "records"}, ${date(b.sentAt)}`;
+  return t("Sent to SAP, {n} {records, plural, one {record} other {records}}, {date}", { n: n(b.records), records: b.records, date: date(b.sentAt) });
 }
 
 /** Why a person cannot approve or send back a batch, or null when they can. */
 export function approveBlock(b: Pick<BatchRow, "status" | "ownerId">, can: { approve: boolean }, me: string | null): string | null {
-  if (!can.approve) return "Your role cannot approve.";
-  if (b.status !== "draft") return `This batch is already ${b.status === "approved" ? "approved" : "sent to SAP"}.`;
-  if (b.ownerId && me && b.ownerId === me) return "You built this batch; a second person approves it.";
+  if (!can.approve) return t("Your role cannot approve.");
+  if (b.status !== "draft") return t("This batch is already {value}.", { value: b.status === "approved" ? t("approved") : t("sent to SAP") });
+  if (b.ownerId && me && b.ownerId === me) return t("You built this batch; a second person approves it.");
   return null;
 }

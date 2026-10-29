@@ -11,6 +11,8 @@ import { useV2Session } from "./hooks";
 import { refreshV2 } from "./queries";
 import { overrideKey, splitKey } from "./work";
 import { clearPatches, dropPatches, setPatches, type Patch } from "./work-overrides";
+import { t } from "@/lib/v2/i18n";
+import { whole } from "./format";
 
 export type RowRef = Pick<WorkRow, "module" | "record_key" | "version_id" | "checks" | "suggested_value" | "status"> & Partial<Pick<WorkRow, "new_value">>;
 
@@ -29,7 +31,7 @@ export interface DecideOptions {
   label?: string;
 }
 
-const noun = (n: number) => (n === 1 ? "record" : "records");
+const noun = (n: number) => (t("{n, plural, one {record} other {records}}", { n }));
 const shortKey = (r: Pick<WorkRow, "record_key">) => splitKey(r.record_key)[0]?.value ?? r.record_key;
 
 /** What a decision will do to the row, shown at once. */
@@ -57,17 +59,17 @@ function labelFor(kind: DecideKind, opts: DecideOptions, rows: readonly RowRef[]
   const n = rows.length;
   switch (kind) {
     case "accept":
-      return `Accepted ${n.toLocaleString("en-US")} suggested ${n === 1 ? "value" : "values"}`;
+      return t("Accepted {n} suggested {n2, plural, one {value} other {values}}", { n: whole(n), n2: n });
     case "edit":
-      return n === 1 ? `Set ${shortKey(rows[0])} to ${opts.value}` : `Set ${n.toLocaleString("en-US")} ${noun(n)} to ${opts.value}`;
+      return n === 1 ? t("Set {shortKey} to {value}", { shortKey: shortKey(rows[0]), value: opts.value }) : t("Set {n} {noun} to {value}", { n: whole(n), noun: noun(n), value: opts.value });
     case "not_an_issue":
-      return `Marked ${n.toLocaleString("en-US")} ${noun(n)} as not an issue`;
+      return t("Marked {n} {noun} as not an issue", { n: whole(n), noun: noun(n) });
     case "accept_risk":
-      return `Accepted the risk on ${n.toLocaleString("en-US")} ${noun(n)}`;
+      return t("Accepted the risk on {n} {noun}", { n: whole(n), noun: noun(n) });
     case "assign":
-      return opts.assignee === "" ? `Unassigned ${n.toLocaleString("en-US")} ${noun(n)}` : `Assigned ${n.toLocaleString("en-US")} ${noun(n)} to you`;
+      return opts.assignee === "" ? t("Unassigned {n} {noun}", { n: whole(n), noun: noun(n) }) : t("Assigned {n} {noun} to you", { n: whole(n), noun: noun(n) });
     case "reopen":
-      return `Reopened ${n.toLocaleString("en-US")} ${noun(n)}`;
+      return t("Reopened {n} {noun}", { n: whole(n), noun: noun(n) });
   }
 }
 
@@ -95,11 +97,11 @@ export function useWorkActions() {
       let use = [...rows];
       if (kind === "accept") use = use.filter((r) => r.suggested_value);
       if (use.length === 0) {
-        toast.show(rows.length === 1 ? "This record has no suggested value: enter one in New value." : "None of the chosen records has a suggested value: enter one in New value.", "error");
+        toast.show(t("{rowsCount, plural, one {This record has no suggested value: enter one in New value.} other {None of the chosen records has a suggested value: enter one in New value.}}", { rowsCount: rows.length }), "error");
         return false;
       }
       if (kind === "edit" && use.some((r) => !(valueOf(opts, r) ?? "").trim())) {
-        toast.show("Give the value to use.", "error");
+        toast.show(t("Give the value to use."), "error");
         return false;
       }
       const keys = use.map(overrideKey);
@@ -124,7 +126,7 @@ export function useWorkActions() {
       } catch (err) {
         dropPatches(keys);
         if (ids.length) toast.done({ ids, label: labelFor(kind, opts, use) });
-        toast.show(errorSentence(err, "The change could not be saved."), "error");
+        toast.show(errorSentence(err, t("The change could not be saved.")), "error");
         void refreshV2(qc);
         return false;
       }
@@ -144,10 +146,10 @@ export function useWorkActions() {
       try {
         const res = await postAcceptAll(check, version);
         const n = res.accepted ?? count;
-        toast.done({ ids: res.action_id ? [res.action_id] : [], label: `Accepted ${n.toLocaleString("en-US")} suggested ${n === 1 ? "value" : "values"} for ${check}` });
+        toast.done({ ids: res.action_id ? [res.action_id] : [], label: t("Accepted {n} suggested {n2, plural, one {value} other {values}} for {check}", { n: whole(n), n2: n, check }) });
       } catch (err) {
         dropPatches(keys);
-        toast.show(errorSentence(err, "The suggested values could not be accepted."), "error");
+        toast.show(errorSentence(err, t("The suggested values could not be accepted.")), "error");
         return false;
       }
       await settle(keys);

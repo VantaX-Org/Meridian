@@ -10,6 +10,7 @@ import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { notFound, refreshRoles, useActivity, useComments, useSubscriptions, useUnreadMentions, useWatch } from "@/lib/v2/roles-queries";
 import { Dash, Mono, Skeleton, V2Link } from "../parts";
 import "../roles.css";
+import { t } from "@/lib/v2/i18n";
 
 /**
  * The collaboration sections every inspector shares (step 6c): Watch (hear about runs, score drops, new breaches,
@@ -32,7 +33,7 @@ export function WatchToggle({ kind, id, label }: { kind: WatchKind; id: string; 
   const q = useWatch(kind, id);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  if (q.isError && notFound(q.error)) return <Dash why="Watching is not available on this server yet" />;
+  if (q.isError && notFound(q.error)) return <Dash why={t("Watching is not available on this server yet")} />;
   const watching = q.data?.watching ?? false;
   const readOnly = session.shared || Boolean(session.viewAs);
   const toggle = async () => {
@@ -50,10 +51,10 @@ export function WatchToggle({ kind, id, label }: { kind: WatchKind; id: string; 
   };
   return (
     <span className="m2-watch" data-testid="watch">
-      <button type="button" className="m2-btn m2-sm" aria-pressed={watching} disabled={busy || !q.data || readOnly} onClick={() => void toggle()} title={readOnly ? "Read-only view" : undefined}>
-        {watching ? "Watching" : "Watch"}
+      <button type="button" className="m2-btn m2-sm" aria-pressed={watching} disabled={busy || !q.data || readOnly} onClick={() => void toggle()} title={readOnly ? t("Read-only view") : undefined}>
+        {watching ? t("Watching") : t("Watch")}
       </button>
-      <span className="m2-meta">{watching ? `You hear about runs, score drops, new critical breaches and comments on ${label}.` : `Hear about runs, score drops and comments on ${label}.`}</span>
+      <span className="m2-meta">{watching ? t("You hear about runs, score drops, new critical breaches and comments on {label}.", { label }) : t("Hear about runs, score drops and comments on {label}.", { label })}</span>
       {error ? (
         <span className="m2-err" role="alert">
           {error}
@@ -107,22 +108,22 @@ export function CommentsSection({ kind, id }: { kind: CommentKind; id: string })
   };
   if (q.isError && notFound(q.error)) {
     return (
-      <section className="m2-rsec" aria-label="Comments">
-        <h3>Comments</h3>
+      <section className="m2-rsec" aria-label={t("Comments")}>
+        <h3>{t("Comments")}</h3>
         <p className="m2-meta">
-          <Dash why="Comments are not available on this server yet" />
+          <Dash why={t("Comments are not available on this server yet")} />
         </p>
       </section>
     );
   }
   const list = q.data?.comments ?? [];
   return (
-    <section className="m2-rsec" aria-label="Comments" data-testid="comments">
-      <h3>Comments</h3>
+    <section className="m2-rsec" aria-label={t("Comments")} data-testid="comments">
+      <h3>{t("Comments")}</h3>
       {q.isPending ? (
         <Skeleton width="70%" height={12} />
       ) : list.length === 0 ? (
-        <p className="m2-meta">No comments yet. Type @ and a name to bring someone in.</p>
+        <p className="m2-meta">{t("No comments yet. Type @ and a name to bring someone in.")}</p>
       ) : (
         <ul className="m2-rows m2-comments">
           {list.map((c) => (
@@ -131,8 +132,8 @@ export function CommentsSection({ kind, id }: { kind: CommentKind; id: string })
               <span>{c.body}</span>
               {c.mentions.length ? <span className="m2-meta">{`Mentioned: ${c.mentions.map((m) => names.get(m) ?? m).join(", ")}`}</span> : null}
               {c.mine && canWrite ? (
-                <button type="button" className="m2-linkbtn2" onClick={() => void remove(c.id)} aria-label={`Remove your comment of ${formatDate(c.created_at, "date")}`}>
-                  Remove
+                <button type="button" className="m2-linkbtn2" onClick={() => void remove(c.id)} aria-label={t("Remove your comment of {created_at}", { created_at: formatDate(c.created_at, "date") })}>
+                  {t("Remove")}
                 </button>
               ) : null}
             </li>
@@ -142,11 +143,11 @@ export function CommentsSection({ kind, id }: { kind: CommentKind; id: string })
       {canWrite ? (
         <div className="m2-compose">
           <label className="m2-fld m2-wide">
-            <span className="m2-lbl">Add a comment</span>
-            <textarea rows={2} value={draft} maxLength={4000} onChange={(e) => setDraft(e.target.value)} placeholder="Ask, explain, or @mention someone" />
+            <span className="m2-lbl">{t("Add a comment")}</span>
+            <textarea rows={2} value={draft} maxLength={4000} onChange={(e) => setDraft(e.target.value)} placeholder={t("Ask, explain, or @mention someone")} />
           </label>
           {suggestions.length ? (
-            <ul className="m2-mention-list" aria-label="People to mention">
+            <ul className="m2-mention-list" aria-label={t("People to mention")}>
               {suggestions.map((p) => (
                 <li key={p.id}>
                   <button type="button" className="m2-linkbtn2" onClick={() => pick(p.id, p.email)}>
@@ -157,7 +158,7 @@ export function CommentsSection({ kind, id }: { kind: CommentKind; id: string })
             </ul>
           ) : null}
           <button type="button" className="m2-btn m2-sm" disabled={busy || !draft.trim()} onClick={() => void post()}>
-            {busy ? "Posting…" : "Post comment"}
+            {busy ? t("Posting…") : t("Post comment")}
           </button>
           {error ? (
             <span className="m2-err" role="alert">
@@ -166,7 +167,7 @@ export function CommentsSection({ kind, id }: { kind: CommentKind; id: string })
           ) : null}
         </div>
       ) : (
-        <p className="m2-meta">{session.shared ? "This is a shared, read-only view." : "Viewing as another role: comments are read-only."}</p>
+        <p className="m2-meta">{session.shared ? t("This is a shared, read-only view.") : t("Viewing as another role: comments are read-only.")}</p>
       )}
     </section>
   );
@@ -176,8 +177,8 @@ export function CommentsSection({ kind, id }: { kind: CommentKind; id: string })
 export function CollabSections({ kind, id, label }: { kind: CommentKind; id: string; label: string }) {
   return (
     <>
-      <section className="m2-rsec" aria-label="Watch">
-        <h3>Watch</h3>
+      <section className="m2-rsec" aria-label={t("Watch")}>
+        <h3>{t("Watch")}</h3>
         <WatchToggle kind={kind} id={id} label={label} />
       </section>
       <CommentsSection kind={kind} id={id} />
@@ -191,16 +192,16 @@ export function ActivitySection({ userId, self }: { userId: string; self: boolea
   const allowed = self || session.can("view_audit") || session.can("manage_users");
   const q = useActivity(userId, allowed);
   return (
-    <section className="m2-rsec" aria-label="Activity" data-testid="activity">
-      <h3>Activity</h3>
+    <section className="m2-rsec" aria-label={t("Activity")} data-testid="activity">
+      <h3>{t("Activity")}</h3>
       {!allowed ? (
-        <p className="m2-meta">{"Reading someone else's activity needs the view audit permission."}</p>
+        <p className="m2-meta">{t("Reading someone else's activity needs the view audit permission.")}</p>
       ) : q.isError ? (
-        <p className="m2-meta">{notFound(q.error) ? <Dash why="Activity is not available on this server yet" /> : "The activity could not be read."}</p>
+        <p className="m2-meta">{notFound(q.error) ? <Dash why={t("Activity is not available on this server yet")} /> : t("The activity could not be read.")}</p>
       ) : !q.data ? (
         <Skeleton width="60%" height={12} />
       ) : q.data.entries.length === 0 ? (
-        <p className="m2-meta">No changes recorded.</p>
+        <p className="m2-meta">{t("No changes recorded.")}</p>
       ) : (
         <ul className="m2-hist">
           {q.data.entries.slice(0, 12).map((e) => (
@@ -242,9 +243,9 @@ export function SubscriptionsBlock() {
   };
   return (
     <div data-testid="subscriptions">
-      <h3>What you hear about</h3>
+      <h3>{t("What you hear about")}</h3>
       {q.isError ? (
-        <p className="m2-meta">{notFound(q.error) ? <Dash why="Subscriptions are not available on this server yet" /> : "Your subscriptions could not be read."}</p>
+        <p className="m2-meta">{notFound(q.error) ? <Dash why={t("Subscriptions are not available on this server yet")} /> : t("Your subscriptions could not be read.")}</p>
       ) : !q.data ? (
         <Skeleton width="60%" height={12} />
       ) : (
@@ -263,8 +264,8 @@ export function SubscriptionsBlock() {
         </p>
       ) : null}
       <p className="m2-prov">
-        <V2Link href={hrefFor({ kind: "away", id: "" })}>Out of office</V2Link>
-        {" hands your approvals and assigned work to someone while you are away."}
+        <V2Link href={hrefFor({ kind: "away", id: "" })}>{t("Out of office")}</V2Link>
+        {t(" hands your approvals and assigned work to someone while you are away.")}
       </p>
     </div>
   );
@@ -277,7 +278,7 @@ export function MentionCount() {
   if (!n) return null;
   return (
     <span className="m2-meta" data-testid="mention-count">
-      {`${n} unread ${n === 1 ? "mention" : "mentions"}`}
+      {t("{n} unread {n, plural, one {mention} other {mentions}}", { n })}
     </span>
   );
 }

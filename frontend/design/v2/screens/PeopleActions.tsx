@@ -3,6 +3,7 @@
 import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { V2Link } from "../parts";
 import "../roles.css";
+import { t } from "@/lib/v2/i18n";
 
 /**
  * The People canvas's verbs (step 6c): Balance work for whoever may assign, Data contracts for everyone (the verbs
@@ -16,15 +17,15 @@ export function PeopleActions() {
     <div className="m2-gtools" data-testid="people-actions" style={{ margin: "8px 0" }}>
       {session.can("assign") && live ? (
         <V2Link href={hrefFor({ kind: "balance", id: "" })} className="m2-btn m2-sm">
-          Balance work
+          {t("Balance work")}
         </V2Link>
       ) : null}
       <V2Link href={hrefFor({ kind: "contracts", id: "" })} className="m2-btn m2-sm">
-        Data contracts
+        {t("Data contracts")}
       </V2Link>
       {live ? (
         <V2Link href={hrefFor({ kind: "away", id: "" })} className="m2-btn m2-sm">
-          Out of office
+          {t("Out of office")}
         </V2Link>
       ) : null}
     </div>

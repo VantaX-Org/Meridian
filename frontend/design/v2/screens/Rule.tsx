@@ -4,13 +4,14 @@ import { useSearchParams } from "next/navigation";
 import { RuleActions, RuleAuthority, RuleBlocks, RuleContract, RuleDefinition, RuleFacts, RuleHistory, RuleLineage, RuleScopeSection, RuleVersions, SectionLevel, ruleStatLine, useRule } from "../inspector/rule";
 import { EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { LedgerSlot } from "./object/LedgerSlot";
+import { t as tr } from "@/lib/v2/i18n";
 
 type TabKey = "definition" | "failing" | "impact" | "history";
 const TABS: { key: TabKey; label: string }[] = [
-  { key: "definition", label: "Definition" },
-  { key: "failing", label: "Failing records" },
-  { key: "impact", label: "Impact" },
-  { key: "history", label: "History" },
+  { key: "definition", get label() { return tr("Definition"); } },
+  { key: "failing", get label() { return tr("Failing records"); } },
+  { key: "impact", get label() { return tr("Impact"); } },
+  { key: "history", get label() { return tr("History"); } },
 ];
 
 function tabOf(value: string | null): TabKey {
@@ -45,10 +46,10 @@ export function RuleCanvas({ id }: { id: string }) {
           <Mono>{id}</Mono>
         </PageTitle>
         <div className="m2-sec">
-          <ErrorFrame onRetry={state.refetch}>This rule could not be read. It may not exist in this tenant, or the API may be unreachable.</ErrorFrame>
+          <ErrorFrame onRetry={state.refetch}>{tr("This rule could not be read. It may not exist in this tenant, or the API may be unreachable.")}</ErrorFrame>
           <div style={{ marginTop: 16 }}>
-            <EmptyFrame action={<V2Link href="/v2/rules" className="m2-btn">Open the rules library</V2Link>}>
-              The rules library lists every rule of the tenant; search it by code or name.
+            <EmptyFrame action={<V2Link href="/v2/rules" className="m2-btn">{tr("Open the rules library")}</V2Link>}>
+              {tr("The rules library lists every rule of the tenant; search it by code or name.")}
             </EmptyFrame>
           </div>
         </div>
@@ -77,9 +78,9 @@ export function RuleCanvas({ id }: { id: string }) {
         ))}
       </p>
       <p className="m2-prov">
-        <V2Link href="/v2/rules">All rules</V2Link>
+        <V2Link href="/v2/rules">{tr("All rules")}</V2Link>
       </p>
-      <nav className="m2-tabs" aria-label={`Views of ${id}`}>
+      <nav className="m2-tabs" aria-label={tr("Views of {id}", { id })}>
         {TABS.map((t) => (
           <V2Link key={t.key} href={href(t.key)} className="m2-tab" aria-current={tab === t.key ? "page" : undefined}>
             {t.label}

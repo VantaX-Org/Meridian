@@ -14,12 +14,13 @@ import { Field, Gate } from "../../forms";
 import { useOutcome, ResultFrame } from "../../inspector/shared";
 import { ScrollFrame } from "../object/ScrollFrame";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../../parts";
+import { t as tr } from "@/lib/v2/i18n";
 
 const PARTS = [
-  { key: "areas", label: "Areas" },
-  { key: "source", label: "Source" },
-  { key: "drift", label: "Drift log" },
-  { key: "compare", label: "Compare with target" },
+  { key: "areas", get label() { return tr("Areas"); } },
+  { key: "source", get label() { return tr("Source"); } },
+  { key: "drift", get label() { return tr("Drift log"); } },
+  { key: "compare", get label() { return tr("Compare with target"); } },
 ] as const;
 type Part = (typeof PARTS)[number]["key"];
 
@@ -28,7 +29,7 @@ function Areas({ id }: { id: string }) {
   const { hrefFor } = useOpenItem();
   if (q.isLoading) return <Skeleton width="100%" height={160} />;
   const areas = q.data?.areas ?? [];
-  if (areas.length === 0) return <EmptyFrame>No configuration area has been read for this system. Load the configuration to see the areas and the objects behind each.</EmptyFrame>;
+  if (areas.length === 0) return <EmptyFrame>{tr("No configuration area has been read for this system. Load the configuration to see the areas and the objects behind each.")}</EmptyFrame>;
   return (
     <div data-testid="config-areas">
       {areas.map((a) => {
@@ -37,7 +38,7 @@ function Areas({ id }: { id: string }) {
           <div key={a.area} className="m2-area">
             <div className="m2-area-h">
               <V2Link href={hrefFor({ kind: "config", id: `${id}:${a.area}` })}>{a.label}</V2Link>
-              <span className="m2-meta">{`${AREA_STATUS_WORD[a.status] ?? labelOf(a.status)}, ${a.tables_done} of ${a.tables_total} objects`}</span>
+              <span className="m2-meta">{tr("{AREA_STATUS_WORD}, {tables_done} of {tables_total} objects", { AREA_STATUS_WORD: AREA_STATUS_WORD[a.status] ?? labelOf(a.status), tables_done: a.tables_done, tables_total: a.tables_total })}</span>
             </div>
             {a.status === "loaded" || a.status === "failed" ? <p>{areaFound(a)}</p> : null}
             {issues.map((o) => (
@@ -66,11 +67,11 @@ function Source({ id }: { id: string }) {
     <>
       <p className="m2-note" data-testid="config-source-summary">
         {objs.length === 0
-          ? "No configuration has been loaded, so every rule reads the SAP standard baseline."
-          : `${live} of ${objs.length} configuration objects were read live from the system; the other ${objs.length - live} fall back to the SAP standard baseline, and the rules that depend on them apply by default.`}
+          ? tr("No configuration has been loaded, so every rule reads the SAP standard baseline.")
+          : tr("{live} of {objsCount} configuration objects were read live from the system; the other {count} fall back to the SAP standard baseline, and the rules that depend on them apply by default.", { live, objsCount: objs.length, count: objs.length - live })}
       </p>
       <div className="m2-form6" style={{ marginTop: 12 }}>
-        <Field label="Object" hint="The SPRO configuration the rules of this object read.">
+        <Field label={tr("Object")} hint={tr("The SPRO configuration the rules of this object read.")}>
           {(p) => (
             <select {...p} value={chosen} onChange={(e) => setModule(e.target.value)}>
               {mods.map((m) => (
@@ -81,19 +82,19 @@ function Source({ id }: { id: string }) {
         </Field>
       </div>
       {!chosen ? (
-        <EmptyFrame>This system exposes no objects yet.</EmptyFrame>
+        <EmptyFrame>{tr("This system exposes no objects yet.")}</EmptyFrame>
       ) : q.isLoading ? (
         <Skeleton width="100%" height={100} />
       ) : q.isError ? (
-        <EmptyFrame>No SPRO configuration is defined for this object, so its rules read the SAP standard baseline.</EmptyFrame>
+        <EmptyFrame>{tr("No SPRO configuration is defined for this object, so its rules read the SAP standard baseline.")}</EmptyFrame>
       ) : q.data ? (
-        <ScrollFrame label="Table 1, scrollable"  style={{ marginTop: 12 }}>
+        <ScrollFrame label={tr("Table 1, scrollable")}  style={{ marginTop: 12 }}>
           <table className="m2-tbl" data-testid="spro-sources">
             <thead>
               <tr>
-                <th scope="col">Table</th>
-                <th scope="col">Source</th>
-                <th scope="col" className="m2-r">Rows</th>
+                <th scope="col">{tr("Table")}</th>
+                <th scope="col">{tr("Source")}</th>
+                <th scope="col" className="m2-r">{tr("Rows")}</th>
               </tr>
             </thead>
             <tbody>
@@ -108,7 +109,7 @@ function Source({ id }: { id: string }) {
           </table>
         </ScrollFrame>
       ) : null}
-      {q.data ? <p className="m2-prov">{`Overall: ${SOURCE_WORD[q.data.source] ?? q.data.source}.`}</p> : null}
+      {q.data ? <p className="m2-prov">{tr("Overall: {SOURCE_WORD}.", { SOURCE_WORD: SOURCE_WORD[q.data.source] ?? q.data.source })}</p> : null}
     </>
   );
 }
@@ -117,21 +118,21 @@ function Drift() {
   const q = useConfigDrift();
   if (q.isLoading) return <Skeleton width="100%" height={120} />;
   const status = (q.error as { response?: { status?: number } } | null)?.response?.status;
-  if (q.isError && status !== 404) return <ErrorFrame onRetry={() => void q.refetch()}>The drift log could not be read.</ErrorFrame>;
+  if (q.isError && status !== 404) return <ErrorFrame onRetry={() => void q.refetch()}>{tr("The drift log could not be read.")}</ErrorFrame>;
   const entries = q.data?.drift_entries ?? [];
-  if (q.isError || entries.length === 0) return <EmptyFrame>{q.isError ? "The drift log needs two analysed runs to compare." : "No configuration changed between the last two runs."}</EmptyFrame>;
+  if (q.isError || entries.length === 0) return <EmptyFrame>{q.isError ? tr("The drift log needs two analysed runs to compare.") : tr("No configuration changed between the last two runs.")}</EmptyFrame>;
   return (
     <>
-      <p className="m2-note">The log covers every connected system, between the last two runs.</p>
-      <ScrollFrame label="Table 2, scrollable">
+      <p className="m2-note">{tr("The log covers every connected system, between the last two runs.")}</p>
+      <ScrollFrame label={tr("Table 2, scrollable")}>
         <table className="m2-tbl" data-testid="config-drift">
           <thead>
             <tr>
-              <th scope="col">Module</th>
-              <th scope="col">Element</th>
-              <th scope="col">Change</th>
-              <th scope="col">Before</th>
-              <th scope="col">After</th>
+              <th scope="col">{tr("Module")}</th>
+              <th scope="col">{tr("Element")}</th>
+              <th scope="col">{tr("Change")}</th>
+              <th scope="col">{tr("Before")}</th>
+              <th scope="col">{tr("After")}</th>
             </tr>
           </thead>
           <tbody>
@@ -151,7 +152,7 @@ function Drift() {
   );
 }
 
-const MATCH_WORD: Record<string, string> = { exists: "In target", key_match: "Key match", desc_match: "Description match", missing: "Missing" };
+const MATCH_WORD: Record<string, string> = { get exists() { return tr("In target"); }, get key_match() { return tr("Key match"); }, get desc_match() { return tr("Description match"); }, get missing() { return tr("Missing"); } };
 
 function Compare({ id }: { id: string }) {
   const [object, setObject] = useState<string | null>(null);
@@ -160,30 +161,30 @@ function Compare({ id }: { id: string }) {
   const refresh = useRefreshV2();
   const { outcome, pending, run } = useOutcome();
   if (q.isLoading) return <Skeleton width="100%" height={140} />;
-  if (q.isError) return <ErrorFrame onRetry={() => void q.refetch()}>The comparison could not be read.</ErrorFrame>;
+  if (q.isError) return <ErrorFrame onRetry={() => void q.refetch()}>{tr("The comparison could not be read.")}</ErrorFrame>;
   const d = q.data;
-  if (!d?.source_load_id) return <EmptyFrame>Nothing to compare yet. Load this system&apos;s configuration, then it is compared with its target.</EmptyFrame>;
+  if (!d?.source_load_id) return <EmptyFrame>{tr("Nothing to compare yet. Load this system's configuration, then it is compared with its target.")}</EmptyFrame>;
   const propose = () =>
     void run("propose", async () => {
       const r = await proposeConfigMatches(id);
       refresh();
-      return { tone: "ok", title: r.proposed ? `${r.proposed} ${r.proposed === 1 ? "match" : "matches"} sent to the steward queue` : "No new matches to propose", detail: r.proposed ? `Target ${r.target}. A steward decides each.` : undefined };
+      return { tone: "ok", title: r.proposed ? tr("{proposed} {proposed, plural, one {match} other {matches}} sent to the steward queue", { proposed: r.proposed }) : tr("No new matches to propose"), detail: r.proposed ? tr("Target {target}. A steward decides each.", { target: r.target }) : undefined };
     });
   return (
     <>
-      <p className="m2-note" data-testid="compare-target">{`Compared with ${d.target.label}.`}{d.target.baseline ? " The target is the SAP standard baseline, so differences are flagged, not blocking." : ""}</p>
+      <p className="m2-note" data-testid="compare-target">{tr("Compared with {label}.", { label: d.target.label })}{d.target.baseline ? tr(" The target is the SAP standard baseline, so differences are flagged, not blocking.") : ""}</p>
       {d.objects.length === 0 ? (
-        <EmptyFrame>The source and the target have no configuration object in common.</EmptyFrame>
+        <EmptyFrame>{tr("The source and the target have no configuration object in common.")}</EmptyFrame>
       ) : (
-        <ScrollFrame label="Table 3, scrollable">
+        <ScrollFrame label={tr("Table 3, scrollable")}>
           <table className="m2-tbl" data-testid="compare-objects">
             <thead>
               <tr>
-                <th scope="col">Object</th>
-                <th scope="col" className="m2-r">In target</th>
-                <th scope="col" className="m2-r">Key match</th>
-                <th scope="col" className="m2-r">Description match</th>
-                <th scope="col" className="m2-r">Missing</th>
+                <th scope="col">{tr("Object")}</th>
+                <th scope="col" className="m2-r">{tr("In target")}</th>
+                <th scope="col" className="m2-r">{tr("Key match")}</th>
+                <th scope="col" className="m2-r">{tr("Description match")}</th>
+                <th scope="col" className="m2-r">{tr("Missing")}</th>
               </tr>
             </thead>
             <tbody>
@@ -205,13 +206,13 @@ function Compare({ id }: { id: string }) {
         </ScrollFrame>
       )}
       {object && d.rows.length > 0 ? (
-        <ScrollFrame label="Table 4, scrollable"  style={{ marginTop: 12 }}>
-          <table className="m2-tbl" aria-label={`Values of ${object}`}>
+        <ScrollFrame label={tr("Table 4, scrollable")}  style={{ marginTop: 12 }}>
+          <table className="m2-tbl" aria-label={tr("Values of {object}", { object })}>
             <thead>
               <tr>
-                <th scope="col">Value</th>
-                <th scope="col">In target</th>
-                <th scope="col">Status</th>
+                <th scope="col">{tr("Value")}</th>
+                <th scope="col">{tr("In target")}</th>
+                <th scope="col">{tr("Status")}</th>
               </tr>
             </thead>
             <tbody>
@@ -228,10 +229,10 @@ function Compare({ id }: { id: string }) {
       ) : null}
       <div className="m2-acts" style={{ marginTop: 12 }}>
         <button type="button" className="m2-btn" disabled={!can("analyse") || pending !== null} onClick={propose}>
-          {pending === "propose" ? "Proposing…" : "Propose matches"}
+          {pending === "propose" ? tr("Proposing…") : tr("Propose matches")}
         </button>
       </div>
-      {!can("analyse") ? <Gate>Proposing matches to the steward queue needs the analyse permission.</Gate> : null}
+      {!can("analyse") ? <Gate>{tr("Proposing matches to the steward queue needs the analyse permission.")}</Gate> : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
     </>
   );
@@ -262,42 +263,42 @@ export function Configuration({ id }: { id: string }) {
     void run("load", async () => {
       const r = await loadSystemConfig(id);
       refresh();
-      return { tone: "ok", title: "Configuration load started", detail: "It reads the configuration tables of every area, then derives the flows. Read-only: Meridian never writes to SAP.", job: r.job_id };
+      return { tone: "ok", title: tr("Configuration load started"), detail: tr("It reads the configuration tables of every area, then derives the flows. Read-only: Meridian never writes to SAP."), job: r.job_id };
     });
   const discover = () =>
     void run("discover", async () => {
       await discoverConfig(id);
       refresh();
-      return { tone: "ok", title: "Discovery started", detail: "It reruns configuration discovery on the latest stored data." };
+      return { tone: "ok", title: tr("Discovery started"), detail: tr("It reruns configuration discovery on the latest stored data.") };
     });
   return (
     <>
       {q.isLoading ? (
         <Skeleton width="100%" height={80} />
       ) : q.isError ? (
-        <ErrorFrame onRetry={() => void q.refetch()}>The configuration status could not be read.</ErrorFrame>
+        <ErrorFrame onRetry={() => void q.refetch()}>{tr("The configuration status could not be read.")}</ErrorFrame>
       ) : !c ? (
-        <EmptyFrame>No configuration has been loaded from this system. Choose Load configuration to read it.</EmptyFrame>
+        <EmptyFrame>{tr("No configuration has been loaded from this system. Choose Load configuration to read it.")}</EmptyFrame>
       ) : (
         <Facts>
-          <Fact label="Status">{c.status === "completed" ? "Loaded" : c.status === "running" ? "Loading" : "Failed"}</Fact>
-          <Fact label="Areas loaded">{`${c.areas_loaded} of ${c.areas_total}`}</Fact>
-          <Fact label="Loaded">{c.finished_at ? formatDate(c.finished_at, "datetime") : "Still running"}</Fact>
-          <Fact label="Objects">{Object.entries(c.summary).map(([k, n]) => `${n} ${k.replace(/_/g, " ")}`).join(", ") || "—"}</Fact>
-          <Fact label="Change history">{c.history.detail || "—"}</Fact>
+          <Fact label={tr("Status")}>{c.status === "completed" ? tr("Loaded") : c.status === "running" ? tr("Loading") : tr("Failed")}</Fact>
+          <Fact label={tr("Areas loaded")}>{tr("{areas_loaded} of {areas_total}", { areas_loaded: c.areas_loaded, areas_total: c.areas_total })}</Fact>
+          <Fact label={tr("Loaded")}>{c.finished_at ? formatDate(c.finished_at, "datetime") : tr("Still running")}</Fact>
+          <Fact label={tr("Objects")}>{Object.entries(c.summary).map(([k, n]) => `${n} ${k.replace(/_/g, " ")}`).join(", ") || "—"}</Fact>
+          <Fact label={tr("Change history")}>{c.history.detail || "—"}</Fact>
         </Facts>
       )}
       <div className="m2-acts" style={{ marginTop: 12 }}>
         <button type="button" className="m2-btn" disabled={!can("trigger_sync") || pending !== null} onClick={load}>
-          {pending === "load" ? "Starting…" : c ? "Load again" : "Load configuration"}
+          {pending === "load" ? tr("Starting…") : c ? tr("Load again") : tr("Load configuration")}
         </button>
         <button type="button" className="m2-btn" disabled={!can("analyse") || pending !== null} onClick={discover}>
-          {pending === "discover" ? "Starting…" : "Discover now"}
+          {pending === "discover" ? tr("Starting…") : tr("Discover now")}
         </button>
       </div>
-      {!can("trigger_sync") ? <Gate>Loading the configuration needs the trigger sync permission; discovery needs analyse.</Gate> : null}
+      {!can("trigger_sync") ? <Gate>{tr("Loading the configuration needs the trigger sync permission; discovery needs analyse.")}</Gate> : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
-      <nav className="m2-subtabs" aria-label="Configuration views">
+      <nav className="m2-subtabs" aria-label={tr("Configuration views")}>
         {PARTS.map((p) => (
           <V2Link key={p.key} href={href(p.key)} className="m2-seg" aria-current={p.key === part ? "page" : undefined}>
             {p.label}

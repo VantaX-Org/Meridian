@@ -8,6 +8,7 @@ import { mdmKeys } from "@/lib/v2/mdm-queries";
 import { firstBlockedStep, PROCESS_MODULES, stepRef } from "@/lib/v2/process-tree";
 import { moduleSlug, systemSlug } from "@/lib/v2/score";
 import { V2Link } from "../../parts";
+import { t } from "@/lib/v2/i18n";
 
 /**
  * The process analyst's next step: the first blocked process step of the objects that have a process definition.
@@ -34,7 +35,7 @@ export function ProcessNextStep({ landscape }: { landscape: Landscape }) {
     if (step) {
       return (
         <V2Link href={`${base(i)}?open=step:${stepRef(cells[i].module, step.id)}`} className="m2-btn m2-next">
-          {`Open ${step.l1Id} step ${step.number}`}
+          {t("Open {l1Id} step {number}", { l1Id: step.l1Id, number: step.number })}
         </V2Link>
       );
     }
@@ -42,7 +43,7 @@ export function ProcessNextStep({ landscape }: { landscape: Landscape }) {
   if (cells.length === 0) return null;
   return (
     <V2Link href={base(0)} className="m2-btn m2-next">
-      Open the process readiness
+      {t("Open the process readiness")}
     </V2Link>
   );
 }

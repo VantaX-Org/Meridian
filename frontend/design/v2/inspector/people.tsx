@@ -7,9 +7,9 @@ import type { User } from "@/types/api";
 import type { ApiKey } from "@/lib/api/api-keys";
 import type { Matrix, Role } from "@/lib/api/roles";
 import * as api from "@/lib/api/v2/admin";
-import { formatDate, formatModuleName, labelOf } from "@/lib/format";
-import { roleLabel } from "@/lib/roles";
-import { STATUS_LABEL, isPast, userStatus } from "@/lib/users";
+import { formatDate } from "@/lib/format";
+
+import { isPast, userStatus } from "@/lib/users";
 import { useOpenItem } from "@/lib/v2/hooks";
 import { refreshAdmin, useApiKeys, useEffective, useGrantPreview, useRolePermissions, useRoles, useUsers } from "@/lib/v2/admin-queries";
 import { useLandscape } from "@/lib/v2/queries";
@@ -21,6 +21,8 @@ import { PermissionMatrix, matrixToPairs } from "../admin/roles";
 import { UserStatusWord, roleNames } from "../admin/users";
 import { keyRoles } from "../admin/apikeys";
 import { ResultFrame, useOutcome } from "./shared";
+import { t } from "@/lib/v2/i18n";
+import { labelText, moduleText, roleText, userStatusText } from "@/lib/v2/labels";
 
 /* ── A scope picker shared by grants and API keys ── */
 
@@ -31,9 +33,9 @@ function ScopeFields({ scope, onChange, roles, expires, onExpires }: { scope: Sc
   return (
     <div className="m2-aform">
       <label>
-        Role
+        {t("Role")}
         <select value={scope.role} onChange={(e) => onChange({ ...scope, role: e.target.value })}>
-          <option value="">Choose a role</option>
+          <option value="">{t("Choose a role")}</option>
           {roles.map((r) => (
             <option key={r.key} value={r.key}>
               {r.name}
@@ -42,9 +44,9 @@ function ScopeFields({ scope, onChange, roles, expires, onExpires }: { scope: Sc
         </select>
       </label>
       <label>
-        System
+        {t("System")}
         <select value={scope.system} onChange={(e) => onChange({ ...scope, system: e.target.value })}>
-          <option value="">All systems</option>
+          <option value="">{t("All systems")}</option>
           {(systems.data ?? []).map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
@@ -53,9 +55,9 @@ function ScopeFields({ scope, onChange, roles, expires, onExpires }: { scope: Sc
         </select>
       </label>
       <label>
-        Object
+        {t("Object")}
         <select value={scope.module} onChange={(e) => onChange({ ...scope, module: e.target.value })}>
-          <option value="">All objects</option>
+          <option value="">{t("All objects")}</option>
           {(landscape.data?.objects ?? []).map((o) => (
             <option key={o.module} value={o.module}>
               {o.label}
@@ -65,7 +67,7 @@ function ScopeFields({ scope, onChange, roles, expires, onExpires }: { scope: Sc
       </label>
       {onExpires ? (
         <label>
-          Expires (optional)
+          {t("Expires (optional)")}
           <input type="date" value={expires ?? ""} onChange={(e) => onExpires(e.target.value)} />
         </label>
       ) : null}
@@ -88,20 +90,20 @@ function InviteUser({ onClose }: { onClose: () => void }) {
   const [created, setCreated] = useState<string | null>(null);
   const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
   return (
-    <InspectorFrame title="Invite a user" status="New user" onClose={onClose}>
+    <InspectorFrame title={t("Invite a user")} status={t("New user")} onClose={onClose}>
       <div className="m2-aform">
         <label>
-          Email
+          {t("Email")}
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" />
         </label>
         <label>
-          Name (optional)
+          {t("Name (optional)")}
           <input value={name} onChange={(e) => setName(e.target.value)} />
         </label>
       </div>
-      <h3>First role</h3>
+      <h3>{t("First role")}</h3>
       <ScopeFields scope={scope} onChange={setScope} roles={roles.data ?? []} />
-      <p className="m2-prov">The invitation lasts seven days. More roles can be added from the person&apos;s own inspector once they exist.</p>
+      <p className="m2-prov">{t("The invitation lasts seven days. More roles can be added from the person's own inspector once they exist.")}</p>
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       <Actions>
         <button
@@ -114,15 +116,15 @@ function InviteUser({ onClose }: { onClose: () => void }) {
               await refreshAdmin(qc, "users");
               await refreshAdmin(qc, "licence");
               setCreated(r.id);
-              return { tone: "ok", title: `Invitation sent to ${r.email}`, detail: "They get a link that works for seven days." };
+              return { tone: "ok", title: t("Invitation sent to {email}", { email: r.email }), detail: t("They get a link that works for seven days.") };
             })
           }
         >
-          {pending === "invite" ? "Inviting…" : "Send the invitation"}
+          {pending === "invite" ? t("Inviting…") : t("Send the invitation")}
         </button>
         {created ? (
           <button type="button" className="m2-btn" onClick={() => openItem({ kind: "user", id: created })}>
-            Open the new user
+            {t("Open the new user")}
           </button>
         ) : null}
       </Actions>
@@ -141,16 +143,16 @@ function GrantsBlock({ user, canEdit, onChanged }: { user: User; canEdit: boolea
   const grants = user.grants ?? [];
   return (
     <>
-      <h3>Roles</h3>
+      <h3>{t("Roles")}</h3>
       {grants.length === 0 ? (
-        <p className="m2-prov">No grants. {user.role ? `The account carries the ${roleLabel(user.role)} role.` : ""}</p>
+        <p className="m2-prov">{t("No grants.")}{" "}{user.role ? t("The account carries the {role} role.", { role: roleText(user.role) }) : ""}</p>
       ) : (
-        <ul className="m2-flist" aria-label="Roles granted">
+        <ul className="m2-flist" aria-label={t("Roles granted")}>
           {grants.map((g) => (
             <li key={g.id}>
               <span>
-                {(g.role_name || roleLabel(g.role_key)).replace(/\s*\(legacy\)\s*$/i, "")}
-                <span className="m2-meta">{`, ${g.system_name ?? "all systems"}${g.module ? `, ${formatModuleName(g.module)}` : ""}${g.expires_at ? `, ${isPast(g.expires_at) ? "expired" : "until"} ${formatDate(g.expires_at)}` : ""}`}</span>
+                {(g.role_name || roleText(g.role_key)).replace(/\s*\(legacy\)\s*$/i, "")}
+                <span className="m2-meta">{`, ${g.system_name ?? t("all systems")}${g.module ? `, ${moduleText(g.module)}` : ""}${g.expires_at ? `, ${isPast(g.expires_at) ? "expired" : "until"} ${formatDate(g.expires_at)}` : ""}`}</span>
               </span>
               {canEdit ? (
                 <button
@@ -161,15 +163,15 @@ function GrantsBlock({ user, canEdit, onChanged }: { user: User; canEdit: boolea
                     void run(`rm-${g.id}`, async () => {
                       await api.removeGrant(user.id, g.id);
                       await onChanged();
-                      done(`Removed ${g.role_name || g.role_key} from ${user.name}`, async () => {
+                      done(t("Removed {role_name} from {name}", { role_name: g.role_name || g.role_key, name: user.name }), async () => {
                         await api.addGrant(user.id, { role_key: g.role_key, system_id: g.system_id, module: g.module, expires_at: g.expires_at ?? null });
                         await onChanged();
                       });
-                      return { tone: "ok", title: "Role removed", detail: `${user.name} no longer has ${g.role_name || g.role_key}${g.system_name ? ` on ${g.system_name}` : ""}.` };
+                      return { tone: "ok", title: t("Role removed"), detail: t("{name} no longer has {role_name}{value}.", { name: user.name, role_name: g.role_name || g.role_key, value: g.system_name ? t(" on {system_name}", { system_name: g.system_name }) : "" }) };
                     })
                   }
                 >
-                  Remove
+                  {t("Remove")}
                 </button>
               ) : null}
             </li>
@@ -178,11 +180,11 @@ function GrantsBlock({ user, canEdit, onChanged }: { user: User; canEdit: boolea
       )}
       {canEdit ? (
         <>
-          <h3>Add a role</h3>
+          <h3>{t("Add a role")}</h3>
           <ScopeFields scope={scope} onChange={setScope} roles={roles.data ?? []} expires={expires} onExpires={setExpires} />
           {scope.role && preview.data ? (
             <p className="m2-prov" role="status" data-testid="grant-preview">
-              {preview.data.diff.added_pairs.length === 0 ? "This adds nothing the person cannot already do." : `This lets ${user.name} ${preview.data.diff.added_pairs.slice(0, 6).map(([r, a]) => `${a} ${r}`).join(", ")}${preview.data.diff.added_pairs.length > 6 ? ` and ${preview.data.diff.added_pairs.length - 6} more` : ""}.`}
+              {preview.data.diff.added_pairs.length === 0 ? t("This adds nothing the person cannot already do.") : t("This lets {name} {map}{value}.", { name: user.name, map: preview.data.diff.added_pairs.slice(0, 6).map(([r, a]) => `${a} ${r}`).join(", "), value: preview.data.diff.added_pairs.length > 6 ? t(" and {count} more", { count: preview.data.diff.added_pairs.length - 6 }) : "" })}
             </p>
           ) : null}
           <div className="m2-acts" style={{ marginTop: 8 }}>
@@ -196,15 +198,15 @@ function GrantsBlock({ user, canEdit, onChanged }: { user: User; canEdit: boolea
                   await onChanged();
                   setScope({ role: "", system: "", module: "" });
                   setExpires("");
-                  done(`Added ${labelOf(scope.role)} to ${user.name}`, async () => {
+                  done(t("Added {role} to {name}", { role: labelText(scope.role), name: user.name }), async () => {
                     await api.removeGrant(user.id, g.id);
                     await onChanged();
                   });
-                  return { tone: "ok", title: "Role added" };
+                  return { tone: "ok", title: t("Role added") };
                 })
               }
             >
-              {pending === "add" ? "Adding…" : "Add the role"}
+              {pending === "add" ? t("Adding…") : t("Add the role")}
             </button>
             <button
               type="button"
@@ -214,11 +216,11 @@ function GrantsBlock({ user, canEdit, onChanged }: { user: User; canEdit: boolea
                 void run("convert", async () => {
                   const r = await api.convertObjectApprovals(user.id, false);
                   setConvert(r);
-                  return { tone: "info", title: r.converted.length ? `${r.converted.length} object approvals can become grants` : "No legacy object approvals to convert", detail: r.skipped.length ? `${r.skipped.length} would be skipped.` : undefined };
+                  return { tone: "info", title: r.converted.length ? t("{convertedCount} object approvals can become grants", { convertedCount: r.converted.length }) : t("No legacy object approvals to convert"), detail: r.skipped.length ? t("{skippedCount} would be skipped.", { skippedCount: r.skipped.length }) : undefined };
                 })
               }
             >
-              Check legacy object approvals
+              {t("Check legacy object approvals")}
             </button>
           </div>
           {convert && convert.converted.length && !convert.confirmed ? (
@@ -232,11 +234,11 @@ function GrantsBlock({ user, canEdit, onChanged }: { user: User; canEdit: boolea
                     const r = await api.convertObjectApprovals(user.id, true);
                     setConvert(r);
                     await onChanged();
-                    return { tone: "ok", title: "Converted to grants", detail: `${r.converted.length} converted.` };
+                    return { tone: "ok", title: t("Converted to grants"), detail: t("{convertedCount} converted.", { convertedCount: r.converted.length }) };
                   })
                 }
               >
-                Convert them to grants
+                {t("Convert them to grants")}
               </button>
             </div>
           ) : null}
@@ -255,11 +257,11 @@ function EffectiveBlock({ userId }: { userId: string }) {
   const open = Object.entries(e.resources).map(([r, acts]) => [r, Object.entries(acts).filter(([, on]) => on).map(([a]) => a)] as const).filter(([, a]) => a.length > 0);
   return (
     <>
-      <h3>What they can do now</h3>
+      <h3>{t("What they can do now")}</h3>
       {open.length === 0 ? (
-        <p className="m2-prov">Nothing yet. They can sign in and see nothing until a role is granted.</p>
+        <p className="m2-prov">{t("Nothing yet. They can sign in and see nothing until a role is granted.")}</p>
       ) : (
-        <ul className="m2-flist" aria-label="Effective permissions">
+        <ul className="m2-flist" aria-label={t("Effective permissions")}>
           {open.map(([r, acts]) => (
             <li key={r}>
               <span>{r}</span>
@@ -292,34 +294,34 @@ function UserBody({ user }: { user: User }) {
       await api.setUserActive(user.id, active);
       await refresh();
       setAsk(null);
-      done(active ? `${user.name} can sign in again` : `${user.name} suspended`, async () => {
+      done(active ? t("{name} can sign in again", { name: user.name }) : t("{name} suspended", { name: user.name }), async () => {
         await api.setUserActive(user.id, !active);
         await refresh();
       });
-      return { tone: "ok", title: active ? `${user.name} can sign in again` : `${user.name} is suspended`, detail: active ? undefined : "They are signed out and cannot sign in until reactivated." };
+      return { tone: "ok", title: active ? t("{name} can sign in again", { name: user.name }) : t("{name} is suspended", { name: user.name }), detail: active ? undefined : t("They are signed out and cannot sign in until reactivated.") };
     });
   return (
     <>
       <Facts>
-        <Fact label="Email">{user.email}</Fact>
-        <Fact label="Status">
+        <Fact label={t("Email")}>{user.email}</Fact>
+        <Fact label={t("Status")}>
           <UserStatusWord user={user} />
         </Fact>
-        <Fact label="Roles">{roleNames(user)}</Fact>
-        <Fact label="Last sign-in">{user.last_login ? `${formatDate(user.last_login, "datetime")}, ${since(user.last_login)}` : "Never"}</Fact>
-        <Fact label="Member since">{formatDate(user.created_at)}</Fact>
-        {status === "invited" || status === "invite_expired" ? <Fact label="Invitation">{`${user.invite_status ? labelOf(user.invite_status) : "Sent"}${user.invite_expires_at ? `, ${isPast(user.invite_expires_at) ? "expired" : "expires"} ${formatDate(user.invite_expires_at)}` : ""}`}</Fact> : null}
-        {user.locked_until && !isPast(user.locked_until) ? <Fact label="Locked until">{formatDate(user.locked_until, "datetime")}</Fact> : null}
-        <Fact label="Password changed">{user.password_changed_at ? formatDate(user.password_changed_at) : "Not yet"}</Fact>
+        <Fact label={t("Roles")}>{roleNames(user)}</Fact>
+        <Fact label={t("Last sign-in")}>{user.last_login ? `${formatDate(user.last_login, "datetime")}, ${since(user.last_login)}` : t("Never")}</Fact>
+        <Fact label={t("Member since")}>{formatDate(user.created_at)}</Fact>
+        {status === "invited" || status === "invite_expired" ? <Fact label={t("Invitation")}>{`${user.invite_status ? labelText(user.invite_status) : t("Sent")}${user.invite_expires_at ? `, ${isPast(user.invite_expires_at) ? "expired" : "expires"} ${formatDate(user.invite_expires_at)}` : ""}`}</Fact> : null}
+        {user.locked_until && !isPast(user.locked_until) ? <Fact label={t("Locked until")}>{formatDate(user.locked_until, "datetime")}</Fact> : null}
+        <Fact label={t("Password changed")}>{user.password_changed_at ? formatDate(user.password_changed_at) : t("Not yet")}</Fact>
       </Facts>
       <Actions>
         {user.is_active ? (
-          <button type="button" className="m2-btn" disabled={!edit || self || pending !== null} title={self ? "You can't change your own access" : undefined} onClick={() => setAsk("suspend")}>
-            Suspend
+          <button type="button" className="m2-btn" disabled={!edit || self || pending !== null} title={self ? t("You can't change your own access") : undefined} onClick={() => setAsk("suspend")}>
+            {t("Suspend")}
           </button>
         ) : (
           <button type="button" className="m2-btn m2-strong" disabled={!edit || pending !== null} onClick={() => setActive(true)}>
-            Reactivate
+            {t("Reactivate")}
           </button>
         )}
         {status === "invited" || status === "invite_expired" ? (
@@ -332,11 +334,11 @@ function UserBody({ user }: { user: User }) {
                 void run("resend", async () => {
                   const r = await api.resendInvite(user.id);
                   await refresh();
-                  return { tone: "ok", title: `Invitation sent to ${user.email}`, detail: `It works until ${formatDate(r.invite_expires_at)}.` };
+                  return { tone: "ok", title: t("Invitation sent to {email}", { email: user.email }), detail: t("It works until {invite_expires_at}.", { invite_expires_at: formatDate(r.invite_expires_at) }) };
                 })
               }
             >
-              Resend the invitation
+              {t("Resend the invitation")}
             </button>
             <button
               type="button"
@@ -347,33 +349,33 @@ function UserBody({ user }: { user: User }) {
                   const r = await api.createInviteLink(user.id);
                   setLink(r.url);
                   const copied = await copyText(r.url);
-                  return { tone: copied ? "ok" : "info", title: copied ? "Invite link copied" : "Invite link made", detail: `It works until ${formatDate(r.expires_at)}.` };
+                  return { tone: copied ? "ok" : "info", title: copied ? t("Invite link copied") : t("Invite link made"), detail: t("It works until {expires_at}.", { expires_at: formatDate(r.expires_at) }) };
                 })
               }
             >
-              Copy an invite link
+              {t("Copy an invite link")}
             </button>
           </>
         ) : (
           <button type="button" className="m2-btn" disabled={!edit || pending !== null} onClick={() => setAsk("reset")}>
-            Reset the password
+            {t("Reset the password")}
           </button>
         )}
-        <button type="button" className="m2-btn m2-crit" disabled={!edit || self || pending !== null} title={self ? "You can't remove yourself" : undefined} onClick={() => setAsk("remove")}>
-          Remove the user
+        <button type="button" className="m2-btn m2-crit" disabled={!edit || self || pending !== null} title={self ? t("You can't remove yourself") : undefined} onClick={() => setAsk("remove")}>
+          {t("Remove the user")}
         </button>
       </Actions>
-      {link ? <p className="m2-secret" aria-label="Invite link">{link}</p> : null}
+      {link ? <p className="m2-secret" aria-label={t("Invite link")}>{link}</p> : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
-      {!edit ? <p className="m2-prov">Changing a user needs the manage users permission.</p> : null}
+      {!edit ? <p className="m2-prov">{t("Changing a user needs the manage users permission.")}</p> : null}
       <GrantsBlock user={user} canEdit={edit} onChanged={refresh} />
       <EffectiveBlock userId={user.id} />
-      {ask === "suspend" ? <Confirm title={`Suspend ${user.name}`} body="They are signed out and cannot sign in until someone reactivates them. Their work stays where it is." confirm="Suspend" danger pending={pending === "suspend"} onCancel={() => setAsk(null)} onConfirm={() => setActive(false)} /> : null}
+      {ask === "suspend" ? <Confirm title={t("Suspend {name}", { name: user.name })} body={t("They are signed out and cannot sign in until someone reactivates them. Their work stays where it is.")} confirm={t("Suspend")} danger pending={pending === "suspend"} onCancel={() => setAsk(null)} onConfirm={() => setActive(false)} /> : null}
       {ask === "remove" ? (
         <Confirm
-          title={`Remove ${user.name}`}
-          body="The account is deleted and its seat is freed. Their audit entries stay."
-          confirm="Remove the user"
+          title={t("Remove {name}", { name: user.name })}
+          body={t("The account is deleted and its seat is freed. Their audit entries stay.")}
+          confirm={t("Remove the user")}
           danger
           pending={pending === "remove"}
           onCancel={() => setAsk(null)}
@@ -382,24 +384,24 @@ function UserBody({ user }: { user: User }) {
               await api.removeUser(user.id);
               await refresh();
               setAsk(null);
-              return { tone: "ok", title: `${user.name} removed` };
+              return { tone: "ok", title: t("{name} removed", { name: user.name }) };
             })
           }
         />
       ) : null}
       {ask === "reset" ? (
         <Confirm
-          title={`Reset the password for ${user.name}`}
-          body="They are signed out and must choose a new password. Email them a link, or copy a one-time link to hand over; it works once and ends in 24 hours."
-          confirm="Email the link"
-          cancel="Cancel"
+          title={t("Reset the password for {name}", { name: user.name })}
+          body={t("They are signed out and must choose a new password. Email them a link, or copy a one-time link to hand over; it works once and ends in 24 hours.")}
+          confirm={t("Email the link")}
+          cancel={t("Cancel")}
           pending={pending === "reset"}
           onCancel={() => setAsk(null)}
           onConfirm={() =>
             void run("reset", async () => {
               const r = await api.resetUserPassword(user.id, true);
               setAsk(null);
-              return r.emailed ? { tone: "ok", title: `Reset email sent to ${user.email}`, detail: `${user.name} is signed out.` } : { tone: "fail", title: `${user.name} is signed out, but the email could not be queued`, detail: "Copy a one-time link instead." };
+              return r.emailed ? { tone: "ok", title: t("Reset email sent to {email}", { email: user.email }), detail: t("{name} is signed out.", { name: user.name }) } : { tone: "fail", title: t("{name} is signed out, but the email could not be queued", { name: user.name }), detail: t("Copy a one-time link instead.") };
             })
           }
         />
@@ -418,11 +420,11 @@ function UserBody({ user }: { user: User }) {
                     setLink(r.link);
                     await copyText(r.link);
                   }
-                  return { tone: "ok", title: "One-time link copied", detail: `${user.name} is signed out. The link works once and ends in 24 hours.` };
+                  return { tone: "ok", title: t("One-time link copied"), detail: t("{name} is signed out. The link works once and ends in 24 hours.", { name: user.name }) };
                 })
               }
             >
-              Copy a one-time reset link instead
+              {t("Copy a one-time reset link instead")}
             </button>
           ) : null}
         </p>
@@ -436,8 +438,8 @@ export function UserInspector({ id, onClose }: { id: string; onClose: () => void
   if (id === "new") return <InviteUser onClose={onClose} />;
   const user = q.data?.users.find((u) => u.id === id);
   return (
-    <InspectorFrame title={user?.name ?? "User"} status={user ? `${user.email}, ${STATUS_LABEL[userStatus(user)]}` : undefined} onClose={onClose}>
-      {user ? <UserBody user={user} /> : q.isLoading ? <Skeleton width="100%" height={120} /> : q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>The user could not be read.</ErrorFrame> : <EmptyFrame>This user is not in the tenant. They may have been removed.</EmptyFrame>}
+    <InspectorFrame title={user?.name ?? t("User")} status={user ? `${user.email}, ${userStatusText(userStatus(user))}` : undefined} onClose={onClose}>
+      {user ? <UserBody user={user} /> : q.isLoading ? <Skeleton width="100%" height={120} /> : q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>{t("The user could not be read.")}</ErrorFrame> : <EmptyFrame>{t("This user is not in the tenant. They may have been removed.")}</EmptyFrame>}
     </InspectorFrame>
   );
 }
@@ -454,14 +456,14 @@ function NewRole({ onClose }: { onClose: () => void }) {
   const { outcome, pending, run } = useOutcome();
   const [made, setMade] = useState<string | null>(null);
   return (
-    <InspectorFrame title="Create a role" status="New role" onClose={onClose}>
+    <InspectorFrame title={t("Create a role")} status={t("New role")} onClose={onClose}>
       <div className="m2-aform">
         <label>
-          Name
+          {t("Name")}
           <input value={name} onChange={(e) => setName(e.target.value)} />
         </label>
         <label>
-          Start as a copy of
+          {t("Start as a copy of")}
           <select value={from} onChange={(e) => setFrom(e.target.value)}>
             {(roles.data ?? []).map((r) => (
               <option key={r.key} value={r.key}>
@@ -471,7 +473,7 @@ function NewRole({ onClose }: { onClose: () => void }) {
           </select>
         </label>
         <label>
-          Description (optional)
+          {t("Description (optional)")}
           <input value={description} onChange={(e) => setDescription(e.target.value)} />
         </label>
       </div>
@@ -486,15 +488,15 @@ function NewRole({ onClose }: { onClose: () => void }) {
               const r = await api.createRole({ name: name.trim(), cloned_from: from, description: description.trim() || undefined });
               await refreshAdmin(qc, "roles");
               setMade(r.key);
-              return { tone: "ok", title: `Role ${r.name} created`, detail: "It starts as a copy. Open it to change what it may do." };
+              return { tone: "ok", title: t("Role {name} created", { name: r.name }), detail: t("It starts as a copy. Open it to change what it may do.") };
             })
           }
         >
-          {pending === "create" ? "Creating…" : "Create the role"}
+          {pending === "create" ? t("Creating…") : t("Create the role")}
         </button>
         {made ? (
           <button type="button" className="m2-btn" onClick={() => openItem({ kind: "role", id: made })}>
-            Open the role
+            {t("Open the role")}
           </button>
         ) : null}
       </Actions>
@@ -520,24 +522,24 @@ function RoleBody({ role }: { role: Role }) {
   return (
     <>
       <Facts>
-        <Fact label="Key">
+        <Fact label={t("Key")}>
           <span className="m2-mono">{role.key}</span>
         </Fact>
-        <Fact label="Type">{role.built_in ? "Built-in: fixed" : "Custom"}</Fact>
-        <Fact label="People">{role.users ?? 0}</Fact>
-        <Fact label="Last changed">{role.updated_at ? formatDate(role.updated_at, "datetime") : "Never"}</Fact>
-        {role.cloned_from ? <Fact label="Copied from">{roleLabel(role.cloned_from)}</Fact> : null}
+        <Fact label={t("Type")}>{role.built_in ? t("Built-in: fixed") : t("Custom")}</Fact>
+        <Fact label={t("People")}>{role.users ?? 0}</Fact>
+        <Fact label={t("Last changed")}>{role.updated_at ? formatDate(role.updated_at, "datetime") : t("Never")}</Fact>
+        {role.cloned_from ? <Fact label={t("Copied from")}>{roleText(role.cloned_from)}</Fact> : null}
       </Facts>
       {edit ? (
         <>
-          <h3>Name and description</h3>
+          <h3>{t("Name and description")}</h3>
           <div className="m2-aform">
             <label>
-              Name
+              {t("Name")}
               <input value={name} onChange={(e) => setName(e.target.value)} />
             </label>
             <label>
-              Description
+              {t("Description")}
               <input value={description} onChange={(e) => setDescription(e.target.value)} />
             </label>
           </div>
@@ -551,24 +553,24 @@ function RoleBody({ role }: { role: Role }) {
                   const prev = { name: role.name, description: role.description ?? "" };
                   await api.updateRole(role.key, { name: name.trim(), description: description.trim() });
                   await refreshAdmin(qc, "roles");
-                  done(`Role ${name.trim()} saved`, async () => {
+                  done(t("Role {name} saved", { name: name.trim() }), async () => {
                     await api.updateRole(role.key, prev);
                     await refreshAdmin(qc, "roles");
                   });
-                  return { tone: "ok", title: "Role saved" };
+                  return { tone: "ok", title: t("Role saved") };
                 })
               }
             >
-              Save the name
+              {t("Save the name")}
             </button>
           </div>
         </>
       ) : null}
-      <h3>{edit ? "What it may do" : "What it may do (fixed)"}</h3>
+      <h3>{edit ? t("What it may do") : t("What it may do (fixed)")}</h3>
       {matrix ? (
         <PermissionMatrix matrix={matrix} editable={edit} base={perms.data?.matrix} onToggle={(r, a, on) => setDraft({ ...matrix, [r]: { ...matrix[r], [a]: on } })} />
       ) : perms.isError ? (
-        <ErrorFrame onRetry={() => void perms.refetch()}>The permissions could not be read.</ErrorFrame>
+        <ErrorFrame onRetry={() => void perms.refetch()}>{t("The permissions could not be read.")}</ErrorFrame>
       ) : (
         <Skeleton width="100%" height={160} />
       )}
@@ -588,33 +590,33 @@ function RoleBody({ role }: { role: Role }) {
                   await api.putRolePermissions(role.key, matrixToPairs(draft));
                   await refreshAdmin(qc, "roles");
                   setDraft(null);
-                  done(`Permissions of ${role.name} saved`, async () => {
+                  done(t("Permissions of {name} saved", { name: role.name }), async () => {
                     await api.putRolePermissions(role.key, matrixToPairs(prev));
                     await refreshAdmin(qc, "roles");
                   });
-                  return { tone: "ok", title: "Permissions saved", detail: "They apply to everyone who holds the role, from their next request." };
+                  return { tone: "ok", title: t("Permissions saved"), detail: t("They apply to everyone who holds the role, from their next request.") };
                 })
               }
             >
-              {pending === "perm" ? "Saving…" : "Save permissions"}
+              {pending === "perm" ? t("Saving…") : t("Save permissions")}
             </button>
             <button type="button" className="m2-btn" disabled={!dirty} onClick={() => setDraft(null)}>
-              Reset
+              {t("Reset")}
             </button>
             <button type="button" className="m2-btn m2-crit" disabled={pending !== null} onClick={() => setAsk(true)}>
-              Delete the role
+              {t("Delete the role")}
             </button>
           </>
         ) : null}
         <button type="button" className="m2-btn" onClick={() => openItem({ kind: "role", id: "new" })}>
-          {role.built_in ? "Copy to change it" : "Copy this role"}
+          {role.built_in ? t("Copy to change it") : t("Copy this role")}
         </button>
       </Actions>
       {ask ? (
         <Confirm
-          title={`Delete ${role.name}`}
-          body={role.users ? `${role.users} ${role.users === 1 ? "person has" : "people have"} this role; the API refuses until they are moved.` : "The role is removed for good."}
-          confirm="Delete the role"
+          title={t("Delete {name}", { name: role.name })}
+          body={role.users ? t("{users} {users, plural, one {person has} other {people have}} this role; the API refuses until they are moved.", { users: role.users }) : t("The role is removed for good.")}
+          confirm={t("Delete the role")}
           danger
           pending={pending === "delete"}
           onCancel={() => setAsk(false)}
@@ -624,7 +626,7 @@ function RoleBody({ role }: { role: Role }) {
               await refreshAdmin(qc, "roles");
               setAsk(false);
               close();
-              return { tone: "ok", title: "Role deleted" };
+              return { tone: "ok", title: t("Role deleted") };
             })
           }
         />
@@ -638,8 +640,8 @@ export function RoleInspector({ id, onClose }: { id: string; onClose: () => void
   if (id === "new") return <NewRole onClose={onClose} />;
   const role = roles.data?.find((r) => r.key === id);
   return (
-    <InspectorFrame title={role?.name ?? "Role"} status={role ? (role.built_in ? "Built-in role" : "Custom role") : undefined} onClose={onClose}>
-      {role ? <RoleBody key={role.key} role={role} /> : roles.isLoading ? <Skeleton width="100%" height={120} /> : roles.isError ? <ErrorFrame onRetry={() => void roles.refetch()}>The role could not be read.</ErrorFrame> : <EmptyFrame>This role does not exist.</EmptyFrame>}
+    <InspectorFrame title={role?.name ?? t("Role")} status={role ? (role.built_in ? t("Built-in role") : t("Custom role")) : undefined} onClose={onClose}>
+      {role ? <RoleBody key={role.key} role={role} /> : roles.isLoading ? <Skeleton width="100%" height={120} /> : roles.isError ? <ErrorFrame onRetry={() => void roles.refetch()}>{t("The role could not be read.")}</ErrorFrame> : <EmptyFrame>{t("This role does not exist.")}</EmptyFrame>}
     </InspectorFrame>
   );
 }
@@ -657,35 +659,35 @@ function NewKey({ onClose }: { onClose: () => void }) {
   const [made, setMade] = useState<{ id: string; key: string } | null>(null);
   const [copied, setCopied] = useState(false);
   return (
-    <InspectorFrame title="Create an API key" status="New key" onClose={onClose}>
+    <InspectorFrame title={t("Create an API key")} status={t("New key")} onClose={onClose}>
       <div className="m2-aform">
         <label>
-          Name
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="BI export job" />
+          {t("Name")}
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("BI export job")} />
         </label>
         <label>
-          Expires (optional)
+          {t("Expires (optional)")}
           <input type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
         </label>
       </div>
-      <h3>Roles the key acts with</h3>
+      <h3>{t("Roles the key acts with")}</h3>
       {grants.map((g, i) => (
         <div key={i} style={{ marginBottom: 12 }}>
           <ScopeFields scope={g} onChange={(s) => setGrants(grants.map((x, j) => (j === i ? s : x)))} roles={roles.data ?? []} />
           {grants.length > 1 ? (
             <button type="button" className="m2-linkbtn" onClick={() => setGrants(grants.filter((_, j) => j !== i))}>
-              Remove this role
+              {t("Remove this role")}
             </button>
           ) : null}
         </div>
       ))}
       <button type="button" className="m2-btn m2-sm" onClick={() => setGrants([...grants, { role: "", system: "", module: "" }])}>
-        Add another role
+        {t("Add another role")}
       </button>
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       {made ? (
         <div role="status">
-          <h3>Your key. It is shown once.</h3>
+          <h3>{t("Your key. It is shown once.")}</h3>
           <p className="m2-secret" data-testid="new-key">{made.key}</p>
           <div className="m2-acts" style={{ marginTop: 8 }}>
             <button
@@ -693,10 +695,10 @@ function NewKey({ onClose }: { onClose: () => void }) {
               className="m2-btn m2-strong"
               onClick={() => void copyText(made.key).then((ok) => setCopied(ok))}
             >
-              {copied ? "Copied" : "Copy the key"}
+              {copied ? t("Copied") : t("Copy the key")}
             </button>
             <button type="button" className="m2-btn" onClick={() => openItem({ kind: "apikey", id: made.id })}>
-              Open the key
+              {t("Open the key")}
             </button>
           </div>
         </div>
@@ -711,11 +713,11 @@ function NewKey({ onClose }: { onClose: () => void }) {
               const k = await api.createApiKey({ name: name.trim(), grants: grants.map((g) => ({ role_key: g.role, system_id: g.system || null, module: g.module || null })), expires_at: expires ? `${expires}T23:59:59Z` : null });
               await refreshAdmin(qc, "apikeys");
               setMade({ id: k.id, key: k.key });
-              return { tone: "ok", title: `Key ${k.name} created`, detail: "Copy it now: it cannot be shown again." };
+              return { tone: "ok", title: t("Key {name} created", { name: k.name }), detail: t("Copy it now: it cannot be shown again.") };
             })
           }
         >
-          {pending === "create" ? "Creating…" : "Create the key"}
+          {pending === "create" ? t("Creating…") : t("Create the key")}
         </button>
       </Actions>
     </InspectorFrame>
@@ -732,33 +734,33 @@ function KeyBody({ k }: { k: ApiKey }) {
   return (
     <>
       <Facts>
-        <Fact label="Key">
+        <Fact label={t("Key")}>
           <span className="m2-mono">{`${k.key_prefix}…`}</span>
         </Fact>
-        <Fact label="Status">{labelOf(k.status)}</Fact>
-        <Fact label="Roles">{keyRoles(k)}</Fact>
-        <Fact label="Created">{`${formatDate(k.created_at)}${k.created_by_name ? ` by ${k.created_by_name}` : ""}`}</Fact>
-        <Fact label="Last used">{k.last_used_at ? `${formatDate(k.last_used_at, "datetime")}, ${since(k.last_used_at)}` : "Never used"}</Fact>
-        <Fact label="Expires">{k.expires_at ? formatDate(k.expires_at) : "Never"}</Fact>
-        {k.revoked_at ? <Fact label="Revoked">{formatDate(k.revoked_at, "datetime")}</Fact> : null}
+        <Fact label={t("Status")}>{labelText(k.status)}</Fact>
+        <Fact label={t("Roles")}>{keyRoles(k)}</Fact>
+        <Fact label={t("Created")}>{`${formatDate(k.created_at)}${k.created_by_name ? t(" by {created_by_name}", { created_by_name: k.created_by_name }) : ""}`}</Fact>
+        <Fact label={t("Last used")}>{k.last_used_at ? `${formatDate(k.last_used_at, "datetime")}, ${since(k.last_used_at)}` : t("Never used")}</Fact>
+        <Fact label={t("Expires")}>{k.expires_at ? formatDate(k.expires_at) : t("Never")}</Fact>
+        {k.revoked_at ? <Fact label={t("Revoked")}>{formatDate(k.revoked_at, "datetime")}</Fact> : null}
       </Facts>
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       <Actions>
         {k.status === "active" ? (
           <button type="button" className="m2-btn m2-crit" disabled={!edit || pending !== null} onClick={() => setAsk("revoke")}>
-            Revoke the key
+            {t("Revoke the key")}
           </button>
         ) : null}
         <button type="button" className="m2-btn" disabled={!edit || pending !== null} onClick={() => setAsk("delete")}>
-          Delete the key
+          {t("Delete the key")}
         </button>
       </Actions>
-      <p className="m2-prov">A revoked key stops working at once and cannot be restored. Its name stays in the audit log.</p>
+      <p className="m2-prov">{t("A revoked key stops working at once and cannot be restored. Its name stays in the audit log.")}</p>
       {ask === "revoke" ? (
         <Confirm
-          title={`Revoke ${k.name}`}
-          body="Anything using this key stops working at once. This cannot be undone: create a new key instead."
-          confirm="Revoke the key"
+          title={t("Revoke {name}", { name: k.name })}
+          body={t("Anything using this key stops working at once. This cannot be undone: create a new key instead.")}
+          confirm={t("Revoke the key")}
           danger
           pending={pending === "revoke"}
           onCancel={() => setAsk(null)}
@@ -767,16 +769,16 @@ function KeyBody({ k }: { k: ApiKey }) {
               await api.revokeApiKey(k.id);
               await refreshAdmin(qc, "apikeys");
               setAsk(null);
-              return { tone: "ok", title: "Key revoked" };
+              return { tone: "ok", title: t("Key revoked") };
             })
           }
         />
       ) : null}
       {ask === "delete" ? (
         <Confirm
-          title={`Delete ${k.name}`}
-          body="The key and its service account are removed. Its entries in the audit log stay."
-          confirm="Delete the key"
+          title={t("Delete {name}", { name: k.name })}
+          body={t("The key and its service account are removed. Its entries in the audit log stay.")}
+          confirm={t("Delete the key")}
           danger
           pending={pending === "delete"}
           onCancel={() => setAsk(null)}
@@ -786,7 +788,7 @@ function KeyBody({ k }: { k: ApiKey }) {
               await refreshAdmin(qc, "apikeys");
               setAsk(null);
               close();
-              return { tone: "ok", title: "Key deleted" };
+              return { tone: "ok", title: t("Key deleted") };
             })
           }
         />
@@ -800,8 +802,8 @@ export function ApiKeyInspector({ id, onClose }: { id: string; onClose: () => vo
   if (id === "new") return <NewKey onClose={onClose} />;
   const k = q.data?.find((x) => x.id === id);
   return (
-    <InspectorFrame title={k?.name ?? "API key"} status={k ? `${labelOf(k.status)} key` : undefined} onClose={onClose}>
-      {k ? <KeyBody k={k} /> : q.isLoading ? <Skeleton width="100%" height={120} /> : q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>The key could not be read.</ErrorFrame> : <EmptyFrame>This key does not exist. It may have been deleted.</EmptyFrame>}
+    <InspectorFrame title={k?.name ?? t("API key")} status={k ? t("{labelText} key", { labelText: labelText(k.status) }) : undefined} onClose={onClose}>
+      {k ? <KeyBody k={k} /> : q.isLoading ? <Skeleton width="100%" height={120} /> : q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>{t("The key could not be read.")}</ErrorFrame> : <EmptyFrame>{t("This key does not exist. It may have been deleted.")}</EmptyFrame>}
     </InspectorFrame>
   );
 }

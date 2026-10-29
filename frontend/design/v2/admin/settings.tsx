@@ -6,13 +6,16 @@ import type { CostModel, DimensionScores, PlannerConfig } from "@/types/api";
 import type { RetentionPolicy, RetentionPreviewItem, RetentionResponse, TenantPurgeRequest } from "@/lib/api/retention";
 import type { ScoringConfig, ScoringResponse } from "@/lib/api/settings";
 import * as api from "@/lib/api/v2/admin";
-import { formatDate, formatModuleName, labelOf } from "@/lib/format";
+import { formatDate, formatModuleName } from "@/lib/format";
 import { refreshAdmin, useCostModel, usePurgeLog, useRetention, useScoring, useTenantSettings } from "@/lib/v2/admin-queries";
 import { fixed } from "@/lib/v2/format";
 import { useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import { AdminPage, Block, Confirm, Fld, Kv, Loaded, NeedsPermission, Note, Sw, useCan, useDone } from "./kit";
+import { AppearanceBlock, ComplianceBlock } from "./enterprise";
+import { t as tr } from "@/lib/v2/i18n";
+import { labelText } from "@/lib/v2/labels";
 
 const DIMS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"] as const;
 const DAMA: DimensionScores = { completeness: 0.25, accuracy: 0.25, consistency: 0.2, timeliness: 0.1, uniqueness: 0.1, validity: 0.1 };
@@ -60,77 +63,77 @@ function ScoringBlock({ s }: { s: ScoringResponse }) {
     void run(key, async () => {
       await api.putScoring({ ...before, ...patch });
       await refreshAdmin(qc, "settings");
-      done(`${title}. They apply from the next analysis run`, async () => {
+      done(tr("{title}. They apply from the next analysis run", { title }), async () => {
         await api.putScoring({ ...before, ...restore });
         await refreshAdmin(qc, "settings");
       });
-      return { tone: "ok", title, detail: "Earlier runs keep the scoring they were scored under." };
+      return { tone: "ok", title, detail: tr("Earlier runs keep the scoring they were scored under.") };
     });
   return (
     <>
-      <Block title="Dimension weights" hint="The score is each measured dimension times its weight. The weights must add up to 100.">
+      <Block title={tr("Dimension weights")} hint={tr("The score is each measured dimension times its weight. The weights must add up to 100.")}>
         <div className="m2-fgrid" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
           {DIMS.map((d) => (
-            <Fld key={d} label={`${labelOf(d)} weight, percent`} error={okNum(w[d], 0, 100) ? null : "0 to 100"}>
+            <Fld key={d} label={tr("{labelText} weight, percent", { labelText: labelText(d) })} error={okNum(w[d], 0, 100) ? null : tr("0 to 100")}>
               <input type="number" min={0} max={100} step={1} value={w[d]} onChange={(e) => setW({ ...w, [d]: e.target.value })} />
             </Fld>
           ))}
         </div>
-        <p className="m2-prov" role="status">{weightsOk ? "The weights add up to 100." : `The weights add up to ${fixed(sum, 1)}. Adjust them to 100 to save.`}</p>
+        <p className="m2-prov" role="status">{weightsOk ? tr("The weights add up to 100.") : tr("The weights add up to {sum}. Adjust them to 100 to save.", { sum: fixed(sum, 1) })}</p>
         <div className="m2-adm-acts" style={{ marginTop: 8 }}>
-          <button type="button" className="m2-btn" disabled={!weightsOk || pending !== null} onClick={() => save("weights", "Weights saved", { dimension_weights: Object.fromEntries(DIMS.map((d) => [d, num(w[d])])) as unknown as DimensionScores }, { dimension_weights: s.dimension_weights })}>
-            {pending === "weights" ? "Saving…" : "Save weights"}
+          <button type="button" className="m2-btn" disabled={!weightsOk || pending !== null} onClick={() => save("weights", tr("Weights saved"), { dimension_weights: Object.fromEntries(DIMS.map((d) => [d, num(w[d])])) as unknown as DimensionScores }, { dimension_weights: s.dimension_weights })}>
+            {pending === "weights" ? tr("Saving…") : tr("Save weights")}
           </button>
           <button type="button" className="m2-btn m2-ghost" onClick={() => setW(Object.fromEntries(DIMS.map((d) => [d, String(toPercent(DAMA)[d])])))}>
-            Use the DAMA defaults
+            {tr("Use the DAMA defaults")}
           </button>
         </div>
       </Block>
-      <Block title="Score bands" hint="At or above target is on target (go), at or above warning is at risk, below that is failing. Critical marks the line below which an object is failing badly.">
+      <Block title={tr("Score bands")} hint={tr("At or above target is on target (go), at or above warning is at risk, below that is failing. Critical marks the line below which an object is failing badly.")}>
         <div className="m2-fgrid" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
           {(["target", "warning", "critical"] as const).map((k) => (
-            <Fld key={k} label={labelOf(k)}>
+            <Fld key={k} label={labelText(k)}>
               <input type="number" min={0} max={100} value={bands[k]} onChange={(e) => setBands({ ...bands, [k]: e.target.value })} />
             </Fld>
           ))}
         </div>
-        {!bandsOk ? <p className="m2-prov" role="alert">Critical must not exceed warning, and warning must not exceed target.</p> : null}
+        {!bandsOk ? <p className="m2-prov" role="alert">{tr("Critical must not exceed warning, and warning must not exceed target.")}</p> : null}
         <div className="m2-adm-acts" style={{ marginTop: 8 }}>
-          <button type="button" className="m2-btn" disabled={!bandsOk || pending !== null} onClick={() => save("bands", "Score bands saved", { thresholds: { target: num(bands.target), warning: num(bands.warning), critical: num(bands.critical) } }, { thresholds: s.thresholds })}>
-            {pending === "bands" ? "Saving…" : "Save bands"}
+          <button type="button" className="m2-btn" disabled={!bandsOk || pending !== null} onClick={() => save("bands", tr("Score bands saved"), { thresholds: { target: num(bands.target), warning: num(bands.warning), critical: num(bands.critical) } }, { thresholds: s.thresholds })}>
+            {pending === "bands" ? tr("Saving…") : tr("Save bands")}
           </button>
           <button type="button" className="m2-btn m2-ghost" onClick={() => setBands({ target: String(s.defaults.thresholds.target), warning: String(s.defaults.thresholds.warning), critical: String(s.defaults.thresholds.critical) })}>
-            Use the default bands
+            {tr("Use the default bands")}
           </button>
         </div>
       </Block>
-      <Block title="Cap rule and tolerance" hint="One critical rule failing beyond its tolerance holds that object at 85; two or more hold it at 70. The caps are fixed. The tolerance says how many failing records count as beyond.">
+      <Block title={tr("Cap rule and tolerance")} hint={tr("One critical rule failing beyond its tolerance holds that object at 85; two or more hold it at 70. The caps are fixed. The tolerance says how many failing records count as beyond.")}>
         <div className="m2-fgrid">
-          <Fld label="Failing share, percent" hint="At or above this share of the records checked." error={okNum(tol.pct, 0, 100) ? null : "0 to 100"}>
+          <Fld label={tr("Failing share, percent")} hint={tr("At or above this share of the records checked.")} error={okNum(tol.pct, 0, 100) ? null : tr("0 to 100")}>
             <input type="number" min={0} max={100} step={0.05} value={tol.pct} onChange={(e) => setTol({ ...tol, pct: e.target.value })} />
           </Fld>
-          <Fld label="Failing records" hint="Or at or above this count, when it is the lower bar." error={okNum(tol.rows, 0) ? null : "0 or more"}>
+          <Fld label={tr("Failing records")} hint={tr("Or at or above this count, when it is the lower bar.")} error={okNum(tol.rows, 0) ? null : tr("0 or more")}>
             <input type="number" min={0} step={1} value={tol.rows} onChange={(e) => setTol({ ...tol, rows: e.target.value })} />
           </Fld>
         </div>
         <div className="m2-frame" tabIndex={0} style={{ marginTop: 12, maxWidth: 520 }}>
-          <table className="m2-tbl" aria-label="Severity weights">
+          <table className="m2-tbl" aria-label={tr("Severity weights")}>
             <thead>
               <tr>
-                <th scope="col">Severity</th>
-                <th scope="col">Rule weight</th>
-                <th scope="col">Failure multiplier</th>
+                <th scope="col">{tr("Severity")}</th>
+                <th scope="col">{tr("Rule weight")}</th>
+                <th scope="col">{tr("Failure multiplier")}</th>
               </tr>
             </thead>
             <tbody>
               {Object.keys(sev).map((k) => (
                 <tr key={k}>
-                  <th scope="row">{labelOf(k)}</th>
+                  <th scope="row">{labelText(k)}</th>
                   <td>
-                    <input className="m2-inp" type="number" min={0} step={0.5} aria-label={`${labelOf(k)} rule weight`} value={sev[k].weight} onChange={(e) => setSev({ ...sev, [k]: { ...sev[k], weight: e.target.value } })} />
+                    <input className="m2-inp" type="number" min={0} step={0.5} aria-label={tr("{k} rule weight", { k: labelText(k) })} value={sev[k].weight} onChange={(e) => setSev({ ...sev, [k]: { ...sev[k], weight: e.target.value } })} />
                   </td>
                   <td>
-                    <input className="m2-inp" type="number" min={1} step={0.5} aria-label={`${labelOf(k)} failure multiplier`} value={sev[k].mult} onChange={(e) => setSev({ ...sev, [k]: { ...sev[k], mult: e.target.value } })} />
+                    <input className="m2-inp" type="number" min={1} step={0.5} aria-label={tr("{k} failure multiplier", { k: labelText(k) })} value={sev[k].mult} onChange={(e) => setSev({ ...sev, [k]: { ...sev[k], mult: e.target.value } })} />
                   </td>
                 </tr>
               ))}
@@ -145,13 +148,13 @@ function ScoringBlock({ s }: { s: ScoringResponse }) {
             onClick={() =>
               save(
                 "tolerance",
-                "Tolerance saved",
+                tr("Tolerance saved"),
                 { critical_tolerance: { pct: num(tol.pct), rows: num(tol.rows) }, severity_weights: Object.fromEntries(Object.entries(sev).map(([k, v]) => [k, num(v.weight)])), severity_multipliers: Object.fromEntries(Object.entries(sev).map(([k, v]) => [k, num(v.mult)])) },
                 { critical_tolerance: s.critical_tolerance, severity_weights: s.severity_weights, severity_multipliers: s.severity_multipliers },
               )
             }
           >
-            {pending === "tolerance" ? "Saving…" : "Save tolerance"}
+            {pending === "tolerance" ? tr("Saving…") : tr("Save tolerance")}
           </button>
         </div>
       </Block>
@@ -195,51 +198,51 @@ function CostBlock({ model }: { model: CostModel }) {
       };
       await api.putCostModel(next);
       await refreshAdmin(qc, "settings");
-      return { tone: "ok", title: "Cost model saved", detail: "It applies from the next analysis or re-analysis." };
+      return { tone: "ok", title: tr("Cost model saved"), detail: tr("It applies from the next analysis or re-analysis.") };
     });
   return (
-    <Block title="Cost model and currency" hint="What a defect costs, in one currency: every value at risk, ROI and planner figure is in it.">
+    <Block title={tr("Cost model and currency")} hint={tr("What a defect costs, in one currency: every value at risk, ROI and planner figure is in it.")}>
       <div className="m2-fgrid">
-        <Fld label="Currency" hint="Three-letter ISO 4217 code, such as ZAR, EUR or USD." error={/^[A-Z]{3}$/.test(currency) ? null : "Use three capital letters"}>
+        <Fld label={tr("Currency")} hint={tr("Three-letter ISO 4217 code, such as ZAR, EUR or USD.")} error={/^[A-Z]{3}$/.test(currency) ? null : tr("Use three capital letters")}>
           <input value={currency} maxLength={3} onChange={(e) => setCurrency(e.target.value.toUpperCase())} />
         </Fld>
-        <Fld label="Monthly subscription" hint="What the ROI divides by. Empty means no ROI multiple." error={sub.trim() === "" || okNum(sub) ? null : "0 or more, or empty"}>
+        <Fld label={tr("Monthly subscription")} hint={tr("What the ROI divides by. Empty means no ROI multiple.")} error={sub.trim() === "" || okNum(sub) ? null : tr("0 or more, or empty")}>
           <input type="number" min={0} value={sub} onChange={(e) => setSub(e.target.value)} />
         </Fld>
       </div>
-      <h3 className="m2-h2" style={{ margin: "16px 0 4px" }}>Cost of one blocked record, by severity</h3>
+      <h3 className="m2-h2" style={{ margin: "16px 0 4px" }}>{tr("Cost of one blocked record, by severity")}</h3>
       <div className="m2-fgrid" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
         {Object.keys(sev).map((k) => (
-          <Fld key={k} label={`${labelOf(k)} finding cost`}>
+          <Fld key={k} label={tr("{k} finding cost", { k: labelText(k) })}>
             <input type="number" min={0} value={sev[k]} onChange={(e) => setSev({ ...sev, [k]: e.target.value })} />
           </Fld>
         ))}
       </div>
-      <h3 className="m2-h2" style={{ margin: "16px 0 4px" }}>Value of one blocked record, by SAP feature</h3>
+      <h3 className="m2-h2" style={{ margin: "16px 0 4px" }}>{tr("Value of one blocked record, by SAP feature")}</h3>
       <div className="m2-frame" tabIndex={0} style={{ maxWidth: 520 }}>
-        <table className="m2-tbl" aria-label="Value per blocked record by SAP feature">
+        <table className="m2-tbl" aria-label={tr("Value per blocked record by SAP feature")}>
           <thead>
             <tr>
-              <th scope="col">SAP feature</th>
-              <th scope="col">Value per record</th>
+              <th scope="col">{tr("SAP feature")}</th>
+              <th scope="col">{tr("Value per record")}</th>
               <th scope="col" />
             </tr>
           </thead>
           <tbody>
             {Object.keys(feat).length === 0 ? (
               <tr>
-                <td colSpan={3} className="m2-meta">No feature has a value yet</td>
+                <td colSpan={3} className="m2-meta">{tr("No feature has a value yet")}</td>
               </tr>
             ) : (
               Object.keys(feat).sort().map((f) => (
                 <tr key={f}>
                   <th scope="row">{f}</th>
                   <td>
-                    <input className="m2-inp" type="number" min={0} aria-label={`${f} value per record`} value={feat[f]} onChange={(e) => setFeat({ ...feat, [f]: e.target.value })} />
+                    <input className="m2-inp" type="number" min={0} aria-label={tr("{f} value per record", { f })} value={feat[f]} onChange={(e) => setFeat({ ...feat, [f]: e.target.value })} />
                   </td>
                   <td className="m2-r">
                     <button type="button" className="m2-btn m2-sm m2-ghost" onClick={() => setFeat(Object.fromEntries(Object.entries(feat).filter(([k]) => k !== f)))}>
-                      Remove
+                      {tr("Remove")}
                     </button>
                   </td>
                 </tr>
@@ -250,9 +253,9 @@ function CostBlock({ model }: { model: CostModel }) {
       </div>
       {unpriced.length ? (
         <div className="m2-fbar" style={{ marginTop: 8 }}>
-          <Fld label="Add a value for">
+          <Fld label={tr("Add a value for")}>
             <select value={addFeature} onChange={(e) => setAddFeature(e.target.value)}>
-              <option value="">Pick an SAP feature</option>
+              <option value="">{tr("Pick an SAP feature")}</option>
               {unpriced.map((f) => (
                 <option key={f} value={f}>
                   {f}
@@ -261,30 +264,30 @@ function CostBlock({ model }: { model: CostModel }) {
             </select>
           </Fld>
           <button type="button" className="m2-btn" disabled={!addFeature} onClick={() => (setFeat({ ...feat, [addFeature]: "0" }), setAddFeature(""))}>
-            Add
+            {tr("Add")}
           </button>
         </div>
       ) : null}
       {Object.keys(impact).length ? (
         <>
-          <h3 className="m2-h2" style={{ margin: "16px 0 4px" }}>Business-impact defects</h3>
+          <h3 className="m2-h2" style={{ margin: "16px 0 4px" }}>{tr("Business-impact defects")}</h3>
           <div className="m2-frame" tabIndex={0}>
-            <table className="m2-tbl" aria-label="Business impact defects">
+            <table className="m2-tbl" aria-label={tr("Business impact defects")}>
               <thead>
                 <tr>
-                  <th scope="col">Defect</th>
-                  <th scope="col">Unit cost</th>
-                  <th scope="col">Factor</th>
-                  <th scope="col">Mitigation, percent</th>
+                  <th scope="col">{tr("Defect")}</th>
+                  <th scope="col">{tr("Unit cost")}</th>
+                  <th scope="col">{tr("Factor")}</th>
+                  <th scope="col">{tr("Mitigation, percent")}</th>
                 </tr>
               </thead>
               <tbody>
                 {Object.keys(impact).map((k) => (
                   <tr key={k}>
-                    <th scope="row">{labelOf(k)}</th>
+                    <th scope="row">{labelText(k)}</th>
                     {(["unit", "factor", "mit"] as const).map((f) => (
                       <td key={f}>
-                        <input className="m2-inp" type="number" min={0} aria-label={`${labelOf(k)} ${f === "unit" ? "unit cost" : f === "factor" ? "factor" : "mitigation"}`} value={impact[k][f]} onChange={(e) => setImpact({ ...impact, [k]: { ...impact[k], [f]: e.target.value } })} />
+                        <input className="m2-inp" type="number" min={0} aria-label={`${labelText(k)} ${f === "unit" ? tr("unit cost") : f === "factor" ? "factor" : "mitigation"}`} value={impact[k][f]} onChange={(e) => setImpact({ ...impact, [k]: { ...impact[k], [f]: e.target.value } })} />
                       </td>
                     ))}
                   </tr>
@@ -296,10 +299,10 @@ function CostBlock({ model }: { model: CostModel }) {
       ) : null}
       {Object.keys(align).length ? (
         <>
-          <h3 className="m2-h2" style={{ margin: "16px 0 4px" }}>Configuration findings</h3>
+          <h3 className="m2-h2" style={{ margin: "16px 0 4px" }}>{tr("Configuration findings")}</h3>
           <div className="m2-fgrid" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
             {Object.keys(align).map((k) => (
-              <Fld key={k} label={`${labelOf(k)}, per unit`}>
+              <Fld key={k} label={tr("{k}, per unit", { k: labelText(k) })}>
                 <input type="number" min={0} value={align[k]} onChange={(e) => setAlign({ ...align, [k]: e.target.value })} />
               </Fld>
             ))}
@@ -309,7 +312,7 @@ function CostBlock({ model }: { model: CostModel }) {
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       <div className="m2-adm-acts">
         <button type="button" className="m2-btn" disabled={!valid || pending !== null} onClick={save}>
-          {pending === "cost" ? "Saving…" : "Save cost model"}
+          {pending === "cost" ? tr("Saving…") : tr("Save cost model")}
         </button>
       </div>
     </Block>
@@ -333,14 +336,14 @@ function PlannerBlock({ initial, currency }: { initial: PlannerConfig; currency:
     </Fld>
   );
   return (
-    <Block title="Planner assumptions" hint="The next-sprint planner ranks open work by severity-weighted records per hour. Money appears only when you state what one failing record costs you.">
+    <Block title={tr("Planner assumptions")} hint={tr("The next-sprint planner ranks open work by severity-weighted records per hour. Money appears only when you state what one failing record costs you.")}>
       <div className="m2-fgrid" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
-        {field("minutes_per_record", "Minutes per record")}
-        {field("investigation_hours", "Hours per finding")}
-        {field("exception_hours", "Hours per exception")}
-        {field("sprint_hours", "Sprint capacity, hours", 1)}
-        <Fld label={currency ? `Cost per failing record (${currency})` : "Cost per failing record"}>
-          <input type="number" min={0} value={p.cost_per_record} placeholder="Not set" onChange={(e) => setP({ ...p, cost_per_record: e.target.value })} />
+        {field("minutes_per_record", tr("Minutes per record"))}
+        {field("investigation_hours", tr("Hours per finding"))}
+        {field("exception_hours", tr("Hours per exception"))}
+        {field("sprint_hours", tr("Sprint capacity, hours"), 1)}
+        <Fld label={currency ? tr("Cost per failing record ({currency})", { currency }) : tr("Cost per failing record")}>
+          <input type="number" min={0} value={p.cost_per_record} placeholder={tr("Not set")} onChange={(e) => setP({ ...p, cost_per_record: e.target.value })} />
         </Fld>
       </div>
       {outcome ? <ResultFrame outcome={outcome} /> : null}
@@ -353,11 +356,11 @@ function PlannerBlock({ initial, currency }: { initial: PlannerConfig; currency:
             void run("planner", async () => {
               await api.savePlanner({ ...initial, minutes_per_record: num(p.minutes_per_record), investigation_hours: num(p.investigation_hours), exception_hours: num(p.exception_hours), sprint_hours: num(p.sprint_hours), cost_per_record: p.cost_per_record === "" ? null : num(p.cost_per_record) });
               await refreshAdmin(qc, "settings");
-              return { tone: "ok", title: "Planner assumptions saved" };
+              return { tone: "ok", title: tr("Planner assumptions saved") };
             })
           }
         >
-          {pending === "planner" ? "Saving…" : "Save assumptions"}
+          {pending === "planner" ? tr("Saving…") : tr("Save assumptions")}
         </button>
       </div>
     </Block>
@@ -384,25 +387,25 @@ function RetentionBlock({ data }: { data: RetentionResponse }) {
   const policy = (): RetentionPolicy => ({ versions_days: daysOf(f.versions), reports_days: daysOf(f.reports), audit_days: daysOf(f.audit), keep_baseline: f.baseline, keep_latest_per_system: Number(f.keep) });
   const e = data.enforcement;
   return (
-    <Block title="Retention" hint="How long runs, reports and audit rows are kept. Archived runs past the limit are purged for good by the nightly task. Empty means for ever.">
+    <Block title={tr("Retention")} hint={tr("How long runs, reports and audit rows are kept. Archived runs past the limit are purged for good by the nightly task. Empty means for ever.")}>
       <div className="m2-fgrid" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
-        <Fld label="Keep runs, days" error={days(f.versions) ? null : "A whole number of days"}>
+        <Fld label={tr("Keep runs, days")} error={days(f.versions) ? null : tr("A whole number of days")}>
           <input type="number" min={1} value={f.versions} onChange={(ev) => setF({ ...f, versions: ev.target.value })} />
         </Fld>
-        <Fld label="Keep reports, days" error={days(f.reports) ? null : "A whole number of days"}>
+        <Fld label={tr("Keep reports, days")} error={days(f.reports) ? null : tr("A whole number of days")}>
           <input type="number" min={1} value={f.reports} onChange={(ev) => setF({ ...f, reports: ev.target.value })} />
         </Fld>
-        <Fld label="Keep audit rows, days" error={days(f.audit) ? null : "A whole number of days"}>
+        <Fld label={tr("Keep audit rows, days")} error={days(f.audit) ? null : tr("A whole number of days")}>
           <input type="number" min={1} value={f.audit} onChange={(ev) => setF({ ...f, audit: ev.target.value })} />
         </Fld>
-        <Fld label="Latest runs kept per system">
+        <Fld label={tr("Latest runs kept per system")}>
           <input type="number" min={0} value={f.keep} onChange={(ev) => setF({ ...f, keep: ev.target.value })} />
         </Fld>
       </div>
       <div style={{ marginTop: 12 }}>
-        <Sw checked={f.baseline} onChange={(v) => setF({ ...f, baseline: v })} label="Keep the baseline run" />
+        <Sw checked={f.baseline} onChange={(v) => setF({ ...f, baseline: v })} label={tr("Keep the baseline run")} />
       </div>
-      <p className="m2-prov">{e.enforced ? "Purges run for real each night under this policy." : `Purges are in rehearsal: the nightly task only logs what it would delete${e.dry_run_until ? ` until ${formatDate(e.dry_run_until)}` : ""}${e.flag_enabled ? "" : ", and deletion is switched off on this deployment"}.`}</p>
+      <p className="m2-prov">{e.enforced ? tr("Purges run for real each night under this policy.") : tr("Purges are in rehearsal: the nightly task only logs what it would delete{value}{value2}.", { value: e.dry_run_until ? tr(" until {dry_run_until}", { dry_run_until: formatDate(e.dry_run_until) }) : "", value2: e.flag_enabled ? "" : tr(", and deletion is switched off on this deployment") })}</p>
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       <div className="m2-adm-acts">
         <button
@@ -414,15 +417,15 @@ function RetentionBlock({ data }: { data: RetentionResponse }) {
               const prev = data.policy;
               await api.putRetention(policy());
               await refreshAdmin(qc, "settings");
-              done("Retention policy saved", async () => {
+              done(tr("Retention policy saved"), async () => {
                 await api.putRetention(prev);
                 await refreshAdmin(qc, "settings");
               });
-              return { tone: "ok", title: "Retention policy saved", detail: "The rehearsal window restarts under the new policy." };
+              return { tone: "ok", title: tr("Retention policy saved"), detail: tr("The rehearsal window restarts under the new policy.") };
             })
           }
         >
-          {pending === "retention" ? "Saving…" : "Save policy"}
+          {pending === "retention" ? tr("Saving…") : tr("Save policy")}
         </button>
         <button
           type="button"
@@ -432,35 +435,35 @@ function RetentionBlock({ data }: { data: RetentionResponse }) {
             void run("preview", async () => {
               const r = await api.previewRetentionDraft(policy());
               setItems(r);
-              return { tone: "info", title: r.length ? `${r.length} ${r.length === 1 ? "run" : "runs"} would be purged` : "Nothing would be purged", detail: "Nothing is deleted by a preview." };
+              return { tone: "info", title: r.length ? tr("{rCount} {rCount, plural, one {run} other {runs}} would be purged", { rCount: r.length }) : tr("Nothing would be purged"), detail: tr("Nothing is deleted by a preview.") };
             })
           }
         >
-          {pending === "preview" ? "Checking…" : "Preview what would be purged"}
+          {pending === "preview" ? tr("Checking…") : tr("Preview what would be purged")}
         </button>
       </div>
       {items && items.length ? (
         <div className="m2-frame" tabIndex={0} style={{ marginTop: 12 }}>
-          <table className="m2-tbl" aria-label="Runs past the policy">
+          <table className="m2-tbl" aria-label={tr("Runs past the policy")}>
             <thead>
               <tr>
-                <th scope="col">Run</th>
-                <th scope="col">Started</th>
-                <th scope="col">Rows</th>
-                <th scope="col" className="m2-r">Storage</th>
+                <th scope="col">{tr("Run")}</th>
+                <th scope="col">{tr("Started")}</th>
+                <th scope="col">{tr("Rows")}</th>
+                <th scope="col" className="m2-r">{tr("Storage")}</th>
                 <th scope="col" />
               </tr>
             </thead>
             <tbody>
               {items.map((i) => (
                 <tr key={i.version_id}>
-                  <td>{i.label ?? `Run of ${i.run_at ? formatDate(i.run_at) : i.version_id.slice(0, 8)}`}</td>
+                  <td>{i.label ?? tr("Run of {value}", { value: i.run_at ? formatDate(i.run_at) : i.version_id.slice(0, 8) })}</td>
                   <td>{i.run_at ? formatDate(i.run_at, "datetime") : "—"}</td>
                   <td style={{ whiteSpace: "normal" }}>{i.blocked_reason ?? rowsText(i.rows_by_table)}</td>
                   <td className="m2-r">{bytes(i.bytes_freed)}</td>
                   <td className="m2-r">
                     <button type="button" className="m2-btn m2-sm m2-crit" disabled={!!i.blocked_reason} onClick={() => setPurging(i)}>
-                      Purge this run
+                      {tr("Purge this run")}
                     </button>
                   </td>
                 </tr>
@@ -469,31 +472,31 @@ function RetentionBlock({ data }: { data: RetentionResponse }) {
           </table>
         </div>
       ) : null}
-      <h3 className="m2-h2" style={{ margin: "16px 0 4px" }}>Purge log</h3>
-      <Loaded q={log} what="The purge log" rows={2}>
+      <h3 className="m2-h2" style={{ margin: "16px 0 4px" }}>{tr("Purge log")}</h3>
+      <Loaded q={log} what={tr("The purge log")} rows={2}>
         {(entries) =>
           entries.length === 0 ? (
-            <p className="m2-prov">No purge yet. Rehearsals and purges appear here with the rows removed per table.</p>
+            <p className="m2-prov">{tr("No purge yet. Rehearsals and purges appear here with the rows removed per table.")}</p>
           ) : (
             <div className="m2-frame" tabIndex={0}>
-              <table className="m2-tbl" aria-label="Purge log">
+              <table className="m2-tbl" aria-label={tr("Purge log")}>
                 <thead>
                   <tr>
-                    <th scope="col">When</th>
-                    <th scope="col">What</th>
-                    <th scope="col">Mode</th>
-                    <th scope="col">Rows</th>
-                    <th scope="col">By</th>
+                    <th scope="col">{tr("When")}</th>
+                    <th scope="col">{tr("What")}</th>
+                    <th scope="col">{tr("Mode")}</th>
+                    <th scope="col">{tr("Rows")}</th>
+                    <th scope="col">{tr("By")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {entries.map((p) => (
                     <tr key={p.id}>
                       <td>{formatDate(p.created_at, "datetime")}</td>
-                      <td>{labelOf(p.kind)}</td>
-                      <td>{p.dry_run ? "Rehearsal" : "Deleted"}</td>
+                      <td>{labelText(p.kind)}</td>
+                      <td>{p.dry_run ? tr("Rehearsal") : tr("Deleted")}</td>
                       <td style={{ whiteSpace: "normal" }}>{p.blocked_reason ?? rowsText(p.rows_by_table)}</td>
-                      <td>{p.actor_email ?? "Scheduler"}</td>
+                      <td>{p.actor_email ?? tr("Scheduler")}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -504,9 +507,9 @@ function RetentionBlock({ data }: { data: RetentionResponse }) {
       </Loaded>
       {purging ? (
         <Confirm
-          title="Purge this run for good"
-          body={`This deletes the run and its findings (${rowsText(purging.rows_by_table)}). It cannot be undone.`}
-          confirm="Purge the run"
+          title={tr("Purge this run for good")}
+          body={tr("This deletes the run and its findings ({rowsText}). It cannot be undone.", { rowsText: rowsText(purging.rows_by_table) })}
+          confirm={tr("Purge the run")}
           danger
           phrase={purging.label ?? purging.version_id}
           pending={pending === "purge"}
@@ -517,7 +520,7 @@ function RetentionBlock({ data }: { data: RetentionResponse }) {
               setPurging(null);
               setItems((cur) => (cur ?? []).filter((x) => x.version_id !== purging.version_id));
               await refreshAdmin(qc, "settings");
-              return r.blocked_reason ? { tone: "fail", title: "The run was not purged", detail: r.blocked_reason } : { tone: "ok", title: "Run purged", detail: bytes(r.bytes_freed) + " freed." };
+              return r.blocked_reason ? { tone: "fail", title: tr("The run was not purged"), detail: r.blocked_reason } : { tone: "ok", title: tr("Run purged"), detail: bytes(r.bytes_freed) + " freed." };
             })
           }
         />
@@ -528,6 +531,7 @@ function RetentionBlock({ data }: { data: RetentionResponse }) {
 
 /* ── Delete everything ── */
 
+// i18n-ignore: the phrase is typed back and compared, so it is the same in every language.
 const PURGE_PHRASE = "purge all data";
 const STORE = "meridian:tenant-purge";
 function loadRequest(): TenantPurgeRequest | null {
@@ -559,33 +563,33 @@ function TenantPurge() {
   }, []);
   const ready = req ? now >= Date.parse(req.executes_after) : false;
   return (
-    <section className="m2-adm-blk m2-danger" aria-label="Delete all data" data-testid="tenant-purge">
-      <h2>Delete all data</h2>
-      <p>Removes every run, report and audit row of this organisation, and its stored files, for good. A request issues a token that works after 24 hours, so a mistake can be caught. The purge log keeps the record of the deletion.</p>
+    <section className="m2-adm-blk m2-danger" aria-label={tr("Delete all data")} data-testid="tenant-purge">
+      <h2>{tr("Delete all data")}</h2>
+      <p>{tr("Removes every run, report and audit row of this organisation, and its stored files, for good. A request issues a token that works after 24 hours, so a mistake can be caught. The purge log keeps the record of the deletion.")}</p>
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       {req ? (
         <>
-          <p>{ready ? "The purge can run now." : `The purge can run after ${formatDate(req.executes_after, "datetime")}.`}</p>
+          <p>{ready ? tr("The purge can run now.") : tr("The purge can run after {executes_after}.", { executes_after: formatDate(req.executes_after, "datetime") })}</p>
           <div className="m2-adm-acts" style={{ marginTop: 0 }}>
             <button type="button" className="m2-btn m2-crit" disabled={!ready} onClick={() => setAsk("run")}>
-              Purge now
+              {tr("Purge now")}
             </button>
             <button type="button" className="m2-btn m2-ghost" onClick={() => (saveRequest(null), setReq(null))}>
-              Forget this request
+              {tr("Forget this request")}
             </button>
           </div>
         </>
       ) : (
         <button type="button" className="m2-btn m2-crit" onClick={() => setAsk("request")}>
-          Request a purge
+          {tr("Request a purge")}
         </button>
       )}
       {ask === "request" ? (
         <Confirm
-          title="Request a purge of all data"
-          body="Nothing is deleted yet. This issues a token that works 24 hours from now."
-          confirm="Request purge"
-          cancel="Keep my data"
+          title={tr("Request a purge of all data")}
+          body={tr("Nothing is deleted yet. This issues a token that works 24 hours from now.")}
+          confirm={tr("Request purge")}
+          cancel={tr("Keep my data")}
           danger
           phrase={PURGE_PHRASE}
           pending={pending === "request"}
@@ -596,17 +600,17 @@ function TenantPurge() {
               saveRequest(r);
               setReq(r);
               setAsk(null);
-              return { tone: "info", title: "Purge requested", detail: `It can run after ${formatDate(r.executes_after, "datetime")}.` };
+              return { tone: "info", title: tr("Purge requested"), detail: tr("It can run after {executes_after}.", { executes_after: formatDate(r.executes_after, "datetime") }) };
             })
           }
         />
       ) : null}
       {ask === "run" && req ? (
         <Confirm
-          title="Purge all data now"
-          body="Every run, report and audit row is deleted for good and a deletion certificate is saved."
-          confirm="Purge now"
-          cancel="Keep my data"
+          title={tr("Purge all data now")}
+          body={tr("Every run, report and audit row is deleted for good and a deletion certificate is saved.")}
+          confirm={tr("Purge now")}
+          cancel={tr("Keep my data")}
           danger
           phrase={PURGE_PHRASE}
           pending={pending === "run"}
@@ -617,7 +621,7 @@ function TenantPurge() {
               saveRequest(null);
               setReq(null);
               setAsk(null);
-              return { tone: "ok", title: "Data purged", detail: `The deletion certificate was saved as ${name}.` };
+              return { tone: "ok", title: tr("Data purged"), detail: tr("The deletion certificate was saved as {name}.", { name }) };
             })
           }
         />
@@ -635,40 +639,42 @@ export function SettingsSection() {
   const cost = useCostModel();
   const retention = useRetention(write);
   return (
-    <AdminPage title="Settings" lead="This tenant at a glance, how defects are scored and priced, and how long data is kept.">
-      {!write ? <Note>These settings are read only for your role. Changing them needs the manage settings permission.</Note> : null}
-      <Block title="Tenant">
-        <Loaded q={tenant} what="The tenant" rows={2}>
+    <AdminPage title={tr("Settings")} lead={tr("This tenant at a glance, its appearance, how defects are scored and priced, how long data is kept, and where it lives.")}>
+      {!write ? <Note>{tr("These settings are read only for your role. Changing them needs the manage settings permission.")}</Note> : null}
+      <Block title={tr("Tenant")}>
+        <Loaded q={tenant} what={tr("The tenant")} rows={2}>
           {(t) => (
             <Kv
               rows={[
-                ["Name", t.name],
-                ["Currency", cost.data?.currency ?? "—"],
-                ["Licensed modules", `${(t.licensed_modules ?? []).length} ${(t.licensed_modules ?? []).length === 1 ? "module" : "modules"}${(t.licensed_modules ?? []).length ? `: ${(t.licensed_modules ?? []).slice(0, 4).map(formatModuleName).join(", ")}${(t.licensed_modules ?? []).length > 4 ? " and more" : ""}` : ""}`],
+                [tr("Name"), t.name],
+                [tr("Currency"), cost.data?.currency ?? "—"],
+                [tr("Licensed modules"), tr("{licensed_modulesCount} {licensed_modulesCount, plural, one {module} other {modules}}{value}", { licensed_modulesCount: (t.licensed_modules ?? []).length, value: (t.licensed_modules ?? []).length ? `: ${(t.licensed_modules ?? []).slice(0, 4).map(formatModuleName).join(", ")}${(t.licensed_modules ?? []).length > 4 ? tr(" and more") : ""}` : "" })],
               ]}
             />
           )}
         </Loaded>
-        <p className="m2-prov">The tenant name and licensed modules come from the licence, set in Meridian HQ.</p>
+        <p className="m2-prov">{tr("The tenant name and licensed modules come from the licence, set in Meridian HQ.")}</p>
       </Block>
-      <Loaded q={scoring} what="The scoring settings" rows={3}>
+      <AppearanceBlock />
+      <Loaded q={scoring} what={tr("The scoring settings")} rows={3}>
         {(s) => (write ? <ScoringBlock key={JSON.stringify(s.dimension_weights) + JSON.stringify(s.thresholds) + JSON.stringify(s.critical_tolerance)} s={s} /> : (
-          <Block title="Scoring">
-            <Kv rows={[["Bands", `target ${s.thresholds.target}, warning ${s.thresholds.warning}, critical ${s.thresholds.critical}`], ["Weights", DIMS.map((d) => `${labelOf(d)} ${toPercent(fractions(s.dimension_weights))[d]}`).join(", ")], ["Tolerance", `${s.critical_tolerance.pct}% or ${s.critical_tolerance.rows} records`]]} />
+          <Block title={tr("Scoring")}>
+            <Kv rows={[[tr("Bands"), tr("target {target}, warning {warning}, critical {critical}", { target: s.thresholds.target, warning: s.thresholds.warning, critical: s.thresholds.critical })], [tr("Weights"), DIMS.map((d) => `${labelText(d)} ${toPercent(fractions(s.dimension_weights))[d]}`).join(", ")], [tr("Tolerance"), tr("{pct}% or {rows} records", { pct: s.critical_tolerance.pct, rows: s.critical_tolerance.rows })]]} />
           </Block>
         ))}
       </Loaded>
-      <Loaded q={cost} what="The cost model" rows={3}>
-        {(m) => (write ? <CostBlock key={JSON.stringify(m)} model={m} /> : <Block title="Cost model"><Kv rows={[["Currency", m.currency]]} /></Block>)}
+      <Loaded q={cost} what={tr("The cost model")} rows={3}>
+        {(m) => (write ? <CostBlock key={JSON.stringify(m)} model={m} /> : <Block title={tr("Cost model")}><Kv rows={[[tr("Currency"), m.currency]]} /></Block>)}
       </Loaded>
       {write && tenant.data ? <PlannerBlock key={JSON.stringify(tenant.data.planner_config)} initial={tenant.data.planner_config ?? { minutes_per_record: 3, investigation_hours: 1, cleaning_item_hours: 0.25, exception_hours: 2, sprint_hours: 40, cost_per_record: null, currency: "" }} currency={cost.data?.currency} /> : null}
       {write ? (
-        <Loaded q={retention} what="The retention policy" rows={3}>
+        <Loaded q={retention} what={tr("The retention policy")} rows={3}>
           {(r) => <RetentionBlock key={JSON.stringify(r.policy)} data={r} />}
         </Loaded>
       ) : (
-        <NeedsPermission what="Retention" permission="manage_settings" />
+        <NeedsPermission what={tr("Retention")} permission="manage_settings" />
       )}
+      <ComplianceBlock />
       {can("manage_system") && write ? <TenantPurge /> : null}
     </AdminPage>
   );

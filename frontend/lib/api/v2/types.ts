@@ -1,3 +1,4 @@
+import { t } from "@/lib/v2/i18n";
 /**
  * Step 0 API contract (API-CONTRACT-step0.md): GET /landscape, /objects/{module}/receipt, /status, /command.
  * A value the backend has not stored is null and the UI shows a dash; nothing here is ever filled in client side.
@@ -6,13 +7,14 @@
 export type DimensionKey = "completeness" | "accuracy" | "consistency" | "timeliness" | "uniqueness" | "validity";
 
 /** The six dimensions in ruler order, with the DAMA weights the score formula uses. */
+/** The six DAMA dimensions. `label` is read through the v2 catalogue, so it is in the interface's language. */
 export const DIMENSIONS: ReadonlyArray<{ key: DimensionKey; label: string; weight: number }> = [
-  { key: "completeness", label: "Completeness", weight: 0.25 },
-  { key: "accuracy", label: "Accuracy", weight: 0.25 },
-  { key: "consistency", label: "Consistency", weight: 0.2 },
-  { key: "timeliness", label: "Timeliness", weight: 0.1 },
-  { key: "uniqueness", label: "Uniqueness", weight: 0.1 },
-  { key: "validity", label: "Validity", weight: 0.1 },
+  { key: "completeness", get label() { return t("Completeness"); }, weight: 0.25 },
+  { key: "accuracy", get label() { return t("Accuracy"); }, weight: 0.25 },
+  { key: "consistency", get label() { return t("Consistency"); }, weight: 0.2 },
+  { key: "timeliness", get label() { return t("Timeliness"); }, weight: 0.1 },
+  { key: "uniqueness", get label() { return t("Uniqueness"); }, weight: 0.1 },
+  { key: "validity", get label() { return t("Validity"); }, weight: 0.1 },
 ];
 
 export type Verdict = "no-go" | "at-risk" | "go";

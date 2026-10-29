@@ -12,14 +12,15 @@ import { type GridColumn } from "../../Grid";
 import "../../mdm.css";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../../parts";
 import { ToolGrid } from "../../GridTools";
+import { t } from "@/lib/v2/i18n";
 
 export const RULE_LABEL: Record<string, string> = {
-  most_recent: "Most recent",
-  most_complete: "Most complete",
-  most_frequent: "Most frequent",
-  trusted_source: "Trusted source",
-  chain: "Source chain",
-  manual_override: "Steward choice",
+  get most_recent() { return t("Most recent"); },
+  get most_complete() { return t("Most complete"); },
+  get most_frequent() { return t("Most frequent"); },
+  get trusted_source() { return t("Trusted source"); },
+  get chain() { return t("Source chain"); },
+  get manual_override() { return t("Steward choice"); },
 };
 
 /** The rule that decides most fields of the object, with how many other rules sit beside it. */
@@ -32,8 +33,8 @@ export function dominantRule(rules: readonly SurvivorshipRule[]): { text: string
   const top = ranked[0][0];
   const others = ranked.length - 1;
   return {
-    text: `${RULE_LABEL[top] ?? top}${others > 0 ? `, ${others} more` : ""}`,
-    title: ranked.map(([k, n]) => `${RULE_LABEL[k] ?? k}: ${n} ${n === 1 ? "field" : "fields"}`).join("; "),
+    text: `${RULE_LABEL[top] ?? top}${others > 0 ? t(", {others} more", { others }) : ""}`,
+    title: ranked.map(([k, n]) => t("{RULE_LABEL}: {n} {n, plural, one {field} other {fields}}", { RULE_LABEL: RULE_LABEL[k] ?? k, n })).join("; "),
   };
 }
 
@@ -46,18 +47,18 @@ function Survivorship({ module }: { module: string }) {
   const { hrefFor } = useOpenItem();
   const q = useSurvivorship(module);
   if (q.isPending) return <Skeleton width="50%" height={14} />;
-  if (q.isError) return <ErrorFrame onRetry={() => void q.refetch()}>The survivorship rules could not be read.</ErrorFrame>;
+  if (q.isError) return <ErrorFrame onRetry={() => void q.refetch()}>{t("The survivorship rules could not be read.")}</ErrorFrame>;
   const rules = q.data.filter((r) => r.active);
   return (
-    <section aria-label="Survivorship rules" className="m2-sec">
+    <section aria-label={t("Survivorship rules")} className="m2-sec">
       <div className="m2-sechead">
-        <h2 className="m2-h2">Survivorship rules</h2>
-        <V2Link href={hrefFor({ kind: "survivorship", id: module })}>Edit the rules</V2Link>
+        <h2 className="m2-h2">{t("Survivorship rules")}</h2>
+        <V2Link href={hrefFor({ kind: "survivorship", id: module })}>{t("Edit the rules")}</V2Link>
       </div>
       {rules.length === 0 ? (
-        <p className="m2-rp m2-meta">No survivorship rule is set for this object, so a merge keeps the survivor&apos;s value for every field. Add one with Edit the rules.</p>
+        <p className="m2-rp m2-meta">{t("No survivorship rule is set for this object, so a merge keeps the survivor's value for every field. Add one with Edit the rules.")}</p>
       ) : (
-        <ul className="m2-flist" aria-label="Survivorship rules by field">
+        <ul className="m2-flist" aria-label={t("Survivorship rules by field")}>
           {rules.map((r) => (
             <li key={r.id}>
               <Mono>{r.field}</Mono>
@@ -79,37 +80,37 @@ function Candidates({ module, label }: { module: string; label: string }) {
   const q = useMatchPairs(module, limit);
   const waiting = q.data?.bands.review ?? q.data?.total ?? 0;
   return (
-    <section aria-label="Match candidates" className="m2-sec">
+    <section aria-label={t("Match candidates")} className="m2-sec">
       <div className="m2-sechead">
-        <h2 className="m2-h2">Match candidates</h2>
-        {q.data ? <span className="m2-sub">{waiting === 1 ? "1 pair to review" : `${int(waiting)} pairs to review`}</span> : null}
+        <h2 className="m2-h2">{t("Match candidates")}</h2>
+        {q.data ? <span className="m2-sub">{waiting === 1 ? t("1 pair to review") : t("{waiting} pairs to review", { waiting: int(waiting) })}</span> : null}
       </div>
       {q.isPending ? (
         <Skeleton width="60%" height={14} />
       ) : q.isError ? (
-        <ErrorFrame onRetry={() => void q.refetch()}>The match candidates could not be read.</ErrorFrame>
+        <ErrorFrame onRetry={() => void q.refetch()}>{t("The match candidates could not be read.")}</ErrorFrame>
       ) : q.data.pairs.length === 0 ? (
-        <p className="m2-rp m2-meta">{`No pair of ${label.toLowerCase()} records is waiting for a steward. Pairs appear when a match run scores two records between the review floor and the auto-merge score.`}</p>
+        <p className="m2-rp m2-meta">{t("No pair of {label} records is waiting for a steward. Pairs appear when a match run scores two records between the review floor and the auto-merge score.", { label: label.toLowerCase() })}</p>
       ) : (
         <>
-          <ul className="m2-pairs" aria-label="Pairs to review">
+          <ul className="m2-pairs" aria-label={t("Pairs to review")}>
             {q.data.pairs.map((p) => (
               <li key={p.id} data-open={open?.kind === "golden" && open.id === `pair:${p.id}` ? "true" : undefined}>
                 <span className="m2-pscore">{p.total.toFixed(2)}</span>
                 <span className="m2-pkeys">
-                  <Mono>{shortKey(p.a)}</Mono> <span className="m2-meta">and</span> <Mono>{shortKey(p.b)}</Mono>
+                  <Mono>{shortKey(p.a)}</Mono> <span className="m2-meta">{t("and")}</span> <Mono>{shortKey(p.b)}</Mono>
                 </span>
-                <V2Link href={hrefFor({ kind: "golden", id: `pair:${p.id}` })} className="m2-btn m2-sm" aria-label={`Review the pair ${p.a} and ${p.b}`}>
-                  Review
+                <V2Link href={hrefFor({ kind: "golden", id: `pair:${p.id}` })} className="m2-btn m2-sm" aria-label={t("Review the pair {a} and {b}", { a: p.a, b: p.b })}>
+                  {t("Review")}
                 </V2Link>
               </li>
             ))}
           </ul>
           <p className="m2-prov">
-            {waiting > q.data.pairs.length ? `Showing the first ${q.data.pairs.length} of ${int(waiting)}, best score first. ` : ""}
+            {waiting > q.data.pairs.length ? t("Showing the first {pairsCount} of {waiting}, best score first. ", { pairsCount: q.data.pairs.length, waiting: int(waiting) }) : ""}
             {waiting > q.data.pairs.length ? (
               <button type="button" className="m2-linkbtn" onClick={() => setLimit((n) => n + 20)}>
-                Show 20 more
+                {t("Show 20 more")}
               </button>
             ) : null}
           </p>
@@ -120,7 +121,7 @@ function Candidates({ module, label }: { module: string; label: string }) {
 }
 
 function rowName(r: GoldenRow) {
-  return r.name ? r.name : <Dash why="The golden records list does not carry the name; open the record" />;
+  return r.name ? r.name : <Dash why={t("The golden records list does not carry the name; open the record")} />;
 }
 
 /** The Golden records tab: the object's golden records, the pairs waiting for a steward, and how survivors are chosen. */
@@ -142,23 +143,23 @@ export function GoldenTab({ module: moduleSegment }: { system: string; module: s
 
   const columns = useMemo<GridColumn<GoldenRow>[]>(
     () => [
-      { id: "key", header: "Golden key", width: 220, pin: true, locked: true, cell: (r) => <Mono>{r.sap_object_key}</Mono> },
-      { id: "name", header: "Name", width: 200, cell: rowName },
-      { id: "sources", header: "Sources", width: 80, numeric: true, cell: (r) => int(r.source_count) },
-      { id: "rule", header: "Survivorship", width: 170, cell: () => (dom ? <span title={dom.title}>{dom.text}</span> : <Dash why="No survivorship rule is set for this object" />) },
-      { id: "confidence", header: "Confidence", width: 100, numeric: true, cell: (r) => confidencePct(r.overall_confidence) },
-      { id: "merged", header: "Last merged", width: 120, cell: (r) => formatDate(r.updated_at, "date") },
-      { id: "conflicts", header: "Open conflicts", width: 130, numeric: true, cell: (r) => int(r.pending_issues) },
+      { id: "key", header: t("Golden key"), width: 220, pin: true, locked: true, cell: (r) => <Mono>{r.sap_object_key}</Mono> },
+      { id: "name", header: t("Name"), width: 200, cell: rowName },
+      { id: "sources", header: t("Sources"), width: 80, numeric: true, cell: (r) => int(r.source_count) },
+      { id: "rule", header: t("Survivorship"), width: 170, cell: () => (dom ? <span title={dom.title}>{dom.text}</span> : <Dash why={t("No survivorship rule is set for this object")} />) },
+      { id: "confidence", header: t("Confidence"), width: 100, numeric: true, cell: (r) => confidencePct(r.overall_confidence) },
+      { id: "merged", header: t("Last merged"), width: 120, cell: (r) => formatDate(r.updated_at, "date") },
+      { id: "conflicts", header: t("Open conflicts"), width: 130, numeric: true, cell: (r) => int(r.pending_issues) },
     ],
     [dom],
   );
 
-  if (q.isError) return <ErrorFrame onRetry={() => void q.refetch()}>{`The golden records of ${label} could not be read.`}</ErrorFrame>;
+  if (q.isError) return <ErrorFrame onRetry={() => void q.refetch()}>{t("The golden records of {label} could not be read.", { label })}</ErrorFrame>;
   const pairsWaiting = pairsQ.data?.bands.review ?? 0;
   if (!q.isPending && total === 0 && !pairsQ.isPending && pairsWaiting === 0) {
     return (
       <EmptyFrame>
-        {`No golden records for ${label} yet. A match run groups the records that describe the same thing, scores each pair, and a steward approves the survivor; the golden records and the pairs to review land here.`}
+        {t("No golden records for {label} yet. A match run groups the records that describe the same thing, scores each pair, and a steward approves the survivor; the golden records and the pairs to review land here.", { label })}
       </EmptyFrame>
     );
   }
@@ -167,23 +168,23 @@ export function GoldenTab({ module: moduleSegment }: { system: string; module: s
   return (
     <div className="m2-mdm">
       <Candidates module={apiModule} label={label} />
-      <section aria-label="Golden records" className="m2-sec">
+      <section aria-label={t("Golden records")} className="m2-sec">
         <div className="m2-sechead">
-          <h2 className="m2-h2">Golden records</h2>
-          {q.data ? <span className="m2-sub">{`${int(total)} ${total === 1 ? "record" : "records"}`}</span> : null}
+          <h2 className="m2-h2">{t("Golden records")}</h2>
+          {q.data ? <span className="m2-sub">{t("{total} {total2, plural, one {record} other {records}}", { total: int(total), total2: total })}</span> : null}
         </div>
         {narrow ? (
           q.isPending ? (
             <Skeleton width="100%" height={160} />
           ) : (
-            <ul className="m2-nlist" aria-label={`Golden records of ${label}`}>
+            <ul className="m2-nlist" aria-label={t("Golden records of {label}", { label })}>
               {rows.map((r) => (
                 <li key={r.id} data-open={openId === r.id ? "true" : undefined}>
-                  <button type="button" onClick={() => openItem({ kind: "golden", id: r.id })} aria-label={`Open golden record ${r.sap_object_key}`}>
+                  <button type="button" onClick={() => openItem({ kind: "golden", id: r.id })} aria-label={t("Open golden record {sap_object_key}", { sap_object_key: r.sap_object_key })}>
                     <span className="m2-nl1">
                       <Mono>{r.sap_object_key}</Mono>
                     </span>
-                    <span className="m2-nl2">{[r.name, `${r.source_count} sources`, confidencePct(r.overall_confidence), `${r.pending_issues} open ${r.pending_issues === 1 ? "conflict" : "conflicts"}`].filter(Boolean).join(", ")}</span>
+                    <span className="m2-nl2">{[r.name, t("{source_count} sources", { source_count: r.source_count }), confidencePct(r.overall_confidence), t("{pending_issues} open {pending_issues, plural, one {conflict} other {conflicts}}", { pending_issues: r.pending_issues })].filter(Boolean).join(", ")}</span>
                   </button>
                 </li>
               ))}
@@ -191,9 +192,9 @@ export function GoldenTab({ module: moduleSegment }: { system: string; module: s
           )
         ) : (
           <ToolGrid<GoldenRow>
-          toolsTitle="Golden records"
+          toolsTitle={t("Golden records")}
             id="object-golden"
-            ariaLabel={`Golden records of ${label}`}
+            ariaLabel={t("Golden records of {label}", { label })}
             columns={columns}
             rows={rows}
             rowId={(r) => r.id}
@@ -204,21 +205,21 @@ export function GoldenTab({ module: moduleSegment }: { system: string; module: s
             initialViewport={GOLDEN_PAGE}
             openRowId={openId}
             onOpen={(r) => openItem({ kind: "golden", id: r.id })}
-            emptyFrame={<EmptyFrame>{`No golden record yet for ${label}. The pairs above become golden records when a steward merges them.`}</EmptyFrame>}
+            emptyFrame={<EmptyFrame>{t("No golden record yet for {label}. The pairs above become golden records when a steward merges them.", { label })}</EmptyFrame>}
           />
         )}
         {total > GOLDEN_PAGE ? (
           <p className="m2-prov m2-pager">
-            {`${int(from)} to ${int(to)} of ${int(total)}`}
+            {t("{from} to {to} of {total}", { from: int(from), to: int(to), total: int(total) })}
             <button type="button" className="m2-linkbtn" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-              Previous
+              {t("Previous")}
             </button>
             <button type="button" className="m2-linkbtn" disabled={to >= total} onClick={() => setPage((p) => p + 1)}>
-              Next
+              {t("Next")}
             </button>
           </p>
         ) : null}
-        <p className="m2-prov">Confidence is the match engine&apos;s score for the surviving record. Last merged is when the record last changed. Open conflicts are fields where the sources disagree and no rule has settled it.</p>
+        <p className="m2-prov">{t("Confidence is the match engine's score for the surviving record. Last merged is when the record last changed. Open conflicts are fields where the sources disagree and no rule has settled it.")}</p>
       </section>
       <Survivorship module={apiModule} />
     </div>

@@ -168,7 +168,7 @@ for (const size of SIZES) {
       test("the inbox panel: Today and Earlier, mark read, the count follows", async ({ page }) => {
         await prepare(page, scheme);
         await page.goto("/v2/people?fixture=1&persona=owner", { waitUntil: "load", timeout: 90_000 });
-        await page.getByRole("button", { name: "Inbox, 7 unread" }).click();
+        await page.getByRole("button", { name: "Inbox 7, unread" }).click();
         const panel = page.getByTestId("inbox-panel");
         await expect(panel.getByRole("heading", { name: "Today" })).toBeVisible(NAV);
         await expect(panel.getByRole("heading", { name: "Earlier" })).toBeVisible();
@@ -177,7 +177,7 @@ for (const size of SIZES) {
         await shot(page, "people-inbox");
         await axe(page, `inbox ${size.name} ${scheme}`);
         await panel.getByRole("button", { name: /^Mark read: Batch B-241/ }).click();
-        await expect(page.getByRole("button", { name: "Inbox, 6 unread" })).toBeVisible(NAV);
+        await expect(page.getByRole("button", { name: "Inbox 6, unread" })).toBeVisible(NAV);
       });
 
       test("triage and SLA from the account menu", async ({ page }) => {

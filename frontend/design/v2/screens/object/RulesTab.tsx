@@ -3,7 +3,7 @@
 import { ScrollFrame } from "./ScrollFrame";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { formatMoneyCompact } from "@/lib/format";
+import { moneyCompactText } from "@/lib/v2/labels";
 import { fixtureParam } from "@/lib/api/v2/fixture";
 import { acceptAllSuggested, approveLearned, dryRunDraft, publishDraft, rejectLearned, type DraftDryRun, type LearnedProposal, type RuleDraft } from "@/lib/api/v2/object";
 import { DIMENSIONS, type Receipt, type RuleRow } from "@/lib/api/v2/types";
@@ -18,11 +18,12 @@ import { int, moduleFromSlug, pct1 } from "@/lib/v2/score";
 import { Explain } from "../../Explain";
 import { IconChevron, SeverityMark } from "../../marks";
 import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../../parts";
+import { t, lc } from "@/lib/v2/i18n";
 
 type View = "all" | "learned" | "drafts";
 
 const PAGE = 25;
-const SEV_WORD: Record<string, string> = { critical: "Critical", high: "High", medium: "Medium", low: "Low", info: "Info" };
+const SEV_WORD: Record<string, string> = { get critical() { return t("Critical"); }, get high() { return t("High"); }, get medium() { return t("Medium"); }, get low() { return t("Low"); }, get info() { return t("Info"); } };
 const dimLabel = (d: string | null | undefined): string => DIMENSIONS.find((x) => x.key === d)?.label ?? "";
 
 /** What the table shows for one rule, derived once from the rule and the object's receipt. */
@@ -60,18 +61,18 @@ function Sev({ severity }: { severity: RuleRow["severity"] }) {
 /* ---- the Rule cell: id, name, why it matters, suggested values ---- */
 
 function SuggestedLine({ line, canApply, accepted, onAccept, busy, viewHref }: { line: RuleLine; canApply: boolean; accepted: boolean; onAccept: (id: string) => void; busy: boolean; viewHref: string }) {
-  if (accepted) return <span className="m2-rs m2-meta">Suggested values accepted</span>;
+  if (accepted) return <span className="m2-rs m2-meta">{t("Suggested values accepted")}</span>;
   if (line.proposed <= 0) return null;
   return (
     <span className="m2-rs">
-      {`${int(line.proposed)} suggested values`}
+      {t("{proposed} suggested values", { proposed: int(line.proposed) })}
       <Dot />
       {canApply ? (
-        <button type="button" className="m2-linkbtn" disabled={busy} onClick={() => onAccept(line.rule.check_id)} aria-label={`Accept all ${int(line.proposed)} suggested values for ${line.rule.check_id}`}>
-          Accept all
+        <button type="button" className="m2-linkbtn" disabled={busy} onClick={() => onAccept(line.rule.check_id)} aria-label={t("Accept all {proposed} suggested values for {check_id}", { proposed: int(line.proposed), check_id: line.rule.check_id })}>
+          {t("Accept all")}
         </button>
       ) : (
-        <V2Link href={viewHref}>View</V2Link>
+        <V2Link href={viewHref}>{t("View")}</V2Link>
       )}
     </span>
   );
@@ -184,25 +185,25 @@ function RulesTable(p: TableProps) {
         </colgroup>
         <thead>
           <tr role="row">
-            <th scope="col" role="columnheader">Rule</th>
-            <th scope="col" role="columnheader">Field</th>
-            <th scope="col" role="columnheader">Dimension</th>
-            <th scope="col" role="columnheader">Severity</th>
+            <th scope="col" role="columnheader">{t("Rule")}</th>
+            <th scope="col" role="columnheader">{t("Field")}</th>
+            <th scope="col" role="columnheader">{t("Dimension")}</th>
+            <th scope="col" role="columnheader">{t("Severity")}</th>
             <th scope="col" role="columnheader" className="m2-r">
-              Tolerance <Explain metric="tolerance" label="Tolerance" module={module} />
+              {t("Tolerance")}{" "}<Explain metric="tolerance" label={t("Tolerance")} module={module} />
             </th>
             <th scope="col" role="columnheader">
-              Over tolerance <Explain metric="tolerance" label="Over tolerance" module={module} />
+              {t("Over tolerance")}{" "}<Explain metric="tolerance" label={t("Over tolerance")} module={module} />
             </th>
-            <th scope="col" role="columnheader" className="m2-r">Failing rows</th>
+            <th scope="col" role="columnheader" className="m2-r">{t("Failing rows")}</th>
             <th scope="col" role="columnheader" className="m2-r">
-              Failing % <Explain metric="failing_pct" label="Failing %" module={module} checkId={first} />
-            </th>
-            <th scope="col" role="columnheader" className="m2-r">
-              Coverage <Explain metric="coverage" label="Coverage" module={module} />
+              {t("Failing %")}{" "}<Explain metric="failing_pct" label={t("Failing %")} module={module} checkId={first} />
             </th>
             <th scope="col" role="columnheader" className="m2-r">
-              {`Value at risk${currency ? `, ${currency}` : ""}`} <Explain metric="value_at_risk" label="Value at risk" module={module} />
+              {t("Coverage")}{" "}<Explain metric="coverage" label={t("Coverage")} module={module} />
+            </th>
+            <th scope="col" role="columnheader" className="m2-r">
+              {t("Value at risk{value}", { value: currency ? `, ${currency}` : "" })} <Explain metric="value_at_risk" label={t("Value at risk")} module={module} />
             </th>
           </tr>
         </thead>
@@ -236,9 +237,9 @@ function RulesTable(p: TableProps) {
                 <Sev severity={l.rule.severity} />
               </td>
               <td role="gridcell" className="m2-r">
-                {l.rule.severity === "critical" && receipt ? `${int(receipt.tolerance.rows)} rows` : <Dash why="Only critical rules carry a tolerance" />}
+                {l.rule.severity === "critical" && receipt ? t("{rows} rows", { rows: int(receipt.tolerance.rows) }) : <Dash why={t("Only critical rules carry a tolerance")} />}
               </td>
-              <td role="gridcell">{l.over == null ? <Dash /> : l.over ? <b>Yes</b> : "No"}</td>
+              <td role="gridcell">{l.over == null ? <Dash /> : l.over ? <b>{t("Yes")}</b> : t("No")}</td>
               <td role="gridcell" className="m2-r">{int(l.rule.affected_count)}</td>
               <td role="gridcell" className="m2-r">{pct2(l.failingPct)}</td>
               <td role="gridcell" className="m2-r">{pct1(l.coverage)}</td>
@@ -247,16 +248,16 @@ function RulesTable(p: TableProps) {
           ))}
           <tr role="row" aria-rowindex={lines.length + 2} className="m2-rfoot">
             <td role="gridcell" colSpan={6} className="m2-meta">
-              {moreCount > 0 ? `and ${int(moreCount)} more rules` : "No further rules"}
+              {moreCount > 0 ? t("and {moreCount} more rules", { moreCount: int(moreCount) }) : t("No further rules")}
               {p.more}
             </td>
-            <td role="gridcell" className="m2-r"><Dash why="The count for the remaining rules is not summed here" /></td>
+            <td role="gridcell" className="m2-r"><Dash why={t("The count for the remaining rules is not summed here")} /></td>
             <td role="gridcell" />
             <td role="gridcell" />
             <td role="gridcell" className="m2-r">{moreCount > 0 ? money(rest) : null}</td>
           </tr>
           <tr role="row" aria-rowindex={lines.length + 3} className="m2-rtotal">
-            <td role="gridcell" colSpan={9}>{`All ${int(total)} rules`}</td>
+            <td role="gridcell" colSpan={9}>{t("All {total} rules", { total: int(total) })}</td>
             <td role="gridcell" className="m2-r">{money(receipt?.value_at_risk ?? null)}</td>
           </tr>
         </tbody>
@@ -272,16 +273,16 @@ function RulesList(p: TableProps) {
   return (
     <div className="m2-rlist">
       <div className="m2-rlh">
-        <span>Rule</span>
+        <span>{t("Rule")}</span>
         <span>
-          {`Value at risk${p.currency ? `, ${p.currency}` : ""}`} <Explain metric="value_at_risk" label="Value at risk" module={p.module} />
+          {t("Value at risk{value}", { value: p.currency ? `, ${p.currency}` : "" })} <Explain metric="value_at_risk" label={t("Value at risk")} module={p.module} />
         </span>
         <span className="m2-meta">
-          Over tolerance <Explain metric="tolerance" label="Over tolerance" module={p.module} />
+          {t("Over tolerance")}{" "}<Explain metric="tolerance" label={t("Over tolerance")} module={p.module} />
           <Dot />
-          Failing % <Explain metric="failing_pct" label="Failing %" module={p.module} checkId={p.lines[0]?.rule.check_id} />
+          {t("Failing %")}{" "}<Explain metric="failing_pct" label={t("Failing %")} module={p.module} checkId={p.lines[0]?.rule.check_id} />
           <Dot />
-          Coverage <Explain metric="coverage" label="Coverage" module={p.module} />
+          {t("Coverage")}{" "}<Explain metric="coverage" label={t("Coverage")} module={p.module} />
         </span>
       </div>
       <div role="list" aria-label={p.label}>
@@ -294,16 +295,16 @@ function RulesList(p: TableProps) {
           <span className="m2-c">
             <Sev severity={l.rule.severity} />
             <Dot />
-            {l.over == null ? "tolerance not read" : l.over ? "over tolerance" : "within tolerance"}
+            {l.over == null ? t("tolerance not read") : l.over ? t("over tolerance") : t("within tolerance")}
             <Dot />
-            {`${int(l.rule.affected_count)} rows (${pct2(l.failingPct)})`}
+            {t("{affected_count} rows ({pct2})", { affected_count: int(l.rule.affected_count), pct2: pct2(l.failingPct) })}
             {l.rule.why ? <><br />{l.rule.why}</> : null}
             {l.proposed > 0 || p.accepted.has(l.rule.check_id) ? <><br /><SuggestedLine line={l} canApply={p.canApply} accepted={p.accepted.has(l.rule.check_id)} onAccept={p.onAccept} busy={p.busy} viewHref={p.viewHref(l.rule.check_id)} /></> : null}
           </span>
         </div>
       ))}
       <div className="m2-lrow m2-rl" role="listitem">
-        <span className="m2-meta">{moreCount > 0 ? `and ${int(moreCount)} more rules` : "No further rules"}{p.more}</span>
+        <span className="m2-meta">{moreCount > 0 ? t("and {moreCount} more rules", { moreCount: int(moreCount) }) : t("No further rules")}{p.more}</span>
         <span className="m2-b">{moreCount > 0 && rest != null ? int(rest) : ""}</span>
       </div>
       </div>
@@ -313,19 +314,22 @@ function RulesList(p: TableProps) {
 
 /* ---- pivots ---- */
 
+/** The first column's heading of each pivot. */
+const PIVOT_WORD: Partial<Record<Pivot, () => string>> = { field: () => t("Field"), dimension: () => t("Dimension"), severity: () => t("Severity"), feature: () => t("S/4 feature") };
+
 function PivotTable({ groups, pivot, label }: { groups: PivotGroup[]; pivot: Exclude<Pivot, "rule">; label: string }) {
   const { hrefFor } = useOpenItem();
   const [openKey, setOpenKey] = useState<string | null>(null);
-  const word = PIVOTS.find((p) => p.key === pivot)?.label.replace("By ", "") ?? "Group";
+  const word = PIVOT_WORD[pivot]?.() ?? t("Group");
   return (
-    <ScrollFrame label="Pivot table, scrollable">
+    <ScrollFrame label={t("Pivot table, scrollable")}>
       <table className="m2-tbl m2-ptbl" aria-label={label}>
         <thead>
           <tr>
             <th scope="col">{word.charAt(0).toUpperCase() + word.slice(1)}</th>
-            <th scope="col" className="m2-r">Rules</th>
-            <th scope="col" className="m2-r">Failing rows</th>
-            <th scope="col" className="m2-r">Value at risk</th>
+            <th scope="col" className="m2-r">{t("Rules")}</th>
+            <th scope="col" className="m2-r">{t("Failing rows")}</th>
+            <th scope="col" className="m2-r">{t("Value at risk")}</th>
           </tr>
         </thead>
         <tbody>
@@ -333,7 +337,7 @@ function PivotTable({ groups, pivot, label }: { groups: PivotGroup[]; pivot: Exc
             const open = openKey === g.key;
             return (
               <Fragment key={g.key}>
-                <tr className="m2-prow">
+                <tr className="m2-pvrow">
                   <th scope="row">
                     <button type="button" className="m2-linkbtn m2-ptoggle" aria-expanded={open} onClick={() => setOpenKey(open ? null : g.key)}>
                       <IconChevron open={open} />
@@ -359,7 +363,7 @@ function PivotTable({ groups, pivot, label }: { groups: PivotGroup[]; pivot: Exc
                   : null}
                 {open && g.rules.length > 12 ? (
                   <tr className="m2-pchild">
-                    <th scope="row" className="m2-meta">{`and ${g.rules.length - 12} more rules`}</th>
+                    <th scope="row" className="m2-meta">{t("and {count} more rules", { count: g.rules.length - 12 })}</th>
                     <td colSpan={3} />
                   </tr>
                 ) : null}
@@ -380,36 +384,36 @@ function LearnedTable({ module, items, canApprove, canReject, onChanged }: { mod
   const approve = useMutation({
     mutationFn: (p: LearnedProposal) => approveLearned(p.id, severity[p.id] ?? "medium"),
     onSuccess: (r) => {
-      setNote(`Approved as ${r.rule_id}. It runs from the next analysis.`);
+      setNote(t("Approved as {rule_id}. It runs from the next analysis.", { rule_id: r.rule_id }));
       onChanged();
     },
   });
   const reject = useMutation({
     mutationFn: (p: LearnedProposal) => rejectLearned(p.id),
     onSuccess: () => {
-      setNote("Rejected. The miner will not propose it again.");
+      setNote(t("Rejected. The miner will not propose it again."));
       onChanged();
     },
   });
   if (items.length === 0) {
     return (
       <>
-        <EmptyFrame>{`No learned rules are waiting for ${module.replace(/_/g, " ")}. The miner proposes rules from the data after an analysis; a person with approval rights decides.`}</EmptyFrame>
+        <EmptyFrame>{t("No learned rules are waiting for {replace}. The miner proposes rules from the data after an analysis; a person with approval rights decides.", { replace: module.replace(/_/g, " ") })}</EmptyFrame>
         {note ? <p role="status" className="m2-prov">{note}</p> : null}
       </>
     );
   }
   return (
     <>
-      <ScrollFrame label="Learned rules, scrollable">
-        <table className="m2-tbl" aria-label="Learned rules waiting for a decision">
+      <ScrollFrame label={t("Learned rules, scrollable")}>
+        <table className="m2-tbl" aria-label={t("Learned rules waiting for a decision")}>
           <thead>
             <tr>
-              <th scope="col">Proposed rule</th>
-              <th scope="col" className="m2-r">Confidence</th>
-              <th scope="col" className="m2-r">Rows supporting</th>
-              <th scope="col" className="m2-r">Would fail</th>
-              <th scope="col">Decision</th>
+              <th scope="col">{t("Proposed rule")}</th>
+              <th scope="col" className="m2-r">{t("Confidence")}</th>
+              <th scope="col" className="m2-r">{t("Rows supporting")}</th>
+              <th scope="col" className="m2-r">{t("Would fail")}</th>
+              <th scope="col">{t("Decision")}</th>
             </tr>
           </thead>
           <tbody>
@@ -418,7 +422,7 @@ function LearnedTable({ module, items, canApprove, canReject, onChanged }: { mod
                 <th scope="row">
                   <div className="m2-rn">
                     <span>{KIND_LABEL[p.kind]}</span>
-                    <span className="m2-rs m2-mono">{p.determinant ? `${p.field} by ${p.determinant}` : p.field}</span>
+                    <span className="m2-rs m2-mono">{p.determinant ? t("{field} by {determinant}", { field: p.field, determinant: p.determinant }) : p.field}</span>
                   </div>
                 </th>
                 <td className="m2-r">{`${Math.round(p.confidence * 100)}%`}</td>
@@ -429,25 +433,25 @@ function LearnedTable({ module, items, canApprove, canReject, onChanged }: { mod
                     <span className="m2-dec">
                       {canApprove ? (
                         <>
-                          <select aria-label={`Severity for ${p.field}`} value={severity[p.id] ?? "medium"} onChange={(e) => setSeverity({ ...severity, [p.id]: e.target.value as "critical" | "high" | "medium" | "low" })}>
-                            <option value="critical">Critical</option>
-                            <option value="high">High</option>
-                            <option value="medium">Medium</option>
-                            <option value="low">Low</option>
+                          <select aria-label={t("Severity for {field}", { field: p.field })} value={severity[p.id] ?? "medium"} onChange={(e) => setSeverity({ ...severity, [p.id]: e.target.value as "critical" | "high" | "medium" | "low" })}>
+                            <option value="critical">{t("Critical")}</option>
+                            <option value="high">{t("High")}</option>
+                            <option value="medium">{t("Medium")}</option>
+                            <option value="low">{t("Low")}</option>
                           </select>
                           <button type="button" className="m2-btn m2-sm" disabled={approve.isPending} onClick={() => approve.mutate(p)}>
-                            Approve
+                            {t("Approve")}
                           </button>
                         </>
                       ) : null}
                       {canReject ? (
                         <button type="button" className="m2-btn m2-sm m2-ghost" disabled={reject.isPending} onClick={() => reject.mutate(p)}>
-                          Reject
+                          {t("Reject")}
                         </button>
                       ) : null}
                     </span>
                   ) : (
-                    <span className="m2-meta">Waiting for an approver</span>
+                    <span className="m2-meta">{t("Waiting for an approver")}</span>
                   )}
                 </td>
               </tr>
@@ -455,7 +459,7 @@ function LearnedTable({ module, items, canApprove, canReject, onChanged }: { mod
           </tbody>
         </table>
 </ScrollFrame>
-      {approve.isError || reject.isError ? <p role="alert" className="m2-prov">That decision could not be saved. It may already have been decided.</p> : null}
+      {approve.isError || reject.isError ? <p role="alert" className="m2-prov">{t("That decision could not be saved. It may already have been decided.")}</p> : null}
       {note ? <p role="status" className="m2-prov">{note}</p> : null}
     </>
   );
@@ -474,30 +478,30 @@ function DraftsTable({ module, items, onChanged }: { module: string; items: Rule
   const publish = useMutation({
     mutationFn: (d: RuleDraft) => publishDraft(d.id),
     onSuccess: (r) => {
-      setNote(`${r.name} is published. It runs from the next analysis.`);
+      setNote(t("{name} is published. It runs from the next analysis.", { name: r.name }));
       onChanged();
     },
   });
   if (items.length === 0) {
     return (
       <>
-        <EmptyFrame action={<V2Link href={`/v2/rules?view=drafts&module=${encodeURIComponent(module)}`} className="m2-btn">Open rule authoring</V2Link>}>{`No drafts for ${module.replace(/_/g, " ")}. Write one in rule authoring or describe it in plain English there; a dry run shows what it would find before it is published.`}</EmptyFrame>
+        <EmptyFrame action={<V2Link href={`/v2/rules?view=drafts&module=${encodeURIComponent(module)}`} className="m2-btn">{t("Open rule authoring")}</V2Link>}>{t("No drafts for {replace}. Write one in rule authoring or describe it in plain English there; a dry run shows what it would find before it is published.", { replace: module.replace(/_/g, " ") })}</EmptyFrame>
         {note ? <p role="status" className="m2-prov">{note}</p> : null}
       </>
     );
   }
   return (
     <>
-      <ScrollFrame label="Rule drafts, scrollable">
-        <table className="m2-tbl" aria-label="Rule drafts">
+      <ScrollFrame label={t("Rule drafts, scrollable")}>
+        <table className="m2-tbl" aria-label={t("Rule drafts")}>
           <thead>
             <tr>
-              <th scope="col">Draft</th>
-              <th scope="col">Field</th>
-              <th scope="col">Dimension</th>
-              <th scope="col">Severity</th>
-              <th scope="col">Dry run</th>
-              <th scope="col">Publish</th>
+              <th scope="col">{t("Draft")}</th>
+              <th scope="col">{t("Field")}</th>
+              <th scope="col">{t("Dimension")}</th>
+              <th scope="col">{t("Severity")}</th>
+              <th scope="col">{t("Dry run")}</th>
+              <th scope="col">{t("Publish")}</th>
             </tr>
           </thead>
           <tbody>
@@ -508,7 +512,7 @@ function DraftsTable({ module, items, onChanged }: { module: string; items: Rule
                 <tr key={d.id}>
                   <th scope="row">
                     <div className="m2-rn">
-                      <span>{r.id ? <><Mono>{r.id}</Mono> </> : null}{r.message ?? "Untitled draft"}</span>
+                      <span>{r.id ? <><Mono>{r.id}</Mono> </> : null}{r.message ?? t("Untitled draft")}</span>
                       {d.rationale ? <span className="m2-rs m2-meta">{d.rationale}</span> : null}
                     </div>
                   </th>
@@ -516,18 +520,18 @@ function DraftsTable({ module, items, onChanged }: { module: string; items: Rule
                   <td>{dimLabel(r.dimension) || <Dash />}</td>
                   <td>{r.severity ? <Sev severity={r.severity as RuleRow["severity"]} /> : <Dash />}</td>
                   <td>
-                    <button type="button" className="m2-btn m2-sm" disabled={dry.isPending} onClick={() => dry.mutate(d)} aria-label={`Dry run ${r.id ?? "draft"}`}>
-                      Dry run
+                    <button type="button" className="m2-btn m2-sm" disabled={dry.isPending} onClick={() => dry.mutate(d)} aria-label={t("Dry run {id}", { id: r.id ?? "draft" })}>
+                      {t("Dry run")}
                     </button>
                     {res ? (
                       <span className="m2-rs" role="status">
-                        {res === "error" ? "The dry run could not run." : res.evaluated ? `${int(res.hits)} of ${int(res.population)} records would fail` : res.reason}
+                        {res === "error" ? t("The dry run could not run.") : res.evaluated ? t("{hits} of {population} records would fail", { hits: int(res.hits), population: int(res.population) }) : res.reason}
                       </span>
                     ) : null}
                   </td>
                   <td>
-                    <button type="button" className="m2-btn m2-sm m2-strong" disabled={publish.isPending} onClick={() => publish.mutate(d)} aria-label={`Publish ${r.id ?? "draft"}`}>
-                      Publish
+                    <button type="button" className="m2-btn m2-sm m2-strong" disabled={publish.isPending} onClick={() => publish.mutate(d)} aria-label={t("Publish {id}", { id: r.id ?? "draft" })}>
+                      {t("Publish")}
                     </button>
                   </td>
                 </tr>
@@ -536,7 +540,7 @@ function DraftsTable({ module, items, onChanged }: { module: string; items: Rule
           </tbody>
         </table>
 </ScrollFrame>
-      {publish.isError ? <p role="alert" className="m2-prov">The draft could not be published. Run the dry run first and check the expression.</p> : null}
+      {publish.isError ? <p role="alert" className="m2-prov">{t("The draft could not be published. Run the dry run first and check the expression.")}</p> : null}
       {note ? <p role="status" className="m2-prov">{note}</p> : null}
     </>
   );
@@ -595,10 +599,10 @@ export function RulesTab({ module: moduleSegment }: { system: string; module: st
     mutationFn: (id: string) => acceptAllSuggested(id, receipt?.run_id),
     onSuccess: (r, id) => {
       setAccepted((prev) => new Set(prev).add(id));
-      setNote(`${int(r.accepted)} suggested values for ${id} are in your draft batch ${r.draft_batch_id}. Nothing reaches SAP until an owner approves.`);
+      setNote(t("{accepted} suggested values for {id} are in your draft batch {draft_batch_id}. Nothing reaches SAP until an owner approves.", { accepted: int(r.accepted), id, draft_batch_id: r.draft_batch_id }));
       void qc.invalidateQueries({ queryKey: ["v2", "work-groups"] });
     },
-    onError: () => setNote("The suggested values could not be accepted. Try again in a moment."),
+    onError: () => setNote(t("The suggested values could not be accepted. Try again in a moment.")),
   });
   const onAccept = useCallback((id: string) => accept.mutate(id), [accept]);
   const onOpen = useCallback((id: string) => openItem({ kind: "rule", id }), [openItem]);
@@ -606,7 +610,7 @@ export function RulesTab({ module: moduleSegment }: { system: string; module: st
 
   const total = Math.max(receipt?.rules_measured ?? 0, ranked.length);
   const currency = receipt?.currency ?? null;
-  const tableLabel = `Rules for ${label}`;
+  const tableLabel = t("Rules for {label}", { label });
   const viewHref = (id: string) => `/v2/work?rule=${encodeURIComponent(id)}&module=${encodeURIComponent(apiModule)}`;
   const learnedN = learnedQ.data?.length;
   const draftsN = draftsQ.data?.length;
@@ -614,15 +618,15 @@ export function RulesTab({ module: moduleSegment }: { system: string; module: st
     <>
       <Dot />
       <button type="button" className="m2-linkbtn" onClick={() => setShown((n) => n + PAGE)}>
-        {`Show ${Math.min(PAGE, ranked.length - shown)} more`}
+        {t("Show {min} more", { min: Math.min(PAGE, ranked.length - shown) })}
       </button>
     </>
   ) : null;
 
   const filters = (
     <div className="m2-rbar">
-      <div className="m2-segs" role="group" aria-label="Show">
-        <button type="button" className="m2-seg" aria-pressed={view === "all"} onClick={() => setView("all")}>All rules</button>
+      <div className="m2-segs" role="group" aria-label={t("Show")}>
+        <button type="button" className="m2-seg" aria-pressed={view === "all"} onClick={() => setView("all")}>{t("All rules")}</button>
         <button type="button" className="m2-seg" aria-pressed={view === "learned"} onClick={() => setView("learned")}>
           {`Learned${learnedN != null ? ` ${learnedN}` : ""}`}
         </button>
@@ -633,7 +637,7 @@ export function RulesTab({ module: moduleSegment }: { system: string; module: st
         ) : null}
       </div>
       {view === "all" ? (
-        <div className="m2-segs" role="group" aria-label="Group the rules">
+        <div className="m2-segs" role="group" aria-label={t("Group the rules")}>
           {PIVOTS.map((p) => (
             <button key={p.key} type="button" className="m2-seg" aria-pressed={pivot === p.key} onClick={() => setPivot(p.key)}>
               {p.label}
@@ -648,7 +652,7 @@ export function RulesTab({ module: moduleSegment }: { system: string; module: st
     return (
       <>
         {filters}
-        {learnedQ.isPending ? <Skeleton width="60%" height={14} /> : learnedQ.isError ? <ErrorFrame onRetry={() => void learnedQ.refetch()}>The learned rules could not be read.</ErrorFrame> : <LearnedTable module={apiModule} items={learnedQ.data} canApprove={canApprove} canReject={canReject} onChanged={refresh("learned")} />}
+        {learnedQ.isPending ? <Skeleton width="60%" height={14} /> : learnedQ.isError ? <ErrorFrame onRetry={() => void learnedQ.refetch()}>{t("The learned rules could not be read.")}</ErrorFrame> : <LearnedTable module={apiModule} items={learnedQ.data} canApprove={canApprove} canReject={canReject} onChanged={refresh("learned")} />}
       </>
     );
   }
@@ -656,7 +660,7 @@ export function RulesTab({ module: moduleSegment }: { system: string; module: st
     return (
       <>
         {filters}
-        {draftsQ.isPending ? <Skeleton width="60%" height={14} /> : draftsQ.isError ? <ErrorFrame onRetry={() => void draftsQ.refetch()}>The drafts could not be read.</ErrorFrame> : <DraftsTable module={apiModule} items={draftsQ.data} onChanged={refresh("drafts")} />}
+        {draftsQ.isPending ? <Skeleton width="60%" height={14} /> : draftsQ.isError ? <ErrorFrame onRetry={() => void draftsQ.refetch()}>{t("The drafts could not be read.")}</ErrorFrame> : <DraftsTable module={apiModule} items={draftsQ.data} onChanged={refresh("drafts")} />}
       </>
     );
   }
@@ -668,7 +672,7 @@ export function RulesTab({ module: moduleSegment }: { system: string; module: st
     <>
       {filters}
       {rulesQ.isError ? (
-        <ErrorFrame onRetry={() => void rulesQ.refetch()}>The rules could not be read for this object.</ErrorFrame>
+        <ErrorFrame onRetry={() => void rulesQ.refetch()}>{t("The rules could not be read for this object.")}</ErrorFrame>
       ) : rulesQ.isPending ? (
         <div aria-busy="true" data-testid="rules-loading">
           {Array.from({ length: 6 }, (_, i) => (
@@ -678,11 +682,11 @@ export function RulesTab({ module: moduleSegment }: { system: string; module: st
           ))}
         </div>
       ) : ranked.length === 0 ? (
-        <EmptyFrame>{`No rule has failed for ${label} in this run. Rules appear here, ranked by value at risk, when an analysis finds records that fail.`}</EmptyFrame>
+        <EmptyFrame>{t("No rule has failed for {label} in this run. Rules appear here, ranked by value at risk, when an analysis finds records that fail.", { label })}</EmptyFrame>
       ) : pivot !== "rule" ? (
         <>
-          <PivotTable groups={groups} pivot={pivot} label={`${tableLabel}, ${PIVOTS.find((p) => p.key === pivot)?.label.toLowerCase()}`} />
-          {pivot === "feature" ? <p className="m2-prov">A rule that blocks or degrades several features is counted under each. Features come from the impact model for this run.</p> : null}
+          <PivotTable groups={groups} pivot={pivot} label={`${tableLabel}, ${lc(PIVOTS.find((p) => p.key === pivot)?.label ?? "")}`} />
+          {pivot === "feature" ? <p className="m2-prov">{t("A rule that blocks or degrades several features is counted under each. Features come from the impact model for this run.")}</p> : null}
         </>
       ) : narrow ? (
         <RulesList {...props} />
@@ -692,7 +696,7 @@ export function RulesTab({ module: moduleSegment }: { system: string; module: st
       {note ? <p role="status" className="m2-prov" data-testid="rules-note">{note}</p> : null}
       {view === "all" && ranked.length > 0 ? (
         <p className="m2-prov">
-          {`Ranked by value at risk${receipt?.value_at_risk != null ? `; total ${formatMoneyCompact(receipt.value_at_risk, currency)} across ${int(receipt.rules_measured)} rules measured` : ""}. Failing % is of ${int(receipt?.records_checked ?? ranked[0].total_count)} records checked.`}
+          {t("Ranked by value at risk{value}. Failing % is of {records_checked} records checked.", { value: receipt?.value_at_risk != null ? t("; total {formatMoneyCompact} across {rules_measured} rules measured", { formatMoneyCompact: moneyCompactText(receipt.value_at_risk, currency), rules_measured: int(receipt.rules_measured) }) : "", records_checked: int(receipt?.records_checked ?? ranked[0].total_count) })}
         </p>
       ) : null}
     </>

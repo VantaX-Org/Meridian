@@ -13,6 +13,7 @@ import { ConfirmBar, Field, Gate } from "../../forms";
 import { ScrollFrame } from "../object/ScrollFrame";
 import { Dash, EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../../parts";
 import { ScheduleFields, scheduleValid, type ScheduleValue } from "./ScheduleFields";
+import { t } from "@/lib/v2/i18n";
 
 /**
  * System › Schedules: the extraction schedules (sync profiles) of the system. Add one for an object, open one to change
@@ -31,7 +32,7 @@ export function Schedules({ id }: { id: string }) {
   const [removing, setRemoving] = useState<SyncProfile | null>(null);
 
   if (q.isLoading) return <Skeleton width="100%" height={120} />;
-  if (q.isError) return <ErrorFrame onRetry={() => void q.refetch()}>The schedules could not be read.</ErrorFrame>;
+  if (q.isError) return <ErrorFrame onRetry={() => void q.refetch()}>{t("The schedules could not be read.")}</ErrorFrame>;
   const profiles: SyncProfile[] = q.data ?? [];
   const scheduled = new Set(profiles.map((p) => p.domain));
   const addable = (objects.data?.objects ?? []).filter((o) => !scheduled.has(o.object));
@@ -42,39 +43,39 @@ export function Schedules({ id }: { id: string }) {
       const saved = await createProfile(id, { system_id: id, domain, tables: o?.tables ?? [], schedule_cron: value.cron.trim(), active: true, extraction_mode: value.mode });
       setDomain("");
       refresh();
-      return { tone: "ok", title: "Schedule added", detail: `${labelOf(saved.domain)}: ${describeCron(saved.schedule_cron)}${saved.next_run_at ? `, next run ${formatDate(saved.next_run_at, "datetime")}` : ""}.` };
+      return { tone: "ok", title: t("Schedule added"), detail: `${labelOf(saved.domain)}: ${describeCron(saved.schedule_cron)}${saved.next_run_at ? t(", next run {next_run_at}", { next_run_at: formatDate(saved.next_run_at, "datetime") }) : ""}.` };
     });
   const toggle = (p: SyncProfile) =>
     void run(`toggle:${p.id}`, async () => {
       const saved = await updateProfile(id, p.id, { active: !p.active });
       refresh();
-      return { tone: "ok", title: saved.active ? "Schedule resumed" : "Schedule paused", detail: `${labelOf(p.domain)}.` };
+      return { tone: "ok", title: saved.active ? t("Schedule resumed") : t("Schedule paused"), detail: `${labelOf(p.domain)}.` };
     });
   const remove = (p: SyncProfile) =>
     void run(`remove:${p.id}`, async () => {
       await deleteProfile(id, p.id);
       setRemoving(null);
       refresh();
-      return { tone: "ok", title: "Schedule deleted", detail: `${labelOf(p.domain)} is no longer extracted on a schedule.` };
+      return { tone: "ok", title: t("Schedule deleted"), detail: t("{domain} is no longer extracted on a schedule.", { domain: labelOf(p.domain) }) };
     });
 
   return (
     <>
-      <p className="m2-note">Each schedule extracts the object again and re-runs its checks, so trends and alerts see every run. Times are UTC.</p>
+      <p className="m2-note">{t("Each schedule extracts the object again and re-runs its checks, so trends and alerts see every run. Times are UTC.")}</p>
       {profiles.length === 0 ? (
-        <EmptyFrame>Nothing is scheduled for this system. Objects are only checked again when someone extracts them{allowed ? "; add a schedule below" : ""}.</EmptyFrame>
+        <EmptyFrame>{allowed ? t("Nothing is scheduled for this system. Objects are only checked again when someone extracts them; add a schedule below.") : t("Nothing is scheduled for this system. Objects are only checked again when someone extracts them.")}</EmptyFrame>
       ) : (
-        <ScrollFrame label="Table 1, scrollable">
+        <ScrollFrame label={t("Table 1, scrollable")}>
           <table className="m2-tbl" data-testid="system-schedules">
             <thead>
               <tr>
-                <th scope="col">Object</th>
-                <th scope="col">Schedule</th>
-                <th scope="col">Mode</th>
-                <th scope="col">Next</th>
-                <th scope="col">Last</th>
-                <th scope="col">State</th>
-                {allowed ? <th scope="col"><span className="m2-sr">Actions</span></th> : null}
+                <th scope="col">{t("Object")}</th>
+                <th scope="col">{t("Schedule")}</th>
+                <th scope="col">{t("Mode")}</th>
+                <th scope="col">{t("Next")}</th>
+                <th scope="col">{t("Last")}</th>
+                <th scope="col">{t("State")}</th>
+                {allowed ? <th scope="col"><span className="m2-sr">{t("Actions")}</span></th> : null}
               </tr>
             </thead>
             <tbody>
@@ -84,18 +85,18 @@ export function Schedules({ id }: { id: string }) {
                     <V2Link href={hrefFor({ kind: "syncschedule", id: `${id}:${p.id}` })}>{labelOf(p.domain)}</V2Link>
                   </th>
                   <td>{describeCron(p.schedule_cron)}</td>
-                  <td>{p.extraction_mode === "delta" ? "Changes only" : "Full"}</td>
+                  <td>{p.extraction_mode === "delta" ? t("Changes only") : t("Full")}</td>
                   <td>{p.active && p.next_run_at ? formatDate(p.next_run_at, "datetime") : <Dash />}</td>
                   <td>{p.last_run_at ? formatDate(p.last_run_at, "datetime") : <Dash />}</td>
-                  <td>{p.active ? "On" : "Paused"}</td>
+                  <td>{p.active ? t("On") : t("Paused")}</td>
                   {allowed ? (
                     <td>
                       <span className="m2-rowacts">
-                        <button type="button" className="m2-btn m2-sm" disabled={pending !== null} onClick={() => toggle(p)} aria-label={`${p.active ? "Pause" : "Resume"} the ${labelOf(p.domain)} schedule`}>
-                          {p.active ? "Pause" : "Resume"}
+                        <button type="button" className="m2-btn m2-sm" disabled={pending !== null} onClick={() => toggle(p)} aria-label={p.active ? t("Pause the {domain} schedule", { domain: labelOf(p.domain) }) : t("Resume the {domain} schedule", { domain: labelOf(p.domain) })}>
+                          {p.active ? t("Pause") : t("Resume")}
                         </button>
-                        <button type="button" className="m2-btn m2-sm m2-ghost" onClick={() => setRemoving(p)} aria-label={`Delete the ${labelOf(p.domain)} schedule`}>
-                          Delete
+                        <button type="button" className="m2-btn m2-sm m2-ghost" onClick={() => setRemoving(p)} aria-label={t("Delete the {domain} schedule", { domain: labelOf(p.domain) })}>
+                          {t("Delete")}
                         </button>
                       </span>
                     </td>
@@ -108,8 +109,8 @@ export function Schedules({ id }: { id: string }) {
       )}
       {removing ? (
         <ConfirmBar
-          message={`${labelOf(removing.domain)} is no longer extracted on a schedule (${describeCron(removing.schedule_cron)}). Its extraction log goes with it; runs and findings already analysed stay.`}
-          confirmLabel="Delete schedule"
+          message={t("{domain} is no longer extracted on a schedule ({describeCron}). Its extraction log goes with it; runs and findings already analysed stay.", { domain: labelOf(removing.domain), describeCron: describeCron(removing.schedule_cron) })}
+          confirmLabel={t("Delete schedule")}
           pending={pending === `remove:${removing.id}`}
           onConfirm={() => remove(removing)}
           onCancel={() => setRemoving(null)}
@@ -122,22 +123,22 @@ export function Schedules({ id }: { id: string }) {
         </p>
       ) : null}
       {!allowed ? (
-        <Gate>Adding, changing, pausing and deleting a schedule needs the manage systems permission.</Gate>
+        <Gate>{t("Adding, changing, pausing and deleting a schedule needs the manage systems permission.")}</Gate>
       ) : addable.length > 0 ? (
         <form
           className="m2-form6"
           style={{ marginTop: 16 }}
-          aria-label="Add a schedule"
+          aria-label={t("Add a schedule")}
           onSubmit={(e) => {
             e.preventDefault();
             if (domain && scheduleValid(value)) add();
           }}
         >
-          <h3>Add a schedule</h3>
-          <Field label="Object">
+          <h3>{t("Add a schedule")}</h3>
+          <Field label={t("Object")}>
             {(p) => (
               <select {...p} value={domain} onChange={(e) => setDomain(e.target.value)}>
-                <option value="">Choose an object</option>
+                <option value="">{t("Choose an object")}</option>
                 {addable.map((o) => (
                   <option key={o.object} value={o.object}>{labelOf(o.object)}</option>
                 ))}
@@ -147,12 +148,12 @@ export function Schedules({ id }: { id: string }) {
           <ScheduleFields value={value} onChange={setValue} />
           <div className="m2-acts">
             <button type="submit" className="m2-btn m2-strong" disabled={!domain || !scheduleValid(value) || pending !== null}>
-              {pending === "add" ? "Adding…" : "Add schedule"}
+              {pending === "add" ? t("Adding…") : t("Add schedule")}
             </button>
           </div>
         </form>
       ) : (
-        <p className="m2-prov">Every object of this system has a schedule.</p>
+        <p className="m2-prov">{t("Every object of this system has a schedule.")}</p>
       )}
     </>
   );

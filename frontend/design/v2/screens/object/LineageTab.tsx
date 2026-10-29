@@ -9,6 +9,7 @@ import { int, moduleFromSlug } from "@/lib/v2/score";
 import "../../mdm.css";
 import { EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../../parts";
 import { ScrollFrame } from "./ScrollFrame";
+import { t as tr } from "@/lib/v2/i18n";
 
 const KINDS: NodeKind[] = ["table", "field", "rule", "feature"];
 const trim = (t: string, n: number): string => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
@@ -63,13 +64,13 @@ function Node({ n, on, hot, onEnter, onLeave, onPick, hrefFor }: { n: LineageNod
   const common = { "data-node": n.id, "data-kind": n.kind, "data-on": on || hot ? "true" : undefined, onMouseEnter: onEnter, onMouseLeave: onLeave, onFocus: onEnter, onBlur: onLeave } as const;
   if (n.open) {
     return (
-      <V2Link href={hrefFor(n.open.kind, n.open.id)} className="m2-lg" aria-label={`${n.kind === "rule" ? "Rule" : "Feature"} ${n.label}`} {...common}>
+      <V2Link href={hrefFor(n.open.kind, n.open.id)} className="m2-lg" aria-label={`${n.kind === "rule" ? tr("Rule") : tr("Feature")} ${n.label}`} {...common}>
         {inner}
       </V2Link>
     );
   }
   return (
-    <g className="m2-lg" role="button" tabIndex={0} aria-pressed={hot} aria-label={`${n.kind === "table" ? "Table" : "Field"} ${n.label}`} onClick={onPick} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPick(); } }} {...common}>
+    <g className="m2-lg" role="button" tabIndex={0} aria-pressed={hot} aria-label={`${n.kind === "table" ? tr("Table") : tr("Field")} ${n.label}`} onClick={onPick} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPick(); } }} {...common}>
       {inner}
     </g>
   );
@@ -92,13 +93,13 @@ export function LineageView({ graph, label }: { graph: LineageGraph; label: stri
   const exportSvg = () => {
     if (!svgRef.current) return;
     const ok = download(svgFileOf(svgRef.current), `lineage-${label.toLowerCase().replace(/\s+/g, "-")}.svg`);
-    setNote(ok ? "The lineage was saved as an SVG file." : "This browser cannot save the file.");
+    setNote(ok ? tr("The lineage was saved as an SVG file.") : tr("This browser cannot save the file."));
   };
 
   return (
     <div className="m2-lgwrap">
       <div>
-        <ScrollFrame label="Lineage graph, scrollable">
+        <ScrollFrame label={tr("Lineage graph, scrollable")}>
           <svg
             ref={svgRef}
             className="m2-lineage m2-lgx"
@@ -106,7 +107,7 @@ export function LineageView({ graph, label }: { graph: LineageGraph; label: stri
             width={graph.width}
             height={graph.height}
             role="group"
-            aria-label={`Lineage of ${label}: ${counts[0]} tables, ${counts[1]} fields, ${counts[2]} rules, ${counts[3]} S/4 features`}
+            aria-label={tr("Lineage of {label}: {counts} tables, {counts2} fields, {counts3} rules, {counts4} S/4 features", { label, counts: counts[0], counts2: counts[1], counts3: counts[2], counts4: counts[3] })}
             data-testid="lineage-graph"
           >
             {KINDS.map((k) => {
@@ -130,11 +131,11 @@ export function LineageView({ graph, label }: { graph: LineageGraph; label: stri
           </svg>
         </ScrollFrame>
         <p className="m2-prov">
-          {`Drawn from the ${graph.shown} failing ${graph.shown === 1 ? "rule" : "rules"} of ${label} with the highest value at risk${graph.hidden > 0 ? `; ${int(graph.hidden)} more are not drawn` : ""}. Features come from the impact model of the current run.`}
+          {tr("Drawn from the {shown} failing {shown, plural, one {rule} other {rules}} of {label} with the highest value at risk{value}. Features come from the impact model of the current run.", { shown: graph.shown, label, value: graph.hidden > 0 ? tr("; {hidden} more are not drawn", { hidden: int(graph.hidden) }) : "" })}
         </p>
       </div>
-      <aside className="m2-lgfacts" aria-label="Facts of the node">
-        <h3 className="m2-h3">{active ? active.label : "Node facts"}</h3>
+      <aside className="m2-lgfacts" aria-label={tr("Facts of the node")}>
+        <h3 className="m2-h3">{active ? active.label : tr("Node facts")}</h3>
         {active ? (
           <>
             <dl className="m2-facts" data-testid="node-facts">
@@ -147,16 +148,16 @@ export function LineageView({ graph, label }: { graph: LineageGraph; label: stri
             </dl>
             {active.open ? (
               <p className="m2-rp">
-                <V2Link href={hrefOf(active.open.kind, active.open.id)}>{active.open.kind === "rule" ? "Open the rule" : "Open the feature"}</V2Link>
+                <V2Link href={hrefOf(active.open.kind, active.open.id)}>{active.open.kind === "rule" ? tr("Open the rule") : tr("Open the feature")}</V2Link>
               </p>
             ) : null}
           </>
         ) : (
-          <p className="m2-rp m2-meta">Hover or focus a node to see its facts here. Click a rule or a feature to open it.</p>
+          <p className="m2-rp m2-meta">{tr("Hover or focus a node to see its facts here. Click a rule or a feature to open it.")}</p>
         )}
         <div className="m2-acts">
           <button type="button" className="m2-btn" onClick={exportSvg}>
-            Export as SVG
+            {tr("Export as SVG")}
           </button>
         </div>
         {note ? <p role="status" className="m2-prov">{note}</p> : null}
@@ -170,13 +171,13 @@ export function LineageTab({ module: moduleSegment }: { system: string; module: 
   const run = useRunParam();
   const apiModule = moduleFromSlug(moduleSegment);
   const L = useLandscape(run);
-  const label = L.data?.objects.find((o) => o.module === apiModule)?.label ?? apiModule.replace(/_/g, " ");
+  const label = `${L.data?.objects.find((o) => o.module === apiModule)?.label ?? apiModule.replace(/_/g, " ")}`;
   const receiptQ = useReceipt(apiModule, run);
   const rulesQ = useObjectRules(apiModule, run);
   const impactQ = useConfigImpact(receiptQ.data?.run_id);
   const graph = useMemo(() => buildLineage(rulesQ.data ?? [], impactQ.data ?? [], apiModule), [rulesQ.data, impactQ.data, apiModule]);
 
-  if (rulesQ.isError) return <ErrorFrame onRetry={() => void rulesQ.refetch()}>{`The lineage of ${label} could not be read.`}</ErrorFrame>;
+  if (rulesQ.isError) return <ErrorFrame onRetry={() => void rulesQ.refetch()}>{tr("The lineage of {label} could not be read.", { label })}</ErrorFrame>;
   if (rulesQ.isPending || (receiptQ.isPending && !receiptQ.isError)) {
     return (
       <div aria-busy="true" data-testid="lineage-loading">
@@ -186,14 +187,14 @@ export function LineageTab({ module: moduleSegment }: { system: string; module: 
   }
   if (graph.nodes.length === 0) {
     return (
-      <EmptyFrame action={<V2Link href="/v2/runs" className="m2-btn">Open the runs</V2Link>}>
-        {`Lineage for ${label} fills when an analysis finds failing rules: it draws the tables and fields those rules read and the S/4HANA features they block or degrade.`}
+      <EmptyFrame action={<V2Link href="/v2/runs" className="m2-btn">{tr("Open the runs")}</V2Link>}>
+        {tr("Lineage for {label} fills when an analysis finds failing rules: it draws the tables and fields those rules read and the S/4HANA features they block or degrade.", { label })}
       </EmptyFrame>
     );
   }
   return (
     <>
-      {impactQ.isError ? <ErrorFrame onRetry={() => void impactQ.refetch()}>The S/4 features could not be read for this run, so the graph stops at the rules.</ErrorFrame> : null}
+      {impactQ.isError ? <ErrorFrame onRetry={() => void impactQ.refetch()}>{tr("The S/4 features could not be read for this run, so the graph stops at the rules.")}</ErrorFrame> : null}
       <LineageView graph={graph} label={label} />
     </>
   );

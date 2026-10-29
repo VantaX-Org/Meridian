@@ -14,6 +14,7 @@ import { useRefreshV2 } from "@/lib/v2/sys-queries";
 import { useSystemsExtended } from "@/lib/v2/runs-queries";
 import { ConfirmBar, Field, Gate } from "../../forms";
 import { VerdictMark } from "../../marks";
+import { t as tr } from "@/lib/v2/i18n";
 
 /** The edit form's values from the stored system. Stored secrets are never shown, so they start empty. */
 export const editValues = (s: SAPSystemExtended): ConnectionValues => ({
@@ -25,19 +26,19 @@ export const editValues = (s: SAPSystemExtended): ConnectionValues => ({
 type Outcome = { connected: boolean; message: string; latency: number | null } | { failed: string };
 
 function TestOutcomeLine({ outcome, stale }: { outcome: Outcome; stale: boolean }) {
-  if (stale) return <p className="m2-note" role="status">A connection field changed after the last test. Test again to try the values as they are now.</p>;
+  if (stale) return <p className="m2-note" role="status">{tr("A connection field changed after the last test. Test again to try the values as they are now.")}</p>;
   if ("failed" in outcome) {
     return (
       <p className="m2-result" role="status" data-tone="fail" data-testid="test-outcome">
-        <span className="m2-result-t"><VerdictMark verdict="no-go" />Test did not run</span>
+        <span className="m2-result-t"><VerdictMark verdict="no-go" />{tr("Test did not run")}</span>
         <span>{outcome.failed}</span>
       </p>
     );
   }
   return (
     <p className="m2-result" role="status" data-tone={outcome.connected ? "ok" : "fail"} data-testid="test-outcome">
-      <span className="m2-result-t"><VerdictMark verdict={outcome.connected ? "go" : "no-go"} />{outcome.connected ? "Connected" : "Not connected"}</span>
-      <span>{[outcome.latency != null ? `${outcome.latency} ms` : null, outcome.message].filter(Boolean).join(". ")}</span>
+      <span className="m2-result-t"><VerdictMark verdict={outcome.connected ? "go" : "no-go"} />{outcome.connected ? tr("Connected") : tr("Not connected")}</span>
+      <span>{[outcome.latency != null ? tr("{latency} ms", { latency: outcome.latency }) : null, outcome.message].filter(Boolean).join(". ")}</span>
     </p>
   );
 }
@@ -120,7 +121,7 @@ export function ConnectionForm({ system, onSaved, onRemoved }: { system?: SAPSys
           ...connection, username: v.username.trim(), ...(rfc ? {} : { token_url: v.token_url.trim() }),
           ...(Object.keys(credentials).length ? { credentials } : {}),
         });
-        setDone(`${saved.name} is saved.`);
+        setDone(tr("{name} is saved.", { name: saved.name }));
         refresh();
         onSaved?.({ id: saved.id, name: saved.name });
       } else {
@@ -135,12 +136,12 @@ export function ConnectionForm({ system, onSaved, onRemoved }: { system?: SAPSys
       if (!system) return;
       const { credentials } = connectionOf(v);
       if (Object.keys(credentials).length === 0) {
-        setError("Type the new secret first. An empty field keeps the stored one.");
+        setError(tr("Type the new secret first. An empty field keeps the stored one."));
         return;
       }
       await updateSystem(system.id, { credentials });
       setV((cur) => ({ ...cur, password: "", client_id: "", client_secret: "", api_key: "" }));
-      setDone("Credentials replaced. Test the connection to confirm they work.");
+      setDone(tr("Credentials replaced. Test the connection to confirm they work."));
       refresh();
     });
   const remove = () =>
@@ -151,18 +152,18 @@ export function ConnectionForm({ system, onSaved, onRemoved }: { system?: SAPSys
       onRemoved?.();
     });
 
-  const secretHint = system ? "Leave empty to keep the stored value" : undefined;
+  const secretHint = system ? tr("Leave empty to keep the stored value") : undefined;
   const tokenRequired = !rfc && auth !== "basic" && (NEEDS_TOKEN_URL.includes(type) || type === "successfactors");
 
   return (
-    <form className="m2-form6" noValidate onSubmit={save} aria-label={system ? `Connection settings of ${system.name}` : "Connect a system"} data-testid="connection-form">
-      {!allowed ? <Gate>Changing a connection needs the manage systems permission. You can read the settings; nothing here is sent.</Gate> : null}
+    <form className="m2-form6" noValidate onSubmit={save} aria-label={system ? tr("Connection settings of {name}", { name: system.name }) : tr("Connect a system")} data-testid="connection-form">
+      {!allowed ? <Gate>{tr("Changing a connection needs the manage systems permission. You can read the settings; nothing here is sent.")}</Gate> : null}
       <fieldset disabled={!allowed} style={{ border: 0, padding: 0, margin: 0, display: "grid", gap: "var(--m2-s3)", minWidth: 0 }}>
-        <Field label="Name" error={form.error("name")}>
-          {(p) => <input {...p} {...bind("name")} placeholder="ECC production" />}
+        <Field label={tr("Name")} error={form.error("name")}>
+          {(p) => <input {...p} {...bind("name")} placeholder={tr("ECC production")} />}
         </Field>
         {!system ? (
-          <Field label="System type">
+          <Field label={tr("System type")}>
             {(p) => (
               <select {...p} value={v.system_type} onChange={(e) => set({ system_type: e.target.value, auth_type: defaultAuth(e.target.value as SystemType) })}>
                 {TYPES.map((t) => (
@@ -173,7 +174,7 @@ export function ConnectionForm({ system, onSaved, onRemoved }: { system?: SAPSys
           </Field>
         ) : null}
         <div className="m2-grid2">
-          <Field label="Environment">
+          <Field label={tr("Environment")}>
             {(p) => (
               <select {...p} value={v.environment} onChange={(e) => set({ environment: e.target.value })}>
                 {ENVIRONMENTS.map((x) => (
@@ -183,21 +184,21 @@ export function ConnectionForm({ system, onSaved, onRemoved }: { system?: SAPSys
             )}
           </Field>
           {system ? (
-            <Field label="Role">
+            <Field label={tr("Role")}>
               {(p) => (
                 <select {...p} value={role} onChange={(e) => setRole(e.target.value === "target" ? "target" : "source")}>
-                  <option value="source">Source</option>
-                  <option value="target">Target</option>
+                  <option value="source">{tr("Source")}</option>
+                  <option value="target">{tr("Target")}</option>
                 </select>
               )}
             </Field>
           ) : null}
         </div>
         {system && role === "source" ? (
-          <Field label="Target system" hint="The configuration is compared with this system. None compares with the SAP standard baseline.">
+          <Field label={tr("Target system")} hint={tr("The configuration is compared with this system. None compares with the SAP standard baseline.")}>
             {(p) => (
               <select {...p} value={target} onChange={(e) => setTarget(e.target.value)}>
-                <option value="none">None (SAP standard baseline)</option>
+                <option value="none">{tr("None (SAP standard baseline)")}</option>
                 {others.filter((o) => o.id !== system.id).map((o) => (
                   <option key={o.id} value={o.id}>{o.name}</option>
                 ))}
@@ -205,29 +206,29 @@ export function ConnectionForm({ system, onSaved, onRemoved }: { system?: SAPSys
             )}
           </Field>
         ) : null}
-        <Field label="Description">{(p) => <input {...p} value={description} onChange={(e) => setDescription(e.target.value)} />}</Field>
+        <Field label={tr("Description")}>{(p) => <input {...p} value={description} onChange={(e) => setDescription(e.target.value)} />}</Field>
         {system ? (
           <label className="m2-chk">
             <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
-            Active
+            {tr("Active")}
           </label>
         ) : null}
 
         <fieldset>
-          <legend>Connection</legend>
+          <legend>{tr("Connection")}</legend>
           {rfc ? (
             <>
-              <Field label="Host" hint={HINT.host} error={form.error("host")}>{(p) => <input {...p} {...bind("host")} />}</Field>
+              <Field label={tr("Host")} hint={HINT.host} error={form.error("host")}>{(p) => <input {...p} {...bind("host")} />}</Field>
               <div className="m2-grid2">
-                <Field label="Client" hint={HINT.client} error={form.error("client")}>{(p) => <input {...p} {...bind("client")} inputMode="numeric" maxLength={3} />}</Field>
-                <Field label="Instance number" hint={HINT.sysnr} error={form.error("sysnr")}>{(p) => <input {...p} {...bind("sysnr")} inputMode="numeric" maxLength={2} />}</Field>
+                <Field label={tr("Client")} hint={HINT.client} error={form.error("client")}>{(p) => <input {...p} {...bind("client")} inputMode="numeric" maxLength={3} />}</Field>
+                <Field label={tr("Instance number")} hint={HINT.sysnr} error={form.error("sysnr")}>{(p) => <input {...p} {...bind("sysnr")} inputMode="numeric" maxLength={2} />}</Field>
               </div>
-              <Field label="User (optional)" hint={HINT.username}>{(p) => <input {...p} {...bind("username")} autoComplete="off" />}</Field>
+              <Field label={tr("User (optional)")} hint={HINT.username}>{(p) => <input {...p} {...bind("username")} autoComplete="off" />}</Field>
             </>
           ) : (
             <>
               {authOptions(type).length > 1 ? (
-                <Field label="Sign-in method">
+                <Field label={tr("Sign-in method")}>
                   {(p) => (
                     <select {...p} value={auth} onChange={(e) => set({ auth_type: e.target.value })}>
                       {authOptions(type).map((o) => (
@@ -237,12 +238,12 @@ export function ConnectionForm({ system, onSaved, onRemoved }: { system?: SAPSys
                   )}
                 </Field>
               ) : null}
-              <Field label="Base URL" hint={HINT.base_url} error={form.error("base_url")}>{(p) => <input {...p} {...bind("base_url")} type="url" placeholder="https://" />}</Field>
-              {type === "successfactors" ? <Field label="Company ID" hint={HINT.company_id} error={form.error("company_id")}>{(p) => <input {...p} {...bind("company_id")} />}</Field> : null}
-              {type === "ariba" ? <Field label="Realm" hint={HINT.realm} error={form.error("company_id")}>{(p) => <input {...p} {...bind("company_id")} />}</Field> : null}
-              {auth === "basic" ? <Field label="User" hint={HINT.basic_username} error={form.error("username")}>{(p) => <input {...p} {...bind("username")} autoComplete="off" />}</Field> : null}
+              <Field label={tr("Base URL")} hint={HINT.base_url} error={form.error("base_url")}>{(p) => <input {...p} {...bind("base_url")} type="url" placeholder="https://" />}</Field>
+              {type === "successfactors" ? <Field label={tr("Company ID")} hint={HINT.company_id} error={form.error("company_id")}>{(p) => <input {...p} {...bind("company_id")} />}</Field> : null}
+              {type === "ariba" ? <Field label={tr("Realm")} hint={HINT.realm} error={form.error("company_id")}>{(p) => <input {...p} {...bind("company_id")} />}</Field> : null}
+              {auth === "basic" ? <Field label={tr("User")} hint={HINT.basic_username} error={form.error("username")}>{(p) => <input {...p} {...bind("username")} autoComplete="off" />}</Field> : null}
               {auth !== "basic" ? (
-                <Field label={tokenRequired ? "Token URL" : "Token URL (optional)"} hint={TOKEN_HINT[type] ?? HINT.token_url} error={form.error("token_url")}>
+                <Field label={tokenRequired ? tr("Token URL") : tr("Token URL (optional)")} hint={TOKEN_HINT[type] ?? HINT.token_url} error={form.error("token_url")}>
                   {(p) => <input {...p} {...bind("token_url")} type="url" placeholder="https://" />}
                 </Field>
               ) : null}
@@ -251,21 +252,21 @@ export function ConnectionForm({ system, onSaved, onRemoved }: { system?: SAPSys
         </fieldset>
 
         <fieldset>
-          <legend>{system ? "Credentials" : "Sign-in secrets"}</legend>
-          {system ? <p className="m2-note">Stored secrets are never shown. Type new values to replace them; an empty field keeps the stored one.</p> : null}
+          <legend>{system ? tr("Credentials") : tr("Sign-in secrets")}</legend>
+          {system ? <p className="m2-note">{tr("Stored secrets are never shown. Type new values to replace them; an empty field keeps the stored one.")}</p> : null}
           {rfc || auth === "basic" ? (
-            <Field label="Password" hint={secretHint} error={form.error("password")}>{(p) => <input {...p} {...bind("password")} type="password" autoComplete="new-password" />}</Field>
+            <Field label={tr("Password")} hint={secretHint} error={form.error("password")}>{(p) => <input {...p} {...bind("password")} type="password" autoComplete="new-password" />}</Field>
           ) : (
             <>
-              <Field label="Client ID" hint={secretHint ?? HINT.client_id} error={form.error("client_id")}>{(p) => <input {...p} {...bind("client_id")} autoComplete="off" />}</Field>
-              <Field label="Client secret" hint={secretHint} error={form.error("client_secret")}>{(p) => <input {...p} {...bind("client_secret")} type="password" autoComplete="new-password" />}</Field>
-              {type === "ariba" ? <Field label="API key" hint={secretHint ?? HINT.api_key} error={form.error("api_key")}>{(p) => <input {...p} {...bind("api_key")} type="password" autoComplete="new-password" />}</Field> : null}
+              <Field label={tr("Client ID")} hint={secretHint ?? HINT.client_id} error={form.error("client_id")}>{(p) => <input {...p} {...bind("client_id")} autoComplete="off" />}</Field>
+              <Field label={tr("Client secret")} hint={secretHint} error={form.error("client_secret")}>{(p) => <input {...p} {...bind("client_secret")} type="password" autoComplete="new-password" />}</Field>
+              {type === "ariba" ? <Field label={tr("API key")} hint={secretHint ?? HINT.api_key} error={form.error("api_key")}>{(p) => <input {...p} {...bind("api_key")} type="password" autoComplete="new-password" />}</Field> : null}
             </>
           )}
           {system ? (
             <div className="m2-acts">
               <button type="button" className="m2-btn" disabled={!allowed || pending !== null} onClick={rotate}>
-                {pending === "rotate" ? "Replacing…" : "Rotate credentials"}
+                {pending === "rotate" ? tr("Replacing…") : tr("Rotate credentials")}
               </button>
             </div>
           ) : null}
@@ -278,24 +279,24 @@ export function ConnectionForm({ system, onSaved, onRemoved }: { system?: SAPSys
       {blocked && allowed ? <p className="m2-fhint">{blocked}</p> : null}
       <div className="m2-acts">
         <button type="button" className="m2-btn" disabled={!allowed || blocked !== null || pending !== null} onClick={test}>
-          {pending === "test" ? "Testing…" : "Test connection"}
+          {pending === "test" ? tr("Testing…") : tr("Test connection")}
         </button>
         <button type="submit" className="m2-btn m2-strong" disabled={!allowed || pending !== null}>
-          {pending === "save" ? "Saving…" : system ? "Save changes" : "Connect system"}
+          {pending === "save" ? tr("Saving…") : system ? tr("Save changes") : tr("Connect system")}
         </button>
         {system && allowed ? (
           <button type="button" className="m2-btn m2-ghost" aria-expanded={removing} onClick={() => setRemoving((x) => !x)}>
-            Remove system
+            {tr("Remove system")}
           </button>
         ) : null}
       </div>
-      {!system ? <p className="m2-fhint">You can connect now and test later. Nothing is read from SAP until you extract.</p> : null}
+      {!system ? <p className="m2-fhint">{tr("You can connect now and test later. Nothing is read from SAP until you extract.")}</p> : null}
       {removing && system ? (
         <>
-          <Field label={`Type ${system.name} to confirm`}>{(p) => <input {...p} value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" />}</Field>
+          <Field label={tr("Type {name} to confirm", { name: system.name })}>{(p) => <input {...p} value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" />}</Field>
           <ConfirmBar
-            message="Its credentials and schedules go with it. Extracted runs and findings stay."
-            confirmLabel="Remove system"
+            message={tr("Its credentials and schedules go with it. Extracted runs and findings stay.")}
+            confirmLabel={tr("Remove system")}
             pending={pending === "remove"}
             disabled={typed !== system.name}
             onConfirm={remove}

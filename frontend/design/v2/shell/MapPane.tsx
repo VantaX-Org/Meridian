@@ -12,6 +12,7 @@ import { Ruler } from "../Ruler";
 import { IconChevron } from "../marks";
 import { ErrorFrame, Skeleton, V2Link } from "../parts";
 import { RunMenu, ScopeMenu } from "./TopBar";
+import { t } from "@/lib/v2/i18n";
 
 export function dimsOf(cell: LandscapeCell): (number | null)[] {
   return DIMENSIONS.map((d) => cell.dimensions[d.key] ?? null);
@@ -25,7 +26,7 @@ function ObjectRow({ system, cell, label, current, fixtureRun }: { system: Lands
       <span className="m2-orow-nm">
         <span className="m2-orow-nt">
           {label}
-          {cell.low_confidence ? <span className="m2-orow-lc">low coverage</span> : null}
+          {cell.low_confidence ? <span className="m2-orow-lc">{t("low coverage")}</span> : null}
         </span>
         {cell.open_work ? <span className="m2-orow-wk">{int(cell.open_work)}</span> : null}
       </span>
@@ -60,10 +61,10 @@ function SystemStatus({ system, landscape }: { system: LandscapeSystem; landscap
   );
   if (system.state === "analysed") {
     const n = landscape.cells.filter((c) => c.system_id === system.id).length;
-    return <>{`${system.last_extracted_at ? formatDate(system.last_extracted_at, "datetime") : "Analysed"}, ${n} ${n === 1 ? "object" : "objects"}`}</>;
+    return <>{t("{value}, {n} {n, plural, one {object} other {objects}}", { value: system.last_extracted_at ? formatDate(system.last_extracted_at, "datetime") : t("Analysed"), n })}</>;
   }
-  if (system.state === "extracted") return <>Extracted, not analysed. {link("Run analysis")}</>;
-  return <>Not extracted yet. {link("Extract")}</>;
+  if (system.state === "extracted") return <>{t("Extracted, not analysed.")}{" "}{link(t("Run analysis"))}</>;
+  return <>{t("Not extracted yet.")}{" "}{link(t("Extract"))}</>;
 }
 
 /**
@@ -84,15 +85,15 @@ export function MapPane({ open, onClose, phone }: { open: boolean; onClose: () =
     <aside
       id="m2-map"
       className={`m2-map${open ? " m2-open" : ""}`}
-      aria-label="Map"
+      aria-label={t("Map")}
       role={phone && open ? "dialog" : undefined}
       aria-modal={phone && open ? true : undefined}
       data-testid="map"
     >
       <div className="m2-map-head">
-        <span>Map</span>
-        <button type="button" className="m2-x" onClick={onClose} aria-label="Close map">
-          <span className="m2-x-t">Close</span>
+        <span>{t("Map")}</span>
+        <button type="button" className="m2-x" onClick={onClose} aria-label={t("Close map")}>
+          <span className="m2-x-t">{t("Close")}</span>
         </button>
       </div>
       {phone ? (
@@ -101,27 +102,27 @@ export function MapPane({ open, onClose, phone }: { open: boolean; onClose: () =
           <RunMenu compact />
         </div>
       ) : null}
-      <nav className="m2-mnav" aria-label="Places">
+      <nav className="m2-mnav" aria-label={t("Places")}>
         <V2Link href="/v2" className="m2-mi" aria-current={current("/v2", true) ? "page" : undefined}>
-          <span>Landscape</span>
+          <span>{t("Landscape")}</span>
           <kbd className="m2-kb">g l</kbd>
         </V2Link>
         <V2Link href="/v2/work" className="m2-mi" aria-current={current("/v2/work") ? "page" : undefined}>
-          <span>Work</span>
+          <span>{t("Work")}</span>
           {counts.data?.fix ? <span className="m2-n">{int(counts.data.fix)}</span> : <kbd className="m2-kb">g w</kbd>}
         </V2Link>
         <V2Link href="/v2/runs" className="m2-mi" aria-current={current("/v2/runs") || current("/v2/run") ? "page" : undefined}>
-          <span>Runs</span>
+          <span>{t("Runs")}</span>
           <kbd className="m2-kb">g r</kbd>
         </V2Link>
         <V2Link href="/v2/people" className="m2-mi" aria-current={current("/v2/people") ? "page" : undefined}>
-          <span>People</span>
+          <span>{t("People")}</span>
           <kbd className="m2-kb">g p</kbd>
         </V2Link>
       </nav>
-      <div className="m2-mgrp">Systems</div>
+      <div className="m2-mgrp">{t("Systems")}</div>
       {q.isError ? (
-        <ErrorFrame onRetry={() => void q.refetch()}>The systems could not be read.</ErrorFrame>
+        <ErrorFrame onRetry={() => void q.refetch()}>{t("The systems could not be read.")}</ErrorFrame>
       ) : !L ? (
         <div className="m2-sys" aria-busy="true">
           {[0, 1, 2].map((i) => (

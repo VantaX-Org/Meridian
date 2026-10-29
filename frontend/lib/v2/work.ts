@@ -4,6 +4,8 @@
  */
 import type { WorkRow } from "@/lib/api/v2/types";
 import type { SavedView, WorkFilters, WorkSummary } from "@/lib/api/v2/work";
+import { t as tr } from "@/lib/v2/i18n";
+import { whole } from "./format";
 
 export type ChipId = "tofix" | "proposed" | "approvals" | "exceptions";
 export type SortKey = "value" | "due" | "age" | "owner";
@@ -30,10 +32,10 @@ const sumStatus = (s: WorkSummary | undefined, status: string, module?: string |
  * (the API's work status "proposed"); exceptions are the rows signed off as not an issue or accepted as a risk.
  */
 export const CHIPS: readonly ChipDef[] = [
-  { id: "tofix", label: "To fix", status: "to_fix", count: (s, m) => sumStatus(s, "to_fix", m) },
-  { id: "proposed", label: "Fix proposed", status: "to_fix", proposed: true, count: (s, m) => (s ? objectsOf(s, m).reduce((n, o) => n + o.proposed, 0) : null) },
-  { id: "approvals", label: "Waiting for approval", status: "proposed", count: (s, m) => sumStatus(s, "proposed", m) },
-  { id: "exceptions", label: "Exceptions", status: "not_an_issue", count: (s, m) => sumStatus(s, "not_an_issue", m) },
+  { id: "tofix", get label() { return tr("To fix"); }, status: "to_fix", count: (s, m) => sumStatus(s, "to_fix", m) },
+  { id: "proposed", get label() { return tr("Fix proposed"); }, status: "to_fix", proposed: true, count: (s, m) => (s ? objectsOf(s, m).reduce((n, o) => n + o.proposed, 0) : null) },
+  { id: "approvals", get label() { return tr("Waiting for approval"); }, status: "proposed", count: (s, m) => sumStatus(s, "proposed", m) },
+  { id: "exceptions", get label() { return tr("Exceptions"); }, status: "not_an_issue", count: (s, m) => sumStatus(s, "not_an_issue", m) },
 ];
 export const chipDef = (id: ChipId): ChipDef => CHIPS.find((c) => c.id === id) ?? CHIPS[0];
 
@@ -148,7 +150,7 @@ export function withState(search: string, s: LedgerState, extra: Record<string, 
   return qs;
 }
 
-export const SORT_LABEL: Record<SortKey, string> = { value: "Value at risk", due: "Due", age: "Age", owner: "Owner" };
+export const SORT_LABEL: Record<SortKey, string> = { get value() { return tr("Value at risk"); }, get due() { return tr("Due"); }, get age() { return tr("Age"); }, get owner() { return tr("Owner"); } };
 
 /** What the server is asked to sort by. It sorts by severity and age; the other keys sort the rows loaded. */
 export const SERVER_SORT: Record<SortKey, string> = { value: "severity", due: "severity", age: "-age", owner: "severity" };
@@ -181,22 +183,22 @@ export function initials(label: string | null | undefined): string | null {
 // Keys ----------------------------------------------------------------------------------------------------------
 
 export const KEY_LABEL: Record<string, string> = {
-  MATNR: "Material number",
-  LIFNR: "Vendor number",
-  KUNNR: "Customer number",
-  PARTNER: "Business partner",
-  SAKNR: "G/L account",
-  BUKRS: "Company code",
-  WERKS: "Plant",
-  VKORG: "Sales organisation",
-  VTWEG: "Distribution channel",
-  SPART: "Division",
-  EKORG: "Purchasing organisation",
-  LGORT: "Storage location",
-  ANLN1: "Asset number",
-  EQUNR: "Equipment number",
-  AUFNR: "Order number",
-  PERNR: "Personnel number",
+  get MATNR() { return tr("Material number"); },
+  get LIFNR() { return tr("Vendor number"); },
+  get KUNNR() { return tr("Customer number"); },
+  get PARTNER() { return tr("Business partner"); },
+  get SAKNR() { return tr("G/L account"); },
+  get BUKRS() { return tr("Company code"); },
+  get WERKS() { return tr("Plant"); },
+  get VKORG() { return tr("Sales organisation"); },
+  get VTWEG() { return tr("Distribution channel"); },
+  get SPART() { return tr("Division"); },
+  get EKORG() { return tr("Purchasing organisation"); },
+  get LGORT() { return tr("Storage location"); },
+  get ANLN1() { return tr("Asset number"); },
+  get EQUNR() { return tr("Equipment number"); },
+  get AUFNR() { return tr("Order number"); },
+  get PERNR() { return tr("Personnel number"); },
 };
 
 export interface KeyPart {
@@ -212,7 +214,7 @@ export function splitKey(key: string): KeyPart[] {
   });
 }
 
-export const keyLabel = (field: string): string => (field ? (KEY_LABEL[field] ?? field) : "Record");
+export const keyLabel = (field: string): string => (field ? (KEY_LABEL[field] ?? field) : tr("Record"));
 
 /** The headings of the first two key columns, from the key fields of the rows on screen. */
 export function keyHeaders(rows: readonly Pick<WorkRow, "record_key">[]): { first: string; second: string } {
@@ -224,7 +226,7 @@ export function keyHeaders(rows: readonly Pick<WorkRow, "record_key">[]): { firs
     if (!second && parts[1]?.field) second = parts[1].field;
     if (first && second) break;
   }
-  return { first: first ? keyLabel(first) : "Record", second: second ? keyLabel(second) : "Plant" };
+  return { first: first ? keyLabel(first) : tr("Record"), second: second ? keyLabel(second) : tr("Plant") };
 }
 
 export const recordItemId = (r: Pick<WorkRow, "module" | "record_key">): string => `${r.module}:${r.record_key}`;
@@ -243,7 +245,7 @@ export function possibleValues(r: Pick<WorkRow, "possible_values" | "possible_va
   return {
     text: shown.map((v) => v.value).join(", "),
     more: total - shown.length,
-    full: list.map((v) => (v.label ? `${v.value} (${v.label})` : v.value)).join(", ") + (total > list.length ? `, and ${total - list.length} more` : ""),
+    full: list.map((v) => (v.label ? `${v.value} (${v.label})` : v.value)).join(", ") + (total > list.length ? tr(", and {count} more", { count: total - list.length }) : ""),
   };
 }
 
@@ -256,29 +258,29 @@ export function daysOpen(firstSeen: string | null | undefined, now: number = Dat
 }
 
 export const STATUS_LABEL: Record<string, string> = {
-  to_fix: "To fix",
-  proposed: "Waiting for approval",
-  approved: "Approved",
-  sent: "Sent to SAP",
-  not_an_issue: "Exception",
-  fixed: "Fixed",
+  get to_fix() { return tr("To fix"); },
+  get proposed() { return tr("Waiting for approval"); },
+  get approved() { return tr("Approved"); },
+  get sent() { return tr("Sent to SAP"); },
+  get not_an_issue() { return tr("Exception"); },
+  get fixed() { return tr("Fixed"); },
 };
 
-const n = (x: number): string => x.toLocaleString("en-US");
+const n = (x: number): string => whole(x);
 
 /** The sentence under the title. Numbers are the summary's; nothing here is estimated. */
 export function sentence(opts: { persona: "lead" | "steward" | "basis" | "owner" | "process"; chip: ChipId | null; summary: WorkSummary | undefined; objectLabel: string | null; module?: string | null }): string {
   const { persona, chip, summary, objectLabel } = opts;
   if (!summary) return "";
-  const where = objectLabel ? ` in ${objectLabel}` : "";
+  const where = objectLabel ? tr(" in {objectLabel}", { objectLabel }) : "";
   const { module } = opts;
   const toFix = chipDef("tofix").count(summary, module) ?? 0;
   const suggested = chipDef("proposed").count(summary, module) ?? 0;
   const waiting = chipDef("approvals").count(summary, module) ?? 0;
   const exceptions = chipDef("exceptions").count(summary, module) ?? 0;
-  if (chip === "approvals") return waiting > 0 ? `${n(waiting)} ${waiting === 1 ? "record waits" : "records wait"} for approval${where}: the values are in a draft fix batch that a second person approves.` : `Nothing is waiting for approval${where}.`;
-  if (chip === "exceptions") return `${n(exceptions)} ${exceptions === 1 ? "record is" : "records are"} signed off${where} as not an issue or an accepted risk.`;
-  if (toFix === 0) return `Nothing is waiting to be fixed${where}.`;
-  if (persona === "steward" || chip === "proposed") return `${n(toFix)} ${toFix === 1 ? "record" : "records"} to fix${where}, ${n(suggested)} with a suggested value.`;
-  return `${n(toFix)} ${toFix === 1 ? "record" : "records"} to fix${where}, ranked by value at risk.`;
+  if (chip === "approvals") return waiting > 0 ? tr("{n} {waiting, plural, one {record waits} other {records wait}} for approval{where}: the values are in a draft fix batch that a second person approves.", { n: n(waiting), waiting, where }) : tr("Nothing is waiting for approval{where}.", { where });
+  if (chip === "exceptions") return tr("{n} {exceptions, plural, one {record is} other {records are}} signed off{where} as not an issue or an accepted risk.", { n: n(exceptions), exceptions, where });
+  if (toFix === 0) return tr("Nothing is waiting to be fixed{where}.", { where });
+  if (persona === "steward" || chip === "proposed") return tr("{n} {toFix, plural, one {record} other {records}} to fix{where}, {n2} with a suggested value.", { n: n(toFix), toFix, where, n2: n(suggested) });
+  return tr("{n} {toFix, plural, one {record} other {records}} to fix{where}, ranked by value at risk.", { n: n(toFix), toFix, where });
 }

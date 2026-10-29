@@ -6,6 +6,7 @@ import { useOpenItem } from "@/lib/v2/hooks";
 import { jobDoing } from "@/lib/v2/jobs";
 import { useV2Jobs } from "@/lib/v2/runs-queries";
 import { V2Link } from "../parts";
+import { t } from "@/lib/v2/i18n";
 
 export interface JobLineProps {
   /** 0 to 100, or null when nothing is running. */
@@ -21,7 +22,7 @@ export interface JobLineProps {
  */
 export function JobLine({ percent, label, href }: JobLineProps) {
   const on = percent !== null;
-  const text = on ? `${label ?? "Working"} ${Math.round(percent)}%` : "";
+  const text = on ? `${label ?? t("Working")} ${Math.round(percent)}%` : "";
   return (
     <div className={`m2-job${on ? " m2-on" : ""}`} role="status" aria-live="polite" data-testid="job-line">
       <div className="m2-job-bar" style={{ width: `${on ? Math.max(0, Math.min(100, percent)) : 0}%` }} />
@@ -45,7 +46,7 @@ function LineFor({ active }: { active: readonly Job[] }) {
   const job = [...active].sort((a, b) => b.updated_at - a.updated_at)[0];
   const more = active.length - 1;
   const percent = Math.min(100, Math.max(0, Math.round(job.percent ?? 0)));
-  return <JobLine percent={percent} label={`${jobDoing(job)}${more > 0 ? ` and ${more} more` : ""}`} href={hrefFor({ kind: "job", id: job.id })} />;
+  return <JobLine percent={percent} label={`${jobDoing(job)}${more > 0 ? t(" and {more} more", { more }) : ""}`} href={hrefFor({ kind: "job", id: job.id })} />;
 }
 
 /** The job line fed by the jobs stream (the existing SSE hook). */

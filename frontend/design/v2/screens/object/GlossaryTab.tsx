@@ -15,8 +15,9 @@ import "../../mdm.css";
 import { ResultFrame, useOutcome } from "../../inspector/shared";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../../parts";
 import { ToolGrid } from "../../GridTools";
+import { t as tr, lc } from "@/lib/v2/i18n";
 
-export const STATUS_WORD: Record<string, string> = { active: "Active", under_review: "Under review", deprecated: "Deprecated" };
+export const STATUS_WORD: Record<string, string> = { get active() { return tr("Active"); }, get under_review() { return tr("Under review"); }, get deprecated() { return tr("Deprecated"); } };
 
 export function TermStatus({ status }: { status: string }) {
   return (
@@ -34,20 +35,20 @@ function WithoutTerm({ module, terms, label }: { module: string; terms: readonly
   const rulesQ = useObjectRules(module, useRunParam());
   const rows = useMemo(() => fieldsWithoutTerm(rulesQ.data ?? [], new Set(terms.map(fieldKey))), [rulesQ.data, terms]);
   return (
-    <section aria-label="Fields without a term" className="m2-sec">
+    <section aria-label={tr("Fields without a term")} className="m2-sec">
       <div className="m2-sechead">
-        <h2 className="m2-h2">Fields without a term</h2>
+        <h2 className="m2-h2">{tr("Fields without a term")}</h2>
         {rulesQ.data ? <span className="m2-sub">{int(rows.length)}</span> : null}
       </div>
       {rulesQ.isPending ? (
         <Skeleton width="50%" height={14} />
       ) : rulesQ.isError ? (
-        <ErrorFrame onRetry={() => void rulesQ.refetch()}>The fields the rules read could not be read.</ErrorFrame>
+        <ErrorFrame onRetry={() => void rulesQ.refetch()}>{tr("The fields the rules read could not be read.")}</ErrorFrame>
       ) : rows.length === 0 ? (
-        <p className="m2-rp m2-meta">{`Every field the failing rules of ${label} read has a business term.`}</p>
+        <p className="m2-rp m2-meta">{tr("Every field the failing rules of {label} read has a business term.", { label })}</p>
       ) : (
         <>
-          <ul className="m2-flist" aria-label="Fields without a term">
+          <ul className="m2-flist" aria-label={tr("Fields without a term")}>
             {rows.map((r) => (
               <li key={r.field}>
                 <Mono>{r.field}</Mono>
@@ -64,7 +65,7 @@ function WithoutTerm({ module, terms, label }: { module: string; terms: readonly
               </li>
             ))}
           </ul>
-          <p className="m2-prov">The fields are those read by the failing rules of this object in the latest run. Terms are drafted from the rule library with Add terms from the rule library, and a data owner approves each.</p>
+          <p className="m2-prov">{tr("The fields are those read by the failing rules of this object in the latest run. Terms are drafted from the rule library with Add terms from the rule library, and a data owner approves each.")}</p>
         </>
       )}
     </section>
@@ -95,12 +96,12 @@ export function GlossaryTab({ module: moduleSegment }: { system: string; module:
 
   const columns = useMemo<GridColumn<TermRow>[]>(
     () => [
-      { id: "term", header: "Term", width: 200, pin: true, locked: true, cell: (r) => r.business_name },
-      { id: "def", header: "Definition", width: 360, cell: (r) => (r.business_definition ? <span title={r.business_definition}>{r.business_definition}</span> : <Dash why="The glossary list does not carry the definition; open the term" />) },
-      { id: "field", header: "SAP field", width: 140, cell: (r) => <Mono>{r.technical_name}</Mono> },
-      { id: "owner", header: "Owner", width: 150, cell: () => (ownerName ?? <Dash why="No owner is set for this object" />) },
-      { id: "status", header: "Status", width: 130, cell: (r) => <TermStatus status={r.status} /> },
-      { id: "rules", header: "Rules", width: 80, numeric: true, title: "Linked rules", cell: (r) => int(r.linked_rules_count) },
+      { id: "term", header: tr("Term"), width: 200, pin: true, locked: true, cell: (r) => r.business_name },
+      { id: "def", header: tr("Definition"), width: 360, cell: (r) => (r.business_definition ? <span title={r.business_definition}>{r.business_definition}</span> : <Dash why={tr("The glossary list does not carry the definition; open the term")} />) },
+      { id: "field", header: tr("SAP field"), width: 140, cell: (r) => <Mono>{r.technical_name}</Mono> },
+      { id: "owner", header: tr("Owner"), width: 150, cell: () => (ownerName ?? <Dash why={tr("No owner is set for this object")} />) },
+      { id: "status", header: tr("Status"), width: 130, cell: (r) => <TermStatus status={r.status} /> },
+      { id: "rules", header: tr("Rules"), width: 80, numeric: true, title: tr("Linked rules"), cell: (r) => int(r.linked_rules_count) },
     ],
     [ownerName],
   );
@@ -109,22 +110,22 @@ export function GlossaryTab({ module: moduleSegment }: { system: string; module:
     void act("populate", async () => {
       const res = await populateGlossary();
       void refreshV2(qc);
-      return { tone: "ok", title: res.created === 0 ? "No new terms to draft" : `${res.created} ${res.created === 1 ? "term" : "terms"} drafted`, detail: `${res.linked} rule ${res.linked === 1 ? "link" : "links"} added from the rule library. Drafts wait for an owner to approve them.` };
+      return { tone: "ok", title: res.created === 0 ? tr("No new terms to draft") : tr("{created} {created, plural, one {term} other {terms}} drafted", { created: res.created }), detail: tr("{linked} rule {linked, plural, one {link} other {links}} added from the rule library. Drafts wait for an owner to approve them.", { linked: res.linked }) };
     });
 
-  if (allQ.isError) return <ErrorFrame onRetry={() => void allQ.refetch()}>{`The glossary of ${label} could not be read.`}</ErrorFrame>;
+  if (allQ.isError) return <ErrorFrame onRetry={() => void allQ.refetch()}>{tr("The glossary of {label} could not be read.", { label })}</ErrorFrame>;
   if (allQ.data && allQ.data.total === 0) {
     return (
       <EmptyFrame
         action={
           canManage ? (
             <button type="button" className="m2-btn" onClick={populate} disabled={pending !== null}>
-              {pending === "populate" ? "Drafting…" : "Draft terms from the rule library"}
+              {pending === "populate" ? tr("Drafting…") : tr("Draft terms from the rule library")}
             </button>
           ) : undefined
         }
       >
-        {`No business terms are linked to ${label} yet. A data owner links a term to a field, or drafts them from the rules of the object, and they appear here with the rules that cite them.`}
+        {tr("No business terms are linked to {label} yet. A data owner links a term to a field, or drafts them from the rules of the object, and they appear here with the rules that cite them.", { label })}
       </EmptyFrame>
     );
   }
@@ -132,35 +133,35 @@ export function GlossaryTab({ module: moduleSegment }: { system: string; module:
     <div className="m2-mdm">
       <div className="m2-rbar">
         <label className="m2-sin">
-          <span className="m2-sr">Search terms</span>
-          <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search terms or fields" aria-label="Search terms" />
+          <span className="m2-sr">{tr("Search terms")}</span>
+          <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={tr("Search terms or fields")} aria-label={tr("Search terms")} />
         </label>
         <div className="m2-acts">
           {canManage ? (
             <button type="button" className="m2-btn" onClick={populate} disabled={pending !== null}>
-              {pending === "populate" ? "Drafting…" : "Add terms from the rule library"}
+              {pending === "populate" ? tr("Drafting…") : tr("Add terms from the rule library")}
             </button>
           ) : null}
         </div>
       </div>
       {outcome ? <ResultFrame outcome={outcome} /> : null}
-      <section aria-label="Business terms" className="m2-sec">
+      <section aria-label={tr("Business terms")} className="m2-sec">
         <div className="m2-sechead">
-          <h2 className="m2-h2">Business terms</h2>
-          {q.data ? <span className="m2-sub">{deferred ? `${int(q.data.total)} found of ${int(allQ.data?.total ?? q.data.total)}` : `${int(q.data.total)} ${q.data.total === 1 ? "term" : "terms"}`}</span> : null}
+          <h2 className="m2-h2">{tr("Business terms")}</h2>
+          {q.data ? <span className="m2-sub">{deferred ? tr("{total} found of {total2}", { total: int(q.data.total), total2: int(allQ.data?.total ?? q.data.total) }) : tr("{total} {total2, plural, one {term} other {terms}}", { total: int(q.data.total), total2: q.data.total })}</span> : null}
         </div>
         {narrow ? (
           q.isPending ? (
             <Skeleton width="100%" height={160} />
           ) : rows.length === 0 ? (
-            <p className="m2-rp m2-meta">No term matches that search.</p>
+            <p className="m2-rp m2-meta">{tr("No term matches that search.")}</p>
           ) : (
-            <ul className="m2-nlist" aria-label={`Business terms of ${label}`}>
+            <ul className="m2-nlist" aria-label={tr("Business terms of {label}", { label })}>
               {rows.map((r) => (
                 <li key={r.id} data-open={openId === r.id ? "true" : undefined}>
-                  <button type="button" onClick={() => openItem({ kind: "term", id: r.id })} aria-label={`Open the term ${r.business_name}`}>
+                  <button type="button" onClick={() => openItem({ kind: "term", id: r.id })} aria-label={tr("Open the term {business_name}", { business_name: r.business_name })}>
                     <span className="m2-nl1">{r.business_name}</span>
-                    <span className="m2-nl2">{[r.technical_name, STATUS_WORD[r.status] ?? r.status, `${r.linked_rules_count} ${r.linked_rules_count === 1 ? "rule" : "rules"}`].join(", ")}</span>
+                    <span className="m2-nl2">{[r.technical_name, STATUS_WORD[r.status] ?? r.status, tr("{linked_rules_count} {linked_rules_count, plural, one {rule} other {rules}}", { linked_rules_count: r.linked_rules_count })].join(", ")}</span>
                   </button>
                 </li>
               ))}
@@ -168,9 +169,9 @@ export function GlossaryTab({ module: moduleSegment }: { system: string; module:
           )
         ) : (
           <ToolGrid<TermRow>
-          toolsTitle="Glossary"
+          toolsTitle={tr("Glossary")}
             id="object-glossary"
-            ariaLabel={`Business terms of ${label}`}
+            ariaLabel={tr("Business terms of {label}", { label })}
             columns={columns}
             rows={rows}
             rowId={(r) => r.id}
@@ -181,10 +182,10 @@ export function GlossaryTab({ module: moduleSegment }: { system: string; module:
             initialViewport={Math.max(rows.length, 8)}
             openRowId={openId}
             onOpen={(r) => openItem({ kind: "term", id: r.id })}
-            emptyFrame={<EmptyFrame>No term matches that search.</EmptyFrame>}
+            emptyFrame={<EmptyFrame>{tr("No term matches that search.")}</EmptyFrame>}
           />
         )}
-        <p className="m2-prov">{`Owner is the owner of the ${label.toLowerCase()} object. Rules counts the rules that cite the term.`}</p>
+        <p className="m2-prov">{tr("Owner is the owner of the {label} object. Rules counts the rules that cite the term.", { label: lc(label) })}</p>
       </section>
       <WithoutTerm module={apiModule} terms={(allQ.data?.terms ?? []) as TermRow[]} label={label} />
     </div>

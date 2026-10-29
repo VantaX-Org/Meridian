@@ -9,6 +9,7 @@ import { useV2Session } from "./hooks";
 import { refreshV2 } from "./queries";
 import { useWorkCan } from "./work-actions";
 import { clearPatches } from "./work-overrides";
+import { t } from "@/lib/v2/i18n";
 
 export interface BatchCan {
   approve: boolean;
@@ -45,7 +46,7 @@ export function useBatchActions() {
   const approve = useCallback(
     async (id: string, label: string) => {
       const r = await postApproveBatch(id);
-      const text = `Approved batch ${label}`;
+      const text = t("Approved batch {label}", { label });
       if (r.action_id) toast.done({ ids: [r.action_id], label: text });
       else toast.show(text);
       await settle();
@@ -57,7 +58,7 @@ export function useBatchActions() {
   const sendBack = useCallback(
     async (id: string, label: string, note: string) => {
       const r = await postSendBack(id, note);
-      const text = `Sent batch ${label} back`;
+      const text = t("Sent batch {label} back", { label });
       if (r.action_id) toast.done({ ids: [r.action_id], label: text });
       else toast.show(text);
       await settle();

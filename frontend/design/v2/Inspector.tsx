@@ -11,6 +11,7 @@ import { EmptyFrame, Mono, V2Link } from "./parts";
 import { extensionFor } from "./inspector/registry";
 import { RuleInspectorBody } from "./inspector/rule";
 import { RecordInspector } from "./screens/RecordInspector";
+import { t } from "@/lib/v2/i18n";
 
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
@@ -27,7 +28,7 @@ export interface InspectorFrameProps {
  * back to where it was when it closes. On a phone it fills the screen.
  */
 export function InspectorFrame({ title, status, onClose, children }: InspectorFrameProps) {
-  const root = useRef<HTMLElement>(null);
+  const root = useRef<HTMLDivElement>(null);
   const closeBtn = useRef<HTMLButtonElement>(null);
   const titleId = useId();
 
@@ -40,7 +41,7 @@ export function InspectorFrame({ title, status, onClose, children }: InspectorFr
     };
   }, []);
 
-  const onKeyDown = (e: ReactKeyboardEvent<HTMLElement>) => {
+  const onKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Escape" && !e.defaultPrevented) {
       e.preventDefault();
       onClose();
@@ -62,18 +63,22 @@ export function InspectorFrame({ title, status, onClose, children }: InspectorFr
   };
 
   return (
-    <aside ref={root} className="m2-insp" role="dialog" aria-modal="false" aria-labelledby={titleId} onKeyDown={onKeyDown} data-testid="inspector">
+    // The aside is the inspector's landmark (a skip link and a screen reader's region list reach it); the dialog inside
+    // it holds the focus loop and Esc.
+    <aside className="m2-insp" id="m2-inspector" aria-label={t("Inspector")}>
+      <div ref={root} className="m2-insp-d" role="dialog" aria-modal="false" aria-labelledby={titleId} onKeyDown={onKeyDown} data-testid="inspector">
       <div className="m2-ih">
         <div style={{ minWidth: 0 }}>
           <h2 id={titleId}>{title}</h2>
           {status ? <div className="m2-ih-sl">{status}</div> : null}
         </div>
-        <button ref={closeBtn} type="button" className="m2-x" onClick={onClose} aria-label="Close inspector">
+        <button ref={closeBtn} type="button" className="m2-x" onClick={onClose} aria-label={t("Close inspector")}>
           <IconClose />
-          <span className="m2-x-t">Close</span>
+          <span className="m2-x-t">{t("Close")}</span>
         </button>
       </div>
       <div className="m2-ib">{children}</div>
+      </div>
     </aside>
   );
 }
@@ -81,7 +86,7 @@ export function InspectorFrame({ title, status, onClose, children }: InspectorFr
 export function Facts({ children }: { children: ReactNode }) {
   return (
     <>
-      <h3>Facts</h3>
+      <h3>{t("Facts")}</h3>
       <dl className="m2-facts">{children}</dl>
     </>
   );
@@ -99,7 +104,7 @@ export function Fact({ label, children }: { label: string; children: ReactNode }
 export function Actions({ children }: { children: ReactNode }) {
   return (
     <>
-      <h3>Actions</h3>
+      <h3>{t("Actions")}</h3>
       <div className="m2-acts">{children}</div>
     </>
   );
@@ -121,15 +126,15 @@ export function RuleBody({ id, landscape }: { id: string; landscape: Landscape |
   return (
     <>
       <Facts>
-        <Fact label="Rule">
+        <Fact label={t("Rule")}>
           <Mono>{id}</Mono>
         </Fact>
-        <Fact label="Name">{name ?? "—"}</Fact>
-        <Fact label="Over tolerance in">{capped.length === 0 ? "No object" : `${capped.length} ${capped.length === 1 ? "object" : "objects"}`}</Fact>
+        <Fact label={t("Name")}>{name ?? "—"}</Fact>
+        <Fact label={t("Over tolerance in")}>{capped.length === 0 ? t("No object") : t("{cappedCount} {cappedCount, plural, one {object} other {objects}}", { cappedCount: capped.length })}</Fact>
       </Facts>
       {capped.length > 0 ? (
         <>
-          <h3>Objects it caps</h3>
+          <h3>{t("Objects it caps")}</h3>
           <ul className="m2-breaches">
             {capped.map((c) => (
               <li key={`${c.system_id}:${c.module}`}>
@@ -142,7 +147,7 @@ export function RuleBody({ id, landscape }: { id: string; landscape: Landscape |
       ) : null}
       <Actions>
         <V2Link href={`/v2/r/${encodeURIComponent(id)}`} className="m2-btn m2-strong">
-          Open the rule
+          {t("Open the rule")}
         </V2Link>
       </Actions>
     </>
@@ -150,8 +155,8 @@ export function RuleBody({ id, landscape }: { id: string; landscape: Landscape |
 }
 
 function titleFor(item: OpenItem): { title: ReactNode; status: ReactNode } {
-  if (item.kind === "rule") return { title: <Mono>{item.id}</Mono>, status: "Rule" };
-  return { title: item.id, status: "Feature" };
+  if (item.kind === "rule") return { title: <Mono>{item.id}</Mono>, status: t("Rule") };
+  return { title: item.id, status: t("Feature") };
 }
 
 /** Shell slot: the right-hand inspector, driven by `?open=<kind>:<id>`. Renders nothing when nothing is open. */
@@ -168,7 +173,7 @@ export function Inspector() {
       {open.kind === "rule" ? (
         <RuleInspectorBody id={open.id} landscape={landscape} />
       ) : (
-        <EmptyFrame>Feature impact fills here in the next step.</EmptyFrame>
+        <EmptyFrame>{t("Feature impact fills here in the next step.")}</EmptyFrame>
       )}
     </InspectorFrame>
   );

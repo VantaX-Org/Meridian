@@ -15,6 +15,7 @@ import { Dash, Dot, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import { kindWord } from "../RunTimeline";
 import { duration } from "../shell/StatusStrip";
+import { t as tr, lc } from "@/lib/v2/i18n";
 
 /** The "Compare with" control: the other runs of the scope, newest first, and the link that opens the pair. */
 export function CompareControl({ id, runs }: { id: string; runs: readonly TimelineRun[] }) {
@@ -32,17 +33,17 @@ export function CompareControl({ id, runs }: { id: string; runs: readonly Timeli
   return (
     <span className="m2-pop-cmp">
       <label htmlFor="run-compare-with" className="m2-meta">
-        Compare with
+        {tr("Compare with")}
       </label>
       <select id="run-compare-with" className="m2-sel" value={other ?? ""} onChange={(e) => setPicked(e.target.value)}>
         {others.map((r) => (
           <option key={r.id} value={r.id}>
-            {`${formatDate(r.run_at, "datetime")}${r.baseline ? " (baseline)" : ""}`}
+            {`${formatDate(r.run_at, "datetime")}${r.baseline ? tr(" (baseline)") : ""}`}
           </option>
         ))}
       </select>
       <V2Link href={`/v2/run/${a}/vs/${b}`} className="m2-btn">
-        Compare
+        {tr("Compare")}
       </V2Link>
     </span>
   );
@@ -54,22 +55,22 @@ function ObjectTable({ cells, labelOf, systemName, run }: { cells: LandscapeCell
       <table className="m2-tbl" data-testid="run-objects">
         <thead>
           <tr>
-            <th scope="col">Object</th>
-            <th scope="col" className="m2-r" title="The score before any cap">
-              Measured
+            <th scope="col">{tr("Object")}</th>
+            <th scope="col" className="m2-r" title={tr("The score before any cap")}>
+              {tr("Measured")}
             </th>
-            <th scope="col" className="m2-r" title="The score after the critical cap">
-              Shown
+            <th scope="col" className="m2-r" title={tr("The score after the critical cap")}>
+              {tr("Shown")}
             </th>
-            <th scope="col">Verdict</th>
+            <th scope="col">{tr("Verdict")}</th>
             <th scope="col" className="m2-r">
-              Records checked
-            </th>
-            <th scope="col" className="m2-r">
-              Rules
+              {tr("Records checked")}
             </th>
             <th scope="col" className="m2-r">
-              Open work
+              {tr("Rules")}
+            </th>
+            <th scope="col" className="m2-r">
+              {tr("Open work")}
             </th>
           </tr>
         </thead>
@@ -82,7 +83,7 @@ function ObjectTable({ cells, labelOf, systemName, run }: { cells: LandscapeCell
               <td className="m2-r">{f1(c.raw_score)}</td>
               <td className="m2-r">
                 {f1(c.score)}
-                {c.capped ? <span className="m2-meta"> capped</span> : null}
+                {c.capped ? <span className="m2-meta">{" "}{tr("capped")}</span> : null}
               </td>
               <td>
                 <span className="m2-v">
@@ -92,7 +93,7 @@ function ObjectTable({ cells, labelOf, systemName, run }: { cells: LandscapeCell
               </td>
               <td className="m2-r">{int(c.records_checked)}</td>
               <td className="m2-r">{int(c.rules_measured)}</td>
-              <td className="m2-r">{c.open_work == null ? <Dash why="Open work is counted for the objects with a work ledger" /> : int(c.open_work)}</td>
+              <td className="m2-r">{c.open_work == null ? <Dash why={tr("Open work is counted for the objects with a work ledger")} /> : int(c.open_work)}</td>
             </tr>
           ))}
         </tbody>
@@ -107,25 +108,25 @@ export function RunJobs({ runId }: { runId: string }) {
   const { hrefFor } = useOpenItem();
   const mine = jobs.jobs.filter((j) => j.version_id === runId || j.id === runId || j.id === `dl-${runId}`);
   return (
-    <section className="m2-sec" aria-label="Jobs">
+    <section className="m2-sec" aria-label={tr("Jobs")}>
       <div className="m2-sechead">
-        <h2 className="m2-h2">Jobs</h2>
-        <span className="m2-sub">The extraction and analysis that made this run</span>
+        <h2 className="m2-h2">{tr("Jobs")}</h2>
+        <span className="m2-sub">{tr("The extraction and analysis that made this run")}</span>
       </div>
       {jobs.isLoading ? (
         <Skeleton width="100%" height={64} />
       ) : mine.length === 0 ? (
-        <EmptyFrame>No job record is kept for this run. The registry holds jobs for 7 days, and the 200 most recent.</EmptyFrame>
+        <EmptyFrame>{tr("No job record is kept for this run. The registry holds jobs for 7 days, and the 200 most recent.")}</EmptyFrame>
       ) : (
         <div className="m2-frame">
           <table className="m2-tbl" data-testid="run-jobs">
             <thead>
               <tr>
-                <th scope="col">Job</th>
-                <th scope="col">State</th>
-                <th scope="col">Started</th>
+                <th scope="col">{tr("Job")}</th>
+                <th scope="col">{tr("State")}</th>
+                <th scope="col">{tr("Started")}</th>
                 <th scope="col" className="m2-r">
-                  Took
+                  {tr("Took")}
                 </th>
               </tr>
             </thead>
@@ -190,9 +191,9 @@ export function RunCanvas({ id }: { id: string }) {
   if (head.isError) {
     return (
       <>
-        <PageTitle>Run</PageTitle>
+        <PageTitle>{tr("Run")}</PageTitle>
         <div className="m2-sec">
-          <ErrorFrame onRetry={() => void head.refetch()}>This run could not be read. It may belong to another tenant or have been removed.</ErrorFrame>
+          <ErrorFrame onRetry={() => void head.refetch()}>{tr("This run could not be read. It may belong to another tenant or have been removed.")}</ErrorFrame>
         </div>
       </>
     );
@@ -201,16 +202,16 @@ export function RunCanvas({ id }: { id: string }) {
   const parts: string[] = v
     ? [
         system?.name ?? "",
-        strip ? `${int(strip.records_checked)} records checked` : "",
-        strip ? `${int(strip.rules_measured)} rules measured` : "",
-        meta?.duration_s != null ? `scored in ${duration(meta.duration_s)}` : "",
-        `trigger ${kindWord(meta?.kind ?? v.metadata?.trigger).toLowerCase()}`,
+        strip ? tr("{records_checked} records checked", { records_checked: int(strip.records_checked) }) : "",
+        strip ? tr("{rules_measured} rules measured", { rules_measured: int(strip.rules_measured) }) : "",
+        meta?.duration_s != null ? tr("scored in {duration_s}", { duration_s: duration(meta.duration_s) }) : "",
+        tr("trigger {kindWord}", { kindWord: lc(kindWord(meta?.kind ?? v.metadata?.trigger)) }),
       ].filter(Boolean)
     : [];
 
   return (
     <>
-      <PageTitle sub={system?.name}>{v ? `Run ${formatDate(v.run_at, "datetime")}` : "Run"}</PageTitle>
+      <PageTitle sub={system?.name}>{v ? tr("Run {run_at}", { run_at: formatDate(v.run_at, "datetime") }) : tr("Run")}</PageTitle>
       <p className="m2-statusline" data-testid="run-status-line">
         {v ? (
           <>
@@ -223,15 +224,15 @@ export function RunCanvas({ id }: { id: string }) {
               ))}
             </span>
             {baseline ? (
-              <span className="m2-v">Baseline</span>
+              <span className="m2-v">{tr("Baseline")}</span>
             ) : null}
             {archived ? (
-              <span>Archived</span>
+              <span>{tr("Archived")}</span>
             ) : null}
             {v.status === "failed" ? (
               <span className="m2-v">
                 <VerdictMark verdict="no-go" />
-                Failed
+                {tr("Failed")}
               </span>
             ) : null}
           </>
@@ -241,13 +242,13 @@ export function RunCanvas({ id }: { id: string }) {
       </p>
       {cells.length > 0 ? (
         <p className="m2-finding" data-testid="run-sentence">
-          {`${cells.length} ${cells.length === 1 ? "object" : "objects"} scored: ${counts.go ?? 0} go, ${counts["at-risk"] ?? 0} at risk, ${counts["no-go"] ?? 0} no-go.`}
+          {tr("{cellsCount} {cellsCount, plural, one {object} other {objects}} scored: {go} go, {counts} at risk, {counts2} no-go.", { cellsCount: cells.length, go: counts.go ?? 0, counts: counts["at-risk"] ?? 0, counts2: counts["no-go"] ?? 0 })}
         </p>
       ) : null}
 
       <div className="m2-cta" data-testid="run-actions">
         <V2Link href={`/v2?run=${id}`} className="m2-btn m2-next">
-          Show scores from this run
+          {tr("Show scores from this run")}
         </V2Link>
         <button
           type="button"
@@ -257,11 +258,11 @@ export function RunCanvas({ id }: { id: string }) {
             void run("pin", async () => {
               const r = await pinBaseline(id, !baseline);
               refresh();
-              return { tone: "ok", title: r.baseline ? "Pinned as the baseline" : "Baseline unpinned", detail: r.baseline ? "Later runs of this system compare with it by default." : "Later runs compare with the run before them." };
+              return { tone: "ok", title: r.baseline ? tr("Pinned as the baseline") : tr("Baseline unpinned"), detail: r.baseline ? tr("Later runs of this system compare with it by default.") : tr("Later runs compare with the run before them.") };
             })
           }
         >
-          {baseline ? "Unpin baseline" : "Pin as baseline"}
+          {baseline ? tr("Unpin baseline") : tr("Pin as baseline")}
         </button>
         {archived ? (
           <button
@@ -272,27 +273,27 @@ export function RunCanvas({ id }: { id: string }) {
               void run("restore", async () => {
                 const r = await restoreRuns();
                 refresh();
-                return { tone: "ok", title: `${r.restored} ${r.restored === 1 ? "run" : "runs"} restored`, detail: "Every archived run is back in the lists." };
+                return { tone: "ok", title: tr("{restored} {restored, plural, one {run} other {runs}} restored", { restored: r.restored }), detail: tr("Every archived run is back in the lists.") };
               })
             }
           >
-            Restore archived runs
+            {tr("Restore archived runs")}
           </button>
         ) : (
           <button
             type="button"
             className="m2-btn"
             disabled={!canChange || pending !== null || older === 0}
-            title={older === 0 ? "No run is older than this one" : undefined}
+            title={older === 0 ? tr("No run is older than this one") : undefined}
             onClick={() =>
               void run("archive", async () => {
                 const r = await archiveRuns(rank + 1);
                 refresh();
-                return { tone: "ok", title: `${r.archived} older ${r.archived === 1 ? "run" : "runs"} archived`, detail: "Nothing is deleted: findings, reports and history stay, and Restore brings the runs back." };
+                return { tone: "ok", title: tr("{archived} older {archived, plural, one {run} other {runs}} archived", { archived: r.archived }), detail: tr("Nothing is deleted: findings, reports and history stay, and Restore brings the runs back.") };
               })
             }
           >
-            {older > 0 ? `Archive the ${older} older ${older === 1 ? "run" : "runs"}` : "Archive older runs"}
+            {older > 0 ? tr("Archive the {older} older {older, plural, one {run} other {runs}}", { older }) : tr("Archive older runs")}
           </button>
         )}
         <button
@@ -303,30 +304,30 @@ export function RunCanvas({ id }: { id: string }) {
             void run("report", async () => {
               await downloadRunReport(id);
               return session.fixture
-                ? { tone: "info", title: "Fixture mode: no file is produced", detail: "Outside fixture mode this saves the run's report from /reports/{run}/download." }
-                : { tone: "ok", title: "Report downloading", detail: "The browser saves it when the file is ready." };
+                ? { tone: "info", title: tr("Fixture mode: no file is produced"), detail: "Outside fixture mode this saves the run's report from /reports/{run}/download." }
+                : { tone: "ok", title: tr("Report downloading"), detail: tr("The browser saves it when the file is ready.") };
             })
           }
         >
-          Download report
+          {tr("Download report")}
         </button>
         <CompareControl id={id} runs={timeline.data?.runs ?? []} />
       </div>
-      {!canChange ? <p className="m2-prov">Pinning, archiving and restoring need the analyse permission.</p> : null}
+      {!canChange ? <p className="m2-prov">{tr("Pinning, archiving and restoring need the analyse permission.")}</p> : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
 
-      <section className="m2-sec" aria-label="By object">
+      <section className="m2-sec" aria-label={tr("By object")}>
         <div className="m2-sechead">
-          <h2 className="m2-h2">By object</h2>
-          <span className="m2-sub">Measured score, then the score shown after the cap</span>
+          <h2 className="m2-h2">{tr("By object")}</h2>
+          <span className="m2-sub">{tr("Measured score, then the score shown after the cap")}</span>
         </div>
         {land.isLoading ? (
           <Skeleton width="100%" height={160} />
         ) : land.isError ? (
-          <ErrorFrame onRetry={() => void land.refetch()}>The objects of this run could not be read.</ErrorFrame>
+          <ErrorFrame onRetry={() => void land.refetch()}>{tr("The objects of this run could not be read.")}</ErrorFrame>
         ) : cells.length === 0 ? (
-          <EmptyFrame action={<V2Link href="/v2/runs" className="m2-btn">All runs</V2Link>}>
-            {v?.status === "failed" ? "This run failed before it scored any object." : "This run has no scored object."}
+          <EmptyFrame action={<V2Link href="/v2/runs" className="m2-btn">{tr("All runs")}</V2Link>}>
+            {v?.status === "failed" ? tr("This run failed before it scored any object.") : tr("This run has no scored object.")}
           </EmptyFrame>
         ) : (
           <ObjectTable cells={cells} labelOf={labelOf} systemName={system?.name ?? ""} run={id} />

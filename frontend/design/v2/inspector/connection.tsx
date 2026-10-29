@@ -7,6 +7,7 @@ import { useSystemsExtended } from "@/lib/v2/runs-queries";
 import { InspectorFrame } from "../Inspector";
 import { EmptyFrame, ErrorFrame, Skeleton } from "../parts";
 import { ConnectionForm } from "../screens/system/ConnectionForm";
+import { t } from "@/lib/v2/i18n";
 
 /**
  * `?open=connection:<system id>` edits a system's connection; `?open=connection:new` connects a new one. The form is
@@ -19,15 +20,15 @@ export function ConnectionInspector({ id, onClose }: { id: string; onClose: () =
   const isNew = id === "new";
   const system = systems.data?.find((s) => s.id === id);
   return (
-    <InspectorFrame title={isNew ? "Connect a system" : system?.name ?? "Connection"} status={isNew ? "New system" : system ? `${systemTypeLabel(system.system_type)}, connection settings` : undefined} onClose={onClose}>
+    <InspectorFrame title={isNew ? t("Connect a system") : system?.name ?? t("Connection")} status={isNew ? t("New system") : system ? t("{systemTypeLabel}, connection settings", { systemTypeLabel: systemTypeLabel(system.system_type) }) : undefined} onClose={onClose}>
       {isNew ? (
         <ConnectionForm onSaved={(s) => router.replace(v2(`/v2/s/${s.id}?open=system:${s.id}`))} />
       ) : systems.isLoading ? (
         <Skeleton width="100%" height={160} />
       ) : systems.isError ? (
-        <ErrorFrame onRetry={() => void systems.refetch()}>The system could not be read.</ErrorFrame>
+        <ErrorFrame onRetry={() => void systems.refetch()}>{t("The system could not be read.")}</ErrorFrame>
       ) : !system ? (
-        <EmptyFrame>This system is not in the tenant. It may have been removed.</EmptyFrame>
+        <EmptyFrame>{t("This system is not in the tenant. It may have been removed.")}</EmptyFrame>
       ) : (
         <ConnectionForm key={system.id} system={system} onRemoved={() => router.replace(v2("/v2"))} />
       )}

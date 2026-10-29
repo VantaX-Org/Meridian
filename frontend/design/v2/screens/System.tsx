@@ -14,13 +14,14 @@ import { CustomObjects } from "./system/CustomObjects";
 import { Schedules } from "./system/Schedules";
 import { VerdictMark } from "../marks";
 import { Dash, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../parts";
+import { t as tr } from "@/lib/v2/i18n";
 
 export const SYSTEM_TABS = [
-  { key: "overview", label: "Overview", old: "overview" },
-  { key: "extractions", label: "Extractions", old: "runs" },
-  { key: "configuration", label: "Configuration", old: "config" },
-  { key: "schedules", label: "Schedules", old: "health" },
-  { key: "custom-objects", label: "Custom objects", old: "custom" },
+  { key: "overview", get label() { return tr("Overview"); }, old: "overview" },
+  { key: "extractions", get label() { return tr("Extractions"); }, old: "runs" },
+  { key: "configuration", get label() { return tr("Configuration"); }, old: "config" },
+  { key: "schedules", get label() { return tr("Schedules"); }, old: "health" },
+  { key: "custom-objects", get label() { return tr("Custom objects"); }, old: "custom" },
 ] as const;
 type TabKey = (typeof SYSTEM_TABS)[number]["key"];
 
@@ -36,27 +37,27 @@ function Overview({ id }: { id: string }) {
   const { hrefFor } = useOpenItem();
   return (
     <>
-      <section className="m2-sec" style={{ marginTop: 0 }} aria-label="Objects">
+      <section className="m2-sec" style={{ marginTop: 0 }} aria-label={tr("Objects")}>
         <div className="m2-sechead">
-          <h2 className="m2-h2">Objects</h2>
-          <span className="m2-sub">What the latest run scored</span>
+          <h2 className="m2-h2">{tr("Objects")}</h2>
+          <span className="m2-sub">{tr("What the latest run scored")}</span>
         </div>
         {land.isLoading ? (
           <Skeleton width="100%" height={120} />
         ) : cells.length === 0 ? (
-          <EmptyFrame>{system?.state === "extracted" ? "This system is extracted but no rule has run on it. Run an analysis." : "No object has a run on this system yet."}</EmptyFrame>
+          <EmptyFrame>{system?.state === "extracted" ? tr("This system is extracted but no rule has run on it. Run an analysis.") : tr("No object has a run on this system yet.")}</EmptyFrame>
         ) : (
           <div className="m2-frame">
             <table className="m2-tbl" data-testid="system-objects">
               <thead>
                 <tr>
-                  <th scope="col">Object</th>
+                  <th scope="col">{tr("Object")}</th>
                   <th scope="col" className="m2-r">
-                    Shown
+                    {tr("Shown")}
                   </th>
-                  <th scope="col">Verdict</th>
+                  <th scope="col">{tr("Verdict")}</th>
                   <th scope="col" className="m2-r">
-                    Records checked
+                    {tr("Records checked")}
                   </th>
                 </tr>
               </thead>
@@ -81,21 +82,21 @@ function Overview({ id }: { id: string }) {
           </div>
         )}
       </section>
-      <section className="m2-sec" aria-label="Recent jobs">
+      <section className="m2-sec" aria-label={tr("Recent jobs")}>
         <div className="m2-sechead">
-          <h2 className="m2-h2">Recent jobs</h2>
-          <span className="m2-sub">From the job registry</span>
+          <h2 className="m2-h2">{tr("Recent jobs")}</h2>
+          <span className="m2-sub">{tr("From the job registry")}</span>
         </div>
         {mine.length === 0 ? (
-          <EmptyFrame>No job has run on this system in the last 7 days.</EmptyFrame>
+          <EmptyFrame>{tr("No job has run on this system in the last 7 days.")}</EmptyFrame>
         ) : (
           <div className="m2-frame">
             <table className="m2-tbl">
               <thead>
                 <tr>
-                  <th scope="col">Job</th>
-                  <th scope="col">State</th>
-                  <th scope="col">Started</th>
+                  <th scope="col">{tr("Job")}</th>
+                  <th scope="col">{tr("State")}</th>
+                  <th scope="col">{tr("Started")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -125,23 +126,23 @@ function Overview({ id }: { id: string }) {
 function Extractions({ id }: { id: string }) {
   const q = useSystemExtractions(id);
   if (q.isLoading) return <Skeleton width="100%" height={160} />;
-  if (q.isError) return <ErrorFrame onRetry={() => void q.refetch()}>The extractions of this system could not be read.</ErrorFrame>;
+  if (q.isError) return <ErrorFrame onRetry={() => void q.refetch()}>{tr("The extractions of this system could not be read.")}</ErrorFrame>;
   const versions = q.data?.versions ?? [];
-  if (versions.length === 0) return <EmptyFrame>This system has not been extracted yet. Open the inspector and choose Extract.</EmptyFrame>;
+  if (versions.length === 0) return <EmptyFrame>{tr("This system has not been extracted yet. Open the inspector and choose Extract.")}</EmptyFrame>;
   return (
     <div className="m2-frame">
       <table className="m2-tbl" data-testid="system-extractions">
         <thead>
           <tr>
-            <th scope="col">Extracted</th>
-            <th scope="col">Label</th>
+            <th scope="col">{tr("Extracted")}</th>
+            <th scope="col">{tr("Label")}</th>
             <th scope="col" className="m2-r">
-              Objects
+              {tr("Objects")}
             </th>
             <th scope="col" className="m2-r">
-              Records
+              {tr("Records")}
             </th>
-            <th scope="col">Analysis</th>
+            <th scope="col">{tr("Analysis")}</th>
           </tr>
         </thead>
         <tbody>
@@ -151,7 +152,7 @@ function Extractions({ id }: { id: string }) {
               <tr key={v.id}>
                 <th scope="row">{formatDate(v.run_at, "datetime")}</th>
                 <td>
-                  {v.baseline ? "Baseline" : null}
+                  {v.baseline ? tr("Baseline") : null}
                   {v.baseline && v.label ? ", " : null}
                   {v.label ?? (v.baseline ? null : <Dash />)}
                 </td>
@@ -160,10 +161,10 @@ function Extractions({ id }: { id: string }) {
                 <td>
                   {v.analysed_at ? (
                     <V2Link href={`/v2/run/${v.id}`} className="m2-rowlink">
-                      Open the run
+                      {tr("Open the run")}
                     </V2Link>
                   ) : (
-                    <span className="m2-meta">{v.analysable ? "Not analysed" : "Cannot be analysed"}</span>
+                    <span className="m2-meta">{v.analysable ? tr("Not analysed") : tr("Cannot be analysed")}</span>
                   )}
                 </td>
               </tr>
@@ -198,9 +199,9 @@ export function SystemCanvas({ id }: { id: string }) {
   if (land.isError) {
     return (
       <>
-        <PageTitle>System</PageTitle>
+        <PageTitle>{tr("System")}</PageTitle>
         <div className="m2-sec">
-          <ErrorFrame onRetry={() => void land.refetch()}>The system could not be read.</ErrorFrame>
+          <ErrorFrame onRetry={() => void land.refetch()}>{tr("The system could not be read.")}</ErrorFrame>
         </div>
       </>
     );
@@ -208,22 +209,22 @@ export function SystemCanvas({ id }: { id: string }) {
   if (!land.isLoading && !system) {
     return (
       <>
-        <PageTitle>System</PageTitle>
+        <PageTitle>{tr("System")}</PageTitle>
         <div className="m2-sec">
-          <EmptyFrame action={<V2Link href="/v2" className="m2-btn">Back to the landscape</V2Link>}>This system is not in the tenant. It may have been removed.</EmptyFrame>
+          <EmptyFrame action={<V2Link href="/v2" className="m2-btn">{tr("Back to the landscape")}</V2Link>}>{tr("This system is not in the tenant. It may have been removed.")}</EmptyFrame>
         </div>
       </>
     );
   }
   return (
     <>
-      <PageTitle sub={system ? [system.version, system.client ? `client ${system.client}` : null].filter(Boolean).join(", ") : undefined}>{system?.name ?? "System"}</PageTitle>
+      <PageTitle sub={system ? [system.version, system.client ? tr("client {client}", { client: system.client }) : null].filter(Boolean).join(", ") : undefined}>{system?.name ?? tr("System")}</PageTitle>
       {system ? (
         <p className="m2-statusline" data-testid="system-status-line">
           <HealthWord health={ext?.health_status ?? system.health_status} />
           <span>{`${systemTypeLabel(system.system_type)}, ${protocolOf(system.system_type)}`}</span>
-          <span>{system.last_extracted_at ? `Last extraction ${formatDate(system.last_extracted_at, "datetime")}` : "Never extracted"}</span>
-          <span>{`${int(system.records)} records`}</span>
+          <span>{system.last_extracted_at ? tr("Last extraction {last_extracted_at}", { last_extracted_at: formatDate(system.last_extracted_at, "datetime") }) : tr("Never extracted")}</span>
+          <span>{tr("{records} records", { records: int(system.records) })}</span>
         </p>
       ) : (
         <Skeleton width={420} height={14} />
@@ -231,14 +232,14 @@ export function SystemCanvas({ id }: { id: string }) {
       {ext?.health_message ? <p className="m2-prov">{ext.health_message}</p> : null}
       <div className="m2-cta">
         <V2Link href={hrefFor({ kind: "system", id })} className="m2-btn m2-next">
-          Test, load or extract
+          {tr("Test, load or extract")}
         </V2Link>
         <V2Link href={hrefFor({ kind: "connection", id })} className="m2-btn">
-          Connection settings
+          {tr("Connection settings")}
         </V2Link>
       </div>
 
-      <nav className="m2-tabs" aria-label={`Views of ${system?.name ?? "the system"}`}>
+      <nav className="m2-tabs" aria-label={tr("Views of {name}", { name: system?.name ?? tr("the system") })}>
         {SYSTEM_TABS.map((t) => (
           <V2Link key={t.key} href={href(t.key)} className="m2-tab" aria-current={t.key === tab ? "page" : undefined}>
             {t.label}

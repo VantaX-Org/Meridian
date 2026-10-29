@@ -64,11 +64,12 @@ describe("the preferences panel", () => {
     expect(within(dialog).getByTestId("format-sample")).toHaveTextContent("scores 71.8, counts 1,234,567");
     await waitFor(() => expect(screen.getByRole("navigation", { name: "Places" })).toHaveTextContent("25,712"));
     fireEvent.change(within(dialog).getByLabelText("Number and date format"), { target: { value: "de-DE" } });
-    await waitFor(() => expect(within(dialog).getByTestId("format-sample")).toHaveTextContent("scores 71,8, counts 1.234.567"));
-    await waitFor(() => expect(screen.getByRole("navigation", { name: "Places" })).toHaveTextContent("25.712"));
+    // A German locale also turns the interface German (lib/v2/i18n): the same sample, in German words.
+    await waitFor(() => expect(within(dialog).getByTestId("format-sample")).toHaveTextContent("Scores 71,8, Anzahlen 1.234.567"));
+    await waitFor(() => expect(screen.getByRole("navigation", { name: "Orte" })).toHaveTextContent("25.712"));
     expect(readPrefs().locale).toBe("de-DE");
     expect(patch).toHaveBeenCalledWith({ locale: "de-DE" });
-    fireEvent.change(within(dialog).getByLabelText("Number and date format"), { target: { value: "" } });
+    fireEvent.change(within(dialog).getByLabelText("Zahlen- und Datumsformat"), { target: { value: "" } });
     await waitFor(() => expect(within(dialog).getByTestId("format-sample")).toHaveTextContent("scores 71.8, counts 1,234,567"));
     expect(readPrefs().locale).toBeUndefined();
   });

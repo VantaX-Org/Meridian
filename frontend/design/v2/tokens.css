@@ -87,6 +87,10 @@
   --m2-t-med: 200ms;
   --m2-ease: cubic-bezier(0.16, 1, 0.3, 1);
 
+  /* Focus: one ring for every focusable thing, the data hue at 2px (WCAG 2.4.7) */
+  --m2-focus: var(--m2-data);
+  --m2-focus-w: 2px;
+
   color-scheme: light;
 }
 
@@ -176,3 +180,40 @@ html[data-theme="dark"] .m2-root {
     scroll-behavior: auto !important;
   }
 }
+
+/*
+ * Tenant accent (Admin, Settings, Appearance). The shell root carries data-tenant-accent and the two custom
+ * properties when the tenant's accent passed the 4.5:1 check (lib/v2/theme.ts): the accent as chosen on the light
+ * ground, its tint on the dark one. Text on the accent follows it.
+ */
+.m2-root[data-tenant-accent] {
+  --m2-data: var(--m2-tenant-accent);
+  --m2-on-data: #FFFFFF;
+}
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .m2-root[data-tenant-accent] {
+    --m2-data: var(--m2-tenant-accent-dark);
+    --m2-on-data: #0A1020;
+  }
+}
+html[data-theme="dark"] .m2-root[data-tenant-accent] {
+  --m2-data: var(--m2-tenant-accent-dark);
+  --m2-on-data: #0A1020;
+}
+
+/* Japanese: the Plex faces carry no kana or kanji, so the system's Japanese face follows them. */
+.m2-root:lang(ja) {
+  --m2-font: var(--font-plex-sans), "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", system-ui, sans-serif;
+}
+
+/* Arrival of a change notice and of the run timeline's marks. Both stop under prefers-reduced-motion (above). */
+@keyframes m2-toast-in {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes m2-tl-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.m2-root .m2-toast { animation: m2-toast-in var(--m2-t-med) var(--m2-ease); }
+.m2-root .m2-tl-mk { animation: m2-tl-in var(--m2-t-med) var(--m2-ease); transition: fill var(--m2-t-fast) var(--m2-ease); }

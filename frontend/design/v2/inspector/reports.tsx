@@ -4,20 +4,22 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { ReportFile, ReportSchedule, ReportScheduleInput, ScheduleCadence } from "@/lib/api/reports";
 import * as rep from "@/lib/api/v2/reports";
-import { formatDate, formatModuleName, labelOf } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { useOpenItem } from "@/lib/v2/hooks";
 import { refreshAdmin, useCatalogue, useReportHistory, useSchedules, useScheduleOptions } from "@/lib/v2/admin-queries";
 import { useLandscape, useRunList } from "@/lib/v2/queries";
-import { fixed } from "@/lib/v2/format";
+import { fixed, v2Locale } from "@/lib/v2/format";
 import { Actions, Fact, Facts, InspectorFrame } from "../Inspector";
 import { EmptyFrame, ErrorFrame, Skeleton } from "../parts";
 import { Confirm, useCan, useDone } from "../admin/kit";
 import { ResultFrame, useOutcome } from "./shared";
+import { t as tr } from "@/lib/v2/i18n";
+import { labelText, moduleText } from "@/lib/v2/labels";
 
 export const sizeText = (n: number): string => (n >= 1e6 ? `${fixed(n / 1e6, 1)} MB` : n >= 1e3 ? `${fixed(n / 1e3, 0)} kB` : `${n} B`);
 export const SCHEDULE_TONE = { sent: "go", partial: "at-risk", failed: "no-go", skipped: "neutral", running: "at-risk" } as const;
-export const SCHEDULE_WORD = { sent: "Delivered", partial: "Partly delivered", failed: "Failed", skipped: "Skipped", running: "Running" } as const;
-const SOURCE: Record<ReportFile["source"], string> = { download: "Downloaded", schedule: "Scheduled", run_now: "Run on request" };
+export const SCHEDULE_WORD = { get sent() { return tr("Delivered"); }, get partial() { return tr("Partly delivered"); }, get failed() { return tr("Failed"); }, get skipped() { return tr("Skipped"); }, get running() { return tr("Running"); } } as const;
+const SOURCE: Record<ReportFile["source"], string> = { get download() { return tr("Downloaded"); }, get schedule() { return tr("Scheduled"); }, get run_now() { return tr("Run on request"); } };
 
 /* ── Create or open a report ── */
 
@@ -36,10 +38,10 @@ function NewReport({ onClose }: { onClose: () => void }) {
   const needsRun = entry?.requires.includes("run");
   const needsModule = entry?.requires.includes("module");
   return (
-    <InspectorFrame title="Create a report" status="Built from the run you choose" onClose={onClose}>
+    <InspectorFrame title={tr("Create a report")} status={tr("Built from the run you choose")} onClose={onClose}>
       <div className="m2-aform">
         <label>
-          Report
+          {tr("Report")}
           <select value={kind} onChange={(e) => setKind(e.target.value)}>
             {(catalogue.data ?? []).map((c) => (
               <option key={c.id} value={c.id}>
@@ -49,19 +51,19 @@ function NewReport({ onClose }: { onClose: () => void }) {
           </select>
         </label>
         <label>
-          Run
+          {tr("Run")}
           <select value={latest} onChange={(e) => setVersion(e.target.value)}>
             {(runs.data?.versions ?? []).map((r) => (
               <option key={r.id} value={r.id}>
-                {r.label ?? `Run of ${formatDate(r.run_at)}`}
+                {r.label ?? tr("Run of {run_at}", { run_at: formatDate(r.run_at) })}
               </option>
             ))}
           </select>
         </label>
         <label>
-          Object{needsModule ? "" : " (optional)"}
+          {tr("Object")}{needsModule ? "" : tr(" (optional)")}
           <select value={module} onChange={(e) => setModule(e.target.value)}>
-            <option value="">{needsModule ? "Choose an object" : "All objects"}</option>
+            <option value="">{needsModule ? tr("Choose an object") : tr("All objects")}</option>
             {(landscape.data?.objects ?? []).map((o) => (
               <option key={o.module} value={o.module}>
                 {o.label}
@@ -70,12 +72,12 @@ function NewReport({ onClose }: { onClose: () => void }) {
           </select>
         </label>
         <label>
-          Compare with (optional)
+          {tr("Compare with (optional)")}
           <select value={compare} onChange={(e) => setCompare(e.target.value)}>
-            <option value="">No comparison</option>
+            <option value="">{tr("No comparison")}</option>
             {(runs.data?.versions ?? []).filter((r) => r.id !== latest).map((r) => (
               <option key={r.id} value={r.id}>
-                {r.label ?? `Run of ${formatDate(r.run_at)}`}
+                {r.label ?? tr("Run of {run_at}", { run_at: formatDate(r.run_at) })}
               </option>
             ))}
           </select>
@@ -84,10 +86,10 @@ function NewReport({ onClose }: { onClose: () => void }) {
       {entry ? (
         <>
           <Facts>
-            <Fact label="Format">{entry.format}</Fact>
-            <Fact label="About">{entry.about}</Fact>
-            <Fact label="Contains">{entry.sections.join(", ")}</Fact>
-            {entry.page_estimate ? <Fact label="Length">{`About ${entry.page_estimate} pages`}</Fact> : null}
+            <Fact label={tr("Format")}>{entry.format}</Fact>
+            <Fact label={tr("About")}>{entry.about}</Fact>
+            <Fact label={tr("Contains")}>{entry.sections.join(", ")}</Fact>
+            {entry.page_estimate ? <Fact label={tr("Length")}>{tr("About {page_estimate} pages", { page_estimate: entry.page_estimate })}</Fact> : null}
           </Facts>
         </>
       ) : catalogue.isLoading ? (
@@ -104,14 +106,14 @@ function NewReport({ onClose }: { onClose: () => void }) {
             void run("build", async () => {
               const name = await rep.buildReport(entry);
               await refreshAdmin(qc, "reports");
-              return { tone: "ok", title: `${entry.name} built`, detail: `Saved as ${name}. It is in the list of reports.` };
+              return { tone: "ok", title: tr("{name} built", { name: entry.name }), detail: tr("Saved as {name}. It is in the list of reports.", { name }) };
             })
           }
         >
-          {pending === "build" ? "Building…" : `Create the ${entry?.format ?? ""} report`.replace("  ", " ")}
+          {pending === "build" ? tr("Building…") : `Create the ${entry?.format ?? ""} report`.replace("  ", " ")}
         </button>
       </Actions>
-      <p className="m2-prov">The report is built from the stored run, not from the live system. To get it on a rhythm, schedule it.</p>
+      <p className="m2-prov">{tr("The report is built from the stored run, not from the live system. To get it on a rhythm, schedule it.")}</p>
     </InspectorFrame>
   );
 }
@@ -124,11 +126,11 @@ function ReportBody({ f }: { f: ReportFile }) {
   return (
     <>
       <Facts>
-        <Fact label="File">{f.file_name}</Fact>
-        <Fact label="Format">{f.format.toUpperCase()}</Fact>
-        <Fact label="Size">{sizeText(f.size_bytes)}</Fact>
-        <Fact label="Run">{f.run_label ?? (f.run_at ? formatDate(f.run_at) : "Not tied to a run")}</Fact>
-        <Fact label="Made">{`${formatDate(f.created_at, "datetime")}, ${SOURCE[f.source]}${f.created_by_label ? ` by ${f.created_by_label}` : ""}`}</Fact>
+        <Fact label={tr("File")}>{f.file_name}</Fact>
+        <Fact label={tr("Format")}>{f.format.toUpperCase()}</Fact>
+        <Fact label={tr("Size")}>{sizeText(f.size_bytes)}</Fact>
+        <Fact label={tr("Run")}>{f.run_label ?? (f.run_at ? formatDate(f.run_at) : tr("Not tied to a run"))}</Fact>
+        <Fact label={tr("Made")}>{`${formatDate(f.created_at, "datetime")}, ${SOURCE[f.source]}${f.created_by_label ? tr(" by {created_by_label}", { created_by_label: f.created_by_label }) : ""}`}</Fact>
       </Facts>
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       <Actions>
@@ -139,26 +141,26 @@ function ReportBody({ f }: { f: ReportFile }) {
           onClick={() =>
             void run("download", async () => {
               const name = await rep.downloadReportFile(f.id, f.file_name);
-              return { tone: "ok", title: "Downloaded", detail: name };
+              return { tone: "ok", title: tr("Downloaded"), detail: name };
             })
           }
         >
-          {pending === "download" ? "Downloading…" : "Download"}
+          {pending === "download" ? tr("Downloading…") : tr("Download")}
         </button>
         {f.schedule_id ? (
           <button type="button" className="m2-btn" onClick={() => openItem({ kind: "schedule", id: f.schedule_id as string })}>
-            Open its schedule
+            {tr("Open its schedule")}
           </button>
         ) : null}
         <button type="button" className="m2-btn m2-crit" disabled={!f.can_delete || pending !== null} onClick={() => setAsk(true)}>
-          Delete the file
+          {tr("Delete the file")}
         </button>
       </Actions>
       {ask ? (
         <Confirm
-          title="Delete this report file"
-          body={`${f.file_name} is removed from the list. A report can be built again from its run.`}
-          confirm="Delete the file"
+          title={tr("Delete this report file")}
+          body={tr("{file_name} is removed from the list. A report can be built again from its run.", { file_name: f.file_name })}
+          confirm={tr("Delete the file")}
           danger
           pending={pending === "delete"}
           onCancel={() => setAsk(false)}
@@ -168,7 +170,7 @@ function ReportBody({ f }: { f: ReportFile }) {
               await refreshAdmin(qc, "reports");
               setAsk(false);
               close();
-              return { tone: "ok", title: "File deleted" };
+              return { tone: "ok", title: tr("File deleted") };
             })
           }
         />
@@ -182,15 +184,19 @@ export function ReportInspector({ id, onClose }: { id: string; onClose: () => vo
   if (id === "new") return <NewReport onClose={onClose} />;
   const f = q.data?.items.find((x) => x.id === id);
   return (
-    <InspectorFrame title={f?.name ?? "Report"} status={f ? `${f.format.toUpperCase()}, ${sizeText(f.size_bytes)}` : undefined} onClose={onClose}>
-      {f ? <ReportBody f={f} /> : q.isLoading ? <Skeleton width="100%" height={100} /> : q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>The report could not be read.</ErrorFrame> : <EmptyFrame>This report file is gone. It may have been deleted.</EmptyFrame>}
+    <InspectorFrame title={f?.name ?? tr("Report")} status={f ? `${f.format.toUpperCase()}, ${sizeText(f.size_bytes)}` : undefined} onClose={onClose}>
+      {f ? <ReportBody f={f} /> : q.isLoading ? <Skeleton width="100%" height={100} /> : q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>{tr("The report could not be read.")}</ErrorFrame> : <EmptyFrame>{tr("This report file is gone. It may have been deleted.")}</EmptyFrame>}
     </InspectorFrame>
   );
 }
 
 /* ── Schedules ── */
 
-const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+/** Monday to Sunday in the chosen language (19 October 2026 is a Monday). */
+const weekdays = (): string[] => {
+  const f = new Intl.DateTimeFormat(v2Locale(), { weekday: "long", timeZone: "UTC" });
+  return Array.from({ length: 7 }, (_, i) => f.format(new Date(Date.UTC(2026, 9, 19 + i))));
+};
 
 function ScheduleForm({ initial, onClose }: { initial: ReportSchedule | null; onClose: () => void }) {
   const qc = useQueryClient();
@@ -237,16 +243,16 @@ function ScheduleForm({ initial, onClose }: { initial: ReportSchedule | null; on
         const prev = toInput(initial);
         const r = await rep.updateSchedule(initial.id, body());
         await refreshAdmin(qc, "reports");
-        done(`Schedule ${r.name} saved`, async () => {
+        done(tr("Schedule {name} saved", { name: r.name }), async () => {
           await rep.updateSchedule(initial.id, prev);
           await refreshAdmin(qc, "reports");
         });
-        return { tone: "ok", title: "Schedule saved", detail: r.next_run_at ? `Next run ${formatDate(r.next_run_at, "datetime")}.` : "It is paused." };
+        return { tone: "ok", title: tr("Schedule saved"), detail: r.next_run_at ? tr("Next run {next_run_at}.", { next_run_at: formatDate(r.next_run_at, "datetime") }) : tr("It is paused.") };
       }
       const r = await rep.createSchedule(body());
       await refreshAdmin(qc, "reports");
       openItem({ kind: "schedule", id: r.id });
-      return { tone: "ok", title: "Schedule created", detail: r.summary };
+      return { tone: "ok", title: tr("Schedule created"), detail: r.summary };
     });
   const pause = (on: boolean) =>
     initial &&
@@ -254,75 +260,75 @@ function ScheduleForm({ initial, onClose }: { initial: ReportSchedule | null; on
       await rep.updateSchedule(initial.id, { ...toInput(initial), enabled: on });
       await refreshAdmin(qc, "reports");
       setEnabled(on);
-      done(on ? `Schedule ${initial.name} resumed` : `Schedule ${initial.name} paused`, async () => {
+      done(on ? tr("Schedule {name} resumed", { name: initial.name }) : tr("Schedule {name} paused", { name: initial.name }), async () => {
         await rep.updateSchedule(initial.id, toInput(initial));
         await refreshAdmin(qc, "reports");
       });
-      return { tone: "ok", title: on ? "Schedule resumed" : "Schedule paused" };
+      return { tone: "ok", title: on ? tr("Schedule resumed") : tr("Schedule paused") };
     });
   return (
-    <InspectorFrame title={initial ? initial.name : "Schedule a report"} status={initial ? initial.summary : "New schedule"} onClose={onClose}>
-      {!can("export") ? <p className="m2-prov">Scheduling reports needs the export permission.</p> : null}
+    <InspectorFrame title={initial ? initial.name : tr("Schedule a report")} status={initial ? initial.summary : tr("New schedule")} onClose={onClose}>
+      {!can("export") ? <p className="m2-prov">{tr("Scheduling reports needs the export permission.")}</p> : null}
       {initial ? (
         <Facts>
-          <Fact label="Next run">{initial.next_run_at ? formatDate(initial.next_run_at, "datetime") : "Paused"}</Fact>
-          <Fact label="Last run">{initial.last_run_at ? `${formatDate(initial.last_run_at, "datetime")}, ${initial.last_status ? SCHEDULE_WORD[initial.last_status] : ""}` : "Not run yet"}</Fact>
+          <Fact label={tr("Next run")}>{initial.next_run_at ? formatDate(initial.next_run_at, "datetime") : tr("Paused")}</Fact>
+          <Fact label={tr("Last run")}>{initial.last_run_at ? `${formatDate(initial.last_run_at, "datetime")}, ${initial.last_status ? SCHEDULE_WORD[initial.last_status] : ""}` : tr("Not run yet")}</Fact>
         </Facts>
       ) : null}
       <div className="m2-aform">
         <label>
-          Name
-          <input value={name} disabled={!edit} onChange={(e) => setName(e.target.value)} placeholder="Board pack for the steering committee" />
+          {tr("Name")}
+          <input value={name} disabled={!edit} onChange={(e) => setName(e.target.value)} placeholder={tr("Board pack for the steering committee")} />
         </label>
         <label>
-          Report
+          {tr("Report")}
           <select value={kind} disabled={!edit} onChange={(e) => setKind(e.target.value)}>
             {(o?.types ?? []).map((t) => (
               <option key={t.id} value={t.id}>
                 {`${t.name} (${t.format.toUpperCase()})`}
               </option>
             ))}
-            {!o && initial ? <option value={initial.kind}>{labelOf(initial.kind)}</option> : null}
+            {!o && initial ? <option value={initial.kind}>{labelText(initial.kind)}</option> : null}
           </select>
         </label>
         <label>
-          Which run
+          {tr("Which run")}
           <select value={scope} disabled={!edit} onChange={(e) => setScope(e.target.value)}>
-            <option value="latest">The latest finished run</option>
-            <option value="upload">The latest file upload</option>
+            <option value="latest">{tr("The latest finished run")}</option>
+            <option value="upload">{tr("The latest file upload")}</option>
             {(o?.systems ?? []).map((s) => (
               <option key={s.id} value={s.id}>
-                {`Latest run of ${s.label}`}
+                {tr("Latest run of {label}", { label: s.label })}
               </option>
             ))}
           </select>
         </label>
         {type?.needs_module || (o?.modules.length ?? 0) > 0 ? (
           <label>
-            Object{type?.needs_module ? "" : " (optional)"}
+            {tr("Object")}{type?.needs_module ? "" : tr(" (optional)")}
             <select value={module} disabled={!edit} onChange={(e) => setModule(e.target.value)}>
-              <option value="">{type?.needs_module ? "Choose an object" : "All objects"}</option>
+              <option value="">{type?.needs_module ? tr("Choose an object") : tr("All objects")}</option>
               {(o?.modules ?? []).map((m) => (
                 <option key={m} value={m}>
-                  {formatModuleName(m)}
+                  {moduleText(m)}
                 </option>
               ))}
             </select>
           </label>
         ) : null}
         <label>
-          Cadence
+          {tr("Cadence")}
           <select value={cadence} disabled={!edit} onChange={(e) => setCadence(e.target.value as ScheduleCadence)}>
-            <option value="daily">Every day</option>
-            <option value="weekly">Every week</option>
-            <option value="monthly">Every month</option>
+            <option value="daily">{tr("Every day")}</option>
+            <option value="weekly">{tr("Every week")}</option>
+            <option value="monthly">{tr("Every month")}</option>
           </select>
         </label>
         {cadence === "weekly" ? (
           <label>
-            On
+            {tr("On")}
             <select value={weekday} disabled={!edit} onChange={(e) => setWeekday(Number(e.target.value))}>
-              {WEEKDAYS.map((d, i) => (
+              {weekdays().map((d, i) => (
                 <option key={d} value={i}>
                   {d}
                 </option>
@@ -332,22 +338,22 @@ function ScheduleForm({ initial, onClose }: { initial: ReportSchedule | null; on
         ) : null}
         {cadence === "monthly" ? (
           <label>
-            On day of the month
+            {tr("On day of the month")}
             <input type="number" min={1} max={31} value={day} disabled={!edit} onChange={(e) => setDay(Math.max(1, Math.min(31, Number(e.target.value) || 1)))} />
           </label>
         ) : null}
         <label>
-          {`At (${initial?.timezone ?? o?.timezone ?? "tenant time zone"})`}
+          {tr("At ({timezone})", { timezone: initial?.timezone ?? o?.timezone ?? tr("tenant time zone") })}
           <input type="time" value={time} disabled={!edit} onChange={(e) => setTime(e.target.value)} />
         </label>
       </div>
-      <h3>Recipients</h3>
+      <h3>{tr("Recipients")}</h3>
       {o ? (
         <>
           <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
-            <legend className="m2-sr">People</legend>
-            <ul className="m2-pick" aria-label="People who receive it">
-              {o.users.length === 0 ? <li className="m2-meta" style={{ padding: 8 }}>No one can receive reports yet.</li> : null}
+            <legend className="m2-sr">{tr("People")}</legend>
+            <ul className="m2-pick" aria-label={tr("People who receive it")}>
+              {o.users.length === 0 ? <li className="m2-meta" style={{ padding: 8 }}>{tr("No one can receive reports yet.")}</li> : null}
               {o.users.map((u) => (
                 <li key={u.id}>
                   <label>
@@ -360,7 +366,7 @@ function ScheduleForm({ initial, onClose }: { initial: ReportSchedule | null; on
             </ul>
           </fieldset>
           {o.channels.length ? (
-            <ul className="m2-pick" aria-label="Alert channels that receive it">
+            <ul className="m2-pick" aria-label={tr("Alert channels that receive it")}>
               {o.channels.map((c) => (
                 <li key={c.id}>
                   <label>
@@ -377,17 +383,17 @@ function ScheduleForm({ initial, onClose }: { initial: ReportSchedule | null; on
       )}
       <label className="m2-sw" style={{ display: "flex", gap: 8, marginTop: 8 }}>
         <input type="checkbox" checked={enabled} disabled={!edit} onChange={(e) => setEnabled(e.target.checked)} />
-        <span>Schedule is on</span>
+        <span>{tr("Schedule is on")}</span>
       </label>
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       <Actions>
         <button type="button" className="m2-btn m2-strong" disabled={!edit || !valid || pending !== null} onClick={save}>
-          {pending === "save" ? "Saving…" : initial ? "Save the schedule" : "Create the schedule"}
+          {pending === "save" ? tr("Saving…") : initial ? tr("Save the schedule") : tr("Create the schedule")}
         </button>
         {initial ? (
           <>
             <button type="button" className="m2-btn" disabled={!edit || pending !== null} onClick={() => pause(!initial.enabled)}>
-              {initial.enabled ? "Pause" : "Resume"}
+              {initial.enabled ? tr("Pause") : tr("Resume")}
             </button>
             <button
               type="button"
@@ -397,24 +403,24 @@ function ScheduleForm({ initial, onClose }: { initial: ReportSchedule | null; on
                 void run("now", async () => {
                   const r = await rep.runScheduleNow(initial.id);
                   await refreshAdmin(qc, "reports");
-                  return { tone: "ok", title: r.queued ? "Queued to run now" : "Could not queue it", detail: "It is built on the worker and delivered to the recipients; the next scheduled run is unchanged." };
+                  return { tone: "ok", title: r.queued ? tr("Queued to run now") : tr("Could not queue it"), detail: tr("It is built on the worker and delivered to the recipients; the next scheduled run is unchanged.") };
                 })
               }
             >
-              Run it now
+              {tr("Run it now")}
             </button>
             <button type="button" className="m2-btn m2-crit" disabled={!edit || pending !== null} onClick={() => setAsk(true)}>
-              Delete
+              {tr("Delete")}
             </button>
           </>
         ) : null}
       </Actions>
-      {!initial && !valid ? <p className="m2-prov">Name it, choose when, and pick at least one recipient.</p> : null}
+      {!initial && !valid ? <p className="m2-prov">{tr("Name it, choose when, and pick at least one recipient.")}</p> : null}
       {ask && initial ? (
         <Confirm
-          title={`Delete ${initial.name}`}
-          body="No more reports are built or sent from this schedule. Files it already made stay in the list."
-          confirm="Delete the schedule"
+          title={tr("Delete {name}", { name: initial.name })}
+          body={tr("No more reports are built or sent from this schedule. Files it already made stay in the list.")}
+          confirm={tr("Delete the schedule")}
           danger
           pending={pending === "delete"}
           onCancel={() => setAsk(false)}
@@ -424,7 +430,7 @@ function ScheduleForm({ initial, onClose }: { initial: ReportSchedule | null; on
               await refreshAdmin(qc, "reports");
               setAsk(false);
               close();
-              return { tone: "ok", title: "Schedule deleted" };
+              return { tone: "ok", title: tr("Schedule deleted") };
             })
           }
         />
@@ -439,8 +445,8 @@ export function ScheduleInspector({ id, onClose }: { id: string; onClose: () => 
   const s = q.data?.find((x) => x.id === id);
   if (s) return <ScheduleForm key={s.id} initial={s} onClose={onClose} />;
   return (
-    <InspectorFrame title="Schedule" onClose={onClose}>
-      {q.isLoading ? <Skeleton width="100%" height={100} /> : q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>The schedule could not be read.</ErrorFrame> : <EmptyFrame>This schedule does not exist. It may have been deleted.</EmptyFrame>}
+    <InspectorFrame title={tr("Schedule")} onClose={onClose}>
+      {q.isLoading ? <Skeleton width="100%" height={100} /> : q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>{tr("The schedule could not be read.")}</ErrorFrame> : <EmptyFrame>{tr("This schedule does not exist. It may have been deleted.")}</EmptyFrame>}
     </InspectorFrame>
   );
 }

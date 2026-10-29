@@ -14,6 +14,8 @@ import { f1, int } from "@/lib/v2/score";
 import { readUiCookie, setUiCookie, subscribeUiCookie, UI_V2 } from "@/lib/v2/switch";
 import { setKeyHints, setPersonaOverride, useKeyHints, usePersonaOverride } from "@/lib/v2/prefs";
 import { useHealth, useLicence, useTenantSettings } from "@/lib/v2/admin-queries";
+import { useDiagnostics } from "@/lib/v2/enterprise-queries";
+import { t as tr, LANGUAGES, langOf, type Lang } from "@/lib/v2/i18n";
 import { APP_VERSION } from "@/lib/version";
 import releaseNotes from "../../../whats-new.json";
 import { Actions, InspectorFrame } from "../Inspector";
@@ -55,9 +57,13 @@ export function PreferencesPanel({ onClose }: { onClose: () => void }) {
     if (fixture) void api.patchMyPreferences(patch);
   };
   const locales = useMemo(() => {
-    const own = prefs.locale && !localeOptions().includes(prefs.locale) ? [prefs.locale] : [];
-    return [...own, ...localeOptions()];
+    const base = [...new Set([...localeOptions(), ...LANGUAGES.map((l) => l.tag)])];
+    const own = prefs.locale && !base.includes(prefs.locale) ? [prefs.locale] : [];
+    return [...own, ...base];
   }, [prefs.locale]);
+  const lang = langOf(prefs.locale);
+  // A new language starts in its own region; the same language keeps the region already chosen (de-CH stays de-CH).
+  const chooseLang = (next: Lang) => save({ locale: next === lang && prefs.locale ? prefs.locale : (LANGUAGES.find((l) => l.lang === next)?.tag ?? null) });
   const zones = useMemo(() => {
     const all = timezoneOptions();
     return prefs.timezone && !all.includes(prefs.timezone) ? [prefs.timezone, ...all] : all;
@@ -67,34 +73,44 @@ export function PreferencesPanel({ onClose }: { onClose: () => void }) {
   const critical = prefs.notifications?.immediate_critical ?? false;
   const email = prefs.notifications?.channels?.email ?? false;
   return (
-    <InspectorFrame title="Preferences" status={session.name || undefined} onClose={onClose}>
-      <h3>Display</h3>
+    <InspectorFrame title={tr("Preferences")} status={session.name || undefined} onClose={onClose}>
+      <h3>{tr("Display")}</h3>
       <div className="m2-aform">
         <div>
-          <div className="m2-lbl m2-meta" style={{ fontSize: 12, marginBottom: 4 }}>Theme</div>
+          <div className="m2-lbl m2-meta" style={{ fontSize: 12, marginBottom: 4 }}>{tr("Theme")}</div>
           <Seg<Theme>
-            label="Theme"
+            label={tr("Theme")}
             value={theme}
-            options={[{ value: "light", label: "Light" }, { value: "dark", label: "Dark" }, { value: "system", label: "System" }]}
+            options={[{ value: "light", label: tr("Light") }, { value: "dark", label: tr("Dark") }, { value: "system", label: tr("System") }]}
             onChange={(t) => (setTheme(t), fixture && void api.patchMyPreferences({ theme: t }))}
           />
         </div>
         <div>
-          <div className="m2-lbl m2-meta" style={{ fontSize: 12, marginBottom: 4 }}>Row density</div>
+          <div className="m2-lbl m2-meta" style={{ fontSize: 12, marginBottom: 4 }}>{tr("Row density")}</div>
           <Seg<DensityTier>
-            label="Row density"
+            label={tr("Row density")}
             value={density}
-            options={[{ value: "compact", label: "Compact" }, { value: "default", label: "Default" }, { value: "comfortable", label: "Comfortable" }]}
+            options={[{ value: "compact", label: tr("Compact") }, { value: "default", label: tr("Default") }, { value: "comfortable", label: tr("Comfortable") }]}
             onChange={(d) => (setDensity(d), fixture && void api.patchMyPreferences({ density: d }))}
           />
         </div>
       </div>
-      <h3>Language and region</h3>
+      <h3>{tr("Language and region")}</h3>
       <div className="m2-aform">
         <label>
-          Number and date format
+          {tr("Language")}
+          <select value={lang} onChange={(e) => chooseLang(e.target.value as Lang)} data-testid="language-picker">
+            {LANGUAGES.map((l) => (
+              <option key={l.lang} value={l.lang} lang={l.tag}>
+                {l.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {tr("Number and date format")}
           <select value={prefs.locale ?? AUTO} onChange={(e) => save({ locale: e.target.value || null })}>
-            <option value={AUTO}>Browser default</option>
+            <option value={AUTO}>{tr("Browser default")}</option>
             {locales.map((l) => (
               <option key={l} value={l}>
                 {l}
@@ -103,9 +119,9 @@ export function PreferencesPanel({ onClose }: { onClose: () => void }) {
           </select>
         </label>
         <label>
-          Time zone
+          {tr("Time zone")}
           <select value={prefs.timezone ?? AUTO} onChange={(e) => save({ timezone: e.target.value || null })}>
-            <option value={AUTO}>UTC (default)</option>
+            <option value={AUTO}>{tr("UTC (default)")}</option>
             {zones.filter((z) => z !== "UTC").map((z) => (
               <option key={z} value={z}>
                 {z.replace(/_/g, " ")}
@@ -115,14 +131,14 @@ export function PreferencesPanel({ onClose }: { onClose: () => void }) {
         </label>
       </div>
       <p className="m2-prov" data-testid="format-sample">
-        {`Dates read ${formatDate(sample, "datetime")}, scores ${f1(71.8)}, counts ${int(1234567)}.`}
+        {tr("Dates read {sample}, scores {value}, counts {value2}.", { sample: formatDate(sample, "datetime"), value: f1(71.8), value2: int(1234567) })}
       </p>
-      <h3>Start screen</h3>
+      <h3>{tr("Start screen")}</h3>
       <div className="m2-aform">
         <label>
-          Open Meridian as
+          {tr("Open Meridian as")}
           <select value={persona ?? AUTO} onChange={(e) => setPersonaOverride((e.target.value || null) as V2Persona | null)}>
-            <option value={AUTO}>{`My role's default (${PERSONA_LABEL[session.persona]})`}</option>
+            <option value={AUTO}>{tr("My role's default ({PERSONA_LABEL})", { PERSONA_LABEL: PERSONA_LABEL[session.persona] })}</option>
             {(Object.keys(PERSONA_LABEL) as V2Persona[]).map((p) => (
               <option key={p} value={p}>
                 {PERSONA_LABEL[p]}
@@ -131,37 +147,37 @@ export function PreferencesPanel({ onClose }: { onClose: () => void }) {
           </select>
         </label>
       </div>
-      <p className="m2-prov">It changes the next step on the landscape and the work it shows first. Your access does not change.</p>
-      <h3>Keyboard</h3>
+      <p className="m2-prov">{tr("It changes the next step on the landscape and the work it shows first. Your access does not change.")}</p>
+      <h3>{tr("Keyboard")}</h3>
       <label className="m2-sw" style={{ display: "flex", gap: 8 }}>
         <input type="checkbox" checked={hints} onChange={(e) => setKeyHints(e.target.checked)} />
-        <span>Show keyboard hints beside menu items and places</span>
+        <span>{tr("Show keyboard hints beside menu items and places")}</span>
       </label>
-      <h3>Notifications</h3>
+      <h3>{tr("Notifications")}</h3>
       <div className="m2-aform">
         <label>
-          Digest of your open items
+          {tr("Digest of your open items")}
           <select value={digest} onChange={(e) => save({ notifications: { digest: e.target.value as DigestFrequency } })}>
-            <option value="off">Off</option>
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
+            <option value="off">{tr("Off")}</option>
+            <option value="daily">{tr("Daily")}</option>
+            <option value="weekly">{tr("Weekly")}</option>
           </select>
         </label>
         <label className="m2-sw" style={{ display: "flex", gap: 8 }}>
           <input type="checkbox" checked={critical} onChange={(e) => save({ notifications: { immediate_critical: e.target.checked } })} />
-          <span>Tell me at once about critical findings</span>
+          <span>{tr("Tell me at once about critical findings")}</span>
         </label>
         <label className="m2-sw" style={{ display: "flex", gap: 8 }}>
           <input type="checkbox" checked={email} onChange={(e) => save({ notifications: { channels: { email: e.target.checked } } })} />
-          <span>Also email me</span>
+          <span>{tr("Also email me")}</span>
         </label>
       </div>
       <p className="m2-prov">
-        <V2Link href="/v2/work?open=triage">Inbox and triage settings</V2Link>
-        {" decide what reaches your inbox and who covers it."}
+        <V2Link href="/v2/work?open=triage">{tr("Inbox and triage settings")}</V2Link>
+        {tr(" decide what reaches your inbox and who covers it.")}
       </p>
       <SubscriptionsBlock />
-      <h3>Interface</h3>
+      <h3>{tr("Interface")}</h3>
       <label className="m2-sw" style={{ display: "flex", gap: 8 }}>
         <input
           type="checkbox"
@@ -169,16 +185,16 @@ export function PreferencesPanel({ onClose }: { onClose: () => void }) {
           onChange={(e) =>
             void run("ui", async () => {
               setUiCookie(e.target.checked ? null : UI_V2);
-              return e.target.checked ? { tone: "info", title: "The current interface opens next time", detail: "This browser now starts in the current interface. You can come back from its account menu." } : { tone: "ok", title: "This browser keeps the new interface" };
+              return e.target.checked ? { tone: "info", title: tr("The current interface opens next time"), detail: tr("This browser now starts in the current interface. You can come back from its account menu.") } : { tone: "ok", title: tr("This browser keeps the new interface") };
             })
           }
         />
-        <span>Use the current interface</span>
+        <span>{tr("Use the current interface")}</span>
       </label>
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       <Actions>
         <button type="button" className="m2-btn" onClick={onClose}>
-          Done
+          {tr("Done")}
         </button>
       </Actions>
     </InspectorFrame>
@@ -213,7 +229,7 @@ function Body({ text }: { text: string }) {
             </ul>
           );
         }
-        if (lines.some((l) => l.startsWith("|"))) return <pre key={i} className="m2-code">{b}</pre>;
+        if (lines.some((l) => l.startsWith("|"))) return <pre key={i} className="m2-code" tabIndex={0}>{b}</pre>;
         return <p key={i}>{inline(lines.join(" "))}</p>;
       })}
     </>
@@ -228,13 +244,13 @@ function Recording({ chapter }: { chapter: HelpChapter }) {
     <div>
       {open ? (
         missing ? (
-          <p className="m2-prov" role="status">The recording for this chapter is in preparation.</p>
+          <p className="m2-prov" role="status">{tr("The recording for this chapter is in preparation.")}</p>
         ) : (
-          <video controls preload="metadata" aria-label={`${chapter.title}: training video`} src={`/api/v1/docs/help-videos/${chapter.video}.mp4`} onError={() => setMissing(true)} />
+          <video controls preload="metadata" aria-label={tr("{title}: training video", { title: chapter.title })} src={`/api/v1/docs/help-videos/${chapter.video}.mp4`} onError={() => setMissing(true)} />
         )
       ) : (
         <button type="button" className="m2-btn" onClick={() => setOpen(true)}>
-          Watch the recording
+          {tr("Watch the recording")}
         </button>
       )}
     </div>
@@ -246,10 +262,10 @@ function ChapterView({ chapter, onBack }: { chapter: HelpChapter; onBack: () => 
   return (
     <div className="m2-hbody" data-testid="help-chapter">
       <button type="button" className="m2-linkbtn" onClick={onBack}>
-        All of help
+        {tr("All of help")}
       </button>
       <h3 style={{ fontSize: 16, marginTop: 8 }}>{chapter.title}</h3>
-      <p className="m2-hs2">{`${chapter.group}${screens.length ? `. Applies to: ${screens.map((s) => SCREEN_LABEL[s]).join(", ")}` : ""}`}</p>
+      <p className="m2-hs2">{`${chapter.group}${screens.length ? tr(". Applies to: {map}", { map: screens.map((s) => SCREEN_LABEL[s]).join(", ") }) : ""}`}</p>
       <Recording chapter={chapter} />
       {chapter.sections.map((s, i) => (
         <section key={i}>
@@ -277,6 +293,9 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
   const health = useHealth();
   const tenant = useTenantSettings(session.can("view"));
   const licence = useLicence();
+  // The server's own summary (GET /support/diagnostics) rides along with the browser's block.
+  const server = useDiagnostics();
+  const serverText = server.data ? JSON.stringify(server.data, null, 2) : null;
   useEffect(() => {
     let alive = true;
     loadHelp().then((d) => alive && setData(d), () => alive && setFailed(true));
@@ -293,7 +312,7 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
     version: health.data?.version ?? APP_VERSION,
     tenant: tenant.data?.name ?? null,
     tenantId: (licence.data as { tenant_id?: string } | undefined)?.tenant_id ?? null,
-    licence: licence.data ? `${licence.data.tier ?? "unknown tier"}, ${licence.data.status}` : null,
+    licence: licence.data ? `${licence.data.tier ?? tr("unknown tier")}, ${licence.data.status}` : null,
     user: session.email ?? (session.name || null),
     screen: pathname,
     time: new Date().toISOString(),
@@ -307,31 +326,31 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
         <span className="m2-hs2">{query && h.sections[0] ? snippet(h.sections[0].text || h.sections[0].heading, query) : h.chapter.summary}</span>
         <span className="m2-hs2">
           {h.chapter.group}
-          {h.chapter.video ? ", with a recording" : ""}
+          {h.chapter.video ? tr(", with a recording") : ""}
         </span>
       </button>
     </li>
   );
   return (
-    <InspectorFrame title="Help" status={screen ? `You are on ${SCREEN_LABEL[screen]}` : undefined} onClose={onClose}>
+    <InspectorFrame title={tr("Help")} status={screen ? tr("You are on {SCREEN_LABEL}", { SCREEN_LABEL: SCREEN_LABEL[screen] }) : undefined} onClose={onClose}>
       {open ? (
         <ChapterView chapter={open} onBack={() => setChapterId(null)} />
       ) : (
         <>
-          <input ref={search} type="search" className="m2-hsearch" aria-label="Search help" placeholder="Search the guide and recordings" value={query} onChange={(e) => setQuery(e.target.value)} />
-          {failed ? <p className="m2-prov" role="alert">The help could not be loaded.</p> : !data ? <Skeleton width="100%" height={80} /> : hits.length === 0 ? <EmptyFrame>{`Nothing in the guide matches "${query}". Try a shorter word, or contact support below.`}</EmptyFrame> : (
+          <input ref={search} type="search" className="m2-hsearch" aria-label={tr("Search help")} placeholder={tr("Search the guide and recordings")} value={query} onChange={(e) => setQuery(e.target.value)} />
+          {failed ? <p className="m2-prov" role="alert">{tr("The help could not be loaded.")}</p> : !data ? <Skeleton width="100%" height={80} /> : hits.length === 0 ? <EmptyFrame>{tr("Nothing in the guide matches \"{query}\". Try a shorter word, or contact support below.", { query })}</EmptyFrame> : (
             <>
               {here.length ? (
                 <>
-                  <h3>On this screen</h3>
-                  <ul className="m2-hlist" aria-label="Help for this screen">{here.map(line)}</ul>
+                  <h3>{tr("On this screen")}</h3>
+                  <ul className="m2-hlist" aria-label={tr("Help for this screen")}>{here.map(line)}</ul>
                 </>
               ) : null}
-              <h3>{here.length ? "Everything else" : "All of help"}</h3>
-              <ul className="m2-hlist" aria-label="All help">{rest.map(line)}</ul>
+              <h3>{here.length ? tr("Everything else") : tr("All of help")}</h3>
+              <ul className="m2-hlist" aria-label={tr("All help")}>{rest.map(line)}</ul>
             </>
           )}
-          <h3>What&apos;s new</h3>
+          <h3>{tr("What's new")}</h3>
           {releases.slice(0, 2).map((r) => (
             <div key={r.version} className="m2-hbody">
               <p className="m2-hs2">{`${r.version}, ${formatDate(r.date)}`}</p>
@@ -344,17 +363,25 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
               </ul>
             </div>
           ))}
-          <h3>Keyboard</h3>
+          <h3>{tr("Keyboard")}</h3>
           <button type="button" className="m2-btn" onClick={() => window.dispatchEvent(new Event("m2:shortcuts"))}>
-            Keyboard shortcuts
+            {tr("Keyboard shortcuts")}
           </button>
-          <h3>Contact support</h3>
-          <p className="m2-hs2" style={{ marginTop: 0 }}>Include this block in your request. It holds no record values and no secrets.</p>
+          <h3>{tr("Contact support")}</h3>
+          <p className="m2-hs2" style={{ marginTop: 0 }}>{tr("Include this block in your request. It holds no record values and no secrets.")}</p>
           <p className="m2-secret" data-testid="diagnostics-ref">{diagnosticsRef(diag)}</p>
-          <pre className="m2-code" aria-label="Diagnostics">{diagnosticsText(diag)}</pre>
+          <pre className="m2-code" tabIndex={0} aria-label={tr("Diagnostics")}>{diagnosticsText(diag)}</pre>
+          {serverText ? (
+            <>
+              <p className="m2-hs2">{tr("The server's summary is attached below.")}</p>
+              <pre className="m2-code" tabIndex={0} aria-label={tr("Server summary")} data-testid="diagnostics-summary">{serverText}</pre>
+            </>
+          ) : server.isError ? (
+            <p className="m2-hs2">{tr("The server's summary could not be read; the block above is enough to start.")}</p>
+          ) : null}
           <Actions>
-            <button type="button" className="m2-btn" onClick={() => void copyText(`${diagnosticsRef(diag)}\n${diagnosticsText(diag)}`).then((ok) => setCopied(ok))}>
-              {copied ? "Copied" : "Copy the diagnostics"}
+            <button type="button" className="m2-btn" onClick={() => void copyText(`${diagnosticsRef(diag)}\n${diagnosticsText(diag)}${serverText ? tr("\n\nServer summary\n{serverText}", { serverText }) : ""}`).then((ok) => setCopied(ok))}>
+              {copied ? tr("Copied") : tr("Copy the diagnostics")}
             </button>
           </Actions>
         </>

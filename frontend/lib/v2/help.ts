@@ -1,3 +1,4 @@
+import { t } from "@/lib/v2/i18n";
 /**
  * The help panel's data: the chapters of the help centre and the user guide (lib/v2/help-data.json, built by
  * scripts/help-index.mjs), which canvas each one applies to, search over them, and the diagnostics block for support.
@@ -27,15 +28,15 @@ export function loadHelp(): Promise<HelpIndex> {
 export type Screen = "landscape" | "object" | "rule" | "work" | "runs" | "system" | "people" | "admin" | "reports";
 
 export const SCREEN_LABEL: Record<Screen, string> = {
-  landscape: "Landscape",
-  object: "An object",
-  rule: "A rule",
-  work: "Work",
-  runs: "Runs",
-  system: "A system",
-  people: "People",
-  admin: "Administration",
-  reports: "Reports",
+  get landscape() { return t("Landscape"); },
+  get object() { return t("An object"); },
+  get rule() { return t("A rule"); },
+  get work() { return t("Work"); },
+  get runs() { return t("Runs"); },
+  get system() { return t("A system"); },
+  get people() { return t("People"); },
+  get admin() { return t("Administration"); },
+  get reports() { return t("Reports"); },
 };
 
 /** Which canvas the viewer is on, from the address. */
@@ -150,7 +151,7 @@ export interface Diagnostics {
 /** The block a person pastes into a support request: no record values, no secrets. */
 export function diagnosticsText(d: Diagnostics): string {
   return [
-    `Meridian ${d.version}`,
+    t("Meridian {version}", { version: d.version }),
     `Tenant: ${d.tenant ?? "unknown"}${d.tenantId ? ` (${d.tenantId})` : ""}`,
     `Licence: ${d.licence ?? "unknown"}`,
     `User: ${d.user ?? "unknown"}`,

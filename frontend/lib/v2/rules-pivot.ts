@@ -1,4 +1,5 @@
 import { DIMENSIONS, type RuleRow } from "@/lib/api/v2/types";
+import { t } from "@/lib/v2/i18n";
 
 /**
  * Ranking and pivoting of an object's rules, computed here from the rules the Rules tab already holds.
@@ -8,11 +9,11 @@ import { DIMENSIONS, type RuleRow } from "@/lib/api/v2/types";
 export type Pivot = "rule" | "field" | "dimension" | "severity" | "feature";
 
 export const PIVOTS: ReadonlyArray<{ key: Pivot; label: string }> = [
-  { key: "rule", label: "By rule" },
-  { key: "field", label: "By field" },
-  { key: "dimension", label: "By dimension" },
-  { key: "severity", label: "By severity" },
-  { key: "feature", label: "By S/4 feature" },
+  { key: "rule", get label() { return t("By rule"); } },
+  { key: "field", get label() { return t("By field"); } },
+  { key: "dimension", get label() { return t("By dimension"); } },
+  { key: "severity", get label() { return t("By severity"); } },
+  { key: "feature", get label() { return t("By S/4 feature"); } },
 ];
 
 /** Value at risk first (unpriced last), then failing records, then id: the order the tab ranks in. */
@@ -53,15 +54,15 @@ function add(map: Map<string, PivotGroup>, key: string, label: string, rule: Rul
 export function pivotRules(ranked: readonly RuleRow[], pivot: Exclude<Pivot, "rule">, features: ReadonlyMap<string, FeatureLink[]>): PivotGroup[] {
   const map = new Map<string, PivotGroup>();
   for (const r of ranked) {
-    if (pivot === "field") add(map, r.field ?? "none", r.field ?? "No field recorded", r, { mono: Boolean(r.field), sub: r.field_description ?? undefined });
+    if (pivot === "field") add(map, r.field ?? "none", r.field ?? t("No field recorded"), r, { mono: Boolean(r.field), sub: r.field_description ?? undefined });
     else if (pivot === "dimension") {
       const d = DIMENSIONS.find((x) => x.key === r.dimension);
-      add(map, r.dimension ?? "none", d?.label ?? "No dimension recorded", r);
+      add(map, r.dimension ?? "none", d?.label ?? t("No dimension recorded"), r);
     } else if (pivot === "severity") add(map, r.severity, r.severity.charAt(0).toUpperCase() + r.severity.slice(1), r);
     else {
       const links = features.get(r.check_id) ?? [];
-      if (links.length === 0) add(map, "none", "No S/4 feature", r);
-      for (const l of links) add(map, l.feature, l.feature, r, { sub: l.status === "blocked" ? "Blocked" : "Degraded" });
+      if (links.length === 0) add(map, "none", t("No S/4 feature"), r);
+      for (const l of links) add(map, l.feature, l.feature, r, { sub: l.status === "blocked" ? t("Blocked") : t("Degraded") });
     }
   }
   const out = [...map.values()];

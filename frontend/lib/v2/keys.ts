@@ -1,3 +1,4 @@
+import { t } from "@/lib/v2/i18n";
 /**
  * The Meridian 2 keyboard registry: one table, three readers. The shell's key listener and the grid dispatch from
  * it, the "?" sheet is drawn from it, and the command line's footer hints are the rows of scope "command".
@@ -60,47 +61,47 @@ const handled = (fn: () => void): boolean => {
 };
 
 export const KEYS: readonly KeyDef[] = [
-  { id: "command.open", keys: ["mod+k", "/"], display: "⌘K or /", scope: "global", label: "Open the command line", run: (c) => handled(() => c.openCommand?.()) },
-  { id: "sheet.open", keys: ["?"], display: "?", scope: "global", label: "Show this sheet", run: (c) => handled(() => c.openShortcuts?.()) },
-  { id: "undo", keys: ["mod+z"], display: "⌘Z", scope: "global", label: "Undo the last change", run: (c, e) => (isTyping(e.target) || !c.undoLast ? false : handled(() => c.undoLast?.())) },
-  { id: "escape", keys: ["Escape"], display: "Esc", scope: "global", label: "Close the top layer: menu, then inspector, then the selection", run: (c) => Boolean(c.escape?.()) },
+  { id: "command.open", keys: ["mod+k", "/"], get display() { return t("⌘K or /"); }, scope: "global", get label() { return t("Open the command line"); }, run: (c) => handled(() => c.openCommand?.()) },
+  { id: "sheet.open", keys: ["?"], display: "?", scope: "global", get label() { return t("Show this sheet"); }, run: (c) => handled(() => c.openShortcuts?.()) },
+  { id: "undo", keys: ["mod+z"], display: "⌘Z", scope: "global", get label() { return t("Undo the last change"); }, run: (c, e) => (isTyping(e.target) || !c.undoLast ? false : handled(() => c.undoLast?.())) },
+  { id: "escape", keys: ["Escape"], display: "Esc", scope: "global", get label() { return t("Close the top layer: menu, then inspector, then the selection"); }, run: (c) => Boolean(c.escape?.()) },
 
-  { id: "go.landscape", keys: ["g l"], display: "g then l", scope: "go", label: "Landscape", run: (c) => handled(() => c.go?.("landscape")) },
-  { id: "go.work", keys: ["g w"], display: "g then w", scope: "go", label: "Work", run: (c) => handled(() => c.go?.("work")) },
-  { id: "go.runs", keys: ["g r"], display: "g then r", scope: "go", label: "Runs", run: (c) => handled(() => c.go?.("runs")) },
-  { id: "go.people", keys: ["g p"], display: "g then p", scope: "go", label: "People", run: (c) => handled(() => c.go?.("people")) },
+  { id: "go.landscape", keys: ["g l"], get display() { return t("g then l"); }, scope: "go", get label() { return t("Landscape"); }, run: (c) => handled(() => c.go?.("landscape")) },
+  { id: "go.work", keys: ["g w"], get display() { return t("g then w"); }, scope: "go", get label() { return t("Work"); }, run: (c) => handled(() => c.go?.("work")) },
+  { id: "go.runs", keys: ["g r"], get display() { return t("g then r"); }, scope: "go", get label() { return t("Runs"); }, run: (c) => handled(() => c.go?.("runs")) },
+  { id: "go.people", keys: ["g p"], get display() { return t("g then p"); }, scope: "go", get label() { return t("People"); }, run: (c) => handled(() => c.go?.("people")) },
 
-  { id: "grid.next", keys: ["j", "ArrowDown"], display: "j or ↓", scope: "grid", label: "Next row", run: (c) => handled(() => c.grid?.move(1, false)) },
-  { id: "grid.prev", keys: ["k", "ArrowUp"], display: "k or ↑", scope: "grid", label: "Previous row", run: (c) => handled(() => c.grid?.move(-1, false)) },
-  { id: "grid.extend-down", keys: ["shift+j", "shift+ArrowDown"], display: "Shift+J or Shift+↓", scope: "grid", label: "Extend the selection down", run: (c) => handled(() => c.grid?.move(1, true)) },
-  { id: "grid.extend-up", keys: ["shift+k", "shift+ArrowUp"], display: "Shift+K or Shift+↑", scope: "grid", label: "Extend the selection up", run: (c) => handled(() => c.grid?.move(-1, true)) },
-  { id: "grid.open", keys: ["Enter"], display: "Enter", scope: "grid", label: "Open the row in the inspector", run: (c) => handled(() => c.grid?.open()) },
-  { id: "grid.toggle", keys: ["x"], display: "x", scope: "grid", label: "Select or clear the row", run: (c) => handled(() => c.grid?.toggle()) },
+  { id: "grid.next", keys: ["j", "ArrowDown"], get display() { return t("j or ↓"); }, scope: "grid", get label() { return t("Next row"); }, run: (c) => handled(() => c.grid?.move(1, false)) },
+  { id: "grid.prev", keys: ["k", "ArrowUp"], get display() { return t("k or ↑"); }, scope: "grid", get label() { return t("Previous row"); }, run: (c) => handled(() => c.grid?.move(-1, false)) },
+  { id: "grid.extend-down", keys: ["shift+j", "shift+ArrowDown"], get display() { return t("Shift+J or Shift+↓"); }, scope: "grid", get label() { return t("Extend the selection down"); }, run: (c) => handled(() => c.grid?.move(1, true)) },
+  { id: "grid.extend-up", keys: ["shift+k", "shift+ArrowUp"], get display() { return t("Shift+K or Shift+↑"); }, scope: "grid", get label() { return t("Extend the selection up"); }, run: (c) => handled(() => c.grid?.move(-1, true)) },
+  { id: "grid.open", keys: ["Enter"], display: "Enter", scope: "grid", get label() { return t("Open the row in the inspector"); }, run: (c) => handled(() => c.grid?.open()) },
+  { id: "grid.toggle", keys: ["x"], display: "x", scope: "grid", get label() { return t("Select or clear the row"); }, run: (c) => handled(() => c.grid?.toggle()) },
 
-  { id: "ledger.accept", keys: ["a"], display: "a", scope: "ledger", label: "Accept the suggested value on the selected rows", run: (c) => (c.ledger ? handled(() => c.ledger?.accept()) : false) },
-  { id: "ledger.not-an-issue", keys: ["n"], display: "n", scope: "ledger", label: "Mark the selected rows as not an issue", run: (c) => (c.ledger ? handled(() => c.ledger?.notAnIssue()) : false) },
-  { id: "ledger.accept-risk", keys: ["r"], display: "r", scope: "ledger", label: "Accept the risk on the selected rows", run: (c) => (c.ledger ? handled(() => c.ledger?.acceptRisk()) : false) },
-  { id: "ledger.export", keys: ["e"], display: "e", scope: "ledger", label: "Export the fix sheet of what is on screen", run: (c) => (c.ledger ? handled(() => c.ledger?.exportSheet()) : false) },
-  { id: "ledger.filter", keys: ["f"], display: "f", scope: "ledger", label: "Move to the filter chips", run: (c) => (c.ledger ? handled(() => c.ledger?.focusChips()) : false) },
-  { id: "ledger.fill", keys: [], display: "⌘D", scope: "ledger", label: "Fill the New value of the first selected row down the selection" },
-  { id: "ledger.paste", keys: [], display: "Paste", scope: "ledger", label: "Paste several lines into a New value cell to fill the selected rows" },
-  { id: "inspector.next", keys: ["]"], display: "]", scope: "inspector", label: "Open the next row", run: (c) => handled(() => c.stepInspector?.(1)) },
-  { id: "inspector.prev", keys: ["["], display: "[", scope: "inspector", label: "Open the previous row", run: (c) => handled(() => c.stepInspector?.(-1)) },
-  { id: "inspector.tab", keys: [], display: "Tab", scope: "inspector", label: "Cycles inside the inspector" },
-  { id: "inspector.close", keys: [], display: "Esc", scope: "inspector", label: "Close and return to where you were" },
+  { id: "ledger.accept", keys: ["a"], display: "a", scope: "ledger", get label() { return t("Accept the suggested value on the selected rows"); }, run: (c) => (c.ledger ? handled(() => c.ledger?.accept()) : false) },
+  { id: "ledger.not-an-issue", keys: ["n"], display: "n", scope: "ledger", get label() { return t("Mark the selected rows as not an issue"); }, run: (c) => (c.ledger ? handled(() => c.ledger?.notAnIssue()) : false) },
+  { id: "ledger.accept-risk", keys: ["r"], display: "r", scope: "ledger", get label() { return t("Accept the risk on the selected rows"); }, run: (c) => (c.ledger ? handled(() => c.ledger?.acceptRisk()) : false) },
+  { id: "ledger.export", keys: ["e"], display: "e", scope: "ledger", get label() { return t("Export the fix sheet of what is on screen"); }, run: (c) => (c.ledger ? handled(() => c.ledger?.exportSheet()) : false) },
+  { id: "ledger.filter", keys: ["f"], display: "f", scope: "ledger", get label() { return t("Move to the filter chips"); }, run: (c) => (c.ledger ? handled(() => c.ledger?.focusChips()) : false) },
+  { id: "ledger.fill", keys: [], display: "⌘D", scope: "ledger", get label() { return t("Fill the New value of the first selected row down the selection"); } },
+  { id: "ledger.paste", keys: [], display: "Paste", scope: "ledger", get label() { return t("Paste several lines into a New value cell to fill the selected rows"); } },
+  { id: "inspector.next", keys: ["]"], display: "]", scope: "inspector", get label() { return t("Open the next row"); }, run: (c) => handled(() => c.stepInspector?.(1)) },
+  { id: "inspector.prev", keys: ["["], display: "[", scope: "inspector", get label() { return t("Open the previous row"); }, run: (c) => handled(() => c.stepInspector?.(-1)) },
+  { id: "inspector.tab", keys: [], display: "Tab", scope: "inspector", get label() { return t("Cycles inside the inspector"); } },
+  { id: "inspector.close", keys: [], display: "Esc", scope: "inspector", get label() { return t("Close and return to where you were"); } },
 
-  { id: "command.move", keys: [], display: "↑ ↓", scope: "command", label: "Move through the results", hint: true },
-  { id: "command.run", keys: [], display: "Enter", scope: "command", label: "Open the result", hint: true },
-  { id: "command.close", keys: [], display: "Esc", scope: "command", label: "Close", hint: true },
+  { id: "command.move", keys: [], display: "↑ ↓", scope: "command", get label() { return t("Move through the results"); }, hint: true },
+  { id: "command.run", keys: [], display: "Enter", scope: "command", get label() { return t("Open the result"); }, hint: true },
+  { id: "command.close", keys: [], display: "Esc", scope: "command", get label() { return t("Close"); }, hint: true },
 ];
 
 export const SCOPE_TITLE: Record<KeyScope, string> = {
-  global: "Everywhere",
-  go: "Go to",
-  grid: "Tables and lists",
-  ledger: "Work ledger",
-  inspector: "Inspector",
-  command: "Command line",
+  get global() { return t("Everywhere"); },
+  get go() { return t("Go to"); },
+  get grid() { return t("Tables and lists"); },
+  get ledger() { return t("Work ledger"); },
+  get inspector() { return t("Inspector"); },
+  get command() { return t("Command line"); },
 };
 
 /** The registry grouped for the "?" sheet, in scope order. */

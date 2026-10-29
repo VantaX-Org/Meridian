@@ -14,12 +14,14 @@ import { InspectorFrame } from "../Inspector";
 import { SeverityMark } from "../marks";
 import { EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../parts";
 import { MentionCount } from "./collab";
+import { t as tr } from "@/lib/v2/i18n";
+import { v2Locale } from "@/lib/v2/format";
 
 /** A time in the viewer's day: "08:41" for today, "3 Oct" before. */
 function when(iso: string, today: boolean): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
-  return today ? d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : formatDate(iso, "date");
+  return today ? d.toLocaleTimeString(v2Locale(), { hour: "2-digit", minute: "2-digit" }) : formatDate(iso, "date");
 }
 
 interface ItemProps {
@@ -57,8 +59,8 @@ function Item({ n, today, active, focusable, objectLabel, onRead }: ItemProps) {
           )
         ) : null}
         {n.is_read ? null : (
-          <button type="button" className="m2-linkbtn2" aria-label={`Mark read: ${sentence}`} onClick={() => onRead(n.id)}>
-            Mark read
+          <button type="button" className="m2-linkbtn2" aria-label={tr("Mark read: {sentence}", { sentence })} onClick={() => onRead(n.id)}>
+            {tr("Mark read")}
           </button>
         )}
       </span>
@@ -142,29 +144,29 @@ export function InboxPanel({ onClose }: { onClose: () => void }) {
 
   const count = unread ?? order.filter((n) => !n.is_read).length;
   return (
-    <InspectorFrame title="Inbox" status={q.data ? `${int(count)} unread` : undefined} onClose={onClose}>
+    <InspectorFrame title={tr("Inbox")} status={q.data ? tr("{count} unread", { count: int(count) }) : undefined} onClose={onClose}>
       <div ref={root} onKeyDown={onKeyDown} data-testid="inbox-panel">
         <div className="m2-inbox-tools">
           <button type="button" className="m2-btn m2-sm" disabled={count === 0 || all.isPending} onClick={() => all.mutate()}>
-            Mark all read
+            {tr("Mark all read")}
           </button>
           <a href="?open=preferences" className="m2-meta">
-            Notification settings
+            {tr("Notification settings")}
           </a>
           <MentionCount />
         </div>
-        {all.isError || one.isError ? <ErrorFrame>The change could not be saved. Try again.</ErrorFrame> : null}
+        {all.isError || one.isError ? <ErrorFrame>{tr("The change could not be saved. Try again.")}</ErrorFrame> : null}
         {q.isLoading ? (
           <Skeleton width="100%" height={160} />
         ) : q.isError ? (
-          <ErrorFrame onRetry={() => void q.refetch()}>The notifications could not be read.</ErrorFrame>
+          <ErrorFrame onRetry={() => void q.refetch()}>{tr("The notifications could not be read.")}</ErrorFrame>
         ) : order.length === 0 ? (
-          <EmptyFrame>Nothing has been sent to you. Approvals, SLA warnings and digests arrive here.</EmptyFrame>
+          <EmptyFrame>{tr("Nothing has been sent to you. Approvals, SLA warnings and digests arrive here.")}</EmptyFrame>
         ) : (
           <>
-            <Group title="Today" items={groups.today} today activeId={current} objectLabel={objectLabel} onRead={read} />
-            <Group title="Earlier" items={groups.earlier} today={false} activeId={current} objectLabel={objectLabel} onRead={read} />
-            <p className="m2-prov m2-nfoot">j and k move, Enter opens.</p>
+            <Group title={tr("Today")} items={groups.today} today activeId={current} objectLabel={objectLabel} onRead={read} />
+            <Group title={tr("Earlier")} items={groups.earlier} today={false} activeId={current} objectLabel={objectLabel} onRead={read} />
+            <p className="m2-prov m2-nfoot">{tr("j and k move, Enter opens.")}</p>
           </>
         )}
       </div>

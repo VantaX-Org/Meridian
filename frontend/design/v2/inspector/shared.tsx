@@ -5,6 +5,7 @@ import { failureText } from "@/lib/v2/errors";
 import { useOpenItem } from "@/lib/v2/hooks";
 import { VerdictMark } from "../marks";
 import { V2Link } from "../parts";
+import { t } from "@/lib/v2/i18n";
 
 /** What an action answered, kept in the frame it was started from. */
 export interface Outcome {
@@ -27,7 +28,7 @@ export function ResultFrame({ outcome, children }: { outcome: Outcome; children?
       {outcome.detail ? <span>{outcome.detail}</span> : null}
       {outcome.job ? (
         <span>
-          <V2Link href={hrefFor({ kind: "job", id: outcome.job })}>Open the job</V2Link>
+          <V2Link href={hrefFor({ kind: "job", id: outcome.job })}>{t("Open the job")}</V2Link>
         </span>
       ) : null}
       {children}
@@ -96,7 +97,7 @@ export function useOutcome(scope?: string): { outcome: Outcome | null; pending: 
         const next = await fn();
         put(next, false);
       } catch (e) {
-        put({ tone: "fail", title: "It did not go through", detail: failureText(e) }, false);
+        put({ tone: "fail", title: t("It did not go through"), detail: failureText(e) }, false);
       } finally {
         if (alive.current) setPending(null);
       }

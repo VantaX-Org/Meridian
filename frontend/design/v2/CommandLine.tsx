@@ -8,17 +8,18 @@ import { useFixture } from "@/lib/api/v2/fixture";
 import { useV2Href } from "@/lib/v2/hooks";
 import { commandHints, ledgerRegistry } from "@/lib/v2/keys";
 import type { CommandGroup } from "@/lib/api/v2/types";
+import { t as tr, tx } from "@/lib/v2/i18n";
 
 const PLACES: CommandGroup = {
   kind: "action",
-  label: "Go to",
+  get label() { return tr("Go to"); },
   items: [
-    { id: "landscape", title: "Landscape", href: "/v2" },
-    { id: "work", title: "Work", href: "/v2/work" },
-    { id: "runs", title: "Runs", href: "/v2/runs" },
-    { id: "people", title: "People", href: "/v2/people" },
-    { id: "rules", title: "Rules", href: "/v2/rules" },
-    { id: "connect", title: "Connect a system", href: "/v2/s/new" },
+    { id: "landscape", get title() { return tr("Landscape"); }, href: "/v2" },
+    { id: "work", get title() { return tr("Work"); }, href: "/v2/work" },
+    { id: "runs", get title() { return tr("Runs"); }, href: "/v2/runs" },
+    { id: "people", get title() { return tr("People"); }, href: "/v2/people" },
+    { id: "rules", get title() { return tr("Rules"); }, href: "/v2/rules" },
+    { id: "connect", get title() { return tr("Connect a system"); }, href: "/v2/s/new" },
   ],
 };
 
@@ -78,7 +79,7 @@ export function CommandLine({ onClose }: { onClose: () => void }) {
 
   const rows = useMemo<Row[]>(() => {
     const groups = debounced.length === 0 || q.trim().length === 0 ? [PLACES] : (result.data?.groups ?? []);
-    return groups.flatMap((g) => g.items.map((i) => ({ id: i.id, kind: g.kind, group: g.label, title: i.title, href: i.href })));
+    return groups.flatMap((g) => g.items.map((i) => ({ id: i.id, kind: g.kind, group: tx(g.label), title: i.title, href: i.href })));
   }, [debounced, q, result.data]);
 
   const clamped = Math.min(index, Math.max(0, rows.length - 1));
@@ -115,7 +116,7 @@ export function CommandLine({ onClose }: { onClose: () => void }) {
   return (
     <div onKeyDown={onKeyDown}>
       <div className="m2-scrim" onClick={onClose} aria-hidden="true" />
-      <div className="m2-pal" role="dialog" aria-modal="true" aria-label="Search or type a command" data-testid="command-line">
+      <div className="m2-pal" role="dialog" aria-modal="true" aria-label={tr("Search or type a command")} data-testid="command-line">
         <input
           ref={input}
           type="text"
@@ -123,8 +124,8 @@ export function CommandLine({ onClose }: { onClose: () => void }) {
           aria-expanded="true"
           aria-controls="m2-pal-list"
           aria-activedescendant={rows.length ? `m2-po-${clamped}` : undefined}
-          aria-label="Search or type a command"
-          placeholder="Search or type a command"
+          aria-label={tr("Search or type a command")}
+          placeholder={tr("Search or type a command")}
           autoComplete="off"
           spellCheck={false}
           value={q}
@@ -133,10 +134,10 @@ export function CommandLine({ onClose }: { onClose: () => void }) {
             setIndex(0);
           }}
         />
-        <ul id="m2-pal-list" role="listbox" aria-label="Results">
+        <ul id="m2-pal-list" role="listbox" aria-label={tr("Results")}>
           {rows.length === 0 ? (
             <li className="m2-pal-gh" role="presentation">
-              {q.trim() && !result.isFetching ? `No match for ${q.trim()}. Try a material number, a rule id such as MM014, or a word such as approve or export.` : result.isFetching ? "Searching" : ""}
+              {q.trim() && !result.isFetching ? tr("No match for {q}. Try a material number, a rule id such as MM014, or a word such as approve or export.", { q: q.trim() }) : result.isFetching ? tr("Searching") : ""}
             </li>
           ) : (
             rows.map((r, i) => {

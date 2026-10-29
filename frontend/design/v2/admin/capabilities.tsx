@@ -19,6 +19,8 @@ import { int } from "@/lib/v2/score";
 import { Mono } from "../parts";
 import { AdminPage, Block, Loaded, NeedsPermission, Note, StatusWord, useCan } from "./kit";
 import "../roles.css";
+import { t as tr, lc } from "@/lib/v2/i18n";
+import { labelText } from "@/lib/v2/labels";
 
 /**
  * The Admin sections the role capability audit added (step 6c): Stewardship (the assignment template, apply with a
@@ -26,16 +28,16 @@ import "../roles.css";
  * Each checks its own permission and states the missing one rather than offering controls.
  */
 
-const SLICE_WORD: Record<SliceKind, string> = { company_code: "Company code", plant: "Plant", sales_org: "Sales organisation", purchasing_org: "Purchasing organisation", none: "Whole object" };
+const SLICE_WORD: Record<SliceKind, string> = { get company_code() { return tr("Company code"); }, get plant() { return tr("Plant"); }, get sales_org() { return tr("Sales organisation"); }, get purchasing_org() { return tr("Purchasing organisation"); }, get none() { return tr("Whole object"); } };
 
 function Diff({ plan }: { plan: ApplyPlan }) {
-  const rows = [...plan.owners.map((r) => ({ ...r, what: "Owner" })), ...plan.stewards.map((r) => ({ ...r, what: r.slice_value === "*" ? "Steward" : `Steward, ${SLICE_WORD[r.slice_kind ?? "none"].toLowerCase()} ${r.slice_value}` }))].filter((r) => r.change !== "same");
+  const rows = [...plan.owners.map((r) => ({ ...r, what: tr("Owner") })), ...plan.stewards.map((r) => ({ ...r, what: r.slice_value === "*" ? tr("Steward") : tr("Steward, {SLICE_WORD} {slice_value}", { SLICE_WORD: lc(SLICE_WORD[r.slice_kind ?? "none"]), slice_value: r.slice_value }) }))].filter((r) => r.change !== "same");
   return (
     <>
-      <p>{`${plan.totals.add} to add, ${plan.totals.change} to change, ${plan.totals.same} already in place.`}</p>
+      <p>{tr("{add} to add, {change} to change, {same} already in place.", { add: plan.totals.add, change: plan.totals.change, same: plan.totals.same })}</p>
       <ul className="m2-diff" data-testid="template-diff">
         {rows.map((r, i) => (
-          <li key={`${r.module}-${r.what}-${i}`} data-change={r.change}>{`${r.change === "add" ? "Add" : "Change"}: ${r.module.replace(/_/g, " ")}, ${r.what}`}</li>
+          <li key={`${r.module}-${r.what}-${i}`} data-change={r.change}>{`${r.change === "add" ? tr("Add") : tr("Change")}: ${r.module.replace(/_/g, " ")}, ${r.what}`}</li>
         ))}
       </ul>
     </>
@@ -54,8 +56,8 @@ export function StewardshipSection() {
   const [error, setError] = useState<string | null>(null);
   if (!can("manage_settings")) {
     return (
-      <AdminPage title="Stewardship">
-        <NeedsPermission what="The steward assignment template" permission="manage_settings" />
+      <AdminPage title={tr("Stewardship")}>
+        <NeedsPermission what={tr("The steward assignment template")} permission="manage_settings" />
       </AdminPage>
     );
   }
@@ -69,14 +71,14 @@ export function StewardshipSection() {
     }
   };
   return (
-    <AdminPage title="Stewardship" lead="One accountable owner per object and one steward per company code, plant or organisation. The template below follows the approved best practice; name the people, check the diff, then apply.">
-      <Loaded q={q} what="The assignment template">
+    <AdminPage title={tr("Stewardship")} lead={tr("One accountable owner per object and one steward per company code, plant or organisation. The template below follows the approved best practice; name the people, check the diff, then apply.")}>
+      <Loaded q={q} what={tr("The assignment template")}>
         {(t) => {
           const tmpl = draft ?? t.template;
           const set = (m: string, patch: Partial<AssignmentTemplate["objects"][string]>) => setDraft({ ...tmpl, objects: { ...tmpl.objects, [m]: { ...tmpl.objects[m], ...patch } } });
           const person = (value: string | null | undefined, onPick: (v: string | null) => void, label: string) => (
             <select value={value ?? ""} onChange={(e) => onPick(e.target.value || null)} aria-label={label}>
-              <option value="">Nobody yet</option>
+              <option value="">{tr("Nobody yet")}</option>
               {(people.data ?? []).map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -86,17 +88,17 @@ export function StewardshipSection() {
           );
           return (
             <>
-              <Block title="Template" hint={`${t.saved ? "Saved for this tenant" : "The default template"}. Active slices: ${(["plant", "company_code", "sales_org", "purchasing_org"] as SliceKind[]).map((k) => `${SLICE_WORD[k].toLowerCase()} ${(t.active_slices[k] ?? []).join(", ") || "none"}`).join("; ")}.`}>
+              <Block title={tr("Template")} hint={tr("{value}. Active slices: {map}.", { value: t.saved ? tr("Saved for this tenant") : tr("The default template"), map: (["plant", "company_code", "sales_org", "purchasing_org"] as SliceKind[]).map((k) => `${lc(SLICE_WORD[k])} ${(t.active_slices[k] ?? []).join(", ") || tr("none")}`).join("; ") })}>
                 <div className="m2-scroll">
                   <table className="m2-tmpl" data-testid="template-table">
                     <thead>
                       <tr>
-                        <th scope="col">Object</th>
-                        <th scope="col">Owner role</th>
-                        <th scope="col">Owner</th>
-                        <th scope="col">Stewards by</th>
-                        <th scope="col">Steward</th>
-                        <th scope="col">Teams</th>
+                        <th scope="col">{tr("Object")}</th>
+                        <th scope="col">{tr("Owner role")}</th>
+                        <th scope="col">{tr("Owner")}</th>
+                        <th scope="col">{tr("Stewards by")}</th>
+                        <th scope="col">{tr("Steward")}</th>
+                        <th scope="col">{tr("Teams")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -104,9 +106,9 @@ export function StewardshipSection() {
                         <tr key={m}>
                           <th scope="row">{t.labels[m] ?? m}</th>
                           <td>{o.owner_role}</td>
-                          <td>{person(o.owner_user_id, (v) => set(m, { owner_user_id: v }), `Owner of ${t.labels[m] ?? m}`)}</td>
+                          <td>{person(o.owner_user_id, (v) => set(m, { owner_user_id: v }), tr("Owner of {labels}", { labels: t.labels[m] ?? m }))}</td>
                           <td>
-                            <select value={o.slice} onChange={(e) => set(m, { slice: e.target.value as SliceKind })} aria-label={`Slice of ${t.labels[m] ?? m}`}>
+                            <select value={o.slice} onChange={(e) => set(m, { slice: e.target.value as SliceKind })} aria-label={tr("Slice of {labels}", { labels: t.labels[m] ?? m })}>
                               {Object.entries(SLICE_WORD).map(([k, l]) => (
                                 <option key={k} value={k}>
                                   {l}
@@ -114,7 +116,7 @@ export function StewardshipSection() {
                               ))}
                             </select>
                           </td>
-                          <td>{person(o.steward_user_id, (v) => set(m, { steward_user_id: v }), `Steward of ${t.labels[m] ?? m}`)}</td>
+                          <td>{person(o.steward_user_id, (v) => set(m, { steward_user_id: v }), tr("Steward of {labels}", { labels: t.labels[m] ?? m }))}</td>
                           <td className="m2-meta">{o.stewards}</td>
                         </tr>
                       ))}
@@ -125,32 +127,32 @@ export function StewardshipSection() {
                   <button type="button" className="m2-btn" disabled={!draft} onClick={() => void run(async () => {
                     await putTemplate(tmpl);
                     setDraft(null);
-                    setMsg("Template saved.");
+                    setMsg(tr("Template saved."));
                     await refreshRoles(qc, "template");
                   })}>
-                    Save the template
+                    {tr("Save the template")}
                   </button>
-                  <button type="button" className="m2-btn" disabled={Boolean(draft)} title={draft ? "Save the template first" : undefined} onClick={() => void run(async () => setPlan(await applyTemplate(true)))}>
-                    Check what applying does
+                  <button type="button" className="m2-btn" disabled={Boolean(draft)} title={draft ? tr("Save the template first") : undefined} onClick={() => void run(async () => setPlan(await applyTemplate(true)))}>
+                    {tr("Check what applying does")}
                   </button>
                   <button type="button" className="m2-btn m2-strong" disabled={!plan || Boolean(draft)} onClick={() => void run(async () => {
                     const done = await applyTemplate(false);
                     setPlan(null);
-                    setMsg(`Applied: ${done.totals.add} added, ${done.totals.change} changed.`);
+                    setMsg(tr("Applied: {add} added, {change} changed.", { add: done.totals.add, change: done.totals.change }));
                     await refreshRoles(qc);
                   })}>
-                    Apply
+                    {tr("Apply")}
                   </button>
                 </div>
                 {plan ? <Diff plan={plan} /> : null}
                 {error ? <Note tone="bad">{error}</Note> : null}
                 {msg ? <p role="status">{msg}</p> : null}
               </Block>
-              <Block title="Gaps" hint="Every object needs one owner and at least one steward per active slice.">
-                <Loaded q={gaps} what="The gaps">
+              <Block title={tr("Gaps")} hint={tr("Every object needs one owner and at least one steward per active slice.")}>
+                <Loaded q={gaps} what={tr("The gaps")}>
                   {(g) =>
                     g.gaps.length === 0 ? (
-                      <StatusWord tone="go">{`No gaps across ${g.objects} objects.`}</StatusWord>
+                      <StatusWord tone="go">{tr("No gaps across {objects} objects.", { objects: g.objects })}</StatusWord>
                     ) : (
                       <ul className="m2-rows" data-testid="template-gaps">
                         {g.gaps.map((x, i) => (
@@ -203,8 +205,8 @@ export function ConfigBundleSection() {
   const [msg, setMsg] = useState<string | null>(null);
   if (!can("manage_settings")) {
     return (
-      <AdminPage title="Configuration bundle">
-        <NeedsPermission what="The configuration bundle" permission="manage_settings" />
+      <AdminPage title={tr("Configuration bundle")}>
+        <NeedsPermission what={tr("The configuration bundle")} permission="manage_settings" />
       </AdminPage>
     );
   }
@@ -218,15 +220,15 @@ export function ConfigBundleSection() {
     }
   };
   return (
-    <AdminPage title="Configuration bundle" lead="Rules switched on or off, field mappings, waves and their gates, settings, SLA policies and the escalation chain as one JSON file. Move a configuration from a test tenant to production, or keep it under version control.">
-      <Block title="Export">
+    <AdminPage title={tr("Configuration bundle")} lead={tr("Rules switched on or off, field mappings, waves and their gates, settings, SLA policies and the escalation chain as one JSON file. Move a configuration from a test tenant to production, or keep it under version control.")}>
+      <Block title={tr("Export")}>
         <button type="button" className="m2-btn" onClick={() => void exportBundle().catch((e) => setError(failureText(e)))}>
-          Download the bundle
+          {tr("Download the bundle")}
         </button>
       </Block>
-      <Block title="Import" hint="Import adds and changes; it never deletes what the file leaves out. Check the diff first.">
+      <Block title={tr("Import")} hint={tr("Import adds and changes; it never deletes what the file leaves out. Check the diff first.")}>
         <FileField
-          label="Bundle file"
+          label={tr("Bundle file")}
           accept=".json,application/json"
           onText={(t) => {
             try {
@@ -234,27 +236,27 @@ export function ConfigBundleSection() {
               setBundle(b);
               void check(b);
             } catch {
-              setError("The file is not JSON.");
+              setError(tr("The file is not JSON."));
             }
           }}
         />
         {diff ? (
           <div data-testid="bundle-diff">
-            <p>{`${diff.totals.add} to add, ${diff.totals.change} to change, ${diff.totals.same} the same, ${diff.totals.kept} kept as they are.`}</p>
+            <p>{tr("{add} to add, {change} to change, {same} the same, {kept} kept as they are.", { add: diff.totals.add, change: diff.totals.change, same: diff.totals.same, kept: diff.totals.kept })}</p>
             <ul className="m2-diff">
               {Object.entries(diff.sections).flatMap(([section, d]) =>
                 d.items
                   .filter((i) => i.change !== "same")
                   .map((i) => (
                     <li key={`${section}-${i.key}`} data-change={i.change}>
-                      {`${i.change === "add" ? "Add" : "Change"} ${section.replace(/_/g, " ")}: `}
+                      {`${i.change === "add" ? tr("Add") : tr("Change")} ${section.replace(/_/g, " ")}: `}
                       <Mono>{i.key}</Mono>
                     </li>
                   )),
               )}
             </ul>
-            <button type="button" className="m2-btn m2-strong" disabled={!diff.dry_run || diff.totals.add + diff.totals.change === 0} onClick={() => void importBundle(bundle, false).then((d) => (setDiff(d), setMsg(`Imported: ${d.totals.add} added, ${d.totals.change} changed.`))).catch((e) => setError(failureText(e)))}>
-              Import
+            <button type="button" className="m2-btn m2-strong" disabled={!diff.dry_run || diff.totals.add + diff.totals.change === 0} onClick={() => void importBundle(bundle, false).then((d) => (setDiff(d), setMsg(tr("Imported: {add} added, {change} changed.", { add: d.totals.add, change: d.totals.change })))).catch((e) => setError(failureText(e)))}>
+              {tr("Import")}
             </button>
           </div>
         ) : null}
@@ -273,8 +275,8 @@ export function ViewAsSection() {
   const [error, setError] = useState<string | null>(null);
   if (!can("manage_users") && !session.viewAs) {
     return (
-      <AdminPage title="View as a role">
-        <NeedsPermission what="Viewing as a role" permission="manage_users" />
+      <AdminPage title={tr("View as a role")}>
+        <NeedsPermission what={tr("Viewing as a role")} permission="manage_users" />
       </AdminPage>
     );
   }
@@ -289,14 +291,14 @@ export function ViewAsSection() {
     }
   };
   return (
-    <AdminPage title="View as a role" lead="See the product as one role sees it, to answer a support question or check a role before you grant it. Everything is read-only while you view as a role, and starting and stopping are in the audit log.">
+    <AdminPage title={tr("View as a role")} lead={tr("See the product as one role sees it, to answer a support question or check a role before you grant it. Everything is read-only while you view as a role, and starting and stopping are in the audit log.")}>
       <Block>
         {session.viewAs ? (
-          <Note tone="warn">{`You are viewing as ${ROLE_NAMES[session.viewAs] ?? session.viewAs}. Stop from the bar at the top of the page.`}</Note>
+          <Note tone="warn">{tr("You are viewing as {ROLE_NAMES}. Stop from the bar at the top of the page.", { ROLE_NAMES: ROLE_NAMES[session.viewAs] ?? session.viewAs })}</Note>
         ) : (
           <div className="m2-adm-acts">
             <label className="m2-fld">
-              <span className="m2-lbl">Role</span>
+              <span className="m2-lbl">{tr("Role")}</span>
               <select value={role} onChange={(e) => setRole(e.target.value)}>
                 {VIEW_AS_ROLES.map((r) => (
                   <option key={r} value={r}>
@@ -306,7 +308,7 @@ export function ViewAsSection() {
               </select>
             </label>
             <button type="button" className="m2-btn m2-strong" onClick={() => void start()}>
-              View as this role
+              {tr("View as this role")}
             </button>
           </div>
         )}
@@ -324,8 +326,8 @@ export function RulesIoSection() {
   const [error, setError] = useState<string | null>(null);
   if (!can("manage_rules") && !can("export")) {
     return (
-      <AdminPage title="Rules import and export">
-        <NeedsPermission what="Rules import and export" permission="manage_rules" />
+      <AdminPage title={tr("Rules import and export")}>
+        <NeedsPermission what={tr("Rules import and export")} permission="manage_rules" />
       </AdminPage>
     );
   }
@@ -339,42 +341,42 @@ export function RulesIoSection() {
     }
   };
   return (
-    <AdminPage title="Rules import and export" lead="Every rule of the tenant as YAML or Excel, and many rules at once back in. Imported rules are validated against the data dictionary and land as drafts for review, never live.">
-      <Block title="Export">
+    <AdminPage title={tr("Rules import and export")} lead={tr("Every rule of the tenant as YAML or Excel, and many rules at once back in. Imported rules are validated against the data dictionary and land as drafts for review, never live.")}>
+      <Block title={tr("Export")}>
         <div className="m2-adm-acts">
-          <select value={fmt} onChange={(e) => setFmt(e.target.value as "yaml" | "xlsx")} aria-label="Format">
+          <select value={fmt} onChange={(e) => setFmt(e.target.value as "yaml" | "xlsx")} aria-label={tr("Format")}>
             <option value="yaml">YAML</option>
-            <option value="xlsx">Excel</option>
+            <option value="xlsx">{tr("Excel")}</option>
           </select>
           <button type="button" className="m2-btn" disabled={!can("export")} onClick={() => void exportRulesBulk(fmt).catch((e) => setError(failureText(e)))}>
-            Download the rules
+            {tr("Download the rules")}
           </button>
         </div>
       </Block>
-      <Block title="Import" hint="A YAML list of rules (each with its module), or the Excel sheet the export writes.">
+      <Block title={tr("Import")} hint={tr("A YAML list of rules (each with its module), or the Excel sheet the export writes.")}>
         {can("manage_rules") ? (
           <>
-            <FileField label="Rules file (YAML)" accept=".yaml,.yml" onText={(t) => (setFile({ content: t, format: "yaml" }), setResult(null))} />
-            <FileField label="Rules file (Excel)" accept=".xlsx" binary onText={(t) => (setFile({ content: t, format: "xlsx" }), setResult(null))} />
+            <FileField label={tr("Rules file (YAML)")} accept=".yaml,.yml" onText={(t) => (setFile({ content: t, format: "yaml" }), setResult(null))} />
+            <FileField label={tr("Rules file (Excel)")} accept=".xlsx" binary onText={(t) => (setFile({ content: t, format: "xlsx" }), setResult(null))} />
             <div className="m2-adm-acts">
               <button type="button" className="m2-btn" disabled={!file} onClick={() => void send(true)}>
-                Check the file
+                {tr("Check the file")}
               </button>
               <button type="button" className="m2-btn m2-strong" disabled={!result || !result.dry_run || result.valid === 0} onClick={() => void send(false)}>
-                {result ? `Create ${result.valid} ${result.valid === 1 ? "draft" : "drafts"}` : "Create drafts"}
+                {result ? tr("Create {valid} {valid, plural, one {draft} other {drafts}}", { valid: result.valid }) : tr("Create drafts")}
               </button>
             </div>
           </>
         ) : (
-          <NeedsPermission what="Importing rules" permission="manage_rules" />
+          <NeedsPermission what={tr("Importing rules")} permission="manage_rules" />
         )}
         {result ? (
           <div data-testid="bulk-result">
-            <p>{result.dry_run ? `${result.valid} of ${result.total} rules are valid.` : `${result.created.length} drafts created; ${result.invalid} rules were left out.`}</p>
+            <p>{result.dry_run ? tr("{valid} of {total} rules are valid.", { valid: result.valid, total: result.total }) : tr("{createdCount} drafts created; {invalid} rules were left out.", { createdCount: result.created.length, invalid: result.invalid })}</p>
             <ul className="m2-diff">
               {result.rows.map((r) => (
                 <li key={r.row} data-change={r.ok ? "add" : "change"}>
-                  {`Row ${r.row}${r.id ? ` (${r.id})` : ""}: ${r.ok ? "valid" : r.errors.join("; ")}`}
+                  {tr("Row {row}{value}: {value2}", { row: r.row, value: r.id ? ` (${r.id})` : "", value2: r.ok ? tr("valid") : r.errors.join("; ") })}
                 </li>
               ))}
             </ul>
@@ -393,27 +395,27 @@ export function ShareLinksSection() {
   const [error, setError] = useState<string | null>(null);
   if (!can("manage_users")) {
     return (
-      <AdminPage title="Share links">
-        <NeedsPermission what="Every share link of the tenant" permission="manage_users" />
+      <AdminPage title={tr("Share links")}>
+        <NeedsPermission what={tr("Every share link of the tenant")} permission="manage_users" />
       </AdminPage>
     );
   }
   return (
-    <AdminPage title="Share links" lead="Read-only links to one page, opened as a viewer by people of this tenant until they expire. Revoke one and it stops working at once.">
-      <Loaded q={q} what="The share links">
+    <AdminPage title={tr("Share links")} lead={tr("Read-only links to one page, opened as a viewer by people of this tenant until they expire. Revoke one and it stops working at once.")}>
+      <Loaded q={q} what={tr("The share links")}>
         {(d) =>
           d.links.length === 0 ? (
-            <p className="m2-meta">Nobody has shared a page yet.</p>
+            <p className="m2-meta">{tr("Nobody has shared a page yet.")}</p>
           ) : (
             <ul className="m2-rows" data-testid="share-links">
               {d.links.map((l) => (
                 <li key={l.id}>
                   <StatusWord tone={l.state_word === "active" ? "go" : "neutral"}>{l.label ?? l.route}</StatusWord>
-                  <span className="m2-meta">{`${l.created_by_label ?? l.created_by}, ${l.state_word === "active" ? `until ${formatDate(l.expires_at, "date")}` : l.state_word}, opened ${int(l.open_count)} ${l.open_count === 1 ? "time" : "times"}`}</span>
+                  <span className="m2-meta">{tr("{created_by_label}, {value}, opened {open_count} {open_count2, plural, one {time} other {times}}", { created_by_label: l.created_by_label ?? l.created_by, value: l.state_word === "active" ? tr("until {expires_at}", { expires_at: formatDate(l.expires_at, "date") }) : lc(labelText(l.state_word)), open_count: int(l.open_count), open_count2: l.open_count })}</span>
                   <Mono>{l.route}</Mono>
                   {l.state_word === "active" ? (
                     <button type="button" className="m2-linkbtn2" onClick={() => void revokeShareLink(l.id).then(() => refreshRoles(qc, "links")).catch((e) => setError(failureText(e)))}>
-                      Revoke
+                      {tr("Revoke")}
                     </button>
                   ) : null}
                 </li>
@@ -435,26 +437,26 @@ export function DelegationsSection() {
   const [error, setError] = useState<string | null>(null);
   if (!can("manage_users")) {
     return (
-      <AdminPage title="Out of office">
-        <NeedsPermission what="Everyone's out of office" permission="manage_users" />
+      <AdminPage title={tr("Out of office")}>
+        <NeedsPermission what={tr("Everyone's out of office")} permission="manage_users" />
       </AdminPage>
     );
   }
   return (
-    <AdminPage title="Out of office" lead="Who is away and who covers their approvals and assigned work. Each person sets their own from Preferences; an administrator can end one.">
-      <Loaded q={q} what="The delegations">
+    <AdminPage title={tr("Out of office")} lead={tr("Who is away and who covers their approvals and assigned work. Each person sets their own from Preferences; an administrator can end one.")}>
+      <Loaded q={q} what={tr("The delegations")}>
         {(d) =>
           d.delegations.length === 0 ? (
-            <p className="m2-meta">Nobody is away.</p>
+            <p className="m2-meta">{tr("Nobody is away.")}</p>
           ) : (
             <ul className="m2-rows" data-testid="all-delegations">
               {d.delegations.map((x) => (
                 <li key={x.id}>
-                  <span>{`${x.from_name} to ${x.to_name}`}</span>
-                  <span className="m2-meta">{`${x.starts_on} to ${x.ends_on}, ${x.state}`}</span>
+                  <span>{tr("{from_name} to {to_name}", { from_name: x.from_name, to_name: x.to_name })}</span>
+                  <span className="m2-meta">{tr("{starts_on} to {ends_on}, {state}", { starts_on: x.starts_on, ends_on: x.ends_on, state: lc(labelText(x.state)) })}</span>
                   {x.state === "active" || x.state === "scheduled" ? (
                     <button type="button" className="m2-linkbtn2" onClick={() => void revokeDelegation(x.id).then(() => refreshRoles(qc, "delegations")).catch((e) => setError(failureText(e)))}>
-                      End it
+                      {tr("End it")}
                     </button>
                   ) : null}
                 </li>

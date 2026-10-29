@@ -4,6 +4,7 @@
  */
 import type { Notification } from "@/types/api";
 import type { SeverityKey } from "@/design/v2/marks";
+import { t } from "@/lib/v2/i18n";
 
 export interface NotificationGroups {
   today: Notification[];
@@ -28,24 +29,24 @@ export interface KindMark {
 }
 
 const KIND: Record<string, KindMark> = {
-  sla_breached: { word: "SLA breached", severity: "critical" },
-  sla_ack_breached: { word: "SLA breached", severity: "critical" },
-  sla_at_risk: { word: "SLA at risk", severity: "high" },
-  dq_alert: { word: "Data quality", severity: "high" },
-  warning: { word: "Warning", severity: "high" },
-  approval: { word: "Approval", severity: "medium" },
-  exception: { word: "Exception", severity: "medium" },
-  rule_proposal: { word: "Rule", severity: "medium" },
-  monitor: { word: "Monitor", severity: "low" },
-  finding: { word: "Finding", severity: "low" },
-  cleaning: { word: "Cleaning", severity: "low" },
-  digest: { word: "Digest", severity: "low" },
-  daily_digest: { word: "Digest", severity: "low" },
-  report: { word: "Report", severity: "low" },
-  info: { word: "Notice", severity: "low" },
+  sla_breached: { get word() { return t("SLA breached"); }, severity: "critical" },
+  sla_ack_breached: { get word() { return t("SLA breached"); }, severity: "critical" },
+  sla_at_risk: { get word() { return t("SLA at risk"); }, severity: "high" },
+  dq_alert: { get word() { return t("Data quality"); }, severity: "high" },
+  warning: { get word() { return t("Warning"); }, severity: "high" },
+  approval: { get word() { return t("Approval"); }, severity: "medium" },
+  exception: { get word() { return t("Exception"); }, severity: "medium" },
+  rule_proposal: { get word() { return t("Rule"); }, severity: "medium" },
+  monitor: { get word() { return t("Monitor"); }, severity: "low" },
+  finding: { get word() { return t("Finding"); }, severity: "low" },
+  cleaning: { get word() { return t("Cleaning"); }, severity: "low" },
+  digest: { get word() { return t("Digest"); }, severity: "low" },
+  daily_digest: { get word() { return t("Digest"); }, severity: "low" },
+  report: { get word() { return t("Report"); }, severity: "low" },
+  info: { get word() { return t("Notice"); }, severity: "low" },
 };
 
-export const kindOf = (type: string): KindMark => KIND[type] ?? { word: "Notice", severity: "low" };
+export const kindOf = (type: string): KindMark => KIND[type] ?? { word: t("Notice"), severity: "low" };
 
 /** The sentence: the title, and the body after it when it adds something. */
 export function sentenceOf(n: Pick<Notification, "title" | "body">): string {
@@ -75,7 +76,7 @@ export function linkOf(link: string | null | undefined, objectLabel?: (module: s
     const label = objectLabel?.(id) ?? id.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
     return { href: link, label, external };
   }
-  if (/[?&]open=batch:/.test(link)) return { href: link, label: "Open the batch", external };
-  if (/^\/v2\/work/.test(link)) return { href: link, label: "Open the ledger", external };
-  return { href: link, label: "Open", external };
+  if (/[?&]open=batch:/.test(link)) return { href: link, label: t("Open the batch"), external };
+  if (/^\/v2\/work/.test(link)) return { href: link, label: t("Open the ledger"), external };
+  return { href: link, label: t("Open"), external };
 }

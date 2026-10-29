@@ -11,6 +11,7 @@ import { Fact, InspectorFrame } from "../Inspector";
 import { FactList, Sec } from "./mdm-parts";
 import { VerdictMark } from "../marks";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
+import { t, lc } from "@/lib/v2/i18n";
 
 export function DqWord({ status }: { status: "green" | "amber" | "red" }) {
   return (
@@ -33,38 +34,38 @@ export function StepInspector({ id, onClose }: { id: string; onClose: () => void
   const step = useMemo(() => stepsOf(doc.data?.processes ?? []).find((s) => s.id === ref?.step), [doc.data, ref?.step]);
 
   return (
-    <InspectorFrame title={step ? step.name : "Process step"} status={step ? `Process step, ${DQ_WORD[step.status].toLowerCase()}` : "Process step"} onClose={onClose}>
+    <InspectorFrame title={step ? step.name : t("Process step")} status={step ? t("Process step, {DQ_WORD}", { DQ_WORD: lc(DQ_WORD[step.status]) }) : t("Process step")} onClose={onClose}>
       {!ref ? (
-        <EmptyFrame>This address does not name a process step.</EmptyFrame>
+        <EmptyFrame>{t("This address does not name a process step.")}</EmptyFrame>
       ) : receipt.isError || doc.isError ? (
-        <ErrorFrame onRetry={() => { void receipt.refetch(); void doc.refetch(); }}>The process readiness could not be read for this run.</ErrorFrame>
+        <ErrorFrame onRetry={() => { void receipt.refetch(); void doc.refetch(); }}>{t("The process readiness could not be read for this run.")}</ErrorFrame>
       ) : receipt.isPending || doc.isPending ? (
         <div aria-busy="true">
           <Skeleton width="100%" height={140} />
         </div>
       ) : !step ? (
-        <EmptyFrame>This run has no step with that id for the object. The process definition may have changed since the link was made.</EmptyFrame>
+        <EmptyFrame>{t("This run has no step with that id for the object. The process definition may have changed since the link was made.")}</EmptyFrame>
       ) : (
         <>
-          <Sec title="Facts">
+          <Sec title={t("Facts")}>
             <FactList>
-              <Fact label="Status">
+              <Fact label={t("Status")}>
                 <DqWord status={step.status} />
               </Fact>
-              <Fact label="Process">{`${step.l1Name}, step ${step.number}`}</Fact>
-              <Fact label="Area">{step.l2Name}</Fact>
-              <Fact label="Transaction">{step.tcode ? <Mono>{step.tcode}</Mono> : <Dash />}</Fact>
-              <Fact label="Records affected">{step.rules.length === 0 ? "0" : step.rules.length === 1 ? int(step.recordsAtLeast) : `${int(step.recordsAtLeast)} or more`}</Fact>
+              <Fact label={t("Process")}>{t("{l1Name}, step {number}", { l1Name: step.l1Name, number: step.number })}</Fact>
+              <Fact label={t("Area")}>{step.l2Name}</Fact>
+              <Fact label={t("Transaction")}>{step.tcode ? <Mono>{step.tcode}</Mono> : <Dash />}</Fact>
+              <Fact label={t("Records affected")}>{step.rules.length === 0 ? "0" : step.rules.length === 1 ? int(step.recordsAtLeast) : t("{recordsAtLeast} or more", { recordsAtLeast: int(step.recordsAtLeast) })}</Fact>
             </FactList>
             {step.description ? <p className="m2-rp m2-meta">{step.description}</p> : null}
           </Sec>
           <Sec title={`Fields: ${step.fields.length}`}>
-            <table className="m2-tbl m2-ftbl" aria-label="Fields this step writes">
+            <table className="m2-tbl m2-ftbl" aria-label={t("Fields this step writes")}>
               <thead>
                 <tr>
-                  <th scope="col">Field</th>
-                  <th scope="col">Status</th>
-                  <th scope="col" className="m2-r">Failing</th>
+                  <th scope="col">{t("Field")}</th>
+                  <th scope="col">{t("Status")}</th>
+                  <th scope="col" className="m2-r">{t("Failing")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -77,17 +78,17 @@ export function StepInspector({ id, onClose }: { id: string; onClose: () => void
                     <td>
                       <DqWord status={f.dq_status} />
                     </td>
-                    <td className="m2-r">{f.check_id ? int(f.affected_count) : <Dash why="No rule reads this field" />}</td>
+                    <td className="m2-r">{f.check_id ? int(f.affected_count) : <Dash why={t("No rule reads this field")} />}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </Sec>
-          <Sec title={`Rules failing: ${step.rules.length}`}>
+          <Sec title={t("Rules failing: {rulesCount}", { rulesCount: step.rules.length })}>
             {step.rules.length === 0 ? (
-              <p className="m2-rp m2-meta">No rule fails on a field of this step.</p>
+              <p className="m2-rp m2-meta">{t("No rule fails on a field of this step.")}</p>
             ) : (
-              <ul className="m2-lk" aria-label="Rules failing on this step">
+              <ul className="m2-lk" aria-label={t("Rules failing on this step")}>
                 {step.rules.map((r) => (
                   <li key={r.checkId}>
                     <span>
@@ -96,21 +97,21 @@ export function StepInspector({ id, onClose }: { id: string; onClose: () => void
                       </V2Link>{" "}
                       {r.message}
                     </span>
-                    <span className="m2-meta">{`${int(r.affected)} failing${r.passRate != null ? `, ${f1(r.passRate)}% pass` : ""}`}</span>
+                    <span className="m2-meta">{t("{affected} failing{value}", { affected: int(r.affected), value: r.passRate != null ? t(", {passRate}% pass", { passRate: f1(r.passRate) }) : "" })}</span>
                   </li>
                 ))}
               </ul>
             )}
           </Sec>
-          <Sec title="Actions">
+          <Sec title={t("Actions")}>
             <div className="m2-acts">
               {step.rules.map((r, i) => (
                 <V2Link key={r.checkId} href={`/v2/work?rule=${encodeURIComponent(r.checkId)}&module=${encodeURIComponent(mod)}`} className={`m2-btn${i === 0 ? " m2-strong" : ""}`}>
-                  <>Fix <Mono>{r.checkId}</Mono> in Work</>
+                  <>{t("Fix")}{" "}<Mono>{r.checkId}</Mono>{" "}{t("in Work")}</>
                 </V2Link>
               ))}
               <V2Link href={designer} className="m2-btn m2-ghost">
-                Open the designer
+                {t("Open the designer")}
               </V2Link>
             </div>
           </Sec>

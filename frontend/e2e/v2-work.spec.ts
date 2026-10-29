@@ -157,7 +157,8 @@ for (const size of SIZES) {
           const box = await dialog.boundingBox();
           expect(box?.width).toBeGreaterThanOrEqual(size.width - 1);
         } else {
-          const box = await dialog.boundingBox();
+          // The inspector's landmark is the 400 px panel; the dialog sits inside its 1 px rule.
+          const box = await page.locator("#m2-inspector").boundingBox();
           expect(Math.round(box?.width ?? 0)).toBe(400);
         }
         await page.waitForLoadState("networkidle");

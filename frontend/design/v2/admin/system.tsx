@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Job } from "@/types/jobs";
 import * as api from "@/lib/api/v2/admin";
 import { useFixture } from "@/lib/api/v2/fixture";
-import { formatDate, labelOf } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { useOpenItem } from "@/lib/v2/hooks";
 import { refreshAdmin, useDoctor, useHealth, useUpdateStatus } from "@/lib/v2/admin-queries";
 import { JOB_KIND_LABEL, JOB_STATUS_LABEL, jobDoing, jobSeconds } from "@/lib/v2/jobs";
@@ -15,20 +15,23 @@ import { EmptyFrame, ErrorFrame, Mono } from "../parts";
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import { AdminPage, Block, Confirm, Fld, Kv, Loaded, Note, StatusWord, useCan } from "./kit";
 import { ToolGrid } from "../GridTools";
+import { DiagnosticsBlock } from "./enterprise";
+import { t } from "@/lib/v2/i18n";
+import { labelText } from "@/lib/v2/labels";
 
 const JOB_TONE: Record<Job["status"], "go" | "at-risk" | "no-go" | "neutral"> = { queued: "neutral", running: "at-risk", completed: "go", failed: "no-go" };
 const DOCTOR_TONE = { ok: "go", warn: "at-risk", fail: "no-go" } as const;
-const DOCTOR_WORD = { ok: "Passing", warn: "Warning", fail: "Failing" } as const;
+const DOCTOR_WORD = { get ok() { return t("Passing"); }, get warn() { return t("Warning"); }, get fail() { return t("Failing"); } } as const;
 
-const dur = (s: number | null): string => (s == null ? "—" : s < 60 ? `${s} s` : s < 3600 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} min`);
+const dur = (s: number | null): string => (s == null ? "—" : s < 60 ? `${s} s` : s < 3600 ? t("{floor} min {value} s", { floor: Math.floor(s / 60), value: s % 60 }) : t("{floor} h {floor2} min", { floor: Math.floor(s / 3600), floor2: Math.floor((s % 3600) / 60) }));
 
 const JOB_COLUMNS: GridColumn<Job>[] = [
-  { id: "job", header: "Job", width: 300, pin: true, locked: true, cell: (j) => jobDoing(j) },
-  { id: "kind", header: "Kind", width: 150, cell: (j) => JOB_KIND_LABEL[j.kind] ?? labelOf(j.kind) },
-  { id: "status", header: "Status", width: 120, cell: (j) => <StatusWord tone={JOB_TONE[j.status]}>{JOB_STATUS_LABEL[j.status]}</StatusWord> },
-  { id: "started", header: "Started", width: 170, cell: (j) => formatDate(j.started_at * 1000, "datetime") },
-  { id: "dur", header: "Duration", width: 110, numeric: true, cell: (j) => dur(jobSeconds(j)) },
-  { id: "msg", header: "Detail", width: 320, cell: (j) => (j.status === "failed" ? (j.error ?? j.message) : j.message) || "—" },
+  { id: "job", get header() { return t("Job"); }, width: 300, pin: true, locked: true, cell: (j) => jobDoing(j) },
+  { id: "kind", get header() { return t("Kind"); }, width: 150, cell: (j) => JOB_KIND_LABEL[j.kind] ?? labelText(j.kind) },
+  { id: "status", get header() { return t("Status"); }, width: 120, cell: (j) => <StatusWord tone={JOB_TONE[j.status]}>{JOB_STATUS_LABEL[j.status]}</StatusWord> },
+  { id: "started", get header() { return t("Started"); }, width: 170, cell: (j) => formatDate(j.started_at * 1000, "datetime") },
+  { id: "dur", get header() { return t("Duration"); }, width: 110, numeric: true, cell: (j) => dur(jobSeconds(j)) },
+  { id: "msg", get header() { return t("Detail"); }, width: 320, cell: (j) => (j.status === "failed" ? (j.error ?? j.message) : j.message) || "—" },
 ];
 
 function Update() {
@@ -50,46 +53,46 @@ function Update() {
   }, [watching, finished, qc]);
   const s = q.data;
   return (
-    <Block title="Platform version" hint="The version this deployment runs, and whether Meridian HQ knows a newer one.">
+    <Block title={t("Platform version")} hint={t("The version this deployment runs, and whether Meridian HQ knows a newer one.")}>
       {manage ? (
-        <Loaded q={q} what="The update status" rows={2}>
+        <Loaded q={q} what={t("The update status")} rows={2}>
           {(u) => (
             <>
               <Kv
                 rows={[
-                  ["Running", <Mono key="r">{u.current_version}</Mono>],
-                  ["Latest", u.update_available ? <span key="l"><Mono>{u.latest_version}</Mono>{" "}<StatusWord tone="at-risk">Update available</StatusWord></span> : <StatusWord tone="go">Up to date</StatusWord>],
-                  ["Updater", u.updater_configured ? "Set up on this deployment" : "Not set up on this deployment"],
-                  ["Model", health.data ? `${health.data.llm_provider}, ${health.data.llm_connected ? "connected" : "not connected"}` : "—"],
-                  ["Email", health.data ? (health.data.email_backend ? String(health.data.email_backend) : "No email backend configured") : "—"],
+                  [t("Running"), <Mono key="r">{u.current_version}</Mono>],
+                  [t("Latest"), u.update_available ? <span key="l"><Mono>{u.latest_version}</Mono>{" "}<StatusWord tone="at-risk">{t("Update available")}</StatusWord></span> : <StatusWord tone="go">{t("Up to date")}</StatusWord>],
+                  [t("Updater"), u.updater_configured ? t("Set up on this deployment") : t("Not set up on this deployment")],
+                  [t("Model"), health.data ? `${health.data.llm_provider}, ${health.data.llm_connected ? t("connected") : t("not connected")}` : "—"],
+                  [t("Email"), health.data ? (health.data.email_backend ? String(health.data.email_backend) : t("No email backend configured")) : "—"],
                 ]}
               />
               {u.update_available && u.release_notes ? <p className="m2-note">{u.release_notes}</p> : null}
-              {u.update_available && !u.updater_configured ? <Note tone="warn">{`Version ${u.latest_version} is available, but automatic updates are not set up on this deployment. Run the update script, or contact support.`}</Note> : null}
+              {u.update_available && !u.updater_configured ? <Note tone="warn">{t("Version {latest_version} is available, but automatic updates are not set up on this deployment. Run the update script, or contact support.", { latest_version: u.latest_version })}</Note> : null}
             </>
           )}
         </Loaded>
       ) : (
-        <Kv rows={[["Running", health.data ? <Mono key="v">{health.data.version}</Mono> : "—"], ["Updates", "Running an update needs the manage system permission."]]} />
+        <Kv rows={[[t("Running"), health.data ? <Mono key="v">{health.data.version}</Mono> : "—"], [t("Updates"), t("Running an update needs the manage system permission.")]]} />
       )}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       {watching && state ? (
         <p className="m2-prov" role="status">
-          {`Update ${state}${progress.data?.message ? `: ${progress.data.message}` : ""}.`}
+          {t("Update {state}{value}.", { state, value: progress.data?.message ? `: ${progress.data.message}` : "" })}
         </p>
       ) : null}
       {manage && s?.update_available && s.updater_configured ? (
         <div className="m2-adm-acts">
           <button type="button" className="m2-btn m2-next" disabled={pending !== null || live} onClick={() => setAsk(true)}>
-            {live ? "Updating…" : `Update to ${s.latest_version}`}
+            {live ? t("Updating…") : t("Update to {latest_version}", { latest_version: s.latest_version })}
           </button>
         </div>
       ) : null}
       {ask && s ? (
         <Confirm
-          title={`Update to ${s.latest_version}`}
-          body="The services restart one after another and the database migrates. Screens may be unavailable for a few minutes. If a step fails, the previous version is restored."
-          confirm="Run the update"
+          title={t("Update to {latest_version}", { latest_version: s.latest_version })}
+          body={t("The services restart one after another and the database migrates. Screens may be unavailable for a few minutes. If a step fails, the previous version is restored.")}
+          confirm={t("Run the update")}
           pending={pending === "update"}
           onCancel={() => setAsk(false)}
           onConfirm={() =>
@@ -97,7 +100,7 @@ function Update() {
               const r = await api.triggerUpdate();
               setAsk(false);
               setWatching(true);
-              return r.status === "started" ? { tone: "ok", title: "Update started", detail: "Progress shows here; the job line follows it too." } : { tone: "info", title: "An update is already running", detail: "Progress shows here." };
+              return r.status === "started" ? { tone: "ok", title: t("Update started"), detail: t("Progress shows here; the job line follows it too.") } : { tone: "info", title: t("An update is already running"), detail: t("Progress shows here.") };
             })
           }
         />
@@ -111,22 +114,22 @@ function Doctor() {
   const q = useDoctor(can("manage_system"));
   if (!can("manage_system")) return null;
   return (
-    <Block title="Health checks" hint="Each check says what it found and what needs fixing. They refresh every 30 seconds.">
-      <Loaded q={q} what="The health checks" rows={3}>
+    <Block title={t("Health checks")} hint={t("Each check says what it found and what needs fixing. They refresh every 30 seconds.")}>
+      <Loaded q={q} what={t("The health checks")} rows={3}>
         {(d) => {
           const items = d.items.filter((i) => i.id !== "llm");
           const warn = items.filter((i) => i.status === "warn").length;
           const fail = items.filter((i) => i.status === "fail").length;
           return (
             <>
-              <p className="m2-prov" role="status" style={{ marginTop: 0 }}>{`${items.length - warn - fail} passing${warn ? `, ${warn} warning` : ""}${fail ? `, ${fail} failing` : ""}. Last checked ${formatDate(d.last_checked, "datetime")}.`}</p>
+              <p className="m2-prov" role="status" style={{ marginTop: 0 }}>{t("{count} passing{value}{value2}. Last checked {last_checked}.", { count: items.length - warn - fail, value: warn ? t(", {warn} warning", { warn }) : "", value2: fail ? t(", {fail} failing", { fail }) : "", last_checked: formatDate(d.last_checked, "datetime") })}</p>
               <div className="m2-frame" tabIndex={0}>
-                <table className="m2-tbl" aria-label="Health checks">
+                <table className="m2-tbl" aria-label={t("Health checks")}>
                   <thead>
                     <tr>
-                      <th scope="col">Check</th>
-                      <th scope="col">Result</th>
-                      <th scope="col">Detail</th>
+                      <th scope="col">{t("Check")}</th>
+                      <th scope="col">{t("Result")}</th>
+                      <th scope="col">{t("Detail")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -142,7 +145,7 @@ function Doctor() {
               </div>
               <div className="m2-adm-acts">
                 <button type="button" className="m2-btn" onClick={() => void q.refetch()}>
-                  Check again
+                  {t("Check again")}
                 </button>
               </div>
             </>
@@ -165,37 +168,37 @@ export function SystemSection() {
   const kinds = [...new Set(jobs.jobs.map((j) => j.kind))];
   const failed = jobs.jobs.filter((j) => j.status === "failed").length;
   return (
-    <AdminPage title="Jobs and system update" lead={`${jobs.active.length} running or queued, ${failed} failed. The newest jobs are kept; open one to read why it stopped and to run it again.`}>
-      <Block title="Jobs">
-        <div className="m2-fbar" role="search" aria-label="Filter jobs">
-          <Fld label="Show">
+    <AdminPage title={t("Jobs and system update")} lead={t("{activeCount} running or queued, {failed} failed. The newest jobs are kept; open one to read why it stopped and to run it again.", { activeCount: jobs.active.length, failed })}>
+      <Block title={t("Jobs")}>
+        <div className="m2-fbar" role="search" aria-label={t("Filter jobs")}>
+          <Fld label={t("Show")}>
             <select value={filter} onChange={(e) => setFilter(e.target.value as JobFilter)}>
-              <option value="all">All jobs</option>
-              <option value="active">Running or queued</option>
-              <option value="failed">Failed</option>
+              <option value="all">{t("All jobs")}</option>
+              <option value="active">{t("Running or queued")}</option>
+              <option value="failed">{t("Failed")}</option>
             </select>
           </Fld>
-          <Fld label="Kind">
+          <Fld label={t("Kind")}>
             <select value={kind} onChange={(e) => setKind(e.target.value)}>
-              <option value="">Any kind</option>
+              <option value="">{t("Any kind")}</option>
               {kinds.map((k) => (
                 <option key={k} value={k}>
-                  {JOB_KIND_LABEL[k] ?? labelOf(k)}
+                  {JOB_KIND_LABEL[k] ?? labelText(k)}
                 </option>
               ))}
             </select>
           </Fld>
         </div>
         <ToolGrid<Job>
-          toolsTitle="Background jobs"
+          toolsTitle={t("Background jobs")}
           id="admin-jobs"
-          ariaLabel="Jobs"
+          ariaLabel={t("Jobs")}
           columns={JOB_COLUMNS}
           rows={shown}
           rowId={(j) => j.id}
           loading={jobs.isPending}
-          error={jobs.isError ? <ErrorFrame onRetry={() => void jobs.refetch()}>The jobs could not be read.</ErrorFrame> : undefined}
-          emptyFrame={<EmptyFrame>{jobs.jobs.length ? "No job matches these filters." : "No job has run yet. Extractions, analyses and uploads appear here."}</EmptyFrame>}
+          error={jobs.isError ? <ErrorFrame onRetry={() => void jobs.refetch()}>{t("The jobs could not be read.")}</ErrorFrame> : undefined}
+          emptyFrame={<EmptyFrame>{jobs.jobs.length ? t("No job matches these filters.") : t("No job has run yet. Extractions, analyses and uploads appear here.")}</EmptyFrame>}
           onOpen={(j) => openItem({ kind: "job", id: j.id })}
           openRowId={open?.kind === "job" ? open.id : null}
           fixedColumns
@@ -203,6 +206,7 @@ export function SystemSection() {
       </Block>
       <Update />
       <Doctor />
+      <DiagnosticsBlock />
     </AdminPage>
   );
 }

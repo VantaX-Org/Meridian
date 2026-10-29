@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import type { ComponentProps, ReactNode } from "react";
+import { useEffect, useRef, type ComponentProps, type ReactNode } from "react";
 import { useV2Href } from "@/lib/v2/hooks";
+import { t } from "@/lib/v2/i18n";
 
 /** A link inside the v2 interface: keeps `?fixture=1` when the page is in fixture mode. */
 export function V2Link({ href, ...rest }: Omit<ComponentProps<typeof Link>, "href"> & { href: string }) {
@@ -51,7 +52,7 @@ export function ErrorFrame({ children, onRetry }: { children: ReactNode; onRetry
       <p>{children}</p>
       {onRetry ? (
         <button type="button" className="m2-btn m2-sm" onClick={onRetry}>
-          Retry
+          {t("Retry")}
         </button>
       ) : null}
     </div>
@@ -65,8 +66,15 @@ export function Skeleton({ width = 120, height = 16 }: { width?: number | string
 
 /** The canvas title: the one h1 of a v2 page, with the system or scope beside it in the lighter weight. */
 export function PageTitle({ children, sub }: { children: ReactNode; sub?: ReactNode }) {
+  const ref = useRef<HTMLHeadingElement>(null);
+  // The window title names the page (WCAG 2.4.2): the h1's words, then the product, in the interface's language.
+  useEffect(() => {
+    const words = ref.current?.textContent?.replace(/\s+/g, " ").trim();
+    // i18n-ignore: the product name, after the translated h1
+    if (words) document.title = `${words} \u2013 Meridian`;
+  });
   return (
-    <h1 className="m2-h1">
+    <h1 className="m2-h1" ref={ref}>
       {children}
       {sub ? (
         <>
