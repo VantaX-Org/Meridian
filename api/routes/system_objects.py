@@ -277,7 +277,7 @@ async def start_download(system_id: uuid.UUID, body: DownloadBody, request: Requ
                    status="queued", system_id=str(system_id), modules=body.objects, version_id=version_id,
                    retry={"via": "downloads", "body": body.model_dump(mode="json")})
     task = run_extraction.delay(str(tenant.id), str(system_id), body.objects, True, "both",
-                                scope, body.analyse, body.label, version_id, bool(body.delta))
+                                scope, body.analyse, body.label, version_id, **({"delta": True} if body.delta else {}))
     jobs.set_task_ids(str(tenant.id), f"dl-{version_id}", [getattr(task, "id", None)])
     return {"job_id": f"dl-{version_id}", "version_id": version_id, "status": "queued", "objects": body.objects,
             "scope": scope, "analyse": body.analyse, "delta": body.delta}
