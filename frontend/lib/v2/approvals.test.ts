@@ -47,8 +47,8 @@ describe("batches", () => {
   });
 
   it("words a sent batch and says why a person cannot approve", () => {
-    expect(sentLine({ records: 96, sentAt: "x" }, () => "9 Oct 2026")).toBe("Sent to SAP · 96 records · 9 Oct 2026");
-    expect(sentLine({ records: 1, sentAt: "x" }, () => "d")).toBe("Sent to SAP · 1 record · d");
+    expect(sentLine({ records: 96, sentAt: "x" }, () => "9 Oct 2026")).toBe("Sent to SAP, 96 records, 9 Oct 2026");
+    expect(sentLine({ records: 1, sentAt: "x" }, () => "d")).toBe("Sent to SAP, 1 record, d");
     expect(approveBlock(batch({}), { approve: false }, "me")).toBe("Your role cannot approve.");
     expect(approveBlock(batch({ status: "approved" }), { approve: true }, "me")).toBe("This batch is already approved.");
     expect(approveBlock(batch({ ownerId: "me" }), { approve: true }, "me")).toBe("You built this batch; a second person approves it.");

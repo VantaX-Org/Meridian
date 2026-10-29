@@ -144,9 +144,9 @@ export function trailOf(events: readonly TrailEvent[]): TrailEntry[] {
 
 const n = (x: number): string => x.toLocaleString("en-US");
 
-/** "Sent to SAP · 96 records · 9 Oct", the line of a batch that has gone. */
+/** "Sent to SAP, 96 records, 9 Oct", the line of a batch that has gone. */
 export function sentLine(b: Pick<BatchRow, "records" | "sentAt">, date: (iso: string | null) => string): string {
-  return `Sent to SAP · ${n(b.records)} ${b.records === 1 ? "record" : "records"} · ${date(b.sentAt)}`;
+  return `Sent to SAP, ${n(b.records)} ${b.records === 1 ? "record" : "records"}, ${date(b.sentAt)}`;
 }
 
 /** Why a person cannot approve or send back a batch, or null when they can. */

@@ -176,18 +176,18 @@ describe("Write-back: Send to SAP", () => {
     fireEvent.click(within(head).getByRole("button", { name: "Send batch B-236 to SAP" }));
     await waitFor(() => expect(send).toHaveBeenCalledWith("B-236", 180));
     const result = await screen.findByTestId("action-result");
-    expect(text(result)).toContain("Sent to SAP · 180 records");
+    expect(text(result)).toContain("Sent to SAP, 180 records");
     expect(text(result)).toContain("remediation-cockpit_xlsx-B-236.xlsx");
-    await waitFor(() => expect(text(within(grid).getByTestId("batch-row-B-236"))).toMatch(/Sent to SAP · 180 records · /));
+    await waitFor(() => expect(text(within(grid).getByTestId("batch-row-B-236"))).toMatch(/Sent to SAP, 180 records, /));
     await waitFor(() => expect(within(grid).getAllByText("Sent to SAP").length).toBeGreaterThan(0));
     expect(within(grid).queryByRole("button", { name: "Send batch B-236 to SAP" })).toBeNull();
   });
 
-  it("a sent batch shows 'Sent to SAP · N records · date' and the status of each record", async () => {
+  it("a sent batch shows 'Sent to SAP, N records, date' and the status of each record", async () => {
     mount("&persona=steward&filter=open&batch=B-229");
     const grid = await ledger();
     const head = await within(grid).findByTestId("batch-row-B-229");
-    expect(text(head)).toMatch(/Sent to SAP · 96 records · 9 Oct/);
+    expect(text(head)).toMatch(/Sent to SAP, 96 records, 9 Oct/);
     await waitFor(() => expect(within(grid).getAllByText("Sent to SAP").length).toBeGreaterThan(0));
     expect(within(head).queryByRole("button", { name: /Send batch/ })).toBeNull();
   });

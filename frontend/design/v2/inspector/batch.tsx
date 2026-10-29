@@ -161,7 +161,7 @@ function BatchBody({ b }: { b: BatchRow }) {
 export function BatchInspector({ id, onClose }: { id: string; onClose: () => void }) {
   const list = useBatches();
   const b = list.rows.find((x) => x.id === id) ?? null;
-  const status = b ? `${BATCH_STATUS_LABEL[b.status]}${b.records ? ` · ${int(b.records)} ${b.records === 1 ? "record" : "records"}` : ""}` : list.isLoading ? <Skeleton width={120} height={12} /> : "Not found";
+  const status = b ? `${BATCH_STATUS_LABEL[b.status]}${b.records ? `, ${int(b.records)} ${b.records === 1 ? "record" : "records"}` : ""}` : list.isLoading ? <Skeleton width={120} height={12} /> : "Not found";
   return (
     <InspectorFrame title={b ? `Batch ${b.label}` : "Batch"} status={status} onClose={onClose}>
       {b ? (

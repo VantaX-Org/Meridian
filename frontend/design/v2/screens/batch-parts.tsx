@@ -71,8 +71,8 @@ export function useBatchControls(onResult?: (o: Outcome) => void) {
       setBusy(`send:${b.id}`);
       try {
         const r = await actions.sendToSap(b.id, b.records);
-        const sum = r.sha256 ? ` · sha256 ${r.sha256.slice(0, 12)}` : "";
-        onResult?.({ tone: "ok", title: `Sent to SAP · ${int(r.records ?? b.records)} ${(r.records ?? b.records) === 1 ? "record" : "records"}`, detail: `${r.filename}${sum}. Load it into SAP with the Migration Cockpit.`, job: r.job_id });
+        const sum = r.sha256 ? `, sha256 ${r.sha256.slice(0, 12)}` : "";
+        onResult?.({ tone: "ok", title: `Sent to SAP, ${int(r.records ?? b.records)} ${(r.records ?? b.records) === 1 ? "record" : "records"}`, detail: `${r.filename}${sum}. Load it into SAP with the Migration Cockpit.`, job: r.job_id });
         if (!onResult) toast.show(`Sent batch ${b.label} to SAP as ${r.filename}`);
       } catch (e) {
         fail(e, "The batch could not be sent to SAP.");

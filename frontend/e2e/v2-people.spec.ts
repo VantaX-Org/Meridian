@@ -158,8 +158,8 @@ for (const size of SIZES) {
         await shot(page, "work-approvals-send");
         await send.click();
         const result = page.getByTestId("action-result");
-        await expect(result).toContainText("Sent to SAP · 180 records", NAV);
-        await expect(page.getByTestId("batch-row-B-236")).toContainText(/Sent to SAP · 180 records/, NAV);
+        await expect(result).toContainText("Sent to SAP, 180 records", NAV);
+        await expect(page.getByTestId("batch-row-B-236")).toContainText(/Sent to SAP, 180 records/, NAV);
         expect(await noSideScroll(page)).toBe(true);
         await shot(page, "work-approvals-sent");
         await axe(page, `sent ${size.name} ${scheme}`);

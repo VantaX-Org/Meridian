@@ -127,12 +127,12 @@ describe("the batch inspector", () => {
     fireEvent.click(within(insp).getByRole("button", { name: "Send batch B-236 to SAP" }));
     await waitFor(() => expect(send).toHaveBeenCalledWith("B-236", 180));
     const result = await within(insp).findByTestId("action-result");
-    expect(text(result)).toContain("Sent to SAP · 180 records");
+    expect(text(result)).toContain("Sent to SAP, 180 records");
     expect(text(result)).toContain("remediation-cockpit_xlsx-B-236.xlsx");
     expect(text(result)).toContain("sha256 9f2c4e1a7b3d");
     await waitFor(() => expect(fact(insp, "Status")).toContain("Sent to SAP"));
     expect(within(insp).queryByRole("button", { name: "Send batch B-236 to SAP" })).toBeNull();
-    expect(within(insp).getByText(/^Sent to SAP · 180 records · /)).toBeInTheDocument();
+    expect(within(insp).getByText(/^Sent to SAP, 180 records, /)).toBeInTheDocument();
   });
 
   it("links the job a live write-back started from the result", async () => {
