@@ -225,7 +225,7 @@ function WhatItChecks({ rule, checkId, latest, historyLoading }: { rule: Rule; c
   else failing = (
     <>
       <DrillLink href={records}>{latest.affected_count.toLocaleString()}</DrillLink> of {latest.total_count.toLocaleString()} records fail, as of {formatDate(latest.run_at, "date")}.{" "}
-      <Link className="m-ink-accent-ink hover:underline" href={records}>Fix them on the object</Link>
+      <Link className="m-ink-accent-ink underline underline-offset-2" href={records}>Fix them on the object</Link>
     </>
   );
   return (

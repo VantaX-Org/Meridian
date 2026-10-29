@@ -118,7 +118,7 @@ export function NotificationRow({ n, showBody, count = 1, onOpen, onMarkRead }: 
             {lines.map((line, i) => (
               <li key={i} className="m-text-body m-ink-2">
                 {line.text}
-                {line.href && <>{" "}<Link href={line.href} onClick={() => onOpen(n)} className="m-ink-accent-ink underline-offset-2 hover:underline">Open</Link></>}
+                {line.href && <>{" "}<Link href={line.href} onClick={() => onOpen(n)} className="m-ink-accent-ink underline underline-offset-2">Open</Link></>}
               </li>
             ))}
           </ul>

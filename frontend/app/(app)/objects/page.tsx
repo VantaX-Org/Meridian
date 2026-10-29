@@ -5,6 +5,7 @@ import { type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePermissions } from "@/lib/permissions";
+import { useRole } from "@/hooks/use-role";
 import type { ColumnDef } from "@tanstack/react-table";
 import { buildDrillHref, DataTable, RowAction, DomainChip, useBreadcrumbScope, ExplorerPage, ExportMenu, Mono, ObjectMap, PageHeader, Sparkline, Stat, emptyExportOptions, type CellMeta, type ObjectMapItem, type ScoreBands, Status, Score } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
@@ -275,6 +276,8 @@ export default function ObjectsPage() {
   const dayOne = useDayOne();
   // Ruling 7: objects outside a module-scoped user's grants are hidden (UI filter; the API enforces scope).
   const { scopeFilter } = usePermissions();
+  // Owners are set by roles that may assign (PUT /owners); everyone else is never offered the prompt.
+  const canAssign = useRole().can("assign");
   const owners = useObjectOwners();
   // The owner a row shows: the data_owners row (what the object header's picker sets), else the list's own field.
   const ownerOf = (o: ObjectRow) => owners.nameOf(o.module) ?? o.owner ?? null;
@@ -416,7 +419,7 @@ export default function ObjectsPage() {
   // what it does not: how many objects sit in each verdict, and the totals behind the ledger.
   // Nobody owns any object: the Owner column steps aside and, for someone who may assign owners (the same read the
   // object page's picker makes), one prompt takes its place.
-  const assignOwners = objects.length > 0 && owners.status === "ready" && objects.every((o) => !ownerOf(o)) && !!assignable.data;
+  const assignOwners = objects.length > 0 && owners.status === "ready" && objects.every((o) => !ownerOf(o)) && canAssign && !!assignable.data;
   const stats = objects.length > 0 && (
     <div className="flex flex-col gap-3">
       <div className="m-stat-grid m-motion-stagger">

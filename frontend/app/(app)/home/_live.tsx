@@ -11,7 +11,7 @@ import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, EmptyState, ErrorState, Pill, Skeleton, Status, Tooltip } from "@/design";
+import { Button, Card, DataTable, EmptyState, ErrorState, Pill, Skeleton, Status } from "@/design";
 import { HEALTH_LABEL, HEALTH_VERDICT, RFC_FIX_HREF, RFC_MISSING_REASON, healthReason, nextRun, rfcLibraryMissing } from "@/app/(app)/systems/_health";
 import { HealthPill } from "@/app/(app)/systems/_health-pill";
 import { useJobs } from "@/hooks/use-jobs";
@@ -138,15 +138,16 @@ export function extractHref(systems: readonly SAPSystemExtended[]): string {
 const stalestSystem = (systems: readonly SAPSystemExtended[]): SAPSystemExtended | undefined =>
   [...systems].filter((s) => s.is_active).sort((a, b) => (a.last_sync_at ?? "").localeCompare(b.last_sync_at ?? ""))[0];
 
-/** "Run extraction", or the same button off with the reason when the system it would read cannot be read yet. */
+/** "Run extraction", with the install step beside it when the system it would read reports no RFC library. */
 function RunExtraction({ systems }: { systems: readonly SAPSystemExtended[] }) {
   const target = stalestSystem(systems);
   if (target && rfcLibraryMissing(target)) {
-    const reason = `${RFC_MISSING_REASON}. Install it first`;
+    // Health may predate an install, so extraction stays possible; the fix sits beside it.
     return (
       <span className="inline-flex flex-wrap items-center justify-center gap-2">
-        <Tooltip label={reason} render={<Button variant="secondary" disabled aria-disabled="true" aria-label={`Run extraction. ${reason}`} />}>Run extraction</Tooltip>
+        <span className="m-text-meta m-ink-3">{RFC_MISSING_REASON}.</span>
         <Link href={RFC_FIX_HREF} className="m-text-meta underline m-ink-accent">How to install it</Link>
+        {link(extractHref(systems), "Run extraction")}
       </span>
     );
   }

@@ -130,7 +130,7 @@ test.describe("visual — overlays", () => {
     await popup(app, "dialog");
   });
 
-  test("admin/users: row menu, edit form Select and the invite drawer", async ({ app }) => {
+  test("admin/users: row menu, edit drawer and the invite drawer's role Select", async ({ app }) => {
     await open(app, "/admin/users", "Users");
     // the first row sits at the bottom of the viewport on the recording, where the row menu flips up
     // under the sticky table header and cannot be clicked; give it room below first
@@ -138,13 +138,13 @@ test.describe("visual — overlays", () => {
     await actions.scrollIntoViewIfNeeded();
     await actions.click();
     await popup(app, "menu");
-    await app.getByRole("button", { name: "Invite user" }).click();
-    await popup(app, "dialog");
-    await actions.scrollIntoViewIfNeeded();
     await actions.click();
-    await expect(app.getByRole("menu")).toBeVisible();
     await app.getByRole("menuitem", { name: "Edit" }).click();
-    await app.getByRole("combobox", { name: "Role" }).click();
+    await popup(app, "dialog");
+    await app.getByRole("button", { name: "Invite user" }).click();
+    const invite = app.getByRole("dialog");
+    await expect(invite).toBeVisible();
+    await invite.getByRole("combobox", { name: "Role" }).click();
     await popup(app, "listbox");
   });
 

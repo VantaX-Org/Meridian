@@ -192,7 +192,7 @@ export function ObjectMonitorStrip({ object, run }: { object: string; run: strin
           </>
         ) : (
           <Fact label="Since baseline">
-            {m.last_run_at ? "First run" : "No run yet"}
+            <span>{m.last_run_at ? "First run" : "No run yet"}</span>
             {m.last_run_at ? <Hint>Changes show from the second run</Hint> : null}
           </Fact>
         )}

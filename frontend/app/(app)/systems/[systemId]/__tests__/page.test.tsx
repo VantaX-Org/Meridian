@@ -488,7 +488,7 @@ describe("system detail page", () => {
     });
   });
 
-  it("names the RFC install step as the primary and turns Extract off with the reason while the library is missing", async () => {
+  it("names the RFC install step as the primary and keeps Extract as a secondary while the library is reported missing", async () => {
     mockHappyPath();
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([{ ...SYSTEM, health_status: "unreachable", health_message: "pyrfc_not_installed: build the API image", last_health_check: "2026-01-01T00:00:00Z" } as SAPSystemExtended]);
     renderWithQuery(<SystemPage />);
@@ -498,8 +498,10 @@ describe("system detail page", () => {
     expect(screen.getByText("scripts/build-rfc-overlay.sh")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Read the steps" })).toHaveAttribute("href", "/docs?page=data-in");
     expect(screen.getByRole("button", { name: "Test connection" })).toHaveClass("m-btn-secondary");
-    const extract = screen.getByRole("button", { name: /^Extract\. The SAP RFC library is not installed/ });
-    expect(extract).toBeDisabled();
+    // Health can predate an install, so Extract stays available, behind the install step.
+    const extract = screen.getAllByRole("button", { name: "Extract" })[0];
+    expect(extract).toBeEnabled();
+    expect(extract).toHaveClass("m-btn-secondary");
   });
 
   it("shows no RFC step for another connection failure", async () => {

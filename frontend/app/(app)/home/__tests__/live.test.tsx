@@ -160,7 +160,7 @@ describe("LiveSection", () => {
     expect(row.next).toBeNull();
   });
 
-  it("turns Run extraction off with the reason, and links the install step, while the system to read has no RFC library", async () => {
+  it("names the missing RFC library and links the install step beside Run extraction", async () => {
     allowed = true;
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([
       { ...system, id: "sys-4", name: "No RFC", last_sync_at: null, health_status: "unreachable", health_message: "pyrfc_not_installed: build the API image" },
@@ -170,8 +170,8 @@ describe("LiveSection", () => {
     renderWithQuery(<LiveSection />);
 
     await screen.findByText("No RFC");
-    expect(screen.getByRole("button", { name: /^Run extraction\. The SAP RFC library is not installed/ })).toBeDisabled();
-    expect(screen.queryByRole("link", { name: "Run extraction" })).toBeNull();
+    expect(screen.getByText(/The SAP RFC library is not installed/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Run extraction" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "How to install it" })).toHaveAttribute("href", "/docs?page=data-in");
   });
 
