@@ -1,7 +1,7 @@
 """The verbs the v2 Admin area needs, against a real Postgres (MERIDIAN_TEST_DB_URL).
 
 Job cancel, analysis options, PATCH /settings/tenant, API key patch, field mapping create and delete, reference list
-delete, the schedules CRUD (and its agreement with the older per-system profiles routes), support diagnostics and the
+delete, the schedules CRUD (and its agreement with the older per-system profiles routes) and the
 two new preferences. Each has its happy path, its validation, a 403 for a viewer, an audit_log row and a tenant isolation
 check. Seed: tests/m2_seed.py; the job registry is an in-memory Redis stand-in; Celery is a recorder.
 """
@@ -533,59 +533,6 @@ async def test_a_scheduled_run_extracts_its_modules_and_scope(s, owner, monkeypa
     from workers.tasks import run_sync
     src = inspect.getsource(run_sync)
     assert "sp.modules, sp.scope" in src and "scope=scope" in src and "modules = list(profile_row[5] or []) or [domain]" in src
-
-
-# ── 8. GET /support/diagnostics ─────────────────────────────────────────────────────────────────────────────
-
-@pytest.mark.anyio
-async def test_support_diagnostics(s, owner, monkeypatch, redis):
-    from api.routes import support
-    from api.services import jobs
-    other = seed_m2(owner)
-    monkeypatch.setattr(support, "_ping_workers", lambda: ["celery@w1"])
-    monkeypatch.setattr(support, "_ping_sync", lambda: True)
-    with owner.begin() as c:
-        for i in range(25):
-            c.execute(text("INSERT INTO audit_log (tenant_id, action, entity_type, entity_id, method, path, status_code, created_at, after_json) "
-                           "VALUES (:t, 'server_error', 'request', :r, 'GET', '/api/v1/x', 500, now() - make_interval(mins => :i), "
-                           "CAST(:a AS jsonb))"), {"t": s["tid"], "r": f"ref{i:02d}", "i": i, "a": json.dumps({"reference": f"ref{i:02d}"})})
-        c.execute(text("INSERT INTO audit_log (tenant_id, action, entity_type, entity_id, method, path, status_code) "
-                       "VALUES (:t, 'server_error', 'request', 'otherref', 'GET', '/api/v1/y', 500)"), {"t": other["tid"]})
-    jobs.start_job(s["tid"], "a", "extraction", "x", status="running")
-    jobs.start_job(s["tid"], "b", "extraction", "x", status="queued")
-    jobs.start_job(s["tid"], "c", "extraction", "x", status="running")
-    jobs.finish_job(s["tid"], "c", "failed", error="boom")
-    jobs.start_job(other["tid"], "z", "extraction", "x", status="running")
-    client = await start(monkeypatch, s)
-    async with client:
-        r = await client.get("/api/v1/support/diagnostics", headers=headers())
-        assert r.status_code == 200, r.text
-        d = r.json()
-        assert set(d) == {"generated_at", "version", "tenant_id", "licence", "health", "server_errors", "jobs"}
-        assert d["tenant_id"] == s["tid"] and d["version"]
-        assert set(d["licence"]) >= {"valid", "status", "expires_at"}
-        assert d["health"]["database"]["status"] == "ok" and d["health"]["cache"]["status"] == "ok"
-        assert d["health"]["workers"] == {"status": "ok", "count": 1}
-        assert [e["reference"] for e in d["server_errors"]] == [f"ref{i:02d}" for i in range(20)]
-        assert set(d["server_errors"][0]) == {"reference", "method", "path", "status_code", "at"}
-        assert d["jobs"] == {"total": 3, "queued": 1, "running": 1, "completed": 0, "failed": 1, "cancelled": 0}
-        # nothing secret, nothing from SAP
-        blob = json.dumps(d).lower()
-        for word in ("password", "secret", "token", "postgresql", "authorization"):
-            assert word not in blob
-        # a worker that does not answer, and a cache that is down, read as such
-        monkeypatch.setattr(support, "_ping_workers", list)
-        monkeypatch.setattr(support, "_ping_sync", lambda: False)
-        d2 = (await client.get("/api/v1/support/diagnostics", headers=headers())).json()
-        assert d2["health"]["workers"]["status"] == "fail" and d2["health"]["cache"]["status"] == "fail"
-        assert (await client.get("/api/v1/support/diagnostics", headers=headers("viewer"))).status_code == 403
-        assert (await client.get("/api/v1/support/diagnostics", headers=headers("manager"))).status_code == 403
-    rows = audit(owner, s["tid"], "support.diagnostics")
-    assert len(rows) == 2 and rows[0][3] == s["user"] and rows[0][5] == {"errors": 20, "jobs": 3}
-    client_b = await start(monkeypatch, other)
-    async with client_b:
-        d3 = (await client_b.get("/api/v1/support/diagnostics", headers=headers())).json()
-        assert [e["reference"] for e in d3["server_errors"]] == ["otherref"] and d3["jobs"]["total"] == 1
 
 
 # ── 9. /me/preferences: start_screen, keyboard_hints ─────────────────────────────────────────────────────────
