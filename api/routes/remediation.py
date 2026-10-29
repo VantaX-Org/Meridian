@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _row, _rls, _where
-from api.services import attention, remediation, worklist
+from api.services import attention, remediation, undo, worklist
 from api.services.rbac import current_user_id, current_user_label, require_permission, scope_from_path
 
 router = APIRouter(prefix="/api/v1/remediation", tags=["remediation"])
@@ -336,14 +336,63 @@ async def approve_batch(
             "AND user_id = CAST(:uid AS uuid) LIMIT 1"), {"bid": batch_id, "uid": uid})).first():
         # a monitor-drafted batch has no human creator: whoever accepted its proposals is the first pair of eyes
         raise HTTPException(status_code=403, detail="You accepted this batch's proposals; a second person must approve it.")
+    rec = undo.Recorder()
+    rec.batch = await undo.batch_snapshot(db, tenant, batch_id, "approved")
     await db.execute(text("UPDATE remediation_batches SET status = 'approved', approved_by = CAST(:uid AS uuid), "
                           "approved_by_label = :label, approved_at = now() WHERE id = :id"),
                      {"uid": uid, "label": current_user_label(), "id": batch_id})
     await _event(db, tenant, batch_id, "approved", request)
     await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), batch_id))
+    action_id = await rec.save(db, tenant, request, "approve_batch", {"batch_id": str(batch_id), "name": b["name"]})
     await db.commit()
     attention.invalidate(tenant.id)
-    return {"id": str(batch_id), "status": "approved", "approved_by": current_user_label()}
+    return {"id": str(batch_id), "status": "approved", "approved_by": current_user_label(), "action_id": action_id}
+
+
+class SendBack(BaseModel):
+    note: str = Field(min_length=1, max_length=4000, description="what the author has to change")
+
+
+@router.post("/batches/{batch_id}/send-back")
+async def send_back_batch(
+    batch_id: uuid.UUID,
+    body: SendBack,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _perm: str = Depends(require_permission("approve", scope=scope_from_path)),
+):
+    """An approver returns a batch to its author with a reason. An approved batch goes back to draft (its approval
+    is withdrawn); a draft stays a draft and is marked returned in its filter. Not once it is exported, and not by
+    the batch creator (four eyes)."""
+    b = await _batch(db, tenant, batch_id)
+    if b["status"] not in ("draft", "approved"):
+        raise HTTPException(status_code=409, detail=f"Batch is already {b['status']}; it can no longer be sent back.")
+    uid = current_user_id(request)
+    if b["created_by"] and uid == b["created_by"]:
+        raise HTTPException(status_code=403, detail="The batch creator cannot send it back.")
+    note = body.note.strip()
+    if not note:
+        raise HTTPException(status_code=422, detail="Say what the author has to change.")
+    rec = undo.Recorder()
+    rec.batch = await undo.batch_snapshot(db, tenant, batch_id, "draft")
+    await db.execute(text("""
+        UPDATE remediation_batches SET status = 'draft', approved_by = NULL, approved_by_label = NULL, approved_at = NULL,
+               filter = COALESCE(filter, '{}'::jsonb) || jsonb_build_object('returned', jsonb_build_object(
+                          'by', CAST(:label AS text), 'note', CAST(:note AS text), 'at', to_jsonb(now())))
+         WHERE id = :id AND tenant_id = :tid"""),
+        {"label": current_user_label(), "note": note, "id": batch_id, "tid": str(tenant.id)})
+    await db.execute(text("INSERT INTO remediation_events (tenant_id, batch_id, item_id, user_id, user_label, action, "
+                          "from_value, to_value) VALUES (:tid, :bid, NULL, CAST(:uid AS uuid), :label, 'sent_back', "
+                          ":frm, :note)"),
+                     {"tid": str(tenant.id), "bid": batch_id, "uid": uid, "label": current_user_label(),
+                      "frm": b["status"], "note": note})
+    await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), batch_id))
+    action_id = await rec.save(db, tenant, request, "send_back_batch",
+                               {"batch_id": str(batch_id), "name": b["name"], "note": note})
+    await db.commit()
+    attention.invalidate(tenant.id)
+    return {"id": str(batch_id), "status": "draft", "sent_back_by": current_user_label(), "action_id": action_id}
 
 
 _MEDIA = {"csv": "text/csv", "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

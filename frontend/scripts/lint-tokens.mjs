@@ -10,7 +10,8 @@ import { join, relative } from "node:path";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 const ALLOW_FILE = join(ROOT, "scripts/lint-tokens.allow.txt");
-const TOKEN_FILES = new Set(["design/tokens.css"]);
+// The v2 interface (design/v2) keeps its raw colour, shadow and motion in its own tokens file; the allowlist stays empty.
+const TOKEN_FILES = new Set(["design/tokens.css", "design/v2/tokens.css"]);
 const SKIP_DIRS = new Set(["node_modules", ".next", "out", "public", "scripts", "e2e", "__tests__"]);
 // design/tokens.ts holds the single TS map of domain token names (mColor), so it must name them.
 // Colour-pass allow sets live here, never in lint-tokens.allow.txt.

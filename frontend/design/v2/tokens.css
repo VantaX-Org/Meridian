@@ -1,0 +1,178 @@
+/*
+ * Meridian 2 tokens. The second file lint:tokens accepts raw colour in (scripts/lint-tokens.mjs TOKEN_FILES);
+ * every other v2 file reads these through var(--m2-*). Everything is scoped to .m2-root so nothing here reaches
+ * the current interface.
+ *
+ * Light is white ground and white sheets with 1px rules; dark is true neutral steps. One data hue marks the
+ * selected cell, the current run and the next-step button. Status hues are always paired with a shape and a word.
+ * Motion is declared in the last section only: lint:tokens keeps transitions and durations out of other files.
+ */
+
+.m2-root {
+  /* Ground and ink */
+  --m2-bg: #FFFFFF;
+  --m2-sheet: #FFFFFF;
+  --m2-line: #E3E7EA;
+  --m2-line-2: #C9D0D5;
+  --m2-rule: #EEF1F3;
+  --m2-chrome: #E3E7EA;
+  --m2-fg: #121A20;
+  --m2-ink-2: #3E4A53;
+  --m2-ink-3: #6B767E;
+  --m2-meta: #59646C;
+  /* Data hue and info */
+  --m2-data: #1B3F8F;
+  --m2-on-data: #FFFFFF;
+  --m2-info: #2E5C8A;
+  /* Status: shape plus word, never colour alone */
+  --m2-crit: #A3221A;
+  --m2-crit-bg: #F0E0DF;
+  --m2-crit-ink: #74190F;
+  --m2-high: #8F5200;
+  --m2-high-bg: #EFE5D4;
+  --m2-high-ink: #5E3500;
+  --m2-pass: #1D6B3F;
+  --m2-pass-bg: #DCEAE1;
+  --m2-pass-ink: #124A2B;
+  /* Surfaces and states */
+  --m2-hover: #F7F9FA;
+  --m2-active: #F1F3F5;
+  --m2-track: #E6EAED;
+  --m2-seg: #5F6B74;
+  --m2-scrim: #121A2059;
+  --m2-shadow: 0 8px 28px #121A202E;
+  --m2-inverse: #121A20;
+  --m2-on-inverse: #F5F7F8;
+
+  /* Type: IBM Plex Sans for words and figures, IBM Plex Mono for SAP identifiers only. Scale 12/13/14/16/20/24. */
+  --m2-font: var(--font-plex-sans), system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --m2-mono: var(--font-plex-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --m2-fs-12: 12px;
+  --m2-fs-13: 13px;
+  --m2-fs-14: 14px;
+  --m2-fs-16: 16px;
+  --m2-fs-20: 20px;
+  --m2-fs-24: 24px;
+  --m2-lh-12: 16px;
+  --m2-lh-13: 18px;
+  --m2-lh-14: 20px;
+  --m2-lh-16: 24px;
+  --m2-lh-20: 28px;
+  --m2-lh-24: 32px;
+
+  /* Spacing on a 4px grid */
+  --m2-s1: 4px;
+  --m2-s2: 8px;
+  --m2-s3: 12px;
+  --m2-s4: 16px;
+  --m2-s5: 20px;
+  --m2-s6: 24px;
+  --m2-s8: 32px;
+  --m2-s10: 40px;
+
+  /* Radius */
+  --m2-r1: 4px;
+  --m2-r2: 6px;
+  --m2-r-round: 999px;
+
+  /* Layout */
+  --m2-bar-h: 48px;
+  --m2-map-w: 280px;
+  --m2-insp-w: 400px;
+  --m2-row-h: 32px;
+  --m2-row-h-compact: 28px;
+
+  /* Motion: 150 and 200 milliseconds, exponential ease-out */
+  --m2-t-fast: 150ms;
+  --m2-t-med: 200ms;
+  --m2-ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .m2-root {
+    --m2-bg: #0E1113;
+    --m2-sheet: #151A1D;
+    --m2-line: #232A2F;
+    --m2-line-2: #343D44;
+    --m2-rule: #232A2F;
+    --m2-chrome: #0E1113;
+    --m2-fg: #E6EBEE;
+    --m2-ink-2: #A3AEB6;
+    --m2-ink-3: #717C84;
+    --m2-meta: #8C979F;
+    --m2-data: #8FB0F5;
+    --m2-on-data: #0A1020;
+    --m2-info: #7FB3E8;
+    --m2-crit: #F0877F;
+    --m2-crit-bg: #2B1A18;
+    --m2-crit-ink: #F4A9A3;
+    --m2-high: #DDA44A;
+    --m2-high-bg: #2A2112;
+    --m2-high-ink: #E8C07C;
+    --m2-pass: #74C291;
+    --m2-pass-bg: #15241B;
+    --m2-pass-ink: #94D4AE;
+    --m2-hover: #1A2024;
+    --m2-active: #242C31;
+    --m2-track: #262E33;
+    --m2-seg: #8A959D;
+    --m2-scrim: #000000A6;
+    --m2-shadow: 0 8px 28px #000000B3;
+    --m2-inverse: #E6EBEE;
+    --m2-on-inverse: #0E1113;
+    color-scheme: dark;
+  }
+}
+
+html[data-theme="dark"] .m2-root {
+  --m2-bg: #0E1113;
+  --m2-sheet: #151A1D;
+  --m2-line: #232A2F;
+  --m2-line-2: #343D44;
+  --m2-rule: #232A2F;
+  --m2-chrome: #0E1113;
+  --m2-fg: #E6EBEE;
+  --m2-ink-2: #A3AEB6;
+  --m2-ink-3: #717C84;
+  --m2-meta: #8C979F;
+  --m2-data: #8FB0F5;
+  --m2-on-data: #0A1020;
+  --m2-info: #7FB3E8;
+  --m2-crit: #F0877F;
+  --m2-crit-bg: #2B1A18;
+  --m2-crit-ink: #F4A9A3;
+  --m2-high: #DDA44A;
+  --m2-high-bg: #2A2112;
+  --m2-high-ink: #E8C07C;
+  --m2-pass: #74C291;
+  --m2-pass-bg: #15241B;
+  --m2-pass-ink: #94D4AE;
+  --m2-hover: #1A2024;
+  --m2-active: #242C31;
+  --m2-track: #262E33;
+  --m2-seg: #8A959D;
+  --m2-scrim: #000000A6;
+  --m2-shadow: 0 8px 28px #000000B3;
+  --m2-inverse: #E6EBEE;
+  --m2-on-inverse: #0E1113;
+  color-scheme: dark;
+}
+
+/* Motion. State changes only: no entrance choreography. */
+.m2-root .m2-motion-bg { transition: background-color var(--m2-t-fast) var(--m2-ease), border-color var(--m2-t-fast) var(--m2-ease); }
+.m2-root .m2-job-bar { transition: width var(--m2-t-med) var(--m2-ease); }
+.m2-root .m2-chev { transition: transform var(--m2-t-fast) var(--m2-ease); }
+.m2-root .m2-map { transition: transform var(--m2-t-med) var(--m2-ease), visibility 0s linear var(--m2-t-med); }
+.m2-root .m2-map.m2-open { transition: transform var(--m2-t-med) var(--m2-ease); }
+
+@media (prefers-reduced-motion: reduce) {
+  .m2-root *,
+  .m2-root *::before,
+  .m2-root *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}

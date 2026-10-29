@@ -1,0 +1,2127 @@
+{
+  "material_master": {
+    "module": "material_master",
+    "label": "Material master",
+    "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+    "run_at": "2026-10-16T05:17:00Z",
+    "records_checked": 61816,
+    "rules_measured": 913,
+    "coverage": 0.9740000000000001,
+    "low_confidence": false,
+    "weights": {
+      "completeness": 0.25,
+      "accuracy": 0.25,
+      "consistency": 0.2,
+      "timeliness": 0.1,
+      "uniqueness": 0.1,
+      "validity": 0.1
+    },
+    "dimensions": [
+      {
+        "key": "completeness",
+        "label": "Completeness",
+        "weight": 0.25,
+        "score": 62,
+        "points": 15.5,
+        "rules_measured": 213,
+        "records_checked": 60827,
+        "coverage": 0.9840000000000001
+      },
+      {
+        "key": "accuracy",
+        "label": "Accuracy",
+        "weight": 0.25,
+        "score": 72,
+        "points": 18,
+        "rules_measured": 98,
+        "records_checked": 60580,
+        "coverage": 0.98
+      },
+      {
+        "key": "consistency",
+        "label": "Consistency",
+        "weight": 0.2,
+        "score": 70,
+        "points": 14,
+        "rules_measured": 331,
+        "records_checked": 59962,
+        "coverage": 0.97
+      },
+      {
+        "key": "timeliness",
+        "label": "Timeliness",
+        "weight": 0.1,
+        "score": 88,
+        "points": 8.8,
+        "rules_measured": 41,
+        "records_checked": 61383,
+        "coverage": 0.993
+      },
+      {
+        "key": "uniqueness",
+        "label": "Uniqueness",
+        "weight": 0.1,
+        "score": 90,
+        "points": 9,
+        "rules_measured": 44,
+        "records_checked": 61569,
+        "coverage": 0.996
+      },
+      {
+        "key": "validity",
+        "label": "Validity",
+        "weight": 0.1,
+        "score": 65,
+        "points": 6.5,
+        "rules_measured": 186,
+        "records_checked": 59467,
+        "coverage": 0.9620000000000001
+      }
+    ],
+    "weighted": 71.8,
+    "measured": 71.8,
+    "cap_level": 70,
+    "capped": true,
+    "score": 70,
+    "breaches": [
+      {
+        "check_id": "MM014",
+        "name": "Base unit of measure not valid",
+        "failing": 3640,
+        "pct": 5.89,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "MM031",
+        "name": "Material type missing",
+        "failing": 2904,
+        "pct": 4.7,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      }
+    ],
+    "tolerance": {
+      "pct": 0.1,
+      "rows": 25
+    },
+    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "severity_weights": {
+      "critical": 4,
+      "high": 3,
+      "medium": 2,
+      "low": 1
+    },
+    "cap_rule": "85 at one critical rule over tolerance, 70 at two or more",
+    "value_at_risk": 4200000,
+    "currency": "ZAR",
+    "features_blocked": 3,
+    "features_degraded": 5,
+    "open_work": 25712
+  },
+  "business_partner": {
+    "module": "business_partner",
+    "label": "Business partner",
+    "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+    "run_at": "2026-10-16T05:17:00Z",
+    "records_checked": 48210,
+    "rules_measured": 420,
+    "coverage": 0.981,
+    "low_confidence": false,
+    "weights": {
+      "completeness": 0.25,
+      "accuracy": 0.25,
+      "consistency": 0.2,
+      "timeliness": 0.1,
+      "uniqueness": 0.1,
+      "validity": 0.1
+    },
+    "dimensions": [
+      {
+        "key": "completeness",
+        "label": "Completeness",
+        "weight": 0.25,
+        "score": 73,
+        "points": 18.3,
+        "rules_measured": 98,
+        "records_checked": 47776,
+        "coverage": 0.991
+      },
+      {
+        "key": "accuracy",
+        "label": "Accuracy",
+        "weight": 0.25,
+        "score": 79,
+        "points": 19.8,
+        "rules_measured": 45,
+        "records_checked": 47583,
+        "coverage": 0.987
+      },
+      {
+        "key": "consistency",
+        "label": "Consistency",
+        "weight": 0.2,
+        "score": 77,
+        "points": 15.4,
+        "rules_measured": 152,
+        "records_checked": 47101,
+        "coverage": 0.977
+      },
+      {
+        "key": "timeliness",
+        "label": "Timeliness",
+        "weight": 0.1,
+        "score": 87,
+        "points": 8.7,
+        "rules_measured": 19,
+        "records_checked": 48210,
+        "coverage": 1
+      },
+      {
+        "key": "uniqueness",
+        "label": "Uniqueness",
+        "weight": 0.1,
+        "score": 90,
+        "points": 9,
+        "rules_measured": 20,
+        "records_checked": 48210,
+        "coverage": 1
+      },
+      {
+        "key": "validity",
+        "label": "Validity",
+        "weight": 0.1,
+        "score": 73,
+        "points": 7.3,
+        "rules_measured": 86,
+        "records_checked": 46715,
+        "coverage": 0.9690000000000001
+      }
+    ],
+    "weighted": 78.4,
+    "measured": 78.4,
+    "cap_level": 70,
+    "capped": true,
+    "score": 70,
+    "breaches": [
+      {
+        "check_id": "BP003",
+        "name": "Business partner grouping missing",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "BP011",
+        "name": "Tax number format not valid",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "BP040",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "BP041",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "BP042",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "BP043",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "BP044",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "BP045",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      }
+    ],
+    "tolerance": {
+      "pct": 0.1,
+      "rows": 25
+    },
+    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "severity_weights": {
+      "critical": 4,
+      "high": 3,
+      "medium": 2,
+      "low": 1
+    },
+    "cap_rule": "85 at one critical rule over tolerance, 70 at two or more",
+    "value_at_risk": null,
+    "currency": "ZAR",
+    "features_blocked": null,
+    "features_degraded": null,
+    "open_work": null
+  },
+  "vendor_master": {
+    "module": "vendor_master",
+    "label": "Vendor master (AP)",
+    "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+    "run_at": "2026-10-16T05:17:00Z",
+    "records_checked": 12884,
+    "rules_measured": 366,
+    "coverage": 0.963,
+    "low_confidence": false,
+    "weights": {
+      "completeness": 0.25,
+      "accuracy": 0.25,
+      "consistency": 0.2,
+      "timeliness": 0.1,
+      "uniqueness": 0.1,
+      "validity": 0.1
+    },
+    "dimensions": [
+      {
+        "key": "completeness",
+        "label": "Completeness",
+        "weight": 0.25,
+        "score": 73,
+        "points": 18.3,
+        "rules_measured": 85,
+        "records_checked": 12536,
+        "coverage": 0.973
+      },
+      {
+        "key": "accuracy",
+        "label": "Accuracy",
+        "weight": 0.25,
+        "score": 79,
+        "points": 19.8,
+        "rules_measured": 39,
+        "records_checked": 12485,
+        "coverage": 0.9690000000000001
+      },
+      {
+        "key": "consistency",
+        "label": "Consistency",
+        "weight": 0.2,
+        "score": 74,
+        "points": 14.8,
+        "rules_measured": 133,
+        "records_checked": 12356,
+        "coverage": 0.9590000000000001
+      },
+      {
+        "key": "timeliness",
+        "label": "Timeliness",
+        "weight": 0.1,
+        "score": 84,
+        "points": 8.4,
+        "rules_measured": 16,
+        "records_checked": 12652,
+        "coverage": 0.982
+      },
+      {
+        "key": "uniqueness",
+        "label": "Uniqueness",
+        "weight": 0.1,
+        "score": 87,
+        "points": 8.7,
+        "rules_measured": 18,
+        "records_checked": 12691,
+        "coverage": 0.985
+      },
+      {
+        "key": "validity",
+        "label": "Validity",
+        "weight": 0.1,
+        "score": 70,
+        "points": 7,
+        "rules_measured": 75,
+        "records_checked": 12253,
+        "coverage": 0.951
+      }
+    ],
+    "weighted": 76.9,
+    "measured": 76.9,
+    "cap_level": 70,
+    "capped": true,
+    "score": 70,
+    "breaches": [
+      {
+        "check_id": "VM007",
+        "name": "Bank account missing for payment method",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "VM019",
+        "name": "Payment terms not valid",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "VM040",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "VM041",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "VM042",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "VM043",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      }
+    ],
+    "tolerance": {
+      "pct": 0.1,
+      "rows": 25
+    },
+    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "severity_weights": {
+      "critical": 4,
+      "high": 3,
+      "medium": 2,
+      "low": 1
+    },
+    "cap_rule": "85 at one critical rule over tolerance, 70 at two or more",
+    "value_at_risk": null,
+    "currency": "ZAR",
+    "features_blocked": null,
+    "features_degraded": null,
+    "open_work": null
+  },
+  "customer_master": {
+    "module": "customer_master",
+    "label": "Customer master (AR)",
+    "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+    "run_at": "2026-10-16T05:17:00Z",
+    "records_checked": 31507,
+    "rules_measured": 312,
+    "coverage": 0.958,
+    "low_confidence": false,
+    "weights": {
+      "completeness": 0.25,
+      "accuracy": 0.25,
+      "consistency": 0.2,
+      "timeliness": 0.1,
+      "uniqueness": 0.1,
+      "validity": 0.1
+    },
+    "dimensions": [
+      {
+        "key": "completeness",
+        "label": "Completeness",
+        "weight": 0.25,
+        "score": 69,
+        "points": 17.3,
+        "rules_measured": 73,
+        "records_checked": 30499,
+        "coverage": 0.968
+      },
+      {
+        "key": "accuracy",
+        "label": "Accuracy",
+        "weight": 0.25,
+        "score": 75,
+        "points": 18.8,
+        "rules_measured": 33,
+        "records_checked": 30373,
+        "coverage": 0.9640000000000001
+      },
+      {
+        "key": "consistency",
+        "label": "Consistency",
+        "weight": 0.2,
+        "score": 72,
+        "points": 14.4,
+        "rules_measured": 113,
+        "records_checked": 30058,
+        "coverage": 0.9540000000000001
+      },
+      {
+        "key": "timeliness",
+        "label": "Timeliness",
+        "weight": 0.1,
+        "score": 84,
+        "points": 8.4,
+        "rules_measured": 14,
+        "records_checked": 30782,
+        "coverage": 0.977
+      },
+      {
+        "key": "uniqueness",
+        "label": "Uniqueness",
+        "weight": 0.1,
+        "score": 84,
+        "points": 8.4,
+        "rules_measured": 15,
+        "records_checked": 30877,
+        "coverage": 0.98
+      },
+      {
+        "key": "validity",
+        "label": "Validity",
+        "weight": 0.1,
+        "score": 70,
+        "points": 7,
+        "rules_measured": 64,
+        "records_checked": 29806,
+        "coverage": 0.946
+      }
+    ],
+    "weighted": 74.2,
+    "measured": 74.2,
+    "cap_level": 70,
+    "capped": true,
+    "score": 70,
+    "breaches": [
+      {
+        "check_id": "CM005",
+        "name": "Reconciliation account missing",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "CM012",
+        "name": "Country not valid",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "CM040",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "CM041",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "CM042",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "CM043",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "CM044",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      }
+    ],
+    "tolerance": {
+      "pct": 0.1,
+      "rows": 25
+    },
+    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "severity_weights": {
+      "critical": 4,
+      "high": 3,
+      "medium": 2,
+      "low": 1
+    },
+    "cap_rule": "85 at one critical rule over tolerance, 70 at two or more",
+    "value_at_risk": null,
+    "currency": "ZAR",
+    "features_blocked": null,
+    "features_degraded": null,
+    "open_work": null
+  },
+  "gl_accounts": {
+    "module": "gl_accounts",
+    "label": "G/L accounts",
+    "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+    "run_at": "2026-10-16T05:17:00Z",
+    "records_checked": 4216,
+    "rules_measured": 188,
+    "coverage": 0.996,
+    "low_confidence": false,
+    "weights": {
+      "completeness": 0.25,
+      "accuracy": 0.25,
+      "consistency": 0.2,
+      "timeliness": 0.1,
+      "uniqueness": 0.1,
+      "validity": 0.1
+    },
+    "dimensions": [
+      {
+        "key": "completeness",
+        "label": "Completeness",
+        "weight": 0.25,
+        "score": 92,
+        "points": 23,
+        "rules_measured": 44,
+        "records_checked": 4216,
+        "coverage": 1
+      },
+      {
+        "key": "accuracy",
+        "label": "Accuracy",
+        "weight": 0.25,
+        "score": 94,
+        "points": 23.5,
+        "rules_measured": 20,
+        "records_checked": 4216,
+        "coverage": 1
+      },
+      {
+        "key": "consistency",
+        "label": "Consistency",
+        "weight": 0.2,
+        "score": 96,
+        "points": 19.2,
+        "rules_measured": 69,
+        "records_checked": 4182,
+        "coverage": 0.992
+      },
+      {
+        "key": "timeliness",
+        "label": "Timeliness",
+        "weight": 0.1,
+        "score": 95,
+        "points": 9.5,
+        "rules_measured": 8,
+        "records_checked": 4216,
+        "coverage": 1
+      },
+      {
+        "key": "uniqueness",
+        "label": "Uniqueness",
+        "weight": 0.1,
+        "score": 96,
+        "points": 9.6,
+        "rules_measured": 9,
+        "records_checked": 4216,
+        "coverage": 1
+      },
+      {
+        "key": "validity",
+        "label": "Validity",
+        "weight": 0.1,
+        "score": 86,
+        "points": 8.6,
+        "rules_measured": 38,
+        "records_checked": 4149,
+        "coverage": 0.9840000000000001
+      }
+    ],
+    "weighted": 93.4,
+    "measured": 93.4,
+    "cap_level": null,
+    "capped": false,
+    "score": 93.4,
+    "breaches": [],
+    "tolerance": {
+      "pct": 0.1,
+      "rows": 25
+    },
+    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "severity_weights": {
+      "critical": 4,
+      "high": 3,
+      "medium": 2,
+      "low": 1
+    },
+    "cap_rule": "85 at one critical rule over tolerance, 70 at two or more",
+    "value_at_risk": null,
+    "currency": "ZAR",
+    "features_blocked": null,
+    "features_degraded": null,
+    "open_work": null
+  },
+  "asset_accounting": {
+    "module": "asset_accounting",
+    "label": "Asset accounting",
+    "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+    "run_at": "2026-10-16T05:17:00Z",
+    "records_checked": 9873,
+    "rules_measured": 245,
+    "coverage": 0.9420000000000001,
+    "low_confidence": false,
+    "weights": {
+      "completeness": 0.25,
+      "accuracy": 0.25,
+      "consistency": 0.2,
+      "timeliness": 0.1,
+      "uniqueness": 0.1,
+      "validity": 0.1
+    },
+    "dimensions": [
+      {
+        "key": "completeness",
+        "label": "Completeness",
+        "weight": 0.25,
+        "score": 68,
+        "points": 17,
+        "rules_measured": 57,
+        "records_checked": 9399,
+        "coverage": 0.9520000000000001
+      },
+      {
+        "key": "accuracy",
+        "label": "Accuracy",
+        "weight": 0.25,
+        "score": 74,
+        "points": 18.5,
+        "rules_measured": 26,
+        "records_checked": 9360,
+        "coverage": 0.948
+      },
+      {
+        "key": "consistency",
+        "label": "Consistency",
+        "weight": 0.2,
+        "score": 70,
+        "points": 14,
+        "rules_measured": 89,
+        "records_checked": 9261,
+        "coverage": 0.938
+      },
+      {
+        "key": "timeliness",
+        "label": "Timeliness",
+        "weight": 0.1,
+        "score": 82,
+        "points": 8.2,
+        "rules_measured": 11,
+        "records_checked": 9488,
+        "coverage": 0.961
+      },
+      {
+        "key": "uniqueness",
+        "label": "Uniqueness",
+        "weight": 0.1,
+        "score": 82,
+        "points": 8.2,
+        "rules_measured": 12,
+        "records_checked": 9518,
+        "coverage": 0.9640000000000001
+      },
+      {
+        "key": "validity",
+        "label": "Validity",
+        "weight": 0.1,
+        "score": 67,
+        "points": 6.7,
+        "rules_measured": 50,
+        "records_checked": 9182,
+        "coverage": 0.93
+      }
+    ],
+    "weighted": 72.6,
+    "measured": 72.6,
+    "cap_level": 70,
+    "capped": true,
+    "score": 70,
+    "breaches": [
+      {
+        "check_id": "AA004",
+        "name": "Depreciation key missing",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "AA009",
+        "name": "Capitalisation date missing",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "AA040",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "AA041",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "AA042",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      }
+    ],
+    "tolerance": {
+      "pct": 0.1,
+      "rows": 25
+    },
+    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "severity_weights": {
+      "critical": 4,
+      "high": 3,
+      "medium": 2,
+      "low": 1
+    },
+    "cap_rule": "85 at one critical rule over tolerance, 70 at two or more",
+    "value_at_risk": null,
+    "currency": "ZAR",
+    "features_blocked": null,
+    "features_degraded": null,
+    "open_work": null
+  },
+  "controlling": {
+    "module": "controlling",
+    "label": "Controlling",
+    "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+    "run_at": "2026-10-16T05:17:00Z",
+    "records_checked": 7402,
+    "rules_measured": 274,
+    "coverage": 0.97,
+    "low_confidence": false,
+    "weights": {
+      "completeness": 0.25,
+      "accuracy": 0.25,
+      "consistency": 0.2,
+      "timeliness": 0.1,
+      "uniqueness": 0.1,
+      "validity": 0.1
+    },
+    "dimensions": [
+      {
+        "key": "completeness",
+        "label": "Completeness",
+        "weight": 0.25,
+        "score": 74,
+        "points": 18.5,
+        "rules_measured": 64,
+        "records_checked": 7254,
+        "coverage": 0.98
+      },
+      {
+        "key": "accuracy",
+        "label": "Accuracy",
+        "weight": 0.25,
+        "score": 80,
+        "points": 20,
+        "rules_measured": 29,
+        "records_checked": 7224,
+        "coverage": 0.976
+      },
+      {
+        "key": "consistency",
+        "label": "Consistency",
+        "weight": 0.2,
+        "score": 77,
+        "points": 15.4,
+        "rules_measured": 100,
+        "records_checked": 7150,
+        "coverage": 0.966
+      },
+      {
+        "key": "timeliness",
+        "label": "Timeliness",
+        "weight": 0.1,
+        "score": 88,
+        "points": 8.8,
+        "rules_measured": 12,
+        "records_checked": 7321,
+        "coverage": 0.9890000000000001
+      },
+      {
+        "key": "uniqueness",
+        "label": "Uniqueness",
+        "weight": 0.1,
+        "score": 90,
+        "points": 9,
+        "rules_measured": 13,
+        "records_checked": 7343,
+        "coverage": 0.992
+      },
+      {
+        "key": "validity",
+        "label": "Validity",
+        "weight": 0.1,
+        "score": 74,
+        "points": 7.4,
+        "rules_measured": 56,
+        "records_checked": 7091,
+        "coverage": 0.958
+      }
+    ],
+    "weighted": 79.1,
+    "measured": 79.1,
+    "cap_level": 70,
+    "capped": true,
+    "score": 70,
+    "breaches": [
+      {
+        "check_id": "CO002",
+        "name": "Cost centre without person responsible",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "CO015",
+        "name": "Cost centre category not valid",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "CO040",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "CO041",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "CO042",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "CO043",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "CO044",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "CO045",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "CO046",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      }
+    ],
+    "tolerance": {
+      "pct": 0.1,
+      "rows": 25
+    },
+    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "severity_weights": {
+      "critical": 4,
+      "high": 3,
+      "medium": 2,
+      "low": 1
+    },
+    "cap_rule": "85 at one critical rule over tolerance, 70 at two or more",
+    "value_at_risk": null,
+    "currency": "ZAR",
+    "features_blocked": null,
+    "features_degraded": null,
+    "open_work": null
+  },
+  "purchasing": {
+    "module": "purchasing",
+    "label": "Purchasing",
+    "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+    "run_at": "2026-10-16T05:17:00Z",
+    "records_checked": 22640,
+    "rules_measured": 451,
+    "coverage": 0.9690000000000001,
+    "low_confidence": false,
+    "weights": {
+      "completeness": 0.25,
+      "accuracy": 0.25,
+      "consistency": 0.2,
+      "timeliness": 0.1,
+      "uniqueness": 0.1,
+      "validity": 0.1
+    },
+    "dimensions": [
+      {
+        "key": "completeness",
+        "label": "Completeness",
+        "weight": 0.25,
+        "score": 72,
+        "points": 18,
+        "rules_measured": 105,
+        "records_checked": 22165,
+        "coverage": 0.9790000000000001
+      },
+      {
+        "key": "accuracy",
+        "label": "Accuracy",
+        "weight": 0.25,
+        "score": 78,
+        "points": 19.5,
+        "rules_measured": 48,
+        "records_checked": 22074,
+        "coverage": 0.975
+      },
+      {
+        "key": "consistency",
+        "label": "Consistency",
+        "weight": 0.2,
+        "score": 71,
+        "points": 14.2,
+        "rules_measured": 164,
+        "records_checked": 21848,
+        "coverage": 0.965
+      },
+      {
+        "key": "timeliness",
+        "label": "Timeliness",
+        "weight": 0.1,
+        "score": 83,
+        "points": 8.3,
+        "rules_measured": 20,
+        "records_checked": 22368,
+        "coverage": 0.988
+      },
+      {
+        "key": "uniqueness",
+        "label": "Uniqueness",
+        "weight": 0.1,
+        "score": 85,
+        "points": 8.5,
+        "rules_measured": 22,
+        "records_checked": 22436,
+        "coverage": 0.991
+      },
+      {
+        "key": "validity",
+        "label": "Validity",
+        "weight": 0.1,
+        "score": 68,
+        "points": 6.8,
+        "rules_measured": 92,
+        "records_checked": 21666,
+        "coverage": 0.9570000000000001
+      }
+    ],
+    "weighted": 75.3,
+    "measured": 75.3,
+    "cap_level": 70,
+    "capped": true,
+    "score": 70,
+    "breaches": [
+      {
+        "check_id": "MM014",
+        "name": "Base unit of measure not valid",
+        "failing": 572,
+        "pct": 2.53,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "MM031",
+        "name": "Material type missing",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      }
+    ],
+    "tolerance": {
+      "pct": 0.1,
+      "rows": 25
+    },
+    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "severity_weights": {
+      "critical": 4,
+      "high": 3,
+      "medium": 2,
+      "low": 1
+    },
+    "cap_rule": "85 at one critical rule over tolerance, 70 at two or more",
+    "value_at_risk": null,
+    "currency": "ZAR",
+    "features_blocked": null,
+    "features_degraded": null,
+    "open_work": null
+  },
+  "sales_orders": {
+    "module": "sales_orders",
+    "label": "Sales orders",
+    "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+    "run_at": "2026-10-16T05:17:00Z",
+    "records_checked": 118330,
+    "rules_measured": 598,
+    "coverage": 0.9840000000000001,
+    "low_confidence": false,
+    "weights": {
+      "completeness": 0.25,
+      "accuracy": 0.25,
+      "consistency": 0.2,
+      "timeliness": 0.1,
+      "uniqueness": 0.1,
+      "validity": 0.1
+    },
+    "dimensions": [
+      {
+        "key": "completeness",
+        "label": "Completeness",
+        "weight": 0.25,
+        "score": 75,
+        "points": 18.8,
+        "rules_measured": 140,
+        "records_checked": 117620,
+        "coverage": 0.9940000000000001
+      },
+      {
+        "key": "accuracy",
+        "label": "Accuracy",
+        "weight": 0.25,
+        "score": 83,
+        "points": 20.8,
+        "rules_measured": 64,
+        "records_checked": 117147,
+        "coverage": 0.99
+      },
+      {
+        "key": "consistency",
+        "label": "Consistency",
+        "weight": 0.2,
+        "score": 78,
+        "points": 15.6,
+        "rules_measured": 216,
+        "records_checked": 115963,
+        "coverage": 0.98
+      },
+      {
+        "key": "timeliness",
+        "label": "Timeliness",
+        "weight": 0.1,
+        "score": 91,
+        "points": 9.1,
+        "rules_measured": 27,
+        "records_checked": 118330,
+        "coverage": 1
+      },
+      {
+        "key": "uniqueness",
+        "label": "Uniqueness",
+        "weight": 0.1,
+        "score": 91,
+        "points": 9.1,
+        "rules_measured": 29,
+        "records_checked": 118330,
+        "coverage": 1
+      },
+      {
+        "key": "validity",
+        "label": "Validity",
+        "weight": 0.1,
+        "score": 77,
+        "points": 7.7,
+        "rules_measured": 122,
+        "records_checked": 115017,
+        "coverage": 0.972
+      }
+    ],
+    "weighted": 81,
+    "measured": 81,
+    "cap_level": 70,
+    "capped": true,
+    "score": 70,
+    "breaches": [
+      {
+        "check_id": "SO006",
+        "name": "Ship-to partner missing",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "SO021",
+        "name": "Payment terms not valid",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "SO040",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "SO041",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "SO042",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "SO043",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "SO044",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "SO045",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      }
+    ],
+    "tolerance": {
+      "pct": 0.1,
+      "rows": 25
+    },
+    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "severity_weights": {
+      "critical": 4,
+      "high": 3,
+      "medium": 2,
+      "low": 1
+    },
+    "cap_rule": "85 at one critical rule over tolerance, 70 at two or more",
+    "value_at_risk": null,
+    "currency": "ZAR",
+    "features_blocked": null,
+    "features_degraded": null,
+    "open_work": null
+  },
+  "plant_maintenance": {
+    "module": "plant_maintenance",
+    "label": "Plant maintenance",
+    "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+    "run_at": "2026-10-16T05:17:00Z",
+    "records_checked": 15964,
+    "rules_measured": 233,
+    "coverage": 0.642,
+    "low_confidence": true,
+    "weights": {
+      "completeness": 0.25,
+      "accuracy": 0.25,
+      "consistency": 0.2,
+      "timeliness": 0.1,
+      "uniqueness": 0.1,
+      "validity": 0.1
+    },
+    "dimensions": [
+      {
+        "key": "completeness",
+        "label": "Completeness",
+        "weight": 0.25,
+        "score": 72,
+        "points": 18,
+        "rules_measured": 54,
+        "records_checked": 10409,
+        "coverage": 0.652
+      },
+      {
+        "key": "accuracy",
+        "label": "Accuracy",
+        "weight": 0.25,
+        "score": 72,
+        "points": 18,
+        "rules_measured": 25,
+        "records_checked": 10345,
+        "coverage": 0.648
+      },
+      {
+        "key": "consistency",
+        "label": "Consistency",
+        "weight": 0.2,
+        "score": 74,
+        "points": 14.8,
+        "rules_measured": 86,
+        "records_checked": 10185,
+        "coverage": 0.638
+      },
+      {
+        "key": "timeliness",
+        "label": "Timeliness",
+        "weight": 0.1,
+        "score": 78,
+        "points": 7.8,
+        "rules_measured": 10,
+        "records_checked": 10552,
+        "coverage": 0.6609999999999999
+      },
+      {
+        "key": "uniqueness",
+        "label": "Uniqueness",
+        "weight": 0.1,
+        "score": 79,
+        "points": 7.9,
+        "rules_measured": 11,
+        "records_checked": 10600,
+        "coverage": 0.664
+      },
+      {
+        "key": "validity",
+        "label": "Validity",
+        "weight": 0.1,
+        "score": 70,
+        "points": 7,
+        "rules_measured": 47,
+        "records_checked": 10057,
+        "coverage": 0.63
+      }
+    ],
+    "weighted": 73.5,
+    "measured": 73.5,
+    "cap_level": 70,
+    "capped": true,
+    "score": 70,
+    "breaches": [
+      {
+        "check_id": "PM003",
+        "name": "Equipment without functional location",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "PM014",
+        "name": "Maintenance plant missing",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "PM040",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "PM041",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "PM042",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "PM043",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "PM044",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      }
+    ],
+    "tolerance": {
+      "pct": 0.1,
+      "rows": 25
+    },
+    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "severity_weights": {
+      "critical": 4,
+      "high": 3,
+      "medium": 2,
+      "low": 1
+    },
+    "cap_rule": "85 at one critical rule over tolerance, 70 at two or more",
+    "value_at_risk": null,
+    "currency": "ZAR",
+    "features_blocked": null,
+    "features_degraded": null,
+    "open_work": null
+  },
+  "production_planning": {
+    "module": "production_planning",
+    "label": "Production planning",
+    "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+    "run_at": "2026-10-16T05:17:00Z",
+    "records_checked": 20118,
+    "rules_measured": 291,
+    "coverage": 0.935,
+    "low_confidence": false,
+    "weights": {
+      "completeness": 0.25,
+      "accuracy": 0.25,
+      "consistency": 0.2,
+      "timeliness": 0.1,
+      "uniqueness": 0.1,
+      "validity": 0.1
+    },
+    "dimensions": [
+      {
+        "key": "completeness",
+        "label": "Completeness",
+        "weight": 0.25,
+        "score": 73,
+        "points": 18.3,
+        "rules_measured": 68,
+        "records_checked": 19012,
+        "coverage": 0.945
+      },
+      {
+        "key": "accuracy",
+        "label": "Accuracy",
+        "weight": 0.25,
+        "score": 79,
+        "points": 19.8,
+        "rules_measured": 31,
+        "records_checked": 18931,
+        "coverage": 0.941
+      },
+      {
+        "key": "consistency",
+        "label": "Consistency",
+        "weight": 0.2,
+        "score": 75,
+        "points": 15,
+        "rules_measured": 106,
+        "records_checked": 18730,
+        "coverage": 0.9309999999999999
+      },
+      {
+        "key": "timeliness",
+        "label": "Timeliness",
+        "weight": 0.1,
+        "score": 88,
+        "points": 8.8,
+        "rules_measured": 13,
+        "records_checked": 19193,
+        "coverage": 0.9540000000000001
+      },
+      {
+        "key": "uniqueness",
+        "label": "Uniqueness",
+        "weight": 0.1,
+        "score": 87,
+        "points": 8.7,
+        "rules_measured": 14,
+        "records_checked": 19253,
+        "coverage": 0.9570000000000001
+      },
+      {
+        "key": "validity",
+        "label": "Validity",
+        "weight": 0.1,
+        "score": 72,
+        "points": 7.2,
+        "rules_measured": 59,
+        "records_checked": 18569,
+        "coverage": 0.9229999999999999
+      }
+    ],
+    "weighted": 77.7,
+    "measured": 77.7,
+    "cap_level": 70,
+    "capped": true,
+    "score": 70,
+    "breaches": [
+      {
+        "check_id": "PP008",
+        "name": "Routing without operations",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "PP017",
+        "name": "BOM component quantity zero",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "PP040",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "PP041",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "PP042",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "PP043",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "PP044",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "PP045",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      }
+    ],
+    "tolerance": {
+      "pct": 0.1,
+      "rows": 25
+    },
+    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "severity_weights": {
+      "critical": 4,
+      "high": 3,
+      "medium": 2,
+      "low": 1
+    },
+    "cap_rule": "85 at one critical rule over tolerance, 70 at two or more",
+    "value_at_risk": null,
+    "currency": "ZAR",
+    "features_blocked": null,
+    "features_degraded": null,
+    "open_work": null
+  },
+  "project_system": {
+    "module": "project_system",
+    "label": "Project system",
+    "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+    "run_at": "2026-10-16T05:17:00Z",
+    "records_checked": 3584,
+    "rules_measured": 160,
+    "coverage": 0.99,
+    "low_confidence": false,
+    "weights": {
+      "completeness": 0.25,
+      "accuracy": 0.25,
+      "consistency": 0.2,
+      "timeliness": 0.1,
+      "uniqueness": 0.1,
+      "validity": 0.1
+    },
+    "dimensions": [
+      {
+        "key": "completeness",
+        "label": "Completeness",
+        "weight": 0.25,
+        "score": 84,
+        "points": 21,
+        "rules_measured": 37,
+        "records_checked": 3584,
+        "coverage": 1
+      },
+      {
+        "key": "accuracy",
+        "label": "Accuracy",
+        "weight": 0.25,
+        "score": 88,
+        "points": 22,
+        "rules_measured": 17,
+        "records_checked": 3570,
+        "coverage": 0.996
+      },
+      {
+        "key": "consistency",
+        "label": "Consistency",
+        "weight": 0.2,
+        "score": 88,
+        "points": 17.6,
+        "rules_measured": 58,
+        "records_checked": 3534,
+        "coverage": 0.986
+      },
+      {
+        "key": "timeliness",
+        "label": "Timeliness",
+        "weight": 0.1,
+        "score": 98,
+        "points": 9.8,
+        "rules_measured": 7,
+        "records_checked": 3584,
+        "coverage": 1
+      },
+      {
+        "key": "uniqueness",
+        "label": "Uniqueness",
+        "weight": 0.1,
+        "score": 98,
+        "points": 9.8,
+        "rules_measured": 8,
+        "records_checked": 3584,
+        "coverage": 1
+      },
+      {
+        "key": "validity",
+        "label": "Validity",
+        "weight": 0.1,
+        "score": 84,
+        "points": 8.4,
+        "rules_measured": 33,
+        "records_checked": 3505,
+        "coverage": 0.978
+      }
+    ],
+    "weighted": 88.6,
+    "measured": 88.6,
+    "cap_level": 85,
+    "capped": true,
+    "score": 85,
+    "breaches": [
+      {
+        "check_id": "PS004",
+        "name": "WBS element without responsible cost centre",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      }
+    ],
+    "tolerance": {
+      "pct": 0.1,
+      "rows": 25
+    },
+    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "severity_weights": {
+      "critical": 4,
+      "high": 3,
+      "medium": 2,
+      "low": 1
+    },
+    "cap_rule": "85 at one critical rule over tolerance, 70 at two or more",
+    "value_at_risk": null,
+    "currency": "ZAR",
+    "features_blocked": null,
+    "features_degraded": null,
+    "open_work": null
+  },
+  "quality_management": {
+    "module": "quality_management",
+    "label": "Quality management",
+    "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+    "run_at": "2026-10-16T05:17:00Z",
+    "records_checked": 8771,
+    "rules_measured": 207,
+    "coverage": 0.9670000000000001,
+    "low_confidence": false,
+    "weights": {
+      "completeness": 0.25,
+      "accuracy": 0.25,
+      "consistency": 0.2,
+      "timeliness": 0.1,
+      "uniqueness": 0.1,
+      "validity": 0.1
+    },
+    "dimensions": [
+      {
+        "key": "completeness",
+        "label": "Completeness",
+        "weight": 0.25,
+        "score": 89,
+        "points": 22.3,
+        "rules_measured": 48,
+        "records_checked": 8569,
+        "coverage": 0.977
+      },
+      {
+        "key": "accuracy",
+        "label": "Accuracy",
+        "weight": 0.25,
+        "score": 93,
+        "points": 23.3,
+        "rules_measured": 22,
+        "records_checked": 8534,
+        "coverage": 0.973
+      },
+      {
+        "key": "consistency",
+        "label": "Consistency",
+        "weight": 0.2,
+        "score": 89,
+        "points": 17.8,
+        "rules_measured": 76,
+        "records_checked": 8446,
+        "coverage": 0.963
+      },
+      {
+        "key": "timeliness",
+        "label": "Timeliness",
+        "weight": 0.1,
+        "score": 96,
+        "points": 9.6,
+        "rules_measured": 9,
+        "records_checked": 8648,
+        "coverage": 0.986
+      },
+      {
+        "key": "uniqueness",
+        "label": "Uniqueness",
+        "weight": 0.1,
+        "score": 99,
+        "points": 9.9,
+        "rules_measured": 10,
+        "records_checked": 8675,
+        "coverage": 0.9890000000000001
+      },
+      {
+        "key": "validity",
+        "label": "Validity",
+        "weight": 0.1,
+        "score": 84,
+        "points": 8.4,
+        "rules_measured": 42,
+        "records_checked": 8376,
+        "coverage": 0.955
+      }
+    ],
+    "weighted": 91.2,
+    "measured": 91.2,
+    "cap_level": null,
+    "capped": false,
+    "score": 91.2,
+    "breaches": [],
+    "tolerance": {
+      "pct": 0.1,
+      "rows": 25
+    },
+    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "severity_weights": {
+      "critical": 4,
+      "high": 3,
+      "medium": 2,
+      "low": 1
+    },
+    "cap_rule": "85 at one critical rule over tolerance, 70 at two or more",
+    "value_at_risk": null,
+    "currency": "ZAR",
+    "features_blocked": null,
+    "features_degraded": null,
+    "open_work": null
+  },
+  "hcm": {
+    "module": "hcm",
+    "label": "HCM",
+    "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+    "run_at": "2026-10-16T05:17:00Z",
+    "records_checked": 5932,
+    "rules_measured": 346,
+    "coverage": 0.9179999999999999,
+    "low_confidence": false,
+    "weights": {
+      "completeness": 0.25,
+      "accuracy": 0.25,
+      "consistency": 0.2,
+      "timeliness": 0.1,
+      "uniqueness": 0.1,
+      "validity": 0.1
+    },
+    "dimensions": [
+      {
+        "key": "completeness",
+        "label": "Completeness",
+        "weight": 0.25,
+        "score": 75,
+        "points": 18.8,
+        "rules_measured": 81,
+        "records_checked": 5505,
+        "coverage": 0.9279999999999999
+      },
+      {
+        "key": "accuracy",
+        "label": "Accuracy",
+        "weight": 0.25,
+        "score": 81,
+        "points": 20.3,
+        "rules_measured": 37,
+        "records_checked": 5481,
+        "coverage": 0.924
+      },
+      {
+        "key": "consistency",
+        "label": "Consistency",
+        "weight": 0.2,
+        "score": 79,
+        "points": 15.8,
+        "rules_measured": 125,
+        "records_checked": 5422,
+        "coverage": 0.914
+      },
+      {
+        "key": "timeliness",
+        "label": "Timeliness",
+        "weight": 0.1,
+        "score": 90,
+        "points": 9,
+        "rules_measured": 16,
+        "records_checked": 5558,
+        "coverage": 0.937
+      },
+      {
+        "key": "uniqueness",
+        "label": "Uniqueness",
+        "weight": 0.1,
+        "score": 90,
+        "points": 9,
+        "rules_measured": 17,
+        "records_checked": 5576,
+        "coverage": 0.94
+      },
+      {
+        "key": "validity",
+        "label": "Validity",
+        "weight": 0.1,
+        "score": 76,
+        "points": 7.6,
+        "rules_measured": 70,
+        "records_checked": 5374,
+        "coverage": 0.9059999999999999
+      }
+    ],
+    "weighted": 80.4,
+    "measured": 80.4,
+    "cap_level": 70,
+    "capped": true,
+    "score": 70,
+    "breaches": [
+      {
+        "check_id": "HC002",
+        "name": "Employee without organisational assignment",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "HC011",
+        "name": "Pay scale group not valid",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "HC040",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "HC041",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "HC042",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "HC043",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "HC044",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "HC045",
+        "name": "Critical rule over tolerance",
+        "failing": null,
+        "pct": null,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      }
+    ],
+    "tolerance": {
+      "pct": 0.1,
+      "rows": 25
+    },
+    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "severity_weights": {
+      "critical": 4,
+      "high": 3,
+      "medium": 2,
+      "low": 1
+    },
+    "cap_rule": "85 at one critical rule over tolerance, 70 at two or more",
+    "value_at_risk": null,
+    "currency": "ZAR",
+    "features_blocked": null,
+    "features_degraded": null,
+    "open_work": null
+  },
+  "sd_customer_master": {
+    "module": "sd_customer_master",
+    "label": "SD customer master",
+    "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+    "run_at": "2026-10-16T05:17:00Z",
+    "records_checked": 29415,
+    "rules_measured": 174,
+    "coverage": 0.972,
+    "low_confidence": false,
+    "weights": {
+      "completeness": 0.25,
+      "accuracy": 0.25,
+      "consistency": 0.2,
+      "timeliness": 0.1,
+      "uniqueness": 0.1,
+      "validity": 0.1
+    },
+    "dimensions": [
+      {
+        "key": "completeness",
+        "label": "Completeness",
+        "weight": 0.25,
+        "score": 77,
+        "points": 19.3,
+        "rules_measured": 41,
+        "records_checked": 28886,
+        "coverage": 0.982
+      },
+      {
+        "key": "accuracy",
+        "label": "Accuracy",
+        "weight": 0.25,
+        "score": 77,
+        "points": 19.3,
+        "rules_measured": 19,
+        "records_checked": 28768,
+        "coverage": 0.978
+      },
+      {
+        "key": "consistency",
+        "label": "Consistency",
+        "weight": 0.2,
+        "score": 78,
+        "points": 15.6,
+        "rules_measured": 63,
+        "records_checked": 28474,
+        "coverage": 0.968
+      },
+      {
+        "key": "timeliness",
+        "label": "Timeliness",
+        "weight": 0.1,
+        "score": 83,
+        "points": 8.3,
+        "rules_measured": 8,
+        "records_checked": 29150,
+        "coverage": 0.991
+      },
+      {
+        "key": "uniqueness",
+        "label": "Uniqueness",
+        "weight": 0.1,
+        "score": 84,
+        "points": 8.4,
+        "rules_measured": 8,
+        "records_checked": 29239,
+        "coverage": 0.9940000000000001
+      },
+      {
+        "key": "validity",
+        "label": "Validity",
+        "weight": 0.1,
+        "score": 74,
+        "points": 7.4,
+        "rules_measured": 35,
+        "records_checked": 28238,
+        "coverage": 0.96
+      }
+    ],
+    "weighted": 78.2,
+    "measured": 78.2,
+    "cap_level": null,
+    "capped": false,
+    "score": 78.2,
+    "breaches": [],
+    "tolerance": {
+      "pct": 0.1,
+      "rows": 25
+    },
+    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "severity_weights": {
+      "critical": 4,
+      "high": 3,
+      "medium": 2,
+      "low": 1
+    },
+    "cap_rule": "85 at one critical rule over tolerance, 70 at two or more",
+    "value_at_risk": null,
+    "currency": "ZAR",
+    "features_blocked": null,
+    "features_degraded": null,
+    "open_work": null
+  }
+}

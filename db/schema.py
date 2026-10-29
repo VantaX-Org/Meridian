@@ -932,8 +932,26 @@ class SavedView(Base):
     name = Column(Text, nullable=False)
     filters = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    columns = Column(JSONB, nullable=True)   # column keys in order; NULL = the page's default (migration 101)
+    density = Column(Text, nullable=True)    # compact|comfortable; NULL = the page's default (migration 101)
 
     __table_args__ = (UniqueConstraint("tenant_id", "user_id", "route", "name", name="uq_saved_views_user_route_name"),)
+
+
+class UndoAction(Base):
+    """One mutating work decision with the inverse that reverts it within ten minutes (migration 100)."""
+    __tablename__ = "undo_actions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Text, nullable=False)
+    kind = Column(Text, nullable=False)
+    payload = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    inverse = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    undone_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (Index("ix_undo_actions_tenant_user", "tenant_id", "user_id", text("created_at DESC")),)
 
 
 class RecordIssue(Base):

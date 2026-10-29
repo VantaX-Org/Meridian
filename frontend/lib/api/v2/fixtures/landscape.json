@@ -1,0 +1,572 @@
+{
+  "scope": "current",
+  "run_id": null,
+  "status_strip": {
+    "run_at": "2026-10-16T05:17:00Z",
+    "records_checked": 400662,
+    "rules_measured": 5178,
+    "scored_in_s": 702,
+    "cost_model": "ZAR v3",
+    "licence_valid_to": "2027-03-31"
+  },
+  "systems": [
+    {
+      "id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "name": "ECC production",
+      "system_type": "ecc",
+      "version": "ECC 6.0 EHP8",
+      "client": "100",
+      "health_status": "ok",
+      "last_extracted_at": "2026-10-16T04:41:00Z",
+      "records": 400662,
+      "state": "analysed",
+      "latest_run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953"
+    },
+    {
+      "id": "a1b2c3d4-0002-4000-8000-000000000002",
+      "name": "S/4HANA sandbox",
+      "system_type": "s4hana_onprem",
+      "version": "S/4HANA 2023",
+      "client": "200",
+      "health_status": "ok",
+      "last_extracted_at": "2026-10-14T22:10:00Z",
+      "records": 212480,
+      "state": "extracted",
+      "latest_run_id": null
+    },
+    {
+      "id": "a1b2c3d4-0003-4000-8000-000000000003",
+      "name": "SuccessFactors",
+      "system_type": "successfactors",
+      "version": "SuccessFactors 2H 2026",
+      "client": null,
+      "health_status": "unknown",
+      "last_extracted_at": null,
+      "records": null,
+      "state": "not_extracted",
+      "latest_run_id": null
+    }
+  ],
+  "objects": [
+    {
+      "module": "material_master",
+      "label": "Material master"
+    },
+    {
+      "module": "business_partner",
+      "label": "Business partner"
+    },
+    {
+      "module": "vendor_master",
+      "label": "Vendor master (AP)"
+    },
+    {
+      "module": "customer_master",
+      "label": "Customer master (AR)"
+    },
+    {
+      "module": "gl_accounts",
+      "label": "G/L accounts"
+    },
+    {
+      "module": "asset_accounting",
+      "label": "Asset accounting"
+    },
+    {
+      "module": "controlling",
+      "label": "Controlling"
+    },
+    {
+      "module": "purchasing",
+      "label": "Purchasing"
+    },
+    {
+      "module": "sales_orders",
+      "label": "Sales orders"
+    },
+    {
+      "module": "plant_maintenance",
+      "label": "Plant maintenance"
+    },
+    {
+      "module": "production_planning",
+      "label": "Production planning"
+    },
+    {
+      "module": "project_system",
+      "label": "Project system"
+    },
+    {
+      "module": "quality_management",
+      "label": "Quality management"
+    },
+    {
+      "module": "hcm",
+      "label": "HCM"
+    },
+    {
+      "module": "sd_customer_master",
+      "label": "SD customer master"
+    }
+  ],
+  "cells": [
+    {
+      "system_id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "module": "material_master",
+      "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+      "score": 70,
+      "raw_score": 71.8,
+      "capped": true,
+      "cap_level": 70,
+      "breaches": [
+        "MM014",
+        "MM031"
+      ],
+      "verdict": "no-go",
+      "coverage": 0.9740000000000001,
+      "low_confidence": false,
+      "records_checked": 61816,
+      "rules_measured": 913,
+      "open_work": 25712,
+      "dimensions": {
+        "completeness": 62,
+        "accuracy": 72,
+        "consistency": 70,
+        "timeliness": 88,
+        "uniqueness": 90,
+        "validity": 65
+      }
+    },
+    {
+      "system_id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "module": "business_partner",
+      "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+      "score": 70,
+      "raw_score": 78.4,
+      "capped": true,
+      "cap_level": 70,
+      "breaches": [
+        "BP003",
+        "BP011",
+        "BP040",
+        "BP041",
+        "BP042",
+        "BP043",
+        "BP044",
+        "BP045"
+      ],
+      "verdict": "no-go",
+      "coverage": 0.981,
+      "low_confidence": false,
+      "records_checked": 48210,
+      "rules_measured": 420,
+      "open_work": null,
+      "dimensions": {
+        "completeness": 73,
+        "accuracy": 79,
+        "consistency": 77,
+        "timeliness": 87,
+        "uniqueness": 90,
+        "validity": 73
+      }
+    },
+    {
+      "system_id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "module": "vendor_master",
+      "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+      "score": 70,
+      "raw_score": 76.9,
+      "capped": true,
+      "cap_level": 70,
+      "breaches": [
+        "VM007",
+        "VM019",
+        "VM040",
+        "VM041",
+        "VM042",
+        "VM043"
+      ],
+      "verdict": "no-go",
+      "coverage": 0.963,
+      "low_confidence": false,
+      "records_checked": 12884,
+      "rules_measured": 366,
+      "open_work": null,
+      "dimensions": {
+        "completeness": 73,
+        "accuracy": 79,
+        "consistency": 74,
+        "timeliness": 84,
+        "uniqueness": 87,
+        "validity": 70
+      }
+    },
+    {
+      "system_id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "module": "customer_master",
+      "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+      "score": 70,
+      "raw_score": 74.2,
+      "capped": true,
+      "cap_level": 70,
+      "breaches": [
+        "CM005",
+        "CM012",
+        "CM040",
+        "CM041",
+        "CM042",
+        "CM043",
+        "CM044"
+      ],
+      "verdict": "no-go",
+      "coverage": 0.958,
+      "low_confidence": false,
+      "records_checked": 31507,
+      "rules_measured": 312,
+      "open_work": null,
+      "dimensions": {
+        "completeness": 69,
+        "accuracy": 75,
+        "consistency": 72,
+        "timeliness": 84,
+        "uniqueness": 84,
+        "validity": 70
+      }
+    },
+    {
+      "system_id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "module": "gl_accounts",
+      "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+      "score": 93.4,
+      "raw_score": 93.4,
+      "capped": false,
+      "cap_level": null,
+      "breaches": [],
+      "verdict": "go",
+      "coverage": 0.996,
+      "low_confidence": false,
+      "records_checked": 4216,
+      "rules_measured": 188,
+      "open_work": null,
+      "dimensions": {
+        "completeness": 92,
+        "accuracy": 94,
+        "consistency": 96,
+        "timeliness": 95,
+        "uniqueness": 96,
+        "validity": 86
+      }
+    },
+    {
+      "system_id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "module": "asset_accounting",
+      "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+      "score": 70,
+      "raw_score": 72.6,
+      "capped": true,
+      "cap_level": 70,
+      "breaches": [
+        "AA004",
+        "AA009",
+        "AA040",
+        "AA041",
+        "AA042"
+      ],
+      "verdict": "no-go",
+      "coverage": 0.9420000000000001,
+      "low_confidence": false,
+      "records_checked": 9873,
+      "rules_measured": 245,
+      "open_work": null,
+      "dimensions": {
+        "completeness": 68,
+        "accuracy": 74,
+        "consistency": 70,
+        "timeliness": 82,
+        "uniqueness": 82,
+        "validity": 67
+      }
+    },
+    {
+      "system_id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "module": "controlling",
+      "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+      "score": 70,
+      "raw_score": 79.1,
+      "capped": true,
+      "cap_level": 70,
+      "breaches": [
+        "CO002",
+        "CO015",
+        "CO040",
+        "CO041",
+        "CO042",
+        "CO043",
+        "CO044",
+        "CO045",
+        "CO046"
+      ],
+      "verdict": "no-go",
+      "coverage": 0.97,
+      "low_confidence": false,
+      "records_checked": 7402,
+      "rules_measured": 274,
+      "open_work": null,
+      "dimensions": {
+        "completeness": 74,
+        "accuracy": 80,
+        "consistency": 77,
+        "timeliness": 88,
+        "uniqueness": 90,
+        "validity": 74
+      }
+    },
+    {
+      "system_id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "module": "purchasing",
+      "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+      "score": 70,
+      "raw_score": 75.3,
+      "capped": true,
+      "cap_level": 70,
+      "breaches": [
+        "MM014",
+        "MM031"
+      ],
+      "verdict": "no-go",
+      "coverage": 0.9690000000000001,
+      "low_confidence": false,
+      "records_checked": 22640,
+      "rules_measured": 451,
+      "open_work": null,
+      "dimensions": {
+        "completeness": 72,
+        "accuracy": 78,
+        "consistency": 71,
+        "timeliness": 83,
+        "uniqueness": 85,
+        "validity": 68
+      }
+    },
+    {
+      "system_id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "module": "sales_orders",
+      "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+      "score": 70,
+      "raw_score": 81,
+      "capped": true,
+      "cap_level": 70,
+      "breaches": [
+        "SO006",
+        "SO021",
+        "SO040",
+        "SO041",
+        "SO042",
+        "SO043",
+        "SO044",
+        "SO045"
+      ],
+      "verdict": "no-go",
+      "coverage": 0.9840000000000001,
+      "low_confidence": false,
+      "records_checked": 118330,
+      "rules_measured": 598,
+      "open_work": null,
+      "dimensions": {
+        "completeness": 75,
+        "accuracy": 83,
+        "consistency": 78,
+        "timeliness": 91,
+        "uniqueness": 91,
+        "validity": 77
+      }
+    },
+    {
+      "system_id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "module": "plant_maintenance",
+      "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+      "score": 70,
+      "raw_score": 73.5,
+      "capped": true,
+      "cap_level": 70,
+      "breaches": [
+        "PM003",
+        "PM014",
+        "PM040",
+        "PM041",
+        "PM042",
+        "PM043",
+        "PM044"
+      ],
+      "verdict": "no-go",
+      "coverage": 0.642,
+      "low_confidence": true,
+      "records_checked": 15964,
+      "rules_measured": 233,
+      "open_work": null,
+      "dimensions": {
+        "completeness": 72,
+        "accuracy": 72,
+        "consistency": 74,
+        "timeliness": 78,
+        "uniqueness": 79,
+        "validity": 70
+      }
+    },
+    {
+      "system_id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "module": "production_planning",
+      "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+      "score": 70,
+      "raw_score": 77.7,
+      "capped": true,
+      "cap_level": 70,
+      "breaches": [
+        "PP008",
+        "PP017",
+        "PP040",
+        "PP041",
+        "PP042",
+        "PP043",
+        "PP044",
+        "PP045"
+      ],
+      "verdict": "no-go",
+      "coverage": 0.935,
+      "low_confidence": false,
+      "records_checked": 20118,
+      "rules_measured": 291,
+      "open_work": null,
+      "dimensions": {
+        "completeness": 73,
+        "accuracy": 79,
+        "consistency": 75,
+        "timeliness": 88,
+        "uniqueness": 87,
+        "validity": 72
+      }
+    },
+    {
+      "system_id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "module": "project_system",
+      "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+      "score": 85,
+      "raw_score": 88.6,
+      "capped": true,
+      "cap_level": 85,
+      "breaches": [
+        "PS004"
+      ],
+      "verdict": "at-risk",
+      "coverage": 0.99,
+      "low_confidence": false,
+      "records_checked": 3584,
+      "rules_measured": 160,
+      "open_work": null,
+      "dimensions": {
+        "completeness": 84,
+        "accuracy": 88,
+        "consistency": 88,
+        "timeliness": 98,
+        "uniqueness": 98,
+        "validity": 84
+      }
+    },
+    {
+      "system_id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "module": "quality_management",
+      "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+      "score": 91.2,
+      "raw_score": 91.2,
+      "capped": false,
+      "cap_level": null,
+      "breaches": [],
+      "verdict": "go",
+      "coverage": 0.9670000000000001,
+      "low_confidence": false,
+      "records_checked": 8771,
+      "rules_measured": 207,
+      "open_work": null,
+      "dimensions": {
+        "completeness": 89,
+        "accuracy": 93,
+        "consistency": 89,
+        "timeliness": 96,
+        "uniqueness": 99,
+        "validity": 84
+      }
+    },
+    {
+      "system_id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "module": "hcm",
+      "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+      "score": 70,
+      "raw_score": 80.4,
+      "capped": true,
+      "cap_level": 70,
+      "breaches": [
+        "HC002",
+        "HC011",
+        "HC040",
+        "HC041",
+        "HC042",
+        "HC043",
+        "HC044",
+        "HC045"
+      ],
+      "verdict": "no-go",
+      "coverage": 0.9179999999999999,
+      "low_confidence": false,
+      "records_checked": 5932,
+      "rules_measured": 346,
+      "open_work": null,
+      "dimensions": {
+        "completeness": 75,
+        "accuracy": 81,
+        "consistency": 79,
+        "timeliness": 90,
+        "uniqueness": 90,
+        "validity": 76
+      }
+    },
+    {
+      "system_id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "module": "sd_customer_master",
+      "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
+      "score": 78.2,
+      "raw_score": 78.2,
+      "capped": false,
+      "cap_level": null,
+      "breaches": [],
+      "verdict": "at-risk",
+      "coverage": 0.972,
+      "low_confidence": false,
+      "records_checked": 29415,
+      "rules_measured": 174,
+      "open_work": null,
+      "dimensions": {
+        "completeness": 77,
+        "accuracy": 77,
+        "consistency": 78,
+        "timeliness": 83,
+        "uniqueness": 84,
+        "validity": 74
+      }
+    }
+  ],
+  "sentence": {
+    "held_under_85": 11,
+    "objects": 15,
+    "critical_over_tolerance": 70,
+    "release_if_fixed": [
+      "MM014",
+      "MM031"
+    ],
+    "released": 2
+  },
+  "counts": {
+    "go": 2,
+    "at_risk": 2,
+    "no_go": 11
+  }
+}

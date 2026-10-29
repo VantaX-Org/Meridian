@@ -25,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _rls
 from api.routes.sync_trigger import module_label
-from api.services import work_analytics, worklist
+from api.services import undo, work_analytics, worklist
 from api.services.worklist import CLEANING_VALUE_MATCH
 from api.services.current_state import current_pairs, pairs_clause, run_ids
 from api.services.rbac import (Scope, _grants_allow, actions_for, current_user_id, current_user_label,
@@ -876,15 +876,22 @@ async def decide(
 ):
     """Apply decisions to failing records. Values go to the user's draft fix batch (a second person approves it);
     "not an issue" and "accept the risk" sign the issues off; undo takes a value back out of the draft."""
-    out = await _apply_decisions(body, request, db, tenant, role)
+    rec = undo.Recorder()
+    out = await _apply_decisions(body, request, db, tenant, role, rec)
+    out["action_id"] = await rec.save(db, tenant, request, "decide", {
+        "version_id": str(body.version_id) if body.version_id else None,
+        "items": [{"module": d.module, "record_key": d.record_key, "check_id": d.check_id, "action": d.action,
+                   "value": d.value, "assignee": d.assignee} for d in body.items]})
     await db.commit()
     work_analytics.forget(tenant.id)
     return out
 
 
-async def _apply_decisions(body: DecideBody, request: Request, db: AsyncSession, tenant: Tenant, role: str) -> dict:
+async def _apply_decisions(body: DecideBody, request: Request, db: AsyncSession, tenant: Tenant, role: str,
+                           rec: Optional[undo.Recorder] = None) -> dict:
     """decide's work without the commit: the caller commits once, so several runs' decisions (a fix sheet of the
-    current state) land together or not at all. Raises HTTPException before or while writing; the caller rolls back."""
+    current state) land together or not at all. Raises HTTPException before or while writing; the caller rolls back.
+    ``rec`` snapshots what each decision changes, so POST /actions/undo can put it back (api/services/undo.py)."""
     missing = sorted({a for a in {_NEEDS[d.action] for d in body.items} if not await _allowed(db, tenant, request, role, a)})
     if missing:
         raise HTTPException(status_code=403, detail=f"Your role cannot {', '.join(missing)}.")
@@ -918,6 +925,10 @@ async def _apply_decisions(body: DecideBody, request: Request, db: AsyncSession,
         if not rows:
             raise HTTPException(status_code=404, detail=f"{d.record_key} does not fail {d.check_id or 'any check'} in this run.")
         issue_ids = [r["issue_id"] for r in rows if r["issue_id"]]
+        if rec is not None and d.action != "comment":
+            rec.scope = scope
+            await rec.issue_rows(db, tenant, issue_ids)
+            await rec.item_rows(db, tenant, scope, d.module, d.record_key, d.check_id)
         if d.action in ("accept", "edit"):
             draft = draft or await _my_draft(db, tenant, request)
             for r in rows:
@@ -946,6 +957,8 @@ async def _apply_decisions(body: DecideBody, request: Request, db: AsyncSession,
                      "c": r["check_id"], "k": d.record_key, "g": r["grain"], "f": r["field"],
                      "cur": r["current_value"], "val": value, "src": source, "conf": conf})
                 touched.append((r["check_id"], d.record_key))
+                if rec is not None:
+                    rec.wrote(draft, r["check_id"], d.record_key)
                 done += 1
             open_ids = [r["issue_id"] for r in rows if r["issue_id"] and r["issue_status"] == "open"]
             if open_ids:
@@ -959,8 +972,12 @@ async def _apply_decisions(body: DecideBody, request: Request, db: AsyncSession,
                  WHERE b.id = i.batch_id AND b.status = 'draft' AND b.created_by IS NOT DISTINCT FROM CAST(:u AS uuid)
                    AND i.tenant_id = :t AND i.scope = :scope AND i.module = :m AND i.record_key = :k
                    AND (CAST(:c AS text) IS NULL OR i.check_id = :c)
-                RETURNING i.check_id"""), {**p, "u": uid})
-            gone = [c for (c,) in res.fetchall()]
+                RETURNING i.check_id, i.batch_id"""), {**p, "u": uid})
+            removed = res.fetchall()
+            gone = [c for c, _b in removed]
+            if rec is not None:
+                for c, b in removed:
+                    rec.deleted(str(b), c, d.record_key)
             back = [r["issue_id"] for r in rows if r["issue_id"] and r["issue_status"] in ("in_progress", "accepted")]
             if back:
                 await db.execute(text("UPDATE record_issues SET status = 'open', resolution = NULL, resolved_at = NULL, "
@@ -1001,6 +1018,15 @@ async def _apply_decisions(body: DecideBody, request: Request, db: AsyncSession,
     return {"updated": done, "draft_batch_id": draft}
 
 
+def _record_group(rec: undo.Recorder, draft: str, check_id: str, rows) -> None:
+    """Note the items a set-based group write created or replaced (``rows``: record key, issue id, the item's
+    previous row as json or None) so the write can be inverted."""
+    for key, _issue, before in rows:
+        if before:
+            rec.items_before[(str(draft), check_id, key)] = before
+        rec.wrote(draft, check_id, key)
+
+
 @router.post("/groups/{check_id}/accept-all")
 async def accept_all(
     check_id: str,
@@ -1036,6 +1062,8 @@ async def accept_all(
                                     WHERE i.tenant_id = fr.tenant_id AND i.scope = :scope AND i.check_id = fr.check_id
                                       AND i.record_key = fr.record_key AND b.status IN ('approved', 'exported'))
                  LIMIT :cap),
+             old AS (SELECT record_key, to_jsonb(r) AS j FROM remediation_items r
+                      WHERE r.batch_id = CAST(:b AS uuid) AND r.check_id = :c),
              ins AS (
                 INSERT INTO remediation_items (tenant_id, batch_id, issue_id, scope, module, check_id, record_key, grain,
                                                field, current_value, proposed_value, proposal_source, confidence)
@@ -1047,19 +1075,25 @@ async def accept_all(
                  -- a value the steward entered stays: accept-all only fills undecided records
                  WHERE remediation_items.proposal_source IS DISTINCT FROM 'steward'
                 RETURNING record_key, issue_id)
-        SELECT record_key, issue_id::text FROM ins"""), p)
+        SELECT ins.record_key, ins.issue_id::text, old.j FROM ins LEFT JOIN old ON old.record_key = ins.record_key"""), p)
     rows = res.fetchall()
-    open_ids = [i for _, i in rows if i]
+    rec = undo.Recorder()
+    rec.scope = scope
+    _record_group(rec, draft, check_id, rows)
+    open_ids = [i for _, i, _j in rows if i]
+    await rec.issue_rows(db, tenant, open_ids)
     if open_ids:
         await db.execute(text("UPDATE record_issues SET status = 'in_progress', updated_at = now(), "
                               "acknowledged_at = COALESCE(acknowledged_at, now()) "
                               "WHERE id = ANY(CAST(:ids AS uuid[])) AND status = 'open'"), {"ids": open_ids})
         await _event(db, tenant, request, open_ids, "status", "open", "in_progress", "Proposed values accepted for the group")
     if rows:
-        await db.run_sync(lambda s: worklist.refresh(s, str(tenant.id), scope, [(check_id, k) for k, _ in rows]))
+        await db.run_sync(lambda s: worklist.refresh(s, str(tenant.id), scope, [(check_id, k) for k, _i, _j in rows]))
+    action_id = await rec.save(db, tenant, request, "accept_all", {"check_id": check_id, "version_id": vid,
+                                                                   "records": len(rows)})
     await db.commit()
     work_analytics.forget(tenant.id)
-    return {"accepted": len(rows), "draft_batch_id": draft}
+    return {"accepted": len(rows), "draft_batch_id": draft, "action_id": action_id}
 
 
 @router.post("/build")
@@ -1098,7 +1132,9 @@ async def set_value(
     draft = await _my_draft(db, tenant, request)
     blank = "AND COALESCE(btrim(fr.field_values ->> (f.details->>'field_checked')), '') = ''" if body.only_blank else ""
     rows = (await db.execute(text(f"""
-        WITH ins AS (
+        WITH old AS (SELECT record_key, to_jsonb(r) AS j FROM remediation_items r
+                      WHERE r.batch_id = CAST(:b AS uuid) AND r.check_id = :c),
+        ins AS (
             INSERT INTO remediation_items (tenant_id, batch_id, issue_id, scope, module, check_id, record_key, grain,
                                            field, current_value, proposed_value, proposal_source)
             SELECT :t, CAST(:b AS uuid), ri.id, :scope, fr.module, fr.check_id, fr.record_key, fr.grain,
@@ -1114,20 +1150,26 @@ async def set_value(
                SET proposed_value = EXCLUDED.proposed_value, proposal_source = 'steward', confidence = NULL,
                    accepted = false, updated_at = now()
             RETURNING record_key, issue_id)
-        SELECT record_key, issue_id::text FROM ins"""),
+        SELECT ins.record_key, ins.issue_id::text, old.j FROM ins LEFT JOIN old ON old.record_key = ins.record_key"""),
         {"t": str(tenant.id), "b": draft, "scope": scope, "v": vid, "c": check_id, "val": body.value,
          "cap": MAX_ACCEPT})).fetchall()
-    open_ids = [i for _, i in rows if i]
+    rec = undo.Recorder()
+    rec.scope = scope
+    _record_group(rec, draft, check_id, rows)
+    open_ids = [i for _, i, _j in rows if i]
+    await rec.issue_rows(db, tenant, open_ids)
     if open_ids:
         await db.execute(text("UPDATE record_issues SET status = 'in_progress', updated_at = now(), "
                               "acknowledged_at = COALESCE(acknowledged_at, now()) "
                               "WHERE id = ANY(CAST(:ids AS uuid[])) AND status = 'open'"), {"ids": open_ids})
         await _event(db, tenant, request, open_ids, "status", "open", "in_progress", f"Value set for the group: {body.value}")
     if rows:
-        await db.run_sync(lambda s: worklist.refresh(s, str(tenant.id), scope, [(check_id, k) for k, _ in rows]))
+        await db.run_sync(lambda s: worklist.refresh(s, str(tenant.id), scope, [(check_id, k) for k, _i, _j in rows]))
+    action_id = await rec.save(db, tenant, request, "set_value", {"check_id": check_id, "version_id": vid,
+                                                                  "value": body.value, "records": len(rows)})
     await db.commit()
     work_analytics.forget(tenant.id)
-    return {"updated": len(rows), "draft_batch_id": draft}
+    return {"updated": len(rows), "draft_batch_id": draft, "action_id": action_id}
 
 
 # ── spreadsheet round trip ───────────────────────────────────────────────────
