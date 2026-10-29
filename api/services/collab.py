@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 import re
 from collections.abc import Iterable, Mapping
-from typing import Any
+from typing import Any, Optional
 
 from sqlalchemy import text
 

@@ -821,12 +821,25 @@ async def write_audit(
     db: AsyncSession, tenant_id: uuid.UUID, request: Request, action: str,
     entity_type: str, entity_id: str, before: dict | None, after: dict | None,
 ) -> None:
-    """Append a role/grant/access-request row to audit_log (caller commits)."""
+    """Append a role/grant/access-request row to audit_log (caller commits).
+
+    The actor is attributed only when they are a user row of the tenant; a token for a user that no longer exists
+    (or a service principal) still acts, and the row then names no user id instead of failing the request."""
+    me = current_user_id(request)
+    known = None
+    if me:
+        try:
+            uuid.UUID(str(me))
+        except (ValueError, TypeError, AttributeError):
+            known = None
+        else:
+            known = (await db.execute(text("SELECT 1 FROM users WHERE id = CAST(:u AS uuid) AND tenant_id = CAST(:t AS uuid)"),
+                                      {"u": str(me), "t": str(tenant_id)})).fetchone()
     await db.execute(
         text("INSERT INTO audit_log (tenant_id, actor_user_id, actor_email, action, entity_type, entity_id, "
              "method, path, status_code, before_json, after_json) "
              "VALUES (:t, :u, :e, :a, :et, :ei, :m, :p, 200, CAST(:b AS jsonb), CAST(:af AS jsonb))"),
-        {"t": str(tenant_id), "u": current_user_id(request), "e": current_user_label(), "a": action,
+        {"t": str(tenant_id), "u": str(me) if known else None, "e": current_user_label(), "a": action,
          "et": entity_type, "ei": entity_id, "m": request.method, "p": request.url.path,
          "b": json.dumps(before) if before is not None else None,
          "af": json.dumps(after) if after is not None else None},
