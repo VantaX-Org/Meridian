@@ -201,6 +201,15 @@ export interface WorkRow {
   /** The value waiting in the user's draft fix batch for this record (status proposed). */
   new_value?: string | null;
   resolution?: "false_positive" | "accepted_risk" | null;
+  /**
+   * Not in GET /work/records yet (a dash is shown without them): the draft batch the value waits in (or the approved or
+   * sent batch it went with), and for an exception the reason given, who signed it off and when.
+   */
+  batch_id?: string | null;
+  batch_name?: string | null;
+  resolution_note?: string | null;
+  resolved_by?: string | null;
+  resolved_at?: string | null;
 }
 
 export interface WorkPage {

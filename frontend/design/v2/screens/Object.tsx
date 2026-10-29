@@ -13,13 +13,14 @@ import { Dash, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../pa
 import { Ruler } from "../Ruler";
 import { dimsOf } from "../shell/MapPane";
 
-type TabKey = "rules" | "records" | "fixes" | "runs" | "readiness" | "lineage" | "glossary" | "golden";
+type TabKey = "rules" | "records" | "fixes" | "runs" | "readiness" | "processes" | "lineage" | "glossary" | "golden";
 const TABS: { key: TabKey; label: string; segment: string }[] = [
   { key: "rules", label: "Rules", segment: "" },
   { key: "records", label: "Records", segment: "/records" },
   { key: "fixes", label: "Fixes", segment: "/fixes" },
   { key: "runs", label: "Runs", segment: "/runs" },
   { key: "readiness", label: "Readiness", segment: "/readiness" },
+  { key: "processes", label: "Processes", segment: "/processes" },
   { key: "lineage", label: "Lineage", segment: "/lineage" },
   { key: "glossary", label: "Glossary", segment: "/glossary" },
   { key: "golden", label: "Golden records", segment: "/golden" },
@@ -336,6 +337,7 @@ const EMPTY: Record<Exclude<TabKey, "rules">, { text: (label: string) => string;
   fixes: { text: (l) => `No fix batches for ${l} yet. A batch starts when a steward accepts suggested values or imports a filled fix sheet.`, action: "Open Work", href: () => "/v2/work" },
   runs: { text: (l) => `${l} has no run history here yet. Each run adds a point once two runs have scored this object.`, action: "Open the runs", href: () => "/v2/runs" },
   readiness: { text: (l) => `Feature impact for ${l} is calculated from the rules that fail. It fills when the impact model has run for this object.`, action: "Open the capping rules", href: () => "" },
+  processes: { text: (l) => `No process step reads ${l} yet. Process readiness fills when a step of the process model reads the fields of the object.`, action: "Open the designer", href: () => "/insights/process/designer" },
   lineage: { text: (l) => `Lineage fills when a field map is loaded for ${l}: it shows where its fields come from and which rules read them.`, action: "Open Systems", href: () => "/systems" },
   glossary: { text: (l) => `No glossary terms are linked to ${l} yet. A data owner links a term to a field and it appears here.`, action: "Open the glossary", href: () => "/mdm/glossary" },
   golden: { text: (l) => `No golden records for ${l} yet. A match run creates them from the records that describe the same thing.`, action: "Open golden records", href: () => "/mdm/golden" },

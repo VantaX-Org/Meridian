@@ -248,6 +248,8 @@ async def apply_inverse(db: AsyncSession, tenant: Tenant, request: Request, row:
     scope, touched = inv.get("scope"), [tuple(x) for x in inv.get("touched") or []]
     if scope and touched:
         await db.run_sync(lambda s: worklist.refresh(s, t, scope, touched))
+    if issues and not (scope and touched):  # a change over several systems (a batch reassigned): recompute from the issues
+        await db.run_sync(lambda s: worklist.refresh_issues(s, t, [i["id"] for i in issues]))
     if batch:
         await db.run_sync(lambda s: worklist.refresh_batch(s, t, batch["id"]))
     await db.execute(text("UPDATE undo_actions SET undone_at = :at WHERE id = CAST(:id AS uuid) AND tenant_id = CAST(:t AS uuid)"),

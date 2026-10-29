@@ -4,20 +4,23 @@ import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
-import { personaForRole } from "@/lib/persona";
+import { personaForRole, pillSetFor } from "@/lib/persona";
 import { fixtureParam, useFixture, withFixture } from "@/lib/api/v2/fixture";
 
-export type OpenKind = "record" | "rule" | "run" | "system" | "feature" | "job";
+export type OpenKind = "record" | "rule" | "run" | "system" | "feature" | "job" | "batch" | "person" | "inbox" | "triage" | "golden" | "term" | "step";
 export interface OpenItem {
   kind: OpenKind;
   id: string;
 }
 
-const KINDS: readonly OpenKind[] = ["record", "rule", "run", "system", "feature", "job"];
+const KINDS: readonly OpenKind[] = ["record", "rule", "run", "system", "feature", "job", "batch", "person", "golden", "term", "step"];
+/** Panels that name no thing: `?open=inbox` and `?open=triage`. Their id is empty. */
+const PANELS: readonly OpenKind[] = ["inbox", "triage"];
 
 /** Parses `?open=<kind>:<id>`. The id may itself contain colons (a record id is module:key). Null for anything else. */
 export function parseOpen(value: string | null | undefined): OpenItem | null {
   if (!value) return null;
+  if ((PANELS as readonly string[]).includes(value)) return { kind: value as OpenKind, id: "" };
   const at = value.indexOf(":");
   if (at <= 0) return null;
   const kind = value.slice(0, at) as OpenKind;
@@ -25,7 +28,7 @@ export function parseOpen(value: string | null | undefined): OpenItem | null {
   return KINDS.includes(kind) && id ? { kind, id } : null;
 }
 
-export const formatOpen = (item: OpenItem): string => `${item.kind}:${item.id}`;
+export const formatOpen = (item: OpenItem): string => (item.id ? `${item.kind}:${item.id}` : item.kind);
 
 /** Returns a function that adds `fixture=1` to a v2 href when the page is in fixture mode. Other hrefs pass through. */
 export function useV2Href(): (href: string) => string {
@@ -55,15 +58,20 @@ export function useOpenItem(): { open: OpenItem | null; openItem: (item: OpenIte
   return { open, openItem, close, hrefFor };
 }
 
-export type V2Persona = "lead" | "steward" | "basis";
+/** The fixture user's id: the "me" row of People and the author the owner persona cannot approve for. */
+export const FIXTURE_ME = "u-me";
 
-export const PERSONA_LABEL: Record<V2Persona, string> = { lead: "Programme lead", steward: "Data steward", basis: "SAP Basis" };
+export type V2Persona = "lead" | "steward" | "basis" | "owner" | "process";
+
+export const PERSONA_LABEL: Record<V2Persona, string> = { lead: "Programme lead", steward: "Data steward", basis: "SAP Basis", owner: "Data owner", process: "Process analyst" };
 
 export interface V2Session {
   persona: V2Persona;
   label: string;
   name: string;
   email: string | null;
+  /** The signed-in user's id; four eyes compares it with who built a batch. */
+  id: string | null;
   can: (action: string) => boolean;
   fixture: boolean;
 }
@@ -76,12 +84,12 @@ export function useV2Session(): V2Session {
   return useMemo(() => {
     if (fixture) {
       const asked = fixtureParam("persona");
-      const persona: V2Persona = asked === "steward" || asked === "basis" ? asked : "lead";
-      return { persona, label: PERSONA_LABEL[persona], name: "Demo user", email: null, can: () => true, fixture };
+      const persona: V2Persona = asked === "steward" || asked === "basis" || asked === "owner" || asked === "process" ? asked : "lead";
+      return { persona, label: PERSONA_LABEL[persona], name: "Demo user", email: null, id: FIXTURE_ME, can: () => true, fixture };
     }
     const p = personaForRole(role);
-    const persona: V2Persona = p === "steward" ? "steward" : p === "basis" ? "basis" : "lead";
-    return { persona, label: PERSONA_LABEL[persona], name: user?.name ?? "", email: user?.email ?? null, can, fixture };
+    const persona: V2Persona = pillSetFor(role) === "owner" ? "owner" : p === "steward" ? "steward" : p === "basis" ? "basis" : p === "process" ? "process" : "lead";
+    return { persona, label: PERSONA_LABEL[persona], name: user?.name ?? "", email: user?.email ?? null, id: user?.id ?? null, can, fixture };
   }, [fixture, role, can, user]);
 }
 

@@ -1,4 +1,6 @@
 import workJson from "./work.json";
+import type { Batch, BatchDetail, BatchEvent, BatchItem } from "@/lib/api/remediation";
+import type { BatchRowApi, SendResult } from "../batches";
 import rulesJson from "./rules.json";
 import type { Decision, WorkGroup, WorkIssue, WorkRecordDetail, WorkSummary } from "@/lib/api/work";
 import type { RuleRow, WorkPage, WorkRow, WorkStatus } from "../types";
@@ -16,7 +18,7 @@ type Params = Record<string, string | number | boolean | undefined>;
 
 const MODULE = "material_master";
 const VERSION = (workJson as unknown as WorkPage).items[0].version_id ?? "d3229ded-0708-4967-9dfb-1b7f4fada953";
-const HEADLINE = { to_fix: 25712, proposed_flag: 3418, waiting: 612, exceptions: 48 };
+const HEADLINE = { to_fix: 25712, proposed_flag: 3418, waiting: 612, exceptions: 48, approved: 180, sent: 96 };
 const ME = "me";
 
 interface RuleMeta {
@@ -66,6 +68,11 @@ const RULES: Record<string, RuleMeta> = Object.fromEntries(
 );
 const RULE_IDS = ruleRows.map((r) => r.check_id);
 
+const SIGN_OFF: { by: string; note: [string, string] }[] = [
+  { by: "T. Mokoena", note: ["Legacy material, blocked for use; the value is correct for the old plant", "Replaced by the new plant in wave 2; the risk is accepted until then"] },
+  { by: "R. Govender", note: ["Service item: no unit of measure applies", "Migration cut-over is first; fix after go-live"] },
+  { by: "P. Khumalo", note: ["Sample material, never procured", "Supplier will correct the master data in Q1"] },
+];
 const NAMES = ["Hex bolt M8 zinc", "Hydraulic hose 3/8 in", "Gasket flange DN50", "Relay 24 V DC 2 CO", "Grease EP2 18 kg", "Circuit breaker 3P 32A", "Pump seal kit KSB 80", "Ball bearing 6204-2RS", "Cable gland M20", "Filter cartridge 10 micron"];
 const PLANTS = ["1000", "2000", "3000", "4000"];
 
@@ -160,10 +167,45 @@ function buildRows(): Row[] {
         suggested_value: m.suggestion,
         new_value: value,
         value_at_risk: Math.round(1800 * Math.pow(0.95, i)),
+        ...(i < 14 ? { batch_id: "B-241", batch_name: "Unit of measure and material type" } : i < 21 ? { batch_id: "B-238", batch_name: "Purchasing and MRP data" } : { batch_id: "B-244", batch_name: "Fixes by Demo user" }),
       }),
       base_status: "proposed",
     });
   }
+  // Approved, and sent to SAP: the rows of the two batches that have moved on.
+  const later: [WorkStatus, string, string, number][] = [["approved", "B-236", "Material groups", 8], ["sent", "B-229", "Valuation classes", 6]];
+  later.forEach(([status, batch, batchName, count], g) => {
+    for (let i = 0; i < count; i++) {
+      const rule = RULE_IDS[(i * 2 + g) % RULE_IDS.length];
+      const m = RULES[rule];
+      const matnr = pad(2100 + g * 400 + i * 41);
+      out.push({
+        ...withDerived({
+          module: MODULE,
+          version_id: VERSION,
+          record_key: plantLevel(rule) ? `MATNR=${matnr}|WERKS=${PLANTS[i % 4]}` : `MATNR=${matnr}`,
+          name: NAMES[(i * 4 + g) % NAMES.length],
+          issues: 1,
+          severity: m.severity,
+          checks: [rule],
+          proposed: 1,
+          status,
+          due_at: null,
+          assigned_to: null,
+          assignee_email: null,
+          top_message: m.message,
+          top_field: m.field,
+          first_seen_at: "2026-08-30T05:11:00Z",
+          suggested_value: m.suggestion,
+          new_value: m.suggestion ?? m.values[0]?.value ?? "1",
+          value_at_risk: Math.round(900 * Math.pow(0.93, i)),
+          batch_id: batch,
+          batch_name: batchName,
+        }),
+        base_status: status,
+      });
+    }
+  });
   // Exceptions: signed off as not an issue or accepted as a risk.
   for (let i = 0; i < 12; i++) {
     const rule = RULE_IDS[(i * 5 + 2) % RULE_IDS.length];
@@ -188,6 +230,9 @@ function buildRows(): Row[] {
         first_seen_at: "2026-07-03T05:11:00Z",
         suggested_value: null,
         resolution: i % 3 === 0 ? "accepted_risk" : "false_positive",
+        resolution_note: SIGN_OFF[i % SIGN_OFF.length].note[i % 3 === 0 ? 1 : 0],
+        resolved_by: SIGN_OFF[i % SIGN_OFF.length].by,
+        resolved_at: `2026-10-${String(2 + (i % 12)).padStart(2, "0")}T0${(i % 8) + 1}:20:00Z`,
         value_at_risk: Math.round(1200 * Math.pow(0.9, i)),
       }),
       base_status: "not_an_issue",
@@ -202,12 +247,17 @@ interface Override {
   assigned_to?: string | null;
   assignee_email?: string | null;
   resolution?: "false_positive" | "accepted_risk" | null;
+  resolution_note?: string | null;
+  resolved_by?: string | null;
+  resolved_at?: string | null;
 }
 interface Delta {
   to_fix: number;
   proposed_flag: number;
   waiting: number;
   exceptions: number;
+  approved: number;
+  sent: number;
 }
 interface Done {
   id: string;
@@ -215,14 +265,57 @@ interface Done {
   before: Map<string, Override | null>;
   delta: Delta;
   groupAccepted?: string;
+  /** The batch a batch action changed, as it was. */
+  batchBefore?: FxBatch;
   undone: boolean;
 }
 
+/** A fix batch of the fixture. Events are written per record, as the API writes them. */
+export interface FxBatch {
+  id: string;
+  name: string;
+  status: "draft" | "approved" | "exported";
+  created_by: string;
+  created_by_label: string;
+  steward_label: string | null;
+  created_at: string;
+  approved_by: string | null;
+  approved_by_label: string | null;
+  approved_at: string | null;
+  exported_at: string | null;
+  items: number;
+  value_at_risk: number;
+  due_at: string | null;
+  returned: { by: string; note: string; at: string } | null;
+  events: { action: string; user_label: string; at: string; note: string | null }[];
+}
+
+function buildBatches(): FxBatch[] {
+  const b = (x: Omit<FxBatch, "approved_by" | "approved_by_label" | "approved_at" | "exported_at" | "returned" | "events"> & Partial<FxBatch>): FxBatch => ({
+    approved_by: null,
+    approved_by_label: null,
+    approved_at: null,
+    exported_at: null,
+    returned: null,
+    events: [],
+    ...x,
+  });
+  const created = (name: string, at: string) => ({ action: "created", user_label: name, at, note: null });
+  return [
+    b({ id: "B-241", name: "Unit of measure and material type", status: "draft", created_by: "u-rg", created_by_label: "R. Govender", steward_label: "A. Naidoo", created_at: "2026-10-14T08:10:00Z", items: 328, value_at_risk: 412600, due_at: "2026-10-23T00:00:00Z", events: [created("R. Govender", "2026-10-14T08:10:00Z"), { action: "proposed", user_label: "A. Naidoo", at: "2026-10-14T15:42:00Z", note: null }] }),
+    b({ id: "B-238", name: "Purchasing and MRP data", status: "draft", created_by: "u-an", created_by_label: "A. Naidoo", steward_label: "A. Naidoo", created_at: "2026-10-13T10:30:00Z", items: 272, value_at_risk: 233400, due_at: "2026-10-28T00:00:00Z", events: [created("A. Naidoo", "2026-10-13T10:30:00Z")] }),
+    b({ id: "B-244", name: "Fixes by Demo user", status: "draft", created_by: "u-me", created_by_label: "Demo user", steward_label: "Demo user", created_at: "2026-10-16T08:02:00Z", items: 12, value_at_risk: 9800, due_at: null, events: [created("Demo user", "2026-10-16T08:02:00Z")] }),
+    b({ id: "B-236", name: "Material groups", status: "approved", created_by: "u-an", created_by_label: "A. Naidoo", steward_label: "A. Naidoo", created_at: "2026-10-09T09:00:00Z", approved_by: "u-tm", approved_by_label: "T. Mokoena", approved_at: "2026-10-15T11:05:00Z", items: 180, value_at_risk: 121300, due_at: "2026-10-30T00:00:00Z", events: [created("A. Naidoo", "2026-10-09T09:00:00Z"), { action: "approved", user_label: "T. Mokoena", at: "2026-10-15T11:05:00Z", note: null }] }),
+    b({ id: "B-229", name: "Valuation classes", status: "exported", created_by: "u-rg", created_by_label: "R. Govender", steward_label: "R. Govender", created_at: "2026-10-02T09:00:00Z", approved_by: "u-tm", approved_by_label: "T. Mokoena", approved_at: "2026-10-08T10:00:00Z", exported_at: "2026-10-09T13:20:00Z", items: 96, value_at_risk: 64200, due_at: "2026-10-09T00:00:00Z", events: [created("R. Govender", "2026-10-02T09:00:00Z"), { action: "approved", user_label: "T. Mokoena", at: "2026-10-08T10:00:00Z", note: null }, { action: "exported", user_label: "R. Govender", at: "2026-10-09T13:20:00Z", note: "cockpit_xlsx" }] }),
+  ];
+}
+
 const rowKey = (module: string, key: string) => `${module}:${key}`;
-const zero = (): Delta => ({ to_fix: 0, proposed_flag: 0, waiting: 0, exceptions: 0 });
+const zero = (): Delta => ({ to_fix: 0, proposed_flag: 0, waiting: 0, exceptions: 0, approved: 0, sent: 0 });
 
 class WorkFixture {
   rows: Row[] = buildRows();
+  batches: FxBatch[] = buildBatches();
   overrides = new Map<string, Override>();
   actions = new Map<string, Done>();
   accepted = new Set<string>();
@@ -233,6 +326,7 @@ class WorkFixture {
 
   reset(): void {
     this.rows = buildRows();
+    this.batches = buildBatches();
     this.overrides.clear();
     this.actions.clear();
     this.accepted.clear();
@@ -252,7 +346,8 @@ class WorkFixture {
   }
 
   open(): number {
-    return HEADLINE.to_fix + HEADLINE.waiting + this.delta.to_fix + this.delta.waiting;
+    const c = this.counts();
+    return c.to_fix + c.waiting + c.approved + c.sent;
   }
   counts(): Delta {
     return {
@@ -260,6 +355,8 @@ class WorkFixture {
       proposed_flag: HEADLINE.proposed_flag + this.delta.proposed_flag,
       waiting: HEADLINE.waiting + this.delta.waiting,
       exceptions: HEADLINE.exceptions + this.delta.exceptions,
+      approved: HEADLINE.approved + this.delta.approved,
+      sent: HEADLINE.sent + this.delta.sent,
     };
   }
 }
@@ -271,13 +368,14 @@ function stripUndefined<T extends object>(o: T): Partial<T> {
 const state = new WorkFixture();
 export const resetWorkFixture = (): void => state.reset();
 /** The records the open number has moved since the page loaded: the landscape and the shell counts follow it. */
-export const workOpenDelta = (): number => state.delta.to_fix + state.delta.waiting;
+export const workOpenDelta = (): number => state.delta.to_fix + state.delta.waiting + state.delta.approved + state.delta.sent;
 
 function fail(status: number, detail: string): never {
   throw Object.assign(new Error(detail), { status, response: { status, data: { detail } } });
 }
 
-const inSet = (r: Row, cat: keyof Delta): boolean => (cat === "to_fix" ? r.status === "to_fix" : cat === "proposed_flag" ? r.status === "to_fix" && !!r.suggested_value : cat === "waiting" ? r.status === "proposed" : r.status === "not_an_issue");
+const inSet = (r: Row, cat: keyof Delta): boolean =>
+  cat === "to_fix" ? r.status === "to_fix" : cat === "proposed_flag" ? r.status === "to_fix" && !!r.suggested_value : cat === "waiting" ? r.status === "proposed" : cat === "approved" ? r.status === "approved" : cat === "sent" ? r.status === "sent" : r.status === "not_an_issue";
 
 function deltaOf(before: Row, after: Row): Delta {
   const d = zero();
@@ -286,7 +384,7 @@ function deltaOf(before: Row, after: Row): Delta {
   });
   return d;
 }
-const add = (a: Delta, b: Delta, sign = 1): Delta => ({ to_fix: a.to_fix + sign * b.to_fix, proposed_flag: a.proposed_flag + sign * b.proposed_flag, waiting: a.waiting + sign * b.waiting, exceptions: a.exceptions + sign * b.exceptions });
+const add = (a: Delta, b: Delta, sign = 1): Delta => ({ to_fix: a.to_fix + sign * b.to_fix, proposed_flag: a.proposed_flag + sign * b.proposed_flag, waiting: a.waiting + sign * b.waiting, exceptions: a.exceptions + sign * b.exceptions, approved: a.approved + sign * b.approved, sent: a.sent + sign * b.sent });
 
 // Reads -----------------------------------------------------------------------------------------------------------
 
@@ -297,10 +395,12 @@ function matches(r: Row, p: Params): boolean {
   if (sev === "blocking" ? !(r.severity === "critical" || r.severity === "high") : sev && r.severity !== sev) return false;
   const status = p.status ? String(p.status) : "to_fix";
   if (status === "open") {
-    if (r.status !== "to_fix" && r.status !== "proposed") return false;
+    if (r.status !== "to_fix" && r.status !== "proposed" && r.status !== "approved" && r.status !== "sent") return false;
   } else if (status !== "all" && r.status !== status) return false;
+  if (p.batch_id && r.batch_id !== p.batch_id) return false;
   if (p.assigned === "me" && r.assigned_to !== ME) return false;
   if (p.assigned === "unassigned" && r.assigned_to) return false;
+  if (p.assigned && p.assigned !== "me" && p.assigned !== "unassigned" && r.assigned_to !== p.assigned) return false;
   if (p.proposed === true || p.proposed === "true") {
     if (!r.suggested_value) return false;
   }
@@ -331,9 +431,14 @@ function sorted(rows: Row[], sort: string): Row[] {
   return [...rows].sort(cmp);
 }
 
-const FILTER_KEYS = ["check_id", "severity", "assigned", "due", "q"] as const;
+const FILTER_KEYS = ["check_id", "severity", "assigned", "due", "q", "batch_id"] as const;
+
+/** What the first page of a person's open work stands for: the people of the fixture hold more than the sample lists. */
+const ASSIGNED_OPEN: Record<string, number> = { "u-an": 214, me: 38 };
 
 function totalFor(p: Params, matched: number): number {
+  const only = !p.check_id && !p.severity && !p.due && !p.q && !p.batch_id && !p.module;
+  if (p.assigned && ASSIGNED_OPEN[String(p.assigned)] && only && (!p.status || p.status === "open")) return Math.max(matched, ASSIGNED_OPEN[String(p.assigned)]);
   if (FILTER_KEYS.some((k) => p[k] !== undefined && p[k] !== "")) {
     if (p.check_id && !p.severity && !p.assigned && !p.due && !p.q) {
       const g = RULES[String(p.check_id)];
@@ -347,8 +452,10 @@ function totalFor(p: Params, matched: number): number {
   if (p.module && p.module !== MODULE) return 0;
   if (status === "to_fix") return p.proposed === true || p.proposed === "true" ? c.proposed_flag : c.to_fix;
   if (status === "proposed") return c.waiting;
+  if (status === "approved") return c.approved;
+  if (status === "sent") return c.sent;
   if (status === "not_an_issue") return c.exceptions;
-  if (status === "open") return c.to_fix + c.waiting;
+  if (status === "open") return c.to_fix + c.waiting + c.approved + c.sent;
   return matched;
 }
 
@@ -381,13 +488,13 @@ export function workSummary(p: Params): WorkSummary {
   const obj = {
     module: MODULE,
     version_id: VERSION,
-    records: z(c.to_fix + c.waiting + c.exceptions),
-    open: z(c.to_fix + c.waiting),
-    issues: z(c.to_fix + c.waiting + 1840),
+    records: z(c.to_fix + c.waiting + c.approved + c.sent + c.exceptions),
+    open: z(c.to_fix + c.waiting + c.approved + c.sent),
+    issues: z(c.to_fix + c.waiting + c.approved + c.sent + 1840),
     critical: z(6544),
     proposed: z(c.proposed_flag),
     overdue: z(1940),
-    statuses: on ? { to_fix: c.to_fix, proposed: c.waiting, not_an_issue: c.exceptions } : {},
+    statuses: on ? { to_fix: c.to_fix, proposed: c.waiting, approved: c.approved, sent: c.sent, not_an_issue: c.exceptions } : {},
   };
   const objects = on ? [obj] : [];
   return {
@@ -493,7 +600,7 @@ export function workRecord(module: string, key: string): WorkRecordDetail {
       reopened_count: 0,
       due_at: row.due_at ?? null,
       sla_state: null,
-      decision: primary && row.status === "proposed" ? { batch_id: "fx-batch", batch_status: "draft", batch_name: "Fixes by Demo user", value: row.new_value ?? null, source: "steward", still_failing: false, at: null } : null,
+      decision: primary && row.status === "proposed" ? { batch_id: row.batch_id ?? "fx-batch", batch_status: "draft", batch_name: row.batch_name ?? "Fixes by Demo user", value: row.new_value ?? null, source: "steward", still_failing: false, at: null } : null,
     };
   });
   return {
@@ -565,6 +672,8 @@ export function views(route: string): { route: string; views: SavedView[] } {
 
 function applyOne(d: Decision, before: Map<string, Override | null>, delta: Delta): number {
   const base = state.row(d.module, d.record_key);
+  // The fixture keeps a sample of each batch's records; reassigning the rest of a batch has nothing to change here.
+  if (!base && d.action === "assign") return 0;
   if (!base) fail(404, `${d.record_key} does not fail ${d.check_id ?? "any check"} in this run.`);
   const k = rowKey(d.module, d.record_key);
   const cur = state.now(base);
@@ -582,13 +691,19 @@ function applyOne(d: Decision, before: Map<string, Override | null>, delta: Delt
     if (!d.note || !d.note.trim()) fail(400, "Say why: a sign-off needs a reason.");
     next.status = "not_an_issue";
     next.resolution = d.action === "not_an_issue" ? "false_positive" : "accepted_risk";
+    next.resolution_note = d.note;
+    next.resolved_by = "Demo user";
+    next.resolved_at = new Date().toISOString();
   } else if (d.action === "assign") {
     next.assigned_to = d.assignee === "" ? null : (d.assignee ?? ME);
     next.assignee_email = d.assignee === "" ? null : "demo.user@example.com";
   } else if (d.action === "undo") {
-    next.status = base.base_status;
+    next.status = base.base_status === "not_an_issue" ? "to_fix" : base.base_status;
     next.new_value = null;
     next.resolution = null;
+    next.resolution_note = null;
+    next.resolved_by = null;
+    next.resolved_at = null;
   }
   state.overrides.set(k, next);
   const after = state.now(base);
@@ -671,26 +786,154 @@ export function undoFixture(body: { action_id: string }): UndoResult {
   restore(a.before);
   state.delta = add(state.delta, a.delta, -1);
   if (a.groupAccepted) state.accepted.delete(a.groupAccepted);
+  if (a.batchBefore) state.batches = state.batches.map((b) => (b.id === a.batchBefore?.id ? (a.batchBefore as FxBatch) : b));
   a.undone = true;
   return { action_id: a.id, kind: a.kind, undone_at: "2026-10-16T09:01:00Z", restored: { issues: a.before.size, items_restored: 0, items_removed: a.before.size, batch: false } };
 }
 
-export function batchFixture(kind: "approve" | "send-back"): { id: string; status: string; action_id: string } {
-  const before = new Map<string, Override | null>();
-  const delta = zero();
+function findBatch(id: string): FxBatch {
+  const b = state.batches.find((x) => x.id === id);
+  if (!b) fail(404, "Batch not found");
+  return b;
+}
+
+const ME_ID = "u-me";
+const ME_LABEL = "Demo user";
+
+function moveRows(batch: string, from: WorkStatus, to: WorkStatus, before: Map<string, Override | null>): void {
   for (const r of state.rows) {
     const cur = state.now(r);
-    if (cur.status !== "proposed") continue;
+    if (cur.batch_id !== batch || cur.status !== from) continue;
     const k = rowKey(r.module, r.record_key);
     before.set(k, state.overrides.get(k) ?? null);
-    state.overrides.set(k, { ...(state.overrides.get(k) ?? {}), status: kind === "approve" ? "approved" : "to_fix", new_value: kind === "approve" ? cur.new_value : null });
-    delta.waiting -= 1;
-    if (kind === "send-back") delta.to_fix += 1;
+    state.overrides.set(k, { ...(state.overrides.get(k) ?? {}), status: to });
+  }
+}
+
+/** Approve a draft batch, or send one back (a draft stays a draft and is marked returned; an approved one goes back to draft). */
+export function batchFixture(kind: "approve" | "send-back", id: string, note?: string): { id: string; status: string; action_id: string } {
+  const b = findBatch(id);
+  const snapshot: FxBatch = { ...b, returned: b.returned ? { ...b.returned } : null, events: [...b.events] };
+  const before = new Map<string, Override | null>();
+  const delta = zero();
+  if (kind === "approve") {
+    if (b.status !== "draft") fail(409, `Batch is already ${b.status}.`);
+    if (b.created_by === ME_ID) fail(403, "The batch creator cannot approve it.");
+    b.status = "approved";
+    b.approved_by = ME_ID;
+    b.approved_by_label = ME_LABEL;
+    b.approved_at = "2026-10-16T09:00:00Z";
+    b.events = [...b.events, { action: "approved", user_label: ME_LABEL, at: b.approved_at, note: null }];
+    moveRows(id, "proposed", "approved", before);
+    delta.waiting -= b.items;
+    delta.approved += b.items;
+  } else {
+    if (b.status === "exported") fail(409, "Batch is already exported; it can no longer be sent back.");
+    if (b.created_by === ME_ID) fail(403, "The batch creator cannot send it back.");
+    if (!note || !note.trim()) fail(422, "Say what the author has to change.");
+    const wasApproved = b.status === "approved";
+    b.status = "draft";
+    b.approved_by = null;
+    b.approved_by_label = null;
+    b.approved_at = null;
+    b.returned = { by: ME_LABEL, note: note.trim(), at: "2026-10-16T09:00:00Z" };
+    b.events = [...b.events, { action: "sent_back", user_label: ME_LABEL, at: b.returned.at, note: note.trim() }];
+    if (wasApproved) {
+      moveRows(id, "approved", "proposed", before);
+      delta.approved -= b.items;
+      delta.waiting += b.items;
+    }
   }
   state.delta = add(state.delta, delta);
-  const id = `fx-action-${++state.seq}`;
-  state.actions.set(id, { id, kind: kind === "approve" ? "approve_batch" : "send_back_batch", before, delta, undone: false });
-  return { id: "fx-batch", status: kind === "approve" ? "approved" : "draft", action_id: id };
+  const action = `fx-action-${++state.seq}`;
+  state.actions.set(action, { id: action, kind: kind === "approve" ? "approve_batch" : "send_back_batch", before, delta, batchBefore: snapshot, undone: false });
+  return { id, status: b.status, action_id: action };
+}
+
+/** Send an approved batch to SAP: the export. The batch creator is refused, as the API refuses. */
+export function sendBatchFixture(id: string): SendResult {
+  const b = findBatch(id);
+  if (b.status === "draft") fail(409, "Approve the batch before exporting it.");
+  if (b.created_by === ME_ID) fail(403, "The batch creator cannot export it.");
+  const delta = zero();
+  if (b.status === "approved") {
+    b.status = "exported";
+    b.exported_at = "2026-10-16T09:05:00Z";
+    b.events = [...b.events, { action: "exported", user_label: ME_LABEL, at: b.exported_at, note: "cockpit_xlsx" }];
+    moveRows(id, "approved", "sent", new Map());
+    delta.approved -= b.items;
+    delta.sent += b.items;
+    state.delta = add(state.delta, delta);
+  }
+  return { filename: `remediation-cockpit_xlsx-${id}.xlsx`, sha256: "9f2c4e1a7b3d58e0c6a14f92d7b05e38a1c4d6f90b2e7a35c8d1f4b60a93e27c", records: b.items, job_id: null };
+}
+
+export function batchesFixture(): { items: BatchRowApi[] } {
+  const items: BatchRowApi[] = state.batches.map((b) => ({
+    id: b.id,
+    name: b.name,
+    status: b.status,
+    filter: { source: "worklist", ...(b.returned ? { returned: b.returned } : {}) } as unknown as Batch["filter"],
+    created_by: b.created_by,
+    created_by_label: b.created_by_label,
+    created_at: b.created_at,
+    approved_by: b.approved_by,
+    approved_by_label: b.approved_by_label,
+    approved_at: b.approved_at,
+    exported_at: b.exported_at,
+    items: b.items,
+    with_proposal: b.items,
+    auto_approvable: 0,
+    fixed: 0,
+    still_failing: 0,
+    value_at_risk: b.value_at_risk,
+    due_at: b.due_at,
+    steward_label: b.steward_label,
+  }));
+  return { items };
+}
+
+export function batchFixtureDetail(id: string): BatchDetail {
+  const b = findBatch(id);
+  const mine = state.rows.map((r) => state.now(r)).filter((r) => r.batch_id === id);
+  const items: BatchItem[] = [];
+  for (let i = 0; i < Math.min(b.items, 60); i++) {
+    const row = mine[i];
+    const rule = row?.checks[0] ?? RULE_IDS[(i * 3) % RULE_IDS.length];
+    const m = RULES[rule];
+    items.push({
+      id: `${id}-item-${i + 1}`,
+      batch_id: id,
+      issue_id: `${id}-issue-${i + 1}`,
+      scope: "ecc-prd",
+      module: MODULE,
+      check_id: rule,
+      record_key: row?.record_key ?? `MATNR=${pad(3000 + i * 29)}`,
+      grain: null,
+      field: m.field,
+      current_value: row?.current_value ?? currentFor(rule, `${id}${i}`),
+      proposed_value: row?.new_value ?? m.suggestion,
+      proposal_source: "steward",
+      confidence: null,
+      accepted: b.status !== "draft",
+      recon_status: null,
+      recon_version: null,
+      updated_at: b.created_at,
+      auto_approvable: false,
+    });
+  }
+  const batch = batchesFixture().items.find((x) => x.id === id) as BatchRowApi;
+  return { batch: batch as Batch, items };
+}
+
+export function batchEventsFixture(id: string): { items: (Omit<BatchEvent, "action"> & { action: string })[] } {
+  const b = findBatch(id);
+  const items: (Omit<BatchEvent, "action"> & { action: string })[] = [];
+  for (const e of b.events) {
+    if (e.action === "sent_back") items.push({ item_id: null as unknown as string, action: e.action, from_value: null, to_value: e.note, user_label: e.user_label, version_id: null, created_at: e.at });
+    else for (let i = 0; i < b.items; i++) items.push({ item_id: `${id}-item-${i + 1}`, action: e.action, from_value: null, to_value: e.note, user_label: e.user_label, version_id: null, created_at: e.at });
+  }
+  return { items };
 }
 
 export function putViewFixture(body: { route: string; name: string; filters: Record<string, string>; columns: string[] | null; density: "compact" | "comfortable" | null }): SavedView {

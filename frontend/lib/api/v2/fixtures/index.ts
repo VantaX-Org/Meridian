@@ -7,7 +7,9 @@ import type { CommandGroup, CommandResult, Landscape, Receipt, RuleRow, RunList,
 import { moduleSlug, systemSlug } from "@/lib/v2/score";
 import { NONE, runsFixtureResponse } from "./runs";
 import { objectFixture } from "./object";
+import { mdmFixture, mdmFixtureWrite } from "./mdm";
 import * as wf from "./work-fixture";
+import * as ap from "./approvals";
 
 /**
  * Fixture answers for the step 0 contract, built from the approved prototype's numbers: 3 systems (ECC production
@@ -105,9 +107,18 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
     const group = /^\/work\/groups\/([^/]+)\/(accept-all|set-value)$/.exec(path);
     if (method === "POST" && group) return group[2] === "accept-all" ? wf.acceptAllFixture(decodeURIComponent(group[1])) : wf.setValueFixture(decodeURIComponent(group[1]), body as { value: string });
     if (method === "POST" && path === "/actions/undo") return wf.undoFixture(body as { action_id: string });
-    const batch = /^\/remediation\/batches\/[^/]+\/(approve|send-back)$/.exec(path);
-    if (method === "POST" && batch) return wf.batchFixture(batch[1] as "approve" | "send-back");
+    const batch = /^\/remediation\/batches\/([^/]+)\/(approve|send-back)$/.exec(path);
+    if (method === "POST" && batch) return wf.batchFixture(batch[2] as "approve" | "send-back", decodeURIComponent(batch[1]), (body as { note?: string } | undefined)?.note);
+    const send = /^\/remediation\/batches\/([^/]+)\/export$/.exec(path);
+    if (method === "POST" && send) return wf.sendBatchFixture(decodeURIComponent(send[1]));
+    const read = /^\/notifications\/([^/]+)\/read$/.exec(path);
+    if (method === "PUT" && path === "/notifications/read-all") return ap.readAllFixture();
+    if (method === "PUT" && read) return ap.readFixture(decodeURIComponent(read[1]));
+    if (method === "PUT" && path === "/triage/sla-policies") return ap.putPolicyFixture(body as never);
+    if (method === "PATCH" && path === "/me/preferences") return ap.patchPreferencesFixture(body as never);
     if (method === "PUT" && path === "/views") return wf.putViewFixture(body as never);
+    const mdm = mdmFixtureWrite(method, path, body);
+    if (mdm !== undefined) return mdm;
     void params;
     throw new FixtureNotFound(`${method} ${path}`);
   })();
@@ -116,7 +127,10 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
 
 export const fixtureExport = wf.exportFixture;
 export const fixtureImport = wf.importFixture;
-export const resetWorkFixture = wf.resetWorkFixture;
+export const resetWorkFixture = (): void => {
+  wf.resetWorkFixture();
+  ap.resetApprovalsFixture();
+};
 
 /** The answer to one v2 read in fixture mode. Throws a 404-shaped error for a path the contract does not have. */
 export function fixtureResponse<T>(path: string, params: Params): T {
@@ -141,7 +155,19 @@ export function fixtureResponse<T>(path: string, params: Params): T {
     const links = /^\/records\/([^/]+)\/(.+)\/links$/.exec(path);
     if (links) return wf.recordLinks(decodeURIComponent(links[1]), decodeURIComponent(links[2]));
     if (path === "/views") return wf.views(String(params.route ?? "work"));
-    if (path === "/shell/counts") return { fix: work.total + wf.workOpenDelta(), inbox: 7 };
+    if (path === "/shell/counts") return { fix: work.total + wf.workOpenDelta(), inbox: ap.unreadFixture().count };
+    if (path === "/remediation/batches") return wf.batchesFixture();
+    const events = /^\/remediation\/batches\/([^/]+)\/events$/.exec(path);
+    if (events) return wf.batchEventsFixture(decodeURIComponent(events[1]));
+    const batchOne = /^\/remediation\/batches\/([^/]+)$/.exec(path);
+    if (batchOne) return wf.batchFixtureDetail(decodeURIComponent(batchOne[1]));
+    if (path === "/writeback/approvals") return { approvals: [], live_enabled: false };
+    if (path === "/people") return ap.peopleFixture();
+    if (path === "/notifications") return ap.notificationsFixture(Number(params.limit ?? 50));
+    if (path === "/notifications/unread-count") return ap.unreadFixture();
+    if (path === "/triage/sla-policies") return ap.policiesFixture();
+    if (path === "/me/preferences") return ap.preferencesFixture();
+    if (path === "/users/assignable") return ap.assignableFixture();
     if (path === "/findings") {
       const rows = Number(params.rows ?? 0);
       if (rows > 0) return { rules: syntheticRules(Math.min(rows, 200000)) };
@@ -149,6 +175,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
     }
     const more = objectFixture(path, params);
     if (more !== undefined) return more;
+    const mdm = mdmFixture(path, params);
+    if (mdm !== undefined) return mdm;
     throw new FixtureNotFound(path);
   })();
   return out as T;

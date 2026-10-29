@@ -60,6 +60,74 @@ async def _batch(db: AsyncSession, tenant: Tenant, batch_id: uuid.UUID) -> dict:
     return _row(row)
 
 
+_SEV_NAME = {0: "critical", 1: "high", 2: "medium", 3: "low"}  # work_records.sev_rank
+
+_EXTRAS_SQL = """
+    WITH recs AS (SELECT DISTINCT i.batch_id, i.scope, i.module, i.record_key FROM remediation_items i
+                   WHERE i.tenant_id = CAST(:t AS uuid) AND i.batch_id = ANY(CAST(:ids AS uuid[]))),
+         latest AS (SELECT DISTINCT ON (r.batch_id, r.scope, r.module, r.record_key)
+                           r.batch_id, w.version_id, w.checks, w.sev_rank
+                      FROM recs r
+                      JOIN work_records w ON w.tenant_id = CAST(:t AS uuid) AND w.scope = r.scope AND w.module = r.module
+                                         AND w.record_key = r.record_key
+                      JOIN analysis_versions v ON v.id = w.version_id
+                     ORDER BY r.batch_id, r.scope, r.module, r.record_key, v.run_at DESC, w.version_id)
+    SELECT b.id::text AS id,
+           (SELECT count(*) FROM recs r WHERE r.batch_id = b.id) AS records,
+           (SELECT min(l.sev_rank) FROM latest l WHERE l.batch_id = b.id) AS top_rank,
+           (SELECT array_agg(DISTINCT r.module) FROM recs r WHERE r.batch_id = b.id) AS modules,
+           (SELECT sum(x.per) FROM latest l CROSS JOIN LATERAL (
+                SELECT sum(f.cost_at_risk / f.affected_count) AS per
+                  FROM unnest(l.checks) c
+                  JOIN findings f ON f.tenant_id = CAST(:t AS uuid) AND f.version_id = l.version_id AND f.check_id = c
+                 WHERE f.cost_at_risk IS NOT NULL AND f.affected_count > 0) x
+             WHERE l.batch_id = b.id) AS value_at_risk,
+           COALESCE(NULLIF(u.name, ''), b.created_by_label) AS steward_label
+      FROM remediation_batches b LEFT JOIN users u ON u.id = b.created_by AND u.tenant_id = b.tenant_id
+     WHERE b.tenant_id = CAST(:t AS uuid) AND b.id = ANY(CAST(:ids AS uuid[]))"""
+
+
+async def _batch_extras(db: AsyncSession, tenant: Tenant, batches: list[dict]) -> dict[str, dict]:
+    """Per batch (one read for all of them, no query per batch): ``records`` (distinct records with an item),
+    ``value_at_risk`` (each record's attribution as the work API sums it: every failing check's cost at risk shared over
+    the records it fails on, read from the record's latest work row; None when no check is priced), ``steward_label``
+    (the creator's display name) and ``due_at`` (the batch's creation time plus the SLA policy of its highest severity,
+    in business hours when the policy says so; None without a policy or a severity)."""
+    if not batches:
+        return {}
+    from datetime import datetime
+
+    from api.services import triage
+    t = str(tenant.id)
+    rows = {r["id"]: r for r in (await db.execute(text(_EXTRAS_SQL), {"t": t, "ids": [str(b["id"]) for b in batches]})).mappings().all()}
+    pols = (await db.execute(text("SELECT severity, module, resolve_minutes, business_hours, at_risk_pct, ack_minutes FROM sla_policies "
+                                  "WHERE tenant_id = CAST(:t AS uuid)"), {"t": t})).mappings().all()
+    cal = None
+    if any(p["business_hours"] for p in pols):
+        st = (await db.execute(text("SELECT timezone, work_days, work_start, work_end, holidays FROM triage_settings "
+                                    "WHERE tenant_id = CAST(:t AS uuid)"), {"t": t})).first()
+        cal = triage.Calendar(st.timezone, tuple(st.work_days), st.work_start, st.work_end, frozenset(st.holidays)) if st \
+            else triage.Calendar()
+    out: dict[str, dict] = {}
+    for b in batches:
+        r = rows.get(str(b["id"]))
+        sev = _SEV_NAME.get(r["top_rank"]) if r and r["top_rank"] is not None else None
+        mods = set(r["modules"] or []) if r else set()
+        fits = [p for p in pols if p["severity"] == sev and (p["module"] is None or p["module"] in mods)]
+        pol = min(fits, key=lambda p: p["resolve_minutes"]) if fits else None
+        created = b.get("created_at")
+        if isinstance(created, str):
+            created = datetime.fromisoformat(created)
+        due = triage.deadlines(created, dict(pol), cal)["due_at"] if pol and created else None
+        out[str(b["id"])] = {
+            "records": int(r["records"]) if r else 0,
+            "value_at_risk": round(float(r["value_at_risk"]), 2) if r and r["value_at_risk"] is not None else None,
+            "due_at": due.isoformat() if due else None,
+            "steward_label": r["steward_label"] if r else b.get("created_by_label"),
+        }
+    return out
+
+
 async def _items(db: AsyncSession, batch_id) -> list[dict]:
     rows = await db.execute(text("SELECT * FROM remediation_items WHERE batch_id = :id "
                                  "ORDER BY module, check_id, record_key"), {"id": batch_id})
@@ -219,7 +287,9 @@ async def list_batches(
           FROM remediation_batches b LEFT JOIN remediation_items i ON i.batch_id = b.id
          WHERE b.tenant_id = :tid GROUP BY b.id ORDER BY b.created_at DESC
     """), {"tid": str(tenant.id)})
-    return {"items": [_row(r) for r in rows.fetchall()]}
+    items = [_row(r) for r in rows.fetchall()]
+    extras = await _batch_extras(db, tenant, items)
+    return {"items": [{**b, **extras[b["id"]]} for b in items]}
 
 
 @router.get("/monitor")
@@ -241,7 +311,8 @@ async def get_batch(
     tenant: Tenant = Depends(get_tenant),
     _perm: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
-    return {"batch": await _batch(db, tenant, batch_id), "items": await _items(db, batch_id)}
+    b = await _batch(db, tenant, batch_id)
+    return {"batch": {**b, **(await _batch_extras(db, tenant, [b]))[b["id"]]}, "items": await _items(db, batch_id)}
 
 
 @router.get("/batches/{batch_id}/events")
@@ -347,6 +418,55 @@ async def approve_batch(
     await db.commit()
     attention.invalidate(tenant.id)
     return {"id": str(batch_id), "status": "approved", "approved_by": current_user_label(), "action_id": action_id}
+
+
+class Reassign(BaseModel):
+    assignee_id: uuid.UUID
+
+
+@router.post("/batches/{batch_id}/reassign")
+async def reassign_batch(
+    batch_id: uuid.UUID,
+    body: Reassign,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _perm: str = Depends(require_permission("assign", scope=scope_from_path)),
+):
+    """Give every record in the batch to one person: what /work/decide's assign does to a record (its open issues get the
+    assignee, an assign event each, the work rows are recomputed), for all the batch's records at once. Undoable through
+    /actions/undo. ``reassigned`` counts the records that had an open issue to hand over."""
+    from api.routes.work import _event
+
+    b = await _batch(db, tenant, batch_id)
+    t = str(tenant.id)
+    if not (await db.execute(text("SELECT 1 FROM users WHERE id = :u AND tenant_id = CAST(:t AS uuid)"),
+                             {"u": body.assignee_id, "t": t})).scalar():
+        raise HTTPException(status_code=404, detail="Assignee not found.")
+    rows = (await db.execute(text("""
+        SELECT ri.id::text AS id, ri.scope, ri.module, ri.record_key
+          FROM record_issues ri
+         WHERE ri.tenant_id = CAST(:t AS uuid) AND ri.status IN ('open', 'in_progress')
+           AND (ri.scope, ri.module, ri.record_key) IN (SELECT i.scope, i.module, i.record_key FROM remediation_items i
+                                                          WHERE i.batch_id = :b AND i.tenant_id = CAST(:t AS uuid))"""),
+                            {"t": t, "b": batch_id})).mappings().all()
+    rec = undo.Recorder()  # no single scope: undo recomputes the work rows from the issues themselves
+    ids = [r["id"] for r in rows]
+    await rec.issue_rows(db, tenant, ids)
+    if ids:
+        await db.execute(text("UPDATE record_issues SET assigned_to = :a, assigned_at = now(), updated_at = now() "
+                              "WHERE tenant_id = CAST(:t AS uuid) AND id = ANY(CAST(:ids AS uuid[]))"),
+                         {"a": body.assignee_id, "t": t, "ids": ids})
+        await _event(db, tenant, request, ids, "assign", None, str(body.assignee_id), f"Batch {b['name']} reassigned")
+        await db.run_sync(lambda s: worklist.refresh_issues(s, t, ids))
+    action_id = await rec.save(db, tenant, request, "reassign_batch",
+                               {"batch_id": str(batch_id), "name": b["name"], "assignee_id": str(body.assignee_id)})
+    await db.commit()
+    attention.invalidate(tenant.id)
+    from api.services import work_analytics
+    work_analytics.forget(tenant.id)
+    return {"batch_id": str(batch_id), "reassigned": len({(r["scope"], r["module"], r["record_key"]) for r in rows}),
+            "action_id": action_id}
 
 
 class SendBack(BaseModel):

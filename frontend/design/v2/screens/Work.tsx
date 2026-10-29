@@ -12,6 +12,7 @@ import { refreshV2, useLandscape, useStatus } from "@/lib/v2/queries";
 import { int } from "@/lib/v2/score";
 import {
   CHIPS,
+  STATUS_LABEL,
   SORT_LABEL,
   SORTS_LOADED_ROWS,
   chipDef,
@@ -40,22 +41,30 @@ import { MenuButton, type MenuEntry } from "../Menu";
 import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, PageTitle, V2Link } from "../parts";
 import { usePhone } from "@/lib/v2/hooks";
 import { useToast } from "../Toast";
+import "../approvals.css";
+import { BatchButtons, day, money, useBatchControls } from "./batch-parts";
+import { ResultFrame } from "../inspector/shared";
+import type { Outcome } from "../inspector/shared";
+import { BATCH_STATUS_LABEL, batchLabel, groupByBatch, sentLine, type BatchRow } from "@/lib/v2/batches";
+import { useBatches } from "@/lib/v2/approvals-queries";
 import { BulkActions, CurrentValue, DecisionCell, NewValueCell, OwnerCell, PossibleValuesCell, PromptDialog, keyValue, rowKeyOf, type LedgerHandlers } from "./work-parts";
 
 // The rows of the grid: records, and in "By rule" the rule headings and a "show more" line under each.
 type Item =
   | { kind: "row"; row: WorkRow }
   | { kind: "group"; group: WorkGroup; open: boolean }
-  | { kind: "more"; check: string; shown: number; total: number };
+  | { kind: "more"; check: string; shown: number; total: number }
+  | { kind: "batch"; batch: BatchRow };
 
-const itemId = (it: Item): string => (it.kind === "row" ? recordItemId(it.row) : it.kind === "group" ? `g:${it.group.check_id}` : `m:${it.check}`);
+const itemId = (it: Item): string => (it.kind === "row" ? recordItemId(it.row) : it.kind === "group" ? `g:${it.group.check_id}` : it.kind === "batch" ? `b:${it.batch.id}` : `m:${it.check}`);
 const GROUP_ROWS = 25;
 const COLUMNS_ID = "work-ledger";
 const GROUPABLE: ReadonlySet<ChipId | null> = new Set<ChipId | null>(["tofix", "proposed", null]);
 const OPEN_STATUSES = new Set(["to_fix", "proposed", "approved", "sent"]);
 
 /** After a change, which rows still belong to the list the chip asks for. */
-function belongs(row: WorkRow, chip: ChipId | null): boolean {
+function belongs(row: WorkRow, chip: ChipId | null, batch: string | null = null): boolean {
+  if (batch && row.batch_id !== undefined && row.batch_id !== batch) return false;
   if (chip === null) return OPEN_STATUSES.has(row.status);
   const c = chipDef(chip);
   return row.status === c.status;
@@ -106,6 +115,9 @@ export function WorkCanvas() {
   const summary = summaryQ.data;
   const counts = useMemo(() => new Map(CHIPS.map((c) => [c.id, c.count(summary, state.module)] as const)), [summary, state.module]);
 
+  const batchesQ = useBatches(state.chip === "approvals" || Boolean(state.batch));
+  const [sent, setSent] = useState<Outcome | null>(null);
+  const controls = useBatchControls(setSent);
   const wc = useWorkCan();
   const can = useMemo(() => ({ apply: wc.apply, approve: wc.approve, assign: wc.assign }), [wc.apply, wc.approve, wc.assign]);
   const grouped = state.group && GROUPABLE.has(state.chip);
@@ -128,13 +140,33 @@ export function WorkCanvas() {
     (rows: readonly WorkRow[]) =>
       rows
         .map((r) => patched(r, patches))
-        .filter((r) => belongs(r, state.chip))
+        .filter((r) => belongs(r, state.chip, state.batch))
         .sort(compare),
-    [patches, state.chip, compare],
+    [patches, state.chip, state.batch, compare],
   );
 
   const flatRows = useMemo(() => (grouped ? [] : visible((rowsQ.data?.pages ?? []).flatMap((p) => p.items))), [grouped, rowsQ.data, visible]);
   const items = useMemo<Item[]>(() => {
+    if (!grouped && state.chip === "approvals") {
+      // Records in draft batches, under their batch; then the batches that have moved on (approved, sent), as headings.
+      const drafts = batchesQ.rows.filter((b) => b.status === "draft");
+      const { groups: under, loose } = groupByBatch(drafts, flatRows);
+      const out: Item[] = [];
+      for (const g of under) {
+        out.push({ kind: "batch", batch: g.batch });
+        g.rows.forEach((row) => out.push({ kind: "row", row }));
+      }
+      loose.forEach((row) => out.push({ kind: "row", row }));
+      if (!state.rule && !state.module) {
+        batchesQ.rows.filter((b) => b.status === "approved").forEach((batch) => out.push({ kind: "batch", batch }));
+        batchesQ.rows.filter((b) => b.status === "exported").sort((a, b) => (b.sentAt ?? "").localeCompare(a.sentAt ?? "")).slice(0, 5).forEach((batch) => out.push({ kind: "batch", batch }));
+      }
+      return out;
+    }
+    if (!grouped && state.batch) {
+      const one = batchesQ.rows.find((b) => b.id === state.batch);
+      return [...(one ? [{ kind: "batch", batch: one } as Item] : []), ...flatRows.map((row) => ({ kind: "row", row }) as Item)];
+    }
     if (!grouped) return flatRows.map((row) => ({ kind: "row", row }));
     const out: Item[] = [];
     groups.forEach((g) => {
@@ -148,7 +180,7 @@ export function WorkCanvas() {
       if (page && total > rows.length) out.push({ kind: "more", check: g.check_id, shown: rows.length, total });
     });
     return out;
-  }, [grouped, flatRows, groups, openChecks, groupRowsQ, visible]);
+  }, [grouped, flatRows, groups, openChecks, groupRowsQ, visible, state.chip, state.batch, state.rule, state.module, batchesQ.rows]);
   const recordRows = useMemo(() => items.flatMap((it) => (it.kind === "row" ? [it.row] : [])), [items]);
 
   // Refs the keyboard and the cells read when an event fires.
@@ -326,7 +358,7 @@ export function WorkCanvas() {
 
   const columns = useMemo<GridColumn<Item>[]>(() => {
     const r = <T,>(f: (row: WorkRow) => T) => (it: Item): T | null => (it.kind === "row" ? f(it.row) : null);
-    return [
+    const base: GridColumn<Item>[] = [
       { id: "record", header: headers.first, width: 170, pin: true, locked: true, title: `${headers.first}. Leading zeros are kept. Pinned.`, cell: r((x) => <Mono>{keyValue(x, 0) ?? x.record_key}</Mono>) },
       { id: "second", header: headers.second, width: 70, title: `${headers.second}, the second part of the record key. A dash when the record has none.`, cell: r((x) => (keyValue(x, 1) ? <Mono>{keyValue(x, 1)}</Mono> : <Dash why="This record has no second key part" />)) },
       { id: "name", header: "Name", width: 170, title: "The record's name.", cell: r((x) => (x.name ? <span title={x.name}>{x.name}</span> : <Dash />)) },
@@ -356,7 +388,43 @@ export function WorkCanvas() {
       { id: "owner", header: "Owner", width: 70, title: "The steward the row is assigned to, by initials.", cell: r((x) => <OwnerCell row={x} h={h} />) },
       { id: "value", header: "Value at risk", width: 120, numeric: true, title: "Cost-model estimate of what this failing value costs.", cell: r((x) => (x.value_at_risk == null ? <Dash /> : <>{int(x.value_at_risk)}</>)) },
     ];
-  }, [headers, h, onChoose, now]);
+    if (state.chip === "exceptions") {
+      // Signed off: what the decision was, why, by whom and when; stewards can reopen it.
+      const keep = new Set(["record", "second", "name", "rule", "severity", "fdesc", "sapfield", "problem", "current"]);
+      const value = base.find((c) => c.id === "value");
+      return [
+        ...base.filter((c) => keep.has(c.id)),
+        { id: "resolution", header: "Resolution", width: 120, locked: true, title: "Not an issue, or the risk was accepted.", cell: r((x) => (x.resolution === "accepted_risk" ? "Accept risk" : x.resolution === "false_positive" ? "Not an issue" : <Dash why="The API has not said how this record was signed off" />)) },
+        { id: "reason", header: "Reason", width: 280, locked: true, title: "The reason given when the record was signed off.", cell: r((x) => (x.resolution_note ? <span title={x.resolution_note}>{x.resolution_note}</span> : <Dash why="The API does not send the reason yet" />)) },
+        { id: "by", header: "Signed off by", width: 130, locked: true, title: "Who signed the record off.", cell: r((x) => x.resolved_by ?? <Dash why="The API does not send who signed off yet" />) },
+        { id: "when", header: "When", width: 100, locked: true, title: "The date of the sign-off.", cell: r((x) => (x.resolved_at ? <span>{day(x.resolved_at)}</span> : <Dash why="The API does not send when yet" />)) },
+        ...(value ? [value] : []),
+        {
+          id: "reopen",
+          header: "Reopen",
+          width: 96,
+          locked: true,
+          title: "Puts the record back to rows to fix. Needs the apply permission.",
+          cell: r((x) =>
+            can.apply ? (
+              <button type="button" className="m2-btn m2-sm m2-reopen" aria-label={`Reopen ${keyValue(x, 0) ?? x.record_key}`} onClick={() => void actions.decide([x], "reopen")}>
+                Reopen
+              </button>
+            ) : (
+              <Dash why="Reopening needs the apply permission" />
+            ),
+          ),
+        },
+      ];
+    }
+    if (state.chip === null) {
+      // All open states: say where each record is.
+      const at = base.findIndex((c) => c.id === "severity");
+      const status: GridColumn<Item> = { id: "status", header: "Status", width: 150, locked: true, title: "Where the record is: to fix, waiting for approval, approved, or sent to SAP.", cell: r((x) => STATUS_LABEL[x.status] ?? x.status) };
+      return [...base.slice(0, at + 1), status, ...base.slice(at + 1)];
+    }
+    return base;
+  }, [headers, h, onChoose, now, state.chip, can.apply, actions]);
 
   // Views menu -------------------------------------------------------------------------------------------------
   const goView = (id: string | null) => {
@@ -379,6 +447,7 @@ export function WorkCanvas() {
   if (state.rule) tags.push({ key: "rule", label: `Rule ${state.rule}`, clear: () => go({ rule: null }) });
   if (state.severity) tags.push({ key: "severity", label: `Severity ${state.severity}`, clear: () => go({ severity: null }) });
   if (state.assigned) tags.push({ key: "assigned", label: state.assigned === "me" ? "Assigned to me" : state.assigned === "unassigned" ? "Unassigned" : "Assigned", clear: () => go({ assigned: null }) });
+  if (state.batch) tags.push({ key: "batch", label: `Batch ${batchLabel(state.batch)}`, clear: () => go({ batch: null }) });
   if (state.due) tags.push({ key: "due", label: state.due === "overdue" ? "Overdue" : "Due soon", clear: () => go({ due: null }) });
 
   const shown = grouped ? recordRows.length : flatRows.length;
@@ -445,6 +514,40 @@ export function WorkCanvas() {
               )
             ) : done ? (
               <span className="m2-meta">Suggested values accepted</span>
+            ) : null}
+          </span>
+        </div>
+      );
+    }
+    if (it.kind === "batch") {
+      const b = it.batch;
+      return (
+        <div className="m2-bh" data-testid={`batch-row-${b.id}`}>
+          <span className="m2-bh-id">
+            <V2Link href={`${pathname}?${withState(search, state, { open: `batch:${b.id}` })}`} aria-label={`Open batch ${b.label}`}>
+              <Mono>{b.label}</Mono>
+            </V2Link>
+          </span>
+          <span className="m2-bh-name" title={b.name}>
+            {b.name}
+          </span>
+          {b.status === "exported" ? (
+            <span className="m2-bh-sent">{sentLine(b, day)}</span>
+          ) : (
+            <>
+              <span className="m2-bh-meta">{b.status === "approved" ? `Approved${b.approvedBy ? ` by ${b.approvedBy}` : ""}` : (b.owner ?? "No owner")}</span>
+              <span className="m2-bh-meta">{`${int(b.records)} ${b.records === 1 ? "record" : "records"}`}</span>
+              <span className="m2-bh-meta">{b.valueAtRisk == null ? "no value at risk" : <>{money(b.valueAtRisk)} at risk</>}</span>
+              <span className="m2-bh-meta">{b.dueAt ? `due ${day(b.dueAt)}` : "no due date"}</span>
+            </>
+          )}
+          <span className="m2-sr">{BATCH_STATUS_LABEL[b.status]}</span>
+          <span className="m2-bh-x">
+            <BatchButtons b={b} c={controls} />
+            {b.status !== "draft" ? (
+              <V2Link href={`${pathname}?${withState(search, { ...state, chip: null, batch: b.id, group: false })}`} className="m2-btn m2-sm">
+                Show records
+              </V2Link>
             ) : null}
           </span>
         </div>
@@ -592,6 +695,20 @@ export function WorkCanvas() {
           </div>
         ) : null
       ) : null}
+      {state.batch && flatRows.some((r) => r.batch_id === undefined) ? (
+        <div className="m2-banner" role="status" data-testid="batch-unfiltered">
+          This list is not narrowed to the batch yet: the API does not send the batch of a row. The batch inspector lists its records.
+        </div>
+      ) : null}
+      {sent ? (
+        <ResultFrame outcome={sent}>
+          <span>
+            <button type="button" className="m2-btn m2-sm" onClick={() => setSent(null)}>
+              Dismiss
+            </button>
+          </span>
+        </ResultFrame>
+      ) : null}
       <div className="m2-lcount" aria-live="polite">
         <span>{countText}</span>
         {loadedNote ? <span className="m2-meta m2-only-wide">{loadedNote}</span> : null}
@@ -602,7 +719,7 @@ export function WorkCanvas() {
         ) : null}
       </div>
       {phone ? (
-        <LedgerList items={items} loading={loading} failed={failed} empty={empty} onRetry={() => void (grouped ? groupsQ.refetch() : rowsQ.refetch())} headers={headers} openId={open?.kind === "record" ? open.id : null} onOpen={(row) => openItem({ kind: "record", id: recordItemId(row) })} spanRow={spanRow} />
+        <LedgerList items={items} loading={loading} failed={failed} empty={empty} onRetry={() => void (grouped ? groupsQ.refetch() : rowsQ.refetch())} exceptions={state.chip === "exceptions"} headers={headers} openId={open?.kind === "record" ? open.id : null} onOpen={(row) => openItem({ kind: "record", id: recordItemId(row) })} spanRow={spanRow} />
       ) : (
         <Grid<Item>
           id={COLUMNS_ID}
@@ -620,7 +737,7 @@ export function WorkCanvas() {
           loading={loading}
           error={failed ? <ErrorFrame onRetry={() => void (grouped ? groupsQ.refetch() : rowsQ.refetch())}>The rows to fix could not be read.</ErrorFrame> : undefined}
           emptyFrame={empty}
-          onOpen={(it) => (it.kind === "row" ? openItem({ kind: "record", id: recordItemId(it.row) }) : it.kind === "group" ? toggleGroup(it.group.check_id) : undefined)}
+          onOpen={(it) => (it.kind === "row" ? openItem({ kind: "record", id: recordItemId(it.row) }) : it.kind === "group" ? toggleGroup(it.group.check_id) : it.kind === "batch" ? openItem({ kind: "batch", id: it.batch.id }) : undefined)}
           openRowId={open?.kind === "record" ? open.id : null}
           onActiveChange={(it) => {
             active.current = it?.kind === "row" ? it.row : undefined;
@@ -638,6 +755,7 @@ export function WorkCanvas() {
           )}
         />
       )}
+      {controls.dialog}
       {reason ? (
         <PromptDialog
           title={reason.kind === "not_an_issue" ? "Mark as not an issue" : "Accept the risk"}
@@ -684,6 +802,7 @@ function LedgerList({
   empty,
   onRetry,
   headers,
+  exceptions,
   openId,
   onOpen,
   spanRow,
@@ -694,6 +813,7 @@ function LedgerList({
   empty: React.ReactNode;
   onRetry: () => void;
   headers: { first: string; second: string };
+  exceptions: boolean;
   openId: string | null;
   onOpen: (row: WorkRow) => void;
   spanRow: (it: Item) => React.ReactNode;
@@ -717,7 +837,7 @@ function LedgerList({
               </span>
               <span className="m2-meta">{r.value_at_risk == null ? "—" : int(r.value_at_risk)}</span>
               <span className="m2-c m2-clip">
-                {[r.name, second ? `${headers.second.toLowerCase()} ${second}` : null, `${r.top_message ?? ""}${r.current_value ? `: ${r.current_value}` : ""}${r.suggested_value ? ` to ${r.suggested_value}` : ""}`].filter(Boolean).map((part, n) => (n === 0 ? <span key={n}>{part}</span> : <span key={n}><Dot />{part}</span>))}
+                {[r.name, second ? `${headers.second.toLowerCase()} ${second}` : null, `${r.top_message ?? ""}${r.current_value ? `: ${r.current_value}` : ""}${r.suggested_value ? ` to ${r.suggested_value}` : ""}`, exceptions ? `${r.resolution === "accepted_risk" ? "Accept risk" : "Not an issue"}${r.resolution_note ? `: ${r.resolution_note}` : ""}${r.resolved_by ? `, ${r.resolved_by}` : ""}` : null].filter(Boolean).map((part, n) => (n === 0 ? <span key={n}>{part}</span> : <span key={n}><Dot />{part}</span>))}
               </span>
             </button>
           </div>

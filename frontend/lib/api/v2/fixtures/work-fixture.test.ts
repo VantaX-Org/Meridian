@@ -14,7 +14,7 @@ beforeEach(() => resetWorkFixture());
 describe("the work fixture", () => {
   it("has the prototype's headline numbers: 25,712 to fix, 3,418 with a suggested value, 612 waiting, 48 exceptions", () => {
     const s = summary();
-    expect(s.objects[0].statuses).toEqual({ to_fix: 25712, proposed: 612, not_an_issue: 48 });
+    expect(s.objects[0].statuses).toEqual({ to_fix: 25712, proposed: 612, approved: 180, sent: 96, not_an_issue: 48 });
     expect(s.objects[0].proposed).toBe(3418);
     expect(records().total).toBe(25712);
     expect(records({ status: "to_fix", proposed: true }).total).toBe(3418);

@@ -1,0 +1,80 @@
+/*
+ * Meridian 2, approvals: batch rows in the ledger, the batch and person inspectors, the People canvas, the inbox panel
+ * and the triage settings. Scoped under .m2-root, reads --m2-* tokens only; no raw colour, no motion.
+ */
+
+/* The batch header row of the ledger: one line, the batch first. */
+.m2-root .m2-bh { display: flex; align-items: center; gap: var(--m2-s3); height: 100%; min-width: 0; font-weight: 400; }
+.m2-root .m2-bh-id { font-weight: 500; }
+.m2-root .m2-bh-id a, .m2-root .m2-bh-id button { color: var(--m2-fg); font-weight: 500; text-decoration: underline; text-underline-offset: 2px; background: transparent; border: 0; padding: 0; }
+.m2-root .m2-bh-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.m2-root .m2-bh-meta { color: var(--m2-ink-2); white-space: nowrap; flex: none; }
+.m2-root .m2-bh-sp { flex: 1; min-width: 0; }
+.m2-root .m2-bh-x { display: inline-flex; gap: var(--m2-s2); flex: none; align-items: center; }
+.m2-root .m2-lgroup .m2-bh { flex-wrap: wrap; height: auto; padding: var(--m2-s2) 0; row-gap: var(--m2-s1); }
+.m2-root .m2-bh-sent { color: var(--m2-ink-2); }
+.m2-root .m2-bsec { margin-top: var(--m2-s4); }
+.m2-root .m2-bsec > h2 { margin: 0 0 var(--m2-s1); }
+.m2-root .m2-blist { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--m2-line); }
+.m2-root .m2-blist > li { border-bottom: 1px solid var(--m2-rule); min-height: 36px; display: flex; align-items: center; padding: var(--m2-s1) 0; }
+.m2-root .m2-blist .m2-bh { height: auto; flex-wrap: wrap; row-gap: var(--m2-s1); width: 100%; }
+
+/* An exception's reason and who signed it off */
+.m2-root .m2-reopen { height: 24px; padding: 0 var(--m2-s2); }
+
+/* The inspector's lists: records of a batch, the trail, the work of a person */
+.m2-root .m2-rlist { list-style: none; margin: 0; padding: 0; font-size: var(--m2-fs-13); }
+.m2-root .m2-rlist > li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--m2-s3); padding: 6px 0; border-bottom: 1px solid var(--m2-line); align-items: baseline; }
+.m2-root .m2-rlist .m2-rl-sub { grid-column: 1 / -1; color: var(--m2-meta); font-size: var(--m2-fs-12); margin-top: -2px; overflow-wrap: anywhere; }
+.m2-root .m2-trail { list-style: none; margin: 0; padding: 0; font-size: var(--m2-fs-13); }
+.m2-root .m2-trail > li { padding: 6px 0 6px var(--m2-s4); border-left: 1px solid var(--m2-line-2); position: relative; }
+.m2-root .m2-trail > li::before { content: ""; position: absolute; left: -4px; top: 12px; width: 7px; height: 7px; border-radius: var(--m2-r-round); background: var(--m2-sheet); border: 1px solid var(--m2-ink-3); }
+.m2-root .m2-trail .m2-tr-note { color: var(--m2-ink-2); margin: 2px 0 0; overflow-wrap: anywhere; }
+.m2-root .m2-trail .m2-tr-at { color: var(--m2-meta); font-size: var(--m2-fs-12); }
+.m2-root .m2-more { margin-top: var(--m2-s2); display: flex; gap: var(--m2-s3); align-items: center; font-size: var(--m2-fs-13); }
+.m2-root .m2-askbox { margin-top: var(--m2-s3); display: flex; flex-direction: column; gap: var(--m2-s2); }
+.m2-root .m2-askbox textarea { width: 100%; min-height: 64px; border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); background: var(--m2-sheet); padding: 6px 8px; font-size: var(--m2-fs-13); resize: vertical; }
+.m2-root .m2-askbox label { font-size: var(--m2-fs-12); color: var(--m2-ink-2); }
+
+/* People */
+.m2-root .m2-people { margin-top: var(--m2-s4); }
+.m2-root .m2-people .m2-tbl td, .m2-root .m2-people .m2-tbl th { vertical-align: middle; }
+.m2-root .m2-people .m2-tbl tr[data-me="true"] td, .m2-root .m2-people .m2-tbl tr[data-me="true"] th { background: var(--m2-active); font-weight: 500; }
+.m2-root .m2-sortbtn { background: transparent; border: 0; padding: 0; color: var(--m2-meta); font-size: var(--m2-fs-12); display: inline-flex; gap: 4px; align-items: center; height: 32px; }
+.m2-root .m2-sortbtn[aria-pressed="true"] { color: var(--m2-fg); font-weight: 500; }
+.m2-root .m2-you { margin-left: var(--m2-s2); font-size: var(--m2-fs-12); color: var(--m2-ink-2); font-weight: 400; }
+.m2-root .m2-who { display: flex; flex-direction: column; line-height: var(--m2-lh-13); }
+.m2-root .m2-who small { color: var(--m2-meta); font-size: var(--m2-fs-12); }
+.m2-root .m2-plist { list-style: none; margin: var(--m2-s3) 0 0; padding: 0; border-top: 1px solid var(--m2-line); }
+.m2-root .m2-plist > li { border-bottom: 1px solid var(--m2-rule); }
+.m2-root .m2-prow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px var(--m2-s3); width: 100%; text-align: left; padding: var(--m2-s3) 0; background: transparent; border: 0; min-height: 48px; }
+.m2-root .m2-prow[data-me="true"] { font-weight: 500; }
+.m2-root .m2-prow .m2-c { grid-column: 1 / -1; color: var(--m2-ink-2); font-weight: 400; font-size: var(--m2-fs-12); }
+
+/* Inbox panel */
+.m2-root .m2-inbox-tools { display: flex; align-items: center; justify-content: space-between; gap: var(--m2-s2); padding: var(--m2-s3) 0 var(--m2-s1); flex-wrap: wrap; }
+.m2-root .m2-nlist { list-style: none; margin: 0; padding: 0; }
+.m2-root .m2-nitem { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px var(--m2-s2); padding: var(--m2-s3) var(--m2-s2); margin: 0 calc(-1 * var(--m2-s2)); border-bottom: 1px solid var(--m2-rule); border-radius: var(--m2-r1); }
+.m2-root .m2-nitem[data-active="true"] { background: var(--m2-active); }
+.m2-root .m2-nitem[data-unread="true"] .m2-ns { font-weight: 500; }
+.m2-root .m2-nk { display: inline-flex; align-items: center; gap: 6px; font-size: var(--m2-fs-12); color: var(--m2-ink-2); }
+.m2-root .m2-nk .m2-unread { width: 6px; height: 6px; border-radius: var(--m2-r-round); background: var(--m2-data); display: inline-block; }
+.m2-root .m2-nat { font-size: var(--m2-fs-12); color: var(--m2-meta); white-space: nowrap; }
+.m2-root .m2-ns { grid-column: 1 / -1; font-size: var(--m2-fs-13); line-height: var(--m2-lh-13); overflow-wrap: anywhere; }
+.m2-root .m2-na { grid-column: 1 / -1; display: flex; gap: var(--m2-s3); align-items: center; font-size: var(--m2-fs-12); }
+.m2-root .m2-linkbtn2 { background: transparent; border: 0; padding: 0; color: var(--m2-data); text-decoration: underline; text-underline-offset: 2px; font-size: var(--m2-fs-12); }
+.m2-root .m2-nfoot { margin-top: var(--m2-s4); font-size: var(--m2-fs-13); }
+
+/* Triage and SLA */
+.m2-root .m2-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--m2-s2) var(--m2-s3); align-items: center; font-size: var(--m2-fs-13); }
+.m2-root .m2-form > label, .m2-root .m2-form > .m2-fl { color: var(--m2-ink-2); }
+.m2-root .m2-form input.m2-num { width: 64px; height: 28px; border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); background: var(--m2-sheet); padding: 0 6px; text-align: right; font-size: var(--m2-fs-13); font-variant-numeric: tabular-nums; }
+.m2-root .m2-form .m2-unit { color: var(--m2-meta); margin-left: var(--m2-s2); }
+.m2-root .m2-form .m2-fv { justify-self: end; display: inline-flex; align-items: center; }
+.m2-root .m2-form .m2-hint { grid-column: 1 / -1; color: var(--m2-meta); font-size: var(--m2-fs-12); margin: 0; }
+
+@media (max-width: 760px) {
+  .m2-root .m2-nitem { padding: var(--m2-s4) var(--m2-s2); }
+  .m2-root .m2-reopen { height: 32px; }
+  .m2-root .m2-form input.m2-num { height: 36px; width: 72px; }
+}

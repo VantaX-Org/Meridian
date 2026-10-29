@@ -45,15 +45,17 @@ export interface LedgerState {
   severity: string | null;
   assigned: string | null;
   due: string | null;
+  /** One fix batch: its records in every open state, with the status of each. */
+  batch: string | null;
   group: boolean;
   sort: SortKey;
   density: Density;
 }
 
-export const DEFAULT_STATE: LedgerState = { chip: "tofix", module: null, rule: null, severity: null, assigned: null, due: null, group: false, sort: "value", density: "comfortable" };
+export const DEFAULT_STATE: LedgerState = { chip: "tofix", module: null, rule: null, severity: null, assigned: null, due: null, batch: null, group: false, sort: "value", density: "comfortable" };
 
 /** The query keys the ledger owns; everything else in the address (fixture, persona, open) is left alone. */
-export const MANAGED = ["filter", "status", "proposed", "module", "rule", "check_id", "severity", "assigned", "due", "group", "sort", "density", "view"] as const;
+export const MANAGED = ["filter", "status", "proposed", "module", "rule", "check_id", "severity", "assigned", "due", "batch", "group", "sort", "density", "view"] as const;
 
 function chipFrom(get: (k: string) => string | null, fallback: ChipId | null): ChipId | null {
   const filter = get("filter");
@@ -73,7 +75,8 @@ function chipFrom(get: (k: string) => string | null, fallback: ChipId | null): C
 export function readState(params: URLSearchParams, view?: SavedView): LedgerState {
   const get = (k: string): string | null => params.get(k) ?? view?.filters[k] ?? null;
   const urlHasChip = params.has("filter") || params.has("status");
-  const chip = urlHasChip || view ? chipFrom(get, view ? null : "tofix") : "tofix";
+  // A batch lists its records in every open state, so it opens on "all open" unless a chip is asked for.
+  const chip = urlHasChip || view ? chipFrom(get, view ? null : "tofix") : get("batch") ? null : "tofix";
   const sort = get("sort");
   const density = params.get("density") ?? view?.density ?? view?.filters.density ?? null;
   return {
@@ -83,6 +86,7 @@ export function readState(params: URLSearchParams, view?: SavedView): LedgerStat
     severity: get("severity"),
     assigned: get("assigned"),
     due: get("due"),
+    batch: get("batch"),
     group: get("group") === "rule",
     sort: sort === "due" || sort === "age" || sort === "owner" ? sort : "value",
     density: density === "compact" ? "compact" : "comfortable",
@@ -98,6 +102,7 @@ export function filtersOf(s: LedgerState): WorkFilters {
     severity: s.severity ?? undefined,
     assigned: s.assigned ?? undefined,
     due: s.due ?? undefined,
+    batch_id: s.batch ?? undefined,
     status: c ? c.status : "open",
     proposed: c?.proposed ? true : undefined,
   };
@@ -112,6 +117,7 @@ export function toParams(s: LedgerState): Record<string, string> {
   if (s.severity) out.severity = s.severity;
   if (s.assigned) out.assigned = s.assigned;
   if (s.due) out.due = s.due;
+  if (s.batch) out.batch = s.batch;
   if (s.group) out.group = "rule";
   if (s.sort !== "value") out.sort = s.sort;
   if (s.density !== "comfortable") out.density = s.density;
@@ -261,7 +267,7 @@ export const STATUS_LABEL: Record<string, string> = {
 const n = (x: number): string => x.toLocaleString("en-US");
 
 /** The sentence under the title. Numbers are the summary's; nothing here is estimated. */
-export function sentence(opts: { persona: "lead" | "steward" | "basis"; chip: ChipId | null; summary: WorkSummary | undefined; objectLabel: string | null; module?: string | null }): string {
+export function sentence(opts: { persona: "lead" | "steward" | "basis" | "owner" | "process"; chip: ChipId | null; summary: WorkSummary | undefined; objectLabel: string | null; module?: string | null }): string {
   const { persona, chip, summary, objectLabel } = opts;
   if (!summary) return "";
   const where = objectLabel ? ` in ${objectLabel}` : "";

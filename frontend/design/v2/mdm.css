@@ -1,0 +1,99 @@
+/*
+ * Meridian 2: the Golden records, Glossary, Lineage and Processes tabs and their inspectors (golden, term, feature,
+ * step). Reads only --m2-* tokens; no raw colour, gradient, shadow or motion; no uppercase labels.
+ */
+
+.m2-mdm { max-width: 1100px; }
+.m2-mdm .m2-sec:first-child { margin-top: 0; }
+
+/* ---- match candidates ---- */
+.m2-pairs { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--m2-line); }
+.m2-pairs li { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: var(--m2-s3); align-items: center; min-height: 40px; padding: 4px 0; border-bottom: 1px solid var(--m2-line); font-size: var(--m2-fs-13); }
+.m2-pairs li[data-open="true"] { background: var(--m2-active); }
+.m2-pscore { font-variant-numeric: tabular-nums; font-weight: 600; }
+.m2-pkeys { min-width: 0; overflow-wrap: anywhere; }
+.m2-pager { display: flex; flex-wrap: wrap; align-items: center; gap: var(--m2-s3); }
+.m2-pager .m2-linkbtn:disabled { color: var(--m2-meta); cursor: not-allowed; }
+
+/* ---- the narrow lists of golden records and terms ---- */
+.m2-nlist { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--m2-line); }
+.m2-nlist li { border-bottom: 1px solid var(--m2-line); }
+.m2-nlist li[data-open="true"] { background: var(--m2-active); }
+.m2-nlist button { display: grid; gap: 2px; width: 100%; min-height: 48px; padding: var(--m2-s2) 0; border: 0; background: transparent; color: var(--m2-fg); text-align: left; font: inherit; font-size: var(--m2-fs-13); }
+.m2-nl2 { color: var(--m2-meta); font-size: var(--m2-fs-12); line-height: var(--m2-lh-12); }
+
+/* ---- search ---- */
+.m2-sin input { height: 32px; width: min(320px, 100%); padding: 0 var(--m2-s3); border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); background: var(--m2-sheet); color: var(--m2-fg); font-size: var(--m2-fs-13); }
+.m2-sin input:focus-visible { outline: 2px solid var(--m2-data); outline-offset: 1px; }
+
+/* ---- inspector tables: fields, side by side ---- */
+.m2-ftbl, .m2-pick { table-layout: auto; }
+.m2-ib .m2-tbl th, .m2-ib .m2-tbl td { padding: 6px 8px; height: auto; white-space: normal; vertical-align: top; }
+.m2-ib .m2-tbl th:first-child, .m2-ib .m2-tbl td:first-child { padding-left: 0; }
+.m2-fcell { display: table-cell; font-weight: 400; }
+.m2-fcell .m2-meta { display: block; font-size: var(--m2-fs-12); line-height: var(--m2-lh-12); }
+.m2-fdiff { display: block; font-size: var(--m2-fs-12); line-height: var(--m2-lh-12); }
+.m2-pick td { overflow-wrap: anywhere; }
+.m2-pick tr[data-same="true"] td { color: var(--m2-meta); }
+.m2-pickl { display: inline-flex; align-items: flex-start; gap: 6px; }
+.m2-pickl input { margin-top: 2px; }
+.m2-surv { display: flex; flex-wrap: wrap; align-items: center; gap: var(--m2-s3); margin: 0; padding: 0; border: 0; font-size: var(--m2-fs-13); }
+.m2-surv legend { float: left; margin-right: var(--m2-s3); padding: 0; font-size: var(--m2-fs-12); color: var(--m2-meta); }
+.m2-surv label { display: inline-flex; align-items: center; gap: 6px; font-size: var(--m2-fs-13); color: var(--m2-fg); }
+.m2-mrow { display: inline-flex; align-items: center; gap: var(--m2-s2); }
+.m2-aform textarea { padding: var(--m2-s2); border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); background: var(--m2-sheet); color: var(--m2-fg); font: inherit; font-size: var(--m2-fs-13); min-width: 0; }
+.m2-aform input:focus-visible, .m2-aform textarea:focus-visible { outline: 2px solid var(--m2-data); outline-offset: 1px; }
+
+/* ---- the lineage graph and its facts ---- */
+.m2-lgwrap { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: var(--m2-s8); align-items: start; }
+svg.m2-lineage.m2-lgx { max-width: none; height: auto; }
+.m2-lgx text.h { fill: var(--m2-meta); }
+.m2-lgx text.mono { font-family: var(--m2-mono); }
+.m2-lgx line[data-on="true"] { stroke: var(--m2-fg); }
+.m2-lgx .m2-lg { cursor: pointer; }
+.m2-lgx .m2-lg rect { pointer-events: all; }
+.m2-lgx .m2-lg[data-on="true"] rect { stroke: var(--m2-ink-2); }
+.m2-lgx .m2-lg:hover rect { stroke: var(--m2-data); }
+.m2-lgx .m2-lg:focus-visible { outline: none; }
+.m2-lgx .m2-lg:focus-visible rect { stroke: var(--m2-data); stroke-width: 2; }
+.m2-lgx g.m2-lg[aria-pressed="true"] rect { stroke: var(--m2-data); }
+.m2-lgfacts { min-width: 0; }
+.m2-lgfacts .m2-facts { margin-bottom: var(--m2-s3); }
+
+/* ---- the processes ---- */
+.m2-procs { max-width: 980px; }
+.m2-l2 { margin-top: var(--m2-s4); }
+.m2-step-d { border-top: 1px solid var(--m2-line); }
+.m2-step-d:last-child { border-bottom: 1px solid var(--m2-line); }
+.m2-step-d > summary { display: flex; flex-wrap: wrap; align-items: center; gap: var(--m2-s3); min-height: 40px; padding: 6px 0; cursor: pointer; font-size: var(--m2-fs-14); list-style: none; }
+.m2-step-d > summary::-webkit-details-marker { display: none; }
+.m2-step-d > summary:focus-visible { outline: 2px solid var(--m2-data); outline-offset: 1px; }
+.m2-step-d[data-blocked="true"] > summary .m2-sname { font-weight: 600; }
+.m2-step-d[data-current="true"] > summary { background: var(--m2-active); }
+.m2-sname { min-width: 0; }
+.m2-sbody { padding: 0 0 var(--m2-s4); }
+.m2-act5 { margin-top: var(--m2-s3); }
+.m2-act5-h { margin: 0 0 var(--m2-s1); font-size: var(--m2-fs-13); font-weight: 600; }
+.m2-dframe { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--m2-s4); padding: var(--m2-s4) var(--m2-s5); border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); max-width: 760px; }
+.m2-dframe .m2-h2 { margin-top: 0; }
+.m2-dframe .m2-rp { max-width: 56ch; }
+
+@media (max-width: 900px) {
+  .m2-lgwrap { grid-template-columns: minmax(0, 1fr); gap: var(--m2-s4); }
+}
+
+@media (max-width: 760px) {
+  .m2-pairs li { grid-template-columns: 48px minmax(0, 1fr) auto; }
+  .m2-sin input { height: 36px; width: 100%; }
+  .m2-sin { flex: 1 1 100%; }
+  .m2-step-d > summary { min-height: 44px; }
+}
+
+/* links inside running text are underlined, never colour alone */
+.m2-rp a, .m2-pager a { text-decoration: underline; text-underline-offset: 2px; }
+
+.m2-procs .m2-ftbl { table-layout: fixed; min-width: 520px; }
+.m2-procs .m2-ftbl th:nth-child(1) { width: 44%; }
+.m2-procs .m2-ftbl th:nth-child(2) { width: 22%; }
+.m2-procs .m2-ftbl th:nth-child(3), .m2-procs .m2-ftbl th:nth-child(4) { width: 17%; }
+.m2-procs .m2-ftbl td, .m2-procs .m2-ftbl tbody th { white-space: normal; }

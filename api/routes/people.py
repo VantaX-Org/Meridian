@@ -12,6 +12,9 @@ have a work record assigned to them in the current state, or are the caller. Cou
                       work; null when they have none open or the tenant has no policy
   breaches_this_month record issues assigned to them whose SLA state is breached and was due this calendar month
   last_action_at      their latest audit_log row; null when they have none
+  sla_met_pct         of the record issues assigned to them that were closed in the last 90 days with an SLA due date, the
+                      share closed on or before it (api/routes/triage.py /metrics counts the same way), one decimal; null
+                      when none closed
 
 Read-only, tenant-scoped, ``view`` permission.
 """
@@ -50,6 +53,7 @@ class PersonOut(BaseModel):
     sla_hours: Optional[float] = None
     breaches_this_month: int
     last_action_at: Optional[datetime] = None
+    sla_met_pct: Optional[float] = None
 
 
 class PeopleOut(BaseModel):
@@ -97,6 +101,10 @@ async def list_people(request: Request, db: AsyncSession = Depends(get_db), tena
         "SELECT assigned_to::text, count(*) FROM record_issues WHERE tenant_id = CAST(:t AS uuid) AND assigned_to IS NOT NULL "
         "AND sla_state = 'breached' AND due_at >= date_trunc('month', now()) AND due_at < date_trunc('month', now()) + interval '1 month' "
         "GROUP BY assigned_to"), {"t": t})).fetchall()}
+    sla_met = {r[0]: round(100.0 * int(r[1]) / int(r[2]), 1) for r in (await db.execute(text(
+        "SELECT assigned_to::text, count(*) FILTER (WHERE resolved_at <= due_at), count(*) FROM record_issues "
+        "WHERE tenant_id = CAST(:t AS uuid) AND assigned_to IS NOT NULL AND resolved_at >= now() - interval '90 days' "
+        "AND due_at IS NOT NULL GROUP BY assigned_to"), {"t": t})).fetchall()}
     last_action = {r[0]: r[1] for r in (await db.execute(text(
         "SELECT actor_user_id::text, max(created_at) FROM audit_log WHERE tenant_id = CAST(:t AS uuid) "
         "AND actor_user_id IS NOT NULL GROUP BY actor_user_id"), {"t": t})).fetchall()}
@@ -125,6 +133,7 @@ async def list_people(request: Request, db: AsyncSession = Depends(get_db), tena
             "sla_hours": round(min(hours), 2) if hours else None,
             "breaches_this_month": breaches.get(uid, 0),
             "last_action_at": last_action.get(uid),
+            "sla_met_pct": sla_met.get(uid),
         })
     people.sort(key=lambda x: (not x["is_me"], -x["open_work"], -x["approvals_waiting"], x["name"].lower(), x["id"]))
     return {"people": people}
