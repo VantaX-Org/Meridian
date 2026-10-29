@@ -13,6 +13,7 @@ import type { Notification } from "@/types/api";
 import { InspectorFrame } from "../Inspector";
 import { SeverityMark } from "../marks";
 import { EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../parts";
+import { MentionCount } from "./collab";
 
 /** A time in the viewer's day: "08:41" for today, "3 Oct" before. */
 function when(iso: string, today: boolean): string {
@@ -150,6 +151,7 @@ export function InboxPanel({ onClose }: { onClose: () => void }) {
           <a href="?open=preferences" className="m2-meta">
             Notification settings
           </a>
+          <MentionCount />
         </div>
         {all.isError || one.isError ? <ErrorFrame>The change could not be saved. Try again.</ErrorFrame> : null}
         {q.isLoading ? (

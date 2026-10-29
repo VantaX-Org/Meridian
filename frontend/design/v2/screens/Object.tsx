@@ -12,6 +12,7 @@ import { VerdictMark } from "../marks";
 import { Dash, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../parts";
 import { Ruler } from "../Ruler";
 import { dimsOf } from "../shell/MapPane";
+import { RelatedObjects } from "./object/Related";
 
 type TabKey = "rules" | "records" | "fixes" | "runs" | "readiness" | "processes" | "lineage" | "glossary" | "golden";
 const TABS: { key: TabKey; label: string; segment: string }[] = [
@@ -254,6 +255,7 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
   return (
     <>
       <PageTitle sub={system.name}>{label}</PageTitle>
+      <RelatedObjects module={apiModule} system={systemSegment} systemId={system.id} label={label} />
       {!cell ? (
         <>
           <p className="m2-statusline">

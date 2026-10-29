@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { ADMIN_SECTIONS, canAdminister, isAdminSlug, visibleSections, type AdminSlug } from "@/lib/v2/admin-sections";
 import { EmptyFrame, V2Link } from "../parts";
 import { ApiKeysSection } from "./apikeys";
+import { ConfigBundleSection, DelegationsSection, RulesIoSection, ShareLinksSection, StewardshipSection, ViewAsSection } from "./capabilities";
 import { AuditSection, MappingsSection, ReferenceSection } from "./data";
 import { AdminPage, Block, NeedsPermission, useCan } from "./kit";
 import { AlertsSection, NotificationsSection } from "./notify";
@@ -120,6 +121,18 @@ function Section({ slug }: { slug: AdminSlug }) {
       return <RunsSection />;
     case "system":
       return <SystemSection />;
+    case "stewardship":
+      return <StewardshipSection />;
+    case "configbundle":
+      return <ConfigBundleSection />;
+    case "viewas":
+      return <ViewAsSection />;
+    case "rulesio":
+      return <RulesIoSection />;
+    case "sharelinks":
+      return <ShareLinksSection />;
+    case "delegations":
+      return <DelegationsSection />;
   }
 }
 

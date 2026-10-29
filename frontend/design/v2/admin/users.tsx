@@ -9,10 +9,11 @@ import { useOpenItem } from "@/lib/v2/hooks";
 import { refreshAdmin, useLicence, useRoles, useUsers } from "@/lib/v2/admin-queries";
 import { roleLabel } from "@/lib/roles";
 import { STATUS_LABEL, inviteAttention, inviteAttentionSentence, seatsFull, seatsNearlyFull, seatsSentence, userStatus, USER_STATUSES } from "@/lib/users";
-import { Grid, type GridColumn } from "../Grid";
+import { type GridColumn } from "../Grid";
 import { EmptyFrame, ErrorFrame, Mono } from "../parts";
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import { AdminPage, Block, Confirm, Dialog, Fld, NeedsPermission, Note, StatusWord, since, useCan } from "./kit";
+import { ToolGrid } from "../GridTools";
 
 const STATUS_TONE: Record<UserStatus, "go" | "at-risk" | "no-go" | "neutral"> = { active: "go", invited: "at-risk", invite_expired: "no-go", locked: "no-go", suspended: "neutral" };
 
@@ -203,7 +204,8 @@ export function UsersSection() {
       {attention ? <Note tone="warn">{`Invitations need attention: ${attention}. Resend them or remove the ones nobody will accept.`}</Note> : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       <Block>
-        <Grid<User>
+        <ToolGrid<User>
+          toolsTitle="Users"
           id="admin-users"
           ariaLabel="Users"
           columns={COLUMNS}

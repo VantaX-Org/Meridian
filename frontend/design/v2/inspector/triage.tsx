@@ -10,6 +10,7 @@ import { useWorkCan } from "@/lib/v2/work-actions";
 import { InspectorFrame } from "../Inspector";
 import { EmptyFrame, ErrorFrame, Skeleton } from "../parts";
 import { ResultFrame, type Outcome } from "./shared";
+import { EscalationChainEditor } from "./governance";
 
 const SEVERITIES: { key: TriageSeverity; label: string }[] = [
   { key: "critical", label: "Critical" },
@@ -110,8 +111,9 @@ function Body() {
       <div className="m2-form">
         <span className="m2-fl">Escalate after</span>
         <span className="m2-fv">The SLA days above</span>
-        <p className="m2-hint">A record that passes its SLA is escalated to the team lead, else the fallback owner. There is no separate escalation delay to set.</p>
+        <p className="m2-hint">A record that passes its SLA is escalated to the team lead, else the fallback owner. The chain below adds later levels.</p>
       </div>
+      <EscalationChainEditor />
 
       <h3>Digest</h3>
       <div className="m2-form">

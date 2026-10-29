@@ -5,9 +5,10 @@ import { apiErrorMessage } from "@/lib/error";
 import { formatDate } from "@/lib/format";
 import { useOpenItem } from "@/lib/v2/hooks";
 import { useApiKeys } from "@/lib/v2/admin-queries";
-import { Grid, type GridColumn } from "../Grid";
+import { type GridColumn } from "../Grid";
 import { EmptyFrame, ErrorFrame, Mono } from "../parts";
 import { AdminPage, Block, NeedsPermission, StatusWord, since, useCan } from "./kit";
+import { ToolGrid } from "../GridTools";
 
 const TONE: Record<ApiKeyStatus, "go" | "at-risk" | "no-go" | "neutral"> = { active: "go", expired: "at-risk", revoked: "no-go", suspended: "neutral" };
 const WORD: Record<ApiKeyStatus, string> = { active: "Active", expired: "Expired", revoked: "Revoked", suspended: "Suspended" };
@@ -47,7 +48,8 @@ export function ApiKeysSection() {
       }
     >
       <Block>
-        <Grid<ApiKey>
+        <ToolGrid<ApiKey>
+          toolsTitle="API keys"
           id="admin-apikeys"
           ariaLabel="API keys"
           columns={COLUMNS}

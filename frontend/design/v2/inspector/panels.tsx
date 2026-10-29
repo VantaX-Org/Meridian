@@ -20,6 +20,7 @@ import { Actions, InspectorFrame } from "../Inspector";
 import { EmptyFrame, Skeleton, V2Link } from "../parts";
 import { copyText } from "../admin/kit";
 import { ResultFrame, useOutcome } from "./shared";
+import { SubscriptionsBlock } from "./collab";
 
 /* ── Preferences ── */
 
@@ -159,6 +160,7 @@ export function PreferencesPanel({ onClose }: { onClose: () => void }) {
         <V2Link href="/v2/work?open=triage">Inbox and triage settings</V2Link>
         {" decide what reaches your inbox and who covers it."}
       </p>
+      <SubscriptionsBlock />
       <h3>Interface</h3>
       <label className="m2-sw" style={{ display: "flex", gap: 8 }}>
         <input

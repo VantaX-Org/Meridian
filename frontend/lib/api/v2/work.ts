@@ -91,6 +91,10 @@ export interface SavedView {
   density: "compact" | "comfortable" | null;
   builtin: boolean;
   created_at: string | null;
+  /** Every user of the tenant sees it (step 6c). */
+  shared?: boolean;
+  /** False for a view another user shared. */
+  mine?: boolean;
 }
 export const getViews = (route: string): Promise<{ route: string; views: SavedView[] }> => v2Get("/views", { route });
 export const putView = (view: { route: string; name: string; filters: Record<string, string>; columns: string[] | null; density: "compact" | "comfortable" | null }): Promise<SavedView> =>

@@ -15,6 +15,8 @@ import { EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { BatchButtons, ReassignMenu, day, money, useBatchControls } from "../screens/batch-parts";
 import { useToast } from "../Toast";
 import { ResultFrame, useOutcome } from "./shared";
+import { CollabSections } from "./collab";
+import { DelegationBanner } from "./delegation";
 
 const SHOWN = 50;
 const REASSIGN_MAX = 500;
@@ -107,6 +109,7 @@ function BatchBody({ b }: { b: BatchRow }) {
   const mine = b.ownerId != null && b.ownerId === can.me;
   return (
     <>
+      <DelegationBanner />
       <Facts>
         <Fact label="Batch">
           <Mono>{b.label}</Mono>
@@ -153,6 +156,7 @@ function BatchBody({ b }: { b: BatchRow }) {
       {b.status === "approved" ? <p className="m2-prov">Send to SAP hands the approved values over as a Migration Cockpit file. It cannot be taken back.</p> : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       {controls.dialog}
+      <CollabSections kind="batch" id={b.id} label={`batch ${b.label}`} />
     </>
   );
 }

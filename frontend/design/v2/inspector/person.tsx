@@ -14,6 +14,8 @@ import { Actions, Fact, Facts, InspectorFrame } from "../Inspector";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { BatchButtons, ReassignMenu, day, money, useBatchControls } from "../screens/batch-parts";
 import { ResultFrame, useOutcome } from "./shared";
+import { ActivitySection } from "./collab";
+import { DelegationBanner } from "./delegation";
 
 const REASSIGN_MAX = 200;
 
@@ -44,6 +46,7 @@ function PersonBody({ id }: { id: string }) {
   const total = work.data?.total ?? p.open_work;
   return (
     <>
+      <DelegationBanner personId={p.id} />
       <Facts>
         <Fact label="Role">{roleWord(p.role)}</Fact>
         <Fact label="Email">{p.email ?? <Dash />}</Fact>
@@ -125,6 +128,7 @@ function PersonBody({ id }: { id: string }) {
         <ReassignMenu rows={rows} disabled={!can.assign || p.open_work === 0} subject={p.name} />
       </Actions>
       {!can.assign ? <p className="m2-prov">Reassigning needs the assign permission, which your role does not hold.</p> : null}
+      <ActivitySection userId={p.id} self={p.is_me} />
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       {controls.dialog}
     </>

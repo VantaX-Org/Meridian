@@ -13,12 +13,14 @@ import { useBatches, usePeople } from "@/lib/v2/approvals-queries";
 import { slaMet } from "@/lib/v2/people";
 import { useLandscape, useStatus, useTopWork } from "@/lib/v2/queries";
 import { f1, int, moduleSlug, readingText, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
-import { Grid, type GridColumn } from "../Grid";
+import { type GridColumn } from "../Grid";
 import { VerdictMark } from "../marks";
 import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { Ruler } from "../Ruler";
 import { ProcessNextStep } from "./object/ProcessNext";
 import { dimsOf } from "../shell/MapPane";
+import { GateMark } from "../inspector/governance";
+import { ToolGrid } from "../GridTools";
 
 const SEL_KEY = "mn_v2_sel";
 
@@ -236,6 +238,7 @@ function WaveHeadText({ group }: { group: WaveGroup }) {
       {w ? (
         <>
           {" "}
+          <GateMark waveId={w.id} />{" "}
           <V2Link href={hrefFor({ kind: "waves", id: "" })} aria-label={`Edit ${w.name}`}>
             Edit
           </V2Link>
@@ -407,7 +410,8 @@ function NextWork({ landscape }: { landscape: Landscape }) {
         <h2 className="m2-h2">Your next work</h2>
         {total > 0 ? <V2Link href="/v2/work">{`View all ${int(total)}`}</V2Link> : null}
       </div>
-      <Grid<WorkRow>
+      <ToolGrid<WorkRow>
+          toolsTitle="Top of the ledger"
         id="landscape-next-work"
         ariaLabel="Your next work"
         columns={NEXT_WORK_COLUMNS}

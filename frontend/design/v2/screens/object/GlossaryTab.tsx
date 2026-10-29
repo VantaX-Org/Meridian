@@ -9,11 +9,12 @@ import { useGlossary, useObjectOwners } from "@/lib/v2/mdm-queries";
 import { useNarrow } from "@/lib/v2/narrow";
 import { refreshV2, useLandscape, useObjectRules } from "@/lib/v2/queries";
 import { int, moduleFromSlug } from "@/lib/v2/score";
-import { Grid, type GridColumn } from "../../Grid";
+import { type GridColumn } from "../../Grid";
 import { VerdictMark } from "../../marks";
 import "../../mdm.css";
 import { ResultFrame, useOutcome } from "../../inspector/shared";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../../parts";
+import { ToolGrid } from "../../GridTools";
 
 export const STATUS_WORD: Record<string, string> = { active: "Active", under_review: "Under review", deprecated: "Deprecated" };
 
@@ -166,7 +167,8 @@ export function GlossaryTab({ module: moduleSegment }: { system: string; module:
             </ul>
           )
         ) : (
-          <Grid<TermRow>
+          <ToolGrid<TermRow>
+          toolsTitle="Glossary"
             id="object-glossary"
             ariaLabel={`Business terms of ${label}`}
             columns={columns}
