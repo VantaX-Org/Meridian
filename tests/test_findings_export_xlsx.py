@@ -45,13 +45,13 @@ def test_export_findings_builds_real_workbook() -> None:
         finding_type="data_quality",
         severity="high",
         dimension="completeness",
-        rule_context={"message": "Bad field"},
+        rule_context={"message": "Bad field", "valid_values_with_labels": {"EA": "each", "KG": "kilogram"}},
         affected_count=5,
         total_count=100,
         pass_rate=95.5,
         cost_at_risk=1200.0,
         impact_score=8.2,
-        details={"baseline": "live_config"},
+        details={"baseline": "live_config", "field_checked": "MARA.MEINS"},
         remediation_text="Fix it",
         created_at=created_at,
     )
@@ -71,10 +71,13 @@ def test_export_findings_builds_real_workbook() -> None:
     ws = wb["Findings"]
     headers = [c.value for c in ws[1]]
     assert headers == [
-        "ID", "Module", "Object", "Check ID", "Type", "Severity", "Dimension", "Message",
-        "Affected", "Total", "Pass rate", "Cost at risk", "Impact score", "Baseline",
-        "Remediation", "Created",
+        "Object", "Check", "Problem", "Field description", "SAP field", "Severity", "Dimension", "Failing records",
+        "Records checked", "Pass rate", "Possible values", "Cost at risk", "How to fix",
+        "ID", "Module", "Type", "Impact score", "Baseline", "Created",
     ]
+    assert ws.cell(row=2, column=4).value == "Base unit of measure"
+    assert ws.cell(row=2, column=5).value == "MARA-MEINS"
+    assert ws.cell(row=2, column=11).value == "EA (each), KG (kilogram)"
     pass_rate_cell = ws.cell(row=2, column=headers.index("Pass rate") + 1).value
     assert abs(pass_rate_cell - 0.955) < 1e-6
     created_cell = ws.cell(row=2, column=headers.index("Created") + 1).value
