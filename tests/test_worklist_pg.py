@@ -372,6 +372,9 @@ async def test_a_run_counts_as_built_only_once_its_build_finished(run, client_fo
         with owner.begin() as c:  # a build that stopped half way leaves rows but no completion marker
             c.execute(text("UPDATE analysis_versions SET metadata = metadata - 'worklist_built_at' WHERE id = :v"),
                       {"v": vid})
+        # the builder marks the work changed when it clears the marker; this direct edit does the same by hand
+        from api.middleware.cache import bump_tenant_generation
+        bump_tenant_generation(tid)
         assert (await summary()).json()["built"] is False
 
 
