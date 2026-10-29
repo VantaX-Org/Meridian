@@ -1500,6 +1500,8 @@ class LearnedRuleProposal(Base):
     violations = Column(BigInteger, nullable=False)
     sample_keys = Column(JSONB, nullable=False, server_default="[]")
     status = Column(Text, nullable=False, server_default="pending")
+    source = Column(Text, nullable=False, server_default="data")  # data | fixes (migration 109)
+    evidence = Column(JSONB, nullable=True)  # mined from fixes: count, sample keys, time span, who
     rule_id = Column(Text, nullable=True)
     decided_by = Column(Text, nullable=True)
     decided_at = Column(DateTime(timezone=True), nullable=True)

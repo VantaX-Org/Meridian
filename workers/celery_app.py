@@ -84,6 +84,7 @@ import workers.tasks.purge_expired  # noqa: F401 — nightly retention purge (be
 import workers.tasks.build_worklist  # noqa: F401 — steward work list per run
 import workers.tasks.report_schedules  # noqa: F401 — scheduled reports (beat) and run now
 import workers.tasks.webhooks  # outbound webhook deliveries (beat)
+import workers.tasks.fix_mining  # learned rules from stewards' fixes (beat)
 import workers.scheduler  # noqa: F401, E402 — registers beat schedule
 
 
