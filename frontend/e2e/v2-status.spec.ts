@@ -5,7 +5,7 @@
  *     and maintenance; it reads again every minute; axe finds no critical or serious violation; no sideways scroll.
  *   - The status strip's health word links to it.
  *   - Admin, Settings, Appearance (contrast shown and refused below 4.5:1, the accent applied) and Admin, Users,
- *     Provisioning (SCIM token shown once, group mapping, the SCIM badge).
+ *     Provisioning (SCIM token shown once, the group mapping).
  *   Screenshots: __screenshots__/v2/status-*.png, admin-appearance-*.png, admin-scim-*.png at 1440 and 390, light and dark.
  *
  *   PLAYWRIGHT_BASE_URL=http://localhost:3100 PW_CHROMIUM=/opt/pw-browsers/chromium-1194/chrome-linux/chrome npx playwright test e2e/v2-status.spec.ts
@@ -58,10 +58,10 @@ for (const size of SIZES) {
         await expect(page).toHaveURL(/\/v2\/status/);
         await expect(page.getByRole("heading", { level: 1, name: "Status" })).toBeVisible(NAV);
         await expect(page.getByTestId("status-overall")).toContainText("Degraded");
-        await expect(page.getByRole("region", { name: "Components and their state" }).getByRole("row")).toHaveCount(6);
+        await expect(page.getByRole("region", { name: "Components and their state" }).getByRole("row")).toHaveCount(7);
         await expect(page.getByTestId("uptime").locator(".m2-upcell")).toHaveCount(30);
         await expect(page.getByTestId("uptime")).toContainText("Down");
-        await expect(page.getByText("INC-7F3A91")).toBeVisible();
+        await expect(page.getByText("ERR-7F3A91")).toBeVisible();
         await expect(page.getByTestId("maintenance")).toContainText("Planned maintenance");
         await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
         // No map, canvas or inspector here.
@@ -99,17 +99,17 @@ for (const size of SIZES) {
         await page.screenshot({ path: path.join(SHOTS, `admin-appearance-applied_${size.name}_${scheme}.png`) });
       });
 
-      test("Admin, Users, Provisioning: the token shown once, the group mapping and the SCIM badge", async ({ page }) => {
+      test("Admin, Users, Provisioning: the token shown once and the group mapping", async ({ page }) => {
         await prepare(page, scheme);
         await page.goto("/v2/admin/users?fixture=1", { waitUntil: "load", timeout: 90_000 });
         const card = page.getByTestId("scim-card");
         await expect(card.getByText("Active")).toBeVisible(NAV);
-        await expect(card).toContainText("/api/v1/scim/v2");
+        await expect(card).toContainText("/scim/v2");
+        await expect(card).toContainText("mscim_");
         await card.getByRole("button", { name: "Rotate the token" }).click();
         await page.getByRole("dialog", { name: "Rotate the SCIM token" }).getByRole("button", { name: "Rotate" }).click();
         await expect(card.getByTestId("scim-secret")).toContainText("Shown once.");
         await expect(card.getByRole("region", { name: "Group to role mapping" }).getByRole("row")).toHaveCount(4);
-        if (size.width > 500) await expect(page.getByRole("grid", { name: "Users" }).getByTestId("scim-badge")).toHaveCount(2, NAV);
         expect(await noSideways(page)).toBe(true);
         await card.scrollIntoViewIfNeeded();
         await page.waitForLoadState("networkidle");
@@ -151,7 +151,7 @@ test.describe("status: signed in, the health word, and the minute refresh", () =
     await page.clock.install({ time: new Date("2026-10-20T08:00:10Z") });
     await prepare(page, "light", false);
     await page.goto("/v2/status?fixture=1", { waitUntil: "load", timeout: 90_000 });
-    const updated = page.getByText(/^Updated .* This page reads the status again every minute\.$/);
+    const updated = page.getByText(/^Checked .* This page reads the status again every minute\.$/);
     await expect(updated).toContainText("08:00", NAV);
     await page.clock.fastForward(61_000);
     await expect(updated).toContainText("08:01", NAV);

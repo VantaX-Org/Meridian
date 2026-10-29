@@ -130,9 +130,6 @@ function build(): State {
     locked_until: null,
     password_changed_at: ago(60),
   }));
-  // Two people came from the identity provider through SCIM: their rows carry the provider's external id.
-  Object.assign(users[3], { external_id: "e3b1c0a4-5f1d-4b8e-9a27-entra-thabo" });
-  Object.assign(users[4], { external_id: "00u8k2l9qzLerato0h7" });
   const roleName = (k: string) => ROLE_DEFS.find((r) => r.key === k)?.name ?? k;
   const grants: Record<string, UserGrant[]> = {};
   users.forEach((u, i) => {

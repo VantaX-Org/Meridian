@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useSyncExternalStore, type CSSProperties } from "react";
-import { getTheme, type TenantTheme } from "@/lib/api/v2/enterprise";
+import { getTheme, type PublicTheme } from "@/lib/api/v2/enterprise";
 import { fixtureActive } from "@/lib/api/v2/fixture";
 import { t as tr } from "@/lib/v2/i18n";
 
@@ -83,13 +83,25 @@ export function checkAccent(hex: string): AccentCheck | null {
   return { light, darkAsChosen: ratio(l, DARK_GROUND_LUMINANCE), darkTint: tint.toUpperCase(), dark, ok: light >= MIN_CONTRAST && dark >= MIN_CONTRAST };
 }
 
-/** The attributes the shell root takes from a theme: the accent's two custom properties and the switch that reads them. */
-export function themeRootProps(theme: TenantTheme | null | undefined): { style?: CSSProperties; "data-tenant-accent"?: string } {
-  const c = theme?.accent ? checkAccent(theme.accent) : null;
-  if (!theme?.accent || !c?.ok) return {};
+/**
+ * The dark-theme accent the screen uses: the server's `accent_dark` (checked against its own dark ground) when it also
+ * reads at 4.5:1 on this interface's dark sheet, else the first tint of it that does.
+ */
+export function darkAccentFor(accentDark: string): string {
+  if (!isHex(accentDark)) return "";
+  return ratio(luminance(accentDark), DARK_GROUND_LUMINANCE) >= MIN_CONTRAST ? accentDark : darkTint(accentDark).toUpperCase();
+}
+
+/**
+ * The attributes the shell root takes from the public theme: the accent's two custom properties and the switch that
+ * reads them. Only a customised theme repaints, and only with an accent that reads at 4.5:1 on the light ground.
+ */
+export function themeRootProps(theme: PublicTheme | null | undefined): { style?: CSSProperties; "data-tenant-accent"?: string } {
+  if (!theme?.customised || !isHex(theme.accent) || ratio(luminance(theme.accent), LIGHT_GROUND_LUMINANCE) < MIN_CONTRAST) return {};
+  const dark = darkAccentFor(theme.accent_dark) || darkTint(theme.accent).toUpperCase();
   return {
     "data-tenant-accent": "",
-    style: { "--m2-tenant-accent": theme.accent, "--m2-tenant-accent-dark": c.darkTint } as CSSProperties,
+    style: { "--m2-tenant-accent": theme.accent, "--m2-tenant-accent-dark": dark } as CSSProperties,
   };
 }
 
@@ -97,7 +109,7 @@ export function themeRootProps(theme: TenantTheme | null | undefined): { style?:
  * GET /theme is read once per page load and kept here, outside any query client, because the sign-in page renders
  * before the app's providers matter. The Appearance form puts what it saved straight in, so the shell follows at once.
  */
-let themeValue: TenantTheme | null = null;
+let themeValue: PublicTheme | null = null;
 let themeLoaded: string | null = null;
 let themeLoading: Promise<void> | null = null;
 const themeListeners = new Set<() => void>();
@@ -110,10 +122,12 @@ const subscribeTheme = (cb: () => void): (() => void) => {
 };
 
 /** Sets the theme every screen reads (after a save), or forgets it so the next screen reads it again. */
-export function refreshTenantTheme(next?: TenantTheme | null): void {
+export function refreshTenantTheme(next?: PublicTheme | null): void {
   if (next === undefined) {
     themeLoaded = null;
     themeLoading = null;
+    // A screen is showing the theme: read it again now, so a save shows at once.
+    if (themeListeners.size > 0 && typeof window !== "undefined") loadTheme();
   } else {
     themeValue = next;
     themeLoaded = fixtureActive() ? "fixture" : "live";
@@ -141,7 +155,7 @@ function loadTheme(): void {
 }
 
 /** The tenant's theme, or null until it has been read (and when it could not be): Meridian's own look meanwhile. */
-export function useTenantTheme(): TenantTheme | null {
+export function useTenantTheme(): PublicTheme | null {
   const value = useSyncExternalStore(subscribeTheme, () => themeValue, () => null);
   useEffect(() => {
     loadTheme();
@@ -150,20 +164,20 @@ export function useTenantTheme(): TenantTheme | null {
 }
 
 /** The name the tenant gave the product, else Meridian. */
-export const productName = (theme: TenantTheme | null | undefined): string => theme?.product_name?.trim() || tr("Meridian");
+export const productName = (theme: Pick<PublicTheme, "product_name"> | null | undefined): string => theme?.product_name?.trim() || tr("Meridian");
 
 /**
  * For pages outside the v2 root (the sign-in page): the accent goes on the document as the current interface's
  * accent token for as long as the page is open. Only an accent that passes the contrast check is applied.
  */
-export function useDocumentAccent(theme: TenantTheme | null): void {
+export function useDocumentAccent(theme: PublicTheme | null): void {
   useEffect(() => {
-    const c = theme?.accent ? checkAccent(theme.accent) : null;
-    if (!theme?.accent || !c?.ok) return;
+    const props = themeRootProps(theme);
+    if (!theme || !props.style) return;
     const root = document.documentElement;
     const before = root.style.getPropertyValue("--m-accent");
     const dark = root.dataset.theme === "dark" || (root.dataset.theme !== "light" && window.matchMedia?.("(prefers-color-scheme: dark)").matches);
-    root.style.setProperty("--m-accent", dark ? c.darkTint : theme.accent);
+    root.style.setProperty("--m-accent", dark ? String((props.style as Record<string, string>)["--m2-tenant-accent-dark"]) : theme.accent);
     return () => {
       if (before) root.style.setProperty("--m-accent", before);
       else root.style.removeProperty("--m-accent");

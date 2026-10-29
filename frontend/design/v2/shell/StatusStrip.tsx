@@ -9,7 +9,7 @@ import { useV2Jobs } from "@/lib/v2/runs-queries";
 import { useCanvasRun } from "@/lib/v2/scope";
 import { int } from "@/lib/v2/score";
 import { useStatusPage } from "@/lib/v2/enterprise-queries";
-import { overallStatus, statusWord } from "@/lib/v2/status";
+import { overallVerdict, overallWord } from "@/lib/v2/status";
 import { SeverityMark, VerdictMark } from "../marks";
 import { Dot, V2Link } from "../parts";
 import { t } from "@/lib/v2/i18n";
@@ -18,11 +18,11 @@ import { t } from "@/lib/v2/i18n";
 function HealthWord() {
   const q = useStatusPage();
   if (!q.data) return null;
-  const s = overallStatus(q.data.components);
+  const s = q.data.status;
   return (
-    <V2Link href="/v2/status" className="m2-health" data-testid="status-health" aria-label={t("Platform {statusWord}, open the status page", { statusWord: statusWord(s) })}>
-      <VerdictMark verdict={s === "ok" ? "go" : s === "degraded" ? "at-risk" : "no-go"} />
-      {statusWord(s)}
+    <V2Link href="/v2/status" className="m2-health" data-testid="status-health" aria-label={t("Platform {statusWord}, open the status page", { statusWord: overallWord(s) })}>
+      <VerdictMark verdict={overallVerdict(s)} />
+      {overallWord(s)}
     </V2Link>
   );
 }

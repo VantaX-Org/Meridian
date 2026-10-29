@@ -13,7 +13,7 @@ import { ToolGrid } from "../GridTools";
 import { EmptyFrame, ErrorFrame, Mono } from "../parts";
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import { AdminPage, Block, Confirm, Dialog, Fld, NeedsPermission, Note, StatusWord, since, useCan } from "./kit";
-import { ScimBadge, ScimCard } from "./enterprise";
+import { ScimCard } from "./enterprise";
 import { t as tr } from "@/lib/v2/i18n";
 import { inviteAttentionText, roleText, seatsText, userStatusText } from "@/lib/v2/labels";
 
@@ -40,7 +40,6 @@ const COLUMNS: GridColumn<User>[] = [
     cell: (u) => (
       <span title={u.email}>
         {u.name} <span className="m2-meta">{u.email}</span>
-        <ScimBadge user={u} />
       </span>
     ),
   },

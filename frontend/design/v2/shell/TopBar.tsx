@@ -156,7 +156,7 @@ export function TopBar({ onOpenCommand, onToggleMap, onShortcuts, mapOpen }: Top
     <header className="m2-top">
       <div className="m2-top-l">
         <V2Link href="/v2" className="m2-brand" aria-label={tr("{name}, go to the landscape", { name })}>
-          {/* eslint-disable-next-line @next/next/no-img-element -- the tenant's logo, often a data URL; next/image would need every host configured */}
+          {/* eslint-disable-next-line @next/next/no-img-element -- the tenant's logo, served by the API or, in fixture mode, from memory; next/image would add nothing */}
           {tenant?.logo_url ? <img src={tenant.logo_url} alt="" className="m2-logo" /> : <Mark />}
           <span className="m2-bn">{name}</span>
         </V2Link>

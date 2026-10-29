@@ -1,22 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import type { ComponentStatus, StatusPage } from "@/lib/api/v2/enterprise";
+import type { ComponentStatus, OverallStatus, StatusPage } from "@/lib/api/v2/enterprise";
 import { formatDate } from "@/lib/format";
 import { useStatusPage } from "@/lib/v2/enterprise-queries";
 import { fixed } from "@/lib/v2/format";
-import { dayCells, maintenanceState, overallStatus, statusWord, type DayCell } from "@/lib/v2/status";
+import { currentMaintenance, dayCells, overallVerdict, overallWord, statusWord, type DayCell } from "@/lib/v2/status";
 import { productName, useTenantTheme } from "@/lib/v2/theme";
 import { Mark, VerdictMark } from "../marks";
 import { ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import "../status.css";
 import { t } from "@/lib/v2/i18n";
 
-const VERDICT: Record<ComponentStatus, "go" | "at-risk" | "no-go"> = { ok: "go", degraded: "at-risk", down: "no-go" };
+const VERDICT: Record<ComponentStatus, "go" | "at-risk" | "no-go" | null> = { up: "go", degraded: "at-risk", down: "no-go", not_configured: null };
 
+const pctText = (p: number | null | undefined): string => (p == null ? "—" : `${fixed(p, 2)}%`);
 
-function overallSentence(s: ComponentStatus): string {
-  return s === "ok" ? t("Every part of the platform is working.") : s === "degraded" ? t("Part of the platform is slower or less available than usual.") : t("Part of the platform is down.");
+function overallSentence(s: OverallStatus): string {
+  return s === "operational" ? t("Every part of the platform is working.") : s === "degraded" ? t("Part of the platform is slower or less available than usual.") : t("A core part of the platform is down.");
 }
 
 function dayWord(c: DayCell): string {
@@ -26,17 +27,17 @@ function dayWord(c: DayCell): string {
 function dayLabel(c: DayCell): string {
   const date = formatDate(`${c.day}T12:00:00Z`, "date");
   if (c.state === "none") return t("{date}: No checks recorded", { date });
-  return t("{date}: {dayWord}, {count} of {total} checks passed", { date, dayWord: dayWord(c), count: c.total - c.failed, total: c.total });
+  return t("{date}: {dayWord}, {pct} of {slots} checks up", { date, dayWord: dayWord(c), pct: pctText(c.uptimePct), slots: c.slots });
 }
 
-/** One bar of thirty day cells. Hue only where a day was degraded or down; the word beside the bar says it in words. */
+/** One bar of thirty day cells from the server's per-day uptime. Hue only where a day was degraded or down; the word beside the bar says it. */
 export function UptimeBar({ page }: { page: StatusPage }) {
-  const cells = dayCells(page.samples, 30);
+  const cells = dayCells(page.uptime, page.generated_at, 30);
   const degraded = cells.filter((c) => c.state === "degraded").length;
   const down = cells.filter((c) => c.state === "down").length;
-  const state: ComponentStatus = down > 0 ? "down" : degraded > 0 ? "degraded" : "ok";
-  const word = statusWord(state);
-  const pct = page.uptime_30d_pct;
+  const state: ComponentStatus = down > 0 ? "down" : degraded > 0 ? "degraded" : "up";
+  const verdict = VERDICT[state];
+  const pct = page.uptime.overall_pct;
   const summary = t("{value} over the last 30 days. {down} {down, plural, one {day} other {days}} down, {degraded} {degraded, plural, one {day} other {days}} degraded.", { value: pct == null ? t("Uptime not measured") : t("{pct}% uptime", { pct: fixed(pct, 2) }), down, degraded });
   return (
     <div className="m2-up" data-testid="uptime">
@@ -46,8 +47,8 @@ export function UptimeBar({ page }: { page: StatusPage }) {
         ))}
       </div>
       <div className="m2-upword">
-        {state === "ok" ? null : <VerdictMark verdict={VERDICT[state]} />}
-        <span>{word}</span>
+        {state === "up" || !verdict ? null : <VerdictMark verdict={verdict} />}
+        <span>{statusWord(state)}</span>
       </div>
       <p className="m2-prov">{summary}</p>
       <div className="m2-upaxis" aria-hidden="true">
@@ -59,6 +60,7 @@ export function UptimeBar({ page }: { page: StatusPage }) {
 }
 
 function Components({ page }: { page: StatusPage }) {
+  const uptime = new Map(page.uptime.components.map((c) => [c.id, c.uptime_pct]));
   return (
     <div className="m2-frame" tabIndex={0} role="region" aria-label={t("Components and their state")}>
       <table className="m2-tbl m2-stat-tbl">
@@ -68,23 +70,28 @@ function Components({ page }: { page: StatusPage }) {
             <th scope="col">{t("Component")}</th>
             <th scope="col">{t("State")}</th>
             <th scope="col">{t("Detail")}</th>
-            <th scope="col">{t("Measured")}</th>
+            <th scope="col" className="m2-r">{t("Response")}</th>
+            <th scope="col" className="m2-r">{t("30-day uptime")}</th>
           </tr>
         </thead>
         <tbody>
-          {page.components.map((c) => (
-            <tr key={c.name}>
-              <th scope="row">{c.name}</th>
-              <td>
-                <span className="m2-v">
-                  <VerdictMark verdict={VERDICT[c.status]} />
-                  {statusWord(c.status)}
-                </span>
-              </td>
-              <td className="m2-wrap">{c.detail ?? "—"}</td>
-              <td>{formatDate(c.measured_at, "datetime")}</td>
-            </tr>
-          ))}
+          {page.components.map((c) => {
+            const v = VERDICT[c.status];
+            return (
+              <tr key={c.id}>
+                <th scope="row">{c.label}</th>
+                <td>
+                  <span className="m2-v">
+                    {v ? <VerdictMark verdict={v} /> : null}
+                    {statusWord(c.status)}
+                  </span>
+                </td>
+                <td className="m2-wrap">{c.detail ?? "—"}</td>
+                <td className="m2-r">{c.latency_ms == null ? "—" : t("{latency} ms", { latency: c.latency_ms })}</td>
+                <td className="m2-r">{pctText(uptime.get(c.id))}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -92,20 +99,25 @@ function Components({ page }: { page: StatusPage }) {
 }
 
 function Incidents({ page }: { page: StatusPage }) {
-  if (page.incidents.length === 0) return <p className="m2-prov">{t("No incident in the last 30 days.")}</p>;
+  if (page.incidents.length === 0) return <p className="m2-prov">{t("No server error in the last 24 hours.")}</p>;
   return (
     <ul className="m2-incs">
       {page.incidents.map((i) => (
         <li key={i.reference}>
           <div>
-            <Mono>{i.reference}</Mono>
-            <span className="m2-meta">{t(" {count} {count, plural, one {error} other {errors}}", { count: i.count })}</span>
+            <Mono>{i.reference}</Mono>{" "}
+            <span className="m2-meta">{t("{count, plural, one {# error} other {# errors}}", { count: i.count })}</span>
           </div>
           <div className="m2-meta">{t("First seen {first_seen}, last seen {last_seen}", { first_seen: formatDate(i.first_seen, "datetime"), last_seen: formatDate(i.last_seen, "datetime") })}</div>
-          {i.path ? (
+          {i.areas.length ? (
             <div className="m2-meta">
-              {t("On ")}
-              <Mono>{i.path}</Mono>
+              {t("Where:")}{" "}
+              {i.areas.map((a, n) => (
+                <span key={a}>
+                  {n > 0 ? ", " : null}
+                  <Mono>{a}</Mono>
+                </span>
+              ))}
             </div>
           ) : null}
         </li>
@@ -115,13 +127,19 @@ function Incidents({ page }: { page: StatusPage }) {
 }
 
 function Maintenance({ page }: { page: StatusPage }) {
-  const m = page.maintenance;
-  const when = maintenanceState(m);
-  if (!m || when === "over") return null;
+  const m = currentMaintenance(page.maintenance);
+  if (!m) return null;
+  const more = page.maintenance.length - 1;
   return (
     <section className="m2-maint" aria-label={t("Planned maintenance")} data-testid="maintenance">
-      <h2 className="m2-h2">{when === "now" ? t("Maintenance in progress") : t("Planned maintenance")}</h2>
-      <p>{t("From {from} to {to}. {note}", { from: formatDate(m.from, "datetime"), to: formatDate(m.to, "datetime"), note: m.note })}</p>
+      <h2 className="m2-h2">{m.in_progress ? t("Maintenance in progress") : t("Planned maintenance")}</h2>
+      <p>
+        <strong>{m.title}</strong>
+        {" "}
+        {t("From {from} to {to}.", { from: formatDate(m.starts_at, "datetime"), to: formatDate(m.ends_at, "datetime") })}
+        {m.detail ? ` ${m.detail}` : ""}
+      </p>
+      {more > 0 ? <p className="m2-prov">{t("{more, plural, one {# more window is} other {# more windows are}} planned.", { more })}</p> : null}
     </section>
   );
 }
@@ -134,7 +152,7 @@ export function StatusScreen({ signedIn = false }: { signedIn?: boolean }) {
   const q = useStatusPage();
   const theme = useTenantTheme();
   const page = q.data;
-  const overall = page ? overallStatus(page.components) : null;
+  const overall = page?.status ?? null;
   return (
     <div className="m2-stat-page">
       <a className="m2-skip" href="#m2-status-main">
@@ -168,12 +186,12 @@ export function StatusScreen({ signedIn = false }: { signedIn?: boolean }) {
           <>
             <p className="m2-stat-sum" role="status" data-testid="status-overall">
               <span className="m2-v">
-                <VerdictMark verdict={VERDICT[overall]} />
-                <strong>{statusWord(overall)}</strong>
+                <VerdictMark verdict={overallVerdict(overall)} />
+                <strong>{overallWord(overall)}</strong>
               </span>{" "}
               {overallSentence(overall)}
             </p>
-            <p className="m2-prov">{t("Updated {updated}. This page reads the status again every minute.", { updated: formatDate(new Date(q.dataUpdatedAt), "datetime") })}</p>
+            <p className="m2-prov">{t("Checked {updated}. This page reads the status again every minute.", { updated: formatDate(page.generated_at, "datetime") })}</p>
             <Maintenance page={page} />
             <section className="m2-sec" aria-labelledby="m2-st-up">
               <h2 className="m2-h2" id="m2-st-up">{t("Last 30 days")}</h2>
@@ -184,7 +202,7 @@ export function StatusScreen({ signedIn = false }: { signedIn?: boolean }) {
               <Components page={page} />
             </section>
             <section className="m2-sec" aria-labelledby="m2-st-i">
-              <h2 className="m2-h2" id="m2-st-i">{t("Incidents")}</h2>
+              <h2 className="m2-h2" id="m2-st-i">{t("Server errors, last 24 hours")}</h2>
               <Incidents page={page} />
             </section>
           </>

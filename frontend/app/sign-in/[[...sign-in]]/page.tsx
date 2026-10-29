@@ -45,7 +45,7 @@ export default function SignInPage() {
   // The tenant's look (GET /theme, public): its logo and name above the form, its accent on the page. Read only here.
   const tenant = useTenantTheme();
   useDocumentAccent(tenant);
-  const branded = Boolean(tenant?.logo_url || tenant?.product_name);
+  const branded = Boolean(tenant?.customised);
 
   useEffect(() => {
     // Back from the identity provider: the callback leaves the session token in the URL fragment.
@@ -109,7 +109,7 @@ export default function SignInPage() {
       <div className={authFormClass}>
         {branded ? (
           <div className="flex items-center gap-2.5" data-testid="tenant-brand">
-            {/* eslint-disable-next-line @next/next/no-img-element -- the tenant's logo, often a data URL */}
+            {/* eslint-disable-next-line @next/next/no-img-element -- the tenant's logo, served by the API */}
             {tenant?.logo_url ? <img src={tenant.logo_url} alt="" className="h-8 w-auto max-w-[160px] object-contain" /> : null}
             <span className="m-text-title font-semibold m-ink">{productName(tenant)}</span>
           </div>
