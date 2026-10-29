@@ -16,8 +16,8 @@ export interface SelectOption {
  * the three name the trigger.
  */
 export function Select({
-  value, onValueChange, options, placeholder, label, className,
-}: { value: string; onValueChange: (v: string) => void; options: SelectOption[]; placeholder?: string; label?: string; className?: string }) {
+  value, onValueChange, options, placeholder, label, className, disabled,
+}: { value: string; onValueChange: (v: string) => void; options: SelectOption[]; placeholder?: string; label?: string; className?: string; disabled?: boolean }) {
   const trigger = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (process.env.NODE_ENV === "production") return;
@@ -32,7 +32,7 @@ export function Select({
     return () => clearTimeout(t);
   }, []);
   return (
-    <BaseSelect.Root value={value} onValueChange={(v) => onValueChange(v ?? "")} items={options}>
+    <BaseSelect.Root value={value} onValueChange={(v) => onValueChange(v ?? "")} items={options} disabled={disabled}>
       <BaseSelect.Trigger
         ref={trigger}
         aria-label={label}

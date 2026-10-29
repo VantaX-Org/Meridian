@@ -7,7 +7,13 @@ import type { TenantSettings } from "@/types/api";
 import type { FindingsAggregate } from "@/lib/api/findings";
 import ScoringPage, { toStored, weightPreview, withFeatureDraft, withSeverityDraft } from "../page";
 
-vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+let writer = true;
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => writer }) }));
+const access = vi.hoisted(() => ({ requestAccess: null as null | ((t: unknown) => void) }));
+vi.mock("@/lib/permissions", async (orig) => ({
+  ...(await orig<typeof import("@/lib/permissions")>()),
+  usePermissionsContext: () => (access.requestAccess ? { loading: false, can: () => true, has: () => true, requestAccess: access.requestAccess } : null),
+}));
 
 const SETTINGS: TenantSettings = {
   name: "Acme",
@@ -180,5 +186,23 @@ describe("rules scoring page", () => {
     vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue(AGGREGATE);
     renderWithQuery(<ScoringPage />);
     await waitFor(() => expect(screen.getByText(/could not be loaded/i)).toBeInTheDocument());
+  });
+
+  it("offers Request access beside the read-only notice, for administering rules", async () => {
+    writer = false;
+    try {
+      const requestAccess = vi.fn();
+      access.requestAccess = requestAccess;
+      vi.spyOn(settingsApi, "getSettings").mockResolvedValue(SETTINGS);
+      vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue(AGGREGATE);
+      renderWithQuery(<ScoringPage />);
+      const notice = await screen.findByText("These settings are read only for your role");
+      expect(notice).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Request access" }));
+      expect(requestAccess).toHaveBeenCalledWith({ resource: "rules", action: "admin" });
+    } finally {
+      writer = true;
+      access.requestAccess = null;
+    }
   });
 });

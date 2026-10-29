@@ -110,11 +110,17 @@ export default function MigrationPage() {
   const shownWaves = (verdict ? data.filter((w) => verdictOf(w) === verdict) : data).sort((a, b) =>
     (VERDICT_RANK[verdictOf(a) ?? ""] ?? 3) - (VERDICT_RANK[verdictOf(b) ?? ""] ?? 3) || (a.last_score ?? 101) - (b.last_score ?? 101));
   const [goCount, atRiskCount, noGoCount] = [goWaves.length, atRiskWaves.length, noGoWaves.length];
+  // A wave that has never run is the next step: its readiness is unknown until it does. Otherwise a new wave is.
+  const unrunWave = data.find((w) => !w.last_run_id && !w.last_verdict);
   const createButton = can("analyse") ? <Button onClick={() => setCreating(true)}>Create wave</Button> : undefined;
+  const runFirst = can("analyse") && unrunWave ? (
+    <Button pending={run.isPending} onClick={() => run.mutate(unrunWave.id)}>{`Run ${unrunWave.name}`}</Button>
+  ) : undefined;
+  const headerCreate = runFirst && can("analyse") ? <Button variant="secondary" onClick={() => setCreating(true)}>Create wave</Button> : createButton;
   return (
     <>
       <ExplorerPage
-        header={<PageHeader title="Migration" meta={`${waves.isPending ? "" : `${data.length} ${data.length === 1 ? "wave" : "waves"}. `}Whether each group of objects is ready to load into S/4HANA, worst first. Run a wave to refresh its readiness`} actions={<><InsightActions />{createButton}</>} tabs={<InsightTabs />} />}
+        header={<PageHeader title="Migration" meta={`${waves.isPending ? "" : `${data.length} ${data.length === 1 ? "wave" : "waves"}. `}Whether each group of objects is ready to load into S/4HANA, worst first. Run a wave to refresh its readiness`} actions={<><InsightActions />{runFirst}{headerCreate}</>} tabs={<InsightTabs />} />}
         summary={data.length > 0 ? (
           <div className="m-stat-grid">
             <Stat label="Waves" help="wave" value={data.length} />

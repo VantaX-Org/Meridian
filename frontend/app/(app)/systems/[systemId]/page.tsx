@@ -13,7 +13,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { clsx } from "clsx";
 import { Bar, Button, Card, Checkbox, ConfirmDialog, DataTable, Delta, Drawer, DrillLink, EmptyState, ErrorState, ExportMenu, Field, Input, Line, Mono, Notice, PageHeader, Pill, Select, Skeleton, Stat, Status, Tabs, Tooltip, emptyExportOptions, type Verdict, entityTabs, toVerdict, toast, useBreadcrumbTitle, Score } from "@/design";
-import { HEALTH_LABEL, dqsTrend, latestDqs } from "../_health";
+import { HEALTH_LABEL, RFC_FIX_HREF, RFC_FIX_SCRIPT, RFC_MISSING_REASON, dqsTrend, latestDqs, rfcLibraryMissing } from "../_health";
 import { HealthReason } from "../_health-pill";
 import { DqsScore } from "@/components/insight/dqs-score";
 import { ConfigurationTab } from "./config-tab";
@@ -227,7 +227,9 @@ export default function SystemPage() {
   const openExtract = () => setExtractOpen(true);
   const analysable = latest ?? versions[0];
   // Until the connection is known to work, testing it is the next step, not extracting from it.
-  const testFirst = system.health_status !== "healthy" && can("trigger_sync");
+  const rfcDown = rfcLibraryMissing(system);
+  const testFirst = system.health_status !== "healthy" && can("trigger_sync") && !rfcDown;
+  const extractOffReason = `${RFC_MISSING_REASON}. Install it first`;
   const runsExport = [{ format: "xlsx" as const, label: "Runs (.xlsx)", run: () => exportRuns("xlsx", { system_id: systemId }) }];
 
   return (
@@ -254,11 +256,16 @@ export default function SystemPage() {
         ]}
         actions={
         <>
+          {rfcDown ? <Button render={<Link href={RFC_FIX_HREF}>Install the RFC library</Link>} /> : null}
           {can("trigger_sync") ? <Button variant={testFirst ? "primary" : "secondary"} disabled={test.isPending} onClick={() => test.mutate()}>{testLabel}</Button> : null}
-          <GatedPrimary kind="extract" allowed={can("trigger_sync")} variant={testFirst ? "secondary" : "primary"} systemId={systemId} scopeLabel={system.name} data-tour="system-extract"
-            onClick={openExtract}>
-            Extract
-          </GatedPrimary>
+          {rfcDown && can("trigger_sync") ? (
+            <Tooltip label={extractOffReason} render={<Button variant="secondary" disabled aria-disabled="true" aria-label={`Extract. ${extractOffReason}`} />}>Extract</Tooltip>
+          ) : (
+            <GatedPrimary kind="extract" allowed={can("trigger_sync")} variant={testFirst || rfcDown ? "secondary" : "primary"} systemId={systemId} scopeLabel={system.name} data-tour="system-extract"
+              onClick={openExtract}>
+              Extract
+            </GatedPrimary>
+          )}
         </>
         }
       />
@@ -283,6 +290,16 @@ export default function SystemPage() {
           action={<GatedPrimary kind="extract" allowed={false} variant="secondary" systemId={systemId} scopeLabel={system.name}>Extract</GatedPrimary>}
         >
           Extraction needs the {primaryRole("extract")} role on this system. Request access to extract from it.
+        </Notice>
+      ) : null}
+
+      {rfcDown ? (
+        <Notice
+          tone="warning"
+          title="Install the SAP RFC library to connect this system"
+          action={<Button size="sm" render={<Link href={RFC_FIX_HREF}>Read the steps</Link>} />}
+        >
+          The server cannot reach SAP over RFC until the library is built in. On the host, run <Mono>{RFC_FIX_SCRIPT}</Mono> with the path to your SAP NW RFC SDK, then select Test connection. Extract stays off until then. The steps are in the user guide chapter Data in.
         </Notice>
       ) : null}
 

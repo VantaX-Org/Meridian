@@ -1129,6 +1129,15 @@ function TaskOpen({ t }: { t: StewardshipQueueItem }) {
   return <div><Button variant="secondary" render={<Link href={link.href} />}>{link.label}</Button></div>;
 }
 
+/** The model's recommendation as a verb Meridian can do from here ("escalate: critical severity requires attention"), with its reason. */
+const SUGGESTED_MOVES = ["escalate", "approve", "reject"] as const;
+function suggestedMove(recommendation: string | null | undefined): { move: (typeof SUGGESTED_MOVES)[number]; reason: string } | null {
+  if (!recommendation) return null;
+  const [head, ...rest] = recommendation.split(/:\s*/);
+  const move = SUGGESTED_MOVES.find((m) => m === head.trim().toLowerCase());
+  return move ? { move, reason: rest.join(": ").trim() } : null;
+}
+
 /** The selected task: what it is, where it stands against its SLA, the model's suggestion and the one decision. */
 function TaskDetail({ t, exc, sla, now, assignee, busy, canApprove, canAssign, canRelease, people, onApprove, onReject, onEscalate, onAssign, onRelease, onReassign }: {
   t: StewardshipQueueItem; exc: Exception | null; sla: Sla; now: number; assignee: string; busy: boolean; canApprove: boolean; canAssign: boolean; canRelease: boolean;
@@ -1136,6 +1145,9 @@ function TaskDetail({ t, exc, sla, now, assignee, busy, canApprove, canAssign, c
   onApprove: () => void; onReject: () => void; onEscalate: () => void; onAssign: () => void; onRelease: () => void; onReassign: (userId: string) => void;
 }) {
   const claimFirst = canAssign && !t.assigned_to;
+  const suggested = suggestedMove(t.ai_recommendation);
+  // Approve and Reject are already buttons here; Escalate otherwise waits in the menu, so a suggestion to escalate is surfaced as its own button.
+  const suggestEscalate = suggested?.move === "escalate" && canApprove && t.status !== "escalated";
   // An exception beyond the list's first page is read by id (the same query TaskSource makes), for its title and object.
   const excDetail = useQuery({ queryKey: ["exceptions", "detail", t.source_id], queryFn: () => getException(t.source_id), enabled: t.item_type === "exception" && !exc, retry: false, meta: { ignoreError: true } });
   const source = exc ?? excDetail.data ?? null;
@@ -1145,7 +1157,7 @@ function TaskDetail({ t, exc, sla, now, assignee, busy, canApprove, canAssign, c
   const more: MenuItemDef[] = [
     ...(canAssign && !claimFirst ? [{ label: "Claim", onSelect: onAssign }] : []),
     ...(canRelease ? [{ label: "Release", onSelect: onRelease }] : []),
-    ...(t.status !== "escalated" ? [{ label: "Escalate", onSelect: onEscalate }] : []),
+    ...(t.status !== "escalated" && !suggestEscalate ? [{ label: "Escalate", onSelect: onEscalate }] : []),
   ];
   return (
     <Card
@@ -1179,10 +1191,14 @@ function TaskDetail({ t, exc, sla, now, assignee, busy, canApprove, canAssign, c
         </dl>
         <TaskSource t={t} />
         {t.ai_recommendation ? (
-          <p className="m-text-body m-ink-2">
-            Meridian suggests: {labelOf(t.ai_recommendation)}
-            {t.ai_confidence != null ? `, ${Math.round(t.ai_confidence * 100)}% sure` : ""}. Check it before you decide.
-          </p>
+          <div className="flex flex-col items-start gap-2">
+            <p className="m-text-body m-ink-2">
+              Meridian suggests: {suggested ? labelOf(suggested.move) : labelOf(t.ai_recommendation)}
+              {t.ai_confidence != null ? `, ${Math.round(t.ai_confidence * 100)}% sure` : ""}
+              {suggested?.reason ? `. ${suggested.reason.charAt(0).toUpperCase()}${suggested.reason.slice(1)}` : ""}. Check it before you decide.
+            </p>
+            {suggestEscalate ? <Button variant="secondary" size="sm" disabled={busy} onClick={onEscalate}>Escalate</Button> : null}
+          </div>
         ) : null}
         <TaskOpen t={t} />
       </div>

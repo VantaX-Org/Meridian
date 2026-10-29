@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi, describe, it, expect } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
@@ -88,4 +88,40 @@ describe("admin triage page", () => {
     retry.click();
     await waitFor(() => expect(screen.getByText("Stewards")).toBeInTheDocument());
   });
+
+  it("warns that new issues go to nobody when there are no rules and no fallback user, and hides the switched-off tile", async () => {
+    mockAll();
+    vi.spyOn(triageApi, "getTeams").mockResolvedValue([]);
+    vi.spyOn(triageApi, "getRules").mockResolvedValue([]);
+    renderWithQuery(<AdminTriagePage />);
+    const warning = await screen.findByRole("alert");
+    expect(warning).toHaveTextContent("New issues go to nobody: set a fallback user");
+    expect(within(warning).getByRole("link", { name: "Set fallback user" })).toHaveAttribute("href", "#calendar");
+    expect(screen.queryByText("Rules switched off")).toBeNull();
+  });
+
+  it("shows no warning once a fallback user is set, and the tile returns with rules", async () => {
+    mockAll();
+    vi.spyOn(triageApi, "getTriageSettings").mockResolvedValue({ ...SETTINGS, fallback_user_id: "u1" });
+    renderWithQuery(<AdminTriagePage />);
+    expect(await screen.findByText("Rules switched off")).toBeInTheDocument();
+    expect(screen.queryByText("New issues go to nobody: set a fallback user")).toBeNull();
+  });
+
+  it("offers one Add team and one Add rule at a time: the empty state's, then the header's", async () => {
+    mockAll();
+    vi.spyOn(triageApi, "getTeams").mockResolvedValue([]);
+    vi.spyOn(triageApi, "getRules").mockResolvedValue([]);
+    const first = renderWithQuery(<AdminTriagePage />);
+    await screen.findByText("No teams yet");
+    expect(screen.getAllByRole("button", { name: "Add team" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Add rule" })).toHaveLength(1);
+    first.unmount();
+    mockAll();
+    renderWithQuery(<AdminTriagePage />);
+    await screen.findByText("Stewards");
+    expect(screen.getAllByRole("button", { name: "Add team" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Add rule" })).toHaveLength(1);
+  });
+
 });

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
+import Link from "next/link";
 import { Button, Checkbox, ChoiceGroup, ConfirmDialog, DataTable, Dialog, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Pill, Select, Skeleton, Stat, Status, Textarea, toast } from "@/design";
 import { SettingsTabs } from "@/components/admin/settings-tabs";
 import { LedgerHead, RowButton } from "@/components/mdm/ledger";
@@ -61,6 +62,10 @@ export default function AdminTriagePage() {
   const sla = useQuery({ queryKey: queryKeys.triageSla(), queryFn: getSlaPolicies });
   const usersQ = useUsers();
   const idle = (ruleQ.data ?? []).filter((r) => !r.enabled).length;
+  const calendar = useQuery({ queryKey: queryKeys.triageSettings(), queryFn: getTriageSettings, meta: { ignoreError: true } });
+  // No rule routes anything and nobody catches the rest: every new issue is assigned to no one.
+  const goesToNobody = !ruleQ.isLoading && (ruleQ.data?.length ?? 0) === 0 && calendar.isSuccess && !calendar.data.fallback_user_id;
+  const hasRules = ruleQ.isLoading || (ruleQ.data?.length ?? 0) > 0;
 
   if (teams.isError || ruleQ.isError || sla.isError || usersQ.isError) {
     return (
@@ -77,9 +82,22 @@ export default function AdminTriagePage() {
     <div className="flex flex-col gap-4" aria-busy={teams.isLoading || undefined}>
       <PageHeader tabs={<SettingsTabs />} title="Triage" meta="Who gets each new issue, how long they have to fix it, and the working days the clock counts. These drive the urgency colours in the inbox" />
 
-      <div className="flex gap-4">
-        <Stat label="Rules switched off" value={idle} tone={idle ? "at-risk" : undefined} loading={ruleQ.isLoading} delta={`of ${ruleQ.data?.length ?? 0} assignment rules`} />
-      </div>
+      {goesToNobody ? (
+        <Notice
+          tone="warning"
+          title="New issues go to nobody: set a fallback user"
+          action={<Button size="sm" render={<Link href="#calendar">Set fallback user</Link>} />}
+        >
+          There are no assignment rules and no fallback user, so a new issue is not assigned to anyone. Pick a fallback user under Working calendar, or add a rule.
+        </Notice>
+      ) : null}
+
+      {/* A count of switched-off rules means nothing when there are no rules. */}
+      {hasRules ? (
+        <div className="flex gap-4">
+          <Stat label="Rules switched off" value={idle} tone={idle ? "at-risk" : undefined} loading={ruleQ.isLoading} delta={`of ${ruleQ.data?.length ?? 0} assignment rules`} />
+        </div>
+      ) : null}
 
       {!rules && !settings ? (
         <Notice tone="info">You can read these settings. Ask an administrator to change teams, rules, deadlines or the calendar.</Notice>
@@ -125,7 +143,7 @@ function TeamsSection({ write }: { write: boolean }) {
   ];
 
   return (
-    <Section title="Teams" action={write ? <Button variant="secondary" onClick={() => setEditing("new")}>Add team</Button> : undefined}>
+    <Section title="Teams" action={write && teams.data?.length ? <Button variant="secondary" onClick={() => setEditing("new")}>Add team</Button> : undefined}>
       {teams.isError ? (
         <ErrorState message={errText(teams.error, "Teams could not be read")} onRetry={() => teams.refetch()} />
       ) : teams.isLoading ? (
@@ -267,7 +285,7 @@ function RulesSection({ write }: { write: boolean }) {
   ];
 
   return (
-    <Section title="Assignment rules" action={write ? <Button variant="secondary" onClick={() => setEditing("new")}>Add rule</Button> : undefined}>
+    <Section title="Assignment rules" action={write && sorted.length ? <Button variant="secondary" onClick={() => setEditing("new")}>Add rule</Button> : undefined}>
       {ruleQ.isError ? (
         <ErrorState message={errText(ruleQ.error, "Rules could not be read")} onRetry={() => ruleQ.refetch()} />
       ) : ruleQ.isLoading ? (

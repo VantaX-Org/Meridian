@@ -54,7 +54,10 @@ export default function AdminSignInPage() {
     setLoadedFrom(saved);
     setForm(toForm(saved));
   }
-  const set = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
+  // An error shows once its field was typed in or left, never on a form nobody has touched.
+  const [touched, setTouched] = useState<Partial<Record<keyof FormState, boolean>>>({});
+  const touch = (...keys: (keyof FormState)[]) => setTouched((t) => (keys.every((k) => t[k]) ? t : { ...t, ...Object.fromEntries(keys.map((k) => [k, true])) }));
+  const set = (patch: Partial<FormState>) => { touch(...(Object.keys(patch) as (keyof FormState)[])); setForm((f) => ({ ...f, ...patch })); };
 
   const input: SsoConfigInput = {
     issuer: form.issuer.trim(), client_id: form.clientId.trim(), display_name: form.displayName.trim(),
@@ -69,6 +72,16 @@ export default function AdminSignInPage() {
     displayName: form.displayName.trim() ? undefined : "Enter the name shown on the sign-in button",
   };
   const invalid = Object.values(errors).some(Boolean);
+  // The secret's message explains an edit to a saved issuer or client ID, so it needs no touch first.
+  const shown = (k: "issuer" | "clientId" | "secret" | "displayName") => (touched[k] || (k === "secret" && saved?.has_secret) ? errors[k] : undefined);
+  /** What a disabled Save is waiting for, as a phrase ("the issuer address and the client secret"). */
+  const missing = [
+    errors.issuer && "the issuer address",
+    errors.clientId && "the client ID",
+    errors.secret && (saved?.has_secret ? "the client secret again" : "the client secret"),
+    errors.displayName && "the display name",
+  ].filter((m): m is string => Boolean(m));
+  const missingText = missing.length < 2 ? missing.join("") : `${missing.slice(0, -1).join(", ")} and ${missing[missing.length - 1]}`;
 
   const save = useMutation({
     mutationFn: () => saveSsoConfig(input),
@@ -119,18 +132,18 @@ export default function AdminSignInPage() {
           <Async query={q} skeleton={240}>{(
             <>
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Issuer address" error={errors.issuer}>
-                  <Input type="url" inputMode="url" placeholder="https://login.example.com/tenant-id/v2.0" value={form.issuer} onChange={(e) => set({ issuer: e.target.value })} />
+                <Field label="Issuer address" error={shown("issuer")}>
+                  <Input type="url" inputMode="url" placeholder="https://login.example.com/tenant-id/v2.0" value={form.issuer} onChange={(e) => set({ issuer: e.target.value })} onBlur={() => touch("issuer")} />
                 </Field>
-                <Field label="Client ID" error={errors.clientId}>
-                  <Input value={form.clientId} onChange={(e) => set({ clientId: e.target.value })} autoComplete="off" />
+                <Field label="Client ID" error={shown("clientId")}>
+                  <Input value={form.clientId} onChange={(e) => set({ clientId: e.target.value })} onBlur={() => touch("clientId")} autoComplete="off" />
                 </Field>
-                <Field label="Client secret" error={errors.secret}>
-                  <Input type="password" autoComplete="new-password" value={form.secret} onChange={(e) => set({ secret: e.target.value })}
+                <Field label="Client secret" error={shown("secret")}>
+                  <Input type="password" autoComplete="new-password" value={form.secret} onChange={(e) => set({ secret: e.target.value })} onBlur={() => touch("secret")}
                     placeholder={saved?.has_secret ? "Stored. Leave blank to keep it" : ""} />
                 </Field>
-                <Field label="Display name" error={errors.displayName}>
-                  <Input value={form.displayName} onChange={(e) => set({ displayName: e.target.value })} placeholder="Company login" maxLength={60} />
+                <Field label="Display name" error={shown("displayName")}>
+                  <Input value={form.displayName} onChange={(e) => set({ displayName: e.target.value })} onBlur={() => touch("displayName")} placeholder="Company login" maxLength={60} />
                 </Field>
               </div>
               <Field label="Allowed email domains">
@@ -152,6 +165,8 @@ export default function AdminSignInPage() {
                 <Button variant="secondary" pending={test.isPending} disabled={!form.issuer.trim()} onClick={() => test.mutate()}>Test sign-in</Button>
                 {saved?.configured ? <Button variant="ghost" onClick={() => setConfirmRemove(true)}>Turn off single sign-on</Button> : null}
               </div>
+              {/* A disabled button says what it is waiting for. */}
+              {invalid ? <p className="m-text-meta m-ink-3" data-testid="signin-missing">{`Save is off until you enter ${missingText}.`}{!form.issuer.trim() ? " Test sign-in needs the issuer address." : ""}</p> : null}
             </>
           )}</Async>
         </SettingsSection>

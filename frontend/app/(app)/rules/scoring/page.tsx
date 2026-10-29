@@ -11,6 +11,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { RequestAccessButton } from "@/components/request-access-button";
 import { Button, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Radar, Select, Skeleton, Score } from "@/design";
 import { SettingsSection, SettingsSheet } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
@@ -154,7 +155,7 @@ function ScoringForm({ initial, scoring }: { initial: TenantSettings; scoring: S
     <div className="flex flex-col gap-4">
       <PageHeader title="Scoring" meta="How the quality score is weighted and where its bands fall" />
       <p className="m-text-body m-ink-3">When an alert fires and who is told is set in <Link className="underline" href="/admin/alerts">Alerts</Link>.</p>
-      {!write ? <Notice tone="info">These settings are read only for your role</Notice> : null}
+      {!write ? <Notice tone="info" action={<RequestAccessButton resource="rules" action="admin" />}>These settings are read only for your role</Notice> : null}
 
       {!agg.isError && !agg.isLoading && current === null ? (
         <p className="m-text-body m-ink-3">Save weights; the preview uses the latest findings once a run completes.</p>

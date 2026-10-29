@@ -110,4 +110,27 @@ describe("CreateWaveDialog validation", () => {
     expect(screen.getByText("Enter a number from 0 to 100")).toBeInTheDocument();
     expect(create).not.toHaveBeenCalled();
   });
+
+  it("leads with Run <wave> while a wave has never run, with Create wave second", async () => {
+    const never: MigrationWave = { ...WAVE, last_run_id: null, last_verdict: null, last_score: null, last_completed_at: null, trend: [] };
+    vi.spyOn(migrationApi, "getWaves").mockResolvedValue([never]);
+    const run = vi.spyOn(migrationApi, "runWave").mockResolvedValue({
+      run_id: "r3", task_id: "t", status: "queued", mode: "source_to_destination", modules: ["material_master"],
+    });
+    renderWithQuery(<MigrationPage />);
+    const primary = await screen.findByRole("button", { name: "Run Wave 1" });
+    expect(primary).toHaveClass("m-btn-primary");
+    expect(screen.getByRole("button", { name: "Create wave" })).toHaveClass("m-btn-secondary");
+    fireEvent.click(primary);
+    await waitFor(() => expect(run).toHaveBeenCalledWith("w1"));
+  });
+
+  it("keeps Create wave as the primary once every wave has run", async () => {
+    vi.spyOn(migrationApi, "getWaves").mockResolvedValue([WAVE]);
+    renderWithQuery(<MigrationPage />);
+    await screen.findByText("Wave 1");
+    expect(screen.getByRole("button", { name: "Create wave" })).toHaveClass("m-btn-primary");
+    expect(screen.queryByRole("button", { name: "Run Wave 1" })).toBeNull();
+  });
+
 });

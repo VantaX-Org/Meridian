@@ -73,4 +73,32 @@ describe("MdmOverviewPage", () => {
     renderWithQuery(<MdmOverviewPage />);
     expect(await screen.findByText("No match work waiting")).toBeInTheDocument();
   });
+
+  describe("the primary action is the real next step", () => {
+    const pair: StewardshipQueueItem = { id: "q1", tenant_id: "t", item_type: "merge_decision", source_id: "s", domain: "material_master", priority: 1, due_at: null, assigned_to: null, status: "open", sla_hours: null, created_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-01T00:00:00Z", ai_recommendation: null, ai_confidence: null };
+    const setup = (waiting: boolean, backlog: number) => {
+      vi.spyOn(mdmApi, "getMdmDashboard").mockResolvedValue({ latest: { ...metric, backlog_count: backlog }, trend: [metric], active_systems_count: 4 });
+      vi.spyOn(mdmApi, "getMdmHistory").mockResolvedValue({ history: [] });
+      vi.spyOn(stewardshipApi, "getQueueItems").mockImplementation(async (f = {}) => (waiting && f.status === "open" ? { items: [pair], total: 1 } : { items: [], total: 0 }));
+      renderWithQuery(<MdmOverviewPage />);
+    };
+
+    it("reviews match pairs when pairs are waiting", async () => {
+      setup(true, 38);
+      expect(await screen.findByRole("link", { name: "Review match pairs" })).toHaveAttribute("href", "/mdm/golden/merge");
+    });
+
+    it("opens the stewardship tasks when no pair waits but other tasks do", async () => {
+      setup(false, 38);
+      expect(await screen.findByRole("link", { name: "Open stewardship tasks" })).toHaveAttribute("href", "/inbox");
+      expect(screen.queryByRole("link", { name: "Review match pairs" })).toBeNull();
+    });
+
+    it("sets up match rules when nothing waits at all", async () => {
+      setup(false, 0);
+      expect(await screen.findByRole("link", { name: "Set up match rules" })).toHaveAttribute("href", "/mdm/match-rules");
+      expect(screen.queryByRole("link", { name: "Review match pairs" })).toBeNull();
+    });
+  });
+
 });

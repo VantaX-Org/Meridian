@@ -22,6 +22,7 @@ export default function AdminLicencePage() {
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
   const l = q.data;
+  const notValidated = l?.valid === null && Boolean(l?.status);
   const modules = l?.enabled_modules ?? [];
   const all = modules.includes("*");
   const seats = l?.features?.max_users ?? 0;
@@ -37,7 +38,8 @@ export default function AdminLicencePage() {
         title="Licence"
         meta="What this deployment is licensed for: objects, seats and features. Plan changes and invoices are handled in Meridian HQ"
         status={l?.valid === false ? <Pill tone="no-go">Not valid</Pill> : l?.valid ? <Pill tone="go">Valid</Pill> : undefined}
-        actions={canValidate ? <Button variant="secondary" pending={validate.isPending} onClick={() => validate.mutate()}>Validate now</Button> : undefined}
+        // Not validated yet: the Validate button below the notice is the page's one primary, so the header does not repeat it.
+        actions={canValidate && !notValidated ? <Button variant="secondary" pending={validate.isPending} onClick={() => validate.mutate()}>Validate now</Button> : undefined}
       />
 
       {l?.valid === false ? (
@@ -45,9 +47,13 @@ export default function AdminLicencePage() {
           The licence is not valid. Meridian HQ reports status &ldquo;{labelOf(l.status)}&rdquo;. Renew it in Meridian HQ; this deployment keeps its data either way
         </Notice>
       ) : null}
-      {l?.valid === null && l?.status ? (
-        <Notice tone="info">
-          Not validated yet: the deployment validates with Meridian HQ on a schedule; defaults apply until the next check
+      {notValidated ? (
+        <Notice
+          tone="warning"
+          title="Not validated yet"
+          action={canValidate ? <Button pending={validate.isPending} onClick={() => validate.mutate()}>Validate now</Button> : undefined}
+        >
+          This deployment has not checked its licence with Meridian HQ, so default entitlements apply: no module list, seat count or expiry. {canValidate ? "Validate now to check it. " : "Ask an administrator to validate it. "}It also validates on a schedule.
         </Notice>
       ) : null}
 

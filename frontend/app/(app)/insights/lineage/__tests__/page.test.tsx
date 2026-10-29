@@ -178,4 +178,22 @@ describe("LineagePage blast radius", () => {
     expect(screen.queryByText(/on gl_account/)).toBeNull();
     vi.unstubAllGlobals();
   });
+
+  it("keeps Trace it as the one primary; the form's Trace is secondary", async () => {
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [LATEST as never] });
+    vi.spyOn(lineageApi, "getLineageModel").mockResolvedValue({
+      model_version: 3, node_counts: {}, edge_count: 120, kpis: [], processes: [], features: [], warnings: [],
+    });
+    vi.spyOn(lineageApi, "getLineageImpact").mockResolvedValue({
+      version_id: "v1", model_version: 3, cost_available: false,
+      kpis: [{ id: "kpi:dpo", type: "kpi", label: "DPO", findings: 2, check_ids: ["AP017"], records_affected: 40, max_records: 30, worst_severity: "high", worst_impact: "degraded", min_hops: 2 }],
+      processes: [], features: [], unmapped_checks: [],
+    });
+    vi.spyOn(lineageApi, "getLineage").mockResolvedValue({ start: "kpi:dpo", model_version: 3, nodes: [], edges: [], paths_to_kpis: [] });
+    renderWithQuery(<LineagePage />);
+    expect(await screen.findByRole("button", { name: "Trace it" })).toHaveClass("m-btn-primary");
+    const form = (await screen.findByLabelText("Item to trace")).closest("form") as HTMLElement;
+    expect(within(form).getByRole("button", { name: "Trace" })).toHaveClass("m-btn-secondary");
+  });
+
 });

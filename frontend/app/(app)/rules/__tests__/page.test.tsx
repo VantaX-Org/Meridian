@@ -6,6 +6,11 @@ import * as rulesApi from "@/lib/api/rules";
 import type { Rule } from "@/lib/api/rules";
 import RulesPage from "../page";
 
+const access = vi.hoisted(() => ({ requestAccess: null as null | ((t: unknown) => void) }));
+vi.mock("@/lib/permissions", async (orig) => ({
+  ...(await orig<typeof import("@/lib/permissions")>()),
+  usePermissionsContext: () => (access.requestAccess ? { loading: false, can: () => true, has: () => true, requestAccess: access.requestAccess } : null),
+}));
 const h = vi.hoisted(() => ({
   can: (() => true) as (action: string) => boolean,
   dayOne: { status: "ready", step: null, error: null as unknown, refetch: () => {} },
@@ -204,4 +209,22 @@ describe("rule on/off row action", () => {
     expect(names).toEqual(["Many failures", "Few failures"]);
     expect(screen.getByText("1,200")).toBeInTheDocument();
   });
+
+  it("offers Request access on the read-only banner when the viewer cannot manage rules", async () => {
+    const requestAccess = vi.fn();
+    access.requestAccess = requestAccess;
+    h.can = () => false;
+    try {
+      vi.spyOn(rulesApi, "getRules").mockResolvedValue({ rules: [RULE], total: 1, limit: 1000, offset: 0 });
+      vi.spyOn(rulesApi, "getRulesSummary").mockResolvedValue({ summary: [] });
+      renderWithQuery(<RulesPage />);
+      await screen.findByText(/The library is read-only for you/);
+      await userEvent.setup().click(screen.getByRole("button", { name: "Request access" }));
+      expect(requestAccess).toHaveBeenCalledWith({ resource: "rules", action: "edit" });
+    } finally {
+      h.can = () => true;
+      access.requestAccess = null;
+    }
+  });
+
 });

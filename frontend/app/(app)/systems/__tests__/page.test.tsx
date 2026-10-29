@@ -84,7 +84,8 @@ describe("systems list page", () => {
     await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
     const names = screen.getAllByRole("row").map((r) => r.textContent ?? "");
     expect(names.findIndex((t) => t.includes("PO Down"))).toBeLessThan(names.findIndex((t) => t.includes("ECC Prod")));
-    expect(screen.getAllByRole("link", { name: /^Open / })).toHaveLength(4);
+    expect(screen.getAllByRole("link", { name: /^Open / })).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: /^Fix connection to / })).toHaveLength(3);
   });
 
   it("shows no score and no tile strip for a lone system that has loaded nothing, and says one needs attention", async () => {
@@ -100,7 +101,7 @@ describe("systems list page", () => {
     await waitFor(() => expect(systemObjectsApi.getSystemVersions).toHaveBeenCalled());
     expect(screen.queryByText("70.0")).toBeNull();
     expect(screen.queryByTestId("systems-health")).toBeNull();
-    expect(screen.getByRole("link", { name: "Open ECC Prod" })).toHaveClass("hover:underline");
+    expect(screen.getByRole("link", { name: "Fix connection to ECC Prod" })).toHaveClass("hover:underline");
   });
 
   it("renders systems once loaded", async () => {
@@ -248,4 +249,23 @@ describe("systems page health param", () => {
     currentSearch = "";
     grants.connect = false;
   });
+
+  it("an unreachable system makes Fix connection the primary and Connect system secondary, and each unhealthy row says Fix connection", async () => {
+    grants.connect = true;
+    const down = { ...SYSTEM, id: "s9", name: "PO Down", health_status: "unreachable" } as SAPSystemExtended;
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([SYSTEM, down]);
+    vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({ versions: [], download: null });
+    vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 2 });
+    vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([]);
+    vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([]);
+    renderWithQuery(<SystemsPage />);
+    await waitFor(() => expect(screen.getByText("PO Down")).toBeInTheDocument());
+    const primary = screen.getAllByRole("link", { name: "Fix connection" }).find((a) => a.classList.contains("m-btn-primary"));
+    expect(primary).toHaveAttribute("href", "/systems/s9?tab=health");
+    expect(screen.getByRole("button", { name: "Connect system" })).toHaveClass("m-btn-secondary");
+    expect(screen.getByRole("link", { name: "Fix connection to PO Down" })).toHaveAttribute("href", "/systems/s9?tab=health");
+    expect(screen.getByRole("link", { name: "Open ECC Prod" })).toBeInTheDocument();
+    grants.connect = false;
+  });
+
 });

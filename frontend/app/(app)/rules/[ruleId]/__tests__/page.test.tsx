@@ -17,7 +17,13 @@ vi.mock("next/navigation", () => ({
   useParams: () => ({ ruleId: "r1" }),
   useRouter: () => ({ push: vi.fn() }),
 }));
-vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+const access = vi.hoisted(() => ({ requestAccess: null as null | ((t: unknown) => void) }));
+vi.mock("@/lib/permissions", async (orig) => ({
+  ...(await orig<typeof import("@/lib/permissions")>()),
+  usePermissionsContext: () => (access.requestAccess ? { loading: false, can: () => true, has: () => true, requestAccess: access.requestAccess } : null),
+}));
+let allowed = true;
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => allowed }) }));
 
 const RULE: Rule = {
   id: "r1", name: "AP001: Vendor number is mandatory", description: null, module: "business_partner",
@@ -56,6 +62,8 @@ const LINEAGE: RuleLineage = {
 
 describe("rule detail page", () => {
   beforeEach(() => {
+    allowed = true;
+    access.requestAccess = null;
     vi.spyOn(lineageApi, "getRuleLineage").mockResolvedValue(LINEAGE);
     vi.spyOn(rulesApi, "getRuleVersions").mockResolvedValue({ rule_id: "AP001", shipped: null, versions: [] });
     vi.spyOn(ownersApi, "getOwners").mockResolvedValue([]);
@@ -111,7 +119,7 @@ describe("rule detail page", () => {
   });
 
   it("shows lineage and ownership by check id", async () => {
-    vi.spyOn(rulesApi, "getRule").mockResolvedValue(RULE);
+    vi.spyOn(rulesApi, "getRule").mockResolvedValue({ ...RULE, last_pass_rate: 0.9, last_run_at: "2026-10-10T08:00:00Z" });
     vi.spyOn(configLoadApi, "getRuleApplicability").mockResolvedValue(APPLICABILITY);
     renderWithQuery(<RulePage />);
     await waitFor(() => expect(screen.getByText("LFB1.LNRZE")).toBeInTheDocument());
@@ -215,4 +223,49 @@ describe("rule detail page", () => {
     const { container } = renderWithQuery(<RulePage />);
     await waitFor(() => expect(container.querySelector('[aria-busy="true"]')).not.toBeNull());
   });
+
+  it("offers Run analysis, not See failing records, for a rule that has no result", async () => {
+    vi.spyOn(rulesApi, "getRule").mockResolvedValue(RULE);
+    vi.spyOn(rulesApi, "getRuleHistory").mockResolvedValue({ rule_id: "r1", runs: [] });
+    vi.spyOn(configLoadApi, "getRuleApplicability").mockResolvedValue(APPLICABILITY);
+    renderWithQuery(<RulePage />);
+    expect(await screen.findByRole("button", { name: "Run analysis" })).toHaveClass("m-btn-primary");
+    expect(screen.queryByRole("link", { name: "See failing records" })).toBeNull();
+  });
+
+  it("hides the button for a rule with no result when the viewer cannot run an analysis, and says how to ask for rule access", async () => {
+    allowed = false;
+    vi.spyOn(rulesApi, "getRule").mockResolvedValue(RULE);
+    vi.spyOn(rulesApi, "getRuleHistory").mockResolvedValue({ rule_id: "r1", runs: [] });
+    vi.spyOn(configLoadApi, "getRuleApplicability").mockResolvedValue(APPLICABILITY);
+    renderWithQuery(<RulePage />);
+    await screen.findByText(/This rule is read-only for you/);
+    expect(screen.queryByRole("button", { name: "Run analysis" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "See failing records" })).toBeNull();
+  });
+
+  it("keeps See failing records once the rule has run", async () => {
+    vi.spyOn(rulesApi, "getRule").mockResolvedValue({ ...RULE, last_pass_rate: 0.9, last_run_at: "2026-10-10T08:00:00Z" });
+    vi.spyOn(rulesApi, "getRuleHistory").mockResolvedValue({ rule_id: "r1", runs: [] });
+    vi.spyOn(configLoadApi, "getRuleApplicability").mockResolvedValue(APPLICABILITY);
+    renderWithQuery(<RulePage />);
+    expect(await screen.findByRole("link", { name: "See failing records" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Run analysis" })).toBeNull();
+  });
+
+
+  it("offers Request access on the read-only note of a rule", async () => {
+    allowed = false;
+    const requestAccess = vi.fn();
+    access.requestAccess = requestAccess;
+    vi.spyOn(rulesApi, "getRule").mockResolvedValue(RULE);
+    vi.spyOn(rulesApi, "getRuleHistory").mockResolvedValue({ rule_id: "r1", runs: [] });
+    vi.spyOn(configLoadApi, "getRuleApplicability").mockResolvedValue(APPLICABILITY);
+    renderWithQuery(<RulePage />);
+    await screen.findByText(/This rule is read-only for you/);
+    const { default: userEvent } = await import("@testing-library/user-event");
+    await userEvent.setup().click(screen.getAllByRole("button", { name: "Request access" })[0]);
+    expect(requestAccess).toHaveBeenCalledWith({ resource: "rules", action: "edit" });
+  });
+
 });

@@ -6,7 +6,9 @@ import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
-import { Button, Card, DataTable, DrillLink, EmptyState, EntityTabs, ErrorState, Line, Mono, PageHeader, Pill, Skeleton, Stat, buildDrillHref, toast, Status, useBreadcrumbTitle } from "@/design";
+import { RequestAccessButton } from "@/components/request-access-button";
+import { RunAnalysis } from "@/app/(app)/insights/_components/RunAnalysis";
+import { Button, Card, DataTable, DrillLink, EmptyState, EntityTabs, ErrorState, Line, Mono, Notice, PageHeader, Pill, Skeleton, Stat, buildDrillHref, toast, Status, useBreadcrumbTitle } from "@/design";
 import { exportRuleHistory, getRule, getRuleByCode, getRuleHistory, updateRule, type Rule, type RuleHistoryRun } from "@/lib/api/rules";
 import { getReference } from "@/lib/api/process-designer";
 import { processStepHref } from "@/components/process/shared";
@@ -323,6 +325,7 @@ export default function RulePage() {
 
   // Rule names are "{check id}: {message}"; data.id is the rules row UUID, not the check id.
   const checkId = data.name.split(":")[0];
+  const hasResult = Boolean(data.last_run_at) || Boolean(history.data?.runs.some((r) => r.pass_rate != null));
   const rate = data.last_pass_rate == null ? null : data.last_pass_rate * (data.last_pass_rate <= 1 ? 100 : 1);
 
   return (
@@ -337,9 +340,19 @@ export default function RulePage() {
               {data.enabled ? "Disable rule" : "Enable rule"}
             </Button>
           )}
-          <Button render={<Link href={buildDrillHref({ object: data.module, ruleId: checkId })}>See failing records</Link>} />
+          {/* A rule that has no result has no failing records to see: the next step is an analysis (if permitted), else nothing. */}
+          {hasResult ? (
+            <Button render={<Link href={buildDrillHref({ object: data.module, ruleId: checkId })}>See failing records</Link>} />
+          ) : (
+            <RunAnalysis variant="primary" />
+          )}
         </>}
       />
+      {!canManage ? (
+        <Notice tone="info" action={<RequestAccessButton resource="rules" action="edit" />}>
+          Enabling, disabling or changing the owner of a rule needs the manage-rules permission. This rule is read-only for you.
+        </Notice>
+      ) : null}
       <EntityTabs entityType="rules" entityId={data.id}
         exportOptions={[{ format: "xlsx", label: "Rule run history (.xlsx)", run: () => exportRuleHistory(ruleId, "xlsx") }]}
         history={

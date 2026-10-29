@@ -686,4 +686,40 @@ describe("InboxPage exceptions paging", () => {
     await waitFor(() => expect(get).toHaveBeenCalledWith({ per_page: 100, page: 2 }));
     expect(await screen.findByText("2 of 250 exceptions loaded")).toBeInTheDocument();
   });
+
+describe("InboxPage suggested move", () => {
+  const mountSuggested = (recommendation: string) => {
+    nav.qs = "keep=1";
+    nav.can = true;
+    vi.spyOn(stewardship, "getQueueItems").mockImplementation(async (p) => ({
+      items: p?.status === "open" ? [task("s1", "material_master", { ai_recommendation: recommendation, ai_confidence: 0.95 })] : [],
+      total: p?.status === "open" ? 1 : 0,
+    } as never));
+    vi.spyOn(stewardship, "getMetrics").mockResolvedValue({ items_by_type: {}, items_by_status: {}, avg_resolution_hours: null, sla_breached: 0 } as never);
+    vi.spyOn(triage, "getTriageMetrics").mockResolvedValue({ unassigned: 0, backlog_by_owner: [] } as never);
+    renderWithQuery(<InboxPage />);
+    return screen.findByRole("region", { name: "Selected item" });
+  };
+
+  it("surfaces a suggestion to escalate as an Escalate button beside the suggestion, with Claim still the one primary", async () => {
+    const escalate = vi.spyOn(stewardship, "escalateItem").mockResolvedValue({ id: "s1", status: "escalated" } as never);
+    const detail = await mountSuggested("escalate: critical severity requires immediate steward attention");
+    expect(within(detail).getByText(/Meridian suggests: Escalate, 95% sure\. Critical severity requires immediate steward attention\./)).toBeInTheDocument();
+    const button = within(detail).getByRole("button", { name: "Escalate" });
+    expect(button).toHaveClass("m-btn-secondary");
+    expect(within(detail).getByRole("button", { name: "Claim" })).toHaveClass("m-btn-primary");
+    fireEvent.click(button);
+    await waitFor(() => expect(escalate).toHaveBeenCalled());
+    expect(escalate.mock.calls[0][0]).toBe("s1");
+  });
+
+  it("keeps Escalate in the menu when the suggestion is something else", async () => {
+    const detail = await mountSuggested("approve");
+    expect(within(detail).getByText(/Meridian suggests: Approve, 95% sure\./)).toBeInTheDocument();
+    expect(within(detail).queryByRole("button", { name: "Escalate" })).toBeNull();
+    fireEvent.click(within(detail).getByRole("button", { name: "More actions" }));
+    expect(await screen.findByRole("menuitem", { name: "Escalate" })).toBeInTheDocument();
+  });
+});
+
 });

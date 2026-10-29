@@ -15,6 +15,11 @@ vi.mock("@/hooks/use-role", () => ({
     can: (a: string) => (a === "manage_rules" ? perms.manageRules : a === "review_ai_rules" ? perms.reviewAi : true),
   }),
 }));
+const access = vi.hoisted(() => ({ requestAccess: null as null | ((t: unknown) => void) }));
+vi.mock("@/lib/permissions", async (orig) => ({
+  ...(await orig<typeof import("@/lib/permissions")>()),
+  usePermissionsContext: () => (access.requestAccess ? { loading: false, can: () => true, has: () => true, requestAccess: access.requestAccess } : null),
+}));
 const nav = vi.hoisted(() => ({ params: new URLSearchParams("") }));
 vi.mock("next/navigation", () => ({ useSearchParams: () => nav.params, useRouter: () => ({ push: vi.fn(), replace: vi.fn() }), usePathname: () => "/rules/drafts" }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -43,6 +48,7 @@ const DRAFT: RuleDraft = {
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  access.requestAccess = null;
   perms.manageRules = true;
   perms.reviewAi = true;
   nav.params = new URLSearchParams("");
@@ -188,4 +194,16 @@ describe("rules drafts page", () => {
     expect(screen.getByLabelText("Rule id")).toHaveValue("ZR-9");
     expect(create).not.toHaveBeenCalled();
   });
+
+  it("offers Request access for the manage-rules permission to someone who has neither", async () => {
+    perms.manageRules = false;
+    perms.reviewAi = false;
+    const requestAccess = vi.fn();
+    access.requestAccess = requestAccess;
+    vi.spyOn(api, "getRuleDrafts").mockResolvedValue([]);
+    renderWithQuery(<RuleDraftsPage />);
+    await userEvent.click(await screen.findByRole("button", { name: "Request manage-rules access" }));
+    expect(requestAccess).toHaveBeenCalledWith({ resource: "rules", action: "edit" });
+  });
+
 });

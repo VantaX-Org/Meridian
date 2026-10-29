@@ -30,14 +30,14 @@ const LIMIT = 500;
  * the right to run it): the dedup, anomaly or relationship task for the mined feeds, the learned-rules miner for
  * patterns. Without a run it opens the runs list.
  */
-export function MineNow({ run, task }: { run?: string; task?: MiningTask }) {
+export function MineNow({ run, task, variant = "primary" }: { run?: string; task?: MiningTask; variant?: "primary" | "secondary" }) {
   const mine = useMutation({
     mutationFn: async () => { await (task ? runMining(run as string, [task]) : mineLearnedRules(run as string)); },
     onSuccess: () => toast.success("Mining started. Results appear here when it finishes; progress shows in the job tray."),
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
   if (!run) return <Button variant="secondary" render={<Link href="/runs">Open runs</Link>} />;
-  return <Button onClick={() => mine.mutate()} pending={mine.isPending}>Mine now</Button>;
+  return <Button variant={variant} onClick={() => mine.mutate()} pending={mine.isPending}>Mine now</Button>;
 }
 
 /** What the feeds read: one run, or the current state (every object at its own latest run). */

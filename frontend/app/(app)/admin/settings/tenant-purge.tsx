@@ -57,7 +57,12 @@ export function TenantPurge({ now = () => Date.now() }: { now?: () => number }) 
   const ready = pending ? now() >= Date.parse(pending.executes_after) : false;
 
   return (
-    <div className="flex flex-col gap-3" data-testid="tenant-purge">
+    <section
+      aria-label="Danger zone"
+      className="flex flex-col gap-3 p-4 [border:1px_solid_var(--m-critical)] [border-radius:var(--m-radius-sheet)] [background:var(--m-critical-soft)]"
+      data-testid="tenant-purge"
+    >
+      <h2 className="m-text-h font-semibold [color:var(--m-critical-ink)]">Danger zone</h2>
       <h3 className="font-semibold m-text-h">Delete all data</h3>
       <p className="m-text-body m-ink-2">
         Removes every run, report and audit row of this organisation, and its stored files, for good. A request issues a token that works after 24 hours, so a mistake can be caught. The purge log keeps the record of the deletion.
@@ -73,7 +78,7 @@ export function TenantPurge({ now = () => Date.now() }: { now?: () => number }) 
           </div>
         </Notice>
       ) : (
-        <div><Button variant="secondary" onClick={() => setAsking(true)}>Request purge</Button></div>
+        <div><Button variant="danger" onClick={() => setAsking(true)}>Request purge</Button></div>
       )}
 
       <ConfirmDialog
@@ -100,6 +105,6 @@ export function TenantPurge({ now = () => Date.now() }: { now?: () => number }) 
         pending={run.isPending}
         onConfirm={() => pending && run.mutate(pending.token)}
       />
-    </div>
+    </section>
   );
 }

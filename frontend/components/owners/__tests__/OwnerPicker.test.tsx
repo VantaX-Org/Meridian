@@ -1,11 +1,14 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as ownersApi from "@/lib/api/owners";
 import type { DataOwner } from "@/lib/api/owners";
 import * as usersApi from "@/lib/api/users";
 import { OwnerPicker } from "../OwnerPicker";
+
+const role = vi.hoisted(() => ({ assign: true }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: (a: string) => (a === "assign" ? role.assign : false) }) }));
 
 const ROW: DataOwner = {
   kind: "rule", ref: "AP001", owner_user_id: "u1", owner_name: "Ann", steward_user_id: null,
@@ -13,6 +16,8 @@ const ROW: DataOwner = {
 };
 
 describe("OwnerPicker", () => {
+  beforeEach(() => { role.assign = true; });
+
   it("shows the owner as text when the viewer cannot assign", async () => {
     vi.spyOn(ownersApi, "getOwners").mockResolvedValue([ROW]);
     vi.spyOn(usersApi, "getAssignableUsers").mockRejectedValue(new Error("forbidden"));
@@ -45,4 +50,17 @@ describe("OwnerPicker", () => {
       expect(put).toHaveBeenCalledWith({ kind: "rule", ref: "AP001", owner_user_id: "u1", steward_user_id: null }),
     );
   });
+
+  it("shows the owner and steward pickers disabled, with the reason, when the viewer cannot assign", async () => {
+    role.assign = false;
+    vi.spyOn(ownersApi, "getOwners").mockResolvedValue([ROW]);
+    vi.spyOn(usersApi, "getAssignableUsers").mockResolvedValue([
+      { id: "u1", name: "Ann", email: "ann@example.test", role: "steward" },
+    ]);
+    renderWithQuery(<OwnerPicker kind="rule" refId="AP001" />);
+    expect(await screen.findByRole("combobox", { name: "Owner" })).toBeDisabled();
+    expect(screen.getByRole("combobox", { name: "Steward" })).toBeDisabled();
+    expect(screen.getByText("Changing the owner or steward needs the assign permission.")).toBeInTheDocument();
+  });
+
 });
