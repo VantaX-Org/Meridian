@@ -3,22 +3,23 @@
  * Pure functions only: geometry is computed here so it can be tested without a DOM.
  */
 import { DIMENSIONS, type DimensionKey, type Verdict } from "@/lib/api/v2/types";
+import { fixed, v2Locale } from "./format";
 
 export const DASH = "—";
 
 /** One decimal, or a dash for a value the API did not store. */
 export function f1(n: number | null | undefined): string {
-  return n == null || Number.isNaN(n) ? DASH : (Math.round(n * 10) / 10).toFixed(1);
+  return n == null || Number.isNaN(n) ? DASH : fixed(Math.round(n * 10) / 10, 1);
 }
 
-/** Whole number with thousands separators (en-US, so it is stable across test and browser locales), or a dash. */
+/** Whole number with thousands separators in the chosen locale (en-US until one is chosen), or a dash. */
 export function int(n: number | null | undefined): string {
-  return n == null || Number.isNaN(n) ? DASH : Math.round(n).toLocaleString("en-US");
+  return n == null || Number.isNaN(n) ? DASH : Math.round(n).toLocaleString(v2Locale());
 }
 
 /** A 0 to 1 share as a percentage with one decimal ("97.4%"), or a dash. */
 export function pct1(share: number | null | undefined): string {
-  return share == null || Number.isNaN(share) ? DASH : `${(Math.round(share * 1000) / 10).toFixed(1)}%`;
+  return share == null || Number.isNaN(share) ? DASH : `${fixed(Math.round(share * 1000) / 10, 1)}%`;
 }
 
 export const VERDICT_LABEL: Record<Verdict, string> = { "no-go": "No-go", "at-risk": "At risk", go: "Go" };

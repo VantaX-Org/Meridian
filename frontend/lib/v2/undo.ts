@@ -5,6 +5,8 @@
 export interface DoneAction {
   /** One id per run the change touched; undone newest first. */
   ids: string[];
+  /** Takes the change back itself (the Admin area: re-enable a user), instead of the server's POST /actions/undo. */
+  undo?: () => Promise<void>;
   /** What was done, in a short sentence: "Accepted 112 suggested values". */
   label: string;
 }

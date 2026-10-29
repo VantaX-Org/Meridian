@@ -289,6 +289,11 @@ export function checkClassLabel(id: string): string {
  * shared defaults: en-GB, UTC. This module imports nothing so `node lib/format.test.mjs` can load it directly. */
 let formatPrefs: { locale?: string; timezone?: string } = {};
 
+/** The locale the user chose (BCP 47), or undefined when they chose none. */
+export function getFormatLocale(): string | undefined {
+  return formatPrefs.locale;
+}
+
 export function setFormatPrefs(prefs: { locale?: string; timezone?: string }): void {
   formatPrefs = { locale: prefs.locale || undefined, timezone: prefs.timezone || undefined };
 }

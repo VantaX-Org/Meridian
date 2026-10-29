@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "@/design/v2/tokens.css";
 import "@/design/v2/v2.css";
+import "@/design/v2/admin.css";
 import { V2Shell } from "@/design/v2/shell/V2Shell";
 
 // IBM Plex Sans for words and figures, IBM Plex Mono for SAP identifiers. Self-hosted (app/_fonts, latin subset,

@@ -10,6 +10,7 @@ import { objectFixture } from "./object";
 import { mdmFixture, mdmFixtureWrite } from "./mdm";
 import * as wf from "./work-fixture";
 import * as ap from "./approvals";
+import { adminFixtureResponse, adminFixtureWrite, NONE_ADMIN } from "./admin";
 
 /**
  * Fixture answers for the step 0 contract, built from the approved prototype's numbers: 3 systems (ECC production
@@ -115,16 +116,18 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
     if (method === "PUT" && path === "/notifications/read-all") return ap.readAllFixture();
     if (method === "PUT" && read) return ap.readFixture(decodeURIComponent(read[1]));
     if (method === "PUT" && path === "/triage/sla-policies") return ap.putPolicyFixture(body as never);
-    if (method === "PATCH" && path === "/me/preferences") return ap.patchPreferencesFixture(body as never);
     if (method === "PUT" && path === "/views") return wf.putViewFixture(body as never);
     const mdm = mdmFixtureWrite(method, path, body);
     if (mdm !== undefined) return mdm;
+    const admin = adminFixtureWrite(method, path, body, params);
+    if (admin !== NONE_ADMIN) return admin;
     void params;
     throw new FixtureNotFound(`${method} ${path}`);
   })();
   return out as T;
 }
 
+export { fixtureDownload, resetAdminFixture } from "./admin";
 export const fixtureExport = wf.exportFixture;
 export const fixtureImport = wf.importFixture;
 export const resetWorkFixture = (): void => {
@@ -134,6 +137,8 @@ export const resetWorkFixture = (): void => {
 
 /** The answer to one v2 read in fixture mode. Throws a 404-shaped error for a path the contract does not have. */
 export function fixtureResponse<T>(path: string, params: Params): T {
+  const adminStep = adminFixtureResponse(path, params);
+  if (adminStep !== NONE_ADMIN) return adminStep as T;
   const runsStep = runsFixtureResponse(path, params);
   if (runsStep !== NONE) return runsStep as T;
   const out = ((): unknown => {
@@ -166,7 +171,6 @@ export function fixtureResponse<T>(path: string, params: Params): T {
     if (path === "/notifications") return ap.notificationsFixture(Number(params.limit ?? 50));
     if (path === "/notifications/unread-count") return ap.unreadFixture();
     if (path === "/triage/sla-policies") return ap.policiesFixture();
-    if (path === "/me/preferences") return ap.preferencesFixture();
     if (path === "/users/assignable") return ap.assignableFixture();
     if (path === "/findings") {
       const rows = Number(params.rows ?? 0);

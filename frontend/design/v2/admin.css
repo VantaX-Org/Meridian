@@ -1,0 +1,89 @@
+/*
+ * The Admin area, preferences, help, reports and waves. Tokens only (design/v2/tokens.css); every selector sits under
+ * .m2-root so nothing reaches the current interface.
+ */
+.m2-root .m2-adm-grp { font-size: var(--m2-fs-12); color: var(--m2-meta); padding: var(--m2-s3) 10px var(--m2-s1); }
+.m2-root .m2-adm-lead { margin: var(--m2-s2) 0 0; font-size: var(--m2-fs-14); line-height: var(--m2-lh-14); color: var(--m2-ink-2); max-width: 86ch; text-wrap: pretty; }
+.m2-root .m2-adm-acts { margin-top: var(--m2-s4); display: flex; gap: var(--m2-s2); align-items: center; flex-wrap: wrap; }
+.m2-root .m2-adm-blk { margin-top: var(--m2-s8); }
+.m2-root .m2-adm-blk > h2 { font-size: var(--m2-fs-14); line-height: var(--m2-lh-14); font-weight: 600; margin: 0 0 var(--m2-s1); }
+.m2-root .m2-adm-blk > p.m2-adm-hint { margin: 0 0 var(--m2-s3); font-size: var(--m2-fs-13); color: var(--m2-meta); max-width: 78ch; }
+
+.m2-root .m2-fgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--m2-s3) var(--m2-s4); max-width: 720px; }
+.m2-root .m2-fgrid .m2-wide { grid-column: 1 / -1; }
+.m2-root .m2-fld { display: grid; gap: var(--m2-s1); align-content: start; font-size: var(--m2-fs-12); color: var(--m2-meta); min-width: 0; }
+.m2-root .m2-fld > span.m2-lbl { color: var(--m2-ink-2); font-size: var(--m2-fs-12); }
+.m2-root .m2-fld input, .m2-root .m2-fld select, .m2-root .m2-fld textarea { height: 32px; padding: 0 var(--m2-s2); border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); background: var(--m2-sheet); color: var(--m2-fg); font-size: var(--m2-fs-13); min-width: 0; width: 100%; }
+.m2-root .m2-fld textarea { height: auto; min-height: 96px; padding: var(--m2-s2); font-family: var(--m2-mono); font-size: var(--m2-fs-12); resize: vertical; }
+.m2-root .m2-fld input:hover, .m2-root .m2-fld select:hover, .m2-root .m2-fld textarea:hover { border-color: var(--m2-ink-3); }
+.m2-root .m2-fld input[disabled], .m2-root .m2-fld select[disabled] { color: var(--m2-meta); border-style: dashed; background: transparent; cursor: not-allowed; }
+.m2-root .m2-fld .m2-err { color: var(--m2-crit-ink); font-size: var(--m2-fs-12); }
+.m2-root .m2-fld .m2-hint { color: var(--m2-meta); font-size: var(--m2-fs-12); }
+.m2-root .m2-fld.m2-mono-in input { font-family: var(--m2-mono); font-size: var(--m2-fs-12); }
+.m2-root .m2-sw { display: flex; align-items: flex-start; gap: var(--m2-s2); font-size: var(--m2-fs-13); color: var(--m2-fg); }
+.m2-root .m2-sw input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--m2-data); flex: none; }
+.m2-root .m2-sw small { display: block; color: var(--m2-meta); font-size: var(--m2-fs-12); }
+
+.m2-root .m2-kv { display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: var(--m2-s1) var(--m2-s4); margin: 0; font-size: var(--m2-fs-13); max-width: 720px; }
+.m2-root .m2-kv dt { color: var(--m2-meta); }
+.m2-root .m2-kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+
+.m2-root .m2-fbar { display: flex; flex-wrap: wrap; gap: var(--m2-s3); align-items: flex-end; margin-bottom: var(--m2-s3); }
+.m2-root .m2-fbar .m2-fld { min-width: 140px; }
+.m2-root .m2-fbar .m2-fld input, .m2-root .m2-fbar .m2-fld select { height: 32px; }
+
+.m2-root .m2-pmx { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--m2-fs-13); }
+.m2-root .m2-pmx th { font-size: var(--m2-fs-12); font-weight: 400; color: var(--m2-meta); text-align: center; padding: 0 var(--m2-s2); height: 32px; border-bottom: 1px solid var(--m2-line-2); white-space: nowrap; position: sticky; top: 0; background: var(--m2-sheet); }
+.m2-root .m2-pmx th:first-child, .m2-root .m2-pmx td:first-child { text-align: left; padding-left: var(--m2-s3); position: sticky; left: 0; background: var(--m2-sheet); }
+.m2-root .m2-pmx td { text-align: center; height: 32px; border-bottom: 1px solid var(--m2-rule); padding: 0 var(--m2-s2); }
+.m2-root .m2-pmx tbody tr:last-child td { border-bottom: 0; }
+.m2-root .m2-pmx input { width: 16px; height: 16px; accent-color: var(--m2-data); margin: 0; vertical-align: middle; }
+.m2-root .m2-pmx .m2-yes { color: var(--m2-pass-ink); }
+.m2-root .m2-pmx .m2-no { color: var(--m2-ink-3); }
+.m2-root .m2-pmx [data-changed="true"] { background: var(--m2-active); }
+
+.m2-root .m2-secret { font-family: var(--m2-mono); font-size: var(--m2-fs-12); border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); padding: var(--m2-s2) var(--m2-s3); overflow-wrap: anywhere; background: var(--m2-hover); user-select: all; }
+
+.m2-root .m2-danger { border: 1px solid var(--m2-crit); border-radius: var(--m2-r2); padding: var(--m2-s4); background: var(--m2-crit-bg); color: var(--m2-crit-ink); }
+.m2-root .m2-danger h2 { color: var(--m2-crit-ink); }
+.m2-root .m2-danger p { margin: var(--m2-s1) 0 var(--m2-s3); font-size: var(--m2-fs-13); }
+.m2-root .m2-btn.m2-crit { border-color: var(--m2-crit); color: var(--m2-crit-ink) !important; }
+
+.m2-root .m2-note { border-left: 2px solid var(--m2-line-2); padding: var(--m2-s1) var(--m2-s3); margin: var(--m2-s3) 0; font-size: var(--m2-fs-13); color: var(--m2-ink-2); max-width: 86ch; }
+.m2-root .m2-note[data-tone="warn"] { border-left-color: var(--m2-high); }
+.m2-root .m2-note[data-tone="bad"] { border-left-color: var(--m2-crit); }
+
+.m2-root .m2-tags { display: flex; flex-wrap: wrap; gap: var(--m2-s1); margin: 0; padding: 0; list-style: none; }
+.m2-root .m2-tags li { border: 1px solid var(--m2-line-2); border-radius: var(--m2-r1); padding: 0 var(--m2-s2); font-size: var(--m2-fs-12); line-height: 20px; background: var(--m2-sheet); }
+
+.m2-root .m2-pagebar { display: flex; align-items: center; justify-content: space-between; gap: var(--m2-s3); margin-top: var(--m2-s2); font-size: var(--m2-fs-12); color: var(--m2-meta); }
+
+.m2-root .m2-code { font-family: var(--m2-mono); font-size: var(--m2-fs-12); white-space: pre-wrap; overflow-wrap: anywhere; border: 1px solid var(--m2-line); border-radius: var(--m2-r2); padding: var(--m2-s2) var(--m2-s3); background: var(--m2-hover); max-height: 220px; overflow: auto; margin: 0; }
+
+.m2-root .m2-hsearch { width: 100%; height: 32px; border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); background: var(--m2-sheet); padding: 0 var(--m2-s2); font-size: var(--m2-fs-13); }
+.m2-root .m2-hlist { list-style: none; margin: var(--m2-s2) 0 0; padding: 0; }
+.m2-root .m2-hlist li { border-bottom: 1px solid var(--m2-rule); }
+.m2-root .m2-hlist li:last-child { border-bottom: 0; }
+.m2-root .m2-hitem { width: 100%; text-align: left; border: 0; background: transparent; padding: var(--m2-s2) 0; display: grid; gap: 2px; }
+.m2-root .m2-hitem:hover .m2-ht { text-decoration: underline; text-underline-offset: 2px; }
+.m2-root .m2-ht { font-size: var(--m2-fs-13); font-weight: 500; color: var(--m2-fg); }
+.m2-root .m2-hs2 { font-size: var(--m2-fs-12); color: var(--m2-meta); }
+.m2-root .m2-hbody h3 { font-size: var(--m2-fs-13); font-weight: 600; margin: var(--m2-s4) 0 var(--m2-s1); }
+.m2-root .m2-hbody p { font-size: var(--m2-fs-13); line-height: var(--m2-lh-13); color: var(--m2-ink-2); margin: 0 0 var(--m2-s2); }
+.m2-root .m2-hbody video { width: 100%; max-height: 220px; background: var(--m2-inverse); border-radius: var(--m2-r2); }
+.m2-root .m2-here { font-size: var(--m2-fs-12); color: var(--m2-data); }
+
+.m2-root .m2-wavehead th { background: var(--m2-active); font-weight: 500; color: var(--m2-fg); }
+.m2-root .m2-wavehead td { background: var(--m2-active); }
+.m2-root .m2-wsum { display: inline-flex; gap: var(--m2-s3); flex-wrap: wrap; font-size: var(--m2-fs-12); color: var(--m2-ink-2); }
+.m2-root .m2-wsum b { font-weight: 500; color: var(--m2-fg); }
+
+@media (max-width: 760px) {
+  .m2-root .m2-fgrid { grid-template-columns: minmax(0, 1fr); }
+  .m2-root .m2-kv { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .m2-root .m2-kv dd { margin-bottom: var(--m2-s2); }
+  .m2-root .m2-fld input, .m2-root .m2-fld select { height: 36px; }
+}
+
+.m2-root .m2-help { width: 32px; justify-content: center; padding: 0; font-weight: 600; border: 1px solid var(--m2-line-2); }
+html[data-m2-hints="off"] .m2-root .m2-kb { display: none; }
