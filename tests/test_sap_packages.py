@@ -53,3 +53,11 @@ def test_mdg_change_request_groups_entities_by_model():
     assert mara["changes"] == [{"attribute": "MATKL", "old": "misc", "new": "MG-0001", "rule": "LR-000001"}]
     assert models["MM"]["change_request_type"] == "ZMAT_CHG"
     assert "no MDG or SAP call" in doc["note"]
+
+
+def test_ltmc_workbook_strips_control_characters():
+    items = [dict(i) for i in ITEMS]
+    for it in items:
+        it["proposed_value"] = (it["proposed_value"] or "v") + "\x0b"
+    wb = load_workbook(io.BytesIO(pk.ltmc_workbook(items, get_dictionary("s4hana"))))
+    assert all("\x0b" not in str(c.value) for ws in wb.worksheets for row in ws.iter_rows() for c in row)

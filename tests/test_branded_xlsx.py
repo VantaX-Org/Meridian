@@ -217,6 +217,22 @@ def test_guard_frame_is_the_shared_export_guard():
     assert df["note"][0] == "=1+1"  # input untouched
 
 
+def test_guard_frame_strips_control_characters_so_the_workbook_writes():
+    import io
+
+    import pandas as pd
+    from openpyxl import load_workbook
+
+    df = pd.DataFrame({"note": ["a\x0bb", "c\x00d", "ok"], "qty": [1, 2, 3]})
+    out = guard_frame(df)
+    assert out["note"].tolist() == ["ab", "cd", "ok"]
+    assert df["note"][0] == "a\x0bb"  # input untouched
+    buf = io.BytesIO()
+    out.to_excel(buf, index=False)
+    ws = load_workbook(io.BytesIO(buf.getvalue())).active
+    assert [ws.cell(row=r, column=1).value for r in (2, 3, 4)] == ["ab", "cd", "ok"]
+
+
 def test_cover_band_mark_meta_hyperlinks_and_tabs():
     wb = _load(build_workbook(tenant_name="T", run_label="R", run_id="rid-1", title="Findings export",
                               sheets=[_basic_sheet()]))

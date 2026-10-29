@@ -21,6 +21,7 @@ from openpyxl import Workbook
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.drawing.image import Image as XLImage
 from openpyxl.formatting.rule import CellIsRule, ColorScaleRule, DataBarRule
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
@@ -75,6 +76,22 @@ STATUS_WORDS = {"pass": "ok", "go": "ok", "warn": "warn", "warning": "warn", "co
                 "blocking": "bad", "critical": "bad", "high": "high"}
 
 
+def strip_illegal_chars(value: object) -> object:
+    """Drop the control characters openpyxl refuses to write (it raises IllegalCharacterError)."""
+    if isinstance(value, str):
+        return ILLEGAL_CHARACTERS_RE.sub("", value)
+    return value
+
+
+def strip_illegal_chars_frame(df: pd.DataFrame) -> pd.DataFrame:
+    """Copy of ``df`` with illegal control characters removed from every object/string column."""
+    out = df.copy()
+    for col in out.columns:
+        if out[col].dtype == object or str(out[col].dtype) in ("string", "str"):
+            out[col] = out[col].map(strip_illegal_chars)
+    return out
+
+
 def guard_formula_cell(value: object) -> object:
     """Prefix a leading apostrophe onto text that looks like a spreadsheet formula.
 
@@ -122,7 +139,7 @@ def guard_frame(df: pd.DataFrame, sap_columns: Iterable[str] = ()) -> pd.DataFra
     Every other column gets the full :func:`guard_formula_cell`. Returns a copy.
     """
     sap = set(sap_columns)
-    out = df.copy()
+    out = strip_illegal_chars_frame(df)
     for col in out.columns:
         out[col] = out[col].map(guard_sap_reimport_cell if col in sap else guard_formula_cell)
     return out
@@ -186,10 +203,7 @@ def _unique_title(title: str, used: set[str]) -> str:
 
 
 def _cell_value_and_format(raw: object, kind: ColumnKind, scale: float) -> tuple[object, Optional[str]]:
-    # SAP texts can carry control characters (vertical tab, NUL) that Excel cannot store: openpyxl raises on them
-    # and the whole export fails, so they are dropped.
-    if isinstance(raw, str):
-        raw = ILLEGAL_CHARACTERS_RE.sub("", raw)
+    raw = strip_illegal_chars(raw)
     if raw is None or raw == "":
         return (None, None)
     if kind == "int":

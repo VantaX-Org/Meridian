@@ -1,6 +1,6 @@
 import { AxiosError, AxiosHeaders } from "axios";
 import { describe, expect, it } from "vitest";
-import { apiErrorMessage } from "../error";
+import { apiErrorMessage, apiErrorState } from "../error";
 
 const failed = (status: number, data: unknown = {}) =>
   new AxiosError("x", "ERR", undefined, undefined, { status, data, statusText: "", headers: {}, config: { headers: new AxiosHeaders() } });
@@ -20,5 +20,14 @@ describe("apiErrorMessage", () => {
     expect(apiErrorMessage(failed(402, { detail: { error: "module_not_licenced", detail: sentence, modules: ["quality_management"] } }))).toBe(sentence);
     // an object detail without a human string still falls back — the branch must not stringify junk
     expect(apiErrorMessage(failed(402, { detail: { error: "module_not_licenced" } }))).toBe("The server could not complete the request. Try again.");
+  });
+});
+
+describe("unhandled server error reference", () => {
+  const detail = "Something went wrong on the server. Reference 1a2b3c4d.";
+  it("shows the server's reference sentence in both the message and the error state", () => {
+    const err = failed(500, { detail, reference: "1a2b3c4d" });
+    expect(apiErrorMessage(err)).toBe(detail);
+    expect(apiErrorState(err)).toEqual({ title: "The server could not complete the request.", message: detail });
   });
 });
