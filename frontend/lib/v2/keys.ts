@@ -4,7 +4,7 @@
  * A key is added here once: its label, where it works and what it does.
  */
 
-export type KeyScope = "global" | "go" | "grid" | "inspector" | "command";
+export type KeyScope = "global" | "go" | "grid" | "ledger" | "inspector" | "command";
 export type GoDestination = "landscape" | "work" | "runs" | "people";
 
 /** What a focused or registered grid lets the keyboard do. */
@@ -12,6 +12,17 @@ export interface GridTarget {
   move(dir: 1 | -1, extend: boolean): void;
   open(): void;
   toggle(): void;
+}
+
+/** What the Work ledger lets the keyboard do, on the selected rows or else the highlighted one. */
+export interface LedgerTarget {
+  accept(): void;
+  notAnIssue(): void;
+  acceptRisk(): void;
+  exportSheet(): void;
+  focusChips(): void;
+  /** Opens the previous or next record of the ledger in the inspector. False when it has no open record to step from. */
+  step(dir: 1 | -1): boolean;
 }
 
 /** What the key handlers may call. The shell supplies it; absent members make the key do nothing. */
@@ -22,6 +33,10 @@ export interface KeyContext {
   /** Closes the top layer (overlay, then menu, then inspector, then selection). Returns true when something closed. */
   escape?(): boolean;
   grid?: GridTarget | null;
+  /** The Work ledger, when it is on screen. */
+  ledger?: LedgerTarget | null;
+  /** Takes the last change back. */
+  undoLast?(): void;
   /** Moves to the previous or next row and opens it in the inspector. */
   stepInspector?(dir: 1 | -1): void;
 }
@@ -47,6 +62,7 @@ const handled = (fn: () => void): boolean => {
 export const KEYS: readonly KeyDef[] = [
   { id: "command.open", keys: ["mod+k", "/"], display: "⌘K or /", scope: "global", label: "Open the command line", run: (c) => handled(() => c.openCommand?.()) },
   { id: "sheet.open", keys: ["?"], display: "?", scope: "global", label: "Show this sheet", run: (c) => handled(() => c.openShortcuts?.()) },
+  { id: "undo", keys: ["mod+z"], display: "⌘Z", scope: "global", label: "Undo the last change", run: (c, e) => (isTyping(e.target) || !c.undoLast ? false : handled(() => c.undoLast?.())) },
   { id: "escape", keys: ["Escape"], display: "Esc", scope: "global", label: "Close the top layer: menu, then inspector, then the selection", run: (c) => Boolean(c.escape?.()) },
 
   { id: "go.landscape", keys: ["g l"], display: "g then l", scope: "go", label: "Landscape", run: (c) => handled(() => c.go?.("landscape")) },
@@ -61,6 +77,13 @@ export const KEYS: readonly KeyDef[] = [
   { id: "grid.open", keys: ["Enter"], display: "Enter", scope: "grid", label: "Open the row in the inspector", run: (c) => handled(() => c.grid?.open()) },
   { id: "grid.toggle", keys: ["x"], display: "x", scope: "grid", label: "Select or clear the row", run: (c) => handled(() => c.grid?.toggle()) },
 
+  { id: "ledger.accept", keys: ["a"], display: "a", scope: "ledger", label: "Accept the suggested value on the selected rows", run: (c) => (c.ledger ? handled(() => c.ledger?.accept()) : false) },
+  { id: "ledger.not-an-issue", keys: ["n"], display: "n", scope: "ledger", label: "Mark the selected rows as not an issue", run: (c) => (c.ledger ? handled(() => c.ledger?.notAnIssue()) : false) },
+  { id: "ledger.accept-risk", keys: ["r"], display: "r", scope: "ledger", label: "Accept the risk on the selected rows", run: (c) => (c.ledger ? handled(() => c.ledger?.acceptRisk()) : false) },
+  { id: "ledger.export", keys: ["e"], display: "e", scope: "ledger", label: "Export the fix sheet of what is on screen", run: (c) => (c.ledger ? handled(() => c.ledger?.exportSheet()) : false) },
+  { id: "ledger.filter", keys: ["f"], display: "f", scope: "ledger", label: "Move to the filter chips", run: (c) => (c.ledger ? handled(() => c.ledger?.focusChips()) : false) },
+  { id: "ledger.fill", keys: [], display: "⌘D", scope: "ledger", label: "Fill the New value of the first selected row down the selection" },
+  { id: "ledger.paste", keys: [], display: "Paste", scope: "ledger", label: "Paste several lines into a New value cell to fill the selected rows" },
   { id: "inspector.next", keys: ["]"], display: "]", scope: "inspector", label: "Open the next row", run: (c) => handled(() => c.stepInspector?.(1)) },
   { id: "inspector.prev", keys: ["["], display: "[", scope: "inspector", label: "Open the previous row", run: (c) => handled(() => c.stepInspector?.(-1)) },
   { id: "inspector.tab", keys: [], display: "Tab", scope: "inspector", label: "Cycles inside the inspector" },
@@ -75,13 +98,14 @@ export const SCOPE_TITLE: Record<KeyScope, string> = {
   global: "Everywhere",
   go: "Go to",
   grid: "Tables and lists",
+  ledger: "Work ledger",
   inspector: "Inspector",
   command: "Command line",
 };
 
 /** The registry grouped for the "?" sheet, in scope order. */
 export function sheetGroups(): { scope: KeyScope; title: string; items: KeyDef[] }[] {
-  const order: KeyScope[] = ["global", "go", "grid", "inspector", "command"];
+  const order: KeyScope[] = ["global", "go", "grid", "ledger", "inspector", "command"];
   return order.map((scope) => ({ scope, title: SCOPE_TITLE[scope], items: KEYS.filter((k) => k.scope === scope) })).filter((g) => g.items.length > 0);
 }
 
@@ -95,7 +119,9 @@ export function isTyping(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null;
   if (!el || !el.tagName) return false;
   const tag = el.tagName;
-  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable === true;
+  // A checkbox, radio or button takes no text: the ledger's keys still work while one has focus.
+  if (tag === "INPUT") return !["checkbox", "radio", "button", "submit"].includes((el as HTMLInputElement).type);
+  return tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable === true;
 }
 
 /** Does one key spec ("mod+k", "shift+j", "?", "Escape") match this event? Sequences are handled by the dispatcher. */
@@ -148,7 +174,9 @@ export function createDispatcher(getContext: () => KeyContext): Dispatcher {
         return false;
       }
       pending = null;
-      const scopes: KeyScope[] = ctx.grid ? ["global", "inspector", "grid"] : ["global", "inspector"];
+      const scopes: KeyScope[] = ["global", "inspector"];
+      if (ctx.grid) scopes.push("grid");
+      if (ctx.ledger) scopes.push("ledger");
       for (const def of KEYS) {
         if (!def.run || !scopes.includes(def.scope)) continue;
         for (const spec of def.keys) {
@@ -178,5 +206,19 @@ export const gridRegistry = {
   },
   get(): GridTarget | null {
     return activeGrid;
+  },
+};
+
+/** The Work ledger on screen, if any: what a, n, r, e and f act on. The last one mounted. */
+let activeLedger: LedgerTarget | null = null;
+export const ledgerRegistry = {
+  set(target: LedgerTarget | null): void {
+    activeLedger = target;
+  },
+  clear(target: LedgerTarget): void {
+    if (activeLedger === target) activeLedger = null;
+  },
+  get(): LedgerTarget | null {
+    return activeLedger;
   },
 };

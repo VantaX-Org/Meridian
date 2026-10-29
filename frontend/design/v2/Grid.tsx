@@ -1,7 +1,6 @@
 "use client";
 
-/* eslint-disable react-hooks/incompatible-library -- TanStack Table's hook returns functions React Compiler cannot memoize; Grid is the one wrapper around it, as DataTable is for the current interface. */
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref } from "react";
 import { flexRender, getCoreRowModel, useReactTable, type ColumnDef, type VisibilityState } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { KEYS, gridRegistry, matchKey, type GridTarget } from "@/lib/v2/keys";
@@ -23,6 +22,10 @@ export interface GridColumn<T> {
   defaultHidden?: boolean;
   /** Header tooltip. */
   title?: string;
+}
+
+export interface GridHandle {
+  clear(): void;
 }
 
 export interface BulkContext<T> {
@@ -61,6 +64,18 @@ export interface GridProps<T> {
   fixedColumns?: boolean;
   /** Hide the bar above the grid (row count, columns): an embedded grid whose caller states the count. */
   hideBar?: boolean;
+  /** A row drawn as one cell across every column (a group heading), with no checkbox. Return null for an ordinary row. */
+  spanRow?: (row: T, index: number) => ReactNode | null;
+  /** The count the bar states, when it is not the number of rows (group headings are rows too). */
+  count?: number;
+  /** Tells the caller which row is highlighted by the keyboard. */
+  onActiveChange?: (row: T | undefined) => void;
+  /** Lets the caller clear the selection after an action that was not started from the bulk bar (a key). */
+  handleRef?: Ref<GridHandle>;
+  /** How the bulk bar names the selection: "3 records" (default "3 selected"). */
+  bulkLabel?: (count: number) => string;
+  /** Called with the selected rows whenever the selection changes. */
+  onSelectionChange?: (rows: T[]) => void;
 }
 
 const HEAD_H = 32;
@@ -97,7 +112,7 @@ function saveHidden(id: string, visibility: VisibilityState): void {
  * x selects, Shift extends. The column choice is remembered per table id.
  */
 export function Grid<T>(props: GridProps<T>) {
-  const { id, ariaLabel, columns, rows, rowId, compact, height = 480, initialViewport, onOpen, openRowId, selectable, bulkBar, toolbar, emptyFrame, error, loading, primary = true, fixedColumns, hideBar } = props;
+  const { id, ariaLabel, columns, rows, rowId, compact, height = 480, initialViewport, onOpen, openRowId, selectable, bulkBar, toolbar, emptyFrame, error, loading, primary = true, fixedColumns, hideBar, spanRow, count, onActiveChange, onSelectionChange, bulkLabel, handleRef } = props;
   const rowH = compact ? 28 : 32;
   const gid = useId();
   const scroller = useRef<HTMLDivElement>(null);
@@ -149,10 +164,17 @@ export function Grid<T>(props: GridProps<T>) {
 
   const rowsRef = useRef(rows);
   const stateRef = useRef({ active, selected });
+  const spanRef = useRef(spanRow);
   useEffect(() => {
     rowsRef.current = rows;
     stateRef.current = { active, selected };
+    spanRef.current = spanRow;
   });
+  useEffect(() => {
+    onActiveChange?.(active >= 0 ? rows[active] : undefined);
+    // Only a change of the highlighted row is announced, not every render of the caller.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
 
   const selectIndex = useCallback(
     (indexes: number[], on: boolean) => {
@@ -160,7 +182,7 @@ export function Grid<T>(props: GridProps<T>) {
         const next = new Set(prev);
         for (const i of indexes) {
           const r = rowsRef.current[i];
-          if (r === undefined) continue;
+          if (r === undefined || spanRef.current?.(r, i) != null) continue;
           const key = rowId(r, i);
           if (on) next.add(key);
           else next.delete(key);
@@ -225,10 +247,16 @@ export function Grid<T>(props: GridProps<T>) {
   };
 
   const clear = useCallback(() => setSelected(new Set()), []);
+  useImperativeHandle(handleRef, () => ({ clear }), [clear]);
   const selectedRows = useMemo(() => {
     if (selected.size === 0) return [] as T[];
     return rows.filter((r, i) => selected.has(rowId(r, i)));
   }, [selected, rows, rowId]);
+  const selectableCount = useMemo(() => (spanRow ? rows.filter((r, i) => spanRow(r, i) == null).length : rows.length), [rows, spanRow]);
+  useEffect(() => {
+    onSelectionChange?.(selectedRows);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedRows]);
 
   const chooser: MenuEntry[] = [
     { kind: "heading", label: "Columns" },
@@ -259,7 +287,7 @@ export function Grid<T>(props: GridProps<T>) {
         <div className="m2-gridbar-l">{toolbar}</div>
         <div className="m2-gridbar-r">
           <span className="m2-meta" aria-live="polite">
-            {rows.length.toLocaleString("en-US")} {rows.length === 1 ? "row" : "rows"}
+            {(count ?? rows.length).toLocaleString("en-US")} {(count ?? rows.length) === 1 ? "row" : "rows"}
           </span>
           {fixedColumns ? null : (
             <MenuButton label="Choose columns" buttonLabel="Choose columns" entries={chooser} className="m2-btn m2-sm" align="end">
@@ -295,9 +323,9 @@ export function Grid<T>(props: GridProps<T>) {
                 <input
                   type="checkbox"
                   aria-label="Select all rows"
-                  checked={rows.length > 0 && selectedCount === rows.length}
+                  checked={selectableCount > 0 && selectedCount === selectableCount}
                   ref={(el) => {
-                    if (el) el.indeterminate = selectedCount > 0 && selectedCount < rows.length;
+                    if (el) el.indeterminate = selectedCount > 0 && selectedCount < selectableCount;
                   }}
                   onChange={(e) => (e.target.checked ? selectIndex(rows.map((_, i) => i), true) : clear())}
                 />
@@ -342,6 +370,30 @@ export function Grid<T>(props: GridProps<T>) {
               if (row === undefined) return null;
               const key = rowId(row, v.index);
               const isSel = selected.has(key);
+              const span = spanRow?.(row, v.index) ?? null;
+              if (span != null) {
+                return (
+                  <div
+                    key={key}
+                    id={`${gid}-r${v.index}`}
+                    role="row"
+                    aria-rowindex={v.index + 2}
+                    data-active={v.index === active ? "true" : undefined}
+                    className="m2-grow m2-grow-span"
+                    style={{ height: rowH, transform: `translateY(${v.start - HEAD_H}px)`, width: total }}
+                    onClick={(e) => {
+                      if ((e.target as HTMLElement).closest("input,a,button")) return;
+                      stateRef.current.active = v.index;
+                      setActive(v.index);
+                      onOpen?.(row);
+                    }}
+                  >
+                    <div role="gridcell" aria-colspan={leaf.length + (selectable ? 1 : 0)} className="m2-gcell m2-gspan">
+                      {span}
+                    </div>
+                  </div>
+                );
+              }
               return (
                 <div
                   key={key}
@@ -400,9 +452,7 @@ export function Grid<T>(props: GridProps<T>) {
       </div>
       {selectedCount > 0 ? (
         <div className="m2-bulk" role="region" aria-label="Bulk actions" data-testid="bulk-bar">
-          <span>
-            {selectedCount.toLocaleString("en-US")} selected
-          </span>
+          <span>{bulkLabel ? bulkLabel(selectedCount) : `${selectedCount.toLocaleString("en-US")} selected`}</span>
           {bulkBar?.({ selected: selectedRows, clear })}
           <button type="button" className="m2-btn m2-sm m2-ghost" onClick={clear}>
             Clear selection

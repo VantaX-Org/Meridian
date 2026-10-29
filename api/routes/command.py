@@ -136,6 +136,7 @@ async def _people(db: AsyncSession, tenant: Tenant, q: str, n: int) -> list[dict
 async def _actions(db: AsyncSession, tenant: Tenant, request: Request, role: str, q: str) -> list[dict]:
     """Static actions, filtered by the words of the query (every word starts a keyword) and by what the caller may do."""
     words = q.lower().split()
+    v2 = request.cookies.get("mn_ui") == "v2"  # the v2 shell links into /v2/work
     candidates: list[tuple[str, str, str, str, tuple[str, ...]]] = []  # (permission, id, title, href, keywords)
 
     if await _allowed(db, tenant, request, role, "approve"):
@@ -143,10 +144,10 @@ async def _actions(db: AsyncSession, tenant: Tenant, request: Request, role: str
             "SELECT count(DISTINCT b.id) FROM remediation_batches b "
             "JOIN remediation_items i ON i.batch_id = b.id AND i.tenant_id = b.tenant_id "
             "WHERE b.tenant_id = CAST(:t AS uuid) AND b.status = 'draft' AND i.accepted"), {"t": str(tenant.id)})).scalar() or 0
-        candidates.append(("approve", "approvals", f"Approvals waiting {int(waiting)}", "/inbox?kind=approvals",
+        candidates.append(("approve", "approvals", f"Approvals waiting {int(waiting)}", "/v2/work?filter=approvals" if v2 else "/inbox?kind=approvals",
                            ("approve", "approvals", "approval", "waiting", "inbox")))
     if await _allowed(db, tenant, request, role, "export"):
-        candidates.append(("export", "export-fix-sheet", "Export fix sheet", "/fix?action=export",
+        candidates.append(("export", "export-fix-sheet", "Export fix sheet", "/v2/work?export=1" if v2 else "/fix?action=export",
                            ("export", "fix", "sheet", "download")))
     if await _allowed(db, tenant, request, role, "trigger_sync"):
         for r in (await db.execute(text(

@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, type QueryClient } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { getCounts, getLandscape, getObjectRules, getReceipt, getRunList, getStatus, getTopWork } from "@/lib/api/v2/landscape";
 
@@ -52,4 +52,12 @@ export function useTopWork(limit = 5, enabled = true) {
 export function useObjectRules(module: string, run: string | null, rows = 0) {
   const fixture = useFixture();
   return useQuery({ queryKey: v2Keys.rules(fixture, module, run, rows), queryFn: () => getObjectRules(module, run, rows || undefined), staleTime: STALE });
+}
+
+/**
+ * After a change: every v2 read that could show it (the ledger, its counts, the map's open-work badge, the top bar)
+ * is marked stale and the ones on screen refetch. The command line's results are left alone.
+ */
+export function refreshV2(qc: QueryClient): Promise<void> {
+  return qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === "v2" && q.queryKey[1] !== "command" });
 }

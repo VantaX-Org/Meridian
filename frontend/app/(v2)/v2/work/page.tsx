@@ -1,5 +1,5 @@
-import { NotYetCanvas } from "@/design/v2/screens/routes";
+import { WorkCanvas } from "@/design/v2/screens/Work";
 
 export default function WorkPage() {
-  return <NotYetCanvas kind="work" />;
+  return <WorkCanvas />;
 }

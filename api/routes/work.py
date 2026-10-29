@@ -124,15 +124,33 @@ async def _unbuilt(db: AsyncSession, tenant: Tenant, rows: _Rows) -> list[str]:
 _FIRST_SEEN = """LEFT JOIN LATERAL (SELECT min(ri.first_seen_at) AS first_seen_at FROM record_issues ri
                     WHERE ri.tenant_id = CAST(:t AS uuid) AND ri.scope = w.scope AND ri.record_key = w.record_key
                       AND ri.check_id = ANY(w.checks)) fs ON true"""
-# Sort keys of /work/records as ascending, never-null expressions, so one row comparison pages any order.
-# "age" descending is the oldest first; a record without a first-seen time sorts last either way.
+# Sort keys of /work/records as never-null expressions, so one keyset comparison pages any order. Numeric keys are
+# ascending expressions (a descending key is the negated expression); "age" descending is the oldest first. A record
+# without the value (first-seen time, value at risk, due date, assignee) sorts last either way. Text keys (owner)
+# cannot be negated: the descending form orders the same kind of expression DESC (_SORT_DIR) with the unassigned
+# prefix flipped so they still come last.
+_OWNER_TEXT = ("lower(COALESCE(NULLIF(u.name, ''), u.email, '')) || chr(1) || lower(COALESCE(u.email, ''))")
 _SORT_KEYS = {
     ("severity", False): "w.sev_rank",
     ("severity", True): "-w.sev_rank",
     ("age", True): "COALESCE(EXTRACT(EPOCH FROM fs.first_seen_at)::float8, 'Infinity'::float8)",
     ("age", False): "COALESCE(-EXTRACT(EPOCH FROM fs.first_seen_at)::float8, 'Infinity'::float8)",
+    ("value", False): "COALESCE(val.v, 'Infinity'::float8)",
+    ("value", True): "COALESCE(-val.v, 'Infinity'::float8)",
+    ("due", False): "COALESCE(EXTRACT(EPOCH FROM w.due_at)::float8, 'Infinity'::float8)",
+    ("due", True): "COALESCE(-EXTRACT(EPOCH FROM w.due_at)::float8, 'Infinity'::float8)",
+    ("owner", False): f"(CASE WHEN w.assigned_to IS NULL THEN '1' ELSE '0' || {_OWNER_TEXT} END) COLLATE \"C\"",
+    ("owner", True): f"(CASE WHEN w.assigned_to IS NULL THEN '0' ELSE '1' || {_OWNER_TEXT} END) COLLATE \"C\"",
 }
-_SORT_CAST = {"severity": "int", "age": "float8"}
+_SORT_DIR = {("owner", True): "DESC"}
+_SORT_CAST = {"severity": "int", "age": "float8", "value": "float8", "due": "float8", "owner": "text"}
+_SORT_NAMES = "severity, age, value, due and owner"
+# The value at risk of a record, as the per-object export attributes it: each failing check's cost at risk shared
+# over the records the check fails on, summed; null when none of its checks is priced (no cost model).
+_VALUE_JOIN = """LEFT JOIN LATERAL (SELECT sum(vf.cost_at_risk::float8 / vf.affected_count)
+                                       FILTER (WHERE vf.cost_at_risk IS NOT NULL AND vf.affected_count > 0) AS v
+                                  FROM findings vf WHERE vf.tenant_id = w.tenant_id AND vf.version_id = w.version_id
+                                   AND vf.check_id = ANY(w.checks)) val ON true"""
 
 
 def _parse_sort(sort: Optional[str]) -> list[tuple[str, bool]]:
@@ -144,7 +162,7 @@ def _parse_sort(sort: Optional[str]) -> list[tuple[str, bool]]:
             continue
         key = (part.lstrip("-"), part.startswith("-"))
         if key not in _SORT_KEYS:
-            raise HTTPException(status_code=422, detail=f"sort takes severity and age, each optionally with a leading minus; not {part!r}")
+            raise HTTPException(status_code=422, detail=f"sort takes {_SORT_NAMES}, each optionally with a leading minus; not {part!r}")
         if any(k == key[0] for k, _ in keys):
             continue
         keys.append(key)
@@ -158,13 +176,29 @@ def _cursor(sort: list[tuple[str, bool]], row) -> str:
 
 
 def _uncursor(sort: list[tuple[str, bool]], c: str) -> tuple[list, str, str]:
+    cast = {"int": int, "float8": float, "text": str}
     try:
         spec, values, module, key = json.loads(base64.urlsafe_b64decode(c.encode()))
         if spec != [f"{'-' if d else ''}{k}" for k, d in sort] or len(values) != len(sort):
             raise ValueError("cursor of another sort")
-        return [int(v) if _SORT_CAST[k] == "int" else float(v) for (k, _), v in zip(sort, values)], str(module), str(key)
+        return [cast[_SORT_CAST[k]](v) for (k, _), v in zip(sort, values)], str(module), str(key)
     except Exception:
         raise HTTPException(status_code=422, detail="after is not a cursor from this list")
+
+
+def _after(order: list[tuple[str, bool]], exprs: list[str]) -> str:
+    """The keyset condition: rows after the cursor (:as0.., :am, :ak) in the sort's order. One row comparison when every
+    key ascends; else the same lexicographic comparison with each key's own direction."""
+    marks = [f"CAST(:as{i} AS {_SORT_CAST[k]})" for i, (k, _) in enumerate(order)]
+    dirs = [_SORT_DIR.get(key, "ASC") for key in order]
+    if all(d == "ASC" for d in dirs):
+        return f"({', '.join(exprs)}, w.module, w.record_key) > ({', '.join(marks)}, :am, :ak)"
+    cols = list(zip([*exprs, "w.module", "w.record_key"], [*marks, ":am", ":ak"], [*dirs, "ASC", "ASC"]))
+    ors = []
+    for i, (e, m, d) in enumerate(cols):
+        eq = [f"{x} = {y}" for x, y, _ in cols[:i]]
+        ors.append("(" + " AND ".join([*eq, f"{e} {'<' if d == 'DESC' else '>'} {m}"]) + ")")
+    return "(" + " OR ".join(ors) + ")"
 
 
 @router.get("/summary")
@@ -190,16 +224,19 @@ async def summary(
     """Per object of the run (or, ``scope=current``, of the current state, each object from its own run): records
     and issues to fix, by work status, and its groups' size. ``unbuilt`` lists the runs whose work list is missing;
     ``built`` is false when no run read has one. With any of /work/records' filters, ``totals`` count the records
-    that list shows (status defaults to open, as there) so the Fix work tiles follow the filters; ``objects`` stay
-    unfiltered."""
+    that list shows (status defaults to open, as there) so the Fix work tiles follow the filters; ``objects`` follow
+    module, check_id, severity and system only (every status), and stay unfiltered when none is passed."""
     await _rls(db, tenant)
     sel = await _rows(db, tenant, version_id, scope)
-    p: dict = {"t": str(tenant.id)}
+    # objects follow module, check_id, severity and system when given (status, assignee and the rest stay off: the
+    # chips count every status of the objects shown)
+    owhere, p = _records_where(tenant, sel, request, module, check_id, severity, "all", None, None, None, None, None,
+                               system)
     rows = (await db.execute(text(f"""
         SELECT w.module, w.version_id::text AS version_id, w.status, count(*) AS records, sum(w.issues) AS issues,
                count(*) FILTER (WHERE w.sev_rank = 0) AS critical, count(*) FILTER (WHERE w.proposed > 0) AS proposed,
                count(*) FILTER (WHERE w.due_at < now()) AS overdue
-          FROM work_records w WHERE w.tenant_id = :t AND {sel.where("w", p)}
+          FROM work_records w WHERE {' AND '.join(owhere)}
          GROUP BY w.module, w.version_id, w.status"""), p)).fetchall()
     objects: dict[str, dict] = {}
     for r in rows:
@@ -397,8 +434,9 @@ async def records(
     q: Optional[str] = Query(None, max_length=200),
     after: Optional[str] = Query(None, description="cursor from the previous page"),
     limit: int = Query(PAGE, ge=1, le=500),
-    sort: Optional[str] = Query(None, max_length=50, description="severity and/or age, comma separated, a leading minus "
-                                                                 "for descending (-age: the oldest first); default severity"),
+    sort: Optional[str] = Query(None, max_length=80, description="severity, age, value (value at risk), due and/or owner, comma "
+                                                                 "separated, a leading minus for descending (-age: the oldest first, "
+                                                                 "-value: the most at risk first); default severity"),
     since: Optional[uuid.UUID] = Query(None, description=_SINCE_DESC),
     scope: WorkScope = _SCOPE,
     db: AsyncSession = Depends(get_db),
@@ -418,8 +456,7 @@ async def records(
     page_where = list(where)
     if after:
         values, mod, key = _uncursor(order, after)
-        marks = ", ".join(f"CAST(:as{i} AS {_SORT_CAST[k]})" for i, (k, _) in enumerate(order))
-        page_where.append(f"({', '.join(exprs)}, w.module, w.record_key) > ({marks}, :am, :ak)")
+        page_where.append(_after(order, exprs))
         p.update({f"as{i}": v for i, v in enumerate(values)}, am=mod, ak=key)
     rows = (await db.execute(text(f"""
         SELECT w.module, w.version_id::text AS version_id, w.record_key, w.name, w.issues, w.sev_rank, w.checks,
@@ -427,13 +464,16 @@ async def records(
                {', '.join(f"{e} AS s{i}" for i, e in enumerate(exprs))}
           FROM work_records w
           {_FIRST_SEEN if any(k == "age" for k, _ in order) else ""}
+          {_VALUE_JOIN if any(k == "value" for k, _ in order) else ""}
           LEFT JOIN users u ON u.id = w.assigned_to
           LEFT JOIN work_groups g ON g.version_id = w.version_id AND g.check_id = w.checks[1]
          WHERE {' AND '.join(page_where)}
-         ORDER BY {', '.join(exprs)}, w.module, w.record_key LIMIT :lim"""), {**p, "lim": limit + 1})).fetchall()
+         ORDER BY {', '.join(f"{e} {_SORT_DIR.get(k, 'ASC')}" for e, k in zip(exprs, order))}, w.module, w.record_key
+         LIMIT :lim"""), {**p, "lim": limit + 1})).fetchall()
     more = len(rows) > limit
     rows = rows[:limit]
     extra = await _row_extras(db, tenant, rows)
+    fields = await _row_fields(db, tenant, request, rows)
     total = (await db.execute(text(f"SELECT count(*) FROM (SELECT 1 FROM work_records w WHERE {' AND '.join(where)} "
                                    f"LIMIT {COUNT_CAP + 1}) x"), p)).scalar() or 0
     return {
@@ -445,7 +485,8 @@ async def records(
                    "due_at": r.due_at.isoformat() if r.due_at else None,
                    "assigned_to": str(r.assigned_to) if r.assigned_to else None, "assignee_email": r.assignee_email,
                    "top_message": r.top_message, "top_field": r.top_field,
-                   **extra.get((r.version_id, r.module, r.record_key), {"first_seen_at": None, "suggested_value": None})}
+                   **extra.get((r.version_id, r.module, r.record_key), {"first_seen_at": None, "suggested_value": None}),
+                   **fields.get((r.version_id, r.module, r.record_key), _NO_FIELDS)}
                   for r in rows],
     }
 
@@ -492,6 +533,103 @@ async def _row_extras(db: AsyncSession, tenant: Tenant, rows) -> dict[tuple[str,
     return {(r.version_id, r.module, r.record_key): {
         "first_seen_at": r.first_seen_at.isoformat() if r.first_seen_at else None,
         "suggested_value": r.suggested_value} for r in out}
+
+
+def _field_value(check) -> Optional[str]:
+    """A failing check's field value in the record: stored under TABLE.FIELD or the bare field name."""
+    if not check:
+        return None
+    fv = check["field_values"] or {}
+    field = check["field"]
+    value = fv[field] if field in fv else fv.get(field.rpartition(".")[2])
+    return None if value is None else str(value)
+
+
+_NO_FIELDS = {"value_at_risk": None, "current_value": None, "field_description": None, "possible_values": None,
+              "possible_values_total": None, "new_value": None, "resolution": None}
+
+
+async def _row_fields(db: AsyncSession, tenant: Tenant, request: Request, rows) -> dict[tuple[str, str, str], dict]:
+    """The readable fields of one page of rows, keyed (version_id, module, record_key), from one batched read of the
+    page's failing checks (no query per row): the value at risk (each check's cost at risk shared over the records it
+    fails on, summed, as the per-object export attributes it; None when no check is priced), the first failing field's
+    current value, description and the rule's possible values (api/services/fix_sheet.py, as the fix sheet writes
+    them), the value waiting in the user's draft batch for a proposed record, and the sign-off's resolution."""
+    if not rows:
+        return {}
+    from api.services import fix_sheet as fs
+
+    keys = {"t": str(tenant.id), "kv": [r.version_id for r in rows], "km": [r.module for r in rows],
+            "kk": [r.record_key for r in rows]}
+    checks = (await db.execute(text("""
+        WITH k AS (SELECT * FROM unnest(CAST(:kv AS uuid[]), CAST(:km AS text[]), CAST(:kk AS text[]))
+                                 AS k(version_id, module, record_key))
+        SELECT w.version_id::text AS version_id, w.module, w.record_key, c.check_id, f.details->>'field_checked' AS field,
+               fr.field_values, f.module AS rule_module,
+               COALESCE(NULLIF(f.rule_context->'valid_values_with_labels', 'null'::jsonb),
+                        NULLIF(f.rule_context->'valid_values', 'null'::jsonb)) AS valid_values,
+               f.affected_count, f.cost_at_risk
+          FROM work_records w JOIN k USING (version_id, module, record_key)
+          CROSS JOIN LATERAL unnest(w.checks) WITH ORDINALITY c(check_id, n)
+          JOIN findings f ON f.tenant_id = w.tenant_id AND f.version_id = w.version_id AND f.check_id = c.check_id
+          LEFT JOIN finding_records fr ON fr.version_id = w.version_id AND fr.check_id = c.check_id
+                                      AND fr.module = w.module AND fr.record_key = w.record_key
+         WHERE w.tenant_id = CAST(:t AS uuid)
+         ORDER BY w.version_id, w.module, w.record_key, c.n"""), keys)).mappings().all()
+    by_row: dict[tuple[str, str, str], list] = {}
+    for c in checks:
+        by_row.setdefault((c["version_id"], c["module"], c["record_key"]), []).append(c)
+
+    uid = current_user_id(request)
+    drafts: dict[tuple[str, str, str], str] = {}
+    proposed = [r for r in rows if r.status == "proposed"]
+    if proposed and uid:
+        for d in (await db.execute(text("""
+            SELECT DISTINCT ON (w.version_id, w.module, w.record_key) w.version_id::text AS version_id, w.module,
+                   w.record_key, i.proposed_value
+              FROM work_records w
+              JOIN remediation_items i ON i.tenant_id = w.tenant_id AND i.scope = w.scope AND i.module = w.module
+                                      AND i.record_key = w.record_key AND i.check_id = ANY(w.checks)
+              JOIN remediation_batches b ON b.id = i.batch_id AND b.tenant_id = i.tenant_id
+             WHERE w.tenant_id = CAST(:t AS uuid) AND b.status = 'draft' AND b.created_by = CAST(:u AS uuid)
+               AND i.proposed_value IS NOT NULL
+               AND (w.version_id, w.module, w.record_key) IN (SELECT * FROM unnest(CAST(:kv AS uuid[]),
+                       CAST(:km AS text[]), CAST(:kk AS text[])))
+             ORDER BY w.version_id, w.module, w.record_key, i.updated_at DESC"""), {**keys, "u": uid})).mappings().all():
+            drafts[(d["version_id"], d["module"], d["record_key"])] = d["proposed_value"]
+    resolutions: dict[tuple[str, str, str], str] = {}
+    signed = [r for r in rows if r.status == "not_an_issue"]
+    if signed:
+        for d in (await db.execute(text("""
+            SELECT DISTINCT ON (w.version_id, w.module, w.record_key) w.version_id::text AS version_id, w.module,
+                   w.record_key, ri.resolution
+              FROM work_records w
+              JOIN record_issues ri ON ri.tenant_id = w.tenant_id AND ri.scope = w.scope AND ri.record_key = w.record_key
+                                   AND ri.check_id = ANY(w.checks) AND ri.resolution IN ('false_positive', 'accepted_risk')
+             WHERE w.tenant_id = CAST(:t AS uuid) AND w.status = 'not_an_issue'
+               AND (w.version_id, w.module, w.record_key) IN (SELECT * FROM unnest(CAST(:kv AS uuid[]),
+                       CAST(:km AS text[]), CAST(:kk AS text[])))
+             ORDER BY w.version_id, w.module, w.record_key, ri.updated_at DESC NULLS LAST"""), keys)).mappings().all():
+            resolutions[(d["version_id"], d["module"], d["record_key"])] = d["resolution"]
+
+    out: dict[tuple[str, str, str], dict] = {}
+    for r in rows:
+        key = (r.version_id, r.module, r.record_key)
+        mine = by_row.get(key, [])
+        priced = [float(c["cost_at_risk"]) / c["affected_count"] for c in mine
+                  if c["cost_at_risk"] is not None and (c["affected_count"] or 0) > 0]
+        first = next((c for c in mine if c["field"]), None)  # the only failing field, else the first in check order
+        allowed = _allowed_values(first["valid_values"], first["rule_module"], first["check_id"], limit=None) if first else None
+        out[key] = {
+            "value_at_risk": round(sum(priced), 2) if priced else None,
+            "current_value": _field_value(first),
+            "field_description": fs.field_label(first["field"]) if first else None,
+            "possible_values": allowed[:fs.POSSIBLE_VALUES_SHOWN] if allowed else None,
+            "possible_values_total": len(allowed) if allowed else None,
+            "new_value": drafts.get(key) if r.status == "proposed" else None,
+            "resolution": resolutions.get(key) if r.status == "not_an_issue" else None,
+        }
+    return out
 
 
 @router.get("/search")
@@ -570,7 +708,7 @@ async def record(
          WHERE w.tenant_id = :t AND w.version_id = CAST(:v AS uuid) AND w.module = :m AND w.record_key = :k"""),
         p)).fetchone()
     rows = (await db.execute(text("""
-        SELECT fr.check_id, fr.field_values, f.severity, f.dimension, f.details->>'message' AS message,
+        SELECT fr.check_id, fr.field_values, fr.grain, f.severity, f.dimension, f.details->>'message' AS message,
                f.details->>'field_checked' AS field, f.remediation_text, f.value_fix_map,
                f.rule_context->>'why_it_matters' AS why, f.rule_context->>'sap_impact' AS impact,
                (SELECT e FROM jsonb_array_elements(CASE WHEN jsonb_typeof(f.record_fixes) = 'array' THEN f.record_fixes ELSE '[]'::jsonb END) e
@@ -604,8 +742,13 @@ async def record(
     rule_rows = await _tenant_rules(db, tenant, module, sorted({r["check_id"] for r in rows}))
     values: dict = {}
     issues = []
+    described: dict[str, str] = {}  # TABLE.FIELD -> the field's description
     for r in rows:
         fv = r["field_values"] or {}
+        for name in [*fv, r["field"]]:
+            if name:
+                full = name if "." in name else f"{r['grain']}.{name}" if r["grain"] else name
+                described.setdefault(full, fs_field_label(full))
         values.update({k: v for k, v in fv.items() if k not in values})
         field = r["field"]
         current = fv.get(field) if field else None
@@ -665,6 +808,7 @@ async def record(
         "assigned_to": str(head.assigned_to) if head and head.assigned_to else None,
         "assignee_email": head.assignee_email if head else None,
         "values": {k: (None if v is None else str(v)) for k, v in values.items()},
+        "field_descriptions": described,
         "issues": issues, "events": events,
         "other_runs": await _previous_run(db, tenant, vid, scope, module, record_key, [i["check_id"] for i in issues]),
         **(await _mdm_links(db, tenant, module, record_key)),
@@ -675,6 +819,11 @@ async def record(
 
 
 MAX_ALLOWED = 60
+
+
+def fs_field_label(field: str) -> str:
+    from api.services.fix_sheet import field_label
+    return field_label(field) or field
 
 
 def _pass_rate(stored, failing, population) -> Optional[float]:
@@ -717,9 +866,10 @@ def _rule_meta(r, row: Optional[dict]) -> dict:
     }
 
 
-def _allowed_values(stored, module: Optional[str], check_id: str) -> Optional[list[dict]]:
-    """The values the rule accepts, with their meaning where the rule gives one; None for a rule without a list."""
-    src = stored if isinstance(stored, dict) and stored else None
+def _allowed_values(stored, module: Optional[str], check_id: str, limit: Optional[int] = MAX_ALLOWED) -> Optional[list[dict]]:
+    """The values the rule accepts, with their meaning where the rule gives one; None for a rule without a list.
+    ``limit`` caps the list (None: every value)."""
+    src = stored if isinstance(stored, (dict, list)) and stored else None
     if src is None:
         y = _shipped_rule(module, check_id)
         src = y.get("valid_values_with_labels") or y.get("allowed_values") or y.get("domain_values")
@@ -729,7 +879,7 @@ def _allowed_values(stored, module: Optional[str], check_id: str) -> Optional[li
         out = [{"value": "" if v is None else str(v), "label": None} for v in src]
     else:
         return None
-    return out[:MAX_ALLOWED] or None
+    return (out if limit is None else out[:limit]) or None
 
 
 async def _previous_run(db: AsyncSession, tenant: Tenant, vid: str, scope: str, module: str, record_key: str,

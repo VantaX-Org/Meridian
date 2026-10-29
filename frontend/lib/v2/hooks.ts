@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
@@ -88,4 +88,21 @@ export function useV2Session(): V2Session {
 /** The run the page is pinned to (`?run=`), or null for the current state. */
 export function useRunParam(): string | null {
   return useSearchParams().get("run");
+}
+
+const PHONE = "(max-width: 760px)";
+const subscribePhone = (cb: () => void) => {
+  if (typeof window.matchMedia !== "function") return () => undefined;
+  const mq = window.matchMedia(PHONE);
+  mq.addEventListener("change", cb);
+  return () => mq.removeEventListener("change", cb);
+};
+
+/** True at phone width, where the map is a bottom sheet, the inspector fills the screen and the ledger is a list. */
+export function usePhone(): boolean {
+  return useSyncExternalStore(
+    subscribePhone,
+    () => typeof window.matchMedia === "function" && window.matchMedia(PHONE).matches,
+    () => false,
+  );
 }

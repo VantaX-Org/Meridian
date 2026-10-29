@@ -10,6 +10,7 @@ import { IconClose } from "./marks";
 import { EmptyFrame, Mono, V2Link } from "./parts";
 import { extensionFor } from "./inspector/registry";
 import { RuleInspectorBody } from "./inspector/rule";
+import { RecordInspector } from "./screens/RecordInspector";
 
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
@@ -148,42 +149,8 @@ export function RuleBody({ id, landscape }: { id: string; landscape: Landscape |
   );
 }
 
-function recordTitle(id: string): { module: string; key: string } {
-  const at = id.indexOf(":");
-  return at > 0 ? { module: id.slice(0, at), key: id.slice(at + 1) } : { module: "", key: id };
-}
-
-function RecordBody({ id }: { id: string }) {
-  const { module, key } = recordTitle(id);
-  const parts = key.split("|").map((p) => p.split("="));
-  return (
-    <>
-      <Facts>
-        {parts.map(([field, value]) => (
-          <Fact key={field} label={field}>
-            <Mono>{value}</Mono>
-          </Fact>
-        ))}
-      </Facts>
-      <h3>Failing rules and fix</h3>
-      <EmptyFrame
-        action={
-          module ? (
-            <V2Link href={`/objects/${module}/records/${encodeURIComponent(key)}`} className="m2-btn">
-              Open the record in the current interface
-            </V2Link>
-          ) : undefined
-        }
-      >
-        Every field, the failing rules and the fix with its possible values fill here in the next step.
-      </EmptyFrame>
-    </>
-  );
-}
-
 function titleFor(item: OpenItem): { title: ReactNode; status: ReactNode } {
   if (item.kind === "rule") return { title: <Mono>{item.id}</Mono>, status: "Rule" };
-  if (item.kind === "record") return { title: <Mono>{recordTitle(item.id).key}</Mono>, status: "Record" };
   return { title: item.id, status: "Feature" };
 }
 
@@ -194,13 +161,12 @@ export function Inspector() {
   if (!open) return null;
   const extension = extensionFor(open, close);
   if (extension) return extension;
+  if (open.kind === "record") return <RecordInspector id={open.id} onClose={close} />;
   const { title, status } = titleFor(open);
   return (
     <InspectorFrame title={title} status={status} onClose={close}>
       {open.kind === "rule" ? (
         <RuleInspectorBody id={open.id} landscape={landscape} />
-      ) : open.kind === "record" ? (
-        <RecordBody id={open.id} />
       ) : (
         <EmptyFrame>Feature impact fills here in the next step.</EmptyFrame>
       )}

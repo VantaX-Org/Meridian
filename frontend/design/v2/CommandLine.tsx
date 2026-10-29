@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { getCommand } from "@/lib/api/v2/landscape";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { useV2Href } from "@/lib/v2/hooks";
-import { commandHints } from "@/lib/v2/keys";
+import { commandHints, ledgerRegistry } from "@/lib/v2/keys";
 import type { CommandGroup } from "@/lib/api/v2/types";
 
 const PLACES: CommandGroup = {
@@ -21,9 +21,24 @@ const PLACES: CommandGroup = {
 };
 
 interface Row {
+  id: string;
+  kind: string;
   group: string;
   title: string;
   href: string;
+}
+
+/**
+ * The actions the command line offers, wired to the v2 screens whatever address the API sends: "approve" opens the
+ * ledger on the batches waiting for approval; "export" saves the fix sheet of the rows on screen (and, from another
+ * screen, opens the ledger and exports its default rows).
+ */
+export const WORK_APPROVALS = "/v2/work?filter=approvals";
+export const WORK_EXPORT = "/v2/work?export=1";
+function actionTarget(r: Row): { href: string; exportNow: boolean } {
+  if (r.kind === "action" && r.id === "approvals") return { href: WORK_APPROVALS, exportNow: false };
+  if (r.kind === "action" && (r.id === "export-fix-sheet" || r.id === "export")) return { href: WORK_EXPORT, exportNow: true };
+  return { href: r.href, exportNow: false };
 }
 
 /**
@@ -61,14 +76,17 @@ export function CommandLine({ onClose }: { onClose: () => void }) {
 
   const rows = useMemo<Row[]>(() => {
     const groups = debounced.length === 0 || q.trim().length === 0 ? [PLACES] : (result.data?.groups ?? []);
-    return groups.flatMap((g) => g.items.map((i) => ({ group: g.label, title: i.title, href: i.href })));
+    return groups.flatMap((g) => g.items.map((i) => ({ id: i.id, kind: g.kind, group: g.label, title: i.title, href: i.href })));
   }, [debounced, q, result.data]);
 
   const clamped = Math.min(index, Math.max(0, rows.length - 1));
   const run = (r: Row | undefined) => {
     if (!r) return;
     onClose();
-    router.push(href(r.href));
+    const target = actionTarget(r);
+    const ledger = ledgerRegistry.get();
+    if (target.exportNow && ledger) ledger.exportSheet();
+    else router.push(href(target.href));
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
