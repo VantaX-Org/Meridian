@@ -2854,3 +2854,49 @@ class WaveCertificateSignature(Base):
         UniqueConstraint("certificate_id", "user_id", name="uq_wave_certificate_signatures_user"),
         Index("ix_wave_certificate_signatures_cert", "tenant_id", "certificate_id"),
     )
+
+
+class Webhook(Base):
+    """An outbound webhook subscription (migration 107, api/routes/webhooks.py). ``secret`` signs every delivery
+    (X-Meridian-Signature, HMAC-SHA256) and is never returned by the API."""
+    __tablename__ = "webhooks"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    url = Column(Text, nullable=False)
+    secret = Column(Text, nullable=False)
+    events = Column(ARRAY(Text), nullable=False, server_default="{}")
+    active = Column(Boolean, nullable=False, server_default=text("true"))
+    description = Column(Text, nullable=True)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (Index("ix_webhooks_tenant", "tenant_id"),)
+
+
+class WebhookDelivery(Base):
+    """One event for one webhook and its delivery attempts (migration 107, workers/tasks/webhooks.py)."""
+    __tablename__ = "webhook_deliveries"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    webhook_id = Column(UUID(as_uuid=True), ForeignKey("webhooks.id", ondelete="CASCADE"), nullable=False)
+    event = Column(Text, nullable=False)
+    event_id = Column(UUID(as_uuid=True), nullable=False)
+    payload = Column(JSONB, nullable=False)
+    status = Column(Text, nullable=False, server_default="pending")  # pending | retrying | delivered | failed
+    attempts = Column(Integer, nullable=False, server_default="0")
+    next_attempt_at = Column(DateTime(timezone=True), nullable=True, server_default=text("now()"))
+    last_attempt_at = Column(DateTime(timezone=True), nullable=True)
+    response_code = Column(Integer, nullable=True)
+    error = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    delivered_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("status IN ('pending', 'retrying', 'delivered', 'failed')", name="ck_webhook_deliveries_status"),
+        UniqueConstraint("webhook_id", "event_id", name="uq_webhook_deliveries_event"),
+        Index("ix_webhook_deliveries_webhook", "tenant_id", "webhook_id", "created_at"),
+        Index("ix_webhook_deliveries_due", "next_attempt_at", postgresql_where=text("status IN ('pending', 'retrying')")),
+    )

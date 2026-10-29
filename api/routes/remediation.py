@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _row, _rls, _where
-from api.services import attention, remediation, undo, worklist
+from api.services import attention, remediation, undo, webhooks, worklist
 from api.services.rbac import current_user_id, current_user_label, require_permission, scope_from_path
 
 router = APIRouter(prefix="/api/v1/remediation", tags=["remediation"])
@@ -190,6 +190,7 @@ async def create_batch(
     from api.services.collab import notify_batch_waiting_sync  # watchers of its objects (migration 104)
     await db.run_sync(lambda s: notify_batch_waiting_sync(s, str(tenant.id), str(out["id"]), body.name,
                                                           [i["module"] for i in issues], uid))
+    await db.run_sync(lambda s: webhooks.batch_event(s, str(tenant.id), str(out["id"]), "batch.waiting"))
     await db.commit()
     return out
 
@@ -243,6 +244,7 @@ async def create_batch_from_cleaning(
     filt = json.dumps({"source": "cleaning", "ids": sorted(str(r["id"]) for r in rows)})
     out = await db.run_sync(lambda s: remediation.store_batch(s, str(tenant.id), body.name, filt, items, uid, label))
     await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), out["id"]))
+    await db.run_sync(lambda s: webhooks.batch_event(s, str(tenant.id), str(out["id"]), "batch.waiting"))
     await db.commit()
     return out
 
@@ -270,6 +272,7 @@ async def create_batch_from_simulation(
     filt = json.dumps({"source": "simulation", "simulation_id": body.simulation_id})
     out = await db.run_sync(lambda s: remediation.store_batch(s, str(tenant.id), body.name, filt, items, uid, label))
     await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), out["id"]))
+    await db.run_sync(lambda s: webhooks.batch_event(s, str(tenant.id), str(out["id"]), "batch.waiting"))
     await db.commit()
     return out
 
@@ -418,6 +421,7 @@ async def approve_batch(
     await _event(db, tenant, batch_id, "approved", request)
     await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), batch_id))
     action_id = await rec.save(db, tenant, request, "approve_batch", {"batch_id": str(batch_id), "name": b["name"]})
+    await db.run_sync(lambda s: webhooks.batch_event(s, str(tenant.id), str(batch_id), "batch.approved"))
     await db.commit()
     attention.invalidate(tenant.id)
     return {"id": str(batch_id), "status": "approved", "approved_by": current_user_label(), "action_id": action_id}
@@ -603,6 +607,7 @@ async def export_batch(
          "cnt": len(items), "uid": uid, "label": current_user_label(), "approved_label": b["approved_by_label"]})
     await _event(db, tenant, batch_id, "exported", request, to_value=format)
     await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), batch_id))
+    await db.run_sync(lambda s: webhooks.batch_event(s, str(tenant.id), str(batch_id), "batch.sent"))
     await db.commit()
     return StreamingResponse(io.BytesIO(data), media_type=_MEDIA[ext], headers={
         "Content-Disposition": f"attachment; filename={filename}",

@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _rls
 from api.services import readiness_certificate as rc
+from api.services import webhooks
 from api.services.rbac import (
     current_user_id,
     current_user_label,
@@ -133,6 +134,9 @@ async def sign_certificate(wave_id: uuid.UUID, cert_id: uuid.UUID, body: SignBod
     if complete:
         await db.execute(text("UPDATE wave_certificates SET status = 'signed' WHERE id = :c AND tenant_id = :t"),
                          {"c": str(cert_id), "t": t})
+    await db.run_sync(lambda s: webhooks.emit_safe(s, t, "certificate.signed", {
+        "certificate_id": str(cert_id), "wave_id": str(wave_id), "wave_name": wave.name, "version": cert[1],
+        "sha256": cert[3], "signed_by": current_user_label(), "complete": complete}))
     await write_audit(db, tenant.id, request, "certificate_signed", "wave_certificate", str(cert_id), None,
                       {"wave_id": str(wave_id), "version": cert[1], "sha256": cert[3], "statement": statement,
                        "complete": complete})

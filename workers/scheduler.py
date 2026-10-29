@@ -1037,6 +1037,10 @@ celery_app.conf.beat_schedule = {
         "task": "workers.tasks.purge_expired.purge_expired",
         "schedule": crontab(hour=2, minute=30),  # 02:30 UTC: retention policy per tenant (dry run until enabled)
     },
+    "webhook-deliveries-every-minute": {
+        "task": "workers.tasks.webhooks.deliver_due_webhooks",
+        "schedule": crontab(),  # due deliveries and retries (backoff 1, 2, 4, 8 minutes; 5 attempts)
+    },
     "prune-process-events-0315": {
         "task": "workers.tasks.run_process_discovery.prune_events",
         "schedule": crontab(hour=3, minute=15),  # old process events and surplus discovery runs
