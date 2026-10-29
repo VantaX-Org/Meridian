@@ -113,7 +113,7 @@ async def test_pinning_is_per_upload_lineage(seeded, adb):
     from api.routes.versions import _resolve_pair, pin_baseline
     eng, tid, ids = seeded
     tenant = SimpleNamespace(id=uuid.UUID(tid))
-    out = await pin_baseline(ids["co1"], True, adb, tenant)
+    out = await pin_baseline(ids["co1"], request=None, pinned=True, db=adb, tenant=tenant)
     assert out["scope"] == f"upload:controlling{SFX}"
     try:
         with eng.connect() as c:
@@ -122,7 +122,7 @@ async def test_pinning_is_per_upload_lineage(seeded, adb):
         assert pinned == {ids["bp"], ids["co1"]}  # business_partner keeps its own baseline
         assert str((await _resolve_pair(adb, None, ids["co_extra12"]))[0]) == ids["co1"]
     finally:
-        await pin_baseline(ids["co1"], False, adb, tenant)
+        await pin_baseline(ids["co1"], request=None, pinned=False, db=adb, tenant=tenant)
 
 
 def test_monitor_pairs_a_baseline_with_the_newest_run_of_its_own_objects(seeded):

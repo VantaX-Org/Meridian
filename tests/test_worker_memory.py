@@ -67,5 +67,7 @@ def test_the_system_lock_expires_so_a_dead_run_cannot_block_a_retry():
     assert callable(re_mod._touch_system_lock)
 
     import inspect
-    body = inspect.getsource(re_mod.run_extraction.run)
+    body = inspect.getsource(re_mod._extract)
     assert "_touch_system_lock" in body, "progress updates must refresh the lock"
+    task = inspect.getsource(re_mod.run_extraction.run)
+    assert "_release_system_lock" in task, "a finished extraction must free the system for the next download"

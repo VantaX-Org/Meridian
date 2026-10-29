@@ -188,6 +188,20 @@ def _acquire_system_lock(system_id: str) -> bool:
         return True
 
 
+def _release_system_lock(system_id: str) -> None:
+    """Free the system when the extraction ends, however it ends, so the next download need not wait out the TTL."""
+    try:
+        import redis  # type: ignore
+
+        from workers.celery_app import celery_app
+        url = celery_app.conf.broker_url
+        if not url:
+            return
+        redis.from_url(url).delete(f"extract-lock:system:{system_id}")
+    except Exception:
+        pass
+
+
 @celery_app.task(
     bind=True,
     name="workers.tasks.run_extraction.run_extraction",
@@ -209,8 +223,6 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
     ``purpose`` marks a download made for something other than data quality (process discovery): it is recorded on
     the version and the DQ side effects (module map, table profiles) are skipped.
     """
-    from api.services.task_progress import publish_progress
-
     if version_id and not _acquire_version_lock(str(version_id)):
         logger.warning(
             "extraction for version %s is already running (redelivered after a restart); "
@@ -222,6 +234,18 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
             "Concurrent extractions multiply RFC sessions for one SAP user and SAP refuses the "
             "surplus logons, which locks the account.", system_id)
         return {"version_id": str(version_id), "status": "system_busy"}
+
+    try:
+        return _extract(self, tenant_id, system_id, modules, include_config, sync_type, scope, analyse, label,
+                        version_id, delta, purpose)
+    finally:
+        _release_system_lock(str(system_id))
+
+
+def _extract(self, tenant_id, system_id, modules, include_config, sync_type, scope, analyse, label, version_id, delta,
+             purpose):
+    """The extraction proper, run while the system lock is held."""
+    from api.services.task_progress import publish_progress
 
     engine = get_sync_engine()
     if sync_type != "config":
@@ -267,6 +291,11 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
             from workers.dataset import parquet_name
 
             prefix = f"staging/{tenant_id}/{version_id}/"
+            from api.services import delta_extraction
+            baseline = delta_baseline(session, tenant_id, system_id, modules, scope) if delta else None
+            # the previous extraction left row hashes: compare every table with it, read dated tables by change date
+            compare = bool(baseline) and delta_extraction.hashes_exist(session, tenant_id, baseline["id"])
+            changes: list = []
             stored_rows: dict[str, int] = {}
             activity: list[str] = []
             profiles: list[tuple[str, dict, list[dict]]] = []
@@ -312,12 +341,24 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
                                              dictionary))
                 jobs.update_job(tenant_id, job_id, stage="read", rows_done=sum(stored_rows.values()),
                                 message=f"Stored {table}")
+                if delta and not purpose:  # the per-table change log; hashes kept for the next delta
+                    t_dict = dictionary.table(table) if dictionary is not None else None
+                    key_cols = [f"{table}.{k}" for k in (getattr(t_dict, "keys", None) or []) if f"{table}.{k}" in df.columns]
+                    obj = next((m for m in entry.get("modules", ()) if m in modules), modules[0])
+                    change = delta_extraction.track_table(session, tenant_id, version_id, obj, table, df, key_cols,
+                                                          entry, compare)
+                    changes.append(change)
+                    session.commit()
+                    jobs.update_job(tenant_id, job_id, stage="read", rows_done=sum(stored_rows.values()),
+                                    rows_read=sum(c.rows_read for c in changes),
+                                    rows_changed=sum(c.changed or 0 for c in changes),
+                                    message=f"Stored {table}: {change.rows_read:,} read"
+                                            + (f", {change.changed:,} changed" if change.changed is not None else ""))
 
             from api.services.connectivity_manager import DeltaRequest
 
-            baseline = delta_baseline(session, tenant_id, system_id, modules, scope) if delta else None
             dplan = delta_plan(baseline, datetime.now(timezone.utc), DELTA_FULL_DAYS) if delta else None
-            request = DeltaRequest(dplan[0], baseline_loader(str(baseline["dataset_path"]))) \
+            request = DeltaRequest(dplan[0], baseline_loader(str(baseline["dataset_path"])), by_change_date=compare) \
                 if dplan and baseline else None
             frames, coverage = manager.extract(system_id, modules, scope=scope, progress=_progress, sink=store,
                                                delta=request)
@@ -394,6 +435,9 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
             )
             session.commit()
 
+            if changes:  # the version row exists now
+                delta_extraction.record_changes(session, tenant_id, version_id, changes)
+                session.commit()
             failed = {c["table"] for c in coverage if c["status"] == "failed" or c.get("complete") is False}
             if not purpose:
                 _mark_modules(session, tenant_id, system_id, modules, "partial" if failed else "success", total_rows)

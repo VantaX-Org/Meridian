@@ -20,5 +20,13 @@ def evaluate_contracts(version_id: str, tenant_id: str) -> list[dict]:
         session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
         results = evaluate_run(session, str(tenant_id), str(version_id))
         session.commit()
+        try:  # per-object threshold breaches of the run (api/services/contract_enforcement.py)
+            from api.services.contract_enforcement import record_run
+            breaches = record_run(session, str(tenant_id), str(version_id))
+            session.commit()
+            logger.info(f"contract breaches for {version_id}: {breaches}")
+        except Exception as e:  # noqa: BLE001 - compliance above is already recorded
+            session.rollback()
+            logger.warning(f"contract breaches for {version_id} not recorded: {type(e).__name__}")
     logger.info(f"contracts for {version_id}: {results}")
     return results

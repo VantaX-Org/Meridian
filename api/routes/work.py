@@ -15,17 +15,19 @@ import base64
 import json
 import re
 import uuid
-from typing import Literal, Optional
+from typing import Literal, NamedTuple, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.middleware.cache import cached_json
 from api.routes.record_issues import _rls
 from api.routes.sync_trigger import module_label
-from api.services import undo, work_analytics, worklist
+from api.services import undo, work_analytics, work_counts, worklist
 from api.services.worklist import CLEANING_VALUE_MATCH
 from api.services.current_state import current_pairs, pairs_clause, run_ids
 from api.services.rbac import (Scope, _grants_allow, actions_for, current_user_id, current_user_label,
@@ -227,17 +229,65 @@ async def summary(
     that list shows (status defaults to open, as there) so the Fix work tiles follow the filters; ``objects`` follow
     module, check_id, severity and system only (every status), and stay unfiltered when none is passed."""
     await _rls(db, tenant)
+    filters = {"version_id": version_id, "module": module, "check_id": check_id, "severity": severity, "status": status,
+               "assigned": assigned, "proposed": proposed, "due": due, "part": part, "system": system, "q": q,
+               "since": since, "scope": scope, "latest": await latest_run(db, tenant.id),
+               # "me" is the caller: their own key
+               "me": current_user_id(request) if assigned == "me" else None}
+
+    async def produce() -> dict:
+        return jsonable_encoder(await _summary(request, version_id, module, check_id, severity, status, assigned,
+                                               proposed, due, part, system, q, since, scope, db, tenant))
+
+    return await cached_json(SUMMARY_CACHE_PREFIX, "work_summary", tenant.id, filters, SUMMARY_TTL_SECONDS, produce)
+
+
+SUMMARY_CACHE_PREFIX = "work"  # the landscape's prefix: one invalidation (mark_work_changed) drops both
+SUMMARY_TTL_SECONDS = 30
+
+
+class _SummaryRow(NamedTuple):
+    module: str
+    version_id: str
+    status: str
+    records: int
+    issues: int
+    critical: int
+    proposed: int
+    overdue: int
+
+
+async def _summary(request: Request, version_id, module, check_id, severity, status, assigned, proposed, due, part,
+                   system, q, since, scope, db: AsyncSession, tenant: Tenant) -> dict:
     sel = await _rows(db, tenant, version_id, scope)
     # objects follow module, check_id, severity and system when given (status, assignee and the rest stay off: the
-    # chips count every status of the objects shown)
+    # chips count every status of the objects shown). work_counts (migration 108) answers every filter but check_id;
+    # overdue (due_at < now()) is time-dependent, so it is always counted live, on the partial index of due records.
     owhere, p = _records_where(tenant, sel, request, module, check_id, severity, "all", None, None, None, None, None,
                                system)
-    rows = (await db.execute(text(f"""
-        SELECT w.module, w.version_id::text AS version_id, w.status, count(*) AS records, sum(w.issues) AS issues,
-               count(*) FILTER (WHERE w.sev_rank = 0) AS critical, count(*) FILTER (WHERE w.proposed > 0) AS proposed,
-               count(*) FILTER (WHERE w.due_at < now()) AS overdue
-          FROM work_records w WHERE {' AND '.join(owhere)}
-         GROUP BY w.module, w.version_id, w.status"""), p)).fetchall()
+    if check_id is None:
+        cp: dict = {}
+        cwhere = work_counts.where(sel, cp, module, severity, system)
+        counted = (await db.execute(text(f"""
+            SELECT c.module, c.version_id::text AS version_id, c.status, sum(c.count)::bigint AS records,
+                   sum(c.issues_sum)::bigint AS issues,
+                   COALESCE(sum(c.count) FILTER (WHERE c.severity = 'critical'), 0)::bigint AS critical,
+                   sum(c.proposed_count)::bigint AS proposed
+              FROM work_counts c WHERE {' AND '.join(cwhere)}
+             GROUP BY c.module, c.version_id, c.status HAVING sum(c.count) <> 0"""),
+            {**cp, "t": str(tenant.id)})).fetchall()
+        overdue = {(r[0], r[1], r[2]): int(r[3]) for r in (await db.execute(text(f"""
+            SELECT w.module, w.version_id::text, w.status, count(*) FROM work_records w
+             WHERE {' AND '.join(owhere)} AND w.due_at < now() GROUP BY 1, 2, 3"""), p)).fetchall()}
+        rows = [_SummaryRow(r.module, r.version_id, r.status, int(r.records), int(r.issues), int(r.critical),
+                            int(r.proposed), overdue.get((r.module, r.version_id, r.status), 0)) for r in counted]
+    else:
+        rows = (await db.execute(text(f"""
+            SELECT w.module, w.version_id::text AS version_id, w.status, count(*) AS records, sum(w.issues) AS issues,
+                   count(*) FILTER (WHERE w.sev_rank = 0) AS critical, count(*) FILTER (WHERE w.proposed > 0) AS proposed,
+                   count(*) FILTER (WHERE w.due_at < now()) AS overdue
+              FROM work_records w WHERE {' AND '.join(owhere)}
+             GROUP BY w.module, w.version_id, w.status"""), p)).fetchall()
     objects: dict[str, dict] = {}
     for r in rows:
         o = objects.setdefault(r.module, {"module": r.module, "version_id": r.version_id, "records": 0, "open": 0,
@@ -259,13 +309,26 @@ async def summary(
         where, fp = _records_where(tenant, sel, request, module, check_id, severity, status or "open", assigned,
                                    proposed, q, due, part, system)
         await _since(db, tenant, sel, since, module, where, fp)
-        f = (await db.execute(text(f"""
-            SELECT count(*) AS records, COALESCE(sum(w.issues), 0) AS issues,
-                   count(*) FILTER (WHERE w.sev_rank = 0) AS critical, count(*) FILTER (WHERE w.proposed > 0) AS proposed,
-                   count(*) FILTER (WHERE w.due_at < now()) AS overdue
-              FROM work_records w WHERE {' AND '.join(where)}"""), fp)).mappings().one()
-        totals = {"records": f["records"], "open": f["records"], "issues": int(f["issues"]), "critical": f["critical"],
-                  "proposed": f["proposed"], "overdue": f["overdue"]}
+        if all(f is None for f in (check_id, assigned, proposed, due, part, q, since)):
+            # module, severity, system and status only: work_counts, plus the live overdue count
+            cp = {}
+            cwhere = work_counts.where(sel, cp, module, severity, system, status or "open")
+            c = (await db.execute(text(f"""
+                SELECT COALESCE(sum(c.count), 0)::bigint AS records, COALESCE(sum(c.issues_sum), 0)::bigint AS issues,
+                       COALESCE(sum(c.count) FILTER (WHERE c.severity = 'critical'), 0)::bigint AS critical,
+                       COALESCE(sum(c.proposed_count), 0)::bigint AS proposed
+                  FROM work_counts c WHERE {' AND '.join(cwhere)}"""), {**cp, "t": str(tenant.id)})).mappings().one()
+            late = (await db.execute(text(f"SELECT count(*) FROM work_records w WHERE {' AND '.join(where)} "
+                                          "AND w.due_at < now()"), fp)).scalar()
+            f = {**c, "overdue": int(late or 0)}
+        else:
+            f = (await db.execute(text(f"""
+                SELECT count(*) AS records, COALESCE(sum(w.issues), 0) AS issues,
+                       count(*) FILTER (WHERE w.sev_rank = 0) AS critical, count(*) FILTER (WHERE w.proposed > 0) AS proposed,
+                       count(*) FILTER (WHERE w.due_at < now()) AS overdue
+                  FROM work_records w WHERE {' AND '.join(where)}"""), fp)).mappings().one()
+        totals = {"records": int(f["records"]), "open": int(f["records"]), "issues": int(f["issues"]),
+                  "critical": int(f["critical"]), "proposed": int(f["proposed"]), "overdue": int(f["overdue"])}
     return {"version_id": sel.vid, "scope": sel.scope, "mode": "current" if sel.current else "run",
             "version_ids": ids, "unbuilt": unbuilt, "built": len(unbuilt) < len(ids), "objects": out,
             "totals": totals}

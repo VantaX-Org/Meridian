@@ -2,7 +2,7 @@
 
 Every verb the audit added: comments and @mentions, watches and subscriptions (and the run events they fire), a
 person's activity, out-of-office delegations (and the notification copy to the delegate), the escalation chain and its
-worker step, contract versions, wave gates and the certificate stub, workload balancing with undo, share links,
+worker step, contract versions, wave gates and the certificate listing, workload balancing with undo, share links,
 the configuration bundle, view as a role, bulk rules, the grid export, shared views and remembered columns, the
 extraction dry run, the steward assignment template, related objects and the fix-order hint. RBAC gates, audit rows
 and row-level security of every new table.
@@ -273,7 +273,7 @@ async def test_wave_gate_status_and_certificate(owner, monkeypatch):
         assert st["passed"] is False and [x["key"] for x in st["checks"]] == ["min_score", "zero_criticals", "contracts_met"]
         assert st["checks"][2]["passed"] is True  # no active contract names these objects
         cert = (await c.get(f"/api/v1/migration/waves/{wid}/certificate", headers=headers("viewer"))).json()
-        assert cert["final"] is False and cert["passed"] is False and cert["wave"] == "Wave 1"
+        assert cert["wave_id"] == str(wid) and cert["versions"] == [] and isinstance(cert["required_signers"], list)
     assert _audit(owner, tid, "wave_gate.update") == 1
 
 

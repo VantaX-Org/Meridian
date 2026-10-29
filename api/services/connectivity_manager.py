@@ -156,6 +156,9 @@ class DeltaRequest:
     plain field names, or None when it has none."""
     since: str
     load_baseline: Callable[[str], Optional[pd.DataFrame]]
+    # the previous extraction left row hashes: tables with a date-of-last-change field are read by that date
+    # (api/services/delta_extraction.py)
+    by_change_date: bool = False
 
 
 _SIGNALS = ("SIGTERM", "SIGINT", "SIGHUP")
@@ -404,6 +407,10 @@ class ConnectivityManager:
                             connector, table, cols, list(t.keys), plan.where, delta, delta_keys, delta_map,
                             raw.get(plan.via) if plan.via else None, counts.get(table), max_rows,
                         ) if delta is not None and table in delta_map else (None, None)
+                        if df is None and delta is not None and delta.by_change_date and not plan.via \
+                                and not plan.slices:
+                            df, delta_info = self._date_delta_read(connector, table, cols, list(t.keys), plan.where,
+                                                                   delta, counts.get(table), max_rows)
                         if df is None and plan.via:
                             wheres = [w for parent in (plan.via, *plan.also_via)
                                       for w in via_filters(table, parent, raw.get(parent), extra_edges=pe_edges(),
@@ -641,6 +648,30 @@ class ConnectivityManager:
         if expected is not None and expected != len(df):
             return None, None
         return df, {"since": delta.since, "key": key, "changed": len(ids), "reread": len(fresh)}
+
+    @staticmethod
+    def _date_delta_read(connector, table: str, cols: list[str], keys: list[str], where: Optional[str],
+                         delta: DeltaRequest, expected: Optional[int],
+                         max_rows: int) -> tuple[Optional[pd.DataFrame], Optional[dict]]:
+        """``table`` as the baseline merged with the rows changed since ``delta.since`` by the table's
+        date-of-last-change field, or (None, None) to read it in full: no such field among the read columns, no
+        usable baseline, or a merged count that disagrees with SAP's (records deleted leave no change date)."""
+        from api.services.delta_extraction import change_date_where, merge_by_key
+        from sap.data_dictionary import get_change_date_field
+
+        field = get_change_date_field(table)
+        if not field or field not in cols:
+            return None, None
+        baseline = delta.load_baseline(table)
+        if baseline is None or not set(cols) <= set(baseline.columns):
+            return None, None
+        fresh = connector.read_table_full(table, cols, keys, where=" AND ".join(
+            x for x in (change_date_where(field, delta.since), where) if x), max_rows=max_rows)
+        df = merge_by_key(baseline[cols], fresh[cols] if len(fresh) else pd.DataFrame(columns=cols),
+                          [k for k in keys if k in cols])
+        if expected is not None and expected != len(df):
+            return None, None
+        return df, {"since": delta.since, "field": field, "mode": "change_date", "reread": len(fresh)}
 
     def read_rows(self, system_id: str, table: str, fields: list[str], wheres: list[str]) -> pd.DataFrame:
         """Rows of one ABAP table, one read-only RFC read per WHERE clause (for example, key IN-lists
@@ -1197,6 +1228,9 @@ class ConnectivityManager:
         except Exception as e:  # drift is a report; it never costs the load
             logger.warning(f"config drift for load {load_id} failed: {e}")
             self.session.rollback()
+        else:  # owners of the objects whose rules depend on what changed are told; those objects are re-scored
+            from api.services.drift_alerts import process_safe
+            process_safe(self.session, str(self.tenant_id), system_id, str(load_id), "config_load")
         return {"load_id": load_id, "system_type": system_type, "objects": snap.summary(), "items": len(rows),
                 "origin": origin, "flows_derived": derivation is not None,
                 "table_logging_off": bool(history.get("table_logging_off"))}
@@ -1218,6 +1252,8 @@ class ConnectivityManager:
         results = {}
         live = baseline = 0
         connection_failed = False
+        # live snapshots replaced in this sync are diffed into config_drift_log under this id (drift alerts)
+        self._drift_run, self._drift_rows = str(uuid.uuid4()), 0
 
         for module in modules:
             targets = get_extraction_targets(system_type, module, include_config=True)
@@ -1266,6 +1302,10 @@ class ConnectivityManager:
             {"sid": system_id, "st": status},
         )
         self.session.commit()
+        if self._drift_rows:
+            from api.services.drift_alerts import process_safe
+            process_safe(self.session, str(self.tenant_id), system_id, self._drift_run, "config_sync")
+        self._drift_run = None
         return {"status": status, "modules": results}
 
     def _store_config_snapshots(self, system_id: str, module: str,
@@ -1276,6 +1316,16 @@ class ConnectivityManager:
     def _store_config_snapshot(self, system_id: str, module: str,
                                table_name: str, df: pd.DataFrame, source: str):
         data = df.to_dict(orient="records")
+        if source == "live" and getattr(self, "_drift_run", None):
+            prev = self.session.execute(text(
+                "SELECT config_data, source FROM config_snapshots WHERE tenant_id = :tid AND system_id = :sid "
+                "AND module = :mod AND config_table = :tbl"),
+                {"tid": self.tenant_id, "sid": system_id, "mod": module, "tbl": table_name}).fetchone()
+            if prev is not None and prev[1] == "live":  # a first live read after the baseline is not drift
+                from api.services.drift_alerts import log_snapshot_drift
+                self._drift_rows += log_snapshot_drift(
+                    self.session, str(self.tenant_id), self._drift_run, module, table_name,
+                    list(prev[0] or []), json.loads(json.dumps(data, default=str)))
         self.session.execute(
             text("""
                 INSERT INTO config_snapshots

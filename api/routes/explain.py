@@ -410,7 +410,8 @@ async def _open_work(c: _Ctx) -> dict:
         return _out(c, "open_work", f"The work list for {c.label} is not built", [
             "The work list of this run has not been built yet, so open work cannot be counted."], [("Open work", None, "records")])
     by = {r[0]: int(r[1]) for r in (await c.db.execute(text(
-        "SELECT status, count(*) FROM work_records WHERE version_id = :v AND tenant_id = :t AND module = :m GROUP BY status"),
+        "SELECT status, sum(count)::bigint FROM work_counts WHERE version_id = :v AND tenant_id = :t AND module = :m "
+        "GROUP BY status HAVING sum(count) <> 0"),  # migration 108
         c.p)).fetchall()}
     open_n = sum(by.get(s, 0) for s in OPEN_WORK)
     labels = {"to_fix": "to fix", "proposed": "with a proposed fix", "approved": "approved", "sent": "sent to SAP"}

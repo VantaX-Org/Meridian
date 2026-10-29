@@ -46,6 +46,8 @@ from typing import Any, Optional
 
 from sqlalchemy import text
 
+from api.middleware.cache import mark_work_changed
+
 logger = logging.getLogger("meridian.purge")
 
 # Record issue lifecycle (record_issues.status, migration 048): open ones survive a purge.
@@ -68,6 +70,7 @@ _VERSION_FINDINGS = "SELECT id FROM findings WHERE tenant_id = :t AND version_id
 DELETE_ORDER: tuple[tuple[str, str], ...] = (
     ("write_back_log", f"tenant_id = :t AND (version_id = :v OR finding_id IN ({_VERSION_FINDINGS}))"),
     ("work_records", "tenant_id = :t AND version_id = :v"),
+    ("work_counts", "tenant_id = :t AND version_id = :v"),  # emptied by work_records' triggers (migration 108)
     ("work_groups", "tenant_id = :t AND version_id = :v"),
     ("finding_records", "tenant_id = :t AND version_id = :v"),
     ("finding_root_causes", "tenant_id = :t AND version_id = :v"),
@@ -400,6 +403,7 @@ def purge_version(session: Any, tenant_id: str, version_id: str, *, dry_run: boo
                                           0, None, actor, source=source)
     write_audit_row(session, tid, actor, "purge", "analysis_version", vid,
                     {"label": label, "rows_by_table": result.rows_by_table, "purge_log_id": result.purge_log_id})
+    mark_work_changed(session, tid)  # the cached landscape and work summary drop the run on commit
     session.commit()
 
     # Storage after the commit: the rows are gone either way, so a storage failure

@@ -43,7 +43,7 @@ class _Db:
             return _Res([{"module": "material_master", "version_id": self.latest}] if self.latest else [])
         if "worklist_built_at" in sql:  # the runs whose work list finished building
             return _Res([self.latest] if self.to_fix is not None else [])
-        if "FROM work_records" in sql:
+        if "FROM work_counts" in sql:
             return _Res(self.to_fix)
         if "cleaning_queue" in sql:
             return _Res(self.fix_count)
@@ -116,7 +116,7 @@ def test_fix_counts_records_to_fix_of_the_current_state(monkeypatch):
     assert res.json()["fix"] == 7
     assert not any("cleaning_queue" in s for s, _ in db.calls)
     # the count reads each object of the current state at its own run, as Fix work does without ?run=
-    sql, params = next((s, p) for s, p in db.calls if "FROM work_records" in s)
+    sql, params = next((s, p) for s, p in db.calls if "FROM work_counts" in s)  # pre-aggregated, migration 108
     assert "unnest(CAST(:cm AS text[]), CAST(:cv AS uuid[]))" in sql
     assert params["cm"] == ["material_master"] and params["cv"] == [latest] and params["tid"] == str(TID)
 
@@ -126,7 +126,7 @@ def test_fix_is_null_without_a_work_list_and_never_cleaning_proposals(monkeypatc
     db = _Db(fix_count=4, inbox_count=2, latest=str(uuid.uuid4()), to_fix=None)
     body = _get(_app(db, monkeypatch), "/api/v1/shell/counts").json()
     assert body == {"fix": None, "inbox": 2}
-    assert not any("cleaning_queue" in s or "FROM work_records" in s for s, _ in db.calls)
+    assert not any("cleaning_queue" in s or "FROM work_counts" in s for s, _ in db.calls)
 
 
 def test_fix_is_null_without_any_run(monkeypatch):

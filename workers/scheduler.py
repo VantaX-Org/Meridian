@@ -1037,8 +1037,20 @@ celery_app.conf.beat_schedule = {
         "task": "workers.tasks.purge_expired.purge_expired",
         "schedule": crontab(hour=2, minute=30),  # 02:30 UTC: retention policy per tenant (dry run until enabled)
     },
+    "webhook-deliveries-every-minute": {
+        "task": "workers.tasks.webhooks.deliver_due_webhooks",
+        "schedule": crontab(),  # due deliveries and retries (backoff 1, 2, 4, 8 minutes; 5 attempts)
+    },
+    "learned-rules-from-fixes-0145": {
+        "task": "workers.tasks.fix_mining.mine_rules_from_fixes",
+        "schedule": crontab(hour=1, minute=45),  # daily: propose rules stewards keep fixing by hand (never enabled)
+    },
     "prune-process-events-0315": {
         "task": "workers.tasks.run_process_discovery.prune_events",
         "schedule": crontab(hour=3, minute=15),  # old process events and surplus discovery runs
+    },
+    "reconcile-work-counts-0340": {
+        "task": "workers.tasks.reconcile_work_counts.reconcile_work_counts",
+        "schedule": crontab(hour=3, minute=40),  # 03:40 UTC: work_counts vs a live count, drift logged and repaired
     },
 }

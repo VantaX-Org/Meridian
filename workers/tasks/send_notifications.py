@@ -520,16 +520,43 @@ def alert_text(alert: dict) -> str:
     return f"Meridian {alert['mode']} alert{where} — " + "; ".join(parts) + f". {alert['links']['findings']}"
 
 
+def _facts(alert: dict) -> list[tuple[str, str]]:
+    """The alert's numbers as (label, value) pairs for the Slack and Teams cards: counts and scores only."""
+    out = []
+    if alert.get("system_name"):
+        out.append(("System", str(alert["system_name"])))
+    if alert.get("score") is not None:
+        out.append(("Score", f"{alert['score']}"))
+    if alert.get("score_drop") is not None:
+        out.append(("Drop", f"{alert['score_drop']} points"))
+    out.append(("New critical rules", str(alert.get("new_critical_count") or 0)))
+    if alert.get("sla_breaches"):
+        out.append(("SLA breaches", str(alert["sla_breaches"])))
+    if alert.get("regressed_records"):
+        out.append(("Records failing again", str(alert["regressed_records"])))
+    return out
+
+
 def render(kind: str, alert: dict) -> dict:
+    """The incoming-webhook body: Slack Block Kit (with a text fallback) or a Teams Adaptive Card."""
+    title = f"Meridian {alert['mode']} alert"
     if kind == "slack":
-        return {"text": alert_text(alert)}
+        return {"text": alert_text(alert), "blocks": [
+            {"type": "header", "text": {"type": "plain_text", "text": title}},
+            {"type": "section", "text": {"type": "mrkdwn", "text": alert_text(alert)}},
+            {"type": "section", "fields": [{"type": "mrkdwn", "text": f"*{k}*\n{v}"} for k, v in _facts(alert)][:10]},
+            {"type": "actions", "elements": [{"type": "button", "text": {"type": "plain_text", "text": "Open findings"},
+                                              "url": alert["links"]["findings"]}]},
+        ]}
     if kind == "teams":
         return {"type": "message", "attachments": [{
             "contentType": "application/vnd.microsoft.card.adaptive",
             "content": {
                 "$schema": "http://adaptivecards.io/schemas/adaptive-card.json", "type": "AdaptiveCard",
                 "version": "1.4",
-                "body": [{"type": "TextBlock", "wrap": True, "text": alert_text(alert)}],
+                "body": [{"type": "TextBlock", "size": "Medium", "weight": "Bolder", "text": title},
+                         {"type": "TextBlock", "wrap": True, "text": alert_text(alert)},
+                         {"type": "FactSet", "facts": [{"title": k, "value": v} for k, v in _facts(alert)]}],
                 "actions": [{"type": "Action.OpenUrl", "title": "Open findings", "url": alert["links"]["findings"]}],
             }}]}
     return alert

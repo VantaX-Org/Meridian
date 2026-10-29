@@ -20,6 +20,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Identity,
     Index,
     Integer,
     LargeBinary,
@@ -544,6 +545,9 @@ class Contract(Base):
     quality_contract = Column(JSONB, nullable=True)
     freshness_contract = Column(JSONB, nullable=True)
     volume_contract = Column(JSONB, nullable=True)
+    # migration 110: an enforced contract's breaches block pinning a baseline; thresholds per object
+    enforce = Column(Boolean, nullable=False, server_default=text("false"))
+    thresholds = Column(JSONB, nullable=True)
     status = Column(Text, nullable=False, server_default="draft")
     created_by = Column(UUID(as_uuid=True), nullable=True)
     approved_by = Column(UUID(as_uuid=True), nullable=True)
@@ -1061,6 +1065,37 @@ class WorkRecord(Base):
         Index("ix_work_records_tenant_rank", "tenant_id", "sev_rank", "module", "record_key"),
         Index("ix_work_records_status_cover", "tenant_id", "version_id", "module", "status",
               postgresql_include=["sev_rank", "issues", "proposed", "due_at"]),
+        # Migration 108: overdue records (due_at < now()) without reading the run's other rows.
+        Index("ix_work_records_due", "tenant_id", "version_id", "module", "due_at",
+              postgresql_include=["status", "scope", "sev_rank", "assigned_to"],
+              postgresql_where=text("due_at IS NOT NULL")),
+    )
+
+
+class WorkCount(Base):
+    """Open work pre-aggregated: work_records counted per (run, object, work status, system, severity, assignee),
+    kept exact by statement triggers on work_records in the same transaction — migration 108,
+    api/services/work_counts.py."""
+    __tablename__ = "work_counts"
+
+    id = Column(BigInteger, Identity(always=True), primary_key=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="CASCADE"), nullable=False)
+    module = Column(Text, nullable=False)
+    status = Column(Text, nullable=False)       # worklist.STATUSES
+    system_id = Column(Text, nullable=False)    # work_records.scope: source system id, or 'upload'
+    severity = Column(Text, nullable=False)     # work_records.sev_rank by name: critical, high, medium, low, info
+    assigned_to = Column(UUID(as_uuid=True), nullable=True)
+    count = Column(BigInteger, nullable=False, server_default="0")
+    issues_sum = Column(BigInteger, nullable=False, server_default="0")
+    proposed_count = Column(BigInteger, nullable=False, server_default="0")   # records with proposed > 0
+    value_at_risk_sum = Column(Numeric, nullable=False, server_default="0")
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        Index("uq_work_counts_slice", "tenant_id", "version_id", "module", "status", "system_id", "severity",
+              "assigned_to", unique=True, postgresql_nulls_not_distinct=True),
+        Index("ix_work_counts_status", "tenant_id", "version_id", "status", "module"),
     )
 
 
@@ -1500,6 +1535,8 @@ class LearnedRuleProposal(Base):
     violations = Column(BigInteger, nullable=False)
     sample_keys = Column(JSONB, nullable=False, server_default="[]")
     status = Column(Text, nullable=False, server_default="pending")
+    source = Column(Text, nullable=False, server_default="data")  # data | fixes (migration 109)
+    evidence = Column(JSONB, nullable=True)  # mined from fixes: count, sample keys, time span, who
     rule_id = Column(Text, nullable=True)
     decided_by = Column(Text, nullable=True)
     decided_at = Column(DateTime(timezone=True), nullable=True)
@@ -2809,3 +2846,166 @@ class StewardAssignment(Base):
 
     __table_args__ = (UniqueConstraint("tenant_id", "module", "slice_kind", "slice_value",
                                        name="uq_steward_assignments_slice"),)
+
+
+# ── Step 9: certificates, drift alerts, webhooks, contract enforcement, delta extraction (migrations 106-111) ──
+
+
+class WaveCertificate(Base):
+    """One issued readiness certificate of a migration wave, numbered per wave (migration 106,
+    api/services/readiness_certificate.py). The PDF is a report_files row of kind ``readiness_certificate``."""
+    __tablename__ = "wave_certificates"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    wave_id = Column(UUID(as_uuid=True), ForeignKey("migration_waves.id", ondelete="CASCADE"), nullable=False)
+    version = Column(Integer, nullable=False)
+    status = Column(Text, nullable=False, server_default="issued")  # issued | signed
+    content = Column(JSONB, nullable=False)
+    content_sha256 = Column(Text, nullable=False)
+    report_file_id = Column(UUID(as_uuid=True), ForeignKey("report_files.id", ondelete="SET NULL"), nullable=True)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_by_label = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        CheckConstraint("status IN ('issued', 'signed')", name="ck_wave_certificates_status"),
+        UniqueConstraint("wave_id", "version", name="uq_wave_certificates_version"),
+        Index("ix_wave_certificates_wave", "tenant_id", "wave_id", "version"),
+    )
+
+
+class WaveCertificateSignature(Base):
+    """One owner's signature of a readiness certificate: who, when and the statement signed (migration 106)."""
+    __tablename__ = "wave_certificate_signatures"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    certificate_id = Column(UUID(as_uuid=True), ForeignKey("wave_certificates.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    user_label = Column(Text, nullable=False)
+    statement = Column(Text, nullable=False)
+    signed_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint("certificate_id", "user_id", name="uq_wave_certificate_signatures_user"),
+        Index("ix_wave_certificate_signatures_cert", "tenant_id", "certificate_id"),
+    )
+
+
+class Webhook(Base):
+    """An outbound webhook subscription (migration 107, api/routes/webhooks.py). ``secret`` signs every delivery
+    (X-Meridian-Signature, HMAC-SHA256) and is never returned by the API."""
+    __tablename__ = "webhooks"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    url = Column(Text, nullable=False)
+    secret = Column(Text, nullable=False)
+    events = Column(ARRAY(Text), nullable=False, server_default="{}")
+    active = Column(Boolean, nullable=False, server_default=text("true"))
+    description = Column(Text, nullable=True)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (Index("ix_webhooks_tenant", "tenant_id"),)
+
+
+class WebhookDelivery(Base):
+    """One event for one webhook and its delivery attempts (migration 107, workers/tasks/webhooks.py)."""
+    __tablename__ = "webhook_deliveries"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    webhook_id = Column(UUID(as_uuid=True), ForeignKey("webhooks.id", ondelete="CASCADE"), nullable=False)
+    event = Column(Text, nullable=False)
+    event_id = Column(UUID(as_uuid=True), nullable=False)
+    payload = Column(JSONB, nullable=False)
+    status = Column(Text, nullable=False, server_default="pending")  # pending | retrying | delivered | failed
+    attempts = Column(Integer, nullable=False, server_default="0")
+    next_attempt_at = Column(DateTime(timezone=True), nullable=True, server_default=text("now()"))
+    last_attempt_at = Column(DateTime(timezone=True), nullable=True)
+    response_code = Column(Integer, nullable=True)
+    error = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    delivered_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("status IN ('pending', 'retrying', 'delivered', 'failed')", name="ck_webhook_deliveries_status"),
+        UniqueConstraint("webhook_id", "event_id", name="uq_webhook_deliveries_event"),
+        Index("ix_webhook_deliveries_webhook", "tenant_id", "webhook_id", "created_at"),
+        Index("ix_webhook_deliveries_due", "next_attempt_at", postgresql_where=text("status IN ('pending', 'retrying')")),
+    )
+
+
+class ConfigDriftAlert(Base):
+    """One config load or sync that changed what rules depend on (migration 108, api/services/drift_alerts.py)."""
+    __tablename__ = "config_drift_alerts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id", ondelete="CASCADE"), nullable=False)
+    source = Column(Text, nullable=False)  # config_load | config_sync
+    run_id = Column(UUID(as_uuid=True), nullable=False)
+    areas = Column(JSONB, nullable=False, server_default="[]")
+    rules = Column(ARRAY(Text), nullable=False, server_default="{}")
+    objects = Column(ARRAY(Text), nullable=False, server_default="{}")
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="SET NULL"), nullable=True)
+    notified = Column(Integer, nullable=False, server_default="0")
+    rescore_queued = Column(Boolean, nullable=False, server_default=text("false"))
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        CheckConstraint("source IN ('config_load', 'config_sync')", name="ck_config_drift_alerts_source"),
+        UniqueConstraint("tenant_id", "run_id", name="uq_config_drift_alerts_run"),
+        Index("ix_config_drift_alerts_tenant_created", "tenant_id", "created_at"),
+    )
+
+
+class ContractBreach(Base):
+    """One object of a finished run below a contract's threshold (migration 110, api/services/contract_enforcement.py)."""
+    __tablename__ = "contract_breaches"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    contract_id = Column(UUID(as_uuid=True), ForeignKey("contracts.id", ondelete="CASCADE"), nullable=False)
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="CASCADE"), nullable=False)
+    module = Column(Text, nullable=False)
+    metric = Column(Text, nullable=False)  # score | critical_breaches | <dimension>
+    threshold = Column(Float, nullable=True)
+    actual = Column(Float, nullable=True)
+    enforced = Column(Boolean, nullable=False, server_default=text("false"))
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint("contract_id", "version_id", "module", "metric", name="uq_contract_breaches_metric"),
+        Index("ix_contract_breaches_contract", "tenant_id", "contract_id", "created_at"),
+        Index("ix_contract_breaches_version", "tenant_id", "version_id"),
+    )
+
+
+class ExtractionChange(Base):
+    """How one data table of an extraction was read and what changed since the previous one (migration 111,
+    api/services/delta_extraction.py)."""
+    __tablename__ = "extraction_changes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="CASCADE"), nullable=False)
+    table_name = Column(Text, nullable=False)
+    mode = Column(Text, nullable=False)  # full | change_documents | change_date
+    rows_read = Column(BigInteger, nullable=False, server_default="0")
+    rows_total = Column(BigInteger, nullable=True)
+    inserted = Column(BigInteger, nullable=True)
+    updated = Column(BigInteger, nullable=True)
+    deleted = Column(BigInteger, nullable=True)
+    unchanged = Column(BigInteger, nullable=True)
+    duration_s = Column(Float, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        CheckConstraint("mode IN ('full', 'change_documents', 'change_date')", name="ck_extraction_changes_mode"),
+        UniqueConstraint("version_id", "table_name", name="uq_extraction_changes_table"),
+        Index("ix_extraction_changes_version", "tenant_id", "version_id"),
+    )

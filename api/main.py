@@ -83,6 +83,13 @@ from api.routes.events import router as events_router
 from api.routes.jobs import router as jobs_router
 from api.routes.schedules import router as schedules_router
 from api.routes.simulation import router as simulation_router
+from api.routes.simulate import router as simulate_router
+from api.routes.wave_certificates import router as wave_certificates_router
+from api.routes.impact_money import router as impact_money_router
+from api.routes.webhooks import router as webhooks_router
+from api.routes.drift_alerts import router as drift_alerts_router
+from api.routes.contract_breaches import router as contract_breaches_router
+from api.routes.extraction_changes import router as extraction_changes_router
 from api.routes.mining import router as mining_router
 from api.routes.process_mining import router as process_mining_router
 from api.routes.process_designer import router as process_designer_router
@@ -439,6 +446,13 @@ app.include_router(events_router)
 app.include_router(jobs_router)
 app.include_router(schedules_router)
 app.include_router(simulation_router)
+app.include_router(simulate_router)
+app.include_router(wave_certificates_router)
+app.include_router(impact_money_router)
+app.include_router(webhooks_router)
+app.include_router(drift_alerts_router)
+app.include_router(contract_breaches_router)
+app.include_router(extraction_changes_router)
 app.include_router(mining_router)
 app.include_router(process_mining_router)
 app.include_router(process_designer_router)

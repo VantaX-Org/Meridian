@@ -33,7 +33,12 @@ class Reject(BaseModel):
 
 
 class Mine(BaseModel):
-    version_id: uuid.UUID
+    """``source=data`` (the default when a version is named): house-rule mining over that version's datasets, queued.
+    ``source=fixes`` (the default without a version): mine the values stewards entered through /work/decide now
+    (api/services/fix_mining.py); ``min_records`` overrides the tenant setting for this call."""
+    version_id: Optional[uuid.UUID] = None
+    source: Optional[Literal["data", "fixes"]] = None
+    min_records: Optional[int] = Field(None, ge=2, le=100000)
 
 
 def next_rule_id(s: Session, tenant_id: str) -> str:
@@ -94,15 +99,17 @@ def reject_sync(s: Session, tenant_id: str, pid: str, note: Optional[str], me: s
 @router.get("/learned-rules", dependencies=[Depends(require_permission("view"))])
 async def list_learned(status: Literal["pending", "approved", "rejected"] = Query("pending"),
                        module: Optional[str] = None, kind: Optional[str] = None,
+                       source: Optional[Literal["data", "fixes"]] = None,
                        db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> dict:
     await _rls(db, tenant)
     rows = (await db.execute(text("""
         SELECT id, version_id, module, kind, table_name, determinant, field, body, confidence, support_rows,
-               violations, sample_keys, status, rule_id, decided_by, decided_at, updated_at
+               violations, sample_keys, status, rule_id, decided_by, decided_at, updated_at, source, evidence
           FROM learned_rule_proposals
-         WHERE status = :s AND (CAST(:m AS text) IS NULL OR module = :m) AND (CAST(:k AS text) IS NULL OR kind = :k)
+         WHERE tenant_id = :t AND status = :s AND (CAST(:m AS text) IS NULL OR module = :m)
+           AND (CAST(:k AS text) IS NULL OR kind = :k) AND (CAST(:src AS text) IS NULL OR source = :src)
          ORDER BY support_rows DESC, confidence DESC, field LIMIT 1000
-    """), {"s": status, "m": module, "k": kind})).fetchall()
+    """), {"t": str(tenant.id), "s": status, "m": module, "k": kind, "src": source})).fetchall()
     return {"items": [_row(r) for r in rows]}
 
 
@@ -114,6 +121,13 @@ async def mine(body: Mine, db: AsyncSession = Depends(get_db), tenant: Tenant = 
     from workers.tasks.mining.orchestrator import mining_targets, run_mining_for_version
 
     await _rls(db, tenant)
+    if (body.source or ("data" if body.version_id else "fixes")) == "fixes":
+        from api.services import fix_mining
+        out = await db.run_sync(lambda s: fix_mining.mine(s, str(tenant.id), body.min_records))
+        await db.commit()
+        return out
+    if body.version_id is None:
+        raise HTTPException(status_code=422, detail="Name the version to mine its data.")
     row = (await db.execute(text("SELECT metadata FROM analysis_versions WHERE id = :v AND tenant_id = :t"),
                             {"v": body.version_id, "t": tenant.id})).fetchone()
     if row is None:

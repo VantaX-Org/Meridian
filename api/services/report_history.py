@@ -74,6 +74,8 @@ REPORT_TYPES: dict[str, ReportType] = {
     "compare": ReportType("Run comparison", "pdf", schedulable=False),
     "record": ReportType("Record fix sheet", "pdf", schedulable=False),
     "full": ReportType("Full report", "pdf", schedulable=False),
+    # Issued per migration wave (api/routes/wave_certificates.py), never on a schedule.
+    "readiness_certificate": ReportType("Readiness certificate", "pdf", needs_run=False, schedulable=False),
 }
 
 # Report route endpoint (function name) -> report kind, for the downloads that are stored.

@@ -3,7 +3,7 @@ import logging
 import uuid
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 
 from api.services.rbac import require_permission, scope_from_path
 from pydantic import BaseModel, ConfigDict, Field
@@ -541,20 +541,45 @@ async def analyse_version(version_id: str, db: AsyncSession = Depends(get_db), t
     return {"version_id": version_id, "task_id": job.id, "job_id": version_id, "status": "pending"}
 
 
+class BaselineBody(BaseModel):
+    """Pinning a run that breaches an enforced data contract needs ``force`` and the reason (audited)."""
+    force: bool = False
+    reason: Optional[str] = Field(None, max_length=2000)
+
+
 @router.post("/versions/{version_id}/baseline", dependencies=[Depends(require_permission("analyse", scope=scope_from_path))])
 async def pin_baseline(
     version_id: str,
+    request: Request,
     pinned: bool = Query(True),
+    body: Optional[BaselineBody] = Body(None),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
     """Pin (or unpin) a run as the comparison baseline for its lineage; one baseline per lineage
-    (per system, or per set of uploaded objects)."""
+    (per system, or per set of uploaded objects). 409 when the run breaches an enforced data contract, unless the
+    body says ``force`` with a ``reason``; a forced pin is audited with the breaches it overrode."""
+    from api.services import contract_enforcement as ce
+    from api.services.rbac import write_audit
+
     await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
     vid = uuid.UUID(version_id)
     scope = await _scope_of(db, vid)
     if scope is None:
         raise HTTPException(status_code=404, detail="Version not found")
+    body = body or BaselineBody()
+    if pinned:
+        enforced = [c for c in await ce.active(db, str(tenant.id)) if c.get("enforce")]
+        breaches = ce.breaches_of(enforced, await ce.summary_of(db, str(tenant.id), str(vid))) if enforced else []
+        if breaches and not body.force:
+            raise HTTPException(status_code=409, detail={
+                "detail": "This run breaches an enforced data contract; pin it with force and a reason.",
+                "breaches": breaches})
+        if breaches and not (body.reason or "").strip():
+            raise HTTPException(status_code=422, detail="Say why the breached run is pinned anyway.")
+        if breaches:
+            await write_audit(db, tenant.id, request, "baseline_forced", "analysis_version", str(vid), None,
+                              {"reason": body.reason.strip(), "breaches": breaches})
     await db.execute(text(f"""
         UPDATE analysis_versions SET metadata = COALESCE(metadata, '{{}}'::jsonb) - 'baseline'
          WHERE {lineage_sql()} = :scope AND metadata ? 'baseline'

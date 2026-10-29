@@ -13,7 +13,7 @@ Data contracts: versions and breaches (the list, create, edit, submit and activa
 Wave gates (api/services/wave_gate.py)
   GET  /api/v1/migration/waves/gates                  every wave with its gate criteria and status; view
   PUT  /api/v1/migration/waves/{id}/gate              {min_score?, zero_criticals, contracts_met}; analyse (as waves)
-  GET  /api/v1/migration/waves/{id}/certificate       the readiness certificate stub (step 9 fills it); view
+  GET  /api/v1/migration/waves/{id}/certificate       served by api/routes/wave_certificates.py (versions and signers)
 
 Every write is audited.
 """
@@ -31,7 +31,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.services import escalation, wave_gate
 from api.services.rbac import (
-    current_user_id,
     current_user_label,
     require_any_permission,
     require_permission,
@@ -200,7 +199,7 @@ async def _contracts(db: AsyncSession, t: str) -> list[dict]:
 
 
 async def _gates(db: AsyncSession, tenant: Tenant, wave_id: uuid.UUID | None = None) -> list[dict]:
-    from api.routes.landscape import get_landscape
+    from api.routes.landscape import _landscape
 
     t = await _rls(db, tenant)
     waves = (await db.execute(text(
@@ -211,7 +210,7 @@ async def _gates(db: AsyncSession, tenant: Tenant, wave_id: uuid.UUID | None = N
         "ORDER BY w.target_date NULLS LAST, w.name"), {"t": t, "w": str(wave_id) if wave_id else None})).mappings().all()
     if not waves:
         return []
-    cells = (await get_landscape(scope="current", run=None, db=db, tenant=tenant))["cells"]
+    cells = (await _landscape("current", None, db, tenant))["cells"]
     contracts = await _contracts(db, t)
     out = []
     for w in waves:
@@ -251,15 +250,3 @@ async def put_gate(wave_id: uuid.UUID, body: GateIn, request: Request, db: Async
     return got[0]
 
 
-@router.get("/migration/waves/{wave_id}/certificate", dependencies=[Depends(require_permission("view"))])
-async def certificate(wave_id: uuid.UUID, request: Request, db: AsyncSession = Depends(get_db),
-                      tenant: Tenant = Depends(get_tenant)):
-    """The readiness certificate stub: the gate's verdict and checks as they stand. Step 9 turns this into the signed
-    PDF certificate; until then ``final`` is false and nothing is signed."""
-    got = await _gates(db, tenant, wave_id)
-    if not got:
-        raise HTTPException(status_code=404, detail="Wave not found.")
-    g = got[0]
-    return {"wave_id": g["wave_id"], "wave": g["name"], "final": False, "passed": g["status"]["passed"],
-            "checks": g["status"]["checks"], "requested_by": current_user_id(request),
-            "note": "A draft: the signed readiness certificate arrives in step 9."}

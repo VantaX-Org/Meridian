@@ -17,7 +17,7 @@ from celery.exceptions import SoftTimeLimitExceeded
 from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
 
-from api.middleware.cache import invalidate_tenant_cache
+from api.middleware.cache import invalidate_tenant_cache, mark_work_changed
 from api.services.run_events import publish_progress_write, publish_run_event
 from api.services.run_steps import record_step
 from checks.base import reraise_soft_limit
@@ -329,6 +329,14 @@ def _mark_failed(engine: Engine, tenant_id: str, version_id: str, error: str) ->
                 {"vid": version_id, "tid": tenant_id},
             )
         session.commit()
+        try:  # outbound webhooks: run.failed (the run, never the error text)
+            from api.services import webhooks
+            webhooks.run_failed(session, str(tenant_id), str(version_id))
+            session.commit()
+        except Exception as e:  # noqa: BLE001 - an event never changes how a failed run is recorded
+            reraise_soft_limit(e)
+            session.rollback()
+            logger.warning(f"run.failed webhook for {version_id} not queued: {type(e).__name__}")
     record_step(engine, tenant_id, version_id, check_step_num, check_step_name, status="failed",
                 error_detail=error)
     _progress(
@@ -1173,6 +1181,9 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                                       and r.affected_count / r.total_count > 0.3]),
                 },
             )
+            # the run is scored: the cached landscape, status strip and work summary of the tenant go on commit
+            # (work_counts itself followed work_records in the work list build above, by trigger)
+            mark_work_changed(session, tenant_id)
             session.commit()
         invalidate_tenant_cache(str(tenant_id), "attention")  # the Action centre reads this run's state
         publish_run_event(tenant_id, version_id, "complete", "Analysis complete", 100)  # status is 'complete' now
@@ -1200,6 +1211,19 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                 })
             session.commit()
         logger.info(f"Upserted dqs_history for {len(modules)} modules")
+
+        # Outbound webhooks: run.finished, score.dropped and breach.new (ids, names and numbers only)
+        try:
+            from api.services import webhooks
+            with Session(engine) as session:
+                session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+                queued = webhooks.run_events(session, str(tenant_id), str(version_id))
+                session.commit()
+            if any(queued.values()):
+                logger.info(f"webhook events for {version_id}: {queued}")
+        except Exception as e:  # noqa: BLE001 - an event never fails a finished run
+            reraise_soft_limit(e)
+            logger.warning(f"webhook events for {version_id} not queued: {type(e).__name__}")
 
         # Generate deterministic report immediately (no LLM, <1 second)
         try:

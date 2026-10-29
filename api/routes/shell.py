@@ -30,8 +30,8 @@ async def shell_counts(
     if pairs:
         params: dict = {"tid": str(tenant.id)}
         fix = (await db.execute(
-            text(f"SELECT COUNT(*) FROM work_records w WHERE w.tenant_id = :tid AND {pairs_clause('w', pairs, params)} "
-                 "AND w.status = 'to_fix'"),
+            text(f"SELECT COALESCE(sum(c.count), 0)::bigint FROM work_counts c WHERE c.tenant_id = :tid "
+                 f"AND {pairs_clause('c', pairs, params)} AND c.status = 'to_fix'"),  # migration 108
             params,
         )).scalar() or 0
     inbox_result = await db.execute(

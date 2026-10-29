@@ -3155,3 +3155,17 @@ def get_mandatory_fields(table_name: str) -> list[str]:
     if table is None:
         return []
     return [f for f, meta in table.items() if meta.get("mandatory")]
+
+
+def get_change_date_field(table_name: str) -> str | None:
+    """The table's date-of-last-change field (a DATS field the dictionary describes as the date of the last change,
+    e.g. MARA.LAEDA), which a delta extraction can read ``>= since`` instead of the whole table; None when the
+    dictionary knows none for the table."""
+    table = DATA_DICTIONARY.get(table_name.upper())
+    if table is None:
+        return None
+    for name, meta in table.items():
+        desc = (meta.get("description") or "").lower()
+        if meta.get("data_type") == "DATS" and ("last change" in desc or desc.startswith("changed on")):
+            return name
+    return None
