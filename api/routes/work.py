@@ -318,7 +318,7 @@ async def groups(
 
 
 def _records_where(tenant: Tenant, sel: "_Rows | str", request: Request, module, check_id, severity, status, assigned,
-                   proposed, q, due=None, part=None, system=None) -> tuple[list[str], dict]:
+                   proposed, q, due=None, part=None, system=None, batch_id=None) -> tuple[list[str], dict]:
     """``sel``: the rows read (one run or the current state), or one run's id."""
     if isinstance(sel, str):
         sel = _Rows(sel, None, None)
@@ -338,6 +338,11 @@ def _records_where(tenant: Tenant, sel: "_Rows | str", request: Request, module,
     if system:
         where.append("w.scope = :sys")
         p["sys"] = system
+    if batch_id:  # the records with an item in this fix batch, in any state of the batch
+        where.append("EXISTS (SELECT 1 FROM remediation_items bi WHERE bi.tenant_id = w.tenant_id "
+                     "AND bi.batch_id = CAST(:bid AS uuid) AND bi.scope = w.scope AND bi.module = w.module "
+                     "AND bi.record_key = w.record_key AND bi.check_id = ANY(w.checks))")
+        p["bid"] = str(batch_id)
     if status == "all":
         pass
     elif status == "open":
@@ -431,6 +436,7 @@ async def records(
     due: Optional[str] = Query(None, pattern="^(overdue|today)$", description="SLA: past due, or due within a day"),
     part: Optional[str] = Query(None, max_length=200, description="a key part, FIELD=VALUE (BUKRS=1000)"),
     system: Optional[str] = Query(None, max_length=100, description="source system id, or 'upload'"),
+    batch_id: Optional[uuid.UUID] = Query(None, description="only the records with an item in this fix batch, in any state"),
     q: Optional[str] = Query(None, max_length=200),
     after: Optional[str] = Query(None, description="cursor from the previous page"),
     limit: int = Query(PAGE, ge=1, le=500),
@@ -450,7 +456,7 @@ async def records(
     sel = await _rows(db, tenant, version_id, scope)
     order = _parse_sort(sort)
     where, p = _records_where(tenant, sel, request, module, check_id, severity, status, assigned, proposed, q, due, part,
-                              system)
+                              system, batch_id)
     await _since(db, tenant, sel, since, module, where, p)
     exprs = [_SORT_KEYS[k] for k in order]
     page_where = list(where)
@@ -546,7 +552,8 @@ def _field_value(check) -> Optional[str]:
 
 
 _NO_FIELDS = {"value_at_risk": None, "current_value": None, "field_description": None, "possible_values": None,
-              "possible_values_total": None, "new_value": None, "resolution": None}
+              "possible_values_total": None, "new_value": None, "resolution": None, "batch_id": None, "batch_name": None,
+              "resolution_note": None, "resolved_by": None, "resolved_at": None}
 
 
 async def _row_fields(db: AsyncSession, tenant: Tenant, request: Request, rows) -> dict[tuple[str, str, str], dict]:
@@ -597,25 +604,45 @@ async def _row_fields(db: AsyncSession, tenant: Tenant, request: Request, rows) 
                        CAST(:km AS text[]), CAST(:kk AS text[])))
              ORDER BY w.version_id, w.module, w.record_key, i.updated_at DESC"""), {**keys, "u": uid})).mappings().all():
             drafts[(d["version_id"], d["module"], d["record_key"])] = d["proposed_value"]
-    resolutions: dict[tuple[str, str, str], str] = {}
+    resolutions: dict[tuple[str, str, str], dict] = {}
     signed = [r for r in rows if r.status == "not_an_issue"]
     if signed:
         for d in (await db.execute(text("""
             SELECT DISTINCT ON (w.version_id, w.module, w.record_key) w.version_id::text AS version_id, w.module,
-                   w.record_key, ri.resolution
+                   w.record_key, ri.resolution, ri.resolved_at, e.note, COALESCE(NULLIF(u.name, ''), e.user_label) AS by
               FROM work_records w
               JOIN record_issues ri ON ri.tenant_id = w.tenant_id AND ri.scope = w.scope AND ri.record_key = w.record_key
                                    AND ri.check_id = ANY(w.checks) AND ri.resolution IN ('false_positive', 'accepted_risk')
+              LEFT JOIN LATERAL (SELECT ev.note, ev.user_id, ev.user_label FROM record_issue_events ev
+                                  WHERE ev.issue_id = ri.id AND ev.tenant_id = ri.tenant_id AND ev.action = 'status'
+                                    AND ev.to_value = 'accepted' ORDER BY ev.created_at DESC LIMIT 1) e ON true
+              LEFT JOIN users u ON u.id = e.user_id AND u.tenant_id = ri.tenant_id
              WHERE w.tenant_id = CAST(:t AS uuid) AND w.status = 'not_an_issue'
                AND (w.version_id, w.module, w.record_key) IN (SELECT * FROM unnest(CAST(:kv AS uuid[]),
                        CAST(:km AS text[]), CAST(:kk AS text[])))
              ORDER BY w.version_id, w.module, w.record_key, ri.updated_at DESC NULLS LAST"""), keys)).mappings().all():
-            resolutions[(d["version_id"], d["module"], d["record_key"])] = d["resolution"]
+            resolutions[(d["version_id"], d["module"], d["record_key"])] = dict(d)
+
+    # the fix batch a record's proposed value sits in: one read of the page, the item changed last
+    batches: dict[tuple[str, str, str], dict] = {}
+    for d in (await db.execute(text("""
+        SELECT DISTINCT ON (w.version_id, w.module, w.record_key) w.version_id::text AS version_id, w.module, w.record_key,
+               b.id::text AS batch_id, b.name AS batch_name
+          FROM work_records w
+          JOIN remediation_items i ON i.tenant_id = w.tenant_id AND i.scope = w.scope AND i.module = w.module
+                                  AND i.record_key = w.record_key AND i.check_id = ANY(w.checks)
+          JOIN remediation_batches b ON b.id = i.batch_id AND b.tenant_id = i.tenant_id
+         WHERE w.tenant_id = CAST(:t AS uuid)
+           AND (w.version_id, w.module, w.record_key) IN (SELECT * FROM unnest(CAST(:kv AS uuid[]),
+                   CAST(:km AS text[]), CAST(:kk AS text[])))
+         ORDER BY w.version_id, w.module, w.record_key, (i.proposed_value IS NOT NULL) DESC, i.updated_at DESC, b.id"""), keys)).mappings().all():
+        batches[(d["version_id"], d["module"], d["record_key"])] = dict(d)
 
     out: dict[tuple[str, str, str], dict] = {}
     for r in rows:
         key = (r.version_id, r.module, r.record_key)
         mine = by_row.get(key, [])
+        sign = resolutions.get(key) if r.status == "not_an_issue" else None
         priced = [float(c["cost_at_risk"]) / c["affected_count"] for c in mine
                   if c["cost_at_risk"] is not None and (c["affected_count"] or 0) > 0]
         first = next((c for c in mine if c["field"]), None)  # the only failing field, else the first in check order
@@ -627,7 +654,12 @@ async def _row_fields(db: AsyncSession, tenant: Tenant, request: Request, rows) 
             "possible_values": allowed[:fs.POSSIBLE_VALUES_SHOWN] if allowed else None,
             "possible_values_total": len(allowed) if allowed else None,
             "new_value": drafts.get(key) if r.status == "proposed" else None,
-            "resolution": resolutions.get(key) if r.status == "not_an_issue" else None,
+            "resolution": sign["resolution"] if sign else None,
+            "batch_id": batches[key]["batch_id"] if key in batches else None,
+            "batch_name": batches[key]["batch_name"] if key in batches else None,
+            "resolution_note": sign["note"] if sign else None,
+            "resolved_by": sign["by"] if sign else None,
+            "resolved_at": sign["resolved_at"].isoformat() if sign and sign["resolved_at"] else None,
         }
     return out
 

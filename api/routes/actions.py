@@ -38,7 +38,7 @@ class UndoRestoredOut(BaseModel):
 
 class UndoOut(BaseModel):
     action_id: str
-    kind: str                  # decide | accept_all | set_value | approve_batch | send_back_batch
+    kind: str                  # decide | accept_all | set_value | approve_batch | send_back_batch | reassign_batch
     undone_at: str
     restored: UndoRestoredOut
 
