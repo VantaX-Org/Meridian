@@ -20,6 +20,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Identity,
     Index,
     Integer,
     LargeBinary,
@@ -1064,6 +1065,37 @@ class WorkRecord(Base):
         Index("ix_work_records_tenant_rank", "tenant_id", "sev_rank", "module", "record_key"),
         Index("ix_work_records_status_cover", "tenant_id", "version_id", "module", "status",
               postgresql_include=["sev_rank", "issues", "proposed", "due_at"]),
+        # Migration 108: overdue records (due_at < now()) without reading the run's other rows.
+        Index("ix_work_records_due", "tenant_id", "version_id", "module", "due_at",
+              postgresql_include=["status", "scope", "sev_rank", "assigned_to"],
+              postgresql_where=text("due_at IS NOT NULL")),
+    )
+
+
+class WorkCount(Base):
+    """Open work pre-aggregated: work_records counted per (run, object, work status, system, severity, assignee),
+    kept exact by statement triggers on work_records in the same transaction — migration 108,
+    api/services/work_counts.py."""
+    __tablename__ = "work_counts"
+
+    id = Column(BigInteger, Identity(always=True), primary_key=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="CASCADE"), nullable=False)
+    module = Column(Text, nullable=False)
+    status = Column(Text, nullable=False)       # worklist.STATUSES
+    system_id = Column(Text, nullable=False)    # work_records.scope: source system id, or 'upload'
+    severity = Column(Text, nullable=False)     # work_records.sev_rank by name: critical, high, medium, low, info
+    assigned_to = Column(UUID(as_uuid=True), nullable=True)
+    count = Column(BigInteger, nullable=False, server_default="0")
+    issues_sum = Column(BigInteger, nullable=False, server_default="0")
+    proposed_count = Column(BigInteger, nullable=False, server_default="0")   # records with proposed > 0
+    value_at_risk_sum = Column(Numeric, nullable=False, server_default="0")
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        Index("uq_work_counts_slice", "tenant_id", "version_id", "module", "status", "system_id", "severity",
+              "assigned_to", unique=True, postgresql_nulls_not_distinct=True),
+        Index("ix_work_counts_status", "tenant_id", "version_id", "status", "module"),
     )
 
 

@@ -32,6 +32,7 @@ from api.deps import Tenant, get_db, get_tenant
 from api.routes.objects import _label
 from api.routes.record_issues import _rls
 from api.services.current_state import current_pairs, pairs_clause
+from api.services.work_counts import SEV_RANK_OF_NAME_SQL
 from api.services.rbac import actions_for, current_user_id, has_permission, require_permission
 
 router = APIRouter(prefix="/api/v1/people", tags=["people"], dependencies=[Depends(require_permission("view"))])
@@ -83,13 +84,23 @@ async def list_people(request: Request, db: AsyncSession = Depends(get_db), tena
     open_by: dict[str, dict] = {}
     if pairs:
         p: dict = {"t": t, "open": list(_OPEN)}
-        where = pairs_clause("w", pairs, p)
+        # counts and severities from work_counts (migration 108); overdue is time-dependent, so counted live on
+        # the partial index of records with a due date
+        cwhere = pairs_clause("c", pairs, p)
         for r in (await db.execute(text(f"""
-            SELECT w.assigned_to::text AS u, count(*) AS n, count(*) FILTER (WHERE w.due_at < now()) AS late,
-                   array_agg(DISTINCT w.sev_rank) AS ranks
-              FROM work_records w WHERE w.tenant_id = CAST(:t AS uuid) AND w.status = ANY(:open)
-               AND w.assigned_to IS NOT NULL AND {where} GROUP BY w.assigned_to"""), p)).mappings().all():
-            open_by[r["u"]] = {"n": int(r["n"]), "late": int(r["late"]), "ranks": list(r["ranks"] or [])}
+            SELECT c.assigned_to::text AS u, sum(c.count)::bigint AS n,
+                   array_agg(DISTINCT {SEV_RANK_OF_NAME_SQL.format(c="c.severity")}) AS ranks
+              FROM work_counts c WHERE c.tenant_id = CAST(:t AS uuid) AND c.status = ANY(:open)
+               AND c.count > 0 AND c.assigned_to IS NOT NULL AND {cwhere} GROUP BY c.assigned_to"""),
+                p)).mappings().all():
+            open_by[r["u"]] = {"n": int(r["n"]), "late": 0, "ranks": list(r["ranks"] or [])}
+        where = pairs_clause("w", pairs, p, key="w")
+        for u, late in (await db.execute(text(f"""
+            SELECT w.assigned_to::text, count(*) FROM work_records w WHERE w.tenant_id = CAST(:t AS uuid)
+               AND w.status = ANY(:open) AND w.assigned_to IS NOT NULL AND w.due_at < now() AND {where}
+             GROUP BY w.assigned_to"""), p)).fetchall():
+            if u in open_by:
+                open_by[u]["late"] = int(late)
 
     policies: dict[str, float] = {}
     for sev, minutes in (await db.execute(text(

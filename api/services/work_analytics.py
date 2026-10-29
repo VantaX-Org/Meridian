@@ -131,8 +131,9 @@ _RUNS_SQL = f"""
     SELECT v.id::text AS id, v.label, v.run_at,
            (SELECT COALESCE(sum(f.affected_count), 0) FROM findings f
              WHERE f.version_id = v.id AND {_MOD.format(c="f.module")}) AS issues,
-           (SELECT count(*) FROM work_records w WHERE w.version_id = v.id AND w.status = ANY(:open_work)
-               AND {_MOD.format(c="w.module")}) AS open_records,
+           (SELECT COALESCE(sum(c.count), 0)::bigint FROM work_counts c  -- migration 108
+             WHERE c.tenant_id = v.tenant_id AND c.version_id = v.id AND c.status = ANY(:open_work)
+               AND {_MOD.format(c="c.module")}) AS open_records,
            EXISTS (SELECT 1 FROM work_groups g WHERE g.version_id = v.id) AS built
       FROM analysis_versions v
      WHERE v.tenant_id = CAST(:t AS uuid) AND {finished_sql("v.status")}

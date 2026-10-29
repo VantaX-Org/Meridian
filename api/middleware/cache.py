@@ -8,8 +8,10 @@ decorated function runs normally without caching.
 import hashlib
 import json
 import logging
+import time
+from collections.abc import Awaitable, Callable
 from functools import wraps
-from typing import Optional
+from typing import Any, Optional
 
 import redis
 
@@ -18,18 +20,25 @@ from api.config import settings
 logger = logging.getLogger("meridian.cache")
 
 _redis_client: Optional[redis.Redis] = None
+_REDIS_RETRY_S = 30.0
+_redis_down_until = 0.0
 
 
 def get_redis() -> Optional[redis.Redis]:
-    """Return a Redis client, or None if unavailable."""
-    global _redis_client
+    """Return a Redis client, or None if unavailable. After a failed connect it is not tried again for 30 s, so a
+    missing Redis costs one slow connect per half minute, not one per request."""
+    global _redis_client, _redis_down_until
     if _redis_client is None:
+        if time.monotonic() < _redis_down_until:
+            return None
         try:
-            _redis_client = redis.from_url(settings.redis_url, decode_responses=True)
+            _redis_client = redis.from_url(settings.redis_url, decode_responses=True,
+                                           socket_connect_timeout=1, socket_timeout=1)
             _redis_client.ping()
-        except Exception as e:
+        except (redis.RedisError, OSError, ValueError) as e:
             logger.warning(f"Redis cache unavailable: {e}")
             _redis_client = None
+            _redis_down_until = time.monotonic() + _REDIS_RETRY_S
     return _redis_client
 
 
@@ -164,3 +173,105 @@ def invalidate_tenant_cache(tenant_id: str, prefix: str = "") -> int:
         logger.warning(f"Cache invalidation failed: {e}")
 
     return deleted
+
+
+# ── Keyed response cache with per-tenant invalidation ───────────────────────────────────────────────────────────
+#
+# A read whose body depends on the tenant's work (the landscape, the status strip, the Fix work summary) is cached
+# under   meridian:cache:<prefix>:<tenant>:<name>:<hash of (generation, parts)>
+# where ``generation`` is a per-tenant counter (meridian:cache:gen:<tenant>). Invalidation is one INCR of that
+# counter: every key built before it is unreachable at once and expires on its TTL; no SCAN over the keyspace.
+# The counter is bumped after the commit of the transaction that changed the data (``mark_work_changed`` +
+# the after_commit hook below), so a reader can never cache a pre-commit body under the new generation.
+# Bodies are only ever stored under their own tenant's key; a request never reads another tenant's key.
+
+_GEN_KEY = "meridian:cache:gen:{tenant}"
+_memo: dict[str, tuple[float, Any]] = {}
+
+
+def tenant_generation(r: redis.Redis, tenant_id: str) -> str:
+    return str(r.get(_GEN_KEY.format(tenant=tenant_id)) or "0")
+
+
+def bump_tenant_generation(tenant_id: Any) -> None:
+    """Invalidate every keyed cache entry of the tenant (all prefixes), now. Safe from a request or a worker."""
+    stale = [k for k in _memo if f":{tenant_id}:" in k]
+    for k in stale:
+        _memo.pop(k, None)
+    r = get_redis()
+    if r is None:
+        return
+    try:
+        r.incr(_GEN_KEY.format(tenant=str(tenant_id)))
+    except (redis.RedisError, OSError) as e:
+        logger.warning(f"Cache generation bump failed: {e}")
+
+
+async def cached_json(prefix: str, name: str, tenant_id: Any, parts: dict, ttl_seconds: int,
+                      produce: Callable[[], Awaitable[Any]], memo_fallback: bool = False) -> Any:
+    """``produce()`` (a JSON-ready value) cached ``ttl_seconds`` per tenant and ``parts`` (every input the body
+    depends on besides the tenant: filters, the run read, the latest run id). Without Redis the value is produced
+    every time, or with ``memo_fallback`` kept in this process for the TTL (no cross-process invalidation then)."""
+    tid = str(tenant_id)
+    r = get_redis()
+    if r is None:
+        if not memo_fallback:
+            return await produce()
+        key = _build_cache_key(tid, prefix, name, _hash_args(**parts))
+        hit = _memo.get(key)
+        if hit and time.monotonic() - hit[0] < ttl_seconds:
+            return hit[1]
+        value = await produce()
+        _memo[key] = (time.monotonic(), value)
+        return value
+    try:
+        gen = tenant_generation(r, tid)
+        key = _build_cache_key(tid, prefix, name, _hash_args(gen=gen, **parts))
+        hit = r.get(key)
+        if hit is not None:
+            return json.loads(hit)
+    except (redis.RedisError, OSError, ValueError) as e:
+        logger.warning(f"Cache read failed: {e}")
+        return await produce()
+    value = await produce()
+    try:
+        r.set(key, json.dumps(value, default=str), ex=ttl_seconds)
+    except (redis.RedisError, OSError, TypeError, ValueError) as e:
+        logger.warning(f"Cache write failed: {e}")
+    return value
+
+
+_PENDING = "meridian_cache_tenants"
+
+
+def mark_work_changed(session: Any, tenant_id: Any) -> None:
+    """Invalidate the tenant's keyed caches once ``session`` commits (work_records, and so work_counts, changed).
+    A session without commit hooks (a plain Connection) invalidates now."""
+    from sqlalchemy.orm import Session
+
+    target = getattr(session, "sync_session", session)
+    if isinstance(target, Session):
+        target.info.setdefault(_PENDING, set()).add(str(tenant_id))
+    else:
+        bump_tenant_generation(tenant_id)
+
+
+def _after_commit(session) -> None:
+    for tid in session.info.pop(_PENDING, ()):
+        bump_tenant_generation(tid)
+
+
+def _after_rollback(session) -> None:
+    session.info.pop(_PENDING, None)
+
+
+def _install_hooks() -> None:
+    from sqlalchemy import event
+    from sqlalchemy.orm import Session
+
+    if not event.contains(Session, "after_commit", _after_commit):
+        event.listen(Session, "after_commit", _after_commit)
+        event.listen(Session, "after_rollback", _after_rollback)
+
+
+_install_hooks()

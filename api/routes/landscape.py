@@ -2,14 +2,17 @@
 
 GET /api/v1/landscape  the matrix of systems x objects with score, verdict, breaches and open work, plus the
                        one-sentence summary ("11 of 15 objects held under 85; fix MM014 and MM031 to release 2")
-GET /api/v1/status     the status strip on its own (cached 30 s per tenant, in process)
+GET /api/v1/status     the status strip on its own
+
+Both are cached 30 s per tenant in Redis (api/middleware/cache.py cached_json), keyed with the tenant, the inputs and
+the tenant's latest run, and dropped at once when the tenant's work changes (mark_work_changed); the status strip
+falls back to this process when Redis is down. Open work per cell is read from work_counts (migration 108).
 
 Read-only and additive. Every number is read from what the run stored (analysis_versions.dqs_summary, findings,
-work_records, sync_runs) and scored by api/services/scoring.py; a value that is not stored is null, never estimated.
+work_counts, sync_runs) and scored by api/services/scoring.py; a value that is not stored is null, never estimated.
 Every query carries the tenant id and runs after ``app.tenant_id`` is set (RLS).
 """
 import re
-import time
 import uuid
 from collections import Counter
 from datetime import datetime
@@ -24,6 +27,8 @@ from api.deps import Tenant, get_db, get_tenant
 from api.middleware.licence import get_cached_manifest
 from api.routes.objects import _label, _measured_dimensions, _version_summary, breach_ids, cap_level_of, records_checked_of
 from api.routes.record_issues import _rls
+from api.middleware.cache import cached_json
+from api.services import work_counts
 from api.services.rbac import require_permission
 from api.services.run_context import latest_run
 from api.services.scoring import critical_over_tolerance, readiness_status, scoring_config
@@ -32,8 +37,8 @@ from checks.cost import effective as effective_cost_model
 
 router = APIRouter(prefix="/api/v1", tags=["landscape"])
 
-_OPEN_WORK = ("to_fix", "proposed", "approved", "sent")  # api/routes/work.py OPEN
 STATUS_TTL_SECONDS = 30.0
+LANDSCAPE_TTL_SECONDS = 30
 Verdict = Literal["no-go", "at-risk", "go"]
 SystemState = Literal["analysed", "extracted", "not_extracted"]
 
@@ -139,20 +144,20 @@ async def build_status(db: AsyncSession, tenant: Tenant) -> StatusStripOut:
     return out
 
 
-_STATUS_CACHE: dict[str, tuple[float, StatusStripOut]] = {}
+CACHE_PREFIX = "work"  # keyed per tenant; bumped by api.middleware.cache.mark_work_changed on every work write
 
 
 @router.get("/status", response_model=StatusStripOut, dependencies=[Depends(require_permission("view"))])
 async def get_status(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
-    """The status strip (latest run, records and rules checked, time to score, cost model, licence), cached 30 s per tenant."""
-    key = str(tenant.id)
-    hit = _STATUS_CACHE.get(key)
-    if hit and time.monotonic() - hit[0] < STATUS_TTL_SECONDS:
-        return hit[1]
+    """The status strip (latest run, records and rules checked, time to score, cost model, licence), cached 30 s per
+    tenant and latest run (Redis; in this process when Redis is down)."""
     await _rls(db, tenant)
-    strip = await build_status(db, tenant)
-    _STATUS_CACHE[key] = (time.monotonic(), strip)
-    return strip
+
+    async def produce() -> dict:
+        return (await build_status(db, tenant)).model_dump(mode="json")
+
+    return await cached_json(CACHE_PREFIX, "status", tenant.id, {"latest": await latest_run(db, tenant.id)},
+                             int(STATUS_TTL_SECONDS), produce, memo_fallback=True)
 
 
 # The newest finished run of every (system, object): the run set of api/services/run_context.py (no archived or
@@ -208,13 +213,24 @@ async def get_landscape(scope: Literal["current", "run"] = Query("current"),
                         run: Optional[uuid.UUID] = Query(None),
                         db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     """Systems x objects. ``scope=current``: each object at the newest finished run that measured it, per system.
-    ``scope=run&run=<id>``: the cells of that one run (404 when it is not this tenant's)."""
+    ``scope=run&run=<id>``: the cells of that one run (404 when it is not this tenant's). Cached 30 s per tenant,
+    scope, run and the tenant's latest run; a change to the tenant's work invalidates it at once."""
     await _rls(db, tenant)
-    t = str(tenant.id)
     if scope == "run" and run is None:
         raise HTTPException(422, "scope=run needs run=<run id>")
     if scope == "current" and run is not None:
         raise HTTPException(422, "run is only for scope=run")
+
+    async def produce() -> dict:
+        return LandscapeOut.model_validate(await _landscape(scope, run, db, tenant)).model_dump(mode="json")
+
+    return await cached_json(CACHE_PREFIX, "landscape", tenant.id,
+                             {"scope": scope, "run": run, "latest": await latest_run(db, tenant.id)},
+                             LANDSCAPE_TTL_SECONDS, produce)
+
+
+async def _landscape(scope: str, run: uuid.UUID | None, db: AsyncSession, tenant: Tenant) -> dict:
+    t = str(tenant.id)
     thresholds = scoring_config((await db.execute(text("SELECT dqs_weights FROM tenants WHERE id = :t"),
                                                   {"t": t})).scalar() or {})["thresholds"]
 
@@ -250,10 +266,7 @@ async def get_landscape(scope: Literal["current", "run"] = Query("current"),
         built = {r[0] for r in (await db.execute(text(
             "SELECT id::text FROM analysis_versions WHERE tenant_id = :t AND id = ANY(CAST(:ids AS uuid[])) "
             "AND metadata ? 'worklist_built_at'"), p)).fetchall()}
-        open_work = {(r[0], r[1]): int(r[2]) for r in (await db.execute(text(
-            "SELECT version_id::text, module, count(*) FROM work_records WHERE tenant_id = :t "
-            "AND version_id = ANY(CAST(:ids AS uuid[])) AND status = ANY(:open) GROUP BY 1, 2"),
-            {**p, "open": list(_OPEN_WORK)})).fetchall()}
+        open_work = await work_counts.open_by_run_module(db, t, ids)  # pre-aggregated (migration 108)
         widest = {(r[0], r[1]): int(r[2]) for r in (await db.execute(text(
             "SELECT version_id::text, module, max(total_count) FROM findings WHERE tenant_id = :t "
             "AND version_id = ANY(CAST(:ids AS uuid[])) GROUP BY 1, 2"), p)).fetchall() if r[2]}

@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-from api.services import object_monitor
+from api.services import object_monitor, work_counts
 from api.services.run_context import latest_run
 from api.services.run_lineage import lineage_sql
 
@@ -389,7 +389,6 @@ _DIMENSION_ORDER = ("completeness", "accuracy", "consistency", "timeliness", "un
 _DIMENSION_SHORT = {"completeness": "C", "accuracy": "A", "consistency": "Cs", "timeliness": "T",
                     "uniqueness": "U", "validity": "V"}
 CAP_RULE = "85 at one critical rule over tolerance, 70 at two or more"  # api/services/scoring.py _cap
-_OPEN_WORK = ("to_fix", "proposed", "approved", "sent")  # api/routes/work.py OPEN
 
 
 class ReceiptDimensionOut(BaseModel):
@@ -546,9 +545,7 @@ async def get_object_receipt(module: str, run: Optional[uuid.UUID] = Query(None,
 
     built = (await db.execute(text("SELECT metadata ? 'worklist_built_at' FROM analysis_versions "
                                    "WHERE id = :v AND tenant_id = :t"), t)).scalar()
-    open_work = (await db.execute(text(
-        "SELECT count(*) FROM work_records WHERE version_id = :v AND tenant_id = :t AND module = :m "
-        "AND status = ANY(:open)"), {**t, "open": list(_OPEN_WORK)})).scalar() if built else None
+    open_work = await work_counts.open_count(db, t["t"], t["v"], module) if built else None  # migration 108
 
     from api.services import contract_enforcement as ce
     contract_breaches = [{k: b[k] for k in ("contract_id", "name", "enforce", "metric", "threshold", "actual")}

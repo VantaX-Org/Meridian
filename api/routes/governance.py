@@ -199,7 +199,7 @@ async def _contracts(db: AsyncSession, t: str) -> list[dict]:
 
 
 async def _gates(db: AsyncSession, tenant: Tenant, wave_id: uuid.UUID | None = None) -> list[dict]:
-    from api.routes.landscape import get_landscape
+    from api.routes.landscape import _landscape
 
     t = await _rls(db, tenant)
     waves = (await db.execute(text(
@@ -210,7 +210,7 @@ async def _gates(db: AsyncSession, tenant: Tenant, wave_id: uuid.UUID | None = N
         "ORDER BY w.target_date NULLS LAST, w.name"), {"t": t, "w": str(wave_id) if wave_id else None})).mappings().all()
     if not waves:
         return []
-    cells = (await get_landscape(scope="current", run=None, db=db, tenant=tenant))["cells"]
+    cells = (await _landscape("current", None, db, tenant))["cells"]
     contracts = await _contracts(db, t)
     out = []
     for w in waves:

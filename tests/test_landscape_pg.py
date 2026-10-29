@@ -36,9 +36,10 @@ def client_for(monkeypatch):
     from api import deps as api_deps
     from api.deps import Tenant, get_tenant
     from api.main import app
+    from api.middleware import cache
     from api.routes import landscape
-
-    landscape._STATUS_CACHE.clear()
+    cache._memo.clear()
+    monkeypatch.setattr(cache, "get_redis", lambda: None)  # the in-process fallback of the status strip cache
     monkeypatch.setattr(landscape, "get_cached_manifest", lambda: {"expiry_date": "2027-03-31T00:00:00+00:00"})
 
     def make(tid):
@@ -148,7 +149,9 @@ async def test_status_strip_and_cache(seeded, client_for, monkeypatch):
         again = (await client.get("/api/v1/status", headers=HEADERS)).json()
         assert first == again and len(calls) == 1  # the second read is the cached one
         assert first["records_checked"] == 66816 and first["rules_measured"] == 953 and first["scored_in_s"] == 702
-        landscape._STATUS_CACHE[seeded["tid"]] = (landscape._STATUS_CACHE[seeded["tid"]][0] - 31, landscape.StatusStripOut())
+        from api.middleware import cache
+        for k, (at, body) in list(cache._memo.items()):
+            cache._memo[k] = (at - 31, body)
         await client.get("/api/v1/status", headers=HEADERS)
         assert len(calls) == 2  # older than 30 s: read again
 

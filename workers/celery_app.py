@@ -82,6 +82,7 @@ import workers.tasks.send_owner_digests  # noqa: F401 — weekly owner digest (b
 import workers.tasks.run_process_discovery  # noqa: F401 — process discovery chain and nightly prune
 import workers.tasks.purge_expired  # noqa: F401 — nightly retention purge (beat)
 import workers.tasks.build_worklist  # noqa: F401 — steward work list per run
+import workers.tasks.reconcile_work_counts  # registers the nightly work_counts drift check (beat)
 import workers.tasks.report_schedules  # noqa: F401 — scheduled reports (beat) and run now
 import workers.tasks.webhooks  # outbound webhook deliveries (beat)
 import workers.tasks.fix_mining  # learned rules from stewards' fixes (beat)

@@ -2,6 +2,8 @@
 
 work_groups   one row per (run, check)            what fails, where, how many, in which work status
 work_records  one row per (run, object, record)   the record, its name, its checks, worst severity, status
+work_counts   work_records counted per (run, object, status, system, severity, assignee), kept by triggers on
+              work_records in the same transaction (migration 108, api/services/work_counts.py)
 
 Built from what the run already stored (finding_records, findings, record_issues) plus the decisions
 made since (remediation_items, record_issues.status), and refreshed for the records a decision touches.
@@ -23,6 +25,7 @@ from typing import Iterable, Optional
 
 from sqlalchemy import text
 
+from api.middleware.cache import mark_work_changed
 from api.services.record_issues import _copy, scope_of
 from checks.profiling import is_sensitive
 
@@ -171,6 +174,7 @@ def build(session, tenant_id: str, version_id: str, frames=None) -> dict:
                          "WHERE id = CAST(:vid AS uuid)"), p)
     session.execute(text("DELETE FROM work_groups WHERE version_id = CAST(:vid AS uuid)"), p)
     session.execute(text("DELETE FROM work_records WHERE version_id = CAST(:vid AS uuid)"), p)
+    mark_work_changed(session, tenant_id)  # work_counts follows work_records (migration 108 triggers)
     session.commit()
 
     modules = session.execute(text(
@@ -203,6 +207,7 @@ def build(session, tenant_id: str, version_id: str, frames=None) -> dict:
     pruned = prune(session, p)
     session.execute(text("UPDATE analysis_versions SET metadata = COALESCE(metadata, '{}'::jsonb) "
                          "|| jsonb_build_object('worklist_built_at', now()::text) WHERE id = CAST(:vid AS uuid)"), p)
+    mark_work_changed(session, tenant_id)
     session.commit()
     return {"groups": session.execute(text("SELECT count(*) FROM work_groups WHERE version_id = CAST(:vid AS uuid)"),
                                       p).scalar(), "records": records, "named": named, "pruned_runs": pruned}
@@ -214,6 +219,7 @@ def refresh(session, tenant_id: str, scope: str, keys: Iterable[tuple[str, str]]
     keys = list(dict.fromkeys(keys))
     if not keys:
         return 0
+    mark_work_changed(session, tenant_id)  # the cached landscape and summary go when the caller commits
     checks = sorted({c for c, _ in keys})
     record_keys = sorted({k for _, k in keys})
     runs = session.execute(text("""

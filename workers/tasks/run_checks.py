@@ -17,7 +17,7 @@ from celery.exceptions import SoftTimeLimitExceeded
 from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
 
-from api.middleware.cache import invalidate_tenant_cache
+from api.middleware.cache import invalidate_tenant_cache, mark_work_changed
 from api.services.run_events import publish_progress_write, publish_run_event
 from api.services.run_steps import record_step
 from checks.base import reraise_soft_limit
@@ -1181,6 +1181,9 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                                       and r.affected_count / r.total_count > 0.3]),
                 },
             )
+            # the run is scored: the cached landscape, status strip and work summary of the tenant go on commit
+            # (work_counts itself followed work_records in the work list build above, by trigger)
+            mark_work_changed(session, tenant_id)
             session.commit()
         invalidate_tenant_cache(str(tenant_id), "attention")  # the Action centre reads this run's state
         publish_run_event(tenant_id, version_id, "complete", "Analysis complete", 100)  # status is 'complete' now
