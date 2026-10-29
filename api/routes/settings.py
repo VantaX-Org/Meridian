@@ -4,10 +4,10 @@ import json
 import math
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
-from api.services.rbac import require_permission
-from pydantic import AliasChoices, BaseModel, Field
+from api.services.rbac import require_permission, write_audit
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -69,26 +69,55 @@ class TenantSettingsResponse(BaseModel):
     notification_config: Optional[NotificationConfig] = None
     planner_config: Optional[PlannerConfig] = None
     stripe_customer_id: Optional[str] = None
+    # One place to read what PATCH /settings/tenant writes (additive)
+    currency: Optional[str] = None
+    cost_model: Optional[dict] = None
+    scoring_weights: Optional[DimensionWeights] = None
+    cap_rule: Optional["CapRule"] = None
+    tolerance: Optional["Tolerance"] = None
+    retention_days: Optional[int] = None
 
 
 # ─── GET /settings ──────────────────────────────────────────────────
 
-@router.get("", response_model=TenantSettingsResponse, dependencies=[Depends(require_permission("view"))])
-async def get_settings(
-    db: AsyncSession = Depends(get_db),
-    tenant: TenantDep = Depends(get_tenant),
-):
-    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
+DEFAULT_CAP_RULE = {"one_critical": 85.0, "two_plus": 70.0}
+
+
+class CapRule(BaseModel):
+    """The DQS ceiling when critical rules are over tolerance: ``one_critical`` for one, ``two_plus`` for two or more."""
+    one_critical: float = Field(DEFAULT_CAP_RULE["one_critical"], ge=0, le=100)
+    two_plus: float = Field(DEFAULT_CAP_RULE["two_plus"], ge=0, le=100)
+
+
+class Tolerance(BaseModel):
+    """A failing critical rule caps the score only at or above ``pct`` percent failing records or ``rows`` rows."""
+    pct: float = Field(ge=0, le=100)
+    rows: int = Field(ge=0)
+
+
+TenantSettingsResponse.model_rebuild()
+
+
+async def _settings_document(db: AsyncSession, tenant: TenantDep) -> TenantSettingsResponse:
+    from checks import cost
+    from api.services.scoring import effective_weights
+
+    await db.execute(text(f"SET app.tenant_id = '{str(tenant.id)}'"))
     result = await db.execute(
-        text("SELECT name, licensed_modules, dqs_weights, alert_thresholds, stripe_customer_id FROM tenants WHERE id = :tid"),
+        text("SELECT name, licensed_modules, dqs_weights, alert_thresholds, stripe_customer_id, cost_model, retention "
+             "FROM tenants WHERE id = :tid"),
         {"tid": str(tenant.id)},
     )
     row = result.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    dqs_weights_raw = row[2] or {}
-    nc = dqs_weights_raw.pop("notification_config", None) if isinstance(dqs_weights_raw, dict) else None
+    dqs_weights_raw = dict(row[2] or {})
+    nc = dqs_weights_raw.pop("notification_config", None)
+    own_cost = row[5] if isinstance(row[5], dict) else {}
+    retention = row[6] if isinstance(row[6], dict) else {}
+    cfg = scoring_config(dqs_weights_raw)
+    stored_cap = dqs_weights_raw.get("cap_rule") if isinstance(dqs_weights_raw.get("cap_rule"), dict) else {}
 
     return TenantSettingsResponse(
         name=row[0],
@@ -98,7 +127,21 @@ async def get_settings(
         planner_config=PlannerConfig(**row[3]["planner"]) if row[3] and isinstance(row[3].get("planner"), dict) else PlannerConfig(),
         notification_config=NotificationConfig(**nc) if nc else None,
         stripe_customer_id=row[4],
+        currency=cost.effective(own_cost).get("currency"),
+        cost_model=own_cost,
+        scoring_weights=DimensionWeights(**{d: round(w, 4) for d, w in effective_weights(dqs_weights_raw).items()}),
+        cap_rule=CapRule(**{**DEFAULT_CAP_RULE, **{k: v for k, v in stored_cap.items() if k in DEFAULT_CAP_RULE}}),
+        tolerance=Tolerance(pct=round(cfg["critical_tolerance"]["pct"] * 100, 4), rows=int(cfg["critical_tolerance"]["rows"])),
+        retention_days=retention.get("versions_days"),
     )
+
+
+@router.get("", response_model=TenantSettingsResponse, dependencies=[Depends(require_permission("view"))])
+async def get_settings(
+    db: AsyncSession = Depends(get_db),
+    tenant: TenantDep = Depends(get_tenant),
+):
+    return await _settings_document(db, tenant)
 
 
 # ─── PATCH /settings/dqs-weights ────────────────────────────────────
@@ -297,6 +340,31 @@ class CostModel(BaseModel):
     subscription_monthly: Optional[float] = None
 
 
+def _validate_cost_model(body: "CostModel") -> None:
+    """422 for any number, feature, severity key, spec or alignment type the cost model cannot hold."""
+    from checks import cost
+    from api.services.insights_impact import impact_features
+    sections = ("severity", "modules", "rules", "features", "impact", "config_alignment")
+    numbers = [e for section in sections for e in _cost_number_errors(section, getattr(body, section))]
+    numbers += _cost_number_errors("subscription_monthly", body.subscription_monthly)
+    if numbers:
+        raise HTTPException(status_code=422, detail=numbers)
+    feature_names = {f["feature"] for f in impact_features()}
+    unknown = sorted(set(body.features) - feature_names)
+    if unknown:
+        raise HTTPException(status_code=422, detail=[f"features.{k}: not a config impact feature" for k in unknown])
+    if set(body.severity) - set(cost.SEVERITY_FACTOR):
+        raise HTTPException(status_code=422, detail=f"severity keys are {sorted(cost.SEVERITY_FACTOR)}")
+    errors = [f"{section}.{key}: {err}" for section in ("severity", "modules", "rules")
+              for key, spec in getattr(body, section).items() if (err := cost.validate_spec(spec))]
+    errors += [f"impact.{key}: {err}" for key, spec in body.impact.items() if (err := cost.validate_impact(key, spec))]
+    known = set(cost.defaults().get("config_alignment") or {})
+    errors += [f"config_alignment.{key}: alignment types are {sorted(known)}"
+               for key in body.config_alignment if key not in known]
+    if errors:
+        raise HTTPException(status_code=422, detail=errors)
+
+
 @router.get("/cost-model", dependencies=[Depends(require_permission("view"))])
 async def get_cost_model(db: AsyncSession = Depends(get_db), tenant: TenantDep = Depends(get_tenant)):
     from checks import cost
@@ -319,28 +387,111 @@ async def put_cost_model(body: CostModel, db: AsyncSession = Depends(get_db),
     """Replace the tenant's cost model. Each spec is {per_record: n} or
     {field: "TABLE.FIELD"}, either with an optional factor."""
     from checks import cost
-    from api.services.insights_impact import impact_features
-    sections = ("severity", "modules", "rules", "features", "impact", "config_alignment")
-    numbers = [e for section in sections for e in _cost_number_errors(section, getattr(body, section))]
-    numbers += _cost_number_errors("subscription_monthly", body.subscription_monthly)
-    if numbers:
-        raise HTTPException(status_code=422, detail=numbers)
-    feature_names = {f["feature"] for f in impact_features()}
-    unknown = sorted(set(body.features) - feature_names)
-    if unknown:
-        raise HTTPException(status_code=422, detail=[f"features.{k}: not a config impact feature" for k in unknown])
-    if set(body.severity) - set(cost.SEVERITY_FACTOR):
-        raise HTTPException(status_code=422, detail=f"severity keys are {sorted(cost.SEVERITY_FACTOR)}")
-    errors = [f"{section}.{key}: {err}" for section in ("severity", "modules", "rules")
-              for key, spec in getattr(body, section).items() if (err := cost.validate_spec(spec))]
-    errors += [f"impact.{key}: {err}" for key, spec in body.impact.items() if (err := cost.validate_impact(key, spec))]
-    known = set(cost.defaults().get("config_alignment") or {})
-    errors += [f"config_alignment.{key}: alignment types are {sorted(known)}"
-               for key in body.config_alignment if key not in known]
-    if errors:
-        raise HTTPException(status_code=422, detail=errors)
+    _validate_cost_model(body)
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
     await db.execute(text("UPDATE tenants SET cost_model = CAST(:m AS jsonb) WHERE id = :tid"),
                      {"m": json.dumps(body.model_dump(exclude_none=True)), "tid": str(tenant.id)})
     await db.commit()
     return {"status": "ok", "effective": cost.effective(body.model_dump(exclude_none=True))}
+
+
+# ─── PATCH /settings/tenant ─────────────────────────────────────────
+# Everything GET /settings exposes as a tenant-wide setting, writable in one call. Only the keys sent change.
+
+class TenantPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    cost_model: Optional[CostModel] = None
+    currency: Optional[str] = Field(None, pattern=r"^[A-Z]{3}$")
+    # fractions that sum to 1.0 (stored as percentages, like PUT /settings/scoring)
+    scoring_weights: Optional[DimensionWeights] = None
+    cap_rule: Optional[CapRule] = None
+    tolerance: Optional[Tolerance] = None
+    # days an archived run is kept before the retention policy may purge it (retention.versions_days)
+    retention_days: Optional[int] = Field(None, ge=1, le=3650)
+
+
+@router.patch("/tenant", response_model=TenantSettingsResponse, dependencies=[Depends(require_permission("manage_settings"))])
+async def patch_tenant_settings(
+    body: TenantPatch,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: TenantDep = Depends(get_tenant),
+):
+    """Change tenant-wide settings in one validated, audited call and return the settings document.
+
+    scoring_weights: six dimensions, each 0..1, summing to 1.0. cap_rule: both ceilings 0..100 and two_plus <= one_critical.
+    tolerance: pct 0..100, rows >= 0. cost_model replaces the cost model as PUT /settings/cost-model does; currency
+    then overrides its currency. retention_days sets the retention policy's versions_days."""
+    sent = body.model_fields_set
+    if not sent:
+        raise HTTPException(status_code=422, detail="Nothing to update")
+    for key in sent:
+        if getattr(body, key) is None:
+            raise HTTPException(status_code=422, detail=f"{key} cannot be null")
+    errors: list[str] = []
+    if body.scoring_weights is not None:
+        w = body.scoring_weights.model_dump()
+        if any(v < 0 or v > 1 for v in w.values()):
+            errors.append("scoring_weights: each weight must be between 0 and 1")
+        elif abs(sum(w.values()) - 1.0) > 0.001:
+            errors.append(f"scoring_weights: must sum to 1.0, got {round(sum(w.values()), 4)}")
+    if body.cap_rule is not None and body.cap_rule.two_plus > body.cap_rule.one_critical:
+        errors.append("cap_rule: two_plus cannot be higher than one_critical")
+    if body.name is not None and not body.name.strip():
+        errors.append("name: cannot be blank")
+    if errors:
+        raise HTTPException(status_code=422, detail=errors)
+    if body.cost_model is not None:
+        _validate_cost_model(body.cost_model)
+
+    await db.execute(text(f"SET app.tenant_id = '{str(tenant.id)}'"))
+    row = (await db.execute(
+        text("SELECT name, dqs_weights, cost_model, retention FROM tenants WHERE id = :tid FOR UPDATE"),
+        {"tid": str(tenant.id)})).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    weights = dict(row[1] or {})
+    own_cost = dict(row[2]) if isinstance(row[2], dict) else {}
+    retention = dict(row[3]) if isinstance(row[3], dict) else {}
+    before: dict = {}
+    after: dict = {}
+
+    if body.name is not None:
+        before["name"], after["name"] = row[0], body.name.strip()
+    if body.scoring_weights is not None:
+        from api.services.scoring import effective_weights
+        before["scoring_weights"] = {d: round(v, 4) for d, v in effective_weights(weights).items()}
+        after["scoring_weights"] = {d: round(v, 4) for d, v in body.scoring_weights.model_dump().items()}
+        weights.update({d: v * 100 for d, v in after["scoring_weights"].items()})
+    if body.cap_rule is not None:
+        before["cap_rule"] = weights.get("cap_rule") or DEFAULT_CAP_RULE
+        after["cap_rule"] = weights["cap_rule"] = body.cap_rule.model_dump()
+    if body.tolerance is not None:
+        old = scoring_config(weights)["critical_tolerance"]
+        before["tolerance"] = {"pct": round(old["pct"] * 100, 4), "rows": int(old["rows"])}
+        weights["critical_tolerance"] = {"pct": body.tolerance.pct / 100, "rows": body.tolerance.rows}
+        after["tolerance"] = body.tolerance.model_dump()
+    if body.cost_model is not None or body.currency is not None:
+        before["cost_model"] = own_cost
+        new_cost = body.cost_model.model_dump(exclude_none=True) if body.cost_model is not None else dict(own_cost)
+        if body.currency is not None:
+            new_cost["currency"] = body.currency
+        own_cost = after["cost_model"] = new_cost
+    if body.retention_days is not None:
+        before["retention_days"] = retention.get("versions_days")
+        after["retention_days"] = body.retention_days
+        # the dry-run window of the nightly purge restarts with the policy (api/services/retention.py)
+        from datetime import datetime, timezone
+        from api.services.retention import POLICY_UPDATED_KEY
+        retention = {**retention, "versions_days": body.retention_days,
+                     POLICY_UPDATED_KEY: datetime.now(timezone.utc).isoformat()}
+
+    await db.execute(
+        text("UPDATE tenants SET name = :n, dqs_weights = CAST(:w AS jsonb), cost_model = CAST(:c AS jsonb), "
+             "retention = CAST(:r AS jsonb) WHERE id = :tid"),
+        {"n": after.get("name", row[0]), "w": json.dumps(weights), "c": json.dumps(own_cost),
+         "r": json.dumps(retention), "tid": str(tenant.id)})
+    await write_audit(db, tenant.id, request, "tenant_settings.update", "tenant_settings", str(tenant.id), before, after)
+    await db.commit()
+    return await _settings_document(db, tenant)

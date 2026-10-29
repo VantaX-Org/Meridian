@@ -51,11 +51,16 @@ def start_chain(tenant_id: str, system_id: str, l1s: Sequence[str], run_ids: Seq
         jobs.start_job(tenant_id, job_id, "process_discovery", f"Process discovery: {', '.join(l1s)}",
                        system_id=system_id, run_ids=list(run_ids), version_id=version_id)
         jobs.update_job(tenant_id, job_id, stage="extraction", percent=0, message="Extracting event tables")
-        chain(run_extraction.si(tenant_id, system_id, [MODULE_OF[l1] for l1 in l1s], include_config=False,
-                                sync_type="data", scope=scope, analyse=False, label="Process discovery",
-                                version_id=version_id, purpose=PURPOSE),
-              discover_process.si(tenant_id, system_id, list(run_ids), version_id, token)).apply_async(
+        queued = chain(run_extraction.si(tenant_id, system_id, [MODULE_OF[l1] for l1 in l1s], include_config=False,
+                                         sync_type="data", scope=scope, analyse=False, label="Process discovery",
+                                         version_id=version_id, purpose=PURPOSE),
+                       discover_process.si(tenant_id, system_id, list(run_ids), version_id, token)).apply_async(
             link_error=abort_runs.si(tenant_id, system_id, list(run_ids), version_id, token))
+        ids, node = [], queued  # the chain's tasks, last to first, for POST /jobs/{id}/cancel
+        while node is not None and len(ids) < 10:
+            ids.append(getattr(node, "id", None))
+            node = getattr(node, "parent", None)
+        jobs.set_task_ids(tenant_id, job_id, [i for i in ids if isinstance(i, str)])
     except Exception:
         release_lock(tenant_id, system_id, token)
         raise

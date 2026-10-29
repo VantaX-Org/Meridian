@@ -21,7 +21,7 @@ from starlette.concurrency import run_in_threadpool
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services import jobs
-from api.services.rbac import require_permission
+from api.services.rbac import require_permission, write_audit
 
 router = APIRouter(prefix="/api/v1/systems", tags=["system-objects"])
 
@@ -270,8 +270,9 @@ async def start_download(system_id: uuid.UUID, body: DownloadBody, request: Requ
     jobs.start_job(str(tenant.id), f"dl-{version_id}", "extraction", body.label or ", ".join(body.objects),
                    status="queued", system_id=str(system_id), modules=body.objects, version_id=version_id,
                    retry={"via": "downloads", "body": body.model_dump(mode="json")})
-    run_extraction.delay(str(tenant.id), str(system_id), body.objects, True, "both",
-                         scope, body.analyse, body.label, version_id)
+    task = run_extraction.delay(str(tenant.id), str(system_id), body.objects, True, "both",
+                                scope, body.analyse, body.label, version_id)
+    jobs.set_task_ids(str(tenant.id), f"dl-{version_id}", [getattr(task, "id", None)])
     return {"job_id": f"dl-{version_id}", "version_id": version_id, "status": "queued", "objects": body.objects,
             "scope": scope, "analyse": body.analyse}
 
@@ -518,3 +519,38 @@ async def reference_lists(system_id: uuid.UUID, db: AsyncSession = Depends(get_d
     kinds = {"REF_POSTAL": "postal-codes", "REF_BIC": "bic"}
     return [ReferenceSummary(kind=kinds.get(r[0], r[0]), records=r[1] or 0, countries=sorted(r[2] or []))
             for r in rows]
+
+
+_REFERENCE_TABLES = {"postal-codes": "REF_POSTAL", "bic": "REF_BIC", "REF_POSTAL": "REF_POSTAL", "REF_BIC": "REF_BIC"}
+
+
+@router.delete("/{system_id}/reference/{name}", dependencies=[Depends(require_permission("manage_systems"))])
+async def delete_reference_list(system_id: uuid.UUID, name: str, request: Request, db: AsyncSession = Depends(get_db),
+                                tenant: Tenant = Depends(get_tenant)):
+    """Remove an uploaded reference list (``postal-codes`` or ``bic``, as GET lists them). 404 when the system has no such
+    list; 409 while an enabled rule of the tenant (one a steward authored or mined) names it. The checks generated from
+    the list (PX-, BX-BNKA) stop with it from the next analysis."""
+    table = _REFERENCE_TABLES.get(name)
+    if table is None:
+        raise HTTPException(404, "Reference list not found")
+    await _rls(db, tenant)
+    row = (await db.execute(text(
+        "SELECT id, record_count FROM config_snapshots WHERE tenant_id = :t AND system_id = :s "
+        "AND source = 'reference' AND config_table = :tbl FOR UPDATE"),
+        {"t": str(tenant.id), "s": str(system_id), "tbl": table})).fetchone()
+    if row is None:
+        raise HTTPException(404, "Reference list not found")
+    kind = "postal-codes" if table == "REF_POSTAL" else "bic"
+    users = [r[0] for r in (await db.execute(text(
+        "SELECT name FROM rules WHERE tenant_id = :t AND enabled AND (conditions::text ILIKE :a OR conditions::text ILIKE :b) "
+        "UNION SELECT rule_id FROM rule_versions WHERE tenant_id = :t AND state = 'active' "
+        "AND (body::text ILIKE :a OR body::text ILIKE :b) ORDER BY 1 LIMIT 10"),
+        {"t": str(tenant.id), "a": f"%{table}%", "b": f"%{kind}%"})).fetchall()]
+    if users:
+        raise HTTPException(409, f"Rules still use this list: {', '.join(users)}. Disable or change them first.")
+    await db.execute(text("DELETE FROM config_snapshots WHERE id = :i AND tenant_id = :t"),
+                     {"i": str(row[0]), "t": str(tenant.id)})
+    await write_audit(db, tenant.id, request, "reference_list.delete", "reference_list", f"{system_id}:{kind}",
+                      {"kind": kind, "system_id": str(system_id), "records": row[1] or 0}, None)
+    await db.commit()
+    return {"kind": kind, "system_id": str(system_id), "status": "deleted", "records": row[1] or 0}

@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -53,6 +53,15 @@ class CreateKeyBody(BaseModel):
     expires_at: Optional[datetime] = None
     # Add the key to an existing service account (its grants stay and any new ones are added).
     service_user_id: Optional[uuid.UUID] = None
+
+
+class PatchKeyBody(BaseModel):
+    """Only the keys sent change. ``scopes`` replaces every grant of the key's service account; ``expires_at: null``
+    removes the expiry. The secret is never part of a patch or its answer."""
+    model_config = ConfigDict(extra="forbid")
+    name: Optional[str] = Field(None, min_length=1, max_length=120)
+    scopes: Optional[list[KeyGrantIn]] = Field(None, max_length=MAX_GRANTS)
+    expires_at: Optional[datetime] = None
 
 
 class KeyGrantOut(BaseModel):
@@ -211,6 +220,61 @@ async def create_key(body: CreateKeyBody, request: Request, response: Response, 
     await db.commit()
     response.headers["Cache-Control"] = "no-store"
     return ApiKeyCreated(**out.model_dump(), key=key)
+
+
+@router.patch("/{key_id}", dependencies=[Depends(require_permission("manage_users"))])
+async def patch_key(key_id: uuid.UUID, body: PatchKeyBody, request: Request, db: AsyncSession = Depends(get_db),
+                    tenant: Tenant = Depends(get_tenant)) -> ApiKeyOut:
+    """Rename a key, change its scopes (the grants of its service account, under the same guards as at creation) or its
+    expiry. A revoked key cannot be changed. Never returns the secret."""
+    await _rls(db, tenant)
+    sent = body.model_fields_set
+    if not sent:
+        raise HTTPException(status_code=422, detail="Nothing to update")
+    if "name" in sent and body.name is None or "scopes" in sent and body.scopes is None:
+        raise HTTPException(status_code=422, detail="name and scopes cannot be null")
+    row = await _load(db, tenant, key_id)
+    if row.revoked_at is not None:
+        raise HTTPException(status_code=409, detail="A revoked key cannot be changed")
+    await guard_user_access_change(db, tenant, request, row.user_id)
+    before = _view(row, await _grants_of(db, tenant.id, [str(row.user_id)]))
+    uid, tid = str(row.user_id), str(tenant.id)
+
+    if "name" in sent:
+        name = (body.name or "").strip()
+        if not name:
+            raise HTTPException(status_code=422, detail="Name the key")
+        await db.execute(text("UPDATE api_keys SET name = :n WHERE id = :k AND tenant_id = :t"),
+                         {"n": name, "k": str(key_id), "t": tid})
+        if (await db.execute(text("SELECT count(*) FROM api_keys WHERE user_id = :u AND tenant_id = :t"),
+                             {"u": uid, "t": tid})).scalar_one() == 1:  # the account carries its only key's name
+            await db.execute(text("UPDATE users SET name = :n WHERE id = :u AND tenant_id = :t"),
+                             {"n": name, "u": uid, "t": tid})
+    if "expires_at" in sent:
+        expires_at = body.expires_at
+        if expires_at is not None:
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            if expires_at <= datetime.now(timezone.utc):
+                raise HTTPException(status_code=422, detail="The expiry must be in the future")
+        await db.execute(text("UPDATE api_keys SET expires_at = :x WHERE id = :k AND tenant_id = :t"),
+                         {"x": expires_at, "k": str(key_id), "t": tid})
+    if "scopes" in sent:
+        scopes = body.scopes or []
+        if not scopes:
+            raise HTTPException(status_code=422, detail=NO_GRANTS_DETAIL)
+        for g in scopes:
+            await _forbid_admin(db, tenant, g.role_key)
+        await db.execute(text("DELETE FROM user_role_scopes WHERE user_id = :u AND tenant_id = :t"), {"u": uid, "t": tid})
+        for g in scopes:
+            await insert_grant(db, tenant, request, uid, g.role_key, g.system_id, g.module)
+        await recompute_users_role(db, tenant.id, uid)
+
+    out = _view(await _load(db, tenant, key_id), await _grants_of(db, tenant.id, [uid]))
+    await write_audit(db, tenant.id, request, "api_key.update", "api_key", str(key_id),
+                      before.model_dump(exclude={"created_by_name"}), out.model_dump(exclude={"created_by_name"}))
+    await db.commit()
+    return out
 
 
 @router.post("/{key_id}/revoke", dependencies=[Depends(require_permission("manage_users"))])

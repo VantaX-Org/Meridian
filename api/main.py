@@ -81,6 +81,8 @@ from api.routes.lineage import router as lineage_router
 from api.routes.business_process import router as business_process_router
 from api.routes.events import router as events_router
 from api.routes.jobs import router as jobs_router
+from api.routes.schedules import router as schedules_router
+from api.routes.support import router as support_router
 from api.routes.simulation import router as simulation_router
 from api.routes.mining import router as mining_router
 from api.routes.process_mining import router as process_mining_router
@@ -407,6 +409,8 @@ app.include_router(lineage_router)
 app.include_router(business_process_router)
 app.include_router(events_router)
 app.include_router(jobs_router)
+app.include_router(schedules_router)
+app.include_router(support_router)
 app.include_router(simulation_router)
 app.include_router(mining_router)
 app.include_router(process_mining_router)

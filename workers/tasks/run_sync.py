@@ -68,7 +68,7 @@ def run_sync(self, profile_id: str, tenant_id: str, trigger: str = "scheduled", 
         result = session.execute(
             text("""
                 SELECT sp.domain, sp.ai_anomaly_baseline, ss.name as system_name, ss.id as system_id,
-                       sp.extraction_mode
+                       sp.extraction_mode, sp.modules, sp.scope
                 FROM sync_profiles sp
                 JOIN sap_systems ss ON sp.system_id = ss.id
                 WHERE sp.id = :pid AND sp.tenant_id = :tid AND sp.active = true
@@ -86,6 +86,9 @@ def run_sync(self, profile_id: str, tenant_id: str, trigger: str = "scheduled", 
         system_name = profile_row[2]
         system_id = str(profile_row[3])
         delta = profile_row[4] == "delta"
+        # a schedule made through /api/v1/schedules names its modules and scope; an older one is just its domain
+        modules = list(profile_row[5] or []) or [domain]
+        scope = profile_row[6] or None
 
     # Step 2: Download the domain (connection, credentials, tables, storage: run_extraction).
     # Direct call: runs here, under this task's time limits, as one job.
@@ -95,7 +98,7 @@ def run_sync(self, profile_id: str, tenant_id: str, trigger: str = "scheduled", 
     from workers.tasks.run_extraction import run_extraction
 
     try:
-        result = run_extraction(tenant_id, system_id, [domain], analyse=False,
+        result = run_extraction(tenant_id, system_id, modules, analyse=False, scope=scope,
                                 label=f"Sync {system_name}", version_id=version_id, delta=delta)
     except Exception as e:
         _fail_sync_run(engine, tenant_id, sync_run_id, f"Extraction failed: {str(e)[:300]}",

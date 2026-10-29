@@ -757,6 +757,11 @@ class SyncProfile(Base):
     extraction_mode = Column(Text, server_default="full", nullable=True)  # full, delta, sample
     max_rows = Column(Integer, server_default="0", nullable=True)  # 0 = unlimited
 
+    # Run schedule (migration 102): a label, the cadence preset chosen (NULL: custom cron) and the extraction scope
+    name = Column(Text, nullable=True)
+    preset = Column(Text, nullable=True)
+    scope = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+
     system = relationship("SAPSystem", back_populates="sync_profiles")
     runs = relationship("SyncRun", back_populates="profile", cascade="all, delete-orphan")
 

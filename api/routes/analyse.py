@@ -59,6 +59,7 @@ async def run_agents_endpoint(
     # force: a manual re-run repeats the pipeline even on an agents_complete run, which the
     # worker otherwise skips as a duplicate delivery.
     job = run_agents.delay(str(vid), str(tenant.id), force=True)
+    jobs.set_task_ids(str(tenant.id), str(vid), [getattr(job, "id", None)])
 
     return {
         "version_id": str(vid),

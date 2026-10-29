@@ -18,7 +18,10 @@ Shape of a job::
      retry: {via, body}}                              # extraction: its start request, for POST /jobs/{id}/retry
 
 ``kind`` is one of extraction, config_sync, analysis, upload, simulation. ``status`` is
-queued, running, completed, failed.
+queued, running, completed, failed, cancelled. A job also carries ``task_ids`` (the Celery task ids its start
+route recorded, for POST /jobs/{id}/cancel) and, once cancelled, ``cancelled_by``, ``cancelled_by_label`` and
+``cancelled_at``. A cancelled job stays cancelled: later progress writes from a worker that has not stopped yet
+are dropped.
 """
 
 from __future__ import annotations
@@ -26,6 +29,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from api.services.task_progress import _redis_client
@@ -35,6 +39,7 @@ logger = logging.getLogger("meridian.jobs")
 JOB_TTL_SECONDS = 7 * 24 * 3600
 INDEX_KEEP = 200          # most recent jobs kept per tenant
 ACTIVE = ("queued", "running")
+CANCELLED = "cancelled"
 
 STAGES: dict[str, list[tuple[str, str]]] = {
     "extraction": [("connect", "Connecting"), ("read", "Reading tables"), ("store", "Storing data"),
@@ -144,7 +149,7 @@ def update_job(tenant_id: str, job_id: str, *, stage: Optional[str] = None, perc
         return
     try:
         job = get_job(tenant_id, job_id)
-        if job is None:
+        if job is None or job.get("status") == CANCELLED:
             return
         job["status"] = "running"
         if stage is not None:
@@ -173,7 +178,7 @@ def finish_job(tenant_id: str, job_id: str, status: str = "completed", *, error:
         return
     try:
         job = get_job(tenant_id, job_id)
-        if job is None:
+        if job is None or job.get("status") == CANCELLED:
             return
         failed = status == "failed"
         job.update({"status": status, "error": (error or None) and str(error)[:500], "result": result,
@@ -191,6 +196,43 @@ def finish_job(tenant_id: str, job_id: str, status: str = "completed", *, error:
         _save(client, tenant_id, job)
     except Exception as exc:
         logger.warning("finish_job %s failed: %s", job_id, exc)
+
+
+def set_task_ids(tenant_id: str, job_id: str, task_ids: list[str]) -> None:
+    """Record the Celery task ids behind a job, so it can be cancelled. Changes nothing else (not the status)."""
+    client = _redis_client()
+    if client is None:
+        return
+    try:
+        job = get_job(tenant_id, job_id)
+        if job is None or job.get("status") == CANCELLED:
+            return
+        job["task_ids"] = sorted({*job.get("task_ids", []), *[str(t) for t in task_ids if t]})
+        _save(client, tenant_id, job)
+    except Exception as exc:
+        logger.warning("set_task_ids %s failed: %s", job_id, exc)
+
+
+def mark_cancelled(tenant_id: str, job_id: str, *, by: Optional[str], by_label: Optional[str]) -> Optional[dict]:
+    """Mark a queued or running job cancelled (who, when) and publish it on the jobs stream. Returns the saved job,
+    or None when the registry is unreachable or the job is gone."""
+    client = _redis_client()
+    if client is None:
+        return None
+    try:
+        job = get_job(tenant_id, job_id)
+        if job is None:
+            return None
+        now = _now()
+        job.update({"status": CANCELLED, "finished_at": now, "message": "Cancelled",
+                    "cancelled_by": by, "cancelled_by_label": by_label,
+                    "cancelled_at": datetime.fromtimestamp(now, tz=timezone.utc).isoformat()})
+        job["stages"] = [{**s, "status": "done" if s["status"] == "done" else "skipped"} for s in job.get("stages", [])]
+        _save(client, tenant_id, job)
+        return job
+    except Exception as exc:
+        logger.warning("mark_cancelled %s failed: %s", job_id, exc)
+        return None
 
 
 def stage_percent(job: dict) -> int:
@@ -255,7 +297,7 @@ def mirror_progress(progress_key: str, payload: dict) -> None:
                        rows_done=payload.get("rows_processed"), rows_total=payload.get("total_rows"))
         else:
             job = get_job(tenant_id, job_id)
-            if job is None:
+            if job is None or job.get("status") == CANCELLED:
                 return
             if status == "queued":
                 job["status"] = "queued"
