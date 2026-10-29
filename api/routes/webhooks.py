@@ -30,7 +30,7 @@ from api.services.rbac import current_user_id, require_permission, write_audit
 
 router = APIRouter(prefix="/api/v1", tags=["webhooks"])
 Event = Literal["*", "run.finished", "run.failed", "batch.waiting", "batch.approved", "batch.sent", "score.dropped",
-                "breach.new", "config.drift", "certificate.signed"]
+                "breach.new", "config.drift", "certificate.signed", "digest.sent"]
 _COLS = "id::text, url, events, active, description, created_by::text, created_at, updated_at"
 
 
@@ -193,6 +193,8 @@ async def test_webhook(webhook_id: uuid.UUID, db: AsyncSession = Depends(get_db)
     ids = await db.run_sync(lambda s: webhooks.emit(s, t, webhooks.TEST_EVENT, {
         "message": "Test event from Meridian", "webhook_id": str(webhook_id)}, webhook_id=str(webhook_id)))
     await db.commit()
+    if not ids:  # sandbox mode: held back and recorded (api/services/sandbox.py)
+        return {"delivery_id": None, "status": "skipped", "reason": "sandbox"}
     out = await asyncio.to_thread(_deliver_now, t, ids[0])
     return {"delivery_id": ids[0], **(out or {"status": "pending"})}
 

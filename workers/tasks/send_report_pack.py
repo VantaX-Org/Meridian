@@ -155,6 +155,10 @@ def send_for_tenant(session: Session, tenant_id: str, cadence: str, *, base_url:
     channels = _email_channels(session, cadence)
     if not channels:
         return 0
+    from api.services.sandbox import held_back_sync
+    if held_back_sync(session, tenant_id, "report_pack", cadence):  # sandbox mode: nothing leaves (migration 115)
+        session.commit()
+        return 0
     run_id = latest_run_id(session, tenant_id)
     if not run_id:
         return 0

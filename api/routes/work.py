@@ -27,7 +27,7 @@ from api.deps import Tenant, get_db, get_tenant
 from api.middleware.cache import cached_json
 from api.routes.record_issues import _rls
 from api.routes.sync_trigger import module_label
-from api.services import undo, work_analytics, work_counts, worklist
+from api.services import sandbox, undo, work_analytics, work_counts, worklist
 from api.services.worklist import CLEANING_VALUE_MATCH
 from api.services.current_state import current_pairs, pairs_clause, run_ids
 from api.services.rbac import (Scope, _grants_allow, actions_for, current_user_id, current_user_label,
@@ -1149,6 +1149,7 @@ async def _apply_decisions(body: DecideBody, request: Request, db: AsyncSession,
             raise HTTPException(status_code=400, detail="Write the comment.")
     await _rls(db, tenant)
     vid, scope = await _run(db, tenant, body.version_id)
+    await sandbox.guard_scope(db, tenant.id, scope)  # sandbox mode: decisions land on sandbox rows only (115)
     uid = current_user_id(request)
     draft: Optional[str] = None
     touched: list[tuple[str, str]] = []
@@ -1284,6 +1285,7 @@ async def accept_all(
     """Every machine-proposed value of one group (still to fix) into the user's draft batch, set-based."""
     await _rls(db, tenant)
     vid, scope = await _run(db, tenant, version_id)
+    await sandbox.guard_scope(db, tenant.id, scope)  # sandbox mode: decisions land on sandbox rows only (115)
     draft = await _my_draft(db, tenant, request)
     p = {"t": str(tenant.id), "v": vid, "c": check_id, "scope": scope, "b": draft, "cap": MAX_ACCEPT}
     res = await db.execute(text("""
@@ -1374,6 +1376,7 @@ async def set_value(
     """One value for every open record of a group (mass edit), into the user's draft batch, set-based."""
     await _rls(db, tenant)
     vid, scope = await _run(db, tenant, version_id)
+    await sandbox.guard_scope(db, tenant.id, scope)  # sandbox mode: decisions land on sandbox rows only (115)
     draft = await _my_draft(db, tenant, request)
     blank = "AND COALESCE(btrim(fr.field_values ->> (f.details->>'field_checked')), '') = ''" if body.only_blank else ""
     rows = (await db.execute(text(f"""

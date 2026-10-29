@@ -228,8 +228,13 @@ def export_licensed() -> bool:
 
 def _blocked(session: Session, tenant_id: str, sched: dict) -> Optional[str]:
     """Why this slot must not be generated or sent (None when it may): the licence no longer includes
-    report export, or the creator is gone, inactive or no longer holds ``export``."""
+    report export, or the creator is gone, inactive or no longer holds ``export``, or the tenant is in sandbox mode
+    (migration 115: nothing leaves; the held-back delivery is recorded)."""
     from api.services.rbac import active_users_holding_sync
+    from api.services.sandbox import held_back_sync
+
+    if held_back_sync(session, tenant_id, "report_schedule", "report", str(sched["id"])):
+        return "held back: the tenant is in sandbox mode"
 
     try:
         licensed = export_licensed()

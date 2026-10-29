@@ -50,6 +50,7 @@ class StatusStripOut(BaseModel):
     scored_in_s: Optional[int] = None          # first analysis step started to last one finished
     cost_model: Optional[str] = None           # the currency the tenant's cost model prices in
     licence_valid_to: Optional[str] = None     # YYYY-MM-DD from the cached licence manifest
+    sandbox: bool = False                      # the tenant is in sandbox mode: nothing leaves (migration 115)
 
 
 class LandscapeSystemOut(BaseModel):
@@ -120,11 +121,12 @@ async def build_status(db: AsyncSession, tenant: Tenant) -> StatusStripOut:
     """The status strip for the tenant's latest finished run. Caller has set ``app.tenant_id``."""
     t = str(tenant.id)
     run_id = await latest_run(db, tenant.id)
-    cost_model = (await db.execute(text("SELECT cost_model FROM tenants WHERE id = :t"), {"t": t})).scalar()
+    trow = (await db.execute(text("SELECT cost_model, sandbox FROM tenants WHERE id = :t"), {"t": t})).fetchone()
+    cost_model = trow[0] if trow else None
     currency = str(effective_cost_model(cost_model if isinstance(cost_model, dict) else None)["currency"])
     expiry = get_cached_manifest().get("expiry_date")
     valid_to = str(expiry)[:10] if expiry and re.match(r"\d{4}-\d{2}-\d{2}", str(expiry)) else None
-    out = StatusStripOut(cost_model=currency, licence_valid_to=valid_to)
+    out = StatusStripOut(cost_model=currency, licence_valid_to=valid_to, sandbox=bool(trow and trow[1]))
     if run_id is None:
         return out
     row = (await db.execute(text("SELECT run_at, dqs_summary FROM analysis_versions WHERE id = :v AND tenant_id = :t"),

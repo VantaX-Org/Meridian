@@ -355,6 +355,12 @@ async def approve_writeback(
                    "(LSMW / BAPI file) from the finding or cleaning queue and load them in SAP.",
         )
 
+    from api.services.sandbox import held_back
+    if await held_back(db, tenant_id, "write_back", "bapi", approval_id):  # sandbox mode: nothing leaves (115)
+        await db.commit()
+        raise HTTPException(status_code=409, detail="Sandbox mode is on: nothing is written back to SAP. "
+                                                    "Exit the sandbox to apply this write-back.")
+
     # 4-eyes: approving user must differ from requesting user
     approving_user = _require_user(request)
     if approving_user == record[1]:

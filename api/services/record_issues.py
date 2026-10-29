@@ -37,7 +37,10 @@ _UNSTABLE = "row:%"
 
 
 def scope_of(metadata: dict) -> str:
-    return str(metadata.get("system_id") or "upload")
+    """The source a run's records belong to: its system id, or 'upload'; a sandbox copy of a run (migration 115,
+    api/services/sandbox.py) keeps its rows apart under ``sandbox:<that scope>``."""
+    base = str(metadata.get("system_id") or "upload")
+    return f"sandbox:{base}" if metadata.get("sandbox") is True else base
 
 
 _COPY_CHUNK = 1_000_000  # rows per COPY: bounds the buffer on a 100M-row extract

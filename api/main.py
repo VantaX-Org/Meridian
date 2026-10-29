@@ -104,6 +104,7 @@ from api.routes.attention import router as attention_router
 from api.routes.landscape import router as landscape_router
 from api.routes.command import router as command_router
 from api.routes.policy_packs import router as policy_packs_router
+from api.routes.sandbox import router as sandbox_router
 from api.routes.system_update import router as system_update_router
 from api.routes.retention import router as retention_router
 from api.routes.actions import router as actions_router
@@ -467,6 +468,7 @@ app.include_router(shell_router)
 app.include_router(attention_router)
 app.include_router(landscape_router)
 app.include_router(policy_packs_router)
+app.include_router(sandbox_router)
 app.include_router(command_router)
 app.include_router(system_update_router)
 app.include_router(retention_router)

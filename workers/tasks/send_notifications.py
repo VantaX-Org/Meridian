@@ -439,6 +439,11 @@ def send_notification(self, version_id: str, tenant_id: str, trigger: str):
             if not config:
                 logger.warning(f"Tenant {tenant_id} not found, skipping notification")
                 return
+            from api.services.sandbox import held_back_sync
+            if held_back_sync(session, tenant_id, "notification", trigger, str(version_id)):  # sandbox (115)
+                session.commit()
+                logger.info(f"send_notification held back for tenant {tenant_id}: sandbox mode")
+                return
 
             if trigger == "critical_found":  # alert channels: new critical findings go out immediately
                 _send_immediate_critical(session, tenant_id, version_id)
@@ -880,6 +885,10 @@ def send_alert_digest(period: str) -> dict:
         try:
             with Session(engine) as session:
                 session.execute(text("SET app.tenant_id = :tid"), {"tid": tid})
+                from api.services.sandbox import held_back_sync
+                if held_back_sync(session, tid, "alert_digest", period):  # sandbox mode: nothing leaves (115)
+                    session.commit()
+                    continue
                 channels = _channels(session, "digest = :p", {"p": period})
                 recipients = _recipients_safe(session, tid, period)
                 if recipients:  # personal digests: each user's own open items

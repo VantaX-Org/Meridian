@@ -80,6 +80,8 @@ class FakeSession:
         if sql.startswith("INSERT INTO notifications"):
             self.notifications.append(p)
             return _Result()
+        if sql.startswith("SELECT sandbox FROM tenants"):  # api/services/sandbox.py: not in sandbox mode
+            return _Result(scalar=False)
         raise AssertionError(f"unexpected SQL: {sql}")
 
     def commit(self):

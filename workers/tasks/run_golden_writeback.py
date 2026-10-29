@@ -38,6 +38,10 @@ def run(session: Any, tenant_id: str, request_id: str, mode: str) -> dict:
 
     if mode not in ("simulate", "apply"):
         raise ValueError(f"unknown mode {mode}")
+    from api.services.sandbox import held_back_sync
+    if mode == "apply" and held_back_sync(session, tenant_id, "write_back", "golden_record", request_id):
+        session.commit()  # sandbox mode (migration 115): the request stays approved and is applied after the exit
+        return {"skipped": True, "reason": "sandbox"}
     claim_from, claim_to = ("simulating", "simulating") if mode == "simulate" else ("approved", "applying")
     row = session.execute(text(
         "UPDATE golden_writeback_requests r SET status = :to, updated_at = now() "
