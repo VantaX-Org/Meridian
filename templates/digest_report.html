@@ -1,0 +1,55 @@
+{% extends "_base.html" %}
+{% block body %}
+<p>{{ d.landscape.text }}</p>
+
+<table class="meta">
+<tr><td class="k">Objects measured</td><td>{{ d.landscape.objects | n }}</td></tr>
+<tr><td class="k">Held under 85</td><td>{{ d.landscape.held_under_85 | n }}</td></tr>
+<tr><td class="k">Critical rules over tolerance</td><td>{{ d.landscape.critical_over_tolerance | n }}</td></tr>
+<tr><td class="k">Fix batches waiting for approval</td><td>{{ d.approvals_waiting | n }}</td></tr>
+<tr><td class="k">SLA breaches</td><td>{{ d.sla_breaches | n }}</td></tr>
+<tr><td class="k">Value at risk</td><td>{{ money(d.value_at_risk.total) }}</td></tr>
+</table>
+
+<h2>Score moves</h2>
+{% if d.score_moves %}
+<table class="data">
+<thead><tr><th>System</th><th>Object</th><th class="r">Before</th><th class="r">After</th><th class="r">Change</th></tr></thead>
+<tbody>
+{% for m in d.score_moves %}
+<tr><td>{{ m.system }}</td><td>{{ m.module | module }}</td><td class="r">{{ m.before | n(1) }}</td><td class="r">{{ m.after | n(1) }}</td><td class="r">{{ m.delta | signed }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<div class="empty">No score moved since the previous run of each object.</div>
+{% endif %}
+
+<h2>Waves and gates</h2>
+{% if d.waves %}
+<table class="data">
+<thead><tr><th>Wave</th><th>Target date</th><th>Gate</th><th>Not met</th></tr></thead>
+<tbody>
+{% for w in d.waves %}
+<tr><td>{{ w.name }}</td><td>{{ w.target_date or "not set" }}</td><td>{{ "open" if w.gate_open else "closed" }}</td><td>{{ w.failing | join("; ") or "none" }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<div class="empty">No migration wave is planned.</div>
+{% endif %}
+
+<h2>Top value at risk</h2>
+{% if d.value_at_risk.top %}
+<table class="data">
+<thead><tr><th>Rule</th><th>Object</th><th class="r">Failing records</th><th class="r">At risk</th></tr></thead>
+<tbody>
+{% for v in d.value_at_risk.top %}
+<tr><td class="mono">{{ v.check_id }}</td><td>{{ v.module | module }}</td><td class="r">{{ v.failing_records | n }}</td><td class="r">{{ money(v.cost_at_risk) }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<div class="empty">No failing rule is priced in the cost model.</div>
+{% endif %}
+{% endblock %}
