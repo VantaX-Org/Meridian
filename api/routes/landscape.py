@@ -202,7 +202,7 @@ def sentence_of(cells: list[dict]) -> dict:
     return {
         "held_under_85": sum(1 for c in cells if c["capped"]),
         "objects": len(cells),
-        "critical_over_tolerance": sum(c["critical_over_tolerance"] for c in cells),
+        "critical_over_tolerance": sum(c.get("critical_over_tolerance", len(c["breaches"])) for c in cells),
         "release_if_fixed": top,
         "released": sum(1 for c in cells if c["breaches"] and set(c["breaches"]) <= set(top)) if top else 0,
     }
