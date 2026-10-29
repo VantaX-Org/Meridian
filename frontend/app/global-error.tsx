@@ -6,6 +6,7 @@ import "../design/global-error.css";
 import { clientErrorId, reportClientError } from "@/lib/client-errors";
 import { Attribution } from "@/design/brand/Attribution";
 import { themeBootScript } from "@/lib/theme";
+import { writeClipboard } from "@/lib/browser";
 
 // Replaces the root layout, so there is no shell, no Tailwind and no design primitives here: plain elements
 // styled by design/global-error.css, which reads tokens.css variables only.
@@ -21,12 +22,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
 
   const copyDetails = async () => {
     const details = JSON.stringify({ digest: reference, message: error.message, pathname: window.location.pathname, time: new Date().toISOString() }, null, 2);
-    try {
-      await navigator.clipboard.writeText(details);
-      setCopied("done");
-    } catch {
-      setCopied("failed");
-    }
+    setCopied((await writeClipboard(details)) ? "done" : "failed");
   };
 
   return (

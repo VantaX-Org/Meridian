@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button, Mono, toast } from "@/design";
 import { clientErrorId, reportClientError } from "@/lib/client-errors";
+import { writeClipboard } from "@/lib/browser";
 
 /** Renders inside the shell frame, so the index bar and scope bar stay usable when a page crashes. One sheet, one action. */
 export default function AppError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
@@ -17,12 +18,8 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
 
   const copyDetails = async () => {
     const details = JSON.stringify({ digest: reference, message: error.message, pathname, time: new Date().toISOString() }, null, 2);
-    try {
-      await navigator.clipboard.writeText(details);
-      toast("Details copied");
-    } catch {
-      toast.error("Could not copy details");
-    }
+    if (await writeClipboard(details)) toast("Details copied");
+    else toast.error("Could not copy details");
   };
 
   return (
