@@ -1,0 +1,57 @@
+WEBVTT
+
+1
+00:00:00.045 --> 00:00:08.254
+An object is one area of SAP data scored as a whole on one system.
+
+2
+00:00:08.254 --> 00:00:16.587
+The facts line: run, records checked, rules measured, records to fix, value at risk, features blocked, wave verdict.
+
+3
+00:00:16.587 --> 00:00:23.366
+Related objects, upstream and downstream. Fix upstream first.
+
+4
+00:00:23.366 --> 00:00:29.840
+The ruler: the tick is the measured score, the number is the score shown.
+
+5
+00:00:29.840 --> 00:00:34.755
+Capped at 70 by MM014 and MM031: two critical rules over tolerance.
+
+6
+00:00:34.755 --> 00:00:40.090
+The receipt: each dimension's weight, score and points, then measured, cap and score shown.
+
+7
+00:00:40.090 --> 00:00:47.070
+Every i explains its figure from the run itself.
+
+8
+00:00:47.070 --> 00:00:54.806
+Rules, ranked by value at risk, with tolerance and whether each is over it.
+
+9
+00:00:54.806 --> 00:01:02.026
+Pivot the rules by field, dimension, severity or S/4 feature.
+
+10
+00:01:02.026 --> 00:01:09.205
+Runs: the measured score over eight runs, and why it moved against the baseline.
+
+11
+00:01:09.205 --> 00:01:14.124
+The shown score moved only to 70.0, because the cap holds it.
+
+12
+00:01:14.124 --> 00:01:21.793
+Readiness: the waves this object is in, and what its failing rules block in S/4HANA.
+
+13
+00:01:21.793 --> 00:01:29.191
+Fixes lists the object's fix batches.
+
+14
+00:01:29.191 --> 00:01:35.746
+Watch the object to hear about runs, score drops and new critical breaches.

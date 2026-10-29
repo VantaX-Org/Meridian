@@ -1,0 +1,37 @@
+WEBVTT
+
+1
+00:00:00.015 --> 00:00:06.394
+SAP Basis: connections, extractions, schedules and jobs.
+
+2
+00:00:06.394 --> 00:00:11.311
+Step 1, Landscape: your system tasks.
+
+3
+00:00:11.311 --> 00:00:17.666
+Step 2, the system: test the connection.
+
+4
+00:00:17.666 --> 00:00:24.561
+Step 3, the inspector: choose objects, dry run, then extract or extract changes only.
+
+5
+00:00:24.561 --> 00:00:31.169
+Step 4, Schedules: Changes only for routine runs.
+
+6
+00:00:31.169 --> 00:00:37.448
+Step 5, Runs: open a failed job and retry it.
+
+7
+00:00:37.448 --> 00:00:43.840
+Field mappings and runs per system are under Administration.
+
+8
+00:00:43.840 --> 00:00:52.091
+Configuration: what was read from the customising tables, and what could not be read and why.
+
+9
+00:00:52.091 --> 00:00:59.418
+Custom objects: Z tables and fields, with anomalies to investigate.

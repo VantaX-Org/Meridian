@@ -1,0 +1,53 @@
+WEBVTT
+
+1
+00:00:00.086 --> 00:00:07.376
+Administration: everything that sets up this tenant.
+
+2
+00:00:07.376 --> 00:00:14.405
+Users: seats, roles as grants, invitations.
+
+3
+00:00:14.405 --> 00:00:21.440
+Roles and permissions: built-in roles are fixed; copy one to change it.
+
+4
+00:00:21.440 --> 00:00:27.998
+Single sign-on with OpenID Connect, and the sign-in page rules.
+
+5
+00:00:27.998 --> 00:00:34.655
+View as a role: read-only, for support, and in the audit log.
+
+6
+00:00:34.655 --> 00:00:41.604
+Settings: weights, score bands, the cap rule and tolerance, cost model and retention.
+
+7
+00:00:41.604 --> 00:00:50.935
+One critical rule beyond its tolerance holds an object at 85; two or more at 70. The caps are fixed.
+
+8
+00:00:50.935 --> 00:00:57.873
+Stewardship: one owner per object, stewards per slice, and the gaps.
+
+9
+00:00:57.873 --> 00:01:04.596
+Configuration bundle: export the configuration as one file; import with a diff first.
+
+10
+00:01:04.596 --> 00:01:11.218
+Rules import and export: imported rules land as drafts, never live.
+
+11
+00:01:11.218 --> 00:01:19.051
+Audit log: every change, by whom and when, and every call to the language model.
+
+12
+00:01:19.051 --> 00:01:25.969
+Alerts: channels and thresholds. Alerts never carry record values.
+
+13
+00:01:25.969 --> 00:01:32.571
+Jobs and system update: jobs, the platform version and health checks.

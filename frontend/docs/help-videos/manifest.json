@@ -1,0 +1,161 @@
+{
+  "about": "Meridian 2 help recordings: length in seconds and size in bytes, written by scripts/help-videos.mjs.",
+  "videos": {
+    "guide2-administration": {
+      "seconds": 94.1,
+      "bytes": 979280,
+      "poster": 42156,
+      "chapter": "administration"
+    },
+    "guide2-approvals": {
+      "seconds": 75.1,
+      "bytes": 1003880,
+      "poster": 82284,
+      "chapter": "approvals"
+    },
+    "guide2-glossary": {
+      "seconds": 62.3,
+      "bytes": 696580,
+      "poster": 65691,
+      "chapter": "glossary"
+    },
+    "guide2-golden-records": {
+      "seconds": 56.9,
+      "bytes": 861475,
+      "poster": 66000,
+      "chapter": "golden-records"
+    },
+    "guide2-keyboard": {
+      "seconds": 63.3,
+      "bytes": 1036813,
+      "poster": 77777,
+      "chapter": "keyboard"
+    },
+    "guide2-landscape": {
+      "seconds": 87.9,
+      "bytes": 886775,
+      "poster": 61737,
+      "chapter": "landscape"
+    },
+    "guide2-lineage": {
+      "seconds": 61.9,
+      "bytes": 781626,
+      "poster": 65858,
+      "chapter": "lineage"
+    },
+    "guide2-object": {
+      "seconds": 97.4,
+      "bytes": 1032597,
+      "poster": 65151,
+      "chapter": "object"
+    },
+    "guide2-overview": {
+      "seconds": 182.5,
+      "bytes": 2271609,
+      "poster": 61734,
+      "chapter": "overview"
+    },
+    "guide2-people": {
+      "seconds": 76,
+      "bytes": 758227,
+      "poster": 47827,
+      "chapter": "people"
+    },
+    "guide2-persona-admin": {
+      "seconds": 59.1,
+      "bytes": 642624,
+      "poster": 41945,
+      "chapter": "persona-admin"
+    },
+    "guide2-persona-auditor": {
+      "seconds": 63.3,
+      "bytes": 811163,
+      "poster": 61862,
+      "chapter": "persona-auditor"
+    },
+    "guide2-persona-basis": {
+      "seconds": 59.5,
+      "bytes": 645454,
+      "poster": 59369,
+      "chapter": "persona-basis"
+    },
+    "guide2-persona-lead": {
+      "seconds": 60.5,
+      "bytes": 613416,
+      "poster": 61672,
+      "chapter": "persona-lead"
+    },
+    "guide2-persona-owner": {
+      "seconds": 59.1,
+      "bytes": 907296,
+      "poster": 61069,
+      "chapter": "persona-owner"
+    },
+    "guide2-persona-process": {
+      "seconds": 63.3,
+      "bytes": 675530,
+      "poster": 58773,
+      "chapter": "persona-process"
+    },
+    "guide2-persona-steward": {
+      "seconds": 60.2,
+      "bytes": 917459,
+      "poster": 59630,
+      "chapter": "persona-steward"
+    },
+    "guide2-preferences": {
+      "seconds": 66.8,
+      "bytes": 801443,
+      "poster": 72307,
+      "chapter": "preferences"
+    },
+    "guide2-processes": {
+      "seconds": 55.1,
+      "bytes": 703781,
+      "poster": 66057,
+      "chapter": "processes"
+    },
+    "guide2-rules": {
+      "seconds": 82.3,
+      "bytes": 744350,
+      "poster": 59632,
+      "chapter": "rules"
+    },
+    "guide2-run-compare": {
+      "seconds": 64.7,
+      "bytes": 841175,
+      "poster": 64518,
+      "chapter": "run-compare"
+    },
+    "guide2-runs": {
+      "seconds": 65.7,
+      "bytes": 501228,
+      "poster": 61601,
+      "chapter": "runs"
+    },
+    "guide2-schedules": {
+      "seconds": 64.2,
+      "bytes": 715396,
+      "poster": 62604,
+      "chapter": "schedules"
+    },
+    "guide2-systems": {
+      "seconds": 83.1,
+      "bytes": 744392,
+      "poster": 44016,
+      "chapter": "systems"
+    },
+    "guide2-waves": {
+      "seconds": 62.4,
+      "bytes": 721970,
+      "poster": 65082,
+      "chapter": "waves"
+    },
+    "guide2-work": {
+      "seconds": 107.3,
+      "bytes": 1255280,
+      "poster": 77791,
+      "chapter": "work"
+    }
+  }
+}
