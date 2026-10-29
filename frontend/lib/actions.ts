@@ -3,14 +3,11 @@
 /** Clipboard and CSV helpers shared by the admin and workbench surfaces. */
 
 import { toast } from "sonner";
+import { writeClipboard } from "@/lib/browser";
 
 export async function copyToClipboard(text: string, label = "Copied to clipboard") {
-  try {
-    await navigator.clipboard.writeText(text);
-    toast.success(label);
-  } catch {
-    toast.error("Could not copy");
-  }
+  if (await writeClipboard(text)) toast.success(label);
+  else toast.error("Could not copy");
 }
 
 export function downloadCsv(filename: string, rows: Record<string, unknown>[]) {

@@ -7,6 +7,7 @@ import { Dialog } from "../primitives/Dialog";
 import { Button } from "../primitives/Button";
 import { Textarea } from "../primitives/Textarea";
 import { IconHelp } from "../icons";
+import { writeClipboard } from "@/lib/browser";
 
 export interface ReportContext {
   /** The page the person is on. */
@@ -26,12 +27,7 @@ function ReportDialog({ open, onOpenChange, context, supportEmail }: { open: boo
   const [copied, setCopied] = useState<"idle" | "done" | "failed">("idle");
   const text = reportText(context);
   const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied("done");
-    } catch {
-      setCopied("failed");
-    }
+    setCopied((await writeClipboard(text)) ? "done" : "failed");
   };
   return (
     <Dialog

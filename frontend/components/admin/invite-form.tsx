@@ -13,6 +13,7 @@ import { ROLE_META, grantableRoles } from "@/lib/roles";
 import { seatsFull, seatsFullSentence, seatsNearlyFull, seatsSentence } from "@/lib/users";
 import { GrantsPicker, type GrantRowView } from "./grants-picker";
 import { useSeats } from "./use-seats";
+import { localId } from "@/lib/browser";
 
 const SCHEMA: Schema<{ email: string; name: string }> = {
   email: [required("Enter an email address"), emailRule()],
@@ -72,7 +73,7 @@ export function InviteForm({ onDone }: { onDone: () => void }) {
           onAdd={(g) => setGrants((cur) => {
             const system_id = g.system_id ?? null, mod = g.module ?? null;
             if (cur.some((c) => c.role_key === g.role_key && c.system_id === system_id && c.module === mod)) return cur;
-            return [...cur, { id: crypto.randomUUID(), role_key: g.role_key, system_id, module: mod }];
+            return [...cur, { id: localId(), role_key: g.role_key, system_id, module: mod }];
           })}
           onRemove={(g) => setGrants((cur) => cur.filter((c) => c.id !== g.id))}
         />

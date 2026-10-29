@@ -25,6 +25,7 @@ import { formatDate, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { User } from "@/types/api";
 import { grantLabel, roleLabel } from "@/lib/roles";
+import { writeClipboard } from "@/lib/browser";
 import {
   STATUS_LABEL, inviteAttention, inviteAttentionSentence, isUserStatus, seatsFull, seatsNearlyFull, seatsSentence, userStatus, USER_STATUSES,
 } from "@/lib/users";
@@ -49,12 +50,7 @@ function grantNames(u: User): string {
 
 /** Copies text for the admin; false when the browser refuses (no permission, insecure page). */
 async function copyText(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
+  return writeClipboard(text);
 }
 
 const ALL = "__all__";
