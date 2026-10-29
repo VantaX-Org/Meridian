@@ -107,7 +107,7 @@ def store_hashes(session, tenant_id: str, version_id: str, module: str, table: s
     for i in range(0, len(items), _CHUNK):
         session.execute(text("""
             INSERT INTO record_hashes (tenant_id, module, record_key, row_hash, version_id)
-            SELECT :t, :m, :p || k, h, CAST(:v AS uuid) FROM unnest(CAST(:ks AS text[]), CAST(:hs AS text[])) AS x(k, h)
+            SELECT :t, :m, CAST(:p AS text) || k, h, CAST(:v AS uuid) FROM unnest(CAST(:ks AS text[]), CAST(:hs AS text[])) AS x(k, h)
             ON CONFLICT (tenant_id, module, record_key) DO UPDATE SET row_hash = EXCLUDED.row_hash,
                                                                       version_id = EXCLUDED.version_id"""),
             {"t": tenant_id, "m": module, "p": p, "v": version_id,
