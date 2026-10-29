@@ -97,6 +97,13 @@ from api.routes.landscape import router as landscape_router
 from api.routes.command import router as command_router
 from api.routes.system_update import router as system_update_router
 from api.routes.retention import router as retention_router
+from api.routes.actions import router as actions_router
+from api.routes.explain import router as explain_router
+from api.routes.people import router as people_router
+from api.routes.record_links import router as record_links_router
+from api.routes.rule_scope import router as rule_scope_router
+from api.routes.run_timeline import router as run_timeline_router
+from api.routes.views import router as views_router
 
 from api.utils.structured_logging import configure_logging
 
@@ -416,6 +423,13 @@ app.include_router(landscape_router)
 app.include_router(command_router)
 app.include_router(system_update_router)
 app.include_router(retention_router)
+app.include_router(actions_router)
+app.include_router(explain_router)
+app.include_router(people_router)
+app.include_router(record_links_router)
+app.include_router(rule_scope_router)
+app.include_router(run_timeline_router)
+app.include_router(views_router)
 
 from api.routes.auth import router as auth_router
 app.include_router(auth_router)
