@@ -17,7 +17,7 @@ from checks.base import record_keys
 from checks.frames import TableFrames
 from sap.ddic import Dictionary
 
-from api.services.branded_xlsx import guard_frame
+from api.services.branded_xlsx import guard_frame, strip_illegal_chars_frame
 
 from .engine import Mapping
 
@@ -73,6 +73,8 @@ def to_xlsx(tables: dict[str, pd.DataFrame], *, sanitize_formulas: bool = False)
         for name, df in sorted(tables.items()):
             if sanitize_formulas:
                 df = guard_frame(df)
+            else:
+                df = strip_illegal_chars_frame(df)  # control characters only; SAP values stay byte-for-byte
             df.to_excel(xw, sheet_name=name[:31].replace("/", "_"), index=False)
     return buf.getvalue()
 

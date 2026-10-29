@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.config import settings
+from api.server_error import unhandled_exception_handler
 from api.routes.health import router as health_router
 from api.routes.upload import router as upload_router
 from api.routes.upload_match import router as upload_match_router
@@ -266,6 +267,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Meridian API", version="1.0.0", lifespan=lifespan)
+# Unexpected exceptions only; HTTPException keeps FastAPI's own handler.
+app.add_exception_handler(Exception, unhandled_exception_handler)
 
 # Security headers middleware
 from starlette.middleware.base import BaseHTTPMiddleware

@@ -16,6 +16,7 @@ from collections.abc import Iterable
 import pandas as pd
 from openpyxl.worksheet.worksheet import Worksheet
 
+from api.services.branded_xlsx import guard_frame
 from api.services.remediation import ANCHOR, _exportable, _key_parts, cockpit_sheets
 from sap.ddic import Dictionary
 
@@ -58,7 +59,7 @@ def ltmc_workbook(items: list[dict], dictionary: Dictionary | None) -> bytes:
             "Paste rows into the template downloaded from your S/4HANA release; check sheet names match.",
             "Meridian never writes to SAP. Load this file through the Migration Cockpit yourself.",
         ]})
-        readme.to_excel(xw, sheet_name="README", index=False)
+        guard_frame(readme).to_excel(xw, sheet_name="README", index=False)
         for table, df in sheets.items():
             obj = TABLE_OBJECT.get(table)
             if obj is None:
@@ -67,7 +68,9 @@ def ltmc_workbook(items: list[dict], dictionary: Dictionary | None) -> bytes:
             name = f"{mig} - {names[table]}"[:31]
             cols = [FIELD_ALIASES.get(f"{table}.{c}", c) for c in df.columns]
             desc = pd.DataFrame([[_description(dictionary, table, c) for c in df.columns]], columns=cols)
-            pd.concat([desc, df.set_axis(cols, axis=1)], ignore_index=True).to_excel(xw, sheet_name=name, index=False)
+            sheet = pd.concat([desc, df.set_axis(cols, axis=1)], ignore_index=True)
+            # Reimport file: the narrowed SAP guard on every column, plus control-character stripping.
+            guard_frame(sheet, sap_columns=sheet.columns).to_excel(xw, sheet_name=name, index=False)
         for ws in xw.book.worksheets:
             no_formulas(ws)
     return buf.getvalue()
