@@ -51,7 +51,7 @@ export default function RootLayout({
             }}
           />
         </head>
-        <body className="font-sans antialiased">
+        <body className="flex min-h-dvh flex-col font-sans antialiased">
           <Providers>
             {children}
             <Toaster />

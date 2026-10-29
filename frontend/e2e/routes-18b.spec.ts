@@ -19,11 +19,11 @@ const FAILING: Record<string, RegExp> = {
  */
 const NEW_ROUTES: [string, string][] = [
   ["/insights/operations", "Operations"],
-  ["/insights/reports", "Reports are built from controlling_1k; 31 finished runs are available."],
+  ["/insights/reports", "Reports"],
   ["/insights/exec", "Executive summary"],
   ["/mdm", "MDM overview"],
   ["/mdm/survivorship", "No survivorship rules"],
-  ["/admin/audit", "Changes, last 30 days"],
+  ["/admin/audit", "Recorded events, last 30 days"],
   ["/admin/alerts", "No alert channels"],
   ["/admin/jobs", "Jobs"],
   ["/admin/reference", "Bank codes (SWIFT BIC)"],

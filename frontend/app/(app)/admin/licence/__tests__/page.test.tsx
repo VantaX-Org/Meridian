@@ -141,4 +141,35 @@ describe("validate now", () => {
     await waitFor(() => expect(screen.getAllByText("Professional").length).toBeGreaterThan(0));
     expect(screen.queryByRole("button", { name: "Validate now" })).toBeNull();
   });
+
+describe("not validated yet", () => {
+  beforeEach(() => {
+    h.user = { role: "admin", permissions: ["view", "manage_system"] };
+    vi.spyOn(updateApi, "getUpdateStatus").mockResolvedValue({
+      current_version: "1.0.0", latest_version: "1.0.0", update_available: false, release_notes: "", updater_configured: true,
+    });
+  });
+
+  it("is a warning with Validate now as its one primary action", async () => {
+    vi.spyOn(licenceApi, "getLicenceManifest").mockResolvedValue({ ...MANIFEST, valid: null, status: "checking", tier: undefined });
+    const validate = vi.spyOn(licenceApi, "validateLicence").mockResolvedValue({ ...MANIFEST });
+    renderWithQuery(<AdminLicencePage />);
+    const warning = await screen.findByRole("alert");
+    expect(warning).toHaveTextContent("Not validated yet");
+    const button = screen.getByRole("button", { name: "Validate now" });
+    expect(warning).toContainElement(button);
+    expect(button).toHaveClass("m-btn-primary");
+    fireEvent.click(button);
+    await waitFor(() => expect(validate).toHaveBeenCalledTimes(1));
+  });
+
+  it("offers no Validate now to someone who cannot validate, and says to ask", async () => {
+    h.user = { role: "manager", permissions: ["view", "manage_systems"] };
+    vi.spyOn(licenceApi, "getLicenceManifest").mockResolvedValue({ ...MANIFEST, valid: null, status: "checking", tier: undefined });
+    renderWithQuery(<AdminLicencePage />);
+    expect(await screen.findByText(/Ask an administrator to validate it/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Validate now" })).toBeNull();
+  });
+});
+
 });

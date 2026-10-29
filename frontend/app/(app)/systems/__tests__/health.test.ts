@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { SystemVersion } from "@/lib/api/system-objects";
 import type { SyncProfile } from "@/types/api";
-import { dqsTrend, latestDqs, nextRun } from "../_health";
+import { dqsTrend, latestDqs, nextRun, rfcLibraryMissing } from "../_health";
 
 const version = (run_at: string, dqs: Record<string, number | null>, analysed = true): SystemVersion => ({
   id: run_at, run_at, label: null, status: "complete", objects: [], scope: {}, records: {},
@@ -27,5 +27,14 @@ describe("systems list helpers", () => {
     expect(nextRun([profile("2026-10-11T02:00:00+02:00"), profile("2026-10-10T23:00:00Z"),
                     profile("2026-10-10T01:00:00Z", false), profile(null)])).toBe("2026-10-10T23:00:00Z");
     expect(nextRun([profile(null)])).toBeNull();
+  });
+});
+
+describe("rfcLibraryMissing", () => {
+  it("is true only for a failing connection whose stored reason is the missing RFC library", () => {
+    expect(rfcLibraryMissing({ health_status: "unreachable", health_message: "pyrfc_not_installed: build the API image" })).toBe(true);
+    expect(rfcLibraryMissing({ health_status: "unreachable", health_message: "ping failed" })).toBe(false);
+    expect(rfcLibraryMissing({ health_status: "healthy", health_message: "pyrfc_not_installed" })).toBe(false);
+    expect(rfcLibraryMissing({ health_status: "unknown", health_message: null })).toBe(false);
   });
 });

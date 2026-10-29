@@ -103,4 +103,23 @@ describe("MiningPage patterns", () => {
     await waitFor(() => expect(mine).toHaveBeenCalledWith("v1"));
     query = "";
   });
+
+  it("keeps one primary: Open patterns in Do next, with Search now (not Open systems) as the secondary for no record links", async () => {
+    query = "run=v1";
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [{ id: "v1", label: "Run 1", status: "complete", run_at: "2026-10-01T00:00:00Z" }] } as never);
+    vi.spyOn(relationshipsApi, "getRelationships").mockResolvedValue({ relationships: [], total: 0 });
+    vi.spyOn(miningApi, "getMiningSummary").mockResolvedValue(summary);
+    vi.spyOn(miningApi, "getMiningPatterns").mockResolvedValue({ patterns: [] });
+    const mineRelationships = vi.spyOn(miningApi, "runMining").mockResolvedValue({ task_id: "t", version_id: "v1", include: ["relationship"] });
+    renderWithQuery(<MiningPage />);
+    const open = await screen.findByRole("button", { name: "Open patterns" });
+    expect(open).toHaveClass("m-btn-primary");
+    const mine = await screen.findByRole("button", { name: "Search now" });
+    expect(mine).toHaveClass("m-btn-secondary");
+    expect(screen.queryByRole("link", { name: "Open systems" })).toBeNull();
+    fireEvent.click(mine);
+    await waitFor(() => expect(mineRelationships).toHaveBeenCalledWith("v1", ["relationship"]));
+    query = "";
+  });
+
 });

@@ -7,7 +7,7 @@ import { expect, RECORDED, test } from "./fixtures";
  */
 test("object page without ?run= opens the object's own latest run", async ({ app }) => {
   await app.goto("/objects/material_master", { waitUntil: "load" });
-  await expect(app.getByTestId("run-scope")).toContainText("material_master", { timeout: 20_000 });
+  await expect(app.getByTestId("run-scope")).toContainText("Material master", { timeout: 20_000 });
   await expect(app.getByText(/could not reach the server/i)).toHaveCount(0);
   await expect(app.getByText(/is not in this run/i)).toHaveCount(0);
 });

@@ -226,7 +226,8 @@ describe("PersonaHomePage Brief geometry", () => {
     renderWithQuery(<LeadHomePage />);
     await screen.findByRole("link", { name: "MM-001" });
     expect(screen.queryByRole("link", { name: "Fix Material master" })).toBeNull();
-    expect(screen.getByRole("link", { name: "Open Material master" })).toHaveAttribute("href", "/objects/material_master?run=v1");
+    // the ledger's row opens the object at its run; the hero's step (the lowest score) opens it too
+    expect(screen.getAllByRole("link", { name: "Open Material master" }).map((l) => l.getAttribute("href"))).toContain("/objects/material_master?run=v1");
   });
 
   it("keeps Fix for an approver who cannot apply", async () => {
@@ -341,7 +342,7 @@ describe("PersonaHomePage blocking and loading states", () => {
     renderWithQuery(<LeadHomePage />);
 
     await screen.findAllByRole("link", { name: "MM-001" });
-    expect(screen.getByText(/3 critical failing rules cap the score at 60/)).toHaveTextContent(/and 1 more/);
+    expect(screen.getByTestId("home-cap-line")).toHaveTextContent("3 critical failing rules (MM-001, MM-002 and 1 more) cap the score at 60");
   });
 
   it("takes count and names from the cap reason, so the line always adds up, even before findings load", async () => {
@@ -353,8 +354,9 @@ describe("PersonaHomePage blocking and loading states", () => {
 
     renderWithQuery(<LeadHomePage />);
 
-    const line = await screen.findByText(/4 critical failing rules cap the score at 70/);
-    expect(line).toHaveTextContent("4 critical failing rules cap the score at 70: BP019, BP002 and 2 more");
+    const line = await screen.findByTestId("home-cap-line");
+    // The rules are named as rules, inside the count, so the objects they cap read as objects.
+    expect(line).toHaveTextContent("4 critical failing rules (BP019, BP002 and 2 more) cap the score at 70");
     // the cap line, and the objects table's blocking rule until the findings name a higher-impact one
     for (const link of screen.getAllByRole("link", { name: "BP019" })) {
       expect(link).toHaveAttribute("href", "/objects/material_master?run=v1&tab=records&check_id=BP019");
@@ -373,7 +375,7 @@ describe("PersonaHomePage blocking and loading states", () => {
 
     renderWithQuery(<LeadHomePage />);
 
-    expect(await screen.findByText(/2 critical failing rules cap 2 of 2 objects at 85/)).toHaveTextContent("2 critical failing rules cap 2 of 2 objects at 85: BP019 and 1 more");
+    expect(await screen.findByTestId("home-cap-line")).toHaveTextContent("2 critical failing rules (BP019 and 1 more) cap 2 of 2 objects at 85");
   });
 
   it("shows plain cap text while findings load", async () => {
@@ -401,13 +403,16 @@ describe("PersonaHomePage blocking and loading states", () => {
   it("sets the steward's work row and inbox items before the score, and the lead's after it", async () => {
     vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null, error: null, refetch: vi.fn() });
     vi.spyOn(stewardshipApi, "getQueueItems").mockResolvedValue({ items: [
-      { id: "q1", tenant_id: "t", item_type: "merge_decision", source_id: "s", domain: "material_master", priority: 1, due_at: null, assigned_to: null, status: "open", sla_hours: null, created_at: "2026-10-08T00:00:00Z", updated_at: "2026-10-08T00:00:00Z", ai_recommendation: null, ai_confidence: null },
+      { id: "q1", tenant_id: "t", item_type: "merge_decision", source_id: "s", domain: "material_master", priority: 1, due_at: "2026-10-01T00:00:00Z", assigned_to: null, status: "open", sla_hours: null, created_at: "2026-10-08T00:00:00Z", updated_at: "2026-10-08T00:00:00Z", ai_recommendation: null, ai_confidence: null },
     ], total: 1 } as unknown as Awaited<ReturnType<typeof stewardshipApi.getQueueItems>>);
 
     renderWithQuery(<StewardHomePage />);
 
     const items = await screen.findByTestId("home-inbox-items");
-    expect(items).toHaveTextContent("Merge decision, Material master");
+    expect(items).toHaveTextContent("Merge decision in Material master");
+    expect(items).not.toHaveTextContent("Unknown");
+    expect(items).toHaveTextContent(/\d+d overdue/);
+    expect(items).not.toHaveTextContent("due ");
     // Each item opens that task in the inbox, not every task of its type.
     expect(within(items).getByRole("link", { name: /Merge decision/ })).toHaveAttribute("href", "/inbox?focus=q1");
     const hero = screen.getByTestId("home-verdict-row");
@@ -563,7 +568,7 @@ describe("PersonaHomePage current state across objects", () => {
     expect(dqs).toHaveTextContent("2.0");
     const notReady = (screen.getByText("Objects below target")).closest("a");
     // below target is at risk or no-go: controlling (no-go) and material master (at risk)
-    expect(notReady).toHaveTextContent(/2\s*of 3/);
+    expect(notReady).toHaveTextContent(/2\s*1 no-go, 1 at risk/);
     expect(notReady).toHaveAttribute("href", "/objects?readiness=warn%2Cfail");
     // critical and high: controlling 2 + 1, material master 1, accounts payable 4
     const criticalHigh = (screen.getByText("Critical and high failing rules")).closest("a");
@@ -579,17 +584,20 @@ describe("PersonaHomePage current state across objects", () => {
       versions: RUNS.map((r) => (r.id === "mm1" ? upload("mm1", r.run_at, "material_master", 85, { critical_count: 1, capped: true, cap_reason: reason }) : r)),
     });
 
+    vi.spyOn(shellApi, "getShellCounts").mockResolvedValue({ fix: 150, inbox: 0 });
     renderWithQuery(<StewardHomePage />);
 
     await screen.findByTestId("run-scope");
     expect((screen.getByText("Worst object")).closest("a")).toHaveAttribute("href", "/objects/controlling?run=co2");
-    expect(screen.getByRole("link", { name: "Open worst object" })).toHaveAttribute("href", "/objects/controlling?run=co2");
-    // The verdict's next step is the home's one primary button; Run analysis is secondary.
-    expect(screen.getByRole("link", { name: "Open worst object" })).toHaveClass("m-btn-primary");
+    // The steward's step is Fix work; it is the home's one primary button, Run analysis is secondary.
+    expect(await screen.findByRole("link", { name: "Start fixing" })).toHaveAttribute("href", "/fix");
+    expect(screen.getByTestId("home-next")).toHaveTextContent("Next: 150 records need fixing.");
+    expect(screen.getByRole("link", { name: "Start fixing" })).toHaveClass("m-btn-primary");
+    expect(screen.queryByRole("link", { name: "Open worst object" })).toBeNull();
     expect(screen.getByRole("button", { name: "Run analysis" })).toHaveClass("m-btn-secondary");
     // the blocking rule of an object that is not in the newest run drills into that object's own run
     for (const link of screen.getAllByRole("link", { name: "MM045" })) expect(link).toHaveAttribute("href", "/objects/material_master?run=mm1&tab=records&check_id=MM045");
-    expect(screen.getByText(/1 critical failing rule caps 1 of 3 objects/)).toHaveTextContent("1 critical failing rule caps 1 of 3 objects: MM045");
+    expect(screen.getByTestId("home-cap-line")).toHaveTextContent("1 critical failing rule (MM045) caps 1 of 3 objects");
   });
 
   it("gives a data owner (approves, cannot apply) Open approvals as the steward home's next step", async () => {
@@ -599,6 +607,7 @@ describe("PersonaHomePage current state across objects", () => {
     expect(open).toHaveAttribute("href", "/inbox?kind=approvals");
     expect(open).toHaveClass("m-btn-primary");
     expect(screen.queryByRole("link", { name: "Open worst object" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Start fixing" })).toBeNull();
   });
 
   it("gives the auditor Open audit log, not the lead's objects below target", async () => {
@@ -608,10 +617,13 @@ describe("PersonaHomePage current state across objects", () => {
     expect(screen.queryByRole("link", { name: "Open objects below target" })).toBeNull();
   });
 
-  it("keeps Open objects below target for a viewer, who has no audit log", async () => {
+  it("gives a viewer, who has no audit log, the score's step: the lowest-scoring object", async () => {
     perms.can = (a) => a === "view";
     renderWithQuery(<LeadHomePage />);
-    expect(await screen.findByRole("link", { name: "Open objects below target" })).toBeInTheDocument();
+    const hero = await screen.findByTestId("home-verdict-row");
+    expect(await within(hero).findByRole("link", { name: "Open Controlling" })).toHaveAttribute("href", "/objects/controlling");
+    expect(screen.getByTestId("home-next")).toHaveTextContent("Next: Controlling comes first, the lowest score at 70.0.");
+    expect(screen.queryByRole("link", { name: "Open audit log" })).toBeNull();
   });
 
   it("asks the findings endpoints for the current state, not one run", async () => {
@@ -631,7 +643,7 @@ describe("PersonaHomePage current state across objects", () => {
       renderWithQuery(<LeadHomePage />);
 
       const scope = await screen.findByTestId("run-scope");
-      expect(scope).toHaveTextContent("controlling_1k, 16 Oct 2026");
+      expect(scope).toHaveTextContent("Controlling, 16 Oct, 05:17");
       expect(screen.queryByTestId("run-sources")).toBeNull();
       expect(screen.getByRole("link", { name: "Back to current state" })).toHaveAttribute("href", "/home/lead");
       expect(screen.getByTestId("home-verdict")).toHaveTextContent("1 of 1 object is not ready for go-live.");

@@ -17,7 +17,7 @@ import { getVersions } from "@/lib/api/versions";
 import { apiErrorMessage, apiErrorState } from "@/lib/error";
 import { MODULE_LABELS, formatModuleName, labelOf, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import { runName } from "@/lib/run-scope";
+import { runFileName, runName } from "@/lib/run-scope";
 import { formatSize, readHeaderSample } from "@/lib/upload-preview";
 import type { Version } from "@/types/api";
 import type { Job as TrackedJob } from "@/types/jobs";
@@ -174,8 +174,8 @@ export default function ImportPage() {
 
   const columns = useMemo<ColumnDef<Version>[]>(() => [
     {
-      id: "file", header: "File",
-      cell: ({ row }) => <Link href={`/runs/${row.original.id}`} className="underline">{row.original.metadata?.file_name ?? runName(row.original)}</Link>,
+      id: "file", header: "Run",
+      cell: ({ row }) => <span className="inline-flex flex-col"><Link href={`/runs/${row.original.id}`} className="underline">{runName(row.original)}</Link>{runFileName(row.original) ? <span className="m-text-meta m-ink-3">{runFileName(row.original)}</span> : null}</span>,
     },
     { id: "modules", header: "Objects", cell: ({ row }) => (row.original.metadata?.modules ?? []).map(formatModuleName).join(", ") },
     { id: "rows", header: "Records", cell: ({ row }) => (row.original.metadata?.row_count != null ? <DrillLink href={`/runs/${row.original.id}`}>{row.original.metadata.row_count.toLocaleString()}</DrillLink> : "") },

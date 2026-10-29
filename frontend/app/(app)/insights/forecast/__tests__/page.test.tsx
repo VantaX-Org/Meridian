@@ -75,13 +75,17 @@ describe("ForecastPage", () => {
     renderWithQuery(<ForecastPage />);
     await waitFor(() => expect(analyticsApi.getPredictiveAnalytics).toHaveBeenCalled());
     expect(await screen.findByText("Not enough runs to forecast")).toBeInTheDocument();
-    expect(screen.getByText("A forecast needs runs on three different days.")).toBeInTheDocument();
+    expect(screen.getByText("A forecast needs runs on three different days. It can start after another run on a new day.")).toBeInTheDocument();
+    // Opening runs cannot add a day; with no system known the way on is the systems list, and nothing is exportable.
+    expect(screen.getByRole("link", { name: "Open systems" })).toHaveAttribute("href", "/systems");
+    expect(screen.queryByRole("link", { name: "Open runs" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /export/i })).toBeNull();
   });
 
   it("explains the empty forecast from the API's reason, runs_seen and days_seen, under the shared action bar", async () => {
     vi.spyOn(analyticsApi, "getPredictiveAnalytics").mockResolvedValue({ forecasts: [], early_warnings: [], reason: "needs_three_days", runs_seen: 6, days_seen: 1 });
     renderWithQuery(<ForecastPage />);
-    expect(await screen.findByText("A forecast needs runs on three different days; these 6 runs cover 1 day.")).toBeInTheDocument();
+    expect(await screen.findByText("A forecast needs runs on three different days; these 6 runs cover 1 day. It can start after runs on 2 more new days.")).toBeInTheDocument();
     // The forecast reads every object's history, not one run: the header says what the API saw and names no run.
     expect(await screen.findByText("Every object, from 6 runs on 1 day")).toBeInTheDocument();
     expect(screen.queryByTestId("run-scope")).toBeNull();
@@ -89,10 +93,11 @@ describe("ForecastPage", () => {
   });
 
   it("forecastEmptyDetail covers no runs, too few days and the unknown case", () => {
-    expect(forecastEmptyDetail({ reason: "needs_three_days", runs_seen: 1, days_seen: 1 })).toBe("A forecast needs runs on three different days; this 1 run covers 1 day.".replace("this 1 run covers", "these 1 run cover"));
-    expect(forecastEmptyDetail({ reason: null, runs_seen: 0, days_seen: 0 })).toBe("A forecast needs runs on three different days; these 0 runs cover 0 days.");
+    expect(forecastEmptyDetail({ reason: "needs_three_days", runs_seen: 1, days_seen: 1 })).toBe("A forecast needs runs on three different days; these 1 run cover 1 day. It can start after runs on 2 more new days.");
+    expect(forecastEmptyDetail({ reason: "needs_three_days", runs_seen: 4, days_seen: 2 })).toBe("A forecast needs runs on three different days; these 4 runs cover 2 days. It can start after another run on a new day.");
+    expect(forecastEmptyDetail({ reason: null, runs_seen: 0, days_seen: 0 })).toBe("A forecast needs runs on three different days; these 0 runs cover 0 days. It can start after runs on 3 more new days.");
     expect(forecastEmptyDetail({ reason: "other", runs_seen: 0 })).toBe("A forecast needs finished runs, and none exists yet.");
-    expect(forecastEmptyDetail(undefined)).toBe("A forecast needs runs on three different days.");
+    expect(forecastEmptyDetail(undefined)).toBe("A forecast needs runs on three different days. It can start after another run on a new day.");
   });
 
   it("shows the API error message and retries on click", async () => {

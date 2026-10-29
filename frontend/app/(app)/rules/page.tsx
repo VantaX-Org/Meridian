@@ -21,6 +21,7 @@ import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
+import { RequestAccessButton } from "@/components/request-access-button";
 import { DrillLink, Button, Card, ConfirmDialog, DataTable, DomainChip, Drawer, EmptyState, ErrorState, Field, Input, Mono, Notice, PageHeader, Pill, RowActionButton, Score, Select, Skeleton, Stat, Tabs, Textarea, Status, buildDrillHref, toast, type CellMeta, PageFrame } from "@/design";
 import { actionColumn, LedgerHead, RowLink } from "@/components/mdm/ledger";
 import { useRole } from "@/hooks/use-role";
@@ -36,7 +37,7 @@ import { MM_VIEWS } from "@/lib/material-views";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { FeedbackPanel, SuppressionsPanel } from "./rule-panels";
-import { ConditionList, FilterChips, Rows, ThresholdTable, type FilterChip } from "./rule-ui";
+import { ConditionList, FilterChips, Rows, ThresholdTable, hasThresholds, type FilterChip } from "./rule-ui";
 
 const CATEGORY_LABEL: Record<string, string> = { ecc: "ECC", successfactors: "SuccessFactors", warehouse: "Warehouse" };
 const SOURCE_LABEL: Record<string, string> = { yaml: "built-in", hq: "HQ", mined: "mined", custom: "custom" };
@@ -355,7 +356,7 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
 
   return (
     <div className="flex flex-col gap-4 py-4">
-      {!canManage ? <Notice tone="info">Enabling, disabling or writing a rule needs the manage-rules permission. The library is read-only for you.</Notice> : null}
+      {!canManage ? <Notice tone="info" action={<RequestAccessButton resource="rules" action="edit" />}>Enabling, disabling or writing a rule needs the manage-rules permission. The library is read-only for you.</Notice> : null}
       <div className="m-stat-grid">
         {/* A failed read has no counts: "—", never zeros above the error. */}
         <Stat label="Failing" value={rulesQ.isError ? "—" : failingCount.toLocaleString()} href={rulesQ.isError ? undefined : "/rules?state=failing"} tone={!rulesQ.isError && failingCount ? "at-risk" : undefined} hint="Library rules whose last run failed; Objects also counts generated checks, once per object" loading={rulesQ.isLoading} />
@@ -444,10 +445,10 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
                   ["Last run", selected.last_pass_rate != null ? `${pct(selected.last_pass_rate)} pass${selected.last_run_at ? `, ${formatDate(selected.last_run_at, "datetime")}` : ""}` : "Not run yet"],
                 ]} />
                 {selected.tags?.length ? <div className="flex flex-wrap gap-1">{selected.tags.map((t) => <Pill key={t} tone="neutral">{t}</Pill>)}</div> : null}
-                {conditionList(selected).length ? <ConditionList conditions={conditionList(selected)} /> : null}
+                {conditionList(selected).length ? <ConditionList conditions={conditionList(selected)} message={selected.description} /> : null}
               </div>
             </Card>
-            {selected.thresholds ? <Card title="Thresholds" padding="sm"><ThresholdTable thresholds={selected.thresholds} /></Card> : null}
+            {selected.thresholds && hasThresholds(selected.thresholds) ? <Card title="Thresholds" padding="sm"><ThresholdTable thresholds={selected.thresholds} /></Card> : null}
           </div>
         ) : null}
       </Drawer>

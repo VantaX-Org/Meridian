@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, Card, DataTable, EmptyState, ErrorState, Pill, Skeleton, Status } from "@/design";
-import { HEALTH_LABEL, HEALTH_VERDICT, healthReason, nextRun } from "@/app/(app)/systems/_health";
+import { HEALTH_LABEL, HEALTH_VERDICT, RFC_FIX_HREF, RFC_MISSING_REASON, healthReason, nextRun, rfcLibraryMissing } from "@/app/(app)/systems/_health";
 import { HealthPill } from "@/app/(app)/systems/_health-pill";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
@@ -20,6 +20,7 @@ import { getSystems } from "@/lib/api/connectivity";
 import { getSyncProfiles } from "@/lib/api/systems";
 import { isListFailure } from "@/lib/error";
 import { formatDate, formatDuration, labelOf, relativeTime } from "@/lib/format";
+import { jobName } from "@/lib/run-scope";
 import { explainJobError } from "@/lib/job-error";
 import { queryKeys } from "@/lib/query-keys";
 import type { SAPSystemExtended } from "@/types/api";
@@ -112,7 +113,7 @@ const jobDuration = (j: Job) => {
 const jobColumns = (systemName: ReadonlyMap<string, string>): ColumnDef<Job>[] => [
   { id: "status", header: "Status", cell: ({ row: { original: j } }) => <Status kind="lifecycle" value={j.status} /> },
   // One line per job: a long name truncates, the whole name in its title.
-  { accessorKey: "label", header: "Job", cell: ({ row: { original: j } }) => <span className="block max-w-[28ch] truncate" title={j.label}>{j.label}</span> },
+  { accessorKey: "label", header: "Job", cell: ({ row: { original: j } }) => <span className="block max-w-[28ch] truncate" title={j.label}>{jobName(j.label)}</span> },
   { id: "system", header: "System", cell: ({ row: { original: j } }) => (j.system_id ? systemName.get(j.system_id) ?? "—" : "—") },
   { id: "kind", header: "Kind", cell: ({ row: { original: j } }) => labelOf(j.kind) },
   {
@@ -130,10 +131,27 @@ const healthHref = (r: SystemRow) => `/systems/${r.system.id}?tab=health`;
  * Basis starts an extraction from home in two clicks instead of finding the system on the Systems list.
  */
 export function extractHref(systems: readonly SAPSystemExtended[]): string {
-  const stalest = systems
-    .filter((s) => s.is_active)
-    .sort((a, b) => (a.last_sync_at ?? "").localeCompare(b.last_sync_at ?? ""))[0];
+  const stalest = stalestSystem(systems);
   return stalest ? `/systems/${stalest.id}?extract=1` : "/systems";
+}
+
+const stalestSystem = (systems: readonly SAPSystemExtended[]): SAPSystemExtended | undefined =>
+  [...systems].filter((s) => s.is_active).sort((a, b) => (a.last_sync_at ?? "").localeCompare(b.last_sync_at ?? ""))[0];
+
+/** "Run extraction", with the install step beside it when the system it would read reports no RFC library. */
+function RunExtraction({ systems }: { systems: readonly SAPSystemExtended[] }) {
+  const target = stalestSystem(systems);
+  if (target && rfcLibraryMissing(target)) {
+    // Health may predate an install, so extraction stays possible; the fix sits beside it.
+    return (
+      <span className="inline-flex flex-wrap items-center justify-center gap-2">
+        <span className="m-text-meta m-ink-3">{RFC_MISSING_REASON}.</span>
+        <Link href={RFC_FIX_HREF} className="m-text-meta underline m-ink-accent">How to install it</Link>
+        {link(extractHref(systems), "Run extraction")}
+      </span>
+    );
+  }
+  return link(extractHref(systems), "Run extraction");
 }
 
 export function LiveSection() {
@@ -172,7 +190,7 @@ export function LiveSection() {
           <DataTable columns={jobColumns(systemName)} data={shownJobs} getRowId={(j) => j.id} height="auto" hideToolbar tableId="home-jobs" />
         ) : null}
         {active.length === 0 ? (
-          <EmptyState variant="inline" title="Nothing is running" action={can("trigger_sync") ? link(extractHref(systems), "Run extraction") : undefined} />
+          <EmptyState variant="inline" title="Nothing is running" action={can("trigger_sync") ? <RunExtraction systems={systems} /> : undefined} />
         ) : null}
       </Card>
     </div>

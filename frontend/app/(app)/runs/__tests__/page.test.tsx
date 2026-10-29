@@ -11,7 +11,7 @@ import * as retentionApi from "@/lib/api/retention";
 import * as uploadApi from "@/lib/api/upload";
 import * as versionsApi from "@/lib/api/versions";
 import type { DimensionScores, SAPSystemExtended, Version } from "@/types/api";
-import RunsPage from "../page";
+import RunsPage, { uniformColumns } from "../page";
 
 const push = vi.fn();
 const searchParams = new URLSearchParams();
@@ -77,8 +77,8 @@ describe("RunsPage", () => {
       vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer] });
       vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
       renderWithQuery(<RunsPage />);
-      await waitFor(() => expect(screen.getByText("Trend appears after two runs")).toBeInTheDocument());
-      expect(within(screen.getByTestId("runs-chart-slot")).getByText("Trend appears after two runs")).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByText("Trend appears after two runs of this object")).toBeInTheDocument());
+      expect(within(screen.getByTestId("runs-chart-slot")).getByText("Trend appears after two runs of this object")).toBeInTheDocument();
     });
 
     it("holds the chart with two runs", async () => {
@@ -87,7 +87,7 @@ describe("RunsPage", () => {
       renderWithQuery(<RunsPage />);
       await waitFor(() => expect(screen.getByText("Score per run, ECC Prod")).toBeInTheDocument());
       expect(within(screen.getByTestId("runs-chart-slot")).getByText("Score per run, ECC Prod")).toBeInTheDocument();
-      expect(screen.queryByText("Trend appears after two runs")).toBeNull();
+      expect(screen.queryByText("Trend appears after two runs of this object")).toBeNull();
     });
   });
 
@@ -115,10 +115,10 @@ describe("RunsPage", () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer] });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
     renderWithQuery(<RunsPage />);
-    expect(await screen.findByText("Latest DQS, ECC Prod")).toBeInTheDocument();
+    expect(await screen.findByText("Latest run's score, ECC Prod")).toBeInTheDocument();
     expect(screen.queryByRole("navigation", { name: "Operate views" })).toBeNull();
     // One run: the score tile names its system, its run and day, and what the number is a mean of.
-    expect(await screen.findByText("Latest DQS, ECC Prod")).toBeInTheDocument();
+    expect(await screen.findByText("Latest run's score, ECC Prod")).toBeInTheDocument();
     expect(await screen.findByText("Oct 8 upload, 8 Oct 2026, mean of 1 object")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Run analysis" }));
     expect(await screen.findByRole("dialog", { name: "Run analysis" })).toBeInTheDocument();
@@ -134,7 +134,7 @@ describe("RunsPage", () => {
     expect(links.length).toBeGreaterThan(1); // stat tile and table cell
     for (const link of links) expect(link).toHaveAttribute("href", "/runs/v2");
     expect(screen.getByText("Score per run, ECC Prod")).toBeInTheDocument();
-    expect(screen.getByText("Latest DQS, ECC Prod")).toBeInTheDocument();
+    expect(screen.getByText("Latest run's score, ECC Prod")).toBeInTheDocument();
     expect(screen.getByText("Oct 8 upload, 8 Oct 2026, vs previous run")).toBeInTheDocument();
   });
 
@@ -143,8 +143,8 @@ describe("RunsPage", () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [{ ...newer, metadata: meta }, { ...older, metadata: meta }] });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
     renderWithQuery(<RunsPage />);
-    expect(await screen.findByText("Score per run, uploads")).toBeInTheDocument();
-    expect(screen.getByText("Latest DQS, uploads")).toBeInTheDocument();
+    expect(await screen.findByText("Score per run, Material master")).toBeInTheDocument();
+    expect(screen.getByText("Latest run's score, Material master")).toBeInTheDocument();
     expect(screen.queryByText(/latest system/)).toBeNull();
   });
 
@@ -163,13 +163,14 @@ describe("RunsPage", () => {
     expect(screen.getByRole("link", { name: "Open Oct 8 upload" })).toHaveAttribute("href", "/runs/v2");
   });
 
-  it("breaks a run name only after an underscore, never mid-word, and keeps it on one line on a wide screen", async () => {
+  it("names a run by its object and time, never by its file name, and keeps it on one line on a wide screen", async () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [version({ id: "v9", label: "sd_customer_master_1k", dqs_summary: { sd_customer_master: dqs(70) } })] });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
     renderWithQuery(<RunsPage />);
     const name = await screen.findByTestId("run-name");
-    expect(name).toHaveTextContent(/^sd_customer_master_1k$/);
-    expect(name.querySelectorAll("wbr")).toHaveLength(3);
+    expect(name.textContent).not.toMatch(/_/);
+    expect(name).toHaveTextContent(/, \d{1,2} Oct/);
+    expect(name.querySelectorAll("wbr")).toHaveLength(0);
     for (const w of name.querySelectorAll("wbr")) expect(w.previousSibling?.textContent).toMatch(/_$/);
     expect(name).toHaveClass("[overflow-wrap:normal]", "[word-break:normal]", "xl:whitespace-nowrap");
     expect(name).not.toHaveClass("break-all");
@@ -463,5 +464,30 @@ describe("RunsPage delete permanently", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(del).not.toHaveBeenCalled();
     searchParams.delete("archived");
+  });
+});
+
+describe("RunsPage, columns that repeat", () => {
+  const sysOf = () => "Upload";
+  const up = (id: string, status: Version["status"]) => version({ id, status, metadata: { modules: ["m"], file_name: "f.csv", row_count: 1 } });
+
+  it("hides Status when every run is done and Started by when it repeats System", () => {
+    expect([...uniformColumns([up("a", "complete"), up("b", "complete")], sysOf)].sort()).toEqual(["started_by", "status"]);
+  });
+
+  it("keeps Status when a run failed or is running, and Started by when a person or schedule started a run", () => {
+    expect(uniformColumns([up("a", "complete"), up("b", "failed")], sysOf).has("status")).toBe(false);
+    const scheduled = version({ id: "c", metadata: { modules: ["m"], system_id: "sys-1", trigger: "scheduled" } as Version["metadata"] });
+    expect(uniformColumns([up("a", "complete"), scheduled], sysOf).has("started_by")).toBe(false);
+  });
+
+  it("charts one lineage only: runs of another object are not joined into the line", async () => {
+    const other = version({ id: "v9", label: "Other", run_at: "2026-10-05T00:00:00Z", dqs_summary: { fi_gl: dqs(50) }, metadata: { modules: ["fi_gl"], file_name: "o.csv", row_count: 1 } });
+    const own = (id: string, day: string, score: number) => version({ id, label: `mm ${day}`, run_at: `2026-10-${day}T00:00:00Z`, dqs_summary: { material_master: dqs(score) }, metadata: { modules: ["material_master"], file_name: "m.csv", row_count: 1 } });
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [own("v3", "08", 74), other, own("v1", "01", 71)] });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    renderWithQuery(<RunsPage />);
+    expect(await screen.findByText("Score per run, Material master")).toBeInTheDocument();
+    expect(screen.getByText("Latest run's score, Material master")).toBeInTheDocument();
   });
 });

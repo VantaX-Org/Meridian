@@ -59,7 +59,7 @@ describe("ProposalsPage", () => {
     await screen.findByText("100001");
     expect(getCleaningQueue).toHaveBeenCalledWith(expect.objectContaining({ version_id: "R1", kind: "MARA.MEINS" }));
     expect(await screen.findByRole("heading", { name: "Fix MARA.MEINS" })).toBeInTheDocument();
-    expect(await screen.findByText(/found by material_master_25k/)).toBeInTheDocument();
+    expect(await screen.findByText(/found by Material master, 16 Oct, 05:17/)).toBeInTheDocument();
   });
 
   it("lists only the waiting proposals, says Waiting, and offers no decision on one already decided", async () => {
@@ -122,7 +122,7 @@ describe("ProposalsPage", () => {
     renderWithQuery(<ProposalsPage />);
 
     await userEvent.click(await screen.findByRole("button", { name: "Draft fix batch from 12 approved" }));
-    await waitFor(() => expect(createBatchFromCleaning).toHaveBeenCalledWith("Fix MARA.MEINS from material_master_25k", { version_id: "R1", kind: "MARA.MEINS" }));
+    await waitFor(() => expect(createBatchFromCleaning).toHaveBeenCalledWith("Fix MARA.MEINS from Material master, 16 Oct, 05:17", { version_id: "R1", kind: "MARA.MEINS" }));
   });
 
   it("cannot draft a batch before anything is approved", async () => {
@@ -235,4 +235,41 @@ describe("ProposalsPage paging and missing runs", () => {
       for (const b of screen.getAllByRole("button", { name: /^(approve|reject)$/i })) expect(b).toBeDisabled();
     });
   });
+
+  it("leads with Review N waiting while proposals wait, and drafts the batch as a secondary", async () => {
+    queue([item({})], 1);
+    renderWithQuery(<ProposalsPage />);
+    const review = await screen.findByRole("link", { name: "Review 1,200 waiting" });
+    expect(review).toHaveClass("m-btn-primary");
+    expect(review).toHaveAttribute("href", "#waiting-proposals");
+    expect(screen.getByRole("button", { name: "Draft fix batch from 1 approved" })).toHaveClass("m-btn-secondary");
+  });
+
+  it("makes the fix batch the primary once nothing waits", async () => {
+    vi.mocked(getCleaningGroups).mockResolvedValue({ groups: [], records: 0, confident: 0, runs: 1 });
+    queue([], 3);
+    renderWithQuery(<ProposalsPage />);
+    const draft = await screen.findByRole("button", { name: "Draft fix batch from 3 approved" });
+    expect(draft).toHaveClass("m-btn-primary");
+    expect(screen.queryByRole("link", { name: /^Review .* waiting$/ })).toBeNull();
+  });
+
+  it("shows the current value beside the proposed one", async () => {
+    queue([item({ record_data_before: { MEINS: "ST" }, record_data_after: { MEINS: "PC" } })]);
+    renderWithQuery(<ProposalsPage />);
+    await screen.findByText("100001");
+    expect(screen.getByRole("columnheader", { name: "Current value" })).toBeInTheDocument();
+    expect(screen.getByText("ST")).toBeInTheDocument();
+    expect(screen.getByText("PC")).toBeInTheDocument();
+  });
+
+  it("draws the step the page is on as the current one", async () => {
+    queue([item({})]);
+    renderWithQuery(<ProposalsPage />);
+    const steps = await screen.findByRole("list", { name: "Fix steps" });
+    const current = steps.querySelector("li[data-current='true']");
+    expect(current).toHaveTextContent("1Proposal");
+    expect(steps.querySelectorAll("li[data-current]")).toHaveLength(1);
+  });
+
 });

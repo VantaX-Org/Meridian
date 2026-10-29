@@ -332,6 +332,12 @@ describe("system detail page", () => {
     expect(within(bench).getAllByText("7 records").length).toBeGreaterThan(0);
     const chart = screen.getByText("Objects by records").closest("section, div[class]")!.parentElement as HTMLElement;
     expect(within(chart).queryByText("No rows loaded yet")).toBeNull();
+    // One object is one bar, which compares nothing: the figure is written as a sentence instead.
+    expect(within(chart).getByTestId("objects-by-records-value")).toHaveTextContent("Accounts payable holds 7 records.");
+    expect(within(chart).queryByRole("img")).toBeNull();
+    // One analysed run is not a trend either.
+    expect(screen.getByTestId("score-per-run-value")).toHaveTextContent("Mean score 70 in the latest run.");
+    expect(screen.queryByRole("img", { name: /Score per run/ })).toBeNull();
   });
 
   it("offers Extract from the empty summary of an object with no records", async () => {
@@ -481,4 +487,30 @@ describe("system detail page", () => {
       expect(versions.mock.calls.length).toBe(settled);
     });
   });
+
+  it("names the RFC install step as the primary and keeps Extract as a secondary while the library is reported missing", async () => {
+    mockHappyPath();
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([{ ...SYSTEM, health_status: "unreachable", health_message: "pyrfc_not_installed: build the API image", last_health_check: "2026-01-01T00:00:00Z" } as SAPSystemExtended]);
+    renderWithQuery(<SystemPage />);
+    const install = await screen.findByRole("link", { name: "Install the RFC library" });
+    expect(install).toHaveAttribute("href", "/docs?page=data-in");
+    expect(install).toHaveClass("m-btn-primary");
+    expect(screen.getByText("scripts/build-rfc-overlay.sh")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Read the steps" })).toHaveAttribute("href", "/docs?page=data-in");
+    expect(screen.getByRole("button", { name: "Test connection" })).toHaveClass("m-btn-secondary");
+    // Health can predate an install, so Extract stays available, behind the install step.
+    const extract = screen.getAllByRole("button", { name: "Extract" })[0];
+    expect(extract).toBeEnabled();
+    expect(extract).toHaveClass("m-btn-secondary");
+  });
+
+  it("shows no RFC step for another connection failure", async () => {
+    mockHappyPath();
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([{ ...SYSTEM, health_status: "unreachable", health_message: "ping failed" } as SAPSystemExtended]);
+    renderWithQuery(<SystemPage />);
+    await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
+    expect(screen.queryByRole("link", { name: "Install the RFC library" })).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Extract" })[0]).toBeEnabled();
+  });
+
 });

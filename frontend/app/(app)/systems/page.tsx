@@ -26,6 +26,7 @@ import { COUNT_DEFS } from "@/lib/counts";
 /** Worst first, so the ledger leads with what needs a hand. */
 const HEALTH_RANK: Record<HealthStatus, number> = { unreachable: 0, auth_failed: 0, degraded: 1, unknown: 2, healthy: 3 };
 const isDown = (h: HealthStatus) => h === "unreachable" || h === "auth_failed";
+const isUnhealthy = (h: HealthStatus) => h === "degraded" || isDown(h);
 
 /** A configuration load as the lifecycle vocabulary; the states outside it (not loaded, not available) render neutral by name. */
 const CONFIG_LIFECYCLE: Record<SystemConfigState, string> = {
@@ -118,7 +119,6 @@ export default function SystemsPage() {
   const [configFilter, setConfigFilter] = useUrlState("config", "");
   const [rawHealth, setHealthFilter] = useUrlState("health", "");
   const healthFilter = rawHealth === "unhealthy" || rawHealth === "down" || Object.hasOwn(HEALTH_LABEL, rawHealth) ? rawHealth : "";
-  const isUnhealthy = (h: HealthStatus) => h === "degraded" || h === "unreachable" || h === "auth_failed";
   const matchesHealth = (h: HealthStatus) =>
     !healthFilter || (healthFilter === "unhealthy" ? isUnhealthy(h) : healthFilter === "down" ? isDown(h) : h === healthFilter);
   /** The score, or null when nothing has been loaded: never extracted, no object with rows, or a run that read none. */
@@ -223,7 +223,10 @@ export default function SystemsPage() {
       enableSorting: false,
       size: 72,
       meta: { sticky: "end" },
-      cell: ({ row }) => <RowAction href={`/systems/${row.original.id}`} label={`Open ${row.original.name}`} />,
+      cell: ({ row }) => isUnhealthy(row.original.health_status)
+        // A connection that is not working: the row's step is to fix it, on the Health tab where the reason and the test are.
+        ? <RowAction href={`/systems/${row.original.id}?tab=health`} label={`Fix connection to ${row.original.name}`}>Fix connection</RowAction>
+        : <RowAction href={`/systems/${row.original.id}`} label={`Open ${row.original.name}`} />,
     },
   ];
 
@@ -240,6 +243,8 @@ export default function SystemsPage() {
   const down = count(isDown);
   const untested = count((h) => h === "unknown");
   const attention = systems.length - healthy;
+  /** The first unreachable system by name: where the header's "Fix connection" goes. */
+  const firstDown = [...systems].filter((s) => isDown(s.health_status)).sort((a, b) => a.name.localeCompare(b.name))[0];
   const filtering = Boolean(configFilter || healthFilter);
   const canConnect = usePermissions().has("systems", "create");
   // `/systems?connect=1` (the day-one step, the home empty state) lands with the connect dialog open.
@@ -259,7 +264,9 @@ export default function SystemsPage() {
             <>
               <ExportMenu options={systems.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} />
               {systems.length > 0 ? <RunAnalysis variant="secondary" /> : null}
-              {canConnect ? <Button onClick={() => openConnect(true)}>Connect system</Button> : null}
+              {/* A system that cannot be reached makes fixing it the next step; connecting another is then secondary. */}
+              {firstDown ? <Button render={<Link href={`/systems/${firstDown.id}?tab=health`}>Fix connection</Link>} /> : null}
+              {canConnect ? <Button variant={firstDown ? "secondary" : "primary"} onClick={() => openConnect(true)}>Connect system</Button> : null}
             </>
           }
           meta={`${isLoading ? "" : `${systems.length} ${systems.length === 1 ? "system" : "systems"}${attention ? `, ${attention} ${attention === 1 ? "needs" : "need"} attention` : ""}. `}The SAP systems Meridian reads from, worst first. Open one to test it, load its configuration or pull data`}
@@ -286,7 +293,7 @@ export default function SystemsPage() {
         ) : undefined
       }
       table={
-        <DataTable
+        <DataTable hideExport
           columns={columns}
           data={shown}
           getRowId={(r) => r.id}

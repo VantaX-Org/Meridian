@@ -56,6 +56,8 @@ export interface AuditSummaryRow {
 
 export async function getAuditSummary(): Promise<{
   summary: AuditSummaryRow[];
+  /** Every event recorded in the window, exact even when `summary` is capped. */
+  total?: number;
 }> {
   const { data } = await apiClient.get("/api/v1/audit/summary");
   return data;

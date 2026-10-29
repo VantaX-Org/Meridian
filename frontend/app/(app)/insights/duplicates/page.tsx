@@ -50,7 +50,7 @@ export default function DuplicatesPage() {
   const pairsNow = minedNow.data?.length ?? 0;
   const pairsBefore = minedBefore.data?.length ?? 0;
   const changed = isCurrent
-    ? minedNow.isLoading ? <Skeleton height={16} /> : `${plural(pairsNow, "likely duplicate pair")} mined across ${plural(state.objects.length, "object")}, each from its own latest run`
+    ? minedNow.isLoading ? <Skeleton height={16} /> : `${plural(pairsNow, "likely duplicate pair")} found across ${plural(state.objects.length, "object")}, each from its own latest run`
     : !run || !current
     ? "First run of this system"
     : !previous
@@ -60,8 +60,8 @@ export default function DuplicatesPage() {
         : !minedNow.data || !minedBefore.data
           ? "The previous run could not be read"
           : pairsNow === pairsBefore
-            ? `${plural(pairsNow, "duplicate pair")} mined, as in the previous run`
-            : `${Math.abs(pairsNow - pairsBefore).toLocaleString()} ${pairsNow > pairsBefore ? "more" : "fewer"} duplicate pairs mined than in the previous run`;
+            ? `${plural(pairsNow, "duplicate pair")} found, as in the previous run`
+            : `${Math.abs(pairsNow - pairsBefore).toLocaleString()} ${pairsNow > pairsBefore ? "more" : "fewer"} duplicate pairs found than in the previous run`;
   // The page is one flow (cluster, likely duplicates, anomalies, relationships); an old `?tab=` link scrolls to its part.
   const tab = search.get("tab");
   useEffect(() => {
@@ -205,8 +205,8 @@ export default function DuplicatesPage() {
         <EmptyState title="No finished run yet" detail="Duplicates are found in the records of a finished run." ghost="grid" action={<Button render={<Link href="/runs">Open runs</Link>}/>} />
       ) : nothing ? (
         <EmptyState
-          title={isCurrent ? "Nothing mined yet" : "Nothing mined in this run yet"}
-          detail="Look up a record above to see its duplicates. Likely duplicate pairs, anomalies and field relationships show here once a run is mined; to decide on scored pairs instead, open Match review."
+          title={isCurrent ? "Nothing found yet" : "Nothing found in this run yet"}
+          detail="Look up a record above to see its duplicates. Likely duplicate pairs, anomalies and field relationships show here once a run is searched; to decide on scored pairs instead, open Match review."
           ghost="grid"
           action={<Button variant="secondary" render={<Link href="/mdm/golden/merge">Open match review</Link>} />}
         />
@@ -238,7 +238,7 @@ export default function DuplicatesPage() {
       {noRun ? null : (
         <section id="duplicates-scored" aria-label="Scored pairs" className="flex flex-col gap-2">
           <h2 className="m-text-h font-semibold m-ink">Scored pairs</h2>
-          <p className="m-text-meta m-ink-3">The matcher&apos;s pending candidate pairs for one object. Review opens the pair in Match review.</p>
+          <p className="m-text-meta m-ink-3">Pending candidate pairs for one object. Review opens the pair in Match review.</p>
           <ScoredPairs objects={objectOptions} />
         </section>
       )}
@@ -246,7 +246,7 @@ export default function DuplicatesPage() {
         <>
         <section id="duplicates-pairs" aria-label="Likely duplicates" className="flex flex-col gap-2">
           <h2 className="m-text-h font-semibold m-ink">Likely duplicates</h2>
-          <p className="m-text-meta m-ink-3">{isCurrent ? "Pairs the miner found in each object's latest run." : "Pairs the miner found in this run."} Review takes a pair to Match review, where every merge is decided.</p>
+          <p className="m-text-meta m-ink-3">{isCurrent ? "Pairs found in each object's latest run." : "Pairs found in this run."} Review takes a pair to Match review, where every merge is decided.</p>
           <MinedDuplicates q={feeds.duplicates} scope={{ run, current: isCurrent }} />
         </section>
         <section id="duplicates-anomalies" aria-label="Anomalies" className="flex flex-col gap-2">

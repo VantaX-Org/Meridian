@@ -14,6 +14,8 @@
  *    step counted rule failures and called them failing records; it now counts distinct failing records per object
  *    (`dqs_summary.clean_records.failing_records` where every rule is attributed to the object's records, else the
  *    object's rule failures, an upper bound).
+ *  - GET /exceptions/billing (api/routes/exceptions.py `BILLING_CURRENCY`). The recording predates the `currency` field,
+ *    so its amounts printed without one; the API now names the currency (a ZAR price list) on every answer.
  *
  * `by_dimension[].findings` keeps the recorded counts: the recording holds no per-dimension split of failing rules
  * and no page reads that field.
@@ -106,6 +108,11 @@ export function correctRecording(har: Har): void {
     if (body.cost_at_risk != null) body.cost_at_risk = Math.round(modules.reduce((a, m) => a + (m.cost_at_risk ?? 0), 0) * 100) / 100;
     if (!version) body.version_ids = body.version_ids.filter((id) => modules.some((m) => runOf(m.module) === id));
     write(e, body);
+  }
+
+  for (const e of entries.filter((x) => isGet(x, "/exceptions/billing"))) {
+    const body = read(e) as Record<string, unknown> | undefined;
+    if (body && body.currency === undefined) write(e, { ...body, currency: "ZAR" });
   }
 
   if (cleansingEntry && cleansing) {

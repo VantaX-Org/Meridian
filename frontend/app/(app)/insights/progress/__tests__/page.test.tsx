@@ -130,7 +130,7 @@ describe("ProgressPage", () => {
     expect(await screen.findByText("How fast the data is getting fixed, and what is slowing it down.")).toBeInTheDocument();
     expect(screen.getAllByText("Progress").length).toBeGreaterThan(0);
     expect(await screen.findByText("Records to fix")).toBeInTheDocument();
-    expect(screen.getByText("Fixed this week")).toBeInTheDocument();
+    expect(screen.getByText("Rule failures fixed this week")).toBeInTheDocument();
     expect(screen.getByText("Median time to fix")).toBeInTheDocument();
     expect(screen.getByText("Projected finish")).toBeInTheDocument();
     expect(screen.getAllByText("5 Nov 2026").length).toBeGreaterThan(0);
@@ -155,7 +155,7 @@ describe("ProgressPage", () => {
     expect(screen.getByText(/Plant: 2 failing records across 2 values/)).toBeInTheDocument();
     expect(screen.getByText("Rule suggestion")).toBeInTheDocument();
     const change = screen.getByText("Change since the previous run").closest("section, div") as HTMLElement;
-    expect(within(change.parentElement ?? change).getByText(/Compared with material_master_1k: 2 fixed, 1 new, 1 still failing; 2 rules not in both runs left out/)).toBeInTheDocument();
+    expect(within(change.parentElement ?? change).getByText(/Compared with Material master, 2 Oct, 05:00: 2 fixed, 1 new, 1 still failing; 2 rules not in both runs left out/)).toBeInTheDocument();
   });
 
   it("says there is nothing earlier to compare with on the first run, with an action", async () => {
@@ -197,7 +197,7 @@ describe("ProgressPage", () => {
     mount();
     const link = (name: string | RegExp) => screen.getByRole("link", { name }).getAttribute("href");
     expect(await screen.findByText("GL002")).toBeInTheDocument();
-    expect(screen.getByText("Fixed this week").closest("a")?.getAttribute("href")).toBe("/fix?run=bp2&st=fixed");
+    expect(screen.getByText("Rule failures fixed this week").closest("a")?.getAttribute("href")).toBe("/fix?run=bp2&st=fixed");
     expect(screen.getByText("Records to fix").closest("a")?.getAttribute("href")).toBe("/fix?run=bp2");
     // Fix work has no date filter: the tile says its drill opens every fixed record, and one noun is used throughout.
     expect(screen.getByText("Rule failures fixed in the last 7 days; opens all fixed records")).toBeInTheDocument();
@@ -238,8 +238,17 @@ describe("ProgressPage", () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [{ ...RUNS[0], metadata: { ...RUNS[0].metadata, baseline: true } }, RUNS[1]] });
     const pin = vi.spyOn(versionsApi, "pinBaseline").mockResolvedValue({ baseline: false });
     mount();
-    expect(await screen.findByText("Baseline: material_master_100k, 16 Oct 2026")).toBeInTheDocument();
+    expect(await screen.findByText("Baseline: Material master, 16 Oct, 05:00")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Unpin baseline" }));
     await waitFor(() => expect(pin).toHaveBeenCalledWith("bp2", false));
+  });
+
+  it("hides Where the failing records sit when the keys carry no organisational unit", async () => {
+    mockAll();
+    vi.spyOn(wa, "getRootCauses").mockResolvedValue({ version_id: "bp2", source: "work_records", total_records: 3, dimensions: [] });
+    mount();
+    expect(await screen.findByText("Records to fix")).toBeInTheDocument();
+    await screen.findByText("How good the proposals are");
+    await waitFor(() => expect(screen.queryByText("Where the failing records sit")).toBeNull());
   });
 });

@@ -32,4 +32,14 @@ describe("LevelTable", () => {
     const cells = within(row).getAllByRole("cell").map((c) => c.textContent);
     expect(cells.slice(1)).toEqual(["3", "1", "2"]);
   });
+
+  it("shows a dash, not zero, when no run is shown on the model", () => {
+    render(
+      <LevelTable doc={DOC} parent={null} parentLevel={0} colour={() => undefined} hasData={false}
+        actions={{ rename: vi.fn(), add: vi.fn(), remove: vi.fn(), move: vi.fn() }}
+        onOpen={vi.fn()} editable onBlocked={vi.fn()} canDesign={false} />,
+    );
+    const row = screen.getByRole("button", { name: "Procure to pay" }).closest("tr") as HTMLElement;
+    expect(within(row).getAllByRole("cell").map((c) => c.textContent).slice(1)).toEqual(["3", "—", "—"]);
+  });
 });

@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ErrorState, Field, Select, Skeleton } from "@/design";
+import { useRole } from "@/hooks/use-role";
 import { getOwners, putOwner, type OwnerKind } from "@/lib/api/owners";
 import { getAssignableUsers } from "@/lib/api/users";
 import { apiErrorDetail, isListFailure } from "@/lib/error";
@@ -13,6 +14,8 @@ const NONE = "none";
 
 export function OwnerPicker({ kind, refId }: { kind: OwnerKind; refId: string }) {
   const qc = useQueryClient();
+  // Saving an owner needs the assign permission (PUT /owners); without it the pickers stay, shown and switched off.
+  const canAssign = useRole().can("assign");
   const owners = useQuery({
     queryKey: queryKeys.owners(kind),
     queryFn: () => getOwners(kind),
@@ -55,6 +58,7 @@ export function OwnerPicker({ kind, refId }: { kind: OwnerKind; refId: string })
     );
   }
   const options = [{ value: NONE, label: "Not set" }, ...users.data.map((u) => ({ value: u.id, label: u.name }))];
+  const locked = !canAssign;
   const picked = (v: string) => (v === NONE ? null : v);
   return (
     <div className="flex flex-wrap gap-4">
@@ -63,6 +67,7 @@ export function OwnerPicker({ kind, refId }: { kind: OwnerKind; refId: string })
           value={row?.owner_user_id ?? NONE}
           onValueChange={(v) => save.mutate({ owner_user_id: picked(v) })}
           options={options}
+          disabled={locked}
         />
       </Field>
       <Field label="Steward">
@@ -70,8 +75,10 @@ export function OwnerPicker({ kind, refId }: { kind: OwnerKind; refId: string })
           value={row?.steward_user_id ?? NONE}
           onValueChange={(v) => save.mutate({ steward_user_id: picked(v) })}
           options={options}
+          disabled={locked}
         />
       </Field>
+      {locked ? <p className="m-text-meta m-ink-3 basis-full">Changing the owner or steward needs the assign permission.</p> : null}
     </div>
   );
 }

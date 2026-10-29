@@ -45,7 +45,7 @@ export const LEAD_ITEMS: AttentionItem[] = [
     system_id: RECORDED.systemId, system_name: RECORDED.systemName, required_action: "manage_systems",
   }),
   attentionItem({
-    id: "regression:material_master", kind: "regression", tier: 2, severity: "high", title: "2 rules started failing again on Material master",
+    id: "regression:material_master", kind: "regression", tier: 2, severity: "high", title: "1 rule started failing again on Material master",
     detail: "9 records fail now that passed in the baseline.", href: `/fix?module=material_master&run=${RECORDED.materialRunId}&since=${RECORDED.latestRunId}`,
     action_label: "Review records", count: 9, object: "material_master", module: "material_master",
     system_id: RECORDED.systemId, system_name: RECORDED.systemName, required_action: "apply",

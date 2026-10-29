@@ -37,10 +37,13 @@ const SELF_ACCESS_REASON = "You can't change your own access";
 /** Roles and access, opened on this user's grants. */
 const manageHref = (id: string) => `/admin/roles?tab=users&user=${encodeURIComponent(id)}`;
 
+/** A role by its display name: the "(legacy)" marker belongs to the roles page, not to a person's row. */
+const plainRole = (name: string): string => name.replace(/\s*\(legacy\)\s*$/i, "");
+
 /** The table's Roles cell: each granted role once, in grant order; users.role before any grant is listed. */
 function grantNames(u: User): string {
-  const names = Array.from(new Set((u.grants ?? []).map((g) => g.role_name || roleLabel(g.role_key))));
-  return names.length ? names.join(", ") : roleLabel(u.role);
+  const names = Array.from(new Set((u.grants ?? []).map((g) => plainRole(g.role_name || roleLabel(g.role_key)))));
+  return names.length ? names.join(", ") : plainRole(roleLabel(u.role));
 }
 
 /** Copies text for the admin; false when the browser refuses (no permission, insecure page). */
@@ -421,7 +424,7 @@ function UserGrants({ userId }: { userId: string }) {
   const grantsQ = useQuery({ queryKey: ["grants", userId], queryFn: () => listGrants(userId) });
   const rolesQ = useQuery({ queryKey: ["roles"], queryFn: listRoles });
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
-  const roleName = (key: string) => rolesQ.data?.find((r) => r.key === key)?.name;
+  const roleName = (key: string) => plainRole(rolesQ.data?.find((r) => r.key === key)?.name ?? roleLabel(key));
   const systemName = (id: string | null) => id ? systemsQ.data?.find((s) => s.id === id)?.name ?? "Unknown system" : null;
   return (
     <div className="flex flex-col gap-2">

@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as auditApi from "@/lib/api/audit";
@@ -59,12 +59,20 @@ describe("admin audit page", () => {
     ] });
     const get = vi.spyOn(auditApi, "getAuditEntries").mockResolvedValue({ entries: [ENTRY], total: 1, limit: 100, offset: 0 });
     renderWithQuery(<AdminAuditPage />);
-    expect(await screen.findByText("Changes, last 30 days")).toBeInTheDocument();
+    expect(await screen.findByText("Recorded events, last 30 days")).toBeInTheDocument();
     expect(await screen.findByText("15")).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole("button", { name: /Create user/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Users created/ }));
     await waitFor(() => expect(get).toHaveBeenLastCalledWith(expect.objectContaining({ action: "create", entity_type: "user", offset: 0 })));
     fireEvent.click(screen.getByRole("button", { name: "Remove filter Kind" }));
     await waitFor(() => expect(get.mock.lastCall?.[0]?.action).toBeUndefined());
+  });
+
+  it("counts every recorded event, using the exact total when the kinds are capped", async () => {
+    vi.spyOn(auditApi, "getAuditSummary").mockResolvedValue({ summary: [{ action: "upload", entity_type: "upload", count: 20 }], total: 116 });
+    vi.spyOn(auditApi, "getAuditEntries").mockResolvedValue({ entries: [ENTRY], total: 116, limit: 100, offset: 0 });
+    renderWithQuery(<AdminAuditPage />);
+    const tile = (await screen.findByText("Recorded events, last 30 days")).closest("[data-testid='audit-summary']") as HTMLElement;
+    await waitFor(() => expect(within(tile).getByText("116")).toBeInTheDocument());
   });
 
   it("lists every change to users, not only edits", async () => {

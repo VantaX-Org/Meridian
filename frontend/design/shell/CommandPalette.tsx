@@ -28,11 +28,24 @@ export interface CommandItem {
   shortcut?: string;
 }
 
-export function CommandPalette({ items, grammar }: { items: CommandItem[]; grammar?: GrammarContext }) {
+/**
+ * The global search: pages, objects, check IDs and (through `onQueryChange` and `records`) failing records by key or
+ * name. The layout owns the record lookup so this component stays free of data fetching. "/" opens it from anywhere
+ * outside a text field, as ⌘K does.
+ */
+export function CommandPalette({ items, grammar, records, onQueryChange }: {
+  items: CommandItem[];
+  grammar?: GrammarContext;
+  /** Record hits for the current query; always shown (the lookup already matched them). */
+  records?: CommandItem[];
+  /** Called with the text typed in the palette, "" when it closes. */
+  onQueryChange?: (query: string) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const parsed = grammar && query.trim() ? parsePalette(query, grammar) : null;
   const isMac = useIsMac();
+  useEffect(() => { onQueryChange?.(open ? query : ""); }, [open, query, onQueryChange]);
   const router = useRouter();
   // The latest items for the global key handler, so it subscribes once.
   const itemsRef = useRef(items);
@@ -44,6 +57,11 @@ export function CommandPalette({ items, grammar }: { items: CommandItem[]; gramm
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey && !e.defaultPrevented && !isTypingTarget(e.target)) {
+        e.preventDefault();
+        setOpen(true);
+        return;
+      }
       if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
       // ⌘K is the one global key: it opens the palette from anywhere, even while typing.
       if (e.key === "k") {
@@ -117,6 +135,24 @@ export function CommandPalette({ items, grammar }: { items: CommandItem[]; gramm
             </Command.Item>
           )}
           <Command.Empty>Nothing matches. Try a rule ID like <span style={{ fontFamily: "var(--m-font-mono)" }}>MM003</span> or a material number.</Command.Empty>
+          {records && records.length > 0 && (
+            <Command.Group heading={records[0].group ?? "Records"}>
+              {records.map((item) => (
+                <Command.Item
+                  key={item.href}
+                  forceMount
+                  value={`__record__ ${item.href}`}
+                  onSelect={() => {
+                    router.push(item.href);
+                    setOpen(false);
+                  }}
+                >
+                  <span className="flex-1 truncate">{withMono(item.label)}</span>
+                  {item.moduleId && <DomainChip moduleId={item.moduleId} />}
+                </Command.Item>
+              ))}
+            </Command.Group>
+          )}
           {[...groups].map(([group, list]) => (
               <Command.Group key={group} heading={group}>
                 {list.map((item) => (

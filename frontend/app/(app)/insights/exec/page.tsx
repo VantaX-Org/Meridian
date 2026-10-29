@@ -188,7 +188,18 @@ export default function ExecPage() {
   const capScope = isCurrent ? stateSummaryOf : pinnedRun ? stateSummary(stateObjects([pinnedRun], current.modules)) : null;
   const capText = capScope ? capSentenceNamed(capSummary(capScope)) : capped && capReason ? `Capped: ${shortCapReason(capReason)}` : null;
   const tier = isCurrent ? tierOf(stateScore, bandsQ.data?.thresholds) : dqs?.tier;
-  const step = doNext(isCurrent ? current.objects : stateObjects(runs.filter((r) => r.id === run), current.modules), { pinned: !isCurrent });
+  // Do next names the top row of the Fix first list below it (never a different object); only without such a row
+  // is it the scope's score step (lib/do-next.ts).
+  const fixTop = isCurrent
+    ? currentFix[0] && { check: currentFix[0].check_id, module: currentFix[0].module, records: currentFix[0].affected_count, run: currentFix[0].version_id }
+    : runFix[0] && { check: runFix[0].check_id, module: runFix[0].module, records: runFix[0].affected, run };
+  const fixNext = fixTop
+    ? {
+        sentence: `Fix ${fixTop.check} on ${formatModuleName(fixTop.module)} first: ${fixTop.records.toLocaleString("en-US")} failing ${fixTop.records === 1 ? "record" : "records"}`,
+        action: { label: `Fix ${fixTop.check}`, href: fixHref({ run: fixTop.run, module: fixTop.module, check: fixTop.check }) },
+      }
+    : null;
+  const step = fixNext ?? doNext(isCurrent ? current.objects : stateObjects(runs.filter((r) => r.id === run), current.modules), { pinned: !isCurrent });
   const currency = cost.data?.currency;
   const roi = useQuery({ queryKey: ["roi"], queryFn: getRoi });
   // The run the summary describes (null in current mode, which spans runs) and the run its exports are built from:
@@ -232,6 +243,9 @@ export default function ExecPage() {
   const l1Tabs = [...byL1].sort(([a], [b]) => a.localeCompare(b));
   const topRisk = data ? largestValueAtRisk(valueAtRiskByL1(data.impact_rows)) : null;
   const boardPack = exportVid ? () => void downloadAuthenticated(getBoardReportUrl(exportVid, compareVid), boardFile()).catch((e: unknown) => toast.error(apiErrorMessage(e))) : undefined;
+  // The Owner column is left out when the owners list loaded and none of the listed objects has one: "Not set" on every row says nothing.
+  const fixModules = isCurrent ? currentFix.map((f) => f.module) : runFix.map((r) => r.module);
+  const showOwnerColumn = owners.status !== "ready" || fixModules.some((m) => owners.nameOf(m) != null);
   const pairs = (n: number) => plural(n, "object and wave pair", "object and wave pairs");
   // No cost can be stated before an approved fix is applied; "0x" and "0 months" would read as a verdict.
   const noCostAvoided = !!roi.data && !roi.data.roi.risk_mitigated;
@@ -247,7 +261,7 @@ export default function ExecPage() {
       title="Executive summary"
       purpose={PAGE_PURPOSE["/insights/exec"]}
       scope
-      actions={<InsightActions run={vid} current={isCurrent} options={exportOptions} />}
+      actions={<InsightActions run={vid} current={isCurrent} options={exportOptions} hasData={state !== "empty" && state !== "error"} />}
       insight={{
         hero: true,
         lead: typeof composite === "number" ? (
@@ -275,13 +289,15 @@ export default function ExecPage() {
           </div>
         ) : undefined,
         stats: data ? [
-          { label: "Objects blocked in a wave", value: noGo, hint: cells.length ? `of ${pairs(cells.length)}` : "No wave set up", tone: noGo ? "no-go" : "go", to: withScope("/insights/readiness", { run: vid }) },
+          // A tile for something not set up (no wave, no owner) would read 0; the setup line under the cards names them instead.
+          ...(cells.length ? [{ label: "Objects blocked in a wave", value: noGo, hint: `of ${pairs(cells.length)}`, tone: noGo ? "no-go" as const : "go" as const, to: withScope("/insights/readiness", { run: vid }) }] : []),
           topRisk || !costAtRisk.text
             ? { label: topRisk ? `Most at risk: ${l1Label(topRisk.l1)}` : "Most at risk", value: topRisk ? formatMoneyCompact(topRisk.value_at_risk, currency) : "—", hint: topRisk ? undefined : "No SAP feature priced yet", to: withScope("/insights/impact", { run: vid }) }
             : { label: COST_AT_RISK, value: costAtRisk.text, hint: "Failing records; no SAP feature priced yet", to: withScope("/insights/impact", { run: vid }) },
-          // Whether anyone owns an issue is said here, under the owners, not as a change.
-          { label: "Owners improved", value: up, hint: ownerRows.length === 0 ? "Nobody owns an issue yet" : undefined, to: withScope("/insights/owners", { run: vid }) },
-          { label: "Owners slipped", value: down, tone: down ? "at-risk" : undefined, to: withScope("/insights/owners", { run: vid }) },
+          ...(ownerRows.length ? [
+            { label: "Owners improved", value: up, to: withScope("/insights/owners", { run: vid }) },
+            { label: "Owners slipped", value: down, tone: down ? "at-risk" as const : undefined, to: withScope("/insights/owners", { run: vid }) },
+          ] : []),
         ] : undefined,
         situation: {
           sentence: data?.narrative || (cells.length ? `${noGo} of ${pairs(cells.length)} cannot load` : "No migration wave is set up yet"),
@@ -364,14 +380,14 @@ export default function ExecPage() {
           >
             {isCurrent ? (
               <DataTable
-                columns={withOwner(currentFindingColumns, (f) => f.module, owners)}
+                columns={showOwnerColumn ? withOwner(currentFindingColumns, (f) => f.module, owners) : currentFindingColumns}
                 data={currentFix}
                 getRowId={(f) => f.id}
                 onRowClick={(f) => router.push(buildDrillHref({ object: f.module, ruleId: f.check_id, run: f.version_id }))}
                 hideToolbar height="auto"
               />
             ) : (
-              <DataTable columns={withOwner(ruleColumns(run, true), (r) => r.module, owners)} data={runFix} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar height="auto" />
+              <DataTable columns={showOwnerColumn ? withOwner(ruleColumns(run, true), (r) => r.module, owners) : ruleColumns(run, true)} data={runFix} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} hideToolbar height="auto" />
             )}
           </Section>
         </div>

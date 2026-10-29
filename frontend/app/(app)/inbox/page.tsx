@@ -51,7 +51,7 @@ import { MODULE_LABELS, formatDate, formatInt, formatModuleName, formatMoney, la
 import { inboxKeyHandler, keyBelongsElsewhere } from "@/lib/inbox-keys";
 import { queryKeys } from "@/lib/query-keys";
 import { ApprovalsPanel, SapMonitorPanel } from "./inbox-panels";
-import { EXC_PAGE, RECORD_ISSUES_HREF, exceptionObject, exceptionTaskName, taskObject, taskSourceLink } from "./task-source";
+import { EXC_PAGE, RECORD_ISSUES_HREF, exceptionObject, taskObject, taskSourceLink, taskTitle, unnamedTaskChecks } from "./task-source";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import type { Exception, ExceptionRule, ExceptionStatus, Severity, StewardshipQueueItem, StewardshipStatus } from "@/types/api";
 
@@ -155,19 +155,6 @@ async function each(ids: string[], fn: (id: string) => Promise<unknown>): Promis
   return { ok, failed: r.length - ok };
 }
 
-/**
- * "Merge decision in Material master"; an exception task is named by its check, "Custom Rule: Blank material group
- * in Material master" (its exception's title, else the queue's source title, else its check's name), never a bare
- * "Exception" when anything names it. Just the name when the object is unknown, never "in Unknown".
- */
-const taskTitle = (t: StewardshipQueueItem, exc?: Exception | null, ruleName?: RuleNameOf) => {
-  const what = exceptionTaskName(t, exc, ruleName) ?? labelOf(t.item_type);
-  const d = taskObject(t, exc);
-  return d ? `${what} in ${formatModuleName(d)}` : what;
-};
-/** The checks the catalogue has to name: an exception task with no title of its own is named by its check. */
-const unnamedChecks = (items: readonly StewardshipQueueItem[]) =>
-  items.filter((t) => t.item_type === "exception" && !t.source_title && !!t.source_check_id).map((t) => t.source_check_id);
 /** An exception named by its check and object, as its task is. */
 const exceptionTitle = (e: Exception) => {
   const d = exceptionObject(e);
@@ -288,7 +275,7 @@ export default function InboxPage() {
   const excById = useMemo(() => new Map((excIndexQ.data?.exceptions ?? []).map((e) => [e.id, e])), [excIndexQ.data]);
   const excOf = useCallback((t: StewardshipQueueItem) => (t.item_type === "exception" ? excById.get(t.source_id) ?? null : null), [excById]);
   // A task whose exception has no title is named by its linked check: the catalogue names it.
-  const ruleNameOf: RuleNameOf = useRuleNames(queues.flatMap((q) => unnamedChecks(q.data?.items ?? [])));
+  const ruleNameOf: RuleNameOf = useRuleNames(queues.flatMap((q) => unnamedTaskChecks(q.data?.items ?? [])));
   const excLoaded = useMemo(() => excPageQs.flatMap((q) => q.data?.exceptions ?? []), [excPageQs]);
   const excTotal = excQ.data?.total ?? 0;
   const excMetricsQ = useQuery({ queryKey: queryKeys.exceptionMetrics(), queryFn: () => getExceptionMetrics(), enabled: isExceptions });
@@ -1129,6 +1116,15 @@ function TaskOpen({ t }: { t: StewardshipQueueItem }) {
   return <div><Button variant="secondary" render={<Link href={link.href} />}>{link.label}</Button></div>;
 }
 
+/** The model's recommendation as a verb Meridian can do from here ("escalate: critical severity requires attention"), with its reason. */
+const SUGGESTED_MOVES = ["escalate", "approve", "reject"] as const;
+function suggestedMove(recommendation: string | null | undefined): { move: (typeof SUGGESTED_MOVES)[number]; reason: string } | null {
+  if (!recommendation) return null;
+  const [head, ...rest] = recommendation.split(/:\s*/);
+  const move = SUGGESTED_MOVES.find((m) => m === head.trim().toLowerCase());
+  return move ? { move, reason: rest.join(": ").trim() } : null;
+}
+
 /** The selected task: what it is, where it stands against its SLA, the model's suggestion and the one decision. */
 function TaskDetail({ t, exc, sla, now, assignee, busy, canApprove, canAssign, canRelease, people, onApprove, onReject, onEscalate, onAssign, onRelease, onReassign }: {
   t: StewardshipQueueItem; exc: Exception | null; sla: Sla; now: number; assignee: string; busy: boolean; canApprove: boolean; canAssign: boolean; canRelease: boolean;
@@ -1136,16 +1132,19 @@ function TaskDetail({ t, exc, sla, now, assignee, busy, canApprove, canAssign, c
   onApprove: () => void; onReject: () => void; onEscalate: () => void; onAssign: () => void; onRelease: () => void; onReassign: (userId: string) => void;
 }) {
   const claimFirst = canAssign && !t.assigned_to;
+  const suggested = suggestedMove(t.ai_recommendation);
+  // Approve and Reject are already buttons here; Escalate otherwise waits in the menu, so a suggestion to escalate is surfaced as its own button.
+  const suggestEscalate = suggested?.move === "escalate" && canApprove && t.status !== "escalated";
   // An exception beyond the list's first page is read by id (the same query TaskSource makes), for its title and object.
   const excDetail = useQuery({ queryKey: ["exceptions", "detail", t.source_id], queryFn: () => getException(t.source_id), enabled: t.item_type === "exception" && !exc, retry: false, meta: { ignoreError: true } });
   const source = exc ?? excDetail.data ?? null;
   const object = taskObject(t, source);
-  const ruleNameOf: RuleNameOf = useRuleNames(unnamedChecks([t]), !source?.title);
+  const ruleNameOf: RuleNameOf = useRuleNames(unnamedTaskChecks([t]), !source?.title);
   // The rarer moves wait in the menu: taking over someone else's task, handing it back, escalating.
   const more: MenuItemDef[] = [
     ...(canAssign && !claimFirst ? [{ label: "Claim", onSelect: onAssign }] : []),
     ...(canRelease ? [{ label: "Release", onSelect: onRelease }] : []),
-    ...(t.status !== "escalated" ? [{ label: "Escalate", onSelect: onEscalate }] : []),
+    ...(t.status !== "escalated" && !suggestEscalate ? [{ label: "Escalate", onSelect: onEscalate }] : []),
   ];
   return (
     <Card
@@ -1179,10 +1178,14 @@ function TaskDetail({ t, exc, sla, now, assignee, busy, canApprove, canAssign, c
         </dl>
         <TaskSource t={t} />
         {t.ai_recommendation ? (
-          <p className="m-text-body m-ink-2">
-            Meridian suggests: {labelOf(t.ai_recommendation)}
-            {t.ai_confidence != null ? `, ${Math.round(t.ai_confidence * 100)}% sure` : ""}. Check it before you decide.
-          </p>
+          <div className="flex flex-col items-start gap-2">
+            <p className="m-text-body m-ink-2">
+              Meridian suggests: {suggested ? labelOf(suggested.move) : labelOf(t.ai_recommendation)}
+              {t.ai_confidence != null ? `, ${Math.round(t.ai_confidence * 100)}% sure` : ""}
+              {suggested?.reason ? `. ${suggested.reason.charAt(0).toUpperCase()}${suggested.reason.slice(1)}` : ""}. Check it before you decide.
+            </p>
+            {suggestEscalate ? <Button variant="secondary" size="sm" disabled={busy} onClick={onEscalate}>Escalate</Button> : null}
+          </div>
         ) : null}
         <TaskOpen t={t} />
       </div>

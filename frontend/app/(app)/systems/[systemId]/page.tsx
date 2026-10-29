@@ -13,7 +13,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { clsx } from "clsx";
 import { Bar, Button, Card, Checkbox, ConfirmDialog, DataTable, Delta, Drawer, DrillLink, EmptyState, ErrorState, ExportMenu, Field, Input, Line, Mono, Notice, PageHeader, Pill, Select, Skeleton, Stat, Status, Tabs, Tooltip, emptyExportOptions, type Verdict, entityTabs, toVerdict, toast, useBreadcrumbTitle, Score } from "@/design";
-import { HEALTH_LABEL, dqsTrend, latestDqs } from "../_health";
+import { HEALTH_LABEL, RFC_FIX_HREF, RFC_FIX_SCRIPT, dqsTrend, latestDqs, rfcLibraryMissing } from "../_health";
 import { HealthReason } from "../_health-pill";
 import { DqsScore } from "@/components/insight/dqs-score";
 import { ConfigurationTab } from "./config-tab";
@@ -227,7 +227,8 @@ export default function SystemPage() {
   const openExtract = () => setExtractOpen(true);
   const analysable = latest ?? versions[0];
   // Until the connection is known to work, testing it is the next step, not extracting from it.
-  const testFirst = system.health_status !== "healthy" && can("trigger_sync");
+  const rfcDown = rfcLibraryMissing(system);
+  const testFirst = system.health_status !== "healthy" && can("trigger_sync") && !rfcDown;
   const runsExport = [{ format: "xlsx" as const, label: "Runs (.xlsx)", run: () => exportRuns("xlsx", { system_id: systemId }) }];
 
   return (
@@ -254,8 +255,9 @@ export default function SystemPage() {
         ]}
         actions={
         <>
+          {rfcDown ? <Button render={<Link href={RFC_FIX_HREF}>Install the RFC library</Link>} /> : null}
           {can("trigger_sync") ? <Button variant={testFirst ? "primary" : "secondary"} disabled={test.isPending} onClick={() => test.mutate()}>{testLabel}</Button> : null}
-          <GatedPrimary kind="extract" allowed={can("trigger_sync")} variant={testFirst ? "secondary" : "primary"} systemId={systemId} scopeLabel={system.name} data-tour="system-extract"
+          <GatedPrimary kind="extract" allowed={can("trigger_sync")} variant={testFirst || rfcDown ? "secondary" : "primary"} systemId={systemId} scopeLabel={system.name} data-tour="system-extract"
             onClick={openExtract}>
             Extract
           </GatedPrimary>
@@ -283,6 +285,16 @@ export default function SystemPage() {
           action={<GatedPrimary kind="extract" allowed={false} variant="secondary" systemId={systemId} scopeLabel={system.name}>Extract</GatedPrimary>}
         >
           Extraction needs the {primaryRole("extract")} role on this system. Request access to extract from it.
+        </Notice>
+      ) : null}
+
+      {rfcDown ? (
+        <Notice
+          tone="warning"
+          title="Install the SAP RFC library to connect this system"
+          action={<Button size="sm" render={<Link href={RFC_FIX_HREF}>Read the steps</Link>} />}
+        >
+          The server cannot reach SAP over RFC until the library is built in. On the host, run <Mono>{RFC_FIX_SCRIPT}</Mono> with the path to your SAP NW RFC SDK, then select Test connection. Extraction fails until then. The steps are in the user guide chapter Data in.
         </Notice>
       ) : null}
 
@@ -479,12 +491,17 @@ function Overview({ systemId, modules, versions, latest, canSync, canAnalyse, on
       ) : null}
       <div className="grid [gap:var(--m-section-gap)] @5xl:grid-cols-2">
         <Card title="Score per run" meta="Mean of the objects, newest twelve runs">
-          {scored.length < 2 ? (
+          {scored.length === 0 ? (
             <EmptyState
               title="No trend yet"
-              detail="Two analysed runs are needed to draw a trend."
+              detail="Three analysed runs are needed to draw a trend."
               action={extract}
             />
+          ) : scored.length < 3 ? (
+            // Two points make a line that says nothing: the value in one sentence until a third run exists.
+            <p className="m-text-body m-ink-2" data-testid="score-per-run-value">
+              {`Mean score ${Number((meanDqs(scored[scored.length - 1]) ?? 0).toFixed(1))} in the latest run${scored.length === 2 ? `, ${Number((meanDqs(scored[0]) ?? 0).toFixed(1))} in the run before` : ""}. A chart appears after a third analysed run.`}
+            </p>
           ) : (
             <Line
               height={160}
@@ -501,6 +518,11 @@ function Overview({ systemId, modules, versions, latest, canSync, canAnalyse, on
               detail="Extract an object to see how many rows it holds."
               action={extract}
             />
+          ) : byRows.length < 2 ? (
+            // One bar compares nothing: the figure in one sentence.
+            <p className="m-text-body m-ink-2" data-testid="objects-by-records-value">
+              {`${byRows[0].name} holds ${byRows[0].records.toLocaleString()} records. A chart appears once a second object is loaded.`}
+            </p>
           ) : (
             <Bar
               height={160}

@@ -3,6 +3,7 @@
 import type { InsightHeaderProps } from "@/design";
 import { formatMoneyCompact, formatScore, plural } from "@/lib/format";
 import { capSentence, type CapSummary } from "@/lib/home-metrics";
+import { COUNT_DEFS } from "@/lib/counts";
 
 export interface InsightFacts {
   hasRun: boolean;
@@ -120,7 +121,8 @@ export function buildInsight(section: Section, f: InsightFacts): Omit<InsightHea
 
   // `affected` sums each failing rule's records, so a record failing three rules counts three times: rule failures,
   // never "records" (it sat beside a cleansing funnel of distinct failing records and read as the same number).
-  let situation = `${score}, with ${n(f.total)} failing rules and ${n(f.affected)} rule failures.`;
+  // "Failing rules" spans every severity (the cap line counts critical ones, the tile critical and high): say so.
+  let situation = `${score}, with ${n(f.total)} failing rules ${COUNT_DEFS.failing_rules.scope} and ${n(f.affected)} rule failures.`;
   if (section === "systems") situation = `${n(f.systems)} system${f.systems === 1 ? "" : "s"} connected. ${score}.`;
   if (section === "migration") situation = `${n(f.waves)} migration wave${f.waves === 1 ? "" : "s"} defined. ${score}.`;
   if ((section === "inbox" || section === "mdm") && f.backlog !== null) situation = `${n(f.backlog)} item${f.backlog === 1 ? "" : "s"} waiting for a steward. ${score}.`;

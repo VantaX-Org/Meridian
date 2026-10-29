@@ -13,7 +13,6 @@ import { SettingsSection } from "@/components/mdm/ledger";
 import { apiErrorMessage, isListFailure, apiErrorState } from "@/lib/error";
 import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import { TenantPurge } from "./tenant-purge";
 
 const KIND_LABEL: Record<PurgeLogEntry["kind"], string> = {
   version: "Run", reports: "Reports", audit: "Audit log", tenant: "Whole tenant",
@@ -237,8 +236,6 @@ export function RetentionPanel() {
         ) : (
           <DataTable columns={logColumns} data={log.data} getRowId={(r) => r.id} tableId="purge-log" hideToolbar />
         )}</Async>
-
-        <TenantPurge />
     </SettingsSection>
   );
 }

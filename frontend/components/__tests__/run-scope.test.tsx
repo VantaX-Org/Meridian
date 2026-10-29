@@ -21,7 +21,7 @@ const hrefFor = (id: string | null) => hrefWithRun("/objects/material_master", s
 describe("RunScope", () => {
   it("says which run the numbers belong to", () => {
     render(<RunScope scope={{ run: NEW, choices: [NEW], latestId: NEW.id, pinned: false }} hrefFor={hrefFor} />);
-    expect(screen.getByTestId("run-scope")).toHaveTextContent("As of material_master_25k, 16 Oct 2026");
+    expect(screen.getByTestId("run-scope")).toHaveTextContent("As of Material master, 16 Oct, 05:00");
     expect(screen.queryByRole("link", { name: "Back to latest" })).toBeNull();
     expect(screen.queryByRole("combobox")).toBeNull();
   });
@@ -39,9 +39,9 @@ describe("RunScope", () => {
   it("switches to another run of the lineage through ?run=, and to the latest by clearing it", async () => {
     render(<RunScope scope={{ run: OLD, choices: [NEW, OLD], latestId: NEW.id, pinned: true }} hrefFor={hrefFor} picker />);
     const picker = screen.getByRole("combobox", { name: "Showing run" });
-    expect(picker).toHaveTextContent("material_master_10k, 10 Oct 2026");
+    expect(picker).toHaveTextContent("Material master, 10 Oct, 05:00");
     await userEvent.click(picker);
-    await userEvent.click(await screen.findByRole("option", { name: "material_master_25k, 16 Oct 2026" }));
+    await userEvent.click(await screen.findByRole("option", { name: "Material master, 16 Oct, 05:00" }));
     expect(replace).toHaveBeenCalledWith("/objects/material_master?tab=rules", { scroll: false });
   });
 

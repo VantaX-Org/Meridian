@@ -38,9 +38,9 @@ describe("admin jobs page", () => {
     perms = new Set(["trigger_sync"]);
     vi.spyOn(jobsApi, "getJobs").mockResolvedValue([BASE, { ...BASE, id: "j2", kind: "upload", label: "file.csv" }]);
     renderWithQuery(<JobsPage />);
-    await screen.findByText("file.csv");
+    await screen.findByText("Upload of File");
     expect(screen.getByRole("button", { name: "Retry Re-analysis. Needs analyse permission" })).toBeDisabled();
-    expect(screen.queryByRole("button", { name: /^Retry file\.csv/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Retry Upload of File/ })).toBeNull();
   });
 
   it("shows Extract again disabled without the extract permission", async () => {

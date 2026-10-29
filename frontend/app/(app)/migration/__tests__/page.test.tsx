@@ -20,7 +20,7 @@ const WAVE: MigrationWave = {
   id: "w1", name: "Wave 1", source_system_id: "s1", target_system_id: null, target_release: "s4hana",
   modules: ["material_master"], target_date: "2027-03-01", stage: "mock1", min_readiness: 95, min_dqs: null,
   signed_off_by: null, signed_off_at: null, created_at: "2026-10-01T08:00:00Z", updated_at: "2026-10-01T08:00:00Z",
-  last_run_id: "r2", last_verdict: "conditional", last_score: 97, last_completed_at: "2026-10-10T08:00:00Z",
+  last_run_id: "r2", last_verdict: "at_risk", last_score: 97, last_completed_at: "2026-10-10T08:00:00Z",
   trend: [80, 97],
 };
 
@@ -78,7 +78,7 @@ describe("MigrationPage", () => {
 describe("MigrationPage verdict param", () => {
   it.each(["garbage", "constructor"])("ignores ?verdict=%s: every wave, no banner", async (v) => {
     currentSearch = `verdict=${v}`;
-    vi.spyOn(migrationApi, "getWaves").mockResolvedValue([WAVE, { ...WAVE, id: "w2", name: "Wave 2", last_verdict: "no-go" }]);
+    vi.spyOn(migrationApi, "getWaves").mockResolvedValue([WAVE, { ...WAVE, id: "w2", name: "Wave 2", last_verdict: "no_go" }]);
     renderWithQuery(<MigrationPage />);
     expect(await screen.findByText("Wave 1")).toBeInTheDocument();
     expect(screen.getByText("Wave 2")).toBeInTheDocument();
@@ -89,7 +89,7 @@ describe("MigrationPage verdict param", () => {
 
   it("?verdict=no_go lists only no-go waves", async () => {
     currentSearch = "verdict=no_go";
-    vi.spyOn(migrationApi, "getWaves").mockResolvedValue([WAVE, { ...WAVE, id: "w2", name: "Wave 2", last_verdict: "no-go" }]);
+    vi.spyOn(migrationApi, "getWaves").mockResolvedValue([WAVE, { ...WAVE, id: "w2", name: "Wave 2", last_verdict: "no_go" }]);
     renderWithQuery(<MigrationPage />);
     expect(await screen.findByText("Wave 2")).toBeInTheDocument();
     expect(screen.queryByText("Wave 1")).not.toBeInTheDocument();
@@ -110,4 +110,27 @@ describe("CreateWaveDialog validation", () => {
     expect(screen.getByText("Enter a number from 0 to 100")).toBeInTheDocument();
     expect(create).not.toHaveBeenCalled();
   });
+
+  it("leads with Run <wave> while a wave has never run, with Create wave second", async () => {
+    const never: MigrationWave = { ...WAVE, last_run_id: null, last_verdict: null, last_score: null, last_completed_at: null, trend: [] };
+    vi.spyOn(migrationApi, "getWaves").mockResolvedValue([never]);
+    const run = vi.spyOn(migrationApi, "runWave").mockResolvedValue({
+      run_id: "r3", task_id: "t", status: "queued", mode: "source_to_destination", modules: ["material_master"],
+    });
+    renderWithQuery(<MigrationPage />);
+    const primary = await screen.findByRole("button", { name: "Run Wave 1" });
+    expect(primary).toHaveClass("m-btn-primary");
+    expect(screen.getByRole("button", { name: "Create wave" })).toHaveClass("m-btn-secondary");
+    fireEvent.click(primary);
+    await waitFor(() => expect(run).toHaveBeenCalledWith("w1"));
+  });
+
+  it("keeps Create wave as the primary once every wave has run", async () => {
+    vi.spyOn(migrationApi, "getWaves").mockResolvedValue([WAVE]);
+    renderWithQuery(<MigrationPage />);
+    await screen.findByText("Wave 1");
+    expect(screen.getByRole("button", { name: "Create wave" })).toHaveClass("m-btn-primary");
+    expect(screen.queryByRole("button", { name: "Run Wave 1" })).toBeNull();
+  });
+
 });

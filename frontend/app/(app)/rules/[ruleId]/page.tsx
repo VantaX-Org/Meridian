@@ -6,7 +6,9 @@ import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
-import { Button, Card, DataTable, DrillLink, EmptyState, EntityTabs, ErrorState, Line, Mono, PageHeader, Pill, Skeleton, Stat, buildDrillHref, toast, Status, useBreadcrumbTitle } from "@/design";
+import { RequestAccessButton } from "@/components/request-access-button";
+import { RunAnalysis } from "@/app/(app)/insights/_components/RunAnalysis";
+import { Button, Card, DataTable, DrillLink, EmptyState, EntityTabs, ErrorState, Line, Mono, Notice, PageHeader, Pill, Skeleton, Stat, buildDrillHref, toast, Status, useBreadcrumbTitle } from "@/design";
 import { exportRuleHistory, getRule, getRuleByCode, getRuleHistory, updateRule, type Rule, type RuleHistoryRun } from "@/lib/api/rules";
 import { getReference } from "@/lib/api/process-designer";
 import { processStepHref } from "@/components/process/shared";
@@ -18,7 +20,7 @@ import { apiErrorState } from "@/lib/error";
 import { checkClassLabel, formatDate, formatModuleName, formatPct, labelOf, plural } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { actionColumn, LedgerHead, RowLink } from "@/components/mdm/ledger";
-import { ConditionList, ThresholdTable } from "../rule-ui";
+import { ConditionList, ThresholdTable, hasThresholds } from "../rule-ui";
 import { RuleVersions } from "./rule-versions";
 import { RuleVersionDiff } from "./rule-version-diff";
 
@@ -223,7 +225,7 @@ function WhatItChecks({ rule, checkId, latest, historyLoading }: { rule: Rule; c
   else failing = (
     <>
       <DrillLink href={records}>{latest.affected_count.toLocaleString()}</DrillLink> of {latest.total_count.toLocaleString()} records fail, as of {formatDate(latest.run_at, "date")}.{" "}
-      <Link className="m-ink-accent-ink hover:underline" href={records}>Fix them on the object</Link>
+      <Link className="m-ink-accent-ink underline underline-offset-2" href={records}>Fix them on the object</Link>
     </>
   );
   return (
@@ -280,7 +282,10 @@ export default function RulePage() {
   const qc = useQueryClient();
   const canManage = useRole().can("manage_rules");
   const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: queryKeys.ruleDetail(ruleId), queryFn: () => getRule(ruleId) });
-  const history = useQuery({ queryKey: queryKeys.ruleHistory(ruleId), queryFn: () => getRuleHistory(ruleId, { limit: 20 }) });
+  // Rule names are "{check id}: {message}"; data.id is the rules row UUID, not the check id.
+  const checkId = data?.name.split(":")[0] ?? "";
+  // Findings are stored by check id, which is also what the glossary reads: asking by the row UUID finds no runs.
+  const history = useQuery({ queryKey: queryKeys.ruleHistory(checkId), queryFn: () => getRuleHistory(checkId, { limit: 20 }), enabled: !!checkId });
   const toggleGen = useRef(0);
   const toggle = useMutation({
     mutationFn: (enabled: boolean) => updateRule(ruleId, { enabled }),
@@ -321,8 +326,7 @@ export default function RulePage() {
   }
   if (isError || !data) return <ErrorState {...apiErrorState(error)} onRetry={() => refetch()} />;
 
-  // Rule names are "{check id}: {message}"; data.id is the rules row UUID, not the check id.
-  const checkId = data.name.split(":")[0];
+  const hasResult = Boolean(data.last_run_at) || Boolean(history.data?.runs.some((r) => r.pass_rate != null));
   const rate = data.last_pass_rate == null ? null : data.last_pass_rate * (data.last_pass_rate <= 1 ? 100 : 1);
 
   return (
@@ -337,11 +341,21 @@ export default function RulePage() {
               {data.enabled ? "Disable rule" : "Enable rule"}
             </Button>
           )}
-          <Button render={<Link href={buildDrillHref({ object: data.module, ruleId: checkId })}>See failing records</Link>} />
+          {/* A rule that has no result has no failing records to see: the next step is an analysis (if permitted), else nothing. */}
+          {hasResult ? (
+            <Button render={<Link href={buildDrillHref({ object: data.module, ruleId: checkId })}>See failing records</Link>} />
+          ) : (
+            <RunAnalysis variant="primary" />
+          )}
         </>}
       />
+      {!canManage ? (
+        <Notice tone="info" action={<RequestAccessButton resource="rules" action="edit" />}>
+          Enabling, disabling or changing the owner of a rule needs the manage-rules permission. This rule is read-only for you.
+        </Notice>
+      ) : null}
       <EntityTabs entityType="rules" entityId={data.id}
-        exportOptions={[{ format: "xlsx", label: "Rule run history (.xlsx)", run: () => exportRuleHistory(ruleId, "xlsx") }]}
+        exportOptions={[{ format: "xlsx", label: "Rule run history (.xlsx)", run: () => exportRuleHistory(checkId, "xlsx") }]}
         history={
           <div className="flex flex-col gap-6">
             {history.data && history.data.runs.length > 0 ? (
@@ -361,7 +375,7 @@ export default function RulePage() {
           </div>
         }
         overview={<>
-      <WhatItChecks rule={data} checkId={checkId} latest={history.data?.runs[0]} historyLoading={history.isLoading} />
+      <WhatItChecks rule={data} checkId={checkId} latest={history.data?.runs[0]} historyLoading={history.isLoading || (history.isPending && !!checkId)} />
 
       <div className="m-stat-grid">
         <Stat
@@ -420,8 +434,8 @@ export default function RulePage() {
         })()}
       </div></Card>
 
-      {conditionList(data.conditions).length ? <Card title="Conditions"><ConditionList conditions={conditionList(data.conditions)} /></Card> : null}
-      {data.thresholds ? <Card title="Thresholds"><ThresholdTable thresholds={data.thresholds} /></Card> : null}
+      {conditionList(data.conditions).length ? <Card title="Conditions"><ConditionList conditions={conditionList(data.conditions)} message={data.description} /></Card> : null}
+      {data.thresholds && hasThresholds(data.thresholds) ? <Card title="Thresholds"><ThresholdTable thresholds={data.thresholds} /></Card> : null}
 
       </>} />
     </div>

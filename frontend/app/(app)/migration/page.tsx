@@ -15,11 +15,9 @@ import { apiErrorMessage } from "@/lib/error";
 import { getWaves, runWave, startMigration } from "@/lib/api/migration";
 import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import type { MigrationWave, TransferVerdict, WaveVerdict } from "@/types/api";
+import type { MigrationWave } from "@/types/api";
 import { CreateWaveDialog, STAGE_LABEL } from "./create-wave-dialog";
 import { COUNT_DEFS } from "@/lib/counts";
-
-const FROM_ENGINE: Record<TransferVerdict, WaveVerdict> = { go: "go", conditional: "at_risk", "no-go": "no_go" };
 
 export default function MigrationPage() {
   const router = useRouter();
@@ -61,7 +59,7 @@ export default function MigrationPage() {
     {
       id: "verdict", header: COUNT_DEFS.verdict.label,
       cell: ({ row }) => {
-        const v = row.original.last_verdict ? FROM_ENGINE[row.original.last_verdict] : null;
+        const v = row.original.last_verdict ?? null;
         return v ? <Status kind="verdict" value={v} /> : <Pill>Not run</Pill>;
       },
     },
@@ -100,7 +98,7 @@ export default function MigrationPage() {
   ];
 
   const data = waves.data ?? [];
-  const verdictOf = (w: MigrationWave) => (w.last_verdict ? FROM_ENGINE[w.last_verdict] : null);
+  const verdictOf = (w: MigrationWave) => (w.last_verdict ?? null);
   const goWaves = data.filter((w) => verdictOf(w) === "go");
   const atRiskWaves = data.filter((w) => verdictOf(w) === "at_risk");
   const noGoWaves = data.filter((w) => verdictOf(w) === "no_go");
@@ -110,15 +108,21 @@ export default function MigrationPage() {
   const shownWaves = (verdict ? data.filter((w) => verdictOf(w) === verdict) : data).sort((a, b) =>
     (VERDICT_RANK[verdictOf(a) ?? ""] ?? 3) - (VERDICT_RANK[verdictOf(b) ?? ""] ?? 3) || (a.last_score ?? 101) - (b.last_score ?? 101));
   const [goCount, atRiskCount, noGoCount] = [goWaves.length, atRiskWaves.length, noGoWaves.length];
+  // A wave that has never run is the next step: its readiness is unknown until it does. Otherwise a new wave is.
+  const unrunWave = data.find((w) => !w.last_run_id && !w.last_verdict);
   const createButton = can("analyse") ? <Button onClick={() => setCreating(true)}>Create wave</Button> : undefined;
+  const runFirst = can("analyse") && unrunWave ? (
+    <Button pending={run.isPending} onClick={() => run.mutate(unrunWave.id)}>{`Run ${unrunWave.name}`}</Button>
+  ) : undefined;
+  const headerCreate = runFirst && can("analyse") ? <Button variant="secondary" onClick={() => setCreating(true)}>Create wave</Button> : createButton;
   return (
     <>
       <ExplorerPage
-        header={<PageHeader title="Migration" meta={`${waves.isPending ? "" : `${data.length} ${data.length === 1 ? "wave" : "waves"}. `}Whether each group of objects is ready to load into S/4HANA, worst first. Run a wave to refresh its readiness`} actions={<><InsightActions />{createButton}</>} tabs={<InsightTabs />} />}
+        header={<PageHeader title="Migration" meta={`${waves.isPending ? "" : `${data.length} ${data.length === 1 ? "wave" : "waves"}. `}Whether each group of objects is ready to load into S/4HANA, worst first. Run a wave to refresh its readiness`} actions={<><InsightActions />{runFirst}{headerCreate}</>} tabs={<InsightTabs />} />}
         summary={data.length > 0 ? (
           <div className="m-stat-grid">
             <Stat label="Waves" help="wave" value={data.length} />
-            <Stat label="Go" value={goCount} tone="go" href="/migration?verdict=go" />
+            <Stat label="Go" value={goCount} tone={goCount > 0 ? "go" : undefined} href="/migration?verdict=go" />
             <Stat label="At risk" value={atRiskCount} tone={atRiskCount > 0 ? "at-risk" : undefined} href="/migration?verdict=at_risk" />
             <Stat label="No-go" value={noGoCount} tone={noGoCount > 0 ? "no-go" : undefined} href="/migration?verdict=no_go" />
           </div>

@@ -35,7 +35,7 @@ test.describe("lead", () => {
   test("sees the ranked items on the page and the number on the Rail flag", async ({ app }) => {
     await app.goto("/attention", { waitUntil: "load" });
 
-    await expect(app.getByRole("main").getByText("4 items in your scope, as of", { exact: false })).toBeVisible({ timeout: 20_000 });
+    await expect(app.getByRole("main").getByText("4 items in your scope, 2 critical or high, as of", { exact: false })).toBeVisible({ timeout: 20_000 });
     // worst first: blocked work, then the regression, then freshness, then admin
     const titles = await app.getByRole("main").locator("td span.flex-col > span.font-medium").allTextContents();
     expect(titles).toEqual(LEAD_ITEMS.map((i) => i.title));
@@ -43,7 +43,7 @@ test.describe("lead", () => {
     // the flag counts the critical and high items (one critical, one high), and says so in words
     const badge = app.getByTestId("attention-badge");
     await expect(badge).toHaveText("2");
-    await expect(app.getByRole("link", { name: "To do" })).toHaveAccessibleDescription("2 critical or high");
+    await expect(app.getByRole("link", { name: "To do" })).toHaveAccessibleName("To do, 2 critical or high to-do items");
   });
 
   test("every row offers its one action, which opens its fix", async ({ app }) => {

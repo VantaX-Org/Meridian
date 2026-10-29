@@ -43,8 +43,11 @@ export function FixSteps({ current }: { current: (typeof STEPS)[number] }) {
   return (
     <ol aria-label="Fix steps" className="flex flex-wrap items-center m-text-meta m-ink-3 [&>li+li]:[border-left:1px_solid_var(--m-line)]">
       {STEPS.map((step, i) => (
-        <li key={step} className="inline-flex items-center gap-1 px-3 first:pl-0">
-          <span className="m-numeric">{i + 1}</span>
+        <li key={step} className="inline-flex items-center gap-1 px-3 first:pl-0" data-current={step === current ? "true" : undefined}>
+          {/* The step the page is on: its number filled in the accent, its name in full ink. */}
+          <span
+            className={`m-numeric inline-flex h-5 w-5 items-center justify-center rounded-full${step === current ? " [background:var(--m-accent)] [color:var(--m-ink-on-accent)]" : ""}`}
+          >{i + 1}</span>
           <span aria-current={step === current ? "step" : undefined} className={step === current ? "m-ink font-medium" : undefined}>{step}</span>
         </li>
       ))}
@@ -192,6 +195,11 @@ export default function ProposalsPage() {
   const busy = approve.isPending || reject.isPending;
   const columns: ColumnDef<CleaningQueueItem>[] = [
     { accessorKey: "record_key", header: "Record", cell: ({ row }) => <Mono>{row.original.record_key}</Mono> },
+    // What is in SAP now, beside what is proposed; a merge or a golden value has no single current value.
+    { id: "current", header: "Current value", enableSorting: false, cell: ({ row }) => {
+      const p = proposalOf(row.original);
+      return p?.before == null ? <span className="m-ink-3">—</span> : <Mono>{p.before || "(blank)"}</Mono>;
+    } },
     { id: "proposed", header: "Proposed value", enableSorting: false, cell: ({ row }) => <ProposalCell proposal={proposalOf(row.original)} /> },
     {
       accessorKey: "confidence",
@@ -266,9 +274,11 @@ export default function ProposalsPage() {
           >
             Accept {confidentCount.toLocaleString()} at {HIGH_CONFIDENCE_LABEL}
           </Button>
+          {/* Waiting proposals are the visible work, so reviewing them is the step; the batch is the primary once none wait. */}
+          {waiting > 0 ? <Button render={<a href="#waiting-proposals">{`Review ${waiting.toLocaleString()} waiting`}</a>} /> : null}
           {draftable ? (
             <Button
-              variant="primary"
+              variant={waiting > 0 ? "secondary" : "primary"}
               disabled={approvedCount === 0 || toBatch.isPending}
               onClick={() => toBatch.mutate()}
             >
@@ -299,12 +309,14 @@ export default function ProposalsPage() {
         </div>
       ) : undefined}
       table={
-        <div className="flex flex-col gap-3">
+        <div id="waiting-proposals" className="flex flex-col gap-3">
           {failure ? <Notice tone="danger">{failure}</Notice> : null}
           <DataTable
             columns={columns}
             data={ranked}
             getRowId={(row) => row.id}
+            // The page's Export menu is the one export.
+            hideExport
             bulkActions={canApprove ? (selected) => (
               <>
                 <Button variant="secondary" disabled={busy} onClick={() => approve.mutate(selected.map((i) => i.id))}>Approve selected</Button>

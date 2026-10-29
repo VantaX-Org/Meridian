@@ -81,7 +81,7 @@ describe("ObjectDetailPage", () => {
     expect(getObject).toHaveBeenCalledWith("material_master", "mm-latest");
     expect(getObject).not.toHaveBeenCalledWith("material_master", "bp-new");
     // The header names the run (the scope bar picks it), and nothing is pinned, so there is no "Back to latest".
-    expect(screen.getByTestId("run-scope")).toHaveTextContent("As of material_master_25k, 14 Oct 2026");
+    expect(screen.getByTestId("run-scope")).toHaveTextContent("As of Material master, 14 Oct, 05:00");
     expect(screen.queryByRole("link", { name: "Back to latest" })).toBeNull();
     expect(replace).not.toHaveBeenCalled();
   });
@@ -110,7 +110,7 @@ describe("ObjectDetailPage", () => {
     vi.spyOn(versionsApi, "getVersion").mockResolvedValue(at("co-1k", "controlling_1k", "16", "controlling"));
     renderWithQuery(<ObjectDetailPage />);
     expect(await screen.findByText("Material master is not in this run")).toBeInTheDocument();
-    expect(screen.getByText("controlling_1k, 16 Oct 2026 did not measure Material master.")).toBeInTheDocument();
+    expect(screen.getByText("Controlling, 16 Oct, 05:00 did not measure Material master.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Show latest run of Material master" })).toHaveAttribute("href", "/objects/material_master");
     expect(screen.queryByText(/could not reach the server/i)).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();

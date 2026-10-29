@@ -133,3 +133,43 @@ describe("CommandPalette item shortcuts", () => {
     expect(push).not.toHaveBeenCalled();
   });
 });
+
+describe("CommandPalette records and the / key", () => {
+  class StubResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  const originalRO = globalThis.ResizeObserver;
+  const originalScrollIntoView = HTMLElement.prototype.scrollIntoView as unknown;
+  beforeEach(() => {
+    allowPaletteTitleWarning();
+    (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = StubResizeObserver;
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    push.mockClear();
+  });
+  afterEach(() => {
+    (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = originalRO;
+    HTMLElement.prototype.scrollIntoView = originalScrollIntoView as typeof HTMLElement.prototype.scrollIntoView;
+  });
+
+  it("opens on / outside a text field, not inside one", () => {
+    render(<><input aria-label="Elsewhere" /><CommandPalette items={[]} /></>);
+    fireEvent.keyDown(screen.getByLabelText("Elsewhere"), { key: "/" });
+    expect(screen.queryByRole("combobox")).toBeNull();
+    fireEvent.keyDown(document.body, { key: "/" });
+    expect(screen.getByRole("combobox")).toBeInTheDocument();
+  });
+
+  it("reports the typed text, and shows and opens the record hits it is given", () => {
+    const onQueryChange = vi.fn();
+    const records = [{ label: "Bolt 1 (Material master, MATNR=M1, 2 issues)", href: "/objects/material_master?record=MATNR%3DM1", group: "Records" }];
+    render(<CommandPalette items={[]} records={records} onQueryChange={onQueryChange} />);
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    fireEvent.change(screen.getByPlaceholderText("Type a page, object, check ID or record key"), { target: { value: "bolt" } });
+    expect(onQueryChange).toHaveBeenLastCalledWith("bolt");
+    expect(screen.getByText("Records")).toBeInTheDocument();
+    fireEvent.click(screen.getByText(/Bolt 1/));
+    expect(push).toHaveBeenCalledWith("/objects/material_master?record=MATNR%3DM1");
+  });
+});

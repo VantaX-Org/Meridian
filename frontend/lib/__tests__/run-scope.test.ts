@@ -2,7 +2,7 @@
 // on an object page), ?run= pins another one, and "Back to latest" is offered only while it is pinned.
 import { describe, expect, it } from "vitest";
 import type { DQSSummary, Version } from "@/types/api";
-import { hrefWithRun, latestFinishedRun, lineageChoices, resolveScope, runChoiceLabels, runHasObject, runScopeLabel } from "../run-scope";
+import { hrefWithRun, latestFinishedRun, lineageChoices, resolveScope, runChoiceLabels, runFileName, runHasObject, runName, runScopeLabel, runSourceLabel } from "../run-scope";
 
 const score = { composite_score: 80 } as DQSSummary;
 
@@ -101,17 +101,34 @@ describe("hrefWithRun", () => {
 });
 
 describe("run labels", () => {
-  it("names the run and its day, without a middle dot", () => {
-    expect(runScopeLabel(MM_NEW)).toBe("material_master_25k, 14 Oct 2026");
-    expect(runScopeLabel(run("x", "14", { label: null, metadata: { modules: ["material_master"] } }))).toBe("Material master, 14 Oct 2026");
+  it("names the run by its objects and when it ran, never by the upload's file name", () => {
+    expect(runName(MM_NEW)).toMatch(/^Material master, 14 Oct(, 2026)?, 05:00$/);
+    expect(runName(MM_NEW)).not.toContain("material_master_25k");
+    expect(runScopeLabel(MM_NEW)).toBe(runName(MM_NEW));
+    expect(runName(run("x", "14", { label: null, metadata: { modules: ["material_master", "controlling", "fi_gl"] } }))).toMatch(/^Material master and 2 more, /);
+    expect(runName(run("x", "14", { label: "controlling_1k" }))).toMatch(/^Controlling, /);
+    expect(runName(run("x", "14", { label: "Quarter close check" }))).toBe("Quarter close check");
   });
 
-  it("adds the time only where two runs share a name and a day", () => {
-    const a = run("a", "14", { label: "controlling_1k", run_at: "2026-10-14T05:00:00Z" });
-    const b = run("b", "14", { label: "controlling_1k", run_at: "2026-10-14T09:30:00Z" });
+  it("keeps the file name as secondary text", () => {
+    expect(runFileName(MM_NEW)).toBe("material_master_25k");
+    expect(runFileName(run("x", "14", { label: "Quarter close check" }))).toBeUndefined();
+    expect(runFileName(run("x", "14", { label: "x", metadata: { file_name: "mm.xlsx" } }))).toBe("mm.xlsx");
+  });
+
+  it("names the source: the system when known, else upload", () => {
+    expect(runSourceLabel(MM_NEW)).toBe("upload");
+    expect(runSourceLabel(run("s", "14", { metadata: { system_id: "s1" } }), "ECC production")).toBe("ECC production");
+  });
+
+  it("adds the run number only where two runs still read the same", () => {
+    const a = upload("a", "14", "controlling", { label: null, run_number: 1 });
+    const b = upload("b", "14", "controlling", { label: null, run_number: 2 });
     const labels = runChoiceLabels([a, b, MM_NEW]);
-    expect(labels.get("a")).not.toBe(labels.get("b"));
-    expect(labels.get("a")).toMatch(/^controlling_1k, 14 Oct 2026, /);
-    expect(labels.get("material_master_25k")).toBe("material_master_25k, 14 Oct 2026");
+    expect(labels.get("a")).toMatch(/, run 1$/);
+    expect(labels.get("b")).toMatch(/, run 2$/);
+    expect(labels.get("material_master_25k")).toBe(runName(MM_NEW));
+    const c = upload("c", "15", "controlling", { label: null, run_at: "2026-10-15T09:30:00Z", run_number: 3 });
+    expect(runChoiceLabels([a, c]).get("c")).toBe(runName(c));
   });
 });

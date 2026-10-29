@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { AskMeridian, Breadcrumb, Button, JobTray, NotificationBell, Rail, TopBar, CommandPalette, RootPageFrame, ProgressFill, IconChart, IconGrid } from "@/design";
@@ -22,7 +22,7 @@ import { setTenantTimezone } from "@/lib/format";
 import { PermissionsProvider } from "@/lib/permissions";
 import { ScopedPill } from "@/components/scoped-pill";
 import { GlobalObjectPicker, GlobalRunPicker, RunCarrier } from "@/components/global-run";
-import { GlobalSearch } from "@/components/global-search";
+import { useRecordItems } from "@/components/global-search";
 import { HelpSlot } from "@/components/help/help-slot";
 import { reportClientError } from "@/lib/client-errors";
 
@@ -63,7 +63,10 @@ function CommandPaletteSlot() {
   const grammar = {
     objects: (objectsQ.data?.objects ?? []).map((o) => ({ module: o.module, label: o.label })),
   };
-  return <CommandPalette items={items} grammar={grammar} />;
+  // Failing records by key or name are searched here, from the one global search; the scope bar has no finder.
+  const [text, setText] = useState("");
+  const records = useRecordItems(text);
+  return <CommandPalette items={items} grammar={grammar} records={records} onQueryChange={setText} />;
 }
 
 /** 2px track at the top of the content column; the accent fill shows only while a job runs. The track is always
@@ -121,7 +124,7 @@ function Presentation({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, searchParams]);
   return (
-    <div className="flex h-dvh flex-col" data-present="1">
+    <div className="flex flex-col [height:calc(100dvh-var(--m-attribution-h))]" data-present="1">
       {/* The shell is gone, so the document heading the Breadcrumb owns is kept here, visually hidden. */}
       <div className="sr-only"><Breadcrumb /></div>
       {/* The same bottom room as the shell: "Exit presentation" and the attribution sit over it, never over the last row. */}
@@ -139,7 +142,7 @@ function Chrome({ children }: { children: ReactNode }) {
   const present = useSearchParams().get("present") === "1";
   if (present) return <Presentation>{children}</Presentation>;
   return (
-      <div className="flex h-dvh flex-col m-print-flow">
+      <div className="flex flex-col m-print-flow [height:calc(100dvh-var(--m-attribution-h))]">
         <JobProgressBar />
         <Suspense fallback={<div className="[height:var(--m-topbar-h)]" />}>
           <Rail
@@ -150,7 +153,7 @@ function Chrome({ children }: { children: ReactNode }) {
           />
         </Suspense>
         <Suspense fallback={null}><RunCarrier /></Suspense>
-        <TopBar trailing={<><Suspense fallback={null}><GlobalSearch /></Suspense><Suspense fallback={null}><GlobalObjectPicker /></Suspense><Suspense fallback={null}><GlobalRunPicker /></Suspense><ScopedPill /></>} />
+        <TopBar trailing={<><Suspense fallback={null}><GlobalObjectPicker /></Suspense><Suspense fallback={null}><GlobalRunPicker /></Suspense><ScopedPill /></>} />
         {/* m-shell-main keeps room under the Ask Meridian launcher (fixed bottom-right): the last row of a page and a focused control never sit under it. */}
         <main id="main" tabIndex={0} className="m-shell-main flex-1 overflow-auto outline-none m-print-flow [background:var(--m-canvas)]">
           <RootPageFrame>{children}</RootPageFrame>

@@ -13,6 +13,7 @@ import { Button, ErrorState, Field, Input, Notice, PageFrame, PageHeader, Select
 import { SettingsSection, SettingsSheet } from "@/components/mdm/ledger";
 import { SettingsTabs } from "@/components/admin/settings-tabs";
 import { useRole } from "@/hooks/use-role";
+import { getAlertChannels } from "@/lib/api/notifications";
 import { getSettings, saveNotificationSettings, updateAlertThresholds, type NotificationConfig } from "@/lib/api/settings";
 import { apiErrorMessage } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
@@ -56,6 +57,9 @@ function AlertsForm({ initial, header }: { initial: TenantSettings; header: Reac
   const qc = useQueryClient();
   const { can } = useRole();
   const write = can("manage_settings");
+  const [addingChannel, setAddingChannel] = useState(false);
+  const channels = useQuery({ queryKey: queryKeys.alertChannels(), queryFn: getAlertChannels, retry: false, meta: { ignoreError: true } });
+  const noChannel = channels.isSuccess && channels.data.length === 0;
   const [thresholds, setThresholds] = useState<AlertThresholds>({ ...DEFAULT_THRESHOLDS, ...initial.alert_thresholds });
   const [digest, setDigest] = useState<NotificationConfig>({ ...DEFAULT_DIGEST, ...initial.notification_config });
   const floors = thresholds.module_floors ?? {};
@@ -82,6 +86,16 @@ function AlertsForm({ initial, header }: { initial: TenantSettings; header: Reac
     <PageFrame gap={4}>
       {header}
       {!write ? <Notice tone="info">These settings are read only for your role</Notice> : null}
+      {noChannel ? (
+        <Notice
+          tone="warning"
+          title="Alerts stay in the app: no channel is set up"
+          // The Channels section below holds the one primary; this opens the same dialog.
+          action={write ? <Button variant="secondary" size="sm" onClick={() => setAddingChannel(true)}>Add channel</Button> : undefined}
+        >
+          Nobody is emailed or messaged when an alert fires or a digest is due. Add email, Slack, Teams or a webhook to send them out.
+        </Notice>
+      ) : null}
       <SettingsSheet>
         <SettingsSection title="When to alert" hint="Alert when a run has at least this many critical or high failing rules, or an object's score falls by more than the drop against the previous run">
           <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); saveThresholds.mutate(); }}>
@@ -102,6 +116,7 @@ function AlertsForm({ initial, header }: { initial: TenantSettings; header: Reac
             <div>
               <h3 className="m-text-body font-semibold mb-1">Score floors per object</h3>
               <p className="m-text-meta mb-2 m-ink-3">An analysis that scores an object below its floor raises an in-app alert, and a message on each channel below that takes alerts.</p>
+              {!Object.keys(floors).length ? <p className="m-text-meta m-ink-3">No floors set</p> : (
               <table className="m-table [max-width:480px]">
                 <thead><tr><th>Object</th><th>Floor</th><th /></tr></thead>
                 <tbody>
@@ -115,9 +130,9 @@ function AlertsForm({ initial, header }: { initial: TenantSettings; header: Reac
                       <td>{write ? <Button type="button" variant="ghost" onClick={() => setFloor(m, null)}>Remove</Button> : null}</td>
                     </tr>
                   ))}
-                  {!Object.keys(floors).length ? <tr><td colSpan={3} className="m-text-meta m-ink-3">No floors set</td></tr> : null}
                 </tbody>
               </table>
+              )}
               {write && unfloored.length ? (
                 <div className="mt-2 [max-width:260px]">
                   <Select
@@ -133,7 +148,7 @@ function AlertsForm({ initial, header }: { initial: TenantSettings; header: Reac
         </SettingsSection>
 
         <SettingsSection title="Channels" hint="Where alerts and digests go outside the app. Alerts carry counts, rule ids and links, never record values. A board pack channel gets the board pack and the analyst workbook for the latest finished run: weekly on Monday mornings, or monthly on the 1st">
-          <ChannelsSection canEdit={write} />
+          <ChannelsSection canEdit={write} adding={addingChannel} onAddingChange={setAddingChannel} />
         </SettingsSection>
 
         <SettingsSection title="Default digest" hint="The summary the tenant gets by default, by email and Teams">

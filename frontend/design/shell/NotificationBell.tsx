@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useJobs } from "../../hooks/use-jobs";
 import { getNotifications, getUnreadCount, markAllNotificationsRead, markNotificationRead } from "../../lib/api/notifications";
 import { humanizeIds, relativeTime } from "../../lib/format";
+import { notificationLines, notificationTarget, notificationTitle } from "../../lib/notification-copy";
 import { queryKeys } from "../../lib/query-keys";
 import type { Notification, NotificationType } from "../../types/api";
 import { Badge } from "../primitives/Badge";
@@ -82,13 +83,16 @@ export function useNotificationMutations() {
 }
 
 /** One notification: unread dot, type pill, title (a link when it has an in-app target), body and age. */
-export function NotificationRow({ n, showBody, onOpen, onMarkRead }: {
+export function NotificationRow({ n, showBody, count = 1, onOpen, onMarkRead }: {
   n: Notification; showBody?: boolean; onOpen: (n: Notification) => void;
+  /** How many identical notifications from the same run this row stands for. */
+  count?: number;
   /** Marks this one read without opening it; the row shows "Mark read" while it is unread. */
   onMarkRead?: (n: Notification) => void;
 }) {
-  const href = internalHref(n.link);
-  const titleText = humanizeIds(n.title);
+  const href = notificationTarget(n);
+  const titleText = notificationTitle(n);
+  const lines = showBody ? notificationLines(n) : [];
   const title = <span className="m-text-body font-medium m-ink">{titleText}</span>;
   return (
     <li className="flex items-start gap-3 px-3 py-2" data-unread={n.is_read ? undefined : "true"}>
@@ -102,13 +106,26 @@ export function NotificationRow({ n, showBody, onOpen, onMarkRead }: {
           <Pill tone={TONE[n.type] ?? "neutral"}>{NOTIFICATION_TYPE_LABEL[n.type] ?? humanizeIds(n.type)}</Pill>
           {!n.is_read && <span className="sr-only">Unread</span>}
           <time className="m-text-meta m-ink-3" dateTime={n.created_at}>{relativeTime(n.created_at)}</time>
+          {count > 1 && <span className="m-text-meta m-ink-3">{`${count} times`}</span>}
         </div>
         {href ? (
           <Link href={href} onClick={() => onOpen(n)} aria-label={`Open notification: ${titleText}`} className="underline-offset-2 hover:underline">{title}</Link>
         ) : (
           <button type="button" onClick={() => onOpen(n)} aria-label={`Open notification: ${titleText}`} className="text-left">{title}</button>
         )}
-        {showBody && <p className="m-text-body m-ink-2">{humanizeIds(n.body)}</p>}
+        {showBody && (
+          <ul className="flex flex-col gap-0.5">
+            {lines.map((line, i) => (
+              <li key={i} className="m-text-body m-ink-2">
+                {line.text}
+                {line.href && <>{" "}<Link href={line.href} onClick={() => onOpen(n)} className="m-ink-accent-ink underline underline-offset-2">Open</Link></>}
+              </li>
+            ))}
+          </ul>
+        )}
+        {showBody && href && !lines.some((l) => l.href) && (
+          <Link href={href} onClick={() => onOpen(n)} className="m-text-body font-medium m-ink-accent-ink underline-offset-2 hover:underline">Open</Link>
+        )}
       </div>
       {onMarkRead && !n.is_read && (
         <Button variant="ghost" size="sm" onClick={() => onMarkRead(n)} aria-label={`Mark read: ${titleText}`}>Mark read</Button>

@@ -45,6 +45,8 @@ class ObjectSummaryOut(BaseModel):
     module: str
     label: str
     composite_score: Optional[float] = None
+    raw_score: Optional[float] = None         # the measured score before the critical cap (dqs_summary raw_score)
+    capped: bool = False                      # a critical failure holds composite_score at its cap
     readiness: Optional[str] = None
     failing_checks: int
     affected_records: int
@@ -181,6 +183,8 @@ async def list_objects(run: str = Query(..., alias="run"),
             "module": module,
             "label": _label(module),
             "composite_score": score,
+            "raw_score": mod_summary.get("raw_score"),
+            "capped": bool(mod_summary.get("capped")),
             "readiness": tier(score, thresholds) if score is not None else None,
             "failing_checks": failing,
             "affected_records": affected,

@@ -51,7 +51,7 @@ describe("To do page", () => {
     expect(headers[headers.length - 1]).toBe("Action");
     const action = within(rows[0]).getByRole("link", { name: "Open system: KSA PRD cannot be reached" });
     expect(action).toHaveAttribute("href", "/systems/s1");
-    expect(screen.getByText(/6 items in your scope, as of \d{2}:\d{2}/)).toBeInTheDocument();
+    expect(screen.getByText(/6 items in your scope, 4 critical or high, as of \d{2}:\d{2}/)).toBeInTheDocument();
     expect(api.getAttention).toHaveBeenCalledWith({ limit: 200 });
   });
 

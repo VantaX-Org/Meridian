@@ -129,7 +129,7 @@ describe("FixWork", () => {
     search = new URLSearchParams("run=R1");
     const getVersion = vi.spyOn(versions, "getVersion").mockResolvedValue({ id: "R1", label: "material_master_25k", status: "complete", run_at: "2026-10-16T05:00:00Z", dqs_summary: null, metadata: {} });
     renderWithQuery(<FixWork />);
-    expect(await screen.findByText("As of material_master_25k, 16 Oct 2026")).toBeInTheDocument();
+    expect(await screen.findByText("As of Material master, 16 Oct, 05:00")).toBeInTheDocument();
     expect(getVersion).toHaveBeenCalledWith("R1");
     expect(screen.getByText("records with a critical rule failure")).toBeInTheDocument();
     expect(screen.queryByText("block SAP processes")).toBeNull();
@@ -304,7 +304,8 @@ describe("FixWork", () => {
     });
 
     it("shows Record, Rule, Severity, Age, Due, Assignee and Suggested value, asking the server for severity, then the oldest", async () => {
-      vi.stubGlobal("matchMedia", (q: string) => ({ matches: true, media: q, addEventListener: () => undefined, removeEventListener: () => undefined }));
+      // Every width query matches except the phone one, which would turn the queue into cards (this test reads the table).
+      vi.stubGlobal("matchMedia", (q: string) => ({ matches: q !== "(max-width: 639px)", media: q, addEventListener: () => undefined, removeEventListener: () => undefined }));
       renderWithQuery(<FixWork />);
       const rows = await screen.findAllByTestId("work-record");
       const headers = within(screen.getByRole("grid", { name: "Records to fix" })).getAllByRole("columnheader").map((h) => h.textContent);

@@ -148,7 +148,7 @@ describe("MasterRecordPage", () => {
     expect(within(row("MAKTX")).getByText(/from S4P/)).toBeInTheDocument();
     expect(within(row("MAKTX")).getByText("MARA-2000")).toBeInTheDocument();
     // "Source priority from <upload's run>", not "from upload:bbbb2222"; the raw label stays, in Mono.
-    expect(await within(row("MEINS")).findByText("Source priority from Upload, material_master_25k, 16 Oct 2026")).toBeInTheDocument();
+    expect(await within(row("MEINS")).findByText("Source priority from Upload, Material master, 16 Oct, 00:00")).toBeInTheDocument();
     expect(within(row("MEINS")).getByText("upload:bbbb2222")).toBeInTheDocument();
     expect(within(row("MEINS")).queryByText(/from upload:/)).not.toBeInTheDocument();
   });

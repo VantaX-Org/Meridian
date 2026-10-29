@@ -24,7 +24,7 @@ const EMPTY_METRICS: triageApi.TriageMetrics = {
 function mount() {
   vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [{ id: "v1", label: "Run 1", status: "complete", run_at: "2026-10-01T00:00:00Z" }] } as never);
   vi.spyOn(usersApi, "getAssignableUsers").mockResolvedValue([]);
-  vi.spyOn(analyticsApi, "getSprints").mockResolvedValue({ sprints: [], total_actions: 0 });
+  if (!vi.isMockFunction(analyticsApi.getSprints)) vi.spyOn(analyticsApi, "getSprints").mockResolvedValue({ sprints: [], total_actions: 0 });
   if (!vi.isMockFunction(triageApi.getTriageMetrics)) vi.spyOn(triageApi, "getTriageMetrics").mockResolvedValue(EMPTY_METRICS);
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={qc}><OperationsPage /></QueryClientProvider>);
@@ -64,8 +64,8 @@ describe("OperationsPage", () => {
     expect(screen.getByRole("img", { name: "Average age by stage in hours: Detected 2" })).toBeInTheDocument();
     expect(screen.getByText(/Detected holds work longest, at 2 h on average/)).toBeInTheDocument();
     // One capacity number: a surplus, with both inputs as the hint.
-    expect(screen.getByText("+1 steward")).toBeInTheDocument();
-    expect(screen.getByText("1 steward now, 0 needed")).toBeInTheDocument();
+    expect(screen.getByText("1 steward to spare")).toBeInTheDocument();
+    expect(screen.getByText("Team of 1; the queue needs 0")).toBeInTheDocument();
     expect(screen.queryByText("Stewards needed")).toBeNull();
     expect(screen.getByText("1 stage is holding work")).toBeInTheDocument();
     // The queue counts are the cleaning queue: they open Fix work's Cleaning proposals tab, not the inbox.
@@ -104,7 +104,7 @@ describe("OperationsPage", () => {
     vi.spyOn(analyticsApi, "getOperational").mockResolvedValue({
       kpis: {
         throughput: 0, automation_rate: 0, mttr_hours: 0, sla_compliance_pct: 0, rejection_rate: 0, rollback_rate: 0,
-        items_in_flight: 40, avg_queue_age_hours: 0, top_rule_by_volume: "N/A", total_processed: 0, total_detected: 40,
+        items_in_flight: 40, avg_queue_age_hours: 0, top_rule_by_volume: "N/A", total_processed: 5, total_detected: 40,
       },
       bottlenecks: [{ stage: "pending_review", count: 40, avg_age_hours: 48, recommendation: "Add reviewers" }, { stage: "detected", count: 2, avg_age_hours: 3, recommendation: "x" }],
       capacity: { needed: 3, current: 1, surplus_deficit: -2, recommendation: "Add two stewards" },
@@ -139,6 +139,37 @@ describe("OperationsPage", () => {
     expect(screen.getByText("ana@x.io")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "7" })).toHaveAttribute("href", "/inbox?assignee=u1");
     expect(screen.getByRole("link", { name: "SLA policies" })).toHaveAttribute("href", "/admin/triage");
+  });
+});
+
+describe("OperationsPage with nothing processed", () => {
+  it("shows dashes instead of 100%, does not claim balance, and collapses the zero metrics into one line", async () => {
+    vi.spyOn(analyticsApi, "getOperational").mockResolvedValue({
+      kpis: {
+        throughput: 0, automation_rate: 0, mttr_hours: 0, sla_compliance_pct: 100, rejection_rate: 0, rollback_rate: 0,
+        items_in_flight: 41191, avg_queue_age_hours: 0, top_rule_by_volume: "N/A", total_processed: 0, total_detected: 0,
+      },
+      bottlenecks: [{ stage: "detected", count: 61816, avg_age_hours: 3, recommendation: "x" }],
+      capacity: { needed: 0, current: 0, surplus_deficit: 0, recommendation: "Team capacity is balanced" },
+    });
+    vi.spyOn(analyticsApi, "getSprints").mockResolvedValue({
+      sprints: [
+        { sprint_number: 1, name: "Sprint 1", total_effort_hours: 1000, records_fixed: 2500, critical_cleared: 0, dqs_now: 70, dqs_projected: 70, estimated_cost: null, currency: "ZAR" },
+        { sprint_number: 2, name: "Sprint 2", total_effort_hours: 12, records_fixed: 40, critical_cleared: 0, dqs_now: 70, dqs_projected: 70, estimated_cost: null, currency: "ZAR" },
+      ],
+      total_actions: 3,
+    } as never);
+    mount();
+    expect(await screen.findByText(/Nothing processed yet, so throughput/)).toBeInTheDocument();
+    expect(screen.queryByText("100%")).toBeNull();
+    expect(screen.queryByText("Balanced")).toBeNull();
+    expect(screen.queryByText(/of 0 detected/)).toBeNull();
+    expect(screen.queryByText("Rollback rate")).toBeNull();
+    expect(screen.getByText("Not measured until items are processed")).toBeInTheDocument();
+    expect(await screen.findByText("No score change projected.")).toBeInTheDocument();
+    expect(screen.queryByText("Estimated cost")).toBeNull();
+    expect(await screen.findByText("1,000")).toBeInTheDocument();
+    expect(screen.getByText("2,500")).toBeInTheDocument();
   });
 });
 

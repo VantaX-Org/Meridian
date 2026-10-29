@@ -59,7 +59,7 @@ export function InsightTabs({ view: viewId, run: runId }: { view?: string; run?:
   const view = viewId ? VIEWS.find((v) => v.id === viewId) : viewOf(pathname);
   if (!view || view.strip === false || search?.get("present") === "1") return null;
   return (
-    <nav aria-label={`${view.label} views`} data-tour="insight-views" className="m-tabs-list flex-wrap">
+    <nav aria-label={`${view.label} views`} data-tour="insight-views" className="m-tabs-list sm:flex-wrap">
       {view.tabs.map(([href, label]) => {
         const current = href === pathname;
         return (

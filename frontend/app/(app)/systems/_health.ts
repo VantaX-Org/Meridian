@@ -29,6 +29,17 @@ const HEALTH_REASONS: Record<string, string> = {
   "connection successful": "Connection successful",
 };
 
+/** The host-side step that installs the SAP RFC library, and the user guide chapter that explains it. */
+export const RFC_FIX_SCRIPT = "scripts/build-rfc-overlay.sh";
+export const RFC_FIX_HREF = "/docs?page=data-in";
+export const RFC_MISSING_REASON = "The SAP RFC library is not installed on the server, so Meridian cannot read this system yet";
+
+/** True when the stored health reason says the SAP RFC library is missing on the server (the connection cannot work until it is built in). */
+export function rfcLibraryMissing(s: { health_status: HealthStatus; health_message: string | null | undefined }): boolean {
+  if (s.health_status === "healthy" || s.health_status === "unknown") return false;
+  return (s.health_message ?? "").trim().toLowerCase().startsWith("pyrfc_not_installed");
+}
+
 /**
  * Why a connection is in its state, in words, with the raw text the check stored for a tooltip: a known reason code
  * ("pyrfc_not_installed: build the API image ...") reads as its sentence; a recognisable SAP or network error as the

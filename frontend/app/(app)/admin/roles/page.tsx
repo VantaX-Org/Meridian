@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, Card, Choice, ConfirmDialog, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, IconButton, Input, Menu, Mono, Notice, PageHeader, Pill, Select, Skeleton, Tabs, Textarea, IconMore, toast } from "@/design";
+import { Button, Card, Choice, ConfirmDialog, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, IconButton, Input, Menu, Mono, Notice, PageHeader, Pill, RowActionButton, Select, Skeleton, Tabs, Textarea, IconMore, toast } from "@/design";
 import { ApiKeysTab } from "@/components/admin/api-keys-tab";
 import { EffectivePermissionsView } from "@/components/admin/effective-permissions";
 import { GrantDiff } from "@/components/admin/grant-diff";
@@ -41,6 +41,7 @@ export default function AdminRolesPage() {
   const [raw, setTab] = useUrlState("tab", "roles");
   const tab = (TABS as readonly string[]).includes(raw) ? raw : "roles";
   const rolesQ = useQuery({ queryKey: ["roles"], queryFn: listRoles });
+  const [creating, setCreating] = useState(false);
 
   if (loading) return <div aria-busy="true"><Skeleton height={320} /></div>;
   if (!can("manage_users")) {
@@ -54,12 +55,17 @@ export default function AdminRolesPage() {
   const custom = roles.filter((r) => !r.built_in).length;
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Roles and access" meta={`${rolesQ.isLoading ? "" : `${roles.length} roles, ${custom} custom. `}Decide what each role may do and which systems or objects each person reaches`} />
-      <Notice tone="info">Built-in roles cannot be changed: clone one to make your own. Give a role for one system or object only, so people get just the access their work needs.</Notice>
+      <PageHeader
+        title="Roles and access"
+        meta={`${rolesQ.isLoading ? "" : `${roles.length} roles, ${custom} custom. `}Decide what each role may do and which systems or objects each person reaches`}
+        // A new role starts as a copy of an existing one (the API creates roles by cloning), then its permissions are set in the Matrix.
+        actions={tab === "roles" && roles.length ? <Button onClick={() => setCreating(true)}>Create role</Button> : undefined}
+      />
+      <Notice tone="info">Built-in roles cannot be changed. Create a role or clone one, which starts as a copy you can then change. Give a role for one system or object only, so people get just the access their work needs.</Notice>
       <Tabs
         value={tab} onValueChange={setTab}
         items={[
-          { value: "roles", label: "Roles", content: <RolesTab roles={roles} loading={rolesQ.isLoading} error={rolesQ.isError ? rolesQ.error : null} retry={() => rolesQ.refetch()} /> },
+          { value: "roles", label: "Roles", content: <RolesTab creating={creating} onCreatingChange={setCreating} roles={roles} loading={rolesQ.isLoading} error={rolesQ.isError ? rolesQ.error : null} retry={() => rolesQ.refetch()} /> },
           { value: "matrix", label: "Matrix", content: <MatrixTab /> },
           { value: "users", label: "Users & scopes", content: <UsersTab roles={roles} onInvite={() => setTab("invite")} /> },
           { value: "invite", label: "Invite", content: <InviteTab /> },
@@ -80,7 +86,7 @@ function deleteRoleSentence(role: Role | null): string {
   return `${who} the access it grants at once, at every system and object it was granted for. Their other roles stay. Deleting it cannot be undone.`;
 }
 
-function RolesTab({ roles, loading, error, retry }: { roles: Role[]; loading: boolean; error: unknown; retry: () => void }) {
+function RolesTab({ roles, loading, error, retry, creating, onCreatingChange }: { roles: Role[]; loading: boolean; error: unknown; retry: () => void; creating: boolean; onCreatingChange: (open: boolean) => void }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState<Role | null>(null);
   const [cloning, setCloning] = useState<string | null>(null);
@@ -102,11 +108,12 @@ function RolesTab({ roles, loading, error, retry }: { roles: Role[]; loading: bo
       id: "actions", header: "",
       cell: ({ row }) => {
         const r = row.original;
-        const items = [{ label: "Clone", onSelect: () => setCloning(r.key) }];
-        if (!r.built_in) items.push({ label: "Edit", onSelect: () => setEditing(r) }, { label: "Delete", onSelect: () => setDeleting(r) });
+        // Clone is the row's visible action; the rarer ones (edit, delete a custom role) wait in the menu.
+        const items = r.built_in ? [] : [{ label: "Edit", onSelect: () => setEditing(r) }, { label: "Delete", onSelect: () => setDeleting(r) }];
         return (
-          <span onClick={(e) => e.stopPropagation()}>
-            <Menu trigger={<IconButton size="sm" aria-label={`Actions for ${r.name}`}><IconMore size={16} /></IconButton>} items={items} />
+          <span className="inline-flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <RowActionButton label={`Clone ${r.name}`} onClick={() => setCloning(r.key)}>Clone</RowActionButton>
+            {items.length ? <Menu trigger={<IconButton size="sm" aria-label={`Actions for ${r.name}`}><IconMore size={16} /></IconButton>} items={items} /> : null}
           </span>
         );
       },
@@ -122,7 +129,7 @@ function RolesTab({ roles, loading, error, retry }: { roles: Role[]; loading: bo
       <Drawer open={!!open} onOpenChange={(o) => { if (!o) setOpen(null); }} title={open?.name ?? "Role"}>
         {open ? <RoleDrawer key={open.key} role={open} onClone={() => setCloning(open.key)} onSaved={refresh} /> : null}
       </Drawer>
-      <CloneDialog roles={roles} from={cloning} onClose={() => setCloning(null)} onDone={() => { setCloning(null); refresh(); }} />
+      <CloneDialog roles={roles} open={creating || !!cloning} from={cloning} onClose={() => { setCloning(null); onCreatingChange(false); }} onDone={() => { setCloning(null); onCreatingChange(false); refresh(); }} />
       <EditDialog role={editing} onClose={() => setEditing(null)} onDone={() => { setEditing(null); refresh(); }} />
       <ConfirmDialog
         open={!!deleting}
@@ -176,10 +183,11 @@ function RoleDrawer({ role, onClone, onSaved }: { role: Role; onClone: () => voi
   );
 }
 
-function CloneDialog({ roles, from, onClose, onDone }: { roles: Role[]; from: string | null; onClose: () => void; onDone: () => void }) {
+/** Clone a role (`from` set), or create one (open with no `from`: it starts as a copy of the role picked here). */
+function CloneDialog({ roles, open, from, onClose, onDone }: { roles: Role[]; open: boolean; from: string | null; onClose: () => void; onDone: () => void }) {
   const [name, setName] = useState("");
   const [src, setSrc] = useState<string | null>(null);
-  const source = src ?? from ?? "";
+  const source = src ?? from ?? roles.find((r) => r.built_in)?.key ?? roles[0]?.key ?? "";
   const close = () => { setName(""); setSrc(null); onClose(); };
   const m = useMutation({
     mutationFn: () => cloneRole({ name, cloned_from: source }),
@@ -187,12 +195,13 @@ function CloneDialog({ roles, from, onClose, onDone }: { roles: Role[]; from: st
     onError: (e) => toast.error(`Not cloned. ${apiErrorMessage(e)}`),
   });
   return (
-    <Dialog open={!!from} onOpenChange={(o) => { if (!o) close(); }} title="Clone role">
-      <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); if (name.trim()) m.mutate(); }}>
-        <Field label="Clone from"><Select options={roles.map((r) => ({ value: r.key, label: r.name }))} value={source} onValueChange={setSrc} /></Field>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) close(); }} title={from ? "Clone role" : "Create role"}>
+      <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); if (name.trim() && source) m.mutate(); }}>
+        {from ? null : <p className="m-text-meta m-ink-3">A new role starts as a copy of the role you pick. Set what it may do in the Matrix afterwards.</p>}
+        <Field label={from ? "Clone from" : "Start from"}><Select options={roles.map((r) => ({ value: r.key, label: r.name }))} value={source} onValueChange={setSrc} /></Field>
         <Field label="New role name"><Input value={name} onChange={(e) => setName(e.target.value)} required /></Field>
         <div className="flex gap-2">
-          <Button type="submit" disabled={!name.trim() || m.isPending}>Create clone</Button>
+          <Button type="submit" disabled={!name.trim() || !source || m.isPending}>{from ? "Create clone" : "Create role"}</Button>
           <Button type="button" variant="secondary" onClick={close}>Close</Button>
         </div>
       </form>

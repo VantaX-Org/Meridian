@@ -21,12 +21,34 @@ export interface CellMeta {
 /** Column ids that hold a row's action ("Open", "Fix"): DataTable pins them to the right edge unless told otherwise. */
 const ACTION_COLUMN_IDS = new Set(["action", "actions"]);
 
+/** Column ids that hold a row's status or verdict: they stay in view on a phone, whatever a page marks as low priority. */
+const STATUS_COLUMN_IDS = /^(status|verdict|state|severity|outcome|health)$/i;
+
+/** True for the row's action column (id `action` or `actions`). */
+export function isActionColumn(id: string): boolean {
+  return ACTION_COLUMN_IDS.has(id);
+}
+
+/** True for the column that holds the row's status or verdict: a severity column, or one named like a status. */
+export function isStatusColumn(id: string, meta: CellMeta | undefined): boolean {
+  return !!meta?.severity || STATUS_COLUMN_IDS.test(id);
+}
+
 /**
  * A column's meta as DataTable lays it out: an action column (id `action` or `actions`) is pinned to the right
  * edge by default, so on a phone a table wider than its card scrolls under the action and never clips it ("Ope").
+ * The action and the status or verdict column are never low priority: a phone always keeps what the row says and
+ * what to do about it.
  */
 export function layoutMeta(id: string, meta: CellMeta | undefined): CellMeta | undefined {
-  return ACTION_COLUMN_IDS.has(id) && meta?.sticky === undefined ? { ...meta, sticky: "end" } : meta;
+  let out = meta;
+  if (ACTION_COLUMN_IDS.has(id) && out?.sticky === undefined) out = { ...out, sticky: "end" };
+  if (out?.priority === "low" && (isActionColumn(id) || isStatusColumn(id, out))) {
+    const { priority: dropped, ...rest } = out;
+    void dropped;
+    out = rest;
+  }
+  return out;
 }
 
 /**

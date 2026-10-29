@@ -34,14 +34,16 @@ import { attentionAction } from "@/lib/attention";
 import { dqsExplanation, useDqsInputs } from "@/components/insight/dqs-score";
 import { verdictSentence, type NarrativeInput } from "@/lib/home-narrative";
 import {
-  runCap, capSentence, capSummary, cappedReason, dimensionHeatmapCells, runDqs, runDimensions, trend, readinessOf, isBelowTarget, BELOW_TARGET,
+  runCap, capParts, CAP_NAMED_SHOWN, capSummary, cappedReason, dimensionHeatmapCells, runDqs, runDimensions, trend, readinessOf, isBelowTarget, BELOW_TARGET,
   worstObjectsFirst, DIMENSIONS,
 } from "@/lib/home-metrics";
 import {
   criticalHighHref, criticalHighTotal, isScored, latestPerLineage, runObjectsName, stateDqs, stateObjects, stateRows, stateScopeLine, stateSeries, stateSummary,
   type StateRow,
 } from "@/lib/current-state";
-import { formatModuleName, labelOf, plural, relativeTime, round1 } from "@/lib/format";
+import { formatModuleName, plural, round1 } from "@/lib/format";
+import { useRuleNames } from "@/lib/rule-name";
+import { taskDueText, taskTitle, unnamedTaskChecks } from "../inbox/task-source";
 import { previousInLineage, runPageHref } from "@/lib/runs";
 import { fixHref } from "@/lib/drill";
 import { hrefWithRun, runName, runScopeLabel } from "@/lib/run-scope";
@@ -51,7 +53,8 @@ import { apiErrorState, isListFailure } from "@/lib/error";
 import { openJobTray } from "@/lib/job-tray-bus";
 import { queryKeys } from "@/lib/query-keys";
 import { PERSONA_OPTIONS } from "@/lib/persona";
-import { homeActionFor } from "@/lib/home-action";
+import { homeStep } from "@/lib/home-action";
+import { doNext } from "@/lib/do-next";
 import { getPredictiveAnalytics } from "@/lib/api/analytics";
 import { forecastSentence, overallForecast } from "@/lib/score-forecast";
 import { MINE_PARAM, useObjectOwners } from "@/hooks/use-object-owners";
@@ -123,6 +126,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const landscapeQ = useQuery({ queryKey: queryKeys.configLandscape(), queryFn: getConfigLandscape });
   // The steward's queue leads the page: the five open items due first.
   const queueQ = useQuery({ queryKey: ["home-inbox-top"], queryFn: () => getQueueItems({ status: "open", limit: 5 }), enabled: role === "steward", meta: { ignoreError: true } });
+  const inboxRuleName = useRuleNames(unnamedTaskChecks(queueQ.data?.items ?? []), role === "steward");
   // A reviewer of AI rules who does not write rules (the AI reviewer): their next action is the proposals waiting.
   const reviewsAiRules = can("review_ai_rules") && !can("manage_rules");
   const proposalsQ = useAiProposals(reviewsAiRules);
@@ -243,12 +247,15 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   // Objects below target: at risk or no-go (go only at the target); "not ready" is kept for wave readiness.
   const belowTarget = objects.filter(isBelowTarget);
   const belowTargetTone = objects.some((o) => o.readiness === "fail") ? "no-go" : belowTarget.length ? "at-risk" : "go";
+  // The tile and the hero's verdict count the same objects: say how they split, so the two visibly add up.
+  const noGoCount = objects.filter((o) => o.readiness === "fail").length;
+  const belowTargetHint = belowTarget.length ? `${noGoCount} no-go, ${belowTarget.length - noGoCount} at risk` : `of ${objects.length}`;
   const systems = systemsQ.data ?? [];
   const activeSystems = systems.filter((s) => s.is_active);
 
-  const action = pendingProposals > 0 && !toDo
-    ? { label: `Review ${plural(pendingProposals, "proposal")}`, href: "/rules/drafts?tab=ai" }
-    : homeActionFor({
+  // The one step of this home (lib/home-action.ts homeStep): the hero's button, the "Next:" line above it and the
+  // "Do next" cell all read it, so they can never name different things.
+  const step = homeStep({
     persona: role,
     can,
     belowTarget: belowTarget.length,
@@ -256,6 +263,12 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     worstHref: worst ? `/objects/${worst.module}?run=${worst.run_id}` : undefined,
     systemFailing: activeSystems.some(isFailing),
     attention: toDo,
+    attentionTitle: attentionTop?.title,
+    proposals: pendingProposals,
+    next: doNext(state, { pinned: !!pinned }),
+    recordsToFix: shellCountsQ.data?.fix,
+    fixStarted: (workQ.data?.totals.proposed ?? 0) > 0,
+    failingSystem: activeSystems.find(isFailing)?.name,
   });
   // The ledger's row action fixes only for a role that can work a fix (apply it, or approve it); else it opens.
   const canFix = can("apply") || can("approve");
@@ -269,15 +282,17 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const criticalRules = reasonRules.length
     ? reasonRules
     : [...new Map(findings.filter((f) => f.severity === "critical").map((f) => [f.check_id, { check_id: f.check_id, module: f.module }])).values()];
-  const capHead = capSentence(capInfo);
-  const namedRules = criticalRules.slice(0, 2);
+  const capWords = capParts(capInfo);
+  const namedRules = criticalRules.slice(0, CAP_NAMED_SHOWN);
   const moreRules = capInfo.rules - namedRules.length;
-  const capLine = capHead ? (
+  // The rules are named as rules, inside the count they belong to: "70 critical failing rules (AR002, AR003 and 68
+  // more) cap 11 of 15 objects".
+  const capLine = capWords ? (
     <>
-      {capHead}
+      {capWords.rules}
       {namedRules.length > 0 && (
         <>
-          {": "}
+          {" ("}
           {namedRules.map((f, i) => (
             <span key={f.check_id}>
               {i > 0 && ", "}
@@ -285,8 +300,10 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
             </span>
           ))}
           {moreRules > 0 && ` and ${moreRules} more`}
+          {")"}
         </>
       )}
+      {` ${capWords.rest}`}
     </>
   ) : undefined;
 
@@ -399,7 +416,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         }} />
       ) : undefined}
     >
-      <DataTable
+      <DataTable phoneLayout="table"
         columns={columns}
         data={rows}
         getRowId={(o) => o.module}
@@ -497,13 +514,15 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         <EmptyState variant="inline" title="Nothing waits in the inbox" action={<Link href="/fix?sugg=1" className="underline-offset-2 hover:underline">{`Open records ${COUNT_DEFS.suggested.label.toLowerCase()}`}</Link>} />
       ) : (
         <ul className="flex flex-col" data-testid="home-inbox-items">
-          {queueItems.map((it) => (
-            <li key={it.id} className="flex items-center gap-3 border-b py-2 [border-color:var(--m-line)] m-text-body">
-              <Link href={`/inbox?focus=${encodeURIComponent(it.id)}`} className="flex-1 underline-offset-2 hover:underline">{labelOf(it.item_type)}, {formatModuleName(it.domain)}</Link>
-              {it.sla_state === "breached" && <Pill tone="no-go">Overdue</Pill>}
-              <span className="m-ink-3">{it.due_at ? `due ${relativeTime(it.due_at)}` : `opened ${relativeTime(it.created_at)}`}</span>
-            </li>
-          ))}
+          {queueItems.map((it) => {
+            const due = taskDueText(it);
+            return (
+              <li key={it.id} className="flex items-center gap-3 border-b py-2 [border-color:var(--m-line)] m-text-body">
+                <Link href={`/inbox?focus=${encodeURIComponent(it.id)}`} className="flex-1 underline-offset-2 hover:underline">{taskTitle(it, null, inboxRuleName)}</Link>
+                {due.overdue ? <Pill tone="no-go">{due.text}</Pill> : <span className="m-ink-3">{due.text}</span>}
+              </li>
+            );
+          })}
         </ul>
       )}
     </Card>
@@ -511,7 +530,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const work =
     role === "lead" ? (
       <WorkRow>
-        <Stat label={COUNT_DEFS.objects_below_target.label} value={belowTarget.length} hint={`of ${objects.length}`} tone={belowTargetTone} href={objectsHref({ readiness: BELOW_TARGET })} />
+        <Stat label={COUNT_DEFS.objects_below_target.label} value={belowTarget.length} hint={belowTargetHint} tone={belowTargetTone} href={objectsHref({ readiness: BELOW_TARGET })} />
         <Stat label={COUNT_DEFS.blocking_rules.label} value={criticalHigh.toLocaleString()} hint={criticalHigh ? undefined : "none"} tone={criticalHigh ? "no-go" : "go"} href={criticalHighLink} />
         <Stat label={COUNT_DEFS.inbox_open.label} value={countsReady ? counts.inbox : "—"} hint={countsReady && !counts.inbox ? "clear" : undefined} href="/inbox" />
       </WorkRow>
@@ -562,7 +581,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         firstRunLabel: pinned ? undefined : `First run of ${runObjectsName(newest)}`,
         sentence,
         capLine,
-        action,
+        action: step,
       }}
       run={{ id: newest.id, label: pinned ? runLabel(pinned) : stateScopeLine(objects.length, newest.run_at), runAt: newest.run_at }}
       scope={
@@ -582,7 +601,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       work={work}
       lists={lists}
       onboarding={<HomeOnboarding />}
-      cells={<RouteInsight doNext={toDoNext} />}
+      cells={<RouteInsight embedded doNext={step} />}
       nextAction={<AttentionCard />}
       headerActions={<>
         <RunAnalysis variant="secondary" />

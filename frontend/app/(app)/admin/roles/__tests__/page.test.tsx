@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
@@ -63,9 +63,10 @@ describe("admin roles page", () => {
     renderWithQuery(<AdminRolesPage />);
     const user = userEvent.setup();
     await screen.findByText("Ops");
-    expect(screen.getByRole("button", { name: "Actions for Viewer" })).toHaveClass("m-iconbtn", "m-iconbtn-sm");
-    await user.click(screen.getByRole("button", { name: "Actions for Viewer" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Clone" }));
+    // Clone is the row's visible action; a custom role's Edit and Delete wait in its menu, a built-in has no menu.
+    expect(screen.queryByRole("button", { name: "Actions for Viewer" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Actions for Ops" })).toHaveClass("m-iconbtn", "m-iconbtn-sm");
+    await user.click(screen.getByRole("button", { name: "Clone Viewer" }));
     await user.type(await screen.findByLabelText("New role name"), "Copy");
     await user.click(screen.getByRole("button", { name: "Create clone" }));
     await waitFor(() => expect(clone).toHaveBeenCalledWith({ name: "Copy", cloned_from: "viewer" }));
@@ -185,4 +186,21 @@ describe("admin roles page", () => {
     expect(screen.getByRole("button", { name: "Send invitation" })).toBeDisabled();
     expect(inv).not.toHaveBeenCalled();
   });
+
+  it("names Create role as the page's primary, and creates a role as a copy of the one picked", async () => {
+    const clone = vi.spyOn(rolesApi, "cloneRole").mockResolvedValue(CUSTOM);
+    renderWithQuery(<AdminRolesPage />);
+    const user = userEvent.setup();
+    const create = await screen.findByRole("button", { name: "Create role" });
+    expect(create).toHaveClass("m-btn-primary");
+    // The banner says what is possible, not a Clone button that does not exist.
+    expect(screen.getByText(/Create a role or clone one, which starts as a copy/)).toBeInTheDocument();
+    await user.click(create);
+    expect(await screen.findByRole("dialog", { name: "Create role" })).toBeInTheDocument();
+    expect(screen.getByText(/A new role starts as a copy of the role you pick/)).toBeInTheDocument();
+    await user.type(screen.getByLabelText("New role name"), "Auditors");
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Create role" }));
+    await waitFor(() => expect(clone).toHaveBeenCalledWith({ name: "Auditors", cloned_from: "viewer" }));
+  });
+
 });

@@ -50,7 +50,7 @@ export function ScoredPairs({ objects }: { objects: { value: string; label: stri
       ) : q.isError ? (
         <ErrorState {...apiErrorState(q.error)} onRetry={() => void q.refetch()} />
       ) : !q.data?.items.length ? (
-        <EmptyState variant="inline" title="No pending pairs" detail={`The matcher has no pair left to review for ${formatModuleName(object)}`} />
+        <EmptyState variant="inline" title="No pending pairs" detail={`No pair is left to review for ${formatModuleName(object)}`} />
       ) : (
         <>
           <p className="m-text-meta m-ink-3">{plural(q.data.total, "pending pair")} for {formatModuleName(object)}, best match first</p>

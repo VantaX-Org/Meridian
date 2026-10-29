@@ -19,11 +19,11 @@ import { startedByRun } from "@/lib/api/v1/objects";
 import { blockedReasonOf, deleteVersion } from "@/lib/api/retention";
 import { getAnalysisStatus } from "@/lib/api/upload";
 import { archiveVersions, compareVersions, getVersions, restoreVersions } from "@/lib/api/versions";
-import { formatDate, formatNumber, plural } from "@/lib/format";
+import { formatDate, formatModuleName, formatNumber, plural } from "@/lib/format";
 import { runAxisTicks } from "@/lib/run-axis";
 import { queryKeys } from "@/lib/query-keys";
 import { isFinished, lineageOf, lineageSeries, overallDqs, previousRunId, runPageHref, scopeOf } from "@/lib/runs";
-import { runName, runScopeLabel } from "@/lib/run-scope";
+import { runFileName, runName, runScopeLabel } from "@/lib/run-scope";
 import type { Version } from "@/types/api";
 import { isListFailure } from "@/lib/error";
 import { BREAK_AT_SEPARATORS, breakAtUnderscores } from "@/lib/break-name";
@@ -105,8 +105,20 @@ export function groupReruns(versions: readonly Version[]): { rows: Version[]; ea
   return { rows, earlier };
 }
 
-function makeColumns(allVersions: Version[], earlier: ReadonlyMap<string, Version[]>, systemOf: (v: Version) => string, onDelete?: (v: Version) => void): ColumnDef<Version>[] {
-  return [
+/**
+ * The columns that say the same thing on every row of the ledger step aside: Status when every run is done (a failed
+ * or running run brings it back), Started by when it repeats the System column on every row.
+ */
+export function uniformColumns(rows: readonly Version[], systemOf: (v: Version) => string): Set<string> {
+  const hidden = new Set<string>();
+  if (rows.length === 0) return hidden;
+  if (rows.every((v) => toLifecycle(v.status) === "done")) hidden.add("status");
+  if (rows.every((v) => startedByRun(v) === systemOf(v))) hidden.add("started_by");
+  return hidden;
+}
+
+function makeColumns(allVersions: Version[], earlier: ReadonlyMap<string, Version[]>, systemOf: (v: Version) => string, onDelete?: (v: Version) => void, hide: ReadonlySet<string> = new Set()): ColumnDef<Version>[] {
+  const columns: ColumnDef<Version>[] = [
     {
       // The ledger is grouped by day: the label sits on the first run of each day and is blank under it.
       id: "day",
@@ -130,7 +142,7 @@ function makeColumns(allVersions: Version[], earlier: ReadonlyMap<string, Versio
         const more = earlier.get(row.original.id)?.length ?? 0;
         return (
           // Wraps on a phone: the note drops under the name rather than running under the pinned Open.
-          <span className="inline-flex flex-wrap items-center gap-x-2" title={formatDate(row.original.run_at, "datetime")}>
+          <span className="inline-flex flex-wrap items-center gap-x-2" title={[formatDate(row.original.run_at, "datetime"), runFileName(row.original)].filter(Boolean).join(", ")}>
             {/* One line from 1280px, where the ledger has room; narrower, it wraps after an underscore, never mid-word. */}
             <span className={`min-w-0 xl:whitespace-nowrap ${BREAK_AT_SEPARATORS}`} data-testid="run-name">{breakAtUnderscores(runName(row.original), "xl:hidden")}</span>
             {more > 0 ? <span className="m-text-meta m-ink-3 whitespace-nowrap">{`+${plural(more, "earlier run")}`}</span> : null}
@@ -208,6 +220,7 @@ function makeColumns(allVersions: Version[], earlier: ReadonlyMap<string, Versio
       ),
     },
   ];
+  return columns.filter((c) => !hide.has(c.id ?? ""));
 }
 
 /** The earlier runs folded under a ledger row: each with its time, status and score, a compare with the row's run, and Open. */
@@ -319,7 +332,7 @@ export default function RunsPage() {
   const grouped = useMemo(() => groupReruns(allVersions), [allVersions]);
   const systemOf = useCallback((v: Version) => (scopeOf(v) === "upload" ? "Upload" : systemName.get(scopeOf(v)) ?? "—"), [systemName]);
   const columns = useMemo(
-    () => makeColumns(allVersions, grouped.earlier, systemOf, canPurge ? setDeleteTarget : undefined),
+    () => makeColumns(allVersions, grouped.earlier, systemOf, canPurge ? setDeleteTarget : undefined, uniformColumns(grouped.rows, systemOf)),
     [allVersions, grouped, systemOf, canPurge],
   );
   // Every connected system, not only the ones on the current page. The upload scope has no system_id to filter by.
@@ -343,20 +356,21 @@ export default function RunsPage() {
   const prevDqs = prevRun ? overallDqs(prevRun) : null;
   const delta = latestDqs !== null && prevDqs !== null ? Math.round((latestDqs - prevDqs) * 10) / 10 : null;
 
-  // Chart scope: the chosen system, else the system of the latest run.
-  const chartScope = system || (latest ? scopeOf(latest) : "");
-  // The name of a scope: the system's name, "uploads" for imported files; null until the systems load.
-  const scopeName = (scope: string): string | null => (scope === "upload" ? "uploads" : systemName.get(scope) ?? null);
-  const chartScopeName = chartScope ? scopeName(chartScope) : null;
-  const latestScopeName = latest ? scopeName(scopeOf(latest)) : null;
+  // The chart is one object's score per run: the runs of the latest run's lineage (its system, or uploads of the same
+  // objects), never runs of different objects joined into one line. The headline figure is that same latest run.
+  // What that lineage is called: its system, else the objects its uploads carry.
+  const chartName = latest
+    ? (scopeOf(latest) !== "upload" ? systemName.get(scopeOf(latest)) : undefined)
+      ?? ((latest.metadata?.modules?.length ? latest.metadata.modules : Object.keys(latest.dqs_summary ?? {})).map(formatModuleName).join(", ") || runName(latest))
+    : "";
   const points = useMemo(() => {
     // Keyed by run id with a disambiguated date as the tick, so two runs on one day never merge into one point.
-    const scoped = headScoped.filter((v) => isFinished(v) && scopeOf(v) === chartScope);
+    const scoped = latest ? headScoped.filter((v) => isFinished(v) && lineageOf(v) === lineageOf(latest)) : [];
     const ticks = runAxisTicks(scoped);
     return scoped
       .flatMap((v) => { const y = overallDqs(v); return y === null ? [] : [{ x: v.id, label: ticks.get(v.id), y: Math.round(y * 10) / 10, runId: v.id }]; })
       .reverse();
-  }, [headScoped, chartScope]);
+  }, [headScoped, latest]);
 
   const exportOptions = [{ format: "xlsx" as const, run: () => exportRuns("xlsx", { system_id: system || undefined, limit: 100 }) }];
   const refreshLists = () => {
@@ -434,13 +448,13 @@ export default function RunsPage() {
     <div className="flex flex-col gap-4">
       <div data-testid="runs-chart-slot" className="flex flex-col gap-1">
         <h2 className="font-semibold m-text-h">
-          {chartScopeName ? `Score per run, ${chartScopeName}` : "Score per run"}
+          {chartName ? `Score per run, ${chartName}` : "Score per run"}
         </h2>
         {points.length > 1 ? (
           <Line data={points} height={120} onPointClick={(p) => { if (p.runId) router.push(runPageHref(p.runId)); }} />
         ) : (
           <div className="flex items-center justify-center [height:120px] [background:var(--m-sheet-sunken)]">
-            <EmptyState variant="inline" title="Trend appears after two runs" />
+            <EmptyState variant="inline" title="Trend appears after two runs of this object" />
           </div>
         )}
       </div>
@@ -448,7 +462,7 @@ export default function RunsPage() {
         // As many columns as tiles, so one tile never stretches across the row.
         <div className={`m-stat-grid m-motion-stagger ${failedCount > 0 ? "@5xl:[grid-template-columns:repeat(2,minmax(0,360px))]" : "[grid-template-columns:minmax(0,360px)]"}`}>
           <Stat
-            label={latestScopeName ? `Latest DQS, ${latestScopeName}` : "Latest DQS"}
+            label={chartName ? `Latest run's score, ${chartName}` : "Latest run's score"}
             help="dqs"
             value={latest && latestDqs !== null ? latestDqs.toFixed(1) : "—"}
             bar={latest && latestDqs !== null ? latestDqs : undefined}
@@ -528,7 +542,7 @@ export default function RunsPage() {
       summary={summary}
       table={
         <>
-        <DataTable
+        <DataTable hideExport
           columns={columns}
           data={rows}
           getRowId={(row) => row.id}

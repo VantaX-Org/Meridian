@@ -510,7 +510,8 @@ export function FixWork({ module: fixedModule, run: fixedRun }: FixWorkScope = {
 
   return (
     <div className="flex min-w-0 flex-col gap-4" data-testid="fix-work">
-      {isCurrent ? (
+      {/* Inside an object page the page names its run; Fix work names it only on its own page. */}
+      {fixedModule ? null : isCurrent ? (
         <p className="m-text-body m-ink-2" data-testid="fix-scope">
           {newestOfState ? stateScopeLine(s.objects.length, newestOfState.run_at) : `Current state of ${plural(s.objects.length, "object")}`}, each object at its own latest run
         </p>

@@ -55,6 +55,25 @@ describe("WaveCockpitPage", () => {
     expect(screen.queryByRole("button", { name: "Sign off" })).not.toBeInTheDocument();
   });
 
+  it("explains readiness, shows the trend from the second run and draws no verdict chart", async () => {
+    search = new URLSearchParams();
+    vi.spyOn(migrationApi, "getWaveCockpit").mockResolvedValue(COCKPIT);
+    renderWithQuery(<WaveCockpitPage />);
+    await screen.findByText("Wave 1");
+    expect(screen.getByText(/share of records with no blocking gap/)).toBeInTheDocument();
+    expect(screen.getByText("Trend")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Objects by readiness verdict")).toBeNull();
+  });
+
+  it("hides the trend card until there is a second run", async () => {
+    search = new URLSearchParams();
+    vi.spyOn(migrationApi, "getWaveCockpit").mockResolvedValue({ ...COCKPIT, trend: [COCKPIT.trend[0]] });
+    renderWithQuery(<WaveCockpitPage />);
+    await screen.findByText("Wave 1");
+    expect(screen.queryByText("Trend")).toBeNull();
+    expect(screen.queryByText(/starts with the second run/)).toBeNull();
+  });
+
   it("shows the sign-off time in the tenant's time zone", async () => {
     search = new URLSearchParams();
     vi.spyOn(triageApi, "getTriageSettings").mockResolvedValue({
@@ -226,4 +245,22 @@ describe("WaveCockpitPage not found", () => {
     expect(await screen.findByText("The server could not complete the request.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
+
+  it("makes Review N blockers the primary and opens the Blockers tab", async () => {
+    search = new URLSearchParams();
+    vi.spyOn(migrationApi, "getWaveCockpit").mockResolvedValue(COCKPIT);
+    renderWithQuery(<WaveCockpitPage />);
+    const review = await screen.findByRole("link", { name: `Review ${COCKPIT.blockers.length === 1 ? "1 blocker" : `${COCKPIT.blockers.length} blockers`}` });
+    expect(review).toHaveAttribute("href", "/migration/w1?tab=blockers");
+    expect(review).toHaveClass("m-btn-primary");
+  });
+
+  it("offers no blockers button when there are none", async () => {
+    search = new URLSearchParams();
+    vi.spyOn(migrationApi, "getWaveCockpit").mockResolvedValue({ ...COCKPIT, blockers: [] });
+    renderWithQuery(<WaveCockpitPage />);
+    await screen.findByText("Wave 1");
+    expect(screen.queryByRole("link", { name: /^Review \d+ blockers?$/ })).toBeNull();
+  });
+
 });

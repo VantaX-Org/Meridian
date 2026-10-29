@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { AxiosError, type AxiosResponse } from "axios";
 import * as migrationApi from "@/lib/api/migration";
 import DryRunPage from "../page";
+import type { MigrationWave } from "@/types/api";
 
 let searchParams = "run=run-1";
 const push = vi.fn();
@@ -11,6 +12,13 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(searchParams),
   useRouter: () => ({ push }),
 }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+const WAVE: MigrationWave = {
+  id: "w1", name: "Wave 1", source_system_id: "sys-1", target_system_id: null, target_release: "s4hana",
+  modules: ["material_master"], target_date: null, stage: "mock1", min_readiness: 95, min_dqs: null,
+  signed_off_by: null, signed_off_at: null, created_at: "2026-10-01T08:00:00Z", updated_at: "2026-10-01T08:00:00Z",
+};
 
 function renderWithQuery(ui: React.ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -114,6 +122,18 @@ describe("DryRunPage", () => {
     renderWithQuery(<DryRunPage />);
     expect(await screen.findByText("No dry runs yet")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open migration cockpit" })).toHaveAttribute("href", "/migration");
+    searchParams = "run=run-1";
+  });
+
+  it("offers Dry run <wave> directly when a wave exists, and opens the run it starts", async () => {
+    searchParams = "";
+    vi.spyOn(migrationApi, "getMigrationRuns").mockResolvedValue([]);
+    vi.spyOn(migrationApi, "getWaves").mockResolvedValue([WAVE]);
+    const start = vi.spyOn(migrationApi, "startMigration").mockResolvedValue({ run_id: "run-9", task_id: "t", status: "queued", mode: "s4_dry_run", modules: ["material_master"] });
+    renderWithQuery(<DryRunPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Dry run Wave 1" }));
+    await waitFor(() => expect(start).toHaveBeenCalledWith({ mode: "s4_dry_run", source_system_id: "sys-1", modules: ["material_master"] }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/migration/dry-run?run=run-9"));
     searchParams = "run=run-1";
   });
 

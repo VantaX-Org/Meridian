@@ -18,8 +18,9 @@ import LeadHomePage from "../lead/page";
 import StewardHomePage from "../steward/page";
 
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+// The Do next cell as the real RouteInsight sets it on a home: the sentence of the step it is given, linked, no button.
 vi.mock("@/components/insight/route-insight", () => ({
-  RouteInsight: ({ doNext }: { doNext?: { sentence: string; href: string } }) => (doNext ? <p data-testid="do-next">{doNext.sentence}</p> : <p data-testid="do-next">score step</p>),
+  RouteInsight: ({ doNext }: { doNext?: { sentence: string; href: string } }) => (doNext ? <a data-testid="do-next" href={doNext.href}>{`${doNext.sentence}.`}</a> : <p data-testid="do-next">no step</p>),
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), useSearchParams: () => new URLSearchParams("") }));
 
@@ -50,8 +51,10 @@ function serve(items: attentionApi.AttentionItem[]) {
   vi.spyOn(attentionApi, "getAttentionCount").mockResolvedValue({ ...list.counts, top: items[0] ?? null });
 }
 
+const nextLine = () => screen.getByTestId("home-next");
+
 describe("home and the To do list", () => {
-  it("names one item in the verdict button, the do next sentence and the card's first row", async () => {
+  it("names one item in the verdict button, the Next line, the do next sentence and the card's first row", async () => {
     serve(SAMPLE);
     renderWithQuery(<LeadHomePage />);
     const title = SAMPLE[0].title;
@@ -59,23 +62,38 @@ describe("home and the To do list", () => {
     expect(button).toHaveAttribute("href", SAMPLE[0].href);
     expect(button.closest("[data-testid='home-verdict-row']")).not.toBeNull();
     await waitFor(() => expect(screen.getByTestId("do-next")).toHaveTextContent(title));
+    expect(nextLine()).toHaveTextContent(`Next: ${title}.`);
+    expect(screen.getByTestId("do-next")).toHaveAttribute("href", SAMPLE[0].href);
+    // the four sentences sit inside the hero, the To do card under it
+    expect(screen.getByTestId("home-verdict-row")).toContainElement(screen.getByTestId("do-next"));
     const first = (await screen.findAllByTestId("attention-row"))[0];
     expect(within(first).getByText(title)).toBeInTheDocument();
     expect(within(first).getByRole("link")).toHaveAttribute("href", SAMPLE[0].href);
   });
 
-  it("keeps the home's own action when the top item is hygiene or admin (tier 4 and below)", async () => {
+  it("takes the score's step when the top item is hygiene or admin (tier 4 and below): button, Next line and Do next cell agree", async () => {
     serve([item({ id: "x", tier: 4, severity: "medium", title: "310 records are overdue", action_label: "Open", href: "/fix?due=overdue" })]);
     renderWithQuery(<LeadHomePage />);
-    expect(await screen.findByRole("link", { name: "Open objects below target" })).toBeInTheDocument();
-    expect(screen.getByTestId("do-next")).toHaveTextContent("score step");
+    // the ledger's row also offers "Open Material master"; the hero holds the one primary button
+    const hero = await screen.findByTestId("home-verdict-row");
+    const button = await within(hero).findByRole("link", { name: "Open Material master" });
+    expect(button).toHaveAttribute("href", "/objects/material_master");
+    const cell = screen.getByTestId("do-next");
+    expect(cell).toHaveTextContent("Material master comes first, the lowest score at 72.5.");
+    expect(nextLine()).toHaveTextContent("Next: Material master comes first, the lowest score at 72.5.");
+    expect(cell).toHaveAttribute("href", button.getAttribute("href"));
+    expect(hero.querySelectorAll(".m-btn-primary")).toHaveLength(1);
     expect((await screen.findAllByTestId("attention-row"))[0]).toHaveTextContent("310 records are overdue");
   });
 
-  it("leaves the steward's home action alone but still lists the card", async () => {
+  it("sends the steward to Fix work, the records to fix in the Next line and the Do next cell", async () => {
     serve(SAMPLE);
+    vi.spyOn(shellApi, "getShellCounts").mockResolvedValue({ fix: 24576, inbox: 0 });
     renderWithQuery(<StewardHomePage />);
-    expect(await screen.findByRole("link", { name: "Open worst object" })).toBeInTheDocument();
+    const button = await screen.findByRole("link", { name: "Start fixing" });
+    expect(button).toHaveAttribute("href", "/fix");
+    await waitFor(() => expect(nextLine()).toHaveTextContent("Next: 24,576 records need fixing."));
+    expect(screen.getByTestId("do-next")).toHaveTextContent("24,576 records need fixing.");
     expect((await screen.findAllByTestId("attention-row")).length).toBeGreaterThan(0);
   });
 
@@ -83,6 +101,6 @@ describe("home and the To do list", () => {
     serve([]);
     renderWithQuery(<LeadHomePage />);
     expect(await screen.findByText("Nothing in your scope needs a person now")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open objects below target" })).toBeInTheDocument();
+    expect(within(screen.getByTestId("home-verdict-row")).getByRole("link", { name: "Open Material master" })).toBeInTheDocument();
   });
 });

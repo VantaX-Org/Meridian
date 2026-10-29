@@ -244,7 +244,8 @@ export default function LineagePage() {
                 options={[{ value: "both", label: "Up and downstream" }, { value: "down", label: "Downstream" }, { value: "up", label: "Upstream" }]} />
               <Select label="How far" value={String(depth)} onValueChange={(v) => setDepth(Number(v))}
                 options={[2, 3, 4, 6, 8, 12].map((n) => ({ value: String(n), label: `${n} steps` }))} />
-              <Button type="submit">Trace</Button>
+              {/* "Trace it" in Do next is the page's one primary; this submits the typed item. */}
+              <Button type="submit" variant="secondary">Trace</Button>
             </form>
             {!focus ? <EmptyState title="Enter a field, rule or KPI to trace" detail="Type it in the box above and select Trace. The trace shows what feeds it and what it feeds." ghost="grid" />
               : graphQ.isLoading ? <Skeleton height={240} />
@@ -260,7 +261,7 @@ export default function LineagePage() {
                     {" "}Items with a dashed red outline are reached by a failing rule. A dashed link blocks its target; a dotted link degrades it.
                   </p>
                 </>
-              ) : <EmptyState title="Nothing is linked to this item" detail="Check the spelling, try an item from the table below, or choose more steps." action={rows[0] ? <Button onClick={() => trace(rows[0].id)}>{`Trace ${rows[0].label}`}</Button> : <Button render={<Link href="/rules">Open rules</Link>} />} />}
+              ) : <EmptyState title="Nothing is linked to this item" detail="Check the spelling, try an item from the table below, or choose more steps." action={rows[0] ? <Button variant="secondary" onClick={() => trace(rows[0].id)}>{`Trace ${rows[0].label}`}</Button> : <Button render={<Link href="/rules">Open rules</Link>} />} />}
           </div>
         </Card>
         <Card title="KPIs, processes and features at risk" meta="Reached by a failing rule in this run; select a row to trace it">

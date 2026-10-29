@@ -67,7 +67,33 @@ describe("AdminSignInPage", () => {
     await waitFor(() => expect(screen.getByLabelText("Issuer address")).toBeInTheDocument());
     expect(screen.getByRole("button", { name: "Save sign-in settings" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Test sign-in" })).toBeDisabled();
-    expect(screen.getByText("Enter the client secret")).toBeInTheDocument();
+    // Nothing was typed, so no red error yet: the disabled buttons say what they wait for instead.
+    expect(screen.queryByText("Enter the client secret")).toBeNull();
+    expect(screen.queryByText("Enter the issuer address")).toBeNull();
+    expect(screen.getByTestId("signin-missing")).toHaveTextContent("Save is off until you enter the issuer address, the client ID, the client secret and the display name. Test sign-in needs the issuer address.");
+  });
+
+  it("shows a field's error only after it was typed in or left", async () => {
+    vi.spyOn(ssoApi, "getSsoConfig").mockResolvedValue(EMPTY);
+    renderWithQuery(<AdminSignInPage />);
+    const issuer = await screen.findByLabelText("Issuer address");
+    expect(screen.queryByText("Enter the issuer address")).toBeNull();
+    fireEvent.blur(issuer);
+    expect(screen.getByText("Enter the issuer address")).toBeInTheDocument();
+    // The other fields stay quiet until they are touched too.
+    expect(screen.queryByText("Enter the client ID")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Client ID"), { target: { value: "x" } });
+    fireEvent.change(screen.getByLabelText("Client ID"), { target: { value: "" } });
+    expect(screen.getByText("Enter the client ID")).toBeInTheDocument();
+  });
+
+  it("drops the issuer from the hint once it is typed", async () => {
+    vi.spyOn(ssoApi, "getSsoConfig").mockResolvedValue(EMPTY);
+    renderWithQuery(<AdminSignInPage />);
+    fireEvent.change(await screen.findByLabelText("Issuer address"), { target: { value: "https://login.example.com/t1" } });
+    expect(screen.getByRole("button", { name: "Test sign-in" })).toBeEnabled();
+    expect(screen.getByTestId("signin-missing")).toHaveTextContent("Save is off until you enter the client ID, the client secret and the display name.");
+    expect(screen.getByTestId("signin-missing")).not.toHaveTextContent("Test sign-in needs");
   });
 
   it("asks for the secret again when the issuer of a saved configuration changes", async () => {

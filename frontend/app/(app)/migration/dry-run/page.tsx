@@ -2,13 +2,15 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { isAxiosError } from "axios";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, DataTable, ExplorerPage, Mono, Notice, PageHeader, Pager, Pill, ReportPage, Skeleton, Stat, Status, asyncStateOf } from "@/design";
-import { getDryRunRecords, getMigrationRun, getMigrationRuns, dryRunExportUrl, type DryRunRecord } from "@/lib/api/migration";
+import { getDryRunRecords, getMigrationRun, getMigrationRuns, getWaves, startMigration, dryRunExportUrl, type DryRunRecord } from "@/lib/api/migration";
+import { useRole } from "@/hooks/use-role";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatDate, formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -61,6 +63,20 @@ function DryRunPicker({ notADryRun }: { notADryRun?: boolean }) {
   const router = useRouter();
   const q = useQuery({ queryKey: ["migration", "runs", "s4_dry_run"], queryFn: () => getMigrationRuns({ mode: "s4_dry_run" }) });
   const runs = q.data ?? [];
+  const qc = useQueryClient();
+  const { can } = useRole();
+  // With a wave to check, the empty state starts its dry run directly instead of pointing at the cockpit.
+  const wavesQ = useQuery({ queryKey: queryKeys.migrationWaves(), queryFn: getWaves, meta: { ignoreError: true } });
+  const wave = wavesQ.data?.find((w) => w.source_system_id && w.modules.length > 0);
+  const start = useMutation({
+    mutationFn: () => startMigration({ mode: "s4_dry_run", source_system_id: wave?.source_system_id as string, modules: wave?.modules ?? [] }),
+    onSuccess: (data) => {
+      toast.success("Dry run queued");
+      void qc.invalidateQueries({ queryKey: queryKeys.migrationWaves() });
+      router.push(`/migration/dry-run?run=${data.run_id}`);
+    },
+    onError: (e) => toast.error(apiErrorMessage(e)),
+  });
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title="S/4 load dry runs" meta="Choose a dry run to see which records would load into S/4HANA" />
@@ -70,7 +86,9 @@ function DryRunPicker({ notADryRun }: { notADryRun?: boolean }) {
         emptyProps={{
           title: "No dry runs yet",
           detail: "Start one from a migration wave with Dry run (S/4 load). It checks every record against the S/4HANA load rules without loading anything.",
-          action: <Button render={<Link href="/migration">Open migration cockpit</Link>} />,
+          action: wave && can("analyse")
+            ? <Button pending={start.isPending} onClick={() => start.mutate()}>{`Dry run ${wave.name}`}</Button>
+            : <Button render={<Link href="/migration">Open migration cockpit</Link>} />,
         }}
         errorProps={{ error: q.error, onRetry: () => q.refetch() }}
         table={<DataTable columns={pickerColumns} data={runs} getRowId={(r) => r.id} onRowClick={(r) => router.push(`/migration/dry-run?run=${r.id}`)} />}

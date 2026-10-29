@@ -1,11 +1,17 @@
 "use client";
 
 // frontend/design/templates/ExplorerPage.tsx
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Async, type AsyncEmpty, type AsyncError, type AsyncState } from "../primitives/Async";
 import { Skeleton, StatSkeleton } from "../primitives/Skeleton";
 import { PageFrame } from "./PageFrame";
 import { useLoadingTimeout } from "../hooks/useLoadingTimeout";
+import { useMediaQuery } from "../hooks/useMediaQuery";
+import { Button } from "../primitives/Button";
+import { Drawer } from "../primitives/Drawer";
+
+/** Below this width the filter bar would fill the first screen, so it moves behind one "Filters" button. */
+const PHONE = "(max-width: 639px)";
 
 export function ExplorerPage({
   header,
@@ -43,6 +49,15 @@ export function ExplorerPage({
   aside?: ReactNode;
 }) {
   const stuck = useLoadingTimeout(state === "loading");
+  const phone = useMediaQuery(PHONE);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  // On a phone the filter groups open in a drawer; the table stays the first thing on the screen.
+  const filters = filterBar && phone ? (
+    <>
+      <Button variant="secondary" onClick={() => setFiltersOpen(true)}>Filters</Button>
+      <Drawer open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">{filterBar}</Drawer>
+    </>
+  ) : filterBar;
   // Toolbar, table header (28) and twelve rows, so loading does not shift the layout.
   const rowH = dense ? "var(--m-row-h-dense)" : "var(--m-row-h)";
   const skeleton = (
@@ -75,11 +90,11 @@ export function ExplorerPage({
       {header}
       {toolbarEnd ? (
         <div className="flex items-start justify-between gap-4">
-          <div className="flex-1">{filterBar}</div>
+          <div className="flex-1">{filters}</div>
           {toolbarEnd}
         </div>
       ) : (
-        filterBar
+        filters
       )}
       {summarySlot}
       {strip}

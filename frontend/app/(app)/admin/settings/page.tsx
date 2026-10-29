@@ -13,7 +13,9 @@ import { formatDate, labelOf, humanizeIds } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { AlertChannelsPanel } from "./alert-channels-panel";
 import { CostModelPanel } from "./cost-model-panel";
+import { NeedsSetup } from "./needs-setup";
 import { RetentionPanel } from "./retention-panel";
+import { TenantPurge } from "./tenant-purge";
 
 const FIX_HREF: Record<string, string> = { licence: "/admin/licence" };
 // The language model is set at install time and not shown in the app.
@@ -51,6 +53,8 @@ export default function AdminSettingsPage() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader tabs={<SettingsTabs />} title="Settings" meta="This deployment at a glance: licence, alert channels, how long data is kept, how defects are priced, and health checks that say what needs fixing" actions={<Button variant="secondary" render={<Link href="/admin/licence">Open licence</Link>} />} />
+
+      <NeedsSetup licence={l} />
 
       {l?.valid === false ? (
         <Notice tone="danger">
@@ -107,6 +111,9 @@ export default function AdminSettingsPage() {
           </SettingsSection>
         ) : null}
       </SettingsSheet>
+
+      {/* Deleting everything is not a setting: it sits last, apart, in the critical tone. */}
+      <TenantPurge />
     </div>
   );
 }

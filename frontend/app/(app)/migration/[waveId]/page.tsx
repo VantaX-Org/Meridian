@@ -5,7 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
-import { Bar, Button, Card, DataTable, DrillLink, EmptyState, ErrorState, ExportMenu, PageHeader, Skeleton, Sparkline, Stat, Tabs, entityTabs, type ExportOption, Status, statusLabel, toVerdict } from "@/design";
+import { Button, Card, DataTable, DrillLink, EmptyState, ErrorState, ExportMenu, PageHeader, Skeleton, Sparkline, Stat, Tabs, entityTabs, type ExportOption, Status, toVerdict } from "@/design";
 import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
 import { apiErrorMessage, apiErrorState, isNotFound } from "@/lib/error";
@@ -13,7 +13,7 @@ import {
   downloadMigrationExport, downloadMigrationGaps, downloadWaveReport, getWaveCockpit, runWave, signoffWave,
 } from "@/lib/api/migration";
 import { downloadRealignment } from "@/lib/api/config-pairing";
-import { browserTimezone, formatDate, formatModuleName, trendSentence } from "@/lib/format";
+import { browserTimezone, formatDate, formatModuleName, plural, trendSentence } from "@/lib/format";
 import { getTriageSettings } from "@/lib/api/triage";
 import { queryKeys } from "@/lib/query-keys";
 import type { WaveObject } from "@/types/api";
@@ -102,9 +102,6 @@ export default function WaveCockpitPage() {
   const w = c.wave;
   // the analysis version the wave scored; a migration run id is not a run the objects pages can open
   const run = c.source_version_id;
-  const funnel = (["go", "at_risk", "no_go"] as const).map((v) => ({
-    x: statusLabel("verdict", v), y: c.objects.filter((o) => o.verdict === v).length,
-  }));
 
   // Most records blocked first: what moves the wave's readiness.
   const ranked = [...c.objects].sort((a, b) => b.records_blocked - a.records_blocked || b.blocker_count - a.blocker_count);
@@ -141,6 +138,9 @@ export default function WaveCockpitPage() {
         meta={`${STAGE_LABEL[w.stage]}, target ${w.target_date ? formatDate(w.target_date, "date") : "not set"}, ${w.signed_off_at ? `signed off ${formatDate(w.signed_off_at, "datetime", tenantTz)}` : "not signed off"}. Clear the blockers until readiness reaches ${w.min_readiness}%, then sign the wave off`}
         actions={
           <>
+            {c.blockers.length > 0 && !signable ? (
+              <Button render={<Link href={`/migration/${waveId}?tab=blockers`}>{`Review ${plural(c.blockers.length, "blocker")}`}</Link>} />
+            ) : null}
             {can("analyse") ? <Button variant="ghost" onClick={() => setEditing(true)}>Edit wave</Button> : null}
             {signable ? (
               <GatedPrimary kind="signoff" allowed={can("approve")} disabled={signoff.isPending} onClick={() => signoff.mutate()}>Sign off</GatedPrimary>
@@ -149,7 +149,7 @@ export default function WaveCockpitPage() {
           </>
         }
       />
-      <div className="grid grid-cols-1 [gap:var(--m-section-gap)] @3xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]" data-testid="wave-figure">
+      <div className={`grid grid-cols-1 [gap:var(--m-section-gap)] ${c.trend.length >= 2 ? "@3xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]" : "@3xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"}`} data-testid="wave-figure">
         <Stat
           label="Readiness"
           href={`/migration/${waveId}?tab=overview`}
@@ -160,27 +160,23 @@ export default function WaveCockpitPage() {
           delta={`minimum ${w.min_readiness}%`}
         />
         <Stat label="Records blocked" href={`/migration/${waveId}?tab=blockers`} value={c.records_blocked.toLocaleString()}
-              delta={`of ${c.records_total.toLocaleString()}`} />
-        <Card title="Trend" padding="sm">
-          {c.trend.length < 2 ? (
-            <p className="m-text-body m-ink-2">The trend starts with the second run</p>
-          ) : (
+              delta={`of ${c.records_total.toLocaleString()} records. Readiness is the share of records with no blocking gap`} />
+        {/* The trend card appears with the second run; before that it would only say it is empty. */}
+        {c.trend.length >= 2 ? (
+          <Card title="Trend" padding="sm">
             <div className="flex flex-col gap-2">
               <Sparkline data={c.trend.map((p) => ({ x: formatDate(p.completed_at, "date"), y: p.score }))} width={160} height={32} />
               <p className="m-text-body m-ink-2">{trendSentence(c.trend[0].score, c.trend[c.trend.length - 1].score, c.trend.length, "Readiness").replace(/\.$/, "")}</p>
             </div>
-          )}
-        </Card>
+          </Card>
+        ) : null}
       </div>
       <Tabs
         value={tab}
         onValueChange={(v) => router.replace(`/migration/${waveId}?tab=${v}`)}
         items={[
           { value: "overview", label: "Overview", content: c.objects.length ? (
-              <div className="flex flex-col [gap:var(--m-section-gap)]">
-                <DataTable columns={objectColumns(run, waveId)} data={ranked} getRowId={(o) => o.module} />
-                <Bar label="Objects by readiness verdict" height={96} data={funnel} />
-              </div>
+              <DataTable hideExport columns={objectColumns(run, waveId)} data={ranked} getRowId={(o) => o.module} />
             ) : <EmptyState title="No objects in this wave" detail="Add the SAP objects this wave moves, then run it to score their readiness." action={wavesAction} /> },
           { value: "blockers", label: "Blockers", content: <BlockersTab waveId={waveId} runId={c.run_id} versionId={c.source_version_id} blockers={c.blockers} runAction={runAction} /> },
           { value: "mapping", label: "Mapping", content: (

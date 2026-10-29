@@ -135,11 +135,11 @@ export function useDayOne(): DayOne {
  * the step is gated (`actionable: false`/`href: null`) — spec 4's no-link
  * rule for users who lack the permission the step requires.
  */
-export function DayOneAction({ step, fallbackHref, fallbackLabel }: { step: DayOneStep | null; fallbackHref: string; fallbackLabel: string }) {
+export function DayOneAction({ step, fallbackHref, fallbackLabel, variant = "primary" }: { step: DayOneStep | null; fallbackHref: string; fallbackLabel: string; variant?: "primary" | "secondary" }) {
   if (step && (!step.actionable || !step.href)) {
     return <span style={{ color: "var(--m-ink-3)" }}>{step.label}</span>;
   }
-  const primary = <Button render={<Link href={step?.href ?? fallbackHref}>{step?.actionLabel ?? step?.label ?? fallbackLabel}</Link>} />;
+  const primary = <Button variant={variant} render={<Link href={step?.href ?? fallbackHref}>{step?.actionLabel ?? step?.label ?? fallbackLabel}</Link>} />;
   if (!step?.secondary) return primary;
   return (
     <span className="inline-flex flex-wrap items-center gap-2">

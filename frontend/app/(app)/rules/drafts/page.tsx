@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, DataTable, EmptyState, ExplorerPage, Mono, PageHeader, Skeleton, Tabs, asyncStateOf } from "@/design";
 import { actionColumn, RowButton } from "@/components/mdm/ledger";
+import { RequestAccessButton } from "@/components/request-access-button";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getRuleDrafts, type RuleDraft } from "@/lib/api/rules";
@@ -45,7 +46,7 @@ export default function RuleDraftsPage() {
         title="Rule drafts need the manage-rules permission"
         detail="Ask an administrator for the manage-rules permission to write and publish rule drafts."
         ghost="table"
-        action={<Button variant="secondary" render={<Link href="/rules">Back to rules</Link>} />}
+        action={<span className="inline-flex flex-wrap items-center justify-center gap-2"><RequestAccessButton resource="rules" action="edit" variant="primary" size="md" label="Request manage-rules access" /><Button variant="secondary" render={<Link href="/rules">Back to rules</Link>} /></span>}
       />
     );
   }

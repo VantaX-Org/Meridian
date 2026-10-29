@@ -79,6 +79,18 @@ describe("S4Tab", () => {
     expect(byCode).toHaveBeenCalledWith("BP203", "business_partner");
   });
 
+  it("says the areas are not evaluated, not zeros, when no check ran", async () => {
+    vi.spyOn(migrationApi, "getS4Readiness").mockResolvedValue({
+      ...READINESS, evaluated: 0, failing: 0, failing_records: 0, blocking_failing: 0, warning_failing: 0,
+      areas: READINESS.areas.map((a) => ({ ...a, evaluated: 0, failing: 0, failing_records: 0, blocking_failing: 0, status: "not_evaluated", checks: [] })),
+    });
+    renderWithQuery(<S4Tab versionId="v1" runAction={<button type="button">Run now</button>} />);
+    expect(await screen.findByText("Not evaluated")).toBeInTheDocument();
+    expect(screen.getByText(/run the wave/i)).toBeInTheDocument();
+    expect(screen.queryByTestId("s4-summary")).toBeNull();
+    expect(screen.queryByText("No-go")).toBeNull();
+  });
+
   it("asks for a wave run first when there is no version, with the run action", async () => {
     const onRun = vi.fn();
     renderWithQuery(<S4Tab versionId={null} runAction={<button type="button" onClick={onRun}>Run now</button>} />);

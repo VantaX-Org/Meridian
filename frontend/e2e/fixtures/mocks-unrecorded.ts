@@ -626,6 +626,12 @@ async function mockMdm(page: Router) {
   await get(`**/api/v1/master-records/${GOLDEN_ID}/cluster-graph`, CLUSTER_GRAPH);
   // list[MergeEventOut]: never merged, so no events
   await get(new RegExp(`/api/v1/master-records/${GOLDEN_ID}/merge-events(\\?.*)?$`), []);
+  // The MDM overview's counts: the recorded master records are all candidates (139,190), none promoted (status=golden).
+  await page.route(/\/api\/v1\/master-records\?(?=.*per_page=1(&|$))/, (r) => {
+    if (r.request().method() !== "GET") return r.fallback();
+    const golden = new URL(r.request().url()).searchParams.get("status") === "golden";
+    return r.fulfill(json({ records: [], total: golden ? 0 : 139190, page: 1, per_page: 1 }));
+  });
   await page.route(/\/api\/v1\/match-scores(\?.*)?$/, (r) =>
     r.request().method() === "GET" ? r.fulfill(json(matchScores(new URL(r.request().url()).searchParams))) : r.fallback());
   // GET /match-scores/{id} (ReviewPairDetail): the pair plus both records' compared fields
@@ -642,10 +648,15 @@ async function mockMdm(page: Router) {
 
 /** GET /audit/summary: counts by action and entity type over 30 days, as the recorded audit list holds them. */
 const AUDIT_SUMMARY = {
+  total: 116,
   summary: [
-    { action: "analyse", entity_type: "versions", count: 6 },
-    { action: "report.export", entity_type: "report", count: 3 },
-    { action: "run", entity_type: "mining", count: 1 },
+    { action: "upload", entity_type: "upload", count: 20 },
+    { action: "report.export", entity_type: "report", count: 13 },
+    { action: "analyse", entity_type: "versions", count: 12 },
+    { action: "update", entity_type: "rules", count: 12 },
+    { action: "update", entity_type: "me", count: 11 },
+    { action: "latest", entity_type: "config", count: 7 },
+    { action: "run", entity_type: "mining", count: 3 },
   ],
 };
 

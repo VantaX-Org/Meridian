@@ -3,6 +3,7 @@
 /** Insights > Explore: one failing-rule set, pivoted by rule, object, field, dimension, severity or S/4 status. */
 
 import { useMemo } from "react";
+import { useLoadingTimeout } from "@/design/hooks/useLoadingTimeout";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -118,6 +119,19 @@ export default function RulesPage() {
   const keep = (r: RuleRow) => (!field || r.field === field) && (checks.length === 0 || checks.includes(r.check_id)) && (!s4Impact || r.s4 === s4Impact);
   const rows = useMemo(() => (q.data?.rows ?? []).filter(keep), [q.data, field, check, s4Impact]); // eslint-disable-line react-hooks/exhaustive-deps
   const prevRows = (prevQ.data?.rows ?? []).filter(keep);
+  // A previous run that never answers is an error with Retry after the shared timeout, not a skeleton for ever.
+  const prevStuck = useLoadingTimeout(prevQ.isLoading);
+  // Columns that hold one value on every row say nothing: hidden at first, one click in Columns brings them back.
+  const constantColumns = useMemo(() => {
+    const hidden: Record<string, false> = {};
+    if (rows.length > 1) {
+      const same = (value: (r: RuleRow) => unknown) => rows.every((r) => value(r) === value(rows[0]));
+      if (same((r) => r.auto_fix_pct)) hidden.auto_fix_pct = false;
+      if (same((r) => r.s4)) hidden.s4 = false;
+      if (same((r) => r.delta_affected ?? 0)) hidden.delta = false;
+    }
+    return hidden;
+  }, [rows]);
   const groups = useMemo(() => (axis === "rule" ? [] : groupBy(rows, axis)), [rows, axis]);
   const groupLabel = (key: string) => (axis === "module" ? formatModuleName(key) : axis === "field" ? key : labelOf(key));
   /** A group's failing records in Fix work, where Fix work can filter by the axis (object or severity). */
@@ -189,7 +203,9 @@ export default function RulesPage() {
   const totalAffected = rows.reduce((n, r) => n + r.affected, 0);
   const blocking = rows.filter((r) => r.s4 === "blocking").length;
   const changed = previous && prevQ.isLoading
-    ? <Skeleton height={16} />
+    ? prevStuck
+      ? <span className="inline-flex flex-wrap items-center gap-2">The previous run is taking longer than expected. <Button variant="secondary" onClick={() => void prevQ.refetch()}>Retry</Button></span>
+      : <Skeleton height={16} />
     : !previous
       ? "First run of this system"
       : !prevQ.data
@@ -245,7 +261,7 @@ export default function RulesPage() {
         <>
           {/* The ledger first: the rules (or groups) ranked by impact, the last column the row's one action. */}
           {axis === "rule"
-            ? <DataTable columns={columns} data={rows} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} />
+            ? <DataTable key={Object.keys(constantColumns).join(",")} columns={columns} data={rows} getRowId={(r) => `${r.module}:${r.check_id}`} onRowClick={(r) => void finding.open(r)} initialColumnVisibility={constantColumns} />
             : <DataTable columns={groupColumns} data={groups} getRowId={(g) => g.key} onRowClick={drill} />}
           {pareto.length > 0 && (
             <Card title={`Impact by ${axisInTitle}`} meta={axis === "rule" ? `${plural(n80, "rule accounts", "rules account")} for 80% of impact` : `${n80} of ${groups.length} ${n80 === 1 ? "accounts" : "account"} for 80% of impact`}>

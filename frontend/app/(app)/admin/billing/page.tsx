@@ -81,8 +81,9 @@ export default function ExceptionBillingPage() {
       charts={
         <div className="flex flex-col gap-4">
           <div className="flex gap-6">
-            <Stat label="Total" value={b ? money(b.total_amount, b.currency) : q.isLoading ? "–" : "Pick a month"} />
-            <Stat label="Base fee" value={b ? money(b.base_fee, b.currency) : q.isLoading ? "–" : "—"} />
+            <Stat label="Total" value={b ? money(b.total_amount, b.currency) : q.isLoading ? "–" : "Pick a month"} delta={b?.currency ? `All amounts in ${b.currency}` : undefined} />
+            {/* Not the "Monthly subscription" of Risk and ROI pricing under Settings: that is the cost the ROI divides by. */}
+            <Stat label="Meridian base fee" value={b ? money(b.base_fee, b.currency) : q.isLoading ? "–" : "—"} delta="What Meridian bills each month before exceptions" />
           </div>
           <div className="[max-width:200px]">
             <Field label="Month">

@@ -117,11 +117,10 @@ describe("ExecPage", () => {
     expect(screen.queryByText("No executive summary yet")).toBeNull();
     expect(screen.getByText("No migration wave is set up yet")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open migration cockpit" })).toHaveAttribute("href", "/migration");
-    // Nobody owning an issue is said under the owners' figure; What changed describes a change, never ownership.
-    expect(screen.getByText("Nobody owns an issue yet").closest("a")?.getAttribute("href")).toBe("/insights/owners?run=v1");
+    // Nothing is set up for waves or owners: no tile reads 0, the setup line below names them. What changed describes a change, never ownership.
+    for (const label of ["Objects blocked in a wave", "Owners improved", "Owners slipped"]) expect(screen.queryByText(label)).toBeNull();
     expect(screen.getByText("First scored run: nothing to compare yet")).toBeInTheDocument();
-    // The hero's figures open the same run they count, and with nothing blocked the next step is the board pack.
-    expect(screen.getByText("Objects blocked in a wave").closest("a")?.getAttribute("href")).toBe("/insights/readiness?run=v1");
+    // With nothing blocked the next step is the board pack.
     const dl = vi.spyOn(downloadApi, "downloadAuthenticated").mockResolvedValue(undefined);
     fireEvent.click(screen.getByRole("button", { name: "Download board pack" }));
     expect(dl).toHaveBeenCalledWith(expect.stringContaining("v1"), `Meridian board pack – ${TODAY}.pdf`);
@@ -148,7 +147,7 @@ describe("ExecPage", () => {
     expect(await screen.findByText("Material master comes first, the lowest score at 70.0: fix MM001, which caps it")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Fix MM001" })).toHaveAttribute("href", "/fix?run=v1&module=material_master&check=MM001");
     // The cap in Home's unit and scope: capping rules and capped objects out of those measured, never one object's reason.
-    expect(screen.getByText("1 critical failing rule caps 1 of 2 objects: MM001")).toBeInTheDocument();
+    expect(screen.getByText("1 critical failing rule (MM001) caps 1 of 2 objects")).toBeInTheDocument();
   });
 
   it("names no feature price it does not have, and shows the failing records' cost at risk instead", async () => {
@@ -222,6 +221,20 @@ describe("ExecPage", () => {
     await waitFor(() => expect(download).toHaveBeenCalledWith(expect.stringContaining("/board/v2"), `Meridian board pack – ECC PRD – ${TODAY}.pdf`));
   });
 
+  it("makes Do next name the top Fix first row, not the lowest-scoring object", async () => {
+    const sum = (score: number) => ({ composite_score: score, dimension_scores: {}, critical_count: 1, high_count: 0, medium_count: 0, low_count: 0, total_checks: 10, passing_checks: 9, capped: false, cap_reason: null });
+    h.versions = [{ id: "v1", label: "ECC PRD", status: "complete", run_at: "2026-10-20T08:00:00Z", metadata: {}, dqs_summary: { hcm: sum(64.5), material_master: sum(80) } }];
+    vi.spyOn(insightsApi, "getExec").mockResolvedValue({ version_id: "v1", narrative: "", readiness_cells: [], waterfall: [], impact_rows: [], owner_rows: [], composite: 72, cap: null, cap_reason: null } as never);
+    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [
+      { check_id: "MM045", name: "Material type missing", module: "material_master", severity: "critical", dimension: "validity", field: null, affected: 24576, total: 30000, pass_rate: 0.18, impact: 1, auto_fix_pct: 0, s4: "", delta_affected: null, cost_at_risk: null },
+    ] } as never);
+    renderWithQuery(<ExecPage />);
+    // the Fix first list ranks Material master first; Do next must not name HCM, the lowest score
+    expect(await screen.findByText("Fix MM045 on Material master first: 24,576 failing records")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Fix MM045" })).toHaveAttribute("href", "/fix?run=v1&module=material_master&check=MM045");
+    expect(screen.queryByText(/comes first, the lowest score/)).toBeNull();
+  });
+
   it("ranks Fix first from each object's current findings and shows the current state's delta", async () => {
     h.qs = "";
     h.path = "/insights/exec";
@@ -258,6 +271,9 @@ describe("ExecPage", () => {
     const ids = screen.getAllByText(/^(CO001|MM045|MM050|MM900)$/).map((el) => el.textContent);
     expect(ids).toEqual(["CO001", "MM050", "MM045"]);
     expect(screen.getByRole("columnheader", { name: "Owner" })).toBeInTheDocument();
+    // Do next names the top row of the Fix first list, with a Fix action to that rule's records
+    expect(screen.getByText("Fix CO001 on Controlling first: 40 failing records")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Fix CO001" })).toHaveAttribute("href", "/fix?run=co2&module=controlling&check=CO001");
     // the score over runs, beside the target, in current mode
     expect(screen.getByRole("heading", { name: "Score over runs" })).toBeInTheDocument();
     // (60 + 80) / 2 against (50 + 80) / 2: up 5 with the latest run, as Home and the overview say
@@ -289,6 +305,34 @@ describe("ExecPage", () => {
     expect(await screen.findByText("Value does not match the field's SAP data type (MARA)")).toBeInTheDocument();
     expect(await screen.findByText("Material description is missing")).toBeInTheDocument();
     await waitFor(() => expect(screen.getAllByText("Owner unavailable").length).toBe(2));
+    expect(screen.queryByText("Not set")).toBeNull();
+  });
+
+  it("leaves out the Owner column when the owners list loaded and no listed object has an owner", async () => {
+    h.qs = "";
+    h.path = "/insights/exec";
+    const sum = (score: number) => ({ composite_score: score, dimension_scores: {}, critical_count: 1, high_count: 0, medium_count: 0, low_count: 0, total_checks: 10, passing_checks: 9, capped: false, cap_reason: null });
+    h.versions = [{ id: "mm1", label: "material_master_25k", status: "complete", run_at: "2026-10-16T03:00:00Z", metadata: { modules: ["material_master"] }, dqs_summary: { material_master: sum(70) } }];
+    vi.spyOn(insightsApi, "getExec").mockResolvedValue({
+      version_id: null, latest_version_id: "mm1", scope: "current", composite: 70, cap: null, cap_reason: null,
+      narrative: "", readiness_cells: [], waterfall: [], impact_rows: [], owner_rows: [],
+    });
+    vi.spyOn(insightsApi, "getCurrentOverview").mockResolvedValue({ dqs: { composite: 70, previous: null, delta: null, tier: "at_risk", capped: false, cap_reason: null } } as never);
+    vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "mm1", rows: [] } as never);
+    vi.spyOn(findingsApi, "getFindingsAggregate").mockRejectedValue(new Error("not under test"));
+    vi.spyOn(findingsApi, "getFindings").mockResolvedValue({
+      findings: [
+        { id: "f1", version_id: "mm1", module: "material_master", check_id: "DDIC-MARA-TYPE", severity: "high", dimension: "validity", affected_count: 400, total_count: 1000, pass_rate: 60, details: { kind: "type", table: "MARA" } },
+        { id: "f2", version_id: "mm1", module: "material_master", check_id: "MM045", severity: "critical", dimension: "completeness", affected_count: 40, total_count: 100, pass_rate: 60, details: {} },
+      ],
+      total: 2,
+    } as never);
+    vi.spyOn(rulesApi, "getRuleNames").mockResolvedValue({ names: { MM045: "MM045: Material description is missing" }, generated: {} });
+    vi.spyOn(ownersApi, "getOwners").mockResolvedValue([]);
+    renderWithQuery(<ExecPage />);
+    expect(await screen.findByText("Value does not match the field's SAP data type (MARA)")).toBeInTheDocument();
+    expect(await screen.findByText("Material description is missing")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("columnheader", { name: "Owner" })).toBeNull());
     expect(screen.queryByText("Not set")).toBeNull();
   });
 

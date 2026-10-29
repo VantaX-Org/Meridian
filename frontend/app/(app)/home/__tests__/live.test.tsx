@@ -144,7 +144,7 @@ describe("LiveSection", () => {
     renderWithQuery(<LiveSection />);
     expect(await screen.findByRole("columnheader", { name: /^Duration/ })).toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: /^Progress/ })).toBeNull();
-    const name = screen.getByText(label);
+    const name = screen.getByText(label.replace(" | ", " of "));
     expect(name).toHaveClass("truncate");
     expect(name).toHaveAttribute("title", label);
   });
@@ -159,4 +159,20 @@ describe("LiveSection", () => {
     expect(row.lastSuccess).toBe(new Date(1_791_000_000 * 1000).toISOString());
     expect(row.next).toBeNull();
   });
+
+  it("names the missing RFC library and links the install step beside Run extraction", async () => {
+    allowed = true;
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([
+      { ...system, id: "sys-4", name: "No RFC", last_sync_at: null, health_status: "unreachable", health_message: "pyrfc_not_installed: build the API image" },
+    ]);
+    vi.spyOn(jobsApi, "getJobs").mockResolvedValue([]);
+
+    renderWithQuery(<LiveSection />);
+
+    await screen.findByText("No RFC");
+    expect(screen.getByText(/The SAP RFC library is not installed/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Run extraction" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "How to install it" })).toHaveAttribute("href", "/docs?page=data-in");
+  });
+
 });

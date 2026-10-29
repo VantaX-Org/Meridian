@@ -10,18 +10,19 @@ import { Button, DataTable, EmptyState, ExplorerPage, ExportMenu, Field, FilterC
 import {
   exportAuditEntries, getAuditEntries, getAuditSummary, getLlmAudit, type AuditEntry, type AuditListParams, type AuditSummaryRow, type LlmAuditEntry,
 } from "@/lib/api/audit";
-import { labelOf } from "@/lib/format";
 import { useRole } from "@/hooks/use-role";
 import { getUsers } from "@/lib/api/users";
 import { queryKeys } from "@/lib/query-keys";
 import { useTenantTimezone } from "@/lib/tenant-zone";
 import { usePermissions } from "@/lib/permissions";
 import { useUrlState } from "@/hooks/use-url-state";
-import { auditSentence, When } from "../_lib/audit-sentence";
+import { auditActor, auditKindLabel, auditSentence, auditTarget, When } from "../_lib/audit-sentence";
 
 const auditColumns = (tz: string): ColumnDef<AuditEntry>[] => [
   { id: "when", header: "When", cell: ({ row }) => <When iso={row.original.created_at} tz={tz} /> },
+  { id: "actor", header: "Actor", cell: ({ row }) => auditActor(row.original) },
   { id: "what", header: "What happened", cell: ({ row }) => auditSentence(row.original) },
+  { id: "target", header: "Target", cell: ({ row }) => auditTarget(row.original) },
 ];
 
 /** The request behind a row, for whoever needs it: method and path, the response code and where it came from. */
@@ -63,26 +64,25 @@ const dayBound = (day: string, end: boolean): string | undefined => {
   return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
 };
 
-/** One kind of change as words: "Create user", "Retry job". */
-const kindLabel = (r: { action: string; entity_type: string | null }): string =>
-  `${labelOf(r.action)}${r.entity_type ? ` ${labelOf(r.entity_type).toLowerCase()}` : ""}`;
+/** One kind of change as words: "Users created", "Runs started". */
+const kindLabel = auditKindLabel;
 
 /** The summary returns at most this many kinds (api/routes/audit.py LIMIT 50). */
 const SUMMARY_KINDS = 50;
 
 /**
- * The last 30 days at a glance (GET /audit/summary): the changes counted and the three most
- * frequent kinds; each kind filters the log below.
+ * The last 30 days at a glance (GET /audit/summary): every recorded event counted (reads such as exports
+ * included, as the log lists them) and the three most frequent kinds; each kind filters the log below.
  */
 function AuditSummaryStrip({ onPick }: { onPick: (r: AuditSummaryRow) => void }) {
   const q = useQuery({ queryKey: ["audit", "summary"], queryFn: getAuditSummary });
   const rows = q.data?.summary ?? [];
   if (q.isError || (q.isSuccess && rows.length === 0)) return null;
-  const total = rows.reduce((n, r) => n + r.count, 0);
+  const total = q.data?.total ?? rows.reduce((n, r) => n + r.count, 0);
   return (
     <div className="m-stat-grid" data-testid="audit-summary">
-      <Stat label="Changes, last 30 days" value={total.toLocaleString()} loading={q.isLoading}
-        hint={rows.length >= SUMMARY_KINDS ? `Across the ${SUMMARY_KINDS} most frequent kinds` : `${rows.length.toLocaleString()} kinds of change`} />
+      <Stat label="Recorded events, last 30 days" value={total.toLocaleString()} loading={q.isLoading}
+        hint={`${rows.length >= SUMMARY_KINDS ? `The ${SUMMARY_KINDS} most frequent` : rows.length.toLocaleString()} kinds. The log below lists older events too`} />
       {rows.slice(0, 3).map((r) => (
         <Stat key={`${r.action}:${r.entity_type ?? ""}`} label={kindLabel(r)} value={r.count.toLocaleString()} hint="Show these in the log" onClick={() => onPick(r)} />
       ))}
@@ -152,7 +152,7 @@ function AuditTable({ params, empty, summary = false }: { params: AuditListParam
       errorProps={{ error: q.error, onRetry: () => void q.refetch() }}
       table={
         <div className="flex flex-col gap-2">
-          <DataTable columns={columns} data={entries} getRowId={(r) => r.id} renderExpanded={(e) => <RequestDetail e={e} />} />
+          <DataTable hideExport columns={columns} data={entries} getRowId={(r) => r.id} renderExpanded={(e) => <RequestDetail e={e} />} />
           {total > PAGE ? <Pager page={page} pageCount={Math.max(1, Math.ceil(total / PAGE))} pageSize={PAGE} total={total} onPageChange={setPage} /> : null}
         </div>
       }

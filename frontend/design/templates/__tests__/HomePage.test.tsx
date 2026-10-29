@@ -82,11 +82,23 @@ describe("HomePage data state", () => {
     expect(container.querySelector("svg[role=img]")).toBeNull();
   });
 
-  it("sets the next best action right under the hero, before the four sentences", () => {
+  it("sets the four sentences inside the hero, then the next best action (the To do card) under it", () => {
     render(<HomePage persona="lead" state="ready" verdict={{ dqs: 70, sentence: "x" }} run={run} nextAction={<div data-testid="nba" />} cells={<div data-testid="cells" />} />);
+    const hero = screen.getByTestId("home-verdict-row");
     const nba = screen.getByTestId("nba");
-    expect(screen.getByTestId("home-verdict-row").compareDocumentPosition(nba) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(nba.compareDocumentPosition(screen.getByTestId("cells")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(hero).toContainElement(screen.getByTestId("cells"));
+    expect(hero).not.toContainElement(nba);
+    expect(screen.getByTestId("cells").compareDocumentPosition(nba) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("states the step in words ('Next: ...') right above the hero's one primary button", () => {
+    render(<HomePage persona="lead" state="ready" verdict={{ dqs: 70, sentence: "x", action: { label: "Fix MM045", href: "/fix?check=MM045", sentence: "Material master comes first" } }} run={run} />);
+    const next = screen.getByTestId("home-next");
+    expect(next).toHaveTextContent("Next: Material master comes first.");
+    const button = screen.getByRole("link", { name: "Fix MM045" });
+    expect(button).toHaveClass("m-btn-primary");
+    expect(next.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByTestId("home-verdict-row").querySelectorAll(".m-btn-primary")).toHaveLength(1);
   });
 
   it("puts the trend in the hero, under the score and its verdict", () => {

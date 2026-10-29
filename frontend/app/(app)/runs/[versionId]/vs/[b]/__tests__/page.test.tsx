@@ -56,7 +56,7 @@ beforeEach(() => {
 describe("CompareRunsPage", () => {
   it("renders the narrative, three stats and the changed-rule table", async () => {
     renderWithQuery(<CompareRunsPage />);
-    await waitFor(() => expect(screen.getByText("DQS moved from 71.2 to 74.8 (+3.6) across 1 module.")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("DQS moved from 71.2 to 74.8 (+3.6) across 1 object.")).toBeInTheDocument());
     // The direction in the header: from the run compared with to this run, to the second when they share the minute.
     expect(screen.getByText(/^Oct 1 \(8 Oct 2026, [0-9:]+:[0-9]{2}:[0-9]{2}.*\) to Oct 8 \(/)).toBeInTheDocument();
     expect(screen.getAllByText("74.8").length).toBeGreaterThan(0);
