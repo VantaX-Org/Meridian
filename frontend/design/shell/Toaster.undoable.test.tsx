@@ -1,8 +1,15 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { toast, Toaster } from "./Toaster";
 
 describe("toast.undoable", () => {
+  // sonner removes a closed toast on an untracked 200ms timer: let it run before the file's environment is torn down,
+  // or its setState lands on a missing window.
+  afterEach(async () => {
+    toast.dismiss();
+    await waitFor(() => expect(document.querySelector("[data-sonner-toast]")).toBeNull());
+  });
+
   it("shows an Undo action that runs the inverse and confirms", async () => {
     const undo = vi.fn().mockResolvedValue(undefined);
     render(<Toaster />);

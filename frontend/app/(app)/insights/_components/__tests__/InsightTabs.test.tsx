@@ -2,13 +2,13 @@ import { render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { InsightTabs } from "../InsightViews";
 
-const nav = vi.hoisted(() => ({ path: "/insights/owners" }));
+const nav = vi.hoisted(() => ({ path: "/runs" }));
 vi.mock("next/navigation", () => ({ usePathname: () => nav.path, useSearchParams: () => new URLSearchParams() }));
 
-afterEach(() => { nav.path = "/insights/owners"; });
+afterEach(() => { nav.path = "/runs"; });
 
 describe("InsightTabs", () => {
-  it.each(["/insights/owners", "/runs", "/rules/contracts"])("draws no Operate strip on %s (Runs and Fix work dropped it)", (path) => {
+  it.each(["/runs", "/rules/contracts"])("draws no Operate strip on %s (Runs and Fix work dropped it)", (path) => {
     nav.path = path;
     const { container } = render(<InsightTabs />);
     expect(container).toBeEmptyDOMElement();

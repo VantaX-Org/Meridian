@@ -1,7 +1,7 @@
 // frontend/lib/__tests__/nav.test.ts
 import { describe, expect, it } from "vitest";
 import nextConfig from "../../next.config";
-import { INDEX_ONLY_GROUPS, MAX_PILLS, NAV_GROUPS, settingsTabs, flattenNav, getPageTitle, activeHref, homeHrefForRole, isItemVisible, resolveNavHref, splitNav, visibleNav, type NavItem } from "../nav";
+import { INDEX_ONLY_GROUPS, MAX_PILLS, NAV_GROUPS, sectionTabs, settingsTabs, flattenNav, getPageTitle, activeHref, homeHrefForRole, isItemVisible, resolveNavHref, splitNav, visibleNav, type NavItem } from "../nav";
 import { LEGACY_ROLES, permissionsPayload } from "../../e2e/fixtures/legacy-permissions";
 
 describe("nav vs legacy redirects", () => {
@@ -115,12 +115,13 @@ describe("wave 18b gap routes", () => {
 describe("Process entries", () => {
   const flat = flattenNav(NAV_GROUPS.flatMap((g) => g.items));
 
-  it("makes the catalogue a main entry and keeps the runs and the designer under Analysis, all gated on process/view", () => {
+  it("makes the catalogue a main entry with the runs and the designer as its tabs, all gated on process/view", () => {
     const work = NAV_GROUPS.find((g) => g.main)!;
-    const analysis = NAV_GROUPS.find((g) => g.group === "Analysis")!;
+    const catalogue = work.items.find((i) => i.href === "/process")!;
     expect(work.items.filter((i) => i.href.startsWith("/process")).map((i) => i.href)).toEqual(["/process"]);
-    expect(analysis.items.filter((i) => i.href.includes("process")).map((i) => i.href)).toEqual(["/insights/process/designer", "/process/runs"]);
-    for (const item of [...work.items, ...analysis.items].filter((i) => i.href.includes("process"))) {
+    expect(catalogue.children?.map((i) => i.href)).toEqual(["/process/runs", "/insights/process/designer"]);
+    expect(sectionTabs(visibleNav({ can: () => true, isMenuItemEnabled: () => true }), "/process/runs").map((t) => t.label)).toEqual(["As-is processes", "Discovery runs", "Process designer"]);
+    for (const item of flattenNav([catalogue])) {
       expect(item.requires).toEqual({ resource: "process", action: "view" });
     }
   });
@@ -157,9 +158,9 @@ describe("menu structure", () => {
     expect(sectionOf("/insights/exec")).toBe("Analysis");
     expect(sectionOf("/insights/rules")).toBe("Analysis");
     expect(sectionOf("/process")).toBe("Work");
-    expect(sectionOf("/process/runs")).toBe("Analysis");
-    expect(sectionOf("/insights/process/designer")).toBe("Analysis");
-    expect(sectionOf("/fix/what-if")).toBe("Analysis");
+    expect(sectionOf("/process/runs")).toBe("Work");
+    expect(sectionOf("/insights/process/designer")).toBe("Work");
+    expect(sectionOf("/fix/what-if")).toBe("Work");
     expect(sectionOf("/mdm/glossary")).toBe("Master data");
     expect(sectionOf("/rules/drafts")).toBe("Rules");
     expect(sectionOf("/systems")).toBe("Data in");
@@ -259,6 +260,14 @@ describe("retired and merged pages", () => {
   it("calls the migration waves page Waves in the nav, the tab strip and the title", () => {
     expect(items.find((i) => i.href === "/insights/readiness")?.label).toBe("Waves");
     expect(getPageTitle("/insights/readiness")).toBe("Waves");
+  });
+
+  it("draws the Rules pages as one tab strip, catalogue first", () => {
+    const admin = { can: () => true, isMenuItemEnabled: () => true };
+    expect(sectionTabs(visibleNav(admin), "/rules/scoring").map((t) => t.label)).toEqual([
+      "Rules", "Data contracts", "Rule drafts", "Dictionary", "Scoring", "Learned rules",
+    ]);
+    expect(sectionTabs(visibleNav(admin), "/objects")).toEqual([]);
   });
 
   it("orders the admin tab strip: Overview first, then the pages an admin works through", () => {

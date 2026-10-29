@@ -12,6 +12,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { BodySkeleton, PROCESS_PURPOSE, ProcessFrame, processMeta } from "./_components/process-header";
 import { CatalogueCards, NoSystem, SystemSelect, processInsight, useProcessSystem } from "./_components/shared";
 import { DiscoveryStart, canMine, isDayOne } from "./_components/discovery-start";
+import { SectionTabs } from "@/components/section-tabs";
 
 const noRun = (i: InsightHeaderProps): InsightHeaderProps =>
   i.next.action?.label.includes("discovery") ? { ...i, next: { sentence: i.next.sentence } } : i;
@@ -35,7 +36,7 @@ export default function ProcessCataloguePage() {
   const starting = !!rows && (isDayOne(rows) || !canMine(rows));
   return (
     <ProcessFrame>
-      <PageHeader title="As-is processes" meta={processMeta(PROCESS_PURPOSE.catalogue)}
+      <PageHeader tabs={<SectionTabs label="Process pages" />} title="As-is processes" meta={processMeta(PROCESS_PURPOSE.catalogue)}
         actions={system && (
           <>
             <SystemSelect value={system.id} onValueChange={setSystem} systems={list} />

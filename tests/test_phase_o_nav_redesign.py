@@ -97,11 +97,11 @@ def test_sidebar_mdm_items():
 
 
 def test_sidebar_process_and_impact_items():
-    """Processes are a main pill (Work); their runs and the designer sit under Analysis; the insight views reach the
+    """Processes are a main pill (Work) with the runs and the designer as its tabs; the insight views reach the
     process map, lineage, patterns and duplicates."""
-    assert '"/process"' in _group_block(_nav(), "Work")
-    analysis = _group_block(_nav(), "Analysis")
-    assert '"/process/runs"' in analysis and '"/insights/process/designer"' in analysis
+    work = _group_block(_nav(), "Work")
+    assert '"/process"' in work
+    assert '"/process/runs"' in work and '"/insights/process/designer"' in work
     views = VIEWS.read_text(encoding="utf-8")
     for href in ("/insights/process", "/insights/lineage", "/insights/mining", "/insights/duplicates"):
         assert f'"{href}"' in views

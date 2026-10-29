@@ -14,6 +14,7 @@ import { ProcessSchedules } from "../_components/schedules-card";
 import { NewRunDialog } from "../_components/new-run-dialog";
 import { DiscoveryStart, canMine } from "../_components/discovery-start";
 import { NoSystem, RunsTable, SystemSelect, useProcessSystem } from "../_components/shared";
+import { SectionTabs } from "@/components/section-tabs";
 
 export default function ProcessRunsPage() {
   const { can } = useRole();
@@ -35,11 +36,11 @@ export default function ProcessRunsPage() {
 
   if (systems.isError) return <ProcessFrame><ErrorState {...apiErrorState(systems.error)} onRetry={() => systems.refetch()} /></ProcessFrame>;
   if (systems.isSuccess && !system) return <ProcessFrame><NoSystem /></ProcessFrame>;
-  if (!system) return <ProcessFrame><PageHeader title="Discovery runs" meta={processMeta(PROCESS_PURPOSE.runs)} /><RowsSkeleton /></ProcessFrame>;
+  if (!system) return <ProcessFrame><PageHeader tabs={<SectionTabs label="Process pages" />} title="Discovery runs" meta={processMeta(PROCESS_PURPOSE.runs)} /><RowsSkeleton /></ProcessFrame>;
   const extraction = active.find((j) => j.kind === "extraction" && j.system_id === system.id);
   return (
     <ProcessFrame>
-      <PageHeader title="Discovery runs" meta={processMeta(PROCESS_PURPOSE.runs)}
+      <PageHeader tabs={<SectionTabs label="Process pages" />} title="Discovery runs" meta={processMeta(PROCESS_PURPOSE.runs)}
         actions={(
           <>
             <SystemSelect value={system.id} onValueChange={setSystem} systems={list} />

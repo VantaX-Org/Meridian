@@ -30,6 +30,7 @@ import { errorText } from "@/lib/api/remediation";
 import { getVersions } from "@/lib/api/versions";
 import { labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { SectionTabs } from "@/components/section-tabs";
 
 const STATUS_OPTIONS = [
   { value: "pending", label: "Awaiting review" },
@@ -119,7 +120,7 @@ export default function LearnedRulesPage() {
     <ExplorerPage
       header={
         <>
-          <PageHeader
+          <PageHeader tabs={<SectionTabs label="Rules pages" />}
             title="Learned rules"
             meta="Patterns your own data follows for at least 95% of records. Approve one to make it a rule; the records that break it then show as findings."
             actions={can("manage_rules") ? <Button onClick={() => mine.mutate()} pending={mine.isPending} disabled={!latestRun}>Mine now</Button> : undefined}

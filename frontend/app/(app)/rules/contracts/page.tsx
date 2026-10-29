@@ -6,7 +6,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button, DataTable, Drawer, ExplorerPage, Field, Input, PageHeader, Pill, Select, Skeleton, Stat, Status, Textarea, type PillTone } from "@/design";
-import { InsightTabs } from "@/app/(app)/insights/_components/InsightViews";
+import { SectionTabs } from "@/components/section-tabs";
 import { InsightActions } from "@/app/(app)/insights/_components/InsightActions";
 import { actionColumn, RowButton } from "@/components/mdm/ledger";
 import { usePeople } from "@/components/mdm/use-people";
@@ -92,7 +92,7 @@ const RANK = (c: Contract) => (breached(c) ? 0 : c.status === "pending_approval"
 
   return (
     <ExplorerPage
-      header={<PageHeader title="Data contracts" meta={`A contract is a promise between the system that produces data and the one that uses it, checked on every analysis.${q.data ? ` ${all.length.toLocaleString()} contracts.` : ""}`} actions={<><InsightActions />{canCreate ? <Button onClick={() => setCreating(true)}>New contract</Button> : null}</>} tabs={<InsightTabs />} />}
+      header={<PageHeader title="Data contracts" meta={`A contract is a promise between the system that produces data and the one that uses it, checked on every analysis.${q.data ? ` ${all.length.toLocaleString()} contracts.` : ""}`} actions={<><InsightActions />{canCreate ? <Button onClick={() => setCreating(true)}>New contract</Button> : null}</>} tabs={<SectionTabs label="Rules pages" />} />}
       filterBar={
         <div className="flex items-end gap-3">
           <div className="flex items-end gap-3">

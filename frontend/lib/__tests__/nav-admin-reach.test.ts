@@ -65,8 +65,12 @@ describe("admin reaches every page", () => {
     expect(main.length).toBeLessThanOrEqual(MAX_PILLS);
   });
 
-  it("gives every insight view, reports, what-if, the designer, migration and the admin pages their own More entry", () => {
-    for (const h of ["/insights/reports", "/insights/trends", "/insights/forecast", "/insights/impact", "/insights/lineage", "/insights/mining", "/insights/duplicates", "/insights/readiness", "/insights/process", "/insights/process/designer", "/migration", "/fix/what-if", "/rules/learned", "/migration/dry-run", "/admin/jobs"]) expect(railHrefs, h).toContain(h);
+  it("lists each tabbed section once in More: its tabs are reached from its page, the palette and All features", () => {
+    for (const h of ["/insights/exec", "/insights/rules", "/insights/readiness", "/rules", "/migration", "/migration/dry-run", "/admin/jobs"]) expect(railHrefs, h).toContain(h);
+    for (const h of ["/insights/reports", "/insights/trends", "/insights/forecast", "/insights/impact", "/insights/lineage", "/insights/mining", "/insights/duplicates", "/insights/process", "/insights/process/designer", "/fix/what-if", "/rules/learned"]) {
+      expect(railHrefs, h).not.toContain(h);
+      expect(indexHrefs, h).toContain(h);
+    }
     // Exception billing is a Settings tab (Settings stands for its tabs in More), listed on All features.
     expect(indexHrefs).toContain("/admin/billing");
   });

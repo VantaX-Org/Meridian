@@ -150,6 +150,30 @@ export function settingsTabs(groups: readonly NavGroup[]): NavItem[] {
   });
 }
 
+/**
+ * Items whose children are tabs of the item's own page: the More panel lists the item once and not its tabs (the
+ * page's tab strip and the command palette reach them). Main items' children never reach More (`splitNav`).
+ */
+export const FOLDED_HREFS: ReadonlySet<string> = new Set([
+  SETTINGS_HREF, "/insights/exec", "/insights/rules", "/insights/readiness", "/rules",
+  // Main items: their tabs never reach More, but a role without their pill finds them there, lit on every tab.
+  "/fix", "/process", "/insights/progress",
+]);
+
+/** Sections drawn as one tab strip from the nav (`sectionTabs`): the item's page first, then its children. */
+const SECTION_HREFS = ["/rules", "/process"] as const;
+
+/**
+ * The tab strip of the section `pathname` belongs to, from the visible nav: the section's page and each child the
+ * viewer may open. Empty outside a section or when only one tab is visible.
+ */
+export function sectionTabs(groups: readonly NavGroup[], pathname: string): NavItem[] {
+  const items = flattenNav(groups.flatMap((g) => g.items)).filter((i) => (SECTION_HREFS as readonly string[]).includes(i.href));
+  const section = items.find((i) => [i, ...(i.children ?? [])].some((t) => t.href === pathname));
+  const tabs = section ? [{ ...section, children: undefined }, ...(section.children ?? [])] : [];
+  return tabs.length > 1 ? tabs : [];
+}
+
 /** DESIGN.md §1.1: the index bar holds at most this many pills before More (the main group's size). */
 export const MAX_PILLS = 6;
 
@@ -173,12 +197,26 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     group: "Work",
     main: true,
     items: [
-      { href: "/fix", requires: req("fixes", "view"), label: "Fix work", icon: IconEraser, anyOf: ["approve", "apply"], badgeKey: "fix", keywords: "fix cleaning corrections proposals apply batches" },
+      { href: "/fix", requires: req("fixes", "view"), label: "Fix work", icon: IconEraser, anyOf: ["approve", "apply"], badgeKey: "fix", keywords: "fix cleaning corrections proposals apply batches",
+        children: [
+          { href: "/fix/what-if", requires: req("fixes", "view"), label: "What-if", icon: IconBranch, anyOf: ["approve", "apply"], keywords: "simulation simulate score before after fix" },
+        ],
+      },
       { href: "/objects", requires: req("findings", "view"), label: "Objects", icon: IconCube, licenceKey: "findings", keywords: "checks critical severity findings records" },
       { href: "/runs", requires: req("analysis", "view"), label: "Runs", icon: IconHistory, licenceKey: "versions", keywords: "compare history snapshots baseline" },
       // Labelled "Processes" on its pill (Rail PILL_LABEL); its page and the palette keep the full name.
-      { href: "/process", requires: req("process", "view"), label: "As-is processes", icon: IconProcess, anyOf: ["view"], keywords: "processes process discovery mining as-is l1 l5 ptp otc variants conformance signavio bpmn flow" },
-      { href: "/insights/progress", requires: req("reports", "view"), label: "Progress", icon: IconTrend, anyOf: ["view"], keywords: "baseline compare movement fixed new trends history forecast predictive" },
+      { href: "/process", requires: req("process", "view"), label: "As-is processes", icon: IconProcess, anyOf: ["view"], keywords: "processes process discovery mining as-is l1 l5 ptp otc variants conformance signavio bpmn flow",
+        children: [
+          { href: "/process/runs", requires: req("process", "view"), label: "Discovery runs", icon: IconHistory, anyOf: ["view"], keywords: "process discovery run runs processes incremental extraction" },
+          { href: "/insights/process/designer", requires: req("process", "view"), label: "Process designer", icon: IconDraft, anyOf: ["view"], keywords: "bpmn designer model reference l1 l5 signavio export processes" },
+        ],
+      },
+      { href: "/insights/progress", requires: req("reports", "view"), label: "Progress", icon: IconTrend, anyOf: ["view"], keywords: "baseline compare movement fixed new trends history forecast predictive",
+        children: [
+          { href: "/insights/trends", requires: req("reports", "view"), label: "Trends", icon: IconTrend, keywords: "trend score movement run to run history" },
+          { href: "/insights/forecast", requires: req("reports", "view"), label: "Forecast", icon: IconTrend, keywords: "forecast predictive projection 7 30 90 days" },
+        ],
+      },
       {
         href: "/inbox",
         requires: req("stewardship", "view"),
@@ -201,34 +239,44 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     group: "Analysis",
     items: [
       { href: "/home/lead", requires: req("analysis", "view"), label: "Home", icon: IconHome, licenceKey: "dashboard", keywords: "overview home dqs verdict command centre", shortcut: "⌘1" },
+      // Each entry below is one page with tabs (InsightViews VIEWS): More lists the entry once (FOLDED_HREFS), the
+      // page's tab strip and the command palette reach the rest. Trends and Forecast are tabs of the Progress pill.
       {
-        // The Insights overview repeated Home and was retired (/insights redirects to the viewer's home); the insight
-        // views are listed by their own pages, the executive summary first.
         href: "/insights/exec",
         requires: req("reports", "view"),
         label: "Summary",
         icon: IconGauge,
         anyOf: ["view"],
-        keywords: "insights executive summary exec overview narrative readiness impact owners duplicates forecast process lineage mining",
+        keywords: "insights executive summary exec overview narrative board pack",
         children: [
-          // Every insight view is its own More entry (owner: a page that is only a tab reads as a missing feature).
-          // Reports is gated on export: the page's downloads need it (api/services/rbac.py maps export to reports/export).
+          // Gated on export: the page's downloads need it (api/services/rbac.py maps export to reports/export).
           { href: "/insights/reports", requires: req("reports", "export"), label: "Reports", icon: IconLog, anyOf: ["export"], keywords: "reports report library pdf board pack executive workbook xlsx json download export trend owners rule catalogue dictionary extraction cleaning record fix sheet comparison" },
-          { href: "/insights/trends", requires: req("reports", "view"), label: "Trends", icon: IconTrend, keywords: "trend score movement run to run history" },
-          { href: "/insights/forecast", requires: req("reports", "view"), label: "Forecast", icon: IconTrend, keywords: "forecast predictive projection 7 30 90 days" },
-          { href: "/insights/rules", requires: req("reports", "view"), label: "Failing rules", icon: IconCompass, keywords: "explore rule ranking failing pareto root cause field" },
+        ],
+      },
+      {
+        href: "/insights/rules",
+        requires: req("reports", "view"),
+        label: "Explore",
+        icon: IconCompass,
+        keywords: "explore failing rules ranking pareto root cause field",
+        children: [
           { href: "/insights/impact", requires: req("reports", "view"), label: "Value at risk", icon: IconCompass, keywords: "impact value at risk blocked degraded sap features opportunity cost" },
           { href: "/insights/lineage", requires: req("reports", "view"), label: "Lineage", icon: IconBranch, keywords: "lineage field config process kpi" },
           { href: "/insights/mining", requires: req("reports", "view"), label: "Patterns", icon: IconCompass, keywords: "mining patterns anomalies drift likely rules" },
           { href: "/insights/duplicates", requires: req("reports", "view"), label: "Duplicates", icon: IconMerge, keywords: "duplicates same record merge" },
-          { href: "/insights/readiness", requires: req("reports", "view"), label: "Waves", icon: IconFlag, keywords: "readiness waves go no-go blockers migration cutover readiness" },
-          { href: "/insights/process", requires: req("reports", "view"), label: "Process data readiness", icon: IconFlag, keywords: "process readiness steps blocked failing fields l1 l5" },
           { href: "/insights/owners", requires: req("reports", "view"), label: "Owners", icon: IconPeople, keywords: "owners digest steward follow up" },
         ],
       },
-      { href: "/fix/what-if", requires: req("fixes", "view"), label: "What-if", icon: IconBranch, anyOf: ["approve", "apply"], keywords: "simulation simulate score before after fix" },
-      { href: "/insights/process/designer", requires: req("process", "view"), label: "Process designer", icon: IconDraft, anyOf: ["view"], keywords: "bpmn designer model reference l1 l5 signavio export processes" },
-      { href: "/process/runs", requires: req("process", "view"), label: "Discovery runs", icon: IconHistory, anyOf: ["view"], keywords: "process discovery run runs processes incremental extraction" },
+      {
+        href: "/insights/readiness",
+        requires: req("reports", "view"),
+        label: "Waves",
+        icon: IconFlag,
+        keywords: "readiness waves go no-go blockers migration cutover",
+        children: [
+          { href: "/insights/process", requires: req("reports", "view"), label: "Process data readiness", icon: IconFlag, keywords: "process readiness steps blocked failing fields l1 l5" },
+        ],
+      },
     ],
   },
   {
