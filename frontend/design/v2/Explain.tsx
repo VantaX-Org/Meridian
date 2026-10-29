@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import type { ExplainArgs, ExplainMetric, ExplainRow } from "@/lib/api/v2/object";
+import { v2Locale } from "@/lib/v2/format";
 import { useExplain } from "@/lib/v2/object-queries";
 import { Skeleton } from "./parts";
 import "./object.css";
@@ -30,7 +31,7 @@ const GAP = 8;
 
 function format(row: ExplainRow): string {
   if (row.value == null) return "—";
-  const v = typeof row.value === "number" ? row.value.toLocaleString("en-US", { maximumFractionDigits: 2 }) : row.value;
+  const v = typeof row.value === "number" ? row.value.toLocaleString(v2Locale(), { maximumFractionDigits: 2 }) : row.value;
   return row.unit ? `${v} ${row.unit}` : String(v);
 }
 

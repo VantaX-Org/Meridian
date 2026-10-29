@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import * as landscapeApi from "@/lib/api/v2/landscape";
+import * as reportsApi from "@/lib/api/v2/reports";
 import { landscapeFixture } from "@/lib/api/v2/fixtures";
 import { LandscapeCanvas } from "../screens/Landscape";
 import { getUrl, setUrl } from "./nav-store";
@@ -100,11 +101,19 @@ describe("landscape canvas, fixture mode", () => {
     expect(window.sessionStorage.getItem("mn_v2_sel")).toBe(`${ECC.id}:${landscapeFixture.cells[3].module}`);
   });
 
-  it("lead: the next step opens the no-go objects", async () => {
+  it("lead: the next step reads the wave data: it clears the no-go objects of the next wave", async () => {
+    renderWithQuery(<LandscapeCanvas />);
+    const next = await screen.findByRole("link", { name: "Clear the 3 no-go objects in Wave 1: finance foundations" });
+    expect(next).toHaveAttribute("href", expect.stringContaining("/v2/work?verdict=no-go"));
+    expect(next).toHaveClass("m2-next");
+    expect(text(screen.getByTestId("wave-next-when"))).toMatch(/^Wave 1: finance foundations: due 16 Nov 2026, .* 1 go, 0 at risk, 3 no-go\.$/);
+  });
+
+  it("lead: with no wave defined the next step opens the no-go objects, as before", async () => {
+    vi.spyOn(reportsApi, "getWaves").mockResolvedValue([]);
     renderWithQuery(<LandscapeCanvas />);
     const next = await screen.findByRole("link", { name: "Open the no-go objects" });
     expect(next).toHaveAttribute("href", expect.stringContaining("/v2/work?verdict=no-go"));
-    expect(next).toHaveClass("m2-next");
   });
 
   it("steward: the next step accepts the suggested values in Work", async () => {

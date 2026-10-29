@@ -18,7 +18,7 @@ export async function v2Get<T>(path: string, params?: Params): Promise<T> {
   return data;
 }
 
-/** A write (POST, PUT, DELETE). Fixture mode applies it to the in-memory fixture so the screen shows the change. */
+/** A write (POST, PUT, PATCH, DELETE). Fixture mode applies it to the in-memory fixture so the screen shows the change. */
 export async function v2Send<T>(method: "POST" | "PUT" | "PATCH" | "DELETE", path: string, body?: unknown, params?: Params): Promise<T> {
   const query = clean(params);
   if (fixtureActive()) return fixtureWrite<T>(method, path, body, query ?? {});

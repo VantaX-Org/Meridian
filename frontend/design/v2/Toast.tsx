@@ -73,7 +73,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     async (a: DoneAction) => {
       removeAction(a);
       try {
-        for (const id of [...a.ids].reverse()) await postUndo(id);
+        if (a.undo) await a.undo();
+        else for (const id of [...a.ids].reverse()) await postUndo(id);
         await refreshV2(qc);
         clearPatches();
         show(`Undone: ${a.label.charAt(0).toLowerCase()}${a.label.slice(1)}`);

@@ -2,7 +2,10 @@
 
 import { Explain } from "../Explain";
 import { Fragment, useMemo, useSyncExternalStore, type ReactNode } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import type { MigrationWave } from "@/types/api";
+import { useWaves } from "@/lib/v2/admin-queries";
+import { daysUntil, groupByWave, nextWave, type WaveGroup } from "@/lib/v2/waves";
 import { formatDate } from "@/lib/format";
 import type { Landscape, LandscapeCell, LandscapeSystem, WorkRow } from "@/lib/api/v2/types";
 import { useOpenItem, useRunParam, useV2Session, type V2Persona } from "@/lib/v2/hooks";
@@ -107,7 +110,7 @@ function OwnerLine() {
 }
 
 /** The next-step button, by persona. One per canvas. */
-export function NextStep({ landscape, persona }: { landscape: Landscape; persona: V2Persona }) {
+export function NextStep({ landscape, persona, waves }: { landscape: Landscape; persona: V2Persona; waves?: readonly MigrationWave[] }) {
   const { hrefFor } = useOpenItem();
   if (persona === "owner") return <OwnerNext />;
   if (persona === "steward") {
@@ -126,6 +129,24 @@ export function NextStep({ landscape, persona }: { landscape: Landscape; persona
       <V2Link href={hrefFor({ kind: "system", id: s.id })} className="m2-btn m2-next">
         {label}
       </V2Link>
+    );
+  }
+  const wave = waves && waves.length ? nextWave(waves) : null;
+  if (wave) {
+    const [group] = groupByWave(landscape, [wave], landscape.cells);
+    const noGo = group.counts["no-go"];
+    const atRisk = group.counts["at-risk"];
+    const due = daysUntil(wave.target_date);
+    const when = wave.target_date ? `due ${formatDate(wave.target_date)}${due != null ? (due < 0 ? `, ${-due} ${-due === 1 ? "day" : "days"} ago` : due === 0 ? ", today" : `, in ${due} ${due === 1 ? "day" : "days"}`) : ""}` : "no date set";
+    const label = noGo > 0 ? `Clear the ${noGo} no-go ${noGo === 1 ? "object" : "objects"} in ${wave.name}` : atRisk > 0 ? `Review the ${atRisk} at-risk ${atRisk === 1 ? "object" : "objects"} in ${wave.name}` : `Open ${wave.name}`;
+    const href = noGo > 0 ? "/v2/work?verdict=no-go" : atRisk > 0 ? "/v2/work?verdict=at-risk" : hrefFor({ kind: "waves", id: "" });
+    return (
+      <>
+        <V2Link href={href} className="m2-btn m2-next" data-testid="wave-next-step">
+          {label}
+        </V2Link>
+        <span className="m2-meta" data-testid="wave-next-when">{`${wave.name}: ${when}. ${group.counts.go} go, ${atRisk} at risk, ${noGo} no-go.`}</span>
+      </>
     );
   }
   return (
@@ -202,18 +223,68 @@ function otherCell(system: LandscapeSystem): ReactNode {
   return <Dash why="This object has no run on this system" />;
 }
 
-export function Coverage({ landscape, run }: { landscape: Landscape; run: string | null }) {
+/** The header of one wave: its name, date and stage, and how many of its objects are go, at risk and no-go. */
+function WaveHeadText({ group }: { group: WaveGroup }) {
+  const { hrefFor } = useOpenItem();
+  const w = group.wave;
+  const c = group.counts;
+  return (
+    <span className="m2-wsum">
+      <b>{w ? w.name : "Not in a wave"}</b>{" "}
+      <span>{w ? (w.target_date ? `due ${formatDate(w.target_date)}` : "no date set") : `${group.modules.length} ${group.modules.length === 1 ? "object" : "objects"}`}</span>{" "}
+      <span>{`${c.go} go, ${c["at-risk"]} at risk, ${c["no-go"]} no-go`}</span>
+      {w ? (
+        <>
+          {" "}
+          <V2Link href={hrefFor({ kind: "waves", id: "" })} aria-label={`Edit ${w.name}`}>
+            Edit
+          </V2Link>
+        </>
+      ) : null}
+    </span>
+  );
+}
+
+/** By system (the plain matrix) or by wave, kept in the address as `?view=waves`. */
+function ViewToggle({ view }: { view: "systems" | "waves" }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const go = (next: "systems" | "waves") => {
+    const q = new URLSearchParams(params.toString());
+    if (next === "waves") q.set("view", "waves");
+    else q.delete("view");
+    const qs = q.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
+  return (
+    <div role="group" aria-label="Group the matrix" className="m2-segs" data-testid="view-toggle">
+      <button type="button" className="m2-seg" aria-pressed={view === "systems"} onClick={() => go("systems")}>
+        All objects
+      </button>
+      <button type="button" className="m2-seg" aria-pressed={view === "waves"} onClick={() => go("waves")}>
+        Waves
+      </button>
+    </div>
+  );
+}
+
+export function Coverage({ landscape, run, view = "systems", waves = [] }: { landscape: Landscape; run: string | null; view?: "systems" | "waves"; waves?: readonly MigrationWave[] }) {
   const params = useSearchParams();
   const selected = useSelectedCell();
   const chosen = params.get("system");
   const systems = landscape.systems.filter((s) => !chosen || systemSlug(s.name) === chosen);
   const cellOf = (system: LandscapeSystem, module: string) => landscape.cells.find((c) => c.system_id === system.id && c.module === module);
   const { go, at_risk, no_go } = landscape.counts;
+  const visible = landscape.cells.filter((c) => systems.some((x) => x.id === c.system_id));
+  const groups: WaveGroup[] | null = view === "waves" ? groupByWave(landscape, waves, visible) : null;
+  const objectOf = (module: string) => landscape.objects.find((o) => o.module === module);
   return (
     <section className="m2-sec" aria-label="Coverage matrix">
       <div className="m2-sechead">
         <h2 className="m2-h2">Coverage</h2>
         <span className="m2-sub">{`${go} go, ${at_risk} at risk, ${no_go} no-go`}</span>
+        <ViewToggle view={view} />
       </div>
       <div className="m2-frame m2-only-wide">
         <table className="m2-tbl m2-mx" data-testid="coverage-matrix">
@@ -234,7 +305,35 @@ export function Coverage({ landscape, run }: { landscape: Landscape; run: string
             </tr>
           </thead>
           <tbody>
-            {landscape.objects.map((o) => (
+            {groups
+              ? groups.flatMap((g) => [
+                  <tr key={`wave-${g.wave?.id ?? "none"}`} className="m2-wavehead" data-testid="wave-head">
+                    <th scope="colgroup" colSpan={1 + systems.length}>
+                      <WaveHeadText group={g} />
+                    </th>
+                  </tr>,
+                  ...(g.modules.length === 0
+                    ? [
+                        <tr key={`empty-${g.wave?.id ?? "none"}`}>
+                          <td colSpan={1 + systems.length} className="m2-meta">
+                            No object is assigned to this wave yet.
+                          </td>
+                        </tr>,
+                      ]
+                    : g.modules.map((m) => objectOf(m)).filter((o): o is NonNullable<typeof o> => !!o).map((o) => (
+              <tr key={o.module}>
+                    <th scope="row">
+                      <span className="m2-oname">{o.label}</span>
+                      <Explain metric="dqs" label={`the score of ${o.label}`} module={o.module} />
+                    </th>
+                    {systems.map((s) => {
+                      const cell = cellOf(s, o.module);
+                      return <td key={s.id}>{cell ? <CellLink system={s} cell={cell} label={o.label} selected={selected === `${s.id}:${o.module}`} run={run} /> : otherCell(s)}</td>;
+                    })}
+                  </tr>
+                      ))),
+                ])
+              : landscape.objects.map((o) => (
               <tr key={o.module}>
                 <th scope="row">
                   <span className="m2-oname">{o.label}</span>
@@ -245,11 +344,16 @@ export function Coverage({ landscape, run }: { landscape: Landscape; run: string
                   return <td key={s.id}>{cell ? <CellLink system={s} cell={cell} label={o.label} selected={selected === `${s.id}:${o.module}`} run={run} /> : otherCell(s)}</td>;
                 })}
               </tr>
-            ))}
+                ))}
           </tbody>
         </table>
       </div>
       <div className="m2-mlist">
+        {groups ? (
+          <p className="m2-prov" data-testid="wave-list-note">
+            {groups.map((g) => `${g.wave?.name ?? "Not in a wave"}: ${g.counts.go} go, ${g.counts["at-risk"]} at risk, ${g.counts["no-go"]} no-go`).join(". ")}.
+          </p>
+        ) : null}
         {landscape.cells
           .filter((c) => !chosen || systemSlug(landscape.systems.find((s) => s.id === c.system_id)?.name ?? "") === chosen)
           .map((c) => {
@@ -400,6 +504,8 @@ export function LandscapeCanvas() {
   const q = useLandscape(run);
   const session = useV2Session();
   const params = useSearchParams();
+  const waves = useWaves().data ?? [];
+  const view = params.get("view") === "waves" ? "waves" : "systems";
   const L = q.data;
   const scopeName = useMemo(() => {
     const chosen = params.get("system");
@@ -456,9 +562,9 @@ export function LandscapeCanvas() {
       </p>
       {session.persona === "owner" ? <OwnerLine /> : null}
       <div className="m2-cta">
-        <NextStep landscape={L} persona={session.persona} />
+        <NextStep landscape={L} persona={session.persona} waves={waves} />
       </div>
-      <Coverage landscape={L} run={run} />
+      <Coverage landscape={L} run={run} view={view} waves={waves} />
       {session.persona === "basis" ? <BasisTasks landscape={L} /> : <NextWork landscape={L} />}
     </>
   );

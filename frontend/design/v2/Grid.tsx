@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref } from "react";
 import { flexRender, getCoreRowModel, useReactTable, type ColumnDef, type VisibilityState } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { v2Locale } from "@/lib/v2/format";
 import { KEYS, gridRegistry, matchKey, type GridTarget } from "@/lib/v2/keys";
 import { MenuButton, type MenuEntry } from "./Menu";
 
@@ -287,7 +288,7 @@ export function Grid<T>(props: GridProps<T>) {
         <div className="m2-gridbar-l">{toolbar}</div>
         <div className="m2-gridbar-r">
           <span className="m2-meta" aria-live="polite">
-            {(count ?? rows.length).toLocaleString("en-US")} {(count ?? rows.length) === 1 ? "row" : "rows"}
+            {(count ?? rows.length).toLocaleString(v2Locale())} {(count ?? rows.length) === 1 ? "row" : "rows"}
           </span>
           {fixedColumns ? null : (
             <MenuButton label="Choose columns" buttonLabel="Choose columns" entries={chooser} className="m2-btn m2-sm" align="end">
@@ -452,7 +453,7 @@ export function Grid<T>(props: GridProps<T>) {
       </div>
       {selectedCount > 0 ? (
         <div className="m2-bulk" role="region" aria-label="Bulk actions" data-testid="bulk-bar">
-          <span>{bulkLabel ? bulkLabel(selectedCount) : `${selectedCount.toLocaleString("en-US")} selected`}</span>
+          <span>{bulkLabel ? bulkLabel(selectedCount) : `${selectedCount.toLocaleString(v2Locale())} selected`}</span>
           {bulkBar?.({ selected: selectedRows, clear })}
           <button type="button" className="m2-btn m2-sm m2-ghost" onClick={clear}>
             Clear selection

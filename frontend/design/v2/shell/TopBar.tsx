@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { useAuroraPrefs } from "@/hooks/use-theme";
 import type { Theme } from "@/lib/preferences";
 import { PERSONA_LABEL, useOpenItem, useRunParam, useV2Session } from "@/lib/v2/hooks";
+import { canAdminister } from "@/lib/v2/admin-sections";
 import { useUnread } from "@/lib/v2/approvals-queries";
 import { useLandscape } from "@/lib/v2/queries";
 import { setUiCookie } from "@/lib/v2/switch";
@@ -70,18 +71,20 @@ export interface AccountMenuProps {
   onSignOut?: () => void;
 }
 
-/** Persona label and the account menu: who you are, theme, shortcuts, administration, and the way back. */
+/** Persona label and the account menu: who you are, theme, preferences, reports, shortcuts, administration, and the way back. */
 export function AccountMenu({ theme, setTheme, onShortcuts, onSignOut }: AccountMenuProps) {
   const session = useV2Session();
-  const { openItem } = useOpenItem();
+  const { openItem, hrefFor } = useOpenItem();
   const entries: MenuEntry[] = [
     { kind: "heading", label: session.name ? (session.email ? `${session.name}, ${session.email}` : session.name) : PERSONA_LABEL[session.persona] },
     { kind: "heading", label: "Theme" },
     ...THEMES.map<MenuEntry>((t) => ({ kind: "item", id: `theme-${t.value}`, label: t.label, checked: theme === t.value, onSelect: () => setTheme(t.value) })),
     { kind: "separator" },
+    { kind: "item", id: "prefs", label: "Preferences", href: hrefFor({ kind: "preferences", id: "" }) },
+    { kind: "item", id: "reports", label: "Reports", href: "/v2/reports" },
     { kind: "item", id: "keys", label: "Keyboard shortcuts", kbd: "?", onSelect: onShortcuts },
     { kind: "item", id: "triage", label: "Triage and SLA", onSelect: () => openItem({ kind: "triage", id: "" }) },
-    ...(session.can("manage_settings") ? [{ kind: "item", id: "admin", label: "Administration", href: "/admin", external: true } as MenuEntry] : []),
+    ...(canAdminister(session.can) ? [{ kind: "item", id: "admin", label: "Administration", href: "/v2/admin" } as MenuEntry] : []),
     { kind: "separator" },
     { kind: "item", id: "back", label: "Back to the current interface", href: "/home", external: true, onSelect: () => setUiCookie(null) },
     ...(onSignOut ? [{ kind: "item", id: "out", label: "Sign out", onSelect: onSignOut } as MenuEntry] : []),
@@ -101,12 +104,9 @@ function LiveAccountMenu({ onShortcuts }: { onShortcuts: () => void }) {
 }
 
 function FixtureAccountMenu({ onShortcuts }: { onShortcuts: () => void }) {
-  const [theme, setThemeState] = useState<Theme>("system");
-  useEffect(() => {
-    if (theme === "system") return;
-    document.documentElement.dataset.theme = theme;
-  }, [theme]);
-  return <AccountMenu theme={theme} setTheme={setThemeState} onShortcuts={onShortcuts} />;
+  // Fixture mode has no sign-in, but the theme is the same preference the live menu keeps (local first).
+  const { theme, setTheme } = useAuroraPrefs();
+  return <AccountMenu theme={theme} setTheme={setTheme} onShortcuts={onShortcuts} />;
 }
 
 export interface TopBarProps {
@@ -122,6 +122,7 @@ export function TopBar({ onOpenCommand, onToggleMap, onShortcuts, mapOpen }: Top
   const { open, openItem, close } = useOpenItem();
   const inbox = useMemo(() => (unread ? int(unread.count) : "—"), [unread]);
   const inboxOpen = open?.kind === "inbox";
+  const helpOpen = open?.kind === "help";
   return (
     <header className="m2-top">
       <div className="m2-top-l">
@@ -143,6 +144,9 @@ export function TopBar({ onOpenCommand, onToggleMap, onShortcuts, mapOpen }: Top
       <div className="m2-top-r">
         <button type="button" className="m2-tbtn" aria-haspopup="dialog" aria-expanded={inboxOpen} aria-label={`Inbox, ${inbox} unread`} onClick={() => (inboxOpen ? close() : openItem({ kind: "inbox", id: "" }))}>
           Inbox <b>{inbox}</b>
+        </button>
+        <button type="button" className="m2-tbtn m2-help" aria-label="Help" aria-haspopup="dialog" aria-expanded={helpOpen} onClick={() => (helpOpen ? close() : openItem({ kind: "help", id: "" }))}>
+          ?
         </button>
         {session.fixture ? <FixtureAccountMenu onShortcuts={onShortcuts} /> : <LiveAccountMenu onShortcuts={onShortcuts} />}
       </div>

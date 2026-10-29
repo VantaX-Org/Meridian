@@ -6,21 +6,24 @@ import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { personaForRole, pillSetFor } from "@/lib/persona";
 import { fixtureParam, useFixture, withFixture } from "@/lib/api/v2/fixture";
+import { usePersonaOverride } from "./prefs";
 
-export type OpenKind = "record" | "rule" | "run" | "system" | "feature" | "job" | "batch" | "person" | "inbox" | "triage" | "golden" | "term" | "step";
+export type OpenKind = "record" | "rule" | "run" | "system" | "feature" | "job" | "batch" | "person" | "inbox" | "triage" | "golden" | "term" | "step" | AdminKind;
+/** The administration, report and panel kinds: `?open=user:<id>` and so on. `preferences`, `help` and `waves` carry no id. */
+export type AdminKind = "user" | "role" | "apikey" | "audit" | "channel" | "mapping" | "report" | "schedule" | "preferences" | "help" | "waves";
+/** Kinds written without an id: `?open=preferences`. */
+export const BARE_KINDS: readonly OpenKind[] = ["inbox", "triage", "preferences", "help", "waves"];
 export interface OpenItem {
   kind: OpenKind;
   id: string;
 }
 
-const KINDS: readonly OpenKind[] = ["record", "rule", "run", "system", "feature", "job", "batch", "person", "golden", "term", "step"];
-/** Panels that name no thing: `?open=inbox` and `?open=triage`. Their id is empty. */
-const PANELS: readonly OpenKind[] = ["inbox", "triage"];
+const KINDS: readonly OpenKind[] = ["record", "rule", "run", "system", "feature", "job", "batch", "person", "golden", "term", "step", "user", "role", "apikey", "audit", "channel", "mapping", "report", "schedule"];
 
 /** Parses `?open=<kind>:<id>`. The id may itself contain colons (a record id is module:key). Null for anything else. */
 export function parseOpen(value: string | null | undefined): OpenItem | null {
   if (!value) return null;
-  if ((PANELS as readonly string[]).includes(value)) return { kind: value as OpenKind, id: "" };
+  if ((BARE_KINDS as readonly string[]).includes(value)) return { kind: value as OpenKind, id: "" };
   const at = value.indexOf(":");
   if (at <= 0) return null;
   const kind = value.slice(0, at) as OpenKind;
@@ -81,16 +84,17 @@ export function useV2Session(): V2Session {
   const fixture = useFixture();
   const { user } = useAuth();
   const { role, can } = useRole();
+  const chosen = usePersonaOverride();
   return useMemo(() => {
     if (fixture) {
       const asked = fixtureParam("persona");
-      const persona: V2Persona = asked === "steward" || asked === "basis" || asked === "owner" || asked === "process" ? asked : "lead";
+      const persona: V2Persona = asked === "steward" || asked === "basis" || asked === "owner" || asked === "process" ? asked : (chosen ?? "lead");
       return { persona, label: PERSONA_LABEL[persona], name: "Demo user", email: null, id: FIXTURE_ME, can: () => true, fixture };
     }
     const p = personaForRole(role);
-    const persona: V2Persona = pillSetFor(role) === "owner" ? "owner" : p === "steward" ? "steward" : p === "basis" ? "basis" : p === "process" ? "process" : "lead";
+    const persona: V2Persona = chosen ?? (pillSetFor(role) === "owner" ? "owner" : p === "steward" ? "steward" : p === "basis" ? "basis" : p === "process" ? "process" : "lead");
     return { persona, label: PERSONA_LABEL[persona], name: user?.name ?? "", email: user?.email ?? null, id: user?.id ?? null, can, fixture };
-  }, [fixture, role, can, user]);
+  }, [fixture, role, can, user, chosen]);
 }
 
 /** The run the page is pinned to (`?run=`), or null for the current state. */

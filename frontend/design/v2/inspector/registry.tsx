@@ -6,6 +6,11 @@ import { BatchInspector } from "./batch";
 import { InboxPanel } from "./inbox";
 import { JobInspector } from "./job";
 import { PersonInspector } from "./person";
+import { PreferencesPanel, HelpPanel } from "./panels";
+import { ApiKeyInspector, RoleInspector, UserInspector } from "./people";
+import { AuditInspector, ChannelInspector, MappingInspector } from "./records";
+import { ReportInspector, ScheduleInspector } from "./reports";
+import { WavesPanel } from "./waves";
 import { RunInspector } from "./run";
 import { SystemInspector } from "./system";
 import { TriagePanel } from "./triage";
@@ -35,6 +40,17 @@ export const INSPECTOR_BODIES: Partial<Record<OpenKind, ComponentType<BodyProps>
   term: TermInspector,
   feature: FeatureInspector,
   step: StepInspector,
+  user: UserInspector,
+  role: RoleInspector,
+  apikey: ApiKeyInspector,
+  audit: AuditInspector,
+  channel: ChannelInspector,
+  mapping: MappingInspector,
+  report: ReportInspector,
+  schedule: ScheduleInspector,
+  preferences: PreferencesPanel,
+  help: HelpPanel,
+  waves: WavesPanel,
 };
 
 export function extensionFor(item: OpenItem, onClose: () => void): ReactNode {

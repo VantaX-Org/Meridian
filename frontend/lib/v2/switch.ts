@@ -13,8 +13,18 @@ export function readUiCookie(source: string = typeof document === "undefined" ? 
   return value || null;
 }
 
+/** Fired on the window whenever the choice changes, so a switch on screen can follow it. */
+export const UI_EVENT = "m2:ui";
+
 /** Chooses the interface for this browser. Null clears the choice. */
 export function setUiCookie(value: typeof UI_V2 | null): void {
   if (typeof document === "undefined") return;
   document.cookie = value ? `${UI_COOKIE}=${value}; Path=/; SameSite=Lax; Max-Age=${YEAR}` : `${UI_COOKIE}=; Path=/; SameSite=Lax; Max-Age=0`;
+  window.dispatchEvent(new Event(UI_EVENT));
+}
+
+/** Subscribes to changes of the choice (for useSyncExternalStore). */
+export function subscribeUiCookie(cb: () => void): () => void {
+  window.addEventListener(UI_EVENT, cb);
+  return () => window.removeEventListener(UI_EVENT, cb);
 }

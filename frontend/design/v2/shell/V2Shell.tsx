@@ -1,17 +1,22 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AuthGuard } from "@/components/auth/auth-guard";
+import { useAuth } from "@/context/auth-context";
+import { usePreferencesSync } from "@/hooks/use-preferences";
 import { PermissionsProvider } from "@/lib/permissions";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { createDispatcher, gridRegistry, ledgerRegistry, type GoDestination, type KeyContext } from "@/lib/v2/keys";
 import { useOpenItem, usePhone, useV2Href } from "@/lib/v2/hooks";
 import { setUiCookie, UI_V2 } from "@/lib/v2/switch";
+import { useApplyKeyHints } from "@/lib/v2/prefs";
+import { readPrefs, subscribePreferences } from "@/lib/preferences";
 import { CommandLine } from "../CommandLine";
 import { Inspector } from "../Inspector";
 import { ShortcutSheet } from "../ShortcutSheet";
 import { FixtureJobLine, LiveJobLine } from "./JobLine";
+import { AdminMap } from "../admin/Admin";
 import { MapPane } from "./MapPane";
 import { StatusStrip } from "./StatusStrip";
 import { ToastProvider, useToast } from "../Toast";
@@ -32,11 +37,21 @@ function ChromeBody({ children }: { children: ReactNode }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
   const toast = useToast();
+  useApplyKeyHints();
+  // Numbers and dates are written at render, so a change of locale redraws everything but the inspector that changed it.
+  const localeKey = useSyncExternalStore(subscribePreferences, () => readPrefs().locale ?? "", () => "");
 
   // The cookie that says "this browser prefers the new interface" is set by arriving here.
   useEffect(() => setUiCookie(UI_V2), []);
   // The map sheet closes when you go somewhere.
   useEffect(() => setMapOpen(false), [pathname]);
+
+  // The help panel's "Keyboard shortcuts" button asks for the sheet.
+  useEffect(() => {
+    const show = () => setSheetOpen(true);
+    window.addEventListener("m2:shortcuts", show);
+    return () => window.removeEventListener("m2:shortcuts", show);
+  }, []);
 
   const ctx = useRef<KeyContext>({});
   useEffect(() => {
@@ -88,14 +103,14 @@ function ChromeBody({ children }: { children: ReactNode }) {
       <a className="m2-skip" href="#m2-canvas">
         Skip to content
       </a>
-      <TopBar onOpenCommand={() => setCommandOpen(true)} onToggleMap={toggleMap} onShortcuts={() => setSheetOpen(true)} mapOpen={mapOpen} />
+      <TopBar key={localeKey} onOpenCommand={() => setCommandOpen(true)} onToggleMap={toggleMap} onShortcuts={() => setSheetOpen(true)} mapOpen={mapOpen} />
       {fixture ? <FixtureJobLine /> : <LiveJobLine />}
       <div className="m2-main">
-        <MapPane open={mapOpen} onClose={() => setMapOpen(false)} phone={phone} />
+        {pathname.startsWith("/v2/admin") ? <AdminMap key={localeKey} open={mapOpen} onClose={() => setMapOpen(false)} phone={phone} /> : <MapPane key={localeKey} open={mapOpen} onClose={() => setMapOpen(false)} phone={phone} />}
         {phone && mapOpen ? <div className="m2-scrim" onClick={() => setMapOpen(false)} aria-hidden="true" /> : null}
         <div className="m2-sheetwrap">
           <div className="m2-cwrap">
-            <main id="m2-canvas" className="m2-canvas" tabIndex={-1}>
+            <main key={localeKey} id="m2-canvas" className="m2-canvas" tabIndex={-1}>
               {children}
             </main>
             <StatusStrip />
@@ -120,6 +135,13 @@ function Chrome({ children, fixture }: { children: ReactNode; fixture: boolean }
   );
 }
 
+/** Keeps this person's preferences (theme, density, locale) in step with the server while they are signed in. */
+function PreferencesSync() {
+  const { user } = useAuth();
+  usePreferencesSync(user?.id);
+  return null;
+}
+
 /**
  * The v2 shell: top bar, map, canvas, inspector, job line and status strip. In fixture mode (`?fixture=1`) it renders
  * with no session; otherwise it sits behind the same sign-in and permissions as the current interface.
@@ -134,7 +156,10 @@ export function V2Shell({ children }: { children: ReactNode }) {
   if (fixture) return inner;
   return (
     <AuthGuard>
-      <PermissionsProvider>{inner}</PermissionsProvider>
+      <PermissionsProvider>
+        <PreferencesSync />
+        {inner}
+      </PermissionsProvider>
     </AuthGuard>
   );
 }
