@@ -29,6 +29,7 @@ from workers.db import get_sync_engine
 import workers.tasks.send_report_pack  # noqa: F401 — registers the board pack beat tasks
 import workers.tasks.report_schedules  # noqa: F401 — registers the scheduled report tasks
 import workers.tasks.process_schedules  # noqa: F401 — registers the process discovery schedule tick
+import workers.tasks.health_samples  # noqa: F401 — registers the 5-minute health sample (status page uptime)
 
 logger = logging.getLogger("meridian.scheduler")
 
@@ -1019,6 +1020,10 @@ celery_app.conf.beat_schedule = {
     "exception-escalation-every-30min": {
         "task": "workers.scheduler.escalate_exceptions",
         "schedule": crontab(minute="*/30"),
+    },
+    "health-samples-every-5min": {
+        "task": "workers.tasks.health_samples.sample_health",
+        "schedule": crontab(minute="*/5"),  # status page uptime: one row per component per 5-minute slot
     },
     "health-check-every-30min": {
         "task": "workers.tasks.run_health_check.check_all_systems",

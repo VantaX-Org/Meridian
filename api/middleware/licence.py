@@ -564,6 +564,8 @@ _LICENCE_EXEMPT_PREFIXES = (
     "/api/v1/auth",
     "/api/v1/licence",
     "/api/v1/system/update",  # security/licence fixes must install even on a lapsed licence
+    "/api/v1/theme",  # the sign-in page's theme renders before anyone signs in, licence or not
+    "/api/v1/status/page",  # the status page explains an outage, a lapsed licence included
 )
 
 
