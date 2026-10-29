@@ -2,16 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { formatDate } from "@/lib/format";
 import { useAuth } from "@/context/auth-context";
 import { useAuroraPrefs } from "@/hooks/use-theme";
 import type { Theme } from "@/lib/preferences";
 import { PERSONA_LABEL, useRunParam, useV2Session } from "@/lib/v2/hooks";
-import { useCounts, useLandscape, useRunList } from "@/lib/v2/queries";
+import { useCounts, useLandscape } from "@/lib/v2/queries";
 import { setUiCookie } from "@/lib/v2/switch";
 import { int, systemSlug } from "@/lib/v2/score";
 import { IconDown, IconSearch, Mark } from "../marks";
 import { MenuButton, type MenuEntry } from "../Menu";
+import { RunTimelineMenu } from "../RunTimeline";
 import { V2Link } from "../parts";
 
 /** The current URL with one query parameter set or removed, for the scope and run menus. */
@@ -51,30 +51,9 @@ export function ScopeMenu({ compact }: { compact?: boolean }) {
   );
 }
 
-/** Which run the numbers come from: the last eight, newest first. No choice means the current state. */
+/** Which run the numbers come from: the timeline of the last eight runs (design/v2/RunTimeline.tsx). */
 export function RunMenu({ compact }: { compact?: boolean }) {
-  const run = useRunParam();
-  const withParam = useWith();
-  const runs = useRunList().data?.versions ?? [];
-  const selected = runs.find((r) => r.id === run) ?? runs[0];
-  const entries: MenuEntry[] = [
-    { kind: "heading", label: "Runs" },
-    ...runs.map<MenuEntry>((r, i) => ({
-      kind: "item",
-      id: r.id,
-      label: formatDate(r.run_at, "datetime"),
-      sub: i === 0 ? "Latest" : r.label ?? undefined,
-      checked: selected?.id === r.id,
-      href: withParam("run", i === 0 ? null : r.id),
-    })),
-  ];
-  if (runs.length === 0) entries.push({ kind: "item", id: "none", label: "No run yet", disabled: true });
-  return (
-    <MenuButton label="Run" entries={entries} className={compact ? "m2-btn m2-sm" : "m2-tbtn m2-runsw"}>
-      {selected ? `Run ${formatDate(selected.run_at, "datetime")}` : "No run yet"}
-      <IconDown />
-    </MenuButton>
-  );
+  return <RunTimelineMenu compact={compact} />;
 }
 
 const THEMES: { value: Theme; label: string }[] = [

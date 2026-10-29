@@ -56,17 +56,17 @@ describe("top bar", () => {
     expect(items[1]).toHaveAttribute("href", expect.stringContaining("system=ecc-production"));
   });
 
-  it("the run menu lists the last 8 runs, newest first, the latest marked", async () => {
+  it("the run control opens the timeline of the last 8 runs: oldest to newest on a date axis, the latest selected, the baseline marked", async () => {
     mount();
     fireEvent.click(await screen.findByRole("button", { name: /^Run 16 Oct/ }));
-    const menu = await screen.findByRole("menu", { name: "Run" });
-    const items = within(menu).getAllByRole("menuitemradio");
-    expect(items).toHaveLength(8);
-    expect(norm(items[0])).toBe("16 Oct 2026, 05:17Latest");
-    expect(items[0]).toHaveAttribute("aria-checked", "true");
-    expect(norm(items[7])).toBe("28 Aug 2026, 05:11");
-    expect(items[1]).toHaveAttribute("href", expect.stringContaining("run=b0"));
-    expect(items[0]).not.toHaveAttribute("href", expect.stringContaining("run="));
+    const dialog = await screen.findByRole("dialog", { name: /^Runs, 28 Aug 2026 to 16 Oct 2026/ });
+    const chart = await within(dialog).findByTestId("run-timeline");
+    const runs = within(chart).getAllByRole("button");
+    expect(runs).toHaveLength(8);
+    expect(runs[7]).toHaveAttribute("aria-pressed", "true");
+    expect(runs[0]).toHaveAccessibleName("Run 28 Aug 2026, 05:11");
+    expect(within(chart).getByTestId("tl-baseline")).toHaveTextContent("baseline");
+    expect(norm(runs[5])).toContain("2 Oct");
   });
 
   it("menus move with the arrow keys, close with Esc and give focus back to the button", async () => {
@@ -288,7 +288,7 @@ describe("job line and status strip", () => {
     mount();
     const strip = await screen.findByTestId("status-strip");
     await waitFor(() => expect(norm(strip)).toContain("licence valid to 31 Mar 2027"));
-    expect(norm(strip)).toBe("Run 16 Oct 2026, 05:17 400,662 records checked 5,178 rules measured scored in 11 m 42 s cost model ZAR v3 licence valid to 31 Mar 2027");
+    expect(norm(strip.querySelector(".m2-status-t") as HTMLElement)).toBe("Run 16 Oct 2026, 05:17 400,662 records checked 5,178 rules measured scored in 11 m 42 s cost model ZAR v3 licence valid to 31 Mar 2027");
     expect(duration(702)).toBe("11 m 42 s");
     expect(duration(45)).toBe("45 s");
   });

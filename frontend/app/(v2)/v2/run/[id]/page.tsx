@@ -1,5 +1,9 @@
-import { NotYetCanvas } from "@/design/v2/screens/routes";
+"use client";
+
+import { useParams } from "next/navigation";
+import { RunCanvas } from "@/design/v2/screens/Run";
 
 export default function RunPage() {
-  return <NotYetCanvas kind="run" />;
+  const { id } = useParams<{ id: string }>();
+  return <RunCanvas id={String(id)} />;
 }
