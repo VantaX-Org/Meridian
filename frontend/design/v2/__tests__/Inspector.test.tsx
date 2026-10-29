@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import { formatOpen, parseOpen, useOpenItem } from "@/lib/v2/hooks";
 import { landscapeFixture } from "@/lib/api/v2/fixtures";
@@ -94,14 +94,14 @@ describe("<Inspector>", () => {
     expect(screen.getByText("Never")).toBeInTheDocument();
   });
 
-  it("opens a rule with the objects it caps, each a link", async () => {
+  it("opens a rule with its scope, each object a link (the rule body is covered in RuleInspector.test.tsx)", async () => {
     setUrl("/v2?open=rule:MM014");
     renderWithQuery(<Harness />);
     const dialog = await screen.findByRole("dialog");
-    await waitFor(() => expect(screen.getByText("Objects it caps")).toBeInTheDocument());
+    const scope = await within(dialog).findByRole("region", { name: /^Scope/ });
     expect(dialog).toHaveTextContent("MM014");
-    expect(screen.getByRole("link", { name: "Material master" })).toHaveAttribute("href", expect.stringContaining("/v2/o/ecc-production/material-master"));
-    expect(screen.getByRole("link", { name: "Open the rule" })).toBeInTheDocument();
+    expect(within(scope).getByRole("link", { name: "Material master" })).toHaveAttribute("href", expect.stringContaining("/v2/o/ecc-production/material-master"));
+    expect(within(dialog).getByRole("link", { name: "Open the rule" })).toBeInTheDocument();
   });
 
   it("opens a record by its key parts, with a designed frame for what comes in the next step", async () => {

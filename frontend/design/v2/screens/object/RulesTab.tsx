@@ -1,0 +1,700 @@
+"use client";
+
+import { ScrollFrame } from "./ScrollFrame";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { formatMoneyCompact } from "@/lib/format";
+import { fixtureParam } from "@/lib/api/v2/fixture";
+import { acceptAllSuggested, approveLearned, dryRunDraft, publishDraft, rejectLearned, type DraftDryRun, type LearnedProposal, type RuleDraft } from "@/lib/api/v2/object";
+import { DIMENSIONS, type Receipt, type RuleRow } from "@/lib/api/v2/types";
+import { KIND_LABEL } from "@/lib/api/learnedRules";
+import { useOpenItem, useRunParam, useV2Session } from "@/lib/v2/hooks";
+import { KEYS, gridRegistry, matchKey, type GridTarget } from "@/lib/v2/keys";
+import { useNarrow } from "@/lib/v2/narrow";
+import { useConfigImpact, useDrafts, useLearned, useWorkGroups } from "@/lib/v2/object-queries";
+import { useLandscape, useObjectRules, useReceipt } from "@/lib/v2/queries";
+import { PIVOTS, pivotRules, rankRules, type FeatureLink, type Pivot, type PivotGroup } from "@/lib/v2/rules-pivot";
+import { int, moduleFromSlug, pct1 } from "@/lib/v2/score";
+import { Explain } from "../../Explain";
+import { IconChevron, SeverityMark } from "../../marks";
+import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../../parts";
+
+type View = "all" | "learned" | "drafts";
+
+const PAGE = 25;
+const SEV_WORD: Record<string, string> = { critical: "Critical", high: "High", medium: "Medium", low: "Low", info: "Info" };
+const dimLabel = (d: string | null | undefined): string => DIMENSIONS.find((x) => x.key === d)?.label ?? "";
+
+/** What the table shows for one rule, derived once from the rule and the object's receipt. */
+export interface RuleLine {
+  rule: RuleRow;
+  /** Null until the receipt has been read. */
+  over: boolean | null;
+  failingPct: number | null;
+  coverage: number | null;
+  proposed: number;
+}
+
+function lineOf(rule: RuleRow, receipt: Receipt | undefined, proposed: number): RuleLine {
+  const checked = receipt?.records_checked ?? rule.total_count;
+  return {
+    rule,
+    over: rule.severity !== "critical" ? false : receipt ? receipt.breaches.some((b) => b.check_id === rule.check_id) : null,
+    failingPct: checked > 0 ? (rule.affected_count / checked) * 100 : null,
+    coverage: receipt?.records_checked ? Math.min(1, rule.total_count / receipt.records_checked) : null,
+    proposed,
+  };
+}
+
+const pct2 = (n: number | null): string => (n == null ? "—" : `${(Math.round(n * 100) / 100).toFixed(2)}%`);
+
+function Sev({ severity }: { severity: RuleRow["severity"] }) {
+  return (
+    <span className="m2-sev">
+      <SeverityMark severity={severity} />
+      {SEV_WORD[severity]}
+    </span>
+  );
+}
+
+/* ---- the Rule cell: id, name, why it matters, suggested values ---- */
+
+function SuggestedLine({ line, canApply, accepted, onAccept, busy, viewHref }: { line: RuleLine; canApply: boolean; accepted: boolean; onAccept: (id: string) => void; busy: boolean; viewHref: string }) {
+  if (accepted) return <span className="m2-rs m2-meta">Suggested values accepted</span>;
+  if (line.proposed <= 0) return null;
+  return (
+    <span className="m2-rs">
+      {`${int(line.proposed)} suggested values`}
+      <Dot />
+      {canApply ? (
+        <button type="button" className="m2-linkbtn" disabled={busy} onClick={() => onAccept(line.rule.check_id)} aria-label={`Accept all ${int(line.proposed)} suggested values for ${line.rule.check_id}`}>
+          Accept all
+        </button>
+      ) : (
+        <V2Link href={viewHref}>View</V2Link>
+      )}
+    </span>
+  );
+}
+
+function RuleCell({ line, ...rest }: { line: RuleLine; canApply: boolean; accepted: boolean; onAccept: (id: string) => void; busy: boolean; viewHref: string }) {
+  const { hrefFor } = useOpenItem();
+  return (
+    <div className="m2-rn">
+      <span>
+        <V2Link href={hrefFor({ kind: "rule", id: line.rule.check_id })} className="m2-mono" onClick={(e) => e.stopPropagation()}>
+          {line.rule.check_id}
+        </V2Link>{" "}
+        {line.rule.name}
+      </span>
+      {line.rule.why ? <span className="m2-rs m2-meta">{line.rule.why}</span> : null}
+      <SuggestedLine line={line} {...rest} />
+    </div>
+  );
+}
+
+/* ---- the ranked table (wide) and list (narrow) ---- */
+
+interface TableProps {
+  label: string;
+  lines: RuleLine[];
+  receipt: Receipt | undefined;
+  module: string;
+  currency: string | null;
+  total: number;
+  canApply: boolean;
+  accepted: ReadonlySet<string>;
+  onAccept: (id: string) => void;
+  busy: boolean;
+  viewHref: (id: string) => string;
+  more: ReactNode;
+  openId: string | null;
+  onOpen: (id: string) => void;
+}
+
+function restOf(lines: RuleLine[], receipt: Receipt | undefined): number | null {
+  if (receipt?.value_at_risk == null) return null;
+  const seen = lines.reduce((s, l) => s + (l.rule.value_at_risk ?? 0), 0);
+  return Math.max(0, receipt.value_at_risk - seen);
+}
+
+function RulesTable(p: TableProps) {
+  const { lines, receipt, module, currency, total } = p;
+  const [active, setActive] = useState(-1);
+  const linesRef = useRef(lines);
+  const activeRef = useRef(-1);
+  useEffect(() => {
+    linesRef.current = lines;
+    activeRef.current = active;
+  });
+  const onOpen = p.onOpen;
+  const target = useMemo<GridTarget>(
+    () => ({
+      move: (dir) => {
+        const n = linesRef.current.length;
+        if (!n) return;
+        const prev = activeRef.current;
+        const next = prev < 0 ? (dir > 0 ? 0 : n - 1) : Math.max(0, Math.min(n - 1, prev + dir));
+        activeRef.current = next;
+        setActive(next);
+        document.getElementById(`m2-rule-row-${linesRef.current[next].rule.check_id}`)?.scrollIntoView?.({ block: "nearest" });
+      },
+      open: () => {
+        const l = linesRef.current[activeRef.current];
+        if (l) onOpen(l.rule.check_id);
+      },
+      toggle: () => undefined,
+    }),
+    [onOpen],
+  );
+  useEffect(() => {
+    gridRegistry.set(target);
+    return () => gridRegistry.clear(target);
+  }, [target]);
+  const onKeyDown = (e: ReactKeyboardEvent<HTMLElement>) => {
+    if (e.target !== e.currentTarget && (e.target as HTMLElement).closest("input,button,a,select,textarea")) return;
+    for (const def of KEYS) {
+      if (def.scope !== "grid" || !def.run) continue;
+      for (const spec of def.keys) {
+        if (matchKey(spec, e) && def.run({ grid: target }, e.nativeEvent)) {
+          e.preventDefault();
+          return;
+        }
+      }
+    }
+  };
+  const first = lines[0]?.rule.check_id;
+  const rest = restOf(lines, receipt);
+  const moreCount = Math.max(0, total - lines.length);
+  const money = (n: number | null) => (n == null ? <Dash /> : int(n));
+  return (
+    <div className="m2-frame m2-rframe">
+      <table className="m2-tbl m2-rtbl" role="grid" aria-label={p.label} aria-rowcount={lines.length + 3} tabIndex={0} onKeyDown={onKeyDown} aria-activedescendant={active >= 0 ? `m2-rule-row-${lines[active]?.rule.check_id}` : undefined}>
+        <colgroup>
+          <col style={{ width: 272 }} />
+          <col style={{ width: 112 }} />
+          <col style={{ width: 92 }} />
+          <col style={{ width: 80 }} />
+          <col style={{ width: 82 }} />
+          <col style={{ width: 88 }} />
+          <col style={{ width: 70 }} />
+          <col style={{ width: 82 }} />
+          <col style={{ width: 82 }} />
+          <col style={{ width: 106 }} />
+        </colgroup>
+        <thead>
+          <tr role="row">
+            <th scope="col" role="columnheader">Rule</th>
+            <th scope="col" role="columnheader">Field</th>
+            <th scope="col" role="columnheader">Dimension</th>
+            <th scope="col" role="columnheader">Severity</th>
+            <th scope="col" role="columnheader" className="m2-r">
+              Tolerance <Explain metric="tolerance" label="Tolerance" module={module} />
+            </th>
+            <th scope="col" role="columnheader">
+              Over tolerance <Explain metric="tolerance" label="Over tolerance" module={module} />
+            </th>
+            <th scope="col" role="columnheader" className="m2-r">Failing rows</th>
+            <th scope="col" role="columnheader" className="m2-r">
+              Failing % <Explain metric="failing_pct" label="Failing %" module={module} checkId={first} />
+            </th>
+            <th scope="col" role="columnheader" className="m2-r">
+              Coverage <Explain metric="coverage" label="Coverage" module={module} />
+            </th>
+            <th scope="col" role="columnheader" className="m2-r">
+              {`Value at risk${currency ? `, ${currency}` : ""}`} <Explain metric="value_at_risk" label="Value at risk" module={module} />
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {lines.map((l, i) => (
+            <tr
+              key={l.rule.check_id}
+              id={`m2-rule-row-${l.rule.check_id}`}
+              role="row"
+              aria-rowindex={i + 2}
+              data-active={i === active ? "true" : undefined}
+              data-open={p.openId === l.rule.check_id ? "true" : undefined}
+              className="m2-rrow"
+              onClick={(e) => {
+                if ((e.target as HTMLElement).closest("a,button,input,select")) return;
+                setActive(i);
+                p.onOpen(l.rule.check_id);
+              }}
+            >
+              <td role="gridcell">
+                <RuleCell line={l} canApply={p.canApply} accepted={p.accepted.has(l.rule.check_id)} onAccept={p.onAccept} busy={p.busy} viewHref={p.viewHref(l.rule.check_id)} />
+              </td>
+              <td role="gridcell">
+                <div className="m2-rn">
+                  <span>{l.rule.field_description ?? <Dash />}</span>
+                  {l.rule.field ? <span className="m2-rs m2-mono">{l.rule.field}</span> : null}
+                </div>
+              </td>
+              <td role="gridcell">{dimLabel(l.rule.dimension) || <Dash />}</td>
+              <td role="gridcell">
+                <Sev severity={l.rule.severity} />
+              </td>
+              <td role="gridcell" className="m2-r">
+                {l.rule.severity === "critical" && receipt ? `${int(receipt.tolerance.rows)} rows` : <Dash why="Only critical rules carry a tolerance" />}
+              </td>
+              <td role="gridcell">{l.over == null ? <Dash /> : l.over ? <b>Yes</b> : "No"}</td>
+              <td role="gridcell" className="m2-r">{int(l.rule.affected_count)}</td>
+              <td role="gridcell" className="m2-r">{pct2(l.failingPct)}</td>
+              <td role="gridcell" className="m2-r">{pct1(l.coverage)}</td>
+              <td role="gridcell" className="m2-r">{money(l.rule.value_at_risk)}</td>
+            </tr>
+          ))}
+          <tr role="row" aria-rowindex={lines.length + 2} className="m2-rfoot">
+            <td role="gridcell" colSpan={6} className="m2-meta">
+              {moreCount > 0 ? `and ${int(moreCount)} more rules` : "No further rules"}
+              {p.more}
+            </td>
+            <td role="gridcell" className="m2-r"><Dash why="The count for the remaining rules is not summed here" /></td>
+            <td role="gridcell" />
+            <td role="gridcell" />
+            <td role="gridcell" className="m2-r">{moreCount > 0 ? money(rest) : null}</td>
+          </tr>
+          <tr role="row" aria-rowindex={lines.length + 3} className="m2-rtotal">
+            <td role="gridcell" colSpan={9}>{`All ${int(total)} rules`}</td>
+            <td role="gridcell" className="m2-r">{money(receipt?.value_at_risk ?? null)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function RulesList(p: TableProps) {
+  const { hrefFor } = useOpenItem();
+  const rest = restOf(p.lines, p.receipt);
+  const moreCount = Math.max(0, p.total - p.lines.length);
+  return (
+    <div className="m2-rlist">
+      <div className="m2-rlh">
+        <span>Rule</span>
+        <span>
+          {`Value at risk${p.currency ? `, ${p.currency}` : ""}`} <Explain metric="value_at_risk" label="Value at risk" module={p.module} />
+        </span>
+        <span className="m2-meta">
+          Over tolerance <Explain metric="tolerance" label="Over tolerance" module={p.module} />
+          <Dot />
+          Failing % <Explain metric="failing_pct" label="Failing %" module={p.module} checkId={p.lines[0]?.rule.check_id} />
+          <Dot />
+          Coverage <Explain metric="coverage" label="Coverage" module={p.module} />
+        </span>
+      </div>
+      <div role="list" aria-label={p.label}>
+      {p.lines.map((l) => (
+        <div key={l.rule.check_id} role="listitem" className="m2-lrow m2-rl" data-open={p.openId === l.rule.check_id ? "true" : undefined}>
+          <span>
+            <V2Link href={hrefFor({ kind: "rule", id: l.rule.check_id })} className="m2-mono">{l.rule.check_id}</V2Link> {l.rule.name}
+          </span>
+          <span className="m2-b">{l.rule.value_at_risk == null ? "—" : int(l.rule.value_at_risk)}</span>
+          <span className="m2-c">
+            <Sev severity={l.rule.severity} />
+            <Dot />
+            {l.over == null ? "tolerance not read" : l.over ? "over tolerance" : "within tolerance"}
+            <Dot />
+            {`${int(l.rule.affected_count)} rows (${pct2(l.failingPct)})`}
+            {l.rule.why ? <><br />{l.rule.why}</> : null}
+            {l.proposed > 0 || p.accepted.has(l.rule.check_id) ? <><br /><SuggestedLine line={l} canApply={p.canApply} accepted={p.accepted.has(l.rule.check_id)} onAccept={p.onAccept} busy={p.busy} viewHref={p.viewHref(l.rule.check_id)} /></> : null}
+          </span>
+        </div>
+      ))}
+      <div className="m2-lrow m2-rl" role="listitem">
+        <span className="m2-meta">{moreCount > 0 ? `and ${int(moreCount)} more rules` : "No further rules"}{p.more}</span>
+        <span className="m2-b">{moreCount > 0 && rest != null ? int(rest) : ""}</span>
+      </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---- pivots ---- */
+
+function PivotTable({ groups, pivot, label }: { groups: PivotGroup[]; pivot: Exclude<Pivot, "rule">; label: string }) {
+  const { hrefFor } = useOpenItem();
+  const [openKey, setOpenKey] = useState<string | null>(null);
+  const word = PIVOTS.find((p) => p.key === pivot)?.label.replace("By ", "") ?? "Group";
+  return (
+    <ScrollFrame label="Pivot table, scrollable">
+      <table className="m2-tbl m2-ptbl" aria-label={label}>
+        <thead>
+          <tr>
+            <th scope="col">{word.charAt(0).toUpperCase() + word.slice(1)}</th>
+            <th scope="col" className="m2-r">Rules</th>
+            <th scope="col" className="m2-r">Failing rows</th>
+            <th scope="col" className="m2-r">Value at risk</th>
+          </tr>
+        </thead>
+        <tbody>
+          {groups.map((g) => {
+            const open = openKey === g.key;
+            return (
+              <Fragment key={g.key}>
+                <tr className="m2-prow">
+                  <th scope="row">
+                    <button type="button" className="m2-linkbtn m2-ptoggle" aria-expanded={open} onClick={() => setOpenKey(open ? null : g.key)}>
+                      <IconChevron open={open} />
+                      <span>{g.mono ? <Mono>{g.label}</Mono> : g.label}</span>
+                    </button>
+                    {g.sub ? <span className="m2-meta m2-psub">{g.sub}</span> : null}
+                  </th>
+                  <td className="m2-r">{int(g.rules.length)}</td>
+                  <td className="m2-r">{int(g.failing)}</td>
+                  <td className="m2-r">{g.value == null ? <Dash /> : int(g.value)}</td>
+                </tr>
+                {open
+                  ? g.rules.slice(0, 12).map((r) => (
+                      <tr key={`${g.key}:${r.check_id}`} className="m2-pchild">
+                        <th scope="row">
+                          <V2Link href={hrefFor({ kind: "rule", id: r.check_id })} className="m2-mono">{r.check_id}</V2Link> {r.name}
+                        </th>
+                        <td />
+                        <td className="m2-r">{int(r.affected_count)}</td>
+                        <td className="m2-r">{r.value_at_risk == null ? <Dash /> : int(r.value_at_risk)}</td>
+                      </tr>
+                    ))
+                  : null}
+                {open && g.rules.length > 12 ? (
+                  <tr className="m2-pchild">
+                    <th scope="row" className="m2-meta">{`and ${g.rules.length - 12} more rules`}</th>
+                    <td colSpan={3} />
+                  </tr>
+                ) : null}
+              </Fragment>
+            );
+          })}
+        </tbody>
+      </table>
+</ScrollFrame>
+  );
+}
+
+/* ---- learned rules ---- */
+
+function LearnedTable({ module, items, canApprove, canReject, onChanged }: { module: string; items: LearnedProposal[]; canApprove: boolean; canReject: boolean; onChanged: () => void }) {
+  const [severity, setSeverity] = useState<Record<string, "critical" | "high" | "medium" | "low">>({});
+  const [note, setNote] = useState<string | null>(null);
+  const approve = useMutation({
+    mutationFn: (p: LearnedProposal) => approveLearned(p.id, severity[p.id] ?? "medium"),
+    onSuccess: (r) => {
+      setNote(`Approved as ${r.rule_id}. It runs from the next analysis.`);
+      onChanged();
+    },
+  });
+  const reject = useMutation({
+    mutationFn: (p: LearnedProposal) => rejectLearned(p.id),
+    onSuccess: () => {
+      setNote("Rejected. The miner will not propose it again.");
+      onChanged();
+    },
+  });
+  if (items.length === 0) {
+    return (
+      <>
+        <EmptyFrame>{`No learned rules are waiting for ${module.replace(/_/g, " ")}. The miner proposes rules from the data after an analysis; a person with approval rights decides.`}</EmptyFrame>
+        {note ? <p role="status" className="m2-prov">{note}</p> : null}
+      </>
+    );
+  }
+  return (
+    <>
+      <ScrollFrame label="Learned rules, scrollable">
+        <table className="m2-tbl" aria-label="Learned rules waiting for a decision">
+          <thead>
+            <tr>
+              <th scope="col">Proposed rule</th>
+              <th scope="col" className="m2-r">Confidence</th>
+              <th scope="col" className="m2-r">Rows supporting</th>
+              <th scope="col" className="m2-r">Would fail</th>
+              <th scope="col">Decision</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((p) => (
+              <tr key={p.id}>
+                <th scope="row">
+                  <div className="m2-rn">
+                    <span>{KIND_LABEL[p.kind]}</span>
+                    <span className="m2-rs m2-mono">{p.determinant ? `${p.field} by ${p.determinant}` : p.field}</span>
+                  </div>
+                </th>
+                <td className="m2-r">{`${Math.round(p.confidence * 100)}%`}</td>
+                <td className="m2-r">{int(p.support_rows)}</td>
+                <td className="m2-r">{int(p.violations)}</td>
+                <td>
+                  {canApprove || canReject ? (
+                    <span className="m2-dec">
+                      {canApprove ? (
+                        <>
+                          <select aria-label={`Severity for ${p.field}`} value={severity[p.id] ?? "medium"} onChange={(e) => setSeverity({ ...severity, [p.id]: e.target.value as "critical" | "high" | "medium" | "low" })}>
+                            <option value="critical">Critical</option>
+                            <option value="high">High</option>
+                            <option value="medium">Medium</option>
+                            <option value="low">Low</option>
+                          </select>
+                          <button type="button" className="m2-btn m2-sm" disabled={approve.isPending} onClick={() => approve.mutate(p)}>
+                            Approve
+                          </button>
+                        </>
+                      ) : null}
+                      {canReject ? (
+                        <button type="button" className="m2-btn m2-sm m2-ghost" disabled={reject.isPending} onClick={() => reject.mutate(p)}>
+                          Reject
+                        </button>
+                      ) : null}
+                    </span>
+                  ) : (
+                    <span className="m2-meta">Waiting for an approver</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+</ScrollFrame>
+      {approve.isError || reject.isError ? <p role="alert" className="m2-prov">That decision could not be saved. It may already have been decided.</p> : null}
+      {note ? <p role="status" className="m2-prov">{note}</p> : null}
+    </>
+  );
+}
+
+/* ---- drafts ---- */
+
+function DraftsTable({ module, items, onChanged }: { module: string; items: RuleDraft[]; onChanged: () => void }) {
+  const [results, setResults] = useState<Record<string, DraftDryRun | "error">>({});
+  const [note, setNote] = useState<string | null>(null);
+  const dry = useMutation({
+    mutationFn: (d: RuleDraft) => dryRunDraft(d),
+    onSuccess: (r, d) => setResults((prev) => ({ ...prev, [d.id]: r })),
+    onError: (_e, d) => setResults((prev) => ({ ...prev, [d.id]: "error" })),
+  });
+  const publish = useMutation({
+    mutationFn: (d: RuleDraft) => publishDraft(d.id),
+    onSuccess: (r) => {
+      setNote(`${r.name} is published. It runs from the next analysis.`);
+      onChanged();
+    },
+  });
+  if (items.length === 0) {
+    return (
+      <>
+        <EmptyFrame action={<V2Link href={`/rules/drafts?module=${encodeURIComponent(module)}`} className="m2-btn">Open rule authoring</V2Link>}>{`No drafts for ${module.replace(/_/g, " ")}. Write one in rule authoring or describe it in plain English there; a dry run shows what it would find before it is published.`}</EmptyFrame>
+        {note ? <p role="status" className="m2-prov">{note}</p> : null}
+      </>
+    );
+  }
+  return (
+    <>
+      <ScrollFrame label="Rule drafts, scrollable">
+        <table className="m2-tbl" aria-label="Rule drafts">
+          <thead>
+            <tr>
+              <th scope="col">Draft</th>
+              <th scope="col">Field</th>
+              <th scope="col">Dimension</th>
+              <th scope="col">Severity</th>
+              <th scope="col">Dry run</th>
+              <th scope="col">Publish</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((d) => {
+              const r = d.proposed_rule;
+              const res = results[d.id];
+              return (
+                <tr key={d.id}>
+                  <th scope="row">
+                    <div className="m2-rn">
+                      <span>{r.id ? <><Mono>{r.id}</Mono> </> : null}{r.message ?? "Untitled draft"}</span>
+                      {d.rationale ? <span className="m2-rs m2-meta">{d.rationale}</span> : null}
+                    </div>
+                  </th>
+                  <td>{r.field ? <Mono>{String(r.field)}</Mono> : <Dash />}</td>
+                  <td>{dimLabel(r.dimension) || <Dash />}</td>
+                  <td>{r.severity ? <Sev severity={r.severity as RuleRow["severity"]} /> : <Dash />}</td>
+                  <td>
+                    <button type="button" className="m2-btn m2-sm" disabled={dry.isPending} onClick={() => dry.mutate(d)} aria-label={`Dry run ${r.id ?? "draft"}`}>
+                      Dry run
+                    </button>
+                    {res ? (
+                      <span className="m2-rs" role="status">
+                        {res === "error" ? "The dry run could not run." : res.evaluated ? `${int(res.hits)} of ${int(res.population)} records would fail` : res.reason}
+                      </span>
+                    ) : null}
+                  </td>
+                  <td>
+                    <button type="button" className="m2-btn m2-sm m2-strong" disabled={publish.isPending} onClick={() => publish.mutate(d)} aria-label={`Publish ${r.id ?? "draft"}`}>
+                      Publish
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+</ScrollFrame>
+      {publish.isError ? <p role="alert" className="m2-prov">The draft could not be published. Run the dry run first and check the expression.</p> : null}
+      {note ? <p role="status" className="m2-prov">{note}</p> : null}
+    </>
+  );
+}
+
+/* ---- the tab ---- */
+
+/** The Rules tab: the object's rules ranked by value at risk, pivots, and the Learned and Drafts views. */
+export function RulesTab({ module: moduleSegment }: { system: string; module: string }) {
+  const run = useRunParam();
+  const apiModule = moduleFromSlug(moduleSegment);
+  const { open, openItem } = useOpenItem();
+  const { can } = useV2Session();
+  const narrow = useNarrow();
+  const qc = useQueryClient();
+  const rowsParam = Number(fixtureParam("rows") ?? 0);
+  const rulesQ = useObjectRules(apiModule, run, Number.isFinite(rowsParam) ? rowsParam : 0);
+  const landscape = useLandscape(run).data;
+  const label = landscape?.objects.find((o) => o.module === apiModule)?.label ?? apiModule.replace(/_/g, " ");
+  const receiptQ = useReceipt(apiModule, run);
+  const receipt = receiptQ.data;
+  const groupsQ = useWorkGroups(apiModule, receipt?.run_id, Boolean(receipt));
+  const impactQ = useConfigImpact(receipt?.run_id);
+
+  const canDrafts = can("manage_rules");
+  const canApprove = can("approve") || can("review_ai_rules");
+  const canReject = canApprove || can("manage_rules");
+  const learnedQ = useLearned(apiModule, true);
+  const draftsQ = useDrafts(apiModule, canDrafts);
+
+  const [pivot, setPivot] = useState<Pivot>("rule");
+  const [view, setView] = useState<View>("all");
+  const [shown, setShown] = useState(PAGE);
+  const [accepted, setAccepted] = useState<ReadonlySet<string>>(new Set());
+  const [note, setNote] = useState<string | null>(null);
+
+  const ranked = useMemo(() => rankRules(rulesQ.data ?? []), [rulesQ.data]);
+  const proposed = useMemo(() => new Map((groupsQ.data ?? []).map((g) => [g.check_id, g.proposed])), [groupsQ.data]);
+  const lines = useMemo(() => ranked.slice(0, shown).map((r) => lineOf(r, receipt, proposed.get(r.check_id) ?? 0)), [ranked, shown, receipt, proposed]);
+  const features = useMemo(() => {
+    const map = new Map<string, FeatureLink[]>();
+    for (const res of impactQ.data ?? []) {
+      if (res.status === "ok") continue;
+      for (const f of res.blocking_findings) {
+        if (f.module && f.module !== apiModule) continue;
+        const list = map.get(f.check_id) ?? [];
+        list.push({ feature: res.feature, status: res.status });
+        map.set(f.check_id, list);
+      }
+    }
+    return map;
+  }, [impactQ.data, apiModule]);
+  const groups = useMemo(() => (pivot === "rule" ? [] : pivotRules(ranked, pivot, features)), [ranked, pivot, features]);
+
+  const accept = useMutation({
+    mutationFn: (id: string) => acceptAllSuggested(id, receipt?.run_id),
+    onSuccess: (r, id) => {
+      setAccepted((prev) => new Set(prev).add(id));
+      setNote(`${int(r.accepted)} suggested values for ${id} are in your draft batch ${r.draft_batch_id}. Nothing reaches SAP until an owner approves.`);
+      void qc.invalidateQueries({ queryKey: ["v2", "work-groups"] });
+    },
+    onError: () => setNote("The suggested values could not be accepted. Try again in a moment."),
+  });
+  const onAccept = useCallback((id: string) => accept.mutate(id), [accept]);
+  const onOpen = useCallback((id: string) => openItem({ kind: "rule", id }), [openItem]);
+  const refresh = (key: string) => () => void qc.invalidateQueries({ queryKey: ["v2", key] });
+
+  const total = Math.max(receipt?.rules_measured ?? 0, ranked.length);
+  const currency = receipt?.currency ?? null;
+  const tableLabel = `Rules for ${label}`;
+  const viewHref = (id: string) => `/v2/work?rule=${encodeURIComponent(id)}&module=${encodeURIComponent(apiModule)}`;
+  const learnedN = learnedQ.data?.length;
+  const draftsN = draftsQ.data?.length;
+  const moreButton = ranked.length > shown ? (
+    <>
+      <Dot />
+      <button type="button" className="m2-linkbtn" onClick={() => setShown((n) => n + PAGE)}>
+        {`Show ${Math.min(PAGE, ranked.length - shown)} more`}
+      </button>
+    </>
+  ) : null;
+
+  const filters = (
+    <div className="m2-rbar">
+      <div className="m2-segs" role="group" aria-label="Show">
+        <button type="button" className="m2-seg" aria-pressed={view === "all"} onClick={() => setView("all")}>All rules</button>
+        <button type="button" className="m2-seg" aria-pressed={view === "learned"} onClick={() => setView("learned")}>
+          {`Learned${learnedN != null ? ` ${learnedN}` : ""}`}
+        </button>
+        {canDrafts ? (
+          <button type="button" className="m2-seg" aria-pressed={view === "drafts"} onClick={() => setView("drafts")}>
+            {`Drafts${draftsN != null ? ` ${draftsN}` : ""}`}
+          </button>
+        ) : null}
+      </div>
+      {view === "all" ? (
+        <div className="m2-segs" role="group" aria-label="Group the rules">
+          {PIVOTS.map((p) => (
+            <button key={p.key} type="button" className="m2-seg" aria-pressed={pivot === p.key} onClick={() => setPivot(p.key)}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+
+  if (view === "learned") {
+    return (
+      <>
+        {filters}
+        {learnedQ.isPending ? <Skeleton width="60%" height={14} /> : learnedQ.isError ? <ErrorFrame onRetry={() => void learnedQ.refetch()}>The learned rules could not be read.</ErrorFrame> : <LearnedTable module={apiModule} items={learnedQ.data} canApprove={canApprove} canReject={canReject} onChanged={refresh("learned")} />}
+      </>
+    );
+  }
+  if (view === "drafts" && canDrafts) {
+    return (
+      <>
+        {filters}
+        {draftsQ.isPending ? <Skeleton width="60%" height={14} /> : draftsQ.isError ? <ErrorFrame onRetry={() => void draftsQ.refetch()}>The drafts could not be read.</ErrorFrame> : <DraftsTable module={apiModule} items={draftsQ.data} onChanged={refresh("drafts")} />}
+      </>
+    );
+  }
+
+  const openId = open?.kind === "rule" ? open.id : null;
+  const props: TableProps = { label: tableLabel, lines, receipt, module: apiModule, currency, total, canApply: can("apply"), accepted, onAccept, busy: accept.isPending, viewHref, more: moreButton, openId, onOpen };
+
+  return (
+    <>
+      {filters}
+      {rulesQ.isError ? (
+        <ErrorFrame onRetry={() => void rulesQ.refetch()}>The rules could not be read for this object.</ErrorFrame>
+      ) : rulesQ.isPending ? (
+        <div aria-busy="true" data-testid="rules-loading">
+          {Array.from({ length: 6 }, (_, i) => (
+            <div key={i} style={{ height: 40, display: "flex", alignItems: "center" }}>
+              <Skeleton width={`${50 + ((i * 11) % 40)}%`} height={12} />
+            </div>
+          ))}
+        </div>
+      ) : ranked.length === 0 ? (
+        <EmptyFrame>{`No rule has failed for ${label} in this run. Rules appear here, ranked by value at risk, when an analysis finds records that fail.`}</EmptyFrame>
+      ) : pivot !== "rule" ? (
+        <>
+          <PivotTable groups={groups} pivot={pivot} label={`${tableLabel}, ${PIVOTS.find((p) => p.key === pivot)?.label.toLowerCase()}`} />
+          {pivot === "feature" ? <p className="m2-prov">A rule that blocks or degrades several features is counted under each. Features come from the impact model for this run.</p> : null}
+        </>
+      ) : narrow ? (
+        <RulesList {...props} />
+      ) : (
+        <RulesTable {...props} />
+      )}
+      {note ? <p role="status" className="m2-prov" data-testid="rules-note">{note}</p> : null}
+      {view === "all" && ranked.length > 0 ? (
+        <p className="m2-prov">
+          {`Ranked by value at risk${receipt?.value_at_risk != null ? `; total ${formatMoneyCompact(receipt.value_at_risk, currency)} across ${int(receipt.rules_measured)} rules measured` : ""}. Failing % is of ${int(receipt?.records_checked ?? ranked[0].total_count)} records checked.`}
+        </p>
+      ) : null}
+    </>
+  );
+}

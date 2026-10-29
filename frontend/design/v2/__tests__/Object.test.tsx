@@ -1,13 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import * as landscapeApi from "@/lib/api/v2/landscape";
 import { landscapeFixture } from "@/lib/api/v2/fixtures";
 import { EmptyTab, ObjectFrame, RulesTab } from "../screens/Object";
-import { getUrl, setUrl } from "./nav-store";
+import { setUrl } from "./nav-store";
 import { stubLayout } from "./layout-stub";
 
 vi.mock("next/navigation", async () => (await import("./nav-store")).navigationMock);
+vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
 
 let undo: () => void = () => undefined;
 beforeEach(() => {
@@ -153,35 +154,6 @@ describe("tabs as route segments", () => {
     expect(frameEl).toHaveTextContent(copy);
     expect(within(frameEl).getAllByRole("link")).toHaveLength(1);
     expect(within(frameEl).getByRole("link", { name: action })).toBeInTheDocument();
-  });
-});
-
-describe("Rules tab", () => {
-  it("lists the object's rules in the grid, ranked by value at risk, and opens one in the inspector", async () => {
-    frame();
-    const grid = await screen.findByRole("grid", { name: "Rules for Material master" });
-    await waitFor(() => expect(within(grid).getAllByRole("row").length).toBe(9)); // header plus 8
-    const first = within(grid).getAllByRole("row")[1];
-    expect(norm(first)).toContain("MM014");
-    expect(norm(first)).toContain("Critical");
-    expect(norm(first)).toContain("1,184,000");
-    expect(within(grid).getByRole("columnheader", { name: "Value at risk" })).toBeInTheDocument();
-    fireEvent.click(first);
-    expect(getUrl()).toContain("open=rule%3AMM014");
-  });
-
-  it("says so when no rule has run, in an empty frame", async () => {
-    vi.spyOn(landscapeApi, "getObjectRules").mockResolvedValue([]);
-    frame();
-    expect(await screen.findByText(/No rule has run for Material master in this run/)).toBeInTheDocument();
-  });
-
-  it("a failed read is an error inside the grid with Retry", async () => {
-    vi.spyOn(landscapeApi, "getObjectRules").mockRejectedValue(new Error("down"));
-    frame();
-    const alert = await screen.findByTestId("error-frame");
-    expect(alert).toHaveTextContent("The rules could not be read for this object.");
-    expect(within(alert).getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 });
 

@@ -2,7 +2,7 @@ import { getShellCounts, type ShellCounts } from "@/lib/api/shell";
 import { getFindings } from "@/lib/api/findings";
 import { fixtureActive } from "./fixture";
 import { v2Get } from "./client";
-import type { CommandResult, Landscape, Receipt, RuleRow, RunList, StatusStrip, WorkPage } from "./types";
+import type { CommandResult, DimensionKey, Landscape, Receipt, RuleRow, RunList, StatusStrip, WorkPage } from "./types";
 
 /** GET /landscape: scope=current reads every object at its own latest run; `run` pins one run. */
 export function getLandscape(run?: string | null): Promise<Landscape> {
@@ -49,7 +49,8 @@ export async function getObjectRules(module: string, run: string | null | undefi
     const res = await v2Get<{ rules: RuleRow[] }>("/findings", { module, version_id: run ?? undefined, rows });
     return res.rules;
   }
-  const list = await getFindings({ module, version_id: run ?? undefined, type: "rule", sort: "impact", limit: 500 });
+  // /findings pages at 200 at most; the failing rules come first by impact, the order the Rules tab ranks them in.
+  const list = await getFindings({ module, version_id: run ?? undefined, type: "rule", failing: true, sort: "impact", limit: 200 });
   return list.findings.map((f) => ({
     check_id: f.check_id,
     name: f.details.message ?? f.check_id,
@@ -58,6 +59,10 @@ export async function getObjectRules(module: string, run: string | null | undefi
     affected_count: f.affected_count,
     total_count: f.total_count,
     pass_rate: f.pass_rate,
-    value_at_risk: null,
+    value_at_risk: f.cost_at_risk ?? null,
+    dimension: (f.dimension as DimensionKey | undefined) ?? null,
+    check_class: f.check_class ?? null,
+    why: f.rule_context?.why_it_matters ?? null,
+    field_description: f.business_name ?? null,
   }));
 }
