@@ -16,6 +16,10 @@
     "typecheck": "tsc --noEmit",
     "start:standalone": "cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/ && PORT=${PORT:-3000} HOSTNAME=0.0.0.0 node .next/standalone/server.js",
     "e2e:record": "node e2e/record.mjs",
+    "guide:pdf": "node scripts/guide-pdf.mjs",
+    "help:index": "node scripts/help-index.mjs",
+    "help:record": "RECORD_HELP=1 playwright test --project=recording e2e/guided-tours-v2.spec.ts",
+    "help:videos": "node scripts/help-videos.mjs && node scripts/help-index.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },
