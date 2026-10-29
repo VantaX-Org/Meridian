@@ -6,7 +6,7 @@ import { JobProgress } from "./JobProgress";
 import type { Job } from "../../types/jobs";
 
 const SKIP = new Set(["node_modules", ".next", "coverage", "dist", "out", "test-results", "playwright-report"]);
-const EXT = /\.(tsx?|mjs|cjs|js|css|md|json|txt)$/;
+const EXT = /\.(tsx?|mjs|cjs|js|css|md|json|txt|vtt)$/; // vtt: the help recordings' captions
 const DOT = String.fromCharCode(0xb7); // the test file itself must not contain the glyph
 
 function walk(dir: string, out: string[]): string[] {

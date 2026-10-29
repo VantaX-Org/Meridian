@@ -70,7 +70,14 @@
 .m2-root .m2-hs2 { font-size: var(--m2-fs-12); color: var(--m2-meta); }
 .m2-root .m2-hbody h3 { font-size: var(--m2-fs-13); font-weight: 600; margin: var(--m2-s4) 0 var(--m2-s1); }
 .m2-root .m2-hbody p { font-size: var(--m2-fs-13); line-height: var(--m2-lh-13); color: var(--m2-ink-2); margin: 0 0 var(--m2-s2); }
-.m2-root .m2-hbody video { width: 100%; max-height: 220px; background: var(--m2-inverse); border-radius: var(--m2-r2); }
+.m2-root .m2-hbody video { width: 100%; aspect-ratio: 16 / 10; height: auto; background: var(--m2-inverse); border-radius: var(--m2-r2); display: block; }
+.m2-root .m2-htag { font-size: var(--m2-fs-12); color: var(--m2-meta); border: 1px solid var(--m2-line); border-radius: var(--m2-r2); padding: 0 var(--m2-s1); justify-self: start; }
+.m2-root .m2-walk { list-style: none; margin: var(--m2-s2) 0; padding: 0; counter-reset: walk; }
+.m2-root .m2-walk li { counter-increment: walk; display: grid; grid-template-columns: 24px 1fr; gap: 2px var(--m2-s2); padding: var(--m2-s2) 0; border-bottom: 1px solid var(--m2-rule); font-size: var(--m2-fs-13); }
+.m2-root .m2-walk li::before { content: counter(walk); grid-row: span 3; font-weight: 600; color: var(--m2-meta); font-variant-numeric: tabular-nums; }
+.m2-root .m2-walk li[aria-current="step"]::before { color: var(--m2-data); }
+.m2-root .m2-walk li[aria-current="step"] .m2-ht { color: var(--m2-data); }
+.m2-root .m2-walk li:last-child { border-bottom: 0; }
 .m2-root .m2-here { font-size: var(--m2-fs-12); color: var(--m2-data); }
 
 .m2-root .m2-wavehead th { background: var(--m2-active); font-weight: 500; color: var(--m2-fg); }

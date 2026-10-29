@@ -1,22 +1,38 @@
 import { t } from "@/lib/v2/i18n";
 /**
- * The help panel's data: the chapters of the help centre and the user guide (lib/v2/help-data.json, built by
- * scripts/help-index.mjs), which canvas each one applies to, search over them, and the diagnostics block for support.
+ * The help panel's data: the Meridian 2 guide, then the current interface's help centre and user guide
+ * (lib/v2/help-data.json, built by scripts/help-index.mjs), which canvas and which route each chapter applies to, the
+ * walkthrough for each role's start screen, search over chapter text and recording captions, and the diagnostics
+ * block for support.
  */
 export interface HelpSection { heading: string; text: string }
+export interface WalkStep { screen: string; href: string; text: string }
 export interface HelpChapter {
   id: string;
-  kind: "journey" | "guide";
+  kind: "v2" | "journey" | "guide";
+  /** "v2" for the new interface's guide; "current" for the chapters of the current interface. */
+  interface: "v2" | "current";
   group: string;
   slug: string;
   title: string;
   summary: string;
   audiences: string[];
-  /** Base name of the training recording, served at /api/v1/docs/help-videos/{video}.mp4. */
+  /** Base name of the training recording, served at /api/v1/docs/help-videos/{video}.mp4 (.jpg poster, .vtt captions). */
   video: string | null;
+  /** Length of the recording, from docs/help-videos/manifest.json, or null when not recorded yet. */
+  seconds: number | null;
+  /** The recording's caption lines, searched with the text. */
+  captions: string[];
+  /** The role whose start screen this walkthrough belongs to. */
+  persona: string | null;
+  walkthrough: WalkStep[] | null;
   sections: HelpSection[];
 }
-export interface HelpIndex { title: string; guideTitle: string; chapters: HelpChapter[] }
+export interface WhatsNewEntry { step: string; date: string; ref: string; text: string }
+export interface HelpIndex { title: string; guideTitle: string; v2Title: string; whatsNew: WhatsNewEntry[]; chapters: HelpChapter[] }
+
+/** Where a chapter's recording, poster and captions are served. */
+export const videoUrl = (video: string, ext: "mp4" | "jpg" | "vtt"): string => `/api/v1/docs/help-videos/${video}.${ext}`;
 
 let cached: Promise<HelpIndex> | null = null;
 /** The index, loaded on first use so it is not part of the shell's first download. */
@@ -54,6 +70,32 @@ export function screenOf(pathname: string): Screen | null {
 }
 
 const APPLIES: Record<string, Screen[]> = {
+  "v2:overview": ["landscape"],
+  "v2:landscape": ["landscape"],
+  "v2:object": ["object"],
+  "v2:rules": ["rule", "object"],
+  "v2:work": ["work", "object"],
+  "v2:approvals": ["work", "people"],
+  "v2:people": ["people", "work"],
+  "v2:runs": ["runs", "system"],
+  "v2:run-compare": ["runs", "object"],
+  "v2:systems": ["system", "admin"],
+  "v2:golden-records": ["object"],
+  "v2:glossary": ["object"],
+  "v2:lineage": ["object"],
+  "v2:processes": ["object"],
+  "v2:schedules": ["reports"],
+  "v2:waves": ["landscape"],
+  "v2:administration": ["admin"],
+  "v2:preferences": ["landscape", "admin"],
+  "v2:keyboard": ["landscape", "work"],
+  "v2:persona-lead": ["landscape"],
+  "v2:persona-steward": ["work"],
+  "v2:persona-owner": ["work", "people"],
+  "v2:persona-basis": ["system", "runs"],
+  "v2:persona-process": ["object"],
+  "v2:persona-auditor": ["admin"],
+  "v2:persona-admin": ["admin"],
   "journey:first-login": ["landscape"],
   "journey:connect-a-system": ["system", "landscape"],
   "journey:first-analysis": ["runs", "system"],
@@ -98,31 +140,161 @@ export const screensFor = (id: string): Screen[] => APPLIES[id] ?? [];
 export const appliesTo = (id: string, screen: Screen | null): boolean => screen !== null && screensFor(id).includes(screen);
 
 /**
- * The chapters in the order the panel lists them: the ones for this canvas first (a chapter written mainly for this
- * canvas before one that only touches it, each group in its own order), then the rest in their own order.
+ * Every page of app/(v2), as its route pattern, and the chapter that explains it. help.test.ts reads the page files and
+ * fails when a route has no row here, so a new canvas cannot ship without its chapter.
  */
-export function orderFor(chapters: readonly HelpChapter[], screen: Screen | null): HelpChapter[] {
-  const here = chapters
-    .map((c, i) => ({ c, i, rank: screen ? screensFor(c.id).indexOf(screen) : -1 }))
-    .filter((x) => x.rank >= 0)
-    .sort((a, b) => a.rank - b.rank || a.i - b.i)
-    .map((x) => x.c);
-  return [...here, ...chapters.filter((c) => !appliesTo(c.id, screen))];
+export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
+  "/v2": "v2:landscape",
+  "/v2/o/[system]/[module]": "v2:object",
+  "/v2/o/[system]/[module]/rules": "v2:object",
+  "/v2/o/[system]/[module]/records": "v2:work",
+  "/v2/o/[system]/[module]/fixes": "v2:approvals",
+  "/v2/o/[system]/[module]/runs": "v2:run-compare",
+  "/v2/o/[system]/[module]/readiness": "v2:waves",
+  "/v2/o/[system]/[module]/golden": "v2:golden-records",
+  "/v2/o/[system]/[module]/glossary": "v2:glossary",
+  "/v2/o/[system]/[module]/lineage": "v2:lineage",
+  "/v2/o/[system]/[module]/processes": "v2:processes",
+  "/v2/o/[system]/[module]/processes/design": "v2:processes",
+  "/v2/r/[id]": "v2:rules",
+  "/v2/rules": "v2:rules",
+  "/v2/work": "v2:work",
+  "/v2/people": "v2:people",
+  "/v2/runs": "v2:runs",
+  "/v2/run/[id]": "v2:run-compare",
+  "/v2/run/[id]/vs/[b]": "v2:run-compare",
+  "/v2/s/[id]": "v2:systems",
+  "/v2/s/new": "v2:systems",
+  "/v2/share/[token]": "v2:persona-auditor",
+  "/v2/reports": "v2:schedules",
+  "/v2/admin": "v2:administration",
+  "/v2/admin/[section]": "v2:administration",
+};
+
+/** The panels a `?open=` value opens, by its kind, and the chapter that explains each. They win over the route. */
+const OPEN_CHAPTERS: Readonly<Record<string, string>> = {
+  preferences: "v2:preferences",
+  waves: "v2:waves",
+  batch: "v2:approvals",
+  triage: "v2:people",
+  inbox: "v2:people",
+  balance: "v2:people",
+  contracts: "v2:people",
+  contract: "v2:people",
+  away: "v2:people",
+  person: "v2:people",
+  golden: "v2:golden-records",
+  survivorship: "v2:golden-records",
+  term: "v2:glossary",
+  step: "v2:processes",
+  schedule: "v2:schedules",
+  report: "v2:schedules",
+  connection: "v2:systems",
+  config: "v2:systems",
+  syncschedule: "v2:systems",
+  zobject: "v2:systems",
+  system: "v2:systems",
+  job: "v2:runs",
+  run: "v2:run-compare",
+  rule: "v2:rules",
+  record: "v2:work",
+};
+
+/** The route pattern of an address: "/v2/o/ecc-production/material-master/golden" is "/v2/o/[system]/[module]/golden". */
+export function routeOf(pathname: string): string | null {
+  const seg = (pathname.replace(/\/+$/, "") || "/").split("/").slice(1);
+  if (seg[0] !== "v2") return null;
+  const [, a, b, c, d, e] = seg;
+  if (!a) return "/v2";
+  if (a === "o" && b && c) return `/v2/o/[system]/[module]${d ? `/${d}` : ""}${e ? `/${e}` : ""}`;
+  if (a === "r" && b) return "/v2/r/[id]";
+  if (a === "run" && b) return c === "vs" && d ? "/v2/run/[id]/vs/[b]" : "/v2/run/[id]";
+  if (a === "s" && b) return b === "new" ? "/v2/s/new" : "/v2/s/[id]";
+  if (a === "share" && b) return "/v2/share/[token]";
+  if (a === "admin") return b ? "/v2/admin/[section]" : "/v2/admin";
+  return `/v2/${a}`;
+}
+
+/** The chapter for what the viewer looks at: an open panel's chapter first, then the ledger filter or view, then the route. */
+export function chapterFor(pathname: string, search = ""): string | null {
+  const q = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+  const open = q.get("open");
+  if (open && open !== "help") {
+    const kind = open.split(":")[0];
+    if (OPEN_CHAPTERS[kind]) return OPEN_CHAPTERS[kind];
+  }
+  const route = routeOf(pathname);
+  if (route === "/v2/work" && (q.get("filter") === "approvals" || q.get("filter") === "exceptions")) return "v2:approvals";
+  if (route === "/v2" && q.get("view") === "waves") return "v2:waves";
+  return route ? (ROUTE_CHAPTERS[route] ?? null) : null;
+}
+
+/** The walkthrough for a role's start screen: by the role for those without a persona of their own, else the persona. */
+export function walkthroughFor(persona: string, role: string | null): string {
+  if (role === "auditor" || role === "viewer") return "v2:persona-auditor";
+  if (role === "platform_admin" || role === "admin") return "v2:persona-admin";
+  return `v2:persona-${persona}`;
+}
+
+export interface OrderContext {
+  pathname?: string;
+  search?: string;
+  /** The walkthrough to put first on the viewer's start screen. */
+  walkthrough?: string | null;
+}
+
+const onStart = (ctx: OrderContext): boolean => ctx.pathname !== undefined && routeOf(ctx.pathname) === "/v2" && !new URLSearchParams(ctx.search ?? "").get("view");
+
+/**
+ * The chapters in the order the panel lists them. On the start screen the viewer's walkthrough comes first; then the
+ * chapter for the route or the open panel; then the other Meridian 2 chapters for this canvas (a chapter written mainly
+ * for it before one that only touches it); then every other Meridian 2 chapter; then the current interface's chapters,
+ * the ones for this canvas first.
+ */
+export function orderFor(chapters: readonly HelpChapter[], screen: Screen | null, ctx: OrderContext = {}): HelpChapter[] {
+  const pin: string[] = [];
+  if (onStart(ctx) && ctx.walkthrough) pin.push(ctx.walkthrough);
+  const here = ctx.pathname !== undefined ? chapterFor(ctx.pathname, ctx.search) : null;
+  if (here && !pin.includes(here)) pin.push(here);
+  const pinned = pin.map((id) => chapters.find((c) => c.id === id)).filter((c): c is HelpChapter => Boolean(c));
+  const rest = chapters.filter((c) => !pin.includes(c.id));
+  const byScreen = (list: HelpChapter[]) => {
+    const on = list
+      .map((c, i) => ({ c, i, rank: screen ? screensFor(c.id).indexOf(screen) : -1 }))
+      .filter((x) => x.rank >= 0)
+      .sort((a, b) => a.rank - b.rank || a.i - b.i)
+      .map((x) => x.c);
+    return [...on, ...list.filter((c) => !appliesTo(c.id, screen))];
+  };
+  return [...pinned, ...byScreen(rest.filter((c) => c.interface === "v2")), ...byScreen(rest.filter((c) => c.interface !== "v2"))];
+}
+
+/** True when the chapter belongs under "On this screen": a Meridian 2 chapter for this canvas, route, panel or start screen. */
+export function isHere(chapter: HelpChapter, screen: Screen | null, ctx: OrderContext = {}): boolean {
+  if (chapter.interface !== "v2") return false;
+  if (onStart(ctx) && ctx.walkthrough === chapter.id) return true;
+  if (ctx.pathname !== undefined && chapterFor(ctx.pathname, ctx.search) === chapter.id) return true;
+  return appliesTo(chapter.id, screen);
 }
 
 export interface HelpHit { chapter: HelpChapter; sections: HelpSection[] }
 
-/** Chapters whose title, summary or text contain every word of the query, with the sections that matched. */
+/** Heading of the passage a caption match is shown under. */
+export const FROM_RECORDING = "From the recording";
+
+/** Chapters whose title, summary, text or recording captions contain every word of the query, with what matched. */
 export function searchHelp(chapters: readonly HelpChapter[], query: string): HelpHit[] {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   if (words.length === 0) return chapters.map((chapter) => ({ chapter, sections: [] }));
   const hits: HelpHit[] = [];
   for (const chapter of chapters) {
     const head = `${chapter.title} ${chapter.summary}`.toLowerCase();
-    const all = `${head} ${chapter.sections.map((s) => `${s.heading} ${s.text}`).join(" ")}`.toLowerCase();
+    const captions = chapter.captions ?? [];
+    const all = `${head} ${chapter.sections.map((s) => `${s.heading} ${s.text}`).join(" ")} ${captions.join(" ")}`.toLowerCase();
     if (!words.every((w) => all.includes(w))) continue;
     const sections = chapter.sections.filter((s) => words.some((w) => `${s.heading} ${s.text}`.toLowerCase().includes(w))).slice(0, 3);
-    hits.push({ chapter, sections });
+    const said = captions.filter((c) => words.some((w) => c.toLowerCase().includes(w))).slice(0, 2).map((text) => ({ heading: FROM_RECORDING, text }));
+    hits.push({ chapter, sections: sections.length ? [...sections, ...said].slice(0, 3) : said });
   }
   // Title matches first, then the rest in the given order.
   return hits.sort((a, b) => Number(words.every((w) => b.chapter.title.toLowerCase().includes(w))) - Number(words.every((w) => a.chapter.title.toLowerCase().includes(w))));
