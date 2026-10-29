@@ -156,6 +156,9 @@ class DeltaRequest:
     plain field names, or None when it has none."""
     since: str
     load_baseline: Callable[[str], Optional[pd.DataFrame]]
+    # the previous extraction left row hashes: tables with a date-of-last-change field are read by that date
+    # (api/services/delta_extraction.py)
+    by_change_date: bool = False
 
 
 _SIGNALS = ("SIGTERM", "SIGINT", "SIGHUP")
@@ -404,6 +407,10 @@ class ConnectivityManager:
                             connector, table, cols, list(t.keys), plan.where, delta, delta_keys, delta_map,
                             raw.get(plan.via) if plan.via else None, counts.get(table), max_rows,
                         ) if delta is not None and table in delta_map else (None, None)
+                        if df is None and delta is not None and delta.by_change_date and not plan.via \
+                                and not plan.slices:
+                            df, delta_info = self._date_delta_read(connector, table, cols, list(t.keys), plan.where,
+                                                                   delta, counts.get(table), max_rows)
                         if df is None and plan.via:
                             wheres = [w for parent in (plan.via, *plan.also_via)
                                       for w in via_filters(table, parent, raw.get(parent), extra_edges=pe_edges(),
@@ -641,6 +648,30 @@ class ConnectivityManager:
         if expected is not None and expected != len(df):
             return None, None
         return df, {"since": delta.since, "key": key, "changed": len(ids), "reread": len(fresh)}
+
+    @staticmethod
+    def _date_delta_read(connector, table: str, cols: list[str], keys: list[str], where: Optional[str],
+                         delta: DeltaRequest, expected: Optional[int],
+                         max_rows: int) -> tuple[Optional[pd.DataFrame], Optional[dict]]:
+        """``table`` as the baseline merged with the rows changed since ``delta.since`` by the table's
+        date-of-last-change field, or (None, None) to read it in full: no such field among the read columns, no
+        usable baseline, or a merged count that disagrees with SAP's (records deleted leave no change date)."""
+        from api.services.delta_extraction import change_date_where, merge_by_key
+        from sap.data_dictionary import get_change_date_field
+
+        field = get_change_date_field(table)
+        if not field or field not in cols:
+            return None, None
+        baseline = delta.load_baseline(table)
+        if baseline is None or not set(cols) <= set(baseline.columns):
+            return None, None
+        fresh = connector.read_table_full(table, cols, keys, where=" AND ".join(
+            x for x in (change_date_where(field, delta.since), where) if x), max_rows=max_rows)
+        df = merge_by_key(baseline[cols], fresh[cols] if len(fresh) else pd.DataFrame(columns=cols),
+                          [k for k in keys if k in cols])
+        if expected is not None and expected != len(df):
+            return None, None
+        return df, {"since": delta.since, "field": field, "mode": "change_date", "reread": len(fresh)}
 
     def read_rows(self, system_id: str, table: str, fields: list[str], wheres: list[str]) -> pd.DataFrame:
         """Rows of one ABAP table, one read-only RFC read per WHERE clause (for example, key IN-lists

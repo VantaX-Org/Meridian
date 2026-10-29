@@ -2951,3 +2951,29 @@ class ContractBreach(Base):
         Index("ix_contract_breaches_contract", "tenant_id", "contract_id", "created_at"),
         Index("ix_contract_breaches_version", "tenant_id", "version_id"),
     )
+
+
+class ExtractionChange(Base):
+    """How one data table of an extraction was read and what changed since the previous one (migration 111,
+    api/services/delta_extraction.py)."""
+    __tablename__ = "extraction_changes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="CASCADE"), nullable=False)
+    table_name = Column(Text, nullable=False)
+    mode = Column(Text, nullable=False)  # full | change_documents | change_date
+    rows_read = Column(BigInteger, nullable=False, server_default="0")
+    rows_total = Column(BigInteger, nullable=True)
+    inserted = Column(BigInteger, nullable=True)
+    updated = Column(BigInteger, nullable=True)
+    deleted = Column(BigInteger, nullable=True)
+    unchanged = Column(BigInteger, nullable=True)
+    duration_s = Column(Float, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        CheckConstraint("mode IN ('full', 'change_documents', 'change_date')", name="ck_extraction_changes_mode"),
+        UniqueConstraint("version_id", "table_name", name="uq_extraction_changes_table"),
+        Index("ix_extraction_changes_version", "tenant_id", "version_id"),
+    )
