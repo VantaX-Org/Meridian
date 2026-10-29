@@ -108,6 +108,19 @@ async def _rows(db: AsyncSession, tenant: Tenant, version_id: Optional[uuid.UUID
     return _Rows(vid, rscope, None)
 
 
+async def _as_of_rows(db: AsyncSession, tenant: Tenant, as_of_run: uuid.UUID, version_id: Optional[uuid.UUID],
+                      scope: str) -> _Rows:
+    """The current state as it stood at run ``as_of_run`` (api/services/current_state.current_pairs_as_of)."""
+    from api.services.current_state import current_pairs_as_of
+
+    if version_id is not None or scope == "current":
+        raise HTTPException(status_code=422, detail="as_of_run is exclusive with version_id and scope=current")
+    if not (await db.execute(text("SELECT 1 FROM analysis_versions WHERE id = CAST(:v AS uuid) AND tenant_id = :t"),
+                             {"v": str(as_of_run), "t": str(tenant.id)})).scalar():
+        raise HTTPException(status_code=404, detail="Run not found.")
+    return _Rows(None, None, await current_pairs_as_of(db, tenant.id, str(as_of_run)))
+
+
 def _auto_runs(sel: _Rows) -> str:
     """Findings of the runs ``sel`` reads (bound by ``sel.where``): the proposed values of a fix sheet."""
     return "f.version_id = ANY(CAST(:cv AS uuid[]))" if sel.current else "f.version_id = CAST(:v AS uuid)"
@@ -508,15 +521,23 @@ async def records(
                                                                  "-value: the most at risk first); default severity"),
     since: Optional[uuid.UUID] = Query(None, description=_SINCE_DESC),
     scope: WorkScope = _SCOPE,
+    as_of_run: Optional[uuid.UUID] = Query(None, description="time travel: the current state as it stood when this run "
+                                                              "finished (each object at its newest run at or before "
+                                                              "it); exclusive with version_id and scope"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _perm: str = Depends(require_permission("view")),
 ):
     """Failing records of the run (or the current state), worst first unless ``sort`` says otherwise, a page at a time
     (keyset over the sort, then module and record key: no deep OFFSET at millions, and no page reorders the ones before
-    it). Each record names the run it was found in (``version_id``): the run its decisions go to."""
+    it). Each record names the run it was found in (``version_id``): the run its decisions go to. ``as_of_run`` reads
+    the ledger as it stood at that run: the failing records of every object at its newest run up to then (their work
+    status is today's)."""
     await _rls(db, tenant)
-    sel = await _rows(db, tenant, version_id, scope)
+    if as_of_run is not None:
+        sel = await _as_of_rows(db, tenant, as_of_run, version_id, scope)
+    else:
+        sel = await _rows(db, tenant, version_id, scope)
     order = _parse_sort(sort)
     where, p = _records_where(tenant, sel, request, module, check_id, severity, status, assigned, proposed, q, due, part,
                               system, batch_id)

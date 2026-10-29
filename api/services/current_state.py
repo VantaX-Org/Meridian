@@ -47,6 +47,20 @@ async def current_pairs(db: AsyncSession, tenant_id, module: Optional[str] = Non
     return [{"module": r["module"], "version_id": r["version_id"]} for r in rows]
 
 
+# The current state as it stood when run ``:asof`` finished: the same rule over the runs at or before it.
+_AS_OF = ("AND run_at <= (SELECT a.run_at FROM analysis_versions a WHERE a.id = CAST(:asof AS uuid) "
+          "AND a.tenant_id = CAST(:t AS uuid))")
+CURRENT_PAIRS_AS_OF_SQL = CURRENT_PAIRS_SQL.replace(f"{finished_sql()}\n", f"{finished_sql()} {_AS_OF}\n", 1)
+
+
+async def current_pairs_as_of(db: AsyncSession, tenant_id, as_of_run: str, module: Optional[str] = None) -> list[dict]:
+    """``current_pairs`` as the state stood at run ``as_of_run``: every object at the newest finished run of its
+    lineage at or before that run. Empty when the run is not this tenant's."""
+    rows = (await db.execute(text(CURRENT_PAIRS_AS_OF_SQL), {"t": str(tenant_id), "m": module,
+                                                             "asof": str(as_of_run)})).mappings().all()
+    return [{"module": r["module"], "version_id": r["version_id"]} for r in rows]
+
+
 def pairs_clause(alias: str, pairs: list[dict], params: dict, key: str = "c") -> str:
     """SQL keeping the rows of ``alias`` (a table with ``module`` and ``version_id``) that belong to one of the
     current pairs; binds ``<key>m`` / ``<key>v`` into ``params`` (``key`` tells two clauses of one query apart).

@@ -106,6 +106,7 @@ from api.routes.command import router as command_router
 from api.routes.policy_packs import router as policy_packs_router
 from api.routes.sandbox import router as sandbox_router
 from api.routes.digests import router as digests_router
+from api.routes.record_history import router as record_history_router
 from api.routes.system_update import router as system_update_router
 from api.routes.retention import router as retention_router
 from api.routes.actions import router as actions_router
@@ -393,6 +394,7 @@ app.include_router(migration_router)
 app.include_router(exceptions_router)
 app.include_router(source_design_router)
 app.include_router(record_issues_router)
+app.include_router(record_history_router)  # before work: /records/{module}/{key:path} would take /history
 app.include_router(work_router)
 app.include_router(work_analytics_router)
 app.include_router(materials_router)
