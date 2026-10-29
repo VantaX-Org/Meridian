@@ -258,7 +258,7 @@ function OldRecording({ chapter }: { chapter: HelpChapter }) {
   );
 }
 
-const minutes = (s: number | null): string | null => (s == null ? null : s >= 60 ? `${Math.floor(s / 60)} min ${Math.round(s % 60)} s` : `${Math.round(s)} s`);
+const minutes = (s: number | null): string | null => (s == null ? null : s >= 60 ? tr("{m} min {s} s", { m: Math.floor(s / 60), s: Math.round(s % 60) }) : tr("{s} s", { s: Math.round(s) }));
 
 /** A Meridian 2 recording, in the panel: the poster frame until it plays, and the captions as a subtitle track. */
 function Recording({ chapter }: { chapter: HelpChapter }) {
@@ -269,14 +269,14 @@ function Recording({ chapter }: { chapter: HelpChapter }) {
   return (
     <figure style={{ margin: "8px 0" }} data-testid="help-video">
       {missing ? (
-        <p className="m2-prov" role="status">The recording for this chapter is in preparation.</p>
+        <p className="m2-prov" role="status">{tr("The recording for this chapter is in preparation.")}</p>
       ) : (
-        <video controls preload="none" playsInline poster={videoUrl(chapter.video, "jpg")} aria-label={`${chapter.title}: training video${length ? `, ${length}` : ""}`} onError={() => setMissing(true)}>
+        <video controls preload="none" playsInline poster={videoUrl(chapter.video, "jpg")} aria-label={length ? tr("{title}: training video, {length}", { title: chapter.title, length }) : tr("{title}: training video", { title: chapter.title })} onError={() => setMissing(true)}>
           <source src={videoUrl(chapter.video, "mp4")} type="video/mp4" onError={() => setMissing(true)} />
-          <track kind="captions" src={videoUrl(chapter.video, "vtt")} srcLang="en" label="English" default />
+          <track kind="captions" src={videoUrl(chapter.video, "vtt")} srcLang="en" label={tr("English")} default />
         </video>
       )}
-      <figcaption className="m2-hs2">{`Recording${length ? `, ${length}` : ""}, with captions. No sound.`}</figcaption>
+      <figcaption className="m2-hs2">{length ? tr("Recording, {length}, with captions. No sound.", { length }) : tr("Recording, with captions. No sound.")}</figcaption>
     </figure>
   );
 }
@@ -324,23 +324,23 @@ function Walkthrough({ chapter }: { chapter: HelpChapter }) {
   };
   const next = at < steps.length - 1 ? steps[at + 1] : null;
   return (
-    <section aria-label="Walkthrough" data-testid="walkthrough">
-      <p className="m2-hs2" data-testid="walkthrough-at">{`Step ${at + 1} of ${steps.length}: ${steps[at].screen}`}</p>
+    <section aria-label={tr("Walkthrough")} data-testid="walkthrough">
+      <p className="m2-hs2" data-testid="walkthrough-at">{tr("Step {n} of {total}: {screen}", { n: at + 1, total: steps.length, screen: steps[at].screen })}</p>
       <ol className="m2-walk">
         {steps.map((s, i) => (
           <li key={s.screen + i} aria-current={i === at ? "step" : undefined}>
             <span className="m2-ht">{s.screen}</span>
             <span>{s.text}</span>
-            <V2Link href={keepWalk(s.href, chapter.id)} onClick={() => go(i)}>{`Open ${s.screen}`}</V2Link>
+            <V2Link href={keepWalk(s.href, chapter.id)} onClick={() => go(i)}>{tr("Open {screen}", { screen: s.screen })}</V2Link>
           </li>
         ))}
       </ol>
       {next ? (
         <V2Link href={keepWalk(next.href, chapter.id)} className="m2-btn m2-strong" onClick={() => go(at + 1)} data-testid="walkthrough-next">
-          {`Next step: ${next.screen}`}
+          {tr("Next step: {screen}", { screen: next.screen })}
         </V2Link>
       ) : (
-        <p className="m2-prov">That is the fifth step. The chapter below goes deeper.</p>
+        <p className="m2-prov">{tr("That is the fifth step. The chapter below goes deeper.")}</p>
       )}
     </section>
   );
@@ -348,7 +348,7 @@ function Walkthrough({ chapter }: { chapter: HelpChapter }) {
 
 function ChapterView({ chapter, onBack }: { chapter: HelpChapter; onBack: () => void }) {
   const screens = screensFor(chapter.id);
-  const where = chapter.interface === "v2" ? chapter.group : `${CURRENT}, ${chapter.group}`;
+  const where = chapter.interface === "v2" ? chapter.group : `${tr("Current interface")}, ${chapter.group}`;
   return (
     <div className="m2-hbody" data-testid="help-chapter">
       <button type="button" className="m2-linkbtn" onClick={onBack}>
@@ -369,7 +369,6 @@ function ChapterView({ chapter, onBack }: { chapter: HelpChapter; onBack: () => 
 }
 
 /** How the chapters of the interface being replaced are marked in the index. */
-const CURRENT = { toString: () => tr("Current interface") } as const;
 
 /** `?open=help`: the guide and its recordings, the walkthrough and the chapter for this screen first, and support. */
 export function HelpPanel({ onClose }: { onClose: () => void }) {
@@ -427,13 +426,13 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
     <li key={h.chapter.id}>
       <button type="button" className="m2-hitem" onClick={() => setChapterId(h.chapter.id)}>
         <span className="m2-ht">{h.chapter.title}</span>
-        <span className="m2-hs2">{query && h.sections[0] ? `${h.sections[0].heading === FROM_RECORDING ? `${FROM_RECORDING}: ` : ""}${snippet(h.sections[0].text || h.sections[0].heading, query)}` : h.chapter.summary}</span>
+        <span className="m2-hs2">{query && h.sections[0] ? `${h.sections[0].heading === FROM_RECORDING ? `${tr("From the recording")}: ` : ""}${snippet(h.sections[0].text || h.sections[0].heading, query)}` : h.chapter.summary}</span>
         <span className="m2-hs2">
           {h.chapter.group}
           {h.chapter.walkthrough ? tr(", five steps") : ""}
           {h.chapter.video ? tr(", with a recording") : ""}
         </span>
-        {h.chapter.interface !== "v2" ? <span className="m2-htag">{CURRENT}</span> : null}
+        {h.chapter.interface !== "v2" ? <span className="m2-htag">{tr("Current interface")}</span> : null}
       </button>
     </li>
   );
@@ -443,7 +442,7 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
         <ChapterView chapter={open} onBack={() => setChapterId(null)} />
       ) : (
         <>
-          <input ref={searchBox} type="search" className="m2-hsearch" aria-label={tr("Search help")} placeholder={tr("Search the guide and the recordings")} value={query} onChange={(e) => setQuery(e.target.value)} />
+          <input ref={searchBox} type="search" className="m2-hsearch" aria-label={tr("Search help")} placeholder={tr("Search the guide and recordings")} value={query} onChange={(e) => setQuery(e.target.value)} />
           {failed ? <p className="m2-prov" role="alert">{tr("The help could not be loaded.")}</p> : !data ? <Skeleton width="100%" height={80} /> : hits.length === 0 ? <EmptyFrame>{tr("Nothing in the guide matches \"{query}\". Try a shorter word, or contact support below.", { query })}</EmptyFrame> : (
             <>
               {here.length ? (
@@ -460,7 +459,7 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
               ) : null}
               {current.length ? (
                 <>
-                  <h3>{CURRENT}</h3>
+                  <h3>{tr("Current interface")}</h3>
                   <p className="m2-hs2" style={{ marginTop: 0 }}>{tr("Chapters about the interface this one replaces. They stay until it is removed.")}</p>
                   <ul className="m2-hlist" aria-label={tr("Current interface help")}>{current.map(line)}</ul>
                 </>

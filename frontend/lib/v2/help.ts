@@ -279,8 +279,8 @@ export function isHere(chapter: HelpChapter, screen: Screen | null, ctx: OrderCo
 
 export interface HelpHit { chapter: HelpChapter; sections: HelpSection[] }
 
-/** Heading of the passage a caption match is shown under. */
-export const FROM_RECORDING = "From the recording";
+/** Heading of the passage a caption match is shown under (an internal token; the panel translates it). */
+export const FROM_RECORDING = "From the recording"; // i18n-ignore
 
 /** Chapters whose title, summary, text or recording captions contain every word of the query, with what matched. */
 export function searchHelp(chapters: readonly HelpChapter[], query: string): HelpHit[] {

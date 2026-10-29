@@ -3546,6 +3546,23 @@ export const en = {
   "Server errors, last 24 hours": "Server errors, last 24 hours",
   "Outage": "Outage",
   "Not configured": "Not configured",
+  "Current interface": "Current interface",
+  ", five steps": ", five steps",
+  "Chapters about the interface this one replaces. They stay until it is removed.": "Chapters about the interface this one replaces. They stay until it is removed.",
+  "Current interface help": "Current interface help",
+  "{date}, step {step}. ": "{date}, step {step}. ",
+  "{m} min {s} s": "{m} min {s} s",
+  "{title}: training video, {length}": "{title}: training video, {length}",
+  "English": "English",
+  "Recording, {length}, with captions. No sound.": "Recording, {length}, with captions. No sound.",
+  "Recording, with captions. No sound.": "Recording, with captions. No sound.",
+  "Walkthrough": "Walkthrough",
+  "Step {n} of {total}: {screen}": "Step {n} of {total}: {screen}",
+  "Open {screen}": "Open {screen}",
+  "Next step: {screen}": "Next step: {screen}",
+  "That is the fifth step. The chapter below goes deeper.": "That is the fifth step. The chapter below goes deeper.",
+  "From the recording": "From the recording",
+  "{s} s": "{s} s",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
