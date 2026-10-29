@@ -27,7 +27,8 @@ describe("one h1 per page", () => {
 // Source scan: the Breadcrumb owns the only h1. Add a path to ALLOWED only for a page that legitimately owns it (login, error).
 const H1 = /<h1\b|as="h1"|level=\{1\}/;
 // global-error.tsx and the root not-found.tsx render outside the shell, so no Breadcrumb exists to own the h1.
-const ALLOWED = new Set(["design/shell/Breadcrumb.tsx", "components/auth/auth-frame.tsx", "app/global-error.tsx", "app/not-found.tsx"]);
+// design/v2/parts.tsx: Meridian 2 has no Breadcrumb; its PageTitle is the one h1 of each canvas.
+const ALLOWED = new Set(["design/v2/parts.tsx", "design/shell/Breadcrumb.tsx", "components/auth/auth-frame.tsx", "app/global-error.tsx", "app/not-found.tsx"]);
 
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((n) => {

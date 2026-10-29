@@ -1,0 +1,84 @@
+{
+  "rules": [
+    {
+      "check_id": "MM014",
+      "name": "Base unit of measure not valid",
+      "field": "MARA.MEINS",
+      "severity": "critical",
+      "affected_count": 3640,
+      "total_count": 61816,
+      "pass_rate": 94.11,
+      "value_at_risk": 1184000
+    },
+    {
+      "check_id": "MM031",
+      "name": "Material type missing",
+      "field": "MARA.MTART",
+      "severity": "critical",
+      "affected_count": 2904,
+      "total_count": 61816,
+      "pass_rate": 95.3,
+      "value_at_risk": 902000
+    },
+    {
+      "check_id": "MM022",
+      "name": "Material group missing",
+      "field": "MARA.MATKL",
+      "severity": "high",
+      "affected_count": 3118,
+      "total_count": 61816,
+      "pass_rate": 94.96,
+      "value_at_risk": 611000
+    },
+    {
+      "check_id": "MM057",
+      "name": "Gross weight missing",
+      "field": "MARA.BRGEW",
+      "severity": "high",
+      "affected_count": 2266,
+      "total_count": 61816,
+      "pass_rate": 96.33,
+      "value_at_risk": 402000
+    },
+    {
+      "check_id": "MM063",
+      "name": "Purchasing group missing",
+      "field": "MARC.EKGRP",
+      "severity": "high",
+      "affected_count": 2712,
+      "total_count": 61816,
+      "pass_rate": 95.61,
+      "value_at_risk": 338000
+    },
+    {
+      "check_id": "MM078",
+      "name": "MRP type not valid for material type",
+      "field": "MARC.DISMM",
+      "severity": "high",
+      "affected_count": 1894,
+      "total_count": 61816,
+      "pass_rate": 96.94,
+      "value_at_risk": 268000
+    },
+    {
+      "check_id": "MM091",
+      "name": "Valuation class missing",
+      "field": "MBEW.BKLAS",
+      "severity": "high",
+      "affected_count": 1420,
+      "total_count": 61816,
+      "pass_rate": 97.7,
+      "value_at_risk": 241000
+    },
+    {
+      "check_id": "MM105",
+      "name": "Procurement type missing",
+      "field": "MARC.BESKZ",
+      "severity": "high",
+      "affected_count": 1260,
+      "total_count": 61816,
+      "pass_rate": 97.96,
+      "value_at_risk": 198000
+    }
+  ]
+}

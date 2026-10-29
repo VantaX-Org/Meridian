@@ -5,7 +5,7 @@
  * user to any browser), their password, and the log of notifications sent to them.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
@@ -20,6 +20,7 @@ import { apiErrorMessage } from "@/lib/error";
 import { formatDate } from "@/lib/format";
 import { localeOptions, timezoneOptions, type DigestFrequency } from "@/lib/preferences";
 import { queryKeys } from "@/lib/query-keys";
+import { readUiCookie, setUiCookie, UI_V2 } from "@/lib/v2/switch";
 import { DeliveriesCard, PasswordCard } from "./account-cards";
 
 const THEMES: { value: Theme; label: string }[] = [
@@ -34,6 +35,30 @@ const DIGESTS: { value: DigestFrequency; label: string }[] = [
 ];
 /** Select cannot hold an empty value, so "not set" is a named choice that clears the preference. */
 const AUTO = "auto";
+
+const noopSubscribe = () => () => undefined;
+
+/** The interface switch (lib/v2/switch.ts): the new interface is opt-in, and /v2 opens whatever this says. */
+function InterfaceCard() {
+  const stored = useSyncExternalStore(noopSubscribe, () => readUiCookie() === UI_V2, () => false);
+  const [chosen, setChosen] = useState<boolean | null>(null);
+  const on = chosen ?? stored;
+  return (
+    <Card title="Interface" meta="Try the new Meridian layout. Nothing about your data changes, and you can go back from its account menu">
+      <div className="flex flex-wrap items-center gap-4">
+        <Switch
+          label="Try the new interface"
+          checked={on}
+          onCheckedChange={(next) => {
+            setUiCookie(next ? UI_V2 : null);
+            setChosen(next);
+          }}
+        />
+        <Link className="underline" href="/v2">Open the new interface</Link>
+      </div>
+    </Card>
+  );
+}
 
 const NO_EMAIL_NOTICE = "Email is not configured on this deployment; you will get in-app notifications only";
 
@@ -100,6 +125,7 @@ export default function PreferencesPage() {
         </div>
         <p className="m-text-meta mt-3 m-ink-3">Dates look like {formatDate(new Date(), "datetime")}</p>
       </Card>
+      <InterfaceCard />
       <Card title="Notifications" meta="Where and how alerts reach you">
         <div className="flex flex-col gap-4">
           {!emailConfigured ? <Notice tone="info">{NO_EMAIL_NOTICE}</Notice> : null}
