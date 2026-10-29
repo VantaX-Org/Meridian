@@ -188,6 +188,20 @@ def _acquire_system_lock(system_id: str) -> bool:
         return True
 
 
+def _release_system_lock(system_id: str) -> None:
+    """Free the system when the extraction ends, however it ends, so the next download need not wait out the TTL."""
+    try:
+        import redis  # type: ignore
+
+        from workers.celery_app import celery_app
+        url = celery_app.conf.broker_url
+        if not url:
+            return
+        redis.from_url(url).delete(f"extract-lock:system:{system_id}")
+    except Exception:
+        pass
+
+
 @celery_app.task(
     bind=True,
     name="workers.tasks.run_extraction.run_extraction",
@@ -209,8 +223,6 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
     ``purpose`` marks a download made for something other than data quality (process discovery): it is recorded on
     the version and the DQ side effects (module map, table profiles) are skipped.
     """
-    from api.services.task_progress import publish_progress
-
     if version_id and not _acquire_version_lock(str(version_id)):
         logger.warning(
             "extraction for version %s is already running (redelivered after a restart); "
@@ -222,6 +234,18 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
             "Concurrent extractions multiply RFC sessions for one SAP user and SAP refuses the "
             "surplus logons, which locks the account.", system_id)
         return {"version_id": str(version_id), "status": "system_busy"}
+
+    try:
+        return _extract(self, tenant_id, system_id, modules, include_config, sync_type, scope, analyse, label,
+                        version_id, delta, purpose)
+    finally:
+        _release_system_lock(str(system_id))
+
+
+def _extract(self, tenant_id, system_id, modules, include_config, sync_type, scope, analyse, label, version_id, delta,
+             purpose):
+    """The extraction proper, run while the system lock is held."""
+    from api.services.task_progress import publish_progress
 
     engine = get_sync_engine()
     if sync_type != "config":
