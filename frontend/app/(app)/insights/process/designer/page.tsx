@@ -26,6 +26,7 @@ import * as D from "./_components/doc";
 import { LevelTable } from "./_components/level-table";
 import { ProcessTree, type TreeActions } from "./_components/tree";
 import { OldVersionBanner, VersionsMenu } from "./_components/versions";
+import { SectionTabs } from "@/components/section-tabs";
 
 const RANK: Record<DqColour, number> = { green: 0, amber: 1, red: 2 };
 
@@ -99,7 +100,7 @@ export default function ProcessDesigner() {
   if (!doc) {
     return (
       <div className="flex flex-col gap-4">
-        <PageHeader title="Process designer" meta={DESIGNER_PURPOSE} />
+        <PageHeader tabs={<SectionTabs label="Process pages" />} title="Process designer" meta={DESIGNER_PURPOSE} />
         {failed ? (
           <ErrorState {...apiErrorState(failed)}
             onRetry={() => void (reference ? ref.refetch() : saved.refetch())} />
@@ -286,7 +287,7 @@ function Editor(p: EditorProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Process designer"
+      <PageHeader tabs={<SectionTabs label="Process pages" />} title="Process designer"
         meta={<>
           <span className="block m-text-body m-ink-2">{DESIGNER_PURPOSE}</span>
           <span className="mt-1 block">

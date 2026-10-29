@@ -74,7 +74,8 @@ describe("Rail (the index bar)", () => {
     fireEvent.click(screen.getByRole("button", { name: "More" }));
     const panel = screen.getByRole("group", { name: "More pages" });
     expect(panel).toHaveTextContent("Fix");
-    expect(panel).toHaveTextContent("Process designer");
+    // the designer and discovery runs are tabs of the Processes page, not More entries
+    expect(panel).not.toHaveTextContent("Process designer");
     expect(panel).not.toHaveTextContent("As-is processes");
   });
 
@@ -87,7 +88,7 @@ describe("Rail (the index bar)", () => {
     ["data_steward", STEWARD], ["steward", STEWARD],
     ["data_owner", OWNER], ["approver", OWNER],
     ["sap_basis", BASIS],
-  ])("%s: pills by role, with Processes, Discovery runs and the designer under More", async (r, expected) => {
+  ])("%s: pills by role, with Processes under More and its tabs folded into it", async (r, expected) => {
     role = r;
     // trigger_sync opens Jobs; the shared set holds every other permission these pills need
     perms = [...ALL_PERMS, "trigger_sync"];
@@ -99,8 +100,8 @@ describe("Rail (the index bar)", () => {
     fireEvent.click(screen.getByRole("button", { name: "More" }));
     const panel = screen.getByRole("group", { name: "More pages" });
     expect(panel).toHaveTextContent("As-is processes");
-    expect(panel).toHaveTextContent("Discovery runs");
-    expect(panel).toHaveTextContent("Process designer");
+    expect(panel).not.toHaveTextContent("Discovery runs");
+    expect(panel).not.toHaveTextContent("Process designer");
     // no page is both a pill and a More entry (a data owner with view_audit still finds Fix work's batch approvals there)
     const pillHrefs = [...screen.getByTestId("rail-nav-items").querySelectorAll("a")].map((a) => a.getAttribute("href"));
     for (const a of panel.querySelectorAll("a")) expect(pillHrefs).not.toContain(a.getAttribute("href"));

@@ -5,6 +5,8 @@ import { renderWithQuery } from "@/__tests__/render";
 import * as api from "@/lib/api/rules";
 import RuleDictionaryPage from "../page";
 
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+
 describe("rules dictionary page", () => {
   it("shows the fresh-install sentence, then a looked-up field", async () => {
     vi.spyOn(api, "getDdicFields").mockResolvedValue([

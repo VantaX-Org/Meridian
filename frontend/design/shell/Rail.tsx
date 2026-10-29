@@ -14,7 +14,7 @@ import { useRole } from "../../hooks/use-role";
 import { APPROVALS_HREF, pillSetFor, type PillSet } from "../../lib/persona";
 import { MeridianMark } from "../icons/Mark";
 import { IconChevronDown, IconFlag, IconGrid } from "../icons";
-import { PERSONA_PILLS, SETTINGS_HREF, activeHref, flattenNav, resolveNavHref, splitNav, type NavGroup, type NavItem } from "../../lib/nav";
+import { FOLDED_HREFS, PERSONA_PILLS, activeHref, flattenNav, resolveNavHref, splitNav, type NavGroup, type NavItem } from "../../lib/nav";
 import { Badge } from "../primitives/Badge";
 import { Skeleton } from "../primitives/Skeleton";
 
@@ -31,8 +31,6 @@ import { Skeleton } from "../primitives/Skeleton";
 
 /** The pill label where the nav label is too long for the strip. */
 const PILL_LABEL: Record<string, string> = { "/process": "Processes", [APPROVALS_HREF]: "Approvals" };
-/** Items whose children are tabs of the item's own page, so the More panel lists the item once and not its tabs. */
-const FOLDED = new Set([SETTINGS_HREF]);
 const MORE_PANEL_ID = "topnav-more";
 const ICON_SIZE = 16;
 
@@ -56,7 +54,7 @@ type MoreGroup = { group: string; items: NavItem[] };
  * The pills and the More panel for one pill set (lib/persona.ts `pillSetFor`): the nav's split (lib/nav.ts
  * `splitNav`), then the set's own pills (`PERSONA_PILLS`, in order, skipping what the viewer cannot see). A pill
  * taken from More leaves More, along with any entry that opens the same page; main items the set leaves out move
- * to the top of More. A folded item (Settings) stands for its tabs, so its children leave the panel.
+ * to the top of More. A folded item (Settings, Summary, Explore, Readiness, Rules) stands for its tabs, so its children leave the panel.
  */
 export function railSplit(
   groups: readonly NavGroup[],
@@ -66,7 +64,7 @@ export function railSplit(
   const split = splitNav(groups, resolve);
   const folded = new Set(
     flattenNav(groups.flatMap((g) => g.items))
-      .filter((i) => FOLDED.has(i.href))
+      .filter((i) => FOLDED_HREFS.has(i.href))
       .flatMap((i) => (i.children ?? []).map((c) => c.href)),
   );
   const moreItems = split.more.flatMap((g) => g.items);
@@ -157,7 +155,7 @@ export function Rail({ commandPalette, notifications, helpMenu, userMenu }: Rail
   const isActive = (item: NavItem) =>
     item.href === activeItemHref || !!item.children?.some((c) => c.href === activeItemHref && !pillHrefs.has(c.href));
   // A More entry is current on its own page, and a folded one (Settings) also on its tabs, which the panel does not list.
-  const isMoreItemActive = (item: NavItem) => item.href === activeItemHref || (FOLDED.has(item.href) && isActive(item));
+  const isMoreItemActive = (item: NavItem) => item.href === activeItemHref || (FOLDED_HREFS.has(item.href) && isActive(item));
   const moreActive = more.some((g) => g.items.some(isMoreItemActive));
 
   // The panel closes on Escape, on a click outside it and when focus leaves it.

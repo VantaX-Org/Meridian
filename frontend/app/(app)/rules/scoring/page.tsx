@@ -22,6 +22,7 @@ import { featureLabel, formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { CostModel, CostSpec, DimensionScores, PlannerConfig, TenantSettings } from "@/types/api";
 import { clsx } from "clsx";
+import { SectionTabs } from "@/components/section-tabs";
 
 const DIMS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"] as const;
 type Dim = (typeof DIMS)[number];
@@ -89,7 +90,7 @@ export default function ScoringPage() {
     const failed = settings.isError ? settings : scoring.isError ? scoring : null;
     return (
       <div className="flex flex-col gap-4">
-        <PageHeader title="Scoring" meta="How the quality score is weighted and where its bands fall" />
+        <PageHeader tabs={<SectionTabs label="Rules pages" />} title="Scoring" meta="How the quality score is weighted and where its bands fall" />
         {failed ? (
           <ErrorState title="Settings could not be loaded." message={apiErrorMessage(failed.error)} onRetry={() => { void settings.refetch(); void scoring.refetch(); }} />
         ) : (
@@ -157,7 +158,7 @@ function ScoringForm({ initial, scoring }: { initial: TenantSettings; scoring: S
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Scoring" meta="How the quality score is weighted and where its bands fall" />
+      <PageHeader tabs={<SectionTabs label="Rules pages" />} title="Scoring" meta="How the quality score is weighted and where its bands fall" />
       <p className="m-text-body m-ink-3">When an alert fires and who is told is set in <Link className="underline" href="/admin/alerts">Alerts</Link>.</p>
       {!write ? <Notice tone="info" action={<RequestAccessButton resource="rules" action="admin" />}>These settings are read only for your role</Notice> : null}
 

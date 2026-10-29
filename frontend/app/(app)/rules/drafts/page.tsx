@@ -16,6 +16,7 @@ import { getRuleDrafts, type RuleDraft } from "@/lib/api/rules";
 import { formatDate, formatModuleName } from "@/lib/format";
 import { AiProposals, useAiProposals } from "./ai-proposals";
 import { DraftDrawer } from "./draft-drawer";
+import { SectionTabs } from "@/components/section-tabs";
 
 export default function RuleDraftsPage() {
   const { can, loading } = useRole();
@@ -61,7 +62,7 @@ export default function RuleDraftsPage() {
     />
   );
   const header = (
-    <PageHeader
+    <PageHeader tabs={<SectionTabs label="Rules pages" />}
       title="Rule drafts"
       meta={tab === "ai"
         ? "Match rules the AI proposed from steward corrections. Approve one to add it to the match rules, or reject it with a reason."

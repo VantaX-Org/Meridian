@@ -10,6 +10,7 @@ import { Button, DataTable, ExplorerPage, Field, Input, Mono, Notice, PageHeader
 import { getDdicFields, type DdicField } from "@/lib/api/rules";
 import { actionColumn, RowLink } from "@/components/mdm/ledger";
 import { isListFailure } from "@/lib/error";
+import { SectionTabs } from "@/components/section-tabs";
 
 export default function RuleDictionaryPage() {
   const [text, setText] = useState("");
@@ -28,7 +29,7 @@ export default function RuleDictionaryPage() {
   const missing = (q.data ?? []).filter((f) => f.missing).map((f) => `${f.table}.${f.field}`);
   return (
     <ExplorerPage
-      header={<PageHeader title="Dictionary" meta="Look up what an SAP field holds: its domain, data element and length. Type TABLE.FIELD names, separated by commas." />}
+      header={<PageHeader tabs={<SectionTabs label="Rules pages" />} title="Dictionary" meta="Look up what an SAP field holds: its domain, data element and length. Type TABLE.FIELD names, separated by commas." />}
       filterBar={<div className="flex flex-col gap-1"><Field label="Fields"><Input aria-label="Fields" value={text} placeholder="MARA.MATNR, KNA1.KUNNR" onChange={(e) => setText(e.target.value)} /></Field>{skipped.length ? <Notice tone="warning">{`Not TABLE.FIELD, skipped: ${skipped.join(", ")}`}</Notice> : null}{missing.length && items.length ? <Notice tone="info">{`Not in the dictionary: ${missing.join(", ")}`}</Notice> : null}</div>}
       state={names.length === 0 ? "empty" : q.isLoading ? "loading" : isListFailure(q) ? "error" : items.length === 0 ? "empty" : undefined}
       emptyProps={names.length === 0

@@ -38,6 +38,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { FeedbackPanel, SuppressionsPanel } from "./rule-panels";
 import { ConditionList, FilterChips, Rows, ThresholdTable, hasThresholds, type FilterChip } from "./rule-ui";
+import { SectionTabs } from "@/components/section-tabs";
 
 const CATEGORY_LABEL: Record<string, string> = { ecc: "ECC", successfactors: "SuccessFactors", warehouse: "Warehouse" };
 const SOURCE_LABEL: Record<string, string> = { yaml: "built-in", hq: "HQ", mined: "mined", custom: "custom" };
@@ -592,7 +593,7 @@ export default function RulesPage() {
   const enabled = rows.reduce((n, r) => n + (r.enabled ? r.count : 0), 0);
   return (
     <PageFrame>
-      <PageHeader
+      <PageHeader tabs={<SectionTabs label="Rules pages" />}
         title="Rules"
         meta={`Every check that runs on an analysis, the most-failing first. Open one to see what it checks and which records fail it.${summary.data ? ` ${total.toLocaleString()} rules, ${enabled.toLocaleString()} switched on.` : ""}`}
         actions={<>
