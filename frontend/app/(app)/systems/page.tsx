@@ -286,7 +286,7 @@ export default function SystemsPage() {
         ) : undefined
       }
       table={
-        <DataTable
+        <DataTable hideExport
           columns={columns}
           data={shown}
           getRowId={(r) => r.id}

@@ -304,7 +304,8 @@ describe("FixWork", () => {
     });
 
     it("shows Record, Rule, Severity, Age, Due, Assignee and Suggested value, asking the server for severity, then the oldest", async () => {
-      vi.stubGlobal("matchMedia", (q: string) => ({ matches: true, media: q, addEventListener: () => undefined, removeEventListener: () => undefined }));
+      // Every width query matches except the phone one, which would turn the queue into cards (this test reads the table).
+      vi.stubGlobal("matchMedia", (q: string) => ({ matches: q !== "(max-width: 639px)", media: q, addEventListener: () => undefined, removeEventListener: () => undefined }));
       renderWithQuery(<FixWork />);
       const rows = await screen.findAllByTestId("work-record");
       const headers = within(screen.getByRole("grid", { name: "Records to fix" })).getAllByRole("columnheader").map((h) => h.textContent);

@@ -178,7 +178,7 @@ export default function WaveCockpitPage() {
         items={[
           { value: "overview", label: "Overview", content: c.objects.length ? (
               <div className="flex flex-col [gap:var(--m-section-gap)]">
-                <DataTable columns={objectColumns(run, waveId)} data={ranked} getRowId={(o) => o.module} />
+                <DataTable hideExport columns={objectColumns(run, waveId)} data={ranked} getRowId={(o) => o.module} />
                 <Bar label="Objects by readiness verdict" height={96} data={funnel} />
               </div>
             ) : <EmptyState title="No objects in this wave" detail="Add the SAP objects this wave moves, then run it to score their readiness." action={wavesAction} /> },

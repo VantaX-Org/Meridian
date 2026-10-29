@@ -3,6 +3,8 @@
 // The same ways out of every insight page: run an analysis, review fixes (Fix work), present,
 // and export the failing-records list for manual cleaning. Reports is a tab of the Summary view.
 // None of them is primary: the page's one primary action is its "Do next" button in the InsightHeader.
+// A page with nothing to show (`hasData` false) keeps Run analysis and Review fixes, the ways to get data, and drops
+// Present and Export: there is nothing yet to put on a screen or take away.
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Button, ExportMenu, type ExportOption } from "@/design";
@@ -11,7 +13,7 @@ import { withScope } from "./useInsightScope";
 import { RunAnalysis } from "./RunAnalysis";
 
 /** `current`: the page shows the current state across objects, so the failing-records list is the current state's too. */
-export function InsightActions({ run, module, options = [], current = false }: { run?: string; module?: string; options?: ExportOption[]; current?: boolean }) {
+export function InsightActions({ run, module, options = [], current = false, hasData = true }: { run?: string; module?: string; options?: ExportOption[]; current?: boolean; hasData?: boolean }) {
   const pathname = usePathname() ?? "";
   const search = useSearchParams();
   const presentHref = `${pathname}?${new URLSearchParams({ ...Object.fromEntries(search?.entries() ?? []), present: "1" })}`;
@@ -26,8 +28,8 @@ export function InsightActions({ run, module, options = [], current = false }: {
     <div className="flex flex-wrap items-center gap-2">
       <RunAnalysis variant="secondary" />
       <Button variant="ghost" render={<Link href={withScope("/fix", { run })}>Review fixes</Link>} />
-      <Button variant="ghost" render={<Link href={presentHref}>Present</Link>} />
-      <ExportMenu options={list} />
+      {hasData && <Button variant="ghost" render={<Link href={presentHref}>Present</Link>} />}
+      {hasData && <ExportMenu options={list} />}
     </div>
   );
 }

@@ -399,7 +399,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         }} />
       ) : undefined}
     >
-      <DataTable
+      <DataTable phoneLayout="table"
         columns={columns}
         data={rows}
         getRowId={(o) => o.module}

@@ -454,7 +454,7 @@ export default function ObjectsPage() {
       summary={map || undefined}
       strip={stats || undefined}
       table={
-        <DataTable
+        <DataTable hideExport
           columns={columns}
           data={shownObjs}
           getRowId={(row) => row.module}

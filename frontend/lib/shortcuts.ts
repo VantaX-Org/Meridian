@@ -82,7 +82,7 @@ export const DESIGNER_SHORTCUTS: readonly Shortcut[] = [
 export const GLOBAL_SHORTCUTS: readonly Shortcut[] = [
   { group: "Global", keys: "⌘K", description: "Search or jump to a page" },
   { group: "Global", keys: "?", description: "Show keyboard shortcuts" },
-  { group: "Global", keys: "/", description: "Find a record by key or name" },
+  { group: "Global", keys: "/", description: "Search pages and records by key or name" },
 ];
 
 /**

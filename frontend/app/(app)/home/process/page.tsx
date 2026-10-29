@@ -208,7 +208,7 @@ export default function ProcessHomePage() {
         meta={readiness.latest
           ? `${scoredCount} of ${plural(rows.length, "process", "processes")} scored, ${noGo} no-go, from ${runScopeLabel(readiness.latest)} on ${system.name}`
           : `No finished analysis of ${system.name} to score readiness from`}>
-        <DataTable columns={columns(system.id, can("run_process_discovery"), readiness.latest?.id, phone)} data={ledger} getRowId={(r) => r.l1} height="auto" hideToolbar tableId="home-processes" />
+        <DataTable phoneLayout="table" columns={columns(system.id, can("run_process_discovery"), readiness.latest?.id, phone)} data={ledger} getRowId={(r) => r.l1} height="auto" hideToolbar tableId="home-processes" />
       </Card>
       <div className="m-stat-grid">
         <Stat label="Processes discovered" value={`${h.discovered} of ${rows.length}`} href={catalogueHref} />

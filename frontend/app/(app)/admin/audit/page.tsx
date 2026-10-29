@@ -152,7 +152,7 @@ function AuditTable({ params, empty, summary = false }: { params: AuditListParam
       errorProps={{ error: q.error, onRetry: () => void q.refetch() }}
       table={
         <div className="flex flex-col gap-2">
-          <DataTable columns={columns} data={entries} getRowId={(r) => r.id} renderExpanded={(e) => <RequestDetail e={e} />} />
+          <DataTable hideExport columns={columns} data={entries} getRowId={(r) => r.id} renderExpanded={(e) => <RequestDetail e={e} />} />
           {total > PAGE ? <Pager page={page} pageCount={Math.max(1, Math.ceil(total / PAGE))} pageSize={PAGE} total={total} onPageChange={setPage} /> : null}
         </div>
       }
