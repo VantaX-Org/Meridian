@@ -45,12 +45,60 @@ in the ledger; anything you select opens in the same inspector. There is no menu
 All in `design/v2/tokens.css`, scoped to `.m2-root`; light on the root, dark under `prefers-color-scheme: dark` and
 under `html[data-theme="dark"]`.
 
-- **Ground and ink**: `--m2-bg`, `--m2-sheet`, `--m2-line`, `--m2-line-2`, `--m2-rule`, `--m2-fg`, `--m2-ink-2`,
-  `--m2-ink-3`, `--m2-meta`. Light is white ground and white sheets with 1px rules; dark is neutral steps.
-- **One data hue**: `--m2-data` (and `--m2-on-data`) marks the selected cell, the current run and the next-step button,
-  the one strong control of a canvas. `--m2-info` for neutral notices.
-- **Status**: `--m2-crit`, `--m2-high`, `--m2-pass` with their `-bg` and `-ink`. A status hue always comes with a shape
-  (`VerdictMark`, `SeverityMark`) and a word, never alone.
+### Colour
+
+Colour is quiet by default and spent on meaning. Three layers, all in `tokens.css`:
+
+1. **Two ramps.** The neutral ramp `--m2-n-0` to `--m2-n-950` is one cool slate (OKLCH hue 240, chroma under 0.025);
+   the Meridian blue ramp `--m2-b-50` to `--m2-b-950` is hue 263, and step 700, `#1B3F8F`, is the brand blue of the
+   mark. Each step is darker than the one before (the test checks it). Nothing else in the interface is a neutral or a
+   blue of its own.
+2. **Semantic tokens** name a ramp step per theme, so dark is chosen, not inverted:
+   - **Ground and ink**: `--m2-bg` (light: a whisper of slate, `n-25`; dark: `n-950`), `--m2-sheet` (white; `n-925`),
+     `--m2-line`, `--m2-line-2`, `--m2-rule`, `--m2-fg`, `--m2-ink-2`, `--m2-ink-3`, `--m2-meta`, `--m2-hover`,
+     `--m2-active`, `--m2-track`, `--m2-seg`. The map and the top bar sit on the ground; the canvas and the inspector are
+     white sheets on it, divided by 1px rules. No shadow except for what floats.
+   - **One data hue**: `--m2-data` (`b-700`; `b-300` in dark) with `--m2-on-data` and the selection wash `--m2-data-bg`.
+     It marks the selected cell, the current run, links, the focus ring and the next-step button, the one strong control
+     of a canvas.
+   - **Semantic colours**, each a mark colour, a wash (`-bg`) and the text on the wash (`-ink`): `--m2-pass` (Go, Done,
+     Fixed), `--m2-warn` (At risk, High, a warning), `--m2-fail` (No-go, Failed, an error), `--m2-crit` (Critical) and
+     `--m2-info` (a neutral notice). Fail and critical share the stop red on purpose: two reds in one ledger read as a
+     difference that is not there; critical adds the square mark. `--m2-high` is kept as the name of the warn hue the
+     screens were written with. A status hue always comes with a shape (`VerdictMark`, `SeverityMark`) and a word,
+     never alone. A notice is a wash with its ink, never a coloured left border.
+3. **Chart colours** (used only by `design/v2/charts`): `--m2-chart-1` to `--m2-chart-8`, a categorical set in a fixed
+   order (blue, orange, teal, ochre, violet, green, magenta, cyan); `--m2-seq-1` to `--m2-seq-5`, the blue ramp as a
+   sequential scale; `--m2-sev-crit`, `-high`, `-med`, `-low`, the ordinal severity scale (stop red, warn amber, two
+   neutral steps, matching the marks); and the chrome `--m2-chart-grid`, `--m2-chart-axis`, `--m2-chart-text`,
+   `--m2-chart-line`, `--m2-chart-area`, `--m2-chart-quiet`.
+
+Every pair a screen draws is measured by `design/v2/__tests__/tokens.test.ts` in light and dark: text, data and status
+at 4.5:1 or better on every ground it sits on (WCAG 1.4.3), marks, the focus ring and chart fills at 3:1 (WCAG 1.4.11).
+The categorical palette is held to colour-vision checks: neighbours at least 8 apart (OKLab x100) under simulated
+protanopia and deuteranopia and 15 apart for full colour vision, the first three apart on every pair, each hue inside
+the lightness band of its theme. The measured values:
+
+| Pair | Light | Dark |
+|---|---|---|
+| ink on ground | `#151A1E` on `#F7F9FB`, 16.60 | `#E6EBEF` on `#0E1215`, 15.68 |
+| ink on sheet | `#151A1E` on `#FFFFFF`, 17.52 | `#E6EBEF` on `#151A1E`, 14.60 |
+| secondary ink on sheet | `#3E4A53`, 9.09 | `#A9B3BB`, 8.22 |
+| meta on sheet, on ground | `#59646C`, 6.06 and 5.74 | `#8C979F`, 5.88 and 6.31 |
+| data hue on sheet, on its wash | `#1B3F8F`, 9.75 and 9.00 | `#8EB1F5`, 8.14 and 7.47 |
+| text on the data hue | `#FFFFFF`, 9.75 | `#08152F`, 8.42 |
+| pass on sheet, ink on wash | `#1D6B3F`, 6.51; 8.28 | `#74C291`, 8.23; 9.45 |
+| warn on sheet, ink on wash | `#8F5200`, 6.22; 8.73 | `#DDA44A`, 7.91; 9.26 |
+| fail and critical on sheet, ink on wash | `#A3221A`, 7.50; 8.98 | `#F0877F`, 7.07; 8.74 |
+| info on sheet, ink on wash | `#2E5C8A`, 6.97; 9.18 | `#7FB3E8`, 7.94; 9.84 |
+| chart 1 to 8 on sheet | `#406FD1` 4.76, `#C65A1E` 4.30, `#0F8A78` 4.26, `#A87600` 4.00, `#7559C7` 5.24, `#4D7F1A` 4.81, `#1F7FAE` 4.46, `#B8487E` 4.92 | `#648FE7` 5.53, `#D06A30` 4.83, `#1E9C88` 5.15, `#B98A1C` 5.60, `#8C70DE` 4.58, `#5F962A` 4.91, `#2E94C8` 5.16, `#CC5A93` 4.55 |
+| severity medium, low on sheet | `#3E4A53` 9.09, `#6B767E` 4.65 | `#A9B3BB` 8.22, `#6B767E` 3.77 |
+| sequential faint end on sheet | `#8EB1F5`, 2.15 (2:1 floor for an ordinal end) | `#2A54B0`, 2.50 |
+
+Worst categorical neighbours: 9.6 under colour-vision simulation, 17.2 for full colour vision, in both themes.
+
+### Type, space, motion
+
 - **Type**: IBM Plex Sans for words and figures (`--m2-font`, tabular figures), IBM Plex Mono for SAP identifiers only
   (`--m2-mono`: check ids, `TABLE.FIELD`, record keys, run ids). Both self-hosted from `app/_fonts`. Scale
   12/13/14/16/20/24 (`--m2-fs-*`, `--m2-lh-*`). Sentence case everywhere.
@@ -58,8 +106,12 @@ under `html[data-theme="dark"]`.
   32px (`--m2-row-h-compact` 28px), the shadow `--m2-shadow` only for what floats (menus, the inspector on a phone).
 - **Motion**: `--m2-t-fast`, `--m2-t-med`, `--m2-ease`, declared in the last section of the tokens file only; none under
   `prefers-reduced-motion`.
-- **Tenant theme**: a tenant may set its accent, logo and name (Administration, Settings, Appearance);
-  `themeRootProps` puts them on the root, and the contrast of the accent is checked before it is saved.
+- **Tenant theme**: a tenant may set its accent, logo and name (Administration, Settings, Appearance). The form shows the
+  accent's contrast and, below 4.5:1, the nearest shade of it that passes, with a button to use it; the server refuses
+  to save a failing accent. `themeRootProps` (`lib/v2/theme.ts`) puts the accent on the root and clamps it whatever was
+  stored: on the light ground the first darker shade that reads at 4.5:1, on the dark ground the first lighter tint
+  that does. The selection wash and the text on the accent follow it, so a tenant's colour changes the hue of the
+  interface but never its legibility.
 
 ## 3. Components
 
@@ -125,8 +177,8 @@ table in `docs/guide/redirects.md`, asserted by `__tests__/legacy-redirects.test
 - `npm run lint:tokens` rejects raw hex, gradients, backdrop blur, ad hoc shadows, motion and duration literals and
   all-caps text outside the token files. `scripts/lint-tokens.allow.txt` holds no entries. Never add a line to it.
 - `npm run lint` runs `eslint . --max-warnings 0`; no `any`; no inline style in `app/`.
-- `npm run check:contrast` gates the colour pairs of `design/tokens.css`; the v2 pairs are checked by
-  `design/v2/__tests__/tokens.test.ts` in light and dark.
+- `npm run check:contrast` gates the colour pairs of `design/tokens.css`; the v2 pairs and the chart palette are
+  checked by `design/v2/__tests__/tokens.test.ts` in light and dark.
 - `e2e/v2-a11y.spec.ts` runs axe (WCAG 2.1 A and AA) on every page in English, German and Japanese, light and dark;
   `e2e/redirects.spec.ts` does the same for the pages outside the shell. Fix a failure in the component or the
   tokens, never with an axe rule exclusion.

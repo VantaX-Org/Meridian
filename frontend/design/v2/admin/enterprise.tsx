@@ -23,7 +23,7 @@ const ratioText = (r: number | null | undefined): string => (r == null ? "—" :
 const NAME_MAX = 40;
 
 /** The contrast of the chosen accents, before saving: the server checks the same pairs again and has the last word. */
-export function ContrastResult({ accent, accentDark }: { accent: string; accentDark: string }) {
+export function ContrastResult({ accent, accentDark, onUse }: { accent: string; accentDark: string; onUse?: (hex: string) => void }) {
   const c = checkAccent(accent);
   if (!c) return <p className="m2-prov" role="alert">{tr("Write the accent as # and six hexadecimal digits, for example the colour picker gives.")}</p>;
   const dark = accentDark.trim() ? (isHex(accentDark) ? accentDark.trim().toUpperCase() : null) : null;
@@ -45,7 +45,20 @@ export function ContrastResult({ accent, accentDark }: { accent: string; accentD
           </>
         ) : null}
       </dl>
-      {c.light >= MIN_CONTRAST ? null : <p className="m2-prov" role="alert">{tr("Below 4.5:1 on the light ground: links and the primary button would be hard to read. Choose a darker accent.")}</p>}
+      {c.light >= MIN_CONTRAST ? null : (
+        <>
+          <p className="m2-prov" role="alert">{tr("Below 4.5:1 on the light ground: links and the primary button would be hard to read. Choose a darker accent.")}</p>
+          <p className="m2-prov m2-shade" data-testid="nearest-shade">
+            <span className="m2-swatch" style={{ "--m2-swatch": c.lightShade } as CSSProperties} aria-hidden="true" />
+            {tr("The nearest shade of it that passes is {hex}.", { hex: c.lightShade })}
+            {onUse ? (
+              <button type="button" className="m2-btn m2-sm" onClick={() => onUse(c.lightShade)}>
+                {tr("Use this shade")}
+              </button>
+            ) : null}
+          </p>
+        </>
+      )}
     </div>
   );
 }
@@ -158,7 +171,7 @@ function AppearanceForm({ initial, write }: { initial: ThemeSettings; write: boo
             <input type="text" value={accentDark} disabled={!write} onChange={(e) => setAccentDark(e.target.value.trim())} spellCheck={false} />
           </Fld>
           <div className="m2-wide">
-            <ContrastResult accent={accent} accentDark={accentDark} />
+            <ContrastResult accent={accent} accentDark={accentDark} onUse={write ? (hex) => (setAccent(hex), setPicker(hex.toLowerCase())) : undefined} />
           </div>
         </div>
       ) : null}

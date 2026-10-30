@@ -49,9 +49,9 @@
 .m2-root .m2-danger p { margin: var(--m2-s1) 0 var(--m2-s3); font-size: var(--m2-fs-13); }
 .m2-root .m2-btn.m2-crit { border-color: var(--m2-crit); color: var(--m2-crit-ink) !important; }
 
-.m2-root .m2-anote { border-left: 2px solid var(--m2-line-2); padding: var(--m2-s1) var(--m2-s3); margin: var(--m2-s3) 0; font-size: var(--m2-fs-13); color: var(--m2-ink-2); max-width: 86ch; }
-.m2-root .m2-anote[data-tone="warn"] { border-left-color: var(--m2-high); }
-.m2-root .m2-anote[data-tone="bad"] { border-left-color: var(--m2-crit); }
+.m2-root .m2-anote { background: var(--m2-hover); border-radius: var(--m2-r2); padding: var(--m2-s2) var(--m2-s3); margin: var(--m2-s3) 0; font-size: var(--m2-fs-13); color: var(--m2-ink-2); max-width: 86ch; }
+.m2-root .m2-anote[data-tone="warn"] { background: var(--m2-warn-bg); color: var(--m2-warn-ink); }
+.m2-root .m2-anote[data-tone="bad"] { background: var(--m2-fail-bg); color: var(--m2-fail-ink); }
 
 .m2-root .m2-tags { display: flex; flex-wrap: wrap; gap: var(--m2-s1); margin: 0; padding: 0; list-style: none; }
 .m2-root .m2-tags li { border: 1px solid var(--m2-line-2); border-radius: var(--m2-r1); padding: 0 var(--m2-s2); font-size: var(--m2-fs-12); line-height: 20px; background: var(--m2-sheet); }

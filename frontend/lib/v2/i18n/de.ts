@@ -4515,4 +4515,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The reconciliation could not be read for this run.": "Der Abgleich konnte für diesen Lauf nicht gelesen werden.",
   "Download the reconciliation workbook": "Abgleichsarbeitsmappe herunterladen",
   "The workbook holds the ten rules with the most failing records in this run, with empty SE16 count and match columns for your team.": "Die Arbeitsmappe enthält die zehn Regeln mit den meisten fehlerhaften Sätzen dieses Laufs, mit leeren Spalten für die SE16-Anzahl und die Übereinstimmung für Ihr Team.",
+  "The nearest shade of it that passes is {hex}.": "Der nächste Farbton davon, der besteht, ist {hex}.",
+  "Use this shade": "Diesen Farbton verwenden",
 };

@@ -23,12 +23,13 @@
 .m2-root .m2-auth-pw .m2-auth-show { position: absolute; right: var(--m2-s1); top: 50%; transform: translateY(-50%); height: 28px; padding: 0 var(--m2-s2); border: 0; background: none; color: var(--m2-ink-2); font-size: var(--m2-fs-12); border-radius: var(--m2-r1); cursor: pointer; }
 .m2-root .m2-auth-pw .m2-auth-show:hover { background: var(--m2-hover); }
 .m2-root .m2-auth-pw .m2-auth-show:focus-visible { outline: var(--m2-focus-w) solid var(--m2-focus); outline-offset: 1px; }
-.m2-root .m2-auth-note { border: 1px solid var(--m2-line-2); border-left-width: 3px; border-radius: var(--m2-r2); padding: var(--m2-s2) var(--m2-s3); font-size: var(--m2-fs-13); line-height: var(--m2-lh-13); color: var(--m2-ink-2); display: grid; gap: var(--m2-s1); }
+.m2-root .m2-auth-note { border: 1px solid var(--m2-line); background: var(--m2-hover); border-radius: var(--m2-r2); padding: var(--m2-s2) var(--m2-s3); font-size: var(--m2-fs-13); line-height: var(--m2-lh-13); color: var(--m2-ink-2); display: grid; gap: var(--m2-s1); }
 .m2-root .m2-auth-note:focus { outline: none; }
 .m2-root .m2-auth-note strong { color: var(--m2-fg); font-weight: 600; }
-.m2-root .m2-auth-note[data-tone="danger"] { border-left-color: var(--m2-crit); }
-.m2-root .m2-auth-note[data-tone="warning"] { border-left-color: var(--m2-high); }
-.m2-root .m2-auth-note[data-tone="info"] { border-left-color: var(--m2-info); }
+.m2-root .m2-auth-note[data-tone="danger"] { background: var(--m2-fail-bg); border-color: transparent; color: var(--m2-fail-ink); }
+.m2-root .m2-auth-note[data-tone="warning"] { background: var(--m2-warn-bg); border-color: transparent; color: var(--m2-warn-ink); }
+.m2-root .m2-auth-note[data-tone="info"] { background: var(--m2-info-bg); border-color: transparent; color: var(--m2-info-ink); }
+.m2-root .m2-auth-note[data-tone] strong { color: inherit; }
 .m2-root .m2-auth-note a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .m2-root .m2-auth-facts { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: var(--m2-s1) var(--m2-s3); margin: 0; font-size: var(--m2-fs-13); line-height: var(--m2-lh-13); }
 .m2-root .m2-auth-facts dt { color: var(--m2-meta); }

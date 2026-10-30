@@ -4514,6 +4514,8 @@ export const en = {
   "The reconciliation could not be read for this run.": "The reconciliation could not be read for this run.",
   "Download the reconciliation workbook": "Download the reconciliation workbook",
   "The workbook holds the ten rules with the most failing records in this run, with empty SE16 count and match columns for your team.": "The workbook holds the ten rules with the most failing records in this run, with empty SE16 count and match columns for your team.",
+  "The nearest shade of it that passes is {hex}.": "The nearest shade of it that passes is {hex}.",
+  "Use this shade": "Use this shade",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

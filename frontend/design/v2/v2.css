@@ -364,7 +364,7 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 /* Notices */
 .m2-toasts { position: fixed; z-index: 120; left: 50%; bottom: var(--m2-s6); transform: translateX(-50%); display: flex; flex-direction: column; gap: var(--m2-s2); align-items: center; max-width: calc(100vw - 32px); pointer-events: none; }
 .m2-toast { pointer-events: auto; display: flex; align-items: center; gap: var(--m2-s2); background: var(--m2-inverse); color: var(--m2-on-inverse); border-radius: var(--m2-r2); box-shadow: var(--m2-shadow); padding: var(--m2-s2) var(--m2-s2) var(--m2-s2) var(--m2-s3); font-size: var(--m2-fs-13); min-height: 36px; }
-.m2-toast[data-tone="error"] { border-left: 4px solid var(--m2-crit); }
+.m2-toast[data-tone="error"]::before { content: ""; width: 8px; height: 8px; flex: none; border-radius: 1px; background: var(--m2-on-inverse-crit); }
 .m2-toast .m2-dot::before { background: var(--m2-on-inverse); }
 .m2-toast-b { height: 28px; padding: 0 var(--m2-s3); border: 1px solid var(--m2-ink-3); background: transparent; border-radius: var(--m2-r1); color: var(--m2-on-inverse); font-weight: 500; }
 .m2-toast-b:hover { border-color: var(--m2-on-inverse); }

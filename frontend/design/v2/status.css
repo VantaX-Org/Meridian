@@ -12,8 +12,8 @@
 .m2-root .m2-stat-sum { font-size: var(--m2-fs-16); line-height: var(--m2-lh-16); margin: var(--m2-s3) 0 0; }
 .m2-root .m2-stat-sum strong { font-weight: 600; }
 .m2-root .m2-stat-tbl td.m2-wrap { white-space: normal; min-width: 220px; }
-.m2-root .m2-maint { margin-top: var(--m2-s6); border-left: 2px solid var(--m2-info); padding: var(--m2-s2) var(--m2-s3); }
-.m2-root .m2-maint p { margin: var(--m2-s1) 0 0; font-size: var(--m2-fs-13); color: var(--m2-ink-2); }
+.m2-root .m2-maint { margin-top: var(--m2-s6); background: var(--m2-info-bg); color: var(--m2-info-ink); border-radius: var(--m2-r2); padding: var(--m2-s3) var(--m2-s4); }
+.m2-root .m2-maint p { margin: var(--m2-s1) 0 0; font-size: var(--m2-fs-13); color: inherit; }
 
 .m2-root .m2-up { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--m2-s1) var(--m2-s3); align-items: center; margin-top: var(--m2-s2); max-width: 720px; }
 .m2-root .m2-upbar { display: grid; grid-template-columns: repeat(30, minmax(0, 1fr)); gap: var(--m2-s1); height: 28px; }
@@ -36,6 +36,7 @@
 .m2-root .m2-contrast { margin: var(--m2-s2) 0 0; display: grid; grid-template-columns: max-content max-content; gap: var(--m2-s1) var(--m2-s4); font-size: var(--m2-fs-13); }
 .m2-root .m2-contrast dt { color: var(--m2-meta); }
 .m2-root .m2-contrast dd { margin: 0; font-variant-numeric: tabular-nums; }
+.m2-root .m2-shade { display: flex; flex-wrap: wrap; align-items: center; gap: var(--m2-s2); }
 .m2-root .m2-preview { display: flex; align-items: center; gap: var(--m2-s3); border: 1px solid var(--m2-line); border-radius: var(--m2-r2); padding: var(--m2-s3); max-width: 520px; flex-wrap: wrap; }
 .m2-root .m2-preview .m2-logo { height: 32px; }
 .m2-root .m2-preview-bn { font-weight: 600; font-size: var(--m2-fs-16); overflow-wrap: anywhere; }

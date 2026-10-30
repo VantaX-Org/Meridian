@@ -4515,4 +4515,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "The reconciliation could not be read for this run.": "この実行の照合を読み込めませんでした。",
   "Download the reconciliation workbook": "照合ワークブックをダウンロード",
   "The workbook holds the ten rules with the most failing records in this run, with empty SE16 count and match columns for your team.": "ワークブックには、この実行でエラー件数の多い上位 10 ルールと、チームが記入する SE16 件数と一致の空欄列が含まれます。",
+  "The nearest shade of it that passes is {hex}.": "基準を満たす最も近い色調は {hex} です。",
+  "Use this shade": "この色調を使う",
 };

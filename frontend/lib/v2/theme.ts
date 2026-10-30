@@ -7,16 +7,17 @@ import { t as tr } from "@/lib/v2/i18n";
 
 /**
  * Tenant theming: the accent, the logo and the product name a tenant sets in Admin, Settings, Appearance. The accent
- * replaces the data hue (--m2-data: selected cell, current run, the next-step button, links) and must read at 4.5:1 or
- * better on the light ground; on the dark ground Meridian uses the lightest-needed tint of it that reads at 4.5:1, so
- * one accent works in both themes. The grounds' luminances are those of --m2-sheet in design/v2/tokens.css (white, and
+ * replaces the data hue (--m2-data: selected cell, current run, the next-step button, links, the focus ring) and must
+ * read at 4.5:1 or better on the light ground; on the dark ground Meridian uses the lightest-needed tint of it that
+ * reads at 4.5:1, so one accent works in both themes. An accent stored before the check, or one the server measured on
+ * another ground, is never dropped and never drawn below AA: the shell clamps it to the first shade that passes. The grounds' luminances are those of --m2-sheet in design/v2/tokens.css (white, and
  * the dark sheet); tokens.test.ts holds them to the file, so no colour literal lives here.
  */
 
 /** Relative luminance of --m2-sheet in light (white). */
 export const LIGHT_GROUND_LUMINANCE = 1;
-/** Relative luminance of --m2-sheet in dark. */
-export const DARK_GROUND_LUMINANCE = 0.009869;
+/** Relative luminance of --m2-sheet in dark (--m2-n-925). */
+export const DARK_GROUND_LUMINANCE = 0.00992;
 /** WCAG 2.1 AA for text and for the accent as a link colour. */
 export const MIN_CONTRAST = 4.5;
 
@@ -53,6 +54,21 @@ export function towardWhite(hex: string, amount: number): string {
   return `#${hex2(r + (255 - r) * amount)}${hex2(g + (255 - g) * amount)}${hex2(b + (255 - b) * amount)}`;
 }
 
+/** The colour `amount` (0 to 1) of the way from `hex` to black. */
+export function towardBlack(hex: string, amount: number): string {
+  const [r, g, b] = channels(hex);
+  return `#${hex2(r * (1 - amount))}${hex2(g * (1 - amount))}${hex2(b * (1 - amount))}`;
+}
+
+/** The accent as the light theme draws it: as chosen when it reads at 4.5:1 on the light ground, else the first shade of it, in steps of 2%, that does. */
+export function lightShade(hex: string): string {
+  for (let i = 0; i <= 50; i++) {
+    const c = towardBlack(hex, i / 50);
+    if (ratio(luminance(c), LIGHT_GROUND_LUMINANCE) >= MIN_CONTRAST) return i === 0 ? hex.trim() : c.toUpperCase();
+  }
+  return towardBlack(hex, 1);
+}
+
 /** The first tint of the accent, in steps of 2%, that reads at 4.5:1 on the dark ground. */
 export function darkTint(hex: string): string {
   for (let i = 0; i <= 50; i++) {
@@ -70,6 +86,8 @@ export interface AccentCheck {
   /** The tint used in the dark theme, and its ratio there. */
   darkTint: string;
   dark: number;
+  /** The shade the light theme would draw: the accent itself when it passes, else the nearest darker shade that does. */
+  lightShade: string;
   ok: boolean;
 }
 
@@ -80,7 +98,7 @@ export function checkAccent(hex: string): AccentCheck | null {
   const light = ratio(l, LIGHT_GROUND_LUMINANCE);
   const tint = darkTint(hex);
   const dark = ratio(luminance(tint), DARK_GROUND_LUMINANCE);
-  return { light, darkAsChosen: ratio(l, DARK_GROUND_LUMINANCE), darkTint: tint.toUpperCase(), dark, ok: light >= MIN_CONTRAST && dark >= MIN_CONTRAST };
+  return { light, darkAsChosen: ratio(l, DARK_GROUND_LUMINANCE), darkTint: tint.toUpperCase(), dark, lightShade: lightShade(hex).toUpperCase(), ok: light >= MIN_CONTRAST && dark >= MIN_CONTRAST };
 }
 
 /**
@@ -94,14 +112,16 @@ export function darkAccentFor(accentDark: string): string {
 
 /**
  * The attributes the shell root takes from the public theme: the accent's two custom properties and the switch that
- * reads them. Only a customised theme repaints, and only with an accent that reads at 4.5:1 on the light ground.
+ * reads them. Only a customised theme repaints. The light accent is clamped to 4.5:1 on the light ground and the dark
+ * one to 4.5:1 on the dark ground, so a tenant's colour can change the hue of the interface but never its legibility.
  */
 export function themeRootProps(theme: PublicTheme | null | undefined): { style?: CSSProperties; "data-tenant-accent"?: string } {
-  if (!theme?.customised || !isHex(theme.accent) || ratio(luminance(theme.accent), LIGHT_GROUND_LUMINANCE) < MIN_CONTRAST) return {};
+  if (!theme?.customised || !isHex(theme.accent)) return {};
+  const light = lightShade(theme.accent);
   const dark = darkAccentFor(theme.accent_dark) || darkTint(theme.accent).toUpperCase();
   return {
     "data-tenant-accent": "",
-    style: { "--m2-tenant-accent": theme.accent, "--m2-tenant-accent-dark": dark } as CSSProperties,
+    style: { "--m2-tenant-accent": light, "--m2-tenant-accent-dark": dark } as CSSProperties,
   };
 }
 
@@ -177,7 +197,8 @@ export function useDocumentAccent(theme: PublicTheme | null): void {
     const root = document.documentElement;
     const before = root.style.getPropertyValue("--m-accent");
     const dark = root.dataset.theme === "dark" || (root.dataset.theme !== "light" && window.matchMedia?.("(prefers-color-scheme: dark)").matches);
-    root.style.setProperty("--m-accent", dark ? String((props.style as Record<string, string>)["--m2-tenant-accent-dark"]) : theme.accent);
+    const vars = props.style as Record<string, string>;
+    root.style.setProperty("--m-accent", String(dark ? vars["--m2-tenant-accent-dark"] : vars["--m2-tenant-accent"]));
     return () => {
       if (before) root.style.setProperty("--m-accent", before);
       else root.style.removeProperty("--m-accent");
