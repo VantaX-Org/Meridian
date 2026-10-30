@@ -13,6 +13,7 @@ from starlette.background import BackgroundTask
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.server_error import server_failure
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _rls
 from api.services.report_pdf import (
@@ -323,8 +324,7 @@ async def _pdf(tenant: Tenant, kind: str, filename: str, vid: Optional[uuid.UUID
                                       str(vid) if vid else None, str(vid1) if vid1 else None,
                                       module, matnr, runs)
     except Exception:
-        logger.exception("PDF report %s failed", kind)
-        raise HTTPException(status_code=500, detail="Failed to generate PDF report")
+        raise server_failure("The PDF report could not be generated.", log=logger, what=f"pdf {kind}") from None
     if pdf is None:
         raise HTTPException(status_code=404, detail=_NOT_FOUND[kind])
     return Response(content=pdf, media_type="application/pdf",
@@ -503,8 +503,7 @@ async def workbook_xlsx(version_id: uuid.UUID, request: Request, module: Optiona
         out = await asyncio.to_thread(_workbook_sync, str(tenant.id), str(version_id),
                                       str(compare) if compare else None, module)
     except Exception:
-        logger.exception("Workbook failed")
-        raise HTTPException(status_code=500, detail="Failed to generate workbook")
+        raise server_failure("The workbook could not be generated.", log=logger, what="workbook") from None
     if out is None:
         raise HTTPException(status_code=404, detail="Run not found.")
     await _audit_export(request, tenant, "workbook", version_id, module)

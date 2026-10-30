@@ -7,6 +7,7 @@ import logging
 import secrets
 import uuid
 
+from fastapi import HTTPException
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
@@ -51,3 +52,14 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
         status_code=500,
         content={"detail": f"Something went wrong on the server. Reference {code}.", "reference": code},
     )
+
+
+def server_failure(message: str, *, log: logging.Logger | None = None, what: str = "request") -> HTTPException:
+    """A 500 for a handled failure: log the active traceback under a short code, answer a sentence and the code.
+
+    Call it inside ``except``: ``raise server_failure("The PDF could not be built.", log=logger, what="pdf") from None``.
+    The caller reads ``"<message> Reference <code>."``; the traceback stays in the log under the same code.
+    """
+    code = secrets.token_hex(4)
+    (log or logger).exception("Handled server error ref=%s (%s)", code, what)
+    return HTTPException(status_code=500, detail=f"{message} Reference {code}.")

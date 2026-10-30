@@ -6,6 +6,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 
+from api.server_error import server_failure
 from api.deps import Tenant, get_tenant
 from api.services import user_guide
 
@@ -20,7 +21,6 @@ async def user_guide_pdf(tenant: Tenant = Depends(get_tenant)) -> Response:  # n
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="The user guide is not installed.") from None
     except Exception:
-        logger.exception("User guide PDF failed")
-        raise HTTPException(status_code=500, detail="Failed to generate the user guide") from None
+        raise server_failure("The user guide could not be generated.", log=logger, what="user_guide") from None
     return Response(content=pdf, media_type="application/pdf",
                     headers={"Content-Disposition": 'attachment; filename="meridian_user_guide.pdf"'})
