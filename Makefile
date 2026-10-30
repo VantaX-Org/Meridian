@@ -10,7 +10,7 @@ coverage:
 	$(PYTEST) tests/ -q $(COV)
 	python tests/coverage_floor.py coverage.xml
 
-# One shard, as CI splits the suite: make coverage-shard SHARD=1/6
+# One shard, as CI splits the suite: make coverage-shard SHARD=1/8
 coverage-shard:
 	PYTEST_SHARD=$(SHARD) $(PYTEST) tests/ -q $(COV)
 	python tests/coverage_floor.py coverage.xml

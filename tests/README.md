@@ -1,7 +1,7 @@
 # Tests
 
 `pytest tests/` runs the suite (conftest.py sets up the development environment; set `MERIDIAN_TEST_DB_URL`
-for the Postgres tests). CI splits it into six shards by test id (`PYTEST_SHARD=i/6`).
+for the Postgres tests). CI splits it into eight shards by test id (`PYTEST_SHARD=i/8`).
 
 ## Coverage
 
@@ -9,7 +9,7 @@ Line coverage of `api`, `workers`, `checks` and `sap` (configuration in `.covera
 
 ```bash
 make coverage                  # whole suite: coverage.xml + terminal report, then the floor
-make coverage-shard SHARD=1/6  # one CI shard
+make coverage-shard SHARD=1/8  # one CI shard
 python tests/coverage_floor.py coverage.xml [--floor N]
 ```
 
@@ -21,5 +21,5 @@ missed), minus 2 points. One shard runs a sixth of the tests, so the combined si
 least this; the floor is deliberately set from the single shard. Raise the floor when coverage rises; never
 lower it to make a build pass.
 
-The CI job that combines the six shards, publishes `coverage.xml` and enforces the floor is `coverage` in
+The CI job that combines the eight shards, publishes `coverage.xml` and enforces the floor is `coverage` in
 `.github/workflows/unit-tests.yml`.
