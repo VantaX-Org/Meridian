@@ -16,7 +16,7 @@ const OUT = path.join(GUIDE, "meridian-guide.pdf");
 const FONTS = path.join(path.dirname(GUIDE), "..", "app", "_fonts");
 
 /** The product's own faces (IBM Plex, app/_fonts), embedded so the PDF reads like the screens on any machine. */
-function fontFaces() {
+export function fontFaces() {
   const face = (family, file, weight) =>
     `@font-face { font-family: "${family}"; font-weight: ${weight}; src: url(data:font/woff2;base64,${readFileSync(path.join(FONTS, file)).toString("base64")}) format("woff2"); }`;
   return [
@@ -26,7 +26,7 @@ function fontFaces() {
   ].join("\n  ");
 }
 
-const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+export const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 /** Bold, code and links of one line of markdown; a link keeps its text and drops its target. */
 export function inline(text) {
@@ -36,14 +36,40 @@ export function inline(text) {
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1");
 }
 
-/** The subset of markdown the guide uses: headings, paragraphs, bullet and numbered lists. */
-export function markdownToHtml(md, id) {
+/**
+ * The subset of markdown the guide uses: headings, paragraphs, bullet and numbered lists; and for the administrator
+ * training guide also fenced code, pipe tables and images (`image(src, alt)` turns an image path into HTML).
+ */
+export function markdownToHtml(md, id, image = null) {
   const out = [];
-  const blocks = md.replace(/\r/g, "").split(/\n\s*\n/);
+  // Fenced code first, so blank lines inside a fence stay inside it.
+  const fences = [];
+  const text = md.replace(/\r/g, "").replace(/^```[^\n]*\n([\s\S]*?)^```\s*$/gm, (_, code) => {
+    fences.push(code.replace(/\n$/, ""));
+    return `\u0000FENCE${fences.length - 1}\u0000`;
+  });
+  const blocks = text.split(/\n\s*\n/);
   for (const block of blocks) {
     const lines = block.split("\n").filter((l) => l.trim());
     if (!lines.length) continue;
-    const h = /^(#{1,3}) (.*)$/.exec(lines[0]);
+    const fence = /^\u0000FENCE(\d+)\u0000$/.exec(lines[0].trim());
+    if (fence && lines.length === 1) {
+      out.push(`<pre><code>${esc(fences[Number(fence[1])])}</code></pre>`);
+      continue;
+    }
+    const img = /^!\[([^\]]*)\]\(([^)]+)\)$/.exec(lines[0].trim());
+    if (img && lines.length === 1 && image) {
+      out.push(image(img[2], img[1]));
+      continue;
+    }
+    if (lines.length >= 2 && lines.every((l) => /^\s*\|.*\|\s*$/.test(l)) && /^\s*\|[\s:|-]+\|\s*$/.test(lines[1])) {
+      const cells = (l) => l.trim().slice(1, -1).split("|").map((c) => inline(c.trim()));
+      const head = cells(lines[0]).map((c) => `<th>${c}</th>`).join("");
+      const rows = lines.slice(2).map((l) => `<tr>${cells(l).map((c) => `<td>${c}</td>`).join("")}</tr>`).join("");
+      out.push(`<table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>`);
+      continue;
+    }
+    const h = /^(#{1,4}) (.*)$/.exec(lines[0]);
     if (h && lines.length === 1) {
       const level = h[1].length;
       out.push(level === 1 ? `<h1 id="${id}">${inline(h[2])}</h1>` : `<h${level}>${inline(h[2])}</h${level}>`);
@@ -55,6 +81,30 @@ export function markdownToHtml(md, id) {
     }
     if (lines.every((l) => /^\s*\d+\. /.test(l))) {
       out.push(`<ol>${lines.map((l) => `<li>${inline(l.replace(/^\s*\d+\. /, ""))}</li>`).join("")}</ol>`);
+      continue;
+    }
+    if (image && /^\s*\d+\. /.test(lines[0])) {
+      // A numbered list whose items wrap onto indented lines, possibly with a nested bullet list.
+      const items = [];
+      for (const l of lines) {
+        if (/^\d+\. /.test(l)) items.push({ text: l.replace(/^\d+\. /, ""), sub: [] });
+        else if (/^\s+[-*] /.test(l) && items.length) items[items.length - 1].sub.push(l.trim().replace(/^[-*] /, ""));
+        else if (items.length) {
+          const it = items[items.length - 1];
+          if (it.sub.length) it.sub[it.sub.length - 1] += ` ${l.trim()}`;
+          else it.text += ` ${l.trim()}`;
+        }
+      }
+      out.push(`<ol>${items.map((it) => `<li>${inline(it.text)}${it.sub.length ? `<ul>${it.sub.map((x) => `<li>${inline(x)}</li>`).join("")}</ul>` : ""}</li>`).join("")}</ol>`);
+      continue;
+    }
+    if (image && /^\s*[-*] /.test(lines[0])) {
+      const items = [];
+      for (const l of lines) {
+        if (/^[-*] /.test(l)) items.push(l.replace(/^[-*] /, ""));
+        else if (items.length) items[items.length - 1] += ` ${l.trim()}`;
+      }
+      out.push(`<ul>${items.map((x) => `<li>${inline(x)}</li>`).join("")}</ul>`);
       continue;
     }
     out.push(`<p>${inline(lines.join(" "))}</p>`);

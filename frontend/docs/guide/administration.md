@@ -69,6 +69,10 @@ These are set through the API in this version; there is no screen for them yet:
 - **Trigger sync** or **analyse** (SAP Basis, analyst, programme lead): runs and jobs.
 - Anyone who holds view reads the licence, settings, mappings, reference data, alerts and notifications, read only.
 
+## Administrator training guide
+
+The course for the administrator and the SAP Basis colleague (install and first start, licence, users and access, connecting SAP, extraction and schedules, scoring and money, write-back, notifications, operations and troubleshooting) is the printable administrator training guide, `docs/admin-training/meridian-administrator-training.pdf` in the Meridian repository. Ask your Meridian contact for it if you do not have the repository.
+
 ## Keyboard
 
 - In every section table, `j` and `k` move and `Enter` opens the row in the inspector.
