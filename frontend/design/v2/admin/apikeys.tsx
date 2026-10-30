@@ -7,7 +7,7 @@ import { useOpenItem } from "@/lib/v2/hooks";
 import { useApiKeys } from "@/lib/v2/admin-queries";
 import { type GridColumn } from "../Grid";
 import { EmptyFrame, ErrorFrame, Mono } from "../parts";
-import { AdminPage, Block, NeedsPermission, StatusWord, since, useCan } from "./kit";
+import { AdminPage, Block, NeedsPermission, StatusWord, useCan, Since } from "./kit";
 import { ToolGrid } from "../GridTools";
 import { t } from "@/lib/v2/i18n";
 
@@ -24,7 +24,7 @@ const COLUMNS: GridColumn<ApiKey>[] = [
   { id: "prefix", get header() { return t("Key"); }, width: 130, cell: (k) => <Mono>{`${k.key_prefix}…`}</Mono> },
   { id: "roles", get header() { return t("Roles"); }, width: 300, cell: (k) => keyRoles(k) },
   { id: "status", get header() { return t("Status"); }, width: 120, cell: (k) => <StatusWord tone={TONE[k.status]}>{WORD[k.status]}</StatusWord> },
-  { id: "used", get header() { return t("Last used"); }, width: 130, cell: (k) => since(k.last_used_at, t("Never used")) },
+  { id: "used", get header() { return t("Last used"); }, width: 130, cell: (k) => <Since at={k.last_used_at} never={t("Never used")} /> },
   { id: "expires", get header() { return t("Expires"); }, width: 130, cell: (k) => (k.expires_at ? formatDate(k.expires_at) : t("Never")) },
   { id: "by", get header() { return t("Created by"); }, width: 160, defaultHidden: true, cell: (k) => k.created_by_name ?? "—" },
 ];

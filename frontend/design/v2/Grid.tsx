@@ -287,6 +287,8 @@ export function Grid<T>(props: GridProps<T>) {
 
   const showRows = !error && !loading && rows.length > 0;
   const scrollH = showRows ? Math.min(height, HEAD_H + rows.length * rowH + 2) : undefined;
+  // While rows load, the skeleton fills the frame it will have, so the page under the grid does not move when they arrive.
+  const skelRows = Math.max(1, Math.floor((height - HEAD_H - 2) / rowH));
   const items = virt.getVirtualItems();
   const activeId = active >= 0 && active < rows.length ? `${gid}-r${active}` : undefined;
 
@@ -360,8 +362,8 @@ export function Grid<T>(props: GridProps<T>) {
         {error ? (
           <div className="m2-gstate">{error}</div>
         ) : loading ? (
-          <div role="rowgroup" className="m2-gbody" aria-busy="true" style={{ width: "100%", minWidth: total, height: rowH * 8 }}>
-            {Array.from({ length: 8 }, (_, i) => (
+          <div role="rowgroup" className="m2-gbody" aria-busy="true" style={{ width: "100%", minWidth: total, height: rowH * skelRows }}>
+            {Array.from({ length: skelRows }, (_, i) => (
               <div key={i} role="row" className="m2-grow m2-grow-skel" style={{ gridTemplateColumns: template, height: rowH, transform: `translateY(${i * rowH}px)` }}>
                 {leaf.map((c) => (
                   <div key={c.id} role="gridcell" className="m2-gcell">

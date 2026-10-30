@@ -38,7 +38,7 @@ import { PAGE, useGroupRows, useWorkGroups, useWorkRows, useWorkSummary, useWork
 import { Grid, type GridColumn, type GridHandle } from "../Grid";
 import { IconChevron, IconClose, SeverityMark } from "../marks";
 import { MenuButton, type MenuEntry } from "../Menu";
-import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, PageTitle, V2Link } from "../parts";
+import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { usePhone } from "@/lib/v2/hooks";
 import { useToast } from "../Toast";
 import "../approvals.css";
@@ -685,6 +685,10 @@ export function WorkCanvas() {
         <p className="m2-finding" data-testid="work-sentence">
           {text}
         </p>
+      ) : summaryQ.isPending ? (
+        <p className="m2-finding" aria-busy="true">
+          <Skeleton width={420} height={16} />
+        </p>
       ) : null}
       <FixOrderHint module={state.module} />
       {state.asOf ? (
@@ -707,6 +711,10 @@ export function WorkCanvas() {
           <span className="m2-meta m2-only-wide">
             {tr("for")}{" "}<Mono>{topGroup.check_id}</Mono>{tr(", the rule with the most at risk")}
           </span>
+        </div>
+      ) : session.persona === "steward" && can.apply && groupsQ.isPending ? (
+        <div className="m2-cta" aria-busy="true">
+          <Skeleton width={260} height={36} />
         </div>
       ) : null}
       <div className="m2-ledger-head">

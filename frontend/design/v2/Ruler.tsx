@@ -101,7 +101,10 @@ export function Ruler(props: RulerProps) {
                 .map((a) => (
                   <line key={`b${a.value}`} className="m2-ax2" x1={g.plot.left - 8} x2={g.plot.left - 1} y1={a.y} y2={a.y} />
                 ))}
-              {g.axis.map((a) => (
+              {/* A scale number that would sit on a band label (100 by 90 go, 50 by 60 critical) keeps its tick, not its text. */}
+              {g.axis
+                .filter((a) => a.kind === "band" || !g.axis.some((b) => b.kind === "band" && Math.abs(b.y - a.y) < 16))
+                .map((a) => (
                 <text key={`t${a.value}`} className="m2-rt" x={g.plot.left - 14} y={a.y + 4} textAnchor="end">
                   {a.label}
                 </text>

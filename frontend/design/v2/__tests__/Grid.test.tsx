@@ -206,9 +206,9 @@ describe("<Grid> states", () => {
     expect(screen.queryByText("R000001")).toBeNull();
   });
 
-  it("shows flat placeholder rows while loading, at the row pitch", () => {
-    render(<Grid id="load" ariaLabel="Load" columns={COLUMNS} rows={[]} rowId={(r) => r.id} loading />);
-    expect(document.querySelectorAll(".m2-grow-skel")).toHaveLength(8);
+  it("shows flat placeholder rows while loading, at the row pitch, filling the frame the rows will have", () => {
+    render(<Grid id="load" ariaLabel="Load" columns={COLUMNS} rows={[]} rowId={(r) => r.id} loading height={290} />);
+    expect(document.querySelectorAll(".m2-grow-skel")).toHaveLength(8); // (290 - 32 header - 2 rules) / 32 per row
     expect(document.querySelector(".m2-gbody")).toHaveAttribute("aria-busy", "true");
   });
 

@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode 
 import type { UseQueryResult } from "@tanstack/react-query";
 import { writeClipboard } from "@/lib/browser";
 import { relTime } from "@/lib/v2/format";
+import { formatDate } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/error";
 import { useV2Session } from "@/lib/v2/hooks";
 import { VerdictMark } from "../marks";
@@ -209,6 +210,17 @@ export function useDone(): (label: string, undo?: () => Promise<unknown>) => voi
 export const copyText = (text: string): Promise<boolean> => writeClipboard(text);
 
 export const since = (iso: string | null | undefined, never = t("Never")): string => (iso ? relTime(iso) : never);
+
+/** "11 days ago", with the date and time on hover and for assistive technology: relative where it helps, exact on demand. */
+export function Since({ at, never }: { at: string | null | undefined; never?: string }) {
+  if (!at) return <>{never ?? t("Never")}</>;
+  const exact = formatDate(at, "datetime");
+  return (
+    <time dateTime={at} title={exact}>
+      {relTime(at)}
+    </time>
+  );
+}
 
 /** The rows shown as "from 1 to 50 of 211" with Previous and Next. */
 export function Pager({ offset, limit, total, onPage }: { offset: number; limit: number; total: number; onPage: (offset: number) => void }) {

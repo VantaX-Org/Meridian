@@ -35,7 +35,7 @@ export function RelatedObjects({ module, system, systemId, label }: { module: st
       {q.isError ? (
         notFound(q.error) ? null : <p className="m2-meta">{t("The related objects could not be read.")}</p>
       ) : !q.data ? (
-        <p className="m2-meta" aria-busy="true">
+        <p className="m2-meta m2-related-wait" aria-busy="true">
           <Skeleton width="70%" height={14} />
         </p>
       ) : q.data.related.length === 0 ? (

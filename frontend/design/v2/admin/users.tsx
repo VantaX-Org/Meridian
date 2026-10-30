@@ -12,7 +12,7 @@ import { type GridColumn } from "../Grid";
 import { ToolGrid } from "../GridTools";
 import { EmptyFrame, ErrorFrame, Mono } from "../parts";
 import { ResultFrame, useOutcome } from "../inspector/shared";
-import { AdminPage, Block, Confirm, Dialog, Fld, NeedsPermission, Note, StatusWord, since, useCan } from "./kit";
+import { AdminPage, Block, Confirm, Dialog, Fld, NeedsPermission, Note, StatusWord, useCan, Since } from "./kit";
 import { ScimCard } from "./enterprise";
 import { t as tr } from "@/lib/v2/i18n";
 import { inviteAttentionText, roleText, seatsText, userStatusText } from "@/lib/v2/labels";
@@ -45,8 +45,8 @@ const COLUMNS: GridColumn<User>[] = [
   },
   { id: "roles", get header() { return tr("Roles"); }, width: 240, cell: (u) => roleNames(u) },
   { id: "status", get header() { return tr("Status"); }, width: 150, cell: (u) => <UserStatusWord user={u} /> },
-  { id: "login", get header() { return tr("Last sign-in"); }, width: 140, cell: (u) => since(u.last_login) },
-  { id: "since", get header() { return tr("Member since"); }, width: 140, defaultHidden: true, cell: (u) => since(u.created_at) },
+  { id: "login", get header() { return tr("Last sign-in"); }, width: 140, cell: (u) => <Since at={u.last_login} /> },
+  { id: "since", get header() { return tr("Member since"); }, width: 140, defaultHidden: true, cell: (u) => <Since at={u.created_at} /> },
 ];
 
 const BULK_DONE: Record<api.BulkAction, string> = { get suspend() { return tr("Suspended"); }, get reactivate() { return tr("Reactivated"); }, get resend() { return tr("Invitation sent to"); }, get reset() { return tr("Password reset for"); } };

@@ -7,6 +7,7 @@
 
 /* Before the shell has rendered, its place is held at its final height, so nothing under it moves (no layout shift). */
 .m2-boot { height: calc(100dvh - var(--m-attribution-h, 0px)); }
+.m2-auth-wait { min-height: calc(100dvh - var(--m-attribution-h, 0px)); display: grid; place-items: center; }
 .m2-root {
   position: relative;
   display: flex;
@@ -95,6 +96,7 @@
 .m2-ib h3 { font-size: var(--m2-fs-14); font-weight: 600; margin: var(--m2-s6) 0 var(--m2-s2); }
 .m2-facts { margin: 0; display: grid; grid-template-columns: 1fr; }
 .m2-fact { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--m2-s3); padding: var(--m2-s1) 0; min-height: 28px; border-bottom: 1px solid var(--m2-line); font-size: var(--m2-fs-13); align-items: start; }
+.m2-fact dt .m2-mono { white-space: nowrap; }
 .m2-fact dt { color: var(--m2-ink-2); margin: 0; }
 .m2-fact dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
 .m2-acts { display: flex; flex-wrap: wrap; gap: var(--m2-s2); }
@@ -131,6 +133,9 @@
 
 /* Ruler */
 .m2-ruler { display: block; overflow: visible; flex: none; }
+/* Every edge of the ruler lands on a device pixel (the geometry keeps the exact weights; the browser snaps the edges), so
+   the 48 in a map row and the 240 on an object read as sharp 1px marks at any zoom. Text keeps its own rendering. */
+.m2-ruler rect, .m2-ruler line { shape-rendering: crispEdges; }
 .m2-ruler .m2-t { fill: var(--m2-track); }
 .m2-ruler .m2-f { fill: var(--m2-seg); }
 .m2-ruler.m2-on .m2-f { fill: var(--m2-data); }
@@ -334,7 +339,7 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-edot { flex: none; width: 6px; height: 6px; border-radius: var(--m2-r-round); background: var(--m2-data); margin-right: var(--m2-s2); }
 .m2-nv[data-dirty="true"] input { border-color: var(--m2-data); }
 .m2-inp-bulk { width: 140px; background: var(--m2-sheet); color: var(--m2-fg); }
-.m2-lcount { display: flex; flex-wrap: wrap; align-items: center; gap: var(--m2-s3); margin: var(--m2-s3) 0 var(--m2-s2); font-size: var(--m2-fs-13); color: var(--m2-ink-2); }
+.m2-lcount { min-height: var(--m2-row-h-compact); display: flex; flex-wrap: wrap; align-items: center; gap: var(--m2-s3); margin: var(--m2-s3) 0 var(--m2-s2); font-size: var(--m2-fs-13); color: var(--m2-ink-2); }
 .m2-drop { display: flex; flex-wrap: wrap; align-items: center; gap: var(--m2-s3); margin-top: var(--m2-s3); padding: var(--m2-s3); border: 1px dashed var(--m2-line-2); border-radius: var(--m2-r2); font-size: var(--m2-fs-13); color: var(--m2-ink-2); }
 .m2-skipped { margin: var(--m2-s1) 0 0; padding-left: var(--m2-s4); }
 .m2-grow-span { cursor: default; background: var(--m2-active); }
@@ -466,3 +471,6 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-start-t { margin: 0; font-size: var(--m2-fs-16); line-height: var(--m2-lh-16); font-weight: 600; }
 .m2-start-b > p { margin: var(--m2-s1) 0 0; color: var(--m2-ink-2); font-size: var(--m2-fs-14); line-height: var(--m2-lh-14); max-width: 64ch; }
 .m2-start-a { margin-top: var(--m2-s3); display: flex; gap: var(--m2-s2); flex-wrap: wrap; align-items: center; }
+
+/* A tab arriving: its table frame at a table's height. */
+.m2-tab-wait { display: grid; gap: var(--m2-s3); padding: var(--m2-s4); min-height: calc(8 * var(--m2-row-h)); margin-top: var(--m2-s3); }

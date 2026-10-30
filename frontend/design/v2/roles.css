@@ -38,6 +38,7 @@
 .m2-root .m2-related li { display: inline-flex; gap: var(--m2-s1); align-items: baseline; }
 .m2-root .m2-related .m2-meta { font-size: var(--m2-fs-12); }
 .m2-root .m2-related a { display: inline-block; min-height: var(--m2-s6); line-height: var(--m2-s6); }
+.m2-root .m2-related-wait { min-height: calc(2 * var(--m2-s6) + var(--m2-s2)); margin: var(--m2-s2) 0 0; }
 .m2-root .m2-fixhint { font-size: var(--m2-fs-13); color: var(--m2-high-ink); border-left: 2px solid var(--m2-high); padding: var(--m2-s1) var(--m2-s3); margin: var(--m2-s2) 0; }
 
 .m2-root .m2-tmpl { width: 100%; border-collapse: collapse; font-size: var(--m2-fs-13); }
