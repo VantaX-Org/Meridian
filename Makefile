@@ -1,4 +1,4 @@
-# Developer shortcuts. CI runs the same commands from .github/workflows (see tests/COVERAGE_CI_SNIPPET.yml).
+# Developer shortcuts. CI runs the same commands from .github/workflows (see .github/workflows/unit-tests.yml, job coverage).
 
 PYTEST ?= python -m pytest
 COV = --cov=api --cov=workers --cov=checks --cov=sap --cov-report=xml --cov-report=term

@@ -1,5 +1,5 @@
 # Coverage of the Python code base (PC-8). Used by `make coverage` and the CI coverage job
-# (tests/COVERAGE_CI_SNIPPET.yml); the floor is enforced by tests/coverage_floor.py.
+# (.github/workflows/unit-tests.yml, job coverage); the floor is enforced by tests/coverage_floor.py.
 [run]
 source =
     api

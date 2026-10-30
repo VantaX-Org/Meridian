@@ -21,5 +21,5 @@ missed), minus 2 points. One shard runs a sixth of the tests, so the combined si
 least this; the floor is deliberately set from the single shard. Raise the floor when coverage rises; never
 lower it to make a build pass.
 
-The CI job that combines the six shards and enforces the floor is in `tests/COVERAGE_CI_SNIPPET.yml`, to be
-merged into `.github/workflows/unit-tests.yml`.
+The CI job that combines the six shards, publishes `coverage.xml` and enforces the floor is `coverage` in
+`.github/workflows/unit-tests.yml`.

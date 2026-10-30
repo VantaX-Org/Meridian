@@ -67,7 +67,7 @@ vendor/nwrfcsdk/*
 *.har.recording.tmp
 .playwright-mcp/
 
-# Coverage (make coverage, tests/COVERAGE_CI_SNIPPET.yml)
+# Coverage (make coverage, .github/workflows/unit-tests.yml, job coverage)
 .coverage
 .coverage.*
 coverage.xml
