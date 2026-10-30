@@ -67,28 +67,36 @@ are now disclosed in the documents and logged in the register with a status:
 
 - **The demo runs on fixture data** (DR-1, demo-script.md): no buyer has seen the engine compute numbers
   from SAP data.
-- **Live write-back to on-premise SAP sends nothing today** (DR-2): fixes leave as files; BAPI write-back
-  for three objects is being built.
-- **The licence is not enforceable as shipped** (DR-3, security.md F-11).
-- **The tenant is hard-coded** (DR-4, architecture.md section 3, security.md section 4).
+- **Live write-back to on-premise SAP** (DR-2): live BAPI write-back for material master, customer and
+  business partner with interface checks and a simulation before every commit is in the code behind
+  `MERIDIAN_LIVE_WRITEBACK_ENABLED` (off by default), not yet run against a live SAP system; vendor (`LFA1`)
+  fixes are export only.
+- **The licence was not enforceable** (DR-3, security.md F-11): fixed with Ed25519 vendor signatures;
+  enforcement switches on after the licence worker is deployed with `LICENCE_SIGNING_KEY_ED25519`, until when
+  the transition window `MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES` is on by default.
+- **The tenant was hard-coded** (DR-4): fixed; the tenant comes from the verified token claim
+  (architecture.md section 3, security.md section 4).
 - **Most of the code was written with Claude Code under one principal engineer**, and the clone is shallow
   (DR-5, provenance.md).
-- **On-premise extraction depends on `RFC_READ_TABLE`** (PC-1).
+- **On-premise extraction depended on `RFC_READ_TABLE`** (PC-1): the reader is now selectable
+  (`/BODS/RFC_READ_TABLE2`, `BBP_RFC_READ_TABLE`, `auto`) with a read-only role template; no ODP or CDS path.
+- **xlsx stays on the SheetJS CDN** (PC-7, not fixed): the registry's 0.18.5 has two high advisories;
+  vendoring the 0.20.3 tarball is open.
 
 And from this review:
 
 1. **The API image keeps its Python source** (security.md F-1, roadmap D-01): the strip step in
-   `docker/Dockerfile.api.prod` is a silent no-op. Fixed in commit `213d8faa` on the backend remediation
-   line, not yet merged here.
+   `docker/Dockerfile.api.prod` is a silent no-op. Fixed: both images now compile and strip all source and
+   fail the build if any remains.
 2. **The HTTPS block in nginx is never enabled by the installer** (D-11): a default install serves HTTP
-   unless the operator adds TLS. Fixed in commit `a79e9ea8`, not yet merged here.
+   unless the operator adds TLS. Fixed: `scripts/nginx-https.sh` enables it for SSL modes 2 and 3.
 3. **Tenant isolation is enforced by Postgres**, not only by application code, and is tested both
    statically and against a live database (security.md section 5).
 4. **Every number is deterministic**; the model writes prose around aggregates, and the product runs with
    no model at all. Two optional helpers do send redacted sample values to a configured model (security.md
    section 9).
-5. **A licence worker outage blocks connected installs after 2 to 8 hours** (operations.md section 8,
-   D-25).
+5. **A licence worker outage no longer blocks connected installs within hours** (D-25, PC-14): the last
+   valid signed response is honoured for 14 days (operations.md section 8).
 
 ## Method and limits
 

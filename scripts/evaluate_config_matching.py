@@ -21,7 +21,7 @@ from agents.state import AgentState
 from checks.base import CheckResult
 from checks.runner import run_checks
 
-BASE_DIR = pathlib.Path(__file__).parent.parent / "Test Files" / "config_matching"
+BASE_DIR = pathlib.Path(__file__).parent.parent / "tests" / "fixtures" / "config_matching"
 GROUND_TRUTH_PATH = BASE_DIR / "ground_truth.json"
 
 TENANT_ID = "test-tenant"

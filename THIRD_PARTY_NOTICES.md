@@ -13,11 +13,11 @@ copyleft and unusual licences are in `docs/diligence/licences.md`.
 |---|---|---|---|---|
 | Garage object store | v2.4.1 | AGPL-3.0-only | `docker/Dockerfile.garage` | official static binary, unmodified, own container; licence text at /licenses/GARAGE-LICENSE; source: https://git.deuxfleurs.fr/Deuxfleurs/garage |
 | PostgreSQL | 16 (postgres:16-alpine) | PostgreSQL | `docker-compose.yml` | upstream image, pulled by the customer |
-| Redis | 7 (redis:7-alpine, floating minor) | BSD-3-Clause up to 7.2; RSALv2 or SSPLv1 from 7.4 | `docker-compose.yml` | upstream image, pulled by the customer |
+| Redis | 7.2 (redis:7.2-alpine) | BSD-3-Clause (7.4 and later are RSALv2 or SSPLv1, so the image is pinned to 7.2) | `docker-compose.yml` | upstream image, pulled by the customer |
 | nginx | 1.27 (nginx:1.27-alpine) | BSD-2-Clause | `docker/Dockerfile.nginx` | base of meridian-nginx |
-| Ollama | latest (ollama/ollama) | MIT | `docker-compose.yml` | upstream image, optional (Tier 2 LLM) |
+| Ollama | 0.40.12 (ollama/ollama:0.40.12) | MIT | `docker-compose.yml` | upstream image, optional (Tier 2 LLM) |
 | Python | 3.12 (python:3.12-slim-bookworm) | PSF-2.0 | `docker/Dockerfile.api.prod` | base of meridian-api, -worker |
-| Node.js | 20 (node:20-alpine) | MIT | `docker/Dockerfile.frontend.prod` | base of meridian-frontend |
+| Node.js | 22 (node:22-alpine) | MIT | `docker/Dockerfile.frontend.prod` | base of meridian-frontend |
 | Prometheus | v2.55.0 | Apache-2.0 | `docker/docker-compose.monitoring.yml` | optional monitoring overlay |
 | Alertmanager | v0.27.0 | Apache-2.0 | `docker/docker-compose.monitoring.yml` | optional monitoring overlay |
 | Grafana | 11.3.0 | AGPL-3.0-only | `docker/docker-compose.monitoring.yml` | optional monitoring overlay, upstream image |
@@ -25,7 +25,7 @@ copyleft and unusual licences are in `docs/diligence/licences.md`.
 
 ## Brand elements
 
-Maintained by hand: `scripts/diligence_licences.py` does not write this section.
+Written from `BRAND_ELEMENTS` in `scripts/diligence_licences.py`.
 
 | Element | Owner | Terms | Where it ships |
 |---|---|---|---|

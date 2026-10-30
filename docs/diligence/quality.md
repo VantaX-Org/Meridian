@@ -4,9 +4,8 @@ What is tested, what CI enforces on every change, and what was measured for this
 commit `5cf7161c` on 2026-10-30; commands in [README.md](README.md) and below.
 
 **Update, 30 October 2026.** A buyer's critique read this document as overstating test credibility; the
-points it raised are answered in place below. Fixes named by commit hash are on the backend remediation
-line and are not yet merged into the branch this package describes. "Being fixed (October 2026)" means
-work is under way and could not be verified here.
+points it raised are answered in place below. The fixes of the backend remediation line are merged into
+this tree; each point below says what is true now.
 
 What the numbers do and do not show:
 
@@ -58,10 +57,10 @@ From `.github/workflows/` (read in full for this document):
 Gaps:
 
 - `e2e/v2-step10.spec.ts` (28 tests: policy packs, digests, sandbox, record history) is not in the CI spec
-  list (D-06). Fixed in commit `47f53c3a` (added to `SPECS` in `aurora-e2e.yml`); not yet merged here.
+  list (D-06). Fixed: added to `SPECS` in `.github/workflows/aurora-e2e.yml`.
 - No Python lint or type-check step (D-29, PC-10). The ruff E9 and F errors, including the two undefined
-  names, were cleared in commit `6fdf345f`; a `ruff check` gate in CI is being added (October 2026). No
-  type checker gate exists or is yet committed.
+  names, were cleared in commit `6fdf345f`, and a `ruff check` job now runs in
+  `.github/workflows/unit-tests.yml`. No type checker gate exists yet.
 - No full-stack end-to-end test in CI. A live-stack acceptance spec (`frontend/e2e/acceptance.spec.ts`,
   commit `d49301fd`) exists and is skipped unless `ACCEPTANCE_BASE_URL` is set.
 
@@ -83,9 +82,10 @@ Gaps:
   and service tests are the 4,995 top-level tests and the 89 Postgres files, which this set leaves out.
   It is a floor, not an estimate of whole-suite coverage. Output:
   `docs/diligence/generated/pytest-coverage.txt` and `.json`.
-- Not measured: whole-suite Python coverage (PC-8). Adding coverage to the CI shards and publishing a
-  floor is being fixed (October 2026); until a measured figure is published here, treat 16.8% as the only
-  measured Python number, on a subset. The full suite takes about 70 minutes of CI time across six
+- Whole-suite Python coverage (PC-8) now runs in CI: every shard writes coverage, a job combines them,
+  publishes `coverage.xml` and fails below a floor of 52.9% (`tests/coverage_floor.py`,
+  `.github/workflows/unit-tests.yml`). The first CI run gives the whole-suite figure; until it is published
+  here, treat 16.8% as the only measured Python number, on a subset. The full suite takes about 70 minutes of CI time across six
   shards; with coverage it did not fit this review on a shared 4-core host. To measure it, add
   `--cov=api --cov=workers --cov=checks --cov=agents --cov=sap --cov=llm --cov=db` to each shard in
   `unit-tests.yml` and combine the `.coverage` files with `coverage combine`.
@@ -110,9 +110,9 @@ Gaps:
 | Design tokens | `npm run lint:tokens` | "ok (0 warnings) (0 legacy files allowlisted)"; the allow-list holds only its header |
 | Translations | `node scripts/i18n-extract.mjs` | 4,074 keys used, 4,231 in catalogue, 0 untranslated, 0 missing, 0 gaps |
 | Colour contrast | `npm run check:contrast` | in CI |
-| No middle dot (U+00B7) under `frontend/` | `pytest tests/test_no_middle_dot.py` | 2 passed. It scans frontend source only; the API put the character into the receipt formula on screen, fixed in commit `f905081b` (not yet merged here) |
+| No middle dot (U+00B7) under `frontend/` | `pytest tests/test_no_middle_dot.py` | 2 passed. It scans frontend source only; the API put the character into the receipt formula on screen, fixed in commit `f905081b` (the receipt formula uses a multiplication sign) |
 | Rules reconcile with the SAP dictionary | `python -m checks.rule_reconciler --strict` | in CI |
-| Python lint | none in CI | D-29: errors cleared in `6fdf345f`; a CI gate is being added (October 2026) |
+| Python lint | `ruff check` job in `.github/workflows/unit-tests.yml` | D-29 fixed |
 
 ## 6. End-to-end and accessibility evidence
 

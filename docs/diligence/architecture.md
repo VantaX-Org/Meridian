@@ -80,18 +80,21 @@ maps columns to SAP `TABLE.FIELD`, sanitises formula injection and writes the sa
 Write-back is the only path that sends data towards SAP, and it requires an approved fix batch. What it
 does: file export always (`POST /api/v1/remediation/batches/{batch_id}/export`, `GET /api/v1/work/export`);
 live BAPI write-back for material master, customer and business partner (simulate then commit, per-record
-RETURN messages); other objects export only. Status: the BAPI mappings are being implemented in October
-2026. In the code this document describes, `BAPI_FIELDS` in `api/routes/writeback.py` is empty, so the
-on-premise path refuses every field and live write-back is off by default (`live_writeback_enabled`,
-`MERIDIAN_LIVE_WRITEBACK_ENABLED`); `api/services/golden_writeback.py` reports ECC, S/4HANA on-premise and
-EWM as unsupported for that reason. The one live path that works today is an OData PATCH of
-`A_BusinessPartner` for S/4HANA Cloud and BTP business partner fields. See DR-2 in
+RETURN messages); other objects export only. Status (30 October 2026): `sap/bapi_writeback.py` maps material master
+fields to `BAPI_MATERIAL_SAVEDATA`, business partner fields to `BAPI_BUPA_CENTRAL_CHANGE` and
+`BAPI_BUPA_ADDRESS_CHANGE`, and customer fields to `BAPI_CUSTOMER_CHANGEFROMDATA1`; each record's call is
+checked against the connected system's BAPI interface, simulated (`TESTRUN`, or a call followed by a rollback;
+the customer BAPI by the interface check only) and committed only when RETURN holds no E or A message, with
+the RETURN messages kept per record (`api/routes/writeback.py`). Live write-back stays off by default
+(`MERIDIAN_LIVE_WRITEBACK_ENABLED`) and has not yet been run against a live SAP system. Vendor master (`LFA1`)
+fixes are export only: the classic vendor maintenance class is not remote-enabled. The OData PATCH of
+`A_BusinessPartner` for S/4HANA Cloud and BTP business partner fields is the other live path. See DR-2 in
 [roadmap-and-debt.md](roadmap-and-debt.md).
 
 ## 3. Tenancy and row-level security
 
 ```
-request ──> LocalAuthMiddleware (JWT, API key)  ──> TenantMiddleware ──> get_tenant(): the fixed dev tenant (DR-4)
+request ──> LocalAuthMiddleware (JWT, API key)  ──> TenantMiddleware ──> get_tenant(): the verified token's tenant_id claim
         ──> get_db(): SET LOCAL app.tenant_id = '<uuid>'  ──> every query
 Postgres: ENABLE + FORCE ROW LEVEL SECURITY, policy tenant_isolation:
           USING (tenant_id = current_setting('app.tenant_id')::uuid)
@@ -108,15 +111,16 @@ Role:     the API and workers connect as meridian_app (no superuser, no BYPASSRL
   shared engine (`workers/db.py`).
 - The non-superuser role is created by migration 040 and written into `.env` by `scripts/meridian-deploy.sh`
   (lines 574 to 576). `docs/ops/rls-hardening.md` is the runbook for deployments installed before 040.
-- **Correction (30 October 2026).** The tenant is not taken from the token, as an earlier version of this
-  section said. `api/deps.py:get_tenant` returns a hard-coded development tenant
-  (`00000000-0000-0000-0000-000000000001`) in every mode, `api/middleware/local_auth.py` signs and checks
-  sessions with that tenant's secret only, and its licensed modules are a fixed list. RLS is enforced, but
-  every request runs as that one tenant.
+- **Tenant resolution (fixed 30 October 2026, DR-4).** Until that day `api/deps.py:get_tenant` returned a
+  hard-coded development tenant. Now `api/middleware/local_auth.py` verifies each token with the secret of the
+  tenant its `tenant_id` claim names (cached per tenant) and makes the verified claim the request's tenant and
+  RLS context; `get_tenant` refuses a signed-in request without one outside development; licensed modules
+  come from the licence cache; the deployment's own tenant (sign-in, public pages, API keys) is
+  `MERIDIAN_TENANT_ID` (`api/config.py`). `tests/test_tenant_isolation_api_pg.py` proves a token for one tenant
+  cannot read another's rows.
 - A deployment is single-customer by design (EULA section 2). The schema is multi-tenant, so serving several
-  business units or a hosted model needs no schema change, but it does need the authentication work in
-  DR-4 ([roadmap-and-debt.md](roadmap-and-debt.md)): the tenant from a verified token claim, per-tenant
-  secrets, entitlements from the licence, and a cross-tenant API test.
+  business units or a hosted model needs no schema change; the authentication side (DR-4,
+  [roadmap-and-debt.md](roadmap-and-debt.md)) is in place, tenant provisioning is the remaining work.
 
 ## 4. The deterministic check engine
 
@@ -219,10 +223,12 @@ the leading key instead of `ROWSKIPS` (which makes SAP hold every skipped row an
 and can open a small pool of extra sessions for large reads. The cost for the customer: `RFC_READ_TABLE` is
 not released by SAP for customer use, needs `S_RFC` on `SDTX` and table-read authorisation
 (`S_TABU_NAM` per table, or broad `S_TABU_DIS` groups), and many Basis teams refuse it in production. The
-authorisations it needs are listed in `docs/sap-connector.md` section 2. An alternative reader (a
-configurable read function) and an authorisation role template (`docs/sap/authorisation-role-template.md`)
-are being added in October 2026 and are not in the code this document describes; see PC-1 in
-[roadmap-and-debt.md](roadmap-and-debt.md).
+authorisations it needs are listed in `docs/sap-connector.md` section 2. Since 30 October 2026 the reader is
+selectable: `/BODS/RFC_READ_TABLE2` (rows up to 30,000 bytes) or `BBP_RFC_READ_TABLE`, per connection
+(`SAPConnectionParams.read_function`) or per deployment (`MERIDIAN_RFC_READ_FUNCTION`), or `auto`, which probes
+`RFC_FUNCTION_SEARCH` (`sap/rfc.py`); the default stays `RFC_READ_TABLE` and the data read is the same. The
+read-only PFCG role is `docs/sap/authorisation-role-template.md`. There is still no ODP, SLT or CDS-view path;
+see PC-1 in [roadmap-and-debt.md](roadmap-and-debt.md).
 
 ## 8. Control plane
 
@@ -235,10 +241,14 @@ Install worker (cloudflare/install-worker)         ── serves the install scr
 
 The customer API sends the licence key and a SHA-256 machine fingerprint (hostname and MAC hash,
 `api/middleware/licence.py:_get_machine_fingerprint`) every 6 hours; it never sends SAP data. Offline and
-air-gapped installs verify an RS256 token (`MERIDIAN_LICENCE_TOKEN`) or an HMAC-signed file instead
-(`LICENCE_MODE=offline|airgap`). As shipped this does not protect revenue: the online response signature
-is checked only when `LICENCE_SERVER_PUBLIC_KEY` is set (blank in `.env.example`), and the HMAC file is
-signed with a secret the customer holds; only the RS256 token is asymmetric (DR-3, being fixed October 2026). Behaviour when the licence worker is unreachable is in
+air-gapped installs use a signed token (`MERIDIAN_LICENCE_TOKEN`) or file instead. Every path verifies an
+Ed25519 signature against the vendor public key compiled into the image (`api/middleware/licence_keys.py`) and
+fails closed; the licence worker signs with `LICENCE_SIGNING_KEY_ED25519`. DR-3 is fixed; enforcement switches
+on after the worker rollout: the transition window `MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES` is on by default
+(`api/config.py`) and still accepts the old HMAC and RSA signatures (and, with no RSA key set, an unsigned
+online response), logging each, until the worker is deployed with `LICENCE_SIGNING_KEY_ED25519`; a release then
+turns it off. When the worker is unreachable, the last valid signed response is honoured for 14 days
+(`offline_grace`, PC-14). Behaviour when the licence worker is unreachable is in
 [operations.md](operations.md), section 8.
 
 ## 9. Frontend
