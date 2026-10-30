@@ -91,6 +91,8 @@
   --m2-seg: var(--m2-n-600);
   --m2-scrim: #151A1E59;
   --m2-shadow: 0 8px 28px #151A1E2E;
+  /* The one card that stands alone on the ground (the signed-out pages): a lift of a few pixels, not a float. */
+  --m2-shadow-card: 0 1px 2px #151A1E0F, 0 12px 32px #151A1E0D;
   --m2-inverse: var(--m2-n-925);
   --m2-on-inverse: var(--m2-n-25);
   /* The stop red where it marks an error on the inverse ground (a toast) */
@@ -228,6 +230,8 @@
     --m2-seg: var(--m2-n-400);
     --m2-scrim: #000000A6;
     --m2-shadow: 0 8px 28px #000000B3;
+  --m2-shadow-card: 0 1px 2px #00000066;
+    --m2-shadow-card: 0 1px 2px #00000066;
     --m2-inverse: var(--m2-n-100);
     --m2-on-inverse: var(--m2-n-950);
   --m2-on-inverse-crit: #A3221A;
@@ -286,6 +290,7 @@ html[data-theme="dark"] .m2-root {
   --m2-seg: var(--m2-n-400);
   --m2-scrim: #000000A6;
   --m2-shadow: 0 8px 28px #000000B3;
+  --m2-shadow-card: 0 1px 2px #00000066;
   --m2-inverse: var(--m2-n-100);
   --m2-on-inverse: var(--m2-n-950);
   --m2-on-inverse-crit: #A3221A;

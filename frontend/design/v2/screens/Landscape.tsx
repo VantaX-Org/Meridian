@@ -1,5 +1,6 @@
 "use client";
 
+import { Welcome } from "./Welcome";
 import { Explain } from "../Explain";
 import { Fragment, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -559,7 +560,10 @@ export function FirstSteps({ connected, analysed }: { connected: boolean; analys
   );
   return (
     <section className="m2-sec m2-start" aria-labelledby="m2-start-h" data-testid="first-steps">
-      <h2 className="m2-h2" id="m2-start-h">{t("Three steps to your first scores")}</h2>
+      <div className="m2-start-head">
+        <h2 className="m2-h2" id="m2-start-h">{t("Three steps to your first scores")}</h2>
+        <span className="m2-sub">{t("Step {current} of 3", { current })}</span>
+      </div>
       <ol className="m2-start-list">
         {step(
           1,
@@ -689,6 +693,7 @@ export function LandscapeCanvas() {
         </div>
       ) : null}
       <PageTitle sub={scopeName}>{t("Landscape")}</PageTitle>
+      <Welcome />
       <p className="m2-finding" data-testid="landscape-sentence">
         <LandscapeSentence landscape={L} />
       </p>

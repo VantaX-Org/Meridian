@@ -128,8 +128,16 @@ All under `design/v2`. Screens compose these and draw nothing of their own.
   (`auth/Guard.tsx`: session check, the forced password change), the permissions provider, the request for access
   (`RequestAccess.tsx`), the top bar, the map, the canvas, the inspector, the job line and the toasts. Pages that stand
   without the shell (the status page, the signed-out pages, not found) use `StandaloneRoot`.
-- **Signed-out pages** (`auth/AuthFrame.tsx`): the tenant's mark and name over one card with the page's h1, the form,
-  and the version under it.
+- **Signed-out pages** (`auth/AuthFrame.tsx`): two columns on the slate ground. On the left the tenant's mark and name,
+  the one sentence of what the product does, three facts in plain words and the ruler drawn as the brand's picture (six
+  segments as wide as their weights, the tick across them; decorative). On the right one white card, lifted by
+  `--m2-shadow-card`, with the page's h1, the form and the version under it. On a phone: the mark, the card, then the
+  facts. The Aletheia attribution strip stays under every page (root layout).
+- **First run**: an empty tenant's landscape is a stepper of three steps (`FirstSteps`: connect or upload, run, read),
+  joined by a rule, the current step open with the canvas's one strong button and "Step 1 of 3" beside the heading. A
+  person's first visit to a populated landscape opens with the welcome (`screens/Welcome.tsx`): the map, the canvas and
+  the inspector in one line each, the keys, the help, and Got it, kept in the person's preferences (`tours_done`) so it
+  never returns. In fixture mode it shows only with `?welcome=1`; `?landscape=empty` shows the empty tenant.
 - **Inspector** (`Inspector.tsx`): `InspectorFrame`, `Facts`/`Fact`, `Actions`; the panels are in `inspector/` and
   registered in `inspector/registry.tsx`.
 - **Grid** (`Grid.tsx`, `GridTools.tsx`): every ledger and list. Virtualised (100,000 rows stay smooth), keyboard rows,

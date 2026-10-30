@@ -463,18 +463,38 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-pmark path { fill: var(--m2-crit); stroke: var(--m2-crit); stroke-width: 0.8; }
 .m2-ruler-box-lg .m2-pmark svg { width: 14px; height: 15px; }
 
-/* The first run of an empty tenant (Landscape, FirstSteps): three numbered steps on the block rhythm. */
-.m2-start { max-width: 760px; }
-.m2-start-list { list-style: none; margin: var(--m2-block-gap) 0 0; padding: 0; display: grid; gap: var(--m2-block-gap); }
-.m2-start-step { display: grid; grid-template-columns: var(--m2-s8) minmax(0, 1fr); gap: var(--m2-s3); padding: var(--m2-s4); border: 1px solid var(--m2-line); border-radius: var(--m2-r2); background: var(--m2-sheet); }
-.m2-start-step[data-state="current"] { border-color: var(--m2-data); }
-.m2-start-step[data-state="next"] .m2-start-b > p { color: var(--m2-meta); }
-.m2-start-n { width: var(--m2-s8); height: var(--m2-s8); border-radius: var(--m2-r-round); display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--m2-line-2); font-weight: 600; font-size: var(--m2-fs-14); color: var(--m2-ink-2); }
+/* The first run of an empty tenant (Landscape, FirstSteps): a stepper, not a stack of cards. A rule joins the three
+   numbered marks; the current step is open with its action, the others are one line each. */
+.m2-start { max-width: 720px; }
+.m2-start-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--m2-s3); flex-wrap: wrap; }
+.m2-start-list { list-style: none; margin: var(--m2-s5) 0 0; padding: 0; display: grid; }
+.m2-start-step { position: relative; display: grid; grid-template-columns: var(--m2-s8) minmax(0, 1fr); gap: var(--m2-s4); padding: 0 0 var(--m2-s6); }
+.m2-start-step:last-child { padding-bottom: 0; }
+.m2-start-step:not(:last-child)::before { content: ""; position: absolute; left: calc(var(--m2-s8) / 2); top: var(--m2-s8); bottom: 0; width: 1px; background: var(--m2-line-2); }
+.m2-start-step[data-state="done"]:not(:last-child)::before { background: var(--m2-pass); }
+.m2-start-n { position: relative; width: var(--m2-s8); height: var(--m2-s8); border-radius: var(--m2-r-round); display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--m2-line-2); background: var(--m2-sheet); font-weight: 600; font-size: var(--m2-fs-13); color: var(--m2-ink-2); font-variant-numeric: tabular-nums; }
 .m2-start-step[data-state="current"] .m2-start-n { background: var(--m2-data); border-color: var(--m2-data); color: var(--m2-on-data); }
-.m2-start-step[data-state="done"] .m2-start-n { color: var(--m2-pass-ink); border-color: var(--m2-pass); }
-.m2-start-t { margin: 0; font-size: var(--m2-fs-16); line-height: var(--m2-lh-16); font-weight: 600; }
-.m2-start-b > p { margin: var(--m2-s1) 0 0; color: var(--m2-ink-2); font-size: var(--m2-fs-14); line-height: var(--m2-lh-14); max-width: 64ch; }
-.m2-start-a { margin-top: var(--m2-s3); display: flex; gap: var(--m2-s2); flex-wrap: wrap; align-items: center; }
+.m2-start-step[data-state="done"] .m2-start-n { color: var(--m2-pass-ink); border-color: var(--m2-pass); background: var(--m2-pass-bg); }
+.m2-start-b { padding-top: var(--m2-s1); min-width: 0; }
+.m2-start-t { margin: 0; font-size: var(--m2-fs-14); line-height: var(--m2-lh-14); font-weight: 500; color: var(--m2-ink-2); }
+.m2-start-step[data-state="current"] .m2-start-t { font-size: var(--m2-fs-16); line-height: var(--m2-lh-16); font-weight: 600; color: var(--m2-fg); }
+.m2-start-b > p { margin: var(--m2-s1) 0 0; color: var(--m2-meta); font-size: var(--m2-fs-13); line-height: var(--m2-lh-13); max-width: 64ch; }
+.m2-start-step[data-state="current"] .m2-start-b > p { color: var(--m2-ink-2); font-size: var(--m2-fs-14); line-height: var(--m2-lh-14); margin-top: var(--m2-s2); }
+.m2-start-a { margin-top: var(--m2-s4); display: flex; gap: var(--m2-s2); flex-wrap: wrap; align-items: center; }
+
+/* The welcome on a person's first visit: one quiet panel on the canvas, dismissed for good. */
+.m2-welcome { margin: 0 0 var(--m2-section-gap); padding: var(--m2-s5) var(--m2-s6); border: 1px solid var(--m2-line); border-radius: var(--m2-r2); background: var(--m2-data-bg); display: grid; gap: var(--m2-s4); max-width: 960px; }
+.m2-welcome-h { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--m2-s4); }
+.m2-welcome-h h2 { margin: 0; font-size: var(--m2-fs-16); line-height: var(--m2-lh-16); font-weight: 600; }
+.m2-welcome-h p { margin: var(--m2-s1) 0 0; font-size: var(--m2-fs-14); line-height: var(--m2-lh-14); color: var(--m2-ink-2); max-width: 72ch; }
+.m2-welcome-parts { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--m2-s5); }
+.m2-welcome-parts li { display: grid; gap: var(--m2-s1); font-size: var(--m2-fs-13); line-height: var(--m2-lh-13); color: var(--m2-ink-2); min-width: 0; }
+.m2-welcome-parts strong { color: var(--m2-fg); font-weight: 600; font-size: var(--m2-fs-14); }
+.m2-welcome-a { display: flex; flex-wrap: wrap; gap: var(--m2-s2); align-items: center; }
+@media (max-width: 760px) {
+  .m2-welcome { padding: var(--m2-s4); }
+  .m2-welcome-parts { grid-template-columns: minmax(0, 1fr); gap: var(--m2-s3); }
+}
 
 /* A tab arriving: its table frame at a table's height. */
 .m2-tab-wait { display: grid; gap: var(--m2-s3); padding: var(--m2-s4); min-height: calc(8 * var(--m2-row-h)); margin-top: var(--m2-s3); }

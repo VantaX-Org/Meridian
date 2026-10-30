@@ -243,6 +243,44 @@ describe("landscape canvas, honest states", () => {
     expect(within(steps[2]).getByRole("heading", { name: "Read the landscape" })).toBeInTheDocument();
   });
 
+  it("the guided start says which step the tenant is on, and joins the steps as one stepper", async () => {
+    vi.spyOn(workApi, "getSummary").mockResolvedValue({ version_id: null, scope: null, built: true, objects: [], totals: { records: 0, open: 0, issues: 0, critical: 0, proposed: 0, overdue: 0 } });
+    vi.spyOn(landscapeApi, "getLandscape").mockResolvedValue({ ...landscapeFixture, systems: [], cells: [], objects: [] });
+    renderWithQuery(<LandscapeCanvas />);
+    const start = await screen.findByTestId("first-steps");
+    expect(within(start).getByRole("heading", { level: 2 })).toHaveTextContent("Three steps to your first scores");
+    expect(start).toHaveTextContent("Step 1 of 3");
+    expect(within(start).getByRole("list").tagName).toBe("OL");
+    expect(within(start).getAllByRole("listitem")[0]).toHaveAttribute("aria-current", "step");
+  });
+
+  it("welcomes a person on the first visit with the three places and the keys, and Got it keeps it away for good", async () => {
+    const { resetPreferencesCache, readPrefs } = await import("@/lib/preferences");
+    window.localStorage.clear();
+    resetPreferencesCache();
+    visit("&welcome=1");
+    const { unmount } = renderWithQuery(<LandscapeCanvas />);
+    const welcome = await screen.findByTestId("welcome");
+    expect(within(welcome).getByRole("heading", { level: 2 })).toHaveTextContent("Welcome to Meridian, Demo user");
+    expect(within(welcome).getAllByRole("listitem").map((li) => li.querySelector("strong")?.textContent)).toEqual(["The map", "The canvas", "The inspector"]);
+    expect(within(welcome).getByRole("link", { name: "Open the help" })).toHaveAttribute("href", expect.stringContaining("open=help"));
+    fireEvent.click(within(welcome).getByRole("button", { name: "Got it" }));
+    expect(screen.queryByTestId("welcome")).toBeNull();
+    expect(readPrefs().tours_done).toContain("welcome-v2");
+    unmount();
+    renderWithQuery(<LandscapeCanvas />);
+    await screen.findByTestId("landscape-sentence");
+    expect(screen.queryByTestId("welcome")).toBeNull();
+    window.localStorage.clear();
+    resetPreferencesCache();
+  });
+
+  it("does not welcome in fixture mode unless asked, so demonstrations open on the page", async () => {
+    renderWithQuery(<LandscapeCanvas />);
+    await screen.findByTestId("landscape-sentence");
+    expect(screen.queryByTestId("welcome")).toBeNull();
+  });
+
   it("with no system but uploaded files, lists the uploaded objects and says where their records are", async () => {
     vi.spyOn(landscapeApi, "getLandscape").mockResolvedValue({ ...landscapeFixture, systems: [], cells: [], objects: [] });
     vi.spyOn(workApi, "getSummary").mockResolvedValue({
