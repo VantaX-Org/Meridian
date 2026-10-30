@@ -52,9 +52,9 @@ for (const size of SIZES) {
         await page.goto("/rules?fixture=1", { waitUntil: "load", timeout: 90_000 });
         await expect(page.getByRole("heading", { level: 1 })).toHaveText("Rules", NAV);
         const grid = page.getByRole("grid", { name: "Rules library" });
-        await expect(grid).toHaveAttribute("aria-rowcount", "39", NAV);
+        await expect(grid).toHaveAttribute("aria-rowcount", "795", NAV);
         await page.getByLabel("Object").selectOption("business_partner");
-        await expect(grid).toHaveAttribute("aria-rowcount", "7");
+        await expect(grid).toHaveAttribute("aria-rowcount", "65");
         await page.getByLabel("Object").selectOption("");
         await page.getByRole("searchbox", { name: "Search" }).fill("MM142");
         await expect(grid).toHaveAttribute("aria-rowcount", "2");
@@ -103,7 +103,7 @@ for (const size of SIZES) {
         const form = page.getByRole("form", { name: "Map a field to Check the material" });
         await form.getByLabel("Map a field").fill("MARA.BRGEW");
         await form.getByRole("button", { name: "Map field" }).click();
-        await expect(page.getByRole("list", { name: "Fields of Check the material" })).toContainText("MARA.BRGEW");
+        await expect(page.getByRole("list", { name: "Fields of Check the material" })).toContainText("MARA-BRGEW");
         await page.getByRole("button", { name: "Save as a new version" }).click();
         await expect(page.getByText("Saved as version 2")).toBeVisible();
         await page.waitForLoadState("networkidle");

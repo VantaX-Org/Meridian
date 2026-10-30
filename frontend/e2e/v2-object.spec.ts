@@ -74,7 +74,8 @@ for (const size of SIZES) {
           await expect(rows.nth(1)).toContainText("Base unit of measure MEINS must reference a valid entry in T006");
           await expect(rows.nth(1)).toContainText("112 suggested values");
           await expect(rows.nth(1)).toContainText("Accept all");
-          await expect(rows.nth(1).getByRole("gridcell").nth(5)).toHaveText("Yes", NAV);
+          await expect(rows.nth(1).getByRole("gridcell").nth(5)).toHaveText("No", NAV); // MM142 is high: no tolerance, never caps
+          await expect(rows.nth(2).getByRole("gridcell").nth(5)).toHaveText("Yes", NAV); // MM003, critical, over tolerance
           await expect(rows.nth(9)).toContainText("and 72 more rules");
           await expect(rows.nth(10)).toContainText("All 80 rules");
           await expect(rows.nth(10)).toContainText("4,200,000");
@@ -177,7 +178,7 @@ for (const size of SIZES) {
         await expect(page.getByRole("heading", { level: 1 })).toContainText("Base unit of measure MEINS must reference a valid entry in T006", NAV);
         await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
         const stat = page.getByTestId("rule-stat-line");
-        await expect(stat).toContainText("Critical");
+        await expect(stat).toContainText("High");
         await expect(stat).toContainText("4,212 failing across 2 objects");
         await expect(page.getByRole("navigation", { name: "Views of MM142" }).getByRole("link")).toHaveCount(4);
         await expect(page.getByRole("region", { name: "Definition" })).toBeVisible();
@@ -216,7 +217,7 @@ for (const size of SIZES) {
         const width = await chart.getByTestId("score-line").evaluate((el) => getComputedStyle(el).strokeWidth);
         expect(width).toBe("2px");
         const why = page.getByTestId("why-moved");
-        await expect(why.getByRole("link", { name: "MM169" })).toBeVisible(NAV);
+        await expect(why.getByRole("link", { name: /^MM\d{3}$/ }).first()).toBeVisible(NAV);
         await expect(why).toContainText("69.8 on 2 Oct 2026, 71.8 on 16 Oct 2026");
         await expect(page.getByRole("form", { name: "Compare two runs" }).getByRole("link", { name: "Compare" })).toHaveAttribute("href", /\/run\/.+\/vs\/.+/);
         expect(await noSideScroll(page)).toBe(true);

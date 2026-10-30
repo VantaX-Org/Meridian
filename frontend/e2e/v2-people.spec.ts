@@ -59,7 +59,7 @@ for (const size of SIZES) {
           const list = page.getByRole("list", { name: "People" });
           await expect(list.getByRole("listitem").first()).toContainText("Demo user");
           await expect(list.getByRole("listitem").first()).toContainText("you");
-          await expect(list.getByRole("listitem")).toHaveCount(6);
+          await expect(list.getByRole("listitem")).toHaveCount(7); // six people and the unassigned open records
         } else {
           const table = page.getByRole("table", { name: "People" });
           await expect(table).toBeVisible(NAV);
