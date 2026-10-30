@@ -30,8 +30,12 @@ the grant to the requesting node.
 
 The old RSA `signature` (v1 canonical, `OFFLINE_JWT_PRIVATE_KEY`) is still emitted.
 A client accepts it, and the old HMAC offline file and RS256 offline token, only
-while `MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES=true` (default off), and logs every
-such acceptance. Use that only as a short transition window.
+while `MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES=true`, and logs every such acceptance.
+The setting is on by default for the transition: an installation that updates before
+this worker signs with `LICENCE_SIGNING_KEY_ED25519` keeps working (with no RSA key
+configured it accepts an unsigned response, as before). Order of rollout: set the
+worker secret and deploy the worker, confirm responses carry `signature_ed25519`, then
+release the API with the default switched to false.
 
 **Offline grace (14 days).** The client keeps the last valid signed response, with
 its signature, in memory and at `MERIDIAN_LICENCE_STATE_PATH`. When the worker is

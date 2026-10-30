@@ -450,7 +450,7 @@ def _do_sync_manifest(rules: list, field_mappings: list) -> None:
 # an HMAC wouldn't stop them (they'd hold the secret), so we verify against the vendor PUBLIC key compiled into
 # the image (api/middleware/licence_keys.py). Enforcement is always on: a valid response without a valid
 # signature is rejected (fail closed). The old RSA signature with a key from .env is accepted only inside the
-# legacy window (settings.licence_allow_legacy_signatures, default off), and every such acceptance is logged.
+# legacy window (settings.licence_allow_legacy_signatures, on by default during the transition), and every such acceptance is logged.
 
 # 7 days — matches the worker's expiry grace window. Bounds replay of a captured
 # response to this window; after it, the stale signature is rejected.
@@ -523,6 +523,13 @@ def _verify_response_signature(result: dict, max_age: Optional[int] = None) -> b
     signatures are rejected. ``max_age`` (seconds since signing) defaults to LICENCE_SIGNATURE_MAX_AGE."""
     from api.middleware import licence_keys
 
+    if (settings.licence_allow_legacy_signatures and not result.get("signature_ed25519")
+            and _licence_public_key() is None):
+        # Transition window: an installation upgraded before Meridian HQ signs with the vendor key keeps the old
+        # behaviour (no key configured, the response is not verified) so an update never locks it out.
+        logger.warning("Licence response accepted WITHOUT a signature (transition window: "
+                       "MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES is on). Set it to false once HQ signs with Ed25519.")
+        return True
     signed_at = result.get("signed_at")
     if signed_at is None:
         logger.error("Licence response is unsigned — rejecting")

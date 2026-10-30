@@ -25,6 +25,9 @@ def install(monkeypatch, tmp_path=None) -> None:
     monkeypatch.setattr(lic.settings, "env", "development")
     monkeypatch.setenv("MERIDIAN_LICENCE_TEST_PUBLIC_KEY", TEST_ONLY_PUBLIC_KEY_B64)
     monkeypatch.setattr(lic, "_last_signed", None)
+    # The enforcement these tests prove is the one that holds once the transition window closes; a test that
+    # exercises the window opens it itself.
+    monkeypatch.setattr(lic.settings, "licence_allow_legacy_signatures", False)
     if tmp_path is not None:
         monkeypatch.setattr(lic.settings, "licence_state_path", str(tmp_path / "licence-last-valid.json"))
 

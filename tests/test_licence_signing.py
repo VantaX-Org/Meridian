@@ -100,3 +100,31 @@ if __name__ == "__main__":
     import sys
 
     sys.exit(pytest.main([__file__, "-q"]))
+
+
+def test_transition_window_is_open_by_default():
+    """An installation that updates before HQ signs with the vendor key must not be locked out."""
+    from api.config import Settings
+
+    assert Settings().licence_allow_legacy_signatures is True
+
+
+def test_unsigned_response_accepted_in_the_transition_window_with_no_key(monkeypatch):
+    monkeypatch.setattr(lic.settings, "licence_allow_legacy_signatures", True)
+    monkeypatch.delenv("LICENCE_SERVER_PUBLIC_KEY", raising=False)
+    assert lic._verify_response_signature({"valid": True, "tenant_id": "t"}) is True
+
+
+def test_window_does_not_waive_a_configured_rsa_key(monkeypatch):
+    """With an RSA key configured the old behaviour verified the signature; the window keeps that."""
+    monkeypatch.setattr(lic.settings, "licence_allow_legacy_signatures", True)
+    _legacy_rsa(monkeypatch)
+    assert lic._verify_response_signature({"valid": True, "tenant_id": "t"}) is False
+
+
+def test_window_still_rejects_a_bad_ed25519_signature(monkeypatch):
+    monkeypatch.setattr(lic.settings, "licence_allow_legacy_signatures", True)
+    monkeypatch.delenv("LICENCE_SERVER_PUBLIC_KEY", raising=False)
+    r = signed_response(FP)
+    r["signature_ed25519"] = r["signature_ed25519"][:-4] + "AAAA"
+    assert lic._verify_response_signature(r) is False

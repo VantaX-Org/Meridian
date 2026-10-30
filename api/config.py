@@ -64,12 +64,14 @@ class Settings(BaseSettings):
     licence_file: Optional[str] = None
     licence_file_path: Optional[str] = None
     licence_secret: Optional[str] = None
-    # Transition window only, default off: also accept the old HMAC-signed offline licence file (LICENCE_SECRET),
+    # Transition window, ON by default until Meridian HQ signs every response with the vendor Ed25519 key; then
+    # the default flips to off. While on, also accept the old HMAC-signed offline licence file (LICENCE_SECRET),
     # the old RS256 offline token (MERIDIAN_OFFLINE_PUBLIC_KEY) and the old RSA-signed online response
-    # (LICENCE_SERVER_PUBLIC_KEY). Every acceptance is logged. Licences are otherwise verified only against the
+    # (LICENCE_SERVER_PUBLIC_KEY), and, when no such key is configured, an unsigned online response as before.
+    # Every acceptance is logged. Licences are otherwise verified only against the
     # vendor's Ed25519 keys compiled into the image (api/middleware/licence_keys.py).
     licence_allow_legacy_signatures: bool = Field(
-        default=False, validation_alias=AliasChoices("MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES"))
+        default=True, validation_alias=AliasChoices("MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES"))
     # Offline grace: when HQ is unreachable, the last valid signed online response is honoured for this many
     # days after it was signed, with a warning and status "offline_grace" (api/middleware/licence.py).
     licence_offline_grace_days: int = Field(
