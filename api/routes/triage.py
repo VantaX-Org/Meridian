@@ -17,6 +17,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.middleware.cache import cached_json
 from api.services import triage
 from api.services.rbac import current_user_id, current_user_label, require_any_permission, require_permission
 
@@ -709,8 +710,15 @@ async def metrics(weeks: int = Query(8, ge=1, le=52), db: AsyncSession = Depends
                   tenant: Tenant = Depends(get_tenant), _r: str = Depends(require_permission("view"))):
     """Backlog by owner / team, SLA attainment, MTTA / MTTR (hours from SLA start), breaches, weekly trend."""
     tid = await _rls(db, tenant)
-    p = {"tid": tid, "blocks": "{}", "since": datetime.now(UTC) - timedelta(weeks=weeks)}
-    base = f"WITH q AS ({triage.ITEMS_SQL})"
+    # Held a minute across API workers: each statement scans every open issue (millions at a large customer).
+    body = await cached_json("triage", "metrics", tid, {"weeks": weeks}, 60,
+                             lambda: _metrics(db, tid, weeks), memo_fallback=True)
+    return MetricsOut(**body)
+
+
+async def _metrics(db: AsyncSession, tid: str, weeks: int) -> dict[str, Any]:
+    p = {"tid": tid, "since": datetime.now(UTC) - timedelta(weeks=weeks)}
+    base = triage.METRICS_ITEMS_SQL
     open_ = "q.status NOT IN ('resolved', 'accepted')"
     backlog = """COUNT(*) AS open, COUNT(*) FILTER (WHERE q.sla_state = 'breached') AS breached,
                   COUNT(*) FILTER (WHERE q.sla_state = 'at_risk') AS at_risk"""
@@ -732,20 +740,20 @@ async def metrics(weeks: int = Query(8, ge=1, le=52), db: AsyncSession = Depends
                AVG(EXTRACT(EPOCH FROM q.resolved_at - q.sla_started_at) / 3600)
                    FILTER (WHERE q.resolved_at >= :since AND q.resolved_at >= q.sla_started_at) AS mttr
           FROM q"""), p)).fetchone()
+    # Each event counted in its own week by one grouped pass, not a join of every week to every item on three ORed ranges.
     weekly = (await db.execute(text(f"""{base}
-        SELECT w.week::date AS week,
-               COUNT(*) FILTER (WHERE date_trunc('week', q.created_at) = w.week) AS opened,
-               COUNT(*) FILTER (WHERE date_trunc('week', q.resolved_at) = w.week) AS resolved,
-               COUNT(*) FILTER (WHERE date_trunc('week', q.resolved_at) = w.week AND q.resolved_at <= q.due_at)
-                   AS resolved_in_sla,
-               COUNT(*) FILTER (WHERE date_trunc('week', q.due_at) = w.week AND q.due_at < now()
-                                AND (q.resolved_at IS NULL OR q.resolved_at > q.due_at)) AS breached
+        SELECT w.week::date AS week, COALESCE(o.n, 0) AS opened, COALESCE(r.n, 0) AS resolved,
+               COALESCE(r.in_sla, 0) AS resolved_in_sla, COALESCE(b.n, 0) AS breached
           FROM generate_series(date_trunc('week', CAST(:since AS timestamptz)), date_trunc('week', now()),
                                interval '1 week') AS w(week)
-          LEFT JOIN q ON q.created_at >= w.week AND q.created_at < w.week + interval '1 week'
-                      OR q.resolved_at >= w.week AND q.resolved_at < w.week + interval '1 week'
-                      OR q.due_at >= w.week AND q.due_at < w.week + interval '1 week'
-         GROUP BY w.week ORDER BY w.week"""), p)).fetchall()
+          LEFT JOIN (SELECT date_trunc('week', q.created_at) AS wk, COUNT(*) AS n FROM q GROUP BY 1) o ON o.wk = w.week
+          LEFT JOIN (SELECT date_trunc('week', q.resolved_at) AS wk, COUNT(*) AS n,
+                            COUNT(*) FILTER (WHERE q.resolved_at <= q.due_at) AS in_sla
+                       FROM q WHERE q.resolved_at IS NOT NULL GROUP BY 1) r ON r.wk = w.week
+          LEFT JOIN (SELECT date_trunc('week', q.due_at) AS wk, COUNT(*) AS n FROM q
+                      WHERE q.due_at < now() AND (q.resolved_at IS NULL OR q.resolved_at > q.due_at) GROUP BY 1) b
+                 ON b.wk = w.week
+         ORDER BY w.week"""), p)).fetchall()
 
     def rows(rs) -> list[dict[str, Any]]:
         return [dict(r._mapping) for r in rs]
@@ -753,7 +761,7 @@ async def metrics(weeks: int = Query(8, ge=1, le=52), db: AsyncSession = Depends
     def hours(v) -> Optional[float]:
         return None if v is None else round(float(v), 2)
 
-    return MetricsOut(
+    return dict(
         weeks=weeks, backlog_by_owner=rows(by_owner), backlog_by_team=rows(by_team), unassigned=s.unassigned,
         resolved_in_sla=s.resolved_in_sla, resolved_total=s.resolved_total,
         sla_attainment_pct=round(100 * s.resolved_in_sla / s.resolved_total, 1) if s.resolved_total else None,

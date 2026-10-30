@@ -14,6 +14,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.middleware.cache import cached_json, mark_work_changed
 from api.services.rbac import current_user_id, current_user_label, require_permission, scope_from_path
 
 logger = logging.getLogger("meridian.cleaning")
@@ -253,7 +254,7 @@ async def list_cleaning_queue(
 
 # ── GET /api/v1/cleaning/queue/groups ────────────────────────────────────────
 
-_groups_cache: dict[str, tuple[float, dict]] = {}
+_GROUPS_TTL_S = 300
 
 # Confidence is 0..100 from the cleaning engine and 0..1 from the match engine; read it as 0..1.
 CONF_SQL = "(CASE WHEN confidence > 1 THEN confidence / 100.0 ELSE confidence END)"
@@ -290,28 +291,31 @@ async def list_cleaning_groups(
     """Open proposals grouped by the run that found them, the object and what they do (KIND_SQL):
     one row per decision on the Fix screen. Cleaning items carry their run (version_id) but no
     batch, so the run is the batch; items with no run (the match engine's review pairs) group
-    under version_id null, never dropped. Cached for _TOTAL_TTL_S like the queue total; the
-    table holds millions of rows."""
+    under version_id null, never dropped. Cached in Redis for _GROUPS_TTL_S, shared by every
+    API worker; approve, reject, apply, rollback and merge invalidate it. The table holds millions of rows."""
     await _set_rls(db, tenant.id)
-    key = str(tenant.id)
-    hit = _groups_cache.get(key)
-    if hit and time.monotonic() - hit[0] <= _TOTAL_TTL_S:
-        return hit[1]
+    return await cached_json("cleaning", "groups", tenant.id, {}, _GROUPS_TTL_S,
+                             lambda: _cleaning_groups(db, str(tenant.id)), memo_fallback=True)
+
+
+async def _cleaning_groups(db: AsyncSession, tid: str) -> dict:
+    # Aggregate first, then join the ~dozens of groups: joining before the GROUP BY hashed every open row
+    # (millions, ~850 bytes each) to disk and took 44 s on 3.2M rows.
     rows = (await db.execute(text(f"""
-        WITH open AS (
-            SELECT version_id, object_type, {KIND_SQL} AS kind, {CONF_SQL} AS conf
+        WITH g AS (
+            SELECT version_id, object_type, {KIND_SQL} AS kind, COUNT(*) AS records, AVG({CONF_SQL}) AS avg_confidence,
+                   COUNT(*) FILTER (WHERE {CONF_SQL} >= 0.85) AS confident
               FROM cleaning_queue
              WHERE tenant_id = :tid AND status IN ('detected', 'recommended')
+             GROUP BY 1, 2, 3
         )
-        SELECT o.version_id, o.object_type, o.kind, COUNT(*) AS records, AVG(o.conf) AS avg_confidence,
-               COUNT(*) FILTER (WHERE o.conf >= 0.85) AS confident,
-               MAX(r.name) AS rule_name, v.label AS run_label, v.run_at AS run_at
-          FROM open o
-          LEFT JOIN analysis_versions v ON v.id = o.version_id AND v.tenant_id = :tid
-          LEFT JOIN cleaning_rules r ON r.id::text = o.kind AND r.tenant_id = :tid
-         GROUP BY o.version_id, o.object_type, o.kind, v.label, v.run_at
-         ORDER BY records DESC, avg_confidence DESC
-    """), {"tid": key})).mappings().all()
+        SELECT g.version_id, g.object_type, g.kind, g.records, g.avg_confidence, g.confident,
+               r.name AS rule_name, v.label AS run_label, v.run_at AS run_at
+          FROM g
+          LEFT JOIN analysis_versions v ON v.id = g.version_id AND v.tenant_id = :tid
+          LEFT JOIN cleaning_rules r ON r.id::text = g.kind AND r.tenant_id = :tid
+         ORDER BY g.records DESC, g.avg_confidence DESC
+    """), {"tid": tid})).mappings().all()
     groups = [{
         "version_id": str(r["version_id"]) if r["version_id"] else None, "object_type": r["object_type"], "kind": r["kind"],
         "rule_name": r["rule_name"],
@@ -319,14 +323,12 @@ async def list_cleaning_groups(
         "confident": int(r["confident"]), "run_label": r["run_label"],
         "run_at": r["run_at"].isoformat() if r["run_at"] else None,
     } for r in rows]
-    out = {
+    return {
         "groups": groups,
         "records": sum(g["records"] for g in groups),
         "confident": sum(g["confident"] for g in groups),
         "runs": len({g["version_id"] for g in groups if g["version_id"]}),
     }
-    _groups_cache[key] = (time.monotonic(), out)
-    return out
 
 
 # ── GET /api/v1/cleaning/queue/{id} ──────────────────────────────────────────
@@ -408,6 +410,7 @@ async def approve_cleaning_item(
         data_after=row.get("record_data_after"),
         metadata={"notes": body.notes} if body.notes else None,
     )
+    mark_work_changed(db, tenant.id)
     await db.commit()
 
     return {"id": item_id, "status": "approved"}
@@ -443,6 +446,7 @@ async def reject_cleaning_item(
         db, tenant.id, item_id, "rejected", row["record_key"], row["object_type"],
         metadata={"reason": body.reason},
     )
+    mark_work_changed(db, tenant.id)
     await db.commit()
 
     return {"id": item_id, "status": "rejected"}
@@ -509,6 +513,7 @@ async def bulk_approve(
     actor = current_user_label()
     for r in approved:
         await _create_audit(db, tenant.id, str(r[0]), "approved", r[1], r[2], actor_name=actor, metadata={"bulk": True})
+    mark_work_changed(db, tenant.id)
     await db.commit()
 
     return {"approved_count": len(approved_ids), "skipped_count": 0}
@@ -567,6 +572,7 @@ async def apply_cleaning_item(
         data_before=row.get("record_data_before"),
         data_after=after_data,
     )
+    mark_work_changed(db, tenant.id)
     await db.commit()
 
     return {"id": item_id, "status": "applied", "rollback_deadline": deadline.isoformat()}
@@ -617,6 +623,7 @@ async def rollback_cleaning_item(
         data_before=row.get("record_data_after"),
         data_after=row.get("record_data_before"),
     )
+    mark_work_changed(db, tenant.id)
     await db.commit()
 
     return {"id": item_id, "status": "rolled_back"}
@@ -1084,6 +1091,7 @@ async def dedup_merge(
                       "reason": reason},
         )
 
+    mark_work_changed(db, tenant.id)
     await db.commit()
 
     return {
