@@ -121,13 +121,13 @@ for (const size of SIZES) {
       test("the inspector opens from a link, traps focus, closes with Esc and returns focus", async ({ page }) => {
         await prepare(page, scheme);
         await page.goto("/o/ecc-production/material-master?fixture=1", { waitUntil: "load", timeout: 90_000 });
-        const rule = page.getByTestId("cap-sentence").getByRole("link", { name: "MM142" });
+        const rule = page.getByTestId("cap-sentence").getByRole("link", { name: "MM035" });
         await expect(rule).toBeVisible(NAV);
         await rule.focus();
         await rule.click();
-        const dialog = page.getByRole("dialog", { name: /MM142/ });
+        const dialog = page.getByRole("dialog", { name: /MM035/ });
         await expect(dialog).toBeVisible();
-        await expect(page).toHaveURL(/open=rule%3AMM142/);
+        await expect(page).toHaveURL(/open=rule%3AMM035/);
         await expect(dialog.getByRole("button", { name: "Close inspector" })).toBeFocused();
         await expect(dialog.getByRole("heading", { name: /^Scope/ })).toBeVisible(NAV);
         if (phone) {
@@ -160,7 +160,7 @@ for (const size of SIZES) {
         const palette = page.getByRole("dialog", { name: "Search or type a command" });
         await expect(palette).toBeVisible();
         await palette.getByRole("combobox").fill("MM0");
-        await expect(palette.getByText("MM142: Base unit of measure MEINS must reference a valid entry in T006")).toBeVisible();
+        await expect(palette.getByText("MM003: Material type is mandatory - determines procurement and storage behaviour")).toBeVisible();
         await page.waitForLoadState("networkidle");
         await shot(page, "command");
         await axe(page, `command ${size.name} ${scheme}`);

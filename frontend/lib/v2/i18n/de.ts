@@ -4378,4 +4378,9 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Where": "Wo",
   "What SAP answered": "Antwort von SAP",
   "No extraction is scheduled.": "Keine Extraktion ist geplant.",
+  "Connections table, scrollable": "Tabelle der Verbindungen, scrollbar",
+  "Extractions table, scrollable": "Tabelle der Extraktionen, scrollbar",
+  "Failed jobs table, scrollable": "Tabelle der fehlgeschlagenen Jobs, scrollbar",
+  "Authorisation errors table, scrollable": "Tabelle der Berechtigungsfehler, scrollbar",
+  "Schedules table, scrollable": "Tabelle der Zeitpläne, scrollbar",
 };

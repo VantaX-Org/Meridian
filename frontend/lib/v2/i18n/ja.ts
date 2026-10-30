@@ -4378,4 +4378,9 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Where": "場所",
   "What SAP answered": "SAP の応答",
   "No extraction is scheduled.": "スケジュールされた抽出はありません。",
+  "Connections table, scrollable": "接続の表（スクロール可能）",
+  "Extractions table, scrollable": "抽出の表（スクロール可能）",
+  "Failed jobs table, scrollable": "失敗ジョブの表（スクロール可能）",
+  "Authorisation errors table, scrollable": "権限エラーの表（スクロール可能）",
+  "Schedules table, scrollable": "スケジュールの表（スクロール可能）",
 };

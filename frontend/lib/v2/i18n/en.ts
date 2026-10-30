@@ -4377,6 +4377,11 @@ export const en = {
   "Where": "Where",
   "What SAP answered": "What SAP answered",
   "No extraction is scheduled.": "No extraction is scheduled.",
+  "Connections table, scrollable": "Connections table, scrollable",
+  "Extractions table, scrollable": "Extractions table, scrollable",
+  "Failed jobs table, scrollable": "Failed jobs table, scrollable",
+  "Authorisation errors table, scrollable": "Authorisation errors table, scrollable",
+  "Schedules table, scrollable": "Schedules table, scrollable",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

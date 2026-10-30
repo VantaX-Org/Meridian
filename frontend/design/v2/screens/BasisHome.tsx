@@ -15,6 +15,7 @@ import { runKeys, useSystemsExtended, useV2Jobs } from "@/lib/v2/runs-queries";
 import { int } from "@/lib/v2/score";
 import { t } from "@/lib/v2/i18n";
 import { SeverityMark, VerdictMark } from "../marks";
+import { ScrollFrame } from "./object/ScrollFrame";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 
 /**
@@ -81,7 +82,7 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
         ) : systems.length === 0 ? (
           <EmptyFrame action={<V2Link href="/s/new" className="m2-btn">{t("Connect a system")}</V2Link>}>{t("No system is connected yet.")}</EmptyFrame>
         ) : (
-          <div className="m2-frame">
+          <ScrollFrame label={t("Connections table, scrollable")}>
             <table className="m2-tbl">
               <thead>
                 <tr>
@@ -107,12 +108,12 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
                 })}
               </tbody>
             </table>
-          </div>
+          </ScrollFrame>
         )}
       </Block>
 
       <Block title={t("Last extraction")} testid="basis-extractions">
-        <div className="m2-frame">
+        <ScrollFrame label={t("Extractions table, scrollable")}>
           <table className="m2-tbl">
             <thead>
               <tr>
@@ -133,7 +134,7 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollFrame>
       </Block>
 
       <Block title={t("Failed jobs to triage")} testid="basis-failures" note={t("{count} open", { count: failed.length })}>
@@ -142,7 +143,7 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
         ) : failed.length === 0 ? (
           <EmptyFrame>{t("No failed job is waiting. A job that fails and is not followed by a success of the same kind lands here.")}</EmptyFrame>
         ) : (
-          <div className="m2-frame">
+          <ScrollFrame label={t("Failed jobs table, scrollable")}>
             <table className="m2-tbl">
               <thead>
                 <tr>
@@ -165,7 +166,7 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollFrame>
         )}
       </Block>
 
@@ -173,7 +174,7 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
         {authErrors.length === 0 ? (
           <EmptyFrame>{t("No refused credentials or missing authorisations in the connection tests and the jobs read.")}</EmptyFrame>
         ) : (
-          <div className="m2-frame">
+          <ScrollFrame label={t("Authorisation errors table, scrollable")}>
             <table className="m2-tbl">
               <thead>
                 <tr>
@@ -192,7 +193,7 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollFrame>
         )}
       </Block>
 
@@ -200,7 +201,7 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
         {schedules.length === 0 ? (
           <EmptyFrame action={<V2Link href="/admin/runs" className="m2-btn">{t("Start and schedule")}</V2Link>}>{t("No extraction is scheduled.")}</EmptyFrame>
         ) : (
-          <div className="m2-frame">
+          <ScrollFrame label={t("Schedules table, scrollable")}>
             <table className="m2-tbl">
               <thead>
                 <tr>
@@ -223,7 +224,7 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollFrame>
         )}
       </Block>
     </div>
