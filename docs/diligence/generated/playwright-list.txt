@@ -1,0 +1,400 @@
+Listing tests:
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /v2 answers with a permanent redirect to /
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /v2/work?filter=approvals answers with a permanent redirect to /work?filter=approvals
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /v2/o/ecc-production/material-master/rules answers with a permanent redirect to /o/ecc-production/material-master/rules
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /v2/status answers with a permanent redirect to /status
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /home answers with a permanent redirect to /
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /home/steward answers with a permanent redirect to /
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /fix answers with a permanent redirect to /work
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /fix?check=MM014 answers with a permanent redirect to /work?rule=MM014&check=MM014
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /fix?mine=1 answers with a permanent redirect to /work?assigned=me&mine=1
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /inbox answers with a permanent redirect to /work?open=inbox
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /inbox?kind=approvals answers with a permanent redirect to /work?filter=approvals&kind=approvals
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /objects answers with a permanent redirect to /
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /objects/material_master answers with a permanent redirect to /o/_/material_master
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /objects/material_master?tab=history answers with a permanent redirect to /o/_/material_master/runs?tab=history
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /objects/material_master/rules/MM014 answers with a permanent redirect to /r/MM014
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /insights/readiness answers with a permanent redirect to /?view=waves
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /insights/readiness?module=material_master answers with a permanent redirect to /o/_/material_master/readiness?module=material_master
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /insights/owners answers with a permanent redirect to /people
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /insights/trends answers with a permanent redirect to /runs
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /rules/MM014 answers with a permanent redirect to /r/MM014
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /rules/drafts answers with a permanent redirect to /rules?view=drafts
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /rules/contracts answers with a permanent redirect to /people?open=contracts
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /runs/R1 answers with a permanent redirect to /run/R1
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /runs/R1/vs/R2 answers with a permanent redirect to /run/R1/vs/R2
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /systems answers with a permanent redirect to /
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /systems/S1 answers with a permanent redirect to /s/S1
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /mdm/golden/G1 answers with a permanent redirect to /?open=golden%3AG1
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /migration answers with a permanent redirect to /?view=waves&open=waves
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /admin/jobs answers with a permanent redirect to /admin/system
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /admin/sign-in answers with a permanent redirect to /admin/signin
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /help answers with a permanent redirect to /?open=help
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /me/preferences answers with a permanent redirect to /?open=preferences
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /import answers with a permanent redirect to /admin/runs
+  [chromium] › redirects.spec.ts:68:9 › old addresses › /workbench?tab=batches&batch=B1 answers with a permanent redirect to /work?batch=B1&tab=batches
+  [chromium] › redirects.spec.ts:81:7 › old addresses › an old object link lands on the object of the system that holds it
+  [chromium] › redirects.spec.ts:87:7 › old addresses › an old Fix work link opens the Work ledger with the same filter
+  [chromium] › redirects.spec.ts:103:9 › pages outside the shell › sign-in has one h1 and no critical or serious axe violation
+  [chromium] › redirects.spec.ts:103:9 › pages outside the shell › forgot-password has one h1 and no critical or serious axe violation
+  [chromium] › redirects.spec.ts:103:9 › pages outside the shell › licence-error has one h1 and no critical or serious axe violation
+  [chromium] › redirects.spec.ts:103:9 › pages outside the shell › status has one h1 and no critical or serious axe violation
+  [chromium] › redirects.spec.ts:103:9 › pages outside the shell › not-found has one h1 and no critical or serious axe violation
+  [chromium] › sign-in-states.spec.ts:22:5 › empty submit shows per-field validation and no network call
+  [chromium] › sign-in-states.spec.ts:32:5 › 401 shows a wrong-credentials message
+  [chromium] › sign-in-states.spec.ts:40:5 › 429 shows a rate-limit message and keeps the button enabled
+  [chromium] › sign-in-states.spec.ts:49:5 › a network error shows the server-unreachable message
+  [chromium] › sign-in-states.spec.ts:62:5 › SSO enabled shows Continue with the provider above the password form
+  [chromium] › sign-in-states.spec.ts:72:5 › SSO enforced hides the password form until Administrator sign-in is chosen
+  [chromium] › sign-in-states.spec.ts:81:5 › a refused SSO sign-in explains itself from the code in the address
+  [chromium] › v2-a11y.spec.ts:124:11 › axe, en, light › every v2 page has no critical or serious violation
+  [chromium] › v2-a11y.spec.ts:124:11 › axe, en, dark › every v2 page has no critical or serious violation
+  [chromium] › v2-a11y.spec.ts:124:11 › axe, de, light › every v2 page has no critical or serious violation
+  [chromium] › v2-a11y.spec.ts:124:11 › axe, de, dark › every v2 page has no critical or serious violation
+  [chromium] › v2-a11y.spec.ts:124:11 › axe, ja, light › every v2 page has no critical or serious violation
+  [chromium] › v2-a11y.spec.ts:124:11 › axe, ja, dark › every v2 page has no critical or serious violation
+  [chromium] › v2-a11y.spec.ts:149:11 › layout, en, 1440 › the top bar, the map and the inspector hold the longer and the Japanese words
+  [chromium] › v2-a11y.spec.ts:149:11 › layout, de, 1440 › the top bar, the map and the inspector hold the longer and the Japanese words
+  [chromium] › v2-a11y.spec.ts:149:11 › layout, ja, 1440 › the top bar, the map and the inspector hold the longer and the Japanese words
+  [chromium] › v2-a11y.spec.ts:149:11 › layout, en, 390 › the top bar, the map and the inspector hold the longer and the Japanese words
+  [chromium] › v2-a11y.spec.ts:149:11 › layout, de, 390 › the top bar, the map and the inspector hold the longer and the Japanese words
+  [chromium] › v2-a11y.spec.ts:149:11 › layout, ja, 390 › the top bar, the map and the inspector hold the longer and the Japanese words
+  [chromium] › v2-a11y.spec.ts:207:9 › 200% zoom at 1440 › no sideways scroll and no clipped control, en
+  [chromium] › v2-a11y.spec.ts:207:9 › 200% zoom at 1440 › no sideways scroll and no clipped control, de
+  [chromium] › v2-a11y.spec.ts:207:9 › 200% zoom at 1440 › no sideways scroll and no clipped control, ja
+  [chromium] › v2-a11y.spec.ts:224:7 › reflow at 320 › no sideways page scroll on the main pages
+  [chromium] › v2-a11y.spec.ts:267:7 › keyboard only › skip links lead to the content, the map and the inspector
+  [chromium] › v2-a11y.spec.ts:291:7 › keyboard only › flow 1: landscape to an object to the rule inspector
+  [chromium] › v2-a11y.spec.ts:312:7 › keyboard only › flow 2: a ledger decision, then Undo from the keyboard
+  [chromium] › v2-a11y.spec.ts:332:7 › keyboard only › flow 3: approve a batch
+  [chromium] › v2-a11y.spec.ts:345:7 › keyboard only › flow 4: start an extraction as Basis
+  [chromium] › v2-a11y.spec.ts:368:7 › keyboard only › flow 5: an administrator invites a user
+  [chromium] › v2-a11y.spec.ts:388:7 › prefers-reduced-motion › stops the notice's slide and the timeline's fade
+  [chromium] › v2-a11y.spec.ts:401:7 › prefers-reduced-motion › without the preference the notice slides in
+  [chromium] › v2-admin.spec.ts:57:11 › v2 admin at 1440, light › users: the people, their status, and a person's inspector
+  [chromium] › v2-admin.spec.ts:80:11 › v2 admin at 1440, light › settings: weights, bands, cost model and retention
+  [chromium] › v2-admin.spec.ts:90:11 › v2 admin at 1440, light › audit log and runs and jobs
+  [chromium] › v2-admin.spec.ts:106:11 › v2 admin at 1440, light › preferences and help open from the top bar and the account menu
+  [chromium] › v2-admin.spec.ts:129:11 › v2 reports at 1440, light › reports and schedules, a schedule's inspector
+  [chromium] › v2-admin.spec.ts:157:11 › v2 waves at 1440, light › the landscape grouped by wave, and the waves editor
+  [chromium] › v2-admin.spec.ts:57:11 › v2 admin at 1440, dark › users: the people, their status, and a person's inspector
+  [chromium] › v2-admin.spec.ts:80:11 › v2 admin at 1440, dark › settings: weights, bands, cost model and retention
+  [chromium] › v2-admin.spec.ts:90:11 › v2 admin at 1440, dark › audit log and runs and jobs
+  [chromium] › v2-admin.spec.ts:106:11 › v2 admin at 1440, dark › preferences and help open from the top bar and the account menu
+  [chromium] › v2-admin.spec.ts:129:11 › v2 reports at 1440, dark › reports and schedules, a schedule's inspector
+  [chromium] › v2-admin.spec.ts:157:11 › v2 waves at 1440, dark › the landscape grouped by wave, and the waves editor
+  [chromium] › v2-admin.spec.ts:57:11 › v2 admin at 390, light › users: the people, their status, and a person's inspector
+  [chromium] › v2-admin.spec.ts:80:11 › v2 admin at 390, light › settings: weights, bands, cost model and retention
+  [chromium] › v2-admin.spec.ts:90:11 › v2 admin at 390, light › audit log and runs and jobs
+  [chromium] › v2-admin.spec.ts:106:11 › v2 admin at 390, light › preferences and help open from the top bar and the account menu
+  [chromium] › v2-admin.spec.ts:129:11 › v2 reports at 390, light › reports and schedules, a schedule's inspector
+  [chromium] › v2-admin.spec.ts:157:11 › v2 waves at 390, light › the landscape grouped by wave, and the waves editor
+  [chromium] › v2-admin.spec.ts:57:11 › v2 admin at 390, dark › users: the people, their status, and a person's inspector
+  [chromium] › v2-admin.spec.ts:80:11 › v2 admin at 390, dark › settings: weights, bands, cost model and retention
+  [chromium] › v2-admin.spec.ts:90:11 › v2 admin at 390, dark › audit log and runs and jobs
+  [chromium] › v2-admin.spec.ts:106:11 › v2 admin at 390, dark › preferences and help open from the top bar and the account menu
+  [chromium] › v2-admin.spec.ts:129:11 › v2 reports at 390, dark › reports and schedules, a schedule's inspector
+  [chromium] › v2-admin.spec.ts:157:11 › v2 waves at 390, dark › the landscape grouped by wave, and the waves editor
+  [chromium] › v2-help.spec.ts:62:11 › v2 help at 1440, light › the index: the walkthrough and the screen's chapter first, nothing of the retired interface, captions searched
+  [chromium] › v2-help.spec.ts:78:11 › v2 help at 1440, light › a chapter plays its recording in the panel, with the poster and the captions
+  [chromium] › v2-help.spec.ts:100:11 › v2 help at 1440, light › a role's walkthrough: five steps with the screen names, and the next step opens the next screen
+  [chromium] › v2-help.spec.ts:62:11 › v2 help at 1440, dark › the index: the walkthrough and the screen's chapter first, nothing of the retired interface, captions searched
+  [chromium] › v2-help.spec.ts:78:11 › v2 help at 1440, dark › a chapter plays its recording in the panel, with the poster and the captions
+  [chromium] › v2-help.spec.ts:100:11 › v2 help at 1440, dark › a role's walkthrough: five steps with the screen names, and the next step opens the next screen
+  [chromium] › v2-help.spec.ts:62:11 › v2 help at 390, light › the index: the walkthrough and the screen's chapter first, nothing of the retired interface, captions searched
+  [chromium] › v2-help.spec.ts:78:11 › v2 help at 390, light › a chapter plays its recording in the panel, with the poster and the captions
+  [chromium] › v2-help.spec.ts:100:11 › v2 help at 390, light › a role's walkthrough: five steps with the screen names, and the next step opens the next screen
+  [chromium] › v2-help.spec.ts:62:11 › v2 help at 390, dark › the index: the walkthrough and the screen's chapter first, nothing of the retired interface, captions searched
+  [chromium] › v2-help.spec.ts:78:11 › v2 help at 390, dark › a chapter plays its recording in the panel, with the poster and the captions
+  [chromium] › v2-help.spec.ts:100:11 › v2 help at 390, dark › a role's walkthrough: five steps with the screen names, and the next step opens the next screen
+  [chromium] › v2-landscape.spec.ts:51:11 › v2 at 1440, light › landscape: the sentence, the next step and the coverage matrix
+  [chromium] › v2-landscape.spec.ts:84:11 › v2 at 1440, light › an object opens from the landscape, with its ruler, receipt and tabs
+  [chromium] › v2-landscape.spec.ts:107:11 › v2 at 1440, light › the inspector opens from a link, traps focus, closes with Esc and returns focus
+  [chromium] › v2-landscape.spec.ts:141:11 › v2 at 1440, light › the command line opens with the shortcut and finds a rule
+  [chromium] › v2-landscape.spec.ts:51:11 › v2 at 1440, dark › landscape: the sentence, the next step and the coverage matrix
+  [chromium] › v2-landscape.spec.ts:84:11 › v2 at 1440, dark › an object opens from the landscape, with its ruler, receipt and tabs
+  [chromium] › v2-landscape.spec.ts:107:11 › v2 at 1440, dark › the inspector opens from a link, traps focus, closes with Esc and returns focus
+  [chromium] › v2-landscape.spec.ts:141:11 › v2 at 1440, dark › the command line opens with the shortcut and finds a rule
+  [chromium] › v2-landscape.spec.ts:51:11 › v2 at 390, light › landscape: the sentence, the next step and the coverage matrix
+  [chromium] › v2-landscape.spec.ts:84:11 › v2 at 390, light › an object opens from the landscape, with its ruler, receipt and tabs
+  [chromium] › v2-landscape.spec.ts:107:11 › v2 at 390, light › the inspector opens from a link, traps focus, closes with Esc and returns focus
+  [chromium] › v2-landscape.spec.ts:141:11 › v2 at 390, light › the command line opens with the shortcut and finds a rule
+  [chromium] › v2-landscape.spec.ts:158:13 › v2 at 390, light › the map is a bottom sheet behind the Map button
+  [chromium] › v2-landscape.spec.ts:51:11 › v2 at 390, dark › landscape: the sentence, the next step and the coverage matrix
+  [chromium] › v2-landscape.spec.ts:84:11 › v2 at 390, dark › an object opens from the landscape, with its ruler, receipt and tabs
+  [chromium] › v2-landscape.spec.ts:107:11 › v2 at 390, dark › the inspector opens from a link, traps focus, closes with Esc and returns focus
+  [chromium] › v2-landscape.spec.ts:141:11 › v2 at 390, dark › the command line opens with the shortcut and finds a rule
+  [chromium] › v2-landscape.spec.ts:158:13 › v2 at 390, dark › the map is a bottom sheet behind the Map button
+  [chromium] › v2-landscape.spec.ts:181:7 › a long list of rules › 100,000 rules draw only the first page, say how many more there are, and cause no layout shift
+  [chromium] › v2-landscape.spec.ts:203:7 › a long list of rules › j and k move through the rules and Enter opens one in the inspector
+  [chromium] › v2-mdm.spec.ts:57:11 › v2 object, MDM tabs at 1440, light › Golden records: the grid, the pairs to review and the survivorship rules, then a pair side by side
+  [chromium] › v2-mdm.spec.ts:91:11 › v2 object, MDM tabs at 1440, light › Golden records: a golden record opens in the inspector with how each value was chosen
+  [chromium] › v2-mdm.spec.ts:103:11 › v2 object, MDM tabs at 1440, light › Glossary: the terms, a search, the fields without a term and a term in the inspector
+  [chromium] › v2-mdm.spec.ts:137:11 › v2 object, MDM tabs at 1440, light › Lineage: tables to fields to rules to S/4 features as a 1 pixel graph with a facts list
+  [chromium] › v2-mdm.spec.ts:166:11 › v2 object, MDM tabs at 1440, light › Processes: the tree of steps with blocked steps marked, and a step in the inspector
+  [chromium] › v2-mdm.spec.ts:57:11 › v2 object, MDM tabs at 1440, dark › Golden records: the grid, the pairs to review and the survivorship rules, then a pair side by side
+  [chromium] › v2-mdm.spec.ts:91:11 › v2 object, MDM tabs at 1440, dark › Golden records: a golden record opens in the inspector with how each value was chosen
+  [chromium] › v2-mdm.spec.ts:103:11 › v2 object, MDM tabs at 1440, dark › Glossary: the terms, a search, the fields without a term and a term in the inspector
+  [chromium] › v2-mdm.spec.ts:137:11 › v2 object, MDM tabs at 1440, dark › Lineage: tables to fields to rules to S/4 features as a 1 pixel graph with a facts list
+  [chromium] › v2-mdm.spec.ts:166:11 › v2 object, MDM tabs at 1440, dark › Processes: the tree of steps with blocked steps marked, and a step in the inspector
+  [chromium] › v2-mdm.spec.ts:57:11 › v2 object, MDM tabs at 390, light › Golden records: the grid, the pairs to review and the survivorship rules, then a pair side by side
+  [chromium] › v2-mdm.spec.ts:91:11 › v2 object, MDM tabs at 390, light › Golden records: a golden record opens in the inspector with how each value was chosen
+  [chromium] › v2-mdm.spec.ts:103:11 › v2 object, MDM tabs at 390, light › Glossary: the terms, a search, the fields without a term and a term in the inspector
+  [chromium] › v2-mdm.spec.ts:137:11 › v2 object, MDM tabs at 390, light › Lineage: tables to fields to rules to S/4 features as a 1 pixel graph with a facts list
+  [chromium] › v2-mdm.spec.ts:166:11 › v2 object, MDM tabs at 390, light › Processes: the tree of steps with blocked steps marked, and a step in the inspector
+  [chromium] › v2-mdm.spec.ts:57:11 › v2 object, MDM tabs at 390, dark › Golden records: the grid, the pairs to review and the survivorship rules, then a pair side by side
+  [chromium] › v2-mdm.spec.ts:91:11 › v2 object, MDM tabs at 390, dark › Golden records: a golden record opens in the inspector with how each value was chosen
+  [chromium] › v2-mdm.spec.ts:103:11 › v2 object, MDM tabs at 390, dark › Glossary: the terms, a search, the fields without a term and a term in the inspector
+  [chromium] › v2-mdm.spec.ts:137:11 › v2 object, MDM tabs at 390, dark › Lineage: tables to fields to rules to S/4 features as a 1 pixel graph with a facts list
+  [chromium] › v2-mdm.spec.ts:166:11 › v2 object, MDM tabs at 390, dark › Processes: the tree of steps with blocked steps marked, and a step in the inspector
+  [chromium] › v2-mdm.spec.ts:193:7 › process analyst › the landscape's next step opens the first blocked process step
+  [chromium] › v2-object.spec.ts:59:11 › v2 object at 1440, light › Rules: ranked by value at risk, with the pivot, the i popovers and the totals
+  [chromium] › v2-object.spec.ts:115:11 › v2 object at 1440, light › Rules: Learned and Drafts, with their decisions
+  [chromium] › v2-object.spec.ts:137:11 › v2 object at 1440, light › Rules: Accept all puts the suggested values in the draft batch
+  [chromium] › v2-object.spec.ts:147:11 › v2 object at 1440, light › the rule inspector opens from a rule and shows facts, definition, authority, scope, blocks, lineage, versions, contract, actions and history
+  [chromium] › v2-object.spec.ts:173:11 › v2 object at 1440, light › the rule canvas: header stat line, Definition, Failing records, Impact and History
+  [chromium] › v2-object.spec.ts:204:11 › v2 object at 1440, light › Runs: the measured score over 8 runs with the cap, the baseline and why the score moved
+  [chromium] › v2-object.spec.ts:228:11 › v2 object at 1440, light › Readiness: waves, the cap rule and the blocked and degraded features with their rules
+  [chromium] › v2-object.spec.ts:244:11 › v2 object at 1440, light › Records: the ledger scoped to the object, or its designed frame
+  [chromium] › v2-object.spec.ts:59:11 › v2 object at 1440, dark › Rules: ranked by value at risk, with the pivot, the i popovers and the totals
+  [chromium] › v2-object.spec.ts:115:11 › v2 object at 1440, dark › Rules: Learned and Drafts, with their decisions
+  [chromium] › v2-object.spec.ts:137:11 › v2 object at 1440, dark › Rules: Accept all puts the suggested values in the draft batch
+  [chromium] › v2-object.spec.ts:147:11 › v2 object at 1440, dark › the rule inspector opens from a rule and shows facts, definition, authority, scope, blocks, lineage, versions, contract, actions and history
+  [chromium] › v2-object.spec.ts:173:11 › v2 object at 1440, dark › the rule canvas: header stat line, Definition, Failing records, Impact and History
+  [chromium] › v2-object.spec.ts:204:11 › v2 object at 1440, dark › Runs: the measured score over 8 runs with the cap, the baseline and why the score moved
+  [chromium] › v2-object.spec.ts:228:11 › v2 object at 1440, dark › Readiness: waves, the cap rule and the blocked and degraded features with their rules
+  [chromium] › v2-object.spec.ts:244:11 › v2 object at 1440, dark › Records: the ledger scoped to the object, or its designed frame
+  [chromium] › v2-object.spec.ts:59:11 › v2 object at 390, light › Rules: ranked by value at risk, with the pivot, the i popovers and the totals
+  [chromium] › v2-object.spec.ts:115:11 › v2 object at 390, light › Rules: Learned and Drafts, with their decisions
+  [chromium] › v2-object.spec.ts:137:11 › v2 object at 390, light › Rules: Accept all puts the suggested values in the draft batch
+  [chromium] › v2-object.spec.ts:147:11 › v2 object at 390, light › the rule inspector opens from a rule and shows facts, definition, authority, scope, blocks, lineage, versions, contract, actions and history
+  [chromium] › v2-object.spec.ts:173:11 › v2 object at 390, light › the rule canvas: header stat line, Definition, Failing records, Impact and History
+  [chromium] › v2-object.spec.ts:204:11 › v2 object at 390, light › Runs: the measured score over 8 runs with the cap, the baseline and why the score moved
+  [chromium] › v2-object.spec.ts:228:11 › v2 object at 390, light › Readiness: waves, the cap rule and the blocked and degraded features with their rules
+  [chromium] › v2-object.spec.ts:244:11 › v2 object at 390, light › Records: the ledger scoped to the object, or its designed frame
+  [chromium] › v2-object.spec.ts:59:11 › v2 object at 390, dark › Rules: ranked by value at risk, with the pivot, the i popovers and the totals
+  [chromium] › v2-object.spec.ts:115:11 › v2 object at 390, dark › Rules: Learned and Drafts, with their decisions
+  [chromium] › v2-object.spec.ts:137:11 › v2 object at 390, dark › Rules: Accept all puts the suggested values in the draft batch
+  [chromium] › v2-object.spec.ts:147:11 › v2 object at 390, dark › the rule inspector opens from a rule and shows facts, definition, authority, scope, blocks, lineage, versions, contract, actions and history
+  [chromium] › v2-object.spec.ts:173:11 › v2 object at 390, dark › the rule canvas: header stat line, Definition, Failing records, Impact and History
+  [chromium] › v2-object.spec.ts:204:11 › v2 object at 390, dark › Runs: the measured score over 8 runs with the cap, the baseline and why the score moved
+  [chromium] › v2-object.spec.ts:228:11 › v2 object at 390, dark › Readiness: waves, the cap rule and the blocked and degraded features with their rules
+  [chromium] › v2-object.spec.ts:244:11 › v2 object at 390, dark › Records: the ledger scoped to the object, or its designed frame
+  [chromium] › v2-object.spec.ts:261:7 › keyboard › the i is reachable by Tab, opens with Enter and closes with Esc back onto itself
+  [chromium] › v2-object.spec.ts:277:7 › keyboard › a rule opens from the keyboard with j, k and Enter
+  [chromium] › v2-people.spec.ts:52:11 › v2 people and approvals at 1440, light › the People canvas: the table, the caller's row first and marked
+  [chromium] › v2-people.spec.ts:78:11 › v2 people and approvals at 1440, light › a person opens in the inspector: facts, objects, work, waiting approvals, Reassign…
+  [chromium] › v2-people.spec.ts:92:11 › v2 people and approvals at 1440, light › the owner lands with 'Approve batch B-241', which opens the batch inspector
+  [chromium] › v2-people.spec.ts:109:11 › v2 people and approvals at 1440, light › approving a batch from the ledger posts a notice with Undo and moves the count
+  [chromium] › v2-people.spec.ts:135:11 › v2 people and approvals at 1440, light › exceptions: the reason, who and when, and Reopen
+  [chromium] › v2-people.spec.ts:152:11 › v2 people and approvals at 1440, light › an approved batch is sent to SAP: the result sits in the frame and the batch reads as sent
+  [chromium] › v2-people.spec.ts:168:11 › v2 people and approvals at 1440, light › the inbox panel: Today and Earlier, mark read, the count follows
+  [chromium] › v2-people.spec.ts:183:11 › v2 people and approvals at 1440, light › triage and SLA from the account menu
+  [chromium] › v2-people.spec.ts:52:11 › v2 people and approvals at 1440, dark › the People canvas: the table, the caller's row first and marked
+  [chromium] › v2-people.spec.ts:78:11 › v2 people and approvals at 1440, dark › a person opens in the inspector: facts, objects, work, waiting approvals, Reassign…
+  [chromium] › v2-people.spec.ts:92:11 › v2 people and approvals at 1440, dark › the owner lands with 'Approve batch B-241', which opens the batch inspector
+  [chromium] › v2-people.spec.ts:109:11 › v2 people and approvals at 1440, dark › approving a batch from the ledger posts a notice with Undo and moves the count
+  [chromium] › v2-people.spec.ts:135:11 › v2 people and approvals at 1440, dark › exceptions: the reason, who and when, and Reopen
+  [chromium] › v2-people.spec.ts:152:11 › v2 people and approvals at 1440, dark › an approved batch is sent to SAP: the result sits in the frame and the batch reads as sent
+  [chromium] › v2-people.spec.ts:168:11 › v2 people and approvals at 1440, dark › the inbox panel: Today and Earlier, mark read, the count follows
+  [chromium] › v2-people.spec.ts:183:11 › v2 people and approvals at 1440, dark › triage and SLA from the account menu
+  [chromium] › v2-people.spec.ts:52:11 › v2 people and approvals at 390, light › the People canvas: the table, the caller's row first and marked
+  [chromium] › v2-people.spec.ts:78:11 › v2 people and approvals at 390, light › a person opens in the inspector: facts, objects, work, waiting approvals, Reassign…
+  [chromium] › v2-people.spec.ts:92:11 › v2 people and approvals at 390, light › the owner lands with 'Approve batch B-241', which opens the batch inspector
+  [chromium] › v2-people.spec.ts:109:11 › v2 people and approvals at 390, light › approving a batch from the ledger posts a notice with Undo and moves the count
+  [chromium] › v2-people.spec.ts:135:11 › v2 people and approvals at 390, light › exceptions: the reason, who and when, and Reopen
+  [chromium] › v2-people.spec.ts:152:11 › v2 people and approvals at 390, light › an approved batch is sent to SAP: the result sits in the frame and the batch reads as sent
+  [chromium] › v2-people.spec.ts:168:11 › v2 people and approvals at 390, light › the inbox panel: Today and Earlier, mark read, the count follows
+  [chromium] › v2-people.spec.ts:183:11 › v2 people and approvals at 390, light › triage and SLA from the account menu
+  [chromium] › v2-people.spec.ts:52:11 › v2 people and approvals at 390, dark › the People canvas: the table, the caller's row first and marked
+  [chromium] › v2-people.spec.ts:78:11 › v2 people and approvals at 390, dark › a person opens in the inspector: facts, objects, work, waiting approvals, Reassign…
+  [chromium] › v2-people.spec.ts:92:11 › v2 people and approvals at 390, dark › the owner lands with 'Approve batch B-241', which opens the batch inspector
+  [chromium] › v2-people.spec.ts:109:11 › v2 people and approvals at 390, dark › approving a batch from the ledger posts a notice with Undo and moves the count
+  [chromium] › v2-people.spec.ts:135:11 › v2 people and approvals at 390, dark › exceptions: the reason, who and when, and Reopen
+  [chromium] › v2-people.spec.ts:152:11 › v2 people and approvals at 390, dark › an approved batch is sent to SAP: the result sits in the frame and the batch reads as sent
+  [chromium] › v2-people.spec.ts:168:11 › v2 people and approvals at 390, dark › the inbox panel: Today and Earlier, mark read, the count follows
+  [chromium] › v2-people.spec.ts:183:11 › v2 people and approvals at 390, dark › triage and SLA from the account menu
+  [chromium] › v2-roles.spec.ts:48:7 › v2 role capabilities at 1440, light › admin: stewardship template, configuration bundle, view as, rules import, share links, out of office
+  [chromium] › v2-roles.spec.ts:73:7 › v2 role capabilities at 1440, light › programme lead: wave gates, balance work, contracts, grid export
+  [chromium] › v2-roles.spec.ts:94:7 › v2 role capabilities at 1440, light › data steward: comments and watch, fix order, out of office, shared view
+  [chromium] › v2-roles.spec.ts:115:7 › v2 role capabilities at 1440, light › data owner: delegation banner, contract approval, escalation chain, related objects
+  [chromium] › v2-roles.spec.ts:129:7 › v2 role capabilities at 1440, light › SAP Basis: extraction dry run and delta
+  [chromium] › v2-roles.spec.ts:140:7 › v2 role capabilities at 1440, light › process analyst: what if these rules were fixed
+  [chromium] › v2-roles.spec.ts:150:7 › v2 role capabilities at 1440, light › viewer and auditor: shared view, activity
+  [chromium] › v2-rules.spec.ts:50:11 › v2 rules at 1440, light › the rules library lists, filters and opens a rule
+  [chromium] › v2-rules.spec.ts:69:11 › v2 rules at 1440, light › drafts: create, edit and dry run
+  [chromium] › v2-rules.spec.ts:83:11 › v2 rules at 1440, light › the survivorship editor adds a rule and saves
+  [chromium] › v2-rules.spec.ts:98:11 › v2 rules at 1440, light › the process designer edits the tree, maps a field and saves
+  [chromium] › v2-rules.spec.ts:50:11 › v2 rules at 1440, dark › the rules library lists, filters and opens a rule
+  [chromium] › v2-rules.spec.ts:69:11 › v2 rules at 1440, dark › drafts: create, edit and dry run
+  [chromium] › v2-rules.spec.ts:83:11 › v2 rules at 1440, dark › the survivorship editor adds a rule and saves
+  [chromium] › v2-rules.spec.ts:98:11 › v2 rules at 1440, dark › the process designer edits the tree, maps a field and saves
+  [chromium] › v2-rules.spec.ts:50:11 › v2 rules at 390, light › the rules library lists, filters and opens a rule
+  [chromium] › v2-rules.spec.ts:69:11 › v2 rules at 390, light › drafts: create, edit and dry run
+  [chromium] › v2-rules.spec.ts:83:11 › v2 rules at 390, light › the survivorship editor adds a rule and saves
+  [chromium] › v2-rules.spec.ts:98:11 › v2 rules at 390, light › the process designer edits the tree, maps a field and saves
+  [chromium] › v2-rules.spec.ts:50:11 › v2 rules at 390, dark › the rules library lists, filters and opens a rule
+  [chromium] › v2-rules.spec.ts:69:11 › v2 rules at 390, dark › drafts: create, edit and dry run
+  [chromium] › v2-rules.spec.ts:83:11 › v2 rules at 390, dark › the survivorship editor adds a rule and saves
+  [chromium] › v2-rules.spec.ts:98:11 › v2 rules at 390, dark › the process designer edits the tree, maps a field and saves
+  [chromium] › v2-runs.spec.ts:55:11 › v2 runs at 1440, light › the run timeline opens from the top bar, marks the baseline, and picking a run re-scopes the canvas
+  [chromium] › v2-runs.spec.ts:81:11 › v2 runs at 1440, light › the Run canvas: status line, per-object table, actions and jobs
+  [chromium] › v2-runs.spec.ts:99:11 › v2 runs at 1440, light › the Compare canvas: sentence, rows, totals that add up, method and what changed
+  [chromium] › v2-runs.spec.ts:127:11 › v2 runs at 1440, light › the Runs canvas: the timeline at full width, the table with filters, Start a run
+  [chromium] › v2-runs.spec.ts:144:11 › v2 runs at 1440, light › the Jobs view lists every job; a row opens the job inspector with stages, tables, the error and Retry
+  [chromium] › v2-runs.spec.ts:166:11 › v2 runs at 1440, light › a running job fills the job line, which opens its inspector; a failed job is one line in the status strip
+  [chromium] › v2-runs.spec.ts:182:11 › v2 runs at 1440, light › the system inspector answers Test connection and Extract in its own frame
+  [chromium] › v2-runs.spec.ts:197:11 › v2 runs at 1440, light › the Basis next step opens the system inspector on the system that was never extracted
+  [chromium] › v2-runs.spec.ts:208:11 › v2 runs at 1440, light › the System canvas: health, its views, and the Configuration view
+  [chromium] › v2-runs.spec.ts:55:11 › v2 runs at 1440, dark › the run timeline opens from the top bar, marks the baseline, and picking a run re-scopes the canvas
+  [chromium] › v2-runs.spec.ts:81:11 › v2 runs at 1440, dark › the Run canvas: status line, per-object table, actions and jobs
+  [chromium] › v2-runs.spec.ts:99:11 › v2 runs at 1440, dark › the Compare canvas: sentence, rows, totals that add up, method and what changed
+  [chromium] › v2-runs.spec.ts:127:11 › v2 runs at 1440, dark › the Runs canvas: the timeline at full width, the table with filters, Start a run
+  [chromium] › v2-runs.spec.ts:144:11 › v2 runs at 1440, dark › the Jobs view lists every job; a row opens the job inspector with stages, tables, the error and Retry
+  [chromium] › v2-runs.spec.ts:166:11 › v2 runs at 1440, dark › a running job fills the job line, which opens its inspector; a failed job is one line in the status strip
+  [chromium] › v2-runs.spec.ts:182:11 › v2 runs at 1440, dark › the system inspector answers Test connection and Extract in its own frame
+  [chromium] › v2-runs.spec.ts:197:11 › v2 runs at 1440, dark › the Basis next step opens the system inspector on the system that was never extracted
+  [chromium] › v2-runs.spec.ts:208:11 › v2 runs at 1440, dark › the System canvas: health, its views, and the Configuration view
+  [chromium] › v2-runs.spec.ts:55:11 › v2 runs at 390, light › the run timeline opens from the top bar, marks the baseline, and picking a run re-scopes the canvas
+  [chromium] › v2-runs.spec.ts:81:11 › v2 runs at 390, light › the Run canvas: status line, per-object table, actions and jobs
+  [chromium] › v2-runs.spec.ts:99:11 › v2 runs at 390, light › the Compare canvas: sentence, rows, totals that add up, method and what changed
+  [chromium] › v2-runs.spec.ts:127:11 › v2 runs at 390, light › the Runs canvas: the timeline at full width, the table with filters, Start a run
+  [chromium] › v2-runs.spec.ts:144:11 › v2 runs at 390, light › the Jobs view lists every job; a row opens the job inspector with stages, tables, the error and Retry
+  [chromium] › v2-runs.spec.ts:166:11 › v2 runs at 390, light › a running job fills the job line, which opens its inspector; a failed job is one line in the status strip
+  [chromium] › v2-runs.spec.ts:182:11 › v2 runs at 390, light › the system inspector answers Test connection and Extract in its own frame
+  [chromium] › v2-runs.spec.ts:197:11 › v2 runs at 390, light › the Basis next step opens the system inspector on the system that was never extracted
+  [chromium] › v2-runs.spec.ts:208:11 › v2 runs at 390, light › the System canvas: health, its views, and the Configuration view
+  [chromium] › v2-runs.spec.ts:55:11 › v2 runs at 390, dark › the run timeline opens from the top bar, marks the baseline, and picking a run re-scopes the canvas
+  [chromium] › v2-runs.spec.ts:81:11 › v2 runs at 390, dark › the Run canvas: status line, per-object table, actions and jobs
+  [chromium] › v2-runs.spec.ts:99:11 › v2 runs at 390, dark › the Compare canvas: sentence, rows, totals that add up, method and what changed
+  [chromium] › v2-runs.spec.ts:127:11 › v2 runs at 390, dark › the Runs canvas: the timeline at full width, the table with filters, Start a run
+  [chromium] › v2-runs.spec.ts:144:11 › v2 runs at 390, dark › the Jobs view lists every job; a row opens the job inspector with stages, tables, the error and Retry
+  [chromium] › v2-runs.spec.ts:166:11 › v2 runs at 390, dark › a running job fills the job line, which opens its inspector; a failed job is one line in the status strip
+  [chromium] › v2-runs.spec.ts:182:11 › v2 runs at 390, dark › the system inspector answers Test connection and Extract in its own frame
+  [chromium] › v2-runs.spec.ts:197:11 › v2 runs at 390, dark › the Basis next step opens the system inspector on the system that was never extracted
+  [chromium] › v2-runs.spec.ts:208:11 › v2 runs at 390, dark › the System canvas: health, its views, and the Configuration view
+  [chromium] › v2-status.spec.ts:55:11 › status and enterprise admin at 1440, light › the status page reads signed out: components, 30 days, incidents and maintenance
+  [chromium] › v2-status.spec.ts:75:11 › status and enterprise admin at 1440, light › Admin, Settings, Appearance: contrast as numbers, refused below 4.5:1, applied when saved
+  [chromium] › v2-status.spec.ts:102:11 › status and enterprise admin at 1440, light › Admin, Users, Provisioning: the token shown once and the group mapping
+  [chromium] › v2-status.spec.ts:55:11 › status and enterprise admin at 1440, dark › the status page reads signed out: components, 30 days, incidents and maintenance
+  [chromium] › v2-status.spec.ts:75:11 › status and enterprise admin at 1440, dark › Admin, Settings, Appearance: contrast as numbers, refused below 4.5:1, applied when saved
+  [chromium] › v2-status.spec.ts:102:11 › status and enterprise admin at 1440, dark › Admin, Users, Provisioning: the token shown once and the group mapping
+  [chromium] › v2-status.spec.ts:55:11 › status and enterprise admin at 390, light › the status page reads signed out: components, 30 days, incidents and maintenance
+  [chromium] › v2-status.spec.ts:75:11 › status and enterprise admin at 390, light › Admin, Settings, Appearance: contrast as numbers, refused below 4.5:1, applied when saved
+  [chromium] › v2-status.spec.ts:102:11 › status and enterprise admin at 390, light › Admin, Users, Provisioning: the token shown once and the group mapping
+  [chromium] › v2-status.spec.ts:55:11 › status and enterprise admin at 390, dark › the status page reads signed out: components, 30 days, incidents and maintenance
+  [chromium] › v2-status.spec.ts:75:11 › status and enterprise admin at 390, dark › Admin, Settings, Appearance: contrast as numbers, refused below 4.5:1, applied when saved
+  [chromium] › v2-status.spec.ts:102:11 › status and enterprise admin at 390, dark › Admin, Users, Provisioning: the token shown once and the group mapping
+  [chromium] › v2-status.spec.ts:127:7 › status: signed in, the health word, and the minute refresh › /status reads signed in, with the way back to Meridian
+  [chromium] › v2-status.spec.ts:134:7 › status: signed in, the health word, and the minute refresh › /status reads signed out too, with Sign in instead of the way back; /v2/status redirects to it
+  [chromium] › v2-status.spec.ts:143:7 › status: signed in, the health word, and the minute refresh › the status strip's health word opens the status page
+  [chromium] › v2-status.spec.ts:153:7 › status: signed in, the health word, and the minute refresh › reads the status again every minute
+  [chromium] › v2-step10.spec.ts:58:11 › v2 step 10 at 1440, light › policy packs: the Admin section, the pack inspector, the mark and the receipt
+  [chromium] › v2-step10.spec.ts:79:11 › v2 step 10 at 1440, light › the Policy chip on the Work ledger
+  [chromium] › v2-step10.spec.ts:87:11 › v2 step 10 at 1440, light › digests: the Admin section, a new digest, Send now and the preview
+  [chromium] › v2-step10.spec.ts:108:11 › v2 step 10 at 1440, light › sandbox mode: the banner across the shell, the Settings block and the refused decision
+  [chromium] › v2-step10.spec.ts:128:11 › v2 step 10 at 1440, light › history and time travel: the History tab, the ledger as of a run, the object as of a run
+  [chromium] › v2-step10.spec.ts:146:11 › v2 step 10 at 1440, light › prediction: the start forms and a queued job
+  [chromium] › v2-step10.spec.ts:171:11 › v2 step 10 at 1440, light › natural language: ? in the command line shows the filter that will run
+  [chromium] › v2-step10.spec.ts:58:11 › v2 step 10 at 1440, dark › policy packs: the Admin section, the pack inspector, the mark and the receipt
+  [chromium] › v2-step10.spec.ts:79:11 › v2 step 10 at 1440, dark › the Policy chip on the Work ledger
+  [chromium] › v2-step10.spec.ts:87:11 › v2 step 10 at 1440, dark › digests: the Admin section, a new digest, Send now and the preview
+  [chromium] › v2-step10.spec.ts:108:11 › v2 step 10 at 1440, dark › sandbox mode: the banner across the shell, the Settings block and the refused decision
+  [chromium] › v2-step10.spec.ts:128:11 › v2 step 10 at 1440, dark › history and time travel: the History tab, the ledger as of a run, the object as of a run
+  [chromium] › v2-step10.spec.ts:146:11 › v2 step 10 at 1440, dark › prediction: the start forms and a queued job
+  [chromium] › v2-step10.spec.ts:171:11 › v2 step 10 at 1440, dark › natural language: ? in the command line shows the filter that will run
+  [chromium] › v2-step10.spec.ts:58:11 › v2 step 10 at 390, light › policy packs: the Admin section, the pack inspector, the mark and the receipt
+  [chromium] › v2-step10.spec.ts:79:11 › v2 step 10 at 390, light › the Policy chip on the Work ledger
+  [chromium] › v2-step10.spec.ts:87:11 › v2 step 10 at 390, light › digests: the Admin section, a new digest, Send now and the preview
+  [chromium] › v2-step10.spec.ts:108:11 › v2 step 10 at 390, light › sandbox mode: the banner across the shell, the Settings block and the refused decision
+  [chromium] › v2-step10.spec.ts:128:11 › v2 step 10 at 390, light › history and time travel: the History tab, the ledger as of a run, the object as of a run
+  [chromium] › v2-step10.spec.ts:146:11 › v2 step 10 at 390, light › prediction: the start forms and a queued job
+  [chromium] › v2-step10.spec.ts:171:11 › v2 step 10 at 390, light › natural language: ? in the command line shows the filter that will run
+  [chromium] › v2-step10.spec.ts:58:11 › v2 step 10 at 390, dark › policy packs: the Admin section, the pack inspector, the mark and the receipt
+  [chromium] › v2-step10.spec.ts:79:11 › v2 step 10 at 390, dark › the Policy chip on the Work ledger
+  [chromium] › v2-step10.spec.ts:87:11 › v2 step 10 at 390, dark › digests: the Admin section, a new digest, Send now and the preview
+  [chromium] › v2-step10.spec.ts:108:11 › v2 step 10 at 390, dark › sandbox mode: the banner across the shell, the Settings block and the refused decision
+  [chromium] › v2-step10.spec.ts:128:11 › v2 step 10 at 390, dark › history and time travel: the History tab, the ledger as of a run, the object as of a run
+  [chromium] › v2-step10.spec.ts:146:11 › v2 step 10 at 390, dark › prediction: the start forms and a queued job
+  [chromium] › v2-step10.spec.ts:171:11 › v2 step 10 at 390, dark › natural language: ? in the command line shows the filter that will run
+  [chromium] › v2-step9.spec.ts:59:11 › v2 step 9 at 1440, light › fix simulation: Simulate fixing and Top fixes on the Rules tab, and from the Work bulk bar
+  [chromium] › v2-step9.spec.ts:76:11 › v2 step 9 at 1440, light › fix simulation from the Work bulk bar
+  [chromium] › v2-step9.spec.ts:89:11 › v2 step 9 at 1440, light › readiness certificate and money on the Waves view and in the certificate inspector
+  [chromium] › v2-step9.spec.ts:105:11 › v2 step 9 at 1440, light › impact in money on the Readiness tab
+  [chromium] › v2-step9.spec.ts:114:11 › v2 step 9 at 1440, light › webhooks: the Admin section, a preset, the webhook and a delivery
+  [chromium] › v2-step9.spec.ts:133:11 › v2 step 9 at 1440, light › config drift: the System canvas view and the inbox panel
+  [chromium] › v2-step9.spec.ts:144:11 › v2 step 9 at 1440, light › rule mining: the Learned view with the evidence of mined rules
+  [chromium] › v2-step9.spec.ts:152:11 › v2 step 9 at 1440, light › contracts: the mark on the matrix and the ruler, the editor, and the refused baseline
+  [chromium] › v2-step9.spec.ts:178:11 › v2 step 9 at 1440, light › delta extraction: the option in the extraction dialog and the change log
+  [chromium] › v2-step9.spec.ts:59:11 › v2 step 9 at 1440, dark › fix simulation: Simulate fixing and Top fixes on the Rules tab, and from the Work bulk bar
+  [chromium] › v2-step9.spec.ts:76:11 › v2 step 9 at 1440, dark › fix simulation from the Work bulk bar
+  [chromium] › v2-step9.spec.ts:89:11 › v2 step 9 at 1440, dark › readiness certificate and money on the Waves view and in the certificate inspector
+  [chromium] › v2-step9.spec.ts:105:11 › v2 step 9 at 1440, dark › impact in money on the Readiness tab
+  [chromium] › v2-step9.spec.ts:114:11 › v2 step 9 at 1440, dark › webhooks: the Admin section, a preset, the webhook and a delivery
+  [chromium] › v2-step9.spec.ts:133:11 › v2 step 9 at 1440, dark › config drift: the System canvas view and the inbox panel
+  [chromium] › v2-step9.spec.ts:144:11 › v2 step 9 at 1440, dark › rule mining: the Learned view with the evidence of mined rules
+  [chromium] › v2-step9.spec.ts:152:11 › v2 step 9 at 1440, dark › contracts: the mark on the matrix and the ruler, the editor, and the refused baseline
+  [chromium] › v2-step9.spec.ts:178:11 › v2 step 9 at 1440, dark › delta extraction: the option in the extraction dialog and the change log
+  [chromium] › v2-step9.spec.ts:59:11 › v2 step 9 at 390, light › fix simulation: Simulate fixing and Top fixes on the Rules tab, and from the Work bulk bar
+  [chromium] › v2-step9.spec.ts:76:11 › v2 step 9 at 390, light › fix simulation from the Work bulk bar
+  [chromium] › v2-step9.spec.ts:89:11 › v2 step 9 at 390, light › readiness certificate and money on the Waves view and in the certificate inspector
+  [chromium] › v2-step9.spec.ts:105:11 › v2 step 9 at 390, light › impact in money on the Readiness tab
+  [chromium] › v2-step9.spec.ts:114:11 › v2 step 9 at 390, light › webhooks: the Admin section, a preset, the webhook and a delivery
+  [chromium] › v2-step9.spec.ts:133:11 › v2 step 9 at 390, light › config drift: the System canvas view and the inbox panel
+  [chromium] › v2-step9.spec.ts:144:11 › v2 step 9 at 390, light › rule mining: the Learned view with the evidence of mined rules
+  [chromium] › v2-step9.spec.ts:152:11 › v2 step 9 at 390, light › contracts: the mark on the matrix and the ruler, the editor, and the refused baseline
+  [chromium] › v2-step9.spec.ts:178:11 › v2 step 9 at 390, light › delta extraction: the option in the extraction dialog and the change log
+  [chromium] › v2-step9.spec.ts:59:11 › v2 step 9 at 390, dark › fix simulation: Simulate fixing and Top fixes on the Rules tab, and from the Work bulk bar
+  [chromium] › v2-step9.spec.ts:76:11 › v2 step 9 at 390, dark › fix simulation from the Work bulk bar
+  [chromium] › v2-step9.spec.ts:89:11 › v2 step 9 at 390, dark › readiness certificate and money on the Waves view and in the certificate inspector
+  [chromium] › v2-step9.spec.ts:105:11 › v2 step 9 at 390, dark › impact in money on the Readiness tab
+  [chromium] › v2-step9.spec.ts:114:11 › v2 step 9 at 390, dark › webhooks: the Admin section, a preset, the webhook and a delivery
+  [chromium] › v2-step9.spec.ts:133:11 › v2 step 9 at 390, dark › config drift: the System canvas view and the inbox panel
+  [chromium] › v2-step9.spec.ts:144:11 › v2 step 9 at 390, dark › rule mining: the Learned view with the evidence of mined rules
+  [chromium] › v2-step9.spec.ts:152:11 › v2 step 9 at 390, dark › contracts: the mark on the matrix and the ruler, the editor, and the refused baseline
+  [chromium] › v2-step9.spec.ts:178:11 › v2 step 9 at 390, dark › delta extraction: the option in the extraction dialog and the change log
+  [chromium] › v2-systems.spec.ts:52:11 › v2 systems at 1440, light › Configuration lists the areas, and an area opens its objects
+  [chromium] › v2-systems.spec.ts:67:11 › v2 systems at 1440, light › Configuration: source, drift log and comparison with the target
+  [chromium] › v2-systems.spec.ts:80:11 › v2 systems at 1440, light › Schedules: add, pause and delete a schedule
+  [chromium] › v2-systems.spec.ts:102:11 › v2 systems at 1440, light › Custom objects: the registry, an object inspector and the anomaly decision
+  [chromium] › v2-systems.spec.ts:119:11 › v2 systems at 1440, light › Connection: edit settings, test, and the new-system canvas
+  [chromium] › v2-systems.spec.ts:139:11 › v2 systems at 1440, light › Scope: set inline when extracting
+  [chromium] › v2-systems.spec.ts:52:11 › v2 systems at 1440, dark › Configuration lists the areas, and an area opens its objects
+  [chromium] › v2-systems.spec.ts:67:11 › v2 systems at 1440, dark › Configuration: source, drift log and comparison with the target
+  [chromium] › v2-systems.spec.ts:80:11 › v2 systems at 1440, dark › Schedules: add, pause and delete a schedule
+  [chromium] › v2-systems.spec.ts:102:11 › v2 systems at 1440, dark › Custom objects: the registry, an object inspector and the anomaly decision
+  [chromium] › v2-systems.spec.ts:119:11 › v2 systems at 1440, dark › Connection: edit settings, test, and the new-system canvas
+  [chromium] › v2-systems.spec.ts:139:11 › v2 systems at 1440, dark › Scope: set inline when extracting
+  [chromium] › v2-systems.spec.ts:52:11 › v2 systems at 390, light › Configuration lists the areas, and an area opens its objects
+  [chromium] › v2-systems.spec.ts:67:11 › v2 systems at 390, light › Configuration: source, drift log and comparison with the target
+  [chromium] › v2-systems.spec.ts:80:11 › v2 systems at 390, light › Schedules: add, pause and delete a schedule
+  [chromium] › v2-systems.spec.ts:102:11 › v2 systems at 390, light › Custom objects: the registry, an object inspector and the anomaly decision
+  [chromium] › v2-systems.spec.ts:119:11 › v2 systems at 390, light › Connection: edit settings, test, and the new-system canvas
+  [chromium] › v2-systems.spec.ts:139:11 › v2 systems at 390, light › Scope: set inline when extracting
+  [chromium] › v2-systems.spec.ts:52:11 › v2 systems at 390, dark › Configuration lists the areas, and an area opens its objects
+  [chromium] › v2-systems.spec.ts:67:11 › v2 systems at 390, dark › Configuration: source, drift log and comparison with the target
+  [chromium] › v2-systems.spec.ts:80:11 › v2 systems at 390, dark › Schedules: add, pause and delete a schedule
+  [chromium] › v2-systems.spec.ts:102:11 › v2 systems at 390, dark › Custom objects: the registry, an object inspector and the anomaly decision
+  [chromium] › v2-systems.spec.ts:119:11 › v2 systems at 390, dark › Connection: edit settings, test, and the new-system canvas
+  [chromium] › v2-systems.spec.ts:139:11 › v2 systems at 390, dark › Scope: set inline when extracting
+  [chromium] › v2-work.spec.ts:51:11 › v2 work at 1440, light › the ledger: title, sentence, chips with counts, the rows
+  [chromium] › v2-work.spec.ts:83:11 › v2 work at 1440, light › a change shows a notice with Undo, and Ctrl+Z takes it back
+  [chromium] › v2-work.spec.ts:112:11 › v2 work at 1440, light › selecting rows shows the bulk bar; By rule groups the rows under their rule
+  [chromium] › v2-work.spec.ts:138:11 › v2 work at 1440, light › a row opens the record in the inspector: facts, fix, links, actions, and Esc returns
+  [chromium] › v2-work.spec.ts:175:11 › v2 work at 1440, light › the command line's approve and export reach the ledger
+  [chromium] › v2-work.spec.ts:51:11 › v2 work at 1440, dark › the ledger: title, sentence, chips with counts, the rows
+  [chromium] › v2-work.spec.ts:83:11 › v2 work at 1440, dark › a change shows a notice with Undo, and Ctrl+Z takes it back
+  [chromium] › v2-work.spec.ts:112:11 › v2 work at 1440, dark › selecting rows shows the bulk bar; By rule groups the rows under their rule
+  [chromium] › v2-work.spec.ts:138:11 › v2 work at 1440, dark › a row opens the record in the inspector: facts, fix, links, actions, and Esc returns
+  [chromium] › v2-work.spec.ts:175:11 › v2 work at 1440, dark › the command line's approve and export reach the ledger
+  [chromium] › v2-work.spec.ts:51:11 › v2 work at 390, light › the ledger: title, sentence, chips with counts, the rows
+  [chromium] › v2-work.spec.ts:83:11 › v2 work at 390, light › a change shows a notice with Undo, and Ctrl+Z takes it back
+  [chromium] › v2-work.spec.ts:112:11 › v2 work at 390, light › selecting rows shows the bulk bar; By rule groups the rows under their rule
+  [chromium] › v2-work.spec.ts:138:11 › v2 work at 390, light › a row opens the record in the inspector: facts, fix, links, actions, and Esc returns
+  [chromium] › v2-work.spec.ts:175:11 › v2 work at 390, light › the command line's approve and export reach the ledger
+  [chromium] › v2-work.spec.ts:51:11 › v2 work at 390, dark › the ledger: title, sentence, chips with counts, the rows
+  [chromium] › v2-work.spec.ts:83:11 › v2 work at 390, dark › a change shows a notice with Undo, and Ctrl+Z takes it back
+  [chromium] › v2-work.spec.ts:112:11 › v2 work at 390, dark › selecting rows shows the bulk bar; By rule groups the rows under their rule
+  [chromium] › v2-work.spec.ts:138:11 › v2 work at 390, dark › a row opens the record in the inspector: facts, fix, links, actions, and Esc returns
+  [chromium] › v2-work.spec.ts:175:11 › v2 work at 390, dark › the command line's approve and export reach the ledger
+Total: 398 tests in 17 files

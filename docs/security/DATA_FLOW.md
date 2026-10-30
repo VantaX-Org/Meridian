@@ -84,7 +84,7 @@ All external hops use TLS 1.2 or 1.3. Internal docker-network hops (api ↔ db, 
 
 | Store | Default retention | Configurable |
 |---|---|---|
-| `audit_log` | forever | — |
+| `audit_log` | forever unless the tenant sets `audit_days` (30 to 3,650) | Compliance screen or `PUT /api/v1/settings/retention`; enforced by the nightly purge after 7 days of dry runs with `MERIDIAN_PURGE_ENABLED` on (see `docs/diligence/data-governance.md`) |
 | `admin_audit` | forever | — |
 | Celery task results (Redis) | 24h | `CELERY_RESULT_EXPIRES` |
 | Prometheus metrics | 30 days | `--storage.tsdb.retention.time` |

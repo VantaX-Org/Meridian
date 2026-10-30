@@ -1,0 +1,3 @@
+find: The -delete action automatically turns on -depth, but -prune does nothing when -depth is in effect.  If you want to carry on anyway, just explicitly use the -depth option.
+find exit status 1
+left behind: ./api/x.py ./db/migrations/001.py ./db/schema.py 
