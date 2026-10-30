@@ -125,6 +125,11 @@ class Settings(BaseSettings):
     # Auth
     # Clerk removed - using local auth only
     auth_mode: str = "local"
+    # This deployment's own tenant. A signed-in request takes its tenant from the verified token's tenant_id
+    # claim (api/middleware/local_auth.py); this id is used only for the public pages before sign-in (theme,
+    # status page, licence), API keys and HQ manifest sync. A single-tenant install keeps the default.
+    deployment_tenant_id: str = Field(default="00000000-0000-0000-0000-000000000001",
+                                      validation_alias=AliasChoices("MERIDIAN_TENANT_ID", "DEPLOYMENT_TENANT_ID"))
     # Live SAP write-back (BAPI execution) stays off until per-module BAPI
     # parameter builders + commit/rollback are verified against the customer's
     # release. With it off, fixes are delivered as export files (LSMW/BAPI).

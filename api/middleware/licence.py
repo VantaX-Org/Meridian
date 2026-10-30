@@ -336,10 +336,10 @@ def _do_sync_manifest(rules: list, field_mappings: list) -> None:
     try:
         from sqlalchemy import text
 
-        from api.deps import _DEV_TENANT
+        from api.deps import deployment_tenant_id
         from workers.db import get_sync_engine
 
-        local_tid = str(_DEV_TENANT.id)
+        local_tid = str(deployment_tenant_id())
         with get_sync_engine().begin() as conn:
             conn.execute(text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": local_tid})
             for rule in rules:

@@ -1,7 +1,8 @@
 """Local authentication middleware — JWT verification for AUTH_MODE=local.
 
 Checks every /api/* request (except excluded paths) for a valid Bearer token
-signed with the tenant's jwt_secret.
+signed with the jwt_secret of the tenant its ``tenant_id`` claim names, and makes that
+verified claim the request's tenant (request.state.tenant_id / verified_tenant_id).
 """
 
 import contextvars
@@ -22,7 +23,7 @@ from api.services.rate_limiter import rate_limit
 
 logger = logging.getLogger("meridian.local_auth")
 
-DEV_TENANT_ID = "00000000-0000-0000-0000-000000000001"
+DEV_TENANT_ID = "00000000-0000-0000-0000-000000000001"  # the development tenant (api/deps.py DEV_TENANT_ID)
 
 _EXCLUDED_PATHS = {
     "/api/v1/auth/login",
@@ -48,42 +49,89 @@ _EXCLUDED_PATHS = {
 _API_KEY_RATE_LIMIT = max(1, int(os.environ.get("API_KEY_RATE_LIMIT_PER_MIN", "600")))
 _api_key_rate_limit = rate_limit("api_key", limit=_API_KEY_RATE_LIMIT, window_s=60, key_by="api_key")
 
-# Cache jwt_secret in memory to avoid DB hit on every request
+
+
+def is_public_path(path: str) -> bool:
+    """The paths this middleware serves without a token (sign-in, invite, theme, status page, licence)."""
+    return path in _EXCLUDED_PATHS
+
+
+# tenants.jwt_secret per tenant id, cached in memory so a request costs no DB read. Each tenant signs its own
+# sessions; a token is verified with the secret of the tenant its tenant_id claim names, and the claim it then
+# carries is the request's tenant. A rotated secret applies after a restart or forget_jwt_secret().
 _jwt_secret_cache: dict[str, str] = {}
+_jwt_secret_lock = threading.Lock()
 
 
-def _load_jwt_secret() -> str | None:
-    """Load jwt_secret from DB (sync) and cache it."""
-    cached = _jwt_secret_cache.get(DEV_TENANT_ID)
+def forget_jwt_secret(tenant_id: str | None = None) -> None:
+    """Drop the cached signing secret of one tenant (or all), after a rotation in this process."""
+    with _jwt_secret_lock:
+        if tenant_id is None:
+            _jwt_secret_cache.clear()
+        else:
+            _jwt_secret_cache.pop(str(tenant_id), None)
+
+
+def _deployment_tenant() -> str:
+    from api.deps import deployment_tenant_id
+
+    return str(deployment_tenant_id())
+
+
+def _load_jwt_secret_for(tenant_id: str) -> str | None:
+    """tenants.jwt_secret of ``tenant_id`` from the DB (sync, cached); None when the tenant has none."""
+    with _jwt_secret_lock:
+        cached = _jwt_secret_cache.get(tenant_id)
     if cached:
         return cached
-
     try:
         import psycopg2
-        import os
 
         db_url = os.environ.get("DATABASE_URL_SYNC", "")
         if not db_url:
             db_url = os.environ.get("DATABASE_URL", "").replace("+asyncpg", "")
         if not db_url:
             return None
-
-        # Parse the SQLAlchemy URL to psycopg2 format
-        # postgresql://user:pass@host:port/db -> same format works for psycopg2
         conn = psycopg2.connect(db_url)
         try:
             cur = conn.cursor()
-            cur.execute("SELECT jwt_secret FROM tenants WHERE id = %s", (DEV_TENANT_ID,))
+            cur.execute("SELECT jwt_secret FROM tenants WHERE id = %s", (tenant_id,))
             row = cur.fetchone()
             if row and row[0]:
-                _jwt_secret_cache[DEV_TENANT_ID] = row[0]
+                with _jwt_secret_lock:
+                    _jwt_secret_cache[tenant_id] = row[0]
                 return row[0]
         finally:
             conn.close()
     except Exception as e:
-        logger.warning(f"Failed to load jwt_secret: {e}")
-
+        logger.warning(f"Failed to load jwt_secret: {type(e).__name__}")
     return None
+
+
+def _load_jwt_secret() -> str | None:
+    """The signing secret of this deployment's own tenant (the single-tenant install's only tenant)."""
+    return _load_jwt_secret_for(_deployment_tenant())
+
+
+def _claimed_tenant(token: str) -> str | None:
+    """The tenant_id claim of a token, read WITHOUT verification: only to choose whose secret verifies it.
+    None when the token is not a JWT or names no valid tenant id."""
+    try:
+        import jwt as pyjwt
+
+        claim = pyjwt.decode(token, options={"verify_signature": False}).get("tenant_id")
+    except Exception:  # noqa: BLE001 - not a JWT: verification below refuses it
+        return None
+    return str(claim) if claim and _valid_uuid(claim) else None
+
+
+def _secret_for(token: str) -> tuple[str | None, str | None]:
+    """(secret, claimed tenant) for verifying ``token``: the claimed tenant's own secret; a token that names no
+    tenant, or this deployment's tenant, is verified with the deployment tenant's secret."""
+    claimed = _claimed_tenant(token)
+    if claimed is None or claimed == _deployment_tenant():
+        return _load_jwt_secret(), claimed
+    return _load_jwt_secret_for(claimed), claimed
 
 
 # users.token_version per user id, cached briefly so session revocation costs at most one indexed
@@ -182,8 +230,8 @@ class LocalAuthMiddleware(BaseHTTPMiddleware):
                     content={"detail": "Not authenticated"},
                 )
 
-        # Get jwt_secret
-        secret = _load_jwt_secret()
+        # The secret of the tenant the token names (each tenant signs its own sessions)
+        secret, claimed = _secret_for(token)
         if not secret:
             return JSONResponse(
                 status_code=401,
@@ -208,8 +256,18 @@ class LocalAuthMiddleware(BaseHTTPMiddleware):
         # Session revocation: a password change or reset, or deactivation, bumps users.token_version;
         # a token issued before that (a lower ``tv``; none counts as 0) is no longer a session.
         user_id = payload.get("sub")
-        tenant_id = payload.get("tenant_id") or DEV_TENANT_ID
+        tenant_id = payload.get("tenant_id")
+        if not tenant_id:
+            # Every session token names its tenant. One without the claim is accepted only by a development
+            # deployment, for its own tenant; anywhere else it could land in a tenant it was never issued for.
+            from api.config import settings
+
+            if settings.env != "development":
+                return JSONResponse(status_code=401, content={"detail": "Invalid or expired token"})
+            tenant_id = _deployment_tenant()
         if not _valid_uuid(user_id) or not _valid_uuid(tenant_id):
+            return JSONResponse(status_code=401, content={"detail": "Invalid or expired token"})
+        if claimed is not None and str(tenant_id) != claimed:
             return JSONResponse(status_code=401, content={"detail": "Invalid or expired token"})
         try:
             current = await run_in_threadpool(_current_token_version, str(user_id), str(tenant_id))
@@ -223,6 +281,9 @@ class LocalAuthMiddleware(BaseHTTPMiddleware):
                 content={"detail": "Session has been revoked. Sign in again."},
             )
 
+        # The verified tenant: TenantMiddleware sets RLS from it and get_tenant returns it.
+        request.state.tenant_id = uuid.UUID(str(tenant_id))
+        request.state.verified_tenant_id = request.state.tenant_id
         # Set user info on request state for downstream use
         request.state.local_user_id = payload.get("sub")
         request.state.local_user_email = payload.get("email")
@@ -241,7 +302,8 @@ class LocalAuthMiddleware(BaseHTTPMiddleware):
         user's own grants from the database; a key adds no permission of its own and has no cookie or token
         version. Revoked, expired and suspended keys answer 401 with a plain sentence."""
         try:
-            key = await run_in_threadpool(resolve_key_sync, token, DEV_TENANT_ID)
+            # API keys belong to this deployment's tenant (the key carries no tenant of its own).
+            key = await run_in_threadpool(resolve_key_sync, token, _deployment_tenant())
         except KeyRejected as e:
             return JSONResponse(status_code=401, content={"detail": e.detail})
         except Exception as e:  # noqa: BLE001 - database down or not migrated: the server's fault, not a 401
@@ -250,6 +312,7 @@ class LocalAuthMiddleware(BaseHTTPMiddleware):
 
         request.state.api_key_id = key.key_id
         request.state.tenant_id = uuid.UUID(key.tenant_id)
+        request.state.verified_tenant_id = request.state.tenant_id
         try:
             await _api_key_rate_limit(request)
         except HTTPException as e:

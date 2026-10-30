@@ -164,7 +164,8 @@ def test_deactivate_revokes_sessions(owner: Engine, monkeypatch: pytest.MonkeyPa
         _grant(owner, tid, u[n], "platform_admin")
     _grant(owner, tid, u["target"], "viewer")
     secret = "deactivate-test-secret-of-32-bytes!!"
-    monkeypatch.setattr(mw, "_load_jwt_secret", lambda: secret)
+    # the token names its own tenant, so the middleware verifies it with that tenant's secret
+    monkeypatch.setattr(mw, "_load_jwt_secret_for", lambda _tid: secret)
     monkeypatch.setattr(mw, "_token_version_cache", {})
     session = create_access_token(u["target"], tid, "t@example.test", "viewer", secret)
 

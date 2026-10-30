@@ -18,7 +18,7 @@ _tenant_id_var: contextvars.ContextVar[uuid.UUID | None] = contextvars.ContextVa
     "meridian_tenant_id", default=None
 )
 
-# Dev tenant UUID — used when AUTH_MODE=local
+# Dev tenant UUID (kept for importers; the fallback reads api.deps.deployment_tenant_id)
 _DEV_TENANT_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 
 
@@ -36,8 +36,10 @@ class TenantMiddleware(BaseHTTPMiddleware):
     ``request.state.tenant_id`` and a ContextVar readable by DB dependencies.
 
     Resolution order:
-    1. request.state.tenant_id — set by upstream middleware (e.g. JWT decode)
-    2. Dev tenant — when AUTH_MODE=local and no tenant is set
+    1. request.state.tenant_id — the verified token's tenant, set by LocalAuthMiddleware
+    2. The deployment's own tenant (settings.deployment_tenant_id) — when AUTH_MODE=local and no tenant is
+       set, which LocalAuthMiddleware allows only on the public paths before sign-in. The route's get_tenant
+       refuses a signed-in route without a verified tenant outside development.
     """
 
     async def dispatch(self, request: Request, call_next):
@@ -51,7 +53,9 @@ class TenantMiddleware(BaseHTTPMiddleware):
             from api.config import settings  # deferred to avoid circular import
 
             if settings.auth_mode == "local":
-                tenant_id = _DEV_TENANT_ID
+                from api.deps import deployment_tenant_id
+
+                tenant_id = deployment_tenant_id()
 
         if tenant_id is not None:
             request.state.tenant_id = tenant_id

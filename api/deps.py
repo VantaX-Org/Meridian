@@ -1,7 +1,7 @@
 import uuid
 from typing import AsyncGenerator
 
-from fastapi import Depends, Request
+from fastapi import Depends, HTTPException, Request
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -57,43 +57,93 @@ class Tenant:
         self.licensed_modules = licensed_modules
 
 
-# Hardcoded dev tenant for AUTH_MODE=local
-_DEV_TENANT = Tenant(
-    id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
-    name="Dev Tenant",
-    licensed_modules=[
-        "business_partner", "material_master", "fi_gl",
-        "accounts_payable", "accounts_receivable", "asset_accounting", "hcm",
-        "mm_purchasing", "plant_maintenance", "production_planning", "project_system",
-        "quality_management", "sd_customer_master", "sd_sales_orders", "controlling", "interface_health", "s4_readiness", "banking_tax",
-        "employee_central", "compensation", "benefits",
-        "payroll_integration", "performance_goals", "succession_planning",
-        "recruiting_onboarding", "learning_management", "time_attendance",
-        "ewms_stock", "ewms_transfer_orders", "batch_management",
-        "mdg_master_data", "grc_compliance", "fleet_management",
-        "transport_management", "wm_interface", "cross_system_integration",
-        "s4hc_master_data", "concur_expense", "concur_users",
-        "ariba_supplier", "ariba_contracts", "ariba_procurement",
-    ],
-)
+DEV_TENANT_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+
+# The development tenant: the fixed row a development stack and the tests sign in to. Never a fallback for a
+# signed-in request outside development (get_tenant below).
+_DEV_TENANT = Tenant(id=DEV_TENANT_ID, name="Dev Tenant", licensed_modules=["*"])
+
+
+def deployment_tenant_id() -> uuid.UUID:
+    """This deployment's own tenant (settings.deployment_tenant_id, MERIDIAN_TENANT_ID): the tenant of the public
+    pages before sign-in, of API keys and of the HQ manifest sync. A single-tenant install keeps the default."""
+    try:
+        return uuid.UUID(str(settings.deployment_tenant_id))
+    except (TypeError, ValueError):
+        return DEV_TENANT_ID
+
+
+# Paths LocalAuthMiddleware lets through without a token (sign-in, theme, status page, licence). Before sign-in
+# there is no token to name a tenant, so these serve the deployment's own tenant.
+def _is_public_path(path: str) -> bool:
+    from api.middleware.local_auth import is_public_path  # deferred: local_auth imports this module
+
+    return is_public_path(path)
+
+
+# tenants.name per tenant id, read once a minute at most; a renamed tenant shows within the TTL.
+_TENANT_NAME_TTL_S = 60.0
+_tenant_names: dict[uuid.UUID, tuple[str, float]] = {}
+
+
+async def _tenant_name(tenant_id: uuid.UUID) -> str:
+    import time
+
+    now = time.monotonic()
+    hit = _tenant_names.get(tenant_id)
+    if hit and hit[1] > now:
+        return hit[0]
+    name = "Dev Tenant" if tenant_id == DEV_TENANT_ID else "Tenant"
+    try:
+        async with async_session_factory() as session:
+            row = (await session.execute(text("SELECT name FROM tenants WHERE id = :t"),
+                                         {"t": str(tenant_id)})).scalar()
+            if row:
+                name = str(row)
+    except Exception:  # noqa: BLE001 - a name is cosmetic: never fail a request over it
+        pass
+    _tenant_names[tenant_id] = (name, now + _TENANT_NAME_TTL_S)
+    return name
+
+
+def _licensed_modules(request: Request) -> list[str]:
+    """The modules the validated licence entitles: LicenceMiddleware's request.state.licensed_modules, else the
+    cached licence manifest, else none (the development bypass grants every module as ["*"])."""
+    mods = getattr(request.state, "licensed_modules", None)
+    if isinstance(mods, list):
+        return list(mods)
+    from api.middleware.licence import get_cached_manifest
+
+    manifest = get_cached_manifest()
+    if manifest.get("valid"):
+        return list(manifest.get("enabled_modules") or [])
+    if settings.env == "development" and not settings.licence_key:
+        return ["*"]
+    return []
 
 
 async def get_tenant(request: Request) -> Tenant:
-    # TenantMiddleware runs before routing/dependency resolution, so it can
-    # only guess a default tenant (request.state.tenant_id). This dependency
-    # is the actual source of truth (overridden in tests, JWT-derived in
-    # prod) and resolves later, inside the route. Write the real tenant back
-    # onto request.state so anything that reads it *after* the route runs —
-    # e.g. AuditMiddleware building its row once the response comes back —
-    # sees the request's real tenant instead of the middleware's guess.
-    if settings.auth_mode == "local":
-        request.state.tenant_id = _DEV_TENANT.id
-        return _DEV_TENANT
+    """The request's tenant: the ``tenant_id`` claim of the verified session token (or API key), which
+    LocalAuthMiddleware puts on ``request.state.verified_tenant_id``.
 
-    # JWT extraction for local auth
-    # For now, return dev tenant as fallback
-    request.state.tenant_id = _DEV_TENANT.id
-    return _DEV_TENANT
+    Without one: the public pages before sign-in serve the deployment's own tenant; a development deployment
+    falls back to the development tenant; anything else is refused (401), so a request can never land in a
+    tenant its token does not name. Tests override this dependency.
+
+    TenantMiddleware runs before routing; this dependency resolves inside the route. The tenant is written back
+    onto request.state so anything that reads it after the route runs (AuditMiddleware) sees the real one.
+    """
+    verified = getattr(request.state, "verified_tenant_id", None)
+    if verified is not None:
+        tid = uuid.UUID(str(verified))
+    elif _is_public_path(request.url.path):
+        tid = deployment_tenant_id()
+    elif settings.env == "development":
+        tid = DEV_TENANT_ID
+    else:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    request.state.tenant_id = tid
+    return Tenant(id=tid, name=await _tenant_name(tid), licensed_modules=_licensed_modules(request))
 
 
 # Aliases used by newer routes
