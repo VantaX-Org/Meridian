@@ -54,6 +54,28 @@ describe("the help panel", () => {
     expect(within(here).getAllByRole("listitem")[0]).toHaveTextContent("five steps");
   });
 
+  it("in German the chapter titles and summaries are German and each chapter says it is in English", async () => {
+    const prefs = await import("@/lib/preferences");
+    prefs.setPreferences({ locale: "de-DE" });
+    try {
+      mount("/?fixture=1&persona=basis&open=help");
+      const dialog = await screen.findByRole("dialog", { name: "Hilfe" });
+      await within(dialog).findByRole("list", { name: "Hilfe für diesen Bildschirm" });
+      const here = within(dialog).getByRole("list", { name: "Hilfe für diesen Bildschirm" });
+      const first = within(here).getAllByRole("listitem")[0];
+      expect(first).toHaveTextContent("Rundgang: SAP Basis");
+      expect(first).toHaveTextContent("auf Englisch");
+      expect(first).toHaveTextContent("Systemaufgaben, Verbindungstests");
+      fireEvent.click(within(first).getByRole("button"));
+      expect(await within(dialog).findByTestId("help-in-english")).toHaveTextContent("Dieses Kapitel ist auf Englisch.");
+    } finally {
+      window.localStorage.clear();
+      prefs.resetPreferencesCache();
+      (await import("@/lib/v2/i18n")).setLang("en");
+      (await import("@/lib/format")).setFormatPrefs({});
+    }
+  });
+
   it("gives the auditor and the viewer their own walkthrough", async () => {
     const dialog = await openPanel("/?fixture=1&role=auditor&open=help");
     expect(titles(within(dialog).getByRole("list", { name: "Help for this screen" }))[0]).toBe("Walkthrough: auditor and viewer");

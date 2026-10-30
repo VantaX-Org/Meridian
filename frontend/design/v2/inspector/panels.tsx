@@ -9,7 +9,7 @@ import { fixtureParam, useFixture } from "@/lib/api/v2/fixture";
 import * as api from "@/lib/api/v2/admin";
 import { formatDate } from "@/lib/format";
 import { localeOptions, setPreferences, timezoneOptions, type DensityTier, type DigestFrequency, type PreferencesPatch, type Theme } from "@/lib/preferences";
-import { diagnosticsRef, diagnosticsText, FROM_RECORDING, isHere, loadHelp, orderFor, screenOf, screensFor, SCREEN_LABEL, searchHelp, snippet, videoUrl, walkthroughFor, type HelpChapter, type HelpIndex } from "@/lib/v2/help";
+import { diagnosticsRef, diagnosticsText, FROM_RECORDING, helpInEnglish, helpText, isHere, loadHelp, orderFor, screenOf, screensFor, SCREEN_LABEL, searchHelp, snippet, videoUrl, walkthroughFor, type HelpChapter, type HelpIndex } from "@/lib/v2/help";
 import { PERSONA_LABEL, useV2Session, type V2Persona } from "@/lib/v2/hooks";
 import { f1, int } from "@/lib/v2/score";
 import { setKeyHints, setPersonaOverride, useKeyHints, usePersonaOverride } from "@/lib/v2/prefs";
@@ -306,22 +306,25 @@ function Walkthrough({ chapter }: { chapter: HelpChapter }) {
 
 function ChapterView({ chapter, onBack }: { chapter: HelpChapter; onBack: () => void }) {
   const screens = screensFor(chapter.id);
-  const where = chapter.group;
+  const where = helpText(chapter.group);
   return (
     <div className="m2-hbody" data-testid="help-chapter">
       <button type="button" className="m2-linkbtn" onClick={onBack}>
         {tr("All of help")}
       </button>
-      <h3 style={{ fontSize: 16, marginTop: "var(--m2-s2)" }}>{chapter.title}</h3>
+      <h3 style={{ fontSize: 16, marginTop: "var(--m2-s2)" }}>{helpText(chapter.title)}</h3>
+      {helpInEnglish() ? <p className="m2-banner" data-testid="help-in-english">{tr("This chapter is in English.")}</p> : null}
       <p className="m2-hs2">{`${where}${screens.length ? tr(". Applies to: {map}", { map: screens.map((s) => SCREEN_LABEL[s]).join(", ") }) : ""}`}</p>
       <Walkthrough chapter={chapter} />
       <Recording chapter={chapter} />
-      {chapter.sections.map((s, i) => (
-        <section key={i}>
-          {s.heading ? <h3>{s.heading}</h3> : null}
-          <Body text={s.text} />
-        </section>
-      ))}
+      <div lang="en">
+        {chapter.sections.map((s, i) => (
+          <section key={i}>
+            {s.heading ? <h3>{s.heading}</h3> : null}
+            <Body text={s.text} />
+          </section>
+        ))}
+      </div>
     </div>
   );
 }
@@ -380,10 +383,10 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
   const line = (h: { chapter: HelpChapter; sections: { heading: string; text: string }[] }) => (
     <li key={h.chapter.id}>
       <button type="button" className="m2-hitem" onClick={() => setChapterId(h.chapter.id)}>
-        <span className="m2-ht">{h.chapter.title}</span>
-        <span className="m2-hs2">{query && h.sections[0] ? `${h.sections[0].heading === FROM_RECORDING ? `${tr("From the recording")}: ` : ""}${snippet(h.sections[0].text || h.sections[0].heading, query)}` : h.chapter.summary}</span>
+        <span className="m2-ht">{helpText(h.chapter.title)}{helpInEnglish() ? <span className="m2-meta">{" "}{tr("in English")}</span> : null}</span>
+        <span className="m2-hs2">{query && h.sections[0] ? `${h.sections[0].heading === FROM_RECORDING ? `${tr("From the recording")}: ` : ""}${snippet(h.sections[0].text || h.sections[0].heading, query)}` : helpText(h.chapter.summary)}</span>
         <span className="m2-hs2">
-          {h.chapter.group}
+          {helpText(h.chapter.group)}
           {h.chapter.walkthrough ? tr(", five steps") : ""}
           {h.chapter.video ? tr(", with a recording") : ""}
         </span>
