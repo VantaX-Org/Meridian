@@ -343,7 +343,6 @@ def _node(tables: dict, matnr: str, plant: str, row: Optional[pd.Series], this: 
 
 def walk_chain(tables: dict[str, pd.DataFrame], matnr: str, plant: str, depth: int = CHAIN_DEPTH) -> dict:
     """Follow MARC.NFMAT inside one plant. Links = arrows, a closing loop arrow included."""
-    marc = tables.get("MARC", pd.DataFrame())
     start = _node(tables, matnr, plant, _marc_row(_for(tables, "MARC", matnr), plant), this=True)
     chain, seen = [start], [matnr]
     loop_at, dead_end, truncated, links = None, False, False, 0

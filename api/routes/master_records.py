@@ -10,17 +10,16 @@ Endpoints:
 
 import copy
 import logging
-import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.services.rbac import require_permission, scope_from_path, has_permission, _get_user_role
+from api.services.rbac import require_permission, scope_from_path, has_permission
 
 router = APIRouter(prefix="/api/v1", tags=["master-records"])
 logger = logging.getLogger("meridian.master_records")
@@ -153,7 +152,6 @@ async def list_master_records(
     records = []
     for row in result.fetchall():
         source_contributions = row[5] or {}
-        golden_fields = row[6] or {}
 
         # Count unique source systems
         sources = set()

@@ -8,7 +8,6 @@ POST /match-rules/simulate — dry-run match engine against last sync batch
 """
 
 import asyncio
-import json
 import uuid
 from typing import Optional
 

@@ -11,7 +11,6 @@ import pandas as pd
 
 from api.services.standardisers import (
     country_code,
-    legal_suffix,
     material_description,
     sa_phone_number,
     sap_uom,

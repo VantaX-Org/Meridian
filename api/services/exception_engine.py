@@ -3,7 +3,6 @@
 import re
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 
 # ── 14 pre-built SAP transaction monitors ────────────────────────────────────
 

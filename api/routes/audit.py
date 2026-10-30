@@ -27,7 +27,7 @@ from api.services.branded_xlsx import (
     xlsx_filename,
     xlsx_response,
 )
-from api.services.rbac import require_any_permission, require_permission
+from api.services.rbac import require_any_permission
 
 router = APIRouter(prefix="/api/v1", tags=["audit"])
 

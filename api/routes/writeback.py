@@ -11,7 +11,6 @@ Rules (non-negotiable):
 import asyncio
 import logging
 import os
-import re
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
@@ -182,7 +181,6 @@ async def create_writeback(
         else:
             # Verify the configured connector backend is available
             from sap import get_connector
-            from sap.base import SAPConnectorError
             try:
                 _test_conn = get_connector()
             except Exception:

@@ -262,10 +262,10 @@ async def _team_exists(db: AsyncSession, tid: str, team_id: uuid.UUID) -> None:
 
 # ── teams ─────────────────────────────────────────────────────────────────────
 
-_TEAMS_SQL = f"""
+_TEAMS_SQL = """
     SELECT t.id, t.name, t.strategy, t.lead_user_id,
            COALESCE((SELECT array_agg(m.user_id::text ORDER BY m.user_id) FROM triage_team_members m
-                      WHERE m.team_id = t.id), '{{}}') AS member_ids,
+                      WHERE m.team_id = t.id), '{}') AS member_ids,
            (SELECT COUNT(*) FROM record_issues ri WHERE ri.assigned_team_id = t.id
                AND ri.status NOT IN ('resolved', 'accepted'))
          + (SELECT COUNT(*) FROM stewardship_queue sq WHERE sq.assigned_team_id = t.id
@@ -712,7 +712,7 @@ async def metrics(weeks: int = Query(8, ge=1, le=52), db: AsyncSession = Depends
     p = {"tid": tid, "blocks": "{}", "since": datetime.now(UTC) - timedelta(weeks=weeks)}
     base = f"WITH q AS ({triage.ITEMS_SQL})"
     open_ = "q.status NOT IN ('resolved', 'accepted')"
-    backlog = f"""COUNT(*) AS open, COUNT(*) FILTER (WHERE q.sla_state = 'breached') AS breached,
+    backlog = """COUNT(*) AS open, COUNT(*) FILTER (WHERE q.sla_state = 'breached') AS breached,
                   COUNT(*) FILTER (WHERE q.sla_state = 'at_risk') AS at_risk"""
     by_owner = (await db.execute(text(f"""{base}
         SELECT q.assigned_to::text AS user_id, u.email, {backlog} FROM q JOIN users u ON u.id = q.assigned_to

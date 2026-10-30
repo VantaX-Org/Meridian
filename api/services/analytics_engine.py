@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
 from math import ceil
 from typing import Any
 
@@ -600,7 +599,6 @@ class OperationalAnalytics:
         total_rejected = sum(m.get("rejected", 0) for m in cleaning_metrics)
         total_rolled_back = sum(m.get("rolled_back", 0) for m in cleaning_metrics)
         total_recommended = sum(m.get("recommended", 0) for m in cleaning_metrics)
-        total_verified = sum(m.get("verified", 0) for m in cleaning_metrics)
 
         # Period days (count unique periods)
         periods = set(m.get("period", "") for m in cleaning_metrics)

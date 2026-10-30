@@ -1,5 +1,4 @@
 import logging
-import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -172,7 +171,7 @@ async def lifespan(app: FastAPI):
         if settings.auth_mode == "local":
             try:
                 from sqlalchemy import text
-                from api.deps import engine, async_session_factory
+                from api.deps import async_session_factory
 
                 async with async_session_factory() as session:
                     result = await session.execute(

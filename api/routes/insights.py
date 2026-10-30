@@ -318,11 +318,11 @@ async def get_owners(db: AsyncSession = Depends(get_db), tenant: Tenant = Depend
     }
 
     rows = []
-    for owner, agg in aggregates.items():
-        card = build_owner_card(owner, agg["score"], agg["delta"], agg["open_by_severity"],
-                                 agg["fixed_since_baseline"], agg["oldest_item_age_days"])
-        last_sent = last_sent_by_user.get(agg["user_id"])
-        rows.append({**card.__dict__, "user_id": str(agg["user_id"]) if agg.get("user_id") else None,
+    for owner, owner_agg in aggregates.items():
+        card = build_owner_card(owner, owner_agg["score"], owner_agg["delta"], owner_agg["open_by_severity"],
+                                 owner_agg["fixed_since_baseline"], owner_agg["oldest_item_age_days"])
+        last_sent = last_sent_by_user.get(owner_agg["user_id"])
+        rows.append({**card.__dict__, "user_id": str(owner_agg["user_id"]) if owner_agg.get("user_id") else None,
                      "schedule": "weekly", "last_sent": last_sent.isoformat() if last_sent else None})
     return {"owners": rows}
 

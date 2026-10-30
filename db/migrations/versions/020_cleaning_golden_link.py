@@ -1,6 +1,5 @@
 """Add golden_record_id and golden_field_value to cleaning_queue."""
 from alembic import op
-import sqlalchemy as sa
 
 revision: str = '020_cleaning_golden_link'
 down_revision: str = '017'

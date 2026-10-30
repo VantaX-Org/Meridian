@@ -6,7 +6,6 @@ Writes: sync_runs.ai_quality_score (0.0-1.0), sync_runs.anomaly_flags (jsonb)
 Called by: run_sync.py immediately after data extraction.
 """
 
-import json
 import logging
 from typing import Any
 

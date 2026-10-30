@@ -15,8 +15,7 @@ Source mapping:
 """
 
 import logging
-import os
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta, timezone
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session

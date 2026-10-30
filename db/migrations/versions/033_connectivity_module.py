@@ -10,7 +10,7 @@ from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
+from sqlalchemy.dialects.postgresql import UUID, ARRAY
 
 revision: str = "033"
 down_revision: Union[str, None] = "032"

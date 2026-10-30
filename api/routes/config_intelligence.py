@@ -22,7 +22,6 @@ from api.services.config_intelligence.serializers import (
     ConfigDiscoverRequest,
     ConfigDiscoverResponse,
     ConfigInventoryListResponse,
-    DriftEntryResponse,
     DriftListResponse,
     HealthScoreListResponse,
     LicenceUtilisationListResponse,

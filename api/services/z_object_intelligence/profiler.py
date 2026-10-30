@@ -23,7 +23,6 @@ from api.models.z_object_intelligence import (
     ZDetectedObject,
     ZObjectCategory,
     ZObjectProfile,
-    TrendDirection,
 )
 
 # Date patterns commonly found in SAP data

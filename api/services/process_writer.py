@@ -15,7 +15,6 @@ Overall L3 process readiness is the worst status from its child L4 sub-processes
 L4 readiness is the worst of its L5 activities; an activity is the worst of its fields.
 """
 
-import copy
 import logging
 from typing import Any
 

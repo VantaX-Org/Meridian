@@ -13,7 +13,7 @@ import json
 import logging
 import os
 import uuid
-from typing import Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
 from celery import Task
 from celery.exceptions import SoftTimeLimitExceeded
@@ -23,6 +23,9 @@ from sqlalchemy.orm import Session
 from api.services import jobs
 from workers.celery_app import CONFIG_WAIT_RETRIES, CONFIG_WAIT_SECONDS, EXTRACT_TIME_LIMIT, celery_app
 from workers.db import get_sync_engine, tenant_session
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 logger = logging.getLogger("meridian.workers.extraction")
 

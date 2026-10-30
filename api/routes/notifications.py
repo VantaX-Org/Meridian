@@ -125,7 +125,7 @@ async def mark_all_read(
 
     params = {"tid": str(tenant.id)}
     own = _own(request, params)
-    result = await db.execute(
+    await db.execute(
         text(f"""
             UPDATE notifications SET is_read = true
             WHERE tenant_id = :tid AND is_read = false AND {own}

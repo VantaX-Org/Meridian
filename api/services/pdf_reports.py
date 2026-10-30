@@ -21,7 +21,6 @@ from datetime import datetime, timezone
 from functools import lru_cache
 from zoneinfo import ZoneInfo
 from typing import Any, Iterable, Optional
-from zoneinfo import ZoneInfo
 
 from jinja2 import Environment, FileSystemLoader, Undefined, select_autoescape
 from markupsafe import Markup, escape

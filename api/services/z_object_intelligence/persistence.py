@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import text
@@ -19,8 +18,6 @@ from checks.sap_dates import sap_date_to_timestamp
 
 from api.models.z_object_intelligence import (
     ZBaseline,
-    ZObjectCategory,
-    ZObjectStatus,
 )
 
 

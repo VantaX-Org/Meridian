@@ -36,7 +36,6 @@ Create Date: 2026-04-24
 from typing import Sequence, Union
 
 from alembic import op
-from sqlalchemy import text
 
 
 revision: str = "040"

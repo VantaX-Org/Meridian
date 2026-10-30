@@ -9,7 +9,6 @@ Supports key rotation with automatic decryption of previous key versions.
 """
 
 import os
-import json
 from typing import Optional
 from cryptography.fernet import Fernet, MultiFernet
 import logging

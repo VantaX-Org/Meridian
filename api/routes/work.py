@@ -1497,7 +1497,7 @@ async def export_sheet(
 ):
     """The filtered work list (one run, or ``scope=current``) as a fix sheet: one row per record and failing check, with its current and
     suggested value and blank New value / Decision / Reason columns to fill in and import back."""
-    from api.services.branded_xlsx import ROW_CAP, ColumnSpec, SheetSpec, build_workbook, xlsx_filename, xlsx_response
+    from api.services.branded_xlsx import ROW_CAP, SheetSpec, build_workbook, xlsx_filename, xlsx_response
 
     await _rls(db, tenant)
     sel = await _rows(db, tenant, version_id, scope)

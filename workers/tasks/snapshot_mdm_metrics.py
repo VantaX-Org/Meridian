@@ -6,7 +6,6 @@ from existing tables. Writes a daily row to mdm_metrics per tenant.
 """
 
 import logging
-import os
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import text

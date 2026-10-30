@@ -1,12 +1,11 @@
 """Run Sync API — trigger per-module re-analysis and report status."""
 
 import logging
-import os
 import re
 from typing import Any, Literal, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession

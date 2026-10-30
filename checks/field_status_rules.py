@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from sqlalchemy import text
 
-from sap.field_status_config import CONFIG_TABLES, REFERENCE_TABLES, Resolution, resolve_all
+from sap.field_status_config import CONFIG_TABLES, REFERENCE_TABLES, Resolution
 
 
 def load_config(session, system_id: str | None) -> dict[str, list[dict]]:

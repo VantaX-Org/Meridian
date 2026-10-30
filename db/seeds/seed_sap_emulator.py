@@ -35,7 +35,7 @@ import logging
 import os
 import random
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any
@@ -752,7 +752,6 @@ def calculate_dqs(findings: list[dict], total_records: int, module_code: str) ->
         CheckType.FRESHNESS_CHECK.value: "timeliness",
     }
 
-    dim_totals = {d: 0 for d in DAMA_WEIGHTS}
     dim_fails = {d: 0 for d in DAMA_WEIGHTS}
 
     for f in findings:
@@ -1380,7 +1379,7 @@ def run_seed(tenant_id: str, db_url: str, dry_run: bool = False) -> dict:
 
         # 4a: Extract data via emulated RFC
         conn = sap_connections[module.category]
-        result = conn.call(
+        conn.call(
             "RFC_READ_TABLE",
             QUERY_TABLE=module.primary_table,
             ROWCOUNT=min(module.record_count, 200),  # Cap for seed performance

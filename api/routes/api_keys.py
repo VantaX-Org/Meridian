@@ -106,7 +106,7 @@ def _iso(v: Optional[datetime]) -> Optional[str]:
     return v.isoformat() if v else None
 
 
-_SELECT = f"""
+_SELECT = """
     SELECT k.id, k.name, k.key_prefix, k.user_id, k.created_by, cb.name AS created_by_name, k.created_at,
            k.expires_at, k.last_used_at, k.revoked_at, u.is_active, u.email
       FROM api_keys k

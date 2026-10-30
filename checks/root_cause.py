@@ -145,8 +145,8 @@ def classify_root_cause(
         return {
             "root_cause_type": "bad_data",
             "reasoning": (
-                f"All flagged values are valid in your SPRO config — the records "
-                f"are the problem, not the configuration. Apply a cleaning rule."
+                "All flagged values are valid in your SPRO config — the records "
+                "are the problem, not the configuration. Apply a cleaning rule."
             ),
             "element_type": element_type,
             "flagged_values_in_config": sorted(in_config)[:20],
@@ -155,10 +155,10 @@ def classify_root_cause(
         return {
             "root_cause_type": "bad_config",
             "reasoning": (
-                f"Flagged values are not present in your SPRO config — the rule's "
-                f"reference list may be stricter than your configuration, or the "
-                f"config itself has drifted from what the rule expects. Review "
-                f"SPRO before cleaning records."
+                "Flagged values are not present in your SPRO config — the rule's "
+                "reference list may be stricter than your configuration, or the "
+                "config itself has drifted from what the rule expects. Review "
+                "SPRO before cleaning records."
             ),
             "element_type": element_type,
             "flagged_values_not_in_config": sorted(not_in_config)[:20],

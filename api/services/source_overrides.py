@@ -32,7 +32,6 @@ deployment may add its own.
 from __future__ import annotations
 
 import logging
-import os
 from functools import lru_cache
 from pathlib import Path
 
