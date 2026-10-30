@@ -16,12 +16,18 @@ import pandas as pd
 
 @dataclass
 class SAPConnectionParams:
-    """Connection parameters — mirrors the existing pyrfc.Connection signature."""
+    """Connection parameters — mirrors the existing pyrfc.Connection signature.
+
+    ``read_function``: the table reader sap/rfc.py uses: "RFC_READ_TABLE", "/BODS/RFC_READ_TABLE2",
+    "BBP_RFC_READ_TABLE", or "auto" (probe RFC_FUNCTION_SEARCH for the first available of those, in that order
+    after /BODS). Empty: MERIDIAN_RFC_READ_FUNCTION, else RFC_READ_TABLE. See docs/sap/authorisation-role-template.md.
+    """
     host: str
     client: str
     sysnr: str
     user: str
     password: str
+    read_function: str = ""
 
 
 @dataclass
