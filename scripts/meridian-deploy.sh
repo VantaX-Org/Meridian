@@ -628,13 +628,18 @@ fi
 # =============================================================================
 configure_ssl_none() { log "SSL: disabled (HTTP only)"; }
 
+# The compose file bind-mounts ./nginx/certs and ./nginx/meridian.conf from its
+# own directory, so the certificates and the site config live there.
+NGINX_DIR="${REPO_ROOT}/docker/nginx"
+
 configure_ssl_self_signed() {
     section "Self-signed SSL"
-    mkdir -p "${INSTALL_DIR}/nginx/certs"
+    mkdir -p "${NGINX_DIR}/certs"
     openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-        -keyout "${INSTALL_DIR}/nginx/certs/privkey.pem" \
-        -out "${INSTALL_DIR}/nginx/certs/fullchain.pem" \
+        -keyout "${NGINX_DIR}/certs/privkey.pem" \
+        -out "${NGINX_DIR}/certs/fullchain.pem" \
         -subj "/CN=${SERVER_DOMAIN}" 2>/dev/null
+    chmod 600 "${NGINX_DIR}/certs/privkey.pem"
     log "Self-signed certificate generated"
 }
 
@@ -643,18 +648,29 @@ configure_ssl_letsencrypt() {
     if ! command -v certbot &>/dev/null; then
         apt-get update && apt-get install -y certbot
     fi
-    mkdir -p "${INSTALL_DIR}/nginx/certs"
+    mkdir -p "${NGINX_DIR}/certs"
     certbot certonly --standalone -d "${SERVER_DOMAIN}" --agree-tos -m "admin@${SERVER_DOMAIN}" -n
-    cp "/etc/letsencrypt/live/${SERVER_DOMAIN}/fullchain.pem" "${INSTALL_DIR}/nginx/certs/fullchain.pem"
-    cp "/etc/letsencrypt/live/${SERVER_DOMAIN}/privkey.pem" "${INSTALL_DIR}/nginx/certs/privkey.pem"
-    chmod 600 "${INSTALL_DIR}/nginx/certs/privkey.pem"
+    cp "/etc/letsencrypt/live/${SERVER_DOMAIN}/fullchain.pem" "${NGINX_DIR}/certs/fullchain.pem"
+    cp "/etc/letsencrypt/live/${SERVER_DOMAIN}/privkey.pem" "${NGINX_DIR}/certs/privkey.pem"
+    chmod 600 "${NGINX_DIR}/certs/privkey.pem"
     log "Let's Encrypt certificate issued"
+}
+
+# Turn on the HTTPS server block and redirect port 80 to 443 (health probes
+# stay on port 80). Only after the certificates exist: nginx refuses to start
+# with an ssl_certificate it cannot read.
+enable_https_nginx() {
+    [[ -s "${NGINX_DIR}/certs/fullchain.pem" && -s "${NGINX_DIR}/certs/privkey.pem" ]] \
+        || error "SSL mode ${SSL_MODE}: no certificate in ${NGINX_DIR}/certs, HTTPS not enabled"
+    bash "${SCRIPT_DIR}/nginx-https.sh" "${NGINX_DIR}/meridian.conf" \
+        || error "Could not enable HTTPS in ${NGINX_DIR}/meridian.conf"
+    log "HTTPS enabled in nginx; port 80 redirects to 443"
 }
 
 case "$SSL_MODE" in
     1) configure_ssl_none ;;
-    2) configure_ssl_self_signed ;;
-    3) configure_ssl_letsencrypt ;;
+    2) configure_ssl_self_signed; enable_https_nginx ;;
+    3) configure_ssl_letsencrypt; enable_https_nginx ;;
 esac
 
 # =============================================================================

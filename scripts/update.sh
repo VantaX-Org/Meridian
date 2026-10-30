@@ -181,6 +181,20 @@ sync_ollama_overlay() {  # sync_ollama_overlay <stage> <compose_dir>
         || warn "Ollama overlay updated but the container was not recreated — run: docker compose -f $COMPOSE_FILE -f $resolved up -d ollama"
 }
 
+# The release's meridian.conf ships with HTTPS commented out. An install that
+# has certificates (SSL mode 2 or 3) gets HTTPS and the port 80 redirect back
+# after the files are synced; nginx-https.sh is idempotent. Runs outside
+# sync_deployment_files so it also runs after update.sh re-executes itself.
+reapply_https_nginx() {
+    local compose_dir conf
+    compose_dir=$(dirname "$COMPOSE_FILE")
+    conf="$compose_dir/nginx/meridian.conf"
+    [[ -s "$compose_dir/nginx/certs/fullchain.pem" && -f "$conf" ]] || return 0
+    [[ -f scripts/nginx-https.sh ]] || { warn "scripts/nginx-https.sh missing - HTTPS not re-applied to $conf"; return 0; }
+    bash scripts/nginx-https.sh "$conf" && info "HTTPS kept enabled in nginx" \
+        || warn "Could not re-apply HTTPS to $conf"
+}
+
 sync_deployment_files() {
     [[ -n "${MERIDIAN_UPDATE_REEXEC:-}" ]] && return 0
     local stage cid compose_dir changed_self=false
@@ -512,6 +526,7 @@ assert_no_active_run
 
 pull_images
 sync_deployment_files
+reapply_https_nginx
 pull_dependencies
 rebuild_rfc_overlay
 

@@ -66,6 +66,7 @@ fetch "docker/nginx/nginx.conf"            "${INSTALL_DIR}/docker/nginx/nginx.co
 fetch ".env.example"                       "${INSTALL_DIR}/.env.example"
 fetch "scripts/meridian-deploy.sh"         "${INSTALL_DIR}/scripts/meridian-deploy.sh"
 fetch "scripts/update.sh"                  "${INSTALL_DIR}/scripts/update.sh"
+fetch "scripts/nginx-https.sh"             "${INSTALL_DIR}/scripts/nginx-https.sh"
 fetch "scripts/preflight.sh"               "${INSTALL_DIR}/scripts/preflight.sh"
 fetch "scripts/build-rfc-overlay.sh"       "${INSTALL_DIR}/scripts/build-rfc-overlay.sh"
 fetch "scripts/backup.sh"                  "${INSTALL_DIR}/scripts/backup.sh"
