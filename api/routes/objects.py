@@ -522,6 +522,7 @@ class ObjectReceiptOut(BaseModel):
     currency: str
     # whether value_at_risk is priced by the tenant's own cost model or by the shipped defaults
     cost_model: Optional[CostModelOut] = None
+    cost_model_source: Optional[str] = None  # cost_model.source, flat for the status strip and money cells
     features_blocked: Optional[int] = None
     features_degraded: Optional[int] = None
     open_work: Optional[int] = None
@@ -650,6 +651,7 @@ async def get_object_receipt(module: str, run: Optional[uuid.UUID] = Query(None,
         "cap_rule_detail": cap_rule_detail(mod_summary),
         "value_at_risk": float(value_at_risk) if value_at_risk is not None else None, "currency": currency,
         "cost_model": cost_model_meta(cost_model),
+        "cost_model_source": cost_model_meta(cost_model)["source"],
         "features_blocked": sum(1 for r in impact if r[0] == "blocked" and _touches(r[1])),
         "features_degraded": sum(1 for r in impact if r[0] == "degraded" and _touches(r[1])),
         "open_work": int(open_work) if open_work is not None else None,

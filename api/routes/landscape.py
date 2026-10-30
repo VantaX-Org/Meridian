@@ -51,6 +51,7 @@ class StatusStripOut(BaseModel):
     rules_measured: Optional[int] = None       # rules that produced a result in that run
     scored_in_s: Optional[int] = None          # first analysis step started to last one finished
     cost_model: Optional[str] = None           # the currency the tenant's cost model prices in
+    cost_model_source: Optional[str] = None    # "tenant" once the tenant saved a cost model, else "default"
     licence_valid_to: Optional[str] = None     # YYYY-MM-DD from the cached licence manifest
     sandbox: bool = False                      # the tenant is in sandbox mode: nothing leaves (migration 115)
 
@@ -133,7 +134,8 @@ async def build_status(db: AsyncSession, tenant: Tenant) -> StatusStripOut:
     currency = str(effective_cost_model(cost_model if isinstance(cost_model, dict) else None)["currency"])
     expiry = get_cached_manifest().get("expiry_date")
     valid_to = str(expiry)[:10] if expiry and re.match(r"\d{4}-\d{2}-\d{2}", str(expiry)) else None
-    out = StatusStripOut(cost_model=currency, licence_valid_to=valid_to, sandbox=bool(trow and trow[1]))
+    out = StatusStripOut(cost_model=currency, cost_model_source=cost_model_meta(cost_model)["source"],
+                         licence_valid_to=valid_to, sandbox=bool(trow and trow[1]))
     if run_id is None:
         return out
     row = (await db.execute(text("SELECT run_at, dqs_summary FROM analysis_versions WHERE id = :v AND tenant_id = :t"),

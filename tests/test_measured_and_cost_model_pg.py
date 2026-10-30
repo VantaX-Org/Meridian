@@ -60,8 +60,10 @@ async def test_money_says_whether_the_cost_model_is_the_default(seeded, client_f
     eng, s = seeded
     land = await _get(client_for, s["tid"], "/api/v1/landscape")
     assert land["cost_model"]["source"] == "default" and land["cost_model"]["is_default"] is True
+    assert land["status_strip"]["cost_model_source"] == "default"  # what the status strip and money cells read
     receipt = await _get(client_for, s["tid"], f"/api/v1/objects/material_master/receipt?run={s['run']}")
     assert receipt["cost_model"] == {"source": "default", "is_default": True, "currency": receipt["currency"]}
+    assert receipt["cost_model_source"] == "default"
     work = await _get(client_for, s["tid"], f"/api/v1/work/records?version_id={s['run']}")
     assert work["cost_model"]["is_default"] is True
 
@@ -72,5 +74,6 @@ async def test_money_says_whether_the_cost_model_is_the_default(seeded, client_f
     cache._memo.clear()
     receipt = await _get(client_for, s["tid"], f"/api/v1/objects/material_master/receipt?run={s['run']}")
     assert receipt["cost_model"] == {"source": "tenant", "is_default": False, "currency": "EUR"}
+    assert receipt["cost_model_source"] == "tenant"
     land = await _get(client_for, s["tid"], "/api/v1/landscape?sort=measured")
-    assert land["cost_model"]["source"] == "tenant"
+    assert land["cost_model"]["source"] == "tenant" and land["status_strip"]["cost_model_source"] == "tenant"
