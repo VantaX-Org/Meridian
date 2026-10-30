@@ -191,7 +191,7 @@ class AsOfOut(BaseModel):
     breaches: list[str] = Field(description="Critical rules over tolerance.")
     dimensions: dict[str, float] = Field(description="Score per DAMA dimension.")
     records_checked: Optional[int] = Field(None, description="Records checked.")
-    failing_records: int = Field(description="The run's failing records of the object (work list rows).")
+    failing_records: int = Field(description="The run's failing records of the object (work list rows, else its stored failing records).")
     rules: list[AsOfRuleOut] = Field(description="Rule results in that run.")
 
 
@@ -227,6 +227,10 @@ async def object_as_of(module: str, run: uuid.UUID = Query(..., description="the
     failing = (await db.execute(text(
         "SELECT count(*) FROM work_records WHERE tenant_id = CAST(:t AS uuid) AND version_id = CAST(:v AS uuid) "
         "AND module = :m"), {"v": row["v"], "t": t, "m": module})).scalar() or 0
+    if not failing:  # an older run's work list is pruned (worklist.KEEP_RUNS); its failing records are still stored
+        failing = (await db.execute(text(
+            "SELECT count(DISTINCT record_key) FROM finding_records WHERE tenant_id = CAST(:t AS uuid) "
+            "AND version_id = CAST(:v AS uuid) AND module = :m"), {"v": row["v"], "t": t, "m": module})).scalar() or 0
     widest = max((int(r["total_count"] or 0) for r in rules), default=0) or None
     return {
         "module": module, "as_of_run": str(run), "as_of_at": at, "run_id": row["v"], "run_at": row["run_at"],
