@@ -430,6 +430,19 @@ through standard BAPIs:
 - **Material master**: `BAPI_MATERIAL_SAVEDATA`.
 - **Business partner**: `BAPI_BUPA_CENTRAL_CHANGE` and `BAPI_BUPA_ADDRESS_CHANGE`.
 - **Customer** (SD customer master and accounts receivable): `BAPI_CUSTOMER_CHANGEFROMDATA1`.
+- **Vendor** (accounts payable), only where the vendor is a business partner with the supplier role: names
+  (`LFA1-NAME1` to `NAME4`) and search term (`SORTL`) by `BAPI_BUPA_CENTRAL_CHANGE`; the address (`LFA1` country,
+  region, city, postal code, language, and `ADRC`) by `BAPI_BUPA_ADDRESS_CHANGE`; bank account holder, control key
+  and reference (`LFBK-KOINH`, `BKONT`, `BKREF`) by `BAPI_BUPA_BANKDETAIL_CHANGE`.
+
+How a vendor is routed is decided on the connected system, per record, before anything is sent: the BAPIs must be
+there (`RFC_FUNCTION_SEARCH`), `CVI_VEND_LINK` must link the vendor to a business partner (read with `BUT000`), the
+vendor's address must be one of the partner's (`BUT020`) and a bank row one of its bank details (`BUT0BK`). On
+S/4HANA every vendor is a business partner. On ECC this is the case only where customer/vendor integration (CVI) is
+active; there, confirm with the Basis team that synchronisation from the business partner to the vendor is switched
+on, or a change reaches the business partner and not `LFA1`. **Check with SAP** runs this lookup (reads only) so the
+field table already says BAPI or Export per vendor. The RFC user needs read access to those tables and
+`RFC_FUNCTION_SEARCH`, and the write role needs the business partner BAPIs.
 
 For each record Meridian checks the BAPI's interface on the connected system, simulates the call (`TESTRUN`, or a
 call followed by `BAPI_TRANSACTION_ROLLBACK`; the customer BAPI is simulated by the interface check only, because it
@@ -441,10 +454,17 @@ Live write-back needs change authorisations, so it uses a **separate** SAP role 
 its own process (the template lists the BAPIs and objects). Never add them to the read-only role. Sandbox mode holds
 every write-back back.
 
-**Export only**: every other object, including the classic vendor master (`LFA1`, `LFB1`, `LFM1`), whose
-maintenance class is not remote-enabled: vendor fixes leave as a load file, or through the business partner where
-the vendor is one. Live write-back has not yet been run against a live SAP system by the vendor; run it first on a
-quality system.
+**Export only**, each field with its reason:
+
+- Vendor company code data (`LFB1`) and purchasing organisation data (`LFM1`): their maintenance (class
+  `VMD_EI_API` and the CVI maintenance APIs) is not remote-enabled, and Meridian relies on no RFC-enabled
+  substitute.
+- Every vendor on a release without customer/vendor integration, or not linked to a business partner: the reason
+  reads "Vendor master on this release changes through the vendor maintenance transaction; Meridian exports a load
+  file". SAP has no released remote-enabled change BAPI for the classic vendor master.
+- Vendor fields with no mapping (tax numbers, blocks, the bank key itself) and every other object.
+
+Live write-back has not yet been run against a live SAP system by the vendor; run it first on a quality system.
 
 ### Checks
 
@@ -455,7 +475,8 @@ quality system.
 
 On a quality system, with live write-back on, open an approved batch of material master fixes, run **Check with
 SAP**, then **Send to SAP** as a second person, and read the simulation messages and the commit messages for each
-record. Then try a vendor master field and read the reason it goes out by export.
+record. Then open an approved accounts payable batch: run **Check with SAP** and read which vendor fields go by
+BAPI (a vendor that is a business partner) and which by export, and why (a company code field always does).
 
 ## Module 8: Notifications and integrations
 

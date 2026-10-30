@@ -30,7 +30,7 @@ How to read it:
 | Explaining a change | run against run by rule and object (`GET /api/v1/versions/compare`, the run canvas at `/run/{id}`; `GET /api/v1/explain/{metric}`) |
 | Business consequence | 53 deterministic rules map failing checks to blocked or degraded SAP features (`agents/config_impact.py`, `db/seeds/config_impact_rules.yaml`, `GET /api/v1/config-impact/{version_id}`); value at risk from a cost model whose shipped values are starting assumptions, not benchmarks (`checks/cost_model.yaml`, `GET /api/v1/simulate/fix/top`) |
 | Fix work | one ledger per record and failing field with current, suggested and new value, fill-down, accept, four-eyes approval, fix sheet export and import (`/work`, `GET /api/v1/work/records`, `POST /api/v1/work/decide`, `GET /api/v1/work/export`, `POST /api/v1/work/import`) |
-| Write-back to SAP | file export always (`POST /api/v1/remediation/batches/{batch_id}/export`, `GET /api/v1/work/export`); live BAPI write-back for material master, customer and business partner (simulate then commit, per-record RETURN messages); other objects export only. Status: the BAPI mappings are being implemented in October 2026; in the code this document describes `BAPI_FIELDS` in `api/routes/writeback.py` is still empty and live write-back is off by default (`live_writeback_enabled`), so today every on-premise fix leaves as a file (DR-2). S/4HANA Cloud and BTP business partner fields can be patched over OData (`api/services/golden_writeback.py`). Every write path needs an approved batch |
+| Write-back to SAP | file export always (`POST /api/v1/remediation/batches/{batch_id}/export`, `GET /api/v1/work/export`); live BAPI write-back for material master, customer, business partner and vendor (simulate then commit, per-record RETURN messages; a vendor only where it is a business partner, through the business partner BAPIs); other objects, vendor company code and purchasing data, and vendors on releases without CVI export only. Status: in the code behind `MERIDIAN_LIVE_WRITEBACK_ENABLED` (off by default) and tested against a fake RFC connector only; not yet run against a live SAP system (DR-2). S/4HANA Cloud and BTP business partner fields can be patched over OData (`api/services/golden_writeback.py`). Every write path needs an approved batch |
 | Golden records, match and merge | match rules, scores, survivorship, golden records (`/api/v1/match-rules`, `/api/v1/master-records`, `/o/{system}/{module}/golden`) |
 | Business glossary | terms linked to rules and fields (`/api/v1/glossary`, `/o/{system}/{module}/glossary`) |
 | Lineage | SAP object lineage model and impact by run (`GET /api/v1/lineage/graph`, `/o/{system}/{module}/lineage`) |
@@ -93,14 +93,16 @@ side-by-side demo, so each is a hypothesis for the buyer's competitive calls, no
 3. **Business consequence in SAP terms.** Failing rules mapped to blocked or degraded SAP features (53
    rules). The money figure that sits beside it comes from assumptions the tenant must set (PC-3).
 4. **One product from measurement to approved fix**, customer-hosted, with no dependency on a model.
-   The fix leaves as a file today; live BAPI write-back is being built (DR-2).
+   The fix leaves as a file by default; live BAPI write-back is in the code behind a switch and not yet
+   run against a live SAP system (DR-2).
 
 Claims we have removed from earlier drafts because we cannot support them:
 
 - "No competitor does X." The earlier version of this document listed five gaps "the research found no
   competitor doing". That research did not cover the SAP-specialist vendors, so the statement was
   untested. It is withdrawn.
-- "Write-back to SAP" as a shipped differentiator. It is not shipped for on-premise SAP (DR-2).
+- "Write-back to SAP" as a proven differentiator. For on-premise SAP it is in the code behind a switch and
+  has not been run against a live SAP system (DR-2).
 
 ## 5. What the competitors do better
 
@@ -117,7 +119,8 @@ Written for the buyer's benefit; every item here is a reason a customer could ch
   Basis teams refuse in production (PC-1).
 - **Writing to SAP.** Loading corrected and migrated data into SAP at volume is the core business of
   Syniti, Winshuttle and SNP, and SAP MDG owns the create and change process itself. Meridian exports a
-  load file today; its BAPI write-back covers three objects once DR-2 lands, and is not proven at volume.
+  load file today; its BAPI write-back covers material, customer, business partner and (where it is a
+  business partner) vendor, and is not proven against a live system or at volume.
 - **Migration execution.** Syniti and SNP move the data, convert systems and carve out companies.
   Meridian measures readiness and certifies waves; it does not migrate.
 - **Governance of creation.** SAP MDG stops bad master data at the point of entry with workflow inside
