@@ -1,0 +1,100 @@
+name: Dependency audit
+
+# The gate the diligence package (docs/diligence/security.md) describes: pip-audit over the exact pins in
+# requirements.lock (every package the API and worker images install) and npm audit over the runtime
+# dependencies of every package-lock.json, failing on a high or critical advisory. It also regenerates the
+# CycloneDX SBOMs and fails when the committed ones under docs/diligence/sbom/ no longer list the same
+# components, so the SBOM in the repository is the SBOM of the code in the repository.
+#
+# security-scan.yml audits requirements.txt (floors, resolved fresh); this one audits what ships.
+
+on:
+  pull_request:
+    paths:
+      - "requirements.txt"
+      - "requirements.lock"
+      - "frontend/package.json"
+      - "frontend/package-lock.json"
+      - "cloudflare/*/package-lock.json"
+      - "docs/diligence/sbom/**"
+      - ".github/workflows/dependency-audit.yml"
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 3 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: pip-audit (requirements.lock)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install the auditors
+        run: python -m pip install --upgrade "pip-audit>=2.7" "cyclonedx-bom>=4"
+      - name: Audit the locked pins
+        # --no-deps: the lock is already the full resolved set; --strict: an unresolvable pin is an error.
+        # pip-audit's JSON carries no severity, so any advisory fails the job; a finding that is accepted is
+        # added below with --ignore-vuln and documented under "Known findings" in docs/diligence/security.md.
+        run: |
+          pip-audit --requirement requirements.lock --no-deps --disable-pip --strict --desc on
+      - name: Python SBOM matches the committed one
+        run: |
+          cyclonedx-py requirements requirements.lock --of JSON --output-reproducible -o /tmp/python.cdx.json
+          python - <<'PY'
+          import json
+          def comps(p):
+              return sorted((c["name"].lower(), c.get("version", "")) for c in json.load(open(p)).get("components", []))
+          new, old = comps("/tmp/python.cdx.json"), comps("docs/diligence/sbom/python.cdx.json")
+          if new != old:
+              print("docs/diligence/sbom/python.cdx.json is stale: run bash scripts/diligence_audit.sh and commit")
+              print("added:", sorted(set(new) - set(old)))
+              print("removed:", sorted(set(old) - set(new)))
+              raise SystemExit(1)
+          print(f"python SBOM current: {len(new)} components")
+          PY
+
+  npm:
+    name: npm audit (${{ matrix.dir }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        dir: [frontend, cloudflare/portal, cloudflare/licence-worker, cloudflare/llm-proxy, cloudflare/install-worker]
+    defaults:
+      run:
+        working-directory: ${{ matrix.dir }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Audit runtime dependencies (fails on high or critical)
+        run: |
+          if [ ! -f package-lock.json ]; then echo "no package-lock.json in ${{ matrix.dir }}: nothing to audit"; exit 0; fi
+          npm audit --omit=dev --audit-level=high
+      - name: Full audit including development tooling (report only)
+        run: |
+          if [ -f package-lock.json ]; then npm audit || true; fi
+      - name: Frontend SBOM matches the committed one
+        if: matrix.dir == 'frontend'
+        run: |
+          npm sbom --sbom-format cyclonedx --omit dev --package-lock-only > /tmp/frontend.cdx.json
+          node -e '
+            const fs = require("fs");
+            const comps = (p) => JSON.parse(fs.readFileSync(p, "utf8")).components.map((c) => `${c.name}@${c.version}`).sort();
+            const a = comps("/tmp/frontend.cdx.json"), b = comps("../docs/diligence/sbom/frontend.cdx.json");
+            if (JSON.stringify(a) !== JSON.stringify(b)) {
+              console.log("docs/diligence/sbom/frontend.cdx.json is stale: run bash scripts/diligence_audit.sh and commit");
+              process.exit(1);
+            }
+            console.log(`frontend SBOM current: ${a.length} components`);
+          '
