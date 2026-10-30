@@ -124,7 +124,7 @@ async def sync_config(
     enforce_licensed_modules(request, body.modules)
 
     task_id = str(uuid.uuid4())
-    jobs.start_job(str(tenant.id), f"cfg-{task_id}", "config_sync", f"Configuration: {', '.join(body.modules)}",
+    jobs.start_job(str(tenant.id), f"cfg-{task_id}", "config_sync", f"Configuration | {', '.join(body.modules)}",
                    status="queued", system_id=body.system_id, modules=body.modules)
     run_config_sync.apply_async(args=(str(tenant.id), body.system_id, body.modules), task_id=task_id)
     jobs.set_task_ids(str(tenant.id), f"cfg-{task_id}", [task_id])

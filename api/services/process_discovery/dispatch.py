@@ -48,7 +48,7 @@ def start_chain(tenant_id: str, system_id: str, l1s: Sequence[str], run_ids: Seq
     from workers.tasks.run_process_discovery import PURPOSE, abort_runs, discover_process, release_lock
 
     try:
-        jobs.start_job(tenant_id, job_id, "process_discovery", f"Process discovery: {', '.join(l1s)}",
+        jobs.start_job(tenant_id, job_id, "process_discovery", f"Process discovery | {', '.join(l1s)}",
                        system_id=system_id, run_ids=list(run_ids), version_id=version_id)
         jobs.update_job(tenant_id, job_id, stage="extraction", percent=0, message="Extracting event tables")
         queued = chain(run_extraction.si(tenant_id, system_id, [MODULE_OF[l1] for l1 in l1s], include_config=False,
