@@ -1,16 +1,23 @@
 import type { L4, ProcessModelDocument } from "@/types/process-model";
 import { locate, patchActivity, findActivity, removeNode } from "@/app/(app)/insights/process/designer/_components/doc";
+import { t } from "@/lib/v2/i18n";
 
-export const LEVEL_WORD = { 1: "Process", 2: "Area", 3: "Sub-process", 4: "Step", 5: "Activity" } as const;
+export const LEVEL_WORD: Readonly<Record<1 | 2 | 3 | 4 | 5, string>> = {
+  get 1() { return t("Process"); },
+  get 2() { return t("Area"); },
+  get 3() { return t("Sub-process"); },
+  get 4() { return t("Step"); },
+  get 5() { return t("Activity"); },
+};
 
 /** TABLE.FIELD as SAP names them: capitals, digits, underscore and namespace slashes on both sides of one dot. */
 export const FIELD_RE = /^[A-Z0-9_/]+\.[A-Z0-9_/]+$/;
 
 export function fieldError(value: string, existing: readonly string[]): string | undefined {
   const v = value.trim().toUpperCase();
-  if (!v) return "Enter the field as TABLE.FIELD";
-  if (!FIELD_RE.test(v)) return "Use TABLE.FIELD, for example MARA.MATNR";
-  if (existing.includes(v)) return "This field is already mapped to the activity";
+  if (!v) return t("Enter the field as TABLE.FIELD");
+  if (!FIELD_RE.test(v)) return t("Use TABLE.FIELD, for example MARA.MATNR");
+  if (existing.includes(v)) return t("This field is already mapped to the activity");
   return undefined;
 }
 

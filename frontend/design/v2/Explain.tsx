@@ -6,6 +6,7 @@ import { v2Locale } from "@/lib/v2/format";
 import { useExplain } from "@/lib/v2/object-queries";
 import { Skeleton } from "./parts";
 import "./object.css";
+import { t as tr } from "@/lib/v2/i18n";
 
 /**
  * The "i" that explains a number. One popover at a time, 320 pixels wide, drawn from GET /explain/{metric}: a title,
@@ -94,7 +95,7 @@ export function Explain({ metric, label, module, run, dimension, checkId }: Expl
 
   return (
     <>
-      <button ref={btn} type="button" className="m2-ibtn" aria-label={`About ${label}`} aria-expanded={open} aria-controls={open ? id : undefined} onClick={toggle}>
+      <button ref={btn} type="button" className="m2-ibtn" aria-label={tr("About {label}", { label })} aria-expanded={open} aria-controls={open ? id : undefined} onClick={toggle}>
         <span aria-hidden="true">i</span>
       </button>
       {open ? (
@@ -108,7 +109,7 @@ export function Explain({ metric, label, module, run, dimension, checkId }: Expl
               <Skeleton width="80%" height={12} />
             </div>
           ) : q.isError ? (
-            <p role="alert">The explanation could not be read for this run.</p>
+            <p role="alert">{tr("The explanation could not be read for this run.")}</p>
           ) : (
             <>
               <h4>{q.data.title}</h4>

@@ -11,24 +11,25 @@ import { useLandscape, useReceipt } from "@/lib/v2/queries";
 import { f1, findSystem, int, moduleFromSlug } from "@/lib/v2/score";
 import { Dash, EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../../parts";
 import { ScoreChart, type ChartPoint } from "./ScoreChart";
+import { t } from "@/lib/v2/i18n";
 
 const shortDate = (iso: string | null): string => (iso ? formatDate(iso, "date").replace(/\s\d{4}$/, "") : "");
-const longDate = (iso: string | null): string => (iso ? formatDate(iso, "date") : "an earlier run");
+const longDate = (iso: string | null): string => (iso ? formatDate(iso, "date") : t("an earlier run"));
 
 const KIND: { key: ChangeKind; title: string }[] = [
-  { key: "newly_failing", title: "Newly failing" },
-  { key: "fixed", title: "Fixed" },
-  { key: "worse", title: "Worse" },
-  { key: "better", title: "Better" },
+  { key: "newly_failing", get title() { return t("Newly failing"); } },
+  { key: "fixed", get title() { return t("Fixed"); } },
+  { key: "worse", get title() { return t("Worse"); } },
+  { key: "better", get title() { return t("Better"); } },
 ];
 const SHOWN = 3;
 
 function movement(kind: ChangeKind, c: ChangedCheck): { text: string; delta: number } {
   const d = c.v2_affected - c.v1_affected;
-  if (kind === "fixed") return { text: `${int(c.v1_affected)} records fixed`, delta: d };
-  if (kind === "newly_failing") return { text: `${int(c.v2_affected)} records newly failing`, delta: d };
-  if (kind === "worse") return { text: `${int(Math.abs(d))} more records failing`, delta: d };
-  return { text: `${int(Math.abs(d))} fewer records failing`, delta: d };
+  if (kind === "fixed") return { text: t("{v1_affected} records fixed", { v1_affected: int(c.v1_affected) }), delta: d };
+  if (kind === "newly_failing") return { text: t("{v2_affected} records newly failing", { v2_affected: int(c.v2_affected) }), delta: d };
+  if (kind === "worse") return { text: t("{d} more records failing", { d: int(Math.abs(d)) }), delta: d };
+  return { text: t("{d} fewer records failing", { d: int(Math.abs(d)) }), delta: d };
 }
 
 const signed = (n: number): string => `${n > 0 ? "+" : n < 0 ? "−" : ""}${int(Math.abs(n))}`;
@@ -48,12 +49,12 @@ function WhyMoved({ module, baseline, current }: { module: string; baseline: Tim
   const change = before != null && after != null ? Math.round((after - before) * 10) / 10 : null;
   const shownBefore = side?.before?.score ?? baseline.objects[module]?.score ?? null;
   const shownAfter = side?.after?.score ?? current.objects[module]?.score ?? null;
-  const sub = `${longDate(current.run_at)} against ${longDate(baseline.run_at)}`;
+  const sub = t("{longDate} against {longDate2}", { longDate: longDate(current.run_at), longDate2: longDate(baseline.run_at) });
 
   return (
     <div data-testid="why-moved">
       <div className="m2-sechead">
-        <h2 className="m2-h2">Why the score moved</h2>
+        <h2 className="m2-h2">{t("Why the score moved")}</h2>
         <span className="m2-sub">{sub}</span>
       </div>
       {summary.isPending || changed.isPending ? (
@@ -65,7 +66,7 @@ function WhyMoved({ module, baseline, current }: { module: string; baseline: Tim
           ))}
         </div>
       ) : summary.isError || changed.isError ? (
-        <ErrorFrame onRetry={() => { void summary.refetch(); void changed.refetch(); }}>The comparison of these two runs could not be read.</ErrorFrame>
+        <ErrorFrame onRetry={() => { void summary.refetch(); void changed.refetch(); }}>{t("The comparison of these two runs could not be read.")}</ErrorFrame>
       ) : (
         <>
           <ul className="m2-why">
@@ -76,7 +77,7 @@ function WhyMoved({ module, baseline, current }: { module: string; baseline: Tim
               return [
                 <li key={`${key}-h`} className="m2-whyh">
                   <span>{title}</span>
-                  <span className="m2-s">{`${int(total)} ${total === 1 ? "rule" : "rules"}`}</span>
+                  <span className="m2-s">{t("{total} {total2, plural, one {rule} other {rules}}", { total: int(total), total2: total })}</span>
                   <span />
                 </li>,
                 ...list.slice(0, SHOWN).map((c) => {
@@ -91,19 +92,19 @@ function WhyMoved({ module, baseline, current }: { module: string; baseline: Tim
                     </li>
                   );
                 }),
-                ...(total > SHOWN ? [<li key={`${key}-more`} className="m2-whymore"><span className="m2-meta">{`and ${int(total - Math.min(list.length, SHOWN))} more ${total - Math.min(list.length, SHOWN) === 1 ? "rule" : "rules"}`}</span><span /><span /></li>] : []),
+                ...(total > SHOWN ? [<li key={`${key}-more`} className="m2-whymore"><span className="m2-meta">{t("and {count} more {count2, plural, one {rule} other {rules}}", { count: int(total - Math.min(list.length, SHOWN)), count2: total - Math.min(list.length, SHOWN) })}</span><span /><span /></li>] : []),
               ];
             })}
             <li className="m2-tot">
-              <span>Measured score</span>
-              <span className="m2-s">{`${f1(before)} on ${longDate(baseline.run_at)}, ${f1(after)} on ${longDate(current.run_at)}`}</span>
+              <span>{t("Measured score")}</span>
+              <span className="m2-s">{t("{before} on {longDate}, {after} on {longDate2}", { before: f1(before), longDate: longDate(baseline.run_at), after: f1(after), longDate2: longDate(current.run_at) })}</span>
               <span className="m2-e">{change == null ? <Dash /> : `${change > 0 ? "+" : change < 0 ? "−" : ""}${Math.abs(change).toFixed(1)}`}</span>
             </li>
           </ul>
-          {(changed.data && KIND.every((k) => (changed.data?.[k.key] ?? []).length === 0)) ? <p className="m2-prov">No rule changed enough between these two runs to move the score.</p> : null}
-          <p className="m2-prov">{summary.data?.method ?? "Only rules that ran cleanly in both runs are compared."}</p>
+          {(changed.data && KIND.every((k) => (changed.data?.[k.key] ?? []).length === 0)) ? <p className="m2-prov">{t("No rule changed enough between these two runs to move the score.")}</p> : null}
+          <p className="m2-prov">{summary.data?.method ?? t("Only rules that ran cleanly in both runs are compared.")}</p>
           {shownBefore != null && shownAfter != null && current.objects[module]?.capped && before != null && after != null && (shownBefore !== before || shownAfter !== after) ? (
-            <p className="m2-meta m2-prov" data-testid="shown-note">{`The shown score moved only ${f1(shownBefore)} to ${f1(shownAfter)}, because the cap holds it at ${f1(shownAfter)}.`}</p>
+            <p className="m2-meta m2-prov" data-testid="shown-note">{t("The shown score moved only {shownBefore} to {shownAfter}, because the cap holds it at {shownAfter}.", { shownBefore: f1(shownBefore), shownAfter: f1(shownAfter) })}</p>
           ) : null}
         </>
       )}
@@ -115,31 +116,31 @@ function WhyMoved({ module, baseline, current }: { module: string; baseline: Tim
 function ComparePicker({ runs, from, to }: { runs: TimelineRun[]; from: string; to: string }) {
   const [a, setA] = useState(from);
   const [b, setB] = useState(to);
-  const label = (r: TimelineRun) => `Run ${formatDate(r.run_at, "datetime")}`;
+  const label = (r: TimelineRun) => t("Run {run_at}", { run_at: formatDate(r.run_at, "datetime") });
   return (
-    <form className="m2-cmp" aria-label="Compare two runs" onSubmit={(e) => e.preventDefault()}>
-      <span className="m2-cmp-t">Compare with…</span>
+    <form className="m2-cmp" aria-label={t("Compare two runs")} onSubmit={(e) => e.preventDefault()}>
+      <span className="m2-cmp-t">{t("Compare with…")}</span>
       <label>
-        <span className="m2-sr">Earlier run</span>
-        <select value={a} onChange={(e) => setA(e.target.value)} aria-label="Earlier run">
+        <span className="m2-sr">{t("Earlier run")}</span>
+        <select value={a} onChange={(e) => setA(e.target.value)} aria-label={t("Earlier run")}>
           {runs.map((r) => (
             <option key={r.id} value={r.id}>{label(r)}</option>
           ))}
         </select>
       </label>
-      <span className="m2-meta" aria-hidden="true">with</span>
+      <span className="m2-meta" aria-hidden="true">{t("with")}</span>
       <label>
-        <span className="m2-sr">Later run</span>
-        <select value={b} onChange={(e) => setB(e.target.value)} aria-label="Later run">
+        <span className="m2-sr">{t("Later run")}</span>
+        <select value={b} onChange={(e) => setB(e.target.value)} aria-label={t("Later run")}>
           {runs.map((r) => (
             <option key={r.id} value={r.id}>{label(r)}</option>
           ))}
         </select>
       </label>
       {a === b ? (
-        <button type="button" className="m2-btn m2-sm" disabled>Compare</button>
+        <button type="button" className="m2-btn m2-sm" disabled>{t("Compare")}</button>
       ) : (
-        <V2Link href={`/v2/run/${a}/vs/${b}`} className="m2-btn m2-sm m2-strong">Compare</V2Link>
+        <V2Link href={`/v2/run/${a}/vs/${b}`} className="m2-btn m2-sm m2-strong">{t("Compare")}</V2Link>
       )}
     </form>
   );
@@ -151,7 +152,7 @@ export function RunsTab({ system: systemSegment, module: moduleSegment }: { syst
   const apiModule = moduleFromSlug(moduleSegment);
   const L = useLandscape(runParam);
   const system = L.data ? findSystem(L.data.systems, decodeURIComponent(systemSegment)) : undefined;
-  const label = L.data?.objects.find((o) => o.module === apiModule)?.label ?? apiModule.replace(/_/g, " ");
+  const label = `${L.data?.objects.find((o) => o.module === apiModule)?.label ?? apiModule.replace(/_/g, " ")}`;
   const timeline = useTimeline(system?.id);
   const receipt = useReceipt(apiModule, runParam, Boolean(system)).data;
   const { hrefFor } = useOpenItem();
@@ -174,7 +175,7 @@ export function RunsTab({ system: systemSegment, module: moduleSegment }: { syst
     () =>
       series.map((r) => {
         const m = r.objects[apiModule].raw_score ?? r.objects[apiModule].score ?? 0;
-        return { id: r.id, label: shortDate(r.run_at), title: `${longDate(r.run_at)}: measured ${f1(m)}`, measured: m, baseline: baseline?.id === r.id };
+        return { id: r.id, label: shortDate(r.run_at), title: t("{longDate}: measured {m}", { longDate: longDate(r.run_at), m: f1(m) }), measured: m, baseline: baseline?.id === r.id };
       }),
     [series, apiModule, baseline],
   );
@@ -186,14 +187,14 @@ export function RunsTab({ system: systemSegment, module: moduleSegment }: { syst
       </div>
     );
   }
-  if (timeline.isError) return <ErrorFrame onRetry={() => void timeline.refetch()}>The run history could not be read.</ErrorFrame>;
+  if (timeline.isError) return <ErrorFrame onRetry={() => void timeline.refetch()}>{t("The run history could not be read.")}</ErrorFrame>;
   if (!system || series.length < 2 || !current) {
     const only = series[0]?.objects[apiModule];
     return (
-      <EmptyFrame action={<V2Link href="/v2/runs" className="m2-btn">Open the runs</V2Link>}>
+      <EmptyFrame action={<V2Link href="/v2/runs" className="m2-btn">{t("Open the runs")}</V2Link>}>
         {only
-          ? `${label} has one scored run so far, measured ${f1(only.raw_score)} and shown ${f1(only.score)}. The history chart fills from the second run with the same rule set.`
-          : `${label} has no run history here yet. Each run adds a point once two runs have scored this object.`}
+          ? t("{label} has one scored run so far, measured {raw_score} and shown {score}. The history chart fills from the second run with the same rule set.", { label, raw_score: f1(only.raw_score), score: f1(only.score) })
+          : t("{label} has no run history here yet. Each run adds a point once two runs have scored this object.", { label })}
       </EmptyFrame>
     );
   }
@@ -201,33 +202,33 @@ export function RunsTab({ system: systemSegment, module: moduleSegment }: { syst
   const cap = receipt?.cap_level ?? null;
   const first = points[0];
   const last = points[points.length - 1];
-  const aria = `Measured score of ${label}, last ${points.length} runs: ${f1(first.measured)} on ${first.label}, ${f1(last.measured)} on ${last.label}${baseline ? `. Baseline run ${shortDate(baseline.run_at)}` : ""}${cap != null ? `. Cap ${cap}` : ""}.`;
+  const aria = t("Measured score of {label}, last {pointsCount} runs: {measured} on {label2}, {measured2} on {label3}{value}{value2}.", { label, pointsCount: points.length, measured: f1(first.measured), label2: first.label, measured2: f1(last.measured), label3: last.label, value: baseline ? t(". Baseline run {shortDate}", { shortDate: shortDate(baseline.run_at) }) : "", value2: cap != null ? t(". Cap {cap}", { cap }) : "" });
   const rows = [...series].reverse();
 
   return (
     <div className="m2-rungrid">
       <div>
         <div className="m2-sechead">
-          <h2 className="m2-h2">{`Measured score, last ${points.length} runs`}</h2>
-          <span className="m2-sub">{cap != null ? `Cap ${cap}.0, ${receipt?.breaches.length ?? 0} critical rules over tolerance` : "No cap applies"}</span>
+          <h2 className="m2-h2">{t("Measured score, last {pointsCount} runs", { pointsCount: points.length })}</h2>
+          <span className="m2-sub">{cap != null ? t("Cap {cap}.0, {breachesCount} critical rules over tolerance", { cap, breachesCount: receipt?.breaches.length ?? 0 }) : t("No cap applies")}</span>
         </div>
         <ScoreChart points={points} capLevel={cap} label={aria} compact={narrow} />
-        <ScrollFrame label="Runs, scrollable" style={{ marginTop: 16 }}>
-          <table className="m2-tbl" aria-label="Runs shown in the chart">
+        <ScrollFrame label={t("Runs, scrollable")} style={{ marginTop: 16 }}>
+          <table className="m2-tbl" aria-label={t("Runs shown in the chart")}>
             <thead>
               <tr>
-                <th scope="col">Run</th>
-                <th scope="col" className="m2-r">Measured</th>
-                <th scope="col" className="m2-r">Shown</th>
-                <th scope="col" className="m2-r">Records checked</th>
+                <th scope="col">{t("Run")}</th>
+                <th scope="col" className="m2-r">{t("Measured")}</th>
+                <th scope="col" className="m2-r">{t("Shown")}</th>
+                <th scope="col" className="m2-r">{t("Records checked")}</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id}>
                   <th scope="row">
-                    <V2Link href={hrefFor({ kind: "run", id: r.id })}>{`Run ${formatDate(r.run_at, "datetime")}`}</V2Link>
-                    {r.baseline ? <span className="m2-meta"> baseline</span> : null}
+                    <V2Link href={hrefFor({ kind: "run", id: r.id })}>{t("Run {run_at}", { run_at: formatDate(r.run_at, "datetime") })}</V2Link>
+                    {r.baseline ? <span className="m2-meta">{" "}{t("baseline")}</span> : null}
                   </th>
                   <td className="m2-r">{f1(r.objects[apiModule].raw_score)}</td>
                   <td className="m2-r">{f1(r.objects[apiModule].score)}</td>
@@ -237,15 +238,15 @@ export function RunsTab({ system: systemSegment, module: moduleSegment }: { syst
             </tbody>
           </table>
 </ScrollFrame>
-        <p className="m2-prov">Scores are as stored with each run; the measured score is before the cap, the shown score after it.</p>
+        <p className="m2-prov">{t("Scores are as stored with each run; the measured score is before the cap, the shown score after it.")}</p>
         <ComparePicker runs={series} from={(baseline ?? series[0]).id} to={current.id} />
       </div>
       {baseline ? (
         <WhyMoved module={apiModule} baseline={baseline} current={current} />
       ) : (
         <div>
-          <div className="m2-sechead"><h2 className="m2-h2">Why the score moved</h2></div>
-          <EmptyFrame>This is the earliest run in view, so there is nothing before it to compare. The next run adds the comparison.</EmptyFrame>
+          <div className="m2-sechead"><h2 className="m2-h2">{t("Why the score moved")}</h2></div>
+          <EmptyFrame>{t("This is the earliest run in view, so there is nothing before it to compare. The next run adds the comparison.")}</EmptyFrame>
         </div>
       )}
     </div>

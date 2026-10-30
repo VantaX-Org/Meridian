@@ -14,6 +14,8 @@ import { Grid, type GridProps } from "./Grid";
 import { MenuButton, type MenuEntry } from "./Menu";
 import { useToast } from "./Toast";
 import "./roles.css";
+import { t } from "@/lib/v2/i18n";
+import { int } from "@/lib/v2/score";
 
 /**
  * The tools every v2 grid gets (step 6c), placed in the grid's toolbar slot: a Views menu (the person's own and shared
@@ -104,7 +106,7 @@ export function GridTools<T>({ gridId, route, title, columns, rows, filters, onA
     try {
       const shown = visibleColumns(gridId, columns);
       const name = await exportGrid({ title, route: key, columns: shown.map((c) => ({ key: c.id, header: c.header, kind: c.numeric ? "int" : "text" })), rows: exportRows(rows, shown), filters });
-      toast.show(`Exported ${rows.length.toLocaleString("en-US")} rows to ${name}`);
+      toast.show(t("Exported {rowsCount} rows to {name}", { rowsCount: int(rows.length), name }));
     } catch (e) {
       toast.show(failureText(e), "error");
     }
@@ -116,7 +118,7 @@ export function GridTools<T>({ gridId, route, title, columns, rows, filters, onA
       await qc.invalidateQueries({ queryKey: ["v2", "views", fx, key] });
       setSaving(false);
       setName("");
-      toast.show(shared ? "Saved and shared with everyone" : "View saved");
+      toast.show(shared ? t("Saved and shared with everyone") : t("View saved"));
     } catch (e) {
       setError(failureText(e));
     }
@@ -131,31 +133,31 @@ export function GridTools<T>({ gridId, route, title, columns, rows, filters, onA
     }
   };
   const entries: MenuEntry[] = [
-    { kind: "heading", label: "Views" },
+    { kind: "heading", label: t("Views") },
     ...(views.length
-      ? views.map<MenuEntry>((v) => ({ kind: "item", id: v.id, label: v.name, sub: v.builtin ? "Built in" : v.mine === false ? "Shared" : v.shared ? "Yours, shared" : "Yours", onSelect: () => apply(v) }))
-      : [{ kind: "item", id: "none", label: "No saved views yet", disabled: true } as MenuEntry]),
+      ? views.map<MenuEntry>((v) => ({ kind: "item", id: v.id, label: v.name, sub: v.builtin ? t("Built in") : v.mine === false ? t("Shared") : v.shared ? t("Yours, shared") : t("Yours"), onSelect: () => apply(v) }))
+      : [{ kind: "item", id: "none", label: t("No saved views yet"), disabled: true } as MenuEntry]),
     { kind: "separator" },
-    { kind: "item", id: "save", label: "Save these columns as a view…", disabled: readOnly, onSelect: () => setSaving(true) },
-    { kind: "item", id: "share", label: "Share this page as a link…", disabled: readOnly || !session.can("export"), onSelect: () => void share() },
-    { kind: "item", id: "export", label: "Export to Excel", sub: "The columns on screen", disabled: !session.can("export"), onSelect: () => void doExport() },
+    { kind: "item", id: "save", label: t("Save these columns as a view…"), disabled: readOnly, onSelect: () => setSaving(true) },
+    { kind: "item", id: "share", label: t("Share this page as a link…"), disabled: readOnly || !session.can("export"), onSelect: () => void share() },
+    { kind: "item", id: "export", label: t("Export to Excel"), sub: t("The columns on screen"), disabled: !session.can("export"), onSelect: () => void doExport() },
   ];
   return (
     <span className="m2-gtools" data-testid={`grid-tools-${gridId}`}>
-      <MenuButton label={`Saved views, sharing and export of ${title}`} buttonLabel={`Share and export ${title}`} entries={entries} className="m2-btn m2-sm" onOpen={pushColumns}>
-        Share and export
+      <MenuButton label={t("Saved views, sharing and export of {title}", { title })} buttonLabel={t("Share and export {title}", { title })} entries={entries} className="m2-btn m2-sm" onOpen={pushColumns}>
+        {t("Share and export")}
       </MenuButton>
       {saving ? (
-        <Dialog title="Save these columns as a view" description="The columns on screen and the filters in force, under a name." onClose={() => setSaving(false)}>
+        <Dialog title={t("Save these columns as a view")} description={t("The columns on screen and the filters in force, under a name.")} onClose={() => setSaving(false)}>
           <label>
-            Name
+            {t("Name")}
             <input type="text" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} />
           </label>
           <label className="m2-sw">
             <input type="checkbox" checked={shared} onChange={(e) => setShared(e.target.checked)} />
             <span>
-              Share with everyone
-              <small>Others see it in their Views menu and cannot change it.</small>
+              {t("Share with everyone")}
+              <small>{t("Others see it in their Views menu and cannot change it.")}</small>
             </span>
           </label>
           {error ? (
@@ -165,23 +167,23 @@ export function GridTools<T>({ gridId, route, title, columns, rows, filters, onA
           ) : null}
           <div className="m2-dlg-a">
             <button type="button" className="m2-btn" onClick={() => setSaving(false)}>
-              Cancel
+              {t("Cancel")}
             </button>
             <button type="button" className="m2-btn m2-strong" disabled={!name.trim() || name.trim().startsWith("_")} onClick={() => void save()}>
-              Save view
+              {t("Save view")}
             </button>
           </div>
         </Dialog>
       ) : null}
       {sharing ? (
-        <Dialog title="Read-only link" description="Anyone in this tenant who opens it sees this page as a viewer, for 7 days. An administrator can revoke it." onClose={() => setSharing(null)}>
-          <input type="text" readOnly value={sharing.url} aria-label="Share link" onFocus={(e) => e.currentTarget.select()} />
+        <Dialog title={t("Read-only link")} description={t("Anyone in this tenant who opens it sees this page as a viewer, for 7 days. An administrator can revoke it.")} onClose={() => setSharing(null)}>
+          <input type="text" readOnly value={sharing.url} aria-label={t("Share link")} onFocus={(e) => e.currentTarget.select()} />
           <div className="m2-dlg-a">
             <button type="button" className="m2-btn" onClick={() => setSharing(null)}>
-              Close
+              {t("Close")}
             </button>
-            <button type="button" className="m2-btn m2-strong" onClick={() => void copyText(sharing.url).then((ok) => toast.show(ok ? "Link copied" : "Copy it from the field"))}>
-              Copy link
+            <button type="button" className="m2-btn m2-strong" onClick={() => void copyText(sharing.url).then((ok) => toast.show(ok ? t("Link copied") : t("Copy it from the field")))}>
+              {t("Copy link")}
             </button>
           </div>
         </Dialog>

@@ -1,6 +1,8 @@
 import type { ImpactResult } from "@/lib/api/v2/object";
 import type { RuleRow } from "@/lib/api/v2/types";
 import { describeField } from "./sap-fields";
+import { t } from "@/lib/v2/i18n";
+import { whole } from "./format";
 
 /**
  * The lineage of one object as a graph: source tables, the fields read from them, the rules that read the fields, and
@@ -50,10 +52,10 @@ const COLS: Record<NodeKind, { x: number; w: number }> = {
 };
 const ROW = 34;
 const NODE_H = 26;
-export const COLUMN_TITLES: Record<NodeKind, string> = { table: "Source tables", field: "Fields", rule: "Rules", feature: "S/4 features" };
+export const COLUMN_TITLES: Record<NodeKind, string> = { get table() { return t("Source tables"); }, get field() { return t("Fields"); }, get rule() { return t("Rules"); }, get feature() { return t("S/4 features"); } };
 const HEAD = 22;
 
-const int = (n: number): string => Math.round(n).toLocaleString("en-US");
+const int = (n: number): string => whole(Math.round(n));
 const tableOf = (field: string): string => field.split(/[.-]/)[0];
 
 export function buildLineage(rules: readonly RuleRow[], impact: readonly ImpactResult[], module: string, cap = MAX_RULES): LineageGraph {
@@ -86,10 +88,10 @@ export function buildLineage(rules: readonly RuleRow[], impact: readonly ImpactR
     const readers = ranked.filter((x) => x.field === field);
     const tableRules = ranked.filter((x) => tableOf(x.field as string) === table);
     const tableFields = new Set(tableRules.map((x) => x.field));
-    mk(`table:${table}`, "table", table, [["Table", table], ["Fields read", int(tableFields.size)], ["Rules reading it", int(tableRules.length)], ["Rule failures", int(tableRules.reduce((s, x) => s + x.affected_count, 0))]], null);
+    mk(`table:${table}`, "table", table, [[t("Table"), table], [t("Fields read"), int(tableFields.size)], [t("Rules reading it"), int(tableRules.length)], [t("Rule failures"), int(tableRules.reduce((s, x) => s + x.affected_count, 0))]], null);
     const desc = describeField(field) ?? r.field_description ?? null;
-    mk(`field:${field}`, "field", field, [["Field", field], ["Meaning", desc ?? "—"], ["Table", table], ["Rules reading it", readers.map((x) => x.check_id).join(", ")]], null);
-    mk(`rule:${r.check_id}`, "rule", r.check_id, [["Rule", r.check_id], ["Name", r.name], ["Severity", r.severity.charAt(0).toUpperCase() + r.severity.slice(1)], ["Failing records", int(r.affected_count)], ["Reads", field]], { kind: "rule", id: r.check_id });
+    mk(`field:${field}`, "field", field, [[t("Field"), field], [t("Meaning"), desc ?? "—"], [t("Table"), table], [t("Rules reading it"), readers.map((x) => x.check_id).join(", ")]], null);
+    mk(`rule:${r.check_id}`, "rule", r.check_id, [[t("Rule"), r.check_id], [t("Name"), r.name], [t("Severity"), r.severity.charAt(0).toUpperCase() + r.severity.slice(1)], [t("Failing records"), int(r.affected_count)], [t("Reads"), field]], { kind: "rule", id: r.check_id });
     link(`table:${table}`, `field:${field}`);
     link(`field:${field}`, `rule:${r.check_id}`);
     for (const res of featuresOf.get(r.check_id) ?? []) {
@@ -99,11 +101,11 @@ export function buildLineage(rules: readonly RuleRow[], impact: readonly ImpactR
         "feature",
         res.feature,
         [
-          ["Feature", res.feature],
-          ["Status", res.status === "blocked" ? "Blocked" : "Degraded"],
-          ["Blocking rules", [...new Set(mine)].join(", ")],
-          ["Records affected", res.total_affected_records == null ? "—" : int(res.total_affected_records)],
-          ["Opportunity cost", res.opportunity_cost_summary || "No summary for this run"],
+          [t("Feature"), res.feature],
+          [t("Status"), res.status === "blocked" ? t("Blocked") : t("Degraded")],
+          [t("Blocking rules"), [...new Set(mine)].join(", ")],
+          [t("Records affected"), res.total_affected_records == null ? "—" : int(res.total_affected_records)],
+          [t("Opportunity cost"), res.opportunity_cost_summary || t("No summary for this run")],
         ],
         { kind: "feature", id: res.feature },
       );

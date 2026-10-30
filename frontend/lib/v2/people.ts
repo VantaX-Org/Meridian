@@ -4,22 +4,23 @@
 import type { Person } from "@/lib/api/v2/people";
 import type { Landscape } from "@/lib/api/v2/types";
 import { moduleSlug, systemSlug } from "./score";
+import { t } from "@/lib/v2/i18n";
 
 export const ROLE_WORD: Record<string, string> = {
-  admin: "Administrator",
-  platform_admin: "Administrator",
-  manager: "Programme lead",
-  programme_lead: "Programme lead",
-  steward: "Data steward",
-  data_steward: "Data steward",
-  approver: "Data owner",
-  data_owner: "Data owner",
-  analyst: "Analyst",
-  auditor: "Auditor",
-  viewer: "Viewer",
-  ai_reviewer: "AI reviewer",
-  process_analyst: "Process analyst",
-  sap_basis: "SAP Basis",
+  get admin() { return t("Administrator"); },
+  get platform_admin() { return t("Administrator"); },
+  get manager() { return t("Programme lead"); },
+  get programme_lead() { return t("Programme lead"); },
+  get steward() { return t("Data steward"); },
+  get data_steward() { return t("Data steward"); },
+  get approver() { return t("Data owner"); },
+  get data_owner() { return t("Data owner"); },
+  get analyst() { return t("Analyst"); },
+  get auditor() { return t("Auditor"); },
+  get viewer() { return t("Viewer"); },
+  get ai_reviewer() { return t("AI reviewer"); },
+  get process_analyst() { return t("Process analyst"); },
+  get sap_basis() { return t("SAP Basis"); },
 };
 
 export const roleWord = (role: string): string => ROLE_WORD[role] ?? role.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
@@ -37,13 +38,13 @@ export function slaMet(p: Pick<Person, "open_work" | "overdue" | "sla_met_pct">)
 export type PeopleSort = "open" | "name" | "approvals" | "overdue" | "sla" | "breaches" | "last";
 
 export const PEOPLE_SORT_LABEL: Record<PeopleSort, string> = {
-  open: "Open work",
-  name: "Person",
-  approvals: "Approvals waiting",
-  overdue: "Overdue",
-  sla: "SLA met",
-  breaches: "Breaches this month",
-  last: "Last action",
+  get open() { return t("Open work"); },
+  get name() { return t("Person"); },
+  get approvals() { return t("Approvals waiting"); },
+  get overdue() { return t("Overdue"); },
+  get sla() { return t("SLA met"); },
+  get breaches() { return t("Breaches this month"); },
+  get last() { return t("Last action"); },
 };
 
 const num = (a: number | null, b: number | null, desc: boolean): number => {
@@ -80,7 +81,7 @@ export function sortPeople(people: readonly Person[], key: PeopleSort, reverse =
 export function objectsLine(p: Pick<Person, "objects_owned">): string | null {
   const owned = p.objects_owned.filter((o) => o.as === "owner").length;
   const stewarded = p.objects_owned.filter((o) => o.as === "steward").length;
-  const parts = [owned ? `${owned} owned` : null, stewarded ? `${stewarded} stewarded` : null].filter(Boolean);
+  const parts = [owned ? t("{owned} owned", { owned }) : null, stewarded ? t("{stewarded} stewarded", { stewarded }) : null].filter(Boolean);
   return parts.length ? parts.join(", ") : null;
 }
 
@@ -89,10 +90,10 @@ export function slaWord(hours: number | null): string | null {
   if (hours == null) return null;
   if (hours >= 24 && Math.abs(hours / 24 - Math.round(hours / 24)) < 0.01) {
     const d = Math.round(hours / 24);
-    return `${d} ${d === 1 ? "day" : "days"}`;
+    return t("{d} {d, plural, one {day} other {days}}", { d });
   }
   const h = Math.round(hours * 10) / 10;
-  return `${h} ${h === 1 ? "hour" : "hours"}`;
+  return t("{h} {h, plural, one {hour} other {hours}}", { h });
 }
 
 /** The link to an object canvas: the system it was last analysed on, else the first system, else the landscape. */

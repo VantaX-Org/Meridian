@@ -1,4 +1,5 @@
 import type { BusinessProcessL1, BusinessProcessL5Activity, BusinessProcessL5Field } from "@/types/api";
+import { t } from "@/lib/v2/i18n";
 
 /**
  * The L1 to L5 process document (GET /business-process/{run}/{module}) read as steps. A step is an L4 sub-process:
@@ -14,7 +15,7 @@ export const PROCESS_MODULES: ReadonlySet<string> = new Set([
   "production_planning", "asset_accounting", "controlling", "plant_maintenance", "quality_management", "project_system", "hcm", "employee_central",
 ]);
 
-export const DQ_WORD: Record<DQ, string> = { green: "Ready", amber: "At risk", red: "Blocked" };
+export const DQ_WORD: Record<DQ, string> = { get green() { return t("Ready"); }, get amber() { return t("At risk"); }, get red() { return t("Blocked"); } };
 export const DQ_VERDICT = { green: "go", amber: "at-risk", red: "no-go" } as const;
 
 /** One failing rule inside a step, once, with the fields of the step it reads. */

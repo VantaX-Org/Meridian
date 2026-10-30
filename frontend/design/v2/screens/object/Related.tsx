@@ -9,30 +9,31 @@ import { int, moduleSlug } from "@/lib/v2/score";
 import { WatchToggle } from "../../inspector/collab";
 import { Dash, V2Link } from "../../parts";
 import "../../roles.css";
+import { t } from "@/lib/v2/i18n";
 
 /**
  * Under the object's title (step 6c): the objects to govern with it (sap/object_relationships.yaml), each with its
  * relation and open critical failures, the fix-order hint when an upstream object still fails, a Watch toggle and the
  * way to the data contracts.
  */
-const REL: Record<string, string> = { upstream: "upstream", downstream: "downstream", "shared-reference": "shares reference data" };
+const REL: Record<string, string> = { get upstream() { return t("upstream"); }, get downstream() { return t("downstream"); }, get "shared-reference"() { return t("shares reference data"); } };
 
 export function RelatedObjects({ module, system, systemId, label }: { module: string; system: string; systemId: string; label: string }) {
   const q = useRelated(module);
   const { hrefFor } = useOpenItem();
   return (
-    <section className="m2-sec" aria-label="Related objects" data-testid="related-objects">
+    <section className="m2-sec" aria-label={t("Related objects")} data-testid="related-objects">
       <div className="m2-gtools">
         <WatchToggle kind="object" id={`${systemId}:${module}`} label={label} />
         <V2Link href={hrefFor({ kind: "contracts", id: "" })} className="m2-btn m2-sm">
-          Data contracts
+          {t("Data contracts")}
         </V2Link>
         <OwnerApply module={module} />
       </div>
       {q.isError ? (
-        notFound(q.error) ? null : <p className="m2-meta">The related objects could not be read.</p>
+        notFound(q.error) ? null : <p className="m2-meta">{t("The related objects could not be read.")}</p>
       ) : !q.data ? null : q.data.related.length === 0 ? (
-        <p className="m2-meta">No related object is mapped for this object.</p>
+        <p className="m2-meta">{t("No related object is mapped for this object.")}</p>
       ) : (
         <>
           {q.data.fix_hint ? (
@@ -40,11 +41,11 @@ export function RelatedObjects({ module, system, systemId, label }: { module: st
               {q.data.fix_hint.sentence}
             </p>
           ) : null}
-          <ul className="m2-related" aria-label={`Objects related to ${label}`}>
+          <ul className="m2-related" aria-label={t("Objects related to {label}", { label })}>
             {q.data.related.map((r) => (
               <li key={r.module}>
                 <V2Link href={`/v2/o/${system}/${moduleSlug(r.module)}`}>{r.label}</V2Link>
-                <span className="m2-meta">{`${REL[r.relation]}${r.open_criticals ? `, ${int(r.open_criticals)} critical` : ""}`}</span>
+                <span className="m2-meta">{`${REL[r.relation]}${r.open_criticals ? t(", {open_criticals} critical", { open_criticals: int(r.open_criticals) }) : ""}`}</span>
               </li>
             ))}
           </ul>
@@ -57,10 +58,10 @@ export function RelatedObjects({ module, system, systemId, label }: { module: st
 /** The Work ledger's and the record inspector's hint: fix the upstream object first. Nothing when there is none. */
 export function FixOrderHint({ module }: { module: string | null }) {
   const q = useRelated(module);
-  if (!module || !q.data?.fix_hint) return q.isError && !notFound(q.error) ? <Dash why="The fix order could not be read" /> : null;
+  if (!module || !q.data?.fix_hint) return q.isError && !notFound(q.error) ? <Dash why={t("The fix order could not be read")} /> : null;
   return (
     <p className="m2-fixhint" data-testid="fix-hint" role="note">
-      {`${q.data.fix_hint.sentence}. Records there fail before this object can pass.`}
+      {t("{sentence}. Records there fail before this object can pass.", { sentence: q.data.fix_hint.sentence })}
     </p>
   );
 }
@@ -81,7 +82,7 @@ function OwnerApply({ module }: { module: string }) {
       if (dry) setPlan(r);
       else {
         setPlan(null);
-        setNote(`Applied: ${r.totals.add} added, ${r.totals.change} changed.`);
+        setNote(t("Applied: {add} added, {change} changed.", { add: r.totals.add, change: r.totals.change }));
       }
     } catch (e) {
       setNote(failureText(e));
@@ -91,14 +92,14 @@ function OwnerApply({ module }: { module: string }) {
     <span className="m2-gtools" data-testid="owner-apply">
       {plan ? (
         <>
-          <span className="m2-meta">{`The template would add ${plan.totals.add} and change ${plan.totals.change} assignments.`}</span>
+          <span className="m2-meta">{t("The template would add {add} and change {change} assignments.", { add: plan.totals.add, change: plan.totals.change })}</span>
           <button type="button" className="m2-btn m2-sm m2-strong" disabled={plan.totals.add + plan.totals.change === 0} onClick={() => void go(false)}>
-            Apply
+            {t("Apply")}
           </button>
         </>
       ) : (
         <button type="button" className="m2-btn m2-sm" onClick={() => void go(true)}>
-          Steward template
+          {t("Steward template")}
         </button>
       )}
       {note ? <span role="status">{note}</span> : null}

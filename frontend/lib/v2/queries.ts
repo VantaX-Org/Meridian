@@ -1,7 +1,10 @@
 "use client";
 
+import { useCallback } from "react";
 import { useQuery, type QueryClient } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
+import type { Landscape } from "@/lib/api/v2/types";
+import { currentLang, tx } from "./i18n";
 import { getCounts, getLandscape, getObjectRules, getReceipt, getRunList, getStatus, getTopWork } from "@/lib/api/v2/landscape";
 
 /** Query keys for the v2 reads. The fixture flag is part of every key, so fixture and live answers never mix. */
@@ -21,7 +24,10 @@ const STALE = 30_000;
 
 export function useLandscape(run: string | null) {
   const fixture = useFixture();
-  return useQuery({ queryKey: v2Keys.landscape(fixture, run), queryFn: () => getLandscape(run), staleTime: STALE });
+  // Object names come from the API in English; the interface's language names them (Materialstamm, 品目マスタ).
+  const lang = currentLang();
+  const select = useCallback((l: Landscape): Landscape => (lang === "en" ? l : { ...l, objects: l.objects.map((o) => ({ ...o, label: tx(o.label) })) }), [lang]);
+  return useQuery({ queryKey: v2Keys.landscape(fixture, run), queryFn: () => getLandscape(run), staleTime: STALE, select });
 }
 
 export function useStatus() {

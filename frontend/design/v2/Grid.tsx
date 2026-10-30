@@ -6,6 +6,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { v2Locale } from "@/lib/v2/format";
 import { KEYS, gridRegistry, matchKey, type GridTarget } from "@/lib/v2/keys";
 import { MenuButton, type MenuEntry } from "./Menu";
+import { t } from "@/lib/v2/i18n";
 
 export interface GridColumn<T> {
   id: string;
@@ -260,7 +261,7 @@ export function Grid<T>(props: GridProps<T>) {
   }, [selectedRows]);
 
   const chooser: MenuEntry[] = [
-    { kind: "heading", label: "Columns" },
+    { kind: "heading", label: t("Columns") },
     ...columns
       .filter((c) => !c.locked && !c.pin)
       .map<MenuEntry>((c) => ({
@@ -273,7 +274,7 @@ export function Grid<T>(props: GridProps<T>) {
         onSelect: () => table.getColumn(c.id)?.toggleVisibility(visibility[c.id] === false),
       })),
     { kind: "separator" },
-    { kind: "item", id: "all", label: "Show all columns", keepOpen: true, onSelect: () => table.resetColumnVisibility(true) },
+    { kind: "item", id: "all", label: t("Show all columns"), keepOpen: true, onSelect: () => table.resetColumnVisibility(true) },
   ];
 
   const showRows = !error && !loading && rows.length > 0;
@@ -288,11 +289,11 @@ export function Grid<T>(props: GridProps<T>) {
         <div className="m2-gridbar-l">{toolbar}</div>
         <div className="m2-gridbar-r">
           <span className="m2-meta" aria-live="polite">
-            {(count ?? rows.length).toLocaleString(v2Locale())} {(count ?? rows.length) === 1 ? "row" : "rows"}
+            {(count ?? rows.length).toLocaleString(v2Locale())} {t("{count, plural, one {row} other {rows}}", { count: (count ?? rows.length) })}
           </span>
           {fixedColumns ? null : (
-            <MenuButton label="Choose columns" buttonLabel="Choose columns" entries={chooser} className="m2-btn m2-sm" align="end">
-              Columns
+            <MenuButton label={t("Choose columns")} buttonLabel={t("Choose columns")} entries={chooser} className="m2-btn m2-sm" align="end">
+              {t("Columns")}
             </MenuButton>
           )}
         </div>
@@ -323,7 +324,7 @@ export function Grid<T>(props: GridProps<T>) {
               <div role="columnheader" className="m2-gcell m2-gpin m2-gsel" style={{ left: 0 }}>
                 <input
                   type="checkbox"
-                  aria-label="Select all rows"
+                  aria-label={t("Select all rows")}
                   checked={selectableCount > 0 && selectedCount === selectableCount}
                   ref={(el) => {
                     if (el) el.indeterminate = selectedCount > 0 && selectedCount < selectableCount;
@@ -419,7 +420,7 @@ export function Grid<T>(props: GridProps<T>) {
                     <div role="gridcell" className="m2-gcell m2-gpin m2-gsel" style={{ left: 0 }}>
                       <input
                         type="checkbox"
-                        aria-label={`Select row ${v.index + 1}`}
+                        aria-label={t("Select row {count}", { count: v.index + 1 })}
                         checked={isSel}
                         onChange={(e) => {
                           const shift = (e.nativeEvent as MouseEvent).shiftKey;
@@ -452,11 +453,11 @@ export function Grid<T>(props: GridProps<T>) {
         )}
       </div>
       {selectedCount > 0 ? (
-        <div className="m2-bulk" role="region" aria-label="Bulk actions" data-testid="bulk-bar">
-          <span>{bulkLabel ? bulkLabel(selectedCount) : `${selectedCount.toLocaleString(v2Locale())} selected`}</span>
+        <div className="m2-bulk" role="region" aria-label={t("Bulk actions")} data-testid="bulk-bar">
+          <span>{bulkLabel ? bulkLabel(selectedCount) : t("{selectedCount} selected", { selectedCount: selectedCount.toLocaleString(v2Locale()) })}</span>
           {bulkBar?.({ selected: selectedRows, clear })}
           <button type="button" className="m2-btn m2-sm m2-ghost" onClick={clear}>
-            Clear selection
+            {t("Clear selection")}
           </button>
         </div>
       ) : null}

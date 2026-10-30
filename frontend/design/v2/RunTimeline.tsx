@@ -10,6 +10,7 @@ import { useTimeline } from "@/lib/v2/runs-queries";
 import { int } from "@/lib/v2/score";
 import { IconDown } from "./marks";
 import "./runs.css";
+import { t as tr } from "@/lib/v2/i18n";
 
 /** "16 Oct", the date on the axis. */
 export function shortDate(iso: string | null | undefined): string {
@@ -98,7 +99,7 @@ export interface RunTimelineChartProps {
  * The timeline: a date axis with one square per run, the baseline marked by a rule and the word, the selected run
  * in the data hue with a bold label. Every run is a button; Enter or Space picks it, the arrow keys move between them.
  */
-export function RunTimelineChart({ runs, selectedId, onPick, label = "Runs on a date axis", fallbackWidth = 520 }: RunTimelineChartProps) {
+export function RunTimelineChart({ runs, selectedId, onPick, label = tr("Runs on a date axis"), fallbackWidth = 520 }: RunTimelineChartProps) {
   const box = useRef<HTMLDivElement>(null);
   const width = useMeasuredWidth(box, fallbackWidth);
   const g = useMemo(() => timelineLayout(runs, width, selectedId), [runs, width, selectedId]);
@@ -123,13 +124,13 @@ export function RunTimelineChart({ runs, selectedId, onPick, label = "Runs on a 
             <g key={`b${p.id}`} data-testid="tl-baseline">
               <line className="m2-tl-base" x1={p.x} x2={p.x} y1={26} y2={74} />
               <text className="m2-tl-t" x={p.x} y={16} textAnchor="middle">
-                baseline
+                {tr("baseline")}
               </text>
             </g>
           ))}
         {g.points.map((p, i) => {
           const r = runOf(p.id);
-          const full = `Run ${formatDate(r?.run_at, "datetime")}${p.baseline ? ", baseline" : ""}${p.selected ? ", selected" : ""}`;
+          const full = tr("Run {run_at}{value}{value2}", { run_at: formatDate(r?.run_at, "datetime"), value: p.baseline ? tr(", baseline") : "", value2: p.selected ? tr(", selected") : "" });
           return (
             <g
               key={p.id}
@@ -159,7 +160,7 @@ export function RunTimelineChart({ runs, selectedId, onPick, label = "Runs on a 
   );
 }
 
-const KIND_WORD: Record<string, string> = { scheduled: "Scheduled", manual: "Started by hand", recheck: "Recheck", upload: "Upload" };
+const KIND_WORD: Record<string, string> = { get scheduled() { return tr("Scheduled"); }, get manual() { return tr("Started by hand"); }, get recheck() { return tr("Recheck"); }, get upload() { return tr("Upload"); } };
 export const kindWord = (kind: string | null | undefined): string => (kind ? (KIND_WORD[kind] ?? kind) : "—");
 
 /** Orders two run ids by date: [earlier, later]. */
@@ -242,7 +243,7 @@ export function RunTimelineMenu({ compact }: { compact?: boolean }) {
 
   const first = runs[0]?.run_at;
   const last = latest?.run_at;
-  const heading = runs.length ? `Runs, ${formatDate(first, "date")} to ${formatDate(last, "date")}` : "Runs";
+  const heading = runs.length ? tr("Runs, {first} to {last}", { first: formatDate(first, "date"), last: formatDate(last, "date") }) : tr("Runs");
   return (
     <>
       <button
@@ -253,7 +254,7 @@ export function RunTimelineMenu({ compact }: { compact?: boolean }) {
         aria-expanded={open}
         onClick={toggle}
       >
-        {selected ? `Run ${formatDate(selected.run_at, "datetime")}` : "No run yet"}
+        {selected ? tr("Run {run_at}", { run_at: formatDate(selected.run_at, "datetime") }) : tr("No run yet")}
         <IconDown />
       </button>
       {open ? (
@@ -262,26 +263,26 @@ export function RunTimelineMenu({ compact }: { compact?: boolean }) {
             {heading}
           </h4>
           {runs.length === 0 ? (
-            <p className="m2-pop-p">No run has finished for this scope yet. Extract a system and run an analysis to see it here.</p>
+            <p className="m2-pop-p">{tr("No run has finished for this scope yet. Extract a system and run an analysis to see it here.")}</p>
           ) : (
             <>
               <RunTimelineChart runs={runs} selectedId={selected?.id ?? null} onPick={onPick} />
               <p className="m2-pop-p" data-testid="tl-selected">
                 {selected
-                  ? `Selected: run ${formatDate(selected.run_at, "datetime")}, ${Object.keys(selected.objects).length} objects scored${selected.records_checked ? `, ${int(selected.records_checked)} records checked` : ""}. Choosing a run re-scopes every score on the canvas.`
+                  ? tr("Selected: run {run_at}, {keysCount} objects scored{value}. Choosing a run re-scopes every score on the canvas.", { run_at: formatDate(selected.run_at, "datetime"), keysCount: Object.keys(selected.objects).length, value: selected.records_checked ? tr(", {records_checked} records checked", { records_checked: int(selected.records_checked) }) : "" })
                   : ""}
               </p>
               <div className="m2-pop-cmp">
-                <label htmlFor={`${titleId}-cmp`}>Compare with</label>
+                <label htmlFor={`${titleId}-cmp`}>{tr("Compare with")}</label>
                 <select id={`${titleId}-cmp`} className="m2-sel" value={other} onChange={(e) => setPicked(e.target.value)}>
                   {others.map((r) => (
                     <option key={r.id} value={r.id}>
-                      {`${formatDate(r.run_at, "datetime")}${r.baseline ? " (baseline)" : ""}`}
+                      {`${formatDate(r.run_at, "datetime")}${r.baseline ? tr(" (baseline)") : ""}`}
                     </option>
                   ))}
                 </select>
                 <button type="button" className="m2-btn m2-sm m2-strong" onClick={goCompare} disabled={!other}>
-                  Compare with…
+                  {tr("Compare with…")}
                 </button>
               </div>
             </>

@@ -1,4 +1,5 @@
 import { f1 } from "@/lib/v2/score";
+import { t } from "@/lib/v2/i18n";
 
 /**
  * The measured score over the last runs, in the chart house style: one 2 pixel line in the data hue, four gridlines
@@ -85,20 +86,20 @@ export function ScoreChart({ points, capLevel, label, compact = false }: { point
       ))}
       <line className="m2-axis" x1={g.plot.left} x2={endX} y1={g.axisY} y2={g.axisY} />
       <text className="m2-ax" x={g.plot.left - 8} y={g.axisY + 4} textAnchor="end">{Y_MIN}</text>
-      <text className="m2-ax" x={g.plot.left - 8} y={g.plot.top - 6} textAnchor="end">score</text>
+      <text className="m2-ax" x={g.plot.left - 8} y={g.plot.top - 6} textAnchor="end">{t("score")}</text>
       {points.map((p, i) => ((points.length - 1 - i) % step === 0 ? (
         <text key={p.id} className="m2-ax" x={g.xs[i]} y={g.height - 8} textAnchor={i === 0 ? "start" : i === points.length - 1 ? "end" : "middle"}>{p.label}</text>
       ) : null))}
       {g.baselineX != null ? (
         <>
           <line className="m2-vbar" x1={g.baselineX} x2={g.baselineX} y1={g.plot.top} y2={g.axisY} data-testid="baseline-rule" />
-          <text className="m2-ax" x={g.baselineX + 4} y={g.plot.top + 10}>{`baseline ${base?.label ?? ""}`}</text>
+          <text className="m2-ax" x={g.baselineX + 4} y={g.plot.top + 10}>{t("baseline {label}", { label: base?.label ?? "" })}</text>
         </>
       ) : null}
       {g.capY != null ? (
         <>
           <line className="m2-capl" x1={g.plot.left} x2={endX} y1={g.capY} y2={g.capY} data-level={capLevel ?? undefined} data-testid="cap-line" />
-          <text className="m2-ax" x={endX + 4} y={g.capY + 4}>{`cap ${capLevel}`}</text>
+          <text className="m2-ax" x={endX + 4} y={g.capY + 4}>{t("cap {capLevel}", { capLevel })}</text>
         </>
       ) : null}
       {points.length > 1 ? <polyline className="m2-ln" points={g.points} data-testid="score-line" /> : null}

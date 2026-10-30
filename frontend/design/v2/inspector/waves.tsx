@@ -14,13 +14,14 @@ import { EmptyFrame, ErrorFrame, Skeleton } from "../parts";
 import { Confirm, useDone } from "../admin/kit";
 import { ResultFrame, useOutcome } from "./shared";
 import { WaveGateEditor } from "./governance";
+import { t } from "@/lib/v2/i18n";
 
 export const STAGES: { value: WaveStage; label: string }[] = [
-  { value: "plan", label: "Plan" },
-  { value: "mock1", label: "Mock load 1" },
-  { value: "mock2", label: "Mock load 2" },
-  { value: "dress", label: "Dress rehearsal" },
-  { value: "cutover", label: "Cutover" },
+  { value: "plan", get label() { return t("Plan"); } },
+  { value: "mock1", get label() { return t("Mock load 1"); } },
+  { value: "mock2", get label() { return t("Mock load 2"); } },
+  { value: "dress", get label() { return t("Dress rehearsal"); } },
+  { value: "cutover", get label() { return t("Cutover"); } },
 ];
 
 /** `?open=waves`: which objects move in which wave, and when. Changing waves needs the analyse permission. */
@@ -61,37 +62,37 @@ export function WavesPanel({ onClose }: { onClose: () => void }) {
       setDates({});
       setStages({});
       setNames({});
-      done(`Updated ${patches.length} ${patches.length === 1 ? "wave" : "waves"}`, async () => {
+      done(t("Updated {patchesCount} {patchesCount, plural, one {wave} other {waves}}", { patchesCount: patches.length }), async () => {
         for (const b of before) await rep.updateWave(b.id, b.prev);
         await refreshAdmin(qc, "waves");
       });
-      return { tone: "ok", title: `${patches.length} ${patches.length === 1 ? "wave" : "waves"} updated`, detail: "A changed wave needs a new sign-off." };
+      return { tone: "ok", title: t("{patchesCount} {patchesCount, plural, one {wave} other {waves}} updated", { patchesCount: patches.length }), detail: t("A changed wave needs a new sign-off.") };
     });
   const create = () =>
     void run("create", async () => {
       const w = await rep.createWave({ name: fresh.name.trim(), modules: [], target_date: fresh.date || null, stage: fresh.stage, min_readiness: 95 });
       await refreshAdmin(qc, "waves");
       setFresh({ name: "", date: "", stage: "plan" });
-      return { tone: "ok", title: `Wave ${w.name} created`, detail: "Assign objects to it below." };
+      return { tone: "ok", title: t("Wave {name} created", { name: w.name }), detail: t("Assign objects to it below.") };
     });
   return (
-    <InspectorFrame title="Migration waves" status={`${list.length} ${list.length === 1 ? "wave" : "waves"}`} onClose={onClose}>
-      {!allowed ? <p className="m2-prov">Changing waves needs the analyse permission on these systems. You can read them here.</p> : null}
-      {waves.isError ? <ErrorFrame onRetry={() => void waves.refetch()}>The waves could not be read.</ErrorFrame> : null}
+    <InspectorFrame title={t("Migration waves")} status={t("{listCount} {listCount, plural, one {wave} other {waves}}", { listCount: list.length })} onClose={onClose}>
+      {!allowed ? <p className="m2-prov">{t("Changing waves needs the analyse permission on these systems. You can read them here.")}</p> : null}
+      {waves.isError ? <ErrorFrame onRetry={() => void waves.refetch()}>{t("The waves could not be read.")}</ErrorFrame> : null}
       {waves.isLoading ? <Skeleton width="100%" height={100} /> : null}
-      {waves.isSuccess && list.length === 0 ? <EmptyFrame>No wave exists yet. Add the first one below, then assign objects to it.</EmptyFrame> : null}
+      {waves.isSuccess && list.length === 0 ? <EmptyFrame>{t("No wave exists yet. Add the first one below, then assign objects to it.")}</EmptyFrame> : null}
       {list.map((w) => (
-        <div key={w.id} className="m2-aform" style={{ marginBottom: 16, paddingBottom: 12, borderBottom: "1px solid var(--m2-rule)" }} role="group" aria-label={`Wave ${w.name}`}>
+        <div key={w.id} className="m2-aform" style={{ marginBottom: 16, paddingBottom: 12, borderBottom: "1px solid var(--m2-rule)" }} role="group" aria-label={t("Wave {name}", { name: w.name })}>
           <label>
-            Name
+            {t("Name")}
             <input value={names[w.id] ?? w.name} disabled={!allowed} onChange={(e) => setNames({ ...names, [w.id]: e.target.value })} />
           </label>
           <label>
-            Target date
+            {t("Target date")}
             <input type="date" value={dates[w.id] ?? w.target_date?.slice(0, 10) ?? ""} disabled={!allowed} onChange={(e) => setDates({ ...dates, [w.id]: e.target.value })} />
           </label>
           <label>
-            Stage
+            {t("Stage")}
             <select value={stages[w.id] ?? w.stage} disabled={!allowed} onChange={(e) => setStages({ ...stages, [w.id]: e.target.value as WaveStage })}>
               {STAGES.map((s) => (
                 <option key={s.value} value={s.value}>
@@ -101,30 +102,30 @@ export function WavesPanel({ onClose }: { onClose: () => void }) {
             </select>
           </label>
           <span className="m2-prov" style={{ margin: 0 }}>
-            {w.signed_off_at ? `Signed off ${formatDate(w.signed_off_at)}. Any change clears the sign-off.` : "Not signed off."}
+            {w.signed_off_at ? t("Signed off {signed_off_at}. Any change clears the sign-off.", { signed_off_at: formatDate(w.signed_off_at) }) : t("Not signed off.")}
           </span>
           <WaveGateEditor waveId={w.id} />
           {allowed ? (
             <button type="button" className="m2-linkbtn" style={{ justifySelf: "start" }} onClick={() => setRemoving(w.id)}>
-              {`Delete ${w.name}`}
+              {t("Delete {name}", { name: w.name })}
             </button>
           ) : null}
         </div>
       ))}
       {allowed ? (
         <>
-          <h3>Add a wave</h3>
+          <h3>{t("Add a wave")}</h3>
           <div className="m2-aform">
             <label>
-              Name
-              <input value={fresh.name} onChange={(e) => setFresh({ ...fresh, name: e.target.value })} placeholder="Wave 4: warehouse" />
+              {t("Name")}
+              <input value={fresh.name} onChange={(e) => setFresh({ ...fresh, name: e.target.value })} placeholder={t("Wave 4: warehouse")} />
             </label>
             <label>
-              Target date (optional)
+              {t("Target date (optional)")}
               <input type="date" value={fresh.date} onChange={(e) => setFresh({ ...fresh, date: e.target.value })} />
             </label>
             <label>
-              Stage
+              {t("Stage")}
               <select value={fresh.stage} onChange={(e) => setFresh({ ...fresh, stage: e.target.value as WaveStage })}>
                 {STAGES.map((s) => (
                   <option key={s.value} value={s.value}>
@@ -136,21 +137,21 @@ export function WavesPanel({ onClose }: { onClose: () => void }) {
           </div>
           <div className="m2-acts" style={{ marginTop: 8 }}>
             <button type="button" className="m2-btn" disabled={!fresh.name.trim() || pending !== null} onClick={create}>
-              {pending === "create" ? "Adding…" : "Add the wave"}
+              {pending === "create" ? t("Adding…") : t("Add the wave")}
             </button>
           </div>
         </>
       ) : null}
-      <h3>Objects</h3>
+      <h3>{t("Objects")}</h3>
       {objects.length === 0 ? (
-        <EmptyFrame>No object has been scored yet, so there is nothing to assign.</EmptyFrame>
+        <EmptyFrame>{t("No object has been scored yet, so there is nothing to assign.")}</EmptyFrame>
       ) : (
         <div className="m2-frame" tabIndex={0} style={{ maxHeight: 360 }}>
-          <table className="m2-tbl" aria-label="Objects by wave">
+          <table className="m2-tbl" aria-label={t("Objects by wave")}>
             <thead>
               <tr>
-                <th scope="col">Object</th>
-                <th scope="col">Wave</th>
+                <th scope="col">{t("Object")}</th>
+                <th scope="col">{t("Wave")}</th>
               </tr>
             </thead>
             <tbody>
@@ -158,8 +159,8 @@ export function WavesPanel({ onClose }: { onClose: () => void }) {
                 <tr key={o.module}>
                   <th scope="row">{o.label}</th>
                   <td>
-                    <select className="m2-sel" aria-label={`Wave of ${o.label}`} value={current(o.module)} disabled={!allowed || list.length === 0} onChange={(e) => setChoice({ ...choice, [o.module]: e.target.value })}>
-                      <option value="">No wave</option>
+                    <select className="m2-sel" aria-label={t("Wave of {label}", { label: o.label })} value={current(o.module)} disabled={!allowed || list.length === 0} onChange={(e) => setChoice({ ...choice, [o.module]: e.target.value })}>
+                      <option value="">{t("No wave")}</option>
                       {list.map((w) => (
                         <option key={w.id} value={w.id}>
                           {w.name}
@@ -176,17 +177,17 @@ export function WavesPanel({ onClose }: { onClose: () => void }) {
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       <Actions>
         <button type="button" className="m2-btn m2-strong" disabled={!allowed || !dirty || pending !== null} onClick={save}>
-          {pending === "save" ? "Saving…" : dirty ? `Save ${patches.length} ${patches.length === 1 ? "change" : "changes"}` : "Save changes"}
+          {pending === "save" ? t("Saving…") : dirty ? t("Save {patchesCount} {patchesCount, plural, one {change} other {changes}}", { patchesCount: patches.length }) : t("Save changes")}
         </button>
         <button type="button" className="m2-btn" disabled={!dirty} onClick={() => (setChoice({}), setDates({}), setStages({}), setNames({}))}>
-          Discard
+          {t("Discard")}
         </button>
       </Actions>
       {removing ? (
         <Confirm
-          title={`Delete ${list.find((w) => w.id === removing)?.name ?? "the wave"}`}
-          body="The wave and its sign-off are removed. The objects stay where they are, in no wave."
-          confirm="Delete the wave"
+          title={t("Delete {name}", { name: list.find((w) => w.id === removing)?.name ?? t("the wave") })}
+          body={t("The wave and its sign-off are removed. The objects stay where they are, in no wave.")}
+          confirm={t("Delete the wave")}
           danger
           pending={pending === "delete"}
           onCancel={() => setRemoving(null)}
@@ -195,7 +196,7 @@ export function WavesPanel({ onClose }: { onClose: () => void }) {
               await rep.deleteWave(removing);
               await refreshAdmin(qc, "waves");
               setRemoving(null);
-              return { tone: "ok", title: "Wave deleted" };
+              return { tone: "ok", title: t("Wave deleted") };
             })
           }
         />

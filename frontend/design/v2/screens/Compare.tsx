@@ -11,6 +11,7 @@ import { useLandscape } from "@/lib/v2/queries";
 import { systemSlug } from "@/lib/v2/score";
 import { VerdictMark } from "../marks";
 import { Dash, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
+import { t as tr } from "@/lib/v2/i18n";
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
 
@@ -51,10 +52,10 @@ function Change({ d }: { d: number | null }) {
 }
 
 const GROUPS: { kind: ChangeKind; title: string }[] = [
-  { kind: "newly_failing", title: "Newly failing rules" },
-  { kind: "fixed", title: "Fixed rules" },
-  { kind: "worse", title: "Worse" },
-  { kind: "better", title: "Better" },
+  { kind: "newly_failing", get title() { return tr("Newly failing rules"); } },
+  { kind: "fixed", get title() { return tr("Fixed rules"); } },
+  { kind: "worse", get title() { return tr("Worse"); } },
+  { kind: "better", get title() { return tr("Better"); } },
 ];
 const SHOWN = 5;
 
@@ -63,15 +64,15 @@ function WhatChanged({ a, b, totals, labelOf }: { a: string; b: string; totals: 
   const { hrefFor } = useOpenItem();
   const [all, setAll] = useState<Partial<Record<ChangeKind, boolean>>>({});
   return (
-    <section className="m2-sec" aria-label="What changed">
+    <section className="m2-sec" aria-label={tr("What changed")}>
       <div className="m2-sechead">
-        <h2 className="m2-h2">What changed</h2>
-        <span className="m2-sub">Rule counts match the table above</span>
+        <h2 className="m2-h2">{tr("What changed")}</h2>
+        <span className="m2-sub">{tr("Rule counts match the table above")}</span>
       </div>
       {q.isLoading ? (
         <Skeleton width="100%" height={160} />
       ) : q.isError || !q.data ? (
-        <ErrorFrame onRetry={() => void q.refetch()}>The rules that changed could not be read.</ErrorFrame>
+        <ErrorFrame onRetry={() => void q.refetch()}>{tr("The rules that changed could not be read.")}</ErrorFrame>
       ) : (
         <div className="m2-chg" data-testid="what-changed">
           {GROUPS.map(({ kind, title }) => {
@@ -97,7 +98,7 @@ function WhatChanged({ a, b, totals, labelOf }: { a: string; b: string; totals: 
                           </V2Link>{" "}
                           {c.message ?? ""}
                         </span>
-                        <span className="m2-s">{`${labelOf(c.module)}, ${int(c.v1_affected)} to ${int(c.v2_affected)} records failing`}</span>
+                        <span className="m2-s">{tr("{module}, {v1_affected} to {v2_affected} records failing", { module: labelOf(c.module), v1_affected: int(c.v1_affected), v2_affected: int(c.v2_affected) })}</span>
                       </li>
                     ))}
                   </ul>
@@ -105,13 +106,13 @@ function WhatChanged({ a, b, totals, labelOf }: { a: string; b: string; totals: 
                 {rest > 0 ? (
                   <div className="m2-more">
                     <button type="button" className="m2-linkbtn" onClick={() => setAll((s) => ({ ...s, [kind]: true }))}>
-                      {`and ${int(rest)} more`}
+                      {tr("and {rest} more", { rest: int(rest) })}
                     </button>
                   </div>
                 ) : open && list.length > SHOWN ? (
                   <div className="m2-more">
                     <button type="button" className="m2-linkbtn" onClick={() => setAll((s) => ({ ...s, [kind]: false }))}>
-                      Show fewer
+                      {tr("Show fewer")}
                     </button>
                   </div>
                 ) : null}
@@ -149,9 +150,9 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
   if (sum.isError) {
     return (
       <>
-        <PageTitle>Compare runs</PageTitle>
+        <PageTitle>{tr("Compare runs")}</PageTitle>
         <div className="m2-sec">
-          <ErrorFrame onRetry={() => void sum.refetch()}>These two runs could not be compared. Both must exist and belong to the same system.</ErrorFrame>
+          <ErrorFrame onRetry={() => void sum.refetch()}>{tr("These two runs could not be compared. Both must exist and belong to the same system.")}</ErrorFrame>
         </div>
       </>
     );
@@ -161,7 +162,7 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
   const dn = rows.filter((r) => r.d != null && r.d < 0).length;
   const held = (S?.objects ?? []).filter((o) => o.after?.capped).length;
   const t = S?.totals;
-  const title = S ? `Run ${formatDate(S.b.run_at, "datetime")} vs ${baselineA ? "baseline " : ""}${formatDate(S.a.run_at, "date")}` : "Compare runs";
+  const title = S ? tr("Run {run_at} vs {value}{run_at2}", { run_at: formatDate(S.b.run_at, "datetime"), value: baselineA ? "baseline " : "", run_at2: formatDate(S.a.run_at, "date") }) : tr("Compare runs");
 
   return (
     <>
@@ -169,11 +170,11 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
       {S && t ? (
         <>
           <p className="m2-finding" data-testid="compare-sentence">
-            {`${up} of ${rows.length} objects scored higher and ${dn} lower. ${int(t.newly_failing)} rules started failing and ${int(t.fixed)} stopped.`}
-            {held > 0 ? ` ${held} ${held === 1 ? "object is" : "objects are"} still capped by a critical rule, so the shown score hides part of it.` : ""}
+            {tr("{up} of {rowsCount} objects scored higher and {dn} lower. {newly_failing} rules started failing and {fixed} stopped.", { up, rowsCount: rows.length, dn, newly_failing: int(t.newly_failing), fixed: int(t.fixed) })}
+            {held > 0 ? tr(" {held} {held, plural, one {object is} other {objects are}} still capped by a critical rule, so the shown score hides part of it.", { held }) : ""}
           </p>
           <p className="m2-prov" data-testid="compare-method">
-            {S.method} Coverage is the share of records a rule could evaluate.
+            {S.method}{" "}{tr("Coverage is the share of records a rule could evaluate.")}
           </p>
         </>
       ) : (
@@ -181,14 +182,14 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
       )}
       <div className="m2-cta">
         <V2Link href={`/v2/run/${b}`} className="m2-btn">
-          Open run details
+          {tr("Open run details")}
         </V2Link>
         {options.length > 1 ? (
           <span className="m2-pop-cmp">
             <label htmlFor="cmp-from" className="m2-meta">
-              Compare
+              {tr("Compare")}
             </label>
-            <select id="cmp-from" className="m2-sel" aria-label="From run" value={a} onChange={(e) => swapTo(e.target.value, b)}>
+            <select id="cmp-from" className="m2-sel" aria-label={tr("From run")} value={a} onChange={(e) => swapTo(e.target.value, b)}>
               {options.map((r) => (
                 <option key={r.id} value={r.id}>
                   {formatDate(r.run_at, "datetime")}
@@ -196,9 +197,9 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
               ))}
             </select>
             <label htmlFor="cmp-to" className="m2-meta">
-              with
+              {tr("with")}
             </label>
-            <select id="cmp-to" className="m2-sel" aria-label="To run" value={b} onChange={(e) => swapTo(a, e.target.value)}>
+            <select id="cmp-to" className="m2-sel" aria-label={tr("To run")} value={b} onChange={(e) => swapTo(a, e.target.value)}>
               {options.map((r) => (
                 <option key={r.id} value={r.id}>
                   {formatDate(r.run_at, "datetime")}
@@ -209,51 +210,51 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
         ) : null}
       </div>
 
-      <section className="m2-sec" aria-label="By object">
+      <section className="m2-sec" aria-label={tr("By object")}>
         <div className="m2-sechead">
-          <h2 className="m2-h2">By object</h2>
-          <span className="m2-sub">Measured score, then the score shown after the cap</span>
+          <h2 className="m2-h2">{tr("By object")}</h2>
+          <span className="m2-sub">{tr("Measured score, then the score shown after the cap")}</span>
         </div>
         {!S ? (
           <Skeleton width="100%" height={200} />
         ) : rows.length === 0 ? (
-          <EmptyFrame>Neither run scored an object, so there is nothing to compare.</EmptyFrame>
+          <EmptyFrame>{tr("Neither run scored an object, so there is nothing to compare.")}</EmptyFrame>
         ) : (
           <>
             <div className="m2-frame m2-only-wide">
               <table className="m2-tbl" data-testid="compare-table" style={{ minWidth: 960 }}>
                 <thead>
                   <tr>
-                    <th scope="col">Object</th>
+                    <th scope="col">{tr("Object")}</th>
                     <th scope="col" className="m2-r">
-                      Measured
+                      {tr("Measured")}
                     </th>
                     <th scope="col" style={{ width: 120 }}>
-                      Change
+                      {tr("Change")}
                     </th>
                     <th scope="col" className="m2-r">
-                      <span className="m2-sr">Change in points</span>
+                      <span className="m2-sr">{tr("Change in points")}</span>
                     </th>
                     <th scope="col" className="m2-r">
-                      Shown
+                      {tr("Shown")}
                     </th>
                     <th scope="col" className="m2-r">
-                      Records checked
+                      {tr("Records checked")}
                     </th>
                     <th scope="col" className="m2-r">
-                      Coverage
+                      {tr("Coverage")}
                     </th>
-                    <th scope="col" className="m2-r" title="Rules newly failing">
-                      New
+                    <th scope="col" className="m2-r" title={tr("Rules newly failing")}>
+                      {tr("New")}
                     </th>
-                    <th scope="col" className="m2-r" title="Rules fixed">
-                      Fixed
+                    <th scope="col" className="m2-r" title={tr("Rules fixed")}>
+                      {tr("Fixed")}
                     </th>
-                    <th scope="col" className="m2-r" title="Rules with more failing rows">
-                      Worse
+                    <th scope="col" className="m2-r" title={tr("Rules with more failing rows")}>
+                      {tr("Worse")}
                     </th>
-                    <th scope="col" className="m2-r" title="Rules with fewer failing rows">
-                      Better
+                    <th scope="col" className="m2-r" title={tr("Rules with fewer failing rows")}>
+                      {tr("Better")}
                     </th>
                   </tr>
                 </thead>
@@ -264,7 +265,7 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
                         <V2Link href={`/v2/o/${systemSlug(systemName)}/${moduleSlug(o.module)}?run=${b}`}>{o.label}</V2Link>
                       </th>
                       <td className="m2-r">
-                        {f1(o.before?.raw_score)} <span className="m2-u">to</span> {f1(o.after?.raw_score)}
+                        {f1(o.before?.raw_score)} <span className="m2-u">{tr("to")}</span> {f1(o.after?.raw_score)}
                       </td>
                       <td>
                         <DivergingBar d={d} />
@@ -273,14 +274,14 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
                         <Change d={d} />
                       </td>
                       <td className="m2-r">
-                        {f1(o.before?.score)} <span className="m2-u">to</span> {f1(o.after?.score)}
+                        {f1(o.before?.score)} <span className="m2-u">{tr("to")}</span> {f1(o.after?.score)}
                       </td>
                       <td className="m2-r">
                         {o.before?.records_checked == null && o.after?.records_checked == null ? (
                           <Dash />
                         ) : (
                           <>
-                            {int(o.before?.records_checked)} <span className="m2-u">to</span> {int(o.after?.records_checked)}
+                            {int(o.before?.records_checked)} <span className="m2-u">{tr("to")}</span> {int(o.after?.records_checked)}
                           </>
                         )}
                       </td>
@@ -294,13 +295,13 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
                 </tbody>
                 <tfoot>
                   <tr data-testid="compare-totals">
-                    <th scope="row">{`All ${rows.length} objects`}</th>
+                    <th scope="row">{tr("All {rowsCount} objects", { rowsCount: rows.length })}</th>
                     <td />
                     <td />
                     <td />
                     <td />
                     <td className="m2-r">
-                      {int(t?.records_checked_before)} <span className="m2-u">to</span> {int(t?.records_checked_after)}
+                      {int(t?.records_checked_before)} <span className="m2-u">{tr("to")}</span> {int(t?.records_checked_after)}
                     </td>
                     <td />
                     <td className="m2-r">{int(t?.newly_failing)}</td>
@@ -322,11 +323,11 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
                     <Change d={d} />
                   </div>
                   <div className="m2-c">
-                    {`${f1(o.before?.raw_score)} to ${f1(o.after?.raw_score)} measured, shown ${f1(o.before?.score)} to ${f1(o.after?.score)}, ${int(o.before?.records_checked)} to ${int(o.after?.records_checked)} records checked. ${o.newly_failing} new, ${o.fixed} fixed, ${o.worse} worse, ${o.better} better.`}
+                    {tr("{raw_score} to {raw_score2} measured, shown {score} to {score2}, {records_checked} to {records_checked2} records checked. {newly_failing} new, {fixed} fixed, {worse} worse, {better} better.", { raw_score: f1(o.before?.raw_score), raw_score2: f1(o.after?.raw_score), score: f1(o.before?.score), score2: f1(o.after?.score), records_checked: int(o.before?.records_checked), records_checked2: int(o.after?.records_checked), newly_failing: o.newly_failing, fixed: o.fixed, worse: o.worse, better: o.better })}
                   </div>
                 </V2Link>
               ))}
-              <p className="m2-prov" data-testid="compare-list-totals">{`All ${rows.length} objects: ${int(t?.newly_failing)} new, ${int(t?.fixed)} fixed, ${int(t?.worse)} worse, ${int(t?.better)} better.`}</p>
+              <p className="m2-prov" data-testid="compare-list-totals">{tr("All {rowsCount} objects: {newly_failing} new, {fixed} fixed, {worse} worse, {better} better.", { rowsCount: rows.length, newly_failing: int(t?.newly_failing), fixed: int(t?.fixed), worse: int(t?.worse), better: int(t?.better) })}</p>
             </div>
           </>
         )}

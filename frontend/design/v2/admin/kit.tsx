@@ -3,13 +3,14 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { writeClipboard } from "@/lib/browser";
-import { relativeTime } from "@/lib/format";
+import { relTime } from "@/lib/v2/format";
 import { apiErrorMessage } from "@/lib/error";
 import { useV2Session } from "@/lib/v2/hooks";
 import { VerdictMark } from "../marks";
 import { ErrorFrame, PageTitle, Skeleton } from "../parts";
 import { useToast } from "../Toast";
 import "../admin.css";
+import { t } from "@/lib/v2/i18n";
 
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
@@ -93,7 +94,7 @@ export function Note({ tone, children }: { tone?: "warn" | "bad"; children: Reac
 export function NeedsPermission({ what, permission }: { what: string; permission: string }) {
   return (
     <div className="m2-empty" data-testid="needs-permission">
-      <p>{`${what} needs the ${permission.replace(/_/g, " ")} permission. Ask an administrator to grant it.`}</p>
+      <p>{t("{what} needs the {replace} permission. Ask an administrator to grant it.", { what, replace: permission.replace(/_/g, " ") })}</p>
     </div>
   );
 }
@@ -113,7 +114,7 @@ export function Loaded<T>({ q, what, rows = 4, children }: { q: UseQueryResult<T
   if (q.isError) {
     return (
       <ErrorFrame onRetry={() => void q.refetch()}>
-        {`${what} could not be read. ${apiErrorMessage(q.error)}`}
+        {t("{what} could not be read. {apiErrorMessage}", { what, apiErrorMessage: apiErrorMessage(q.error) })}
       </ErrorFrame>
     );
   }
@@ -175,14 +176,14 @@ export function Dialog({ title, description, children, onClose, wide }: { title:
 }
 
 /** A confirmation: what will happen, and the one button that does it. `phrase` makes the person type it first. */
-export function Confirm({ title, body, confirm, cancel = "Cancel", danger, phrase, pending, onConfirm, onCancel }: { title: string; body: ReactNode; confirm: string; cancel?: string; danger?: boolean; phrase?: string; pending?: boolean; onConfirm: () => void; onCancel: () => void }) {
+export function Confirm({ title, body, confirm, cancel = t("Cancel"), danger, phrase, pending, onConfirm, onCancel }: { title: string; body: ReactNode; confirm: string; cancel?: string; danger?: boolean; phrase?: string; pending?: boolean; onConfirm: () => void; onCancel: () => void }) {
   const [typed, setTyped] = useState("");
   const ok = !phrase || typed.trim() === phrase;
   return (
     <Dialog title={title} description={body} onClose={onCancel}>
       {phrase ? (
         <label>
-          {`Type "${phrase}" to continue`}
+          {t("Type \"{phrase}\" to continue", { phrase })}
           <input type="text" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" />
         </label>
       ) : null}
@@ -191,7 +192,7 @@ export function Confirm({ title, body, confirm, cancel = "Cancel", danger, phras
           {cancel}
         </button>
         <button type="button" className={`m2-btn m2-strong${danger ? " m2-crit" : ""}`} disabled={!ok || pending} onClick={onConfirm}>
-          {pending ? "Working…" : confirm}
+          {pending ? t("Working…") : confirm}
         </button>
       </div>
     </Dialog>
@@ -207,20 +208,20 @@ export function useDone(): (label: string, undo?: () => Promise<unknown>) => voi
 /** Copies text; resolves to whether the browser allowed it. */
 export const copyText = (text: string): Promise<boolean> => writeClipboard(text);
 
-export const since = (iso: string | null | undefined, never = "Never"): string => (iso ? relativeTime(iso) : never);
+export const since = (iso: string | null | undefined, never = t("Never")): string => (iso ? relTime(iso) : never);
 
 /** The rows shown as "from 1 to 50 of 211" with Previous and Next. */
 export function Pager({ offset, limit, total, onPage }: { offset: number; limit: number; total: number; onPage: (offset: number) => void }) {
-  if (total <= limit) return <div className="m2-pagebar">{`${total} ${total === 1 ? "entry" : "entries"}`}</div>;
+  if (total <= limit) return <div className="m2-pagebar">{t("{total} {total, plural, one {entry} other {entries}}", { total })}</div>;
   return (
     <div className="m2-pagebar">
-      <span>{`${offset + 1} to ${Math.min(total, offset + limit)} of ${total}`}</span>
+      <span>{t("{count} to {min} of {total}", { count: offset + 1, min: Math.min(total, offset + limit), total })}</span>
       <span style={{ display: "inline-flex", gap: 8 }}>
         <button type="button" className="m2-btn m2-sm" disabled={offset === 0} onClick={() => onPage(Math.max(0, offset - limit))}>
-          Previous
+          {t("Previous")}
         </button>
         <button type="button" className="m2-btn m2-sm" disabled={offset + limit >= total} onClick={() => onPage(offset + limit)}>
-          Next
+          {t("Next")}
         </button>
       </span>
     </div>

@@ -12,6 +12,7 @@ import { ConfirmBar, Gate } from "../forms";
 import { Dash, EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../parts";
 import { ScheduleFields, scheduleValid, type ScheduleValue } from "../screens/system/ScheduleFields";
 import { useOutcome } from "./shared";
+import { t } from "@/lib/v2/i18n";
 
 function Body({ system, profileId, onClose }: { system: string; profileId: string; onClose: () => void }) {
   const q = useSystemProfiles(system);
@@ -23,8 +24,8 @@ function Body({ system, profileId, onClose }: { system: string; profileId: strin
   const [edit, setEdit] = useState<ScheduleValue | null>(null);
   const [removing, setRemoving] = useState(false);
   if (q.isLoading) return <Skeleton width="100%" height={120} />;
-  if (q.isError) return <ErrorFrame onRetry={() => void q.refetch()}>The schedule could not be read.</ErrorFrame>;
-  if (!p) return <EmptyFrame>This schedule is not on the system any more. It may have been deleted.</EmptyFrame>;
+  if (q.isError) return <ErrorFrame onRetry={() => void q.refetch()}>{t("The schedule could not be read.")}</ErrorFrame>;
+  if (!p) return <EmptyFrame>{t("This schedule is not on the system any more. It may have been deleted.")}</EmptyFrame>;
   const value: ScheduleValue = edit ?? { cron: p.schedule_cron ?? "0 2 * * 1", mode: p.extraction_mode ?? "full" };
   const dirty = edit !== null && (edit.cron !== (p.schedule_cron ?? "") || edit.mode !== p.extraction_mode);
 
@@ -33,39 +34,39 @@ function Body({ system, profileId, onClose }: { system: string; profileId: strin
       const saved = await updateProfile(system, p.id, { schedule_cron: value.cron.trim(), extraction_mode: value.mode });
       setEdit(null);
       refresh();
-      return { tone: "ok", title: "Schedule saved", detail: `${describeCron(saved.schedule_cron)}${saved.next_run_at ? `, next run ${formatDate(saved.next_run_at, "datetime")}` : ""}.` };
+      return { tone: "ok", title: t("Schedule saved"), detail: `${describeCron(saved.schedule_cron)}${saved.next_run_at ? t(", next run {next_run_at}", { next_run_at: formatDate(saved.next_run_at, "datetime") }) : ""}.` };
     });
   const toggle = () =>
     void run("toggle", async () => {
       const saved = await updateProfile(system, p.id, { active: !p.active });
       refresh();
-      return { tone: "ok", title: saved.active ? "Schedule resumed" : "Schedule paused" };
+      return { tone: "ok", title: saved.active ? t("Schedule resumed") : t("Schedule paused") };
     });
   const remove = () =>
     void run("remove", async () => {
       await deleteProfile(system, p.id);
       refresh();
       onClose();
-      return { tone: "ok", title: "Schedule deleted" };
+      return { tone: "ok", title: t("Schedule deleted") };
     });
 
   return (
     <>
       <Facts>
-        <Fact label="Object">{labelOf(p.domain)}</Fact>
-        <Fact label="Schedule">{describeCron(p.schedule_cron)}</Fact>
-        <Fact label="Mode">{p.extraction_mode === "delta" ? "Changes only" : "Full"}</Fact>
-        <Fact label="State">{p.active ? "On" : "Paused"}</Fact>
-        <Fact label="Next run">{p.active && p.next_run_at ? formatDate(p.next_run_at, "datetime") : <Dash />}</Fact>
-        <Fact label="Last run">{p.last_run_at ? formatDate(p.last_run_at, "datetime") : <Dash />}</Fact>
-        <Fact label="Tables">{p.tables.length ? p.tables.join(", ") : <Dash />}</Fact>
+        <Fact label={t("Object")}>{labelOf(p.domain)}</Fact>
+        <Fact label={t("Schedule")}>{describeCron(p.schedule_cron)}</Fact>
+        <Fact label={t("Mode")}>{p.extraction_mode === "delta" ? t("Changes only") : t("Full")}</Fact>
+        <Fact label={t("State")}>{p.active ? t("On") : t("Paused")}</Fact>
+        <Fact label={t("Next run")}>{p.active && p.next_run_at ? formatDate(p.next_run_at, "datetime") : <Dash />}</Fact>
+        <Fact label={t("Last run")}>{p.last_run_at ? formatDate(p.last_run_at, "datetime") : <Dash />}</Fact>
+        <Fact label={t("Tables")}>{p.tables.length ? p.tables.join(", ") : <Dash />}</Fact>
       </Facts>
       {allowed ? (
         <>
-          <h3>Change the schedule</h3>
+          <h3>{t("Change the schedule")}</h3>
           <form
             className="m2-form6"
-            aria-label="Change the schedule"
+            aria-label={t("Change the schedule")}
             onSubmit={(e) => {
               e.preventDefault();
               if (dirty && scheduleValid(value)) save();
@@ -74,22 +75,22 @@ function Body({ system, profileId, onClose }: { system: string; profileId: strin
             <ScheduleFields value={value} onChange={setEdit} />
             <div className="m2-acts">
               <button type="submit" className="m2-btn m2-strong" disabled={!dirty || !scheduleValid(value) || pending !== null}>
-                {pending === "save" ? "Saving…" : "Save schedule"}
+                {pending === "save" ? t("Saving…") : t("Save schedule")}
               </button>
             </div>
           </form>
           <Actions>
             <button type="button" className="m2-btn" disabled={pending !== null} onClick={toggle}>
-              {p.active ? "Pause" : "Resume"}
+              {p.active ? t("Pause") : t("Resume")}
             </button>
             <button type="button" className="m2-btn m2-ghost" aria-expanded={removing} onClick={() => setRemoving((x) => !x)}>
-              Delete schedule
+              {t("Delete schedule")}
             </button>
           </Actions>
           {removing ? (
             <ConfirmBar
-              message="The object is no longer extracted on a schedule. Its extraction log goes with it; runs and findings already analysed stay."
-              confirmLabel="Delete schedule"
+              message={t("The object is no longer extracted on a schedule. Its extraction log goes with it; runs and findings already analysed stay.")}
+              confirmLabel={t("Delete schedule")}
               pending={pending === "remove"}
               onConfirm={remove}
               onCancel={() => setRemoving(false)}
@@ -97,7 +98,7 @@ function Body({ system, profileId, onClose }: { system: string; profileId: strin
           ) : null}
         </>
       ) : (
-        <Gate>Changing, pausing and deleting a schedule needs the manage systems permission.</Gate>
+        <Gate>{t("Changing, pausing and deleting a schedule needs the manage systems permission.")}</Gate>
       )}
       {outcome ? (
         <p className="m2-result" role="status" data-tone={outcome.tone} data-testid="action-result">
@@ -106,7 +107,7 @@ function Body({ system, profileId, onClose }: { system: string; profileId: strin
         </p>
       ) : null}
       <p className="m2-prov">
-        <V2Link href={`/v2/s/${system}?tab=schedules`}>All schedules of the system</V2Link>
+        <V2Link href={`/v2/s/${system}?tab=schedules`}>{t("All schedules of the system")}</V2Link>
       </p>
     </>
   );
@@ -118,8 +119,8 @@ export function ScheduleInspector({ id, onClose }: { id: string; onClose: () => 
   const system = at > 0 ? id.slice(0, at) : "";
   const profile = at > 0 ? id.slice(at + 1) : "";
   return (
-    <InspectorFrame title="Schedule" status="Extraction schedule" onClose={onClose}>
-      {system && profile ? <Body system={system} profileId={profile} onClose={onClose} /> : <EmptyFrame>This address does not name a schedule.</EmptyFrame>}
+    <InspectorFrame title={t("Schedule")} status={t("Extraction schedule")} onClose={onClose}>
+      {system && profile ? <Body system={system} profileId={profile} onClose={onClose} /> : <EmptyFrame>{t("This address does not name a schedule.")}</EmptyFrame>}
     </InspectorFrame>
   );
 }

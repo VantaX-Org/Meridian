@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint . --max-warnings 0",
     "lint:tokens": "node scripts/lint-tokens.mjs",
+    "i18n:extract": "node scripts/i18n-extract.mjs",
     "check:contrast": "node scripts/check-contrast.mjs",
     "brand:rasterise": "node scripts/brand-rasterise.mjs",
     "e2e": "playwright test",

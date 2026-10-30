@@ -50,6 +50,8 @@ import { useBatches } from "@/lib/v2/approvals-queries";
 import { BulkActions, CurrentValue, DecisionCell, NewValueCell, OwnerCell, PossibleValuesCell, PromptDialog, keyValue, rowKeyOf, type LedgerHandlers } from "./work-parts";
 import { GridTools, useGridKey } from "../GridTools";
 import { FixOrderHint } from "./object/Related";
+import { t as tr, lc } from "@/lib/v2/i18n";
+import { whole, v2Locale } from "@/lib/v2/format";
 
 // The rows of the grid: records, and in "By rule" the rule headings and a "show more" line under each.
 type Item =
@@ -76,7 +78,7 @@ const objectName = (module: string, labels: Map<string, string>) => labels.get(m
 
 function Chips({ state, counts, set, groupRef }: { state: LedgerState; counts: Map<ChipId, number | null>; set: (chip: ChipId | null) => void; groupRef: React.RefObject<HTMLDivElement | null> }) {
   return (
-    <div className="m2-chips" role="group" aria-label="Filter by state" ref={groupRef}>
+    <div className="m2-chips" role="group" aria-label={tr("Filter by state")} ref={groupRef}>
       {CHIPS.map((c) => {
         const n = counts.get(c.id);
         return (
@@ -231,12 +233,12 @@ export function WorkCanvas() {
       fillDown: (from, value) => {
         const sel = selected.current;
         if (sel.length === 0) {
-          toast.show("Select the rows to fill, then press ⌘D in the New value you want to copy.");
+          toast.show(tr("Select the rows to fill, then press ⌘D in the New value you want to copy."));
           return;
         }
         const rows = sel.some((r) => rowKeyOf(r) === rowKeyOf(from)) ? sel : [from, ...sel];
         drafts.delete(rowKeyOf(from));
-        void actions.decide(rows, "edit", { value, label: `Filled ${value} down ${rows.length.toLocaleString("en-US")} ${rows.length === 1 ? "row" : "rows"}` });
+        void actions.decide(rows, "edit", { value, label: tr("Filled {value} down {rowsCount} {rowsCount2, plural, one {row} other {rows}}", { value, rowsCount: whole(rows.length), rowsCount2: rows.length }) });
       },
       paste: (from, lines) => {
         const sel = selected.current;
@@ -246,9 +248,9 @@ export function WorkCanvas() {
         const rows = pool.slice(0, n);
         const values = Object.fromEntries(rows.map((r, i) => [rowKeyOf(r), lines[i]]));
         for (const r of rows) drafts.delete(rowKeyOf(r));
-        const into = sel.length >= 2 ? "selected rows" : "rows";
+        const into = sel.length >= 2 ? tr("selected rows") : tr("rows");
         const left = lines.length - n;
-        void actions.decide(rows, "edit", { values, label: `Pasted ${n} ${n === 1 ? "value" : "values"} into ${n} ${into}${left > 0 ? `; ${left} ${left === 1 ? "line was" : "lines were"} left over` : ""}` });
+        void actions.decide(rows, "edit", { values, label: tr("Pasted {n} {n, plural, one {value} other {values}} into {n} {into}{value}", { n, into, value: left > 0 ? tr("; {left} {left, plural, one {line was} other {lines were}} left over", { left }) : "" }) });
       },
       owner: (row) => initials(row.assignee_email),
     }),
@@ -272,9 +274,9 @@ export function WorkCanvas() {
   const doExport = useCallback(async () => {
     try {
       const { filename } = await exportFixSheet(filtersOf(state));
-      toast.show(`Fix sheet saved as ${filename}`);
+      toast.show(tr("Fix sheet saved as {filename}", { filename }));
     } catch (err) {
-      toast.show(errorSentence(err, "The fix sheet could not be exported."), "error");
+      toast.show(errorSentence(err, tr("The fix sheet could not be exported.")), "error");
     }
   }, [state, toast]);
 
@@ -297,10 +299,10 @@ export function WorkCanvas() {
       try {
         const result = await importFixSheet(file);
         setImp({ name: file.name, busy: false, result });
-        if (result.action_id) toast.done({ ids: [result.action_id], label: `Imported ${int(result.updated)} ${result.updated === 1 ? "decision" : "decisions"} from ${file.name}` });
+        if (result.action_id) toast.done({ ids: [result.action_id], label: tr("Imported {updated} {updated2, plural, one {decision} other {decisions}} from {name}", { updated: int(result.updated), updated2: result.updated, name: file.name }) });
         await refreshV2(qc);
       } catch (err) {
-        setImp({ name: file.name, busy: false, error: errorSentence(err, "The file could not be read as a fix sheet.") });
+        setImp({ name: file.name, busy: false, error: errorSentence(err, tr("The file could not be read as a fix sheet.")) });
       }
     },
     [qc, toast],
@@ -313,7 +315,7 @@ export function WorkCanvas() {
 
   // Keyboard ---------------------------------------------------------------------------------------------------
   const keyTarget = useRef<LedgerTarget | null>(null);
-  const needRows = useCallback(() => toast.show("Select rows first: x selects the highlighted row, Shift+J extends the selection."), [toast]);
+  const needRows = useCallback(() => toast.show(tr("Select rows first: x selects the highlighted row, Shift+J extends the selection.")), [toast]);
   useEffect(() => {
     const t: LedgerTarget = {
       accept: () => {
@@ -362,15 +364,15 @@ export function WorkCanvas() {
   const columns = useMemo<GridColumn<Item>[]>(() => {
     const r = <T,>(f: (row: WorkRow) => T) => (it: Item): T | null => (it.kind === "row" ? f(it.row) : null);
     const base: GridColumn<Item>[] = [
-      { id: "record", header: headers.first, width: 170, pin: true, locked: true, title: `${headers.first}. Leading zeros are kept. Pinned.`, cell: r((x) => <Mono>{keyValue(x, 0) ?? x.record_key}</Mono>) },
-      { id: "second", header: headers.second, width: 70, title: `${headers.second}, the second part of the record key. A dash when the record has none.`, cell: r((x) => (keyValue(x, 1) ? <Mono>{keyValue(x, 1)}</Mono> : <Dash why="This record has no second key part" />)) },
-      { id: "name", header: "Name", width: 170, title: "The record's name.", cell: r((x) => (x.name ? <span title={x.name}>{x.name}</span> : <Dash />)) },
-      { id: "rule", header: "Rule", width: 70, title: "Check id of the rule that rejected the value.", cell: r((x) => <Mono>{x.checks[0] ?? "—"}</Mono>) },
+      { id: "record", header: headers.first, width: 170, pin: true, locked: true, title: tr("{first}. Leading zeros are kept. Pinned.", { first: headers.first }), cell: r((x) => <Mono>{keyValue(x, 0) ?? x.record_key}</Mono>) },
+      { id: "second", header: headers.second, width: 70, title: tr("{second}, the second part of the record key. A dash when the record has none.", { second: headers.second }), cell: r((x) => (keyValue(x, 1) ? <Mono>{keyValue(x, 1)}</Mono> : <Dash why={tr("This record has no second key part")} />)) },
+      { id: "name", header: tr("Name"), width: 170, title: tr("The record's name."), cell: r((x) => (x.name ? <span title={x.name}>{x.name}</span> : <Dash />)) },
+      { id: "rule", header: tr("Rule"), width: 70, title: tr("Check id of the rule that rejected the value."), cell: r((x) => <Mono>{x.checks[0] ?? "—"}</Mono>) },
       {
         id: "severity",
-        header: "Severity",
+        header: tr("Severity"),
         width: 96,
-        title: "Severity of the rule. Weights: critical 4, high 3, medium 2, low 1.",
+        title: tr("Severity of the rule. Weights: critical 4, high 3, medium 2, low 1."),
         cell: r((x) => (
           <span className="m2-v">
             <SeverityMark severity={x.severity} />
@@ -378,18 +380,18 @@ export function WorkCanvas() {
           </span>
         )),
       },
-      { id: "fdesc", header: "Field description", width: 150, title: "Business name of the failing field.", cell: r((x) => (x.field_description ? <span title={x.field_description}>{x.field_description}</span> : <Dash why="The API has no description for this field yet" />)) },
-      { id: "sapfield", header: "SAP field", width: 120, title: "TABLE.FIELD of the failing value.", cell: r((x) => (x.top_field ? <Mono>{x.top_field}</Mono> : <Dash />)) },
-      { id: "problem", header: "Problem", width: 230, title: "What the rule found wrong with the value.", cell: r((x) => (x.top_message ? <span title={x.top_message}>{x.top_message}</span> : <Dash />)) },
-      { id: "current", header: "Current value", width: 110, title: "The value held in SAP at extraction.", cell: r((x) => <CurrentValue value={x.current_value} />) },
-      { id: "possible", header: "Possible values", width: 200, title: "Values the rule accepts. Open the row for the full list with meanings.", cell: r((x) => <PossibleValuesCell row={x} />) },
-      { id: "suggested", header: "Suggested value", width: 120, title: "The value the rules propose. Blank when no single value is right.", cell: r((x) => (x.suggested_value ? <Mono>{x.suggested_value}</Mono> : <Dash why="No suggested value for this row" />)) },
-      { id: "newvalue", header: "New value", width: 130, locked: true, title: "The value to write back. Type and press Enter, paste a column, or fill down with ⌘D.", cell: r((x) => <NewValueCell row={x} h={h} />) },
-      { id: "decision", header: "Decision", width: 130, locked: true, title: "fix, not an issue or accept risk. The last two ask for a reason.", cell: r((x) => <DecisionCell row={x} h={h} onChoose={onChoose} />) },
-      { id: "first", header: "First seen", width: 100, title: "The date the oldest failing issue of this row was first seen.", cell: r((x) => (x.first_seen_at ? <span>{new Date(x.first_seen_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })}</span> : <Dash />)) },
-      { id: "days", header: "Days open", width: 90, numeric: true, title: "Days since this row was first seen.", cell: r((x) => { const d = daysOpen(x.first_seen_at, now); return d == null ? <Dash /> : <>{int(d)}</>; }) },
-      { id: "owner", header: "Owner", width: 70, title: "The steward the row is assigned to, by initials.", cell: r((x) => <OwnerCell row={x} h={h} />) },
-      { id: "value", header: "Value at risk", width: 120, numeric: true, title: "Cost-model estimate of what this failing value costs.", cell: r((x) => (x.value_at_risk == null ? <Dash /> : <>{int(x.value_at_risk)}</>)) },
+      { id: "fdesc", header: tr("Field description"), width: 150, title: tr("Business name of the failing field."), cell: r((x) => (x.field_description ? <span title={x.field_description}>{x.field_description}</span> : <Dash why={tr("The API has no description for this field yet")} />)) },
+      { id: "sapfield", header: tr("SAP field"), width: 120, title: tr("TABLE.FIELD of the failing value."), cell: r((x) => (x.top_field ? <Mono>{x.top_field}</Mono> : <Dash />)) },
+      { id: "problem", header: tr("Problem"), width: 230, title: tr("What the rule found wrong with the value."), cell: r((x) => (x.top_message ? <span title={x.top_message}>{x.top_message}</span> : <Dash />)) },
+      { id: "current", header: tr("Current value"), width: 110, title: tr("The value held in SAP at extraction."), cell: r((x) => <CurrentValue value={x.current_value} />) },
+      { id: "possible", header: tr("Possible values"), width: 200, title: tr("Values the rule accepts. Open the row for the full list with meanings."), cell: r((x) => <PossibleValuesCell row={x} />) },
+      { id: "suggested", header: tr("Suggested value"), width: 120, title: tr("The value the rules propose. Blank when no single value is right."), cell: r((x) => (x.suggested_value ? <Mono>{x.suggested_value}</Mono> : <Dash why={tr("No suggested value for this row")} />)) },
+      { id: "newvalue", header: tr("New value"), width: 130, locked: true, title: tr("The value to write back. Type and press Enter, paste a column, or fill down with ⌘D."), cell: r((x) => <NewValueCell row={x} h={h} />) },
+      { id: "decision", header: tr("Decision"), width: 130, locked: true, title: tr("fix, not an issue or accept risk. The last two ask for a reason."), cell: r((x) => <DecisionCell row={x} h={h} onChoose={onChoose} />) },
+      { id: "first", header: tr("First seen"), width: 100, title: tr("The date the oldest failing issue of this row was first seen."), cell: r((x) => (x.first_seen_at ? <span>{new Date(x.first_seen_at).toLocaleDateString(v2Locale(), { day: "numeric", month: "short", timeZone: "UTC" })}</span> : <Dash />)) },
+      { id: "days", header: tr("Days open"), width: 90, numeric: true, title: tr("Days since this row was first seen."), cell: r((x) => { const d = daysOpen(x.first_seen_at, now); return d == null ? <Dash /> : <>{int(d)}</>; }) },
+      { id: "owner", header: tr("Owner"), width: 70, title: tr("The steward the row is assigned to, by initials."), cell: r((x) => <OwnerCell row={x} h={h} />) },
+      { id: "value", header: tr("Value at risk"), width: 120, numeric: true, title: tr("Cost-model estimate of what this failing value costs."), cell: r((x) => (x.value_at_risk == null ? <Dash /> : <>{int(x.value_at_risk)}</>)) },
     ];
     if (state.chip === "exceptions") {
       // Signed off: what the decision was, why, by whom and when; stewards can reopen it.
@@ -397,24 +399,24 @@ export function WorkCanvas() {
       const value = base.find((c) => c.id === "value");
       return [
         ...base.filter((c) => keep.has(c.id)),
-        { id: "resolution", header: "Resolution", width: 120, locked: true, title: "Not an issue, or the risk was accepted.", cell: r((x) => (x.resolution === "accepted_risk" ? "Accept risk" : x.resolution === "false_positive" ? "Not an issue" : <Dash why="The API has not said how this record was signed off" />)) },
-        { id: "reason", header: "Reason", width: 280, locked: true, title: "The reason given when the record was signed off.", cell: r((x) => (x.resolution_note ? <span title={x.resolution_note}>{x.resolution_note}</span> : <Dash why="The API does not send the reason yet" />)) },
-        { id: "by", header: "Signed off by", width: 130, locked: true, title: "Who signed the record off.", cell: r((x) => x.resolved_by ?? <Dash why="The API does not send who signed off yet" />) },
-        { id: "when", header: "When", width: 100, locked: true, title: "The date of the sign-off.", cell: r((x) => (x.resolved_at ? <span>{day(x.resolved_at)}</span> : <Dash why="The API does not send when yet" />)) },
+        { id: "resolution", header: tr("Resolution"), width: 120, locked: true, title: tr("Not an issue, or the risk was accepted."), cell: r((x) => (x.resolution === "accepted_risk" ? tr("Accept risk") : x.resolution === "false_positive" ? tr("Not an issue") : <Dash why={tr("The API has not said how this record was signed off")} />)) },
+        { id: "reason", header: tr("Reason"), width: 280, locked: true, title: tr("The reason given when the record was signed off."), cell: r((x) => (x.resolution_note ? <span title={x.resolution_note}>{x.resolution_note}</span> : <Dash why={tr("The API does not send the reason yet")} />)) },
+        { id: "by", header: tr("Signed off by"), width: 130, locked: true, title: tr("Who signed the record off."), cell: r((x) => x.resolved_by ?? <Dash why={tr("The API does not send who signed off yet")} />) },
+        { id: "when", header: tr("When"), width: 100, locked: true, title: tr("The date of the sign-off."), cell: r((x) => (x.resolved_at ? <span>{day(x.resolved_at)}</span> : <Dash why={tr("The API does not send when yet")} />)) },
         ...(value ? [value] : []),
         {
           id: "reopen",
-          header: "Reopen",
+          header: tr("Reopen"),
           width: 96,
           locked: true,
-          title: "Puts the record back to rows to fix. Needs the apply permission.",
+          title: tr("Puts the record back to rows to fix. Needs the apply permission."),
           cell: r((x) =>
             can.apply ? (
-              <button type="button" className="m2-btn m2-sm m2-reopen" aria-label={`Reopen ${keyValue(x, 0) ?? x.record_key}`} onClick={() => void actions.decide([x], "reopen")}>
-                Reopen
+              <button type="button" className="m2-btn m2-sm m2-reopen" aria-label={tr("Reopen {keyValue}", { keyValue: keyValue(x, 0) ?? x.record_key })} onClick={() => void actions.decide([x], "reopen")}>
+                {tr("Reopen")}
               </button>
             ) : (
-              <Dash why="Reopening needs the apply permission" />
+              <Dash why={tr("Reopening needs the apply permission")} />
             ),
           ),
         },
@@ -423,7 +425,7 @@ export function WorkCanvas() {
     if (state.chip === null) {
       // All open states: say where each record is.
       const at = base.findIndex((c) => c.id === "severity");
-      const status: GridColumn<Item> = { id: "status", header: "Status", width: 150, locked: true, title: "Where the record is: to fix, waiting for approval, approved, or sent to SAP.", cell: r((x) => STATUS_LABEL[x.status] ?? x.status) };
+      const status: GridColumn<Item> = { id: "status", header: tr("Status"), width: 150, locked: true, title: tr("Where the record is: to fix, waiting for approval, approved, or sent to SAP."), cell: r((x) => STATUS_LABEL[x.status] ?? x.status) };
       return [...base.slice(0, at + 1), status, ...base.slice(at + 1)];
     }
     return base;
@@ -438,20 +440,20 @@ export function WorkCanvas() {
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   };
   const viewEntries: MenuEntry[] = [
-    { kind: "heading", label: "Views" },
-    ...(viewsQ.data?.views ?? []).map<MenuEntry>((v) => ({ kind: "item", id: v.id, label: v.name, sub: v.builtin ? "Built in" : undefined, checked: viewId === v.id, variant: "radio", onSelect: () => goView(v.id) })),
+    { kind: "heading", label: tr("Views") },
+    ...(viewsQ.data?.views ?? []).map<MenuEntry>((v) => ({ kind: "item", id: v.id, label: v.name, sub: v.builtin ? tr("Built in") : undefined, checked: viewId === v.id, variant: "radio", onSelect: () => goView(v.id) })),
     { kind: "separator" },
-    { kind: "item", id: "reset", label: "Reset to the default view", onSelect: () => goView(null) },
-    { kind: "item", id: "save", label: "Save current view…", onSelect: () => setSaving(true) },
+    { kind: "item", id: "reset", label: tr("Reset to the default view"), onSelect: () => goView(null) },
+    { kind: "item", id: "save", label: tr("Save current view…"), onSelect: () => setSaving(true) },
   ];
 
   // The strip of filters in force beyond the chip, each one removable.
   const tags: { key: string; label: string; clear: () => void }[] = [];
-  if (state.rule) tags.push({ key: "rule", label: `Rule ${state.rule}`, clear: () => go({ rule: null }) });
-  if (state.severity) tags.push({ key: "severity", label: `Severity ${state.severity}`, clear: () => go({ severity: null }) });
-  if (state.assigned) tags.push({ key: "assigned", label: state.assigned === "me" ? "Assigned to me" : state.assigned === "unassigned" ? "Unassigned" : "Assigned", clear: () => go({ assigned: null }) });
-  if (state.batch) tags.push({ key: "batch", label: `Batch ${batchLabel(state.batch)}`, clear: () => go({ batch: null }) });
-  if (state.due) tags.push({ key: "due", label: state.due === "overdue" ? "Overdue" : "Due soon", clear: () => go({ due: null }) });
+  if (state.rule) tags.push({ key: "rule", label: tr("Rule {rule}", { rule: state.rule }), clear: () => go({ rule: null }) });
+  if (state.severity) tags.push({ key: "severity", label: tr("Severity {severity}", { severity: state.severity }), clear: () => go({ severity: null }) });
+  if (state.assigned) tags.push({ key: "assigned", label: state.assigned === "me" ? tr("Assigned to me") : state.assigned === "unassigned" ? tr("Unassigned") : tr("Assigned"), clear: () => go({ assigned: null }) });
+  if (state.batch) tags.push({ key: "batch", label: tr("Batch {batchLabel}", { batchLabel: batchLabel(state.batch) }), clear: () => go({ batch: null }) });
+  if (state.due) tags.push({ key: "due", label: state.due === "overdue" ? tr("Overdue") : tr("Due soon"), clear: () => go({ due: null }) });
 
   const shown = grouped ? recordRows.length : flatRows.length;
   const total = grouped ? null : (rowsQ.data?.pages[0]?.total ?? null);
@@ -465,22 +467,22 @@ export function WorkCanvas() {
       action={
         tags.length || state.chip !== "tofix" ? (
           <button type="button" className="m2-btn" onClick={clearFilters}>
-            Clear filters
+            {tr("Clear filters")}
           </button>
         ) : (
           <V2Link href="/v2/runs" className="m2-btn">
-            Open the runs
+            {tr("Open the runs")}
           </V2Link>
         )
       }
     >
       {summary && summary.built === false
-        ? "The work list of the latest run is not built yet, so no rows can be listed. It is built after each run finishes."
+        ? tr("The work list of the latest run is not built yet, so no rows can be listed. It is built after each run finishes.")
         : state.chip === "approvals"
-          ? "No value is waiting for approval. Accepted and entered values land here until a second person approves them."
+          ? tr("No value is waiting for approval. Accepted and entered values land here until a second person approves them.")
           : state.chip === "exceptions"
-            ? "No record is signed off as not an issue or an accepted risk."
-            : "No rows in this view. Rows fill when an analysis finds a failing value with a fix; widen the view or clear its filters."}
+            ? tr("No record is signed off as not an issue or an accepted risk.")
+            : tr("No rows in this view. Rows fill when an analysis finds a failing value with a fix; widen the view or clear its filters.")}
     </EmptyFrame>
   );
 
@@ -505,18 +507,18 @@ export function WorkCanvas() {
             <Mono>{g.check_id}</Mono>
             <span>{g.message ?? g.check_id}</span>
           </button>
-          <span className="m2-meta">{`${int(g.records)} rows`}</span>
+          <span className="m2-meta">{tr("{records} rows", { records: int(g.records) })}</span>
           <span className="m2-gx">
             {left > 0 ? (
               can.apply ? (
                 <button type="button" className="m2-btn m2-sm" onClick={() => void actions.acceptRule(g.check_id, left, g.version_id, recordRows)}>
-                  {`Accept all ${int(left)} suggested`}
+                  {tr("Accept all {left} suggested", { left: int(left) })}
                 </button>
               ) : (
-                <span className="m2-meta">{`${int(left)} suggested`}</span>
+                <span className="m2-meta">{tr("{left} suggested", { left: int(left) })}</span>
               )
             ) : done ? (
-              <span className="m2-meta">Suggested values accepted</span>
+              <span className="m2-meta">{tr("Suggested values accepted")}</span>
             ) : null}
           </span>
         </div>
@@ -527,7 +529,7 @@ export function WorkCanvas() {
       return (
         <div className="m2-bh" data-testid={`batch-row-${b.id}`}>
           <span className="m2-bh-id">
-            <V2Link href={`${pathname}?${withState(search, state, { open: `batch:${b.id}` })}`} aria-label={`Open batch ${b.label}`}>
+            <V2Link href={`${pathname}?${withState(search, state, { open: `batch:${b.id}` })}`} aria-label={tr("Open batch {label}", { label: b.label })}>
               <Mono>{b.label}</Mono>
             </V2Link>
           </span>
@@ -538,10 +540,10 @@ export function WorkCanvas() {
             <span className="m2-bh-sent">{sentLine(b, day)}</span>
           ) : (
             <>
-              <span className="m2-bh-meta">{b.status === "approved" ? `Approved${b.approvedBy ? ` by ${b.approvedBy}` : ""}` : (b.owner ?? "No owner")}</span>
-              <span className="m2-bh-meta">{`${int(b.records)} ${b.records === 1 ? "record" : "records"}`}</span>
-              <span className="m2-bh-meta">{b.valueAtRisk == null ? "no value at risk" : <>{money(b.valueAtRisk)} at risk</>}</span>
-              <span className="m2-bh-meta">{b.dueAt ? `due ${day(b.dueAt)}` : "no due date"}</span>
+              <span className="m2-bh-meta">{b.status === "approved" ? `Approved${b.approvedBy ? tr(" by {approvedBy}", { approvedBy: b.approvedBy }) : ""}` : (b.owner ?? tr("No owner"))}</span>
+              <span className="m2-bh-meta">{tr("{records} {records2, plural, one {record} other {records}}", { records: int(b.records), records2: b.records })}</span>
+              <span className="m2-bh-meta">{b.valueAtRisk == null ? tr("no value at risk") : <>{money(b.valueAtRisk)}{" "}{tr("at risk")}</>}</span>
+              <span className="m2-bh-meta">{b.dueAt ? tr("due {day}", { day: day(b.dueAt) }) : tr("no due date")}</span>
             </>
           )}
           <span className="m2-sr">{BATCH_STATUS_LABEL[b.status]}</span>
@@ -549,7 +551,7 @@ export function WorkCanvas() {
             <BatchButtons b={b} c={controls} />
             {b.status !== "draft" ? (
               <V2Link href={`${pathname}?${withState(search, { ...state, chip: null, batch: b.id, group: false })}`} className="m2-btn m2-sm">
-                Show records
+                {tr("Show records")}
               </V2Link>
             ) : null}
           </span>
@@ -559,9 +561,9 @@ export function WorkCanvas() {
     if (it.kind === "more") {
       return (
         <div className="m2-gb">
-          <span className="m2-meta">{`${int(it.shown)} of ${int(it.total)} rows of ${it.check} shown`}</span>
+          <span className="m2-meta">{tr("{shown} of {total} rows of {check} shown", { shown: int(it.shown), total: int(it.total), check: it.check })}</span>
           <button type="button" className="m2-btn m2-sm" onClick={() => setExpanded((cur) => ({ ...(cur ?? openGroups), [it.check]: (cur ?? openGroups)[it.check] + GROUP_ROWS * 2 }))}>
-            {`Show ${Math.min(GROUP_ROWS * 2, it.total - it.shown)} more`}
+            {tr("Show {min} more", { min: Math.min(GROUP_ROWS * 2, it.total - it.shown) })}
           </button>
         </div>
       );
@@ -570,18 +572,18 @@ export function WorkCanvas() {
   };
 
   const toolbar = (
-    <div className="m2-tool" role="toolbar" aria-label="Ledger controls">
-      <div className="m2-seg" role="group" aria-label="Grouping">
+    <div className="m2-tool" role="toolbar" aria-label={tr("Ledger controls")}>
+      <div className="m2-seg" role="group" aria-label={tr("Grouping")}>
         <button type="button" aria-pressed={!grouped} onClick={() => go({ group: false })}>
-          Flat
+          {tr("Flat")}
         </button>
-        <button type="button" aria-pressed={grouped} disabled={!GROUPABLE.has(state.chip)} title={GROUPABLE.has(state.chip) ? undefined : "Grouping applies to rows to fix"} onClick={() => go({ group: true })}>
-          By rule
+        <button type="button" aria-pressed={grouped} disabled={!GROUPABLE.has(state.chip)} title={GROUPABLE.has(state.chip) ? undefined : tr("Grouping applies to rows to fix")} onClick={() => go({ group: true })}>
+          {tr("By rule")}
         </button>
       </div>
       <label className="m2-selbox">
-        <span className="m2-meta">Sort</span>
-        <select className="m2-sel" aria-label="Sort by" value={state.sort} onChange={(e) => go({ sort: e.target.value as SortKey })}>
+        <span className="m2-meta">{tr("Sort")}</span>
+        <select className="m2-sel" aria-label={tr("Sort by")} value={state.sort} onChange={(e) => go({ sort: e.target.value as SortKey })}>
           {(Object.keys(SORT_LABEL) as SortKey[]).map((k) => (
             <option key={k} value={k}>
               {SORT_LABEL[k]}
@@ -589,22 +591,22 @@ export function WorkCanvas() {
           ))}
         </select>
       </label>
-      <div className="m2-seg m2-only-wide" role="group" aria-label="Row density">
+      <div className="m2-seg m2-only-wide" role="group" aria-label={tr("Row density")}>
         {(["compact", "comfortable"] as Density[]).map((d) => (
-          <button key={d} type="button" aria-pressed={state.density === d} title={d === "compact" ? "Rows 28 pixels" : "Rows 32 pixels"} onClick={() => go({ density: d })}>
-            {d === "compact" ? "Compact" : "Standard"}
+          <button key={d} type="button" aria-pressed={state.density === d} title={d === "compact" ? tr("Rows 28 pixels") : tr("Rows 32 pixels")} onClick={() => go({ density: d })}>
+            {d === "compact" ? tr("Compact") : tr("Standard")}
           </button>
         ))}
       </div>
-      <MenuButton label="Views" entries={viewEntries} className="m2-btn m2-sm">
-        Views
+      <MenuButton label={tr("Views")} entries={viewEntries} className="m2-btn m2-sm">
+        {tr("Views")}
         <Dot />
-        {view?.name ?? "Unsaved"}
+        {view?.name ?? tr("Unsaved")}
       </MenuButton>
       <label className="m2-selbox">
-        <span className="m2-meta">Object</span>
-        <select className="m2-sel" aria-label="Object" value={state.module ?? ""} onChange={(e) => go({ module: e.target.value || null })}>
-          <option value="">All objects</option>
+        <span className="m2-meta">{tr("Object")}</span>
+        <select className="m2-sel" aria-label={tr("Object")} value={state.module ?? ""} onChange={(e) => go({ module: e.target.value || null })}>
+          <option value="">{tr("All objects")}</option>
           {(summary?.objects ?? []).map((o) => (
             <option key={o.module} value={o.module}>
               {objectName(o.module, labels)}
@@ -614,51 +616,51 @@ export function WorkCanvas() {
       </label>
       <span className="m2-tool-sp" />
       <button type="button" className="m2-btn m2-sm" onClick={() => void doExport()}>
-        Export fix sheet <kbd className="m2-kb">e</kbd>
+        {tr("Export fix sheet")}{" "}<kbd className="m2-kb">e</kbd>
       </button>
       {can.apply ? (
         <button type="button" className="m2-btn m2-sm" aria-expanded={importOpen} onClick={() => setImportOpen((v) => !v)}>
-          Import filled sheet
+          {tr("Import filled sheet")}
         </button>
       ) : null}
     </div>
   );
 
   const countText = grouped
-    ? `${int(groups.length)} of ${int(groupsQ.data?.total ?? groups.length)} rules shown`
+    ? tr("{groupsCount} of {total} rules shown", { groupsCount: int(groups.length), total: int(groupsQ.data?.total ?? groups.length) })
     : total != null
-      ? `Showing ${int(Math.min(shown, total))} of ${int(total)}${rowsQ.data?.pages[0]?.total_capped ? " or more" : ""}`
+      ? tr("Showing {min} of {total}{value}", { min: int(Math.min(shown, total)), total: int(total), value: rowsQ.data?.pages[0]?.total_capped ? tr(" or more") : "" })
       : "";
-  const loadedNote = !grouped && SORTS_LOADED_ROWS.has(state.sort) && (hasMore || (total ?? 0) > shown) ? `Sorted by ${SORT_LABEL[state.sort].toLowerCase()} within the rows loaded.` : "";
+  const loadedNote = !grouped && SORTS_LOADED_ROWS.has(state.sort) && (hasMore || (total ?? 0) > shown) ? tr("Sorted by {SORT_LABEL} within the rows loaded.", { SORT_LABEL: SORT_LABEL[state.sort].toLowerCase() }) : "";
 
   return (
     <div onDragOver={(e) => can.apply && e.preventDefault()} onDrop={onDrop} data-testid="work-ledger">
-      <PageTitle sub={objectLabel ?? "All objects"}>Work</PageTitle>
+      <PageTitle sub={objectLabel ?? tr("All objects")}>{tr("Work")}</PageTitle>
       {text ? (
         <p className="m2-finding" data-testid="work-sentence">
           {text}
         </p>
       ) : null}
       <FixOrderHint module={state.module} />
-      <p className="m2-prov m2-only-wide">{`Rows are read from the latest run of each object${status?.cost_model ? `. Value at risk is from cost model ${status.cost_model}` : ""}.`}</p>
+      <p className="m2-prov m2-only-wide">{tr("Rows are read from the latest run of each object{value}.", { value: status?.cost_model ? tr(". Value at risk is from cost model {cost_model}", { cost_model: status.cost_model }) : "" })}</p>
       {session.persona === "steward" && can.apply && topGroup && state.chip !== "approvals" && state.chip !== "exceptions" ? (
         <div className="m2-cta">
           <button type="button" className="m2-btn m2-next" onClick={() => void actions.acceptRule(topGroup.check_id, topGroup.proposed, topGroup.version_id, recordRows)}>
-            {`Accept the ${int(topGroup.proposed)} suggested ${topGroup.proposed === 1 ? "value" : "values"}`}
+            {tr("Accept the {proposed} suggested {proposed2, plural, one {value} other {values}}", { proposed: int(topGroup.proposed), proposed2: topGroup.proposed })}
           </button>
           <span className="m2-meta m2-only-wide">
-            for <Mono>{topGroup.check_id}</Mono>, the rule with the most at risk
+            {tr("for")}{" "}<Mono>{topGroup.check_id}</Mono>{tr(", the rule with the most at risk")}
           </span>
         </div>
       ) : null}
       <div className="m2-ledger-head">
         <Chips state={state} counts={counts} set={(chip) => go({ chip, group: chip === "approvals" || chip === "exceptions" ? false : state.group })} groupRef={chipsRef} />
         {tags.length ? (
-          <ul className="m2-tags" aria-label="Filters in force">
+          <ul className="m2-tags" aria-label={tr("Filters in force")}>
             {tags.map((t) => (
               <li key={t.key}>
                 <span>{t.label}</span>
-                <button type="button" aria-label={`Remove filter: ${t.label}`} onClick={t.clear}>
+                <button type="button" aria-label={tr("Remove filter: {label}", { label: t.label })} onClick={t.clear}>
                   <IconClose />
                 </button>
               </li>
@@ -671,12 +673,12 @@ export function WorkCanvas() {
         <div className="m2-drop" data-testid="import-panel">
           <span>
             {imp?.busy
-              ? `Reading ${imp.name}…`
-              : "Drop the filled fix sheet here, or choose a file (.xlsx). Meridian checks keys, SAP fields and values before anything changes."}
+              ? tr("Reading {name}…", { name: imp.name })
+              : tr("Drop the filled fix sheet here, or choose a file (.xlsx). Meridian checks keys, SAP fields and values before anything changes.")}
           </span>
-          <input ref={fileRef} type="file" accept=".xlsx,.csv" className="m2-sr" aria-label="Choose a filled fix sheet" onChange={(e) => void onFile(e.target.files?.[0])} />
+          <input ref={fileRef} type="file" accept=".xlsx,.csv" className="m2-sr" aria-label={tr("Choose a filled fix sheet")} onChange={(e) => void onFile(e.target.files?.[0])} />
           <button type="button" className="m2-btn m2-sm" onClick={() => fileRef.current?.click()}>
-            Choose file
+            {tr("Choose file")}
           </button>
         </div>
       ) : null}
@@ -686,14 +688,14 @@ export function WorkCanvas() {
         ) : imp.result ? (
           <div className="m2-banner" role="status" data-testid="import-result">
             <p style={{ margin: 0 }}>
-              {`${imp.name}: ${int(imp.result.updated)} ${imp.result.updated === 1 ? "decision" : "decisions"} saved from ${int(imp.result.rows)} ${imp.result.rows === 1 ? "row" : "rows"}${imp.result.skipped.length ? `; ${int(imp.result.skipped.length)} skipped` : ""}.`}
+              {tr("{name}: {updated} {updated2, plural, one {decision} other {decisions}} saved from {rows} {rows2, plural, one {row} other {rows}}{value}.", { name: imp.name, updated: int(imp.result.updated), updated2: imp.result.updated, rows: int(imp.result.rows), rows2: imp.result.rows, value: imp.result.skipped.length ? tr("; {skippedCount} skipped", { skippedCount: int(imp.result.skipped.length) }) : "" })}
             </p>
             {imp.result.skipped.length ? (
               <ul className="m2-skipped">
                 {imp.result.skipped.slice(0, 5).map((s) => (
                   <li key={s}>{s}</li>
                 ))}
-                {imp.result.skipped.length > 5 ? <li>{`and ${imp.result.skipped.length - 5} more`}</li> : null}
+                {imp.result.skipped.length > 5 ? <li>{tr("and {count} more", { count: imp.result.skipped.length - 5 })}</li> : null}
               </ul>
             ) : null}
           </div>
@@ -701,14 +703,14 @@ export function WorkCanvas() {
       ) : null}
       {state.batch && flatRows.some((r) => r.batch_id === undefined) ? (
         <div className="m2-banner" role="status" data-testid="batch-unfiltered">
-          This list is not narrowed to the batch yet: the API does not send the batch of a row. The batch inspector lists its records.
+          {tr("This list is not narrowed to the batch yet: the API does not send the batch of a row. The batch inspector lists its records.")}
         </div>
       ) : null}
       {sent ? (
         <ResultFrame outcome={sent}>
           <span>
             <button type="button" className="m2-btn m2-sm" onClick={() => setSent(null)}>
-              Dismiss
+              {tr("Dismiss")}
             </button>
           </span>
         </ResultFrame>
@@ -718,7 +720,7 @@ export function WorkCanvas() {
         {loadedNote ? <span className="m2-meta m2-only-wide">{loadedNote}</span> : null}
         {hasMore ? (
           <button type="button" className="m2-btn m2-sm" disabled={rowsQ.isFetchingNextPage} onClick={() => void rowsQ.fetchNextPage()}>
-            {`Show ${PAGE} more`}
+            {tr("Show {PAGE} more", { PAGE })}
           </button>
         ) : null}
       </div>
@@ -728,9 +730,9 @@ export function WorkCanvas() {
         <Grid<Item>
           key={gridKey}
           id={COLUMNS_ID}
-          toolbar={<GridTools gridId={COLUMNS_ID} route="work" title="Work" columns={columns} rows={items} filters={Object.fromEntries(Object.entries({ module: state.module, rule: state.rule, severity: state.severity, assigned: state.assigned }).filter(([, v]) => v)) as Record<string, string>} onColumns={bumpGrid} />}
+          toolbar={<GridTools gridId={COLUMNS_ID} route="work" title={tr("Work")} columns={columns} rows={items} filters={Object.fromEntries(Object.entries({ module: state.module, rule: state.rule, severity: state.severity, assigned: state.assigned }).filter(([, v]) => v)) as Record<string, string>} onColumns={bumpGrid} />}
           handleRef={gridHandle}
-          ariaLabel="Work ledger"
+          ariaLabel={tr("Work ledger")}
           columns={columns}
           rows={items}
           rowId={itemId}
@@ -739,9 +741,9 @@ export function WorkCanvas() {
           selectable={can.apply || can.approve || can.assign}
           spanRow={spanRow}
           count={recordRows.length}
-          bulkLabel={(n) => `${n.toLocaleString("en-US")} ${n === 1 ? "record" : "records"}`}
+          bulkLabel={(n) => tr("{n} {n2, plural, one {record} other {records}}", { n: whole(n), n2: n })}
           loading={loading}
-          error={failed ? <ErrorFrame onRetry={() => void (grouped ? groupsQ.refetch() : rowsQ.refetch())}>The rows to fix could not be read.</ErrorFrame> : undefined}
+          error={failed ? <ErrorFrame onRetry={() => void (grouped ? groupsQ.refetch() : rowsQ.refetch())}>{tr("The rows to fix could not be read.")}</ErrorFrame> : undefined}
           emptyFrame={empty}
           onOpen={(it) => (it.kind === "row" ? openItem({ kind: "record", id: recordItemId(it.row) }) : it.kind === "group" ? toggleGroup(it.group.check_id) : it.kind === "batch" ? openItem({ kind: "batch", id: it.batch.id }) : undefined)}
           openRowId={open?.kind === "record" ? open.id : null}
@@ -764,10 +766,10 @@ export function WorkCanvas() {
       {controls.dialog}
       {reason ? (
         <PromptDialog
-          title={reason.kind === "not_an_issue" ? "Mark as not an issue" : "Accept the risk"}
-          description={`${reason.rows.length.toLocaleString("en-US")} ${reason.rows.length === 1 ? "record" : "records"} will leave the list of rows to fix and show under Exceptions.`}
-          label="Reason"
-          confirm={reason.kind === "not_an_issue" ? "Mark as not an issue" : "Accept the risk"}
+          title={reason.kind === "not_an_issue" ? tr("Mark as not an issue") : tr("Accept the risk")}
+          description={tr("{rowsCount} {rowsCount2, plural, one {record} other {records}} will leave the list of rows to fix and show under Exceptions.", { rowsCount: whole(reason.rows.length), rowsCount2: reason.rows.length })}
+          label={tr("Reason")}
+          confirm={reason.kind === "not_an_issue" ? tr("Mark as not an issue") : tr("Accept the risk")}
           multiline
           onCancel={() => setReason(null)}
           onConfirm={(note) => {
@@ -779,20 +781,20 @@ export function WorkCanvas() {
       ) : null}
       {saving ? (
         <PromptDialog
-          title="Save this view"
-          label="Name"
-          confirm="Save view"
-          description="Keeps the filters, the grouping, the sort and the row density. Open it again from Views."
+          title={tr("Save this view")}
+          label={tr("Name")}
+          confirm={tr("Save view")}
+          description={tr("Keeps the filters, the grouping, the sort and the row density. Open it again from Views.")}
           onCancel={() => setSaving(false)}
           onConfirm={(name) => {
             setSaving(false);
             void viewsQ
               .save({ route: "work", name, filters: viewFilters(state), columns: null, density: state.density })
               .then((saved) => {
-                toast.show(`Saved the view ${saved.name}`);
+                toast.show(tr("Saved the view {name}", { name: saved.name }));
                 goView(saved.id);
               })
-              .catch((err) => toast.show(errorSentence(err, "The view could not be saved."), "error"));
+              .catch((err) => toast.show(errorSentence(err, tr("The view could not be saved.")), "error"));
           }}
         />
       ) : null}
@@ -824,11 +826,11 @@ function LedgerList({
   onOpen: (row: WorkRow) => void;
   spanRow: (it: Item) => React.ReactNode;
 }) {
-  if (failed) return <ErrorFrame onRetry={onRetry}>The rows to fix could not be read.</ErrorFrame>;
-  if (loading) return <div aria-busy="true" className="m2-meta">Reading the rows to fix…</div>;
+  if (failed) return <ErrorFrame onRetry={onRetry}>{tr("The rows to fix could not be read.")}</ErrorFrame>;
+  if (loading) return <div aria-busy="true" className="m2-meta">{tr("Reading the rows to fix…")}</div>;
   if (items.length === 0) return <>{empty}</>;
   return (
-    <div className="m2-mlist" role="list" aria-label="Work ledger">
+    <div className="m2-mlist" role="list" aria-label={tr("Work ledger")}>
       {items.map((it) => {
         if (it.kind !== "row") return <div key={itemId(it)} role="listitem" className="m2-lgroup">{spanRow(it)}</div>;
         const r = it.row;
@@ -837,13 +839,13 @@ function LedgerList({
         const second = keyValue(r, 1);
         return (
           <div key={id} role="listitem">
-            <button type="button" className="m2-lrow" data-open={openId === id ? "true" : undefined} title={d != null ? `${int(d)} days open` : undefined} onClick={() => onOpen(r)}>
+            <button type="button" className="m2-lrow" data-open={openId === id ? "true" : undefined} title={d != null ? tr("{d} days open", { d: int(d) }) : undefined} onClick={() => onOpen(r)}>
               <span>
                 <span className="m2-mono">{keyValue(r, 0) ?? r.record_key}</span> <span className="m2-mono m2-meta">{r.checks[0] ?? ""}</span>
               </span>
               <span className="m2-meta">{r.value_at_risk == null ? "—" : int(r.value_at_risk)}</span>
               <span className="m2-c m2-clip">
-                {[r.name, second ? `${headers.second.toLowerCase()} ${second}` : null, `${r.top_message ?? ""}${r.current_value ? `: ${r.current_value}` : ""}${r.suggested_value ? ` to ${r.suggested_value}` : ""}`, exceptions ? `${r.resolution === "accepted_risk" ? "Accept risk" : "Not an issue"}${r.resolution_note ? `: ${r.resolution_note}` : ""}${r.resolved_by ? `, ${r.resolved_by}` : ""}` : null].filter(Boolean).map((part, n) => (n === 0 ? <span key={n}>{part}</span> : <span key={n}><Dot />{part}</span>))}
+                {[r.name, second ? `${lc(headers.second)} ${second}` : null, `${r.top_message ?? ""}${r.current_value ? `: ${r.current_value}` : ""}${r.suggested_value ? tr(" to {suggested_value}", { suggested_value: r.suggested_value }) : ""}`, exceptions ? `${r.resolution === "accepted_risk" ? tr("Accept risk") : tr("Not an issue")}${r.resolution_note ? `: ${r.resolution_note}` : ""}${r.resolved_by ? `, ${r.resolved_by}` : ""}` : null].filter(Boolean).map((part, n) => (n === 0 ? <span key={n}>{part}</span> : <span key={n}><Dot />{part}</span>))}
               </span>
             </button>
           </div>

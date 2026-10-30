@@ -9,6 +9,7 @@ import { Button, Field, Notice } from "@/design";
 import { SsoSignInButton } from "@/components/auth/sso-sign-in";
 import { ssoErrorSentence, takeSsoSession } from "@/components/auth/sso";
 import { getOidcPublicConfig, type OidcPublicConfig } from "@/lib/api/sso";
+import { productName, useDocumentAccent, useTenantTheme } from "@/lib/v2/theme";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -41,6 +42,10 @@ export default function SignInPage() {
   const [adminForm, setAdminForm] = useState(false);
   const [next, setNext] = useState<string | null>(null);
   const noticeRef = useRef<HTMLDivElement>(null);
+  // The tenant's look (GET /theme, public): its logo and name above the form, its accent on the page. Read only here.
+  const tenant = useTenantTheme();
+  useDocumentAccent(tenant);
+  const branded = Boolean(tenant?.customised);
 
   useEffect(() => {
     // Back from the identity provider: the callback leaves the session token in the URL fragment.
@@ -102,6 +107,13 @@ export default function SignInPage() {
   return (
     <AuthFrame title="Sign in">
       <div className={authFormClass}>
+        {branded ? (
+          <div className="flex items-center gap-2.5" data-testid="tenant-brand">
+            {/* eslint-disable-next-line @next/next/no-img-element -- the tenant's logo, served by the API */}
+            {tenant?.logo_url ? <img src={tenant.logo_url} alt="" className="h-8 w-auto max-w-[160px] object-contain" /> : null}
+            <span className="m-text-title font-semibold m-ink">{productName(tenant)}</span>
+          </div>
+        ) : null}
         {ssoError ? <Notice tone="danger">{ssoError}</Notice> : null}
         {sso?.enabled ? <SsoSignInButton displayName={sso.display_name ?? "single sign-on"} next={next} /> : null}
         {sso?.enabled && showForm ? <p className="m-text-meta m-ink-3">Or use your email and password</p> : null}

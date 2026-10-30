@@ -7,6 +7,7 @@ import { refreshV2 } from "@/lib/v2/queries";
 import { peekAction, popAction, pushAction, removeAction, type DoneAction } from "@/lib/v2/undo";
 import { clearPatches } from "@/lib/v2/work-overrides";
 import { IconClose } from "./marks";
+import { t as tr, lcFirst } from "@/lib/v2/i18n";
 
 /** How long a notice stays: a change can be taken back from it for this long. */
 export const TOAST_MS = 6000;
@@ -77,9 +78,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         else for (const id of [...a.ids].reverse()) await postUndo(id);
         await refreshV2(qc);
         clearPatches();
-        show(`Undone: ${a.label.charAt(0).toLowerCase()}${a.label.slice(1)}`);
+        show(tr("Undone: {action}", { action: lcFirst(a.label) }));
       } catch (err) {
-        show(errorSentence(err, "This change could not be undone."), "error");
+        show(errorSentence(err, tr("This change could not be undone.")), "error");
       }
     },
     [qc, show],
@@ -95,7 +96,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const undoLast = useCallback(async () => {
     if (!peekAction()) {
-      show("Nothing to undo in this session.");
+      show(tr("Nothing to undo in this session."));
       return;
     }
     const a = popAction();
@@ -107,7 +108,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={api}>
       {children}
-      <div className="m2-toasts" role="region" aria-label="Change notices" aria-live="polite" data-testid="toasts">
+      <div className="m2-toasts" role="region" aria-label={tr("Change notices")} aria-live="polite" data-testid="toasts">
         {items.map((t) => (
           <div key={t.id} className="m2-toast" data-tone={t.tone} role={t.tone === "error" ? "alert" : "status"}>
             <span className="m2-toast-m">{t.message}</span>
@@ -122,11 +123,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                     void undoAction(t.action as DoneAction);
                   }}
                 >
-                  Undo
+                  {tr("Undo")}
                 </button>
               </>
             ) : null}
-            <button type="button" className="m2-toast-x" aria-label="Dismiss" onClick={() => dismiss(t.id)}>
+            <button type="button" className="m2-toast-x" aria-label={tr("Dismiss")} onClick={() => dismiss(t.id)}>
               <IconClose />
             </button>
           </div>

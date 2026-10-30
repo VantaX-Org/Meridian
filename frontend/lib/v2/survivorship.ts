@@ -1,12 +1,13 @@
 import type { SurvivorshipRuleInput, SurvivorshipRuleType } from "@/lib/api/survivorship";
+import { t as tr } from "@/lib/v2/i18n";
 
 export const RULE_TYPES: { value: SurvivorshipRuleType; label: string; needsSources: boolean; help: string }[] = [
-  { value: "most_recent", label: "Most recent", needsSources: false, help: "The value from the record changed last survives." },
-  { value: "most_complete", label: "Most complete", needsSources: false, help: "The longest non-empty value survives." },
-  { value: "most_frequent", label: "Most frequent", needsSources: false, help: "The value most of the records agree on survives." },
-  { value: "trusted_source", label: "Trusted source", needsSources: true, help: "The value from the first trusted system that has one survives." },
-  { value: "chain", label: "Chain of systems", needsSources: true, help: "Systems are tried in the order listed; the first with a value survives." },
-  { value: "manual_override", label: "Manual override", needsSources: false, help: "A steward chooses the value on each merge." },
+  { value: "most_recent", get label() { return tr("Most recent"); }, needsSources: false, get help() { return tr("The value from the record changed last survives."); } },
+  { value: "most_complete", get label() { return tr("Most complete"); }, needsSources: false, get help() { return tr("The longest non-empty value survives."); } },
+  { value: "most_frequent", get label() { return tr("Most frequent"); }, needsSources: false, get help() { return tr("The value most of the records agree on survives."); } },
+  { value: "trusted_source", get label() { return tr("Trusted source"); }, needsSources: true, get help() { return tr("The value from the first trusted system that has one survives."); } },
+  { value: "chain", get label() { return tr("Chain of systems"); }, needsSources: true, get help() { return tr("Systems are tried in the order listed; the first with a value survives."); } },
+  { value: "manual_override", get label() { return tr("Manual override"); }, needsSources: false, get help() { return tr("A steward chooses the value on each merge."); } },
 ];
 
 export const typeLabel = (t: string): string => RULE_TYPES.find((x) => x.value === t)?.label ?? t;

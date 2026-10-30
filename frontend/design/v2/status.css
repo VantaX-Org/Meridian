@@ -1,0 +1,86 @@
+/*
+ * The status page and the pieces of the enterprise screens (appearance, SCIM, compliance). Tokens only
+ * (design/v2/tokens.css); every selector sits under .m2-root.
+ */
+.m2-root.m2-standalone { height: auto; min-height: 100dvh; overflow: visible; }
+.m2-root .m2-stat-page { max-width: 920px; width: 100%; margin: 0 auto; padding: var(--m2-s4) 0 var(--m2-s10); }
+.m2-root .m2-stat-head { display: flex; align-items: center; justify-content: space-between; gap: var(--m2-s3); padding-bottom: var(--m2-s3); border-bottom: 1px solid var(--m2-line); }
+.m2-root .m2-stat-brand { display: inline-flex; align-items: center; gap: var(--m2-s2); font-weight: 600; font-size: var(--m2-fs-16); min-width: 0; overflow-wrap: anywhere; }
+.m2-root .m2-logo { display: block; height: 24px; width: auto; max-width: 160px; object-fit: contain; }
+.m2-root .m2-stat-main { padding-top: var(--m2-s6); }
+.m2-root .m2-stat-main:focus { outline: none; }
+.m2-root .m2-stat-sum { font-size: var(--m2-fs-16); line-height: var(--m2-lh-16); margin: var(--m2-s3) 0 0; }
+.m2-root .m2-stat-sum strong { font-weight: 600; }
+.m2-root .m2-stat-tbl td.m2-wrap { white-space: normal; min-width: 220px; }
+.m2-root .m2-maint { margin-top: var(--m2-s6); border-left: 2px solid var(--m2-info); padding: var(--m2-s2) var(--m2-s3); }
+.m2-root .m2-maint p { margin: var(--m2-s1) 0 0; font-size: var(--m2-fs-13); color: var(--m2-ink-2); }
+
+.m2-root .m2-up { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--m2-s1) var(--m2-s3); align-items: center; margin-top: var(--m2-s2); max-width: 720px; }
+.m2-root .m2-upbar { display: grid; grid-template-columns: repeat(30, minmax(0, 1fr)); gap: 2px; height: 28px; }
+.m2-root .m2-upcell { display: block; border-radius: 2px; background: var(--m2-seg); }
+.m2-root .m2-upcell[data-state="none"] { background: var(--m2-track); }
+.m2-root .m2-upcell[data-state="degraded"] { background: var(--m2-high); }
+.m2-root .m2-upcell[data-state="down"] { background: var(--m2-crit); }
+.m2-root .m2-upword { display: inline-flex; align-items: center; gap: 6px; font-size: var(--m2-fs-13); font-weight: 500; white-space: nowrap; }
+.m2-root .m2-up .m2-prov { grid-column: 1 / -1; }
+.m2-root .m2-upaxis { grid-column: 1; grid-row: 2; display: flex; justify-content: space-between; font-size: var(--m2-fs-12); color: var(--m2-meta); }
+
+.m2-root .m2-incs { list-style: none; margin: var(--m2-s2) 0 0; padding: 0; max-width: 720px; }
+.m2-root .m2-incs li { padding: var(--m2-s2) 0; border-bottom: 1px solid var(--m2-line); font-size: var(--m2-fs-13); display: grid; gap: 2px; overflow-wrap: anywhere; }
+
+/* The status strip's health word */
+.m2-root .m2-health { display: inline-flex; align-items: center; gap: 6px; margin-right: var(--m2-s3); }
+
+/* Appearance */
+.m2-root .m2-swatch { display: inline-block; width: 16px; height: 16px; border-radius: var(--m2-r1); border: 1px solid var(--m2-line-2); vertical-align: -3px; background: var(--m2-swatch, transparent); }
+.m2-root .m2-contrast { margin: var(--m2-s2) 0 0; display: grid; grid-template-columns: max-content max-content; gap: var(--m2-s1) var(--m2-s4); font-size: var(--m2-fs-13); }
+.m2-root .m2-contrast dt { color: var(--m2-meta); }
+.m2-root .m2-contrast dd { margin: 0; font-variant-numeric: tabular-nums; }
+.m2-root .m2-preview { display: flex; align-items: center; gap: var(--m2-s3); border: 1px solid var(--m2-line); border-radius: var(--m2-r2); padding: var(--m2-s3); max-width: 520px; flex-wrap: wrap; }
+.m2-root .m2-preview .m2-logo { height: 32px; }
+.m2-root .m2-preview-bn { font-weight: 600; font-size: var(--m2-fs-16); overflow-wrap: anywhere; }
+
+/* SCIM */
+.m2-root .m2-maptbl input, .m2-root .m2-maptbl select { height: 32px; border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); background: var(--m2-sheet); color: var(--m2-fg); padding: 0 var(--m2-s2); width: 100%; min-width: 140px; }
+.m2-root .m2-badge2 { display: inline-flex; align-items: center; border: 1px solid var(--m2-line-2); border-radius: var(--m2-r1); padding: 0 var(--m2-s1); font-size: var(--m2-fs-12); line-height: 18px; color: var(--m2-ink-2); margin-left: var(--m2-s2); white-space: nowrap; }
+
+@media (max-width: 760px) {
+  .m2-root .m2-stat-page { padding-top: var(--m2-s3); }
+  .m2-root .m2-up { grid-template-columns: minmax(0, 1fr); }
+  .m2-root .m2-upaxis { grid-row: auto; }
+  .m2-root .m2-contrast { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Top bar brand with a tenant logo, and About */
+.m2-root .m2-brand .m2-logo { height: 22px; max-width: 120px; }
+.m2-root .m2-about { display: flex; align-items: center; gap: var(--m2-s3); font-size: var(--m2-fs-16); font-weight: 600; margin: var(--m2-s2) 0; }
+
+/* Appearance preview: the chosen accent, as the shell would apply it in each theme */
+.m2-root .m2-preview[data-accent] { --m2-data: var(--m2-tenant-accent); }
+@media (prefers-color-scheme: dark) { html:not([data-theme="light"]) .m2-root .m2-preview[data-accent] { --m2-data: var(--m2-tenant-accent-dark); } }
+html[data-theme="dark"] .m2-root .m2-preview[data-accent] { --m2-data: var(--m2-tenant-accent-dark); }
+.m2-root .m2-preview-link { color: var(--m2-data); text-decoration: underline; text-underline-offset: 2px; }
+.m2-root .m2-status-l { display: flex; align-items: center; min-width: 0; }
+
+/*
+ * Languages. German compounds hyphenate where the browser knows the word; Japanese breaks by its own strict rules.
+ * The narrow columns (the 280px map, the inspector, the top bar) keep long words inside their box.
+ */
+.m2-root:lang(de) { hyphens: auto; -webkit-hyphens: auto; }
+.m2-root:lang(ja) { line-break: strict; word-break: normal; }
+.m2-root .m2-sysrow-nm, .m2-root .m2-sysrow-st, .m2-root .m2-mgrp, .m2-root .m2-adm-grp, .m2-root .m2-ih-sl, .m2-root .m2-fact dt { overflow-wrap: anywhere; }
+.m2-root .m2-mi > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m2-root .m2-acts .m2-btn, .m2-root .m2-adm-acts .m2-btn { max-width: 100%; }
+.m2-root .m2-insp .m2-btn { white-space: normal; height: auto; min-height: 32px; text-align: center; }
+
+/* On a phone the right of the top bar gives way first: the persona's name shortens, the Map button keeps its word. */
+@media (max-width: 760px) {
+  .m2-root .m2-top-l { flex: 0 0 auto; }
+  .m2-root .m2-top-r { flex: 1 1 auto; min-width: 0; }
+  .m2-root .m2-top-r .m2-tbtn { min-width: 0; flex: 0 1 auto; }
+  .m2-root .m2-persona > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .m2-root .m2-btn.m2-next { white-space: normal; height: auto; min-height: 44px; padding-top: var(--m2-s2); padding-bottom: var(--m2-s2); text-align: center; }
+}
+
+/* A link inside a sentence is underlined, so it is told from the text without colour (WCAG 1.4.1). */
+.m2-root .m2-note a { text-decoration: underline; text-underline-offset: 2px; }

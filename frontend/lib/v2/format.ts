@@ -31,3 +31,26 @@ export function fixed(n: number, digits: number): string {
 export function whole(n: number): string {
   return n.toLocaleString(v2Locale(), { maximumFractionDigits: 0 });
 }
+
+/** "3 hours ago" in the chosen locale ("vor 3 Stunden", "3 時間前"), through Intl.RelativeTimeFormat. */
+export function relTime(iso: string, now: number = Date.now()): string {
+  const diff = (Date.parse(iso) - now) / 1000;
+  if (!Number.isFinite(diff)) return "—";
+  const rtf = new Intl.RelativeTimeFormat(v2Locale(), { numeric: "auto" });
+  const abs = Math.abs(diff);
+  if (abs < 60) return rtf.format(0, "minute");
+  if (abs < 3600) return rtf.format(Math.round(diff / 60), "minute");
+  if (abs < 86_400) return rtf.format(Math.round(diff / 3600), "hour");
+  if (abs < 86_400 * 30) return rtf.format(Math.round(diff / 86_400), "day");
+  if (abs < 86_400 * 365) return rtf.format(Math.round(diff / (86_400 * 30)), "month");
+  return rtf.format(Math.round(diff / (86_400 * 365)), "year");
+}
+
+/** An amount of money in the chosen locale, with the currency the tenant set. */
+export function money(n: number, currency: string, digits = 0): string {
+  try {
+    return new Intl.NumberFormat(v2Locale(), { style: "currency", currency, minimumFractionDigits: digits, maximumFractionDigits: digits }).format(n);
+  } catch {
+    return `${whole(n)} ${currency}`;
+  }
+}

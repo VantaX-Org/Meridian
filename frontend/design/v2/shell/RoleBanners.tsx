@@ -9,6 +9,7 @@ import { useV2Href, useV2Session } from "@/lib/v2/hooks";
 import { installViewAsHeader, ROLE_NAMES, setShareMode, setViewAs } from "@/lib/v2/view-as";
 import { EmptyFrame, PageTitle, Skeleton } from "../parts";
 import "../roles.css";
+import { t } from "@/lib/v2/i18n";
 
 /**
  * The shell's role banners (step 6c), one line under the job line: "Viewing as Data steward, read-only" while an
@@ -34,10 +35,10 @@ export function RoleBanners() {
     return (
       <div className="m2-banner" role="status" data-testid="view-as-banner">
         <span>
-          <strong>{`Viewing as ${ROLE_NAMES[session.viewAs] ?? session.viewAs}.`}</strong> Read-only: you see what this role sees, and nothing can be changed until you stop.
+          <strong>{t("Viewing as {ROLE_NAMES}.", { ROLE_NAMES: ROLE_NAMES[session.viewAs] ?? session.viewAs })}</strong>{" "}{t("Read-only: you see what this role sees, and nothing can be changed until you stop.")}
         </span>
         <button type="button" className="m2-btn m2-sm" onClick={() => void stop()}>
-          Stop viewing as
+          {t("Stop viewing as")}
         </button>
         {error ? <span role="alert">{error}</span> : null}
       </div>
@@ -47,10 +48,10 @@ export function RoleBanners() {
     return (
       <div className="m2-banner" data-tone="info" role="status" data-testid="shared-banner">
         <span>
-          <strong>Shared view.</strong> Read-only, as a viewer.
+          <strong>{t("Shared view.")}</strong>{" "}{t("Read-only, as a viewer.")}
         </span>
         <button type="button" className="m2-btn m2-sm" onClick={() => setShareMode(null)}>
-          Leave the shared view
+          {t("Leave the shared view")}
         </button>
       </div>
     );
@@ -70,7 +71,7 @@ export function ShareLanding() {
     resolveShareLink(token)
       .then((r) => {
         if (!alive) return;
-        setShareMode(r.label ?? "Shared view");
+        setShareMode(r.label ?? t("Shared view"));
         const qs = new URLSearchParams(r.state).toString();
         router.replace(href(`${r.route}${qs ? `?${qs}` : ""}`));
       })
@@ -81,7 +82,7 @@ export function ShareLanding() {
   }, [token, router, href]);
   return (
     <>
-      <PageTitle>Shared view</PageTitle>
+      <PageTitle>{t("Shared view")}</PageTitle>
       {error ? <EmptyFrame>{error}</EmptyFrame> : <Skeleton width={320} height={14} />}
     </>
   );

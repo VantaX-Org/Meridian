@@ -2,6 +2,7 @@
 
 import { useId, type ReactNode } from "react";
 import "./system.css";
+import { t } from "@/lib/v2/i18n";
 
 export interface ControlProps {
   id: string;
@@ -32,13 +33,13 @@ export function Field({ label, hint, error, children }: { label: string; hint?: 
 }
 
 /** The inline answer to a destructive verb: says what goes, offers the verb and its way back. No modal, no toast. */
-export function ConfirmBar({ message, confirmLabel, keepLabel = "Keep", pending, disabled, onConfirm, onCancel }: { message: ReactNode; confirmLabel: string; keepLabel?: string; pending?: boolean; disabled?: boolean; onConfirm: () => void; onCancel: () => void }) {
+export function ConfirmBar({ message, confirmLabel, keepLabel = t("Keep"), pending, disabled, onConfirm, onCancel }: { message: ReactNode; confirmLabel: string; keepLabel?: string; pending?: boolean; disabled?: boolean; onConfirm: () => void; onCancel: () => void }) {
   return (
-    <div className="m2-confirm" role="group" aria-label="Confirm" data-testid="confirm-bar">
+    <div className="m2-confirm" role="group" aria-label={t("Confirm")} data-testid="confirm-bar">
       <p>{message}</p>
       <div className="m2-acts">
         <button type="button" className="m2-btn m2-danger" disabled={pending || disabled} onClick={onConfirm}>
-          {pending ? "Working…" : confirmLabel}
+          {pending ? t("Working…") : confirmLabel}
         </button>
         <button type="button" className="m2-btn m2-ghost" onClick={onCancel}>
           {keepLabel}

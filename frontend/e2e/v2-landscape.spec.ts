@@ -54,7 +54,8 @@ for (const size of SIZES) {
         await expect(page.getByRole("heading", { level: 1 })).toHaveText(/Landscape/);
         await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
         await expect(page.getByTestId("landscape-sentence")).toContainText("11 of 15 objects are held under 85 by 70 critical rules over tolerance");
-        await expect(page.getByRole("link", { name: "Open the no-go objects" })).toBeVisible();
+        // With migration waves in the fixture the lead's next step clears the no-go objects of the next wave.
+        await expect(page.getByRole("link", { name: "Clear the 3 no-go objects in Wave 1: finance foundations" })).toBeVisible();
 
         if (phone) {
           // The matrix becomes a list of two-line rows below 760px.
@@ -91,16 +92,16 @@ for (const size of SIZES) {
         await expect(page.locator('svg[data-size="240"]')).toBeVisible();
         await expect(page.getByTestId("receipt")).toBeVisible();
         await expect(page.getByTestId("receipt-footer")).toContainText("tolerance 10% of rows or 25 rows");
-        await expect(page.getByRole("navigation", { name: "Views of Material master" }).getByRole("link")).toHaveCount(8);
+        await expect(page.getByRole("navigation", { name: "Views of Material master" }).getByRole("link")).toHaveCount(9);
         await expect(page.getByRole(phone ? "list" : "grid", { name: "Rules for Material master" })).toBeVisible(); // two-line rows on a phone
         await page.waitForLoadState("networkidle");
         await shot(page, "object");
         await axe(page, `object ${size.name} ${scheme}`);
 
-        // The tab is a route segment with a designed empty frame.
+        // The tab is a route segment; since step 6b it draws the lineage of the failing rules.
         await page.getByRole("navigation", { name: "Views of Material master" }).getByRole("link", { name: "Lineage" }).click();
         await expect(page).toHaveURL(/\/material-master\/lineage/, NAV);
-        await expect(page.getByTestId("empty-frame")).toContainText("Lineage fills when a field map is loaded", NAV);
+        await expect(page.locator('[aria-label^="Lineage of Material master:"]')).toBeVisible(NAV);
       });
 
       test("the inspector opens from a link, traps focus, closes with Esc and returns focus", async ({ page }) => {
@@ -119,7 +120,8 @@ for (const size of SIZES) {
           const box = await dialog.boundingBox();
           expect(box?.width).toBeGreaterThanOrEqual(size.width - 1); // full screen on a phone
         } else {
-          const box = await dialog.boundingBox();
+          // The inspector's landmark is the 400 px panel; the dialog sits inside its 1 px rule.
+          const box = await page.locator("#m2-inspector").boundingBox();
           expect(Math.round(box?.width ?? 0)).toBe(400);
         }
         // Tab stays inside the dialog.

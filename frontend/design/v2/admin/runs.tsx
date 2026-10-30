@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { SyncProfile } from "@/types/api";
 import * as api from "@/lib/api/v2/admin";
 import { analyseRun, loadSystemConfig, retryJobById } from "@/lib/api/v2/runs";
-import { formatDate, labelOf } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { useOpenItem } from "@/lib/v2/hooks";
 import { refreshAdmin } from "@/lib/v2/admin-queries";
 import { JOB_KIND_LABEL, JOB_STATUS_LABEL, jobDoing } from "@/lib/v2/jobs";
@@ -20,6 +20,8 @@ import { ResultFrame, useOutcome } from "../inspector/shared";
 import { describeCron } from "../screens/System";
 import { AdminPage, Block, Confirm, Dialog, Fld, NeedsPermission, StatusWord, useCan, useDone } from "./kit";
 import { ToolGrid } from "../GridTools";
+import { t } from "@/lib/v2/i18n";
+import { labelText } from "@/lib/v2/labels";
 
 const list = (s: string): string[] | undefined => {
   const v = s.split(/[\s,;]+/).filter(Boolean);
@@ -35,7 +37,7 @@ export function cronFor(cadence: "daily" | "weekly" | "monthly", time: string, w
 function SystemPick({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const systems = useSystemsExtended();
   return (
-    <Fld label="System">
+    <Fld label={t("System")}>
       <select value={value} onChange={(e) => onChange(e.target.value)}>
         {(systems.data ?? []).map((s) => (
           <option key={s.id} value={s.id}>
@@ -61,35 +63,35 @@ function Extraction({ system }: { system: string }) {
   const canAnalyse = useCan()("analyse");
   const toggle = (o: string) => setPicked((p) => (p.includes(o) ? p.filter((x) => x !== o) : [...p, o]));
   return (
-    <Block title="Start an extraction" hint="Reads the chosen objects from the system into a new stored run. Leave the scope empty to read everything.">
-      <ul className="m2-pick" aria-label="Objects to extract" style={{ maxWidth: 520 }}>
+    <Block title={t("Start an extraction")} hint={t("Reads the chosen objects from the system into a new stored run. Leave the scope empty to read everything.")}>
+      <ul className="m2-pick" aria-label={t("Objects to extract")} style={{ maxWidth: 520 }}>
         {(objects.data?.objects ?? []).map((o) => (
           <li key={o.object}>
             <label>
               <input type="checkbox" checked={picked.includes(o.object)} disabled={!can} onChange={() => toggle(o.object)} />
-              <span>{labelOf(o.object)}</span>
-              <span className="m2-meta">{o.last_download ? `last ${formatDate(o.last_download.at)}` : "never"}</span>
+              <span>{labelText(o.object)}</span>
+              <span className="m2-meta">{o.last_download ? t("last {at}", { at: formatDate(o.last_download.at) }) : "never"}</span>
             </label>
           </li>
         ))}
       </ul>
       <div className="m2-fgrid" style={{ marginTop: 12 }}>
-        <Fld label="Company codes" hint="Separated by commas.">
+        <Fld label={t("Company codes")} hint={t("Separated by commas.")}>
           <input value={codes} disabled={!can} onChange={(e) => setCodes(e.target.value)} />
         </Fld>
-        <Fld label="Plants">
+        <Fld label={t("Plants")}>
           <input value={plants} disabled={!can} onChange={(e) => setPlants(e.target.value)} />
         </Fld>
-        <Fld label="Documents from">
+        <Fld label={t("Documents from")}>
           <input type="date" value={from} disabled={!can} onChange={(e) => setFrom(e.target.value)} />
         </Fld>
-        <Fld label="Documents to">
+        <Fld label={t("Documents to")}>
           <input type="date" value={to} disabled={!can} onChange={(e) => setTo(e.target.value)} />
         </Fld>
       </div>
       <label className="m2-sw" style={{ marginTop: 8 }}>
         <input type="checkbox" checked={analyse && canAnalyse} disabled={!canAnalyse || !can} onChange={(e) => setAnalyse(e.target.checked)} />
-        <span>Analyse straight after extracting</span>
+        <span>{t("Analyse straight after extracting")}</span>
       </label>
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       <div className="m2-adm-acts">
@@ -102,14 +104,14 @@ function Extraction({ system }: { system: string }) {
               const r = await api.startExtraction(system, picked, analyse && canAnalyse, { company_codes: list(codes), plants: list(plants), date_from: from || undefined, date_to: to || undefined });
               void qc.invalidateQueries({ queryKey: ["v2"] });
               void qc.invalidateQueries({ queryKey: ["jobs"] });
-              return { tone: "ok", title: "Extraction started", detail: `${picked.length} ${picked.length === 1 ? "object" : "objects"}${analyse && canAnalyse ? ", analysed straight after" : ""}.`, job: r.job_id };
+              return { tone: "ok", title: t("Extraction started"), detail: t("{pickedCount} {pickedCount, plural, one {object} other {objects}}{value}.", { pickedCount: picked.length, value: analyse && canAnalyse ? t(", analysed straight after") : "" }), job: r.job_id };
             })
           }
         >
-          {pending === "extract" ? "Starting…" : picked.length ? `Extract ${picked.length} ${picked.length === 1 ? "object" : "objects"}` : "Choose objects to extract"}
+          {pending === "extract" ? t("Starting…") : picked.length ? t("Extract {pickedCount} {pickedCount, plural, one {object} other {objects}}", { pickedCount: picked.length }) : t("Choose objects to extract")}
         </button>
       </div>
-      {!can ? <p className="m2-prov">Starting an extraction needs the trigger sync permission on this system.</p> : null}
+      {!can ? <p className="m2-prov">{t("Starting an extraction needs the trigger sync permission on this system.")}</p> : null}
     </Block>
   );
 }
@@ -124,14 +126,14 @@ function Analysis({ system }: { system: string }) {
   const chosen = picked || rows[0]?.id || "";
   const { outcome, pending, run } = useOutcome("admin-analyse");
   return (
-    <Block title="Start an analysis" hint="Scores a stored extraction against the rules as they stand now. Earlier scores are kept as they were.">
+    <Block title={t("Start an analysis")} hint={t("Scores a stored extraction against the rules as they stand now. Earlier scores are kept as they were.")}>
       <div className="m2-fbar">
-        <Fld label="Extraction">
+        <Fld label={t("Extraction")}>
           <select value={chosen} disabled={!can} onChange={(e) => setPicked(e.target.value)}>
-            {rows.length === 0 ? <option value="">No extraction can be analysed</option> : null}
+            {rows.length === 0 ? <option value="">{t("No extraction can be analysed")}</option> : null}
             {rows.map((v) => (
               <option key={v.id} value={v.id}>
-                {`${v.label ?? formatDate(v.run_at, "datetime")}${v.analysed_at ? `, analysed with ${v.rule_set ?? "the rules"}` : ", not analysed yet"}`}
+                {`${v.label ?? formatDate(v.run_at, "datetime")}${v.analysed_at ? t(", analysed with {rule_set}", { rule_set: v.rule_set ?? t("the rules") }) : t(", not analysed yet")}`}
               </option>
             ))}
           </select>
@@ -145,15 +147,15 @@ function Analysis({ system }: { system: string }) {
               const r = await analyseRun(chosen);
               void qc.invalidateQueries({ queryKey: ["v2"] });
               void qc.invalidateQueries({ queryKey: ["jobs"] });
-              return { tone: "ok", title: "Analysis started", detail: "The extraction is being scored.", job: r.job_id };
+              return { tone: "ok", title: t("Analysis started"), detail: t("The extraction is being scored."), job: r.job_id };
             })
           }
         >
-          {pending === "analyse" ? "Starting…" : "Run the analysis"}
+          {pending === "analyse" ? t("Starting…") : t("Run the analysis")}
         </button>
       </div>
       {outcome ? <ResultFrame outcome={outcome} /> : null}
-      {!can ? <p className="m2-prov">Starting an analysis needs the analyse permission.</p> : null}
+      {!can ? <p className="m2-prov">{t("Starting an analysis needs the analyse permission.")}</p> : null}
     </Block>
   );
 }
@@ -164,8 +166,8 @@ function ConfigLoad({ system }: { system: string }) {
   const load = useSystemConfigLoad(system, !!system);
   const { outcome, pending, run } = useOutcome("admin-config");
   return (
-    <Block title="Load configuration" hint="Reads the system's configuration tables, then derives the process flows. The last load is shown.">
-      <p className="m2-prov" style={{ marginTop: 0 }}>{load.data ? `Last load: ${load.data.areas_loaded} of ${load.data.areas_total} areas, ${load.data.finished_at ? formatDate(load.data.finished_at, "datetime") : "running"}.` : "No configuration has been loaded yet."}</p>
+    <Block title={t("Load configuration")} hint={t("Reads the system's configuration tables, then derives the process flows. The last load is shown.")}>
+      <p className="m2-prov" style={{ marginTop: 0 }}>{load.data ? t("Last load: {areas_loaded} of {areas_total} areas, {value}.", { areas_loaded: load.data.areas_loaded, areas_total: load.data.areas_total, value: load.data.finished_at ? formatDate(load.data.finished_at, "datetime") : "running" }) : t("No configuration has been loaded yet.")}</p>
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       <div className="m2-adm-acts">
         <button
@@ -176,11 +178,11 @@ function ConfigLoad({ system }: { system: string }) {
             void run("config", async () => {
               const r = await loadSystemConfig(system);
               void qc.invalidateQueries({ queryKey: ["v2"] });
-              return { tone: "ok", title: "Configuration load started", job: r.job_id };
+              return { tone: "ok", title: t("Configuration load started"), job: r.job_id };
             })
           }
         >
-          {pending === "config" ? "Starting…" : "Load the configuration"}
+          {pending === "config" ? t("Starting…") : t("Load the configuration")}
         </button>
       </div>
     </Block>
@@ -208,29 +210,29 @@ function ProfileDialog({ system, profile, onClose }: { system: string; profile: 
         const prev = { schedule_cron: profile.schedule_cron ?? "", active: profile.active, extraction_mode: profile.extraction_mode };
         await api.updateProfile(system, profile.id, { schedule_cron: line, extraction_mode: mode });
         await refreshAdmin(qc, "profiles");
-        done("Schedule saved", async () => {
+        done(t("Schedule saved"), async () => {
           await api.updateProfile(system, profile.id, prev);
           await refreshAdmin(qc, "profiles");
         });
         onClose();
-        return { tone: "ok", title: "Schedule saved" };
+        return { tone: "ok", title: t("Schedule saved") };
       }
       const o = objects.data?.objects.find((x) => x.object === object);
       await api.createProfile(system, { system_id: system, domain: object, tables: o?.tables ?? [], schedule_cron: line, active: true, extraction_mode: mode });
       await refreshAdmin(qc, "profiles");
       onClose();
-      return { tone: "ok", title: "Schedule created" };
+      return { tone: "ok", title: t("Schedule created") };
     });
   return (
-    <Dialog title={profile ? `Edit the schedule of ${labelOf(profile.domain)}` : "Schedule a run"} description="The system extracts the object on this rhythm. Changing it never fires a run at once." onClose={onClose} wide>
+    <Dialog title={profile ? t("Edit the schedule of {domain}", { domain: labelText(profile.domain) }) : t("Schedule a run")} description={t("The system extracts the object on this rhythm. Changing it never fires a run at once.")} onClose={onClose} wide>
       {!profile ? (
         <label className="m2-fld">
-          <span className="m2-lbl">Object</span>
+          <span className="m2-lbl">{t("Object")}</span>
           <select value={object} onChange={(e) => setObject(e.target.value)}>
-            <option value="">Choose an object</option>
+            <option value="">{t("Choose an object")}</option>
             {(objects.data?.objects ?? []).map((o) => (
               <option key={o.object} value={o.object}>
-                {labelOf(o.object)}
+                {labelText(o.object)}
               </option>
             ))}
           </select>
@@ -238,24 +240,24 @@ function ProfileDialog({ system, profile, onClose }: { system: string; profile: 
       ) : null}
       {custom ? (
         <label className="m2-fld">
-          <span className="m2-lbl">Cron line (minute hour day month weekday)</span>
+          <span className="m2-lbl">{t("Cron line (minute hour day month weekday)")}</span>
           <input value={cron} onChange={(e) => setCron(e.target.value)} placeholder="0 4 * * 1" />
         </label>
       ) : (
         <>
           <label className="m2-fld">
-            <span className="m2-lbl">Cadence</span>
+            <span className="m2-lbl">{t("Cadence")}</span>
             <select value={cadence} onChange={(e) => setCadence(e.target.value as typeof cadence)}>
-              <option value="daily">Every day</option>
-              <option value="weekly">Every week</option>
-              <option value="monthly">Every month</option>
+              <option value="daily">{t("Every day")}</option>
+              <option value="weekly">{t("Every week")}</option>
+              <option value="monthly">{t("Every month")}</option>
             </select>
           </label>
           {cadence === "weekly" ? (
             <label className="m2-fld">
-              <span className="m2-lbl">On</span>
+              <span className="m2-lbl">{t("On")}</span>
               <select value={weekday} onChange={(e) => setWeekday(Number(e.target.value))}>
-                {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((d, i) => (
+                {[t("Sunday"), t("Monday"), t("Tuesday"), t("Wednesday"), t("Thursday"), t("Friday"), t("Saturday")].map((d, i) => (
                   <option key={d} value={i}>
                     {d}
                   </option>
@@ -265,34 +267,34 @@ function ProfileDialog({ system, profile, onClose }: { system: string; profile: 
           ) : null}
           {cadence === "monthly" ? (
             <label className="m2-fld">
-              <span className="m2-lbl">On day of the month</span>
+              <span className="m2-lbl">{t("On day of the month")}</span>
               <input type="number" min={1} max={28} value={day} onChange={(e) => setDay(Math.max(1, Math.min(28, Number(e.target.value) || 1)))} />
             </label>
           ) : null}
           <label className="m2-fld">
-            <span className="m2-lbl">At (UTC)</span>
+            <span className="m2-lbl">{t("At (UTC)")}</span>
             <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
           </label>
         </>
       )}
       <button type="button" className="m2-linkbtn" onClick={() => setCustom(!custom)}>
-        {custom ? "Choose a cadence instead" : "Write a cron line instead"}
+        {custom ? t("Choose a cadence instead") : t("Write a cron line instead")}
       </button>
       <label className="m2-fld">
-        <span className="m2-lbl">What it reads</span>
+        <span className="m2-lbl">{t("What it reads")}</span>
         <select value={mode} onChange={(e) => setMode(e.target.value as "full" | "delta")}>
-          <option value="full">Everything each time</option>
-          <option value="delta">Only what changed since the last run</option>
+          <option value="full">{t("Everything each time")}</option>
+          <option value="delta">{t("Only what changed since the last run")}</option>
         </select>
       </label>
-      <p className="m2-prov" role="status">{`Runs ${describeCron(line)}.`}</p>
+      <p className="m2-prov" role="status">{t("Runs {describeCron}.", { describeCron: describeCron(line) })}</p>
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       <div className="m2-dlg-a">
         <button type="button" className="m2-btn" onClick={onClose}>
-          Cancel
+          {t("Cancel")}
         </button>
         <button type="button" className="m2-btn m2-strong" disabled={!valid || pending !== null} onClick={save}>
-          {pending === "save" ? "Saving…" : profile ? "Save the schedule" : "Create the schedule"}
+          {pending === "save" ? t("Saving…") : profile ? t("Save the schedule") : t("Create the schedule")}
         </button>
       </div>
     </Dialog>
@@ -313,66 +315,66 @@ function Schedules({ system }: { system: string }) {
     void run(`pause-${p.id}`, async () => {
       await api.updateProfile(system, p.id, { active: !p.active });
       await refreshAdmin(qc, "profiles");
-      done(p.active ? `${labelOf(p.domain)} schedule paused` : `${labelOf(p.domain)} schedule resumed`, async () => {
+      done(p.active ? t("{domain} schedule paused", { domain: labelText(p.domain) }) : t("{domain} schedule resumed", { domain: labelText(p.domain) }), async () => {
         await api.updateProfile(system, p.id, { active: p.active });
         await refreshAdmin(qc, "profiles");
       });
-      return { tone: "ok", title: p.active ? "Schedule paused" : "Schedule resumed" };
+      return { tone: "ok", title: p.active ? t("Schedule paused") : t("Schedule resumed") };
     });
   const columns: GridColumn<SyncProfile>[] = [
-    { id: "object", header: "Object", width: 200, pin: true, locked: true, cell: (p) => labelOf(p.domain) },
-    { id: "when", header: "Rhythm", width: 230, cell: (p) => describeCron(p.schedule_cron) },
-    { id: "mode", header: "Reads", width: 110, cell: (p) => (p.extraction_mode === "delta" ? "Changes" : "Everything") },
-    { id: "next", header: "Next run", width: 160, cell: (p) => (p.active && p.next_run_at ? formatDate(p.next_run_at, "datetime") : <StatusWord tone="neutral">Paused</StatusWord>) },
-    { id: "last", header: "Last run", width: 160, cell: (p) => (p.last_run_at ? formatDate(p.last_run_at, "datetime") : "Never") },
+    { id: "object", header: t("Object"), width: 200, pin: true, locked: true, cell: (p) => labelText(p.domain) },
+    { id: "when", header: t("Rhythm"), width: 230, cell: (p) => describeCron(p.schedule_cron) },
+    { id: "mode", header: t("Reads"), width: 110, cell: (p) => (p.extraction_mode === "delta" ? t("Changes") : t("Everything")) },
+    { id: "next", header: t("Next run"), width: 160, cell: (p) => (p.active && p.next_run_at ? formatDate(p.next_run_at, "datetime") : <StatusWord tone="neutral">{t("Paused")}</StatusWord>) },
+    { id: "last", header: t("Last run"), width: 160, cell: (p) => (p.last_run_at ? formatDate(p.last_run_at, "datetime") : t("Never")) },
     {
       id: "act",
-      header: "Actions",
+      header: t("Actions"),
       width: 220,
       locked: true,
       cell: (p) => (
         <span style={{ display: "inline-flex", gap: 6 }}>
-          <button type="button" className="m2-btn m2-sm" disabled={!can || pending !== null} aria-label={`${p.active ? "Pause" : "Resume"} ${labelOf(p.domain)}`} onClick={() => toggle(p)}>
-            {p.active ? "Pause" : "Resume"}
+          <button type="button" className="m2-btn m2-sm" disabled={!can || pending !== null} aria-label={`${p.active ? t("Pause") : t("Resume")} ${labelText(p.domain)}`} onClick={() => toggle(p)}>
+            {p.active ? t("Pause") : t("Resume")}
           </button>
-          <button type="button" className="m2-btn m2-sm" disabled={!can} aria-label={`Edit ${labelOf(p.domain)}`} onClick={() => setEditing(p)}>
-            Edit
+          <button type="button" className="m2-btn m2-sm" disabled={!can} aria-label={t("Edit {domain}", { domain: labelText(p.domain) })} onClick={() => setEditing(p)}>
+            {t("Edit")}
           </button>
-          <button type="button" className="m2-btn m2-sm m2-crit" disabled={!can} aria-label={`Delete ${labelOf(p.domain)}`} onClick={() => setRemoving(p)}>
-            Delete
+          <button type="button" className="m2-btn m2-sm m2-crit" disabled={!can} aria-label={t("Delete {domain}", { domain: labelText(p.domain) })} onClick={() => setRemoving(p)}>
+            {t("Delete")}
           </button>
         </span>
       ),
     },
   ];
   return (
-    <Block title="Scheduled runs" hint="Objects this system extracts on a rhythm. A paused schedule keeps its settings.">
+    <Block title={t("Scheduled runs")} hint={t("Objects this system extracts on a rhythm. A paused schedule keeps its settings.")}>
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       <ToolGrid<SyncProfile>
-          toolsTitle="Schedules"
+          toolsTitle={t("Schedules")}
         id="admin-profiles"
-        ariaLabel="Scheduled runs"
+        ariaLabel={t("Scheduled runs")}
         columns={columns}
         rows={rows}
         rowId={(p) => p.id}
         loading={q.isPending && !!system}
-        error={q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>The schedules could not be read.</ErrorFrame> : undefined}
-        emptyFrame={<EmptyFrame>No run is scheduled for this system. Schedule one and the extraction arrives on its own.</EmptyFrame>}
+        error={q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>{t("The schedules could not be read.")}</ErrorFrame> : undefined}
+        emptyFrame={<EmptyFrame>{t("No run is scheduled for this system. Schedule one and the extraction arrives on its own.")}</EmptyFrame>}
         fixedColumns
         compact
       />
       <div className="m2-adm-acts">
         <button type="button" className="m2-btn" disabled={!can || !system} onClick={() => setEditing("new")}>
-          Schedule a run
+          {t("Schedule a run")}
         </button>
       </div>
-      {!can ? <p className="m2-prov">Scheduling needs the manage systems permission.</p> : null}
+      {!can ? <p className="m2-prov">{t("Scheduling needs the manage systems permission.")}</p> : null}
       {editing ? <ProfileDialog system={system} profile={editing === "new" ? null : editing} onClose={() => setEditing(null)} /> : null}
       {removing ? (
         <Confirm
-          title={`Delete the schedule of ${labelOf(removing.domain)}`}
-          body="The object is no longer extracted on a rhythm. Runs it already made stay."
-          confirm="Delete the schedule"
+          title={t("Delete the schedule of {domain}", { domain: labelText(removing.domain) })}
+          body={t("The object is no longer extracted on a rhythm. Runs it already made stay.")}
+          confirm={t("Delete the schedule")}
           danger
           pending={pending === "delete"}
           onCancel={() => setRemoving(null)}
@@ -381,7 +383,7 @@ function Schedules({ system }: { system: string }) {
               await api.deleteProfile(system, removing.id);
               await refreshAdmin(qc, "profiles");
               setRemoving(null);
-              return { tone: "ok", title: "Schedule deleted" };
+              return { tone: "ok", title: t("Schedule deleted") };
             })
           }
         />
@@ -397,36 +399,36 @@ function RecentJobs() {
   const can = useCan();
   const { outcome, pending, run } = useOutcome("admin-job-retry");
   const columns: GridColumn<Job>[] = [
-    { id: "job", header: "Job", width: 280, pin: true, locked: true, cell: (j) => jobDoing(j) },
-    { id: "kind", header: "Kind", width: 140, cell: (j) => JOB_KIND_LABEL[j.kind] ?? labelOf(j.kind) },
-    { id: "status", header: "Status", width: 110, cell: (j) => <StatusWord tone={j.status === "completed" ? "go" : j.status === "failed" ? "no-go" : j.status === "running" ? "at-risk" : "neutral"}>{JOB_STATUS_LABEL[j.status]}</StatusWord> },
-    { id: "started", header: "Started", width: 160, cell: (j) => formatDate(j.started_at * 1000, "datetime") },
+    { id: "job", header: t("Job"), width: 280, pin: true, locked: true, cell: (j) => jobDoing(j) },
+    { id: "kind", header: t("Kind"), width: 140, cell: (j) => JOB_KIND_LABEL[j.kind] ?? labelText(j.kind) },
+    { id: "status", header: t("Status"), width: 110, cell: (j) => <StatusWord tone={j.status === "completed" ? "go" : j.status === "failed" ? "no-go" : j.status === "running" ? "at-risk" : "neutral"}>{JOB_STATUS_LABEL[j.status]}</StatusWord> },
+    { id: "started", header: t("Started"), width: 160, cell: (j) => formatDate(j.started_at * 1000, "datetime") },
     {
       id: "act",
-      header: "Actions",
+      header: t("Actions"),
       width: 170,
       locked: true,
       cell: (j) => (
         <span style={{ display: "inline-flex", gap: 6 }}>
-          <button type="button" className="m2-btn m2-sm" onClick={() => openItem({ kind: "job", id: j.id })} aria-label={`Open ${jobDoing(j)}`}>
-            Open
+          <button type="button" className="m2-btn m2-sm" onClick={() => openItem({ kind: "job", id: j.id })} aria-label={t("Open {jobDoing}", { jobDoing: jobDoing(j) })}>
+            {t("Open")}
           </button>
           {j.status === "failed" ? (
             <button
               type="button"
               className="m2-btn m2-sm"
               disabled={!canRetry(j) || !can("trigger_sync") || pending !== null}
-              aria-label={`Retry ${jobDoing(j)}`}
+              aria-label={t("Retry {jobDoing}", { jobDoing: jobDoing(j) })}
               onClick={() =>
                 void run(`retry-${j.id}`, async () => {
                   const r = await retryJobById(j.id);
                   void qc.invalidateQueries({ queryKey: ["v2"] });
                   void qc.invalidateQueries({ queryKey: ["jobs"] });
-                  return { tone: "ok", title: "Started again", job: r.job_id ?? null };
+                  return { tone: "ok", title: t("Started again"), job: r.job_id ?? null };
                 })
               }
             >
-              Retry
+              {t("Retry")}
             </button>
           ) : null}
         </span>
@@ -434,17 +436,17 @@ function RecentJobs() {
     },
   ];
   return (
-    <Block title="Recent jobs" hint="Open a job for its stages and tables. A failed job that recorded how it started can be retried; a running job cannot be cancelled, because the API has no cancel.">
+    <Block title={t("Recent jobs")} hint={t("Open a job for its stages and tables. A failed job that recorded how it started can be retried; a running job cannot be cancelled, because the API has no cancel.")}>
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       <ToolGrid<Job>
-          toolsTitle="Jobs"
+          toolsTitle={t("Jobs")}
         id="admin-runs-jobs"
-        ariaLabel="Recent jobs"
+        ariaLabel={t("Recent jobs")}
         columns={columns}
         rows={jobs.jobs.filter((j, i, all) => all.findIndex((x) => x.id === j.id) === i).slice(0, 12)}
         rowId={(j) => j.id}
         loading={jobs.isPending}
-        emptyFrame={<EmptyFrame>No job has run yet.</EmptyFrame>}
+        emptyFrame={<EmptyFrame>{t("No job has run yet.")}</EmptyFrame>}
         onOpen={(j) => openItem({ kind: "job", id: j.id })}
         openRowId={open?.kind === "job" ? open.id : null}
         fixedColumns
@@ -461,14 +463,14 @@ export function RunsSection() {
   const [picked, setPicked] = useState("");
   const system = picked || systems.data?.[0]?.id || "";
   const allowed = can("trigger_sync") || can("analyse") || can("manage_systems");
-  if (!allowed) return <AdminPage title="Runs and jobs"><NeedsPermission what="Starting runs" permission="trigger_sync" /></AdminPage>;
+  if (!allowed) return <AdminPage title={t("Runs and jobs")}><NeedsPermission what={t("Starting runs")} permission="trigger_sync" /></AdminPage>;
   return (
-    <AdminPage title="Runs and jobs" lead="Start work here and follow it in the job line. Everything below acts on one system at a time.">
+    <AdminPage title={t("Runs and jobs")} lead={t("Start work here and follow it in the job line. Everything below acts on one system at a time.")}>
       <div className="m2-fbar">
         <SystemPick value={system} onChange={setPicked} />
       </div>
       {systems.isSuccess && (systems.data ?? []).length === 0 ? (
-        <EmptyFrame>No system is connected yet. Connect one from the landscape, then start an extraction here.</EmptyFrame>
+        <EmptyFrame>{t("No system is connected yet. Connect one from the landscape, then start an extraction here.")}</EmptyFrame>
       ) : !system ? null : (
         <>
           <Extraction key={`x-${system}`} system={system} />

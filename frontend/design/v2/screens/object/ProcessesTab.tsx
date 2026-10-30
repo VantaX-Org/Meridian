@@ -12,6 +12,7 @@ import "../../mdm.css";
 import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../../parts";
 import { ScrollFrame } from "./ScrollFrame";
 import { WhatIfPanel } from "./WhatIf";
+import { t } from "@/lib/v2/i18n";
 
 /** The process designer of an object: a canvas of its own under the object. */
 export const designerHref = (system: string, module: string): string => `/v2/o/${system}/${module}/processes/design`;
@@ -25,29 +26,29 @@ function StepBlock({ step, module, openId }: { step: StepView; module: string; o
         <DqWord status={step.status} />
         <span className="m2-sname">{step.name}</span>
         {step.tcode ? <Mono>{step.tcode}</Mono> : null}
-        <span className="m2-meta">{`Step ${step.number}`}</span>
+        <span className="m2-meta">{t("Step {number}", { number: step.number })}</span>
       </summary>
       <div className="m2-sbody">
         <p className="m2-rp">
           {step.description}{" "}
-          <V2Link href={hrefFor({ kind: "step", id: ref })} aria-label={`Open the step ${step.name}`}>
-            Open the step
+          <V2Link href={hrefFor({ kind: "step", id: ref })} aria-label={t("Open the step {name}", { name: step.name })}>
+            {t("Open the step")}
           </V2Link>
         </p>
         {step.activities.map((a) => (
           <div key={a.l5_id} className="m2-act5">
             <h5 className="m2-act5-h">{a.l5_name}</h5>
             {a.fields.length === 0 ? (
-              <p className="m2-rp m2-meta">No field is mapped to this activity.</p>
+              <p className="m2-rp m2-meta">{t("No field is mapped to this activity.")}</p>
             ) : (
-              <ScrollFrame label={`Fields of ${a.l5_name}, scrollable`}>
-                <table className="m2-tbl m2-ftbl" aria-label={`Fields of ${a.l5_name}`}>
+              <ScrollFrame label={t("Fields of {l5_name}, scrollable", { l5_name: a.l5_name })}>
+                <table className="m2-tbl m2-ftbl" aria-label={t("Fields of {l5_name}", { l5_name: a.l5_name })}>
                   <thead>
                     <tr>
-                      <th scope="col">Field</th>
-                      <th scope="col">Status</th>
-                      <th scope="col" className="m2-r">Pass rate</th>
-                      <th scope="col" className="m2-r">Failing</th>
+                      <th scope="col">{t("Field")}</th>
+                      <th scope="col">{t("Status")}</th>
+                      <th scope="col" className="m2-r">{t("Pass rate")}</th>
+                      <th scope="col" className="m2-r">{t("Failing")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -60,8 +61,8 @@ function StepBlock({ step, module, openId }: { step: StepView; module: string; o
                         <td>
                           <DqWord status={f.dq_status} />
                         </td>
-                        <td className="m2-r">{f.pass_rate == null ? <Dash why="No rule reads this field" /> : `${f1(f.pass_rate)}%`}</td>
-                        <td className="m2-r">{f.check_id ? int(f.affected_count) : <Dash why="No rule reads this field" />}</td>
+                        <td className="m2-r">{f.pass_rate == null ? <Dash why={t("No rule reads this field")} /> : `${f1(f.pass_rate)}%`}</td>
+                        <td className="m2-r">{f.check_id ? int(f.affected_count) : <Dash why={t("No rule reads this field")} />}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -90,7 +91,7 @@ function L1Block({ l1, steps, module, openId }: { l1: BusinessProcessL1; steps: 
           {blocked > 0 ? (
             <>
               <Dot />
-              {`${blocked} of ${steps.length} ${steps.length === 1 ? "step" : "steps"} blocked`}
+              {t("{blocked} of {stepsCount} {stepsCount, plural, one {step} other {steps}} blocked", { blocked, stepsCount: steps.length })}
             </>
           ) : null}
         </span>
@@ -126,19 +127,19 @@ export function ProcessesTab({ system, module: moduleSegment }: { system: string
   const openId = open?.kind === "step" ? open.id : null;
 
   const designer = (
-    <section aria-label="Process designer" className="m2-sec m2-dframe">
+    <section aria-label={t("Process designer")} className="m2-sec m2-dframe">
       <div>
-        <h2 className="m2-h2">Process designer</h2>
-        <p className="m2-rp">Edit the process model, its steps and the fields each step reads in the process designer. Changes there show here on the next run.</p>
+        <h2 className="m2-h2">{t("Process designer")}</h2>
+        <p className="m2-rp">{t("Edit the process model, its steps and the fields each step reads in the process designer. Changes there show here on the next run.")}</p>
       </div>
       <V2Link href={designerHref(system, moduleSegment)} className="m2-btn">
-        Open the designer
+        {t("Open the designer")}
       </V2Link>
     </section>
   );
 
   if (receiptQ.isError || docQ.isError) {
-    return <ErrorFrame onRetry={() => { void receiptQ.refetch(); void docQ.refetch(); }}>{`The process readiness of ${label} could not be read.`}</ErrorFrame>;
+    return <ErrorFrame onRetry={() => { void receiptQ.refetch(); void docQ.refetch(); }}>{t("The process readiness of {label} could not be read.", { label })}</ErrorFrame>;
   }
   if (receiptQ.isPending || docQ.isPending) {
     return (
@@ -150,8 +151,8 @@ export function ProcessesTab({ system, module: moduleSegment }: { system: string
   if (processes.length === 0) {
     return (
       <>
-        <EmptyFrame action={<V2Link href={designerHref(system, moduleSegment)} className="m2-btn">Open the designer</V2Link>}>
-          {`No process step reads the fields of ${label}. Process readiness fills for objects that a step of the process model reads, such as Material master in Procure to Pay; add the object to a step in the designer.`}
+        <EmptyFrame action={<V2Link href={designerHref(system, moduleSegment)} className="m2-btn">{t("Open the designer")}</V2Link>}>
+          {t("No process step reads the fields of {label}. Process readiness fills for objects that a step of the process model reads, such as Material master in Procure to Pay; add the object to a step in the designer.", { label })}
         </EmptyFrame>
       </>
     );
@@ -160,13 +161,13 @@ export function ProcessesTab({ system, module: moduleSegment }: { system: string
     <div className="m2-procs">
       <p className="m2-finding" data-testid="process-sentence">
         {blocked.length === 0
-          ? `No process step is blocked by ${label}. Every step that reads its fields is ready in this run.`
-          : `${blocked.length} of ${steps.length} process ${steps.length === 1 ? "step is" : "steps are"} blocked by ${label}: ${blocked.slice(0, 3).map((s) => `${s.l1Id} step ${s.number}`).join(", ")}${blocked.length > 3 ? ` and ${blocked.length - 3} more` : ""}.`}
+          ? t("No process step is blocked by {label}. Every step that reads its fields is ready in this run.", { label })
+          : t("{blockedCount} of {stepsCount} process {stepsCount, plural, one {step is} other {steps are}} blocked by {label}: {map}{value}.", { blockedCount: blocked.length, stepsCount: steps.length, label, map: blocked.slice(0, 3).map((s) => t("{l1Id} step {number}", { l1Id: s.l1Id, number: s.number })).join(", "), value: blocked.length > 3 ? t(" and {count} more", { count: blocked.length - 3 }) : "" })}
       </p>
       {processes.map((l1) => (
         <L1Block key={l1.l1_id} l1={l1} steps={steps.filter((s) => s.l1Id === l1.l1_id)} module={apiModule} openId={openId} />
       ))}
-      <p className="m2-prov">A step is blocked when a field it writes fails a critical or high rule, or passes under 70%. Failing counts are records, and a record can fail several rules.</p>
+      <p className="m2-prov">{t("A step is blocked when a field it writes fails a critical or high rule, or passes under 70%. Failing counts are records, and a record can fail several rules.")}</p>
       <WhatIfPanel steps={steps} receipt={receiptQ.data} label={label} />
       {designer}
     </div>

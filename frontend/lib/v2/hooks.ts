@@ -8,6 +8,7 @@ import { personaForRole, pillSetFor } from "@/lib/persona";
 import { fixtureParam, useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { usePersonaOverride } from "./prefs";
 import { actionsOf, useShareMode, useViewAs } from "./view-as";
+import { t } from "@/lib/v2/i18n";
 
 export type OpenKind = "record" | "rule" | "run" | "system" | "feature" | "job" | "batch" | "person" | "inbox" | "triage" | "golden" | "term" | "step" | "connection" | "config" | "syncschedule" | "zobject" | "survivorship" | AdminKind;
 /** The administration, report and panel kinds: `?open=user:<id>` and so on. `preferences`, `help` and `waves` carry no id. */
@@ -69,7 +70,7 @@ export const FIXTURE_ME = "u-me";
 
 export type V2Persona = "lead" | "steward" | "basis" | "owner" | "process";
 
-export const PERSONA_LABEL: Record<V2Persona, string> = { lead: "Programme lead", steward: "Data steward", basis: "SAP Basis", owner: "Data owner", process: "Process analyst" };
+export const PERSONA_LABEL: Record<V2Persona, string> = { get lead() { return t("Programme lead"); }, get steward() { return t("Data steward"); }, get basis() { return t("SAP Basis"); }, get owner() { return t("Data owner"); }, get process() { return t("Process analyst"); } };
 
 export interface V2Session {
   persona: V2Persona;
@@ -109,7 +110,7 @@ export function useV2Session(): V2Session {
       const asked = fixtureParam("persona");
       const persona: V2Persona = asked === "steward" || asked === "basis" || asked === "owner" || asked === "process" || asked === "lead" ? asked : asRole ? personaOf(asRole) : (chosen ?? "lead");
       const allowed = asRole ? new Set(actionsOf(asRole)) : null;
-      return { persona, label: PERSONA_LABEL[persona], name: "Demo user", email: null, id: FIXTURE_ME, can: allowed ? (a: string) => allowed.has(a) : () => true, fixture, viewAs, shared };
+      return { persona, label: PERSONA_LABEL[persona], name: t("Demo user"), email: null, id: FIXTURE_ME, can: allowed ? (a: string) => allowed.has(a) : () => true, fixture, viewAs, shared };
     }
     // Live: a view-as role is narrowed by the server (/me/permissions answers for it); a share link narrows here.
     const viewer = new Set(actionsOf("viewer"));

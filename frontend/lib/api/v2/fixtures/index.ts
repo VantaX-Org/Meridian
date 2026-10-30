@@ -10,9 +10,10 @@ import { objectFixture } from "./object";
 import { mdmFixture, mdmFixtureWrite } from "./mdm";
 import * as wf from "./work-fixture";
 import * as ap from "./approvals";
-import { adminFixtureResponse, adminFixtureWrite, NONE_ADMIN } from "./admin";
 import { NOT_MINE, resetSys6b, sys6bRead, sys6bWrite, withSystems } from "./sys6b";
 import { NONE_ROLES, resetRolesFixture, rolesFixtureResponse, rolesFixtureWrite } from "./roles";
+import { adminFixtureResponse, adminFixtureWrite, fixtureDownload as adminFixtureDownload, NONE_ADMIN } from "./admin";
+import { enterpriseFixtureDownload, enterpriseFixtureResponse, enterpriseFixtureWrite, NONE_ENTERPRISE } from "./enterprise";
 
 /**
  * Fixture answers for the step 0 contract, built from the approved prototype's numbers: 3 systems (ECC production
@@ -125,6 +126,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
     if (method === "PUT" && path === "/views") return wf.putViewFixture(body as never);
     const mdm = mdmFixtureWrite(method, path, body);
     if (mdm !== undefined) return mdm;
+    const ent = enterpriseFixtureWrite(method, path, body);
+    if (ent !== NONE_ENTERPRISE) return ent;
     const admin = adminFixtureWrite(method, path, body, params);
     if (admin !== NONE_ADMIN) return admin;
     void params;
@@ -133,7 +136,13 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   return out as T;
 }
 
-export { fixtureDownload, resetAdminFixture } from "./admin";
+export { resetAdminFixture } from "./admin";
+export { resetEnterpriseFixture } from "./enterprise";
+
+/** A file in fixture mode: the enterprise stand-ins first, then the admin area's. */
+export function fixtureDownload(path: string, params: Record<string, unknown>, fallback: string): { name: string; text: string } {
+  return enterpriseFixtureDownload(path) ?? adminFixtureDownload(path, params, fallback);
+}
 export const fixtureExport = wf.exportFixture;
 export const fixtureImport = wf.importFixture;
 export const resetWorkFixture = (): void => {
@@ -147,6 +156,8 @@ export const resetWorkFixture = (): void => {
 export function fixtureResponse<T>(path: string, params: Params): T {
   const rolesStep = rolesFixtureResponse(path, params);
   if (rolesStep !== NONE_ROLES) return rolesStep as T;
+  const ent = enterpriseFixtureResponse(path);
+  if (ent !== NONE_ENTERPRISE) return ent as T;
   const adminStep = adminFixtureResponse(path, params);
   if (adminStep !== NONE_ADMIN) return adminStep as T;
   const s6 = sys6bRead(path, params);

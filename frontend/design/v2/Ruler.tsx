@@ -1,4 +1,5 @@
 import { rulerGeometry, readingText, f1, DASH, type RulerSize } from "@/lib/v2/score";
+import { t } from "@/lib/v2/i18n";
 
 export interface RulerProps {
   size: RulerSize;
@@ -36,7 +37,7 @@ export function Ruler(props: RulerProps) {
   const { size, dims, measured, score, capped, capLevel, breaches, label, selected, showScore = true, empty } = props;
   const g = rulerGeometry(size, empty ? [null, null, null, null, null, null] : dims, empty ? null : measured);
   const reading = empty
-    ? `${label}: no run yet.`
+    ? t("{label}: no run yet.", { label })
     : readingText({ label, measured, score, capped, capLevel, breaches, dims, records: props.records, rules: props.rules, coverage: props.coverage, lowConfidence: props.lowConfidence ?? false });
   const large = size === 240;
   const tickLeft = g.plot.left - (large ? 2 : 2);
@@ -98,7 +99,7 @@ export function Ruler(props: RulerProps) {
         {large ? (
           <span className="m2-rlab" aria-hidden="true" style={{ marginLeft: g.plot.left, gap: g.gap, width: g.plot.width }}>
             {g.segments.map((s) => (
-              <span key={s.key} className="m2-rlab-i" title={`${s.label} ${s.score ?? "not measured"}`} style={{ width: s.width }}>
+              <span key={s.key} className="m2-rlab-i" title={`${s.label} ${s.score ?? t("not measured")}`} style={{ width: s.width }}>
                 {s.score == null ? DASH : Math.round(s.score)}
               </span>
             ))}
@@ -108,7 +109,7 @@ export function Ruler(props: RulerProps) {
       {showScore ? (
         <span className="m2-ruler-num">
           <span className="m2-sc" data-testid="ruler-score">{empty ? DASH : f1(score)}</span>
-          {!empty && capped ? <span className="m2-capword">capped</span> : null}
+          {!empty && capped ? <span className="m2-capword">{t("capped")}</span> : null}
         </span>
       ) : null}
     </span>

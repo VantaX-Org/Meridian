@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { AlertChannel, AlertChannelCreate, AlertDigest, AlertChannelKind, AlertReportPack } from "@/lib/api/notifications";
 import type { FieldMapping } from "@/lib/api/field-mappings";
 import * as api from "@/lib/api/v2/admin";
-import { formatDate, formatModuleName } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { auditSentence } from "@/lib/v2/audit-sentence";
 import { useOpenItem } from "@/lib/v2/hooks";
 import { refreshAdmin, useAuditEntry, useChannels, useMappings, useUsers } from "@/lib/v2/admin-queries";
@@ -15,6 +15,8 @@ import { Confirm, copyText, useCan, useDone } from "../admin/kit";
 import { shownValue } from "../admin/data";
 import { DIGEST_LABEL, KIND_LABEL, PACK_LABEL } from "../admin/notify";
 import { ResultFrame, useOutcome } from "./shared";
+import { t } from "@/lib/v2/i18n";
+import { moduleText } from "@/lib/v2/labels";
 
 /* ── Audit entry ── */
 
@@ -24,53 +26,53 @@ export function AuditInspector({ id, onClose }: { id: string; onClose: () => voi
   const q = useAuditEntry(id);
   const users = useUsers({}, useCan()("manage_users"));
   const e = q.data;
-  const actor = e ? (users.data?.users.find((u) => u.id === e.actor_user_id)?.name ?? e.actor_email ?? "The system") : "";
+  const actor = e ? (users.data?.users.find((u) => u.id === e.actor_user_id)?.name ?? e.actor_email ?? t("The system")) : "";
   return (
-    <InspectorFrame title={e ? auditSentence(e) : "Audit entry"} status={e ? formatDate(e.created_at, "datetime") : undefined} onClose={onClose}>
+    <InspectorFrame title={e ? auditSentence(e) : t("Audit entry")} status={e ? formatDate(e.created_at, "datetime") : undefined} onClose={onClose}>
       {e ? (
         <>
           <Facts>
-            <Fact label="Who">{actor}</Fact>
-            <Fact label="Action">
+            <Fact label={t("Who")}>{actor}</Fact>
+            <Fact label={t("Action")}>
               <Mono>{e.action}</Mono>
             </Fact>
-            <Fact label="Result">{e.status_code >= 400 ? `Refused, ${e.status_code}` : `Done, ${e.status_code}`}</Fact>
-            <Fact label="Request">
+            <Fact label={t("Result")}>{e.status_code >= 400 ? t("Refused, {status_code}", { status_code: e.status_code }) : t("Done, {status_code}", { status_code: e.status_code })}</Fact>
+            <Fact label={t("Request")}>
               <Mono>{`${e.method} ${e.path}`}</Mono>
             </Fact>
             {e.entity_type ? (
-              <Fact label="Object">
+              <Fact label={t("Object")}>
                 {e.entity_type}
                 {e.entity_id ? <> <Mono>{e.entity_id}</Mono></> : null}
               </Fact>
             ) : null}
-            <Fact label="From">{[e.ip, e.user_agent].filter(Boolean).join(", ") || "—"}</Fact>
+            <Fact label={t("From")}>{[e.ip, e.user_agent].filter(Boolean).join(", ") || "—"}</Fact>
           </Facts>
           {e.before_json ? (
             <>
-              <h3>Before</h3>
-              <pre className="m2-code" aria-label="Before">{pretty(e.before_json)}</pre>
+              <h3>{t("Before")}</h3>
+              <pre className="m2-code" aria-label={t("Before")}>{pretty(e.before_json)}</pre>
             </>
           ) : null}
           {e.after_json ? (
             <>
-              <h3>After</h3>
-              <pre className="m2-code" aria-label="After">{pretty(e.after_json)}</pre>
+              <h3>{t("After")}</h3>
+              <pre className="m2-code" aria-label={t("After")}>{pretty(e.after_json)}</pre>
             </>
           ) : null}
           <Actions>
             <button type="button" className="m2-btn" onClick={() => void copyText(e.id)}>
-              Copy the entry id
+              {t("Copy the entry id")}
             </button>
           </Actions>
-          <p className="m2-prov">Audit entries are permanent. They cannot be edited or removed from here.</p>
+          <p className="m2-prov">{t("Audit entries are permanent. They cannot be edited or removed from here.")}</p>
         </>
       ) : q.isLoading ? (
         <Skeleton width="100%" height={120} />
       ) : q.isError ? (
-        <ErrorFrame onRetry={() => void q.refetch()}>The entry could not be read.</ErrorFrame>
+        <ErrorFrame onRetry={() => void q.refetch()}>{t("The entry could not be read.")}</ErrorFrame>
       ) : (
-        <EmptyFrame>This entry is not among the most recent ones. Filter the log by date to find it.</EmptyFrame>
+        <EmptyFrame>{t("This entry is not among the most recent ones. Filter the log by date to find it.")}</EmptyFrame>
       )}
     </InspectorFrame>
   );
@@ -96,10 +98,10 @@ function NewChannel({ onClose }: { onClose: () => void }) {
   const secretOk = kind !== "webhook" || secret === "" || (secret.length >= 16 && secret.length <= 256);
   const reachable = digest !== "off" || immediate;
   return (
-    <InspectorFrame title="Add a channel" status="New channel" onClose={onClose}>
+    <InspectorFrame title={t("Add a channel")} status={t("New channel")} onClose={onClose}>
       <div className="m2-aform">
         <label>
-          Type
+          {t("Type")}
           <select value={kind} onChange={(e) => setKind(e.target.value as AlertChannelKind)}>
             {KINDS.map((k) => (
               <option key={k} value={k}>
@@ -109,17 +111,17 @@ function NewChannel({ onClose }: { onClose: () => void }) {
           </select>
         </label>
         <label>
-          {kind === "email" ? "Address" : "URL"}
-          <input type={kind === "email" ? "email" : "url"} value={target} onChange={(e) => setTarget(e.target.value)} placeholder={kind === "email" ? "dq-team@company.com" : "https://"} />
+          {kind === "email" ? t("Address") : t("URL")}
+          <input type={kind === "email" ? "email" : "url"} value={target} onChange={(e) => setTarget(e.target.value)} placeholder={kind === "email" ? t("dq-team@company.com") : t("https://")} />
         </label>
         {kind === "webhook" ? (
           <label>
-            Signing secret (16 to 256 characters)
+            {t("Signing secret (16 to 256 characters)")}
             <input type="password" value={secret} onChange={(e) => setSecret(e.target.value)} autoComplete="new-password" />
           </label>
         ) : null}
         <label>
-          Digest
+          {t("Digest")}
           <select value={digest} onChange={(e) => setDigest(e.target.value as AlertDigest)}>
             {DIGESTS.map((d) => (
               <option key={d} value={d}>
@@ -130,7 +132,7 @@ function NewChannel({ onClose }: { onClose: () => void }) {
         </label>
         {kind === "email" ? (
           <label>
-            Board pack
+            {t("Board pack")}
             <select value={pack} onChange={(e) => setPack(e.target.value as AlertReportPack)}>
               {(Object.keys(PACK_LABEL) as AlertReportPack[]).map((p) => (
                 <option key={p} value={p}>
@@ -142,10 +144,10 @@ function NewChannel({ onClose }: { onClose: () => void }) {
         ) : null}
         <label className="m2-sw" style={{ display: "flex", gap: 8 }}>
           <input type="checkbox" checked={immediate} onChange={(e) => setImmediate(e.target.checked)} />
-          Send new critical findings at once
+          {t("Send new critical findings at once")}
         </label>
       </div>
-      {!reachable ? <p className="m2-prov" role="alert">Choose a digest or immediate delivery, or the channel never fires.</p> : null}
+      {!reachable ? <p className="m2-prov" role="alert">{t("Choose a digest or immediate delivery, or the channel never fires.")}</p> : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       <Actions>
         <button
@@ -158,15 +160,15 @@ function NewChannel({ onClose }: { onClose: () => void }) {
               const c = await api.createChannel(body);
               await refreshAdmin(qc, "channels");
               setMade(c.id);
-              return { tone: "ok", title: "Channel added" };
+              return { tone: "ok", title: t("Channel added") };
             })
           }
         >
-          {pending === "add" ? "Adding…" : "Add the channel"}
+          {pending === "add" ? t("Adding…") : t("Add the channel")}
         </button>
         {made ? (
           <button type="button" className="m2-btn" onClick={() => openItem({ kind: "channel", id: made })}>
-            Open the channel
+            {t("Open the channel")}
           </button>
         ) : null}
       </Actions>
@@ -189,15 +191,15 @@ function ChannelBody({ c }: { c: AlertChannel }) {
   return (
     <>
       <Facts>
-        <Fact label="Type">{KIND_LABEL[c.kind]}</Fact>
-        <Fact label="Sends to">{c.target}</Fact>
-        <Fact label="Added">{formatDate(c.created_at)}</Fact>
-        {c.kind === "webhook" ? <Fact label="Signing secret">{c.has_secret ? "Stored" : "None"}</Fact> : null}
+        <Fact label={t("Type")}>{KIND_LABEL[c.kind]}</Fact>
+        <Fact label={t("Sends to")}>{c.target}</Fact>
+        <Fact label={t("Added")}>{formatDate(c.created_at)}</Fact>
+        {c.kind === "webhook" ? <Fact label={t("Signing secret")}>{c.has_secret ? t("Stored") : t("None")}</Fact> : null}
       </Facts>
-      <h3>Settings</h3>
+      <h3>{t("Settings")}</h3>
       <div className="m2-aform">
         <label>
-          Digest
+          {t("Digest")}
           <select value={digest} disabled={!edit} onChange={(e) => setDigest(e.target.value as AlertDigest)}>
             {DIGESTS.map((d) => (
               <option key={d} value={d}>
@@ -208,7 +210,7 @@ function ChannelBody({ c }: { c: AlertChannel }) {
         </label>
         {c.kind === "email" ? (
           <label>
-            Board pack
+            {t("Board pack")}
             <select value={pack} disabled={!edit} onChange={(e) => setPack(e.target.value as AlertReportPack)}>
               {(Object.keys(PACK_LABEL) as AlertReportPack[]).map((p) => (
                 <option key={p} value={p}>
@@ -220,11 +222,11 @@ function ChannelBody({ c }: { c: AlertChannel }) {
         ) : null}
         <label className="m2-sw" style={{ display: "flex", gap: 8 }}>
           <input type="checkbox" checked={immediate} disabled={!edit} onChange={(e) => setImmediate(e.target.checked)} />
-          Send new critical findings at once
+          {t("Send new critical findings at once")}
         </label>
         <label className="m2-sw" style={{ display: "flex", gap: 8 }}>
           <input type="checkbox" checked={enabled} disabled={!edit} onChange={(e) => setEnabled(e.target.checked)} />
-          Channel is on
+          {t("Channel is on")}
         </label>
       </div>
       {outcome ? <ResultFrame outcome={outcome} /> : null}
@@ -238,15 +240,15 @@ function ChannelBody({ c }: { c: AlertChannel }) {
               const prev = { digest: c.digest, immediate_critical: c.immediate_critical, enabled: c.enabled, ...(c.kind === "email" ? { report_pack: c.report_pack ?? "off" } : {}) };
               await api.updateChannel(c.id, { digest, immediate_critical: immediate, enabled, ...(c.kind === "email" ? { report_pack: pack } : {}) });
               await refreshAdmin(qc, "channels");
-              done("Channel saved", async () => {
+              done(t("Channel saved"), async () => {
                 await api.updateChannel(c.id, prev);
                 await refreshAdmin(qc, "channels");
               });
-              return { tone: "ok", title: "Channel saved" };
+              return { tone: "ok", title: t("Channel saved") };
             })
           }
         >
-          {pending === "save" ? "Saving…" : "Save"}
+          {pending === "save" ? t("Saving…") : t("Save")}
         </button>
         <button
           type="button"
@@ -255,22 +257,22 @@ function ChannelBody({ c }: { c: AlertChannel }) {
           onClick={() =>
             void run("test", async () => {
               const r = await api.testChannel(c.id);
-              return r.delivered ? { tone: "ok", title: "Test message delivered" } : { tone: "fail", title: "The channel did not accept the test message", detail: "Check the address, and that the channel is on." };
+              return r.delivered ? { tone: "ok", title: t("Test message delivered") } : { tone: "fail", title: t("The channel did not accept the test message"), detail: t("Check the address, and that the channel is on.") };
             })
           }
         >
-          {pending === "test" ? "Sending…" : "Send a test message"}
+          {pending === "test" ? t("Sending…") : t("Send a test message")}
         </button>
         <button type="button" className="m2-btn m2-crit" disabled={!edit || pending !== null} onClick={() => setAsk(true)}>
-          Remove the channel
+          {t("Remove the channel")}
         </button>
       </Actions>
       {ask ? (
         <Confirm
-          title={`Remove the ${KIND_LABEL[c.kind]} channel`}
-          body={`${c.target} stops receiving alerts and digests at once.`}
-          confirm="Remove the channel"
-          cancel="Keep the channel"
+          title={t("Remove the {KIND_LABEL} channel", { KIND_LABEL: KIND_LABEL[c.kind] })}
+          body={t("{target} stops receiving alerts and digests at once.", { target: c.target })}
+          confirm={t("Remove the channel")}
+          cancel={t("Keep the channel")}
           danger
           pending={pending === "remove"}
           onCancel={() => setAsk(false)}
@@ -280,7 +282,7 @@ function ChannelBody({ c }: { c: AlertChannel }) {
               await refreshAdmin(qc, "channels");
               setAsk(false);
               close();
-              return { tone: "ok", title: "Channel removed" };
+              return { tone: "ok", title: t("Channel removed") };
             })
           }
         />
@@ -294,8 +296,8 @@ export function ChannelInspector({ id, onClose }: { id: string; onClose: () => v
   if (id === "new") return <NewChannel onClose={onClose} />;
   const c = q.data?.find((x) => x.id === id);
   return (
-    <InspectorFrame title={c ? `${KIND_LABEL[c.kind]}: ${c.target}` : "Channel"} status={c ? (c.enabled ? "On" : "Off") : undefined} onClose={onClose}>
-      {c ? <ChannelBody key={c.id} c={c} /> : q.isLoading ? <Skeleton width="100%" height={120} /> : q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>The channel could not be read.</ErrorFrame> : <EmptyFrame>This channel does not exist.</EmptyFrame>}
+    <InspectorFrame title={c ? `${KIND_LABEL[c.kind]}: ${c.target}` : t("Channel")} status={c ? (c.enabled ? t("On") : t("Off")) : undefined} onClose={onClose}>
+      {c ? <ChannelBody key={c.id} c={c} /> : q.isLoading ? <Skeleton width="100%" height={120} /> : q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>{t("The channel could not be read.")}</ErrorFrame> : <EmptyFrame>{t("This channel does not exist.")}</EmptyFrame>}
     </InspectorFrame>
   );
 }
@@ -325,42 +327,42 @@ function MappingBody({ m, selfService }: { m: FieldMapping; selfService: boolean
   return (
     <>
       <Facts>
-        <Fact label="Object">{formatModuleName(m.module)}</Fact>
-        <Fact label="Standard field">
+        <Fact label={t("Object")}>{moduleText(m.module)}</Fact>
+        <Fact label={t("Standard field")}>
           <Mono>{m.standard_field}</Mono>
         </Fact>
-        <Fact label="Meaning">{m.standard_label ?? "—"}</Fact>
-        <Fact label="Type">
+        <Fact label={t("Meaning")}>{m.standard_label ?? "—"}</Fact>
+        <Fact label={t("Type")}>
           <Mono>{m.data_type}</Mono>
         </Fact>
-        <Fact label="State">{m.is_mapped ? "Mapped" : "Not mapped: the standard column is read"}</Fact>
-        <Fact label="Changed">{formatDate(m.updated_at, "datetime")}</Fact>
+        <Fact label={t("State")}>{m.is_mapped ? t("Mapped") : t("Not mapped: the standard column is read")}</Fact>
+        <Fact label={t("Changed")}>{formatDate(m.updated_at, "datetime")}</Fact>
       </Facts>
-      <h3>Your column</h3>
+      <h3>{t("Your column")}</h3>
       <div className="m2-aform">
         <label>
-          Column header in your file
-          <input value={col} disabled={!edit} onChange={(e) => setCol(e.target.value)} placeholder={`Default ${m.standard_field}`} />
+          {t("Column header in your file")}
+          <input value={col} disabled={!edit} onChange={(e) => setCol(e.target.value)} placeholder={t("Default {standard_field}", { standard_field: m.standard_field })} />
         </label>
         <label>
-          Label
+          {t("Label")}
           <input value={label} disabled={!edit} onChange={(e) => setLabel(e.target.value)} placeholder={m.standard_label ?? ""} />
         </label>
         <label>
-          Notes
+          {t("Notes")}
           <input value={notes} disabled={!edit} onChange={(e) => setNotes(e.target.value)} />
         </label>
       </div>
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       <Actions>
-        <button type="button" className="m2-btn m2-strong" disabled={!edit || !dirty || pending !== null} onClick={() => write({ customer_field: col.trim(), customer_label: label.trim(), notes: notes.trim(), is_mapped: col.trim() !== "" }, "Mapping saved")}>
-          {pending === "save" ? "Saving…" : "Save the mapping"}
+        <button type="button" className="m2-btn m2-strong" disabled={!edit || !dirty || pending !== null} onClick={() => write({ customer_field: col.trim(), customer_label: label.trim(), notes: notes.trim(), is_mapped: col.trim() !== "" }, t("Mapping saved"))}>
+          {pending === "save" ? t("Saving…") : t("Save the mapping")}
         </button>
-        <button type="button" className="m2-btn" disabled={!edit || (!m.is_mapped && !m.customer_field && !m.notes) || pending !== null} onClick={() => (setCol(""), setLabel(""), setNotes(""), write({ customer_field: "", customer_label: "", notes: "", is_mapped: false }, "Mapping cleared"))}>
-          Clear the mapping
+        <button type="button" className="m2-btn" disabled={!edit || (!m.is_mapped && !m.customer_field && !m.notes) || pending !== null} onClick={() => (setCol(""), setLabel(""), setNotes(""), write({ customer_field: "", customer_label: "", notes: "", is_mapped: false }, t("Mapping cleared")))}>
+          {t("Clear the mapping")}
         </button>
       </Actions>
-      {!edit ? <p className="m2-prov">Editing mappings needs the manage field mappings permission and a licence with self-service mapping.</p> : null}
+      {!edit ? <p className="m2-prov">{t("Editing mappings needs the manage field mappings permission and a licence with self-service mapping.")}</p> : null}
     </>
   );
 }
@@ -369,8 +371,8 @@ export function MappingInspector({ id, onClose }: { id: string; onClose: () => v
   const q = useMappings({});
   const m = q.data?.mappings.find((x) => x.id === id);
   return (
-    <InspectorFrame title={m ? m.standard_field : "Field mapping"} status={m ? formatModuleName(m.module) : undefined} onClose={onClose}>
-      {m ? <MappingBody key={`${m.id}|${m.updated_at}`} m={m} selfService={q.data?.self_service_enabled ?? true} /> : q.isLoading ? <Skeleton width="100%" height={120} /> : q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>The mapping could not be read.</ErrorFrame> : <EmptyFrame>This field is not in the mapping list.</EmptyFrame>}
+    <InspectorFrame title={m ? m.standard_field : t("Field mapping")} status={m ? moduleText(m.module) : undefined} onClose={onClose}>
+      {m ? <MappingBody key={`${m.id}|${m.updated_at}`} m={m} selfService={q.data?.self_service_enabled ?? true} /> : q.isLoading ? <Skeleton width="100%" height={120} /> : q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>{t("The mapping could not be read.")}</ErrorFrame> : <EmptyFrame>{t("This field is not in the mapping list.")}</EmptyFrame>}
     </InspectorFrame>
   );
 }

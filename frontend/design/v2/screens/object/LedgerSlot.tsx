@@ -5,6 +5,7 @@ import { useRunParam } from "@/lib/v2/hooks";
 import { useLandscape } from "@/lib/v2/queries";
 import { findSystem, moduleFromSlug } from "@/lib/v2/score";
 import { EmptyFrame, Skeleton, V2Link } from "../../parts";
+import { t } from "@/lib/v2/i18n";
 
 /**
  * The work ledger is built as design/v2/screens/Ledger.tsx. The Records tab and the rule canvas show it scoped, and
@@ -29,7 +30,7 @@ export type LedgerLoader = () => Promise<LedgerModule>;
 function loadScreen(name: string): Promise<LedgerModule> {
   return import(/* webpackInclude: /Ledger\.tsx$/ */ `../${name}.tsx`) as Promise<LedgerModule>;
 }
-const defaultLoader: LedgerLoader = () => loadScreen("Ledger");
+const defaultLoader: LedgerLoader = () => loadScreen(t("Ledger"));
 
 let cached: ComponentType<LedgerProps> | null | undefined;
 
@@ -71,8 +72,8 @@ export function LedgerSlot({ label, scope, loader = defaultLoader }: { label: st
     );
   }
   return (
-    <EmptyFrame action={<V2Link href={scope.module ? `/v2/work?module=${encodeURIComponent(scope.module)}` : "/v2/work"} className="m2-btn">Open Work</V2Link>}>
-      {`The ledger of failing records for ${label} could not be loaded here. Work lists every record and failing field, ranked by value at risk, with the current value, the suggested value and the decision on the row.`}
+    <EmptyFrame action={<V2Link href={scope.module ? `/v2/work?module=${encodeURIComponent(scope.module)}` : "/v2/work"} className="m2-btn">{t("Open Work")}</V2Link>}>
+      {t("The ledger of failing records for {label} could not be loaded here. Work lists every record and failing field, ranked by value at risk, with the current value, the suggested value and the decision on the row.", { label })}
     </EmptyFrame>
   );
 }

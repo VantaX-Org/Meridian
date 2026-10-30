@@ -29,7 +29,7 @@ afterEach(() => {
 const text = (el: Element) => (el.textContent ?? "").replace(/\s+/g, " ").trim();
 const mount = () => renderWithQuery(<V2Shell><h1>Page</h1></V2Shell>);
 const openPanel = async () => {
-  fireEvent.click(await screen.findByRole("button", { name: "Inbox, 7 unread" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Inbox 7, unread" }));
   const panel = await screen.findByTestId("inbox-panel");
   await within(panel).findByRole("heading", { name: "Today" });
   return panel;
@@ -45,7 +45,7 @@ describe("the inbox panel", () => {
     expect(within(frame).getByRole("heading", { level: 2, name: "Inbox" })).toBeInTheDocument();
     expect(frame.contains(panel)).toBe(true);
     expect(text(frame.querySelector(".m2-ih-sl") as Element)).toBe("7 unread");
-    expect(screen.getByRole("button", { name: "Inbox, 7 unread" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: "Inbox 7, unread" })).toHaveAttribute("aria-expanded", "true");
   });
 
   it("opens straight from ?open=inbox", async () => {
@@ -90,7 +90,7 @@ describe("the inbox panel", () => {
     const first = items(panel)[0];
     fireEvent.click(within(first).getByRole("button", { name: /^Mark read: Batch B-241/ }));
     await waitFor(() => expect(mark).toHaveBeenCalledWith("n1"));
-    expect(await screen.findByRole("button", { name: "Inbox, 6 unread" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Inbox 6, unread" })).toBeInTheDocument();
     await waitFor(() => expect(within(items(panel)[0]).queryByRole("button", { name: /^Mark read/ })).toBeNull());
     expect(text(screen.getByTestId("inspector").querySelector(".m2-ih-sl") as Element)).toBe("6 unread");
   });
@@ -101,7 +101,7 @@ describe("the inbox panel", () => {
     const panel = await openPanel();
     fireEvent.click(within(panel).getByRole("button", { name: "Mark all read" }));
     await waitFor(() => expect(all).toHaveBeenCalled());
-    expect(await screen.findByRole("button", { name: "Inbox, 0 unread" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Inbox 0, unread" })).toBeInTheDocument();
     await waitFor(() => expect(within(panel).getByRole("button", { name: "Mark all read" })).toBeDisabled());
     expect(within(panel).queryByRole("button", { name: /^Mark read/ })).toBeNull();
   });

@@ -31,7 +31,7 @@
 .m2-root ::selection { background: var(--m2-data); color: var(--m2-on-data); }
 .m2-root input, .m2-root select { caret-color: var(--m2-data); }
 .m2-root * { scrollbar-width: thin; scrollbar-color: var(--m2-line-2) transparent; }
-.m2-root :focus-visible { outline: 2px solid var(--m2-data); outline-offset: 2px; border-radius: var(--m2-r1); }
+.m2-root :focus-visible { outline: var(--m2-focus-w) solid var(--m2-focus); outline-offset: 2px; border-radius: var(--m2-r1); }
 .m2-root [hidden] { display: none !important; }
 .m2-mono { font-family: var(--m2-mono); font-weight: 400; font-size: var(--m2-fs-12); letter-spacing: 0; font-variant-numeric: normal; }
 .m2-meta { color: var(--m2-meta); }
@@ -174,6 +174,7 @@
 .m2-menu-h { font-size: var(--m2-fs-12); color: var(--m2-meta); padding: 6px 10px 4px; }
 .m2-menu-i { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: var(--m2-s3); min-height: 32px; padding: 4px 10px; border: 0; background: transparent; border-radius: var(--m2-r1); text-align: left; color: var(--m2-fg) !important; }
 .m2-menu-i:hover, .m2-menu-i:focus-visible { background: var(--m2-active); outline: 0; text-decoration: none !important; }
+.m2-menu-i:focus-visible { box-shadow: inset 0 0 0 var(--m2-focus-w) var(--m2-focus); }
 .m2-menu-i[aria-checked="true"] { font-weight: 500; }
 .m2-menu-i[aria-disabled="true"] { color: var(--m2-meta) !important; cursor: not-allowed; }
 .m2-menu-l { display: flex; flex-direction: column; min-width: 0; }

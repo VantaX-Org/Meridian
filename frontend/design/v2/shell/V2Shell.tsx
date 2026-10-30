@@ -12,6 +12,8 @@ import { useOpenItem, usePhone, useV2Href } from "@/lib/v2/hooks";
 import { setUiCookie, UI_V2 } from "@/lib/v2/switch";
 import { useApplyKeyHints } from "@/lib/v2/prefs";
 import { readPrefs, subscribePreferences } from "@/lib/preferences";
+import { t, useInterfaceLang } from "@/lib/v2/i18n";
+import { themeRootProps, useTenantTheme } from "@/lib/v2/theme";
 import { CommandLine } from "../CommandLine";
 import { Inspector } from "../Inspector";
 import { ShortcutSheet } from "../ShortcutSheet";
@@ -22,6 +24,7 @@ import { RoleBanners } from "./RoleBanners";
 import { StatusStrip } from "./StatusStrip";
 import { ToastProvider, useToast } from "../Toast";
 import { TopBar } from "./TopBar";
+import { useDocumentLang } from "./Standalone";
 
 export { usePhone };
 
@@ -101,9 +104,21 @@ function ChromeBody({ children }: { children: ReactNode }) {
   const toggleMap = useCallback(() => setMapOpen((v) => !v), []);
   return (
     <>
-      <a className="m2-skip" href="#m2-canvas">
-        Skip to content
-      </a>
+      <nav className="m2-skips" aria-label={t("Skip links")}>
+        <a className="m2-skip" href="#m2-canvas">
+          {t("Skip to content")}
+        </a>
+        {phone ? null : (
+          <a className="m2-skip" href="#m2-map">
+            {t("Skip to the map")}
+          </a>
+        )}
+        {open ? (
+          <a className="m2-skip" href="#m2-inspector">
+            {t("Skip to the inspector")}
+          </a>
+        ) : null}
+      </nav>
       <TopBar key={localeKey} onOpenCommand={() => setCommandOpen(true)} onToggleMap={toggleMap} onShortcuts={() => setSheetOpen(true)} mapOpen={mapOpen} />
       {fixture ? <FixtureJobLine /> : <LiveJobLine />}
       <RoleBanners />
@@ -117,7 +132,7 @@ function ChromeBody({ children }: { children: ReactNode }) {
             </main>
             <StatusStrip />
           </div>
-          <Inspector />
+          <Inspector key={open?.kind === "preferences" ? "preferences" : localeKey} />
         </div>
       </div>
       {commandOpen ? <CommandLine onClose={() => setCommandOpen(false)} /> : null}
@@ -128,8 +143,12 @@ function ChromeBody({ children }: { children: ReactNode }) {
 
 /** The root of the v2 interface: its tokens are scoped to it, so the change notices live inside it too. */
 function Chrome({ children, fixture }: { children: ReactNode; fixture: boolean }) {
+  // The language is set here, above everything that writes words; the tenant's accent rides on the same root.
+  const { tag } = useInterfaceLang();
+  const theme = useTenantTheme();
+  useDocumentLang(tag);
   return (
-    <div className="m2-root" data-m2="" data-fixture={fixture ? "1" : undefined}>
+    <div className="m2-root" data-m2="" data-fixture={fixture ? "1" : undefined} lang={tag} {...themeRootProps(theme)}>
       <ToastProvider>
         <ChromeBody>{children}</ChromeBody>
       </ToastProvider>

@@ -15,6 +15,7 @@ import { SsoSection } from "./signin";
 import { SystemSection } from "./system";
 import { BillingSection, LicenceSection } from "./tenant";
 import { UsersSection } from "./users";
+import { t } from "@/lib/v2/i18n";
 
 /** The left index of the Admin canvas: the same column as the landscape map, sections in place of objects. */
 export function AdminMap({ open, onClose, phone }: { open: boolean; onClose: () => void; phone: boolean }) {
@@ -23,20 +24,20 @@ export function AdminMap({ open, onClose, phone }: { open: boolean; onClose: () 
   const sections = visibleSections(can);
   const groups = [...new Set(sections.map((s) => s.group))];
   return (
-    <aside id="m2-map" className={`m2-map${open ? " m2-open" : ""}`} aria-label="Administration" role={phone && open ? "dialog" : undefined} aria-modal={phone && open ? true : undefined} data-testid="admin-index">
+    <aside id="m2-map" className={`m2-map${open ? " m2-open" : ""}`} aria-label={t("Administration")} role={phone && open ? "dialog" : undefined} aria-modal={phone && open ? true : undefined} data-testid="admin-index">
       <div className="m2-map-head">
-        <span>Administration</span>
-        <button type="button" className="m2-x" onClick={onClose} aria-label="Close index">
-          <span className="m2-x-t">Close</span>
+        <span>{t("Administration")}</span>
+        <button type="button" className="m2-x" onClick={onClose} aria-label={t("Close index")}>
+          <span className="m2-x-t">{t("Close")}</span>
         </button>
       </div>
-      <nav className="m2-mnav" aria-label="Administration sections">
+      <nav className="m2-mnav" aria-label={t("Administration sections")}>
         <V2Link href="/v2" className="m2-mi">
-          <span>Back to the landscape</span>
+          <span>{t("Back to the landscape")}</span>
           <kbd className="m2-kb">g l</kbd>
         </V2Link>
         <V2Link href="/v2/admin" className="m2-mi" aria-current={pathname === "/v2/admin" ? "page" : undefined}>
-          <span>All of administration</span>
+          <span>{t("All of administration")}</span>
         </V2Link>
         {groups.map((g) => (
           <div key={g}>
@@ -60,15 +61,15 @@ export function AdminHome() {
   const can = useCan();
   if (!canAdminister(can)) {
     return (
-      <AdminPage title="Administration">
-        <NeedsPermission what="Administration" permission="manage_settings" />
+      <AdminPage title={t("Administration")}>
+        <NeedsPermission what={t("Administration")} permission="manage_settings" />
       </AdminPage>
     );
   }
   const sections = visibleSections(can);
   const groups = [...new Set(sections.map((s) => s.group))];
   return (
-    <AdminPage title="Administration" lead="Everything that sets up this tenant: who can sign in, what the licence covers, how scoring and alerts behave, and the state of the platform. Each section opens in this column.">
+    <AdminPage title={t("Administration")} lead={t("Everything that sets up this tenant: who can sign in, what the licence covers, how scoring and alerts behave, and the state of the platform. Each section opens in this column.")}>
       {groups.map((g) => (
         <Block key={g} title={g}>
           <ul className="m2-hlist" aria-label={g}>
@@ -140,15 +141,15 @@ function Section({ slug }: { slug: AdminSlug }) {
 export function AdminCanvas({ section }: { section: string }) {
   if (!isAdminSlug(section)) {
     return (
-      <AdminPage title="Administration">
+      <AdminPage title={t("Administration")}>
         <EmptyFrame
           action={
             <V2Link href="/v2/admin" className="m2-btn">
-              All of administration
+              {t("All of administration")}
             </V2Link>
           }
         >
-          {`There is no administration section called "${section}". ${ADMIN_SECTIONS.length} sections exist.`}
+          {t("There is no administration section called \"{section}\". {ADMIN_SECTIONSCount} sections exist.", { section, ADMIN_SECTIONSCount: ADMIN_SECTIONS.length })}
         </EmptyFrame>
       </AdminPage>
     );

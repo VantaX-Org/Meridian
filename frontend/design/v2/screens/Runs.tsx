@@ -17,19 +17,20 @@ import { VerdictMark } from "../marks";
 import { Dash, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../parts";
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import { duration } from "../shell/StatusStrip";
+import { t } from "@/lib/v2/i18n";
 
 const RUN_STATUS: Record<string, { word: string; mark: "go" | "no-go" | null }> = {
-  complete: { word: "Complete", mark: "go" },
-  agents_complete: { word: "Complete", mark: "go" },
-  ai_enriched: { word: "Complete", mark: "go" },
-  partial: { word: "Partial", mark: null },
-  failed: { word: "Failed", mark: "no-go" },
-  agents_failed: { word: "Failed", mark: "no-go" },
-  error: { word: "Failed", mark: "no-go" },
-  errored: { word: "Failed", mark: "no-go" },
-  pending: { word: "Queued", mark: null },
-  running: { word: "Running", mark: null },
-  extracted: { word: "Extracted", mark: null },
+  complete: { get word() { return t("Complete"); }, mark: "go" },
+  agents_complete: { get word() { return t("Complete"); }, mark: "go" },
+  ai_enriched: { get word() { return t("Complete"); }, mark: "go" },
+  partial: { get word() { return t("Partial"); }, mark: null },
+  failed: { get word() { return t("Failed"); }, mark: "no-go" },
+  agents_failed: { get word() { return t("Failed"); }, mark: "no-go" },
+  error: { get word() { return t("Failed"); }, mark: "no-go" },
+  errored: { get word() { return t("Failed"); }, mark: "no-go" },
+  pending: { get word() { return t("Queued"); }, mark: null },
+  running: { get word() { return t("Running"); }, mark: null },
+  extracted: { get word() { return t("Extracted"); }, mark: null },
 };
 
 /** Run status as a mark and a word; the filter groups the raw statuses the same way. */
@@ -51,15 +52,16 @@ export function rulesOf(v: VersionHead): number | null {
 }
 
 const STATUS_FILTERS = [
-  { value: "all", label: "Any status" },
-  { value: "complete", label: "Complete" },
-  { value: "failed", label: "Failed" },
-  { value: "active", label: "Queued or running" },
+  { value: "all", get label() { return t("Any status"); } },
+  { value: "complete", get label() { return t("Complete"); } },
+  { value: "failed", get label() { return t("Failed"); } },
+  { value: "active", get label() { return t("Queued or running"); } },
 ] as const;
 
 function statusGroup(status: string): "complete" | "failed" | "active" | "other" {
   const w = runStatus(status).word;
-  return w === "Complete" ? "complete" : w === "Failed" ? "failed" : w === "Queued" || w === "Running" ? "active" : "other";
+  // The word is in the interface's language, so it is compared with the same words.
+  return w === t("Complete") ? "complete" : w === t("Failed") ? "failed" : w === t("Queued") || w === t("Running") ? "active" : "other";
 }
 
 /** "Start a run": analyse the newest stored extraction of one system, the existing POST /versions/{id}/analyse. */
@@ -76,15 +78,15 @@ function StartRun({ onClose }: { onClose: () => void }) {
   const allowed = session.can("analyse");
   const system = systems.find((s) => s.id === chosen);
   return (
-    <div className="m2-handoff" data-testid="start-run" role="group" aria-label="Start a run">
+    <div className="m2-handoff" data-testid="start-run" role="group" aria-label={t("Start a run")}>
       {systems.length === 0 ? (
-        <p>No system has been extracted yet, so there is nothing to analyse. Extract a system first.</p>
+        <p>{t("No system has been extracted yet, so there is nothing to analyse. Extract a system first.")}</p>
       ) : (
         <>
-          <p>An analysis scores the newest stored extraction of a system with every rule. To read fresh data first, extract the system from its page.</p>
+          <p>{t("An analysis scores the newest stored extraction of a system with every rule. To read fresh data first, extract the system from its page.")}</p>
           <div className="m2-pop-cmp">
             <label htmlFor="start-system" className="m2-meta">
-              System
+              {t("System")}
             </label>
             <select id="start-system" className="m2-sel" value={chosen} onChange={(e) => setPicked(e.target.value)}>
               {systems.map((s) => (
@@ -99,22 +101,22 @@ function StartRun({ onClose }: { onClose: () => void }) {
               disabled={!allowed || !newest || pending !== null}
               onClick={() =>
                 void run("analyse", async () => {
-                  if (!newest) return { tone: "fail", title: "Nothing to analyse", detail: "No stored extraction of this system can be analysed." };
+                  if (!newest) return { tone: "fail", title: t("Nothing to analyse"), detail: t("No stored extraction of this system can be analysed.") };
                   const r = await analyseRun(newest.id);
                   void qc.invalidateQueries({ queryKey: ["v2"] });
                   void qc.invalidateQueries({ queryKey: ["jobs"] });
-                  return { tone: "ok", title: "Analysis started", detail: `The ${formatDate(newest.run_at, "datetime")} extraction of ${system?.name ?? "the system"} is being scored.`, job: r.job_id };
+                  return { tone: "ok", title: t("Analysis started"), detail: t("The {run_at} extraction of {name} is being scored.", { run_at: formatDate(newest.run_at, "datetime"), name: system?.name ?? t("the system") }), job: r.job_id };
                 })
               }
             >
-              {pending === "analyse" ? "Starting…" : `Analyse ${system?.name ?? ""}`.trim()}
+              {pending === "analyse" ? t("Starting…") : t("Analyse {name}", { name: system?.name ?? "" }).trim()}
             </button>
             <button type="button" className="m2-btn m2-ghost" onClick={onClose}>
-              Close
+              {t("Close")}
             </button>
           </div>
-          {extractions.isSuccess && !newest ? <p className="m2-prov">This system has no stored extraction that can be analysed.</p> : null}
-          {!allowed ? <p className="m2-prov">Starting a run needs the analyse permission.</p> : null}
+          {extractions.isSuccess && !newest ? <p className="m2-prov">{t("This system has no stored extraction that can be analysed.")}</p> : null}
+          {!allowed ? <p className="m2-prov">{t("Starting a run needs the analyse permission.")}</p> : null}
         </>
       )}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
@@ -130,31 +132,31 @@ function RunsTable({ systemFilter, statusFilter, showArchived }: { systemFilter:
   const systemName = (id: string | undefined) => land.data?.systems.find((s) => s.id === id)?.name;
   const rows = (page.data?.versions ?? []).filter((v) => (systemFilter === "all" || v.metadata?.system_id === systemFilter) && (statusFilter === "all" || statusGroup(v.status) === statusFilter));
   if (page.isLoading) return <Skeleton width="100%" height={200} />;
-  if (page.isError) return <ErrorFrame onRetry={() => void page.refetch()}>The runs could not be read.</ErrorFrame>;
+  if (page.isError) return <ErrorFrame onRetry={() => void page.refetch()}>{t("The runs could not be read.")}</ErrorFrame>;
   if (rows.length === 0) {
-    return <EmptyFrame>{(page.data?.versions.length ?? 0) === 0 ? "No run has been made yet. Extract a system and run an analysis to see it here." : "No run matches these filters."}</EmptyFrame>;
+    return <EmptyFrame>{(page.data?.versions.length ?? 0) === 0 ? t("No run has been made yet. Extract a system and run an analysis to see it here.") : t("No run matches these filters.")}</EmptyFrame>;
   }
   return (
     <div className="m2-frame">
       <table className="m2-tbl" data-testid="runs-table">
         <thead>
           <tr>
-            <th scope="col">Date</th>
-            <th scope="col">System</th>
-            <th scope="col">Label</th>
-            <th scope="col">Trigger</th>
+            <th scope="col">{t("Date")}</th>
+            <th scope="col">{t("System")}</th>
+            <th scope="col">{t("Label")}</th>
+            <th scope="col">{t("Trigger")}</th>
             <th scope="col" className="m2-r">
-              Records
+              {t("Records")}
             </th>
             <th scope="col" className="m2-r">
-              Rules
+              {t("Rules")}
             </th>
-            <th scope="col" className="m2-r" title="Lowest and highest shown score over the objects the run scored">
-              Score
+            <th scope="col" className="m2-r" title={t("Lowest and highest shown score over the objects the run scored")}>
+              {t("Score")}
             </th>
-            <th scope="col">Status</th>
+            <th scope="col">{t("Status")}</th>
             <th scope="col" className="m2-r">
-              Took
+              {t("Took")}
             </th>
           </tr>
         </thead>
@@ -174,15 +176,15 @@ function RunsTable({ systemFilter, statusFilter, showArchived }: { systemFilter:
                 </th>
                 <td>{sys ?? <Dash />}</td>
                 <td>
-                  {v.metadata?.baseline ? "Baseline" : null}
+                  {v.metadata?.baseline ? t("Baseline") : null}
                   {v.metadata?.baseline && v.label ? ", " : null}
                   {v.label ?? (v.metadata?.baseline ? null : <Dash />)}
-                  {v.metadata?.archived ? <span className="m2-meta"> archived</span> : null}
+                  {v.metadata?.archived ? <span className="m2-meta">{" "}{t("archived")}</span> : null}
                 </td>
                 <td>{kindWord(m?.kind ?? v.metadata?.trigger)}</td>
                 <td className="m2-r">{m?.records_checked == null ? <Dash /> : int(m.records_checked)}</td>
                 <td className="m2-r">{rules == null ? <Dash /> : int(rules)}</td>
-                <td className="m2-r">{range ? `${f1(range[0])} to ${f1(range[1])}` : <Dash />}</td>
+                <td className="m2-r">{range ? t("{range} to {range2}", { range: f1(range[0]), range2: f1(range[1]) }) : <Dash />}</td>
                 <td>
                   <span className="m2-v">
                     {st.mark ? <VerdictMark verdict={st.mark} /> : null}
@@ -207,24 +209,24 @@ function JobsTable({ kind, status }: { kind: string; status: string }) {
   const { hrefFor } = useOpenItem();
   const rows = jobs.jobs.filter((j) => (kind === "all" || j.kind === kind) && (status === "all" || (status === "active" ? j.status === "queued" || j.status === "running" : j.status === status)));
   if (jobs.isLoading) return <Skeleton width="100%" height={160} />;
-  if (jobs.isError) return <ErrorFrame onRetry={() => void jobs.refetch()}>The jobs could not be read.</ErrorFrame>;
-  if (rows.length === 0) return <EmptyFrame>{jobs.jobs.length === 0 ? "No job has run in the last 7 days." : "No job matches these filters."}</EmptyFrame>;
+  if (jobs.isError) return <ErrorFrame onRetry={() => void jobs.refetch()}>{t("The jobs could not be read.")}</ErrorFrame>;
+  if (rows.length === 0) return <EmptyFrame>{jobs.jobs.length === 0 ? t("No job has run in the last 7 days.") : t("No job matches these filters.")}</EmptyFrame>;
   const sys = (j: Job) => land.data?.systems.find((s) => s.id === j.system_id)?.name;
   return (
     <div className="m2-frame">
       <table className="m2-tbl" data-testid="jobs-table">
         <thead>
           <tr>
-            <th scope="col">Job</th>
-            <th scope="col">Object</th>
-            <th scope="col">System</th>
-            <th scope="col">State</th>
+            <th scope="col">{t("Job")}</th>
+            <th scope="col">{t("Object")}</th>
+            <th scope="col">{t("System")}</th>
+            <th scope="col">{t("State")}</th>
             <th scope="col" className="m2-r">
-              Progress
+              {t("Progress")}
             </th>
-            <th scope="col">Started</th>
+            <th scope="col">{t("Started")}</th>
             <th scope="col" className="m2-r">
-              Took
+              {t("Took")}
             </th>
           </tr>
         </thead>
@@ -293,48 +295,48 @@ export function RunsCanvas() {
 
   return (
     <>
-      <PageTitle sub={scope?.name}>Runs</PageTitle>
+      <PageTitle sub={scope?.name}>{t("Runs")}</PageTitle>
       <p className="m2-finding">
-        {latest ? `The last ${runs.length} ${runs.length === 1 ? "run" : "runs"}, the latest on ${formatDate(latest.run_at, "date")}.` : "No run has finished for this scope yet."}
-        {baseline ? ` The baseline is ${formatDate(baseline.run_at, "date")}.` : ""}
+        {latest ? t("The last {runsCount} {runsCount, plural, one {run} other {runs}}, the latest on {run_at}.", { runsCount: runs.length, run_at: formatDate(latest.run_at, "date") }) : t("No run has finished for this scope yet.")}
+        {baseline ? t(" The baseline is {run_at}.", { run_at: formatDate(baseline.run_at, "date") }) : ""}
       </p>
 
-      <section className="m2-sec" aria-label="Timeline">
+      <section className="m2-sec" aria-label={t("Timeline")}>
         {timeline.isLoading ? (
           <Skeleton width="100%" height={100} />
         ) : timeline.isError ? (
-          <ErrorFrame onRetry={() => void timeline.refetch()}>The timeline could not be read.</ErrorFrame>
+          <ErrorFrame onRetry={() => void timeline.refetch()}>{t("The timeline could not be read.")}</ErrorFrame>
         ) : runs.length === 0 ? (
-          <EmptyFrame>Runs appear here once a system has been extracted and analysed.</EmptyFrame>
+          <EmptyFrame>{t("Runs appear here once a system has been extracted and analysed.")}</EmptyFrame>
         ) : (
           <div className="m2-frame" style={{ padding: "var(--m2-s3) var(--m2-s4)" }}>
-            <RunTimelineChart runs={runs} selectedId={latest?.id ?? null} onPick={(id) => router.push(v2Href(`/v2/run/${id}`))} label="Runs on a date axis, choose one to open it" fallbackWidth={900} />
+            <RunTimelineChart runs={runs} selectedId={latest?.id ?? null} onPick={(id) => router.push(v2Href(`/v2/run/${id}`))} label={t("Runs on a date axis, choose one to open it")} fallbackWidth={900} />
           </div>
         )}
       </section>
 
       <div className="m2-cta" style={{ justifyContent: "space-between" }}>
-        <nav className="m2-views" aria-label="Runs views">
+        <nav className="m2-views" aria-label={t("Runs views")}>
           <V2Link href={link("runs")} aria-current={view === "runs" ? "page" : undefined}>
-            Runs
+            {t("Runs")}
           </V2Link>
           <V2Link href={link("jobs")} aria-current={view === "jobs" ? "page" : undefined}>
-            {`Jobs${jobs.active.length ? ` (${jobs.active.length} running)` : ""}`}
+            {`Jobs${jobs.active.length ? t(" ({activeCount} running)", { activeCount: jobs.active.length }) : ""}`}
           </V2Link>
         </nav>
-        <button type="button" className="m2-btn m2-strong" aria-expanded={starting} disabled={!session.can("analyse")} title={session.can("analyse") ? undefined : "Starting a run needs the analyse permission"} onClick={() => setStarting((v) => !v)}>
-          Start a run
+        <button type="button" className="m2-btn m2-strong" aria-expanded={starting} disabled={!session.can("analyse")} title={session.can("analyse") ? undefined : t("Starting a run needs the analyse permission")} onClick={() => setStarting((v) => !v)}>
+          {t("Start a run")}
         </button>
       </div>
       {starting ? <StartRun onClose={() => setStarting(false)} /> : null}
 
       {view === "runs" ? (
-        <section className="m2-sec" aria-label="Runs" style={{ marginTop: "var(--m2-s4)" }}>
+        <section className="m2-sec" aria-label={t("Runs")} style={{ marginTop: "var(--m2-s4)" }}>
           <div className="m2-filters">
             <label>
-              System
+              {t("System")}
               <select className="m2-sel" value={system} onChange={(e) => setSystem(e.target.value)}>
-                <option value="all">All systems</option>
+                <option value="all">{t("All systems")}</option>
                 {(land.data?.systems ?? []).map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
@@ -343,7 +345,7 @@ export function RunsCanvas() {
               </select>
             </label>
             <label>
-              Status
+              {t("Status")}
               <select className="m2-sel" value={status} onChange={(e) => setStatus(e.target.value)}>
                 {STATUS_FILTERS.map((f) => (
                   <option key={f.value} value={f.value}>
@@ -354,18 +356,18 @@ export function RunsCanvas() {
             </label>
             <label>
               <input type="checkbox" checked={archived} onChange={(e) => setArchived(e.target.checked)} />
-              Show archived runs
+              {t("Show archived runs")}
             </label>
           </div>
           <RunsTable systemFilter={system} statusFilter={status} showArchived={archived} />
         </section>
       ) : (
-        <section className="m2-sec" aria-label="Jobs" style={{ marginTop: "var(--m2-s4)" }}>
+        <section className="m2-sec" aria-label={t("Jobs")} style={{ marginTop: "var(--m2-s4)" }}>
           <div className="m2-filters">
             <label>
-              Kind
+              {t("Kind")}
               <select className="m2-sel" value={kind} onChange={(e) => setKind(e.target.value)}>
-                <option value="all">Every kind</option>
+                <option value="all">{t("Every kind")}</option>
                 {KINDS.map((k) => (
                   <option key={k} value={k}>
                     {JOB_KIND_LABEL[k]}
@@ -374,12 +376,12 @@ export function RunsCanvas() {
               </select>
             </label>
             <label>
-              State
+              {t("State")}
               <select className="m2-sel" value={jobStatus} onChange={(e) => setJobStatus(e.target.value)}>
-                <option value="all">Any state</option>
-                <option value="active">Queued or running</option>
-                <option value="completed">Done</option>
-                <option value="failed">Failed</option>
+                <option value="all">{t("Any state")}</option>
+                <option value="active">{t("Queued or running")}</option>
+                <option value="completed">{t("Done")}</option>
+                <option value="failed">{t("Failed")}</option>
               </select>
             </label>
           </div>
