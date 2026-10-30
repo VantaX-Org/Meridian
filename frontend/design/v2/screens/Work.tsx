@@ -51,7 +51,7 @@ import { BulkActions, CurrentValue, DecisionCell, NewValueCell, OwnerCell, Possi
 import { GridTools, useGridKey } from "../GridTools";
 import { FixOrderHint } from "./object/Related";
 import { t as tr, lc } from "@/lib/v2/i18n";
-import { whole, v2Locale } from "@/lib/v2/format";
+import { whole } from "@/lib/v2/format";
 import { formatDate } from "@/lib/format";
 import { useRunList } from "@/lib/v2/queries";
 import { policyLabel } from "@/lib/v2/step10";
@@ -420,7 +420,7 @@ export function WorkCanvas() {
       { id: "suggested", header: tr("Suggested value"), width: 120, title: tr("The value the rules propose. Blank when no single value is right."), cell: r((x) => (x.suggested_value ? <Mono>{x.suggested_value}</Mono> : <Dash why={tr("No suggested value for this row")} />)) },
       { id: "newvalue", header: tr("New value"), width: 130, locked: true, title: tr("The value to write back. Type and press Enter, paste a column, or fill down with ⌘D."), cell: r((x) => <NewValueCell row={x} h={h} />) },
       { id: "decision", header: tr("Decision"), width: 130, locked: true, title: tr("fix, not an issue or accept risk. The last two ask for a reason."), cell: r((x) => <DecisionCell row={x} h={h} onChoose={onChoose} />) },
-      { id: "first", header: tr("First seen"), width: 100, title: tr("The date the oldest failing issue of this row was first seen."), cell: r((x) => (x.first_seen_at ? <span>{new Date(x.first_seen_at).toLocaleDateString(v2Locale(), { day: "numeric", month: "short", timeZone: "UTC" })}</span> : <Dash />)) },
+      { id: "first", header: tr("First seen"), width: 100, title: tr("The date the oldest failing issue of this row was first seen."), cell: r((x) => (x.first_seen_at ? <span title={formatDate(x.first_seen_at, "date")}>{formatDate(x.first_seen_at, "day")}</span> : <Dash />)) },
       { id: "days", header: tr("Days open"), width: 90, numeric: true, title: tr("Days since this row was first seen."), cell: r((x) => { const d = daysOpen(x.first_seen_at, now); return d == null ? <Dash /> : <>{int(d)}</>; }) },
       { id: "owner", header: tr("Owner"), width: 70, title: tr("The steward the row is assigned to, by initials."), cell: r((x) => <OwnerCell row={x} h={h} />) },
       { id: "value", header: tr("Value at risk"), width: 120, numeric: true, title: tr("Cost-model estimate of what this failing value costs."), cell: r((x) => (x.value_at_risk == null ? <Dash /> : <>{int(x.value_at_risk)}</>)) },
@@ -574,7 +574,7 @@ export function WorkCanvas() {
             <span className="m2-bh-sent">{sentLine(b, day)}</span>
           ) : (
             <>
-              <span className="m2-bh-meta">{b.status === "approved" ? `Approved${b.approvedBy ? tr(" by {approvedBy}", { approvedBy: b.approvedBy }) : ""}` : (b.owner ?? tr("No owner"))}</span>
+              <span className="m2-bh-meta">{b.status === "approved" ? (b.approvedBy ? tr("Approved by {approvedBy}", { approvedBy: b.approvedBy }) : tr("Approved")) : (b.owner ?? tr("No owner"))}</span>
               <span className="m2-bh-meta">{tr("{records} {records2, plural, one {record} other {records}}", { records: int(b.records), records2: b.records })}</span>
               <span className="m2-bh-meta">{b.valueAtRisk == null ? tr("no value at risk") : <>{money(b.valueAtRisk)}{" "}{tr("at risk")}</>}</span>
               <span className="m2-bh-meta">{b.dueAt ? tr("due {day}", { day: day(b.dueAt) }) : tr("no due date")}</span>

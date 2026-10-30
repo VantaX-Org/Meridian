@@ -1,0 +1,29 @@
+/*
+ * Print: the canvas alone, on white, at the width of the page. The chrome (top bar, map, inspector, job line, status
+ * strip, banners, toasts), the controls and the grid overlay stay on screen. The receipt prints whole with its rows
+ * kept together; the ledger prints the rows on screen under its header (the whole ledger leaves as an
+ * Excel file through Share and export, in the same column order and words). Tokens only, light values.
+ */
+@media print {
+  @page { size: A4 landscape; margin: 12mm; }
+  /* The light ground and inks for paper are set in tokens.css (its print section). */
+  .m2-root { height: auto !important; overflow: visible !important; padding: 0 !important; }
+  .m2-root .m2-top, .m2-root .m2-map, .m2-root .m2-insp, .m2-root .m2-status, .m2-root .m2-job, .m2-root .m2-skips,
+  .m2-root .m2-scrim, .m2-root .m2-toasts, .m2-root .m2-grid-overlay, .m2-root .m2-rbanner, .m2-root .m2-bulk,
+  .m2-root .m2-cta, .m2-root .m2-gridbar, .m2-root .m2-tool, .m2-root .m2-tabs, .m2-root button, .m2-root select,
+  .m2-attribution { display: none !important; }
+  .m2-root .m2-main, .m2-root .m2-sheetwrap, .m2-root .m2-cwrap { display: block !important; height: auto !important; overflow: visible !important; border: 0 !important; margin: 0 !important; }
+  .m2-root .m2-canvas { overflow: visible !important; padding: 0 !important; }
+  .m2-root a { color: inherit !important; text-decoration: none !important; }
+  .m2-root .m2-sec { break-inside: avoid-page; }
+  /* The receipt: one block, never split across pages. */
+  .m2-root .m2-rcpt { break-inside: avoid; width: 100%; }
+  .m2-root .m2-rcpt tr { break-inside: avoid; }
+  /* The ledger: the rendered rows in document flow under the header. */
+  .m2-root .m2-grid, .m2-root .m2-gridwrap { height: auto !important; max-height: none !important; overflow: visible !important; }
+  .m2-root .m2-gbody { height: auto !important; }
+  .m2-root .m2-grow { position: static !important; transform: none !important; break-inside: avoid; }
+  .m2-root .m2-ghead { position: static !important; }
+  .m2-root .m2-gpin { position: static !important; }
+  .m2-root .m2-gsel { visibility: hidden; }
+}
