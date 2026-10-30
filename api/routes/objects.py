@@ -32,6 +32,7 @@ from api.services.rbac import require_permission, scope_from_path
 from api.services.scoring import (DEFAULT_THRESHOLDS, critical_over_tolerance, effective_weights,
                                   scoring_config, tier)
 from api.services.version_status import FINISHED
+from api.services.cost_model_meta import CostModelOut, meta_of as cost_model_meta
 from checks.cost import effective as effective_cost_model
 
 router = APIRouter(prefix="/api/v1/objects", tags=["objects"])
@@ -48,6 +49,8 @@ class ObjectSummaryOut(BaseModel):
     label: str
     composite_score: Optional[float] = None
     raw_score: Optional[float] = None         # the measured score before the critical cap (dqs_summary raw_score)
+    # the measured score to rank by: raw_score, else composite_score when nothing caps it
+    measured_score: Optional[float] = None
     capped: bool = False                      # a critical failure holds composite_score at its cap
     readiness: Optional[str] = None
     failing_checks: int
@@ -66,6 +69,7 @@ class ObjectSummaryOut(BaseModel):
 
 class ObjectsListOut(BaseModel):
     run_id: Optional[str] = None
+    sort: str = "-measured"                   # the order of ``objects``: -measured (default), measured or module
     objects: list[ObjectSummaryOut]
     blocking_findings_total: int = 0  # failing critical and high findings in the run
     # the tenant's DQS bands {target, warning, critical}, for the score rings
@@ -191,11 +195,14 @@ async def _enrichments(db: AsyncSession, tenant: Tenant, run_id: str) -> tuple[d
 
 @router.get("", response_model=ObjectsListOut, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_objects(run: str = Query(..., alias="run"),
+                       sort: Literal["-measured", "measured", "module"] = Query(
+                           "-measured", description="ranked by the measured score before the critical cap "
+                           "(-measured: highest first, the default; measured: lowest first), or by module id"),
                        db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await _rls(db, tenant)
     run_id = await _resolve_run(db, tenant, run)
     if run_id is None:
-        return {"run_id": None, "objects": []}
+        return {"run_id": None, "sort": sort, "objects": []}
     summary, thresholds = await _version_summary(db, tenant, run_id)
 
     rows = (await db.execute(text(
@@ -219,6 +226,7 @@ async def list_objects(run: str = Query(..., alias="run"),
             "label": _label(module),
             "composite_score": score,
             "raw_score": mod_summary.get("raw_score"),
+            "measured_score": measured_of(mod_summary),
             "capped": bool(mod_summary.get("capped")),
             "readiness": tier(score, thresholds) if score is not None else None,
             "failing_checks": failing,
@@ -233,8 +241,26 @@ async def list_objects(run: str = Query(..., alias="run"),
             "owner": owners.get(module),
             "dimension_scores": _measured_dimensions(mod_summary),
         })
-    return {"run_id": run_id, "objects": objects, "thresholds": thresholds,
+    if sort != "module":
+        objects = sort_by_measured(objects, descending=sort == "-measured")
+    return {"run_id": run_id, "sort": sort, "objects": objects, "thresholds": thresholds,
             "blocking_findings_total": blocking_total}
+
+
+def measured_of(m: dict) -> Optional[float]:
+    """The measured score before the critical cap: raw_score, else the score itself (nothing capped it)."""
+    raw = m.get("raw_score")
+    if isinstance(raw, (int, float)) and not isinstance(raw, bool):
+        return float(raw)
+    score = m.get("composite_score")
+    return float(score) if isinstance(score, (int, float)) and not isinstance(score, bool) else None
+
+
+def sort_by_measured(items: list[dict], descending: bool, key: str = "measured_score") -> list[dict]:
+    """Rank by the measured score (the capped score flattens ranking at 85 / 70); unmeasured last, stable ties."""
+    have = [i for i in items if i.get(key) is not None]
+    none = [i for i in items if i.get(key) is None]
+    return sorted(have, key=lambda i: i[key], reverse=descending) + none
 
 
 class MonitorCadenceOut(BaseModel):
@@ -343,6 +369,7 @@ class ObjectDetailOut(BaseModel):
     affected_records: int
     capped: bool = False
     raw_score: Optional[float] = None  # the measured score before the cap
+    measured_score: Optional[float] = None  # raw_score, else composite_score when nothing caps it
     cap_reason: Optional[str] = None
     dimension_scores: dict[str, float]
     rules: list[ObjectRuleOut]
@@ -375,6 +402,7 @@ async def get_object(module: str, run: uuid.UUID = Query(..., alias="run"),
         "capped": bool(mod_summary.get("capped")),
         "cap_reason": mod_summary.get("cap_reason"),
         "raw_score": mod_summary.get("raw_score"),
+        "measured_score": measured_of(mod_summary),
         "dimension_scores": {d: v for d, v in (mod_summary.get("dimension_scores") or {}).items()
                              if (mod_summary.get("dimension_coverage") or {}).get(d) != 0},  # coverage 0: not measured
         "rules": [
@@ -456,6 +484,8 @@ class ObjectReceiptOut(BaseModel):
     cap_rule: str
     value_at_risk: Optional[float] = None
     currency: str
+    # whether value_at_risk is priced by the tenant's own cost model or by the shipped defaults
+    cost_model: Optional[CostModelOut] = None
     features_blocked: Optional[int] = None
     features_degraded: Optional[int] = None
     open_work: Optional[int] = None
@@ -580,6 +610,7 @@ async def get_object_receipt(module: str, run: Optional[uuid.UUID] = Query(None,
         "breaches": breaches, "tolerance": {"pct": tol["pct"], "rows": tol["rows"]},
         "formula": formula, "severity_weights": cfg["severity_weights"], "cap_rule": CAP_RULE,
         "value_at_risk": float(value_at_risk) if value_at_risk is not None else None, "currency": currency,
+        "cost_model": cost_model_meta(cost_model),
         "features_blocked": sum(1 for r in impact if r[0] == "blocked" and _touches(r[1])),
         "features_degraded": sum(1 for r in impact if r[0] == "degraded" and _touches(r[1])),
         "open_work": int(open_work) if open_work is not None else None,

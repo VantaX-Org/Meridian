@@ -31,6 +31,7 @@ from api.services import app_links
 from api.services import sandbox, undo, work_analytics, work_counts, worklist
 from api.services.worklist import CLEANING_VALUE_MATCH
 from api.services.current_state import current_pairs, pairs_clause, run_ids
+from api.services import cost_model_meta
 from api.services.rbac import (Scope, _grants_allow, actions_for, current_user_id, current_user_label,
                                dev_role_override, grants_for, has_permission, require_permission)
 from api.services.record_issues import scope_of
@@ -604,6 +605,7 @@ async def records(
     return {
         "version_id": sel.vid, "total": min(total, COUNT_CAP), "total_capped": total > COUNT_CAP,
         "next": _cursor(order, rows[-1]) if more and rows else None,
+        "cost_model": await cost_model_meta.for_tenant(db, tenant.id),  # what each value_at_risk is priced by
         "items": [{"module": r.module, "version_id": r.version_id, "record_key": r.record_key, "name": r.name, "issues": r.issues,
                    "severity": SEVERITIES[r.sev_rank] if r.sev_rank < 4 else "info", "checks": list(r.checks),
                    "proposed": r.proposed, "status": r.status,
@@ -964,6 +966,8 @@ async def record(
         "other_runs": await _previous_run(db, tenant, vid, scope, module, record_key, [i["check_id"] for i in issues]),
         **(await _mdm_links(db, tenant, module, record_key)),
         "currency": await _currency(db, tenant) if any(i["rule"]["cost_at_risk"] is not None for i in issues) else None,
+        # the tenant's own cost model or the shipped defaults: default-priced money is an estimate
+        "cost_model": await cost_model_meta.for_tenant(db, tenant.id),
         "can": {k: await _allowed(db, tenant, request, role, a)
                 for k, a in (("fix", "apply"), ("sign_off", "approve"), ("assign", "assign"), ("comment", "analyse"))},
     }
