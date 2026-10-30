@@ -79,7 +79,7 @@ class SAPConnection(BaseModel):
 
 
 class WriteBackRequest(BaseModel):
-    finding_id: str
+    finding_id: uuid.UUID = Field(..., description="The finding (findings.id) whose record fixes are written back.")
     record_fixes: list[dict] = Field(
         ..., description="Only fixes with sql_statement are applied"
     )
@@ -141,7 +141,7 @@ async def create_writeback(
     # Validate finding exists
     result = await db.execute(
         text("SELECT id, module, record_fixes FROM findings WHERE id = :fid AND tenant_id = :tid"),
-        {"fid": body.finding_id, "tid": tenant_id},
+        {"fid": str(body.finding_id), "tid": tenant_id},
     )
     finding = result.fetchone()
     if not finding:
@@ -200,7 +200,7 @@ async def create_writeback(
             {
                 "log_id": log_id,
                 "tid": tenant_id,
-                "fid": body.finding_id,
+                "fid": str(body.finding_id),
                 "requested_by": requesting_user,
                 "count": len(valid_fixes),
                 "errors": str(errors) if errors else None,
@@ -231,7 +231,7 @@ async def create_writeback(
         {
             "log_id": approval_id,
             "tid": tenant_id,
-            "fid": body.finding_id,
+            "fid": str(body.finding_id),
             "requested_by": requesting_user,
             "count": len(valid_fixes),
             "host": body.sap_connection.host,
