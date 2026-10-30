@@ -14,6 +14,16 @@ export interface LlmConfig {
   notes: string;
 }
 
+/** The offline grace (GET /licence while the licence service cannot be reached): the last signed licence is
+ * honoured for grace_days after it was signed. Null or absent when the licence service answered. */
+export interface OfflineGrace {
+  active: boolean;
+  signed_at: string;
+  ends_at: string;
+  days_left: number;
+  grace_days: number;
+}
+
 export interface LicenceManifest {
   valid: boolean | null;
   status: string;
@@ -34,6 +44,8 @@ export interface LicenceManifest {
   latest_version?: string;
   /** Release notes for `latest_version`, if any. */
   release_notes?: string;
+  /** Set while the licence service is unreachable and the last signed licence is honoured (status "offline_grace"). */
+  offline_grace?: OfflineGrace | null;
 }
 
 const DEFAULT_MANIFEST: LicenceManifest = {

@@ -4382,6 +4382,11 @@ export const en = {
   "Failed jobs table, scrollable": "Failed jobs table, scrollable",
   "Authorisation errors table, scrollable": "Authorisation errors table, scrollable",
   "Schedules table, scrollable": "Schedules table, scrollable",
+  "Offline: the last signed licence is honoured until {date} ({days} {days, plural, one {day} other {days}} left).": "Offline: the last signed licence is honoured until {date} ({days} {days, plural, one {day} other {days}} left).",
+  "Meridian HQ could not be reached. Check that this server can reach the licence service (outbound HTTPS, proxy and firewall); the licence is confirmed again on the next successful check.": "Meridian HQ could not be reached. Check that this server can reach the licence service (outbound HTTPS, proxy and firewall); the licence is confirmed again on the next successful check.",
+  "Offline grace": "Offline grace",
+  "Last signed licence": "Last signed licence",
+  "Signed {date}, honoured for {graceDays} {graceDays, plural, one {day} other {days}}": "Signed {date}, honoured for {graceDays} {graceDays, plural, one {day} other {days}}",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

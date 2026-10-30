@@ -4383,4 +4383,9 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Failed jobs table, scrollable": "Tabelle der fehlgeschlagenen Jobs, scrollbar",
   "Authorisation errors table, scrollable": "Tabelle der Berechtigungsfehler, scrollbar",
   "Schedules table, scrollable": "Tabelle der Zeitpläne, scrollbar",
+  "Offline: the last signed licence is honoured until {date} ({days} {days, plural, one {day} other {days}} left).": "Offline: Die zuletzt signierte Lizenz gilt bis {date} (noch {days} {days, plural, one {Tag} other {Tage}}).",
+  "Meridian HQ could not be reached. Check that this server can reach the licence service (outbound HTTPS, proxy and firewall); the licence is confirmed again on the next successful check.": "Meridian HQ war nicht erreichbar. Prüfen Sie, ob dieser Server den Lizenzdienst erreicht (ausgehendes HTTPS, Proxy und Firewall); die Lizenz wird bei der nächsten erfolgreichen Prüfung erneut bestätigt.",
+  "Offline grace": "Offline-Kulanzzeit",
+  "Last signed licence": "Zuletzt signierte Lizenz",
+  "Signed {date}, honoured for {graceDays} {graceDays, plural, one {day} other {days}}": "Signiert am {date}, gilt {graceDays} {graceDays, plural, one {Tag} other {Tage}}",
 };

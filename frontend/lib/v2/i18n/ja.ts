@@ -4383,4 +4383,9 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Failed jobs table, scrollable": "失敗ジョブの表（スクロール可能）",
   "Authorisation errors table, scrollable": "権限エラーの表（スクロール可能）",
   "Schedules table, scrollable": "スケジュールの表（スクロール可能）",
+  "Offline: the last signed licence is honoured until {date} ({days} {days, plural, one {day} other {days}} left).": "オフライン: 最後に署名されたライセンスを {date} まで有効とします（残り {days} 日）。",
+  "Meridian HQ could not be reached. Check that this server can reach the licence service (outbound HTTPS, proxy and firewall); the licence is confirmed again on the next successful check.": "Meridian HQ に接続できませんでした。このサーバーからライセンスサービスに到達できるか確認してください（送信 HTTPS、プロキシ、ファイアウォール）。次回の確認が成功すると、ライセンスは再確認されます。",
+  "Offline grace": "オフライン猶予",
+  "Last signed licence": "最後に署名されたライセンス",
+  "Signed {date}, honoured for {graceDays} {graceDays, plural, one {day} other {days}}": "{date} に署名、{graceDays} 日間有効",
 };

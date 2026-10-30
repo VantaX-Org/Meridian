@@ -61,6 +61,31 @@ describe("Admin: licence", () => {
     expect(await screen.findByTestId("action-result")).toHaveTextContent("Licence checked with Meridian HQ");
   });
 
+  it("shows the default fixture as valid, without an offline warning", async () => {
+    renderWithQuery(<LicenceSection />);
+    await screen.findByText("Demo Corp");
+    expect(screen.queryByText(/Offline: the last signed licence/)).toBeNull();
+    expect(norm(screen.getByRole("region", { name: "Detail" }))).not.toContain("Offline grace");
+  });
+
+  it("warns while the licence service is unreachable and the last signed licence is honoured", async () => {
+    const base = await adminApi.getLicence();
+    vi.spyOn(adminApi, "getLicence").mockResolvedValue({
+      ...base,
+      valid: true,
+      status: "offline_grace",
+      offline_grace: { active: true, signed_at: "2026-10-20T08:00:00+00:00", ends_at: "2026-11-03T08:00:00+00:00", days_left: 4, grace_days: 14 },
+    });
+    renderWithQuery(<LicenceSection />);
+    const note = await screen.findByText(/Offline: the last signed licence is honoured until/);
+    expect(norm(note)).toContain("until 3 Nov 2026 (4 days left)");
+    expect(norm(note)).toContain("Check that this server can reach the licence service");
+    const detail = screen.getByRole("region", { name: "Detail" });
+    expect(norm(detail)).toContain("Offline grace");
+    expect(norm(detail)).not.toMatch(/Status ?Valid/);
+    expect(norm(detail)).toContain("honoured for 14 days");
+  });
+
   it("offers no refresh without the manage system permission", async () => {
     h.allowed = ["view"];
     renderWithQuery(<LicenceSection />);

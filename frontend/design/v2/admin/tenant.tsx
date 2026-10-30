@@ -47,10 +47,17 @@ export function LicenceSection() {
           const used = l.seats_used;
           const days = l.days_remaining;
           const notValidated = l.valid === null;
+          const grace = l.status === "offline_grace" && l.offline_grace?.active ? l.offline_grace : null;
           const features = Object.entries(l.features ?? {}).filter(([, v]) => typeof v === "boolean") as [string, boolean][];
           return (
             <>
               {l.valid === false ? <Note tone="bad">{tr("The licence is not valid. Meridian HQ reports status \"{status}\". Renew it in Meridian HQ; module entitlements may be restricted until then.", { status: labelText(l.status) })}</Note> : null}
+              {grace ? (
+                <Note tone={grace.days_left <= 3 ? "bad" : "warn"}>
+                  {tr("Offline: the last signed licence is honoured until {date} ({days} {days, plural, one {day} other {days}} left).", { date: formatDate(grace.ends_at), days: grace.days_left })}{" "}
+                  {tr("Meridian HQ could not be reached. Check that this server can reach the licence service (outbound HTTPS, proxy and firewall); the licence is confirmed again on the next successful check.")}
+                </Note>
+              ) : null}
               {notValidated ? <Note tone="warn">{tr("This deployment has not checked its licence with Meridian HQ, so default entitlements apply: no module list, seat count or expiry. It also checks on a schedule.")}</Note> : null}
               {days != null && days < 30 ? <Note tone={days < 7 ? "bad" : "warn"}>{days <= 0 ? tr("The licence has expired. Renew it in Meridian HQ.") : tr("The licence expires in {days} {days, plural, one {day} other {days}}. Renew it in Meridian HQ before then; a renewal shows here after the next check.", { days })}</Note> : null}
               {seats && used != null && used / seats >= 0.75 ? <Note tone={used >= seats ? "bad" : "warn"}>{tr("{used} of {seats} seats are in use. {value}", { used, seats, value: used >= seats ? tr("A new invitation fails until a user is suspended or the licence grants more seats.") : tr("Add seats in Meridian HQ before the team grows further.") })}</Note> : null}
@@ -58,10 +65,11 @@ export function LicenceSection() {
                 <Kv
                   rows={[
                     [tr("Company"), l.company_name ?? tr("Not set")],
-                    [tr("Status"), l.valid === false ? <StatusWord tone="no-go">{labelText(l.status)}</StatusWord> : l.valid ? <StatusWord tone="go">{tr("Valid")}</StatusWord> : <StatusWord tone="at-risk">{tr("Not validated yet")}</StatusWord>],
+                    [tr("Status"), grace ? <StatusWord tone="at-risk">{tr("Offline grace")}</StatusWord> : l.valid === false ? <StatusWord tone="no-go">{labelText(l.status)}</StatusWord> : l.valid ? <StatusWord tone="go">{tr("Valid")}</StatusWord> : <StatusWord tone="at-risk">{tr("Not validated yet")}</StatusWord>],
                     [tr("Tier"), l.tier ? labelText(l.tier) : tr("Not validated yet")],
                     [tr("Seats"), seats ? (used != null ? tr("{used} of {seats} in use", { used, seats }) : String(seats)) : notValidated ? tr("Not validated yet") : tr("Unlimited")],
                     [tr("Valid until"), l.expiry_date ? `${formatDate(l.expiry_date)}${days != null ? tr(", {days} {days, plural, one {day} other {days}} left", { days }) : ""}` : tr("Not set")],
+                    ...(grace ? [[tr("Last signed licence"), tr("Signed {date}, honoured for {graceDays} {graceDays, plural, one {day} other {days}}", { date: formatDate(grace.signed_at, "datetime"), graceDays: grace.grace_days })] as [string, string]] : []),
                     [tr("Last checked"), l.last_validated ? formatDate(l.last_validated, "datetime") : tr("Not checked yet")],
                     [tr("Platform version"), update.data ? <>{update.data.current_version}{update.data.update_available ? <>{", "}<V2Link href="/admin/system">{tr("{latest_version} is available", { latest_version: update.data.latest_version })}</V2Link></> : tr(" (up to date)")}</> : <V2Link href="/admin/system">{tr("See Jobs and system update")}</V2Link>],
                   ]}
