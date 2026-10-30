@@ -68,9 +68,16 @@ roadmap-and-debt.md, D-03.)
 | 1 | `/?fixture=1&persona=owner` | the same landscape with the owner's next step: "Approve batch B-241". |
 | 2 | `/people?fixture=1&persona=owner` | "2 batches wait for your approval"; the person inspector lists the approvals waiting. |
 | 3 | `/work?fixture=1&persona=owner&filter=approvals` | 612 records waiting; approve batch B-241: "Approved batch B-241". |
-| 4 | `/work?fixture=1&persona=steward&filter=open&batch=B-236` | a batch already sent: "Sent to SAP, 180 records". |
+| 4 | `/work?fixture=1&persona=steward&filter=open&batch=B-236` | a batch already sent: "Sent to SAP, 180 records". Say what this means: the batch's load file was exported (batch status `exported`, labelled "Sent to SAP" in `frontend/lib/v2/batches.ts`); a person loads that file in SAP. Nothing was written to SAP by Meridian. |
 
-Message: four-eyes approval before anything is written back to SAP.
+Message: four-eyes approval before a fix leaves the product.
+
+How fixes reach SAP (state this to the buyer as written): file export always; live BAPI write-back for
+material master, customer and business partner (simulate then commit, per-record RETURN messages); other
+objects export only. The BAPI mappings are being implemented in October 2026; in the code this script was
+written against, `BAPI_FIELDS` in `api/routes/writeback.py` is empty and live write-back is off by default,
+so every on-premise fix leaves as a file (roadmap-and-debt.md, DR-2). Do not demonstrate or describe live
+write-back until DR-2 is closed.
 
 ### 5. SAP Basis and administrator (5 minutes)
 

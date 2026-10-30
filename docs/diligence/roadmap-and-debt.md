@@ -72,6 +72,16 @@ Leftover markers: the code has exactly one `TODO` and no `FIXME`, `XXX` or `HACK
 | D-33 | `docs/security/DATA_FLOW.md` section 7 said `audit_log` is kept forever; the retention policy now purges it after `audit_days`. **Fixed here.** | `docs/security/DATA_FLOW.md` | | | |
 | D-34 | `docs/accessibility/audit-2026-10.md` names the `/v2/*` paths of the interface before the cut-over to the root | `docs/accessibility/audit-2026-10.md` | a note that the paths moved; the audit itself stays as dated evidence | S | Low |
 
+### Findings of the buyer's review (30 October 2026)
+
+An independent buyer's critique tested this package against the code and found material omissions. They
+are logged here with the critique's own IDs (DR: deal risk, PC: price cut) and a status. "Being fixed
+(October 2026)" means work is under way in another branch and is not in the code this register describes.
+
+| ID | Item | Where | Expected | Effort | Risk | Status |
+|---|---|---|---|---|---|---|
+| DR-2 | **Live write-back to on-premise SAP sends nothing.** `BAPI_MAP` names a BAPI per object but `BAPI_FIELDS` is empty, so every field is refused; live write-back is off by default; the golden-record path reports ECC, S/4HANA on-premise and EWM as unsupported. Earlier versions of competitive-position.md and demo-script.md presented write-back as shipped. Only the S/4HANA Cloud and BTP business partner OData PATCH works live. | `api/routes/writeback.py` lines 33 to 52 and 351; `api/services/golden_writeback.py` lines 8 to 10 | file export always; live BAPI write-back for material master (`BAPI_MATERIAL_SAVEDATA`), customer and business partner with a test run (simulate) before commit and the BAPI RETURN messages kept per record; other objects export only; integration tests against an SAP sandbox | L | High (headline capability) | Being fixed (October 2026): BAPI mappings for the three objects with simulate then commit. The documents now describe write-back exactly as above. Close when the mappings, the sandbox test and the switch are merged |
+
 ## 2. What the architecture allows next
 
 These follow from what is already built, not from a plan document.
@@ -88,8 +98,10 @@ These follow from what is already built, not from a plan document.
   the work is in tenant provisioning and per-tenant encryption keys for extracts.
 - **Change data instead of full extracts.** `api/services/delta_extraction.py` and `record_hashes` exist;
   routine runs on deltas cut extraction time and storage.
-- **Write-back as a product.** Approved fix batches already go back to SAP through the connector layer
-  with four-eyes approval and an audit trail; extending write-back to more objects is connector work.
+- **Write-back as a product.** Approved fix batches leave as load files with four-eyes approval and an
+  audit trail. Live BAPI write-back for material master, customer and business partner (simulate then
+  commit) is being built (DR-2); each further object is a verified BAPI parameter mapping and a sandbox
+  test, not new plumbing.
 - **Model independence.** Every number is deterministic and every model call is optional and logged, so
   the model provider can change (or be removed) without changing results; the risk in an acquisition is
   low because the product does not depend on a model to be correct.

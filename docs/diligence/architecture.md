@@ -77,8 +77,16 @@ sequenceDiagram
 
 Upload is the second entry point: `POST /api/v1/upload` (`api/routes/upload.py`) validates magic bytes,
 maps columns to SAP `TABLE.FIELD`, sanitises formula injection and writes the same parquet layout.
-Write-back to SAP (`api/routes/writeback.py`, `api/services/golden_writeback.py`) is the only path that sends
-data to SAP, and it requires an approved fix batch.
+Write-back is the only path that sends data towards SAP, and it requires an approved fix batch. What it
+does: file export always (`POST /api/v1/remediation/batches/{batch_id}/export`, `GET /api/v1/work/export`);
+live BAPI write-back for material master, customer and business partner (simulate then commit, per-record
+RETURN messages); other objects export only. Status: the BAPI mappings are being implemented in October
+2026. In the code this document describes, `BAPI_FIELDS` in `api/routes/writeback.py` is empty, so the
+on-premise path refuses every field and live write-back is off by default (`live_writeback_enabled`,
+`MERIDIAN_LIVE_WRITEBACK_ENABLED`); `api/services/golden_writeback.py` reports ECC, S/4HANA on-premise and
+EWM as unsupported for that reason. The one live path that works today is an OData PATCH of
+`A_BusinessPartner` for S/4HANA Cloud and BTP business partner fields. See DR-2 in
+[roadmap-and-debt.md](roadmap-and-debt.md).
 
 ## 3. Tenancy and row-level security
 
