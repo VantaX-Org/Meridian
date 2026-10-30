@@ -1,5 +1,5 @@
 {
-  "about": "Meridian 2 help recordings: length in seconds and size in bytes, written by scripts/help-videos.mjs.",
+  "about": "Meridian help recordings: length in seconds and size in bytes, written by scripts/help-videos.mjs.",
   "videos": {
     "guide2-administration": {
       "seconds": 94.1,

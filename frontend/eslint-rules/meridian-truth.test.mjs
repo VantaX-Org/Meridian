@@ -1,11 +1,11 @@
 /**
  * Tests for one-h1, tally-figure-numeric, no-raw-id, format-date-only and the
- * "&" glyph check. Run: node eslint-rules/aurora-truth.test.mjs
+ * "&" glyph check. Run: node eslint-rules/meridian-truth.test.mjs
  */
 import assert from "node:assert/strict";
 import { Linter } from "eslint";
-import writing from "./aurora-writing.mjs";
-import structure from "./aurora-structure.mjs";
+import writing from "./meridian-writing.mjs";
+import structure from "./meridian-structure.mjs";
 
 const linter = new Linter({ cwd: "/" });
 const cfg = (rule, plugin, name) => [{
@@ -15,7 +15,7 @@ const cfg = (rule, plugin, name) => [{
   rules: { [`${name}/${rule}`]: "error" },
 }];
 const count = (rule, code, file = "/app/components/x.tsx") => {
-  const [plugin, name] = rule in writing.rules ? [writing, "aurora-writing"] : [structure, "aurora-structure"];
+  const [plugin, name] = rule in writing.rules ? [writing, "meridian-writing"] : [structure, "meridian-structure"];
   return linter.verify(code, cfg(rule, plugin, name), file).filter((m) => m.ruleId).length;
 };
 
@@ -24,7 +24,7 @@ assert.equal(count("one-h1", "const a = <h1>x</h1>;"), 1);
 assert.equal(count("one-h1", 'const a = <Text as="h1">x</Text>;'), 1);
 assert.equal(count("one-h1", 'const a = <Text variant="display-lg">x</Text>;'), 1);
 assert.equal(count("one-h1", 'const a = <Text variant="display-sm" as="p">x</Text>;'), 0);
-assert.equal(count("one-h1", "const a = <h1>x</h1>;", "/app/components/ui-core/index.tsx"), 0);
+assert.equal(count("one-h1", "const a = <h1>x</h1>;", "/app/design/v2/parts.tsx"), 0);
 
 // tally-figure-numeric
 assert.equal(count("tally-figure-numeric", 'const a = <TallyFigure label="a" value="None" />;'), 1);
@@ -65,4 +65,4 @@ assert.equal(count("no-inline-style", 'const a = <p style={{ color: "var(--m-ink
 assert.equal(count("no-inline-style", 'const a = <Link style={linkStyle} href="/x">x</Link>;'), 1);
 assert.equal(count("no-inline-style", "const a = <p {...{ style: s }}>x</p>;"), 1);
 assert.equal(count("no-inline-style", 'const a = <p className="m-ink-3">x</p>;'), 0);
-console.log("aurora-truth tests: all passed");
+console.log("meridian-truth tests: all passed");

@@ -8,7 +8,7 @@ const noop = () => () => undefined;
 const signedIn = () => /(?:^|;\s*)mn_session=1(?:;|$)/.test(document.cookie);
 
 /**
- * /status: readable signed out (middleware.ts lists it as public); it reads only GET /status/page. Someone signed in
+ * /status: readable signed out (proxy.ts lists it as public); it reads only GET /status/page. Someone signed in
  * gets the way back to Meridian instead of Sign in.
  */
 export default function StatusPage() {

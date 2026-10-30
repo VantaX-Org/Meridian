@@ -1,12 +1,12 @@
 /**
- * Aurora writing-system ESLint plugin — WS8 §11.4.
+ * Meridian writing-system ESLint plugin — WS8 §11.4.
  *
- * Aurora copy teaches, directs, or confirms — nothing else (spec §11.1).
+ * Copy teaches, directs, or confirms — nothing else (spec §11.1).
  * Placeholder strings ("Loading…", "Error", "OK"), glossary violations
  * ("dashboard" instead of "command centre"), and whiny voice ("Oops",
  * "Sorry", "Welcome to") all dilute the product voice.
  *
- * This plugin defines a single rule, `aurora-writing/no-forbidden-copy`,
+ * This plugin defines a single rule, `meridian-writing/no-forbidden-copy`,
  * that flags those patterns in:
  *   - JSX text nodes: `<p>Loading…</p>` and `<>Error</>`
  *   - String literals: `"Submit"`, `"Oops, something went wrong"`
@@ -14,7 +14,7 @@
  *
  * The rule ships warnings by default (not errors) so the team can ratchet
  * up after an initial clean-up sweep. Per-line disable via the normal
- * `// eslint-disable-next-line aurora-writing/no-forbidden-copy` requires
+ * `// eslint-disable-next-line meridian-writing/no-forbidden-copy` requires
  * a justification comment per spec §11.4.
  */
 
@@ -46,7 +46,7 @@ const GLOSSARY_VIOLATIONS = [
     pattern: /\bdashboard(s)?\b/i,
     replacement: "command centre",
     rationale:
-      "Aurora glossary term is 'command centre' (spec §11.3) — 'dashboard' " +
+      "The glossary term is 'command centre' (spec §11.3) — 'dashboard' " +
       "is the anti-pattern.",
   },
   {
@@ -63,7 +63,7 @@ const GLOSSARY_VIOLATIONS = [
     pattern: /\bsomething went wrong\b/i,
     replacement: "a specific failure description",
     rationale:
-      "Aurora voice is not apologetic for things Meridian didn't cause " +
+      "The voice is not apologetic for things Meridian didn't cause " +
       "(spec §11.2). Name the specific failure.",
   },
 ];
@@ -117,19 +117,19 @@ const rule = {
     type: "suggestion",
     docs: {
       description:
-        "Flag placeholder copy, glossary violations, and non-Aurora voice " +
+        "Flag placeholder copy, glossary violations, and an off-voice " +
         "(spec §11).",
     },
     messages: {
       placeholder:
-        "Aurora copy must teach, direct, or confirm (spec §11.1). " +
+        "Copy must teach, direct, or confirm (spec §11.1). " +
         "{{value}} is a placeholder — replace with a specific empty-state " +
         "sentence, button label, or action phrase.",
       voice:
-        "Aurora voice is confident, never apologetic (spec §11.2). '{{value}}' " +
+        "The voice is confident, never apologetic (spec §11.2). '{{value}}' " +
         "starts with '{{prefix}}' — rewrite to name the specific issue.",
       glossary:
-        "Aurora glossary violation (spec §11.3): '{{value}}' — prefer " +
+        "Glossary violation (spec §11.3): '{{value}}' — prefer " +
         "'{{replacement}}'. {{rationale}}",
     },
     schema: [],
@@ -155,7 +155,7 @@ const rule = {
     // keep the rule signal-high.
     // Enum-valued props (`type="submit"`, `status="ok"`, `state="loading"`) are identifiers
     // for code, never shown to users, so they are not copy.
-    const NON_COPY_ATTRS = new Set(["type", "status", "variant", "state"]);
+    const NON_COPY_ATTRS = new Set(["type", "status", "variant", "state", "data-testid", "className", "id", "name", "key", "role"]);
     const isJsxAttrValue = (node) => {
       let attr = null;
       if (node.parent?.type === "JSXAttribute") attr = node.parent;
@@ -240,6 +240,8 @@ const noRawId = {
     const inWrapper = (n) => {
       for (let a = n.parent; a; a = a.parent) {
         if (a.type === "JSXElement" && WRAPPERS.has(a.openingElement.name.name)) return true;
+        // An element drawn in the identifier face (className "m2-mono") is the same wrapper as Mono.
+        if (a.type === "JSXElement" && a.openingElement.attributes.some((x) => x.type === "JSXAttribute" && x.name.name === "className" && typeof x.value?.value === "string" && /\bm2-mono\b/.test(x.value.value))) return true;
         if (a.type === "JSXAttribute") return true; // props are judged by their component
       }
       return false;
@@ -259,7 +261,7 @@ const noRawId = {
 };
 
 const plugin = {
-  meta: { name: "aurora-writing", version: "1.0.0" },
+  meta: { name: "meridian-writing", version: "1.0.0" },
   rules: {
     "no-forbidden-copy": rule,
     "no-forbidden-glyphs": glyphRule,
@@ -271,5 +273,5 @@ const plugin = {
 export default plugin;
 
 // Named export so config files can also do:
-//   import { plugin as auroraWriting } from "./eslint-rules/aurora-writing.mjs"
+//   import { plugin as meridianWriting } from "./eslint-rules/meridian-writing.mjs"
 export { plugin, rule, classify };

@@ -1,11 +1,11 @@
-# Meridian 2 Accessibility Conformance Report
+# Meridian Accessibility Conformance Report
 
 **WCAG Edition (Based on VPAT® Version 2.5)**
 
 ## Name of Product/Version
 
-Meridian 2, the v2 interface of the Meridian SAP data quality and master data management platform (frontend routes
-`/v2/*`, `/v2/status` and `/status`), build of October 2026 (Meridian 2, step 8).
+Meridian, the SAP data quality and master data management platform: its web interface (the map, canvas and inspector
+at `/`, the signed-out pages and the status page at `/status`), build of October 2026.
 
 ## Report Date
 
@@ -13,7 +13,7 @@ Meridian 2, the v2 interface of the Meridian SAP data quality and master data ma
 
 ## Product Description
 
-Meridian is deployed in the customer's own environment. The v2 interface is a web application with a top bar, a map
+Meridian is deployed in the customer's own environment. Its interface is a web application with a top bar, a map
 of the SAP landscape (systems and objects), a canvas, an inspector panel and a status strip; an administration area;
 and a status page readable without signing in. It is available in English, German and Japanese.
 
@@ -24,11 +24,10 @@ the product to attach the diagnostics block to a request.
 
 ## Notes
 
-- Scope: every screen under `design/v2` and `app/(v2)`, the status page and the sign-in page's tenant branding. The
-  current interface (`/home` and the other pages outside `/v2`) is not covered by this report.
-- Screens owned by a parallel work stream at the time of testing (system configuration, the rules library and the
-  object tabs under `design/v2/screens/object/`) were included in the automated axe runs (the Object page and its Rules
-  tab) but their wording is not yet localised; German and Japanese users see English text in those panes.
+- Scope: every screen of the web interface (`app/(v2)`, `app/(auth)` and the status page, built from `design/v2`),
+  including the sign-in page's tenant branding. It is the only interface the product ships.
+- Every label, message and empty state of the interface is localised in English, German and Japanese; the message
+  extraction (`frontend/scripts/i18n-extract.mjs`) fails the build on an untranslated string.
 - Content supplied by the server or the customer (help chapters, training recordings, server error messages, object
   and field names the API sends) is shown as delivered.
 - The method and every finding are in [audit-2026-10.md](./audit-2026-10.md).
@@ -36,8 +35,8 @@ the product to attach the diagnostics block to a request.
 ## Evaluation Methods Used
 
 1. Automated testing with axe-core 4.11 (tags `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`) through
-   `@axe-core/playwright` on 30 v2 page states in English, German and Japanese, light and dark theme, at 1440 x 900
-   (`frontend/e2e/v2-a11y.spec.ts`, `frontend/e2e/v2-status.spec.ts`, and the step 0 to 6 specs `e2e/v2-*.spec.ts`).
+   `@axe-core/playwright` on 30 page states in English, German and Japanese, light and dark theme, at 1440 x 900
+   (`frontend/e2e/v2-a11y.spec.ts`, `frontend/e2e/v2-status.spec.ts`, and the screen specs `e2e/v2-*.spec.ts`).
 2. Scripted keyboard-only walkthroughs of the five main flows in Chromium (Playwright), checking focus order, the
    focus ring, skip links and landmarks.
 3. Layout checks: 200 % zoom at 1440 (a 720 CSS px viewport at device scale 2), reflow at 320 CSS px, and the
@@ -124,7 +123,7 @@ Criteria that depend on them are marked accordingly.
 | 2.4.6 Headings and Labels (Level AA) | Supports | Headings name their section; labels name their field. |
 | 2.4.7 Focus Visible (Level AA) | Supports | One focus ring from the tokens (`--m2-focus`, 2px, offset 2px) on every focusable element; menu items show an inset ring. Checked in the keyboard walkthroughs. |
 | 3.1.2 Language of Parts (Level AA) | Partially Supports | The language picker marks each language name with its own `lang`. English text sent by the server (help chapters, error sentences, object names the catalogue does not know) appears inside German and Japanese pages without `lang="en"`. |
-| 3.2.3 Consistent Navigation (Level AA) | Supports | The top bar, map and status strip are the same on every v2 page. |
+| 3.2.3 Consistent Navigation (Level AA) | Supports | The top bar, map and status strip are the same on every page. |
 | 3.2.4 Consistent Identification (Level AA) | Supports | The same function has the same name everywhere (Close, Open the rule, Undo). |
 | 3.3.3 Error Suggestion (Level AA) | Supports | Errors say how to fix them ("Each kind of data is kept from 1 to 3650 days", "Choose a darker accent"). |
 | 3.3.4 Error Prevention (Legal, Financial, Data) (Level AA) | Supports | Destructive actions ask first; purging all data needs a typed phrase and a 24-hour token; ledger decisions and approvals can be undone. |

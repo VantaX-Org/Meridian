@@ -1,5 +1,5 @@
 {
-  "about": "The recording script of the Meridian 2 help videos: one tour per guide chapter, read by e2e/guided-tours-v2.spec.ts (RECORD_HELP=1, the recording project). Every step shows its caption, then does its action (go, click, point, press, fill, focus), then holds long enough to read. The captions are the videos' subtitle track and are searched by the help panel.",
+  "about": "The recording script of the Meridian help videos: one tour per guide chapter, read by e2e/guided-tours-v2.spec.ts (RECORD_HELP=1, the recording project). Every step shows its caption, then does its action (go, click, point, press, fill, focus), then holds long enough to read. The captions are the videos' subtitle track and are searched by the help panel.",
   "tours": [
     {
       "video": "guide2-overview", "chapter": "overview", "params": "persona=lead",

@@ -9,6 +9,7 @@ import { t } from "@/lib/v2/i18n";
 import { f1, int } from "@/lib/v2/score";
 import { passRateText } from "@/lib/v2/step10";
 import { useObjectAsOf } from "@/lib/v2/step10-queries";
+import { labelText } from "@/lib/v2/labels";
 import { SeverityMark, type SeverityKey } from "../../marks";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../../parts";
 import { PolicyMark, Ruler } from "../../Ruler";
@@ -120,7 +121,7 @@ export function AsOfView({ module, label, asOf }: { module: string; label: strin
                       <td>
                         <span className="m2-v">
                           <SeverityMark severity={sev(r.severity)} />
-                          {r.severity}
+                          {labelText(r.severity)}
                         </span>
                       </td>
                       <td className="m2-r">{int(r.failing)}</td>

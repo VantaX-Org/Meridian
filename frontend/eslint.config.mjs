@@ -1,8 +1,8 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
-import auroraWriting from "./eslint-rules/aurora-writing.mjs";
-import auroraStructure from "./eslint-rules/aurora-structure.mjs";
+import meridianWriting from "./eslint-rules/meridian-writing.mjs";
+import meridianStructure from "./eslint-rules/meridian-structure.mjs";
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -15,41 +15,37 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
-  // Aurora writing system (spec §11) — flags placeholder copy, glossary
-  // violations, and apologetic voice. Every rule is an error; CI runs
-  // eslint with --max-warnings 0.
+  // The writing and structure rules (DESIGN.md, Words) flag placeholder copy, glossary violations and an
+  // apologetic voice. Every rule is an error; CI runs eslint with --max-warnings 0.
   {
     plugins: {
-      "aurora-writing": auroraWriting,
-      "aurora-structure": auroraStructure,
+      "meridian-writing": meridianWriting,
+      "meridian-structure": meridianStructure,
     },
     rules: {
-      "aurora-writing/no-forbidden-copy": "error",
-      "aurora-writing/format-date-only": "error",
-      "aurora-writing/no-raw-id": "error",
-      "aurora-structure/one-h1": "error",
-      "aurora-structure/tally-figure-numeric": "error",
-      "aurora-writing/no-forbidden-glyphs": "error",
-      "aurora-structure/tally-figure-href": "error",
-      "aurora-structure/one-tally": "error",
-      "aurora-structure/tally-verdict": "error",
-      "aurora-structure/chart-rules": "error",
-      "aurora-structure/severity-via-badge": "error",
-      "aurora-structure/sap-name-in-chip": "error",
-      "aurora-structure/empty-state-no-media": "error",
-      "aurora-structure/no-invented-progress": "error",
-      "aurora-structure/url-is-state": "error",
+      "meridian-writing/no-forbidden-copy": "error",
+      "meridian-writing/format-date-only": "error",
+      "meridian-writing/no-raw-id": "error",
+      "meridian-structure/one-h1": "error",
+      "meridian-structure/tally-figure-numeric": "error",
+      "meridian-writing/no-forbidden-glyphs": "error",
+      "meridian-structure/tally-figure-href": "error",
+      "meridian-structure/one-tally": "error",
+      "meridian-structure/tally-verdict": "error",
+      "meridian-structure/chart-rules": "error",
+      "meridian-structure/severity-via-badge": "error",
+      "meridian-structure/sap-name-in-chip": "error",
+      "meridian-structure/empty-state-no-media": "error",
+      "meridian-structure/no-invented-progress": "error",
+      "meridian-structure/url-is-state": "error",
     },
-    // Scope: user-facing Aurora code and dashboard pages. Skip type
-    // definitions, config, and the design playground (which intentionally
-    // uses anti-pattern strings to demo empty states and error flows).
+    // Scope: the pages, the shared code and the interface library. Tests are skipped.
     files: [
       "app/**/*.{ts,tsx}",
-      "components/**/*.{ts,tsx}",
       "lib/**/*.{ts,tsx}",
+      "design/v2/**/*.{ts,tsx}",
     ],
     ignores: [
-      "**/_design-playground/**",
       "**/*.test.{ts,tsx}",
       "**/*.spec.{ts,tsx}",
     ],
@@ -72,15 +68,8 @@ const eslintConfig = defineConfig([
   // DESIGN.md "No inline style": no `style` prop anywhere under app/ (design/ owns every style).
   {
     files: ["app/**/*.{ts,tsx}"],
-    plugins: { "aurora-structure": auroraStructure },
-    rules: { "aurora-structure/no-inline-style": "error" },
-  },
-  // TanStack Table's hook returns functions React Compiler cannot memoize.
-  // DataTable is the single wrapper around it and opts out with "use no memo",
-  // which this lint rule does not recognise.
-  {
-    files: ["components/aurora/data/table.tsx"],
-    rules: { "react-hooks/incompatible-library": "off" },
+    plugins: { "meridian-structure": meridianStructure },
+    rules: { "meridian-structure/no-inline-style": "error" },
   },
 ]);
 

@@ -2,7 +2,7 @@
  * Depth model (DESIGN.md, "Depth"): which Tally size a detail route uses.
  * Level 1 is the portfolio, 4 is a single record. Hub pages (lists under a
  * hub Tally) are not listed; their components pick a level themselves.
- * Plain JS so the eslint rule `aurora-structure/one-tally` can import it on any Node.
+ * Plain JS so the eslint rule `meridian-structure/one-tally` can import it on any Node.
  */
 
 /** @typedef {1 | 2 | 3 | 4} DepthLevel */

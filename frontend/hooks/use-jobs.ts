@@ -1,6 +1,5 @@
 "use client";
 
-import { toast } from "sonner";
 import { useEffect } from "react";
 import { useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { getJobs, streamJobs } from "@/lib/api/jobs";
@@ -13,8 +12,8 @@ const ACTIVE = new Set(["queued", "running"]);
 
 /**
  * True for a query key whose first element is in `touches`. Absent `touches`
- * matches nothing — the caller is expected to offer a manual "Refresh" toast
- * instead of guessing (spec section 9.1).
+ * matches nothing; the stream then refreshes every read (a finished job without
+ * a declared footprint may have changed any of them).
  */
 export function touchedPredicate(touches: string[] | undefined) {
   const set = new Set(touches ?? []);
@@ -46,9 +45,7 @@ export function useJobStream(): void {
             if (job.touches && job.touches.length > 0) {
               qc.invalidateQueries({ predicate: touchedPredicate(job.touches) });
             } else {
-              toast(`${job.label} finished`, {
-                action: { label: "Refresh", onClick: () => qc.invalidateQueries() },
-              });
+              void qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== JOBS_QUERY_KEY[0] });
             }
           }
         },

@@ -54,5 +54,5 @@ Recordings are never auto-committed: a training video is a published claim about
 ## The printable guide
 
 The printable guide is generated from the same chapters: `npm run guide:pdf` writes
-`frontend/docs/guide/meridian-2-guide.pdf` (headless Chromium print to PDF). The API renders the same chapters as the
+`frontend/docs/guide/meridian-guide.pdf` (headless Chromium print to PDF). The API renders the same chapters as the
 PDF manual at `GET /api/v1/docs/user-guide.pdf` (`api/services/user_guide.py`).
