@@ -4260,4 +4260,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Suppressed {count}": "抑制中 {count}",
   "Jobs ({activeCount} running)": "ジョブ（{activeCount} 件実行中）",
   "Administration: {section}": "管理: {section}",
+  "Demo data": "デモデータ",
+  "Every figure on this page is sample data built into the interface, not read from your SAP systems.": "このページの数値はすべてインターフェースに組み込まれたサンプルデータであり、お使いの SAP システムから読み取ったものではありません。",
 };

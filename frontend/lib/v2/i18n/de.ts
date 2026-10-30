@@ -4260,4 +4260,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Suppressed {count}": "Unterdrückt {count}",
   "Jobs ({activeCount} running)": "Jobs ({activeCount} laufen)",
   "Administration: {section}": "Administration: {section}",
+  "Demo data": "Demodaten",
+  "Every figure on this page is sample data built into the interface, not read from your SAP systems.": "Alle Zahlen auf dieser Seite sind in die Oberfläche eingebaute Beispieldaten und stammen nicht aus Ihren SAP-Systemen.",
 };

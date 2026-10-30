@@ -4259,6 +4259,8 @@ export const en = {
   "Suppressed {count}": "Suppressed {count}",
   "Jobs ({activeCount} running)": "Jobs ({activeCount} running)",
   "Administration: {section}": "Administration: {section}",
+  "Demo data": "Demo data",
+  "Every figure on this page is sample data built into the interface, not read from your SAP systems.": "Every figure on this page is sample data built into the interface, not read from your SAP systems.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

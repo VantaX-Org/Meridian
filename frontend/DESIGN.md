@@ -115,8 +115,9 @@ words above it. Object names come from `formatModuleName` (`lib/format.ts`), nev
 | `/status` | The status page (signed out and signed in) |
 | `/sign-in`, `/forgot-password`, `/reset-password`, `/accept-invite`, `/licence-error` | Signed out |
 
-`?fixture=1` on any page answers every read from `lib/api/v2/fixtures` (tests, recordings, demos); `?open=kind:id`
-opens the inspector. Every address of the retired interface and of `/v2` redirects permanently (`next.config.ts`,
+`?fixture=1` on any page answers every read from `lib/api/v2/fixtures` (tests, recordings, demos) and puts the "Demo
+data" bar at the top of every page; a production build honours it only when built with `NEXT_PUBLIC_MERIDIAN_DEMO=1`
+(the e2e web server and the recordings set it, a customer image never does). `?open=kind:id` opens the inspector. Every address of the retired interface and of `/v2` redirects permanently (`next.config.ts`,
 table in `docs/guide/redirects.md`, asserted by `__tests__/legacy-redirects.test.ts` and `e2e/redirects.spec.ts`).
 
 ## 6. Guardrails

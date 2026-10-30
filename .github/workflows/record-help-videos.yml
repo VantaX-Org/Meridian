@@ -50,6 +50,9 @@ jobs:
           ffmpeg -version | head -1
 
       - name: Record the guided tours
+        # The tours run in fixture mode, which only a demo build honours (frontend/lib/api/v2/fixture.ts).
+        env:
+          NEXT_PUBLIC_MERIDIAN_DEMO: "1"
         run: |
           if [ -n "${{ github.event.inputs.journeys }}" ]; then
             GREP=$(echo "${{ github.event.inputs.journeys }}" | tr ',' '|')

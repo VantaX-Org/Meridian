@@ -9,6 +9,8 @@ import { defineConfig, devices } from "@playwright/test";
  *           PW_CHROMIUM=/path/to/chromium   to run on a Chromium you already have
  * In CI:    the web server is the production build served the way the image
  *           serves it (standalone), so perf budgets measure what customers get.
+ * Fixture mode only works in a build made with NEXT_PUBLIC_MERIDIAN_DEMO=1 (or in `next dev`): the web server below
+ * sets it, and a server you start yourself for PLAYWRIGHT_BASE_URL must be built with it too.
  */
 export default defineConfig({
   testDir: "./e2e",
@@ -54,5 +56,7 @@ export default defineConfig({
         url: "http://localhost:3000/sign-in",
         reuseExistingServer: !process.env.CI,
         timeout: 600_000,
+        // The demo build: honours ?fixture=1 (lib/api/v2/fixture.ts fixtureAllowed). A customer image never sets it.
+        env: { NEXT_PUBLIC_MERIDIAN_DEMO: "1" },
       },
 });
