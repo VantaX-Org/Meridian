@@ -33,7 +33,7 @@
 .m2-area-h a { font-weight: 500; }
 .m2-area p { margin: 0; font-size: var(--m2-fs-13); color: var(--m2-ink-2); }
 .m2-subtabs { display: inline-flex; max-width: 100%; border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); overflow: auto hidden; scrollbar-width: none; margin: var(--m2-s5) 0 var(--m2-s3); }
-.m2-scope { display: grid; gap: var(--m2-s3); margin-top: var(--m2-s3); }
+.m2-scope-form { display: grid; gap: var(--m2-s3); margin-top: var(--m2-s3); }
 .m2-hint-list { margin: 0; padding-left: var(--m2-s4); font-size: var(--m2-fs-13); color: var(--m2-ink-2); }
 
 /* ---- the rules library ---- */
@@ -55,10 +55,10 @@
 .m2-tree ul { list-style: none; margin: 0; padding-left: var(--m2-s4); border-left: 1px solid var(--m2-line); }
 .m2-node { display: flex; align-items: center; gap: var(--m2-s2); min-height: 32px; padding: 0 var(--m2-s1); border-radius: var(--m2-r2); }
 .m2-node[data-current="true"] { background: var(--m2-active); }
-.m2-node > button.m2-pick-n { flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 4px 0; color: var(--m2-fg); font: inherit; overflow-wrap: anywhere; }
+.m2-node > button.m2-pick-n { flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: var(--m2-s1) 0; color: var(--m2-fg); font: inherit; overflow-wrap: anywhere; }
 .m2-node .m2-lvl { color: var(--m2-meta); font-size: var(--m2-fs-12); min-width: 24px; }
 .m2-node-acts { display: inline-flex; gap: var(--m2-s1); }
-.m2-mini { height: 24px; min-width: 24px; padding: 0 6px; border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); background: var(--m2-sheet); color: var(--m2-ink-2); font-size: var(--m2-fs-12); }
+.m2-mini { height: 24px; min-width: 24px; padding: 0 var(--m2-s2); border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); background: var(--m2-sheet); color: var(--m2-ink-2); font-size: var(--m2-fs-12); }
 .m2-mini:hover:not(:disabled) { background: var(--m2-hover); color: var(--m2-fg); }
 .m2-mini:disabled { opacity: 0.4; }
 .m2-mini:focus-visible { outline: 2px solid var(--m2-data); outline-offset: 1px; }

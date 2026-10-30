@@ -250,7 +250,7 @@ export function NewZRule({ objectId, onDone }: { objectId?: string; onDone?: () 
   const { outcome, pending, run } = useOutcome();
   const [name, setName] = useState("");
   const [condition, setCondition] = useState("");
-  const [severity, setSeverity] = useState<(typeof SEVERITIES)[number]>("medium");
+  const [ruleSeverity, setRuleSeverity] = useState<(typeof SEVERITIES)[number]>("medium");
   const [target, setTarget] = useState(objectId ?? "any");
   const [shown, setShown] = useState(false);
   if (!can("manage_rules")) return <Gate>{tr("Creating a Z rule needs the manage rules permission.")}</Gate>;
@@ -265,7 +265,7 @@ export function NewZRule({ objectId, onDone }: { objectId?: string; onDone?: () 
         setShown(true);
         if (!name.trim() || !condition.trim()) return;
         void run("create", async () => {
-          await createZRule({ rule_name: name.trim(), custom_condition: condition.trim(), severity, ...(target !== "any" ? { z_object_id: target } : {}) });
+          await createZRule({ rule_name: name.trim(), custom_condition: condition.trim(), severity: ruleSeverity, ...(target !== "any" ? { z_object_id: target } : {}) });
           setName("");
           setCondition("");
           setShown(false);
@@ -280,7 +280,7 @@ export function NewZRule({ objectId, onDone }: { objectId?: string; onDone?: () 
       <div className="m2-grid2">
         <Field label={tr("Severity")}>
           {(p) => (
-            <select {...p} value={severity} onChange={(e) => setSeverity(e.target.value as (typeof SEVERITIES)[number])}>
+            <select {...p} value={ruleSeverity} onChange={(e) => setRuleSeverity(e.target.value as (typeof SEVERITIES)[number])}>
               {SEVERITIES.map((s) => (
                 <option key={s} value={s}>{labelOf(s)}</option>
               ))}
@@ -333,9 +333,9 @@ function Rules() {
           </table>
         </ScrollFrame>
       )}
-      <h3 style={{ marginTop: 16 }}>{tr("New Z rule")}</h3>
+      <h3 style={{ marginTop: "var(--m2-s4)" }}>{tr("New Z rule")}</h3>
       <NewZRule />
-      <h3 style={{ marginTop: 16 }}>{tr("Rule templates")}</h3>
+      <h3 style={{ marginTop: "var(--m2-s4)" }}>{tr("Rule templates")}</h3>
       <ScrollFrame label={tr("Table 7, scrollable")}>
         <table className="m2-tbl">
           <thead><tr><th scope="col">{tr("Template")}</th><th scope="col">{tr("What it checks")}</th><th scope="col">{tr("Default severity")}</th></tr></thead>
@@ -417,7 +417,7 @@ export function CustomObjects({ id }: { id: string }) {
           <Fact label={tr("Mapped to standard")}>{tr("{mapped_to_standard} of {total_z_objects}", { mapped_to_standard: r.mapped_to_standard, total_z_objects: r.total_z_objects })}</Fact>
         </Facts>
       ) : null}
-      <div className="m2-acts" style={{ marginTop: 12 }}>
+      <div className="m2-acts" style={{ marginTop: "var(--m2-s3)" }}>
         <button type="button" className="m2-btn" disabled={!can("analyse") || pending !== null} onClick={detect}>
           {pending === "detect" ? tr("Starting…") : tr("Detect now")}
         </button>

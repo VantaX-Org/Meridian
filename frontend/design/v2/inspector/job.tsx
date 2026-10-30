@@ -98,7 +98,7 @@ function JobBody({ job }: { job: Job }) {
 
       {live ? (
         <>
-          <div className="m2-prog" role="progressbar" aria-label={tr("{JOB_KIND_LABEL} progress", { JOB_KIND_LABEL: JOB_KIND_LABEL[job.kind] })} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(job.percent)} style={{ marginTop: 12 }}>
+          <div className="m2-prog" role="progressbar" aria-label={tr("{JOB_KIND_LABEL} progress", { JOB_KIND_LABEL: JOB_KIND_LABEL[job.kind] })} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(job.percent)} style={{ marginTop: "var(--m2-s3)" }}>
             <span style={{ width: `${Math.min(100, Math.max(0, job.percent))}%` }} />
           </div>
           {job.message ? <p className="m2-prov">{job.message}</p> : null}

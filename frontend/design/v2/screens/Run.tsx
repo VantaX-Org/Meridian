@@ -38,7 +38,7 @@ function PinRefusal({ refusal, canForce, pending, onForce }: { refusal: Baseline
         ))}
       </ul>
       {canForce ? (
-        <span style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+        <span style={{ display: "flex", flexWrap: "wrap", gap: "var(--m2-s2)", alignItems: "center" }}>
           <label className="m2-sr" htmlFor="pin-reason">
             {tr("Why this run is pinned anyway")}
           </label>

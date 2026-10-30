@@ -93,7 +93,7 @@ function SsoForm({ saved, part }: { saved: SsoConfig; part: "sso" | "signin" }) 
             </Fld>
           </div>
           {saved.redirect_uri ? (
-            <p className="m2-prov" style={{ marginTop: 12 }}>
+            <p className="m2-prov" style={{ marginTop: "var(--m2-s3)" }}>
               {t("Register this redirect address at your identity provider: ")}
               <span className="m2-mono">{saved.redirect_uri}</span>{" "}
               <button type="button" className="m2-linkbtn" onClick={() => void copyText(saved.redirect_uri)}>

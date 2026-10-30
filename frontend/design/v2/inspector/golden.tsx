@@ -273,7 +273,7 @@ function PairBody({ pairId, onClose }: { pairId: string; onClose: () => void }) 
             </FactList>
           </Sec>
           <Sec title={t("Side by side")}>
-            <table className="m2-tbl m2-pick" aria-label={t("The two records side by side, pick a value per field")}>
+            <table className="m2-tbl m2-pickt" aria-label={t("The two records side by side, pick a value per field")}>
               <thead>
                 <tr>
                   <th scope="col">{t("Field")}</th>

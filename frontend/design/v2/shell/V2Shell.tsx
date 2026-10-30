@@ -1,5 +1,6 @@
 "use client";
 
+import { GridOverlay, useGridOverlay } from "./GridOverlay";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AuthGuard } from "../auth/Guard";
@@ -147,11 +148,13 @@ function Chrome({ children, fixture }: { children: ReactNode; fixture: boolean }
   const { tag } = useInterfaceLang();
   const theme = useTenantTheme();
   useDocumentLang(tag);
+  const grid = useGridOverlay();
   return (
-    <div className="m2-root" data-m2="" data-fixture={fixture ? "1" : undefined} lang={tag} {...themeRootProps(theme)}>
+    <div className="m2-root" data-m2="" data-fixture={fixture ? "1" : undefined} data-grid={grid ? "" : undefined} lang={tag} {...themeRootProps(theme)}>
       <ToastProvider>
         <ChromeBody>{children}</ChromeBody>
       </ToastProvider>
+      <GridOverlay on={grid} />
     </div>
   );
 }

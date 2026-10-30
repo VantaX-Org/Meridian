@@ -72,11 +72,11 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
     });
   return (
     <Dialog title={tr("Import users")} description={tr("One person per line: email, name, role. The first line may be the column names. Each person gets an invitation.")} onClose={onClose} wide>
-      <label className="m2-fld">
+      <label className="m2-afld">
         <span className="m2-lbl">CSV</span>
         <textarea rows={6} value={csv} onChange={(e) => (setCsv(e.target.value), setPreview(null))} spellCheck={false} aria-label="CSV" />
       </label>
-      <label className="m2-fld">
+      <label className="m2-afld">
         <span className="m2-lbl">{tr("Or choose a file")}</span>
         <input type="file" accept=".csv,text/csv,text/plain" onChange={(e) => void e.target.files?.[0]?.text().then((t) => (setCsv(t), setPreview(null)))} />
       </label>

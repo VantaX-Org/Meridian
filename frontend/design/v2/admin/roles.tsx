@@ -137,7 +137,7 @@ function Requests() {
       </Loaded>
       {granting ? (
         <Dialog title={t("Grant access")} description={t("Choose the role to add. It applies to the scope they asked about.")} onClose={() => setGranting(null)}>
-          <label className="m2-fld">
+          <label className="m2-afld">
             <span className="m2-lbl">{t("Role")}</span>
             <select value={role} onChange={(e) => setRole(e.target.value)}>
               <option value="">{t("Choose a role")}</option>
@@ -160,7 +160,7 @@ function Requests() {
       ) : null}
       {declining ? (
         <Dialog title={t("Decline the request")} description={t("They see this reason.")} onClose={() => setDeclining(null)}>
-          <label className="m2-fld">
+          <label className="m2-afld">
             <span className="m2-lbl">{t("Reason")}</span>
             <textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
           </label>

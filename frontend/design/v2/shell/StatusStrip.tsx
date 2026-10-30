@@ -41,11 +41,12 @@ function FailureLine() {
   const failed = openFailures(jobs)[0];
   if (!failed) return null;
   const why = firstSentence(failed.error);
+  const sentence = t("{JOB_KIND_LABEL} of {jobObject} failed{value}", { JOB_KIND_LABEL: JOB_KIND_LABEL[failed.kind], jobObject: jobObject(failed), value: why ? `: ${why}` : "" });
   return (
     <span className="m2-fail" data-testid="status-failure">
       <SeverityMark severity="critical" />
-      <span>
-        {t("{JOB_KIND_LABEL} of {jobObject} failed{value}", { JOB_KIND_LABEL: JOB_KIND_LABEL[failed.kind], jobObject: jobObject(failed), value: why ? `: ${why}` : "" })}{" "}
+      <span title={sentence}>
+        {sentence}{" "}
         <V2Link href={hrefFor({ kind: "job", id: failed.id })}>{t("Open")}</V2Link>
       </span>
     </span>
@@ -87,7 +88,7 @@ export function StatusStrip() {
             </Fragment>
           ))
         ) : (
-          <span className="m2-skel" style={{ width: 360, height: 12 }} aria-hidden="true" />
+          <span className="m2-skel m2-skel-strip" aria-hidden="true" />
         )}
         </span>
       </span>

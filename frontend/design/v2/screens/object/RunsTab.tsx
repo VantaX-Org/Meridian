@@ -213,7 +213,7 @@ export function RunsTab({ system: systemSegment, module: moduleSegment }: { syst
           <span className="m2-sub">{cap != null ? t("Cap {cap}.0, {breachesCount} critical rules over tolerance", { cap, breachesCount: receipt?.breaches.length ?? 0 }) : t("No cap applies")}</span>
         </div>
         <ScoreChart points={points} capLevel={cap} label={aria} compact={narrow} />
-        <ScrollFrame label={t("Runs, scrollable")} style={{ marginTop: 16 }}>
+        <ScrollFrame label={t("Runs, scrollable")} style={{ marginTop: "var(--m2-s4)" }}>
           <table className="m2-tbl" aria-label={t("Runs shown in the chart")}>
             <thead>
               <tr>

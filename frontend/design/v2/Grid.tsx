@@ -113,6 +113,12 @@ function saveHidden(id: string, visibility: VisibilityState): void {
  * column stick; numbers are right-aligned tabular figures. Keyboard: j, k and the arrow keys move, Enter opens,
  * x selects, Shift extends. The column choice is remembered per table id.
  */
+/** A cut value shows in full on hover: the cell's title is set the first time it is pointed at while overflowing. */
+function showFullValue(e: { currentTarget: HTMLElement }): void {
+  const el = e.currentTarget;
+  if (!el.title && el.scrollWidth > el.clientWidth + 1) el.title = (el.textContent ?? "").trim();
+}
+
 export function Grid<T>(props: GridProps<T>) {
   const { id, ariaLabel, columns, rows, rowId, compact, height = 480, initialViewport, onOpen, openRowId, selectable, bulkBar, toolbar, emptyFrame, error, loading, primary = true, fixedColumns, hideBar, spanRow, count, onActiveChange, onSelectionChange, bulkLabel, handleRef } = props;
   const rowH = compact ? 28 : 32;
@@ -151,7 +157,9 @@ export function Grid<T>(props: GridProps<T>) {
   const pinned = columns.find((c) => c.pin)?.id;
   const widths = leaf.map((c) => c.getSize());
   const total = widths.reduce((a, b) => a + b, 0) + (selectable ? SELECT_W : 0);
-  const template = `${selectable ? `${SELECT_W}px ` : ""}${widths.map((w) => `${w}px`).join(" ")}`;
+  // The last column takes what is left of the frame, so the header rule and the row rules always reach its edge.
+  // i18n-ignore: a CSS grid track, not words
+  const template = `${selectable ? `${SELECT_W}px ` : ""}${widths.map((w, i) => (i === widths.length - 1 ? `minmax(${w}px, 1fr)` : `${w}px`)).join(" ")}`;
   const selectedCount = selected.size;
 
   const virt = useVirtualizer({
@@ -318,7 +326,7 @@ export function Grid<T>(props: GridProps<T>) {
         }}
         style={{ height: scrollH, maxHeight: height }}
       >
-        <div role="rowgroup" className="m2-ghead" style={{ width: total, height: HEAD_H }}>
+        <div role="rowgroup" className="m2-ghead" style={{ width: "100%", minWidth: total, height: HEAD_H }}>
           <div role="row" aria-rowindex={1} className="m2-ghead-row" style={{ gridTemplateColumns: template, height: HEAD_H }}>
             {selectable ? (
               <div role="columnheader" className="m2-gcell m2-gpin m2-gsel" style={{ left: 0 }}>
@@ -352,7 +360,7 @@ export function Grid<T>(props: GridProps<T>) {
         {error ? (
           <div className="m2-gstate">{error}</div>
         ) : loading ? (
-          <div role="rowgroup" className="m2-gbody" aria-busy="true" style={{ width: total, height: rowH * 8 }}>
+          <div role="rowgroup" className="m2-gbody" aria-busy="true" style={{ width: "100%", minWidth: total, height: rowH * 8 }}>
             {Array.from({ length: 8 }, (_, i) => (
               <div key={i} role="row" className="m2-grow m2-grow-skel" style={{ gridTemplateColumns: template, height: rowH, transform: `translateY(${i * rowH}px)` }}>
                 {leaf.map((c) => (
@@ -366,7 +374,7 @@ export function Grid<T>(props: GridProps<T>) {
         ) : rows.length === 0 ? (
           <div className="m2-gstate">{emptyFrame}</div>
         ) : (
-          <div role="rowgroup" className="m2-gbody" style={{ width: total, height: virt.getTotalSize() }}>
+          <div role="rowgroup" className="m2-gbody" style={{ width: "100%", minWidth: total, height: virt.getTotalSize() }}>
             {items.map((v) => {
               const row = rows[v.index];
               if (row === undefined) return null;
@@ -382,7 +390,7 @@ export function Grid<T>(props: GridProps<T>) {
                     aria-rowindex={v.index + 2}
                     data-active={v.index === active ? "true" : undefined}
                     className="m2-grow m2-grow-span"
-                    style={{ height: rowH, transform: `translateY(${v.start - HEAD_H}px)`, width: total }}
+                    style={{ height: rowH, transform: `translateY(${v.start - HEAD_H}px)`, width: "100%", minWidth: total }}
                     onClick={(e) => {
                       if ((e.target as HTMLElement).closest("input,a,button")) return;
                       stateRef.current.active = v.index;
@@ -441,6 +449,7 @@ export function Grid<T>(props: GridProps<T>) {
                         role="gridcell"
                         className={`m2-gcell${meta.numeric ? " m2-gnum" : ""}${meta.id === pinned ? " m2-gpin" : ""}`}
                         style={meta.id === pinned ? { left: selectable ? SELECT_W : 0 } : undefined}
+                        onMouseEnter={showFullValue}
                       >
                         {meta.cell(row, v.index)}
                       </div>

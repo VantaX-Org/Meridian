@@ -119,7 +119,7 @@ function ExtractPicker({ system, allowAnalyse, onDone }: { system: LandscapeSyst
             <p className="m2-prov">{t("Choose objects to set the scope: company codes, plants, organisations and a date window.")}</p>
           )}
           {picked.size > 0 ? <RunForecast systemId={system.id} modules={[...picked]} delta={delta} what="extraction" /> : null}
-          <div className="m2-acts" style={{ marginTop: 8 }}>
+          <div className="m2-acts" style={{ marginTop: "var(--m2-s2)" }}>
             <button type="button" className="m2-btn m2-strong" disabled={picked.size === 0 || pending !== null || Boolean(badDates)} onClick={go}>
               {pending === "extract" ? t("Starting…") : picked.size ? t("Extract {size} {size, plural, one {object} other {objects}}", { size: picked.size }) : t("Choose objects to extract")}
             </button>

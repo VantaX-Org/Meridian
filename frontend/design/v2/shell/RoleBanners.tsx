@@ -33,7 +33,7 @@ export function RoleBanners() {
   };
   if (session.viewAs) {
     return (
-      <div className="m2-banner" role="status" data-testid="view-as-banner">
+      <div className="m2-rbanner" role="status" data-testid="view-as-banner">
         <span>
           <strong>{t("Viewing as {ROLE_NAMES}.", { ROLE_NAMES: ROLE_NAMES[session.viewAs] ?? session.viewAs })}</strong>{" "}{t("Read-only: you see what this role sees, and nothing can be changed until you stop.")}
         </span>
@@ -46,7 +46,7 @@ export function RoleBanners() {
   }
   if (session.shared) {
     return (
-      <div className="m2-banner" data-tone="info" role="status" data-testid="shared-banner">
+      <div className="m2-rbanner" data-tone="info" role="status" data-testid="shared-banner">
         <span>
           <strong>{t("Shared view.")}</strong>{" "}{t("Read-only, as a viewer.")}
         </span>

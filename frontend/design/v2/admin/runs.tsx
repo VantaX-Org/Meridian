@@ -77,7 +77,7 @@ function Extraction({ system }: { system: string }) {
           </li>
         ))}
       </ul>
-      <div className="m2-fgrid" style={{ marginTop: 12 }}>
+      <div className="m2-fgrid" style={{ marginTop: "var(--m2-s3)" }}>
         <Fld label={t("Company codes")} hint={t("Separated by commas.")}>
           <input value={codes} disabled={!can} onChange={(e) => setCodes(e.target.value)} />
         </Fld>
@@ -91,11 +91,11 @@ function Extraction({ system }: { system: string }) {
           <input type="date" value={to} disabled={!can} onChange={(e) => setTo(e.target.value)} />
         </Fld>
       </div>
-      <label className="m2-sw" style={{ marginTop: 8 }}>
+      <label className="m2-sw" style={{ marginTop: "var(--m2-s2)" }}>
         <input type="checkbox" checked={analyse && canAnalyse} disabled={!canAnalyse || !can} onChange={(e) => setAnalyse(e.target.checked)} />
         <span>{t("Analyse straight after extracting")}</span>
       </label>
-      <label className="m2-sw" style={{ marginTop: 8 }}>
+      <label className="m2-sw" style={{ marginTop: "var(--m2-s2)" }}>
         <input type="checkbox" checked={delta} disabled={!can} onChange={(e) => setDelta(e.target.checked)} data-testid="extract-delta" />
         <span>
           {t("Changes only since last full download")}
@@ -203,7 +203,7 @@ function FileUpload({ system }: { system: string }) {
         </Fld>
       </div>
       {system && systemName ? (
-        <label className="m2-sw" style={{ marginTop: 8 }}>
+        <label className="m2-sw" style={{ marginTop: "var(--m2-s2)" }}>
           <input type="checkbox" checked={attach} disabled={!can} onChange={(e) => setAttach(e.target.checked)} />
           <span>{t("Attach the run to {name}", { name: systemName })}</span>
         </label>
@@ -300,7 +300,7 @@ function ProfileDialog({ system, profile, onClose }: { system: string; profile: 
   return (
     <Dialog title={profile ? t("Edit the schedule of {domain}", { domain: labelText(profile.domain) }) : t("Schedule a run")} description={t("The system extracts the object on this rhythm. Changing it never fires a run at once.")} onClose={onClose} wide>
       {!profile ? (
-        <label className="m2-fld">
+        <label className="m2-afld">
           <span className="m2-lbl">{t("Object")}</span>
           <select value={object} onChange={(e) => setObject(e.target.value)}>
             <option value="">{t("Choose an object")}</option>
@@ -313,13 +313,13 @@ function ProfileDialog({ system, profile, onClose }: { system: string; profile: 
         </label>
       ) : null}
       {custom ? (
-        <label className="m2-fld">
+        <label className="m2-afld">
           <span className="m2-lbl">{t("Cron line (minute hour day month weekday)")}</span>
           <input value={cron} onChange={(e) => setCron(e.target.value)} placeholder="0 4 * * 1" />
         </label>
       ) : (
         <>
-          <label className="m2-fld">
+          <label className="m2-afld">
             <span className="m2-lbl">{t("Cadence")}</span>
             <select value={cadence} onChange={(e) => setCadence(e.target.value as typeof cadence)}>
               <option value="daily">{t("Every day")}</option>
@@ -328,7 +328,7 @@ function ProfileDialog({ system, profile, onClose }: { system: string; profile: 
             </select>
           </label>
           {cadence === "weekly" ? (
-            <label className="m2-fld">
+            <label className="m2-afld">
               <span className="m2-lbl">{t("On")}</span>
               <select value={weekday} onChange={(e) => setWeekday(Number(e.target.value))}>
                 {[t("Sunday"), t("Monday"), t("Tuesday"), t("Wednesday"), t("Thursday"), t("Friday"), t("Saturday")].map((d, i) => (
@@ -340,12 +340,12 @@ function ProfileDialog({ system, profile, onClose }: { system: string; profile: 
             </label>
           ) : null}
           {cadence === "monthly" ? (
-            <label className="m2-fld">
+            <label className="m2-afld">
               <span className="m2-lbl">{t("On day of the month")}</span>
               <input type="number" min={1} max={28} value={day} onChange={(e) => setDay(Math.max(1, Math.min(28, Number(e.target.value) || 1)))} />
             </label>
           ) : null}
-          <label className="m2-fld">
+          <label className="m2-afld">
             <span className="m2-lbl">{t("At (UTC)")}</span>
             <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
           </label>
@@ -354,7 +354,7 @@ function ProfileDialog({ system, profile, onClose }: { system: string; profile: 
       <button type="button" className="m2-linkbtn" onClick={() => setCustom(!custom)}>
         {custom ? t("Choose a cadence instead") : t("Write a cron line instead")}
       </button>
-      <label className="m2-fld">
+      <label className="m2-afld">
         <span className="m2-lbl">{t("What it reads")}</span>
         <select value={mode} onChange={(e) => setMode(e.target.value as "full" | "delta")}>
           <option value="full">{t("Everything each time")}</option>
@@ -407,7 +407,7 @@ function Schedules({ system }: { system: string }) {
       width: 220,
       locked: true,
       cell: (p) => (
-        <span style={{ display: "inline-flex", gap: 6 }}>
+        <span style={{ display: "inline-flex", gap: "var(--m2-s2)" }}>
           <button type="button" className="m2-btn m2-sm" disabled={!can || pending !== null} aria-label={`${p.active ? t("Pause") : t("Resume")} ${labelText(p.domain)}`} onClick={() => toggle(p)}>
             {p.active ? t("Pause") : t("Resume")}
           </button>
@@ -483,7 +483,7 @@ function RecentJobs() {
       width: 170,
       locked: true,
       cell: (j) => (
-        <span style={{ display: "inline-flex", gap: 6 }}>
+        <span style={{ display: "inline-flex", gap: "var(--m2-s2)" }}>
           <button type="button" className="m2-btn m2-sm" onClick={() => openItem({ kind: "job", id: j.id })} aria-label={t("Open {jobDoing}", { jobDoing: jobDoing(j) })}>
             {t("Open")}
           </button>

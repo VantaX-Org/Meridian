@@ -176,7 +176,7 @@ export function StewardshipSection() {
 
 function FileField({ label, accept, onText, binary }: { label: string; accept: string; onText: (text: string, name: string) => void; binary?: boolean }) {
   return (
-    <label className="m2-fld">
+    <label className="m2-afld">
       <span className="m2-lbl">{label}</span>
       <input
         type="file"
@@ -297,7 +297,7 @@ export function ViewAsSection() {
           <Note tone="warn">{tr("You are viewing as {ROLE_NAMES}. Stop from the bar at the top of the page.", { ROLE_NAMES: ROLE_NAMES[session.viewAs] ?? session.viewAs })}</Note>
         ) : (
           <div className="m2-adm-acts">
-            <label className="m2-fld">
+            <label className="m2-afld">
               <span className="m2-lbl">{tr("Role")}</span>
               <select value={role} onChange={(e) => setRole(e.target.value)}>
                 {VIEW_AS_ROLES.map((r) => (

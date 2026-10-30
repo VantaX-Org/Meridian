@@ -74,7 +74,7 @@ function WhatChanged({ a, b, totals, labelOf }: { a: string; b: string; totals: 
       ) : q.isError || !q.data ? (
         <ErrorFrame onRetry={() => void q.refetch()}>{tr("The rules that changed could not be read.")}</ErrorFrame>
       ) : (
-        <div className="m2-chg" data-testid="what-changed">
+        <div className="m2-cchg" data-testid="what-changed">
           {GROUPS.map(({ kind, title }) => {
             const list = q.data.checks[kind] ?? [];
             const open = all[kind] ?? false;
@@ -318,7 +318,7 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
                   <div className="m2-nm" style={{ gridColumn: 1 }}>
                     {o.label}
                   </div>
-                  <div style={{ gridColumn: 2, display: "flex", gap: 8, alignItems: "center" }}>
+                  <div style={{ gridColumn: 2, display: "flex", gap: "var(--m2-s2)", alignItems: "center" }}>
                     <DivergingBar d={d} width={72} scale={12} />
                     <Change d={d} />
                   </div>

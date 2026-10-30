@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { formatDate, labelOf } from "@/lib/format";
 import { loadSystemConfig } from "@/lib/api/v2/runs";
 import { discoverConfig, proposeConfigMatches } from "@/lib/api/v2/sys";
-import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
+import { useOpenItem, useUrlParam, useV2Session } from "@/lib/v2/hooks";
 import { areaFound, AREA_STATUS_WORD, objectSource, objectText, SOURCE_WORD } from "@/lib/v2/config-text";
 import { useSystemConfigLoad, useSystemObjectList } from "@/lib/v2/runs-queries";
 import { useConfigCompare, useConfigDrift, useRefreshV2, useSproConfig } from "@/lib/v2/sys-queries";
@@ -58,7 +58,7 @@ function Source({ id }: { id: string }) {
   const objects = useSystemObjectList(id);
   const load = useSystemConfigLoad(id);
   const mods = (objects.data?.objects ?? []).map((o) => o.object);
-  const [module, setModule] = useState("");
+  const [module, setModule] = useUrlParam<string>("module", "");
   const chosen = module || mods[0] || "";
   const q = useSproConfig(id, chosen, Boolean(chosen));
   const objs = load.data?.areas.flatMap((a) => a.objects) ?? [];
@@ -70,7 +70,7 @@ function Source({ id }: { id: string }) {
           ? tr("No configuration has been loaded, so every rule reads the SAP standard baseline.")
           : tr("{live} of {objsCount} configuration objects were read live from the system; the other {count} fall back to the SAP standard baseline, and the rules that depend on them apply by default.", { live, objsCount: objs.length, count: objs.length - live })}
       </p>
-      <div className="m2-form6" style={{ marginTop: 12 }}>
+      <div className="m2-form6" style={{ marginTop: "var(--m2-s3)" }}>
         <Field label={tr("Object")} hint={tr("The SPRO configuration the rules of this object read.")}>
           {(p) => (
             <select {...p} value={chosen} onChange={(e) => setModule(e.target.value)}>
@@ -88,7 +88,7 @@ function Source({ id }: { id: string }) {
       ) : q.isError ? (
         <EmptyFrame>{tr("No SPRO configuration is defined for this object, so its rules read the SAP standard baseline.")}</EmptyFrame>
       ) : q.data ? (
-        <ScrollFrame label={tr("Table 1, scrollable")}  style={{ marginTop: 12 }}>
+        <ScrollFrame label={tr("Table 1, scrollable")}  style={{ marginTop: "var(--m2-s3)" }}>
           <table className="m2-tbl" data-testid="spro-sources">
             <thead>
               <tr>
@@ -206,7 +206,7 @@ function Compare({ id }: { id: string }) {
         </ScrollFrame>
       )}
       {object && d.rows.length > 0 ? (
-        <ScrollFrame label={tr("Table 4, scrollable")}  style={{ marginTop: 12 }}>
+        <ScrollFrame label={tr("Table 4, scrollable")}  style={{ marginTop: "var(--m2-s3)" }}>
           <table className="m2-tbl" aria-label={tr("Values of {object}", { object })}>
             <thead>
               <tr>
@@ -227,7 +227,7 @@ function Compare({ id }: { id: string }) {
           </table>
         </ScrollFrame>
       ) : null}
-      <div className="m2-acts" style={{ marginTop: 12 }}>
+      <div className="m2-acts" style={{ marginTop: "var(--m2-s3)" }}>
         <button type="button" className="m2-btn" disabled={!can("analyse") || pending !== null} onClick={propose}>
           {pending === "propose" ? tr("Proposing…") : tr("Propose matches")}
         </button>
@@ -288,7 +288,7 @@ export function Configuration({ id }: { id: string }) {
           <Fact label={tr("Change history")}>{c.history.detail || "—"}</Fact>
         </Facts>
       )}
-      <div className="m2-acts" style={{ marginTop: 12 }}>
+      <div className="m2-acts" style={{ marginTop: "var(--m2-s3)" }}>
         <button type="button" className="m2-btn" disabled={!can("trigger_sync") || pending !== null} onClick={load}>
           {pending === "load" ? tr("Starting…") : c ? tr("Load again") : tr("Load configuration")}
         </button>

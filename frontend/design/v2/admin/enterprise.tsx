@@ -128,7 +128,7 @@ function AppearanceForm({ initial, write }: { initial: ThemeSettings; write: boo
   return (
     <>
       <SavedTheme th={initial} />
-      <div className="m2-fgrid" style={{ marginTop: 12 }}>
+      <div className="m2-fgrid" style={{ marginTop: "var(--m2-s3)" }}>
         <Fld label={tr("Logo")} hint={tr("PNG or SVG, {max} KB at most. It replaces the mark in the top bar and on the sign-in page.", { max: ent.LOGO_MAX_BYTES / 1024 })} error={logoError}>
           <input type="file" accept={ent.LOGO_TYPES.join(",")} disabled={!write} onChange={(e) => onFile(e.target.files?.[0])} />
         </Fld>
@@ -136,17 +136,17 @@ function AppearanceForm({ initial, write }: { initial: ThemeSettings; write: boo
           <input type="text" value={name} maxLength={80} disabled={!write} onChange={(e) => setName(e.target.value)} placeholder={tr("Meridian")} />
         </Fld>
       </div>
-      <div style={{ marginTop: 12 }}>
+      <div style={{ marginTop: "var(--m2-s3)" }}>
         <label className="m2-sw">
           <input type="checkbox" checked={useAccent} disabled={!write} onChange={(e) => setUseAccent(e.target.checked)} />
           <span>{tr("Use our own accent colour")}</span>
         </label>
       </div>
       {useAccent ? (
-        <div className="m2-fgrid" style={{ marginTop: 8 }}>
+        <div className="m2-fgrid" style={{ marginTop: "var(--m2-s2)" }}>
           <Fld label={tr("Accent")} hint={tr("Links, the selected cell, the current run and the primary button. It must read at 4.5:1 on white.")} mono>
-            <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <input type="color" aria-label={tr("Accent, colour picker")} value={picker} disabled={!write} onChange={(e) => (setAccent(e.target.value), setPicker(e.target.value))} style={{ width: 44, padding: 2 }} />
+            <span style={{ display: "flex", gap: "var(--m2-s2)", alignItems: "center" }}>
+              <input type="color" aria-label={tr("Accent, colour picker")} value={picker} disabled={!write} onChange={(e) => (setAccent(e.target.value), setPicker(e.target.value))} style={{ width: 44, padding: "var(--m2-s1)" }} />
               <input type="text" aria-label={tr("Accent, hexadecimal")} value={accent} disabled={!write} onChange={(e) => {
                   const v = e.target.value.trim();
                   setAccent(v);
@@ -162,7 +162,7 @@ function AppearanceForm({ initial, write }: { initial: ThemeSettings; write: boo
           </div>
         </div>
       ) : null}
-      <h3 className="m2-h2" style={{ marginTop: 16, fontSize: 13 }}>{tr("Preview")}</h3>
+      <h3 className="m2-h2" style={{ marginTop: "var(--m2-s4)", fontSize: 13 }}>{tr("Preview")}</h3>
       <div className="m2-preview" data-accent={previewStyle ? "" : undefined} style={previewStyle} data-testid="appearance-preview">
         {/* eslint-disable-next-line @next/next/no-img-element -- the stored logo or the chosen file, before it is uploaded */}
         {shownLogo ? <img src={shownLogo} alt={tr("Logo preview")} className="m2-logo" /> : <Mark size={28} />}
@@ -256,7 +256,7 @@ function ComplianceForm({ data, write }: { data: ComplianceStatement; write: boo
       />
       {enc.database_volume === false || enc.object_storage === false ? <Note tone="warn">{tr("Part of the storage is not encrypted at rest. Turn it on in the database and storage configuration of this deployment.")}</Note> : null}
       <p className="m2-prov">{tr("A dash means this deployment does not declare it.")}</p>
-      <div className="m2-frame" tabIndex={0} role="region" aria-label={tr("Retention by kind of data")} style={{ marginTop: 12, maxWidth: 620 }}>
+      <div className="m2-frame" tabIndex={0} role="region" aria-label={tr("Retention by kind of data")} style={{ marginTop: "var(--m2-s3)", maxWidth: 620 }}>
         <table className="m2-tbl">
           <thead>
             <tr>
@@ -365,10 +365,10 @@ export function DiagnosticsBlock() {
 function OneTimeSecret({ token, onDone }: { token: string; onDone: () => void }) {
   const [copied, setCopied] = useState<boolean | null>(null);
   return (
-    <div className="m2-note" data-tone="warn" data-testid="scim-secret">
+    <div className="m2-anote" data-tone="warn" data-testid="scim-secret">
       <p style={{ margin: 0 }}>{tr("Shown once. Copy the token now and paste it into your identity provider: Meridian keeps only a hash of it.")}</p>
       <p className="m2-secret" aria-label={tr("SCIM token")}>{token}</p>
-      <div className="m2-adm-acts" style={{ marginTop: 8 }}>
+      <div className="m2-adm-acts" style={{ marginTop: "var(--m2-s2)" }}>
         <button type="button" className="m2-btn" onClick={() => void copyText(token).then(setCopied)}>
           {copied ? tr("Copied") : tr("Copy the token")}
         </button>
@@ -415,7 +415,7 @@ export function ScimCard() {
                 [tr("Last used"), t.last_used_at ? since(t.last_used_at) : "—"],
                 [
                   tr("SCIM base URL"),
-                  <span key="u" style={{ display: "inline-flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                  <span key="u" style={{ display: "inline-flex", gap: "var(--m2-s2)", alignItems: "center", flexWrap: "wrap" }}>
                     <Mono>{t.base_url}</Mono>
                     <button type="button" className="m2-btn m2-sm" onClick={() => void copyText(t.base_url).then(setCopied)}>
                       {copied ? tr("Copied") : tr("Copy the URL")}
@@ -476,7 +476,7 @@ export function ScimCard() {
 function GroupRoles() {
   const q = useScimGroupRoles();
   return (
-    <div style={{ marginTop: 16 }}>
+    <div style={{ marginTop: "var(--m2-s4)" }}>
       <h3 className="m2-h2" style={{ fontSize: 13 }}>{tr("Group to role")}</h3>
       <p className="m2-adm-hint">{tr("A person in one of these identity provider groups gets its role. Saving re-syncs everyone in a SCIM group at once.")}</p>
       <Loaded q={q} what={tr("The group mapping")} rows={3}>

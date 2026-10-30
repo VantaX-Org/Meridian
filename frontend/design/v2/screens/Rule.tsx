@@ -47,7 +47,7 @@ export function RuleCanvas({ id }: { id: string }) {
         </PageTitle>
         <div className="m2-sec">
           <ErrorFrame onRetry={state.refetch}>{tr("This rule could not be read. It may not exist in this tenant, or the API may be unreachable.")}</ErrorFrame>
-          <div style={{ marginTop: 16 }}>
+          <div style={{ marginTop: "var(--m2-s4)" }}>
             <EmptyFrame action={<V2Link href="/rules" className="m2-btn">{tr("Open the rules library")}</V2Link>}>
               {tr("The rules library lists every rule of the tenant; search it by code or name.")}
             </EmptyFrame>

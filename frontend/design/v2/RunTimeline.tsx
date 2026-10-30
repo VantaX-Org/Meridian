@@ -271,7 +271,7 @@ export function RunTimelineMenu({ compact }: { compact?: boolean }) {
         <IconDown />
       </button>
       {open ? (
-        <div ref={panel} className="m2-pop" role="dialog" aria-labelledby={titleId} style={pos ?? undefined} data-testid="run-popover">
+        <div ref={panel} className="m2-tlpop" role="dialog" aria-labelledby={titleId} style={pos ?? undefined} data-testid="run-popover">
           <h4 id={titleId} className="m2-pop-h">
             {heading}
           </h4>

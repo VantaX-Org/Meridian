@@ -60,7 +60,8 @@
   --m2-lh-20: 28px;
   --m2-lh-24: 32px;
 
-  /* Spacing on a 4px grid */
+  /* Spacing on a 4px grid. Every padding, margin and gap under design/v2 and app/ is one of these (or a calc() of
+     them); npm run lint:tokens rejects a raw px spacing value anywhere else. */
   --m2-s1: 4px;
   --m2-s2: 8px;
   --m2-s3: 12px;
@@ -69,6 +70,14 @@
   --m2-s6: 24px;
   --m2-s8: 32px;
   --m2-s10: 40px;
+  --m2-s12: 48px;
+
+  /* Vertical rhythm: sections of a canvas 24 apart, blocks inside a section 16, a list row 36 (the grid's rows are
+     32 and 28), a header 48. */
+  --m2-section-gap: var(--m2-s6);
+  --m2-block-gap: var(--m2-s4);
+  --m2-row-h-list: 36px;
+  --m2-header-h: 48px;
 
   /* Radius */
   --m2-r1: 4px;
@@ -81,6 +90,8 @@
   --m2-insp-w: 400px;
   --m2-row-h: 32px;
   --m2-row-h-compact: 28px;
+  /* The canvas gutter: 24 at desktop widths, 16 on a phone (redefined in the phone query below). */
+  --m2-gutter: var(--m2-s6);
 
   /* Motion: 150 and 200 milliseconds, exponential ease-out */
   --m2-t-fast: 150ms;
@@ -217,3 +228,33 @@ html[data-theme="dark"] .m2-root[data-tenant-accent] {
 }
 .m2-root .m2-toast { animation: m2-toast-in var(--m2-t-med) var(--m2-ease); }
 .m2-root .m2-tl-mk { animation: m2-tl-in var(--m2-t-med) var(--m2-ease); transition: fill var(--m2-t-fast) var(--m2-ease); }
+
+/* The phone gutter: one pane at a time, full-width sheets with 16px sides. */
+@media (max-width: 760px) {
+  .m2-root { --m2-gutter: var(--m2-s4); }
+}
+
+/*
+ * The layout grid, drawn over the page with ?grid=1 (design/v2/shell/GridOverlay.tsx; off by default, kept in the build
+ * so anyone can check an alignment): an 8px baseline grid, the canvas gutters and the column bounds of the map, the
+ * canvas and the inspector. It never takes a click.
+ */
+.m2-root .m2-grid-overlay {
+  position: fixed; inset: 0; z-index: 2147483000; pointer-events: none;
+  background-image:
+    repeating-linear-gradient(to bottom, rgba(214, 0, 110, 0.12) 0 1px, transparent 1px 8px),
+    repeating-linear-gradient(to right, rgba(214, 0, 110, 0.12) 0 1px, transparent 1px 8px);
+}
+.m2-root[data-grid] .m2-map,
+.m2-root[data-grid] .m2-canvas,
+.m2-root[data-grid] .m2-insp { outline: 1px solid rgba(0, 102, 255, 0.55); outline-offset: -1px; }
+.m2-root[data-grid] .m2-canvas { box-shadow: inset var(--m2-gutter) 0 0 0 rgba(0, 102, 255, 0.07), inset calc(-1 * var(--m2-gutter)) 0 0 0 rgba(0, 102, 255, 0.07); }
+
+/* Paper: light ground and inks whatever the screen's theme (design/v2/print.css lays the page out). */
+@media print {
+  html, body { background: #FFFFFF !important; }
+  .m2-root, html[data-theme="dark"] .m2-root {
+    --m2-bg: #FFFFFF; --m2-sheet: #FFFFFF; --m2-fg: #000000; --m2-ink-2: #2B2F36; --m2-meta: #4A505A;
+    --m2-line: #C9CDD3; --m2-line-2: #9AA0A9; --m2-rule: #DADDE1;
+  }
+}
