@@ -234,3 +234,49 @@ async def test_tenant_isolation(owner, monkeypatch):
         # another tenant's user is not a valid assignee
         assert (await client2.post(f"/api/v1/remediation/batches/{bid}/reassign", headers=headers(),
                                    json={"assignee_id": t2["cara"]})).status_code == 404
+
+
+def _sheet_records(content: bytes, sheet: str | None = None) -> list[str]:
+    """The record keys of an exported workbook, in sheet order (the grey Record column the import reads)."""
+    import io
+
+    from openpyxl import load_workbook
+
+    wb = load_workbook(io.BytesIO(content))
+    names = [sheet] if sheet else wb.sheetnames
+    keys: list[str] = []
+    for n in names:
+        ws = wb[n]
+        header = [c.value for c in ws[1]]
+        if "Record" not in header:  # the cover and summary sheets
+            continue
+        keys += [r[header.index("Record")].value for r in ws.iter_rows(min_row=2)]
+    return keys
+
+
+@pytest.mark.anyio
+async def test_exports_take_the_batch_policy_and_sort_of_the_list(owner, monkeypatch):
+    """D-03: /work/export and /work/export/per-object take batch_id, policy and sort like /work/records, so an export
+    from a filtered ledger holds the rows the screen shows, in its order."""
+    s = seed_m2(owner)
+    priced(owner, s)
+    bid = make_batch(owner, s)
+    client = await start(monkeypatch, s)
+    async with client:
+        listed = [i["record_key"] for i in (await client.get(
+            f"/api/v1/work/records?status=all&batch_id={bid}&sort=-value&limit=100", headers=headers())).json()["items"]]
+        assert sorted(listed) == sorted([R1, R2])
+        for path in ("/api/v1/work/export", "/api/v1/work/export/per-object"):
+            r = await client.get(f"{path}?status=all&batch_id={bid}&sort=-value", headers=headers())
+            assert r.status_code == 200, r.text
+            keys = _sheet_records(r.content, "Fix sheet" if path.endswith("export") else None)
+            assert set(keys) == {R1, R2}, path
+            assert list(dict.fromkeys(keys)) == listed, path  # one row per failing check, records in list order
+        # a policy pack narrows the export exactly as it narrows the list (no seeded rule evidences GDPR)
+        assert (await client.get("/api/v1/work/records?status=all&policy=gdpr", headers=headers())).json()["total"] == 0
+        r = await client.get("/api/v1/work/export?status=all&policy=gdpr", headers=headers())
+        assert r.status_code == 200 and _sheet_records(r.content, "Fix sheet") == []
+        r = await client.get("/api/v1/work/records?status=all&policy=nope", headers=headers())
+        assert r.status_code == 422
+        assert (await client.get("/api/v1/work/export?status=all&policy=nope", headers=headers())).status_code == 422
+        assert (await client.get("/api/v1/work/export?sort=bogus", headers=headers())).status_code == 422
