@@ -25,3 +25,5 @@ ENVIRONMENT = "production"
 # Secrets — set via:
 #   wrangler secret put LICENCE_ADMIN_SECRET
 #   wrangler secret put LICENCE_SECRET
+#   wrangler secret put LICENCE_SIGNING_KEY_ED25519   # vendor Ed25519 PKCS8 PEM; its public key is compiled
+#                                                     # into api/middleware/licence_keys.py

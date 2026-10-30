@@ -9,7 +9,6 @@ here; enabled_modules/enabled_menu_items (frontend) and RBAC (per-endpoint
 require_permission + tenant isolation) protect them instead.
 """
 
-import pytest
 
 from api.middleware.licence import FEATURE_ROUTE_MAP, _check_feature_gate
 

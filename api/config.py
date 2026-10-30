@@ -64,6 +64,21 @@ class Settings(BaseSettings):
     licence_file: Optional[str] = None
     licence_file_path: Optional[str] = None
     licence_secret: Optional[str] = None
+    # Transition window only, default off: also accept the old HMAC-signed offline licence file (LICENCE_SECRET),
+    # the old RS256 offline token (MERIDIAN_OFFLINE_PUBLIC_KEY) and the old RSA-signed online response
+    # (LICENCE_SERVER_PUBLIC_KEY). Every acceptance is logged. Licences are otherwise verified only against the
+    # vendor's Ed25519 keys compiled into the image (api/middleware/licence_keys.py).
+    licence_allow_legacy_signatures: bool = Field(
+        default=False, validation_alias=AliasChoices("MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES"))
+    # Offline grace: when HQ is unreachable, the last valid signed online response is honoured for this many
+    # days after it was signed, with a warning and status "offline_grace" (api/middleware/licence.py).
+    licence_offline_grace_days: int = Field(
+        default=14, ge=0, le=30, validation_alias=AliasChoices("MERIDIAN_LICENCE_OFFLINE_GRACE_DAYS"))
+    # Where the last valid signed online response is kept so the grace survives a restart (best effort; it is
+    # re-verified on load, so editing the file grants nothing).
+    licence_state_path: str = Field(
+        default="/var/lib/meridian/licence-last-valid.json",
+        validation_alias=AliasChoices("MERIDIAN_LICENCE_STATE_PATH"))
 
     # Updater sidecar (docker/docker-compose.updater.yml) — holds the Docker
     # socket so the api container never needs it. Unset secret means this

@@ -20,6 +20,10 @@ export default defineWorkersConfig({
             LICENCE_ADMIN_SECRET: "test-admin-secret",
             LICENCE_SECRET: "test-licence-secret",
             RELEASE_PUBLISH_TOKEN: "test-release-token",
+            // TEST ONLY Ed25519 key, generated for these tests and trusted nowhere else; its public key is
+            // TEST_ONLY_LICENCE_PUBLIC_KEY in src/index.test.ts. The vendor key is a wrangler secret.
+            LICENCE_SIGNING_KEY_ED25519:
+              "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIBBxnJKL5hNXPj4iCpjgHowc5JRU9xdeoVyby24W2pGF\n-----END PRIVATE KEY-----",
           },
         },
       },

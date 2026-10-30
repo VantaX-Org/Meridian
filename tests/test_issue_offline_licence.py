@@ -16,8 +16,9 @@ def _issue(tmp_path: Path, *extra: str) -> dict[str, str]:
 def test_issued_token_verifies_and_grants_everything(tmp_path, monkeypatch):
     env = _issue(tmp_path, "--new-key", str(tmp_path / "k.pem"))
     assert env["MERIDIAN_LICENCE_MODE"] == "offline"
+    monkeypatch.setattr("api.config.settings.env", "development")  # the test key is honoured in development only
     monkeypatch.setenv("MERIDIAN_LICENCE_TOKEN", env["MERIDIAN_LICENCE_TOKEN"])
-    monkeypatch.setenv("MERIDIAN_OFFLINE_PUBLIC_KEY", env["MERIDIAN_OFFLINE_PUBLIC_KEY"])  # quoted, \n-escaped
+    monkeypatch.setenv("MERIDIAN_LICENCE_TEST_PUBLIC_KEY", env["MERIDIAN_LICENCE_TEST_PUBLIC_KEY"])
     from api.middleware.licence import _read_offline_token
     r = _read_offline_token()
     assert r["valid"] and r["enabled_modules"] == ["*"] and r["features"]["export_reports"] is True
@@ -27,7 +28,8 @@ def test_issued_token_verifies_and_grants_everything(tmp_path, monkeypatch):
 def test_token_from_another_key_is_rejected(tmp_path, monkeypatch):
     a = _issue(tmp_path, "--new-key", str(tmp_path / "a.pem"))
     b = _issue(tmp_path, "--new-key", str(tmp_path / "b.pem"))
+    monkeypatch.setattr("api.config.settings.env", "development")
     monkeypatch.setenv("MERIDIAN_LICENCE_TOKEN", a["MERIDIAN_LICENCE_TOKEN"])
-    monkeypatch.setenv("MERIDIAN_OFFLINE_PUBLIC_KEY", b["MERIDIAN_OFFLINE_PUBLIC_KEY"])
+    monkeypatch.setenv("MERIDIAN_LICENCE_TEST_PUBLIC_KEY", b["MERIDIAN_LICENCE_TEST_PUBLIC_KEY"])
     from api.middleware.licence import _read_offline_token
     assert _read_offline_token() == {"valid": False, "reason": "invalid_token"}
