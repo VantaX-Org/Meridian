@@ -111,8 +111,16 @@ Worst categorical neighbours: 9.6 under colour-vision simulation, 17.2 for full 
   (`lib/v2/density.ts`). The shell root carries `data-density` and the tokens under it; the virtual grid measures with
   the same heights (`ROW_H`, held to the tokens by the test), and a ledger may keep its own density in its address or a
   saved view (Work, `?density=`).
-- **Motion**: `--m2-t-fast`, `--m2-t-med`, `--m2-ease`, declared in the last section of the tokens file only; none under
-  `prefers-reduced-motion`.
+- **Motion and feedback**: `--m2-t-fast` 150ms for a state (hover, press, a chart part), `--m2-t-med` 200ms for an
+  arrival, `--m2-t-pulse` 1600ms for a placeholder's breath, `--m2-ease` (exponential ease-out) and `--m2-ease-loop`
+  for what loops, `--m2-rise` 6px for how far an arrival travels. Declared in the last section of the tokens file only.
+  Three things arrive: the inspector from the right, a menu from where it opens, a notice from below; arrivals move
+  but do not fade, so text is at full contrast from the first frame. Buttons, rows, fields and menu items ease their
+  colour and border. Loading is a placeholder in the final geometry that breathes (`CanvasSkeleton` for a canvas,
+  including `app/(v2)/loading.tsx`; `InspectorSkeleton` for an inspector body; `Skeleton` inside a block). A notice
+  (`Toast.tsx`) waits while the pointer or the keyboard is on it, carries a check when it reports a change with Undo
+  and a red mark when it is an error. Every focusable thing shows the one focus ring (`--m2-focus`, 2px). Under
+  `prefers-reduced-motion` nothing moves.
 - **Tenant theme**: a tenant may set its accent, logo and name (Administration, Settings, Appearance). The form shows the
   accent's contrast and, below 4.5:1, the nearest shade of it that passes, with a button to use it; the server refuses
   to save a failing accent. `themeRootProps` (`lib/v2/theme.ts`) puts the accent on the root and clamps it whatever was

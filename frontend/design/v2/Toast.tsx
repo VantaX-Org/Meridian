@@ -6,7 +6,7 @@ import { errorSentence, postUndo } from "@/lib/api/v2/work";
 import { refreshV2 } from "@/lib/v2/queries";
 import { peekAction, popAction, pushAction, removeAction, type DoneAction } from "@/lib/v2/undo";
 import { clearPatches } from "@/lib/v2/work-overrides";
-import { IconClose } from "./marks";
+import { IconCheck, IconClose } from "./marks";
 import { t as tr, lcFirst } from "@/lib/v2/i18n";
 
 /** How long a notice stays: a change can be taken back from it for this long. */
@@ -51,16 +51,30 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setItems((cur) => cur.filter((x) => x.id !== id));
   }, []);
 
-  const push = useCallback(
-    (item: Omit<ToastItem, "id">) => {
-      const id = ++seq.current;
-      setItems((cur) => [...cur.slice(-2), { ...item, id }]);
+  const arm = useCallback(
+    (id: number) => {
+      const t = timers.current.get(id);
+      if (t) clearTimeout(t);
       timers.current.set(
         id,
         setTimeout(() => dismiss(id), TOAST_MS),
       );
     },
     [dismiss],
+  );
+  // A notice under the pointer or the keyboard waits: its six seconds start again when it is left (WCAG 2.2.1).
+  const hold = useCallback((id: number) => {
+    const t = timers.current.get(id);
+    if (t) clearTimeout(t);
+  }, []);
+
+  const push = useCallback(
+    (item: Omit<ToastItem, "id">) => {
+      const id = ++seq.current;
+      setItems((cur) => [...cur.slice(-2), { ...item, id }]);
+      arm(id);
+    },
+    [arm],
   );
 
   useEffect(() => {
@@ -110,7 +124,22 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div className="m2-toasts" role="region" aria-label={tr("Change notices")} aria-live="polite" data-testid="toasts">
         {items.map((t) => (
-          <div key={t.id} className="m2-toast" data-tone={t.tone} role={t.tone === "error" ? "alert" : "status"}>
+          <div
+            key={t.id}
+            className="m2-toast"
+            data-tone={t.tone}
+            data-done={t.action ? "true" : undefined}
+            role={t.tone === "error" ? "alert" : "status"}
+            onMouseEnter={() => hold(t.id)}
+            onMouseLeave={() => arm(t.id)}
+            onFocus={() => hold(t.id)}
+            onBlur={() => arm(t.id)}
+          >
+            {t.action ? (
+              <span className="m2-toast-ic" aria-hidden="true">
+                <IconCheck />
+              </span>
+            ) : null}
             <span className="m2-toast-m">{t.message}</span>
             {t.action ? (
               <>

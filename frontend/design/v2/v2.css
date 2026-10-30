@@ -47,6 +47,16 @@
 /* A link inside a sentence is underlined as well as coloured, so it never relies on colour alone. */
 .m2-sysrow-st a, .m2-hs a, .m2-meta a, .m2-finding a, .m2-prov a, .m2-statusline a, .m2-sline a, .m2-banner a, .m2-formula a, .m2-breaches a, .m2-ih-sl a, .m2-sechead a, .m2-empty p a, .m2-ib p a, .m2-lrow .m2-c a { text-decoration: underline; text-underline-offset: 2px; }
 .m2-skel { display: inline-block; background: var(--m2-track); border-radius: var(--m2-r1); vertical-align: middle; }
+/* Placeholders in the final geometry (CanvasSkeleton, InspectorSkeleton) */
+.m2-wait { display: grid; gap: var(--m2-s4); justify-items: start; }
+.m2-wait > .m2-skel, .m2-wait-block > .m2-skel { display: block; }
+.m2-wait-lines { display: grid; gap: var(--m2-s2); width: 100%; }
+.m2-wait-lines > .m2-skel { display: block; }
+.m2-wait-block { display: grid; gap: var(--m2-s3); width: 100%; margin-top: var(--m2-s4); }
+.m2-wait-facts { margin-top: var(--m2-s4); }
+.m2-wait-facts .m2-fact { align-items: center; }
+.m2-wait-facts .m2-fact > .m2-skel:last-child { justify-self: end; }
+.m2-wait-acts { margin-top: var(--m2-s5); }
 
 /* Top bar */
 .m2-top { flex: none; height: var(--m2-bar-h); border-bottom: 1px solid var(--m2-chrome); display: grid; grid-template-columns: 1fr minmax(240px, 440px) 1fr; align-items: center; gap: var(--m2-s4); position: relative; }
@@ -367,6 +377,7 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-toast { pointer-events: auto; display: flex; align-items: center; gap: var(--m2-s2); background: var(--m2-inverse); color: var(--m2-on-inverse); border-radius: var(--m2-r2); box-shadow: var(--m2-shadow); padding: var(--m2-s2) var(--m2-s2) var(--m2-s2) var(--m2-s3); font-size: var(--m2-fs-13); min-height: 36px; }
 .m2-toast[data-tone="error"]::before { content: ""; width: 8px; height: 8px; flex: none; border-radius: 1px; background: var(--m2-on-inverse-crit); }
 .m2-toast .m2-dot::before { background: var(--m2-on-inverse); }
+.m2-toast-ic { display: inline-flex; flex: none; color: var(--m2-on-inverse); }
 .m2-toast-b { height: 28px; padding: 0 var(--m2-s3); border: 1px solid var(--m2-ink-3); background: transparent; border-radius: var(--m2-r1); color: var(--m2-on-inverse); font-weight: 500; }
 .m2-toast-b:hover { border-color: var(--m2-on-inverse); }
 .m2-toast-x { width: 28px; height: 28px; border: 0; background: transparent; color: var(--m2-on-inverse); display: inline-flex; align-items: center; justify-content: center; border-radius: var(--m2-r1); }

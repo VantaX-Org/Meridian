@@ -74,6 +74,62 @@ export function Skeleton({ width = 120, height = 16 }: { width?: number | string
 }
 
 /**
+ * A canvas while it arrives: the h1's line, the sentence, the next-step button and two blocks, in the final geometry,
+ * so nothing moves when the page lands. Busy for assistive technology, with its name said once.
+ */
+export function CanvasSkeleton({ blocks = 2 }: { blocks?: number }) {
+  return (
+    <div className="m2-wait" aria-busy="true" data-testid="canvas-loading">
+      <span className="m2-sr" role="status">{t("Loading")}</span>
+      <Skeleton width={240} height={28} />
+      <div className="m2-wait-lines">
+        <Skeleton width="min(560px, 100%)" height={14} />
+        <Skeleton width="min(420px, 80%)" height={14} />
+      </div>
+      <Skeleton width={200} height={36} />
+      {Array.from({ length: blocks }, (_, i) => (
+        <div key={i} className="m2-wait-block">
+          <Skeleton width={160} height={16} />
+          <Skeleton width="100%" height={i === 0 ? 220 : 160} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * The inspector while its body arrives: the title and status line, five facts in their two columns and the actions,
+ * in the order every inspector keeps.
+ */
+export function InspectorSkeleton() {
+  return (
+    <>
+      <div className="m2-ih">
+        <div className="m2-wait-lines">
+          <Skeleton width={220} height={18} />
+          <Skeleton width={160} height={13} />
+        </div>
+      </div>
+      <div className="m2-ib">
+        <span className="m2-sr" role="status">{t("Loading")}</span>
+        <div className="m2-wait-facts">
+          {[64, 48, 72, 40, 56].map((w, i) => (
+            <div key={i} className="m2-fact">
+              <Skeleton width={`${w + 20}%`} height={12} />
+              <Skeleton width={`${w}%`} height={12} />
+            </div>
+          ))}
+        </div>
+        <div className="m2-acts m2-wait-acts">
+          <Skeleton width={120} height={32} />
+          <Skeleton width={96} height={32} />
+        </div>
+      </div>
+    </>
+  );
+}
+
+/**
  * The window title names the page (WCAG 2.4.2): the h1's words, then the product, in the interface's language. The
  * framework writes its own title into the head after the page has painted (the layout's metadata), so the title is
  * held: whenever the head's title changes away from this page's, it is put back. Leaving the page lets go.

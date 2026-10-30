@@ -185,10 +185,16 @@
   /* The canvas gutter: 24 at desktop widths, 16 on a phone (redefined in the phone query below). */
   --m2-gutter: var(--m2-s6);
 
-  /* Motion: 150 and 200 milliseconds, exponential ease-out */
+  /* Motion: 150 milliseconds for a state (hover, press, a part of a chart), 200 for something arriving (the inspector,
+     a menu, a notice), 1600 for the breath of a placeholder. Exponential ease-out for what arrives and changes; the
+     symmetric ease only for what loops. Nothing moves under prefers-reduced-motion. */
   --m2-t-fast: 150ms;
   --m2-t-med: 200ms;
+  --m2-t-pulse: 1600ms;
   --m2-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --m2-ease-loop: cubic-bezier(0.45, 0, 0.55, 1);
+  /* How far an arriving panel travels: a hint of direction, not a slide. */
+  --m2-rise: 6px;
 
   /* Focus: one ring for every focusable thing, the data hue at 2px (WCAG 2.4.7) */
   --m2-focus: var(--m2-data);
@@ -342,12 +348,60 @@ html[data-theme="dark"] .m2-root {
   --m2-row-lh: var(--m2-lh-14);
 }
 
-/* Motion. State changes only: no entrance choreography. */
-.m2-root .m2-motion-bg { transition: background-color var(--m2-t-fast) var(--m2-ease), border-color var(--m2-t-fast) var(--m2-ease); }
+/*
+ * Motion. State changes ease in 150ms; three things arrive in 200ms (the inspector from the right, a menu from where it
+ * opens, a notice from below) and nothing else makes an entrance. Placeholders breathe
+ * while they wait. The reduced-motion block at the end of this section turns every one of them off.
+ */
+.m2-root .m2-motion-bg,
+.m2-root .m2-btn,
+.m2-root .m2-tbtn,
+.m2-root .m2-x,
+.m2-root .m2-mi,
+.m2-root .m2-orow,
+.m2-root .m2-sysrow,
+.m2-root .m2-lrow,
+.m2-root .m2-grow,
+.m2-root .m2-menu-i,
+.m2-root .m2-seg,
+.m2-root .m2-segs > button,
+.m2-root .m2-search,
+.m2-root .m2-linkbtn,
+.m2-root .m2-toast-b,
+.m2-root .m2-toast-x,
+.m2-root .m2-auth-show,
+.m2-root input,
+.m2-root select,
+.m2-root textarea { transition: background-color var(--m2-t-fast) var(--m2-ease), border-color var(--m2-t-fast) var(--m2-ease), color var(--m2-t-fast) var(--m2-ease), box-shadow var(--m2-t-fast) var(--m2-ease); }
 .m2-root .m2-job-bar { transition: width var(--m2-t-med) var(--m2-ease); }
 .m2-root .m2-chev { transition: transform var(--m2-t-fast) var(--m2-ease); }
 .m2-root .m2-map { transition: transform var(--m2-t-med) var(--m2-ease), visibility 0s linear var(--m2-t-med); }
 .m2-root .m2-map.m2-open { transition: transform var(--m2-t-med) var(--m2-ease); }
+.m2-root .m2-stack-s,
+.m2-root .m2-chart .m2-col { transition: fill var(--m2-t-fast) var(--m2-ease), stroke var(--m2-t-fast) var(--m2-ease); }
+
+/* Arrivals move, they do not fade: text is at full contrast from its first frame. */
+@keyframes m2-arrive-x {
+  from { transform: translateX(var(--m2-rise)); }
+  to { transform: none; }
+}
+@keyframes m2-arrive-y {
+  from { transform: translateY(calc(-1 * var(--m2-rise))); }
+  to { transform: none; }
+}
+@keyframes m2-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes m2-breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.m2-root .m2-insp-d { animation: m2-arrive-x var(--m2-t-med) var(--m2-ease); }
+.m2-root .m2-menu { animation: m2-arrive-y var(--m2-t-med) var(--m2-ease); }
+.m2-root .m2-scrim { animation: m2-fade var(--m2-t-med) var(--m2-ease); }
+.m2-root .m2-viz-tip { animation: m2-fade var(--m2-t-fast) var(--m2-ease); }
+.m2-root .m2-skel { animation: m2-breathe var(--m2-t-pulse) var(--m2-ease-loop) infinite; }
 
 @media (prefers-reduced-motion: reduce) {
   .m2-root *,
@@ -390,7 +444,7 @@ html[data-theme="dark"] .m2-root[data-tenant-accent] {
 
 /* Arrival of a change notice and of the run timeline's marks. Both stop under prefers-reduced-motion (above). */
 @keyframes m2-toast-in {
-  from { transform: translateY(8px); opacity: 0; }
+  from { transform: translateY(var(--m2-rise)); opacity: 0; }
   to { transform: none; opacity: 1; }
 }
 @keyframes m2-tl-in {
