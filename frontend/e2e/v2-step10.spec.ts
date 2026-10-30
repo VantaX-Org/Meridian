@@ -65,7 +65,7 @@ for (const size of SIZES) {
         await expect(page.getByTestId("class-vendor_bank")).toContainText("Breached", NAV);
         await shot(page, "policy-pack");
         await page.goto(`${OBJECT}?fixture=1`, { waitUntil: "load" });
-        await expect(page.getByTestId("receipt-policy")).toContainText("Batch identification", NAV);
+        await expect(page.getByTestId("receipt-policy")).toContainText("Inventory valuation", NAV);
         await page.getByTestId("receipt-policy").scrollIntoViewIfNeeded();
         expect(await noSideways(page)).toBe(true);
         await shot(page, "receipt-policy");
@@ -78,8 +78,8 @@ for (const size of SIZES) {
 
       test("the Policy chip on the Work ledger", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/work?fixture=1&policy=gxp:batch_identity&filter=open", { waitUntil: "load" });
-        await expect(page.getByRole("list", { name: "Filters in force" })).toContainText("Policy: Batch identification (GxP batch and quality)", NAV);
+        await page.goto("/work?fixture=1&policy=sox:inventory_valuation&filter=open", { waitUntil: "load" });
+        await expect(page.getByRole("list", { name: "Filters in force" })).toContainText("Policy: Inventory valuation (SOX financial controls)", NAV);
         expect(await noSideways(page)).toBe(true);
         await shot(page, "work-policy");
       });
@@ -129,7 +129,7 @@ for (const size of SIZES) {
         await prepare(page, scheme);
         await page.goto(`/work?fixture=1&open=${RECORD}`, { waitUntil: "load" });
         await page.getByRole("tab", { name: "History" }).click(NAV);
-        await expect(page.getByTestId("history-runs")).toContainText("MARA.MEINS", NAV);
+        await expect(page.getByTestId("history-runs")).toContainText("MARA-MEINS", NAV);
         await expect(page.getByTestId("history-events")).toContainText("started failing");
         await shot(page, "record-history");
         await page.goto(`/work?fixture=1&as_of_run=${R3}&filter=open`, { waitUntil: "load" });
