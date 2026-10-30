@@ -149,6 +149,26 @@ def connect_sap_system(system_type: str, params: dict):
     raise SAPConnectorError(f"No connector for system_type: {system_type}")
 
 
+def connect_onprem_odata(params: dict):
+    """The SAP Gateway OData V2 connector of an on-premise S/4HANA system (extraction_path "odata",
+    sap/s4hana_onprem.py): the system's base URL, its SAP client as sap-client, and basic sign-in with the
+    system's user and password unless OAuth client credentials are stored. Caller closes it."""
+    from sap.s4hana_onprem import S4OnPremODataConnector
+
+    if not params.get("base_url"):
+        raise SAPConnectorError("The OData extraction path needs the Gateway's base URL on the system's connection "
+                                "settings, for example https://s4host:44300.")
+    auth = params.get("odata_auth") or "basic"
+    connector = S4OnPremODataConnector(sap_client=params.get("client") or "")
+    connector.connect(CloudConnectionParams(
+        base_url=params["base_url"], company_id="", auth_type=auth,
+        username=params.get("user", ""), password=params.get("password", ""),
+        client_id=params.get("client_id", ""), client_secret=params.get("client_secret", ""),
+        token_url=params.get("token_url", ""),
+    ))
+    return connector
+
+
 @dataclass(frozen=True)
 class DeltaRequest:
     """Re-read only what SAP's change documents say changed since ``since`` (YYYYMMDD), over
@@ -233,6 +253,15 @@ class ConnectivityManager:
                 "user": system_row.username or os.getenv("SAP_RFC_USER", "RFC_USER"),
                 "password": decrypt_password(self.tenant_id, encrypted) if encrypted else "",
             })
+            if system_type == "s4hana_onprem":  # the Gateway, for the OData extraction path
+                auth = getattr(system_row, "auth_type", None)
+                params.update({"base_url": getattr(system_row, "base_url", None) or "",
+                               "token_url": getattr(system_row, "token_url", None) or "",
+                               "odata_auth": auth if auth in ("basic", "oauth2_client_credentials") else "basic"})
+                if getattr(system_row, "client_id_encrypted", None):
+                    params["client_id"] = decrypt_password(self.tenant_id, system_row.client_id_encrypted)
+                if getattr(system_row, "client_secret_encrypted", None):
+                    params["client_secret"] = decrypt_password(self.tenant_id, system_row.client_secret_encrypted)
 
         elif system_type in CLOUD_SYSTEM_TYPES:
             params.update({
@@ -268,6 +297,10 @@ class ConnectivityManager:
     def _get_connector(self, system_type: str, params: dict):
         """Return the correct connector instance for a system type."""
         return connect_sap_system(system_type, params)
+
+    def _get_onprem_odata_connector(self, params: dict):
+        """The Gateway OData connector of an on-premise S/4HANA system (extraction_path "odata")."""
+        return connect_onprem_odata(params)
 
     # -- Extraction (rules-driven, per-table) -----------------------------------
 
@@ -316,13 +349,25 @@ class ConnectivityManager:
         dictionary = dictionary_for(self.session, system_id, system_type)
         frames: dict[str, pd.DataFrame] = {}
         coverage: list[dict] = []
+        # S/4HANA on premise through its Gateway's released OData APIs instead of RFC (sap/s4hana_onprem.py)
+        odata = path_setting == "odata" and system_type == "s4hana_onprem"
         try:
-            connector = self._get_connector(system_type, params)
+            connector = self._get_onprem_odata_connector(params) if odata else self._get_connector(system_type, params)
         finally:
             for key in ("password", "client_secret", "api_key"):
                 params.pop(key, None)
         try:
-            if system_type in ABAP_SYSTEM_TYPES:
+            if odata:
+                frames, coverage = self._extract_s4hc(connector, modules, dictionary,
+                                                      label="S/4HANA on premise OData")
+                for c in coverage:
+                    c["path"] = "odata"
+                if progress:  # one line per table for the job, with the path it was read through
+                    rows = [{"table": c["table"], "status": c["status"], "rows": c.get("rows", 0), "expected": None,
+                             "path": "odata"} for c in coverage]
+                    progress({"table": None, "tables_done": len(rows), "tables_total": len(rows), "rows_read": 0,
+                              "table_rows": None, "percent": 99, "tables": rows})
+            elif system_type in ABAP_SYSTEM_TYPES:
                 # SAP dates/times are system-local: the freshness checks need the offset (sap/ddic_reader.py)
                 from sap.ddic_reader import utc_offset_seconds
                 self.sap_utc_offset_seconds = utc_offset_seconds(connector) if hasattr(connector, "call") else None
@@ -997,17 +1042,19 @@ class ConnectivityManager:
                 continue
         return wanted
 
-    def _extract_s4hc(self, connector, modules, dictionary):
+    def _extract_s4hc(self, connector, modules, dictionary, label: str = "S/4HANA Cloud"):
         """ECC tables from S/4HANA Cloud OData entities (sap/s4hana_cloud.S4HC_TABLE_MAP), in the
-        internal format RFC delivers: dates YYYYMMDD, flags 'X' / ''."""
+        internal format RFC delivers: dates YYYYMMDD, flags 'X' / ''. Also the on-premise Gateway's V2 APIs
+        (extraction_path "odata"), whose dates arrive as /Date(ms)/."""
         from checks.types.domain_value_check import _parse_dates
+        from sap.btp import ecc_value
         from sap.s4hana_cloud import S4HC_TABLE_MAP
 
         frames, coverage, reads = {}, [], {}
         for table in sorted(self._rule_tables(modules)):
             if table not in S4HC_TABLE_MAP:
                 coverage.append({"table": table, "status": "upload_required",
-                                 "detail": "no S/4HANA Cloud OData mapping for this table"})
+                                 "detail": f"no {label} mapping for this table"})
                 continue
             entity, fields, required = S4HC_TABLE_MAP[table]
             if entity not in reads:
@@ -1031,6 +1078,7 @@ class ConnectivityManager:
                 s = df[prop].map(lambda v: ("X" if v else "") if isinstance(v, bool) else v)
                 f = dictionary.field(table, name)
                 if f is not None and (f.type or "").upper() == "DATS":
+                    s = s.map(ecc_value)  # OData V2 /Date(ms)/ -> YYYYMMDD; V4 ISO dates as they were
                     s = _parse_dates(s).dt.strftime("%Y%m%d").where(s.notna() & s.astype("string").ne(""), "")
                 out[f"{table}.{name}"] = s
             if required and f"{table}.{required}" in out.columns:
