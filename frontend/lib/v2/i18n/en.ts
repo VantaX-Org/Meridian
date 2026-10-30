@@ -4282,6 +4282,17 @@ export const en = {
   "Enter confirms, Escape keeps the rows as they are.": "Enter confirms, Escape keeps the rows as they are.",
   "Export to CSV": "Export to CSV",
   "The columns and rows on screen": "The columns and rows on screen",
+  "Estimate from default assumptions, set your cost model in Administration": "Estimate from default assumptions, set your cost model in Administration",
+  "Estimated from your cost model": "Estimated from your cost model",
+  "default estimate": "default estimate",
+  "est.": "est.",
+  "an estimate from default assumptions;": "an estimate from default assumptions;",
+  "set your cost model in Administration": "set your cost model in Administration",
+  "estimated from your cost model": "estimated from your cost model",
+  "{formatMoneyCompact} at risk, estimated": "{formatMoneyCompact} at risk, estimated",
+  "{money} at risk": "{money} at risk",
+  "{first}, as SAP shows it (leading zeros of a numeric key left out; the full key is on hover). Pinned.": "{first}, as SAP shows it (leading zeros of a numeric key left out; the full key is on hover). Pinned.",
+  "cost model {cost_model}, default assumptions": "cost model {cost_model}, default assumptions",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

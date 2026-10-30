@@ -5,7 +5,7 @@ Work is the one list of everything that needs a person: every failing record and
 ## What is on it
 
 - **The title and scope**: "Work" and the objects in scope, such as "All objects". Click an object in the map to scope the ledger to it.
-- **The sentence**: what the current filter holds, for example "25,712 records to fix, ranked by value at risk." and, under it, "Rows are read from the latest run of each object. Value at risk is from cost model ZAR v3."
+- **The sentence**: what the current filter holds, for example "25,712 records to fix, ranked by value at risk." and, under it, "Rows are read from the latest run of each object. Value at risk is from cost model ZAR."
 - **The state chips**: **To fix**, **Fix proposed**, **Waiting for approval** and **Exceptions**, each with its count. The chips are the filter.
 - **The Policy chip**: narrows the ledger to the records failing a rule that evidences an applied policy pack or one of its classes, for example "Policy: Vendor bank data (SOX financial controls)" (`policy=sox:vendor_bank`).
 - **The controls**: **Flat** or **By rule** grouping; **Sort** by value at risk, due, age or owner; **Compact** or **Standard** rows; **Views** (saved and shared views); the object filter; **Export fix sheet** (`e`) and **Import filled sheet**.

@@ -30,7 +30,7 @@ describe("landscape fixture reconciles with the approved prototype", () => {
   it("the status strip equals the sum of the cells: 400,662 records and 794 rules", () => {
     expect(L.cells.reduce((n, c) => n + (c.records_checked ?? 0), 0)).toBe(L.status_strip.records_checked);
     expect(L.cells.reduce((n, c) => n + (c.rules_measured ?? 0), 0)).toBe(L.status_strip.rules_measured);
-    expect(L.status_strip).toMatchObject({ records_checked: 400662, rules_measured: 794, scored_in_s: 702, cost_model: "ZAR v3", licence_valid_to: "2027-03-31" });
+    expect(L.status_strip).toMatchObject({ records_checked: 400662, rules_measured: 794, scored_in_s: 702, cost_model: "ZAR", licence_valid_to: "2027-03-31" });
   });
 
   it("Material master measures 71.8 and shows 70.0, capped by two critical rules", () => {

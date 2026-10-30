@@ -1,5 +1,6 @@
 "use client";
 
+import { EstimateNote, Money } from "../Money";
 import { useEffect, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { formatDate, formatModuleName, MODULE_LABELS } from "@/lib/format";
@@ -18,7 +19,6 @@ import { policyMark } from "@/lib/v2/step10";
 import { AsOfView, PolicyBreaches } from "./step10/ObjectParts";
 import { ObjectContractsBlock } from "./step9/Contracts";
 import { t as tr, tn } from "@/lib/v2/i18n";
-import { moneyCompactText } from "@/lib/v2/labels";
 
 type TabKey = "rules" | "records" | "fixes" | "runs" | "readiness" | "processes" | "lineage" | "glossary" | "golden";
 const TABS: { key: TabKey; label: string; segment: string }[] = [
@@ -195,7 +195,7 @@ function statusItems(receipt: Receipt, cell: LandscapeCell | undefined): ReactNo
   items.push(tr("{records_checked} records checked", { records_checked: int(receipt.records_checked) }));
   items.push(tr("{rules_measured} rules measured", { rules_measured: int(receipt.rules_measured) }));
   if (receipt.open_work != null) items.push(tr("{open_work} to fix", { open_work: int(receipt.open_work) }));
-  if (receipt.value_at_risk != null) items.push(tr("{formatMoneyCompact} at risk", { formatMoneyCompact: moneyCompactText(receipt.value_at_risk, receipt.currency) }));
+  if (receipt.value_at_risk != null) items.push(<span key="m">{tn("{money} at risk", { money: <Money amount={receipt.value_at_risk} currency={receipt.currency} source={receipt.cost_model_source} /> })}, <EstimateNote source={receipt.cost_model_source} /></span>);
   if (receipt.features_blocked != null) items.push(tr("{features_blocked} {features_blocked, plural, one {feature} other {features}} blocked", { features_blocked: receipt.features_blocked }));
   if (cell) items.push(<span key="v" className="m2-v"><VerdictMark verdict={cell.verdict} />{VERDICT_LABEL[cell.verdict]}{" "}{tr("for wave 1")}</span>);
   return items;

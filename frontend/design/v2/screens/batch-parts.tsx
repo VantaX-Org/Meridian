@@ -1,5 +1,6 @@
 "use client";
 
+import { Money } from "../Money";
 import { useCallback, useState, type ReactNode } from "react";
 import { formatDate } from "@/lib/format";
 import { errorSentence } from "@/lib/api/v2/client";
@@ -15,9 +16,8 @@ import { Dash } from "../parts";
 import type { Outcome } from "../inspector/shared";
 import { PromptDialog } from "./work-parts";
 import { t } from "@/lib/v2/i18n";
-import { moneyCompactText } from "@/lib/v2/labels";
 
-export const money = (n: number | null | undefined): ReactNode => (n == null ? <Dash why={t("The cost model has not priced this batch")} /> : moneyCompactText(n, "ZAR"));
+export const money = (n: number | null | undefined): ReactNode => (n == null ? <Dash why={t("The cost model has not priced this batch")} /> : <Money amount={n} />);
 export const day = (iso: string | null | undefined): string => (iso ? formatDate(iso, "date") : "—");
 
 /**

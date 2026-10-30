@@ -16,7 +16,7 @@ Every score in Meridian is drawn on one **ruler**: six segments whose widths are
 
 The cap rule is fixed: one critical rule over tolerance caps a score at 85, two or more at 70. A critical rule counts as over tolerance when it fails at least the share of records or the number of records set under Administration, Settings, Cap rule and tolerance. The receipt under every object score states it in one line, for example: "Measured 71.8, the tick on the ruler. Capped at 70 by MM003 and MM035, two critical rules over tolerance."
 
-Verdicts come from the score bands: **Go**, **At risk** and **No-go**. Value at risk comes from the cost model named in the footer, such as "cost model ZAR v3". Nothing is estimated by a language model: every figure is a rule result over stored data, and each one has an **i** beside it that shows the arithmetic.
+Verdicts come from the score bands: **Go**, **At risk** and **No-go**. Value at risk comes from the cost model named in the footer, such as "cost model ZAR". Nothing is estimated by a language model: every figure is a rule result over stored data, and each one has an **i** beside it that shows the arithmetic.
 
 ## Where each role starts
 

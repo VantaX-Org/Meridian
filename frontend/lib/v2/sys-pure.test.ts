@@ -155,3 +155,13 @@ describe("grid CSV export", () => {
     expect(gridCsv([{ id: "MM142", n: 3640 }, { id: "=HYPERLINK()", n: 0 }], cols)).toBe('Rule,"Failing, rows"\nMM142,3640\n\'=HYPERLINK(),0');
   });
 });
+
+describe("SAP keys as SAP shows them", () => {
+  it("drops the leading zeros of a numeric key and keeps any other key", async () => {
+    const { alphaOut } = await import("./format");
+    expect(alphaOut("000000000000000232")).toBe("232");
+    expect(alphaOut("0000")).toBe("0");
+    expect(alphaOut("00A-17")).toBe("00A-17");
+    expect(alphaOut("1000")).toBe("1000");
+  });
+});

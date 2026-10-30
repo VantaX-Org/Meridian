@@ -87,7 +87,7 @@ describe("ranking", () => {
     expect(cells[6]).toBe("3,640");
     expect(cells[7]).toBe("5.89%");
     expect(cells[8]).toBe("100.0%");
-    expect(cells[9]).toBe("1,184,000");
+    expect(cells[9]).toBe("ZAR 1,184,000 est.");
     // A critical rule carries the tolerance and says whether it is over it.
     const critical = within(dataRows(g)[1]).getAllByRole("gridcell").map(norm);
     expect(critical[3]).toBe("Critical");

@@ -79,13 +79,15 @@
 .m2-cwrap { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .m2-canvas { flex: 1; min-height: 0; min-width: 0; overflow: auto; padding: var(--m2-section-gap) var(--m2-gutter) var(--m2-s10); position: relative; }
 .m2-canvas:focus, .m2-canvas:focus-visible { outline: none; }
-.m2-status { flex: none; min-height: 28px; border-top: 1px solid var(--m2-line); background: var(--m2-sheet); padding: 0 var(--m2-s4); display: flex; align-items: center; justify-content: space-between; gap: var(--m2-s4); font-size: var(--m2-fs-12); color: var(--m2-meta); white-space: nowrap; overflow: hidden; }
-.m2-status-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* The status strip wraps rather than cut its facts short: the cost model and a failure are read in full (PO-11). */
+.m2-status { flex: none; min-height: 28px; border-top: 1px solid var(--m2-line); background: var(--m2-sheet); padding: var(--m2-s1) var(--m2-s4); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--m2-s1) var(--m2-s4); font-size: var(--m2-fs-12); color: var(--m2-meta); }
+.m2-status-t { min-width: 0; }
+.m2-status-t > span { white-space: nowrap; }
 .m2-status-l { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: var(--m2-s3); }
 /* The failed job keeps one line beside the run's figures: its mark, then the sentence, cut with an ellipsis (the whole
    sentence is its title and the job inspector). */
-.m2-root .m2-status .m2-fail { flex: 0 1 auto; max-width: 50%; min-width: 0; flex-wrap: nowrap; align-items: center; margin-left: 0; color: var(--m2-fg); }
-.m2-root .m2-status .m2-fail > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.m2-root .m2-status .m2-fail { flex: 0 1 auto; min-width: 0; flex-wrap: nowrap; align-items: center; margin-left: 0; color: var(--m2-fg); }
+.m2-root .m2-status .m2-fail > span { min-width: 0; }
 .m2-root .m2-status .m2-fail > svg { flex: none; }
 
 /* Inspector */
@@ -479,3 +481,10 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-ruler .m2-rdim { fill: var(--m2-ink-2); }
 .m2-ruler-num .m2-meas { font-size: var(--m2-fs-12); color: var(--m2-meta); white-space: nowrap; }
 .m2-ruler-box-lg .m2-ruler-num .m2-meas { font-size: var(--m2-fs-14); }
+/* Money is an estimate (design/v2/Money.tsx): the marker after every amount, the note beside a headline one. */
+.m2-money { white-space: nowrap; }
+.m2-money .m2-est { font-size: var(--m2-fs-12); color: var(--m2-meta); }
+.m2-money .m2-est[data-default="true"] { color: var(--m2-high-ink); }
+.m2-estnote { color: var(--m2-meta); }
+/* The phone ledger: the record key and the rule id never run together. */
+.m2-keyrule { display: inline-flex; flex-wrap: wrap; gap: 0 var(--m2-s2); }

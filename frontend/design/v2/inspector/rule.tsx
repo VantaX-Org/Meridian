@@ -1,5 +1,6 @@
 "use client";
 
+import { Money } from "../Money";
 import { createContext, useContext, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { checkClassLabel, formatDate } from "@/lib/format";
@@ -152,7 +153,7 @@ export function ruleStatLine(v: RuleView): string[] {
   if (s.definition.dimension) out.push(DIM_WORD(s.definition.dimension));
   out.push(tr("{failing_records} failing across {objectsCount} {objectsCount, plural, one {object} other {objects}}", { failing_records: int(s.failing_records), objectsCount: s.objects.length }));
   if (v.failingPct != null) out.push(tr("{pct2} of records checked", { pct2: pct2(v.failingPct) }));
-  if (v.row?.value_at_risk != null) out.push(tr("{formatMoneyCompact} at risk", { formatMoneyCompact: moneyCompactText(v.row.value_at_risk, v.currency) }));
+  if (v.row?.value_at_risk != null) out.push(tr("{formatMoneyCompact} at risk, estimated", { formatMoneyCompact: moneyCompactText(v.row.value_at_risk, v.currency) }));
   if (v.overTolerance != null) out.push(v.overTolerance ? tr("over tolerance") : tr("within tolerance"));
   if (s.features.length > 0) out.push(tr("blocks {featuresCount} S/4 {featuresCount, plural, one {feature} other {features}}", { featuresCount: s.features.length }));
   return out;
@@ -190,7 +191,7 @@ export function RuleFacts({ view }: { view: RuleView }) {
           {view.failingPct == null ? <Dash /> : tr("{pct2} of {checked} records checked", { pct2: pct2(view.failingPct), checked: int(view.checked) })}
         </Fact>
         <Fact label={<>{tr("Value at risk")}{" "}<Explain metric="value_at_risk" label={tr("Value at risk")} module={primary} /></>}>
-          {view.row?.value_at_risk == null ? <Dash why={tr("Not priced in this run")} /> : <>{moneyCompactText(view.row.value_at_risk, view.currency)}{oneObject ? "" : s.objects.length > 1 ? tr(" in {label}", { label: s.objects[0].label }) : ""}</>}
+          {view.row?.value_at_risk == null ? <Dash why={tr("Not priced in this run")} /> : <><Money amount={view.row.value_at_risk} currency={view.currency} />{oneObject ? "" : s.objects.length > 1 ? tr(" in {label}", { label: s.objects[0].label }) : ""}</>}
         </Fact>
       </Facts>
     </Sec>

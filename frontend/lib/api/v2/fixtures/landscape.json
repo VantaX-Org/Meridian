@@ -6,7 +6,7 @@
     "records_checked": 400662,
     "rules_measured": 794,
     "scored_in_s": 702,
-    "cost_model": "ZAR v3",
+    "cost_model": "ZAR",
     "licence_valid_to": "2027-03-31"
   },
   "systems": [

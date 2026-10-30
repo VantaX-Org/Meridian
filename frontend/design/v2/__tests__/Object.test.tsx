@@ -42,7 +42,7 @@ describe("object canvas header", () => {
     expect(norm(status)).toContain("61,816 records checked");
     expect(norm(status)).toContain("80 rules measured");
     expect(norm(status)).toContain("25,712 to fix");
-    expect(norm(status)).toContain("4.2 m at risk");
+    expect(norm(status)).toContain("ZAR 4.2 m est. at risk, estimated from your cost model");
     expect(norm(status)).toContain("3 features blocked");
     expect(norm(status)).toContain("No-go for wave 1");
   });

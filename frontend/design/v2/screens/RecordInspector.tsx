@@ -1,5 +1,6 @@
 "use client";
 
+import { Money } from "../Money";
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { WorkIssue, WorkRecordDetail } from "@/lib/api/work";
@@ -22,7 +23,7 @@ import { useToast } from "../Toast";
 import { PromptDialog } from "./work-parts";
 import { CollabSections } from "../inspector/collab";
 import { FixOrderHint } from "./object/Related";
-import { t as tr } from "@/lib/v2/i18n";
+import { t as tr, tn } from "@/lib/v2/i18n";
 import { RecordHistoryPanel } from "./step10/RecordHistory";
 
 export function parseRecordId(id: string): { module: string; key: string } {
@@ -225,7 +226,7 @@ export function RecordInspector({ id, onClose }: { id: string; onClose: () => vo
   const plant = parts.find((p) => p.field === "WERKS")?.value ?? detail?.values["MARC.WERKS"] ?? null;
   const live = detail ? patched({ module, record_key: key, status: detail.status } as { module: string; record_key: string; status: WorkRecordDetail["status"] }, patches).status : null;
   const atRisk = detail ? detail.issues.reduce((n, i) => n + (i.rule?.cost_per_record ?? 0), 0) : 0;
-  const statusParts = detail ? [STATUS_LABEL[live ?? detail.status] ?? detail.status, detail.name, plant ? tr("plant {plant}", { plant }) : null, atRisk > 0 ? tr("{value}{atRisk} at risk", { value: detail.currency ? `${detail.currency} ` : "", atRisk: int(atRisk) }) : null].filter(Boolean) : [];
+  const statusParts = detail ? [STATUS_LABEL[live ?? detail.status] ?? detail.status, detail.name, plant ? tr("plant {plant}", { plant }) : null, atRisk > 0 ? <>{tn("{money} at risk", { money: <Money amount={atRisk} currency={detail.currency} compact={false} /> })}</> : null].filter(Boolean) : [];
   const status: ReactNode = detail ? statusParts.map((part, n) => (n === 0 ? <span key={n}>{part}</span> : <span key={n}><Dot />{part}</span>)) : tr("Reading the record");
 
   const rowFor = (i: WorkIssue): RowRef => ({ module, record_key: key, version_id: detail?.version_id, checks: [i.check_id], suggested_value: i.suggestion?.value ?? null, status: i.status });

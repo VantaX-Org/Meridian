@@ -17,7 +17,7 @@ The landscape is the start screen for every role. It answers three questions in 
 - **The score in each cell** is the object's shown score in the run in the top bar: the weighted dimension scores, capped at 85 by one critical rule over tolerance and at 70 by two or more. Open the **i** beside the object name for the receipt.
 - **The verdict** comes from the score bands under Administration, Settings: at or above target is go, at or above warning is at risk, below that is no-go. A critical rule over tolerance keeps an object out of go.
 - **The sentence's counts**: "held under 85" counts the objects whose shown score is capped; "critical rules over tolerance" counts the rules behind those caps; "would release" names the rules whose fix lifts the most objects off their cap.
-- **Value at risk** in Your next work is the cost model named under the table: "Rows ranked by value at risk, cost model ZAR v3."
+- **Value at risk** in Your next work is the cost model named under the table: "Rows ranked by value at risk, cost model ZAR."
 - **The footer** repeats the run, the records checked, the rules measured, the scoring time, the cost model and the licence validity, and shows a failed job in red when one needs attention.
 
 ## What you can do, by role

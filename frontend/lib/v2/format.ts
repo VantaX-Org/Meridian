@@ -54,3 +54,11 @@ export function money(n: number, currency: string, digits = 0): string {
     return `${whole(n)} ${currency}`;
   }
 }
+
+/**
+ * A SAP key as SAP users read it: a purely numeric key loses its leading zeros (the ALPHA conversion exit,
+ * "000000000000000232" reads "232"); a key with letters stays as it is. The full key stays in the title and the copy.
+ */
+export function alphaOut(key: string): string {
+  return /^\d+$/.test(key) ? key.replace(/^0+(?=\d)/, "") : key;
+}

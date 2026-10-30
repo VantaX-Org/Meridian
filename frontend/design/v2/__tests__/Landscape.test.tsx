@@ -149,7 +149,7 @@ describe("landscape canvas, fixture mode", () => {
     expect(values).toEqual([...values].sort((a, b) => b - a));
     expect(within(grid).getByRole("columnheader", { name: "Value at risk" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "View all 25,712" })).toHaveAttribute("href", expect.stringContaining("/work"));
-    expect(screen.getByText("Rows ranked by value at risk, cost model ZAR v3.")).toBeInTheDocument();
+    expect(screen.getByText("Rows ranked by value at risk, cost model ZAR.")).toBeInTheDocument();
   });
 
   it("opens a row's record in the inspector through the URL", async () => {

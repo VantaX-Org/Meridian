@@ -60,7 +60,7 @@ describe("the record inspector", () => {
     expect(title.querySelector(".m2-mono")).not.toBeNull();
     await screen.findByTestId("record-facts");
     const status = document.querySelector(".m2-ih-sl") as HTMLElement;
-    expect(text(status)).toMatch(/^To fix Hex bolt M8 zinc plant 1000 ZAR [\d,]+ at risk$/);
+    expect(text(status)).toMatch(/^To fix Hex bolt M8 zinc plant 1000 ZAR [\d,]+ est\. at risk$/);
   });
 
   it("lists every field of the record as description, TABLE-FIELD and value, the failing ones marked with their rule id", async () => {

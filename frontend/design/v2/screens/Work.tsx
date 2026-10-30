@@ -1,5 +1,6 @@
 "use client";
 
+import { Money } from "../Money";
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -52,7 +53,7 @@ import { BulkActions, CurrentValue, DecisionCell, NewValueCell, OwnerCell, Possi
 import { GridTools, useGridKey } from "../GridTools";
 import { FixOrderHint } from "./object/Related";
 import { t as tr, lc } from "@/lib/v2/i18n";
-import { whole } from "@/lib/v2/format";
+import { alphaOut, whole } from "@/lib/v2/format";
 import { formatDate } from "@/lib/format";
 import { useRunList } from "@/lib/v2/queries";
 import { policyLabel } from "@/lib/v2/step10";
@@ -417,7 +418,7 @@ export function WorkCanvas() {
   const columns = useMemo<GridColumn<Item>[]>(() => {
     const r = <T,>(f: (row: WorkRow) => T) => (it: Item): T | null => (it.kind === "row" ? f(it.row) : null);
     const base: GridColumn<Item>[] = [
-      { id: "record", header: headers.first, width: 170, pin: true, locked: true, title: tr("{first}. Leading zeros are kept. Pinned.", { first: headers.first }), cell: r((x) => <Mono>{keyValue(x, 0) ?? x.record_key}</Mono>) },
+      { id: "record", header: headers.first, width: 170, pin: true, locked: true, title: tr("{first}, as SAP shows it (leading zeros of a numeric key left out; the full key is on hover). Pinned.", { first: headers.first }), cell: r((x) => <KeyText value={keyValue(x, 0) ?? x.record_key} />) },
       { id: "second", header: headers.second, width: 70, title: tr("{second}, the second part of the record key. A dash when the record has none.", { second: headers.second }), cell: r((x) => (keyValue(x, 1) ? <Mono>{keyValue(x, 1)}</Mono> : <Dash why={tr("This record has no second key part")} />)) },
       { id: "name", header: tr("Name"), width: 170, title: tr("The record's name."), cell: r((x) => (x.name ? <span title={x.name}>{x.name}</span> : <Dash />)) },
       { id: "rule", header: tr("Rule"), width: 70, title: tr("Check id of the rule that rejected the value."), cell: r((x) => <Mono>{x.checks[0] ?? "—"}</Mono>) },
@@ -444,7 +445,7 @@ export function WorkCanvas() {
       { id: "first", header: tr("First seen"), width: 100, defaultHidden: true, title: tr("The date the oldest failing issue of this row was first seen."), cell: r((x) => (x.first_seen_at ? <span title={formatDate(x.first_seen_at, "date")}>{formatDate(x.first_seen_at, "day")}</span> : <Dash />)) },
       { id: "days", header: tr("Days open"), width: 90, defaultHidden: true, numeric: true, title: tr("Days since this row was first seen."), cell: r((x) => { const d = daysOpen(x.first_seen_at, now); return d == null ? <Dash /> : <>{int(d)}</>; }) },
       { id: "owner", header: tr("Owner"), width: 70, title: tr("The steward the row is assigned to, by initials."), cell: r((x) => <OwnerCell row={x} h={h} />) },
-      { id: "value", header: tr("Value at risk"), width: 120, numeric: true, title: tr("Cost-model estimate of what this failing value costs."), cell: r((x) => (x.value_at_risk == null ? <Dash /> : <>{int(x.value_at_risk)}</>)) },
+      { id: "value", header: tr("Value at risk"), width: 120, numeric: true, title: tr("Cost-model estimate of what this failing value costs."), cell: r((x) => (x.value_at_risk == null ? <Dash /> : <Money amount={x.value_at_risk} compact={false} />)) },
     ];
     if (state.chip === "exceptions") {
       // Signed off: what the decision was, why, by whom and when; stewards can reopen it.
@@ -902,6 +903,16 @@ export function WorkCanvas() {
 }
 
 /** Phone: each row is two lines in a list; editing happens in the inspector. */
+/** A record key as SAP shows it (ALPHA conversion), the full key in the title and in what is copied. */
+function KeyText({ value }: { value: string }) {
+  const shown = alphaOut(value);
+  return (
+    <span className="m2-mono" title={shown === value ? undefined : value} data-key={value}>
+      {shown}
+    </span>
+  );
+}
+
 function LedgerList({
   items,
   loading,
@@ -939,10 +950,11 @@ function LedgerList({
         return (
           <div key={id} role="listitem">
             <button type="button" className="m2-lrow" data-open={openId === id ? "true" : undefined} title={d != null ? tr("{d} days open", { d: int(d) }) : undefined} onClick={() => onOpen(r)}>
-              <span>
-                <span className="m2-mono">{keyValue(r, 0) ?? r.record_key}</span> <span className="m2-mono m2-meta">{r.checks[0] ?? ""}</span>
+              <span className="m2-keyrule">
+                <KeyText value={keyValue(r, 0) ?? r.record_key} />{" "}
+                <span className="m2-mono m2-meta">{r.checks[0] ?? ""}</span>
               </span>
-              <span className="m2-meta">{r.value_at_risk == null ? "—" : int(r.value_at_risk)}</span>
+              <span className="m2-meta">{r.value_at_risk == null ? "—" : <Money amount={r.value_at_risk} compact={false} />}</span>
               <span className="m2-c m2-clip">
                 {[r.name, second ? `${lc(headers.second)} ${second}` : null, `${r.top_message ?? ""}${r.current_value ? `: ${r.current_value}` : ""}${r.suggested_value ? tr(" to {suggested_value}", { suggested_value: r.suggested_value }) : ""}`, exceptions ? `${r.resolution === "accepted_risk" ? tr("Accept risk") : tr("Not an issue")}${r.resolution_note ? `: ${r.resolution_note}` : ""}${r.resolved_by ? `, ${r.resolved_by}` : ""}` : null].filter(Boolean).map((part, n) => (n === 0 ? <span key={n}>{part}</span> : <span key={n}><Dot />{part}</span>))}
               </span>

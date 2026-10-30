@@ -274,7 +274,7 @@ describe("job line and status strip", () => {
     mount();
     const strip = await screen.findByTestId("status-strip");
     await waitFor(() => expect(norm(strip)).toContain("licence valid to 31 Mar 2027"));
-    expect(norm(strip.querySelector(".m2-status-t") as HTMLElement)).toBe("Run 16 Oct 2026, 05:17 400,662 records checked 794 rules measured scored in 11 m 42 s cost model ZAR v3 licence valid to 31 Mar 2027");
+    expect(norm(strip.querySelector(".m2-status-t") as HTMLElement)).toBe("Run 16 Oct 2026, 05:17 400,662 records checked 794 rules measured scored in 11 m 42 s cost model ZAR licence valid to 31 Mar 2027");
     expect(duration(702)).toBe("11 m 42 s");
     expect(duration(45)).toBe("45 s");
   });
