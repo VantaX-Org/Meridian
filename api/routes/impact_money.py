@@ -16,7 +16,7 @@ from api.routes.record_issues import _rls
 from api.services import impact_money
 from api.services.rbac import Scope, require_permission, require_scope
 
-router = APIRouter(prefix="/api/v1/impact", tags=["impact"])
+router = APIRouter(prefix="/api/v1/impact", tags=["impact-money"])
 
 
 @router.get("/money", dependencies=[Depends(require_permission("view"))])

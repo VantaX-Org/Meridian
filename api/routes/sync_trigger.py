@@ -15,7 +15,7 @@ from api.services.rbac import current_user_label, require_permission
 
 logger = logging.getLogger("meridian.sync_trigger")
 
-router = APIRouter(prefix="/api/v1/sync-trigger", tags=["sync_trigger"])
+router = APIRouter(prefix="/api/v1/sync-trigger", tags=["sync-trigger"])
 
 # Display name of every module id: the one Python copy of frontend/lib/format.ts MODULE_LABELS, cased by
 # frontend/DESIGN.md "Object names" (sentence case, SAP acronyms upper case, eWMS with a lower-case e).

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 
-router = APIRouter(prefix="/api/v1/business-process", tags=["business_process"])
+router = APIRouter(prefix="/api/v1/business-process", tags=["business-process"])
 logger = logging.getLogger("meridian.business_process")
 
 NO_PROCESS_DEFINITION = "no_process_definition"

@@ -500,3 +500,7 @@ app.include_router(auth_router)
 from api.routes.auth_oidc import admin_router as sso_admin_router, router as auth_oidc_router
 app.include_router(auth_oidc_router)
 app.include_router(sso_admin_router)
+
+from api.openapi_meta import install as _install_openapi
+
+_install_openapi(app)  # docstring summaries and tag descriptions in GET /openapi.json

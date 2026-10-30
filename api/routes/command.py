@@ -13,7 +13,7 @@ from typing import Optional
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Query, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,19 +35,19 @@ GROUP_LABELS = {"record": "Records", "rule": "Rules", "object": "Objects", "run"
 
 
 class CommandItemOut(BaseModel):
-    id: str
-    title: str
-    href: str
+    id: str = Field(description="Item id.")
+    title: str = Field(description="Text shown in the command line.")
+    href: str = Field(description="Address the item opens.")
 
 
 class CommandGroupOut(BaseModel):
-    kind: str
-    label: str
-    items: list[CommandItemOut]
+    kind: str = Field(description="Group kind (systems, objects, rules, records, people, screens).")
+    label: str = Field(description="Group heading.")
+    items: list[CommandItemOut] = Field(description="Matching items.")
 
 
 class CommandOut(BaseModel):
-    groups: list[CommandGroupOut]
+    groups: list[CommandGroupOut] = Field(description="Matches grouped by kind.")
 
 
 def slug(value: str) -> str:
@@ -187,19 +187,19 @@ async def command(request: Request, q: str = Query("", max_length=200), limit: i
 
 
 class NLMatchOut(BaseModel):
-    phrase: str
-    slot: str
-    value: str | bool
-    label: str
+    phrase: str = Field(description="Words of the question matched.")
+    slot: str = Field(description="Filter parameter they set.")
+    value: str | bool = Field(description="Value they set.")
+    label: str = Field(description="The match in plain words.")
 
 
 class NLOut(BaseModel):
-    filter: dict[str, str | bool]             # the parameters GET /work/records accepts
-    href: str                                 # /work with the filter in the query string
-    explanation: str
-    unmatched_words: list[str]
-    matched: list[NLMatchOut]
-    llm_used: bool = False
+    filter: dict[str, str | bool] = Field(description="The parameters GET /work/records accepts.")
+    href: str = Field(description="The Work ledger address (/work) with the filter in the query string.")
+    explanation: str = Field(description="The filter in plain words.")
+    unmatched_words: list[str] = Field(description="Words the parser did not use.")
+    matched: list[NLMatchOut] = Field(description="Each phrase and the filter it set.")
+    llm_used: bool = Field(False, description="True when the model fallback (MERIDIAN_NL_LLM) parsed the question.")
 
 
 @router.get("/command/nl", response_model=NLOut)

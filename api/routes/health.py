@@ -10,7 +10,7 @@ from api.services.version import APP_VERSION
 
 logger = logging.getLogger("meridian.health")
 
-router = APIRouter()
+router = APIRouter(tags=["health"])
 
 
 @router.get("/health")

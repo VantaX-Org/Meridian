@@ -124,32 +124,32 @@ class DigestUpdate(BaseModel):
 
 
 class DigestOut(BaseModel):
-    id: str
-    name: str
-    audience: str
-    role: Optional[str] = None
-    wave_id: Optional[str] = None
-    cron: str
-    timezone: str
-    channel: str
-    recipients: list[str]
-    recipient_user_ids: list[str]
-    alert_channel_id: Optional[str] = None
-    attach_pdf: bool
-    enabled: bool
-    last_sent_at: Optional[datetime] = None
-    next_run_at: Optional[datetime] = None
-    created_by: Optional[str] = None
-    created_at: datetime
-    updated_at: datetime
+    id: str = Field(description="Digest id.")
+    name: str = Field(description="Digest name.")
+    audience: str = Field(description="Who receives it: users, role or wave.")
+    role: Optional[str] = Field(None, description="Role whose members receive it (audience role).")
+    wave_id: Optional[str] = Field(None, description="Migration wave it reports on (audience wave).")
+    cron: str = Field(description="Five-field cron schedule.")
+    timezone: str = Field(description="IANA time zone the cron is read in.")
+    channel: str = Field(description="Delivery channel: email or an alert channel.")
+    recipients: list[str] = Field(description="Email addresses that receive it.")
+    recipient_user_ids: list[str] = Field(description="User ids that receive it.")
+    alert_channel_id: Optional[str] = Field(None, description="Alert channel used when the channel is not email.")
+    attach_pdf: bool = Field(description="True to attach the PDF report.")
+    enabled: bool = Field(description="False pauses the schedule.")
+    last_sent_at: Optional[datetime] = Field(None, description="When it was last sent.")
+    next_run_at: Optional[datetime] = Field(None, description="When it is next due.")
+    created_by: Optional[str] = Field(None, description="Who created it.")
+    created_at: datetime = Field(description="When it was created.")
+    updated_at: datetime = Field(description="When it was last changed.")
 
 
 class SendOut(BaseModel):
-    delivery_id: Optional[str] = None
-    status: str
-    reason: Optional[str] = None
-    delivered: int
-    failed: int
+    delivery_id: Optional[str] = Field(None, description="Delivery record id.")
+    status: str = Field(description="Delivery status: sent, failed or skipped.")
+    reason: Optional[str] = Field(None, description="Why it failed or was skipped.")
+    delivered: int = Field(description="Recipients it reached.")
+    failed: int = Field(description="Recipients it did not reach.")
 
 
 async def _one(db: AsyncSession, tenant: Tenant, digest_id: uuid.UUID) -> dict:

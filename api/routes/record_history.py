@@ -21,7 +21,7 @@ from datetime import datetime
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,40 +37,40 @@ SEVERITIES = ("critical", "high", "medium", "low")
 
 
 class HistoryRunOut(BaseModel):
-    run_id: str
-    run_at: datetime
-    label: Optional[str] = None
-    system_id: Optional[str] = None
-    sandbox: bool = False
-    failing: bool
-    checks: list[str]
-    values: dict[str, Optional[str]]          # the failing fields' values in that run (TABLE.FIELD -> value)
-    work_status: Optional[str] = None         # the record's work status on that run's row (today's)
-    severity: Optional[str] = None
+    run_id: str = Field(description="Run id.")
+    run_at: datetime = Field(description="When the run finished.")
+    label: Optional[str] = Field(None, description="Run label.")
+    system_id: Optional[str] = Field(None, description="SAP system of the run.")
+    sandbox: bool = Field(False, description="True for a sandbox run.")
+    failing: bool = Field(description="True when the record failed a rule in that run.")
+    checks: list[str] = Field(description="Rule ids the record failed in that run.")
+    values: dict[str, Optional[str]] = Field(description="The failing fields' values in that run (TABLE.FIELD -> value).")
+    work_status: Optional[str] = Field(None, description="The record's work status on that run's row (today's).")
+    severity: Optional[str] = Field(None, description="Highest severity the record failed in that run.")
 
 
 class HistoryEventOut(BaseModel):
-    at: Optional[datetime] = None
-    kind: str                                 # issue | fix_proposed | batch | fix_approved | fix_sent
-    action: Optional[str] = None
-    check_id: Optional[str] = None
-    run_id: Optional[str] = None
-    scope: Optional[str] = None
-    from_value: Optional[str] = None
-    to_value: Optional[str] = None
-    note: Optional[str] = None
-    by: Optional[str] = None
-    batch_id: Optional[str] = None
-    batch_status: Optional[str] = None
+    at: Optional[datetime] = Field(None, description="When it happened.")
+    kind: str = Field(description="Event kind: issue, fix_proposed, batch, fix_approved or fix_sent.")
+    action: Optional[str] = Field(None, description="What was done.")
+    check_id: Optional[str] = Field(None, description="Rule the event concerns.")
+    run_id: Optional[str] = Field(None, description="Run the event concerns.")
+    scope: Optional[str] = Field(None, description="Scope of the decision (record, rule or object).")
+    from_value: Optional[str] = Field(None, description="Field value before the fix.")
+    to_value: Optional[str] = Field(None, description="Field value after the fix.")
+    note: Optional[str] = Field(None, description="Note left with the event.")
+    by: Optional[str] = Field(None, description="Who did it.")
+    batch_id: Optional[str] = Field(None, description="Fix batch id.")
+    batch_status: Optional[str] = Field(None, description="Fix batch status.")
 
 
 class HistoryOut(BaseModel):
-    module: str
-    record_key: str
-    name: Optional[str] = None
-    systems: list[str]
-    runs: list[HistoryRunOut]
-    events: list[HistoryEventOut]
+    module: str = Field(description="Object (module id).")
+    record_key: str = Field(description="SAP record key.")
+    name: Optional[str] = Field(None, description="Record description, when known.")
+    systems: list[str] = Field(description="SAP systems the record was read from.")
+    runs: list[HistoryRunOut] = Field(description="The record in each run, newest first.")
+    events: list[HistoryEventOut] = Field(description="Decisions and fixes on the record, newest first.")
 
 
 def _value(v: Any) -> Optional[str]:
@@ -169,30 +169,30 @@ async def record_history(module: str, record_key: str,
 
 
 class AsOfRuleOut(BaseModel):
-    check_id: str
-    severity: str
-    dimension: Optional[str] = None
-    failing: int
-    total: int
-    pass_rate: Optional[float] = None
+    check_id: str = Field(description="Rule id.")
+    severity: str = Field(description="Rule severity.")
+    dimension: Optional[str] = Field(None, description="DAMA dimension of the rule.")
+    failing: int = Field(description="Records failing.")
+    total: int = Field(description="Records checked.")
+    pass_rate: Optional[float] = Field(None, description="Share of records passing, 0 to 100.")
 
 
 class AsOfOut(BaseModel):
-    module: str
-    as_of_run: str
-    as_of_at: datetime
-    run_id: str
-    run_at: datetime
-    system_id: Optional[str] = None
-    score: Optional[float] = None
-    raw_score: Optional[float] = None
-    capped: bool = False
-    cap_level: Optional[int] = None
-    breaches: list[str]
-    dimensions: dict[str, float]
-    records_checked: Optional[int] = None
-    failing_records: int                      # the run's failing records of the object (work list rows)
-    rules: list[AsOfRuleOut]
+    module: str = Field(description="Object (module id).")
+    as_of_run: str = Field(description="Run asked for.")
+    as_of_at: datetime = Field(description="Time asked for.")
+    run_id: str = Field(description="Run that answers (the last one on or before the time).")
+    run_at: datetime = Field(description="When that run finished.")
+    system_id: Optional[str] = Field(None, description="SAP system of the run.")
+    score: Optional[float] = Field(None, description="Object score in that run, after caps.")
+    raw_score: Optional[float] = Field(None, description="Score before caps.")
+    capped: bool = Field(False, description="True when a critical cap applied.")
+    cap_level: Optional[int] = Field(None, description="Cap applied (85 or 70).")
+    breaches: list[str] = Field(description="Critical rules over tolerance.")
+    dimensions: dict[str, float] = Field(description="Score per DAMA dimension.")
+    records_checked: Optional[int] = Field(None, description="Records checked.")
+    failing_records: int = Field(description="The run's failing records of the object (work list rows).")
+    rules: list[AsOfRuleOut] = Field(description="Rule results in that run.")
 
 
 @router.get("/objects/{module}/as-of", response_model=AsOfOut,

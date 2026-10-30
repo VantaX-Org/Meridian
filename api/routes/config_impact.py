@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 
-router = APIRouter(prefix="/api/v1/config-impact", tags=["config_impact"])
+router = APIRouter(prefix="/api/v1/config-impact", tags=["config-impact"])
 logger = logging.getLogger("meridian.config_impact")
 
 

@@ -15,7 +15,7 @@ from api.services import drift_alerts
 from api.services.rbac import require_permission
 from api.services.receipt_math import rule_names
 
-router = APIRouter(prefix="/api/v1/config/drift", tags=["config-drift"])
+router = APIRouter(prefix="/api/v1/config/drift", tags=["drift-alerts"])
 
 
 @router.get("/alerts", dependencies=[Depends(require_permission("view"))])

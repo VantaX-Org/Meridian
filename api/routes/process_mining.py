@@ -25,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.server_error import server_failure
 from api.deps import Tenant, get_db, get_tenant
 
-router = APIRouter(prefix="/api/v1/process", tags=["process_mining"])
+router = APIRouter(prefix="/api/v1/process", tags=["process-mining"])
 logger = logging.getLogger("meridian.process_mining")
 
 

@@ -19,7 +19,7 @@ from api.routes.record_issues import _rls
 from api.services import simulate_fix as sf
 from api.services.rbac import Scope, require_permission, require_scope
 
-router = APIRouter(prefix="/api/v1/simulate", tags=["simulate"])
+router = APIRouter(prefix="/api/v1/simulate", tags=["fix-simulation"])
 
 
 class RecordRef(BaseModel):
@@ -37,74 +37,74 @@ class SimulateBody(BaseModel):
 
 
 class GateOut(BaseModel):
-    wave_id: str
-    name: str
-    open: bool
-    reasons: list[str]
+    wave_id: str = Field(description="Migration wave id.")
+    name: str = Field(description="Wave name.")
+    open: bool = Field(description="True when the wave's readiness gate would open.")
+    reasons: list[str] = Field(description="Sentences naming what still holds the gate shut.")
 
 
 class StateOut(BaseModel):
-    score: float | None = None
-    raw_score: float | None = None
-    cap_level: int | None = None
-    breaches: list[str]
-    dimensions: dict[str, float]
-    verdict: str | None = None
-    features_blocked: int
-    features_degraded: int
-    wave_gate: list[GateOut]
+    score: float | None = Field(None, description="Data quality score (0 to 100) after the critical caps.")
+    raw_score: float | None = Field(None, description="Weighted dimension score before the critical caps.")
+    cap_level: int | None = Field(None, description="The cap applied (85 for one critical breach, 70 for two or more), or null.")
+    breaches: list[str] = Field(description="Check ids of critical rules over tolerance.")
+    dimensions: dict[str, float] = Field(description="Score per DAMA dimension (completeness, accuracy, consistency, timeliness, uniqueness, validity).")
+    verdict: str | None = Field(None, description="Readiness verdict: go, at_risk or no_go.")
+    features_blocked: int = Field(description="SAP features the config impact model marks blocked.")
+    features_degraded: int = Field(description="SAP features the config impact model marks degraded.")
+    wave_gate: list[GateOut] = Field(description="Readiness gates of the waves that include this object.")
 
 
 class DeltaOut(BaseModel):
-    score: float | None = None
-    raw_score: float | None = None
-    breaches_cleared: list[str]
-    features_blocked: int
-    features_degraded: int
-    verdict_changed: bool
-    gates_opened: list[str]
+    score: float | None = Field(None, description="Change in score (after minus before).")
+    raw_score: float | None = Field(None, description="Change in the uncapped score.")
+    breaches_cleared: list[str] = Field(description="Critical rules the fix brings under tolerance.")
+    features_blocked: int = Field(description="Change in blocked features.")
+    features_degraded: int = Field(description="Change in degraded features.")
+    verdict_changed: bool = Field(description="True when the verdict differs after the fix.")
+    gates_opened: list[str] = Field(description="Wave ids whose gate opens after the fix.")
 
 
 class SentenceOut(BaseModel):
-    held_under_85: int
-    objects: int
-    critical_over_tolerance: int
-    release_if_fixed: list[str]
-    released: int
+    held_under_85: int = Field(description="Objects held under 85 by a critical cap.")
+    objects: int = Field(description="Objects in the landscape.")
+    critical_over_tolerance: int = Field(description="Critical rules over tolerance across the landscape.")
+    release_if_fixed: list[str] = Field(description="Objects the fix would release from their cap.")
+    released: int = Field(description="Count of objects released.")
 
 
 class LandscapeDeltaOut(BaseModel):
-    before: SentenceOut
-    after: SentenceOut
+    before: SentenceOut = Field(description="Landscape sentence before the fix.")
+    after: SentenceOut = Field(description="Landscape sentence after the fix.")
 
 
 class SimulateOut(BaseModel):
-    module: str
-    run_id: str
-    run_at: datetime | None = None
-    system_id: str | None = None
-    before: StateOut
-    after: StateOut
-    delta: DeltaOut
-    method: dict
-    landscape: LandscapeDeltaOut | None = None
+    module: str = Field(description="Object (module id) simulated.")
+    run_id: str = Field(description="Run the simulation starts from.")
+    run_at: datetime | None = Field(None, description="When that run finished.")
+    system_id: str | None = Field(None, description="SAP system of the run.")
+    before: StateOut = Field(description="The object's state in the run.")
+    after: StateOut = Field(description="The object's state if the selected rules, records or batches were fixed.")
+    delta: DeltaOut = Field(description="After minus before.")
+    method: dict = Field(description="How the simulation was computed (deterministic, record level).")
+    landscape: LandscapeDeltaOut | None = Field(None, description="The landscape sentence before and after, when the landscape is read.")
 
 
 class TopRuleOut(BaseModel):
-    check_id: str
-    severity: str
-    failing: int
-    after_score: float | None = None
-    delta: float | None = None
-    after_verdict: str | None = None
-    breach_cleared: bool
+    check_id: str = Field(description="Rule id.")
+    severity: str = Field(description="Rule severity: critical, high, medium or low.")
+    failing: int = Field(description="Records failing the rule in the run.")
+    after_score: float | None = Field(None, description="Object score if this rule alone were fixed.")
+    delta: float | None = Field(None, description="Score gain if this rule alone were fixed.")
+    after_verdict: str | None = Field(None, description="Verdict if this rule alone were fixed.")
+    breach_cleared: bool = Field(description="True when fixing this rule clears a critical breach.")
 
 
 class TopOut(BaseModel):
-    module: str
-    run_id: str
-    score: float | None = None
-    rules: list[TopRuleOut]
+    module: str = Field(description="Object (module id).")
+    run_id: str = Field(description="Run the ranking reads.")
+    score: float | None = Field(None, description="Object score in that run.")
+    rules: list[TopRuleOut] = Field(description="Rules ranked by the score gain of fixing each alone.")
 
 
 async def _object_run(request: Request, db: AsyncSession, tenant: Tenant, module: str,

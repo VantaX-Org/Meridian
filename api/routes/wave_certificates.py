@@ -33,7 +33,7 @@ from api.services.rbac import (
     write_audit,
 )
 
-router = APIRouter(prefix="/api/v1/migration", tags=["migration"])
+router = APIRouter(prefix="/api/v1/migration", tags=["readiness-certificates"])
 
 
 class SignBody(BaseModel):
