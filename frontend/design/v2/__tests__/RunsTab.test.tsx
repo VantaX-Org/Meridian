@@ -29,7 +29,7 @@ const norm = (el: HTMLElement) => (el.textContent ?? "").replace(/\s+/g, " ").tr
 /** A list row read as its columns, joined by a space: the columns are separate grid cells on screen. */
 const cols = (li: Element) => Array.from(li.children).map((c) => norm(c as HTMLElement)).filter(Boolean).join(" ");
 const render = () => renderWithQuery(<RunsTab system="ecc-production" module="material-master" />);
-const css = readFileSync(join(__dirname, "..", "object.css"), "utf8");
+const css = readFileSync(join(__dirname, "..", "charts.css"), "utf8");
 
 describe("the score chart geometry", () => {
   const points: ChartPoint[] = [66.2, 67, 66.8, 68.9, 69.4, 69.8, 70.9, 71.8].map((m, i) => ({ id: `r${i}`, label: `d${i}`, title: `d${i}`, measured: m, baseline: i === 5 }));
@@ -80,18 +80,20 @@ describe("the Runs tab chart", () => {
     expect(svg).toHaveAccessibleName("Measured score of Material master, last 8 runs: 67.8 on 28 Aug, 71.8 on 16 Oct. Baseline run 2 Oct. Cap 70.");
     const line = within(svg as unknown as HTMLElement).getByTestId("score-line");
     expect(line.getAttribute("points")?.split(" ")).toHaveLength(8);
-    expect(css).toMatch(/\.m2-chart \.m2-ln \{[^}]*stroke: var\(--m2-data\);[^}]*stroke-width: 2;/);
+    expect(css).toMatch(/\.m2-chart \.m2-ln \{[^}]*stroke: var\(--m2-chart-line\);[^}]*stroke-width: 2;/);
     expect(svg.querySelectorAll("line.m2-gl")).toHaveLength(4);
     const labels = Array.from(svg.querySelectorAll("text.m2-ax")).map((t) => t.textContent);
     for (const v of ["60", "70", "80", "90", "100"]) expect(labels).toContain(v);
   });
 
-  it("has no markers and no legend, and the hue is on the series alone", async () => {
+  it("has one end dot and no legend, the hue on the series alone and the words in ink", async () => {
     render();
     const svg = await screen.findByTestId("score-chart");
-    expect(svg.querySelectorAll("circle, marker, [class*='legend']")).toHaveLength(0);
-    const dataUses = css.split("\n").filter((l) => l.startsWith(".m2-chart") && l.includes("var(--m2-data)"));
-    expect(dataUses.map((l) => l.split(" {")[0])).toEqual([".m2-chart .m2-ln", ".m2-chart .m2-lab"]);
+    expect(svg.querySelectorAll("circle")).toHaveLength(1);
+    expect(svg.querySelectorAll("marker, [class*='legend']")).toHaveLength(0);
+    const hueUses = css.split("\n").filter((l) => l.includes(".m2-chart") && l.includes("var(--m2-chart-line)"));
+    expect(hueUses.map((l) => l.split(" {")[0])).toEqual([".m2-root .m2-chart .m2-ln", ".m2-root .m2-chart .m2-end, .m2-root .m2-chart .m2-pt"]);
+    expect(svg.querySelector("text.m2-lab")).toHaveTextContent("71.8");
   });
 
   it("draws the cap level dashed and names it", async () => {

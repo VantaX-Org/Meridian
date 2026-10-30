@@ -142,6 +142,30 @@ All under `design/v2`. Screens compose these and draw nothing of their own.
 - **Administration kit** (`admin/kit.tsx`): `AdminPage`, `Block`, `Fld`, `Dialog`, `Confirm`, `NeedsPermission`,
   `StatusWord`.
 
+### Charts
+
+One grammar for every chart, in `design/v2/charts` (styles in `design/v2/charts.css`). A screen passes values and
+words; the chart draws. Never a chart of a screen's own.
+
+| Component | What it shows | Where |
+|---|---|---|
+| `TrendChart` | A value over runs: a 2px line in the data hue over a 10% wash, the last value named at the end beside a ringed end dot, reference levels dashed and named, one marked run as a 1px rule | Object, Runs tab (`ScoreChart`, the 60 to 100 score scale every object shares) |
+| `Sparkline` | The trend in a row: a 1.5px line in the quiet ink, the latest as a dot in the data hue, no axis | The map (under each object's ruler, one scale per system), the rule inspector's history |
+| `StackedBar` | One whole in parts: a 12px bar, parts separated by 2px of sheet, never by strokes; the legend under it carries each part's mark, word and count | Run, findings by severity (`severityParts`); `verdictParts` for objects by verdict |
+| `Distribution` | How values spread: columns of a count per bin, at most 24px wide, data end rounded, foot square; the verdict bands as named dashed hairlines | Run, objects by measured score |
+| `SmallMultiples` | Many trends side by side on one shared scale, each panel with its name and last value | Runs, objects over the last runs |
+| `DeltaBar` | A change either side of zero inside a table row, the signed number beside it | Compare two runs |
+
+The frame (`ChartFrame`) is the same for all: the title and a one-line reading above, the plot, the legend when there
+are two series or more, and one state at a time (loading as a flat placeholder at the plot's height, empty saying what
+would fill it, error saying what failed with Retry). Every chart has a text alternative: its figures as a table behind
+"Show the figures" (`ChartTable`), or, for a sparkline, an accessible name with the first and last value. The plot is an
+image with a name and is focusable: the arrow keys, Home and End step through the points, Escape leaves, and a polite
+live region and a tooltip on the inverse ground read the point in focus; the pointer does the same. Axes are hairlines
+one step off the sheet (`--m2-chart-grid`), the baseline one step stronger (`--m2-chart-axis`), the axis text 12px in
+`--m2-chart-text` with tabular figures, ticks on round values. Text never wears a series colour. Light and dark come
+from the tokens alone.
+
 ### Status vocabulary
 
 Verdicts **Go**, **At risk**, **No-go** (from the score bands and the cap); severities **Critical**, **High**,

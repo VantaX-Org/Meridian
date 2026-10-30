@@ -397,7 +397,8 @@ html[data-theme="dark"] .m2-root[data-tenant-accent] {
 
 /* The phone gutter: one pane at a time, full-width sheets with 16px sides. */
 @media (max-width: 760px) {
-  .m2-root { --m2-gutter: var(--m2-s4); }
+  /* One pane at a time: the canvas is the page, so the ground is the sheet. */
+  .m2-root { --m2-gutter: var(--m2-s4); --m2-bg: var(--m2-sheet); }
 }
 
 /*

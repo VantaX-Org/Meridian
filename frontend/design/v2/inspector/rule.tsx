@@ -1,5 +1,6 @@
 "use client";
 
+import { Sparkline } from "../charts";
 import { Money } from "../Money";
 import { createContext, useContext, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -390,8 +391,28 @@ function RunLine({ run, view }: { run: RuleRun; view: RuleView }) {
 export function RuleHistory({ view, limit = 8 }: { view: RuleView; limit?: number }) {
   const q = useRuleHistory(view.id);
   const items = useMemo(() => historyItems(q.data ?? [], view), [q.data, view]);
+  // Failing records per run, oldest first, summed over the objects the rule runs on: the trend above the list.
+  const trend = useMemo(() => {
+    const byRun = new Map<string, { at: string; n: number }>();
+    for (const r of q.data ?? []) byRun.set(r.version_id, { at: r.run_at, n: (byRun.get(r.version_id)?.n ?? 0) + r.affected_count });
+    return [...byRun.values()].sort((a, b) => a.at.localeCompare(b.at)).slice(-limit);
+  }, [q.data, limit]);
+  const top = Math.max(1, ...trend.map((x) => x.n));
   return (
     <Sec title={tr("History")}>
+      {trend.length > 1 ? (
+        <div className="m2-rtrend">
+          <Sparkline
+            values={trend.map((x) => x.n)}
+            width={160}
+            height={24}
+            domain={[0, top]}
+            label={tr("Failing records over the last {count} runs: {first} to {last}", { count: trend.length, first: int(trend[0].n), last: int(trend[trend.length - 1].n) })}
+            testId="rule-trend"
+          />
+          <span className="m2-meta">{tr("Failing records, last {count} runs", { count: trend.length })}</span>
+        </div>
+      ) : null}
       {q.isPending ? (
         <Skeleton width="70%" height={14} />
       ) : q.isError ? (

@@ -1,0 +1,84 @@
+/*
+ * The chart grammar (design/v2/charts, DESIGN.md "Charts"). Every chart draws with these rules: hairline gridlines one
+ * step off the sheet, the baseline one step stronger, the axis text at 12 pixels in the chart ink with tabular figures,
+ * the data in the data hue or the palette tokens, text never in a series colour. The frame holds the title, the plot,
+ * the legend, the states and the table behind "Show the figures".
+ */
+.m2-root .m2-viz { margin: 0; min-width: 0; display: grid; gap: var(--m2-s2); }
+.m2-root .m2-viz-cap { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--m2-s1) var(--m2-s4); }
+.m2-root .m2-viz-t { margin: 0; font-size: var(--m2-fs-14); line-height: var(--m2-lh-14); font-weight: 600; color: var(--m2-fg); }
+.m2-root .m2-viz-sub { font-size: var(--m2-fs-12); line-height: var(--m2-lh-12); color: var(--m2-meta); }
+.m2-root .m2-viz-plot { position: relative; min-width: 0; width: 100%; }
+.m2-root .m2-viz-plot > svg { display: block; overflow: visible; font-variant-numeric: tabular-nums; }
+.m2-root .m2-viz-plot > svg:focus { outline: none; }
+.m2-root .m2-viz-plot > svg:focus-visible { outline: var(--m2-focus-w) solid var(--m2-focus); outline-offset: var(--m2-s1); border-radius: var(--m2-r1); }
+.m2-root .m2-viz-wait { display: block; }
+.m2-root .m2-viz-wait .m2-skel { display: block; border-radius: var(--m2-r2); }
+.m2-root .m2-viz-msg { display: grid; align-content: center; }
+.m2-root .m2-viz-empty { border: 1px dashed var(--m2-line-2); border-radius: var(--m2-r2); padding: var(--m2-s4); color: var(--m2-ink-2); font-size: var(--m2-fs-13); }
+.m2-root .m2-viz-empty p { margin: 0; max-width: 56ch; }
+
+/* Legend: a mark and a word per series, the count in ink */
+.m2-root .m2-viz-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--m2-s1) var(--m2-s4); font-size: var(--m2-fs-12); line-height: var(--m2-lh-12); color: var(--m2-ink-2); }
+.m2-root .m2-viz-legend li { display: inline-flex; align-items: center; gap: var(--m2-s2); white-space: nowrap; }
+.m2-root .m2-viz-sw { width: 10px; height: 10px; border-radius: 2px; background: var(--m2-viz-c); flex: none; }
+.m2-root .m2-viz-lv { color: var(--m2-fg); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+/* The tooltip of the point in focus: the inverse ground, never covering the point */
+.m2-root .m2-viz-tip { position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, calc(-100% - var(--m2-s2))); max-width: 280px; width: max-content; padding: var(--m2-s1) var(--m2-s2); border-radius: var(--m2-r1); background: var(--m2-inverse); color: var(--m2-on-inverse); font-size: var(--m2-fs-12); line-height: var(--m2-lh-12); font-variant-numeric: tabular-nums; box-shadow: var(--m2-shadow); }
+.m2-root .m2-viz-tip[data-align="start"] { transform: translate(0, calc(-100% - var(--m2-s2))); }
+.m2-root .m2-viz-tip[data-align="end"] { transform: translate(-100%, calc(-100% - var(--m2-s2))); }
+
+/* The table behind "Show the figures" */
+.m2-root .m2-viz-tbl { font-size: var(--m2-fs-12); }
+.m2-root .m2-viz-tbl > summary { cursor: pointer; color: var(--m2-data); width: max-content; border-radius: var(--m2-r1); }
+.m2-root .m2-viz-tbl > summary:hover { text-decoration: underline; text-underline-offset: 2px; }
+.m2-root .m2-viz-tbl[open] > summary { margin-bottom: var(--m2-s2); }
+.m2-root .m2-viz-table { max-width: 640px; }
+
+/* Line and column charts */
+.m2-root .m2-chart { width: 100%; height: auto; }
+.m2-root .m2-chart .m2-gl { stroke: var(--m2-chart-grid); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.m2-root .m2-chart .m2-axis { stroke: var(--m2-chart-axis); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.m2-root .m2-chart .m2-vbar { stroke: var(--m2-chart-quiet); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.m2-root .m2-chart .m2-capl { stroke: var(--m2-ink-2); stroke-width: 1; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
+.m2-root .m2-chart .m2-xh { stroke: var(--m2-chart-axis); stroke-width: 1; }
+.m2-root .m2-chart .m2-ln { fill: none; stroke: var(--m2-chart-line); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.m2-root .m2-chart .m2-area { fill: var(--m2-chart-area); stroke: none; }
+.m2-root .m2-chart .m2-end, .m2-root .m2-chart .m2-pt { fill: var(--m2-chart-line); stroke: var(--m2-chart-ring); stroke-width: 2; }
+.m2-root .m2-chart .m2-ax { fill: var(--m2-chart-text); font-size: var(--m2-fs-12); font-family: var(--m2-font); }
+.m2-root .m2-chart .m2-lab { fill: var(--m2-fg); font-size: var(--m2-fs-13); font-weight: 600; font-family: var(--m2-font); }
+.m2-root .m2-chart .m2-hit { fill: transparent; }
+.m2-root .m2-chart .m2-col { fill: var(--m2-seq-3); }
+.m2-root .m2-chart .m2-col[data-on="true"] { fill: var(--m2-seq-5); }
+
+/* Stacked bar: parts separated by the sheet, not by strokes */
+.m2-root .m2-stack { width: 100%; }
+.m2-root .m2-stack .m2-stack-empty { fill: var(--m2-track); }
+.m2-root .m2-stack .m2-stack-s[data-on="true"] { stroke: var(--m2-fg); stroke-width: 1; }
+
+/* Sparkline: the trend in a row */
+.m2-root .m2-spark { display: block; overflow: visible; flex: none; }
+.m2-root .m2-spark-l { fill: none; stroke: var(--m2-chart-quiet); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.m2-root .m2-spark-d { fill: var(--m2-chart-line); }
+.m2-root [aria-current="page"] .m2-spark-l { stroke: var(--m2-ink-2); }
+
+/* Small multiples: one panel per object, one shared scale */
+.m2-root .m2-multi { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: var(--m2-s4) var(--m2-s5); }
+.m2-root .m2-multi-i { display: grid; gap: var(--m2-s1); min-width: 0; position: relative; }
+.m2-root .m2-multi-h { display: flex; justify-content: space-between; align-items: baseline; gap: var(--m2-s2); font-size: var(--m2-fs-12); line-height: var(--m2-lh-12); min-width: 0; }
+.m2-root .m2-multi-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--m2-ink-2); min-width: 0; }
+.m2-root .m2-multi-v { font-weight: 600; color: var(--m2-fg); font-variant-numeric: tabular-nums; }
+.m2-root .m2-multi-pw { position: relative; }
+.m2-root .m2-multi-p { display: block; overflow: visible; }
+.m2-root .m2-multi-p .m2-gl { stroke: var(--m2-chart-axis); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.m2-root .m2-multi-p .m2-capl { stroke: var(--m2-chart-quiet); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+.m2-root .m2-multi-dot { position: absolute; width: 6px; height: 6px; transform: translate(-50%, -50%); border-radius: var(--m2-r-round); background: var(--m2-chart-line); box-shadow: 0 0 0 2px var(--m2-sheet); }
+.m2-root .m2-multi-sc { font-size: var(--m2-fs-12); line-height: var(--m2-lh-12); color: var(--m2-meta); }
+
+/* Change bar in a compare row */
+.m2-root .m2-dbar { display: block; }
+.m2-root .m2-dbar .m2-z { stroke: var(--m2-chart-quiet); stroke-width: 1; }
+.m2-root .m2-dbar .m2-up { fill: var(--m2-pass); }
+.m2-root .m2-dbar .m2-dn { fill: var(--m2-fail); }
+.m2-root .m2-rtrend { display: flex; align-items: center; gap: var(--m2-s3); margin: 0 0 var(--m2-s2); font-size: var(--m2-fs-12); }

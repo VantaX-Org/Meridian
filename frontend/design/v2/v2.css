@@ -127,6 +127,7 @@
 .m2-orow:hover { background: var(--m2-hover); text-decoration: none !important; }
 .m2-orow[aria-current="page"] { background: var(--m2-active); }
 .m2-orow-nm { display: flex; justify-content: space-between; gap: var(--m2-s2); min-width: 0; }
+.m2-orow-r { display: flex; flex-direction: column; justify-content: center; gap: calc(var(--m2-s1) / 2); }
 .m2-orow-nt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .m2-orow-wk { flex: none; font-size: var(--m2-fs-12); color: var(--m2-ink-2); }
 .m2-orow .m2-sc { text-align: right; }

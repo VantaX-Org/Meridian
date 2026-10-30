@@ -1,5 +1,6 @@
 "use client";
 
+import { DeltaBar } from "../charts";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatDate } from "@/lib/format";
@@ -29,18 +30,8 @@ export function measuredChange(o: Pick<CompareObject, "before" | "after">): numb
   return b == null || a == null ? null : r1(a - b);
 }
 
-/** A bar either side of a zero line: green to the right for a rise, red to the left for a fall. Never colour alone: the sign sits beside it. */
-export function DivergingBar({ d, width = 110, scale = 17 }: { d: number | null; width?: number; scale?: number }) {
-  const mid = width / 2;
-  const len = d == null ? 0 : Math.min(Math.abs(d) * scale, mid - 2);
-  const x = d != null && d >= 0 ? mid : mid - len;
-  return (
-    <svg className="m2-dbar" width={width} height={12} viewBox={`0 0 ${width} 12`} aria-hidden="true" data-testid="dbar">
-      <line className="m2-z" x1={mid} x2={mid} y1={0} y2={12} />
-      {d != null && d !== 0 ? <rect className={d > 0 ? "m2-up" : "m2-dn"} x={x} y={3} width={len} height={6} /> : null}
-    </svg>
-  );
-}
+/** The change bar of a compare row: the chart grammar's DeltaBar (design/v2/charts). */
+export const DivergingBar = DeltaBar;
 
 function Change({ d }: { d: number | null }) {
   return (

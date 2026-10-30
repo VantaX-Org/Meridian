@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatDate } from "@/lib/format";
-import { analyseRun, type VersionHead } from "@/lib/api/v2/runs";
+import { analyseRun, type TimelineRun, type VersionHead } from "@/lib/api/v2/runs";
 import type { Job, JobKind } from "@/types/jobs";
 import { useOpenItem, useUrlParam, useV2Href, useV2Session } from "@/lib/v2/hooks";
 import { JOB_KIND_LABEL, JOB_STATUS_LABEL, jobObject, jobSeconds } from "@/lib/v2/jobs";
@@ -14,6 +14,7 @@ import { useScopeSystem } from "@/lib/v2/scope";
 import { f1, int } from "@/lib/v2/score";
 import { RunTimelineChart, kindWord, triggerOf } from "../RunTimeline";
 import { VerdictMark } from "../marks";
+import { ChartFrame, ChartTable, MULTI_H, SmallMultiples, scoreDomain } from "../charts";
 import { Dash, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../parts";
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import { duration } from "../shell/StatusStrip";
@@ -394,6 +395,58 @@ export function RunsCanvas() {
           <JobsTable kind={kind} status={jobStatus} />
         </section>
       )}
+      {view === "runs" ? <ObjectTrends runs={runs} labelOf={(m) => land.data?.objects.find((o) => o.module === m)?.label ?? m} state={timeline.isLoading ? "loading" : timeline.isError ? "error" : "ready"} onRetry={() => void timeline.refetch()} /> : null}
     </>
+  );
+}
+
+/**
+ * Every object's measured score over the runs of the timeline, as small multiples on one shared scale: which objects
+ * are moving, and which way, at a glance. The table behind "Show the figures" holds every value.
+ */
+export function ObjectTrends({ runs, labelOf, state, onRetry }: { runs: readonly TimelineRun[]; labelOf: (module: string) => string; state: "ready" | "loading" | "error"; onRetry: () => void }) {
+  const modules = useMemo(() => [...new Set(runs.flatMap((r) => Object.keys(r.objects)))], [runs]);
+  const series = useMemo(
+    () =>
+      modules
+        .map((m) => ({ module: m, values: runs.map((r) => r.objects[m]?.raw_score ?? r.objects[m]?.score ?? null) }))
+        .filter((x) => x.values.filter((v) => v != null).length > 1)
+        .sort((a, b) => (a.values[a.values.length - 1] ?? 0) - (b.values[b.values.length - 1] ?? 0)),
+    [modules, runs],
+  );
+  const domain = useMemo(() => scoreDomain(series.flatMap((x) => x.values.filter((v): v is number => v != null)), [85], 20), [series]);
+  const lastOf = (vs: readonly (number | null)[]) => [...vs].reverse().find((v) => v != null) ?? null;
+  const firstOf = (vs: readonly (number | null)[]) => vs.find((v) => v != null) ?? null;
+  return (
+    <section className="m2-sec" aria-label={t("Objects over these runs")}>
+      <ChartFrame
+        title={t("Objects over these runs")}
+        sub={t("Measured score, one panel per object on one scale, lowest first")}
+        state={state === "ready" && series.length === 0 ? "empty" : state}
+        empty={t("Each object gets a panel once two runs have scored it.")}
+        onRetry={onRetry}
+        height={MULTI_H * 2 + 48}
+        testId="object-trends"
+        table={
+          <ChartTable
+            caption={t("Measured score by object and run")}
+            head={[t("Object"), ...runs.map((r) => (r.run_at ? formatDate(r.run_at, "date") : r.id.slice(0, 8)))]}
+            rows={series.map((x) => [labelOf(x.module), ...x.values.map((v) => (v == null ? "—" : f1(v)))])}
+          />
+        }
+      >
+        <SmallMultiples
+          items={series.map((x) => ({
+            id: x.module,
+            title: labelOf(x.module),
+            values: x.values,
+            last: f1(lastOf(x.values)),
+            label: t("{label}: measured {first} to {last} over {count} runs", { label: labelOf(x.module), first: f1(firstOf(x.values)), last: f1(lastOf(x.values)), count: x.values.length }),
+          }))}
+          domain={domain}
+          reference={{ value: 85, label: t("85 cap") }}
+        />
+      </ChartFrame>
+    </section>
   );
 }
