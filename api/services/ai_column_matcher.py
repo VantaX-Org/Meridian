@@ -318,6 +318,18 @@ Return a JSON array: [{{"source": "column_name", "target": "TABLE.FIELD", "confi
 Use null for target if no confident match exists."""
 
 
+def _candidate_index() -> dict[str, str]:
+    """{lower-case header: TABLE.FIELD} over the whole catalogue, for redaction: every alias in any module's
+    column_map.yaml and every unambiguous short field name across all modules (aliases win)."""
+    fields: set[str] = set()
+    for module_fields in _load_all_module_fields().values():
+        fields |= module_fields
+    index = {k.lower(): v for k, v in _build_short_name_index(fields).items()}
+    for aliases in _load_all_column_maps().values():
+        index.update({str(a).strip().lower(): t for a, t in aliases.items() if isinstance(t, str)})
+    return index
+
+
 def _llm_match_columns(
     unmatched_headers: list[str],
     sample_rows: list[list[str]],
@@ -327,16 +339,21 @@ def _llm_match_columns(
 ) -> list[dict]:
     """Call the LLM to map unmatched columns. Returns list of {source, target, confidence}."""
     # Build sample data for unmatched columns only. Values pass through
-    # sanitise_for_prompt so PII-mapped SAP fields are redacted before reaching
-    # the LLM (same boundary the other AI services enforce).
+    # sanitise_for_prompt, which redacts by the header name (an SAP PII field or a
+    # business word such as "Vendor name") and by the SAP field the header is known
+    # to stand for in any module's column map, so personal data never reaches the
+    # LLM whatever the header is called.
     from api.utils.pii_fields import sanitise_for_prompt
     unmatched_indices = [i for i, h in enumerate(all_headers) if h in unmatched_headers]
+    index = _candidate_index()
+    candidates = {all_headers[i]: index.get(all_headers[i].strip().lower()) for i in unmatched_indices}
     sample_data_lines = []
     for row in sample_rows[:3]:
         sample_vals = []
         for idx in unmatched_indices:
             if idx < len(row):
-                sample_vals.append(f"{all_headers[idx]}={sanitise_for_prompt(all_headers[idx], row[idx])}")
+                h = all_headers[idx]
+                sample_vals.append(f"{h}={sanitise_for_prompt(h, row[idx], candidates[h])}")
         if sample_vals:
             sample_data_lines.append(", ".join(sample_vals))
 
