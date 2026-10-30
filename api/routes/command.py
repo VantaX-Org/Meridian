@@ -222,7 +222,8 @@ async def command_nl(q: str = Query(..., min_length=1, max_length=300), db: Asyn
     out = nl_query.parse(q, vocab)
     used = False
     if out["unmatched_words"] and nl_query.llm_enabled():
-        mapped = nl_query.classify_unmatched(out["unmatched_words"], vocab)
+        import asyncio
+        mapped = await asyncio.to_thread(nl_query.classify_unmatched, out["unmatched_words"], vocab, None, t)
         if mapped:
             used = True
             words = " ".join(mapped.get(w, w) for w in nl_query.words_of(q))

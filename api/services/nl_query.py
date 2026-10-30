@@ -284,13 +284,18 @@ def llm_enabled() -> bool:
 
 
 def classify_unmatched(words: list[str], vocab: Vocab,
-                       invoke: Optional[Callable[[list[dict]], Optional[str]]] = None) -> dict[str, str]:
+                       invoke: Optional[Callable[[list[dict]], Optional[str]]] = None,
+                       tenant_id: Optional[str] = None) -> dict[str, str]:
     """{word: phrase} for unmatched words the model maps onto a phrase of the closed vocabulary. Only the words and the
     vocabulary's phrases are sent (no record data, no tenant data beyond its system and people names already in the
-    vocabulary); an answer that is not exactly a known phrase is dropped."""
+    vocabulary); an answer that is not exactly a known phrase is dropped. A call to the configured model is written to
+    llm_audit_log (prompt hashed). Blocking: call it off the event loop."""
     if not words:
         return {}
+    audit = None
     if invoke is None:
+        import time
+
         from llm.provider import get_llm_safe, llm_is_noop, safe_invoke
 
         if llm_is_noop():
@@ -299,16 +304,32 @@ def classify_unmatched(words: list[str], vocab: Vocab,
 
         def invoke(messages: list[dict]) -> Optional[str]:
             return safe_invoke(llm, messages, timeout_seconds=15, max_tokens=300)
+
+        def audit(prompt: str, started: float, ok: bool) -> None:
+            if not tenant_id:
+                return
+            try:
+                from api.utils.llm_logger import log_llm_call
+                log_llm_call(tenant_id, "nl_query", prompt, os.getenv("LLM_PROVIDER", ""), len(prompt) // 4,
+                             int((time.monotonic() - started) * 1000), ok)
+            except Exception:  # noqa: BLE001 - the audit never costs the answer
+                logger.exception("nl_query could not write llm_audit_log")
     allowed = sorted(vocab.phrases)
     messages = [
         {"role": "system", "content": "Map each word to exactly one phrase from the list, or to null. Answer with a "
                                       "JSON object {word: phrase or null} and nothing else."},
         {"role": "user", "content": json.dumps({"words": words, "phrases": allowed})},
     ]
+    import time as _t
+    started = _t.monotonic()
     try:
         raw = invoke(messages) or ""
         answer = json.loads(raw[raw.find("{"): raw.rfind("}") + 1]) if "{" in raw else {}
     except Exception as e:  # noqa: BLE001 - the deterministic result stands
         logger.warning("NL fallback unavailable: %s", type(e).__name__)
+        if audit:
+            audit(messages[1]["content"], started, False)
         return {}
+    if audit:
+        audit(messages[1]["content"], started, bool(raw))
     return {w: p for w, p in (answer or {}).items() if w in words and isinstance(p, str) and p in vocab.phrases}
