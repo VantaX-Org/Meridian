@@ -232,9 +232,10 @@ async def lifespan(app: FastAPI):
                         admin_id = str(_uuid.uuid4())
                         await session.execute(
                             text(
-                                "INSERT INTO users (id, tenant_id, email, name, role, password_hash, is_active) "
+                                "INSERT INTO users (id, tenant_id, email, name, role, password_hash, is_active, "
+                                "must_change_password) "
                                 "VALUES (:id, '00000000-0000-0000-0000-000000000001', "
-                                "'admin@meridian.local', 'Admin', 'platform_admin', :pw, true)"
+                                "'admin@meridian.local', 'Admin', 'platform_admin', :pw, true, true)"
                             ),
                             {"id": admin_id, "pw": default_pw},
                         )
@@ -248,7 +249,9 @@ async def lifespan(app: FastAPI):
                             {"id": admin_id},
                         )
                         await session.commit()
-                        logger.info("Default admin user created: admin@meridian.local / admin")
+                        # The seeded password is public: sign-in answers must_change_password and the
+                        # interface sends the administrator to the change screen first.
+                        logger.info("Default admin user created: admin@meridian.local (change the password at first sign-in)")
             except Exception as e:
                 logger.warning(f"Dev tenant init failed: {e}")
 
