@@ -93,3 +93,60 @@ This is finding F-1 in [security.md](security.md) and defect D-01 in
 [roadmap-and-debt.md](roadmap-and-debt.md). Bytecode is in any case a deterrent rather than protection:
 `.pyc` decompiles to readable Python with public tools, so the real protection is the EULA and the licence
 check, not the build.
+
+## 6. The Aletheia attribution strip
+
+Every screen of the frontend ends with a small strip showing a mark and the word "Aletheia" (hover title
+"Vantax Aletheia"). A buyer will ask whose brand it is and whether it comes with the deal. This section
+answers from what the repositories contain; it is not legal advice.
+
+**What Aletheia is.** Vantax Aletheia is a separate product of the same group: a grounded question-answering
+engine (internal codename `cortex0`) in its own repository (`VantaX-Org/vantax-aletheia`). Its licensor, as
+named in its terms, is VANTA X, a South African company. Meridian contains none of Aletheia's code
+(`grep -rn cortex0` over the Meridian source finds nothing).
+
+**What Meridian contains of it.**
+
+| Item | Where |
+|---|---|
+| Aletheia's mark, an SVG of 1,141 bytes, served unaltered | `frontend/public/brand/aletheia-mark.svg` |
+| The strip component (the mark and the name) | `frontend/design/brand/Attribution.tsx`, rendered by `frontend/app/layout.tsx` and `frontend/app/global-error.tsx` |
+| Its style, in the document flow at the foot of the page | `.m-attribution` in `frontend/design/tokens.css` |
+| A test that the strip is on every screen and the mark is byte-for-byte Aletheia's | `frontend/design/brand/Attribution.test.tsx` |
+
+The strip was added on 25 October 2026 (commit `6f7d112a`). The component and the test cite "Aletheia
+licence, section 6, Attribution is mandatory".
+
+**The licence it cites.** Section 6 of the Vantax Aletheia Software Licence and Terms and Conditions
+(version 1.0, `cortex0/legal/TERMS_AND_CONDITIONS.md` in the Aletheia repository) says every Deployment
+must display the Aletheia Attribution on every screen, and that removing it is a material breach that
+terminates the licence. Related terms of that document: section 4 reserves the Aletheia name, logo and
+get-up to the licensor and forbids removing or altering the Attribution; section 5.6 forbids removing,
+disabling or obscuring it; section 11 sets liquidated damages for removing it (R 250,000 per Deployment
+plus R 5,000 per day); South African law governs. The document describes itself as a commercial template
+not yet reviewed by an attorney. The Aletheia repository's own `LICENSE` file is a different, placeholder
+licence (source-available, evaluation and non-commercial use only, pending counsel review), with copyright
+asserted by the founder and VantaX-Org.
+
+**What it covers in Meridian, and what we could not find.** In Meridian it covers the mark and the name
+only. Those terms are written for deployments of the Aletheia software. Neither repository contains an
+agreement that licenses Aletheia's mark, name or any design element to Meridian, or that applies section 6
+to Meridian; the only record is the code comment and the commit message. We did not find any Aletheia
+design asset in Meridian beyond the mark: Meridian's design system (`frontend/design/v2/`,
+`frontend/DESIGN.md`) is Meridian's own.
+
+**What a buyer acquires and what it must keep.**
+
+- The buyer does not acquire the Aletheia name, mark or any Aletheia IP by buying Meridian unless the deal
+  says so: under section 4 of Aletheia's terms they stay with the Aletheia licensor.
+- If an agreement between Meridian's owner and the Aletheia licensor applies the attribution obligation to
+  Meridian, the buyer must keep the strip on every screen, unaltered, or obtain a release. Removing it
+  under such an agreement would expose the buyer to the remedies above.
+- Recommendation: because both products sit with the same group, settle it in the transaction documents.
+  Either a written licence from the Aletheia licensor to use the mark in Meridian (scope, term, territory,
+  whether the attribution obligation survives the sale), or a written release that lets the buyer remove
+  the strip. Removing it is a small change: the component, its two render sites, its CSS rule, its test
+  and the SVG.
+- Counsel should confirm the legal entity that owns Meridian (the `LICENSE` says "VantaX"; the EULA
+  template leaves `{{LICENSOR_LEGAL_NAME}}` open; Aletheia's terms name VANTA X) so the licence or release
+  is given by and to the right parties.

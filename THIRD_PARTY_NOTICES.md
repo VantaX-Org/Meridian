@@ -23,6 +23,14 @@ copyleft and unusual licences are in `docs/diligence/licences.md`.
 | Grafana | 11.3.0 | AGPL-3.0-only | `docker/docker-compose.monitoring.yml` | optional monitoring overlay, upstream image |
 | SAP NetWeaver RFC SDK | customer supplied | SAP proprietary | `vendor/nwrfcsdk/README.md` | never in the repository or the published images; the customer adds it and builds with INSTALL_PYRFC=true |
 
+## Brand elements
+
+Maintained by hand: `scripts/diligence_licences.py` does not write this section.
+
+| Element | Owner | Terms | Where it ships |
+|---|---|---|---|
+| Aletheia mark and name (the attribution strip at the foot of every screen) | the licensor of Vantax Aletheia (VANTA X), a separate product of the same group | the Aletheia name, logo and get-up are reserved to their owner; the Vantax Aletheia Software Licence, section 6, requires the mark on every screen of an Aletheia deployment and forbids altering it. Used in Meridian unaltered. Whether and on what terms it is licensed to Meridian is set out in `docs/diligence/licences.md` section 6 | `frontend/public/brand/aletheia-mark.svg`, rendered by `frontend/design/brand/Attribution.tsx` |
+
 ## Python packages (134, the API and worker images)
 
 | Package | Version | Licence | Home page |
