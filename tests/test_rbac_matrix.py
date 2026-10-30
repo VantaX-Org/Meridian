@@ -11,6 +11,8 @@ ROOT = Path(__file__).resolve().parent.parent
 _UNGUARDED_OK = {
     ("auth.py", "/login"), ("auth.py", "/change-password"), ("auth.py", "/accept-invite"),
     ("auth.py", "/forgot-password"), ("auth.py", "/reset-password"), ("auth.py", "/invite/preview"),
+    # signing out needs only a session (LocalAuthMiddleware); any role may end its own
+    ("auth.py", "/logout"),
     ("notifications.py", "/notifications/{notification_id}/read"),
     ("notifications.py", "/notifications/read-all"),
     ("preferences.py", "/me/preferences"),

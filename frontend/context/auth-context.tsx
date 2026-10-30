@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import { isAxiosError } from "axios";
 import apiClient from "@/lib/api/client";
-import { changeOwnPassword } from "@/lib/api/auth";
+import { changeOwnPassword, logoutSession } from "@/lib/api/auth";
 import { clearLocalPreferences } from "@/lib/preferences";
 
 export interface AuthUser {
@@ -118,6 +118,8 @@ export function LocalAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
+    // Carries the token being dropped, so the sign-out is attributed; not awaited.
+    void logoutSession(localStorage.getItem(TOKEN_KEY));
     localStorage.removeItem(TOKEN_KEY);
     clearLocalPreferences();
     setSessionCookie(false);

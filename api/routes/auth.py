@@ -4,6 +4,7 @@ Active only when AUTH_MODE=local.
 """
 
 import os
+import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -12,7 +13,8 @@ from sqlalchemy import text
 
 from api.services.rbac import (
     BUILTIN_NAMES,
-    PERMISSIONS, PERSONA_ROLES, home_for, permissions_for, require_permission, unscoped_actions_sync,
+    PERMISSIONS, PERSONA_ROLES, current_user_id, home_for, permissions_for, require_permission,
+    unscoped_actions_sync, write_audit_sync,
 )
 from api.deps import get_sync_engine_or_create
 from api.services.local_auth import (
@@ -180,33 +182,52 @@ def login(body: LoginRequest, request: Request, response: Response):
         # emails get the same answer as non-administrators, so this reveals nothing about who has an account.
         from api.services import oidc as _oidc
 
+        typed_email = (body.email or "").strip()[:320]
+
+        def refuse(status: int, detail: str, reason: str) -> HTTPException:
+            """Audit the refused sign-in (email as typed and the address, never the password) and commit it."""
+            write_audit_sync(conn, DEV_TENANT_ID, request, "auth.login_failed", "user",
+                             str(row[0]) if row else None, None, {"email": typed_email, "reason": reason},
+                             actor_user_id=str(row[0]) if row else None, actor_email=typed_email,
+                             status_code=status)
+            conn.commit()
+            return HTTPException(status_code=status, detail=detail)
+
         if _oidc.is_enforced(_oidc.load_config(conn, DEV_TENANT_ID)) and not _oidc.holds_break_glass(
                 conn, DEV_TENANT_ID, str(row[0]) if row else None, row[3] if row else None):
-            raise HTTPException(status_code=403, detail="Your organisation requires single sign-on. Use Continue with single sign-on.")
+            raise refuse(403, "Your organisation requires single sign-on. Use Continue with single sign-on.",
+                         "sso_required")
 
         if not row or not row[5]:  # not found or inactive
-            raise HTTPException(status_code=401, detail="Invalid credentials")
+            raise refuse(401, "Invalid credentials", "unknown_or_inactive")
 
         if not row[4]:  # no password_hash set
-            raise HTTPException(status_code=401, detail="Invalid credentials")
+            raise refuse(401, "Invalid credentials", "no_password")
 
         if row[8]:  # locked: refused before the password is looked at, so a guesser learns nothing from it
-            raise HTTPException(
-                status_code=423,
-                detail=f"This account is locked after too many failed sign-ins. Try again in {row[8]} "
-                       f"minute{'' if row[8] == 1 else 's'}.")
+            raise refuse(
+                423,
+                f"This account is locked after too many failed sign-ins. Try again in {row[8]} "
+                f"minute{'' if row[8] == 1 else 's'}.",
+                "locked")
 
         if not verify_password(body.password, row[4]):
             # Atomic count; the lock starts on the LOCKOUT_THRESHOLD-th failure, the next attempt gets 423.
-            # A count left over from an expired lock restarts at one.
-            conn.execute(
+            # A count left over from an expired lock restarts at one. A locked account never reaches this
+            # update (it is refused above), so "locked after it" means this failure started the lock.
+            counted = conn.execute(
                 text("UPDATE users SET "
                      "failed_login_count = CASE WHEN locked_until <= now() THEN 1 ELSE failed_login_count + 1 END, "
                      "locked_until = CASE WHEN (CASE WHEN locked_until <= now() THEN 1 ELSE failed_login_count + 1 END) "
-                     ">= :n THEN now() + make_interval(mins => :m) ELSE locked_until END WHERE id = :uid"),
-                {"n": LOCKOUT_THRESHOLD, "m": LOCKOUT_MINUTES, "uid": str(row[0])})
-            conn.commit()
-            raise HTTPException(status_code=401, detail="Invalid credentials")
+                     ">= :n THEN now() + make_interval(mins => :m) ELSE locked_until END WHERE id = :uid "
+                     "RETURNING failed_login_count, COALESCE(locked_until > now(), false)"),
+                {"n": LOCKOUT_THRESHOLD, "m": LOCKOUT_MINUTES, "uid": str(row[0])}).fetchone()
+            if counted and counted[1]:
+                write_audit_sync(conn, DEV_TENANT_ID, request, "auth.lockout", "user", str(row[0]), None,
+                                 {"email": row[1], "failed_login_count": int(counted[0]),
+                                  "locked_minutes": LOCKOUT_MINUTES},
+                                 actor_user_id=str(row[0]), actor_email=row[1], status_code=401)
+            raise refuse(401, "Invalid credentials", "wrong_password")
 
         must_change = bool(row[6])
 
@@ -241,6 +262,8 @@ def login(body: LoginRequest, request: Request, response: Response):
             text("UPDATE users SET last_login = :now, failed_login_count = 0, locked_until = NULL WHERE id = :uid"),
             {"now": datetime.now(timezone.utc), "uid": user_id},
         )
+        write_audit_sync(conn, DEV_TENANT_ID, request, "auth.login", "user", user_id, None,
+                         {"email": row[1], "method": "password"}, actor_user_id=user_id, actor_email=row[1])
         conn.commit()
 
         return LoginResponse(
@@ -320,7 +343,7 @@ def change_password(body: ChangePasswordRequest, request: Request, response: Res
 
     Accepted even when `must_change_password` is true on the account —
     in fact that's the intended path. Clears the flag on success so
-    the user can proceed with normal API use. Writes a ``user.password_change`` audit row.
+    the user can proceed with normal API use. Writes an ``auth.password_change`` audit row.
 
     Revokes every other session: bumps ``users.token_version``, so LocalAuthMiddleware rejects
     any token issued before the change (a stolen session dies with the old password). The
@@ -377,12 +400,9 @@ def change_password(body: ChangePasswordRequest, request: Request, response: Res
             ),
             {"ph": hash_password(new_password), "uid": str(row[0])},
         ).fetchone()
-        conn.execute(
-            text("INSERT INTO audit_log (tenant_id, actor_user_id, actor_email, action, entity_type, entity_id, "
-                 "method, path, status_code) VALUES (:t, :u, :e, 'user.password_change', 'user', :u, "
-                 ":m, :p, 200)"),
-            {"t": DEV_TENANT_ID, "u": str(row[0]), "e": row[3], "m": request.method, "p": request.url.path},
-        )
+        write_audit_sync(conn, DEV_TENANT_ID, request, "auth.password_change", "user", str(row[0]), None,
+                         {"email": row[3], "sessions_revoked": True},
+                         actor_user_id=str(row[0]), actor_email=row[3])
         conn.commit()
         forget_token_version(str(row[0]))
         token = create_access_token(
@@ -395,6 +415,35 @@ def change_password(body: ChangePasswordRequest, request: Request, response: Res
         )
     _set_auth_cookie(response, token, request)
     return ChangePasswordResponse(token=token)
+
+
+@router.post("/logout", status_code=204)
+def logout(request: Request) -> Response:
+    """Sign out: clear the session cookie and write an ``auth.logout`` audit row.
+
+    Behind LocalAuthMiddleware, so only a signed-in caller reaches it. The browser drops its own token;
+    other sessions of the same user stay valid (changing the password is what revokes them)."""
+    from api.middleware.local_auth import get_current_user
+
+    user_id = current_user_id(request)
+    email = (get_current_user() or {}).get("email")
+    try:
+        user_id = str(uuid.UUID(str(user_id))) if user_id else None
+    except ValueError:
+        user_id = None  # an API key or service principal: there is no session to end
+    if user_id:
+        engine = get_sync_engine_or_create()
+        with engine.connect() as conn:
+            conn.execute(text(f"SET app.tenant_id = \'{str(DEV_TENANT_ID)}\'"))
+            known = conn.execute(text("SELECT 1 FROM users WHERE id = CAST(:u AS uuid) AND tenant_id = :t"),
+                                 {"u": user_id, "t": DEV_TENANT_ID}).fetchone()
+            write_audit_sync(conn, DEV_TENANT_ID, request, "auth.logout", "user", user_id, None,
+                             {"email": email} if email else None,
+                             actor_user_id=user_id if known else None, actor_email=email)
+            conn.commit()
+    out = Response(status_code=204)
+    out.delete_cookie("mn_auth_token", path="/", samesite="lax", httponly=True, secure=cookie_secure(request))
+    return out
 
 
 class AcceptInviteRequest(BaseModel):
