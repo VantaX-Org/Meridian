@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { Ruler, type RulerProps } from "../Ruler";
-import { breachNames, capSentence, findSystem, moduleFromSlug, moduleSlug, readingText, rulerGeometry, scoreY, segmentShares, systemSlug, WEIGHT_PERCENT } from "@/lib/v2/score";
+import { setLang } from "@/lib/v2/i18n";
+import { breachNames, capSentence, findSystem, labelsOverlap, spreadLabels, moduleFromSlug, moduleSlug, readingText, rulerGeometry, scoreY, segmentShares, systemSlug, WEIGHT_PERCENT } from "@/lib/v2/score";
 
 const MM = [62, 72, 70, 88, 90, 65];
 
@@ -18,6 +19,38 @@ const props = (over: Partial<RulerProps> = {}): RulerProps => ({
   rules: 913,
   coverage: 0.974,
   ...over,
+});
+
+describe("ruler labels never collide", () => {
+  const layouts = [
+    { name: "1440 px wide", opts: {} },
+    { name: "320 px wide (a phone: 288 px of canvas)", opts: { compact: true, available: 288 } },
+  ];
+  const langs = ["en", "de", "ja"] as const;
+  it.each(langs.flatMap((lang) => layouts.map((l) => [lang, l.name, l.opts] as const)))("%s at %s", (lang, _name, opts) => {
+    setLang(lang);
+    try {
+      for (const dims of [MM, [100, 100, 100, 100, 100, 100], [null, null, null, null, null, null]]) {
+        const g = rulerGeometry(240, dims, 71.8, opts);
+        expect(g.labels.length).toBeGreaterThanOrEqual(5 + 2 + 12);
+        for (const l of g.labels) {
+          expect(l.x, `${l.text} starts inside the drawing`).toBeGreaterThanOrEqual(0);
+          expect(l.x + l.width, `${l.text} ends inside the drawing`).toBeLessThanOrEqual(g.viewWidth);
+          expect(l.y + l.height, `${l.text} sits inside the drawing`).toBeLessThanOrEqual(g.viewHeight);
+        }
+        for (let i = 0; i < g.labels.length; i++)
+          for (let j = i + 1; j < g.labels.length; j++) expect(labelsOverlap(g.labels[i], g.labels[j]), `${g.labels[i].text} and ${g.labels[j].text}`).toBe(false);
+        if (opts.available) expect(g.viewWidth).toBeLessThanOrEqual(opts.available);
+      }
+    } finally {
+      setLang("en");
+    }
+  });
+
+  it("spreads labels that would sit on each other and keeps their order", () => {
+    const out = spreadLabels([{ y: 10, height: 14 }, { y: 12, height: 14 }, { y: 60, height: 14 }]);
+    expect(out.map((l) => l.y)).toEqual([10, 26, 60]);
+  });
 });
 
 describe("ruler geometry", () => {
@@ -141,7 +174,18 @@ describe("<Ruler>", () => {
     expect(container.querySelector('[data-cap="85"]')).not.toBeNull();
     expect(container.querySelector('[data-cap="70"]')).not.toBeNull();
     expect(container.querySelector(".m2-ruler.m2-on")).not.toBeNull();
-    expect(Array.from(container.querySelectorAll(".m2-rlab-i")).map((n) => n.textContent)).toEqual(["62", "72", "70", "88", "90", "65"]);
+    const own = (sel: string) => Array.from(container.querySelectorAll(sel)).map((n) => n.lastChild?.textContent);
+    expect(own('[data-label="score"]')).toEqual(["62", "72", "70", "88", "90", "65"]);
+    // Each segment is named under it, the letters of the formula, with the full name on hover.
+    expect(own('[data-label="dimension"]')).toEqual(["C", "A", "Cs", "T", "U", "V"]);
+    expect(Array.from(container.querySelectorAll('[data-label="dimension"] title')).map((n) => n.textContent)).toEqual(["Completeness", "Accuracy", "Consistency", "Timeliness", "Uniqueness", "Validity"]);
+  });
+
+  it("says the measured score beside a capped one, so capped objects still rank", () => {
+    render(<Ruler {...props()} />);
+    expect(screen.getByTestId("ruler-score")).toHaveTextContent("70.0");
+    expect(screen.getByText("capped")).toBeInTheDocument();
+    expect(screen.getByTestId("ruler-measured")).toHaveTextContent("71.8 measured");
   });
 
   it("draws an object with no run as an empty bar with a dash", () => {

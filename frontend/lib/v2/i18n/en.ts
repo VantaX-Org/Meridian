@@ -4261,6 +4261,17 @@ export const en = {
   "Administration: {section}": "Administration: {section}",
   "Demo data": "Demo data",
   "Every figure on this page is sample data built into the interface, not read from your SAP systems.": "Every figure on this page is sample data built into the interface, not read from your SAP systems.",
+  "{measured} measured": "{measured} measured",
+  "Object not found": "Object not found",
+  "{system} has no object called {segment}. Open the landscape and choose an object from the map.": "{system} has no object called {segment}. Open the landscape and choose an object from the map.",
+  "Record not found": "Record not found",
+  "No failing record with the key {key} is in the latest run. Check the key; a record fixed since the list was read also leaves it.": "No failing record with the key {key} is in the latest run. Check the key; a record fixed since the list was read also leaves it.",
+  "Completeness (short)": "C",
+  "Accuracy (short)": "A",
+  "Consistency (short)": "Cs",
+  "Timeliness (short)": "T",
+  "Uniqueness (short)": "U",
+  "Validity (short)": "V",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

@@ -12,7 +12,7 @@ import { useOpenItem, useRunParam, useV2Session, type V2Persona } from "@/lib/v2
 import { useBatches, usePeople } from "@/lib/v2/approvals-queries";
 import { slaMet } from "@/lib/v2/people";
 import { useLandscape, useStatus, useTopWork } from "@/lib/v2/queries";
-import { f1, int, moduleSlug, readingText, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
+import { byMeasured, f1, int, moduleSlug, readingText, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { type GridColumn } from "../Grid";
 import { IconCheck, VerdictMark } from "../marks";
 import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
@@ -293,6 +293,9 @@ export function Coverage({ landscape, run, view = "systems", waves = [] }: { lan
   const visible = landscape.cells.filter((c) => systems.some((x) => x.id === c.system_id));
   const groups: WaveGroup[] | null = view === "waves" ? groupByWave(landscape, waves, visible) : null;
   const objectOf = (module: string) => landscape.objects.find((o) => o.module === module);
+  // Rows rank by the lowest measured score of the object on the systems shown, so objects the cap ties still rank.
+  const rank = new Map(byMeasured(visible).map((c, i) => [c.module, i] as const));
+  const objectsByMeasured = [...landscape.objects].sort((a, b) => (rank.get(a.module) ?? 1e9) - (rank.get(b.module) ?? 1e9));
   return (
     <section className="m2-sec" aria-label={t("Coverage matrix")}>
       <div className="m2-sechead">
@@ -347,7 +350,7 @@ export function Coverage({ landscape, run, view = "systems", waves = [] }: { lan
                   </tr>
                       ))),
                 ])
-              : landscape.objects.map((o) => (
+              : objectsByMeasured.map((o) => (
               <tr key={o.module}>
                 <th scope="row">
                   <span className="m2-oname">{o.label}</span>
@@ -368,7 +371,7 @@ export function Coverage({ landscape, run, view = "systems", waves = [] }: { lan
             {groups.map((g) => t("{name}: {go} go, {counts} at risk, {counts2} no-go", { name: g.wave?.name ?? t("Not in a wave"), go: g.counts.go, counts: g.counts["at-risk"], counts2: g.counts["no-go"] })).join(". ")}.
           </p>
         ) : null}
-        {landscape.cells
+        {byMeasured(landscape.cells)
           .filter((c) => !chosen || systemSlug(landscape.systems.find((s) => s.id === c.system_id)?.name ?? "") === chosen)
           .map((c) => {
             const s = landscape.systems.find((x) => x.id === c.system_id);

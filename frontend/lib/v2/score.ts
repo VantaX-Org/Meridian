@@ -55,8 +55,56 @@ export interface RulerGeometry {
   /** Y of the measured tick, or null when there is no measured score. */
   tickY: number | null;
   /** Scale marks, present at 240 only. */
-  axis: { y: number; value: number; label: string; kind: "scale" | "band" }[];
-  caps: { y: number; value: number; label: string }[];
+  axis: { y: number; value: number; label: string; kind: "scale" | "band"; title?: string }[];
+  caps: { y: number; value: number; label: string; title?: string }[];
+  /** Every text of the 240 drawing as a box, in drawing units, laid out so no two overlap (rulerLabelBoxes). */
+  labels: RulerLabelBox[];
+}
+
+/** One label of the ruler as a box: the text, where it sits and how much room it takes. */
+export interface RulerLabelBox {
+  kind: "scale" | "band" | "cap" | "dimension" | "score";
+  text: string;
+  /** The full words behind a short label, for the hover title. */
+  title: string;
+  /** Left edge, top edge, width and height of the box. */
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Line height of a 12 px label and the room kept between two labels. */
+export const LABEL_H = 14;
+const LABEL_GAP = 2;
+
+/** The width of a 12 px label: Plex Sans figures and Latin letters are about 6.6 px, CJK characters a full 12 px. */
+export function labelWidth(text: string): number {
+  let w = 0;
+  for (const ch of text) w += /[\u3000-\u9fff\uf900-\ufaff\uff00-\uffef]/.test(ch) ? 12 : 6.6;
+  return Math.ceil(w);
+}
+
+/** The short name of each dimension under its segment (the letters of the formula); the full name is the title. */
+export function dimensionShort(key: DimensionKey): string {
+  switch (key) {
+    case "completeness": return t("Completeness (short)");
+    case "accuracy": return t("Accuracy (short)");
+    case "consistency": return t("Consistency (short)");
+    case "timeliness": return t("Timeliness (short)");
+    case "uniqueness": return t("Uniqueness (short)");
+    default: return t("Validity (short)");
+  }
+}
+
+/** Moves labels of one column apart so none overlaps the next, keeping their order and staying nearest their marks. */
+export function spreadLabels<T extends { y: number; height: number }>(labels: T[]): T[] {
+  const out = [...labels].sort((a, b) => a.y - b.y).map((l) => ({ ...l }));
+  for (let i = 1; i < out.length; i++) {
+    const min = out[i - 1].y + out[i - 1].height + LABEL_GAP;
+    if (out[i].y < min) out[i].y = min;
+  }
+  return out;
 }
 
 const SMALL = { height: 12, gap: 1 } as const;
@@ -73,12 +121,22 @@ export function scoreY(score: number, top: number, height: number): number {
  * filled from the bottom to its own score, and a tick across all of them at the measured score. The 48 size is a bar
  * and a tick; the 240 size adds the 0 to 100 axis with the 60, 75 and 90 band marks and the 70 and 85 cap ticks.
  */
-export function rulerGeometry(size: RulerSize, dims: ReadonlyArray<number | null>, measured: number | null): RulerGeometry {
+export function rulerGeometry(size: RulerSize, dims: ReadonlyArray<number | null>, measured: number | null, opts: { compact?: boolean; available?: number } = {}): RulerGeometry {
   const large = size === 240;
-  const plotW = large ? LARGE.width : size;
-  const height = large ? LARGE.height : SMALL.height;
+  const compact = large && opts.compact === true;
   const top = large ? LARGE.top : 0;
-  const left = large ? LARGE.left : 0;
+  const height = large ? LARGE.height : SMALL.height;
+  // The 240 ruler's gutters fit its own words (German and Japanese run longer than English); on a phone the band
+  // and cap labels are the short forms and the plot takes the width that is left.
+  const bandText = (v: number, word: string) => (compact ? String(v) : word);
+  const bands = large ? [{ v: 60, word: t("60 critical") }, { v: 75, word: t("75 at risk") }, { v: 90, word: t("90 go") }] : [];
+  // On a phone the cap lines carry their level ("85", "70") and the words are the title.
+  const capDefs = large ? [{ v: 85, word: t("cap 1 critical"), short: "85" }, { v: 70, word: t("cap 2 or more"), short: "70" }] : [];
+  const leftW = large ? Math.max(labelWidth("50"), ...bands.map((b) => labelWidth(bandText(b.v, b.word)))) : 0;
+  const rightW = large ? Math.max(...capDefs.map((c) => labelWidth(compact ? c.short : c.word))) : 0;
+  const left = large ? Math.max(compact ? 0 : LARGE.left, leftW + 14 + 2) : 0;
+  const right = large ? Math.max(compact ? 0 : LARGE.right, rightW + 14 + 2) : 0;
+  const plotW = large ? (compact ? Math.max(160, Math.min(LARGE.width, (opts.available ?? 288) - left - right)) : LARGE.width) : size;
   const gap = large ? LARGE.gap : SMALL.gap;
   const usable = plotW - gap * (DIMENSIONS.length - 1);
   let x = left;
@@ -101,25 +159,48 @@ export function rulerGeometry(size: RulerSize, dims: ReadonlyArray<number | null
   const tickY = measured == null ? null : scoreY(measured, top, height);
   const axis: RulerGeometry["axis"] = [];
   const caps: RulerGeometry["caps"] = [];
+  const labels: RulerLabelBox[] = [];
+  const bottom = top + height;
   if (large) {
-    for (const v of [0, 25, 50, 100]) axis.push({ y: scoreY(v, top, height), value: v, label: String(v), kind: "scale" });
-    axis.push({ y: scoreY(60, top, height), value: 60, label: t("60 critical"), kind: "band" });
-    axis.push({ y: scoreY(75, top, height), value: 75, label: t("75 at risk"), kind: "band" });
-    axis.push({ y: scoreY(90, top, height), value: 90, label: t("90 go"), kind: "band" });
-    caps.push({ y: scoreY(85, top, height), value: 85, label: t("cap 1 critical") });
-    caps.push({ y: scoreY(70, top, height), value: 70, label: t("cap 2 or more") });
+    // The band words on the left, spread so none touches the next; a scale number keeps its tick but not its text
+    // where a band word sits.
+    const leftLabels = spreadLabels(bands.map((b) => ({ value: b.v, text: bandText(b.v, b.word), title: b.word, y: scoreY(b.v, top, height) - LABEL_H / 2, height: LABEL_H })));
+    for (const l of [...leftLabels].sort((a, b) => a.value - b.value)) axis.push({ y: l.y + LABEL_H / 2, value: l.value, label: l.text, kind: "band", title: l.title });
+    for (const v of [0, 25, 50, 100]) {
+      const y = scoreY(v, top, height);
+      const clear = leftLabels.every((l) => y + LABEL_H / 2 + LABEL_GAP <= l.y || y - LABEL_H / 2 - LABEL_GAP >= l.y + l.height);
+      axis.push({ y, value: v, label: clear ? String(v) : "", kind: "scale" });
+    }
+    const rightLabels = spreadLabels(capDefs.map((c) => ({ value: c.v, text: compact ? c.short : c.word, title: c.word, y: scoreY(c.v, top, height) - LABEL_H / 2, height: LABEL_H })));
+    for (const c of [...rightLabels].sort((a, b) => b.value - a.value)) caps.push({ y: scoreY(c.value, top, height), value: c.value, label: c.text, title: c.title });
+    for (const a of axis) if (a.label) labels.push({ kind: a.kind, text: a.label, title: a.title ?? a.label, x: left - 14 - labelWidth(a.label), y: a.y - LABEL_H / 2, width: labelWidth(a.label), height: LABEL_H });
+    for (const c of rightLabels) labels.push({ kind: "cap", text: c.text, title: c.title, x: left + plotW + 14, y: c.y, width: labelWidth(c.text), height: LABEL_H });
+    // Under each segment: its short name, then its score.
+    for (const sg of segments) {
+      const short = dimensionShort(sg.key);
+      const num = sg.score == null ? DASH : String(Math.round(sg.score));
+      const cx = sg.x + sg.width / 2;
+      labels.push({ kind: "dimension", text: short, title: sg.label, x: cx - labelWidth(short) / 2, y: bottom + 6, width: labelWidth(short), height: LABEL_H });
+      labels.push({ kind: "score", text: num, title: `${sg.label} ${num}`, x: cx - labelWidth(num) / 2, y: bottom + 6 + LABEL_H, width: labelWidth(num), height: LABEL_H });
+    }
   }
   return {
     size,
-    viewWidth: large ? LARGE.left + LARGE.width + LARGE.right : plotW,
-    viewHeight: top + height + (large ? 4 : 0),
+    viewWidth: large ? left + plotW + right : plotW,
+    viewHeight: top + height + (large ? 6 + 2 * LABEL_H + 4 : 0),
     plot: { left, top, width: plotW, height },
     gap,
     segments,
     tickY,
     axis,
     caps,
+    labels,
   };
+}
+
+/** True when two label boxes share any point. */
+export function labelsOverlap(a: RulerLabelBox, b: RulerLabelBox): boolean {
+  return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 }
 
 /** The share of the plot width each segment takes, in percent. They sum to 100 by construction. */
@@ -198,4 +279,13 @@ export function systemForModule<S extends { id: string }, C extends { system_id:
 export function findSystem<T extends { id: string; name: string }>(systems: readonly T[], segment: string): T | undefined {
   const s = segment.toLowerCase();
   return systems.find((x) => systemSlug(x.name) === s || x.id.toLowerCase() === s || x.name.toLowerCase() === s);
+}
+
+/**
+ * Lowest measured score first: the order of the landscape and the map. The measured score (before any cap) ranks
+ * objects the cap would tie at 70.0; an object with no score goes last, and ties keep the object's name order.
+ */
+export function byMeasured<T extends { raw_score: number | null; score: number | null; module: string }>(cells: readonly T[]): T[] {
+  const m = (c: T) => c.raw_score ?? c.score ?? Number.POSITIVE_INFINITY;
+  return [...cells].sort((a, b) => m(a) - m(b) || a.module.localeCompare(b.module));
 }

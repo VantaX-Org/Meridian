@@ -475,3 +475,7 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 
 /* A tab arriving: its table frame at a table's height. */
 .m2-tab-wait { display: grid; gap: var(--m2-s3); padding: var(--m2-s4); min-height: calc(8 * var(--m2-row-h)); margin-top: var(--m2-s3); }
+/* The ruler's dimension letters under their segments, and the measured score beside a capped one (PC-2). */
+.m2-ruler .m2-rdim { fill: var(--m2-ink-2); }
+.m2-ruler-num .m2-meas { font-size: var(--m2-fs-12); color: var(--m2-meta); white-space: nowrap; }
+.m2-ruler-box-lg .m2-ruler-num .m2-meas { font-size: var(--m2-fs-14); }
