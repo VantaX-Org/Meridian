@@ -53,3 +53,5 @@
 /* The demo data bar (shell/DemoBar.tsx): the critical hue, so sample figures never read as measured ones. */
 .m2-root .m2-demobar { display: flex; align-items: baseline; gap: var(--m2-s3); flex-wrap: wrap; padding: var(--m2-s1) var(--m2-s4); background: var(--m2-crit-bg); color: var(--m2-crit-ink); border-bottom: 2px solid var(--m2-crit); font-size: var(--m2-fs-13); }
 .m2-root .m2-demobar strong { font-weight: 600; }
+/* The confirmation of a bulk change over 25 rows (Work): stays in view at the foot of the canvas. */
+.m2-root .m2-bulkconfirm { position: sticky; bottom: 0; z-index: 2; background: var(--m2-sheet); }

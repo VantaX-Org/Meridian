@@ -32,7 +32,8 @@ import {
   withState,
   MANAGED,
 } from "@/lib/v2/work";
-import { useWorkActions, useWorkCan, type DecideKind } from "@/lib/v2/work-actions";
+import { ConfirmBar } from "../forms";
+import { needsConfirm, useWorkActions, useWorkCan, type DecideKind } from "@/lib/v2/work-actions";
 import { patched, usePatches } from "@/lib/v2/work-overrides";
 import { PAGE, useGroupRows, useWorkGroups, useWorkRows, useWorkSummary, useWorkViews } from "@/lib/v2/work-queries";
 import { Grid, type GridColumn, type GridHandle } from "../Grid";
@@ -228,6 +229,12 @@ export function WorkCanvas() {
   });
   const [drafts] = useState(() => new Map<string, string>());
   const [reason, setReason] = useState<{ rows: WorkRow[]; kind: "not_an_issue" | "accept_risk"; clear?: () => void } | null>(null);
+  // A bulk change over CONFIRM_OVER rows waits here until the person confirms it (Enter) or keeps the rows (Escape).
+  const [bulk, setBulk] = useState<{ count: number; message: string; confirm: string; run: () => void } | null>(null);
+  const ask = useCallback((count: number, message: string, confirm: string, run: () => void) => {
+    if (needsConfirm(count)) setBulk({ count, message, confirm, run });
+    else run();
+  }, [setBulk]);
   const [saving, setSaving] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [imp, setImp] = useState<{ name: string; busy: boolean; result?: ImportResult; error?: string } | null>(null);
@@ -353,19 +360,19 @@ export function WorkCanvas() {
       accept: () => {
         const rows = targets();
         if (!can.apply) return;
-        if (rows.length) void actions.decide(rows, "accept").then((ok) => ok && gridHandle.current?.clear());
+        if (rows.length) ask(rows.length, tr("Accept the suggested value on {count} rows?", { count: int(rows.length) }), tr("Accept {count} values", { count: int(rows.length) }), () => void actions.decide(rows, "accept").then((ok) => ok && gridHandle.current?.clear()));
         else needRows();
       },
       notAnIssue: () => {
         const rows = targets();
         if (!can.approve) return;
-        if (rows.length) setReason({ rows, kind: "not_an_issue", clear: () => gridHandle.current?.clear() });
+        if (rows.length) ask(rows.length, tr("Mark {count} rows as not an issue?", { count: int(rows.length) }), tr("Continue with {count} rows", { count: int(rows.length) }), () => setReason({ rows, kind: "not_an_issue", clear: () => gridHandle.current?.clear() }));
         else needRows();
       },
       acceptRisk: () => {
         const rows = targets();
         if (!can.approve) return;
-        if (rows.length) setReason({ rows, kind: "accept_risk", clear: () => gridHandle.current?.clear() });
+        if (rows.length) ask(rows.length, tr("Accept the risk on {count} rows?", { count: int(rows.length) }), tr("Continue with {count} rows", { count: int(rows.length) }), () => setReason({ rows, kind: "accept_risk", clear: () => gridHandle.current?.clear() }));
         else needRows();
       },
       exportSheet: () => void doExport(),
@@ -382,7 +389,21 @@ export function WorkCanvas() {
     keyTarget.current = t;
     ledgerRegistry.set(t);
     return () => ledgerRegistry.clear(t);
-  }, [targets, can, actions, doExport, needRows, open, openItem]);
+  }, [targets, can, actions, doExport, needRows, open, openItem, ask]);
+
+  // While the confirmation bar shows, Enter confirms and Escape keeps the rows; nothing else on the page takes them.
+  useEffect(() => {
+    if (!bulk) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Enter" && e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopPropagation();
+      setBulk(null);
+      if (e.key === "Enter") bulk.run();
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, [bulk]);
 
   // Words ------------------------------------------------------------------------------------------------------
   const [gridKey, bumpGrid] = useGridKey(COLUMNS_ID);
@@ -412,16 +433,16 @@ export function WorkCanvas() {
           </span>
         )),
       },
-      { id: "fdesc", header: tr("Field description"), width: 150, title: tr("Business name of the failing field."), cell: r((x) => (x.field_description ? <span title={x.field_description}>{x.field_description}</span> : <Dash why={tr("The API has no description for this field yet")} />)) },
-      { id: "sapfield", header: tr("SAP field"), width: 120, title: tr("TABLE.FIELD of the failing value."), cell: r((x) => (x.top_field ? <Mono>{x.top_field}</Mono> : <Dash />)) },
-      { id: "problem", header: tr("Problem"), width: 230, title: tr("What the rule found wrong with the value."), cell: r((x) => (x.top_message ? <span title={x.top_message}>{x.top_message}</span> : <Dash />)) },
       { id: "current", header: tr("Current value"), width: 110, title: tr("The value held in SAP at extraction."), cell: r((x) => <CurrentValue value={x.current_value} />) },
-      { id: "possible", header: tr("Possible values"), width: 200, title: tr("Values the rule accepts. Open the row for the full list with meanings."), cell: r((x) => <PossibleValuesCell row={x} />) },
       { id: "suggested", header: tr("Suggested value"), width: 120, title: tr("The value the rules propose. Blank when no single value is right."), cell: r((x) => (x.suggested_value ? <Mono>{x.suggested_value}</Mono> : <Dash why={tr("No suggested value for this row")} />)) },
       { id: "newvalue", header: tr("New value"), width: 130, locked: true, title: tr("The value to write back. Type and press Enter, paste a column, or fill down with ⌘D."), cell: r((x) => <NewValueCell row={x} h={h} />) },
       { id: "decision", header: tr("Decision"), width: 130, locked: true, title: tr("fix, not an issue or accept risk. The last two ask for a reason."), cell: r((x) => <DecisionCell row={x} h={h} onChoose={onChoose} />) },
-      { id: "first", header: tr("First seen"), width: 100, title: tr("The date the oldest failing issue of this row was first seen."), cell: r((x) => (x.first_seen_at ? <span title={formatDate(x.first_seen_at, "date")}>{formatDate(x.first_seen_at, "day")}</span> : <Dash />)) },
-      { id: "days", header: tr("Days open"), width: 90, numeric: true, title: tr("Days since this row was first seen."), cell: r((x) => { const d = daysOpen(x.first_seen_at, now); return d == null ? <Dash /> : <>{int(d)}</>; }) },
+      { id: "fdesc", header: tr("Field description"), width: 150, defaultHidden: true, title: tr("Business name of the failing field."), cell: r((x) => (x.field_description ? <span title={x.field_description}>{x.field_description}</span> : <Dash why={tr("The API has no description for this field yet")} />)) },
+      { id: "sapfield", header: tr("SAP field"), width: 120, title: tr("TABLE.FIELD of the failing value."), cell: r((x) => (x.top_field ? <Mono>{x.top_field}</Mono> : <Dash />)) },
+      { id: "problem", header: tr("Problem"), width: 230, title: tr("What the rule found wrong with the value."), cell: r((x) => (x.top_message ? <span title={x.top_message}>{x.top_message}</span> : <Dash />)) },
+      { id: "possible", header: tr("Possible values"), width: 200, defaultHidden: true, title: tr("Values the rule accepts. Open the row for the full list with meanings."), cell: r((x) => <PossibleValuesCell row={x} />) },
+      { id: "first", header: tr("First seen"), width: 100, defaultHidden: true, title: tr("The date the oldest failing issue of this row was first seen."), cell: r((x) => (x.first_seen_at ? <span title={formatDate(x.first_seen_at, "date")}>{formatDate(x.first_seen_at, "day")}</span> : <Dash />)) },
+      { id: "days", header: tr("Days open"), width: 90, defaultHidden: true, numeric: true, title: tr("Days since this row was first seen."), cell: r((x) => { const d = daysOpen(x.first_seen_at, now); return d == null ? <Dash /> : <>{int(d)}</>; }) },
       { id: "owner", header: tr("Owner"), width: 70, title: tr("The steward the row is assigned to, by initials."), cell: r((x) => <OwnerCell row={x} h={h} />) },
       { id: "value", header: tr("Value at risk"), width: 120, numeric: true, title: tr("Cost-model estimate of what this failing value costs."), cell: r((x) => (x.value_at_risk == null ? <Dash /> : <>{int(x.value_at_risk)}</>)) },
     ];
@@ -545,7 +566,7 @@ export function WorkCanvas() {
           <span className="m2-gx">
             {left > 0 ? (
               can.apply ? (
-                <button type="button" className="m2-btn m2-sm" onClick={() => void actions.acceptRule(g.check_id, left, g.version_id, recordRows)}>
+                <button type="button" className="m2-btn m2-sm" onClick={() => ask(left, tr("Accept {count} suggested values for {check}?", { count: int(left), check: g.check_id }), tr("Accept {count} values", { count: int(left) }), () => void actions.acceptRule(g.check_id, left, g.version_id, recordRows))}>
                   {tr("Accept all {left} suggested", { left: int(left) })}
                 </button>
               ) : (
@@ -705,7 +726,7 @@ export function WorkCanvas() {
       <p className="m2-prov m2-only-wide">{tr("Rows are read from the latest run of each object{value}.", { value: status?.cost_model ? tr(". Value at risk is from cost model {cost_model}", { cost_model: status.cost_model }) : "" })}</p>
       {session.persona === "steward" && can.apply && topGroup && state.chip !== "approvals" && state.chip !== "exceptions" ? (
         <div className="m2-cta">
-          <button type="button" className="m2-btn m2-next" onClick={() => void actions.acceptRule(topGroup.check_id, topGroup.proposed, topGroup.version_id, recordRows)}>
+          <button type="button" className="m2-btn m2-next" onClick={() => ask(topGroup.proposed, tr("Accept {count} suggested values for {check}?", { count: int(topGroup.proposed), check: topGroup.check_id }), tr("Accept {count} values", { count: int(topGroup.proposed) }), () => void actions.acceptRule(topGroup.check_id, topGroup.proposed, topGroup.version_id, recordRows))}>
             {tr("Accept the {proposed} suggested {proposed2, plural, one {value} other {values}}", { proposed: int(topGroup.proposed), proposed2: topGroup.proposed })}
           </button>
           <span className="m2-meta m2-only-wide">
@@ -828,6 +849,20 @@ export function WorkCanvas() {
         />
       )}
       {controls.dialog}
+      {bulk ? (
+        <div className="m2-bulkconfirm" data-testid="bulk-confirm" role="alertdialog" aria-label={tr("Confirm a change to {count} rows", { count: int(bulk.count) })}>
+          <ConfirmBar
+            message={<>{bulk.message} {tr("Enter confirms, Escape keeps the rows as they are.")}</>}
+            confirmLabel={bulk.confirm}
+            onConfirm={() => {
+              const run = bulk.run;
+              setBulk(null);
+              run();
+            }}
+            onCancel={() => setBulk(null)}
+          />
+        </div>
+      ) : null}
       {reason ? (
         <PromptDialog
           title={reason.kind === "not_an_issue" ? tr("Mark as not an issue") : tr("Accept the risk")}

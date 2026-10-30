@@ -4273,4 +4273,12 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Timeliness (short)": "Ak",
   "Uniqueness (short)": "Ei",
   "Validity (short)": "Gü",
+  "Accept the suggested value on {count} rows?": "Den vorgeschlagenen Wert in {count} Zeilen übernehmen?",
+  "Accept {count} values": "{count} Werte übernehmen",
+  "Mark {count} rows as not an issue?": "{count} Zeilen als kein Problem markieren?",
+  "Continue with {count} rows": "Mit {count} Zeilen fortfahren",
+  "Accept the risk on {count} rows?": "Das Risiko für {count} Zeilen akzeptieren?",
+  "Accept {count} suggested values for {check}?": "{count} vorgeschlagene Werte für {check} übernehmen?",
+  "Confirm a change to {count} rows": "Änderung an {count} Zeilen bestätigen",
+  "Enter confirms, Escape keeps the rows as they are.": "Eingabe bestätigt, Escape lässt die Zeilen unverändert.",
 };

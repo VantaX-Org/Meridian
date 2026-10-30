@@ -4273,4 +4273,12 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Timeliness (short)": "時",
   "Uniqueness (short)": "一",
   "Validity (short)": "妥",
+  "Accept the suggested value on {count} rows?": "{count} 行に提案値を適用しますか？",
+  "Accept {count} values": "{count} 件の値を適用",
+  "Mark {count} rows as not an issue?": "{count} 行を問題なしにしますか？",
+  "Continue with {count} rows": "{count} 行で続ける",
+  "Accept the risk on {count} rows?": "{count} 行のリスクを受け入れますか？",
+  "Accept {count} suggested values for {check}?": "{check} の提案値 {count} 件を適用しますか？",
+  "Confirm a change to {count} rows": "{count} 行の変更を確認",
+  "Enter confirms, Escape keeps the rows as they are.": "Enter で確定、Escape で行をそのままにします。",
 };

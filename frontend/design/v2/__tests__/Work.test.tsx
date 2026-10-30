@@ -81,16 +81,12 @@ describe("the Work ledger, fixture mode", () => {
       "Name",
       "Rule",
       "Severity",
-      "Field description",
-      "SAP field",
-      "Problem",
       "Current value",
-      "Possible values",
       "Suggested value",
       "New value",
       "Decision",
-      "First seen",
-      "Days open",
+      "SAP field",
+      "Problem",
       "Owner",
       "Value at risk",
     ]);
@@ -100,9 +96,6 @@ describe("the Work ledger, fixture mode", () => {
     expect(within(row).getByText("MARA.MTART")).toBeInTheDocument();
     expect(within(row).getByText("Material type is mandatory - determines procurement and storage behaviour")).toBeInTheDocument();
     expect(within(row).getByText("12,390")).toBeInTheDocument();
-    // Possible values are cut to three with "+N more" and the whole list in the title.
-    const pv = within(row).getByText("+9 more");
-    expect(pv.closest(".m2-pvl")).toHaveAttribute("title", expect.stringContaining("ROH (Raw materials)"));
     expect(within(row).getByLabelText(`New value for ${KEY_232}`)).toBeInTheDocument();
     expect(within(row).getByLabelText(`Decision for ${KEY_232}`)).toBeInTheDocument();
   });
@@ -151,6 +144,10 @@ describe("the Work ledger, fixture mode", () => {
     mount();
     const next = await screen.findByRole("button", { name: "Accept the 112 suggested values" });
     fireEvent.click(next);
+    // Over 25 values: the confirmation bar first.
+    expect(await screen.findByTestId("bulk-confirm")).toHaveTextContent("Accept 112 suggested values for MM142?");
+    expect(spy).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Accept 112 values" }));
     await waitFor(() => expect(spy).toHaveBeenCalledWith("MM142", expect.any(String)));
     expect(await screen.findByText(/Accepted 112 suggested values for MM142/)).toBeInTheDocument();
     // The count moved: the next rule's values are now the next step.
@@ -384,8 +381,10 @@ describe("the Work ledger, fixture mode", () => {
     const grid = await ledger();
     await within(grid).findByText(KEY_232);
     fireEvent.click(screen.getByRole("button", { name: "Choose columns" }));
+    fireEvent.click(await screen.findByRole("menuitemcheckbox", { name: "SAP field" }));
+    await waitFor(() => expect(within(screen.getByRole("grid", { name: "Work ledger" })).queryByRole("columnheader", { name: "SAP field" })).toBeNull());
     fireEvent.click(await screen.findByRole("menuitemcheckbox", { name: "Field description" }));
-    await waitFor(() => expect(within(screen.getByRole("grid", { name: "Work ledger" })).queryByRole("columnheader", { name: "Field description" })).toBeNull());
+    await waitFor(() => expect(within(screen.getByRole("grid", { name: "Work ledger" })).getByRole("columnheader", { name: "Field description" })).toBeInTheDocument());
   });
 
   it("Export fix sheet saves what is on screen, with the filters of the chip", async () => {
@@ -530,6 +529,52 @@ describe("the keyboard, in the shell", () => {
     press("a");
     await waitFor(() => expect(spy).toHaveBeenCalled());
     expect(spy.mock.calls[0][0]).toEqual([expect.objectContaining({ action: "accept" })]);
+  });
+
+  it("a over more than 25 rows asks first: the bar shows the count, Escape keeps the rows, Enter accepts", async () => {
+    const spy = vi.spyOn(workApi, "postDecide");
+    mountShell();
+    const grid = await ledger();
+    await within(grid).findByText(KEY_100);
+    fireEvent.click(within(grid).getByRole("checkbox", { name: "Select all rows" }));
+    press("a");
+    const bar = await screen.findByTestId("bulk-confirm");
+    const n = Number(/on ([\d,]+) rows\?/.exec(bar.textContent ?? "")?.[1].replace(/,/g, ""));
+    expect(n).toBeGreaterThan(25);
+    expect(bar).toHaveTextContent("Enter confirms, Escape keeps the rows as they are.");
+    expect(spy).not.toHaveBeenCalled();
+    press("Escape");
+    await waitFor(() => expect(screen.queryByTestId("bulk-confirm")).toBeNull());
+    expect(spy).not.toHaveBeenCalled();
+    press("a");
+    await screen.findByTestId("bulk-confirm");
+    press("Enter");
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+    // Every selected row with a suggested value is accepted, in one call.
+    expect(spy.mock.calls[0][0].length).toBeGreaterThan(25);
+    expect(spy.mock.calls[0][0].length).toBeLessThanOrEqual(n);
+  });
+
+  it("r over more than 25 rows asks before the reason dialog", async () => {
+    mountShell();
+    const grid = await ledger();
+    await within(grid).findByText(KEY_100);
+    fireEvent.click(within(grid).getByRole("checkbox", { name: "Select all rows" }));
+    press("r");
+    expect(await screen.findByTestId("bulk-confirm")).toHaveTextContent(/Accept the risk on \d+ rows\?/);
+    expect(screen.queryByRole("dialog", { name: "Accept the risk" })).toBeNull();
+    fireEvent.click(within(screen.getByTestId("bulk-confirm")).getByRole("button", { name: /Continue with \d+ rows/ }));
+    expect(await screen.findByRole("dialog", { name: "Accept the risk" })).toBeInTheDocument();
+  });
+
+  it("the default columns put Current, Suggested, New value and Decision beside the rule", async () => {
+    mountShell();
+    const grid = await ledger();
+    const heads = within(grid).getAllByRole("columnheader").map((h) => (h.textContent ?? "").trim());
+    const at = (name: string) => heads.findIndex((h) => h.startsWith(name));
+    for (const name of ["Current value", "Suggested value", "New value", "Decision"]) expect(at(name), name).toBeGreaterThan(at("Rule"));
+    expect(at("Decision")).toBeLessThan(at("Problem"));
+    for (const hidden of ["Field description", "Possible values", "First seen", "Days open"]) expect(at(hidden), hidden).toBe(-1);
   });
 
   it("n and r open the reason dialog for the selected rows", async () => {

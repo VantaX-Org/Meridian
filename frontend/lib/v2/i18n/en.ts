@@ -4272,6 +4272,14 @@ export const en = {
   "Timeliness (short)": "T",
   "Uniqueness (short)": "U",
   "Validity (short)": "V",
+  "Accept the suggested value on {count} rows?": "Accept the suggested value on {count} rows?",
+  "Accept {count} values": "Accept {count} values",
+  "Mark {count} rows as not an issue?": "Mark {count} rows as not an issue?",
+  "Continue with {count} rows": "Continue with {count} rows",
+  "Accept the risk on {count} rows?": "Accept the risk on {count} rows?",
+  "Accept {count} suggested values for {check}?": "Accept {count} suggested values for {check}?",
+  "Confirm a change to {count} rows": "Confirm a change to {count} rows",
+  "Enter confirms, Escape keeps the rows as they are.": "Enter confirms, Escape keeps the rows as they are.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
