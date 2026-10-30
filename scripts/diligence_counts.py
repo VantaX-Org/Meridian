@@ -15,7 +15,6 @@ Run from the repository root with PYTHONPATH set to it.
 from __future__ import annotations
 
 import argparse
-import ast
 import collections
 import json
 import os
