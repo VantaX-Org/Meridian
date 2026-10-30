@@ -232,7 +232,7 @@ describe("Learned and Drafts", () => {
   it("lists the learned rules waiting, and lets an approver approve with a severity and reject", async () => {
     const approve = vi.spyOn(objectApi, "approveLearned").mockResolvedValue({ id: "lp-001", status: "approved", rule_id: "LR-000007" });
     render();
-    const chip = await screen.findByRole("button", { name: "Learned 2" });
+    const chip = await screen.findByRole("button", { name: "Learned 4" });
     fireEvent.click(chip);
     const t = await screen.findByRole("table", { name: "Learned rules waiting for a decision" });
     expect(norm(within(t).getAllByRole("row")[1])).toContain("Decided by another field");
@@ -249,26 +249,26 @@ describe("Learned and Drafts", () => {
   it("shows a viewer the learned rules but no decision", async () => {
     granted = ["view"];
     render();
-    fireEvent.click(await screen.findByRole("button", { name: "Learned 2" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Learned 4" }));
     const t = await screen.findByRole("table", { name: "Learned rules waiting for a decision" });
     expect(within(t).queryByRole("button", { name: "Approve" })).toBeNull();
     expect(within(t).queryByRole("button", { name: "Reject" })).toBeNull();
-    expect(within(t).getAllByText("Waiting for an approver")).toHaveLength(2);
+    expect(within(t).getAllByText("Waiting for an approver")).toHaveLength(4);
   });
 
   it("lets a rule manager reject but not approve", async () => {
     granted = ["view", "manage_rules"];
     render();
-    fireEvent.click(await screen.findByRole("button", { name: "Learned 2" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Learned 4" }));
     const t = await screen.findByRole("table", { name: "Learned rules waiting for a decision" });
     expect(within(t).queryByRole("button", { name: "Approve" })).toBeNull();
-    expect(within(t).getAllByRole("button", { name: "Reject" })).toHaveLength(2);
+    expect(within(t).getAllByRole("button", { name: "Reject" })).toHaveLength(4);
   });
 
   it("hides Drafts from a role without manage_rules", async () => {
     granted = ["view", "approve"];
     render();
-    await screen.findByRole("button", { name: "Learned 2" });
+    await screen.findByRole("button", { name: "Learned 4" });
     expect(screen.queryByRole("button", { name: /^Drafts/ })).toBeNull();
   });
 

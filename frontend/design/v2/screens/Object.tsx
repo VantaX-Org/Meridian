@@ -13,6 +13,8 @@ import { Dash, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../pa
 import { Ruler } from "../Ruler";
 import { dimsOf } from "../shell/MapPane";
 import { RelatedObjects } from "./object/Related";
+import { contractMark } from "@/lib/v2/step9";
+import { ObjectContractsBlock } from "./step9/Contracts";
 import { t as tr, tn } from "@/lib/v2/i18n";
 import { moneyCompactText } from "@/lib/v2/labels";
 
@@ -305,6 +307,7 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
               coverage={cell.coverage}
               lowConfidence={cell.low_confidence}
               selected
+              contract={contractMark(cell)}
             />
             <div className="m2-sline" data-testid="cap-sentence">
               <span className="m2-v">
@@ -325,6 +328,7 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
           ) : receiptQ.isError ? null : (
             <ReceiptSkeleton capRow={cell.cap_level != null} breaches={cell.breaches.length} />
           )}
+          <ObjectContractsBlock module={apiModule} label={label} run={run} />
           {tabs}
           <div className="m2-tabpanel">{children}</div>
         </>

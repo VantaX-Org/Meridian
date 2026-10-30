@@ -14,6 +14,7 @@ import { EmptyFrame, ErrorFrame, Skeleton } from "../parts";
 import { Confirm, useDone } from "../admin/kit";
 import { ResultFrame, useOutcome } from "./shared";
 import { WaveGateEditor } from "./governance";
+import { CertificateBlock } from "../screens/step9/Certificate";
 import { t } from "@/lib/v2/i18n";
 
 export const STAGES: { value: WaveStage; label: string }[] = [
@@ -105,6 +106,10 @@ export function WavesPanel({ onClose }: { onClose: () => void }) {
             {w.signed_off_at ? t("Signed off {signed_off_at}. Any change clears the sign-off.", { signed_off_at: formatDate(w.signed_off_at) }) : t("Not signed off.")}
           </span>
           <WaveGateEditor waveId={w.id} />
+          <details className="m2-ct" data-testid="wave-certificate">
+            <summary>{t("Readiness certificate")}</summary>
+            <CertificateBlock waveId={w.id} waveName={w.name} />
+          </details>
           {allowed ? (
             <button type="button" className="m2-linkbtn" style={{ justifySelf: "start" }} onClick={() => setRemoving(w.id)}>
               {t("Delete {name}", { name: w.name })}

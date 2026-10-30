@@ -66,9 +66,9 @@ describe("the Waves view of the landscape", () => {
     page();
     await waitFor(() => expect(screen.getAllByTestId("wave-head")).toHaveLength(4));
     const heads = screen.getAllByTestId("wave-head").map(text);
-    expect(heads[0]).toBe("Wave 1: finance foundations due 16 Nov 2026 1 go, 0 at risk, 3 no-go Edit");
-    expect(heads[1]).toBe("Wave 2: master data due 18 Jan 2027 0 go, 0 at risk, 3 no-go Edit");
-    expect(heads[2]).toBe("Wave 3: operations no date set 0 go, 0 at risk, 3 no-go Edit");
+    expect(heads[0]).toBe("Wave 1: finance foundations due 16 Nov 2026 1 go, 0 at risk, 3 no-go Edit Certificate");
+    expect(heads[1]).toBe("Wave 2: master data due 18 Jan 2027 0 go, 0 at risk, 3 no-go Edit Certificate");
+    expect(heads[2]).toBe("Wave 3: operations no date set 0 go, 0 at risk, 3 no-go Edit Certificate");
     expect(heads[3]).toBe("Not in a wave 5 objects 1 go, 2 at risk, 2 no-go");
     const table = screen.getByTestId("coverage-matrix");
     const rowNames = Array.from(table.querySelectorAll(".m2-oname")).map((el) => el.textContent);

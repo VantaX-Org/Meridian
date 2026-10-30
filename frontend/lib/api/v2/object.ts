@@ -306,10 +306,27 @@ export function acceptAllSuggested(checkId: string, run: string | null | undefin
 
 /* ---- GET /learned-rules, /rule-authoring/drafts ---- */
 
+/** Step 9: the evidence of a rule mined from stewards' fixes (api/services/fix_mining.py). */
+export interface FixEvidence {
+  count: number;
+  sample_keys: string[];
+  first_at: string | null;
+  last_at: string | null;
+  who: string[];
+  fix_value: string | null;
+  /** "blank" or "same invalid value" */
+  pattern: string;
+  invalid_value: string | null;
+}
+
 export interface LearnedProposal {
   id: string;
   module: string;
-  kind: "dependency" | "value_set" | "format" | "range";
+  /** null and invalid_value come from stewards' fixes (step 9); the others from the data. */
+  kind: "dependency" | "value_set" | "format" | "range" | "null" | "invalid_value";
+  /** data or fixes; absent on a server from before step 9. */
+  source?: "data" | "fixes" | null;
+  evidence?: FixEvidence | null;
   table_name: string;
   determinant: string | null;
   field: string;
@@ -331,6 +348,11 @@ export function approveLearned(id: string, severity: "critical" | "high" | "medi
 
 export function rejectLearned(id: string): Promise<{ id: string; status: string }> {
   return v2Post(`/learned-rules/${encodeURIComponent(id)}/reject`, {});
+}
+
+/** POST /learned-rules/mine without a version: mine the values stewards entered now (manage_rules). */
+export function mineFixes(): Promise<{ source: "fixes"; min_records: number; edits: number; proposed: number; refreshed: number }> {
+  return v2Post("/learned-rules/mine", { source: "fixes" });
 }
 
 export interface RuleDraft {

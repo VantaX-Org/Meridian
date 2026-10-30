@@ -26,6 +26,8 @@ import { SurvivorshipInspector } from "./survivorship";
 import { BalancePanel } from "./balance";
 import { ContractInspector, ContractsPanel } from "./contract";
 import { OutOfOfficePanel } from "./delegation";
+import { CertificateInspector } from "../screens/step9/Certificate";
+import { DeliveryInspector, WebhookInspector } from "./webhook";
 
 interface BodyProps {
   id: string;
@@ -68,6 +70,9 @@ export const INSPECTOR_BODIES: Partial<Record<OpenKind, ComponentType<BodyProps>
   contracts: ContractsPanel,
   balance: BalancePanel,
   away: OutOfOfficePanel,
+  webhook: WebhookInspector,
+  delivery: DeliveryInspector,
+  certificate: CertificateInspector,
 };
 
 export function extensionFor(item: OpenItem, onClose: () => void): ReactNode {

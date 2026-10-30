@@ -21,6 +21,8 @@ import { ProcessNextStep } from "./object/ProcessNext";
 import { dimsOf } from "../shell/MapPane";
 import { GateMark } from "../inspector/governance";
 import { ToolGrid } from "../GridTools";
+import { contractMark } from "@/lib/v2/step9";
+import { WavesByValue } from "./step9/Money";
 import { t } from "@/lib/v2/i18n";
 
 const SEL_KEY = "mn_v2_sel";
@@ -183,6 +185,7 @@ function SystemHead({ system }: { system: LandscapeSystem }) {
 function CellLink({ system, cell, label, selected, run }: { system: LandscapeSystem; cell: LandscapeCell; label: string; selected: boolean; run: string | null }) {
   const reading = readingText({ label, measured: cell.raw_score, score: cell.score, capped: cell.capped, capLevel: cell.cap_level, breaches: cell.breaches, dims: dimsOf(cell), records: cell.records_checked, rules: cell.rules_measured, coverage: cell.coverage, lowConfidence: cell.low_confidence });
   const href = `/v2/o/${systemSlug(system.name)}/${moduleSlug(cell.module)}${run ? `?run=${run}` : ""}`;
+  const mark = contractMark(cell);
   return (
     <V2Link
       href={href}
@@ -190,7 +193,7 @@ function CellLink({ system, cell, label, selected, run }: { system: LandscapeSys
       data-selected={selected ? "true" : undefined}
       data-testid="matrix-cell"
       title={reading}
-      aria-label={`${label}, ${system.name}, ${f1(cell.score)}${cell.capped ? " capped" : ""}, ${VERDICT_LABEL[cell.verdict]}${cell.low_confidence ? t(", low coverage") : ""}`}
+      aria-label={`${label}, ${system.name}, ${f1(cell.score)}${cell.capped ? " capped" : ""}, ${VERDICT_LABEL[cell.verdict]}${cell.low_confidence ? t(", low coverage") : ""}${mark ? `, ${mark.title}` : ""}`}
       onClick={() => rememberCell(`${system.id}:${cell.module}`)}
     >
       <Ruler
@@ -207,6 +210,7 @@ function CellLink({ system, cell, label, selected, run }: { system: LandscapeSys
         coverage={cell.coverage}
         lowConfidence={cell.low_confidence}
         selected={selected}
+        contract={mark}
       />
       <span className="m2-cell-vd m2-v">
         <VerdictMark verdict={cell.verdict} />
@@ -242,6 +246,9 @@ function WaveHeadText({ group }: { group: WaveGroup }) {
           <GateMark waveId={w.id} />{" "}
           <V2Link href={hrefFor({ kind: "waves", id: "" })} aria-label={t("Edit {name}", { name: w.name })}>
             {t("Edit")}
+          </V2Link>{" "}
+          <V2Link href={hrefFor({ kind: "certificate", id: w.id })} aria-label={t("Readiness certificate of {name}", { name: w.name })} data-testid="wave-certificate-link">
+            {t("Certificate")}
           </V2Link>
         </>
       ) : null}
@@ -372,7 +379,7 @@ export function Coverage({ landscape, run, view = "systems", waves = [] }: { lan
                   {VERDICT_LABEL[c.verdict]}
                 </span>
                 <span className="m2-c">
-                  <Ruler size={48} dims={dimsOf(c)} measured={c.raw_score} score={c.score} capped={c.capped} capLevel={c.cap_level} breaches={c.breaches} label={label} records={c.records_checked} rules={c.rules_measured} coverage={c.coverage} lowConfidence={c.low_confidence} />
+                  <Ruler size={48} dims={dimsOf(c)} measured={c.raw_score} score={c.score} capped={c.capped} capLevel={c.cap_level} breaches={c.breaches} label={label} records={c.records_checked} rules={c.rules_measured} coverage={c.coverage} lowConfidence={c.low_confidence} contract={contractMark(c)} />
                 </span>
                 <span className="m2-c">
                   {t("{records_checked} records checked, {rules_measured} rules measured", { records_checked: int(c.records_checked), rules_measured: int(c.rules_measured) })}
@@ -383,6 +390,7 @@ export function Coverage({ landscape, run, view = "systems", waves = [] }: { lan
             );
           })}
       </div>
+      {groups ? <WavesByValue /> : null}
     </section>
   );
 }

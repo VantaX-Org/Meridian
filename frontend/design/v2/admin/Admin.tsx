@@ -15,6 +15,7 @@ import { SsoSection } from "./signin";
 import { SystemSection } from "./system";
 import { BillingSection, LicenceSection } from "./tenant";
 import { UsersSection } from "./users";
+import { WebhooksSection } from "./webhooks";
 import { t } from "@/lib/v2/i18n";
 
 /** The left index of the Admin canvas: the same column as the landscape map, sections in place of objects. */
@@ -118,6 +119,8 @@ function Section({ slug }: { slug: AdminSlug }) {
       return <AlertsSection />;
     case "notifications":
       return <NotificationsSection />;
+    case "webhooks":
+      return <WebhooksSection />;
     case "runs":
       return <RunsSection />;
     case "system":

@@ -133,7 +133,7 @@ export function Loaded<T>({ q, what, rows = 4, children }: { q: UseQueryResult<T
 }
 
 /** A dialog in the v2 style: scrim, focus trapped, Esc closes, focus returns to what opened it. */
-export function Dialog({ title, description, children, onClose, wide }: { title: string; description?: ReactNode; children: ReactNode; onClose: () => void; wide?: boolean }) {
+export function Dialog({ title, description, children, onClose, wide, className }: { title: string; description?: ReactNode; children: ReactNode; onClose: () => void; wide?: boolean; className?: string }) {
   const root = useRef<HTMLDivElement>(null);
   const id = useId();
   useEffect(() => {
@@ -166,7 +166,7 @@ export function Dialog({ title, description, children, onClose, wide }: { title:
   return (
     <div onKeyDown={onKeyDown}>
       <div className="m2-scrim" onClick={onClose} aria-hidden="true" />
-      <div ref={root} className="m2-pal m2-dlg" role="dialog" aria-modal="true" aria-labelledby={`${id}-t`} style={wide ? { width: "min(640px, calc(100vw - 32px))" } : undefined} data-testid="admin-dialog">
+      <div ref={root} className={`m2-pal m2-dlg${className ? ` ${className}` : ""}`} role="dialog" aria-modal="true" aria-labelledby={`${id}-t`} style={wide ? { width: "min(640px, calc(100vw - 32px))" } : undefined} data-testid="admin-dialog">
         <h2 id={`${id}-t`}>{title}</h2>
         {description ? <p className="m2-dlg-d">{description}</p> : null}
         {children}

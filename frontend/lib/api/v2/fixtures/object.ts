@@ -83,7 +83,8 @@ const EXTRA: Record<string, RuleExtra> = {
   MM105: { cls: "domain_value_check", expr: "MARC-BESKZ in (E, F, X)", auth: "SAP domain BESKZ and DAMA completeness", authority: "best_practice", impact: "MRP cannot decide between in-house production and external procurement.", proposed: 0, prior: 1260, possible: "E, F, X" },
 };
 
-const FEATURES: { feature: string; status: "blocked" | "degraded"; rules: string[] }[] = [
+/** The S/4 features the impact model maps Material master's failing rules to; step 9 prices them. */
+export const FEATURES: { feature: string; status: "blocked" | "degraded"; rules: string[] }[] = [
   { feature: "Migration cockpit: material load", status: "blocked", rules: ["MM014", "MM031"] },
   { feature: "Material ledger actual costing", status: "blocked", rules: ["MM014"] },
   { feature: "Embedded EWM product master", status: "blocked", rules: ["MM014", "MM031"] },
@@ -255,6 +256,8 @@ function groups(): { version_id: string; built: boolean; total: number; groups: 
 const LEARNED: LearnedProposal[] = [
   { id: "lp-001", module: MM, kind: "dependency", table_name: "MARC", determinant: "MARA.MTART", field: "MARC.DISMM", confidence: 0.97, support_rows: 48212, violations: 1894, sample_keys: ["MATNR=000000000000000211"], status: "pending" },
   { id: "lp-002", module: MM, kind: "value_set", table_name: "MARA", determinant: null, field: "MARA.SPART", confidence: 0.99, support_rows: 60410, violations: 188, sample_keys: ["MATNR=000000000000000342"], status: "pending" },
+  { id: "lp-003", module: MM, kind: "null", source: "fixes", table_name: "MARA", determinant: null, field: "MARA.MEINS", confidence: 1, support_rows: 30, violations: 0, sample_keys: ["MATNR=000000000000000100", "MATNR=000000000000000117", "MATNR=000000000000000125", "MATNR=000000000000000131", "MATNR=000000000000000148"], status: "pending", evidence: { count: 30, sample_keys: ["MATNR=000000000000000100", "MATNR=000000000000000117", "MATNR=000000000000000125", "MATNR=000000000000000131", "MATNR=000000000000000148"], first_at: "2026-10-12T09:14:00Z", last_at: "2026-10-16T15:02:00Z", who: ["a.naidoo@example.com"], fix_value: "EA", pattern: "blank", invalid_value: null } },
+  { id: "lp-004", module: MM, kind: "invalid_value", source: "fixes", table_name: "MARA", determinant: null, field: "MARA.GEWEI", confidence: 1, support_rows: 26, violations: 0, sample_keys: ["MATNR=000000000000000203", "MATNR=000000000000000211", "MATNR=000000000000000232", "MATNR=000000000000000240", "MATNR=000000000000000257"], status: "pending", evidence: { count: 26, sample_keys: ["MATNR=000000000000000203", "MATNR=000000000000000211", "MATNR=000000000000000232", "MATNR=000000000000000240", "MATNR=000000000000000257"], first_at: "2026-10-09T08:40:00Z", last_at: "2026-10-15T11:20:00Z", who: ["a.naidoo@example.com", "demo.user@example.com"], fix_value: "KG", pattern: "same invalid value", invalid_value: "K.G" } },
 ];
 
 export const DRAFTS: RuleDraft[] = [
@@ -299,6 +302,7 @@ export function fixturePost<T>(path: string, body: unknown, params: Record<strin
     state.accepted.add(id);
     return { accepted: n, draft_batch_id: "B-243" } as T;
   }
+  if (path === "/learned-rules/mine") return { source: "fixes", min_records: 25, edits: 56, proposed: 0, refreshed: LEARNED.filter((l) => l.source === "fixes" && !state.learnedDone.has(l.id)).length, proposal_ids: [] } as T;
   const lr = /^\/learned-rules\/([^/]+)\/(approve|reject)$/.exec(path);
   if (lr) {
     state.learnedDone.add(decodeURIComponent(lr[1]));

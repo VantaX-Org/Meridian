@@ -121,7 +121,7 @@ export function runIdOfDownload(jobId: string): string {
 
 export async function startDownload(
   id: string,
-  body: { objects: string[]; scope: DownloadScope; label?: string; analyse: boolean }
+  body: { objects: string[]; scope: DownloadScope; label?: string; analyse: boolean; /** Re-read only what changed since the last download of the same objects and scope. */ delta?: boolean }
 ): Promise<{ job_id: string; status: string }> {
   return (await apiClient.post(`${base(id)}/downloads`, body)).data;
 }

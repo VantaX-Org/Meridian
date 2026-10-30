@@ -188,7 +188,7 @@ for (const size of SIZES) {
         await dialog.getByRole("button", { name: "Test connection" }).click();
         await expect(dialog.getByTestId("action-result")).toContainText("RFC connection works");
         await dialog.getByRole("button", { name: "Extract" }).click();
-        await expect(dialog.getByTestId("extract-picker").getByRole("checkbox")).toHaveCount(16); // 15 objects and the analyse switch
+        await expect(dialog.getByTestId("extract-picker").getByRole("checkbox")).toHaveCount(17); // 15 objects, the analyse switch and changes only
         await page.waitForLoadState("networkidle");
         await shot(page, "system-inspector");
         await axe(page, `system inspector ${size.name} ${scheme}`);
@@ -205,19 +205,19 @@ for (const size of SIZES) {
         await expect(dialog.getByTestId("action-result")).toContainText("OData connection failed");
       });
 
-      test("the System canvas: health, five views, and the hand-over frame", async ({ page }) => {
+      test("the System canvas: health, its views, and the Configuration view", async ({ page }) => {
         await prepare(page, scheme);
         await page.goto(`/v2/s/${ECC}?fixture=1`, { waitUntil: "load", timeout: 90_000 });
         await expect(page.getByRole("heading", { level: 1 })).toContainText("ECC production", NAV);
         await expect(page.getByTestId("system-status-line")).toContainText("Connected");
-        await expect(page.getByRole("navigation", { name: "Views of ECC production" }).getByRole("link")).toHaveCount(5);
+        await expect(page.getByRole("navigation", { name: "Views of ECC production" }).getByRole("link")).toHaveCount(6);
         await expect(page.getByTestId("system-objects")).toBeVisible();
         expect(await noSideways(page)).toBe(true);
         await page.waitForLoadState("networkidle");
         await shot(page, "system");
         await axe(page, `system ${size.name} ${scheme}`);
-        await page.getByRole("navigation", { name: "Views of ECC production" }).getByRole("link", { name: "Configuration" }).click();
-        await expect(page.getByTestId("handoff")).toContainText("still in the current interface", NAV);
+        await page.getByRole("navigation", { name: "Views of ECC production" }).getByRole("link", { name: "Configuration", exact: true }).click();
+        await expect(page.getByTestId("config-areas").getByRole("link").first()).toBeVisible(NAV); // the hand-over frame is gone: Configuration is a v2 view of its own
         await shot(page, "system-configuration");
         await axe(page, `system configuration ${size.name} ${scheme}`);
       });

@@ -115,11 +115,11 @@ for (const size of SIZES) {
       test("Rules: Learned and Drafts, with their decisions", async ({ page }) => {
         await prepare(page, scheme);
         await page.goto(`${OBJECT}?fixture=1`, { waitUntil: "load", timeout: 90_000 });
-        await page.getByRole("button", { name: "Learned 2" }).click(NAV);
+        await page.getByRole("button", { name: "Learned 4" }).click(NAV);
         const learned = page.getByRole("table", { name: "Learned rules waiting for a decision" });
         await expect(learned).toBeVisible();
-        await expect(learned.getByRole("button", { name: "Approve" })).toHaveCount(2);
-        await expect(learned.getByRole("button", { name: "Reject" })).toHaveCount(2);
+        await expect(learned.getByRole("button", { name: "Approve" })).toHaveCount(4);
+        await expect(learned.getByRole("button", { name: "Reject" })).toHaveCount(4);
         await page.waitForLoadState("networkidle");
         await shotTab(page, "object-rules-learned");
         await axe(page, `learned ${size.name} ${scheme}`);
@@ -233,7 +233,7 @@ for (const size of SIZES) {
         await expect(waves.getByRole("row")).toHaveCount(3);
         await expect(page.getByTestId("cap-statement")).toContainText("Held at 70 by MM014 and MM031");
         await expect(page.getByRole("heading", { name: /Blocked in S\/4HANA/ })).toBeVisible();
-        await expect(page.getByRole("link", { name: "Migration cockpit: material load" })).toBeVisible(NAV);
+        await expect(page.getByLabel("S/4HANA features").getByRole("link", { name: "Migration cockpit: material load" })).toBeVisible(NAV);
         await expect(page.getByRole("heading", { name: /Degraded in S\/4HANA/ })).toBeVisible();
         expect(await noSideScroll(page)).toBe(true);
         await page.waitForLoadState("networkidle");

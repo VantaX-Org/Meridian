@@ -111,6 +111,8 @@ export function resetRolesFixture(): void {
 /** Test seam: what the last export POSTed. */
 export const lastRolesExport = (): State["lastExport"] => st().lastExport;
 export const rolesAudit = (): State["audit"] => st().audit;
+/** The contracts as the roles fixture holds them: step 9 reads them for enforcement (lib/api/v2/fixtures/step9.ts). */
+export const rolesContracts = (): readonly Contract[] => st().contracts;
 const nextId = (p: string): string => `${p}-${++st().seq + 100}`;
 const audit = (action: string): void => void st().audit.push({ action, at: NOW });
 const str = (v: unknown): string => (v === undefined || v === null ? "" : String(v));

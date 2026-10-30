@@ -44,6 +44,7 @@ const KIND: Record<string, KindMark> = {
   daily_digest: { get word() { return t("Digest"); }, severity: "low" },
   report: { get word() { return t("Report"); }, severity: "low" },
   info: { get word() { return t("Notice"); }, severity: "low" },
+  config_drift: { get word() { return t("Configuration"); }, severity: "medium" },
 };
 
 export const kindOf = (type: string): KindMark => KIND[type] ?? { word: t("Notice"), severity: "low" };

@@ -428,3 +428,11 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
   .m2-tool { gap: var(--m2-s2); }
   .m2-fixrow { grid-template-columns: 1fr; gap: 2px; }
 }
+
+/* Step 9: the data contract mark beside a score. Outlined when the breached contracts only report, filled when one
+   is enforced (a baseline cannot be pinned). Shape and the title's words carry it, never the hue alone. */
+.m2-cmark { display: inline-flex; align-items: center; align-self: center; }
+.m2-cmark svg { display: block; overflow: visible; }
+.m2-cmark path { fill: none; stroke: var(--m2-crit); stroke-width: 1.4; }
+.m2-cmark[data-enforced="true"] path { fill: var(--m2-crit); }
+.m2-ruler-box-lg .m2-cmark svg { width: 14px; height: 14px; }

@@ -5,7 +5,8 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type Keybo
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { moneyCompactText } from "@/lib/v2/labels";
 import { fixtureParam } from "@/lib/api/v2/fixture";
-import { acceptAllSuggested, approveLearned, dryRunDraft, publishDraft, rejectLearned, type DraftDryRun, type LearnedProposal, type RuleDraft } from "@/lib/api/v2/object";
+import { acceptAllSuggested, approveLearned, dryRunDraft, mineFixes, publishDraft, rejectLearned, type DraftDryRun, type LearnedProposal, type RuleDraft } from "@/lib/api/v2/object";
+import { formatDate } from "@/lib/format";
 import { DIMENSIONS, type Receipt, type RuleRow } from "@/lib/api/v2/types";
 import { KIND_LABEL } from "@/lib/api/learnedRules";
 import { useOpenItem, useRunParam, useV2Session } from "@/lib/v2/hooks";
@@ -14,13 +15,14 @@ import { useNarrow } from "@/lib/v2/narrow";
 import { useConfigImpact, useDrafts, useLearned, useWorkGroups } from "@/lib/v2/object-queries";
 import { useLandscape, useObjectRules, useReceipt } from "@/lib/v2/queries";
 import { PIVOTS, pivotRules, rankRules, type FeatureLink, type Pivot, type PivotGroup } from "@/lib/v2/rules-pivot";
-import { int, moduleFromSlug, pct1 } from "@/lib/v2/score";
+import { findSystem, int, moduleFromSlug, pct1 } from "@/lib/v2/score";
+import { SimulateDialog, TopFixesView } from "../step9/Simulation";
 import { Explain } from "../../Explain";
 import { IconChevron, SeverityMark } from "../../marks";
 import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../../parts";
-import { t, lc } from "@/lib/v2/i18n";
+import { t, lc, tn } from "@/lib/v2/i18n";
 
-type View = "all" | "learned" | "drafts";
+type View = "all" | "top" | "learned" | "drafts";
 
 const PAGE = 25;
 const SEV_WORD: Record<string, string> = { get critical() { return t("Critical"); }, get high() { return t("High"); }, get medium() { return t("Medium"); }, get low() { return t("Low"); }, get info() { return t("Info"); } };
@@ -378,6 +380,36 @@ function PivotTable({ groups, pivot, label }: { groups: PivotGroup[]; pivot: Exc
 
 /* ---- learned rules ---- */
 
+const learnedKind = (k: LearnedProposal["kind"]): string => (k === "null" ? t("Blank field stewards always fill") : k === "invalid_value" ? t("Value stewards always correct") : KIND_LABEL[k]);
+
+/** Where a proposal came from and what supports it: the fixes behind a mined rule, or the rows of the data. */
+function Evidence({ p }: { p: LearnedProposal }) {
+  const { hrefFor } = useOpenItem();
+  const e = p.evidence;
+  if (p.source !== "fixes" || !e) return <span className="m2-meta">{t("From the data: {rows} rows agree", { rows: int(p.support_rows) })}</span>;
+  const span = e.first_at && e.last_at ? t("{from} to {to}", { from: formatDate(e.first_at, "date"), to: formatDate(e.last_at, "date") }) : null;
+  return (
+    <div className="m2-rn" data-testid="learned-evidence">
+      <span>{t("From fixes: {count} {n, plural, one {record} other {records}}{span}{who}", { count: int(e.count), n: e.count, span: span ? `, ${span}` : "", who: e.who.length ? t(", by {who}", { who: e.who.join(", ") }) : "" })}</span>
+      <span className="m2-rs">
+        {e.pattern === "blank" ? tn("Blank, filled with {value}", { value: e.fix_value != null ? <Mono>{e.fix_value}</Mono> : <Dash /> }) : tn("Was {old}, corrected to {value}", { old: <Mono>{e.invalid_value ?? ""}</Mono>, value: e.fix_value != null ? <Mono>{e.fix_value}</Mono> : <Dash /> })}
+      </span>
+      <span className="m2-rs m2-meta">
+        {t("Fixes it came from:")}{" "}
+        {e.sample_keys.map((k, i) => (
+          <span key={k}>
+            {i > 0 ? ", " : ""}
+            <V2Link href={hrefFor({ kind: "record", id: `${p.module}:${k}` })} className="m2-mono">
+              {k.split("=").slice(1).join("=") || k}
+            </V2Link>
+          </span>
+        ))}
+        {e.count > e.sample_keys.length ? ` ${t("and {more} more", { more: int(e.count - e.sample_keys.length) })}` : ""}
+      </span>
+    </div>
+  );
+}
+
 function LearnedTable({ module, items, canApprove, canReject, onChanged }: { module: string; items: LearnedProposal[]; canApprove: boolean; canReject: boolean; onChanged: () => void }) {
   const [severity, setSeverity] = useState<Record<string, "critical" | "high" | "medium" | "low">>({});
   const [note, setNote] = useState<string | null>(null);
@@ -410,6 +442,7 @@ function LearnedTable({ module, items, canApprove, canReject, onChanged }: { mod
           <thead>
             <tr>
               <th scope="col">{t("Proposed rule")}</th>
+              <th scope="col">{t("Evidence")}</th>
               <th scope="col" className="m2-r">{t("Confidence")}</th>
               <th scope="col" className="m2-r">{t("Rows supporting")}</th>
               <th scope="col" className="m2-r">{t("Would fail")}</th>
@@ -421,10 +454,13 @@ function LearnedTable({ module, items, canApprove, canReject, onChanged }: { mod
               <tr key={p.id}>
                 <th scope="row">
                   <div className="m2-rn">
-                    <span>{KIND_LABEL[p.kind]}</span>
+                    <span>{learnedKind(p.kind)}</span>
                     <span className="m2-rs m2-mono">{p.determinant ? t("{field} by {determinant}", { field: p.field, determinant: p.determinant }) : p.field}</span>
                   </div>
                 </th>
+                <td>
+                  <Evidence p={p} />
+                </td>
                 <td className="m2-r">{`${Math.round(p.confidence * 100)}%`}</td>
                 <td className="m2-r">{int(p.support_rows)}</td>
                 <td className="m2-r">{int(p.violations)}</td>
@@ -462,6 +498,19 @@ function LearnedTable({ module, items, canApprove, canReject, onChanged }: { mod
       {approve.isError || reject.isError ? <p role="alert" className="m2-prov">{t("That decision could not be saved. It may already have been decided.")}</p> : null}
       {note ? <p role="status" className="m2-prov">{note}</p> : null}
     </>
+  );
+}
+
+/** "Mine the fixes now": rules from the values stewards keep entering, never enabled without an approver. */
+function MineFixes({ onDone }: { onDone: () => void }) {
+  const mine = useMutation({ mutationFn: mineFixes, onSuccess: onDone });
+  return (
+    <p className="m2-prov" style={{ marginTop: 0 }}>
+      <button type="button" className="m2-btn m2-sm" disabled={mine.isPending} onClick={() => mine.mutate()}>
+        {mine.isPending ? t("Mining…") : t("Mine stewards’ fixes now")}
+      </button>{" "}
+      {mine.data ? <span role="status">{t("{proposed} new, {refreshed} refreshed, from {edits} fixes; a rule needs {min} records fixed the same way.", { proposed: mine.data.proposed, refreshed: mine.data.refreshed, edits: int(mine.data.edits), min: int(mine.data.min_records) })}</span> : mine.isError ? <span role="alert">{t("The fixes could not be mined.")}</span> : t("A nightly run does this too.")}
+    </p>
   );
 }
 
@@ -549,7 +598,7 @@ function DraftsTable({ module, items, onChanged }: { module: string; items: Rule
 /* ---- the tab ---- */
 
 /** The Rules tab: the object's rules ranked by value at risk, pivots, and the Learned and Drafts views. */
-export function RulesTab({ module: moduleSegment }: { system: string; module: string }) {
+export function RulesTab({ module: moduleSegment, system: systemSegment }: { system: string; module: string }) {
   const run = useRunParam();
   const apiModule = moduleFromSlug(moduleSegment);
   const { open, openItem } = useOpenItem();
@@ -560,6 +609,8 @@ export function RulesTab({ module: moduleSegment }: { system: string; module: st
   const rulesQ = useObjectRules(apiModule, run, Number.isFinite(rowsParam) ? rowsParam : 0);
   const landscape = useLandscape(run).data;
   const label = landscape?.objects.find((o) => o.module === apiModule)?.label ?? apiModule.replace(/_/g, " ");
+  const systemId = landscape && systemSegment ? (findSystem(landscape.systems, decodeURIComponent(systemSegment))?.id ?? null) : null;
+  const [simulating, setSimulating] = useState(false);
   const receiptQ = useReceipt(apiModule, run);
   const receipt = receiptQ.data;
   const groupsQ = useWorkGroups(apiModule, receipt?.run_id, Boolean(receipt));
@@ -627,6 +678,7 @@ export function RulesTab({ module: moduleSegment }: { system: string; module: st
     <div className="m2-rbar">
       <div className="m2-segs" role="group" aria-label={t("Show")}>
         <button type="button" className="m2-seg" aria-pressed={view === "all"} onClick={() => setView("all")}>{t("All rules")}</button>
+        <button type="button" className="m2-seg" aria-pressed={view === "top"} onClick={() => setView("top")}>{t("Top fixes")}</button>
         <button type="button" className="m2-seg" aria-pressed={view === "learned"} onClick={() => setView("learned")}>
           {`Learned${learnedN != null ? ` ${learnedN}` : ""}`}
         </button>
@@ -636,6 +688,12 @@ export function RulesTab({ module: moduleSegment }: { system: string; module: st
           </button>
         ) : null}
       </div>
+      {view === "all" ? (
+        <button type="button" className="m2-btn m2-sm" onClick={() => setSimulating(true)} data-testid="simulate-rules">
+          {t("Simulate fixing…")}
+        </button>
+      ) : null}
+      {simulating ? <SimulateDialog module={apiModule} label={label} systemId={systemId} run={run} onClose={() => setSimulating(false)} /> : null}
       {view === "all" ? (
         <div className="m2-segs" role="group" aria-label={t("Group the rules")}>
           {PIVOTS.map((p) => (
@@ -648,10 +706,19 @@ export function RulesTab({ module: moduleSegment }: { system: string; module: st
     </div>
   );
 
+  if (view === "top") {
+    return (
+      <>
+        {filters}
+        <TopFixesView module={apiModule} label={label} systemId={systemId} run={run} />
+      </>
+    );
+  }
   if (view === "learned") {
     return (
       <>
         {filters}
+        {canDrafts ? <MineFixes onDone={refresh("learned")} /> : null}
         {learnedQ.isPending ? <Skeleton width="60%" height={14} /> : learnedQ.isError ? <ErrorFrame onRetry={() => void learnedQ.refetch()}>{t("The learned rules could not be read.")}</ErrorFrame> : <LearnedTable module={apiModule} items={learnedQ.data} canApprove={canApprove} canReject={canReject} onChanged={refresh("learned")} />}
       </>
     );
