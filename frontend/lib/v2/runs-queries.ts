@@ -1,5 +1,6 @@
 "use client";
 
+import type { Job } from "@/types/jobs";
 import { useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
 import {
@@ -17,7 +18,7 @@ import {
   getVersionsPage,
   type VersionsQuery,
 } from "@/lib/api/v2/runs";
-import { JOBS_QUERY_KEY } from "@/hooks/use-jobs";
+import { JOBS_QUERY_OPTIONS } from "@/hooks/use-jobs";
 
 /** Query keys of the step 3 reads. Every key starts with "v2" and carries the fixture flag, like the landscape keys. */
 export const runKeys = {
@@ -64,11 +65,13 @@ export function useVersionsPage(q: VersionsQuery) {
 /** Jobs: the cache the jobs stream patches (live), or the fixture list. The stream itself is mounted once, by the shell. */
 export function useV2Jobs() {
   const fixture = useFixture();
-  const q = useQuery({
-    queryKey: fixture ? runKeys.fixtureJobs : JOBS_QUERY_KEY,
-    queryFn: () => getJobsList(100),
-    refetchInterval: fixture ? false : 15_000,
-    staleTime: 5_000,
+  // Live: the page's one shared jobs read (hooks/use-jobs.ts JOBS_QUERY_OPTIONS); fixture mode reads the fixture list.
+  const q = useQuery<Job[]>({
+    queryKey: fixture ? runKeys.fixtureJobs : JOBS_QUERY_OPTIONS.queryKey,
+    queryFn: fixture ? () => getJobsList(100) : JOBS_QUERY_OPTIONS.queryFn,
+    staleTime: fixture ? 5_000 : JOBS_QUERY_OPTIONS.staleTime,
+    refetchOnMount: fixture ? true : JOBS_QUERY_OPTIONS.refetchOnMount,
+    refetchInterval: fixture ? false : JOBS_QUERY_OPTIONS.refetchInterval,
   });
   const jobs = q.data ?? [];
   return { ...q, jobs, active: jobs.filter((j) => j.status === "queued" || j.status === "running") };
