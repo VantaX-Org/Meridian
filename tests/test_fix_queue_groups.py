@@ -83,8 +83,8 @@ async def _client() -> AsyncClient:
 async def test_groups_cover_proposals_without_a_batch(seeded, monkeypatch):
     tid, vid = seeded
     _as(monkeypatch, tid)
-    from api.routes import cleaning
-    cleaning._groups_cache.clear()
+    from api.middleware import cache
+    cache._memo.clear()
     async with await _client() as client:
         r = await client.get("/api/v1/cleaning/queue/groups", headers=HEADERS)
     assert r.status_code == 200, r.text

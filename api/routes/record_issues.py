@@ -110,14 +110,17 @@ async def list_issues(
 ):
     await _rls(db, tenant)
     where, p = _where(status, module, check_id, severity, assigned_to, scope, search, request, version_id)
-    total = (await db.execute(text(f"SELECT COUNT(*) FROM record_issues ri WHERE {where}"), p)).scalar()
-    # status counts ignore the status filter so the tabs always show every bucket
+    # status counts ignore the status filter so the tabs always show every bucket; the total is read off them
     w2, p2 = _where(None, module, check_id, severity, assigned_to, scope, search, request, version_id)
     counts = dict((await db.execute(text(f"SELECT ri.status, COUNT(*) FROM record_issues ri WHERE {w2} "
                                          f"GROUP BY ri.status"), p2)).fetchall())
-    rows = await db.execute(text(f"{_SELECT} WHERE {where} {_ORDER} LIMIT :limit OFFSET :offset"),
+    total = counts.get(status, 0) if status else sum(counts.values())
+    # The page is cut from record_issues alone, then joined: joining users and findings to every issue before the
+    # sort took half a minute on millions of rows.
+    page = f"(SELECT ri.* FROM record_issues ri WHERE {where} {_ORDER} LIMIT :limit OFFSET :offset) ri"
+    rows = await db.execute(text(f"{_SELECT.replace('FROM record_issues ri', 'FROM ' + page)} {_ORDER}"),
                             {**p, "limit": limit, "offset": offset})
-    return {"total": int(total or 0), "counts": counts, "items": [_row(r) for r in rows.fetchall()]}
+    return {"total": int(total), "counts": counts, "items": [_row(r) for r in rows.fetchall()]}
 
 
 @router.get("/export")

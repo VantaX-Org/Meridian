@@ -572,6 +572,20 @@ def blocked_features() -> dict[str, int]:
 # rank   = impact × (1 + 2 × share of the resolve window already used), so urgency lifts items.
 # ponytail: urgency uses wall-clock elapsed share even on business-hours policies; exact
 # business-time share would need the calendar in SQL.
+# The columns /triage/metrics reads, without the findings lookup and ranking of ITEMS_SQL: that join costs seconds per
+# million issues and the metrics read none of it. NOT MATERIALIZED, or a CTE named more than once is spooled whole.
+METRICS_ITEMS_SQL = """
+    WITH q AS NOT MATERIALIZED (
+        SELECT ri.status, ri.sla_state, ri.assigned_to, ri.assigned_team_id, ri.resolved_at, ri.due_at,
+               ri.acknowledged_at, ri.sla_started_at, ri.first_seen_at AS created_at
+          FROM record_issues ri
+         WHERE ri.tenant_id = CAST(:tid AS uuid)
+        UNION ALL
+        SELECT sq.status, sq.sla_state, sq.assigned_to, sq.assigned_team_id, sq.resolved_at, sq.due_at,
+               sq.acknowledged_at, sq.sla_started_at, sq.created_at
+          FROM stewardship_queue sq
+         WHERE sq.tenant_id = CAST(:tid AS uuid)
+    )"""
 ITEMS_SQL = f"""
     WITH items AS (
         SELECT 'issue' AS kind, ri.id, ri.module, ri.check_id, ri.severity, ri.status, ri.record_key AS ref,

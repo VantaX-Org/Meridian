@@ -28,6 +28,13 @@ from api.models.config_intelligence import (
 from api.services.config_intelligence.drift_detector import DriftEntry
 
 
+
+def _elements(value) -> list:
+    """affected_elements is JSONB, so the driver usually hands back a list already; older rows may hold text."""
+    if isinstance(value, str):
+        return json.loads(value)
+    return value or []
+
 class ConfigIntelligencePersistence:
     """Save and load Config Intelligence analysis results."""
 
@@ -463,7 +470,7 @@ class ConfigIntelligencePersistence:
                 severity=Severity(r[3]),
                 title=r[4],
                 description=r[5] or "",
-                affected_elements=json.loads(r[6]) if r[6] else [],
+                affected_elements=_elements(r[6]),
                 remediation=r[7] or "",
                 estimated_impact_zar=r[8] or 0.0,
             )
@@ -557,7 +564,7 @@ class ConfigIntelligencePersistence:
             severity=Severity(r[3]),
             title=r[4],
             description=r[5] or "",
-            affected_elements=json.loads(r[6]) if r[6] else [],
+            affected_elements=_elements(r[6]),
             remediation=r[7] or "",
             estimated_impact_zar=r[8] or 0.0,
         )
