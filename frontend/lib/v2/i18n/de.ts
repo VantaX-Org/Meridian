@@ -4388,4 +4388,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Offline grace": "Offline-Kulanzzeit",
   "Last signed licence": "Zuletzt signierte Lizenz",
   "Signed {date}, honoured for {graceDays} {graceDays, plural, one {day} other {days}}": "Signiert am {date}, gilt {graceDays} {graceDays, plural, one {Tag} other {Tage}}",
+  "The fix sheet reads today's rows, not a past run; clear the run to export": "Das Korrekturblatt liest die heutigen Zeilen, keinen früheren Lauf; heben Sie den Lauf auf, um zu exportieren",
+  "One sheet per object, with each record's value at risk": "Ein Blatt je Objekt, mit dem gefährdeten Wert jedes Datensatzes",
+  "Export by object": "Nach Objekt exportieren",
 };

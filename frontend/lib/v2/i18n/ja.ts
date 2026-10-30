@@ -4388,4 +4388,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Offline grace": "オフライン猶予",
   "Last signed licence": "最後に署名されたライセンス",
   "Signed {date}, honoured for {graceDays} {graceDays, plural, one {day} other {days}}": "{date} に署名、{graceDays} 日間有効",
+  "The fix sheet reads today's rows, not a past run; clear the run to export": "修正シートは過去の実行ではなく今日の行を読み込みます。エクスポートするには実行の指定を解除してください",
+  "One sheet per object, with each record's value at risk": "オブジェクトごとに 1 シート、各レコードのリスク額付き",
+  "Export by object": "オブジェクト別にエクスポート",
 };

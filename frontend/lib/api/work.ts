@@ -205,6 +205,10 @@ export interface RecordFilter {
   /** A baseline run id: only records failing a check they did not fail in that run (the monitoring strip's new failing records). Needs one run. */
   since?: string;
   q?: string;
+  /** One fix batch, a policy pack (or pack:class) and the order of /work/records; the exports take them too. */
+  batch_id?: string;
+  policy?: string;
+  sort?: string;
 }
 
 export interface Decision {

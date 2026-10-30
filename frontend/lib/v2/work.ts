@@ -3,7 +3,7 @@
  * sentence above the grid. No React and no network here, so each can be tested on its own.
  */
 import type { WorkRow } from "@/lib/api/v2/types";
-import type { SavedView, WorkFilters, WorkSummary } from "@/lib/api/v2/work";
+import type { ExportQuery, SavedView, WorkFilters, WorkSummary } from "@/lib/api/v2/work";
 import { t as tr } from "@/lib/v2/i18n";
 import { whole } from "./format";
 
@@ -122,6 +122,11 @@ export function filtersOf(s: LedgerState): WorkFilters {
   };
 }
 
+/** What the fix-sheet exports are asked: the ledger's filters (batch and policy included) and its order. */
+export function exportQueryOf(s: LedgerState): ExportQuery {
+  return { ...filtersOf(s), sort: EXPORT_SORT[s.sort] };
+}
+
 /** The address query for a state, defaults left out. */
 export function toParams(s: LedgerState): Record<string, string> {
   const out: Record<string, string> = {};
@@ -169,6 +174,12 @@ export const SORT_LABEL: Record<SortKey, string> = { get value() { return tr("Va
 
 /** What the server is asked to sort by. It sorts by severity and age; the other keys sort the rows loaded. */
 export const SERVER_SORT: Record<SortKey, string> = { value: "severity", due: "severity", age: "-age", owner: "severity" };
+/**
+ * What the fix-sheet exports are asked to sort by: the whole order the ledger shows (compareRows), which the server
+ * can sort in full for an export. Ties fall back to value at risk, highest first, as on screen.
+ */
+// i18n-ignore: GET /work/records sort names, not words
+export const EXPORT_SORT: Record<SortKey, string> = { value: "-value,severity", due: "due,-value", age: "-age,-value", owner: "owner,-value" };
 export const SORTS_LOADED_ROWS: ReadonlySet<SortKey> = new Set<SortKey>(["value", "due", "owner"]);
 
 const last = <T>(a: T | null | undefined, b: T | null | undefined, cmp: (x: T, y: T) => number): number => (a == null ? (b == null ? 0 : 1) : b == null ? -1 : cmp(a, b));

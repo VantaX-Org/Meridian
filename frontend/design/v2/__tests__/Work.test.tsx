@@ -398,6 +398,18 @@ describe("the Work ledger, fixture mode", () => {
     expect(await screen.findByText("Fix sheet saved as fix-sheet.xlsx")).toBeInTheDocument();
   });
 
+  it("both exports pass the ledger's batch, policy and sort", async () => {
+    const sheet = vi.spyOn(workApi, "exportFixSheet").mockResolvedValue({ filename: "fix-sheet.xlsx" });
+    const byObject = vi.spyOn(workApi, "exportFixSheetByObject").mockResolvedValue({ filename: "records-to-fix-by-object.xlsx" });
+    mount("&batch=b-1&policy=sox&sort=age");
+    fireEvent.click(await screen.findByRole("button", { name: /Export fix sheet/ }));
+    await waitFor(() => expect(sheet).toHaveBeenCalled());
+    expect(sheet.mock.calls[0][0]).toMatchObject({ batch_id: "b-1", policy: "sox", sort: "-age,-value" });
+    fireEvent.click(screen.getByRole("button", { name: "Export by object" }));
+    await waitFor(() => expect(byObject).toHaveBeenCalled());
+    expect(byObject.mock.calls[0][0]).toMatchObject({ batch_id: "b-1", policy: "sox", sort: "-age,-value" });
+  });
+
   it("?export=1 (the command line's export) saves the sheet once and leaves the address clean", async () => {
     const spy = vi.spyOn(workApi, "exportFixSheet").mockResolvedValue({ filename: "fix-sheet.xlsx" });
     mount("&export=1");

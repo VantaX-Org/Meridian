@@ -956,11 +956,11 @@ export function putViewFixture(body: { route: string; name: string; filters?: Re
   return view;
 }
 
-export function exportFixture(f: WorkFilters): { filename: string; blob: Blob } {
+export function exportFixture(f: WorkFilters, name = "fix-sheet.xlsx"): { filename: string; blob: Blob } {
   const page = workRecords({ ...(f as Params), status: f.status ?? "to_fix", limit: 500 });
   const head = ["Object", "Record", "Name", "Check", "Severity", "Issue", "Field", "Current value", "Suggested value", "New value", "Decision", "Reason"];
   const lines = [head.join("\t"), ...page.items.map((r) => [r.module, r.record_key, r.name ?? "", r.checks[0], r.severity, r.top_message ?? "", r.top_field ?? "", r.current_value ?? "", r.suggested_value ?? "", "", "", ""].join("\t"))];
-  return { filename: "fix-sheet-fixture.tsv", blob: new Blob([lines.join("\n")], { type: "text/tab-separated-values" }) };
+  return { filename: `${name.replace(/\.xlsx$/, "")}-fixture.tsv`, blob: new Blob([lines.join("\n")], { type: "text/tab-separated-values" }) };
 }
 
 export function importFixture(name: string): ImportResult {
