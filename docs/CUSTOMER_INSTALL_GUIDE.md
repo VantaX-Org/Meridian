@@ -405,6 +405,7 @@ Environment settings (in `.env`, with these defaults when unset):
 |---|---|---|
 | `MERIDIAN_APP_URL` | (falls back to `SERVER_DOMAIN`) | Address links in digests, webhooks, invitations and resets start with |
 | `MERIDIAN_NL_LLM` | `0` | `1` lets the configured LLM map only the words of a plain-words question the fixed tables do not know; it never sees SAP data and each call is written to the LLM audit log |
+| `MERIDIAN_API_INTERNAL_URL` | `http://api:8000` | Where the worker probes the API for the status page's uptime (the Helm chart sets its own service name) |
 | `MERIDIAN_STATUS_QUEUES` | `celery` | Celery queues the status page watches |
 | `MERIDIAN_STATUS_QUEUE_WARN` | `100` | Waiting tasks that turn a queue amber on the status page |
 | `MERIDIAN_SIMULATION_TTL` | `86400` | Seconds a fix simulation result is kept |
