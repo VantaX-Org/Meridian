@@ -11,6 +11,7 @@ import { formatDate } from "@/lib/format";
 import { localeOptions, setPreferences, timezoneOptions, type DensityTier, type DigestFrequency, type PreferencesPatch, type Theme } from "@/lib/preferences";
 import { diagnosticsRef, diagnosticsText, FROM_RECORDING, helpInEnglish, helpText, isHere, loadHelp, orderFor, screenOf, screensFor, SCREEN_LABEL, searchHelp, snippet, videoUrl, walkthroughFor, type HelpChapter, type HelpIndex } from "@/lib/v2/help";
 import { PERSONA_LABEL, useV2Session, type V2Persona } from "@/lib/v2/hooks";
+import { personaDensity } from "@/lib/v2/density";
 import { f1, int } from "@/lib/v2/score";
 import { setKeyHints, setPersonaOverride, useKeyHints, usePersonaOverride } from "@/lib/v2/prefs";
 import { useHealth, useLicence, useTenantSettings } from "@/lib/v2/admin-queries";
@@ -25,6 +26,9 @@ import { SubscriptionsBlock } from "./collab";
 /* ── Preferences ── */
 
 const AUTO = "";
+
+/** The density choice: the role's, or one of the two modes (lib/v2/density.ts). */
+type DensityChoice = "role" | "compact" | "comfortable";
 
 function Seg<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: { value: T; label: string }[]; onChange: (v: T) => void }) {
   return (
@@ -41,8 +45,9 @@ function Seg<T extends string>({ label, value, options, onChange }: { label: str
 /** `?open=preferences`: how Meridian looks and reads for this person, and where it tells them things. */
 export function PreferencesPanel({ onClose }: { onClose: () => void }) {
   const fixture = useFixture();
-  const { theme, density, setTheme, setDensity } = useAuroraPrefs();
+  const { theme, setTheme } = useAuroraPrefs();
   const { prefs } = usePreferences();
+  const density = prefs.density;
   const persona = usePersonaOverride();
   const hints = useKeyHints();
   const session = useV2Session();
@@ -83,12 +88,22 @@ export function PreferencesPanel({ onClose }: { onClose: () => void }) {
         </div>
         <div>
           <div className="m2-lbl m2-meta" style={{ fontSize: 12, marginBottom: "var(--m2-s1)" }}>{tr("Row density")}</div>
-          <Seg<DensityTier>
+          <Seg<DensityChoice>
             label={tr("Row density")}
-            value={density}
-            options={[{ value: "compact", label: tr("Compact") }, { value: "default", label: tr("Default") }, { value: "comfortable", label: tr("Comfortable") }]}
-            onChange={(d) => (setDensity(d), fixture && void api.patchMyPreferences({ density: d }))}
+            value={density === "compact" || density === "comfortable" ? density : "role"}
+            options={[
+              { value: "role", label: tr("My role's ({density})", { density: personaDensity(session.persona) === "compact" ? tr("Compact") : tr("Comfortable") }) },
+              { value: "compact", label: tr("Compact") },
+              { value: "comfortable", label: tr("Comfortable") },
+            ]}
+            onChange={(d) => {
+              const next: DensityTier | null = d === "role" ? null : d;
+              save({ density: next });
+            }}
           />
+          <p className="m2-prov" data-testid="density-note">
+            {tr("Compact fits more rows: 28 pixels, 13 pixel text. Comfortable reads more easily: 36 pixels, 14 pixel text. Every list and ledger follows it.")}
+          </p>
         </div>
       </div>
       <h3>{tr("Language and region")}</h3>

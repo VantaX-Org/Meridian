@@ -57,10 +57,11 @@ export interface LedgerState {
   asOf: string | null;
   group: boolean;
   sort: SortKey;
-  density: Density;
+  /** The ledger's own density (?density= or a saved view); null follows the density in Preferences. */
+  density: Density | null;
 }
 
-export const DEFAULT_STATE: LedgerState = { chip: "tofix", module: null, rule: null, severity: null, assigned: null, due: null, batch: null, policy: null, system: null, asOf: null, group: false, sort: "value", density: "comfortable" };
+export const DEFAULT_STATE: LedgerState = { chip: "tofix", module: null, rule: null, severity: null, assigned: null, due: null, batch: null, policy: null, system: null, asOf: null, group: false, sort: "value", density: null };
 
 /** The query keys the ledger owns; everything else in the address (fixture, persona, open) is left alone. */
 export const MANAGED = ["filter", "status", "proposed", "module", "rule", "check_id", "severity", "assigned", "due", "batch", "policy", "system", "as_of_run", "group", "sort", "density", "view"] as const;
@@ -100,7 +101,7 @@ export function readState(params: URLSearchParams, view?: SavedView): LedgerStat
     asOf: params.get("as_of_run"),
     group: get("group") === "rule",
     sort: sort === "due" || sort === "age" || sort === "owner" ? sort : "value",
-    density: density === "compact" ? "compact" : "comfortable",
+    density: density === "compact" || density === "comfortable" ? density : null,
   };
 }
 
@@ -142,7 +143,7 @@ export function toParams(s: LedgerState): Record<string, string> {
   if (s.asOf) out.as_of_run = s.asOf;
   if (s.group) out.group = "rule";
   if (s.sort !== "value") out.sort = s.sort;
-  if (s.density !== "comfortable") out.density = s.density;
+  if (s.density) out.density = s.density;
   return out;
 }
 

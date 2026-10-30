@@ -4516,6 +4516,9 @@ export const en = {
   "The workbook holds the ten rules with the most failing records in this run, with empty SE16 count and match columns for your team.": "The workbook holds the ten rules with the most failing records in this run, with empty SE16 count and match columns for your team.",
   "The nearest shade of it that passes is {hex}.": "The nearest shade of it that passes is {hex}.",
   "Use this shade": "Use this shade",
+  "My role's ({density})": "My role's ({density})",
+  "Compact fits more rows: 28 pixels, 13 pixel text. Comfortable reads more easily: 36 pixels, 14 pixel text. Every list and ledger follows it.": "Compact fits more rows: 28 pixels, 13 pixel text. Comfortable reads more easily: 36 pixels, 14 pixel text. Every list and ledger follows it.",
+  "Rows 36 pixels": "Rows 36 pixels",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

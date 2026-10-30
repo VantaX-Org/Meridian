@@ -202,7 +202,8 @@ describe("Admin: field mappings", () => {
   it("lists the standard fields with the customer column, and narrows by search", async () => {
     setUrl("/admin/mappings?fixture=1");
     renderWithQuery(<MappingsSection />);
-    await waitFor(() => expect(dataRows("Field mappings")).toHaveLength(12));
+    // Twelve loaded rows, not the twelve placeholder rows the frame holds while it loads.
+    await waitFor(() => expect(within(screen.getByRole("grid", { name: "Field mappings" })).queryAllByRole("row").filter((r) => !r.classList.contains("m2-grow-skel")).slice(1)).toHaveLength(12));
     expect(norm(dataRows("Field mappings")[0])).toContain("MARA-MATNR");
     expect(norm(dataRows("Field mappings")[0])).toContain("MATNR_X");
     expect(norm(dataRows("Field mappings")[0])).toContain("Mapped");
@@ -232,7 +233,8 @@ describe("Admin: field mappings", () => {
     const spy = vi.spyOn(adminApi, "resetFieldMappings");
     setUrl("/admin/mappings?fixture=1");
     renderWithQuery(<MappingsSection />);
-    await waitFor(() => expect(dataRows("Field mappings")).toHaveLength(12));
+    // Twelve loaded rows, not the twelve placeholder rows the frame holds while it loads.
+    await waitFor(() => expect(within(screen.getByRole("grid", { name: "Field mappings" })).queryAllByRole("row").filter((r) => !r.classList.contains("m2-grow-skel")).slice(1)).toHaveLength(12));
     fireEvent.click(screen.getByRole("button", { name: "Reset all to defaults" }));
     const dialog = await screen.findByRole("dialog", { name: "Reset all mappings to defaults" });
     expect(spy).not.toHaveBeenCalled();
@@ -245,7 +247,8 @@ describe("Admin: field mappings", () => {
     h.allowed = ["view"];
     setUrl("/admin/mappings?fixture=1");
     renderWithQuery(<MappingsSection />);
-    await waitFor(() => expect(dataRows("Field mappings")).toHaveLength(12));
+    // Twelve loaded rows, not the twelve placeholder rows the frame holds while it loads.
+    await waitFor(() => expect(within(screen.getByRole("grid", { name: "Field mappings" })).queryAllByRole("row").filter((r) => !r.classList.contains("m2-grow-skel")).slice(1)).toHaveLength(12));
     expect(screen.queryByRole("button", { name: "Reset all to defaults" })).toBeNull();
     expect(screen.getByText(/Read only for your role/)).toBeInTheDocument();
   });

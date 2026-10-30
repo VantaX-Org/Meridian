@@ -169,8 +169,17 @@
   --m2-bar-h: 48px;
   --m2-map-w: 280px;
   --m2-insp-w: 400px;
-  --m2-row-h: 32px;
+  --m2-row-h: 36px;
   --m2-row-h-compact: 28px;
+  /* Density (lib/v2/density.ts): comfortable here, compact under [data-density="compact"] below. The grid row, a list
+     row, a map row and a fact row, the side padding of a cell and the text of a row. */
+  --m2-list-row-h: 40px;
+  --m2-orow-h: 32px;
+  --m2-fact-h: 32px;
+  --m2-cell-px: var(--m2-s3);
+  --m2-cell-py: var(--m2-s3);
+  --m2-row-fs: var(--m2-fs-14);
+  --m2-row-lh: var(--m2-lh-14);
   /* The canvas gutter: 24 at desktop widths, 16 on a phone (redefined in the phone query below). */
   --m2-gutter: var(--m2-s6);
 
@@ -299,6 +308,33 @@ html[data-theme="dark"] .m2-root {
   --m2-chart-axis: var(--m2-n-800);
   --m2-chart-text: var(--m2-n-400);
   color-scheme: dark;
+}
+
+/*
+ * Density. The shell root carries data-density (the person's choice, else their role's: lib/v2/density.ts), and a grid
+ * that is told otherwise carries its own. Compact is the steward's and the Basis team's start: more rows, the same type
+ * scale one step down.
+ */
+.m2-root[data-density="compact"],
+.m2-root [data-density="compact"] {
+  --m2-row-h: 28px;
+  --m2-list-row-h: 32px;
+  --m2-orow-h: 28px;
+  --m2-fact-h: 26px;
+  --m2-cell-px: var(--m2-s2);
+  --m2-cell-py: var(--m2-s2);
+  --m2-row-fs: var(--m2-fs-13);
+  --m2-row-lh: var(--m2-lh-13);
+}
+.m2-root [data-density="comfortable"] {
+  --m2-row-h: 36px;
+  --m2-list-row-h: 40px;
+  --m2-orow-h: 32px;
+  --m2-fact-h: 32px;
+  --m2-cell-px: var(--m2-s3);
+  --m2-cell-py: var(--m2-s3);
+  --m2-row-fs: var(--m2-fs-14);
+  --m2-row-lh: var(--m2-lh-14);
 }
 
 /* Motion. State changes only: no entrance choreography. */

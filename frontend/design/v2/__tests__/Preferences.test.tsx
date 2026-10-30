@@ -7,7 +7,7 @@ import { setFormatPrefs } from "@/lib/format";
 import { readPrefs, resetPreferencesCache } from "@/lib/preferences";
 import { f1, int, pct1 } from "@/lib/v2/score";
 import { fixed, v2Locale, whole } from "@/lib/v2/format";
-import { readKeyHints, readPersonaOverride } from "@/lib/v2/prefs";
+import { readKeyHints, readPersonaOverride, setPersonaOverride } from "@/lib/v2/prefs";
 import { V2Shell } from "../shell/V2Shell";
 import { resetKeptOutcomes } from "../inspector/shared";
 import { setUrl } from "./nav-store";
@@ -94,6 +94,27 @@ describe("the preferences panel", () => {
     const density = within(dialog).getByRole("group", { name: "Row density" });
     fireEvent.click(within(density).getByRole("button", { name: "Compact" }));
     await waitFor(() => expect(document.documentElement.dataset.density).toBe("compact"));
+  });
+
+  it("density follows the role until chosen: comfortable for a lead, compact for a steward, and a choice is kept", async () => {
+    const root = () => document.querySelector(".m2-root") as HTMLElement;
+    const { unmount } = mount();
+    let dialog = await panel();
+    expect(root()).toHaveAttribute("data-density", "comfortable");
+    const density = within(dialog).getByRole("group", { name: "Row density" });
+    expect(within(density).getByRole("button", { name: "My role's (Comfortable)" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(within(density).getByRole("button", { name: "Compact" }));
+    await waitFor(() => expect(root()).toHaveAttribute("data-density", "compact"));
+    expect(readPrefs().density).toBe("compact");
+    fireEvent.click(within(density).getByRole("button", { name: "My role's (Comfortable)" }));
+    await waitFor(() => expect(root()).toHaveAttribute("data-density", "comfortable"));
+    expect(readPrefs().density).toBeUndefined();
+    unmount();
+    setPersonaOverride("steward");
+    mount();
+    dialog = await panel();
+    await waitFor(() => expect(root()).toHaveAttribute("data-density", "compact"));
+    expect(within(within(dialog).getByRole("group", { name: "Row density" })).getByRole("button", { name: "My role's (Compact)" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("the start screen is a persona that overrides the role's, and is kept for this browser", async () => {

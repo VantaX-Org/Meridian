@@ -102,8 +102,15 @@ Worst categorical neighbours: 9.6 under colour-vision simulation, 17.2 for full 
 - **Type**: IBM Plex Sans for words and figures (`--m2-font`, tabular figures), IBM Plex Mono for SAP identifiers only
   (`--m2-mono`: check ids, `TABLE.FIELD`, record keys, run ids). Both self-hosted from `app/_fonts`. Scale
   12/13/14/16/20/24 (`--m2-fs-*`, `--m2-lh-*`). Sentence case everywhere.
-- **Space and shape**: `--m2-s1` to `--m2-s10` on a 4px grid, radii `--m2-r1` 4px and `--m2-r2` 6px, rows `--m2-row-h`
-  32px (`--m2-row-h-compact` 28px), the shadow `--m2-shadow` only for what floats (menus, the inspector on a phone).
+- **Space and shape**: `--m2-s1` to `--m2-s10` on a 4px grid, radii `--m2-r1` 4px and `--m2-r2` 6px, the shadow
+  `--m2-shadow` only for what floats (menus, the inspector on a phone).
+- **Density**: two modes, a preference in the Preferences panel saved with the theme and the language (server and this
+  browser). Comfortable: grid rows `--m2-row-h` 36px, list rows 40px, map and fact rows 32px, 12px cell sides, 14px row
+  text. Compact: 28, 32, 28 and 26px, 8px sides, 13px text. Until a person chooses, the role decides: compact for a
+  data steward and SAP Basis, comfortable for the programme lead, the data owner and everyone else
+  (`lib/v2/density.ts`). The shell root carries `data-density` and the tokens under it; the virtual grid measures with
+  the same heights (`ROW_H`, held to the tokens by the test), and a ledger may keep its own density in its address or a
+  saved view (Work, `?density=`).
 - **Motion**: `--m2-t-fast`, `--m2-t-med`, `--m2-ease`, declared in the last section of the tokens file only; none under
   `prefers-reduced-motion`.
 - **Tenant theme**: a tenant may set its accent, logo and name (Administration, Settings, Appearance). The form shows the

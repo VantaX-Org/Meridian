@@ -10,7 +10,7 @@
 .m2-root .m2-pop-cmp { display: flex; gap: var(--m2-s2); align-items: center; flex-wrap: wrap; margin-top: var(--m2-s3); }
 .m2-root .m2-cta .m2-pop-cmp { margin-top: 0; }
 .m2-root .m2-pop-cmp label { color: var(--m2-meta); }
-.m2-root .m2-sel { height: var(--m2-row-h); max-width: 100%; border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); background: var(--m2-sheet); color: var(--m2-fg); font: inherit; font-size: var(--m2-fs-13); padding: 0 var(--m2-s2); }
+.m2-root .m2-sel { height: 32px; max-width: 100%; border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); background: var(--m2-sheet); color: var(--m2-fg); font: inherit; font-size: var(--m2-fs-13); padding: 0 var(--m2-s2); }
 .m2-root .m2-tl-box { width: 100%; min-width: 0; }
 .m2-root .m2-tl { display: block; max-width: 100%; height: auto; overflow: visible; }
 .m2-root .m2-tl-ax { stroke: var(--m2-line-2); stroke-width: 1; }

@@ -1,5 +1,6 @@
 "use client";
 
+import { ROW_H, useDensity, type Density } from "@/lib/v2/density";
 import { useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref } from "react";
 import { flexRender, getCoreRowModel, useReactTable, type ColumnDef, type VisibilityState } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -42,7 +43,7 @@ export interface GridProps<T> {
   columns: GridColumn<T>[];
   rows: readonly T[];
   rowId: (row: T, index: number) => string;
-  /** 28 pixel rows instead of 32. */
+  /** Force compact (true) or comfortable (false) rows; left out, the grid follows the density in Preferences. */
   compact?: boolean;
   /** The most the scroll area grows to, in pixels (default 480). A short list is only as tall as its rows. */
   height?: number;
@@ -109,7 +110,7 @@ function saveHidden(id: string, visibility: VisibilityState): void {
 
 /**
  * The data grid: TanStack Table for the column model and visibility, TanStack Virtual for the rows. Rows are a fixed
- * 32 pixels (28 compact) and absolutely placed, so scrolling never moves anything else; the header and the first
+ * height set by the density (36 pixels comfortable, 28 compact; lib/v2/density.ts) and absolutely placed, so scrolling never moves anything else; the header and the first
  * column stick; numbers are right-aligned tabular figures. Keyboard: j, k and the arrow keys move, Enter opens,
  * x selects, Shift extends. The column choice is remembered per table id.
  */
@@ -121,7 +122,9 @@ function showFullValue(e: { currentTarget: HTMLElement }): void {
 
 export function Grid<T>(props: GridProps<T>) {
   const { id, ariaLabel, columns, rows, rowId, compact, height = 480, initialViewport, onOpen, openRowId, selectable, bulkBar, toolbar, emptyFrame, error, loading, primary = true, fixedColumns, hideBar, spanRow, count, onActiveChange, onSelectionChange, bulkLabel, handleRef } = props;
-  const rowH = compact ? 28 : 32;
+  const shellDensity = useDensity();
+  const density: Density = compact === undefined ? shellDensity : compact ? "compact" : "comfortable";
+  const rowH = ROW_H[density];
   const gid = useId();
   const scroller = useRef<HTMLDivElement>(null);
   const [visibility, setVisibility] = useState<VisibilityState>(() => (typeof window === "undefined" ? {} : loadHidden(id, columns as GridColumn<unknown>[])));
@@ -171,6 +174,12 @@ export function Grid<T>(props: GridProps<T>) {
     initialRect: { width: 800, height: initialViewport ?? height },
     getItemKey: (i) => i,
   });
+  // A change of density re-measures every row at the new height.
+  useEffect(() => {
+    virt.measure();
+    // The virtualizer is one instance for the grid's life; only the row height asks for a new measure.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rowH]);
 
   const rowsRef = useRef(rows);
   const stateRef = useRef({ active, selected });
@@ -293,7 +302,7 @@ export function Grid<T>(props: GridProps<T>) {
   const activeId = active >= 0 && active < rows.length ? `${gid}-r${active}` : undefined;
 
   return (
-    <div className="m2-gridwrap" data-testid="grid" data-grid={id}>
+    <div className="m2-gridwrap" data-testid="grid" data-grid={id} data-density={density}>
       {hideBar ? null : (
       <div className="m2-gridbar">
         <div className="m2-gridbar-l">{toolbar}</div>

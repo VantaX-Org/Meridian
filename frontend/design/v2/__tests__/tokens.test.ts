@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
+import { ROW_H, personaDensity, resolveDensity } from "@/lib/v2/density";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { DARK_ATTR, DARK_MEDIA, LIGHT, TOKENS_CSS as tokens, contrastOf, deltaE, lightnessChroma, resolve, tokenContrast, type Theme } from "./tokens-css";
+import { DARK_ATTR, DARK_MEDIA, LIGHT, TOKENS_CSS as tokens, block, decls, contrastOf, deltaE, lightnessChroma, resolve, tokenContrast, type Theme } from "./tokens-css";
 
 const styles = readFileSync(join(__dirname, "..", "v2.css"), "utf8");
 const THEMES: readonly Theme[] = ["light", "dark"];
@@ -154,4 +155,31 @@ describe("v2 chart palette", () => {
       expect(contrastOf(seq[0], resolve(theme, "--m2-sheet"))).toBeGreaterThanOrEqual(2);
     });
   }
+});
+
+describe("v2 density", () => {
+  const compact = decls(block(tokens, '.m2-root [data-density="compact"] {'));
+  const comfortable = decls(block(tokens, '.m2-root [data-density="comfortable"] {'));
+  it("drives the row heights, padding and text step from tokens, and the grid measures with the same heights", () => {
+    expect(parseInt(LIGHT["--m2-row-h"], 10)).toBe(ROW_H.comfortable);
+    expect(parseInt(comfortable["--m2-row-h"], 10)).toBe(ROW_H.comfortable);
+    expect(parseInt(compact["--m2-row-h"], 10)).toBe(ROW_H.compact);
+    for (const k of ["--m2-row-h", "--m2-list-row-h", "--m2-orow-h", "--m2-fact-h", "--m2-cell-px", "--m2-cell-py", "--m2-row-fs", "--m2-row-lh"]) {
+      expect(compact[k], k).toBeDefined();
+      expect(comfortable[k], k).toBe(LIGHT[k]);
+    }
+    expect(compact["--m2-row-fs"]).toBe("var(--m2-fs-13)");
+    expect(comfortable["--m2-row-fs"]).toBe("var(--m2-fs-14)");
+    expect(styles).toMatch(/\.m2-gcell \{ padding: 0 var\(--m2-cell-px\)/);
+  });
+  it("starts stewards and Basis compact, leads and owners comfortable, and a choice wins over the role", () => {
+    expect(personaDensity("steward")).toBe("compact");
+    expect(personaDensity("basis")).toBe("compact");
+    expect(personaDensity("lead")).toBe("comfortable");
+    expect(personaDensity("owner")).toBe("comfortable");
+    expect(resolveDensity(undefined, "steward")).toBe("compact");
+    expect(resolveDensity("default", "basis")).toBe("compact");
+    expect(resolveDensity("comfortable", "steward")).toBe("comfortable");
+    expect(resolveDensity("compact", "lead")).toBe("compact");
+  });
 });

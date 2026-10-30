@@ -340,7 +340,7 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
               coverage={cell.coverage}
               lowConfidence={cell.low_confidence}
               selected
-              compact={phone}
+              compact={phone || undefined}
               contract={contractMark(cell)}
               policy={policyMark(cell)}
             />

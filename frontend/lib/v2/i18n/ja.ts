@@ -4517,4 +4517,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "The workbook holds the ten rules with the most failing records in this run, with empty SE16 count and match columns for your team.": "ワークブックには、この実行でエラー件数の多い上位 10 ルールと、チームが記入する SE16 件数と一致の空欄列が含まれます。",
   "The nearest shade of it that passes is {hex}.": "基準を満たす最も近い色調は {hex} です。",
   "Use this shade": "この色調を使う",
+  "My role's ({density})": "ロールの既定 ({density})",
+  "Compact fits more rows: 28 pixels, 13 pixel text. Comfortable reads more easily: 36 pixels, 14 pixel text. Every list and ledger follows it.": "コンパクトはより多くの行を表示します (行 28 ピクセル、文字 13 ピクセル)。ゆったりは読みやすさを優先します (行 36 ピクセル、文字 14 ピクセル)。すべての一覧と台帳がこの設定に従います。",
+  "Rows 36 pixels": "行 36 ピクセル",
 };

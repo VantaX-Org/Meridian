@@ -1,3 +1,4 @@
+import { DensityContext } from "@/lib/v2/density";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { Grid, type GridColumn } from "../Grid";
@@ -53,7 +54,7 @@ describe("<Grid> virtualisation", () => {
     expect(screen.getByText("100,000 rows")).toBeInTheDocument();
   });
 
-  it("places rows on the 32 pixel pitch (28 compact) so scrolling never moves the layout around them", () => {
+  it("places rows on the 36 pixel pitch (28 compact) so scrolling never moves the layout around them", () => {
     const rows = makeRows(5_000);
     const { rerender } = render(<Grid id="pitch" ariaLabel="Pitch" columns={COLUMNS} rows={rows} rowId={(r) => r.id} />);
     const pitch = (h: number) => {
@@ -64,16 +65,16 @@ describe("<Grid> virtualisation", () => {
         expect((row as HTMLElement).style.height).toBe(`${h}px`);
       });
     };
-    pitch(32);
+    pitch(36);
     const body = () => (document.querySelector(".m2-gbody") as HTMLElement).style.height;
-    expect(body()).toBe(`${5_000 * 32}px`);
+    expect(body()).toBe(`${5_000 * 36}px`);
     const scroller = screen.getByRole("grid");
     act(() => {
-      scroller.scrollTop = 32 * 2_000;
+      scroller.scrollTop = 36 * 2_000;
       fireEvent.scroll(scroller);
     });
-    expect(body()).toBe(`${5_000 * 32}px`);
-    pitch(32);
+    expect(body()).toBe(`${5_000 * 36}px`);
+    pitch(36);
     expect(dataRows().some((r) => r.getAttribute("aria-rowindex") === "2002")).toBe(true);
     rerender(<Grid id="pitch" ariaLabel="Pitch" columns={COLUMNS} rows={rows} rowId={(r) => r.id} compact />);
     expect(body()).toBe(`${5_000 * 28}px`);
@@ -211,9 +212,28 @@ describe("<Grid> states", () => {
     expect(screen.queryByText("R000001")).toBeNull();
   });
 
+  it("follows the density of the shell unless told otherwise", () => {
+    const rows = makeRows(10);
+    const { unmount } = render(
+      <DensityContext.Provider value="compact">
+        <Grid id="dens" ariaLabel="Density" columns={COLUMNS} rows={rows} rowId={(r) => r.id} />
+      </DensityContext.Provider>,
+    );
+    expect((dataRows()[0] as HTMLElement).style.height).toBe("28px");
+    expect(screen.getByTestId("grid")).toHaveAttribute("data-density", "compact");
+    unmount();
+    render(
+      <DensityContext.Provider value="compact">
+        <Grid id="dens" ariaLabel="Density" columns={COLUMNS} rows={rows} rowId={(r) => r.id} compact={false} />
+      </DensityContext.Provider>,
+    );
+    expect((dataRows()[0] as HTMLElement).style.height).toBe("36px");
+    expect(screen.getByTestId("grid")).toHaveAttribute("data-density", "comfortable");
+  });
+
   it("shows flat placeholder rows while loading, at the row pitch, filling the frame the rows will have", () => {
     render(<Grid id="load" ariaLabel="Load" columns={COLUMNS} rows={[]} rowId={(r) => r.id} loading height={290} />);
-    expect(document.querySelectorAll(".m2-grow-skel")).toHaveLength(8); // (290 - 32 header - 2 rules) / 32 per row
+    expect(document.querySelectorAll(".m2-grow-skel")).toHaveLength(7); // (290 - 32 header - 2 rules) / 36 per row
     expect(document.querySelector(".m2-gbody")).toHaveAttribute("aria-busy", "true");
   });
 
