@@ -1,0 +1,33 @@
+WEBVTT
+
+1
+00:00:00.028 --> 00:00:07.768
+A wave is a set of objects moved together in one cutover.
+
+2
+00:00:07.768 --> 00:00:14.927
+Each wave: due date, go, at risk and no-go counts, and the gate state.
+
+3
+00:00:14.927 --> 00:00:21.515
+The next step follows the nearest wave.
+
+4
+00:00:21.515 --> 00:00:29.150
+Edit opens the migration waves panel.
+
+5
+00:00:29.151 --> 00:00:37.259
+Name, target date and stage: plan, mock loads, dress rehearsal, cutover.
+
+6
+00:00:37.259 --> 00:00:47.010
+The gate: min score, zero criticals, contracts met, each with what fails it now.
+
+7
+00:00:47.010 --> 00:00:54.363
+The readiness certificate is not signed in this version; its link shows the checks.
+
+8
+00:00:54.363 --> 00:00:59.387
+Assign each object to a wave, then save the changes.

@@ -20,8 +20,10 @@ from api.deps import Tenant, get_tenant
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["docs"])
 
-# The recordings ship with the app, so the name is validated against this shape — never a path.
-_NAME = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}\.mp4$")
+# The recordings ship with the app, so the name is validated against this shape — never a path. Beside each
+# recording: its poster frame (.jpg) and its captions (.vtt), which the help panel's <video> and <track> load.
+_NAME = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}\.(mp4|jpg|vtt)$")
+_TYPES = {"mp4": "video/mp4", "jpg": "image/jpeg", "vtt": "text/vtt; charset=utf-8"}
 _RANGE = re.compile(r"^bytes=(\d*)-(\d*)$")
 _MAX_BYTES = 200 * 1024 * 1024  # a training recording is minutes, not gigabytes
 
@@ -45,7 +47,8 @@ def _read_slice(path: Path, start: int, length: int) -> bytes:
 
 @router.get("/docs/help-videos/{name}")
 async def help_video(name: str, request: Request, tenant: Tenant = Depends(get_tenant)) -> Response:  # noqa: ARG001 - sign-in only
-    if not _NAME.match(name):
+    m_name = _NAME.match(name)
+    if not m_name:
         raise HTTPException(status_code=404, detail="Recording not found")
     path = _video_path(name)
     if path is None:
@@ -66,10 +69,10 @@ async def help_video(name: str, request: Request, tenant: Tenant = Depends(get_t
             return Response(status_code=416, headers={**headers, "Content-Range": f"bytes */{size}"})
         length = end - start + 1
         data = await asyncio.to_thread(_read_slice, path, start, length)
-        return Response(content=data, status_code=206, media_type="video/mp4",
+        return Response(content=data, status_code=206, media_type=_TYPES[m_name.group(1)],
                         headers={**headers, "Content-Length": str(length),
                                  "Content-Range": f"bytes {start}-{end}/{size}"})
     data = await asyncio.to_thread(_read_slice, path, 0, size)
-    return Response(content=data, media_type="video/mp4",
+    return Response(content=data, media_type=_TYPES[m_name.group(1)],
                     headers={**headers, "Content-Length": str(size),
                              "Content-Disposition": f'inline; filename="{name}"'})

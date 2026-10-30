@@ -1,14 +1,15 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useRole } from "@/hooks/use-role";
 import { useAuroraPrefs } from "@/hooks/use-theme";
 import { usePreferences } from "@/hooks/use-preferences";
-import { useFixture } from "@/lib/api/v2/fixture";
+import { fixtureParam, useFixture } from "@/lib/api/v2/fixture";
 import * as api from "@/lib/api/v2/admin";
 import { formatDate } from "@/lib/format";
 import { localeOptions, setPreferences, timezoneOptions, type DensityTier, type DigestFrequency, type PreferencesPatch, type Theme } from "@/lib/preferences";
-import { diagnosticsRef, diagnosticsText, loadHelp, orderFor, screenOf, screensFor, SCREEN_LABEL, searchHelp, snippet, appliesTo, type HelpChapter, type HelpIndex } from "@/lib/v2/help";
+import { diagnosticsRef, diagnosticsText, FROM_RECORDING, isHere, loadHelp, orderFor, screenOf, screensFor, SCREEN_LABEL, searchHelp, snippet, videoUrl, walkthroughFor, type HelpChapter, type HelpIndex } from "@/lib/v2/help";
 import { PERSONA_LABEL, useV2Session, type V2Persona } from "@/lib/v2/hooks";
 import { f1, int } from "@/lib/v2/score";
 import { readUiCookie, setUiCookie, subscribeUiCookie, UI_V2 } from "@/lib/v2/switch";
@@ -17,7 +18,6 @@ import { useHealth, useLicence, useTenantSettings } from "@/lib/v2/admin-queries
 import { useDiagnostics } from "@/lib/v2/enterprise-queries";
 import { t as tr, LANGUAGES, langOf, type Lang } from "@/lib/v2/i18n";
 import { APP_VERSION } from "@/lib/version";
-import releaseNotes from "../../../whats-new.json";
 import { Actions, InspectorFrame } from "../Inspector";
 import { EmptyFrame, Skeleton, V2Link } from "../parts";
 import { copyText } from "../admin/kit";
@@ -236,7 +236,8 @@ function Body({ text }: { text: string }) {
   );
 }
 
-function Recording({ chapter }: { chapter: HelpChapter }) {
+/** A recording of the current interface: opened on request, so a chapter without one never shows a dead player. */
+function OldRecording({ chapter }: { chapter: HelpChapter }) {
   const [open, setOpen] = useState(false);
   const [missing, setMissing] = useState(false);
   if (!chapter.video) return null;
@@ -246,7 +247,7 @@ function Recording({ chapter }: { chapter: HelpChapter }) {
         missing ? (
           <p className="m2-prov" role="status">{tr("The recording for this chapter is in preparation.")}</p>
         ) : (
-          <video controls preload="metadata" aria-label={tr("{title}: training video", { title: chapter.title })} src={`/api/v1/docs/help-videos/${chapter.video}.mp4`} onError={() => setMissing(true)} />
+          <video controls preload="metadata" aria-label={tr("{title}: training video", { title: chapter.title })} src={videoUrl(chapter.video, "mp4")} onError={() => setMissing(true)} />
         )
       ) : (
         <button type="button" className="m2-btn" onClick={() => setOpen(true)}>
@@ -257,15 +258,105 @@ function Recording({ chapter }: { chapter: HelpChapter }) {
   );
 }
 
+const minutes = (s: number | null): string | null => (s == null ? null : s >= 60 ? tr("{m} min {s} s", { m: Math.floor(s / 60), s: Math.round(s % 60) }) : tr("{s} s", { s: Math.round(s) }));
+
+/** A Meridian 2 recording, in the panel: the poster frame until it plays, and the captions as a subtitle track. */
+function Recording({ chapter }: { chapter: HelpChapter }) {
+  const [missing, setMissing] = useState(false);
+  if (!chapter.video) return null;
+  if (chapter.interface !== "v2") return <OldRecording chapter={chapter} />;
+  const length = minutes(chapter.seconds);
+  return (
+    <figure style={{ margin: "8px 0" }} data-testid="help-video">
+      {missing ? (
+        <p className="m2-prov" role="status">{tr("The recording for this chapter is in preparation.")}</p>
+      ) : (
+        <video controls preload="none" playsInline poster={videoUrl(chapter.video, "jpg")} aria-label={length ? tr("{title}: training video, {length}", { title: chapter.title, length }) : tr("{title}: training video", { title: chapter.title })} onError={() => setMissing(true)}>
+          <source src={videoUrl(chapter.video, "mp4")} type="video/mp4" onError={() => setMissing(true)} />
+          <track kind="captions" src={videoUrl(chapter.video, "vtt")} srcLang="en" label={tr("English")} default />
+        </video>
+      )}
+      <figcaption className="m2-hs2">{length ? tr("Recording, {length}, with captions. No sound.", { length }) : tr("Recording, with captions. No sound.")}</figcaption>
+    </figure>
+  );
+}
+
+/** A link into a walkthrough step that keeps the walkthrough open in help, unless the step opens a panel of its own. */
+function keepWalk(href: string, chapterId: string): string {
+  if (/[?&]open=/.test(href)) return href;
+  return `${href}${href.includes("?") ? "&" : "?"}open=help&chapter=${encodeURIComponent(chapterId)}`;
+}
+
+const WALK_EVENT = "m2:walkthrough";
+function subscribeWalk(cb: () => void): () => void {
+  window.addEventListener(WALK_EVENT, cb);
+  window.addEventListener("storage", cb);
+  return () => {
+    window.removeEventListener(WALK_EVENT, cb);
+    window.removeEventListener("storage", cb);
+  };
+}
+function readWalk(key: string): number {
+  try {
+    const n = Number(window.localStorage.getItem(key));
+    return Number.isInteger(n) && n >= 0 ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** A role's five first steps: each names the screen and opens it; the next-step button moves on. Progress stays in this browser. */
+function Walkthrough({ chapter }: { chapter: HelpChapter }) {
+  const steps = chapter.walkthrough ?? [];
+  const key = `meridian:walkthrough:${chapter.slug}`;
+  const stored = useSyncExternalStore(subscribeWalk, () => readWalk(key), () => 0);
+  const [local, setLocal] = useState<number | null>(null);
+  const at = Math.min(local ?? stored, Math.max(0, steps.length - 1));
+  if (steps.length === 0) return null;
+  const go = (i: number) => {
+    setLocal(i);
+    try {
+      window.localStorage.setItem(key, String(i));
+      window.dispatchEvent(new Event(WALK_EVENT));
+    } catch {
+      /* blocked storage: the step is kept for this view only */
+    }
+  };
+  const next = at < steps.length - 1 ? steps[at + 1] : null;
+  return (
+    <section aria-label={tr("Walkthrough")} data-testid="walkthrough">
+      <p className="m2-hs2" data-testid="walkthrough-at">{tr("Step {n} of {total}: {screen}", { n: at + 1, total: steps.length, screen: steps[at].screen })}</p>
+      <ol className="m2-walk">
+        {steps.map((s, i) => (
+          <li key={s.screen + i} aria-current={i === at ? "step" : undefined}>
+            <span className="m2-ht">{s.screen}</span>
+            <span>{s.text}</span>
+            <V2Link href={keepWalk(s.href, chapter.id)} onClick={() => go(i)}>{tr("Open {screen}", { screen: s.screen })}</V2Link>
+          </li>
+        ))}
+      </ol>
+      {next ? (
+        <V2Link href={keepWalk(next.href, chapter.id)} className="m2-btn m2-strong" onClick={() => go(at + 1)} data-testid="walkthrough-next">
+          {tr("Next step: {screen}", { screen: next.screen })}
+        </V2Link>
+      ) : (
+        <p className="m2-prov">{tr("That is the fifth step. The chapter below goes deeper.")}</p>
+      )}
+    </section>
+  );
+}
+
 function ChapterView({ chapter, onBack }: { chapter: HelpChapter; onBack: () => void }) {
   const screens = screensFor(chapter.id);
+  const where = chapter.interface === "v2" ? chapter.group : `${tr("Current interface")}, ${chapter.group}`;
   return (
     <div className="m2-hbody" data-testid="help-chapter">
       <button type="button" className="m2-linkbtn" onClick={onBack}>
         {tr("All of help")}
       </button>
       <h3 style={{ fontSize: 16, marginTop: 8 }}>{chapter.title}</h3>
-      <p className="m2-hs2">{`${chapter.group}${screens.length ? tr(". Applies to: {map}", { map: screens.map((s) => SCREEN_LABEL[s]).join(", ") }) : ""}`}</p>
+      <p className="m2-hs2">{`${where}${screens.length ? tr(". Applies to: {map}", { map: screens.map((s) => SCREEN_LABEL[s]).join(", ") }) : ""}`}</p>
+      <Walkthrough chapter={chapter} />
       <Recording chapter={chapter} />
       {chapter.sections.map((s, i) => (
         <section key={i}>
@@ -277,19 +368,24 @@ function ChapterView({ chapter, onBack }: { chapter: HelpChapter; onBack: () => 
   );
 }
 
-interface Release { version: string; date: string; items: { title: string; body: string }[] }
+/** How the chapters of the interface being replaced are marked in the index. */
 
-/** `?open=help`: the guide and the training recordings, the chapters for this canvas first, and how to reach support. */
+/** `?open=help`: the guide and its recordings, the walkthrough and the chapter for this screen first, and support. */
 export function HelpPanel({ onClose }: { onClose: () => void }) {
   const pathname = usePathname();
+  const params = useSearchParams();
+  const search = params.toString();
   const screen = screenOf(pathname);
   const session = useV2Session();
+  const { role: liveRole } = useRole();
+  const role = session.shared ? "viewer" : (session.viewAs ?? (session.fixture ? fixtureParam("role") : liveRole));
+  const ctx = useMemo(() => ({ pathname, search, walkthrough: walkthroughFor(session.persona, role) }), [pathname, search, session.persona, role]);
   const [data, setData] = useState<HelpIndex | null>(null);
   const [failed, setFailed] = useState(false);
   const [query, setQuery] = useState("");
-  const [chapterId, setChapterId] = useState<string | null>(null);
+  const [chapterId, setChapterId] = useState<string | null>(() => params.get("chapter"));
   const [copied, setCopied] = useState(false);
-  const search = useRef<HTMLInputElement>(null);
+  const searchBox = useRef<HTMLInputElement>(null);
   const health = useHealth();
   const tenant = useTenantSettings(session.can("view"));
   const licence = useLicence();
@@ -303,10 +399,18 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
       alive = false;
     };
   }, []);
-  const ordered = useMemo(() => (data ? orderFor(data.chapters, screen) : []), [data, screen]);
+  // A walkthrough link names the chapter to reopen: follow it when the address changes, as state set during render.
+  const asked = params.get("chapter");
+  const [seenAsked, setSeenAsked] = useState(asked);
+  if (asked !== seenAsked) {
+    setSeenAsked(asked);
+    if (asked) setChapterId(asked);
+  }
+  const ordered = useMemo(() => (data ? orderFor(data.chapters, screen, ctx) : []), [data, screen, ctx]);
   const hits = useMemo(() => searchHelp(ordered, query), [ordered, query]);
-  const here = hits.filter((h) => appliesTo(h.chapter.id, screen));
-  const rest = hits.filter((h) => !appliesTo(h.chapter.id, screen));
+  const here = hits.filter((h) => isHere(h.chapter, screen, ctx));
+  const restV2 = hits.filter((h) => h.chapter.interface === "v2" && !isHere(h.chapter, screen, ctx));
+  const current = hits.filter((h) => h.chapter.interface !== "v2");
   const open = data?.chapters.find((c) => c.id === chapterId) ?? null;
   const diag = {
     version: health.data?.version ?? APP_VERSION,
@@ -318,16 +422,17 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
     time: new Date().toISOString(),
     browser: typeof navigator === "undefined" ? "unknown" : navigator.userAgent,
   };
-  const releases = releaseNotes as readonly Release[];
   const line = (h: { chapter: HelpChapter; sections: { heading: string; text: string }[] }) => (
     <li key={h.chapter.id}>
       <button type="button" className="m2-hitem" onClick={() => setChapterId(h.chapter.id)}>
         <span className="m2-ht">{h.chapter.title}</span>
-        <span className="m2-hs2">{query && h.sections[0] ? snippet(h.sections[0].text || h.sections[0].heading, query) : h.chapter.summary}</span>
+        <span className="m2-hs2">{query && h.sections[0] ? `${h.sections[0].heading === FROM_RECORDING ? `${tr("From the recording")}: ` : ""}${snippet(h.sections[0].text || h.sections[0].heading, query)}` : h.chapter.summary}</span>
         <span className="m2-hs2">
           {h.chapter.group}
+          {h.chapter.walkthrough ? tr(", five steps") : ""}
           {h.chapter.video ? tr(", with a recording") : ""}
         </span>
+        {h.chapter.interface !== "v2" ? <span className="m2-htag">{tr("Current interface")}</span> : null}
       </button>
     </li>
   );
@@ -337,7 +442,7 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
         <ChapterView chapter={open} onBack={() => setChapterId(null)} />
       ) : (
         <>
-          <input ref={search} type="search" className="m2-hsearch" aria-label={tr("Search help")} placeholder={tr("Search the guide and recordings")} value={query} onChange={(e) => setQuery(e.target.value)} />
+          <input ref={searchBox} type="search" className="m2-hsearch" aria-label={tr("Search help")} placeholder={tr("Search the guide and recordings")} value={query} onChange={(e) => setQuery(e.target.value)} />
           {failed ? <p className="m2-prov" role="alert">{tr("The help could not be loaded.")}</p> : !data ? <Skeleton width="100%" height={80} /> : hits.length === 0 ? <EmptyFrame>{tr("Nothing in the guide matches \"{query}\". Try a shorter word, or contact support below.", { query })}</EmptyFrame> : (
             <>
               {here.length ? (
@@ -346,23 +451,32 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
                   <ul className="m2-hlist" aria-label={tr("Help for this screen")}>{here.map(line)}</ul>
                 </>
               ) : null}
-              <h3>{here.length ? tr("Everything else") : tr("All of help")}</h3>
-              <ul className="m2-hlist" aria-label={tr("All help")}>{rest.map(line)}</ul>
+              {restV2.length ? (
+                <>
+                  <h3>{here.length ? tr("Everything else") : tr("All of help")}</h3>
+                  <ul className="m2-hlist" aria-label={tr("All help")}>{restV2.map(line)}</ul>
+                </>
+              ) : null}
+              {current.length ? (
+                <>
+                  <h3>{tr("Current interface")}</h3>
+                  <p className="m2-hs2" style={{ marginTop: 0 }}>{tr("Chapters about the interface this one replaces. They stay until it is removed.")}</p>
+                  <ul className="m2-hlist" aria-label={tr("Current interface help")}>{current.map(line)}</ul>
+                </>
+              ) : null}
             </>
           )}
           <h3>{tr("What's new")}</h3>
-          {releases.slice(0, 2).map((r) => (
-            <div key={r.version} className="m2-hbody">
-              <p className="m2-hs2">{`${r.version}, ${formatDate(r.date)}`}</p>
-              <ul style={{ margin: "0 0 8px", paddingLeft: 18, fontSize: 13 }}>
-                {r.items.slice(0, 4).map((i) => (
-                  <li key={i.title}>
-                    <strong>{i.title}</strong>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          {data ? (
+            <ul className="m2-hlist" aria-label={tr("What's new")} data-testid="whats-new">
+              {data.whatsNew.map((w) => (
+                <li key={w.step} style={{ padding: "6px 0", fontSize: 13 }}>
+                  <span className="m2-hs2">{tr("{date}, step {step}. ", { date: formatDate(w.date), step: w.step })}</span>
+                  {w.text}
+                </li>
+              ))}
+            </ul>
+          ) : null}
           <h3>{tr("Keyboard")}</h3>
           <button type="button" className="m2-btn" onClick={() => window.dispatchEvent(new Event("m2:shortcuts"))}>
             {tr("Keyboard shortcuts")}
@@ -389,4 +503,3 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
     </InspectorFrame>
   );
 }
-

@@ -1,0 +1,41 @@
+WEBVTT
+
+1
+00:00:00.023 --> 00:00:06.589
+The glossary: one business term per SAP field.
+
+2
+00:00:06.589 --> 00:00:13.874
+Each term has a definition, its field, the owner, the status and the rules that cite it.
+
+3
+00:00:13.874 --> 00:00:19.495
+Under review means a data owner has not approved it yet.
+
+4
+00:00:19.495 --> 00:00:24.408
+Fields without a term: read by failing rules, with no term yet.
+
+5
+00:00:24.408 --> 00:00:30.226
+Add terms from the rule library drafts them; the owner approves each.
+
+6
+00:00:30.226 --> 00:00:37.089
+Open a term for its fields, rules, review cycle and history.
+
+7
+00:00:37.089 --> 00:00:43.193
+A data owner edits and approves a term. Mark as reviewed keeps an active term current.
+
+8
+00:00:43.193 --> 00:00:49.102
+Each term cites the rules that read its field, so the definition and the check agree.
+
+9
+00:00:49.102 --> 00:00:54.680
+Search finds a term by its name, its definition or its SAP field.
+
+10
+00:00:54.680 --> 00:01:01.234
+The glossary is per object: every object has its own tab.

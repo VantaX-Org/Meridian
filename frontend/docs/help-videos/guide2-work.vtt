@@ -1,0 +1,57 @@
+WEBVTT
+
+1
+00:00:00.018 --> 00:00:07.492
+Work is the ledger: every failing record and field, ranked by value at risk.
+
+2
+00:00:07.492 --> 00:00:14.647
+The chips are the filter: to fix, fix proposed, waiting for approval, exceptions.
+
+3
+00:00:14.647 --> 00:00:21.921
+Each row holds the current value, the possible values and the suggested value.
+
+4
+00:00:21.921 --> 00:00:29.325
+Choose a decision: fix, not an issue or accept risk.
+
+5
+00:00:29.325 --> 00:00:36.292
+Every change shows a notice with Undo.
+
+6
+00:00:36.292 --> 00:00:41.332
+Command Z takes the last change back.
+
+7
+00:00:41.332 --> 00:00:48.532
+Select rows with x or the checkboxes; Shift J extends the selection.
+
+8
+00:00:48.532 --> 00:00:55.552
+The bulk bar acts on every selected row.
+
+9
+00:00:55.552 --> 00:01:05.204
+By rule groups the rows under their rule, so a whole rule is decided at once.
+
+10
+00:01:05.204 --> 00:01:13.093
+Open a record: every failing field, its possible values and the decision.
+
+11
+00:01:13.093 --> 00:01:18.152
+Feature impact, provenance and history are on the record too.
+
+12
+00:01:18.152 --> 00:01:25.674
+Export fix sheet saves the rows on screen to Excel, with the same columns.
+
+13
+00:01:25.674 --> 00:01:33.806
+Fill it in offline and import it back: Meridian checks keys, fields and values before anything changes.
+
+14
+00:01:33.806 --> 00:01:41.844
+Share and export saves a view, exports any grid, or shares the page as a read-only link.

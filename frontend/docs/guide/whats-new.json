@@ -1,0 +1,11 @@
+[
+  { "step": "0", "date": "2026-10-29", "ref": "#517, #518", "text": "The new interface behind a switch: the landscape with its coverage matrix, the object canvas with the ruler and its receipt, the inspector and the command line." },
+  { "step": "1", "date": "2026-10-29", "ref": "#521", "text": "The Work ledger: one row per failing record and field, the record inspector, bulk decisions, fill down, the fix sheet round trip and undo." },
+  { "step": "2", "date": "2026-10-29", "ref": "#520", "text": "Object tabs for rules, records, runs and readiness, and the rule canvas and inspector with definition, failing records, impact and history." },
+  { "step": "3", "date": "2026-10-29", "ref": "#519", "text": "The run timeline, the Run and Compare canvases that explain why each score moved, the job line and the system inspector." },
+  { "step": "4", "date": "2026-10-29", "ref": "#522", "text": "Approvals, exceptions and write-backs in the ledger, the batch and person inspectors, the People canvas and the inbox with triage." },
+  { "step": "5", "date": "2026-10-29", "ref": "#522", "text": "The Golden records, Glossary, Lineage and Processes tabs of every object, with their inspectors." },
+  { "step": "6", "date": "2026-10-29", "ref": "#523", "text": "Administration, preferences, the help panel, reports and their schedules, and migration waves." },
+  { "step": "6b", "date": "2026-10-29", "ref": "branch", "text": "The system canvas with configuration, schedules and custom objects, connection and scope editors, the rules library, the survivorship editor and the process designer." },
+  { "step": "6c", "date": "2026-10-29", "ref": "branch", "text": "Every role's verbs: comments and mentions, watch, out of office, escalation chain, contracts, balance work, wave gates, dry run and changes only, what-if, share links, view as, configuration bundle, bulk rules and the stewardship template." }
+]

@@ -1,0 +1,41 @@
+WEBVTT
+
+1
+00:00:00.031 --> 00:00:08.055
+Every value decided in Work waits in a fix batch until a second person approves it.
+
+2
+00:00:08.055 --> 00:00:16.300
+Rows are grouped by batch, with who built it, the records, value at risk and the due date.
+
+3
+00:00:16.300 --> 00:00:24.036
+Open the batch for its facts, its changes and the approval trail.
+
+4
+00:00:24.036 --> 00:00:30.471
+Each change reads as the SAP field and the pair of values.
+
+5
+00:00:30.471 --> 00:00:38.209
+You cover for a colleague who is away: their approvals come to you as well.
+
+6
+00:00:38.209 --> 00:00:43.211
+The approval trail: who drafted the batch and who proposed the values.
+
+7
+00:00:43.211 --> 00:00:51.319
+Approve acts on the whole batch. Send back asks for a reason the steward reads.
+
+8
+00:00:51.319 --> 00:00:57.576
+Approval does not touch SAP. The batch is exported and loaded; the next run confirms each record.
+
+9
+00:00:57.576 --> 00:01:05.683
+Exceptions: records signed off as not an issue or an accepted risk, with the reason.
+
+10
+00:01:05.683 --> 00:01:12.919
+Resolution, reason, who signed off and when. Reopen puts a record back to fix.

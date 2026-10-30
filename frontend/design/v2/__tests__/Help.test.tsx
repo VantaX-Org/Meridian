@@ -20,10 +20,18 @@ afterEach(() => {
 });
 
 const mount = (url: string) => {
+  // Fixture mode reads ?persona= and ?role= from the window's address, the shell's hooks from the navigation store.
+  window.history.pushState({}, "", url);
   setUrl(url);
   return renderWithQuery(<V2Shell><h1>Page</h1></V2Shell>);
 };
 const titles = (list: HTMLElement) => within(list).getAllByRole("listitem").map((li) => (within(li).getByRole("button").querySelector(".m2-ht") as HTMLElement).textContent);
+const openPanel = async (url: string) => {
+  mount(url);
+  const dialog = await screen.findByRole("dialog", { name: "Help" });
+  await within(dialog).findByRole("list", { name: "All help" });
+  return dialog;
+};
 
 describe("the help panel", () => {
   it("opens from the ? button in the top bar and closes with it", async () => {
@@ -39,67 +47,115 @@ describe("the help panel", () => {
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Help" })).toBeNull());
   });
 
-  it("lists the chapter for the screen you are on first, under its own heading", async () => {
-    mount("/v2/admin/users?fixture=1&open=help");
-    const dialog = await screen.findByRole("dialog", { name: "Help" });
-    const here = await within(dialog).findByRole("list", { name: "Help for this screen" });
-    expect(titles(here)[0]).toBe("Creating and managing users");
-    expect(titles(here)).toContain("Administration");
-    expect(titles(here)).not.toContain("Your first hour in Meridian");
-    const rest = within(dialog).getByRole("list", { name: "All help" });
-    expect(titles(rest)).toContain("Your first hour in Meridian");
+  it("puts the role's walkthrough first on the start screen, then the chapter for the screen", async () => {
+    const dialog = await openPanel("/v2?fixture=1&persona=steward&open=help");
+    const here = within(dialog).getByRole("list", { name: "Help for this screen" });
+    expect(titles(here).slice(0, 2)).toEqual(["Walkthrough: data steward", "Landscape"]);
+    expect(within(here).getAllByRole("listitem")[0]).toHaveTextContent("five steps");
+  });
+
+  it("gives the auditor and the viewer their own walkthrough", async () => {
+    const dialog = await openPanel("/v2?fixture=1&role=auditor&open=help");
+    expect(titles(within(dialog).getByRole("list", { name: "Help for this screen" }))[0]).toBe("Walkthrough: auditor and viewer");
+  });
+
+  it("lists the chapter for the screen you are on first, and the current interface's chapters last, marked", async () => {
+    const dialog = await openPanel("/v2/admin/users?fixture=1&open=help");
+    const here = within(dialog).getByRole("list", { name: "Help for this screen" });
+    expect(titles(here)[0]).toBe("Administration");
+    expect(titles(here)).toContain("Walkthrough: administrator");
+    expect(titles(here)).not.toContain("Creating and managing users");
+    const current = within(dialog).getByRole("list", { name: "Current interface help" });
+    expect(titles(current)).toContain("Creating and managing users");
+    expect(within(current).getAllByRole("listitem").every((li) => li.textContent?.includes("Current interface"))).toBe(true);
     expect(within(dialog).getByText("You are on Administration")).toBeInTheDocument();
   });
 
-  it("puts a different chapter first on a different screen", async () => {
-    mount("/v2/work?fixture=1&open=help");
-    const dialog = await screen.findByRole("dialog", { name: "Help" });
-    const here = await within(dialog).findByRole("list", { name: "Help for this screen" });
-    expect(titles(here)[0]).toBe("Fix your first record");
-    expect(titles(here)).toContain("A day as a data steward");
+  it("puts a different chapter first on a different screen and for an open panel", async () => {
+    const work = await openPanel("/v2/work?fixture=1&open=help");
+    expect(titles(within(work).getByRole("list", { name: "Help for this screen" }))[0]).toBe("The Work ledger");
   });
 
-  it("searches the guide and the chapters, and says when nothing matches", async () => {
-    mount("/v2?fixture=1&open=help");
-    const dialog = await screen.findByRole("dialog", { name: "Help" });
-    await within(dialog).findByRole("list", { name: "Help for this screen" });
-    fireEvent.change(within(dialog).getByRole("searchbox", { name: "Search help" }), { target: { value: "golden record" } });
-    const all = await within(dialog).findByRole("list", { name: "All help" });
-    expect(titles(all)[0]).toBe("Master data: survivors and golden records");
-    expect(titles(all).length).toBeLessThan(10);
-    fireEvent.change(within(dialog).getByRole("searchbox", { name: "Search help" }), { target: { value: "zzzqq" } });
+  it("searches the chapters and the recordings' captions, and says when nothing matches", async () => {
+    const dialog = await openPanel("/v2?fixture=1&open=help");
+    const box = within(dialog).getByRole("searchbox", { name: "Search help" });
+    fireEvent.change(box, { target: { value: "golden records" } });
+    await waitFor(() => expect(titles(within(dialog).getByRole("list", { name: "All help" }))[0]).toBe("Golden records"));
+    fireEvent.change(box, { target: { value: "slash" } });
+    const overview = await within(dialog).findByRole("button", { name: /Meridian in three minutes/ });
+    expect(overview).toHaveTextContent("From the recording:");
+    fireEvent.change(box, { target: { value: "zzzqq" } });
     expect(await within(dialog).findByText(/Nothing in the guide matches "zzzqq"/)).toBeInTheDocument();
   });
 
-  it("opens a chapter as sections with the screens it applies to, and a recording that plays in the panel", async () => {
-    mount("/v2?fixture=1&open=help");
-    const dialog = await screen.findByRole("dialog", { name: "Help" });
-    fireEvent.click(await within(dialog).findByRole("button", { name: /Reporting up/ }));
+  it("opens a chapter with its recording in the panel: poster, mp4 and a captions track", async () => {
+    const dialog = await openPanel("/v2?fixture=1&open=help");
+    fireEvent.click(within(dialog).getByRole("button", { name: /^The Work ledger/ }));
     const chapter = await within(dialog).findByTestId("help-chapter");
-    expect(within(chapter).getByRole("heading", { name: "Reporting up" })).toBeInTheDocument();
-    expect(chapter).toHaveTextContent("Applies to: Landscape, Reports");
-    expect(within(chapter).getAllByRole("heading", { level: 3 }).length).toBeGreaterThan(3);
-    expect(chapter.querySelector("video")).toBeNull();
-    fireEvent.click(within(chapter).getByRole("button", { name: "Watch the recording" }));
+    expect(within(chapter).getByRole("heading", { name: "The Work ledger" })).toBeInTheDocument();
+    expect(chapter).toHaveTextContent("Applies to: Work, An object");
     const video = chapter.querySelector("video") as HTMLVideoElement;
-    expect(video).toHaveAttribute("src", "/api/v1/docs/help-videos/help-lead-reporting.mp4");
-    fireEvent.error(video);
+    expect(video).toHaveAttribute("poster", "/api/v1/docs/help-videos/guide2-work.jpg");
+    expect(video.querySelector("source")).toHaveAttribute("src", "/api/v1/docs/help-videos/guide2-work.mp4");
+    const track = video.querySelector("track") as HTMLTrackElement;
+    expect(track).toHaveAttribute("kind", "captions");
+    expect(track).toHaveAttribute("src", "/api/v1/docs/help-videos/guide2-work.vtt");
+    expect(track).toHaveAttribute("srclang", "en");
+    expect(track.hasAttribute("default")).toBe(true);
+    expect(within(chapter).getByText(/with captions\. No sound\./)).toBeInTheDocument();
+    expect(within(chapter).getByRole("heading", { name: "When something is wrong" })).toBeInTheDocument();
+    fireEvent.error(video.querySelector("source") as HTMLSourceElement);
     expect(await within(chapter).findByText("The recording for this chapter is in preparation.")).toBeInTheDocument();
     fireEvent.click(within(chapter).getByRole("button", { name: "All of help" }));
     expect(await within(dialog).findByRole("searchbox", { name: "Search help" })).toBeInTheDocument();
   });
 
-  it("shows what is new from the release notes", async () => {
-    mount("/v2?fixture=1&open=help");
+  it("keeps the current interface's recordings behind a button", async () => {
+    const dialog = await openPanel("/v2?fixture=1&open=help");
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Reporting up/ }));
+    const chapter = await within(dialog).findByTestId("help-chapter");
+    expect(chapter).toHaveTextContent("Current interface, Your day in Meridian");
+    expect(chapter.querySelector("video")).toBeNull();
+    fireEvent.click(within(chapter).getByRole("button", { name: "Watch the recording" }));
+    expect(chapter.querySelector("video")).toHaveAttribute("src", "/api/v1/docs/help-videos/help-lead-reporting.mp4");
+  });
+
+  it("walks a role through five steps with the screen names and a next-step button", async () => {
+    const dialog = await openPanel("/v2?fixture=1&persona=steward&open=help");
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Walkthrough: data steward/ }));
+    const walk = await within(dialog).findByTestId("walkthrough");
+    const steps = within(walk).getAllByRole("listitem");
+    expect(steps).toHaveLength(5);
+    expect(steps.map((s) => s.querySelector(".m2-ht")?.textContent)).toEqual(["Landscape", "Work", "A record", "By rule", "Waiting for approval"]);
+    expect(steps[0]).toHaveAttribute("aria-current", "step");
+    expect(within(walk).getByTestId("walkthrough-at")).toHaveTextContent("Step 1 of 5: Landscape");
+    const next = within(walk).getByRole("link", { name: "Next step: Work" });
+    expect(next.getAttribute("href")).toContain("/v2/work");
+    expect(next.getAttribute("href")).toContain("chapter=v2%3Apersona-steward");
+    fireEvent.click(next);
+    await waitFor(() => expect(within(walk).getByTestId("walkthrough-at")).toHaveTextContent("Step 2 of 5: Work"));
+    expect(within(walk).getAllByRole("listitem")[1]).toHaveAttribute("aria-current", "step");
+    expect(within(walk).getByRole("link", { name: "Open A record" }).getAttribute("href")).toContain("open=record");
+  });
+
+  it("reopens the chapter a walkthrough link names", async () => {
+    mount("/v2/work?fixture=1&open=help&chapter=v2%3Apersona-steward");
     const dialog = await screen.findByRole("dialog", { name: "Help" });
-    expect(await within(dialog).findByRole("heading", { name: "What's new" })).toBeInTheDocument();
-    expect(within(dialog).getByText(/^0\.1\.1, /)).toBeInTheDocument();
-    expect(within(dialog).getByText("Five insight views on one spine")).toBeInTheDocument();
+    expect(await within(dialog).findByTestId("walkthrough")).toBeInTheDocument();
+  });
+
+  it("shows what is new in the new interface, one dated line per step, newest first", async () => {
+    const dialog = await openPanel("/v2?fixture=1&open=help");
+    expect(within(dialog).getByRole("heading", { name: "What's new" })).toBeInTheDocument();
+    const items = within(within(dialog).getByTestId("whats-new")).getAllByRole("listitem");
+    expect(items).toHaveLength(9);
+    expect(items[0]).toHaveTextContent(/step 6c\./);
+    expect(items[8]).toHaveTextContent(/step 0\./);
+    expect(items[0]).toHaveTextContent("2026");
   });
 
   it("the keyboard button opens the shortcut sheet", async () => {
-    mount("/v2?fixture=1&open=help");
-    const dialog = await screen.findByRole("dialog", { name: "Help" });
+    const dialog = await openPanel("/v2?fixture=1&open=help");
     fireEvent.click(within(dialog).getByRole("button", { name: "Keyboard shortcuts" }));
     expect(await screen.findByRole("dialog", { name: /Keyboard shortcuts/ })).toBeInTheDocument();
   });
