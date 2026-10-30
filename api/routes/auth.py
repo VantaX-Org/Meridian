@@ -48,7 +48,12 @@ router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 LOCKOUT_THRESHOLD = 10
 LOCKOUT_MINUTES = 15
 
-DEV_TENANT_ID = "00000000-0000-0000-0000-000000000001"
+# The tenant sign-in looks the user up in, and the tenant_id every issued token carries: this deployment's own
+# tenant (settings.deployment_tenant_id, MERIDIAN_TENANT_ID). LocalAuthMiddleware verifies each token with the
+# secret of the tenant its claim names. (The name is kept for importers such as api/routes/auth_oidc.py.)
+from api.deps import deployment_tenant_id as _deployment_tenant_id  # noqa: E402
+
+DEV_TENANT_ID = str(_deployment_tenant_id())
 _column_exists_cache: dict[tuple[str, str], bool] = {}
 
 
