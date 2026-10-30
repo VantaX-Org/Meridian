@@ -52,7 +52,7 @@ export function trainingHtml() {
   pre { background: #F4F5F7; border: 1px solid #D9DDE3; border-radius: 4px; padding: 6pt 8pt; white-space: pre-wrap; break-inside: avoid; }
   table { width: 100%; border-collapse: collapse; margin: 4pt 0 10pt; font-size: 9pt; }
   th, td { border-bottom: 1px solid #D9DDE3; padding: 3pt 5pt; text-align: left; vertical-align: top; }
-  th { font-weight: 600; } tr { break-inside: avoid; }
+  th { font-weight: 600; } tr { break-inside: avoid; } th:first-child, td:first-child { width: 30%; }
   figure { margin: 8pt 0 12pt; break-inside: avoid; } figure img { width: 100%; border: 1px solid #D9DDE3; }
   figcaption { font-size: 9pt; color: #4A5568; margin-top: 3pt; }
   .chapter { break-before: page; }
