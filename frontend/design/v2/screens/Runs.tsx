@@ -18,6 +18,7 @@ import { Dash, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../pa
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import { duration } from "../shell/StatusStrip";
 import { t } from "@/lib/v2/i18n";
+import { RunForecast } from "./step10/Prediction";
 
 const RUN_STATUS: Record<string, { word: string; mark: "go" | "no-go" | null }> = {
   complete: { get word() { return t("Complete"); }, mark: "go" },
@@ -115,6 +116,7 @@ function StartRun({ onClose }: { onClose: () => void }) {
               {t("Close")}
             </button>
           </div>
+          {newest ? <RunForecast systemId={chosen} modules={newest.objects} what="analysis" /> : null}
           {extractions.isSuccess && !newest ? <p className="m2-prov">{t("This system has no stored extraction that can be analysed.")}</p> : null}
           {!allowed ? <p className="m2-prov">{t("Starting a run needs the analyse permission.")}</p> : null}
         </>

@@ -9,6 +9,11 @@ import { useV2Href } from "@/lib/v2/hooks";
 import { commandHints, ledgerRegistry } from "@/lib/v2/keys";
 import type { CommandGroup } from "@/lib/api/v2/types";
 import { t as tr, tx } from "@/lib/v2/i18n";
+import { matchValue, nlQuestion, nlTarget, slotWord } from "@/lib/v2/step10";
+import { useNl } from "@/lib/v2/step10-queries";
+import type { NlAnswer } from "@/lib/api/v2/step10";
+import { Mono } from "./parts";
+import "./step10.css";
 
 const PLACES: CommandGroup = {
   kind: "action",
@@ -69,10 +74,14 @@ export function CommandLine({ onClose }: { onClose: () => void }) {
     return () => clearTimeout(t);
   }, [q]);
 
+  // Natural language mode: a leading `?` asks in a sentence (GET /command/nl) instead of searching.
+  const question = nlQuestion(debounced);
+  const nlMode = q.trimStart().startsWith("?");
+  const nl = useNl(question ?? "", nlMode && Boolean(question));
   const result = useQuery({
     queryKey: ["v2", "command", fixture, debounced],
     queryFn: () => getCommand(debounced),
-    enabled: debounced.length > 0,
+    enabled: debounced.length > 0 && !nlMode,
     placeholderData: keepPreviousData,
     staleTime: 10_000,
   });
@@ -83,6 +92,11 @@ export function CommandLine({ onClose }: { onClose: () => void }) {
   }, [debounced, q, result.data]);
 
   const clamped = Math.min(index, Math.max(0, rows.length - 1));
+  const openNl = (a: NlAnswer | undefined) => {
+    if (!a) return;
+    onClose();
+    router.push(href(nlTarget(a)));
+  };
   const run = (r: Row | undefined) => {
     if (!r) return;
     onClose();
@@ -104,7 +118,8 @@ export function CommandLine({ onClose }: { onClose: () => void }) {
       setIndex(Math.max(0, clamped - 1));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      run(rows[clamped]);
+      if (nlMode) openNl(nl.data);
+      else run(rows[clamped]);
     } else if (e.key === "Tab") e.preventDefault();
   };
 
@@ -121,9 +136,10 @@ export function CommandLine({ onClose }: { onClose: () => void }) {
           ref={input}
           type="text"
           role="combobox"
-          aria-expanded="true"
-          aria-controls="m2-pal-list"
-          aria-activedescendant={rows.length ? `m2-po-${clamped}` : undefined}
+          aria-expanded={!nlMode}
+          aria-controls={nlMode ? "m2-nl" : "m2-pal-list"}
+          aria-describedby="m2-pal-hint"
+          aria-activedescendant={!nlMode && rows.length ? `m2-po-${clamped}` : undefined}
           aria-label={tr("Search or type a command")}
           placeholder={tr("Search or type a command")}
           autoComplete="off"
@@ -134,6 +150,12 @@ export function CommandLine({ onClose }: { onClose: () => void }) {
             setIndex(0);
           }}
         />
+        <p id="m2-pal-hint" className="m2-pal-hint">
+          {tr("Start with ? to ask in a sentence, such as ?critical vendors assigned to me due this week. The answer is a ledger filter you can see before it runs.")}
+        </p>
+        {nlMode ? (
+          <NlPanel question={question} answer={nl.data} pending={nl.isFetching} failed={nl.isError} onOpen={() => openNl(nl.data)} />
+        ) : (
         <ul id="m2-pal-list" role="listbox" aria-label={tr("Results")}>
           {rows.length === 0 ? (
             <li className="m2-pal-gh" role="presentation">
@@ -154,6 +176,7 @@ export function CommandLine({ onClose }: { onClose: () => void }) {
             })
           )}
         </ul>
+        )}
         <div className="m2-pal-foot" aria-hidden="true">
           {commandHints().map((h) => (
             <span key={h.id}>
@@ -162,6 +185,60 @@ export function CommandLine({ onClose }: { onClose: () => void }) {
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * The natural language answer: the filter that will run as chips (each matched phrase with the slot it fills), the
+ * server's explanation, the words it did not understand, and Open. Nothing is hidden: the filter shown is the one the
+ * ledger reads.
+ */
+function NlPanel({ question, answer, pending, failed, onOpen }: { question: string | null; answer: NlAnswer | undefined; pending: boolean; failed: boolean; onOpen: () => void }) {
+  if (!question) {
+    return (
+      <div id="m2-nl" className="m2-nl" role="region" aria-label={tr("Ask in a sentence")} data-testid="nl-panel">
+        <p className="m2-nl-why">{tr("Type a question after the ?, such as ?vendor bank data in ECC production, or ?overdue materials assigned to me.")}</p>
+      </div>
+    );
+  }
+  return (
+    <div id="m2-nl" className="m2-nl" role="region" aria-label={tr("The filter that will run")} aria-live="polite" data-testid="nl-panel">
+      {failed ? (
+        <p className="m2-nl-why" role="alert">{tr("The question could not be read. Try other words, or search without the ?.")}</p>
+      ) : !answer ? (
+        <p className="m2-nl-why">{pending ? tr("Reading the question") : ""}</p>
+      ) : (
+        <>
+          <h3>{tr("The filter that will run")}</h3>
+          {answer.matched.length ? (
+            <ul className="m2-nl-chips" data-testid="nl-chips">
+              {answer.matched.map((m) => (
+                <li key={`${m.slot}:${String(m.value)}`} title={tr("From the words: {phrase}", { phrase: m.phrase })}>
+                  <b>{slotWord(m.slot)}</b>
+                  <span>{m.label}</span>
+                  <span className="m2-meta">{`(${matchValue(m)})`}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="m2-nl-why">{tr("No filter: Open shows the open work.")}</p>
+          )}
+          <p className="m2-nl-why" data-testid="nl-explanation">{answer.explanation}</p>
+          {answer.unmatched_words.length ? (
+            <p className="m2-nl-why" data-testid="nl-unmatched">
+              {tr("Not understood, left out of the filter: {words}", { words: answer.unmatched_words.join(", ") })}
+            </p>
+          ) : null}
+          {answer.llm_used ? <p className="m2-nl-why">{tr("The language model mapped some words onto the same filters; the filter above is still what runs.")}</p> : null}
+          <div className="m2-nl-acts">
+            <button type="button" className="m2-btn m2-strong" onClick={onOpen}>
+              {tr("Open in Work")}
+            </button>
+            <Mono>{nlTarget(answer)}</Mono>
+          </div>
+        </>
+      )}
     </div>
   );
 }

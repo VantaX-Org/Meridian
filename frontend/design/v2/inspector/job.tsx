@@ -12,7 +12,7 @@ import { int } from "@/lib/v2/score";
 import { duration } from "../shell/StatusStrip";
 import { Actions, Fact, Facts, InspectorFrame } from "../Inspector";
 import { VerdictMark } from "../marks";
-import { EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
+import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { ResultFrame, useOutcome } from "./shared";
 import { t as tr } from "@/lib/v2/i18n";
 
@@ -82,6 +82,7 @@ function JobBody({ job }: { job: Job }) {
         <Fact label={tr("Job")}>{JOB_KIND_LABEL[job.kind]}</Fact>
         <Fact label={tr("Object")}>{jobObject(job)}</Fact>
         {system ? <Fact label={tr("System")}>{system.name}</Fact> : null}
+        {job.status === "queued" ? <Fact label={tr("Queue")}>{job.queue_position != null ? tr("Position {n} in the queue", { n: job.queue_position }) : <Dash why={tr("The server did not give this job's place in the queue")} />}</Fact> : null}
         <Fact label={tr("Started")}>{formatDate(job.started_at * 1000, "datetime")}</Fact>
         <Fact label={live ? tr("Running for") : tr("Took")}>{secs == null ? "—" : duration(secs)}</Fact>
         {job.rows_total > 0 || job.rows_done > 0 ? <Fact label={tr("Rows")}>{job.rows_total ? tr("{rows_done} of {rows_total}", { rows_done: int(job.rows_done), rows_total: int(job.rows_total) }) : int(job.rows_done)}</Fact> : null}

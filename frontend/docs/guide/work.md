@@ -7,9 +7,12 @@ Work is the one list of everything that needs a person: every failing record and
 - **The title and scope**: "Work" and the objects in scope, such as "All objects". Click an object in the map to scope the ledger to it.
 - **The sentence**: what the current filter holds, for example "25,712 records to fix, ranked by value at risk." and, under it, "Rows are read from the latest run of each object. Value at risk is from cost model ZAR v3."
 - **The state chips**: **To fix**, **Fix proposed**, **Waiting for approval** and **Exceptions**, each with its count. The chips are the filter.
+- **The Policy chip**: narrows the ledger to the records failing a rule that evidences an applied policy pack or one of its classes, for example "Policy: Vendor bank data (SOX financial controls)" (`policy=sox:vendor_bank`).
 - **The controls**: **Flat** or **By rule** grouping; **Sort** by value at risk, due, age or owner; **Compact** or **Standard** rows; **Views** (saved and shared views); the object filter; **Export fix sheet** (`e`) and **Import filled sheet**.
 - **The rows**: the record key (for example Material number and Plant), name, rule, severity, field description, SAP field (`MARA.MEINS`), problem, current value, possible values, suggested value, New value, decision, first seen, days open, owner and value at risk.
 - **The fix-order hint**: where an upstream object still fails, a line says so first, for example "Fix Material master first: 3,640 upstream failures. Records there fail before this object can pass."
+
+**As of run** reads the ledger as it stood when an earlier run finished: each object at its newest run up to then. A band says "As it stood at run 2 Oct 2026, 05:09; statuses are today's." with **Back to today**. Grouping by rule and the fix sheet read today's rows only, so they are off while a policy or a past run narrows the ledger.
 
 The ledger loads 100 rows at a time ("Showing 100 of 25,712. Sorted by value at risk within the rows loaded.") with **Show 100 more**.
 
@@ -23,7 +26,7 @@ The ledger loads 100 rows at a time ("Showing 100 of 25,712. Sorted by value at 
 
 ## Editing a row
 
-Type in **New value** and press `Enter`; until you do the cell reads "Not saved yet: press Enter". Or choose a **Decision**: **fix** (accept the suggested or entered value), **not an issue** or **accept risk**. A record in the inspector shows every failing field with the same cells, plus its facts, feature impact, provenance and history. On a phone, editing happens in the inspector.
+Type in **New value** and press `Enter`; until you do the cell reads "Not saved yet: press Enter". Or choose a **Decision**: **fix** (accept the suggested or entered value), **not an issue** or **accept risk**. A record in the inspector shows every failing field with the same cells, plus its facts, feature impact, provenance and history. Its **History** tab lists every run that measured the record with the values of its failing fields in that run, then every decision on it in order, with who and when, each linked to its run. On a phone, editing happens in the inspector.
 
 Every change shows a notice at the bottom of the screen, such as "Accepted 1 suggested value", with **Undo**. `⌘Z` takes the last change back while focus is not in a field: "Undone: accepted 1 suggested value". The chip counts move at once.
 
@@ -58,6 +61,8 @@ Accepted and entered values go into your draft fix batch. They wait there for a 
 - `⌘D` fills down; `⌘Z` undoes; `[` and `]` step through rows in the inspector.
 
 ## When something is wrong
+
+- **"Sandbox mode is on: decisions apply to the sandbox run only."**: the tenant is in sandbox mode and the row belongs to the real run. Exit the sandbox under Administration, Settings, or decide on the sandbox copy.
 
 - **"The work list of the latest run is not built yet, so no rows can be listed. It is built after each run finishes."** Wait for the analysis to finish, or ask whoever started it.
 - **"No rows in this view."** The filters exclude everything. **Reset to the default view** from Views.

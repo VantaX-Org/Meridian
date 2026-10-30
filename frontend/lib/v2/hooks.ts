@@ -11,7 +11,9 @@ import { usePersonaOverride } from "./prefs";
 import { actionsOf, useShareMode, useViewAs } from "./view-as";
 import { t } from "@/lib/v2/i18n";
 
-export type OpenKind = "record" | "rule" | "run" | "system" | "feature" | "job" | "batch" | "person" | "inbox" | "triage" | "golden" | "term" | "step" | "connection" | "config" | "syncschedule" | "zobject" | "survivorship" | AdminKind | Step9Kind;
+export type OpenKind = "record" | "rule" | "run" | "system" | "feature" | "job" | "batch" | "person" | "inbox" | "triage" | "golden" | "term" | "step" | "connection" | "config" | "syncschedule" | "zobject" | "survivorship" | AdminKind | Step9Kind | Step10Kind;
+/** Step 10: a policy pack (`policypack:<id>`) and a digest schedule (`digest:<id>` or `digest:new`). */
+export type Step10Kind = "policypack" | "digest";
 /** Step 9: a webhook (`webhook:<id>` or `webhook:new`), one delivery (`delivery:<webhook id>:<delivery id>`) and a wave's readiness certificate (`certificate:<wave id>`). */
 export type Step9Kind = "webhook" | "delivery" | "certificate";
 /** The administration, report and panel kinds: `?open=user:<id>` and so on. `preferences`, `help` and `waves` carry no id. */
@@ -25,7 +27,7 @@ export interface OpenItem {
   id: string;
 }
 
-const KINDS: readonly OpenKind[] = ["record", "rule", "run", "system", "feature", "job", "batch", "person", "golden", "term", "step", "user", "role", "apikey", "audit", "channel", "mapping", "report", "schedule", "connection", "config", "syncschedule", "zobject", "survivorship", "contract", "webhook", "delivery", "certificate"];
+const KINDS: readonly OpenKind[] = ["record", "rule", "run", "system", "feature", "job", "batch", "person", "golden", "term", "step", "user", "role", "apikey", "audit", "channel", "mapping", "report", "schedule", "connection", "config", "syncschedule", "zobject", "survivorship", "contract", "webhook", "delivery", "certificate", "policypack", "digest"];
 
 /** Parses `?open=<kind>:<id>`. The id may itself contain colons (a record id is module:key). Null for anything else. */
 export function parseOpen(value: string | null | undefined): OpenItem | null {

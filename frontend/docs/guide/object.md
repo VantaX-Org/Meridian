@@ -17,6 +17,10 @@ Under it the receipt says it in words, exactly as the product states it: "Measur
 
 The receipt table then adds the score up: one row per dimension with its weight, score, points, rules measured, records checked and coverage; then **Weighted**, **Measured**, **Cap, 2 critical rules over tolerance** and **Score shown**. The formula line under it is the full rule: the six weights, "severity weights critical 4, high 3, medium 2, low 1; tolerance 10% of rows or 25 rows, as set on each rule; cap rule: 85 at one critical rule over tolerance, 70 at two or more." Every row has an **i** that explains the figure from the run itself.
 
+**Policy classes breached** follows when an applied policy pack's class has a failing critical rule of this object: the class, its authority and the rules. A filled shield beside the score says the same on the ruler and the landscape cell; the diamond beside it is a data contract.
+
+**As of** in the run menu shows the object as it stood when an earlier run finished: a band says so, the ruler and the rules are that run's, and **Back to today** returns.
+
 **Critical rules over tolerance** lists the rules behind the cap with their failing records and share, for example "MM014 Base unit of measure not valid, 3,640 failing, 5.89%".
 
 ## The tabs

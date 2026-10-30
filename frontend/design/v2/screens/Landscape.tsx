@@ -22,6 +22,7 @@ import { dimsOf } from "../shell/MapPane";
 import { GateMark } from "../inspector/governance";
 import { ToolGrid } from "../GridTools";
 import { contractMark } from "@/lib/v2/step9";
+import { policyMark } from "@/lib/v2/step10";
 import { WavesByValue } from "./step9/Money";
 import { t } from "@/lib/v2/i18n";
 
@@ -186,6 +187,7 @@ function CellLink({ system, cell, label, selected, run }: { system: LandscapeSys
   const reading = readingText({ label, measured: cell.raw_score, score: cell.score, capped: cell.capped, capLevel: cell.cap_level, breaches: cell.breaches, dims: dimsOf(cell), records: cell.records_checked, rules: cell.rules_measured, coverage: cell.coverage, lowConfidence: cell.low_confidence });
   const href = `/o/${systemSlug(system.name)}/${moduleSlug(cell.module)}${run ? `?run=${run}` : ""}`;
   const mark = contractMark(cell);
+  const pmark = policyMark(cell);
   return (
     <V2Link
       href={href}
@@ -193,7 +195,7 @@ function CellLink({ system, cell, label, selected, run }: { system: LandscapeSys
       data-selected={selected ? "true" : undefined}
       data-testid="matrix-cell"
       title={reading}
-      aria-label={`${label}, ${system.name}, ${f1(cell.score)}${cell.capped ? " capped" : ""}, ${VERDICT_LABEL[cell.verdict]}${cell.low_confidence ? t(", low coverage") : ""}${mark ? `, ${mark.title}` : ""}`}
+      aria-label={`${label}, ${system.name}, ${f1(cell.score)}${cell.capped ? " capped" : ""}, ${VERDICT_LABEL[cell.verdict]}${cell.low_confidence ? t(", low coverage") : ""}${mark ? `, ${mark.title}` : ""}${pmark ? `, ${pmark.title}` : ""}`}
       onClick={() => rememberCell(`${system.id}:${cell.module}`)}
     >
       <Ruler
@@ -211,6 +213,7 @@ function CellLink({ system, cell, label, selected, run }: { system: LandscapeSys
         lowConfidence={cell.low_confidence}
         selected={selected}
         contract={mark}
+        policy={pmark}
       />
       <span className="m2-cell-vd m2-v">
         <VerdictMark verdict={cell.verdict} />
@@ -379,7 +382,7 @@ export function Coverage({ landscape, run, view = "systems", waves = [] }: { lan
                   {VERDICT_LABEL[c.verdict]}
                 </span>
                 <span className="m2-c">
-                  <Ruler size={48} dims={dimsOf(c)} measured={c.raw_score} score={c.score} capped={c.capped} capLevel={c.cap_level} breaches={c.breaches} label={label} records={c.records_checked} rules={c.rules_measured} coverage={c.coverage} lowConfidence={c.low_confidence} contract={contractMark(c)} />
+                  <Ruler size={48} dims={dimsOf(c)} measured={c.raw_score} score={c.score} capped={c.capped} capLevel={c.cap_level} breaches={c.breaches} label={label} records={c.records_checked} rules={c.rules_measured} coverage={c.coverage} lowConfidence={c.low_confidence} contract={contractMark(c)} policy={policyMark(c)} />
                 </span>
                 <span className="m2-c">
                   {t("{records_checked} records checked, {rules_measured} rules measured", { records_checked: int(c.records_checked), rules_measured: int(c.rules_measured) })}

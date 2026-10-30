@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { formatDate } from "@/lib/format";
 import type { TimelineRun } from "@/lib/api/v2/runs";
 import { useV2Href } from "@/lib/v2/hooks";
@@ -176,6 +176,10 @@ function inOrder(runs: readonly TimelineRun[], x: string, y: string): [string, s
  */
 export function RunTimelineMenu({ compact }: { compact?: boolean }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const search = useSearchParams();
+  const onObject = pathname.startsWith("/o/");
+  const [asOfPick, setAsOfPick] = useState<string>("");
   const v2Href = useV2Href();
   const system = useScopeSystem();
   const canvasRun = useCanvasRun();
@@ -241,6 +245,15 @@ export function RunTimelineMenu({ compact }: { compact?: boolean }) {
     router.push(v2Href(`/run/${a}/vs/${b}`));
   };
 
+  const asOfRun = runs.some((r) => r.id === asOfPick) ? asOfPick : (selected?.id ?? "");
+  const goAsOf = () => {
+    if (!asOfRun) return;
+    const next = new URLSearchParams(search.toString());
+    next.set("as_of", asOfRun);
+    setOpen(false);
+    router.push(v2Href(`${pathname}?${next.toString()}`));
+  };
+
   const first = runs[0]?.run_at;
   const last = latest?.run_at;
   const heading = runs.length ? tr("Runs, {first} to {last}", { first: formatDate(first, "date"), last: formatDate(last, "date") }) : tr("Runs");
@@ -285,6 +298,21 @@ export function RunTimelineMenu({ compact }: { compact?: boolean }) {
                   {tr("Compare with…")}
                 </button>
               </div>
+              {onObject ? (
+                <div className="m2-pop-cmp" data-testid="as-of-picker">
+                  <label htmlFor={`${titleId}-asof`}>{tr("As of")}</label>
+                  <select id={`${titleId}-asof`} className="m2-sel" value={asOfRun} onChange={(e) => setAsOfPick(e.target.value)}>
+                    {[...runs].reverse().map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {formatDate(r.run_at, "datetime")}
+                      </option>
+                    ))}
+                  </select>
+                  <button type="button" className="m2-btn m2-sm" onClick={goAsOf} disabled={!asOfRun}>
+                    {tr("Show the object as it stood")}
+                  </button>
+                </div>
+              ) : null}
             </>
           )}
         </div>

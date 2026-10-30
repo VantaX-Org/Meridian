@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { formatDate } from "@/lib/format";
 import type { Landscape, LandscapeCell, LandscapeSystem, Receipt } from "@/lib/api/v2/types";
 import { useOpenItem, useRunParam } from "@/lib/v2/hooks";
@@ -14,6 +14,8 @@ import { Ruler } from "../Ruler";
 import { dimsOf } from "../shell/MapPane";
 import { RelatedObjects } from "./object/Related";
 import { contractMark } from "@/lib/v2/step9";
+import { policyMark } from "@/lib/v2/step10";
+import { AsOfView, PolicyBreaches } from "./step10/ObjectParts";
 import { ObjectContractsBlock } from "./step9/Contracts";
 import { t as tr, tn } from "@/lib/v2/i18n";
 import { moneyCompactText } from "@/lib/v2/labels";
@@ -174,6 +176,7 @@ export function ReceiptTable({ receipt }: { receipt: Receipt }) {
           </ul>
         </>
       ) : null}
+      <PolicyBreaches receipt={receipt} />
     </>
   );
 }
@@ -201,6 +204,7 @@ function statusItems(receipt: Receipt, cell: LandscapeCell | undefined): ReactNo
 /** The object canvas: header, the 240 ruler with its receipt, the capping rules, and the tabs of views. */
 export function ObjectFrame({ system: systemSegment, module: moduleSegment, children }: { system: string; module: string; children: ReactNode }) {
   const run = useRunParam();
+  const asOf = useSearchParams().get("as_of");
   const pathname = usePathname();
   const router = useRouter();
   const L = useLandscape(run);
@@ -292,6 +296,12 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
           {tabs}
           <div className="m2-tabpanel">{children}</div>
         </>
+      ) : asOf ? (
+        <>
+          <AsOfView module={apiModule} label={label} asOf={asOf} />
+          {tabs}
+          <div className="m2-tabpanel">{children}</div>
+        </>
       ) : (
         <>
           {receiptQ.isError ? (
@@ -324,6 +334,7 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
               lowConfidence={cell.low_confidence}
               selected
               contract={contractMark(cell)}
+              policy={policyMark(cell)}
             />
             <div className="m2-sline" data-testid="cap-sentence">
               <span className="m2-v">

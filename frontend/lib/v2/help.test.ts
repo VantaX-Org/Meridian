@@ -207,8 +207,8 @@ describe("searching help", () => {
 });
 
 describe("what's new", () => {
-  it("has one dated line for each step from 0 to the cut-over (7), newest first", () => {
-    expect(whatsNew.map((w) => w.step)).toEqual(["7", "6c", "6b", "6", "5", "4", "3", "2", "1", "0"]);
+  it("has one dated line for each step from 0 to the cut-over (7) and step 10, newest first", () => {
+    expect(whatsNew.map((w) => w.step)).toEqual(["10", "7", "6c", "6b", "6", "5", "4", "3", "2", "1", "0"]);
     for (const w of whatsNew) {
       expect(w.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(w.text).not.toContain("\n");

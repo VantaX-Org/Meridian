@@ -1,0 +1,66 @@
+/*
+ * Step 10: policy packs, digests, sandbox mode, record history and time travel, run prediction and the natural
+ * language mode of the command line. Every colour, space and size is a --m2-* token from tokens.css.
+ */
+
+/* Policy: the breached classes on the receipt, each with its authority under the label. */
+.m2-s10-policy h2 { display: flex; align-items: center; gap: var(--m2-s2); }
+.m2-s10-auth { display: block; font-size: var(--m2-fs-12); color: var(--m2-meta); margin-top: 2px; }
+.m2-s10-packs { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--m2-s3); }
+.m2-s10-pack { border: 1px solid var(--m2-line); border-radius: var(--m2-r2); padding: var(--m2-s3) var(--m2-s4); background: var(--m2-sheet); min-width: 0; }
+.m2-s10-pack h3 { margin: 0; font-size: var(--m2-fs-16); display: flex; align-items: center; gap: var(--m2-s2); flex-wrap: wrap; }
+.m2-s10-pack p { margin: var(--m2-s1) 0 0; font-size: var(--m2-fs-13); color: var(--m2-ink-2); overflow-wrap: anywhere; }
+.m2-s10-cov { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--m2-s2); margin: var(--m2-s3) 0 0; font-size: var(--m2-fs-13); }
+.m2-s10-cov div { min-width: 0; }
+.m2-s10-cov dt { color: var(--m2-meta); font-size: var(--m2-fs-12); }
+.m2-s10-cov dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 600; }
+.m2-s10-acts { display: flex; gap: var(--m2-s2); flex-wrap: wrap; margin-top: var(--m2-s3); }
+.m2-s10-classes { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--m2-line); }
+.m2-s10-classes > li { padding: var(--m2-s2) 0; border-bottom: 1px solid var(--m2-rule); font-size: var(--m2-fs-13); }
+.m2-s10-classes .m2-s10-ch { display: flex; align-items: center; gap: var(--m2-s2); justify-content: space-between; flex-wrap: wrap; }
+.m2-s10-fields { display: flex; flex-wrap: wrap; gap: 2px var(--m2-s2); margin-top: var(--m2-s1); font-size: var(--m2-fs-12); color: var(--m2-ink-2); }
+@media (max-width: 760px) {
+  .m2-s10-cov { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Time travel: the band that says the canvas shows the past. Dashed, so it never reads as a status. */
+.m2-asof { display: flex; align-items: center; justify-content: space-between; gap: var(--m2-s3); flex-wrap: wrap; border: 1px dashed var(--m2-line-2); border-radius: var(--m2-r2); padding: var(--m2-s2) var(--m2-s3); margin: var(--m2-s2) 0 var(--m2-s3); font-size: var(--m2-fs-13); color: var(--m2-ink-2); background: var(--m2-sheet); }
+.m2-asof strong { color: var(--m2-fg); font-weight: 600; }
+.m2-asof-pick { display: inline-flex; align-items: center; gap: var(--m2-s2); }
+
+/* Sandbox: one line across the shell while the tenant is in sandbox mode. */
+.m2-root .m2-banner.m2-sandbox { border-bottom-style: dashed; }
+
+/* Prediction: what a run will take, before it is started. */
+.m2-predict { border: 1px solid var(--m2-line); border-radius: var(--m2-r2); padding: var(--m2-s2) var(--m2-s3); margin: var(--m2-s3) 0 0; font-size: var(--m2-fs-13); background: var(--m2-sheet); min-width: 0; }
+.m2-predict h4 { margin: 0 0 var(--m2-s1); font-size: var(--m2-fs-13); font-weight: 600; }
+.m2-predict dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px var(--m2-s3); margin: 0; }
+.m2-predict dt { color: var(--m2-meta); }
+.m2-predict dd { margin: 0; font-variant-numeric: tabular-nums; min-width: 0; overflow-wrap: anywhere; }
+.m2-predict p { margin: var(--m2-s1) 0 0; color: var(--m2-meta); font-size: var(--m2-fs-12); }
+
+/* Natural language: the filter that will run, as chips, the explanation and the words not understood. */
+.m2-nl { padding: var(--m2-s3) var(--m2-s4); border-top: 1px solid var(--m2-line); font-size: var(--m2-fs-13); display: grid; gap: var(--m2-s2); max-height: 50vh; overflow: auto; }
+.m2-nl h3 { margin: 0; font-size: var(--m2-fs-12); color: var(--m2-meta); font-weight: 600; }
+.m2-nl-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--m2-s2); }
+.m2-nl-chips li { display: inline-flex; align-items: baseline; gap: var(--m2-s1); border: 1px solid var(--m2-line-2); border-radius: var(--m2-r1); padding: 2px var(--m2-s2); background: var(--m2-sheet); max-width: 100%; overflow-wrap: anywhere; }
+.m2-nl-chips b { font-weight: 600; }
+.m2-nl-why { margin: 0; color: var(--m2-ink-2); }
+.m2-nl-acts { display: flex; gap: var(--m2-s2); flex-wrap: wrap; align-items: center; }
+.m2-pal-hint { padding: 0 var(--m2-s4) var(--m2-s2); font-size: var(--m2-fs-12); color: var(--m2-meta); margin: 0; }
+
+/* Record history: a run per row, a column per failing field; the decisions under it. */
+.m2-hist-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--m2-line); margin: 0 0 var(--m2-s3); }
+.m2-hist-tabs [role="tab"] { appearance: none; border: 0; border-bottom: 2px solid transparent; background: none; padding: var(--m2-s2) var(--m2-s3); font: inherit; font-size: var(--m2-fs-13); color: var(--m2-ink-2); cursor: pointer; min-height: 32px; }
+.m2-hist-tabs [role="tab"][aria-selected="true"] { color: var(--m2-fg); border-bottom-color: var(--m2-data); font-weight: 600; }
+.m2-hist-tbl td, .m2-hist-tbl th { white-space: nowrap; }
+.m2-hist-ev { list-style: none; margin: 0; padding: 0; }
+.m2-hist-ev li { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; padding: var(--m2-s2) 0; border-bottom: 1px solid var(--m2-rule); font-size: var(--m2-fs-13); }
+.m2-hist-ev .m2-meta { font-size: var(--m2-fs-12); }
+
+/* Digests: the preview frame, sandboxed, at the dialog's width. */
+.m2-dg-frame { width: 100%; height: min(60vh, 520px); border: 1px solid var(--m2-line); border-radius: var(--m2-r2); background: var(--m2-sheet); }
+.m2-dlg.m2-dg-dlg { width: min(760px, calc(100vw - 32px)); top: 6vh; max-height: 88vh; overflow: auto; }
+.m2-dg-num { display: grid; gap: var(--m2-s2); font-size: var(--m2-fs-13); }
+.m2-dg-num table { width: 100%; }
+.m2-dg-recips { display: flex; flex-wrap: wrap; gap: var(--m2-s1) var(--m2-s3); }

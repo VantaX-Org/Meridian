@@ -136,9 +136,9 @@ describe("the help panel", () => {
     const dialog = await openPanel("/?fixture=1&open=help");
     expect(within(dialog).getByRole("heading", { name: "What's new" })).toBeInTheDocument();
     const items = within(within(dialog).getByTestId("whats-new")).getAllByRole("listitem");
-    expect(items).toHaveLength(10);
-    expect(items[0]).toHaveTextContent(/step 7\./);
-    expect(items[9]).toHaveTextContent(/step 0\./);
+    expect(items).toHaveLength(11);
+    expect(items[0]).toHaveTextContent(/step 10\./);
+    expect(items[10]).toHaveTextContent(/step 0\./);
     expect(items[0]).toHaveTextContent("2026");
   });
 

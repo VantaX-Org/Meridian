@@ -23,6 +23,7 @@ import { PromptDialog } from "./work-parts";
 import { CollabSections } from "../inspector/collab";
 import { FixOrderHint } from "./object/Related";
 import { t as tr } from "@/lib/v2/i18n";
+import { RecordHistoryPanel } from "./step10/RecordHistory";
 
 export function parseRecordId(id: string): { module: string; key: string } {
   const at = id.indexOf(":");
@@ -216,6 +217,7 @@ export function RecordInspector({ id, onClose }: { id: string; onClose: () => vo
   const { hrefFor } = useOpenItem();
   const [reason, setReason] = useState<{ kind: "not_an_issue" | "accept_risk"; issues: WorkIssue[] } | { kind: "send_back" } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState<"record" | "history">("record");
   const firstInput = useRef<HTMLDivElement>(null);
 
   const parts = splitKey(key);
@@ -448,7 +450,17 @@ export function RecordInspector({ id, onClose }: { id: string; onClose: () => vo
   return (
     <>
       <InspectorFrame title={<Mono>{title}</Mono>} status={status} onClose={onClose}>
-        {body}
+        <div className="m2-hist-tabs" role="tablist" aria-label={tr("Views of this record")}>
+          <button type="button" role="tab" id="rec-tab-record" aria-controls="rec-panel" aria-selected={tab === "record"} tabIndex={tab === "record" ? 0 : -1} onClick={() => setTab("record")} onKeyDown={(e) => e.key === "ArrowRight" && (setTab("history"), document.getElementById("rec-tab-history")?.focus())}>
+            {tr("Record")}
+          </button>
+          <button type="button" role="tab" id="rec-tab-history" aria-controls="rec-panel" aria-selected={tab === "history"} tabIndex={tab === "history" ? 0 : -1} onClick={() => setTab("history")} onKeyDown={(e) => e.key === "ArrowLeft" && (setTab("record"), document.getElementById("rec-tab-record")?.focus())}>
+            {tr("History")}
+          </button>
+        </div>
+        <div id="rec-panel" role="tabpanel" aria-labelledby={tab === "record" ? "rec-tab-record" : "rec-tab-history"}>
+          {tab === "history" ? <RecordHistoryPanel module={module} recordKey={key} /> : body}
+        </div>
       </InspectorFrame>
       {reason && reason.kind !== "send_back" ? (
         <PromptDialog

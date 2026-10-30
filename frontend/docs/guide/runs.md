@@ -14,11 +14,14 @@ A run is one measurement of your data at a point in time: an extraction from a s
 
 A running job shows as a thin progress line under the top bar, never a tray. Open it, or any job row, for the job inspector: its stages and tables with row counts, the percent, the error in plain words for a failed job (for example "OData refused credentials (HTTP 401). Check the client id and secret in the system settings.") and, where the job recorded how it started, **Retry**.
 
+Every start form (Administration, Runs and jobs; the system inspector's **Extract** and **Run analysis**; **Start a run** here) shows the prediction before you confirm: the duration band and how sure it is, the records it will check, the cost from the cost model's run cost (a dash when none is set) and where it would queue, for example "Position 2 in the queue; 1 running, 1 queued". A queued job says its place on the job line and in its inspector.
+
 ## The numbers and where they come from
 
 - **Records** and **Rules** are the records checked and the rules measured in that run, across every object.
 - **Score** is the lowest and highest shown score of the run's objects.
 - **Took** is from the job registry: extraction and analysis timings are recorded by the workers.
+- **The prediction** reads the tenant's last eight finished runs of each object: the median records, the median seconds per record, and a band from the 25th to the 75th percentile; with fewer than four runs the band is the lowest to the highest. Nothing is estimated by a language model.
 - The baseline is the run you pinned; every comparison and "since the baseline" figure measures against it.
 
 ## What you can do, by role

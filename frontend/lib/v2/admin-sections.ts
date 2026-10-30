@@ -1,6 +1,8 @@
 import { t } from "@/lib/v2/i18n";
 /** The sections of the Admin canvas, in the order the left index lists them, with the permission each one needs. */
-export type AdminSlug = "users" | "roles" | "sso" | "signin" | "apikeys" | "licence" | "billing" | "settings" | "mappings" | "reference" | "audit" | "alerts" | "notifications" | "webhooks" | "runs" | "system" | CapabilitySlug;
+export type AdminSlug = "users" | "roles" | "sso" | "signin" | "apikeys" | "licence" | "billing" | "settings" | "mappings" | "reference" | "audit" | "alerts" | "notifications" | "webhooks" | "runs" | "system" | Step10Slug | CapabilitySlug;
+/** Step 10: policy packs and scheduled digests. */
+export type Step10Slug = "policypacks" | "digests";
 /** Step 6c, the role capability audit (design/v2/admin/capabilities.tsx). */
 export type CapabilitySlug = "stewardship" | "configbundle" | "viewas" | "rulesio" | "sharelinks" | "delegations";
 
@@ -31,10 +33,12 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
   { slug: "mappings", get label() { return t("Field mappings"); }, get group() { return t("Data"); }, get lead() { return t("Which column in your files holds each standard SAP field."); }, needs: ["manage_field_mappings", "manage_settings", "view"] },
   { slug: "reference", get label() { return t("Reference data"); }, get group() { return t("Data"); }, get lead() { return t("Postal code and bank code lists that address and bank rules compare against."); }, needs: ["manage_systems", "manage_settings", "view"] },
   { slug: "rulesio", get label() { return t("Rules import and export"); }, get group() { return t("Data"); }, get lead() { return t("Every rule as YAML or Excel, and many rules back in as drafts."); }, needs: ["manage_rules", "export"] },
+  { slug: "policypacks", get label() { return t("Policy packs"); }, get group() { return t("Data"); }, get lead() { return t("GxP, SOX and GDPR field classes, the authority each answers to, and the rules that evidence them."); }, needs: ["manage_rules", "view"] },
   { slug: "audit", get label() { return t("Audit log"); }, get group() { return t("Data"); }, get lead() { return t("Every change made through the product, by whom and when."); }, needs: ["view_audit", "manage_users"] },
   { slug: "alerts", get label() { return t("Alerts"); }, get group() { return t("Notifications"); }, get lead() { return t("When an alert fires and which channels carry it."); }, needs: ["manage_settings", "view"] },
   { slug: "notifications", get label() { return t("Notifications"); }, get group() { return t("Notifications"); }, get lead() { return t("The tenant's default digest."); }, needs: ["manage_settings", "view"] },
   { slug: "webhooks", get label() { return t("Webhooks"); }, get group() { return t("Notifications"); }, get lead() { return t("Signed events to Slack, Teams or any https endpoint, the delivery log, and what runs by itself."); }, needs: ["manage_settings"] },
+  { slug: "digests", get label() { return t("Digests"); }, get group() { return t("Notifications"); }, get lead() { return t("Scheduled summaries by role or by wave: the landscape, score moves, gates, approvals and value at risk."); }, needs: ["manage_settings"] },
   { slug: "runs", get label() { return t("Runs and jobs"); }, get group() { return t("Operations"); }, get lead() { return t("Start an extraction, an analysis or a configuration load, schedule them, and retry what failed."); }, needs: ["trigger_sync", "analyse", "manage_systems", "upload"] },
   { slug: "system", get label() { return t("Jobs and system update"); }, get group() { return t("Operations"); }, get lead() { return t("Background jobs, the platform version and health checks."); }, needs: ["manage_system", "view"] },
 ];

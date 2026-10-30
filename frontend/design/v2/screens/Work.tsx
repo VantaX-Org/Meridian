@@ -52,6 +52,11 @@ import { GridTools, useGridKey } from "../GridTools";
 import { FixOrderHint } from "./object/Related";
 import { t as tr, lc } from "@/lib/v2/i18n";
 import { whole, v2Locale } from "@/lib/v2/format";
+import { formatDate } from "@/lib/format";
+import { useRunList } from "@/lib/v2/queries";
+import { policyLabel } from "@/lib/v2/step10";
+import { usePolicyPacks } from "@/lib/v2/step10-queries";
+import "../step10.css";
 
 // The rows of the grid: records, and in "By rule" the rule headings and a "show more" line under each.
 type Item =
@@ -76,7 +81,7 @@ function belongs(row: WorkRow, chip: ChipId | null, batch: string | null = null)
 
 const objectName = (module: string, labels: Map<string, string>) => labels.get(module) ?? module.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
 
-function Chips({ state, counts, set, groupRef }: { state: LedgerState; counts: Map<ChipId, number | null>; set: (chip: ChipId | null) => void; groupRef: React.RefObject<HTMLDivElement | null> }) {
+function Chips({ state, counts, set, groupRef, policy }: { state: LedgerState; counts: Map<ChipId, number | null>; set: (chip: ChipId | null) => void; groupRef: React.RefObject<HTMLDivElement | null>; policy: React.ReactNode }) {
   return (
     <div className="m2-chips" role="group" aria-label={tr("Filter by state")} ref={groupRef}>
       {CHIPS.map((c) => {
@@ -87,7 +92,29 @@ function Chips({ state, counts, set, groupRef }: { state: LedgerState; counts: M
           </button>
         );
       })}
+      {policy}
     </div>
+  );
+}
+
+/** Step 10: the Policy chip. Its menu lists the applied packs and their classes; choosing one narrows the ledger (`policy=`). */
+function PolicyChip({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }) {
+  const q = usePolicyPacks();
+  const applied = (q.data?.packs ?? []).filter((p) => p.applied || value?.split(":")[0] === p.id);
+  const entries: MenuEntry[] = [
+    { kind: "item", id: "none", label: tr("Any policy"), variant: "radio", checked: !value, onSelect: () => onChange(null) },
+    ...applied.flatMap<MenuEntry>((p) => [
+      { kind: "heading", label: p.name },
+      { kind: "item", id: p.id, label: tr("Every class of {pack}", { pack: p.name }), variant: "radio", checked: value === p.id, onSelect: () => onChange(p.id) },
+      ...p.classes.map<MenuEntry>((c) => ({ kind: "item", id: `${p.id}:${c.id}`, label: c.label, sub: c.breached ? tr("breached") : undefined, variant: "radio", checked: value === `${p.id}:${c.id}`, onSelect: () => onChange(`${p.id}:${c.id}`) })),
+    ]),
+    ...(q.isSuccess && applied.length === 0 ? [{ kind: "heading", label: tr("No policy pack is applied. Apply one under Administration, Policy packs.") } as MenuEntry] : []),
+  ];
+  return (
+    <MenuButton label={tr("Policy")} entries={entries} className="m2-chip">
+      <span data-testid="policy-chip" aria-hidden="true" />
+      {value ? tr("Policy: {label}", { label: policyLabel(value, q.data?.packs) }) : tr("Policy")}
+    </MenuButton>
   );
 }
 
@@ -124,7 +151,12 @@ export function WorkCanvas() {
   const controls = useBatchControls(setSent);
   const wc = useWorkCan();
   const can = useMemo(() => ({ apply: wc.apply, approve: wc.approve, assign: wc.assign }), [wc.apply, wc.approve, wc.assign]);
-  const grouped = state.group && GROUPABLE.has(state.chip);
+  // A policy class or a past run is read by GET /work/records alone: the rule groups and the fix sheet do not take them.
+  const narrowed = Boolean(state.policy || state.asOf);
+  const grouped = state.group && GROUPABLE.has(state.chip) && !narrowed;
+  const packs = usePolicyPacks().data?.packs;
+  const runList = useRunList();
+  const asOfRun = state.asOf ? runList.data?.versions.find((v) => v.id === state.asOf) : undefined;
   const groupsQ = useWorkGroups({ module: state.module ?? undefined, severity: state.severity ?? undefined }, true);
   const rowsQ = useWorkRows(filters, state.sort, !grouped && !viewPending);
 
@@ -254,7 +286,7 @@ export function WorkCanvas() {
       },
       owner: (row) => initials(row.assignee_email),
     }),
-    [can, drafts, actions, toast],
+    [can, drafts, actions, toast, setReason],
   );
 
   const onChoose = useCallback(
@@ -453,7 +485,9 @@ export function WorkCanvas() {
   if (state.severity) tags.push({ key: "severity", label: tr("Severity {severity}", { severity: state.severity }), clear: () => go({ severity: null }) });
   if (state.assigned) tags.push({ key: "assigned", label: state.assigned === "me" ? tr("Assigned to me") : state.assigned === "unassigned" ? tr("Unassigned") : tr("Assigned"), clear: () => go({ assigned: null }) });
   if (state.batch) tags.push({ key: "batch", label: tr("Batch {batchLabel}", { batchLabel: batchLabel(state.batch) }), clear: () => go({ batch: null }) });
-  if (state.due) tags.push({ key: "due", label: state.due === "overdue" ? tr("Overdue") : tr("Due soon"), clear: () => go({ due: null }) });
+  if (state.due) tags.push({ key: "due", label: state.due === "overdue" ? tr("Overdue") : state.due === "week" ? tr("Due this week") : tr("Due soon"), clear: () => go({ due: null }) });
+  if (state.policy) tags.push({ key: "policy", label: tr("Policy: {label}", { label: policyLabel(state.policy, packs) }), clear: () => go({ policy: null }) });
+  if (state.system) tags.push({ key: "system", label: tr("System {name}", { name: landscape?.systems.find((x) => x.id === state.system)?.name ?? (state.system === "upload" ? tr("file uploads") : state.system) }), clear: () => go({ system: null }) });
 
   const shown = grouped ? recordRows.length : flatRows.length;
   const total = grouped ? null : (rowsQ.data?.pages[0]?.total ?? null);
@@ -577,7 +611,7 @@ export function WorkCanvas() {
         <button type="button" aria-pressed={!grouped} onClick={() => go({ group: false })}>
           {tr("Flat")}
         </button>
-        <button type="button" aria-pressed={grouped} disabled={!GROUPABLE.has(state.chip)} title={GROUPABLE.has(state.chip) ? undefined : tr("Grouping applies to rows to fix")} onClick={() => go({ group: true })}>
+        <button type="button" aria-pressed={grouped} disabled={!GROUPABLE.has(state.chip) || narrowed} title={narrowed ? tr("Grouping by rule does not apply to a policy class or a past run") : GROUPABLE.has(state.chip) ? undefined : tr("Grouping applies to rows to fix")} onClick={() => go({ group: true })}>
           {tr("By rule")}
         </button>
       </div>
@@ -614,8 +648,19 @@ export function WorkCanvas() {
           ))}
         </select>
       </label>
+      <label className="m2-selbox">
+        <span className="m2-meta">{tr("As of run")}</span>
+        <select className="m2-sel" aria-label={tr("As of run")} value={state.asOf ?? ""} onChange={(e) => go({ asOf: e.target.value || null, group: false })} data-testid="as-of-run">
+          <option value="">{tr("Today")}</option>
+          {(runList.data?.versions ?? []).map((v) => (
+            <option key={v.id} value={v.id}>
+              {formatDate(v.run_at, "datetime")}
+            </option>
+          ))}
+        </select>
+      </label>
       <span className="m2-tool-sp" />
-      <button type="button" className="m2-btn m2-sm" onClick={() => void doExport()}>
+      <button type="button" className="m2-btn m2-sm" disabled={narrowed} title={narrowed ? tr("The fix sheet reads today's rows without a policy or a past run; clear them to export") : undefined} onClick={() => void doExport()}>
         {tr("Export fix sheet")}{" "}<kbd className="m2-kb">e</kbd>
       </button>
       {can.apply ? (
@@ -642,6 +687,17 @@ export function WorkCanvas() {
         </p>
       ) : null}
       <FixOrderHint module={state.module} />
+      {state.asOf ? (
+        <div className="m2-asof" role="status" data-testid="ledger-as-of">
+          <span>
+            <strong>{tr("As it stood at run {when}; statuses are today's.", { when: asOfRun ? formatDate(asOfRun.run_at, "datetime") : state.asOf.slice(0, 8) })}</strong>{" "}
+            {tr("Each object is read at its newest run up to then. Counts on the chips are today's.")}
+          </span>
+          <button type="button" className="m2-btn m2-sm" onClick={() => go({ asOf: null })}>
+            {tr("Back to today")}
+          </button>
+        </div>
+      ) : null}
       <p className="m2-prov m2-only-wide">{tr("Rows are read from the latest run of each object{value}.", { value: status?.cost_model ? tr(". Value at risk is from cost model {cost_model}", { cost_model: status.cost_model }) : "" })}</p>
       {session.persona === "steward" && can.apply && topGroup && state.chip !== "approvals" && state.chip !== "exceptions" ? (
         <div className="m2-cta">
@@ -654,7 +710,7 @@ export function WorkCanvas() {
         </div>
       ) : null}
       <div className="m2-ledger-head">
-        <Chips state={state} counts={counts} set={(chip) => go({ chip, group: chip === "approvals" || chip === "exceptions" ? false : state.group })} groupRef={chipsRef} />
+        <Chips state={state} counts={counts} set={(chip) => go({ chip, group: chip === "approvals" || chip === "exceptions" ? false : state.group })} groupRef={chipsRef} policy={<PolicyChip value={state.policy} onChange={(policy) => go({ policy, group: false })} />} />
         {tags.length ? (
           <ul className="m2-tags" aria-label={tr("Filters in force")}>
             {tags.map((t) => (

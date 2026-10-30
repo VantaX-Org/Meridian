@@ -436,3 +436,10 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-cmark path { fill: none; stroke: var(--m2-crit); stroke-width: 1.4; }
 .m2-cmark[data-enforced="true"] path { fill: var(--m2-crit); }
 .m2-ruler-box-lg .m2-cmark svg { width: 14px; height: 14px; }
+
+/* Step 10: the policy mark, a filled shield: an applied policy pack's class has a failing critical rule. It sits beside
+   the contract diamond, never in its place; its title says it in words. */
+.m2-pmark { display: inline-flex; align-items: center; align-self: center; }
+.m2-pmark svg { display: block; overflow: visible; }
+.m2-pmark path { fill: var(--m2-crit); stroke: var(--m2-crit); stroke-width: 0.8; }
+.m2-ruler-box-lg .m2-pmark svg { width: 14px; height: 15px; }
