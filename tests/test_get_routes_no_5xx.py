@@ -58,6 +58,11 @@ def _seed(engine, tid: str) -> None:
                                   'open', :v, :v)"""), {"t": tid, "v": vid})
 
 
+# This sweep looks for server errors, not speed. Coverage instrumentation (COVERAGE_FILE is set in CI's coverage
+# runs) makes the slowest routes take two to three times longer, so they get more time there.
+_ROUTE_TIMEOUT_S = 90 if os.environ.get("COVERAGE_FILE") else 30
+
+
 async def _sweep(tid: str, monkeypatch) -> list[str]:
     monkeypatch.setattr("api.middleware.local_auth._load_jwt_secret", lambda: "test-secret")
     monkeypatch.setattr("api.middleware.local_auth.decode_access_token",
@@ -69,7 +74,7 @@ async def _sweep(tid: str, monkeypatch) -> list[str]:
     async with AsyncClient(transport=ASGITransport(app=app, raise_app_exceptions=False), base_url="http://test") as client:
         for path in _paths():
             try:
-                r = await asyncio.wait_for(client.get(path, headers=HEADERS), 30)
+                r = await asyncio.wait_for(client.get(path, headers=HEADERS), _ROUTE_TIMEOUT_S)
             except asyncio.TimeoutError:
                 bad.append(f"{path} timeout")
                 continue

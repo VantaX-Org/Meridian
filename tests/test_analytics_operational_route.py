@@ -84,6 +84,13 @@ async def test_mdm_health_and_queue_queries_run_on_asyncpg():
     from sqlalchemy import text
     from sqlalchemy.ext.asyncio import create_async_engine
 
+    import subprocess
+
+    # Bring the schema to head first: this test can run before any other migrates the shared test database.
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    r = subprocess.run(["alembic", "upgrade", "head"], cwd=root, capture_output=True, text=True,
+                       env={**os.environ, "DATABASE_URL_MIGRATE": os.environ["MERIDIAN_TEST_DB_URL"], "PYTHONPATH": root})
+    assert r.returncode == 0, r.stderr
     eng = create_async_engine(os.environ["MERIDIAN_TEST_DB_URL"].replace("postgresql://", "postgresql+asyncpg://", 1))
     try:
         async with eng.connect() as c:
