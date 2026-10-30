@@ -195,7 +195,7 @@ class NLMatchOut(BaseModel):
 
 class NLOut(BaseModel):
     filter: dict[str, str | bool]             # the parameters GET /work/records accepts
-    href: str                                 # /v2/work with the filter in the query string
+    href: str                                 # /work with the filter in the query string
     explanation: str
     unmatched_words: list[str]
     matched: list[NLMatchOut]
