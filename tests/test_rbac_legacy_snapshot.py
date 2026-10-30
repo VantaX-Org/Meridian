@@ -3,12 +3,13 @@
 Intentional changes since: handoff_rule (hand one blocking rule to a steward) is held by every `assign`
 holder, so admin, manager and steward gained it (feat-process-handoff); manage_triage (edit triage teams,
 assignment rules and SLA policies) is held by the persona roles programme_lead and data_steward and, because
-the admin holds every action, by admin. Legacy manager and steward did not gain it."""
+the admin holds every action, by admin. Legacy manager and steward did not gain it. manage_workflows (create, version
+and activate approval workflow definitions) is the administrator's alone."""
 
 from api.services.rbac import PERMISSIONS, PERSONA_ROLES, VALID_ROLES, has_permission, permissions_for
 
 LEGACY_SNAPSHOT: dict[str, list[str]] = {
-    "admin": ['ai_feedback', 'analyse', 'apply', 'approve', 'assign', 'export', 'export_process', 'handoff_rule', 'manage_field_mappings', 'manage_llm', 'manage_rules', 'manage_settings', 'manage_system', 'manage_systems', 'manage_triage', 'manage_users', 'mdm.read', 'mdm.write', 'review_ai_rules', 'run_process_discovery', 'trigger_ai', 'trigger_sync', 'upload', 'view', 'view_ai_confidence', 'view_audit'],
+    "admin": ['ai_feedback', 'analyse', 'apply', 'approve', 'assign', 'export', 'export_process', 'handoff_rule', 'manage_field_mappings', 'manage_llm', 'manage_rules', 'manage_settings', 'manage_system', 'manage_systems', 'manage_triage', 'manage_users', 'manage_workflows', 'mdm.read', 'mdm.write', 'review_ai_rules', 'run_process_discovery', 'trigger_ai', 'trigger_sync', 'upload', 'view', 'view_ai_confidence', 'view_audit'],
     "manager": ['ai_feedback', 'analyse', 'apply', 'approve', 'assign', 'export', 'export_process', 'handoff_rule', 'manage_systems', 'mdm.read', 'mdm.write', 'trigger_ai', 'trigger_sync', 'upload', 'view', 'view_ai_confidence', 'view_audit'],
     "steward": ['ai_feedback', 'analyse', 'apply', 'approve', 'assign', 'export', 'handoff_rule', 'manage_rules', 'mdm.read', 'mdm.write', 'review_ai_rules', 'trigger_ai', 'trigger_sync', 'upload', 'view', 'view_ai_confidence'],
     "analyst": ['analyse', 'export', 'mdm.read', 'trigger_ai', 'trigger_sync', 'upload', 'view', 'view_ai_confidence'],

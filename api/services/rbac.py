@@ -51,6 +51,8 @@ PERMISSIONS: dict[str, set[str]] = {
         "manage_system", "manage_systems", "manage_settings", "view_audit",
         "ai_feedback", "review_ai_rules", "trigger_ai", "trigger_sync",
         "mdm.write", "run_process_discovery", "export_process",
+        # approval workflow definitions (api/routes/workflows.py): the administrator manages, everyone else reads
+        "manage_workflows",
     },
     "manager": _READ | {
         "upload", "analyse", "approve", "apply", "export", "assign", "handoff_rule",
@@ -359,6 +361,8 @@ LEGACY_ACTION_MAP: dict[str, set[tuple[str, str]]] = {
     "manage_triage": {("stewardship", "admin")},
     "manage_llm": {("llm", "admin")},
     "manage_users": {("users", "admin")},
+    # Approval workflow definitions for fix batches and change requests (create, new version, activate).
+    "manage_workflows": {("fixes", "admin")},
     "view_audit": {("audit", "view"), ("audit", "export")},
     "run_process_discovery": {("process", "run")},
     "export_process": {("process", "export")},
