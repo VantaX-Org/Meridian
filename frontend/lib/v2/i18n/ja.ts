@@ -4298,4 +4298,5 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "{rowsCount} {rowsCount, plural, one {run} other {runs}} in the table.": "表に {rowsCount} 件の実行があります。",
   "The timeline shows the last {runsCount} finished {runsCount, plural, one {run} other {runs}}, the latest on {run_at}.": "タイムラインには完了した直近 {runsCount} 件の実行を表示しています。最新は {run_at} です。",
   "Open Administration": "管理を開く",
+  "{slot}:": "{slot}：",
 };

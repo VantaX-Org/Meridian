@@ -4297,6 +4297,7 @@ export const en = {
   "{rowsCount} {rowsCount, plural, one {run} other {runs}} in the table.": "{rowsCount} {rowsCount, plural, one {run} other {runs}} in the table.",
   "The timeline shows the last {runsCount} finished {runsCount, plural, one {run} other {runs}}, the latest on {run_at}.": "The timeline shows the last {runsCount} finished {runsCount, plural, one {run} other {runs}}, the latest on {run_at}.",
   "Open Administration": "Open Administration",
+  "{slot}:": "{slot}:",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

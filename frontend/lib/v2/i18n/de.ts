@@ -4298,4 +4298,5 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "{rowsCount} {rowsCount, plural, one {run} other {runs}} in the table.": "{rowsCount} {rowsCount, plural, one {Lauf} other {Läufe}} in der Tabelle.",
   "The timeline shows the last {runsCount} finished {runsCount, plural, one {run} other {runs}}, the latest on {run_at}.": "Die Zeitleiste zeigt {runsCount, plural, one {den letzten abgeschlossenen Lauf} other {die letzten # abgeschlossenen Läufe}}, den neuesten am {run_at}.",
   "Open Administration": "Administration öffnen",
+  "{slot}:": "{slot}:",
 };
