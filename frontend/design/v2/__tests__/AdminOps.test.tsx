@@ -53,7 +53,7 @@ describe("Admin: audit log", () => {
     await waitFor(() => expect(dataRows("Audit log")).toHaveLength(25));
     expect(screen.getByText("1 to 25 of 36")).toBeInTheDocument();
     expect(norm(dataRows("Audit log")[0])).toContain("Nomsa Dlamini");
-    expect(norm(dataRows("Audit log")[0])).toContain("created a user");
+    expect(norm(dataRows("Audit log")[0])).toContain("created the user Ines Fernandes");
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     await waitFor(() => expect(dataRows("Audit log")).toHaveLength(11));
     expect(screen.getByText("26 to 36 of 36")).toBeInTheDocument();
@@ -99,7 +99,7 @@ describe("Admin: audit log", () => {
     await waitFor(() => expect(dataRows("Audit log")).toHaveLength(25));
     fireEvent.click(dataRows("Audit log")[0]);
     await waitFor(() => expect(getUrl()).toContain("open=audit%3Aau-"));
-    const dialog = await screen.findByRole("dialog", { name: /created a user/ });
+    const dialog = await screen.findByRole("dialog", { name: /created the user Ines Fernandes/ });
     expect(within(dialog).getByText("Request")).toBeInTheDocument();
     expect(within(dialog).getByText("Audit entries are permanent. They cannot be edited or removed from here.")).toBeInTheDocument();
   });

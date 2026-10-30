@@ -1,4 +1,4 @@
-/** The audit log read as sentences, for the Admin canvases and the audit inspector. Same wording as the current interface. */
+/** The audit log read as sentences, for the Admin canvases and the audit inspector. */
 
 import type { AuditEntry } from "@/lib/api/audit";
 
@@ -31,7 +31,7 @@ const ENTITY: Record<string, { noun: string; plural?: string; mass?: boolean }> 
   rules: { noun: "rule" },
   exceptions: { noun: "exception" },
   stewardship: { get noun() { return t("inbox task"); } },
-  cleaning: { get noun() { return t("cleaning item"); } },
+  cleaning: { get noun() { return t("cleaning task"); } },
   findings: { noun: "finding" },
   jobs: { noun: "job" },
   notifications: { noun: "notification" },
@@ -39,8 +39,8 @@ const ENTITY: Record<string, { noun: string; plural?: string; mass?: boolean }> 
   glossary: { get noun() { return t("glossary term"); } },
   contracts: { get noun() { return t("data contract"); } },
   issues: { get noun() { return t("record issue"); } },
-  work: { get noun() { return t("fix work item"); } },
-  triage: { get noun() { return t("triage item"); } },
+  work: { get noun() { return t("fix in the Work ledger"); } },
+  triage: { get noun() { return t("triage task"); } },
   simulations: { get noun() { return t("what-if simulation"); } },
   assistant: { get noun() { return t("assistant question"); } },
   me: { noun: "profile" },
@@ -97,13 +97,18 @@ export function auditTarget(e: AuditEntry): string {
 }
 
 /** One sentence per action: "ana changed the role of Bob from steward to admin", built from method, path and entity. */
-export function auditSentence(e: AuditEntry): string {
-  const who = auditActor(e);
+export function auditSentence(e: AuditEntry, actorName?: string): string {
+  const who = actorName || auditActor(e);
   const before = rec(e.before_json), after = rec(e.after_json);
   const kind = auditKind(e);
   const thing = kind.noun;
   const subject = nameOf(e.after_json) ?? nameOf(e.before_json);
-  const failed = e.status_code >= 400 ? t(" (refused, {status_code})", { status_code: e.status_code }) : "";
+  if (e.status_code >= 400) {
+    // A refused request changed nothing: say what was asked, never that it happened.
+    const asked = subject ? t("{action} on {subject}", { action: e.action, subject }) : e.action;
+    return t("{who} was refused ({status_code}): {asked}", { who, status_code: e.status_code, asked });
+  }
+  const failed = "";
   const keyVerb = API_KEY_VERB[e.action];
   if (keyVerb) return t("{who} {keyVerb} the API key {subject}{failed}", { who, keyVerb, subject: subject ?? t("(unnamed)"), failed });
   if ("role" in before && "role" in after && before.role !== after.role) {

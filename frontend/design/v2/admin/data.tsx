@@ -247,9 +247,9 @@ const PAGE = 25;
 const AUDIT_COLUMNS = (who: (e: AuditEntry) => string): GridColumn<AuditEntry>[] => [
   { id: "when", header: t("When"), width: 150, pin: true, locked: true, cell: (e) => <time dateTime={e.created_at}>{formatDate(e.created_at, "datetime")}</time> },
   { id: "who", header: t("Who"), width: 180, cell: (e) => who(e) },
-  { id: "what", header: t("What happened"), width: 380, cell: (e) => auditSentence(e) },
+  { id: "what", header: t("What happened"), width: 380, cell: (e) => auditSentence(e, who(e)) },
   { id: "action", header: t("Action"), width: 150, cell: (e) => <Mono>{e.action}</Mono> },
-  { id: "object", header: t("Object"), width: 140, cell: (e) => (e.entity_id ? <Mono>{e.entity_id}</Mono> : <Dash />) },
+  { id: "object", header: t("Target"), width: 140, cell: (e) => (e.entity_id ? <Mono>{e.entity_id}</Mono> : <Dash />) },
   { id: "status", header: t("Result"), width: 110, cell: (e) => (e.status_code >= 400 ? <StatusWord tone="no-go">{t("Refused {status_code}", { status_code: e.status_code })}</StatusWord> : <StatusWord tone="go">{t("Done")}</StatusWord>) },
 ];
 

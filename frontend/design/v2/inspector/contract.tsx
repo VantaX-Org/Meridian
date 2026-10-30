@@ -9,10 +9,11 @@ import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { notFound, refreshRoles, useContract, useContracts } from "@/lib/v2/roles-queries";
 import { Actions, Fact, Facts, InspectorFrame } from "../Inspector";
 import { VerdictMark } from "../marks";
-import { Dash, Mono, Skeleton, V2Link } from "../parts";
+import { Dash, Skeleton, V2Link } from "../parts";
 import { CollabSections } from "./collab";
 import "../roles.css";
 import { t } from "@/lib/v2/i18n";
+import { moduleText } from "@/lib/v2/labels";
 
 /**
  * Data contracts for owners and approvers (step 6c, on the existing /contracts): `?open=contracts` lists them and
@@ -71,7 +72,7 @@ export function ContractsPanel({ onClose }: { onClose: () => void }) {
           {q.data.contracts.map((c) => (
             <li key={c.id}>
               <V2Link href={hrefFor({ kind: "contract", id: c.id })}>{c.name}</V2Link>
-              <span className="m2-meta">{t("{STATUS}, version {version}, {producer} to {consumer}", { STATUS: STATUS[c.status] ?? c.status, version: c.version, producer: c.producer, consumer: c.consumer })}</span>
+              <span className="m2-meta">{t("{STATUS}, version {version}, {producer} to {consumer}", { STATUS: STATUS[c.status] ?? c.status, version: c.version, producer: moduleText(c.producer), consumer: c.consumer })}</span>
               <Compliance c={c} />
             </li>
           ))}
@@ -144,7 +145,7 @@ export function ContractInspector({ id, onClose }: { id: string; onClose: () => 
         <>
           <Facts>
             <Fact label={t("Producer")}>
-              <Mono>{c.producer}</Mono>
+              {moduleText(c.producer)}
             </Fact>
             <Fact label={t("Consumer")}>{c.consumer}</Fact>
             <Fact label={t("Promise")}>{c.quality_contract && typeof c.quality_contract.min_score === "number" ? t("Score at {min_score} or more", { min_score: c.quality_contract.min_score }) : <Dash why={t("No quality promise")} />}</Fact>

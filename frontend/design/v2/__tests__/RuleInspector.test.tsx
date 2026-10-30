@@ -76,9 +76,9 @@ describe("the rule inspector", () => {
   it("gives the definition: check class, field, expression and parameters", async () => {
     const d = await open();
     const def = norm(section(d, "Definition"));
-    expect(def).toContain("domain_value_check");
+    expect(def).toContain("Allowed values");
     expect(def).toContain("MARA-MEINS in T006-MSEHI");
-    expect(def).toContain("check_table");
+    expect(def).toContain("Check table");
     expect(def).toContain("T006");
     expect(def).toContain("Shipped with Meridian");
   });

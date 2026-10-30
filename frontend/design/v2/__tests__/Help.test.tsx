@@ -132,14 +132,14 @@ describe("the help panel", () => {
     expect(await within(dialog).findByTestId("walkthrough")).toBeInTheDocument();
   });
 
-  it("shows what is new, one dated line per step, newest first", async () => {
+  it("shows what is new, one dated line per release, newest first", async () => {
     const dialog = await openPanel("/?fixture=1&open=help");
     expect(within(dialog).getByRole("heading", { name: "What's new" })).toBeInTheDocument();
     const items = within(within(dialog).getByTestId("whats-new")).getAllByRole("listitem");
     expect(items).toHaveLength(11);
-    expect(items[0]).toHaveTextContent(/step 10\./);
-    expect(items[10]).toHaveTextContent(/step 0\./);
-    expect(items[0]).toHaveTextContent("2026");
+    expect(items[0]).toHaveTextContent(/^30 Oct 2026\. Policy packs/);
+    expect(items[10]).toHaveTextContent(/^29 Oct 2026\. The landscape with its coverage matrix/);
+    for (const item of items) expect(item).not.toHaveTextContent(/step \d|\/v2|new interface/i);
   });
 
   it("the keyboard button opens the shortcut sheet", async () => {

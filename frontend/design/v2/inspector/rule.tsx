@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { formatDate } from "@/lib/format";
+import { checkClassLabel, formatDate } from "@/lib/format";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { getObjectRules, getReceipt } from "@/lib/api/v2/landscape";
 import { handOffRule, suppressRule, type RuleRun, type RuleScope } from "@/lib/api/v2/object";
@@ -16,8 +16,8 @@ import "../object.css";
 import { SeverityMark, type SeverityKey } from "../marks";
 import { Dash, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { CollabSections } from "./collab";
-import { t as tr, lc } from "@/lib/v2/i18n";
-import { moneyCompactText } from "@/lib/v2/labels";
+import { t as tr, lc, tx } from "@/lib/v2/i18n";
+import { labelText, moneyCompactText } from "@/lib/v2/labels";
 
 /**
  * Everything the rule inspector and the rule canvas say about one rule, read from GET /rules/{id}/scope, the receipts
@@ -203,11 +203,11 @@ export function RuleDefinition({ view }: { view: RuleView }) {
   return (
     <Sec title={tr("Definition")}>
       <Facts>
-        <Fact label={tr("Check class")}>{d.check_class ? <Mono>{d.check_class}</Mono> : <Dash />}</Fact>
+        <Fact label={tr("Check class")}>{d.check_class ? <span title={d.check_class}>{tx(checkClassLabel(d.check_class))}</span> : <Dash />}</Fact>
         <Fact label={tr("Field")}>{d.field ? <Mono>{d.field}</Mono> : <Dash />}</Fact>
         <Fact label={tr("Expression")}>{d.expression ? <Mono>{d.expression}</Mono> : <Dash why={tr("The rule has no stored expression")} />}</Fact>
         {params.map(([k, v]) => (
-          <Fact key={k} label={<Mono>{k}</Mono>}>
+          <Fact key={k} label={<span title={k}>{labelText(k)}</span>}>
             <Mono>{typeof v === "string" ? v : JSON.stringify(v)}</Mono>
           </Fact>
         ))}
@@ -566,7 +566,7 @@ export function RuleInspectorBody({ id, landscape }: { id: string; landscape?: L
       <>
         <ErrorFrame onRetry={s.refetch}>{tr("This rule could not be read. It may not run on any object yet.")}</ErrorFrame>
         {capped > 0 ? <p className="m2-prov">{tr("It is a critical rule over tolerance in {capped} {capped, plural, one {object} other {objects}}.", { capped })}</p> : null}
-        <div className="m2-acts" style={{ marginTop: 16 }}>
+        <div className="m2-acts" style={{ marginTop: "var(--m2-s4)" }}>
           <V2Link href={`/r/${encodeURIComponent(id)}`} className="m2-btn m2-strong">
             {tr("Open the rule")}
           </V2Link>

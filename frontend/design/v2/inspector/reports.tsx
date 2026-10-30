@@ -110,7 +110,7 @@ function NewReport({ onClose }: { onClose: () => void }) {
             })
           }
         >
-          {pending === "build" ? tr("Building…") : `Create the ${entry?.format ?? ""} report`.replace("  ", " ")}
+          {pending === "build" ? tr("Building…") : (entry?.format ? tr("Create the {format} report", { format: entry.format }) : tr("Create the report"))}
         </button>
       </Actions>
       <p className="m2-prov">{tr("The report is built from the stored run, not from the live system. To get it on a rhythm, schedule it.")}</p>
@@ -353,7 +353,7 @@ function ScheduleForm({ initial, onClose }: { initial: ReportSchedule | null; on
           <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
             <legend className="m2-sr">{tr("People")}</legend>
             <ul className="m2-pick" aria-label={tr("People who receive it")}>
-              {o.users.length === 0 ? <li className="m2-meta" style={{ padding: 8 }}>{tr("No one can receive reports yet.")}</li> : null}
+              {o.users.length === 0 ? <li className="m2-meta" style={{ padding: "var(--m2-s2)" }}>{tr("No one can receive reports yet.")}</li> : null}
               {o.users.map((u) => (
                 <li key={u.id}>
                   <label>
@@ -381,7 +381,7 @@ function ScheduleForm({ initial, onClose }: { initial: ReportSchedule | null; on
       ) : (
         <Skeleton width="100%" height={80} />
       )}
-      <label className="m2-sw" style={{ display: "flex", gap: 8, marginTop: 8 }}>
+      <label className="m2-sw" style={{ display: "flex", gap: "var(--m2-s2)", marginTop: "var(--m2-s2)" }}>
         <input type="checkbox" checked={enabled} disabled={!edit} onChange={(e) => setEnabled(e.target.checked)} />
         <span>{tr("Schedule is on")}</span>
       </label>
