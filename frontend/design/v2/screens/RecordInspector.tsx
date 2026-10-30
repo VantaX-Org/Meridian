@@ -1,5 +1,6 @@
 "use client";
 
+import { Money } from "../Money";
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { WorkIssue, WorkRecordDetail } from "@/lib/api/work";
@@ -17,12 +18,12 @@ import { useRecordLinks, useWorkRecord } from "@/lib/v2/work-queries";
 import { InspectorFrame } from "../Inspector";
 import { MenuButton } from "../Menu";
 import { SeverityMark, type SeverityKey } from "../marks";
-import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
+import { Value, Dash, Dot, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { useToast } from "../Toast";
 import { PromptDialog } from "./work-parts";
 import { CollabSections } from "../inspector/collab";
 import { FixOrderHint } from "./object/Related";
-import { t as tr } from "@/lib/v2/i18n";
+import { t as tr, tn } from "@/lib/v2/i18n";
 import { RecordHistoryPanel } from "./step10/RecordHistory";
 
 export function parseRecordId(id: string): { module: string; key: string } {
@@ -225,7 +226,7 @@ export function RecordInspector({ id, onClose }: { id: string; onClose: () => vo
   const plant = parts.find((p) => p.field === "WERKS")?.value ?? detail?.values["MARC.WERKS"] ?? null;
   const live = detail ? patched({ module, record_key: key, status: detail.status } as { module: string; record_key: string; status: WorkRecordDetail["status"] }, patches).status : null;
   const atRisk = detail ? detail.issues.reduce((n, i) => n + (i.rule?.cost_per_record ?? 0), 0) : 0;
-  const statusParts = detail ? [STATUS_LABEL[live ?? detail.status] ?? detail.status, detail.name, plant ? tr("plant {plant}", { plant }) : null, atRisk > 0 ? tr("{value}{atRisk} at risk", { value: detail.currency ? `${detail.currency} ` : "", atRisk: int(atRisk) }) : null].filter(Boolean) : [];
+  const statusParts = detail ? [STATUS_LABEL[live ?? detail.status] ?? detail.status, detail.name, plant ? tr("plant {plant}", { plant }) : null, atRisk > 0 ? <>{tn("{money} at risk", { money: <Money amount={atRisk} currency={detail.currency} compact={false} /> })}</> : null].filter(Boolean) : [];
   const status: ReactNode = detail ? statusParts.map((part, n) => (n === 0 ? <span key={n}>{part}</span> : <span key={n}><Dot />{part}</span>)) : tr("Reading the record");
 
   const rowFor = (i: WorkIssue): RowRef => ({ module, record_key: key, version_id: detail?.version_id, checks: [i.check_id], suggested_value: i.suggestion?.value ?? null, status: i.status });
@@ -262,7 +263,10 @@ export function RecordInspector({ id, onClose }: { id: string; onClose: () => vo
     <Loading />
   ) : detailQ.isError || !detail ? (
     (detailQ.error as { status?: number; response?: { status?: number } } | null)?.response?.status === 404 || (detailQ.error as { status?: number } | null)?.status === 404 ? (
-      <EmptyFrame>{tr("This record does not fail any check in the latest run. It may have been fixed since the list was read.")}</EmptyFrame>
+      <div data-testid="record-not-found">
+        <h3>{tr("Record not found")}</h3>
+        <EmptyFrame>{tr("No failing record with the key {key} is in the latest run. Check the key; a record fixed since the list was read also leaves it.", { key })}</EmptyFrame>
+      </div>
     ) : (
       <ErrorFrame onRetry={() => void detailQ.refetch()}>{tr("The record could not be read.")}</ErrorFrame>
     )
@@ -280,7 +284,7 @@ export function RecordInspector({ id, onClose }: { id: string; onClose: () => vo
                 <Mono className="m2-fid">{sapField(field)}</Mono>
               </dt>
               <dd>
-                {value === null || value === "" ? <span className="m2-meta">{tr("blank")}</span> : <Mono>{value}</Mono>}
+                {value === null || value === "" ? <span className="m2-meta">{tr("blank")}</span> : <Value value={String(value)} />}
                 {hits.length ? (
                   <span className="m2-fail">
                     {[...new Map(hits.map((h) => [h.check_id, h])).values()].map((h) => (

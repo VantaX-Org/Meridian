@@ -26,6 +26,11 @@ export interface StatusStrip {
   rules_measured: number | null;
   scored_in_s: number | null;
   cost_model: string | null;
+  /**
+   * Where the cost model's figures come from: "default" while the tenant has not changed the shipped starting
+   * assumptions (checks/cost_model.yaml), "tenant" once it has. Absent on a server from before it: treated as set.
+   */
+  cost_model_source?: "default" | "tenant" | null;
   licence_valid_to: string | null;
   /** Step 10: the tenant is in sandbox mode, so nothing leaves the deployment. Absent on a server from before it. */
   sandbox?: boolean;
@@ -140,6 +145,8 @@ export interface Receipt {
   cap_rule: string;
   value_at_risk: number | null;
   currency: string | null;
+  /** As on the status strip: "default" while value at risk is priced from the shipped starting assumptions. */
+  cost_model_source?: "default" | "tenant" | null;
   features_blocked: number | null;
   features_degraded: number | null;
   open_work: number | null;

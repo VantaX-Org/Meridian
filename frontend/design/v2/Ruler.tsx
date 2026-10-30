@@ -29,6 +29,9 @@ export interface RulerProps {
   contract?: { count: number; enforced: number; title: string } | null;
   /** Step 10: the policy mark (lib/v2/step10 policyMark). One shield, beside the contract diamond, never in its place. */
   policy?: { count: number; title: string } | null;
+  /** The 240 ruler on a phone: short band and cap words, the plot as wide as `available` allows. */
+  compact?: boolean;
+  available?: number;
 }
 
 /** The policy breach mark: one filled shield. Its title and accessible name say how many applied classes are breached. */
@@ -62,7 +65,7 @@ export function ContractMark({ mark }: { mark: { count: number; enforced: number
  */
 export function Ruler(props: RulerProps) {
   const { size, dims, measured, score, capped, capLevel, breaches, label, selected, showScore = true, empty } = props;
-  const g = rulerGeometry(size, empty ? [null, null, null, null, null, null] : dims, empty ? null : measured);
+  const g = rulerGeometry(size, empty ? [null, null, null, null, null, null] : dims, empty ? null : measured, { compact: props.compact, available: props.available });
   const reading = empty
     ? t("{label}: no run yet.", { label })
     : readingText({ label, measured, score, capped, capLevel, breaches, dims, records: props.records, rules: props.rules, coverage: props.coverage, lowConfidence: props.lowConfidence ?? false });
@@ -101,22 +104,31 @@ export function Ruler(props: RulerProps) {
                 .map((a) => (
                   <line key={`b${a.value}`} className="m2-ax2" x1={g.plot.left - 8} x2={g.plot.left - 1} y1={a.y} y2={a.y} />
                 ))}
-              {/* A scale number that would sit on a band label (100 by 90 go, 50 by 60 critical) keeps its tick, not its text. */}
               {g.axis
-                .filter((a) => a.kind === "band" || !g.axis.some((b) => b.kind === "band" && Math.abs(b.y - a.y) < 16))
+                .filter((a) => a.label)
                 .map((a) => (
-                <text key={`t${a.value}`} className="m2-rt" x={g.plot.left - 14} y={a.y + 4} textAnchor="end">
-                  {a.label}
-                </text>
-              ))}
+                  <text key={`t${a.kind}${a.value}`} className="m2-rt" x={g.plot.left - 14} y={a.y + 4} textAnchor="end" data-band={a.kind === "band" ? a.value : undefined}>
+                    {a.title && a.title !== a.label ? <title>{a.title}</title> : null}
+                    {a.label}
+                  </text>
+                ))}
               {g.caps.map((c) => (
                 <g key={`c${c.value}`} data-cap={c.value}>
                   <line className="m2-capl" x1={g.plot.left} x2={g.plot.left + g.plot.width + 10} y1={c.y} y2={c.y} />
-                  <text className="m2-rt" x={g.plot.left + g.plot.width + 14} y={c.y + 4}>
+                  <text className="m2-rt" x={g.plot.left + g.plot.width + 14} y={(g.labels.find((l) => l.kind === "cap" && l.text === c.label)?.y ?? c.y - 7) + 11}>
+                    {c.title && c.title !== c.label ? <title>{c.title}</title> : null}
                     {c.label}
                   </text>
                 </g>
               ))}
+              {g.labels
+                .filter((l) => l.kind === "dimension" || l.kind === "score")
+                .map((l, i) => (
+                  <text key={`d${i}`} className={l.kind === "dimension" ? "m2-rt m2-rdim" : "m2-rt m2-rsc"} x={l.x + l.width / 2} y={l.y + 11} textAnchor="middle" data-label={l.kind}>
+                    <title>{l.title}</title>
+                    {l.text}
+                  </text>
+                ))}
             </>
           ) : null}
           {g.tickY != null ? (
@@ -126,20 +138,12 @@ export function Ruler(props: RulerProps) {
             </g>
           ) : null}
         </svg>
-        {large ? (
-          <span className="m2-rlab" aria-hidden="true" style={{ marginLeft: g.plot.left, gap: g.gap, width: g.plot.width }}>
-            {g.segments.map((s) => (
-              <span key={s.key} className="m2-rlab-i" title={`${s.label} ${s.score ?? t("not measured")}`} style={{ width: s.width }}>
-                {s.score == null ? DASH : Math.round(s.score)}
-              </span>
-            ))}
-          </span>
-        ) : null}
       </span>
       {showScore ? (
         <span className="m2-ruler-num">
           <span className="m2-sc" data-testid="ruler-score">{empty ? DASH : f1(score)}</span>
           {!empty && capped ? <span className="m2-capword">{t("capped")}</span> : null}
+          {!empty && capped && measured != null ? <span className="m2-meas" data-testid="ruler-measured">{t("{measured} measured", { measured: f1(measured) })}</span> : null}
           {!empty && props.contract ? <ContractMark mark={props.contract} /> : null}
           {!empty && props.policy ? <PolicyMark mark={props.policy} /> : null}
         </span>

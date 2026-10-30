@@ -138,7 +138,7 @@ describe("Admin: alerts and notifications", () => {
     fireEvent.change(screen.getByLabelText("Material master floor"), { target: { value: "70" } });
     fireEvent.click(screen.getByRole("button", { name: "Save thresholds" }));
     await waitFor(() => expect(spy).toHaveBeenCalled());
-    expect(spy.mock.calls[0][0]).toMatchObject({ critical_threshold: 2, high_threshold: 10, dqs_drop_threshold: 5, module_floors: { material_master: 70, vendor_master: 80 } });
+    expect(spy.mock.calls[0][0]).toMatchObject({ critical_threshold: 2, high_threshold: 10, dqs_drop_threshold: 5, module_floors: { material_master: 70, accounts_payable: 80 } });
     await waitFor(() => expect(screen.getAllByText("Alert thresholds saved").length).toBeGreaterThan(0));
   });
 

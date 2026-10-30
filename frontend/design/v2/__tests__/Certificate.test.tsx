@@ -42,7 +42,7 @@ describe("the readiness certificate of a wave", () => {
   it("lists the required signers, the versions and who has signed", async () => {
     open("w-2");
     const block = await screen.findByTestId("certificate-block");
-    expect(block).toHaveTextContent("Required signers: R. Govender (Material master); T. Mokoena (Business partner); Demo user (Customer master).");
+    expect(block).toHaveTextContent("Required signers: R. Govender (Material master); T. Mokoena (Business partner); Demo user (Accounts receivable).");
     const [v1] = await within(block).findAllByTestId("certificate-version");
     expect(v1).toHaveTextContent("Version 1");
     expect(v1).toHaveTextContent("Issued, waiting for signatures");
@@ -82,12 +82,12 @@ describe("the readiness certificate of a wave", () => {
     const refusal = await screen.findByTestId("certificate-refusal");
     expect(refusal).toHaveTextContent("The wave is not ready to certify.");
     expect(refusal).toHaveTextContent("Material master");
-    expect(within(refusal).getByRole("link", { name: "MM014" })).toBeInTheDocument();
+    expect(within(refusal).getByRole("link", { name: "MM003" })).toBeInTheDocument();
   });
 
   it("issues a version when every object of the wave is clear", async () => {
     const w = await rep.createWave({ name: "Wave 9: clean", modules: [], target_date: null, stage: "plan", min_readiness: 95 });
-    await rep.updateWave(w.id, { modules: ["gl_accounts", "quality_management"] });
+    await rep.updateWave(w.id, { modules: ["fi_gl", "quality_management"] });
     open(w.id);
     const block = await screen.findByTestId("certificate-block");
     expect(block).toHaveTextContent("No object of this wave has an owner");

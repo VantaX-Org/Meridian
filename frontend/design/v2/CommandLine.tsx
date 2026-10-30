@@ -10,7 +10,7 @@ import { canAdminister, visibleSections } from "@/lib/v2/admin-sections";
 import { commandHints, ledgerRegistry } from "@/lib/v2/keys";
 import type { CommandGroup } from "@/lib/api/v2/types";
 import { t as tr, tx } from "@/lib/v2/i18n";
-import { matchValue, nlQuestion, nlTarget, slotWord } from "@/lib/v2/step10";
+import { chipValue, nlQuestion, nlTarget, slotWord } from "@/lib/v2/step10";
 import { useNl } from "@/lib/v2/step10-queries";
 import type { NlAnswer } from "@/lib/api/v2/step10";
 import { Mono } from "./parts";
@@ -193,7 +193,7 @@ export function CommandLine({ onClose }: { onClose: () => void }) {
         <ul id="m2-pal-list" role="listbox" aria-label={tr("Results")}>
           {rows.length === 0 ? (
             <li className="m2-pal-gh" role="presentation">
-              {q.trim() && !result.isFetching ? tr("No match for {q}. Try a material number, a rule id such as MM014, or a word such as approve or export.", { q: q.trim() }) : result.isFetching ? tr("Searching") : ""}
+              {q.trim() && !result.isFetching ? tr("No match for {q}. Try a material number, a rule id such as MM142, or a word such as approve or export.", { q: q.trim() }) : result.isFetching ? tr("Searching") : ""}
             </li>
           ) : (
             rows.map((r, i) => {
@@ -249,9 +249,8 @@ function NlPanel({ question, answer, pending, failed, onOpen }: { question: stri
             <ul className="m2-nl-chips" data-testid="nl-chips">
               {answer.matched.map((m) => (
                 <li key={`${m.slot}:${String(m.value)}`} title={tr("From the words: {phrase}", { phrase: m.phrase })}>
-                  <b>{slotWord(m.slot)}</b>
-                  <span>{m.label}</span>
-                  <span className="m2-meta">{`(${matchValue(m)})`}</span>
+                  <b>{tr("{slot}:", { slot: slotWord(m.slot) })}</b>{" "}
+                  <span>{chipValue(m)}</span>
                 </li>
               ))}
             </ul>

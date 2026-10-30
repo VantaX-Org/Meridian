@@ -2,9 +2,9 @@
   "about": "Meridian help recordings: length in seconds and size in bytes, written by scripts/help-videos.mjs.",
   "videos": {
     "guide2-administration": {
-      "seconds": 94.1,
-      "bytes": 979280,
-      "poster": 42156,
+      "seconds": 127.4,
+      "bytes": 1393292,
+      "poster": 43922,
       "chapter": "administration"
     },
     "guide2-approvals": {
@@ -32,9 +32,9 @@
       "chapter": "keyboard"
     },
     "guide2-landscape": {
-      "seconds": 87.9,
-      "bytes": 886775,
-      "poster": 61737,
+      "seconds": 96.7,
+      "bytes": 1040794,
+      "poster": 65669,
       "chapter": "landscape"
     },
     "guide2-lineage": {
@@ -44,27 +44,27 @@
       "chapter": "lineage"
     },
     "guide2-object": {
-      "seconds": 97.4,
-      "bytes": 1032597,
-      "poster": 65151,
+      "seconds": 107.2,
+      "bytes": 1251837,
+      "poster": 66593,
       "chapter": "object"
     },
     "guide2-overview": {
-      "seconds": 182.5,
-      "bytes": 2271609,
-      "poster": 61734,
+      "seconds": 182.4,
+      "bytes": 2258656,
+      "poster": 65599,
       "chapter": "overview"
     },
     "guide2-people": {
-      "seconds": 76,
-      "bytes": 758227,
-      "poster": 47827,
+      "seconds": 75.8,
+      "bytes": 902654,
+      "poster": 54373,
       "chapter": "people"
     },
     "guide2-persona-admin": {
-      "seconds": 59.1,
-      "bytes": 642624,
-      "poster": 41945,
+      "seconds": 76.7,
+      "bytes": 787183,
+      "poster": 4837,
       "chapter": "persona-admin"
     },
     "guide2-persona-auditor": {
@@ -74,9 +74,9 @@
       "chapter": "persona-auditor"
     },
     "guide2-persona-basis": {
-      "seconds": 59.5,
-      "bytes": 645454,
-      "poster": 59369,
+      "seconds": 100.3,
+      "bytes": 983858,
+      "poster": 4832,
       "chapter": "persona-basis"
     },
     "guide2-persona-lead": {
@@ -116,9 +116,9 @@
       "chapter": "processes"
     },
     "guide2-rules": {
-      "seconds": 82.3,
-      "bytes": 744350,
-      "poster": 59632,
+      "seconds": 95.3,
+      "bytes": 872688,
+      "poster": 64287,
       "chapter": "rules"
     },
     "guide2-run-compare": {
@@ -128,9 +128,9 @@
       "chapter": "run-compare"
     },
     "guide2-runs": {
-      "seconds": 65.7,
-      "bytes": 501228,
-      "poster": 61601,
+      "seconds": 87.4,
+      "bytes": 876196,
+      "poster": 4854,
       "chapter": "runs"
     },
     "guide2-schedules": {
@@ -152,9 +152,9 @@
       "chapter": "waves"
     },
     "guide2-work": {
-      "seconds": 107.3,
-      "bytes": 1255280,
-      "poster": 77791,
+      "seconds": 110.5,
+      "bytes": 1223734,
+      "poster": 68219,
       "chapter": "work"
     }
   }

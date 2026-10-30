@@ -43,7 +43,9 @@ describe("Runs canvas", () => {
   it("has the title, a sentence about the last runs and the timeline at full width", async () => {
     renderWithQuery(<RunsCanvas />);
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Runs");
-    expect(await screen.findByText(/The last 8 runs, the latest on 16 Oct 2026\. The baseline is 2 Oct 2026\./)).toBeInTheDocument();
+    expect(await screen.findByText(/The timeline shows the last 8 finished runs, the latest on 16 Oct 2026\. The baseline is 2 Oct 2026\./)).toBeInTheDocument();
+    // The table's count comes from its own rows: the 8 finished runs and the failed one.
+    expect(await screen.findByTestId("runs-count")).toHaveTextContent(`${screen.getAllByTestId("run-row").length} runs in the table, 1 of them failed.`);
     const chart = await screen.findByTestId("run-timeline");
     expect(within(chart).getAllByRole("button")).toHaveLength(8);
     expect(within(chart).getByTestId("tl-baseline")).toBeInTheDocument();
@@ -63,7 +65,7 @@ describe("Runs canvas", () => {
     const rows = await within(table).findAllByTestId("run-row");
     await waitFor(() => expect(norm(rows[0])).toContain("ECC production"));
     expect(rows).toHaveLength(9); // eight finished runs and one failed
-    expect(cells(rows[0])).toBe("16 Oct 2026, 05:17 ECC production — Scheduled 400,662 5,178 70.0 to 93.4 Complete 11 m 42 s");
+    expect(cells(rows[0])).toBe("16 Oct 2026, 05:17 ECC production — Scheduled 400,662 794 70.0 to 93.4 Complete 11 m 42 s");
     const failed = rows.find((r) => /Failed/.test(norm(r))) as HTMLElement;
     expect(cells(failed)).toContain("S/4HANA sandbox");
     expect(cells(failed)).toContain("Started by hand");

@@ -89,6 +89,19 @@ export function slotWord(slot: string): string {
   }
 }
 
+/**
+ * The words of one filter chip: "Severity: critical". The API's label may repeat the slot ("severity critical"); the
+ * slot is said once, before the colon, and the value after it.
+ */
+export function chipValue(m: { slot: string; label: string; value: string | boolean }): string {
+  const label = m.label.trim();
+  const lower = label.toLowerCase();
+  const prefix = slotWord(m.slot).toLowerCase();
+  if (lower.startsWith(`${prefix} `)) return label.slice(prefix.length + 1).trim();
+  if (lower.startsWith(`${prefix}: `)) return label.slice(prefix.length + 2).trim();
+  return label || String(m.value);
+}
+
 /** The command line's natural language mode: a leading `?` and at least one word after it. */
 export function nlQuestion(input: string): string | null {
   const s = input.trimStart();

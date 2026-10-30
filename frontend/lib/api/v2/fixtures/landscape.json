@@ -4,9 +4,9 @@
   "status_strip": {
     "run_at": "2026-10-16T05:17:00Z",
     "records_checked": 400662,
-    "rules_measured": 5178,
+    "rules_measured": 794,
     "scored_in_s": 702,
-    "cost_model": "ZAR v3",
+    "cost_model": "ZAR",
     "licence_valid_to": "2027-03-31"
   },
   "systems": [
@@ -57,16 +57,16 @@
       "label": "Business partner"
     },
     {
-      "module": "vendor_master",
-      "label": "Vendor master (AP)"
+      "module": "accounts_payable",
+      "label": "Accounts payable"
     },
     {
-      "module": "customer_master",
-      "label": "Customer master (AR)"
+      "module": "accounts_receivable",
+      "label": "Accounts receivable"
     },
     {
-      "module": "gl_accounts",
-      "label": "G/L accounts"
+      "module": "fi_gl",
+      "label": "FI general ledger"
     },
     {
       "module": "asset_accounting",
@@ -77,12 +77,12 @@
       "label": "Controlling"
     },
     {
-      "module": "purchasing",
-      "label": "Purchasing"
+      "module": "mm_purchasing",
+      "label": "MM purchasing"
     },
     {
-      "module": "sales_orders",
-      "label": "Sales orders"
+      "module": "sd_sales_orders",
+      "label": "SD sales orders"
     },
     {
       "module": "plant_maintenance",
@@ -102,7 +102,7 @@
     },
     {
       "module": "hcm",
-      "label": "HCM"
+      "label": "HCM personnel administration"
     },
     {
       "module": "sd_customer_master",
@@ -119,14 +119,14 @@
       "capped": true,
       "cap_level": 70,
       "breaches": [
-        "MM014",
-        "MM031"
+        "MM003",
+        "MM035"
       ],
       "verdict": "no-go",
       "coverage": 0.9740000000000001,
       "low_confidence": false,
       "records_checked": 61816,
-      "rules_measured": 913,
+      "rules_measured": 80,
       "open_work": 25712,
       "dimensions": {
         "completeness": 62,
@@ -146,20 +146,15 @@
       "capped": true,
       "cap_level": 70,
       "breaches": [
+        "BP019",
         "BP003",
-        "BP011",
-        "BP040",
-        "BP041",
-        "BP042",
-        "BP043",
-        "BP044",
-        "BP045"
+        "BP004"
       ],
       "verdict": "no-go",
       "coverage": 0.981,
       "low_confidence": false,
       "records_checked": 48210,
-      "rules_measured": 420,
+      "rules_measured": 64,
       "open_work": null,
       "dimensions": {
         "completeness": 73,
@@ -172,25 +167,22 @@
     },
     {
       "system_id": "a1b2c3d4-0001-4000-8000-000000000001",
-      "module": "vendor_master",
+      "module": "accounts_payable",
       "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
       "score": 70,
       "raw_score": 76.9,
       "capped": true,
       "cap_level": 70,
       "breaches": [
-        "VM007",
-        "VM019",
-        "VM040",
-        "VM041",
-        "VM042",
-        "VM043"
+        "AP005",
+        "AP006",
+        "AP003"
       ],
       "verdict": "no-go",
       "coverage": 0.963,
       "low_confidence": false,
       "records_checked": 12884,
-      "rules_measured": 366,
+      "rules_measured": 58,
       "open_work": null,
       "dimensions": {
         "completeness": 73,
@@ -203,26 +195,22 @@
     },
     {
       "system_id": "a1b2c3d4-0001-4000-8000-000000000001",
-      "module": "customer_master",
+      "module": "accounts_receivable",
       "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
       "score": 70,
       "raw_score": 74.2,
       "capped": true,
       "cap_level": 70,
       "breaches": [
-        "CM005",
-        "CM012",
-        "CM040",
-        "CM041",
-        "CM042",
-        "CM043",
-        "CM044"
+        "AR005",
+        "AR003",
+        "AR006"
       ],
       "verdict": "no-go",
       "coverage": 0.958,
       "low_confidence": false,
       "records_checked": 31507,
-      "rules_measured": 312,
+      "rules_measured": 52,
       "open_work": null,
       "dimensions": {
         "completeness": 69,
@@ -235,7 +223,7 @@
     },
     {
       "system_id": "a1b2c3d4-0001-4000-8000-000000000001",
-      "module": "gl_accounts",
+      "module": "fi_gl",
       "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
       "score": 93.4,
       "raw_score": 93.4,
@@ -246,7 +234,7 @@
       "coverage": 0.996,
       "low_confidence": false,
       "records_checked": 4216,
-      "rules_measured": 188,
+      "rules_measured": 44,
       "open_work": null,
       "dimensions": {
         "completeness": 92,
@@ -266,17 +254,14 @@
       "capped": true,
       "cap_level": 70,
       "breaches": [
-        "AA004",
-        "AA009",
-        "AA040",
-        "AA041",
-        "AA042"
+        "AA003",
+        "AA004"
       ],
       "verdict": "no-go",
       "coverage": 0.9420000000000001,
       "low_confidence": false,
       "records_checked": 9873,
-      "rules_measured": 245,
+      "rules_measured": 46,
       "open_work": null,
       "dimensions": {
         "completeness": 68,
@@ -296,21 +281,15 @@
       "capped": true,
       "cap_level": 70,
       "breaches": [
-        "CO002",
-        "CO015",
-        "CO040",
-        "CO041",
-        "CO042",
-        "CO043",
-        "CO044",
-        "CO045",
-        "CO046"
+        "CO003",
+        "CO001",
+        "CO002"
       ],
       "verdict": "no-go",
       "coverage": 0.97,
       "low_confidence": false,
       "records_checked": 7402,
-      "rules_measured": 274,
+      "rules_measured": 48,
       "open_work": null,
       "dimensions": {
         "completeness": 74,
@@ -323,21 +302,21 @@
     },
     {
       "system_id": "a1b2c3d4-0001-4000-8000-000000000001",
-      "module": "purchasing",
+      "module": "mm_purchasing",
       "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
       "score": 70,
       "raw_score": 75.3,
       "capped": true,
       "cap_level": 70,
       "breaches": [
-        "MM014",
-        "MM031"
+        "PUR004",
+        "PUR003"
       ],
       "verdict": "no-go",
       "coverage": 0.9690000000000001,
       "low_confidence": false,
       "records_checked": 22640,
-      "rules_measured": 451,
+      "rules_measured": 62,
       "open_work": null,
       "dimensions": {
         "completeness": 72,
@@ -350,27 +329,22 @@
     },
     {
       "system_id": "a1b2c3d4-0001-4000-8000-000000000001",
-      "module": "sales_orders",
+      "module": "sd_sales_orders",
       "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
       "score": 70,
       "raw_score": 81,
       "capped": true,
       "cap_level": 70,
       "breaches": [
-        "SO006",
-        "SO021",
-        "SO040",
-        "SO041",
-        "SO042",
-        "SO043",
-        "SO044",
-        "SO045"
+        "SDSO003",
+        "SDSO002",
+        "SDSO005"
       ],
       "verdict": "no-go",
       "coverage": 0.9840000000000001,
       "low_confidence": false,
       "records_checked": 118330,
-      "rules_measured": 598,
+      "rules_measured": 60,
       "open_work": null,
       "dimensions": {
         "completeness": 75,
@@ -391,18 +365,13 @@
       "cap_level": 70,
       "breaches": [
         "PM003",
-        "PM014",
-        "PM040",
-        "PM041",
-        "PM042",
-        "PM043",
-        "PM044"
+        "PM033"
       ],
       "verdict": "no-go",
       "coverage": 0.642,
       "low_confidence": true,
       "records_checked": 15964,
-      "rules_measured": 233,
+      "rules_measured": 50,
       "open_work": null,
       "dimensions": {
         "completeness": 72,
@@ -422,20 +391,15 @@
       "capped": true,
       "cap_level": 70,
       "breaches": [
-        "PP008",
-        "PP017",
-        "PP040",
-        "PP041",
-        "PP042",
-        "PP043",
-        "PP044",
-        "PP045"
+        "PP007",
+        "PP014",
+        "PP013"
       ],
       "verdict": "no-go",
       "coverage": 0.935,
       "low_confidence": false,
       "records_checked": 20118,
-      "rules_measured": 291,
+      "rules_measured": 56,
       "open_work": null,
       "dimensions": {
         "completeness": 73,
@@ -455,13 +419,13 @@
       "capped": true,
       "cap_level": 85,
       "breaches": [
-        "PS004"
+        "PS019"
       ],
       "verdict": "at-risk",
       "coverage": 0.99,
       "low_confidence": false,
       "records_checked": 3584,
-      "rules_measured": 160,
+      "rules_measured": 42,
       "open_work": null,
       "dimensions": {
         "completeness": 84,
@@ -485,7 +449,7 @@
       "coverage": 0.9670000000000001,
       "low_confidence": false,
       "records_checked": 8771,
-      "rules_measured": 207,
+      "rules_measured": 45,
       "open_work": null,
       "dimensions": {
         "completeness": 89,
@@ -505,20 +469,15 @@
       "capped": true,
       "cap_level": 70,
       "breaches": [
-        "HC002",
-        "HC011",
-        "HC040",
-        "HC041",
-        "HC042",
-        "HC043",
-        "HC044",
-        "HC045"
+        "PA004",
+        "PA002",
+        "PA001"
       ],
       "verdict": "no-go",
       "coverage": 0.9179999999999999,
       "low_confidence": false,
       "records_checked": 5932,
-      "rules_measured": 346,
+      "rules_measured": 47,
       "open_work": null,
       "dimensions": {
         "completeness": 75,
@@ -542,7 +501,7 @@
       "coverage": 0.972,
       "low_confidence": false,
       "records_checked": 29415,
-      "rules_measured": 174,
+      "rules_measured": 40,
       "open_work": null,
       "dimensions": {
         "completeness": 77,
@@ -557,12 +516,12 @@
   "sentence": {
     "held_under_85": 11,
     "objects": 15,
-    "critical_over_tolerance": 70,
+    "critical_over_tolerance": 30,
     "release_if_fixed": [
-      "MM014",
-      "MM031"
+      "MM003",
+      "MM035"
     ],
-    "released": 2
+    "released": 1
   },
   "counts": {
     "go": 2,

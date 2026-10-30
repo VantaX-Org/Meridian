@@ -72,7 +72,7 @@ describe("the Waves view of the landscape", () => {
     expect(heads[3]).toBe("Not in a wave 5 objects 1 go, 2 at risk, 2 no-go");
     const table = screen.getByTestId("coverage-matrix");
     const rowNames = Array.from(table.querySelectorAll(".m2-oname")).map((el) => el.textContent);
-    expect(rowNames.slice(0, 4)).toEqual(["Vendor master (AP)", "G/L accounts", "Asset accounting", "Controlling"]);
+    expect(rowNames.slice(0, 4)).toEqual(["Accounts payable", "FI general ledger", "Asset accounting", "Controlling"]);
     expect(rowNames).toHaveLength(15);
     // The counts of the waves add up to the matrix's own: 2 go, 2 at risk, 11 no-go.
     expect(screen.getByText("2 go, 2 at risk, 11 no-go")).toBeInTheDocument();
@@ -88,7 +88,7 @@ describe("the Waves view of the landscape", () => {
 
   it("with every no-go object cleared, the next step moves to the at-risk ones, then to the waves themselves", async () => {
     vi.spyOn(rep, "getWaves").mockResolvedValue([
-      { id: "x", name: "Wave X", source_system_id: null, target_system_id: null, target_release: "2025", modules: ["gl_accounts", "quality_management"], target_date: "2026-12-01", stage: "plan", min_readiness: 95, min_dqs: null, signed_off_by: null, signed_off_at: null, created_at: "", updated_at: "" },
+      { id: "x", name: "Wave X", source_system_id: null, target_system_id: null, target_release: "2025", modules: ["fi_gl", "quality_management"], target_date: "2026-12-01", stage: "plan", min_readiness: 95, min_dqs: null, signed_off_by: null, signed_off_at: null, created_at: "", updated_at: "" },
     ]);
     visit();
     page();
@@ -117,8 +117,8 @@ describe("the waves editor", () => {
     expect(within(w1).getByLabelText("Target date")).toHaveValue("2026-11-16");
     expect(within(w1).getByLabelText("Stage")).toHaveValue("mock2");
     const table = within(dialog).getByRole("table", { name: "Objects by wave" });
-    expect(within(table).getByLabelText("Wave of Purchasing")).toHaveValue("w-3");
-    expect(within(table).getByLabelText("Wave of HCM")).toHaveValue("");
+    expect(within(table).getByLabelText("Wave of MM purchasing")).toHaveValue("w-3");
+    expect(within(table).getByLabelText("Wave of HCM personnel administration")).toHaveValue("");
   });
 
   it("assigns an object to another wave and saves only the waves that changed, with the date", async () => {
@@ -128,19 +128,19 @@ describe("the waves editor", () => {
     const dialog = await screen.findByRole("dialog", { name: "Migration waves" });
     const save = await within(dialog).findByRole("button", { name: "Save changes" });
     expect(save).toBeDisabled();
-    fireEvent.change(within(dialog).getByLabelText("Wave of Purchasing"), { target: { value: "w-1" } });
-    fireEvent.change(within(dialog).getByLabelText("Wave of HCM"), { target: { value: "w-2" } });
+    fireEvent.change(within(dialog).getByLabelText("Wave of MM purchasing"), { target: { value: "w-1" } });
+    fireEvent.change(within(dialog).getByLabelText("Wave of HCM personnel administration"), { target: { value: "w-2" } });
     const w3 = within(dialog).getByRole("group", { name: "Wave Wave 3: operations" });
     fireEvent.change(within(w3).getByLabelText("Target date"), { target: { value: "2027-03-01" } });
     expect(within(dialog).getByRole("button", { name: "Save 3 changes" })).toBeEnabled();
     fireEvent.click(within(dialog).getByRole("button", { name: "Save 3 changes" }));
     await waitFor(() => expect(update).toHaveBeenCalledTimes(3));
     const calls = Object.fromEntries(update.mock.calls.map(([id, body]) => [id, body]));
-    expect(calls["w-1"]).toEqual({ modules: ["gl_accounts", "asset_accounting", "controlling", "vendor_master", "purchasing"] });
-    expect(calls["w-2"]).toEqual({ modules: ["material_master", "business_partner", "customer_master", "hcm"] });
-    expect(calls["w-3"]).toEqual({ target_date: "2027-03-01", modules: ["sales_orders", "plant_maintenance"] });
+    expect(calls["w-1"]).toEqual({ modules: ["fi_gl", "asset_accounting", "controlling", "accounts_payable", "mm_purchasing"] });
+    expect(calls["w-2"]).toEqual({ modules: ["material_master", "business_partner", "accounts_receivable", "hcm"] });
+    expect(calls["w-3"]).toEqual({ target_date: "2027-03-01", modules: ["sd_sales_orders", "plant_maintenance"] });
     expect(await within(dialog).findByTestId("action-result")).toHaveTextContent("3 waves updated");
-    await waitFor(() => expect(within(dialog).getByLabelText("Wave of Purchasing")).toHaveValue("w-1"));
+    await waitFor(() => expect(within(dialog).getByLabelText("Wave of MM purchasing")).toHaveValue("w-1"));
   });
 
   it("adds a wave with a name, a date and a stage", async () => {
@@ -176,7 +176,7 @@ describe("the waves editor", () => {
     expect(await within(dialog).findByText(/Changing waves needs the analyse permission/)).toBeInTheDocument();
     const w1 = within(dialog).getByRole("group", { name: "Wave Wave 1: finance foundations" });
     expect(within(w1).getByLabelText("Target date")).toBeDisabled();
-    expect(within(dialog).getByLabelText("Wave of Purchasing")).toBeDisabled();
+    expect(within(dialog).getByLabelText("Wave of MM purchasing")).toBeDisabled();
     expect(within(dialog).getByRole("button", { name: "Save changes" })).toBeDisabled();
     expect(within(dialog).queryByRole("button", { name: "Add the wave" })).toBeNull();
   });

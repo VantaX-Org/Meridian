@@ -199,17 +199,29 @@ CONTAINER_COMPONENTS = [
      "official static binary, unmodified, own container; licence text at /licenses/GARAGE-LICENSE; "
      "source: https://git.deuxfleurs.fr/Deuxfleurs/garage"),
     ("PostgreSQL", "16 (postgres:16-alpine)", "PostgreSQL", "docker-compose.yml", "upstream image, pulled by the customer"),
-    ("Redis", "7 (redis:7-alpine, floating minor)", "BSD-3-Clause up to 7.2; RSALv2 or SSPLv1 from 7.4",
+    ("Redis", "7.2 (redis:7.2-alpine)", "BSD-3-Clause (7.4 and later are RSALv2 or SSPLv1, so the image is pinned to 7.2)",
      "docker-compose.yml", "upstream image, pulled by the customer"),
     ("nginx", "1.27 (nginx:1.27-alpine)", "BSD-2-Clause", "docker/Dockerfile.nginx", "base of meridian-nginx"),
-    ("Ollama", "latest (ollama/ollama)", "MIT", "docker-compose.yml", "upstream image, optional (Tier 2 LLM)"),
+    ("Ollama", "0.40.12 (ollama/ollama:0.40.12)", "MIT", "docker-compose.yml", "upstream image, optional (Tier 2 LLM)"),
     ("Python", "3.12 (python:3.12-slim-bookworm)", "PSF-2.0", "docker/Dockerfile.api.prod", "base of meridian-api, -worker"),
-    ("Node.js", "20 (node:20-alpine)", "MIT", "docker/Dockerfile.frontend.prod", "base of meridian-frontend"),
+    ("Node.js", "22 (node:22-alpine)", "MIT", "docker/Dockerfile.frontend.prod", "base of meridian-frontend"),
     ("Prometheus", "v2.55.0", "Apache-2.0", "docker/docker-compose.monitoring.yml", "optional monitoring overlay"),
     ("Alertmanager", "v0.27.0", "Apache-2.0", "docker/docker-compose.monitoring.yml", "optional monitoring overlay"),
     ("Grafana", "11.3.0", "AGPL-3.0-only", "docker/docker-compose.monitoring.yml", "optional monitoring overlay, upstream image"),
     ("SAP NetWeaver RFC SDK", "customer supplied", "SAP proprietary", "vendor/nwrfcsdk/README.md",
      "never in the repository or the published images; the customer adds it and builds with INSTALL_PYRFC=true"),
+]
+
+
+# Brand elements that are not packages: written into THIRD_PARTY_NOTICES.md with the tables, so a regeneration keeps
+# them. (element, owner, terms, where it ships)
+BRAND_ELEMENTS = [
+    ("Aletheia mark and name (the attribution strip at the foot of every screen)",
+     "the licensor of Vantax Aletheia (VANTA X), a separate product of the same group",
+     "the Aletheia name, logo and get-up are reserved to their owner; the Vantax Aletheia Software Licence, section 6, "
+     "requires the mark on every screen of an Aletheia deployment and forbids altering it. Used in Meridian unaltered. "
+     "Whether and on what terms it is licensed to Meridian is set out in `docs/diligence/licences.md` section 6",
+     "`frontend/public/brand/aletheia-mark.svg`, rendered by `frontend/design/brand/Attribution.tsx`"),
 ]
 
 
@@ -224,6 +236,9 @@ def write_notices(py: list[dict], npm: list[dict], dest: Path) -> None:
              "## Container components", ""]
     lines += ["| Component | Version | Licence | Defined in | How it ships |", "|---|---|---|---|---|"]
     lines += [f"| {c} | {v} | {lic} | `{w}` | {h} |" for c, v, lic, w, h in CONTAINER_COMPONENTS]
+    lines += ["", "## Brand elements", "", "Written from `BRAND_ELEMENTS` in `scripts/diligence_licences.py`.", ""]
+    lines += ["| Element | Owner | Terms | Where it ships |", "|---|---|---|---|"]
+    lines += [f"| {e} | {o} | {t} | {w} |" for e, o, t, w in BRAND_ELEMENTS]
     lines += ["", f"## Python packages ({len(py)}, the API and worker images)", ""]
     lines += _table(py, [("Package", "name"), ("Version", "version"), ("Licence", "licence"), ("Home page", "url")])
     lines += ["", f"## npm packages ({len(runtime_npm)}, the frontend image; optional packages are platform binaries", "installed only on their platform)", ""]

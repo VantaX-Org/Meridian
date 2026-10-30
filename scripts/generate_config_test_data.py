@@ -1,7 +1,7 @@
 """Generate config matching test datasets for all 29 SAP modules.
 
 Creates three CSVs per module (clean, data_errors, config_deviation) and a
-ground_truth.json under Test Files/config_matching/.
+ground_truth.json under tests/fixtures/config_matching/.
 """
 
 import json
@@ -21,7 +21,7 @@ from tests.fixtures.synthetic_sap_data import generate_business_partner
 # ---------------------------------------------------------------------------
 # Output directories
 # ---------------------------------------------------------------------------
-BASE_DIR = pathlib.Path(__file__).parent.parent / "Test Files" / "config_matching"
+BASE_DIR = pathlib.Path(__file__).parent.parent / "tests" / "fixtures" / "config_matching"
 DIRS = {
     "ecc": BASE_DIR / "ecc",
     "successfactors": BASE_DIR / "successfactors",

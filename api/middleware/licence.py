@@ -32,9 +32,16 @@ _last_checked_at: Optional[float] = None
 _consecutive_failures: int = 0
 _first_failure_at: Optional[float] = None
 
-# Task 08: Licence degradation cutoff
+# Offline grace (PC-14). When HQ is unreachable, the last valid SIGNED online response is honoured for
+# settings.licence_offline_grace_days (14) after it was signed, with a logged warning, the response header
+# X-Licence-Warning: offline_grace and status "offline_grace" on GET /api/v1/licence. Past that, gated routes
+# lock (403 licence_server_cutoff) until HQ answers again.
 _degraded_at: Optional[float] = None  # When Cloudflare became unreachable
-LICENCE_DEGRADED_CUTOFF_SECONDS = 2 * 60 * 60  # 2 hours: 7200 seconds
+LICENCE_DEGRADED_CUTOFF_SECONDS = settings.licence_offline_grace_days * 24 * 60 * 60
+
+# The last online response whose Ed25519 signature verified, kept with its signature (and on disk at
+# settings.licence_state_path) so it can be re-verified when HQ is unreachable.
+_last_signed: Optional[dict] = None
 
 CACHE_TTL_SECONDS = 6 * 60 * 60  # 6 hours — valid licences
 INVALID_CACHE_TTL_SECONDS = 60  # a renewal or reactivation applies within a minute
@@ -100,14 +107,56 @@ def get_cached_licence() -> dict:
 
     if not cached.get("valid"):
         result["reason"] = cached.get("reason")
+    # HQ unreachable and running on the last signed licence: when it was signed, when the grace ends, days left
+    result["offline_grace"] = _manifest_cache.get("offline_grace") if _cache.get("offline_grace") else None
 
     return result
+
+
+def _offline_payload_bytes(payload: dict) -> bytes:
+    """The bytes an offline licence file's signature covers: its payload as sorted-key JSON."""
+    return json.dumps(payload, sort_keys=True).encode()
+
+
+def _offline_signature_ok(data: dict) -> tuple[bool, str]:
+    """(valid, reason) for an offline licence file ``{payload, signature, signature_alg}``.
+
+    Ed25519 by the vendor key (api/middleware/licence_keys.py) is the only accepted signature. The old
+    HMAC-SHA256 over LICENCE_SECRET (a secret the customer holds, so it proves nothing) is accepted only while
+    settings.licence_allow_legacy_signatures is on, and every acceptance is logged."""
+    from api.middleware import licence_keys
+
+    payload, sig = data.get("payload"), data.get("signature")
+    if not isinstance(payload, dict) or not sig:
+        return False, "unsigned_licence"
+    alg = str(data.get("signature_alg") or "HMAC-SHA256")
+    if alg == "Ed25519":
+        try:
+            raw = base64.b64decode(str(sig), validate=True)
+        except (ValueError, TypeError):
+            return False, "invalid_signature"
+        return (True, "") if licence_keys.verify(raw, _offline_payload_bytes(payload)) else (False, "invalid_signature")
+    if not settings.licence_allow_legacy_signatures:
+        logger.error("Offline licence is signed with %s, which is no longer accepted; ask Meridian HQ for an "
+                     "Ed25519-signed licence", alg)
+        return False, "legacy_signature_rejected"
+    secret = os.getenv("LICENCE_SECRET", "")
+    if not secret:
+        return False, "unsigned_licence"
+    expected = hmac_mod.new(secret.encode(), _offline_payload_bytes(payload), hashlib.sha256).hexdigest()
+    if not hmac_mod.compare_digest(str(sig), expected):
+        return False, "invalid_signature"
+    logger.warning("Offline licence accepted on a LEGACY HMAC signature (transition window: "
+                   "MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES is on). Replace it with an Ed25519-signed licence.")
+    return True, ""
 
 
 def _read_offline_licence() -> dict | None:
     """Read licence from a local JSON file for air-gapped deployments.
 
-    Requires LICENCE_MODE=offline. Validates HMAC-SHA256 signature using LICENCE_SECRET.
+    Requires LICENCE_MODE=offline. The file is ``{payload, signature, signature_alg: "Ed25519"}``, signed by
+    Meridian HQ's private key and verified against the vendor public key compiled into the image; an unsigned
+    file, or one signed any other way, grants nothing (see _offline_signature_ok for the legacy window).
     After 48h of consecutive validation failures: refuse new analysis jobs,
     keep dashboard and existing data accessible.
     """
@@ -120,37 +169,23 @@ def _read_offline_licence() -> dict | None:
             return None
         licence_path = settings.licence_file
     else:
-        licence_path = os.getenv("LICENCE_FILE_PATH", "/etc/meridian/licence.json")
-        if not settings.licence_file:
-            licence_path = licence_path  # use LICENCE_FILE_PATH
-        else:
-            licence_path = settings.licence_file  # prefer settings if set
+        licence_path = settings.licence_file or os.getenv("LICENCE_FILE_PATH", "/etc/meridian/licence.json")
 
     try:
         with open(licence_path, "r") as f:
             data = json.load(f)
 
-        # HMAC signature verification
-        licence_secret = os.getenv("LICENCE_SECRET", "")
-        if licence_secret and "signature" in data and "payload" in data:
-            # New format: {payload: {...}, signature: "<hmac_sha256_hex>"}
-            payload = data["payload"]
-            expected = hmac_mod.new(
-                licence_secret.encode(),
-                json.dumps(payload, sort_keys=True).encode(),
-                hashlib.sha256,
-            ).hexdigest()
-            if data["signature"] != expected:
-                logger.warning("Offline licence HMAC signature mismatch")
+        ok, reason = _offline_signature_ok(data if isinstance(data, dict) else {})
+        if not ok:
+            if reason == "unsigned_licence":
+                logger.warning("Offline licence is unsigned — rejecting")
+            else:
+                logger.warning(f"Offline licence signature rejected: {reason}")
                 _consecutive_failures += 1
                 if _first_failure_at is None:
                     _first_failure_at = time.time()
-                return {"valid": False, "reason": "invalid_signature"}
-        else:
-            # An unsigned file (or no LICENCE_SECRET to verify it with) grants
-            # nothing — otherwise anyone could write their own licence.
-            logger.warning("Offline licence is unsigned or LICENCE_SECRET is not set — rejecting")
-            return {"valid": False, "reason": "unsigned_licence"}
+            return {"valid": False, "reason": reason}
+        payload = data["payload"]
 
         # Reset failure counter on successful read
         _consecutive_failures = 0
@@ -176,32 +211,55 @@ def _read_offline_licence() -> dict | None:
             _first_failure_at = time.time()
         return None
     except Exception as e:
-        logger.warning(f"Failed to read offline licence file: {e}")
+        logger.warning(f"Failed to read offline licence file: {type(e).__name__}")
         _consecutive_failures += 1
         if _first_failure_at is None:
             _first_failure_at = time.time()
         return None
 
 
-def _read_offline_token() -> dict | None:
-    """Verify HQ's RS256 offline licence JWT (MERIDIAN_LICENCE_TOKEN).
+def _decode_offline_token(token: str) -> dict:
+    """The claims of an offline licence JWT. EdDSA (Ed25519) against the compiled vendor keys; the old RS256
+    against MERIDIAN_OFFLINE_PUBLIC_KEY only inside the legacy window. Raises pyjwt.PyJWTError otherwise."""
+    import jwt as pyjwt
 
-    Issued by POST /api/admin/tenants/:id/offline-token and verified with the
-    matching public key (MERIDIAN_OFFLINE_PUBLIC_KEY). None when no token is set.
+    from api.middleware import licence_keys
+
+    alg = pyjwt.get_unverified_header(token).get("alg")
+    opts = {"require": ["exp", "tenant_id", "iss"]}
+    if alg == "EdDSA":
+        last: Exception = pyjwt.InvalidSignatureError("no vendor key")
+        for key in licence_keys.public_keys():
+            try:
+                return pyjwt.decode(token, key, algorithms=["EdDSA"], issuer="meridian-hq", options=opts)
+            except pyjwt.InvalidSignatureError as e:
+                last = e
+        raise last
+    if alg == "RS256" and settings.licence_allow_legacy_signatures:
+        # A PEM in .env is usually one line with \n escapes; restore the line breaks.
+        pem = os.getenv("MERIDIAN_OFFLINE_PUBLIC_KEY", "").strip().strip('"').replace("\\n", "\n")
+        if not pem:
+            raise pyjwt.InvalidKeyError("no legacy public key")
+        claims = pyjwt.decode(token, pem, algorithms=["RS256"], issuer="meridian-hq", options=opts)
+        logger.warning("Offline licence token accepted on a LEGACY RS256 signature with a key from .env "
+                       "(transition window: MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES is on).")
+        return claims
+    raise pyjwt.InvalidAlgorithmError(f"offline licence token algorithm {alg!r} is not accepted")
+
+
+def _read_offline_token() -> dict | None:
+    """Verify HQ's offline licence JWT (MERIDIAN_LICENCE_TOKEN), EdDSA-signed by the vendor key.
+
+    Issued by POST /api/admin/tenants/:id/offline-token (or scripts/issue_offline_licence.py) and verified
+    against the vendor public key compiled into the image. None when no token is set.
     """
     token = os.getenv("MERIDIAN_LICENCE_TOKEN", "").strip()
     if not token:
         return None
-    # A PEM in .env is usually one line with \n escapes; restore the line breaks.
-    key = os.getenv("MERIDIAN_OFFLINE_PUBLIC_KEY", "").strip().strip('"').replace("\\n", "\n")
-    if not key:
-        logger.error("MERIDIAN_LICENCE_TOKEN set but MERIDIAN_OFFLINE_PUBLIC_KEY is not — cannot verify")
-        return {"valid": False, "reason": "no_public_key"}
     import jwt as pyjwt
 
     try:
-        claims = pyjwt.decode(token, key, algorithms=["RS256"], issuer="meridian-hq",
-                              options={"require": ["exp", "tenant_id", "iss"]})
+        claims = _decode_offline_token(token)
     except pyjwt.ExpiredSignatureError:
         return {"valid": False, "reason": "expired"}
     except pyjwt.PyJWTError as e:
@@ -233,16 +291,16 @@ def is_licence_degraded() -> bool:
 
 
 def is_cloudflare_unreachable() -> bool:
-    """Check if Cloudflare licence server has been unreachable for >= 2 hours.
-    
-    Task 08: Hard cutoff to prevent permanent bypass when Cloudflare is down.
-    After 2 hours: refuse all licence-gated requests, return 403.
+    """True once the licence server has been unreachable for longer than the offline grace (14 days).
+
+    Inside that window the deployment runs on the last valid signed response (offline_grace_manifest), which
+    is itself bounded by its own signature time, so a stale or forged response never extends it.
     """
     if _degraded_at is None:
         return False
     elapsed = time.time() - _degraded_at
     if elapsed > LICENCE_DEGRADED_CUTOFF_SECONDS:
-        logger.error(f"Licence server unreachable for {elapsed:.0f}s (cutoff: {LICENCE_DEGRADED_CUTOFF_SECONDS}s). Rejecting request.")
+        logger.error(f"Licence server unreachable for {elapsed:.0f}s (offline grace: {LICENCE_DEGRADED_CUTOFF_SECONDS}s).")
         return True
     return False
 
@@ -255,7 +313,8 @@ def _mark_cloudflare_degraded() -> None:
     global _degraded_at
     if _degraded_at is None:
         _degraded_at = time.time()
-        logger.warning("Cloudflare licence server marked as unreachable. Grace period starts (2 hours).")
+        logger.warning("Licence server marked as unreachable. Running on the last signed licence for at most "
+                       f"{settings.licence_offline_grace_days} days after it was signed (offline grace).")
 
 
 def _mark_cloudflare_healthy() -> None:
@@ -336,10 +395,10 @@ def _do_sync_manifest(rules: list, field_mappings: list) -> None:
     try:
         from sqlalchemy import text
 
-        from api.deps import _DEV_TENANT
+        from api.deps import deployment_tenant_id
         from workers.db import get_sync_engine
 
-        local_tid = str(_DEV_TENANT.id)
+        local_tid = str(deployment_tenant_id())
         with get_sync_engine().begin() as conn:
             conn.execute(text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": local_tid})
             for rule in rules:
@@ -386,21 +445,23 @@ def _do_sync_manifest(rules: list, field_mappings: list) -> None:
 
 
 # ── Response signature verification (anti-self-grant) ─────────────────────────
-# The worker RSA-signs every valid licence response. A customer holding the image
-# could otherwise MITM their own licence check and forge `valid:true`; an HMAC
-# wouldn't stop them (they'd hold the secret), so the worker signs with a private
-# key and we verify with the PUBLIC key here. Enforcement is OFF until
-# LICENCE_SERVER_PUBLIC_KEY is set — lets the worker deploy first, then the
-# operator flips enforcement on with no forced lockout (safe rollout).
+# The worker signs every valid licence response with the vendor's Ed25519 private key (a Cloudflare worker
+# secret). A customer holding the image could otherwise MITM their own licence check and forge `valid:true`;
+# an HMAC wouldn't stop them (they'd hold the secret), so we verify against the vendor PUBLIC key compiled into
+# the image (api/middleware/licence_keys.py). Enforcement is always on: a valid response without a valid
+# signature is rejected (fail closed). The old RSA signature with a key from .env is accepted only inside the
+# legacy window (settings.licence_allow_legacy_signatures, on by default during the transition), and every such acceptance is logged.
 
 # 7 days — matches the worker's expiry grace window. Bounds replay of a captured
 # response to this window; after it, the stale signature is rejected.
 LICENCE_SIGNATURE_MAX_AGE = int(
     os.getenv("LICENCE_SIGNATURE_MAX_AGE_SECONDS", str(7 * 24 * 60 * 60))
 )
+CANONICAL_V1 = "meridian-licence-v1"  # legacy RSA signature
+CANONICAL_V2 = "meridian-licence-v2"  # Ed25519 signature (signature_ed25519)
 
 
-def _entitlement_canonical(result: dict, signed_at) -> bytes:
+def _entitlement_canonical(result: dict, signed_at, version: str = CANONICAL_V1) -> bytes:
     """Byte-identical twin of the worker's `entitlementCanonical` (index.ts).
 
     Fixed field list + "\\n" join (not JSON) so JS and Python cannot diverge on
@@ -412,7 +473,7 @@ def _entitlement_canonical(result: dict, signed_at) -> bytes:
     else:
         feat_keys = sorted(features)
     parts = [
-        "meridian-licence-v1",
+        version,
         "1",  # valid
         result.get("tenant_id") or "",
         result.get("expiry_date") or "",
@@ -426,36 +487,59 @@ def _entitlement_canonical(result: dict, signed_at) -> bytes:
 
 
 def _licence_public_key():
+    """The legacy RSA public key from .env (LICENCE_SERVER_PUBLIC_KEY), honoured only in the legacy window."""
     pem = os.getenv("LICENCE_SERVER_PUBLIC_KEY")
     if not pem:
         return None
     from cryptography.hazmat.primitives.serialization import load_pem_public_key
 
-    return load_pem_public_key(pem.encode())
+    return load_pem_public_key(pem.strip().strip('"').replace("\\n", "\n").encode())
 
 
-def _verify_response_signature(result: dict) -> bool:
-    """True if the response is authentic OR enforcement is disabled.
-
-    Disabled (no LICENCE_SERVER_PUBLIC_KEY) → True (rollout passthrough). Enabled
-    → the response MUST carry a fresh RSA signature over its entitlement fields,
-    bound to this node's fingerprint; otherwise False (reject the grant).
-    """
-    pub = _licence_public_key()
-    if pub is None:
-        return True  # enforcement not enabled yet — worker-first rollout
-
-    sig_b64 = result.get("signature")
-    signed_at = result.get("signed_at")
-    if not sig_b64 or signed_at is None:
-        logger.error("Licence response unsigned but signature enforcement is on — rejecting")
+def _verify_legacy_rsa(result: dict, signed_at) -> bool:
+    if not settings.licence_allow_legacy_signatures:
         return False
+    pub = _licence_public_key()
+    sig_b64 = result.get("signature")
+    if pub is None or not sig_b64:
+        return False
+    from cryptography.exceptions import InvalidSignature
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.asymmetric import padding
 
     try:
-        if abs(time.time() - float(signed_at)) > LICENCE_SIGNATURE_MAX_AGE:
-            logger.error("Licence response signature stale — rejecting")
-            return False
+        pub.verify(base64.b64decode(sig_b64), _entitlement_canonical(result, signed_at), padding.PKCS1v15(),
+                   hashes.SHA256())
+    except (InvalidSignature, ValueError, TypeError):
+        return False
+    logger.warning("Licence response accepted on a LEGACY RSA signature with a key from .env (transition "
+                   "window: MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES is on).")
+    return True
+
+
+def _verify_response_signature(result: dict, max_age: Optional[int] = None) -> bool:
+    """True only when the response carries a valid, fresh Ed25519 signature by the vendor key over its
+    entitlement fields, bound to this node's fingerprint. Fail closed: missing, stale, cross-node or invalid
+    signatures are rejected. ``max_age`` (seconds since signing) defaults to LICENCE_SIGNATURE_MAX_AGE."""
+    from api.middleware import licence_keys
+
+    if (settings.licence_allow_legacy_signatures and not result.get("signature_ed25519")
+            and _licence_public_key() is None):
+        # Transition window: an installation upgraded before Meridian HQ signs with the vendor key keeps the old
+        # behaviour (no key configured, the response is not verified) so an update never locks it out.
+        logger.warning("Licence response accepted WITHOUT a signature (transition window: "
+                       "MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES is on). Set it to false once HQ signs with Ed25519.")
+        return True
+    signed_at = result.get("signed_at")
+    if signed_at is None:
+        logger.error("Licence response is unsigned — rejecting")
+        return False
+    try:
+        age = time.time() - float(signed_at)
     except (TypeError, ValueError):
+        return False
+    if abs(age) > (LICENCE_SIGNATURE_MAX_AGE if max_age is None else max_age):
+        logger.error("Licence response signature stale — rejecting")
         return False
 
     # Node binding: a response captured for another node carries that node's
@@ -465,21 +549,78 @@ def _verify_response_signature(result: dict) -> bool:
         logger.error("Licence response fingerprint mismatch — rejecting")
         return False
 
-    from cryptography.exceptions import InvalidSignature
-    from cryptography.hazmat.primitives import hashes
-    from cryptography.hazmat.primitives.asymmetric import padding
-
-    try:
-        pub.verify(
-            base64.b64decode(sig_b64),
-            _entitlement_canonical(result, signed_at),
-            padding.PKCS1v15(),
-            hashes.SHA256(),
-        )
-        return True
-    except (InvalidSignature, ValueError, TypeError) as e:
-        logger.error(f"Licence response signature invalid — rejecting: {type(e).__name__}")
+    sig_b64 = result.get("signature_ed25519")
+    if not sig_b64:
+        if _verify_legacy_rsa(result, signed_at):
+            return True
+        logger.error("Licence response carries no Ed25519 signature — rejecting")
         return False
+    try:
+        raw = base64.b64decode(str(sig_b64), validate=True)
+    except (ValueError, TypeError):
+        return False
+    if licence_keys.verify(raw, _entitlement_canonical(result, signed_at, CANONICAL_V2)):
+        return True
+    logger.error("Licence response signature invalid — rejecting")
+    return False
+
+
+# ── Offline grace: the last signed response, re-verified ──────────────────────
+
+def _grace_seconds() -> int:
+    return settings.licence_offline_grace_days * 24 * 60 * 60
+
+
+def _remember_signed(result: dict) -> None:
+    """Keep a verified online response (with its signature) for the offline grace, in memory and on disk."""
+    global _last_signed
+    _last_signed = dict(result)
+    try:
+        path = settings.licence_state_path
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        tmp = f"{path}.tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(_last_signed, f)
+        os.replace(tmp, path)
+    except OSError as e:  # best effort: the in-memory copy still serves this process
+        logger.info(f"Could not keep the signed licence on disk ({type(e).__name__}); the offline grace "
+                    "holds for this process only")
+
+
+def _load_signed() -> Optional[dict]:
+    """The last signed response: this process's, else the copy on disk."""
+    if _last_signed is not None:
+        return _last_signed
+    try:
+        with open(settings.licence_state_path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def offline_grace_manifest() -> Optional[dict]:
+    """The last valid signed online response when its signature still verifies inside the offline grace
+    (signed at most settings.licence_offline_grace_days ago, for this node); None otherwise."""
+    last = _load_signed()
+    if not last or not last.get("valid") or _grace_seconds() <= 0:
+        return None
+    if not _verify_response_signature(last, max_age=_grace_seconds()):
+        return None
+    return last
+
+
+def offline_grace_status(manifest: dict) -> dict:
+    """The visible status of a grace manifest: when it was signed, when the grace ends and days left."""
+    signed_at = float(manifest.get("signed_at") or 0)
+    ends = signed_at + _grace_seconds()
+    return {
+        "active": True,
+        "signed_at": datetime.fromtimestamp(signed_at, tz=timezone.utc).isoformat(),
+        "ends_at": datetime.fromtimestamp(ends, tz=timezone.utc).isoformat(),
+        "days_left": max(0, int((ends - time.time()) // 86400)),
+        "grace_days": settings.licence_offline_grace_days,
+    }
 
 
 async def _validate_licence() -> dict | None:
@@ -488,15 +629,11 @@ async def _validate_licence() -> dict | None:
     _last_checked_at = time.time()
 
     # Offline / air-gapped: never touch the network. HQ's signed token first,
-    # then the legacy HMAC-signed licence file.
+    # then the signed licence file.
     if settings.licence_mode in ("offline", "airgap"):
         return _read_offline_token() or _read_offline_licence()
 
-    # Task 08: Check degraded state cutoff BEFORE attempting network call
-    if is_cloudflare_unreachable():
-        logger.error("Licence server has been unreachable >2hrs. Rejecting request.")
-        return {"valid": False, "reason": "licence_server_unreachable_cutoff"}
-
+    # Always try HQ, even past the offline grace: the first answer it gives ends the lock.
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(
@@ -543,14 +680,16 @@ async def _validate_licence() -> dict | None:
                 return None
             # Connection successful — clear degraded state
             _mark_cloudflare_healthy()
-            # Anti-self-grant: when a public key is configured, a forged or
-            # replayed `valid:true` is rejected here before it can entitle anything.
-            if result.get("valid") and not _verify_response_signature(result):
-                return {"valid": False, "reason": "signature_invalid"}
+            # Anti-self-grant: a forged, replayed or unsigned `valid:true` is
+            # rejected here before it can entitle anything.
+            if result.get("valid"):
+                if not _verify_response_signature(result):
+                    return {"valid": False, "reason": "signature_invalid"}
+                _remember_signed(result)
             return result
     except Exception as e:
-        logger.warning(f"Licence server unreachable: {e}")
-        # Task 08: Mark first failure time for cutoff tracking
+        logger.warning(f"Licence server unreachable: {type(e).__name__}")
+        # Starts the offline-grace clock
         _mark_cloudflare_degraded()
         return None
 
@@ -640,15 +779,9 @@ def feature_licensed(feature: str) -> bool:
         import asyncio
 
         result, outcome = asyncio.run(revalidate())
-        if result is None:
-            last_known = _cache.get("response")
-            if not (last_known and last_known.get("valid") and not is_cloudflare_unreachable()):
-                return False
-            manifest = last_known
-        elif outcome in ("cutoff", "invalid"):
+        if result is None or outcome in ("cutoff", "invalid"):
             return False
-        else:
-            manifest = _cache["response"] if outcome == "grace" else result
+        manifest = _cache["response"] if outcome == "grace" else result
     features = _features_to_list(manifest.get("features", {}))
     return "*" in features or feature in features
 
@@ -736,27 +869,55 @@ def _record_validation(result: dict) -> str:
         _cache["response"] = result
         _cache["expires_at"] = now + INVALID_CACHE_TTL_SECONDS
         _cache["grace"] = False
-        _manifest_cache.update({"valid": False, "status": reason})
+        _cache["offline_grace"] = False
+        _manifest_cache.update({"valid": False, "status": reason, "offline_grace": None})
         return "invalid"
 
     _cache["response"] = result
     _cache["expires_at"] = now + CACHE_TTL_SECONDS
     _cache["grace"] = False
+    _cache["offline_grace"] = False
     # Populate full manifest cache for GET /api/v1/licence
     _update_manifest_cache(result)
+    _manifest_cache["offline_grace"] = None
     # Sync rules and field mappings from manifest asynchronously
     _sync_manifest_to_db(result)
     return "valid"
+
+
+def _record_offline_grace(manifest: dict) -> None:
+    """Serve the last signed response while HQ is unreachable: retried every minute, flagged everywhere."""
+    status = offline_grace_status(manifest)
+    logger.warning("Licence server unreachable: running on the last signed licence (offline grace, %s days "
+                   "left, ends %s). Restore access to the licence server.", status["days_left"], status["ends_at"])
+    _cache["response"] = manifest
+    _cache["expires_at"] = time.time() + INVALID_CACHE_TTL_SECONDS
+    _cache["grace"] = False
+    _cache["offline_grace"] = True
+    if not _manifest_cache or _manifest_cache.get("tenant_id") != (manifest.get("tenant_id") or manifest.get("tenantId")):
+        _update_manifest_cache(manifest)
+    _manifest_cache.update({"valid": True, "status": "offline_grace", "offline_grace": status})
 
 
 async def revalidate() -> tuple[dict | None, str]:
     """Validate with the licence server now and refresh the caches.
 
     Used by the middleware on a cache miss and by POST /api/v1/licence/validate.
-    Returns ``(None, "unreachable")`` when the server could not be reached.
+    When the server cannot be reached: ``(manifest, "offline_grace")`` while the last signed response still
+    verifies inside the offline grace; ``(None, "cutoff")`` once a licence this node held has run out of
+    grace; ``(None, "unreachable")`` when it never held one.
     """
     result = await _validate_licence()
     if result is None:
+        if settings.licence_mode not in ("offline", "airgap"):
+            grace = offline_grace_manifest()
+            if grace is not None:
+                _record_offline_grace(grace)
+                return grace, "offline_grace"
+            if _load_signed() is not None or is_cloudflare_unreachable():
+                _manifest_cache.update({"valid": False, "status": "licence_server_unreachable_cutoff",
+                                        "offline_grace": None})
+                return None, "cutoff"
         return None, "unreachable"
     return result, _record_validation(result)
 
@@ -811,6 +972,8 @@ class LicenceMiddleware(BaseHTTPMiddleware):
                 response = await _serve_entitled(request, call_next, cached)
                 if _cache.get("grace"):
                     response.headers["X-Licence-Warning"] = "expired_grace"
+                elif _cache.get("offline_grace"):
+                    response.headers["X-Licence-Warning"] = "offline_grace"
                 return response
             else:
                 return licence_lock_response("licence_invalid", cached.get("reason"), 402)
@@ -818,32 +981,19 @@ class LicenceMiddleware(BaseHTTPMiddleware):
         # Cache miss — call licence server
         result, outcome = await revalidate()
 
-        if result is None:
-            # Licence server unreachable. FAIL CLOSED — granting ["*"] here let
-            # anyone bypass licensing entirely by blocking the licence server
-            # (firewall it, or never configure it). Degrade ONLY on a licence
-            # this deployment previously validated, using its LAST KNOWN
-            # entitlements, and only inside the degradation grace window. No
-            # prior valid licence (fresh boot, never validated) → deny.
-            last_known = _cache.get("response")
-            if (
-                last_known
-                and last_known.get("valid")
-                and not is_cloudflare_unreachable()
-            ):
-                logger.warning(
-                    "Licence server unreachable — running degraded on the last "
-                    "validated licence's entitlements"
-                )
-                return await _serve_entitled(request, call_next, last_known)
-            logger.error(
-                "Licence server unreachable and no valid cached licence — denying"
-            )
-            return licence_lock_response("licence_unverified", "licence_server_unreachable", 403)
-
-        # Task 08: Check cutoff rejection reason
+        if outcome == "offline_grace" and result is not None:
+            # HQ unreachable: the last signed licence, re-verified, inside its 14-day grace.
+            response = await _serve_entitled(request, call_next, result)
+            response.headers["X-Licence-Warning"] = "offline_grace"
+            return response
         if outcome == "cutoff":
             return licence_lock_response("licence_server_cutoff", "licence_server_unreachable_cutoff", 403)
+        if result is None:
+            # Licence server unreachable and this node never held a signed licence. FAIL CLOSED: granting
+            # anything here would let anyone bypass licensing by blocking the licence server.
+            logger.error("Licence server unreachable and no signed licence to fall back on — denying")
+            return licence_lock_response("licence_unverified", "licence_server_unreachable", 403)
+
         if outcome == "grace":
             response = await _serve_entitled(request, call_next, _cache["response"])
             response.headers["X-Licence-Warning"] = "expired_grace"

@@ -9,14 +9,14 @@ The sentence reads, for example, "612 records wait for approval: the values are 
 Open a batch to read it in the batch inspector:
 
 - **Facts**: batch, name, status, owner, steward, created, due, records and value at risk.
-- **Records**: each change as the SAP field and the pair of values, for example "`MARA.MEINS` STK to EA". The first 50 show in the inspector; **Open all 328 in the ledger** opens the rest.
+- **Records**: each change as the SAP field and the pair of values, for example "`MARA-MEINS` STK to EA". The first 50 show in the inspector; **Open all 328 in the ledger** opens the rest.
 - **Approval trail**: who drafted it and who proposed the values, with times.
 - **Actions**: **Approve**, **Send back** (with a reason the steward reads), **Download sheet** and **Reassign…**. "Approving acts on the whole batch. You can take it back from the notice that follows."
 - **Watch** and **Comments**.
 
 ## After approval
 
-Approval does not touch SAP. It is Meridian's record that the values are right. The approved batch is exported as a load file for your SAP process, and records then read **Sent to SAP**. Where live write-back is switched on for the deployment, an approved change can go to SAP through that route instead, and each request needs someone other than the requester. Either way the work is not finished until a run says so: the next finished run reads the records again, and those that pass become **Fixed**. A record that still fails returns to **To fix**.
+Approval does not touch SAP. It is Meridian's record that the values are right. The approved batch is exported as a load file for your SAP process, and records then read **Sent to SAP**. Where live write-back is switched on for the deployment (`MERIDIAN_LIVE_WRITEBACK_ENABLED`, material master, customer and business partner on ECC, S/4HANA on premise and EWM), an approved change can go to SAP through standard BAPIs instead: each record is simulated first and committed only when SAP's RETURN messages hold no error, those messages are kept per record, and each request needs someone other than the requester. Every other object, including the classic vendor master, goes out as a load file. Either way the work is not finished until a run says so: the next finished run reads the records again, and those that pass become **Fixed**. A record that still fails returns to **To fix**.
 
 The record statuses, in order: **To fix**, **Fix proposed**, **Waiting for approval**, **Approved**, **Sent to SAP**, **Fixed**. Exceptions are **Not an issue** and **Accept risk**.
 

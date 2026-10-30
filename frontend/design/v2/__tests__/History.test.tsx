@@ -56,23 +56,23 @@ describe("record history", () => {
     const table = await within(panel).findByTestId("history-runs");
     const rows = within(table).getAllByRole("row");
     expect(rows).toHaveLength(9); // the header and 8 runs, newest first
-    expect(within(table).getByRole("columnheader", { name: "MARA.MEINS" })).toBeInTheDocument();
+    expect(within(table).getByRole("columnheader", { name: "MARA-MEINS" })).toBeInTheDocument();
     expect(norm(rows[1])).toContain("16 Oct 2026");
     expect(norm(rows[1])).toContain("Failing");
     expect(norm(rows[8])).toContain("Passing");
     expect(within(rows[1]).getByRole("link", { name: /16 Oct 2026/ })).toHaveAttribute("href", "/run/d3229ded-0708-4967-9dfb-1b7f4fada953?fixture=1");
     const events = within(panel).getByTestId("history-events");
-    expect(norm(events)).toContain("MM014: started failing");
-    expect(norm(events)).toContain("MM014: assigned to A. Naidoo");
+    expect(norm(events)).toContain("MM142: started failing");
+    expect(norm(events)).toContain("MM142: assigned to A. Naidoo");
     expect(norm(events)).toContain("R. Govender");
     expect(within(events).getAllByRole("link", { name: "open the run" }).length).toBeGreaterThan(0);
   });
 
   it("names each kind of event in words", () => {
-    const base = { at: null, check_id: "MM014", run_id: null, scope: null, from_value: null, note: null, by: null, batch_id: null, batch_status: null };
-    expect(eventWords({ ...base, kind: "fix_proposed", action: "proposed", to_value: "EA" })).toBe("MM014: fix proposed to EA");
-    expect(eventWords({ ...base, kind: "fix_sent", action: null, to_value: null })).toBe("MM014: fix sent to SAP");
-    expect(eventWords({ ...base, kind: "issue", action: "comment", to_value: null, note: "Checked with the plant" })).toBe("MM014: comment: Checked with the plant");
+    const base = { at: null, check_id: "MM142", run_id: null, scope: null, from_value: null, note: null, by: null, batch_id: null, batch_status: null };
+    expect(eventWords({ ...base, kind: "fix_proposed", action: "proposed", to_value: "EA" })).toBe("MM142: fix proposed to EA");
+    expect(eventWords({ ...base, kind: "fix_sent", action: null, to_value: null })).toBe("MM142: fix sent to SAP");
+    expect(eventWords({ ...base, kind: "issue", action: "comment", to_value: null, note: "Checked with the plant" })).toBe("MM142: comment: Checked with the plant");
   });
 
   it("the history read keeps the oldest run first, as the API does", () => {
@@ -130,7 +130,7 @@ describe("the Object canvas as of a run", () => {
     const band = await screen.findByTestId("as-of-band");
     await waitFor(() => expect(norm(band)).toContain("As it stood at the run of 18 Sept 2026, 05:16."));
     const rules = await screen.findByTestId("as-of-rules");
-    expect(norm(rules)).toContain("MM014");
+    expect(norm(rules)).toContain("MM142");
     expect(screen.queryByTestId("receipt")).toBeNull();
     expect(within(band).getByRole("link", { name: "Back to today" })).toHaveAttribute("href", expect.not.stringContaining("as_of"));
   });

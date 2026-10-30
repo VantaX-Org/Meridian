@@ -152,6 +152,10 @@ docker compose exec api alembic upgrade head
 - **Kubernetes Helm** — enterprise deployments (`helm/`)
 - **Air-gapped** — offline JWT licence, local auth, pre-loaded Docker images, zero outbound calls
 
+Administrator training (install, licence, users, connecting SAP, operations, troubleshooting), as a course with
+exercises: [docs/admin-training/meridian-administrator-training.pdf](docs/admin-training/meridian-administrator-training.pdf)
+(source: `meridian-administrator-training.md` beside it, printed with `npm run training:pdf` in `frontend/`).
+
 ## Security
 
 - No SAP data leaves the customer boundary

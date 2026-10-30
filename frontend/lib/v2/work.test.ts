@@ -7,11 +7,11 @@ const summary = (over: Partial<WorkSummary["objects"][number]> = {}, extra: Part
   version_id: null,
   scope: null,
   built: true,
-  objects: [{ module: "material_master", records: 100, open: 90, issues: 90, critical: 10, proposed: 40, overdue: 5, statuses: { to_fix: 70, proposed: 20, not_an_issue: 10 }, ...over }, ...extra.map((e) => ({ module: "vendor_master", records: 0, open: 0, issues: 0, critical: 0, proposed: 0, overdue: 0, statuses: {}, ...e }))],
+  objects: [{ module: "material_master", records: 100, open: 90, issues: 90, critical: 10, proposed: 40, overdue: 5, statuses: { to_fix: 70, proposed: 20, not_an_issue: 10 }, ...over }, ...extra.map((e) => ({ module: "accounts_payable", records: 0, open: 0, issues: 0, critical: 0, proposed: 0, overdue: 0, statuses: {}, ...e }))],
   totals: { records: 100, open: 90, issues: 90, critical: 10, proposed: 40, overdue: 5 },
 });
 
-const row = (over: Partial<WorkRow>): WorkRow => ({ module: "material_master", record_key: "MATNR=1", name: "x", issues: 1, severity: "high", checks: ["MM014"], proposed: 0, status: "to_fix", top_message: null, top_field: null, ...over });
+const row = (over: Partial<WorkRow>): WorkRow => ({ module: "material_master", record_key: "MATNR=1", name: "x", issues: 1, severity: "high", checks: ["MM142"], proposed: 0, status: "to_fix", top_message: null, top_field: null, ...over });
 
 describe("chips", () => {
   it("count from the summary: to fix, fix proposed, waiting for approval, exceptions", () => {
@@ -21,10 +21,10 @@ describe("chips", () => {
   });
 
   it("count one object when the ledger is scoped to it", () => {
-    const s = summary({}, [{ module: "vendor_master", statuses: { to_fix: 5 }, proposed: 2 }]);
-    expect(CHIPS[0].count(s, "vendor_master")).toBe(5);
+    const s = summary({}, [{ module: "accounts_payable", statuses: { to_fix: 5 }, proposed: 2 }]);
+    expect(CHIPS[0].count(s, "accounts_payable")).toBe(5);
     expect(CHIPS[0].count(s)).toBe(75);
-    expect(CHIPS[1].count(s, "vendor_master")).toBe(2);
+    expect(CHIPS[1].count(s, "accounts_payable")).toBe(2);
   });
 
   it("ask the API for the right rows", () => {
@@ -32,16 +32,16 @@ describe("chips", () => {
     expect(filtersOf({ ...DEFAULT_STATE, chip: "proposed" })).toMatchObject({ status: "to_fix", proposed: true });
     expect(filtersOf({ ...DEFAULT_STATE, chip: "approvals" })).toMatchObject({ status: "proposed" });
     expect(filtersOf({ ...DEFAULT_STATE, chip: "exceptions" })).toMatchObject({ status: "not_an_issue" });
-    expect(filtersOf({ ...DEFAULT_STATE, chip: null, module: "m", rule: "MM014", severity: "critical", assigned: "me", due: "overdue" })).toEqual({ module: "m", check_id: "MM014", severity: "critical", assigned: "me", due: "overdue", status: "open", proposed: undefined });
+    expect(filtersOf({ ...DEFAULT_STATE, chip: null, module: "m", rule: "MM142", severity: "critical", assigned: "me", due: "overdue" })).toEqual({ module: "m", check_id: "MM142", severity: "critical", assigned: "me", due: "overdue", status: "open", proposed: undefined });
   });
 });
 
 describe("the address", () => {
   it("round-trips the state and leaves defaults out", () => {
     expect(toParams(DEFAULT_STATE)).toEqual({});
-    const s = { ...DEFAULT_STATE, chip: "approvals" as const, module: "material_master", rule: "MM014", group: true, sort: "age" as const, density: "compact" as const };
+    const s = { ...DEFAULT_STATE, chip: "approvals" as const, module: "material_master", rule: "MM142", group: true, sort: "age" as const, density: "compact" as const };
     const params = toParams(s);
-    expect(params).toEqual({ filter: "approvals", module: "material_master", rule: "MM014", group: "rule", sort: "age", density: "compact" });
+    expect(params).toEqual({ filter: "approvals", module: "material_master", rule: "MM142", group: "rule", sort: "age", density: "compact" });
     expect(readState(new URLSearchParams(params))).toEqual(s);
   });
 

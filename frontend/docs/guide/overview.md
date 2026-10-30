@@ -12,11 +12,11 @@ The top bar holds the scope (which systems), the run you are reading, the comman
 
 ## The numbers on every screen
 
-Every score in Meridian is drawn on one **ruler**: six segments whose widths are the dimension weights (completeness 25, accuracy 25, consistency 20, timeliness 10, uniqueness 10, validity 10), each filled to its own score, with a tick at the **measured** score. The number beside the ruler is the score **shown**. When a critical rule is over tolerance the shown score is capped and the word **capped** appears beside it.
+Every score in Meridian is drawn on one **ruler**: six segments whose widths are the dimension weights (completeness 25, accuracy 25, consistency 20, timeliness 10, uniqueness 10, validity 10), each filled to its own score, with a tick at the **measured** score. The number beside the ruler is the score **shown**. When a critical rule is over tolerance the shown score is capped and reads with both numbers, for example "70.0 capped, 71.8 measured"; objects are ranked by the measured score.
 
-The cap rule is fixed: one critical rule over tolerance caps a score at 85, two or more at 70. A critical rule counts as over tolerance when it fails at least the share of records or the number of records set under Administration, Settings, Cap rule and tolerance. The receipt under every object score states it in one line, for example: "Measured 71.8, the tick on the ruler. Capped at 70 by MM014 and MM031, two critical rules over tolerance."
+The cap rule is fixed: one critical rule over tolerance caps a score at 85, two or more at 70. A critical rule counts as over tolerance when it fails at least the share of records or the number of records set under Administration, Settings, Cap rule and tolerance. The receipt under every object score states it in one line, for example: "Measured 71.8, the tick on the ruler. Capped at 70 by MM003 and MM035, two critical rules over tolerance."
 
-Verdicts come from the score bands: **Go**, **At risk** and **No-go**. Value at risk comes from the cost model named in the footer, such as "cost model ZAR v3". Nothing is estimated by a language model: every figure is a rule result over stored data, and each one has an **i** beside it that shows the arithmetic.
+Verdicts come from the score bands: **Go**, **At risk** and **No-go**. Value at risk comes from the cost model named in the footer, such as "cost model ZAR", and every amount is marked as an estimate: **est.**, or **default estimate** until the tenant saves its own cost model under Administration, Settings. Nothing is estimated by a language model: every figure is a rule result over stored data, and each one has an **i** beside it that shows the arithmetic.
 
 ## Where each role starts
 
@@ -25,7 +25,8 @@ Everyone lands on the **Landscape**, shaped for their role by one **next-step bu
 - Programme lead: "Clear the 3 no-go objects in Wave 1: finance foundations".
 - Data steward: "Accept the suggested values".
 - Data owner: "Approve batch B-241".
-- SAP Basis: "Extract SuccessFactors" (the system not yet extracted).
+- SAP Basis: "Extract SuccessFactors" (the system not yet extracted), with the Basis home above the matrix: connections, extractions, failed jobs, authorisation errors and schedules.
+- Platform admin: "Open Administration".
 - Process analyst: "Open PTP step 3".
 - Auditor and viewer: the same landscape, read-only.
 
@@ -33,7 +34,7 @@ Under **Preferences**, **Start screen**, you can open Meridian as another role's
 
 ## Keyboard
 
-- `⌘K` or `/` opens the command line. Type a material number, a rule id such as `MM014`, an object, a run, or a word such as approve or export.
+- `⌘K` or `/` opens the command line. Type a material number, a rule id such as `MM142`, an object, a run, or a word such as approve or export.
 - `g` then `l`, `w`, `r` or `p` goes to Landscape, Work, Runs or People.
 - `?` shows every shortcut. `⌘Z` undoes the last change. `Esc` closes the top layer.
 
@@ -44,3 +45,13 @@ Under **Preferences**, **Start screen**, you can open Meridian as another role's
 - **The red line at the bottom of the screen** names a failed job, such as "Extraction of Employee central failed: OData refused credentials (HTTP 401)". Open it for the stages and a retry; SAP Basis owns connection errors.
 - **"... needs the ... permission. Ask an administrator to grant it."** means your role does not hold that action. Your administrator grants it under Administration, Users.
 - For anything else, open help (`?`), copy the diagnostics block under **Contact support** and send it to your administrator. It holds no record values and no secrets.
+
+## The Demo data bar
+
+The demo build carries a bar at the top of every page: "Every figure on this page is sample data built into the interface, not read from your SAP systems." It cannot be dismissed, and a customer installation never shows it.
+
+## The strip at the foot of every page
+
+The small strip with the Aletheia mark under every page is a licensed attribution, not a second product: the
+licence of the Aletheia mark requires it on every screen, so it cannot be hidden. Hover it for the same words in the
+interface's language.

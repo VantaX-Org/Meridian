@@ -13,15 +13,23 @@ copyleft and unusual licences are in `docs/diligence/licences.md`.
 |---|---|---|---|---|
 | Garage object store | v2.4.1 | AGPL-3.0-only | `docker/Dockerfile.garage` | official static binary, unmodified, own container; licence text at /licenses/GARAGE-LICENSE; source: https://git.deuxfleurs.fr/Deuxfleurs/garage |
 | PostgreSQL | 16 (postgres:16-alpine) | PostgreSQL | `docker-compose.yml` | upstream image, pulled by the customer |
-| Redis | 7 (redis:7-alpine, floating minor) | BSD-3-Clause up to 7.2; RSALv2 or SSPLv1 from 7.4 | `docker-compose.yml` | upstream image, pulled by the customer |
+| Redis | 7.2 (redis:7.2-alpine) | BSD-3-Clause (7.4 and later are RSALv2 or SSPLv1, so the image is pinned to 7.2) | `docker-compose.yml` | upstream image, pulled by the customer |
 | nginx | 1.27 (nginx:1.27-alpine) | BSD-2-Clause | `docker/Dockerfile.nginx` | base of meridian-nginx |
-| Ollama | latest (ollama/ollama) | MIT | `docker-compose.yml` | upstream image, optional (Tier 2 LLM) |
+| Ollama | 0.40.12 (ollama/ollama:0.40.12) | MIT | `docker-compose.yml` | upstream image, optional (Tier 2 LLM) |
 | Python | 3.12 (python:3.12-slim-bookworm) | PSF-2.0 | `docker/Dockerfile.api.prod` | base of meridian-api, -worker |
-| Node.js | 20 (node:20-alpine) | MIT | `docker/Dockerfile.frontend.prod` | base of meridian-frontend |
+| Node.js | 22 (node:22-alpine) | MIT | `docker/Dockerfile.frontend.prod` | base of meridian-frontend |
 | Prometheus | v2.55.0 | Apache-2.0 | `docker/docker-compose.monitoring.yml` | optional monitoring overlay |
 | Alertmanager | v0.27.0 | Apache-2.0 | `docker/docker-compose.monitoring.yml` | optional monitoring overlay |
 | Grafana | 11.3.0 | AGPL-3.0-only | `docker/docker-compose.monitoring.yml` | optional monitoring overlay, upstream image |
 | SAP NetWeaver RFC SDK | customer supplied | SAP proprietary | `vendor/nwrfcsdk/README.md` | never in the repository or the published images; the customer adds it and builds with INSTALL_PYRFC=true |
+
+## Brand elements
+
+Written from `BRAND_ELEMENTS` in `scripts/diligence_licences.py`.
+
+| Element | Owner | Terms | Where it ships |
+|---|---|---|---|
+| Aletheia mark and name (the attribution strip at the foot of every screen) | the licensor of Vantax Aletheia (VANTA X), a separate product of the same group | the Aletheia name, logo and get-up are reserved to their owner; the Vantax Aletheia Software Licence, section 6, requires the mark on every screen of an Aletheia deployment and forbids altering it. Used in Meridian unaltered. Whether and on what terms it is licensed to Meridian is set out in `docs/diligence/licences.md` section 6 | `frontend/public/brand/aletheia-mark.svg`, rendered by `frontend/design/brand/Attribution.tsx` |
 
 ## Python packages (134, the API and worker images)
 

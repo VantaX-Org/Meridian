@@ -161,6 +161,10 @@ export function useWorkActions() {
   return { decide, acceptRule, undoLast: toast.undoLast, clear: clearPatches };
 }
 
+/** A bulk change that touches more rows than this asks first: a confirmation bar with the count, Enter or Escape. */
+export const CONFIRM_OVER = 25;
+export const needsConfirm = (rows: number): boolean => rows > CONFIRM_OVER;
+
 export interface WorkCan {
   apply: boolean;
   approve: boolean;

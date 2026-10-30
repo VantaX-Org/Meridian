@@ -1,5 +1,6 @@
 "use client";
 
+import { Money } from "../../Money";
 import { ScrollFrame } from "./ScrollFrame";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -169,7 +170,7 @@ function RulesTable(p: TableProps) {
   const first = lines[0]?.rule.check_id;
   const rest = restOf(lines, receipt);
   const moreCount = Math.max(0, total - lines.length);
-  const money = (n: number | null) => (n == null ? <Dash /> : int(n));
+  const money = (n: number | null) => (n == null ? <Dash /> : <Money amount={n} compact={false} currency={p.currency} source={receipt?.cost_model_source} />);
   return (
     <div className="m2-frame m2-rframe">
       <table className="m2-tbl m2-rtbl" role="grid" aria-label={p.label} aria-rowcount={lines.length + 3} tabIndex={0} onKeyDown={onKeyDown} aria-activedescendant={active >= 0 ? `m2-rule-row-${lines[active]?.rule.check_id}` : undefined}>
@@ -250,7 +251,7 @@ function RulesTable(p: TableProps) {
           ))}
           <tr role="row" aria-rowindex={lines.length + 2} className="m2-rfoot">
             <td role="gridcell" colSpan={6} className="m2-meta">
-              {moreCount > 0 ? t("and {moreCount} more rules", { moreCount: int(moreCount) }) : t("No further rules")}
+              {moreCount > 0 ? <V2Link href={`/rules?object=${encodeURIComponent(p.module)}`} data-testid="more-rules">{t("and {moreCount} more rules", { moreCount: int(moreCount) })}</V2Link> : t("No further rules")}
               {p.more}
             </td>
             <td role="gridcell" className="m2-r"><Dash why={t("The count for the remaining rules is not summed here")} /></td>
@@ -306,7 +307,7 @@ function RulesList(p: TableProps) {
         </div>
       ))}
       <div className="m2-lrow m2-rl" role="listitem">
-        <span className="m2-meta">{moreCount > 0 ? t("and {moreCount} more rules", { moreCount: int(moreCount) }) : t("No further rules")}{p.more}</span>
+        <span className="m2-meta">{moreCount > 0 ? <V2Link href={`/rules?object=${encodeURIComponent(p.module)}`} data-testid="more-rules">{t("and {moreCount} more rules", { moreCount: int(moreCount) })}</V2Link> : t("No further rules")}{p.more}</span>
         <span className="m2-b">{moreCount > 0 && rest != null ? int(rest) : ""}</span>
       </div>
       </div>

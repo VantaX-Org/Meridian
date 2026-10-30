@@ -1,57 +1,61 @@
 WEBVTT
 
 1
-00:00:00.045 --> 00:00:08.254
+00:00:00.017 --> 00:00:07.737
 An object is one area of SAP data scored as a whole on one system.
 
 2
-00:00:08.254 --> 00:00:16.587
-The facts line: run, records checked, rules measured, records to fix, value at risk, features blocked, wave verdict.
+00:00:07.737 --> 00:00:14.662
+The tabs sit under the title. The Rules view comes first and carries the receipt.
 
 3
-00:00:16.587 --> 00:00:23.366
-Related objects, upstream and downstream. Fix upstream first.
+00:00:14.662 --> 00:00:23.387
+The facts line: run, records checked, rules measured, records to fix, value at risk marked est., features blocked, wave verdict.
 
 4
-00:00:23.366 --> 00:00:29.840
-The ruler: the tick is the measured score, the number is the score shown.
+00:00:23.387 --> 00:00:29.724
+Related objects, upstream and downstream. Fix upstream first.
 
 5
-00:00:29.840 --> 00:00:34.755
-Capped at 70 by MM014 and MM031: two critical rules over tolerance.
+00:00:29.724 --> 00:00:38.697
+The ruler: the tick is the measured score, the number is the score shown. It reads 70.0 capped, 71.8 measured.
 
 6
-00:00:34.755 --> 00:00:40.090
-The receipt: each dimension's weight, score and points, then measured, cap and score shown.
+00:00:38.697 --> 00:00:43.617
+Capped at 70 by MM003 and MM035: two critical rules over tolerance.
 
 7
-00:00:40.090 --> 00:00:47.070
-Every i explains its figure from the run itself.
+00:00:43.617 --> 00:00:48.950
+The receipt: each dimension's weight, score and points, then measured, cap and score shown.
 
 8
-00:00:47.070 --> 00:00:54.806
-Rules, ranked by value at risk, with tolerance and whether each is over it.
+00:00:48.950 --> 00:00:55.990
+Every i explains its figure from the run itself.
 
 9
-00:00:54.806 --> 00:01:02.026
-Pivot the rules by field, dimension, severity or S/4 feature.
+00:00:55.990 --> 00:01:03.753
+Rules, ranked by value at risk, with tolerance and whether each is over it.
 
 10
-00:01:02.026 --> 00:01:09.205
-Runs: the measured score over eight runs, and why it moved against the baseline.
+00:01:03.753 --> 00:01:10.909
+Pivot the rules by field, dimension, severity or S/4 feature.
 
 11
-00:01:09.205 --> 00:01:14.124
-The shown score moved only to 70.0, because the cap holds it.
+00:01:10.909 --> 00:01:19.345
+Runs: the measured score over eight runs, and why it moved against the baseline.
 
 12
-00:01:14.124 --> 00:01:21.793
-Readiness: the waves this object is in, and what its failing rules block in S/4HANA.
+00:01:19.345 --> 00:01:24.257
+The shown score moved only to 70.0, because the cap holds it.
 
 13
-00:01:21.793 --> 00:01:29.191
-Fixes lists the object's fix batches.
+00:01:24.257 --> 00:01:32.808
+Readiness: the waves this object is in, and what its failing rules block in S/4HANA.
 
 14
-00:01:29.191 --> 00:01:35.746
+00:01:32.808 --> 00:01:39.959
+Fixes lists the object's fix batches.
+
+15
+00:01:39.959 --> 00:01:45.969
 Watch the object to hear about runs, score drops and new critical breaches.

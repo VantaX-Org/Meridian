@@ -24,7 +24,7 @@ beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
   granted = "all";
   resetObjectFixture();
-  setUrl("/o/ecc-production/material-master?open=rule:MM014&fixture=1");
+  setUrl("/o/ecc-production/material-master?open=rule:MM142&fixture=1");
 });
 afterEach(() => {
   window.sessionStorage.clear();
@@ -43,8 +43,8 @@ const section = (d: HTMLElement, name: RegExp | string) => within(d).getByRole("
 describe("the rule inspector", () => {
   it("is named by the rule id and draws the sections in order: facts, definition, authority, scope, blocks, lineage, versions, contract, actions, history, watch, comments", async () => {
     const d = await open();
-    expect(d).toHaveAccessibleName("MM014");
-    expect(within(d).getByTestId("rule-name")).toHaveTextContent("Base unit of measure not valid");
+    expect(d).toHaveAccessibleName("MM142");
+    expect(within(d).getByTestId("rule-name")).toHaveTextContent("Base unit of measure MEINS must reference a valid entry in T006");
     const names = within(d).getAllByRole("region").map((r) => r.getAttribute("aria-label"));
     expect(names).toEqual(["Facts", "Definition", "Authority", "Scope: 2 objects, 1 system", "Blocks: 3 S/4 features", "Lineage", "Versions", "Contract", "Actions", "History", "Watch", "Comments"]);
     expect(within(d).getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual(names);
@@ -54,14 +54,14 @@ describe("the rule inspector", () => {
     const d = await open();
     const facts = section(d, "Facts");
     const fact = (label: string | RegExp) => within(facts).getByText(label, { selector: "dt" }).closest(".m2-fact") as HTMLElement;
-    expect(norm(fact("Severity"))).toBe("SeverityCritical");
-    expect(norm(fact("Dimension"))).toBe("DimensionValidity");
-    expect(norm(fact("Field"))).toContain("MARA.MEINS");
-    await waitFor(() => expect(norm(fact(/^Tolerance/))).toContain("25 rows"));
-    await waitFor(() => expect(norm(fact(/^Over tolerance/))).toContain("Yes"));
+    expect(norm(fact("Severity"))).toBe("SeverityHigh");
+    expect(norm(fact("Dimension"))).toBe("DimensionConsistency");
+    expect(norm(fact("Field"))).toContain("MARA-MEINS");
+    // A high rule has no tolerance of its own and never caps the score.
+    await waitFor(() => expect(norm(fact(/^Over tolerance/))).toContain("No"));
     expect(norm(fact("Failing records"))).toBe("Failing records4,212 across 2 objects");
     expect(norm(fact("Material master"))).toBe("Material master3,640");
-    expect(norm(fact("Purchasing"))).toBe("Purchasing572");
+    expect(norm(fact("MM purchasing"))).toBe("MM purchasing572");
     expect(norm(fact(/^Failing %/))).toContain("4.99% of 84,456 records checked");
     await waitFor(() => expect(norm(fact(/^Value at risk/))).toMatch(/1\.18 ?m/));
   });
@@ -70,13 +70,13 @@ describe("the rule inspector", () => {
     const d = await open();
     fireEvent.click(within(section(d, "Facts")).getByRole("button", { name: "About Failing %" }));
     const pop = await screen.findByTestId("explain");
-    await waitFor(() => expect(pop).toHaveTextContent("3,640 of 61,816 records checked fail MM014"));
+    await waitFor(() => expect(pop).toHaveTextContent("3,640 of 61,816 records checked fail MM142"));
   });
 
   it("gives the definition: check class, field, expression and parameters", async () => {
     const d = await open();
     const def = norm(section(d, "Definition"));
-    expect(def).toContain("Allowed values");
+    expect(def).toContain("Exists in check table");
     expect(def).toContain("MARA-MEINS in T006-MSEHI");
     expect(def).toContain("Check table");
     expect(def).toContain("T006");
@@ -86,15 +86,15 @@ describe("the rule inspector", () => {
   it("names the authority and why it matters", async () => {
     const d = await open();
     const a = norm(section(d, "Authority"));
-    expect(a).toContain("SAP hard constraint");
-    expect(a).toContain("Goods movements and MRP cannot post for a material whose base unit is not an ISO unit.");
+    expect(a).toContain("Best practice");
+    expect(a).toContain("UoM conversions fail; stock quantities cannot be resolved; costing and CO-PA calculations error.");
   });
 
   it("links every object and system in the scope", async () => {
     const d = await open();
     const scope = section(d, /^Scope/);
     expect(within(scope).getByRole("link", { name: "Material master" })).toHaveAttribute("href", expect.stringMatching(/\/o\/ecc-production\/material-master/));
-    expect(within(scope).getByRole("link", { name: "Purchasing" })).toHaveAttribute("href", expect.stringMatching(/\/o\/ecc-production\/purchasing/));
+    expect(within(scope).getByRole("link", { name: "MM purchasing" })).toHaveAttribute("href", expect.stringMatching(/\/o\/ecc-production\/mm-purchasing/));
     expect(within(scope).getByRole("link", { name: "ECC production" })).toHaveAttribute("href", expect.stringContaining("open=system%3A"));
   });
 
@@ -112,8 +112,8 @@ describe("the rule inspector", () => {
     const svg = within(section(d, "Lineage")).getByTestId("lineage");
     expect(svg.tagName.toLowerCase()).toBe("svg");
     expect(svg).toHaveAttribute("role", "group");
-    expect(svg).toHaveAccessibleName("Lineage: MARA.MEINS to MM014 to blocked features");
-    expect(Array.from(svg.querySelectorAll("text")).map((t) => t.textContent)).toEqual(expect.arrayContaining(["MARA.MEINS", "MM014", "Migration cockpit: …", "Material ledger act…", "Embedded EWM produc…"]));
+    expect(svg).toHaveAccessibleName("Lineage: MARA.MEINS to MM142 to blocked features");
+    expect(Array.from(svg.querySelectorAll("text")).map((t) => t.textContent)).toEqual(expect.arrayContaining(["MARA.MEINS", "MM142", "Migration cockpit: …", "Material ledger act…", "Embedded EWM produc…"]));
     expect(svg.querySelectorAll("line")).toHaveLength(4); // field to rule, then rule to each of the three features
     expect(svg.querySelectorAll("a")).toHaveLength(3);
     expect(svg.querySelectorAll("rect")).toHaveLength(2 + 3);
@@ -134,9 +134,8 @@ describe("the rule inspector", () => {
   it("shows the contracts that name the rule or set a threshold on its dimension", async () => {
     const d = await open();
     const c = section(d, "Contract");
-    expect(within(c).getAllByText("MD-MATERIAL, version 3")).toHaveLength(2);
+    expect(within(c).getAllByText("MD-MATERIAL, version 3")).toHaveLength(1);
     expect(norm(c)).toContain("names this rule");
-    expect(norm(c)).toContain("minimum 90 for validity");
   });
 
   it("reads the history: runs and versions, newest first", async () => {
@@ -155,8 +154,8 @@ describe("actions by role", () => {
   it("offers a lead every verb: open, failing records, suppress, edit in authoring, hand to a steward", async () => {
     const d = await open();
     const a = section(d, "Actions");
-    expect(within(a).getByRole("link", { name: "Open the rule" })).toHaveAttribute("href", expect.stringContaining("/r/MM014"));
-    expect(within(a).getByRole("link", { name: "Open failing records" })).toHaveAttribute("href", expect.stringContaining("/r/MM014?tab=failing"));
+    expect(within(a).getByRole("link", { name: "Open the rule" })).toHaveAttribute("href", expect.stringContaining("/r/MM142"));
+    expect(within(a).getByRole("link", { name: "Open failing records" })).toHaveAttribute("href", expect.stringContaining("/r/MM142?tab=failing"));
     expect(within(a).getByRole("button", { name: "Suppress" })).toBeInTheDocument();
     expect(within(a).getByRole("link", { name: "Edit in authoring" })).toHaveAttribute("href", expect.stringContaining("/rules?view=drafts&module=material_master"));
     expect(within(a).getByRole("button", { name: "Hand to a steward" })).toBeInTheDocument();
@@ -182,33 +181,33 @@ describe("actions by role", () => {
   });
 
   it("suppresses with a reason and a period, through the suppression endpoint", async () => {
-    const spy = vi.spyOn(objectApi, "suppressRule").mockResolvedValue({ id: "s1", check_id: "MM014", expires_at: "x" });
+    const spy = vi.spyOn(objectApi, "suppressRule").mockResolvedValue({ id: "s1", check_id: "MM142", expires_at: "x" });
     const d = await open();
     fireEvent.click(within(section(d, "Actions")).getByRole("button", { name: "Suppress" }));
-    const form = within(d).getByRole("form", { name: "Suppress MM014" });
+    const form = within(d).getByRole("form", { name: "Suppress MM142" });
     fireEvent.change(within(form).getByLabelText("Reason"), { target: { value: "Waiting for the unit table refresh" } });
     fireEvent.change(within(form).getByLabelText("For"), { target: { value: "60" } });
     fireEvent.click(within(form).getByRole("button", { name: "Suppress rule" }));
     await waitFor(() => expect(spy).toHaveBeenCalled());
     const [id, reason, expires] = spy.mock.calls[0];
-    expect([id, reason]).toEqual(["MM014", "Waiting for the unit table refresh"]);
+    expect([id, reason]).toEqual(["MM142", "Waiting for the unit table refresh"]);
     expect(new Date(expires).getTime() - Date.now()).toBeGreaterThan(59 * 86_400_000);
-    expect(await within(d).findByRole("status")).toHaveTextContent("MM014 is suppressed until the date you set.");
+    expect(await within(d).findByRole("status")).toHaveTextContent("MM142 is suppressed until the date you set.");
   });
 
   it("hands the rule to a steward with a note and a due date", async () => {
     const spy = vi.spyOn(objectApi, "handOffRule").mockResolvedValue({ task_id: "t", exception_id: "e", assigned_to: "u-naidoo", due_at: "x" });
     const d = await open();
     fireEvent.click(within(section(d, "Actions")).getByRole("button", { name: "Hand to a steward" }));
-    const form = within(d).getByRole("form", { name: "Hand MM014 to a steward" });
+    const form = within(d).getByRole("form", { name: "Hand MM142 to a steward" });
     await within(form).findByRole("option", { name: "A. Naidoo" });
     fireEvent.change(within(form).getByLabelText("Steward"), { target: { value: "u-naidoo" } });
     fireEvent.change(within(form).getByLabelText("Note"), { target: { value: "Fix the unit table first" } });
     fireEvent.change(within(form).getByLabelText("Due"), { target: { value: "2026-11-02" } });
     fireEvent.click(within(form).getByRole("button", { name: "Hand over" }));
     await waitFor(() => expect(spy).toHaveBeenCalled());
-    expect(spy.mock.calls[0][0]).toMatchObject({ check_id: "MM014", module: "material_master", assignee_id: "u-naidoo", note: "Fix the unit table first", due_date: "2026-11-02" });
-    expect(await within(d).findByRole("status")).toHaveTextContent("MM014 is handed over");
+    expect(spy.mock.calls[0][0]).toMatchObject({ check_id: "MM142", module: "material_master", assignee_id: "u-naidoo", note: "Fix the unit table first", due_date: "2026-11-02" });
+    expect(await within(d).findByRole("status")).toHaveTextContent("MM142 is handed over");
   });
 });
 

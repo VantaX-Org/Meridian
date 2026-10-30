@@ -178,7 +178,7 @@ describe("Admin: field mappings", () => {
     setUrl("/admin/mappings?fixture=1");
     renderWithQuery(<MappingsSection />);
     await waitFor(() => expect(dataRows("Field mappings")).toHaveLength(12));
-    expect(norm(dataRows("Field mappings")[0])).toContain("MARA.MATNR");
+    expect(norm(dataRows("Field mappings")[0])).toContain("MARA-MATNR");
     expect(norm(dataRows("Field mappings")[0])).toContain("MATNR_X");
     expect(norm(dataRows("Field mappings")[0])).toContain("Mapped");
     fireEvent.change(screen.getByLabelText("Search"), { target: { value: "LIFNR" } });

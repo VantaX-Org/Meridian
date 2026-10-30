@@ -153,6 +153,63 @@ describe("POST /api/licence/validate", () => {
   });
 });
 
+// ─── Ed25519 signatures (vendor key; the test key in vitest.config.ts) ───────
+
+// TEST ONLY: the public half of vitest.config.ts LICENCE_SIGNING_KEY_ED25519.
+const TEST_ONLY_LICENCE_PUBLIC_KEY = "b1cT8T5StMuJ2nL1c4hCVSfmyGw/L8Qsl3R2UxIgw+A=";
+
+async function verifyEd25519(message: string, signatureB64: string): Promise<boolean> {
+  const raw = Uint8Array.from(atob(TEST_ONLY_LICENCE_PUBLIC_KEY), (c) => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey("raw", raw, { name: "Ed25519" }, false, ["verify"]);
+  const sig = Uint8Array.from(atob(signatureB64), (c) => c.charCodeAt(0));
+  return crypto.subtle.verify({ name: "Ed25519" }, key, sig, new TextEncoder().encode(message));
+}
+
+describe("Ed25519 licence signatures", () => {
+  it("signs every valid validate response over the v2 canonical the API rebuilds", async () => {
+    const { licence_key } = await createTestTenant();
+    const resp = await callWorker("/api/licence/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ licenceKey: licence_key, machineFingerprint: "fp-1" }),
+    });
+    expect(resp.status).toBe(200);
+    const d = (await resp.json()) as {
+      tenant_id: string; expiry_date: string; enabled_modules: string[]; enabled_menu_items: string[];
+      features: Record<string, unknown>; machine_fingerprint: string; signed_at: number;
+      signature_ed25519: string; signature_ed25519_alg: string;
+    };
+    expect(d.signature_ed25519_alg).toBe("Ed25519-canonical-v2");
+    // the same bytes api/middleware/licence.py _entitlement_canonical(..., CANONICAL_V2) builds
+    const canonical = [
+      "meridian-licence-v2", "1", d.tenant_id, d.expiry_date,
+      [...d.enabled_modules].sort().join(","), [...d.enabled_menu_items].sort().join(","),
+      Object.keys(d.features).filter((k) => !!d.features[k]).sort().join(","),
+      d.machine_fingerprint, String(d.signed_at),
+    ].join("\n");
+    expect(await verifyEd25519(canonical, d.signature_ed25519)).toBe(true);
+    // a widened entitlement no longer verifies
+    expect(await verifyEd25519(canonical.replace("meridian-licence-v2\n1\n", "meridian-licence-v2\n1\nx"),
+      d.signature_ed25519)).toBe(false);
+  });
+
+  it("issues offline tokens as EdDSA JWTs signed by the vendor key", async () => {
+    const { id } = await createTestTenant();
+    const resp = await callWorker(`/api/admin/tenants/${id}/offline-token`, {
+      method: "POST",
+      headers: await adminHeaders(),
+      body: JSON.stringify({ expiryDays: 30 }),
+    });
+    expect(resp.status).toBe(200);
+    const { token } = (await resp.json()) as { token: string };
+    const [h, p, sig] = token.split(".");
+    const header = JSON.parse(atob(h.replace(/-/g, "+").replace(/_/g, "/")));
+    expect(header.alg).toBe("EdDSA");
+    const std = sig.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (sig.length % 4)) % 4);
+    expect(await verifyEd25519(`${h}.${p}`, std)).toBe(true);
+  });
+});
+
 // ─── Heartbeat ────────────────────────────────────────────────────────────────
 
 describe("GET /api/licence/heartbeat", () => {

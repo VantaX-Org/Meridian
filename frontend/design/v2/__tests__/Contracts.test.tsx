@@ -46,11 +46,11 @@ describe("the contract breach mark", () => {
     expect(contractMark({ contract_breaches: 0 })).toBeNull();
     const weak = contractMark({ contract_breaches: 3, enforced_contract_breaches: 0 })!;
     const strong = contractMark({ contract_breaches: 3, enforced_contract_breaches: 3 })!;
-    const { rerender } = renderWithQuery(<Ruler size={48} dims={dims} measured={71.8} score={70} capped capLevel={70} breaches={["MM014"]} label="Material master" records={1} rules={1} coverage={1} contract={weak} />);
+    const { rerender } = renderWithQuery(<Ruler size={48} dims={dims} measured={71.8} score={70} capped capLevel={70} breaches={["MM142"]} label="Material master" records={1} rules={1} coverage={1} contract={weak} />);
     const mark = screen.getByTestId("contract-mark");
     expect(mark).toHaveAttribute("title", "3 data contract thresholds breached, not enforced");
     expect(mark).toHaveAttribute("data-enforced", "false");
-    rerender(<Ruler size={240} dims={dims} measured={71.8} score={70} capped capLevel={70} breaches={["MM014"]} label="Material master" records={1} rules={1} coverage={1} contract={strong} />);
+    rerender(<Ruler size={240} dims={dims} measured={71.8} score={70} capped capLevel={70} breaches={["MM142"]} label="Material master" records={1} rules={1} coverage={1} contract={strong} />);
     expect(screen.getAllByTestId("contract-mark")).toHaveLength(1);
     expect(screen.getByTestId("contract-mark")).toHaveAttribute("data-enforced", "true");
     expect(screen.getByTestId("contract-mark")).toHaveAccessibleName(/3 enforced: a baseline cannot be pinned/);

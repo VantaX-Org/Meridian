@@ -145,7 +145,7 @@ describe("which chapters come first", () => {
   it("reads the canvas from the address", () => {
     expect(screenOf("/")).toBe("landscape");
     expect(screenOf("/o/ecc-production/material-master/rules")).toBe("object");
-    expect(screenOf("/r/MM031")).toBe("rule");
+    expect(screenOf("/r/MM003")).toBe("rule");
     expect(screenOf("/work")).toBe("work");
     expect(screenOf("/run/abc/vs/def")).toBe("runs");
     expect(screenOf("/s/a1")).toBe("system");
@@ -207,8 +207,8 @@ describe("searching help", () => {
 });
 
 describe("what's new", () => {
-  it("has one dated line for each step from 0 to the cut-over (7) and step 10, newest first", () => {
-    expect(whatsNew.map((w) => w.step)).toEqual(["10", "7", "6c", "6b", "6", "5", "4", "3", "2", "1", "0"]);
+  it("has one dated line for each step from 0 to the cut-over (7), step 10 and the release of 30 October, newest first", () => {
+    expect(whatsNew.map((w) => w.step)).toEqual(["11", "10", "7", "6c", "6b", "6", "5", "4", "3", "2", "1", "0"]);
     for (const w of whatsNew) {
       expect(w.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(w.text).not.toContain("\n");

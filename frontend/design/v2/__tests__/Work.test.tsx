@@ -51,9 +51,9 @@ function mount(search = "") {
 }
 
 const ledger = () => screen.findByRole("grid", { name: "Work ledger" });
-const rowFor = (grid: HTMLElement, key: string) => within(grid).getByText(key).closest('[role="row"]') as HTMLElement;
-const KEY_100 = "000000000000000100"; // MM014, suggested EA
-const KEY_232 = "000000000000000232"; // MM031, no suggestion, the highest value at risk
+const rowFor = (grid: HTMLElement, key: string) => within(grid).getByTitle(key).closest('[role="row"]') as HTMLElement;
+const KEY_100 = "000000000000000100"; // MM142, suggested EA
+const KEY_232 = "000000000000000232"; // MM003, no suggestion, the highest value at risk
 
 describe("the Work ledger, fixture mode", () => {
   it("states what it lists: the title, the sentence from the summary, the chips with their counts", async () => {
@@ -72,7 +72,7 @@ describe("the Work ledger, fixture mode", () => {
   it("draws the grid with the columns of the prototype, keeping leading zeros and showing the headers of the key", async () => {
     mount();
     const grid = await ledger();
-    await within(grid).findByText(KEY_232);
+    await within(grid).findByTitle(KEY_232);
     const heads = within(grid).getAllByRole("columnheader").map((h) => text(h));
     expect(heads).toEqual([
       "",
@@ -81,28 +81,22 @@ describe("the Work ledger, fixture mode", () => {
       "Name",
       "Rule",
       "Severity",
-      "Field description",
-      "SAP field",
-      "Problem",
       "Current value",
-      "Possible values",
       "Suggested value",
       "New value",
       "Decision",
-      "First seen",
-      "Days open",
+      "SAP field",
+      "Problem",
       "Owner",
       "Value at risk",
     ]);
     const row = rowFor(grid, KEY_232);
-    expect(within(row).getByText("MM031")).toHaveClass("m2-mono");
+    expect(within(row).getByText("MM003")).toHaveClass("m2-mono");
     expect(within(row).getByText("Critical")).toBeInTheDocument();
-    expect(within(row).getByText("MARA.MTART")).toBeInTheDocument();
-    expect(within(row).getByText("Material type missing")).toBeInTheDocument();
-    expect(within(row).getByText("12,390")).toBeInTheDocument();
-    // Possible values are cut to three with "+N more" and the whole list in the title.
-    const pv = within(row).getByText("+9 more");
-    expect(pv.closest(".m2-pvl")).toHaveAttribute("title", expect.stringContaining("ROH (Raw materials)"));
+    expect(within(row).getByText("MARA-MTART")).toBeInTheDocument();
+    expect(within(row).getByText("Material type is mandatory - determines procurement and storage behaviour")).toBeInTheDocument();
+    // One formatter with its unit everywhere: the same figure the record inspector shows.
+    expect(within(row).getByTestId("money")).toHaveTextContent("ZAR 12,390 est.");
     expect(within(row).getByLabelText(`New value for ${KEY_232}`)).toBeInTheDocument();
     expect(within(row).getByLabelText(`Decision for ${KEY_232}`)).toBeInTheDocument();
   });
@@ -110,9 +104,9 @@ describe("the Work ledger, fixture mode", () => {
   it("ranks by value at risk by default and re-sorts by age", async () => {
     mount();
     const grid = await ledger();
-    await within(grid).findByText(KEY_232);
+    await within(grid).findByTitle(KEY_232);
     const firstKeys = () => within(grid).getAllByRole("row").slice(1, 4).map((r) => text(r.querySelector('[role="gridcell"]:nth-child(2)') as Element));
-    expect(firstKeys()[0]).toBe(KEY_232);
+    expect(firstKeys()[0]).toBe("232"); // ALPHA-converted on screen, the full key on hover
     fireEvent.change(screen.getByLabelText("Sort by"), { target: { value: "age" } });
     expect(getUrl()).toContain("sort=age");
   });
@@ -120,7 +114,7 @@ describe("the Work ledger, fixture mode", () => {
   it("filters with a chip: Waiting for approval lists the values in a draft batch, and the address carries it", async () => {
     mount();
     const grid = await ledger();
-    await within(grid).findByText(KEY_232);
+    await within(grid).findByTitle(KEY_232);
     fireEvent.click(screen.getByRole("button", { name: /Waiting for approval/ }));
     expect(getUrl()).toContain("filter=approvals");
     await waitFor(() => expect(within(screen.getByRole("grid", { name: "Work ledger" })).queryByText(KEY_232)).toBeNull());
@@ -136,13 +130,13 @@ describe("the Work ledger, fixture mode", () => {
   it("groups by rule: a heading per rule with 'Accept all N suggested', the top rule open", async () => {
     mount("&group=rule");
     const grid = await ledger();
-    const heading = await within(grid).findByRole("button", { name: /^MM014/ });
+    const heading = await within(grid).findByRole("button", { name: /^MM142/ });
     expect(heading).toHaveAttribute("aria-expanded", "true");
     expect(within(grid).getByRole("button", { name: "Accept all 112 suggested" })).toBeInTheDocument();
     expect(within(grid).getByRole("button", { name: "Accept all 640 suggested" })).toBeInTheDocument();
     // Only the open rule shows rows; the others are collapsed.
-    await waitFor(() => expect(within(grid).getAllByText("MM014").length).toBeGreaterThan(1));
-    expect(within(grid).getByRole("button", { name: /^MM031/ })).toHaveAttribute("aria-expanded", "false");
+    await waitFor(() => expect(within(grid).getAllByText("MM142").length).toBeGreaterThan(1));
+    expect(within(grid).getByRole("button", { name: /^MM003/ })).toHaveAttribute("aria-expanded", "false");
     expect(screen.getByRole("button", { name: "By rule" })).toHaveAttribute("aria-pressed", "true");
   });
 
@@ -151,8 +145,12 @@ describe("the Work ledger, fixture mode", () => {
     mount();
     const next = await screen.findByRole("button", { name: "Accept the 112 suggested values" });
     fireEvent.click(next);
-    await waitFor(() => expect(spy).toHaveBeenCalledWith("MM014", expect.any(String)));
-    expect(await screen.findByText(/Accepted 112 suggested values for MM014/)).toBeInTheDocument();
+    // Over 25 values: the confirmation bar first.
+    expect(await screen.findByTestId("bulk-confirm")).toHaveTextContent("Accept 112 suggested values for MM142?");
+    expect(spy).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Accept 112 values" }));
+    await waitFor(() => expect(spy).toHaveBeenCalledWith("MM142", expect.any(String)));
+    expect(await screen.findByText(/Accepted 112 suggested values for MM142/)).toBeInTheDocument();
     // The count moved: the next rule's values are now the next step.
     expect(await screen.findByRole("button", { name: "Accept the 640 suggested values" })).toBeInTheDocument();
   });
@@ -160,7 +158,7 @@ describe("the Work ledger, fixture mode", () => {
   it("shows the bulk bar for the selected rows: N records, accept, set value, not an issue, accept risk, assign", async () => {
     mount();
     const grid = await ledger();
-    await within(grid).findByText(KEY_232);
+    await within(grid).findByTitle(KEY_232);
     const boxes = within(grid).getAllByRole("checkbox", { name: /^Select row/ });
     fireEvent.click(boxes[0]);
     fireEvent.click(boxes[1]);
@@ -173,13 +171,13 @@ describe("the Work ledger, fixture mode", () => {
     const spy = vi.spyOn(workApi, "postDecide");
     mount();
     const grid = await ledger();
-    await within(grid).findByText(KEY_100);
+    await within(grid).findByTitle(KEY_100);
     const r = rowFor(grid, KEY_100);
     fireEvent.click(within(r).getByRole("checkbox"));
     fireEvent.click(within(screen.getByRole("region", { name: "Bulk actions" })).getByRole("button", { name: /Accept suggested/ }));
     await waitFor(() => expect(spy).toHaveBeenCalled());
     const [items, version] = spy.mock.calls[0];
-    expect(items).toEqual([expect.objectContaining({ module: "material_master", record_key: `MATNR=${KEY_100}`, check_id: "MM014", action: "accept" })]);
+    expect(items).toEqual([expect.objectContaining({ module: "material_master", record_key: `MATNR=${KEY_100}`, check_id: "MM142", action: "accept" })]);
     expect(version).toBe("d3229ded-0708-4967-9dfb-1b7f4fada953");
     expect(await screen.findByText("Accepted 1 suggested value")).toBeInTheDocument();
   });
@@ -188,7 +186,7 @@ describe("the Work ledger, fixture mode", () => {
     const spy = vi.spyOn(workApi, "postDecide");
     mount();
     const grid = await ledger();
-    await within(grid).findByText(KEY_232);
+    await within(grid).findByTitle(KEY_232);
     const boxes = within(grid).getAllByRole("checkbox", { name: /^Select row/ });
     fireEvent.click(boxes[0]);
     fireEvent.click(boxes[1]);
@@ -206,7 +204,7 @@ describe("the Work ledger, fixture mode", () => {
     const spy = vi.spyOn(workApi, "postDecide");
     mount();
     const grid = await ledger();
-    await within(grid).findByText(KEY_232);
+    await within(grid).findByTitle(KEY_232);
     fireEvent.click(within(rowFor(grid, KEY_232)).getByRole("checkbox"));
     fireEvent.click(within(await screen.findByRole("region", { name: "Bulk actions" })).getByRole("button", { name: /Not an issue/ }));
     const dialog = await screen.findByRole("dialog", { name: "Mark as not an issue" });
@@ -214,7 +212,7 @@ describe("the Work ledger, fixture mode", () => {
     fireEvent.change(within(dialog).getByLabelText("Reason"), { target: { value: "Spare part, planned elsewhere" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Mark as not an issue" }));
     await waitFor(() => expect(spy).toHaveBeenCalled());
-    expect(spy.mock.calls[0][0]).toEqual([expect.objectContaining({ action: "not_an_issue", note: "Spare part, planned elsewhere", check_id: "MM031" })]);
+    expect(spy.mock.calls[0][0]).toEqual([expect.objectContaining({ action: "not_an_issue", note: "Spare part, planned elsewhere", check_id: "MM003" })]);
     // The row has left the list of rows to fix, and the notice offers Undo.
     await waitFor(() => expect(within(screen.getByRole("grid", { name: "Work ledger" })).queryByText(KEY_232)).toBeNull());
     expect(await screen.findByText("Marked 1 record as not an issue")).toBeInTheDocument();
@@ -224,7 +222,7 @@ describe("the Work ledger, fixture mode", () => {
     const spy = vi.spyOn(workApi, "postDecide");
     mount();
     const grid = await ledger();
-    await within(grid).findByText(KEY_232);
+    await within(grid).findByTitle(KEY_232);
     fireEvent.click(within(rowFor(grid, KEY_232)).getByRole("checkbox"));
     fireEvent.click(within(await screen.findByRole("region", { name: "Bulk actions" })).getByRole("button", { name: "Assign…" }));
     fireEvent.click(await screen.findByRole("menuitem", { name: "Assign to me" }));
@@ -236,17 +234,17 @@ describe("the Work ledger, fixture mode", () => {
     const spy = vi.spyOn(workApi, "postDecide");
     mount();
     const grid = await ledger();
-    await within(grid).findByText(KEY_100);
+    await within(grid).findByTitle(KEY_100);
     fireEvent.change(within(rowFor(grid, KEY_100)).getByLabelText(`Decision for ${KEY_100}`), { target: { value: "fix" } });
     await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
-    expect(spy).toHaveBeenCalledWith([{ module: "material_master", record_key: `MATNR=${KEY_100}`, check_id: "MM014", action: "accept", value: undefined, note: undefined, assignee: undefined }], "d3229ded-0708-4967-9dfb-1b7f4fada953");
+    expect(spy).toHaveBeenCalledWith([{ module: "material_master", record_key: `MATNR=${KEY_100}`, check_id: "MM142", action: "accept", value: undefined, note: undefined, assignee: undefined }], "d3229ded-0708-4967-9dfb-1b7f4fada953");
   });
 
   it("a Decision of accept risk needs a reason and sends accept_risk with it", async () => {
     const spy = vi.spyOn(workApi, "postDecide");
     mount();
     const grid = await ledger();
-    await within(grid).findByText(KEY_232);
+    await within(grid).findByTitle(KEY_232);
     fireEvent.change(within(rowFor(grid, KEY_232)).getByLabelText(`Decision for ${KEY_232}`), { target: { value: "accept risk" } });
     const dialog = await screen.findByRole("dialog", { name: "Accept the risk" });
     fireEvent.change(within(dialog).getByLabelText("Reason"), { target: { value: "Signed off by the plant" } });
@@ -258,40 +256,40 @@ describe("the Work ledger, fixture mode", () => {
   it("choosing fix on a row with no suggested value says so with the server's kind of sentence, and changes nothing", async () => {
     mount();
     const grid = await ledger();
-    await within(grid).findByText(KEY_232);
+    await within(grid).findByTitle(KEY_232);
     fireEvent.change(within(rowFor(grid, KEY_232)).getByLabelText(`Decision for ${KEY_232}`), { target: { value: "fix" } });
     expect(await screen.findByRole("alert")).toHaveTextContent("no suggested value");
-    expect(within(screen.getByRole("grid", { name: "Work ledger" })).getByText(KEY_232)).toBeInTheDocument();
+    expect(within(screen.getByRole("grid", { name: "Work ledger" })).getByTitle(KEY_232)).toBeInTheDocument();
   });
 
   it("Enter in New value commits through /work/decide as an edit", async () => {
     const spy = vi.spyOn(workApi, "postDecide");
     mount();
     const grid = await ledger();
-    await within(grid).findByText(KEY_232);
+    await within(grid).findByTitle(KEY_232);
     const input = within(rowFor(grid, KEY_232)).getByLabelText(`New value for ${KEY_232}`);
     fireEvent.change(input, { target: { value: "ROH" } });
     expect(spy).not.toHaveBeenCalled();
     fireEvent.keyDown(input, { key: "Enter" });
     await waitFor(() => expect(spy).toHaveBeenCalled());
-    expect(spy.mock.calls[0][0]).toEqual([expect.objectContaining({ module: "material_master", record_key: `MATNR=${KEY_232}`, check_id: "MM031", action: "edit", value: "ROH" })]);
+    expect(spy.mock.calls[0][0]).toEqual([expect.objectContaining({ module: "material_master", record_key: `MATNR=${KEY_232}`, check_id: "MM003", action: "edit", value: "ROH" })]);
   });
 
   it("an error from the API puts the row back and shows the server's sentence", async () => {
     vi.spyOn(workApi, "postDecide").mockRejectedValue(Object.assign(new Error("x"), { response: { status: 403, data: { detail: "Your role cannot apply." } } }));
     mount();
     const grid = await ledger();
-    await within(grid).findByText(KEY_100);
+    await within(grid).findByTitle(KEY_100);
     fireEvent.change(within(rowFor(grid, KEY_100)).getByLabelText(`Decision for ${KEY_100}`), { target: { value: "fix" } });
     expect(await screen.findByRole("alert")).toHaveTextContent("Your role cannot apply.");
-    expect(within(screen.getByRole("grid", { name: "Work ledger" })).getByText(KEY_100)).toBeInTheDocument();
+    expect(within(screen.getByRole("grid", { name: "Work ledger" })).getByTitle(KEY_100)).toBeInTheDocument();
   });
 
   it("fills down with ⌘D: the New value of the focused row goes to every selected row", async () => {
     const spy = vi.spyOn(workApi, "postDecide");
     mount();
     const grid = await ledger();
-    await within(grid).findByText(KEY_232);
+    await within(grid).findByTitle(KEY_232);
     const boxes = within(grid).getAllByRole("checkbox", { name: /^Select row/ });
     fireEvent.click(boxes[0]);
     fireEvent.click(boxes[1]);
@@ -310,7 +308,7 @@ describe("the Work ledger, fixture mode", () => {
     const spy = vi.spyOn(workApi, "postDecide");
     mount();
     const grid = await ledger();
-    await within(grid).findByText(KEY_232);
+    await within(grid).findByTitle(KEY_232);
     const boxes = within(grid).getAllByRole("checkbox", { name: /^Select row/ });
     fireEvent.click(boxes[0]);
     fireEvent.click(boxes[1]);
@@ -327,7 +325,7 @@ describe("the Work ledger, fixture mode", () => {
     const spy = vi.spyOn(workApi, "postDecide");
     mount();
     const grid = await ledger();
-    await within(grid).findByText(KEY_232);
+    await within(grid).findByTitle(KEY_232);
     const input = within(rowFor(grid, KEY_232)).getByLabelText(`New value for ${KEY_232}`);
     fireEvent.paste(input, { clipboardData: { getData: () => "ROH" } });
     expect(spy).not.toHaveBeenCalled();
@@ -336,7 +334,7 @@ describe("the Work ledger, fixture mode", () => {
   it("opens a row in the inspector: ?open=record:<module>:<key>", async () => {
     mount();
     const grid = await ledger();
-    await within(grid).findByText(KEY_232);
+    await within(grid).findByTitle(KEY_232);
     fireEvent.click(within(rowFor(grid, KEY_232)).getByText("Hydraulic hose 3/8 in"));
     expect(decodeURIComponent(getUrl())).toContain(`open=record:material_master:MATNR=${KEY_232}`);
     expect(await screen.findByRole("heading", { level: 2, name: KEY_232 })).toBeInTheDocument();
@@ -372,7 +370,7 @@ describe("the Work ledger, fixture mode", () => {
   it("density: Compact makes the rows 28 pixels", async () => {
     mount();
     const grid = await ledger();
-    await within(grid).findByText(KEY_232);
+    await within(grid).findByTitle(KEY_232);
     const row = rowFor(grid, KEY_232);
     expect(row.style.height).toBe("32px");
     fireEvent.click(screen.getByRole("button", { name: "Compact" }));
@@ -382,10 +380,12 @@ describe("the Work ledger, fixture mode", () => {
   it("Columns hides and shows columns", async () => {
     mount();
     const grid = await ledger();
-    await within(grid).findByText(KEY_232);
+    await within(grid).findByTitle(KEY_232);
     fireEvent.click(screen.getByRole("button", { name: "Choose columns" }));
+    fireEvent.click(await screen.findByRole("menuitemcheckbox", { name: "SAP field" }));
+    await waitFor(() => expect(within(screen.getByRole("grid", { name: "Work ledger" })).queryByRole("columnheader", { name: "SAP field" })).toBeNull());
     fireEvent.click(await screen.findByRole("menuitemcheckbox", { name: "Field description" }));
-    await waitFor(() => expect(within(screen.getByRole("grid", { name: "Work ledger" })).queryByRole("columnheader", { name: "Field description" })).toBeNull());
+    await waitFor(() => expect(within(screen.getByRole("grid", { name: "Work ledger" })).getByRole("columnheader", { name: "Field description" })).toBeInTheDocument());
   });
 
   it("Export fix sheet saves what is on screen, with the filters of the chip", async () => {
@@ -427,7 +427,7 @@ describe("the Work ledger, fixture mode", () => {
   });
 
   it("an empty list says what would fill it", async () => {
-    mount("&filter=exceptions&rule=MM105&severity=critical");
+    mount("&filter=exceptions&rule=MM028&severity=critical");
     expect(await screen.findByText(/No record is signed off/)).toBeInTheDocument();
   });
 });
@@ -438,7 +438,7 @@ describe("undo", () => {
     const undo = vi.spyOn(workApi, "postUndo");
     mount();
     const grid = await ledger();
-    await within(grid).findByText(KEY_232);
+    await within(grid).findByTitle(KEY_232);
     fireEvent.click(within(rowFor(grid, KEY_232)).getByRole("checkbox"));
     fireEvent.click(within(await screen.findByRole("region", { name: "Bulk actions" })).getByRole("button", { name: "Assign…" }));
     fireEvent.click(await screen.findByRole("menuitem", { name: "Assign to me" }));
@@ -456,7 +456,7 @@ describe("undo", () => {
     try {
       mount();
       const grid = await ledger();
-      await within(grid).findByText(KEY_100);
+      await within(grid).findByTitle(KEY_100);
       fireEvent.change(within(rowFor(grid, KEY_100)).getByLabelText(`Decision for ${KEY_100}`), { target: { value: "fix" } });
       const region = screen.getByRole("region", { name: "Change notices" });
       expect(region).toHaveAttribute("aria-live", "polite");
@@ -473,7 +473,7 @@ describe("undo", () => {
   it("the counts follow a change: accepting a suggested value moves one from To fix to Waiting for approval after the refetch", async () => {
     mount();
     const grid = await ledger();
-    await within(grid).findByText(KEY_100);
+    await within(grid).findByTitle(KEY_100);
     const chips = screen.getByRole("group", { name: "Filter by state" });
     await waitFor(() => expect(within(chips).getByRole("button", { name: /To fix/ })).toHaveTextContent("25,712"));
     fireEvent.change(within(rowFor(grid, KEY_100)).getByLabelText(`Decision for ${KEY_100}`), { target: { value: "fix" } });
@@ -497,7 +497,7 @@ describe("the keyboard, in the shell", () => {
     const undo = vi.spyOn(workApi, "postUndo");
     mountShell();
     const grid = await ledger();
-    await within(grid).findByText(KEY_100);
+    await within(grid).findByTitle(KEY_100);
     fireEvent.change(within(rowFor(grid, KEY_100)).getByLabelText(`Decision for ${KEY_100}`), { target: { value: "fix" } });
     await screen.findByText("Accepted 1 suggested value");
     press("z", { metaKey: true });
@@ -516,7 +516,7 @@ describe("the keyboard, in the shell", () => {
     const undo = vi.spyOn(workApi, "postUndo");
     mountShell();
     const grid = await ledger();
-    await within(grid).findByText(KEY_232);
+    await within(grid).findByTitle(KEY_232);
     fireEvent.keyDown(within(rowFor(grid, KEY_232)).getByLabelText(`New value for ${KEY_232}`), { key: "z", metaKey: true });
     expect(undo).not.toHaveBeenCalled();
   });
@@ -525,17 +525,63 @@ describe("the keyboard, in the shell", () => {
     const spy = vi.spyOn(workApi, "postDecide");
     mountShell();
     const grid = await ledger();
-    await within(grid).findByText(KEY_100);
+    await within(grid).findByTitle(KEY_100);
     fireEvent.click(within(rowFor(grid, KEY_100)).getByRole("checkbox"));
     press("a");
     await waitFor(() => expect(spy).toHaveBeenCalled());
     expect(spy.mock.calls[0][0]).toEqual([expect.objectContaining({ action: "accept" })]);
   });
 
+  it("a over more than 25 rows asks first: the bar shows the count, Escape keeps the rows, Enter accepts", async () => {
+    const spy = vi.spyOn(workApi, "postDecide");
+    mountShell();
+    const grid = await ledger();
+    await within(grid).findByTitle(KEY_100);
+    fireEvent.click(within(grid).getByRole("checkbox", { name: "Select all rows" }));
+    press("a");
+    const bar = await screen.findByTestId("bulk-confirm");
+    const n = Number(/on ([\d,]+) rows\?/.exec(bar.textContent ?? "")?.[1].replace(/,/g, ""));
+    expect(n).toBeGreaterThan(25);
+    expect(bar).toHaveTextContent("Enter confirms, Escape keeps the rows as they are.");
+    expect(spy).not.toHaveBeenCalled();
+    press("Escape");
+    await waitFor(() => expect(screen.queryByTestId("bulk-confirm")).toBeNull());
+    expect(spy).not.toHaveBeenCalled();
+    press("a");
+    await screen.findByTestId("bulk-confirm");
+    press("Enter");
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+    // Every selected row with a suggested value is accepted, in one call.
+    expect(spy.mock.calls[0][0].length).toBeGreaterThan(25);
+    expect(spy.mock.calls[0][0].length).toBeLessThanOrEqual(n);
+  });
+
+  it("r over more than 25 rows asks before the reason dialog", async () => {
+    mountShell();
+    const grid = await ledger();
+    await within(grid).findByTitle(KEY_100);
+    fireEvent.click(within(grid).getByRole("checkbox", { name: "Select all rows" }));
+    press("r");
+    expect(await screen.findByTestId("bulk-confirm")).toHaveTextContent(/Accept the risk on \d+ rows\?/);
+    expect(screen.queryByRole("dialog", { name: "Accept the risk" })).toBeNull();
+    fireEvent.click(within(screen.getByTestId("bulk-confirm")).getByRole("button", { name: /Continue with \d+ rows/ }));
+    expect(await screen.findByRole("dialog", { name: "Accept the risk" })).toBeInTheDocument();
+  });
+
+  it("the default columns put Current, Suggested, New value and Decision beside the rule", async () => {
+    mountShell();
+    const grid = await ledger();
+    const heads = within(grid).getAllByRole("columnheader").map((h) => (h.textContent ?? "").trim());
+    const at = (name: string) => heads.findIndex((h) => h.startsWith(name));
+    for (const name of ["Current value", "Suggested value", "New value", "Decision"]) expect(at(name), name).toBeGreaterThan(at("Rule"));
+    expect(at("Decision")).toBeLessThan(at("Problem"));
+    for (const hidden of ["Field description", "Possible values", "First seen", "Days open"]) expect(at(hidden), hidden).toBe(-1);
+  });
+
   it("n and r open the reason dialog for the selected rows", async () => {
     mountShell();
     const grid = await ledger();
-    await within(grid).findByText(KEY_232);
+    await within(grid).findByTitle(KEY_232);
     fireEvent.click(within(rowFor(grid, KEY_232)).getByRole("checkbox"));
     press("n");
     expect(await screen.findByRole("dialog", { name: "Mark as not an issue" })).toBeInTheDocument();
@@ -579,9 +625,12 @@ describe("phone: rows are two-line list items", () => {
       mount();
       const list = await screen.findByRole("list", { name: "Work ledger" });
       expect(screen.queryByRole("grid", { name: "Work ledger" })).toBeNull();
-      const first = await within(list).findByRole("button", { name: new RegExp(KEY_232) });
+      const first = (await within(list).findByTitle(KEY_232)).closest("button") as HTMLElement;
+      // The key reads as SAP shows it, with a gap before the rule id, and the money has its unit.
+      expect(text(first)).toMatch(/^232 MM003/);
+      expect(within(first).getByTestId("money")).toHaveTextContent("ZAR 12,390 est.");
       expect(text(first)).toContain("Hydraulic hose 3/8 in");
-      expect(text(first)).toContain("MM031");
+      expect(text(first)).toContain("MM003");
       expect(first.querySelector("input")).toBeNull();
       fireEvent.click(first);
       expect(decodeURIComponent(getUrl())).toContain(`open=record:material_master:MATNR=${KEY_232}`);
@@ -595,7 +644,7 @@ describe("read-only", () => {
   it("a viewer sees the rows with no editing, no selection and no bulk bar", async () => {
     mount("&role=viewer");
     const grid = await ledger();
-    await within(grid).findByText(KEY_232);
+    await within(grid).findByTitle(KEY_232);
     expect(within(grid).queryByLabelText(`New value for ${KEY_232}`)).toBeNull();
     expect(within(grid).queryByLabelText(`Decision for ${KEY_232}`)).toBeNull();
     expect(within(grid).queryByRole("checkbox")).toBeNull();

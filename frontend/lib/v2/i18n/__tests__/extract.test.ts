@@ -24,6 +24,6 @@ describe("v2 message extraction", () => {
 
   it("tells prose from identifiers, paths, classes and SAP names", () => {
     for (const s of ["Save the mapping", "Users", "Sign-in", "No run yet"]) expect(isProse(s), s).toBe(true);
-    for (const s of ["MARA.MEINS", "material_master", "m2-btn m2-sm", "/work", "MM014", "data-testid", "mod+k", "repeat(3, minmax(0, 1fr))", "image/svg+xml"]) expect(isProse(s), s).toBe(false);
+    for (const s of ["MARA.MEINS", "material_master", "m2-btn m2-sm", "/work", "MM142", "data-testid", "mod+k", "repeat(3, minmax(0, 1fr))", "image/svg+xml"]) expect(isProse(s), s).toBe(false);
   });
 });

@@ -1,3 +1,4 @@
+import { LIBRARY } from "@/lib/api/v2/fixtures/library";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -139,22 +140,22 @@ describe("why the score moved", () => {
   it("lists the rules that changed, by kind, each rule id a link that opens it", async () => {
     render();
     const why = await screen.findByTestId("why-moved");
-    await waitFor(() => expect(within(why).getByRole("link", { name: "MM119" })).toBeInTheDocument());
+    await waitFor(() => expect(within(why).getAllByRole("link", { name: /^MM\d+$/ }).length).toBeGreaterThan(0));
     const heads = Array.from(why.querySelectorAll("li.m2-whyh")).map(cols);
     expect(heads).toEqual(["Newly failing 3 rules", "Fixed 9 rules", "Worse 3 rules", "Better 20 rules"]);
-    const row = (id: string) => cols(within(why).getByRole("link", { name: id }).closest("li") as HTMLElement);
-    expect(row("MM119")).toBe("MM119 Net weight above gross weight 240 records newly failing +240");
-    expect(row("MM091")).toBe("MM091 Valuation class missing 377 records fixed −377");
-    expect(row("MM057")).toBe("MM057 Gross weight missing 70 more records failing +70");
-    expect(row("MM022")).toBe("MM022 Material group missing 340 records fixed −340");
-    expect(within(why).getByRole("link", { name: "MM022" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM022"));
+    // Every rule named is a Material master rule of the shipped library, with its own message, and opens the rule.
+    for (const a of within(why).getAllByRole("link", { name: /^MM\d+$/ })) {
+      const rule = LIBRARY.find((r) => r.check_id === a.textContent);
+      expect(rule?.module, a.textContent ?? "").toBe("material_master");
+      expect(cols(a.closest("li") as HTMLElement)).toContain(rule?.name ?? "");
+      expect(a).toHaveAttribute("href", expect.stringContaining(`open=rule%3A${rule?.check_id}`));
+    }
   });
 
   it("shows the biggest three of each kind and counts the rest", async () => {
     render();
     const why = await screen.findByTestId("why-moved");
-    await waitFor(() => expect(within(why).getByRole("link", { name: "MM119" })).toBeInTheDocument());
-    expect(within(why).getAllByRole("link", { name: /^MM\d+$/ })).toHaveLength(3 + 3 + 3 + 3);
+    await waitFor(() => expect(within(why).getAllByRole("link", { name: /^MM\d+$/ })).toHaveLength(3 + 3 + 3 + 3));
     expect(norm(why)).toContain("and 17 more rules"); // better: 20, 3 shown
     expect(norm(why)).toContain("and 6 more rules"); // fixed: 9, 3 shown
   });

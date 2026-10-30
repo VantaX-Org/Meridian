@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
-import { resetAdminFixture, resetWorkFixture } from "@/lib/api/v2/fixtures";
+import { fixtureResponse, resetAdminFixture, resetWorkFixture } from "@/lib/api/v2/fixtures";
+import * as landscapeApiForMoney from "@/lib/api/v2/landscape";
+import type { StatusStrip as StatusStripT } from "@/lib/api/v2/types";
 import * as s9 from "@/lib/api/v2/step9";
 import { ReadinessTab } from "../screens/object/ReadinessTab";
 import { LandscapeCanvas } from "../screens/Landscape";
@@ -49,7 +51,7 @@ describe("impact in money", () => {
   });
 
   it("says there is no cost model rather than inventing a price", async () => {
-    vi.spyOn(s9, "getMoney").mockResolvedValue({ scope: "object", id: "material_master", as_of: "2026-10-20T08:00:00Z", currency: null, cost_model: false, features: [{ feature: "MRP Live", system_id: "s", system: "ECC", run_id: "r", status: "blocked", blocking_rules: ["MM078"], modules: ["material_master"], records: 10, value_per_record_month: null, opportunity_cost_per_month: null, first_blocked_at: "2026-09-01T00:00:00Z", months_blocked: 1.6, cumulative_cost: null }], totals: { opportunity_cost_per_month: null, cumulative_cost: null, features_blocked: 1, features_degraded: 0 }, ranking: { waves: [], objects: [] } });
+    vi.spyOn(s9, "getMoney").mockResolvedValue({ scope: "object", id: "material_master", as_of: "2026-10-20T08:00:00Z", currency: null, cost_model: false, features: [{ feature: "MRP Live", system_id: "s", system: "ECC", run_id: "r", status: "blocked", blocking_rules: ["MM023"], modules: ["material_master"], records: 10, value_per_record_month: null, opportunity_cost_per_month: null, first_blocked_at: "2026-09-01T00:00:00Z", months_blocked: 1.6, cumulative_cost: null }], totals: { opportunity_cost_per_month: null, cumulative_cost: null, features_blocked: 1, features_degraded: 0 }, ranking: { waves: [], objects: [] } });
     renderWithQuery(<ObjectMoney module="material_master" label="Material master" />);
     expect(await screen.findByText(/No cost model is set for this tenant/)).toBeInTheDocument();
   });
@@ -64,5 +66,31 @@ describe("impact in money", () => {
     expect(norm(items[0])).toContain("Wave 2: master data");
     expect(norm(items[0])).toMatch(/ZAR\s?98,200 a month/);
     expect(rank).toHaveTextContent("in ZAR");
+  });
+});
+
+describe("money is an estimate", () => {
+  it("every amount carries its unit and the marker, with the words on hover", async () => {
+    const { Money } = await import("../Money");
+    window.sessionStorage.setItem("mn_v2_fixture", "1");
+    const { findByTestId } = renderWithQuery(<Money amount={12390} compact={false} />);
+    const m = await findByTestId("money");
+    await waitFor(() => expect(m).toHaveTextContent("ZAR 12,390"));
+    expect(m).toHaveTextContent("est.");
+    expect(m).toHaveAttribute("title", "Estimated from your cost model");
+  });
+
+  it("while the cost model is the shipped default, it says so and points to Administration", async () => {
+    const { Money, EstimateNote } = await import("../Money");
+    window.sessionStorage.setItem("mn_v2_fixture", "1");
+    const strip = fixtureResponse<StatusStripT>("/status", {});
+    vi.spyOn(landscapeApiForMoney, "getStatus").mockResolvedValue({ ...strip, cost_model_source: "default" });
+    const { findByTestId } = renderWithQuery(<><Money amount={4200000} /> <EstimateNote /></>);
+    const m = await findByTestId("money");
+    await waitFor(() => expect(m).toHaveTextContent("default estimate"));
+    expect(m).toHaveAttribute("title", "Estimate from default assumptions, set your cost model in Administration");
+    const note = await findByTestId("estimate-note");
+    expect(note).toHaveTextContent("an estimate from default assumptions; set your cost model in Administration");
+    expect(within(note).getByRole("link", { name: "set your cost model in Administration" })).toHaveAttribute("href", expect.stringMatching(/^\/admin\/settings.*#cost-model$/));
   });
 });

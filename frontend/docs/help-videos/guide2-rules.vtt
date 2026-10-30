@@ -1,49 +1,49 @@
 WEBVTT
 
 1
-00:00:00.021 --> 00:00:08.232
+00:00:00.021 --> 00:00:08.087
 A rule is a fixed check with an id, a field, a dimension and a severity.
 
 2
-00:00:08.232 --> 00:00:15.645
-The facts line: failing records across objects, the share, value at risk, over tolerance, features blocked.
+00:00:08.087 --> 00:00:16.400
+MM142 is a high rule: failing records across objects, the share, the estimated value at risk, within tolerance, features blocked.
 
 3
-00:00:15.645 --> 00:00:21.899
-Definition: the check class, the field, the expression and the SAP authority.
+00:00:16.400 --> 00:00:23.740
+Definition: the check class, the field as MARA-MEINS, the expression and the authority.
 
 4
-00:00:21.899 --> 00:00:26.814
+00:00:23.740 --> 00:00:28.693
 Versions: who changed the rule, when and why.
 
 5
-00:00:26.814 --> 00:00:31.820
+00:00:28.693 --> 00:00:33.752
 Scope: every object and system the rule runs on, with its failing count.
 
 6
-00:00:31.820 --> 00:00:39.675
-The rule inspector holds the same facts beside any canvas.
+00:00:33.752 --> 00:00:45.466
+The rule inspector holds the same facts beside any canvas. MM003 is one of the two critical rules that cap Material master.
 
 7
-00:00:39.675 --> 00:00:46.890
+00:00:45.466 --> 00:00:53.572
 Tolerance: only critical rules carry one. Over it, the rule caps the score.
 
 8
-00:00:46.890 --> 00:00:51.933
+00:00:53.572 --> 00:00:58.774
 Comment on the rule, and watch it.
 
 9
-00:00:51.933 --> 00:00:59.290
-The rules library lists every rule of the tenant.
+00:00:58.774 --> 00:01:08.760
+The rules library lists every rule of the tenant: 794 across 15 objects, every page of them.
 
 10
-00:00:59.290 --> 00:01:06.396
+00:01:08.760 --> 00:01:15.653
 Filter by object, dimension, severity, check class and state.
 
 11
-00:01:06.396 --> 00:01:13.997
+00:01:15.653 --> 00:01:23.637
 Drafts run nowhere until they are reviewed and enabled.
 
 12
-00:01:13.997 --> 00:01:20.557
+00:01:23.637 --> 00:01:31.223
 New rule draft starts a rule in authoring.

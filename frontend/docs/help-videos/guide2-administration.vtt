@@ -1,53 +1,65 @@
 WEBVTT
 
 1
-00:00:00.086 --> 00:00:07.376
+00:00:00.338 --> 00:00:09.801
 Administration: everything that sets up this tenant.
 
 2
-00:00:07.376 --> 00:00:14.405
+00:00:09.801 --> 00:00:17.193
 Users: seats, roles as grants, invitations.
 
 3
-00:00:14.405 --> 00:00:21.440
+00:00:17.193 --> 00:00:26.263
 Roles and permissions: built-in roles are fixed; copy one to change it.
 
 4
-00:00:21.440 --> 00:00:27.998
+00:00:26.263 --> 00:00:33.761
 Single sign-on with OpenID Connect, and the sign-in page rules.
 
 5
-00:00:27.998 --> 00:00:34.655
+00:00:33.761 --> 00:00:41.222
 View as a role: read-only, for support, and in the audit log.
 
 6
-00:00:34.655 --> 00:00:41.604
-Settings: weights, score bands, the cap rule and tolerance, cost model and retention.
+00:00:41.222 --> 00:00:49.195
+Licence: status, seats, validity and the modules this deployment may use.
 
 7
-00:00:41.604 --> 00:00:50.935
-One critical rule beyond its tolerance holds an object at 85; two or more at 70. The caps are fixed.
+00:00:49.195 --> 00:00:56.684
+Settings: weights, score bands, the cap rule and tolerance, cost model and retention.
 
 8
-00:00:50.935 --> 00:00:57.873
-Stewardship: one owner per object, stewards per slice, and the gaps.
+00:00:56.684 --> 00:01:07.007
+One critical rule beyond its tolerance holds an object at 85; two or more at 70. The caps are fixed.
 
 9
-00:00:57.873 --> 00:01:04.596
-Configuration bundle: export the configuration as one file; import with a diff first.
+00:01:07.007 --> 00:01:15.515
+Stewardship: one owner per object, stewards per slice, and the gaps.
 
 10
-00:01:04.596 --> 00:01:11.218
-Rules import and export: imported rules land as drafts, never live.
+00:01:15.515 --> 00:01:23.027
+Configuration bundle: export the configuration as one file; import with a diff first.
 
 11
-00:01:11.218 --> 00:01:19.051
-Audit log: every change, by whom and when, and every call to the language model.
+00:01:23.027 --> 00:01:30.061
+Rules import and export: imported rules land as drafts, never live.
 
 12
-00:01:19.051 --> 00:01:25.969
-Alerts: channels and thresholds. Alerts never carry record values.
+00:01:30.061 --> 00:01:38.136
+Audit log: every change, by whom and when, and every call to the language model.
 
 13
-00:01:25.969 --> 00:01:32.571
-Jobs and system update: jobs, the platform version and health checks.
+00:01:38.137 --> 00:01:45.022
+Alerts: channels and thresholds. Alerts never carry record values.
+
+14
+00:01:45.022 --> 00:01:52.513
+Default digest: the summary the tenant gets by default. Each person sets their own in Preferences.
+
+15
+00:01:52.513 --> 00:02:00.162
+Start and schedule: start an extraction, an analysis, a configuration load or an upload, and schedule them.
+
+16
+00:02:00.162 --> 00:02:06.572
+Platform and updates: jobs, the platform version, health checks and the diagnostics bundle.

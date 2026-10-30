@@ -77,3 +77,30 @@ export function exportRows<T>(rows: readonly T[], columns: readonly ToolColumn<T
     ),
   );
 }
+
+/** One CSV cell: a value that a spreadsheet would read as a formula is kept as text, and quotes are doubled. */
+export function csvCell(v: string | number | null | undefined): string {
+  const raw = v == null ? "" : String(v);
+  const safe = typeof v === "string" && /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
+  return /[",\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+}
+
+/** The grid's visible columns and rows as CSV, with the column headers as the first line. */
+export function gridCsv<T>(rows: readonly T[], columns: readonly ToolColumn<T>[]): string {
+  const data = exportRows(rows, columns);
+  return [columns.map((c) => csvCell(c.header)).join(","), ...data.map((r) => columns.map((c) => csvCell(r[c.id])).join(","))].join("\n");
+}
+
+/** Saves the grid as a CSV file in the browser and returns its name. */
+export function downloadGridCsv<T>(route: string, rows: readonly T[], columns: readonly ToolColumn<T>[]): string {
+  const name = `${route.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "export"}.csv`;
+  const url = window.URL.createObjectURL(new Blob([gridCsv(rows, columns)], { type: "text/csv;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+  return name;
+}

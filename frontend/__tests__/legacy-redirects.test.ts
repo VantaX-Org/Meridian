@@ -80,7 +80,7 @@ describe("the cut-over redirects", () => {
   const isLive = (p: string) => live.some((re) => re.test(p.split("?")[0].split("#")[0]));
 
   it("knows the pages the app serves", () => {
-    for (const p of ["/", "/work", "/runs", "/people", "/reports", "/rules", "/admin", "/admin/users", "/o/a/b", "/o/a/b/rules", "/r/MM014", "/run/R1", "/run/R1/vs/R2", "/s/new", "/s/S1", "/share/T1", "/status", "/sign-in"]) {
+    for (const p of ["/", "/work", "/runs", "/people", "/reports", "/rules", "/admin", "/admin/users", "/o/a/b", "/o/a/b/rules", "/r/MM142", "/run/R1", "/run/R1/vs/R2", "/s/new", "/s/S1", "/share/T1", "/status", "/sign-in"]) {
       expect(isLive(p), p).toBe(true);
     }
     expect(isLive("/fix")).toBe(false);
@@ -122,11 +122,11 @@ describe("the cut-over redirects", () => {
       "/fix": "/work",
       "/inbox": "/work?open=inbox",
       "/objects/material_master": "/o/_/material_master",
-      "/objects/material_master/rules/MM014": "/r/MM014",
+      "/objects/material_master/rules/MM142": "/r/MM142",
       "/objects/material_master/records/MATNR=100": "/work?module=material_master&open=record%3Amaterial_master%3AMATNR=100",
       "/insights/readiness": "/?view=waves",
       "/insights/owners": "/people",
-      "/rules/MM014": "/r/MM014",
+      "/rules/MM142": "/r/MM142",
       "/rules/drafts": "/rules?view=drafts",
       "/rules/contracts": "/people?open=contracts",
       "/runs/R1": "/run/R1",

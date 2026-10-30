@@ -25,10 +25,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.middleware.licence import get_cached_manifest
-from api.routes.objects import _label, _measured_dimensions, _version_summary, breach_ids, cap_level_of, records_checked_of
+from api.routes.objects import (_label, _measured_dimensions, _version_summary, breach_ids, cap_level_of, measured_of,
+                                records_checked_of, sort_by_measured)
 from api.routes.record_issues import _rls
 from api.middleware.cache import cached_json
 from api.services import work_counts
+from api.services.cost_model_meta import CostModelOut, meta_of as cost_model_meta
 from api.services.rbac import require_permission
 from api.services.run_context import latest_run
 from api.services.scoring import critical_over_tolerance, readiness_status, scoring_config
@@ -49,6 +51,7 @@ class StatusStripOut(BaseModel):
     rules_measured: Optional[int] = None       # rules that produced a result in that run
     scored_in_s: Optional[int] = None          # first analysis step started to last one finished
     cost_model: Optional[str] = None           # the currency the tenant's cost model prices in
+    cost_model_source: Optional[str] = None    # "tenant" once the tenant saved a cost model, else "default"
     licence_valid_to: Optional[str] = None     # YYYY-MM-DD from the cached licence manifest
     sandbox: bool = False                      # the tenant is in sandbox mode: nothing leaves (migration 115)
 
@@ -75,8 +78,10 @@ class LandscapeCellOut(BaseModel):
     system_id: str
     module: str
     run_id: str
-    score: Optional[float] = None
+    score: Optional[float] = None              # the score as capped by a critical failure (85 / 70)
     raw_score: Optional[float] = None
+    # the measured score before the critical cap (raw_score, else score when nothing caps it): rank by this
+    measured_score: Optional[float] = None
     capped: bool = False
     cap_level: Optional[int] = None
     breaches: list[str] = []
@@ -109,6 +114,9 @@ class LandscapeCountsOut(BaseModel):
 class LandscapeOut(BaseModel):
     scope: Literal["current", "run"]
     run_id: Optional[str] = None
+    sort: str = "position"                     # the order of ``cells``: position (system, object) or -measured/measured
+    # whether money on this landscape is priced by the tenant's own cost model or by the shipped defaults
+    cost_model: Optional[CostModelOut] = None
     status_strip: StatusStripOut
     systems: list[LandscapeSystemOut]
     objects: list[LandscapeObjectOut]
@@ -126,7 +134,8 @@ async def build_status(db: AsyncSession, tenant: Tenant) -> StatusStripOut:
     currency = str(effective_cost_model(cost_model if isinstance(cost_model, dict) else None)["currency"])
     expiry = get_cached_manifest().get("expiry_date")
     valid_to = str(expiry)[:10] if expiry and re.match(r"\d{4}-\d{2}-\d{2}", str(expiry)) else None
-    out = StatusStripOut(cost_model=currency, licence_valid_to=valid_to, sandbox=bool(trow and trow[1]))
+    out = StatusStripOut(cost_model=currency, cost_model_source=cost_model_meta(cost_model)["source"],
+                         licence_valid_to=valid_to, sandbox=bool(trow and trow[1]))
     if run_id is None:
         return out
     row = (await db.execute(text("SELECT run_at, dqs_summary FROM analysis_versions WHERE id = :v AND tenant_id = :t"),
@@ -211,9 +220,15 @@ def sentence_of(cells: list[dict]) -> dict:
     }
 
 
+LandscapeSort = Literal["position", "measured", "-measured"]
+
+
 @router.get("/landscape", response_model=LandscapeOut, dependencies=[Depends(require_permission("view"))])
 async def get_landscape(scope: Literal["current", "run"] = Query("current"),
                         run: Optional[uuid.UUID] = Query(None),
+                        sort: LandscapeSort = Query("position", description="cells in matrix position (system, object), "
+                                                    "or ranked by the measured score: -measured (highest first) "
+                                                    "or measured"),
                         db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     """Systems x objects. ``scope=current``: each object at the newest finished run that measured it, per system.
     ``scope=run&run=<id>``: the cells of that one run (404 when it is not this tenant's). Cached 30 s per tenant,
@@ -225,17 +240,18 @@ async def get_landscape(scope: Literal["current", "run"] = Query("current"),
         raise HTTPException(422, "run is only for scope=run")
 
     async def produce() -> dict:
-        return LandscapeOut.model_validate(await _landscape(scope, run, db, tenant)).model_dump(mode="json")
+        return LandscapeOut.model_validate(await _landscape(scope, run, db, tenant, sort)).model_dump(mode="json")
 
     return await cached_json(CACHE_PREFIX, "landscape", tenant.id,
-                             {"scope": scope, "run": run, "latest": await latest_run(db, tenant.id)},
+                             {"scope": scope, "run": run, "sort": sort, "latest": await latest_run(db, tenant.id)},
                              LANDSCAPE_TTL_SECONDS, produce)
 
 
-async def _landscape(scope: str, run: uuid.UUID | None, db: AsyncSession, tenant: Tenant) -> dict:
+async def _landscape(scope: str, run: uuid.UUID | None, db: AsyncSession, tenant: Tenant,
+                     sort: str = "position") -> dict:
     t = str(tenant.id)
-    thresholds = scoring_config((await db.execute(text("SELECT dqs_weights FROM tenants WHERE id = :t"),
-                                                  {"t": t})).scalar() or {})["thresholds"]
+    trow = (await db.execute(text("SELECT dqs_weights, cost_model FROM tenants WHERE id = :t"), {"t": t})).fetchone()
+    thresholds = scoring_config((trow[0] if trow else None) or {})["thresholds"]
 
     systems = (await db.execute(text(_SYSTEMS_SQL), {"t": t})).mappings().all()
     known = {s["id"] for s in systems}
@@ -286,6 +302,7 @@ async def _landscape(scope: str, run: uuid.UUID | None, db: AsyncSession, tenant
         cov = m.get("coverage")
         cells.append({
             "system_id": sid, "module": module, "run_id": rid, "score": score, "raw_score": m.get("raw_score"),
+            "measured_score": measured_of(m),
             "capped": bool(m.get("capped")), "cap_level": cap_level_of(m), "breaches": breach_ids(m),
             "verdict": _verdict(score, m, thresholds),
             "coverage": cov if isinstance(cov, (int, float)) else None,
@@ -312,9 +329,12 @@ async def _landscape(scope: str, run: uuid.UUID | None, db: AsyncSession, tenant
             "state": state, "latest_run_id": latest})
     order = {s["id"]: i for i, s in enumerate(out_systems)}
     cells.sort(key=lambda c: (order[c["system_id"]], c["module"]))
+    if sort != "position":
+        cells = sort_by_measured(cells, descending=sort == "-measured")
     modules = sorted({c["module"] for c in cells})
     return {
-        "scope": scope, "run_id": str(run) if run else None,
+        "scope": scope, "run_id": str(run) if run else None, "sort": sort,
+        "cost_model": cost_model_meta(trow[1] if trow else None),
         "status_strip": await build_status(db, tenant),
         "systems": out_systems,
         "objects": [{"module": m, "label": _label(m)} for m in modules],

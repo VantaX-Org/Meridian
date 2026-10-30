@@ -728,4 +728,6 @@
    Ask launcher (z 40) but under the popup, dialog and drawer layer (z 50), so it never draws over a modal or a menu.
    The mark is Aletheia's own file, served unaltered from public/brand. */
 .m-attribution { flex: none; display: flex; align-items: center; justify-content: flex-start; gap: 7px; height: var(--m-attribution-h); padding: 0 var(--m-space-4); user-select: none; color: var(--m-ink-3); font-size: var(--m-text-micro); line-height: var(--m-leading-micro); font-weight: 600; letter-spacing: 0.12em; }
+.m-attribution .m-attribution-note { font-weight: 400; letter-spacing: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.m-attribution .m-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .m-attribution img { width: 16px; height: 16px; border-radius: 4px; display: block; flex: none; }

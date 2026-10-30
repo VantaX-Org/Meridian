@@ -48,7 +48,7 @@ describe("the data steward's jobs", () => {
   });
 
   it("is told to fix the upstream object first on the ledger of a dependent object", async () => {
-    visit("/work?module=purchasing", "data_steward");
+    visit("/work?module=mm_purchasing", "data_steward");
     mount(<WorkCanvas />);
     expect(norm(await screen.findByTestId("fix-hint"))).toBe("Fix Material master first: 3,640 upstream failures. Records there fail before this object can pass.");
   });

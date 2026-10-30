@@ -1,6 +1,6 @@
 # Systems
 
-A system is one SAP or cloud source Meridian reads from: ECC, S/4HANA on premise or Cloud, Extended Warehouse Management, SuccessFactors, Concur, Ariba or BTP. Meridian reads from SAP and never writes to it. The system canvas is where SAP Basis connects a system, tests it, extracts with a scope, schedules extractions, loads the configuration and reviews custom objects. Open a system from its heading on the landscape or the map (`/s/{id}`); connect a new one from the command line ("Connect a system") or at `/s/new`.
+A system is one SAP or cloud source Meridian reads from: ECC, S/4HANA on premise or Cloud, Extended Warehouse Management, SuccessFactors, Concur, Ariba or BTP. Meridian reads from SAP with a read-only role; live write-back is off unless an administrator turns it on (see the Approvals chapter). The system canvas is where SAP Basis connects a system, tests it, extracts with a scope, schedules extractions, loads the configuration and reviews custom objects. Open a system from its heading on the landscape or the map (`/s/{id}`); connect a new one from the command line ("Connect a system") or at `/s/new`.
 
 ## Connect a system
 
@@ -23,7 +23,7 @@ The header gives the health ("Connected"), the type and protocol ("ECC, RFC"), t
 
 ## Extract with a scope
 
-In the system inspector, **Extract** asks for the objects and the scope: "Choose objects to set the scope: company codes, plants, organisations and a date window." With no filter the scope reads "Scope: everything, no organisational filter." The same extraction form under Administration, Runs and jobs adds company codes, plants, a document date window and **Analyse straight after extracting**, which scores the new extraction when it lands.
+In the system inspector, **Extract** asks for the objects and the scope: "Choose objects to set the scope: company codes, plants, organisations and a date window." With no filter the scope reads "Scope: everything, no organisational filter." The same extraction form under Administration, Start and schedule adds company codes, plants, a document date window and **Analyse straight after extracting**, which scores the new extraction when it lands.
 
 **Dry run** shows "What an extraction of 3 objects would read, without reading it": the rows per table last time and an estimated duration, in the form "rows in tables, about a duration (this system's recent speed, rows a second)". Where the system has no recent extraction the speed reads "an assumed speed". From there **Extract changes only** starts a delta extraction that reads the change documents since the last download, where the system supports it; otherwise the reason is shown.
 
@@ -51,7 +51,8 @@ In the system inspector, **Extract** asks for the objects and the scope: "Choose
 ## When something is wrong
 
 - **"Sign-in refused"** or **HTTP 401**: the user or secret is wrong or expired. Open **Connection settings**, type the new values ("Stored secrets are never shown. Type new values to replace them; an empty field keeps the stored one.") and test again.
-- **"No authorisation to read this table. The user needs read access to it."** Grant the RFC user read access to that table in SAP (S_TABU_DIS or S_TABU_NAM), then **Load again**.
+- **"No authorisation to read this table. The user needs read access to it."** Grant the RFC user read access to that table in SAP (S_TABU_NAM, or S_TABU_DIS), then **Load again**. The read-only role template is `docs/sap/authorisation-role-template.md`.
+- **The Basis team refuses `RFC_READ_TABLE`**: on-premise tables can also be read through `/BODS/RFC_READ_TABLE2` or `BBP_RFC_READ_TABLE`; the deployment setting `MERIDIAN_RFC_READ_FUNCTION` chooses one, or `auto` finds the first that exists. The data read is the same.
 - **"The table does not exist in this release. Nothing to fix."** Expected on some releases.
 - **"This system is extracted but no rule has run on it. Run an analysis."** Use Run analysis.
 - **"Testing, loading and extracting need the trigger sync permission on this system."** Ask your administrator for a grant on that system.

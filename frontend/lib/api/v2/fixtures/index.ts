@@ -7,6 +7,7 @@ import type { CommandGroup, CommandResult, Landscape, Receipt, RuleRow, RunList,
 import { moduleSlug, systemSlug } from "@/lib/v2/score";
 import { NONE, runsFixtureResponse } from "./runs";
 import { objectFixture } from "./object";
+import { failingRulesOf } from "./library";
 import { mdmFixture, mdmFixtureWrite } from "./mdm";
 import * as wf from "./work-fixture";
 import * as ap from "./approvals";
@@ -212,7 +213,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
     if (path === "/findings") {
       const rows = Number(params.rows ?? 0);
       if (rows > 0) return { rules: syntheticRules(Math.min(rows, 200000)) };
-      return { rules: params.module === "material_master" ? baseRules : [] };
+      const mod = String(params.module ?? "");
+      return { rules: mod === "material_master" ? baseRules : failingRulesOf(mod) };
     }
     const more = objectFixture(path, params);
     if (more !== undefined) return more;

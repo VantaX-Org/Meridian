@@ -11,7 +11,7 @@ import { moduleFromSlug } from "@/lib/v2/score";
 import { moveBy, needsSources, RULE_TYPES, toInput, typeLabel, validateRules, type DraftRule } from "@/lib/v2/survivorship";
 import { Actions, InspectorFrame } from "../Inspector";
 import { ConfirmBar, Field, Gate } from "../forms";
-import { EmptyFrame, ErrorFrame, Skeleton } from "../parts";
+import { Mono, EmptyFrame, ErrorFrame, Skeleton } from "../parts";
 import { ResultFrame, useOutcome } from "./shared";
 import { t as tr } from "@/lib/v2/i18n";
 
@@ -64,7 +64,7 @@ function Editor({ domain, initial }: { domain: string; initial: SurvivorshipRule
             return (
               <li key={r.key} aria-label={r.field || tr("New rule")}>
                 <div className="m2-sv-h">
-                  <span className="m2-mono">{r.field || tr("New rule")}</span>
+                  {r.field ? <Mono>{r.field}</Mono> : <span>{tr("New rule")}</span>}
                   <span className="m2-meta">{`${typeLabel(r.rule_type)}${r.ai_inferred ? tr(", suggested by the miner") : ""}`}</span>
                 </div>
                 <div className="m2-grid2">

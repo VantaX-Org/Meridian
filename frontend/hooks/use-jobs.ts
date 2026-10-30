@@ -6,6 +6,23 @@ import { getJobs, streamJobs } from "@/lib/api/jobs";
 import type { Job } from "@/types/jobs";
 
 export const JOBS_QUERY_KEY = ["jobs"] as const;
+
+/** Whether the jobs stream is open: while it is, it keeps the list current and nothing polls. */
+let streamOpen = false;
+export const jobsStreamOpen = (): boolean => streamOpen;
+
+/**
+ * The one jobs read of the page: every screen, the job line and the status strip share it (one key, one function,
+ * one interval). A mount reads the cache instead of asking again; the list is polled every 30 s only while the stream
+ * is down. The live acceptance run counted 84 reads of /jobs in 30 s before this.
+ */
+export const JOBS_QUERY_OPTIONS = {
+  queryKey: JOBS_QUERY_KEY,
+  queryFn: () => getJobs({ limit: 100 }),
+  staleTime: 15_000,
+  refetchOnMount: false,
+  refetchInterval: () => (streamOpen ? false : 30_000),
+} as const;
 /** Admin › Jobs: the longer history list, patched by the same stream so a finished job leaves "Running". */
 export const JOBS_HISTORY_QUERY_KEY = ["jobs", "history"] as const;
 const ACTIVE = new Set(["queued", "running"]);
@@ -35,6 +52,7 @@ export function useJobStream(): void {
       stop = streamJobs(
         (job) => {
           delay = 2_000;
+          streamOpen = true;
           qc.setQueryData<Job[]>(JOBS_QUERY_KEY, (prev = []) => [
             job,
             ...prev.filter((j) => j.id !== job.id),
@@ -50,6 +68,7 @@ export function useJobStream(): void {
           }
         },
         () => {
+          streamOpen = false;
           retry = setTimeout(connect, delay);
           delay = Math.min(delay * 2, 30_000);
         },
@@ -64,12 +83,7 @@ export function useJobStream(): void {
 }
 
 export function useJobs() {
-  const q = useQuery({
-    queryKey: JOBS_QUERY_KEY,
-    queryFn: () => getJobs({ limit: 100 }),
-    refetchInterval: 15_000,
-    staleTime: 5_000,
-  });
+  const q = useQuery(JOBS_QUERY_OPTIONS);
   const jobs = q.data ?? [];
   return { ...q, jobs, active: jobs.filter((j) => ACTIVE.has(j.status)) };
 }

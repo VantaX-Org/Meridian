@@ -5,6 +5,7 @@ import { resetWorkFixture } from "@/lib/api/v2/fixtures";
 import { RulesLibrary } from "../screens/RulesLibrary";
 import { stubLayout } from "./layout-stub";
 import { getUrl, setUrl } from "./nav-store";
+import * as rulelib from "@/lib/api/v2/rulelib";
 
 const h = vi.hoisted(() => ({ allowed: new Set<string>() }));
 
@@ -56,21 +57,34 @@ describe("the rules library", () => {
     const g = await grid();
     await waitFor(() => expect(count(g)).toBeGreaterThan(30));
     pick("Object", "business_partner");
-    await waitFor(() => expect(count(g)).toBe(6));
+    await waitFor(() => expect(count(g)).toBe(64));
     pick("Severity", "critical");
-    await waitFor(() => expect(count(g)).toBeLessThan(6));
-    expect(screen.getByRole("button", { name: "Clear the filters" }).parentElement).toHaveTextContent(/^\d+ of 38 rules\./);
+    await waitFor(() => expect(count(g)).toBeLessThan(64));
+    expect(screen.getByRole("button", { name: "Clear the filters" }).parentElement).toHaveTextContent(/^\d+ of 794 rules\./);
     fireEvent.click(screen.getByRole("button", { name: "Clear the filters" }));
     await waitFor(() => expect(count(g)).toBeGreaterThan(30));
+  });
+
+  it("opens on one object from /rules?object=, pages through every rule and exports the grid", async () => {
+    const spy = vi.spyOn(rulelib, "getRuleList");
+    setUrl("/rules?fixture=1&object=business_partner");
+    render();
+    const g = await grid();
+    await waitFor(() => expect(count(g)).toBe(64));
+    expect(screen.getByRole("button", { name: "Clear the filters" }).parentElement).toHaveTextContent(/^64 of 794 rules\./);
+    expect(spy).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: /Share and export Rules library/ }));
+    expect(await screen.findByRole("menuitem", { name: /Export to CSV/ })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /Export to Excel/ })).toBeInTheDocument();
   });
 
   it("searches by code and by name", async () => {
     render();
     const g = await grid();
     await waitFor(() => expect(count(g)).toBeGreaterThan(30));
-    pick("Search", "MM014");
+    pick("Search", "MM142");
     await waitFor(() => expect(count(g)).toBe(1));
-    expect(rowsOf(g)[0]).toHaveTextContent("Base unit of measure not valid");
+    expect(rowsOf(g)[0]).toHaveTextContent("Base unit of measure MEINS must reference a valid entry in T006");
   });
 
   it("filters by dimension and class by reading the rules of each object", async () => {
@@ -97,22 +111,22 @@ describe("the rules library", () => {
     render();
     const g = await grid();
     await waitFor(() => expect(count(g)).toBeGreaterThan(30));
-    pick("Search", "MM014");
+    pick("Search", "MM142");
     await waitFor(() => expect(count(g)).toBe(1));
     fireEvent.click(rowsOf(g)[0]);
-    expect(getUrl()).toContain("open=rule%3AMM014");
+    expect(getUrl()).toContain("open=rule%3AMM142");
   });
 
   it("disables the selected rules", async () => {
     render();
     const g = await grid();
     await waitFor(() => expect(count(g)).toBeGreaterThan(30));
-    pick("Search", "MM014");
+    pick("Search", "MM142");
     await waitFor(() => expect(count(g)).toBe(1));
     fireEvent.click(within(g).getByRole("checkbox", { name: "Select row 1" }));
     fireEvent.click(within(await screen.findByTestId("bulk-bar")).getByRole("button", { name: "Disable" }));
     expect(await screen.findByText("1 rule disabled")).toBeInTheDocument();
-    expect(sent).toHaveBeenCalledWith("PATCH", "/rules/rule-MM014", { enabled: false });
+    expect(sent).toHaveBeenCalledWith("PATCH", "/rules/rule-MM142", { enabled: false });
     pick("State", "disabled");
     await waitFor(() => expect(count(g)).toBe(1));
   });

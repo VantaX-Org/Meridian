@@ -17,9 +17,10 @@ code, these documents say so.
 | [quality.md](quality.md) | How many tests exist at each layer, what CI runs on every PR, measured coverage, type safety, lint gates, end-to-end and accessibility evidence, performance evidence. |
 | [operations.md](operations.md) | Deployment, upgrade and migration, backup and restore, RPO and RTO, monitoring, retention, scaling, the licence worker's failure behaviour, the support model. |
 | [data-governance.md](data-governance.md) | What data is stored and where, what leaves the deployment, retention and deletion, GDPR-relevant processing, policy packs, sandbox mode, the audit trail. |
-| [roadmap-and-debt.md](roadmap-and-debt.md) | The technical debt register (35 items with location, expected behaviour, effort, risk) and what the architecture allows next. |
-| [competitive-position.md](competitive-position.md) | A capability comparison with Informatica, Collibra, Ataccama, SAP MDG, Monte Carlo and Soda, each Meridian claim tied to a route or screen. |
-| [demo-script.md](demo-script.md) | A 30-minute buyer demo by role on fixture-mode URLs, and a 10-minute technical deep dive with commands. |
+| [roadmap-and-debt.md](roadmap-and-debt.md) | The technical debt register (35 items found by this review, the buyer's critique findings DR-1 to DR-5 and the PC items with a status each, and which items are fixed) and what the architecture allows next. |
+| [competitive-position.md](competitive-position.md) | A capability comparison with the SAP-specialist vendors (SAP Information Steward, SAP MDG, Syniti, Precisely with Winshuttle, SNP) and the general platforms (Informatica, Collibra, Ataccama, Monte Carlo, Soda), each Meridian claim tied to a route or screen, and what the competitors do better. |
+| [demo-script.md](demo-script.md) | A 30-minute buyer demo by role on fixture data (stated as such), a live demo from synthetic extracts, and a 10-minute technical deep dive with commands. |
+| [provenance.md](provenance.md) | How the code was produced (AI-assisted development with Claude Code under one principal engineer), commits by author, what that means for IP, the history available, and the review process. |
 
 Supporting material:
 
@@ -59,20 +60,43 @@ bash scripts/diligence_audit.sh --full
 | npm advisories, runtime | 0 frontend; 1 moderate in `cloudflare/portal` | `npm audit --omit=dev` |
 | Licences | 0 strong copyleft inside our images; 4 weak-copyleft Python packages, 14 LGPL optional sharp binaries, 1 CC-BY data package; Garage (AGPL) as a separate container | `scripts/diligence_licences.py` |
 
-## The five things a reviewer should read first
+## The things a reviewer should read first
+
+A buyer's critique on 30 October 2026 found material omissions in the first version of this package. They
+are now disclosed in the documents and logged in the register with a status:
+
+- **The demo runs on fixture data** (DR-1, demo-script.md): no buyer has seen the engine compute numbers
+  from SAP data.
+- **Live write-back to on-premise SAP** (DR-2): live BAPI write-back for material master, customer and
+  business partner with interface checks and a simulation before every commit is in the code behind
+  `MERIDIAN_LIVE_WRITEBACK_ENABLED` (off by default), not yet run against a live SAP system; vendor (`LFA1`)
+  fixes are export only.
+- **The licence was not enforceable** (DR-3, security.md F-11): fixed with Ed25519 vendor signatures;
+  enforcement switches on after the licence worker is deployed with `LICENCE_SIGNING_KEY_ED25519`, until when
+  the transition window `MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES` is on by default.
+- **The tenant was hard-coded** (DR-4): fixed; the tenant comes from the verified token claim
+  (architecture.md section 3, security.md section 4).
+- **Most of the code was written with Claude Code under one principal engineer**, and the clone is shallow
+  (DR-5, provenance.md).
+- **On-premise extraction depended on `RFC_READ_TABLE`** (PC-1): the reader is now selectable
+  (`/BODS/RFC_READ_TABLE2`, `BBP_RFC_READ_TABLE`, `auto`) with a read-only role template; no ODP or CDS path.
+- **xlsx stays on the SheetJS CDN** (PC-7, not fixed): the registry's 0.18.5 has two high advisories;
+  vendoring the 0.20.3 tarball is open.
+
+And from this review:
 
 1. **The API image keeps its Python source** (security.md F-1, roadmap D-01): the strip step in
-   `docker/Dockerfile.api.prod` is a silent no-op. The IP-protection claim does not hold for that image
-   today; the fix is small.
+   `docker/Dockerfile.api.prod` is a silent no-op. Fixed: both images now compile and strip all source and
+   fail the build if any remains.
 2. **The HTTPS block in nginx is never enabled by the installer** (D-11): a default install serves HTTP
-   unless the operator adds TLS.
+   unless the operator adds TLS. Fixed: `scripts/nginx-https.sh` enables it for SSL modes 2 and 3.
 3. **Tenant isolation is enforced by Postgres**, not only by application code, and is tested both
    statically and against a live database (security.md section 5).
 4. **Every number is deterministic**; the model writes prose around aggregates, and the product runs with
    no model at all. Two optional helpers do send redacted sample values to a configured model (security.md
    section 9).
-5. **A licence worker outage blocks connected installs after 2 to 8 hours** (operations.md section 8,
-   D-25).
+5. **A licence worker outage no longer blocks connected installs within hours** (D-25, PC-14): the last
+   valid signed response is honoured for 14 days (operations.md section 8).
 
 ## Method and limits
 

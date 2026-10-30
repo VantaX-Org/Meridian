@@ -4,7 +4,7 @@ import type { ModuleCoverage, Rule } from "@/lib/api/v2/rulelib";
 export interface LibRow {
   /** The row id of the rule (PATCH /rules/{id}). */
   id: string;
-  /** The SAP-facing code before the colon of the name, such as MM014. */
+  /** The SAP-facing code before the colon of the name, such as MM142. */
   checkId: string;
   message: string;
   module: string;
@@ -20,7 +20,7 @@ export interface LibRow {
   checkClass: string | null;
 }
 
-/** "MM014: Base unit not valid" is check id MM014 and message "Base unit not valid"; a name with no colon is all message. */
+/** "MM142: Base unit not valid" is check id MM142 and message "Base unit not valid"; a name with no colon is all message. */
 export function splitName(name: string): { checkId: string; message: string } {
   const at = name.indexOf(":");
   if (at <= 0) return { checkId: name.trim(), message: name.trim() };

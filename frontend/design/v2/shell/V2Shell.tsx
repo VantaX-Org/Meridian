@@ -23,6 +23,7 @@ import { AdminMap } from "../admin/Admin";
 import { MapPane } from "./MapPane";
 import { RoleBanners } from "./RoleBanners";
 import { SandboxBanner } from "./SandboxBanner";
+import { DemoBar } from "./DemoBar";
 import { StatusStrip } from "./StatusStrip";
 import { ToastProvider, useToast } from "../Toast";
 import { TopBar } from "./TopBar";
@@ -121,6 +122,7 @@ function ChromeBody({ children }: { children: ReactNode }) {
           </a>
         ) : null}
       </nav>
+      <DemoBar on={fixture} />
       <TopBar key={localeKey} onOpenCommand={() => setCommandOpen(true)} onToggleMap={toggleMap} onShortcuts={() => setSheetOpen(true)} mapOpen={mapOpen} />
       {fixture ? <FixtureJobLine /> : <LiveJobLine />}
       <RoleBanners />

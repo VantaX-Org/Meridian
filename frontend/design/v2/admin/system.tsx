@@ -158,7 +158,7 @@ function Doctor() {
 
 type JobFilter = "all" | "active" | "failed";
 
-/** Admin › Jobs and system update: what is running, what failed, the platform version and the health checks. */
+/** Admin › Platform and updates: what is running, what failed, the platform version and the health checks. */
 export function SystemSection() {
   const { openItem, open } = useOpenItem();
   const jobs = useV2Jobs();
@@ -168,7 +168,7 @@ export function SystemSection() {
   const kinds = [...new Set(jobs.jobs.map((j) => j.kind))];
   const failed = jobs.jobs.filter((j) => j.status === "failed").length;
   return (
-    <AdminPage title={t("Jobs and system update")} lead={t("{activeCount} running or queued, {failed} failed. The newest jobs are kept; open one to read why it stopped and to run it again.", { activeCount: jobs.active.length, failed })}>
+    <AdminPage title={t("Platform and updates")} lead={t("{activeCount} running or queued, {failed} failed. The newest jobs are kept; open one to read why it stopped and to run it again.", { activeCount: jobs.active.length, failed })}>
       <Block title={t("Jobs")}>
         <div className="m2-fbar" role="search" aria-label={t("Filter jobs")}>
           <Fld label={t("Show")}>

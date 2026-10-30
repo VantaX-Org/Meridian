@@ -75,8 +75,8 @@ describe("t() and tx()", () => {
 
   it("keeps check ids, TABLE.FIELD and run ids as placeholders, untranslated", () => {
     setLang("de", "de-DE");
-    expect(t("Fix for {check_id}", { check_id: "MM014" })).toBe("Korrektur für MM014");
-    expect(t("Lineage: {field} to {id} to {value}", { field: "MARA.MEINS", id: "MM014", value: "MIGO" })).toContain("MARA.MEINS");
+    expect(t("Fix for {check_id}", { check_id: "MM142" })).toBe("Korrektur für MM142");
+    expect(t("Lineage: {field} to {id} to {value}", { field: "MARA.MEINS", id: "MM142", value: "MIGO" })).toContain("MARA.MEINS");
   });
 
   it("falls back to English for a key a language leaves empty, and to the key itself for an unknown one", () => {

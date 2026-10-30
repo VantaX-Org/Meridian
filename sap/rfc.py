@@ -30,6 +30,18 @@ class _Conn(Protocol):
     def close(self) -> None: ...
 
 
+# Table readers. RFC_READ_TABLE returns each row in a 512-byte work area (wider rows are read in column groups and
+# joined back on the key). /BODS/RFC_READ_TABLE2 (the Data Services reader, shipped with the SAP BODS/ODP support
+# packages) returns rows in a work area of up to 30,000 bytes, named by its OUT_TABLE export, so most tables read in
+# one group. BBP_RFC_READ_TABLE (SRM/BBP layer) has RFC_READ_TABLE's interface and work area; Basis teams that refuse
+# RFC_READ_TABLE sometimes allow it. All three are read-only. Chosen per connection (SAPConnectionParams.read_function
+# or MERIDIAN_RFC_READ_FUNCTION); "auto" probes RFC_FUNCTION_SEARCH in AUTO_ORDER. The DataFrame is the same.
+READ_TABLE = "RFC_READ_TABLE"
+BODS_READ_TABLE = "/BODS/RFC_READ_TABLE2"
+BBP_READ_TABLE = "BBP_RFC_READ_TABLE"
+READ_FUNCTIONS: dict[str, int] = {READ_TABLE: 512, BBP_READ_TABLE: 512, BODS_READ_TABLE: 30000}  # work area bytes
+AUTO_ORDER = (BODS_READ_TABLE, BBP_READ_TABLE)
+
 PAYROLL_FUNCTION = "Z_MERIDIAN_PAYROLL_TOTALS"
 PAYROLL_TABLE = "ZMERIDIAN_PAYRT"
 PAYROLL_FIELDS = ["PERNR", "SEQNR", "FPPER", "INPER", "PAYDT", "LGART", "BETRG", "ANZHL", "WAERS"]
@@ -188,6 +200,49 @@ class RFCConnector(SAPConnector):
         self._parallel = max(1, min(8, parallel))
         self._open_extra: Optional[Callable[[], _Conn]] = None  # opens another connection like the primary
         self._extra: Optional[list[_Conn]] = None  # extra connections; None = not opened yet
+        self._read_setting = ""          # SAPConnectionParams.read_function, else MERIDIAN_RFC_READ_FUNCTION
+        self._read_function = READ_TABLE  # resolved on first read
+
+    # ── Table reader selection ─────────────────────────────────────────────────
+
+    @property
+    def read_function(self) -> str:
+        return self._read_function
+
+    @property
+    def _work_area(self) -> int:
+        return READ_FUNCTIONS.get(self._read_function, 512)
+
+    def _resolve_read_function(self) -> None:
+        """Pick the table reader: an explicit setting as given, "auto" by probing RFC_FUNCTION_SEARCH."""
+        setting = (self._read_setting or os.environ.get("MERIDIAN_RFC_READ_FUNCTION") or READ_TABLE).strip()
+        if setting.upper() != "AUTO":
+            if setting not in READ_FUNCTIONS:
+                raise SAPConnectorError(f"read_function {setting!r} is not one of {', '.join(READ_FUNCTIONS)} or auto")
+            self._read_function = setting
+            return
+        self._read_function = READ_TABLE
+        for fm in AUTO_ORDER:
+            try:
+                found = self._conn.call("RFC_FUNCTION_SEARCH", FUNCNAME=fm).get("FUNCTIONS") or []
+            except Exception as e:  # not authorised for the search, or no such function: try the next
+                logger.info("RFC_FUNCTION_SEARCH for %s failed (%s)", fm, type(e).__name__)
+                continue
+            if any(str(f.get("FUNCNAME", "")).strip() == fm for f in found):
+                self._read_function = fm
+                break
+        logger.info("table reader: %s", self._read_function)
+
+    def _read_call(self, conn: _Conn, **params) -> dict:
+        """One read through the chosen reader, normalised to RFC_READ_TABLE's {FIELDS, DATA}."""
+        if self._read_function == BODS_READ_TABLE:
+            r = conn.call(BODS_READ_TABLE, **params)
+            out = str(r.get("OUT_TABLE") or "").strip()
+            data = r.get(out) if out else None
+            if data is None:  # an older patch level names no OUT_TABLE: the one TBLOUT* table that holds rows
+                data = next((v for k, v in r.items() if k.startswith("TBLOUT") and v), [])
+            return {"FIELDS": r.get("FIELDS") or [], "DATA": data or []}
+        return conn.call(self._read_function, **params)
 
     # ── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -210,6 +265,7 @@ class RFCConnector(SAPConnector):
                 "pyrfc_not_installed: build the API image with INSTALL_PYRFC=true"
             )
         self._password = params.password
+        self._read_setting = getattr(params, "read_function", "") or ""
         try:
             self._conn = pyrfc.Connection(
                 ashost=params.host,
@@ -230,6 +286,7 @@ class RFCConnector(SAPConnector):
         logger.info("RFC logon ok: %s (client %s, user %s)", params.host, params.client, params.user)
         self._open_extra = lambda: pyrfc.Connection(ashost=params.host, client=params.client, user=params.user,
                                                     passwd=params.password, sysnr=params.sysnr)
+        self._resolve_read_function()
 
     def close(self) -> None:
         """Close every session, and say so. A close that fails silently leaves the session open on
@@ -277,12 +334,12 @@ class RFCConnector(SAPConnector):
         where: Optional[str] = None,
         max_rows: int = 0,
     ) -> pd.DataFrame:
-        """Single RFC_READ_TABLE call (fields must fit the 512-byte work area)."""
+        """Single read through the chosen reader (fields must fit its work area: 512 bytes for RFC_READ_TABLE)."""
         if self._conn is None:
             raise SAPConnectorError("read_table called before connect()")
         try:
-            result = self._conn.call(
-                "RFC_READ_TABLE",
+            result = self._read_call(
+                self._conn,
                 QUERY_TABLE=table,
                 FIELDS=[{"FIELDNAME": f} for f in fields],
                 OPTIONS=where_options(where),
@@ -382,7 +439,7 @@ class RFCConnector(SAPConnector):
         if not rest:
             return []
         try:
-            meta = self._conn.call("RFC_READ_TABLE", QUERY_TABLE=table, NO_DATA="X",
+            meta = self._read_call(self._conn, QUERY_TABLE=table, NO_DATA="X",
                                    FIELDS=[{"FIELDNAME": f} for f in keys + rest]).get("FIELDS") or []
         except Exception as e:
             if "DATA_BUFFER_EXCEEDED" not in str(e) or len(rest) == 1:
@@ -396,7 +453,7 @@ class RFCConnector(SAPConnector):
         width = {str(m.get("FIELDNAME", "")).strip(): int(m.get("LENGTH") or 0) for m in meta}
         if not all(f in width for f in rest):
             return [rest]  # no widths to pack by: the probe accepted the fields together
-        free = _WORK_AREA - sum(width.get(k, 0) for k in keys)
+        free = self._work_area - sum(width.get(k, 0) for k in keys)
         groups: list[list[str]] = [[]]
         for f in rest:
             if groups[-1] and sum(width[g] for g in groups[-1]) + width[f] > free:
@@ -533,8 +590,8 @@ class RFCConnector(SAPConnector):
             if want <= 0:
                 break
             try:
-                result = conn.call(
-                    "RFC_READ_TABLE", QUERY_TABLE=table, FIELDS=[{"FIELDNAME": f} for f in fields],
+                result = self._read_call(
+                    conn, QUERY_TABLE=table, FIELDS=[{"FIELDNAME": f} for f in fields],
                     OPTIONS=where_options(where), ROWSKIPS=skip, ROWCOUNT=want,
                 )
             except Exception as e:
@@ -669,7 +726,7 @@ def where_options(where: Optional[str]) -> list[dict]:
 # Single canonical implementation — replaces the duplicates in connect.py
 # and run_sync.py.
 
-_WORK_AREA = 512  # bytes in RFC_READ_TABLE's DATA-WA
+_WORK_AREA = 512  # bytes in RFC_READ_TABLE's DATA-WA (READ_FUNCTIONS has each reader's)
 
 
 def _parse_rfc_result(result: dict) -> pd.DataFrame:

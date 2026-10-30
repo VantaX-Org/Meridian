@@ -87,9 +87,9 @@ describe("the Golden records tab", () => {
   });
 
   it("is a designed empty state, with what would put rows here, for an object without golden records", async () => {
-    tab("purchasing");
+    tab("mm_purchasing");
     const empty = await screen.findByTestId("empty-frame");
-    expect(empty).toHaveTextContent(/No golden records for Purchasing yet\. A match run groups the records that describe the same thing/);
+    expect(empty).toHaveTextContent(/No golden records for MM purchasing yet\. A match run groups the records that describe the same thing/);
     expect(within(empty).queryByRole("link")).toBeNull();
   });
 

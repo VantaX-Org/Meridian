@@ -360,7 +360,7 @@ export function Grid<T>(props: GridProps<T>) {
           </div>
         </div>
         {error ? (
-          <div className="m2-gstate">{error}</div>
+          <div role="rowgroup"><div role="row"><div role="gridcell" className="m2-gstate">{error}</div></div></div>
         ) : loading ? (
           <div role="rowgroup" className="m2-gbody" aria-busy="true" style={{ width: "100%", minWidth: total, height: rowH * skelRows }}>
             {Array.from({ length: skelRows }, (_, i) => (
@@ -374,7 +374,8 @@ export function Grid<T>(props: GridProps<T>) {
             ))}
           </div>
         ) : rows.length === 0 ? (
-          <div className="m2-gstate">{emptyFrame}</div>
+          // The empty frame sits in a row and a cell, so the grid only holds what a grid may hold (its action included).
+          <div role="rowgroup"><div role="row"><div role="gridcell" className="m2-gstate">{emptyFrame}</div></div></div>
         ) : (
           <div role="rowgroup" className="m2-gbody" style={{ width: "100%", minWidth: total, height: virt.getTotalSize() }}>
             {items.map((v) => {

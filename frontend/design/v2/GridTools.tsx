@@ -7,7 +7,7 @@ import { v2Get, v2Send } from "@/lib/api/v2/client";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { createShareLink, exportGrid } from "@/lib/api/v2/roles";
 import { failureText } from "@/lib/v2/errors";
-import { columnsFromHidden, exportRows, hiddenColumns, hiddenFromColumns, visibleColumns, writeHidden, type ToolColumn } from "@/lib/v2/grid-export";
+import { columnsFromHidden, downloadGridCsv, exportRows, hiddenColumns, hiddenFromColumns, visibleColumns, writeHidden, type ToolColumn } from "@/lib/v2/grid-export";
 import { useV2Session } from "@/lib/v2/hooks";
 import { Dialog, copyText } from "./admin/kit";
 import { Grid, type GridProps } from "./Grid";
@@ -141,6 +141,7 @@ export function GridTools<T>({ gridId, route, title, columns, rows, filters, onA
     { kind: "item", id: "save", label: t("Save these columns as a view…"), disabled: readOnly, onSelect: () => setSaving(true) },
     { kind: "item", id: "share", label: t("Share this page as a link…"), disabled: readOnly || !session.can("export"), onSelect: () => void share() },
     { kind: "item", id: "export", label: t("Export to Excel"), sub: t("The columns on screen"), disabled: !session.can("export"), onSelect: () => void doExport() },
+    { kind: "item", id: "export-csv", label: t("Export to CSV"), sub: t("The columns and rows on screen"), disabled: !session.can("export"), onSelect: () => toast.show(t("Exported {rowsCount} rows to {name}", { rowsCount: int(rows.length), name: downloadGridCsv(key, rows, visibleColumns(gridId, columns)) })) },
   ];
   return (
     <span className="m2-gtools" data-testid={`grid-tools-${gridId}`}>

@@ -64,6 +64,23 @@ class Settings(BaseSettings):
     licence_file: Optional[str] = None
     licence_file_path: Optional[str] = None
     licence_secret: Optional[str] = None
+    # Transition window, ON by default until Meridian HQ signs every response with the vendor Ed25519 key; then
+    # the default flips to off. While on, also accept the old HMAC-signed offline licence file (LICENCE_SECRET),
+    # the old RS256 offline token (MERIDIAN_OFFLINE_PUBLIC_KEY) and the old RSA-signed online response
+    # (LICENCE_SERVER_PUBLIC_KEY), and, when no such key is configured, an unsigned online response as before.
+    # Every acceptance is logged. Licences are otherwise verified only against the
+    # vendor's Ed25519 keys compiled into the image (api/middleware/licence_keys.py).
+    licence_allow_legacy_signatures: bool = Field(
+        default=True, validation_alias=AliasChoices("MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES"))
+    # Offline grace: when HQ is unreachable, the last valid signed online response is honoured for this many
+    # days after it was signed, with a warning and status "offline_grace" (api/middleware/licence.py).
+    licence_offline_grace_days: int = Field(
+        default=14, ge=0, le=30, validation_alias=AliasChoices("MERIDIAN_LICENCE_OFFLINE_GRACE_DAYS"))
+    # Where the last valid signed online response is kept so the grace survives a restart (best effort; it is
+    # re-verified on load, so editing the file grants nothing).
+    licence_state_path: str = Field(
+        default="/var/lib/meridian/licence-last-valid.json",
+        validation_alias=AliasChoices("MERIDIAN_LICENCE_STATE_PATH"))
 
     # Updater sidecar (docker/docker-compose.updater.yml) — holds the Docker
     # socket so the api container never needs it. Unset secret means this
@@ -125,6 +142,11 @@ class Settings(BaseSettings):
     # Auth
     # Clerk removed - using local auth only
     auth_mode: str = "local"
+    # This deployment's own tenant. A signed-in request takes its tenant from the verified token's tenant_id
+    # claim (api/middleware/local_auth.py); this id is used only for the public pages before sign-in (theme,
+    # status page, licence), API keys and HQ manifest sync. A single-tenant install keeps the default.
+    deployment_tenant_id: str = Field(default="00000000-0000-0000-0000-000000000001",
+                                      validation_alias=AliasChoices("MERIDIAN_TENANT_ID", "DEPLOYMENT_TENANT_ID"))
     # Live SAP write-back (BAPI execution) stays off until per-module BAPI
     # parameter builders + commit/rollback are verified against the customer's
     # release. With it off, fixes are delivered as export files (LSMW/BAPI).

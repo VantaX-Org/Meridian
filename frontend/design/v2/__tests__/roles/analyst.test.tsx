@@ -24,7 +24,7 @@ describe("the process analyst's jobs", () => {
   });
 
   it("may comment on a rule (view) but not balance work (no assign)", async () => {
-    visit("/work?open=rule:MM014", "process_analyst");
+    visit("/work?open=rule:MM142", "process_analyst");
     mount();
     expect(await screen.findByRole("textbox", { name: "Add a comment" })).toBeInTheDocument();
   });

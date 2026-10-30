@@ -60,9 +60,9 @@ describe("the Processes tab", () => {
     const migo = screen.getAllByTestId("process-step")[2];
     const t = within(migo).getByRole("table", { name: "Fields of Enter Quantity and Unit" });
     const row = within(t).getAllByRole("row")[1];
-    expect(norm(row)).toBe("MARA.MEINSBase unit of measureBlocked94.1%3,640");
+    expect(norm(row)).toBe("MARA-MEINSBase unit of measureBlocked94.1%3,640");
     const t2 = within(migo).getByRole("table", { name: "Fields of Select Movement Type" });
-    expect(norm(within(t2).getAllByRole("row")[1])).toBe("MARA.MTARTMaterial typeBlocked95.3%2,904");
+    expect(norm(within(t2).getAllByRole("row")[1])).toBe("MARA-MTARTMaterial typeBlocked95.3%2,904");
     expect(within(migo).getByRole("link", { name: "Open the step Post Goods Receipt" })).toHaveAttribute("href", expect.stringContaining("open=step%3Amaterial_master%3APTP-GR-MIGO"));
   });
 
@@ -74,10 +74,10 @@ describe("the Processes tab", () => {
   });
 
   it("is a designed empty state for an object no process step reads, with the designer as the action", async () => {
-    tab("purchasing");
+    tab("mm-purchasing");
     const empty = await screen.findByTestId("empty-frame");
-    expect(empty).toHaveTextContent(/No process step reads the fields of Purchasing/);
-    expect(within(empty).getByRole("link", { name: "Open the designer" })).toHaveAttribute("href", "/o/ecc-production/purchasing/processes/design?fixture=1");
+    expect(empty).toHaveTextContent(/No process step reads the fields of MM purchasing/);
+    expect(within(empty).getByRole("link", { name: "Open the designer" })).toHaveAttribute("href", "/o/ecc-production/mm-purchasing/processes/design?fixture=1");
   });
 
   it("says when no step is blocked", async () => {
@@ -111,14 +111,14 @@ describe("the step inspector", () => {
     const fields = within(d).getByRole("table", { name: "Fields this step writes" });
     expect(within(fields).getAllByRole("row")).toHaveLength(3);
     const rules = within(d).getByRole("list", { name: "Rules failing on this step" });
-    expect(within(rules).getByRole("link", { name: "MM014" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM014"));
+    expect(within(rules).getByRole("link", { name: "MM142" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM142"));
   });
 
   it("links the fix into the ledger filtered to the rules that fail", async () => {
     const d = await open();
-    const fix = within(d).getByRole("link", { name: "Fix MM014 in Work" });
-    expect(fix).toHaveAttribute("href", expect.stringContaining("/work?rule=MM014&module=material_master"));
-    expect(within(d).getByRole("link", { name: "Fix MM031 in Work" })).toHaveAttribute("href", expect.stringContaining("rule=MM031"));
+    const fix = within(d).getByRole("link", { name: "Fix MM142 in Work" });
+    expect(fix).toHaveAttribute("href", expect.stringContaining("/work?rule=MM142&module=material_master"));
+    expect(within(d).getByRole("link", { name: "Fix MM003 in Work" })).toHaveAttribute("href", expect.stringContaining("rule=MM003"));
     expect(within(d).getByRole("link", { name: "Open the designer" })).toHaveAttribute("href", expect.stringContaining("/processes/design"));
   });
 

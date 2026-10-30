@@ -16,8 +16,17 @@ export interface RuleList {
   total: number;
 }
 
-/** GET /rules, at most 1000 per call (the API's own ceiling). */
-export const getRuleList = (): Promise<RuleList> => v2Get<RuleList>("/rules", { limit: 1000 });
+/** GET /rules, page by page (the API answers at most 1000 per call) until every rule of the tenant is read. */
+export async function getRuleList(): Promise<RuleList> {
+  const first = await v2Get<RuleList>("/rules", { limit: 1000, offset: 0 });
+  const rules = [...first.rules];
+  while (rules.length < first.total) {
+    const next = await v2Get<RuleList>("/rules", { limit: 1000, offset: rules.length });
+    if (!next.rules.length) break;
+    rules.push(...next.rules);
+  }
+  return { rules, total: first.total };
+}
 
 /** GET /rules/coverage/{module}: the rules of one object with their check class and dimension. */
 export const getModuleRules = (module: string): Promise<ModuleCoverage> => v2Get<ModuleCoverage>(`/rules/coverage/${encodeURIComponent(module)}`);

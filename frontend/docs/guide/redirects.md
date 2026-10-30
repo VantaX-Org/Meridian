@@ -258,7 +258,7 @@ Systems: each system's canvas; connecting a new one; extracting from the landsca
 
 ### Data in
 
-Data in: uploading a file is a block of Administration, Runs and jobs.
+Data in: uploading a file is a block of Administration, Start and schedule.
 
 | Old address | When | New address |
 |---|---|---|

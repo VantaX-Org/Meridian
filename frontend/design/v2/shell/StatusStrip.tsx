@@ -69,7 +69,7 @@ export function StatusStrip() {
         t("{records_checked} records checked", { records_checked: int(s.records_checked) }),
         t("{rules_measured} rules measured", { rules_measured: int(s.rules_measured) }),
         s.scored_in_s == null ? "" : t("scored in {scored_in_s}", { scored_in_s: duration(s.scored_in_s) }),
-        s.cost_model ? t("cost model {cost_model}", { cost_model: s.cost_model }) : "",
+        s.cost_model ? (s.cost_model_source === "default" ? t("cost model {cost_model}, default assumptions", { cost_model: s.cost_model }) : t("cost model {cost_model}", { cost_model: s.cost_model })) : "",
         s.licence_valid_to ? t("licence valid to {licence_valid_to}", { licence_valid_to: formatDate(s.licence_valid_to, "date") }) : "",
       ].filter(Boolean)
     : [];
@@ -84,7 +84,7 @@ export function StatusStrip() {
           parts.map((p, i) => (
             <Fragment key={p}>
               {i > 0 ? <Dot /> : null}
-              {p}
+              <span>{p}</span>
             </Fragment>
           ))
         ) : (

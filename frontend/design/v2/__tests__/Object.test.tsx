@@ -40,9 +40,9 @@ describe("object canvas header", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("ECC production");
     expect(norm(status)).toContain("Run 16 Oct 2026, 05:17");
     expect(norm(status)).toContain("61,816 records checked");
-    expect(norm(status)).toContain("913 rules measured");
+    expect(norm(status)).toContain("80 rules measured");
     expect(norm(status)).toContain("25,712 to fix");
-    expect(norm(status)).toContain("4.2 m at risk");
+    expect(norm(status)).toContain("ZAR 4.2 m est. at risk, estimated from your cost model");
     expect(norm(status)).toContain("3 features blocked");
     expect(norm(status)).toContain("No-go for wave 1");
   });
@@ -50,9 +50,9 @@ describe("object canvas header", () => {
   it("draws the 240 ruler, the measured score as the tick, and says what caps it with links to the rules", async () => {
     frame();
     const sentence = await screen.findByTestId("cap-sentence");
-    await waitFor(() => expect(norm(sentence)).toContain("Capped at 70 by MM014 and MM031, two critical rules over tolerance."));
+    await waitFor(() => expect(norm(sentence)).toContain("Capped at 70 by MM003 and MM035, two critical rules over tolerance."));
     expect(norm(sentence)).toContain("Measured 71.8");
-    expect(within(sentence).getByRole("link", { name: "MM014" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM014"));
+    expect(within(sentence).getByRole("link", { name: "MM035" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM035"));
     const ruler = document.querySelector('svg[data-size="240"]');
     expect(ruler).not.toBeNull();
     expect(ruler?.classList.contains("m2-on")).toBe(true);
@@ -67,7 +67,7 @@ describe("the receipt", () => {
     const table = await screen.findByTestId("receipt");
     expect(within(table).getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["Dimension", "Weight", "Score", "Points", "Rules measured", "Records checked", "Coverage"]);
     const completeness = within(table).getByRole("row", { name: /^Completeness/ });
-    expect(within(completeness).getAllByRole("cell").map((c) => c.textContent)).toEqual(["25%", "62.0", "15.5", "213", "60,827", "98.4%"]);
+    expect(within(completeness).getAllByRole("cell").map((c) => c.textContent)).toEqual(["25%", "62.0", "15.5", "21", "60,827", "98.4%"]);
     const weighted = within(table).getByRole("row", { name: /^Weighted/ });
     expect(norm(weighted)).toContain("71.8");
     expect(norm(within(table).getByRole("row", { name: /^Measured/ }))).toContain("71.8");
@@ -86,8 +86,7 @@ describe("the receipt", () => {
     frame();
     const footer = await screen.findByTestId("receipt-footer");
     const t = norm(footer);
-    const dot = String.fromCharCode(0xb7); // the multiplication dot the API's formula uses; the glyph is kept out of source files
-    expect(t).toContain(`DQS = 0.25${dot}C + 0.25${dot}A + 0.20${dot}Cs + 0.10${dot}T + 0.10${dot}U + 0.10${dot}V`);
+    expect(t).toContain("DQS = 0.25 × C + 0.25 × A + 0.20 × Cs + 0.10 × T + 0.10 × U + 0.10 × V");
     expect(t).toContain("severity weights critical 4, high 3, medium 2, low 1");
     expect(t).toContain("tolerance 10% of rows or 25 rows");
     expect(t).toContain("cap rule: 85 at one critical rule over tolerance, 70 at two or more");
@@ -98,10 +97,10 @@ describe("the receipt", () => {
     const list = await screen.findByTestId("breaches");
     const items = within(list).getAllByRole("listitem");
     expect(items).toHaveLength(2);
-    expect(within(items[0]).getByRole("link", { name: "MM014" })).toBeInTheDocument();
-    expect(norm(items[0])).toContain("Base unit of measure not valid");
-    expect(norm(items[0])).toContain("3,640 failing");
-    expect(norm(items[1])).toContain("2,904 failing");
+    expect(within(items[0]).getByRole("link", { name: "MM003" })).toBeInTheDocument();
+    expect(norm(items[0])).toContain("Material type is mandatory");
+    expect(norm(items[0])).toContain("2,904 failing");
+    expect(norm(items[1])).toContain("1,420 failing");
   });
 
   it("leaves out the weighted row when the stored summary cannot reproduce it, and shows a dash for a count it does not hold", async () => {
@@ -172,6 +171,26 @@ describe("object canvas states", () => {
     frame("nowhere", "material-master");
     expect(await screen.findByText(/No system matches this address/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open the landscape" })).toHaveAttribute("href", expect.stringMatching(/^\/(\?|$)/));
+  });
+
+  it("an object slug Meridian does not know is not found, never a real-looking page", async () => {
+    setUrl("/o/ecc-production/nonexistent");
+    frame("ecc-production", "nonexistent");
+    const nf = await screen.findByTestId("object-not-found");
+    expect(within(nf).getByRole("heading", { level: 1 })).toHaveTextContent("Object not found");
+    expect(nf).toHaveTextContent("ECC production has no object called nonexistent.");
+    expect(screen.queryByRole("img")).toBeNull(); // no ruler
+    expect(screen.queryByRole("button", { name: /Watch/ })).toBeNull();
+  });
+
+  it("puts the tabs straight under the title, before the ruler and the receipt", async () => {
+    setUrl("/o/ecc-production/material-master/records");
+    frame();
+    const tabs = await screen.findByRole("navigation", { name: "Views of Material master" });
+    const ruler = await screen.findByRole("img", { name: /measured 71\.8/ });
+    expect(tabs.compareDocumentPosition(ruler) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Off the Rules view the receipt stays out of the way of the tab's content.
+    expect(screen.queryByText(/How 70\.0 is made/)).toBeNull();
   });
 
   it("a failed landscape read is an error with Retry", async () => {

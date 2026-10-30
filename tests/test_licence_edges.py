@@ -3,9 +3,9 @@
 Covers the failure modes called out in the production-readiness audit:
 - Expired offline licence → rejected
 - Missing offline licence file → failure counter starts
-- Offline HMAC signature mismatch → rejected
-- Cloudflare unreachable, under 2h grace → middleware keeps serving cached
-- Cloudflare unreachable, over 2h → hard cutoff, 403
+- Offline licence signature (Ed25519, vendor key) mismatch → rejected; HMAC only in the legacy window
+- Cloudflare unreachable, inside the 14-day offline grace → the last signed licence (tests/test_licence_grace.py)
+- Cloudflare unreachable, past it → hard cutoff, 403
 - 48h consecutive-failure cutoff for offline mode
 - Invalid licence key format
 
@@ -16,16 +16,23 @@ state so execution order doesn't matter.
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac as hmac_mod
 import json
-import os
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
 
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def _test_key(monkeypatch, tmp_path):
+    """Trust this run's throwaway Ed25519 key; keep the offline-grace file in tmp_path."""
+    from tests.licence_test_keys import install
+
+    install(monkeypatch, tmp_path)
 
 
 @pytest.fixture(autouse=True)
@@ -40,6 +47,7 @@ def _reset_licence_state():
     lic._first_failure_at = None
     lic._degraded_at = None
     lic._last_checked_at = None
+    lic._last_signed = None
     yield
     lic._cache.clear()
     lic._cache.update({"response": None, "expires_at": 0.0})
@@ -57,22 +65,26 @@ def _write_signed_licence(
     secret: str = "s3cret",
     modules: list | None = None,
     corrupt_signature: bool = False,
+    hmac_signed: bool = False,
 ) -> None:
-    """Write a JWT-style offline licence file (payload + HMAC signature)."""
+    """Write an offline licence file: payload + Ed25519 signature by the test key (``hmac_signed``: the old
+    HMAC-SHA256 over ``secret``, accepted only inside the legacy window)."""
+    from tests.licence_test_keys import signed_offline_file
+
     payload = {
         "active": active,
         "expiresAt": expires_at,
         "tenantId": "00000000-0000-0000-0000-000000000001",
         "modules": modules or ["business_partner"],
     }
-    sig = hmac_mod.new(
-        secret.encode(),
-        json.dumps(payload, sort_keys=True).encode(),
-        hashlib.sha256,
-    ).hexdigest()
+    if hmac_signed:
+        sig = hmac_mod.new(secret.encode(), json.dumps(payload, sort_keys=True).encode(), hashlib.sha256).hexdigest()
+        path.write_text(json.dumps({"payload": payload, "signature": sig}))
+        return
+    body = json.loads(signed_offline_file(payload))
     if corrupt_signature:
-        sig = "0" * 64
-    path.write_text(json.dumps({"payload": payload, "signature": sig}))
+        body["signature"] = base64.b64encode(b"\0" * 64).decode()
+    path.write_text(json.dumps(body))
 
 
 def test_expired_offline_licence_is_rejected(tmp_path, monkeypatch):
@@ -118,6 +130,38 @@ def test_offline_hmac_mismatch_rejected(tmp_path, monkeypatch):
     # 48h degradation check relies on.
     assert lic._consecutive_failures == 1
     assert lic._first_failure_at is not None
+
+
+def test_hmac_offline_licence_is_refused_outside_the_legacy_window(tmp_path, monkeypatch):
+    """LICENCE_SECRET sits in the customer's own .env, so an HMAC proves nothing: refused by default."""
+    from api.middleware import licence as lic
+
+    licence_file = tmp_path / "licence.json"
+    future = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat().replace("+00:00", "Z")
+    _write_signed_licence(licence_file, expires_at=future, secret="s3cret", hmac_signed=True)
+    monkeypatch.setenv("LICENCE_MODE", "offline")
+    monkeypatch.setenv("LICENCE_SECRET", "s3cret")
+    monkeypatch.setattr(lic.settings, "licence_file", str(licence_file))
+
+    assert lic._read_offline_licence() == {"valid": False, "reason": "legacy_signature_rejected"}
+
+    # inside the transition window (setting on) it is accepted, and logged
+    monkeypatch.setattr(lic.settings, "licence_allow_legacy_signatures", True)
+    assert lic._read_offline_licence()["valid"] is True
+
+
+def test_offline_licence_signed_by_another_key_is_rejected(tmp_path, monkeypatch):
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    from api.middleware import licence as lic
+    from tests.licence_test_keys import signed_offline_file
+
+    licence_file = tmp_path / "licence.json"
+    payload = {"active": True, "expiresAt": "2099-01-01T00:00:00Z", "modules": ["*"]}
+    licence_file.write_text(signed_offline_file(payload, key=Ed25519PrivateKey.generate()))
+    monkeypatch.setenv("LICENCE_MODE", "offline")
+    monkeypatch.setattr(lic.settings, "licence_file", str(licence_file))
+    assert lic._read_offline_licence() == {"valid": False, "reason": "invalid_signature"}
 
 
 def test_offline_file_missing_bumps_failure_counter(tmp_path, monkeypatch):
@@ -263,21 +307,24 @@ async def test_validate_licence_in_offline_mode_skips_network(tmp_path, monkeypa
 
 
 @pytest.mark.asyncio
-async def test_validate_licence_short_circuits_past_cutoff(monkeypatch):
+async def test_validate_licence_retries_hq_past_the_cutoff(monkeypatch):
+    """Past the offline grace the licence locks, but HQ is still asked: its first answer ends the lock."""
     from api.middleware import licence as lic
 
     monkeypatch.setenv("LICENCE_MODE", "online")
     monkeypatch.setattr(lic.settings, "licence_file", None)
     lic._degraded_at = time.time() - (lic.LICENCE_DEGRADED_CUTOFF_SECONDS + 10)
+    calls = []
 
-    class _Boom:
+    class _Down:
         def __init__(self, *a, **kw):
-            raise AssertionError("should not attempt network past cutoff")
+            calls.append(1)
+            raise OSError("connection refused")
 
-    monkeypatch.setattr(lic.httpx, "AsyncClient", _Boom)
-
-    result = await lic._validate_licence()
-    assert result == {"valid": False, "reason": "licence_server_unreachable_cutoff"}
+    monkeypatch.setattr(lic.httpx, "AsyncClient", _Down)
+    assert await lic._validate_licence() is None
+    assert calls == [1]
+    assert await lic.revalidate() == (None, "cutoff")
 
 
 @pytest.mark.asyncio
@@ -539,7 +586,33 @@ def _rsa_pair():
 
 
 @pytest.mark.asyncio
-async def test_offline_token_verified_with_hq_public_key(monkeypatch):
+async def test_offline_token_verified_with_vendor_key(monkeypatch):
+    import jwt as pyjwt
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    from api.middleware import licence as lic
+    from tests.licence_test_keys import TEST_ONLY_PRIVATE_KEY
+
+    now = int(datetime.now(timezone.utc).timestamp())
+    claims = {"iss": "meridian-hq", "tenant_id": "t-1", "exp": now + 86400, "enabled_modules": ["fi_gl"]}
+    monkeypatch.setattr(lic.settings, "licence_mode", "offline")
+
+    monkeypatch.setenv("MERIDIAN_LICENCE_TOKEN", pyjwt.encode(claims, TEST_ONLY_PRIVATE_KEY, algorithm="EdDSA"))
+    ok = await lic._validate_licence()
+    assert ok["valid"] and ok["enabled_modules"] == ["fi_gl"] and ok["tenant_id"] == "t-1"
+
+    forged = Ed25519PrivateKey.generate()  # a key the customer made themselves
+    monkeypatch.setenv("MERIDIAN_LICENCE_TOKEN", pyjwt.encode(claims, forged, algorithm="EdDSA"))
+    assert (await lic._validate_licence()) == {"valid": False, "reason": "invalid_token"}
+
+    monkeypatch.setenv("MERIDIAN_LICENCE_TOKEN",
+                       pyjwt.encode({**claims, "exp": now - 10}, TEST_ONLY_PRIVATE_KEY, algorithm="EdDSA"))
+    assert (await lic._validate_licence()) == {"valid": False, "reason": "expired"}
+
+
+@pytest.mark.asyncio
+async def test_rs256_token_with_a_key_from_env_needs_the_legacy_window(monkeypatch):
+    """The old offline token was verified against a public key in .env, which the customer could replace."""
     import jwt as pyjwt
 
     from api.middleware import licence as lic
@@ -549,14 +622,20 @@ async def test_offline_token_verified_with_hq_public_key(monkeypatch):
     claims = {"iss": "meridian-hq", "tenant_id": "t-1", "exp": now + 86400, "enabled_modules": ["fi_gl"]}
     monkeypatch.setattr(lic.settings, "licence_mode", "offline")
     monkeypatch.setenv("MERIDIAN_OFFLINE_PUBLIC_KEY", pub)
-
     monkeypatch.setenv("MERIDIAN_LICENCE_TOKEN", pyjwt.encode(claims, key, algorithm="RS256"))
-    ok = await lic._validate_licence()
-    assert ok["valid"] and ok["enabled_modules"] == ["fi_gl"] and ok["tenant_id"] == "t-1"
-
-    other, _ = _rsa_pair()  # forged with a different key
-    monkeypatch.setenv("MERIDIAN_LICENCE_TOKEN", pyjwt.encode(claims, other, algorithm="RS256"))
     assert (await lic._validate_licence()) == {"valid": False, "reason": "invalid_token"}
 
-    monkeypatch.setenv("MERIDIAN_LICENCE_TOKEN", pyjwt.encode({**claims, "exp": now - 10}, key, algorithm="RS256"))
-    assert (await lic._validate_licence()) == {"valid": False, "reason": "expired"}
+    monkeypatch.setattr(lic.settings, "licence_allow_legacy_signatures", True)
+    assert (await lic._validate_licence())["valid"] is True
+
+
+def test_test_key_is_ignored_outside_development(monkeypatch):
+    from api.middleware import licence_keys
+
+    from tests.licence_test_keys import TEST_ONLY_PRIVATE_KEY
+
+    msg = b"meridian"
+    sig = TEST_ONLY_PRIVATE_KEY.sign(msg)
+    assert licence_keys.verify(sig, msg) is True
+    monkeypatch.setattr(licence_keys, "_development", lambda: False)
+    assert licence_keys.verify(sig, msg) is False

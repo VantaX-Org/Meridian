@@ -66,3 +66,9 @@ vendor/nwrfcsdk/*
 !vendor/nwrfcsdk/README.md
 *.har.recording.tmp
 .playwright-mcp/
+
+# Coverage (make coverage, .github/workflows/unit-tests.yml, job coverage)
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/

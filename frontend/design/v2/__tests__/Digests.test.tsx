@@ -140,3 +140,12 @@ describe("Admin, Digests", () => {
     expect(zoneOk("Mars/Olympus")).toBe(false);
   });
 });
+
+describe("Administration's index names each place once", () => {
+  it("no item carries its group's name, and nothing repeats the Runs page", async () => {
+    const { ADMIN_SECTIONS } = await import("@/lib/v2/admin-sections");
+    for (const s of ADMIN_SECTIONS) expect(s.label, s.slug).not.toBe(s.group);
+    expect(ADMIN_SECTIONS.map((s) => s.label)).not.toContain("Runs and jobs");
+    expect(new Set(ADMIN_SECTIONS.map((s) => s.label)).size).toBe(ADMIN_SECTIONS.length);
+  });
+});

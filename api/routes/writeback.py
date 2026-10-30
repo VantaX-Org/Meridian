@@ -3,12 +3,15 @@
 Rules (non-negotiable):
 - Only apply fixes where sql_statement is populated (deterministic fixes only)
 - NEVER apply LLM-generated fix_instructions directly to SAP
-- dry_run=True validates BAPIs without committing
+- dry_run=True reports, per field, whether a BAPI can carry it (sap/bapi_writeback.py) and why not
+- Live execution simulates each record first (TESTRUN or no commit), then commits only when RETURN holds no
+  E or A message, and records SAP's RETURN messages per record
 - Every write-back is logged to write_back_log
 - 4-eyes: requesting_user != approving_user
 """
 
 import asyncio
+import json
 import logging
 import os
 import uuid
@@ -26,14 +29,15 @@ from api.services.rbac import require_permission
 router = APIRouter(prefix="/api/v1", tags=["writeback"])
 logger = logging.getLogger("meridian.writeback")
 
-# BAPI mapping for ECC module write-back.
+# BAPI per ECC module. The modules with field-level parameter mappings (material master, business partner,
+# customer) are in sap/bapi_writeback.py, which builds, verifies against the connected system, simulates and
+# commits each call. The others have no field mapping yet: every field of theirs is reported per field as
+# "no BAPI mapping" and goes out through the export (LSMW / BAPI file) instead.
 # SuccessFactors modules use OData APIs (not RFC BAPIs) — excluded intentionally.
-# Warehouse modules may use RFC but with specialised function modules — extend as needed.
 BAPI_MAP = {
-    "business_partner": "BAPI_BUPA_CENTRAL_DATA_SET",
+    "business_partner": "BAPI_BUPA_CENTRAL_CHANGE",
     "material_master": "BAPI_MATERIAL_SAVEDATA",
     "fi_gl": "BAPI_GL_ACCOUNT_CREATE",
-    "accounts_payable": "BAPI_VENDOR_CHANGEFROMDATA",
     "accounts_receivable": "BAPI_CUSTOMER_CHANGEFROMDATA1",
     "asset_accounting": "BAPI_FIXEDASSET_CHANGE",
     "hcm": "HR_INFOTYPE_OPERATION",
@@ -45,29 +49,20 @@ BAPI_MAP = {
 }
 
 
-# BAPI -> {TABLE.FIELD: (key params, data structure, BAPI field)} for fixes a BAPI can carry.
-# ponytail: empty until each BAPI's structure is verified against a test system; until then every
-# fix is refused and loaded through a remediation batch export instead of an RFC call with guessed params.
-BAPI_FIELDS: dict[str, dict[str, tuple[dict[str, str], str, str]]] = {}
-
-
 def _structured(fix) -> bool:
     """A structured auto_fix proposal: field, full record key and proposed value (never instruction text)."""
     return isinstance(fix, dict) and bool(fix.get("auto_fix") and fix.get("record_key")
                                           and fix.get("field") and fix.get("proposed_value") is not None)
 
 
-def _bapi_params(bapi: str, fix: dict) -> Optional[dict]:
-    """BAPI parameters built from the fix's table, field, record key and proposed value; None when unmapped."""
-    m = BAPI_FIELDS.get(bapi, {}).get(fix["field"])
-    if m is None:
-        return None
-    keys = dict(p.split("=", 1) for p in fix["record_key"].split("|") if "=" in p)
-    key_params, structure, bapi_field = m
-    if any(k not in keys for k in key_params):
-        return None
-    return {**{param: keys[k] for k, param in key_params.items()},
-            structure: {bapi_field: fix["proposed_value"]}, structure + "X": {bapi_field: "X"}}
+def field_support(module: str, fix: dict) -> dict:
+    """Whether a BAPI carries this fix's field for this record, which one, and why not: one honest line per field.
+    ``delivery`` is "bapi" when live write-back can send it, else "export"."""
+    from sap.bapi_writeback import plan_field
+
+    plan = plan_field(module, str(fix.get("field") or ""), str(fix.get("record_key") or ""))
+    return {"record_key": str(fix.get("record_key") or ""), "field": plan.field, "supported": plan.supported,
+            "bapi": plan.bapi, "reason": plan.reason, "delivery": "bapi" if plan.supported else "export"}
 
 
 class SAPConnection(BaseModel):
@@ -89,18 +84,43 @@ class WriteBackRequest(BaseModel):
     )
 
 
+class FieldSupportOut(BaseModel):
+    record_key: str
+    field: str                       # TABLE.FIELD
+    supported: bool                  # a BAPI mapping carries it
+    bapi: Optional[str] = None
+    reason: Optional[str] = None     # why not, as a sentence
+    delivery: str                    # "bapi" (live write-back) | "export" (LSMW / BAPI file)
+
+
+class RecordResultOut(BaseModel):
+    record_key: str
+    bapis: list[str] = []
+    fields: list[str] = []
+    simulated: bool = False
+    simulate_messages: list[dict] = []   # RETURN of the test run: type, id, number, message
+    applied: bool = False
+    committed: bool = False
+    messages: list[dict] = []            # RETURN of the real call and the commit
+    error: Optional[str] = None
+
+
 class WriteBackResponse(BaseModel):
     applied: int
     skipped: int
     errors: list[str]
     dry_run: bool
     pending_approval_id: Optional[str] = None
+    # per field: whether live write-back can send it, through which BAPI, and why not
+    fields: list[FieldSupportOut] = []
 
 
 class ApprovalResponse(BaseModel):
     applied: int
     errors: list[str]
     status: str
+    fields: list[FieldSupportOut] = []
+    records: list[RecordResultOut] = []   # per record: simulation, call and commit, with SAP's RETURN messages
 
 
 def _mask_password(msg: str, password: str) -> str:
@@ -172,19 +192,18 @@ async def create_writeback(
     # against the approver at approval time.
     requesting_user = _require_user(request)
 
-    # Dry run: validate BAPIs can be called
+    # Per field: can a BAPI carry it? Fields without a mapping are said so here, one by one.
+    support = [field_support(module, f) for f in valid_fixes]
     errors: list[str] = []
+    if not any(x["supported"] for x in support):
+        errors.append(f"None of these fields has a BAPI mapping for '{module}'; deliver them with the export")
     if body.dry_run:
-        bapi = BAPI_MAP.get(module)
-        if not bapi:
-            errors.append(f"No BAPI mapping for module '{module}' — write-back not supported")
-        else:
-            # Verify the configured connector backend is available
-            from sap import get_connector
-            try:
-                _test_conn = get_connector()
-            except Exception:
-                errors.append("SAP connector not available — cannot validate BAPI calls")
+        # Verify the configured connector backend is available
+        from sap import get_connector
+        try:
+            get_connector()
+        except Exception:
+            errors.append("SAP connector not available — cannot validate BAPI calls")
 
         # Create pending write-back log entry
         log_id = str(uuid.uuid4())
@@ -195,7 +214,7 @@ async def create_writeback(
                      records_updated, errors, sap_host, created_at)
                 SELECT :log_id, :tid, :fid,
                     (SELECT version_id FROM findings WHERE id = :fid AND tenant_id = :tid),
-                    :requested_by, true, :count, :errors, :host, now()
+                    :requested_by, true, :count, CAST(:errors AS jsonb), :host, now()
             """),
             {
                 "log_id": log_id,
@@ -203,7 +222,7 @@ async def create_writeback(
                 "fid": str(body.finding_id),
                 "requested_by": requesting_user,
                 "count": len(valid_fixes),
-                "errors": str(errors) if errors else None,
+                "errors": json.dumps({"errors": errors}) if errors else None,
                 "host": body.sap_connection.host,
             },
         )
@@ -215,6 +234,7 @@ async def create_writeback(
             errors=errors,
             dry_run=True,
             pending_approval_id=log_id,
+            fields=support,
         )
 
     # Non-dry-run: create pending approval record (4-eyes requirement)
@@ -244,9 +264,10 @@ async def create_writeback(
     return WriteBackResponse(
         applied=0,
         skipped=skipped,
-        errors=[],
+        errors=errors,
         dry_run=False,
         pending_approval_id=approval_id,
+        fields=support,
     )
 
 
@@ -349,8 +370,9 @@ async def approve_writeback(
     if not settings.live_writeback_enabled:
         raise HTTPException(
             status_code=409,
-            detail="Live SAP write-back is disabled on this deployment. Export the fixes "
-                   "(LSMW / BAPI file) from the finding or cleaning queue and load them in SAP.",
+            detail="Live SAP write-back is off on this deployment (setting MERIDIAN_LIVE_WRITEBACK_ENABLED). "
+                   "Until an administrator turns it on, deliver the fixes with the export (LSMW / BAPI file) "
+                   "from the finding or cleaning queue.",
         )
 
     from api.services.sandbox import held_back
@@ -382,21 +404,31 @@ async def approve_writeback(
     # Filter to deterministic fixes only
     valid_fixes = [f for f in record_fixes if _structured(f)]
 
-    bapi = BAPI_MAP.get(module)
+    support = [field_support(module, f) for f in valid_fixes]
     errors: list[str] = []
     applied = 0
+    records: list[dict] = []
+    # record_key -> {TABLE.FIELD: proposed value}, only the fields a BAPI carries
+    by_record: dict[str, dict] = {}
+    for fix, sup in zip(valid_fixes, support):
+        if sup["supported"]:
+            by_record.setdefault(sup["record_key"], {})[sup["field"]] = fix["proposed_value"]
+    unsupported = [x for x in support if not x["supported"]]
+    if unsupported:
+        errors.append(f"{len(unsupported)} field(s) have no BAPI mapping and were not sent; deliver them with the "
+                      "export (see fields)")
 
-    if not bapi:
-        errors.append(f"No BAPI mapping for module '{module}'")
-    elif not valid_fixes:
+    if not valid_fixes:
         errors.append("No deterministic fixes available")
+    elif not by_record:
+        errors.append(f"No field of this finding has a BAPI mapping for '{module}'")
     else:
         # Execute via SAP connector. Resolve REAL credentials from the
         # registered on-prem SAP system matching this write-back's host —
         # never fabricate a user/password (the old "WRITEBACK"/"****" literals
         # could never connect). Decrypted only here, at execution time.
         from sap import get_connector
-        from sap.base import SAPConnectionParams, SAPConnectorError, BAPICall
+        from sap.base import SAPConnectionParams, SAPConnectorError
 
         sys_result = await db.execute(
             text("""
@@ -426,52 +458,41 @@ async def approve_writeback(
                 password=decrypt_password(tenant_id, sys_row[2]),
             )
 
-            def _apply_bapi_fixes() -> tuple[int, list[str]]:
-                """Synchronous PyRFC calls — connect + N BAPI executions.
-                Runs on a worker thread via asyncio.to_thread; this handler
-                is `async def`, so calling this directly would block
-                FastAPI's entire event loop for the whole RFC round-trip
-                (every request, not just this one) for however many fixes
-                there are."""
-                _applied = 0
-                _errors: list[str] = []
+            def _apply() -> tuple[list[dict], list[str]]:
+                """Synchronous RFC work on a worker thread (asyncio.to_thread): this handler is ``async def``,
+                so calling it directly would block the event loop for every request for the whole round-trip."""
                 try:
                     with get_connector() as conn:
                         conn.connect(params)
-                        for fix in valid_fixes:
-                            bapi_params = _bapi_params(bapi, fix)
-                            if bapi_params is None:
-                                _errors.append(f"No {bapi} parameter mapping for {fix.get('field', '?')} "
-                                               f"({fix.get('record_key')}); load it via a remediation batch")
-                                continue
-                            try:
-                                conn.execute_bapi(BAPICall(bapi_name=bapi, params=bapi_params))
-                                _applied += 1
-                            except SAPConnectorError as e:
-                                _errors.append(f"BAPI call failed for {fix.get('field', '?')}: {str(e)}")
+                        return apply_records(conn, module, by_record), []
                 except SAPConnectorError as e:
                     if "pyrfc_not_installed" in str(e):
-                        _errors.append("PyRFC not installed")
-                    else:
-                        _errors.append(f"RFC connection failed: {str(e)}")
-                return _applied, _errors
+                        return [], ["PyRFC not installed"]
+                    return [], [f"RFC connection failed: {e}"]
 
-            applied, bapi_errors = await asyncio.to_thread(_apply_bapi_fixes)
-            errors.extend(bapi_errors)
+            records, conn_errors = await asyncio.to_thread(_apply)
+            errors.extend(conn_errors)
+            applied = sum(1 for r in records if r["committed"])
+            for r in records:
+                if r["error"]:
+                    errors.append(f"{r['record_key']}: {r['error']}")
+                elif not r["committed"]:
+                    errors.append(f"{r['record_key']}: SAP refused the change; see its RETURN messages")
 
     # Update the log record
     await db.execute(
         text("""
             UPDATE write_back_log
             SET approved_by = :approver, applied_at = :now,
-                records_updated = :applied, errors = :errors
+                records_updated = :applied, errors = CAST(:errors AS jsonb)
             WHERE id = :aid AND tenant_id = :tid
         """),
         {
             "approver": approving_user,
             "now": datetime.now(timezone.utc),
             "applied": applied,
-            "errors": str(errors) if errors else None,
+            # per record: the simulation and the call with SAP's RETURN messages; no field values
+            "errors": json.dumps({"errors": errors, "records": records}) if errors or records else None,
             "aid": approval_id,
             "tid": tenant_id,
         },
@@ -481,4 +502,14 @@ async def approve_writeback(
     status = "completed" if not errors else "completed_with_errors"
     logger.info(f"Write-back approved: {approval_id} — applied={applied}, errors={len(errors)}")
 
-    return ApprovalResponse(applied=applied, errors=errors, status=status)
+    return ApprovalResponse(applied=applied, errors=errors, status=status, fields=support, records=records)
+
+
+def apply_records(conn, module: str, by_record: dict[str, dict]) -> list[dict]:
+    """Simulate then write each record (sap/bapi_writeback.py write_record) on one connection; per-record
+    results with SAP's RETURN messages. The interface of each BAPI is read once per run."""
+    from sap.bapi_writeback import write_record
+
+    cache: dict = {}
+    return [write_record(conn, module, key, changes, apply=True, cache=cache).as_dict()
+            for key, changes in by_record.items()]

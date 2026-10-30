@@ -664,9 +664,11 @@ export function SettingsSection() {
           </Block>
         ))}
       </Loaded>
-      <Loaded q={cost} what={tr("The cost model")} rows={3}>
-        {(m) => (write ? <CostBlock key={JSON.stringify(m)} model={m} /> : <Block title={tr("Cost model")}><Kv rows={[[tr("Currency"), m.currency]]} /></Block>)}
-      </Loaded>
+      <div id="cost-model">
+        <Loaded q={cost} what={tr("The cost model")} rows={3}>
+          {(m) => (write ? <CostBlock key={JSON.stringify(m)} model={m} /> : <Block title={tr("Cost model")}><Kv rows={[[tr("Currency"), m.currency]]} /></Block>)}
+        </Loaded>
+      </div>
       {write && tenant.data ? <PlannerBlock key={JSON.stringify(tenant.data.planner_config)} initial={tenant.data.planner_config ?? { minutes_per_record: 3, investigation_hours: 1, cleaning_item_hours: 0.25, exception_hours: 2, sprint_hours: 40, cost_per_record: null, currency: "" }} currency={cost.data?.currency} /> : null}
       {write ? (
         <Loaded q={retention} what={tr("The retention policy")} rows={3}>

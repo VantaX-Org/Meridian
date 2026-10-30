@@ -76,6 +76,8 @@ jobs:
     env:
       CI: "true"
       NEXT_TELEMETRY_DISABLED: "1"
+      # The specs run in fixture mode, which only a demo build honours (frontend/lib/api/v2/fixture.ts).
+      NEXT_PUBLIC_MERIDIAN_DEMO: "1"
       # Every acceptance spec. Fully parallel (playwright.config.ts), so shards split by test, not by file.
       SPECS: >-
         e2e/v2-a11y.spec.ts

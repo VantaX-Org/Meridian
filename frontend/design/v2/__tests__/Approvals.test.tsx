@@ -62,7 +62,7 @@ describe("Waiting for approval: records under their batch", () => {
     expect(line).toContain("Unit of measure and material type");
     expect(line).toContain("R. Govender");
     expect(line).toContain("328 records");
-    expect(line).toContain("ZAR 413 k at risk");
+    expect(line).toContain("ZAR 413 k est. at risk");
     expect(line).toMatch(/due 23 Oct/);
     expect(within(b241).getByRole("button", { name: "Approve batch B-241" })).toBeEnabled();
     expect(within(b241).getByRole("button", { name: "Send batch B-241 back" })).toBeEnabled();

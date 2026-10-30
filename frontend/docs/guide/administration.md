@@ -15,7 +15,7 @@ Administration is everything that sets up the tenant: who can sign in, what the 
 
 ## Tenant
 
-- **Licence**: company, status, tier, seats, validity, last checked, platform version and the licensed modules and features. **Check with Meridian HQ now**. "Plan changes and invoices are handled in Meridian HQ; this deployment keeps its data either way."
+- **Licence**: company, status, tier, seats, validity, last checked, platform version and the licensed modules and features. **Check with Meridian HQ now**. "Plan changes and invoices are handled in Meridian HQ; this deployment keeps its data either way." Every licence is verified against the vendor's Ed25519 key built into the image. When Meridian HQ cannot be reached, the last valid signed answer is honoured for 14 days after it was signed: the page still reads Valid while the API reports the status `offline_grace` with the days left; after that, gated pages lock until Meridian HQ answers again.
 - **Billing**: resolved exceptions by billing tier on top of the base fee; read only.
 - **Settings**: the tenant; **Dimension weights** ("The score is each measured dimension times its weight. The weights must add up to 100." **Use the DAMA defaults**); **Score bands** ("At or above target is on target (go), at or above warning is at risk, below that is failing."); **Cap rule and tolerance**: "One critical rule failing beyond its tolerance holds that object at 85; two or more hold it at 70. The caps are fixed. The tolerance says how many failing records count as beyond.", with **Failing share, percent** and **Failing records** and the severity weights and multipliers; **Cost model and currency**; **Planner assumptions**; **Retention** (keep runs, reports and audit rows for so many days, keep the baseline; purges rehearse first and the purge log records each one); **Delete all data**, which issues a token that works after 24 hours. **Sandbox mode**: **Enter sandbox mode** copies the latest finished run into a sandbox run; until **Exit sandbox mode**, decisions land on the copy only, decisions on the real run are refused with the reason ("Sandbox mode is on: decisions apply to the sandbox run only."), and notifications, webhooks, digests, report mailouts and write-backs are held back and counted. A band across every page says "Sandbox: nothing leaves this deployment." with since when and by whom. Entering and exiting need manage system; exiting discards the sandbox runs.
 - **Stewardship**: "One accountable owner per object and one steward per company code, plant or organisation." The template per object (owner role, owner, stewards by slice, steward, teams), **Save the template**, **Check what applying does** (a dry-run diff), **Apply**, and **Gaps**: "Every object needs one owner and at least one steward per active slice", for example "Vendor master (AP): No steward for purchasing organisation 1000".
@@ -32,21 +32,25 @@ Administration is everything that sets up the tenant: who can sign in, what the 
 ## Notifications
 
 - **Alerts**: channels (email, Microsoft Teams, signed webhook) with their digest, board pack and critical alerts; **When to alert** (critical and high failing rules, score drop in points) and **Score floors per object**. "Alerts carry counts, rule ids and links, never record values."
-- **Notifications**: the tenant's default digest. Each person sets their own under Preferences.
+- **Default digest**: the tenant's default digest. Each person sets their own under Preferences.
 - **Digests**: scheduled summaries for a role (the programme lead every Monday at 07:00) or a migration wave: the landscape sentence, score moves, the waves and their gates, approvals waiting, SLA breaches and the top value at risk. The form takes the cadence (a preset or a cron line, checked as you type), the time zone, the channel (email with addresses and people, an alert channel, or the `digest.sent` webhook event), **Attach the digest as a PDF** and **Send on its schedule**. In the digest's inspector: **Send now**, **Preview** (the email in a sealed frame, or the numbers it is built from), **Pause**, **Edit**, **Delete** and the delivery log. Needs manage settings.
 
 ## Operations
 
-- **Runs and jobs**: start an extraction (objects, company codes, plants, document dates, analyse straight after), start an analysis of a stored extraction, load the configuration, scheduled runs, **Upload a file** (a CSV, TSV, Excel, JSON or Parquet file of one object becomes a run and is analysed at once; its columns are matched by the field mappings; needs upload) and recent jobs with **Retry**.
-- **Jobs and system update**: jobs by state and kind, the platform version and **Update to** the latest when Meridian HQ knows one, and **Health checks** (database, cache and queue, background workers, licence, email delivery, file storage): "Each check says what it found and what needs fixing. They refresh every 30 seconds."
+- **Start and schedule** (the runs themselves are on Runs): start an extraction (objects, company codes, plants, document dates, analyse straight after), start an analysis of a stored extraction, load the configuration, scheduled runs, **Upload a file** (a CSV, TSV, Excel, JSON or Parquet file of one object becomes a run and is analysed at once; its columns are matched by the field mappings; needs upload) and recent jobs with **Retry**.
+- **Platform and updates**: jobs by state and kind, the platform version and **Update to** the latest when Meridian HQ knows one, **Health checks** (database, cache and queue, background workers, licence, email delivery, file storage): "Each check says what it found and what needs fixing. They refresh every 30 seconds.", and **Support** with **Download diagnostics bundle**: versions, health checks, recent errors and configuration with every secret removed, and no SAP record values.
 
 ## Provisioning, theming and compliance
 
-These are set through the API in this version; there is no screen for them yet:
+- **Provisioning (SCIM)**, under Users: "Microsoft Entra ID, Okta and other identity providers create, update and suspend people here through SCIM 2.0. Give them the base URL and a token." **Create a token**, **Rotate the token** (the old one stops at once), **Revoke**, and **Group to role**: "A person in one of these identity provider groups gets its role. Saving re-syncs everyone in a SCIM group at once." Only grants SCIM made are removed, and the last active administrator is never left without admin.
+- **Appearance**, under Settings: the tenant's accent, logo and name, with the contrast of the accent checked before it is saved.
+- **Compliance**, under Settings: data residency, retention days per table family, encryption flags and the last backup.
 
-- **SCIM provisioning**: SCIM 2.0 under `/scim/v2`, authenticated by a per-tenant token issued, rotated and revoked at `POST /api/v1/admin/scim/token`. Map identity-provider groups to roles at `GET/PUT /api/v1/admin/scim/group-roles`. Only grants SCIM made are removed, and the last active administrator is never left without admin.
-- **Theming**: `GET/PUT /api/v1/settings/theme` sets the tenant's colours and logo (PNG or SVG), with contrast checks.
-- **Compliance**: `GET/PUT /api/v1/settings/compliance` records data residency, retention days per table family, encryption flags and the last backup.
+## Sign-in, audit and tenancy
+
+- The first sign-in of an account that must change its password (the seeded administrator, or an account an administrator reset) goes to the password change before anything else.
+- The audit log records sign-in, failed sign-in, lockout, sign-out and password change (`auth.login`, `auth.login_failed`, `auth.lockout`, `auth.logout`, `auth.password_change`), and single sign-on (`auth.sso_login`, `auth.sso_refused`, `auth.sso_user_created`). A failed sign-in keeps the email as typed and the reason, never the password.
+- A signed-in request runs in the tenant its verified token names; the deployment's own tenant is set by `MERIDIAN_TENANT_ID`.
 
 ## The numbers and where they come from
 
@@ -61,13 +65,17 @@ These are set through the API in this version; there is no screen for them yet:
 
 - **Platform admin**: every section.
 - **Manage users**: users, roles, single sign-on, sign-in page, view as, share links, out of office, API keys.
-- **Manage settings**: settings, billing, stewardship, configuration bundle, alerts, notifications.
-- **Manage system**: licence, jobs and system update, sandbox mode.
+- **Manage settings**: settings, billing, stewardship, configuration bundle, alerts, default digest, webhooks, digests.
+- **Manage system**: licence, platform and updates, the diagnostics bundle, sandbox mode.
 - **Manage rules**: apply and remove policy packs; anyone who holds view reads them.
 - **View audit** (auditor): the audit log, and a person's activity in People.
 - **Manage field mappings**, **manage systems**, **manage rules**: field mappings, reference data, rules import and export.
-- **Trigger sync** or **analyse** (SAP Basis, analyst, programme lead): runs and jobs.
-- Anyone who holds view reads the licence, settings, mappings, reference data, alerts and notifications, read only.
+- **Trigger sync**, **analyse** or **upload** (SAP Basis, analyst, programme lead): start and schedule.
+- Anyone who holds view reads the licence, settings, mappings, reference data, alerts and the default digest, read only.
+
+## Administrator training guide
+
+The course for the administrator and the SAP Basis colleague (install and first start, licence, users and access, connecting SAP, extraction and schedules, scoring and money, write-back, notifications, operations and troubleshooting) is the printable administrator training guide, `docs/admin-training/meridian-administrator-training.pdf` in the Meridian repository. Ask your Meridian contact for it if you do not have the repository.
 
 ## Keyboard
 
@@ -82,4 +90,5 @@ These are set through the API in this version; there is no screen for them yet:
 - **Single sign-on test fails**: check the redirect address registered at the identity provider matches the one shown, character for character.
 - **"The tenant is already in sandbox mode."** or **"The tenant is not in sandbox mode."**: someone else entered or exited first; the page reads the state again.
 - **A digest shows Held back**: the tenant is in sandbox mode, so nothing was sent; the delivery log keeps the attempt.
+- **The interactive API documentation answers 404**: `/docs` and `/openapi.json` are served only on a development deployment or with `MERIDIAN_OPENAPI_PUBLIC=1`.
 - **A purge request**: purges are irreversible. The token only works after 24 hours so a mistake can be caught; the purge log keeps the record.

@@ -19,7 +19,7 @@ function Harness() {
   return (
     <div>
       <button onClick={() => openItem({ kind: "system", id: ECC.id })}>Open ECC</button>
-      <button onClick={() => openItem({ kind: "rule", id: "MM014" })}>Open rule</button>
+      <button onClick={() => openItem({ kind: "rule", id: "MM142" })}>Open rule</button>
       <button onClick={() => openItem({ kind: "record", id: "material_master:MATNR=000000000000000101" })}>Open record</button>
       <button>Last control</button>
       <output data-testid="open">{open ? `${open.kind}:${open.id}` : "none"}</output>
@@ -37,7 +37,7 @@ afterEach(() => window.sessionStorage.clear());
 
 describe("?open round trip", () => {
   it("parses kind and id, keeping colons, equals signs and bars in the id", () => {
-    expect(parseOpen("rule:MM014")).toEqual({ kind: "rule", id: "MM014" });
+    expect(parseOpen("rule:MM142")).toEqual({ kind: "rule", id: "MM142" });
     expect(parseOpen("record:material_master:MATNR=0001|WERKS=3000")).toEqual({ kind: "record", id: "material_master:MATNR=0001|WERKS=3000" });
     expect(parseOpen("system:abc")).toEqual({ kind: "system", id: "abc" });
     expect(parseOpen("nonsense:1")).toBeNull();
@@ -55,10 +55,10 @@ describe("?open round trip", () => {
     setUrl("/o/ecc-production/material-master?run=r1&fixture=1");
     renderWithQuery(<Harness />);
     fireEvent.click(screen.getByText("Open rule"));
-    expect(getUrl()).toContain("open=rule%3AMM014");
+    expect(getUrl()).toContain("open=rule%3AMM142");
     expect(getUrl()).toContain("run=r1");
     expect(getUrl()).toContain("fixture=1");
-    expect(screen.getByTestId("open")).toHaveTextContent("rule:MM014");
+    expect(screen.getByTestId("open")).toHaveTextContent("rule:MM142");
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Close inspector" }));
     expect(getUrl()).not.toContain("open=");
@@ -96,11 +96,11 @@ describe("<Inspector>", () => {
   });
 
   it("opens a rule with its scope, each object a link (the rule body is covered in RuleInspector.test.tsx)", async () => {
-    setUrl("/?open=rule:MM014");
+    setUrl("/?open=rule:MM142");
     renderWithQuery(<Harness />);
     const dialog = await screen.findByRole("dialog");
     const scope = await within(dialog).findByRole("region", { name: /^Scope/ });
-    expect(dialog).toHaveTextContent("MM014");
+    expect(dialog).toHaveTextContent("MM142");
     expect(within(scope).getByRole("link", { name: "Material master" })).toHaveAttribute("href", expect.stringContaining("/o/ecc-production/material-master"));
     expect(within(dialog).getByRole("link", { name: "Open the rule" })).toBeInTheDocument();
   });

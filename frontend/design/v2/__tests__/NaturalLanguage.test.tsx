@@ -51,7 +51,9 @@ describe("the command line's natural language mode", () => {
     const chips = await within(dialog).findByTestId("nl-chips", {}, { timeout: 3000 });
     expect(spy).toHaveBeenCalledWith("critical materials assigned to me due this week in ECC production zebra");
     const items = within(chips).getAllByRole("listitem").map((li) => norm(li));
-    expect(items).toEqual(["Severityseverity critical(critical)", "ObjectMaterial master(material_master)", "Ownerassigned to you(me)", "Duedue within seven days(week)", `Systemsystem ECC production(${ECC})`]);
+    // The slot once, then its value: never "Severity severity critical (critical)".
+    expect(items).toEqual(["Severity: critical", "Object: Material master", "Owner: assigned to you", "Due: within seven days", "System: ECC production"]);
+    expect(ECC).toBeTruthy();
     expect(within(dialog).getByTestId("nl-explanation")).toHaveTextContent("Records severity critical, Material master, assigned to you, due within seven days, system ECC production. Open work only. Not understood: zebra.");
     expect(within(dialog).getByTestId("nl-unmatched")).toHaveTextContent("Not understood, left out of the filter: zebra");
     expect(within(dialog).queryByRole("listbox")).toBeNull();
@@ -74,13 +76,13 @@ describe("the command line's natural language mode", () => {
   it("pure parts: the question after ?, the address at the root, the slot words", () => {
     expect(nlQuestion("  ? overdue vendors ")).toBe("overdue vendors");
     expect(nlQuestion("?")).toBeNull();
-    expect(nlQuestion("MM014")).toBeNull();
+    expect(nlQuestion("MM142")).toBeNull();
     expect(nlHref("/v2/work?severity=critical")).toBe("/work?severity=critical");
     expect(nlTarget({ href: "/v2/work?status=proposed", filter: { status: "proposed" } })).toBe("/work?status=proposed");
     expect(nlTarget({ href: "/v2/work", filter: {} })).toBe("/work?filter=open");
     expect(slotWord("policy")).toBe("Policy");
-    const a = fixtureResponse<s10.NlAnswer>("/command/nl", { q: "show me the overdue mm014 failures" });
-    expect(a.filter).toEqual({ due: "overdue", check_id: "MM014" });
+    const a = fixtureResponse<s10.NlAnswer>("/command/nl", { q: "show me the overdue mm142 failures" });
+    expect(a.filter).toEqual({ due: "overdue", check_id: "MM142" });
     expect(a.unmatched_words).toEqual([]);
   });
 });

@@ -27,7 +27,7 @@
       "id": "settings",
       "label": "Administration and settings",
       "chapters": [
-        { "slug": "administration", "title": "Administration", "summary": "Users, roles, sign-in, view as, share links, licence, settings, stewardship, configuration bundle, data, alerts, runs and jobs, and the platform.", "video": "guide2-administration" },
+        { "slug": "administration", "title": "Administration", "summary": "Users, roles, sign-in, view as, share links, licence, settings, stewardship, configuration bundle, data, notifications, start and schedule, and the platform.", "video": "guide2-administration" },
         { "slug": "preferences", "title": "Preferences", "summary": "Theme, density, locale and time zone, start screen, keyboard hints, digest and what you hear about.", "video": "guide2-preferences" },
         { "slug": "keyboard", "title": "Keyboard and the command line", "summary": "Every shortcut, and the command line that opens any record, rule, object or run by typing.", "video": "guide2-keyboard" }
       ]
@@ -62,7 +62,7 @@
             { "screen": "Landscape", "href": "/", "text": "Read how many batches wait for you and press Approve batch B-241." },
             { "screen": "Batch B-241", "href": "/work?open=batch%3AB-241", "text": "Read the changes and the approval trail, then Approve or Send back with a reason." },
             { "screen": "Waiting for approval", "href": "/work?filter=approvals", "text": "Every batch waiting, grouped by batch." },
-            { "screen": "Your object", "href": "/o/ecc-production/purchasing", "text": "Watch an object you own and apply the steward template to it." },
+            { "screen": "Your object", "href": "/o/ecc-production/mm-purchasing", "text": "Watch an object you own and apply the steward template to it." },
             { "screen": "Out of office", "href": "/people?open=away", "text": "Before you are away, set who covers your approvals." }
           ]
         },
@@ -103,7 +103,7 @@
             { "screen": "Single sign-on", "href": "/admin/sso", "text": "Connect your identity provider and test it." },
             { "screen": "Settings", "href": "/admin/settings", "text": "Check weights, bands, the cap rule and tolerance, cost model and retention." },
             { "screen": "Stewardship", "href": "/admin/stewardship", "text": "Name owners and stewards, check the diff, apply, and close the gaps." },
-            { "screen": "Jobs and system update", "href": "/admin/system", "text": "Read the health checks and update the platform." }
+            { "screen": "Platform and updates", "href": "/admin/system", "text": "Read the health checks and update the platform." }
           ]
         }
       ]

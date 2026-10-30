@@ -77,7 +77,7 @@ describe("sandbox mode", () => {
     await waitFor(() => expect(enter).toHaveBeenCalledWith(true));
     expect(await within(block).findByText("Sandbox mode is on")).toBeInTheDocument();
     await waitFor(() => expect(norm(block)).toContain("In sandbox"));
-    expect(norm(block)).toContain("5,178 findings");
+    expect(norm(block)).toContain("794 findings");
     expect(within(block).getByRole("link", { name: "sbx-d3229ded" })).toBeInTheDocument();
     fireEvent.click(within(block).getByRole("button", { name: "Exit sandbox mode" }));
     const out = await screen.findByRole("dialog", { name: "Exit sandbox mode" });
@@ -100,7 +100,7 @@ describe("sandbox mode", () => {
     expect(() => fixtureWrite("POST", "/work/decide", { items: [] }, {})).toThrow(/Sandbox mode is on/);
     renderWithQuery(<V2Shell><WorkCanvas /></V2Shell>);
     const grid = await screen.findByRole("grid", { name: "Work ledger" });
-    const row = (await within(grid).findByText("000000000000000100")).closest('[role="row"]') as HTMLElement;
+    const row = (await within(grid).findByTitle("000000000000000100")).closest('[role="row"]') as HTMLElement;
     fireEvent.click(within(row).getByRole("checkbox"));
     fireEvent.keyDown(document.body, { key: "a" });
     expect(await screen.findByText("Sandbox mode is on: decisions apply to the sandbox run only. Exit the sandbox to work on the real run.")).toBeInTheDocument();

@@ -42,7 +42,7 @@ describe("config drift alerts", () => {
     expect(text).toContain("Configuration sync");
     expect(text).toContain("3 changes in T006 and T134");
     expect(text).toContain("T006 1 added, 1 removed");
-    expect(text).toContain("MM014 Base unit of measure not valid");
+    expect(text).toContain("MM142 Base unit of measure MEINS must reference a valid entry in T006");
     expect(text).toContain("Owners notified: 2");
     expect(within(alert).getByRole("link", { name: "open the run" })).toHaveAttribute("href", expect.stringContaining("/run/"));
     expect(within(alert).getByRole("link", { name: "Material master" })).toHaveAttribute("href", expect.stringContaining("/o/ecc-production/material-master"));

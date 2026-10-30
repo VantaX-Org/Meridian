@@ -1,22 +1,22 @@
 {
   "rules": [
     {
-      "check_id": "MM014",
-      "name": "Base unit of measure not valid",
+      "check_id": "MM142",
+      "name": "Base unit of measure MEINS must reference a valid entry in T006",
       "field": "MARA.MEINS",
-      "severity": "critical",
+      "severity": "high",
       "affected_count": 3640,
       "total_count": 61816,
       "pass_rate": 94.11,
       "value_at_risk": 1184000,
-      "dimension": "validity",
-      "check_class": "domain_value_check",
+      "dimension": "consistency",
+      "check_class": "referential_check",
       "field_description": "Base unit of measure",
-      "why": "Goods movements and MRP cannot post for a material whose base unit is not an ISO unit."
+      "why": "UoM conversions fail; stock quantities cannot be resolved; costing and CO-PA calculations error."
     },
     {
-      "check_id": "MM031",
-      "name": "Material type missing",
+      "check_id": "MM003",
+      "name": "Material type is mandatory - determines procurement and storage behaviour",
       "field": "MARA.MTART",
       "severity": "critical",
       "affected_count": 2904,
@@ -26,13 +26,13 @@
       "dimension": "completeness",
       "check_class": "null_check",
       "field_description": "Material type",
-      "why": "Without a material type SAP cannot derive field selection, number range or valuation control."
+      "why": "Material cannot be created or used in MM, PP, SD, or FI without a valid material type."
     },
     {
-      "check_id": "MM022",
-      "name": "Material group missing",
+      "check_id": "MM007",
+      "name": "Material group is required for reporting and procurement",
       "field": "MARA.MATKL",
-      "severity": "high",
+      "severity": "medium",
       "affected_count": 3118,
       "total_count": 61816,
       "pass_rate": 94.96,
@@ -40,27 +40,27 @@
       "dimension": "completeness",
       "check_class": "null_check",
       "field_description": "Material group",
-      "why": "Material group drives purchasing analytics, source lists and G/L account determination."
+      "why": "Spend analysis and procurement reporting are incomplete."
     },
     {
-      "check_id": "MM057",
-      "name": "Gross weight missing",
+      "check_id": "MM015",
+      "name": "Gross weight is recommended for shipping and transportation planning",
       "field": "MARA.BRGEW",
-      "severity": "high",
+      "severity": "medium",
       "affected_count": 2266,
       "total_count": 61816,
       "pass_rate": 96.33,
       "value_at_risk": 402000,
       "dimension": "completeness",
-      "check_class": "cross_field_check",
+      "check_class": "null_check",
       "field_description": "Gross weight",
-      "why": "Freight, transport planning and EWM capacity checks need a gross weight."
+      "why": "Transportation planning and load building produce incorrect results."
     },
     {
-      "check_id": "MM063",
-      "name": "Purchasing group missing",
+      "check_id": "MM302",
+      "name": "Externally procured, MRP-planned material has no purchasing group",
       "field": "MARC.EKGRP",
-      "severity": "high",
+      "severity": "medium",
       "affected_count": 2712,
       "total_count": 61816,
       "pass_rate": 95.61,
@@ -68,27 +68,27 @@
       "dimension": "completeness",
       "check_class": "null_check",
       "field_description": "Purchasing group",
-      "why": "MRP-generated purchase requisitions cannot be routed to a buyer without a purchasing group."
+      "why": "Requisitions from MRP land without a purchasing group; they are not picked up by buyer worklists (ME57) and release strategies keyed on purchasing group do not apply."
     },
     {
-      "check_id": "MM078",
-      "name": "MRP type not valid for material type",
+      "check_id": "MM023",
+      "name": "MRP type (plant level) must exist in T438A",
       "field": "MARC.DISMM",
       "severity": "high",
       "affected_count": 1894,
       "total_count": 61816,
       "pass_rate": 96.94,
       "value_at_risk": 268000,
-      "dimension": "consistency",
-      "check_class": "cross_field_check",
+      "dimension": "validity",
+      "check_class": "domain_value_check",
       "field_description": "MRP type",
-      "why": "An MRP type that does not suit the material type stops planning runs from creating proposals."
+      "why": "MRP run (MD01/MD01N) skips materials with invalid types."
     },
     {
-      "check_id": "MM091",
-      "name": "Valuation class missing",
+      "check_id": "MM035",
+      "name": "Valuation class is mandatory for FI account determination",
       "field": "MBEW.BKLAS",
-      "severity": "high",
+      "severity": "critical",
       "affected_count": 1420,
       "total_count": 61816,
       "pass_rate": 97.7,
@@ -96,21 +96,21 @@
       "dimension": "completeness",
       "check_class": "null_check",
       "field_description": "Valuation class",
-      "why": "Without a valuation class, goods movements cannot find the stock account and post to the G/L."
+      "why": "All goods movements (MIGO) fail with account determination errors."
     },
     {
-      "check_id": "MM105",
-      "name": "Procurement type missing",
+      "check_id": "MM028",
+      "name": "Procurement type must be E (in-house), F (external), or X (both)",
       "field": "MARC.BESKZ",
       "severity": "high",
       "affected_count": 1260,
       "total_count": 61816,
       "pass_rate": 97.96,
       "value_at_risk": 198000,
-      "dimension": "completeness",
+      "dimension": "validity",
       "check_class": "domain_value_check",
       "field_description": "Procurement type",
-      "why": "MRP cannot decide between in-house production and external procurement."
+      "why": "MRP generates incorrect proposal types."
     }
   ]
 }

@@ -64,8 +64,14 @@ interface Env {
    * without holding full admin. It can only move latest_version forward.
    * Set via wrangler secret put RELEASE_PUBLISH_TOKEN. */
   RELEASE_PUBLISH_TOKEN?: string;
-  /** RSA-PKCS8 private key PEM for offline JWT signing (set as Worker secret) */
+  /** RSA-PKCS8 private key PEM: the LEGACY RSA response signature only, for clients still inside their
+   * transition window (MERIDIAN_LICENCE_ALLOW_LEGACY_SIGNATURES). New clients ignore it. */
   OFFLINE_JWT_PRIVATE_KEY?: string;
+  /** Ed25519 PKCS8 private key PEM, the vendor licence-signing key (wrangler secret put
+   * LICENCE_SIGNING_KEY_ED25519). Signs every valid validate response (signature_ed25519) and every offline
+   * licence token (EdDSA). Its public key is compiled into the API image (api/middleware/licence_keys.py),
+   * so clients accept nothing else. */
+  LICENCE_SIGNING_KEY_ED25519?: string;
   /** Comma-separated list of allowed CORS origins. Falls back to `*`
    * only when explicitly set to `ALLOW_ALL` — otherwise echoes the
    * request Origin only when it appears in the list. */
@@ -853,9 +859,10 @@ async function handleGenerateOfflineToken(
   const authErr = await requireAdmin(request, env);
   if (authErr) return authErr;
 
-  if (!env.OFFLINE_JWT_PRIVATE_KEY) {
+  const signingKey = await ed25519SigningKey(env);
+  if (!signingKey) {
     return json(
-      { error: "not_configured", message: "OFFLINE_JWT_PRIVATE_KEY secret is not set" },
+      { error: "not_configured", message: "LICENCE_SIGNING_KEY_ED25519 secret is not set" },
       503
     );
   }
@@ -898,31 +905,18 @@ async function handleGenerateOfflineToken(
     field_mappings: fieldMappings,
   };
 
-  const keyPem = env.OFFLINE_JWT_PRIVATE_KEY.trim();
-  const pemBody = keyPem
-    .replace(/-----BEGIN PRIVATE KEY-----/, "")
-    .replace(/-----END PRIVATE KEY-----/, "")
-    .replace(/\s/g, "");
-  const keyDer = Uint8Array.from(atob(pemBody), (c) => c.charCodeAt(0));
-
-  const cryptoKey = await crypto.subtle.importKey(
-    "pkcs8",
-    keyDer.buffer,
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-
   const encode = (obj: unknown) =>
     btoa(JSON.stringify(obj)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 
-  const headerB64 = encode({ alg: "RS256", typ: "JWT" });
+  // EdDSA (Ed25519) with the vendor key: the API verifies offline tokens only against the vendor public key
+  // compiled into the image, so a key the customer generates cannot issue one.
+  const headerB64 = encode({ alg: "EdDSA", typ: "JWT" });
   const payloadB64 = encode(payload);
   const signingInput = `${headerB64}.${payloadB64}`;
 
   const sigBuf = await crypto.subtle.sign(
-    "RSASSA-PKCS1-v1_5",
-    cryptoKey,
+    { name: "Ed25519" },
+    signingKey,
     new TextEncoder().encode(signingInput)
   );
   const sig = btoa(String.fromCharCode(...new Uint8Array(sigBuf)))
@@ -936,11 +930,11 @@ async function handleGenerateOfflineToken(
 // ─── Response signing (anti-self-grant) ───────────────────────────────────────
 // A customer who holds the image can MITM their own licence check; an HMAC with
 // a shared secret in the image would not stop them (they hold the secret). Only
-// an asymmetric signature — private key here in Cloudflare, public key in the
-// client env — prevents a self-granted `valid:true`. We reuse the existing
-// OFFLINE_JWT_PRIVATE_KEY (RSASSA-PKCS1-v1_5 / SHA-256). Clients verify ONLY when
-// LICENCE_SERVER_PUBLIC_KEY is configured, so the worker deploys first and the
-// operator flips enforcement on afterwards — no forced lockout.
+// an asymmetric signature — private key here in Cloudflare, public key compiled
+// into the API image — prevents a self-granted `valid:true`. Every valid response
+// carries `signature_ed25519` (Ed25519 over the v2 canonical below) and clients
+// reject a valid response without it. The legacy RSA `signature` (v1 canonical,
+// OFFLINE_JWT_PRIVATE_KEY) is still emitted for clients inside their transition window.
 
 // Canonical entitlement string — MUST be byte-identical to the Python client's
 // `_entitlement_canonical` in api/middleware/licence.py. Fixed field list and a
@@ -955,12 +949,12 @@ function entitlementCanonical(f: {
   features: Record<string, unknown>;
   machine_fingerprint: string;
   signed_at: number;
-}): string {
+}, version: "meridian-licence-v1" | "meridian-licence-v2" = "meridian-licence-v1"): string {
   const featKeys = Object.keys(f.features)
     .filter((k) => !!f.features[k])
     .sort();
   return [
-    "meridian-licence-v1",
+    version,
     "1", // valid
     f.tenant_id,
     f.expiry_date,
@@ -972,8 +966,32 @@ function entitlementCanonical(f: {
   ].join("\n");
 }
 
-// Returns standard (padded) base64 signature, or null when no signing key is set
-// (older deployments / not-yet-configured — client treats unsigned as legacy).
+function pemToDer(pem: string): ArrayBuffer {
+  const body = pem.trim()
+    .replace(/-----BEGIN PRIVATE KEY-----/, "")
+    .replace(/-----END PRIVATE KEY-----/, "")
+    .replace(/\\n/g, "")
+    .replace(/\s/g, "");
+  return Uint8Array.from(atob(body), (c) => c.charCodeAt(0)).buffer;
+}
+
+// The vendor Ed25519 signing key, or null when the secret is not set.
+async function ed25519SigningKey(env: Env): Promise<CryptoKey | null> {
+  if (!env.LICENCE_SIGNING_KEY_ED25519) return null;
+  return crypto.subtle.importKey("pkcs8", pemToDer(env.LICENCE_SIGNING_KEY_ED25519), { name: "Ed25519" }, false, ["sign"]);
+}
+
+// Standard (padded) base64 Ed25519 signature over the canonical, or null when no key is set (clients then
+// reject the response: fail closed).
+async function signEntitlementEd25519(env: Env, canonical: string): Promise<string | null> {
+  const key = await ed25519SigningKey(env);
+  if (!key) return null;
+  const sigBuf = await crypto.subtle.sign({ name: "Ed25519" }, key, new TextEncoder().encode(canonical));
+  return btoa(String.fromCharCode(...new Uint8Array(sigBuf)));
+}
+
+// LEGACY: RSA signature over the v1 canonical, for clients inside their transition window only.
+// Returns standard (padded) base64, or null when OFFLINE_JWT_PRIVATE_KEY is not set.
 async function signEntitlement(env: Env, canonical: string): Promise<string | null> {
   if (!env.OFFLINE_JWT_PRIVATE_KEY) return null;
   const pemBody = env.OFFLINE_JWT_PRIVATE_KEY.trim()
@@ -1107,18 +1125,21 @@ async function handleValidate(request: Request, env: Env): Promise<Response> {
   // and machine_fingerprint binds the grant to the requesting node.
   const signedAt = Math.floor(Date.now() / 1000);
   const fingerprint = machineFingerprint || "";
-  const signature = await signEntitlement(
-    env,
-    entitlementCanonical({
-      tenant_id: row.id,
-      expiry_date: row.expiry_date,
-      enabled_modules: enabledModules,
-      enabled_menu_items: enabledMenuItems,
-      features: features as Record<string, unknown>,
-      machine_fingerprint: fingerprint,
-      signed_at: signedAt,
-    })
-  );
+  const entitlement = {
+    tenant_id: row.id,
+    expiry_date: row.expiry_date,
+    enabled_modules: enabledModules,
+    enabled_menu_items: enabledMenuItems,
+    features: features as unknown as Record<string, unknown>,
+    machine_fingerprint: fingerprint,
+    signed_at: signedAt,
+  };
+  const signatureEd25519 = await signEntitlementEd25519(env, entitlementCanonical(entitlement, "meridian-licence-v2"));
+  if (!signatureEd25519) {
+    // Clients reject an unsigned grant, so say so here rather than let every deployment lock with a vague error.
+    logJson("error", "licence_signing_key_missing", { tenant: row.id });
+  }
+  const signature = await signEntitlement(env, entitlementCanonical(entitlement, "meridian-licence-v1"));
 
   // Advisory platform-update signal — NOT part of the signed entitlement
   // (see entitlementCanonical above). A missing table (e.g. this migration
@@ -1156,7 +1177,10 @@ async function handleValidate(request: Request, env: Env): Promise<Response> {
     rules,
     field_mappings: (mappingsResult.results || []).map(parseFieldMapping),
     llm_config: JSON.parse(row.llm_config || "{}") as LlmConfig,
-    // Anti-self-grant signature (verified by clients that set LICENCE_SERVER_PUBLIC_KEY).
+    // Anti-self-grant signature: Ed25519 by the vendor key, verified against the public key compiled into
+    // the API image. `signature` is the legacy RSA one, for clients inside their transition window only.
+    signature_ed25519: signatureEd25519,
+    signature_ed25519_alg: "Ed25519-canonical-v2",
     signature,
     signed_at: signedAt,
     machine_fingerprint: fingerprint,

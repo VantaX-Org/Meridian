@@ -7,7 +7,7 @@ import type { Landscape, LandscapeCell, LandscapeSystem } from "@/lib/api/v2/typ
 import { useOpenItem, useRunParam } from "@/lib/v2/hooks";
 import { useCounts, useLandscape } from "@/lib/v2/queries";
 import { DIMENSIONS } from "@/lib/api/v2/types";
-import { f1, int, moduleSlug, readingText, systemSlug } from "@/lib/v2/score";
+import { byMeasured, f1, int, moduleSlug, readingText, systemSlug } from "@/lib/v2/score";
 import { Ruler } from "../Ruler";
 import { IconChevron } from "../marks";
 import { ErrorFrame, Skeleton, V2Link } from "../parts";
@@ -140,7 +140,7 @@ export function MapPane({ open, onClose, phone }: { open: boolean; onClose: () =
         <div className="m2-sys">
           {L.systems.map((s) => {
             const openNow = isOpen(s);
-            const cells = L.cells.filter((c) => c.system_id === s.id);
+            const cells = byMeasured(L.cells.filter((c) => c.system_id === s.id));
             return (
               <div key={s.id}>
                 <button type="button" className="m2-sysrow" aria-expanded={openNow} onClick={() => setExpanded((e) => ({ ...e, [s.id]: !openNow }))}>

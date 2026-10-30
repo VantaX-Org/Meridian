@@ -10,6 +10,7 @@
 import landscapeJson from "./landscape.json";
 import runsJson from "./runs.json";
 import { fixtureParam } from "../fixture";
+import { LIBRARY, type LibraryRule } from "./library";
 import { formatDate } from "@/lib/format";
 import type { Landscape, LandscapeCell } from "../types";
 import type { ChangeKind, CheckChange, CompareObject, CompareSide, CompareSummary, TimelineRun, VersionCompare, VersionHead } from "../runs";
@@ -54,13 +55,13 @@ export function resetRunsFixture(): void {
 const CMP: Record<string, [number, number, number, number, number, number]> = {
   material_master: [69.8, 71.8, 3, 9, 3, 20],
   business_partner: [77.6, 78.4, 1, 3, 1, 5],
-  vendor_master: [77.3, 76.9, 3, 1, 5, 2],
-  customer_master: [72.8, 74.2, 1, 4, 2, 6],
-  gl_accounts: [92.9, 93.4, 0, 2, 0, 3],
+  accounts_payable: [77.3, 76.9, 3, 1, 5, 2],
+  accounts_receivable: [72.8, 74.2, 1, 4, 2, 6],
+  fi_gl: [92.9, 93.4, 0, 2, 0, 3],
   asset_accounting: [73.4, 72.6, 2, 1, 4, 1],
   controlling: [77.9, 79.1, 1, 3, 1, 4],
-  purchasing: [74.4, 75.3, 0, 3, 1, 4],
-  sales_orders: [79.2, 81.0, 1, 5, 2, 8],
+  mm_purchasing: [74.4, 75.3, 0, 3, 1, 4],
+  sd_sales_orders: [79.2, 81.0, 1, 5, 2, 8],
   plant_maintenance: [74.1, 73.5, 2, 0, 3, 1],
   production_planning: [76.2, 77.7, 0, 2, 1, 3],
   project_system: [87.5, 88.6, 0, 1, 0, 1],
@@ -193,60 +194,38 @@ function countsFor(module: string, ka: number, kb: number): Record<ChangeKind, n
   if (ka === kb) return { newly_failing: 0, fixed: 0, worse: 0, better: 0 };
   const sc = ka === 6 && kb === 8 ? 1 : Math.abs(kb - ka) / 2;
   const f = (n: number) => (ka === 6 && kb === 8 ? n : Math.round(n * sc));
-  return { newly_failing: f(nf), fixed: f(fx), worse: f(w), better: f(b) };
+  const want = { newly_failing: f(nf), fixed: f(fx), worse: f(w), better: f(b) };
+  // A rule changes one way between two runs: never more changes than the object has rules to change.
+  const room = (RULES_OF[module] ?? []).filter((r) => r.severity !== "critical").length;
+  const sum = want.newly_failing + want.fixed + want.worse + want.better;
+  if (sum <= room) return want;
+  const k = room / sum;
+  return { newly_failing: Math.floor(want.newly_failing * k), fixed: Math.floor(want.fixed * k), worse: Math.floor(want.worse * k), better: Math.floor(want.better * k) };
 }
 
-const PREFIX: Record<string, string> = { material_master: "MM", business_partner: "BP", vendor_master: "VM", customer_master: "CM", gl_accounts: "GL", asset_accounting: "AA", controlling: "CO", purchasing: "PU", sales_orders: "SO", plant_maintenance: "PM", production_planning: "PP", project_system: "PS", quality_management: "QM", hcm: "HC", sd_customer_master: "SD" };
-const FIELDS: Record<string, string[]> = {
-  material_master: ["Base unit of measure", "Gross weight", "Net weight", "Valuation class", "Material group", "Purchasing group"],
-  business_partner: ["Tax number format", "Street address", "Bank key", "Search term"],
-  vendor_master: ["Payment terms", "Reconciliation account", "Bank details", "Order currency"],
-  customer_master: ["Dunning procedure", "Payment terms", "Sales district", "Credit limit"],
-  gl_accounts: ["Account group", "Field status group", "Tax category"],
-  asset_accounting: ["Asset class", "Capitalisation date", "Depreciation key", "Cost centre"],
-  controlling: ["Cost centre category", "Profit centre", "Responsible person"],
-  purchasing: ["Purchasing group", "Incoterms", "Info record price", "Delivery tolerance"],
-  sales_orders: ["Incoterms location", "Payment terms", "Delivery plant", "Shipping condition"],
-  plant_maintenance: ["Equipment catalogue profile", "Maintenance plant", "Planner group"],
-  production_planning: ["Routing", "Work centre", "Production version"],
-  project_system: ["WBS element", "Project profile", "Responsible cost centre"],
-  quality_management: ["Inspection type", "Control key", "Sampling procedure"],
-  hcm: ["Cost centre assignment", "Pay scale group", "Bank details"],
-  sd_customer_master: ["Pricing procedure", "Shipping condition", "Tax classification"],
-};
-const ISSUES = ["missing", "not valid", "not in the check table"];
-
-/** The prototype's named rules, placed first in their object's list for each kind. */
-const NAMED: Record<ChangeKind, [string, string][]> = {
-  newly_failing: [["VM022", "Payment terms not in T052"], ["AA018", "Asset class without depreciation area"], ["PM011", "Equipment without catalogue profile"], ["MM119", "Net weight above gross weight"]],
-  fixed: [["MM022", "Material group missing"], ["MM091", "Valuation class missing"], ["SO014", "Incoterms location missing"], ["CM009", "Dunning procedure not valid"]],
-  worse: [["VM019", "Payment terms not valid"], ["MM057", "Gross weight missing"], ["AA009", "Capitalisation date missing"], ["PM014", "Maintenance plant missing"]],
-  better: [["MM063", "Purchasing group missing"], ["SO021", "Payment terms not valid"], ["BP011", "Tax number format not valid"], ["CO015", "Cost centre category not valid"]],
-};
 const KIND_ORDER: ChangeKind[] = ["newly_failing", "fixed", "worse", "better"];
-const SEVERITIES = ["critical", "high", "medium", "low"] as const;
 const SEV_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+
+/** The rules of each object in the fixture run (library.json), so a change names a rule the engine has. */
+const RULES_OF: Record<string, LibraryRule[]> = LIBRARY.reduce<Record<string, LibraryRule[]>>((m, r) => ((m[r.module] ??= []).push(r), m), {});
 
 function changesFor(ka: number, kb: number): Record<ChangeKind, CheckChange[]> {
   const out: Record<ChangeKind, CheckChange[]> = { newly_failing: [], fixed: [], worse: [], better: [] };
-  for (const kind of KIND_ORDER) {
-    let seq = 200 + KIND_ORDER.indexOf(kind) * 100;
-    for (const mod of MODULES) {
+  for (const mod of MODULES) {
+    // Each kind takes its own rules of the object, in id order, so no rule changes two ways at once.
+    const pool = (RULES_OF[mod] ?? []).filter((r) => r.severity !== "critical");
+    let next = 0;
+    for (const kind of KIND_ORDER) {
       const n = countsFor(mod, ka, kb)[kind];
-      const prefix = PREFIX[mod];
-      const named = NAMED[kind].filter(([id]) => id.startsWith(prefix));
-      for (let i = 0; i < n; i++) {
-        const fields = FIELDS[mod];
-        const pre = named[i];
-        const id = pre ? pre[0] : `${prefix}${String(seq++).padStart(3, "0")}`;
-        const message = pre ? pre[1] : `${fields[(i + seq) % fields.length]} ${ISSUES[(i + KIND_ORDER.indexOf(kind)) % ISSUES.length]}`;
-        const base = 40 + ((i * 37 + seq) % 400);
+      for (let i = 0; i < n && next < pool.length; i++, next++) {
+        const r = pool[next];
+        const base = 40 + ((i * 37 + next * 11) % 400);
         const [v1, v2] = kind === "newly_failing" ? [0, base] : kind === "fixed" ? [base, 0] : kind === "worse" ? [base, base * 2 + 30] : [base * 2 + 30, base];
-        out[kind].push({ check_id: id, module: mod, severity: SEVERITIES[(i + seq) % (kind === "newly_failing" ? 4 : 3)], message, v1_affected: v1, v2_affected: v2 });
+        out[kind].push({ check_id: r.check_id, module: mod, severity: r.severity, message: r.name, v1_affected: v1, v2_affected: v2 });
       }
     }
-    out[kind].sort((x, y) => SEV_RANK[x.severity] - SEV_RANK[y.severity] || x.check_id.localeCompare(y.check_id));
   }
+  for (const kind of KIND_ORDER) out[kind].sort((x, y) => SEV_RANK[x.severity] - SEV_RANK[y.severity] || x.check_id.localeCompare(y.check_id));
   return out;
 }
 
@@ -482,13 +461,13 @@ export function systemsExtended(): SAPSystemExtended[] {
 const TABLES: Record<string, string[]> = {
   material_master: ["MARA", "MAKT", "MARC", "MBEW"],
   business_partner: ["BUT000", "ADRC", "DFKKBPTAXNUM"],
-  vendor_master: ["LFA1", "LFB1", "LFBK"],
-  customer_master: ["KNA1", "KNB1", "KNVV"],
-  gl_accounts: ["SKA1", "SKB1"],
+  accounts_payable: ["LFA1", "LFB1", "LFBK"],
+  accounts_receivable: ["KNA1", "KNB1", "KNVV"],
+  fi_gl: ["SKA1", "SKB1"],
   asset_accounting: ["ANLA", "ANLB"],
   controlling: ["CSKS", "CEPC"],
-  purchasing: ["EKKO", "EKPO", "EINA"],
-  sales_orders: ["VBAK", "VBAP"],
+  mm_purchasing: ["EKKO", "EKPO", "EINA"],
+  sd_sales_orders: ["VBAK", "VBAP"],
 };
 
 export function objectsOf(systemId: string): { system_type: string; objects: SystemObject[] } {

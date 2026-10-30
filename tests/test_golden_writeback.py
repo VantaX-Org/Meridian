@@ -6,10 +6,8 @@ from __future__ import annotations
 import json
 
 import httpx
-import pandas as pd
 import pytest
 
-from api.routes import writeback
 from api.services import golden_writeback as gw
 from sap.base import CloudConnectionParams, SAPConnectorError
 
@@ -41,25 +39,32 @@ def test_odata_other_objects_are_unsupported() -> None:
     assert all(not x["supported"] for x in plan["fields"])
 
 
-@pytest.mark.parametrize("domain,bapi", [("business_partner", "BAPI_BUPA_CENTRAL_DATA_SET"),
-                                         ("material_master", "BAPI_MATERIAL_SAVEDATA"),
-                                         ("accounts_payable", "BAPI_VENDOR_CHANGEFROMDATA"),
-                                         ("accounts_receivable", "BAPI_CUSTOMER_CHANGEFROMDATA1")])
-def test_rfc_is_unsupported_until_a_bapi_mapping_is_verified(domain: str, bapi: str) -> None:
-    """The fix write-back's BAPI_FIELDS is empty, so no field has verified BAPI parameters."""
-    assert writeback.BAPI_FIELDS == {}
-    plan = gw.plan_target("ecc", domain, "1", {"NAME1": "x"})
-    assert not plan["supported"] and plan["bapi"] == bapi
-    assert plan["fields"][0]["reason"].startswith(f"No verified {bapi} parameter mapping")
+@pytest.mark.parametrize("domain,bapi,field,mapped", [
+    ("business_partner", "BAPI_BUPA_CENTRAL_CHANGE", "NAME_ORG1", True),
+    ("material_master", "BAPI_MATERIAL_SAVEDATA", "MATKL", True),
+    ("accounts_receivable", "BAPI_CUSTOMER_CHANGEFROMDATA1", "NAME1", True),
+    ("material_master", "BAPI_MATERIAL_SAVEDATA", "NFMAT", False)])
+def test_rfc_plan_follows_the_bapi_field_mapping(domain: str, bapi: str, field: str, mapped: bool) -> None:
+    """sap/bapi_writeback.py maps fields per BAPI; a field without a mapping says so, one by one."""
+    plan = gw.plan_target("ecc", domain, "1", {field: "x"})
+    assert plan["bapi"] == bapi and plan["supported"] is mapped
+    if mapped:
+        assert plan["method"] == "rfc_bapi" and plan["fields"][0]["target"] == bapi
+    else:
+        assert plan["fields"][0]["reason"].startswith("No BAPI mapping for")
 
 
-def test_rfc_uses_the_fix_writeback_mapping_once_verified(monkeypatch) -> None:
-    monkeypatch.setitem(writeback.BAPI_FIELDS, "BAPI_BUPA_CENTRAL_DATA_SET",
-                        {"BUT000.NAME_ORG1": ({"PARTNER": "BUSINESSPARTNER"}, "CENTRALDATAORGANIZATION", "NAME1")})
+def test_rfc_vendor_is_export_only_with_the_reason() -> None:
+    plan = gw.plan_target("ecc", "accounts_payable", "1", {"NAME1": "x"})
+    assert not plan["supported"] and "VMD_EI_API" in plan["reason"]
+
+
+def test_rfc_business_partner_fields() -> None:
     plan = gw.plan_target("s4hana_onprem", "business_partner", "1000", BP)
     f = _by_field(plan)
     assert plan["supported"] and plan["method"] == "rfc_bapi"
-    assert f["BUT000.NAME_ORG1"]["supported"] and not f["BUT000.BU_SORT1"]["supported"]
+    assert f["BUT000.NAME_ORG1"]["supported"] and f["BUT000.BU_SORT1"]["supported"]
+    assert not f["BUT000.BU_GROUP"]["supported"] and not f["LFA1.NAME1"]["supported"]
 
 
 def test_rfc_object_without_bapi_and_cloud_without_writes() -> None:
@@ -138,8 +143,9 @@ def test_connection_failure_marks_the_supported_fields_and_skips_unsupported_sys
         calls.append(sid)
         raise SAPConnectorError("auth_failed")
 
+    # ECC can take none of these fields (the grouping has no BAPI mapping)
     ecc = {"system_id": "e1", "system_name": "ECC", "system_type": "ecc",
-           **gw.plan_target("ecc", "business_partner", "1000", BP)}
+           **gw.plan_target("ecc", "business_partner", "1000", {"BUT000.BU_GROUP": "BP01"})}
     out = gw.execute_targets([_target(), ecc], "business_partner", "1000", False, connect)
     assert calls == ["s1"]  # never connects to a system that cannot take any field
     assert _by_field(out[0])["BUT000.NAME_ORG1"]["result"] == "error"
@@ -147,34 +153,7 @@ def test_connection_failure_marks_the_supported_fields_and_skips_unsupported_sys
     assert {x["result"] for x in out[1]["fields"]} == {"unsupported"}
 
 
-def test_rfc_simulate_and_apply_through_the_verified_bapi(monkeypatch) -> None:
-    monkeypatch.setitem(writeback.BAPI_FIELDS, "BAPI_BUPA_CENTRAL_DATA_SET",
-                        {"BUT000.NAME_ORG1": ({"PARTNER": "BUSINESSPARTNER"}, "CENTRALDATAORGANIZATION", "NAME1")})
-
-    class FakeRFC:
-        def __init__(self):
-            self.calls = []
-
-        def read_table(self, table, fields, where=None, max_rows=0):
-            assert table == "BUT000" and where == "PARTNER = '1000'" and max_rows == 1
-            return pd.DataFrame([{"PARTNER": "1000", "NAME_ORG1": "Old"}])
-
-        def execute_bapi(self, call):
-            self.calls.append(call)
-            return {}
-
-        def close(self):
-            pass
-
-    conn = FakeRFC()
-    t = {"system_id": "e1", "system_name": "ECC", "system_type": "ecc",
-         **gw.plan_target("ecc", "business_partner", "1000", {"NAME_ORG1": "New"})}
-    sim = gw.execute_targets([t], "business_partner", "1000", False, lambda sid: conn)
-    assert sim[0]["fields"][0]["result"] == "would_change" and conn.calls == []
-    gw.execute_targets(sim, "business_partner", "1000", True, lambda sid: conn)
-    assert conn.calls[0].bapi_name == "BAPI_BUPA_CENTRAL_DATA_SET"
-    assert conn.calls[0].params == {"BUSINESSPARTNER": "1000", "CENTRALDATAORGANIZATION": {"NAME1": "New"},
-                                    "CENTRALDATAORGANIZATIONX": {"NAME1": "X"}}
+# RFC simulate / apply through sap/bapi_writeback.py: tests/test_bapi_writeback.py
 
 
 # ── connector: read_entity / update_entity ──────────────────────────────────────────────

@@ -117,7 +117,7 @@ describe("map", () => {
     expect(norm(mm)).toContain("25,712");
     expect(norm(mm)).toContain("70.0");
     expect(mm.querySelector('svg[data-size="48"]')).not.toBeNull();
-    expect(mm.getAttribute("title")).toContain("capped at 70 by MM014 and MM031");
+    expect(mm.getAttribute("title")).toContain("capped at 70 by MM003 and MM035");
     expect(map.querySelectorAll(".m2-orow")).toHaveLength(15);
   });
 
@@ -154,7 +154,7 @@ describe("command line", () => {
     await waitFor(() => expect(input).toHaveFocus());
     expect(within(dialog).getByText("Landscape")).toBeInTheDocument(); // empty query lists the places
     fireEvent.change(input, { target: { value: "MM0" } });
-    await within(dialog).findByText("MM014: Base unit of measure not valid");
+    await within(dialog).findByText("MM003: Material type is mandatory - determines procurement and storage behaviour");
     const options = within(dialog).getAllByRole("option");
     expect(options[0]).toHaveAttribute("aria-selected", "true");
     expect(within(dialog).getByText("Rules")).toBeInTheDocument();
@@ -162,7 +162,7 @@ describe("command line", () => {
     expect(within(dialog).getAllByRole("option")[1]).toHaveAttribute("aria-selected", "true");
     fireEvent.keyDown(input, { key: "ArrowUp" });
     fireEvent.keyDown(input, { key: "Enter" });
-    expect(push).toHaveBeenCalledWith(expect.stringContaining("open=rule:MM014"));
+    expect(push).toHaveBeenCalledWith(expect.stringContaining("open=rule:MM003"));
     expect(screen.queryByRole("dialog", { name: "Search or type a command" })).toBeNull();
   });
 
@@ -188,7 +188,7 @@ describe("command line", () => {
     keyOnBody("/");
     const dialog = await screen.findByRole("dialog", { name: "Search or type a command" });
     fireEvent.change(within(dialog).getByRole("combobox"), { target: { value: "zzzzqq" } });
-    expect(await within(dialog).findByText(/No match for zzzzqq\. Try a material number, a rule id such as MM014/)).toBeInTheDocument();
+    expect(await within(dialog).findByText(/No match for zzzzqq\. Try a material number, a rule id such as MM142/)).toBeInTheDocument();
   });
 
   it("shows the key hints from the registry and closes on Esc, returning focus to where it was", async () => {
@@ -227,9 +227,9 @@ describe("keyboard", () => {
   });
 
   it("Esc closes the inspector and takes ?open= out of the URL", async () => {
-    setUrl("/?open=rule:MM014");
+    setUrl("/?open=rule:MM142");
     mount();
-    const dialog = await screen.findByRole("dialog", { name: /MM014/ });
+    const dialog = await screen.findByRole("dialog", { name: /MM142/ });
     expect(dialog).toBeInTheDocument();
     keyOnBody("Escape");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
@@ -274,7 +274,7 @@ describe("job line and status strip", () => {
     mount();
     const strip = await screen.findByTestId("status-strip");
     await waitFor(() => expect(norm(strip)).toContain("licence valid to 31 Mar 2027"));
-    expect(norm(strip.querySelector(".m2-status-t") as HTMLElement)).toBe("Run 16 Oct 2026, 05:17 400,662 records checked 5,178 rules measured scored in 11 m 42 s cost model ZAR v3 licence valid to 31 Mar 2027");
+    expect(norm(strip.querySelector(".m2-status-t") as HTMLElement)).toBe("Run 16 Oct 2026, 05:17 400,662 records checked 794 rules measured scored in 11 m 42 s cost model ZAR licence valid to 31 Mar 2027");
     expect(duration(702)).toBe("11 m 42 s");
     expect(duration(45)).toBe("45 s");
   });

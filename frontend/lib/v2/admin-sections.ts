@@ -36,11 +36,11 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
   { slug: "policypacks", get label() { return t("Policy packs"); }, get group() { return t("Data"); }, get lead() { return t("GxP, SOX and GDPR field classes, the authority each answers to, and the rules that evidence them."); }, needs: ["manage_rules", "view"] },
   { slug: "audit", get label() { return t("Audit log"); }, get group() { return t("Data"); }, get lead() { return t("Every change made through the product, by whom and when."); }, needs: ["view_audit", "manage_users"] },
   { slug: "alerts", get label() { return t("Alerts"); }, get group() { return t("Notifications"); }, get lead() { return t("When an alert fires and which channels carry it."); }, needs: ["manage_settings", "view"] },
-  { slug: "notifications", get label() { return t("Notifications"); }, get group() { return t("Notifications"); }, get lead() { return t("The tenant's default digest."); }, needs: ["manage_settings", "view"] },
+  { slug: "notifications", get label() { return t("Default digest"); }, get group() { return t("Notifications"); }, get lead() { return t("The tenant's default digest."); }, needs: ["manage_settings", "view"] },
   { slug: "webhooks", get label() { return t("Webhooks"); }, get group() { return t("Notifications"); }, get lead() { return t("Signed events to Slack, Teams or any https endpoint, the delivery log, and what runs by itself."); }, needs: ["manage_settings"] },
   { slug: "digests", get label() { return t("Digests"); }, get group() { return t("Notifications"); }, get lead() { return t("Scheduled summaries by role or by wave: the landscape, score moves, gates, approvals and value at risk."); }, needs: ["manage_settings"] },
-  { slug: "runs", get label() { return t("Runs and jobs"); }, get group() { return t("Operations"); }, get lead() { return t("Start an extraction, an analysis or a configuration load, schedule them, and retry what failed."); }, needs: ["trigger_sync", "analyse", "manage_systems", "upload"] },
-  { slug: "system", get label() { return t("Jobs and system update"); }, get group() { return t("Operations"); }, get lead() { return t("Background jobs, the platform version and health checks."); }, needs: ["manage_system", "view"] },
+  { slug: "runs", get label() { return t("Start and schedule"); }, get group() { return t("Operations"); }, get lead() { return t("Start an extraction, an analysis, a configuration load or an upload, and schedule them. The runs themselves are on Runs."); }, needs: ["trigger_sync", "analyse", "manage_systems", "upload"] },
+  { slug: "system", get label() { return t("Platform and updates"); }, get group() { return t("Operations"); }, get lead() { return t("Background jobs, the platform version and health checks."); }, needs: ["manage_system", "view"] },
 ];
 
 export const isAdminSlug = (s: string): s is AdminSlug => ADMIN_SECTIONS.some((x) => x.slug === s);

@@ -1,3 +1,4 @@
+import { currentLang, hasMessage, tx } from "@/lib/v2/i18n";
 import { t } from "@/lib/v2/i18n";
 /**
  * The help panel's data: the Meridian guide (lib/v2/help-data.json, built by scripts/help-index.mjs from docs/guide),
@@ -302,3 +303,12 @@ export function diagnosticsRef(d: Diagnostics): string {
   const day = d.time.slice(5, 10).replace("-", "");
   return `MN-${h.toString(16).toUpperCase().padStart(8, "0").slice(0, 4)}-${day}`;
 }
+
+/**
+ * A chapter's title, summary or group in the interface's language: the catalogue translates every one of them. The
+ * chapters themselves are written in English; `helpInEnglish` says when the panel must say so.
+ */
+export function helpText(s: string): string {
+  return hasMessage(s) ? tx(s) : s;
+}
+export const helpInEnglish = (): boolean => currentLang() !== "en";

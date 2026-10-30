@@ -12,7 +12,7 @@ import { useLandscape } from "@/lib/v2/queries";
 import { useSystemExtractions, useTimeline, useV2Jobs, useVersionsPage } from "@/lib/v2/runs-queries";
 import { useScopeSystem } from "@/lib/v2/scope";
 import { f1, int } from "@/lib/v2/score";
-import { RunTimelineChart, kindWord } from "../RunTimeline";
+import { RunTimelineChart, kindWord, triggerOf } from "../RunTimeline";
 import { VerdictMark } from "../marks";
 import { Dash, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../parts";
 import { ResultFrame, useOutcome } from "../inspector/shared";
@@ -138,8 +138,12 @@ function RunsTable({ systemFilter, statusFilter, showArchived }: { systemFilter:
   if (rows.length === 0) {
     return <EmptyFrame>{(page.data?.versions.length ?? 0) === 0 ? t("No run has been made yet. Extract a system and run an analysis to see it here.") : t("No run matches these filters.")}</EmptyFrame>;
   }
+  const failedRows = rows.filter((v) => statusGroup(v.status) === "failed").length;
   return (
     <div className="m2-frame">
+      <p className="m2-prov" data-testid="runs-count" style={{ margin: "var(--m2-s2) var(--m2-s3)" }}>
+        {failedRows ? t("{rowsCount} {rowsCount, plural, one {run} other {runs}} in the table, {failedRows} of them failed.", { rowsCount: rows.length, failedRows }) : t("{rowsCount} {rowsCount, plural, one {run} other {runs}} in the table.", { rowsCount: rows.length })}
+      </p>
       <table className="m2-tbl" data-testid="runs-table">
         <thead>
           <tr>
@@ -183,7 +187,7 @@ function RunsTable({ systemFilter, statusFilter, showArchived }: { systemFilter:
                   {v.label ?? (v.metadata?.baseline ? null : <Dash />)}
                   {v.metadata?.archived ? <span className="m2-meta">{" "}{t("archived")}</span> : null}
                 </td>
-                <td>{kindWord(m?.kind ?? v.metadata?.trigger)}</td>
+                <td>{kindWord(triggerOf(m?.kind, v.metadata))}</td>
                 <td className="m2-r">{m?.records_checked == null ? <Dash /> : int(m.records_checked)}</td>
                 <td className="m2-r">{rules == null ? <Dash /> : int(rules)}</td>
                 <td className="m2-r">{range ? t("{range} to {range2}", { range: f1(range[0]), range2: f1(range[1]) }) : <Dash />}</td>
@@ -299,7 +303,7 @@ export function RunsCanvas() {
     <>
       <PageTitle sub={scope?.name}>{t("Runs")}</PageTitle>
       <p className="m2-finding">
-        {latest ? t("The last {runsCount} {runsCount, plural, one {run} other {runs}}, the latest on {run_at}.", { runsCount: runs.length, run_at: formatDate(latest.run_at, "date") }) : t("No run has finished for this scope yet.")}
+        {latest ? t("The timeline shows the last {runsCount} finished {runsCount, plural, one {run} other {runs}}, the latest on {run_at}.", { runsCount: runs.length, run_at: formatDate(latest.run_at, "date") }) : t("No run has finished for this scope yet.")}
         {baseline ? t(" The baseline is {run_at}.", { run_at: formatDate(baseline.run_at, "date") }) : ""}
       </p>
 

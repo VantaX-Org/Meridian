@@ -64,13 +64,13 @@ for (const size of SIZES) {
         if (phone) {
           const list = page.getByRole("list", { name: "Work ledger" });
           await expect(list.getByRole("listitem").first()).toBeVisible(NAV);
-          await expect(list.getByRole("button").first()).toContainText("MM031");
+          await expect(list.getByRole("button").first()).toContainText("MM003");
           await expect(list.locator("input")).toHaveCount(0);
         } else {
           const grid = page.getByRole("grid", { name: "Work ledger" });
           await expect(grid).toBeVisible(NAV);
           await expect(grid.getByRole("columnheader", { name: "Material number" })).toBeVisible();
-          await expect(grid.getByText("000000000000000232")).toBeVisible();
+          await expect(grid.getByTitle("000000000000000232")).toBeVisible();
           await expect(grid.getByLabel("New value for 000000000000000232")).toBeVisible();
         }
         // No page scroll sideways, at any width.
@@ -85,7 +85,7 @@ for (const size of SIZES) {
         await prepare(page, scheme);
         await page.goto("/work?fixture=1&persona=steward", { waitUntil: "load", timeout: 90_000 });
         const grid = page.getByRole("grid", { name: "Work ledger" });
-        await expect(grid.getByText(KEY)).toBeVisible(NAV);
+        await expect(grid.getByTitle(KEY)).toBeVisible(NAV);
         const chips = page.getByRole("group", { name: "Filter by state" });
         await expect(chips.getByRole("button", { name: /To fix/ })).toContainText("25,712");
         await grid.getByLabel(`Decision for ${KEY}`).selectOption("fix");
@@ -98,7 +98,7 @@ for (const size of SIZES) {
         expect((at?.y ?? 0) + (at?.height ?? 0)).toBeLessThanOrEqual(size.height);
         await expect(chips.getByRole("button", { name: /To fix/ })).toContainText("25,711");
         await expect(chips.getByRole("button", { name: /Waiting for approval/ })).toContainText("613");
-        await expect(grid.getByText(KEY)).toHaveCount(0);
+        await expect(grid.getByTitle(KEY)).toHaveCount(0);
         await shot(page, "work-undo");
         await axe(page, `work notice ${size.name} ${scheme}`);
         // Focus is on the page, not in a field, so Ctrl+Z is the app's Undo.
@@ -106,7 +106,7 @@ for (const size of SIZES) {
         await page.keyboard.press("Control+z");
         await expect(page.getByRole("region", { name: "Change notices" })).toContainText("Undone: accepted 1 suggested value");
         await expect(chips.getByRole("button", { name: /To fix/ })).toContainText("25,712");
-        await expect(grid.getByText(KEY)).toBeVisible();
+        await expect(grid.getByTitle(KEY)).toBeVisible();
       });
 
       test("selecting rows shows the bulk bar; By rule groups the rows under their rule", async ({ page }) => {
@@ -114,7 +114,7 @@ for (const size of SIZES) {
         await prepare(page, scheme);
         await page.goto("/work?fixture=1&persona=steward", { waitUntil: "load", timeout: 90_000 });
         const grid = page.getByRole("grid", { name: "Work ledger" });
-        await expect(grid.getByText("000000000000000232")).toBeVisible(NAV);
+        await expect(grid.getByTitle("000000000000000232")).toBeVisible(NAV);
         const boxes = grid.getByRole("checkbox", { name: /^Select row/ });
         await boxes.nth(0).check();
         await boxes.nth(1).check();
@@ -128,7 +128,7 @@ for (const size of SIZES) {
         await bar.getByRole("button", { name: "Clear selection" }).click();
         await page.getByRole("button", { name: "By rule" }).click();
         await expect(page).toHaveURL(/group=rule/);
-        await expect(grid.getByRole("button", { name: /^MM014/ })).toHaveAttribute("aria-expanded", "true", NAV);
+        await expect(grid.getByRole("button", { name: /^MM142/ })).toHaveAttribute("aria-expanded", "true", NAV);
         await expect(grid.getByRole("button", { name: "Accept all 112 suggested" })).toBeVisible();
         await page.waitForLoadState("networkidle");
         await shot(page, "work-grouped");
@@ -139,10 +139,10 @@ for (const size of SIZES) {
         await prepare(page, scheme);
         await page.goto("/work?fixture=1&persona=steward", { waitUntil: "load", timeout: 90_000 });
         if (phone) {
-          await page.getByRole("list", { name: "Work ledger" }).getByRole("button", { name: new RegExp(KEY) }).click(NAV);
+          await page.getByRole("list", { name: "Work ledger" }).getByTitle(KEY).click(NAV);
         } else {
           const grid = page.getByRole("grid", { name: "Work ledger" });
-          await expect(grid.getByText(KEY)).toBeVisible(NAV);
+          await expect(grid.getByTitle(KEY)).toBeVisible(NAV);
           await grid.getByText("Hex bolt M8 zinc").first().click();
         }
         const dialog = page.getByRole("dialog", { name: KEY });
@@ -150,7 +150,7 @@ for (const size of SIZES) {
         await expect(page).toHaveURL(/open=record%3Amaterial_master%3AMATNR%3D/);
         await expect(dialog.getByTestId("record-facts")).toBeVisible(NAV);
         await expect(dialog.getByTestId("record-facts").getByText("MARA-MEINS")).toBeVisible();
-        await expect(dialog.getByTestId("fix-block").first()).toContainText("MM014");
+        await expect(dialog.getByTestId("fix-block").first()).toContainText("MM142");
         await expect(dialog.getByTestId("feature-impact")).toContainText("Migration cockpit: material load");
         await expect(dialog.getByRole("button", { name: /Accept suggested/ })).toBeEnabled();
         if (phone) {

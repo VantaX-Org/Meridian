@@ -5,9 +5,20 @@ import { useSyncExternalStore } from "react";
 /**
  * Fixture mode: `/?fixture=1` answers every v2 read from lib/api/v2/fixtures instead of the API, so the interface
  * can be built, screenshotted and tested with no backend. The flag is kept for the tab (sessionStorage) so links that
- * do not carry the query keep working; `?fixture=0` turns it off.
+ * do not carry the query keep working; `?fixture=0` turns it off. Only builds that allow it (fixtureAllowed) honour the
+ * query, and while it is on every page carries the "Demo data" bar (design/v2/shell/DemoBar.tsx).
  */
 const KEY = "mn_v2_fixture";
+
+/**
+ * Whether this build may answer from fixtures at all. A production build may only when it was built for a demo or a
+ * test run (NEXT_PUBLIC_MERIDIAN_DEMO=1 at build time: the e2e web server and the help recordings set it); a customer
+ * image never does, so `?fixture=1` on a customer's deployment is ignored. Development and tests always may. Both
+ * variables are read as literal properties so Next inlines them at build time.
+ */
+export function fixtureAllowed(): boolean {
+  return process.env.NEXT_PUBLIC_MERIDIAN_DEMO === "1" || process.env.NODE_ENV !== "production";
+}
 
 function readStore(): boolean {
   try {
@@ -19,7 +30,7 @@ function readStore(): boolean {
 
 /** True when this page is in fixture mode. Safe on the server (false) and when storage is blocked. */
 export function fixtureActive(): boolean {
-  if (typeof window === "undefined") return false;
+  if (typeof window === "undefined" || !fixtureAllowed()) return false;
   let q: string | null = null;
   try {
     q = new URLSearchParams(window.location.search).get("fixture");

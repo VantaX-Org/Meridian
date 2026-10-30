@@ -68,6 +68,9 @@ async def _open_criticals(db: AsyncSession, tenant: Tenant, modules: list[str]) 
 @router.get("/objects/{module}/related", dependencies=[Depends(require_permission("view"))])
 async def related_objects(module: str, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await _rls(db, tenant)
+    from api.services.not_found import require_object
+
+    await require_object(db, tenant.id, module)
     rel = stewardship.related(module)
     crit = await _open_criticals(db, tenant, [r["module"] for r in rel])
     rows = [{**r, "label": _label(r["module"]), "open_criticals": crit.get(r["module"], 0)} for r in rel]
