@@ -11,12 +11,11 @@ Every write is audited (audit_log) and runs under the tenant's row-level securit
 from __future__ import annotations
 
 import asyncio
-import io
 import json
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -159,5 +158,5 @@ async def certificate_pdf(wave_id: uuid.UUID, cert_id: uuid.UUID, db: AsyncSessi
     if row is None:
         raise HTTPException(status_code=404, detail="Certificate file not found.")
     data = await asyncio.to_thread(read_report_file, row[1], row[2])
-    return StreamingResponse(io.BytesIO(data), media_type="application/pdf",
-                             headers={"Content-Disposition": f"attachment; filename={row[0]}"})
+    return Response(content=data, media_type="application/pdf",
+                    headers={"Content-Disposition": f"attachment; filename={row[0]}"})
