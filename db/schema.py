@@ -632,6 +632,8 @@ class User(Base):
     external_subject = Column(Text, nullable=True)
     # Validated by api/routes/preferences.py (theme, density, locale, saved views, ...).
     preferences = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    # The person this user reports to, for the workflow assignee rule "requester's manager" (migration 119).
+    manager_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,
@@ -3133,3 +3135,123 @@ class SkippedDelivery(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
 
     __table_args__ = (Index("ix_skipped_deliveries_tenant", "tenant_id", "created_at"),)
+
+
+# ── Configurable approval workflows (migration 119) ──────────────────────────
+
+
+class WorkflowDefinition(Base):
+    """One version of a tenant's approval workflow for one object kind; steps as JSON (api/services/workflow.py)."""
+    __tablename__ = "workflow_definitions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    key = Column(Text, nullable=False)
+    name = Column(Text, nullable=False)
+    description = Column(Text, nullable=True)
+    object_kind = Column(Text, nullable=False)  # fix_batch | change_request
+    version = Column(Integer, nullable=False)
+    active = Column(Boolean, nullable=False, server_default=text("false"))
+    definition = Column(JSONB, nullable=False)
+    created_by = Column(UUID(as_uuid=True), nullable=True)
+    created_by_label = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    activated_at = Column(DateTime(timezone=True), nullable=True)
+    activated_by_label = Column(Text, nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("object_kind IN ('fix_batch', 'change_request')", name="ck_workflow_definitions_kind"),
+        UniqueConstraint("tenant_id", "key", "version", name="uq_workflow_definitions_version"),
+        Index("uq_workflow_definitions_active", "tenant_id", "object_kind", unique=True,
+              postgresql_where=text("active")),
+    )
+
+
+class WorkflowInstance(Base):
+    """One run of a definition version over one object, with the facts its conditions were evaluated against."""
+    __tablename__ = "workflow_instances"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    definition_id = Column(UUID(as_uuid=True), ForeignKey("workflow_definitions.id"), nullable=False)
+    definition_key = Column(Text, nullable=False)
+    definition_version = Column(Integer, nullable=False)
+    object_kind = Column(Text, nullable=False)
+    object_id = Column(Text, nullable=False)
+    status = Column(Text, nullable=False, server_default="in_progress")
+    requester_id = Column(UUID(as_uuid=True), nullable=True)
+    requester_label = Column(Text, nullable=True)
+    facts = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    started_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("status IN ('in_progress', 'approved', 'rejected', 'cancelled', 'withdrawn')",
+                        name="ck_workflow_instances_status"),
+        Index("ix_workflow_instances_object", "tenant_id", "object_kind", "object_id"),
+        Index("uq_workflow_instances_open", "tenant_id", "object_kind", "object_id", unique=True,
+              postgresql_where=text("status = 'in_progress'")),
+    )
+
+
+class WorkflowTask(Base):
+    """One step of an instance: who may decide, quorum, due time, votes and the decision."""
+    __tablename__ = "workflow_tasks"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    instance_id = Column(UUID(as_uuid=True), ForeignKey("workflow_instances.id", ondelete="CASCADE"), nullable=False)
+    step_index = Column(SmallInteger, nullable=False)
+    step_name = Column(Text, nullable=False)
+    assignee_rule = Column(JSONB, nullable=False)
+    assigned_users = Column(ARRAY(UUID(as_uuid=True)), nullable=False, server_default="{}")
+    assignee_note = Column(Text, nullable=True)
+    quorum = Column(Text, nullable=False, server_default="any")
+    requester_may_approve = Column(Boolean, nullable=False, server_default=text("false"))
+    status = Column(Text, nullable=False, server_default="waiting")
+    skip_reason = Column(Text, nullable=True)
+    sla_hours = Column(Float, nullable=True)
+    escalate = Column(Boolean, nullable=False, server_default=text("true"))
+    due_at = Column(DateTime(timezone=True), nullable=True)
+    escalation_level = Column(SmallInteger, nullable=False, server_default="0")
+    escalated_to = Column(ARRAY(UUID(as_uuid=True)), nullable=False, server_default="{}")
+    overdue_notified_at = Column(DateTime(timezone=True), nullable=True)
+    votes = Column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    decided_by = Column(UUID(as_uuid=True), nullable=True)
+    decided_by_label = Column(Text, nullable=True)
+    on_behalf_of = Column(UUID(as_uuid=True), nullable=True)
+    decision = Column(Text, nullable=True)
+    comment = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    activated_at = Column(DateTime(timezone=True), nullable=True)
+    notified_at = Column(DateTime(timezone=True), nullable=True)
+    decided_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("status IN ('waiting', 'pending', 'approved', 'rejected', 'skipped', 'cancelled')",
+                        name="ck_workflow_tasks_status"),
+        CheckConstraint("quorum IN ('any', 'all')", name="ck_workflow_tasks_quorum"),
+        UniqueConstraint("instance_id", "step_index", name="uq_workflow_tasks_step"),
+        Index("ix_workflow_tasks_pending", "tenant_id", "status", "due_at"),
+    )
+
+
+class WorkflowEvent(Base):
+    """Append-only trail of every workflow and change request transition, with the actor."""
+    __tablename__ = "workflow_events"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    object_kind = Column(Text, nullable=False)
+    object_id = Column(Text, nullable=False)
+    instance_id = Column(UUID(as_uuid=True), ForeignKey("workflow_instances.id", ondelete="CASCADE"), nullable=True)
+    task_id = Column(UUID(as_uuid=True), ForeignKey("workflow_tasks.id", ondelete="CASCADE"), nullable=True)
+    action = Column(Text, nullable=False)
+    from_status = Column(Text, nullable=True)
+    to_status = Column(Text, nullable=True)
+    actor_id = Column(UUID(as_uuid=True), nullable=True)
+    actor_label = Column(Text, nullable=True)
+    detail = Column(JSONB, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (Index("ix_workflow_events_object", "tenant_id", "object_kind", "object_id", "created_at"),)

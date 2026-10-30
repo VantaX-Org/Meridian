@@ -961,6 +961,10 @@ celery_app.conf.beat_schedule = {
         "task": "workers.tasks.triage_sla.sla_sweep",
         "schedule": crontab(minute="*/5"),  # auto-assign, start SLA clocks, at-risk/breach escalation
     },
+    "workflow-sla-sweep-every-15min": {
+        "task": "workers.tasks.workflows.sla_sweep",
+        "schedule": crontab(minute="4,19,34,49"),  # approval steps past due: the escalation chain, level by level
+    },
     "stewardship-queue-populate-every-15min": {
         "task": "workers.tasks.populate_stewardship_queue.populate_queue",
         "schedule": crontab(minute="*/15"),  # Every 15 minutes — populates queue, then chains ai_triage

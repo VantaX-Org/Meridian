@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _row, _rls, _where
-from api.services import attention, remediation, undo, webhooks, worklist
+from api.services import attention, remediation, undo, webhooks, workflow, worklist
 from api.services.rbac import current_user_id, current_user_label, require_permission, scope_from_path
 
 router = APIRouter(prefix="/api/v1/remediation", tags=["remediation"])
@@ -412,6 +412,20 @@ async def approve_batch(
             "AND user_id = CAST(:uid AS uuid) LIMIT 1"), {"bid": batch_id, "uid": uid})).first():
         # a monitor-drafted batch has no human creator: whoever accepted its proposals is the first pair of eyes
         raise HTTPException(status_code=403, detail="You accepted this batch's proposals; a second person must approve it.")
+    # The approval runs through the tenant's workflow for fix batches (api/services/workflow.py); its default, one
+    # four-eyes step for anyone holding approve except the creator, is the rule above. The batch is approved once the
+    # workflow is: a definition with more steps leaves it a draft until its last step is approved.
+    facts = await batch_facts(db, tenant, b)
+    try:
+        res = await db.run_sync(lambda s: workflow.decide_object(
+            s, str(tenant.id), "fix_batch", str(batch_id), b["created_by"], b.get("created_by_label"), facts, uid,
+            current_user_label(), "approve", None, {"approve"}))
+    except workflow.WorkflowError as e:
+        raise HTTPException(status_code=e.status, detail=e.detail)
+    if res["status"] != "approved":
+        await db.commit()
+        return {"id": str(batch_id), "status": b["status"], "approved_by": None, "action_id": None,
+                "workflow": _workflow_summary(res["instance"])}
     rec = undo.Recorder()
     rec.batch = await undo.batch_snapshot(db, tenant, batch_id, "approved")
     await db.execute(text("UPDATE remediation_batches SET status = 'approved', approved_by = CAST(:uid AS uuid), "
@@ -423,7 +437,29 @@ async def approve_batch(
     await db.run_sync(lambda s: webhooks.batch_event(s, str(tenant.id), str(batch_id), "batch.approved"))
     await db.commit()
     attention.invalidate(tenant.id)
-    return {"id": str(batch_id), "status": "approved", "approved_by": current_user_label(), "action_id": action_id}
+    return {"id": str(batch_id), "status": "approved", "approved_by": current_user_label(), "action_id": action_id,
+            "workflow": _workflow_summary(res["instance"])}
+
+
+def _workflow_summary(inst: dict) -> dict:
+    """The batch's approval in a few words: the workflow, its status and the step waiting, if any."""
+    waiting = next((t for t in inst["tasks"] if t["status"] == "pending"), None)
+    return {"instance_id": inst["id"], "workflow": inst["definition_key"], "version": inst["definition_version"],
+            "status": inst["status"], "waiting_step": waiting["step_name"] if waiting else None,
+            "steps": [{"name": t["step_name"], "status": t["status"], "decided_by": t["decided_by_label"]}
+                      for t in inst["tasks"]]}
+
+
+async def batch_facts(db: AsyncSession, tenant: Tenant, b: dict) -> dict:
+    """What a workflow condition may test about a fix batch (api/services/workflow.py FACTS)."""
+    rows = (await db.execute(text(
+        "SELECT DISTINCT module, upper(field) AS field FROM remediation_items WHERE batch_id = :b AND tenant_id = :t"),
+        {"b": b["id"], "t": str(tenant.id)})).fetchall()
+    extras = (await _batch_extras(db, tenant, [b]))[b["id"]]
+    fields = sorted({r[1] for r in rows if r[1]})
+    classes = await db.run_sync(lambda s: workflow.policy_classes(s, str(tenant.id), fields))
+    return {"title": f"Fix batch {b['name']}", "modules": sorted({r[0] for r in rows if r[0]}), "fields": fields,
+            "records": extras["records"], "value_at_risk": extras["value_at_risk"], "policy_classes": classes}
 
 
 class Reassign(BaseModel):
@@ -502,6 +538,11 @@ async def send_back_batch(
         raise HTTPException(status_code=422, detail="Say what the author has to change.")
     rec = undo.Recorder()
     rec.batch = await undo.batch_snapshot(db, tenant, batch_id, "draft")
+    # its approval in progress ends rejected with the note; an approval already given is withdrawn
+    await db.run_sync(lambda s_: workflow.close(s_, str(tenant.id), "fix_batch", str(batch_id), "rejected", uid,
+                                                current_user_label(), note)
+                      or workflow.close(s_, str(tenant.id), "fix_batch", str(batch_id), "withdrawn", uid,
+                                        current_user_label(), note))
     await db.execute(text("""
         UPDATE remediation_batches SET status = 'draft', approved_by = NULL, approved_by_label = NULL, approved_at = NULL,
                filter = COALESCE(filter, '{}'::jsonb) || jsonb_build_object('returned', jsonb_build_object(

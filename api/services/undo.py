@@ -238,6 +238,15 @@ async def apply_inverse(db: AsyncSession, tenant: Tenant, request: Request, row:
             {"status": batch["status"], "ab": batch["approved_by"], "abl": batch["approved_by_label"],
              "aa": datetime.fromisoformat(batch["approved_at"]) if batch["approved_at"] else None,
              "f": json.dumps(batch["filter"]), "b": batch["id"], "t": t})
+        # the batch's approval follows its status: back to draft withdraws it, back to approved reinstates it
+        from api.services import workflow
+        from api.services.rbac import current_user_id, current_user_label
+        uid, label = current_user_id(request), current_user_label()
+        if batch["status"] == "draft":
+            await db.run_sync(lambda s: workflow.close(s, t, "fix_batch", batch["id"], "withdrawn", uid, label,
+                                                       "Undone"))
+        elif batch["status"] == "approved":
+            await db.run_sync(lambda s: workflow.reinstate(s, t, "fix_batch", batch["id"], uid, label))
         await db.execute(text("""
             INSERT INTO remediation_events (tenant_id, batch_id, item_id, user_id, user_label, action, from_value, to_value)
             VALUES (CAST(:t AS uuid), CAST(:b AS uuid), NULL, CAST(:u AS uuid), :label, 'undone', :frm, :to)"""),

@@ -335,6 +335,39 @@ async def update_user(
     return _row_to_dict(row.fetchone())
 
 
+class ManagerBody(BaseModel):
+    manager_id: Optional[uuid.UUID] = None  # None clears it
+
+
+@router.put("/users/{user_id}/manager")
+async def set_manager(
+    user_id: uuid.UUID,
+    body: ManagerBody,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("manage_users")),
+) -> dict:
+    """Who the user reports to: the approver of a workflow step whose assignee rule is the requester's manager."""
+    await _set_rls(db, tenant.id)
+    before = (await db.execute(text("SELECT manager_id::text FROM users WHERE id = :u AND tenant_id = :t"),
+                               {"u": str(user_id), "t": str(tenant.id)})).fetchone()
+    if before is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if body.manager_id is not None:
+        if body.manager_id == user_id:
+            raise HTTPException(status_code=422, detail="A user cannot be their own manager.")
+        if not (await db.execute(text("SELECT 1 FROM users WHERE id = :u AND tenant_id = :t"),
+                                 {"u": str(body.manager_id), "t": str(tenant.id)})).first():
+            raise HTTPException(status_code=404, detail="Manager not found")
+    await db.execute(text("UPDATE users SET manager_id = CAST(:m AS uuid) WHERE id = :u AND tenant_id = :t"),
+                     {"m": str(body.manager_id) if body.manager_id else None, "u": str(user_id), "t": str(tenant.id)})
+    await write_audit(db, tenant.id, request, "user.manager", "user", str(user_id), {"manager_id": before[0]},
+                      {"manager_id": str(body.manager_id) if body.manager_id else None})
+    await db.commit()
+    return {"id": str(user_id), "manager_id": str(body.manager_id) if body.manager_id else None}
+
+
 # ── Invites ──────────────────────────────────────────────────────────────────
 
 
