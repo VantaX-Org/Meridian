@@ -133,3 +133,8 @@
   .m2-segs { flex-wrap: wrap; overflow: visible; width: 100%; }
   .m2-segs > :is(button, a).m2-seg { flex: 1 0 auto; border-bottom: 1px solid var(--m2-line); }
 }
+
+/* Prove in SAP: the SE16 selection reads as rows of text, not a dense grid */
+.m2-prove .m2-prove-tbl { margin: var(--m2-s3) 0; }
+.m2-prove .m2-prove-tbl th, .m2-prove .m2-prove-tbl td { height: auto; white-space: normal; vertical-align: top; padding: var(--m2-s2); }
+.m2-prove .m2-aform { margin-bottom: var(--m2-s3); }

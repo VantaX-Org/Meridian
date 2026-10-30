@@ -56,7 +56,7 @@ export function extractionPathWord(s: SAPSystemExtended): string | null {
     case "odata":
       return t("OData");
     case "auto":
-      return t("Automatic (ODP where it covers the rules)");
+      return t("Automatic (table reader)");
     default:
       return t("Table reader");
   }

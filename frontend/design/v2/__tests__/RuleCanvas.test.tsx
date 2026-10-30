@@ -40,11 +40,11 @@ describe("the rule canvas /r/{check_id}", () => {
     expect(document.querySelector('svg[data-size]')).toBeNull(); // a rule has no ruler
   });
 
-  it("has the tabs Definition, Failing records, Impact and History, Definition first", async () => {
+  it("has the tabs Definition, Failing records, Prove in SAP, Impact and History, Definition first", async () => {
     renderWithQuery(<RuleCanvas id="MM142" />);
     const nav = await screen.findByRole("navigation", { name: "Views of MM142" });
     const links = within(nav).getAllByRole("link");
-    expect(links.map((l) => l.textContent)).toEqual(["Definition", "Failing records", "Impact", "History"]);
+    expect(links.map((l) => l.textContent)).toEqual(["Definition", "Failing records", "Prove in SAP", "Impact", "History"]);
     expect(links[0]).toHaveAttribute("aria-current", "page");
     expect(links[1]).toHaveAttribute("href", expect.stringMatching(/^\/r\/MM142\?.*tab=failing/));
     expect(links[0]).toHaveAttribute("href", expect.not.stringContaining("tab="));
@@ -66,6 +66,31 @@ describe("the rule canvas /r/{check_id}", () => {
     expect(slot).toHaveAttribute("data-module", "material_master");
     expect(JSON.parse(slot.getAttribute("data-filters") ?? "{}")).toEqual({ check_id: "MM142" });
     expect(screen.getByRole("link", { name: "Failing records" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("Prove in SAP gives the SE16 selection, what SE16 cannot express, the counts and five keys", async () => {
+    setUrl("/r/MM142?tab=prove&fixture=1");
+    renderWithQuery(<RuleCanvas id="MM142" />);
+    const sec = await screen.findByRole("region", { name: "Prove in SAP" });
+    await within(sec).findByRole("table", { name: "SE16 selection" });
+    expect(within(sec).getByRole("heading", { level: 2 })).toHaveTextContent("Prove in SAP");
+    // MM142 looks MEINS up in T006: SE16H gives the closest selection, the lookup is said in words
+    expect(norm(sec)).toContain("SE16H gives the closest selection");
+    const rows = within(within(sec).getByRole("table", { name: "SE16 selection" })).getAllByRole("row").slice(1)
+      .map((r) => within(r).getAllByRole("cell").map((c) => norm(c)).join(" | "));
+    expect(rows).toEqual(["Population | MARA-MEINS | Not initial | —", "Population | MARA-LVORM | Initial value | —"]);
+    expect(norm(screen.getByTestId("prove-conditions"))).toContain("MARA.MEINS has no entry in check table T006: list T006 in SE16 and compare");
+    expect(norm(sec)).toContain("61,816 records checked");
+    expect(norm(sec)).toContain("3,640 records");
+    expect(norm(sec)).toContain("118 flagged for deletion");
+    // the keys as SE16 shows them, with the stored key alongside
+    const keys = within(screen.getByTestId("prove-keys")).getAllByRole("listitem").map((li) => norm(li));
+    expect(keys).toHaveLength(5);
+    expect(keys[0]).toBe("MATNR 232stored as MATNR=000000000000000232");
+    // two objects measure MM142: the reader chooses which run to prove
+    expect(within(sec).getByRole("combobox", { name: "Object and run" })).toHaveDisplayValue("Material master on ECC production");
+    expect(within(sec).getByRole("button", { name: "Download the reconciliation workbook" })).toBeEnabled();
+    expect(screen.getByRole("link", { name: "Prove in SAP" })).toHaveAttribute("aria-current", "page");
   });
 
   it("Impact shows the facts, what the rule blocks and the lineage", async () => {

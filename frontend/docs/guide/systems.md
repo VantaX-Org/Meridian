@@ -18,7 +18,7 @@ How an ABAP system's tables are read, chosen in the connection settings:
 
 - **Table reader**: "Reads each table with the table reader below. Needs read access to the tables."
 - **ODP, table reader for the rest**: "Reads mapped tables through ODP providers (RODPS_REPL). Fields a provider does not carry are reported per table; other tables use the table reader." The providers are classic extractors such as `0MATERIAL_ATTR` (MARA), `0MAT_PLANT_ATTR` (MARC), `0CUSTOMER_ATTR` (KNA1), `0VENDOR_ATTR` (LFA1) and `0GL_ACCOUNT_ATTR` (SKA1), and on S/4HANA released CDS views such as `I_Product` and `I_BusinessPartner`.
-- **Automatic: ODP where it covers the rules**: "Uses ODP for a table when the ODP functions exist and a provider carries every field the rules need; the table reader otherwise."
+- **Automatic: table reader**: "Reads with the table reader. ODP is used only when you choose it, after confirming with SAP that your licence allows it (SAP Note 3255746)."
 - **OData through the SAP Gateway** (S/4HANA on premise only): "Reads through the released APIs your Gateway exposes, such as API_PRODUCT_SRV and API_BUSINESS_PARTNER, with this system's user." Enter the **Gateway base URL**; the system's client is sent as `sap-client`.
 
 A table read with a date window, a scope or by parent keys always uses the table reader, because ODP reads a provider in full. The **Table reader** setting chooses `RFC_READ_TABLE`, `/BODS/RFC_READ_TABLE2` or `BBP_RFC_READ_TABLE`, or **Find the first available**.
@@ -67,7 +67,7 @@ In the system inspector, **Extract** asks for the objects and the scope: "Choose
 - **"Sign-in refused"** or **HTTP 401**: the user or secret is wrong or expired. Open **Connection settings**, type the new values ("Stored secrets are never shown. Type new values to replace them; an empty field keeps the stored one.") and test again.
 - **"No authorisation to read this table. The user needs read access to it."** Grant the RFC user read access to that table in SAP (S_TABU_NAM, or S_TABU_DIS), then **Load again**. The read-only role template is `docs/sap/authorisation-role-template.md`.
 - **The Basis team refuses `RFC_READ_TABLE`**: choose another **Table reader** (`/BODS/RFC_READ_TABLE2` or `BBP_RFC_READ_TABLE`), or an **Extraction path** that does not read tables directly: **ODP** or, on S/4HANA on premise, **OData through the SAP Gateway**. The data read is the same; fields ODP cannot deliver are listed per table.
-- **"RODPS_REPL_ODP_OPEN is not available on this system"**: the ODP functions are missing or not authorised. Grant `S_RFC` for function group `RODPS_REPL`, or choose **Automatic**, which falls back to the table reader.
+- **"RODPS_REPL_ODP_OPEN is not available on this system"**: the ODP functions are missing or not authorised. Grant `S_RFC` for function group `RODPS_REPL`, or choose **Automatic**, which reads with the table reader.
 - **An OData table failed with 404**: the API service is not activated on the Gateway (`/IWFND/MAINT_SERVICE`).
 - **"The table does not exist in this release. Nothing to fix."** Expected on some releases.
 - **"This system is extracted but no rule has run on it. Run an analysis."** Use Run analysis.

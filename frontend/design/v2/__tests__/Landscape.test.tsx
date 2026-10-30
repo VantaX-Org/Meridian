@@ -150,7 +150,7 @@ describe("landscape canvas, fixture mode", () => {
     expect(within(conn).getByRole("row", { name: /ECC production/ })).toHaveTextContent("Connected");
     expect(within(conn).getByRole("row", { name: /SuccessFactors/ })).toHaveTextContent("Refused the credentials");
     expect(within(conn).getByRole("row", { name: /ECC production/ })).toHaveTextContent("Table reader");
-    expect(within(conn).getByRole("row", { name: /S\/4HANA sandbox/ })).toHaveTextContent("Automatic (ODP where it covers the rules)");
+    expect(within(conn).getByRole("row", { name: /S\/4HANA sandbox/ })).toHaveTextContent("Automatic (table reader)");
     const ext = within(home).getByTestId("basis-extractions");
     expect(within(ext).getByRole("row", { name: /ECC production/ })).toHaveTextContent("400,662");
     await waitFor(() => expect(within(ext).getByRole("row", { name: /ECC production/ })).toHaveTextContent("5 with the table reader"));

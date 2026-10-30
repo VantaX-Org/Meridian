@@ -10,6 +10,7 @@ import type {
   LearnedProposal,
   Readiness,
   ReadinessCell,
+  Reconcile,
   RuleDraft,
   RuleRun,
   RuleScope,
@@ -276,10 +277,62 @@ const STEWARDS: Steward[] = [
   { id: "u-mokoena", name: "K. Mokoena", email: "k.mokoena@example.test", role: "data_steward" },
 ];
 
+/** Material numbers of the demo extract, stored as SAP holds them (MATN1, 18 digits). */
+const DEMO_MATERIALS = ["000000000000000232", "000000000000000233", "000000000000001017", "000000000000004410", "000000000000020051"];
+
+/** The reconciliation pack of a fixture rule in the current run, as api/services/reconcile.py builds it. */
+function reconcile(id: string, run: string | undefined): Reconcile {
+  const r = ruleRow(id);
+  const x = EXTRA[id];
+  if (!r || !x || !run) throw new FixtureNotFound(`/rules/${id}/reconcile`);
+  const [table, field] = (r.field ?? ".").split(".");
+  const lookup = x.cls === "referential_check" || x.cls === "domain_value_check";
+  const check = /in (T[0-9A-Z]+)-([A-Z]+)/.exec(x.expr);
+  const deletion = table === "MARA"
+    ? [{ table: "MARA", field: "LVORM", operator: "initial", values: [], part: "population", words: "MARA.LVORM is initial (not flagged for deletion)" }]
+    : [{ table, field: "LVORM", operator: "initial", values: [], part: "population", words: `${table}.LVORM is initial (not flagged for deletion)` },
+       { table: "MARA", field: "LVORM", operator: "initial", values: [], part: "population", words: "MARA.LVORM is initial (not flagged for deletion)" }];
+  const joins = table === "MARA" ? [] : [{ from_table: table, to_table: "MARA", on: [[`${table}.MATNR`, "MARA.MATNR"]], words: `${table} to MARA on ${table}.MATNR = MARA.MATNR` }];
+  const keyFields = table === "MARA" ? ["MATNR"] : table === "MBEW" ? ["MATNR", "BWKEY", "BWTAR"] : ["MATNR", "WERKS"];
+  const conditions: Reconcile["conditions"] = [];
+  if (lookup) conditions.push({ kind: "not_in_check_table", fields: [r.field ?? ""], params: { table: check?.[1] ?? null, field: check?.[2] ?? null }, words: `${r.field} has no entry in ${check?.[1] ?? "its check table"} (${check?.[2] ?? field}): list ${check?.[1] ?? "the check table"} in SE16 and compare` });
+  for (const j of joins) conditions.push({ kind: "join", fields: j.on.flat(), params: { from_table: j.from_table, to_table: j.to_table }, words: `Join ${j.words}: SE16 reads one table at a time (use SE16H or SQVI)` });
+  return {
+    check_id: id,
+    module: MM,
+    label: "Material master",
+    run_id: run,
+    run_at: "2026-10-16T05:17:00Z",
+    run_label: "Run of 16 Oct 2026",
+    check_class: x.cls,
+    message: r.name,
+    field: r.field,
+    system: "abap",
+    transaction: conditions.length === 0 ? "SE16N" : "SE16H",
+    tables: table === "MARA" ? ["MARA"] : [table, "MARA"],
+    grain: { table, key_fields: keyFields },
+    population_selection: [...(lookup ? [{ table, field, operator: "not_initial", values: [], part: "population", words: `${r.field} is not initial` }] : []), ...deletion],
+    failing_selection: lookup ? [] : [{ table, field, operator: "initial", values: [], part: "failing", words: `${r.field} is initial (blank, 0 or 00000000)` }],
+    conditions,
+    joins,
+    se16: conditions.length === 0,
+    population: r.total_count,
+    failing: r.affected_count,
+    excluded: { deleted: 118 },
+    sample_keys: DEMO_MATERIALS.map((m) => {
+      const extra = keyFields.length > 1 ? [{ field: keyFields[1], raw: "3000", display: "3000" }] : [];
+      const fields = [{ field: "MATNR", raw: m, display: m.replace(/^0+/, "") }, ...extra];
+      return { raw: fields.map((p) => `${p.field}=${p.raw}`).join("|"), display: fields.map((p) => `${p.field} ${p.display}`).join(", "), fields };
+    }),
+  };
+}
+
 /** A GET the object screens make, or undefined for any other path. */
 export function objectFixture(path: string, params: Params): unknown {
   const scopeM = /^\/rules\/([^/]+)\/scope$/.exec(path);
   if (scopeM) return scope(decodeURIComponent(scopeM[1]));
+  const rec = /^\/rules\/([^/]+)\/reconcile$/.exec(path);
+  if (rec) return reconcile(decodeURIComponent(rec[1]), typeof params.run === "string" ? params.run : undefined);
   const hist = /^\/rules\/([^/]+)\/history$/.exec(path);
   if (hist) return ruleHistory(decodeURIComponent(hist[1]));
   const ex = /^\/explain\/([^/]+)$/.exec(path);

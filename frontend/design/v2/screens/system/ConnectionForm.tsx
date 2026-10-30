@@ -28,13 +28,13 @@ export const editValues = (s: SAPSystemExtended): ConnectionValues => ({
 const PATH_LABEL: Record<string, () => string> = {
   table_reader: () => tr("Table reader"),
   odp: () => tr("ODP, table reader for the rest"),
-  auto: () => tr("Automatic: ODP where it covers the rules"),
+  auto: () => tr("Automatic: table reader"),
   odata: () => tr("OData through the SAP Gateway"),
 };
 const PATH_HINT: Record<string, () => string> = {
   table_reader: () => tr("Reads each table with the table reader below. Needs read access to the tables."),
   odp: () => tr("Reads mapped tables through ODP providers (RODPS_REPL). Fields a provider does not carry are reported per table; other tables use the table reader."),
-  auto: () => tr("Uses ODP for a table when the ODP functions exist and a provider carries every field the rules need; the table reader otherwise."),
+  auto: () => tr("Reads with the table reader. ODP is used only when you choose it, after confirming with SAP that your licence allows it (SAP Note 3255746)."),
   odata: () => tr("Reads through the released APIs your Gateway exposes, such as API_PRODUCT_SRV and API_BUSINESS_PARTNER, with this system's user."),
 };
 const READER_LABEL: Record<string, () => string> = {

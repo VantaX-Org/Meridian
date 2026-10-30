@@ -89,7 +89,7 @@ Many Basis teams refuse `RFC_READ_TABLE` in production. Each ABAP system has an
 |---|---|---|
 | Table reader (default) | every planned table through the table reader (`RFC_READ_TABLE`, `/BODS/RFC_READ_TABLE2` or `BBP_RFC_READ_TABLE`, also chosen per system) | `S_RFC` for the reader, `S_TABU_NAM` for the tables |
 | ODP | tables mapped to an ODP provider in `sap/odp_mappings.yaml` through `RODPS_REPL_ODP_GET_DETAIL` / `OPEN` / `FETCH` / `CLOSE` (full extraction, packaged by fetch call); the rest through the table reader | `S_RFC` for `RODPS_REPL`, `S_RO_OSOA`, the CDS views' access controls |
-| Automatic | ODP for a table when the functions exist and a provider carries every field the rules need; the table reader otherwise | as ODP, plus `RFC_FUNCTION_SEARCH` |
+| Automatic | The table reader for every table; ODP over RFC only when chosen explicitly (SAP Note 3255746) | as the table reader |
 | OData (S/4HANA on premise) | the Gateway's released APIs (`API_BUSINESS_PARTNER`, `API_PRODUCT_SRV`, `API_GLACCOUNTINCHARTOFACCOUNTS_SRV`), mapped onto the same tables as S/4HANA Cloud | `S_SERVICE` for the services, back-end display authorisations, the Gateway base URL on the connection |
 
 ODP providers carry extractor or CDS fields, not table fields: the mapping lists

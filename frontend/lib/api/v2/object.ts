@@ -1,6 +1,7 @@
 import apiClient from "@/lib/api/client";
 import { fixtureActive } from "./fixture";
 import { v2Get, v2Send } from "./client";
+import { v2Download } from "./download";
 import { fixturePost } from "./fixtures/object";
 import type { DimensionKey } from "./types";
 
@@ -133,6 +134,76 @@ export interface RuleScope {
 
 export function getRuleScope(checkId: string, module?: string | null): Promise<RuleScope> {
   return v2Get<RuleScope>(`/rules/${encodeURIComponent(checkId)}/scope`, { module: module ?? undefined });
+}
+
+/* ---- GET /rules/{check_id}/reconcile?run= : prove a rule in SAP ---- */
+
+/** SE16's selection options, plus the field's initial value and SE16's multiple selection of single values. */
+export type SelectionOperator = "EQ" | "NE" | "GT" | "LT" | "GE" | "LE" | "CP" | "initial" | "not_initial" | "in" | "not_in";
+
+export interface SelectionLine {
+  table: string;
+  field: string;
+  operator: SelectionOperator | string;
+  values: string[];
+  part: "population" | "failing" | string;
+  /** The line in English words, as the workbook writes it. */
+  words: string;
+}
+
+/** What SE16 alone cannot express: its kind, the identifiers it names and the condition in English words. */
+export interface ReconcileCondition {
+  kind: string;
+  fields: string[];
+  params: Record<string, unknown>;
+  words: string;
+}
+
+export interface ReconcileJoin {
+  from_table: string;
+  to_table: string;
+  on: string[][];
+  words: string;
+}
+
+export interface ReconcileKey {
+  raw: string;
+  display: string;
+  fields: { field: string | null; raw: string; display: string }[];
+}
+
+export interface Reconcile {
+  check_id: string;
+  module: string;
+  label: string;
+  run_id: string;
+  run_at: string | null;
+  run_label: string | null;
+  check_class: string | null;
+  message: string | null;
+  field: string | null;
+  system: "abap" | "cloud" | string;
+  transaction: string | null;
+  tables: string[];
+  grain: { table: string | null; key_fields: string[] };
+  population_selection: SelectionLine[];
+  failing_selection: SelectionLine[];
+  conditions: ReconcileCondition[];
+  joins: ReconcileJoin[];
+  se16: boolean;
+  population: number;
+  failing: number;
+  excluded: Record<string, number>;
+  sample_keys: ReconcileKey[];
+}
+
+export function getRuleReconcile(checkId: string, run: string): Promise<Reconcile> {
+  return v2Get<Reconcile>(`/rules/${encodeURIComponent(checkId)}/reconcile`, { run });
+}
+
+/** The reconciliation workbook of a run: the `top` rules with the most failing records, one sheet each. */
+export function downloadReconciliationWorkbook(run: string, top = 10): Promise<string> {
+  return v2Download(`/runs/${encodeURIComponent(run)}/reconciliation.xlsx`, { top }, "meridian-reconciliation.xlsx");
 }
 
 /* ---- GET /rules/{check_id}/history ---- */

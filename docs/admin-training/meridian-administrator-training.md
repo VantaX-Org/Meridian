@@ -11,8 +11,8 @@ your own deployment shows your data and never shows that bar.
 
 Who does what:
 
-- **Meridian administrator**: modules 1 to 3 and 6 to 10.
-- **SAP Basis**: modules 4 and 5, and the SAP side of module 7.
+- **Meridian administrator**: modules 1 to 3 and 6 to 11.
+- **SAP Basis**: modules 4 and 5, and the SAP side of modules 7 and 11.
 
 ## Module 1: Install and first start
 
@@ -243,7 +243,7 @@ Many Basis teams refuse `RFC_READ_TABLE` in production. Each ABAP system's conne
 |---|---|
 | Table reader (default) | Reads every table with the table reader below. |
 | ODP, table reader for the rest | Reads the tables an ODP provider covers (`0MATERIAL_ATTR` for MARA, `0MAT_PLANT_ATTR` for MARC, `0CUSTOMER_ATTR` for KNA1, `0VENDOR_ATTR` for LFA1, `0GL_ACCOUNT_ATTR` for SKA1, and on S/4HANA the CDS views `I_Product`, `I_Customer`, `I_Supplier`, `I_BusinessPartner`) through the `RODPS_REPL_ODP_*` functions. A field the provider does not carry is listed for the table and its rules are not evaluable. Other tables use the table reader. |
-| Automatic: ODP where it covers the rules | ODP for a table when the functions exist and a provider carries every field the rules need; the table reader otherwise. |
+| Automatic: table reader | The table reader for every table. ODP over RFC is used only when you choose ODP explicitly, after confirming with SAP that your licence allows it (SAP Note 3255746). |
 | OData through the SAP Gateway | S/4HANA on premise only. Reads the released APIs your Gateway exposes (`API_PRODUCT_SRV`, `API_BUSINESS_PARTNER`, `API_GLACCOUNTINCHARTOFACCOUNTS_SRV`) with this system's user, sending its client as `sap-client`. Enter the **Gateway base URL**. |
 
 A table read with a date window, a scope or by parent keys always uses the table reader, because ODP reads a
@@ -594,3 +594,40 @@ as your restore time.
 
 For anything else, download the diagnostics bundle and send it with your request: it holds no SAP data, no
 credentials and no user emails. The printable user guide (all roles) is `frontend/docs/guide/meridian-guide.pdf`.
+
+## Module 11: Prove the numbers
+
+**You will learn to** reproduce a rule's count by hand in SAP, so your SAP team can check Meridian's numbers
+without trusting Meridian, and record the result for the go-live sign-off.
+
+Every count in Meridian is a rule over the data your extraction read. For any rule and run, Meridian gives the SE16
+selection that reproduces it: the table and record grain, the selection fields with their SE16 options and values,
+what SE16 alone cannot express (a pattern, a check-table lookup, a duplicate, a join) in plain words, the population
+and failing counts it measured, and five failing record keys as SE16 shows them.
+
+**Steps**
+
+1. Open a rule (`⌘K`, then its id, for example `MM014`) and choose **Prove in SAP**. When the rule runs on several
+   objects, choose the object and run.
+2. In SAP, open the transaction the section names: `SE16N` when one selection is enough, otherwise `SE16H` (or
+   `SQVI` for a join). Enter the table of the **Record grain**.
+3. Enter the **Population** rows. "Initial value" means option `=` with an empty value (it selects blank, 0 and
+   00000000). The population leaves out records SAP marks as dead, such as `LVORM` flagged for deletion. Count the
+   entries and compare with **Population**.
+4. Add the **Failing** rows and count again; compare with **Failing**. For a rule with conditions SE16 cannot
+   express, apply them as written (for a check table, list the check table in SE16 and compare the values).
+5. Look up the **Five failing records** by their key. SE16 shows `MATNR 232`; Meridian stores
+   `MATNR=000000000000000232` (the conversion exit adds the leading zeros), and both are shown.
+
+To prove a whole run, **Download the reconciliation workbook** from the same section (export permission): a summary
+sheet with one row per rule, for the ten rules with the most failing records, and one sheet per rule with its
+selection, steps, counts and sample keys. Your team fills in the **SE16 count** and **Match** columns.
+
+**Check.** The SE16 count equals Meridian's count when the extraction read the table in full on the run's date. A
+small difference usually means the data changed since the extraction (SE16 reads today's data); rerun the extraction
+and the rule, then count again in the same hour. A table read by a window (an extraction scope or a date range) is
+counted only inside that window: add the same window to the SE16 selection.
+
+**Exercise.** Reconcile three rules of your first run: one completeness rule with a single SE16N selection (a
+`null_check`), one value-list rule (a check-table lookup) and one rule with a join. Fill in the workbook and keep it
+with the go-live records. The step-by-step first deployment runbook is `docs/live-deployment-checklist.md`.
