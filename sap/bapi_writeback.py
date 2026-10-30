@@ -23,9 +23,13 @@ Objects and BAPIs:
                       _X structures), BAPI_BUPA_ADDRESS_CHANGE for ADRC (ADDRESSDATA/_X)
   sd_customer_master  BAPI_CUSTOMER_CHANGEFROMDATA1: PI_COMPANYDATA/X (KNA1 general data) and
   accounts_receivable PI_OPT_COMPANYDATA/X (KNVV sales-area data, with PI_SALESORG, PI_DISTR_CHAN, PI_DIVISION)
-  accounts_payable    none. The classic vendor master (LFA1, LFB1, LFM1) is maintained by class VMD_EI_API, which is
-                      not remote-enabled and differs by release, so it cannot be called over RFC. Vendor fixes go out
-                      as an export (LSMW / XK02 file), or through BUT000 where the vendor is a business partner.
+  accounts_payable    through the vendor's business partner (supplier role), where the connected system has one for it
+                      (CVI): LFA1 names and search term by BAPI_BUPA_CENTRAL_CHANGE, LFA1 address fields and ADRC by
+                      BAPI_BUPA_ADDRESS_CHANGE, LFBK account holder, control key and reference by
+                      BAPI_BUPA_BANKDETAIL_CHANGE. Decided per record on the system (``resolve_vendor``): the functions
+                      must exist (RFC_FUNCTION_SEARCH), CVI_VEND_LINK must link the vendor to a partner, the address and
+                      bank row must be the partner's (BUT020, BUT0BK). Otherwise, and always for LFB1 / LFM1 (their
+                      maintenance, class VMD_EI_API, is not remote-enabled), the fix goes out with the export.
 
 The structure and field names below follow SAP's interface documentation for these BAPIs. They are not taken on
 trust: step 2 checks each one against the connected system before anything is sent.
@@ -44,9 +48,6 @@ COMMIT = "BAPI_TRANSACTION_COMMIT"
 ROLLBACK = "BAPI_TRANSACTION_ROLLBACK"
 FAILING_TYPES = ("E", "A")
 
-VENDOR_REASON = ("The classic vendor master (LFA1, LFB1, LFM1) is maintained by class VMD_EI_API, which is not "
-                 "remote-enabled and differs by release; load this fix with the export (LSMW / XK02 file), or fix "
-                 "the business partner (BUT000) where the vendor is one")
 
 
 @dataclass(frozen=True)
@@ -71,6 +72,8 @@ class ObjectSpec:
     simulate: str                          # "testrun_or_rollback" | "interface_only"
     # record-key field -> importing parameter, sent when the record key has it (sales area, address number)
     context: dict[str, str] = field(default_factory=dict)
+    # record-key field -> the one BAPI that takes it as context (none listed: every BAPI of the object)
+    context_bapi: dict[str, str] = field(default_factory=dict)
 
 
 def _t(bapi: str, param: str, fld: str, xparam: Optional[str] = None, **kw: Any) -> Target:
@@ -157,6 +160,7 @@ BUSINESS_PARTNER = ObjectSpec(
     bapi_key={_BPC: ("PARTNER", "BUSINESSPARTNER"), _BPA: ("PARTNER", "BUSINESSPARTNER")},
     simulate="testrun_or_rollback",
     context={"ADDRNUMBER": "ADDRNUMBER"},
+    context_bapi={"ADDRNUMBER": _BPA},
     fields={
         "BUT000.BU_SORT1": _bp("CENTRALDATA", "SEARCHTERM1"), "BUT000.BU_SORT2": _bp("CENTRALDATA", "SEARCHTERM2"),
         "BUT000.TITLE": _bp("CENTRALDATA", "TITLE_KEY"), "BUT000.XDELE": _bp("CENTRALDATA", "CENTRALARCHIVINGFLAG"),
@@ -204,17 +208,73 @@ def _customer(module: str) -> ObjectSpec:
                       fields=CUSTOMER_FIELDS)
 
 
+# ── Vendor (accounts payable) ────────────────────────────────────────────────
+# A vendor is written only where it is a business partner with the supplier role (CVI: S/4HANA always, ECC where
+# customer/vendor integration is active). Its general data then lives in the business partner, and the business
+# partner BAPIs above carry it; CVI synchronises the change to LFA1/LFBK in the same LUW. Which path a record takes is
+# decided on the connected system, per record, by ``resolve_vendor``: the BAPIs must exist (RFC_FUNCTION_SEARCH),
+# CVI_VEND_LINK must link the vendor to a partner (BUT000 by PARTNER_GUID), the vendor's address must be one of the
+# partner's (BUT020), and a bank row must be one of the partner's bank details (BUT0BK). Anything else goes out with
+# the export, with the reason.
+
+_BPB = "BAPI_BUPA_BANKDETAIL_CHANGE"
+VENDOR_TABLES = ("LFA1", "LFB1", "LFM1", "LFBK", "LFB5", "LFM2", "LFAS")
+VENDOR_ORG_TABLES = ("LFB1", "LFM1", "LFB5", "LFM2")
+
+CLASSIC_VENDOR_REASON = ("Vendor master on this release changes through the vendor maintenance transaction; "
+                         "Meridian exports a load file")
+VENDOR_ORG_REASON = ("Company code (LFB1) and purchasing organisation (LFM1) data of a vendor change through the "
+                     "vendor and CVI maintenance APIs (class VMD_EI_API), which are not remote-enabled; SAP releases no "
+                     "RFC-enabled function for them that Meridian can rely on, so Meridian exports a load file")
+VENDOR_BP_NOTE = ("Sent through the vendor's business partner (supplier role, CVI) when the connected system links "
+                  "the vendor to one; checked on the system before anything is sent, otherwise it goes with the export")
+# Kept for the golden-record path (api/services/golden_writeback.py), which does not resolve vendors to partners.
+VENDOR_REASON = ("The classic vendor master (LFA1, LFB1, LFM1) is maintained by class VMD_EI_API, which is not "
+                 "remote-enabled and differs by release; load this golden record with the export (LSMW / XK02 "
+                 "file). Vendor fixes from a finding or batch go live through the business partner where the vendor "
+                 "is one")
+
+
+def _bank(f: str) -> Target:
+    # a bank detail change names the partner's bank detail (BUT0BK.BKVID), found from the LFBK key
+    return _t(_BPB, "BANKDETAILDATA", f, "BANKDETAILDATA_X", needs=("BKVID",))
+
+
+VENDOR = ObjectSpec(
+    module="accounts_payable",
+    bapi_key={_BPC: ("PARTNER", "BUSINESSPARTNER"), _BPA: ("PARTNER", "BUSINESSPARTNER"),
+              _BPB: ("PARTNER", "BUSINESSPARTNER")},
+    simulate="testrun_or_rollback",
+    context={"ADDRNUMBER": "ADDRNUMBER", "BKVID": "BANKDETAILID"},
+    context_bapi={"ADDRNUMBER": _BPA, "BKVID": _BPB},
+    fields={
+        # LFA1 general data held by the partner (an organisation: BUT000 TYPE 2)
+        "LFA1.NAME1": _bp("CENTRALDATAORGANIZATION", "NAME1"), "LFA1.NAME2": _bp("CENTRALDATAORGANIZATION", "NAME2"),
+        "LFA1.NAME3": _bp("CENTRALDATAORGANIZATION", "NAME3"), "LFA1.NAME4": _bp("CENTRALDATAORGANIZATION", "NAME4"),
+        "LFA1.SORTL": _bp("CENTRALDATA", "SEARCHTERM1"),
+        # LFA1 address fields are copies of the vendor's address (ADRC, LFA1.ADRNR)
+        "LFA1.LAND1": _adrc("COUNTRY"), "LFA1.REGIO": _adrc("REGION"), "LFA1.ORT01": _adrc("CITY"),
+        "LFA1.PSTLZ": _adrc("POSTL_COD1"), "LFA1.SPRAS": _adrc("LANGU"),
+        **{k: v for k, v in BUSINESS_PARTNER.fields.items() if k.startswith("ADRC.")},
+        # LFBK bank data held as the partner's bank details (BUT0BK); the bank key fields themselves are not changed
+        "LFBK.KOINH": _bank("ACCOUNTHOLDER"), "LFBK.BKONT": _bank("CTRL_KEY"), "LFBK.BKREF": _bank("BANK_REF"),
+    },
+)
+_ORG_FIELDS = "CENTRALDATAORGANIZATION"
+
 OBJECTS: dict[str, ObjectSpec] = {
     "material_master": MATERIAL,
     "business_partner": BUSINESS_PARTNER,
     "sd_customer_master": _customer("sd_customer_master"),
     "accounts_receivable": _customer("accounts_receivable"),
+    "accounts_payable": VENDOR,
 }
 
 # The main BAPI per module, for display ("which BAPI writes this object")
 BAPI_OF_MODULE: dict[str, str] = {
     "material_master": _MAT, "business_partner": _BPC,
     "sd_customer_master": _CUS, "accounts_receivable": _CUS,
+    "accounts_payable": _BPC,
 }
 
 
@@ -249,8 +309,11 @@ class FieldPlan:
 def plan_field(module: str, fld: str, record_key: str = "") -> FieldPlan:
     """Whether a BAPI can carry this field of this record, and which; the reason when not. Never contacts SAP."""
     full = _full(fld)
-    if module == "accounts_payable" or full.split(".")[0] in ("LFA1", "LFB1", "LFM1"):
-        return FieldPlan(full, False, None, VENDOR_REASON)
+    if module == VENDOR.module:
+        return _plan_vendor(full, record_key)
+    if full.split(".")[0] in VENDOR_TABLES:
+        return FieldPlan(full, False, None, "Vendor fields are written back from accounts payable findings; "
+                                            "load this fix with the export")
     spec = OBJECTS.get(module)
     if spec is None:
         return FieldPlan(full, False, None, f"No write-back BAPI for {module}; load this fix with the export")
@@ -264,6 +327,144 @@ def plan_field(module: str, fld: str, record_key: str = "") -> FieldPlan:
         return FieldPlan(full, False, tgt.bapi,
                          f"The record key has no {', '.join(missing)}, which {tgt.bapi} needs for {full}")
     return FieldPlan(full, True, tgt.bapi, None)
+
+
+def _plan_vendor(full: str, record_key: str) -> FieldPlan:
+    """A vendor field: the business partner BAPI that may carry it, or the export and why. Whether the vendor is a
+    business partner on the connected system is decided at send time (``resolve_vendor``), never here."""
+    if full.split(".")[0] in VENDOR_ORG_TABLES:
+        return FieldPlan(full, False, None, VENDOR_ORG_REASON)
+    tgt = VENDOR.fields.get(full)
+    if tgt is None:
+        return FieldPlan(full, False, None, f"No BAPI mapping for {full} yet; load this fix with the export")
+    need = ["LIFNR", *(("BANKS", "BANKL", "BANKN") if tgt.bapi == _BPB else ())]
+    keys = parse_key(record_key)
+    missing = [k for k in need if k not in keys]
+    if record_key and missing:
+        return FieldPlan(full, False, tgt.bapi, f"The record key has no {', '.join(missing)}, which Meridian needs "
+                                                f"to find the vendor's business partner for {full}")
+    return FieldPlan(full, True, tgt.bapi, VENDOR_BP_NOTE)
+
+
+# ── Vendor: which records the connected system lets through the business partner ─
+
+
+def function_exists(conn: Any, name: str, cache: dict[str, Any]) -> bool:
+    """Whether the remote-enabled function module ``name`` is on the connected system (RFC_FUNCTION_SEARCH, which
+    lists remote-enabled function modules only). Cached per run. A refused search counts as absent."""
+    k = f"fn:{name}"
+    if k not in cache:
+        try:
+            r = conn.execute_bapi(BAPICall("RFC_FUNCTION_SEARCH", {"FUNCNAME": name})) or {}
+            cache[k] = any(str(f.get("FUNCNAME", "")).strip() == name for f in (r.get("FUNCTIONS") or []))
+        except SAPConnectorError as e:  # NOTHING_FOUND, or not authorised to search
+            logger.info("RFC_FUNCTION_SEARCH %s: %s", name, type(e).__name__)
+            cache[k] = False
+    return cache[k]
+
+
+class _ReadFailed(Exception):
+    pass
+
+
+def _lit(v: str) -> str:
+    return "'" + str(v).replace("'", "''") + "'"
+
+
+def _rows(conn: Any, table: str, fields: list[str], where: str) -> list[dict]:
+    try:
+        df = conn.read_table(table, fields, where=where, max_rows=20)
+    except Exception as e:  # not readable for this user, or no such table on this release
+        logger.info("write-back vendor lookup %s: %s", table, type(e).__name__)
+        raise _ReadFailed(table) from e
+    return [{k: str(v or "").strip() for k, v in r.items()} for r in df.to_dict(orient="records")]
+
+
+def resolve_vendor(conn: Any, record_key: str, fields: list[str],
+                   cache: Optional[dict[str, Any]] = None) -> tuple[dict[str, str], dict[str, str]]:
+    """Decide on the connected system, per field, whether this vendor record goes through its business partner.
+
+    Returns (record key fields, with PARTNER, ADDRNUMBER and BKVID added where found; {field: reason} for every field
+    that goes with the export instead). Reads only: RFC_FUNCTION_SEARCH and table reads of CVI_VEND_LINK, BUT000,
+    LFA1, BUT020 and BUT0BK. Never sends a change."""
+    cache = {} if cache is None else cache
+    keys = parse_key(record_key)
+    fields = [_full(f) for f in fields]
+    export: dict[str, str] = {}
+    targets: dict[str, Target] = {}
+    for f in fields:
+        plan = _plan_vendor(f, record_key)
+        if plan.supported:
+            targets[f] = VENDOR.fields[f]
+        else:
+            export[f] = plan.reason or CLASSIC_VENDOR_REASON
+
+    def out(fs, reason: str) -> None:
+        for f in list(fs):
+            export[f] = reason
+            targets.pop(f, None)
+
+    for bapi in sorted({t.bapi for t in targets.values()}):
+        if not function_exists(conn, bapi, cache):
+            out([f for f, t in targets.items() if t.bapi == bapi],
+                f"{CLASSIC_VENDOR_REASON} ({bapi} is not available on this system)")
+    if not targets:
+        return keys, export
+    lifnr = keys["LIFNR"]
+    try:
+        link = _rows(conn, "CVI_VEND_LINK", ["PARTNER_GUID"], f"VENDOR = {_lit(lifnr)}")
+    except _ReadFailed:
+        out(targets, "Meridian could not read CVI_VEND_LINK to find this vendor's business partner (the RFC user "
+                     "needs read access to it); load this fix with the export")
+        return keys, export
+    if not link or not link[0].get("PARTNER_GUID"):
+        out(targets, f"{CLASSIC_VENDOR_REASON} (vendor {lifnr} is not linked to a business partner in CVI_VEND_LINK)")
+        return keys, export
+    try:
+        bp = _rows(conn, "BUT000", ["PARTNER", "TYPE"], f"PARTNER_GUID = {_lit(link[0]['PARTNER_GUID'])}")
+    except _ReadFailed:
+        bp = []
+    if not bp or not bp[0].get("PARTNER"):
+        out(targets, f"The business partner linked to vendor {lifnr} could not be read from BUT000; load this fix "
+                     "with the export")
+        return keys, export
+    partner, bp_type = bp[0]["PARTNER"], bp[0].get("TYPE", "")
+    keys["PARTNER"] = partner
+    if bp_type != "2":
+        out([f for f, t in targets.items() if t.param == _ORG_FIELDS],
+            f"Business partner {partner} of vendor {lifnr} is not an organisation (category {bp_type or 'unknown'}); "
+            "its name is kept in other fields, so load this fix with the export")
+
+    if any(t.bapi == _BPA for t in targets.values()):
+        adrnr = keys.get("ADRNR") or keys.get("ADDRNUMBER")
+        try:
+            if not adrnr:
+                row = _rows(conn, "LFA1", ["ADRNR"], f"LIFNR = {_lit(lifnr)}")
+                adrnr = row[0].get("ADRNR") if row else ""
+            ok = bool(adrnr) and bool(_rows(conn, "BUT020", ["ADDRNUMBER"],
+                                            f"PARTNER = {_lit(partner)} AND ADDRNUMBER = {_lit(adrnr)}"))
+        except _ReadFailed:
+            ok = False
+        if ok:
+            keys["ADDRNUMBER"] = str(adrnr)
+        else:
+            out([f for f, t in targets.items() if t.bapi == _BPA],
+                f"The address of vendor {lifnr} was not found among the addresses of business partner {partner} "
+                "(LFA1.ADRNR in BUT020); load this fix with the export")
+
+    if any(t.bapi == _BPB for t in targets.values()):
+        where = " AND ".join(f"{k} = {_lit(keys[k])}" for k in ("BANKS", "BANKL", "BANKN"))
+        try:
+            bk = _rows(conn, "BUT0BK", ["BKVID"], f"PARTNER = {_lit(partner)} AND {where}")
+        except _ReadFailed:
+            bk = []
+        if bk and bk[0].get("BKVID"):
+            keys["BKVID"] = bk[0]["BKVID"]
+        else:
+            out([f for f, t in targets.items() if t.bapi == _BPB],
+                f"This bank account of vendor {lifnr} was not found among the bank details of business partner "
+                f"{partner} (BUT0BK); load this fix with the export")
+    return keys, export
 
 
 # ── Building the call ─────────────────────────────────────────────────────────
@@ -297,7 +498,7 @@ def build_calls(module: str, record_key: str, changes: dict[str, Any]) -> dict[s
         if missing:
             raise KeyError(", ".join(missing))
         for k, param in spec.context.items():
-            if k in keys:
+            if k in keys and spec.context_bapi.get(k, tgt.bapi) == tgt.bapi:
                 p[param] = keys[k]
         if tgt.view:
             p.setdefault("HEADDATA", {})[tgt.view] = "X"
@@ -332,7 +533,7 @@ class Interface:
     fields: dict[str, set[str]] = field(default_factory=dict)  # structure type -> field names
 
 
-def read_interface(conn: Any, bapi: str, cache: dict[str, Interface]) -> Interface:
+def read_interface(conn: Any, bapi: str, cache: dict[str, Any]) -> Interface:
     """The BAPI's parameters on the connected system (RFC_GET_FUNCTION_INTERFACE). Cached per run."""
     if bapi in cache:
         return cache[bapi]
@@ -355,7 +556,7 @@ def _structure_fields(conn: Any, iface: Interface, tabname: str) -> set[str]:
     return iface.fields[tabname]
 
 
-def verify_params(conn: Any, bapi: str, params: dict, cache: dict[str, Interface]) -> list[str]:
+def verify_params(conn: Any, bapi: str, params: dict, cache: dict[str, Any]) -> list[str]:
     """What the call would send that this system's BAPI does not have ([] = all present)."""
     iface = read_interface(conn, bapi, cache)
     if not iface.params:
@@ -415,11 +616,12 @@ class RecordResult:
     committed: bool = False
     messages: list[dict] = field(default_factory=list)
     error: Optional[str] = None
+    export: list[dict] = field(default_factory=list)   # fields not sent, each {field, reason}: they go by export
 
     def as_dict(self) -> dict:
         return {"record_key": self.record_key, "bapis": self.bapi_calls, "fields": self.fields,
                 "simulated": self.simulated, "simulate_messages": self.simulate_messages, "applied": self.applied,
-                "committed": self.committed, "messages": self.messages, "error": self.error}
+                "committed": self.committed, "messages": self.messages, "error": self.error, "export": self.export}
 
 
 def _call(conn: Any, bapi: str, params: dict) -> dict:
@@ -428,7 +630,7 @@ def _call(conn: Any, bapi: str, params: dict) -> dict:
 
 
 def write_record(conn: Any, module: str, record_key: str, changes: dict[str, Any], apply: bool,
-                 cache: Optional[dict[str, Interface]] = None) -> RecordResult:
+                 cache: Optional[dict[str, Any]] = None) -> RecordResult:
     """Simulate, then (``apply``) write one record's supported changes. See the module docstring for the steps.
 
     ``changes`` maps "TABLE.FIELD" to the new value; fields without a BAPI mapping must be planned out first.
@@ -437,12 +639,24 @@ def write_record(conn: Any, module: str, record_key: str, changes: dict[str, Any
     spec = OBJECTS[module]
     res = RecordResult(record_key=record_key, fields=sorted(_full(f) for f in changes))
     try:
-        calls = build_calls(module, record_key, changes)
-    except KeyError as e:
-        res.error = f"No BAPI mapping or record key field for {e}"
-        return res
-    res.bapi_calls = sorted(calls)
-    try:
+        call_key = record_key
+        if module == VENDOR.module:
+            # a vendor goes through its business partner only where the connected system has one for it
+            keys, export = resolve_vendor(conn, record_key, list(changes), cache)
+            res.export = [{"field": f, "reason": r} for f, r in sorted(export.items())]
+            changes = {f: v for f, v in changes.items() if _full(f) not in export}
+            res.fields = sorted(_full(f) for f in changes)
+            logger.info("write-back vendor %s: %d field(s) through the business partner, %d to the export",
+                        record_key, len(changes), len(export))
+            if not changes:
+                return res
+            call_key = "|".join(f"{k}={v}" for k, v in keys.items())
+        try:
+            calls = build_calls(module, call_key, changes)
+        except KeyError as e:
+            res.error = f"No BAPI mapping or record key field for {e}"
+            return res
+        res.bapi_calls = sorted(calls)
         for bapi, params in calls.items():
             problems = verify_params(conn, bapi, params, cache)
             if problems:

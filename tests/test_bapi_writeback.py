@@ -90,7 +90,7 @@ def test_plan_reports_every_field_and_why_not():
     assert not no_plant.supported and "WERKS" in no_plant.reason
     unmapped = bw.plan_field("material_master", "MARC.NFMAT", MAT_KEY)
     assert not unmapped.supported and unmapped.reason.startswith("No BAPI mapping for MARC.NFMAT")
-    vendor = bw.plan_field("accounts_payable", "LFA1.NAME1", "LIFNR=1")
+    vendor = bw.plan_field("accounts_payable", "LFB1.ZTERM", "LIFNR=1|BUKRS=1000")
     assert not vendor.supported and "VMD_EI_API" in vendor.reason and "export" in vendor.reason
     assert not bw.plan_field("quality_management", "QALS.ART", "PRUEFLOS=1").supported
 
