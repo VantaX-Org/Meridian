@@ -102,11 +102,21 @@ describe("the command line finds every canvas by name", () => {
     expect(push).toHaveBeenCalledWith(expect.stringContaining("/admin/webhooks"));
   });
 
+  it("finds the default digest by the name on its page", async () => {
+    const { dialog, input } = await ask("Default digest");
+    expect(await within(dialog).findByText("Administration: Default digest")).toBeInTheDocument();
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(push).toHaveBeenCalledWith(expect.stringContaining("/admin/notifications"));
+  });
+
   it("matches by the start of a word first, then anywhere in the name", () => {
     const places = placeIndex(() => true);
     expect(matchPlaces(places, "rep").map((p) => p.href)).toContain("/reports");
     expect(matchPlaces(places, "land")[0].href).toBe("/");
     expect(matchPlaces(places, "x")).toEqual([]);
     expect(placeIndex(() => false).some((p) => p.href.startsWith("/admin"))).toBe(false);
+    // The notifications section is found by the name on its page, Default digest.
+    const digest = matchPlaces(places, "default digest");
+    expect(digest[0]).toMatchObject({ href: "/admin/notifications", title: "Administration: Default digest" });
   });
 });

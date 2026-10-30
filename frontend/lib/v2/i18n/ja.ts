@@ -4391,4 +4391,5 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "The fix sheet reads today's rows, not a past run; clear the run to export": "修正シートは過去の実行ではなく今日の行を読み込みます。エクスポートするには実行の指定を解除してください",
   "One sheet per object, with each record's value at risk": "オブジェクトごとに 1 シート、各レコードのリスク額付き",
   "Export by object": "オブジェクト別にエクスポート",
+  "Channels and frequency": "チャネルと頻度",
 };

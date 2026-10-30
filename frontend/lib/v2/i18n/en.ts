@@ -4390,6 +4390,7 @@ export const en = {
   "The fix sheet reads today's rows, not a past run; clear the run to export": "The fix sheet reads today's rows, not a past run; clear the run to export",
   "One sheet per object, with each record's value at risk": "One sheet per object, with each record's value at risk",
   "Export by object": "Export by object",
+  "Channels and frequency": "Channels and frequency",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

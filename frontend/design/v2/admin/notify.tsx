@@ -192,7 +192,7 @@ function DigestForm({ initial }: { initial: NotificationConfig | null }) {
   const emailOk = d.email.trim() === "" || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email.trim());
   const urlOk = d.teams_webhook.trim() === "" || /^https:\/\//i.test(d.teams_webhook.trim());
   return (
-    <Block title={tr("Default digest")} hint={tr("The summary the tenant gets by default, by email and Teams. Each person sets their own digest of open work under Preferences.")}>
+    <Block title={tr("Channels and frequency")} hint={tr("The summary the tenant gets by default, by email and Teams. Each person sets their own digest of open work under Preferences.")}>
       <div className="m2-fgrid">
         <Fld label={tr("Email")} error={emailOk ? null : tr("Enter an email address")}>
           <input type="email" value={d.email} placeholder={tr("dq-team@company.com")} disabled={!write} onChange={(e) => setD({ ...d, email: e.target.value })} />
@@ -234,11 +234,11 @@ function DigestForm({ initial }: { initial: NotificationConfig | null }) {
   );
 }
 
-/** Admin › Notifications: the tenant's default digest. */
+/** Admin › Notifications › Default digest: the tenant's default digest. */
 export function NotificationsSection() {
   const settings = useTenantSettings();
   return (
-    <AdminPage title={tr("Notifications")} lead={tr("What the whole tenant is sent by default. Alerts and their channels are under Alerts.")}>
+    <AdminPage title={tr("Default digest")} lead={tr("What the whole tenant is sent by default. Alerts and their channels are under Alerts.")}>
       <Loaded q={settings} what={tr("The notification settings")} rows={3}>
         {(s: TenantSettings) => <DigestForm key={JSON.stringify(s.notification_config)} initial={s.notification_config} />}
       </Loaded>

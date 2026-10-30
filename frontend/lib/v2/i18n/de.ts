@@ -4391,4 +4391,5 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The fix sheet reads today's rows, not a past run; clear the run to export": "Das Korrekturblatt liest die heutigen Zeilen, keinen früheren Lauf; heben Sie den Lauf auf, um zu exportieren",
   "One sheet per object, with each record's value at risk": "Ein Blatt je Objekt, mit dem gefährdeten Wert jedes Datensatzes",
   "Export by object": "Nach Objekt exportieren",
+  "Channels and frequency": "Kanäle und Häufigkeit",
 };
