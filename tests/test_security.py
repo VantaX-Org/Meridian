@@ -384,7 +384,7 @@ class TestSentryScrubber:
             current["nested"] = {}
             current = current["nested"]
         current["value"] = "deep"
-        scrubbed = self._scrub(deeply_nested)
+        self._scrub(deeply_nested)
         # Should not crash — depth limit prevents infinite recursion
 
     def test_password_keys_redacted(self):

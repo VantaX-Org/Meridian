@@ -279,7 +279,7 @@ def test_compensation_golden():
     ]
     _, found = _run("compensation", _frames("compensation", {"COMPINFO": rows}))
     assert found == {
-        "COMP004": {"USERID=100110|EFFECTIVE_DATE=2025-04-01"},
+        "COMP004": {"USERID=100110|EFFECTIVE_DATE=2025-04-01"},  # currency "ZA" is not 3-letter ISO
         "COMP006": {"USERID=100111|EFFECTIVE_DATE=2025-04-01"},
         "COMP011": {"USERID=100112|EFFECTIVE_DATE=2025-04-01"},
         "COMP018": {"USERID=100113|EFFECTIVE_DATE=2025-04-01"},
@@ -290,7 +290,6 @@ def test_compensation_golden():
         "COMP021": {"USERID=100118|EFFECTIVE_DATE=2025-04-01"},
         # new depth rules (COMP095+) also legitimately fire on this fixture:
         "COMP117": {"USERID=100117|EFFECTIVE_DATE=2025-04-01"},  # pay range max below min
-        "COMP004": {"USERID=100110|EFFECTIVE_DATE=2025-04-01"},  # currency "ZA" is not 3-letter ISO
     }, found
 
 

@@ -4,10 +4,7 @@ Meridian Week 1 P0 Direct Test Suite - No Docker-Compose Calls
 Tests all 14 tasks by checking files and imports directly.
 """
 
-import os
 import sys
-import subprocess
-from typing import Tuple
 from pathlib import Path
 
 # Color codes

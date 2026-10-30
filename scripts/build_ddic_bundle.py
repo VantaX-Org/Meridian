@@ -167,7 +167,6 @@ def parse_domain(name: str, page: str) -> dict:
 
 def referenced_tables() -> set[str]:
     """Every TABLE referenced by rules, the extraction registry and column maps."""
-    import yaml
 
     pat = re.compile(r"\b([A-Z][A-Z0-9_]{2,29})\.([A-Z][A-Z0-9_]{1,29})\b")
     names: set[str] = set()

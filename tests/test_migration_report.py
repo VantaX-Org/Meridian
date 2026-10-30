@@ -54,7 +54,7 @@ def test_empty_wave_renders():
 def test_stream_sanitises_filename():
     """A wave name with an em dash and a semicolon must not break Content-Disposition or
     require non-latin-1 encoding (final review I2)."""
-    name = f"migration_readiness_Cutover—Wave; 1".replace(" ", "_")
+    name = "migration_readiness_Cutover—Wave; 1".replace(" ", "_")
     resp = _stream(b"data", "application/pdf", f"{name}.pdf")
     disposition = resp.headers["content-disposition"]
     disposition.encode("latin-1")  # must not raise

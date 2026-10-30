@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -46,7 +45,6 @@ def parse_metadata(xml_text: str) -> dict[str, set[str]]:
     nothing for most entities.
     """
     root = ET.fromstring(xml_text)
-    ns = {"edm": "http://schemas.microsoft.com/ado/2008/09/edm"}
     set_to_type: dict[str, str] = {}
     for s in root.iter("{http://schemas.microsoft.com/ado/2008/09/edm}EntitySet"):
         set_to_type[s.get("Name", "")] = (s.get("EntityType") or "").split(".")[-1]

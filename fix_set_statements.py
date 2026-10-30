@@ -42,18 +42,18 @@ if os.path.exists(routes_dir):
 persistence_file = 'api/services/z_object_intelligence/persistence.py'
 if os.path.exists(persistence_file):
     if fix_file(persistence_file):
-        print(f'✓ Fixed persistence.py')
+        print('✓ Fixed persistence.py')
 
 # Fix api/utils/llm_logger.py
 llm_logger_file = 'api/utils/llm_logger.py'
 if os.path.exists(llm_logger_file):
     if fix_file(llm_logger_file):
-        print(f'✓ Fixed llm_logger.py')
+        print('✓ Fixed llm_logger.py')
 
 # Fix agents/orchestrator.py (if still needed)
 orchestrator_file = 'agents/orchestrator.py'
 if os.path.exists(orchestrator_file):
     if fix_file(orchestrator_file):
-        print(f'✓ Fixed orchestrator.py')
+        print('✓ Fixed orchestrator.py')
 
 print("All SET app.tenant_id statements have been fixed!")

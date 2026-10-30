@@ -9,7 +9,7 @@ import argparse
 import json
 import pathlib
 import sys
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 
 import pandas as pd
 

@@ -21,7 +21,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import pandas as pd  # noqa: E402
 
 from checks.runner import run_checks  # noqa: E402
 from sap.ddic import get_dictionary  # noqa: E402

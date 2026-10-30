@@ -6,9 +6,7 @@ Runs all 14 task validations in sequence.
 
 import subprocess
 import sys
-import time
-import json
-from typing import Tuple, List
+from typing import Tuple
 
 # Color codes for output
 GREEN = "\033[92m"

@@ -155,7 +155,7 @@ def test_no_new_rule_is_duplicated_within_its_pack():
     new = {m: ids for m, ids in new.items() if ids}
     assert not new, (
         "new duplicate rule(s) - rules in one pack testing the same predicate, which flag the "
-        f"same records twice and inflate the rule count:\n"
+        "same records twice and inflate the rule count:\n"
         + "\n".join(f"  {m}: {', '.join(ids)}" for m, ids in sorted(new.items()))
     )
 

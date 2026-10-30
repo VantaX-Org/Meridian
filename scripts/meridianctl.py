@@ -32,7 +32,7 @@ import json
 import os
 import subprocess
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 VERSION = "1.0.0"
 AIRGAP_MODE = True  # Always True — this is airgap CLI
@@ -119,7 +119,7 @@ def cmd_worker_start(args):
             print(colored(f"  Error starting {l} worker: {e}", Colors.RED))
             return 1
     
-    print(colored(f"All requested lanes started", Colors.GREEN))
+    print(colored("All requested lanes started", Colors.GREEN))
     return 0
 
 
@@ -154,7 +154,7 @@ def cmd_worker_stop(args):
             print(colored(f"  Failed to stop {l} worker", Colors.RED))
             return 1
     
-    print(colored(f"All requested lanes stopped", Colors.YELLOW))
+    print(colored("All requested lanes stopped", Colors.YELLOW))
     return 0
 
 
@@ -250,7 +250,7 @@ def cmd_system_status(args):
         pass
     
     # Worker status
-    print(f"\nWorkers:")
+    print("\nWorkers:")
     cmd_worker_status(argparse.Namespace(lane="all"))
     
     # Redis connection
