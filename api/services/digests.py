@@ -383,7 +383,7 @@ def send(session, tenant_id: str, schedule: dict, due_at: datetime, *, manual: b
     notes: list[str] = []
     try:
         d = build(session, tid, schedule)
-        link = f"{base_url}/v2" if base_url else ""
+        link = f"{base_url}/" if base_url else ""
         if schedule["channel"] == "webhook":
             from api.services import webhooks
             delivered = len(webhooks.emit(session, tid, "digest.sent", webhook_data(d)))
@@ -422,7 +422,7 @@ def send(session, tenant_id: str, schedule: dict, due_at: datetime, *, manual: b
                             ok = bool(send_email(ch["target"], subject_of(d), body, attachments))
                         else:
                             ok = bool(post(dict(ch), {"event": "meridian.digest", **webhook_data(d)},
-                                           summary_text(d), link or "/v2"))
+                                           summary_text(d), link or "/"))
                     except Exception as e:  # noqa: BLE001
                         logger.error("digest %s channel raised: %s", schedule["id"], type(e).__name__)
                         ok = False
