@@ -89,7 +89,7 @@ function OneContract({ c, canEdit }: { c: ObjectContract; canEdit: boolean }) {
         </ul>
       ) : null}
       <ThresholdFields draft={draft} set={setDraft} disabled={!canEdit} idPrefix={`ct-${c.contract_id}`} />
-      <label className="m2-check" style={{ marginTop: 8 }}>
+      <label className="m2-check" style={{ marginTop: "var(--m2-s2)" }}>
         <input type="checkbox" checked={enforce} disabled={!canEdit} onChange={(e) => setEnforce(e.target.checked)} />
         {t("Enforce: while breached, no run of this object can be pinned as the baseline")}
       </label>
@@ -155,7 +155,7 @@ function NewContract({ module, label }: { module: string; label: string }) {
         </label>
       </div>
       <ThresholdFields draft={draft} set={setDraft} disabled={false} idPrefix="nc" />
-      <label className="m2-check" style={{ marginTop: 8 }}>
+      <label className="m2-check" style={{ marginTop: "var(--m2-s2)" }}>
         <input type="checkbox" checked={enforce} onChange={(e) => setEnforce(e.target.checked)} />
         {t("Enforce once it is active")}
       </label>

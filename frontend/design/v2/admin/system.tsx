@@ -67,7 +67,7 @@ function Update() {
                   [t("Email"), health.data ? (health.data.email_backend ? String(health.data.email_backend) : t("No email backend configured")) : "—"],
                 ]}
               />
-              {u.update_available && u.release_notes ? <p className="m2-note">{u.release_notes}</p> : null}
+              {u.update_available && u.release_notes ? <p className="m2-anote">{u.release_notes}</p> : null}
               {u.update_available && !u.updater_configured ? <Note tone="warn">{t("Version {latest_version} is available, but automatic updates are not set up on this deployment. Run the update script, or contact support.", { latest_version: u.latest_version })}</Note> : null}
             </>
           )}

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, type ComponentProps, type ReactNode } from "react";
+import { useEffect, useRef, type ComponentProps, type ReactNode, type RefObject } from "react";
 import { useV2Href } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 
@@ -64,15 +64,38 @@ export function Skeleton({ width = 120, height = 16 }: { width?: number | string
   return <span className="m2-skel" style={{ width, height }} aria-hidden="true" />;
 }
 
+/**
+ * The window title names the page (WCAG 2.4.2): the h1's words, then the product, in the interface's language. The
+ * framework writes its own title into the head after the page has painted (the layout's metadata), so the title is
+ * held: whenever the head's title changes away from this page's, it is put back. Leaving the page lets go.
+ */
+export function useWindowTitle(ref: RefObject<HTMLElement | null>): void {
+  useEffect(() => {
+    const h = ref.current;
+    const clean = (text: string | null | undefined) => (text ?? "").replace(/\s+/g, " ").trim();
+    const sub = h?.querySelector(".m2-h1-sub");
+    const all = clean(h?.textContent);
+    const main = sub ? clean(all.slice(0, all.length - clean(sub.textContent).length)) : all;
+    // "People – Owners and stewards": the canvas, then the scope beside it (drawn with a separator the text lacks).
+    const words = sub && main ? `${main} \u2013 ${clean(sub.textContent)}` : all;
+    if (!words) return;
+    // i18n-ignore: the product name, after the translated h1
+    const want = `${words} \u2013 Meridian`;
+    const hold = () => {
+      if (document.title !== want) document.title = want;
+    };
+    hold();
+    if (typeof MutationObserver === "undefined") return;
+    const watch = new MutationObserver(hold);
+    watch.observe(document.head, { subtree: true, childList: true, characterData: true });
+    return () => watch.disconnect();
+  });
+}
+
 /** The canvas title: the one h1 of a v2 page, with the system or scope beside it in the lighter weight. */
 export function PageTitle({ children, sub }: { children: ReactNode; sub?: ReactNode }) {
   const ref = useRef<HTMLHeadingElement>(null);
-  // The window title names the page (WCAG 2.4.2): the h1's words, then the product, in the interface's language.
-  useEffect(() => {
-    const words = ref.current?.textContent?.replace(/\s+/g, " ").trim();
-    // i18n-ignore: the product name, after the translated h1
-    if (words) document.title = `${words} \u2013 Meridian`;
-  });
+  useWindowTitle(ref);
   return (
     <h1 className="m2-h1" ref={ref}>
       {children}

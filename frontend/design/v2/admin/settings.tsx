@@ -81,7 +81,7 @@ function ScoringBlock({ s }: { s: ScoringResponse }) {
           ))}
         </div>
         <p className="m2-prov" role="status">{weightsOk ? tr("The weights add up to 100.") : tr("The weights add up to {sum}. Adjust them to 100 to save.", { sum: fixed(sum, 1) })}</p>
-        <div className="m2-adm-acts" style={{ marginTop: 8 }}>
+        <div className="m2-adm-acts" style={{ marginTop: "var(--m2-s2)" }}>
           <button type="button" className="m2-btn" disabled={!weightsOk || pending !== null} onClick={() => save("weights", tr("Weights saved"), { dimension_weights: Object.fromEntries(DIMS.map((d) => [d, num(w[d])])) as unknown as DimensionScores }, { dimension_weights: s.dimension_weights })}>
             {pending === "weights" ? tr("Saving…") : tr("Save weights")}
           </button>
@@ -99,7 +99,7 @@ function ScoringBlock({ s }: { s: ScoringResponse }) {
           ))}
         </div>
         {!bandsOk ? <p className="m2-prov" role="alert">{tr("Critical must not exceed warning, and warning must not exceed target.")}</p> : null}
-        <div className="m2-adm-acts" style={{ marginTop: 8 }}>
+        <div className="m2-adm-acts" style={{ marginTop: "var(--m2-s2)" }}>
           <button type="button" className="m2-btn" disabled={!bandsOk || pending !== null} onClick={() => save("bands", tr("Score bands saved"), { thresholds: { target: num(bands.target), warning: num(bands.warning), critical: num(bands.critical) } }, { thresholds: s.thresholds })}>
             {pending === "bands" ? tr("Saving…") : tr("Save bands")}
           </button>
@@ -117,7 +117,7 @@ function ScoringBlock({ s }: { s: ScoringResponse }) {
             <input type="number" min={0} step={1} value={tol.rows} onChange={(e) => setTol({ ...tol, rows: e.target.value })} />
           </Fld>
         </div>
-        <div className="m2-frame" tabIndex={0} style={{ marginTop: 12, maxWidth: 520 }}>
+        <div className="m2-frame" tabIndex={0} style={{ marginTop: "var(--m2-s3)", maxWidth: 520 }}>
           <table className="m2-tbl" aria-label={tr("Severity weights")}>
             <thead>
               <tr>
@@ -141,7 +141,7 @@ function ScoringBlock({ s }: { s: ScoringResponse }) {
             </tbody>
           </table>
         </div>
-        <div className="m2-adm-acts" style={{ marginTop: 8 }}>
+        <div className="m2-adm-acts" style={{ marginTop: "var(--m2-s2)" }}>
           <button
             type="button"
             className="m2-btn"
@@ -211,7 +211,7 @@ function CostBlock({ model }: { model: CostModel }) {
           <input type="number" min={0} value={sub} onChange={(e) => setSub(e.target.value)} />
         </Fld>
       </div>
-      <h3 className="m2-h2" style={{ margin: "16px 0 4px" }}>{tr("Cost of one blocked record, by severity")}</h3>
+      <h3 className="m2-h2" style={{ margin: "var(--m2-s4) 0 var(--m2-s1)" }}>{tr("Cost of one blocked record, by severity")}</h3>
       <div className="m2-fgrid" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
         {Object.keys(sev).map((k) => (
           <Fld key={k} label={tr("{k} finding cost", { k: labelText(k) })}>
@@ -219,7 +219,7 @@ function CostBlock({ model }: { model: CostModel }) {
           </Fld>
         ))}
       </div>
-      <h3 className="m2-h2" style={{ margin: "16px 0 4px" }}>{tr("Value of one blocked record, by SAP feature")}</h3>
+      <h3 className="m2-h2" style={{ margin: "var(--m2-s4) 0 var(--m2-s1)" }}>{tr("Value of one blocked record, by SAP feature")}</h3>
       <div className="m2-frame" tabIndex={0} style={{ maxWidth: 520 }}>
         <table className="m2-tbl" aria-label={tr("Value per blocked record by SAP feature")}>
           <thead>
@@ -253,7 +253,7 @@ function CostBlock({ model }: { model: CostModel }) {
         </table>
       </div>
       {unpriced.length ? (
-        <div className="m2-fbar" style={{ marginTop: 8 }}>
+        <div className="m2-fbar" style={{ marginTop: "var(--m2-s2)" }}>
           <Fld label={tr("Add a value for")}>
             <select value={addFeature} onChange={(e) => setAddFeature(e.target.value)}>
               <option value="">{tr("Pick an SAP feature")}</option>
@@ -271,7 +271,7 @@ function CostBlock({ model }: { model: CostModel }) {
       ) : null}
       {Object.keys(impact).length ? (
         <>
-          <h3 className="m2-h2" style={{ margin: "16px 0 4px" }}>{tr("Business-impact defects")}</h3>
+          <h3 className="m2-h2" style={{ margin: "var(--m2-s4) 0 var(--m2-s1)" }}>{tr("Business-impact defects")}</h3>
           <div className="m2-frame" tabIndex={0}>
             <table className="m2-tbl" aria-label={tr("Business impact defects")}>
               <thead>
@@ -300,7 +300,7 @@ function CostBlock({ model }: { model: CostModel }) {
       ) : null}
       {Object.keys(align).length ? (
         <>
-          <h3 className="m2-h2" style={{ margin: "16px 0 4px" }}>{tr("Configuration findings")}</h3>
+          <h3 className="m2-h2" style={{ margin: "var(--m2-s4) 0 var(--m2-s1)" }}>{tr("Configuration findings")}</h3>
           <div className="m2-fgrid" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
             {Object.keys(align).map((k) => (
               <Fld key={k} label={tr("{k}, per unit", { k: labelText(k) })}>
@@ -403,7 +403,7 @@ function RetentionBlock({ data }: { data: RetentionResponse }) {
           <input type="number" min={0} value={f.keep} onChange={(ev) => setF({ ...f, keep: ev.target.value })} />
         </Fld>
       </div>
-      <div style={{ marginTop: 12 }}>
+      <div style={{ marginTop: "var(--m2-s3)" }}>
         <Sw checked={f.baseline} onChange={(v) => setF({ ...f, baseline: v })} label={tr("Keep the baseline run")} />
       </div>
       <p className="m2-prov">{e.enforced ? tr("Purges run for real each night under this policy.") : tr("Purges are in rehearsal: the nightly task only logs what it would delete{value}{value2}.", { value: e.dry_run_until ? tr(" until {dry_run_until}", { dry_run_until: formatDate(e.dry_run_until) }) : "", value2: e.flag_enabled ? "" : tr(", and deletion is switched off on this deployment") })}</p>
@@ -444,7 +444,7 @@ function RetentionBlock({ data }: { data: RetentionResponse }) {
         </button>
       </div>
       {items && items.length ? (
-        <div className="m2-frame" tabIndex={0} style={{ marginTop: 12 }}>
+        <div className="m2-frame" tabIndex={0} style={{ marginTop: "var(--m2-s3)" }}>
           <table className="m2-tbl" aria-label={tr("Runs past the policy")}>
             <thead>
               <tr>
@@ -473,7 +473,7 @@ function RetentionBlock({ data }: { data: RetentionResponse }) {
           </table>
         </div>
       ) : null}
-      <h3 className="m2-h2" style={{ margin: "16px 0 4px" }}>{tr("Purge log")}</h3>
+      <h3 className="m2-h2" style={{ margin: "var(--m2-s4) 0 var(--m2-s1)" }}>{tr("Purge log")}</h3>
       <Loaded q={log} what={tr("The purge log")} rows={2}>
         {(entries) =>
           entries.length === 0 ? (

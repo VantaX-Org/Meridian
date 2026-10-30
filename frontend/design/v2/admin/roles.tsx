@@ -10,7 +10,7 @@ import { refreshAdmin, useAccessRequests, useAudit, useRoles, useRolesMatrix, us
 import { type GridColumn } from "../Grid";
 import { EmptyFrame, ErrorFrame, Mono } from "../parts";
 import { ResultFrame, useOutcome } from "../inspector/shared";
-import { AdminPage, Block, Dialog, Loaded, NeedsPermission, StatusWord, since, useCan } from "./kit";
+import { AdminPage, Block, Dialog, Loaded, NeedsPermission, StatusWord, useCan, Since } from "./kit";
 import { auditSentence } from "@/lib/v2/audit-sentence";
 import { ToolGrid } from "../GridTools";
 import { t } from "@/lib/v2/i18n";
@@ -70,7 +70,7 @@ const COLUMNS: GridColumn<Role>[] = [
   { id: "key", get header() { return t("Key"); }, width: 190, cell: (r) => <Mono>{r.key}</Mono> },
   { id: "type", get header() { return t("Type"); }, width: 110, cell: (r) => (r.built_in ? t("Built-in") : t("Custom")) },
   { id: "users", get header() { return t("People"); }, width: 90, numeric: true, cell: (r) => r.users ?? 0 },
-  { id: "changed", get header() { return t("Last changed"); }, width: 140, cell: (r) => since(r.updated_at) },
+  { id: "changed", get header() { return t("Last changed"); }, width: 140, cell: (r) => <Since at={r.updated_at} /> },
 ];
 
 function Requests() {
@@ -118,7 +118,7 @@ function Requests() {
                       <td>{nameOf(r.user_id)}</td>
                       <td>{t("{action} on {resource}", { action: r.action, resource: r.resource })}</td>
                       <td style={{ whiteSpace: "normal" }}>{r.reason ?? <span className="m2-dash">{"—"}</span>}</td>
-                      <td>{since(r.created_at)}</td>
+                      <td><Since at={r.created_at} /></td>
                       <td className="m2-r">
                         <button type="button" className="m2-btn m2-sm" disabled={pending !== null} onClick={() => (setRole(""), setGranting(r.id))}>
                           {t("Grant")}
@@ -137,7 +137,7 @@ function Requests() {
       </Loaded>
       {granting ? (
         <Dialog title={t("Grant access")} description={t("Choose the role to add. It applies to the scope they asked about.")} onClose={() => setGranting(null)}>
-          <label className="m2-fld">
+          <label className="m2-afld">
             <span className="m2-lbl">{t("Role")}</span>
             <select value={role} onChange={(e) => setRole(e.target.value)}>
               <option value="">{t("Choose a role")}</option>
@@ -160,7 +160,7 @@ function Requests() {
       ) : null}
       {declining ? (
         <Dialog title={t("Decline the request")} description={t("They see this reason.")} onClose={() => setDeclining(null)}>
-          <label className="m2-fld">
+          <label className="m2-afld">
             <span className="m2-lbl">{t("Reason")}</span>
             <textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
           </label>
@@ -190,7 +190,7 @@ function History() {
             <ul className="m2-hist" aria-label={t("Role changes")}>
               {d.entries.map((e) => (
                 <li key={e.id}>
-                  <span className="m2-d">{since(e.created_at)}</span> {auditSentence(e)}
+                  <span className="m2-d"><Since at={e.created_at} /></span> {auditSentence(e)}
                 </li>
               ))}
             </ul>

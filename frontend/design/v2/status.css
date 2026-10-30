@@ -16,20 +16,20 @@
 .m2-root .m2-maint p { margin: var(--m2-s1) 0 0; font-size: var(--m2-fs-13); color: var(--m2-ink-2); }
 
 .m2-root .m2-up { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--m2-s1) var(--m2-s3); align-items: center; margin-top: var(--m2-s2); max-width: 720px; }
-.m2-root .m2-upbar { display: grid; grid-template-columns: repeat(30, minmax(0, 1fr)); gap: 2px; height: 28px; }
+.m2-root .m2-upbar { display: grid; grid-template-columns: repeat(30, minmax(0, 1fr)); gap: var(--m2-s1); height: 28px; }
 .m2-root .m2-upcell { display: block; border-radius: 2px; background: var(--m2-seg); }
 .m2-root .m2-upcell[data-state="none"] { background: var(--m2-track); }
 .m2-root .m2-upcell[data-state="degraded"] { background: var(--m2-high); }
 .m2-root .m2-upcell[data-state="down"] { background: var(--m2-crit); }
-.m2-root .m2-upword { display: inline-flex; align-items: center; gap: 6px; font-size: var(--m2-fs-13); font-weight: 500; white-space: nowrap; }
+.m2-root .m2-upword { display: inline-flex; align-items: center; gap: var(--m2-s2); font-size: var(--m2-fs-13); font-weight: 500; white-space: nowrap; }
 .m2-root .m2-up .m2-prov { grid-column: 1 / -1; }
 .m2-root .m2-upaxis { grid-column: 1; grid-row: 2; display: flex; justify-content: space-between; font-size: var(--m2-fs-12); color: var(--m2-meta); }
 
 .m2-root .m2-incs { list-style: none; margin: var(--m2-s2) 0 0; padding: 0; max-width: 720px; }
-.m2-root .m2-incs li { padding: var(--m2-s2) 0; border-bottom: 1px solid var(--m2-line); font-size: var(--m2-fs-13); display: grid; gap: 2px; overflow-wrap: anywhere; }
+.m2-root .m2-incs li { padding: var(--m2-s2) 0; border-bottom: 1px solid var(--m2-line); font-size: var(--m2-fs-13); display: grid; gap: var(--m2-s1); overflow-wrap: anywhere; }
 
 /* The status strip's health word */
-.m2-root .m2-health { display: inline-flex; align-items: center; gap: 6px; margin-right: var(--m2-s3); }
+.m2-root .m2-health { display: inline-flex; align-items: center; gap: var(--m2-s2); margin-right: var(--m2-s3); }
 
 /* Appearance */
 .m2-root .m2-swatch { display: inline-block; width: 16px; height: 16px; border-radius: var(--m2-r1); border: 1px solid var(--m2-line-2); vertical-align: -3px; background: var(--m2-swatch, transparent); }

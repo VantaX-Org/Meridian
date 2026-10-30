@@ -91,7 +91,7 @@ export function WavesPanel({ onClose }: { onClose: () => void }) {
       {waves.isLoading ? <Skeleton width="100%" height={100} /> : null}
       {waves.isSuccess && list.length === 0 ? <EmptyFrame>{t("No wave exists yet. Add the first one below, then assign objects to it.")}</EmptyFrame> : null}
       {list.map((w) => (
-        <div key={w.id} className="m2-aform" style={{ marginBottom: 16, paddingBottom: 12, borderBottom: "1px solid var(--m2-rule)" }} role="group" aria-label={t("Wave {name}", { name: w.name })}>
+        <div key={w.id} className="m2-aform" style={{ marginBottom: "var(--m2-s4)", paddingBottom: "var(--m2-s3)", borderBottom: "1px solid var(--m2-rule)" }} role="group" aria-label={t("Wave {name}", { name: w.name })}>
           <label>
             {t("Name")}
             <input value={names[w.id] ?? w.name} disabled={!allowed} onChange={(e) => setNames({ ...names, [w.id]: e.target.value })} />
@@ -153,7 +153,7 @@ export function WavesPanel({ onClose }: { onClose: () => void }) {
               </select>
             </label>
           </div>
-          <div className="m2-acts" style={{ marginTop: 8 }}>
+          <div className="m2-acts" style={{ marginTop: "var(--m2-s2)" }}>
             <button type="button" className="m2-btn" disabled={!fresh.name.trim() || pending !== null} onClick={create}>
               {pending === "create" ? t("Adding…") : t("Add the wave")}
             </button>

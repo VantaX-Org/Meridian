@@ -9,7 +9,7 @@ import type { NextRequest } from "next/server";
 const PUBLIC = ["/sign-in", "/sign-up", "/login", "/accept-invite", "/forgot-password", "/reset-password",
   "/licence-error", "/api", "/health", "/status"];
 
-export default function middleware(req: NextRequest) {
+export default function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   if (PUBLIC.some((p) => pathname === p || pathname.startsWith(p + "/")) || req.cookies.has("mn_session")) {
     return NextResponse.next();

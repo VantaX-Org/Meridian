@@ -64,7 +64,7 @@ function Evidence({ id }: { id: string }) {
                 </span>
               </div>
               <span className="m2-s10-auth">{c.authority}</span>
-              <p className="m2-meta" style={{ margin: "4px 0 0" }}>
+              <p className="m2-meta" style={{ margin: "var(--m2-s1) 0 0" }}>
                 {t("{measured} of {count} rules measured, pass rate {rate}, {failing} failing records", { measured: c.rules_measured, count: c.rules_count, rate: passRateText(c.pass_rate) ?? "—", failing: int(c.failing_records) })}
               </p>
               <div className="m2-s10-fields" aria-label={t("Fields of {label}", { label: c.label })}>
@@ -73,7 +73,7 @@ function Evidence({ id }: { id: string }) {
                 ))}
               </div>
               {c.rules.length ? (
-                <div className="m2-frame" tabIndex={0} role="region" aria-label={t("Rules of {label}, scrollable", { label: c.label })} style={{ marginTop: 8 }}>
+                <div className="m2-frame" tabIndex={0} role="region" aria-label={t("Rules of {label}, scrollable", { label: c.label })} style={{ marginTop: "var(--m2-s2)" }}>
                   <table className="m2-tbl" aria-label={t("Rules evidencing {label}", { label: c.label })}>
                     <thead>
                       <tr>
@@ -253,7 +253,7 @@ function DigestForm({ initial, onSaved }: { initial: Digest | null; onSaved: (d:
       <Field label={t("Name")} error={x.name ? errs.name : undefined}>
         {(p) => <input {...p} value={x.name} maxLength={200} onChange={(e) => set("name", e.target.value)} />}
       </Field>
-      <div className="m2-segs" role="group" aria-label={t("For")} style={{ marginTop: 8 }}>
+      <div className="m2-segs" role="group" aria-label={t("For")} style={{ marginTop: "var(--m2-s2)" }}>
         <button type="button" className="m2-seg" aria-pressed={x.audience === "role"} onClick={() => set("audience", "role")}>
           {t("A role")}
         </button>
@@ -341,7 +341,7 @@ function DigestForm({ initial, onSaved }: { initial: Digest | null; onSaved: (d:
           <Field label={t("Email addresses")} error={errs.recipients} hint={errs.recipients ? undefined : t("One per line or separated by commas.")}>
             {(p) => <textarea {...p} rows={3} value={x.recipients} onChange={(e) => set("recipients", e.target.value)} />}
           </Field>
-          <fieldset style={{ border: 0, padding: 0, margin: "8px 0 0" }}>
+          <fieldset style={{ border: 0, padding: 0, margin: "var(--m2-s2) 0 0" }}>
             <legend className="m2-lbl">{t("People")}</legend>
             {users.isPending ? (
               <Skeleton width="100%" height={40} />
@@ -396,7 +396,7 @@ function PreviewDialog({ d, onClose }: { d: Digest; onClose: () => void }) {
           {t("The numbers")}
         </button>
       </div>
-      <div style={{ marginTop: 12 }}>
+      <div style={{ marginTop: "var(--m2-s3)" }}>
         {view === "email" ? (
           htmlQ.isPending ? (
             <Skeleton width="100%" height={240} />

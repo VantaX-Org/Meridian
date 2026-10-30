@@ -1,14 +1,14 @@
 /**
- * Smoke tests for the aurora-writing classify function.
+ * Smoke tests for the meridian-writing classify function.
  *
- * Runnable via `node eslint-rules/aurora-writing.test.mjs` — no jest/vitest
+ * Runnable via `node eslint-rules/meridian-writing.test.mjs` — no jest/vitest
  * needed, just node's built-in assert. Keeps the rule's pure logic covered
  * even if the full ESLint rule-tester isn't set up. Drop-in friendly for
  * WS8 pass 2 when @typescript-eslint/rule-tester lands.
  */
 
 import assert from "node:assert/strict";
-import { classify } from "./aurora-writing.mjs";
+import { classify } from "./meridian-writing.mjs";
 
 /* ── placeholder ────────────────────────────────────────────────────── */
 
@@ -68,4 +68,4 @@ assert.equal(
   "dashboard anywhere in the sentence triggers glossary",
 );
 
-console.log("aurora-writing classify tests: all passed ✓");
+console.log("meridian-writing classify tests: all passed ✓");

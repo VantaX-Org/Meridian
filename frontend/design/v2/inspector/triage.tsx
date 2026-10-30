@@ -135,7 +135,7 @@ function Body() {
         <p className="m2-hint">{t("The summary of your open work and approvals, sent to you.")}</p>
       </div>
 
-      <div className="m2-acts" style={{ marginTop: 16 }}>
+      <div className="m2-acts" style={{ marginTop: "var(--m2-s4)" }}>
         <button type="button" className="m2-btn m2-strong" disabled={!dirty || invalid || save.isPending || (!canEdit && changed.length > 0)} onClick={onSave}>
           {save.isPending ? t("Saving…") : t("Save")}
         </button>

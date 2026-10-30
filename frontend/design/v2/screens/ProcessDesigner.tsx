@@ -70,7 +70,7 @@ function ActivityEditor({ act, index, count, doc, apply, canDesign }: { act: L5;
             setShown(false);
           }}
         >
-          <Field label={t("Map a field")} error={err} hint="TABLE.FIELD">{(p) => <input {...p} className="m2-mono" value={field} onChange={(e) => setField(e.target.value)} placeholder="MARA.MATNR" />}</Field>
+          <Field label={t("Map a field")} error={err} hint={t("The table and field, such as MARA.MATNR")}>{(p) => <input {...p} className="m2-mono" value={field} onChange={(e) => setField(e.target.value)} placeholder="MARA.MATNR" />}</Field>
           <div className="m2-acts"><button type="submit" className="m2-btn m2-sm">{t("Map field")}</button></div>
         </form>
       ) : null}
@@ -99,7 +99,7 @@ function Detail({ doc, id, apply, canDesign, select }: { doc: ProcessModelDocume
   };
   const label = level === 4 ? t("Activity") : LEVEL_WORD[next as 1 | 2 | 3 | 4];
   return (
-    <section aria-label={t("Selected item")} data-testid="designer-detail">
+    <section aria-label={t("Selected level")} data-testid="designer-detail">
       {hit ? (
         <>
           <h2 className="m2-h2">{`${LEVEL_WORD[level as 1]}: ${hit.item.name || "unnamed"}`}</h2>
@@ -117,13 +117,13 @@ function Detail({ doc, id, apply, canDesign, select }: { doc: ProcessModelDocume
       ) : (
         <>
           <h2 className="m2-h2">{t("The model")}</h2>
-          <p className="m2-rp m2-meta">{t("Choose an item in the tree to rename it, reorder it, add what sits under it, or map fields to its activities.")}</p>
+          <p className="m2-rp m2-meta">{t("Choose a level in the tree to rename it, reorder it, add what sits under it, or map fields to its activities.")}</p>
         </>
       )}
       {canDesign && level < 5 ? (
         <form
           className="m2-form6"
-          style={{ marginTop: 16 }}
+          style={{ marginTop: "var(--m2-s4)" }}
           aria-label={t("Add {label}", { label: lc(label) })}
           onSubmit={(e) => {
             e.preventDefault();
@@ -136,11 +136,11 @@ function Detail({ doc, id, apply, canDesign, select }: { doc: ProcessModelDocume
       ) : null}
       {level === 4 ? (
         <>
-          <h3 style={{ marginTop: 16 }}>{t("Activities and the fields they read")}</h3>
+          <h3 style={{ marginTop: "var(--m2-s4)" }}>{t("Activities and the fields they read")}</h3>
           {(hit!.item as L4).activities.length === 0 ? (
             <p className="m2-rp m2-meta">{t("This step has no activity yet. Add one above, then map the fields it reads or writes.")}</p>
           ) : (
-            <ul className="m2-srcs" style={{ gap: 16 }} aria-label={t("Activities")}>
+            <ul className="m2-srcs" style={{ gap: "var(--m2-s4)" }} aria-label={t("Activities")}>
               {(hit!.item as L4).activities.map((a, i, all) => (
                 <ActivityEditor key={a.id} act={a} index={i} count={all.length} doc={doc} apply={(d) => apply(d)} canDesign={canDesign} />
               ))}
@@ -185,7 +185,7 @@ function Tree({ doc, items, depth: level, selected, select, apply, canDesign }: 
       </ul>
       {removing ? (
         <ConfirmBar
-          message={t("{name} and everything under it are removed when you save.", { name: removing.name || t("This item") })}
+          message={t("{name} and everything under it are removed when you save.", { name: removing.name || t("This level") })}
           confirmLabel={t("Delete {LEVEL_WORD}", { LEVEL_WORD: lc(LEVEL_WORD[level as 1]) })}
           onConfirm={() => {
             apply(removeItem(doc, removing.id));
@@ -243,7 +243,7 @@ function Editor({ data, canDesign, run, pending, onChanged }: { data: ModelWithD
       {canDesign ? (
         <form
           className="m2-form6"
-          style={{ marginTop: 24 }}
+          style={{ marginTop: "var(--m2-s6)" }}
           aria-label={t("Save the model")}
           onSubmit={(e) => {
             e.preventDefault();
@@ -351,7 +351,7 @@ export function ProcessDesigner({ system, module }: { system: string; module: st
       ) : models.isError ? (
         <ErrorFrame onRetry={() => void models.refetch()}>{t("The process models could not be read.")}</ErrorFrame>
       ) : (
-        <div className="m2-form6" style={{ marginTop: 16 }}>
+        <div className="m2-form6" style={{ marginTop: "var(--m2-s4)" }}>
           {(models.data ?? []).length > 0 ? (
             <Field label={t("Model")}>
               {(p) => (
@@ -371,7 +371,7 @@ export function ProcessDesigner({ system, module }: { system: string; module: st
       {canDesign ? (
         <form
           className="m2-form6"
-          style={{ marginTop: 16 }}
+          style={{ marginTop: "var(--m2-s4)" }}
           aria-label={t("Create a model")}
           onSubmit={(e) => {
             e.preventDefault();
@@ -397,7 +397,7 @@ export function ProcessDesigner({ system, module }: { system: string; module: st
       ) : null}
 
       {m && canDesign ? (
-        <div className="m2-acts" style={{ marginTop: 16 }}>
+        <div className="m2-acts" style={{ marginTop: "var(--m2-s4)" }}>
           <button type="button" className="m2-btn m2-strong" disabled={pending !== null} onClick={publish}>{m.status === "published" ? t("Unpublish") : t("Publish model")}</button>
           <button type="button" className="m2-btn" onClick={() => setRename(m.name)}>{t("Rename model")}</button>
           <button type="button" className="m2-btn m2-ghost" aria-expanded={removing} onClick={() => setRemoving((x) => !x)}>{t("Delete model")}</button>
@@ -406,7 +406,7 @@ export function ProcessDesigner({ system, module }: { system: string; module: st
       {rename !== null ? (
         <form
           className="m2-form6"
-          style={{ marginTop: 8 }}
+          style={{ marginTop: "var(--m2-s2)" }}
           aria-label={t("Rename the model")}
           onSubmit={(e) => {
             e.preventDefault();

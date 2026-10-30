@@ -19,7 +19,7 @@
 .m2-root .m2-auth-meta { margin: 0; font-size: var(--m2-fs-12); line-height: var(--m2-lh-12); color: var(--m2-meta); }
 .m2-root .m2-auth-version { justify-self: end; font-variant-numeric: tabular-nums; }
 .m2-root .m2-auth-pw { position: relative; }
-.m2-root .m2-auth-pw input { padding-right: 72px; }
+.m2-root .m2-auth-pw input { padding-right: calc(var(--m2-s12) + var(--m2-s6)); }
 .m2-root .m2-auth-pw .m2-auth-show { position: absolute; right: var(--m2-s1); top: 50%; transform: translateY(-50%); height: 28px; padding: 0 var(--m2-s2); border: 0; background: none; color: var(--m2-ink-2); font-size: var(--m2-fs-12); border-radius: var(--m2-r1); cursor: pointer; }
 .m2-root .m2-auth-pw .m2-auth-show:hover { background: var(--m2-hover); }
 .m2-root .m2-auth-pw .m2-auth-show:focus-visible { outline: var(--m2-focus-w) solid var(--m2-focus); outline-offset: 1px; }

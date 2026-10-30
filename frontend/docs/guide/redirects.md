@@ -1,7 +1,7 @@
 # Old addresses and where they go
 
-At the cut-over (Meridian 2, step 7) the map, canvas and inspector became the only interface. The landscape moved from
-`/v2` to `/`, and every page of the retired interface was removed. No job was lost: each page's work lives on a canvas,
+In October 2026 the map, canvas and inspector became the whole product. The landscape moved from `/v2` to `/`, and
+every page of the earlier interface was removed. No job was lost: each page's work lives on a canvas,
 a tab of an object, a panel or an inspector (see `docs/roles-and-features.md` at the repository root for every job and
 its verb). Every old address, bookmarks and links in old emails included, answers with a permanent redirect (308) to
 the place that does the same job now. The query of the old address rides along, so a run, an object or a filter stays
@@ -15,12 +15,11 @@ Two kinds of target need a word:
 - `?open=kind:id`: the thing opens in the inspector over the page (`/?open=help`, `/work?open=inbox`,
   `/?open=golden:G1`).
 
-The `/v2` addresses are kept for one release, so links shared while both interfaces shipped still open.
+The `/v2` addresses are kept for one release, so links shared before October 2026 still open.
 
 Administration kept its addresses: `/admin/users`, `/admin/roles`, `/admin/settings`, `/admin/licence`,
 `/admin/billing`, `/admin/mappings`, `/admin/reference`, `/admin/audit`, `/admin/alerts` and
-`/admin/notifications` open the same section as before, and `/rules` and `/runs` are the rules library and the runs
-of the new interface. The redirects are defined in `frontend/next.config.ts`;
+`/admin/notifications` open the same section as before, and `/rules` and `/runs` are the rules library and the runs. The redirects are defined in `frontend/next.config.ts`;
 `frontend/__tests__/legacy-redirects.test.ts` checks that each of the 78 routes the old interface served opens a page,
 and `frontend/e2e/redirects.spec.ts` follows a sample of them in the browser.
 
@@ -28,7 +27,7 @@ and `frontend/e2e/redirects.spec.ts` follows a sample of them in the browser.
 
 ### The /v2 addresses
 
-Meridian 2 lived under /v2 while both interfaces shipped. Kept for a release so bookmarks and share links still open.
+The landscape lived under /v2 before October 2026. Kept for a release so bookmarks and share links still open.
 
 | Old address | When | New address |
 |---|---|---|

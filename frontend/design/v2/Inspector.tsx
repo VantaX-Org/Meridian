@@ -173,7 +173,7 @@ export function Inspector() {
       {open.kind === "rule" ? (
         <RuleInspectorBody id={open.id} landscape={landscape} />
       ) : (
-        <EmptyFrame>{t("Feature impact fills here in the next step.")}</EmptyFrame>
+        <EmptyFrame>{t("This selection has nothing more to show. Close the inspector and choose a row.")}</EmptyFrame>
       )}
     </InspectorFrame>
   );

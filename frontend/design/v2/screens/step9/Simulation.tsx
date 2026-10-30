@@ -311,7 +311,7 @@ export function TopFixesView({ module, label, systemId, run }: { module: string;
               </tbody>
             </table>
           </div>
-          <div className="m2-acts" style={{ marginTop: 8 }}>
+          <div className="m2-acts" style={{ marginTop: "var(--m2-s2)" }}>
             <button type="button" className="m2-btn m2-strong" disabled={chosen.size === 0} onClick={() => setOpen([...chosen])}>
               {chosen.size ? t("Simulate fixing {n} {n, plural, one {rule} other {rules}} together", { n: chosen.size }) : t("Choose rules to simulate together")}
             </button>

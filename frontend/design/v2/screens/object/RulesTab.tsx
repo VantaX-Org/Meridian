@@ -9,7 +9,7 @@ import { acceptAllSuggested, approveLearned, dryRunDraft, mineFixes, publishDraf
 import { formatDate } from "@/lib/format";
 import { DIMENSIONS, type Receipt, type RuleRow } from "@/lib/api/v2/types";
 import { KIND_LABEL } from "@/lib/api/learnedRules";
-import { useOpenItem, useRunParam, useV2Session } from "@/lib/v2/hooks";
+import { useOpenItem, useRunParam, useUrlParam, useV2Session } from "@/lib/v2/hooks";
 import { KEYS, gridRegistry, matchKey, type GridTarget } from "@/lib/v2/keys";
 import { useNarrow } from "@/lib/v2/narrow";
 import { useConfigImpact, useDrafts, useLearned, useWorkGroups } from "@/lib/v2/object-queries";
@@ -411,10 +411,10 @@ function Evidence({ p }: { p: LearnedProposal }) {
 }
 
 function LearnedTable({ module, items, canApprove, canReject, onChanged }: { module: string; items: LearnedProposal[]; canApprove: boolean; canReject: boolean; onChanged: () => void }) {
-  const [severity, setSeverity] = useState<Record<string, "critical" | "high" | "medium" | "low">>({});
+  const [severityEdits, setSeverityEdits] = useState<Record<string, "critical" | "high" | "medium" | "low">>({});
   const [note, setNote] = useState<string | null>(null);
   const approve = useMutation({
-    mutationFn: (p: LearnedProposal) => approveLearned(p.id, severity[p.id] ?? "medium"),
+    mutationFn: (p: LearnedProposal) => approveLearned(p.id, severityEdits[p.id] ?? "medium"),
     onSuccess: (r) => {
       setNote(t("Approved as {rule_id}. It runs from the next analysis.", { rule_id: r.rule_id }));
       onChanged();
@@ -469,7 +469,7 @@ function LearnedTable({ module, items, canApprove, canReject, onChanged }: { mod
                     <span className="m2-dec">
                       {canApprove ? (
                         <>
-                          <select aria-label={t("Severity for {field}", { field: p.field })} value={severity[p.id] ?? "medium"} onChange={(e) => setSeverity({ ...severity, [p.id]: e.target.value as "critical" | "high" | "medium" | "low" })}>
+                          <select aria-label={t("Severity for {field}", { field: p.field })} value={severityEdits[p.id] ?? "medium"} onChange={(e) => setSeverityEdits({ ...severityEdits, [p.id]: e.target.value as "critical" | "high" | "medium" | "low" })}>
                             <option value="critical">{t("Critical")}</option>
                             <option value="high">{t("High")}</option>
                             <option value="medium">{t("Medium")}</option>
@@ -623,7 +623,7 @@ export function RulesTab({ module: moduleSegment, system: systemSegment }: { sys
   const draftsQ = useDrafts(apiModule, canDrafts);
 
   const [pivot, setPivot] = useState<Pivot>("rule");
-  const [view, setView] = useState<View>("all");
+  const [view, setView] = useUrlParam<View>("view", "all", ["all", "top", "learned", "drafts"]);
   const [shown, setShown] = useState(PAGE);
   const [accepted, setAccepted] = useState<ReadonlySet<string>>(new Set());
   const [note, setNote] = useState<string | null>(null);
@@ -680,11 +680,11 @@ export function RulesTab({ module: moduleSegment, system: systemSegment }: { sys
         <button type="button" className="m2-seg" aria-pressed={view === "all"} onClick={() => setView("all")}>{t("All rules")}</button>
         <button type="button" className="m2-seg" aria-pressed={view === "top"} onClick={() => setView("top")}>{t("Top fixes")}</button>
         <button type="button" className="m2-seg" aria-pressed={view === "learned"} onClick={() => setView("learned")}>
-          {`Learned${learnedN != null ? ` ${learnedN}` : ""}`}
+          {learnedN != null ? t("Learned {count}", { count: learnedN }) : t("Learned")}
         </button>
         {canDrafts ? (
           <button type="button" className="m2-seg" aria-pressed={view === "drafts"} onClick={() => setView("drafts")}>
-            {`Drafts${draftsN != null ? ` ${draftsN}` : ""}`}
+            {draftsN != null ? t("Drafts {count}", { count: draftsN }) : t("Drafts")}
           </button>
         ) : null}
       </div>

@@ -14,7 +14,7 @@ import { slaMet } from "@/lib/v2/people";
 import { useLandscape, useStatus, useTopWork } from "@/lib/v2/queries";
 import { f1, int, moduleSlug, readingText, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { type GridColumn } from "../Grid";
-import { VerdictMark } from "../marks";
+import { IconCheck, VerdictMark } from "../marks";
 import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { Ruler } from "../Ruler";
 import { ProcessNextStep } from "./object/ProcessNext";
@@ -220,7 +220,7 @@ function CellLink({ system, cell, label, selected, run }: { system: LandscapeSys
         {VERDICT_LABEL[cell.verdict]}
       </span>
       <span className="m2-cell-sub">
-        {t("{records_checked} rec, {rules_measured} rules", { records_checked: int(cell.records_checked), rules_measured: int(cell.rules_measured) })}
+        {t("{records_checked} records, {rules_measured} rules", { records_checked: int(cell.records_checked), rules_measured: int(cell.rules_measured) })}
         {cell.low_confidence ? <span className="m2-lcm">{t("low coverage")}</span> : null}
       </span>
     </V2Link>
@@ -514,6 +514,78 @@ function LandscapeSkeleton() {
   );
 }
 
+/**
+ * The first run of an empty tenant: three steps instead of empty frames. Connect a system or upload a file, run an
+ * analysis, read the landscape. A step that is done says so; the current one carries the canvas's one strong button
+ * when the viewer may take it, and names the permission when not.
+ */
+export function FirstSteps({ connected, analysed }: { connected: boolean; analysed: boolean }) {
+  const session = useV2Session();
+  const canConnect = session.can("manage_systems");
+  const canUpload = session.can("upload");
+  const canRun = session.can("analyse");
+  const current = !connected ? 1 : !analysed ? 2 : 3;
+  const step = (n: number, title: string, body: ReactNode, action: ReactNode) => (
+    <li className="m2-start-step" data-state={n < current ? "done" : n === current ? "current" : "next"} aria-current={n === current ? "step" : undefined}>
+      <span className="m2-start-n" aria-hidden="true">{n < current ? <IconCheck /> : n}</span>
+      <div className="m2-start-b">
+        <h3 className="m2-start-t">
+          {title}
+          {n < current ? <span className="m2-meta"> {t("Done")}</span> : null}
+        </h3>
+        <p>{body}</p>
+        {n === current ? <div className="m2-start-a">{action}</div> : null}
+      </div>
+    </li>
+  );
+  return (
+    <section className="m2-sec m2-start" aria-labelledby="m2-start-h" data-testid="first-steps">
+      <h2 className="m2-h2" id="m2-start-h">{t("Three steps to your first scores")}</h2>
+      <ol className="m2-start-list">
+        {step(
+          1,
+          t("Connect a system or upload a file"),
+          t("Connect an SAP system (ECC, S/4HANA, SuccessFactors, Ariba, Concur or BTP) and extract it, or upload one object as CSV, Excel or Parquet. Nothing leaves your environment."),
+          canConnect || canUpload ? (
+            <>
+              {canConnect ? (
+                <V2Link href="/s/new" className="m2-btn m2-next">
+                  {t("Connect a system")}
+                </V2Link>
+              ) : null}
+              {canUpload ? (
+                <V2Link href="/admin/runs" className="m2-btn">
+                  {t("Upload a file")}
+                </V2Link>
+              ) : null}
+            </>
+          ) : (
+            <span className="m2-meta">{t("Connecting a system needs the manage systems permission. Ask an administrator to grant it.")}</span>
+          ),
+        )}
+        {step(
+          2,
+          t("Run an analysis"),
+          t("Every rule of every object is checked against the extracted records. Before it starts you see how long it should take; the job line under the top bar shows its progress."),
+          canRun ? (
+            <V2Link href="/runs" className="m2-btn m2-next">
+              {t("Run analysis")}
+            </V2Link>
+          ) : (
+            <span className="m2-meta">{t("Running an analysis needs the analyse permission. Ask an administrator to grant it.")}</span>
+          ),
+        )}
+        {step(
+          3,
+          t("Read the landscape"),
+          t("Each object gets a score on the ruler, a verdict and the records to fix. This page then opens with the one sentence that says what holds the landscape back, and your next step."),
+          null,
+        )}
+      </ol>
+    </section>
+  );
+}
+
 /** The landscape canvas: the sentence, the next step, the coverage matrix and the next work. */
 export function LandscapeCanvas() {
   const run = useRunParam();
@@ -542,17 +614,10 @@ export function LandscapeCanvas() {
     return (
       <>
         <PageTitle>{t("Landscape")}</PageTitle>
-        <div className="m2-sec">
-          <EmptyFrame
-            action={
-              <V2Link href="/s/new" className="m2-btn m2-next">
-                {t("Connect a system")}
-              </V2Link>
-            }
-          >
-            {t("No SAP system is connected yet. Connect one, extract it and run an analysis, and every object appears here with its score.")}
-          </EmptyFrame>
-        </div>
+        <p className="m2-finding" data-testid="landscape-sentence">
+          {t("No SAP system is connected yet. Connect one, extract it and run an analysis, and every object appears here with its score.")}
+        </p>
+        <FirstSteps connected={false} analysed={false} />
       </>
     );
   }
@@ -576,6 +641,7 @@ export function LandscapeCanvas() {
         <Dot />
         {first.run_at ? t("run {run_at}", { run_at: formatDate(first.run_at, "datetime") }) : t("no run yet")}
       </p>
+      {L.cells.length === 0 ? <FirstSteps connected analysed={false} /> : null}
       {session.persona === "owner" ? <OwnerLine /> : null}
       <div className="m2-cta">
         <NextStep landscape={L} persona={session.persona} waves={waves} />

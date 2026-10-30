@@ -16,13 +16,12 @@ import { EmptyFrame, ErrorFrame, Skeleton, V2Link } from "../parts";
 import { MentionCount } from "./collab";
 import { DriftInbox } from "../screens/step9/Drift";
 import { t as tr } from "@/lib/v2/i18n";
-import { v2Locale } from "@/lib/v2/format";
 
 /** A time in the viewer's day: "08:41" for today, "3 Oct" before. */
 function when(iso: string, today: boolean): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
-  return today ? d.toLocaleTimeString(v2Locale(), { hour: "2-digit", minute: "2-digit" }) : formatDate(iso, "date");
+  return formatDate(iso, today ? "time" : "date");
 }
 
 interface ItemProps {

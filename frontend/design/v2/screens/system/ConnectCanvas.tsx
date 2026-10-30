@@ -17,7 +17,7 @@ export function ConnectCanvas() {
         {t("Meridian reads from SAP and never writes to it. Enter the connection, test it, and connect. Then extract the objects you want checked.")}{" "}
         <V2Link href="/">{t("Back to the landscape")}</V2Link>
       </p>
-      <div className="m2-sec" style={{ marginTop: 16 }}>
+      <div className="m2-sec" style={{ marginTop: "var(--m2-s4)" }}>
         <ConnectionForm onSaved={(s) => router.replace(v2(`/s/${s.id}?open=system:${s.id}`))} />
       </div>
     </>

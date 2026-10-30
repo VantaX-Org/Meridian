@@ -15,7 +15,7 @@ import { t } from "@/lib/v2/i18n";
 export function ScopeEditor({ draft, onChange, filters, windowed, windowObjects }: { draft: ScopeDraft; onChange: (d: ScopeDraft) => void; filters: ScopeKey[]; windowed: boolean; windowObjects: string[] }) {
   const err = dateError(draft.date_from, draft.date_to);
   return (
-    <div className="m2-scope" data-testid="scope-editor">
+    <div className="m2-scope-form" data-testid="scope-editor">
       <h3>{t("Scope")}</h3>
       {filters.length === 0 && !windowed ? <p className="m2-prov">{t("The chosen objects accept no organisational filter. They are read in full.")}</p> : null}
       <div className="m2-grid2">

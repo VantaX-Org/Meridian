@@ -58,7 +58,7 @@ function Thresholds({ initial, licensed }: { initial: AlertThresholds | null; li
           <input type="number" min={0} step={0.5} value={t.drop} disabled={!write} onChange={(e) => setT({ ...t, drop: e.target.value })} />
         </Fld>
       </div>
-      <h3 className="m2-h2" style={{ margin: "16px 0 4px" }}>{tr("Score floors per object")}</h3>
+      <h3 className="m2-h2" style={{ margin: "var(--m2-s4) 0 var(--m2-s1)" }}>{tr("Score floors per object")}</h3>
       <p className="m2-prov" style={{ marginTop: 0 }}>{tr("An analysis that scores an object below its floor raises an in-app alert and a message on each channel that takes alerts.")}</p>
       {Object.keys(floors).length === 0 ? (
         <p className="m2-prov">{tr("No floors set.")}</p>
@@ -93,7 +93,7 @@ function Thresholds({ initial, licensed }: { initial: AlertThresholds | null; li
         </div>
       )}
       {write && unfloored.length ? (
-        <div className="m2-fbar" style={{ marginTop: 8 }}>
+        <div className="m2-fbar" style={{ marginTop: "var(--m2-s2)" }}>
           <Fld label={tr("Add a floor for")}>
             <select value={add} onChange={(e) => setAdd(e.target.value)}>
               <option value="">{tr("Choose an object")}</option>
@@ -192,7 +192,7 @@ function DigestForm({ initial }: { initial: NotificationConfig | null }) {
   const emailOk = d.email.trim() === "" || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email.trim());
   const urlOk = d.teams_webhook.trim() === "" || /^https:\/\//i.test(d.teams_webhook.trim());
   return (
-    <Block title={tr("Default digest")} hint={tr("The summary the tenant gets by default, by email and Teams. Each person sets their own digest of open items under Preferences.")}>
+    <Block title={tr("Default digest")} hint={tr("The summary the tenant gets by default, by email and Teams. Each person sets their own digest of open work under Preferences.")}>
       <div className="m2-fgrid">
         <Fld label={tr("Email")} error={emailOk ? null : tr("Enter an email address")}>
           <input type="email" value={d.email} placeholder={tr("dq-team@company.com")} disabled={!write} onChange={(e) => setD({ ...d, email: e.target.value })} />
@@ -201,7 +201,7 @@ function DigestForm({ initial }: { initial: NotificationConfig | null }) {
           <input type="url" value={d.teams_webhook} disabled={!write} onChange={(e) => setD({ ...d, teams_webhook: e.target.value })} />
         </Fld>
       </div>
-      <fieldset style={{ border: 0, padding: 0, margin: "12px 0 0", display: "grid", gap: 8 }}>
+      <fieldset style={{ border: 0, padding: 0, margin: "var(--m2-s3) 0 0", display: "grid", gap: "var(--m2-s2)" }}>
         <legend className="m2-sr">{tr("Scheduled reports")}</legend>
         <Sw checked={d.daily_digest} disabled={!write} onChange={(v) => setD({ ...d, daily_digest: v })} label={tr("Daily digest")} />
         <Sw checked={d.weekly_summary} disabled={!write} onChange={(v) => setD({ ...d, weekly_summary: v })} label={tr("Weekly summary")} />

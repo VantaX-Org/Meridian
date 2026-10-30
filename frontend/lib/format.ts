@@ -319,6 +319,10 @@ export function formatNumber(n: number, options?: Intl.NumberFormatOptions): str
 const DATE_OPTS: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" };
 const DATETIME_OPTS: Intl.DateTimeFormatOptions = { ...DATE_OPTS, hour: "2-digit", minute: "2-digit", hourCycle: "h23" };
 const SECONDS_OPTS: Intl.DateTimeFormatOptions = { ...DATETIME_OPTS, second: "2-digit" };
+/** "3 Oct": a date in a narrow column of the current year's work. */
+const DAY_OPTS: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" };
+/** "08:41": a time of today. */
+const TIME_OPTS: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit", hourCycle: "h23" };
 
 /** The tenant's time zone (IANA), set by whoever loads it (GET /api/v1/triage/settings): the default when the user
  * chose no zone of their own. Unset means UTC. */
@@ -352,14 +356,14 @@ export function browserTimezone(): string {
  * UTC. With an explicit IANA `tz` (schedule and sign-off times, read in the tenant's zone) the time is shown in
  * that zone and labelled with it: "2 Oct 2026, 07:09 GMT+2", unless `zoneLabel` is false (a table that names the zone
  * in its header, `zoneName`). An unparseable value is an em dash. */
-export function formatDate(iso: string | number | Date | null | undefined, kind: "date" | "datetime" | "seconds" = "date", tz?: string, zoneLabel = true): string {
+export function formatDate(iso: string | number | Date | null | undefined, kind: "date" | "datetime" | "seconds" | "day" | "time" = "date", tz?: string, zoneLabel = true): string {
   if (iso === null || iso === undefined || iso === "") return "—";
   const d = iso instanceof Date ? iso : new Date(typeof iso === "string" && /^\d{4}-\d{2}-\d{2}T[\d:.]+$/.test(iso) ? `${iso}Z` : iso);
   if (Number.isNaN(d.getTime())) return "—";
-  const opts = kind === "date" ? DATE_OPTS : kind === "seconds" ? SECONDS_OPTS : DATETIME_OPTS;
+  const opts = kind === "date" ? DATE_OPTS : kind === "seconds" ? SECONDS_OPTS : kind === "day" ? DAY_OPTS : kind === "time" ? TIME_OPTS : DATETIME_OPTS;
   if (!tz) return intl(opts, formatPrefs.timezone ?? tenantZone ?? "UTC").format(d);
   const text = intl(opts, tz).format(d);
-  if (kind === "date" || !zoneLabel) return text;
+  if (kind === "date" || kind === "day" || !zoneLabel) return text;
   const zone = intl({ timeZoneName: "short" }, tz).formatToParts(d).find((p) => p.type === "timeZoneName")?.value;
   return zone ? `${text} ${zone}` : text;
 }

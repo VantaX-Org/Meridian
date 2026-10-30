@@ -73,7 +73,7 @@ export function PreferencesPanel({ onClose }: { onClose: () => void }) {
       <h3>{tr("Display")}</h3>
       <div className="m2-aform">
         <div>
-          <div className="m2-lbl m2-meta" style={{ fontSize: 12, marginBottom: 4 }}>{tr("Theme")}</div>
+          <div className="m2-lbl m2-meta" style={{ fontSize: 12, marginBottom: "var(--m2-s1)" }}>{tr("Theme")}</div>
           <Seg<Theme>
             label={tr("Theme")}
             value={theme}
@@ -82,7 +82,7 @@ export function PreferencesPanel({ onClose }: { onClose: () => void }) {
           />
         </div>
         <div>
-          <div className="m2-lbl m2-meta" style={{ fontSize: 12, marginBottom: 4 }}>{tr("Row density")}</div>
+          <div className="m2-lbl m2-meta" style={{ fontSize: 12, marginBottom: "var(--m2-s1)" }}>{tr("Row density")}</div>
           <Seg<DensityTier>
             label={tr("Row density")}
             value={density}
@@ -145,25 +145,25 @@ export function PreferencesPanel({ onClose }: { onClose: () => void }) {
       </div>
       <p className="m2-prov">{tr("It changes the next step on the landscape and the work it shows first. Your access does not change.")}</p>
       <h3>{tr("Keyboard")}</h3>
-      <label className="m2-sw" style={{ display: "flex", gap: 8 }}>
+      <label className="m2-sw" style={{ display: "flex", gap: "var(--m2-s2)" }}>
         <input type="checkbox" checked={hints} onChange={(e) => setKeyHints(e.target.checked)} />
-        <span>{tr("Show keyboard hints beside menu items and places")}</span>
+        <span>{tr("Show keyboard hints beside menu entries and places")}</span>
       </label>
       <h3>{tr("Notifications")}</h3>
       <div className="m2-aform">
         <label>
-          {tr("Digest of your open items")}
+          {tr("Digest of your open work")}
           <select value={digest} onChange={(e) => save({ notifications: { digest: e.target.value as DigestFrequency } })}>
             <option value="off">{tr("Off")}</option>
             <option value="daily">{tr("Daily")}</option>
             <option value="weekly">{tr("Weekly")}</option>
           </select>
         </label>
-        <label className="m2-sw" style={{ display: "flex", gap: 8 }}>
+        <label className="m2-sw" style={{ display: "flex", gap: "var(--m2-s2)" }}>
           <input type="checkbox" checked={critical} onChange={(e) => save({ notifications: { immediate_critical: e.target.checked } })} />
           <span>{tr("Tell me at once about critical findings")}</span>
         </label>
-        <label className="m2-sw" style={{ display: "flex", gap: 8 }}>
+        <label className="m2-sw" style={{ display: "flex", gap: "var(--m2-s2)" }}>
           <input type="checkbox" checked={email} onChange={(e) => save({ notifications: { channels: { email: e.target.checked } } })} />
           <span>{tr("Also email me")}</span>
         </label>
@@ -203,7 +203,7 @@ function Body({ text }: { text: string }) {
         const lines = b.split("\n").filter((l) => l.trim());
         if (lines.every((l) => /^\s*[-*] /.test(l))) {
           return (
-            <ul key={i} style={{ margin: "0 0 8px", paddingLeft: 18 }}>
+            <ul key={i} style={{ margin: "0 0 var(--m2-s2)", paddingLeft: "var(--m2-s4)" }}>
               {lines.map((l, j) => (
                 <li key={j}>{inline(l.replace(/^\s*[-*] /, ""))}</li>
               ))}
@@ -225,7 +225,7 @@ function Recording({ chapter }: { chapter: HelpChapter }) {
   if (!chapter.video) return null;
   const length = minutes(chapter.seconds);
   return (
-    <figure style={{ margin: "8px 0" }} data-testid="help-video">
+    <figure style={{ margin: "var(--m2-s2) 0" }} data-testid="help-video">
       {missing ? (
         <p className="m2-prov" role="status">{tr("The recording for this chapter is in preparation.")}</p>
       ) : (
@@ -312,7 +312,7 @@ function ChapterView({ chapter, onBack }: { chapter: HelpChapter; onBack: () => 
       <button type="button" className="m2-linkbtn" onClick={onBack}>
         {tr("All of help")}
       </button>
-      <h3 style={{ fontSize: 16, marginTop: 8 }}>{chapter.title}</h3>
+      <h3 style={{ fontSize: 16, marginTop: "var(--m2-s2)" }}>{chapter.title}</h3>
       <p className="m2-hs2">{`${where}${screens.length ? tr(". Applies to: {map}", { map: screens.map((s) => SCREEN_LABEL[s]).join(", ") }) : ""}`}</p>
       <Walkthrough chapter={chapter} />
       <Recording chapter={chapter} />
@@ -415,10 +415,10 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
           )}
           <h3>{tr("What's new")}</h3>
           {data ? (
-            <ul className="m2-hlist" aria-label={tr("What's new")} data-testid="whats-new">
+            <ul className="m2-hlist m2-news" aria-label={tr("What's new")} data-testid="whats-new">
               {data.whatsNew.map((w) => (
-                <li key={w.step} style={{ padding: "6px 0", fontSize: 13 }}>
-                  <span className="m2-hs2">{tr("{date}, step {step}. ", { date: formatDate(w.date), step: w.step })}</span>
+                <li key={w.step}>
+                  <span className="m2-hs2">{tr("{date}. ", { date: formatDate(w.date) })}</span>
                   {w.text}
                 </li>
               ))}

@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode 
 import type { UseQueryResult } from "@tanstack/react-query";
 import { writeClipboard } from "@/lib/browser";
 import { relTime } from "@/lib/v2/format";
+import { formatDate } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/error";
 import { useV2Session } from "@/lib/v2/hooks";
 import { VerdictMark } from "../marks";
@@ -84,7 +85,7 @@ export function Kv({ rows }: { rows: [string, ReactNode][] }) {
 
 export function Note({ tone, children }: { tone?: "warn" | "bad"; children: ReactNode }) {
   return (
-    <div className="m2-note" data-tone={tone} role={tone === "bad" ? "alert" : undefined}>
+    <div className="m2-anote" data-tone={tone} role={tone === "bad" ? "alert" : undefined}>
       {children}
     </div>
   );
@@ -122,7 +123,7 @@ export function Loaded<T>({ q, what, rows = 4, children }: { q: UseQueryResult<T
     return (
       <div aria-busy="true" data-testid="loading">
         {Array.from({ length: rows }, (_, i) => (
-          <div key={i} style={{ marginBottom: 8 }}>
+          <div key={i} style={{ marginBottom: "var(--m2-s2)" }}>
             <Skeleton width="100%" height={20} />
           </div>
         ))}
@@ -210,13 +211,24 @@ export const copyText = (text: string): Promise<boolean> => writeClipboard(text)
 
 export const since = (iso: string | null | undefined, never = t("Never")): string => (iso ? relTime(iso) : never);
 
+/** "11 days ago", with the date and time on hover and for assistive technology: relative where it helps, exact on demand. */
+export function Since({ at, never }: { at: string | null | undefined; never?: string }) {
+  if (!at) return <>{never ?? t("Never")}</>;
+  const exact = formatDate(at, "datetime");
+  return (
+    <time dateTime={at} title={exact}>
+      {relTime(at)}
+    </time>
+  );
+}
+
 /** The rows shown as "from 1 to 50 of 211" with Previous and Next. */
 export function Pager({ offset, limit, total, onPage }: { offset: number; limit: number; total: number; onPage: (offset: number) => void }) {
   if (total <= limit) return <div className="m2-pagebar">{t("{total} {total, plural, one {entry} other {entries}}", { total })}</div>;
   return (
     <div className="m2-pagebar">
       <span>{t("{count} to {min} of {total}", { count: offset + 1, min: Math.min(total, offset + limit), total })}</span>
-      <span style={{ display: "inline-flex", gap: 8 }}>
+      <span style={{ display: "inline-flex", gap: "var(--m2-s2)" }}>
         <button type="button" className="m2-btn m2-sm" disabled={offset === 0} onClick={() => onPage(Math.max(0, offset - limit))}>
           {t("Previous")}
         </button>

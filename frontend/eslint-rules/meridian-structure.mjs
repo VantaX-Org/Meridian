@@ -1,5 +1,5 @@
 /**
- * aurora-structure: the page-structure rules from DESIGN.md "Rules".
+ * meridian-structure: the page-structure rules from DESIGN.md "Rules".
  * Rule numbers in the comments are the DESIGN.md numbers.
  */
 import { DEPTH_ROUTES } from "../lib/depth.mjs";
@@ -89,9 +89,9 @@ const tallyVerdict = mk(
 // Rule 5: charts answer one question each, and every chart is clickable.
 const CLICK = { LineChart: "onPointClick", BarChart: "onBarClick", DonutChart: "onSegmentClick" };
 const chartRules = mk(
-  { recharts: "Import charts from components/aurora/data, not recharts.", click: "{{name}} needs {{prop}}: every mark opens its rows." },
+  { recharts: "Draw charts with design/v2 components, not recharts.", click: "{{name}} needs {{prop}}: every mark opens its rows." },
   (context) => {
-    const inData = norm(context.filename).includes("/components/aurora/data/");
+    const inData = norm(context.filename).includes("/design/v2/");
     return {
       ImportDeclaration(node) {
         if (!inData && node.source.value === "recharts") context.report({ node, messageId: "recharts" });
@@ -109,10 +109,10 @@ const chartRules = mk(
 
 // Rule 6: StatusBadge is the only severity renderer.
 const severityViaBadge = mk(
-  { raw: "Render severity with StatusBadge, not data-severity on a raw element." },
+  { raw: "Render severity with SeverityMark (design/v2/marks.tsx), not data-severity on a raw element." },
   (context) => {
     const f = norm(context.filename);
-    if (f.includes("/components/ui-core/") || f.includes("/components/aurora/")) return {};
+    if (f.includes("/design/v2/")) return {};
     return {
       JSXOpeningElement(node) {
         const n = jsxName(node.name);
@@ -132,6 +132,9 @@ const sapName = {
         // Plain data (keys, imports, test ids) is not copy: only JSX content is judged.
         const p = node.parent;
         const inJsx = p.type === "JSXExpressionContainer" || p.type === "JSXAttribute";
+        // An input's example value is typed by the person, not read: it is not a label.
+        const attrName = p.type === "JSXAttribute" ? p.name.name : p.parent?.type === "JSXAttribute" ? p.parent.name.name : null;
+        if (attrName === "placeholder") return;
         if (!inJsx) return;
         for (let a = node.parent; a; a = a.parent) {
           if (a.type === "JSXElement" && ["FieldChip", "Mono"].includes(jsxName(a.openingElement.name))) return;
@@ -166,7 +169,7 @@ const urlIsState = {
   meta: { type: "suggestion", schema: [], messages: { url: "'{{name}}' is a filter. Read it from useSearchParams so the URL is the state." } },
   create(context) {
     const f = norm(context.filename);
-    if (!/\/(app\/\(dashboard\)|components\/(command-centre|workbench|data|analyse|process|admin))\//.test(f)) return {};
+    if (!/\/(app\/\(v2\)|design\/v2\/screens)\//.test(f)) return {};
     return {
       CallExpression(node) {
         if (node.callee.name !== "useState") return;
@@ -178,10 +181,10 @@ const urlIsState = {
   },
 };
 
-// Rule 16: one h1 per route, and PageHeader (or AuthFrame) owns it.
-const oneH1 = mk({ h1: "Only PageHeader renders the h1. Use PageHeader, or a lower heading level." }, (context) => {
+// Rule 16: one h1 per route, and PageTitle (or AuthFrame, outside the shell) owns it.
+const oneH1 = mk({ h1: "Only PageTitle renders the h1. Use PageTitle, or a lower heading level." }, (context) => {
   const f = norm(context.filename);
-  if (f.endsWith("/components/ui-core/index.tsx") || f.endsWith("/components/auth/auth-frame.tsx")
+  if (f.endsWith("/design/v2/parts.tsx") || f.endsWith("/design/v2/auth/AuthFrame.tsx")
       || f.endsWith("/app/global-error.tsx") || f.endsWith("/app/not-found.tsx")) return {}; // outside the shell: no Breadcrumb to own the h1
   const lit = (a) => (a?.value?.type === "Literal" ? a.value.value : a?.value?.expression?.value);
   return {
@@ -238,7 +241,7 @@ const noInlineStyle = mk(
 );
 
 const plugin = {
-  meta: { name: "aurora-structure", version: "1.0.0" },
+  meta: { name: "meridian-structure", version: "1.0.0" },
   rules: {
     "tally-figure-href": tallyFigureHref,
     "one-tally": oneTally,

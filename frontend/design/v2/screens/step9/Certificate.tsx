@@ -98,7 +98,7 @@ function Version({ waveId, v, list, rights, latest, me }: { waveId: string; v: C
         {latest ? <span className="m2-meta">{t("latest")}</span> : null}
       </h4>
       <p className="m2-meta" style={{ margin: 0 }}>{`${v.issued_by ? t("Issued {when} by {who}.", { when: formatDate(v.issued_at, "datetime"), who: v.issued_by }) : t("Issued {when}.", { when: formatDate(v.issued_at, "datetime") })} ${t("Measured on {list}.", { list: v.measured_on.length ? v.measured_on.map((m) => `${moduleText(m.module)} ${m.run_at ? formatDate(m.run_at, "date") : t("never")}`).join(", ") : t("no object") })}`}</p>
-      <p className="m2-cert-hash" style={{ margin: "4px 0 0" }}>{`SHA-256 ${v.sha256}` /* i18n-ignore */}</p>
+      <p className="m2-cert-hash" style={{ margin: "var(--m2-s1) 0 0" }}>{`SHA-256 ${v.sha256}` /* i18n-ignore */}</p>
       <ul className="m2-cert-sig" aria-label={t("Signatures of version {version}", { version: v.version })}>
         {list.required_signers.map((s) => {
           const sig = v.signatures.find((x) => x.user_id === s.user_id);

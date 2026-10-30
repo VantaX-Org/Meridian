@@ -5,11 +5,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { extractDelta, extractionDryRun, putEscalationChain, putWaveGate, type DryRun, type EscalationStep, type WaveGate } from "@/lib/api/v2/roles";
 import { useAssignable } from "@/lib/v2/approvals-queries";
 import { failureText } from "@/lib/v2/errors";
-import { useV2Session } from "@/lib/v2/hooks";
+import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { notFound, refreshRoles, useEscalationChain, useWaveGates } from "@/lib/v2/roles-queries";
 import { int } from "@/lib/v2/score";
 import { VerdictMark } from "../marks";
-import { Dash, Mono, Skeleton } from "../parts";
+import { Dash, Mono, Skeleton, V2Link } from "../parts";
 import "../roles.css";
 import { t as tr } from "@/lib/v2/i18n";
 
@@ -50,7 +50,7 @@ export function EscalationChainEditor() {
   return (
     <section className="m2-rsec" aria-label={tr("Escalation chain")} data-testid="escalation-chain">
       <h3>{tr("Escalation chain")}</h3>
-      <p className="m2-meta">{tr("After a breach the assignee and the team lead hear first. Each level below notifies once more when an item stays past due that long.")}</p>
+      <p className="m2-meta">{tr("After a breach the assignee and the team lead hear first. Each level below notifies once more when a task stays past due that long.")}</p>
       {q.isError ? (
         <p className="m2-meta">{notFound(q.error) ? <Dash why={tr("The escalation chain is not available on this server yet")} /> : tr("The chain could not be read.")}</p>
       ) : !q.data ? (
@@ -127,7 +127,7 @@ export function GateMark({ waveId }: { waveId: string }) {
   const g = q.data?.gates.find((x) => x.wave_id === waveId);
   if (!g || !g.gate.configured) return null;
   return (
-    <span className="m2-gate" data-testid="gate-mark" title={g.status.checks.map((c) => `${c.label}: ${c.passed ? "met" : c.detail}`).join(". ")}>
+    <span className="m2-gate" data-testid="gate-mark" title={g.status.checks.map((c) => (c.passed ? tr("{label}: met", { label: c.label }) : `${c.label}: ${c.detail}`)).join(". ")}>
       <VerdictMark verdict={g.status.passed ? "go" : "no-go"} />
       {g.status.passed ? tr("Gate passed") : tr("Gate not passed, {filterCount} of {checksCount} not met", { filterCount: g.status.checks.filter((c) => !c.passed).length, checksCount: g.status.checks.length })}
     </span>
@@ -159,6 +159,7 @@ export function WaveGateEditor({ waveId }: { waveId: string }) {
 function GateForm({ g }: { g: WaveGate }) {
   const qc = useQueryClient();
   const session = useV2Session();
+  const { hrefFor } = useOpenItem();
   const [min, setMin] = useState<string>(g.gate.min_score === null ? "" : String(g.gate.min_score));
   const [zero, setZero] = useState(g.gate.zero_criticals);
   const [contracts, setContracts] = useState(g.gate.contracts_met);
@@ -197,8 +198,8 @@ function GateForm({ g }: { g: WaveGate }) {
         </span>
       ) : null}
       <span className="m2-meta">
-        {tr("Readiness certificate: {value} (the signed certificate arrives in step 9) ", { value: g.status.passed ? tr("a draft is ready") : tr("not yet") })}
-        <Mono>{g.certificate_href.replace("/api/v1", "")}</Mono>
+        {tr("Readiness certificate: {value}.", { value: g.status.passed ? tr("a draft is ready") : tr("not yet") })}{" "}
+        <V2Link href={hrefFor({ kind: "certificate", id: g.wave_id })}>{tr("Open the certificate")}</V2Link>
       </span>
       {error ? (
         <span className="m2-err" role="alert">

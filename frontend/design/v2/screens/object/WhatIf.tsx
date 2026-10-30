@@ -35,7 +35,7 @@ export function WhatIfPanel({ steps, receipt, label }: { steps: readonly StepVie
   return (
     <section className="m2-sec m2-whatif" aria-label={t("What if these rules were fixed")} data-testid="what-if">
       <h2 className="m2-h2">
-        {t("What if these rules were fixed")}{" "}<span className="m2-sim">{t("Simulation")}</span>
+        {t("What if these rules were fixed")}{" "}<span className="m2-simtag">{t("Simulation")}</span>
       </h2>
       <p className="m2-rp m2-meta">{t("Tick the rules to fix. The steps of {label} are read again without their failures; nothing is changed and no data is read.", { label })}</p>
       <ul className="m2-whatif-rules" aria-label={t("Failing rules")}>

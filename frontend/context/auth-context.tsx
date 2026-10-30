@@ -54,7 +54,7 @@ function isAuthUser(x: unknown): x is AuthUser {
 
 const TOKEN_KEY = "mn_auth_token";
 
-/** Signed-in marker for middleware.ts (the token itself never leaves localStorage). */
+/** Signed-in marker for proxy.ts (the token itself never leaves localStorage). */
 function setSessionCookie(on: boolean): void {
   document.cookie = on
     ? "mn_session=1; Path=/; SameSite=Lax; Max-Age=2592000"

@@ -7,9 +7,11 @@ import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { notFound, useRelated } from "@/lib/v2/roles-queries";
 import { int, moduleSlug } from "@/lib/v2/score";
 import { WatchToggle } from "../../inspector/collab";
-import { Dash, V2Link } from "../../parts";
+import { Dash, Skeleton, V2Link } from "../../parts";
 import "../../roles.css";
 import { t } from "@/lib/v2/i18n";
+import { MODULE_LABELS } from "@/lib/format";
+import { moduleText } from "@/lib/v2/labels";
 
 /**
  * Under the object's title (step 6c): the objects to govern with it (sap/object_relationships.yaml), each with its
@@ -32,7 +34,11 @@ export function RelatedObjects({ module, system, systemId, label }: { module: st
       </div>
       {q.isError ? (
         notFound(q.error) ? null : <p className="m2-meta">{t("The related objects could not be read.")}</p>
-      ) : !q.data ? null : q.data.related.length === 0 ? (
+      ) : !q.data ? (
+        <p className="m2-meta m2-related-wait" aria-busy="true">
+          <Skeleton width="70%" height={14} />
+        </p>
+      ) : q.data.related.length === 0 ? (
         <p className="m2-meta">{t("No related object is mapped for this object.")}</p>
       ) : (
         <>
@@ -44,7 +50,7 @@ export function RelatedObjects({ module, system, systemId, label }: { module: st
           <ul className="m2-related" aria-label={t("Objects related to {label}", { label })}>
             {q.data.related.map((r) => (
               <li key={r.module}>
-                <V2Link href={`/o/${system}/${moduleSlug(r.module)}`}>{r.label}</V2Link>
+                <V2Link href={`/o/${system}/${moduleSlug(r.module)}`}>{Object.hasOwn(MODULE_LABELS, r.module) ? moduleText(r.module) : r.label}</V2Link>
                 <span className="m2-meta">{`${REL[r.relation]}${r.open_criticals ? t(", {open_criticals} critical", { open_criticals: int(r.open_criticals) }) : ""}`}</span>
               </li>
             ))}

@@ -142,7 +142,7 @@ function NewChannel({ onClose }: { onClose: () => void }) {
             </select>
           </label>
         ) : null}
-        <label className="m2-sw" style={{ display: "flex", gap: 8 }}>
+        <label className="m2-sw" style={{ display: "flex", gap: "var(--m2-s2)" }}>
           <input type="checkbox" checked={immediate} onChange={(e) => setImmediate(e.target.checked)} />
           {t("Send new critical findings at once")}
         </label>
@@ -220,11 +220,11 @@ function ChannelBody({ c }: { c: AlertChannel }) {
             </select>
           </label>
         ) : null}
-        <label className="m2-sw" style={{ display: "flex", gap: 8 }}>
+        <label className="m2-sw" style={{ display: "flex", gap: "var(--m2-s2)" }}>
           <input type="checkbox" checked={immediate} disabled={!edit} onChange={(e) => setImmediate(e.target.checked)} />
           {t("Send new critical findings at once")}
         </label>
-        <label className="m2-sw" style={{ display: "flex", gap: 8 }}>
+        <label className="m2-sw" style={{ display: "flex", gap: "var(--m2-s2)" }}>
           <input type="checkbox" checked={enabled} disabled={!edit} onChange={(e) => setEnabled(e.target.checked)} />
           {t("Channel is on")}
         </label>

@@ -187,7 +187,7 @@ function GrantsBlock({ user, canEdit, onChanged }: { user: User; canEdit: boolea
               {preview.data.diff.added_pairs.length === 0 ? t("This adds nothing the person cannot already do.") : t("This lets {name} {map}{value}.", { name: user.name, map: preview.data.diff.added_pairs.slice(0, 6).map(([r, a]) => `${a} ${r}`).join(", "), value: preview.data.diff.added_pairs.length > 6 ? t(" and {count} more", { count: preview.data.diff.added_pairs.length - 6 }) : "" })}
             </p>
           ) : null}
-          <div className="m2-acts" style={{ marginTop: 8 }}>
+          <div className="m2-acts" style={{ marginTop: "var(--m2-s2)" }}>
             <button
               type="button"
               className="m2-btn"
@@ -224,7 +224,7 @@ function GrantsBlock({ user, canEdit, onChanged }: { user: User; canEdit: boolea
             </button>
           </div>
           {convert && convert.converted.length && !convert.confirmed ? (
-            <div className="m2-acts" style={{ marginTop: 8 }}>
+            <div className="m2-acts" style={{ marginTop: "var(--m2-s2)" }}>
               <button
                 type="button"
                 className="m2-btn"
@@ -543,7 +543,7 @@ function RoleBody({ role }: { role: Role }) {
               <input value={description} onChange={(e) => setDescription(e.target.value)} />
             </label>
           </div>
-          <div className="m2-acts" style={{ marginTop: 8 }}>
+          <div className="m2-acts" style={{ marginTop: "var(--m2-s2)" }}>
             <button
               type="button"
               className="m2-btn"
@@ -672,7 +672,7 @@ function NewKey({ onClose }: { onClose: () => void }) {
       </div>
       <h3>{t("Roles the key acts with")}</h3>
       {grants.map((g, i) => (
-        <div key={i} style={{ marginBottom: 12 }}>
+        <div key={i} style={{ marginBottom: "var(--m2-s3)" }}>
           <ScopeFields scope={g} onChange={(s) => setGrants(grants.map((x, j) => (j === i ? s : x)))} roles={roles.data ?? []} />
           {grants.length > 1 ? (
             <button type="button" className="m2-linkbtn" onClick={() => setGrants(grants.filter((_, j) => j !== i))}>
@@ -689,7 +689,7 @@ function NewKey({ onClose }: { onClose: () => void }) {
         <div role="status">
           <h3>{t("Your key. It is shown once.")}</h3>
           <p className="m2-secret" data-testid="new-key">{made.key}</p>
-          <div className="m2-acts" style={{ marginTop: 8 }}>
+          <div className="m2-acts" style={{ marginTop: "var(--m2-s2)" }}>
             <button
               type="button"
               className="m2-btn m2-strong"

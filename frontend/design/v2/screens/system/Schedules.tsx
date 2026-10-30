@@ -127,7 +127,7 @@ export function Schedules({ id }: { id: string }) {
       ) : addable.length > 0 ? (
         <form
           className="m2-form6"
-          style={{ marginTop: 16 }}
+          style={{ marginTop: "var(--m2-s4)" }}
           aria-label={t("Add a schedule")}
           onSubmit={(e) => {
             e.preventDefault();

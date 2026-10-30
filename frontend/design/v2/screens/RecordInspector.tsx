@@ -35,7 +35,7 @@ const SHOWN_ALLOWED = 5;
 
 /** What the history rows say, in the words of the trade. */
 function historyLine(h: RecordLinks["history"][number]): string {
-  if (h.action === "assign") return h.to_value ? tr("Assigned to {to_value}{value}", { to_value: h.to_value, value: h.user ? tr(" by {user}", { user: h.user }) : "" }) : `Unassigned${h.user ? tr(" by {user}", { user: h.user }) : ""}`;
+  if (h.action === "assign") return h.to_value ? tr("Assigned to {to_value}{value}", { to_value: h.to_value, value: h.user ? tr(" by {user}", { user: h.user }) : "" }) : (h.user ? tr("Unassigned by {user}", { user: h.user }) : tr("Unassigned"));
   if (h.action === "comment") return tr("{user} wrote: {note}", { user: h.user ?? tr("Someone"), note: h.note ?? "" });
   if (h.action === "status") return `${h.check_id ? `${h.check_id}: ` : ""}${h.to_value ?? tr("Status changed")}${h.user ? `, ${h.user}` : ""}${h.note ? `. ${h.note}` : ""}`;
   return `${h.action}${h.to_value ? `: ${h.to_value}` : ""}${h.user ? `, ${h.user}` : ""}`;
@@ -217,7 +217,7 @@ export function RecordInspector({ id, onClose }: { id: string; onClose: () => vo
   const { hrefFor } = useOpenItem();
   const [reason, setReason] = useState<{ kind: "not_an_issue" | "accept_risk"; issues: WorkIssue[] } | { kind: "send_back" } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [tab, setTab] = useState<"record" | "history">("record");
+  const [pane, setPane] = useState<"record" | "history">("record");
   const firstInput = useRef<HTMLDivElement>(null);
 
   const parts = splitKey(key);
@@ -451,15 +451,15 @@ export function RecordInspector({ id, onClose }: { id: string; onClose: () => vo
     <>
       <InspectorFrame title={<Mono>{title}</Mono>} status={status} onClose={onClose}>
         <div className="m2-hist-tabs" role="tablist" aria-label={tr("Views of this record")}>
-          <button type="button" role="tab" id="rec-tab-record" aria-controls="rec-panel" aria-selected={tab === "record"} tabIndex={tab === "record" ? 0 : -1} onClick={() => setTab("record")} onKeyDown={(e) => e.key === "ArrowRight" && (setTab("history"), document.getElementById("rec-tab-history")?.focus())}>
+          <button type="button" role="tab" id="rec-tab-record" aria-controls="rec-panel" aria-selected={pane === "record"} tabIndex={pane === "record" ? 0 : -1} onClick={() => setPane("record")} onKeyDown={(e) => e.key === "ArrowRight" && (setPane("history"), document.getElementById("rec-tab-history")?.focus())}>
             {tr("Record")}
           </button>
-          <button type="button" role="tab" id="rec-tab-history" aria-controls="rec-panel" aria-selected={tab === "history"} tabIndex={tab === "history" ? 0 : -1} onClick={() => setTab("history")} onKeyDown={(e) => e.key === "ArrowLeft" && (setTab("record"), document.getElementById("rec-tab-record")?.focus())}>
+          <button type="button" role="tab" id="rec-tab-history" aria-controls="rec-panel" aria-selected={pane === "history"} tabIndex={pane === "history" ? 0 : -1} onClick={() => setPane("history")} onKeyDown={(e) => e.key === "ArrowLeft" && (setPane("record"), document.getElementById("rec-tab-record")?.focus())}>
             {tr("History")}
           </button>
         </div>
-        <div id="rec-panel" role="tabpanel" aria-labelledby={tab === "record" ? "rec-tab-record" : "rec-tab-history"}>
-          {tab === "history" ? <RecordHistoryPanel module={module} recordKey={key} /> : body}
+        <div id="rec-panel" role="tabpanel" aria-labelledby={pane === "record" ? "rec-tab-record" : "rec-tab-history"}>
+          {pane === "history" ? <RecordHistoryPanel module={module} recordKey={key} /> : body}
         </div>
       </InspectorFrame>
       {reason && reason.kind !== "send_back" ? (

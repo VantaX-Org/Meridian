@@ -251,7 +251,7 @@ export function SubscriptionsBlock() {
       ) : (
         <div className="m2-aform">
           {q.data.events.map((e) => (
-            <label key={e.event} className="m2-sw" style={{ display: "flex", gap: 8 }}>
+            <label key={e.event} className="m2-sw" style={{ display: "flex", gap: "var(--m2-s2)" }}>
               <input type="checkbox" checked={e.enabled} disabled={readOnly} onChange={(x) => void flip(e.event, x.target.checked)} />
               <span>{e.label}</span>
             </label>

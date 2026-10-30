@@ -1,4 +1,4 @@
-/** Run: `node lib/format.test.mjs` — node's built-in assert, same pattern as eslint-rules/aurora-writing.test.mjs. */
+/** Run: `node lib/format.test.mjs` — node's built-in assert, same pattern as eslint-rules/meridian-writing.test.mjs. */
 import assert from "node:assert/strict";
 import { checkClassLabel, errorLabel, formatDate, humanizeIds, labelOf } from "./format.ts";
 
@@ -19,7 +19,7 @@ assert.equal(labelOf("open"), "Open");
 assert.equal(labelOf("in_progress"), "In progress");
 assert.equal(labelOf("toString"), "Tostring");
 assert.match(errorLabel("pyrfc_not_installed: build the wheel"), /^SAP RFC library/);
-assert.equal(errorLabel("timeout_reached"), "Timeout Reached");
+assert.equal(errorLabel("timeout_reached"), "Timeout reached");
 assert.equal(errorLabel(null), "—");
-assert.equal(humanizeIds("1 module(s) in accounts_payable failed"), "1 module(s) in Accounts Payable failed");
+assert.equal(humanizeIds("1 module(s) in accounts_payable failed"), "1 module(s) in Accounts payable failed");
 console.log("format.test: ok");

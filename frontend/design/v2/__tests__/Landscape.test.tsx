@@ -57,7 +57,7 @@ describe("landscape canvas, fixture mode", () => {
     expect(within(table).getAllByTestId("matrix-cell")).toHaveLength(15);
   });
 
-  it("a cell is a 48 ruler, the score, the word capped, a verdict mark with its word and 'N rec, M rules'", async () => {
+  it("a cell is a 48 ruler, the score, the word capped, a verdict mark with its word and 'N records, M rules'", async () => {
     renderWithQuery(<LandscapeCanvas />);
     const table = await screen.findByTestId("coverage-matrix");
     const row = within(table).getByRole("row", { name: /Material master/ });
@@ -66,7 +66,7 @@ describe("landscape canvas, fixture mode", () => {
     expect(within(cell).getByTestId("ruler-score")).toHaveTextContent("70.0");
     expect(within(cell).getByText("capped")).toBeInTheDocument();
     expect(within(cell).getByText("No-go")).toBeInTheDocument();
-    expect(within(cell).getByText("61,816 rec, 913 rules")).toBeInTheDocument();
+    expect(within(cell).getByText("61,816 records, 913 rules")).toBeInTheDocument();
     expect(cell).toHaveAttribute("href", expect.stringMatching(/^\/o\/ecc-production\/material-master/));
     expect(cell).toHaveAccessibleName("Material master, ECC production, 70.0 capped, No-go, 3 data contract thresholds breached, not enforced, 1 policy class breached: a critical rule evidencing an applied policy pack fails");
     const go = within(within(table).getByRole("row", { name: /G\/L accounts/ })).getByTestId("matrix-cell");
@@ -197,6 +197,16 @@ describe("landscape canvas, honest states", () => {
     renderWithQuery(<LandscapeCanvas />);
     expect(await screen.findByText(/No SAP system is connected yet/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Connect a system" })).toHaveAttribute("href", expect.stringMatching(/^\/s\/new(\?|$)/));
+  });
+
+  it("an empty tenant gets three steps, the first one current, instead of empty frames", async () => {
+    vi.spyOn(landscapeApi, "getLandscape").mockResolvedValue({ ...landscapeFixture, systems: [], cells: [], objects: [] });
+    renderWithQuery(<LandscapeCanvas />);
+    const start = await screen.findByTestId("first-steps");
+    const steps = within(start).getAllByRole("listitem");
+    expect(steps.map((s) => s.getAttribute("data-state"))).toEqual(["current", "next", "next"]);
+    expect(within(steps[0]).getByRole("link", { name: "Upload a file" })).toHaveAttribute("href", expect.stringMatching(/^\/admin\/runs(\?|$)/));
+    expect(within(steps[2]).getByRole("heading", { name: "Read the landscape" })).toBeInTheDocument();
   });
 
   it("systems with no run yet say so: zero objects scored, rows empty with their reason", async () => {

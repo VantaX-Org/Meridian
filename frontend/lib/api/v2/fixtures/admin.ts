@@ -165,20 +165,21 @@ function build(): State {
     notes: null,
     updated_at: ago(i + 3),
   }));
-  const actions: [string, string, string, string, string][] = [
-    ["create", "users", "POST", "/api/v1/users/invite", "u-7"],
-    ["update", "work", "POST", "/api/v1/work/decide", "batch"],
-    ["update", "settings", "PUT", "/api/v1/settings/scoring", "scoring"],
-    ["sync", "systems", "POST", "/api/v1/systems/extract", SYS_ECC],
-    ["update", "roles", "PUT", "/api/v1/roles/finance_reviewer/permissions", "finance_reviewer"],
-    ["create", "reports", "POST", "/api/v1/reports/schedules", "sch-1"],
-    ["api_key.create", "api-keys", "POST", "/api/v1/admin/api-keys", "key-1"],
-    ["analyse", "versions", "POST", "/api/v1/versions/analyse", "d3229ded"],
-    ["update", "users", "PUT", "/api/v1/users/u-8", "u-8"],
-    ["update", "migration", "PATCH", "/api/v1/migration/waves/w-1", "w-1"],
+  // The name the API records for each change (the payload's name), as the audit middleware stores it.
+  const actions: [string, string, string, string, string, string | null][] = [
+    ["create", "users", "POST", "/api/v1/users/invite", "u-7", "Ines Fernandes"],
+    ["update", "work", "POST", "/api/v1/work/decide", "batch", "Batch B-241"],
+    ["update", "settings", "PUT", "/api/v1/settings/scoring", "scoring", "Scoring weights"],
+    ["sync", "systems", "POST", "/api/v1/systems/extract", SYS_ECC, "ECC production"],
+    ["update", "roles", "PUT", "/api/v1/roles/finance_reviewer/permissions", "finance_reviewer", "Finance reviewer"],
+    ["create", "reports", "POST", "/api/v1/reports/schedules", "sch-1", "Weekly board pack"],
+    ["api_key.create", "api-keys", "POST", "/api/v1/admin/api-keys", "key-1", "Nightly export script"],
+    ["analyse", "versions", "POST", "/api/v1/versions/analyse", "d3229ded", null],
+    ["update", "users", "PUT", "/api/v1/users/u-8", "u-8", "Jonas Weber"],
+    ["update", "migration", "PATCH", "/api/v1/migration/waves/w-1", "w-1", "Wave 1: finance foundations"],
   ];
   const audit: AuditEntry[] = Array.from({ length: 36 }, (_, i) => {
-    const [action, entity, method, path, id] = actions[i % actions.length];
+    const [action, entity, method, path, id, name] = actions[i % actions.length];
     const actor = users[(i * 3) % 6];
     return {
       id: `au-${i + 1}`,
@@ -193,7 +194,7 @@ function build(): State {
       ip: `10.20.0.${10 + (i % 7)}`,
       user_agent: "Mozilla/5.0 (X11; Linux x86_64) Chrome/126.0",
       before_json: i % 3 === 0 ? { is_active: true } : null,
-      after_json: i % 3 === 0 ? { is_active: false } : { name: action },
+      after_json: i % 3 === 0 && entity === "users" ? { name, is_active: false } : name ? { name } : null,
       created_at: ago(i * 0.6 + 0.1, 6 + (i % 12)),
     };
   }).sort((a, b) => b.created_at.localeCompare(a.created_at));

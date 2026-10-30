@@ -112,7 +112,7 @@ describe("the preferences panel", () => {
   it("keyboard hints can be switched off, and the page says so for the stylesheet", async () => {
     mount();
     const dialog = await panel();
-    const box = within(dialog).getByLabelText("Show keyboard hints beside menu items and places");
+    const box = within(dialog).getByLabelText("Show keyboard hints beside menu entries and places");
     expect(box).toBeChecked();
     fireEvent.click(box);
     expect(readKeyHints()).toBe(false);
@@ -125,7 +125,7 @@ describe("the preferences panel", () => {
     const patch = vi.spyOn(adminApi, "patchMyPreferences");
     mount();
     const dialog = await panel();
-    fireEvent.change(within(dialog).getByLabelText("Digest of your open items"), { target: { value: "daily" } });
+    fireEvent.change(within(dialog).getByLabelText("Digest of your open work"), { target: { value: "daily" } });
     fireEvent.click(within(dialog).getByLabelText("Tell me at once about critical findings"));
     expect(readPrefs().notifications).toMatchObject({ digest: "daily", immediate_critical: true });
     expect(patch).toHaveBeenCalledWith({ notifications: { digest: "daily" } });

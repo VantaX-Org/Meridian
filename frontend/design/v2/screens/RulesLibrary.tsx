@@ -3,14 +3,14 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQueries } from "@tanstack/react-query";
-import { formatDate, labelOf } from "@/lib/format";
+import { checkClassLabel, formatDate, labelOf } from "@/lib/format";
 import { CHECK_CLASSES, DIMENSIONS, EMPTY_FORM, SEVERITIES, formToBody, ruleToForm, validateForm, type DraftForm } from "@/lib/v2/draft-model";
 import { useFixture } from "@/lib/api/v2/fixture";
 import {
   createDraft, deleteDraft, dryRunDraftBody, endSuppression, generateDraft, getModuleRules, publishDraftById, setRuleEnabled, updateDraft,
   type RuleDraft, type RuleDraftDryRun,
 } from "@/lib/api/v2/rulelib";
-import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
+import { useOpenItem, useUrlParam, useV2Session } from "@/lib/v2/hooks";
 import { useLandscape } from "@/lib/v2/queries";
 import { filterRows, NO_FILTERS, rankRows, toRows, activeFilterCount, type LibFilters, type LibRow, type StateFilter } from "@/lib/v2/rules-library";
 import { int } from "@/lib/v2/score";
@@ -22,7 +22,7 @@ import { ResultFrame, useOutcome } from "../inspector/shared";
 import "../object.css";
 import { ScrollFrame } from "./object/ScrollFrame";
 import { Dash, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton } from "../parts";
-import { t } from "@/lib/v2/i18n";
+import { t, tx } from "@/lib/v2/i18n";
 
 type View = "rules" | "drafts" | "suppressions";
 
@@ -157,12 +157,12 @@ function DraftEditor({ draft, modules, onClose }: { draft: RuleDraft | null; mod
           {(p) => (
             <select {...p} value={form.check_class} onChange={(e) => set("check_class", e.target.value)}>
               {CHECK_CLASSES.map((c) => (
-                <option key={c} value={c}>{labelOf(c)}</option>
+                <option key={c} value={c}>{tx(checkClassLabel(c))}</option>
               ))}
             </select>
           )}
         </Field>
-        <Field label={t("Field")} hint="TABLE.FIELD">{(p) => <input {...p} className="m2-mono" value={form.field} onChange={(e) => set("field", e.target.value)} />}</Field>
+        <Field label={t("Field")} hint={t("The table and field, such as MARA.MATNR")}>{(p) => <input {...p} className="m2-mono" value={form.field} onChange={(e) => set("field", e.target.value)} />}</Field>
         <Field label={t("Severity")}>
           {(p) => (
             <select {...p} value={form.severity} onChange={(e) => set("severity", e.target.value)}>
@@ -217,7 +217,7 @@ function Drafts({ modules, editing, setEditing }: { modules: string[]; editing: 
       {items.length === 0 ? (
         <EmptyFrame>{t("No drafts. Write a rule, or describe it in plain English; a dry run shows what it would find before it is published.")}</EmptyFrame>
       ) : (
-        <ScrollFrame label={t("Table 1, scrollable")}  style={{ marginTop: 12 }}>
+        <ScrollFrame label={t("Table 1, scrollable")}  style={{ marginTop: "var(--m2-s3)" }}>
           <table className="m2-tbl" data-testid="drafts-table">
             <thead>
               <tr>
@@ -319,7 +319,7 @@ export function RulesLibrary() {
   const landscape = useLandscape(null).data;
   const params = useSearchParams();
   const [filters, setFilters] = useState<LibFilters>(() => ({ ...NO_FILTERS, module: params.get("module") ?? "" }));
-  const [view, setView] = useState<View>(() => (params.get("view") === "drafts" ? "drafts" : "rules"));
+  const [view, setView] = useUrlParam<View>("view", "rules", ["rules", "drafts", "suppressions"]);
   const [editing, setEditing] = useState<RuleDraft | "new" | null>(null);
   const { outcome, pending, run } = useOutcome();
 
@@ -346,7 +346,7 @@ export function RulesLibrary() {
   const segs: { key: View; label: string; show: boolean }[] = [
     { key: "rules", label: t("All rules"), show: true },
     { key: "drafts", label: t("Drafts"), show: canManage },
-    { key: "suppressions", label: `Suppressed${suppressed.size ? ` ${suppressed.size}` : ""}`, show: true },
+    { key: "suppressions", label: suppressed.size ? t("Suppressed {count}", { count: suppressed.size }) : t("Suppressed"), show: true },
   ];
 
   return (
@@ -357,7 +357,7 @@ export function RulesLibrary() {
         {rows.length ? <span>{t("{filterCount} enabled", { filterCount: rows.filter((r) => r.enabled).length })}</span> : null}
         {suppressed.size ? <span>{t("{size} suppressed", { size: suppressed.size })}</span> : null}
       </p>
-      <div className="m2-rbar" style={{ marginTop: 16 }}>
+      <div className="m2-rbar" style={{ marginTop: "var(--m2-s4)" }}>
         <div className="m2-segs" role="group" aria-label={t("Show")}>
           {segs.filter((s) => s.show).map((s) => (
             <button key={s.key} type="button" className="m2-seg" aria-pressed={view === s.key} onClick={() => setView(s.key)}>{s.label}</button>

@@ -14,7 +14,7 @@ export function PeopleActions() {
   const { hrefFor } = useOpenItem();
   const live = !session.shared && !session.viewAs;
   return (
-    <div className="m2-gtools" data-testid="people-actions" style={{ margin: "8px 0" }}>
+    <div className="m2-gtools" data-testid="people-actions" style={{ margin: "var(--m2-s2) 0" }}>
       {session.can("assign") && live ? (
         <V2Link href={hrefFor({ kind: "balance", id: "" })} className="m2-btn m2-sm">
           {t("Balance work")}

@@ -123,9 +123,9 @@
   --m-grad-count-settle: linear-gradient(90deg, var(--m-accent-soft) 0%, transparent 100%);
 
   /* ---------- Type ---------- */
-  --m-font-ui: var(--font-ui, "Manrope", system-ui, sans-serif);
+  --m-font-ui: var(--font-plex-sans, system-ui), system-ui, sans-serif;
   --m-font-sans: var(--m-font-ui);
-  --m-font-mono: var(--font-jbm, "JetBrains Mono", ui-monospace, monospace);
+  --m-font-mono: var(--font-plex-mono, ui-monospace), ui-monospace, monospace;
 
   --m-text-hero: 96px;      --m-leading-hero: 88px;      /* the score: a plain large number */
   --m-text-verdict: 22px;   --m-leading-verdict: 30px;   /* verdict sentence */

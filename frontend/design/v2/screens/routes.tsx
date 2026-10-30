@@ -2,15 +2,32 @@
 
 import type { ReactNode } from "react";
 import { useParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import { EmptyTab, ObjectFrame, RulesTab } from "./Object";
-import { ReadinessTab } from "./object/ReadinessTab";
-import { RecordsTab } from "./object/LedgerSlot";
-import { RunsTab } from "./object/RunsTab";
-import { GoldenTab } from "./object/GoldenTab";
-import { GlossaryTab } from "./object/GlossaryTab";
-import { LineageTab } from "./object/LineageTab";
-import { ProcessesTab } from "./object/ProcessesTab";
-import { RuleCanvas } from "./Rule";
+import { Skeleton } from "../parts";
+
+/** A tab loads with its own address, not with every object page: until it arrives its place shows the skeleton of a table. */
+function TabLoading() {
+  return (
+    <div className="m2-sec" aria-busy="true">
+      <Skeleton width="40%" height={16} />
+      <div className="m2-frame m2-tab-wait">
+        <Skeleton width="100%" height={14} />
+        <Skeleton width="92%" height={14} />
+        <Skeleton width="84%" height={14} />
+      </div>
+    </div>
+  );
+}
+type TabProps = { system: string; module: string };
+const ReadinessTab = dynamic<TabProps>(() => import("./object/ReadinessTab").then((m) => m.ReadinessTab), { loading: TabLoading });
+const RecordsTab = dynamic<TabProps>(() => import("./object/LedgerSlot").then((m) => m.RecordsTab), { loading: TabLoading });
+const RunsTab = dynamic<TabProps>(() => import("./object/RunsTab").then((m) => m.RunsTab), { loading: TabLoading });
+const GoldenTab = dynamic<TabProps>(() => import("./object/GoldenTab").then((m) => m.GoldenTab), { loading: TabLoading });
+const GlossaryTab = dynamic<TabProps>(() => import("./object/GlossaryTab").then((m) => m.GlossaryTab), { loading: TabLoading });
+const LineageTab = dynamic<TabProps>(() => import("./object/LineageTab").then((m) => m.LineageTab), { loading: TabLoading });
+const ProcessesTab = dynamic<TabProps>(() => import("./object/ProcessesTab").then((m) => m.ProcessesTab), { loading: TabLoading });
+const RuleCanvas = dynamic<{ id: string }>(() => import("./Rule").then((m) => m.RuleCanvas), { loading: TabLoading });
 
 interface ObjectParams {
   system: string;

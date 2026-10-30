@@ -5,7 +5,8 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { getCommand } from "@/lib/api/v2/landscape";
 import { useFixture } from "@/lib/api/v2/fixture";
-import { useV2Href } from "@/lib/v2/hooks";
+import { useV2Href, useV2Session } from "@/lib/v2/hooks";
+import { canAdminister, visibleSections } from "@/lib/v2/admin-sections";
 import { commandHints, ledgerRegistry } from "@/lib/v2/keys";
 import type { CommandGroup } from "@/lib/api/v2/types";
 import { t as tr, tx } from "@/lib/v2/i18n";
@@ -27,6 +28,35 @@ const PLACES: CommandGroup = {
     { id: "connect", get title() { return tr("Connect a system"); }, href: "/s/new" },
   ],
 };
+
+/**
+ * Every canvas and panel by name, in the reader's language, for the places this viewer may open: typing "reports",
+ * "webhooks" or "Einstellungen" goes there without asking the server. They follow what the server found.
+ */
+export function placeIndex(can: (action: string) => boolean): { id: string; title: string; href: string }[] {
+  const places = [
+    ...PLACES.items,
+    { id: "reports", title: tr("Reports"), href: "/reports" },
+    { id: "waves", title: tr("Waves"), href: "/?view=waves" },
+    { id: "status", title: tr("Status"), href: "/status" },
+    { id: "inbox", title: tr("Inbox"), href: "/?open=inbox" },
+    { id: "help", title: tr("Help"), href: "/?open=help" },
+    { id: "preferences", title: tr("Preferences"), href: "/?open=preferences" },
+  ];
+  if (canAdminister(can)) places.push({ id: "admin", title: tr("Administration"), href: "/admin" });
+  for (const s of visibleSections(can)) places.push({ id: `admin-${s.slug}`, title: tr("Administration: {section}", { section: s.label }), href: `/admin/${s.slug}` });
+  return places;
+}
+
+/** The places whose name contains the typed words, best first: a name that starts with them, then one that has them. */
+export function matchPlaces(places: readonly { id: string; title: string; href: string }[], q: string): { id: string; title: string; href: string }[] {
+  const needle = q.trim().toLocaleLowerCase();
+  if (needle.length < 2) return [];
+  const words = (s: string) => s.toLocaleLowerCase().split(/[\s:,]+/).filter(Boolean);
+  const starts = places.filter((p) => words(p.title).some((w) => w.startsWith(needle)) || p.title.toLocaleLowerCase().startsWith(needle));
+  const has = places.filter((p) => !starts.includes(p) && p.title.toLocaleLowerCase().includes(needle));
+  return [...starts, ...has].slice(0, 6);
+}
 
 interface Row {
   id: string;
@@ -61,6 +91,7 @@ export function CommandLine({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const href = useV2Href();
   const fixture = useFixture();
+  const session = useV2Session();
 
   useEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -87,9 +118,12 @@ export function CommandLine({ onClose }: { onClose: () => void }) {
   });
 
   const rows = useMemo<Row[]>(() => {
-    const groups = debounced.length === 0 || q.trim().length === 0 ? [PLACES] : (result.data?.groups ?? []);
-    return groups.flatMap((g) => g.items.map((i) => ({ id: i.id, kind: g.kind, group: tx(g.label), title: i.title, href: i.href })));
-  }, [debounced, q, result.data]);
+    if (debounced.length === 0 || q.trim().length === 0) return PLACES.items.map((i) => ({ id: i.id, kind: PLACES.kind, group: PLACES.label, title: i.title, href: i.href }));
+    const here = matchPlaces(placeIndex(session.can), debounced).map((p) => ({ id: `place-${p.id}`, kind: "action", group: tr("Go to"), title: p.title, href: p.href }));
+    const served = (result.data?.groups ?? []).flatMap((g) => g.items.map((i) => ({ id: i.id, kind: g.kind, group: tx(g.label), title: i.title, href: i.href })));
+    // What the server found comes first (a record, a rule, an action such as approve or export); the places follow.
+    return [...served, ...here.filter((h) => !served.some((s) => s.href === h.href))];
+  }, [debounced, q, result.data, session.can]);
 
   const clamped = Math.min(index, Math.max(0, rows.length - 1));
   const openNl = (a: NlAnswer | undefined) => {
