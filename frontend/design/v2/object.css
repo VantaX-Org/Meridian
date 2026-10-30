@@ -4,7 +4,7 @@
  */
 
 /* ---- Explain: the "i" and its 320 pixel popover ---- */
-.m2-ibtn { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-left: var(--m2-s1); padding: 0; border: 1px solid var(--m2-line-2); border-radius: var(--m2-r-round); background: transparent; color: var(--m2-meta); font-size: var(--m2-fs-12); font-weight: 600; line-height: 1; vertical-align: middle; }
+.m2-ibtn { display: inline-grid; place-items: center; width: var(--m2-s6); height: var(--m2-s6); margin-left: var(--m2-s1); padding: 0; border: 1px solid var(--m2-line-2); border-radius: var(--m2-r-round); background: transparent; color: var(--m2-meta); font-size: var(--m2-fs-12); font-weight: 600; line-height: 1; vertical-align: middle; }
 .m2-ibtn:hover, .m2-ibtn[aria-expanded="true"] { border-color: var(--m2-ink-3); color: var(--m2-fg); background: var(--m2-hover); }
 .m2-pop { position: fixed; z-index: 90; max-width: calc(100vw - 16px); max-height: 70vh; overflow: auto; padding: var(--m2-s3) var(--m2-s4); background: var(--m2-sheet); color: var(--m2-fg); border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); box-shadow: var(--m2-shadow); font-size: var(--m2-fs-13); line-height: var(--m2-lh-13); font-weight: 400; text-align: left; white-space: normal; }
 .m2-pop:focus-visible { outline: 2px solid var(--m2-data); outline-offset: 2px; }

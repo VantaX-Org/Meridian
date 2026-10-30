@@ -34,9 +34,10 @@
 .m2-root .m2-whatif-out { margin-top: var(--m2-s3); display: grid; gap: var(--m2-s1); font-size: var(--m2-fs-13); }
 .m2-root .m2-simtag { font-size: var(--m2-fs-12); color: var(--m2-meta); border: 1px dashed var(--m2-line-2); border-radius: var(--m2-r2); padding: 0 var(--m2-s1); }
 
-.m2-root .m2-related { display: flex; flex-wrap: wrap; gap: var(--m2-s1) var(--m2-s3); margin: var(--m2-s2) 0 0; padding: 0; list-style: none; font-size: var(--m2-fs-13); }
+.m2-root .m2-related { display: flex; flex-wrap: wrap; gap: 0 var(--m2-s3); margin: var(--m2-s2) 0 0; padding: 0; list-style: none; font-size: var(--m2-fs-13); }
 .m2-root .m2-related li { display: inline-flex; gap: var(--m2-s1); align-items: baseline; }
 .m2-root .m2-related .m2-meta { font-size: var(--m2-fs-12); }
+.m2-root .m2-related a { display: inline-block; min-height: var(--m2-s6); line-height: var(--m2-s6); }
 .m2-root .m2-fixhint { font-size: var(--m2-fs-13); color: var(--m2-high-ink); border-left: 2px solid var(--m2-high); padding: var(--m2-s1) var(--m2-s3); margin: var(--m2-s2) 0; }
 
 .m2-root .m2-tmpl { width: 100%; border-collapse: collapse; font-size: var(--m2-fs-13); }

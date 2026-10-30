@@ -1,10 +1,8 @@
-import { createElement, Fragment, useSyncExternalStore, type ReactNode } from "react";
+import { createElement, Fragment, useEffect, useSyncExternalStore, type ReactNode } from "react";
 import { getFormatLocale, setFormatPrefs } from "@/lib/format";
 import { readPrefs, subscribePreferences } from "@/lib/preferences";
-import { de } from "./de";
 import { en, type MessageKey } from "./en";
 import { formatMessage, type MessageVars } from "./icu";
-import { ja } from "./ja";
 
 /**
  * The v2 interface in three languages. Messages are keyed by their English text (the catalogue in en.ts is the list
@@ -16,7 +14,41 @@ import { ja } from "./ja";
 export type Lang = "en" | "de" | "ja";
 export type { MessageKey, MessageVars };
 
-export const CATALOGUES: Record<Lang, Readonly<Record<MessageKey, string>>> = { en, de, ja };
+type Catalogue = Readonly<Record<MessageKey, string>>;
+const LOADED: Partial<Record<Lang, Catalogue>> = { en };
+
+/**
+ * The catalogues loaded so far. English ships with every page; German and Japanese are fetched once, when the
+ * preference names them (loadCatalogue), so no page carries the languages its reader does not use.
+ */
+export const CATALOGUES = LOADED as Record<Lang, Catalogue>;
+
+let catalogueVersion = 0;
+const catalogueListeners = new Set<() => void>();
+const subscribeCatalogues = (cb: () => void) => {
+  catalogueListeners.add(cb);
+  return () => catalogueListeners.delete(cb);
+};
+/** Changes each time a catalogue arrives: the shell keys its panes on it so they redraw in the new language. */
+export const useCatalogueVersion = (): number => useSyncExternalStore(subscribeCatalogues, () => catalogueVersion, () => 0);
+
+/** Makes a catalogue available to t() (the loader does it; the test setup registers all three at once). */
+export function registerCatalogue(lang: Lang, catalogue: Catalogue): void {
+  if (LOADED[lang] === catalogue) return;
+  LOADED[lang] = catalogue;
+  catalogueVersion += 1;
+  for (const cb of catalogueListeners) cb();
+}
+
+const pending: Partial<Record<Lang, Promise<void>>> = {};
+/** Fetches a language's catalogue once; English is always there. */
+export function loadCatalogue(lang: Lang): Promise<void> {
+  if (LOADED[lang]) return Promise.resolve();
+  pending[lang] ??= (lang === "de" ? import("./de").then((m) => registerCatalogue("de", m.de)) : import("./ja").then((m) => registerCatalogue("ja", m.ja))).catch(() => {
+    delete pending[lang];
+  });
+  return pending[lang] ?? Promise.resolve();
+}
 
 /** The languages the picker offers, each named in itself, with the region it starts in. */
 export const LANGUAGES: readonly { lang: Lang; name: string; tag: string }[] = [
@@ -51,7 +83,7 @@ export function setLang(lang: Lang, tag?: string): void {
 }
 
 function lookup(key: string): string {
-  const own = (CATALOGUES[active] as Record<string, string | undefined>)[key];
+  const own = (LOADED[active] as Record<string, string | undefined> | undefined)?.[key];
   if (own !== undefined && own !== "") return own;
   const english = (en as Record<string, string | undefined>)[key];
   return english ?? key;
@@ -107,9 +139,26 @@ function preferredTag(): string {
  */
 export function useInterfaceLang(): { lang: Lang; tag: string } {
   const tag = useSyncExternalStore(subscribePreferences, preferredTag, () => "");
-  const lang = langOf(tag);
-  setLang(lang, tag || undefined);
+  const wanted = langOf(tag);
+  useCatalogueVersion();
+  const ready = Boolean(LOADED[wanted]);
+  useEffect(() => {
+    if (!ready) void loadCatalogue(wanted);
+  }, [wanted, ready]);
+  // Until its catalogue has arrived the page reads English, as the server render does.
+  const lang = ready ? wanted : "en";
+  setLang(lang, ready ? tag || undefined : undefined);
   const prefs = readPrefs();
   if (prefs.locale && prefs.locale !== getFormatLocale()) setFormatPrefs({ locale: prefs.locale, timezone: prefs.timezone });
   return { lang, tag: activeTag };
+}
+
+// Start fetching the preferred language's catalogue as soon as this module runs in a browser, before the first render.
+if (typeof window !== "undefined") {
+  try {
+    const first = langOf(readPrefs().locale);
+    if (first !== "en") void loadCatalogue(first);
+  } catch {
+    /* blocked storage: English until the preference is read */
+  }
 }

@@ -5,6 +5,8 @@
 
 .m2-fonts { display: contents; }
 
+/* Before the shell has rendered, its place is held at its final height, so nothing under it moves (no layout shift). */
+.m2-boot { height: calc(100dvh - var(--m-attribution-h, 0px)); }
 .m2-root {
   position: relative;
   display: flex;
@@ -244,11 +246,11 @@
 .m2-mx .m2-hs { color: var(--m2-meta); font-size: var(--m2-fs-12); white-space: normal; }
 .m2-oname { font-weight: 500; font-size: var(--m2-fs-13); background: transparent; border: 0; padding: 0; text-align: left; color: var(--m2-fg) !important; }
 .m2-oname:hover { text-decoration: underline; text-underline-offset: 3px; }
-.m2-cell { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 0 var(--m2-s2); width: calc(100% + 16px); min-height: 44px; padding: var(--m2-s1) var(--m2-s2); margin: 0 calc(-1 * var(--m2-s2)); border: 1.5px solid transparent; border-radius: var(--m2-r2); background: transparent; text-align: left; color: var(--m2-fg) !important; }
+.m2-cell { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--m2-s2); width: calc(100% + 2 * var(--m2-s2)); min-height: 44px; padding: var(--m2-s1) var(--m2-s2); margin: 0 calc(-1 * var(--m2-s2)); border: 1.5px solid transparent; border-radius: var(--m2-r2); background: transparent; text-align: left; color: var(--m2-fg) !important; }
 .m2-cell:hover { background: var(--m2-hover); text-decoration: none !important; }
 .m2-cell[data-selected="true"] { border-color: var(--m2-data); }
 .m2-cell-vd { font-size: var(--m2-fs-12); color: var(--m2-ink-2); justify-self: start; }
-.m2-cell-sub { grid-column: 1 / -1; font-size: var(--m2-fs-12); line-height: 16px; color: var(--m2-meta); white-space: nowrap; }
+.m2-cell-sub { flex: 1 0 100%; font-size: var(--m2-fs-12); line-height: 16px; color: var(--m2-meta); white-space: nowrap; }
 .m2-lcm { display: inline-block; border: 1px solid var(--m2-line-2); border-radius: var(--m2-r1); padding: 0 var(--m2-s1); font-size: var(--m2-fs-12); line-height: 16px; color: var(--m2-ink-2); font-weight: 500; margin-left: var(--m2-s2); }
 .m2-st { color: var(--m2-meta); font-size: var(--m2-fs-12); }
 .m2-mlist { display: none; }

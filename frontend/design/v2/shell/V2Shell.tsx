@@ -13,7 +13,7 @@ import { createDispatcher, gridRegistry, ledgerRegistry, type GoDestination, typ
 import { useOpenItem, usePhone, useV2Href } from "@/lib/v2/hooks";
 import { useApplyKeyHints } from "@/lib/v2/prefs";
 import { readPrefs, subscribePreferences } from "@/lib/preferences";
-import { t, useInterfaceLang } from "@/lib/v2/i18n";
+import { t, useCatalogueVersion, useInterfaceLang } from "@/lib/v2/i18n";
 import { themeRootProps, useTenantTheme } from "@/lib/v2/theme";
 import { CommandLine } from "../CommandLine";
 import { Inspector } from "../Inspector";
@@ -45,7 +45,9 @@ function ChromeBody({ children }: { children: ReactNode }) {
   const toast = useToast();
   useApplyKeyHints();
   // Numbers and dates are written at render, so a change of locale redraws everything but the inspector that changed it.
-  const localeKey = useSyncExternalStore(subscribePreferences, () => readPrefs().locale ?? "", () => "");
+  const prefLocale = useSyncExternalStore(subscribePreferences, () => readPrefs().locale ?? "", () => "");
+  // The panes redraw when the language changes and again when its catalogue arrives.
+  const localeKey = `${prefLocale}:${useCatalogueVersion()}`;
 
   // The map sheet closes when you go somewhere.
   useEffect(() => setMapOpen(false), [pathname]);
@@ -173,7 +175,7 @@ function PreferencesSync() {
 export function V2Shell({ children }: { children: ReactNode }) {
   const fixture = useFixture();
   const inner = (
-    <Suspense fallback={null}>
+    <Suspense fallback={<div className="m2-boot" aria-hidden="true" />}>
       <Chrome fixture={fixture}>{children}</Chrome>
     </Suspense>
   );

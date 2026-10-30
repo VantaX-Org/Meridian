@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import "@/design/v2/tokens.css";
 import "@/design/v2/v2.css";
 import "@/design/v2/admin.css";
@@ -15,7 +16,11 @@ export const metadata: Metadata = {
 export default function V2Layout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <div className="m2-fonts">
-      <V2Shell>{children}</V2Shell>
+      {/* The shell reads the address (fixture mode, the open inspector), so it renders in the browser; until then its
+          place is held at full height and nothing under it moves. */}
+      <Suspense fallback={<div className="m2-boot" aria-hidden="true" />}>
+        <V2Shell>{children}</V2Shell>
+      </Suspense>
     </div>
   );
 }

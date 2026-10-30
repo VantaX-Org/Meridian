@@ -7,7 +7,7 @@ import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { notFound, useRelated } from "@/lib/v2/roles-queries";
 import { int, moduleSlug } from "@/lib/v2/score";
 import { WatchToggle } from "../../inspector/collab";
-import { Dash, V2Link } from "../../parts";
+import { Dash, Skeleton, V2Link } from "../../parts";
 import "../../roles.css";
 import { t } from "@/lib/v2/i18n";
 import { MODULE_LABELS } from "@/lib/format";
@@ -34,7 +34,11 @@ export function RelatedObjects({ module, system, systemId, label }: { module: st
       </div>
       {q.isError ? (
         notFound(q.error) ? null : <p className="m2-meta">{t("The related objects could not be read.")}</p>
-      ) : !q.data ? null : q.data.related.length === 0 ? (
+      ) : !q.data ? (
+        <p className="m2-meta" aria-busy="true">
+          <Skeleton width="70%" height={14} />
+        </p>
+      ) : q.data.related.length === 0 ? (
         <p className="m2-meta">{t("No related object is mapped for this object.")}</p>
       ) : (
         <>
