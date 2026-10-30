@@ -53,7 +53,7 @@ for (const size of SIZES) {
         await page.goto("/?fixture=1", { waitUntil: "load" });
         await expect(page.getByRole("heading", { level: 1 })).toHaveText(/Landscape/);
         await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
-        await expect(page.getByTestId("landscape-sentence")).toContainText("11 of 15 objects are held under 85 by 70 critical rules over tolerance");
+        await expect(page.getByTestId("landscape-sentence")).toContainText("11 of 15 objects are held under 85 by 30 critical rules over tolerance");
         // With migration waves in the fixture the lead's next step clears the no-go objects of the next wave.
         await expect(page.getByRole("link", { name: "Clear the 3 no-go objects in Wave 1: finance foundations" })).toBeVisible();
 
@@ -72,7 +72,7 @@ for (const size of SIZES) {
           await expect(matrix.getByText("Not extracted yet.")).toBeVisible();
         }
         await expect(page.getByRole("grid", { name: "Your next work" })).toBeVisible();
-        await expect(page.getByTestId("status-strip")).toContainText("5,178 rules measured");
+        await expect(page.getByTestId("status-strip")).toContainText("794 rules measured");
 
         // No page scroll sideways, at any width.
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -88,7 +88,7 @@ for (const size of SIZES) {
         else await page.getByTestId("matrix-cell").first().click();
         await expect(page).toHaveURL(/\/o\/ecc-production\/material-master/, NAV);
         await expect(page.getByRole("heading", { level: 1 })).toContainText("Material master", NAV);
-        await expect(page.getByTestId("cap-sentence")).toContainText("Capped at 70 by MM014 and MM031");
+        await expect(page.getByTestId("cap-sentence")).toContainText("Capped at 70 by MM003 and MM035");
         await expect(page.locator('svg[data-size="240"]')).toBeVisible();
         await expect(page.getByTestId("receipt")).toBeVisible();
         await expect(page.getByTestId("receipt-footer")).toContainText("tolerance 10% of rows or 25 rows");
@@ -107,13 +107,13 @@ for (const size of SIZES) {
       test("the inspector opens from a link, traps focus, closes with Esc and returns focus", async ({ page }) => {
         await prepare(page, scheme);
         await page.goto("/o/ecc-production/material-master?fixture=1", { waitUntil: "load", timeout: 90_000 });
-        const rule = page.getByTestId("cap-sentence").getByRole("link", { name: "MM014" });
+        const rule = page.getByTestId("cap-sentence").getByRole("link", { name: "MM142" });
         await expect(rule).toBeVisible(NAV);
         await rule.focus();
         await rule.click();
-        const dialog = page.getByRole("dialog", { name: /MM014/ });
+        const dialog = page.getByRole("dialog", { name: /MM142/ });
         await expect(dialog).toBeVisible();
-        await expect(page).toHaveURL(/open=rule%3AMM014/);
+        await expect(page).toHaveURL(/open=rule%3AMM142/);
         await expect(dialog.getByRole("button", { name: "Close inspector" })).toBeFocused();
         await expect(dialog.getByRole("heading", { name: /^Scope/ })).toBeVisible(NAV);
         if (phone) {
@@ -146,7 +146,7 @@ for (const size of SIZES) {
         const palette = page.getByRole("dialog", { name: "Search or type a command" });
         await expect(palette).toBeVisible();
         await palette.getByRole("combobox").fill("MM0");
-        await expect(palette.getByText("MM014: Base unit of measure not valid")).toBeVisible();
+        await expect(palette.getByText("MM142: Base unit of measure MEINS must reference a valid entry in T006")).toBeVisible();
         await page.waitForLoadState("networkidle");
         await shot(page, "command");
         await axe(page, `command ${size.name} ${scheme}`);

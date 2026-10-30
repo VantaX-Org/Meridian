@@ -335,7 +335,7 @@ describe("the extraction scope", () => {
     open(`system:${ECC.id}`);
     fireEvent.click(await screen.findByRole("button", { name: "Extract" }));
     const list = await screen.findByRole("list", { name: "Objects to extract" });
-    const row = Array.from(list.querySelectorAll("label")).find((l) => /Sales orders/.test(l.textContent ?? ""));
+    const row = Array.from(list.querySelectorAll("label")).find((l) => /SD sales orders/.test(l.textContent ?? ""));
     expect(row).toBeTruthy();
     fireEvent.click(within(row as HTMLElement).getByRole("checkbox"));
     fireEvent.change(await screen.findByLabelText("Documents from"), { target: { value: "2026-03-01" } });

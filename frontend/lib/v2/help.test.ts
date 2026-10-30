@@ -145,7 +145,7 @@ describe("which chapters come first", () => {
   it("reads the canvas from the address", () => {
     expect(screenOf("/")).toBe("landscape");
     expect(screenOf("/o/ecc-production/material-master/rules")).toBe("object");
-    expect(screenOf("/r/MM031")).toBe("rule");
+    expect(screenOf("/r/MM003")).toBe("rule");
     expect(screenOf("/work")).toBe("work");
     expect(screenOf("/run/abc/vs/def")).toBe("runs");
     expect(screenOf("/s/a1")).toBe("system");

@@ -9,7 +9,7 @@ import { groupNotifications, kindOf, linkOf, sentenceOf } from "./inbox";
 import { objectsLine, roleWord, slaMet, slaWord, sortPeople, workByObject } from "./people";
 import { filtersOf, readState, toParams } from "./work";
 
-const row = (over: Partial<WorkRow>): WorkRow => ({ module: "material_master", record_key: "MATNR=1", name: null, issues: 1, severity: "high", checks: ["MM014"], proposed: 0, status: "proposed", top_message: null, top_field: null, ...over });
+const row = (over: Partial<WorkRow>): WorkRow => ({ module: "material_master", record_key: "MATNR=1", name: null, issues: 1, severity: "high", checks: ["MM142"], proposed: 0, status: "proposed", top_message: null, top_field: null, ...over });
 const batch = (over: Partial<BatchRow>): BatchRow => ({ id: "B-1", label: "B-1", name: "x", status: "draft", owner: null, ownerId: null, steward: null, records: 1, valueAtRisk: null, dueAt: null, createdAt: "2026-10-01T00:00:00Z", approvedBy: null, approvedAt: null, sentAt: null, returned: null, ...over });
 const person = (over: Partial<Person>): Person => ({ id: "u", name: "A", email: null, role: "viewer", is_me: false, objects_owned: [], open_work: 0, approvals_waiting: 0, overdue: 0, sla_hours: null, breaches_this_month: 0, last_action_at: null, ...over });
 
@@ -56,9 +56,9 @@ describe("batches", () => {
   });
 
   it("builds the sheet of a batch as CSV with spreadsheet formulas defused", () => {
-    const csv = batchSheetCsv([{ id: "1", batch_id: "b", issue_id: "i", scope: "s", module: "material_master", check_id: "MM014", record_key: "MATNR=1", grain: null, field: "MARA.MEINS", current_value: "=1+1", proposed_value: "EA, each", proposal_source: "steward", confidence: null, accepted: false, recon_status: null, recon_version: null, updated_at: "t", auto_approvable: false }]);
+    const csv = batchSheetCsv([{ id: "1", batch_id: "b", issue_id: "i", scope: "s", module: "material_master", check_id: "MM142", record_key: "MATNR=1", grain: null, field: "MARA.MEINS", current_value: "=1+1", proposed_value: "EA, each", proposal_source: "steward", confidence: null, accepted: false, recon_status: null, recon_version: null, updated_at: "t", auto_approvable: false }]);
     expect(csv.split("\n")[0]).toBe("Object,Record,Rule,Field,Current value,New value,Source,Confidence");
-    expect(csv.split("\n")[1]).toBe("material_master,MATNR=1,MM014,MARA.MEINS,'=1+1,\"EA, each\",steward,");
+    expect(csv.split("\n")[1]).toBe("material_master,MATNR=1,MM142,MARA.MEINS,'=1+1,\"EA, each\",steward,");
   });
 });
 

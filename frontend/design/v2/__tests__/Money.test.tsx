@@ -49,7 +49,7 @@ describe("impact in money", () => {
   });
 
   it("says there is no cost model rather than inventing a price", async () => {
-    vi.spyOn(s9, "getMoney").mockResolvedValue({ scope: "object", id: "material_master", as_of: "2026-10-20T08:00:00Z", currency: null, cost_model: false, features: [{ feature: "MRP Live", system_id: "s", system: "ECC", run_id: "r", status: "blocked", blocking_rules: ["MM078"], modules: ["material_master"], records: 10, value_per_record_month: null, opportunity_cost_per_month: null, first_blocked_at: "2026-09-01T00:00:00Z", months_blocked: 1.6, cumulative_cost: null }], totals: { opportunity_cost_per_month: null, cumulative_cost: null, features_blocked: 1, features_degraded: 0 }, ranking: { waves: [], objects: [] } });
+    vi.spyOn(s9, "getMoney").mockResolvedValue({ scope: "object", id: "material_master", as_of: "2026-10-20T08:00:00Z", currency: null, cost_model: false, features: [{ feature: "MRP Live", system_id: "s", system: "ECC", run_id: "r", status: "blocked", blocking_rules: ["MM023"], modules: ["material_master"], records: 10, value_per_record_month: null, opportunity_cost_per_month: null, first_blocked_at: "2026-09-01T00:00:00Z", months_blocked: 1.6, cumulative_cost: null }], totals: { opportunity_cost_per_month: null, cumulative_cost: null, features_blocked: 1, features_degraded: 0 }, ranking: { waves: [], objects: [] } });
     renderWithQuery(<ObjectMoney module="material_master" label="Material master" />);
     expect(await screen.findByText(/No cost model is set for this tenant/)).toBeInTheDocument();
   });

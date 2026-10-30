@@ -12,7 +12,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "People": "Personen",
   "Search or type a command": "Suchen oder Befehl eingeben",
   "Results": "Ergebnisse",
-  "No match for {q}. Try a material number, a rule id such as MM014, or a word such as approve or export.": "Kein Treffer für {q}. Versuchen Sie eine Materialnummer, eine Regel-ID wie MM014 oder ein Wort wie freigeben oder exportieren.",
+  "No match for {q}. Try a material number, a rule id such as MM142, or a word such as approve or export.": "Kein Treffer für {q}. Versuchen Sie eine Materialnummer, eine Regel-ID wie MM142 oder ein Wort wie freigeben oder exportieren.",
   "Searching": "Suche läuft",
   "About {label}": "Über {label}",
   "The explanation could not be read for this run.": "Die Erläuterung für diesen Lauf konnte nicht gelesen werden.",

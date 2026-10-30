@@ -146,12 +146,12 @@ function build(): State {
     ["material_master", "MARA.MEINS", "Base unit of measure", "UoM", "string"],
     ["business_partner", "BUT000.PARTNER", "Business partner", "BP number", "string"],
     ["business_partner", "BUT000.BU_GROUP", "Grouping", "Group", "string"],
-    ["vendor_master", "LFA1.LIFNR", "Vendor number", "Supplier", "string"],
-    ["vendor_master", "LFA1.STCD1", "Tax number 1", "VAT", "string"],
-    ["customer_master", "KNA1.KUNNR", "Customer number", "Customer", "string"],
-    ["customer_master", "KNA1.LAND1", "Country", "Country", "string"],
-    ["gl_accounts", "SKA1.SAKNR", "G/L account number", "Account", "string"],
-    ["purchasing", "EKKO.EBELN", "Purchasing document", "PO", "string"],
+    ["accounts_payable", "LFA1.LIFNR", "Vendor number", "Supplier", "string"],
+    ["accounts_payable", "LFA1.STCD1", "Tax number 1", "VAT", "string"],
+    ["accounts_receivable", "KNA1.KUNNR", "Customer number", "Customer", "string"],
+    ["accounts_receivable", "KNA1.LAND1", "Country", "Country", "string"],
+    ["fi_gl", "SKA1.SAKNR", "G/L account number", "Account", "string"],
+    ["mm_purchasing", "EKKO.EBELN", "Purchasing document", "PO", "string"],
   ];
   const mappings: FieldMapping[] = mappingFields.map(([module, f, l, cl, t], i) => ({
     id: `fm-${i + 1}`,
@@ -233,9 +233,9 @@ function build(): State {
     mkSchedule("sch-3", { name: "Trend report, daily", kind: "trend", format: "pdf", params: { scope: SYS_ECC, module: null }, cadence: "daily", time_of_day: "08:00", weekday: null, day_of_month: null, timezone: "Africa/Johannesburg", recipient_user_ids: [], recipient_channel_ids: ["ch-2"], enabled: false }, { last: "failed", lastAt: ago(9, 6), next: null }),
   ];
   const waves: MigrationWave[] = [
-    wave("w-1", "Wave 1: finance foundations", ["gl_accounts", "asset_accounting", "controlling", "vendor_master"], "2026-11-16", "mock2", { v: "no_go", s: 71.4 }),
-    wave("w-2", "Wave 2: master data", ["material_master", "business_partner", "customer_master"], "2027-01-18", "mock1", { v: "at_risk", s: 78.9 }),
-    wave("w-3", "Wave 3: operations", ["purchasing", "sales_orders", "plant_maintenance"], null, "plan", { v: null, s: null }),
+    wave("w-1", "Wave 1: finance foundations", ["fi_gl", "asset_accounting", "controlling", "accounts_payable"], "2026-11-16", "mock2", { v: "no_go", s: 71.4 }),
+    wave("w-2", "Wave 2: master data", ["material_master", "business_partner", "accounts_receivable"], "2027-01-18", "mock1", { v: "at_risk", s: 78.9 }),
+    wave("w-3", "Wave 3: operations", ["mm_purchasing", "sd_sales_orders", "plant_maintenance"], null, "plan", { v: null, s: null }),
   ];
   return {
     users,
@@ -250,7 +250,7 @@ function build(): State {
     ],
     licence: {
       valid: true, status: "active", tenant_id: "t-demo", company_name: "Demo Corp", tier: "enterprise", expiry_date: "2027-03-31", days_remaining: 162, seats_used: 8, seats: 25,
-      enabled_modules: ["material_master", "business_partner", "vendor_master", "customer_master", "gl_accounts", "asset_accounting", "controlling", "purchasing", "sales_orders", "hcm"],
+      enabled_modules: ["material_master", "business_partner", "accounts_payable", "accounts_receivable", "fi_gl", "asset_accounting", "controlling", "mm_purchasing", "sd_sales_orders", "hcm"],
       enabled_menu_items: [], features: { ask_meridian: true, export_reports: true, run_sync: true, field_mapping_self_service: true, max_users: 25 }, last_validated: ago(0.3),
     },
     scoring: {
@@ -267,7 +267,7 @@ function build(): State {
     reference: { [SYS_ECC]: [{ kind: "postal-codes", records: 48210, countries: ["ZA", "DE", "GB"] }], [SYS_S4]: [] },
     audit,
     channels,
-    thresholds: { critical_threshold: 1, high_threshold: 10, dqs_drop_threshold: 5, module_floors: { material_master: 75, vendor_master: 80 }, readiness_dqs_threshold: 75, readiness_waves: {} },
+    thresholds: { critical_threshold: 1, high_threshold: 10, dqs_drop_threshold: 5, module_floors: { material_master: 75, accounts_payable: 80 }, readiness_dqs_threshold: 75, readiness_waves: {} },
     digest: { email: "dq-team@demo-corp.example", teams_webhook: "", daily_digest: false, weekly_summary: true, monthly_report: true },
     prefs: { theme: "system", density: "default", locale: "en-GB", timezone: "Africa/Johannesburg", notifications: { digest: "weekly", immediate_critical: true, channels: { email: true } } },
     history,
@@ -423,7 +423,7 @@ function scheduleOptions() {
     users: st().users.filter((u) => u.is_active).map((u) => ({ id: u.id, label: u.name, detail: u.email })),
     channels: st().channels.map((c) => ({ id: c.id, label: `${c.kind}: ${c.target}` })),
     systems: [{ id: SYS_ECC, label: "ECC production" }, { id: SYS_S4, label: "S/4HANA sandbox" }],
-    modules: ["material_master", "business_partner", "vendor_master", "customer_master", "gl_accounts"],
+    modules: ["material_master", "business_partner", "accounts_payable", "accounts_receivable", "fi_gl"],
   };
 }
 

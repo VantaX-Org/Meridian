@@ -83,8 +83,8 @@ describe("the Glossary tab", () => {
     const list = await within(sec).findByRole("list", { name: "Fields without a term" });
     expect(within(sec).getByText("2")).toBeInTheDocument();
     const items = within(list).getAllByRole("listitem");
-    expect(items.map((i) => norm(i))).toEqual(["MBEW.BKLASMM091", "MARC.BESKZMM105"]);
-    expect(within(items[0]).getByRole("link", { name: "MM091" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM091"));
+    expect(items.map((i) => norm(i))).toEqual(["MBEW.BKLASMM035", "MARC.BESKZMM028"]);
+    expect(within(items[0]).getByRole("link", { name: "MM035" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM035"));
   });
 
   it("offers to draft terms from the rule library by permission", async () => {
@@ -105,9 +105,9 @@ describe("the Glossary tab", () => {
   });
 
   it("is a designed empty state for an object with no terms, with what would put rows here", async () => {
-    tab("purchasing");
+    tab("mm_purchasing");
     const empty = await screen.findByTestId("empty-frame");
-    expect(empty).toHaveTextContent(/No business terms are linked to Purchasing yet\. A data owner links a term to a field, or drafts them from the rules of the object/);
+    expect(empty).toHaveTextContent(/No business terms are linked to MM purchasing yet\. A data owner links a term to a field, or drafts them from the rules of the object/);
     expect(within(empty).getByRole("button", { name: "Draft terms from the rule library" })).toBeInTheDocument();
   });
 });
@@ -127,7 +127,7 @@ describe("the term inspector", () => {
     expect(within(d).getAllByRole("region").map((r) => r.getAttribute("aria-label"))).toEqual(["Facts", "Definition", "Rules that cite it: 1", "Fields", "Actions", "History"]);
     expect(norm(within(d).getByText("SAP field", { selector: "dt" }).closest(".m2-fact") as HTMLElement)).toBe("SAP fieldMARA-MEINS");
     const rules = within(d).getByRole("list", { name: "Rules that cite this term" });
-    expect(within(rules).getByRole("link", { name: "MM014" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM014"));
+    expect(within(rules).getByRole("link", { name: "MM142" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM142"));
     const fields = within(d).getByRole("list", { name: "Fields this term governs" });
     expect(norm(fields)).toBe("MARA.MEINSBase unit of measure");
   });

@@ -81,11 +81,11 @@ describe("<Explain>", () => {
 
   it("asks the API only when it is opened, with the arguments it was given", async () => {
     const spy = vi.spyOn(objectApi, "getExplain");
-    renderWithQuery(<Explain metric="failing_pct" label="Failing %" module="material_master" checkId="MM014" run="r1" />);
+    renderWithQuery(<Explain metric="failing_pct" label="Failing %" module="material_master" checkId="MM142" run="r1" />);
     expect(spy).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "About Failing %" }));
     await screen.findByRole("dialog");
-    expect(spy).toHaveBeenCalledWith("failing_pct", { module: "material_master", run: "r1", dimension: undefined, checkId: "MM014" });
+    expect(spy).toHaveBeenCalledWith("failing_pct", { module: "material_master", run: "r1", dimension: undefined, checkId: "MM142" });
   });
 
   it("says so, inside the popover, when the explanation cannot be read", async () => {

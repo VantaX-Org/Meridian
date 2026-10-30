@@ -102,7 +102,7 @@ describe("Admin: runs and jobs", () => {
     expect(go).toBeDisabled();
     await within(dialog).findAllByRole("option", { name: /Material master/ });
     const object = within(dialog).getByLabelText("Object") as HTMLSelectElement;
-    fireEvent.change(object, { target: { value: "vendor_master" } });
+    fireEvent.change(object, { target: { value: "accounts_payable" } });
     fireEvent.click(go);
     await waitFor(() => expect(create).toHaveBeenCalledWith(ECC, expect.objectContaining({ schedule_cron: "0 4 * * 1", active: true, extraction_mode: "full" })));
     await waitFor(() => expect(rows("Scheduled runs")).toHaveLength(3));

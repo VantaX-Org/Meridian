@@ -19,19 +19,19 @@ const SAMPLE: [string, string][] = [
   ["/home", "/"],
   ["/home/steward", "/"],
   ["/fix", "/work"],
-  ["/fix?check=MM014", "/work?rule=MM014&check=MM014"],
+  ["/fix?check=MM142", "/work?rule=MM142&check=MM142"],
   ["/fix?mine=1", "/work?assigned=me&mine=1"],
   ["/inbox", "/work?open=inbox"],
   ["/inbox?kind=approvals", "/work?filter=approvals&kind=approvals"],
   ["/objects", "/"],
   ["/objects/material_master", "/o/_/material_master"],
   ["/objects/material_master?tab=history", "/o/_/material_master/runs?tab=history"],
-  ["/objects/material_master/rules/MM014", "/r/MM014"],
+  ["/objects/material_master/rules/MM142", "/r/MM142"],
   ["/insights/readiness", "/?view=waves"],
   ["/insights/readiness?module=material_master", "/o/_/material_master/readiness?module=material_master"],
   ["/insights/owners", "/people"],
   ["/insights/trends", "/runs"],
-  ["/rules/MM014", "/r/MM014"],
+  ["/rules/MM142", "/r/MM142"],
   ["/rules/drafts", "/rules?view=drafts"],
   ["/rules/contracts", "/people?open=contracts"],
   ["/runs/R1", "/run/R1"],
@@ -85,8 +85,8 @@ test.describe("old addresses", () => {
   });
 
   test("an old Fix work link opens the Work ledger with the same filter", async ({ page }) => {
-    await page.goto("/fix?fixture=1&check=MM014", { waitUntil: "load", timeout: 90_000 });
-    await expect(page).toHaveURL(/\/work\?.*rule=MM014/, { timeout: 90_000 });
+    await page.goto("/fix?fixture=1&check=MM142", { waitUntil: "load", timeout: 90_000 });
+    await expect(page).toHaveURL(/\/work\?.*rule=MM142/, { timeout: 90_000 });
   });
 });
 

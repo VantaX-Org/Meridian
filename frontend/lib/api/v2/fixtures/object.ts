@@ -22,7 +22,7 @@ import type {
 /**
  * Fixture answers for the Object tabs and the rule screens, built from the approved prototype's numbers so they
  * reconcile with the step 0 fixtures: Material master on ECC production, run of 16 Oct 2026, measured 71.8 and shown
- * 70.0, MM014 and MM031 over tolerance, 3 S/4 features blocked and 5 degraded. Writes (accept all, approve, publish)
+ * 70.0, MM003 and MM035 over tolerance, 3 S/4 features blocked and 5 degraded. Writes (accept all, approve, publish)
  * change the in-memory state below so a click in fixture mode has its visible effect; reload resets it.
  */
 
@@ -73,26 +73,26 @@ interface RuleExtra {
 }
 
 const EXTRA: Record<string, RuleExtra> = {
-  MM014: { cls: "domain_value_check", expr: "MARA-MEINS in T006-MSEHI", auth: "SAP note 2140876 and DAMA validity", authority: "sap_hard_constraint", impact: "Goods movements and MRP cannot post for a material whose base unit is not an ISO unit.", proposed: 112, prior: 3736, possible: "EA, KG, M, ST, L and 14 more" },
-  MM031: { cls: "null_check", expr: "MARA-MTART is not initial and in T134-MTART", auth: "SAP table T134 and DAMA completeness", authority: "sap_hard_constraint", impact: "Without a material type SAP cannot derive field selection, number range or valuation control.", proposed: 0, prior: 2904, possible: "ROH, HALB, FERT and 9 more" },
-  MM022: { cls: "null_check", expr: "MARA-MATKL is not initial and in T023-MATKL", auth: "SAP table T023 and DAMA completeness", authority: "best_practice", impact: "Material group drives purchasing analytics, source lists and G/L account determination.", proposed: 486, prior: 4322, possible: "0420, 0430, 0510 and 61 more" },
-  MM057: { cls: "cross_field_check", expr: "MARA-BRGEW > 0", auth: "Material master data standard MD-MATERIAL v3", authority: "customer_configured", impact: "Freight, transport planning and EWM capacity checks need a gross weight.", proposed: 0, prior: 1878, possible: "Numeric, above 0" },
-  MM063: { cls: "null_check", expr: "MARC-EKGRP is not initial and in T024-EKGRP", auth: "SAP table T024 and DAMA completeness", authority: "best_practice", impact: "MRP-generated purchase requisitions cannot be routed to a buyer without a purchasing group.", proposed: 214, prior: 3122, possible: "P01, P02, P03 and 6 more" },
-  MM078: { cls: "cross_field_check", expr: "MARC-DISMM in T438A for MARA-MTART", auth: "SAP table T438A and DAMA consistency", authority: "sap_hard_constraint", impact: "An MRP type that does not suit the material type stops planning runs from creating proposals.", proposed: 0, prior: 1894, possible: "PD, VB, ND and 5 more" },
-  MM091: { cls: "null_check", expr: "MBEW-BKLAS is not initial and in T025-BKLAS", auth: "SAP table T025 and DAMA completeness", authority: "s4hana_migration", impact: "Without a valuation class, goods movements cannot find the stock account and post to the G/L.", proposed: 96, prior: 2060, possible: "3000, 3030 and 7 more" },
-  MM105: { cls: "domain_value_check", expr: "MARC-BESKZ in (E, F, X)", auth: "SAP domain BESKZ and DAMA completeness", authority: "best_practice", impact: "MRP cannot decide between in-house production and external procurement.", proposed: 0, prior: 1260, possible: "E, F, X" },
+  MM142: { cls: "referential_check", expr: "MARA-MEINS in T006-MSEHI", auth: "SAP check table T006 and DAMA consistency", authority: "best_practice", impact: "UoM conversions fail; stock quantities cannot be resolved; costing and CO-PA calculations error.", proposed: 112, prior: 3736, possible: "EA, KG, M, ST, L and 14 more" },
+  MM003: { cls: "null_check", expr: "MARA-MTART is not initial", auth: "SAP table T134 and DAMA completeness", authority: "sap_hard_constraint", impact: "Material cannot be created or used in MM, PP, SD, or FI without a valid material type.", proposed: 0, prior: 2904, possible: "ROH, HALB, FERT and 9 more" },
+  MM007: { cls: "null_check", expr: "MARA-MATKL is not initial", auth: "SAP table T023 and DAMA completeness", authority: "sap_hard_constraint", impact: "Spend analysis and procurement reporting are incomplete.", proposed: 486, prior: 4322, possible: "0420, 0430, 0510 and 61 more" },
+  MM015: { cls: "null_check", expr: "MARA-BRGEW is not initial", auth: "DAMA completeness", authority: "best_practice", impact: "Transportation planning and load building produce incorrect results.", proposed: 0, prior: 1878, possible: "Numeric, above 0" },
+  MM302: { cls: "null_check", expr: "MARC-EKGRP is not initial", auth: "SAP table T024 and DAMA completeness", authority: "best_practice", impact: "Requisitions from MRP land without a purchasing group; they are not picked up by buyer worklists (ME57) and release strategies keyed on purchasing group do not apply.", proposed: 214, prior: 3122, possible: "P01, P02, P03 and 6 more" },
+  MM023: { cls: "domain_value_check", expr: "MARC-DISMM in T438A-DISMM", auth: "SAP table T438A and DAMA validity", authority: "sap_hard_constraint", impact: "MRP run (MD01/MD01N) skips materials with invalid types.", proposed: 0, prior: 1894, possible: "PD, VB, ND and 5 more" },
+  MM035: { cls: "null_check", expr: "MBEW-BKLAS is not initial", auth: "SAP table T025 and DAMA completeness", authority: "sap_hard_constraint", impact: "All goods movements (MIGO) fail with account determination errors.", proposed: 96, prior: 2060, possible: "3000, 3030 and 7 more" },
+  MM028: { cls: "domain_value_check", expr: "MARC-BESKZ in (E, F, X)", auth: "SAP domain BESKZ and DAMA validity", authority: "sap_hard_constraint", impact: "MRP generates incorrect proposal types.", proposed: 0, prior: 1260, possible: "E, F, X" },
 };
 
 /** The S/4 features the impact model maps Material master's failing rules to; step 9 prices them. */
 export const FEATURES: { feature: string; status: "blocked" | "degraded"; rules: string[] }[] = [
-  { feature: "Migration cockpit: material load", status: "blocked", rules: ["MM014", "MM031"] },
-  { feature: "Material ledger actual costing", status: "blocked", rules: ["MM014"] },
-  { feature: "Embedded EWM product master", status: "blocked", rules: ["MM014", "MM031"] },
-  { feature: "MRP Live", status: "degraded", rules: ["MM078"] },
-  { feature: "Advanced available-to-promise", status: "degraded", rules: ["MM057"] },
-  { feature: "Source of supply determination", status: "degraded", rules: ["MM063"] },
-  { feature: "Product compliance", status: "degraded", rules: ["MM022"] },
-  { feature: "Inventory valuation by plant", status: "degraded", rules: ["MM091"] },
+  { feature: "Migration cockpit: material load", status: "blocked", rules: ["MM142", "MM003"] },
+  { feature: "Material ledger actual costing", status: "blocked", rules: ["MM142"] },
+  { feature: "Embedded EWM product master", status: "blocked", rules: ["MM142", "MM003"] },
+  { feature: "MRP Live", status: "degraded", rules: ["MM023"] },
+  { feature: "Advanced available-to-promise", status: "degraded", rules: ["MM015"] },
+  { feature: "Source of supply determination", status: "degraded", rules: ["MM302"] },
+  { feature: "Product compliance", status: "degraded", rules: ["MM007"] },
+  { feature: "Inventory valuation by plant", status: "degraded", rules: ["MM035"] },
 ];
 
 function ruleRow(id: string): RuleRow | undefined {
@@ -108,14 +108,14 @@ function scope(id: string): RuleScope {
   const objects: RuleScope["objects"] = [
     { system_id: ECC.id, system_name: ECC.name, module: MM, label: "Material master", run_id: CURRENT_RUN, run_at: "2026-10-16T05:17:00Z", severity: r.severity, failing: r.affected_count, checked: r.total_count, pass_rate: r.pass_rate },
   ];
-  if (id === "MM014") objects.push({ system_id: ECC.id, system_name: ECC.name, module: "purchasing", label: "Purchasing", run_id: CURRENT_RUN, run_at: "2026-10-16T05:17:00Z", severity: "critical", failing: 572, checked: 22640, pass_rate: 97.47 });
+  if (id === "MM142") objects.push({ system_id: ECC.id, system_name: ECC.name, module: "mm_purchasing", label: "MM purchasing", run_id: CURRENT_RUN, run_at: "2026-10-16T05:17:00Z", severity: "high", failing: 572, checked: 22640, pass_rate: 97.47 });
   const failing = objects.reduce((s, o) => s + o.failing, 0);
   const features: ScopeFeature[] = FEATURES.filter((f) => f.rules.includes(id)).map((f) => ({ feature: f.feature, status: f.status, system_id: ECC.id }));
   const contracts: ScopeContract[] = [];
-  if (id === "MM014") contracts.push({ id: "c-md-material", name: "MD-MATERIAL, version 3", status: "active", via: "names_rule", threshold: null });
+  if (id === "MM142") contracts.push({ id: "c-md-material", name: "MD-MATERIAL, version 3", status: "active", via: "names_rule", threshold: null });
   if (r.dimension === "validity" || r.dimension === "completeness") contracts.push({ id: "c-md-material", name: "MD-MATERIAL, version 3", status: "active", via: "dimension_threshold", threshold: 90 });
   const versions: RuleScope["versions"] =
-    id === "MM014"
+    id === "MM142"
       ? [
           { version: 4, state: "active", created_at: "2026-09-09T08:12:00Z", author: "K. Mokoena", approved_by: "T. van der Merwe", note: "Domain list refreshed from the SAP check table" },
           { version: 3, state: "retired", created_at: "2026-06-02T09:40:00Z", author: "K. Mokoena", approved_by: "T. van der Merwe", note: "Tolerance set to 25 rows" },
@@ -135,7 +135,7 @@ function scope(id: string): RuleScope {
       severity: r.severity,
       message: r.name,
       expression: x.expr,
-      params: id === "MM014" ? { check_table: "T006", check_field: "MSEHI" } : {},
+      params: id === "MM142" ? { check_table: "T006", check_field: "MSEHI" } : {},
     },
     authority: { rule_authority: x.authority, why_it_matters: r.why ?? null, sap_impact: x.impact },
     objects,
@@ -214,13 +214,13 @@ function explain(metric: string, p: Params): Explain {
 
 function readiness(): Readiness {
   const cells: ReadinessCell[] = [];
-  const wave1 = ["material_master", "business_partner", "vendor_master", "customer_master", "gl_accounts", "asset_accounting"];
+  const wave1 = ["material_master", "business_partner", "accounts_payable", "accounts_receivable", "fi_gl", "asset_accounting"];
   for (const mod of wave1) {
     const c = landscape.cells.find((x) => x.module === mod);
     cells.push({ module: mod, wave: "Wave 1", verdict: c?.verdict === "go" ? "go" : c?.verdict === "at-risk" ? "at_risk" : "no_go", blocker_count: c?.breaches.length ?? 0, dqs: c?.score ?? null, score: mod === MM ? 62.4 : null, records_blocked: mod === MM ? 6544 : 0 });
   }
   cells.push({ module: MM, wave: "Wave 2", verdict: "no_go", blocker_count: 5, dqs: 70, score: 62.4, records_blocked: 6544 });
-  for (const mod of ["purchasing", "sales_orders", "controlling"]) {
+  for (const mod of ["mm_purchasing", "sd_sales_orders", "controlling"]) {
     const c = landscape.cells.find((x) => x.module === mod);
     cells.push({ module: mod, wave: "Wave 2", verdict: c?.verdict === "go" ? "go" : c?.verdict === "at-risk" ? "at_risk" : "no_go", blocker_count: c?.breaches.length ?? 0, dqs: c?.score ?? null, score: null, records_blocked: 0 });
   }

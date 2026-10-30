@@ -17,15 +17,15 @@ function step(id: string, n: number, fields: ReturnType<typeof field>[]): StepVi
 }
 
 const steps = [
-  step("GR", 3, [field("MARA.MEINS", "red", "MM014", 3640), field("MARA.MTART", "red", "MM031", 1000)]),
+  step("GR", 3, [field("MARA.MEINS", "red", "MM142", 3640), field("MARA.MTART", "red", "MM003", 1000)]),
   step("PO", 2, [field("MARA.MATKL", "amber", "MM020", 12)]),
   step("PR", 1, [field("MARA.MATNR", "green", null)]),
 ];
 
 describe("what if these rules were fixed", () => {
   it("opens a blocked step only when every red field of it is fixed", () => {
-    expect(simulate(steps, ["MM014"]).blockedAfter).toBe(1);
-    const both = simulate(steps, ["MM014", "MM031"]);
+    expect(simulate(steps, ["MM142"]).blockedAfter).toBe(1);
+    const both = simulate(steps, ["MM142", "MM003"]);
     expect(both.blockedBefore).toBe(1);
     expect(both.blockedAfter).toBe(0);
     expect(both.released.map((s) => s.id)).toEqual(["GR"]);
@@ -34,14 +34,14 @@ describe("what if these rules were fixed", () => {
 
   it("releases the score cap the receipt's way: one critical caps at 85, two at 70, none releases it", () => {
     expect([capFor(0), capFor(1), capFor(2), capFor(5)]).toEqual([null, 85, 70, 70]);
-    const receipt = { score: 70, measured: 71.8, cap_level: 70, breaches: [{ check_id: "MM014" }, { check_id: "MM031" }] } as unknown as Receipt;
-    expect(simulate(steps, ["MM014"], receipt).score).toMatchObject({ capAfter: 85, after: 71.8 });
-    expect(simulate(steps, ["MM014", "MM031"], receipt).score).toMatchObject({ capAfter: null, after: 71.8 });
+    const receipt = { score: 70, measured: 71.8, cap_level: 70, breaches: [{ check_id: "MM142" }, { check_id: "MM003" }] } as unknown as Receipt;
+    expect(simulate(steps, ["MM142"], receipt).score).toMatchObject({ capAfter: 85, after: 71.8 });
+    expect(simulate(steps, ["MM142", "MM003"], receipt).score).toMatchObject({ capAfter: null, after: 71.8 });
     expect(simulate(steps, [], receipt).score).toMatchObject({ capAfter: 70, after: 70 });
   });
 
   it("offers the failing rules most records first, once each", () => {
-    expect(failingRules(steps).map((r) => r.checkId)).toEqual(["MM014", "MM031", "MM020"]);
+    expect(failingRules(steps).map((r) => r.checkId)).toEqual(["MM142", "MM003", "MM020"]);
   });
 });
 

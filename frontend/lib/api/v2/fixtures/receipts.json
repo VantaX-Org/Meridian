@@ -5,7 +5,7 @@
     "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
     "run_at": "2026-10-16T05:17:00Z",
     "records_checked": 61816,
-    "rules_measured": 913,
+    "rules_measured": 80,
     "coverage": 0.9740000000000001,
     "low_confidence": false,
     "weights": {
@@ -23,7 +23,7 @@
         "weight": 0.25,
         "score": 62,
         "points": 15.5,
-        "rules_measured": 213,
+        "rules_measured": 21,
         "records_checked": 60827,
         "coverage": 0.9840000000000001
       },
@@ -33,7 +33,7 @@
         "weight": 0.25,
         "score": 72,
         "points": 18,
-        "rules_measured": 98,
+        "rules_measured": 5,
         "records_checked": 60580,
         "coverage": 0.98
       },
@@ -43,7 +43,7 @@
         "weight": 0.2,
         "score": 70,
         "points": 14,
-        "rules_measured": 331,
+        "rules_measured": 24,
         "records_checked": 59962,
         "coverage": 0.97
       },
@@ -53,7 +53,7 @@
         "weight": 0.1,
         "score": 88,
         "points": 8.8,
-        "rules_measured": 41,
+        "rules_measured": 3,
         "records_checked": 61383,
         "coverage": 0.993
       },
@@ -63,7 +63,7 @@
         "weight": 0.1,
         "score": 90,
         "points": 9,
-        "rules_measured": 44,
+        "rules_measured": 3,
         "records_checked": 61569,
         "coverage": 0.996
       },
@@ -73,7 +73,7 @@
         "weight": 0.1,
         "score": 65,
         "points": 6.5,
-        "rules_measured": 186,
+        "rules_measured": 24,
         "records_checked": 59467,
         "coverage": 0.9620000000000001
       }
@@ -85,18 +85,18 @@
     "score": 70,
     "breaches": [
       {
-        "check_id": "MM014",
-        "name": "Base unit of measure not valid",
-        "failing": 3640,
-        "pct": 5.89,
+        "check_id": "MM003",
+        "name": "Material type is mandatory - determines procurement and storage behaviour",
+        "failing": 2904,
+        "pct": 4.7,
         "tolerance_rows": 25,
         "tolerance_pct": 0.1
       },
       {
-        "check_id": "MM031",
-        "name": "Material type missing",
-        "failing": 2904,
-        "pct": 4.7,
+        "check_id": "MM035",
+        "name": "Valuation class is mandatory for FI account determination",
+        "failing": 1420,
+        "pct": 2.3,
         "tolerance_rows": 25,
         "tolerance_pct": 0.1
       }
@@ -105,7 +105,7 @@
       "pct": 0.1,
       "rows": 25
     },
-    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "formula": "DQS = 0.25 × C + 0.25 × A + 0.20 × Cs + 0.10 × T + 0.10 × U + 0.10 × V",
     "severity_weights": {
       "critical": 4,
       "high": 3,
@@ -125,7 +125,7 @@
     "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
     "run_at": "2026-10-16T05:17:00Z",
     "records_checked": 48210,
-    "rules_measured": 420,
+    "rules_measured": 64,
     "coverage": 0.981,
     "low_confidence": false,
     "weights": {
@@ -143,7 +143,7 @@
         "weight": 0.25,
         "score": 73,
         "points": 18.3,
-        "rules_measured": 98,
+        "rules_measured": 16,
         "records_checked": 47776,
         "coverage": 0.991
       },
@@ -153,7 +153,7 @@
         "weight": 0.25,
         "score": 79,
         "points": 19.8,
-        "rules_measured": 45,
+        "rules_measured": 4,
         "records_checked": 47583,
         "coverage": 0.987
       },
@@ -163,7 +163,7 @@
         "weight": 0.2,
         "score": 77,
         "points": 15.4,
-        "rules_measured": 152,
+        "rules_measured": 26,
         "records_checked": 47101,
         "coverage": 0.977
       },
@@ -173,7 +173,7 @@
         "weight": 0.1,
         "score": 87,
         "points": 8.7,
-        "rules_measured": 19,
+        "rules_measured": 3,
         "records_checked": 48210,
         "coverage": 1
       },
@@ -183,7 +183,7 @@
         "weight": 0.1,
         "score": 90,
         "points": 9,
-        "rules_measured": 20,
+        "rules_measured": 6,
         "records_checked": 48210,
         "coverage": 1
       },
@@ -193,7 +193,7 @@
         "weight": 0.1,
         "score": 73,
         "points": 7.3,
-        "rules_measured": 86,
+        "rules_measured": 9,
         "records_checked": 46715,
         "coverage": 0.9690000000000001
       }
@@ -205,66 +205,26 @@
     "score": 70,
     "breaches": [
       {
+        "check_id": "BP019",
+        "name": "Country is mandatory for all business partners",
+        "failing": 444,
+        "pct": 0.92,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
         "check_id": "BP003",
-        "name": "Business partner grouping missing",
-        "failing": null,
-        "pct": null,
+        "name": "BP category is mandatory - determines partner data model",
+        "failing": 339,
+        "pct": 0.7,
         "tolerance_rows": 25,
         "tolerance_pct": 0.1
       },
       {
-        "check_id": "BP011",
-        "name": "Tax number format not valid",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "BP040",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "BP041",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "BP042",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "BP043",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "BP044",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "BP045",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
+        "check_id": "BP004",
+        "name": "BP category must be 1 (person), 2 (organisation), or 3 (group)",
+        "failing": 204,
+        "pct": 0.42,
         "tolerance_rows": 25,
         "tolerance_pct": 0.1
       }
@@ -273,7 +233,7 @@
       "pct": 0.1,
       "rows": 25
     },
-    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "formula": "DQS = 0.25 × C + 0.25 × A + 0.20 × Cs + 0.10 × T + 0.10 × U + 0.10 × V",
     "severity_weights": {
       "critical": 4,
       "high": 3,
@@ -287,13 +247,13 @@
     "features_degraded": null,
     "open_work": null
   },
-  "vendor_master": {
-    "module": "vendor_master",
-    "label": "Vendor master (AP)",
+  "accounts_payable": {
+    "module": "accounts_payable",
+    "label": "Accounts payable",
     "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
     "run_at": "2026-10-16T05:17:00Z",
     "records_checked": 12884,
-    "rules_measured": 366,
+    "rules_measured": 58,
     "coverage": 0.963,
     "low_confidence": false,
     "weights": {
@@ -311,7 +271,7 @@
         "weight": 0.25,
         "score": 73,
         "points": 18.3,
-        "rules_measured": 85,
+        "rules_measured": 10,
         "records_checked": 12536,
         "coverage": 0.973
       },
@@ -321,7 +281,7 @@
         "weight": 0.25,
         "score": 79,
         "points": 19.8,
-        "rules_measured": 39,
+        "rules_measured": 3,
         "records_checked": 12485,
         "coverage": 0.9690000000000001
       },
@@ -331,7 +291,7 @@
         "weight": 0.2,
         "score": 74,
         "points": 14.8,
-        "rules_measured": 133,
+        "rules_measured": 22,
         "records_checked": 12356,
         "coverage": 0.9590000000000001
       },
@@ -341,7 +301,7 @@
         "weight": 0.1,
         "score": 84,
         "points": 8.4,
-        "rules_measured": 16,
+        "rules_measured": 4,
         "records_checked": 12652,
         "coverage": 0.982
       },
@@ -351,7 +311,7 @@
         "weight": 0.1,
         "score": 87,
         "points": 8.7,
-        "rules_measured": 18,
+        "rules_measured": 6,
         "records_checked": 12691,
         "coverage": 0.985
       },
@@ -361,7 +321,7 @@
         "weight": 0.1,
         "score": 70,
         "points": 7,
-        "rules_measured": 75,
+        "rules_measured": 13,
         "records_checked": 12253,
         "coverage": 0.951
       }
@@ -373,50 +333,26 @@
     "score": 70,
     "breaches": [
       {
-        "check_id": "VM007",
-        "name": "Bank account missing for payment method",
-        "failing": null,
-        "pct": null,
+        "check_id": "AP005",
+        "name": "Country is mandatory — drives tax determination, payment method, and address format",
+        "failing": 890,
+        "pct": 6.91,
         "tolerance_rows": 25,
         "tolerance_pct": 0.1
       },
       {
-        "check_id": "VM019",
-        "name": "Payment terms not valid",
-        "failing": null,
-        "pct": null,
+        "check_id": "AP006",
+        "name": "Country code must be a valid 2-letter ISO code",
+        "failing": 560,
+        "pct": 4.35,
         "tolerance_rows": 25,
         "tolerance_pct": 0.1
       },
       {
-        "check_id": "VM040",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "VM041",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "VM042",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "VM043",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
+        "check_id": "AP003",
+        "name": "Vendor name is mandatory — displayed on all purchasing and payment documents",
+        "failing": 459,
+        "pct": 3.56,
         "tolerance_rows": 25,
         "tolerance_pct": 0.1
       }
@@ -425,7 +361,7 @@
       "pct": 0.1,
       "rows": 25
     },
-    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "formula": "DQS = 0.25 × C + 0.25 × A + 0.20 × Cs + 0.10 × T + 0.10 × U + 0.10 × V",
     "severity_weights": {
       "critical": 4,
       "high": 3,
@@ -439,13 +375,13 @@
     "features_degraded": null,
     "open_work": null
   },
-  "customer_master": {
-    "module": "customer_master",
-    "label": "Customer master (AR)",
+  "accounts_receivable": {
+    "module": "accounts_receivable",
+    "label": "Accounts receivable",
     "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
     "run_at": "2026-10-16T05:17:00Z",
     "records_checked": 31507,
-    "rules_measured": 312,
+    "rules_measured": 52,
     "coverage": 0.958,
     "low_confidence": false,
     "weights": {
@@ -463,7 +399,7 @@
         "weight": 0.25,
         "score": 69,
         "points": 17.3,
-        "rules_measured": 73,
+        "rules_measured": 8,
         "records_checked": 30499,
         "coverage": 0.968
       },
@@ -473,7 +409,7 @@
         "weight": 0.25,
         "score": 75,
         "points": 18.8,
-        "rules_measured": 33,
+        "rules_measured": 3,
         "records_checked": 30373,
         "coverage": 0.9640000000000001
       },
@@ -483,7 +419,7 @@
         "weight": 0.2,
         "score": 72,
         "points": 14.4,
-        "rules_measured": 113,
+        "rules_measured": 25,
         "records_checked": 30058,
         "coverage": 0.9540000000000001
       },
@@ -493,7 +429,7 @@
         "weight": 0.1,
         "score": 84,
         "points": 8.4,
-        "rules_measured": 14,
+        "rules_measured": 3,
         "records_checked": 30782,
         "coverage": 0.977
       },
@@ -503,7 +439,7 @@
         "weight": 0.1,
         "score": 84,
         "points": 8.4,
-        "rules_measured": 15,
+        "rules_measured": 4,
         "records_checked": 30877,
         "coverage": 0.98
       },
@@ -513,7 +449,7 @@
         "weight": 0.1,
         "score": 70,
         "points": 7,
-        "rules_measured": 64,
+        "rules_measured": 9,
         "records_checked": 29806,
         "coverage": 0.946
       }
@@ -525,58 +461,26 @@
     "score": 70,
     "breaches": [
       {
-        "check_id": "CM005",
-        "name": "Reconciliation account missing",
-        "failing": null,
-        "pct": null,
+        "check_id": "AR005",
+        "name": "Country is mandatory — drives tax determination and output formatting",
+        "failing": 741,
+        "pct": 2.35,
         "tolerance_rows": 25,
         "tolerance_pct": 0.1
       },
       {
-        "check_id": "CM012",
-        "name": "Country not valid",
-        "failing": null,
-        "pct": null,
+        "check_id": "AR003",
+        "name": "Customer name is mandatory — displayed on all sales and billing documents",
+        "failing": 288,
+        "pct": 0.91,
         "tolerance_rows": 25,
         "tolerance_pct": 0.1
       },
       {
-        "check_id": "CM040",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "CM041",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "CM042",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "CM043",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "CM044",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
+        "check_id": "AR006",
+        "name": "Country code must be a valid 2-letter ISO code",
+        "failing": 267,
+        "pct": 0.85,
         "tolerance_rows": 25,
         "tolerance_pct": 0.1
       }
@@ -585,7 +489,7 @@
       "pct": 0.1,
       "rows": 25
     },
-    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "formula": "DQS = 0.25 × C + 0.25 × A + 0.20 × Cs + 0.10 × T + 0.10 × U + 0.10 × V",
     "severity_weights": {
       "critical": 4,
       "high": 3,
@@ -599,13 +503,13 @@
     "features_degraded": null,
     "open_work": null
   },
-  "gl_accounts": {
-    "module": "gl_accounts",
-    "label": "G/L accounts",
+  "fi_gl": {
+    "module": "fi_gl",
+    "label": "FI general ledger",
     "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
     "run_at": "2026-10-16T05:17:00Z",
     "records_checked": 4216,
-    "rules_measured": 188,
+    "rules_measured": 44,
     "coverage": 0.996,
     "low_confidence": false,
     "weights": {
@@ -623,7 +527,7 @@
         "weight": 0.25,
         "score": 92,
         "points": 23,
-        "rules_measured": 44,
+        "rules_measured": 12,
         "records_checked": 4216,
         "coverage": 1
       },
@@ -633,7 +537,7 @@
         "weight": 0.25,
         "score": 94,
         "points": 23.5,
-        "rules_measured": 20,
+        "rules_measured": 3,
         "records_checked": 4216,
         "coverage": 1
       },
@@ -643,7 +547,7 @@
         "weight": 0.2,
         "score": 96,
         "points": 19.2,
-        "rules_measured": 69,
+        "rules_measured": 15,
         "records_checked": 4182,
         "coverage": 0.992
       },
@@ -653,7 +557,7 @@
         "weight": 0.1,
         "score": 95,
         "points": 9.5,
-        "rules_measured": 8,
+        "rules_measured": 3,
         "records_checked": 4216,
         "coverage": 1
       },
@@ -663,7 +567,7 @@
         "weight": 0.1,
         "score": 96,
         "points": 9.6,
-        "rules_measured": 9,
+        "rules_measured": 3,
         "records_checked": 4216,
         "coverage": 1
       },
@@ -673,7 +577,7 @@
         "weight": 0.1,
         "score": 86,
         "points": 8.6,
-        "rules_measured": 38,
+        "rules_measured": 8,
         "records_checked": 4149,
         "coverage": 0.9840000000000001
       }
@@ -688,7 +592,7 @@
       "pct": 0.1,
       "rows": 25
     },
-    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "formula": "DQS = 0.25 × C + 0.25 × A + 0.20 × Cs + 0.10 × T + 0.10 × U + 0.10 × V",
     "severity_weights": {
       "critical": 4,
       "high": 3,
@@ -708,7 +612,7 @@
     "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
     "run_at": "2026-10-16T05:17:00Z",
     "records_checked": 9873,
-    "rules_measured": 245,
+    "rules_measured": 46,
     "coverage": 0.9420000000000001,
     "low_confidence": false,
     "weights": {
@@ -726,7 +630,7 @@
         "weight": 0.25,
         "score": 68,
         "points": 17,
-        "rules_measured": 57,
+        "rules_measured": 11,
         "records_checked": 9399,
         "coverage": 0.9520000000000001
       },
@@ -736,7 +640,7 @@
         "weight": 0.25,
         "score": 74,
         "points": 18.5,
-        "rules_measured": 26,
+        "rules_measured": 3,
         "records_checked": 9360,
         "coverage": 0.948
       },
@@ -746,7 +650,7 @@
         "weight": 0.2,
         "score": 70,
         "points": 14,
-        "rules_measured": 89,
+        "rules_measured": 17,
         "records_checked": 9261,
         "coverage": 0.938
       },
@@ -756,7 +660,7 @@
         "weight": 0.1,
         "score": 82,
         "points": 8.2,
-        "rules_measured": 11,
+        "rules_measured": 3,
         "records_checked": 9488,
         "coverage": 0.961
       },
@@ -766,7 +670,7 @@
         "weight": 0.1,
         "score": 82,
         "points": 8.2,
-        "rules_measured": 12,
+        "rules_measured": 2,
         "records_checked": 9518,
         "coverage": 0.9640000000000001
       },
@@ -776,7 +680,7 @@
         "weight": 0.1,
         "score": 67,
         "points": 6.7,
-        "rules_measured": 50,
+        "rules_measured": 10,
         "records_checked": 9182,
         "coverage": 0.93
       }
@@ -788,42 +692,18 @@
     "score": 70,
     "breaches": [
       {
+        "check_id": "AA003",
+        "name": "Asset class is mandatory — controls depreciation area and account determination",
+        "failing": 621,
+        "pct": 6.29,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
         "check_id": "AA004",
-        "name": "Depreciation key missing",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "AA009",
-        "name": "Capitalisation date missing",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "AA040",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "AA041",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "AA042",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
+        "name": "Company code is mandatory — determines depreciation area and fiscal year variant",
+        "failing": 362,
+        "pct": 3.67,
         "tolerance_rows": 25,
         "tolerance_pct": 0.1
       }
@@ -832,7 +712,7 @@
       "pct": 0.1,
       "rows": 25
     },
-    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "formula": "DQS = 0.25 × C + 0.25 × A + 0.20 × Cs + 0.10 × T + 0.10 × U + 0.10 × V",
     "severity_weights": {
       "critical": 4,
       "high": 3,
@@ -852,7 +732,7 @@
     "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
     "run_at": "2026-10-16T05:17:00Z",
     "records_checked": 7402,
-    "rules_measured": 274,
+    "rules_measured": 48,
     "coverage": 0.97,
     "low_confidence": false,
     "weights": {
@@ -870,7 +750,7 @@
         "weight": 0.25,
         "score": 74,
         "points": 18.5,
-        "rules_measured": 64,
+        "rules_measured": 16,
         "records_checked": 7254,
         "coverage": 0.98
       },
@@ -880,7 +760,7 @@
         "weight": 0.25,
         "score": 80,
         "points": 20,
-        "rules_measured": 29,
+        "rules_measured": 1,
         "records_checked": 7224,
         "coverage": 0.976
       },
@@ -890,7 +770,7 @@
         "weight": 0.2,
         "score": 77,
         "points": 15.4,
-        "rules_measured": 100,
+        "rules_measured": 21,
         "records_checked": 7150,
         "coverage": 0.966
       },
@@ -900,7 +780,7 @@
         "weight": 0.1,
         "score": 88,
         "points": 8.8,
-        "rules_measured": 12,
+        "rules_measured": 3,
         "records_checked": 7321,
         "coverage": 0.9890000000000001
       },
@@ -910,7 +790,7 @@
         "weight": 0.1,
         "score": 90,
         "points": 9,
-        "rules_measured": 13,
+        "rules_measured": 3,
         "records_checked": 7343,
         "coverage": 0.992
       },
@@ -920,7 +800,7 @@
         "weight": 0.1,
         "score": 74,
         "points": 7.4,
-        "rules_measured": 56,
+        "rules_measured": 4,
         "records_checked": 7091,
         "coverage": 0.958
       }
@@ -932,74 +812,26 @@
     "score": 70,
     "breaches": [
       {
+        "check_id": "CO003",
+        "name": "Cost centre validity start date is mandatory",
+        "failing": 786,
+        "pct": 10.62,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
+        "check_id": "CO001",
+        "name": "Controlling area is mandatory on a cost centre",
+        "failing": 546,
+        "pct": 7.38,
+        "tolerance_rows": 25,
+        "tolerance_pct": 0.1
+      },
+      {
         "check_id": "CO002",
-        "name": "Cost centre without person responsible",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "CO015",
-        "name": "Cost centre category not valid",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "CO040",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "CO041",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "CO042",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "CO043",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "CO044",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "CO045",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "CO046",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
+        "name": "Cost centre number is mandatory",
+        "failing": 336,
+        "pct": 4.54,
         "tolerance_rows": 25,
         "tolerance_pct": 0.1
       }
@@ -1008,7 +840,7 @@
       "pct": 0.1,
       "rows": 25
     },
-    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "formula": "DQS = 0.25 × C + 0.25 × A + 0.20 × Cs + 0.10 × T + 0.10 × U + 0.10 × V",
     "severity_weights": {
       "critical": 4,
       "high": 3,
@@ -1022,13 +854,13 @@
     "features_degraded": null,
     "open_work": null
   },
-  "purchasing": {
-    "module": "purchasing",
-    "label": "Purchasing",
+  "mm_purchasing": {
+    "module": "mm_purchasing",
+    "label": "MM purchasing",
     "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
     "run_at": "2026-10-16T05:17:00Z",
     "records_checked": 22640,
-    "rules_measured": 451,
+    "rules_measured": 62,
     "coverage": 0.9690000000000001,
     "low_confidence": false,
     "weights": {
@@ -1046,7 +878,7 @@
         "weight": 0.25,
         "score": 72,
         "points": 18,
-        "rules_measured": 105,
+        "rules_measured": 15,
         "records_checked": 22165,
         "coverage": 0.9790000000000001
       },
@@ -1056,7 +888,7 @@
         "weight": 0.25,
         "score": 78,
         "points": 19.5,
-        "rules_measured": 48,
+        "rules_measured": 3,
         "records_checked": 22074,
         "coverage": 0.975
       },
@@ -1066,7 +898,7 @@
         "weight": 0.2,
         "score": 71,
         "points": 14.2,
-        "rules_measured": 164,
+        "rules_measured": 21,
         "records_checked": 21848,
         "coverage": 0.965
       },
@@ -1076,7 +908,7 @@
         "weight": 0.1,
         "score": 83,
         "points": 8.3,
-        "rules_measured": 20,
+        "rules_measured": 5,
         "records_checked": 22368,
         "coverage": 0.988
       },
@@ -1086,7 +918,7 @@
         "weight": 0.1,
         "score": 85,
         "points": 8.5,
-        "rules_measured": 22,
+        "rules_measured": 4,
         "records_checked": 22436,
         "coverage": 0.991
       },
@@ -1096,7 +928,7 @@
         "weight": 0.1,
         "score": 68,
         "points": 6.8,
-        "rules_measured": 92,
+        "rules_measured": 14,
         "records_checked": 21666,
         "coverage": 0.9570000000000001
       }
@@ -1108,18 +940,18 @@
     "score": 70,
     "breaches": [
       {
-        "check_id": "MM014",
-        "name": "Base unit of measure not valid",
-        "failing": 572,
-        "pct": 2.53,
+        "check_id": "PUR004",
+        "name": "PO document type is mandatory — controls procurement processing flow",
+        "failing": 740,
+        "pct": 3.27,
         "tolerance_rows": 25,
         "tolerance_pct": 0.1
       },
       {
-        "check_id": "MM031",
-        "name": "Material type missing",
-        "failing": null,
-        "pct": null,
+        "check_id": "PUR003",
+        "name": "Vendor number is mandatory — PO cannot be processed without a valid vendor",
+        "failing": 359,
+        "pct": 1.59,
         "tolerance_rows": 25,
         "tolerance_pct": 0.1
       }
@@ -1128,7 +960,7 @@
       "pct": 0.1,
       "rows": 25
     },
-    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "formula": "DQS = 0.25 × C + 0.25 × A + 0.20 × Cs + 0.10 × T + 0.10 × U + 0.10 × V",
     "severity_weights": {
       "critical": 4,
       "high": 3,
@@ -1142,13 +974,13 @@
     "features_degraded": null,
     "open_work": null
   },
-  "sales_orders": {
-    "module": "sales_orders",
-    "label": "Sales orders",
+  "sd_sales_orders": {
+    "module": "sd_sales_orders",
+    "label": "SD sales orders",
     "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
     "run_at": "2026-10-16T05:17:00Z",
     "records_checked": 118330,
-    "rules_measured": 598,
+    "rules_measured": 60,
     "coverage": 0.9840000000000001,
     "low_confidence": false,
     "weights": {
@@ -1166,7 +998,7 @@
         "weight": 0.25,
         "score": 75,
         "points": 18.8,
-        "rules_measured": 140,
+        "rules_measured": 9,
         "records_checked": 117620,
         "coverage": 0.9940000000000001
       },
@@ -1176,7 +1008,7 @@
         "weight": 0.25,
         "score": 83,
         "points": 20.8,
-        "rules_measured": 64,
+        "rules_measured": 5,
         "records_checked": 117147,
         "coverage": 0.99
       },
@@ -1186,7 +1018,7 @@
         "weight": 0.2,
         "score": 78,
         "points": 15.6,
-        "rules_measured": 216,
+        "rules_measured": 25,
         "records_checked": 115963,
         "coverage": 0.98
       },
@@ -1196,7 +1028,7 @@
         "weight": 0.1,
         "score": 91,
         "points": 9.1,
-        "rules_measured": 27,
+        "rules_measured": 4,
         "records_checked": 118330,
         "coverage": 1
       },
@@ -1206,7 +1038,7 @@
         "weight": 0.1,
         "score": 91,
         "points": 9.1,
-        "rules_measured": 29,
+        "rules_measured": 3,
         "records_checked": 118330,
         "coverage": 1
       },
@@ -1216,7 +1048,7 @@
         "weight": 0.1,
         "score": 77,
         "points": 7.7,
-        "rules_measured": 122,
+        "rules_measured": 14,
         "records_checked": 115017,
         "coverage": 0.972
       }
@@ -1228,66 +1060,26 @@
     "score": 70,
     "breaches": [
       {
-        "check_id": "SO006",
-        "name": "Ship-to partner missing",
-        "failing": null,
-        "pct": null,
+        "check_id": "SDSO003",
+        "name": "Sales document type is mandatory — controls entire order processing flow",
+        "failing": 639,
+        "pct": 0.54,
         "tolerance_rows": 25,
         "tolerance_pct": 0.1
       },
       {
-        "check_id": "SO021",
-        "name": "Payment terms not valid",
-        "failing": null,
-        "pct": null,
+        "check_id": "SDSO002",
+        "name": "Sold-to customer is mandatory — required for billing and AR posting",
+        "failing": 605,
+        "pct": 0.51,
         "tolerance_rows": 25,
         "tolerance_pct": 0.1
       },
       {
-        "check_id": "SO040",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "SO041",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "SO042",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "SO043",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "SO044",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "SO045",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
+        "check_id": "SDSO005",
+        "name": "Sales organisation is mandatory — determines pricing, output, and org context",
+        "failing": 586,
+        "pct": 0.5,
         "tolerance_rows": 25,
         "tolerance_pct": 0.1
       }
@@ -1296,7 +1088,7 @@
       "pct": 0.1,
       "rows": 25
     },
-    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "formula": "DQS = 0.25 × C + 0.25 × A + 0.20 × Cs + 0.10 × T + 0.10 × U + 0.10 × V",
     "severity_weights": {
       "critical": 4,
       "high": 3,
@@ -1316,7 +1108,7 @@
     "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
     "run_at": "2026-10-16T05:17:00Z",
     "records_checked": 15964,
-    "rules_measured": 233,
+    "rules_measured": 50,
     "coverage": 0.642,
     "low_confidence": true,
     "weights": {
@@ -1334,7 +1126,7 @@
         "weight": 0.25,
         "score": 72,
         "points": 18,
-        "rules_measured": 54,
+        "rules_measured": 13,
         "records_checked": 10409,
         "coverage": 0.652
       },
@@ -1344,7 +1136,7 @@
         "weight": 0.25,
         "score": 72,
         "points": 18,
-        "rules_measured": 25,
+        "rules_measured": 4,
         "records_checked": 10345,
         "coverage": 0.648
       },
@@ -1354,7 +1146,7 @@
         "weight": 0.2,
         "score": 74,
         "points": 14.8,
-        "rules_measured": 86,
+        "rules_measured": 19,
         "records_checked": 10185,
         "coverage": 0.638
       },
@@ -1364,7 +1156,7 @@
         "weight": 0.1,
         "score": 78,
         "points": 7.8,
-        "rules_measured": 10,
+        "rules_measured": 2,
         "records_checked": 10552,
         "coverage": 0.6609999999999999
       },
@@ -1374,7 +1166,7 @@
         "weight": 0.1,
         "score": 79,
         "points": 7.9,
-        "rules_measured": 11,
+        "rules_measured": 7,
         "records_checked": 10600,
         "coverage": 0.664
       },
@@ -1384,7 +1176,7 @@
         "weight": 0.1,
         "score": 70,
         "points": 7,
-        "rules_measured": 47,
+        "rules_measured": 5,
         "records_checked": 10057,
         "coverage": 0.63
       }
@@ -1397,57 +1189,17 @@
     "breaches": [
       {
         "check_id": "PM003",
-        "name": "Equipment without functional location",
-        "failing": null,
-        "pct": null,
+        "name": "Equipment category is mandatory — determines available maintenance functions",
+        "failing": 571,
+        "pct": 3.58,
         "tolerance_rows": 25,
         "tolerance_pct": 0.1
       },
       {
-        "check_id": "PM014",
-        "name": "Maintenance plant missing",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "PM040",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "PM041",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "PM042",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "PM043",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "PM044",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
+        "check_id": "PM033",
+        "name": "Duplicate equipment numbers detected — each equipment must be unique",
+        "failing": 564,
+        "pct": 3.53,
         "tolerance_rows": 25,
         "tolerance_pct": 0.1
       }
@@ -1456,7 +1208,7 @@
       "pct": 0.1,
       "rows": 25
     },
-    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "formula": "DQS = 0.25 × C + 0.25 × A + 0.20 × Cs + 0.10 × T + 0.10 × U + 0.10 × V",
     "severity_weights": {
       "critical": 4,
       "high": 3,
@@ -1476,7 +1228,7 @@
     "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
     "run_at": "2026-10-16T05:17:00Z",
     "records_checked": 20118,
-    "rules_measured": 291,
+    "rules_measured": 56,
     "coverage": 0.935,
     "low_confidence": false,
     "weights": {
@@ -1494,7 +1246,7 @@
         "weight": 0.25,
         "score": 73,
         "points": 18.3,
-        "rules_measured": 68,
+        "rules_measured": 17,
         "records_checked": 19012,
         "coverage": 0.945
       },
@@ -1504,7 +1256,7 @@
         "weight": 0.25,
         "score": 79,
         "points": 19.8,
-        "rules_measured": 31,
+        "rules_measured": 4,
         "records_checked": 18931,
         "coverage": 0.941
       },
@@ -1514,7 +1266,7 @@
         "weight": 0.2,
         "score": 75,
         "points": 15,
-        "rules_measured": 106,
+        "rules_measured": 14,
         "records_checked": 18730,
         "coverage": 0.9309999999999999
       },
@@ -1524,7 +1276,7 @@
         "weight": 0.1,
         "score": 88,
         "points": 8.8,
-        "rules_measured": 13,
+        "rules_measured": 2,
         "records_checked": 19193,
         "coverage": 0.9540000000000001
       },
@@ -1534,7 +1286,7 @@
         "weight": 0.1,
         "score": 87,
         "points": 8.7,
-        "rules_measured": 14,
+        "rules_measured": 1,
         "records_checked": 19253,
         "coverage": 0.9570000000000001
       },
@@ -1544,7 +1296,7 @@
         "weight": 0.1,
         "score": 72,
         "points": 7.2,
-        "rules_measured": 59,
+        "rules_measured": 18,
         "records_checked": 18569,
         "coverage": 0.9229999999999999
       }
@@ -1556,66 +1308,26 @@
     "score": 70,
     "breaches": [
       {
-        "check_id": "PP008",
-        "name": "Routing without operations",
-        "failing": null,
-        "pct": null,
+        "check_id": "PP007",
+        "name": "BOM number missing — Bill of Materials cannot be uniquely identified",
+        "failing": 604,
+        "pct": 3.0,
         "tolerance_rows": 25,
         "tolerance_pct": 0.1
       },
       {
-        "check_id": "PP017",
-        "name": "BOM component quantity zero",
-        "failing": null,
-        "pct": null,
+        "check_id": "PP014",
+        "name": "BOM component quantity is blank or zero (negative quantities are co-/by-products and valid)",
+        "failing": 411,
+        "pct": 2.04,
         "tolerance_rows": 25,
         "tolerance_pct": 0.1
       },
       {
-        "check_id": "PP040",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "PP041",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "PP042",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "PP043",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "PP044",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "PP045",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
+        "check_id": "PP013",
+        "name": "BOM component material is mandatory — missing means no material reservations",
+        "failing": 116,
+        "pct": 0.58,
         "tolerance_rows": 25,
         "tolerance_pct": 0.1
       }
@@ -1624,7 +1336,7 @@
       "pct": 0.1,
       "rows": 25
     },
-    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "formula": "DQS = 0.25 × C + 0.25 × A + 0.20 × Cs + 0.10 × T + 0.10 × U + 0.10 × V",
     "severity_weights": {
       "critical": 4,
       "high": 3,
@@ -1644,7 +1356,7 @@
     "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
     "run_at": "2026-10-16T05:17:00Z",
     "records_checked": 3584,
-    "rules_measured": 160,
+    "rules_measured": 42,
     "coverage": 0.99,
     "low_confidence": false,
     "weights": {
@@ -1662,7 +1374,7 @@
         "weight": 0.25,
         "score": 84,
         "points": 21,
-        "rules_measured": 37,
+        "rules_measured": 7,
         "records_checked": 3584,
         "coverage": 1
       },
@@ -1672,7 +1384,7 @@
         "weight": 0.25,
         "score": 88,
         "points": 22,
-        "rules_measured": 17,
+        "rules_measured": 5,
         "records_checked": 3570,
         "coverage": 0.996
       },
@@ -1682,7 +1394,7 @@
         "weight": 0.2,
         "score": 88,
         "points": 17.6,
-        "rules_measured": 58,
+        "rules_measured": 13,
         "records_checked": 3534,
         "coverage": 0.986
       },
@@ -1692,7 +1404,7 @@
         "weight": 0.1,
         "score": 98,
         "points": 9.8,
-        "rules_measured": 7,
+        "rules_measured": 3,
         "records_checked": 3584,
         "coverage": 1
       },
@@ -1702,7 +1414,7 @@
         "weight": 0.1,
         "score": 98,
         "points": 9.8,
-        "rules_measured": 8,
+        "rules_measured": 3,
         "records_checked": 3584,
         "coverage": 1
       },
@@ -1712,7 +1424,7 @@
         "weight": 0.1,
         "score": 84,
         "points": 8.4,
-        "rules_measured": 33,
+        "rules_measured": 11,
         "records_checked": 3505,
         "coverage": 0.978
       }
@@ -1724,10 +1436,10 @@
     "score": 85,
     "breaches": [
       {
-        "check_id": "PS004",
-        "name": "WBS element without responsible cost centre",
-        "failing": null,
-        "pct": null,
+        "check_id": "PS019",
+        "name": "WBS element points at a project definition that does not exist",
+        "failing": 248,
+        "pct": 6.92,
         "tolerance_rows": 25,
         "tolerance_pct": 0.1
       }
@@ -1736,7 +1448,7 @@
       "pct": 0.1,
       "rows": 25
     },
-    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "formula": "DQS = 0.25 × C + 0.25 × A + 0.20 × Cs + 0.10 × T + 0.10 × U + 0.10 × V",
     "severity_weights": {
       "critical": 4,
       "high": 3,
@@ -1756,7 +1468,7 @@
     "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
     "run_at": "2026-10-16T05:17:00Z",
     "records_checked": 8771,
-    "rules_measured": 207,
+    "rules_measured": 45,
     "coverage": 0.9670000000000001,
     "low_confidence": false,
     "weights": {
@@ -1774,7 +1486,7 @@
         "weight": 0.25,
         "score": 89,
         "points": 22.3,
-        "rules_measured": 48,
+        "rules_measured": 7,
         "records_checked": 8569,
         "coverage": 0.977
       },
@@ -1784,7 +1496,7 @@
         "weight": 0.25,
         "score": 93,
         "points": 23.3,
-        "rules_measured": 22,
+        "rules_measured": 1,
         "records_checked": 8534,
         "coverage": 0.973
       },
@@ -1794,7 +1506,7 @@
         "weight": 0.2,
         "score": 89,
         "points": 17.8,
-        "rules_measured": 76,
+        "rules_measured": 19,
         "records_checked": 8446,
         "coverage": 0.963
       },
@@ -1804,7 +1516,7 @@
         "weight": 0.1,
         "score": 96,
         "points": 9.6,
-        "rules_measured": 9,
+        "rules_measured": 5,
         "records_checked": 8648,
         "coverage": 0.986
       },
@@ -1814,7 +1526,7 @@
         "weight": 0.1,
         "score": 99,
         "points": 9.9,
-        "rules_measured": 10,
+        "rules_measured": 1,
         "records_checked": 8675,
         "coverage": 0.9890000000000001
       },
@@ -1824,7 +1536,7 @@
         "weight": 0.1,
         "score": 84,
         "points": 8.4,
-        "rules_measured": 42,
+        "rules_measured": 12,
         "records_checked": 8376,
         "coverage": 0.955
       }
@@ -1839,7 +1551,7 @@
       "pct": 0.1,
       "rows": 25
     },
-    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "formula": "DQS = 0.25 × C + 0.25 × A + 0.20 × Cs + 0.10 × T + 0.10 × U + 0.10 × V",
     "severity_weights": {
       "critical": 4,
       "high": 3,
@@ -1855,11 +1567,11 @@
   },
   "hcm": {
     "module": "hcm",
-    "label": "HCM",
+    "label": "HCM personnel administration",
     "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
     "run_at": "2026-10-16T05:17:00Z",
     "records_checked": 5932,
-    "rules_measured": 346,
+    "rules_measured": 47,
     "coverage": 0.9179999999999999,
     "low_confidence": false,
     "weights": {
@@ -1877,7 +1589,7 @@
         "weight": 0.25,
         "score": 75,
         "points": 18.8,
-        "rules_measured": 81,
+        "rules_measured": 14,
         "records_checked": 5505,
         "coverage": 0.9279999999999999
       },
@@ -1887,7 +1599,7 @@
         "weight": 0.25,
         "score": 81,
         "points": 20.3,
-        "rules_measured": 37,
+        "rules_measured": 1,
         "records_checked": 5481,
         "coverage": 0.924
       },
@@ -1897,7 +1609,7 @@
         "weight": 0.2,
         "score": 79,
         "points": 15.8,
-        "rules_measured": 125,
+        "rules_measured": 17,
         "records_checked": 5422,
         "coverage": 0.914
       },
@@ -1907,7 +1619,7 @@
         "weight": 0.1,
         "score": 90,
         "points": 9,
-        "rules_measured": 16,
+        "rules_measured": 3,
         "records_checked": 5558,
         "coverage": 0.937
       },
@@ -1917,7 +1629,7 @@
         "weight": 0.1,
         "score": 90,
         "points": 9,
-        "rules_measured": 17,
+        "rules_measured": 4,
         "records_checked": 5576,
         "coverage": 0.94
       },
@@ -1927,7 +1639,7 @@
         "weight": 0.1,
         "score": 76,
         "points": 7.6,
-        "rules_measured": 70,
+        "rules_measured": 8,
         "records_checked": 5374,
         "coverage": 0.9059999999999999
       }
@@ -1939,66 +1651,26 @@
     "score": 70,
     "breaches": [
       {
-        "check_id": "HC002",
-        "name": "Employee without organisational assignment",
-        "failing": null,
-        "pct": null,
+        "check_id": "PA004",
+        "name": "Active employee has no payroll area",
+        "failing": 652,
+        "pct": 10.99,
         "tolerance_rows": 25,
         "tolerance_pct": 0.1
       },
       {
-        "check_id": "HC011",
-        "name": "Pay scale group not valid",
-        "failing": null,
-        "pct": null,
+        "check_id": "PA002",
+        "name": "Active employee has no position",
+        "failing": 489,
+        "pct": 8.24,
         "tolerance_rows": 25,
         "tolerance_pct": 0.1
       },
       {
-        "check_id": "HC040",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "HC041",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "HC042",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "HC043",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "HC044",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
-        "tolerance_rows": 25,
-        "tolerance_pct": 0.1
-      },
-      {
-        "check_id": "HC045",
-        "name": "Critical rule over tolerance",
-        "failing": null,
-        "pct": null,
+        "check_id": "PA001",
+        "name": "Active employee has no organisational unit",
+        "failing": 67,
+        "pct": 1.13,
         "tolerance_rows": 25,
         "tolerance_pct": 0.1
       }
@@ -2007,7 +1679,7 @@
       "pct": 0.1,
       "rows": 25
     },
-    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "formula": "DQS = 0.25 × C + 0.25 × A + 0.20 × Cs + 0.10 × T + 0.10 × U + 0.10 × V",
     "severity_weights": {
       "critical": 4,
       "high": 3,
@@ -2027,7 +1699,7 @@
     "run_id": "d3229ded-0708-4967-9dfb-1b7f4fada953",
     "run_at": "2026-10-16T05:17:00Z",
     "records_checked": 29415,
-    "rules_measured": 174,
+    "rules_measured": 40,
     "coverage": 0.972,
     "low_confidence": false,
     "weights": {
@@ -2045,7 +1717,7 @@
         "weight": 0.25,
         "score": 77,
         "points": 19.3,
-        "rules_measured": 41,
+        "rules_measured": 10,
         "records_checked": 28886,
         "coverage": 0.982
       },
@@ -2055,7 +1727,7 @@
         "weight": 0.25,
         "score": 77,
         "points": 19.3,
-        "rules_measured": 19,
+        "rules_measured": 1,
         "records_checked": 28768,
         "coverage": 0.978
       },
@@ -2065,7 +1737,7 @@
         "weight": 0.2,
         "score": 78,
         "points": 15.6,
-        "rules_measured": 63,
+        "rules_measured": 14,
         "records_checked": 28474,
         "coverage": 0.968
       },
@@ -2075,7 +1747,7 @@
         "weight": 0.1,
         "score": 83,
         "points": 8.3,
-        "rules_measured": 8,
+        "rules_measured": 1,
         "records_checked": 29150,
         "coverage": 0.991
       },
@@ -2085,7 +1757,7 @@
         "weight": 0.1,
         "score": 84,
         "points": 8.4,
-        "rules_measured": 8,
+        "rules_measured": 2,
         "records_checked": 29239,
         "coverage": 0.9940000000000001
       },
@@ -2095,7 +1767,7 @@
         "weight": 0.1,
         "score": 74,
         "points": 7.4,
-        "rules_measured": 35,
+        "rules_measured": 12,
         "records_checked": 28238,
         "coverage": 0.96
       }
@@ -2110,7 +1782,7 @@
       "pct": 0.1,
       "rows": 25
     },
-    "formula": "DQS = 0.25\u00b7C + 0.25\u00b7A + 0.20\u00b7Cs + 0.10\u00b7T + 0.10\u00b7U + 0.10\u00b7V",
+    "formula": "DQS = 0.25 × C + 0.25 × A + 0.20 × Cs + 0.10 × T + 0.10 × U + 0.10 × V",
     "severity_weights": {
       "critical": 4,
       "high": 3,

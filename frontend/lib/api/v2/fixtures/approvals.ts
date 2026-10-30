@@ -29,10 +29,10 @@ const APPROVERS = new Set(["programme_lead", "data_owner", "admin"]);
 type Base = Omit<Person, "approvals_waiting" | "name" | "email" | "role" | "id" | "is_me">;
 const BASE: Record<string, Base> = {
   "u-me": { objects_owned: [{ module: "material_master", label: "Material master", as: "steward" }], open_work: 38, overdue: 3, sla_hours: 72, breaches_this_month: 1, last_action_at: "2026-10-16T08:55:00Z" },
-  "u-rg": { objects_owned: [{ module: "material_master", label: "Material master", as: "owner" }, { module: "accounts_payable", label: "Vendor master (AP)", as: "owner" }], open_work: 12, overdue: 0, sla_hours: 72, breaches_this_month: 0, last_action_at: "2026-10-15T16:20:00Z" },
-  "u-an": { objects_owned: [{ module: "material_master", label: "Material master", as: "steward" }, { module: "mm_purchasing", label: "Purchasing", as: "steward" }], open_work: 214, overdue: 31, sla_hours: 24, breaches_this_month: 9, last_action_at: "2026-10-16T08:12:00Z" },
-  "u-tm": { objects_owned: [{ module: "business_partner", label: "Business partner", as: "owner" }, { module: "accounts_payable", label: "Vendor master (AP)", as: "owner" }, { module: "accounts_receivable", label: "Customer master (AR)", as: "owner" }], open_work: 6, overdue: 0, sla_hours: 72, breaches_this_month: 0, last_action_at: "2026-10-15T11:05:00Z" },
-  "u-pk": { objects_owned: [{ module: "fi_gl", label: "G/L accounts", as: "owner" }, { module: "asset_accounting", label: "Asset accounting", as: "owner" }], open_work: 0, overdue: 0, sla_hours: null, breaches_this_month: 0, last_action_at: "2026-09-30T14:48:00Z" },
+  "u-rg": { objects_owned: [{ module: "material_master", label: "Material master", as: "owner" }, { module: "accounts_payable", label: "Accounts payable", as: "owner" }], open_work: 12, overdue: 0, sla_hours: 72, breaches_this_month: 0, last_action_at: "2026-10-15T16:20:00Z" },
+  "u-an": { objects_owned: [{ module: "material_master", label: "Material master", as: "steward" }, { module: "mm_purchasing", label: "MM purchasing", as: "steward" }], open_work: 214, overdue: 31, sla_hours: 24, breaches_this_month: 9, last_action_at: "2026-10-16T08:12:00Z" },
+  "u-tm": { objects_owned: [{ module: "business_partner", label: "Business partner", as: "owner" }, { module: "accounts_payable", label: "Accounts payable", as: "owner" }, { module: "accounts_receivable", label: "Accounts receivable", as: "owner" }], open_work: 6, overdue: 0, sla_hours: 72, breaches_this_month: 0, last_action_at: "2026-10-15T11:05:00Z" },
+  "u-pk": { objects_owned: [{ module: "fi_gl", label: "FI general ledger", as: "owner" }, { module: "asset_accounting", label: "Asset accounting", as: "owner" }], open_work: 0, overdue: 0, sla_hours: null, breaches_this_month: 0, last_action_at: "2026-09-30T14:48:00Z" },
   "u-sd": { objects_owned: [], open_work: 0, overdue: 0, sla_hours: null, breaches_this_month: 0, last_action_at: "2026-10-14T07:30:00Z" },
 };
 
@@ -69,14 +69,14 @@ function buildNotifications(): Notification[] {
   return [
     n("n1", "approval", "Batch B-241 waits for your approval", "328 records of Material master, ZAR 412,600 at risk. Built by R. Govender.", "/work?filter=approvals&open=batch:B-241", false, at(0, 8, 41)),
     n("n2", "sla_at_risk", "41 records of Material master are close to their due date", "They are due within two days; A. Naidoo holds 38 of them.", "/o/ecc-production/material-master", false, at(0, 7, 58)),
-    n("n3", "sla_breached", "3 records breached their SLA", "Critical rule MM031 is 2 days past its due date on 3 records.", "/work?due=overdue", false, at(0, 7, 20)),
-    n("n4", "info", "Analysis finished on ECC production", "61,816 records checked; Material master scores 70.0, capped by MM014 and MM031.", "/runs", false, at(0, 5, 31)),
+    n("n3", "sla_breached", "3 records breached their SLA", "Critical rule MM003 is 2 days past its due date on 3 records.", "/work?due=overdue", false, at(0, 7, 20)),
+    n("n4", "info", "Analysis finished on ECC production", "61,816 records checked; Material master scores 70.0, capped by MM003 and MM035.", "/runs", false, at(0, 5, 31)),
     n("n5", "approval", "Batch B-236 was approved", "T. Mokoena approved 180 records. It is ready to send to SAP.", "/work?filter=open&batch=B-236&open=batch:B-236", false, at(1, 11, 5)),
-    n("n6", "dq_alert", "MM014 failures rose by 112 records", "Base unit of measure is not valid on 112 more records than in the run before.", "/r/MM014", false, at(1, 6, 2)),
-    n("n7", "exception", "A. Naidoo signed off 4 records as not an issue", "Material master, rule MM022. Open Exceptions to review the reasons.", "/work?filter=exceptions", false, at(2, 15, 12)),
+    n("n6", "dq_alert", "MM142 failures rose by 112 records", "Base unit of measure is not valid on 112 more records than in the run before.", "/r/MM142", false, at(1, 6, 2)),
+    n("n7", "exception", "A. Naidoo signed off 4 records as not an issue", "Material master, rule MM007. Open Exceptions to review the reasons.", "/work?filter=exceptions", false, at(2, 15, 12)),
     n("n8", "digest", "Your weekly digest", "38 records assigned to you, 3 overdue, 2 batches waiting for approval.", "/people", true, at(3, 7, 0)),
     n("n9", "report", "The board pack for September is ready", "Open Reports in the current interface to download it.", "/reports", true, at(5, 9, 30)),
-    n("n10", "monitor", "5 new failing records since the baseline", "ECC production, Purchasing: new records fail EKGRP.", "/o/ecc-production/purchasing", true, at(6, 8, 15)),
+    n("n10", "monitor", "5 new failing records since the baseline", "ECC production, Purchasing: new records fail EKGRP.", "/o/ecc-production/mm-purchasing", true, at(6, 8, 15)),
     n("n11", "cleaning", "Cleaning proposals for Business partner are ready", "214 proposals await review.", "/o/ecc-production/business-partner", true, at(8, 10, 40)),
     n("n12", "info", "SuccessFactors has not been extracted yet", "Extract it from the Landscape to see its objects.", "/", true, at(11, 13, 5)),
   ];

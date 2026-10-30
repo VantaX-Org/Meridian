@@ -6,8 +6,8 @@
  * vocabulary; shapes are those of the endpoints.
  */
 import landscapeJson from "./landscape.json";
-import rulesJson from "./rules.json";
-import type { Landscape, RuleRow } from "../types";
+import { LIBRARY } from "./library";
+import type { Landscape } from "../types";
 import type { SAPSystemExtended, SyncProfile } from "@/types/api";
 import type { ConfigLoad, LoadArea, AreaObject } from "@/lib/api/config-load";
 import type { ConfigCompare, MatchRow } from "@/lib/api/config-pairing";
@@ -22,7 +22,6 @@ import { SURVIVORSHIP } from "./mdm";
 import { DRAFTS } from "./object";
 
 const L = landscapeJson as unknown as Landscape;
-const baseRules = (rulesJson as unknown as { rules: RuleRow[] }).rules;
 const ECC = L.systems[0];
 const SF = L.systems[2];
 const MM = "material_master";
@@ -121,11 +120,11 @@ const nextRun = (cron: string | null | undefined, active: boolean): string | nul
 const SCOPE: Record<string, { scope_filters: string[]; date_window: string[] }> = {
   material_master: { scope_filters: ["plants"], date_window: [] },
   business_partner: { scope_filters: ["company_codes"], date_window: [] },
-  vendor_master: { scope_filters: ["company_codes", "purchasing_orgs"], date_window: [] },
-  customer_master: { scope_filters: ["company_codes", "sales_orgs"], date_window: [] },
-  gl_accounts: { scope_filters: ["company_codes"], date_window: ["BKPF", "BSEG"] },
-  purchasing: { scope_filters: ["purchasing_orgs", "plants"], date_window: ["EKKO"] },
-  sales_orders: { scope_filters: ["sales_orgs", "plants"], date_window: ["VBAK"] },
+  accounts_payable: { scope_filters: ["company_codes", "purchasing_orgs"], date_window: [] },
+  accounts_receivable: { scope_filters: ["company_codes", "sales_orgs"], date_window: [] },
+  fi_gl: { scope_filters: ["company_codes"], date_window: ["BKPF", "BSEG"] },
+  mm_purchasing: { scope_filters: ["purchasing_orgs", "plants"], date_window: ["EKKO"] },
+  sd_sales_orders: { scope_filters: ["sales_orgs", "plants"], date_window: ["VBAK"] },
   controlling: { scope_filters: ["company_codes"], date_window: [] },
   asset_accounting: { scope_filters: ["company_codes"], date_window: [] },
 };
@@ -220,7 +219,7 @@ function configItems(object: string): unknown {
 
 function sproConfig(module: string, id: string): unknown {
   const live = id === ECC.id;
-  const tables = module === "material_master" ? ["T134", "T023", "T006"] : module === "fi_gl" || module === "gl_accounts" ? ["T001", "T003", "T030"] : ["T001", "T001W"];
+  const tables = module === "material_master" ? ["T134", "T023", "T006"] : module === "fi_gl" || module === "fi_gl" ? ["T001", "T003", "T030"] : ["T001", "T001W"];
   return {
     module,
     source: live ? "mixed" : "baseline",
@@ -293,27 +292,11 @@ function zReport(): ZReport {
 
 /* ---- the rules library ---- */
 
-const CLASSES = ["null_check", "domain_value_check", "regex_check", "cross_field_check", "dependency_check", "uniqueness_check"] as const;
-const DIMS = ["completeness", "validity", "accuracy", "consistency", "uniqueness", "timeliness"] as const;
-const SEV = ["critical", "high", "medium", "low"] as const;
-const LIB_MODULES: { module: string; prefix: string; category: string; table: string }[] = [
-  { module: "business_partner", prefix: "BP", category: "ecc", table: "BUT000" },
-  { module: "fi_gl", prefix: "GL", category: "ecc", table: "SKA1" },
-  { module: "mm_purchasing", prefix: "PU", category: "ecc", table: "EKKO" },
-  { module: "employee_central", prefix: "EC", category: "successfactors", table: "PerPerson" },
-  { module: "ewms_stock", prefix: "EW", category: "warehouse", table: "LAGP" },
-];
+interface LibRule { check_id: string; message: string; module: string; category: string; severity: "critical" | "high" | "medium" | "low"; check_class: string; dimension: string; field: string; pass: number; failing: number; source: "yaml" | "custom" }
 
-interface LibRule { check_id: string; message: string; module: string; category: string; severity: (typeof SEV)[number]; check_class: string; dimension: string; field: string; pass: number; failing: number; source: "yaml" | "custom" }
-
+/** The shipped rules the demo tenant's run measured (library.json, sampled from checks/rules by scripts/fixture-rules.py). */
 function libRules(): LibRule[] {
-  const out: LibRule[] = baseRules.map((r) => ({ check_id: r.check_id, message: r.name, module: MM, category: "ecc", severity: r.severity as LibRule["severity"], check_class: (r as unknown as { check_class: string }).check_class ?? "null_check", dimension: (r as unknown as { dimension: string }).dimension ?? "completeness", field: r.field ?? "", pass: r.pass_rate ?? 100, failing: r.affected_count, source: "yaml" }));
-  for (const m of LIB_MODULES) {
-    for (let i = 1; i <= 6; i++) {
-      const n = i + m.prefix.charCodeAt(0);
-      out.push({ check_id: `${m.prefix}${String(i * 7).padStart(3, "0")}`, message: `${m.module.replace(/_/g, " ")} check ${i}`, module: m.module, category: m.category, severity: SEV[n % 4], check_class: CLASSES[n % 6], dimension: DIMS[(n + i) % 6], field: `${m.table}.F${i}`, pass: 100 - ((n * 3) % 17) - 0.5, failing: (n * 211) % 900, source: "yaml" });
-    }
-  }
+  const out: LibRule[] = LIBRARY.map((r) => ({ check_id: r.check_id, message: r.name, module: r.module, category: "ecc", severity: r.severity, check_class: r.check_class, dimension: r.dimension, field: r.field ?? "", pass: r.total > 0 ? Math.round((1 - r.failing / r.total) * 10000) / 100 : 100, failing: r.failing, source: "yaml" }));
   for (const p of st.published) {
     const id = p.name.split(":")[0];
     out.push({ check_id: id, message: p.name.slice(id.length + 2), module: p.module, category: "ecc", severity: p.severity as LibRule["severity"], check_class: "cross_field_check", dimension: "consistency", field: "MARA.NTGEW", pass: 99.7, failing: 212, source: "custom" });
@@ -455,8 +438,11 @@ export function sys6bRead(path: string, params: Params): unknown {
   if (path === "/z-objects/mapping") return { total: Z_ENTRIES.length, mappings: Z_ENTRIES.map<ZMapping>((e) => ({ object_name: e.object_name, module: e.module, standard_equivalent: e.standard_equivalent, confidence: e.standard_equivalent ? 0.9 : 0, mapping_source: "auto" })) };
 
   if (path === "/rules") {
-    const rules = libRules().map(ruleRow);
-    return { rules, total: rules.length, limit: Number(params.limit ?? 500), offset: 0 };
+    // Paged as the API pages it: limit (at most 1000) and offset, optionally one object.
+    const all = libRules().filter((r) => !params.module || r.module === params.module).map(ruleRow);
+    const limit = Math.min(1000, Number(params.limit ?? 500));
+    const offset = Number(params.offset ?? 0);
+    return { rules: all.slice(offset, offset + limit), total: all.length, limit, offset };
   }
   const cov = /^\/rules\/coverage\/([^/]+)$/.exec(path);
   if (cov) return moduleCoverage(decodeURIComponent(cov[1]));

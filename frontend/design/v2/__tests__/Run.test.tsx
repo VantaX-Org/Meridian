@@ -40,7 +40,7 @@ describe("Run canvas", () => {
     renderWithQuery(<RunCanvas id={R8} />);
     const line = await screen.findByTestId("run-status-line");
     await waitFor(() => expect(norm(line)).toContain("trigger scheduled"));
-    expect(norm(line)).toBe("ECC production 400,662 records checked 5,178 rules measured scored in 11 m 42 s trigger scheduled");
+    expect(norm(line)).toBe("ECC production 400,662 records checked 794 rules measured scored in 11 m 42 s trigger scheduled");
   });
 
   it("draws a row per object scored by this run: measured, shown, verdict, records, rules, open work", async () => {
@@ -50,9 +50,9 @@ describe("Run canvas", () => {
     const rows = within(table).getAllByRole("row").slice(1);
     expect(rows).toHaveLength(15);
     const mm = within(table).getByRole("row", { name: /Material master/ });
-    expect(within(mm).getAllByRole("cell").map((c) => norm(c))).toEqual(["71.8", "70.0 capped", "No-go", "61,816", "913", "25,712"]);
+    expect(within(mm).getAllByRole("cell").map((c) => norm(c))).toEqual(["71.8", "70.0 capped", "No-go", "61,816", "80", "25,712"]);
     expect(within(mm).getByRole("link", { name: "Material master" })).toHaveAttribute("href", expect.stringContaining(`/o/ecc-production/material-master?run=${R8}`));
-    const gl = within(table).getByRole("row", { name: /G\/L accounts/ });
+    const gl = within(table).getByRole("row", { name: /FI general ledger/ });
     expect(within(gl).getByText("Go")).toBeInTheDocument();
     // the table adds up to the status line
     const records = rows.reduce((sum, r) => sum + n(norm(within(r).getAllByRole("cell")[3])), 0);

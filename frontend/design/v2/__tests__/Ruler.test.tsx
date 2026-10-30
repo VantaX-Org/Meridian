@@ -12,7 +12,7 @@ const props = (over: Partial<RulerProps> = {}): RulerProps => ({
   score: 70,
   capped: true,
   capLevel: 70,
-  breaches: ["MM014", "MM031"],
+  breaches: ["MM003", "MM035"],
   label: "Material master",
   records: 61816,
   rules: 913,
@@ -81,8 +81,8 @@ describe("ruler geometry", () => {
 
 describe("score wording", () => {
   it("reads a capped score in full: measured, shown, the cap and what caps it", () => {
-    const text = readingText({ label: "Material master", measured: 71.8, score: 70, capped: true, capLevel: 70, breaches: ["MM014", "MM031"], dims: MM, records: 61816, rules: 913, coverage: 0.974, lowConfidence: false });
-    expect(text).toContain("measured 71.8, shown 70.0, capped at 70 by MM014 and MM031");
+    const text = readingText({ label: "Material master", measured: 71.8, score: 70, capped: true, capLevel: 70, breaches: ["MM003", "MM035"], dims: MM, records: 61816, rules: 913, coverage: 0.974, lowConfidence: false });
+    expect(text).toContain("measured 71.8, shown 70.0, capped at 70 by MM003 and MM035");
     expect(text).toContain("Completeness 62");
     expect(text).toContain("61,816 records checked, 913 rules measured, coverage 97.4%");
   });
@@ -101,7 +101,7 @@ describe("score wording", () => {
   });
 
   it("states what caps a score, or that nothing does", () => {
-    expect(capSentence(true, 70, ["MM014", "MM031"])).toBe("Capped at 70 by MM014 and MM031, two critical rules over tolerance.");
+    expect(capSentence(true, 70, ["MM003", "MM035"])).toBe("Capped at 70 by MM003 and MM035, two critical rules over tolerance.");
     expect(capSentence(true, 85, ["PS004"])).toBe("Capped at 85 by PS004, one critical rule over tolerance.");
     expect(capSentence(false, null, [])).toBe("No critical rule is over tolerance, so nothing caps this score.");
   });
@@ -123,7 +123,7 @@ describe("<Ruler>", () => {
     expect(screen.getByTestId("ruler-score")).toHaveTextContent("70.0");
     expect(screen.getByText("capped")).toBeInTheDocument();
     const box = container.querySelector(".m2-ruler-box");
-    expect(box?.getAttribute("title")).toContain("capped at 70 by MM014 and MM031");
+    expect(box?.getAttribute("title")).toContain("capped at 70 by MM003 and MM035");
     expect(screen.getByRole("img")).toHaveAccessibleName(/Material master: measured 71\.8, shown 70\.0/);
     expect(container.querySelectorAll(".m2-seg")).toHaveLength(6);
     expect(container.querySelectorAll(".m2-ks, .m2-k")).toHaveLength(2);

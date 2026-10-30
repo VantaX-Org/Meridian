@@ -7,7 +7,7 @@ import type { DecideResult, GroupResult, UndoResult } from "../work";
 const records = (p: Record<string, string | number | boolean | undefined> = {}) => fixtureResponse<WorkPage>("/work/records", p);
 const summary = () => fixtureResponse<WorkSummary>("/work/summary", {});
 const KEY = "MATNR=000000000000000100";
-const item = (action: string, extra: object = {}) => ({ module: "material_master", record_key: KEY, check_id: "MM014", action, ...extra });
+const item = (action: string, extra: object = {}) => ({ module: "material_master", record_key: KEY, check_id: "MM142", action, ...extra });
 
 beforeEach(() => resetWorkFixture());
 
@@ -24,7 +24,7 @@ describe("the work fixture", () => {
 
   it("the groups' suggested values add up to the 3,418, the top rule first", () => {
     const g = fixtureResponse<{ groups: WorkGroup[] }>("/work/groups", {}).groups;
-    expect(g[0].check_id).toBe("MM014");
+    expect(g[0].check_id).toBe("MM142");
     expect(g[0].proposed).toBe(112);
     expect(g.reduce((n, x) => n + x.proposed, 0)).toBe(3418);
   });
@@ -35,7 +35,7 @@ describe("the work fixture", () => {
     expect(first.next).not.toBeNull();
     const second = records({ limit: 30, sort: "-value", after: first.next ?? undefined });
     expect(second.items[0].record_key).not.toBe(first.items[0].record_key);
-    expect(records({ check_id: "MM031", limit: 100 }).items.every((r) => r.checks[0] === "MM031")).toBe(true);
+    expect(records({ check_id: "MM003", limit: 100 }).items.every((r) => r.checks[0] === "MM003")).toBe(true);
     expect(records({ severity: "critical", limit: 100 }).items.every((r) => r.severity === "critical")).toBe(true);
     expect(records({ assigned: "unassigned", limit: 100 }).items.every((r) => !r.assigned_to)).toBe(true);
   });
@@ -66,7 +66,7 @@ describe("the work fixture", () => {
 
   it("accepting a value that does not exist is a 409 with the server's sentence", () => {
     try {
-      fixtureWrite("POST", "/work/decide", { items: [{ ...item("accept"), record_key: "MATNR=000000000000000232", check_id: "MM031" }] }, {});
+      fixtureWrite("POST", "/work/decide", { items: [{ ...item("accept"), record_key: "MATNR=000000000000000232", check_id: "MM003" }] }, {});
       expect.unreachable();
     } catch (e) {
       expect((e as { response: { status: number; data: { detail: string } } }).response).toEqual({ status: 409, data: { detail: "No proposed value to accept: enter one." } });
@@ -74,7 +74,7 @@ describe("the work fixture", () => {
   });
 
   it("accept-all takes the group's suggested values and undo gives them back", () => {
-    const res = fixtureWrite<GroupResult>("POST", "/work/groups/MM014/accept-all", undefined, {});
+    const res = fixtureWrite<GroupResult>("POST", "/work/groups/MM142/accept-all", undefined, {});
     expect(res.accepted).toBe(112);
     expect(summary().objects[0].proposed).toBe(3418 - 112);
     expect(fixtureResponse<{ groups: WorkGroup[] }>("/work/groups", {}).groups[0].proposed).toBe(0);

@@ -12,14 +12,14 @@
       "issues": 1,
       "severity": "critical",
       "checks": [
-        "MM031"
+        "MM003"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Material type missing",
+      "top_message": "Material type is mandatory - determines procurement and storage behaviour",
       "top_field": "MARA.MTART",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -31,16 +31,16 @@
       "record_key": "MATNR=000000000000000100",
       "name": "Hex bolt M8 zinc",
       "issues": 1,
-      "severity": "critical",
+      "severity": "high",
       "checks": [
-        "MM014"
+        "MM142"
       ],
       "proposed": 1,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Base unit of measure not valid",
+      "top_message": "Base unit of measure MEINS must reference a valid entry in T006",
       "top_field": "MARA.MEINS",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": "EA",
@@ -52,16 +52,16 @@
       "record_key": "MATNR=000000000000000140",
       "name": "Hex bolt M8 zinc",
       "issues": 1,
-      "severity": "critical",
+      "severity": "high",
       "checks": [
-        "MM014"
+        "MM142"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Base unit of measure not valid",
+      "top_message": "Base unit of measure MEINS must reference a valid entry in T006",
       "top_field": "MARA.MEINS",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -73,16 +73,16 @@
       "record_key": "MATNR=000000000000000101",
       "name": "Hex bolt M8 zinc",
       "issues": 1,
-      "severity": "critical",
+      "severity": "high",
       "checks": [
-        "MM014"
+        "MM142"
       ],
       "proposed": 1,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Base unit of measure not valid",
+      "top_message": "Base unit of measure MEINS must reference a valid entry in T006",
       "top_field": "MARA.MEINS",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": "EA",
@@ -96,14 +96,14 @@
       "issues": 1,
       "severity": "critical",
       "checks": [
-        "MM031"
+        "MM003"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Material type missing",
+      "top_message": "Material type is mandatory - determines procurement and storage behaviour",
       "top_field": "MARA.MTART",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -117,14 +117,14 @@
       "issues": 1,
       "severity": "critical",
       "checks": [
-        "MM031"
+        "MM003"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Material type missing",
+      "top_message": "Material type is mandatory - determines procurement and storage behaviour",
       "top_field": "MARA.MTART",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -138,14 +138,14 @@
       "issues": 1,
       "severity": "critical",
       "checks": [
-        "MM031"
+        "MM003"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Material type missing",
+      "top_message": "Material type is mandatory - determines procurement and storage behaviour",
       "top_field": "MARA.MTART",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -157,16 +157,16 @@
       "record_key": "MATNR=000000000000000238",
       "name": "Pump seal kit KSB 80",
       "issues": 1,
-      "severity": "critical",
+      "severity": "high",
       "checks": [
-        "MM014"
+        "MM142"
       ],
       "proposed": 1,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Base unit of measure not valid",
+      "top_message": "Base unit of measure MEINS must reference a valid entry in T006",
       "top_field": "MARA.MEINS",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": "EA",
@@ -178,16 +178,16 @@
       "record_key": "MATNR=000000000000000296",
       "name": "Grease EP2 18 kg",
       "issues": 1,
-      "severity": "critical",
+      "severity": "high",
       "checks": [
-        "MM014"
+        "MM142"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Base unit of measure not valid",
+      "top_message": "Base unit of measure MEINS must reference a valid entry in T006",
       "top_field": "MARA.MEINS",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -199,16 +199,16 @@
       "record_key": "MATNR=000000000000000496",
       "name": "Grease EP2 18 kg",
       "issues": 1,
-      "severity": "high",
+      "severity": "medium",
       "checks": [
-        "MM057"
+        "MM015"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Gross weight missing",
+      "top_message": "Gross weight is recommended for shipping and transportation planning",
       "top_field": "MARA.BRGEW",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -220,16 +220,16 @@
       "record_key": "MATNR=000000000000000364",
       "name": "Oil filter 10 micron",
       "issues": 1,
-      "severity": "high",
+      "severity": "medium",
       "checks": [
-        "MM022"
+        "MM007"
       ],
       "proposed": 1,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Material group missing",
+      "top_message": "Material group is required for reporting and procurement",
       "top_field": "MARA.MATKL",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": "0420",
@@ -241,16 +241,16 @@
       "record_key": "MATNR=000000000000000404",
       "name": "Oil filter 10 micron",
       "issues": 1,
-      "severity": "high",
+      "severity": "medium",
       "checks": [
-        "MM022"
+        "MM007"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Material group missing",
+      "top_message": "Material group is required for reporting and procurement",
       "top_field": "MARA.MATKL",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -262,16 +262,16 @@
       "record_key": "MATNR=000000000000000892",
       "name": "Hydraulic hose 3/8 in",
       "issues": 1,
-      "severity": "high",
+      "severity": "critical",
       "checks": [
-        "MM091"
+        "MM035"
       ],
       "proposed": 1,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Valuation class missing",
+      "top_message": "Valuation class is mandatory for FI account determination",
       "top_field": "MBEW.BKLAS",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": "3000",
@@ -285,14 +285,14 @@
       "issues": 1,
       "severity": "critical",
       "checks": [
-        "MM031"
+        "MM003"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Material type missing",
+      "top_message": "Material type is mandatory - determines procurement and storage behaviour",
       "top_field": "MARA.MTART",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -304,16 +304,16 @@
       "record_key": "MATNR=000000000000000360",
       "name": "Hex bolt M8 zinc",
       "issues": 1,
-      "severity": "critical",
+      "severity": "high",
       "checks": [
-        "MM014"
+        "MM142"
       ],
       "proposed": 1,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Base unit of measure not valid",
+      "top_message": "Base unit of measure MEINS must reference a valid entry in T006",
       "top_field": "MARA.MEINS",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": "EA",
@@ -325,16 +325,16 @@
       "record_key": "MATNR=000000000000000430",
       "name": "Relay 24 V DC 2 CO",
       "issues": 1,
-      "severity": "critical",
+      "severity": "high",
       "checks": [
-        "MM014"
+        "MM142"
       ],
       "proposed": 1,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Base unit of measure not valid",
+      "top_message": "Base unit of measure MEINS must reference a valid entry in T006",
       "top_field": "MARA.MEINS",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": "EA",
@@ -348,14 +348,14 @@
       "issues": 1,
       "severity": "high",
       "checks": [
-        "MM105"
+        "MM028"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Procurement type missing",
+      "top_message": "Procurement type must be E (in-house), F (external), or X (both)",
       "top_field": "MARC.BESKZ",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -367,16 +367,16 @@
       "record_key": "MATNR=000000000000000536",
       "name": "Grease EP2 18 kg",
       "issues": 1,
-      "severity": "high",
+      "severity": "medium",
       "checks": [
-        "MM057"
+        "MM015"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Gross weight missing",
+      "top_message": "Gross weight is recommended for shipping and transportation planning",
       "top_field": "MARA.BRGEW",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -388,16 +388,16 @@
       "record_key": "MATNR=000000000000000506",
       "name": "Gasket flange DN50",
       "issues": 1,
-      "severity": "critical",
+      "severity": "high",
       "checks": [
-        "MM014"
+        "MM142"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Base unit of measure not valid",
+      "top_message": "Base unit of measure MEINS must reference a valid entry in T006",
       "top_field": "MARA.MEINS",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -411,14 +411,14 @@
       "issues": 1,
       "severity": "high",
       "checks": [
-        "MM105"
+        "MM028"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Procurement type missing",
+      "top_message": "Procurement type must be E (in-house), F (external), or X (both)",
       "top_field": "MARC.BESKZ",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -430,16 +430,16 @@
       "record_key": "MATNR=000000000000000582",
       "name": "Coupling jaw L100",
       "issues": 1,
-      "severity": "high",
+      "severity": "medium",
       "checks": [
-        "MM057"
+        "MM015"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Gross weight missing",
+      "top_message": "Gross weight is recommended for shipping and transportation planning",
       "top_field": "MARA.BRGEW",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -451,16 +451,16 @@
       "record_key": "MATNR=000000000000000450",
       "name": "Relay 24 V DC 2 CO",
       "issues": 1,
-      "severity": "high",
+      "severity": "medium",
       "checks": [
-        "MM022"
+        "MM007"
       ],
       "proposed": 1,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Material group missing",
+      "top_message": "Material group is required for reporting and procurement",
       "top_field": "MARA.MATKL",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": "0420",
@@ -472,16 +472,16 @@
       "record_key": "MATNR=000000000000000932",
       "name": "Hydraulic hose 3/8 in",
       "issues": 1,
-      "severity": "high",
+      "severity": "critical",
       "checks": [
-        "MM091"
+        "MM035"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Valuation class missing",
+      "top_message": "Valuation class is mandatory for FI account determination",
       "top_field": "MBEW.BKLAS",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -493,16 +493,16 @@
       "record_key": "MATNR=000000000000000502",
       "name": "Coupling jaw L100",
       "issues": 1,
-      "severity": "high",
+      "severity": "medium",
       "checks": [
-        "MM022"
+        "MM007"
       ],
       "proposed": 1,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Material group missing",
+      "top_message": "Material group is required for reporting and procurement",
       "top_field": "MARA.MATKL",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": "0420",
@@ -514,16 +514,16 @@
       "record_key": "MATNR=000000000000000978",
       "name": "Pump seal kit KSB 80",
       "issues": 1,
-      "severity": "high",
+      "severity": "critical",
       "checks": [
-        "MM091"
+        "MM035"
       ],
       "proposed": 1,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Valuation class missing",
+      "top_message": "Valuation class is mandatory for FI account determination",
       "top_field": "MBEW.BKLAS",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": "3000",
@@ -535,16 +535,16 @@
       "record_key": "MATNR=000000000000000560",
       "name": "Hex bolt M8 zinc",
       "issues": 1,
-      "severity": "high",
+      "severity": "medium",
       "checks": [
-        "MM022"
+        "MM007"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Material group missing",
+      "top_message": "Material group is required for reporting and procurement",
       "top_field": "MARA.MATKL",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -558,14 +558,14 @@
       "issues": 1,
       "severity": "high",
       "checks": [
-        "MM078"
+        "MM023"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "MRP type not valid for material type",
+      "top_message": "MRP type (plant level) must exist in T438A",
       "top_field": "MARC.DISMM",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -577,16 +577,16 @@
       "record_key": "MATNR=000000000000001030",
       "name": "Relay 24 V DC 2 CO",
       "issues": 1,
-      "severity": "high",
+      "severity": "critical",
       "checks": [
-        "MM091"
+        "MM035"
       ],
       "proposed": 1,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Valuation class missing",
+      "top_message": "Valuation class is mandatory for FI account determination",
       "top_field": "MBEW.BKLAS",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": "3000",
@@ -598,16 +598,16 @@
       "record_key": "MATNR=000000000000000628",
       "name": "Circuit breaker 3P 32A",
       "issues": 1,
-      "severity": "high",
+      "severity": "medium",
       "checks": [
-        "MM063"
+        "MM302"
       ],
       "proposed": 1,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Purchasing group missing",
+      "top_message": "Externally procured, MRP-planned material has no purchasing group",
       "top_field": "MARC.EKGRP",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": "P01",
@@ -621,14 +621,14 @@
       "issues": 1,
       "severity": "high",
       "checks": [
-        "MM078"
+        "MM023"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "MRP type not valid for material type",
+      "top_message": "MRP type (plant level) must exist in T438A",
       "top_field": "MARC.DISMM",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -640,16 +640,16 @@
       "record_key": "MATNR=000000000000000668",
       "name": "Circuit breaker 3P 32A",
       "issues": 1,
-      "severity": "high",
+      "severity": "medium",
       "checks": [
-        "MM063"
+        "MM302"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Purchasing group missing",
+      "top_message": "Externally procured, MRP-planned material has no purchasing group",
       "top_field": "MARC.EKGRP",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -663,14 +663,14 @@
       "issues": 1,
       "severity": "high",
       "checks": [
-        "MM078"
+        "MM023"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "MRP type not valid for material type",
+      "top_message": "MRP type (plant level) must exist in T438A",
       "top_field": "MARC.DISMM",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -682,16 +682,16 @@
       "record_key": "MATNR=000000000000000588",
       "name": "Circuit breaker 3P 32A",
       "issues": 1,
-      "severity": "critical",
+      "severity": "high",
       "checks": [
-        "MM014"
+        "MM142"
       ],
       "proposed": 1,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Base unit of measure not valid",
+      "top_message": "Base unit of measure MEINS must reference a valid entry in T006",
       "top_field": "MARA.MEINS",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": "EA",
@@ -705,14 +705,14 @@
       "issues": 1,
       "severity": "high",
       "checks": [
-        "MM105"
+        "MM028"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Procurement type missing",
+      "top_message": "Procurement type must be E (in-house), F (external), or X (both)",
       "top_field": "MARC.BESKZ",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -724,16 +724,16 @@
       "record_key": "MATNR=000000000000000634",
       "name": "Conveyor roller 89 mm",
       "issues": 1,
-      "severity": "high",
+      "severity": "medium",
       "checks": [
-        "MM057"
+        "MM015"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Gross weight missing",
+      "top_message": "Gross weight is recommended for shipping and transportation planning",
       "top_field": "MARA.BRGEW",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -747,14 +747,14 @@
       "issues": 1,
       "severity": "high",
       "checks": [
-        "MM105"
+        "MM028"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Procurement type missing",
+      "top_message": "Procurement type must be E (in-house), F (external), or X (both)",
       "top_field": "MARC.BESKZ",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -766,16 +766,16 @@
       "record_key": "MATNR=000000000000000692",
       "name": "Hydraulic hose 3/8 in",
       "issues": 1,
-      "severity": "high",
+      "severity": "medium",
       "checks": [
-        "MM057"
+        "MM015"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Gross weight missing",
+      "top_message": "Gross weight is recommended for shipping and transportation planning",
       "top_field": "MARA.BRGEW",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -789,14 +789,14 @@
       "issues": 1,
       "severity": "high",
       "checks": [
-        "MM105"
+        "MM028"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Procurement type missing",
+      "top_message": "Procurement type must be E (in-house), F (external), or X (both)",
       "top_field": "MARC.BESKZ",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -808,16 +808,16 @@
       "record_key": "MATNR=000000000000001088",
       "name": "Circuit breaker 3P 32A",
       "issues": 1,
-      "severity": "high",
+      "severity": "critical",
       "checks": [
-        "MM091"
+        "MM035"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Valuation class missing",
+      "top_message": "Valuation class is mandatory for FI account determination",
       "top_field": "MBEW.BKLAS",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -829,16 +829,16 @@
       "record_key": "MATNR=000000000000000714",
       "name": "Conveyor roller 89 mm",
       "issues": 1,
-      "severity": "high",
+      "severity": "medium",
       "checks": [
-        "MM063"
+        "MM302"
       ],
       "proposed": 1,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Purchasing group missing",
+      "top_message": "Externally procured, MRP-planned material has no purchasing group",
       "top_field": "MARC.EKGRP",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": "P01",
@@ -852,14 +852,14 @@
       "issues": 1,
       "severity": "high",
       "checks": [
-        "MM078"
+        "MM023"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "MRP type not valid for material type",
+      "top_message": "MRP type (plant level) must exist in T438A",
       "top_field": "MARC.DISMM",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -871,16 +871,16 @@
       "record_key": "MATNR=000000000000000766",
       "name": "Gasket flange DN50",
       "issues": 1,
-      "severity": "high",
+      "severity": "medium",
       "checks": [
-        "MM063"
+        "MM302"
       ],
       "proposed": 1,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Purchasing group missing",
+      "top_message": "Externally procured, MRP-planned material has no purchasing group",
       "top_field": "MARC.EKGRP",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": "P01",
@@ -894,14 +894,14 @@
       "issues": 1,
       "severity": "high",
       "checks": [
-        "MM078"
+        "MM023"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "MRP type not valid for material type",
+      "top_message": "MRP type (plant level) must exist in T438A",
       "top_field": "MARC.DISMM",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,
@@ -913,16 +913,16 @@
       "record_key": "MATNR=000000000000000824",
       "name": "Oil filter 10 micron",
       "issues": 1,
-      "severity": "high",
+      "severity": "medium",
       "checks": [
-        "MM063"
+        "MM302"
       ],
       "proposed": 0,
       "status": "to_fix",
       "due_at": null,
       "assigned_to": null,
       "assignee_email": null,
-      "top_message": "Purchasing group missing",
+      "top_message": "Externally procured, MRP-planned material has no purchasing group",
       "top_field": "MARC.EKGRP",
       "first_seen_at": "2026-08-14T05:11:00Z",
       "suggested_value": null,

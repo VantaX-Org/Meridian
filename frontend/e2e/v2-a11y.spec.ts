@@ -29,12 +29,12 @@ const SCHEMES = ["light", "dark"] as const;
 /** Every v2 page the e2e suite visits, with an inspector open where the page has one worth checking. */
 const PAGES: { name: string; url: string }[] = [
   { name: "landscape", url: "/?fixture=1" },
-  { name: "landscape-rule", url: "/?fixture=1&open=rule:MM014" },
+  { name: "landscape-rule", url: "/?fixture=1&open=rule:MM142" },
   { name: "landscape-basis-system", url: `/?fixture=1&persona=basis&open=system:${ECC}` },
   { name: "landscape-waves", url: "/?fixture=1&view=waves" },
   { name: "object", url: "/o/ecc-production/material-master?fixture=1" },
   { name: "object-rules", url: "/o/ecc-production/material-master/rules?fixture=1" },
-  { name: "rule", url: "/r/MM014?fixture=1" },
+  { name: "rule", url: "/r/MM142?fixture=1" },
   { name: "work", url: "/work?fixture=1&persona=steward" },
   { name: "work-approvals", url: "/work?fixture=1&persona=owner&filter=approvals" },
   { name: "runs", url: "/runs?fixture=1" },
@@ -175,7 +175,7 @@ for (const size of [
           expect(overflow).toEqual([]);
         }
         await shot(page, "landscape");
-        await open(page, "/o/ecc-production/material-master?fixture=1&open=rule:MM014");
+        await open(page, "/o/ecc-production/material-master?fixture=1&open=rule:MM142");
         const insp = page.getByTestId("inspector");
         await expect(insp).toBeVisible(NAV);
         expect(await noSideways(page)).toBe(true);
@@ -266,7 +266,7 @@ test.describe("keyboard only", () => {
 
   test("skip links lead to the content, the map and the inspector", async ({ page }) => {
     await prepare(page, "light", null);
-    await open(page, "/?fixture=1&open=rule:MM014");
+    await open(page, "/?fixture=1&open=rule:MM142");
     // The inspector took focus when it opened; start from the top of the page, as a fresh visit would.
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     await page.mouse.click(2, 2);

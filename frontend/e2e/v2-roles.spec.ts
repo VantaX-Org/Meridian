@@ -97,7 +97,7 @@ test.describe("v2 role capabilities at 1440, light", () => {
     await expect(page.getByTestId("comments")).toBeVisible(NAV);
     await page.getByTestId("comments").scrollIntoViewIfNeeded();
     await shot(page, "steward", "comments");
-    await go(page, "/work?module=purchasing", "data_steward");
+    await go(page, "/work?module=mm_purchasing", "data_steward");
     await expect(page.getByTestId("fix-hint")).toBeVisible(NAV);
     // The fixture has no Purchasing rows, and an empty Grid (Grid.tsx, the step 8 accessibility pass) draws role=grid
     // without a row: that one rule is out of this step's reach and is skipped for this screenshot only.
@@ -121,7 +121,7 @@ test.describe("v2 role capabilities at 1440, light", () => {
     await expect(page.getByTestId("escalation-chain")).toBeVisible(NAV);
     await page.getByTestId("escalation-chain").scrollIntoViewIfNeeded();
     await shot(page, "owner", "escalation-chain");
-    await go(page, "/o/ecc-production/purchasing", "data_owner");
+    await go(page, "/o/ecc-production/mm-purchasing", "data_owner");
     await expect(page.getByTestId("related-objects")).toBeVisible(NAV);
     await shot(page, "owner", "related-objects");
   });

@@ -193,7 +193,7 @@ export function CommandLine({ onClose }: { onClose: () => void }) {
         <ul id="m2-pal-list" role="listbox" aria-label={tr("Results")}>
           {rows.length === 0 ? (
             <li className="m2-pal-gh" role="presentation">
-              {q.trim() && !result.isFetching ? tr("No match for {q}. Try a material number, a rule id such as MM014, or a word such as approve or export.", { q: q.trim() }) : result.isFetching ? tr("Searching") : ""}
+              {q.trim() && !result.isFetching ? tr("No match for {q}. Try a material number, a rule id such as MM142, or a word such as approve or export.", { q: q.trim() }) : result.isFetching ? tr("Searching") : ""}
             </li>
           ) : (
             rows.map((r, i) => {

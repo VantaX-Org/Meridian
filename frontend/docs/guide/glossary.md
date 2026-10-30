@@ -7,7 +7,7 @@ The glossary is the shared language of an object: one business term per SAP fiel
 - **Search terms** and **Add terms from the rule library**.
 - **Business terms**: "6 terms", each with term, definition, SAP field (`MARA-MEINS`), owner, status (**Active** or **Under review**) and rules. For example: "Base unit of measure: The unit in which stock of the material is managed. Every other unit is converted to it."
 - The line under the table: "Owner is the owner of the material master object. Rules counts the rules that cite the term."
-- **Fields without a term**: the fields read by failing rules that have no term yet, each with the rule that reads it, for example `MBEW.BKLAS` and `MM091`. "The fields are those read by the failing rules of this object in the latest run. Terms are drafted from the rule library with Add terms from the rule library, and a data owner approves each."
+- **Fields without a term**: the fields read by failing rules that have no term yet, each with the rule that reads it, for example `MBEW.BKLAS` and `MM035`. "The fields are those read by the failing rules of this object in the latest run. Terms are drafted from the rule library with Add terms from the rule library, and a data owner approves each."
 
 ## The term inspector
 

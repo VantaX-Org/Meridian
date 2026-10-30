@@ -1,3 +1,4 @@
+import { LIBRARY } from "@/lib/api/v2/fixtures/library";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
@@ -49,7 +50,7 @@ describe("Compare canvas", () => {
   it("states the method: the common rule set, what was excluded, and what counts as changed", async () => {
     renderWithQuery(<CompareCanvas a={A} b={B} />);
     const method = await screen.findByTestId("compare-method");
-    expect(norm(method)).toContain("Rules are compared on the common set: the 5167 rules that ran cleanly in both runs.");
+    expect(norm(method)).toContain("Rules are compared on the common set: the 783 rules that ran cleanly in both runs.");
     expect(norm(method)).toContain("11 rules added since the baseline of 2 Oct 2026 are excluded.");
     expect(norm(method)).toContain("fails at least 10% and 10 records more or fewer");
     expect(norm(method)).toContain("Coverage is the share of records a rule could evaluate.");
@@ -64,7 +65,7 @@ describe("Compare canvas", () => {
     const cells = within(mm).getAllByRole("cell").map((c) => norm(c));
     expect(cells.slice(0, 4)).toEqual(["69.8 to 71.8", "", "+2.0", "69.8 to 70.0"]);
     expect(mm.querySelector(".m2-dbar .m2-up")).not.toBeNull();
-    const vm = rows.find((r) => /Vendor master/.test(norm(r))) as HTMLElement;
+    const vm = rows.find((r) => /Accounts payable/.test(norm(r))) as HTMLElement;
     expect(norm(within(vm).getAllByRole("cell")[2])).toBe("−0.4");
     expect(vm.querySelector(".m2-dbar .m2-dn")).not.toBeNull();
     // the mark beside the sign: a circle for a rise and a square for a fall, always with the sign
@@ -102,8 +103,13 @@ describe("Compare canvas", () => {
     const items = within(nf).getAllByRole("listitem");
     expect(items).toHaveLength(14); // every rule of the count, so the list reconciles with the table
     for (const li of items) expect(within(li).getByRole("link")).toHaveAttribute("href", expect.stringContaining("open=rule%3A"));
-    expect(norm(nf)).toContain("VM022");
-    expect(norm(nf)).toContain("Payment terms not in T052");
+    // Each listed rule is a rule of the shipped library, with its own message (fixtures/library.json).
+    for (const li of items) {
+      const id = within(li).getByRole("link").textContent ?? "";
+      const rule = LIBRARY.find((r) => r.check_id === id);
+      expect(rule, id).toBeDefined();
+      expect(norm(li)).toContain(rule?.name ?? "");
+    }
     // the lists agree with the per-object counts
     const fixed = section.querySelector('[data-kind="fixed"]') as HTMLElement;
     fireEvent.click(within(fixed).getByRole("button", { name: "and 32 more" }));

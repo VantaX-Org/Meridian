@@ -127,7 +127,7 @@ for (const size of SIZES) {
         await page.goto(`${OBJECT}/glossary?open=term:gt-meins&fixture=1`, { waitUntil: "load", timeout: 90_000 });
         const d = page.getByRole("dialog", { name: "Base unit of measure" });
         await expect(d).toBeVisible(NAV);
-        await expect(d.getByRole("link", { name: "MM014", exact: true })).toBeVisible(NAV);
+        await expect(d.getByRole("link", { name: "MM142", exact: true })).toBeVisible(NAV);
         await expect(d.getByRole("button", { name: "Edit" })).toBeVisible();
         expect(await noSideScroll(page)).toBe(true);
         await shot(page, "object-glossary-term");
@@ -143,8 +143,8 @@ for (const size of SIZES) {
         await expect(svg.locator("line[data-edge]")).toHaveCount(26);
         const w = await svg.locator("line[data-edge]").first().evaluate((el) => getComputedStyle(el).strokeWidth);
         expect(w).toBe("1px");
-        await svg.locator('[data-node="rule:MM014"] rect').hover();
-        await expect(page.getByTestId("node-facts")).toContainText("Base unit of measure not valid");
+        await svg.locator('[data-node="rule:MM142"] rect').hover();
+        await expect(page.getByTestId("node-facts")).toContainText("Base unit of measure MEINS must reference a valid entry in T006");
         await page.mouse.move(0, 0);
         await svg.locator('[data-node="feature:MRP Live"]').focus();
         await expect(page.getByTestId("node-facts")).toContainText("Degraded");
@@ -157,7 +157,7 @@ for (const size of SIZES) {
         const d = page.getByRole("dialog", { name: "Migration cockpit: material load" });
         await expect(d).toBeVisible(NAV);
         await expect(d).toContainText("Blocked");
-        await expect(d.getByRole("link", { name: "MM014", exact: true })).toBeVisible(NAV);
+        await expect(d.getByRole("link", { name: "MM142", exact: true })).toBeVisible(NAV);
         expect(await noSideScroll(page)).toBe(true);
         await shot(page, "object-lineage-feature");
         await axe(page, `feature ${size.name} ${scheme}`);
@@ -178,7 +178,7 @@ for (const size of SIZES) {
         await page.getByRole("link", { name: "Open the step Post Goods Receipt" }).click();
         const d = page.getByRole("dialog", { name: "Post Goods Receipt" });
         await expect(d).toBeVisible(NAV);
-        await expect(d.getByRole("link", { name: "Fix MM014 in Work" })).toHaveAttribute("href", /\/work\?rule=MM014&module=material_master/);
+        await expect(d.getByRole("link", { name: "Fix MM142 in Work" })).toHaveAttribute("href", /\/work\?rule=MM142&module=material_master/);
         expect(await noSideScroll(page)).toBe(true);
         await shot(page, "object-processes-step");
         await axe(page, `step ${size.name} ${scheme}`);

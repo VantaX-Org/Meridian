@@ -15,6 +15,7 @@
  * parameters: `?sandbox=1` starts in sandbox mode, `?cost=none` leaves the run cost unpriced, `?queue=busy` puts
  * two jobs ahead in the queue.
  */
+import { LIBRARY } from "./library";
 import landscapeJson from "./landscape.json";
 import runsJson from "./runs.json";
 import rulesJson from "./rules.json";
@@ -75,24 +76,13 @@ interface FixtureFinding {
 }
 
 /** The findings of the current state the packs read: a rule absent here is not measured. */
-const FINDINGS: Record<string, FixtureFinding> = {
-  MM022: { module: "material_master", severity: "critical", failing: 312, total: 61816 },
-  MM232: { module: "material_master", severity: "medium", failing: 0, total: 61816 },
-  MM042: { module: "material_master", severity: "high", failing: 18, total: 61816 },
-  MM324: { module: "material_master", severity: "medium", failing: 0, total: 61816 },
-  QM001: { module: "quality_management", severity: "high", failing: 4, total: 2210 },
-  QM004: { module: "quality_management", severity: "medium", failing: 0, total: 2210 },
-  QM058: { module: "quality_management", severity: "medium", failing: 0, total: 840 },
-  GL001: { module: "gl_accounts", severity: "critical", failing: 0, total: 4120 },
-  GL002: { module: "gl_accounts", severity: "high", failing: 3, total: 4120 },
-  AP039: { module: "vendor_master", severity: "critical", failing: 128, total: 12884 },
-  AP018: { module: "vendor_master", severity: "high", failing: 22, total: 12884 },
-  AP016: { module: "vendor_master", severity: "high", failing: 64, total: 12884 },
-  AR018: { module: "customer_master", severity: "medium", failing: 9, total: 9604 },
-  AR049: { module: "customer_master", severity: "high", failing: 0, total: 9604 },
-  BP007: { module: "business_partner", severity: "critical", failing: 41, total: 48210 },
-  BP017: { module: "business_partner", severity: "medium", failing: 7, total: 48210 },
-};
+const FINDINGS: Record<string, FixtureFinding> = Object.fromEntries(
+  ["MM022", "MM232", "MM042", "MM324", "MM035", "MM033", "MM043", "QM001", "QM004", "QM058", "GL001", "GL002", "AP039", "AP018", "AP016", "AR018", "AR049", "BP007", "BP017"].map((id) => {
+    const r = LIBRARY.find((x) => x.check_id === id);
+    if (!r) throw new Error(`${id} is not in library.json`);
+    return [id, { module: r.module, severity: r.severity, failing: r.failing, total: r.total }];
+  }),
+);
 
 interface ClassDef {
   id: string;
@@ -132,6 +122,7 @@ const PACKS: PackDef[] = [
       { id: "journal_entries", label: "Journal entries", authority: "SOX Section 302 (corporate responsibility for financial reports) and Section 404(a)", fields: ["BKPF.BLART", "BKPF.BUDAT", "BSEG.HKONT", "BSEG.DMBTR"], rules: ["GL029", "GL035", "GL036"] },
       { id: "vendor_bank", label: "Vendor bank data", authority: "SOX Section 404(a) (controls over changes to vendor payment data)", fields: ["LFBK.BANKS", "LFBK.BANKL", "LFBK.BANKN", "LFBK.KOINH", "BNKA.SWIFT"], rules: ["AP018", "AP019", "AP039", "BKT001"] },
       { id: "customer_bank", label: "Customer bank data", authority: "SOX Section 404(a) (controls over receivables and incoming payments)", fields: ["KNBK.BANKS", "KNBK.BANKL", "KNBK.BANKN", "KNBK.KOINH"], rules: ["AR049", "AR050", "BKT021"] },
+      { id: "inventory_valuation", label: "Inventory valuation", authority: "SOX Section 404(a) (controls over inventory valuation and stock account determination)", fields: ["MBEW.BKLAS", "MBEW.VPRSV", "MBEW.STPRS"], rules: ["MM035", "MM033", "MM043"] },
       { id: "payment_terms", label: "Payment terms and reconciliation accounts", authority: "SOX Section 404(a) (completeness and accuracy of payables and receivables)", fields: ["LFB1.ZTERM", "KNB1.ZTERM", "LFB1.AKONT", "KNB1.AKONT"], rules: ["AP014", "AP016", "AR018", "AR021"] },
     ],
   },
@@ -437,8 +428,8 @@ function vocab(): Map<string, { slot: string; value: string | boolean; label: st
     add(o.module.replace(/_/g, " "), "module", o.module, o.label);
   }
   add("materials", "module", "material_master", "Material master");
-  add("vendors", "module", "vendor_master", "Vendor master");
-  add("customers", "module", "customer_master", "Customer master");
+  add("vendors", "module", "accounts_payable", "Vendor master");
+  add("customers", "module", "accounts_receivable", "Customer master");
   for (const s of landscape.systems) add(s.name.toLowerCase(), "system", s.id, `system ${s.name}`);
   add("ecc", "system", ECC.id, `system ${ECC.name}`);
   for (const p of PACKS) {
@@ -506,15 +497,15 @@ function digestOf(id: string): Digest {
 
 function numbers(d: Digest): DigestNumbers {
   const cells = landscape.cells.filter((c) => c.system_id === ECC.id);
-  const wave = d.audience === "wave" ? { id: d.wave_id ?? "", modules: d.wave_id === "w-1" ? ["gl_accounts", "asset_accounting", "controlling", "vendor_master"] : d.wave_id === "w-3" ? ["purchasing", "sales_orders", "plant_maintenance"] : ["material_master", "business_partner", "customer_master"] } : null;
+  const wave = d.audience === "wave" ? { id: d.wave_id ?? "", modules: d.wave_id === "w-1" ? ["fi_gl", "asset_accounting", "controlling", "accounts_payable"] : d.wave_id === "w-3" ? ["mm_purchasing", "sd_sales_orders", "plant_maintenance"] : ["material_master", "business_partner", "accounts_receivable"] } : null;
   const mine = wave ? cells.filter((c) => wave.modules.includes(c.module)) : cells;
   const held = mine.filter((c) => c.capped).length;
   const crit = mine.reduce((n, c) => n + c.breaches.length, 0);
-  const text = mine.length ? `${held} of ${mine.length} objects held under 85; fix MM014 and MM031 to release 2.` : "No object has been measured yet.";
+  const text = mine.length ? `${held} of ${mine.length} objects held under 85; fix MM003 and MM035 to release 2.` : "No object has been measured yet.";
   const waves = [
-    { id: "w-1", name: "Wave 1: finance foundations", modules: ["gl_accounts", "asset_accounting", "controlling", "vendor_master"], target_date: "2026-11-16", gate_open: false, failing: ["Score 85 or more", "No critical rule over tolerance"] },
-    { id: "w-2", name: "Wave 2: master data", modules: ["material_master", "business_partner", "customer_master"], target_date: "2027-01-18", gate_open: false, failing: ["No critical rule over tolerance"] },
-    { id: "w-3", name: "Wave 3: operations", modules: ["purchasing", "sales_orders", "plant_maintenance"], target_date: null, gate_open: true, failing: [] },
+    { id: "w-1", name: "Wave 1: finance foundations", modules: ["fi_gl", "asset_accounting", "controlling", "accounts_payable"], target_date: "2026-11-16", gate_open: false, failing: ["Score 85 or more", "No critical rule over tolerance"] },
+    { id: "w-2", name: "Wave 2: master data", modules: ["material_master", "business_partner", "accounts_receivable"], target_date: "2027-01-18", gate_open: false, failing: ["No critical rule over tolerance"] },
+    { id: "w-3", name: "Wave 3: operations", modules: ["mm_purchasing", "sd_sales_orders", "plant_maintenance"], target_date: null, gate_open: true, failing: [] },
   ].filter((w) => !wave || w.id === wave.id);
   return {
     schedule_id: d.id,
@@ -525,10 +516,10 @@ function numbers(d: Digest): DigestNumbers {
     tenant: "Demo Corp",
     currency: "ZAR",
     generated_at: NOW,
-    landscape: { held_under_85: held, objects: mine.length, critical_over_tolerance: crit, release_if_fixed: ["MM014", "MM031"], released: Math.min(2, held), text },
+    landscape: { held_under_85: held, objects: mine.length, critical_over_tolerance: crit, release_if_fixed: ["MM003", "MM035"], released: Math.min(2, held), text },
     score_moves: [
       { system: ECC.name, module: "material_master", before: 69.8, after: 71.8, delta: 2 },
-      { system: ECC.name, module: "sales_orders", before: 79.2, after: 81, delta: 1.8 },
+      { system: ECC.name, module: "sd_sales_orders", before: 79.2, after: 81, delta: 1.8 },
       { system: ECC.name, module: "asset_accounting", before: 73.4, after: 72.6, delta: -0.8 },
     ].filter((m) => !wave || wave.modules.includes(m.module)),
     waves,
@@ -537,9 +528,9 @@ function numbers(d: Digest): DigestNumbers {
     value_at_risk: {
       total: wave ? 1840000 : 4120000,
       top: [
-        { check_id: "MM014", module: "material_master", cost_at_risk: 412300, failing_records: 1250 },
-        { check_id: "MM031", module: "material_master", cost_at_risk: 288700, failing_records: 875 },
-        { check_id: "AP039", module: "vendor_master", cost_at_risk: 196000, failing_records: 128 },
+        { check_id: "MM142", module: "material_master", cost_at_risk: 412300, failing_records: 1250 },
+        { check_id: "MM003", module: "material_master", cost_at_risk: 288700, failing_records: 875 },
+        { check_id: "AP039", module: "accounts_payable", cost_at_risk: 196000, failing_records: 128 },
       ].filter((v) => !wave || wave.modules.includes(v.module)),
     },
   };
@@ -668,13 +659,13 @@ export function step10Write(method: string, path: string, body: unknown): unknow
     const copy = b.copy_run !== false;
     const vid = copy ? `sbx-${LATEST.slice(0, 8)}` : null;
     st().sandbox = { sandbox: true, since: NOW, by: "Demo user", runs: vid ? [vid] : [], skipped_deliveries: 0 };
-    return { ...clone(st().sandbox), source_run_id: copy ? LATEST : null, sandbox_run_id: vid, copied: copy ? { analysis_versions: 1, findings: 5178, finding_records: 25712, work_records: 25712, record_issues: 26104 } : {} };
+    return { ...clone(st().sandbox), source_run_id: copy ? LATEST : null, sandbox_run_id: vid, copied: copy ? { analysis_versions: 1, findings: 794, finding_records: 25712, work_records: 25712, record_issues: 26104 } : {} };
   }
   if (method === "POST" && path === "/admin/sandbox/exit") {
     if (!st().sandbox.sandbox) throw new Refused(409, "The tenant is not in sandbox mode.");
     const had = st().sandbox.runs.length;
     st().sandbox = { sandbox: false, since: null, by: null, runs: [], skipped_deliveries: 0 };
-    return { ...clone(st().sandbox), discarded: had ? { analysis_versions: had, findings: 5178, work_records: 25712, record_issues: 26104 } : {} };
+    return { ...clone(st().sandbox), discarded: had ? { analysis_versions: had, findings: 794, work_records: 25712, record_issues: 26104 } : {} };
   }
   return NONE_STEP10;
 }

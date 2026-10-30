@@ -5,8 +5,8 @@ The landscape is the start screen for every role. It answers three questions in 
 ## What is on it
 
 - **The title and scope**: "Landscape" and the systems in scope, such as "All systems". Change the scope and the run from the top bar.
-- **The sentence**: one line that says what holds the landscape back, for example "11 of 15 objects are held under 85 by 70 critical rules over tolerance; fixing MM014 and MM031 would release 2 of them."
-- **The provenance line**: records checked, rules measured and the run, for example "400,662 records checked, 5,178 rules measured, run 16 Oct 2026, 05:17".
+- **The sentence**: one line that says what holds the landscape back, for example "11 of 15 objects are held under 85 by 30 critical rules over tolerance; fixing MM003 and MM035 would release 1 of them."
+- **The provenance line**: records checked, rules measured and the run, for example "400,662 records checked, 794 rules measured, run 16 Oct 2026, 05:17".
 - **The next-step button**: one per role (see below), with the wave and its due date under it for the programme lead.
 - **The coverage matrix**: objects as rows, systems as columns. Each cell is a small ruler with the shown score, the word **capped** where a cap applies, the verdict (Go, At risk, No-go), records checked and rules measured. A cell flagged **low coverage** has fewer than 70% of its rules producing a result. A system never extracted shows "Not extracted yet. Extract"; one extracted but not scored shows "Extracted, not analysed. Run analysis".
 - **Coverage, All objects and Waves**: the view switch. **Waves** groups the objects under each migration wave with its due date, its go, at-risk and no-go counts and the gate state (see the Waves and gates chapter).

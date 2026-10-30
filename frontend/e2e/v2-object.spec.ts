@@ -62,21 +62,21 @@ for (const size of SIZES) {
         if (phone) {
           const list = page.getByRole("list", { name: "Rules for Material master" });
           await expect(list).toBeVisible(NAV);
-          await expect(list.getByRole("listitem")).toHaveCount(9); // 8 rules and "and 905 more rules"
-          await expect(list.getByRole("listitem").first()).toContainText("MM014");
+          await expect(list.getByRole("listitem")).toHaveCount(9); // 8 rules and "and 72 more rules"
+          await expect(list.getByRole("listitem").first()).toContainText("MM142");
           await expect(list.getByRole("listitem").first()).toContainText("1,184,000");
         } else {
           const grid = page.getByRole("grid", { name: "Rules for Material master" });
           await expect(grid).toBeVisible(NAV);
           const rows = grid.getByRole("row");
-          await expect(rows).toHaveCount(11, NAV); // header, 8 rules, "and 905 more rules", "All 913 rules"
-          await expect(rows.nth(1)).toContainText("MM014");
-          await expect(rows.nth(1)).toContainText("Base unit of measure not valid");
+          await expect(rows).toHaveCount(11, NAV); // header, 8 rules, "and 72 more rules", "All 80 rules"
+          await expect(rows.nth(1)).toContainText("MM142");
+          await expect(rows.nth(1)).toContainText("Base unit of measure MEINS must reference a valid entry in T006");
           await expect(rows.nth(1)).toContainText("112 suggested values");
           await expect(rows.nth(1)).toContainText("Accept all");
           await expect(rows.nth(1).getByRole("gridcell").nth(5)).toHaveText("Yes", NAV);
-          await expect(rows.nth(9)).toContainText("and 905 more rules");
-          await expect(rows.nth(10)).toContainText("All 913 rules");
+          await expect(rows.nth(9)).toContainText("and 72 more rules");
+          await expect(rows.nth(10)).toContainText("All 80 rules");
           await expect(rows.nth(10)).toContainText("4,200,000");
           for (const h of ["Tolerance", "Over tolerance", "Failing %", "Coverage", "Value at risk"]) await expect(grid.getByRole("button", { name: `About ${h}` })).toBeVisible();
         }
@@ -105,7 +105,7 @@ for (const size of SIZES) {
         await expect(pivot).toBeVisible();
         await expect(pivot.getByRole("row")).toHaveCount(4);
         await pivot.getByRole("row").nth(1).getByRole("button").click();
-        await expect(pivot.getByRole("link", { name: "MM031" })).toBeVisible();
+        await expect(pivot.getByRole("link", { name: "MM003" })).toBeVisible();
         await shotTab(page, "object-rules-pivot");
         await axe(page, `pivot ${size.name} ${scheme}`);
         await page.getByRole("button", { name: "By S/4 feature" }).click();
@@ -139,20 +139,20 @@ for (const size of SIZES) {
         await prepare(page, scheme);
         await page.goto(`${OBJECT}?fixture=1`, { waitUntil: "load", timeout: 90_000 });
         const grid = page.getByRole("grid", { name: "Rules for Material master" });
-        await grid.getByRole("button", { name: "Accept all 112 suggested values for MM014" }).click(NAV);
-        await expect(page.getByTestId("rules-note")).toContainText("112 suggested values for MM014 are in your draft batch B-243");
+        await grid.getByRole("button", { name: "Accept all 112 suggested values for MM142" }).click(NAV);
+        await expect(page.getByTestId("rules-note")).toContainText("112 suggested values for MM142 are in your draft batch B-243");
         await expect(grid.getByRole("row").nth(1)).toContainText("Suggested values accepted");
       });
 
       test("the rule inspector opens from a rule and shows facts, definition, authority, scope, blocks, lineage, versions, contract, actions and history", async ({ page }) => {
         await prepare(page, scheme);
         await page.goto(`${OBJECT}?fixture=1`, { waitUntil: "load", timeout: 90_000 });
-        const link = phone ? page.getByRole("list", { name: "Rules for Material master" }).getByRole("link", { name: "MM014" }) : page.getByRole("grid", { name: "Rules for Material master" }).getByRole("link", { name: "MM014" });
+        const link = phone ? page.getByRole("list", { name: "Rules for Material master" }).getByRole("link", { name: "MM142" }) : page.getByRole("grid", { name: "Rules for Material master" }).getByRole("link", { name: "MM142" });
         await link.click(NAV);
-        const dialog = page.getByRole("dialog", { name: "MM014" });
+        const dialog = page.getByRole("dialog", { name: "MM142" });
         await expect(dialog).toBeVisible(NAV);
-        await expect(page).toHaveURL(/open=rule%3AMM014/);
-        await expect(dialog.getByTestId("rule-name")).toHaveText("Base unit of measure not valid");
+        await expect(page).toHaveURL(/open=rule%3AMM142/);
+        await expect(dialog.getByTestId("rule-name")).toHaveText("Base unit of measure MEINS must reference a valid entry in T006");
         for (const h of ["Facts", "Definition", "Authority", "Scope: 2 objects, 1 system", "Blocks: 3 S/4 features", "Lineage", "Versions", "Contract", "Actions", "History"]) {
           await expect(dialog.getByRole("heading", { name: h, level: 3 })).toBeVisible();
         }
@@ -161,7 +161,7 @@ for (const size of SIZES) {
         await expect(lineage.locator("line")).toHaveCount(4);
         const stroke = await lineage.locator("line").first().evaluate((el) => getComputedStyle(el).strokeWidth);
         expect(stroke).toBe("1px");
-        await expect(dialog.getByRole("link", { name: "Purchasing" })).toBeVisible();
+        await expect(dialog.getByRole("link", { name: "MM purchasing" })).toBeVisible();
         await expect(dialog.getByRole("button", { name: "Hand to a steward" })).toBeVisible();
         await page.waitForLoadState("networkidle");
         await shot(page, "object-rule-inspector");
@@ -172,32 +172,32 @@ for (const size of SIZES) {
 
       test("the rule canvas: header stat line, Definition, Failing records, Impact and History", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/r/MM014?fixture=1", { waitUntil: "load", timeout: 90_000 });
-        await expect(page.getByRole("heading", { level: 1 })).toContainText("MM014", NAV);
-        await expect(page.getByRole("heading", { level: 1 })).toContainText("Base unit of measure not valid", NAV);
+        await page.goto("/r/MM142?fixture=1", { waitUntil: "load", timeout: 90_000 });
+        await expect(page.getByRole("heading", { level: 1 })).toContainText("MM142", NAV);
+        await expect(page.getByRole("heading", { level: 1 })).toContainText("Base unit of measure MEINS must reference a valid entry in T006", NAV);
         await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
         const stat = page.getByTestId("rule-stat-line");
         await expect(stat).toContainText("Critical");
         await expect(stat).toContainText("4,212 failing across 2 objects");
-        await expect(page.getByRole("navigation", { name: "Views of MM014" }).getByRole("link")).toHaveCount(4);
+        await expect(page.getByRole("navigation", { name: "Views of MM142" }).getByRole("link")).toHaveCount(4);
         await expect(page.getByRole("region", { name: "Definition" })).toBeVisible();
         expect(await noSideScroll(page)).toBe(true);
         await page.waitForLoadState("networkidle");
         await shot(page, "object-rule-canvas");
         await axe(page, `rule canvas ${size.name} ${scheme}`);
 
-        await page.getByRole("navigation", { name: "Views of MM014" }).getByRole("link", { name: "Failing records" }).click();
+        await page.getByRole("navigation", { name: "Views of MM142" }).getByRole("link", { name: "Failing records" }).click();
         await expect(page).toHaveURL(/tab=failing/);
         // The ledger when the build has it, the designed frame when it does not.
         await expect(page.locator("[data-testid='empty-frame'], [data-testid='grid']").first()).toBeVisible(NAV);
         await shot(page, "object-rule-canvas-failing");
         await axe(page, `rule canvas failing ${size.name} ${scheme}`);
 
-        await page.getByRole("navigation", { name: "Views of MM014" }).getByRole("link", { name: "Impact" }).click();
+        await page.getByRole("navigation", { name: "Views of MM142" }).getByRole("link", { name: "Impact" }).click();
         await expect(page.getByTestId("lineage")).toBeVisible(NAV);
         await expect(page.getByRole("region", { name: "Facts" })).toBeVisible();
         await shot(page, "object-rule-canvas-impact");
-        await page.getByRole("navigation", { name: "Views of MM014" }).getByRole("link", { name: "History" }).click();
+        await page.getByRole("navigation", { name: "Views of MM142" }).getByRole("link", { name: "History" }).click();
         await expect(page.getByRole("region", { name: "History" }).getByRole("listitem").first()).toContainText("Run 16 Oct 2026", NAV);
       });
 
@@ -216,7 +216,7 @@ for (const size of SIZES) {
         const width = await chart.getByTestId("score-line").evaluate((el) => getComputedStyle(el).strokeWidth);
         expect(width).toBe("2px");
         const why = page.getByTestId("why-moved");
-        await expect(why.getByRole("link", { name: "MM119" })).toBeVisible(NAV);
+        await expect(why.getByRole("link", { name: "MM169" })).toBeVisible(NAV);
         await expect(why).toContainText("69.8 on 2 Oct 2026, 71.8 on 16 Oct 2026");
         await expect(page.getByRole("form", { name: "Compare two runs" }).getByRole("link", { name: "Compare" })).toHaveAttribute("href", /\/run\/.+\/vs\/.+/);
         expect(await noSideScroll(page)).toBe(true);
@@ -231,7 +231,7 @@ for (const size of SIZES) {
         const waves = page.getByRole("table", { name: "Waves that include Material master" });
         await expect(waves).toBeVisible(NAV);
         await expect(waves.getByRole("row")).toHaveCount(3);
-        await expect(page.getByTestId("cap-statement")).toContainText("Held at 70 by MM014 and MM031");
+        await expect(page.getByTestId("cap-statement")).toContainText("Held at 70 by MM003 and MM035");
         await expect(page.getByRole("heading", { name: /Blocked in S\/4HANA/ })).toBeVisible();
         await expect(page.getByLabel("S/4HANA features").getByRole("link", { name: "Migration cockpit: material load" })).toBeVisible(NAV);
         await expect(page.getByRole("heading", { name: /Degraded in S\/4HANA/ })).toBeVisible();
@@ -284,7 +284,7 @@ test.describe("keyboard", () => {
     await page.keyboard.press("j");
     await page.keyboard.press("k");
     await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(/open=rule%3AMM014/);
-    await expect(page.getByRole("dialog", { name: "MM014" })).toBeVisible();
+    await expect(page).toHaveURL(/open=rule%3AMM142/);
+    await expect(page.getByRole("dialog", { name: "MM142" })).toBeVisible();
   });
 });

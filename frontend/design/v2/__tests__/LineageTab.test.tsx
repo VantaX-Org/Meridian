@@ -36,7 +36,7 @@ describe("the Lineage tab", () => {
     expect([count("table"), count("field"), count("rule"), count("feature")]).toEqual([3, 8, 8, 8]);
     expect(svg.querySelectorAll("line[data-edge]")).toHaveLength(26); // 8 table to field, 8 field to rule, 10 rule to feature
     expect(svg).toHaveAccessibleName("Lineage of Material master: 3 tables, 8 fields, 8 rules, 8 S/4 features");
-    expect(svg.querySelector('line[data-edge="rule:MM014>feature:Migration cockpit: material load"]')).not.toBeNull();
+    expect(svg.querySelector('line[data-edge="rule:MM142>feature:Migration cockpit: material load"]')).not.toBeNull();
   });
 
   it("uses 1 pixel non-scaling strokes, like the rule inspector's mini graph", () => {
@@ -48,8 +48,8 @@ describe("the Lineage tab", () => {
   it("links a rule to the rule inspector and a feature to the feature inspector", async () => {
     tab();
     const svg = await graph();
-    const rule = svg.querySelector('a[data-node="rule:MM014"]') as SVGAElement;
-    expect(rule.getAttribute("href")).toContain("open=rule%3AMM014");
+    const rule = svg.querySelector('a[data-node="rule:MM142"]') as SVGAElement;
+    expect(rule.getAttribute("href")).toContain("open=rule%3AMM142");
     const feature = svg.querySelector('a[data-node="feature:Migration cockpit: material load"]') as SVGAElement;
     expect(feature.getAttribute("href")).toContain("open=feature%3AMigration+cockpit%3A+material+load");
   });
@@ -59,18 +59,18 @@ describe("the Lineage tab", () => {
     const svg = await graph();
     const facts = screen.getByRole("complementary", { name: "Facts of the node" });
     expect(facts).toHaveTextContent("Hover or focus a node to see its facts here");
-    fireEvent.mouseEnter(svg.querySelector('[data-node="rule:MM014"]') as Element);
-    expect(norm(within(facts).getByTestId("node-facts"))).toContain("NameBase unit of measure not valid");
-    expect(norm(within(facts).getByTestId("node-facts"))).toContain("SeverityCritical");
-    expect(within(facts).getByRole("link", { name: "Open the rule" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM014"));
-    fireEvent.mouseLeave(svg.querySelector('[data-node="rule:MM014"]') as Element);
+    fireEvent.mouseEnter(svg.querySelector('[data-node="rule:MM142"]') as Element);
+    expect(norm(within(facts).getByTestId("node-facts"))).toContain("NameBase unit of measure MEINS must reference a valid entry in T006");
+    expect(norm(within(facts).getByTestId("node-facts"))).toContain("SeverityHigh");
+    expect(within(facts).getByRole("link", { name: "Open the rule" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM142"));
+    fireEvent.mouseLeave(svg.querySelector('[data-node="rule:MM142"]') as Element);
     expect(facts).toHaveTextContent("Hover or focus a node");
     fireEvent.focus(svg.querySelector('[data-node="feature:MRP Live"]') as Element);
     const f = norm(within(facts).getByTestId("node-facts"));
     expect(f).toContain("StatusDegraded");
-    expect(f).toContain("Blocking rulesMM078");
+    expect(f).toContain("Blocking rulesMM023");
     expect(svg.querySelector("title")).toBeNull();
-    expect(svg.querySelector('line[data-edge="rule:MM078>feature:MRP Live"]')).toHaveAttribute("data-on", "true");
+    expect(svg.querySelector('line[data-edge="rule:MM023>feature:MRP Live"]')).toHaveAttribute("data-on", "true");
   });
 
   it("pins the facts of a table or a field on click, and unpins on a second click", async () => {
@@ -125,8 +125,8 @@ describe("the feature inspector", () => {
     const status = within(d).getByText("Status", { selector: "dt" }).closest(".m2-fact") as HTMLElement;
     expect(norm(status)).toBe("StatusBlocked");
     expect(norm(within(d).getByText("Records affected", { selector: "dt" }).closest(".m2-fact") as HTMLElement)).toBe("Records affected6,544");
-    expect(within(d).getByRole("link", { name: "MM031" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM031"));
-    expect(within(d).getByText(/cannot go live while MM014 and MM031 fail/)).toBeInTheDocument();
+    expect(within(d).getByRole("link", { name: "MM003" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM003"));
+    expect(within(d).getByText(/cannot go live while MM142 and MM003 fail/)).toBeInTheDocument();
   });
 
   it("states degraded for a degraded feature", async () => {

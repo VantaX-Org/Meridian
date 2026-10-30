@@ -56,7 +56,7 @@ for (const size of SIZES) {
         await page.getByLabel("Object").selectOption("business_partner");
         await expect(grid).toHaveAttribute("aria-rowcount", "7");
         await page.getByLabel("Object").selectOption("");
-        await page.getByRole("searchbox", { name: "Search" }).fill("MM014");
+        await page.getByRole("searchbox", { name: "Search" }).fill("MM142");
         await expect(grid).toHaveAttribute("aria-rowcount", "2");
         await grid.getByRole("row").nth(1).click();
         await expect(page.getByRole("dialog")).toBeVisible();

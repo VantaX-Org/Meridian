@@ -74,13 +74,13 @@ describe("the command line's natural language mode", () => {
   it("pure parts: the question after ?, the address at the root, the slot words", () => {
     expect(nlQuestion("  ? overdue vendors ")).toBe("overdue vendors");
     expect(nlQuestion("?")).toBeNull();
-    expect(nlQuestion("MM014")).toBeNull();
+    expect(nlQuestion("MM142")).toBeNull();
     expect(nlHref("/v2/work?severity=critical")).toBe("/work?severity=critical");
     expect(nlTarget({ href: "/v2/work?status=proposed", filter: { status: "proposed" } })).toBe("/work?status=proposed");
     expect(nlTarget({ href: "/v2/work", filter: {} })).toBe("/work?filter=open");
     expect(slotWord("policy")).toBe("Policy");
-    const a = fixtureResponse<s10.NlAnswer>("/command/nl", { q: "show me the overdue mm014 failures" });
-    expect(a.filter).toEqual({ due: "overdue", check_id: "MM014" });
+    const a = fixtureResponse<s10.NlAnswer>("/command/nl", { q: "show me the overdue mm142 failures" });
+    expect(a.filter).toEqual({ due: "overdue", check_id: "MM142" });
     expect(a.unmatched_words).toEqual([]);
   });
 });

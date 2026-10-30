@@ -12,7 +12,7 @@ import { ResultFrame, useOutcome } from "../inspector/shared";
 import { Mono, V2Link } from "../parts";
 import { Block, Confirm, Kv, Loaded, StatusWord, useCan } from "./kit";
 
-/** Rows per table in words: "1 analysis_versions, 5,178 findings". */
+/** Rows per table in words: "1 analysis_versions, 794 findings". */
 const rowsWords = (m: Record<string, number>): string => Object.entries(m).map(([k, v]) => `${int(v)} ${k}`).join(", ");
 
 /**

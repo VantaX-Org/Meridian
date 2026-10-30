@@ -12,7 +12,7 @@ import { isAppPath } from "@/lib/v2/paths";
  * the escalation chain, contracts, workload balancing, wave gates, the extraction dry run, share links, the
  * configuration bundle, view as, bulk rules, the stewardship template and related objects. One in-memory state,
  * reset by resetRolesFixture (index.ts resetWorkFixture calls it). The numbers follow the demo tenant of the other
- * fixtures: Material master on ECC production, 3,640 records failing MM014, the waves w-1 to w-3.
+ * fixtures: Material master on ECC production, 3,640 records failing MM142, the waves w-1 to w-3.
  */
 
 export const NONE_ROLES = Symbol("none");
@@ -39,11 +39,11 @@ const EVENTS: [string, string][] = [
   ["batch_waiting", "A fix batch you watch waits for approval"], ["delegated", "Work routed to you while someone is out of office"],
 ];
 /** Fixture module ids are the prototype's; the relationship map speaks the API's. */
-const API_ID: Record<string, string> = { vendor_master: "accounts_payable", customer_master: "accounts_receivable", gl_accounts: "fi_gl", purchasing: "mm_purchasing", sales_orders: "sd_sales_orders" };
+const API_ID: Record<string, string> = { accounts_payable: "accounts_payable", accounts_receivable: "accounts_receivable", fi_gl: "fi_gl", mm_purchasing: "mm_purchasing", sd_sales_orders: "sd_sales_orders" };
 const FIX_ID: Record<string, string> = Object.fromEntries(Object.entries(API_ID).map(([a, b]) => [b, a]));
 const LABEL: Record<string, string> = Object.fromEntries((landscapeJson as { objects: { module: string; label: string }[] }).objects.map((o) => [o.module, o.label]));
-/** Open critical failures in the current state, per fixture module (Material master: MM014's 3,640). */
-const CRITICALS: Record<string, number> = { material_master: 3640, business_partner: 1210, vendor_master: 402, customer_master: 388, asset_accounting: 96, controlling: 140 };
+/** Open critical failures in the current state, per fixture module (Material master: MM142's 3,640). */
+const CRITICALS: Record<string, number> = { material_master: 3640, business_partner: 1210, accounts_payable: 402, accounts_receivable: 388, asset_accounting: 96, controlling: 140 };
 
 const label = (m: string): string => LABEL[m] ?? LABEL[FIX_ID[m] ?? ""] ?? m.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
 
@@ -74,7 +74,7 @@ function build(): State {
     seq: 0,
     comments: [
       { id: "cm-1", target_kind: "record", target_id: "material_master:MATNR=000000000000000100", body: "Check the unit with purchasing before Friday, @a.naidoo.", author_id: "u-rg", author_label: "R. Govender", mentions: ["u-an"], created_at: "2026-10-19T09:12:00Z", mine: false },
-      { id: "cm-2", target_kind: "rule", target_id: "MM014", body: "Most of these are KG against PC in plant 3000.", author_id: "u-an", author_label: "A. Naidoo", mentions: [], created_at: "2026-10-18T14:40:00Z", mine: false },
+      { id: "cm-2", target_kind: "rule", target_id: "MM142", body: "Most of these are KG against PC in plant 3000.", author_id: "u-an", author_label: "A. Naidoo", mentions: [], created_at: "2026-10-18T14:40:00Z", mine: false },
     ],
     watches: [{ target_kind: "object", target_id: `${ECC}:material_master`, watching: true, events: [] }],
     subs: {},
@@ -83,7 +83,7 @@ function build(): State {
     chain: [{ level: 1, after_minutes: 240, target: "team_lead", user_id: null, user_name: null }],
     contracts: [
       { id: "ct-1", name: "Material master to S/4HANA", description: "What the migration load needs from Material master.", producer: "material_master", consumer: "S/4HANA migration", status: "active", version: 2, quality_contract: { module: "material_master", min_score: 85 }, freshness_contract: { max_age_days: 7 }, created_by: "u-rg", latest_compliant: false, last_checked: "2026-10-16T05:20:00Z" },
-      { id: "ct-2", name: "Vendor bank data for payments", description: null, producer: "vendor_master", consumer: "Accounts payable", status: "draft", version: 1, quality_contract: { module: "vendor_master", min_score: 90 }, freshness_contract: null, created_by: ME, latest_compliant: null, last_checked: null },
+      { id: "ct-2", name: "Vendor bank data for payments", description: null, producer: "accounts_payable", consumer: "Accounts payable", status: "draft", version: 1, quality_contract: { module: "accounts_payable", min_score: 90 }, freshness_contract: null, created_by: ME, latest_compliant: null, last_checked: null },
     ],
     versions: { "ct-1": [{ version: 1, snapshot: { name: "Material master to S/4HANA", status: "active", quality_contract: { min_score: 80 } }, note: "Raised the bar for mock load 2", created_by: "R. Govender", created_at: "2026-09-01T08:00:00Z" }] },
     gates: {
@@ -197,9 +197,9 @@ function gateOf(waveId: string, name: string, modules: string[], s: State): Wave
 }
 
 const WAVES: [string, string, string[]][] = [
-  ["w-1", "Wave 1: finance foundations", ["gl_accounts", "asset_accounting", "controlling", "vendor_master"]],
-  ["w-2", "Wave 2: master data", ["material_master", "business_partner", "customer_master"]],
-  ["w-3", "Wave 3: operations", ["purchasing", "sales_orders", "plant_maintenance"]],
+  ["w-1", "Wave 1: finance foundations", ["fi_gl", "asset_accounting", "controlling", "accounts_payable"]],
+  ["w-2", "Wave 2: master data", ["material_master", "business_partner", "accounts_receivable"]],
+  ["w-3", "Wave 3: operations", ["mm_purchasing", "sd_sales_orders", "plant_maintenance"]],
 ];
 
 /** The balance plan of the demo tenant's stewards: A. Naidoo carries 214, Demo user 38, R. Govender 12. */
@@ -240,8 +240,8 @@ export function rolesFixtureResponse(path: string, params: Params): unknown {
   const act = /^\/people\/([^/]+)\/activity$/.exec(path);
   if (act) {
     const entries: ActivityEntry[] = [
-      { id: "a-1", action: "decide", entity_type: "work", entity_id: "MM014", method: "POST", path: "/api/v1/work/decide", status_code: 200, created_at: "2026-10-16T08:55:00Z" },
-      { id: "a-2", action: "comment.create", entity_type: "comment:rule", entity_id: "MM014", method: "POST", path: "/api/v1/comments", status_code: 201, created_at: "2026-10-15T13:10:00Z" },
+      { id: "a-1", action: "decide", entity_type: "work", entity_id: "MM142", method: "POST", path: "/api/v1/work/decide", status_code: 200, created_at: "2026-10-16T08:55:00Z" },
+      { id: "a-2", action: "comment.create", entity_type: "comment:rule", entity_id: "MM142", method: "POST", path: "/api/v1/comments", status_code: 201, created_at: "2026-10-15T13:10:00Z" },
       { id: "a-3", action: "approve", entity_type: "remediation", entity_id: "B-238", method: "POST", path: "/api/v1/remediation/batches/B-238/approve", status_code: 200, created_at: "2026-10-14T09:02:00Z" },
     ];
     return { user_id: decodeURIComponent(act[1]), entries };

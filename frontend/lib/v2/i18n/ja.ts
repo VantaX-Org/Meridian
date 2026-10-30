@@ -12,7 +12,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "People": "担当者",
   "Search or type a command": "検索またはコマンドを入力",
   "Results": "結果",
-  "No match for {q}. Try a material number, a rule id such as MM014, or a word such as approve or export.": "{q} に一致するものはありません。品目番号、MM014 のようなルール ID、または「承認」「エクスポート」などの語を試してください。",
+  "No match for {q}. Try a material number, a rule id such as MM142, or a word such as approve or export.": "{q} に一致するものはありません。品目番号、MM142 のようなルール ID、または「承認」「エクスポート」などの語を試してください。",
   "Searching": "検索中",
   "About {label}": "{label} について",
   "The explanation could not be read for this run.": "この実行の説明を読み込めませんでした。",

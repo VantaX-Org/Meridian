@@ -36,19 +36,20 @@ describe("the simulation fixture", () => {
     const r = simulateFixture({ module: "material_master" });
     expect(r.before.score).toBe(70);
     expect(r.after.score).toBe(70);
-    expect(r.after.breaches).toEqual(["MM014", "MM031"]);
+    expect(r.after.breaches).toEqual(["MM003", "MM035"]);
     expect(r.delta.breaches_cleared).toEqual([]);
   });
 
   it("clears both caps when both critical rules are fixed, and unblocks every feature they block", () => {
-    const r = simulateFixture({ module: "material_master", rules: ["MM014", "MM031"] });
+    // MM142 blocks the same three features as MM003 without capping the score: all three are fixed here.
+    const r = simulateFixture({ module: "material_master", rules: ["MM003", "MM035", "MM142"] });
     expect(r.after.cap_level).toBeNull();
     expect(r.after.breaches).toEqual([]);
     expect(r.after.score).toBeGreaterThan(70);
     expect(r.after.score).toBe(r.after.raw_score);
     expect(r.before.features_blocked).toBe(3);
     expect(r.after.features_blocked).toBe(0);
-    expect(r.delta.breaches_cleared).toEqual(["MM014", "MM031"]);
+    expect(r.delta.breaches_cleared).toEqual(["MM003", "MM035"]);
     expect(r.landscape?.after.held_under_85).toBe(r.landscape!.before.held_under_85 - 1);
   });
 
@@ -68,8 +69,8 @@ describe("Simulate fixing on the Rules tab", () => {
     expect(picks.filter((c) => (c as HTMLInputElement).checked)).toHaveLength(2);
     fireEvent.click(within(dialog).getByRole("button", { name: "Simulate fixing 2 rules" }));
     const sim = await within(dialog).findByTestId("simulation");
-    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ module: "material_master", rules: ["MM014", "MM031"] }));
-    expect(within(sim).getByTestId("sim-before")).toHaveTextContent("Capped at 70 by MM014 and MM031");
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ module: "material_master", rules: ["MM003", "MM035"] }));
+    expect(within(sim).getByTestId("sim-before")).toHaveTextContent("Capped at 70 by MM003 and MM035");
     expect(within(sim).getByTestId("sim-after")).toHaveTextContent("No cap: no critical rule over tolerance");
     expect(within(sim).getAllByRole("img").filter((el) => el.getAttribute("data-size") === "240")).toHaveLength(2);
     expect(within(sim).getByTestId("simulation-landscape")).toHaveTextContent("Landscape now: 11 of 15 objects are held under 85");
@@ -97,7 +98,7 @@ describe("Simulate fixing in the Work bulk bar", () => {
 
   it("simulates the selected records of one object at once", async () => {
     const spy = vi.spyOn(s9, "simulateFix");
-    renderWithQuery(<BulkActions rows={[row("MATNR=000000000000000232", ["MM031"]), row("MATNR=000000000000000211", ["MM014"])]} clear={() => undefined} h={h} onReason={() => undefined} />);
+    renderWithQuery(<BulkActions rows={[row("MATNR=000000000000000232", ["MM003"]), row("MATNR=000000000000000211", ["MM142"])]} clear={() => undefined} h={h} onReason={() => undefined} />);
     fireEvent.click(screen.getByRole("button", { name: "Simulate fixing" }));
     const dialog = await screen.findByRole("dialog");
     await within(dialog).findByTestId("simulation");
@@ -108,7 +109,7 @@ describe("Simulate fixing in the Work bulk bar", () => {
 
 describe("the simulation view", () => {
   it("says when the landscape sentence cannot be shown", () => {
-    const r = { ...simulateFixture({ module: "material_master", rules: ["MM014"] }), landscape: null };
+    const r = { ...simulateFixture({ module: "material_master", rules: ["MM142"] }), landscape: null };
     renderWithQuery(<SimulationView result={r} label="Material master" />);
     expect(screen.getByText(/The landscape sentence is not shown/)).toBeInTheDocument();
     expect(screen.getByTestId("sim-after")).toHaveTextContent("Wave 2: master data: gate closed");

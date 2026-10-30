@@ -32,19 +32,19 @@ describe("the ledger slot", () => {
   });
 
   it("treats a module without a Ledger export as absent", async () => {
-    renderWithQuery(<LedgerSlot label="MM014" scope={{}} loader={() => Promise.resolve({})} />);
+    renderWithQuery(<LedgerSlot label="MM142" scope={{}} loader={() => Promise.resolve({})} />);
     expect(await screen.findByTestId("empty-frame")).toBeInTheDocument();
   });
 
   it("holds the place with a skeleton while it loads, then renders the ledger with the scope it was given", async () => {
     let release: (m: { Ledger: typeof Probe }) => void = () => undefined;
     const loader: LedgerLoader = () => new Promise((res) => (release = res));
-    renderWithQuery(<LedgerSlot label="MM014" scope={{ module: "material_master", filters: { check_id: "MM014" } }} loader={loader} />);
+    renderWithQuery(<LedgerSlot label="MM142" scope={{ module: "material_master", filters: { check_id: "MM142" } }} loader={loader} />);
     expect(screen.getByTestId("ledger-loading")).toHaveAttribute("aria-busy", "true");
     release({ Ledger: Probe });
     const ledger = await screen.findByTestId("ledger");
     expect(ledger).toHaveAttribute("data-module", "material_master");
-    expect(JSON.parse(ledger.getAttribute("data-filters") ?? "{}")).toEqual({ check_id: "MM014" });
+    expect(JSON.parse(ledger.getAttribute("data-filters") ?? "{}")).toEqual({ check_id: "MM142" });
   });
 
   it("the Records tab always shows something designed: the ledger when the build has it, the frame when it does not", async () => {

@@ -77,7 +77,7 @@ describe("sandbox mode", () => {
     await waitFor(() => expect(enter).toHaveBeenCalledWith(true));
     expect(await within(block).findByText("Sandbox mode is on")).toBeInTheDocument();
     await waitFor(() => expect(norm(block)).toContain("In sandbox"));
-    expect(norm(block)).toContain("5,178 findings");
+    expect(norm(block)).toContain("794 findings");
     expect(within(block).getByRole("link", { name: "sbx-d3229ded" })).toBeInTheDocument();
     fireEvent.click(within(block).getByRole("button", { name: "Exit sandbox mode" }));
     const out = await screen.findByRole("dialog", { name: "Exit sandbox mode" });

@@ -48,8 +48,8 @@ describe("wave membership and verdict", () => {
   });
 
   it("reads another object's own waves", async () => {
-    render("purchasing");
-    const t = await screen.findByRole("table", { name: "Waves that include Purchasing" });
+    render("mm_purchasing");
+    const t = await screen.findByRole("table", { name: "Waves that include MM purchasing" });
     expect(within(t).getAllByRole("row").slice(1).map(cells)).toEqual([["Wave 2", "No-go", "2", "70.0", "—", "0"]]);
   });
 });
@@ -58,9 +58,9 @@ describe("the cap rule", () => {
   it("states what holds the score, names the capping rules as links, and quotes the cap rule", async () => {
     render();
     const s = await screen.findByTestId("cap-statement");
-    expect(norm(s)).toBe("Held at 70 by MM014 and MM031, two critical rules over tolerance. Measured 71.8, shown 70.0. Cap rule: 85 at one critical rule over tolerance, 70 at two or more.");
-    expect(within(s).getByRole("link", { name: "MM014" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM014"));
-    expect(within(s).getByRole("link", { name: "MM031" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM031"));
+    expect(norm(s)).toBe("Held at 70 by MM003 and MM035, two critical rules over tolerance. Measured 71.8, shown 70.0. Cap rule: 85 at one critical rule over tolerance, 70 at two or more.");
+    expect(within(s).getByRole("link", { name: "MM003" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM003"));
+    expect(within(s).getByRole("link", { name: "MM035" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM035"));
   });
 });
 
@@ -71,10 +71,10 @@ describe("blocked and degraded features", () => {
     const list = h.parentElement?.querySelector("ul") as HTMLElement;
     await waitFor(() => expect(within(list).getAllByRole("listitem")).toHaveLength(3));
     const items = within(list).getAllByRole("listitem");
-    expect(norm(items[0])).toBe("Migration cockpit: material loadMM014, MM031");
+    expect(norm(items[0])).toBe("Migration cockpit: material loadMM142, MM003");
     expect(within(items[0]).getByRole("link", { name: "Migration cockpit: material load" })).toHaveAttribute("href", expect.stringContaining("open=feature%3A"));
-    expect(within(items[0]).getByRole("link", { name: "MM031" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM031"));
-    expect(norm(items[1])).toBe("Material ledger actual costingMM014");
+    expect(within(items[0]).getByRole("link", { name: "MM003" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM003"));
+    expect(norm(items[1])).toBe("Material ledger actual costingMM142");
     expect(norm(h)).toContain("3");
   });
 
@@ -84,16 +84,16 @@ describe("blocked and degraded features", () => {
     const list = h.parentElement?.querySelector("ul") as HTMLElement;
     await waitFor(() => expect(within(list).getAllByRole("listitem")).toHaveLength(5));
     expect(within(list).getAllByRole("listitem").map(norm)).toEqual([
-      "MRP LiveMM078",
-      "Advanced available-to-promiseMM057",
-      "Source of supply determinationMM063",
-      "Product complianceMM022",
-      "Inventory valuation by plantMM091",
+      "MRP LiveMM023",
+      "Advanced available-to-promiseMM015",
+      "Source of supply determinationMM302",
+      "Product complianceMM007",
+      "Inventory valuation by plantMM035",
     ]);
   });
 
   it("says so when no feature is touched by this object's rules", async () => {
-    render("purchasing");
+    render("mm_purchasing");
     expect(await screen.findByText("No S/4 feature is blocked by a rule of this object.")).toBeInTheDocument();
     expect(screen.getByText("No S/4 feature is degraded by a rule of this object.")).toBeInTheDocument();
   });

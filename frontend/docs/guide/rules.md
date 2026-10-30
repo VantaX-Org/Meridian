@@ -1,10 +1,10 @@
 # The rule canvas and the rules library
 
-Every number in Meridian comes from a rule: a fixed, deterministic check with an id such as `MM014`, a field, a dimension and a severity. The **rule canvas** shows one rule across every object and system it runs on. The **rules library** lists every rule of the tenant, with drafts and suppressions. Open a rule by typing its id in the command line, from any rule row, or at `/r/{id}`. Open the library from the command line ("Rules") or at `/rules`.
+Every number in Meridian comes from a rule: a fixed, deterministic check with an id such as `MM142`, a field, a dimension and a severity. The **rule canvas** shows one rule across every object and system it runs on. The **rules library** lists every rule of the tenant, with drafts and suppressions. Open a rule by typing its id in the command line, from any rule row, or at `/r/{id}`. Open the library from the command line ("Rules") or at `/rules`.
 
 ## The rule canvas
 
-The title is the rule id and name, for example "MM014 Base unit of measure not valid". The facts line under it reads like "Critical, Validity, 4,212 failing across 2 objects, 4.99% of records checked, ZAR 1.18 m at risk, over tolerance, blocks 3 S/4 features".
+The title is the rule id and name, for example "MM142 Base unit of measure MEINS must reference a valid entry in T006". The facts line under it reads like "Critical, Validity, 4,212 failing across 2 objects, 4.99% of records checked, ZAR 1.18 m at risk, over tolerance, blocks 3 S/4 features".
 
 Four sections follow:
 

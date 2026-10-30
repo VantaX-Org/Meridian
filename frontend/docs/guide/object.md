@@ -7,13 +7,13 @@ An object is one area of SAP data scored as a whole on one system, such as Mater
 - **Watch**: "You hear about runs, score drops, new critical breaches and comments on Material master." Watching is per person; what reaches you is set under Preferences, What you hear about.
 - **Data contracts**: the contracts that name this object.
 - **Related objects**: each related object with its relation, **upstream** or **downstream**. Fix the upstream object first: records there fail before this object can pass.
-- **The facts line**: the run, records checked, rules measured, records to fix, value at risk, S/4 features blocked and the wave verdict, for example "Run 16 Oct 2026, 05:17, 61,816 records checked, 913 rules measured, 25,712 to fix, ZAR 4.2 m at risk, 3 features blocked, No-go for wave 1".
+- **The facts line**: the run, records checked, rules measured, records to fix, value at risk, S/4 features blocked and the wave verdict, for example "Run 16 Oct 2026, 05:17, 61,816 records checked, 80 rules measured, 25,712 to fix, ZAR 4.2 m at risk, 3 features blocked, No-go for wave 1".
 
 ## The ruler and the receipt
 
 The large ruler has the 0 to 100 axis with the 60 critical, 75 at risk and 90 go marks, and two cap lines, **cap 1 critical** (85) and **cap 2 or more** (70). Each of the six segments is filled to its dimension score, which is printed under it. The tick is the measured score; the number beside it is the score shown, with **capped** when a cap applies.
 
-Under it the receipt says it in words, exactly as the product states it: "Measured 71.8, the tick on the ruler. Capped at 70 by MM014 and MM031, two critical rules over tolerance."
+Under it the receipt says it in words, exactly as the product states it: "Measured 71.8, the tick on the ruler. Capped at 70 by MM003 and MM035, two critical rules over tolerance."
 
 The receipt table then adds the score up: one row per dimension with its weight, score, points, rules measured, records checked and coverage; then **Weighted**, **Measured**, **Cap, 2 critical rules over tolerance** and **Score shown**. The formula line under it is the full rule: the six weights, "severity weights critical 4, high 3, medium 2, low 1; tolerance 10% of rows or 25 rows, as set on each rule; cap rule: 85 at one critical rule over tolerance, 70 at two or more." Every row has an **i** that explains the figure from the run itself.
 
@@ -21,11 +21,11 @@ The receipt table then adds the score up: one row per dimension with its weight,
 
 **As of** in the run menu shows the object as it stood when an earlier run finished: a band says so, the ruler and the rules are that run's, and **Back to today** returns.
 
-**Critical rules over tolerance** lists the rules behind the cap with their failing records and share, for example "MM014 Base unit of measure not valid, 3,640 failing, 5.89%".
+**Critical rules over tolerance** lists the rules behind the cap with their failing records and share, for example "MM142 Base unit of measure MEINS must reference a valid entry in T006, 3,640 failing, 5.89%".
 
 ## The tabs
 
-- **Rules**: every rule of the object, ranked by value at risk, with field, dimension, severity, tolerance, over tolerance, failing rows, failing %, coverage and value at risk. Each rule says what goes wrong in SAP while it fails, for example "Goods movements and MRP cannot post for a material whose base unit is not an ISO unit." Where suggested values exist, **Accept all** accepts them for that rule. Pivot the list **By rule**, **By field**, **By dimension**, **By severity** or **By S/4 feature**; **Learned** and **Drafts** list rules waiting for review. The line under it reads "Ranked by value at risk; total ZAR 4.2 m across 913 rules measured. Failing % is of 61,816 records checked."
+- **Rules**: every rule of the object, ranked by value at risk, with field, dimension, severity, tolerance, over tolerance, failing rows, failing %, coverage and value at risk. Each rule says what goes wrong in SAP while it fails, for example "Goods movements and MRP cannot post for a material whose base unit is not an ISO unit." Where suggested values exist, **Accept all** accepts them for that rule. Pivot the list **By rule**, **By field**, **By dimension**, **By severity** or **By S/4 feature**; **Learned** and **Drafts** list rules waiting for review. The line under it reads "Ranked by value at risk; total ZAR 4.2 m across 80 rules measured. Failing % is of 61,816 records checked."
 - **Records**: the Work ledger scoped to this object. See the Work ledger chapter.
 - **Fixes**: the fix batches of this object. "No fix batches for Material master yet. A batch starts when a steward accepts suggested values or imports a filled fix sheet."
 - **Runs**: the measured score over the last eight runs with the cap line and the baseline, a table of measured and shown scores per run ("Scores are as stored with each run; the measured score is before the cap, the shown score after it."), **Compare with** to open two runs side by side, and **Why the score moved** against the baseline: rules newly failing, fixed, worse and better.

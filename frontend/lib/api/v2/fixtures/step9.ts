@@ -80,7 +80,7 @@ const DAYS_PER_MONTH = 30.44;
 const GATE_MIN: Record<string, number> = { "w-1": 85, "w-2": 80 };
 const NAMES: Record<string, string> = { "u-me": "Demo user", "u-rg": "R. Govender", "u-tm": "T. Mokoena", "u-pk": "P. Khumalo", "u-an": "A. Naidoo" };
 /** The data owners the certificate needs: the roles fixture's owners, plus Customer master, which it leaves unowned. */
-const OWNERS: Record<string, string> = { material_master: "u-rg", business_partner: "u-tm", asset_accounting: "u-pk", customer_master: ME };
+const OWNERS: Record<string, string> = { material_master: "u-rg", business_partner: "u-tm", asset_accounting: "u-pk", accounts_receivable: ME };
 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
@@ -112,7 +112,7 @@ function build(): State {
           measured_on: [
             { module: "material_master", run_id: runs[2].id, run_at: runs[2].run_at },
             { module: "business_partner", run_id: runs[2].id, run_at: runs[2].run_at },
-            { module: "customer_master", run_id: runs[2].id, run_at: runs[2].run_at },
+            { module: "accounts_receivable", run_id: runs[2].id, run_at: runs[2].run_at },
           ],
           signatures: [{ user_id: "u-rg", user: "R. Govender", statement: "Ready for mock load 1.", signed_at: "2026-10-02T11:05:00Z" }],
         },
@@ -503,8 +503,8 @@ const ALERTS: DriftAlert[] = [
       { area: "T134", added: 1, removed: 0, changed: 0 },
     ],
     rules: [
-      { check_id: "MM014", name: "Base unit of measure not valid" },
-      { check_id: "MM031", name: "Material type missing" },
+      { check_id: "MM142", name: "Base unit of measure MEINS must reference a valid entry in T006" },
+      { check_id: "MM003", name: "Material type is mandatory - determines procurement and storage behaviour" },
     ],
     objects: [MM],
     version_id: CURRENT_RUN,

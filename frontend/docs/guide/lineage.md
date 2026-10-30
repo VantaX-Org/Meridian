@@ -4,7 +4,7 @@ Lineage draws why a failing value matters: from the source table, to the field, 
 
 ## What is on it
 
-- **Four columns**: **Source tables** (`MARA`, `MARC`, `MBEW`), **Fields** (`MARA.MEINS`), **Rules** (`MM014`) and **S/4 features** (Migration cockpit: material load, Material ledger actual costing, Embedded EWM product master and so on).
+- **Four columns**: **Source tables** (`MARA`, `MARC`, `MBEW`), **Fields** (`MARA.MEINS`), **Rules** (`MM142`) and **S/4 features** (Migration cockpit: material load, Material ledger actual costing, Embedded EWM product master and so on).
 - **Node facts**: "Hover or focus a node to see its facts here. Click a rule or a feature to open it."
 - **Export as SVG**: the drawing as a file for a slide or a document.
 - The line under it: "Drawn from the 8 failing rules of Material master with the highest value at risk. Features come from the impact model of the current run."

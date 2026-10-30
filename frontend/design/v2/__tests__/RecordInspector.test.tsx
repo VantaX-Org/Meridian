@@ -17,7 +17,7 @@ vi.mock("next/navigation", async () => (await import("./nav-store")).navigationM
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
 
 let undoLayout: () => void = () => undefined;
-const KEY = "000000000000000100"; // MM014 base unit of measure, suggested EA
+const KEY = "000000000000000100"; // MM142 base unit of measure, suggested EA
 
 function visit(open: string, extra = "") {
   const url = `/work?fixture=1&persona=steward${extra}&open=${encodeURIComponent(`record:${open}`)}`;
@@ -75,9 +75,9 @@ describe("the record inspector", () => {
     // The failing field carries the rule's id as a link that opens the rule.
     const failing = fact("MARA-MEINS");
     expect(failing).toHaveTextContent("Base unit of measure");
-    expect(within(failing).getByText("PCS")).toHaveClass("m2-mono");
-    const rule = within(failing).getByRole("link", { name: "MM014" });
-    expect(decodeURIComponent(rule.getAttribute("href") ?? "")).toContain("open=rule:MM014");
+    expect(within(failing).getByText("EACH")).toHaveClass("m2-mono");
+    const rule = within(failing).getByRole("link", { name: "MM142" });
+    expect(decodeURIComponent(rule.getAttribute("href") ?? "")).toContain("open=rule:MM142");
     // A field that passes carries none.
     expect(within(fact("MARA-MATKL")).queryByRole("link")).toBeNull();
     expect(facts.getAllByText(/^[A-Z0-9]{4,6}-[A-Z0-9_]+$/).length).toBeGreaterThanOrEqual(11);
@@ -87,10 +87,10 @@ describe("the record inspector", () => {
     mount();
     await body();
     const block = within(screen.getAllByTestId("fix-block")[0]);
-    expect(block.getByRole("link", { name: "MM014" })).toBeInTheDocument();
-    expect(block.getByText("Base unit of measure not valid")).toBeInTheDocument();
+    expect(block.getByRole("link", { name: "MM142" })).toBeInTheDocument();
+    expect(block.getByText("Base unit of measure MEINS must reference a valid entry in T006")).toBeInTheDocument();
     expect(block.getByText("MARA-MEINS")).toBeInTheDocument();
-    expect(block.getByText("PCS")).toBeInTheDocument();
+    expect(block.getByText("EACH")).toBeInTheDocument();
     const values = block.getByText("Possible values").parentElement as HTMLElement;
     expect(values).toHaveTextContent("EA Each");
     expect(values).toHaveTextContent("PC Piece");
@@ -98,8 +98,8 @@ describe("the record inspector", () => {
     expect(values).toHaveTextContent("ST Piece (German)");
     const suggested = block.getByText("Suggested value").parentElement as HTMLElement;
     expect(within(suggested).getByText("EA")).toHaveClass("m2-mono");
-    expect(block.getByLabelText("New value for MM014")).toBeInTheDocument();
-    expect(block.getByLabelText("Decision for MM014")).toBeInTheDocument();
+    expect(block.getByLabelText("New value for MM142")).toBeInTheDocument();
+    expect(block.getByLabelText("Decision for MM142")).toBeInTheDocument();
   });
 
   it("a record that fails several rules has one fix block each, worst first", async () => {
@@ -119,11 +119,11 @@ describe("the record inspector", () => {
     const spy = vi.spyOn(workApi, "postDecide");
     mount();
     await body();
-    const input = screen.getByLabelText("New value for MM014");
+    const input = screen.getByLabelText("New value for MM142");
     fireEvent.change(input, { target: { value: "KG" } });
     fireEvent.keyDown(input, { key: "Enter" });
     await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
-    expect(spy.mock.calls[0][0]).toEqual([expect.objectContaining({ module: "material_master", record_key: `MATNR=${KEY}`, check_id: "MM014", action: "edit", value: "KG" })]);
+    expect(spy.mock.calls[0][0]).toEqual([expect.objectContaining({ module: "material_master", record_key: `MATNR=${KEY}`, check_id: "MM142", action: "edit", value: "KG" })]);
     expect(spy.mock.calls[0][1]).toBe("d3229ded-0708-4967-9dfb-1b7f4fada953");
   });
 
@@ -131,12 +131,12 @@ describe("the record inspector", () => {
     const spy = vi.spyOn(workApi, "postDecide");
     mount();
     await body();
-    fireEvent.change(screen.getByLabelText("Decision for MM014"), { target: { value: "not an issue" } });
+    fireEvent.change(screen.getByLabelText("Decision for MM142"), { target: { value: "not an issue" } });
     const dialog = await screen.findByRole("dialog", { name: "Mark as not an issue" });
     fireEvent.change(within(dialog).getByLabelText("Reason"), { target: { value: "Legacy part" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Mark as not an issue" }));
     await waitFor(() => expect(spy).toHaveBeenCalled());
-    expect(spy.mock.calls[0][0]).toEqual([expect.objectContaining({ action: "not_an_issue", note: "Legacy part", check_id: "MM014" })]);
+    expect(spy.mock.calls[0][0]).toEqual([expect.objectContaining({ action: "not_an_issue", note: "Legacy part", check_id: "MM142" })]);
   });
 
   it("links: feature impact, provenance and history come from the record's links", async () => {
@@ -144,7 +144,7 @@ describe("the record inspector", () => {
     await body();
     const impact = await screen.findByTestId("feature-impact");
     expect(impact).toHaveTextContent("Migration cockpit: material load");
-    expect(impact).toHaveTextContent("blocked by MM014");
+    expect(impact).toHaveTextContent("blocked by MM142");
     expect(within(impact).getByRole("link", { name: "Material ledger actual costing" })).toBeInTheDocument();
     const prov = within(await screen.findByTestId("provenance"));
     expect(prov.getByText("MARA")).toBeInTheDocument();
@@ -180,7 +180,7 @@ describe("actions by permission", () => {
     expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
     fireEvent.click(acts.getByRole("button", { name: /Accept suggested/ }));
     await waitFor(() => expect(spy).toHaveBeenCalled());
-    expect(spy.mock.calls[0][0]).toEqual([expect.objectContaining({ action: "accept", check_id: "MM014" })]);
+    expect(spy.mock.calls[0][0]).toEqual([expect.objectContaining({ action: "accept", check_id: "MM142" })]);
     fireEvent.click(acts.getByRole("button", { name: /^Assign$/ }));
     fireEvent.click(await screen.findByRole("menuitem", { name: "Assign to me" }));
     await waitFor(() => expect(spy).toHaveBeenCalledTimes(2));
@@ -241,8 +241,8 @@ describe("actions by permission", () => {
     expect(screen.getByTestId("read-only")).toHaveTextContent("Read-only for your role");
     const acts = screen.getByRole("heading", { level: 3, name: "Actions" }).nextElementSibling as HTMLElement;
     expect(within(acts).queryByRole("button")).toBeNull();
-    expect(screen.queryByLabelText("New value for MM014")).toBeNull();
-    expect(screen.queryByLabelText("Decision for MM014")).toBeNull();
+    expect(screen.queryByLabelText("New value for MM142")).toBeNull();
+    expect(screen.queryByLabelText("Decision for MM142")).toBeNull();
   });
 });
 

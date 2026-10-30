@@ -378,6 +378,8 @@ const LABEL_OVERRIDES: Record<string, string> = {
 export function labelOf(value: string | null | undefined): string {
   if (!value) return "—";
   if (Object.hasOwn(LABEL_OVERRIDES, value)) return LABEL_OVERRIDES[value];
+  // An object id reads as the object's name ("fi_gl" is "FI general ledger"), never as a title-cased id.
+  if (Object.hasOwn(MODULE_LABELS, value)) return MODULE_LABELS[value];
   const s = value.replace(/[_-]+/g, " ").trim().toLowerCase();
   // System names are acronyms: "ecc" reads "ECC", never "Ecc".
   return (s.charAt(0).toUpperCase() + s.slice(1)).replace(/\b(ecc|ewm|btp)\b/gi, (m) => m.toUpperCase());

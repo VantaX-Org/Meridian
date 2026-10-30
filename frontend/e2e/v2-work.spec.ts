@@ -64,7 +64,7 @@ for (const size of SIZES) {
         if (phone) {
           const list = page.getByRole("list", { name: "Work ledger" });
           await expect(list.getByRole("listitem").first()).toBeVisible(NAV);
-          await expect(list.getByRole("button").first()).toContainText("MM031");
+          await expect(list.getByRole("button").first()).toContainText("MM003");
           await expect(list.locator("input")).toHaveCount(0);
         } else {
           const grid = page.getByRole("grid", { name: "Work ledger" });
@@ -128,7 +128,7 @@ for (const size of SIZES) {
         await bar.getByRole("button", { name: "Clear selection" }).click();
         await page.getByRole("button", { name: "By rule" }).click();
         await expect(page).toHaveURL(/group=rule/);
-        await expect(grid.getByRole("button", { name: /^MM014/ })).toHaveAttribute("aria-expanded", "true", NAV);
+        await expect(grid.getByRole("button", { name: /^MM142/ })).toHaveAttribute("aria-expanded", "true", NAV);
         await expect(grid.getByRole("button", { name: "Accept all 112 suggested" })).toBeVisible();
         await page.waitForLoadState("networkidle");
         await shot(page, "work-grouped");
@@ -150,7 +150,7 @@ for (const size of SIZES) {
         await expect(page).toHaveURL(/open=record%3Amaterial_master%3AMATNR%3D/);
         await expect(dialog.getByTestId("record-facts")).toBeVisible(NAV);
         await expect(dialog.getByTestId("record-facts").getByText("MARA-MEINS")).toBeVisible();
-        await expect(dialog.getByTestId("fix-block").first()).toContainText("MM014");
+        await expect(dialog.getByTestId("fix-block").first()).toContainText("MM142");
         await expect(dialog.getByTestId("feature-impact")).toContainText("Migration cockpit: material load");
         await expect(dialog.getByRole("button", { name: /Accept suggested/ })).toBeEnabled();
         if (phone) {

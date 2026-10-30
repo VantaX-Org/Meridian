@@ -63,7 +63,7 @@ describe("Runs canvas", () => {
     const rows = await within(table).findAllByTestId("run-row");
     await waitFor(() => expect(norm(rows[0])).toContain("ECC production"));
     expect(rows).toHaveLength(9); // eight finished runs and one failed
-    expect(cells(rows[0])).toBe("16 Oct 2026, 05:17 ECC production — Scheduled 400,662 5,178 70.0 to 93.4 Complete 11 m 42 s");
+    expect(cells(rows[0])).toBe("16 Oct 2026, 05:17 ECC production — Scheduled 400,662 794 70.0 to 93.4 Complete 11 m 42 s");
     const failed = rows.find((r) => /Failed/.test(norm(r))) as HTMLElement;
     expect(cells(failed)).toContain("S/4HANA sandbox");
     expect(cells(failed)).toContain("Started by hand");

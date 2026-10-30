@@ -5,7 +5,7 @@ The **run canvas** shows one run: what it scored, object by object, and the jobs
 ## One run
 
 - **The title**: "Run 16 Oct 2026, 05:17" and the system.
-- **The facts line**: the system, records checked, rules measured, scoring time and trigger, for example "ECC production, 400,662 records checked, 5,178 rules measured, scored in 11 m 42 s, trigger scheduled".
+- **The facts line**: the system, records checked, rules measured, scoring time and trigger, for example "ECC production, 400,662 records checked, 794 rules measured, scored in 11 m 42 s, trigger scheduled".
 - **The sentence**: "15 objects scored: 2 go, 2 at risk, 11 no-go."
 - **Actions**: **Show scores from this run** (sets the run in the top bar so every canvas reads it), **Pin as baseline**, **Archive the 8 older runs**, **Download report**, **Compare with**.
 - **By object**: "Measured score, then the score shown after the cap". Each object with its measured score, shown score (with **capped**), verdict, records checked, rules and open work.

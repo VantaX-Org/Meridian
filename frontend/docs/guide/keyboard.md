@@ -7,7 +7,7 @@ Meridian can be driven from the keyboard: a whole ledger can be worked without t
 Open it with `⌘K` (Ctrl+K on Windows and Linux) or `/`. "Search or type a command." Type:
 
 - a **record key** such as a material number to open the record;
-- a **rule id** such as `MM014` to open the rule;
+- a **rule id** such as `MM142` to open the rule;
 - an **object and system**, such as "material master ECC", to open the object;
 - a **run** date to open the run;
 - a word: **approve** opens the batches waiting for approval; **export** saves the fix sheet of what is on screen.

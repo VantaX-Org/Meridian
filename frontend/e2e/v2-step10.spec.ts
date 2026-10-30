@@ -138,7 +138,7 @@ for (const size of SIZES) {
         await shot(page, "work-as-of");
         await page.goto(`${OBJECT}?fixture=1&as_of=${R3}`, { waitUntil: "load" });
         await expect(page.getByTestId("as-of-band")).toContainText("As it stood at the run of 18 Sept 2026", NAV);
-        await expect(page.getByTestId("as-of-rules")).toContainText("MM014");
+        await expect(page.getByTestId("as-of-rules")).toContainText("MM142");
         expect(await noSideways(page)).toBe(true);
         await shot(page, "object-as-of");
       });

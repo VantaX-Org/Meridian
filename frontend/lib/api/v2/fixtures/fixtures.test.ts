@@ -18,24 +18,24 @@ describe("landscape fixture reconciles with the approved prototype", () => {
     for (const [verdict, key] of [["go", "go"], ["at-risk", "at_risk"], ["no-go", "no_go"]] as const) expect(L.cells.filter((c) => c.verdict === verdict).length).toBe(L.counts[key]);
   });
 
-  it("the sentence is computed from the cells: 11 held at 70 by 70 critical rules, MM014 and MM031 release 2", () => {
-    expect(L.sentence).toEqual({ held_under_85: 11, objects: 15, critical_over_tolerance: 70, release_if_fixed: ["MM014", "MM031"], released: 2 });
+  it("the sentence is computed from the cells: 11 held at 70 by 30 critical rules, MM003 and MM035 release 1", () => {
+    expect(L.sentence).toEqual({ held_under_85: 11, objects: 15, critical_over_tolerance: 30, release_if_fixed: ["MM003", "MM035"], released: 1 });
     const held = L.cells.filter((c) => c.capped && c.cap_level === 70);
     expect(held).toHaveLength(11);
-    expect(held.reduce((n, c) => n + c.breaches.length, 0)).toBe(70);
+    expect(held.reduce((n, c) => n + c.breaches.length, 0)).toBe(29);
     const releasable = L.cells.filter((c) => c.breaches.length > 0 && c.breaches.every((b) => L.sentence.release_if_fixed.includes(b)));
-    expect(releasable.map((c) => c.module).sort()).toEqual(["material_master", "purchasing"]);
+    expect(releasable.map((c) => c.module).sort()).toEqual(["material_master"]);
   });
 
-  it("the status strip equals the sum of the cells: 400,662 records and 5,178 rules", () => {
+  it("the status strip equals the sum of the cells: 400,662 records and 794 rules", () => {
     expect(L.cells.reduce((n, c) => n + (c.records_checked ?? 0), 0)).toBe(L.status_strip.records_checked);
     expect(L.cells.reduce((n, c) => n + (c.rules_measured ?? 0), 0)).toBe(L.status_strip.rules_measured);
-    expect(L.status_strip).toMatchObject({ records_checked: 400662, rules_measured: 5178, scored_in_s: 702, cost_model: "ZAR v3", licence_valid_to: "2027-03-31" });
+    expect(L.status_strip).toMatchObject({ records_checked: 400662, rules_measured: 794, scored_in_s: 702, cost_model: "ZAR v3", licence_valid_to: "2027-03-31" });
   });
 
   it("Material master measures 71.8 and shows 70.0, capped by two critical rules", () => {
     const mm = L.cells.find((c) => c.module === "material_master");
-    expect(mm).toMatchObject({ raw_score: 71.8, score: 70, capped: true, cap_level: 70, breaches: ["MM014", "MM031"], verdict: "no-go", records_checked: 61816, rules_measured: 913, open_work: 25712 });
+    expect(mm).toMatchObject({ raw_score: 71.8, score: 70, capped: true, cap_level: 70, breaches: ["MM003", "MM035"], verdict: "no-go", records_checked: 61816, rules_measured: 80, open_work: 25712 });
     expect(mm?.dimensions).toEqual({ completeness: 62, accuracy: 72, consistency: 70, timeliness: 88, uniqueness: 90, validity: 65 });
   });
 
@@ -89,16 +89,16 @@ describe("receipt fixtures", () => {
   it("Material master carries the prototype's receipt: ZAR 4.2 m at risk, 3 blocked and 5 degraded features, 25,712 to fix", () => {
     const mm = fixtureResponse<Receipt>("/objects/material_master/receipt", {});
     expect(mm).toMatchObject({ value_at_risk: 4200000, currency: "ZAR", features_blocked: 3, features_degraded: 5, open_work: 25712, tolerance: { pct: 0.1, rows: 25 } });
-    expect(mm.breaches.map((b) => [b.check_id, b.failing])).toEqual([["MM014", 3640], ["MM031", 2904]]);
+    expect(mm.breaches.map((b) => [b.check_id, b.failing])).toEqual([["MM003", 2904], ["MM035", 1420]]);
     expect(mm.severity_weights).toEqual({ critical: 4, high: 3, medium: 2, low: 1 });
     expect(mm.cap_rule).toBe("85 at one critical rule over tolerance, 70 at two or more");
   });
 
-  it("never invents a figure it does not hold: other objects have null value at risk and null failing counts", () => {
+  it("never invents a figure it does not hold: other objects have null value at risk; their capping rules fail as the rules library says", () => {
     const bp = fixtureResponse<Receipt>("/objects/business_partner/receipt", {});
     expect(bp.value_at_risk).toBeNull();
     expect(bp.open_work).toBeNull();
-    expect(bp.breaches.every((b) => b.failing === null)).toBe(true);
+    expect(bp.breaches.every((b) => (b.failing ?? 0) > (b.tolerance_rows ?? 0))).toBe(true);
   });
 });
 
@@ -124,8 +124,8 @@ describe("the other fixture reads", () => {
   });
 
   it("command: a rule id, a material number and a word each find their group", () => {
-    const rule = fixtureResponse<CommandResult>("/command", { q: "mm014" });
-    expect(rule.groups.find((g) => g.kind === "rule")?.items[0].title).toBe("MM014: Base unit of measure not valid");
+    const rule = fixtureResponse<CommandResult>("/command", { q: "mm142" });
+    expect(rule.groups.find((g) => g.kind === "rule")?.items[0].title).toBe("MM142: Base unit of measure MEINS must reference a valid entry in T006");
     const rec = fixtureResponse<CommandResult>("/command", { q: "101" });
     expect(rec.groups.find((g) => g.kind === "record")?.items[0].title).toContain("000000000000000101");
     const act = fixtureResponse<CommandResult>("/command", { q: "export" });

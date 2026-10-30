@@ -63,9 +63,9 @@ describe("Admin, Policy packs", () => {
     expect(norm(sox)).toContain("SOX financial controls");
     expect(norm(sox)).toContain("Sarbanes-Oxley Act of 2002 (United States)");
     expect(norm(sox)).toContain("Applied 5 Oct 2026 by R. Govender");
-    expect(within(sox).getByTestId("policy-mark")).toHaveAttribute("aria-label", expect.stringContaining("1 policy class breached"));
+    expect(within(sox).getByTestId("policy-mark")).toHaveAttribute("aria-label", expect.stringContaining("4 policy classes breached"));
     const cov = within(sox).getByTestId("pack-coverage");
-    expect(norm(cov)).toContain("Classes breached1");
+    expect(norm(cov)).toContain("Classes breached4");
     expect(norm(within(list).getByTestId("pack-gdpr"))).toContain("Not applied since 20 Sept 2026");
     expect(screen.getByText(/2 of 3 packs applied/)).toBeInTheDocument();
   });
@@ -105,12 +105,13 @@ describe("Admin, Policy packs", () => {
     expect(norm(bank)).toContain("LFBK.BANKN");
     const table = within(bank).getByRole("table", { name: "Rules evidencing Vendor bank data" });
     expect(norm(table)).toContain("AP039");
-    expect(norm(table)).toContain("128 of 12,884");
+    expect(norm(table)).toContain("6 of 12,884");
     expect(within(bank).getByRole("link", { name: "Open the failing records in Work" })).toHaveAttribute("href", expect.stringContaining("policy=sox%3Avendor_bank"));
     const spy = vi.spyOn(s10, "getPolicyEvidence");
     fireEvent.change(within(insp).getByLabelText("Evidence of"), { target: { value: "b0600000-0000-4000-8000-000000000006" } });
     await waitFor(() => expect(spy).toHaveBeenCalledWith("sox", "b0600000-0000-4000-8000-000000000006"));
-    await waitFor(() => expect(norm(within(insp).getByTestId("class-vendor_bank"))).toContain("138 of 12,884"));
+    expect(norm(within(classes).getByTestId("class-gl_master"))).toContain("10 of 4,216");
+    await waitFor(() => expect(norm(within(insp).getByTestId("class-gl_master"))).toContain("11 of 4,216"));
   });
 });
 
@@ -119,7 +120,8 @@ describe("policy breaches on the cell, the ruler and the receipt", () => {
     const l = fixtureResponse<Landscape>("/landscape", {});
     const mm = l.cells.find((c) => c.module === "material_master");
     expect(mm?.policy_breaches).toBe(1);
-    expect(l.cells.find((c) => c.module === "gl_accounts")?.policy_breaches).toBe(0);
+    expect(l.cells.find((c) => c.module === "fi_gl")?.policy_breaches).toBe(1);
+    expect(l.cells.find((c) => c.module === "quality_management")?.policy_breaches).toBe(0);
     expect(policyMark(mm)?.title).toBe("1 policy class breached: a critical rule evidencing an applied policy pack fails");
     expect(policyMark({ policy_breaches: 0 })).toBeNull();
   });
@@ -132,9 +134,9 @@ describe("policy breaches on the cell, the ruler and the receipt", () => {
       </ObjectFrame>,
     );
     const block = await screen.findByTestId("receipt-policy");
-    expect(norm(block)).toContain("Batch identification");
-    expect(norm(block)).toContain("21 CFR 211.80(d) (lot identification)");
-    expect(within(block).getByRole("link", { name: "MM022" })).toBeInTheDocument();
+    expect(norm(block)).toContain("Inventory valuation");
+    expect(norm(block)).toContain("SOX Section 404(a) (controls over inventory valuation and stock account determination)");
+    expect(within(block).getByRole("link", { name: "MM035" })).toBeInTheDocument();
     const marks = screen.getAllByTestId("policy-mark");
     expect(marks.length).toBeGreaterThanOrEqual(2);
     expect(document.querySelector(".m2-ruler-box-lg [data-testid='policy-mark']")).not.toBeNull();
@@ -143,19 +145,19 @@ describe("policy breaches on the cell, the ruler and the receipt", () => {
 
 describe("the Policy chip on the Work ledger", () => {
   it("reads policy= from the address, lists only the records failing a rule of the class, and says the filter in words", async () => {
-    const rows = fixtureResponse<WorkPage>("/work/records", { policy: "gxp:batch_identity", scope: "current", status: "open" });
+    const rows = fixtureResponse<WorkPage>("/work/records", { policy: "sox:inventory_valuation", scope: "current", status: "open" });
     expect(rows.items.length).toBeGreaterThan(0);
-    expect(rows.items.every((r) => r.checks.includes("MM022"))).toBe(true);
-    setUrl("/work?fixture=1&policy=gxp:batch_identity&filter=open");
+    expect(rows.items.every((r) => r.checks.includes("MM035"))).toBe(true);
+    setUrl("/work?fixture=1&policy=sox:inventory_valuation&filter=open");
     renderWithQuery(
       <ToastProvider>
         <WorkCanvas />
       </ToastProvider>,
     );
     const tags = await screen.findByRole("list", { name: "Filters in force" });
-    await waitFor(() => expect(norm(tags)).toContain("Policy: Batch identification (GxP batch and quality)"));
+    await waitFor(() => expect(norm(tags)).toContain("Policy: Inventory valuation (SOX financial controls)"));
     const grid = await screen.findByRole("grid", { name: "Work ledger" });
-    await waitFor(() => expect(within(grid).getAllByText("MM022").length).toBe(rows.items.length));
+    await waitFor(() => expect(within(grid).getAllByText("MM035").length).toBe(rows.items.length));
     expect(screen.getByRole("button", { name: "By rule" })).toBeDisabled();
   });
 

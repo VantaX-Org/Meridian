@@ -123,7 +123,7 @@ describe("the person inspector", () => {
     expect(fact(insp, "SLA")).toContain("1 day");
     expect(fact(insp, "Breaches this month")).toContain("9");
     const objects = within(insp).getByTestId("person-objects");
-    expect(within(objects).getAllByRole("link").map(text)).toEqual(["Material master", "Purchasing"]);
+    expect(within(objects).getAllByRole("link").map(text)).toEqual(["Material master", "MM purchasing"]);
     expect(within(objects).getAllByRole("link")[0].getAttribute("href")).toContain("/o/ecc-production/material-master");
     const work = await within(insp).findByTestId("person-work");
     expect(text(work)).toContain("Material master");

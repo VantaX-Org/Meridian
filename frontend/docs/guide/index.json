@@ -62,7 +62,7 @@
             { "screen": "Landscape", "href": "/", "text": "Read how many batches wait for you and press Approve batch B-241." },
             { "screen": "Batch B-241", "href": "/work?open=batch%3AB-241", "text": "Read the changes and the approval trail, then Approve or Send back with a reason." },
             { "screen": "Waiting for approval", "href": "/work?filter=approvals", "text": "Every batch waiting, grouped by batch." },
-            { "screen": "Your object", "href": "/o/ecc-production/purchasing", "text": "Watch an object you own and apply the steward template to it." },
+            { "screen": "Your object", "href": "/o/ecc-production/mm-purchasing", "text": "Watch an object you own and apply the steward template to it." },
             { "screen": "Out of office", "href": "/people?open=away", "text": "Before you are away, set who covers your approvals." }
           ]
         },

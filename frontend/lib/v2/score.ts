@@ -142,7 +142,7 @@ export interface Reading {
   lowConfidence: boolean;
 }
 
-/** Names the capping rules: "MM014 and MM031", or the count when there are more than two. */
+/** Names the capping rules: "MM003 and MM035", or the count when there are more than two. */
 export function breachNames(breaches: readonly string[]): string {
   if (breaches.length === 0) return "";
   if (breaches.length <= 2) return breaches.join(t(" and "));

@@ -19,7 +19,7 @@ export function listWords(ids: readonly string[]): string {
   return t("{list} and {last}", { list: ids.slice(0, -1).join(", "), last: ids[ids.length - 1] });
 }
 
-/** The cap in words: "Capped at 70 by MM014 and MM031", "No cap". */
+/** The cap in words: "Capped at 70 by MM003 and MM035", "No cap". */
 export function capWords(s: SimState): string {
   const r = rulerOfState(s);
   if (!r.capped) return s.breaches.length ? t("Not capped: measured {measured} is under the cap of {cap}", { measured: f1(s.raw_score), cap: s.cap_level ?? (s.breaches.length >= 2 ? 70 : 85) }) : t("No cap: no critical rule over tolerance");

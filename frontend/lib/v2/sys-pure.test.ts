@@ -52,25 +52,25 @@ const rule = (name: string, over: Partial<Rule> = {}): Rule => ({
 
 describe("rules library", () => {
   it("splits the code from the message", () => {
-    expect(splitName("MM014: Base unit: not valid")).toEqual({ checkId: "MM014", message: "Base unit: not valid" });
+    expect(splitName("MM142: Base unit: not valid")).toEqual({ checkId: "MM142", message: "Base unit: not valid" });
     expect(splitName("Free text")).toEqual({ checkId: "Free text", message: "Free text" });
   });
-  const rows = toRows([rule("MM014: A", { severity: "low", last_affected_count: 1 }), rule("MM031: B", { severity: "critical" }), rule("BP001: C", { module: "business_partner", enabled: false, source: "custom" })], new Set(["MM031"]), new Map());
+  const rows = toRows([rule("MM142: A", { severity: "low", last_affected_count: 1 }), rule("MM003: B", { severity: "critical" }), rule("BP001: C", { module: "business_partner", enabled: false, source: "custom" })], new Set(["MM003"]), new Map());
   it("ranks worst severity first, then most failing", () => {
-    expect(rankRows(rows).map((r) => r.checkId)).toEqual(["MM031", "BP001", "MM014"]);
+    expect(rankRows(rows).map((r) => r.checkId)).toEqual(["MM003", "BP001", "MM142"]);
   });
   it("filters by object, state, search and counts the filters", () => {
     expect(filterRows(rows, { ...NO_FILTERS, module: "business_partner" }).map((r) => r.checkId)).toEqual(["BP001"]);
     expect(filterRows(rows, { ...NO_FILTERS, state: "disabled" })).toHaveLength(1);
-    expect(filterRows(rows, { ...NO_FILTERS, state: "suppressed" }).map((r) => r.checkId)).toEqual(["MM031"]);
+    expect(filterRows(rows, { ...NO_FILTERS, state: "suppressed" }).map((r) => r.checkId)).toEqual(["MM003"]);
     expect(filterRows(rows, { ...NO_FILTERS, state: "custom" }).map((r) => r.checkId)).toEqual(["BP001"]);
-    expect(filterRows(rows, { ...NO_FILTERS, search: "mm0" })).toHaveLength(2);
+    expect(filterRows(rows, { ...NO_FILTERS, search: "mm" })).toHaveLength(2);
     expect(activeFilterCount({ ...NO_FILTERS, search: "x", severity: "low" })).toBe(2);
   });
   it("dimension and class come from the object's coverage when it is known", () => {
-    const cov = new Map([["material_master", { module: "material_master", has_view_map: false, object: { module: "material_master", by_dimension: {}, total: 1, never_run: 0 }, views: [{ view: "all", label: "All", total: 1, tables: [], rules: [{ check_id: "MM014", message: "A", check_class: "null_check", severity: "low", dimension: "completeness", field: null, last_pass_rate: null }] }], dimension_by_view: {}, totals: { rules: 1, never_run: 0, views: 1, views_total: 1, tables: 0 } }]]);
-    const withMeta = toRows([rule("MM014: A"), rule("MM031: B")], new Set(), cov);
-    expect(filterRows(withMeta, { ...NO_FILTERS, dimension: "completeness" }).map((r) => r.checkId)).toEqual(["MM014"]);
+    const cov = new Map([["material_master", { module: "material_master", has_view_map: false, object: { module: "material_master", by_dimension: {}, total: 1, never_run: 0 }, views: [{ view: "all", label: "All", total: 1, tables: [], rules: [{ check_id: "MM142", message: "A", check_class: "null_check", severity: "low", dimension: "completeness", field: null, last_pass_rate: null }] }], dimension_by_view: {}, totals: { rules: 1, never_run: 0, views: 1, views_total: 1, tables: 0 } }]]);
+    const withMeta = toRows([rule("MM142: A"), rule("MM003: B")], new Set(), cov);
+    expect(filterRows(withMeta, { ...NO_FILTERS, dimension: "completeness" }).map((r) => r.checkId)).toEqual(["MM142"]);
     expect(filterRows(withMeta, { ...NO_FILTERS, checkClass: "null_check" })).toHaveLength(1);
   });
 });

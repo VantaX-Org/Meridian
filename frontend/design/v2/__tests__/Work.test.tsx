@@ -52,8 +52,8 @@ function mount(search = "") {
 
 const ledger = () => screen.findByRole("grid", { name: "Work ledger" });
 const rowFor = (grid: HTMLElement, key: string) => within(grid).getByText(key).closest('[role="row"]') as HTMLElement;
-const KEY_100 = "000000000000000100"; // MM014, suggested EA
-const KEY_232 = "000000000000000232"; // MM031, no suggestion, the highest value at risk
+const KEY_100 = "000000000000000100"; // MM142, suggested EA
+const KEY_232 = "000000000000000232"; // MM003, no suggestion, the highest value at risk
 
 describe("the Work ledger, fixture mode", () => {
   it("states what it lists: the title, the sentence from the summary, the chips with their counts", async () => {
@@ -95,10 +95,10 @@ describe("the Work ledger, fixture mode", () => {
       "Value at risk",
     ]);
     const row = rowFor(grid, KEY_232);
-    expect(within(row).getByText("MM031")).toHaveClass("m2-mono");
+    expect(within(row).getByText("MM003")).toHaveClass("m2-mono");
     expect(within(row).getByText("Critical")).toBeInTheDocument();
     expect(within(row).getByText("MARA.MTART")).toBeInTheDocument();
-    expect(within(row).getByText("Material type missing")).toBeInTheDocument();
+    expect(within(row).getByText("Material type is mandatory - determines procurement and storage behaviour")).toBeInTheDocument();
     expect(within(row).getByText("12,390")).toBeInTheDocument();
     // Possible values are cut to three with "+N more" and the whole list in the title.
     const pv = within(row).getByText("+9 more");
@@ -136,13 +136,13 @@ describe("the Work ledger, fixture mode", () => {
   it("groups by rule: a heading per rule with 'Accept all N suggested', the top rule open", async () => {
     mount("&group=rule");
     const grid = await ledger();
-    const heading = await within(grid).findByRole("button", { name: /^MM014/ });
+    const heading = await within(grid).findByRole("button", { name: /^MM142/ });
     expect(heading).toHaveAttribute("aria-expanded", "true");
     expect(within(grid).getByRole("button", { name: "Accept all 112 suggested" })).toBeInTheDocument();
     expect(within(grid).getByRole("button", { name: "Accept all 640 suggested" })).toBeInTheDocument();
     // Only the open rule shows rows; the others are collapsed.
-    await waitFor(() => expect(within(grid).getAllByText("MM014").length).toBeGreaterThan(1));
-    expect(within(grid).getByRole("button", { name: /^MM031/ })).toHaveAttribute("aria-expanded", "false");
+    await waitFor(() => expect(within(grid).getAllByText("MM142").length).toBeGreaterThan(1));
+    expect(within(grid).getByRole("button", { name: /^MM003/ })).toHaveAttribute("aria-expanded", "false");
     expect(screen.getByRole("button", { name: "By rule" })).toHaveAttribute("aria-pressed", "true");
   });
 
@@ -151,8 +151,8 @@ describe("the Work ledger, fixture mode", () => {
     mount();
     const next = await screen.findByRole("button", { name: "Accept the 112 suggested values" });
     fireEvent.click(next);
-    await waitFor(() => expect(spy).toHaveBeenCalledWith("MM014", expect.any(String)));
-    expect(await screen.findByText(/Accepted 112 suggested values for MM014/)).toBeInTheDocument();
+    await waitFor(() => expect(spy).toHaveBeenCalledWith("MM142", expect.any(String)));
+    expect(await screen.findByText(/Accepted 112 suggested values for MM142/)).toBeInTheDocument();
     // The count moved: the next rule's values are now the next step.
     expect(await screen.findByRole("button", { name: "Accept the 640 suggested values" })).toBeInTheDocument();
   });
@@ -179,7 +179,7 @@ describe("the Work ledger, fixture mode", () => {
     fireEvent.click(within(screen.getByRole("region", { name: "Bulk actions" })).getByRole("button", { name: /Accept suggested/ }));
     await waitFor(() => expect(spy).toHaveBeenCalled());
     const [items, version] = spy.mock.calls[0];
-    expect(items).toEqual([expect.objectContaining({ module: "material_master", record_key: `MATNR=${KEY_100}`, check_id: "MM014", action: "accept" })]);
+    expect(items).toEqual([expect.objectContaining({ module: "material_master", record_key: `MATNR=${KEY_100}`, check_id: "MM142", action: "accept" })]);
     expect(version).toBe("d3229ded-0708-4967-9dfb-1b7f4fada953");
     expect(await screen.findByText("Accepted 1 suggested value")).toBeInTheDocument();
   });
@@ -214,7 +214,7 @@ describe("the Work ledger, fixture mode", () => {
     fireEvent.change(within(dialog).getByLabelText("Reason"), { target: { value: "Spare part, planned elsewhere" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Mark as not an issue" }));
     await waitFor(() => expect(spy).toHaveBeenCalled());
-    expect(spy.mock.calls[0][0]).toEqual([expect.objectContaining({ action: "not_an_issue", note: "Spare part, planned elsewhere", check_id: "MM031" })]);
+    expect(spy.mock.calls[0][0]).toEqual([expect.objectContaining({ action: "not_an_issue", note: "Spare part, planned elsewhere", check_id: "MM003" })]);
     // The row has left the list of rows to fix, and the notice offers Undo.
     await waitFor(() => expect(within(screen.getByRole("grid", { name: "Work ledger" })).queryByText(KEY_232)).toBeNull());
     expect(await screen.findByText("Marked 1 record as not an issue")).toBeInTheDocument();
@@ -239,7 +239,7 @@ describe("the Work ledger, fixture mode", () => {
     await within(grid).findByText(KEY_100);
     fireEvent.change(within(rowFor(grid, KEY_100)).getByLabelText(`Decision for ${KEY_100}`), { target: { value: "fix" } });
     await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
-    expect(spy).toHaveBeenCalledWith([{ module: "material_master", record_key: `MATNR=${KEY_100}`, check_id: "MM014", action: "accept", value: undefined, note: undefined, assignee: undefined }], "d3229ded-0708-4967-9dfb-1b7f4fada953");
+    expect(spy).toHaveBeenCalledWith([{ module: "material_master", record_key: `MATNR=${KEY_100}`, check_id: "MM142", action: "accept", value: undefined, note: undefined, assignee: undefined }], "d3229ded-0708-4967-9dfb-1b7f4fada953");
   });
 
   it("a Decision of accept risk needs a reason and sends accept_risk with it", async () => {
@@ -274,7 +274,7 @@ describe("the Work ledger, fixture mode", () => {
     expect(spy).not.toHaveBeenCalled();
     fireEvent.keyDown(input, { key: "Enter" });
     await waitFor(() => expect(spy).toHaveBeenCalled());
-    expect(spy.mock.calls[0][0]).toEqual([expect.objectContaining({ module: "material_master", record_key: `MATNR=${KEY_232}`, check_id: "MM031", action: "edit", value: "ROH" })]);
+    expect(spy.mock.calls[0][0]).toEqual([expect.objectContaining({ module: "material_master", record_key: `MATNR=${KEY_232}`, check_id: "MM003", action: "edit", value: "ROH" })]);
   });
 
   it("an error from the API puts the row back and shows the server's sentence", async () => {
@@ -427,7 +427,7 @@ describe("the Work ledger, fixture mode", () => {
   });
 
   it("an empty list says what would fill it", async () => {
-    mount("&filter=exceptions&rule=MM105&severity=critical");
+    mount("&filter=exceptions&rule=MM028&severity=critical");
     expect(await screen.findByText(/No record is signed off/)).toBeInTheDocument();
   });
 });
@@ -581,7 +581,7 @@ describe("phone: rows are two-line list items", () => {
       expect(screen.queryByRole("grid", { name: "Work ledger" })).toBeNull();
       const first = await within(list).findByRole("button", { name: new RegExp(KEY_232) });
       expect(text(first)).toContain("Hydraulic hose 3/8 in");
-      expect(text(first)).toContain("MM031");
+      expect(text(first)).toContain("MM003");
       expect(first.querySelector("input")).toBeNull();
       fireEvent.click(first);
       expect(decodeURIComponent(getUrl())).toContain(`open=record:material_master:MATNR=${KEY_232}`);

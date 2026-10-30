@@ -11,7 +11,7 @@ export const en = {
   "People": "People",
   "Search or type a command": "Search or type a command",
   "Results": "Results",
-  "No match for {q}. Try a material number, a rule id such as MM014, or a word such as approve or export.": "No match for {q}. Try a material number, a rule id such as MM014, or a word such as approve or export.",
+  "No match for {q}. Try a material number, a rule id such as MM142, or a word such as approve or export.": "No match for {q}. Try a material number, a rule id such as MM142, or a word such as approve or export.",
   "Searching": "Searching",
   "About {label}": "About {label}",
   "The explanation could not be read for this run.": "The explanation could not be read for this run.",
