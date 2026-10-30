@@ -366,7 +366,8 @@ async def decide_task(
     role: str = Depends(require_permission("approve")),
 ) -> dict:
     """Approve or reject a waiting step. A rejection says why. A fix batch step goes through the batch's approve (or,
-    rejected, its send-back), so the batch follows the decision."""
+    rejected, its send-back), so the batch follows the decision; a change request step goes through the request's
+    decision, so the request follows (and, approved, goes to SAP or the export)."""
     if body.decision == "reject" and not (body.comment or "").strip():
         raise HTTPException(status_code=422, detail="Say why you reject it.")
     await _rls(db, tenant)
@@ -382,12 +383,7 @@ async def decide_task(
             return await remediation.approve_batch(uuid.UUID(oid), request, db, tenant, role)
         return await remediation.send_back_batch(uuid.UUID(oid), remediation.SendBack(note=body.comment or ""),
                                                  request, db, tenant, role)
-    actions = await _caller_actions(request, db, tenant, role)
-    uid, label = current_user_id(request), current_user_label()
-    try:
-        res = await db.run_sync(lambda s: workflow.decide(s, str(tenant.id), str(task_id), uid, label, body.decision,
-                                                          body.comment, actions))
-    except workflow.WorkflowError as e:
-        raise _err(e)
-    await db.commit()
-    return res
+    from api.routes import change_requests
+    detail = await change_requests.decide(db, tenant, request, oid, str(task_id), body.decision, body.comment,
+                                          await _caller_actions(request, db, tenant, role))
+    return detail.model_dump(mode="json")

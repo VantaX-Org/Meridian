@@ -129,6 +129,7 @@ from api.routes.balance import router as balance_router
 from api.routes.collab import router as collab_router
 from api.routes.delegations import router as delegations_router
 from api.routes.workflows import router as workflows_router
+from api.routes.change_requests import router as change_requests_router
 from api.routes.governance import router as governance_router
 from api.routes.grid_export import router as grid_export_router
 from api.routes.share_links import router as share_links_router
@@ -500,7 +501,8 @@ app.include_router(status_page_router)
 app.include_router(diagnostics_router)
 app.include_router(theme_router)
 app.include_router(compliance_router)
-for _r in (admin_tools_router, balance_router, collab_router, delegations_router, workflows_router, governance_router,
+for _r in (admin_tools_router, balance_router, collab_router, delegations_router, workflows_router, change_requests_router,
+           governance_router,
            grid_export_router, share_links_router, stewardship_template_router):
     app.include_router(_r)
 

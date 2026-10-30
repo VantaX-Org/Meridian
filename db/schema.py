@@ -3255,3 +3255,84 @@ class WorkflowEvent(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
 
     __table_args__ = (Index("ix_workflow_events_object", "tenant_id", "object_kind", "object_id", "created_at"),)
+
+
+# ── Master data change requests (migration 120) ──────────────────────────────
+
+
+class ChangeRequest(Base):
+    """A proposed create or change of a material, customer, vendor or business partner (api/services/change_requests.py)."""
+    __tablename__ = "change_requests"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    kind = Column(Text, nullable=False)  # create | change
+    object = Column(Text, nullable=False)  # material | customer | vendor | business_partner
+    target_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id", ondelete="SET NULL"), nullable=True)
+    object_key = Column(Text, nullable=True)
+    title = Column(Text, nullable=True)
+    payload = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    status = Column(Text, nullable=False, server_default="draft")
+    requester_id = Column(UUID(as_uuid=True), nullable=True)
+    requester_label = Column(Text, nullable=True)
+    workflow_instance_id = Column(UUID(as_uuid=True), ForeignKey("workflow_instances.id", ondelete="SET NULL"),
+                                  nullable=True)
+    precheck = Column(JSONB, nullable=True)
+    validated_at = Column(DateTime(timezone=True), nullable=True)
+    sap_key = Column(Text, nullable=True)
+    sap_result = Column(JSONB, nullable=True)
+    sap_phase = Column(Text, nullable=True)
+    sap_attempts = Column(Integer, nullable=False, server_default="0")
+    delivery = Column(Text, nullable=True)  # sap | export
+    export = Column(JSONB, nullable=True)
+    reason = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    submitted_at = Column(DateTime(timezone=True), nullable=True)
+    decided_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("kind IN ('create', 'change')", name="ck_change_requests_kind"),
+        CheckConstraint("object IN ('material', 'customer', 'vendor', 'business_partner')",
+                        name="ck_change_requests_object"),
+        CheckConstraint("status IN ('draft', 'submitted', 'in_approval', 'approved', 'rejected', 'creating', "
+                        "'created', 'failed', 'cancelled')", name="ck_change_requests_status"),
+        CheckConstraint("kind = 'create' OR object_key IS NOT NULL", name="ck_change_requests_change_key"),
+        Index("ix_change_requests_status", "tenant_id", "status", "created_at"),
+        Index("ix_change_requests_requester", "tenant_id", "requester_id", "created_at"),
+    )
+
+
+class ChangeRequestAttachment(Base):
+    """Metadata of a file attached to a change request."""
+    __tablename__ = "change_request_attachments"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    request_id = Column(UUID(as_uuid=True), ForeignKey("change_requests.id", ondelete="CASCADE"), nullable=False)
+    filename = Column(Text, nullable=False)
+    content_type = Column(Text, nullable=True)
+    size_bytes = Column(BigInteger, nullable=True)
+    sha256 = Column(Text, nullable=True)
+    storage_key = Column(Text, nullable=True)
+    uploaded_by = Column(UUID(as_uuid=True), nullable=True)
+    uploaded_by_label = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (Index("ix_change_request_attachments_request", "tenant_id", "request_id"),)
+
+
+class ChangeRequestComment(Base):
+    """One comment on a change request."""
+    __tablename__ = "change_request_comments"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    request_id = Column(UUID(as_uuid=True), ForeignKey("change_requests.id", ondelete="CASCADE"), nullable=False)
+    author_id = Column(UUID(as_uuid=True), nullable=True)
+    author_label = Column(Text, nullable=True)
+    body = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (Index("ix_change_request_comments_request", "tenant_id", "request_id", "created_at"),)
