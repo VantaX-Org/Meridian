@@ -2,7 +2,7 @@ import uuid
 from typing import AsyncGenerator
 
 from fastapi import Depends, Request
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from api.config import settings
@@ -41,7 +41,12 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with async_session_factory() as session:
         tenant_id = get_current_tenant_id()
         if tenant_id is not None:
-            await session.execute(text(f"SET LOCAL app.tenant_id = '{str(tenant_id)}'"))
+            # Every transaction, not only the first: after a commit the session checks out a pooled connection
+            # again, which may carry another request's tenant or none (an empty app.tenant_id fails every RLS
+            # cast). Seen in the acceptance run: POST /admin/sandbox/enter answered 500 after its commit.
+            tid = str(uuid.UUID(str(tenant_id)))
+            event.listen(session.sync_session, "after_begin", lambda _s, _tx, conn: conn.execute(
+                text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": tid}))
         yield session
 
 

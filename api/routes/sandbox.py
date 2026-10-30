@@ -79,6 +79,7 @@ async def enter_sandbox(request: Request, body: Optional[EnterBody] = None, db: 
                       {"sandbox": True, "source_run_id": source, "sandbox_run_id": vid, "copied": copied})
     mark_work_changed(db, tenant.id)  # the status strip, landscape and work summary now read the sandbox
     await db.commit()
+    await _rls(db, tenant)  # a new transaction: the tenant context of the one just committed may be gone
     return {**await sandbox.status(db, tenant.id), "source_run_id": source, "sandbox_run_id": vid, "copied": copied}
 
 
@@ -100,4 +101,5 @@ async def exit_sandbox(request: Request, db: AsyncSession = Depends(get_db), ten
                       {"sandbox": False, "discarded": discarded})
     mark_work_changed(db, tenant.id)
     await db.commit()
+    await _rls(db, tenant)  # a new transaction: the tenant context of the one just committed may be gone
     return {**await sandbox.status(db, tenant.id), "discarded": discarded}
