@@ -203,6 +203,20 @@ modules to tables; `sap/spro_tables.py` and `sap/baseline_config.py` read config
 a baseline. Extraction is read-only; the RFC SDK is never in the repository or the published images
 (`vendor/nwrfcsdk/README.md`).
 
+**How on-premise tables are read, and why a Basis team may object.** Every on-premise table read calls one
+function module, `RFC_READ_TABLE` (function group `SDTX`), from `sap/rfc.py` (`read_table` at line 273 and
+the paged `read_table_full`). There is no read function selection today: the name is fixed in the code, and
+there is no ODP, SLT or CDS-view path. To live within that function's limits the reader splits wide tables
+into column groups that each fit its 512-byte work area and joins them back on the key, pages by ranges of
+the leading key instead of `ROWSKIPS` (which makes SAP hold every skipped row and can repeat or miss rows),
+and can open a small pool of extra sessions for large reads. The cost for the customer: `RFC_READ_TABLE` is
+not released by SAP for customer use, needs `S_RFC` on `SDTX` and table-read authorisation
+(`S_TABU_NAM` per table, or broad `S_TABU_DIS` groups), and many Basis teams refuse it in production. The
+authorisations it needs are listed in `docs/sap-connector.md` section 2. An alternative reader (a
+configurable read function) and an authorisation role template (`docs/sap/authorisation-role-template.md`)
+are being added in October 2026 and are not in the code this document describes; see PC-1 in
+[roadmap-and-debt.md](roadmap-and-debt.md).
+
 ## 8. Control plane
 
 ```
