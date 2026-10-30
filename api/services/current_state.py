@@ -18,10 +18,27 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.services.run_lineage import lineage_sql
 from api.services.version_status import finished_sql
 
-CURRENT_RUNS_SQL = f"""
-    SELECT DISTINCT ON ({lineage_sql()}) id FROM analysis_versions
-     WHERE tenant_id = CAST(:t AS uuid) AND {finished_sql()}
-     ORDER BY {lineage_sql()}, run_at DESC"""
+def latest_runs_sql(tenant: str = "CAST(:t AS uuid)") -> str:
+    """SQL selecting ``id``: per lineage, its newest finished run, and the newest finished run of each object (module)
+    the lineage measured. Objects of one system are often run apart (one upload or download per object); the newest
+    run of the system alone would drop every other object of that system from the current state (acceptance run,
+    October 2026: a business partner run hid the system's material master run behind an older upload). Callers keep
+    each object once, from the newest of these runs (``CURRENT_PAIRS_SQL``, ``insights_aggregate.current_objects``)."""
+    return f"""
+    SELECT id FROM (
+        (SELECT DISTINCT ON ({lineage_sql()}) id FROM analysis_versions
+          WHERE tenant_id = {tenant} AND {finished_sql()}
+          ORDER BY {lineage_sql()}, run_at DESC)
+        UNION
+        (SELECT DISTINCT ON ({lineage_sql('lr')}, k.module) lr.id FROM analysis_versions lr
+          CROSS JOIN LATERAL jsonb_object_keys(CASE WHEN jsonb_typeof(lr.dqs_summary) = 'object'
+                                                    THEN lr.dqs_summary ELSE '{{}}'::jsonb END) AS k(module)
+          WHERE lr.tenant_id = {tenant} AND {finished_sql('lr.status')}
+          ORDER BY {lineage_sql('lr')}, k.module, lr.run_at DESC)
+    ) latest_runs"""
+
+
+CURRENT_RUNS_SQL = latest_runs_sql()
 
 # Same rule as insights_aggregate._CURRENT_OBJECTS_SQL, over the run set above.
 CURRENT_PAIRS_SQL = f"""
@@ -50,7 +67,10 @@ async def current_pairs(db: AsyncSession, tenant_id, module: Optional[str] = Non
 # The current state as it stood when run ``:asof`` finished: the same rule over the runs at or before it.
 _AS_OF = ("AND run_at <= (SELECT a.run_at FROM analysis_versions a WHERE a.id = CAST(:asof AS uuid) "
           "AND a.tenant_id = CAST(:t AS uuid))")
-CURRENT_PAIRS_AS_OF_SQL = CURRENT_PAIRS_SQL.replace(f"{finished_sql()}\n", f"{finished_sql()} {_AS_OF}\n", 1)
+_LR_AS_OF = _AS_OF.replace("AND run_at <=", "AND lr.run_at <=")
+CURRENT_PAIRS_AS_OF_SQL = (CURRENT_PAIRS_SQL
+                           .replace(f"{finished_sql()}\n", f"{finished_sql()} {_AS_OF}\n", 1)
+                           .replace(f"{finished_sql('lr.status')}\n", f"{finished_sql('lr.status')} {_LR_AS_OF}\n", 1))
 
 
 async def current_pairs_as_of(db: AsyncSession, tenant_id, as_of_run: str, module: Optional[str] = None) -> list[dict]:
