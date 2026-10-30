@@ -1,7 +1,7 @@
 """Interface health and S/4HANA master data depth rules (IDH009+, S4C011+): integrity and conditional proofs."""
 import json
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 import pytest
@@ -25,7 +25,7 @@ for _mod, (_prefix, _start, _) in PACKS.items():
             NEW.append(_r)
 SENSITIVE = re.compile(r"NAME|ORT|CITY|POST|STRAS|STCD|STCEG|BANKN|BANKL|IBAN|BKONT|BIRTH|DEATH|PFACH|PSTL|TEL|SMTP")
 TECHNICAL = {"QNAME"}  # qRFC queue name, not a personal name
-NOW = datetime.now()
+NOW = datetime.now(timezone.utc)  # also the run's as-of date, so a test that crosses midnight ages nothing
 
 
 def frame(table, **cols):
@@ -34,7 +34,7 @@ def frame(table, **cols):
 
 def fire(rid, tables, refs=None):
     frames = TableFrames(tables, DDIC, module=MODULE[rid])
-    _, res = run_rule(dict(RULES[rid]), frames, refs)
+    _, res = run_rule({**RULES[rid], "_as_of": NOW}, frames, refs)
     assert res is not None and not res.error, (rid, res and res.error)
     return res.affected_count, res.total_count
 
