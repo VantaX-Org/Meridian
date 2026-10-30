@@ -5,7 +5,7 @@ import { formatDate } from "@/lib/format";
 import type { Job } from "@/types/jobs";
 import { retryJobById } from "@/lib/api/v2/runs";
 import { useV2Session } from "@/lib/v2/hooks";
-import { JOB_KIND_LABEL, JOB_STATUS_LABEL, jobObject, jobSeconds, retryPermission } from "@/lib/v2/jobs";
+import { JOB_KIND_LABEL, JOB_STATUS_LABEL, jobObject, jobSeconds, readPathLabel, retryPermission } from "@/lib/v2/jobs";
 import { useLandscape } from "@/lib/v2/queries";
 import { useV2Job } from "@/lib/v2/runs-queries";
 import { int } from "@/lib/v2/score";
@@ -37,6 +37,7 @@ function StatusWord({ job }: { job: Job }) {
 
 function TableProgress({ job }: { job: Job }) {
   if (job.tables.length === 0) return null;
+  const withPath = job.tables.some((t) => t.path);
   return (
     <>
       <h3>{tr("Tables")}</h3>
@@ -45,6 +46,7 @@ function TableProgress({ job }: { job: Job }) {
           <tr>
             <th scope="col">{tr("Table")}</th>
             <th scope="col">{tr("State")}</th>
+            {withPath ? <th scope="col">{tr("Read through")}</th> : null}
             <th scope="col" className="m2-r">
               {tr("Rows")}
             </th>
@@ -57,6 +59,7 @@ function TableProgress({ job }: { job: Job }) {
                 <Mono>{t.table}</Mono>
               </td>
               <td>{t.status === "live" ? tr("Read") : t.status === "failed" ? tr("Failed") : t.status === "running" ? tr("Reading") : t.status === "queued" ? tr("Waiting") : t.status.replace(/_/g, " ")}</td>
+              {withPath ? <td data-testid="job-table-path">{readPathLabel(t)}</td> : null}
               <td className="m2-r">{t.expected ? tr("{rows} of {expected}", { rows: int(t.rows), expected: int(t.expected) }) : int(t.rows)}</td>
             </tr>
           ))}

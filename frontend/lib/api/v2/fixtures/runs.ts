@@ -292,11 +292,11 @@ function stages(kind: string, current: string | null, failed = false): JobStage[
 const done = (kind: string): JobStage[] => stages(kind, null).map((s) => ({ ...s, status: "done" as const }));
 
 const TABLES_ECC: JobTable[] = [
-  { table: "MARA", status: "live", rows: 61816, expected: 61816 },
-  { table: "MARC", status: "live", rows: 148230, expected: 148230 },
-  { table: "MBEW", status: "live", rows: 96104, expected: 96104 },
-  { table: "BUT000", status: "live", rows: 48210, expected: 48210 },
-  { table: "LFA1", status: "live", rows: 12884, expected: 12884 },
+  { table: "MARA", path: "table_reader", status: "live", rows: 61816, expected: 61816 },
+  { table: "MARC", path: "table_reader", status: "live", rows: 148230, expected: 148230 },
+  { table: "MBEW", path: "table_reader", status: "live", rows: 96104, expected: 96104 },
+  { table: "BUT000", path: "table_reader", status: "live", rows: 48210, expected: 48210 },
+  { table: "LFA1", path: "table_reader", status: "live", rows: 12884, expected: 12884 },
 ];
 
 function jobs(): Job[] {
@@ -315,9 +315,9 @@ function jobs(): Job[] {
       rows_total: 400662,
       message: "Reading MARC",
       tables: [
-        { table: "MARA", status: "live", rows: 61816, expected: 61816 },
-        { table: "MARC", status: "running", rows: 106584, expected: 148230 },
-        { table: "MBEW", status: "queued", rows: 0, expected: 96104 },
+        { table: "MARA", status: "live", rows: 61816, expected: 61816, path: "odp", provider: "0MATERIAL_ATTR" },
+        { table: "MARC", status: "running", rows: 106584, expected: 148230, path: "table_reader" },
+        { table: "MBEW", status: "queued", rows: 0, expected: 96104, path: "table_reader" },
       ],
       error: null,
       result: null,
@@ -450,10 +450,10 @@ function startedJob(kind: Job["kind"], id: string, label: string, systemId: stri
 // ── Systems ──────────────────────────────────────────────────────────────────────────────────
 
 export function systemsExtended(): SAPSystemExtended[] {
-  const base = { sysnr: null, username: null, company_id: null, auth_type: null, token_url: null, description: null, is_active: true, config_last_synced_at: null, config_sync_status: null, created_at: "2026-06-01T08:00:00Z", updated_at: "2026-10-16T04:41:00Z", last_sync_at: null, last_sync_status: null, discovery_status: null, discovered_at: null, base_url: null, host: null, last_health_check: null, sap_release: null, last_analysis_at: null, role: "source", target_system_id: null } as const;
+  const base = { sysnr: null, username: null, company_id: null, auth_type: null, token_url: null, description: null, is_active: true, config_last_synced_at: null, config_sync_status: null, created_at: "2026-06-01T08:00:00Z", updated_at: "2026-10-16T04:41:00Z", last_sync_at: null, last_sync_status: null, discovery_status: null, discovered_at: null, base_url: null, host: null, last_health_check: null, sap_release: null, last_analysis_at: null, role: "source", target_system_id: null, extraction_path: "table_reader", read_function: null } as const;
   return [
     { ...base, id: ECC.id, name: ECC.name, system_type: "ecc", host: "ecc-prd.example.internal", client: "100", sysnr: "00", auth_type: "rfc", environment: "PRD", health_status: "healthy", health_message: "RFC connection succeeded (client 100, 41 ms)", last_health_check: "2026-10-29T06:30:00Z", config_last_synced_at: "2026-10-12T06:03:20Z", config_sync_status: "completed", last_sync_at: "2026-10-16T04:41:00Z", last_sync_status: "completed" },
-    { ...base, id: S4.id, name: S4.name, system_type: "s4hana_onprem", host: "s4-sbx.example.internal", client: "200", sysnr: "00", auth_type: "rfc", environment: "QAS", health_status: "healthy", health_message: "RFC connection succeeded (client 200, 55 ms)", last_health_check: "2026-10-29T06:30:00Z", last_sync_at: "2026-10-14T22:10:00Z", last_sync_status: "completed" },
+    { ...base, id: S4.id, name: S4.name, system_type: "s4hana_onprem", host: "s4-sbx.example.internal", client: "200", sysnr: "00", auth_type: "rfc", extraction_path: "auto", read_function: "auto", environment: "QAS", health_status: "healthy", health_message: "RFC connection succeeded (client 200, 55 ms)", last_health_check: "2026-10-29T06:30:00Z", last_sync_at: "2026-10-14T22:10:00Z", last_sync_status: "completed" },
     { ...base, id: SF.id, name: SF.name, system_type: "successfactors", client: null, base_url: "https://api.example.successfactors.com/odata/v2", company_id: "MERIDIANDEMO", auth_type: "oauth2_client_credentials", environment: "PRD", health_status: "auth_failed", health_message: "OData refused credentials (HTTP 401)", last_health_check: "2026-10-15T09:12:04Z" },
   ];
 }

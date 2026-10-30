@@ -485,6 +485,7 @@ function newSystem(b: Record<string, unknown>): SAPSystemExtended {
     token_url: (b.token_url as string) ?? null, description: (b.description as string) ?? null, environment: b.environment as SAPSystemExtended["environment"], is_active: true,
     health_status: "unknown", health_message: null, last_health_check: null, config_last_synced_at: null, config_sync_status: null, created_at: now, updated_at: now, last_sync_at: null, last_sync_status: null,
     discovery_status: null, discovered_at: null, sap_release: null, last_analysis_at: null, role: "source", target_system_id: null,
+    extraction_path: (b.extraction_path as SAPSystemExtended["extraction_path"]) ?? "table_reader", read_function: (b.read_function as SAPSystemExtended["read_function"]) ?? null,
   };
 }
 
@@ -509,6 +510,7 @@ export function sys6bWrite(method: string, path: string, body: unknown): unknown
       const patch: Partial<SAPSystemExtended> = { ...(rest as Partial<SAPSystemExtended>), updated_at: iso() };
       if (credentials && Object.keys(credentials).length) Object.assign(patch, { health_status: "unknown", health_message: "Credentials changed. Test the connection." });
       if (rest.token_url === "") patch.token_url = null;
+      if (rest.read_function === "") patch.read_function = null;
       st.patched.set(id, { ...(st.patched.get(id) ?? {}), ...patch });
       return allSystems().find((s) => s.id === id);
     }

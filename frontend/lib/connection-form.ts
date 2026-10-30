@@ -1,5 +1,5 @@
 import { length, oneOf, pattern, required, url, type FormErrors, type Rule, type Schema } from "@/lib/forms";
-import type { SystemType } from "@/types/api";
+import type { ExtractionPath, ReadFunction, SystemType } from "@/types/api";
 
 /** The pure part of the connect and edit forms (types, auth options, hints, validation, the request bodies), shared by the
  * current interface's dialog and the v2 connection form. */
@@ -17,6 +17,11 @@ export const TYPES: { value: SystemType; label: string }[] = [
 export const ENVIRONMENTS = [{ value: "PRD", label: "Production" }, { value: "QAS", label: "Quality" }, { value: "DEV", label: "Development" }];
 export const environmentLabel = (v: string) => ENVIRONMENTS.find((e) => e.value === v)?.label ?? v;
 export const RFC_TYPES: readonly SystemType[] = ["ecc", "s4hana_onprem", "ewm"];
+/** How an ABAP system's tables are read (sap/extraction_plan.py EXTRACTION_PATHS); odata is S/4HANA on premise only. */
+export const EXTRACTION_PATHS = ["table_reader", "odp", "auto", "odata"] as const;
+export const pathsFor = (type: SystemType): readonly string[] => (type === "s4hana_onprem" ? EXTRACTION_PATHS : EXTRACTION_PATHS.filter((p) => p !== "odata"));
+/** The table readers of sap/rfc.py; "" keeps the deployment's default. */
+export const READ_FUNCTIONS = ["", "RFC_READ_TABLE", "/BODS/RFC_READ_TABLE2", "BBP_RFC_READ_TABLE", "auto"] as const;
 /** Cloud types whose OAuth flow has no default token endpoint (sap/s4hana_cloud.py, sap/btp.py, sap/ariba.py). */
 export const NEEDS_TOKEN_URL: readonly SystemType[] = ["s4hana_cloud", "btp", "ariba"];
 
@@ -60,6 +65,7 @@ export const EMPTY = {
   name: "", system_type: "ecc", environment: "DEV", auth_type: "rfc",
   host: "", client: "", sysnr: "", username: "", password: "",
   base_url: "", token_url: "", company_id: "", client_id: "", client_secret: "", api_key: "",
+  extraction_path: "table_reader", read_function: "",
 };
 export type ConnectionValues = typeof EMPTY;
 export type Key = keyof ConnectionValues;
@@ -81,7 +87,8 @@ const FIELD_NAMES: Partial<Record<Key, string>> = {
  * Validation by connection kind: RFC systems need host, client, instance and password; cloud systems a base URL and
  * the secrets of their auth type. `secretsOptional` (the edit form) lets a secret stay empty: the stored one is kept.
  */
-export function schemaFor(type: SystemType, auth: string, { secretsOptional = false } = {}): Schema<ConnectionValues> {
+/** `odataPath`: an S/4HANA on premise system read through its Gateway, which then needs the Gateway base URL. */
+export function schemaFor(type: SystemType, auth: string, { secretsOptional = false, odataPath = false } = {}): Schema<ConnectionValues> {
   const secret = (message: string): Rule | undefined => (secretsOptional ? undefined : required(message));
   const common: Schema<ConnectionValues> = {
     name: [required("Enter a system name"), length(1, 100, "Use up to 100 characters")],
@@ -91,6 +98,9 @@ export function schemaFor(type: SystemType, auth: string, { secretsOptional = fa
   if (RFC_TYPES.includes(type)) {
     return {
       ...common,
+      extraction_path: oneOf([...pathsFor(type)]),
+      read_function: oneOf([...READ_FUNCTIONS]),
+      base_url: odataPath ? [required("Enter the Gateway base URL"), url()] : url(),
       host: [required("Enter the host name"), length(1, 255)],
       client: [required("Enter the 3-digit client"), pattern(/^\d{3}$/, "Enter a 3-digit client")],
       sysnr: [required("Enter the 2-digit instance number"), pattern(/^\d{2}$/, "Enter a 2-digit instance number")],
@@ -122,7 +132,7 @@ export function testBlockedHint(errors: FormErrors<ConnectionValues>, type: Syst
 
 /** The connection part of a register, update or test body, with only the secrets that were typed. */
 export function connectionOf(v: ConnectionValues): {
-  connection: { host?: string; client?: string; sysnr?: string; username?: string; base_url?: string; token_url?: string; company_id?: string; auth_type: string };
+  connection: { host?: string; client?: string; sysnr?: string; username?: string; base_url?: string; token_url?: string; company_id?: string; auth_type: string; extraction_path?: ExtractionPath; read_function?: ReadFunction };
   credentials: Record<string, string>;
 } {
   const type = v.system_type as SystemType;
@@ -130,7 +140,12 @@ export function connectionOf(v: ConnectionValues): {
   const username = v.username.trim();
   if (RFC_TYPES.includes(type)) {
     return {
-      connection: { host: v.host.trim(), client: v.client.trim(), sysnr: v.sysnr.trim(), auth_type: "rfc", ...(username ? { username } : {}) },
+      connection: {
+        host: v.host.trim(), client: v.client.trim(), sysnr: v.sysnr.trim(), auth_type: "rfc", ...(username ? { username } : {}),
+        extraction_path: (pathsFor(type).includes(v.extraction_path) ? v.extraction_path : "table_reader") as ExtractionPath,
+        ...(v.read_function ? { read_function: v.read_function as ReadFunction } : {}),
+        ...(type === "s4hana_onprem" && v.base_url.trim() ? { base_url: v.base_url.trim() } : {}),
+      },
       credentials: typed(["password"]),
     };
   }

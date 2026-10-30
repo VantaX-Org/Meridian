@@ -280,6 +280,35 @@ describe("the connection form", () => {
     expect(body).not.toHaveProperty("credentials");
   });
 
+  it("chooses the extraction path and the table reader of an ABAP system", async () => {
+    open(`connection:${ECC.id}`);
+    await screen.findByRole("form", { name: "Connection settings of ECC production" });
+    const path = screen.getByLabelText("Extraction path") as HTMLSelectElement;
+    expect(path.value).toBe("table_reader");
+    expect(Array.from(path.options).map((o) => o.value)).toEqual(["table_reader", "odp", "auto"]); // OData is S/4 only
+    fill("Extraction path", "odp");
+    fill("Table reader", "/BODS/RFC_READ_TABLE2");
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByText("ECC production is saved.")).toBeInTheDocument();
+    expect(bodyOf("PUT", `/systems/${ECC.id}`)).toMatchObject({ extraction_path: "odp", read_function: "/BODS/RFC_READ_TABLE2" });
+  });
+
+  it("the OData path of an S/4HANA on premise system needs the Gateway base URL", async () => {
+    const S4 = landscapeFixture.systems[1];
+    open(`connection:${S4.id}`);
+    await screen.findByRole("form", { name: `Connection settings of ${S4.name}` });
+    expect((screen.getByLabelText("Extraction path") as HTMLSelectElement).value).toBe("auto");
+    expect((screen.getByLabelText("Table reader") as HTMLSelectElement).value).toBe("auto");
+    fill("Extraction path", "odata");
+    expect(screen.queryByLabelText("Table reader")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByText("Enter the Gateway base URL")).toBeInTheDocument();
+    expect(bodyOf("PUT", `/systems/${S4.id}`)).toBeUndefined();
+    fill("Gateway base URL", "https://s4gw.example.internal:44300");
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(bodyOf("PUT", `/systems/${S4.id}`)).toMatchObject({ extraction_path: "odata", base_url: "https://s4gw.example.internal:44300" }));
+  });
+
   it("rotates only the credentials", async () => {
     open(`connection:${ECC.id}`);
     await screen.findByRole("form", { name: "Connection settings of ECC production" });

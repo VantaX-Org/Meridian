@@ -87,6 +87,8 @@ def connect_sap_system(system_type: str, params: dict):
             sysnr=params["sysnr"],
             user=params["user"],
             password=params["password"],
+            read_function=params.get("read_function") or "",
+            extraction_path=params.get("extraction_path") or "",
         ))
         return connector
 
@@ -253,6 +255,8 @@ class ConnectivityManager:
                 "user": system_row.username or os.getenv("SAP_RFC_USER", "RFC_USER"),
                 "password": decrypt_password(self.tenant_id, encrypted) if encrypted else "",
             })
+            params["extraction_path"] = getattr(system_row, "extraction_path", None) or ""
+            params["read_function"] = getattr(system_row, "read_function", None) or ""
             if system_type == "s4hana_onprem":  # the Gateway, for the OData extraction path
                 auth = getattr(system_row, "auth_type", None)
                 params.update({"base_url": getattr(system_row, "base_url", None) or "",

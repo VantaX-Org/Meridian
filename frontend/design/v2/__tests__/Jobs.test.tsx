@@ -177,7 +177,10 @@ describe("the job inspector", () => {
     const bar = await screen.findByRole("progressbar");
     expect(bar).toHaveAttribute("aria-valuenow", "42");
     expect(screen.getByText("Reading MARC")).toBeInTheDocument();
-    expect(spaced(within(screen.getByTestId("job-tables")).getAllByRole("row")[2])).toBe("MARC Reading 106,584 of 148,230");
+    const rows = within(screen.getByTestId("job-tables")).getAllByRole("row");
+    expect(spaced(rows[0])).toBe("Table State Read through Rows");
+    expect(spaced(rows[1])).toBe("MARA Read ODP, 0MATERIAL_ATTR 61,816 of 61,816");
+    expect(spaced(rows[2])).toBe("MARC Reading Table reader 106,584 of 148,230");
     expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
   });
 

@@ -34,6 +34,25 @@ logger = logging.getLogger("meridian.systems")
 # ── Request / Response models ────────────────────────────────────────────────
 
 
+# How an ABAP system's tables are read (migration 118). odata: S/4HANA on premise through its Gateway only.
+ExtractionPath = Literal["table_reader", "odp", "odata", "auto"]
+# The table reader (sap/rfc.py READ_FUNCTIONS); None keeps the deployment's MERIDIAN_RFC_READ_FUNCTION.
+ReadFunction = Literal["RFC_READ_TABLE", "/BODS/RFC_READ_TABLE2", "BBP_RFC_READ_TABLE", "auto"]
+
+
+def extraction_path_error(system_type: str, path: Optional[str], base_url: Optional[str]) -> Optional[str]:
+    """Why ``path`` cannot be used on this system, or None."""
+    if not path or path == "table_reader":
+        return None
+    if system_type not in RFC_SYSTEM_TYPES:
+        return "The extraction path applies to ECC, S/4HANA on premise and EWM systems only."
+    if path == "odata" and system_type != "s4hana_onprem":
+        return "The OData extraction path is for S/4HANA on premise systems only."
+    if path == "odata" and not (base_url or "").strip():
+        return "The OData extraction path needs the Gateway's base URL, for example https://s4host:44300."
+    return None
+
+
 class RegisterSystemRequest(BaseModel):
     name: str
     system_type: str = Field(default="ecc")
@@ -54,6 +73,9 @@ class RegisterSystemRequest(BaseModel):
     # RFC: {"password": ...}. Cloud: {"client_id", "client_secret", "api_key", "password" (basic auth)}
     credentials: dict[str, str] = Field(default_factory=dict)
     role: str = Field(default="source", pattern="^(source|target)$")
+    # ABAP systems: how tables are read (sap/extraction_plan.py EXTRACTION_PATHS) and which table reader
+    extraction_path: ExtractionPath = "table_reader"
+    read_function: Optional[ReadFunction] = None
 
 
 class SystemResponse(BaseModel):
@@ -86,6 +108,8 @@ class SystemResponse(BaseModel):
     last_analysis_at: Optional[str] = None
     role: str = "source"
     target_system_id: Optional[str] = None
+    extraction_path: str = "table_reader"
+    read_function: Optional[str] = None
 
 
 class UpdateSystemRequest(BaseModel):
@@ -106,6 +130,8 @@ class UpdateSystemRequest(BaseModel):
     credentials: dict[str, str] = Field(default_factory=dict)
     role: Optional[str] = Field(default=None, pattern="^(source|target)$")
     target_system_id: Optional[str] = None  # "" clears the target
+    extraction_path: Optional[ExtractionPath] = None
+    read_function: Optional[Literal["RFC_READ_TABLE", "/BODS/RFC_READ_TABLE2", "BBP_RFC_READ_TABLE", "auto", ""]] = None  # "" clears it
 
 
 class TestConnectionResponse(BaseModel):
@@ -183,6 +209,8 @@ async def register_system(
         if not body.base_url:
             raise HTTPException(status_code=400, detail="base_url is required for this system_type")
         auth_type = body.auth_type or "oauth2_client_credentials"
+    if msg := extraction_path_error(body.system_type, body.extraction_path, body.base_url):
+        raise HTTPException(status_code=400, detail=msg)
 
     from api.services.credential_store import encrypt_password
 
@@ -190,11 +218,13 @@ async def register_system(
         text("""
             INSERT INTO sap_systems (
                 id, tenant_id, name, system_type, host, client, sysnr, username,
-                base_url, company_id, auth_type, token_url, description, environment, role
+                base_url, company_id, auth_type, token_url, description, environment, role,
+                extraction_path, read_function
             )
             VALUES (
                 gen_random_uuid(), :tid, :name, :system_type, :host, :client, :sysnr, :username,
-                :base_url, :company_id, :auth_type, :token_url, :description, :environment, :role
+                :base_url, :company_id, :auth_type, :token_url, :description, :environment, :role,
+                :extraction_path, :read_function
             )
             RETURNING id, name, system_type, host, client, sysnr, username, base_url, company_id,
                       auth_type, description, environment, is_active,
@@ -215,6 +245,8 @@ async def register_system(
             "description": body.description,
             "environment": body.environment,
             "role": body.role,
+            "extraction_path": body.extraction_path if body.system_type in RFC_SYSTEM_TYPES else "table_reader",
+            "read_function": body.read_function if body.system_type in RFC_SYSTEM_TYPES else None,
         },
     )
     row = result.fetchone()
@@ -274,6 +306,8 @@ async def register_system(
         updated_at=row[14],
         role=body.role,
         token_url=body.token_url,
+        extraction_path=body.extraction_path if body.system_type in RFC_SYSTEM_TYPES else "table_reader",
+        read_function=body.read_function if body.system_type in RFC_SYSTEM_TYPES else None,
     )
 
 
@@ -304,7 +338,7 @@ async def list_systems(
                    s.discovery_status, s.discovered_at::text, s.sap_release,
                    (SELECT max(v.run_at)::text FROM analysis_versions v
                     WHERE v.metadata->>'system_id' = s.id::text AND {finished_sql('v.status')}) AS last_analysis_at,
-                   s.role, s.target_system_id::text, s.token_url
+                   s.role, s.target_system_id::text, s.token_url, s.extraction_path, s.read_function
             FROM sap_systems s
             WHERE s.tenant_id = :tid
             ORDER BY s.created_at DESC
@@ -324,6 +358,7 @@ async def list_systems(
             last_sync_at=r[20], last_sync_status=r[21],
             discovery_status=r[22], discovered_at=r[23], sap_release=r[24], last_analysis_at=r[25],
             role=r[26], target_system_id=r[27], token_url=r[28],
+            extraction_path=r[29] or "table_reader", read_function=r[30],
         )
         for r in rows
     ]
@@ -357,9 +392,23 @@ async def update_system(
         if missing:
             raise HTTPException(status_code=422, detail=_reenter_message(changed, missing))
 
+    if body.extraction_path is not None:
+        if msg := extraction_path_error(stored["system_type"], body.extraction_path,
+                                        body.base_url if body.base_url is not None else stored["base_url"]):
+            raise HTTPException(status_code=400, detail=msg)
+    if body.read_function and stored["system_type"] not in RFC_SYSTEM_TYPES:
+        raise HTTPException(status_code=400, detail="The table reader applies to ECC, S/4HANA on premise and EWM "
+                                                    "systems only.")
+
     # Build dynamic SET clause
     updates = {}
     set_parts = []
+    if body.extraction_path is not None:
+        set_parts.append("extraction_path = :extraction_path")
+        updates["extraction_path"] = body.extraction_path
+    if body.read_function is not None:
+        set_parts.append("read_function = :read_function")
+        updates["read_function"] = body.read_function or None
     if body.name is not None:
         set_parts.append("name = :name")
         updates["name"] = body.name
@@ -474,7 +523,8 @@ async def update_system(
         text("""
             SELECT id, name, system_type, host, client, sysnr, username, base_url, company_id,
                    auth_type, description, environment, is_active,
-                   created_at::text, updated_at::text, role, target_system_id::text, token_url
+                   created_at::text, updated_at::text, role, target_system_id::text, token_url,
+                   extraction_path, read_function
             FROM sap_systems WHERE id = :sid AND tenant_id = :tid
         """),
         {"sid": system_id, "tid": str(tenant.id)},
@@ -488,7 +538,7 @@ async def update_system(
         sysnr=row[5], username=row[6], base_url=row[7], company_id=row[8], auth_type=row[9],
         description=row[10], environment=row[11], is_active=row[12],
         created_at=row[13], updated_at=row[14], role=row[15], target_system_id=row[16],
-        token_url=row[17],
+        token_url=row[17], extraction_path=row[18] or "table_reader", read_function=row[19],
     )
 
 

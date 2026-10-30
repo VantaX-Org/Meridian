@@ -28,6 +28,7 @@ class SAPConnectionParams:
     user: str
     password: str
     read_function: str = ""
+    extraction_path: str = ""   # table_reader | odp | odata | auto (sap/extraction_plan.py); empty: table_reader
 
 
 @dataclass

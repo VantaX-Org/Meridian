@@ -722,6 +722,10 @@ class SAPSystem(Base):
     role = Column(Text, nullable=False, server_default="source")  # source | target
     target_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id", ondelete="SET NULL"), nullable=True)
     timezone = Column(Text, nullable=True)  # IANA zone for SAP dates (migration 079); NULL = Africa/Johannesburg
+    # How an ABAP system's tables are read (migration 118, sap/extraction_plan.py EXTRACTION_PATHS):
+    # table_reader | odp | odata | auto; and the table reader itself (NULL = MERIDIAN_RFC_READ_FUNCTION)
+    extraction_path = Column(Text, nullable=False, server_default="table_reader")
+    read_function = Column(Text, nullable=True)
 
     credentials = relationship("SystemCredential", back_populates="system", cascade="all, delete-orphan")
     sync_profiles = relationship("SyncProfile", back_populates="system", cascade="all, delete-orphan")
