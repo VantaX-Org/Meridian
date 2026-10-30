@@ -38,15 +38,17 @@ COPY agents/ agents/
 COPY checks/ checks/
 COPY templates/ templates/
 
-# Compile to .pyc and strip source. __init__.py is NOT special-cased — see
-# Dockerfile.api.prod for why keeping-but-truncating it breaks packages whose
-# __init__.py carries real logic (sap/__init__.py's get_connector(), etc.):
-# Python prefers a present, even empty, .py over the sibling compiled .pyc.
-# db/migrations is excluded — Alembic needs real source there.
-RUN python -m compileall -b -f \
+# Compile to .pyc beside the source (-b) and strip the source. __init__.py is
+# NOT special-cased: see Dockerfile.api.prod for why keeping a stub breaks
+# packages whose __init__.py carries real logic (sap/__init__.py's
+# get_connector(), etc.). db/migrations is excluded: Alembic needs real source.
+RUN python -m compileall -b -f -q -x 'db/migrations/' \
         api/ llm/ sap/ workers/ db/ agents/ checks/ \
-    && find . -path "./db/migrations" -prune -o -name "*.py" -type f -delete && \
-    find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+    && find . -name "*.py" -not -path "./db/migrations/*" -delete \
+    && find . -name "__pycache__" -type d -prune -exec rm -rf {} +
+
+# Fail the build if any source outside db/migrations survived the strip.
+RUN ! find . -name "*.py" -not -path "./db/migrations/*" | grep .
 
 # === PRODUCTION STAGE ===
 FROM python:3.12-slim-bookworm
@@ -79,7 +81,8 @@ COPY --from=builder /build .
 ARG MERIDIAN_VERSION=0.0.0-dev
 RUN echo "$MERIDIAN_VERSION" > /app/VERSION
 
-RUN find . -name "*.py" ! -name "__init__.py" -delete 2>/dev/null || true
+# Prove the final image carries no application source (db/migrations stays).
+RUN ! find . -name "*.py" -not -path "./db/migrations/*" | grep .
 
 ENV PYTHONPATH=/app
 

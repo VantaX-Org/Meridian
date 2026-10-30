@@ -45,22 +45,23 @@ COPY frontend/docs/guide/ docs/guide/
 # the guide's recordings (the help panel plays them; the API serves them)
 COPY frontend/docs/help-videos/ docs/help-videos/
 
-# Compile all Python source to .pyc bytecode (exclude migrations - they must stay as .py)
-RUN python -m compileall -b -f \
-        api/ llm/ sap/ workers/ agents/ checks/ \
+# Compile all Python source to .pyc bytecode beside the source (-b), so the
+# sourceless loader finds module.pyc and package __init__.pyc once the .py is
+# gone. db/migrations is excluded: Alembic loads revision files by path and
+# needs real source there.
+RUN python -m compileall -b -f -q -x 'db/migrations/' \
+        api/ llm/ sap/ workers/ db/ agents/ checks/ \
     && echo "Compilation complete"
 
-# Strip all .py source (db/migrations excluded — Alembic needs real source
-# there). __init__.py is NOT special-cased: it used to be kept-but-truncated
-# to an empty stub instead of deleted, which silently broke every package
-# whose __init__.py carries real logic (e.g. sap/__init__.py's get_connector()
-# dispatch) — Python's import system prefers a present, even empty, .py file
-# over the sibling compiled __init__.pyc sitting right next to it. Deleting it
-# outright removes the same docstring IP and lets the already-working
-# sourceless-import mechanism (proven by every other module here) load the
-# compiled bytecode instead.
-RUN find . -path "./db/migrations" -prune -o -name "*.py" -type f -delete && \
-    find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+# Strip all .py source except db/migrations. __init__.py is NOT special-cased:
+# Python prefers a present, even empty, .py over the sibling compiled .pyc, so
+# keeping a stub would break packages whose __init__.py carries real logic
+# (e.g. sap/__init__.py's get_connector() dispatch).
+RUN find . -name "*.py" -not -path "./db/migrations/*" -delete \
+    && find . -name "__pycache__" -type d -prune -exec rm -rf {} +
+
+# Fail the build if any source outside db/migrations survived the strip.
+RUN ! find . -name "*.py" -not -path "./db/migrations/*" | grep .
 
 # === PRODUCTION STAGE ===
 FROM python:3.12-slim-bookworm
@@ -99,10 +100,11 @@ COPY --from=builder /build .
 # Copy alembic.ini for migrations (needed by installer)
 COPY alembic.ini /app/
 
-# Remove any stray development artifacts (preserve db/migrations/*.py for Alembic)
-RUN find . -path "./db/migrations" -prune -o -name "*.py" ! -name "__init__.py" -type f -delete 2>/dev/null || true && \
-    find . -name ".git" -type d -exec rm -rf {} + 2>/dev/null || true && \
-    find . -name "Makefile" -delete 2>/dev/null || true
+# Remove any stray development artifacts, then prove the image carries no
+# application source (db/migrations stays: Alembic needs it).
+RUN find . -name ".git" -type d -prune -exec rm -rf {} + \
+    && find . -name "Makefile" -delete \
+    && ! find . -name "*.py" -not -path "./db/migrations/*" | grep .
 
 # User management CLI (needs source .py, not compiled)
 COPY scripts/manage_users.py /app/scripts/manage_users.py
