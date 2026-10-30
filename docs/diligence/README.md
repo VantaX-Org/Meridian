@@ -18,8 +18,9 @@ code, these documents say so.
 | [operations.md](operations.md) | Deployment, upgrade and migration, backup and restore, RPO and RTO, monitoring, retention, scaling, the licence worker's failure behaviour, the support model. |
 | [data-governance.md](data-governance.md) | What data is stored and where, what leaves the deployment, retention and deletion, GDPR-relevant processing, policy packs, sandbox mode, the audit trail. |
 | [roadmap-and-debt.md](roadmap-and-debt.md) | The technical debt register (35 items with location, expected behaviour, effort, risk) and what the architecture allows next. |
-| [competitive-position.md](competitive-position.md) | A capability comparison with Informatica, Collibra, Ataccama, SAP MDG, Monte Carlo and Soda, each Meridian claim tied to a route or screen. |
-| [demo-script.md](demo-script.md) | A 30-minute buyer demo by role on fixture-mode URLs, and a 10-minute technical deep dive with commands. |
+| [competitive-position.md](competitive-position.md) | A capability comparison with the SAP-specialist vendors (SAP Information Steward, SAP MDG, Syniti, Precisely with Winshuttle, SNP) and the general platforms (Informatica, Collibra, Ataccama, Monte Carlo, Soda), each Meridian claim tied to a route or screen, and what the competitors do better. |
+| [demo-script.md](demo-script.md) | A 30-minute buyer demo by role on fixture data (stated as such), a live demo from synthetic extracts, and a 10-minute technical deep dive with commands. |
+| [provenance.md](provenance.md) | How the code was produced (AI-assisted development with Claude Code under one principal engineer), commits by author, what that means for IP, the history available, and the review process. |
 
 Supporting material:
 
