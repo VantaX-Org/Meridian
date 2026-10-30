@@ -32,7 +32,9 @@ from api.routes.record_issues import _rls
 from api.services.rbac import require_permission
 from api.services.receipt_math import DIMENSION_ORDER, OPEN_WORK, breach_ids, cap_level_of, records_checked_of, reweigh, rule_names
 from api.services.run_context import latest_run
-from api.services.scoring import critical_over_tolerance, effective_weights, scoring_config
+from api.services.scoring import (
+    critical_over_tolerance, dimensions_scored_as, effective_weights, scoring_config, scoring_dimension,
+)
 from checks.cost import effective as effective_cost_model
 
 router = APIRouter(prefix="/api/v1/explain", tags=["explain"], dependencies=[Depends(require_permission("view"))])
@@ -218,13 +220,15 @@ async def _dimension(c: _Ctx, dimension: Optional[str]) -> dict:
                                            "and carries no weight."], [])
     shares, _w, _m, reproduced = reweigh(s, c.configured)
     cov = (s.get("dimension_coverage") or {}).get(dimension)
+    # lifecycle and freshness rules score as timeliness (api/services/scoring.py DIMENSION_ALIASES)
+    declared = dimensions_scored_as(dimension)
     by_sev = {r[0]: (int(r[1]), int(r[2])) for r in (await c.db.execute(text(
         "SELECT severity, count(*), count(*) FILTER (WHERE affected_count > 0) FROM findings WHERE version_id = :v "
-        "AND tenant_id = :t AND module = :m AND dimension = :d GROUP BY severity"), {**c.p, "d": dimension})).fetchall()}
+        "AND tenant_id = :t AND module = :m AND dimension = ANY(:d) GROUP BY severity"), {**c.p, "d": declared})).fetchall()}
     population = (await c.db.execute(text(
-        "SELECT max(total_count) FROM findings WHERE version_id = :v AND tenant_id = :t AND module = :m AND dimension = :d"),
-        {**c.p, "d": dimension})).scalar()
-    in_dim = [b for b in await _breach_rows(c) if b["dimension"] == dimension]
+        "SELECT max(total_count) FROM findings WHERE version_id = :v AND tenant_id = :t AND module = :m "
+        "AND dimension = ANY(:d)"), {**c.p, "d": declared})).scalar()
+    in_dim = [b for b in await _breach_rows(c) if scoring_dimension(b["dimension"]) == dimension]
     sw = c.cfg["severity_weights"]
     n_rules = cov if isinstance(cov, int) else sum(v[0] for v in by_sev.values()) or None
     sentence = f"{dimension.capitalize()} {_n(dims[dimension])} = weighted pass rate across "
