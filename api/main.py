@@ -305,7 +305,11 @@ async def lifespan(app: FastAPI):
         logger.warning(f"Audit flush error: {e}")
 
 
-app = FastAPI(title="Meridian API", version="1.0.0", lifespan=lifespan)
+_API_DOCS = settings.api_docs_enabled()
+app = FastAPI(title="Meridian API", version="1.0.0", lifespan=lifespan,
+              docs_url="/docs" if _API_DOCS else None,
+              redoc_url="/redoc" if _API_DOCS else None,
+              openapi_url="/openapi.json" if _API_DOCS else None)
 # Unexpected exceptions only; HTTPException keeps FastAPI's own handler.
 app.add_exception_handler(Exception, unhandled_exception_handler)
 
