@@ -144,6 +144,9 @@ async def record_links(module: str, record_key: str,
                        check_id: Optional[str] = Query(None, max_length=64, description="leave this rule out of failing_rules"),
                        db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await _rls(db, tenant)
+    from api.services.not_found import record_known, require_object, unknown_record
+
+    await require_object(db, tenant.id, module)
     t = str(tenant.id)
     if run:
         try:
@@ -166,6 +169,8 @@ async def record_links(module: str, record_key: str,
          WHERE fr.tenant_id = CAST(:t AS uuid) AND fr.version_id = CAST(:v AS uuid) AND fr.module = :m AND fr.record_key = :k"""),
         {"t": t, "v": vid, "m": module, "k": record_key})).mappings().all()
     if not rows:
+        if not await record_known(db, tenant.id, module, record_key):
+            raise unknown_record(module, record_key)
         raise HTTPException(404, "This record does not fail any check in this run.")
 
     from api.routes.work import _shipped_rule

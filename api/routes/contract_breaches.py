@@ -57,9 +57,11 @@ async def contract_breaches(contract_id: uuid.UUID, limit: int = Query(200, ge=1
 async def object_contracts(module: str, run: uuid.UUID | None = Query(None), db: AsyncSession = Depends(get_db),
                            tenant: Tenant = Depends(get_tenant)) -> dict:
     """The active contracts covering the object and their breaches on run ``run`` (default: the object's latest)."""
+    from api.services.not_found import require_object
     from api.services.run_context import latest_run
 
     await _rls(db, tenant)
+    await require_object(db, tenant.id, module)
     t = str(tenant.id)
     run_id = str(run) if run else await latest_run(db, tenant.id, module=module)
     summary = await ce.summary_of(db, t, run_id) if run_id else {}

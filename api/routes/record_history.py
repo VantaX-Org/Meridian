@@ -205,6 +205,9 @@ async def object_as_of(module: str, run: uuid.UUID = Query(..., description="the
     from api.services.run_lineage import same_lineage_as
 
     await _rls(db, tenant)
+    from api.services.not_found import require_object
+
+    await require_object(db, tenant.id, module)
     t = str(tenant.id)
     at = (await db.execute(text("SELECT run_at FROM analysis_versions WHERE id = :v AND tenant_id = :t"),
                            {"v": str(run), "t": t})).scalar()

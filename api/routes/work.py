@@ -889,6 +889,11 @@ async def record(
          ORDER BY CASE f.severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
                   fr.check_id"""), p)).mappings().all()
     if not rows:
+        from api.services.not_found import record_known, require_object, unknown_record
+
+        await require_object(db, tenant.id, module)
+        if not await record_known(db, tenant.id, module, record_key):
+            raise unknown_record(module, record_key)
         raise HTTPException(status_code=404, detail="This record does not fail any check in this run.")
     cleaning = await _cleaning_rows(db, p)
 
