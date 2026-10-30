@@ -203,11 +203,13 @@ class ODPReader:
              on_package: Optional[Callable[[int, int], None]] = None) -> ODPRead:
         """Full extraction of ``odp``: OPEN, FETCH until no more data (or ``max_rows``), CLOSE.
 
-        ``wanted``: provider fields to keep (None = all). ``on_package(packages, rows)`` after every package.
+        ``wanted``: provider fields to keep, matched without regard to case (None = all).
+        ``on_package(packages, rows)`` after every package.
         """
         provider_fields = self.fields(context, odp)
         names = [f.name for f in provider_fields]
-        keep = names if wanted is None else [n for n in names if n in set(wanted)]
+        want = None if wanted is None else {w.upper() for w in wanted}  # CDS element names arrive upper-cased
+        keep = names if want is None else [n for n in names if n.upper() in want]
         opened = self._send(FN_OPEN, {"subscriber_type": subscriber_type(), "subscriber": self._subscriber,
                                       "process": f"{self._subscriber}_{odp}"[:30], "context": context, "odp": odp,
                                       "mode": FULL, "package_size": package_size()})

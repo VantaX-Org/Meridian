@@ -301,12 +301,17 @@ class ConnectivityManager:
         import os
 
         from api.services.source_design import dictionary_for
-        from sap.extraction_plan import (ABAP_SYSTEM_TYPES, PROCESS_EVENT_CLOUD_MODULES, pe_edges, plan_modules,
-                                         read_order, via_filters)
+        from sap.extraction_plan import (ABAP_SYSTEM_TYPES, PROCESS_EVENT_CLOUD_MODULES, choose_read_paths, pe_edges,
+                                         plan_modules, read_order, resolve_extraction_path, via_filters)
 
         system_row = self._load_system(system_id)
         system_type = system_row.system_type
         params = self._build_connection_params(system_row)
+        try:
+            path_setting = resolve_extraction_path(params.get("extraction_path"))
+        except ValueError as e:
+            logger.warning(f"extract {system_id}: {e}; reading with the table reader")
+            path_setting = "table_reader"
         max_rows = max_rows or int(os.getenv("MERIDIAN_EXTRACT_MAX_ROWS", "5000000"))
         dictionary = dictionary_for(self.session, system_id, system_type)
         frames: dict[str, pd.DataFrame] = {}
@@ -346,6 +351,11 @@ class ConnectivityManager:
                 for t, fs in controlled:
                     if t in plans:
                         plans[t].fields |= {f for f in fs if dictionary.field(t, f) is not None}
+                # ODP or the table reader, per table (sap/extraction_plan.py choose_read_paths)
+                odp_ok = path_setting == "auto" and hasattr(connector, "odp_reader") and \
+                    connector.odp_reader().available()
+                paths = choose_read_paths(plans, path_setting, system_type, odp_ok)
+                reader = getattr(connector, "read_function", None)
                 raw: dict[str, pd.DataFrame] = {}
                 # raw frames a later read filters by (via) or derives from (payroll); nothing else is kept
                 needed_raw = {x for p in plans.values() for x in (p.via, *p.also_via, *p.split_by.values()) if x} \
@@ -359,7 +369,8 @@ class ConnectivityManager:
                 # ponytail: tables without a SAP row count (filtered reads) weigh 1000 rows
                 weight = {tb: counts.get(tb) or 1000 for tb in order}
                 total_weight, done_weight = sum(weight.values()) or 1, 0
-                table_rows = {tb: {"table": tb, "status": "queued", "rows": 0, "expected": counts.get(tb)}
+                table_rows = {tb: {"table": tb, "status": "queued", "rows": 0, "expected": counts.get(tb),
+                                   "path": paths[tb].path, **({"provider": paths[tb].odp} if paths[tb].odp else {})}
                               for tb in order}
 
                 def report(table: Optional[str] = None, groups_done: int = 0, groups: int = 1, rows: int = 0) -> None:
@@ -402,11 +413,19 @@ class ConnectivityManager:
                     where = plan.where
                     delta_info: Optional[dict] = None
                     sliced: list[dict] = []
+                    rp = paths[table]
+                    path_info = self._path_info(rp, reader)
                     try:
+                        if rp.path == "odp":
+                            df, odp_info = self._odp_read(connector, rp, cols, max_rows,
+                                                          lambda rows: report(table, 0, 1, rows))
+                            path_info.update(odp_info)
+                        else:
+                            df = None
                         df, delta_info = self._delta_read(
                             connector, table, cols, list(t.keys), plan.where, delta, delta_keys, delta_map,
                             raw.get(plan.via) if plan.via else None, counts.get(table), max_rows,
-                        ) if delta is not None and table in delta_map else (None, None)
+                        ) if df is None and delta is not None and table in delta_map else (df, None)
                         if df is None and delta is not None and delta.by_change_date and not plan.via \
                                 and not plan.slices:
                             df, delta_info = self._date_delta_read(connector, table, cols, list(t.keys), plan.where,
@@ -437,7 +456,7 @@ class ConnectivityManager:
                                                                on_progress=lambda g, n, rows: report(table, g, n, rows))
                     except SAPConnectorError as e:
                         coverage.append({"table": table, "status": "failed", "detail": str(e)[:300],
-                                         "seconds": round(time.monotonic() - t0, 1)})
+                                         "seconds": round(time.monotonic() - t0, 1), **path_info})
                         logger.warning(f"extract {system_id}: {table} failed: {str(e)[:300]}")
                         continue
                     # RFC_READ_TABLE pages without a sort order: pages can overlap. Repeated
@@ -452,6 +471,7 @@ class ConnectivityManager:
                              "window": where if where and not where.startswith(tuple(
                                  f"{f} = " for f in ("DATBI", "BDATU", "INACT"))) else None,
                              "truncated": len(df) >= max_rows, "seconds": round(time.monotonic() - t0, 1)}
+                    entry.update(path_info)
                     if table in counts:
                         entry["source_rows"] = counts[table]
                     entry["complete"] = self._is_complete(entry["truncated"], dup_keys, counts.get(table), len(df))
@@ -499,6 +519,39 @@ class ConnectivityManager:
             connector.close()
         coverage.extend(self._preview_coverage(system_type, modules))
         return frames, coverage
+
+    @staticmethod
+    def _path_info(rp, reader: Optional[str]) -> dict:
+        """The coverage fields that say how a table was read: path, the reader or ODP provider, and what ODP lacked."""
+        info: dict = {"path": rp.path}
+        if rp.path == "odp":
+            info.update(odp_provider=rp.odp, odp_context=rp.context)
+        elif isinstance(reader, str) and reader:
+            info["reader"] = reader
+        if rp.unavailable:
+            info["odp_unavailable_fields"] = list(rp.unavailable)
+        if rp.reason:
+            info["odp_fallback"] = rp.reason
+        return info
+
+    @staticmethod
+    def _odp_read(connector, rp, cols: list[str], max_rows: int,
+                  on_rows: Callable[[int], None]) -> tuple[pd.DataFrame, dict]:
+        """One table through its ODP provider (sap/odp.py), as the table reader's frame. Fields the provider does not
+        deliver on this system are left out and listed in ``odp_unavailable_fields``."""
+        from sap.odp_mapping import mapping, to_table_frame
+
+        m = mapping(rp.odp, rp.context)
+        wanted = [m.fields[c] for c in cols if c in m.fields]
+        r = connector.odp_reader().read(m.context, m.odp, wanted=wanted, max_rows=max_rows,
+                                        on_package=lambda packages, rows: on_rows(rows))
+        df, missing = to_table_frame(r.frame, m, cols)
+        info: dict = {"odp_packages": r.packages}
+        if missing:
+            info["odp_unavailable_fields"] = missing
+        if m.confirm:
+            info["odp_confirm"] = True
+        return df, info
 
     @staticmethod
     def _preview_coverage(system_type: str, modules: list[str]) -> list[dict]:

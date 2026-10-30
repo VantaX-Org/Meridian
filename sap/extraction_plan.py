@@ -647,6 +647,74 @@ def read_order(plans: dict[str, TablePlan]) -> list[str]:
     return done
 
 
+# How an ABAP system's tables are read (sap_systems.extraction_path; SAPConnectionParams.extraction_path):
+#   table_reader  the RFC table reader (read_function: RFC_READ_TABLE, /BODS/RFC_READ_TABLE2, BBP_RFC_READ_TABLE)
+#   odp           ODP (sap/odp.py) for every table a provider in sap/odp_mappings.yaml maps, even when the provider
+#                 lacks some fields the rules need (those are reported and their rules are not evaluable); the
+#                 table reader for the rest
+#   odata         S/4HANA on premise only: released CDS views over SAP Gateway OData (sap/s4hana_onprem.py)
+#   auto          ODP where the RODPS_REPL_ODP functions exist and a provider maps every field a table needs;
+#                 the table reader otherwise
+EXTRACTION_PATHS = ("table_reader", "odp", "odata", "auto")
+
+
+@dataclass
+class ReadPath:
+    """How one planned table is read, and why. ``unavailable``: needed fields the chosen or best ODP provider does
+    not map. ``reason``: why the table reader was used although ODP was asked for (None when it was not)."""
+    table: str
+    path: str = "table_reader"            # table_reader | odp
+    odp: Optional[str] = None
+    context: Optional[str] = None
+    unavailable: list[str] = field(default_factory=list)
+    reason: Optional[str] = None
+
+
+def resolve_extraction_path(setting: Optional[str]) -> str:
+    """The stored setting, else MERIDIAN_EXTRACTION_PATH, else table_reader. Unknown values raise ValueError."""
+    import os
+
+    value = (setting or os.environ.get("MERIDIAN_EXTRACTION_PATH") or "table_reader").strip().lower()
+    if value not in EXTRACTION_PATHS:
+        raise ValueError(f"extraction_path {value!r} is not one of {', '.join(EXTRACTION_PATHS)}")
+    return value
+
+
+def choose_read_paths(plans: dict[str, TablePlan], setting: str, system_type: str,
+                      odp_available: bool) -> dict[str, ReadPath]:
+    """Per planned table: ODP or the table reader, with the fields ODP cannot deliver and the reason for a fallback.
+
+    ODP reads a provider in full, so a filtered plan (window, scope, deletion filter or parent keys) always uses
+    the table reader. ``odp_available`` matters only for ``auto``; an explicit ``odp`` setting is honoured and a
+    missing function then fails the table's read with a clear sentence instead of quietly using a reader the
+    Basis team may have refused.
+    """
+    from sap.odp_mapping import best_mapping
+
+    out: dict[str, ReadPath] = {}
+    for t, p in plans.items():
+        rp = out[t] = ReadPath(table=t)
+        if setting not in ("odp", "auto") or system_type not in ABAP_SYSTEM_TYPES:
+            continue
+        needed = p.columns()
+        m = best_mapping(t, system_type, needed)
+        if m is None:
+            rp.reason = "no ODP provider is mapped for this table"
+            continue
+        rp.unavailable = m.covers(needed)
+        if p.where or p.via or p.also_via or p.slices:
+            rp.reason = "the read is filtered (window, scope or parent keys) and ODP reads a provider in full"
+            continue
+        if setting == "auto" and not odp_available:
+            rp.reason = "the RODPS_REPL_ODP functions are not available to this user on this system"
+            continue
+        if setting == "auto" and rp.unavailable:
+            rp.reason = f"ODP provider {m.odp} does not carry {len(rp.unavailable)} of the fields the rules need"
+            continue
+        rp.path, rp.odp, rp.context = "odp", m.odp, m.context
+    return out
+
+
 def in_lists(field: str, values: Iterable[str], chunk: int = 60) -> list[str]:
     """``FIELD IN ('a','b',…)`` clauses of at most ``chunk`` values each. The values are stripped,
     de-duplicated, sorted and quote-escaped. ``where_options`` then splits each clause into
