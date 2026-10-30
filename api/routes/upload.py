@@ -259,6 +259,9 @@ async def upload_file(
     create_version = versions.create_version
 
     metadata = {
+        # how the run started: a file, whether or not it is attached to a system (Runs reads "trigger")
+        "source": "upload",
+        "trigger": "upload",
         "file_name": filename,
         "row_count": len(df),
         "columns": list(df.columns),

@@ -58,7 +58,7 @@ class TimelineOut(BaseModel):
 _RUNS_SQL = f"""
     SELECT id::text AS id, run_at, label, metadata->>'system_id' AS system_id,
            COALESCE((metadata->>'baseline') = 'true', false) AS baseline,
-           COALESCE(metadata->>'trigger', CASE WHEN metadata->>'system_id' IS NULL THEN 'upload' END) AS kind,
+           COALESCE(metadata->>'trigger', CASE WHEN metadata->>'system_id' IS NULL OR metadata->>'upload_path' IS NOT NULL THEN 'upload' END) AS kind,
            dqs_summary
       FROM analysis_versions
      WHERE tenant_id = CAST(:t AS uuid) AND {finished_sql()}
