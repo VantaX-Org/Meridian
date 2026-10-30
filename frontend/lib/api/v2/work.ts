@@ -143,20 +143,27 @@ function saveBlob(blob: Blob, filename: string): void {
   window.URL.revokeObjectURL(url);
 }
 
-/** GET /work/export with the filters on screen (the same rows the ledger shows), saved as a file. */
-export async function exportFixSheet(f: WorkFilters): Promise<{ filename: string }> {
+/** What the fix-sheet exports take: the ledger's filters and its order (GET /work/records' sort names). */
+export interface ExportQuery extends WorkFilters {
+  sort?: string;
+}
+
+/** The query an export sends: the ledger's filters, batch, policy and sort included; a past run is not exported. */
+export function exportParams(f: ExportQuery): Record<string, string | boolean> {
+  const { as_of_run: _asOf, ...rest } = f;
+  void _asOf;
+  return Object.fromEntries(Object.entries({ ...scoped, ...rest }).filter(([, v]) => v !== undefined && v !== null && v !== "")) as Record<string, string | boolean>;
+}
+
+async function exportFile(path: string, f: ExportQuery, fallback: string): Promise<{ filename: string }> {
   if (fixtureActive()) {
-    const { filename, blob } = fixtureExport(f as Record<string, unknown>);
+    const { filename, blob } = fixtureExport(f as Record<string, unknown>, fallback);
     saveBlob(blob, filename);
     return { filename };
   }
-  const { policy: _policy, as_of_run: _asOf, ...rest } = f;
-  void _policy;
-  void _asOf;
-  const params = Object.fromEntries(Object.entries({ ...scoped, ...rest }).filter(([, v]) => v !== undefined && v !== null && v !== ""));
   let response;
   try {
-    response = await uploadApiClient.get<Blob>("/api/v1/work/export", { responseType: "blob", params });
+    response = await uploadApiClient.get<Blob>(path, { responseType: "blob", params: exportParams(f) });
   } catch (err: unknown) {
     const data = (err as { response?: { data?: unknown } }).response?.data;
     if (data instanceof Blob) {
@@ -169,10 +176,17 @@ export async function exportFixSheet(f: WorkFilters): Promise<{ filename: string
     throw err;
   }
   const disposition = (response.headers?.["content-disposition"] as string | undefined) ?? "";
-  const filename = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1] ?? /filename="?([^";]+)"?/i.exec(disposition)?.[1] ?? "fix-sheet.xlsx";
+  const filename = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1] ?? /filename="?([^";]+)"?/i.exec(disposition)?.[1] ?? fallback;
   saveBlob(response.data, decodeURIComponent(filename));
   return { filename };
 }
+
+/** GET /work/export with the filters and the order on screen (the same rows the ledger shows), saved as a file. */
+export const exportFixSheet = (f: ExportQuery): Promise<{ filename: string }> => exportFile("/api/v1/work/export", f, "fix-sheet.xlsx");
+
+/** GET /work/export/per-object: the same rows, one sheet per object with each record's value at risk. */
+export const exportFixSheetByObject = (f: ExportQuery): Promise<{ filename: string }> =>
+  exportFile("/api/v1/work/export/per-object", f, "records-to-fix-by-object.xlsx");
 
 export interface ImportResult {
   updated: number;

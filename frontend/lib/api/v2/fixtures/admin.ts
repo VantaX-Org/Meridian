@@ -252,6 +252,8 @@ function build(): State {
       valid: true, status: "active", tenant_id: "t-demo", company_name: "Demo Corp", tier: "enterprise", expiry_date: "2027-03-31", days_remaining: 162, seats_used: 8, seats: 25,
       enabled_modules: ["material_master", "business_partner", "accounts_payable", "accounts_receivable", "fi_gl", "asset_accounting", "controlling", "mm_purchasing", "sd_sales_orders", "hcm"],
       enabled_menu_items: [], features: { ask_meridian: true, export_reports: true, run_sync: true, field_mapping_self_service: true, max_users: 25 }, last_validated: ago(0.3),
+      // Set only while the licence service is unreachable (status "offline_grace"); the demo is online
+      offline_grace: null,
     },
     scoring: {
       dimension_weights: { completeness: 0.25, accuracy: 0.25, consistency: 0.2, timeliness: 0.1, uniqueness: 0.1, validity: 0.1 },
@@ -481,7 +483,7 @@ export function adminFixtureResponse(path: string, params: Record<string, unknow
     ] };
   }
   if (path === "/health") return { status: "ok", version: s.update.current_version, llm_provider: "ollama", llm_connected: true, licence: "valid", email_backend: null, timestamp: NOW };
-  if (path === "/settings") return { name: "Demo Corp", licensed_modules: (s.licence.enabled_modules as string[]), planner_config: s.planner, dqs_weights: null, alert_thresholds: s.thresholds, notification_config: s.digest, stripe_customer_id: null };
+  if (path === "/settings") return { name: "Demo Corp", licensed_modules: (s.licence.enabled_modules as string[]), planner_config: s.planner, dqs_weights: null, alert_thresholds: s.thresholds, notification_config: s.digest, stripe_customer_id: null, live_writeback: false };
   if (path === "/settings/scoring") return clone(s.scoring);
   if (path === "/settings/cost-model") return { defaults: s.cost, tenant: s.cost, effective: clone(s.cost) };
   if (path === "/settings/cost-model/features") return { features: [{ feature: "MIGO", l1: "Procure to pay" }, { feature: "ME21N", l1: "Procure to pay" }, { feature: "VF01", l1: "Order to cash" }, { feature: "FB01", l1: "Record to report" }] };

@@ -24,7 +24,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.services.rbac import require_permission
+from api.services.rbac import require_any_permission, require_permission
 
 router = APIRouter(prefix="/api/v1", tags=["writeback"])
 logger = logging.getLogger("meridian.writeback")
@@ -513,3 +513,180 @@ def apply_records(conn, module: str, by_record: dict[str, dict]) -> list[dict]:
     cache: dict = {}
     return [write_record(conn, module, key, changes, apply=True, cache=cache).as_dict()
             for key, changes in by_record.items()]
+
+
+# ── An approved fix batch, written back on screen ─────────────────────────────
+# The batch inspector's "Send to SAP" when live write-back is on (MERIDIAN_LIVE_WRITEBACK_ENABLED): first a check
+# (which fields a BAPI carries and why not, nothing sent), then the send by an approver who did not build the batch.
+# The four eyes are the batch's own: a second person approved it, and its creator may never send it (as with the
+# load-file export). Values come from the approved batch items, never from the request.
+
+
+class BatchCheckResponse(BaseModel):
+    batch_id: str
+    live_enabled: bool
+    records: int                       # records with a proposed value
+    bapi: int                          # fields a BAPI carries
+    export_only: int                   # fields that go out with the export instead
+    fields: list[FieldSupportOut] = []
+    errors: list[str] = []
+
+
+class BatchSendResponse(BaseModel):
+    batch_id: str
+    status: str                        # completed | completed_with_errors
+    sent: int                          # records SAP committed
+    failed: int                        # records SAP refused or that could not be sent
+    export_only: int                   # fields left for the export
+    errors: list[str] = []
+    fields: list[FieldSupportOut] = []
+    records: list[RecordResultOut] = []  # per record: simulation, call and commit, with SAP's RETURN messages
+
+
+_LIVE_OFF = ("Live SAP write-back is off on this deployment (setting MERIDIAN_LIVE_WRITEBACK_ENABLED). Until an "
+             "administrator turns it on, deliver the fixes with the export (LSMW / BAPI file).")
+
+
+async def _approved_batch(db: AsyncSession, tenant: Tenant, batch_id: uuid.UUID) -> tuple[dict, list[dict]]:
+    """The batch and its items with a proposed value; 409 unless it is approved (or already sent)."""
+    from api.routes.remediation import _batch, _items
+
+    b = await _batch(db, tenant, batch_id)
+    if b["status"] == "draft":
+        raise HTTPException(status_code=409, detail="Approve the batch before sending it to SAP.")
+    items = [i for i in await _items(db, batch_id) if i.get("field") and i.get("proposed_value") is not None]
+    return b, items
+
+
+def _batch_support(items: list[dict]) -> list[dict]:
+    return [field_support(i["module"], {"field": i["field"], "record_key": i["record_key"]}) for i in items]
+
+
+@router.post(
+    "/writeback/batches/{batch_id}/check",
+    response_model=BatchCheckResponse,
+    dependencies=[Depends(require_any_permission("apply", "approve"))],
+)
+async def check_batch_writeback(
+    batch_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Check with SAP: per field of the approved batch, whether a BAPI carries it, which, and why not. Sends nothing."""
+    from api.config import settings
+
+    _, items = await _approved_batch(db, tenant, batch_id)
+    support = _batch_support(items)
+    errors: list[str] = []
+    if not items:
+        errors.append("No record of this batch has a proposed value; there is nothing to send")
+    elif not any(x["supported"] for x in support):
+        errors.append("None of these fields has a BAPI mapping; deliver them with the export")
+    from sap import get_connector
+    try:
+        get_connector()
+    except Exception:
+        errors.append("SAP connector not available on this deployment; the send would fail")
+    return BatchCheckResponse(
+        batch_id=str(batch_id), live_enabled=bool(settings.live_writeback_enabled),
+        records=len({(i["module"], i["record_key"]) for i in items}),
+        bapi=sum(1 for x in support if x["supported"]), export_only=sum(1 for x in support if not x["supported"]),
+        fields=support, errors=errors,
+    )
+
+
+@router.post(
+    "/writeback/batches/{batch_id}/send",
+    response_model=BatchSendResponse,
+    dependencies=[Depends(require_permission("approve"))],
+)
+async def send_batch_writeback(
+    request: Request,
+    batch_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Send an approved batch to SAP: each record simulated, then committed only when SAP's RETURN holds no E or A
+    message. Fields without a BAPI mapping are not sent and stay for the export. The batch becomes Sent to SAP once
+    SAP has committed a record."""
+    from api.config import settings
+    from api.routes.remediation import _event
+
+    tenant_id = str(tenant.id)
+    if not settings.live_writeback_enabled:
+        raise HTTPException(status_code=409, detail=_LIVE_OFF)
+    b, items = await _approved_batch(db, tenant, batch_id)
+    user = _require_user(request)
+    if b.get("created_by") and str(b["created_by"]) == user:
+        raise HTTPException(status_code=403, detail="The batch creator cannot send it to SAP; a second person sends it.")
+    from api.services.sandbox import held_back
+    if await held_back(db, tenant_id, "write_back", "bapi", str(batch_id)):
+        await db.commit()
+        raise HTTPException(status_code=409, detail="Sandbox mode is on: nothing is written back to SAP. "
+                                                    "Exit the sandbox to send this batch.")
+
+    support = _batch_support(items)
+    errors: list[str] = []
+    # (system, module) -> record_key -> {TABLE.FIELD: proposed value}, only the fields a BAPI carries
+    groups: dict[tuple[str, str], dict[str, dict]] = {}
+    for item, sup in zip(items, support):
+        if sup["supported"]:
+            groups.setdefault((str(item["scope"]), item["module"]), {}).setdefault(item["record_key"], {})[
+                sup["field"]] = item["proposed_value"]
+    export_only = sum(1 for x in support if not x["supported"])
+    if export_only:
+        errors.append(f"{export_only} field(s) have no BAPI mapping and were not sent; deliver them with the export")
+    if not groups:
+        errors.append("No field of this batch has a BAPI mapping")
+
+    records: list[dict] = []
+    for (system_id, module), by_record in groups.items():
+        row = (await db.execute(text("""
+            SELECT s.host, s.client, s.sysnr, c.encrypted_password
+              FROM sap_systems s JOIN system_credentials c ON c.system_id = s.id
+             WHERE s.tenant_id = :tid AND CAST(s.id AS text) = :sid
+               AND s.system_type IN ('ecc', 's4hana_onprem', 'ewm')
+             LIMIT 1"""), {"tid": tenant_id, "sid": system_id})).fetchone()
+        if not row:
+            msg = "No registered SAP system with stored credentials holds these records; deliver them with the export"
+            records += [{"record_key": k, "error": msg} for k in by_record]
+            continue
+        from api.services.credential_store import decrypt_password
+        from sap import get_connector
+        from sap.base import SAPConnectionParams, SAPConnectorError
+
+        params = SAPConnectionParams(host=row[0], client=row[1] or "", sysnr=row[2] or "",
+                                     user=os.getenv("SAP_RFC_USER", "RFC_USER"),
+                                     password=decrypt_password(tenant_id, row[3]))
+
+        def _apply(params=params, module=module, by_record=by_record) -> tuple[list[dict], Optional[str]]:
+            try:
+                with get_connector() as conn:
+                    conn.connect(params)
+                    return apply_records(conn, module, by_record), None
+            except SAPConnectorError as e:
+                return [], "PyRFC not installed" if "pyrfc_not_installed" in str(e) else f"RFC connection failed: {e}"
+
+        done, err = await asyncio.to_thread(_apply)
+        records += done or [{"record_key": k, "error": err} for k in by_record]
+
+    out = [RecordResultOut(**r) for r in records]
+    sent = sum(1 for r in out if r.committed)
+    failed = len(out) - sent
+    for r in out:
+        if r.error:
+            errors.append(f"{r.record_key}: {r.error}")
+        elif not r.committed:
+            errors.append(f"{r.record_key}: SAP refused the change; see its RETURN messages")
+    if sent:
+        await db.execute(text("UPDATE remediation_batches SET status = 'exported', exported_at = now() "
+                              "WHERE id = :id AND tenant_id = :tid"), {"id": batch_id, "tid": tenant_id})
+        await _event(db, tenant, batch_id, "exported", request, to_value="bapi")
+        from api.services import webhooks, worklist
+        await db.run_sync(lambda s: worklist.refresh_batch(s, tenant_id, batch_id))
+        await db.run_sync(lambda s: webhooks.batch_event(s, tenant_id, str(batch_id), "batch.sent"))
+    await db.commit()
+    logger.info(f"Batch write-back {batch_id}: sent={sent}, failed={failed}, export_only={export_only}")
+    return BatchSendResponse(batch_id=str(batch_id), status="completed" if not errors else "completed_with_errors",
+                             sent=sent, failed=failed, export_only=export_only, errors=errors, fields=support,
+                             records=out)

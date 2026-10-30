@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import type { WorkGroup } from "@/lib/api/work";
 import type { WorkRow } from "@/lib/api/v2/types";
-import { errorSentence, exportFixSheet, importFixSheet, type ImportResult } from "@/lib/api/v2/work";
+import { errorSentence, exportFixSheet, exportFixSheetByObject, importFixSheet, type ImportResult } from "@/lib/api/v2/work";
 import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { ledgerRegistry, type LedgerTarget } from "@/lib/v2/keys";
 import { refreshV2, useLandscape, useStatus } from "@/lib/v2/queries";
@@ -19,6 +19,7 @@ import {
   chipDef,
   compareRows,
   daysOpen,
+  exportQueryOf,
   filtersOf,
   initials,
   keyHeaders,
@@ -153,8 +154,10 @@ export function WorkCanvas() {
   const controls = useBatchControls(setSent);
   const wc = useWorkCan();
   const can = useMemo(() => ({ apply: wc.apply, approve: wc.approve, assign: wc.assign }), [wc.apply, wc.approve, wc.assign]);
-  // A policy class or a past run is read by GET /work/records alone: the rule groups and the fix sheet do not take them.
+  // A policy class or a past run is read by GET /work/records alone: the rule groups do not take them. The fix
+  // sheets take the policy (and the batch and the sort) but not a past run.
   const narrowed = Boolean(state.policy || state.asOf);
+  const pastRun = Boolean(state.asOf);
   const grouped = state.group && GROUPABLE.has(state.chip) && !narrowed;
   const packs = usePolicyPacks().data?.packs;
   const runList = useRunList();
@@ -311,9 +314,9 @@ export function WorkCanvas() {
   );
 
   // Export and import ------------------------------------------------------------------------------------------
-  const doExport = useCallback(async () => {
+  const doExport = useCallback(async (byObject = false) => {
     try {
-      const { filename } = await exportFixSheet(filtersOf(state));
+      const { filename } = await (byObject ? exportFixSheetByObject : exportFixSheet)(exportQueryOf(state));
       toast.show(tr("Fix sheet saved as {filename}", { filename }));
     } catch (err) {
       toast.show(errorSentence(err, tr("The fix sheet could not be exported.")), "error");
@@ -682,8 +685,11 @@ export function WorkCanvas() {
         </select>
       </label>
       <span className="m2-tool-sp" />
-      <button type="button" className="m2-btn m2-sm" disabled={narrowed} title={narrowed ? tr("The fix sheet reads today's rows without a policy or a past run; clear them to export") : undefined} onClick={() => void doExport()}>
+      <button type="button" className="m2-btn m2-sm" disabled={pastRun} title={pastRun ? tr("The fix sheet reads today's rows, not a past run; clear the run to export") : undefined} onClick={() => void doExport()}>
         {tr("Export fix sheet")}{" "}<kbd className="m2-kb">e</kbd>
+      </button>
+      <button type="button" className="m2-btn m2-sm" disabled={pastRun} title={pastRun ? tr("The fix sheet reads today's rows, not a past run; clear the run to export") : tr("One sheet per object, with each record's value at risk")} onClick={() => void doExport(true)}>
+        {tr("Export by object")}
       </button>
       {can.apply ? (
         <button type="button" className="m2-btn m2-sm" aria-expanded={importOpen} onClick={() => setImportOpen((v) => !v)}>

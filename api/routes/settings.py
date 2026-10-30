@@ -12,6 +12,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import get_db, get_tenant, Tenant as TenantDep
+from api.config import settings as app_settings
 from api.services.scoring import DEFAULT_THRESHOLDS, scoring_config
 
 router = APIRouter(prefix="/api/v1/settings", tags=["settings"])
@@ -76,6 +77,9 @@ class TenantSettingsResponse(BaseModel):
     cap_rule: Optional["CapRule"] = None
     tolerance: Optional["Tolerance"] = None
     retention_days: Optional[int] = None
+    # Whether this deployment writes approved fixes back to SAP itself (MERIDIAN_LIVE_WRITEBACK_ENABLED); off, they
+    # are delivered with the export. Read by the batch inspector to offer "Send to SAP" live.
+    live_writeback: bool = False
 
 
 # ─── GET /settings ──────────────────────────────────────────────────
@@ -133,6 +137,7 @@ async def _settings_document(db: AsyncSession, tenant: TenantDep) -> TenantSetti
         cap_rule=CapRule(**{**DEFAULT_CAP_RULE, **{k: v for k, v in stored_cap.items() if k in DEFAULT_CAP_RULE}}),
         tolerance=Tolerance(pct=round(cfg["critical_tolerance"]["pct"] * 100, 4), rows=int(cfg["critical_tolerance"]["rows"])),
         retention_days=retention.get("versions_days"),
+        live_writeback=bool(app_settings.live_writeback_enabled),
     )
 
 

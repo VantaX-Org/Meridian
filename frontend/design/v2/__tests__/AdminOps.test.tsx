@@ -7,6 +7,9 @@ import { resetRunsFixture } from "@/lib/api/v2/fixtures/runs";
 import { Inspector } from "../Inspector";
 import { AuditSection } from "../admin/data";
 import { AlertsSection, NotificationsSection } from "../admin/notify";
+import { registerCatalogue, setLang } from "@/lib/v2/i18n";
+import { de } from "@/lib/v2/i18n/de";
+import { ja } from "@/lib/v2/i18n/ja";
 import { SystemSection } from "../admin/system";
 import { resetKeptOutcomes } from "../inspector/shared";
 import { getUrl, setUrl } from "./nav-store";
@@ -190,6 +193,23 @@ describe("Admin: alerts and notifications", () => {
     await waitFor(() => expect(dataRows("Alert channels")).toHaveLength(3));
     expect(screen.queryByRole("button", { name: "Add a channel" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Save thresholds" })).toBeNull();
+  });
+
+  it.each([
+    ["en", "Default digest"],
+    ["de", "Standardübersicht"],
+    ["ja", "既定のダイジェスト"],
+  ] as const)("titles the page and the browser tab Default digest (%s)", async (lang, want) => {
+    if (lang !== "en") registerCatalogue(lang, lang === "de" ? de : ja);
+    setLang(lang);
+    try {
+      setUrl("/admin/notifications?fixture=1");
+      renderWithQuery(<NotificationsSection />);
+      expect(await screen.findByRole("heading", { level: 1, name: want })).toBeInTheDocument();
+      await waitFor(() => expect(document.title).toBe(`${want} \u2013 Meridian`));
+    } finally {
+      setLang("en");
+    }
   });
 
   it("saves the default digest", async () => {

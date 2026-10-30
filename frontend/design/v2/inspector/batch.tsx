@@ -17,6 +17,8 @@ import { useToast } from "../Toast";
 import { ResultFrame, useOutcome } from "./shared";
 import { CollabSections } from "./collab";
 import { DelegationBanner } from "./delegation";
+import { LiveWriteback } from "./writeback";
+import { useTenantSettings } from "@/lib/v2/admin-queries";
 import { t as tr } from "@/lib/v2/i18n";
 
 const SHOWN = 50;
@@ -108,6 +110,10 @@ function BatchBody({ b }: { b: BatchRow }) {
     }
   };
   const mine = b.ownerId != null && b.ownerId === can.me;
+  // Live write-back is offered only when the API says this deployment writes to SAP itself (GET /settings).
+  // It stays mounted once the batch is Sent to SAP, so the answer of the send is still shown after the refetch.
+  const liveOn = useTenantSettings().data?.live_writeback === true;
+  const live = liveOn && b.status === "approved";
   return (
     <>
       <DelegationBanner />
@@ -140,7 +146,7 @@ function BatchBody({ b }: { b: BatchRow }) {
       <Trail id={b.id} />
 
       <Actions>
-        <BatchButtons b={b} c={controls} sm={false} />
+        <BatchButtons b={b} c={controls} sm={false} live={live} />
         {b.status === "approved" && can.approve ? (
           <button type="button" className="m2-btn" disabled={mine || controls.busy !== null} title={mine ? tr("You built this batch; a second person sends it back.") : undefined} onClick={() => controls.askSendBack(b)}>
             {tr("Send back")}
@@ -154,8 +160,10 @@ function BatchBody({ b }: { b: BatchRow }) {
       {b.status === "draft" && !can.approve ? <p className="m2-prov">{tr("Approving needs the approve permission, which your role does not hold.")}</p> : null}
       {b.status === "draft" && can.approve && mine ? <p className="m2-prov">{tr("You built this batch, so a second person approves it.")}</p> : null}
       {b.status === "draft" && can.approve && !mine ? <p className="m2-prov">{tr("Approving acts on the whole batch. You can take it back from the notice that follows.")}</p> : null}
-      {b.status === "approved" ? <p className="m2-prov">{tr("Send to SAP hands the approved values over as a Migration Cockpit file. It cannot be taken back.")}</p> : null}
+      {b.status === "approved" && !live ? <p className="m2-prov">{tr("Send to SAP hands the approved values over as a Migration Cockpit file. It cannot be taken back.")}</p> : null}
+      {b.status === "approved" && live ? <p className="m2-prov">{tr("Export load file hands the approved values over as a Migration Cockpit file instead of writing them live. It cannot be taken back.")}</p> : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
+      {liveOn && b.status !== "draft" ? <LiveWriteback b={b} can={can} /> : null}
       {controls.dialog}
       <CollabSections kind="batch" id={b.id} label={tr("batch {label}", { label: b.label })} />
     </>
