@@ -680,12 +680,16 @@ def resolve_extraction_path(setting: Optional[str]) -> str:
     return value
 
 
+AUTO_KEEPS_TABLE_READER = ("auto reads through the table reader: ODP over RFC is used only when the system's path is "
+                           "set to ODP, because SAP Note 3255746 restricts third-party use of the RODPS_REPL modules")
+
+
 def choose_read_paths(plans: dict[str, TablePlan], setting: str, system_type: str,
                       odp_available: bool) -> dict[str, ReadPath]:
     """Per planned table: ODP or the table reader, with the fields ODP cannot deliver and the reason for a fallback.
 
     ODP reads a provider in full, so a filtered plan (window, scope, deletion filter or parent keys) always uses
-    the table reader. ``odp_available`` matters only for ``auto``; an explicit ``odp`` setting is honoured and a
+    the table reader. ``auto`` never chooses ODP over RFC (SAP Note 3255746); an explicit ``odp`` setting is honoured and a
     missing function then fails the table's read with a clear sentence instead of quietly using a reader the
     Basis team may have refused.
     """
@@ -702,14 +706,14 @@ def choose_read_paths(plans: dict[str, TablePlan], setting: str, system_type: st
             rp.reason = "no ODP provider is mapped for this table"
             continue
         rp.unavailable = m.covers(needed)
+        if setting == "auto":
+            # SAP Note 3255746 restricts customer and third-party use of the RODPS_REPL RFC modules, so Meridian
+            # never chooses ODP over RFC by itself: it is read only when the system's path is set to "odp"
+            # explicitly, after the customer has confirmed with SAP that their licence allows it.
+            rp.reason = AUTO_KEEPS_TABLE_READER
+            continue
         if p.where or p.via or p.also_via or p.slices:
             rp.reason = "the read is filtered (window, scope or parent keys) and ODP reads a provider in full"
-            continue
-        if setting == "auto" and not odp_available:
-            rp.reason = "the RODPS_REPL_ODP functions are not available to this user on this system"
-            continue
-        if setting == "auto" and rp.unavailable:
-            rp.reason = f"ODP provider {m.odp} does not carry {len(rp.unavailable)} of the fields the rules need"
             continue
         rp.path, rp.odp, rp.context = "odp", m.odp, m.context
     return out

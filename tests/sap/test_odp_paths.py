@@ -42,19 +42,17 @@ def _plans(**over) -> dict[str, TablePlan]:
     return plans
 
 
-def test_auto_uses_odp_only_where_the_mapping_covers_every_needed_field():
+def test_auto_never_chooses_odp_over_rfc_even_where_a_mapping_covers_every_field():
+    """SAP Note 3255746: ODP over RFC only on an explicit choice, never by itself."""
     paths = choose_read_paths(_plans(), "auto", "ecc", odp_available=True)
-    assert (paths["KNA1"].path, paths["KNA1"].odp, paths["KNA1"].context) == ("odp", "0CUSTOMER_ATTR", "SAPI")
-    assert paths["KNA1"].unavailable == [] and paths["KNA1"].reason is None
+    assert paths["KNA1"].path == "table_reader" and "3255746" in paths["KNA1"].reason
     assert paths["LFA1"].path == "table_reader" and paths["LFA1"].unavailable == ["NAME1"]
-    assert "does not carry 1 of the fields" in paths["LFA1"].reason
-    assert paths["MARC"].path == "table_reader" and "filtered" in paths["MARC"].reason
     assert paths["LFB1"].path == "table_reader" and paths["LFB1"].reason == "no ODP provider is mapped for this table"
 
 
 def test_auto_without_the_functions_keeps_the_table_reader():
     paths = choose_read_paths(_plans(), "auto", "ecc", odp_available=False)
-    assert paths["KNA1"].path == "table_reader" and "not available" in paths["KNA1"].reason
+    assert paths["KNA1"].path == "table_reader"
 
 
 def test_explicit_odp_reads_mapped_tables_through_odp_and_reports_what_it_lacks():
@@ -147,12 +145,12 @@ def test_explicit_odp_reads_lfa1_through_odp_and_the_rest_with_the_table_reader(
 def test_auto_falls_back_to_the_table_reader_when_the_mapping_lacks_needed_fields(monkeypatch):
     frames, cov, conn, _ = _extract(monkeypatch, "auto", _vendor_state())
     assert cov["LFA1"]["path"] == "table_reader" and "NAME1" in cov["LFA1"]["odp_unavailable_fields"]
-    assert "does not carry" in cov["LFA1"]["odp_fallback"]
+    assert "3255746" in cov["LFA1"]["odp_fallback"]
     assert "LFA1.NAME1" in frames["LFA1"].columns
     assert FN_OPEN not in conn.odp_calls()
 
 
-def test_auto_uses_odp_when_the_mapping_covers_the_need(monkeypatch):
+def test_auto_keeps_the_table_reader_even_when_the_mapping_covers_the_need(monkeypatch):
     from sap import odp_mapping
     from sap.extraction_plan import plan_modules
 
@@ -162,9 +160,8 @@ def test_auto_uses_odp_when_the_mapping_covers_the_need(monkeypatch):
     rows = pd.DataFrame({f: LFA1[f] if f in LFA1 else "" for f in need})
     state = ODPState(providers={("SAPI", "0VENDOR_ATTR"): Provider([(f, 40, f == "LIFNR") for f in need], rows)})
     frames, cov, conn, _ = _extract(monkeypatch, "auto", state)
-    assert cov["LFA1"]["path"] == "odp" and "odp_unavailable_fields" not in cov["LFA1"]
-    assert frames["LFA1"]["LFA1.NAME1"].tolist() == ["A", "", "C"]
-    assert "RFC_FUNCTION_SEARCH" in [fm for fm, _ in conn.calls]
+    assert cov["LFA1"]["path"] == "table_reader" and "3255746" in cov["LFA1"]["odp_fallback"]
+    assert FN_OPEN not in conn.odp_calls()
 
 
 def test_auto_without_the_functions_reads_everything_with_the_table_reader(monkeypatch):
