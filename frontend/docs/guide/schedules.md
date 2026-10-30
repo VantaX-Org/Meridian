@@ -36,5 +36,5 @@ Every figure in a report is read from the run it names, so the board pack of 16 
 
 - **"No report has been made yet. Create one from a run, or schedule one to arrive on its own."**
 - **"No one can receive reports yet."** Invite people, or add an email or Teams channel under Administration, Alerts.
-- **Partly delivered**: one recipient or channel refused it. Check the channel under Administration, Alerts; email needs an email backend, which Administration, Jobs and system update reports under Health checks.
+- **Partly delivered**: one recipient or channel refused it. Check the channel under Administration, Alerts; email needs an email backend, which Administration, Platform and updates reports under Health checks.
 - **Failed**: open the schedule and choose **Run it now** after fixing the channel; the job appears under Runs, Jobs.

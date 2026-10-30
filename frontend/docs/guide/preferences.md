@@ -18,7 +18,7 @@ Nothing here changes a number. The locale changes how numbers and dates are writ
 
 ## What you can do, by role
 
-Everyone sets their own preferences. The tenant's default digest and alert channels are set by an administrator under Administration, Notifications and Alerts.
+Everyone sets their own preferences. The tenant's default digest and alert channels are set by an administrator under Administration, Default digest and Alerts.
 
 ## Keyboard
 
@@ -28,5 +28,5 @@ Everyone sets their own preferences. The tenant's default digest and alert chann
 ## When something is wrong
 
 - **Dates show in UTC**: set your time zone here.
-- **No email arrives**: "Also email me" is off, or the deployment has no email backend (Administration, Jobs and system update, Health checks).
+- **No email arrives**: "Also email me" is off, or the deployment has no email backend (Administration, Platform and updates, Health checks).
 - **The start screen did not change**: the start screen is kept in this browser; another browser keeps its own.

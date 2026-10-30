@@ -4330,7 +4330,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Reports built from a stored run, and schedules that build and send them on a rhythm.": "Berichte aus einem gespeicherten Lauf und Zeitpläne, die sie regelmäßig erstellen und versenden.",
   "Waves and gates": "Wellen und Gates",
   "Migration waves with their verdict counts, gate criteria and readiness certificate, and assigning objects to waves.": "Migrationswellen mit ihren Urteilszahlen, Gate-Kriterien und Bereitschaftszertifikat sowie die Zuordnung von Objekten zu Wellen.",
-  "Users, roles, sign-in, view as, share links, licence, settings, stewardship, configuration bundle, data, alerts, runs and jobs, and the platform.": "Benutzer, Rollen, Anmeldung, Ansicht als, Freigabelinks, Lizenz, Einstellungen, Stewardship, Konfigurationspaket, Daten, Warnungen, Läufe und Jobs sowie die Plattform.",
+  "Users, roles, sign-in, view as, share links, licence, settings, stewardship, configuration bundle, data, notifications, start and schedule, and the platform.": "Benutzer, Rollen, Anmeldung, Ansicht als, Freigabelinks, Lizenz, Einstellungen, Stewardship, Konfigurationspaket, Daten, Benachrichtigungen, Starten und planen sowie die Plattform.",
   "Theme, density, locale and time zone, start screen, keyboard hints, digest and what you hear about.": "Design, Dichte, Gebietsschema und Zeitzone, Startbildschirm, Tastaturhinweise, Zusammenfassung und worüber Sie benachrichtigt werden.",
   "Keyboard and the command line": "Tastatur und die Befehlszeile",
   "Every shortcut, and the command line that opens any record, rule, object or run by typing.": "Jede Tastenkombination und die Befehlszeile, die jeden Datensatz, jede Regel, jedes Objekt und jeden Lauf durch Eintippen öffnet.",

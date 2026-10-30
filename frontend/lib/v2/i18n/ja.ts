@@ -4330,7 +4330,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Reports built from a stored run, and schedules that build and send them on a rhythm.": "保存された実行から作るレポートと、それを定期的に作成して送るスケジュール。",
   "Waves and gates": "ウェーブとゲート",
   "Migration waves with their verdict counts, gate criteria and readiness certificate, and assigning objects to waves.": "判定数、ゲート基準、準備状況証明書を持つ移行ウェーブと、オブジェクトのウェーブへの割り当て。",
-  "Users, roles, sign-in, view as, share links, licence, settings, stewardship, configuration bundle, data, alerts, runs and jobs, and the platform.": "ユーザー、ロール、サインイン、代理表示、共有リンク、ライセンス、設定、スチュワードシップ、構成バンドル、データ、アラート、実行とジョブ、プラットフォーム。",
+  "Users, roles, sign-in, view as, share links, licence, settings, stewardship, configuration bundle, data, notifications, start and schedule, and the platform.": "ユーザー、ロール、サインイン、代理表示、共有リンク、ライセンス、設定、スチュワードシップ、構成バンドル、データ、通知、開始とスケジュール、プラットフォーム。",
   "Theme, density, locale and time zone, start screen, keyboard hints, digest and what you hear about.": "テーマ、表示密度、ロケールとタイムゾーン、開始画面、キーボードのヒント、ダイジェスト、通知の内容。",
   "Keyboard and the command line": "キーボードとコマンドライン",
   "Every shortcut, and the command line that opens any record, rule, object or run by typing.": "すべてのショートカットと、入力するだけでレコード、ルール、オブジェクト、実行を開くコマンドライン。",

@@ -4329,7 +4329,7 @@ export const en = {
   "Reports built from a stored run, and schedules that build and send them on a rhythm.": "Reports built from a stored run, and schedules that build and send them on a rhythm.",
   "Waves and gates": "Waves and gates",
   "Migration waves with their verdict counts, gate criteria and readiness certificate, and assigning objects to waves.": "Migration waves with their verdict counts, gate criteria and readiness certificate, and assigning objects to waves.",
-  "Users, roles, sign-in, view as, share links, licence, settings, stewardship, configuration bundle, data, alerts, runs and jobs, and the platform.": "Users, roles, sign-in, view as, share links, licence, settings, stewardship, configuration bundle, data, alerts, runs and jobs, and the platform.",
+  "Users, roles, sign-in, view as, share links, licence, settings, stewardship, configuration bundle, data, notifications, start and schedule, and the platform.": "Users, roles, sign-in, view as, share links, licence, settings, stewardship, configuration bundle, data, notifications, start and schedule, and the platform.",
   "Theme, density, locale and time zone, start screen, keyboard hints, digest and what you hear about.": "Theme, density, locale and time zone, start screen, keyboard hints, digest and what you hear about.",
   "Keyboard and the command line": "Keyboard and the command line",
   "Every shortcut, and the command line that opens any record, rule, object or run by typing.": "Every shortcut, and the command line that opens any record, rule, object or run by typing.",

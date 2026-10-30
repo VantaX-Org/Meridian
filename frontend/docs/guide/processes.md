@@ -5,7 +5,7 @@ The **Processes** tab of an object shows which business process steps its data b
 ## What is on the Processes tab
 
 - **The sentence**: "2 of 4 process steps are blocked by Material master: PTP step 3, PP step 1."
-- **Each process**: its name and code ("Procure to Pay PTP"), its state ("Blocked, 1 of 3 steps blocked"), its description and its steps. Each step names the transaction (`ME51N`, `ME21N`, `MIGO`), its state (**Ready** or **Blocked**) and, when blocked, the activities and fields behind it with status, pass rate and failing records, for example "Enter Quantity and Unit: `MARA.MEINS` Base unit of measure, Blocked, 94.1%, 3,640".
+- **Each process**: its name and code ("Procure to Pay PTP"), its state ("Blocked, 1 of 3 steps blocked"), its description and its steps. Each step names the transaction (`ME51N`, `ME21N`, `MIGO`), its state (**Ready** or **Blocked**) and, when blocked, the activities and fields behind it with status, pass rate and failing records, for example "Enter Quantity and Unit: `MARA-MEINS` Base unit of measure, Blocked, 94.1%, 3,640".
 - The rule under it, as the product states it: "A step is blocked when a field it writes fails a critical or high rule, or passes under 70%. Failing counts are records, and a record can fail several rules."
 - **What if these rules were fixed** (simulation): "Tick the rules to fix. The steps of Material master are read again without their failures; nothing is changed and no data is read." Each rule shows "3,640 records at least, in 1 step". The result shows which steps would be ready.
 - **Process designer** with **Open the designer**.

@@ -27,7 +27,7 @@
       "id": "settings",
       "label": "Administration and settings",
       "chapters": [
-        { "slug": "administration", "title": "Administration", "summary": "Users, roles, sign-in, view as, share links, licence, settings, stewardship, configuration bundle, data, alerts, runs and jobs, and the platform.", "video": "guide2-administration" },
+        { "slug": "administration", "title": "Administration", "summary": "Users, roles, sign-in, view as, share links, licence, settings, stewardship, configuration bundle, data, notifications, start and schedule, and the platform.", "video": "guide2-administration" },
         { "slug": "preferences", "title": "Preferences", "summary": "Theme, density, locale and time zone, start screen, keyboard hints, digest and what you hear about.", "video": "guide2-preferences" },
         { "slug": "keyboard", "title": "Keyboard and the command line", "summary": "Every shortcut, and the command line that opens any record, rule, object or run by typing.", "video": "guide2-keyboard" }
       ]

@@ -23,7 +23,7 @@ You run the data programme: you need to know how ready each system and object is
 - **Watch objects**: **Watch** on the object header for run, score and breach notices.
 - **Export the ledger or any grid**: **Share and export**, **Export to Excel**.
 - **Share a canvas with the steering committee**: **Share and export**, **Share this page as a link** (read-only, expires).
-- **Start extraction and analysis, schedules**: System inspector; Administration, Runs and jobs.
+- **Start extraction and analysis, schedules**: System inspector; Administration, Start and schedule.
 - **Reports and report schedules**: Reports.
 
 ## The numbers you report

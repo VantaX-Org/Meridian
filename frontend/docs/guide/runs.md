@@ -7,14 +7,14 @@ A run is one measurement of your data at a point in time: an extraction from a s
 - **The sentence**: "The timeline shows the last 8 finished runs, the latest on 16 Oct 2026. The baseline is 2 Oct 2026." Over the table, its own count: "9 runs in the table, 1 of them failed."
 - **The run timeline**: one mark per run, the baseline labelled. Select a mark to open that run.
 - **Runs and Jobs**: two views. **Start a run** opens the start panel.
-- **Runs** table: date, system, label, trigger (Scheduled or Started by hand), records, rules, score range across objects (for example "70.0 to 93.4"), status (Complete, Failed, Queued or running) and how long it took. Filter by system and status; **Show archived runs** brings back archived ones.
+- **Runs** table: date, system, label, trigger (Scheduled, Started by hand, or upload for a run made from a file), records, rules, score range across objects (for example "70.0 to 93.4"), status (Complete, Failed, Queued or running) and how long it took. Filter by system and status; **Show archived runs** brings back archived ones.
 - **Jobs** table: every background job (extraction, analysis, configuration load, configuration sync, upload, simulation, process discovery) with its object, system, state, progress, start and duration.
 
 ## The job line and the job inspector
 
 A running job shows as a thin progress line under the top bar, never a tray. Open it, or any job row, for the job inspector: its stages and tables with row counts, the percent, the error in plain words for a failed job (for example "OData refused credentials (HTTP 401). Check the client id and secret in the system settings.") and, where the job recorded how it started, **Retry**.
 
-Every start form (Administration, Runs and jobs; the system inspector's **Extract** and **Run analysis**; **Start a run** here) shows the prediction before you confirm: the duration band and how sure it is, the records it will check, the cost from the cost model's run cost (a dash when none is set) and where it would queue, for example "Position 2 in the queue; 1 running, 1 queued". A queued job says its place on the job line and in its inspector.
+Every start form (Administration, Start and schedule; the system inspector's **Extract** and **Run analysis**; **Start a run** here) shows the prediction before you confirm: the duration band and how sure it is, the records it will check, the cost from the cost model's run cost (a dash when none is set) and where it would queue, for example "Position 2 in the queue; 1 running, 1 queued". A queued job says its place on the job line and in its inspector.
 
 ## The numbers and where they come from
 
@@ -31,7 +31,7 @@ Every start form (Administration, Runs and jobs; the system inspector's **Extrac
 - **Anyone with export**: download a run's report.
 - **Everyone**: read runs and jobs, open a run, compare two runs.
 
-Starting runs, schedules and retries for one system at a time also live under Administration, **Runs and jobs**: "Start an extraction, an analysis or a configuration load, schedule them, and retry what failed."
+Starting runs, schedules and retries for one system at a time also live under Administration, **Start and schedule**: "Start an extraction, an analysis, a configuration load or an upload, and schedule them. The runs themselves are on Runs."
 
 ## Keyboard
 
@@ -43,5 +43,5 @@ Starting runs, schedules and retries for one system at a time also live under Ad
 
 - **A run reads Failed with no records**: open its job. Connection errors (HTTP 401, RFC logon failures) belong to SAP Basis; the job says which credential or table failed.
 - **A run is complete but scores are missing for an object**: the extraction read no records for it, or the analysis skipped its rules. Open the object; its receipt says how many rules produced a result.
-- **Retry is missing**: the job did not record how it started; start it again from the system or from Administration, Runs and jobs.
-- **The job line shows nothing but a job is running**: the job registry updates every few seconds; reload the page if it does not appear within a minute, then ask your administrator to check Jobs and system update.
+- **Retry is missing**: the job did not record how it started; start it again from the system or from Administration, Start and schedule.
+- **The job line shows nothing but a job is running**: the job registry updates every few seconds; reload the page if it does not appear within a minute, then ask your administrator to check Platform and updates.

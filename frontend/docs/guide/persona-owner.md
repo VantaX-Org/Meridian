@@ -5,7 +5,7 @@ You are accountable for one or more objects and you are the second pair of eyes:
 ## Your first five steps
 
 1. **Landscape**: read the line under the sentence and press **Approve batch B-241**.
-2. **Batch inspector**: read the facts, the changes ("`MARA.MEINS` STK to EA") and the approval trail. **Approve** or **Send back** with a reason.
+2. **Batch inspector**: read the facts, the changes ("`MARA-MEINS` STK to EA") and the approval trail. **Approve** or **Send back** with a reason.
 3. **Waiting for approval**: in Work, the chip lists every batch waiting, grouped by batch.
 4. **Your object**: open an object you own; **Watch** it and apply the steward template to it.
 5. **Out of office**: before you are away, set who covers your approvals.

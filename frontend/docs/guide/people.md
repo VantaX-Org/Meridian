@@ -4,9 +4,9 @@
 
 ## People
 
-The sentence sums the team up, for example "4 of 6 people hold open work: 270 records, 34 overdue. 2 batches wait for your approval." and "Counts are read from the work assigned in the latest state."
+The sentence sums the team up, for example "4 of 6 people hold open work: 270 records, 34 overdue. 2 batches wait for your approval. 26,330 of the 26,600 open records are assigned to nobody." and "Counts are read from the work assigned in the latest state."
 
-The table: person and role, objects (owned or stewarded), open work, approvals waiting, overdue, **SLA met**, breaches this month and last action. Your own row reads "you".
+The table: person and role, objects (owned or stewarded), open work, approvals waiting, overdue, **SLA met**, breaches this month and last action. Your own row reads "you". The table ends with an **Unassigned** row ("Assign them on Work to give each an owner and an SLA.", linked to Work's unassigned filter) and a **Total** equal to the work list's open records.
 
 Above it: **Triage and SLA**, **Balance work**, **Data contracts** and **Out of office**.
 
