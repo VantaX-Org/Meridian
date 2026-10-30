@@ -4361,4 +4361,5 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Start an extraction, an analysis, a configuration load or an upload, and schedule them. The runs themselves are on Runs.": "Eine Extraktion, eine Analyse, ein Laden der Konfiguration oder einen Upload starten und planen. Die Läufe selbst stehen unter Läufe.",
   "Aletheia is a licensed mark. Its licence requires this attribution on every screen; it is not a second product.": "Aletheia ist eine lizenzierte Marke. Ihre Lizenz verlangt diesen Hinweis auf jedem Bildschirm; es ist kein zweites Produkt.",
   "licensed mark, attribution required": "lizenzierte Marke, Hinweis vorgeschrieben",
+  "TABLE-FIELD of the failing value.": "TABLE-FIELD des fehlerhaften Werts.",
 };

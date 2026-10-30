@@ -181,7 +181,7 @@ describe("pivot", () => {
     fireEvent.click(screen.getByRole("button", { name: "By field" }));
     const t = await screen.findByRole("table", { name: /by field/i });
     const row = within(t).getAllByRole("row")[1];
-    expect(norm(row)).toContain("MARA.MEINS");
+    expect(norm(row)).toContain("MARA-MEINS");
     fireEvent.click(within(row).getByRole("button"));
     expect(within(t).getByRole("link", { name: "MM142" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM142"));
   });

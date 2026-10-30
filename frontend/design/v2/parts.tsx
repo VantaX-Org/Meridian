@@ -11,9 +11,18 @@ export function V2Link({ href, ...rest }: Omit<ComponentProps<typeof Link>, "hre
   return <Link href={v2Href(href)} {...rest} />;
 }
 
-/** SAP identifiers (check ids, TABLE.FIELD, record keys, run ids) in the mono face, and nowhere else. */
+/** SAP identifiers (check ids, TABLE-FIELD, record keys, run ids) in the mono face, and nowhere else. */
 export function Mono({ children, className }: { children: ReactNode; className?: string }) {
-  return <span className={`m2-mono${className ? ` ${className}` : ""}`}>{children}</span>;
+  // One notation for SAP fields, SAP's own: TABLE-FIELD (MARA-MEINS), whatever the API sent (MARA.MEINS).
+  const text = typeof children === "string" && SAP_FIELD.test(children) ? children.replace(".", "-") : children;
+  return <span className={`m2-mono${className ? ` ${className}` : ""}`}>{text}</span>;
+}
+
+const SAP_FIELD = /^\/?[A-Z][A-Z0-9_/]{2,}\.[A-Z][A-Z0-9_/]+$/;
+
+/** A value as data: SAP codes and keys (no spaces) in the mono face, free text such as a description in the text face. */
+export function Value({ value }: { value: string }) {
+  return /\s/.test(value.trim()) || value.length > 40 ? <span>{value}</span> : <Mono>{value}</Mono>;
 }
 
 /** A middle-dot separator drawn by CSS, so no separator glyph sits in the copy. The spaces keep the text readable aloud. */

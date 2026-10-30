@@ -83,7 +83,7 @@ describe("the Glossary tab", () => {
     const list = await within(sec).findByRole("list", { name: "Fields without a term" });
     expect(within(sec).getByText("2")).toBeInTheDocument();
     const items = within(list).getAllByRole("listitem");
-    expect(items.map((i) => norm(i))).toEqual(["MBEW.BKLASMM035", "MARC.BESKZMM028"]);
+    expect(items.map((i) => norm(i))).toEqual(["MBEW-BKLASMM035", "MARC-BESKZMM028"]);
     expect(within(items[0]).getByRole("link", { name: "MM035" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM035"));
   });
 
@@ -129,7 +129,7 @@ describe("the term inspector", () => {
     const rules = within(d).getByRole("list", { name: "Rules that cite this term" });
     expect(within(rules).getByRole("link", { name: "MM142" })).toHaveAttribute("href", expect.stringContaining("open=rule%3AMM142"));
     const fields = within(d).getByRole("list", { name: "Fields this term governs" });
-    expect(norm(fields)).toBe("MARA.MEINSBase unit of measure");
+    expect(norm(fields)).toBe("MARA-MEINSBase unit of measure");
   });
 
   it("edits the wording by permission and saves it", async () => {

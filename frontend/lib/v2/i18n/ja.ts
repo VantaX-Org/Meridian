@@ -4361,4 +4361,5 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Start an extraction, an analysis, a configuration load or an upload, and schedule them. The runs themselves are on Runs.": "抽出、分析、構成の読み込み、アップロードを開始し、スケジュールします。実行そのものは「実行」にあります。",
   "Aletheia is a licensed mark. Its licence requires this attribution on every screen; it is not a second product.": "Aletheia はライセンスを受けたマークです。ライセンスによりすべての画面にこの表示が必要です。別の製品ではありません。",
   "licensed mark, attribution required": "ライセンスマーク、表示義務あり",
+  "TABLE-FIELD of the failing value.": "不合格の値の TABLE-FIELD。",
 };

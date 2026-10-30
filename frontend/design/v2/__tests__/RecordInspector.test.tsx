@@ -270,3 +270,17 @@ describe("stepping through the ledger", () => {
     await waitFor(() => expect(decodeURIComponent(getUrl())).toContain("MATNR=000000000000000232"));
   });
 });
+
+describe("SAP notation", () => {
+  it("writes every field TABLE-FIELD in the mono face and free text in the text face", async () => {
+    const { Mono, Value } = await import("../parts");
+    const { render: r } = await import("@testing-library/react");
+    const { container } = r(<><Mono>MARA.MEINS</Mono><Mono>MM142</Mono><Value value="Hydraulic hose 3/8 in" /><Value value="PCS" /></>);
+    const spans = Array.from(container.children);
+    expect(spans[0]).toHaveTextContent("MARA-MEINS");
+    expect(spans[0]).toHaveClass("m2-mono");
+    expect(spans[1]).toHaveTextContent("MM142");
+    expect(spans[2]).not.toHaveClass("m2-mono");
+    expect(spans[3]).toHaveClass("m2-mono");
+  });
+});

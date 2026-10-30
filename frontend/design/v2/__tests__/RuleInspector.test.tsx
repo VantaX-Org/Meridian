@@ -56,7 +56,7 @@ describe("the rule inspector", () => {
     const fact = (label: string | RegExp) => within(facts).getByText(label, { selector: "dt" }).closest(".m2-fact") as HTMLElement;
     expect(norm(fact("Severity"))).toBe("SeverityHigh");
     expect(norm(fact("Dimension"))).toBe("DimensionConsistency");
-    expect(norm(fact("Field"))).toContain("MARA.MEINS");
+    expect(norm(fact("Field"))).toContain("MARA-MEINS");
     // A high rule has no tolerance of its own and never caps the score.
     await waitFor(() => expect(norm(fact(/^Over tolerance/))).toContain("No"));
     expect(norm(fact("Failing records"))).toBe("Failing records4,212 across 2 objects");

@@ -60,9 +60,9 @@ describe("the Processes tab", () => {
     const migo = screen.getAllByTestId("process-step")[2];
     const t = within(migo).getByRole("table", { name: "Fields of Enter Quantity and Unit" });
     const row = within(t).getAllByRole("row")[1];
-    expect(norm(row)).toBe("MARA.MEINSBase unit of measureBlocked94.1%3,640");
+    expect(norm(row)).toBe("MARA-MEINSBase unit of measureBlocked94.1%3,640");
     const t2 = within(migo).getByRole("table", { name: "Fields of Select Movement Type" });
-    expect(norm(within(t2).getAllByRole("row")[1])).toBe("MARA.MTARTMaterial typeBlocked95.3%2,904");
+    expect(norm(within(t2).getAllByRole("row")[1])).toBe("MARA-MTARTMaterial typeBlocked95.3%2,904");
     expect(within(migo).getByRole("link", { name: "Open the step Post Goods Receipt" })).toHaveAttribute("href", expect.stringContaining("open=step%3Amaterial_master%3APTP-GR-MIGO"));
   });
 

@@ -93,7 +93,7 @@ describe("the Work ledger, fixture mode", () => {
     const row = rowFor(grid, KEY_232);
     expect(within(row).getByText("MM003")).toHaveClass("m2-mono");
     expect(within(row).getByText("Critical")).toBeInTheDocument();
-    expect(within(row).getByText("MARA.MTART")).toBeInTheDocument();
+    expect(within(row).getByText("MARA-MTART")).toBeInTheDocument();
     expect(within(row).getByText("Material type is mandatory - determines procurement and storage behaviour")).toBeInTheDocument();
     // One formatter with its unit everywhere: the same figure the record inspector shows.
     expect(within(row).getByTestId("money")).toHaveTextContent("ZAR 12,390 est.");

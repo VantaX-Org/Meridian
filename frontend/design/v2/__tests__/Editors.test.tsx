@@ -195,7 +195,7 @@ describe("the process designer", () => {
     fireEvent.change(within(form).getByLabelText("Map a field"), { target: { value: "mara.brgew" } });
     fireEvent.click(within(form).getByRole("button", { name: "Map field" }));
     const fields = await screen.findByRole("list", { name: "Fields of Check the material" });
-    expect(within(fields).getByText("MARA.BRGEW")).toBeInTheDocument();
+    expect(within(fields).getByText("MARA-BRGEW")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Save as a new version" }));
     await screen.findByText("Saved as version 2");
     expect(savedDoc().l1[0].l2[1].l3[0].l4[0].activities[0].fields.map((f) => f.field)).toEqual(["MARA.MEINS", "MARA.MTART", "MARA.BRGEW"]);

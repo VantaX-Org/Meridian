@@ -18,7 +18,7 @@ import { useRecordLinks, useWorkRecord } from "@/lib/v2/work-queries";
 import { InspectorFrame } from "../Inspector";
 import { MenuButton } from "../Menu";
 import { SeverityMark, type SeverityKey } from "../marks";
-import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
+import { Value, Dash, Dot, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { useToast } from "../Toast";
 import { PromptDialog } from "./work-parts";
 import { CollabSections } from "../inspector/collab";
@@ -284,7 +284,7 @@ export function RecordInspector({ id, onClose }: { id: string; onClose: () => vo
                 <Mono className="m2-fid">{sapField(field)}</Mono>
               </dt>
               <dd>
-                {value === null || value === "" ? <span className="m2-meta">{tr("blank")}</span> : <Mono>{value}</Mono>}
+                {value === null || value === "" ? <span className="m2-meta">{tr("blank")}</span> : <Value value={String(value)} />}
                 {hits.length ? (
                   <span className="m2-fail">
                     {[...new Map(hits.map((h) => [h.check_id, h])).values()].map((h) => (
