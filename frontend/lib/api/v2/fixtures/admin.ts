@@ -483,7 +483,7 @@ export function adminFixtureResponse(path: string, params: Record<string, unknow
     ] };
   }
   if (path === "/health") return { status: "ok", version: s.update.current_version, llm_provider: "ollama", llm_connected: true, licence: "valid", email_backend: null, timestamp: NOW };
-  if (path === "/settings") return { name: "Demo Corp", licensed_modules: (s.licence.enabled_modules as string[]), planner_config: s.planner, dqs_weights: null, alert_thresholds: s.thresholds, notification_config: s.digest, stripe_customer_id: null };
+  if (path === "/settings") return { name: "Demo Corp", licensed_modules: (s.licence.enabled_modules as string[]), planner_config: s.planner, dqs_weights: null, alert_thresholds: s.thresholds, notification_config: s.digest, stripe_customer_id: null, live_writeback: false };
   if (path === "/settings/scoring") return clone(s.scoring);
   if (path === "/settings/cost-model") return { defaults: s.cost, tenant: s.cost, effective: clone(s.cost) };
   if (path === "/settings/cost-model/features") return { features: [{ feature: "MIGO", l1: "Procure to pay" }, { feature: "ME21N", l1: "Procure to pay" }, { feature: "VF01", l1: "Order to cash" }, { feature: "FB01", l1: "Record to report" }] };

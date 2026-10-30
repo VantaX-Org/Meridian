@@ -14,7 +14,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { load } from "js-yaml";
 import { beforeAll, describe, expect, it } from "vitest";
-import { fixtureResponse } from "./index";
+import { fixtureResponse, fixtureWrite, resetWorkFixture } from "./index";
 import { LIBRARY } from "./library";
 import type { Landscape, Receipt, RuleRow } from "../types";
 
@@ -154,6 +154,18 @@ describe("fixture answers match the API's response schemas", () => {
 
   it("every answer conforms to the schema the API declares", () => {
     expect(failures).toEqual([]);
+  });
+});
+
+describe("the live write-back fixtures answer in the API's shapes", () => {
+  const post = (route: string) => api.paths[route]?.post?.responses?.["200"]?.content?.["application/json"]?.schema as Schema;
+  it("POST /writeback/batches/{id}/check and /send", () => {
+    resetWorkFixture();
+    const check = fixtureWrite("POST", "/writeback/batches/B-236/check", undefined, {});
+    expect(validate(post("/api/v1/writeback/batches/{batch_id}/check"), JSON.parse(JSON.stringify(check)))).toEqual([]);
+    const send = fixtureWrite("POST", "/writeback/batches/B-236/send", undefined, {});
+    expect(validate(post("/api/v1/writeback/batches/{batch_id}/send"), JSON.parse(JSON.stringify(send)))).toEqual([]);
+    resetWorkFixture();
   });
 });
 

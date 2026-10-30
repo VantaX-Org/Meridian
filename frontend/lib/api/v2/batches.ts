@@ -2,7 +2,7 @@ import apiClient from "@/lib/api/client";
 import type { Batch, BatchDetail, BatchEvent, BatchItem, BatchSummary, ExportFormat } from "@/lib/api/remediation";
 import { fixtureActive } from "./fixture";
 import { fixtureWrite } from "./fixtures";
-import { v2Get } from "./client";
+import { v2Get, v2Send } from "./client";
 
 export type { Batch, BatchDetail, BatchEvent, BatchItem, BatchSummary };
 
@@ -25,6 +25,68 @@ export const getBatchEvents = (id: string): Promise<{ items: BatchEvent[] }> => 
 
 /** GET /writeback/approvals carries the deployment's `live_enabled` flag; it needs the approve permission. */
 export const getWritebackMode = (): Promise<{ live_enabled: boolean }> => v2Get("/writeback/approvals");
+
+/* ── Live write-back of an approved batch (POST /writeback/batches/{id}/check and /send) ── */
+
+/** One field of the batch: whether a BAPI carries it (delivery "bapi") or it goes out with the export, and why. */
+export interface WritebackField {
+  record_key: string;
+  /** TABLE.FIELD */
+  field: string;
+  supported: boolean;
+  bapi: string | null;
+  reason: string | null;
+  delivery: "bapi" | "export";
+}
+
+/** A message of SAP's RETURN table. */
+export interface SapMessage {
+  type: string;
+  id: string;
+  number: string;
+  message: string;
+}
+
+/** One record sent: the simulation, the call and the commit, with SAP's RETURN messages. */
+export interface WritebackRecord {
+  record_key: string;
+  bapis: string[];
+  fields: string[];
+  simulated: boolean;
+  simulate_messages: SapMessage[];
+  applied: boolean;
+  committed: boolean;
+  messages: SapMessage[];
+  error: string | null;
+}
+
+/** Check with SAP: nothing is sent. */
+export interface BatchWritebackCheck {
+  batch_id: string;
+  live_enabled: boolean;
+  records: number;
+  bapi: number;
+  export_only: number;
+  fields: WritebackField[];
+  errors: string[];
+}
+
+/** Send to SAP: what SAP committed, refused, and what stays for the export. */
+export interface BatchWritebackSend {
+  batch_id: string;
+  status: "completed" | "completed_with_errors";
+  sent: number;
+  failed: number;
+  export_only: number;
+  errors: string[];
+  fields: WritebackField[];
+  records: WritebackRecord[];
+}
+
+/** POST /writeback/batches/{id}/check (apply): per field, BAPI or export and why. */
+export const checkBatchWriteback = (id: string): Promise<BatchWritebackCheck> => v2Send("POST", `/writeback/batches/${enc(id)}/check`);
+/** POST /writeback/batches/{id}/send (approve, never the batch creator, only with live write-back on). */
+export const sendBatchWriteback = (id: string): Promise<BatchWritebackSend> => v2Send("POST", `/writeback/batches/${enc(id)}/send`);
 
 export interface SendResult {
   /** The load file handed over. */

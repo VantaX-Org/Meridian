@@ -360,6 +360,8 @@ export interface TenantSettings {
     monthly_report: boolean;
   } | null;
   stripe_customer_id: string | null;
+  /** Whether this deployment writes approved fixes back to SAP itself (MERIDIAN_LIVE_WRITEBACK_ENABLED). */
+  live_writeback?: boolean;
 }
 
 /* ─── Exceptions ─── */

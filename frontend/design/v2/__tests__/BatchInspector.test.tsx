@@ -3,6 +3,9 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import * as workApi from "@/lib/api/v2/work";
 import * as batchApi from "@/lib/api/v2/batches";
+import * as adminApi from "@/lib/api/v2/admin";
+import { fixtureWrite, resetAdminFixture } from "@/lib/api/v2/fixtures";
+import type { BatchWritebackCheck, BatchWritebackSend } from "@/lib/api/v2/batches";
 import { resetWorkFixture } from "@/lib/api/v2/fixtures";
 import { resetActions } from "@/lib/v2/undo";
 import { clearPatches } from "@/lib/v2/work-overrides";
@@ -21,6 +24,7 @@ beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
   window.localStorage.clear();
   resetWorkFixture();
+  resetAdminFixture();
   resetActions();
   clearPatches();
   undoLayout = stubLayout(1400, 700);
@@ -180,5 +184,113 @@ describe("the batch inspector", () => {
   it("says so for a batch that is not in the list", async () => {
     mount("B-999");
     expect(await screen.findByText(/This batch is not in the list/)).toBeInTheDocument();
+  });
+});
+
+describe("live write-back of an approved batch", () => {
+  /** Live write-back on, as GET /settings reports it when MERIDIAN_LIVE_WRITEBACK_ENABLED is set. */
+  const liveOn = async () => {
+    const base = await adminApi.getTenantSettings();
+    vi.spyOn(adminApi, "getTenantSettings").mockResolvedValue({ ...base, live_writeback: true });
+  };
+  const rowsOf = (insp: HTMLElement, name: string) => within(within(insp).getByRole("grid", { name })).getAllByRole("row").slice(1);
+
+  it("is not offered while the API reports live write-back off: Send to SAP is the load file", async () => {
+    mount("B-236");
+    const insp = await body("Batch B-236");
+    expect(within(insp).queryByTestId("live-writeback")).toBeNull();
+    expect(within(insp).queryByRole("button", { name: "Check with SAP" })).toBeNull();
+    expect(within(insp).getByRole("button", { name: "Send batch B-236 to SAP" })).toBeInTheDocument();
+  });
+
+  it("step 1, Check with SAP: a table of the fields, BAPI or export, and the reason; nothing is sent", async () => {
+    await liveOn();
+    const check = vi.spyOn(batchApi, "checkBatchWriteback");
+    const send = vi.spyOn(batchApi, "sendBatchWriteback");
+    mount("B-236");
+    const insp = await body("Batch B-236");
+    const live = await within(insp).findByTestId("live-writeback");
+    // The load file stays, under its own name; Send to SAP waits for the check.
+    expect(within(insp).getByRole("button", { name: "Export batch B-236 as a load file" })).toHaveTextContent("Export load file");
+    expect(within(live).getByRole("button", { name: "Send to SAP" })).toBeDisabled();
+    fireEvent.click(within(live).getByRole("button", { name: "Check with SAP" }));
+    await waitFor(() => expect(check).toHaveBeenCalledWith("B-236"));
+    const expected = fixtureWrite<BatchWritebackCheck>("POST", "/writeback/batches/B-236/check", undefined, {});
+    const rows = await waitFor(() => rowsOf(insp, "Fields checked with SAP"));
+    expect(rows).toHaveLength(Math.min(expected.fields.length, rows.length));
+    const bapiRow = expected.fields.findIndex((f) => f.delivery === "bapi");
+    const exportRow = expected.fields.findIndex((f) => f.delivery === "export");
+    expect(bapiRow).toBeGreaterThanOrEqual(0);
+    expect(exportRow).toBeGreaterThanOrEqual(0);
+    if (bapiRow < rows.length) {
+      expect(text(rows[bapiRow])).toContain(expected.fields[bapiRow].field.replace(".", "-"));
+      expect(text(rows[bapiRow])).toContain("BAPI_MATERIAL_SAVEDATA");
+      expect(text(rows[bapiRow])).toContain("A BAPI carries it");
+    }
+    if (exportRow < rows.length) {
+      expect(text(rows[exportRow])).toContain("Export");
+      expect(text(rows[exportRow])).toContain(expected.fields[exportRow].reason ?? "");
+    }
+    expect(fact(live, "Fields by BAPI")).toContain(String(expected.bapi));
+    expect(fact(live, "Fields by export")).toContain(String(expected.export_only));
+    expect(send).not.toHaveBeenCalled();
+    expect(within(live).getByRole("button", { name: "Send to SAP" })).toBeEnabled();
+  });
+
+  it("step 2, Send to SAP: confirm with the record count, then each record's result with SAP's RETURN messages and a summary", async () => {
+    await liveOn();
+    const send = vi.spyOn(batchApi, "sendBatchWriteback");
+    mount("B-236");
+    const insp = await body("Batch B-236");
+    const live = await within(insp).findByTestId("live-writeback");
+    fireEvent.click(within(live).getByRole("button", { name: "Check with SAP" }));
+    await within(live).findByTestId("writeback-check");
+    const records = Number(fact(live, "Records").replace(/\D/g, ""));
+    expect(records).toBeGreaterThan(0);
+    fireEvent.click(within(live).getByRole("button", { name: "Send to SAP" }));
+    const dialog = await screen.findByRole("dialog", { name: "Send batch B-236 to SAP" });
+    expect(text(dialog)).toContain(`${records} records are written to SAP now`);
+    expect(send).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: `Send ${records} records` }));
+    await waitFor(() => expect(send).toHaveBeenCalledWith("B-236"));
+    const result = (await send.mock.results[0].value) as BatchWritebackSend;
+    const summary = await within(live).findByTestId("writeback-summary");
+    expect(text(summary)).toBe(`Sent ${result.sent}, failed ${result.failed}, export only ${result.export_only}.`);
+    expect(result.sent).toBeGreaterThan(0);
+    expect(result.failed).toBeGreaterThan(0);
+    const lines = rowsOf(insp, "What SAP answered, per record").map(text);
+    // The first record: the test run's and the commit's RETURN messages, type, class, number and text.
+    const first = result.records[0];
+    expect(lines.some((l) => l.includes(first.record_key) && l.includes("Written to SAP") && l.includes("Test run") && l.includes("M3") && l.includes("801") && l.includes(first.simulate_messages[0].message))).toBe(true);
+    expect(lines.some((l) => l.includes("Commit") && l.includes(first.messages[0].message))).toBe(true);
+    // A refusal shows SAP's error message.
+    const refused = result.records.find((r) => !r.committed);
+    if (refused && lines.length < 20) expect(lines.some((l) => l.includes("Refused by SAP") && l.includes(refused.simulate_messages[0].message))).toBe(true);
+    await waitFor(() => expect(fact(insp, "Status")).toContain("Sent to SAP"));
+    // Once sent, the answer stays on screen and nothing is offered again.
+    expect(within(live).getByTestId("writeback-summary")).toBeInTheDocument();
+    expect(within(live).queryByRole("button", { name: "Send to SAP" })).toBeNull();
+  });
+
+  it("the permission gate: Send to SAP needs approve; a role without it is told why and sends nothing", async () => {
+    await liveOn();
+    const send = vi.spyOn(batchApi, "sendBatchWriteback");
+    mount("B-236", "&role=analyst");
+    const insp = await body("Batch B-236");
+    const live = await within(insp).findByTestId("live-writeback");
+    expect(within(live).queryByRole("button", { name: "Send to SAP" })).toBeNull();
+    expect(within(live).queryByRole("button", { name: "Check with SAP" })).toBeNull();
+    expect(within(live).getByText("Sending to SAP needs the approve permission, which your role does not hold.")).toBeInTheDocument();
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("an approver who does not hold apply still checks and sends", async () => {
+    await liveOn();
+    mount("B-236", "&role=approver");
+    const insp = await body("Batch B-236");
+    const live = await within(insp).findByTestId("live-writeback");
+    fireEvent.click(within(live).getByRole("button", { name: "Check with SAP" }));
+    await within(live).findByTestId("writeback-check");
+    expect(within(live).getByRole("button", { name: "Send to SAP" })).toBeEnabled();
   });
 });

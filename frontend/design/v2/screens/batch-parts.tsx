@@ -106,8 +106,12 @@ export function useBatchControls(onResult?: (o: Outcome) => void) {
 
 export type BatchControls = ReturnType<typeof useBatchControls>;
 
-/** The buttons a batch offers this person: Approve and Send back on a draft, Send to SAP on an approved batch. */
-export function BatchButtons({ b, c, sm = true }: { b: BatchRow; c: BatchControls; sm?: boolean }) {
+/**
+ * The buttons a batch offers this person: Approve and Send back on a draft, Send to SAP on an approved batch. With
+ * `live` (the batch inspector, when the deployment writes to SAP itself) the load file is offered as Export load file,
+ * since Send to SAP is the live write-back there.
+ */
+export function BatchButtons({ b, c, sm = true, live = false }: { b: BatchRow; c: BatchControls; sm?: boolean; live?: boolean }) {
   const cls = `m2-btn${sm ? " m2-sm" : ""}`;
   const block = approveBlock(b, c.can, c.can.me);
   if (b.status === "draft") {
@@ -127,8 +131,8 @@ export function BatchButtons({ b, c, sm = true }: { b: BatchRow; c: BatchControl
     if (!c.can.send) return null;
     const mine = b.ownerId != null && b.ownerId === c.can.me;
     return (
-      <button type="button" className={`${cls} m2-strong`} disabled={c.busy !== null || mine} title={mine ? t("You built this batch; a second person sends it.") : undefined} aria-label={t("Send batch {label} to SAP", { label: b.label })} onClick={() => void c.send(b)}>
-        {c.busy === `send:${b.id}` ? t("Sending…") : t("Send to SAP")}
+      <button type="button" className={`${cls}${live ? "" : " m2-strong"}`} disabled={c.busy !== null || mine} title={mine ? t("You built this batch; a second person sends it.") : undefined} aria-label={live ? t("Export batch {label} as a load file", { label: b.label }) : t("Send batch {label} to SAP", { label: b.label })} onClick={() => void c.send(b)}>
+        {c.busy === `send:${b.id}` ? t("Sending…") : live ? t("Export load file") : t("Send to SAP")}
       </button>
     );
   }

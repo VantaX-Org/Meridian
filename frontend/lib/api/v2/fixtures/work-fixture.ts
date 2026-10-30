@@ -1,6 +1,6 @@
 import workJson from "./work.json";
 import type { Batch, BatchDetail, BatchEvent, BatchItem } from "@/lib/api/remediation";
-import type { BatchRowApi, SendResult } from "../batches";
+import type { BatchRowApi, BatchWritebackCheck, BatchWritebackSend, SendResult, WritebackField, WritebackRecord } from "../batches";
 import rulesJson from "./rules.json";
 import type { Decision, WorkGroup, WorkIssue, WorkRecordDetail, WorkSummary } from "@/lib/api/work";
 import type { RuleRow, WorkPage, WorkRow, WorkStatus } from "../types";
@@ -876,6 +876,90 @@ export function sendBatchFixture(id: string): SendResult {
     state.delta = add(state.delta, delta);
   }
   return { filename: `remediation-cockpit_xlsx-${id}.xlsx`, sha256: "9f2c4e1a7b3d58e0c6a14f92d7b05e38a1c4d6f90b2e7a35c8d1f4b60a93e27c", records: b.items, job_id: null };
+}
+
+/*
+ * Live write-back in fixture mode (POST /writeback/batches/{id}/check and /send). The fields a BAPI carries mirror
+ * sap/bapi_writeback.py for the material master: client-level MARA fields go through BAPI_MATERIAL_SAVEDATA; a
+ * plant-level MARC field needs WERKS in the record key, which these keys lack; valuation (MBEW) has no mapping yet.
+ */
+const FX_BAPI = "BAPI_MATERIAL_SAVEDATA";
+function fxSupport(item: BatchItem): WritebackField {
+  // TABLE.FIELD, as the API names it (sap/bapi_writeback.py _full); the fixture rules write TABLE-FIELD
+  const field = (item.field ?? "").replace("-", ".");
+  const [table] = field.split(".");
+  const base = { record_key: item.record_key, field };
+  if (table === "MARA") return { ...base, supported: true, bapi: FX_BAPI, reason: null, delivery: "bapi" };
+  if (table === "MARC" && !/(^|\|)WERKS=/.test(item.record_key))
+    return { ...base, supported: false, bapi: FX_BAPI, reason: `The record key has no WERKS, which ${FX_BAPI} needs for ${field}`, delivery: "export" };
+  if (table === "MARC") return { ...base, supported: true, bapi: FX_BAPI, reason: null, delivery: "bapi" };
+  return { ...base, supported: false, bapi: null, reason: `No BAPI mapping for ${field} yet; load this fix with the export`, delivery: "export" };
+}
+
+function fxItems(id: string): BatchItem[] {
+  const b = findBatch(id);
+  if (b.status === "draft") fail(409, "Approve the batch before sending it to SAP.");
+  return batchFixtureDetail(id).items.filter((i) => i.field && i.proposed_value != null);
+}
+
+export function writebackCheckFixture(id: string): BatchWritebackCheck {
+  const items = fxItems(id);
+  const fields = items.map(fxSupport);
+  const bapi = fields.filter((f) => f.supported).length;
+  return {
+    batch_id: id,
+    live_enabled: true,
+    records: new Set(items.map((i) => i.record_key)).size,
+    bapi,
+    export_only: fields.length - bapi,
+    fields,
+    errors: bapi === 0 ? ["None of these fields has a BAPI mapping; deliver them with the export"] : [],
+  };
+}
+
+/** Every seventh record is refused by SAP in its test run, so the demo shows a refusal with its RETURN message. */
+export function writebackSendFixture(id: string): BatchWritebackSend {
+  const b = findBatch(id);
+  const items = fxItems(id);
+  if (b.created_by === ME_ID) fail(403, "The batch creator cannot send it to SAP; a second person sends it.");
+  const fields = items.map(fxSupport);
+  const byRecord = new Map<string, string[]>();
+  fields.forEach((f) => {
+    if (f.supported) byRecord.set(f.record_key, [...(byRecord.get(f.record_key) ?? []), f.field]);
+  });
+  const records: WritebackRecord[] = [...byRecord.entries()].map(([key, flds], i) => {
+    const matnr = key.replace(/^MATNR=/, "").split("|")[0].replace(/^0+/, "");
+    if (i % 7 === 6)
+      return { record_key: key, bapis: [FX_BAPI], fields: flds, simulated: true, simulate_messages: [{ type: "E", id: "M3", number: "305", message: `Material group of material ${matnr} is not defined in table T023` }], applied: false, committed: false, messages: [], error: null };
+    return {
+      record_key: key,
+      bapis: [FX_BAPI],
+      fields: flds,
+      simulated: true,
+      simulate_messages: [{ type: "S", id: "M3", number: "801", message: `Material ${matnr} changed (test run)` }],
+      applied: true,
+      committed: true,
+      messages: [{ type: "S", id: "M3", number: "801", message: `Material ${matnr} changed` }],
+      error: null,
+    };
+  });
+  const sent = records.filter((r) => r.committed).length;
+  const exportOnly = fields.filter((f) => !f.supported).length;
+  const errors = [
+    ...(exportOnly ? [`${exportOnly} field(s) have no BAPI mapping and were not sent; deliver them with the export`] : []),
+    ...records.filter((r) => !r.committed).map((r) => `${r.record_key}: SAP refused the change; see its RETURN messages`),
+  ];
+  if (sent && b.status === "approved") {
+    b.status = "exported";
+    b.exported_at = "2026-10-16T09:05:00Z";
+    b.events = [...b.events, { action: "exported", user_label: ME_LABEL, at: b.exported_at, note: "bapi" }];
+    moveRows(id, "approved", "sent", new Map());
+    const delta = zero();
+    delta.approved -= b.items;
+    delta.sent += b.items;
+    state.delta = add(state.delta, delta);
+  }
+  return { batch_id: id, status: errors.length ? "completed_with_errors" : "completed", sent, failed: records.length - sent, export_only: exportOnly, errors, fields, records };
 }
 
 export function batchesFixture(): { items: BatchRowApi[] } {

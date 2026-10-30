@@ -390,9 +390,15 @@ check the marker reads **est.**
 
 ### Live write-back
 
-Live write-back is off by default. With `MERIDIAN_LIVE_WRITEBACK_ENABLED=true` in `.env`, a write-back requested
-through the API (`POST /api/v1/writeback`, approved by a second person at `POST /api/v1/writeback/approve/{id}`)
-is applied to ECC, S/4HANA on premise or EWM through standard BAPIs:
+Live write-back is off by default. With `MERIDIAN_LIVE_WRITEBACK_ENABLED=true` in `.env`, the flow is on screen: the
+inspector of an approved batch shows **Live write-back** (GET `/api/v1/settings` reports `live_writeback: true`).
+**Check with SAP** lists every field of the batch with BAPI or Export and the reason, and sends nothing; **Send to
+SAP**, for an approver who did not build the batch, confirms with the record count and shows the result per record
+with SAP's RETURN messages, and a summary of records sent, records failed and fields left for the export. The load
+file stays available as **Export load file**. The same write-back is still open to scripts through the API
+(`POST /api/v1/writeback`, approved by a second person at `POST /api/v1/writeback/approve/{id}`; the screen uses
+`POST /api/v1/writeback/batches/{id}/check` and `/send`). Either way it is applied to ECC, S/4HANA on premise or EWM
+through standard BAPIs:
 
 - **Material master**: `BAPI_MATERIAL_SAVEDATA`.
 - **Business partner**: `BAPI_BUPA_CENTRAL_CHANGE` and `BAPI_BUPA_ADDRESS_CHANGE`.
@@ -420,8 +426,9 @@ quality system.
 
 ### Exercise
 
-On a quality system, approve one material master fix with live write-back on, and read the simulation messages and
-the commit messages for that record. Then try a vendor master field and read the reason it goes out by export.
+On a quality system, with live write-back on, open an approved batch of material master fixes, run **Check with
+SAP**, then **Send to SAP** as a second person, and read the simulation messages and the commit messages for each
+record. Then try a vendor master field and read the reason it goes out by export.
 
 ## Module 8: Notifications and integrations
 
