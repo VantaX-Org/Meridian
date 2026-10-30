@@ -1,174 +1,82 @@
-# Meridian: Updating a Deployed Platform
+# Meridian: updating a deployed platform
 
-## Overview
+An installed Meridian is updated in place by `scripts/update.sh` in the install directory (`/opt/meridian` by
+default), either from Administration (**Update now**, which runs it through the updater sidecar) or by hand over
+SSH. The script installs one named release and pins the stack to it; it never follows a moving `:latest` tag.
 
-After applying fixes to the codebase and pushing to the repo, follow these steps to update a running Meridian instance on a customer server.
+## How a release reaches an install
 
----
+1. A release build (`.github/workflows/build-and-deploy.yml`) tags the repository `vX.Y.Z`, pushes the six images
+   as `ghcr.io/vantax-org/meridian-{api,worker,frontend,nginx,garage,updater}:vX.Y.Z` and sets `latest_version`
+   in Meridian HQ.
+2. Each install reads `latest_version` with its licence validation. Administration shows **Update available**
+   when it is newer than the running version.
 
-## Step 1: Push the Fix to the Repo
+## Run an update
 
-From your local development machine:
+From Administration, **Update now** asks the updater sidecar to install exactly the release HQ offered.
 
-```bash
-cd ~/meridian-2
-git add .
-git commit -m "fix: async analysis polling + progress bar"
-git push origin main
-```
-
-This triggers the GitHub Actions workflow which builds and pushes new Docker images to `ghcr.io/vantax-org/meridian-{api,frontend,worker,nginx}:latest`.
-
-## Step 2: Wait for CI to Finish
-
-Go to `https://github.com/VantaX-Org/Meridian/actions` and wait for the build to go green. This usually takes 5–10 minutes.
-
-## Step 3: Create the Update Script (First Time Only)
-
-SSH into the customer server and check if the update script already exists:
-
-```bash
-ls -la /opt/meridian/update.sh
-```
-
-If it doesn't exist, create it:
-
-```bash
-sudo nano /opt/meridian/update.sh
-```
-
-Paste the following:
-
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-
-INSTALL_DIR="/opt/meridian"
-COMPOSE_FILE="${INSTALL_DIR}/docker-compose.yml"
-
-echo "═══════════════════════════════════════"
-echo "  Meridian Update"
-echo "═══════════════════════════════════════"
-
-cd "$INSTALL_DIR"
-
-echo ""
-echo "→ Pulling latest images..."
-docker compose -f "$COMPOSE_FILE" pull
-
-echo ""
-echo "→ Running database migrations..."
-docker compose -f "$COMPOSE_FILE" run --rm api alembic upgrade head 2>/dev/null || echo "  (no pending migrations)"
-
-echo ""
-echo "→ Restarting services..."
-docker compose -f "$COMPOSE_FILE" up -d
-
-echo ""
-echo "→ Waiting for services to stabilise..."
-sleep 10
-
-echo ""
-echo "→ Health check..."
-if [ -f "${INSTALL_DIR}/healthcheck.sh" ]; then
-    bash "${INSTALL_DIR}/healthcheck.sh"
-else
-    docker compose -f "$COMPOSE_FILE" ps
-fi
-
-echo ""
-echo "═══════════════════════════════════════"
-echo "  Update complete"
-echo "═══════════════════════════════════════"
-```
-
-Save the file, then make it executable:
-
-```bash
-sudo chmod +x /opt/meridian/update.sh
-```
-
-## Step 4: Run the Update
-
-```bash
-sudo bash /opt/meridian/update.sh
-```
-
-This will pull the new images, run any pending database migrations, restart only the containers whose images changed (Postgres, Redis and object storage stay untouched; the one exception is the first update onto Garage, which copies MinIO's files over and verifies each one — see `docs/ops/pilot-upgrade-runbook.md`), and run a health check.
-
-## Step 5: Verify the Update
-
-Check the service logs to confirm the new code is running:
+By hand:
 
 ```bash
 cd /opt/meridian
-
-# API logs — look for the new status endpoint
-docker compose logs api --tail 20
-
-# Worker logs — look for progress updates
-docker compose logs worker --tail 20
-
-# Frontend — check for build timestamp
-docker compose logs frontend --tail 10
+sudo bash scripts/update.sh                  # the release Meridian HQ names as latest
+sudo bash scripts/update.sh --version 2.4.1  # one release (also accepts v2.4.1); use it offline or to reinstall
 ```
 
-Then open the dashboard in your browser and test the fix (e.g. re-upload the file that was timing out).
+Without `--version` the script asks Meridian HQ through the running api's licence client. When HQ cannot
+answer (an offline or air-gapped install, or the api is down), it stops before changing anything and asks for
+`--version`.
 
----
+What it does, in order:
 
-## Quick Reference
+1. Refuses to run while the worker is executing an extraction or a run (`MERIDIAN_UPDATE_FORCE=1` overrides).
+2. Resolves the release and snapshots the images of the running release as `:rollback`.
+3. Pulls the release's images by tag (`vX.Y.Z`), then copies that release's deployment files (compose file,
+   nginx configuration, scripts) out of its api image; when `update.sh` itself changed it continues with the new
+   one.
+4. Backs up the database (`backups/pre-update-<time>.dump`).
+5. Pins the release: writes `MERIDIAN_VERSION=vX.Y.Z` to the install's `.env` (beside the compose file,
+   `docker/.env` on a customer install) and keeps the tag it replaced as `MERIDIAN_PREVIOUS_VERSION`. Every
+   other line of `.env`, its owner and its mode are kept.
+6. Recreates api, worker, beat, frontend and nginx on the release, runs the database migrations and waits up to
+   300 seconds for `/health` and the front door. Postgres, Redis and object storage stay untouched (the one
+   exception is the first update onto Garage, which copies MinIO's files over and verifies each one; see
+   `docs/ops/pilot-upgrade-runbook.md`).
 
-For all future updates after the script is in place, the process is just:
+If the migration or the health check fails, the script rolls back on its own: the `:rollback` images are the
+running release again, `.env` names that release, and the services are recreated on it. A database that had
+already migrated is restored from the dump the script names in its output.
+
+## Roll back
 
 ```bash
-# 1. On your local machine
-git add . && git commit -m "your message" && git push origin main
-
-# 2. Wait for CI to go green at github.com/VantaX-Org/Meridian/actions
-
-# 3. SSH into the server and run
-sudo bash /opt/meridian/update.sh
+sudo bash scripts/update.sh --rollback
 ```
 
----
+This restores the previous release: `MERIDIAN_VERSION` goes back to `MERIDIAN_PREVIOUS_VERSION`, the `:rollback`
+images are tagged as that release, and the services are recreated on it. The release rolled back from becomes the
+previous one, so a second `--rollback` returns to it. Database changes are not undone by a rollback; restore the
+pre-update dump when the newer release had migrated.
+
+## Check what is running
+
+```bash
+grep MERIDIAN_VERSION /opt/meridian/docker/.env        # the pinned release and the one before it
+docker compose -f docker/docker-compose.customer.yml ps
+curl -s http://127.0.0.1/health                         # reports the running version
+```
 
 ## Troubleshooting
 
-**"Image not found" or pull fails:**
+**The pull fails.** The release may not be published yet, or the host cannot reach `ghcr.io`. The running stack
+is untouched; check the release exists, `docker login ghcr.io`, and free disk space (the script needs 10 GB).
 
-The CI build may still be running. Check the Actions tab and wait for it to finish before pulling.
+**"Meridian HQ did not give a latest version".** The install is offline or the api is not running. Name the
+release: `sudo bash scripts/update.sh --version X.Y.Z`.
 
-**"Permission denied" on update.sh:**
+**A migration fails.** The script has already rolled back to the running release. Read the cause with
+`docker compose -f docker/docker-compose.customer.yml logs api --tail 100`.
 
-```bash
-sudo chmod +x /opt/meridian/update.sh
-```
-
-**Migration fails:**
-
-Check the API logs for the full traceback:
-
-```bash
-docker compose -f /opt/meridian/docker-compose.yml logs api --tail 50
-```
-
-If a migration is broken, you can skip it temporarily and investigate:
-
-```bash
-docker compose -f /opt/meridian/docker-compose.yml up -d
-```
-
-**Services show "unhealthy" after update:**
-
-Some services (especially Ollama) take longer to start. Wait 30 seconds and re-check:
-
-```bash
-docker compose -f /opt/meridian/docker-compose.yml ps
-```
-
----
-
-## Reminder: Add update.sh to the Repo
-
-So that future customer installs get the update script automatically, add a block to `scripts/meridian-deploy.sh` (the installer) that writes `update.sh` to the install directory alongside `healthcheck.sh` during first-time setup.
+**Services are unhealthy after the update.** Some services take longer to start. Wait 30 seconds and check
+`docker compose -f docker/docker-compose.customer.yml ps`; if it stays unhealthy, roll back.

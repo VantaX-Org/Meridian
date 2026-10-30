@@ -26,6 +26,8 @@ case "$1" in
     if [[ "$args" == *"storage_migration"* && -n "${FAIL_COPY:-}" ]]; then exit 1; fi
     if [[ "$args" == *"pg_dump"* ]]; then echo "PGDMP-fake"; fi
     if [[ "$args" == *"curl -sf http://localhost:8000/health"* ]]; then echo '{"status":"ok","version":"9.9.9"}'; fi
+    if [[ "$args" == *"revalidate"* ]]; then echo "log line"; echo "MERIDIAN_LATEST=${HQ_LATEST-2.4.1}"; fi
+    if [[ "$args" == *"alembic upgrade head"* && -n "${FAIL_MIGRATE:-}" ]]; then exit 1; fi
     ;;
 esac
 exit 0
@@ -63,8 +65,9 @@ def _setup(tmp: Path, new_update_sh: bool) -> tuple[Path, dict]:
     return host, env
 
 
-def _run(host: Path, env: dict, ok: bool = True) -> list[str]:
-    r = subprocess.run(["bash", "scripts/update.sh"], cwd=host, env=env, capture_output=True, text=True, timeout=60)
+def _run(host: Path, env: dict, ok: bool = True, args: tuple[str, ...] = ()) -> list[str]:
+    r = subprocess.run(["bash", "scripts/update.sh", *args], cwd=host, env=env, capture_output=True, text=True,
+                       timeout=60)
     assert (r.returncode == 0) == ok, r.stdout + r.stderr
     return Path(env["CALLS"]).read_text().splitlines()
 
@@ -76,12 +79,14 @@ def _index(calls: list[str], needle: str) -> int:
 def test_update_order_backup_before_migrate_and_beat_recreated(tmp_path):
     host, env = _setup(tmp_path, new_update_sh=False)
     calls = _run(host, env)
-    pulled = _index(calls, "docker pull ghcr.io/vantax-org/meridian-api:latest")
+    pulled = _index(calls, "docker pull ghcr.io/vantax-org/meridian-api:v2.4.1")
     synced = _index(calls, "docker cp cid123:/deploy/.")
     dump = _index(calls, "pg_dump")
     up = _index(calls, "up -d --force-recreate api worker beat frontend nginx")
     migrate = _index(calls, "alembic upgrade head")
-    assert pulled < synced < dump < up < migrate
+    assert _index(calls, "revalidate") < pulled < synced < dump < up < migrate
+    assert "docker create ghcr.io/vantax-org/meridian-api:v2.4.1" in calls  # the deployment files of that release
+    assert not any("docker pull" in c and c.endswith(":latest") for c in calls)
     assert sum("docker tag ghcr.io/vantax-org/meridian-api:latest ghcr.io/vantax-org/meridian-api:rollback" in c
                for c in calls) == 1
     backups = list((host / "backups").glob("pre-update-*.dump"))
@@ -153,3 +158,70 @@ def test_install_without_ollama_overlay_leaves_ollama_alone(tmp_path):
     calls = _run(host, env)
     assert not any("ollama" in c for c in calls)
     assert not (host / "docker/docker-compose.customer.ollama.resolved.yml").exists()
+
+
+def _env(host: Path) -> dict[str, str]:
+    lines = (host / "docker/.env").read_text().splitlines()
+    return dict(line.split("=", 1) for line in lines if "=" in line and not line.startswith("#"))
+
+
+def test_update_pins_hq_latest_release_and_keeps_the_previous_one(tmp_path):
+    host, env = _setup(tmp_path, new_update_sh=False)
+    (host / "docker/.env").write_text("# install\nPOSTGRES_PASSWORD=secret\nMERIDIAN_VERSION=v2.3.0\n")
+    (host / "docker/.env").chmod(0o600)
+    calls = _run(host, env)
+    assert _env(host) == {"POSTGRES_PASSWORD": "secret", "MERIDIAN_VERSION": "v2.4.1", "MERIDIAN_PREVIOUS_VERSION": "v2.3.0"}
+    assert (host / "docker/.env").read_text().startswith("# install\n")  # other lines kept
+    assert oct((host / "docker/.env").stat().st_mode & 0o777) == "0o600"
+    # the running release is what rollback keeps, the pinned one is what the stack is recreated on
+    assert _index(calls, "docker tag ghcr.io/vantax-org/meridian-api:v2.3.0 ghcr.io/vantax-org/meridian-api:rollback") \
+        < _index(calls, "docker pull ghcr.io/vantax-org/meridian-api:v2.4.1") \
+        < _index(calls, "up -d --force-recreate api worker beat frontend nginx")
+
+
+def test_version_argument_wins_over_hq(tmp_path):
+    host, env = _setup(tmp_path, new_update_sh=False)
+    calls = _run(host, env, args=("--version", "2.5.0"))
+    assert not any("revalidate" in c for c in calls)
+    assert "docker pull ghcr.io/vantax-org/meridian-garage:v2.5.0" in calls
+    assert _env(host)["MERIDIAN_VERSION"] == "v2.5.0" and _env(host)["MERIDIAN_PREVIOUS_VERSION"] == "latest"
+    _run(host, env, args=("--version=v2.5.1",))
+    assert _env(host)["MERIDIAN_VERSION"] == "v2.5.1" and _env(host)["MERIDIAN_PREVIOUS_VERSION"] == "v2.5.0"
+
+
+def test_no_version_from_hq_or_a_bad_one_changes_nothing(tmp_path):
+    host, env = _setup(tmp_path, new_update_sh=False)
+    (host / "docker/.env").write_text("MERIDIAN_VERSION=v2.3.0\n")
+    calls = _run(host, {**env, "HQ_LATEST": ""}, ok=False)
+    assert not any("docker pull" in c or "docker tag" in c or "pg_dump" in c for c in calls)
+    _run(host, env, ok=False, args=("--version", "latest"))
+    assert (host / "docker/.env").read_text() == "MERIDIAN_VERSION=v2.3.0\n"
+
+
+def test_rollback_restores_the_previous_release(tmp_path):
+    host, env = _setup(tmp_path, new_update_sh=False)
+    (host / "docker/.env").write_text("MERIDIAN_VERSION=v2.3.0\n")
+    _run(host, env)
+    before = len(Path(env["CALLS"]).read_text().splitlines())
+    calls = _run(host, env, args=("--rollback",))[before:]
+    assert _env(host) == {"MERIDIAN_VERSION": "v2.3.0", "MERIDIAN_PREVIOUS_VERSION": "v2.4.1"}
+    assert _index(calls, "docker tag ghcr.io/vantax-org/meridian-api:rollback ghcr.io/vantax-org/meridian-api:v2.3.0") \
+        < _index(calls, "up -d --force-recreate api worker beat frontend nginx")
+    assert not any("docker pull" in c for c in calls)
+
+
+def test_failed_migration_auto_rolls_back_to_the_running_release(tmp_path):
+    host, env = _setup(tmp_path, new_update_sh=False)
+    (host / "docker/.env").write_text("MERIDIAN_VERSION=v2.3.0\nMERIDIAN_PREVIOUS_VERSION=v2.2.0\n")
+    calls = _run(host, {**env, "FAIL_MIGRATE": "1"}, ok=False)
+    assert _env(host) == {"MERIDIAN_VERSION": "v2.3.0", "MERIDIAN_PREVIOUS_VERSION": "v2.2.0"}
+    migrate = _index(calls, "alembic upgrade head")
+    assert any("docker tag ghcr.io/vantax-org/meridian-api:rollback ghcr.io/vantax-org/meridian-api:v2.3.0" in c
+               for c in calls[migrate:])
+
+
+def test_failed_storage_copy_keeps_the_running_release_pinned(tmp_path):
+    host, env = _setup(tmp_path, new_update_sh=False)
+    (host / "docker/.env").write_text("MERIDIAN_VERSION=v2.3.0\n")
+    _run(host, {**env, "OLD_MINIO": "oldminio", "FAIL_COPY": "1"}, ok=False)
+    assert _env(host) == {"MERIDIAN_VERSION": "v2.3.0"}

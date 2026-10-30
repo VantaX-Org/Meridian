@@ -6,7 +6,9 @@ Reachable only over the internal `meridian-net` network — never a published
 port — and intended to be called only by the `api` container.
 
 Endpoints:
-    POST /update  - starts scripts/update.sh as a background subprocess.
+    POST /update  - starts scripts/update.sh as a background subprocess; an optional JSON body
+                    {"version": "X.Y.Z"} installs that release (--version), else the
+                    script asks Meridian HQ for its latest one.
     GET  /status  - returns the last known progress written by update.sh.
     GET  /health  - trivial liveness probe for the compose healthcheck.
 
@@ -20,9 +22,10 @@ import asyncio
 import hmac
 import json
 import os
+import re
 from typing import Optional
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import Body, FastAPI, Header, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -46,6 +49,13 @@ _lock = asyncio.Lock()
 _last_good_status: dict = dict(DEFAULT_STATUS)
 
 
+_RELEASE = re.compile(r"^v?\d+\.\d+\.\d+$")
+
+
+class UpdateRequest(BaseModel):
+    version: Optional[str] = None  # the release to install, X.Y.Z or vX.Y.Z
+
+
 class UpdateStatus(BaseModel):
     state: str
     message: Optional[str] = None
@@ -54,7 +64,8 @@ class UpdateStatus(BaseModel):
 
 
 @app.post("/update", status_code=202)
-async def start_update(x_updater_secret: Optional[str] = Header(None, alias="X-Updater-Secret")):
+async def start_update(x_updater_secret: Optional[str] = Header(None, alias="X-Updater-Secret"),
+                       body: Optional[UpdateRequest] = Body(None)):
     # Fail closed if this sidecar was started without a secret configured —
     # otherwise hmac.compare_digest(b"", b"") on a missing header would
     # return True, letting anyone on meridian-net trigger an update.
@@ -63,6 +74,10 @@ async def start_update(x_updater_secret: Optional[str] = Header(None, alias="X-U
     # hmac.compare_digest, not `==` — constant-time comparison against timing attacks.
     if not hmac.compare_digest((x_updater_secret or "").encode(), SHARED_SECRET.encode()):
         raise HTTPException(status_code=401)
+
+    version = (body.version or "").strip() if body else ""
+    if version and not _RELEASE.match(version):
+        raise HTTPException(status_code=422, detail="version must be a release number, X.Y.Z")
 
     global _process
     async with _lock:
@@ -80,6 +95,7 @@ async def start_update(x_updater_secret: Optional[str] = Header(None, alias="X-U
         _process = await asyncio.create_subprocess_exec(
             "bash",
             "scripts/update.sh",
+            *(["--version", version] if version else []),
             cwd=INSTALL_DIR,
             env=env,
         )

@@ -4,8 +4,9 @@
 # scripts/update.sh
 #
 # Usage:
-#   sudo bash scripts/update.sh                    # update to latest
-#   sudo bash scripts/update.sh --rollback         # roll back to previous
+#   sudo bash scripts/update.sh                    # update to Meridian HQ's latest release
+#   sudo bash scripts/update.sh --version 2.4.1    # update to (or reinstall) one release
+#   sudo bash scripts/update.sh --rollback         # roll back to the previous release
 #   sudo bash scripts/update.sh --no-verify        # skip the /health probe
 #   sudo bash scripts/update.sh --include-updater  # also upgrade the updater
 #                                                   # sidecar's own image, as
@@ -16,6 +17,12 @@
 #                                                   # operator-driven — never
 #                                                   # passed by the sidecar's
 #                                                   # own POST /update.
+#
+# The release is pinned: the script pulls the images of one release tag
+# (vX.Y.Z), writes MERIDIAN_VERSION=vX.Y.Z to the install's .env (beside the
+# compose file) and keeps the tag it replaced as MERIDIAN_PREVIOUS_VERSION.
+# Without --version it asks Meridian HQ for latest_version (through the
+# running api's licence client). Rollback restores the previous tag.
 # =========================================================
 set -euo pipefail
 
@@ -67,10 +74,14 @@ ORIGINAL_ARGS=("$@")
 ACTION=update
 VERIFY=true
 INCLUDE_UPDATER=false
+REQUESTED_VERSION="${MERIDIAN_TARGET_VERSION:-}"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --rollback)         ACTION=rollback; shift ;;
+        --version)          [[ $# -ge 2 ]] || { echo "--version needs a release, e.g. --version 2.4.1" >&2; exit 2; }
+                            REQUESTED_VERSION="$2"; shift 2 ;;
+        --version=*)        REQUESTED_VERSION="${1#--version=}"; shift ;;
         --no-verify)        VERIFY=false; shift ;;
         --include-updater)  INCLUDE_UPDATER=true; shift ;;
         -h|--help)          grep '^# ' "$0" | sed 's/^# //'; exit 0 ;;
@@ -92,6 +103,32 @@ fi
 RFC_OVERLAY="$(dirname "$COMPOSE_FILE")/docker-compose.rfc.yml"
 # Container DNS overlay (scripts/dns-overlay.sh) — present only when .env sets MERIDIAN_DNS_1/2.
 DNS_OVERLAY="$(dirname "$COMPOSE_FILE")/docker-compose.dns.yml"
+
+# The install's .env: compose reads it from the directory of the first compose file.
+ENV_FILE="$(dirname "$COMPOSE_FILE")/.env"
+
+# get_env <key>: the key's value in .env (last assignment wins, quotes dropped); empty when unset.
+get_env() {
+    [[ -f "$ENV_FILE" ]] || return 0
+    sed -n "s/^${1}=//p" "$ENV_FILE" | tail -1 | sed -e 's/^["'\'']//' -e 's/["'\'']$//'
+}
+
+# set_env <key> <value>: replace the key's line (or add it; an empty value removes it), keeping every other
+# line, the file's owner and mode.
+set_env() {
+    local tmp="${ENV_FILE}.tmp.$$"
+    if [[ -f "$ENV_FILE" ]]; then grep -v "^${1}=" "$ENV_FILE" > "$tmp" || true; else : > "$tmp"; fi
+    [[ -n "$2" ]] && printf '%s=%s\n' "$1" "$2" >> "$tmp"
+    cat "$tmp" > "$ENV_FILE"
+    rm -f "$tmp"
+}
+
+# release_tag <version>: the image tag of a release (2.4.1, v2.4.1 -> v2.4.1); fails on anything else.
+release_tag() {
+    local v="${1#v}"
+    [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 1
+    echo "v${v}"
+}
 
 dc() {
     local files=(-f "$COMPOSE_FILE")
@@ -128,17 +165,62 @@ retag_rfc() {  # retag_rfc <from-tag> <to-tag>
     done
 }
 
+# The tag the stack runs now: MERIDIAN_VERSION from .env, else latest (the compose default).
+CURRENT_TAG="$(get_env MERIDIAN_VERSION)"
+CURRENT_TAG="${CURRENT_TAG:-latest}"
+PREVIOUS_BEFORE="$(get_env MERIDIAN_PREVIOUS_VERSION)"
+
 snapshot_rollback_tags() {
     retag_rfc rfc-local rfc-rollback
-    info "Snapshotting current images as :rollback..."
+    info "Snapshotting current images (:${CURRENT_TAG}) as :rollback..."
     for img in "${IMAGES[@]}"; do
-        if docker image inspect "${img}:latest" >/dev/null 2>&1; then
-            docker tag "${img}:latest" "${img}:rollback"
-            info "  ${img}: :latest → :rollback"
+        if docker image inspect "${img}:${CURRENT_TAG}" >/dev/null 2>&1; then
+            docker tag "${img}:${CURRENT_TAG}" "${img}:rollback"
+            info "  ${img}: :${CURRENT_TAG} → :rollback"
         else
-            warn "  ${img}:latest not present — no snapshot for this image"
+            warn "  ${img}:${CURRENT_TAG} not present — no snapshot for this image"
         fi
     done
+}
+
+# The release to install: --version (or MERIDIAN_TARGET_VERSION from the updater sidecar), else Meridian HQ's
+# latest_version, asked through the running api's licence client. Nothing is changed when neither answers.
+resolve_target() {
+    local v="$REQUESTED_VERSION"
+    if [[ -z "$v" ]]; then
+        info "Asking Meridian HQ for the latest release..."
+        v=$(dc exec -T api python -c "
+import asyncio
+from api.middleware.licence import revalidate
+result, _ = asyncio.run(revalidate())
+print('MERIDIAN_LATEST=' + str((result or {}).get('latest_version') or ''))
+" 2>/dev/null | sed -n 's/^MERIDIAN_LATEST=//p' | tail -1 || true)
+        [[ -n "$v" ]] || error "Meridian HQ did not give a latest version (offline, or the api is not running). Nothing was changed. Rerun with --version X.Y.Z."
+    fi
+    TARGET_TAG=$(release_tag "$v") || error "'$v' is not a release version (X.Y.Z). Nothing was changed."
+    info "Installing release ${TARGET_TAG} (running: ${CURRENT_TAG})"
+}
+
+# Pin the stack to the new release before it is recreated; the tag it replaces is kept for --rollback.
+pin_release() {
+    set_env MERIDIAN_VERSION "$TARGET_TAG"
+    if [[ "$CURRENT_TAG" != "$TARGET_TAG" ]]; then
+        set_env MERIDIAN_PREVIOUS_VERSION "$CURRENT_TAG"
+    fi
+    info "Pinned MERIDIAN_VERSION=${TARGET_TAG} in ${ENV_FILE}"
+}
+
+# Back to the tag the stack ran before: the :rollback snapshot is that tag again, and .env names it.
+restore_release() {  # restore_release <tag>
+    local img
+    for img in "${IMAGES[@]}"; do
+        if docker image inspect "${img}:rollback" >/dev/null 2>&1; then
+            docker tag "${img}:rollback" "${img}:$1"
+            info "  ${img}: :$1 ← :rollback"
+        fi
+    done
+    retag_rfc rfc-rollback rfc-local
+    set_env MERIDIAN_VERSION "$1"
 }
 
 # Custom-format dump of the whole database, taken before any migration runs.
@@ -201,7 +283,7 @@ sync_deployment_files() {
     [[ -n "${MERIDIAN_UPDATE_REEXEC:-}" ]] && return 0
     local stage cid compose_dir changed_self=false
     stage=$(mktemp -d)
-    cid=$(docker create ghcr.io/vantax-org/meridian-api:latest) \
+    cid=$(docker create "ghcr.io/vantax-org/meridian-api:${TARGET_TAG}") \
         || { warn "Could not read deployment files from the new image — keeping current ones"; return 0; }
     if ! docker cp "$cid:/deploy/." "$stage/" 2>/dev/null; then
         docker rm "$cid" >/dev/null
@@ -225,7 +307,8 @@ sync_deployment_files() {
     info "Deployment files synced from the new release (changed local files kept as *.bak)"
     if [[ "$changed_self" == "true" ]]; then
         info "update.sh changed in this release — continuing with the new version"
-        exec env MERIDIAN_UPDATE_REEXEC=1 bash scripts/update.sh ${ORIGINAL_ARGS[@]+"${ORIGINAL_ARGS[@]}"}
+        exec env MERIDIAN_UPDATE_REEXEC=1 MERIDIAN_TARGET_VERSION="$TARGET_TAG" \
+            bash scripts/update.sh ${ORIGINAL_ARGS[@]+"${ORIGINAL_ARGS[@]}"}
     fi
 }
 
@@ -286,6 +369,8 @@ migrate_object_storage() {
     docker network disconnect "$net" "$old" 2>/dev/null || true
     docker network connect --alias minio "$net" "$old"
     [[ -n "$apps" ]] && docker start $apps >/dev/null
+    set_env MERIDIAN_VERSION "$CURRENT_TAG"  # the stack stays on the release it ran
+    set_env MERIDIAN_PREVIOUS_VERSION "$PREVIOUS_BEFORE"
     write_status "failed" "Object storage copy to Garage failed — still running on MinIO."
     error "Copying object storage to Garage failed — update aborted; Meridian keeps running on MinIO and the previous images. Reason in the log lines above."
 }
@@ -293,7 +378,7 @@ migrate_object_storage() {
 pull_images() {
     # Meridian images first, by name — independent of the (possibly outdated)
     # compose file on this host, which is refreshed from the new image next.
-    info "Pulling latest images..."
+    info "Pulling the images of release ${TARGET_TAG}..."
     # Docker's own root and containerd's content store (used by the containerd image store) can sit on
     # different filesystems; an image pull fills whichever one holds the layers.
     local d free
@@ -305,12 +390,12 @@ pull_images() {
     done
     local out
     for img in "${IMAGES[@]}"; do
-        if ! out=$(docker pull "${img}:latest" 2>&1 >/dev/null); then
+        if ! out=$(docker pull "${img}:${TARGET_TAG}" 2>&1 >/dev/null); then
             echo "$out" | tail -3 >&2
             if grep -q 'no space left on device' <<<"$out"; then
                 error "Pull of ${img} failed: disk full. Running stack is untouched. Free space (docker image prune -f; docker builder prune -f) and rerun."
             fi
-            error "Pull of ${img} failed. Running stack is untouched. Check network / docker login ghcr.io."
+            error "Pull of ${img}:${TARGET_TAG} failed. Running stack is untouched. Check network / docker login ghcr.io, and that release ${TARGET_TAG} exists."
         fi
     done
     info "Images pulled successfully"
@@ -408,21 +493,23 @@ verify_health() {
 }
 
 rollback() {
-    info "Rolling back to previously-running images..."
-    local missing=0
+    local previous img missing=0
+    previous="$(get_env MERIDIAN_PREVIOUS_VERSION)"
+    previous="${previous:-latest}"
+    info "Rolling back from ${CURRENT_TAG} to the previously-running release (${previous})..."
     for img in "${IMAGES[@]}"; do
         if ! docker image inspect "${img}:rollback" >/dev/null 2>&1; then
             warn "  ${img}:rollback not found — skipping"
             missing=$((missing + 1))
-            continue
         fi
-        docker tag "${img}:rollback" "${img}:latest"
-        info "  ${img}: :latest ← :rollback"
     done
     if [[ "$missing" -eq "${#IMAGES[@]}" ]]; then
         error "No :rollback tags found — nothing to roll back to."
     fi
-    retag_rfc rfc-rollback rfc-local
+    restore_release "$previous"
+    # the release rolled back from becomes the previous one, so a second --rollback returns to it
+    [[ "$CURRENT_TAG" != "$previous" ]] && set_env MERIDIAN_PREVIOUS_VERSION "$CURRENT_TAG"
+    info "Restored MERIDIAN_VERSION=${previous} in ${ENV_FILE}"
     info "Restarting services on rolled-back images..."
     dc up -d --force-recreate api worker beat frontend nginx 2>/dev/null || true
     if [[ "$VERIFY" == "true" ]]; then
@@ -438,13 +525,9 @@ rollback() {
 # Reached only when an update has already gone wrong. Restores the :rollback
 # snapshot, recreates services, and always exits non-zero.
 auto_rollback() {
-    warn "$1 Auto-rolling back to previous images..."
-    for img in "${IMAGES[@]}"; do
-        if docker image inspect "${img}:rollback" >/dev/null 2>&1; then
-            docker tag "${img}:rollback" "${img}:latest"
-        fi
-    done
-    retag_rfc rfc-rollback rfc-local
+    warn "$1 Auto-rolling back to previous images (${CURRENT_TAG})..."
+    restore_release "$CURRENT_TAG"
+    set_env MERIDIAN_PREVIOUS_VERSION "$PREVIOUS_BEFORE"
     dc up -d --force-recreate api worker beat frontend nginx 2>/dev/null || true
     if ! verify_health; then
         write_status "failed" "Rollback also failed /health after: $1"
@@ -474,13 +557,9 @@ if [[ "$ACTION" == "rollback" ]]; then
     rollback
 fi
 
-info "Updating Meridian to the latest released version..."
+info "Updating Meridian..."
 
-if [[ -z "${MERIDIAN_UPDATE_REEXEC:-}" ]]; then
-    snapshot_rollback_tags
-fi
-
-write_status "pulling" "Pulling latest images..."
+write_status "pulling" "Resolving the release and pulling its images..."
 # An update recreates the worker, which kills whatever it is running. That is fine for an idle
 # deployment and disastrous for a 15-hour analysis: it happened three times - twice to a
 # material_master baseline that had already finished its extraction, once while DDIC conformance
@@ -526,6 +605,10 @@ assert_no_active_run() {
 
 assert_no_active_run
 
+resolve_target
+if [[ -z "${MERIDIAN_UPDATE_REEXEC:-}" ]]; then
+    snapshot_rollback_tags
+fi
 pull_images
 sync_deployment_files
 reapply_https_nginx
@@ -539,6 +622,8 @@ rebuild_rfc_overlay
 
 write_status "backing_up" "Backing up the database..."
 backup_database
+# pinned before the storage copy: it runs the new release's api image (api.services.storage_migration)
+pin_release
 migrate_object_storage
 
 # Roll forward onto the new images BEFORE migrating: `dc exec` targets the
@@ -575,8 +660,8 @@ except Exception:
 " 2>/dev/null || echo "unknown")
 
 echo ""
-write_status "done" "Update complete. Running version: $VERSION"
-info "Update complete. Running version: $VERSION"
+write_status "done" "Update complete. Running version: $VERSION (release ${TARGET_TAG})"
+info "Update complete. Running version: $VERSION (release ${TARGET_TAG}, pinned in ${ENV_FILE})"
 info "To revert: sudo bash scripts/update.sh --rollback"
 
 if [[ "$INCLUDE_UPDATER" == "true" ]]; then
