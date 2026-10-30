@@ -72,7 +72,8 @@ SAP data, findings, and reports **never leave the customer boundary**.
 │  └─────────┘ └────────┘ └──────┘ └──────┘ └──────┘     │
 │  ┌──────────────┐ ┌────────────────────────────┐        │
 │  │ Next.js 15   │ │ Ollama (local LLM, Tier 2) │        │
-│  │ 30 pages     │ │ qwen3.5:9b        │        │
+│  │ map, canvas, │ │ qwen3.5:9b        │        │
+│  │ inspector    │ │                   │        │
 │  └──────────────┘ └────────────────────────────┘        │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -122,7 +123,7 @@ claims are defensible, see [docs/market-positioning.md](docs/market-positioning.
 | Database | PostgreSQL 16 + Alembic (33 migrations) + RLS |
 | Object storage | Garage (S3-compatible, AGPL, shipped unmodified) |
 | Local LLM | Ollama (qwen3.5:9b, request_timeout=120) |
-| Frontend | Next.js 15, TypeScript, Tailwind v4, shadcn/ui (30 pages) |
+| Frontend | Next.js, TypeScript: one map, one canvas and one inspector (frontend/README.md); English, German, Japanese |
 | SAP connectors | RFC, OData V2/V4, REST — 5 connector implementations |
 | Auth | Clerk or local JWT (air-gapped) |
 | Licence | Cloudflare Workers + D1 |

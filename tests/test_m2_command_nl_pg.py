@@ -43,7 +43,7 @@ async def test_command_nl(owner, monkeypatch):
         assert out["filter"] == {"policy": "sox:vendor_bank", "system": s["ecc"]} and out["unmatched_words"] == []
         assert out["llm_used"] is False and "vendor bank data" in out["explanation"]
         qs = parse_qs(urlparse(out["href"]).query)
-        assert urlparse(out["href"]).path == "/v2/work" and qs == {"policy": ["sox:vendor_bank"], "system": [s["ecc"]]}
+        assert urlparse(out["href"]).path == "/work" and qs == {"policy": ["sox:vendor_bank"], "system": [s["ecc"]]}
 
         recs = (await client.get("/api/v1/work/records", params=out["filter"], headers=headers("viewer"))).json()
         assert sorted(i["record_key"] for i in recs["items"]) == [K1, K2]  # AP039 evidences vendor bank data

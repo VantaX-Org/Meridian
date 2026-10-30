@@ -18,7 +18,7 @@ const SIZES = [
 ] as const;
 const SCHEMES = ["light", "dark"] as const;
 const NAV = { timeout: 90_000 };
-const OBJECT = "/v2/o/ecc-production/material-master";
+const OBJECT = "/o/ecc-production/material-master";
 
 async function prepare(page: Page, scheme: "light" | "dark") {
   await page.context().addCookies([{ name: "mn_session", value: "1", domain: "localhost", path: "/" }]);
@@ -69,7 +69,7 @@ for (const size of SIZES) {
           await expect(grid.getByRole("row").nth(1)).toContainText("Hex bolt M8 zinc", NAV);
         }
         await expect(page.getByText("1,284 records")).toBeVisible();
-        await expect(page.getByRole("region", { name: "Survivorship rules" }).getByRole("link", { name: "Edit in the current interface" })).toHaveAttribute("href", "/mdm/survivorship");
+        await expect(page.getByRole("region", { name: "Survivorship rules" }).getByRole("link", { name: "Edit the rules" })).toHaveAttribute("href", /open=survivorship/);
         expect(await noSideScroll(page)).toBe(true);
         await page.waitForLoadState("networkidle");
         await shotTab(page, "object-golden");
@@ -169,7 +169,7 @@ for (const size of SIZES) {
         await expect(page.getByTestId("process-sentence")).toContainText("2 of 4 process steps are blocked by Material master: PTP step 3, PP step 1.", NAV);
         await expect(page.getByTestId("process-step")).toHaveCount(4);
         await expect(page.locator('[data-testid="process-step"][data-blocked="true"]')).toHaveCount(2);
-        await expect(page.getByRole("region", { name: "Process designer" }).getByRole("link", { name: "Open the designer" })).toHaveAttribute("href", "/insights/process/designer");
+        await expect(page.getByRole("region", { name: "Process designer" }).getByRole("link", { name: "Open the designer" })).toHaveAttribute("href", /^\/o\/ecc-production\/material-master\/processes\/design(\?|$)/);
         expect(await noSideScroll(page)).toBe(true);
         await page.waitForLoadState("networkidle");
         await shotTab(page, "object-processes");
@@ -178,7 +178,7 @@ for (const size of SIZES) {
         await page.getByRole("link", { name: "Open the step Post Goods Receipt" }).click();
         const d = page.getByRole("dialog", { name: "Post Goods Receipt" });
         await expect(d).toBeVisible(NAV);
-        await expect(d.getByRole("link", { name: "Fix MM014 in Work" })).toHaveAttribute("href", /\/v2\/work\?rule=MM014&module=material_master/);
+        await expect(d.getByRole("link", { name: "Fix MM014 in Work" })).toHaveAttribute("href", /\/work\?rule=MM014&module=material_master/);
         expect(await noSideScroll(page)).toBe(true);
         await shot(page, "object-processes-step");
         await axe(page, `step ${size.name} ${scheme}`);
@@ -192,7 +192,7 @@ test.describe("process analyst", () => {
 
   test("the landscape's next step opens the first blocked process step", async ({ page }) => {
     await prepare(page, "light");
-    await page.goto("/v2?fixture=1&persona=process", { waitUntil: "load", timeout: 90_000 });
+    await page.goto("/?fixture=1&persona=process", { waitUntil: "load", timeout: 90_000 });
     const next = page.getByRole("link", { name: "Open PTP step 3" });
     await expect(next).toBeVisible(NAV);
     await next.click();

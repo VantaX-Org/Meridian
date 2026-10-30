@@ -24,6 +24,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services import app_links
 from api.services.notifications import create_notification
 from api.services.rate_limiter import rate_limit
 from api.services.rbac import current_user_id
@@ -92,7 +93,7 @@ async def send_test_notification(
     key = test_key()
 
     # First transaction: the in-app notification and the claimed (pending) email row.
-    await create_notification(str(tenant.id), str(uid), "info", TEST_TITLE, TEST_BODY, "/me/preferences", db)
+    await create_notification(str(tenant.id), str(uid), "info", TEST_TITLE, TEST_BODY, app_links.PREFERENCES, db)
     await record_delivery_async(db, str(tenant.id), str(uid), "in_app", "test", "sent")
     email_row = None
     if email_backend_name() is None or not email:

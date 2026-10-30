@@ -162,7 +162,7 @@ def test_critical_emails_opted_in_users_only_and_everyone_gets_in_app(wired):
     assert [e[0] for e in wired.emails] == ["u@example.com"]
     assert "PRD" in wired.emails[0][1]
     assert sorted(n["uid"] for n in wired.in_app) == sorted([ana.user_id, ben.user_id, eve.user_id])
-    assert all(n["tid"] == TID and n["type"] == "dq_alert" and n["link"] == f"/findings?version_id={VID}" for n in wired.in_app)
+    assert all(n["tid"] == TID and n["type"] == "dq_alert" and n["link"] in (f"/run/{VID}", f"/o/_/material-master?run={VID}") for n in wired.in_app)
     assert "BP-001" in wired.in_app[0]["body"]
 
     by = {(d["uid"], d["channel"]): d for d in s.deliveries}

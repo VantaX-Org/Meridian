@@ -11,7 +11,7 @@ afterEach(() => vi.restoreAllMocks());
 
 describe("the process analyst's jobs", () => {
   it("simulates fixing rules on the Processes tab: blocked steps before and after, labelled as a simulation", async () => {
-    visit("/v2/o/ecc-production/material-master/processes", "process_analyst");
+    visit("/o/ecc-production/material-master/processes", "process_analyst");
     mount(<ProcessesTab system="ecc-production" module="material-master" />);
     const panel = await screen.findByTestId("what-if");
     expect(within(panel).getByText("Simulation")).toBeInTheDocument();
@@ -24,13 +24,13 @@ describe("the process analyst's jobs", () => {
   });
 
   it("may comment on a rule (view) but not balance work (no assign)", async () => {
-    visit("/v2/work?open=rule:MM014", "process_analyst");
+    visit("/work?open=rule:MM014", "process_analyst");
     mount();
     expect(await screen.findByRole("textbox", { name: "Add a comment" })).toBeInTheDocument();
   });
 
   it("is refused Balance work", async () => {
-    visit("/v2/people?open=balance", "process_analyst");
+    visit("/people?open=balance", "process_analyst");
     mount();
     expect(await screen.findByTestId("needs-permission")).toBeInTheDocument();
   });

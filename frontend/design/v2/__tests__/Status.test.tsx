@@ -17,7 +17,7 @@ beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
   resetEnterpriseFixture();
   setLang("en");
-  setUrl("/v2/status?fixture=1");
+  setUrl("/status?fixture=1");
 });
 afterEach(() => {
   window.sessionStorage.clear();
@@ -89,7 +89,7 @@ describe("the status page", () => {
 
   it("signed in, it links back to Meridian instead of to sign-in", async () => {
     renderWithQuery(<StatusScreen signedIn />);
-    expect(await screen.findByRole("link", { name: "Back to Meridian" })).toHaveAttribute("href", "/v2?fixture=1");
+    expect(await screen.findByRole("link", { name: "Back to Meridian" })).toHaveAttribute("href", "/?fixture=1");
   });
 
   it("reads the status again every 60 seconds", async () => {
@@ -132,11 +132,11 @@ describe("the status page", () => {
 
 describe("the status strip's health word", () => {
   it("links to the status page with the platform's state in one word", async () => {
-    setUrl("/v2?fixture=1");
+    setUrl("/?fixture=1");
     renderWithQuery(<StatusStrip />);
     const link = await screen.findByTestId("status-health");
     expect(link).toHaveTextContent("Degraded");
-    expect(link).toHaveAttribute("href", "/v2/status?fixture=1");
+    expect(link).toHaveAttribute("href", "/status?fixture=1");
     expect(link).toHaveAccessibleName("Platform Degraded, open the status page");
   });
 });

@@ -40,7 +40,7 @@ const norm = (el: HTMLElement) => (el.textContent ?? "").replace(/\s+/g, " ").tr
 describe("delta extraction", () => {
   it("the System inspector sends delta when 'Changes only since last full download' is ticked", async () => {
     const spy = vi.spyOn(runsApi, "extractObjects");
-    setUrl(`/v2?fixture=1&open=system:${ECC.id}`);
+    setUrl(`/?fixture=1&open=system:${ECC.id}`);
     renderWithQuery(<Inspector />);
     fireEvent.click(await screen.findByRole("button", { name: "Extract" }));
     const picker = await screen.findByTestId("extract-picker");
@@ -55,7 +55,7 @@ describe("delta extraction", () => {
 
   it("Admin runs sends delta from its extraction form", async () => {
     const spy = vi.spyOn(adminApi, "startExtraction");
-    setUrl("/v2/admin/runs?fixture=1");
+    setUrl("/admin/runs?fixture=1");
     renderWithQuery(<AdminCanvas section="runs" />);
     const objects = await screen.findByRole("list", { name: "Objects to extract" });
     fireEvent.click((await within(objects).findAllByRole("checkbox"))[0]);
@@ -66,7 +66,7 @@ describe("delta extraction", () => {
   });
 
   it("the Extractions view shows the per-table change log of a delta download", async () => {
-    setUrl(`/v2/s/${ECC.id}?fixture=1&tab=extractions`);
+    setUrl(`/s/${ECC.id}?fixture=1&tab=extractions`);
     renderWithQuery(<SystemCanvas id={ECC.id} />);
     const log = await screen.findByTestId("change-log");
     expect(await within(log).findByTestId("change-log-line")).toHaveTextContent("Changes only since 9 Oct 2026: 152,280 rows read of 306,150, 7,200 changed.");
@@ -78,7 +78,7 @@ describe("delta extraction", () => {
   });
 
   it("an older full download says it was not compared, with dashes for the counts", async () => {
-    setUrl(`/v2/s/${ECC.id}?fixture=1&tab=extractions`);
+    setUrl(`/s/${ECC.id}?fixture=1&tab=extractions`);
     renderWithQuery(<SystemCanvas id={ECC.id} />);
     const buttons = await screen.findAllByRole("button", { name: /^Change log of the download/ });
     fireEvent.click(buttons[1]);

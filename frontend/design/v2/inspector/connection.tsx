@@ -11,7 +11,7 @@ import { t } from "@/lib/v2/i18n";
 
 /**
  * `?open=connection:<system id>` edits a system's connection; `?open=connection:new` connects a new one. The form is
- * the same one the /v2/s/new canvas draws. A new system opens its own inspector next, to test, extract and schedule.
+ * the same one the /s/new canvas draws. A new system opens its own inspector next, to test, extract and schedule.
  */
 export function ConnectionInspector({ id, onClose }: { id: string; onClose: () => void }) {
   const router = useRouter();
@@ -22,7 +22,7 @@ export function ConnectionInspector({ id, onClose }: { id: string; onClose: () =
   return (
     <InspectorFrame title={isNew ? t("Connect a system") : system?.name ?? t("Connection")} status={isNew ? t("New system") : system ? t("{systemTypeLabel}, connection settings", { systemTypeLabel: systemTypeLabel(system.system_type) }) : undefined} onClose={onClose}>
       {isNew ? (
-        <ConnectionForm onSaved={(s) => router.replace(v2(`/v2/s/${s.id}?open=system:${s.id}`))} />
+        <ConnectionForm onSaved={(s) => router.replace(v2(`/s/${s.id}?open=system:${s.id}`))} />
       ) : systems.isLoading ? (
         <Skeleton width="100%" height={160} />
       ) : systems.isError ? (
@@ -30,7 +30,7 @@ export function ConnectionInspector({ id, onClose }: { id: string; onClose: () =
       ) : !system ? (
         <EmptyFrame>{t("This system is not in the tenant. It may have been removed.")}</EmptyFrame>
       ) : (
-        <ConnectionForm key={system.id} system={system} onRemoved={() => router.replace(v2("/v2"))} />
+        <ConnectionForm key={system.id} system={system} onRemoved={() => router.replace(v2("/"))} />
       )}
     </InspectorFrame>
   );

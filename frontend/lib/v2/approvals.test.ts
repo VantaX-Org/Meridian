@@ -119,13 +119,14 @@ describe("inbox", () => {
     expect(sentenceOf({ title: "Only", body: "" })).toBe("Only");
   });
 
-  it("names where a link goes: an object, a batch, the ledger, or a page of the current interface", () => {
+  it("names where a link goes: an object, a batch, the ledger, any other page, or a link outside the app", () => {
     expect(linkOf(null)).toBeNull();
-    expect(linkOf("/v2/o/ecc-production/material-master", () => "Material master")).toEqual({ href: "/v2/o/ecc-production/material-master", label: "Material master", external: false });
-    expect(linkOf("/v2/o/ecc-production/business-partner")?.label).toBe("Business partner");
-    expect(linkOf("/v2/work?open=batch:B-1")?.label).toBe("Open the batch");
-    expect(linkOf("/v2/work?due=overdue")?.label).toBe("Open the ledger");
-    expect(linkOf("/reports")).toEqual({ href: "/reports", label: "Open", external: true });
+    expect(linkOf("/o/ecc-production/material-master", () => "Material master")).toEqual({ href: "/o/ecc-production/material-master", label: "Material master", external: false });
+    expect(linkOf("/o/ecc-production/business-partner")?.label).toBe("Business partner");
+    expect(linkOf("/work?open=batch:B-1")?.label).toBe("Open the batch");
+    expect(linkOf("/work?due=overdue")?.label).toBe("Open the ledger");
+    expect(linkOf("/reports")).toEqual({ href: "/reports", label: "Open", external: false });
+    expect(linkOf("https://example.org/a")).toEqual({ href: "https://example.org/a", label: "Open", external: true });
   });
 });
 

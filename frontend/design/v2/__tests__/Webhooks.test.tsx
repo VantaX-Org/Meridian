@@ -35,7 +35,7 @@ afterEach(() => {
 
 const norm = (el: HTMLElement) => (el.textContent ?? "").replace(/\s+/g, " ").trim();
 const page = (open = "") => {
-  setUrl(`/v2/admin/webhooks?fixture=1${open ? `&open=${open}` : ""}`);
+  setUrl(`/admin/webhooks?fixture=1${open ? `&open=${open}` : ""}`);
   return renderWithQuery(
     <>
       <AdminCanvas section="webhooks" />

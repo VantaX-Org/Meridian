@@ -16,7 +16,7 @@ const B = RUNS[7].id; // 16 Oct
 beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
   resetRunsFixture();
-  setUrl(`/v2/run/${A}/vs/${B}?fixture=1`);
+  setUrl(`/run/${A}/vs/${B}?fixture=1`);
 });
 afterEach(() => {
   window.sessionStorage.clear();
@@ -117,7 +117,7 @@ describe("Compare canvas", () => {
     const from = await screen.findByRole("combobox", { name: "From run" });
     await waitFor(() => expect(within(from).getAllByRole("option")).toHaveLength(8));
     fireEvent.change(from, { target: { value: RUNS[0].id } });
-    expect(getUrl()).toContain(`/v2/run/${RUNS[0].id}/vs/${B}`);
+    expect(getUrl()).toContain(`/run/${RUNS[0].id}/vs/${B}`);
   });
 
   it("as a list below 760px each object is a two-line row with the same figures", async () => {

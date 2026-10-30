@@ -20,7 +20,7 @@ export function dimsOf(cell: LandscapeCell): (number | null)[] {
 
 function ObjectRow({ system, cell, label, current, fixtureRun }: { system: LandscapeSystem; cell: LandscapeCell; label: string; current: boolean; fixtureRun: string | null }) {
   const reading = readingText({ label, measured: cell.raw_score, score: cell.score, capped: cell.capped, capLevel: cell.cap_level, breaches: cell.breaches, dims: dimsOf(cell), records: cell.records_checked, rules: cell.rules_measured, coverage: cell.coverage, lowConfidence: cell.low_confidence });
-  const href = `/v2/o/${systemSlug(system.name)}/${moduleSlug(cell.module)}${fixtureRun ? `?run=${fixtureRun}` : ""}`;
+  const href = `/o/${systemSlug(system.name)}/${moduleSlug(cell.module)}${fixtureRun ? `?run=${fixtureRun}` : ""}`;
   return (
     <V2Link href={href} className="m2-orow" aria-current={current ? "page" : undefined} title={reading}>
       <span className="m2-orow-nm">
@@ -103,19 +103,19 @@ export function MapPane({ open, onClose, phone }: { open: boolean; onClose: () =
         </div>
       ) : null}
       <nav className="m2-mnav" aria-label={t("Places")}>
-        <V2Link href="/v2" className="m2-mi" aria-current={current("/v2", true) ? "page" : undefined}>
+        <V2Link href="/" className="m2-mi" aria-current={current("/", true) ? "page" : undefined}>
           <span>{t("Landscape")}</span>
           <kbd className="m2-kb">g l</kbd>
         </V2Link>
-        <V2Link href="/v2/work" className="m2-mi" aria-current={current("/v2/work") ? "page" : undefined}>
+        <V2Link href="/work" className="m2-mi" aria-current={current("/work") ? "page" : undefined}>
           <span>{t("Work")}</span>
           {counts.data?.fix ? <span className="m2-n">{int(counts.data.fix)}</span> : <kbd className="m2-kb">g w</kbd>}
         </V2Link>
-        <V2Link href="/v2/runs" className="m2-mi" aria-current={current("/v2/runs") || current("/v2/run") ? "page" : undefined}>
+        <V2Link href="/runs" className="m2-mi" aria-current={current("/runs") || current("/run") ? "page" : undefined}>
           <span>{t("Runs")}</span>
           <kbd className="m2-kb">g r</kbd>
         </V2Link>
-        <V2Link href="/v2/people" className="m2-mi" aria-current={current("/v2/people") ? "page" : undefined}>
+        <V2Link href="/people" className="m2-mi" aria-current={current("/people") ? "page" : undefined}>
           <span>{t("People")}</span>
           <kbd className="m2-kb">g p</kbd>
         </V2Link>
@@ -153,7 +153,7 @@ export function MapPane({ open, onClose, phone }: { open: boolean; onClose: () =
                 {openNow
                   ? cells.map((c) => {
                       const label = L.objects.find((o) => o.module === c.module)?.label ?? c.module;
-                      const here = pathname.startsWith(`/v2/o/${systemSlug(s.name)}/${moduleSlug(c.module)}`);
+                      const here = pathname.startsWith(`/o/${systemSlug(s.name)}/${moduleSlug(c.module)}`);
                       return <ObjectRow key={c.module} system={s} cell={c} label={label} current={here} fixtureRun={run} />;
                     })
                   : null}

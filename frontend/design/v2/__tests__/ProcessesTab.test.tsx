@@ -11,7 +11,7 @@ vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout:
 
 beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
-  setUrl("/v2/o/ecc-production/material-master/processes?fixture=1");
+  setUrl("/o/ecc-production/material-master/processes?fixture=1");
 });
 afterEach(() => {
   window.sessionStorage.clear();
@@ -69,7 +69,7 @@ describe("the Processes tab", () => {
   it("leads to the process designer canvas, without embedding it", async () => {
     tab();
     const frame = await screen.findByRole("region", { name: "Process designer" });
-    expect(within(frame).getByRole("link", { name: "Open the designer" })).toHaveAttribute("href", "/v2/o/ecc-production/material-master/processes/design?fixture=1");
+    expect(within(frame).getByRole("link", { name: "Open the designer" })).toHaveAttribute("href", "/o/ecc-production/material-master/processes/design?fixture=1");
     expect(document.querySelector("iframe")).toBeNull();
   });
 
@@ -77,7 +77,7 @@ describe("the Processes tab", () => {
     tab("purchasing");
     const empty = await screen.findByTestId("empty-frame");
     expect(empty).toHaveTextContent(/No process step reads the fields of Purchasing/);
-    expect(within(empty).getByRole("link", { name: "Open the designer" })).toHaveAttribute("href", "/v2/o/ecc-production/purchasing/processes/design?fixture=1");
+    expect(within(empty).getByRole("link", { name: "Open the designer" })).toHaveAttribute("href", "/o/ecc-production/purchasing/processes/design?fixture=1");
   });
 
   it("says when no step is blocked", async () => {
@@ -92,7 +92,7 @@ describe("the Processes tab", () => {
 
 describe("the step inspector", () => {
   const open = async (ref = "material_master:PTP-GR-MIGO") => {
-    setUrl(`/v2/o/ecc-production/material-master/processes?open=step:${ref}&fixture=1`);
+    setUrl(`/o/ecc-production/material-master/processes?open=step:${ref}&fixture=1`);
     renderWithQuery(<Inspector />);
     const d = await screen.findByRole("dialog");
     await waitFor(() => expect(within(d).queryByRole("region", { name: "Facts" }) ?? within(d).queryByTestId("empty-frame")).not.toBeNull());
@@ -117,7 +117,7 @@ describe("the step inspector", () => {
   it("links the fix into the ledger filtered to the rules that fail", async () => {
     const d = await open();
     const fix = within(d).getByRole("link", { name: "Fix MM014 in Work" });
-    expect(fix).toHaveAttribute("href", expect.stringContaining("/v2/work?rule=MM014&module=material_master"));
+    expect(fix).toHaveAttribute("href", expect.stringContaining("/work?rule=MM014&module=material_master"));
     expect(within(d).getByRole("link", { name: "Fix MM031 in Work" })).toHaveAttribute("href", expect.stringContaining("rule=MM031"));
     expect(within(d).getByRole("link", { name: "Open the designer" })).toHaveAttribute("href", expect.stringContaining("/processes/design"));
   });

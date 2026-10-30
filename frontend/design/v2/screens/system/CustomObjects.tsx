@@ -397,7 +397,7 @@ export function CustomObjects({ id }: { id: string }) {
     next.delete("open");
     if (key === "registry") next.delete("part");
     else next.set("part", key);
-    return `/v2/s/${id}?${next.toString()}`;
+    return `/s/${id}?${next.toString()}`;
   };
   const detect = () =>
     void run("detect", async () => {

@@ -33,7 +33,7 @@ afterEach(() => {
 const text = (el: Element) => (el.textContent ?? "").replace(/\s+/g, " ").trim();
 
 function mount(id: string, extra = "") {
-  const url = `/v2/work?fixture=1&persona=owner${extra}&open=${encodeURIComponent(`batch:${id}`)}`;
+  const url = `/work?fixture=1&persona=owner${extra}&open=${encodeURIComponent(`batch:${id}`)}`;
   window.history.pushState({}, "", url);
   setUrl(url);
   return renderWithQuery(
@@ -73,7 +73,7 @@ describe("the batch inspector", () => {
     expect(within(list).getAllByRole("listitem")).toHaveLength(50);
     expect(insp).toHaveTextContent("50 of 328 records shown");
     const all = within(insp).getByRole("link", { name: "Open all 328 in the ledger" });
-    expect(all.getAttribute("href")).toContain("/v2/work?filter=open&batch=B-241");
+    expect(all.getAttribute("href")).toContain("/work?filter=open&batch=B-241");
   });
 
   it("shows the approval trail, one step per action, with the number of records", async () => {

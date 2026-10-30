@@ -17,7 +17,7 @@ const FIRST = "b0000000-0000-4000-8000-000000000000";
 
 beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
-  setUrl("/v2/o/ecc-production/material-master/runs?fixture=1");
+  setUrl("/o/ecc-production/material-master/runs?fixture=1");
 });
 afterEach(() => {
   window.sessionStorage.clear();
@@ -171,13 +171,13 @@ describe("why the score moved", () => {
 });
 
 describe("Compare with…", () => {
-  it("links the baseline and the current run to /v2/run/{a}/vs/{b}, and follows the pair that is picked", async () => {
+  it("links the baseline and the current run to /run/{a}/vs/{b}, and follows the pair that is picked", async () => {
     render();
     const form = await screen.findByRole("form", { name: "Compare two runs" });
     expect(within(form).getByText("Compare with…")).toBeInTheDocument();
-    expect(within(form).getByRole("link", { name: "Compare" })).toHaveAttribute("href", expect.stringContaining(`/v2/run/${BASELINE}/vs/${CURRENT}`));
+    expect(within(form).getByRole("link", { name: "Compare" })).toHaveAttribute("href", expect.stringContaining(`/run/${BASELINE}/vs/${CURRENT}`));
     fireEvent.change(within(form).getByLabelText("Earlier run"), { target: { value: FIRST } });
-    expect(within(form).getByRole("link", { name: "Compare" })).toHaveAttribute("href", expect.stringContaining(`/v2/run/${FIRST}/vs/${CURRENT}`));
+    expect(within(form).getByRole("link", { name: "Compare" })).toHaveAttribute("href", expect.stringContaining(`/run/${FIRST}/vs/${CURRENT}`));
   });
 
   it("offers every run of the chart in both pickers and will not compare a run with itself", async () => {

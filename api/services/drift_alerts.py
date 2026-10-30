@@ -26,6 +26,8 @@ import uuid
 
 from sqlalchemy import text
 
+from api.services import app_links
+
 logger = logging.getLogger("meridian.drift_alerts")
 
 MAX_RULES = 500
@@ -133,7 +135,7 @@ def process(session, tenant_id: str, system_id: str, run_id: str, source: str) -
                 title=f"Configuration changed on {system}",
                 body=(f"{changes} change(s) in {names}. {len(rules)} rule(s) on {', '.join(objects)} depend on it; "
                       "the objects are being re-scored."),
-                link="/systems", session=session)
+                link=app_links.system(str(system_id), "changes") if system_id else app_links.LANDSCAPE, session=session)
             notified += 1
     alert_id = str(uuid.uuid4())
     session.execute(text("""

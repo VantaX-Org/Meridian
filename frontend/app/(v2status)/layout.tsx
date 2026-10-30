@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   description: "Whether the platform is working: its components, the last 30 days, incidents and planned maintenance",
 };
 
-/** Pages that stand without the shell: the status page, at /v2/status (public) and /status (signed in). */
+/** Pages that stand without the shell: the status page at /status, readable signed out. */
 export default function StandaloneLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <div className={`m2-fonts ${plexSans.variable} ${plexMono.variable}`}>

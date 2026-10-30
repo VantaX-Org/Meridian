@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createModel, deleteModel, patchModel, saveModel, type ModelWithDocument } from "@/lib/api/v2/designer";
 import { saveFailure } from "@/lib/api/process-designer";
-import { addChild, addNode, childrenOf, locate, moveItem, patchItem, removeItem, renameItem, patchActivity, type Level, type TreeItem } from "@/app/(app)/insights/process/designer/_components/doc";
+import { addChild, addNode, childrenOf, locate, moveItem, patchItem, removeItem, renameItem, patchActivity, type Level, type TreeItem } from "@/lib/v2/process-doc";
 import type { L4, L5, ProcessModelDocument } from "@/types/process-model";
 import { formatDate, labelOf } from "@/lib/format";
 import { addField, deleteActivity, fieldError, LEVEL_WORD, moveActivity, removeField, sameDoc, toggleMandatory } from "@/lib/v2/designer-doc";
@@ -269,7 +269,7 @@ function Editor({ data, canDesign, run, pending, onChanged }: { data: ModelWithD
 }
 
 /**
- * `/v2/o/{system}/{module}/processes/design`: the L1 to L5 process model as a tree you edit. Add, rename, reorder and
+ * `/o/{system}/{module}/processes/design`: the L1 to L5 process model as a tree you edit. Add, rename, reorder and
  * delete processes, areas, sub-processes, steps and activities; map TABLE.FIELD to an activity; save a new version;
  * publish the model. Models are tenant-wide, so the process that reads this object is one among them. Needs analyse or
  * run process discovery to change anything; without it the tree is read-only.
@@ -290,7 +290,7 @@ export function ProcessDesigner({ system, module }: { system: string; module: st
   const [shown, setShown] = useState(false);
   const [rename, setRename] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
-  const back = `/v2/o/${system}/${module}/processes`;
+  const back = `/o/${system}/${module}/processes`;
   const m = model.data?.model;
 
   const create = () => {

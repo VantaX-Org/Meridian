@@ -1,5 +1,5 @@
 /**
- * Meridian 2, step 1: the Work ledger, the record inspector and undo, in fixture mode (`/v2/work?fixture=1`), so the
+ * Meridian 2, step 1: the Work ledger, the record inspector and undo, in fixture mode (`/work?fixture=1`), so the
  * spec needs no API. At 1440 and 390, light and dark: the ledger draws, a row opens in the inspector, a change
  * shows a notice with Undo and Ctrl+Z takes it back, axe finds no critical or serious violation, and a screenshot of
  * each lands in e2e/__screenshots__/v2/work*.png.
@@ -50,7 +50,7 @@ for (const size of SIZES) {
 
       test("the ledger: title, sentence, chips with counts, the rows", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2/work?fixture=1&persona=steward", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/work?fixture=1&persona=steward", { waitUntil: "load", timeout: 90_000 });
         await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
         await expect(page.getByRole("heading", { level: 1 })).toContainText("Work", NAV);
         await expect(page.getByRole("heading", { level: 1 })).toContainText("All objects");
@@ -83,7 +83,7 @@ for (const size of SIZES) {
       test("a change shows a notice with Undo, and Ctrl+Z takes it back", async ({ page }) => {
         test.skip(phone, "Editing happens in the inspector on a phone; the inspector test covers it");
         await prepare(page, scheme);
-        await page.goto("/v2/work?fixture=1&persona=steward", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/work?fixture=1&persona=steward", { waitUntil: "load", timeout: 90_000 });
         const grid = page.getByRole("grid", { name: "Work ledger" });
         await expect(grid.getByText(KEY)).toBeVisible(NAV);
         const chips = page.getByRole("group", { name: "Filter by state" });
@@ -112,7 +112,7 @@ for (const size of SIZES) {
       test("selecting rows shows the bulk bar; By rule groups the rows under their rule", async ({ page }) => {
         test.skip(phone, "Selection and grouping are the grid's; a phone lists rows");
         await prepare(page, scheme);
-        await page.goto("/v2/work?fixture=1&persona=steward", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/work?fixture=1&persona=steward", { waitUntil: "load", timeout: 90_000 });
         const grid = page.getByRole("grid", { name: "Work ledger" });
         await expect(grid.getByText("000000000000000232")).toBeVisible(NAV);
         const boxes = grid.getByRole("checkbox", { name: /^Select row/ });
@@ -137,7 +137,7 @@ for (const size of SIZES) {
 
       test("a row opens the record in the inspector: facts, fix, links, actions, and Esc returns", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2/work?fixture=1&persona=steward", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/work?fixture=1&persona=steward", { waitUntil: "load", timeout: 90_000 });
         if (phone) {
           await page.getByRole("list", { name: "Work ledger" }).getByRole("button", { name: new RegExp(KEY) }).click(NAV);
         } else {
@@ -175,14 +175,14 @@ for (const size of SIZES) {
       test("the command line's approve and export reach the ledger", async ({ page }) => {
         test.skip(phone, "The command line is a desktop shortcut; the phone has the search button");
         await prepare(page, scheme);
-        await page.goto("/v2?fixture=1", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/?fixture=1", { waitUntil: "load", timeout: 90_000 });
         await expect(page.getByTestId("landscape-sentence")).toBeVisible(NAV);
         await page.keyboard.press("Control+k");
         const palette = page.getByRole("dialog", { name: "Search or type a command" });
         await palette.getByRole("combobox").fill("approve");
         await expect(palette.getByText("Approvals waiting 612")).toBeVisible();
         await page.keyboard.press("Enter");
-        await expect(page).toHaveURL(/\/v2\/work\?filter=approvals/, NAV);
+        await expect(page).toHaveURL(/\/work\?filter=approvals/, NAV);
         await expect(page.getByRole("button", { name: /Waiting for approval/ })).toHaveAttribute("aria-pressed", "true");
         await expect(page.getByTestId("work-sentence")).toContainText("612 records wait for approval");
         await page.waitForLoadState("networkidle");

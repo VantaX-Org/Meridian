@@ -72,7 +72,7 @@ function command(q: string): CommandResult {
     .map((r) => ({
       id: `${r.module}:${r.record_key}`,
       title: `Material ${r.record_key.split("=")[1]}: ${r.name ?? ""}`.trim(),
-      href: `/v2/o/${sys}/${moduleSlug(r.module)}?open=record:${encodeURIComponent(`${r.module}:${r.record_key}`)}`,
+      href: `/o/${sys}/${moduleSlug(r.module)}?open=record:${encodeURIComponent(`${r.module}:${r.record_key}`)}`,
     }));
   if (recItems.length) groups.push({ kind: "record", label: "Records", items: recItems });
   const rules = [...baseRules, ...Object.values(receipts).flatMap((r) => r.breaches.map((b) => ({ check_id: b.check_id, name: b.name })))];
@@ -81,17 +81,17 @@ function command(q: string): CommandResult {
     .filter((r) => text.length >= 2 && (r.check_id.toLowerCase().startsWith(text) || r.name.toLowerCase().includes(text)))
     .filter((r) => (seenRule.has(r.check_id) ? false : (seenRule.add(r.check_id), true)))
     .slice(0, 5)
-    .map((r) => ({ id: r.check_id, title: `${r.check_id}: ${r.name}`, href: `/v2?open=rule:${r.check_id}` }));
+    .map((r) => ({ id: r.check_id, title: `${r.check_id}: ${r.name}`, href: `/?open=rule:${r.check_id}` }));
   if (ruleItems.length) groups.push({ kind: "rule", label: "Rules", items: ruleItems });
   const objItems = landscapeFixture.objects
     .filter((o) => text.length >= 2 && text.split(/\s+/).every((t) => `${o.label} ${ecc.name}`.toLowerCase().includes(t)))
     .slice(0, 5)
-    .map((o) => ({ id: o.module, title: `${o.label} on ${ecc.name}`, href: `/v2/o/${sys}/${moduleSlug(o.module)}` }));
+    .map((o) => ({ id: o.module, title: `${o.label} on ${ecc.name}`, href: `/o/${sys}/${moduleSlug(o.module)}` }));
   if (objItems.length) groups.push({ kind: "object", label: "Objects", items: objItems });
   const actions: { id: string; title: string; href: string; kw: string }[] = [
-    { id: "approvals", title: `Approvals waiting ${wf.workRecords({ status: "proposed", limit: 1 }).total.toLocaleString("en-US")}`, href: "/v2/work?filter=approvals", kw: "approve approval approvals waiting" },
-    { id: "export-fix-sheet", title: "Export fix sheet", href: "/v2/work?export=1", kw: "export fix sheet" },
-    { id: "extract", title: `Extract ${ecc.name}`, href: `/v2?open=system:${ecc.id}`, kw: "extract extraction system" },
+    { id: "approvals", title: `Approvals waiting ${wf.workRecords({ status: "proposed", limit: 1 }).total.toLocaleString("en-US")}`, href: "/work?filter=approvals", kw: "approve approval approvals waiting" },
+    { id: "export-fix-sheet", title: "Export fix sheet", href: "/work?export=1", kw: "export fix sheet" },
+    { id: "extract", title: `Extract ${ecc.name}`, href: `/?open=system:${ecc.id}`, kw: "extract extraction system" },
   ];
   const actItems = actions.filter((a) => text.length >= 2 && text.split(/\s+/).every((t) => a.kw.includes(t))).map(({ id, title, href }) => ({ id, title, href }));
   if (actItems.length) groups.push({ kind: "action", label: "Actions", items: actItems });

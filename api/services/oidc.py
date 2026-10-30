@@ -260,11 +260,11 @@ def email_domain_allowed(email: str, allowed_domains: list[str]) -> bool:
 
 
 def safe_next(path: str | None) -> str:
-    """A same-site path to land on after sign-in; anything else (absolute URL, //host, backslash) is /home."""
+    """A same-site path to land on after sign-in; anything else (absolute URL, //host, backslash) is / (the landscape)."""
     if path and path.startswith("/") and not path.startswith("//") and "\\" not in path and len(path) <= 512 \
             and not any(ord(c) < 32 for c in path):
         return path
-    return "/home"
+    return "/"
 
 
 # ── Stored configuration (tenants.sso_config) ────────────────────────────────

@@ -51,7 +51,7 @@ for (const size of SIZES) {
 
       test("the People canvas: the table, the caller's row first and marked", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2/people?fixture=1&persona=owner", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/people?fixture=1&persona=owner", { waitUntil: "load", timeout: 90_000 });
         await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
         await expect(page.getByRole("heading", { level: 1 })).toContainText("People", NAV);
         await expect(page.getByTestId("people-sentence")).toContainText("2 batches wait for your approval", NAV);
@@ -77,7 +77,7 @@ for (const size of SIZES) {
 
       test("a person opens in the inspector: facts, objects, work, waiting approvals, Reassign…", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2/people?fixture=1&persona=owner&open=person%3Au-tm", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/people?fixture=1&persona=owner&open=person%3Au-tm", { waitUntil: "load", timeout: 90_000 });
         const insp = page.getByTestId("inspector");
         await expect(insp.getByRole("heading", { level: 2, name: "T. Mokoena" })).toBeVisible(NAV);
         await expect(insp.getByTestId("person-approvals").getByRole("listitem")).toHaveCount(3, NAV);
@@ -91,7 +91,7 @@ for (const size of SIZES) {
 
       test("the owner lands with 'Approve batch B-241', which opens the batch inspector", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2?fixture=1&persona=owner", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/?fixture=1&persona=owner", { waitUntil: "load", timeout: 90_000 });
         const next = page.getByRole("link", { name: "Approve batch B-241" });
         await expect(next).toBeVisible(NAV);
         await shot(page, "people-owner-landscape");
@@ -108,7 +108,7 @@ for (const size of SIZES) {
 
       test("approving a batch from the ledger posts a notice with Undo and moves the count", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2/work?fixture=1&persona=owner&filter=approvals", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/work?fixture=1&persona=owner&filter=approvals", { waitUntil: "load", timeout: 90_000 });
         const chips = page.getByRole("group", { name: "Filter by state" });
         await expect(chips.getByRole("button", { name: /Waiting for approval/ })).toContainText("612", NAV);
         if (phone) {
@@ -134,7 +134,7 @@ for (const size of SIZES) {
 
       test("exceptions: the reason, who and when, and Reopen", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2/work?fixture=1&persona=steward&filter=exceptions", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/work?fixture=1&persona=steward&filter=exceptions", { waitUntil: "load", timeout: 90_000 });
         if (phone) {
           const list = page.getByRole("list", { name: "Work ledger" });
           await expect(list.getByRole("listitem").first()).toBeVisible(NAV);
@@ -151,7 +151,7 @@ for (const size of SIZES) {
 
       test("an approved batch is sent to SAP: the result sits in the frame and the batch reads as sent", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2/work?fixture=1&persona=steward&filter=open&batch=B-236", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/work?fixture=1&persona=steward&filter=open&batch=B-236", { waitUntil: "load", timeout: 90_000 });
         const send = page.getByRole("button", { name: "Send batch B-236 to SAP" });
         await expect(send).toBeVisible(NAV);
         await page.waitForLoadState("networkidle");
@@ -167,7 +167,7 @@ for (const size of SIZES) {
 
       test("the inbox panel: Today and Earlier, mark read, the count follows", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2/people?fixture=1&persona=owner", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/people?fixture=1&persona=owner", { waitUntil: "load", timeout: 90_000 });
         await page.getByRole("button", { name: "Inbox 7, unread" }).click();
         const panel = page.getByTestId("inbox-panel");
         await expect(panel.getByRole("heading", { name: "Today" })).toBeVisible(NAV);
@@ -182,7 +182,7 @@ for (const size of SIZES) {
 
       test("triage and SLA from the account menu", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2/people?fixture=1&persona=owner", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/people?fixture=1&persona=owner", { waitUntil: "load", timeout: 90_000 });
         await page.getByRole("button", { name: /^Account/ }).click();
         await page.getByRole("menuitem", { name: "Triage and SLA" }).click();
         const insp = page.getByTestId("inspector");

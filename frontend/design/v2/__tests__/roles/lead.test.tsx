@@ -23,14 +23,14 @@ afterEach(() => {
 
 describe("the programme lead's jobs", () => {
   it("sees each wave's gate on the Waves view of the landscape", async () => {
-    visit("/v2?view=waves", "programme_lead");
+    visit("/?view=waves", "programme_lead");
     mount(<LandscapeCanvas />);
     const marks = await screen.findAllByTestId("gate-mark");
     expect(marks.map(norm)).toEqual(["Gate not passed, 2 of 3 not met", "Gate not passed, 2 of 2 not met"]);
   });
 
   it("sets a wave's gate criteria in the Waves panel and reads the checks", async () => {
-    visit("/v2?open=waves", "programme_lead");
+    visit("/?open=waves", "programme_lead");
     mount();
     const gates = await screen.findAllByTestId("wave-gate");
     const third = gates[2];
@@ -43,7 +43,7 @@ describe("the programme lead's jobs", () => {
   });
 
   it("balances work: proposes a plan with before and after, applies it with undo", async () => {
-    visit("/v2/people?open=balance", "programme_lead");
+    visit("/people?open=balance", "programme_lead");
     mount(<PeopleCanvas />);
     expect(await screen.findByRole("link", { name: "Balance work" })).toBeInTheDocument();
     fireEvent.click(await screen.findByRole("button", { name: "Propose a plan" }));
@@ -55,7 +55,7 @@ describe("the programme lead's jobs", () => {
   });
 
   it("exports the Work grid with the columns on screen", async () => {
-    visit("/v2/work", "programme_lead");
+    visit("/work", "programme_lead");
     mount(<WorkCanvas />);
     fireEvent.click(await screen.findByRole("button", { name: "Share and export Work" }));
     fireEvent.click(await screen.findByRole("menuitem", { name: /Export to Excel/ }));
@@ -67,7 +67,7 @@ describe("the programme lead's jobs", () => {
   });
 
   it("opens the data contracts from People", async () => {
-    visit("/v2/people?open=contracts", "programme_lead");
+    visit("/people?open=contracts", "programme_lead");
     mount(<PeopleCanvas />);
     const list = await screen.findByTestId("contracts-list");
     expect(norm(list)).toContain("Material master to S/4HANA");

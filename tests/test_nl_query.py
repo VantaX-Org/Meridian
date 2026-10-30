@@ -72,9 +72,9 @@ def test_href_carries_the_filter(vocab):
     out = nl.parse("critical material master records assigned to me", vocab)
     h = nl.href(out["filter"])
     u = urlparse(h)
-    assert u.path == "/v2/work"
+    assert u.path == "/work"
     assert parse_qs(u.query) == {"severity": ["critical"], "module": ["material_master"], "assigned": ["me"]}
-    assert nl.href({"proposed": True}) == "/v2/work?proposed=true" and nl.href({}) == "/v2/work"
+    assert nl.href({"proposed": True}) == "/work?proposed=true" and nl.href({}) == "/work"
 
 
 def test_filter_values_are_what_work_records_accepts(vocab):

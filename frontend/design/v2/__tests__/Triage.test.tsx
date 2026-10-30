@@ -18,7 +18,7 @@ beforeEach(() => {
   window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null, addEventListener: () => undefined, removeEventListener: () => undefined, addListener: () => undefined, removeListener: () => undefined, dispatchEvent: () => false })) as typeof window.matchMedia;
   resetWorkFixture();
   undoLayout = stubLayout(1400, 700);
-  setUrl("/v2?fixture=1");
+  setUrl("/?fixture=1");
 });
 afterEach(() => {
   undoLayout();
@@ -27,7 +27,7 @@ afterEach(() => {
 
 const text = (el: Element) => (el.textContent ?? "").replace(/\s+/g, " ").trim();
 const mount = (search = "") => {
-  const url = `/v2?fixture=1${search}&open=triage`;
+  const url = `/?fixture=1${search}&open=triage`;
   window.history.pushState({}, "", url);
   setUrl(url);
   return renderWithQuery(<V2Shell><h1>Page</h1></V2Shell>);
@@ -40,7 +40,7 @@ const panel = async () => {
 
 describe("triage and SLA settings", () => {
   it("is an entry in the account menu that opens the panel", async () => {
-    setUrl("/v2?fixture=1");
+    setUrl("/?fixture=1");
     renderWithQuery(<V2Shell><h1>Page</h1></V2Shell>);
     fireEvent.click(await screen.findByRole("button", { name: /^Account/ }));
     fireEvent.click(await screen.findByRole("menuitem", { name: "Triage and SLA" }));

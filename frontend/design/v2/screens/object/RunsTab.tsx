@@ -112,7 +112,7 @@ function WhyMoved({ module, baseline, current }: { module: string; baseline: Tim
   );
 }
 
-/** Compare any two runs: the canvas for that is /v2/run/{a}/vs/{b}. */
+/** Compare any two runs: the canvas for that is /run/{a}/vs/{b}. */
 function ComparePicker({ runs, from, to }: { runs: TimelineRun[]; from: string; to: string }) {
   const [a, setA] = useState(from);
   const [b, setB] = useState(to);
@@ -140,7 +140,7 @@ function ComparePicker({ runs, from, to }: { runs: TimelineRun[]; from: string; 
       {a === b ? (
         <button type="button" className="m2-btn m2-sm" disabled>{t("Compare")}</button>
       ) : (
-        <V2Link href={`/v2/run/${a}/vs/${b}`} className="m2-btn m2-sm m2-strong">{t("Compare")}</V2Link>
+        <V2Link href={`/run/${a}/vs/${b}`} className="m2-btn m2-sm m2-strong">{t("Compare")}</V2Link>
       )}
     </form>
   );
@@ -191,7 +191,7 @@ export function RunsTab({ system: systemSegment, module: moduleSegment }: { syst
   if (!system || series.length < 2 || !current) {
     const only = series[0]?.objects[apiModule];
     return (
-      <EmptyFrame action={<V2Link href="/v2/runs" className="m2-btn">{t("Open the runs")}</V2Link>}>
+      <EmptyFrame action={<V2Link href="/runs" className="m2-btn">{t("Open the runs")}</V2Link>}>
         {only
           ? t("{label} has one scored run so far, measured {raw_score} and shown {score}. The history chart fills from the second run with the same rule set.", { label, raw_score: f1(only.raw_score), score: f1(only.score) })
           : t("{label} has no run history here yet. Each run adds a point once two runs have scored this object.", { label })}

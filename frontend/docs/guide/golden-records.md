@@ -1,6 +1,6 @@
 # Golden records
 
-A golden record is the one trusted version of a thing your systems hold more than once, such as a material kept twice or a supplier in two systems. The **Golden records** tab of an object lists the match candidates waiting for review, the golden records already built and the survivorship rules that decide, field by field, which value survives. Open it from the object's tabs, for example `/v2/o/ecc-production/material-master/golden`.
+A golden record is the one trusted version of a thing your systems hold more than once, such as a material kept twice or a supplier in two systems. The **Golden records** tab of an object lists the match candidates waiting for review, the golden records already built and the survivorship rules that decide, field by field, which value survives. Open it from the object's tabs, for example `/o/ecc-production/material-master/golden`.
 
 ## What is on it
 

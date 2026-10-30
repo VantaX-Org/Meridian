@@ -257,7 +257,7 @@ export function Configuration({ id }: { id: string }) {
     next.delete("open");
     if (key === "areas") next.delete("part");
     else next.set("part", key);
-    return `/v2/s/${id}?${next.toString()}`;
+    return `/s/${id}?${next.toString()}`;
   };
   const load = () =>
     void run("load", async () => {

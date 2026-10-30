@@ -42,7 +42,7 @@ describe("secure-origin helpers", () => {
   });
 
   it("no page calls crypto.randomUUID or navigator.clipboard directly", () => {
-    const offenders = ["app", "components", "design", "hooks", "lib"]
+    const offenders = ["app", "design", "hooks", "lib"]
       .flatMap((d) => sources(path.join(ROOT, d)))
       .filter((f) => !f.endsWith(path.join("lib", "browser.ts")))
       .filter((f) => /crypto\.randomUUID|navigator\.clipboard/.test(readFileSync(f, "utf8")))

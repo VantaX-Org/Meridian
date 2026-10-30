@@ -363,7 +363,7 @@ function effectiveFor(userId: string, extraRole?: string) {
     actions: [...actions].sort(),
     resources,
     scopes: [],
-    home: "/v2",
+    home: "/",
   };
 }
 
@@ -840,6 +840,14 @@ export function adminFixtureWrite(method: string, path: string, body: unknown, p
     const w = wave(nextId("w"), text(b.name), (b.modules as string[]) ?? [], (b.target_date as string | null) ?? null, (b.stage as MigrationWave["stage"]) ?? "plan", { v: null, s: null });
     w.min_readiness = Number(b.min_readiness ?? 95);
     s.waves.push(w);
+    return clone(w);
+  }
+  const so = /^\/migration\/waves\/([^/]+)\/signoff$/.exec(path);
+  if (so && method === "POST") {
+    const w = s.waves.find((x) => x.id === decodeURIComponent(so[1]));
+    if (!w) throw new AdminNotFound(path);
+    if (w.signed_off_at) throw new AdminRefused(409, "This wave is already signed off.");
+    Object.assign(w, { signed_off_by: "u-me", signed_off_at: NOW, updated_at: NOW });
     return clone(w);
   }
   const wv = /^\/migration\/waves\/([^/]+)$/.exec(path);

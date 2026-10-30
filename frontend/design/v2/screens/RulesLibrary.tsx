@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQueries } from "@tanstack/react-query";
 import { formatDate, labelOf } from "@/lib/format";
-import { CHECK_CLASSES, DIMENSIONS, EMPTY_FORM, SEVERITIES, formToBody, ruleToForm, validateForm, type DraftForm } from "@/app/(app)/rules/drafts/draft-model";
+import { CHECK_CLASSES, DIMENSIONS, EMPTY_FORM, SEVERITIES, formToBody, ruleToForm, validateForm, type DraftForm } from "@/lib/v2/draft-model";
 import { useFixture } from "@/lib/api/v2/fixture";
 import {
   createDraft, deleteDraft, dryRunDraftBody, endSuppression, generateDraft, getModuleRules, publishDraftById, setRuleEnabled, updateDraft,
@@ -303,7 +303,7 @@ function Suppressions({ canEnd }: { canEnd: boolean }) {
 }
 
 /**
- * `/v2/rules`: every rule of the tenant across objects. Search and filter by object, dimension, severity, class and
+ * `/rules`: every rule of the tenant across objects. Search and filter by object, dimension, severity, class and
  * state; a grid ranked worst severity first; a row opens the rule inspector. Dimension and class are not in the rules
  * list of the API, so they are read from each object's rules the first time you filter by them. With manage_rules
  * there are drafts (create, edit, dry run, publish, delete) and enabling or disabling selected rules.

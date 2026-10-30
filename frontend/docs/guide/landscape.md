@@ -1,6 +1,6 @@
 # Landscape
 
-The landscape is the start screen for every role. It answers three questions in order: how ready is the data across every system and object, what holds it back, and what is the one thing you should do next. It opens at `/v2`, from **Landscape** at the top of the map, or with `g` then `l`.
+The landscape is the start screen for every role. It answers three questions in order: how ready is the data across every system and object, what holds it back, and what is the one thing you should do next. It opens at `/`, from **Landscape** at the top of the map, or with `g` then `l`.
 
 ## What is on it
 

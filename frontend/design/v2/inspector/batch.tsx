@@ -52,7 +52,7 @@ function Records({ id, total }: { id: string; total: number }) {
       </ul>
       <p className="m2-more">
         <span className="m2-meta">{tr("{min} of {total} records shown", { min: int(Math.min(SHOWN, items.length)), total: int(total) })}</span>
-        <V2Link href={`/v2/work?filter=open&batch=${encodeURIComponent(id)}`}>{tr("Open all {total} in the ledger", { total: int(total) })}</V2Link>
+        <V2Link href={`/work?filter=open&batch=${encodeURIComponent(id)}`}>{tr("Open all {total} in the ledger", { total: int(total) })}</V2Link>
       </p>
     </>
   );

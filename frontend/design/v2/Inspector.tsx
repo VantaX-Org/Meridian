@@ -138,7 +138,7 @@ export function RuleBody({ id, landscape }: { id: string; landscape: Landscape |
           <ul className="m2-breaches">
             {capped.map((c) => (
               <li key={`${c.system_id}:${c.module}`}>
-                <V2Link href={`/v2/o/${systemSlug(system(c.system_id)?.name ?? c.system_id)}/${moduleSlug(c.module)}`}>{label(c.module)}</V2Link>
+                <V2Link href={`/o/${systemSlug(system(c.system_id)?.name ?? c.system_id)}/${moduleSlug(c.module)}`}>{label(c.module)}</V2Link>
                 <span className="m2-meta">{system(c.system_id)?.name}</span>
               </li>
             ))}
@@ -146,7 +146,7 @@ export function RuleBody({ id, landscape }: { id: string; landscape: Landscape |
         </>
       ) : null}
       <Actions>
-        <V2Link href={`/v2/r/${encodeURIComponent(id)}`} className="m2-btn m2-strong">
+        <V2Link href={`/r/${encodeURIComponent(id)}`} className="m2-btn m2-strong">
           {t("Open the rule")}
         </V2Link>
       </Actions>

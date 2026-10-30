@@ -13,7 +13,7 @@ vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout:
 
 beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
-  setUrl("/v2/o/ecc-production/material-master/lineage?fixture=1");
+  setUrl("/o/ecc-production/material-master/lineage?fixture=1");
 });
 afterEach(() => {
   window.sessionStorage.clear();
@@ -105,13 +105,13 @@ describe("the Lineage tab", () => {
     tab();
     const empty = await screen.findByTestId("empty-frame");
     expect(empty).toHaveTextContent(/Lineage for Material master fills when an analysis finds failing rules/);
-    expect(within(empty).getByRole("link", { name: "Open the runs" })).toHaveAttribute("href", expect.stringContaining("/v2/runs"));
+    expect(within(empty).getByRole("link", { name: "Open the runs" })).toHaveAttribute("href", expect.stringContaining("/runs"));
   });
 });
 
 describe("the feature inspector", () => {
   const open = async (id: string) => {
-    setUrl(`/v2/o/ecc-production/material-master/lineage?open=feature:${id}&fixture=1`);
+    setUrl(`/o/ecc-production/material-master/lineage?open=feature:${id}&fixture=1`);
     renderWithQuery(<Inspector />);
     const d = await screen.findByRole("dialog");
     await waitFor(() => expect(within(d).queryByRole("region", { name: "Facts" }) ?? within(d).queryByTestId("empty-frame")).not.toBeNull());

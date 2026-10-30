@@ -1,6 +1,6 @@
 /**
  * Meridian 2, step 9: fix simulation, readiness certificates, impact in money, webhooks, config drift alerts, rule
- * mining from fixes, contract enforcement and delta extraction, in fixture mode (`/v2?fixture=1`), so the spec needs
+ * mining from fixes, contract enforcement and delta extraction, in fixture mode (`/?fixture=1`), so the spec needs
  * no API. At 1440 and 390, light and dark: each screen is there, the actions answer in place, no page scrolls
  * sideways, axe finds no critical or serious violation, and a screenshot of each lands in
  * e2e/__screenshots__/v2/step9-*.png.
@@ -22,7 +22,7 @@ const NAV = { timeout: 90_000 };
 
 const ECC = "a1b2c3d4-0001-4000-8000-000000000001";
 const R8 = "d3229ded-0708-4967-9dfb-1b7f4fada953";
-const OBJECT = "/v2/o/ecc-production/material-master";
+const OBJECT = "/o/ecc-production/material-master";
 
 async function prepare(page: Page, scheme: "light" | "dark") {
   await page.context().addCookies([{ name: "mn_session", value: "1", domain: "localhost", path: "/" }]);
@@ -76,7 +76,7 @@ for (const size of SIZES) {
       test("fix simulation from the Work bulk bar", async ({ page }) => {
         test.skip(size.width < 500, "The ledger is a list on a phone; the bulk bar belongs to the wide grid");
         await prepare(page, scheme);
-        await page.goto("/v2/work?fixture=1", { waitUntil: "load" });
+        await page.goto("/work?fixture=1", { waitUntil: "load" });
         const grid = page.getByRole("grid", { name: "Work ledger" });
         await expect(grid).toBeVisible(NAV);
         await grid.getByRole("checkbox").nth(1).check();
@@ -88,11 +88,11 @@ for (const size of SIZES) {
 
       test("readiness certificate and money on the Waves view and in the certificate inspector", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2?fixture=1&view=waves", { waitUntil: "load" });
+        await page.goto("/?fixture=1&view=waves", { waitUntil: "load" });
         await expect(page.getByTestId("waves-by-value").getByRole("listitem").first()).toContainText("Wave 2: master data", NAV);
         expect(await noSideways(page)).toBe(true);
         await shot(page, "waves-value");
-        await page.goto("/v2?fixture=1&view=waves&open=certificate:w-2", { waitUntil: "load" });
+        await page.goto("/?fixture=1&view=waves&open=certificate:w-2", { waitUntil: "load" });
         const block = page.getByTestId("certificate-block");
         await expect(block).toContainText("Required signers", NAV);
         await block.getByRole("button", { name: "Sign version 1" }).click();
@@ -113,30 +113,30 @@ for (const size of SIZES) {
 
       test("webhooks: the Admin section, a preset, the webhook and a delivery", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2/admin/webhooks?fixture=1", { waitUntil: "load" });
+        await page.goto("/admin/webhooks?fixture=1", { waitUntil: "load" });
         await expect(page.getByRole("grid", { name: "Webhooks" })).toContainText("hooks.slack.com", NAV);
         expect(await noSideways(page)).toBe(true);
         await shot(page, "webhooks");
-        await page.goto("/v2/admin/webhooks?fixture=1&open=webhook:new", { waitUntil: "load" });
+        await page.goto("/admin/webhooks?fixture=1&open=webhook:new", { waitUntil: "load" });
         await page.getByRole("button", { name: "Teams workflow" }).click(NAV);
         await shot(page, "webhook-new");
-        await page.goto("/v2/admin/webhooks?fixture=1&open=webhook:wh-1", { waitUntil: "load" });
+        await page.goto("/admin/webhooks?fixture=1&open=webhook:wh-1", { waitUntil: "load" });
         await page.getByRole("button", { name: "Send a test event" }).click(NAV);
         await expect(page.getByTestId("action-result")).toContainText("Test event delivered");
         await expect(page.getByTestId("delivery-log")).toContainText("Retrying");
         await shot(page, "webhook");
-        await page.goto("/v2/admin/webhooks?fixture=1&open=delivery:wh-1:dlv-104", { waitUntil: "load" });
+        await page.goto("/admin/webhooks?fixture=1&open=delivery:wh-1:dlv-104", { waitUntil: "load" });
         await expect(page.getByTestId("inspector")).toContainText("2 of 5", NAV);
         await shot(page, "delivery");
       });
 
       test("config drift: the System canvas view and the inbox panel", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto(`/v2/s/${ECC}?fixture=1&tab=changes`, { waitUntil: "load" });
+        await page.goto(`/s/${ECC}?fixture=1&tab=changes`, { waitUntil: "load" });
         await expect(page.getByTestId("drift-alert").first()).toContainText("3 changes in T006 and T134", NAV);
         expect(await noSideways(page)).toBe(true);
         await shot(page, "config-changes");
-        await page.goto("/v2?fixture=1&open=inbox", { waitUntil: "load" });
+        await page.goto("/?fixture=1&open=inbox", { waitUntil: "load" });
         await expect(page.getByTestId("inbox-drift")).toContainText("re-score queued", NAV);
         await shot(page, "inbox-drift");
       });
@@ -162,14 +162,14 @@ for (const size of SIZES) {
         expect(await noSideways(page)).toBe(true);
         await shot(page, "contract-editor");
         // `contracts=enforced` starts the fixture with the contract enforced: the pin is refused with the backend's reason.
-        await page.goto(`/v2/run/${R8}?fixture=1&contracts=enforced`, { waitUntil: "load" });
+        await page.goto(`/run/${R8}?fixture=1&contracts=enforced`, { waitUntil: "load" });
         const pin = page.getByRole("button", { name: "Pin as baseline" });
         await expect(pin).toBeEnabled(NAV);
         await pin.click();
         await expect(page.getByTestId("pin-refusal")).toContainText("This run breaches an enforced data contract", NAV);
         await shot(page, "pin-refused");
         if (size.width >= 500) {
-          await page.goto("/v2?fixture=1", { waitUntil: "load" });
+          await page.goto("/?fixture=1", { waitUntil: "load" });
           await expect(page.getByTestId("coverage-matrix").getByTestId("contract-mark").first()).toBeVisible(NAV);
           await shot(page, "matrix-mark");
         }
@@ -177,11 +177,11 @@ for (const size of SIZES) {
 
       test("delta extraction: the option in the extraction dialog and the change log", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto(`/v2/s/${ECC}?fixture=1&tab=extractions`, { waitUntil: "load" });
+        await page.goto(`/s/${ECC}?fixture=1&tab=extractions`, { waitUntil: "load" });
         await expect(page.getByTestId("change-log-line")).toContainText("Changes only since 9 Oct 2026", NAV);
         expect(await noSideways(page)).toBe(true);
         await shot(page, "change-log");
-        await page.goto(`/v2/s/${ECC}?fixture=1&open=system:${ECC}`, { waitUntil: "load" });
+        await page.goto(`/s/${ECC}?fixture=1&open=system:${ECC}`, { waitUntil: "load" });
         await page.getByRole("button", { name: "Extract", exact: true }).click(NAV);
         const picker = page.getByTestId("extract-picker");
         await picker.getByRole("checkbox").first().check(NAV);

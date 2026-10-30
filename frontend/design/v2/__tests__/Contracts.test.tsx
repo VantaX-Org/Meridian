@@ -96,7 +96,7 @@ describe("the contract editor on the Object canvas", () => {
 describe("pinning a run that breaches an enforced contract", () => {
   it("shows the backend's refusal and the breaches, and pins with a reason", async () => {
     await s9.setEnforcement("ct-1", { enforce: true, thresholds: { min_score: 85 } });
-    setUrl(`/v2/run/${R8}?fixture=1`);
+    setUrl(`/run/${R8}?fixture=1`);
     renderWithQuery(<RunCanvas id={R8} />);
     const pin = await screen.findByRole("button", { name: "Pin as baseline" });
     await waitFor(() => expect(pin).toBeEnabled());

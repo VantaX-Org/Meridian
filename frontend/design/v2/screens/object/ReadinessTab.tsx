@@ -113,7 +113,7 @@ export function ReadinessTab({ module: moduleSegment }: { system: string; module
         ) : readinessQ.isError ? (
           <ErrorFrame onRetry={() => void readinessQ.refetch()}>{t("The migration waves could not be read.")}</ErrorFrame>
         ) : cells.length === 0 ? (
-          <EmptyFrame action={<V2Link href="/migration" className="m2-btn">{t("Open migration waves")}</V2Link>}>
+          <EmptyFrame action={<V2Link href="/?view=waves&open=waves" className="m2-btn">{t("Open migration waves")}</V2Link>}>
             {t("{label} is not in a migration wave yet. A lead adds it to a wave, and its verdict appears here.", { label })}
           </EmptyFrame>
         ) : (

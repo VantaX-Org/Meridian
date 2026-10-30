@@ -534,7 +534,7 @@ function DraftsTable({ module, items, onChanged }: { module: string; items: Rule
   if (items.length === 0) {
     return (
       <>
-        <EmptyFrame action={<V2Link href={`/v2/rules?view=drafts&module=${encodeURIComponent(module)}`} className="m2-btn">{t("Open rule authoring")}</V2Link>}>{t("No drafts for {replace}. Write one in rule authoring or describe it in plain English there; a dry run shows what it would find before it is published.", { replace: module.replace(/_/g, " ") })}</EmptyFrame>
+        <EmptyFrame action={<V2Link href={`/rules?view=drafts&module=${encodeURIComponent(module)}`} className="m2-btn">{t("Open rule authoring")}</V2Link>}>{t("No drafts for {replace}. Write one in rule authoring or describe it in plain English there; a dry run shows what it would find before it is published.", { replace: module.replace(/_/g, " ") })}</EmptyFrame>
         {note ? <p role="status" className="m2-prov">{note}</p> : null}
       </>
     );
@@ -662,7 +662,7 @@ export function RulesTab({ module: moduleSegment, system: systemSegment }: { sys
   const total = Math.max(receipt?.rules_measured ?? 0, ranked.length);
   const currency = receipt?.currency ?? null;
   const tableLabel = t("Rules for {label}", { label });
-  const viewHref = (id: string) => `/v2/work?rule=${encodeURIComponent(id)}&module=${encodeURIComponent(apiModule)}`;
+  const viewHref = (id: string) => `/work?rule=${encodeURIComponent(id)}&module=${encodeURIComponent(apiModule)}`;
   const learnedN = learnedQ.data?.length;
   const draftsN = draftsQ.data?.length;
   const moreButton = ranked.length > shown ? (

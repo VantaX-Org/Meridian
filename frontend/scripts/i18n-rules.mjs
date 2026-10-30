@@ -9,7 +9,7 @@ import { readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 /** Where the v2 interface's words live. */
-export const SCAN_ROOTS = ["design/v2", "app/(v2)", "app/(v2status)", "lib/v2"];
+export const SCAN_ROOTS = ["design/v2", "app/(v2)", "app/(v2status)", "app/(auth)", "lib/v2"];
 
 /**
  * Files that are not scanned: the catalogues themselves, tests and fixtures (data, not interface), and the files the

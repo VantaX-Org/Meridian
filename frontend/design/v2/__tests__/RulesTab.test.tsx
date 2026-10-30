@@ -25,7 +25,7 @@ beforeEach(() => {
   granted = "all";
   resetObjectFixture();
   resetWorkFixture();
-  setUrl("/v2/o/ecc-production/material-master?fixture=1");
+  setUrl("/o/ecc-production/material-master?fixture=1");
 });
 afterEach(() => {
   window.sessionStorage.clear();
@@ -136,7 +136,7 @@ describe("ranking", () => {
   });
 
   it("shows 25 rules and adds 25 on request", async () => {
-    window.history.pushState({}, "", "/v2/o/ecc-production/material-master?fixture=1&rows=60");
+    window.history.pushState({}, "", "/o/ecc-production/material-master?fixture=1&rows=60");
     render();
     const g = await grid();
     await waitFor(() => expect(dataRows(g)).toHaveLength(25));
@@ -224,7 +224,7 @@ describe("accept all", () => {
     const g = await grid();
     await waitFor(() => expect(norm(dataRows(g)[0])).toContain("112 suggested values"));
     expect(within(g).queryByRole("button", { name: /Accept all/ })).toBeNull();
-    expect(within(dataRows(g)[0]).getByRole("link", { name: "View" })).toHaveAttribute("href", expect.stringContaining("/v2/work?rule=MM014"));
+    expect(within(dataRows(g)[0]).getByRole("link", { name: "View" })).toHaveAttribute("href", expect.stringContaining("/work?rule=MM014"));
   });
 });
 

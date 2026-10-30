@@ -5,7 +5,6 @@ import { V2Shell } from "../shell/V2Shell";
 import { JobLine } from "../shell/JobLine";
 import { duration } from "../shell/StatusStrip";
 import { getUrl, push, setUrl } from "./nav-store";
-import { readUiCookie } from "@/lib/v2/switch";
 
 vi.mock("next/navigation", async () => (await import("./nav-store")).navigationMock);
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
@@ -18,8 +17,7 @@ beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
   stubMatchMedia(false);
   push.mockClear();
-  setUrl("/v2");
-  document.cookie = "mn_ui=; Path=/; Max-Age=0";
+  setUrl("/");
 });
 afterEach(() => {
   window.sessionStorage.clear();
@@ -87,25 +85,13 @@ describe("top bar", () => {
     expect(scope).toHaveFocus();
   });
 
-  it("the account menu offers theme, shortcuts and the way back to the current interface", async () => {
+  it("the account menu offers theme, shortcuts and no way back to a second interface", async () => {
     mount();
     fireEvent.click(screen.getByRole("button", { name: /^Account/ }));
     const menu = await screen.findByRole("menu", { name: "Account" });
     expect(within(menu).getAllByRole("menuitemradio").map((i) => norm(i))).toEqual(["System", "Light", "Dark"]);
     expect(within(menu).getByRole("menuitem", { name: /Keyboard shortcuts/ })).toBeInTheDocument();
-    const back = within(menu).getByRole("menuitem", { name: "Back to the current interface" });
-    expect(back).toHaveAttribute("href", "/home");
-    expect(back.getAttribute("href")).not.toContain("fixture");
-  });
-
-  it("arriving sets the cookie that says this browser tries the new interface; going back clears it", async () => {
-    mount();
-    expect(readUiCookie()).toBe("v2");
-    fireEvent.click(screen.getByRole("button", { name: /^Account/ }));
-    const back = await screen.findByRole("menuitem", { name: "Back to the current interface" });
-    back.addEventListener("click", (e) => e.preventDefault());
-    fireEvent.click(back);
-    expect(readUiCookie()).toBeNull();
+    expect(within(menu).queryByRole("menuitem", { name: /current interface/ })).toBeNull();
   });
 });
 
@@ -118,7 +104,7 @@ describe("map", () => {
     expect(links[0]).toHaveAttribute("aria-current", "page");
     expect(links[1]).not.toHaveAttribute("aria-current");
     await waitFor(() => expect(links[1]).toHaveTextContent("25,712"));
-    expect(links[1]).toHaveAttribute("href", expect.stringMatching(/^\/v2\/work/));
+    expect(links[1]).toHaveAttribute("href", expect.stringMatching(/^\/work/));
   });
 
   it("draws systems then objects: each object a row with its name, score, 48 ruler and the work waiting", async () => {
@@ -127,7 +113,7 @@ describe("map", () => {
     await within(map).findByText("ECC production");
     const rows = await within(map).findAllByRole("link", { name: /^(Material master|Business partner)/ });
     const mm = rows.find((r) => /^Material master/.test(norm(r))) as HTMLElement;
-    expect(mm).toHaveAttribute("href", expect.stringMatching(/^\/v2\/o\/ecc-production\/material-master/));
+    expect(mm).toHaveAttribute("href", expect.stringMatching(/^\/o\/ecc-production\/material-master/));
     expect(norm(mm)).toContain("25,712");
     expect(norm(mm)).toContain("70.0");
     expect(mm.querySelector('svg[data-size="48"]')).not.toBeNull();
@@ -146,7 +132,7 @@ describe("map", () => {
   });
 
   it("collapses and expands a system, and marks the object you are on", async () => {
-    setUrl("/v2/o/ecc-production/material-master");
+    setUrl("/o/ecc-production/material-master");
     mount();
     const map = screen.getByTestId("map");
     const toggle = await within(map).findByRole("button", { name: "ECC production" });
@@ -234,14 +220,14 @@ describe("keyboard", () => {
     mount();
     keyOnBody("g");
     keyOnBody("w");
-    expect(push).toHaveBeenLastCalledWith(expect.stringMatching(/^\/v2\/work/));
+    expect(push).toHaveBeenLastCalledWith(expect.stringMatching(/^\/work/));
     keyOnBody("g");
     keyOnBody("l");
-    expect(push).toHaveBeenLastCalledWith(expect.stringMatching(/^\/v2(\?|$)/));
+    expect(push).toHaveBeenLastCalledWith(expect.stringMatching(/^\/(\?|$)/));
   });
 
   it("Esc closes the inspector and takes ?open= out of the URL", async () => {
-    setUrl("/v2?open=rule:MM014");
+    setUrl("/?open=rule:MM014");
     mount();
     const dialog = await screen.findByRole("dialog", { name: /MM014/ });
     expect(dialog).toBeInTheDocument();

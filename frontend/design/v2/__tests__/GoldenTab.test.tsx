@@ -28,7 +28,7 @@ beforeEach(() => {
   granted = "all";
   resetMdmFixture();
   undo = stubLayout();
-  setUrl("/v2/o/ecc-production/material-master/golden?fixture=1");
+  setUrl("/o/ecc-production/material-master/golden?fixture=1");
 });
 afterEach(() => {
   undo();
@@ -110,7 +110,7 @@ describe("the Golden records tab", () => {
 
 describe("the golden record inspector", () => {
   const open = async (id = "gr-3") => {
-    setUrl(`/v2/o/ecc-production/material-master/golden?open=golden:${id}&fixture=1`);
+    setUrl(`/o/ecc-production/material-master/golden?open=golden:${id}&fixture=1`);
     renderWithQuery(<Inspector />);
     const d = await screen.findByRole("dialog");
     await within(d).findByRole("table", { name: /Golden fields/ });
@@ -158,7 +158,7 @@ describe("the golden record inspector", () => {
 
 describe("the pair inspector", () => {
   const open = async (id = "ms-0") => {
-    setUrl(`/v2/o/ecc-production/material-master/golden?open=golden:pair:${id}&fixture=1`);
+    setUrl(`/o/ecc-production/material-master/golden?open=golden:pair:${id}&fixture=1`);
     renderWithQuery(<Inspector />);
     const d = await screen.findByRole("dialog");
     await within(d).findByRole("table", { name: /side by side/ });

@@ -56,7 +56,7 @@ function job(over: Partial<Job>): Job {
 beforeEach(() => {
   resetRunsFixture();
   h.allowed = new Set(["trigger_sync", "analyse"]);
-  setUrl("/v2?fixture=1");
+  setUrl("/?fixture=1");
 });
 afterEach(() => {
   window.sessionStorage.clear();
@@ -118,7 +118,7 @@ describe("the job line, fed by the jobs stream", () => {
 
   it("in fixture mode a running extraction appears with ?job=running", async () => {
     window.sessionStorage.setItem("mn_v2_fixture", "1");
-    window.history.pushState({}, "", "/v2?fixture=1&job=running");
+    window.history.pushState({}, "", "/?fixture=1&job=running");
     renderWithQuery(<FixtureJobLine />);
     await waitFor(() => expect(norm(screen.getByTestId("job-line"))).toBe("Extracting Material master 42%"));
   });
@@ -139,7 +139,7 @@ describe("the job inspector", () => {
   beforeEach(() => window.sessionStorage.setItem("mn_v2_fixture", "1"));
 
   it("shows a failed job's stages, its tables, the error and Retry", async () => {
-    setUrl("/v2?fixture=1&open=job:dl-failed-sf");
+    setUrl("/?fixture=1&open=job:dl-failed-sf");
     renderWithQuery(<Inspector />);
     const dialog = await screen.findByRole("dialog", { name: "Extraction, Employee central" });
     await within(dialog).findByTestId("job-stages");
@@ -152,7 +152,7 @@ describe("the job inspector", () => {
   });
 
   it("Retry starts the job again and answers in the frame with a link to the new job", async () => {
-    setUrl("/v2?fixture=1&open=job:dl-failed-sf");
+    setUrl("/?fixture=1&open=job:dl-failed-sf");
     renderWithQuery(<Inspector />);
     const retry = await screen.findByRole("button", { name: "Retry" });
     fireEvent.click(retry);
@@ -163,7 +163,7 @@ describe("the job inspector", () => {
 
   it("Retry is gated by the permission the retry route asks for, and says so", async () => {
     h.allowed = new Set(["view"]);
-    setUrl("/v2?fixture=1&open=job:dl-failed-sf");
+    setUrl("/?fixture=1&open=job:dl-failed-sf");
     renderWithQuery(<Inspector />);
     const retry = await screen.findByRole("button", { name: "Retry" });
     expect(retry).toBeDisabled();
@@ -171,8 +171,8 @@ describe("the job inspector", () => {
   });
 
   it("a running job shows its percent, its message and each table with the rows read of the rows expected, and offers no Retry", async () => {
-    window.history.pushState({}, "", "/v2?fixture=1&job=running");
-    setUrl("/v2?fixture=1&job=running&open=job:dl-e0000000-0000-4000-8000-0000000000e1");
+    window.history.pushState({}, "", "/?fixture=1&job=running");
+    setUrl("/?fixture=1&job=running&open=job:dl-e0000000-0000-4000-8000-0000000000e1");
     renderWithQuery(<Inspector />);
     const bar = await screen.findByRole("progressbar");
     expect(bar).toHaveAttribute("aria-valuenow", "42");
@@ -182,15 +182,15 @@ describe("the job inspector", () => {
   });
 
   it("a completed analysis links to its run", async () => {
-    setUrl("/v2?fixture=1&open=job:d3229ded-0708-4967-9dfb-1b7f4fada953");
+    setUrl("/?fixture=1&open=job:d3229ded-0708-4967-9dfb-1b7f4fada953");
     renderWithQuery(<Inspector />);
     const link = await screen.findByRole("link", { name: "Open the run" });
-    expect(link).toHaveAttribute("href", expect.stringContaining("/v2/run/d3229ded-0708-4967-9dfb-1b7f4fada953"));
+    expect(link).toHaveAttribute("href", expect.stringContaining("/run/d3229ded-0708-4967-9dfb-1b7f4fada953"));
     expect(screen.getByText("11 m 42 s")).toBeInTheDocument();
   });
 
   it("a job that is gone says how long jobs are kept", async () => {
-    setUrl("/v2?fixture=1&open=job:missing");
+    setUrl("/?fixture=1&open=job:missing");
     renderWithQuery(<Inspector />);
     expect(await screen.findByText(/no longer in the registry/)).toBeInTheDocument();
   });

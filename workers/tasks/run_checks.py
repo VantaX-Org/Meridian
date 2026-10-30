@@ -18,6 +18,7 @@ from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
 
 from api.middleware.cache import invalidate_tenant_cache, mark_work_changed
+from api.services import app_links
 from api.services.run_events import publish_progress_write, publish_run_event
 from api.services.run_steps import record_step
 from checks.base import reraise_soft_limit
@@ -1286,7 +1287,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                     type="finding",
                     title=f"New analysis complete: {len(all_results)} findings in {module_list}",
                     body=f"Analysis run finished with {len(all_results)} findings across {len(modules)} module(s).",
-                    link=f"/findings?version_id={version_id}",
+                    link=app_links.run(str(version_id)),
                     session=session,
                 )
                 # Watchers of the objects, systems and rules this run touched (migration 104; never raises).

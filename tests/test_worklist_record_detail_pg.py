@@ -158,9 +158,9 @@ async def test_record_detail_counts_rule_history_and_mdm_links(run, client_for):
         assert o["checks"] == ["MM001", "MM003"] and o["fixed_since"] == ["MM003"] and o["new_since"] == ["MM002"]
         assert o["status"] == "to_fix"
 
-        assert rec["golden_record"] == {"id": golden, "status": "golden", "key": "2", "href": f"/mdm/golden/{golden}"}
+        assert rec["golden_record"] == {"id": golden, "status": "golden", "key": "2", "href": f"/o/_/material-master/golden?open=golden:{golden}"}
         assert rec["duplicates"] == {
-            "open": 2, "href": "/mdm/golden/merge?source=cleaning&object=material_master&record=MATNR%3D2"}
+            "open": 2, "href": "/o/_/material-master/golden"}
         assert rec["currency"] == "ZAR"  # the default cost model: the tenant sets none
 
         # MATNR=1 was not on the previous run's list: it passed then. No golden record, no duplicates for key 1
@@ -170,7 +170,7 @@ async def test_record_detail_counts_rule_history_and_mdm_links(run, client_for):
         assert one["other_runs"]["on_list"] is False and one["other_runs"]["issues"] == 0
         assert one["other_runs"]["new_since"] == ["MM001"] and one["other_runs"]["fixed_since"] == []
         assert one["golden_record"] is None and one["duplicates"] == {
-            "open": 1, "href": "/mdm/golden/merge?source=cleaning&object=material_master&record=MATNR%3D1"}
+            "open": 1, "href": "/o/_/material-master/golden"}
 
         # The previous run itself has no earlier run to compare with.
         old = (await client.get("/api/v1/work/records/material_master/MATNR=2", params={"version_id": prev},

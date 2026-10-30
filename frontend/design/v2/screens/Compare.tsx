@@ -126,7 +126,7 @@ function WhatChanged({ a, b, totals, labelOf }: { a: string; b: string; totals: 
 }
 
 /**
- * `/v2/run/{a}/vs/{b}`: run b (after) against run a (before). One sentence, a row per object with the measured score
+ * `/run/{a}/vs/{b}`: run b (after) against run a (before). One sentence, a row per object with the measured score
  * before and after, the change, the shown score and the rules that moved; a totals row that adds up the rows; the
  * method in one line; and the lists of rules behind the counts, each a link to the rule inspector.
  */
@@ -144,7 +144,7 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
   const systemName = land.data?.systems.find((x) => x.id === sysId)?.name ?? land.data?.systems[0]?.name ?? "";
   const baselineA = runs.find((r) => r.id === a)?.baseline ?? false;
 
-  const swapTo = (nextA: string, nextB: string) => router.push(v2Href(`/v2/run/${nextA}/vs/${nextB}`));
+  const swapTo = (nextA: string, nextB: string) => router.push(v2Href(`/run/${nextA}/vs/${nextB}`));
   const options = [...runs].reverse();
 
   if (sum.isError) {
@@ -181,7 +181,7 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
         <Skeleton width={520} height={16} />
       )}
       <div className="m2-cta">
-        <V2Link href={`/v2/run/${b}`} className="m2-btn">
+        <V2Link href={`/run/${b}`} className="m2-btn">
           {tr("Open run details")}
         </V2Link>
         {options.length > 1 ? (
@@ -262,7 +262,7 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
                   {rows.map(({ o, d }) => (
                     <tr key={o.module} data-testid="compare-row">
                       <th scope="row">
-                        <V2Link href={`/v2/o/${systemSlug(systemName)}/${moduleSlug(o.module)}?run=${b}`}>{o.label}</V2Link>
+                        <V2Link href={`/o/${systemSlug(systemName)}/${moduleSlug(o.module)}?run=${b}`}>{o.label}</V2Link>
                       </th>
                       <td className="m2-r">
                         {f1(o.before?.raw_score)} <span className="m2-u">{tr("to")}</span> {f1(o.after?.raw_score)}
@@ -314,7 +314,7 @@ export function CompareCanvas({ a, b }: { a: string; b: string }) {
             </div>
             <div className="m2-only-narrow" data-testid="compare-list">
               {rows.map(({ o, d }) => (
-                <V2Link key={o.module} href={`/v2/o/${systemSlug(systemName)}/${moduleSlug(o.module)}?run=${b}`} className="m2-lrow" style={{ gridTemplateColumns: "1fr auto" }}>
+                <V2Link key={o.module} href={`/o/${systemSlug(systemName)}/${moduleSlug(o.module)}?run=${b}`} className="m2-lrow" style={{ gridTemplateColumns: "1fr auto" }}>
                   <div className="m2-nm" style={{ gridColumn: 1 }}>
                     {o.label}
                   </div>

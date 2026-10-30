@@ -1,6 +1,6 @@
 # People and inbox
 
-**People** lists the owners and stewards with their open work, approvals waiting, overdue records and SLA, and is where work is balanced, contracts are read and out of office is set. The **inbox** holds what Meridian tells you: approvals, SLA warnings, breaches, finished runs, mentions and digests. Open People from the map, with `g` then `p`, or at `/v2/people`. Open the inbox from **Inbox** and its count in the top bar.
+**People** lists the owners and stewards with their open work, approvals waiting, overdue records and SLA, and is where work is balanced, contracts are read and out of office is set. The **inbox** holds what Meridian tells you: approvals, SLA warnings, breaches, finished runs, mentions and digests. Open People from the map, with `g` then `p`, or at `/people`. Open the inbox from **Inbox** and its count in the top bar.
 
 ## People
 

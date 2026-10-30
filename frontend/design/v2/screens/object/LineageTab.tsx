@@ -187,7 +187,7 @@ export function LineageTab({ module: moduleSegment }: { system: string; module: 
   }
   if (graph.nodes.length === 0) {
     return (
-      <EmptyFrame action={<V2Link href="/v2/runs" className="m2-btn">{tr("Open the runs")}</V2Link>}>
+      <EmptyFrame action={<V2Link href="/runs" className="m2-btn">{tr("Open the runs")}</V2Link>}>
         {tr("Lineage for {label} fills when an analysis finds failing rules: it draws the tables and fields those rules read and the S/4HANA features they block or degrade.", { label })}
       </EmptyFrame>
     );

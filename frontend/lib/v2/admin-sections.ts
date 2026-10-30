@@ -35,7 +35,7 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
   { slug: "alerts", get label() { return t("Alerts"); }, get group() { return t("Notifications"); }, get lead() { return t("When an alert fires and which channels carry it."); }, needs: ["manage_settings", "view"] },
   { slug: "notifications", get label() { return t("Notifications"); }, get group() { return t("Notifications"); }, get lead() { return t("The tenant's default digest."); }, needs: ["manage_settings", "view"] },
   { slug: "webhooks", get label() { return t("Webhooks"); }, get group() { return t("Notifications"); }, get lead() { return t("Signed events to Slack, Teams or any https endpoint, the delivery log, and what runs by itself."); }, needs: ["manage_settings"] },
-  { slug: "runs", get label() { return t("Runs and jobs"); }, get group() { return t("Operations"); }, get lead() { return t("Start an extraction, an analysis or a configuration load, schedule them, and retry what failed."); }, needs: ["trigger_sync", "analyse", "manage_systems"] },
+  { slug: "runs", get label() { return t("Runs and jobs"); }, get group() { return t("Operations"); }, get lead() { return t("Start an extraction, an analysis or a configuration load, schedule them, and retry what failed."); }, needs: ["trigger_sync", "analyse", "manage_systems", "upload"] },
   { slug: "system", get label() { return t("Jobs and system update"); }, get group() { return t("Operations"); }, get lead() { return t("Background jobs, the platform version and health checks."); }, needs: ["manage_system", "view"] },
 ];
 

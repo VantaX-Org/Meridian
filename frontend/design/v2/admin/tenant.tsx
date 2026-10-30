@@ -63,7 +63,7 @@ export function LicenceSection() {
                     [tr("Seats"), seats ? (used != null ? tr("{used} of {seats} in use", { used, seats }) : String(seats)) : notValidated ? tr("Not validated yet") : tr("Unlimited")],
                     [tr("Valid until"), l.expiry_date ? `${formatDate(l.expiry_date)}${days != null ? tr(", {days} {days, plural, one {day} other {days}} left", { days }) : ""}` : tr("Not set")],
                     [tr("Last checked"), l.last_validated ? formatDate(l.last_validated, "datetime") : tr("Not checked yet")],
-                    [tr("Platform version"), update.data ? <>{update.data.current_version}{update.data.update_available ? <>{", "}<V2Link href="/v2/admin/system">{tr("{latest_version} is available", { latest_version: update.data.latest_version })}</V2Link></> : tr(" (up to date)")}</> : <V2Link href="/v2/admin/system">{tr("See Jobs and system update")}</V2Link>],
+                    [tr("Platform version"), update.data ? <>{update.data.current_version}{update.data.update_available ? <>{", "}<V2Link href="/admin/system">{tr("{latest_version} is available", { latest_version: update.data.latest_version })}</V2Link></> : tr(" (up to date)")}</> : <V2Link href="/admin/system">{tr("See Jobs and system update")}</V2Link>],
                   ]}
                 />
               </Block>

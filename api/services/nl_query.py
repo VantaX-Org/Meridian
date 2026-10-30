@@ -36,7 +36,7 @@ logger = logging.getLogger("meridian.nl_query")
 
 RULES_DIR = Path(__file__).resolve().parents[2] / "checks" / "rules"
 MAX_PHRASE = 4
-WORK_HREF = "/v2/work"
+WORK_HREF = "/work"
 RULE_ID = re.compile(r"^[a-z]{1,6}\d{2,4}[a-z]?$")
 
 # Words that carry no filter on their own.
@@ -272,7 +272,7 @@ def explain(matched: list[dict], ignored: list[str], unmatched: list[str]) -> st
 
 
 def href(filt: dict) -> str:
-    """The /v2/work URL with the filter in the query string."""
+    """The /work URL with the filter in the query string."""
     params = {k: ("true" if v is True else v) for k, v in sorted(filt.items())}
     return WORK_HREF + ("?" + urlencode(params) if params else "")
 

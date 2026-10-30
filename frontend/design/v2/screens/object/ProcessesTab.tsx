@@ -15,7 +15,7 @@ import { WhatIfPanel } from "./WhatIf";
 import { t } from "@/lib/v2/i18n";
 
 /** The process designer of an object: a canvas of its own under the object. */
-export const designerHref = (system: string, module: string): string => `/v2/o/${system}/${module}/processes/design`;
+export const designerHref = (system: string, module: string): string => `/o/${system}/${module}/processes/design`;
 
 function StepBlock({ step, module, openId }: { step: StepView; module: string; openId: string | null }) {
   const { hrefFor } = useOpenItem();

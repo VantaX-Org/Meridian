@@ -31,7 +31,7 @@ afterEach(() => {
 
 const norm = (el: HTMLElement) => (el.textContent ?? "").replace(/\s+/g, " ").trim();
 const open = (id: string) => {
-  setUrl(`/v2?fixture=1&open=system:${id}`);
+  setUrl(`/?fixture=1&open=system:${id}`);
   return renderWithQuery(<Inspector />);
 };
 
@@ -151,7 +151,7 @@ describe("the system inspector", () => {
 
 describe("the system canvas", () => {
   const canvas = (tab = "") => {
-    setUrl(`/v2/s/${ECC.id}?fixture=1${tab}`);
+    setUrl(`/s/${ECC.id}?fixture=1${tab}`);
     return renderWithQuery(<SystemCanvas id={ECC.id} />);
   };
 
@@ -180,7 +180,7 @@ describe("the system canvas", () => {
     const table = await screen.findByTestId("system-extractions");
     const rows = within(table).getAllByRole("row").slice(1);
     expect(rows).toHaveLength(8);
-    expect(within(rows[0]).getByRole("link", { name: "Open the run" })).toHaveAttribute("href", expect.stringContaining("/v2/run/d3229ded"));
+    expect(within(rows[0]).getByRole("link", { name: "Open the run" })).toHaveAttribute("href", expect.stringContaining("/run/d3229ded"));
     expect(norm(rows[2])).toContain("Baseline");
   });
 
@@ -210,7 +210,7 @@ describe("the system canvas", () => {
   });
 
   it("a system that is not in the tenant is explained inside the canvas", async () => {
-    setUrl("/v2/s/missing?fixture=1");
+    setUrl("/s/missing?fixture=1");
     renderWithQuery(<SystemCanvas id="missing" />);
     expect(await screen.findByText(/This system is not in the tenant/)).toBeInTheDocument();
   });

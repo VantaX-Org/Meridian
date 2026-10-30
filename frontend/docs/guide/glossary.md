@@ -1,6 +1,6 @@
 # Glossary
 
-The glossary is the shared language of an object: one business term per SAP field, with its definition, its owner, its status and the rules that cite it. The **Glossary** tab of an object lists its terms and the fields that still have none. Open it from the object's tabs, for example `/v2/o/ecc-production/material-master/glossary`.
+The glossary is the shared language of an object: one business term per SAP field, with its definition, its owner, its status and the rules that cite it. The **Glossary** tab of an object lists its terms and the fields that still have none. Open it from the object's tabs, for example `/o/ecc-production/material-master/glossary`.
 
 ## What is on it
 

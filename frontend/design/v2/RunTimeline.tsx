@@ -172,7 +172,7 @@ function inOrder(runs: readonly TimelineRun[], x: string, y: string): [string, s
 /**
  * The run control in the top bar. The button names the run the canvas shows; it opens a timeline of the last eight
  * runs of the scope. Picking one sets the run in the URL (or, on a run page, goes to that run), and "Compare with…"
- * opens /v2/run/{a}/vs/{b} for the two. Esc closes it and gives focus back.
+ * opens /run/{a}/vs/{b} for the two. Esc closes it and gives focus back.
  */
 export function RunTimelineMenu({ compact }: { compact?: boolean }) {
   const router = useRouter();
@@ -238,7 +238,7 @@ export function RunTimelineMenu({ compact }: { compact?: boolean }) {
     if (!selected || !other) return;
     const [a, b] = inOrder(runs, selected.id, other);
     setOpen(false);
-    router.push(v2Href(`/v2/run/${a}/vs/${b}`));
+    router.push(v2Href(`/run/${a}/vs/${b}`));
   };
 
   const first = runs[0]?.run_at;

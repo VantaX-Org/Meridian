@@ -5,6 +5,7 @@
 import type { Notification } from "@/types/api";
 import type { SeverityKey } from "@/design/v2/marks";
 import { t } from "@/lib/v2/i18n";
+import { isAppPath } from "./paths";
 
 export interface NotificationGroups {
   today: Notification[];
@@ -60,24 +61,24 @@ export function sentenceOf(n: Pick<Notification, "title" | "body">): string {
 export interface NotificationLink {
   href: string;
   label: string;
-  /** A page of the current interface: opened as a plain link, not through the v2 router. */
+  /** A link outside the app: opened as a plain link, not through the router. */
   external: boolean;
 }
 
 /**
- * Where "open" goes. A link into the v2 interface keeps its place; one into an object names the object; any other
- * link is a page of the current interface.
+ * Where "open" goes. A link into an object names the object, one to a batch or the ledger says so; anything else in
+ * the app is "Open", and a link outside it is opened as a plain link. Old addresses in older notifications redirect.
  */
 export function linkOf(link: string | null | undefined, objectLabel?: (module: string) => string | null): NotificationLink | null {
   if (!link) return null;
-  const external = !/^\/v2(?:[/?#]|$)/.test(link);
-  const obj = /^\/v2\/o\/[^/]+\/([^/?#]+)/.exec(link);
+  const external = !isAppPath(link);
+  const obj = /^\/o\/[^/]+\/([^/?#]+)/.exec(link);
   if (obj) {
     const id = decodeURIComponent(obj[1]).replace(/-/g, "_");
     const label = objectLabel?.(id) ?? id.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
     return { href: link, label, external };
   }
   if (/[?&]open=batch:/.test(link)) return { href: link, label: t("Open the batch"), external };
-  if (/^\/v2\/work/.test(link)) return { href: link, label: t("Open the ledger"), external };
+  if (/^\/work/.test(link)) return { href: link, label: t("Open the ledger"), external };
   return { href: link, label: t("Open"), external };
 }

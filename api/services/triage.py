@@ -36,6 +36,8 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy import text
 
+from api.services import app_links
+
 logger = logging.getLogger("meridian.triage")
 
 SEVERITIES = ("critical", "high", "medium", "low")
@@ -59,7 +61,7 @@ _WAIT_SQL = "('waiting_sap', 'waiting_requester')"
 _QUEUE_SEV = ("CASE WHEN sq.priority <= 1 THEN 'critical' WHEN sq.priority = 2 THEN 'high' "
               "WHEN sq.priority = 3 THEN 'medium' ELSE 'low' END")
 TABLES = {"issue": "record_issues", "queue": "stewardship_queue"}
-LINKS = {"issue": "/issues", "queue": "/stewardship"}
+LINKS = {"issue": app_links.work(assigned="me"), "queue": app_links.work(assigned="me")}
 LABELS = {"issue": "record issue", "queue": "stewardship item"}
 
 AlertHook = Callable[..., None]

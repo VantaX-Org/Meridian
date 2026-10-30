@@ -24,7 +24,7 @@ beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
   granted = "all";
   resetObjectFixture();
-  setUrl("/v2/o/ecc-production/material-master?open=rule:MM014&fixture=1");
+  setUrl("/o/ecc-production/material-master?open=rule:MM014&fixture=1");
 });
 afterEach(() => {
   window.sessionStorage.clear();
@@ -93,8 +93,8 @@ describe("the rule inspector", () => {
   it("links every object and system in the scope", async () => {
     const d = await open();
     const scope = section(d, /^Scope/);
-    expect(within(scope).getByRole("link", { name: "Material master" })).toHaveAttribute("href", expect.stringMatching(/\/v2\/o\/ecc-production\/material-master/));
-    expect(within(scope).getByRole("link", { name: "Purchasing" })).toHaveAttribute("href", expect.stringMatching(/\/v2\/o\/ecc-production\/purchasing/));
+    expect(within(scope).getByRole("link", { name: "Material master" })).toHaveAttribute("href", expect.stringMatching(/\/o\/ecc-production\/material-master/));
+    expect(within(scope).getByRole("link", { name: "Purchasing" })).toHaveAttribute("href", expect.stringMatching(/\/o\/ecc-production\/purchasing/));
     expect(within(scope).getByRole("link", { name: "ECC production" })).toHaveAttribute("href", expect.stringContaining("open=system%3A"));
   });
 
@@ -155,10 +155,10 @@ describe("actions by role", () => {
   it("offers a lead every verb: open, failing records, suppress, edit in authoring, hand to a steward", async () => {
     const d = await open();
     const a = section(d, "Actions");
-    expect(within(a).getByRole("link", { name: "Open the rule" })).toHaveAttribute("href", expect.stringContaining("/v2/r/MM014"));
-    expect(within(a).getByRole("link", { name: "Open failing records" })).toHaveAttribute("href", expect.stringContaining("/v2/r/MM014?tab=failing"));
+    expect(within(a).getByRole("link", { name: "Open the rule" })).toHaveAttribute("href", expect.stringContaining("/r/MM014"));
+    expect(within(a).getByRole("link", { name: "Open failing records" })).toHaveAttribute("href", expect.stringContaining("/r/MM014?tab=failing"));
     expect(within(a).getByRole("button", { name: "Suppress" })).toBeInTheDocument();
-    expect(within(a).getByRole("link", { name: "Edit in authoring" })).toHaveAttribute("href", expect.stringContaining("/v2/rules?view=drafts&module=material_master"));
+    expect(within(a).getByRole("link", { name: "Edit in authoring" })).toHaveAttribute("href", expect.stringContaining("/rules?view=drafts&module=material_master"));
     expect(within(a).getByRole("button", { name: "Hand to a steward" })).toBeInTheDocument();
   });
 
@@ -214,11 +214,11 @@ describe("actions by role", () => {
 
 describe("states", () => {
   it("says so when the rule cannot be read, and still offers the rule canvas", async () => {
-    setUrl("/v2?open=rule:ZZ999&fixture=1");
+    setUrl("/?open=rule:ZZ999&fixture=1");
     renderWithQuery(<Inspector />);
     const dialog = await screen.findByRole("dialog");
     expect(await within(dialog).findByTestId("error-frame")).toHaveTextContent("This rule could not be read.");
-    expect(within(dialog).getByRole("link", { name: "Open the rule" })).toHaveAttribute("href", expect.stringContaining("/v2/r/ZZ999"));
+    expect(within(dialog).getByRole("link", { name: "Open the rule" })).toHaveAttribute("href", expect.stringContaining("/r/ZZ999"));
   });
 
   it("holds the layout with a skeleton while the rule loads", async () => {

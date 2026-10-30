@@ -16,7 +16,7 @@ vi.mock("../screens/object/LedgerSlot", () => ({
 beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
   resetObjectFixture();
-  setUrl("/v2/r/MM014?fixture=1");
+  setUrl("/r/MM014?fixture=1");
 });
 afterEach(() => {
   window.sessionStorage.clear();
@@ -25,7 +25,7 @@ afterEach(() => {
 
 const norm = (el: HTMLElement) => (el.textContent ?? "").replace(/\s+/g, " ").trim();
 
-describe("the rule canvas /v2/r/{check_id}", () => {
+describe("the rule canvas /r/{check_id}", () => {
   it("heads the page with the rule id and name, and a stat line of its own with no ruler", async () => {
     renderWithQuery(<RuleCanvas id="MM014" />);
     await waitFor(() => expect(norm(screen.getByRole("heading", { level: 1 }))).toContain("MM014 Base unit of measure not valid"));
@@ -45,7 +45,7 @@ describe("the rule canvas /v2/r/{check_id}", () => {
     const links = within(nav).getAllByRole("link");
     expect(links.map((l) => l.textContent)).toEqual(["Definition", "Failing records", "Impact", "History"]);
     expect(links[0]).toHaveAttribute("aria-current", "page");
-    expect(links[1]).toHaveAttribute("href", expect.stringMatching(/^\/v2\/r\/MM014\?.*tab=failing/));
+    expect(links[1]).toHaveAttribute("href", expect.stringMatching(/^\/r\/MM014\?.*tab=failing/));
     expect(links[0]).toHaveAttribute("href", expect.not.stringContaining("tab="));
   });
 
@@ -59,7 +59,7 @@ describe("the rule canvas /v2/r/{check_id}", () => {
   });
 
   it("Failing records is the ledger scoped to the rule: module and a check_id filter", async () => {
-    setUrl("/v2/r/MM014?tab=failing&fixture=1");
+    setUrl("/r/MM014?tab=failing&fixture=1");
     renderWithQuery(<RuleCanvas id="MM014" />);
     const slot = await screen.findByTestId("ledger-slot");
     expect(slot).toHaveAttribute("data-module", "material_master");
@@ -68,7 +68,7 @@ describe("the rule canvas /v2/r/{check_id}", () => {
   });
 
   it("Impact shows the facts, what the rule blocks and the lineage", async () => {
-    setUrl("/v2/r/MM014?tab=impact&fixture=1");
+    setUrl("/r/MM014?tab=impact&fixture=1");
     renderWithQuery(<RuleCanvas id="MM014" />);
     await screen.findByRole("region", { name: "Facts" });
     expect(screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"))).toEqual(["Facts", "Blocks: 3 S/4 features", "Lineage"]);
@@ -76,7 +76,7 @@ describe("the rule canvas /v2/r/{check_id}", () => {
   });
 
   it("History lists the runs and versions", async () => {
-    setUrl("/v2/r/MM014?tab=history&fixture=1");
+    setUrl("/r/MM014?tab=history&fixture=1");
     renderWithQuery(<RuleCanvas id="MM014" />);
     const h = await screen.findByRole("region", { name: "History" });
     await waitFor(() => expect(within(h).getAllByRole("listitem").length).toBeGreaterThan(2));
@@ -84,7 +84,7 @@ describe("the rule canvas /v2/r/{check_id}", () => {
   });
 
   it("keeps the run in the tab links", async () => {
-    setUrl("/v2/r/MM014?run=abc&fixture=1");
+    setUrl("/r/MM014?run=abc&fixture=1");
     renderWithQuery(<RuleCanvas id="MM014" />);
     const nav = await screen.findByRole("navigation", { name: "Views of MM014" });
     expect(within(nav).getByRole("link", { name: "Impact" })).toHaveAttribute("href", expect.stringContaining("run=abc"));
@@ -95,7 +95,7 @@ describe("the rule canvas /v2/r/{check_id}", () => {
     const alert = await screen.findByTestId("error-frame");
     expect(alert).toHaveTextContent("This rule could not be read.");
     expect(within(alert).getByRole("button", { name: "Retry" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open the rules library" })).toHaveAttribute("href", expect.stringContaining("/v2/rules"));
+    expect(screen.getByRole("link", { name: "Open the rules library" })).toHaveAttribute("href", expect.stringContaining("/rules"));
   });
 
   it("holds the layout while the rule loads", () => {

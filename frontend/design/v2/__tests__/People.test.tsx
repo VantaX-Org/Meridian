@@ -33,7 +33,7 @@ afterEach(() => {
 const text = (el: Element) => (el.textContent ?? "").replace(/\s+/g, " ").trim();
 
 function mount(search = "", open?: string) {
-  const url = `/v2/people?fixture=1&persona=owner${search}${open ? `&open=${encodeURIComponent(open)}` : ""}`;
+  const url = `/people?fixture=1&persona=owner${search}${open ? `&open=${encodeURIComponent(open)}` : ""}`;
   window.history.pushState({}, "", url);
   setUrl(url);
   return renderWithQuery(
@@ -124,7 +124,7 @@ describe("the person inspector", () => {
     expect(fact(insp, "Breaches this month")).toContain("9");
     const objects = within(insp).getByTestId("person-objects");
     expect(within(objects).getAllByRole("link").map(text)).toEqual(["Material master", "Purchasing"]);
-    expect(within(objects).getAllByRole("link")[0].getAttribute("href")).toContain("/v2/o/ecc-production/material-master");
+    expect(within(objects).getAllByRole("link")[0].getAttribute("href")).toContain("/o/ecc-production/material-master");
     const work = await within(insp).findByTestId("person-work");
     expect(text(work)).toContain("Material master");
     expect(text(work)).toMatch(/Material master\s*16/);

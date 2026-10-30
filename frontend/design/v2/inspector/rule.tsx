@@ -240,7 +240,7 @@ export function RuleScopeSection({ view }: { view: RuleView }) {
         <ul className="m2-lk">
           {s.objects.map((o) => (
             <li key={`${o.system_id}:${o.module}`}>
-              <V2Link href={`/v2/o/${systemSlug(o.system_name ?? o.system_id)}/${moduleSlug(o.module)}`}>{o.label}</V2Link>
+              <V2Link href={`/o/${systemSlug(o.system_name ?? o.system_id)}/${moduleSlug(o.module)}`}>{o.label}</V2Link>
               <span className="m2-meta">{tr("{system_name}{value}, {failing} failing", { system_name: o.system_name ?? "", value: o.run_at ? tr(", run {run_at}", { run_at: formatDate(o.run_at, "date") }) : "", failing: int(o.failing) })}</span>
             </li>
           ))}
@@ -511,11 +511,11 @@ export function RuleActions({ view, canvas }: { view: RuleView; canvas?: boolean
     <Sec title={tr("Actions")}>
       <div className="m2-acts">
         {canvas ? null : (
-          <V2Link href={`/v2/r/${encodeURIComponent(view.id)}`} className="m2-btn m2-strong">
+          <V2Link href={`/r/${encodeURIComponent(view.id)}`} className="m2-btn m2-strong">
             {tr("Open the rule")}
           </V2Link>
         )}
-        <V2Link href={`/v2/r/${encodeURIComponent(view.id)}?tab=failing`} className="m2-btn">
+        <V2Link href={`/r/${encodeURIComponent(view.id)}?tab=failing`} className="m2-btn">
           {tr("Open failing records")}
         </V2Link>
         {canSuppress ? (
@@ -524,7 +524,7 @@ export function RuleActions({ view, canvas }: { view: RuleView; canvas?: boolean
           </button>
         ) : null}
         {canEdit ? (
-          <V2Link href={`/v2/rules?view=drafts&module=${encodeURIComponent(mod)}`} className="m2-btn">
+          <V2Link href={`/rules?view=drafts&module=${encodeURIComponent(mod)}`} className="m2-btn">
             {tr("Edit in authoring")}
           </V2Link>
         ) : null}
@@ -567,7 +567,7 @@ export function RuleInspectorBody({ id, landscape }: { id: string; landscape?: L
         <ErrorFrame onRetry={s.refetch}>{tr("This rule could not be read. It may not run on any object yet.")}</ErrorFrame>
         {capped > 0 ? <p className="m2-prov">{tr("It is a critical rule over tolerance in {capped} {capped, plural, one {object} other {objects}}.", { capped })}</p> : null}
         <div className="m2-acts" style={{ marginTop: 16 }}>
-          <V2Link href={`/v2/r/${encodeURIComponent(id)}`} className="m2-btn m2-strong">
+          <V2Link href={`/r/${encodeURIComponent(id)}`} className="m2-btn m2-strong">
             {tr("Open the rule")}
           </V2Link>
         </div>

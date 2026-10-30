@@ -457,7 +457,7 @@ def test_beat_generates_due_slot_once_stores_and_delivers_then_advances_in_tenan
     assert len(generated) == 1 and generated[0][2] == {"scope": "latest"}
     assert sorted(e[0] for e in emails) == ["ana@example.test", "ops@example.test"]
     assert all(e[2] == [(f"meridian_board_{vid}.pdf", b"%PDF scheduled", "application/pdf")] for e in emails)
-    assert posts[0][0] == "slack" and posts[0][2] == "https://meridian.example.test/insights/reports"
+    assert posts[0][0] == "slack" and posts[0][2] == "https://meridian.example.test/reports"
     assert posts[0][1]["event"] == "meridian.report_ready"
 
     with owner.connect() as c:

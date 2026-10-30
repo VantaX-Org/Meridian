@@ -36,8 +36,8 @@ def test_current_narrative_links_carry_no_run():
                           top_cluster={"module": "material_master", "field": "MATKL", "table": "MARA", "rules": ["X"]})
     assert lines[0]["text"] == "The data quality score across objects, each at its latest run, is 85.0."
     assert [line["href"] for line in lines] == [
-        "/insights/trends", "/insights/readiness", "/insights/rules?auto_fixable=true",
-        "/insights/rules?field=MARA.MATKL"]
+        "/runs", "/?view=waves", "/rules?auto_fixable=true",
+        "/rules?field=MARA.MATKL"]
 
 
 def test_run_narrative_links_unchanged():
@@ -46,8 +46,8 @@ def test_run_narrative_links_unchanged():
                           conc=None, wave_names=[], auto={"pct": 50.0, "high_confidence": 1},
                           top_cluster={"module": "material_master", "field": "MATKL", "table": "MARA", "rules": ["X"]})
     assert [line["href"] for line in lines] == [
-        "/insights/trends?run=v1", "/insights/readiness?run=v1", "/insights/rules?run=v1&auto_fixable=true",
-        "/insights/rules?run=v1&field=MARA.MATKL"]
+        "/runs?run=v1", "/?view=waves&run=v1", "/rules?run=v1&auto_fixable=true",
+        "/rules?run=v1&field=MARA.MATKL"]
 
 
 # -- PG ----------------------------------------------------------------------------------------

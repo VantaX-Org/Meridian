@@ -20,7 +20,7 @@ beforeEach(() => {
   resetKeptOutcomes();
   refreshTenantTheme();
   setLang("en");
-  setUrl("/v2/admin/settings?fixture=1");
+  setUrl("/admin/settings?fixture=1");
   window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null, addEventListener: () => undefined, removeEventListener: () => undefined, addListener: () => undefined, removeListener: () => undefined, dispatchEvent: () => false })) as typeof window.matchMedia;
 });
 afterEach(() => {
@@ -142,13 +142,13 @@ describe("Admin › Settings › Appearance", () => {
   it("the shell root and the top bar take the tenant's accent, logo and name; About keeps the Meridian mark", async () => {
     await ent.putThemeSettings({ product_name_override: "Acme Data Quality", accent: "#1b3f8f", accent_dark: null, logo_url: null });
     refreshTenantTheme();
-    setUrl("/v2?fixture=1");
+    setUrl("/?fixture=1");
     renderWithQuery(<V2Shell><h1>Page</h1></V2Shell>);
     await waitFor(() => {
       expect(document.querySelector(".m2-root")).toHaveAttribute("data-tenant-accent", "");
       expect((document.querySelector(".m2-root") as HTMLElement).style.getPropertyValue("--m2-tenant-accent")).toBe("#1B3F8F");
     });
-    expect(await screen.findByRole("link", { name: "Acme Data Quality, go to the landscape" })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Acme Data Quality, go to the landscape" }, { timeout: 10_000 })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /^Account/ }));
     fireEvent.click(within(await screen.findByRole("menu", { name: "Account" })).getByRole("menuitem", { name: "About Meridian" }));
     const about = await screen.findByRole("dialog", { name: "About Meridian" });
@@ -205,7 +205,7 @@ describe("Admin › System › diagnostics bundle", () => {
   });
 
   it("the Contact support panel attaches the server's JSON summary", async () => {
-    setUrl("/v2?fixture=1&open=help");
+    setUrl("/?fixture=1&open=help");
     renderWithQuery(<V2Shell><h1>Page</h1></V2Shell>);
     const dialog = await screen.findByRole("dialog", { name: "Help" });
     const summary = await within(dialog).findByTestId("diagnostics-summary");

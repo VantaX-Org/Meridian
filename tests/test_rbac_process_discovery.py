@@ -31,7 +31,7 @@ def test_process_analyst_is_read_plus_process() -> None:
     assert has_permission("process_analyst", "assign") is False
     assert has_permission("process_analyst", "manage_rules") is False
     assert has_permission("process_analyst", "export") is False
-    assert "process_analyst" in VALID_ROLES and home_for("process_analyst") == "/home/process"
+    assert "process_analyst" in VALID_ROLES and home_for("process_analyst") == "/"
     assert rbac.BUILTIN_NAMES["process_analyst"] == "Process analyst"
 
 

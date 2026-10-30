@@ -10,6 +10,8 @@ from sqlalchemy.orm import Session
 from workers.celery_app import celery_app
 from workers.db import get_sync_engine
 
+from api.services import app_links
+
 logger = logging.getLogger("meridian.worker")
 
 
@@ -213,7 +215,7 @@ def run_exception_scan(self, version_id: str, tenant_id: str):
                         type="exception",
                         title=f"Critical exception detected: {exc['title']}",
                         body=exc["description"],
-                        link=f"/exceptions/{exc['id']}",
+                        link=app_links.work(filter="exceptions"),
                         session=notif_session,
                     )
                 notif_session.commit()

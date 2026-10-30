@@ -65,7 +65,7 @@ export function FeatureInspector({ id, onClose }: { id: string; onClose: () => v
           <Sec title={t("Actions")}>
             <div className="m2-acts">
               {rules[0] ? (
-                <V2Link href={`/v2/work?rule=${encodeURIComponent(rules[0].check_id)}`} className="m2-btn m2-strong">
+                <V2Link href={`/work?rule=${encodeURIComponent(rules[0].check_id)}`} className="m2-btn m2-strong">
                   <>{t("Fix")}{" "}<Mono>{rules[0].check_id}</Mono>{" "}{t("in Work")}</>
                 </V2Link>
               ) : null}

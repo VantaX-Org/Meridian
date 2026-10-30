@@ -1,5 +1,5 @@
 /**
- * The rules library (/v2/rules): every rule of the tenant across objects, the drafts, suppressions and the verbs on
+ * The rules library (/rules): every rule of the tenant across objects, the drafts, suppressions and the verbs on
  * them. All existing endpoints: GET /rules, GET /rules/coverage/{module}, PATCH /rules/{id}, GET and DELETE
  * /rule-suppressions, POST /rule-suppressions (object.ts suppressRule), and /rule-authoring/*. In fixture mode the
  * answers come from fixtures/sys6b.ts.

@@ -20,7 +20,7 @@ let undoLayout: () => void = () => undefined;
 const KEY = "000000000000000100"; // MM014 base unit of measure, suggested EA
 
 function visit(open: string, extra = "") {
-  const url = `/v2/work?fixture=1&persona=steward${extra}&open=${encodeURIComponent(`record:${open}`)}`;
+  const url = `/work?fixture=1&persona=steward${extra}&open=${encodeURIComponent(`record:${open}`)}`;
   window.history.pushState({}, "", url);
   setUrl(url);
 }
@@ -249,7 +249,7 @@ describe("actions by permission", () => {
 describe("stepping through the ledger", () => {
   it("] opens the next row and [ the previous one", async () => {
     window.sessionStorage.setItem("mn_v2_fixture", "1");
-    const url = `/v2/work?fixture=1&persona=steward&open=${encodeURIComponent("record:material_master:MATNR=000000000000000232")}`;
+    const url = `/work?fixture=1&persona=steward&open=${encodeURIComponent("record:material_master:MATNR=000000000000000232")}`;
     window.history.pushState({}, "", url);
     setUrl(url);
     renderWithQuery(

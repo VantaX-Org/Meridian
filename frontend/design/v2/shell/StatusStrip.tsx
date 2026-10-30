@@ -20,7 +20,7 @@ function HealthWord() {
   if (!q.data) return null;
   const s = q.data.status;
   return (
-    <V2Link href="/v2/status" className="m2-health" data-testid="status-health" aria-label={t("Platform {statusWord}, open the status page", { statusWord: overallWord(s) })}>
+    <V2Link href="/status" className="m2-health" data-testid="status-health" aria-label={t("Platform {statusWord}, open the status page", { statusWord: overallWord(s) })}>
       <VerdictMark verdict={overallVerdict(s)} />
       {overallWord(s)}
     </V2Link>

@@ -1,5 +1,5 @@
 /**
- * Meridian 2, step 6d: help content and videos, in fixture mode (`/v2?fixture=1&open=help`), so the spec needs no API.
+ * Meridian 2, step 6d: help content and videos, in fixture mode (`/?fixture=1&open=help`), so the spec needs no API.
  * At 1440 and 390, light and dark: the role's walkthrough and the screen's chapter come first, the current interface's
  * chapters are marked, search finds words said only in a recording, a chapter plays its recording in the panel with the
  * poster and a captions track, and the walkthrough's next-step button opens the next screen with help still open. Axe
@@ -59,14 +59,14 @@ for (const size of SIZES) {
       test.setTimeout(150_000);
       const shot = (page: Page, name: string) => page.screenshot({ path: path.join(SHOTS, `${name}_${size.name}_${scheme}.png`) });
 
-      test("the index: the walkthrough and the screen's chapter first, the current interface marked, captions searched", async ({ page }) => {
+      test("the index: the walkthrough and the screen's chapter first, nothing of the retired interface, captions searched", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2?fixture=1&persona=steward&open=help", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/?fixture=1&persona=steward&open=help", { waitUntil: "load", timeout: 90_000 });
         const help = page.getByRole("dialog", { name: "Help" });
         await expect(help.getByRole("heading", { name: "On this screen" })).toBeVisible(NAV);
         expect((await titles(page, "Help for this screen")).slice(0, 2)).toEqual(["Walkthrough: data steward", "Landscape"]);
-        await expect(help.getByRole("heading", { name: "Current interface", exact: true })).toBeAttached();
-        await expect(help.getByTestId("whats-new").getByRole("listitem")).toHaveCount(9);
+        await expect(help.getByRole("heading", { name: "Current interface", exact: true })).toHaveCount(0);
+        await expect(help.getByTestId("whats-new").getByRole("listitem")).toHaveCount(10);
         await page.waitForLoadState("networkidle");
         await shot(page, "help-index");
         await axe(page, `help index ${size.name} ${scheme}`);
@@ -77,7 +77,7 @@ for (const size of SIZES) {
 
       test("a chapter plays its recording in the panel, with the poster and the captions", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2/work?fixture=1&persona=steward&open=help", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/work?fixture=1&persona=steward&open=help", { waitUntil: "load", timeout: 90_000 });
         const help = page.getByRole("dialog", { name: "Help" });
         await expect(help.getByRole("heading", { name: "On this screen" })).toBeVisible(NAV);
         expect((await titles(page, "Help for this screen"))[0]).toBe("The Work ledger");
@@ -99,7 +99,7 @@ for (const size of SIZES) {
 
       test("a role's walkthrough: five steps with the screen names, and the next step opens the next screen", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2?fixture=1&role=data_owner&open=help&chapter=v2%3Apersona-owner", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/?fixture=1&role=data_owner&open=help&chapter=v2%3Apersona-owner", { waitUntil: "load", timeout: 90_000 });
         const help = page.getByRole("dialog", { name: "Help" });
         const walk = help.getByTestId("walkthrough");
         await expect(walk.getByRole("listitem")).toHaveCount(5, NAV);

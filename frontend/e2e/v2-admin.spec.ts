@@ -55,7 +55,7 @@ for (const size of SIZES) {
       };
 
       test("users: the people, their status, and a person's inspector", async ({ page }) => {
-        await go(page, "/v2/admin/users?fixture=1");
+        await go(page, "/admin/users?fixture=1");
         await expect(page.getByRole("heading", { level: 1 })).toContainText("Users", NAV);
         if (!phone) {
           const grid = page.getByRole("grid", { name: "Users" });
@@ -78,7 +78,7 @@ for (const size of SIZES) {
       });
 
       test("settings: weights, bands, cost model and retention", async ({ page }) => {
-        await go(page, "/v2/admin/settings?fixture=1");
+        await go(page, "/admin/settings?fixture=1");
         await expect(page.getByText("Demo Corp")).toBeVisible(NAV);
         await expect(page.getByRole("button", { name: "Save weights" })).toBeVisible(NAV);
         expect(await noSideways(page)).toBe(true);
@@ -88,14 +88,14 @@ for (const size of SIZES) {
       });
 
       test("audit log and runs and jobs", async ({ page }) => {
-        await go(page, "/v2/admin/audit?fixture=1");
+        await go(page, "/admin/audit?fixture=1");
         await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible(NAV);
         if (!phone) await expect(page.getByRole("grid", { name: "Audit log" }).getByText("Nomsa Dlamini").first()).toBeVisible(NAV);
         expect(await noSideways(page)).toBe(true);
         await page.waitForLoadState("networkidle");
         await shot(page, "admin-audit");
         await axe(page, `admin audit ${size.name} ${scheme}`);
-        await page.goto("/v2/admin/runs?fixture=1", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/admin/runs?fixture=1", { waitUntil: "load", timeout: 90_000 });
         await expect(page.getByRole("button", { name: "Schedule a run" })).toBeVisible(NAV);
         expect(await noSideways(page)).toBe(true);
         await page.waitForLoadState("networkidle");
@@ -104,14 +104,14 @@ for (const size of SIZES) {
       });
 
       test("preferences and help open from the top bar and the account menu", async ({ page }) => {
-        await go(page, "/v2?fixture=1");
+        await go(page, "/?fixture=1");
         await page.getByRole("button", { name: "Help" }).click();
         const help = page.getByRole("dialog", { name: "Help" });
         await expect(help.getByRole("heading", { name: "On this screen" })).toBeVisible(NAV);
         await page.waitForLoadState("networkidle");
         await shot(page, "admin-help");
         await axe(page, `help ${size.name} ${scheme}`);
-        await page.goto("/v2?fixture=1&open=preferences", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/?fixture=1&open=preferences", { waitUntil: "load", timeout: 90_000 });
         const prefs = page.getByRole("dialog", { name: "Preferences" });
         await expect(prefs.getByRole("group", { name: "Theme" })).toBeVisible(NAV);
         await page.waitForLoadState("networkidle");
@@ -128,7 +128,7 @@ for (const size of SIZES) {
 
       test("reports and schedules, a schedule's inspector", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2/reports?fixture=1", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/reports?fixture=1", { waitUntil: "load", timeout: 90_000 });
         await expect(page.getByRole("heading", { level: 1 })).toContainText("Reports", NAV);
         await expect(page.getByRole("button", { name: "Create a report" })).toBeVisible(NAV);
         if (!phone) {
@@ -139,7 +139,7 @@ for (const size of SIZES) {
         await page.waitForLoadState("networkidle");
         await shot(page, "reports");
         await axe(page, `reports ${size.name} ${scheme}`);
-        await page.goto("/v2/reports?fixture=1&open=schedule:sch-1", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/reports?fixture=1&open=schedule:sch-1", { waitUntil: "load", timeout: 90_000 });
         const dialog = page.getByRole("dialog", { name: "Board pack for the steering committee" });
         await expect(dialog.getByRole("button", { name: "Pause" })).toBeVisible(NAV);
         await page.waitForLoadState("networkidle");
@@ -156,14 +156,14 @@ for (const size of SIZES) {
 
       test("the landscape grouped by wave, and the waves editor", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2?fixture=1&view=waves", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/?fixture=1&view=waves", { waitUntil: "load", timeout: 90_000 });
         await expect(page.getByTestId("wave-next-step")).toContainText("Clear the 3 no-go objects in Wave 1", NAV);
         if (!phone) await expect(page.getByTestId("wave-head")).toHaveCount(4, NAV);
         expect(await noSideways(page)).toBe(true);
         await page.waitForLoadState("networkidle");
         await shot(page, "waves");
         await axe(page, `waves ${size.name} ${scheme}`);
-        await page.goto("/v2?fixture=1&view=waves&open=waves", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/?fixture=1&view=waves&open=waves", { waitUntil: "load", timeout: 90_000 });
         const dialog = page.getByRole("dialog", { name: "Migration waves" });
         await expect(dialog.getByRole("table", { name: "Objects by wave" })).toBeVisible(NAV);
         await page.waitForLoadState("networkidle");

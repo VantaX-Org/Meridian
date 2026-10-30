@@ -9,7 +9,6 @@ import { PERSONA_LABEL, useOpenItem, useRunParam, useV2Session } from "@/lib/v2/
 import { canAdminister } from "@/lib/v2/admin-sections";
 import { useUnread } from "@/lib/v2/approvals-queries";
 import { useLandscape } from "@/lib/v2/queries";
-import { setUiCookie } from "@/lib/v2/switch";
 import { int, systemSlug } from "@/lib/v2/score";
 import { productName, useTenantTheme } from "@/lib/v2/theme";
 import { APP_VERSION } from "@/lib/version";
@@ -104,13 +103,12 @@ export function AccountMenu({ theme, setTheme, onShortcuts, onSignOut }: Account
     ...THEMES.map<MenuEntry>((t) => ({ kind: "item", id: `theme-${t.value}`, label: t.label, checked: theme === t.value, onSelect: () => setTheme(t.value) })),
     { kind: "separator" },
     { kind: "item", id: "prefs", label: tr("Preferences"), href: hrefFor({ kind: "preferences", id: "" }) },
-    { kind: "item", id: "reports", label: tr("Reports"), href: "/v2/reports" },
+    { kind: "item", id: "reports", label: tr("Reports"), href: "/reports" },
     { kind: "item", id: "keys", label: tr("Keyboard shortcuts"), kbd: "?", onSelect: onShortcuts },
     { kind: "item", id: "triage", label: tr("Triage and SLA"), onSelect: () => openItem({ kind: "triage", id: "" }) },
-    ...(canAdminister(session.can) ? [{ kind: "item", id: "admin", label: tr("Administration"), href: "/v2/admin" } as MenuEntry] : []),
+    ...(canAdminister(session.can) ? [{ kind: "item", id: "admin", label: tr("Administration"), href: "/admin" } as MenuEntry] : []),
     { kind: "separator" },
     { kind: "item", id: "about", label: tr("About Meridian"), onSelect: () => setAbout(true) },
-    { kind: "item", id: "back", label: tr("Back to the current interface"), href: "/home", external: true, onSelect: () => setUiCookie(null) },
     ...(onSignOut ? [{ kind: "item", id: "out", label: tr("Sign out"), onSelect: onSignOut } as MenuEntry] : []),
   ];
   return (
@@ -155,7 +153,7 @@ export function TopBar({ onOpenCommand, onToggleMap, onShortcuts, mapOpen }: Top
   return (
     <header className="m2-top">
       <div className="m2-top-l">
-        <V2Link href="/v2" className="m2-brand" aria-label={tr("{name}, go to the landscape", { name })}>
+        <V2Link href="/" className="m2-brand" aria-label={tr("{name}, go to the landscape", { name })}>
           {/* eslint-disable-next-line @next/next/no-img-element -- the tenant's logo, served by the API or, in fixture mode, from memory; next/image would add nothing */}
           {tenant?.logo_url ? <img src={tenant.logo_url} alt="" className="m2-logo" /> : <Mark />}
           <span className="m2-bn">{name}</span>

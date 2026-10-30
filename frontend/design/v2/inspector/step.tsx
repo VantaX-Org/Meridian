@@ -106,7 +106,7 @@ export function StepInspector({ id, onClose }: { id: string; onClose: () => void
           <Sec title={t("Actions")}>
             <div className="m2-acts">
               {step.rules.map((r, i) => (
-                <V2Link key={r.checkId} href={`/v2/work?rule=${encodeURIComponent(r.checkId)}&module=${encodeURIComponent(mod)}`} className={`m2-btn${i === 0 ? " m2-strong" : ""}`}>
+                <V2Link key={r.checkId} href={`/work?rule=${encodeURIComponent(r.checkId)}&module=${encodeURIComponent(mod)}`} className={`m2-btn${i === 0 ? " m2-strong" : ""}`}>
                   <>{t("Fix")}{" "}<Mono>{r.checkId}</Mono>{" "}{t("in Work")}</>
                 </V2Link>
               ))}

@@ -17,15 +17,15 @@ const RECORD = "material_master:MATNR=000000000000000100";
 
 describe("the viewer's and the auditor's jobs", () => {
   it("opens a share link: the page it points at, under a read-only shared view", async () => {
-    visit("/v2/share/fx-token", "viewer");
+    visit("/share/fx-token", "viewer");
     mount(<ShareLanding />);
     await waitFor(() => expect(getShareMode()).toBe("Material master rules for the audit"));
-    await waitFor(() => expect(getUrl()).toContain("/v2/o/ecc-production/material-master?tab=rules"));
+    await waitFor(() => expect(getUrl()).toContain("/o/ecc-production/material-master?tab=rules"));
     expect(await screen.findByTestId("shared-banner")).toHaveTextContent("Shared view. Read-only, as a viewer.");
   });
 
   it("in a shared view nothing offers a change: Watch is off and comments are read-only", async () => {
-    visit(`/v2/work?open=${encodeURIComponent(`record:${RECORD}`)}`, "auditor");
+    visit(`/work?open=${encodeURIComponent(`record:${RECORD}`)}`, "auditor");
     window.sessionStorage.setItem("mn_v2_share_mode", "Shared view");
     mount();
     const comments = await screen.findByTestId("comments");
@@ -35,35 +35,35 @@ describe("the viewer's and the auditor's jobs", () => {
   });
 
   it("an expired link says so", async () => {
-    visit("/v2/share/expired", "viewer");
+    visit("/share/expired", "viewer");
     mount(<ShareLanding />);
     expect(await screen.findByText("This link was expired. Ask whoever shared it for a new one.")).toBeInTheDocument();
   });
 
   it("a viewer cannot export a grid; an auditor can", async () => {
-    visit("/v2/reports", "viewer");
+    visit("/reports", "viewer");
     const v = mount(<ReportsCanvas />);
     fireEvent.click((await screen.findAllByRole("button", { name: /^Share and export/ }))[0]);
     expect(await screen.findByRole("menuitem", { name: /Export to Excel/ })).toHaveAttribute("aria-disabled", "true");
     v.unmount();
-    visit("/v2/reports", "auditor");
+    visit("/reports", "auditor");
     mount(<ReportsCanvas />);
     fireEvent.click((await screen.findAllByRole("button", { name: /^Share and export/ }))[0]);
     expect(await screen.findByRole("menuitem", { name: /Export to Excel/ })).not.toHaveAttribute("aria-disabled", "true");
   });
 
   it("reads someone's activity only with view_audit: the auditor can, the viewer cannot", async () => {
-    visit("/v2/people?open=person:u-an", "viewer");
+    visit("/people?open=person:u-an", "viewer");
     const v = mount(<PeopleCanvas />);
     expect(norm(await screen.findByTestId("activity"))).toContain("needs the view audit permission");
     v.unmount();
-    visit("/v2/people?open=person:u-an", "auditor");
+    visit("/people?open=person:u-an", "auditor");
     mount(<PeopleCanvas />);
     await waitFor(() => expect(norm(screen.getByTestId("activity"))).toContain("decide"));
   });
 
   it("a viewer sees Data contracts on People but not Balance work", async () => {
-    visit("/v2/people", "viewer");
+    visit("/people", "viewer");
     mount(<PeopleCanvas />);
     const actions = await screen.findByTestId("people-actions");
     expect(within(actions).getByRole("link", { name: "Data contracts" })).toBeInTheDocument();

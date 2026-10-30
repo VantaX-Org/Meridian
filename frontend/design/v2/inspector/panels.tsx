@@ -12,7 +12,6 @@ import { localeOptions, setPreferences, timezoneOptions, type DensityTier, type 
 import { diagnosticsRef, diagnosticsText, FROM_RECORDING, isHere, loadHelp, orderFor, screenOf, screensFor, SCREEN_LABEL, searchHelp, snippet, videoUrl, walkthroughFor, type HelpChapter, type HelpIndex } from "@/lib/v2/help";
 import { PERSONA_LABEL, useV2Session, type V2Persona } from "@/lib/v2/hooks";
 import { f1, int } from "@/lib/v2/score";
-import { readUiCookie, setUiCookie, subscribeUiCookie, UI_V2 } from "@/lib/v2/switch";
 import { setKeyHints, setPersonaOverride, useKeyHints, usePersonaOverride } from "@/lib/v2/prefs";
 import { useHealth, useLicence, useTenantSettings } from "@/lib/v2/admin-queries";
 import { useDiagnostics } from "@/lib/v2/enterprise-queries";
@@ -21,7 +20,6 @@ import { APP_VERSION } from "@/lib/version";
 import { Actions, InspectorFrame } from "../Inspector";
 import { EmptyFrame, Skeleton, V2Link } from "../parts";
 import { copyText } from "../admin/kit";
-import { ResultFrame, useOutcome } from "./shared";
 import { SubscriptionsBlock } from "./collab";
 
 /* ── Preferences ── */
@@ -48,8 +46,6 @@ export function PreferencesPanel({ onClose }: { onClose: () => void }) {
   const persona = usePersonaOverride();
   const hints = useKeyHints();
   const session = useV2Session();
-  const useCurrent = useSyncExternalStore(subscribeUiCookie, () => readUiCookie() !== UI_V2, () => false);
-  const { outcome, run } = useOutcome();
   // A change is saved at once, locally and (live) by the sync mounted in the shell. In fixture mode there is no sync, so
   // the same change goes to the fixture's /me/preferences.
   const save = (patch: PreferencesPatch) => {
@@ -173,25 +169,10 @@ export function PreferencesPanel({ onClose }: { onClose: () => void }) {
         </label>
       </div>
       <p className="m2-prov">
-        <V2Link href="/v2/work?open=triage">{tr("Inbox and triage settings")}</V2Link>
+        <V2Link href="/work?open=triage">{tr("Inbox and triage settings")}</V2Link>
         {tr(" decide what reaches your inbox and who covers it.")}
       </p>
       <SubscriptionsBlock />
-      <h3>{tr("Interface")}</h3>
-      <label className="m2-sw" style={{ display: "flex", gap: 8 }}>
-        <input
-          type="checkbox"
-          checked={useCurrent}
-          onChange={(e) =>
-            void run("ui", async () => {
-              setUiCookie(e.target.checked ? null : UI_V2);
-              return e.target.checked ? { tone: "info", title: tr("The current interface opens next time"), detail: tr("This browser now starts in the current interface. You can come back from its account menu.") } : { tone: "ok", title: tr("This browser keeps the new interface") };
-            })
-          }
-        />
-        <span>{tr("Use the current interface")}</span>
-      </label>
-      {outcome ? <ResultFrame outcome={outcome} /> : null}
       <Actions>
         <button type="button" className="m2-btn" onClick={onClose}>
           {tr("Done")}
@@ -236,35 +217,12 @@ function Body({ text }: { text: string }) {
   );
 }
 
-/** A recording of the current interface: opened on request, so a chapter without one never shows a dead player. */
-function OldRecording({ chapter }: { chapter: HelpChapter }) {
-  const [open, setOpen] = useState(false);
-  const [missing, setMissing] = useState(false);
-  if (!chapter.video) return null;
-  return (
-    <div>
-      {open ? (
-        missing ? (
-          <p className="m2-prov" role="status">{tr("The recording for this chapter is in preparation.")}</p>
-        ) : (
-          <video controls preload="metadata" aria-label={tr("{title}: training video", { title: chapter.title })} src={videoUrl(chapter.video, "mp4")} onError={() => setMissing(true)} />
-        )
-      ) : (
-        <button type="button" className="m2-btn" onClick={() => setOpen(true)}>
-          {tr("Watch the recording")}
-        </button>
-      )}
-    </div>
-  );
-}
-
 const minutes = (s: number | null): string | null => (s == null ? null : s >= 60 ? tr("{m} min {s} s", { m: Math.floor(s / 60), s: Math.round(s % 60) }) : tr("{s} s", { s: Math.round(s) }));
 
-/** A Meridian 2 recording, in the panel: the poster frame until it plays, and the captions as a subtitle track. */
+/** A recording, in the panel: the poster frame until it plays, and the captions as a subtitle track. */
 function Recording({ chapter }: { chapter: HelpChapter }) {
   const [missing, setMissing] = useState(false);
   if (!chapter.video) return null;
-  if (chapter.interface !== "v2") return <OldRecording chapter={chapter} />;
   const length = minutes(chapter.seconds);
   return (
     <figure style={{ margin: "8px 0" }} data-testid="help-video">
@@ -348,7 +306,7 @@ function Walkthrough({ chapter }: { chapter: HelpChapter }) {
 
 function ChapterView({ chapter, onBack }: { chapter: HelpChapter; onBack: () => void }) {
   const screens = screensFor(chapter.id);
-  const where = chapter.interface === "v2" ? chapter.group : `${tr("Current interface")}, ${chapter.group}`;
+  const where = chapter.group;
   return (
     <div className="m2-hbody" data-testid="help-chapter">
       <button type="button" className="m2-linkbtn" onClick={onBack}>
@@ -367,8 +325,6 @@ function ChapterView({ chapter, onBack }: { chapter: HelpChapter; onBack: () => 
     </div>
   );
 }
-
-/** How the chapters of the interface being replaced are marked in the index. */
 
 /** `?open=help`: the guide and its recordings, the walkthrough and the chapter for this screen first, and support. */
 export function HelpPanel({ onClose }: { onClose: () => void }) {
@@ -409,8 +365,7 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
   const ordered = useMemo(() => (data ? orderFor(data.chapters, screen, ctx) : []), [data, screen, ctx]);
   const hits = useMemo(() => searchHelp(ordered, query), [ordered, query]);
   const here = hits.filter((h) => isHere(h.chapter, screen, ctx));
-  const restV2 = hits.filter((h) => h.chapter.interface === "v2" && !isHere(h.chapter, screen, ctx));
-  const current = hits.filter((h) => h.chapter.interface !== "v2");
+  const rest = hits.filter((h) => !isHere(h.chapter, screen, ctx));
   const open = data?.chapters.find((c) => c.id === chapterId) ?? null;
   const diag = {
     version: health.data?.version ?? APP_VERSION,
@@ -432,7 +387,6 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
           {h.chapter.walkthrough ? tr(", five steps") : ""}
           {h.chapter.video ? tr(", with a recording") : ""}
         </span>
-        {h.chapter.interface !== "v2" ? <span className="m2-htag">{tr("Current interface")}</span> : null}
       </button>
     </li>
   );
@@ -451,17 +405,10 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
                   <ul className="m2-hlist" aria-label={tr("Help for this screen")}>{here.map(line)}</ul>
                 </>
               ) : null}
-              {restV2.length ? (
+              {rest.length ? (
                 <>
                   <h3>{here.length ? tr("Everything else") : tr("All of help")}</h3>
-                  <ul className="m2-hlist" aria-label={tr("All help")}>{restV2.map(line)}</ul>
-                </>
-              ) : null}
-              {current.length ? (
-                <>
-                  <h3>{tr("Current interface")}</h3>
-                  <p className="m2-hs2" style={{ marginTop: 0 }}>{tr("Chapters about the interface this one replaces. They stay until it is removed.")}</p>
-                  <ul className="m2-hlist" aria-label={tr("Current interface help")}>{current.map(line)}</ul>
+                  <ul className="m2-hlist" aria-label={tr("All help")}>{rest.map(line)}</ul>
                 </>
               ) : null}
             </>

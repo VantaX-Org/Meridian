@@ -31,7 +31,7 @@ beforeEach(() => {
   resetWorkFixture();
   sent.mockClear();
   h.allowed = new Set(["manage_rules", "approve"]);
-  setUrl("/v2/rules?fixture=1");
+  setUrl("/rules?fixture=1");
 });
 
 const render = () => renderWithQuery(<RulesLibrary />);
@@ -208,7 +208,7 @@ describe("rule drafts", () => {
   });
 
   it("the Rules tab link opens the drafts of the object", async () => {
-    setUrl("/v2/rules?fixture=1&view=drafts&module=material_master");
+    setUrl("/rules?fixture=1&view=drafts&module=material_master");
     render();
     expect(await screen.findByTestId("drafts-table")).toBeInTheDocument();
   });

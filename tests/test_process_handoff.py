@@ -183,7 +183,7 @@ def test_handoff_creates_a_task_the_steward_sees(engines, monkeypatch):
             assert len(note) == 1 and "EKKO.LIFNR" in note[0][0] and body["note"] in note[0][0]
             bell = _rows(app_eng, tid, "SELECT title, link FROM notifications WHERE user_id = CAST(:u AS uuid)",
                          u=users["data_steward"])
-            assert tuple(bell[0]) == ("Handed to you: PO-12", f"/inbox?focus={out['task_id']}")
+            assert tuple(bell[0]) == ("Handed to you: PO-12", "/work?assigned=me")
 
             # the steward sees it in their inbox (Mine, in progress)
             r = await c.get(f"/api/v1/stewardship?status=in_progress&assigned_to={users['data_steward']}",

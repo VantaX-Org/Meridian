@@ -198,7 +198,7 @@ export function ContractInspector({ id, onClose }: { id: string; onClose: () => 
                 <li key={`${b.recorded_at}-${i}`}>
                   <span className="m2-meta">{formatDate(b.recorded_at, "date")}</span>
                   <span>{Array.isArray(b.violations) ? t("{violationsCount} {violationsCount, plural, one {promise} other {promises}} not met", { violationsCount: b.violations.length }) : t("Not met")}</span>
-                  {b.version_id ? <V2Link href={`/v2/run/${encodeURIComponent(b.version_id)}`}>{t("Open the run")}</V2Link> : null}
+                  {b.version_id ? <V2Link href={`/run/${encodeURIComponent(b.version_id)}`}>{t("Open the run")}</V2Link> : null}
                 </li>
               ))}
             </ul>

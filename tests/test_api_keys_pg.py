@@ -346,7 +346,7 @@ def test_attention_flags_keys_expiring_within_14_days(env: dict[str, Any]) -> No
     def n() -> int:
         items = with_session(env["owner"], lambda s: attention.collect(s, DEV))
         hit = [i for i in items if i["kind"] == "api_key_expiring"]
-        assert all(i["href"] == "/admin/roles?tab=keys" and i["severity"] == "low" and i["tier"] == 5 for i in hit)
+        assert all(i["href"] == "/admin/apikeys" and i["severity"] == "low" and i["tier"] == 5 for i in hit)
         return sum(i["count"] for i in hit)
 
     start = n()

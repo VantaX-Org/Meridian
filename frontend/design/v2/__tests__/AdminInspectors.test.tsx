@@ -32,7 +32,7 @@ afterEach(() => {
 
 const norm = (el: HTMLElement) => (el.textContent ?? "").replace(/\s+/g, " ").trim();
 const open = (id: string) => {
-  setUrl(`/v2/admin/users?fixture=1&open=user:${id}`);
+  setUrl(`/admin/users?fixture=1&open=user:${id}`);
   return renderWithQuery(
     <ToastProvider>
       <Inspector />

@@ -87,7 +87,7 @@ function JobBody({ job }: { job: Job }) {
         {job.rows_total > 0 || job.rows_done > 0 ? <Fact label={tr("Rows")}>{job.rows_total ? tr("{rows_done} of {rows_total}", { rows_done: int(job.rows_done), rows_total: int(job.rows_total) }) : int(job.rows_done)}</Fact> : null}
         {job.version_id && job.status === "completed" ? (
           <Fact label={tr("Run")}>
-            <V2Link href={`/v2/run/${job.version_id}`}>{tr("Open the run")}</V2Link>
+            <V2Link href={`/run/${job.version_id}`}>{tr("Open the run")}</V2Link>
           </Fact>
         ) : null}
         <Fact label={tr("Job id")}>
@@ -144,7 +144,7 @@ function JobBody({ job }: { job: Job }) {
             {pending === "retry" ? tr("Retrying…") : tr("Retry")}
           </button>
           {system ? (
-            <V2Link href={`/v2/s/${system.id}`} className="m2-btn">
+            <V2Link href={`/s/${system.id}`} className="m2-btn">
               {tr("Open")}{" "}{system.name}
             </V2Link>
           ) : null}

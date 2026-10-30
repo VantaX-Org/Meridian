@@ -21,6 +21,7 @@ from api.deps import Tenant, get_db, get_tenant
 from api.routes.objects import _label
 from api.routes.record_issues import _rls
 from api.routes.work import _allowed, _records_where, _Rows
+from api.services import app_links
 from api.services.api_keys import NOT_SERVICE_USER_SQL
 from api.services.current_state import current_pairs
 from api.services.rbac import require_permission
@@ -50,7 +51,7 @@ class CommandOut(BaseModel):
 
 
 def slug(value: str) -> str:
-    """"ECC production" -> "ecc-production"; "material_master" -> "material-master" (the v2 route segments)."""
+    """"ECC production" -> "ecc-production"; "material_master" -> "material-master" (the route segments)."""
     return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
 
 
@@ -65,7 +66,7 @@ def _key_value(record_key: str) -> str:
 
 
 def _object_href(system_name: Optional[str], module: str, tail: str = "") -> str:
-    return f"/v2/o/{slug(system_name)}/{slug(module)}{tail}" if system_name else f"/v2/work{tail}"
+    return f"/o/{slug(system_name)}/{slug(module)}{tail}" if system_name else f"/work{tail}"
 
 
 async def _records(db: AsyncSession, tenant: Tenant, request: Request, q: str, pairs: list[dict], n: int) -> list[dict]:
@@ -94,7 +95,7 @@ async def _rules(db: AsyncSession, tenant: Tenant, q: str, n: int) -> list[dict]
         "ORDER BY split_part(name, ':', 1) LIMIT :n"),
         {"t": str(tenant.id), "pre": _like(q) + "%", "any": "%" + _like(q) + "%", "n": n})).mappings().all()
     return [{"id": r["check_id"], "title": f"{r['check_id']} · {r['title']}" if r["title"] else r["check_id"],
-             "href": f"/v2/r/{quote(r['check_id'], safe='')}"} for r in rows]
+             "href": f"/r/{quote(r['check_id'], safe='')}"} for r in rows]
 
 
 async def _objects(db: AsyncSession, tenant: Tenant, q: str, pairs: list[dict], n: int) -> list[dict]:
@@ -108,7 +109,7 @@ async def _objects(db: AsyncSession, tenant: Tenant, q: str, pairs: list[dict], 
         "WHERE av.tenant_id = CAST(:t AS uuid) AND av.id = ANY(CAST(:ids AS uuid[]))"),
         {"t": str(tenant.id), "ids": [p["version_id"] for p in hits]})).fetchall()}
     return [{"id": p["module"], "title": _label(p["module"]),
-             "href": _object_href(systems.get(p["version_id"]), p["module"]) if systems.get(p["version_id"]) else "/v2"}
+             "href": _object_href(systems.get(p["version_id"]), p["module"]) if systems.get(p["version_id"]) else "/"}
             for p in hits]
 
 
@@ -121,7 +122,7 @@ async def _runs(db: AsyncSession, tenant: Tenant, q: str, n: int) -> list[dict]:
     return [{"id": r["id"],
              "title": (r["label"] or (f"Run {r['run_number']}" if r["run_number"] else "Run"))
                       + f" · {r['run_at']:%Y-%m-%d}",
-             "href": f"/v2/run/{r['id']}"} for r in rows]
+             "href": f"/run/{r['id']}"} for r in rows]
 
 
 async def _people(db: AsyncSession, tenant: Tenant, q: str, n: int) -> list[dict]:
@@ -130,13 +131,12 @@ async def _people(db: AsyncSession, tenant: Tenant, q: str, n: int) -> list[dict
         f"AND {NOT_SERVICE_USER_SQL.format(col='email')} AND (name ILIKE :any OR email ILIKE :any) "
         f"ORDER BY name, id LIMIT :n"),
         {"t": str(tenant.id), "any": "%" + _like(q) + "%", "n": n})).mappings().all()
-    return [{"id": r["id"], "title": r["name"], "href": f"/v2/people?open=person:{r['id']}"} for r in rows]
+    return [{"id": r["id"], "title": r["name"], "href": f"/people?open=person:{r['id']}"} for r in rows]
 
 
 async def _actions(db: AsyncSession, tenant: Tenant, request: Request, role: str, q: str) -> list[dict]:
     """Static actions, filtered by the words of the query (every word starts a keyword) and by what the caller may do."""
     words = q.lower().split()
-    v2 = request.cookies.get("mn_ui") == "v2"  # the v2 shell links into /v2/work
     candidates: list[tuple[str, str, str, str, tuple[str, ...]]] = []  # (permission, id, title, href, keywords)
 
     if await _allowed(db, tenant, request, role, "approve"):
@@ -144,16 +144,16 @@ async def _actions(db: AsyncSession, tenant: Tenant, request: Request, role: str
             "SELECT count(DISTINCT b.id) FROM remediation_batches b "
             "JOIN remediation_items i ON i.batch_id = b.id AND i.tenant_id = b.tenant_id "
             "WHERE b.tenant_id = CAST(:t AS uuid) AND b.status = 'draft' AND i.accepted"), {"t": str(tenant.id)})).scalar() or 0
-        candidates.append(("approve", "approvals", f"Approvals waiting {int(waiting)}", "/v2/work?filter=approvals" if v2 else "/inbox?kind=approvals",
+        candidates.append(("approve", "approvals", f"Approvals waiting {int(waiting)}", app_links.work(filter="approvals"),
                            ("approve", "approvals", "approval", "waiting", "inbox")))
     if await _allowed(db, tenant, request, role, "export"):
-        candidates.append(("export", "export-fix-sheet", "Export fix sheet", "/v2/work?export=1" if v2 else "/fix?action=export",
+        candidates.append(("export", "export-fix-sheet", "Export fix sheet", app_links.work(export=True),
                            ("export", "fix", "sheet", "download")))
     if await _allowed(db, tenant, request, role, "trigger_sync"):
         for r in (await db.execute(text(
                 "SELECT id::text AS id, name FROM sap_systems WHERE tenant_id = CAST(:t AS uuid) AND is_active "
                 "ORDER BY name, id"), {"t": str(tenant.id)})).mappings().all():
-            candidates.append(("trigger_sync", f"extract:{r['id']}", f"Extract {r['name']}", f"/systems?extract={r['id']}",
+            candidates.append(("trigger_sync", f"extract:{r['id']}", f"Extract {r['name']}", app_links.opened(app_links.LANDSCAPE, "system", r["id"]),
                                ("extract", "sync", "refresh", *r["name"].lower().split())))
     return [{"id": cid, "title": title, "href": href} for _perm, cid, title, href, kws in candidates
             if all(any(k.startswith(w) for k in kws) for w in words)]
@@ -195,7 +195,7 @@ class NLMatchOut(BaseModel):
 
 class NLOut(BaseModel):
     filter: dict[str, str | bool]             # the parameters GET /work/records accepts
-    href: str                                 # /v2/work with the filter in the query string
+    href: str                                 # /work with the filter in the query string
     explanation: str
     unmatched_words: list[str]
     matched: list[NLMatchOut]

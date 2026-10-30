@@ -5,6 +5,7 @@ import type {
 import landscapeJson from "./landscape.json";
 import stewardJson from "./stewardship.json";
 import roleActions from "./role-actions.json";
+import { isAppPath } from "@/lib/v2/paths";
 
 /**
  * Fixture answers for the step 6c verbs (`?fixture=1`): comments and mentions, watches, subscriptions, delegations,
@@ -90,8 +91,8 @@ function build(): State {
       "w-2": { min_score: 80, zero_criticals: true, contracts_met: false, configured: true, updated_by: "R. Govender", updated_at: "2026-10-12T10:00:00Z" },
     },
     links: [
-      { id: "sl-1", route: "/v2/o/ecc-production/material-master", state: { tab: "rules" }, role: "viewer", label: "Material master rules for the audit", created_by: ME, created_by_label: "Demo user", created_at: "2026-10-18T08:00:00Z", expires_at: "2026-10-25T08:00:00Z", revoked_at: null, last_opened_at: "2026-10-19T11:00:00Z", open_count: 3, state_word: "active" },
-      { id: "sl-2", route: "/v2", state: {}, role: "viewer", label: null, created_by: "u-rg", created_by_label: "R. Govender", created_at: "2026-09-01T08:00:00Z", expires_at: "2026-09-08T08:00:00Z", revoked_at: null, last_opened_at: null, open_count: 0, state_word: "expired" },
+      { id: "sl-1", route: "/o/ecc-production/material-master", state: { tab: "rules" }, role: "viewer", label: "Material master rules for the audit", created_by: ME, created_by_label: "Demo user", created_at: "2026-10-18T08:00:00Z", expires_at: "2026-10-25T08:00:00Z", revoked_at: null, last_opened_at: "2026-10-19T11:00:00Z", open_count: 3, state_word: "active" },
+      { id: "sl-2", route: "/", state: {}, role: "viewer", label: null, created_by: "u-rg", created_by_label: "R. Govender", created_at: "2026-09-01T08:00:00Z", expires_at: "2026-09-08T08:00:00Z", revoked_at: null, last_opened_at: null, open_count: 0, state_word: "expired" },
     ],
     template,
     templateSaved: false,
@@ -261,7 +262,7 @@ export function rolesFixtureResponse(path: string, params: Params): unknown {
   const res = /^\/share-links\/resolve\/([^/]+)$/.exec(path);
   if (res) {
     if (decodeURIComponent(res[1]) === "expired") throw new Refused(410, "This link was expired. Ask whoever shared it for a new one.");
-    return { id: "sl-1", route: "/v2/o/ecc-production/material-master", state: { tab: "rules" }, role: "viewer", label: "Material master rules for the audit", expires_at: "2026-10-25T08:00:00Z", shared_by: "Demo user" };
+    return { id: "sl-1", route: "/o/ecc-production/material-master", state: { tab: "rules" }, role: "viewer", label: "Material master rules for the audit", expires_at: "2026-10-25T08:00:00Z", shared_by: "Demo user" };
   }
   if (path === "/admin/assignment-template") return { template: s.template, saved: s.templateSaved, updated_by: s.templateSaved ? "Demo user" : null, updated_at: s.templateSaved ? NOW : null, active_slices: ACTIVE, labels: Object.fromEntries(Object.keys(s.template.objects).map((m) => [m, label(m)])) } satisfies TemplateOut;
   if (path === "/admin/assignment-template/gaps") return { objects: 15, gaps: templateGaps(s), based_on: "measured objects" };
@@ -395,10 +396,10 @@ export function rolesFixtureWrite(method: string, path: string, body: unknown, p
   if (method === "POST" && path === "/share-links") {
     const token = `fx${nextId("tok")}`;
     const link: ShareLink = { id: nextId("sl"), route: str(b.route), state: (b.state as Record<string, string>) ?? {}, role: "viewer", label: (b.label as string) ?? null, created_by: ME, created_by_label: "Demo user", created_at: NOW, expires_at: "2026-10-27T08:00:00Z", revoked_at: null, last_opened_at: null, open_count: 0, state_word: "active" };
-    if (!/^\/v2/.test(link.route)) throw new Refused(422, "Only a page of the new interface (/v2...) can be shared.");
+    if (!isAppPath(link.route)) throw new Refused(422, "Only a page of Meridian can be shared.");
     s.links.unshift(link);
     audit("share_link.create");
-    return { ...link, token, url: `/v2/share/${token}` };
+    return { ...link, token, url: `/share/${token}` };
   }
   const rl = /^\/share-links\/([^/]+)$/.exec(path);
   if (method === "DELETE" && rl) {

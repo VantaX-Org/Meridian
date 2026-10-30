@@ -12,6 +12,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from api.routes.findings import _COMPLETE, composite_dqs
+from api.services import app_links
 from api.services import s4_readiness
 from api.services.run_context import latest_run_sync
 from api.services.run_lineage import lineage_key, lineage_sql
@@ -173,7 +174,7 @@ def _score_sentence(dqs: dict, deltas: dict) -> str:
 def _href(path: str, run_id: Optional[str], extra: str = "") -> str:
     """``path`` scoped to ``run_id`` (none: the current state, no ``run``), plus ``extra`` query pairs."""
     q = "&".join(x for x in (f"run={run_id}" if run_id else "", extra) if x)
-    return f"{path}?{q}" if q else path
+    return app_links.from_old(f"{path}?{q}" if q else path)
 
 
 def _current_score_sentence(dqs: dict) -> str:

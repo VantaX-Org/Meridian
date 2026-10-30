@@ -66,7 +66,7 @@ function scheduleColumns(users: Map<string, string>, channels: Map<string, strin
   ];
 }
 
-/** /v2/reports: the reports that exist, a way to make one, and the schedules that make them on a rhythm. */
+/** /reports: the reports that exist, a way to make one, and the schedules that make them on a rhythm. */
 export function ReportsCanvas() {
   const can = useCan();
   const { openItem, open } = useOpenItem();

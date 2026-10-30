@@ -1,6 +1,6 @@
 # The rule canvas and the rules library
 
-Every number in Meridian comes from a rule: a fixed, deterministic check with an id such as `MM014`, a field, a dimension and a severity. The **rule canvas** shows one rule across every object and system it runs on. The **rules library** lists every rule of the tenant, with drafts and suppressions. Open a rule by typing its id in the command line, from any rule row, or at `/v2/r/{id}`. Open the library from the command line ("Rules") or at `/v2/rules`.
+Every number in Meridian comes from a rule: a fixed, deterministic check with an id such as `MM014`, a field, a dimension and a severity. The **rule canvas** shows one rule across every object and system it runs on. The **rules library** lists every rule of the tenant, with drafts and suppressions. Open a rule by typing its id in the command line, from any rule row, or at `/r/{id}`. Open the library from the command line ("Rules") or at `/rules`.
 
 ## The rule canvas
 

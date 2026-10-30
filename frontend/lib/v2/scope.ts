@@ -9,9 +9,9 @@ import type { LandscapeSystem } from "@/lib/api/v2/types";
 
 /**
  * How the shell stores scope: two URL parameters, `?system=<slug>` (one system, none for all) and `?run=<uuid>` (one run,
- * none for the current state). Run pages carry their run in the path instead: `/v2/run/{id}` and `/v2/run/{a}/vs/{b}`.
+ * none for the current state). Run pages carry their run in the path instead: `/run/{id}` and `/run/{a}/vs/{b}`.
  */
-const RUN_PATH = /^\/v2\/run\/([^/]+)(?:\/vs\/([^/]+))?\/?$/;
+const RUN_PATH = /^\/run\/([^/]+)(?:\/vs\/([^/]+))?\/?$/;
 
 /** The run or pair of runs the path names, or null off the run pages. */
 export function runPathIds(pathname: string): { id: string; vs: string | null } | null {
@@ -44,7 +44,7 @@ export function useRunPicker(latestId: string | null): (runId: string) => void {
   return useCallback(
     (runId: string) => {
       if (runPathIds(pathname)) {
-        router.push(v2Href(`/v2/run/${runId}`));
+        router.push(v2Href(`/run/${runId}`));
         return;
       }
       const next = new URLSearchParams(params.toString());

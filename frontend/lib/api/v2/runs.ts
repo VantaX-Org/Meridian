@@ -13,6 +13,7 @@ import { downloadAuthenticated } from "@/lib/api/download";
 import { getReportDownloadUrl } from "@/lib/api/reports";
 import { startConfigLoad as liveStartConfigLoad, type ConfigLoad } from "@/lib/api/config-load";
 import { retryJob as liveRetryJob } from "@/lib/api/jobs";
+import { uploadFile as liveUploadFile } from "@/lib/api/upload";
 import { startDownload as liveStartDownload, type DownloadScope, type SystemObject, type SystemVersion, type DownloadProgress } from "@/lib/api/system-objects";
 import type { Job } from "@/types/jobs";
 import type { SAPSystemExtended, SyncProfile, TestConnectionResponse } from "@/types/api";
@@ -196,6 +197,19 @@ export async function analyseRun(versionId: string): Promise<{ version_id: strin
   if (fixtureActive()) return fixtureAction("analyse", { versionId }) as { version_id: string; job_id: string; status: string };
   const { data } = await apiClient.post<{ version_id: string; job_id: string; status: string }>(`/api/v1/versions/${versionId}/analyse`);
   return data;
+}
+
+/**
+ * POST /upload: a file of one object (CSV, TSV, Excel, JSON or Parquet) becomes a new stored run, and its analysis
+ * starts at once. Columns are matched by the tenant's field mappings (Admin, Field mappings). `systemId` attaches the
+ * run to a connected system. Needs the upload permission. Fixture mode answers without a network call.
+ */
+export async function uploadDataFile(file: File, module: string, systemId: string | null, onProgress: (pct: number) => void = () => undefined): Promise<{ version_id: string; job_id: string; status: string }> {
+  if (fixtureActive()) {
+    onProgress(100);
+    return { version_id: "v-upload", job_id: "j-upload", status: "queued" };
+  }
+  return liveUploadFile(file, module, null, onProgress, { systemId });
 }
 
 /** The run's report (GET /reports/{id}/download) saved through the browser. */

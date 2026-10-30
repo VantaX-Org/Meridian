@@ -34,7 +34,7 @@ const norm = (el: HTMLElement) => (el.textContent ?? "").replace(/\s+/g, " ").tr
 
 describe("config drift alerts", () => {
   it("the System canvas lists what changed, the rules touched, the owners told and the re-score", async () => {
-    setUrl(`/v2/s/${ECC.id}?fixture=1&tab=changes`);
+    setUrl(`/s/${ECC.id}?fixture=1&tab=changes`);
     renderWithQuery(<SystemCanvas id={ECC.id} />);
     const view = await screen.findByTestId("config-changes");
     const [alert] = await within(view).findAllByTestId("drift-alert");
@@ -44,28 +44,28 @@ describe("config drift alerts", () => {
     expect(text).toContain("T006 1 added, 1 removed");
     expect(text).toContain("MM014 Base unit of measure not valid");
     expect(text).toContain("Owners notified: 2");
-    expect(within(alert).getByRole("link", { name: "open the run" })).toHaveAttribute("href", expect.stringContaining("/v2/run/"));
-    expect(within(alert).getByRole("link", { name: "Material master" })).toHaveAttribute("href", expect.stringContaining("/v2/o/ecc-production/material-master"));
+    expect(within(alert).getByRole("link", { name: "open the run" })).toHaveAttribute("href", expect.stringContaining("/run/"));
+    expect(within(alert).getByRole("link", { name: "Material master" })).toHaveAttribute("href", expect.stringContaining("/o/ecc-production/material-master"));
   });
 
   it("says what the view is for when a system has no change, and when alerts are off", async () => {
     await putAutomation({ drift_alerts: { enabled: false } });
     const SF = landscapeFixture.systems[2];
-    setUrl(`/v2/s/${SF.id}?fixture=1&tab=changes`);
+    setUrl(`/s/${SF.id}?fixture=1&tab=changes`);
     renderWithQuery(<SystemCanvas id={SF.id} />);
     expect(await screen.findByText(/No configuration change has been seen on this system/)).toBeInTheDocument();
     expect(await screen.findByText(/Drift alerts are turned off/)).toBeInTheDocument();
   });
 
   it("shows the newest changes in the inbox panel, each opening its system", async () => {
-    setUrl("/v2?fixture=1&open=inbox");
+    setUrl("/?fixture=1&open=inbox");
     renderWithQuery(<Inspector />);
     const box = await screen.findByTestId("inbox-drift");
     const items = within(box).getAllByRole("listitem");
     expect(items).toHaveLength(2);
     expect(norm(items[0])).toContain("ECC production");
     expect(norm(items[0])).toContain("2 rules depend on it; 2 owners told; re-score queued.");
-    expect(within(items[1]).getByRole("link", { name: "Open the changes" })).toHaveAttribute("href", expect.stringContaining(`/v2/s/${S4.id}?tab=changes`));
+    expect(within(items[1]).getByRole("link", { name: "Open the changes" })).toHaveAttribute("href", expect.stringContaining(`/s/${S4.id}?tab=changes`));
   });
 
   it("names a config drift notification and sums the areas", () => {

@@ -124,7 +124,7 @@ function Body({ system, area }: { system: string; area: string }) {
         <button type="button" className="m2-btn" disabled={!can("trigger_sync") || pending !== null} onClick={load}>
           {pending === "load" ? t("Starting…") : t("Load configuration again")}
         </button>
-        <V2Link href={`/v2/s/${system}?tab=configuration&part=compare`} className="m2-btn">{t("Compare with the target")}</V2Link>
+        <V2Link href={`/s/${system}?tab=configuration&part=compare`} className="m2-btn">{t("Compare with the target")}</V2Link>
       </Actions>
       {!can("trigger_sync") ? <Gate>{t("Loading the configuration needs the trigger sync permission.")}</Gate> : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}

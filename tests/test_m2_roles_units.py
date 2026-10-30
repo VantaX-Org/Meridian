@@ -31,8 +31,8 @@ def test_run_events_finished_dropped_and_new_breach():
 
 
 def test_link_for_targets():
-    assert collab.link_for("object", "sys-1:material_master") == "/v2/o/sys-1/material_master"
-    assert collab.link_for("record", "material_master:MATNR=1") == "/v2?open=record:material_master:MATNR=1"
+    assert collab.link_for("object", "sys-1:material_master") == "/o/sys-1/material_master"
+    assert collab.link_for("record", "material_master:MATNR=1") == "/?open=record:material_master:MATNR=1"
 
 
 def test_escalation_chain_rules():

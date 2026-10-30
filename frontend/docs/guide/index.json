@@ -39,71 +39,71 @@
         {
           "slug": "persona-lead", "title": "Walkthrough: programme lead", "summary": "Readiness by wave, gates, the receipt behind a no-go, balancing work and the board pack.", "video": "guide2-persona-lead", "persona": "lead",
           "walkthrough": [
-            { "screen": "Landscape", "href": "/v2", "text": "Read the sentence and press the next step for your nearest wave." },
-            { "screen": "Waves", "href": "/v2?view=waves&open=waves", "text": "Open the wave and set its gate: min score, zero criticals, contracts met." },
-            { "screen": "An object", "href": "/v2/o/ecc-production/material-master", "text": "Open a no-go object and read its receipt: measured, capped, by which rules." },
-            { "screen": "People", "href": "/v2/people?open=balance", "text": "See who holds the open work and balance it if one person holds most of it." },
-            { "screen": "Reports", "href": "/v2/reports", "text": "Schedule the board pack for the steering committee." }
+            { "screen": "Landscape", "href": "/", "text": "Read the sentence and press the next step for your nearest wave." },
+            { "screen": "Waves", "href": "/?view=waves&open=waves", "text": "Open the wave and set its gate: min score, zero criticals, contracts met." },
+            { "screen": "An object", "href": "/o/ecc-production/material-master", "text": "Open a no-go object and read its receipt: measured, capped, by which rules." },
+            { "screen": "People", "href": "/people?open=balance", "text": "See who holds the open work and balance it if one person holds most of it." },
+            { "screen": "Reports", "href": "/reports", "text": "Schedule the board pack for the steering committee." }
           ]
         },
         {
           "slug": "persona-steward", "title": "Walkthrough: data steward", "summary": "Accept suggested values, decide a record, work a rule at once, the fix sheet, and your draft batch.", "video": "guide2-persona-steward", "persona": "steward",
           "walkthrough": [
-            { "screen": "Landscape", "href": "/v2", "text": "Press Accept the suggested values: Work opens on your rows." },
-            { "screen": "Work", "href": "/v2/work", "text": "Select the top rows and press a to accept their suggested values. The notice has Undo." },
-            { "screen": "A record", "href": "/v2/work?open=record%3Amaterial_master%3AMATNR%3D000000000000000100", "text": "Open a row without a suggestion, read the possible values and type the New value." },
-            { "screen": "By rule", "href": "/v2/work", "text": "Switch to By rule and decide a whole rule, or export the fix sheet with e." },
-            { "screen": "Waiting for approval", "href": "/v2/work?filter=approvals", "text": "Check your draft batch: a data owner approves it." }
+            { "screen": "Landscape", "href": "/", "text": "Press Accept the suggested values: Work opens on your rows." },
+            { "screen": "Work", "href": "/work", "text": "Select the top rows and press a to accept their suggested values. The notice has Undo." },
+            { "screen": "A record", "href": "/work?open=record%3Amaterial_master%3AMATNR%3D000000000000000100", "text": "Open a row without a suggestion, read the possible values and type the New value." },
+            { "screen": "By rule", "href": "/work", "text": "Switch to By rule and decide a whole rule, or export the fix sheet with e." },
+            { "screen": "Waiting for approval", "href": "/work?filter=approvals", "text": "Check your draft batch: a data owner approves it." }
           ]
         },
         {
           "slug": "persona-owner", "title": "Walkthrough: data owner", "summary": "Approve or send back batches, exceptions, contracts, your objects, and who covers when you are away.", "video": "guide2-persona-owner", "persona": "owner",
           "walkthrough": [
-            { "screen": "Landscape", "href": "/v2", "text": "Read how many batches wait for you and press Approve batch B-241." },
-            { "screen": "Batch B-241", "href": "/v2/work?open=batch%3AB-241", "text": "Read the changes and the approval trail, then Approve or Send back with a reason." },
-            { "screen": "Waiting for approval", "href": "/v2/work?filter=approvals", "text": "Every batch waiting, grouped by batch." },
-            { "screen": "Your object", "href": "/v2/o/ecc-production/purchasing", "text": "Watch an object you own and apply the steward template to it." },
-            { "screen": "Out of office", "href": "/v2/people?open=away", "text": "Before you are away, set who covers your approvals." }
+            { "screen": "Landscape", "href": "/", "text": "Read how many batches wait for you and press Approve batch B-241." },
+            { "screen": "Batch B-241", "href": "/work?open=batch%3AB-241", "text": "Read the changes and the approval trail, then Approve or Send back with a reason." },
+            { "screen": "Waiting for approval", "href": "/work?filter=approvals", "text": "Every batch waiting, grouped by batch." },
+            { "screen": "Your object", "href": "/o/ecc-production/purchasing", "text": "Watch an object you own and apply the steward template to it." },
+            { "screen": "Out of office", "href": "/people?open=away", "text": "Before you are away, set who covers your approvals." }
           ]
         },
         {
           "slug": "persona-basis", "title": "Walkthrough: SAP Basis", "summary": "System tasks, connection tests, dry run and changes only, schedules, and failed jobs.", "video": "guide2-persona-basis", "persona": "basis",
           "walkthrough": [
-            { "screen": "Landscape", "href": "/v2", "text": "Read your system tasks: extract again, run analysis, extract a system never read." },
-            { "screen": "ECC production", "href": "/v2/s/a1b2c3d4-0001-4000-8000-000000000001", "text": "Open the system and test the connection." },
-            { "screen": "System inspector", "href": "/v2/s/a1b2c3d4-0001-4000-8000-000000000001?open=system%3Aa1b2c3d4-0001-4000-8000-000000000001", "text": "Choose objects, run a dry run, then extract or extract changes only." },
-            { "screen": "Schedules", "href": "/v2/s/a1b2c3d4-0001-4000-8000-000000000001?tab=schedules", "text": "Add a schedule in Changes only mode for routine runs." },
-            { "screen": "Runs", "href": "/v2/runs?view=jobs", "text": "Watch the jobs and open a failed one to retry it." }
+            { "screen": "Landscape", "href": "/", "text": "Read your system tasks: extract again, run analysis, extract a system never read." },
+            { "screen": "ECC production", "href": "/s/a1b2c3d4-0001-4000-8000-000000000001", "text": "Open the system and test the connection." },
+            { "screen": "System inspector", "href": "/s/a1b2c3d4-0001-4000-8000-000000000001?open=system%3Aa1b2c3d4-0001-4000-8000-000000000001", "text": "Choose objects, run a dry run, then extract or extract changes only." },
+            { "screen": "Schedules", "href": "/s/a1b2c3d4-0001-4000-8000-000000000001?tab=schedules", "text": "Add a schedule in Changes only mode for routine runs." },
+            { "screen": "Runs", "href": "/runs?view=jobs", "text": "Watch the jobs and open a failed one to retry it." }
           ]
         },
         {
           "slug": "persona-process", "title": "Walkthrough: process analyst", "summary": "Blocked process steps, the what-if simulation, handing a rule off, and the process designer.", "video": "guide2-persona-process", "persona": "process",
           "walkthrough": [
-            { "screen": "Landscape", "href": "/v2", "text": "Press Open PTP step 3." },
-            { "screen": "Processes", "href": "/v2/o/ecc-production/material-master/processes", "text": "Read which steps Material master blocks and the fields behind them." },
-            { "screen": "What if", "href": "/v2/o/ecc-production/material-master/processes", "text": "Tick the rules to fix and see which steps would be ready." },
-            { "screen": "Goods receipt step", "href": "/v2/o/ecc-production/material-master/processes?open=step%3Amaterial_master%3APTP-GR-MIGO", "text": "Hand the blocking rule to a steward with a note." },
-            { "screen": "Process designer", "href": "/v2/o/ecc-production/material-master/processes/design", "text": "Map the fields each activity reads, then publish the model." }
+            { "screen": "Landscape", "href": "/", "text": "Press Open PTP step 3." },
+            { "screen": "Processes", "href": "/o/ecc-production/material-master/processes", "text": "Read which steps Material master blocks and the fields behind them." },
+            { "screen": "What if", "href": "/o/ecc-production/material-master/processes", "text": "Tick the rules to fix and see which steps would be ready." },
+            { "screen": "Goods receipt step", "href": "/o/ecc-production/material-master/processes?open=step%3Amaterial_master%3APTP-GR-MIGO", "text": "Hand the blocking rule to a steward with a note." },
+            { "screen": "Process designer", "href": "/o/ecc-production/material-master/processes/design", "text": "Map the fields each activity reads, then publish the model." }
           ]
         },
         {
           "slug": "persona-auditor", "title": "Walkthrough: auditor and viewer", "summary": "Receipts behind every number, four-eyes evidence, the audit log, a person's activity and share links.", "video": "guide2-persona-auditor", "persona": "auditor",
           "walkthrough": [
-            { "screen": "Landscape", "href": "/v2", "text": "Read the sentence and the coverage matrix, read-only." },
-            { "screen": "An object", "href": "/v2/o/ecc-production/material-master", "text": "Open the receipt and every i: the arithmetic behind each figure." },
-            { "screen": "Approvals", "href": "/v2/work?filter=approvals", "text": "Read the four-eyes evidence: who drafted, who approved, who signed off and why." },
-            { "screen": "Audit log", "href": "/v2/admin/audit", "text": "Filter by person and dates, and export it." },
-            { "screen": "A person's activity", "href": "/v2/people?open=person%3Au-an", "text": "Open a person and read their activity." }
+            { "screen": "Landscape", "href": "/", "text": "Read the sentence and the coverage matrix, read-only." },
+            { "screen": "An object", "href": "/o/ecc-production/material-master", "text": "Open the receipt and every i: the arithmetic behind each figure." },
+            { "screen": "Approvals", "href": "/work?filter=approvals", "text": "Read the four-eyes evidence: who drafted, who approved, who signed off and why." },
+            { "screen": "Audit log", "href": "/admin/audit", "text": "Filter by person and dates, and export it." },
+            { "screen": "A person's activity", "href": "/people?open=person%3Au-an", "text": "Open a person and read their activity." }
           ]
         },
         {
           "slug": "persona-admin", "title": "Walkthrough: administrator", "summary": "Users and roles, single sign-on, settings, the stewardship template, and platform health.", "video": "guide2-persona-admin", "persona": "admin",
           "walkthrough": [
-            { "screen": "Users", "href": "/v2/admin/users", "text": "Invite people and give each a role, scoped where needed." },
-            { "screen": "Single sign-on", "href": "/v2/admin/sso", "text": "Connect your identity provider and test it." },
-            { "screen": "Settings", "href": "/v2/admin/settings", "text": "Check weights, bands, the cap rule and tolerance, cost model and retention." },
-            { "screen": "Stewardship", "href": "/v2/admin/stewardship", "text": "Name owners and stewards, check the diff, apply, and close the gaps." },
-            { "screen": "Jobs and system update", "href": "/v2/admin/system", "text": "Read the health checks and update the platform." }
+            { "screen": "Users", "href": "/admin/users", "text": "Invite people and give each a role, scoped where needed." },
+            { "screen": "Single sign-on", "href": "/admin/sso", "text": "Connect your identity provider and test it." },
+            { "screen": "Settings", "href": "/admin/settings", "text": "Check weights, bands, the cap rule and tolerance, cost model and retention." },
+            { "screen": "Stewardship", "href": "/admin/stewardship", "text": "Name owners and stewards, check the diff, apply, and close the gaps." },
+            { "screen": "Jobs and system update", "href": "/admin/system", "text": "Read the health checks and update the platform." }
           ]
         }
       ]

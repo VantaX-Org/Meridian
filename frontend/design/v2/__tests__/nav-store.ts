@@ -5,7 +5,7 @@ import { vi } from "vitest";
  * A working stand-in for next/navigation in jsdom: the URL is a small store, router.push and router.replace write it,
  * and the hooks re-render when it changes, so "?open=" round trips can be tested without a Next app.
  */
-let url = "/v2";
+let url = "/";
 const listeners = new Set<() => void>();
 
 export function setUrl(next: string): void {

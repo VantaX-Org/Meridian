@@ -1,6 +1,6 @@
 # Runs
 
-A run is one measurement of your data at a point in time: an extraction from a system scored against the rules as they stood. Every score, failing record and report belongs to a run. **Runs** lists them on a timeline with their jobs, so you can see what ran, what failed and which run is the baseline. Open it from the map, with `g` then `r`, or at `/v2/runs`.
+A run is one measurement of your data at a point in time: an extraction from a system scored against the rules as they stood. Every score, failing record and report belongs to a run. **Runs** lists them on a timeline with their jobs, so you can see what ran, what failed and which run is the baseline. Open it from the map, with `g` then `r`, or at `/runs`.
 
 ## What is on it
 

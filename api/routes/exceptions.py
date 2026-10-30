@@ -11,6 +11,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services import app_links
 from api.services.exception_engine import ExceptionBillingCalculator
 from api.services.notifications import create_notification
 from api.services.rbac import has_permission, require_any_permission, require_permission
@@ -400,7 +401,7 @@ async def assign_exception(
                                      {"eid": exception_id, "tid": str(tenant.id)})
         title = (title_row.scalar() or "an exception")
         await create_notification(str(tenant.id), body.user_id, "assignment", f"Assigned to you: {title}",
-                                  "An exception was assigned to you.", f"/inbox?kind=exception&focus={exception_id}", db)
+                                  "An exception was assigned to you.", app_links.work(filter="exceptions"), db)
     await db.commit()
 
     return {"id": exception_id, "assigned_to": body.user_id}

@@ -127,8 +127,10 @@ meridian/
 ├── llm/provider.py                  ← swappable LLM with request_timeout=120
 │
 ├── frontend/                        ← Next.js 15 dashboard
-│   ├── app/(app)/                   ← page routes: home, systems, objects, runs, rules, insights, mdm, inbox, fix, import, admin, design
-│   ├── design/                      ← the one component library (@/design): primitives, charts, table, shell, templates, tokens.css
+│   ├── app/(v2)/                    ← the one interface at the root: landscape /, /o/{system}/{module}, /r/{check_id}, /work, /run, /runs, /people, /reports, /rules, /admin
+│   ├── app/(auth)/                  ← sign-in, invite, password and licence pages on the same tokens
+│   ├── design/v2/                   ← the component library: shell (map, canvas, inspector), ruler, grid, inspector kinds, screens, admin, tokens.css
+│   ├── lib/v2/                      ← hooks, i18n (en, de, ja), help index, keys, formatters
 │   ├── lib/api/                     ← typed API client modules inc. connectivity.ts
 │   └── components/                  ← domain components (e.g. mdm/) built on @/design
 │
@@ -252,39 +254,31 @@ RLS policy on every data table — always set `app.tenant_id` before queries.
 Source of truth: `frontend/DESIGN.md`. When this summary and DESIGN.md
 disagree, follow DESIGN.md.
 
-- **One component library**: `frontend/design/` (`@/design`) — primitives,
-  charts, table, shell and page templates. There is no second library and
-  no legacy shell; `components/aurora`, `components/ui-core`,
-  `components/shell` and `lib/aurora` were retired.
-- **Direction**: "The Instrument" on the Canvas. No sidebar: an index bar of
-  pills (`Rail`) and a scope bar (`TopBar`); one ruler for every score
-  (`Rule`), the four sentences in one row (`InsightHeader`), the object map
-  (`ObjectMap`), ranked ledgers and a split-pane object workbench; a bright
-  blue-grey canvas (`#F4F6F8`), white 16px sheets with one soft shadow,
-  near-black ink (`#1A2233`); blue graphite under `[data-theme="dark"]`. No
-  dark hero blocks, no gradients, no glow. Icons are Meridian's own set in `design/icons`.
-- **Colour**: one cobalt accent `--m-accent` (`#2563EB`, lighter in
-  dark) is interaction only (primary button, links, selection, focus). Hue
-  otherwise means defect status: red / amber / green (critical, high, medium,
-  low and no-go, at-risk, go map onto these) plus info blue for neutral
-  notices. Object domain (`--m-dom-*`, only where an element stands for one
-  SAP object) and chart series (`--m-viz-*`) are muted families; each family
-  never borrows another's tokens. The amber "ember" signal and hero
-  gradients are retired. No glass, gradients or backdrop blur.
-- **Type**: Manrope for UI and numerals, 14px body,
-  tabular figures (no serif anywhere); JetBrains Mono for SAP identifiers only
-  (check IDs, `TABLE.FIELD`, record keys, run IDs, sample values). Both
-  loaded with `next/font`. Sentence case.
-- **Tokens**: `frontend/design/tokens.css` defines every `--m-*` token.
-  `npm run lint:tokens` rejects raw hex, gradients, blur, ad hoc shadows,
-  motion and duration literals outside that one file.
+- **One interface**: Meridian 2, the map, canvas and inspector, served at the
+  root from `frontend/app/(v2)`. The old page tree, its component library and
+  its help centre were deleted in the cut-over; every old URL redirects
+  permanently (table in `frontend/docs/guide/redirects.md`, checked by a test).
+- **One component library**: `frontend/design/v2/` with `lib/v2/`: the shell
+  (280px map of systems and objects, the canvas, the 400px inspector opened by
+  `?open=kind:id`), the ruler for every score (six weighted segments, measured
+  tick, capped number), the virtual grid, the command line, inspector kinds in
+  `design/v2/inspector/registry.tsx`, screens under `design/v2/screens`.
+- **Tokens**: `frontend/design/v2/tokens.css` defines every `--m2-*` token,
+  light and dark. `npm run lint:tokens` rejects raw hex, gradients, blur, ad hoc
+  shadows and motion literals outside the token files.
   `frontend/scripts/lint-tokens.allow.txt` is empty. Never add a line to it.
-- **Routes**: live pages are under `frontend/app/(app)/` (home, systems,
-  objects, runs, rules, insights, mdm, inbox, fix, attention, import, admin
-  incl. sign-in and alerts, design).
-  Every legacy URL redirects into this tree via `next.config.ts`.
-
----
+- **Type**: IBM Plex Sans for UI and numerals (tabular figures), IBM Plex Mono
+  for SAP identifiers only. Sentence case. Words of the trade. Never a middle
+  dot (U+00B7) anywhere under `frontend/`; a test fails on it.
+- **Localisation**: every user-visible string goes through `lib/v2/i18n`
+  (`t`, `tn`, `lc`) with English, German and Japanese entries in the typed
+  catalogue; `node scripts/i18n-extract.mjs` must report 0 untranslated,
+  0 missing, 0 gaps.
+- **Fixture mode**: `?fixture=1` answers every read from `lib/api/v2/fixtures`;
+  tests, recordings and the e2e specs run on it.
+- **Help**: chapters in `frontend/docs/guide`, recordings in
+  `frontend/docs/help-videos/guide2-*`, index built by `npm run help:index`;
+  every route under `app/(v2)` must map to a chapter (`lib/v2/help.test.ts`).
 
 ## SAP module coverage — 29 modules
 

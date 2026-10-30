@@ -172,6 +172,32 @@ jobs:
         run: |
           docker compose exec -T api curl -sf http://localhost:8000/metrics | head -5
 
+      # The frontend serves the signed-out pages and the status page, sends a signed-out visitor to sign in, and
+      # still answers the addresses of the retired interface and of /v2 with a permanent redirect to the new place.
+      - name: Frontend routes and old addresses
+        working-directory: smoke
+        run: |
+          docker compose exec -T frontend node -e '
+            const want = [
+              ["/sign-in", 200], ["/forgot-password", 200], ["/status", 200], ["/licence-error", 200],
+              ["/", 307, "/sign-in"], ["/work", 307, "/sign-in?next=%2Fwork"],
+              ["/v2", 308, "/"], ["/v2/work", 308, "/work"], ["/v2/status", 308, "/status"],
+              ["/fix", 308, "/work"], ["/home/lead", 308, "/"], ["/objects/material_master", 308, "/o/_/material_master"],
+              ["/insights/readiness", 308, "/?view=waves"], ["/admin/jobs", 308, "/admin/system"],
+            ];
+            (async () => {
+              let bad = 0;
+              for (const [path, status, to] of want) {
+                const r = await fetch("http://127.0.0.1:3000" + path, { redirect: "manual" });
+                const loc = r.headers.get("location") ?? "";
+                const ok = r.status === status && (!to || loc === to || loc.endsWith(to));
+                console.log(`${ok ? "ok  " : "FAIL"} ${path} -> ${r.status} ${loc}`);
+                if (!ok) bad++;
+              }
+              process.exit(bad ? 1 : 0);
+            })();
+          '
+
       - name: Teardown
         if: always()
         working-directory: smoke

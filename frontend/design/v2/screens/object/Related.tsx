@@ -44,7 +44,7 @@ export function RelatedObjects({ module, system, systemId, label }: { module: st
           <ul className="m2-related" aria-label={t("Objects related to {label}", { label })}>
             {q.data.related.map((r) => (
               <li key={r.module}>
-                <V2Link href={`/v2/o/${system}/${moduleSlug(r.module)}`}>{r.label}</V2Link>
+                <V2Link href={`/o/${system}/${moduleSlug(r.module)}`}>{r.label}</V2Link>
                 <span className="m2-meta">{`${REL[r.relation]}${r.open_criticals ? t(", {open_criticals} critical", { open_criticals: int(r.open_criticals) }) : ""}`}</span>
               </li>
             ))}

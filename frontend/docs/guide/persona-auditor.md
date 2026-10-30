@@ -15,7 +15,7 @@ You read: every canvas, every number and its receipt, and, as an auditor, the au
 - **Read every canvas**: all canvases, read-only.
 - **Audit log and export (auditor)**: Administration, Audit log.
 - **A person's audit trail (auditor)**: Person inspector, **Activity**.
-- **Open a read-only share link**: `/v2/share/{token}`; the bar says "Shared view", and **Leave the shared view** returns you.
+- **Open a read-only share link**: `/share/{token}`; the bar says "Shared view", and **Leave the shared view** returns you.
 - **Export a grid (auditor)**: **Share and export**, **Export to Excel**.
 - **Read comments**: Inspector, **Comments**.
 - **Rule change trail joining versions and runs**: not joined yet; read the rule's **Versions** and **History** side by side.

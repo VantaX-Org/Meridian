@@ -19,7 +19,7 @@ const SIZES = [
 const SCHEMES = ["light", "dark"] as const;
 /** A route compiled on demand by `next dev` can take a while the first time; a production build answers at once. */
 const NAV = { timeout: 90_000 };
-const OBJECT = "/v2/o/ecc-production/material-master";
+const OBJECT = "/o/ecc-production/material-master";
 
 async function prepare(page: Page, scheme: "light" | "dark") {
   await page.context().addCookies([{ name: "mn_session", value: "1", domain: "localhost", path: "/" }]);
@@ -172,7 +172,7 @@ for (const size of SIZES) {
 
       test("the rule canvas: header stat line, Definition, Failing records, Impact and History", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2/r/MM014?fixture=1", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/r/MM014?fixture=1", { waitUntil: "load", timeout: 90_000 });
         await expect(page.getByRole("heading", { level: 1 })).toContainText("MM014", NAV);
         await expect(page.getByRole("heading", { level: 1 })).toContainText("Base unit of measure not valid", NAV);
         await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
@@ -218,7 +218,7 @@ for (const size of SIZES) {
         const why = page.getByTestId("why-moved");
         await expect(why.getByRole("link", { name: "MM119" })).toBeVisible(NAV);
         await expect(why).toContainText("69.8 on 2 Oct 2026, 71.8 on 16 Oct 2026");
-        await expect(page.getByRole("form", { name: "Compare two runs" }).getByRole("link", { name: "Compare" })).toHaveAttribute("href", /\/v2\/run\/.+\/vs\/.+/);
+        await expect(page.getByRole("form", { name: "Compare two runs" }).getByRole("link", { name: "Compare" })).toHaveAttribute("href", /\/run\/.+\/vs\/.+/);
         expect(await noSideScroll(page)).toBe(true);
         await page.waitForLoadState("networkidle");
         await shotTab(page, "object-runs");

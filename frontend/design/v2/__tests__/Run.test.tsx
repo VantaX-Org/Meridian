@@ -18,7 +18,7 @@ const R6 = RUNS[5].id; // the baseline
 beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
   resetRunsFixture();
-  setUrl(`/v2/run/${R8}?fixture=1`);
+  setUrl(`/run/${R8}?fixture=1`);
 });
 afterEach(() => {
   window.sessionStorage.clear();
@@ -51,7 +51,7 @@ describe("Run canvas", () => {
     expect(rows).toHaveLength(15);
     const mm = within(table).getByRole("row", { name: /Material master/ });
     expect(within(mm).getAllByRole("cell").map((c) => norm(c))).toEqual(["71.8", "70.0 capped", "No-go", "61,816", "913", "25,712"]);
-    expect(within(mm).getByRole("link", { name: "Material master" })).toHaveAttribute("href", expect.stringContaining(`/v2/o/ecc-production/material-master?run=${R8}`));
+    expect(within(mm).getByRole("link", { name: "Material master" })).toHaveAttribute("href", expect.stringContaining(`/o/ecc-production/material-master?run=${R8}`));
     const gl = within(table).getByRole("row", { name: /G\/L accounts/ });
     expect(within(gl).getByText("Go")).toBeInTheDocument();
     // the table adds up to the status line
@@ -74,7 +74,7 @@ describe("Run canvas", () => {
   });
 
   it("a run with no job record says how long jobs are kept", async () => {
-    setUrl(`/v2/run/${R7}?fixture=1`);
+    setUrl(`/run/${R7}?fixture=1`);
     renderWithQuery(<RunCanvas id={R7} />);
     expect(await screen.findByText(/No job record is kept for this run/)).toBeInTheDocument();
   });
@@ -92,7 +92,7 @@ describe("Run canvas", () => {
   });
 
   it("the baseline run offers Unpin; Archive hides the runs older than this one and Restore brings them back", async () => {
-    setUrl(`/v2/run/${R6}?fixture=1`);
+    setUrl(`/run/${R6}?fixture=1`);
     renderWithQuery(<RunCanvas id={R6} />);
     expect(await screen.findByRole("button", { name: "Unpin baseline" })).toBeInTheDocument();
     const archive = await screen.findByRole("button", { name: "Archive the 5 older runs" });
@@ -105,7 +105,7 @@ describe("Run canvas", () => {
   it("an archived run offers Restore, which brings every archived run back", async () => {
     await runsApi.archiveRuns(4);
     const archivedId = RUNS[4].id;
-    setUrl(`/v2/run/${archivedId}?fixture=1`);
+    setUrl(`/run/${archivedId}?fixture=1`);
     renderWithQuery(<RunCanvas id={archivedId} />);
     await waitFor(() => expect(norm(screen.getByTestId("run-status-line"))).toContain("Archived"));
     fireEvent.click(await screen.findByRole("button", { name: "Restore archived runs" }));
@@ -123,18 +123,18 @@ describe("Run canvas", () => {
     expect(spy).toHaveBeenCalledWith(R8);
   });
 
-  it("Compare with… offers the other runs, the baseline first, and links to /v2/run/{earlier}/vs/{later}", async () => {
+  it("Compare with… offers the other runs, the baseline first, and links to /run/{earlier}/vs/{later}", async () => {
     renderWithQuery(<RunCanvas id={R8} />);
     const select = await screen.findByRole("combobox", { name: "Compare with" });
     await waitFor(() => expect(select).toHaveValue(R6));
-    expect(screen.getByRole("link", { name: "Compare" })).toHaveAttribute("href", expect.stringContaining(`/v2/run/${R6}/vs/${R8}`));
+    expect(screen.getByRole("link", { name: "Compare" })).toHaveAttribute("href", expect.stringContaining(`/run/${R6}/vs/${R8}`));
     fireEvent.change(select, { target: { value: R7 } });
-    expect(screen.getByRole("link", { name: "Compare" })).toHaveAttribute("href", expect.stringContaining(`/v2/run/${R7}/vs/${R8}`));
+    expect(screen.getByRole("link", { name: "Compare" })).toHaveAttribute("href", expect.stringContaining(`/run/${R7}/vs/${R8}`));
   });
 
   it("Show scores from this run sends the run to the landscape as ?run=", async () => {
     renderWithQuery(<RunCanvas id={R7} />);
-    expect(await screen.findByRole("link", { name: "Show scores from this run" })).toHaveAttribute("href", expect.stringContaining(`/v2?run=${R7}`));
+    expect(await screen.findByRole("link", { name: "Show scores from this run" })).toHaveAttribute("href", expect.stringContaining(`/?run=${R7}`));
   });
 
   it("a run that cannot be read is an error inside the block, with Retry", async () => {

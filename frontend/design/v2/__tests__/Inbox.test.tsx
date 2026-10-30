@@ -19,7 +19,7 @@ beforeEach(() => {
   resetWorkFixture();
   push.mockClear();
   undoLayout = stubLayout(1400, 700);
-  setUrl("/v2?fixture=1");
+  setUrl("/?fixture=1");
 });
 afterEach(() => {
   undoLayout();
@@ -49,7 +49,7 @@ describe("the inbox panel", () => {
   });
 
   it("opens straight from ?open=inbox", async () => {
-    setUrl("/v2?fixture=1&open=inbox");
+    setUrl("/?fixture=1&open=inbox");
     mount();
     expect(await screen.findByTestId("inbox-panel")).toBeInTheDocument();
   });
@@ -76,11 +76,11 @@ describe("the inbox panel", () => {
     mount();
     const panel = await openPanel();
     const rows = items(panel);
-    expect(within(rows[1]).getByRole("link", { name: "Material master" }).getAttribute("href")).toContain("/v2/o/ecc-production/material-master");
+    expect(within(rows[1]).getByRole("link", { name: "Material master" }).getAttribute("href")).toContain("/o/ecc-production/material-master");
     expect(within(rows[0]).getByRole("link", { name: "Open the batch" }).getAttribute("href")).toContain("open=batch:B-241");
-    // A link to a page of the current interface is a plain link.
+    // Any other page of the app opens through the router and keeps fixture mode.
     const report = rows.find((r) => text(r).includes("board pack")) as HTMLElement;
-    expect(within(report).getByRole("link", { name: "Open" }).getAttribute("href")).toBe("/reports");
+    expect(within(report).getByRole("link", { name: "Open" }).getAttribute("href")).toBe("/reports?fixture=1");
   });
 
   it("marks one read: the API is called, the count in the bar and the list refetch", async () => {
@@ -155,7 +155,7 @@ describe("the inbox panel", () => {
 
   it("says so when the notifications cannot be read, with Retry", async () => {
     vi.spyOn(inboxApi, "getNotifications").mockRejectedValueOnce(new Error("down"));
-    setUrl("/v2?fixture=1&open=inbox");
+    setUrl("/?fixture=1&open=inbox");
     mount();
     expect(await screen.findByText("The notifications could not be read.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));

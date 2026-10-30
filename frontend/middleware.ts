@@ -7,7 +7,7 @@ import type { NextRequest } from "next/server";
  * cookie on login; every API call still carries and verifies the real token.
  */
 const PUBLIC = ["/sign-in", "/sign-up", "/login", "/accept-invite", "/forgot-password", "/reset-password",
-  "/licence-error", "/api", "/health", "/v2/status"];
+  "/licence-error", "/api", "/health", "/status"];
 
 export default function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

@@ -21,7 +21,7 @@ beforeEach(() => {
   granted = "all";
   resetObjectFixture();
   resetWorkFixture();
-  setUrl("/v2/o/ecc-production/material-master?fixture=1");
+  setUrl("/o/ecc-production/material-master?fixture=1");
 });
 afterEach(() => {
   window.sessionStorage.clear();

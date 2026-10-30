@@ -40,7 +40,7 @@ describe("create, update and delete where the API has the verb", () => {
   it("roles: renames a custom role, then deletes it; a built-in role has neither", async () => {
     const update = vi.spyOn(adminApi, "updateRole");
     const remove = vi.spyOn(adminApi, "removeRole");
-    setUrl("/v2/admin/roles?fixture=1&open=role:finance_reviewer");
+    setUrl("/admin/roles?fixture=1&open=role:finance_reviewer");
     page(<RolesSection />);
     const dialog = await screen.findByRole("dialog", { name: "Finance reviewer" });
     fireEvent.change(await within(dialog).findByLabelText("Name"), { target: { value: "Finance approver" } });
@@ -55,7 +55,7 @@ describe("create, update and delete where the API has the verb", () => {
   });
 
   it("roles: a built-in role cannot be changed or deleted from its inspector", async () => {
-    setUrl("/v2/admin/roles?fixture=1&open=role:viewer");
+    setUrl("/admin/roles?fixture=1&open=role:viewer");
     page(<RolesSection />);
     const dialog = await screen.findByRole("dialog", { name: "Viewer" });
     await within(dialog).findByRole("table", { name: "Permissions by resource and action" });
@@ -65,7 +65,7 @@ describe("create, update and delete where the API has the verb", () => {
 
   it("API keys: deletes a key after a confirmation", async () => {
     const spy = vi.spyOn(adminApi, "deleteApiKey");
-    setUrl("/v2/admin/apikeys?fixture=1&open=apikey:key-3");
+    setUrl("/admin/apikeys?fixture=1&open=apikey:key-3");
     page(<ApiKeysSection />);
     const dialog = await screen.findByRole("dialog", { name: "Old migration script" });
     expect(within(dialog).queryByRole("button", { name: "Revoke the key" })).toBeNull();
@@ -80,7 +80,7 @@ describe("create, update and delete where the API has the verb", () => {
   it("users: imports a CSV, checks it first, and invites only the rows that pass", async () => {
     const preview = vi.spyOn(adminApi, "previewUserImport");
     const imp = vi.spyOn(adminApi, "importUsers");
-    setUrl("/v2/admin/users?fixture=1");
+    setUrl("/admin/users?fixture=1");
     page(<UsersSection />);
     fireEvent.click(await screen.findByRole("button", { name: "Import users" }));
     const dialog = await screen.findByRole("dialog", { name: "Import users" });

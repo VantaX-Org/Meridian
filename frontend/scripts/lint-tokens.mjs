@@ -13,9 +13,9 @@ const ALLOW_FILE = join(ROOT, "scripts/lint-tokens.allow.txt");
 // The v2 interface (design/v2) keeps its raw colour, shadow and motion in its own tokens file; the allowlist stays empty.
 const TOKEN_FILES = new Set(["design/tokens.css", "design/v2/tokens.css"]);
 const SKIP_DIRS = new Set(["node_modules", ".next", "out", "public", "scripts", "e2e", "__tests__"]);
-// design/tokens.ts holds the single TS map of domain token names (mColor), so it must name them.
-// Colour-pass allow sets live here, never in lint-tokens.allow.txt.
-const DOMAIN_ALLOW = new Set(["design/tokens.ts", "design/primitives/DomainChip.tsx"]);
+// Colour-pass allow sets live here, never in lint-tokens.allow.txt. The files that named the domain tokens
+// (design/tokens.ts, DomainChip) and drew the glow (design/charts/Graph.tsx) left with the retired interface.
+const DOMAIN_ALLOW = new Set();
 const RULES = [
   { name: "hex colour", re: /(?<![\w&/#-])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})(?![\w-])/ },
   { name: "gradient", re: /\b(?:linear|radial|conic)-gradient\(|\bbg-(?:gradient|linear|radial)-/ },
@@ -30,7 +30,7 @@ const RULES = [
   { name: "motion outside tokens.css", re: /\b(?:transition|animation)(?:-[a-z-]+)?\s*:|@keyframes\b/ },
   // Calm enterprise: no ember signal, no hero glow. Gradient tokens are functional ramps used by tokens.css classes only.
   { name: "retired ember or gradient token", re: /var\(--m-ember|var\(--m-grad-|var\(--m-elev-hero/ },
-  { name: "glow-outside-graph", re: /var\(--m-elev-glow-|var\(--m-glow-/, skip: new Set(["design/charts/Graph.tsx"]) },
+  { name: "glow", re: /var\(--m-elev-glow-|var\(--m-glow-/ },
   { name: "domain-literal", re: /var\(--m-dom-(?:material|customer|vendor|partner|finance|people|plant|asset|other)/, skip: DOMAIN_ALLOW },
   { name: "duration literal outside tokens.css", re: /\b\d*\.?\d+ms\b/ },
 ];

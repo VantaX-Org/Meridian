@@ -58,11 +58,11 @@ export function RunInspector({ id, onClose }: { id: string; onClose: () => void 
             </>
           ) : null}
           <Actions>
-            <V2Link href={`/v2/run/${id}`} className="m2-btn m2-strong">
+            <V2Link href={`/run/${id}`} className="m2-btn m2-strong">
               {tr("Open the run")}
             </V2Link>
             {prev ? (
-              <V2Link href={`/v2/run/${prev.id}/vs/${id}`} className="m2-btn">
+              <V2Link href={`/run/${prev.id}/vs/${id}`} className="m2-btn">
                 {tr("Compare with the run before")}
               </V2Link>
             ) : null}

@@ -39,13 +39,14 @@ from celery.exceptions import SoftTimeLimitExceeded
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from api.services import app_links
 from api.services import report_history as rh
 from workers.celery_app import celery_app
 from workers.db import get_sync_engine, tenant_session
 
 logger = logging.getLogger("meridian.worker.report_schedules")
 
-REPORTS_LINK = "/insights/reports"
+REPORTS_LINK = app_links.REPORTS
 # The longest hard time limit of the tasks below (run_due_report_schedules): a run still 'running'
 # after this cannot finish any more.
 STUCK_AFTER_SECONDS = 1560

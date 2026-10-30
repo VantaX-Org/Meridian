@@ -18,6 +18,8 @@ from workers.celery_app import celery_app
 from workers.dataset import bundle_object, iter_parquet_chunks
 from workers.db import get_sync_engine
 
+from api.services import app_links
+
 logger = logging.getLogger("meridian.mining.house_rules")
 PARENT_CODES = 10
 
@@ -131,7 +133,7 @@ def run_house_rules(self, version_id: str, tenant_id: str, module: str, parquet_
             _notify_reviewers(s, tenant_id, module, new, roles=("admin", "manager", "approver"),
                               title=f"{new} new learned house rules",
                               body=f"Module: {module}. Your data follows these rules for at least 95% of records. "
-                                   "Approve or reject them under Rules › Learned.",
-                              link="/rules/learned")
+                                   "Approve or reject them under Rules, Drafts.",
+                              link=app_links.RULE_DRAFTS)
         s.commit()
     return {"module": module, "proposals": len(props), "new": new}

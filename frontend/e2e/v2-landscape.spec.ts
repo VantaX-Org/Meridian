@@ -1,5 +1,5 @@
 /**
- * Meridian 2, step 0: the landscape, the object canvas and the inspector in fixture mode (`/v2?fixture=1`), so the
+ * Meridian 2, step 0: the landscape, the object canvas and the inspector in fixture mode (`/?fixture=1`), so the
  * spec needs no API and no recording. At 1440 and 390, light and dark: the coverage matrix is there, an object
  * opens, the inspector opens and closes by keyboard, axe finds no critical or serious violation, and a screenshot of
  * each lands in e2e/__screenshots__/v2/. A last test gives the Rules tab 100,000 rules.
@@ -50,7 +50,7 @@ for (const size of SIZES) {
 
       test("landscape: the sentence, the next step and the coverage matrix", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2?fixture=1", { waitUntil: "load" });
+        await page.goto("/?fixture=1", { waitUntil: "load" });
         await expect(page.getByRole("heading", { level: 1 })).toHaveText(/Landscape/);
         await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
         await expect(page.getByTestId("landscape-sentence")).toContainText("11 of 15 objects are held under 85 by 70 critical rules over tolerance");
@@ -83,10 +83,10 @@ for (const size of SIZES) {
 
       test("an object opens from the landscape, with its ruler, receipt and tabs", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2?fixture=1", { waitUntil: "load" });
+        await page.goto("/?fixture=1", { waitUntil: "load" });
         if (phone) await page.locator(".m2-mlist .m2-lrow").first().click();
         else await page.getByTestId("matrix-cell").first().click();
-        await expect(page).toHaveURL(/\/v2\/o\/ecc-production\/material-master/, NAV);
+        await expect(page).toHaveURL(/\/o\/ecc-production\/material-master/, NAV);
         await expect(page.getByRole("heading", { level: 1 })).toContainText("Material master", NAV);
         await expect(page.getByTestId("cap-sentence")).toContainText("Capped at 70 by MM014 and MM031");
         await expect(page.locator('svg[data-size="240"]')).toBeVisible();
@@ -106,7 +106,7 @@ for (const size of SIZES) {
 
       test("the inspector opens from a link, traps focus, closes with Esc and returns focus", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2/o/ecc-production/material-master?fixture=1", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/o/ecc-production/material-master?fixture=1", { waitUntil: "load", timeout: 90_000 });
         const rule = page.getByTestId("cap-sentence").getByRole("link", { name: "MM014" });
         await expect(rule).toBeVisible(NAV);
         await rule.focus();
@@ -140,7 +140,7 @@ for (const size of SIZES) {
 
       test("the command line opens with the shortcut and finds a rule", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2?fixture=1", { waitUntil: "load" });
+        await page.goto("/?fixture=1", { waitUntil: "load" });
         await expect(page.getByTestId("landscape-sentence")).toBeVisible();
         await page.keyboard.press("Control+k");
         const palette = page.getByRole("dialog", { name: "Search or type a command" });
@@ -157,7 +157,7 @@ for (const size of SIZES) {
       if (phone) {
         test("the map is a bottom sheet behind the Map button", async ({ page }) => {
           await prepare(page, scheme);
-          await page.goto("/v2?fixture=1", { waitUntil: "load" });
+          await page.goto("/?fixture=1", { waitUntil: "load" });
           await expect(page.getByTestId("landscape-sentence")).toBeVisible();
           const map = page.getByTestId("map");
           await expect(map).toBeHidden();
@@ -186,7 +186,7 @@ test.describe("a long list of rules", () => {
         for (const e of list.getEntries() as unknown as { hadRecentInput: boolean; value: number }[]) if (!e.hadRecentInput) (window as unknown as { __cls: number }).__cls += e.value;
       }).observe({ type: "layout-shift", buffered: true });
     });
-    await page.goto("/v2/o/ecc-production/material-master?fixture=1&rows=100000", { waitUntil: "load", timeout: 90_000 });
+    await page.goto("/o/ecc-production/material-master?fixture=1&rows=100000", { waitUntil: "load", timeout: 90_000 });
     const grid = page.getByRole("grid", { name: "Rules for Material master" });
     await expect(grid).toBeVisible(NAV);
     await expect(grid).toContainText("and 99,975 more rules");
@@ -202,7 +202,7 @@ test.describe("a long list of rules", () => {
 
   test("j and k move through the rules and Enter opens one in the inspector", async ({ page }) => {
     await prepare(page, "light");
-    await page.goto("/v2/o/ecc-production/material-master?fixture=1", { waitUntil: "load", timeout: 90_000 });
+    await page.goto("/o/ecc-production/material-master?fixture=1", { waitUntil: "load", timeout: 90_000 });
     const grid = page.getByRole("grid", { name: "Rules for Material master" });
     await expect(grid.getByRole("row")).toHaveCount(11, NAV);
     await grid.focus();

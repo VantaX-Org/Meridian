@@ -100,7 +100,7 @@ export function slaWord(hours: number | null): string | null {
 export function objectHref(landscape: Landscape | undefined, module: string): string {
   const cell = landscape?.cells.find((c) => c.module === module);
   const system = landscape?.systems.find((s) => s.id === cell?.system_id) ?? landscape?.systems.find((s) => s.state === "analysed") ?? landscape?.systems[0];
-  return system ? `/v2/o/${systemSlug(system.name)}/${moduleSlug(module)}` : "/v2";
+  return system ? `/o/${systemSlug(system.name)}/${moduleSlug(module)}` : "/";
 }
 
 /** Open work grouped by object, largest first: what a person's inspector lists. */

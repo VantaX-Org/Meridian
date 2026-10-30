@@ -204,7 +204,7 @@ function SystemBody({ system, ext }: { system: LandscapeSystem; ext: SAPSystemEx
         <button type="button" className={`m2-btn${system.state === "not_extracted" ? " m2-strong" : ""}`} aria-expanded={picker} aria-controls="m2-extract" disabled={!sync} onClick={() => setPicker((v) => !v)}>
           {t("Extract")}
         </button>
-        <V2Link href={`/v2/s/${system.id}?tab=schedules`} className="m2-btn">
+        <V2Link href={`/s/${system.id}?tab=schedules`} className="m2-btn">
           {t("Schedule")}
         </V2Link>
         <V2Link href={hrefFor({ kind: "connection", id: system.id })} className={`m2-btn${noConnection ? " m2-strong" : ""}`}>
@@ -224,7 +224,7 @@ function SystemBody({ system, ext }: { system: LandscapeSystem; ext: SAPSystemEx
         </div>
       ) : null}
       <p className="m2-prov">
-        <V2Link href={`/v2/s/${system.id}`}>{t("Open the system")}</V2Link>
+        <V2Link href={`/s/${system.id}`}>{t("Open the system")}</V2Link>
         {t(" for extractions, configuration, schedules and custom objects.")}
       </p>
     </>

@@ -1,6 +1,6 @@
 # The Work ledger
 
-Work is the one list of everything that needs a person: every failing record and field, with its current value, the values the rule accepts, a suggested value, a New value cell and the decision, on one row. The row is the fix. Open it from **Work** at the top of the map, with `g` then `w`, or at `/v2/work`. On an object, the **Records** tab is the same ledger scoped to that object.
+Work is the one list of everything that needs a person: every failing record and field, with its current value, the values the rule accepts, a suggested value, a New value cell and the decision, on one row. The row is the fix. Open it from **Work** at the top of the map, with `g` then `w`, or at `/work`. On an object, the **Records** tab is the same ledger scoped to that object.
 
 ## What is on it
 

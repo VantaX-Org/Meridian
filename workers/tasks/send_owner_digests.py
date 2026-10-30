@@ -14,6 +14,7 @@ import uuid
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from api.services import app_links
 from api.services.insights_owners import OWNER_ISSUE_SQL, baseline_cutoff, build_owner_card, load_owner_aggregates
 from workers.celery_app import celery_app
 from workers.db import get_sync_engine, tenant_session
@@ -72,7 +73,7 @@ def send_digests_for_tenant(engine, tenant_id, owner: str | None = None, honour_
                     VALUES (:id, :tid, :uid, 'digest', :title, :body, :link, false, now())
                 """),
                 {"id": str(uuid.uuid4()), "tid": str(tenant_id), "uid": agg["user_id"],
-                 "title": "Your weekly data quality digest", "body": card.digest, "link": "/insights/owners"},
+                 "title": "Your weekly data quality digest", "body": card.digest, "link": app_links.PEOPLE},
             )
             written += 1
         session.commit()

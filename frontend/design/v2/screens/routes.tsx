@@ -46,7 +46,7 @@ export function ObjectTabRoute({ tab }: { tab: "records" | "fixes" | "runs" | "r
   return <EmptyTab tab={tab} system={system} module={module} />;
 }
 
-/** /v2/r/{check_id}: the rule canvas. */
+/** /r/{check_id}: the rule canvas. */
 export function RuleRoute() {
   const p = useParams<{ id: string }>();
   return <RuleCanvas id={decodeURIComponent(String(p.id))} />;

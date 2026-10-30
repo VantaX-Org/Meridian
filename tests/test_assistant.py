@@ -35,8 +35,8 @@ class FakeSources:
             "blockers": {"count": 3, "previous": 4, "waves": 1},
             "narrative": [
                 {"text": "The data quality score rose 2.4 points to 72.4, led by Material master completeness (+3.0).",
-                 "href": f"/insights/trends?run={RUN}"},
-                {"text": "3 blocking rules fail, holding up Wave 1.", "href": f"/insights/readiness?run={RUN}"},
+                 "href": f"/runs?run={RUN}"},
+                {"text": "3 blocking rules fail, holding up Wave 1.", "href": f"/?view=waves&run={RUN}"},
             ],
         }
 
@@ -254,14 +254,14 @@ def test_score_answer():
     assert "72.4" in out["answer"] and "rose 2.4" in out["answer"]
     assert out["chart"] == "line" and [d["value"] for d in out["data"]] == [70.0, 72.4]
     assert out["version_id"] == RUN
-    assert {"label": "Open trends", "href": f"/insights/trends?run={RUN}"} in out["links"]
+    assert {"label": "Open trends", "href": f"/runs?run={RUN}"} in out["links"]
 
 
 def test_object_score_links_to_the_object():
     out = ask("How is material master doing?")
     assert out["intent"] == "score"
     assert out["answer"].startswith("Material master scores 72.4")
-    assert out["links"][0]["href"] == f"/objects/material_master?run={RUN}"
+    assert out["links"][0]["href"] == f"/o/_/material-master?run={RUN}"
 
 
 def test_weakest_objects_ranked_with_names():
@@ -277,8 +277,8 @@ def test_top_rules_for_one_object_and_severity_pass_filters():
     out = ask("What are the worst critical rules in material master?", src)
     assert ("rules", None, "material_master", "critical", a.TOP_N) in src.calls
     assert "MM003 in Material master on 1,200 records" in out["answer"]
-    assert out["links"][0]["href"] == f"/insights/rules?run={RUN}&module=material_master&severity=critical"
-    assert out["links"][1]["href"] == f"/objects/material_master?run={RUN}&rule=MM003"
+    assert out["links"][0]["href"] == f"/rules?run={RUN}&module=material_master&severity=critical"
+    assert out["links"][1]["href"] == f"/o/_/material-master?run={RUN}&rule=MM003"
 
 
 def test_critical_uses_the_commentary_builder():
@@ -297,7 +297,7 @@ def test_readiness_by_wave():
 def test_fixes_funnel():
     out = ask("How many fixes are proposed?")
     assert out["answer"].startswith("Of 1,000 failing records, 600 have a proposed fix, 200 are approved and 50 are applied.")
-    assert {"label": "Open Fix", "href": "/fix"} in out["links"]
+    assert {"label": "Open Fix", "href": "/work"} in out["links"]
 
 
 def test_owners_most_open_first():
@@ -310,7 +310,7 @@ def test_changes_since_previous_run():
     out = ask("What changed since the last run?")
     assert "rose 2.4 points" in out["answer"]
     assert "4 rules that failed before pass now and 2 rules started failing" in out["answer"]
-    assert out["links"][0]["href"] == f"/runs/{RUN}/vs/{PREV}"
+    assert out["links"][0]["href"] == f"/run/{RUN}/vs/{PREV}"
 
 
 def test_no_run_answers_politely():
@@ -337,7 +337,7 @@ def test_one_rule_by_id():
     assert out["answer"].startswith("MM003 fails on 1,200 records in Material master.")
     assert "It checks that material type is mandatory" in out["answer"]
     assert "40 more than in the previous run" in out["answer"]
-    assert out["links"][0]["href"] == f"/objects/material_master?run={RUN}&rule=MM003"
+    assert out["links"][0]["href"] == f"/o/_/material-master?run={RUN}&rule=MM003"
     assert out["facts"][0]["value"] == 1200
 
 
@@ -525,7 +525,7 @@ def test_route_passes_the_current_scope(client, monkeypatch):
 def test_route_returns_the_citations(client):
     body = _post(client, {"question": "How many records fail MM003?", "version_id": RUN}).json()
     assert body["citations"] == [{"check_id": "MM003", "module": "material_master",
-                                  "href": f"/objects/material_master?run={RUN}&tab=records&check_id=MM003"}]
+                                  "href": f"/o/_/material-master?run={RUN}&tab=records&check_id=MM003"}]
     assert body["facts"][0]["checks"] == [{"check_id": "MM003", "module": "material_master"}]
 
 
@@ -548,9 +548,9 @@ def test_rule_answers_cite_the_checks_they_rest_on(question, cited):
 def test_a_citation_opens_the_failing_records_of_its_check():
     out = ask("How many records fail MM003?")
     assert out["citations"] == [{"check_id": "MM003", "module": "material_master",
-                                 "href": f"/objects/material_master?run={RUN}&tab=records&check_id=MM003"}]
+                                 "href": f"/o/_/material-master?run={RUN}&tab=records&check_id=MM003"}]
     # a check the fact ties to no object opens the rule
-    assert ask("What is the value at risk?")["citations"][0]["href"] == f"/rules/MM003?run={RUN}"
+    assert ask("What is the value at risk?")["citations"][0]["href"] == f"/r/MM003?run={RUN}"
 
 
 def test_a_retrieval_answer_cites_only_the_facts_it_picked():

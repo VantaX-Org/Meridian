@@ -67,18 +67,18 @@ function at(days: number, hour: number, minute: number): string {
 function buildNotifications(): Notification[] {
   const n = (id: string, type: Notification["type"], title: string, body: string, link: string | null, read: boolean, when: string): Notification => ({ id, tenant_id: "t1", user_id: ME, type, title, body, link, is_read: read, created_at: when });
   return [
-    n("n1", "approval", "Batch B-241 waits for your approval", "328 records of Material master, ZAR 412,600 at risk. Built by R. Govender.", "/v2/work?filter=approvals&open=batch:B-241", false, at(0, 8, 41)),
-    n("n2", "sla_at_risk", "41 records of Material master are close to their due date", "They are due within two days; A. Naidoo holds 38 of them.", "/v2/o/ecc-production/material-master", false, at(0, 7, 58)),
-    n("n3", "sla_breached", "3 records breached their SLA", "Critical rule MM031 is 2 days past its due date on 3 records.", "/v2/work?due=overdue", false, at(0, 7, 20)),
-    n("n4", "info", "Analysis finished on ECC production", "61,816 records checked; Material master scores 70.0, capped by MM014 and MM031.", "/v2/runs", false, at(0, 5, 31)),
-    n("n5", "approval", "Batch B-236 was approved", "T. Mokoena approved 180 records. It is ready to send to SAP.", "/v2/work?filter=open&batch=B-236&open=batch:B-236", false, at(1, 11, 5)),
-    n("n6", "dq_alert", "MM014 failures rose by 112 records", "Base unit of measure is not valid on 112 more records than in the run before.", "/v2/r/MM014", false, at(1, 6, 2)),
-    n("n7", "exception", "A. Naidoo signed off 4 records as not an issue", "Material master, rule MM022. Open Exceptions to review the reasons.", "/v2/work?filter=exceptions", false, at(2, 15, 12)),
-    n("n8", "digest", "Your weekly digest", "38 records assigned to you, 3 overdue, 2 batches waiting for approval.", "/v2/people", true, at(3, 7, 0)),
+    n("n1", "approval", "Batch B-241 waits for your approval", "328 records of Material master, ZAR 412,600 at risk. Built by R. Govender.", "/work?filter=approvals&open=batch:B-241", false, at(0, 8, 41)),
+    n("n2", "sla_at_risk", "41 records of Material master are close to their due date", "They are due within two days; A. Naidoo holds 38 of them.", "/o/ecc-production/material-master", false, at(0, 7, 58)),
+    n("n3", "sla_breached", "3 records breached their SLA", "Critical rule MM031 is 2 days past its due date on 3 records.", "/work?due=overdue", false, at(0, 7, 20)),
+    n("n4", "info", "Analysis finished on ECC production", "61,816 records checked; Material master scores 70.0, capped by MM014 and MM031.", "/runs", false, at(0, 5, 31)),
+    n("n5", "approval", "Batch B-236 was approved", "T. Mokoena approved 180 records. It is ready to send to SAP.", "/work?filter=open&batch=B-236&open=batch:B-236", false, at(1, 11, 5)),
+    n("n6", "dq_alert", "MM014 failures rose by 112 records", "Base unit of measure is not valid on 112 more records than in the run before.", "/r/MM014", false, at(1, 6, 2)),
+    n("n7", "exception", "A. Naidoo signed off 4 records as not an issue", "Material master, rule MM022. Open Exceptions to review the reasons.", "/work?filter=exceptions", false, at(2, 15, 12)),
+    n("n8", "digest", "Your weekly digest", "38 records assigned to you, 3 overdue, 2 batches waiting for approval.", "/people", true, at(3, 7, 0)),
     n("n9", "report", "The board pack for September is ready", "Open Reports in the current interface to download it.", "/reports", true, at(5, 9, 30)),
-    n("n10", "monitor", "5 new failing records since the baseline", "ECC production, Purchasing: new records fail EKGRP.", "/v2/o/ecc-production/purchasing", true, at(6, 8, 15)),
-    n("n11", "cleaning", "Cleaning proposals for Business partner are ready", "214 proposals await review.", "/v2/o/ecc-production/business-partner", true, at(8, 10, 40)),
-    n("n12", "info", "SuccessFactors has not been extracted yet", "Extract it from the Landscape to see its objects.", "/v2", true, at(11, 13, 5)),
+    n("n10", "monitor", "5 new failing records since the baseline", "ECC production, Purchasing: new records fail EKGRP.", "/o/ecc-production/purchasing", true, at(6, 8, 15)),
+    n("n11", "cleaning", "Cleaning proposals for Business partner are ready", "214 proposals await review.", "/o/ecc-production/business-partner", true, at(8, 10, 40)),
+    n("n12", "info", "SuccessFactors has not been extracted yet", "Extract it from the Landscape to see its objects.", "/", true, at(11, 13, 5)),
   ];
 }
 
