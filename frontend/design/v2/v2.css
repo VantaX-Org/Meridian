@@ -39,7 +39,8 @@
 .m2-mono { font-family: var(--m2-mono); font-weight: 400; font-size: var(--m2-fs-12); letter-spacing: 0; font-variant-numeric: normal; }
 .m2-meta { color: var(--m2-meta); }
 .m2-dash { color: var(--m2-ink-3); }
-.m2-dot::before { content: "\00B7"; padding: 0 var(--m2-s1); color: var(--m2-meta); }
+/* The separator is a drawn 3px disc, never the U+00B7 character. */
+.m2-dot::before { content: ""; display: inline-block; width: 3px; height: 3px; border-radius: 50%; background: var(--m2-meta); vertical-align: middle; margin: 0 var(--m2-s2); }
 .m2-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .m2-skip { position: absolute; left: var(--m2-s2); top: -48px; z-index: 200; background: var(--m2-sheet); color: var(--m2-fg); border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); padding: var(--m2-s2) var(--m2-s3); }
 .m2-skip:focus { top: var(--m2-s2); }
@@ -362,7 +363,7 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-toasts { position: fixed; z-index: 120; left: 50%; bottom: var(--m2-s6); transform: translateX(-50%); display: flex; flex-direction: column; gap: var(--m2-s2); align-items: center; max-width: calc(100vw - 32px); pointer-events: none; }
 .m2-toast { pointer-events: auto; display: flex; align-items: center; gap: var(--m2-s2); background: var(--m2-inverse); color: var(--m2-on-inverse); border-radius: var(--m2-r2); box-shadow: var(--m2-shadow); padding: var(--m2-s2) var(--m2-s2) var(--m2-s2) var(--m2-s3); font-size: var(--m2-fs-13); min-height: 36px; }
 .m2-toast[data-tone="error"] { border-left: 4px solid var(--m2-crit); }
-.m2-toast .m2-dot::before { color: var(--m2-on-inverse); }
+.m2-toast .m2-dot::before { background: var(--m2-on-inverse); }
 .m2-toast-b { height: 28px; padding: 0 var(--m2-s3); border: 1px solid var(--m2-ink-3); background: transparent; border-radius: var(--m2-r1); color: var(--m2-on-inverse); font-weight: 500; }
 .m2-toast-b:hover { border-color: var(--m2-on-inverse); }
 .m2-toast-x { width: 28px; height: 28px; border: 0; background: transparent; color: var(--m2-on-inverse); display: inline-flex; align-items: center; justify-content: center; border-radius: var(--m2-r1); }
