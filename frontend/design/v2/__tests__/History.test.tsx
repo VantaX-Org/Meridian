@@ -56,7 +56,7 @@ describe("record history", () => {
     const table = await within(panel).findByTestId("history-runs");
     const rows = within(table).getAllByRole("row");
     expect(rows).toHaveLength(9); // the header and 8 runs, newest first
-    expect(within(table).getByRole("columnheader", { name: "MARA.MEINS" })).toBeInTheDocument();
+    expect(within(table).getByRole("columnheader", { name: "MARA-MEINS" })).toBeInTheDocument();
     expect(norm(rows[1])).toContain("16 Oct 2026");
     expect(norm(rows[1])).toContain("Failing");
     expect(norm(rows[8])).toContain("Passing");

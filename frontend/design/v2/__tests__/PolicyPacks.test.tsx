@@ -102,7 +102,7 @@ describe("Admin, Policy packs", () => {
     expect(norm(bank)).toContain("Vendor bank data");
     expect(norm(bank)).toContain("Breached");
     expect(norm(bank)).toContain("SOX Section 404(a) (controls over changes to vendor payment data)");
-    expect(norm(bank)).toContain("LFBK.BANKN");
+    expect(norm(bank)).toContain("LFBK-BANKN");
     const table = within(bank).getByRole("table", { name: "Rules evidencing Vendor bank data" });
     expect(norm(table)).toContain("AP039");
     expect(norm(table)).toContain("6 of 12,884");
