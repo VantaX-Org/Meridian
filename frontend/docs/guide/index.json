@@ -103,7 +103,7 @@
             { "screen": "Single sign-on", "href": "/admin/sso", "text": "Connect your identity provider and test it." },
             { "screen": "Settings", "href": "/admin/settings", "text": "Check weights, bands, the cap rule and tolerance, cost model and retention." },
             { "screen": "Stewardship", "href": "/admin/stewardship", "text": "Name owners and stewards, check the diff, apply, and close the gaps." },
-            { "screen": "Jobs and system update", "href": "/admin/system", "text": "Read the health checks and update the platform." }
+            { "screen": "Platform and updates", "href": "/admin/system", "text": "Read the health checks and update the platform." }
           ]
         }
       ]

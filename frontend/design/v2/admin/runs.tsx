@@ -530,16 +530,16 @@ function RecentJobs() {
   );
 }
 
-/** Admin › Runs and jobs: start an extraction, an analysis or a configuration load, schedule runs, and retry what failed. */
+/** Admin › Start and schedule (the runs themselves are on /runs): start an extraction, an analysis or a configuration load, schedule runs, and retry what failed. */
 export function RunsSection() {
   const can = useCan();
   const systems = useSystemsExtended();
   const [picked, setPicked] = useState("");
   const system = picked || systems.data?.[0]?.id || "";
   const allowed = can("trigger_sync") || can("analyse") || can("manage_systems") || can("upload");
-  if (!allowed) return <AdminPage title={t("Runs and jobs")}><NeedsPermission what={t("Starting runs")} permission="trigger_sync" /></AdminPage>;
+  if (!allowed) return <AdminPage title={t("Start and schedule")}><NeedsPermission what={t("Starting runs")} permission="trigger_sync" /></AdminPage>;
   return (
-    <AdminPage title={t("Runs and jobs")} lead={t("Start work here and follow it in the job line. Everything below acts on one system at a time.")}>
+    <AdminPage title={t("Start and schedule")} lead={t("Start work here and follow it in the job line. Everything below acts on one system at a time.")}>
       <div className="m2-fbar">
         <SystemPick value={system} onChange={setPicked} />
       </div>

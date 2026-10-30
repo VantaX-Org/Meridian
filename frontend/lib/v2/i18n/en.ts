@@ -4355,6 +4355,9 @@ export const en = {
   "{unassigned} of the {total} open records are assigned to nobody.": "{unassigned} of the {total} open records are assigned to nobody.",
   "Records nobody is assigned to": "Records nobody is assigned to",
   "Assign them on Work to give each an owner and an SLA.": "Assign them on Work to give each an owner and an SLA.",
+  "Start and schedule": "Start and schedule",
+  "Platform and updates": "Platform and updates",
+  "Start an extraction, an analysis, a configuration load or an upload, and schedule them. The runs themselves are on Runs.": "Start an extraction, an analysis, a configuration load or an upload, and schedule them. The runs themselves are on Runs.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

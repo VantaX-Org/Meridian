@@ -4356,4 +4356,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "{unassigned} of the {total} open records are assigned to nobody.": "{unassigned} der {total} offenen Datensätze sind niemandem zugewiesen.",
   "Records nobody is assigned to": "Datensätze, die niemandem zugewiesen sind",
   "Assign them on Work to give each an owner and an SLA.": "Weisen Sie sie unter Arbeit zu, damit jeder einen Verantwortlichen und ein SLA hat.",
+  "Start and schedule": "Starten und planen",
+  "Platform and updates": "Plattform und Updates",
+  "Start an extraction, an analysis, a configuration load or an upload, and schedule them. The runs themselves are on Runs.": "Eine Extraktion, eine Analyse, ein Laden der Konfiguration oder einen Upload starten und planen. Die Läufe selbst stehen unter Läufe.",
 };

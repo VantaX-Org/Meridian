@@ -32,13 +32,13 @@ Administration is everything that sets up the tenant: who can sign in, what the 
 ## Notifications
 
 - **Alerts**: channels (email, Microsoft Teams, signed webhook) with their digest, board pack and critical alerts; **When to alert** (critical and high failing rules, score drop in points) and **Score floors per object**. "Alerts carry counts, rule ids and links, never record values."
-- **Notifications**: the tenant's default digest. Each person sets their own under Preferences.
+- **Default digest**: the tenant's default digest. Each person sets their own under Preferences.
 - **Digests**: scheduled summaries for a role (the programme lead every Monday at 07:00) or a migration wave: the landscape sentence, score moves, the waves and their gates, approvals waiting, SLA breaches and the top value at risk. The form takes the cadence (a preset or a cron line, checked as you type), the time zone, the channel (email with addresses and people, an alert channel, or the `digest.sent` webhook event), **Attach the digest as a PDF** and **Send on its schedule**. In the digest's inspector: **Send now**, **Preview** (the email in a sealed frame, or the numbers it is built from), **Pause**, **Edit**, **Delete** and the delivery log. Needs manage settings.
 
 ## Operations
 
-- **Runs and jobs**: start an extraction (objects, company codes, plants, document dates, analyse straight after), start an analysis of a stored extraction, load the configuration, scheduled runs, **Upload a file** (a CSV, TSV, Excel, JSON or Parquet file of one object becomes a run and is analysed at once; its columns are matched by the field mappings; needs upload) and recent jobs with **Retry**.
-- **Jobs and system update**: jobs by state and kind, the platform version and **Update to** the latest when Meridian HQ knows one, and **Health checks** (database, cache and queue, background workers, licence, email delivery, file storage): "Each check says what it found and what needs fixing. They refresh every 30 seconds."
+- **Start and schedule** (the runs themselves are on Runs): start an extraction (objects, company codes, plants, document dates, analyse straight after), start an analysis of a stored extraction, load the configuration, scheduled runs, **Upload a file** (a CSV, TSV, Excel, JSON or Parquet file of one object becomes a run and is analysed at once; its columns are matched by the field mappings; needs upload) and recent jobs with **Retry**.
+- **Platform and updates**: jobs by state and kind, the platform version and **Update to** the latest when Meridian HQ knows one, and **Health checks** (database, cache and queue, background workers, licence, email delivery, file storage): "Each check says what it found and what needs fixing. They refresh every 30 seconds."
 
 ## Provisioning, theming and compliance
 

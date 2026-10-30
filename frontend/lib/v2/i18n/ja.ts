@@ -4356,4 +4356,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "{unassigned} of the {total} open records are assigned to nobody.": "未処理の {total} 件のうち {unassigned} 件は誰にも割り当てられていません。",
   "Records nobody is assigned to": "誰にも割り当てられていないレコード",
   "Assign them on Work to give each an owner and an SLA.": "作業画面で割り当てると、それぞれに担当者と SLA が付きます。",
+  "Start and schedule": "開始とスケジュール",
+  "Platform and updates": "プラットフォームと更新",
+  "Start an extraction, an analysis, a configuration load or an upload, and schedule them. The runs themselves are on Runs.": "抽出、分析、構成の読み込み、アップロードを開始し、スケジュールします。実行そのものは「実行」にあります。",
 };
