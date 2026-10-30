@@ -127,6 +127,20 @@ export function NextStep({ landscape, persona, waves }: { landscape: Landscape; 
     );
   }
   if (persona === "process") return <ProcessNextStep landscape={landscape} />;
+  if (persona === "admin") {
+    return (
+      <V2Link href="/admin" className="m2-btn m2-next">
+        {t("Open Administration")}
+      </V2Link>
+    );
+  }
+  if (persona === "auditor") {
+    return (
+      <V2Link href="/rules" className="m2-btn m2-next">
+        {t("Open the rules library")}
+      </V2Link>
+    );
+  }
   if (persona === "basis") {
     const s = landscape.systems.find((x) => x.state === "not_extracted") ?? landscape.systems.find((x) => x.state === "extracted") ?? landscape.systems[0];
     if (!s) return null;

@@ -73,9 +73,22 @@ export function useOpenItem(): { open: OpenItem | null; openItem: (item: OpenIte
 /** The fixture user's id: the "me" row of People and the author the owner persona cannot approve for. */
 export const FIXTURE_ME = "u-me";
 
-export type V2Persona = "lead" | "steward" | "basis" | "owner" | "process";
+export type V2Persona = "lead" | "steward" | "basis" | "owner" | "process" | "admin" | "analyst" | "auditor" | "viewer";
 
-export const PERSONA_LABEL: Record<V2Persona, string> = { get lead() { return t("Programme lead"); }, get steward() { return t("Data steward"); }, get basis() { return t("SAP Basis"); }, get owner() { return t("Data owner"); }, get process() { return t("Process analyst"); } };
+export const PERSONA_LABEL: Record<V2Persona, string> = {
+  get lead() { return t("Programme lead"); },
+  get steward() { return t("Data steward"); },
+  get basis() { return t("SAP Basis"); },
+  get owner() { return t("Data owner"); },
+  get process() { return t("Process analyst"); },
+  get admin() { return t("Platform admin"); },
+  get analyst() { return t("Analyst"); },
+  get auditor() { return t("Auditor"); },
+  get viewer() { return t("Viewer"); },
+};
+
+const PERSONAS: readonly V2Persona[] = ["lead", "steward", "basis", "owner", "process", "admin", "analyst", "auditor", "viewer"];
+export const isPersona = (v: string | null | undefined): v is V2Persona => PERSONAS.includes(v as V2Persona);
 
 export interface V2Session {
   persona: V2Persona;
@@ -92,9 +105,16 @@ export interface V2Session {
   shared: boolean;
 }
 
-/** Persona of a role key, the way the live session derives it. */
-function personaOf(role: string): V2Persona {
-  if (!isRole(role)) return "lead";
+/**
+ * Persona of a role key, the way the live session derives it: every role its own, so the account button and the
+ * start screen name the person's role. A key that is no known role reads as a viewer, never as the programme lead.
+ */
+export function personaOf(role: string): V2Persona {
+  if (!isRole(role)) return "viewer";
+  if (role === "platform_admin" || role === "admin") return "admin";
+  if (role === "analyst" || role === "ai_reviewer") return "analyst";
+  if (role === "auditor") return "auditor";
+  if (role === "viewer") return "viewer";
   const p = personaForRole(role);
   return pillSetFor(role) === "owner" ? "owner" : p === "steward" ? "steward" : p === "basis" ? "basis" : p === "process" ? "process" : "lead";
 }
@@ -113,15 +133,17 @@ export function useV2Session(): V2Session {
       // `?role=` gives fixture mode one role's permissions (the role tests walk each role's jobs this way).
       const asRole = shared ? "viewer" : (viewAs ?? fixtureParam("role"));
       const asked = fixtureParam("persona");
-      const persona: V2Persona = asked === "steward" || asked === "basis" || asked === "owner" || asked === "process" || asked === "lead" ? asked : asRole ? personaOf(asRole) : (chosen ?? "lead");
+      const persona: V2Persona = isPersona(asked) ? asked : asRole ? personaOf(asRole) : (chosen ?? "lead");
       const allowed = asRole ? new Set(actionsOf(asRole)) : null;
-      return { persona, label: PERSONA_LABEL[persona], name: t("Demo user"), email: null, id: FIXTURE_ME, can: allowed ? (a: string) => allowed.has(a) : () => true, fixture, viewAs, shared };
+      return { persona, label: PERSONA_LABEL[isPersona(asked) ? asked : asRole ? personaOf(asRole) : persona], name: t("Demo user"), email: null, id: FIXTURE_ME, can: allowed ? (a: string) => allowed.has(a) : () => true, fixture, viewAs, shared };
     }
     // Live: a view-as role is narrowed by the server (/me/permissions answers for it); a share link narrows here.
     const viewer = new Set(actionsOf("viewer"));
     const live = shared ? (a: string) => viewer.has(a) && can(a) : can;
-    const persona: V2Persona = chosen ?? personaOf(viewAs ?? role);
-    return { persona, label: PERSONA_LABEL[persona], name: user?.name ?? "", email: user?.email ?? null, id: user?.id ?? null, can: live, fixture, viewAs, shared };
+    // The start screen may be another persona's (Preferences); the account button always says the person's role.
+    const own = personaOf(viewAs ?? role);
+    const persona: V2Persona = chosen ?? own;
+    return { persona, label: PERSONA_LABEL[own], name: user?.name ?? "", email: user?.email ?? null, id: user?.id ?? null, can: live, fixture, viewAs, shared };
   }, [fixture, role, can, user, chosen, viewAs, share]);
 }
 

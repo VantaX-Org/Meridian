@@ -134,7 +134,7 @@ export function PreferencesPanel({ onClose }: { onClose: () => void }) {
         <label>
           {tr("Open Meridian as")}
           <select value={persona ?? AUTO} onChange={(e) => setPersonaOverride((e.target.value || null) as V2Persona | null)}>
-            <option value={AUTO}>{tr("My role's default ({PERSONA_LABEL})", { PERSONA_LABEL: PERSONA_LABEL[session.persona] })}</option>
+            <option value={AUTO}>{tr("My role's default ({PERSONA_LABEL})", { PERSONA_LABEL: session.label })}</option>
             {(Object.keys(PERSONA_LABEL) as V2Persona[]).map((p) => (
               <option key={p} value={p}>
                 {PERSONA_LABEL[p]}

@@ -12,7 +12,7 @@ const PERSONA_KEY = "mn_v2_persona";
 const HINTS_KEY = "mn_v2_hints";
 const EVENT = "m2:prefs";
 
-const PERSONAS: readonly V2Persona[] = ["lead", "steward", "basis"];
+const PERSONAS: readonly V2Persona[] = ["lead", "steward", "basis", "owner", "process", "admin", "analyst", "auditor", "viewer"];
 
 function read(key: string): string | null {
   try {
