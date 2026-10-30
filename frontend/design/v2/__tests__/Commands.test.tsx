@@ -4,6 +4,7 @@ import { renderWithQuery } from "@/__tests__/render";
 import * as landscapeApi from "@/lib/api/v2/landscape";
 import { ledgerRegistry, type LedgerTarget } from "@/lib/v2/keys";
 import { V2Shell } from "../shell/V2Shell";
+import { matchPlaces, placeIndex } from "../CommandLine";
 import { push, setUrl } from "./nav-store";
 
 vi.mock("next/navigation", async () => (await import("./nav-store")).navigationMock);
@@ -90,5 +91,22 @@ describe("the command line's actions", () => {
     fireEvent.keyDown(input, { key: "Enter" });
     await waitFor(() => expect(push).toHaveBeenCalled());
     expect(decodeURIComponent(push.mock.calls[0][0] as string)).toContain("open=record:material_master:MATNR=000000000000000101");
+  });
+});
+
+describe("the command line finds every canvas by name", () => {
+  it("typing a canvas or an administration section lists it under Go to, and Enter opens it", async () => {
+    const { dialog, input } = await ask("webhooks");
+    expect(await within(dialog).findByText("Administration: Webhooks")).toBeInTheDocument();
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(push).toHaveBeenCalledWith(expect.stringContaining("/admin/webhooks"));
+  });
+
+  it("matches by the start of a word first, then anywhere in the name", () => {
+    const places = placeIndex(() => true);
+    expect(matchPlaces(places, "rep").map((p) => p.href)).toContain("/reports");
+    expect(matchPlaces(places, "land")[0].href).toBe("/");
+    expect(matchPlaces(places, "x")).toEqual([]);
+    expect(placeIndex(() => false).some((p) => p.href.startsWith("/admin"))).toBe(false);
   });
 });

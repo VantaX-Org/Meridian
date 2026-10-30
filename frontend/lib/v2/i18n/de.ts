@@ -4259,4 +4259,5 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Approved by {approvedBy}": "Freigegeben von {approvedBy}",
   "Suppressed {count}": "Unterdrückt {count}",
   "Jobs ({activeCount} running)": "Jobs ({activeCount} laufen)",
+  "Administration: {section}": "Administration: {section}",
 };

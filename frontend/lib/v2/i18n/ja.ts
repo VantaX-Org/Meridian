@@ -4259,4 +4259,5 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Approved by {approvedBy}": "承認済み（{approvedBy}）",
   "Suppressed {count}": "抑制中 {count}",
   "Jobs ({activeCount} running)": "ジョブ（{activeCount} 件実行中）",
+  "Administration: {section}": "管理: {section}",
 };

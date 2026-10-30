@@ -4258,6 +4258,7 @@ export const en = {
   "Approved by {approvedBy}": "Approved by {approvedBy}",
   "Suppressed {count}": "Suppressed {count}",
   "Jobs ({activeCount} running)": "Jobs ({activeCount} running)",
+  "Administration: {section}": "Administration: {section}",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
