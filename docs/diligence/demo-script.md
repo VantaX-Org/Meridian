@@ -19,7 +19,8 @@ What a buyer should know about the fixtures (logged as DR-1 in [roadmap-and-debt
   `accounts_payable`, `accounts_receivable`, `sd_sales_orders`).
 - The rules library fixture holds a handful of rules, not the 8,380 the engine ships; the status strip's
   "5,178 rules measured" is a fixture figure.
-- Fixture mode is in the production bundle and nothing on screen says the data is a demo (PC-4).
+- Fixture mode now shows a "Demo data" bar on every page and a production build honours `?fixture=1`
+  only when built with `NEXT_PUBLIC_MERIDIAN_DEMO=1` (commit `b6467dd2`, PC-4); a customer image ignores it.
 - Some fixture screens contradict each other (SuccessFactors "Not extracted yet" beside failing Employee
   Central rules).
 
@@ -31,7 +32,7 @@ from the uploaded data.
 ```bash
 cd frontend
 npm ci
-npm run build && npm run start:standalone     # the production build on http://localhost:3000
+NEXT_PUBLIC_MERIDIAN_DEMO=1 npm run build && npm run start:standalone   # a demo build on http://localhost:3000
 # or: npm run dev
 ```
 
