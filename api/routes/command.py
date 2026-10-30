@@ -184,3 +184,47 @@ async def command(request: Request, q: str = Query("", max_length=200), limit: i
             groups.append({"kind": kind, "label": GROUP_LABELS[kind], "items": items})
             left -= len(items)
     return {"groups": groups}
+
+
+class NLMatchOut(BaseModel):
+    phrase: str
+    slot: str
+    value: str | bool
+    label: str
+
+
+class NLOut(BaseModel):
+    filter: dict[str, str | bool]             # the parameters GET /work/records accepts
+    href: str                                 # /v2/work with the filter in the query string
+    explanation: str
+    unmatched_words: list[str]
+    matched: list[NLMatchOut]
+    llm_used: bool = False
+
+
+@router.get("/command/nl", response_model=NLOut)
+async def command_nl(q: str = Query(..., min_length=1, max_length=300), db: AsyncSession = Depends(get_db),
+                     tenant: Tenant = Depends(get_tenant), _role: str = Depends(require_permission("view"))):
+    """A sentence to a ledger filter, by keyword and synonym tables (api/services/nl_query.py). With
+    MERIDIAN_NL_LLM=1 and an LLM configured, words the tables do not know may be mapped onto the same closed
+    vocabulary by the model; it never sees record data."""
+    from api.services import nl_query
+
+    await _rls(db, tenant)
+    t = str(tenant.id)
+    systems = [dict(r) for r in (await db.execute(text(
+        "SELECT id::text AS id, name, system_type FROM sap_systems WHERE tenant_id = CAST(:t AS uuid) AND is_active "
+        "ORDER BY name, id"), {"t": t})).mappings().all()]
+    people = [dict(r) for r in (await db.execute(text(
+        f"SELECT id::text AS id, name, email FROM users WHERE tenant_id = CAST(:t AS uuid) AND is_active "
+        f"AND {NOT_SERVICE_USER_SQL.format(col='email')} ORDER BY name, id"), {"t": t})).mappings().all()]
+    vocab = nl_query.tenant_vocab(systems, people)
+    out = nl_query.parse(q, vocab)
+    used = False
+    if out["unmatched_words"] and nl_query.llm_enabled():
+        mapped = nl_query.classify_unmatched(out["unmatched_words"], vocab)
+        if mapped:
+            used = True
+            words = " ".join(mapped.get(w, w) for w in nl_query.words_of(q))
+            out = nl_query.parse(words, vocab)
+    return {**out, "href": nl_query.href(out["filter"]), "llm_used": used}

@@ -226,7 +226,7 @@ async def summary(
     status: Optional[str] = Query(None, pattern="^(open|all|to_fix|proposed|approved|sent|not_an_issue|fixed)$"),
     assigned: Optional[str] = Query(None, description="'me', 'unassigned' or a user id"),
     proposed: Optional[bool] = None,
-    due: Optional[str] = Query(None, pattern="^(overdue|today)$"),
+    due: Optional[str] = Query(None, pattern="^(overdue|today|week)$"),
     part: Optional[str] = Query(None, max_length=200),
     system: Optional[str] = Query(None, max_length=100),
     q: Optional[str] = Query(None, max_length=200),
@@ -394,8 +394,10 @@ async def groups(
 
 
 def _records_where(tenant: Tenant, sel: "_Rows | str", request: Request, module, check_id, severity, status, assigned,
-                   proposed, q, due=None, part=None, system=None, batch_id=None) -> tuple[list[str], dict]:
-    """``sel``: the rows read (one run or the current state), or one run's id."""
+                   proposed, q, due=None, part=None, system=None, batch_id=None,
+                   policy: Optional[str] = None) -> tuple[list[str], dict]:
+    """``sel``: the rows read (one run or the current state), or one run's id. ``policy``: a policy pack id or
+    ``pack:class`` (sap/policy_packs.yaml): the records failing a rule that evidences it."""
     if isinstance(sel, str):
         sel = _Rows(sel, None, None)
     p: dict = {"t": str(tenant.id)}
@@ -437,6 +439,9 @@ def _records_where(tenant: Tenant, sel: "_Rows | str", request: Request, module,
         p["a"] = assigned
     if proposed:
         where.append("w.proposed > 0")
+    if policy:
+        where.append("w.checks && CAST(:pol AS text[])")
+        p["pol"] = _policy_rules(policy)
     if part:  # one part of the key, e.g. BUKRS=1000: the records of one company code, plant, sales org
         field, _, value = part.partition("=")
         if not field or not value or not field.replace("_", "").isalnum():
@@ -447,6 +452,8 @@ def _records_where(tenant: Tenant, sel: "_Rows | str", request: Request, module,
         where.append("w.due_at < now()")
     elif due == "today":
         where.append("w.due_at < now() + interval '1 day'")
+    elif due == "week":
+        where.append("w.due_at < now() + interval '7 days'")
     if q:
         term = q.strip()
         if "=" in term:  # a key as the record shows it: LIFNR=0000100234
@@ -457,6 +464,18 @@ def _records_where(tenant: Tenant, sel: "_Rows | str", request: Request, module,
             p["qn"] = term.lower().replace("%", r"\%").replace("_", r"\_") + "%"
             p["qr"] = r"(^|\|)[A-Z0-9_]+=0*" + "".join("\\" + ch if not ch.isalnum() else ch for ch in term.lstrip("0")) + r"($|\|)"
     return where, p
+
+
+def _policy_rules(policy: str) -> list[str]:
+    """The rules evidencing a policy pack (``sox``) or one of its classes (``sox:vendor_bank``); 422 when unknown."""
+    from api.services import policy_packs
+
+    pack_id, _, class_id = policy.partition(":")
+    pk = policy_packs.pack(pack_id)
+    cls = next((c for c in pk["classes"] if c["id"] == class_id), None) if pk and class_id else None
+    if pk is None or (class_id and cls is None):
+        raise HTTPException(status_code=422, detail="policy must be a policy pack id or pack:class, e.g. sox:vendor_bank")
+    return list(cls["rules"]) if cls else policy_packs.pack_rules(pk)
 
 
 # The checks both runs evaluated in full: the ones the run compare (DIFF_SQL) counts, so "new" here is "new" there.
@@ -509,10 +528,12 @@ async def records(
     status: Optional[str] = Query("open", pattern="^(open|all|to_fix|proposed|approved|sent|not_an_issue|fixed)$"),
     assigned: Optional[str] = Query(None, description="'me', 'unassigned' or a user id"),
     proposed: Optional[bool] = None,
-    due: Optional[str] = Query(None, pattern="^(overdue|today)$", description="SLA: past due, or due within a day"),
+    due: Optional[str] = Query(None, pattern="^(overdue|today|week)$", description="SLA: past due, due within a day, or due within seven days"),
     part: Optional[str] = Query(None, max_length=200, description="a key part, FIELD=VALUE (BUKRS=1000)"),
     system: Optional[str] = Query(None, max_length=100, description="source system id, or 'upload'"),
     batch_id: Optional[uuid.UUID] = Query(None, description="only the records with an item in this fix batch, in any state"),
+    policy: Optional[str] = Query(None, max_length=100, description="a policy pack or pack:class (sox:vendor_bank): "
+                                                                    "records failing a rule that evidences it"),
     q: Optional[str] = Query(None, max_length=200),
     after: Optional[str] = Query(None, description="cursor from the previous page"),
     limit: int = Query(PAGE, ge=1, le=500),
@@ -540,7 +561,7 @@ async def records(
         sel = await _rows(db, tenant, version_id, scope)
     order = _parse_sort(sort)
     where, p = _records_where(tenant, sel, request, module, check_id, severity, status, assigned, proposed, q, due, part,
-                              system, batch_id)
+                              system, batch_id, policy)
     await _since(db, tenant, sel, since, module, where, p)
     exprs = [_SORT_KEYS[k] for k in order]
     page_where = list(where)
@@ -1465,7 +1486,7 @@ async def export_sheet(
     status: Optional[str] = Query("open", pattern="^(open|all|to_fix|proposed|approved|sent|not_an_issue|fixed)$"),
     assigned: Optional[str] = None,
     proposed: Optional[bool] = None,
-    due: Optional[str] = Query(None, pattern="^(overdue|today)$"),
+    due: Optional[str] = Query(None, pattern="^(overdue|today|week)$"),
     part: Optional[str] = Query(None, max_length=200),
     system: Optional[str] = Query(None, max_length=100),
     q: Optional[str] = Query(None, max_length=200),
@@ -1571,7 +1592,7 @@ async def export_per_object(
     status: Optional[str] = Query("open", pattern="^(open|all|to_fix|proposed|approved|sent|not_an_issue|fixed)$"),
     assigned: Optional[str] = None,
     proposed: Optional[bool] = None,
-    due: Optional[str] = Query(None, pattern="^(overdue|today)$"),
+    due: Optional[str] = Query(None, pattern="^(overdue|today|week)$"),
     part: Optional[str] = Query(None, max_length=200),
     system: Optional[str] = Query(None, max_length=100),
     q: Optional[str] = Query(None, max_length=200),
