@@ -6,7 +6,7 @@
  * answers come from lib/api/v2/fixtures/sys6b.ts.
  */
 import { v2Get, v2Send } from "./client";
-import type { SAPSystem, SyncProfile, SystemType, TestConnectionResponse } from "@/types/api";
+import type { ExtractionPath, ReadFunction, SAPSystem, SyncProfile, SystemType, TestConnectionResponse } from "@/types/api";
 import type { ConfigCompare, ProposeResult } from "@/lib/api/config-pairing";
 import type { ConfigDriftEntry } from "@/lib/api/config-intelligence";
 import type { DownloadScope } from "@/lib/api/system-objects";
@@ -29,6 +29,8 @@ export interface ConnectionBody {
   company_id?: string;
   auth_type?: string;
   token_url?: string;
+  extraction_path?: ExtractionPath;
+  read_function?: ReadFunction;
   /** RFC: { password }. Cloud: { client_id, client_secret, api_key, password }. Only the secrets that were typed. */
   credentials: Record<string, string>;
 }
@@ -52,6 +54,9 @@ export interface SystemPatch {
   role?: "source" | "target";
   /** "" clears the target. */
   target_system_id?: string;
+  extraction_path?: ExtractionPath;
+  /** "" clears it (the deployment's default reader). */
+  read_function?: ReadFunction | "";
 }
 
 /** POST /systems */

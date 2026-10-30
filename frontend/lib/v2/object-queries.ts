@@ -11,6 +11,7 @@ import {
   getLearnedFor,
   getReadiness,
   getRuleHistory,
+  getRuleReconcile,
   getRuleScope,
   getStewards,
   getTimeline,
@@ -24,6 +25,7 @@ export const objKeys = {
   explain: (f: boolean, metric: string, a: ExplainArgs) => ["v2", "explain", f, metric, a.module ?? "", a.run ?? "", a.dimension ?? "", a.checkId ?? ""] as const,
   scope: (f: boolean, id: string, module: string) => ["v2", "rule-scope", f, id, module] as const,
   history: (f: boolean, id: string) => ["v2", "rule-history", f, id] as const,
+  reconcile: (f: boolean, id: string, run: string) => ["v2", "rule-reconcile", f, id, run] as const,
   timeline: (f: boolean, system: string) => ["v2", "timeline", f, system] as const,
   compare: (f: boolean, a: string, b: string) => ["v2", "compare", f, a, b] as const,
   changed: (f: boolean, a: string, b: string, module: string) => ["v2", "changed-checks", f, a, b, module] as const,
@@ -51,6 +53,12 @@ export function useRuleScope(id: string, module?: string | null) {
 export function useRuleHistory(id: string) {
   const f = useFixture();
   return useQuery({ queryKey: objKeys.history(f, id), queryFn: () => getRuleHistory(id), staleTime: STALE, retry: false });
+}
+
+/** The reconciliation pack of a rule in one run; reads only once a run is known. */
+export function useRuleReconcile(id: string, run: string | null | undefined) {
+  const f = useFixture();
+  return useQuery({ queryKey: objKeys.reconcile(f, id, run ?? ""), queryFn: () => getRuleReconcile(id, run ?? ""), staleTime: STALE, retry: false, enabled: Boolean(run) });
 }
 
 export function useTimeline(systemId: string | null | undefined) {

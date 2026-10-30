@@ -149,8 +149,11 @@ describe("landscape canvas, fixture mode", () => {
     await waitFor(() => expect(within(conn).getAllByRole("row")).toHaveLength(4));
     expect(within(conn).getByRole("row", { name: /ECC production/ })).toHaveTextContent("Connected");
     expect(within(conn).getByRole("row", { name: /SuccessFactors/ })).toHaveTextContent("Refused the credentials");
+    expect(within(conn).getByRole("row", { name: /ECC production/ })).toHaveTextContent("Table reader");
+    expect(within(conn).getByRole("row", { name: /S\/4HANA sandbox/ })).toHaveTextContent("Automatic (table reader)");
     const ext = within(home).getByTestId("basis-extractions");
     expect(within(ext).getByRole("row", { name: /ECC production/ })).toHaveTextContent("400,662");
+    await waitFor(() => expect(within(ext).getByRole("row", { name: /ECC production/ })).toHaveTextContent("5 with the table reader"));
     expect(within(ext).getByRole("row", { name: /SuccessFactors/ })).toHaveTextContent("Not extracted");
     const failed = within(home).getByTestId("basis-failures");
     await waitFor(() => expect(within(failed).getAllByRole("row").length).toBeGreaterThan(1));

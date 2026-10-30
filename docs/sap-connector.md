@@ -5,6 +5,7 @@ Meridian picks the connector from the system's type (`sap_systems.system_type`):
 | System type | Protocol | Library |
 |---|---|---|
 | `ecc`, `s4hana_onprem`, `ewm` | RFC | PyRFC 3.3.1 + SAP NW RFC SDK |
+| `s4hana_onprem` with extraction path `odata` | OData V2 through the customer's Gateway | built in (`sap/s4hana_onprem.py`) |
 | `s4hana_cloud` | OData V4 | built in |
 | `successfactors` | OData V2 | built in |
 | `concur`, `ariba` | REST | built in |
@@ -79,6 +80,33 @@ Only the tables of the modules you extract are read. A table the user may not
 read shows as `failed` on the system's **Coverage** tab (Systems → system →
 Coverage) with SAP's message — nothing is guessed in its place.
 
+### Extraction path: table reader, ODP or OData
+
+Many Basis teams refuse `RFC_READ_TABLE` in production. Each ABAP system has an
+**Extraction path** on its connection settings (Systems → system → Connection):
+
+| Path | Reads | Needs |
+|---|---|---|
+| Table reader (default) | every planned table through the table reader (`RFC_READ_TABLE`, `/BODS/RFC_READ_TABLE2` or `BBP_RFC_READ_TABLE`, also chosen per system) | `S_RFC` for the reader, `S_TABU_NAM` for the tables |
+| ODP | tables mapped to an ODP provider in `sap/odp_mappings.yaml` through `RODPS_REPL_ODP_GET_DETAIL` / `OPEN` / `FETCH` / `CLOSE` (full extraction, packaged by fetch call); the rest through the table reader | `S_RFC` for `RODPS_REPL`, `S_RO_OSOA`, the CDS views' access controls |
+| Automatic | The table reader for every table; ODP over RFC only when chosen explicitly (SAP Note 3255746) | as the table reader |
+| OData (S/4HANA on premise) | the Gateway's released APIs (`API_BUSINESS_PARTNER`, `API_PRODUCT_SRV`, `API_GLACCOUNTINCHARTOFACCOUNTS_SRV`), mapped onto the same tables as S/4HANA Cloud | `S_SERVICE` for the services, back-end display authorisations, the Gateway base URL on the connection |
+
+ODP providers carry extractor or CDS fields, not table fields: the mapping lists
+only fields whose counterpart is certain. Every table's coverage entry records
+the path (`path`: `table_reader`, `odp` or `odata`), the reader or the ODP
+provider, the fields ODP could not deliver (`odp_unavailable_fields`) and why
+the table reader was used instead (`odp_fallback`). A table with a date window,
+a scope filter or a parent-key read always uses the table reader, because ODP
+reads a provider in full. The output is the same DataFrame either way: SAP
+field names as columns, values as strings.
+
+Before using ODP over RFC in production, check SAP Note 3255746 with your SAP
+account team; it restricts third-party use of the RODPS_REPL RFC modules. The
+OData path is the alternative SAP documents for that case.
+
+Authorisations for every path: `docs/sap/authorisation-role-template.md`.
+
 ## 3. Register and discover
 
 Systems → Add system → RFC details (application server, system number,
@@ -94,3 +122,7 @@ every check uses this system's field definitions and configured values.
 | `RFC_ERROR_LOGON_FAILURE` | user, password, client or user lock |
 | `RFC_ERROR_COMMUNICATION` | host/system number, firewall (port 33NN), or DNS — behind a corporate DNS set `MERIDIAN_DNS_1/2` in `.env` |
 | `NOT_AUTHORIZED` / table `failed` on Coverage | missing `S_TABU_DIS`/`S_TABU_NAM` for that table |
+| `RODPS_REPL_ODP_OPEN is not available on this system` | ODP chosen but function group `RODPS_REPL` is missing or not authorised: grant `S_RFC`, or set the extraction path to the table reader or Automatic |
+| `... has no parameter ... so Meridian cannot use ODP on this release` | the ODP function's interface differs on this release; confirm it in SE37 and use the table reader or OData |
+| `ODP provider ... returned no fields` | the extractor or CDS view is not released for extraction, or `S_RO_OSOA` is missing |
+| OData table `failed` with 404 | the API service is not activated in `/IWFND/MAINT_SERVICE` |

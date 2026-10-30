@@ -1,0 +1,153 @@
+# ODP providers -> the SAP table fields Meridian's rules read (sap/odp_mapping.py, sap/extraction_plan.py).
+#
+# An ODP provider exposes extractor or CDS fields, not table fields. Each entry maps one provider to one SAP table:
+# `fields` is {TABLE_FIELD: PROVIDER_FIELD}. Only fields whose provider counterpart is certain are mapped; every
+# other field of the table is unmapped, and a rule that needs one is reported per table ("not available through
+# ODP") and either read with the table reader (extraction path auto) or left not evaluable (extraction path odp).
+#
+# Provider field names are matched without regard to case (ABAP CDS element names arrive upper-cased). A mapped
+# field the provider does not carry on the connected release (RODPS_REPL_ODP_GET_DETAIL decides) is reported the
+# same way as an unmapped one.
+#
+# context   SAPI (classic extractors; ECC and S/4HANA) or ABAP_CDS (released CDS views with an extraction
+#           annotation; S/4HANA only)
+# systems   the sap_systems.system_type values the provider is used on
+# confirm   true: the provider name or its extraction release must be confirmed on the customer's system before
+#           relying on it (RODPS_REPL_TEST or ODQMON show what the system exposes). For ABAP_CDS the ODP name is the
+#           view's SQL view name, which differs by release for some views.
+
+providers:
+  # ── Classic extractors (SAPI) ───────────────────────────────────────────────
+  - odp: 0MATERIAL_ATTR
+    context: SAPI
+    systems: [ecc, s4hana_onprem]
+    table: MARA
+    fields:
+      MATNR: MATNR
+      MTART: MTART
+      MBRSH: MBRSH
+      MATKL: MATKL
+      BISMT: BISMT
+      MEINS: MEINS
+      BRGEW: BRGEW
+      NTGEW: NTGEW
+      GEWEI: GEWEI
+      VOLUM: VOLUM
+      VOLEH: VOLEH
+      SPART: SPART
+      EAN11: EAN11
+      NUMTP: NUMTP
+      PRDHA: PRDHA
+      ERSDA: ERSDA
+      LAEDA: LAEDA
+      LVORM: LVORM
+
+  - odp: 0MAT_PLANT_ATTR
+    context: SAPI
+    systems: [ecc, s4hana_onprem]
+    table: MARC
+    fields:
+      MATNR: MATNR
+      WERKS: WERKS
+      EKGRP: EKGRP
+      DISPO: DISPO
+      DISMM: DISMM
+      BESKZ: BESKZ
+      PRCTR: PRCTR
+
+  - odp: 0CUSTOMER_ATTR
+    context: SAPI
+    systems: [ecc, s4hana_onprem]
+    table: KNA1
+    fields:
+      KUNNR: KUNNR
+      LAND1: LAND1
+      ORT01: ORT01
+      PSTLZ: PSTLZ
+      REGIO: REGIO
+      KTOKD: KTOKD
+      BRSCH: BRSCH
+
+  - odp: 0VENDOR_ATTR
+    context: SAPI
+    systems: [ecc, s4hana_onprem]
+    table: LFA1
+    fields:
+      LIFNR: LIFNR
+      LAND1: LAND1
+      ORT01: ORT01
+      PSTLZ: PSTLZ
+      REGIO: REGIO
+      KTOKK: KTOKK
+      BRSCH: BRSCH
+
+  - odp: 0GL_ACCOUNT_ATTR
+    context: SAPI
+    systems: [ecc, s4hana_onprem]
+    table: SKA1
+    fields:
+      KTOPL: KTOPL
+      SAKNR: SAKNR
+      KTOKS: KTOKS
+      XBILK: XBILK
+
+  # ── Released CDS views (ABAP_CDS, S/4HANA) ──────────────────────────────────
+  - odp: IPRODUCT
+    context: ABAP_CDS
+    view: I_Product
+    systems: [s4hana_onprem]
+    table: MARA
+    confirm: true
+    fields:
+      MATNR: Product
+      MTART: ProductType
+      MATKL: ProductGroup
+      MEINS: BaseUnit
+      BRGEW: GrossWeight
+      NTGEW: NetWeight
+      GEWEI: WeightUnit
+      SPART: Division
+      ERSDA: CreationDate
+      LVORM: IsMarkedForDeletion
+
+  - odp: ICUSTOMER
+    context: ABAP_CDS
+    view: I_Customer
+    systems: [s4hana_onprem]
+    table: KNA1
+    confirm: true
+    fields:
+      KUNNR: Customer
+      LAND1: Country
+      ORT01: CityName
+      PSTLZ: PostalCode
+      REGIO: Region
+      KTOKD: CustomerAccountGroup
+      ERDAT: CreationDate
+
+  - odp: ISUPPLIER
+    context: ABAP_CDS
+    view: I_Supplier
+    systems: [s4hana_onprem]
+    table: LFA1
+    confirm: true
+    fields:
+      LIFNR: Supplier
+      LAND1: Country
+      ORT01: CityName
+      PSTLZ: PostalCode
+      REGIO: Region
+      KTOKK: SupplierAccountGroup
+      ERDAT: CreationDate
+
+  - odp: IBUSINESSPARTNER
+    context: ABAP_CDS
+    view: I_BusinessPartner
+    systems: [s4hana_onprem]
+    table: BUT000
+    confirm: true
+    fields:
+      PARTNER: BusinessPartner
+      TYPE: BusinessPartnerCategory
+      BU_GROUP: BusinessPartnerGrouping
+      CRDAT: CreationDate

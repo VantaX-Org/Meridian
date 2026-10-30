@@ -30,6 +30,12 @@ def shipped() -> dict[tuple[str, str], dict]:
     return {(str(r["id"]), module): {**r, "category": category} for category, _, module, r in raw_rules()}
 
 
+def shipped_for(rule_id: str) -> dict[tuple[str, str], dict]:
+    """The entries of ``shipped()`` for one rule id, without parsing the whole catalogue on a cold worker."""
+    from api.services.tenant_seed import raw_rules_for
+    return {(str(r["id"]), module): {**r, "category": category} for category, _, module, r in raw_rules_for(rule_id)}
+
+
 @lru_cache(maxsize=None)
 def view_map(module: str) -> Optional[dict]:
     path = _VIEWS_DIR / f"{module}.yaml"
@@ -48,10 +54,11 @@ def _condition(conditions: Any) -> dict:
     return conditions if isinstance(conditions, dict) else {}
 
 
-def describe(row: dict) -> dict:
-    """Shipped metadata for a tenant rule row; mined and custom rows fall back to their own conditions."""
+def describe(row: dict, catalogue: Optional[dict[tuple[str, str], dict]] = None) -> dict:
+    """Shipped metadata for a tenant rule row; mined and custom rows fall back to their own conditions.
+    ``catalogue`` replaces ``shipped()`` (``shipped_for`` when the caller asks about one rule)."""
     code, module = rule_code(row["name"]), row["module"]
-    y = shipped().get((code, module))
+    y = (shipped() if catalogue is None else catalogue).get((code, module))
     if y:
         return {"check_id": code, "module": module, "field": y.get("field"), "dimension": y.get("dimension"),
                 "check_class": y.get("check_class"), "authority": y.get("rule_authority"),

@@ -39,12 +39,13 @@ jobs:
     # suite). Four shards ran 15-34 min each once the rule catalogue grew past 8,000
     # checks and the slowest neared the 45-minute cap, so: six shards, about a sixth
     # each, with the cap left at 45 as headroom rather than the expected duration. Measuring coverage on
-    # every shard (job coverage) pushed the slowest past 45, so eight shards.
+    # every shard (job coverage) pushed the slowest past 45, so eight shards. The slowest of the eight then
+    # reached about 41 minutes with coverage on, so ten shards, about a tenth each.
     timeout-minutes: 45  # ponytail: add a shard (matrix and PYTEST_SHARD) if one nears 45
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
     services:
       postgres:
@@ -124,7 +125,7 @@ jobs:
 
       - name: Run tests
         env:
-          PYTEST_SHARD: ${{ matrix.shard }}/8
+          PYTEST_SHARD: ${{ matrix.shard }}/10
           COVERAGE_FILE: .coverage.shard${{ matrix.shard }}
         run: pytest tests/ -q --cov=api --cov=workers --cov=checks --cov=sap --cov-report=term
 

@@ -11,8 +11,8 @@ your own deployment shows your data and never shows that bar.
 
 Who does what:
 
-- **Meridian administrator**: modules 1 to 3 and 6 to 10.
-- **SAP Basis**: modules 4 and 5, and the SAP side of module 7.
+- **Meridian administrator**: modules 1 to 3 and 6 to 11.
+- **SAP Basis**: modules 4 and 5, and the SAP side of modules 7 and 11.
 
 ## Module 1: Install and first start
 
@@ -210,7 +210,7 @@ three times from a test account, and find the three `auth.login_failed` rows in 
 
 - Choose the system type and fill in the connection.
 - Create the read-only SAP role from the template.
-- Choose the table reader your Basis team accepts.
+- Choose the extraction path (table reader, ODP or OData) and the table reader your Basis team accepts.
 - Test the connection and read connection health; connect a cloud system.
 
 ### System types
@@ -230,9 +230,33 @@ Ariba (REST, OAuth 2.0 and an API key).
   dictionary, organisational structure and, for delta extraction, `CDHDR` and `CDPOS`.
 - No transaction codes, no `S_DEVELOP` and no change activity. With this role Meridian cannot change SAP data.
 
+For the ODP path the role adds `S_RFC` for function group `RODPS_REPL` and the ODP authorisations (`S_RO_OSOA`,
+and the CDS views' access controls on S/4HANA); for the OData path, `S_SERVICE` for the Gateway services and the
+back-end display authorisations of those APIs. The template marks the entries to confirm in SU24 or SE37.
+
+### Choosing the extraction path
+
+Many Basis teams refuse `RFC_READ_TABLE` in production. Each ABAP system's connection settings have an
+**Extraction path**:
+
+| Choice | What it does |
+|---|---|
+| Table reader (default) | Reads every table with the table reader below. |
+| ODP, table reader for the rest | Reads the tables an ODP provider covers (`0MATERIAL_ATTR` for MARA, `0MAT_PLANT_ATTR` for MARC, `0CUSTOMER_ATTR` for KNA1, `0VENDOR_ATTR` for LFA1, `0GL_ACCOUNT_ATTR` for SKA1, and on S/4HANA the CDS views `I_Product`, `I_Customer`, `I_Supplier`, `I_BusinessPartner`) through the `RODPS_REPL_ODP_*` functions. A field the provider does not carry is listed for the table and its rules are not evaluable. Other tables use the table reader. |
+| Automatic: table reader | The table reader for every table. ODP over RFC is used only when you choose ODP explicitly, after confirming with SAP that your licence allows it (SAP Note 3255746). |
+| OData through the SAP Gateway | S/4HANA on premise only. Reads the released APIs your Gateway exposes (`API_PRODUCT_SRV`, `API_BUSINESS_PARTNER`, `API_GLACCOUNTINCHARTOFACCOUNTS_SRV`) with this system's user, sending its client as `sap-client`. Enter the **Gateway base URL**. |
+
+A table read with a date window, a scope or by parent keys always uses the table reader, because ODP reads a
+provider in full. The job's **Tables** list has a **Read through** column, and the Basis home shows each system's
+extraction path under **Connections** and, under **Last extraction**, how its tables were read.
+
+Before choosing ODP for production, read SAP Note 3255746 with your SAP account team: it restricts the use of the
+ODP RFC modules by third-party applications. Where it applies, choose OData or the table reader.
+
 ### Choosing the table reader
 
-Set `MERIDIAN_RFC_READ_FUNCTION` in `.env`:
+Each ABAP system's connection settings have a **Table reader**; **Deployment default** uses
+`MERIDIAN_RFC_READ_FUNCTION` in `.env`:
 
 | Value | Reader |
 |---|---|
@@ -241,14 +265,16 @@ Set `MERIDIAN_RFC_READ_FUNCTION` in `.env`:
 | `BBP_RFC_READ_TABLE` | the SRM reader, the same interface as `RFC_READ_TABLE`; some sites allow it when they refuse `RFC_READ_TABLE` |
 | `auto` | probes `RFC_FUNCTION_SEARCH` for `/BODS/RFC_READ_TABLE2`, then `BBP_RFC_READ_TABLE`, else `RFC_READ_TABLE` |
 
-The extracted data is the same whichever reader is used. Grant `RFC_FUNCTION_SEARCH` only with `auto`.
+The extracted data is the same whichever reader or path is used. `RFC_FUNCTION_SEARCH` is needed for `auto` (reader
+or path).
 
 ### Steps
 
 1. Connect a system from the command line ("Connect a system") or at `/s/new`. Name it, choose the **System type**
    and the **Environment**, then for RFC systems **Host**, **Client** (3 digits), **Instance number** (2 digits) and
    an optional **User** (empty uses the deployment's default RFC user, `SAP_RFC_USER`), with the password under
-   **Sign-in secrets**. Cloud systems ask for their base URL and OAuth details instead.
+   **Sign-in secrets**, then the **Extraction path** and the **Table reader**. Cloud systems ask for their base URL
+   and OAuth details instead.
 2. **Test connection**. A passing test reads like "RFC connection succeeded (client 100, 41 ms)".
 3. **Connect system**. Nothing is read from SAP until you extract.
 4. If SAP host names resolve only on your corporate DNS, set `MERIDIAN_DNS_1` (and `MERIDIAN_DNS_2`) in `.env`;
@@ -266,9 +292,10 @@ The extracted data is the same whichever reader is used. Grant `RFC_FUNCTION_SEA
 
 ### Exercise
 
-With your Basis colleague, generate the role from the template on a quality system, set
-`MERIDIAN_RFC_READ_FUNCTION=auto`, test the connection, and note which reader the first extraction used in the job
-inspector.
+With your Basis colleague, generate the role from the template on a quality system, set the system's **Table reader**
+to **Find the first available** and its **Extraction path** to **Automatic**, test the connection, run an extraction
+of Material master, and note in the job inspector's **Read through** column which tables used ODP and which the
+table reader, and why (the extraction log lists the fields ODP could not deliver).
 
 ## Module 5: Extraction, runs and schedules
 
@@ -403,6 +430,19 @@ through standard BAPIs:
 - **Material master**: `BAPI_MATERIAL_SAVEDATA`.
 - **Business partner**: `BAPI_BUPA_CENTRAL_CHANGE` and `BAPI_BUPA_ADDRESS_CHANGE`.
 - **Customer** (SD customer master and accounts receivable): `BAPI_CUSTOMER_CHANGEFROMDATA1`.
+- **Vendor** (accounts payable), only where the vendor is a business partner with the supplier role: names
+  (`LFA1-NAME1` to `NAME4`) and search term (`SORTL`) by `BAPI_BUPA_CENTRAL_CHANGE`; the address (`LFA1` country,
+  region, city, postal code, language, and `ADRC`) by `BAPI_BUPA_ADDRESS_CHANGE`; bank account holder, control key
+  and reference (`LFBK-KOINH`, `BKONT`, `BKREF`) by `BAPI_BUPA_BANKDETAIL_CHANGE`.
+
+How a vendor is routed is decided on the connected system, per record, before anything is sent: the BAPIs must be
+there (`RFC_FUNCTION_SEARCH`), `CVI_VEND_LINK` must link the vendor to a business partner (read with `BUT000`), the
+vendor's address must be one of the partner's (`BUT020`) and a bank row one of its bank details (`BUT0BK`). On
+S/4HANA every vendor is a business partner. On ECC this is the case only where customer/vendor integration (CVI) is
+active; there, confirm with the Basis team that synchronisation from the business partner to the vendor is switched
+on, or a change reaches the business partner and not `LFA1`. **Check with SAP** runs this lookup (reads only) so the
+field table already says BAPI or Export per vendor. The RFC user needs read access to those tables and
+`RFC_FUNCTION_SEARCH`, and the write role needs the business partner BAPIs.
 
 For each record Meridian checks the BAPI's interface on the connected system, simulates the call (`TESTRUN`, or a
 call followed by `BAPI_TRANSACTION_ROLLBACK`; the customer BAPI is simulated by the interface check only, because it
@@ -414,10 +454,17 @@ Live write-back needs change authorisations, so it uses a **separate** SAP role 
 its own process (the template lists the BAPIs and objects). Never add them to the read-only role. Sandbox mode holds
 every write-back back.
 
-**Export only**: every other object, including the classic vendor master (`LFA1`, `LFB1`, `LFM1`), whose
-maintenance class is not remote-enabled: vendor fixes leave as a load file, or through the business partner where
-the vendor is one. Live write-back has not yet been run against a live SAP system by the vendor; run it first on a
-quality system.
+**Export only**, each field with its reason:
+
+- Vendor company code data (`LFB1`) and purchasing organisation data (`LFM1`): their maintenance (class
+  `VMD_EI_API` and the CVI maintenance APIs) is not remote-enabled, and Meridian relies on no RFC-enabled
+  substitute.
+- Every vendor on a release without customer/vendor integration, or not linked to a business partner: the reason
+  reads "Vendor master on this release changes through the vendor maintenance transaction; Meridian exports a load
+  file". SAP has no released remote-enabled change BAPI for the classic vendor master.
+- Vendor fields with no mapping (tax numbers, blocks, the bank key itself) and every other object.
+
+Live write-back has not yet been run against a live SAP system by the vendor; run it first on a quality system.
 
 ### Checks
 
@@ -428,7 +475,8 @@ quality system.
 
 On a quality system, with live write-back on, open an approved batch of material master fixes, run **Check with
 SAP**, then **Send to SAP** as a second person, and read the simulation messages and the commit messages for each
-record. Then try a vendor master field and read the reason it goes out by export.
+record. Then open an approved accounts payable batch: run **Check with SAP** and read which vendor fields go by
+BAPI (a vendor that is a business partner) and which by export, and why (a company code field always does).
 
 ## Module 8: Notifications and integrations
 
@@ -546,3 +594,40 @@ as your restore time.
 
 For anything else, download the diagnostics bundle and send it with your request: it holds no SAP data, no
 credentials and no user emails. The printable user guide (all roles) is `frontend/docs/guide/meridian-guide.pdf`.
+
+## Module 11: Prove the numbers
+
+**You will learn to** reproduce a rule's count by hand in SAP, so your SAP team can check Meridian's numbers
+without trusting Meridian, and record the result for the go-live sign-off.
+
+Every count in Meridian is a rule over the data your extraction read. For any rule and run, Meridian gives the SE16
+selection that reproduces it: the table and record grain, the selection fields with their SE16 options and values,
+what SE16 alone cannot express (a pattern, a check-table lookup, a duplicate, a join) in plain words, the population
+and failing counts it measured, and five failing record keys as SE16 shows them.
+
+**Steps**
+
+1. Open a rule (`⌘K`, then its id, for example `MM014`) and choose **Prove in SAP**. When the rule runs on several
+   objects, choose the object and run.
+2. In SAP, open the transaction the section names: `SE16N` when one selection is enough, otherwise `SE16H` (or
+   `SQVI` for a join). Enter the table of the **Record grain**.
+3. Enter the **Population** rows. "Initial value" means option `=` with an empty value (it selects blank, 0 and
+   00000000). The population leaves out records SAP marks as dead, such as `LVORM` flagged for deletion. Count the
+   entries and compare with **Population**.
+4. Add the **Failing** rows and count again; compare with **Failing**. For a rule with conditions SE16 cannot
+   express, apply them as written (for a check table, list the check table in SE16 and compare the values).
+5. Look up the **Five failing records** by their key. SE16 shows `MATNR 232`; Meridian stores
+   `MATNR=000000000000000232` (the conversion exit adds the leading zeros), and both are shown.
+
+To prove a whole run, **Download the reconciliation workbook** from the same section (export permission): a summary
+sheet with one row per rule, for the ten rules with the most failing records, and one sheet per rule with its
+selection, steps, counts and sample keys. Your team fills in the **SE16 count** and **Match** columns.
+
+**Check.** The SE16 count equals Meridian's count when the extraction read the table in full on the run's date. A
+small difference usually means the data changed since the extraction (SE16 reads today's data); rerun the extraction
+and the rule, then count again in the same hour. A table read by a window (an extraction scope or a date range) is
+counted only inside that window: add the same window to the SE16 selection.
+
+**Exercise.** Reconcile three rules of your first run: one completeness rule with a single SE16N selection (a
+`null_check`), one value-list rule (a check-table lookup) and one rule with a join. Fill in the workbook and keep it
+with the go-live records. The step-by-step first deployment runbook is `docs/live-deployment-checklist.md`.

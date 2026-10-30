@@ -6,18 +6,33 @@ Every number in Meridian comes from a rule: a fixed, deterministic check with an
 
 The title is the rule id and name, for example "MM142 Base unit of measure MEINS must reference a valid entry in T006". The facts line under it reads like "High, Consistency, 4,212 failing across 2 objects, 4.99% of records checked, ZAR 1.18 m at risk, estimated, within tolerance, blocks 3 S/4 features".
 
-Four sections follow:
+Five sections follow:
 
 - **Definition**: the check class (such as "Exists in check table"), the field (`MARA-MEINS`), the expression (`MARA-MEINS in T006-MSEHI`), its parameters such as the check table `T006` and check field `MSEHI`, the source ("Shipped with Meridian" or a custom rule), the authority ("Best practice", or "SAP hard constraint") and what goes wrong in SAP. **Versions** lists every version with who changed it and why; the shipped definition names its file and content hash.
 - **Failing records**: the scope, for example "Scope: 2 objects, 1 system", with each object, its run and its failing count. **Open failing records** opens the Work ledger filtered to this rule.
+- **Prove in SAP**: how to reproduce the rule's count by hand in SE16 or SE16N (see below).
 - **Impact**: the S/4 features this rule blocks or degrades and the lineage from field to rule to feature.
 - **History**: each run's failing count next to the version changes, so a jump in failures can be read against a change to the rule.
 
 **Contract** shows the data contracts that name this rule.
 
+## Prove in SAP
+
+Your SAP team can check any number Meridian shows without trusting Meridian. **Prove in SAP** gives, for the rule and the run of one object (choose the object when the rule runs on several):
+
+- **Record grain**: the table the rule judges and its key, for example `MARA`, one record per `MATNR`.
+- **SE16 selection**: one row per selection field, marked **Population** (the records the rule judges) or **Failing** (added to find the failing ones), with the SE16 option and values. **Initial value** means leave the value empty with the option "=", which selects blank, 0 and 00000000. The population always leaves out what SAP itself marks as dead, such as records flagged for deletion (`MARA-LVORM` is initial), and the facts say how many records that left out.
+- **What SE16 cannot express**: a pattern, a lookup in a check table (for example "MARA.MEINS has no entry in check table T006: list T006 in SE16 and compare"), a duplicate, a join to another table, a check digit. The selection above is then the closest one, and this list says the rest in plain words. When one selection is enough, the section says "One SE16N selection on MARA gives the failing count".
+- **Population** and **Failing**: the counts Meridian measured in that run, to compare with the number of entries SE16 shows.
+- **Five failing records**: their keys as SE16 shows them (`MATNR 232`, without the leading zeros of the conversion exit), with the key as stored (`MATNR=000000000000000232`) beside it.
+
+To prove a run in one go, **Download the reconciliation workbook** (needs the export permission): a summary sheet with one row per rule and empty **SE16 count** and **Match** columns for your team, and one sheet per rule with its selection, steps, counts and sample keys, for the ten rules with the most failing records in that run. The same pack is `GET /api/v1/rules/{id}/reconcile?run={run}` and the workbook `GET /api/v1/runs/{run}/reconciliation.xlsx?top=10`.
+
+Cloud sources (SuccessFactors, Concur, Ariba) have no SE16: the section says so and the same selection applies in the source's own reporting.
+
 ## The rule inspector
 
-Selecting a rule anywhere opens the inspector with the same facts: severity, dimension, field, **Tolerance** (for example "25 rows" on `MM003`; only critical rules carry a tolerance, so a high rule such as `MM142` reads within tolerance), **Over tolerance**, failing records by object, **Failing %** ("4.99% of 84,456 records checked") and **Value at risk**. Below come the definition, scope, the features it blocks, lineage, versions, contract, history, **Watch** and **Comments**.
+Selecting a rule anywhere opens the inspector with the same facts: severity, dimension, field, **Tolerance** (for example "25 rows" on `MM003`; only critical rules carry a tolerance, so a high rule such as `MM142` reads within tolerance), **Over tolerance**, failing records by object, **Failing %** ("4.99% of 84,456 records checked") and **Value at risk**. Below come the definition, scope, the features it blocks, lineage, versions, contract, **Prove in SAP**, history, **Watch** and **Comments**.
 
 ## The rules library
 
@@ -35,7 +50,8 @@ Rules can also be imported and exported in bulk under Administration, Rules impo
 
 ## What you can do, by role
 
-- **Everyone**: read, watch, comment, export the library.
+- **Everyone**: read, watch, comment, export the library, read the SE16 selection of a rule.
+- **Export permission**: download the reconciliation workbook of a run.
 - **Data steward and rule maintainers** (manage rules): **New rule draft**, **Edit in authoring**, **Suppress** with a reason, **Hand to a steward**.
 - **Process analyst** (handoff rule): hand a blocking rule to a steward from the step inspector.
 - **Platform admin**: enable, disable and change severity; bulk import and export.

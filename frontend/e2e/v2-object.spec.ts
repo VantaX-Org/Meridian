@@ -171,7 +171,7 @@ for (const size of SIZES) {
         await expect(dialog).toBeHidden();
       });
 
-      test("the rule canvas: header stat line, Definition, Failing records, Impact and History", async ({ page }) => {
+      test("the rule canvas: header stat line, Definition, Failing records, Impact, History and Prove in SAP", async ({ page }) => {
         await prepare(page, scheme);
         await page.goto("/r/MM142?fixture=1", { waitUntil: "load", timeout: 90_000 });
         await expect(page.getByRole("heading", { level: 1 })).toContainText("MM142", NAV);
@@ -180,7 +180,7 @@ for (const size of SIZES) {
         const stat = page.getByTestId("rule-stat-line");
         await expect(stat).toContainText("High");
         await expect(stat).toContainText("4,212 failing across 2 objects");
-        await expect(page.getByRole("navigation", { name: "Views of MM142" }).getByRole("link")).toHaveCount(4);
+        await expect(page.getByRole("navigation", { name: "Views of MM142" }).getByRole("link")).toHaveCount(5);
         await expect(page.getByRole("region", { name: "Definition" })).toBeVisible();
         expect(await noSideScroll(page)).toBe(true);
         await page.waitForLoadState("networkidle");

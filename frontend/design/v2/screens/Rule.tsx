@@ -1,15 +1,16 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { RuleActions, RuleAuthority, RuleBlocks, RuleContract, RuleDefinition, RuleFacts, RuleHistory, RuleLineage, RuleScopeSection, RuleVersions, SectionLevel, ruleStatLine, useRule } from "../inspector/rule";
+import { RuleActions, RuleAuthority, RuleBlocks, RuleContract, RuleDefinition, RuleFacts, RuleHistory, RuleLineage, RuleProve, RuleScopeSection, RuleVersions, SectionLevel, ruleStatLine, useRule } from "../inspector/rule";
 import { EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { LedgerSlot } from "./object/LedgerSlot";
 import { t as tr } from "@/lib/v2/i18n";
 
-type TabKey = "definition" | "failing" | "impact" | "history";
+type TabKey = "definition" | "failing" | "prove" | "impact" | "history";
 const TABS: { key: TabKey; label: string }[] = [
   { key: "definition", get label() { return tr("Definition"); } },
   { key: "failing", get label() { return tr("Failing records"); } },
+  { key: "prove", get label() { return tr("Prove in SAP"); } },
   { key: "impact", get label() { return tr("Impact"); } },
   { key: "history", get label() { return tr("History"); } },
 ];
@@ -20,8 +21,9 @@ function tabOf(value: string | null): TabKey {
 
 /**
  * The rule canvas, /r/{check_id}: one rule across systems. The header is the rule's own statistics in a line (no
- * ruler: a rule has no score of its own), then Definition, Failing records (the ledger scoped to the rule), Impact and
- * History. The content is the inspector's, laid out as a canvas.
+ * ruler: a rule has no score of its own), then Definition, Failing records (the ledger scoped to the rule), Prove in
+ * SAP (the SE16 selection that reproduces the count), Impact and History. The content is the inspector's, laid out as
+ * a canvas.
  */
 export function RuleCanvas({ id }: { id: string }) {
   const params = useSearchParams();
@@ -104,6 +106,8 @@ export function RuleCanvas({ id }: { id: string }) {
             </div>
           ) : tab === "failing" ? (
             <LedgerSlot label={id} scope={{ module: v.scope.module ?? v.scope.objects[0]?.module, filters: { check_id: id } }} />
+          ) : tab === "prove" ? (
+            <RuleProve view={v} />
           ) : tab === "impact" ? (
             <div className="m2-rcols">
               <div>

@@ -18,6 +18,10 @@ export interface JobTable {
   rows: number;
   /** SAP's own row count when known, else null. */
   expected: number | null;
+  /** How the table is read (api/services/connectivity_manager.py): the table reader, ODP or OData. */
+  path?: "table_reader" | "odp" | "odata";
+  /** The ODP provider, when path is odp. */
+  provider?: string;
 }
 
 export interface Job {

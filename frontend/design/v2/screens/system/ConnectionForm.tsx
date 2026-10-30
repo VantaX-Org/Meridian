@@ -4,11 +4,11 @@ import { useMemo, useState, type FormEvent } from "react";
 import { apiErrorMessage } from "@/lib/error";
 import { useFormErrors } from "@/lib/forms";
 import {
-  authFor, authOptions, connectionKey, connectionOf, defaultAuth, ENVIRONMENTS, EMPTY, HINT, NEEDS_TOKEN_URL, RFC_TYPES, schemaFor, testBlockedHint, TOKEN_HINT, TYPES,
+  authFor, authOptions, connectionKey, connectionOf, defaultAuth, ENVIRONMENTS, EMPTY, HINT, NEEDS_TOKEN_URL, pathsFor, READ_FUNCTIONS, RFC_TYPES, schemaFor, testBlockedHint, TOKEN_HINT, TYPES,
   type ConnectionValues,
 } from "@/lib/connection-form";
 import type { SAPSystemExtended, SystemType, TestConnectionResponse } from "@/types/api";
-import { deleteSystem, registerSystem, testDraftConnection, testEditedConnection, updateSystem, type ConnectionBody } from "@/lib/api/v2/sys";
+import { deleteSystem, registerSystem, testDraftConnection, testEditedConnection, updateSystem, type ConnectionBody, type SystemPatch } from "@/lib/api/v2/sys";
 import { useV2Session } from "@/lib/v2/hooks";
 import { useRefreshV2 } from "@/lib/v2/sys-queries";
 import { useSystemsExtended } from "@/lib/v2/runs-queries";
@@ -21,7 +21,29 @@ export const editValues = (s: SAPSystemExtended): ConnectionValues => ({
   name: s.name, system_type: s.system_type, environment: s.environment, auth_type: authFor(s.system_type, s.auth_type),
   host: s.host ?? "", client: s.client ?? "", sysnr: s.sysnr ?? "", username: s.username ?? "", password: "",
   base_url: s.base_url ?? "", token_url: s.token_url ?? "", company_id: s.company_id ?? "", client_id: "", client_secret: "", api_key: "",
+  extraction_path: s.extraction_path ?? "table_reader", read_function: s.read_function ?? "",
 });
+
+/** The extraction path choices, in the words the editor shows (sap/extraction_plan.py EXTRACTION_PATHS). */
+const PATH_LABEL: Record<string, () => string> = {
+  table_reader: () => tr("Table reader"),
+  odp: () => tr("ODP, table reader for the rest"),
+  auto: () => tr("Automatic: table reader"),
+  odata: () => tr("OData through the SAP Gateway"),
+};
+const PATH_HINT: Record<string, () => string> = {
+  table_reader: () => tr("Reads each table with the table reader below. Needs read access to the tables."),
+  odp: () => tr("Reads mapped tables through ODP providers (RODPS_REPL). Fields a provider does not carry are reported per table; other tables use the table reader."),
+  auto: () => tr("Reads with the table reader. ODP is used only when you choose it, after confirming with SAP that your licence allows it (SAP Note 3255746)."),
+  odata: () => tr("Reads through the released APIs your Gateway exposes, such as API_PRODUCT_SRV and API_BUSINESS_PARTNER, with this system's user."),
+};
+const READER_LABEL: Record<string, () => string> = {
+  "": () => tr("Deployment default"),
+  RFC_READ_TABLE: () => "RFC_READ_TABLE", // i18n-ignore
+  "/BODS/RFC_READ_TABLE2": () => "/BODS/RFC_READ_TABLE2", // i18n-ignore
+  BBP_RFC_READ_TABLE: () => "BBP_RFC_READ_TABLE", // i18n-ignore
+  auto: () => tr("Find the first available"),
+};
 
 type Outcome = { connected: boolean; message: string; latency: number | null } | { failed: string };
 
@@ -70,7 +92,8 @@ export function ConnectionForm({ system, onSaved, onRemoved }: { system?: SAPSys
   const type = v.system_type as SystemType;
   const rfc = RFC_TYPES.includes(type);
   const auth = authFor(type, v.auth_type);
-  const schema = useMemo(() => schemaFor(type, auth, { secretsOptional: Boolean(system) }), [type, auth, system]);
+  const odataPath = type === "s4hana_onprem" && v.extraction_path === "odata";
+  const schema = useMemo(() => schemaFor(type, auth, { secretsOptional: Boolean(system), odataPath }), [type, auth, system, odataPath]);
   const form = useFormErrors(schema, v);
   const key = connectionKey(v);
   const blocked = testBlockedHint(form.errors, type);
@@ -118,7 +141,7 @@ export function ConnectionForm({ system, onSaved, onRemoved }: { system?: SAPSys
         const saved = await updateSystem(system.id, {
           name: v.name.trim(), environment: v.environment, description, is_active: active, role,
           ...(role === "source" ? { target_system_id: target === "none" ? "" : target } : {}),
-          ...connection, username: v.username.trim(), ...(rfc ? {} : { token_url: v.token_url.trim() }),
+          ...connection, username: v.username.trim(), ...(rfc ? { read_function: v.read_function as SystemPatch["read_function"] } : { token_url: v.token_url.trim() }),
           ...(Object.keys(credentials).length ? { credentials } : {}),
         });
         setDone(tr("{name} is saved.", { name: saved.name }));
@@ -224,6 +247,30 @@ export function ConnectionForm({ system, onSaved, onRemoved }: { system?: SAPSys
                 <Field label={tr("Instance number")} hint={HINT.sysnr} error={form.error("sysnr")}>{(p) => <input {...p} {...bind("sysnr")} inputMode="numeric" maxLength={2} />}</Field>
               </div>
               <Field label={tr("User (optional)")} hint={HINT.username}>{(p) => <input {...p} {...bind("username")} autoComplete="off" />}</Field>
+              <Field label={tr("Extraction path")} hint={(PATH_HINT[v.extraction_path] ?? PATH_HINT.table_reader)()} error={form.error("extraction_path")}>
+                {(p) => (
+                  <select {...p} value={v.extraction_path} onChange={(e) => set({ extraction_path: e.target.value })} data-testid="extraction-path">
+                    {pathsFor(type).map((x) => (
+                      <option key={x} value={x}>{PATH_LABEL[x]()}</option>
+                    ))}
+                  </select>
+                )}
+              </Field>
+              {v.extraction_path !== "odata" ? (
+                <Field label={tr("Table reader")} hint={tr("The function that reads tables the extraction path does not cover. Agree it with your Basis team.")} error={form.error("read_function")}>
+                  {(p) => (
+                    <select {...p} value={v.read_function} onChange={(e) => set({ read_function: e.target.value })} data-testid="read-function">
+                      {READ_FUNCTIONS.map((x) => (
+                        <option key={x || "default"} value={x}>{READER_LABEL[x]()}</option>
+                      ))}
+                    </select>
+                  )}
+                </Field>
+              ) : (
+                <Field label={tr("Gateway base URL")} hint={tr("The SAP Gateway of this system, for example https://s4host:44300. Meridian sends this system's client as sap-client.")} error={form.error("base_url")}>
+                  {(p) => <input {...p} {...bind("base_url")} type="url" placeholder="https://" />}
+                </Field>
+              )}
             </>
           ) : (
             <>

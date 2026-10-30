@@ -1,5 +1,5 @@
 import { labelOf } from "@/lib/format";
-import type { Job, JobKind } from "@/types/jobs";
+import type { Job, JobKind, JobTable } from "@/types/jobs";
 import { t } from "@/lib/v2/i18n";
 import { labelText } from "@/lib/v2/labels";
 
@@ -66,4 +66,25 @@ export function openFailures(jobs: readonly Job[]): Job[] {
   return failed
     .filter((f) => !jobs.some((j) => j.id !== f.id && j.status === "completed" && j.system_id === f.system_id && j.kind === f.kind && (j.finished_at ?? 0) > (f.finished_at ?? f.started_at)))
     .sort((a, b) => (b.finished_at ?? b.started_at) - (a.finished_at ?? a.started_at));
+}
+
+/** How one table of an extraction was read, as the job line and the Basis home say it. */
+export function readPathLabel(table: JobTable): string {
+  if (table.path === "odp") return table.provider ? t("ODP, {provider}", { provider: table.provider }) : t("ODP");
+  if (table.path === "odata") return t("OData");
+  if (table.path === "table_reader") return t("Table reader");
+  return "—";
+}
+
+/** The tables of an extraction job by the path they were read through, for a one-line summary. */
+export function readPathSummary(job: Job): string | null {
+  const odp = job.tables.filter((x) => x.path === "odp").map((x) => x.table);
+  const odata = job.tables.filter((x) => x.path === "odata").length;
+  const reader = job.tables.filter((x) => x.path === "table_reader").length;
+  const parts = [
+    odp.length ? t("ODP: {tables}", { tables: odp.join(", ") }) : null,
+    odata ? t("{count} through OData", { count: odata }) : null,
+    reader ? t("{count} with the table reader", { count: reader }) : null,
+  ].filter((p): p is string => p !== null);
+  return parts.length ? parts.join("; ") : null;
 }

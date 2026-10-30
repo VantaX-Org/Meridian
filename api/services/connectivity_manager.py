@@ -87,6 +87,8 @@ def connect_sap_system(system_type: str, params: dict):
             sysnr=params["sysnr"],
             user=params["user"],
             password=params["password"],
+            read_function=params.get("read_function") or "",
+            extraction_path=params.get("extraction_path") or "",
         ))
         return connector
 
@@ -147,6 +149,26 @@ def connect_sap_system(system_type: str, params: dict):
         return connector
 
     raise SAPConnectorError(f"No connector for system_type: {system_type}")
+
+
+def connect_onprem_odata(params: dict):
+    """The SAP Gateway OData V2 connector of an on-premise S/4HANA system (extraction_path "odata",
+    sap/s4hana_onprem.py): the system's base URL, its SAP client as sap-client, and basic sign-in with the
+    system's user and password unless OAuth client credentials are stored. Caller closes it."""
+    from sap.s4hana_onprem import S4OnPremODataConnector
+
+    if not params.get("base_url"):
+        raise SAPConnectorError("The OData extraction path needs the Gateway's base URL on the system's connection "
+                                "settings, for example https://s4host:44300.")
+    auth = params.get("odata_auth") or "basic"
+    connector = S4OnPremODataConnector(sap_client=params.get("client") or "")
+    connector.connect(CloudConnectionParams(
+        base_url=params["base_url"], company_id="", auth_type=auth,
+        username=params.get("user", ""), password=params.get("password", ""),
+        client_id=params.get("client_id", ""), client_secret=params.get("client_secret", ""),
+        token_url=params.get("token_url", ""),
+    ))
+    return connector
 
 
 @dataclass(frozen=True)
@@ -233,6 +255,17 @@ class ConnectivityManager:
                 "user": system_row.username or os.getenv("SAP_RFC_USER", "RFC_USER"),
                 "password": decrypt_password(self.tenant_id, encrypted) if encrypted else "",
             })
+            params["extraction_path"] = getattr(system_row, "extraction_path", None) or ""
+            params["read_function"] = getattr(system_row, "read_function", None) or ""
+            if system_type == "s4hana_onprem":  # the Gateway, for the OData extraction path
+                auth = getattr(system_row, "auth_type", None)
+                params.update({"base_url": getattr(system_row, "base_url", None) or "",
+                               "token_url": getattr(system_row, "token_url", None) or "",
+                               "odata_auth": auth if auth in ("basic", "oauth2_client_credentials") else "basic"})
+                if getattr(system_row, "client_id_encrypted", None):
+                    params["client_id"] = decrypt_password(self.tenant_id, system_row.client_id_encrypted)
+                if getattr(system_row, "client_secret_encrypted", None):
+                    params["client_secret"] = decrypt_password(self.tenant_id, system_row.client_secret_encrypted)
 
         elif system_type in CLOUD_SYSTEM_TYPES:
             params.update({
@@ -269,6 +302,10 @@ class ConnectivityManager:
         """Return the correct connector instance for a system type."""
         return connect_sap_system(system_type, params)
 
+    def _get_onprem_odata_connector(self, params: dict):
+        """The Gateway OData connector of an on-premise S/4HANA system (extraction_path "odata")."""
+        return connect_onprem_odata(params)
+
     # -- Extraction (rules-driven, per-table) -----------------------------------
 
     def extract(self, system_id: str, modules: list[str], max_rows: int = 0,
@@ -301,23 +338,40 @@ class ConnectivityManager:
         import os
 
         from api.services.source_design import dictionary_for
-        from sap.extraction_plan import (ABAP_SYSTEM_TYPES, PROCESS_EVENT_CLOUD_MODULES, pe_edges, plan_modules,
-                                         read_order, via_filters)
+        from sap.extraction_plan import (ABAP_SYSTEM_TYPES, PROCESS_EVENT_CLOUD_MODULES, choose_read_paths, pe_edges,
+                                         plan_modules, read_order, resolve_extraction_path, via_filters)
 
         system_row = self._load_system(system_id)
         system_type = system_row.system_type
         params = self._build_connection_params(system_row)
+        try:
+            path_setting = resolve_extraction_path(params.get("extraction_path"))
+        except ValueError as e:
+            logger.warning(f"extract {system_id}: {e}; reading with the table reader")
+            path_setting = "table_reader"
         max_rows = max_rows or int(os.getenv("MERIDIAN_EXTRACT_MAX_ROWS", "5000000"))
         dictionary = dictionary_for(self.session, system_id, system_type)
         frames: dict[str, pd.DataFrame] = {}
         coverage: list[dict] = []
+        # S/4HANA on premise through its Gateway's released OData APIs instead of RFC (sap/s4hana_onprem.py)
+        odata = path_setting == "odata" and system_type == "s4hana_onprem"
         try:
-            connector = self._get_connector(system_type, params)
+            connector = self._get_onprem_odata_connector(params) if odata else self._get_connector(system_type, params)
         finally:
             for key in ("password", "client_secret", "api_key"):
                 params.pop(key, None)
         try:
-            if system_type in ABAP_SYSTEM_TYPES:
+            if odata:
+                frames, coverage = self._extract_s4hc(connector, modules, dictionary,
+                                                      label="S/4HANA on premise OData")
+                for c in coverage:
+                    c["path"] = "odata"
+                if progress:  # one line per table for the job, with the path it was read through
+                    rows = [{"table": c["table"], "status": c["status"], "rows": c.get("rows", 0), "expected": None,
+                             "path": "odata"} for c in coverage]
+                    progress({"table": None, "tables_done": len(rows), "tables_total": len(rows), "rows_read": 0,
+                              "table_rows": None, "percent": 99, "tables": rows})
+            elif system_type in ABAP_SYSTEM_TYPES:
                 # SAP dates/times are system-local: the freshness checks need the offset (sap/ddic_reader.py)
                 from sap.ddic_reader import utc_offset_seconds
                 self.sap_utc_offset_seconds = utc_offset_seconds(connector) if hasattr(connector, "call") else None
@@ -346,6 +400,11 @@ class ConnectivityManager:
                 for t, fs in controlled:
                     if t in plans:
                         plans[t].fields |= {f for f in fs if dictionary.field(t, f) is not None}
+                # ODP or the table reader, per table (sap/extraction_plan.py choose_read_paths)
+                odp_ok = path_setting == "auto" and hasattr(connector, "odp_reader") and \
+                    connector.odp_reader().available()
+                paths = choose_read_paths(plans, path_setting, system_type, odp_ok)
+                reader = getattr(connector, "read_function", None)
                 raw: dict[str, pd.DataFrame] = {}
                 # raw frames a later read filters by (via) or derives from (payroll); nothing else is kept
                 needed_raw = {x for p in plans.values() for x in (p.via, *p.also_via, *p.split_by.values()) if x} \
@@ -359,7 +418,8 @@ class ConnectivityManager:
                 # ponytail: tables without a SAP row count (filtered reads) weigh 1000 rows
                 weight = {tb: counts.get(tb) or 1000 for tb in order}
                 total_weight, done_weight = sum(weight.values()) or 1, 0
-                table_rows = {tb: {"table": tb, "status": "queued", "rows": 0, "expected": counts.get(tb)}
+                table_rows = {tb: {"table": tb, "status": "queued", "rows": 0, "expected": counts.get(tb),
+                                   "path": paths[tb].path, **({"provider": paths[tb].odp} if paths[tb].odp else {})}
                               for tb in order}
 
                 def report(table: Optional[str] = None, groups_done: int = 0, groups: int = 1, rows: int = 0) -> None:
@@ -402,11 +462,19 @@ class ConnectivityManager:
                     where = plan.where
                     delta_info: Optional[dict] = None
                     sliced: list[dict] = []
+                    rp = paths[table]
+                    path_info = self._path_info(rp, reader)
                     try:
+                        if rp.path == "odp":
+                            df, odp_info = self._odp_read(connector, rp, cols, max_rows,
+                                                          lambda rows: report(table, 0, 1, rows))
+                            path_info.update(odp_info)
+                        else:
+                            df = None
                         df, delta_info = self._delta_read(
                             connector, table, cols, list(t.keys), plan.where, delta, delta_keys, delta_map,
                             raw.get(plan.via) if plan.via else None, counts.get(table), max_rows,
-                        ) if delta is not None and table in delta_map else (None, None)
+                        ) if df is None and delta is not None and table in delta_map else (df, None)
                         if df is None and delta is not None and delta.by_change_date and not plan.via \
                                 and not plan.slices:
                             df, delta_info = self._date_delta_read(connector, table, cols, list(t.keys), plan.where,
@@ -437,7 +505,7 @@ class ConnectivityManager:
                                                                on_progress=lambda g, n, rows: report(table, g, n, rows))
                     except SAPConnectorError as e:
                         coverage.append({"table": table, "status": "failed", "detail": str(e)[:300],
-                                         "seconds": round(time.monotonic() - t0, 1)})
+                                         "seconds": round(time.monotonic() - t0, 1), **path_info})
                         logger.warning(f"extract {system_id}: {table} failed: {str(e)[:300]}")
                         continue
                     # RFC_READ_TABLE pages without a sort order: pages can overlap. Repeated
@@ -452,6 +520,7 @@ class ConnectivityManager:
                              "window": where if where and not where.startswith(tuple(
                                  f"{f} = " for f in ("DATBI", "BDATU", "INACT"))) else None,
                              "truncated": len(df) >= max_rows, "seconds": round(time.monotonic() - t0, 1)}
+                    entry.update(path_info)
                     if table in counts:
                         entry["source_rows"] = counts[table]
                     entry["complete"] = self._is_complete(entry["truncated"], dup_keys, counts.get(table), len(df))
@@ -499,6 +568,39 @@ class ConnectivityManager:
             connector.close()
         coverage.extend(self._preview_coverage(system_type, modules))
         return frames, coverage
+
+    @staticmethod
+    def _path_info(rp, reader: Optional[str]) -> dict:
+        """The coverage fields that say how a table was read: path, the reader or ODP provider, and what ODP lacked."""
+        info: dict = {"path": rp.path}
+        if rp.path == "odp":
+            info.update(odp_provider=rp.odp, odp_context=rp.context)
+        elif isinstance(reader, str) and reader:
+            info["reader"] = reader
+        if rp.unavailable:
+            info["odp_unavailable_fields"] = list(rp.unavailable)
+        if rp.reason:
+            info["odp_fallback"] = rp.reason
+        return info
+
+    @staticmethod
+    def _odp_read(connector, rp, cols: list[str], max_rows: int,
+                  on_rows: Callable[[int], None]) -> tuple[pd.DataFrame, dict]:
+        """One table through its ODP provider (sap/odp.py), as the table reader's frame. Fields the provider does not
+        deliver on this system are left out and listed in ``odp_unavailable_fields``."""
+        from sap.odp_mapping import mapping, to_table_frame
+
+        m = mapping(rp.odp, rp.context)
+        wanted = [m.fields[c] for c in cols if c in m.fields]
+        r = connector.odp_reader().read(m.context, m.odp, wanted=wanted, max_rows=max_rows,
+                                        on_package=lambda packages, rows: on_rows(rows))
+        df, missing = to_table_frame(r.frame, m, cols)
+        info: dict = {"odp_packages": r.packages}
+        if missing:
+            info["odp_unavailable_fields"] = missing
+        if m.confirm:
+            info["odp_confirm"] = True
+        return df, info
 
     @staticmethod
     def _preview_coverage(system_type: str, modules: list[str]) -> list[dict]:
@@ -944,17 +1046,19 @@ class ConnectivityManager:
                 continue
         return wanted
 
-    def _extract_s4hc(self, connector, modules, dictionary):
+    def _extract_s4hc(self, connector, modules, dictionary, label: str = "S/4HANA Cloud"):
         """ECC tables from S/4HANA Cloud OData entities (sap/s4hana_cloud.S4HC_TABLE_MAP), in the
-        internal format RFC delivers: dates YYYYMMDD, flags 'X' / ''."""
+        internal format RFC delivers: dates YYYYMMDD, flags 'X' / ''. Also the on-premise Gateway's V2 APIs
+        (extraction_path "odata"), whose dates arrive as /Date(ms)/."""
         from checks.types.domain_value_check import _parse_dates
+        from sap.btp import ecc_value
         from sap.s4hana_cloud import S4HC_TABLE_MAP
 
         frames, coverage, reads = {}, [], {}
         for table in sorted(self._rule_tables(modules)):
             if table not in S4HC_TABLE_MAP:
                 coverage.append({"table": table, "status": "upload_required",
-                                 "detail": "no S/4HANA Cloud OData mapping for this table"})
+                                 "detail": f"no {label} mapping for this table"})
                 continue
             entity, fields, required = S4HC_TABLE_MAP[table]
             if entity not in reads:
@@ -978,6 +1082,7 @@ class ConnectivityManager:
                 s = df[prop].map(lambda v: ("X" if v else "") if isinstance(v, bool) else v)
                 f = dictionary.field(table, name)
                 if f is not None and (f.type or "").upper() == "DATS":
+                    s = s.map(ecc_value)  # OData V2 /Date(ms)/ -> YYYYMMDD; V4 ISO dates as they were
                     s = _parse_dates(s).dt.strftime("%Y%m%d").where(s.notna() & s.astype("string").ne(""), "")
                 out[f"{table}.{name}"] = s
             if required and f"{table}.{required}" in out.columns:

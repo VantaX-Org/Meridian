@@ -81,6 +81,37 @@ grep -q 'verify_health' <(sed -n '/^auto_rollback()/,/^}/p' "$SCRIPT") \
     && pass "auto_rollback verifies health" \
     || fail "auto_rollback does not verify health"
 
+# --- the release is pinned, never a moving :latest (register D-32) -----------------------------
+grep -qE 'docker pull "\$\{img\}:\$\{TARGET_TAG\}"' "$SCRIPT" \
+    && pass "images are pulled by release tag" \
+    || fail "images are no longer pulled by the release tag"
+
+if grep -qE '^[^#]*docker (pull|create)[^#]*:latest' "$SCRIPT"; then
+    fail "update.sh pulls or reads a :latest image again - the release must be pinned"
+else
+    pass "no :latest pull or create"
+fi
+
+grep -q 'set_env MERIDIAN_VERSION "\$TARGET_TAG"' <(sed -n '/^pin_release()/,/^}/p' "$SCRIPT") \
+    && pass "pin_release writes MERIDIAN_VERSION" \
+    || fail "pin_release does not write MERIDIAN_VERSION to .env"
+
+grep -q 'MERIDIAN_PREVIOUS_VERSION' <(sed -n '/^rollback()/,/^}/p' "$SCRIPT") \
+    && pass "rollback restores the previous MERIDIAN_VERSION" \
+    || fail "rollback no longer reads MERIDIAN_PREVIOUS_VERSION"
+
+grep -q 'restore_release' <(sed -n '/^auto_rollback()/,/^}/p' "$SCRIPT") \
+    && pass "auto_rollback restores the running release" \
+    || fail "auto_rollback does not restore the release it replaced"
+
+PIN=$(grep -n '^pin_release$' "$SCRIPT" | cut -d: -f1)
+UP=$(grep -n '^dc up -d --force-recreate' "$SCRIPT" | head -1 | cut -d: -f1)
+if [[ -n "$PIN" && -n "$UP" && "$PIN" -lt "$UP" ]]; then
+    pass "the release is pinned before the stack is recreated"
+else
+    fail "pin_release must run before 'dc up --force-recreate' (pin line ${PIN:-none}, up line ${UP:-none})"
+fi
+
 echo
 if [[ "$FAILS" -eq 0 ]]; then
     echo "update script structure: OK"

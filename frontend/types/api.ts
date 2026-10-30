@@ -1069,7 +1069,14 @@ export interface SAPSystemExtended {
   last_analysis_at: string | null;
   role: "source" | "target";
   target_system_id: string | null;
+  /** ABAP systems: how tables are read (sap/extraction_plan.py EXTRACTION_PATHS). Others: table_reader. */
+  extraction_path?: ExtractionPath;
+  /** The table reader (sap/rfc.py); null keeps the deployment's default. */
+  read_function?: ReadFunction | null;
 }
+
+export type ExtractionPath = "table_reader" | "odp" | "odata" | "auto";
+export type ReadFunction = "RFC_READ_TABLE" | "/BODS/RFC_READ_TABLE2" | "BBP_RFC_READ_TABLE" | "auto";
 
 /** A registry source whose name is not yet verified against SAP (sap/extraction_registry.py status "preview"). */
 export interface PreviewSource {

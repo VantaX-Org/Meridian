@@ -10,7 +10,7 @@ import type { SAPSystemExtended, SyncProfile } from "@/types/api";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { describeCron } from "@/lib/v2/cron";
 import { useOpenItem } from "@/lib/v2/hooks";
-import { firstSentence, JOB_KIND_LABEL, jobObject, openFailures } from "@/lib/v2/jobs";
+import { firstSentence, JOB_KIND_LABEL, jobObject, openFailures, readPathSummary } from "@/lib/v2/jobs";
 import { runKeys, useSystemsExtended, useV2Jobs } from "@/lib/v2/runs-queries";
 import { int } from "@/lib/v2/score";
 import { t } from "@/lib/v2/i18n";
@@ -45,6 +45,34 @@ function healthOf(status: SAPSystemExtended["health_status"]): { verdict: "go" |
   }
 }
 
+const RFC_TYPES: readonly string[] = ["ecc", "s4hana_onprem", "ewm"];
+
+/** The system's extraction path setting (sap_systems.extraction_path), for ABAP systems. */
+export function extractionPathWord(s: SAPSystemExtended): string | null {
+  if (!RFC_TYPES.includes(s.system_type)) return null;
+  switch (s.extraction_path) {
+    case "odp":
+      return t("ODP, table reader for the rest");
+    case "odata":
+      return t("OData");
+    case "auto":
+      return t("Automatic (table reader)");
+    default:
+      return t("Table reader");
+  }
+}
+
+/** The newest extraction job of each system (GET /jobs), whose tables say how each was read. */
+export function lastExtractionJobs(jobs: readonly Job[]): Map<string, Job> {
+  const out = new Map<string, Job>();
+  for (const j of jobs) {
+    if (j.kind !== "extraction" || !j.system_id || j.tables.length === 0) continue;
+    const cur = out.get(j.system_id);
+    if (!cur || j.started_at > cur.started_at) out.set(j.system_id, j);
+  }
+  return out;
+}
+
 function Block({ title, testid, children, note }: { title: string; testid: string; children: ReactNode; note?: ReactNode }) {
   return (
     <section className="m2-sec" aria-label={title} data-testid={testid}>
@@ -65,6 +93,7 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
   const systems = systemsQ.data ?? [];
   const profileQs = useQueries({ queries: systems.map((s) => ({ queryKey: runKeys.profiles(fixture, s.id), queryFn: () => getSystemProfiles(s.id), staleTime: 30_000 })) });
   const failed = openFailures(jobsQ.jobs);
+  const lastJobs = lastExtractionJobs(jobsQ.jobs);
   const nameOf = (id: string | null | undefined) => systems.find((s) => s.id === id)?.name ?? landscape.systems.find((s) => s.id === id)?.name ?? null;
   const authErrors: { where: string; what: string; at: string | null; href: string }[] = [
     ...systems.filter((s) => s.health_status === "auth_failed" || isAuthError(s.health_message)).map((s) => ({ where: s.name, what: s.health_message ?? t("Refused the credentials"), at: s.last_health_check, href: hrefFor({ kind: "system", id: s.id }) })),
@@ -89,6 +118,7 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
                   <th scope="col">{t("System")}</th>
                   <th scope="col">{t("Type")}</th>
                   <th scope="col">{t("Connection")}</th>
+                  <th scope="col">{t("Extraction path")}</th>
                   <th scope="col">{t("Last check")}</th>
                   <th scope="col">{t("What it said")}</th>
                 </tr>
@@ -101,6 +131,7 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
                       <th scope="row"><V2Link href={hrefFor({ kind: "system", id: s.id })} className="m2-rowlink">{s.name}</V2Link></th>
                       <td>{systemTypeLabel(s.system_type)}{s.client ? <> <Mono>{s.client}</Mono></> : null}</td>
                       <td><span className="m2-v">{h.verdict ? <VerdictMark verdict={h.verdict} /> : null}{h.word}</span></td>
+                      <td data-testid="basis-path">{extractionPathWord(s) ?? <Dash why={t("Cloud systems are read through their APIs")} />}</td>
                       <td>{s.last_health_check ? formatDate(s.last_health_check, "datetime") : <Dash why={t("No connection test has run")} />}</td>
                       <td>{s.health_message ?? <Dash />}</td>
                     </tr>
@@ -121,6 +152,7 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
                 <th scope="col">{t("Last extraction")}</th>
                 <th scope="col" className="m2-r">{t("Records")}</th>
                 <th scope="col">{t("State")}</th>
+                <th scope="col">{t("Read through")}</th>
               </tr>
             </thead>
             <tbody>
@@ -130,6 +162,11 @@ export function BasisHome({ landscape }: { landscape: Landscape }) {
                   <td>{s.last_extracted_at ? formatDate(s.last_extracted_at, "datetime") : <Dash why={t("Never extracted")} />}</td>
                   <td className="m2-r">{s.records == null ? <Dash why={t("Never extracted")} /> : int(s.records)}</td>
                   <td>{s.state === "analysed" ? t("Analysed") : s.state === "extracted" ? t("Extracted, not analysed") : t("Not extracted")}</td>
+                  <td data-testid="basis-read-through">{(() => {
+                    const job = lastJobs.get(s.id);
+                    const summary = job ? readPathSummary(job) : null;
+                    return job && summary ? <V2Link href={hrefFor({ kind: "job", id: job.id })} className="m2-rowlink">{summary}</V2Link> : <Dash why={t("No extraction job with table detail is on record")} />;
+                  })()}</td>
                 </tr>
               ))}
             </tbody>

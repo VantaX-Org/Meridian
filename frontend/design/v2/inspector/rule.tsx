@@ -6,11 +6,11 @@ import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/rea
 import { checkClassLabel, formatDate } from "@/lib/format";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { getObjectRules, getReceipt } from "@/lib/api/v2/landscape";
-import { handOffRule, suppressRule, type RuleRun, type RuleScope } from "@/lib/api/v2/object";
+import { downloadReconciliationWorkbook, handOffRule, suppressRule, type Reconcile, type ReconcileCondition, type RuleRun, type RuleScope, type SelectionLine } from "@/lib/api/v2/object";
 import type { Landscape, Receipt, RuleRow } from "@/lib/api/v2/types";
 import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { v2Keys } from "@/lib/v2/queries";
-import { useRuleHistory, useRuleScope, useStewards } from "@/lib/v2/object-queries";
+import { useRuleHistory, useRuleReconcile, useRuleScope, useStewards } from "@/lib/v2/object-queries";
 import { int, moduleSlug, systemSlug } from "@/lib/v2/score";
 import { Explain } from "../Explain";
 import "../object.css";
@@ -412,6 +412,200 @@ export function RuleHistory({ view, limit = 8 }: { view: RuleView; limit?: numbe
   );
 }
 
+/* ---- prove in SAP: the reconciliation pack ---- */
+
+const OPTION_WORD: Record<string, () => string> = {
+  initial: () => tr("Initial value"),
+  not_initial: () => tr("Not initial"),
+  in: () => tr("One of (multiple selection)"),
+  not_in: () => tr("None of (multiple selection, exclude)"),
+  EQ: () => tr("Equal to"),
+  NE: () => tr("Not equal to"),
+  GT: () => tr("Greater than"),
+  LT: () => tr("Less than"),
+  GE: () => tr("Greater than or equal to"),
+  LE: () => tr("Less than or equal to"),
+  CP: () => tr("Pattern"),
+};
+
+const EXCLUDED_WORD: Record<string, () => string> = {
+  deleted: () => tr("flagged for deletion"),
+  one_time_account: () => tr("one-time accounts"),
+  hidden_by_field_status: () => tr("hidden by the field status"),
+  customer_equipment: () => tr("customer equipment"),
+};
+
+const str = (v: unknown): string => (v == null ? "" : typeof v === "string" ? v : JSON.stringify(v));
+const ids = (fields: string[]): string => fields.join(", ");
+
+/** One condition SE16 cannot express, in the reader's language; the rule-specific logic keeps its English words. */
+export function conditionText(c: ReconcileCondition): string {
+  const p = c.params;
+  const f = ids(c.fields);
+  switch (c.kind) {
+    case "pattern": return tr("{field} does not match the pattern {pattern}", { field: f, pattern: str(p.pattern) });
+    case "not_in_check_table": return p.table ? tr("{field} has no entry in check table {table}: list {table} in SE16 and compare", { field: f, table: str(p.table) }) : tr("{field} has no entry in its check table", { field: f });
+    case "chars_not_in": return tr("A character of {field} is not an allowed value", { field: f });
+    case "format": return tr("{field} is not a valid {format}", { field: f, format: str(p.format) });
+    case "checksum": return tr("{field} fails the {format} check digit", { field: f, format: str(p.format) });
+    case "duplicate": return tr("Two or more records share the same {fields}; in SE16N, output only these fields with the number of entries", { fields: f });
+    case "missing_in_target": return tr("{fields} has no record in {table}", { fields: f, table: str(p.table) });
+    case "present_in_target": return tr("{fields} has a record in {table}", { fields: f, table: str(p.table) });
+    case "expression_true": return tr("Records where {expression} holds", { expression: str(p.expression) });
+    case "expression_false": return tr("Records where {expression} does not hold", { expression: str(p.expression) });
+    case "join": return tr("Join {from} to {to}: SE16 reads one table at a time, so use SE16H or SQVI", { from: str(p.from_table), to: str(p.to_table) });
+    case "status_exclusion": return tr("Leave out records whose status in {table} marks them {label}", { table: str(p.table), label: str(p.label) });
+    case "not_a_date": return tr("A value of {field} that is not a date also fails", { field: f });
+    case "time_of_day": return tr("On the cut-off day itself, records fail when their time is before {cutoff}", { cutoff: str(p.cutoff) });
+    case "older_than_hours": return tr("{field} is more than {hours} hours before the run's as-of time", { field: f, hours: str(p.hours) });
+    case "relative_date": return tr("{field} is measured against the run's as-of date", { field: f });
+    case "group_combination": return tr("The combination {fields} is one of the groups of the field status", { fields: f });
+    default: return tr("Rule logic: {words}", { words: c.words });
+  }
+}
+
+function SelectionRows({ lines, part }: { lines: SelectionLine[]; part: string }) {
+  return (
+    <>
+      {lines.map((l, i) => (
+        <tr key={`${part}:${i}`}>
+          <td>{part}</td>
+          <td><Mono>{`${l.table}-${l.field}`}</Mono></td>
+          <td>{OPTION_WORD[l.operator]?.() ?? l.operator}</td>
+          <td>{l.values.length === 0 ? <Dash why={tr("No value: the option says it")} /> : l.values.map((v, j) => <span key={j}>{j > 0 ? ", " : ""}{v === "" ? tr("(initial)") : <Mono>{v}</Mono>}</span>)}</td>
+        </tr>
+      ))}
+    </>
+  );
+}
+
+function ProvePack({ p }: { p: Reconcile }) {
+  const lines = p.population_selection.length + p.failing_selection.length;
+  const excluded = Object.entries(p.excluded);
+  return (
+    <>
+      <p className="m2-rp">
+        {p.system === "cloud"
+          ? tr("{table} is read from a cloud system, so SE16 does not apply. Use the same selection in the source's own reporting.", { table: p.grain.table ?? "" })
+          : p.se16
+            ? tr("One {transaction} selection on {table} gives the failing count.", { transaction: p.transaction ?? "SE16N", table: p.grain.table ?? "" })
+            : tr("{transaction} gives the closest selection; the conditions below say what SE16 alone cannot express.", { transaction: p.transaction ?? "SE16H" })}
+      </p>
+      <Facts>
+        <Fact label={tr("Run")}>{p.run_at ? formatDate(p.run_at, "date") : <Mono>{p.run_id}</Mono>}</Fact>
+        <Fact label={tr("Record grain")}>{p.grain.table ? <><Mono>{p.grain.table}</Mono>{p.grain.key_fields.length ? <span className="m2-meta"> {tr("one record per {keys}", { keys: p.grain.key_fields.join(", ") })}</span> : null}</> : <Dash />}</Fact>
+        <Fact label={tr("Tables")}>{p.tables.length ? <Mono>{p.tables.join(", ")}</Mono> : <Dash />}</Fact>
+        <Fact label={tr("Population")}>{tr("{population} records checked", { population: int(p.population) })}</Fact>
+        <Fact label={tr("Failing")}>{tr("{failing} records", { failing: int(p.failing) })}</Fact>
+        {excluded.map(([k, n]) => (
+          <Fact key={k} label={tr("Left out")}>{tr("{n} {why}", { n: int(n), why: EXCLUDED_WORD[k]?.() ?? k.replace(/_/g, " ") })}</Fact>
+        ))}
+      </Facts>
+      {lines > 0 ? (
+        <table className="m2-tbl m2-prove-tbl" aria-label={tr("SE16 selection")}>
+          <thead>
+            <tr>
+              <th scope="col">{tr("For")}</th>
+              <th scope="col">{tr("Field")}</th>
+              <th scope="col">{tr("Option")}</th>
+              <th scope="col">{tr("Values")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <SelectionRows lines={p.population_selection} part={tr("Population")} />
+            <SelectionRows lines={p.failing_selection} part={tr("Failing")} />
+          </tbody>
+        </table>
+      ) : (
+        <p className="m2-rp m2-meta">{tr("No selection: the rule judges every record of the table.")}</p>
+      )}
+      {p.conditions.length > 0 ? (
+        <>
+          <p className="m2-rp"><b>{tr("What SE16 cannot express")}</b></p>
+          <ul className="m2-hist" data-testid="prove-conditions">
+            {p.conditions.map((c, i) => (
+              <li key={`${c.kind}:${i}`}>
+                <span>{conditionText(c)}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      <p className="m2-rp"><b>{tr("Five failing records")}</b></p>
+      {p.sample_keys.length === 0 ? (
+        <p className="m2-rp m2-meta">{tr("No failing record key is stored for this run.")}</p>
+      ) : (
+        <ul className="m2-lk" data-testid="prove-keys">
+          {p.sample_keys.map((k) => (
+            <li key={k.raw}>
+              <Mono>{k.display}</Mono>
+              <span className="m2-meta">{tr("stored as {raw}", { raw: k.raw })}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
+/** Prove in SAP: the SE16 selection, the counts and five failing keys of the rule in the run of one object. */
+export function RuleProve({ view }: { view: RuleView }) {
+  const { can } = useV2Session();
+  const objects = view.scope.objects;
+  const [pick, setPick] = useState(0);
+  const obj = objects[Math.min(pick, Math.max(0, objects.length - 1))];
+  const q = useRuleReconcile(view.id, obj?.run_id);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const download = () => {
+    if (!obj) return;
+    setBusy(true);
+    setMsg(null);
+    downloadReconciliationWorkbook(obj.run_id, 10)
+      .then((name) => setMsg(tr("Saved {name}.", { name })))
+      .catch((e: unknown) => setMsg(e instanceof Error && e.message ? e.message : tr("The workbook could not be built.")))
+      .finally(() => setBusy(false));
+  };
+  return (
+    <Sec title={tr("Prove in SAP")}>
+      {!obj ? (
+        <p className="m2-rp m2-meta">{tr("No run has measured this rule yet.")}</p>
+      ) : (
+        <div className="m2-prove" data-testid="rule-prove">
+          {objects.length > 1 ? (
+            <label className="m2-aform">
+              {tr("Object and run")}
+              <select value={pick} onChange={(e) => setPick(Number(e.target.value))}>
+                {objects.map((o, i) => (
+                  <option key={`${o.system_id}:${o.module}`} value={i}>
+                    {tr("{label} on {system}", { label: o.label, system: o.system_name ?? o.system_id })}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          {q.isPending ? (
+            <Skeleton width="80%" height={14} />
+          ) : q.isError ? (
+            <p className="m2-rp m2-meta">{q.error instanceof Error && q.error.message ? q.error.message : tr("The reconciliation could not be read for this run.")}</p>
+          ) : (
+            <ProvePack p={q.data} />
+          )}
+          {can("export") ? (
+            <div className="m2-acts">
+              <button type="button" className="m2-btn" onClick={download} disabled={busy}>
+                {tr("Download the reconciliation workbook")}
+              </button>
+            </div>
+          ) : null}
+          <p className="m2-prov">{tr("The workbook holds the ten rules with the most failing records in this run, with empty SE16 count and match columns for your team.")}</p>
+          {msg ? <p role="status" className="m2-prov">{msg}</p> : null}
+        </div>
+      )}
+    </Sec>
+  );
+}
+
 /* ---- actions by role ---- */
 
 type Panel = "suppress" | "handoff" | null;
@@ -587,6 +781,7 @@ export function RuleInspectorBody({ id, landscape }: { id: string; landscape?: L
       <RuleLineage view={v} />
       <RuleVersions view={v} />
       <RuleContract view={v} />
+      <RuleProve view={v} />
       <RuleActions view={v} />
       <RuleHistory view={v} />
       <CollabSections kind="rule" id={v.id} label={tr("rule {id}", { id: v.id })} />

@@ -30,12 +30,13 @@ router = APIRouter(prefix="/api/v1", tags=["writeback"])
 logger = logging.getLogger("meridian.writeback")
 
 # BAPI per ECC module. The modules with field-level parameter mappings (material master, business partner,
-# customer) are in sap/bapi_writeback.py, which builds, verifies against the connected system, simulates and
+# customer, and vendor through its business partner where the system has CVI) are in sap/bapi_writeback.py, which builds, verifies against the connected system, simulates and
 # commits each call. The others have no field mapping yet: every field of theirs is reported per field as
 # "no BAPI mapping" and goes out through the export (LSMW / BAPI file) instead.
 # SuccessFactors modules use OData APIs (not RFC BAPIs) — excluded intentionally.
 BAPI_MAP = {
     "business_partner": "BAPI_BUPA_CENTRAL_CHANGE",
+    "accounts_payable": "BAPI_BUPA_CENTRAL_CHANGE",  # the vendor's business partner (CVI); else export
     "material_master": "BAPI_MATERIAL_SAVEDATA",
     "fi_gl": "BAPI_GL_ACCOUNT_CREATE",
     "accounts_receivable": "BAPI_CUSTOMER_CHANGEFROMDATA1",
@@ -103,6 +104,7 @@ class RecordResultOut(BaseModel):
     committed: bool = False
     messages: list[dict] = []            # RETURN of the real call and the commit
     error: Optional[str] = None
+    export: list[dict] = []              # fields the system could not take by BAPI ({field, reason}): export
 
 
 class WriteBackResponse(BaseModel):
@@ -473,11 +475,7 @@ async def approve_writeback(
             records, conn_errors = await asyncio.to_thread(_apply)
             errors.extend(conn_errors)
             applied = sum(1 for r in records if r["committed"])
-            for r in records:
-                if r["error"]:
-                    errors.append(f"{r['record_key']}: {r['error']}")
-                elif not r["committed"]:
-                    errors.append(f"{r['record_key']}: SAP refused the change; see its RETURN messages")
+            errors.extend(record_errors(records, support))
 
     # Update the log record
     await db.execute(
@@ -503,6 +501,40 @@ async def approve_writeback(
     logger.info(f"Write-back approved: {approval_id} — applied={applied}, errors={len(errors)}")
 
     return ApprovalResponse(applied=applied, errors=errors, status=status, fields=support, records=records)
+
+
+def record_errors(records: list[dict], support: list[dict]) -> list[str]:
+    """One line per record that was not committed, and the fields the connected system sent to the export instead
+    (a vendor that is no business partner there): ``support`` is updated in place so fields[] says so."""
+    errors: list[str] = []
+    moved = 0
+    for r in records:
+        for x in r.get("export") or []:
+            for sup in support:
+                if sup["record_key"] == r["record_key"] and sup["field"] == x["field"] and sup["supported"]:
+                    sup.update(supported=False, delivery="export", reason=x["reason"])
+                    moved += 1
+        if r.get("error"):
+            errors.append(f"{r['record_key']}: {r['error']}")
+        elif r.get("fields") and not r.get("committed"):
+            errors.append(f"{r['record_key']}: SAP refused the change; see its RETURN messages")
+    if moved:
+        errors.append(f"{moved} field(s) could not go by BAPI on this system and were not sent; deliver them with "
+                      "the export (see fields)")
+    return errors
+
+
+def record_failed(r: dict) -> bool:
+    """Not committed although something was to be sent (a record whose fields all went to the export is not)."""
+    return bool(r.get("error")) or (bool(r.get("fields")) and not r.get("committed"))
+
+
+def resolve_vendors(conn, by_record: dict[str, list[str]]) -> dict[str, dict[str, str]]:
+    """record_key -> {field: reason} for the vendor fields the connected system cannot take by BAPI (read only)."""
+    from sap.bapi_writeback import resolve_vendor
+
+    cache: dict = {}
+    return {key: resolve_vendor(conn, key, fields, cache)[1] for key, fields in by_record.items()}
 
 
 def apply_records(conn, module: str, by_record: dict[str, dict]) -> list[dict]:
@@ -562,6 +594,61 @@ def _batch_support(items: list[dict]) -> list[dict]:
     return [field_support(i["module"], {"field": i["field"], "record_key": i["record_key"]}) for i in items]
 
 
+async def _system_params(db: AsyncSession, tenant_id: str, system_id: str):
+    """Connection parameters of a registered ABAP system with stored credentials, or None."""
+    row = (await db.execute(text("""
+        SELECT s.host, s.client, s.sysnr, c.encrypted_password
+          FROM sap_systems s JOIN system_credentials c ON c.system_id = s.id
+         WHERE s.tenant_id = :tid AND CAST(s.id AS text) = :sid
+           AND s.system_type IN ('ecc', 's4hana_onprem', 'ewm')
+         LIMIT 1"""), {"tid": tenant_id, "sid": system_id})).fetchone()
+    if not row:
+        return None
+    from api.services.credential_store import decrypt_password
+    from sap.base import SAPConnectionParams
+
+    return SAPConnectionParams(host=row[0], client=row[1] or "", sysnr=row[2] or "",
+                               user=os.getenv("SAP_RFC_USER", "RFC_USER"), password=decrypt_password(tenant_id, row[3]))
+
+
+async def _check_vendors(db: AsyncSession, tenant_id: str, items: list[dict], support: list[dict]) -> list[str]:
+    """Vendor fields a BAPI may carry: ask the connected system (read only) whether each vendor is a business partner
+    there, and move the fields it cannot take to the export with the reason. Other objects need no lookup."""
+    from sap import get_connector
+    from sap.base import SAPConnectorError
+
+    # system -> record_key -> fields
+    groups: dict[str, dict[str, list[str]]] = {}
+    for item, sup in zip(items, support):
+        if item["module"] == "accounts_payable" and sup["supported"]:
+            groups.setdefault(str(item["scope"]), {}).setdefault(item["record_key"], []).append(sup["field"])
+    errors: list[str] = []
+    for system_id, by_record in groups.items():
+        params = await _system_params(db, tenant_id, system_id)
+        if params is None:
+            errors.append("No registered SAP system with stored credentials holds these vendors; the send cannot "
+                          "check them")
+            continue
+
+        def _probe(params=params, by_record=by_record) -> tuple[dict, Optional[str]]:
+            try:
+                with get_connector() as conn:
+                    conn.connect(params)
+                    return resolve_vendors(conn, by_record), None
+            except SAPConnectorError as e:
+                return {}, f"RFC connection failed: {e}"
+
+        found, err = await asyncio.to_thread(_probe)
+        if err:
+            errors.append(f"Could not ask SAP whether these vendors are business partners ({err}); the send decides "
+                          "per record")
+            continue
+        records = [{"record_key": k, "export": [{"field": f, "reason": r} for f, r in v.items()]}
+                   for k, v in found.items()]
+        errors += record_errors(records, support)
+    return errors
+
+
 @router.post(
     "/writeback/batches/{batch_id}/check",
     response_model=BatchCheckResponse,
@@ -578,15 +665,18 @@ async def check_batch_writeback(
     _, items = await _approved_batch(db, tenant, batch_id)
     support = _batch_support(items)
     errors: list[str] = []
-    if not items:
-        errors.append("No record of this batch has a proposed value; there is nothing to send")
-    elif not any(x["supported"] for x in support):
-        errors.append("None of these fields has a BAPI mapping; deliver them with the export")
     from sap import get_connector
     try:
         get_connector()
     except Exception:
         errors.append("SAP connector not available on this deployment; the send would fail")
+    else:
+        if settings.live_writeback_enabled:
+            errors += await _check_vendors(db, str(tenant.id), items, support)
+    if not items:
+        errors.insert(0, "No record of this batch has a proposed value; there is nothing to send")
+    elif not any(x["supported"] for x in support):
+        errors.insert(0, "None of these fields has a BAPI mapping; deliver them with the export")
     return BatchCheckResponse(
         batch_id=str(batch_id), live_enabled=bool(settings.live_writeback_enabled),
         records=len({(i["module"], i["record_key"]) for i in items}),
@@ -641,23 +731,13 @@ async def send_batch_writeback(
 
     records: list[dict] = []
     for (system_id, module), by_record in groups.items():
-        row = (await db.execute(text("""
-            SELECT s.host, s.client, s.sysnr, c.encrypted_password
-              FROM sap_systems s JOIN system_credentials c ON c.system_id = s.id
-             WHERE s.tenant_id = :tid AND CAST(s.id AS text) = :sid
-               AND s.system_type IN ('ecc', 's4hana_onprem', 'ewm')
-             LIMIT 1"""), {"tid": tenant_id, "sid": system_id})).fetchone()
-        if not row:
+        params = await _system_params(db, tenant_id, system_id)
+        if params is None:
             msg = "No registered SAP system with stored credentials holds these records; deliver them with the export"
             records += [{"record_key": k, "error": msg} for k in by_record]
             continue
-        from api.services.credential_store import decrypt_password
         from sap import get_connector
-        from sap.base import SAPConnectionParams, SAPConnectorError
-
-        params = SAPConnectionParams(host=row[0], client=row[1] or "", sysnr=row[2] or "",
-                                     user=os.getenv("SAP_RFC_USER", "RFC_USER"),
-                                     password=decrypt_password(tenant_id, row[3]))
+        from sap.base import SAPConnectorError
 
         def _apply(params=params, module=module, by_record=by_record) -> tuple[list[dict], Optional[str]]:
             try:
@@ -672,12 +752,9 @@ async def send_batch_writeback(
 
     out = [RecordResultOut(**r) for r in records]
     sent = sum(1 for r in out if r.committed)
-    failed = len(out) - sent
-    for r in out:
-        if r.error:
-            errors.append(f"{r.record_key}: {r.error}")
-        elif not r.committed:
-            errors.append(f"{r.record_key}: SAP refused the change; see its RETURN messages")
+    failed = sum(1 for r in records if record_failed(r))
+    errors += record_errors(records, support)
+    export_only = sum(1 for x in support if not x["supported"])
     if sent:
         await db.execute(text("UPDATE remediation_batches SET status = 'exported', exported_at = now() "
                               "WHERE id = :id AND tenant_id = :tid"), {"id": batch_id, "tid": tenant_id})

@@ -173,13 +173,17 @@ TRANSACTION_CODES: dict[str, str] = {
 # Mass maintenance transactions (one field, one new value, many keys per run) for correction packages.
 MASS_MAINTENANCE_TCODES: dict[str, str] = {"material": "MM17", "customer": "XD99", "vendor": "XK99"}
 
+# The BAPI that changes each object, as live write-back calls it (sap/bapi_writeback.py) where it has a mapping. A
+# vendor changes through its business partner (supplier role) where the system has CVI: BAPI_BUPA_CENTRAL_CHANGE
+# for names, BAPI_BUPA_ADDRESS_CHANGE for the address, BAPI_BUPA_BANKDETAIL_CHANGE for bank details. SAP has no
+# remote-enabled change BAPI for the classic vendor master; there the LSMW file (XK02 / FK02) is the load path.
 BAPI_NAMES: dict[str, str] = {
     "customer": "BAPI_CUSTOMER_CHANGEFROMDATA1",
-    "vendor": "BAPI_VENDOR_CHANGEFROMDATA",
+    "vendor": "BAPI_BUPA_CENTRAL_CHANGE",
     "material": "BAPI_MATERIAL_SAVEDATA",
     "equipment": "BAPI_EQUI_CHANGE",
-    "business_partner": "BAPI_BUPA_CENTRAL_DATA_SET",
-    "accounts_payable": "BAPI_VENDOR_CHANGEFROMDATA",
+    "business_partner": "BAPI_BUPA_CENTRAL_CHANGE",
+    "accounts_payable": "BAPI_BUPA_CENTRAL_CHANGE",
     "accounts_receivable": "BAPI_CUSTOMER_CHANGEFROMDATA1",
     "asset_accounting": "BAPI_FIXEDASSET_CHANGE",
     "hcm": "HR_INFOTYPE_OPERATION",
@@ -189,6 +193,12 @@ BAPI_NAMES: dict[str, str] = {
     "sd_customer_master": "BAPI_CUSTOMER_CHANGEFROMDATA1",
     "sd_sales_orders": "BAPI_SALESORDER_CHANGE",
 }
+
+_VENDOR_NOTE = ("Vendors change through their business partner (supplier role) where CVI is active: set "
+                "BUSINESSPARTNER to the partner linked to LIFNR in CVI_VEND_LINK; names go by BAPI_BUPA_CENTRAL_CHANGE, "
+                "the address by BAPI_BUPA_ADDRESS_CHANGE, bank details by BAPI_BUPA_BANKDETAIL_CHANGE. Company code "
+                "and purchasing data, and every vendor on a release without CVI, load with the LSMW file (XK02 / FK02)")
+BAPI_NOTES: dict[str, str] = {"vendor": _VENDOR_NOTE, "accounts_payable": _VENDOR_NOTE}
 
 IDOC_TYPES: dict[str, str] = {
     "customer": "DEBMAS07", "vendor": "CREMAS05",
@@ -256,7 +266,7 @@ class ExportEngine:
 
     def export_bapi(self, records: list[dict], object_type: str) -> str:
         """Generate JSON BAPI call structure."""
-        bapi_name = BAPI_NAMES.get(object_type, f"BAPI_{object_type.upper()}_CHANGE")
+        bapi_name = BAPI_NAMES.get(object_type)  # None: no change BAPI is named for this object; never invented
         calls: list[dict[str, Any]] = []
 
         for i, record in enumerate(records, start=1):
@@ -267,7 +277,12 @@ class ExportEngine:
                 "import_params": mapped,
             })
 
-        return json.dumps({"bapi_calls": calls}, indent=2)
+        out: dict[str, Any] = {"bapi_calls": calls}
+        note = BAPI_NOTES.get(object_type) if bapi_name else (
+            "No change BAPI is named for this object; load the file with the LSMW recording instead")
+        if note:
+            out["note"] = note
+        return json.dumps(out, indent=2)
 
     def export_idoc(self, records: list[dict], object_type: str) -> str:
         """Generate JSON IDoc structure."""

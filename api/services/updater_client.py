@@ -19,8 +19,9 @@ logger = logging.getLogger("meridian.updater_client")
 _TIMEOUT = httpx.Timeout(10.0)
 
 
-async def trigger_update() -> dict:
-    """POST /update on the sidecar. Returns {"status": ...} — "started",
+async def trigger_update(version: str | None = None) -> dict:
+    """POST /update on the sidecar, naming the release to install (Meridian HQ's latest_version) so the
+    update pins exactly the release the administrator was offered. Returns {"status": ...} — "started",
     "already_running", "unauthorized", or "unreachable"."""
     if not settings.updater_shared_secret:
         return {"status": "not_configured"}
@@ -29,6 +30,7 @@ async def trigger_update() -> dict:
             resp = await client.post(
                 f"{settings.updater_url}/update",
                 headers={"X-Updater-Secret": settings.updater_shared_secret},
+                json={"version": version} if version else None,
             )
             if resp.status_code == 401:
                 logger.error("Updater sidecar rejected our shared secret")

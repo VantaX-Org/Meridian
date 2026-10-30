@@ -61,7 +61,9 @@ async def trigger_update_route(
     tenant: Tenant = Depends(get_tenant),
     _role: str = Depends(require_permission("manage_system")),
 ):
-    result = await updater_client.trigger_update()
+    manifest = get_cached_manifest()
+    # the release the administrator was offered is the one installed and pinned (scripts/update.sh --version)
+    result = await updater_client.trigger_update(manifest.get("latest_version") or None)
     status = result.get("status")
 
     if status == "not_configured":
@@ -80,7 +82,6 @@ async def trigger_update_route(
         raise HTTPException(status_code=503, detail="Updater sidecar unreachable")
 
     await _set_rls(db, tenant.id)
-    manifest = get_cached_manifest()
     raw_user_id = getattr(request.state, "local_user_id", None)
     await db.execute(
         text("""

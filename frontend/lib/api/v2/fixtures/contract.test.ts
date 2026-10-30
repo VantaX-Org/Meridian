@@ -157,6 +157,17 @@ describe("fixture answers match the API's response schemas", () => {
   });
 });
 
+describe("the reconciliation pack fixture answers in the API's shape", () => {
+  it("GET /rules/{check_id}/reconcile?run= for the rules the fixtures name", () => {
+    const schema = api.paths["/api/v1/rules/{check_id}/reconcile"]?.get?.responses?.["200"]?.content?.["application/json"]?.schema as Schema;
+    expect(schema).toBeTruthy();
+    for (const id of ["MM142", "MM003", "MM302", "MM035"]) {
+      const body = fixtureResponse(`/rules/${id}/reconcile`, { run: IDS.run_id });
+      expect(validate(schema, JSON.parse(JSON.stringify(body)))).toEqual([]);
+    }
+  });
+});
+
 describe("the live write-back fixtures answer in the API's shapes", () => {
   const post = (route: string) => api.paths[route]?.post?.responses?.["200"]?.content?.["application/json"]?.schema as Schema;
   it("POST /writeback/batches/{id}/check and /send", () => {

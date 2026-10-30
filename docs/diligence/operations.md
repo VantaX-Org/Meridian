@@ -37,12 +37,13 @@ fixed the operator enables the block by hand or terminates TLS in front of nginx
 ```
 updater sidecar (POST /update with X-Updater-Secret)  or  sudo bash scripts/update.sh
   0. pg_dump of the database to a pre-update dump (scripts/update.sh line 149)
-  1. snapshot every running image as :rollback
-  2. pull the new :latest images; copy the release's compose files and scripts from the API image (/deploy)
-  3. restart: the API container runs `alembic upgrade head` before it serves
-  4. canary: probe /health until it answers (skip with --no-verify)
-  5. on failure: auto_rollback re-tags :rollback as :latest and restarts
-sudo bash scripts/update.sh --rollback      manual rollback to the previous images
+  1. resolve the release (--version X.Y.Z, else Meridian HQ's latest_version); snapshot the running images as :rollback
+  2. pull that release's vX.Y.Z images; copy its compose files and scripts from the API image (/deploy)
+  3. pin it: MERIDIAN_VERSION=vX.Y.Z (and MERIDIAN_PREVIOUS_VERSION) in the install's .env
+  4. restart: the API container runs `alembic upgrade head` before it serves
+  5. canary: probe /health until it answers (skip with --no-verify)
+  6. on failure: auto_rollback re-tags :rollback as the running release, restores .env and restarts
+sudo bash scripts/update.sh --rollback      manual rollback to the previous release (MERIDIAN_PREVIOUS_VERSION)
 ```
 
 - Migrations are forward-only Alembic revisions in `db/migrations/versions/` (114 files, head `116`). A
