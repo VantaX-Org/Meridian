@@ -31,7 +31,7 @@ from typing import Any
 from sqlalchemy import text
 
 EVENTS = ("run.finished", "run.failed", "batch.waiting", "batch.approved", "batch.sent", "score.dropped",
-          "breach.new", "config.drift", "certificate.signed")
+          "breach.new", "config.drift", "certificate.signed", "digest.sent")
 TEST_EVENT = "webhook.test"
 MAX_ATTEMPTS = 5
 BACKOFF_SECONDS = 60
@@ -111,6 +111,9 @@ def emit(session, tenant_id: str, event: str, data: dict, *, webhook_id: str | N
     if event not in EVENTS and event != TEST_EVENT:
         raise ValueError(f"unknown webhook event: {event}")
     check_payload(data)
+    from api.services.sandbox import held_back_sync
+    if held_back_sync(session, tenant_id, "webhook", event, webhook_id):  # sandbox: nothing leaves (migration 115)
+        return []
     hooks = [r[0] for r in session.execute(text(
         "SELECT id::text FROM webhooks WHERE tenant_id = :t AND (CAST(:w AS uuid) IS NULL OR id = CAST(:w AS uuid)) "
         "AND (active OR CAST(:w AS uuid) IS NOT NULL) AND (:e = ANY(events) OR '*' = ANY(events) OR :e = :test)"),
@@ -195,6 +198,10 @@ def deliver_one(session, tenant_id: str, delivery_id: str, post: Callable[..., A
 
 
 def due(session, tenant_id: str, now: datetime | None = None, limit: int = 200) -> list[str]:
+    """Deliveries whose attempt is due; none while the tenant is in sandbox mode (they wait for the exit)."""
+    from api.services.sandbox import is_sandbox_sync
+    if is_sandbox_sync(session, tenant_id):
+        return []
     now = now or datetime.now(timezone.utc)
     return [r[0] for r in session.execute(text(
         "SELECT id::text FROM webhook_deliveries WHERE tenant_id = :t AND status IN ('pending', 'retrying') "

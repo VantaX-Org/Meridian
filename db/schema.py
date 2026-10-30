@@ -65,6 +65,10 @@ class Tenant(Base):
 
     jwt_secret = Column(Text, nullable=True)
     default_role = Column(Text, nullable=True, server_default="analyst")
+    # Sandbox mode (migration 115, api/services/sandbox.py): nothing leaves the deployment while true.
+    sandbox = Column(Boolean, nullable=False, server_default=text("false"))
+    sandbox_since = Column(DateTime(timezone=True), nullable=True)
+    sandbox_by = Column(Text, nullable=True)
     llm_config = Column(JSONB, nullable=True)
     # OIDC sign-in (migration 098; api/services/oidc.py): issuer, client_id, client_secret_encrypted, display_name,
     # allowed_domains, default_role, enforce. NULL until an admin configures it.
@@ -994,6 +998,7 @@ class RecordIssue(Base):
         UniqueConstraint("tenant_id", "scope", "check_id", "record_key", name="uq_record_issues"),
         Index("ix_record_issues_queue", "tenant_id", "status", "module", "severity"),
         Index("ix_record_issues_assignee", "tenant_id", "assigned_to", "status"),
+        Index("ix_record_issues_record", "tenant_id", "module", "record_key"),  # migration 116: record history
     )
 
 
@@ -1069,6 +1074,8 @@ class WorkRecord(Base):
         Index("ix_work_records_due", "tenant_id", "version_id", "module", "due_at",
               postgresql_include=["status", "scope", "sev_rank", "assigned_to"],
               postgresql_where=text("due_at IS NOT NULL")),
+        # Migration 116: one record across every run (GET /work/records/{module}/{key}/history).
+        Index("ix_work_records_history", "tenant_id", "module", "record_key"),
     )
 
 
@@ -1139,7 +1146,8 @@ class RemediationItem(Base):
     recon_version = Column(UUID(as_uuid=True), nullable=True)
     updated_at = Column(DateTime(timezone=True), server_default=text("now()"))
 
-    __table_args__ = (UniqueConstraint("batch_id", "check_id", "record_key", name="uq_remediation_items"),)
+    __table_args__ = (UniqueConstraint("batch_id", "check_id", "record_key", name="uq_remediation_items"),
+                      Index("ix_remediation_items_record", "tenant_id", "module", "record_key"))  # migration 116
 
 
 class RemediationEvent(Base):
@@ -3009,3 +3017,115 @@ class ExtractionChange(Base):
         UniqueConstraint("version_id", "table_name", name="uq_extraction_changes_table"),
         Index("ix_extraction_changes_version", "tenant_id", "version_id"),
     )
+
+
+# ── Step 10: policy packs, digests, sandbox, record history (migrations 113-116) ──
+
+
+class PolicyPack(Base):
+    """A pack of sap/policy_packs.yaml as one tenant applied it (migration 113, api/services/policy_packs.py)."""
+    __tablename__ = "policy_packs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    pack_id = Column(Text, nullable=False)
+    applied = Column(Boolean, nullable=False, server_default=text("false"))
+    applied_at = Column(DateTime(timezone=True), nullable=True)
+    applied_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    applied_by_label = Column(Text, nullable=True)
+    unapplied_at = Column(DateTime(timezone=True), nullable=True)
+    unapplied_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    unapplied_by_label = Column(Text, nullable=True)
+
+    __table_args__ = (UniqueConstraint("tenant_id", "pack_id", name="uq_policy_packs_pack"),)
+
+
+class PolicyFieldClass(Base):
+    """One field class of an applied pack, materialised at apply time (migration 113)."""
+    __tablename__ = "policy_field_classes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    pack_id = Column(Text, nullable=False)
+    class_id = Column(Text, nullable=False)
+    label = Column(Text, nullable=False)
+    authority = Column(Text, nullable=False)
+    fields = Column(ARRAY(Text), nullable=False, server_default="{}")
+    rules = Column(ARRAY(Text), nullable=False, server_default="{}")
+    materialised_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "pack_id", "class_id", name="uq_policy_field_classes_class"),
+        Index("ix_policy_field_classes_rules", "rules", postgresql_using="gin"),
+    )
+
+
+class DigestSchedule(Base):
+    """A scheduled digest for a role or a migration wave (migration 114, workers/tasks/digests.py)."""
+    __tablename__ = "digest_schedules"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    name = Column(Text, nullable=False)
+    audience = Column(Text, nullable=False)  # role | wave
+    role = Column(Text, nullable=True)
+    wave_id = Column(UUID(as_uuid=True), ForeignKey("migration_waves.id", ondelete="CASCADE"), nullable=True)
+    cron = Column(Text, nullable=False)
+    timezone = Column(Text, nullable=False, server_default="UTC")
+    channel = Column(Text, nullable=False)  # email | webhook | alert_channel
+    recipients = Column(ARRAY(Text), nullable=False, server_default="{}")
+    recipient_user_ids = Column(ARRAY(UUID(as_uuid=True)), nullable=False, server_default="{}")
+    alert_channel_id = Column(UUID(as_uuid=True), ForeignKey("alert_channels.id", ondelete="SET NULL"), nullable=True)
+    attach_pdf = Column(Boolean, nullable=False, server_default=text("true"))
+    enabled = Column(Boolean, nullable=False, server_default=text("true"))
+    last_sent_at = Column(DateTime(timezone=True), nullable=True)
+    next_run_at = Column(DateTime(timezone=True), nullable=True)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        CheckConstraint("audience IN ('role', 'wave')", name="ck_digest_schedules_audience"),
+        CheckConstraint("channel IN ('email', 'webhook', 'alert_channel')", name="ck_digest_schedules_channel"),
+        CheckConstraint("(audience = 'role' AND role IS NOT NULL) OR (audience = 'wave' AND wave_id IS NOT NULL)",
+                        name="ck_digest_schedules_target"),
+        Index("ix_digest_schedules_due", "tenant_id", "next_run_at", postgresql_where=text("enabled")),
+    )
+
+
+class DigestDelivery(Base):
+    """One claimed slot of a digest schedule and what came of it (migration 114)."""
+    __tablename__ = "digest_deliveries"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    schedule_id = Column(UUID(as_uuid=True), ForeignKey("digest_schedules.id", ondelete="CASCADE"), nullable=False)
+    due_at = Column(DateTime(timezone=True), nullable=False)
+    manual = Column(Boolean, nullable=False, server_default=text("false"))
+    status = Column(Text, nullable=False, server_default="sending")  # sending | sent | failed | skipped
+    reason = Column(Text, nullable=True)
+    delivered = Column(Integer, nullable=False, server_default="0")
+    failed = Column(Integer, nullable=False, server_default="0")
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    finished_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("status IN ('sending', 'sent', 'failed', 'skipped')", name="ck_digest_deliveries_status"),
+        UniqueConstraint("schedule_id", "due_at", name="uq_digest_deliveries_slot"),
+        Index("ix_digest_deliveries_schedule", "tenant_id", "schedule_id", "created_at"),
+    )
+
+
+class SkippedDelivery(Base):
+    """A delivery a sender held back, e.g. while the tenant is in sandbox mode (migration 115)."""
+    __tablename__ = "skipped_deliveries"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    channel = Column(Text, nullable=False)
+    kind = Column(Text, nullable=False)
+    ref = Column(Text, nullable=True)
+    reason = Column(Text, nullable=False, server_default="sandbox")
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (Index("ix_skipped_deliveries_tenant", "tenant_id", "created_at"),)

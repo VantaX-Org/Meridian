@@ -323,6 +323,11 @@ def _cost_number_errors(path: str, value: object) -> list[str]:
     return []
 
 
+class RunCost(BaseModel):
+    per_hour: Optional[float] = Field(None, ge=0, le=1e9)
+    per_million_records: Optional[float] = Field(None, ge=0, le=1e9)
+
+
 class CostModel(BaseModel):
     # ISO 4217 code every amount of the model is in (risk, ROI, value at risk, planner, config impact).
     currency: Optional[str] = Field(None, pattern=r"^[A-Z]{3}$")
@@ -338,6 +343,8 @@ class CostModel(BaseModel):
     config_alignment: dict[str, float] = {}
     # what the tenant pays a month, for the ROI multiple and payback; None: no ROI multiple.
     subscription_monthly: Optional[float] = None
+    # what one run costs to run (GET /runs/predict): per hour of run time and per million records checked.
+    run_cost: Optional[RunCost] = None
 
 
 def _validate_cost_model(body: "CostModel") -> None:

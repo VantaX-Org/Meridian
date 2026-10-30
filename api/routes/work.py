@@ -27,7 +27,7 @@ from api.deps import Tenant, get_db, get_tenant
 from api.middleware.cache import cached_json
 from api.routes.record_issues import _rls
 from api.routes.sync_trigger import module_label
-from api.services import undo, work_analytics, work_counts, worklist
+from api.services import sandbox, undo, work_analytics, work_counts, worklist
 from api.services.worklist import CLEANING_VALUE_MATCH
 from api.services.current_state import current_pairs, pairs_clause, run_ids
 from api.services.rbac import (Scope, _grants_allow, actions_for, current_user_id, current_user_label,
@@ -106,6 +106,19 @@ async def _rows(db: AsyncSession, tenant: Tenant, version_id: Optional[uuid.UUID
         return _Rows(None, None, pairs)
     vid, rscope = await _run(db, tenant, version_id)
     return _Rows(vid, rscope, None)
+
+
+async def _as_of_rows(db: AsyncSession, tenant: Tenant, as_of_run: uuid.UUID, version_id: Optional[uuid.UUID],
+                      scope: str) -> _Rows:
+    """The current state as it stood at run ``as_of_run`` (api/services/current_state.current_pairs_as_of)."""
+    from api.services.current_state import current_pairs_as_of
+
+    if version_id is not None or scope == "current":
+        raise HTTPException(status_code=422, detail="as_of_run is exclusive with version_id and scope=current")
+    if not (await db.execute(text("SELECT 1 FROM analysis_versions WHERE id = CAST(:v AS uuid) AND tenant_id = :t"),
+                             {"v": str(as_of_run), "t": str(tenant.id)})).scalar():
+        raise HTTPException(status_code=404, detail="Run not found.")
+    return _Rows(None, None, await current_pairs_as_of(db, tenant.id, str(as_of_run)))
 
 
 def _auto_runs(sel: _Rows) -> str:
@@ -213,7 +226,7 @@ async def summary(
     status: Optional[str] = Query(None, pattern="^(open|all|to_fix|proposed|approved|sent|not_an_issue|fixed)$"),
     assigned: Optional[str] = Query(None, description="'me', 'unassigned' or a user id"),
     proposed: Optional[bool] = None,
-    due: Optional[str] = Query(None, pattern="^(overdue|today)$"),
+    due: Optional[str] = Query(None, pattern="^(overdue|today|week)$"),
     part: Optional[str] = Query(None, max_length=200),
     system: Optional[str] = Query(None, max_length=100),
     q: Optional[str] = Query(None, max_length=200),
@@ -381,8 +394,10 @@ async def groups(
 
 
 def _records_where(tenant: Tenant, sel: "_Rows | str", request: Request, module, check_id, severity, status, assigned,
-                   proposed, q, due=None, part=None, system=None, batch_id=None) -> tuple[list[str], dict]:
-    """``sel``: the rows read (one run or the current state), or one run's id."""
+                   proposed, q, due=None, part=None, system=None, batch_id=None,
+                   policy: Optional[str] = None) -> tuple[list[str], dict]:
+    """``sel``: the rows read (one run or the current state), or one run's id. ``policy``: a policy pack id or
+    ``pack:class`` (sap/policy_packs.yaml): the records failing a rule that evidences it."""
     if isinstance(sel, str):
         sel = _Rows(sel, None, None)
     p: dict = {"t": str(tenant.id)}
@@ -424,6 +439,9 @@ def _records_where(tenant: Tenant, sel: "_Rows | str", request: Request, module,
         p["a"] = assigned
     if proposed:
         where.append("w.proposed > 0")
+    if policy:
+        where.append("w.checks && CAST(:pol AS text[])")
+        p["pol"] = _policy_rules(policy)
     if part:  # one part of the key, e.g. BUKRS=1000: the records of one company code, plant, sales org
         field, _, value = part.partition("=")
         if not field or not value or not field.replace("_", "").isalnum():
@@ -434,6 +452,8 @@ def _records_where(tenant: Tenant, sel: "_Rows | str", request: Request, module,
         where.append("w.due_at < now()")
     elif due == "today":
         where.append("w.due_at < now() + interval '1 day'")
+    elif due == "week":
+        where.append("w.due_at < now() + interval '7 days'")
     if q:
         term = q.strip()
         if "=" in term:  # a key as the record shows it: LIFNR=0000100234
@@ -444,6 +464,18 @@ def _records_where(tenant: Tenant, sel: "_Rows | str", request: Request, module,
             p["qn"] = term.lower().replace("%", r"\%").replace("_", r"\_") + "%"
             p["qr"] = r"(^|\|)[A-Z0-9_]+=0*" + "".join("\\" + ch if not ch.isalnum() else ch for ch in term.lstrip("0")) + r"($|\|)"
     return where, p
+
+
+def _policy_rules(policy: str) -> list[str]:
+    """The rules evidencing a policy pack (``sox``) or one of its classes (``sox:vendor_bank``); 422 when unknown."""
+    from api.services import policy_packs
+
+    pack_id, _, class_id = policy.partition(":")
+    pk = policy_packs.pack(pack_id)
+    cls = next((c for c in pk["classes"] if c["id"] == class_id), None) if pk and class_id else None
+    if pk is None or (class_id and cls is None):
+        raise HTTPException(status_code=422, detail="policy must be a policy pack id or pack:class, e.g. sox:vendor_bank")
+    return list(cls["rules"]) if cls else policy_packs.pack_rules(pk)
 
 
 # The checks both runs evaluated in full: the ones the run compare (DIFF_SQL) counts, so "new" here is "new" there.
@@ -496,10 +528,12 @@ async def records(
     status: Optional[str] = Query("open", pattern="^(open|all|to_fix|proposed|approved|sent|not_an_issue|fixed)$"),
     assigned: Optional[str] = Query(None, description="'me', 'unassigned' or a user id"),
     proposed: Optional[bool] = None,
-    due: Optional[str] = Query(None, pattern="^(overdue|today)$", description="SLA: past due, or due within a day"),
+    due: Optional[str] = Query(None, pattern="^(overdue|today|week)$", description="SLA: past due, due within a day, or due within seven days"),
     part: Optional[str] = Query(None, max_length=200, description="a key part, FIELD=VALUE (BUKRS=1000)"),
     system: Optional[str] = Query(None, max_length=100, description="source system id, or 'upload'"),
     batch_id: Optional[uuid.UUID] = Query(None, description="only the records with an item in this fix batch, in any state"),
+    policy: Optional[str] = Query(None, max_length=100, description="a policy pack or pack:class (sox:vendor_bank): "
+                                                                    "records failing a rule that evidences it"),
     q: Optional[str] = Query(None, max_length=200),
     after: Optional[str] = Query(None, description="cursor from the previous page"),
     limit: int = Query(PAGE, ge=1, le=500),
@@ -508,18 +542,26 @@ async def records(
                                                                  "-value: the most at risk first); default severity"),
     since: Optional[uuid.UUID] = Query(None, description=_SINCE_DESC),
     scope: WorkScope = _SCOPE,
+    as_of_run: Optional[uuid.UUID] = Query(None, description="time travel: the current state as it stood when this run "
+                                                              "finished (each object at its newest run at or before "
+                                                              "it); exclusive with version_id and scope"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _perm: str = Depends(require_permission("view")),
 ):
     """Failing records of the run (or the current state), worst first unless ``sort`` says otherwise, a page at a time
     (keyset over the sort, then module and record key: no deep OFFSET at millions, and no page reorders the ones before
-    it). Each record names the run it was found in (``version_id``): the run its decisions go to."""
+    it). Each record names the run it was found in (``version_id``): the run its decisions go to. ``as_of_run`` reads
+    the ledger as it stood at that run: the failing records of every object at its newest run up to then (their work
+    status is today's)."""
     await _rls(db, tenant)
-    sel = await _rows(db, tenant, version_id, scope)
+    if as_of_run is not None:
+        sel = await _as_of_rows(db, tenant, as_of_run, version_id, scope)
+    else:
+        sel = await _rows(db, tenant, version_id, scope)
     order = _parse_sort(sort)
     where, p = _records_where(tenant, sel, request, module, check_id, severity, status, assigned, proposed, q, due, part,
-                              system, batch_id)
+                              system, batch_id, policy)
     await _since(db, tenant, sel, since, module, where, p)
     exprs = [_SORT_KEYS[k] for k in order]
     page_where = list(where)
@@ -1149,6 +1191,7 @@ async def _apply_decisions(body: DecideBody, request: Request, db: AsyncSession,
             raise HTTPException(status_code=400, detail="Write the comment.")
     await _rls(db, tenant)
     vid, scope = await _run(db, tenant, body.version_id)
+    await sandbox.guard_scope(db, tenant.id, scope)  # sandbox mode: decisions land on sandbox rows only (115)
     uid = current_user_id(request)
     draft: Optional[str] = None
     touched: list[tuple[str, str]] = []
@@ -1284,6 +1327,7 @@ async def accept_all(
     """Every machine-proposed value of one group (still to fix) into the user's draft batch, set-based."""
     await _rls(db, tenant)
     vid, scope = await _run(db, tenant, version_id)
+    await sandbox.guard_scope(db, tenant.id, scope)  # sandbox mode: decisions land on sandbox rows only (115)
     draft = await _my_draft(db, tenant, request)
     p = {"t": str(tenant.id), "v": vid, "c": check_id, "scope": scope, "b": draft, "cap": MAX_ACCEPT}
     res = await db.execute(text("""
@@ -1374,6 +1418,7 @@ async def set_value(
     """One value for every open record of a group (mass edit), into the user's draft batch, set-based."""
     await _rls(db, tenant)
     vid, scope = await _run(db, tenant, version_id)
+    await sandbox.guard_scope(db, tenant.id, scope)  # sandbox mode: decisions land on sandbox rows only (115)
     draft = await _my_draft(db, tenant, request)
     blank = "AND COALESCE(btrim(fr.field_values ->> (f.details->>'field_checked')), '') = ''" if body.only_blank else ""
     rows = (await db.execute(text(f"""
@@ -1441,7 +1486,7 @@ async def export_sheet(
     status: Optional[str] = Query("open", pattern="^(open|all|to_fix|proposed|approved|sent|not_an_issue|fixed)$"),
     assigned: Optional[str] = None,
     proposed: Optional[bool] = None,
-    due: Optional[str] = Query(None, pattern="^(overdue|today)$"),
+    due: Optional[str] = Query(None, pattern="^(overdue|today|week)$"),
     part: Optional[str] = Query(None, max_length=200),
     system: Optional[str] = Query(None, max_length=100),
     q: Optional[str] = Query(None, max_length=200),
@@ -1547,7 +1592,7 @@ async def export_per_object(
     status: Optional[str] = Query("open", pattern="^(open|all|to_fix|proposed|approved|sent|not_an_issue|fixed)$"),
     assigned: Optional[str] = None,
     proposed: Optional[bool] = None,
-    due: Optional[str] = Query(None, pattern="^(overdue|today)$"),
+    due: Optional[str] = Query(None, pattern="^(overdue|today|week)$"),
     part: Optional[str] = Query(None, max_length=200),
     system: Optional[str] = Query(None, max_length=100),
     q: Optional[str] = Query(None, max_length=200),

@@ -425,6 +425,14 @@ class ReceiptContractBreachOut(BaseModel):
     actual: Optional[float] = None
 
 
+class ReceiptPolicyBreachOut(BaseModel):
+    pack_id: str
+    class_id: str
+    label: str
+    authority: str
+    rules: list[str]                          # the class's critical rules failing in this run
+
+
 class ObjectReceiptOut(BaseModel):
     module: str
     label: str
@@ -453,6 +461,9 @@ class ObjectReceiptOut(BaseModel):
     open_work: Optional[int] = None
     # data contracts covering the object that this run breaches (api/services/contract_enforcement.py)
     contract_breaches: list[ReceiptContractBreachOut] = []
+    # applied policy-pack classes with a failing critical rule of this object in this run (api/services/policy_packs.py)
+    policy_breaches: int = 0
+    policy_breach_classes: list[ReceiptPolicyBreachOut] = []
 
 
 def reweigh(mod_summary: dict, configured: dict[str, float]) -> tuple[dict[str, float], Optional[float], Optional[float], bool]:
@@ -551,6 +562,9 @@ async def get_object_receipt(module: str, run: Optional[uuid.UUID] = Query(None,
     contract_breaches = [{k: b[k] for k in ("contract_id", "name", "enforce", "metric", "threshold", "actual")}
                          for b in ce.breaches_of(await ce.active(db, t["t"]), {module: mod_summary}, [module])]
 
+    from api.services import policy_packs
+    policy = (await policy_packs.breaches(db, t["t"], [run_id], module)).get((run_id, module), [])
+
     w = {d: round(configured[d], 4) for d in _DIMENSION_ORDER}
     formula = "DQS = " + " + ".join(f"{w[d]:.2f}·{_DIMENSION_SHORT[d]}" for d in _DIMENSION_ORDER)
     coverage = mod_summary.get("coverage")
@@ -570,6 +584,7 @@ async def get_object_receipt(module: str, run: Optional[uuid.UUID] = Query(None,
         "features_degraded": sum(1 for r in impact if r[0] == "degraded" and _touches(r[1])),
         "open_work": int(open_work) if open_work is not None else None,
         "contract_breaches": contract_breaches,
+        "policy_breaches": len(policy), "policy_breach_classes": policy,
     }
 
 

@@ -1049,6 +1049,10 @@ celery_app.conf.beat_schedule = {
         "task": "workers.tasks.run_process_discovery.prune_events",
         "schedule": crontab(hour=3, minute=15),  # old process events and surplus discovery runs
     },
+    "digests-every-5min": {
+        "task": "workers.tasks.digests.send_due_digests",
+        "schedule": crontab(minute="4-59/5"),  # due digest slots; each slot claimed once (digest_deliveries)
+    },
     "reconcile-work-counts-0340": {
         "task": "workers.tasks.reconcile_work_counts.reconcile_work_counts",
         "schedule": crontab(hour=3, minute=40),  # 03:40 UTC: work_counts vs a live count, drift logged and repaired
