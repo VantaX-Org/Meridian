@@ -4358,6 +4358,8 @@ export const en = {
   "Start and schedule": "Start and schedule",
   "Platform and updates": "Platform and updates",
   "Start an extraction, an analysis, a configuration load or an upload, and schedule them. The runs themselves are on Runs.": "Start an extraction, an analysis, a configuration load or an upload, and schedule them. The runs themselves are on Runs.",
+  "Aletheia is a licensed mark. Its licence requires this attribution on every screen; it is not a second product.": "Aletheia is a licensed mark. Its licence requires this attribution on every screen; it is not a second product.",
+  "licensed mark, attribution required": "licensed mark, attribution required",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

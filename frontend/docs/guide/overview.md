@@ -44,3 +44,9 @@ Under **Preferences**, **Start screen**, you can open Meridian as another role's
 - **The red line at the bottom of the screen** names a failed job, such as "Extraction of Employee central failed: OData refused credentials (HTTP 401)". Open it for the stages and a retry; SAP Basis owns connection errors.
 - **"... needs the ... permission. Ask an administrator to grant it."** means your role does not hold that action. Your administrator grants it under Administration, Users.
 - For anything else, open help (`?`), copy the diagnostics block under **Contact support** and send it to your administrator. It holds no record values and no secrets.
+
+## The strip at the foot of every page
+
+The small strip with the Aletheia mark under every page is a licensed attribution, not a second product: the
+licence of the Aletheia mark requires it on every screen, so it cannot be hidden. Hover it for the same words in the
+interface's language.
