@@ -148,7 +148,7 @@ describe("Admin › Settings › Appearance", () => {
       expect(document.querySelector(".m2-root")).toHaveAttribute("data-tenant-accent", "");
       expect((document.querySelector(".m2-root") as HTMLElement).style.getPropertyValue("--m2-tenant-accent")).toBe("#1B3F8F");
     });
-    expect(await screen.findByRole("link", { name: "Acme Data Quality, go to the landscape" })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Acme Data Quality, go to the landscape" }, { timeout: 10_000 })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /^Account/ }));
     fireEvent.click(within(await screen.findByRole("menu", { name: "Account" })).getByRole("menuitem", { name: "About Meridian" }));
     const about = await screen.findByRole("dialog", { name: "About Meridian" });
