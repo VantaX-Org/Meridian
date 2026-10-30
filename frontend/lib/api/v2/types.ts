@@ -27,6 +27,8 @@ export interface StatusStrip {
   scored_in_s: number | null;
   cost_model: string | null;
   licence_valid_to: string | null;
+  /** Step 10: the tenant is in sandbox mode, so nothing leaves the deployment. Absent on a server from before it. */
+  sandbox?: boolean;
 }
 
 export interface LandscapeSystem {
@@ -71,6 +73,8 @@ export interface LandscapeCell {
   /** Step 9: thresholds of active data contracts this cell breaches, and how many of them are enforced. */
   contract_breaches?: number;
   enforced_contract_breaches?: number;
+  /** Step 10: applied policy-pack classes with a failing critical rule in this cell. */
+  policy_breaches?: number;
 }
 
 export interface LandscapeSentence {
@@ -141,6 +145,9 @@ export interface Receipt {
   open_work: number | null;
   /** Step 9: the thresholds of active data contracts the object breaches on this run. */
   contract_breaches?: { contract_id: string; name: string | null; enforce: boolean; metric: string; threshold: number; actual: number | null }[];
+  /** Step 10: applied policy-pack classes with a failing critical rule of the object in this run. */
+  policy_breaches?: number;
+  policy_breach_classes?: { pack_id: string; class_id: string; label: string; authority: string; rules: string[] }[];
 }
 
 export type CommandKind = "record" | "rule" | "object" | "run" | "person" | "action";

@@ -21,6 +21,7 @@ import { FixtureJobLine, LiveJobLine } from "./JobLine";
 import { AdminMap } from "../admin/Admin";
 import { MapPane } from "./MapPane";
 import { RoleBanners } from "./RoleBanners";
+import { SandboxBanner } from "./SandboxBanner";
 import { StatusStrip } from "./StatusStrip";
 import { ToastProvider, useToast } from "../Toast";
 import { TopBar } from "./TopBar";
@@ -120,6 +121,7 @@ function ChromeBody({ children }: { children: ReactNode }) {
       <TopBar key={localeKey} onOpenCommand={() => setCommandOpen(true)} onToggleMap={toggleMap} onShortcuts={() => setSheetOpen(true)} mapOpen={mapOpen} />
       {fixture ? <FixtureJobLine /> : <LiveJobLine />}
       <RoleBanners />
+      <SandboxBanner />
       <div className="m2-main">
         {pathname.startsWith("/admin") ? <AdminMap key={localeKey} open={mapOpen} onClose={() => setMapOpen(false)} phone={phone} /> : <MapPane key={localeKey} open={mapOpen} onClose={() => setMapOpen(false)} phone={phone} />}
         {phone && mapOpen ? <div className="m2-scrim" onClick={() => setMapOpen(false)} aria-hidden="true" /> : null}

@@ -20,6 +20,7 @@ import { ResultFrame, useOutcome } from "./shared";
 import { DryRunBlock } from "./governance";
 import { t } from "@/lib/v2/i18n";
 import { labelText, systemTypeText } from "@/lib/v2/labels";
+import { RunForecast } from "../screens/step10/Prediction";
 
 const ABAP = new Set(["ecc", "s4hana_onprem", "ewm"]);
 
@@ -117,6 +118,7 @@ function ExtractPicker({ system, allowAnalyse, onDone }: { system: LandscapeSyst
           ) : (
             <p className="m2-prov">{t("Choose objects to set the scope: company codes, plants, organisations and a date window.")}</p>
           )}
+          {picked.size > 0 ? <RunForecast systemId={system.id} modules={[...picked]} delta={delta} what="extraction" /> : null}
           <div className="m2-acts" style={{ marginTop: 8 }}>
             <button type="button" className="m2-btn m2-strong" disabled={picked.size === 0 || pending !== null || Boolean(badDates)} onClick={go}>
               {pending === "extract" ? t("Starting…") : picked.size ? t("Extract {size} {size, plural, one {object} other {objects}}", { size: picked.size }) : t("Choose objects to extract")}
@@ -189,6 +191,7 @@ function SystemBody({ system, ext }: { system: LandscapeSystem; ext: SAPSystemEx
         </Fact>
       </Facts>
 
+      {canAnalyseNow && pendingExtraction ? <RunForecast systemId={system.id} modules={pendingExtraction.objects} what="analysis" /> : null}
       <Actions>
         {canAnalyseNow ? (
           <button type="button" className="m2-btn m2-next" disabled={pending !== null} onClick={analyseNow}>

@@ -47,6 +47,8 @@ export interface Job {
   run_ids?: string[];
   /** extraction: the start request its route recorded; present means POST /jobs/{id}/retry can run it again. */
   retry?: { via: string; body: Record<string, unknown> };
+  /** A queued job's place in the tenant's queue (1: next), from GET /jobs and /jobs/{id}. */
+  queue_position?: number | null;
 }
 
 export interface JobListResponse {

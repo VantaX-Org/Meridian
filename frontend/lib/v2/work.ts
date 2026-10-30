@@ -49,15 +49,21 @@ export interface LedgerState {
   due: string | null;
   /** One fix batch: its records in every open state, with the status of each. */
   batch: string | null;
+  /** Step 10: a policy pack or pack:class (sox:vendor_bank): the records failing a rule that evidences it. */
+  policy: string | null;
+  /** A source system id, or "upload" (the natural language mode fills it). */
+  system: string | null;
+  /** Time travel: the ledger as it stood when this run finished; the statuses are today's. */
+  asOf: string | null;
   group: boolean;
   sort: SortKey;
   density: Density;
 }
 
-export const DEFAULT_STATE: LedgerState = { chip: "tofix", module: null, rule: null, severity: null, assigned: null, due: null, batch: null, group: false, sort: "value", density: "comfortable" };
+export const DEFAULT_STATE: LedgerState = { chip: "tofix", module: null, rule: null, severity: null, assigned: null, due: null, batch: null, policy: null, system: null, asOf: null, group: false, sort: "value", density: "comfortable" };
 
 /** The query keys the ledger owns; everything else in the address (fixture, persona, open) is left alone. */
-export const MANAGED = ["filter", "status", "proposed", "module", "rule", "check_id", "severity", "assigned", "due", "batch", "group", "sort", "density", "view"] as const;
+export const MANAGED = ["filter", "status", "proposed", "module", "rule", "check_id", "severity", "assigned", "due", "batch", "policy", "system", "as_of_run", "group", "sort", "density", "view"] as const;
 
 function chipFrom(get: (k: string) => string | null, fallback: ChipId | null): ChipId | null {
   const filter = get("filter");
@@ -89,6 +95,9 @@ export function readState(params: URLSearchParams, view?: SavedView): LedgerStat
     assigned: get("assigned"),
     due: get("due"),
     batch: get("batch"),
+    policy: get("policy"),
+    system: get("system"),
+    asOf: params.get("as_of_run"),
     group: get("group") === "rule",
     sort: sort === "due" || sort === "age" || sort === "owner" ? sort : "value",
     density: density === "compact" ? "compact" : "comfortable",
@@ -105,6 +114,9 @@ export function filtersOf(s: LedgerState): WorkFilters {
     assigned: s.assigned ?? undefined,
     due: s.due ?? undefined,
     batch_id: s.batch ?? undefined,
+    policy: s.policy ?? undefined,
+    system: s.system ?? undefined,
+    as_of_run: s.asOf ?? undefined,
     status: c ? c.status : "open",
     proposed: c?.proposed ? true : undefined,
   };
@@ -120,6 +132,9 @@ export function toParams(s: LedgerState): Record<string, string> {
   if (s.assigned) out.assigned = s.assigned;
   if (s.due) out.due = s.due;
   if (s.batch) out.batch = s.batch;
+  if (s.policy) out.policy = s.policy;
+  if (s.system) out.system = s.system;
+  if (s.asOf) out.as_of_run = s.asOf;
   if (s.group) out.group = "rule";
   if (s.sort !== "value") out.sort = s.sort;
   if (s.density !== "comfortable") out.density = s.density;
@@ -131,7 +146,7 @@ export function viewFilters(s: LedgerState): Record<string, string> {
   const f = filtersOf(s);
   const out: Record<string, string> = { status: f.status ?? "open" };
   if (f.proposed) out.proposed = "true";
-  for (const k of ["module", "check_id", "severity", "assigned", "due"] as const) if (f[k]) out[k] = String(f[k]);
+  for (const k of ["module", "check_id", "severity", "assigned", "due", "policy", "system"] as const) if (f[k]) out[k] = String(f[k]);
   if (s.group) out.group = "rule";
   if (s.sort !== "value") out.sort = s.sort;
   return out;

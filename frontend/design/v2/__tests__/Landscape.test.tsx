@@ -68,7 +68,7 @@ describe("landscape canvas, fixture mode", () => {
     expect(within(cell).getByText("No-go")).toBeInTheDocument();
     expect(within(cell).getByText("61,816 rec, 913 rules")).toBeInTheDocument();
     expect(cell).toHaveAttribute("href", expect.stringMatching(/^\/o\/ecc-production\/material-master/));
-    expect(cell).toHaveAccessibleName("Material master, ECC production, 70.0 capped, No-go, 3 data contract thresholds breached, not enforced");
+    expect(cell).toHaveAccessibleName("Material master, ECC production, 70.0 capped, No-go, 3 data contract thresholds breached, not enforced, 1 policy class breached: a critical rule evidencing an applied policy pack fails");
     const go = within(within(table).getByRole("row", { name: /G\/L accounts/ })).getByTestId("matrix-cell");
     expect(within(go).getByText("Go")).toBeInTheDocument();
     expect(within(go).queryByText("capped")).toBeNull();

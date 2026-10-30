@@ -27,6 +27,19 @@ export interface RulerProps {
   empty?: boolean;
   /** Step 9: the data contract mark (lib/v2/step9 contractMark). One mark, filled when a breached contract is enforced. */
   contract?: { count: number; enforced: number; title: string } | null;
+  /** Step 10: the policy mark (lib/v2/step10 policyMark). One shield, beside the contract diamond, never in its place. */
+  policy?: { count: number; title: string } | null;
+}
+
+/** The policy breach mark: one filled shield. Its title and accessible name say how many applied classes are breached. */
+export function PolicyMark({ mark }: { mark: { count: number; title: string } }) {
+  return (
+    <span className="m2-pmark" role="img" aria-label={mark.title} title={mark.title} data-testid="policy-mark">
+      <svg width="10" height="11" viewBox="0 0 10 11" aria-hidden="true" focusable="false">
+        <path d="M5 0.7 9.2 2.3V5.3C9.2 7.7 7.4 9.4 5 10.3 2.6 9.4 0.8 7.7 0.8 5.3V2.3Z" />
+      </svg>
+    </span>
+  );
 }
 
 /** The contract breach mark: one diamond, outlined when the breached contracts only report, filled when one is enforced. */
@@ -125,9 +138,13 @@ export function Ruler(props: RulerProps) {
           <span className="m2-sc" data-testid="ruler-score">{empty ? DASH : f1(score)}</span>
           {!empty && capped ? <span className="m2-capword">{t("capped")}</span> : null}
           {!empty && props.contract ? <ContractMark mark={props.contract} /> : null}
+          {!empty && props.policy ? <PolicyMark mark={props.policy} /> : null}
         </span>
-      ) : !empty && props.contract ? (
-        <ContractMark mark={props.contract} />
+      ) : !empty && (props.contract || props.policy) ? (
+        <>
+          {props.contract ? <ContractMark mark={props.contract} /> : null}
+          {props.policy ? <PolicyMark mark={props.policy} /> : null}
+        </>
       ) : null}
     </span>
   );

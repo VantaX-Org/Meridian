@@ -17,7 +17,7 @@ Administration is everything that sets up the tenant: who can sign in, what the 
 
 - **Licence**: company, status, tier, seats, validity, last checked, platform version and the licensed modules and features. **Check with Meridian HQ now**. "Plan changes and invoices are handled in Meridian HQ; this deployment keeps its data either way."
 - **Billing**: resolved exceptions by billing tier on top of the base fee; read only.
-- **Settings**: the tenant; **Dimension weights** ("The score is each measured dimension times its weight. The weights must add up to 100." **Use the DAMA defaults**); **Score bands** ("At or above target is on target (go), at or above warning is at risk, below that is failing."); **Cap rule and tolerance**: "One critical rule failing beyond its tolerance holds that object at 85; two or more hold it at 70. The caps are fixed. The tolerance says how many failing records count as beyond.", with **Failing share, percent** and **Failing records** and the severity weights and multipliers; **Cost model and currency**; **Planner assumptions**; **Retention** (keep runs, reports and audit rows for so many days, keep the baseline; purges rehearse first and the purge log records each one); **Delete all data**, which issues a token that works after 24 hours.
+- **Settings**: the tenant; **Dimension weights** ("The score is each measured dimension times its weight. The weights must add up to 100." **Use the DAMA defaults**); **Score bands** ("At or above target is on target (go), at or above warning is at risk, below that is failing."); **Cap rule and tolerance**: "One critical rule failing beyond its tolerance holds that object at 85; two or more hold it at 70. The caps are fixed. The tolerance says how many failing records count as beyond.", with **Failing share, percent** and **Failing records** and the severity weights and multipliers; **Cost model and currency**; **Planner assumptions**; **Retention** (keep runs, reports and audit rows for so many days, keep the baseline; purges rehearse first and the purge log records each one); **Delete all data**, which issues a token that works after 24 hours. **Sandbox mode**: **Enter sandbox mode** copies the latest finished run into a sandbox run; until **Exit sandbox mode**, decisions land on the copy only, decisions on the real run are refused with the reason ("Sandbox mode is on: decisions apply to the sandbox run only."), and notifications, webhooks, digests, report mailouts and write-backs are held back and counted. A band across every page says "Sandbox: nothing leaves this deployment." with since when and by whom. Entering and exiting need manage system; exiting discards the sandbox runs.
 - **Stewardship**: "One accountable owner per object and one steward per company code, plant or organisation." The template per object (owner role, owner, stewards by slice, steward, teams), **Save the template**, **Check what applying does** (a dry-run diff), **Apply**, and **Gaps**: "Every object needs one owner and at least one steward per active slice", for example "Vendor master (AP): No steward for purchasing organisation 1000".
 - **Configuration bundle**: "Rules switched on or off, field mappings, waves and their gates, settings, SLA policies and the escalation chain as one JSON file." **Download the bundle**; import with a diff first: "Import adds and changes; it never deletes what the file leaves out. Check the diff first."
 
@@ -26,12 +26,14 @@ Administration is everything that sets up the tenant: who can sign in, what the 
 - **Field mappings**: "Name the column in your files that holds each standard SAP field, then save the row." **Reset all to defaults**.
 - **Reference data**: postal code and bank code (SWIFT BIC) lists per system. "Until a list is loaded those rules check the format only." An upload replaces the system's current list.
 - **Rules import and export**: "Every rule of the tenant as YAML or Excel, and many rules at once back in. Imported rules are validated against the data dictionary and land as drafts for review, never live." **Check the file**, then **Create drafts**.
+- **Policy packs**: GxP, SOX and GDPR. Each pack names field classes, the authority each answers to (an article or section, such as "SOX Section 404(a) (controls over changes to vendor payment data)") and the catalogue rules that evidence it. A card per pack shows fields classified, rules evidencing, rules measured, failing records and classes breached, and whether it is applied. **Apply the pack** and **Remove the pack** need manage rules. Open a pack for its classes, their fields and the evidence of each rule, for the current state or one run. An applied class with a failing critical rule is a policy breach: a filled shield beside the score on the landscape cell, the ruler and the object's receipt, which names the class, its authority and the rules.
 - **Audit log**: every change, who made it, the object and the result, filters by person, action, object kind and dates, **Export CSV** and **Export Excel**, and **AI calls**: "Every call to the language model: which service, how long, and whether a deterministic rule answered first. Prompts and records are never stored here."
 
 ## Notifications
 
 - **Alerts**: channels (email, Microsoft Teams, signed webhook) with their digest, board pack and critical alerts; **When to alert** (critical and high failing rules, score drop in points) and **Score floors per object**. "Alerts carry counts, rule ids and links, never record values."
 - **Notifications**: the tenant's default digest. Each person sets their own under Preferences.
+- **Digests**: scheduled summaries for a role (the programme lead every Monday at 07:00) or a migration wave: the landscape sentence, score moves, the waves and their gates, approvals waiting, SLA breaches and the top value at risk. The form takes the cadence (a preset or a cron line, checked as you type), the time zone, the channel (email with addresses and people, an alert channel, or the `digest.sent` webhook event), **Attach the digest as a PDF** and **Send on its schedule**. In the digest's inspector: **Send now**, **Preview** (the email in a sealed frame, or the numbers it is built from), **Pause**, **Edit**, **Delete** and the delivery log. Needs manage settings.
 
 ## Operations
 
@@ -51,6 +53,8 @@ These are set through the API in this version; there is no screen for them yet:
 - **Seats** count active and invited users against the licence.
 - **Settings** hold the numbers every score uses: the dimension weights, the score bands, the tolerance (failing share and failing records) and the severity weights. A change applies to the next analysis; scores already stored with a run are kept as they were.
 - **Health checks** are measured by the platform itself and refresh every 30 seconds.
+- **Policy pack coverage** counts the fields of the pack's classes, the rules that check them, the rules a run has measured and their failing records in the current state; a class is breached when one of its critical rules fails.
+- **Digest numbers** are the landscape's own: the preview's numbers are what the email is rendered from.
 - **Billing** counts resolved exceptions by tier for the month, on top of the base fee, from Meridian HQ.
 
 ## What you can do, by role
@@ -58,7 +62,8 @@ These are set through the API in this version; there is no screen for them yet:
 - **Platform admin**: every section.
 - **Manage users**: users, roles, single sign-on, sign-in page, view as, share links, out of office, API keys.
 - **Manage settings**: settings, billing, stewardship, configuration bundle, alerts, notifications.
-- **Manage system**: licence, jobs and system update.
+- **Manage system**: licence, jobs and system update, sandbox mode.
+- **Manage rules**: apply and remove policy packs; anyone who holds view reads them.
 - **View audit** (auditor): the audit log, and a person's activity in People.
 - **Manage field mappings**, **manage systems**, **manage rules**: field mappings, reference data, rules import and export.
 - **Trigger sync** or **analyse** (SAP Basis, analyst, programme lead): runs and jobs.
@@ -75,4 +80,6 @@ These are set through the API in this version; there is no screen for them yet:
 - **"These settings are read only for your role."** You can read but not change them.
 - **Health check warning "No email backend configured"**: digests and email alerts are not sent until the deployment's email settings are set.
 - **Single sign-on test fails**: check the redirect address registered at the identity provider matches the one shown, character for character.
+- **"The tenant is already in sandbox mode."** or **"The tenant is not in sandbox mode."**: someone else entered or exited first; the page reads the state again.
+- **A digest shows Held back**: the tenant is in sandbox mode, so nothing was sent; the delivery log keeps the attempt.
 - **A purge request**: purges are irreversible. The token only works after 24 hours so a mistake can be caught; the purge log keeps the record.

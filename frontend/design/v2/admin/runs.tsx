@@ -22,6 +22,7 @@ import { AdminPage, Block, Confirm, Dialog, Fld, NeedsPermission, StatusWord, us
 import { ToolGrid } from "../GridTools";
 import { t } from "@/lib/v2/i18n";
 import { labelText } from "@/lib/v2/labels";
+import { RunForecast } from "../screens/step10/Prediction";
 
 const list = (s: string): string[] | undefined => {
   const v = s.split(/[\s,;]+/).filter(Boolean);
@@ -101,6 +102,7 @@ function Extraction({ system }: { system: string }) {
           <small>{t("Re-reads only the records whose SAP change date is after the last full download of the same objects and scope; tables without change dates are read in full. With no earlier download, everything is read.")}</small>
         </span>
       </label>
+      {picked.length ? <RunForecast systemId={system || null} modules={picked} delta={delta} what="extraction" /> : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       <div className="m2-adm-acts">
         <button
@@ -162,6 +164,7 @@ function Analysis({ system }: { system: string }) {
           {pending === "analyse" ? t("Starting…") : t("Run the analysis")}
         </button>
       </div>
+      {chosen ? <RunForecast systemId={system || null} modules={rows.find((v) => v.id === chosen)?.objects ?? []} what="analysis" /> : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       {!can ? <p className="m2-prov">{t("Starting an analysis needs the analyse permission.")}</p> : null}
     </Block>

@@ -15,6 +15,7 @@ import { NONE_ROLES, resetRolesFixture, rolesFixtureResponse, rolesFixtureWrite 
 import { adminFixtureResponse, adminFixtureWrite, fixtureDownload as adminFixtureDownload, NONE_ADMIN } from "./admin";
 import { enterpriseFixtureDownload, enterpriseFixtureResponse, enterpriseFixtureWrite, NONE_ENTERPRISE } from "./enterprise";
 import { NONE_STEP9, receiptContractBreaches, resetStep9Fixture, step9Download, step9Read, step9Write, withContractMarks } from "./step9";
+import { guardDecision, NONE_STEP10, receiptPolicy, resetStep10Fixture, step10Read, step10Write, withPolicyMarks, withSandbox } from "./step10";
 
 /**
  * Fixture answers for the step 0 contract, built from the approved prototype's numbers: 3 systems (ECC production
@@ -107,6 +108,9 @@ function withOpenDelta(l: Landscape): Landscape {
 
 /** A write in fixture mode (POST, PUT, DELETE): applied to the in-memory work fixture. */
 export function fixtureWrite<T>(method: string, path: string, body: unknown, params: Params): T {
+  const step10 = step10Write(method, path, body);
+  if (step10 !== NONE_STEP10) return step10 as T;
+  if (method === "POST" && (path === "/work/decide" || /^\/work\/groups\/[^/]+\/(accept-all|set-value)$/.test(path))) guardDecision();
   const step9 = step9Write(method, path, body);
   if (step9 !== NONE_STEP9) return step9 as T;
   const roles = rolesFixtureWrite(method, path, body, params);
@@ -154,11 +158,14 @@ export const resetWorkFixture = (): void => {
   resetSys6b();
   resetRolesFixture();
   resetStep9Fixture();
+  resetStep10Fixture();
 };
-export { resetStep9Fixture };
+export { resetStep9Fixture, resetStep10Fixture };
 
 /** The answer to one v2 read in fixture mode. Throws a 404-shaped error for a path the contract does not have. */
 export function fixtureResponse<T>(path: string, params: Params): T {
+  const step10 = step10Read(path, params);
+  if (step10 !== NONE_STEP10) return step10 as T;
   const step9 = step9Read(path, params);
   if (step9 !== NONE_STEP9) return step9 as T;
   const rolesStep = rolesFixtureResponse(path, params);
@@ -172,13 +179,13 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   const runsStep = runsFixtureResponse(path, params);
   if (runsStep !== NONE) return runsStep as T;
   const out = ((): unknown => {
-    if (path === "/landscape") return withContractMarks(withSystems(withOpenDelta(landscapeFixture)));
-    if (path === "/status") return landscapeFixture.status_strip as StatusStrip;
+    if (path === "/landscape") return withPolicyMarks(withContractMarks(withSystems(withOpenDelta(landscapeFixture))));
+    if (path === "/status") return withSandbox(landscapeFixture.status_strip as StatusStrip);
     const receipt = /^\/objects\/([^/]+)\/receipt$/.exec(path);
     if (receipt) {
       const r = receipts[decodeURIComponent(receipt[1])];
       if (!r) throw new FixtureNotFound(path);
-      return { ...r, contract_breaches: receiptContractBreaches(r.module) };
+      return { ...r, contract_breaches: receiptContractBreaches(r.module), ...receiptPolicy(r.module) };
     }
     if (path === "/command") return command(String(params.q ?? ""));
     if (path === "/versions") return { ...runs, versions: runs.versions.slice(0, Number(params.limit ?? 8)) };

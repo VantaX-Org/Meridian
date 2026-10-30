@@ -22,6 +22,12 @@ export interface WorkFilters {
   q?: string;
   /** One fix batch (not in GET /work/records yet: the ledger also keeps only the rows that name it). */
   batch_id?: string;
+  /** Step 10: a policy pack or pack:class; GET /work/records only. */
+  policy?: string;
+  /** A source system id, or "upload". */
+  system?: string;
+  /** Step 10: the ledger as it stood at this run; GET /work/records only, never with scope=current. */
+  as_of_run?: string;
 }
 
 export interface WorkQuery extends WorkFilters {
@@ -32,7 +38,8 @@ export interface WorkQuery extends WorkFilters {
 
 const scoped = { scope: "current" } as const;
 
-export const getWork = (q: WorkQuery): Promise<WorkPage> => v2Get<WorkPage>("/work/records", { ...scoped, ...q });
+/** GET /work/records. As of a run, the server reads the current state as it stood then: no scope is sent with it. */
+export const getWork = (q: WorkQuery): Promise<WorkPage> => v2Get<WorkPage>("/work/records", q.as_of_run ? { ...q } : { ...scoped, ...q });
 export const getSummary = (f: WorkFilters = {}): Promise<WorkSummary> => v2Get<WorkSummary>("/work/summary", { ...scoped, ...f });
 export const getGroups = (
   f: Pick<WorkFilters, "module" | "severity" | "proposed" | "q"> & { limit?: number } = {},
@@ -143,7 +150,10 @@ export async function exportFixSheet(f: WorkFilters): Promise<{ filename: string
     saveBlob(blob, filename);
     return { filename };
   }
-  const params = Object.fromEntries(Object.entries({ ...scoped, ...f }).filter(([, v]) => v !== undefined && v !== null && v !== ""));
+  const { policy: _policy, as_of_run: _asOf, ...rest } = f;
+  void _policy;
+  void _asOf;
+  const params = Object.fromEntries(Object.entries({ ...scoped, ...rest }).filter(([, v]) => v !== undefined && v !== null && v !== ""));
   let response;
   try {
     response = await uploadApiClient.get<Blob>("/api/v1/work/export", { responseType: "blob", params });

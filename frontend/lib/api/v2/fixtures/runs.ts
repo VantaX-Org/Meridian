@@ -350,6 +350,31 @@ function jobs(): Job[] {
       modules: ["material_master"],
     });
   }
+  if (fixtureParam("job") === "queued" || fixtureParam("queue") === "busy") {
+    // Step 10: a queued analysis with its place in the queue (GET /jobs carries queue_position on queued jobs).
+    const now = Math.floor(Date.now() / 1000);
+    list.push({
+      id: "an-q0000000-0000-4000-8000-0000000000q1",
+      kind: "analysis",
+      status: "queued",
+      label: "Material master",
+      stage: null,
+      stages: stages("analysis", null).map((s) => ({ ...s, status: "queued" as const })),
+      percent: 0,
+      rows_done: 0,
+      rows_total: 0,
+      message: "Waiting for a worker",
+      tables: [],
+      error: null,
+      result: null,
+      started_at: now - 40,
+      updated_at: now - 40,
+      finished_at: null,
+      system_id: ECC.id,
+      modules: ["material_master"],
+      queue_position: 2,
+    });
+  }
   const R8 = RUNS[0].id;
   list.push(
     {
