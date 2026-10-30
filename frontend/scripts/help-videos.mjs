@@ -1,5 +1,5 @@
 /**
- * Turns the Meridian 2 tour captures into the files the help panel plays. For every caption sidecar the recorder wrote
+ * Turns the Meridian tour captures into the files the help panel plays. For every caption sidecar the recorder wrote
  * (help-videos-raw/captions/<video>.json, from e2e/guided-tours-v2.spec.ts), it converts the capture to an H.264 mp4
  * (faststart, no audio), cuts a poster frame (.jpg), writes the captions as WebVTT (.vtt) and records each recording's
  * length and size in docs/help-videos/manifest.json. The API serves all three at /api/v1/docs/help-videos/<name>.
@@ -63,7 +63,7 @@ function convert(side) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const only = process.argv.slice(2);
   const manifest = existsSync(MANIFEST) ? JSON.parse(readFileSync(MANIFEST, "utf8")) : { about: "", videos: {} };
-  manifest.about = "Meridian 2 help recordings: length in seconds and size in bytes, written by scripts/help-videos.mjs.";
+  manifest.about = "Meridian help recordings: length in seconds and size in bytes, written by scripts/help-videos.mjs.";
   const sides = existsSync(RAW) ? readdirSync(RAW).filter((f) => f.endsWith(".json")) : [];
   let n = 0;
   for (const f of sides) {

@@ -76,7 +76,6 @@ export function guideHtml(date = new Date()) {
     }
     toc.push("</ol></li>");
   }
-  const day = date.toISOString().slice(0, 10);
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(index.title)}</title><style>
   @page { size: A4; margin: 18mm 16mm 20mm; }
   ${fontFaces()}
@@ -94,7 +93,7 @@ export function guideHtml(date = new Date()) {
   .toc .sec ol li { font-weight: 400; margin: 2pt 0 2pt 12pt; } .toc a { color: inherit; text-decoration: none; }
   .part { break-before: page; height: 200mm; display: flex; align-items: center; } .partname { font-size: 22pt; font-weight: 600; }
   </style></head><body>
-  <section class="cover"><h1>${esc(index.title)}</h1><p>Every screen, what its numbers mean and where they come from, what each role can do, the keyboard, and what to do when something is wrong.</p><p>Printed ${day} from docs/guide.</p></section>
+  <section class="cover"><h1>${esc(index.title)}</h1><p>Every screen, what its numbers mean and where they come from, what each role can do, the keyboard, and what to do when something is wrong.</p><p>Edition of ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(date)}.</p></section>
   <nav class="toc"><h1>Contents</h1><ol>${toc.join("")}</ol></nav>
   ${body.join("\n")}
   </body></html>`;
