@@ -14,11 +14,14 @@ import queue
 import re
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from itertools import count
-from typing import Callable, Optional, Protocol
+from typing import TYPE_CHECKING, Callable, Optional, Protocol
 
 import pandas as pd
 
 from .base import BAPICall, SAPConnectionParams, SAPConnector, SAPConnectorError
+
+if TYPE_CHECKING:
+    from .odp import ODPReader
 
 logger = logging.getLogger("meridian.sap.rfc")
 
@@ -358,6 +361,14 @@ class RFCConnector(SAPConnector):
             return self._conn.call(function, **params)
         except Exception as e:
             raise SAPConnectorError(self._mask_password(str(e), self._password)) from e
+
+    def odp_reader(self) -> "ODPReader":
+        """ODP extraction over this connection (sap/odp.py): RODPS_REPL_ODP_* through ``call``, so errors are
+        password-masked SAPConnectorErrors like every other read."""
+        from .odp import ODPReader
+        if self._conn is None:
+            raise SAPConnectorError("odp_reader called before connect()")
+        return ODPReader(self.call)
 
     def read_table_full(
         self,
