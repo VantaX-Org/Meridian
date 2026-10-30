@@ -210,7 +210,7 @@ three times from a test account, and find the three `auth.login_failed` rows in 
 
 - Choose the system type and fill in the connection.
 - Create the read-only SAP role from the template.
-- Choose the table reader your Basis team accepts.
+- Choose the extraction path (table reader, ODP or OData) and the table reader your Basis team accepts.
 - Test the connection and read connection health; connect a cloud system.
 
 ### System types
@@ -230,9 +230,33 @@ Ariba (REST, OAuth 2.0 and an API key).
   dictionary, organisational structure and, for delta extraction, `CDHDR` and `CDPOS`.
 - No transaction codes, no `S_DEVELOP` and no change activity. With this role Meridian cannot change SAP data.
 
+For the ODP path the role adds `S_RFC` for function group `RODPS_REPL` and the ODP authorisations (`S_RO_OSOA`,
+and the CDS views' access controls on S/4HANA); for the OData path, `S_SERVICE` for the Gateway services and the
+back-end display authorisations of those APIs. The template marks the entries to confirm in SU24 or SE37.
+
+### Choosing the extraction path
+
+Many Basis teams refuse `RFC_READ_TABLE` in production. Each ABAP system's connection settings have an
+**Extraction path**:
+
+| Choice | What it does |
+|---|---|
+| Table reader (default) | Reads every table with the table reader below. |
+| ODP, table reader for the rest | Reads the tables an ODP provider covers (`0MATERIAL_ATTR` for MARA, `0MAT_PLANT_ATTR` for MARC, `0CUSTOMER_ATTR` for KNA1, `0VENDOR_ATTR` for LFA1, `0GL_ACCOUNT_ATTR` for SKA1, and on S/4HANA the CDS views `I_Product`, `I_Customer`, `I_Supplier`, `I_BusinessPartner`) through the `RODPS_REPL_ODP_*` functions. A field the provider does not carry is listed for the table and its rules are not evaluable. Other tables use the table reader. |
+| Automatic: ODP where it covers the rules | ODP for a table when the functions exist and a provider carries every field the rules need; the table reader otherwise. |
+| OData through the SAP Gateway | S/4HANA on premise only. Reads the released APIs your Gateway exposes (`API_PRODUCT_SRV`, `API_BUSINESS_PARTNER`, `API_GLACCOUNTINCHARTOFACCOUNTS_SRV`) with this system's user, sending its client as `sap-client`. Enter the **Gateway base URL**. |
+
+A table read with a date window, a scope or by parent keys always uses the table reader, because ODP reads a
+provider in full. The job's **Tables** list has a **Read through** column, and the Basis home shows each system's
+extraction path under **Connections** and, under **Last extraction**, how its tables were read.
+
+Before choosing ODP for production, read SAP Note 3255746 with your SAP account team: it restricts the use of the
+ODP RFC modules by third-party applications. Where it applies, choose OData or the table reader.
+
 ### Choosing the table reader
 
-Set `MERIDIAN_RFC_READ_FUNCTION` in `.env`:
+Each ABAP system's connection settings have a **Table reader**; **Deployment default** uses
+`MERIDIAN_RFC_READ_FUNCTION` in `.env`:
 
 | Value | Reader |
 |---|---|
@@ -241,14 +265,16 @@ Set `MERIDIAN_RFC_READ_FUNCTION` in `.env`:
 | `BBP_RFC_READ_TABLE` | the SRM reader, the same interface as `RFC_READ_TABLE`; some sites allow it when they refuse `RFC_READ_TABLE` |
 | `auto` | probes `RFC_FUNCTION_SEARCH` for `/BODS/RFC_READ_TABLE2`, then `BBP_RFC_READ_TABLE`, else `RFC_READ_TABLE` |
 
-The extracted data is the same whichever reader is used. Grant `RFC_FUNCTION_SEARCH` only with `auto`.
+The extracted data is the same whichever reader or path is used. `RFC_FUNCTION_SEARCH` is needed for `auto` (reader
+or path).
 
 ### Steps
 
 1. Connect a system from the command line ("Connect a system") or at `/s/new`. Name it, choose the **System type**
    and the **Environment**, then for RFC systems **Host**, **Client** (3 digits), **Instance number** (2 digits) and
    an optional **User** (empty uses the deployment's default RFC user, `SAP_RFC_USER`), with the password under
-   **Sign-in secrets**. Cloud systems ask for their base URL and OAuth details instead.
+   **Sign-in secrets**, then the **Extraction path** and the **Table reader**. Cloud systems ask for their base URL
+   and OAuth details instead.
 2. **Test connection**. A passing test reads like "RFC connection succeeded (client 100, 41 ms)".
 3. **Connect system**. Nothing is read from SAP until you extract.
 4. If SAP host names resolve only on your corporate DNS, set `MERIDIAN_DNS_1` (and `MERIDIAN_DNS_2`) in `.env`;
@@ -266,9 +292,10 @@ The extracted data is the same whichever reader is used. Grant `RFC_FUNCTION_SEA
 
 ### Exercise
 
-With your Basis colleague, generate the role from the template on a quality system, set
-`MERIDIAN_RFC_READ_FUNCTION=auto`, test the connection, and note which reader the first extraction used in the job
-inspector.
+With your Basis colleague, generate the role from the template on a quality system, set the system's **Table reader**
+to **Find the first available** and its **Extraction path** to **Automatic**, test the connection, run an extraction
+of Material master, and note in the job inspector's **Read through** column which tables used ODP and which the
+table reader, and why (the extraction log lists the fields ODP could not deliver).
 
 ## Module 5: Extraction, runs and schedules
 
