@@ -338,7 +338,7 @@ async def export_objects(run: str = Query(..., alias="run"),
                          format: str = Query("xlsx", pattern="^(csv|xlsx)$"),
                          db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     """Every object (module) summary for one run, as CSV or XLSX — same rows as GET /objects."""
-    body = await list_objects(run=run, db=db, tenant=tenant)
+    body = await list_objects(run=run, sort="module", db=db, tenant=tenant)
     rows = body["objects"]
     if format == "csv":
         return csv_response(rows, _OBJECTS_EXPORT_COLUMNS, "objects", body["run_id"])

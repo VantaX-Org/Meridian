@@ -131,7 +131,7 @@ async def simulate_fix(body: SimulateBody, request: Request, db: AsyncSession = 
                        records={r.record_key for r in body.records if r.module == body.module},
                        batch_keys=await sf.batch_selection(db, str(tenant.id), body.module, [str(b) for b in body.batches]))
     out = await sf.simulate(db, str(tenant.id), run, sel)
-    land = await get_landscape(scope="current", run=None, db=db, tenant=tenant)
+    land = await get_landscape(scope="current", run=None, sort="position", db=db, tenant=tenant)
     cells = land["cells"]
     if any(c["module"] == run.module and c["run_id"] == run.run_id for c in cells):
         out["landscape"] = {"before": sentence_of(cells), "after": sf.sentence_after(cells, out)}
