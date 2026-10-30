@@ -144,8 +144,14 @@ if [[ "$DRILL" != "true" ]]; then
     fi
 
     if [[ -f "${BACKUP_DIR}/env.gpg" ]]; then
-        info "Decrypting env.gpg (prompts for passphrase)..."
-        gpg --decrypt --output "${REPO_ROOT}/.env" "${BACKUP_DIR}/env.gpg"
+        if [[ -n "${MERIDIAN_BACKUP_PASSPHRASE_FILE:-}" ]]; then
+            info "Decrypting env.gpg (passphrase from MERIDIAN_BACKUP_PASSPHRASE_FILE)..."
+            gpg --batch --yes --pinentry-mode loopback --passphrase-file "$MERIDIAN_BACKUP_PASSPHRASE_FILE" \
+                --decrypt --output "${REPO_ROOT}/.env" "${BACKUP_DIR}/env.gpg"
+        else
+            info "Decrypting env.gpg (prompts for passphrase)..."
+            gpg --decrypt --output "${REPO_ROOT}/.env" "${BACKUP_DIR}/env.gpg"
+        fi
         chmod 600 "${REPO_ROOT}/.env"
     elif [[ -f "${BACKUP_DIR}/env.txt" ]]; then
         cp "${BACKUP_DIR}/env.txt" "${REPO_ROOT}/.env"

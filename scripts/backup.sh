@@ -6,14 +6,21 @@
 # Produces a timestamped bundle with:
 #   - Postgres dump (pg_dump --format=custom — small, restorable with --clean)
 #   - Object storage (all buckets) as objects.tar
-#   - .env file (encrypted with GPG if --encrypt is passed)
+#   - .env file, GPG-encrypted (env.gpg) unless --plain-env is passed: it holds the
+#     master keys (CREDENTIAL_MASTER_KEY, database and storage passwords)
 #   - A manifest.json pinning image tags + migration head
 #
 # Usage:
 #   sudo bash scripts/backup.sh                      # defaults: ./backups/<ts>
 #   sudo bash scripts/backup.sh --output /data/bak   # custom dir
-#   sudo bash scripts/backup.sh --encrypt            # GPG-encrypt .env
+#   sudo bash scripts/backup.sh --passphrase-file /root/.meridian-backup-pass
+#                                                    # unattended (cron): passphrase from a file
+#                                                    # (or MERIDIAN_BACKUP_PASSPHRASE_FILE)
+#   sudo bash scripts/backup.sh --plain-env          # opt out: copy .env in clear (chmod 600)
 #   sudo bash scripts/backup.sh --database-only      # skip object storage (useful in CI drills)
+#
+# Without a passphrase file, gpg prompts for a symmetric passphrase; with no terminal to
+# prompt on and no passphrase file the backup fails rather than writing .env in clear.
 #
 # Exit codes:
 #   0  success
@@ -31,13 +38,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 OUTPUT_DIR="${REPO_ROOT}/backups"
-ENCRYPT=false
+ENCRYPT=true
+PASSPHRASE_FILE="${MERIDIAN_BACKUP_PASSPHRASE_FILE:-}"
 DATABASE_ONLY=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --output)         OUTPUT_DIR="$2"; shift 2 ;;
-        --encrypt)        ENCRYPT=true; shift ;;
+        --encrypt)        ENCRYPT=true; shift ;;  # the default; kept for existing scripts
+        --plain-env)      ENCRYPT=false; shift ;;
+        --passphrase-file) PASSPHRASE_FILE="$2"; shift 2 ;;
         --database-only)  DATABASE_ONLY=true; shift ;;
         -h|--help)
             grep '^# ' "$0" | sed 's/^# //'
@@ -46,6 +56,16 @@ while [[ $# -gt 0 ]]; do
         *)                echo "Unknown flag: $1 (try --help)" >&2; exit 2 ;;
     esac
 done
+
+# Check how .env will be encrypted before anything is dumped.
+if [[ "$ENCRYPT" == "true" && -f "${REPO_ROOT}/.env" ]]; then
+    command -v gpg >/dev/null || fail "gpg is not installed: install it (apt-get install gnupg) or pass --plain-env"
+    if [[ -n "$PASSPHRASE_FILE" ]]; then
+        [[ -r "$PASSPHRASE_FILE" && -s "$PASSPHRASE_FILE" ]] || fail "passphrase file $PASSPHRASE_FILE is missing or empty"
+    elif [[ ! -t 0 ]]; then
+        fail "no terminal to ask for the .env passphrase: pass --passphrase-file (or MERIDIAN_BACKUP_PASSPHRASE_FILE), or --plain-env"
+    fi
+fi
 
 TIMESTAMP=$(date -u +%Y%m%d_%H%M%S)
 BACKUP_DIR="${OUTPUT_DIR}/${TIMESTAMP}"
@@ -90,14 +110,22 @@ fi
 # ─── 3. .env file ───────────────────────────────────────────────────────────
 if [[ -f "${REPO_ROOT}/.env" ]]; then
     if [[ "$ENCRYPT" == "true" ]]; then
-        command -v gpg >/dev/null || fail "--encrypt requested but gpg not installed"
-        info "Encrypting .env with GPG (symmetric, prompts for passphrase)"
-        gpg --symmetric --cipher-algo AES256 --output "${BACKUP_DIR}/env.gpg" "${REPO_ROOT}/.env"
+        if [[ -n "$PASSPHRASE_FILE" ]]; then
+            info "Encrypting .env with GPG (symmetric, passphrase from $PASSPHRASE_FILE)"
+            gpg --batch --yes --pinentry-mode loopback --passphrase-file "$PASSPHRASE_FILE" \
+                --symmetric --cipher-algo AES256 --output "${BACKUP_DIR}/env.gpg" "${REPO_ROOT}/.env" \
+                || fail "Encrypting .env failed (database dump kept at $DB_FILE)"
+        else
+            info "Encrypting .env with GPG (symmetric, prompts for passphrase)"
+            gpg --symmetric --cipher-algo AES256 --output "${BACKUP_DIR}/env.gpg" "${REPO_ROOT}/.env" \
+                || fail "Encrypting .env failed (database dump kept at $DB_FILE)"
+        fi
+        chmod 600 "${BACKUP_DIR}/env.gpg"
     else
-        # Stash a copy but chmod 600 so root-only reads — never world-readable.
+        # Opted out with --plain-env: a copy only root can read.
         cp "${REPO_ROOT}/.env" "${BACKUP_DIR}/env.txt"
         chmod 600 "${BACKUP_DIR}/env.txt"
-        warn ".env copied unencrypted — rerun with --encrypt for sensitive backups"
+        warn ".env copied unencrypted (--plain-env): it holds the master keys, keep this bundle on the host"
     fi
 fi
 

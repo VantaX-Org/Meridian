@@ -11,7 +11,7 @@ backups/20260424_031500/
 ├── manifest.json            # timestamp, migration_head, inventory
 ├── meridian.dump            # pg_dump --format=custom (restorable with pg_restore)
 ├── objects.tar              # every object-storage bucket, exported over S3
-└── env.txt | env.gpg        # .env file (optionally GPG-encrypted)
+└── env.gpg | env.txt        # .env file, GPG-encrypted unless --plain-env
 ```
 
 Total bundle size for a typical customer: ~100 MB to a few GB, depending on how much raw SAP extract has been uploaded.
@@ -26,13 +26,20 @@ sudo bash scripts/backup.sh
 
 Produces `backups/<utc-timestamp>/` under the repo root. Each run is independent — clean up old ones with a cron or manually.
 
-### With GPG-encrypted .env
+### The .env file is encrypted
+
+`.env` holds the master keys (credential key, database and storage passwords), so the backup encrypts it with
+GPG by default: it prompts for a symmetric passphrase and writes `env.gpg`. Unattended runs (cron) read the
+passphrase from a root-only file:
 
 ```bash
-sudo bash scripts/backup.sh --encrypt
+sudo bash scripts/backup.sh --passphrase-file /root/.meridian-backup-pass
+# or: MERIDIAN_BACKUP_PASSPHRASE_FILE=/root/.meridian-backup-pass sudo -E bash scripts/backup.sh
 ```
 
-Prompts for a symmetric passphrase. Writes `env.gpg` instead of `env.txt`. Recommended for anything leaving the customer's machine.
+With no terminal and no passphrase file the backup stops instead of writing `.env` in clear. To opt out, pass
+`--plain-env`: it writes `env.txt` (mode 600). `restore.sh` reads the same `MERIDIAN_BACKUP_PASSPHRASE_FILE`
+when set, and otherwise prompts.
 
 ### Custom output location
 
@@ -46,7 +53,7 @@ Add a daily cron on the Meridian host:
 
 ```cron
 # Daily backup at 03:00, rotates at 14 days
-0 3 * * * /opt/meridian/scripts/backup.sh --output /var/backups/meridian && \
+0 3 * * * /opt/meridian/scripts/backup.sh --passphrase-file /root/.meridian-backup-pass --output /var/backups/meridian && \
           find /var/backups/meridian -maxdepth 1 -type d -mtime +14 -exec rm -rf {} +
 ```
 
