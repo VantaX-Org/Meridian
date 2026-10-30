@@ -60,7 +60,7 @@ def test_only_a_stale_active_schedule_fires(owner, seeded):
     assert (due["kind"], due["tier"], due["severity"], due["required_action"]) == (
         "discovery_due", 3, "medium", "run_process_discovery")
     assert due["count"] == 1 and due["system_id"] == seeded["sid"] and due["system_name"] == "ERP prod"
-    assert due["href"] == f"/process/runs?system={seeded['sid']}"
+    assert due["href"] == f"/s/{seeded['sid']}?tab=schedules"
     assert due["title"] == "Process discovery on ERP prod has not run on schedule"
     assert "PTP" in due["detail"] and "3 days ago" in due["detail"]
     assert due["action_label"] == "Run discovery"

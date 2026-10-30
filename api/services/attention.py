@@ -490,7 +490,7 @@ async def _discovery_due(c: _Ctx) -> list[Item]:
                          since=rs[0].done_at,
                          title=f"Process discovery on {c.name(sid) or 'a system'} has not run on schedule",
                          detail=f"The last run for {names} was {_ago(rs[0].done_at, c.now)}. Run it again.",
-                         href=app_links.JOBS))
+                         href=app_links.system(sid, "schedules")))
     return out
 
 
