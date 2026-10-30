@@ -112,19 +112,31 @@ mkdir -p "$TMP/strip/db/migrations" "$TMP/strip/api" && touch "$TMP/strip/db/sch
 cat "$GEN/source-strip-check.txt"
 
 if [ "$FULL" = 1 ]; then
-  step "pytest coverage, fast unit set (no Postgres files, no rule proofs)"
-  python3 -m pytest tests/agents tests/services tests/sap tests/db tests/workers tests/golden tests/process_discovery tests/checks \
-    -q -p no:cacheprovider --ignore=tests/checks/test_rule_proofs.py --ignore-glob='*_pg.py' \
+  step "pytest coverage, fast unit set (the agent, service, worker, db, golden and process discovery suites; no Postgres files)"
+  python3 -m pytest tests/agents tests/services tests/workers tests/db tests/golden tests/process_discovery \
+    -q -p no:cacheprovider --ignore-glob='*_pg.py' \
     --cov=api --cov=workers --cov=checks --cov=agents --cov=sap --cov=llm --cov=db \
-    --cov-report=term --cov-report=json:"$GEN/pytest-coverage.json" > "$GEN/pytest-coverage.txt" 2>&1 \
-    || echo "pytest returned non-zero: see $GEN/pytest-coverage.txt"
-  tail -n 3 "$GEN/pytest-coverage.txt"
+    --cov-report=term --cov-report=json:"$TMP/pytest-coverage.json" > "$TMP/pytest-coverage.txt" 2>&1 \
+    || echo "pytest returned non-zero: see $TMP/pytest-coverage.txt"
+  grep -E "^TOTAL|passed|failed|^Name" "$TMP/pytest-coverage.txt" > "$GEN/pytest-coverage.txt"
+  python3 - "$TMP/pytest-coverage.json" "$GEN/pytest-coverage.json" <<'PY'
+import collections, json, sys
+d = json.load(open(sys.argv[1]))
+agg = collections.defaultdict(lambda: [0, 0])
+for f, v in d["files"].items():
+    agg[f.split("/")[0]][0] += v["summary"]["covered_lines"]
+    agg[f.split("/")[0]][1] += v["summary"]["num_statements"]
+out = {"totals": {k: d["totals"][k] for k in ("covered_lines", "num_statements", "percent_covered")},
+       "by_package": {k: {"covered": c, "statements": n, "percent": round(100 * c / n, 1)} for k, (c, n) in sorted(agg.items())}}
+json.dump(out, open(sys.argv[2], "w"), indent=1)
+PY
+  cat "$GEN/pytest-coverage.txt"
 
   if [ -d frontend/node_modules ]; then
     step "Vitest coverage"
     (cd frontend && npx vitest run --coverage --coverage.reportOnFailure > "$GEN/vitest-coverage.txt" 2>&1) \
       || echo "vitest returned non-zero: see $GEN/vitest-coverage.txt"
-    [ -f frontend/coverage/coverage-summary.json ] && cp frontend/coverage/coverage-summary.json "$GEN/vitest-coverage-summary.json"
+    [ -f frontend/coverage/coverage-summary.json ] && python3 -c "import json,sys; json.dump({\"total\": json.load(open(sys.argv[1]))[\"total\"]}, open(sys.argv[2], \"w\"), indent=1)" frontend/coverage/coverage-summary.json "$GEN/vitest-coverage-summary.json"
     grep -E "Test Files|Tests |Statements|Branches|Functions|Lines" "$GEN/vitest-coverage.txt"
     step "Playwright test list"
     (cd frontend && npx playwright test --list > "$GEN/playwright-list.txt" 2>&1) || fail "playwright list"

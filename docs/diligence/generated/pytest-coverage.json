@@ -1,0 +1,45 @@
+{
+ "suite": "tests/agents tests/services tests/workers tests/db tests/golden tests/process_discovery (no *_pg.py)",
+ "totals": {
+  "covered_lines": 10330,
+  "num_statements": 61315,
+  "percent_covered": 16.847427220092964
+ },
+ "by_package": {
+  "agents": {
+   "covered": 507,
+   "statements": 805,
+   "percent": 63.0
+  },
+  "api": {
+   "covered": 3876,
+   "statements": 43532,
+   "percent": 8.9
+  },
+  "checks": {
+   "covered": 2116,
+   "statements": 4226,
+   "percent": 50.1
+  },
+  "db": {
+   "covered": 2012,
+   "statements": 3008,
+   "percent": 66.9
+  },
+  "llm": {
+   "covered": 58,
+   "statements": 231,
+   "percent": 25.1
+  },
+  "sap": {
+   "covered": 618,
+   "statements": 3367,
+   "percent": 18.4
+  },
+  "workers": {
+   "covered": 1143,
+   "statements": 6146,
+   "percent": 18.6
+  }
+ }
+}

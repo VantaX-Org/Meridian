@@ -1,0 +1,11 @@
+     × the shell root and the top bar take the tenant's accent, logo and name; About keeps the Meridian mark 10915ms
+     × renders 100,000 rows in under 200 ms and draws only the rows in view 300ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  design/v2/__tests__/Enterprise.test.tsx > Admin › Settings › Appearance > the shell root and the top bar take the tenant's accent, logo and name; About keeps the Meridian mark
+ FAIL  design/v2/__tests__/Grid.test.tsx > <Grid> virtualisation > renders 100,000 rows in under 200 ms and draws only the rows in view
+ Test Files  2 failed | 119 passed (121)
+      Tests  2 failed | 1262 passed (1264)
+Statements   : 82.03% ( 16255/19815 )
+Branches     : 74.5% ( 13286/17833 )
+Functions    : 78.03% ( 5739/7354 )
+Lines        : 83.67% ( 13189/15762 )

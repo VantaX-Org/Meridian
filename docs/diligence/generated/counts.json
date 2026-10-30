@@ -401,8 +401,22 @@
       "v2-work.spec.ts"
     ],
     "playwright_tests_declared (static count of test( calls)": 195,
+    "pytest_collect_summary": "18288/18292 tests collected (4 deselected) in 148.84s (0:02:28)",
     "pytest_files": 505,
     "pytest_files_postgres (_pg.py)": 89,
+    "pytest_items_collected": 18288,
+    "pytest_items_in_postgres_files": 445,
+    "pytest_items_per_directory": {
+      "tests (top level)": 4995,
+      "tests/agents": 42,
+      "tests/checks": 12946,
+      "tests/db": 8,
+      "tests/golden": 35,
+      "tests/process_discovery": 132,
+      "tests/sap": 65,
+      "tests/services": 55,
+      "tests/workers": 10
+    },
     "vitest_files": 121
   }
 }
