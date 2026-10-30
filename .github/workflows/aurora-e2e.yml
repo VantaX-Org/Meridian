@@ -90,6 +90,7 @@ jobs:
         e2e/v2-runs.spec.ts
         e2e/v2-status.spec.ts
         e2e/v2-step9.spec.ts
+        e2e/v2-step10.spec.ts
         e2e/v2-systems.spec.ts
         e2e/v2-work.spec.ts
         e2e/redirects.spec.ts
