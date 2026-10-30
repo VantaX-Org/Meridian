@@ -66,3 +66,9 @@ vendor/nwrfcsdk/*
 !vendor/nwrfcsdk/README.md
 *.har.recording.tmp
 .playwright-mcp/
+
+# Coverage (make coverage, tests/COVERAGE_CI_SNIPPET.yml)
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/

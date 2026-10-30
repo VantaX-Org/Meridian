@@ -1,0 +1,16 @@
+# Coverage of the Python code base (PC-8). Used by `make coverage` and the CI coverage job
+# (tests/COVERAGE_CI_SNIPPET.yml); the floor is enforced by tests/coverage_floor.py.
+[run]
+source =
+    api
+    workers
+    checks
+    sap
+omit =
+    */tests/*
+    */__pycache__/*
+relative_files = True
+
+[report]
+skip_empty = True
+precision = 1
