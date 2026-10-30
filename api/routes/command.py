@@ -80,7 +80,7 @@ async def _records(db: AsyncSession, tenant: Tenant, request: Request, q: str, p
     out = []
     for r in rows:
         rid = f"{r['module']}:{r['record_key']}"
-        title = f"{_label(r['module'])} {_key_value(r['record_key'])}" + (f" · {r['name']}" if r["name"] else "")
+        title = f"{_label(r['module'])} {_key_value(r['record_key'])}" + (f", {r['name']}" if r["name"] else "")
         out.append({"id": rid, "title": title,
                     "href": _object_href(r["system_name"], r["module"], f"?open=record:{quote(rid, safe=':=|')}")})
     return out
@@ -94,7 +94,7 @@ async def _rules(db: AsyncSession, tenant: Tenant, q: str, n: int) -> list[dict]
         "AND (split_part(name, ':', 1) ILIKE :pre OR name ILIKE :any) "
         "ORDER BY split_part(name, ':', 1) LIMIT :n"),
         {"t": str(tenant.id), "pre": _like(q) + "%", "any": "%" + _like(q) + "%", "n": n})).mappings().all()
-    return [{"id": r["check_id"], "title": f"{r['check_id']} · {r['title']}" if r["title"] else r["check_id"],
+    return [{"id": r["check_id"], "title": f"{r['check_id']} {r['title']}" if r["title"] else r["check_id"],
              "href": f"/r/{quote(r['check_id'], safe='')}"} for r in rows]
 
 
@@ -121,7 +121,7 @@ async def _runs(db: AsyncSession, tenant: Tenant, q: str, n: int) -> list[dict]:
         {"t": str(tenant.id), "any": "%" + _like(q) + "%", "n": n})).mappings().all()
     return [{"id": r["id"],
              "title": (r["label"] or (f"Run {r['run_number']}" if r["run_number"] else "Run"))
-                      + f" · {r['run_at']:%Y-%m-%d}",
+                      + f", {r['run_at']:%Y-%m-%d}",
              "href": f"/run/{r['id']}"} for r in rows]
 
 

@@ -63,14 +63,14 @@ async def test_records_rules_objects_runs_people(seeded, client_for):
             ids = [i["id"] for i in g["record"]["items"]]
             assert "material_master:MATNR=000000000000000101|WERKS=3000" in ids, q
         item = (await _cmd(client, "101"))["record"]["items"][0]
-        assert item["title"] == "Material master 000000000000000101 · Hex bolt M8 zinc"
+        assert item["title"] == "Material master 000000000000000101, Hex bolt M8 zinc"
         assert item["href"] == "/o/ecc-production/material-master?open=record:material_master:MATNR=000000000000000101|WERKS=3000"
         assert "record" not in await _cmd(client, "zzz-nothing")
 
         # rules by check_id prefix and by name
         g = await _cmd(client, "MM0")
         assert [i["id"] for i in g["rule"]["items"]] == ["MM014", "MM031"]
-        assert g["rule"]["items"][0] == {"id": "MM014", "title": "MM014 · Base unit of measure not valid", "href": "/r/MM014"}
+        assert g["rule"]["items"][0] == {"id": "MM014", "title": "MM014 Base unit of measure not valid", "href": "/r/MM014"}
         assert [i["id"] for i in (await _cmd(client, "group missing"))["rule"]["items"]] == ["MM031"]
 
         # objects by label, runs by label, people by name

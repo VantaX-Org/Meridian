@@ -62,7 +62,7 @@ def _prediction_interval(
 ) -> tuple[float, float, float]:
     """Point forecast at ``x0`` and its two-sided prediction interval for a simple linear fit.
 
-    ``ŷ ± t(level, n−2) · s · sqrt(1 + 1/n + (x0 − x̄)² / Sxx)``, with ``s`` the residual
+    ``ŷ ± t(level, n−2) * s * sqrt(1 + 1/n + (x0 − x̄)² / Sxx)``, with ``s`` the residual
     standard error. All three values are clamped to the 0–100 score scale and rounded to
     one decimal. Needs at least three points on at least two distinct days."""
     from scipy.stats import t as student_t

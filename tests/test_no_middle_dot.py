@@ -21,3 +21,11 @@ def test_report_sources_and_templates_have_no_middle_dot():
     assert files
     bad = [f.name for f in files if f.exists() and DOT in f.read_text(encoding="utf-8")]
     assert not bad, bad
+
+
+def test_backend_sources_have_no_middle_dot():
+    """API answers reach the screens: the receipt formula and command line titles once carried it (acceptance run)."""
+    files = [p for d in ("api", "workers", "checks", "sap", "agents", "db", "llm") for p in (ROOT / d).rglob("*.py")]
+    assert files
+    bad = [str(f.relative_to(ROOT)) for f in files if DOT in f.read_text(encoding="utf-8")]
+    assert not bad, bad

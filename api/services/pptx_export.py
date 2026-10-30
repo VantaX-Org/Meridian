@@ -66,7 +66,7 @@ def _title_slide(prs: Presentation, meta: dict) -> None:
     run.font.color.rgb = _hex(_ACCENT)
     sub = box.text_frame.add_paragraph()
     srun = sub.add_run()
-    srun.text = f"L1–L5 business process · version {meta.get('version_no', 0)} · exported {meta.get('exported_at', '')}"
+    srun.text = f"L1–L5 business process, version {meta.get('version_no', 0)}, exported {meta.get('exported_at', '')}"
     srun.font.size = Pt(14)
     srun.font.color.rgb = _hex(_MUTED)
 
@@ -76,22 +76,22 @@ def _l1_slide(prs: Presentation, l1: L1, doc: ProcessModelDocument) -> None:
     for l2 in l1.l2:
         lines.append((l2.name, 0, _DARK))
         for l3 in l2.l3:
-            lines.append((f"{l3.name}  ·  {len(l3.l4)} sub-processes", 1, _MUTED))
+            lines.append((f"{l3.name}, {len(l3.l4)} sub-processes", 1, _MUTED))
             for l4 in l3.l4:
-                lines.append((f"{l4.name}  ·  {len(l4.activities)} activities", 2, _ACCENT))
+                lines.append((f"{l4.name}, {len(l4.activities)} activities", 2, _ACCENT))
     n_l5 = sum(len(l4.activities) for a in l1.l2 for b in a.l3 for l4 in b.l4)
-    _add_title(prs, l1.name, f"{len(l1.l2)} process groups · {n_l5} activities")
+    _add_title(prs, l1.name, f"{len(l1.l2)} process groups, {n_l5} activities")
     _add_body(prs, lines or [("No process groups", 0, _MUTED)])
 
 
 def _l4_slide(prs: Presentation, l1: L1, l2: L2, l3: L3, l4: L4) -> None:
     lines: list[tuple[str, int, str]] = []
     for a in l4.activities:
-        rule = f"{len(a.check_ids)} rules · {len(a.sap_tables)} tables" if (a.check_ids or a.sap_tables) else "no DQ coverage"
+        rule = f"{len(a.check_ids)} rules, {len(a.sap_tables)} tables" if (a.check_ids or a.sap_tables) else "no DQ coverage"
         lines.append((f"{a.name}  —  {rule}", 0, _DARK))
         if a.tcode:
             lines.append((f"t-code {a.tcode}", 1, _MUTED))
-    _add_title(prs, l4.name, f"{l1.name} → {l2.name} → {l3.name}" + (f" · t-code {l4.tcode}" if l4.tcode else ""))
+    _add_title(prs, l4.name, f"{l1.name} → {l2.name} → {l3.name}" + (f", t-code {l4.tcode}" if l4.tcode else ""))
     _add_body(prs, lines or [("No activities", 0, _MUTED)])
 
 

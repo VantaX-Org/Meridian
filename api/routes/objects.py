@@ -566,7 +566,7 @@ async def get_object_receipt(module: str, run: Optional[uuid.UUID] = Query(None,
     policy = (await policy_packs.breaches(db, t["t"], [run_id], module)).get((run_id, module), [])
 
     w = {d: round(configured[d], 4) for d in _DIMENSION_ORDER}
-    formula = "DQS = " + " + ".join(f"{w[d]:.2f}·{_DIMENSION_SHORT[d]}" for d in _DIMENSION_ORDER)
+    formula = "DQS = " + " + ".join(f"{w[d]:.2f} × {_DIMENSION_SHORT[d]}" for d in _DIMENSION_ORDER)
     coverage = mod_summary.get("coverage")
     return {
         "module": module, "label": _label(module), "run_id": run_id, "run_at": run_at,
