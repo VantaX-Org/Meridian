@@ -4353,4 +4353,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Walkthroughs by role": "ロール別ウォークスルー",
   "This chapter is in English.": "この章は英語です。",
   "in English": "英語",
+  "{unassigned} of the {total} open records are assigned to nobody.": "未処理の {total} 件のうち {unassigned} 件は誰にも割り当てられていません。",
+  "Records nobody is assigned to": "誰にも割り当てられていないレコード",
+  "Assign them on Work to give each an owner and an SLA.": "作業画面で割り当てると、それぞれに担当者と SLA が付きます。",
 };

@@ -4352,6 +4352,9 @@ export const en = {
   "Walkthroughs by role": "Walkthroughs by role",
   "This chapter is in English.": "This chapter is in English.",
   "in English": "in English",
+  "{unassigned} of the {total} open records are assigned to nobody.": "{unassigned} of the {total} open records are assigned to nobody.",
+  "Records nobody is assigned to": "Records nobody is assigned to",
+  "Assign them on Work to give each an owner and an SLA.": "Assign them on Work to give each an owner and an SLA.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

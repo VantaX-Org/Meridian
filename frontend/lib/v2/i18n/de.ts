@@ -4353,4 +4353,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Walkthroughs by role": "Rundgänge nach Rolle",
   "This chapter is in English.": "Dieses Kapitel ist auf Englisch.",
   "in English": "auf Englisch",
+  "{unassigned} of the {total} open records are assigned to nobody.": "{unassigned} der {total} offenen Datensätze sind niemandem zugewiesen.",
+  "Records nobody is assigned to": "Datensätze, die niemandem zugewiesen sind",
+  "Assign them on Work to give each an owner and an SLA.": "Weisen Sie sie unter Arbeit zu, damit jeder einen Verantwortlichen und ein SLA hat.",
 };

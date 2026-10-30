@@ -7,6 +7,7 @@ import type { Person } from "@/lib/api/v2/people";
 import { useOpenItem, usePhone } from "@/lib/v2/hooks";
 import { PEOPLE_SORT_LABEL, objectsLine, roleWord, slaMet, sortPeople, type PeopleSort } from "@/lib/v2/people";
 import { usePeople } from "@/lib/v2/approvals-queries";
+import { useWorkSummary } from "@/lib/v2/work-queries";
 import { int } from "@/lib/v2/score";
 import { Dash, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../parts";
 import { PeopleActions } from "./PeopleActions";
@@ -45,6 +46,10 @@ export function PeopleCanvas() {
   const [sort, setSort] = useState<PeopleSort>("open");
   const [reverse, setReverse] = useState(false);
   const rows = useMemo(() => sortPeople(q.data?.people ?? [], sort, reverse), [q.data, sort, reverse]);
+  // The open work nobody holds: the work list's open total less what the people hold, so the page adds up.
+  const summary = useWorkSummary().data;
+  const assigned = rows.reduce((n, p) => n + (p.open_work ?? 0), 0);
+  const unassigned = summary ? Math.max(0, summary.totals.open - assigned) : null;
   const choose = (k: PeopleSort) => {
     if (k === sort) setReverse((r) => !r);
     else {
@@ -84,6 +89,7 @@ export function PeopleCanvas() {
       <PageTitle sub={t("Owners and stewards")}>{t("People")}</PageTitle>
       <p className="m2-finding" data-testid="people-sentence">
         {sentenceOf(rows)}
+        {unassigned != null && summary ? <>{" "}{t("{unassigned} of the {total} open records are assigned to nobody.", { unassigned: int(unassigned), total: int(summary.totals.open) })}</> : null}
       </p>
       <p className="m2-prov">
         {t("Counts are read from the work assigned in the latest state.")}{" "}<V2Link href={hrefFor({ kind: "triage", id: "" })}>{t("Triage and SLA")}</V2Link>
@@ -108,6 +114,14 @@ export function PeopleCanvas() {
               </li>
             );
           })}
+          {unassigned != null ? (
+            <li data-testid="people-unassigned">
+              <V2Link href="/work?assigned=unassigned" className="m2-prow">
+                <span>{t("Unassigned")}</span>
+                <span>{t("{open_work} open", { open_work: int(unassigned) })}</span>
+              </V2Link>
+            </li>
+          ) : null}
         </ul>
       ) : (
         <div className="m2-people m2-frame" style={{ overflowX: "auto" }}>
@@ -153,7 +167,27 @@ export function PeopleCanvas() {
                   </tr>
                 );
               })}
+              {unassigned != null ? (
+                <tr data-testid="people-unassigned">
+                  <th scope="row">
+                    <V2Link href="/work?assigned=unassigned" className="m2-rowlink">{t("Unassigned")}</V2Link>
+                  </th>
+                  <td><Dash why={t("Records nobody is assigned to")} /></td>
+                  <td className="m2-r">{int(unassigned)}</td>
+                  <td colSpan={5} className="m2-meta">{t("Assign them on Work to give each an owner and an SLA.")}</td>
+                </tr>
+              ) : null}
             </tbody>
+            {unassigned != null && summary ? (
+              <tfoot>
+                <tr data-testid="people-total">
+                  <th scope="row">{t("Total")}</th>
+                  <td />
+                  <td className="m2-r">{int(summary.totals.open)}</td>
+                  <td colSpan={5} />
+                </tr>
+              </tfoot>
+            ) : null}
           </table>
         </div>
       )}

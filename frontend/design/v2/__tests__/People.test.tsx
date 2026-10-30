@@ -44,14 +44,15 @@ function mount(search = "", open?: string) {
   );
 }
 const table = () => screen.findByRole("table", { name: "People" });
-const names = (t: HTMLElement) => within(t).getAllByRole("row").slice(1).map((r) => text(within(r).getAllByRole("link")[0]));
+const people = (t: HTMLElement) => within(t).getAllByRole("row").slice(1).filter((r) => !r.hasAttribute("data-testid"));
+const names = (t: HTMLElement) => people(t).map((r) => text(within(r).getAllByRole("link")[0]));
 
 describe("the People canvas", () => {
   it("is a table of owners and stewards: the sentence, the columns, the figures from /people", async () => {
     mount();
     const t = await table();
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("People");
-    expect(await screen.findByTestId("people-sentence")).toHaveTextContent(/^4 of 6 people hold open work: 270 records, 34 overdue\. 2 batches wait for your approval\.$/);
+    expect(await screen.findByTestId("people-sentence")).toHaveTextContent(/^4 of 6 people hold open work: 270 records, 34 overdue\. 2 batches wait for your approval\. [\d,]+ of the [\d,]+ open records are assigned to nobody\.$/);
     expect(within(t).getAllByRole("columnheader").map(text)).toEqual(["Person", "Objects", "Open work", "Approvals waiting", "Overdue", "SLA met", "Breaches this month", "Last action"]);
     const naidoo = within(t).getByRole("link", { name: "A. Naidoo" }).closest("tr") as HTMLElement;
     const cells = within(naidoo).getAllByRole("cell").map(text);
@@ -62,7 +63,7 @@ describe("the People canvas", () => {
   it("puts the caller's own row first and marks it, then orders by open work", async () => {
     mount();
     const t = await table();
-    const rows = within(t).getAllByRole("row").slice(1);
+    const rows = people(t);
     expect(rows[0]).toHaveAttribute("data-me", "true");
     expect(text(rows[0])).toContain("you");
     expect(names(t)).toEqual(["Demo user", "A. Naidoo", "R. Govender", "T. Mokoena", "P. Khumalo", "S. Dlamini"]);
@@ -97,7 +98,9 @@ describe("the People canvas", () => {
     window.matchMedia = mm as unknown as typeof window.matchMedia;
     mount();
     const list = await screen.findByRole("list", { name: "People" });
-    expect(within(list).getAllByRole("listitem")).toHaveLength(6);
+    // Six people and, last, the open records nobody holds.
+    await waitFor(() => expect(within(list).getAllByRole("listitem")).toHaveLength(7));
+    expect(within(list).getAllByRole("listitem")[6]).toHaveAttribute("data-testid", "people-unassigned");
     expect(text(within(list).getAllByRole("listitem")[0])).toContain("you");
     expect(screen.queryByRole("table", { name: "People" })).toBeNull();
     vi.unstubAllGlobals();
@@ -184,5 +187,21 @@ describe("the person inspector", () => {
   it("says when the person is not listed", async () => {
     mount("", "person:nobody");
     expect(await screen.findByText(/This person is not listed/)).toBeInTheDocument();
+  });
+});
+
+describe("people add up to the work list", () => {
+  it("an Unassigned row and the total reconcile what people hold with every open record", async () => {
+    mount();
+    const row = await screen.findByTestId("people-unassigned");
+    const total = await screen.findByTestId("people-total");
+    const table = screen.getByTestId("people-table");
+    const held = Array.from(table.querySelectorAll("tbody tr:not([data-testid])")).reduce((n, tr) => n + Number((tr.querySelectorAll("td")[1]?.textContent ?? "0").replace(/,/g, "")), 0);
+    const un = Number((row.querySelectorAll("td")[1]?.textContent ?? "0").replace(/,/g, ""));
+    const all = Number((total.querySelectorAll("td")[1]?.textContent ?? "0").replace(/,/g, ""));
+    expect(held + un).toBe(all);
+    expect(all).toBeGreaterThan(held);
+    expect(screen.getByTestId("people-sentence")).toHaveTextContent(/of the [\d,]+ open records are assigned to nobody\./);
+    expect(within(row).getByRole("link", { name: "Unassigned" })).toHaveAttribute("href", expect.stringContaining("/work?assigned=unassigned"));
   });
 });
