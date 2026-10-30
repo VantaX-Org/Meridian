@@ -4293,6 +4293,9 @@ export const en = {
   "{money} at risk": "{money} at risk",
   "{first}, as SAP shows it (leading zeros of a numeric key left out; the full key is on hover). Pinned.": "{first}, as SAP shows it (leading zeros of a numeric key left out; the full key is on hover). Pinned.",
   "cost model {cost_model}, default assumptions": "cost model {cost_model}, default assumptions",
+  "{rowsCount} {rowsCount, plural, one {run} other {runs}} in the table, {failedRows} of them failed.": "{rowsCount} {rowsCount, plural, one {run} other {runs}} in the table, {failedRows} of them failed.",
+  "{rowsCount} {rowsCount, plural, one {run} other {runs}} in the table.": "{rowsCount} {rowsCount, plural, one {run} other {runs}} in the table.",
+  "The timeline shows the last {runsCount} finished {runsCount, plural, one {run} other {runs}}, the latest on {run_at}.": "The timeline shows the last {runsCount} finished {runsCount, plural, one {run} other {runs}}, the latest on {run_at}.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

@@ -4294,4 +4294,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "{money} at risk": "{money} がリスク",
   "{first}, as SAP shows it (leading zeros of a numeric key left out; the full key is on hover). Pinned.": "{first}（SAP の表示どおり。数値キーの先頭のゼロは省略し、完全なキーはホバーで表示）。固定列。",
   "cost model {cost_model}, default assumptions": "コストモデル {cost_model}（既定の前提）",
+  "{rowsCount} {rowsCount, plural, one {run} other {runs}} in the table, {failedRows} of them failed.": "表に {rowsCount} 件の実行があり、そのうち {failedRows} 件が失敗しました。",
+  "{rowsCount} {rowsCount, plural, one {run} other {runs}} in the table.": "表に {rowsCount} 件の実行があります。",
+  "The timeline shows the last {runsCount} finished {runsCount, plural, one {run} other {runs}}, the latest on {run_at}.": "タイムラインには完了した直近 {runsCount} 件の実行を表示しています。最新は {run_at} です。",
 };

@@ -13,7 +13,7 @@ import { f1, int, moduleSlug, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { VerdictMark } from "../marks";
 import { Dash, Dot, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../parts";
 import { ResultFrame, useOutcome } from "../inspector/shared";
-import { kindWord } from "../RunTimeline";
+import { kindWord, triggerOf } from "../RunTimeline";
 import { duration } from "../shell/StatusStrip";
 import { t as tr, lc } from "@/lib/v2/i18n";
 import { baselineRefusalOf, type BaselineRefusal } from "@/lib/api/v2/step9";
@@ -55,11 +55,18 @@ function PinRefusal({ refusal, canForce, pending, onForce }: { refusal: Baseline
 /** The "Compare with" control: the other runs of the scope, newest first, and the link that opens the pair. */
 export function CompareControl({ id, runs }: { id: string; runs: readonly TimelineRun[] }) {
   const others = useMemo(() => runs.filter((r) => r.id !== id).reverse(), [runs, id]);
-  const base = others.find((r) => r.baseline);
+  // The default partner measured the same objects: a run of another object compares nothing ("0 rules that ran
+  // cleanly in both runs"). The baseline when it shares an object, else the newest earlier run that does.
+  const shares = useMemo(() => {
+    const mine = new Set(Object.keys(runs.find((r) => r.id === id)?.objects ?? {}));
+    return (r: TimelineRun) => mine.size === 0 || Object.keys(r.objects ?? {}).some((m) => mine.has(m));
+  }, [runs, id]);
+  const base = others.find((r) => r.baseline && shares(r));
   const prev = useMemo(() => {
     const at = runs.findIndex((r) => r.id === id);
-    return at > 0 ? runs[at - 1] : others[0];
-  }, [runs, id, others]);
+    const earlier = runs.slice(0, Math.max(0, at)).reverse();
+    return earlier.find(shares) ?? others.find(shares) ?? (at > 0 ? runs[at - 1] : others[0]);
+  }, [runs, id, others, shares]);
   const [picked, setPicked] = useState<string | null>(null);
   const other = picked ?? (base ?? prev)?.id ?? null;
   if (others.length === 0) return null;
@@ -241,7 +248,7 @@ export function RunCanvas({ id }: { id: string }) {
         strip ? tr("{records_checked} records checked", { records_checked: int(strip.records_checked) }) : "",
         strip ? tr("{rules_measured} rules measured", { rules_measured: int(strip.rules_measured) }) : "",
         meta?.duration_s != null ? tr("scored in {duration_s}", { duration_s: duration(meta.duration_s) }) : "",
-        tr("trigger {kindWord}", { kindWord: lc(kindWord(meta?.kind ?? v.metadata?.trigger)) }),
+        tr("trigger {kindWord}", { kindWord: lc(kindWord(triggerOf(meta?.kind, v.metadata))) }),
       ].filter(Boolean)
     : [];
 

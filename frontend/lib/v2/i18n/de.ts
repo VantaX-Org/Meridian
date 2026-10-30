@@ -4294,4 +4294,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "{money} at risk": "{money} gefährdet",
   "{first}, as SAP shows it (leading zeros of a numeric key left out; the full key is on hover). Pinned.": "{first}, wie SAP ihn zeigt (führende Nullen eines numerischen Schlüssels weggelassen; der volle Schlüssel steht im Tooltip). Fixiert.",
   "cost model {cost_model}, default assumptions": "Kostenmodell {cost_model}, Standardannahmen",
+  "{rowsCount} {rowsCount, plural, one {run} other {runs}} in the table, {failedRows} of them failed.": "{rowsCount} {rowsCount, plural, one {Lauf} other {Läufe}} in der Tabelle, davon {failedRows} fehlgeschlagen.",
+  "{rowsCount} {rowsCount, plural, one {run} other {runs}} in the table.": "{rowsCount} {rowsCount, plural, one {Lauf} other {Läufe}} in der Tabelle.",
+  "The timeline shows the last {runsCount} finished {runsCount, plural, one {run} other {runs}}, the latest on {run_at}.": "Die Zeitleiste zeigt {runsCount, plural, one {den letzten abgeschlossenen Lauf} other {die letzten # abgeschlossenen Läufe}}, den neuesten am {run_at}.",
 };

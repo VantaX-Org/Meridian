@@ -145,3 +145,37 @@ describe("Run canvas", () => {
     expect(within(alert).getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 });
+
+describe("Compare with: the default partner", () => {
+  const run = (id: string, at: string, objects: string[], over: Partial<import("@/lib/api/v2/runs").TimelineRun> = {}): import("@/lib/api/v2/runs").TimelineRun => ({
+    id, run_at: at, label: null, system_id: "s", baseline: false, kind: "upload", records_checked: 1, duration_s: 1,
+    objects: Object.fromEntries(objects.map((m) => [m, {} as import("@/lib/api/v2/runs").TimelineRun["objects"][string]])),
+    ...over,
+  });
+  it("is the previous run of the same objects, not the system's previous run of another object", async () => {
+    const { CompareControl } = await import("../screens/Run");
+    const runs = [run("bp1", "2026-10-30T04:00:00Z", ["business_partner"]), run("mm1", "2026-10-30T04:10:00Z", ["material_master"]), run("bp2", "2026-10-30T04:15:00Z", ["business_partner"])];
+    renderWithQuery(<CompareControl id="bp2" runs={runs} />);
+    expect(screen.getByLabelText("Compare with")).toHaveValue("bp1");
+    expect(screen.getByRole("link", { name: "Compare" })).toHaveAttribute("href", expect.stringContaining("/run/bp1/vs/bp2"));
+  });
+
+  it("skips a baseline that measured other objects", async () => {
+    const { CompareControl } = await import("../screens/Run");
+    const runs = [run("mm0", "2026-10-29T04:00:00Z", ["material_master"], { baseline: true }), run("bp1", "2026-10-30T04:00:00Z", ["business_partner"]), run("bp2", "2026-10-30T04:15:00Z", ["business_partner"])];
+    renderWithQuery(<CompareControl id="bp2" runs={runs} />);
+    expect(screen.getByLabelText("Compare with")).toHaveValue("bp1");
+  });
+});
+
+describe("the trigger of a run", () => {
+  it("falls back to the run's own trigger, then to upload for a run made from a file", async () => {
+    const { triggerOf, kindWord } = await import("../RunTimeline");
+    expect(triggerOf("scheduled", { trigger: "manual" })).toBe("scheduled");
+    expect(triggerOf(null, { trigger: "manual" })).toBe("manual");
+    expect(triggerOf(null, { source: "upload" })).toBe("upload");
+    expect(triggerOf(null, { file_name: "bp.csv" })).toBe("upload");
+    expect(triggerOf(null, null)).toBeNull();
+    expect(kindWord(triggerOf(null, { upload_id: "u1" }))).toBe("Upload");
+  });
+});

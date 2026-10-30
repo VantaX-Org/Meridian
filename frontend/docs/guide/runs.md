@@ -4,7 +4,7 @@ A run is one measurement of your data at a point in time: an extraction from a s
 
 ## What is on it
 
-- **The sentence**: "The last 8 runs, the latest on 16 Oct 2026. The baseline is 2 Oct 2026."
+- **The sentence**: "The timeline shows the last 8 finished runs, the latest on 16 Oct 2026. The baseline is 2 Oct 2026." Over the table, its own count: "9 runs in the table, 1 of them failed."
 - **The run timeline**: one mark per run, the baseline labelled. Select a mark to open that run.
 - **Runs and Jobs**: two views. **Start a run** opens the start panel.
 - **Runs** table: date, system, label, trigger (Scheduled or Started by hand), records, rules, score range across objects (for example "70.0 to 93.4"), status (Complete, Failed, Queued or running) and how long it took. Filter by system and status; **Show archived runs** brings back archived ones.
