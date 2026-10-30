@@ -4299,4 +4299,9 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "The timeline shows the last {runsCount} finished {runsCount, plural, one {run} other {runs}}, the latest on {run_at}.": "タイムラインには完了した直近 {runsCount} 件の実行を表示しています。最新は {run_at} です。",
   "Open Administration": "管理を開く",
   "{slot}:": "{slot}：",
+  "No SAP system is connected yet, but {count} {count, plural, one {object} other {objects}} came from uploaded files: {open} records to fix are on Work and their runs on Runs.": "まだ SAP システムは接続されていませんが、{count} 件のオブジェクトがアップロードされたファイルから来ています。修正対象の {open} 件のレコードは「作業」に、その実行は「実行」にあります。",
+  "Objects from uploaded files": "アップロードされたファイルのオブジェクト",
+  "Not attached to a system": "システムに未割り当て",
+  "{open} to fix, {records} records with an issue": "修正対象 {open} 件、問題のあるレコード {records} 件",
+  "Connect a system to attach them": "システムを接続して割り当てる",
 };

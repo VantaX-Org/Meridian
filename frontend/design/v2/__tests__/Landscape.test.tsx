@@ -3,6 +3,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import * as landscapeApi from "@/lib/api/v2/landscape";
 import * as reportsApi from "@/lib/api/v2/reports";
+import * as workApi from "@/lib/api/v2/work";
 import { landscapeFixture } from "@/lib/api/v2/fixtures";
 import { LandscapeCanvas } from "../screens/Landscape";
 import { getUrl, setUrl } from "./nav-store";
@@ -193,6 +194,7 @@ describe("landscape canvas, honest states", () => {
   });
 
   it("a tenant with no system keeps the frame and offers the one action", async () => {
+    vi.spyOn(workApi, "getSummary").mockResolvedValue({ version_id: null, scope: null, built: true, objects: [], totals: { records: 0, open: 0, issues: 0, critical: 0, proposed: 0, overdue: 0 } });
     vi.spyOn(landscapeApi, "getLandscape").mockResolvedValue({ ...landscapeFixture, systems: [], cells: [], objects: [] });
     renderWithQuery(<LandscapeCanvas />);
     expect(await screen.findByText(/No SAP system is connected yet/)).toBeInTheDocument();
@@ -200,6 +202,7 @@ describe("landscape canvas, honest states", () => {
   });
 
   it("an empty tenant gets three steps, the first one current, instead of empty frames", async () => {
+    vi.spyOn(workApi, "getSummary").mockResolvedValue({ version_id: null, scope: null, built: true, objects: [], totals: { records: 0, open: 0, issues: 0, critical: 0, proposed: 0, overdue: 0 } });
     vi.spyOn(landscapeApi, "getLandscape").mockResolvedValue({ ...landscapeFixture, systems: [], cells: [], objects: [] });
     renderWithQuery(<LandscapeCanvas />);
     const start = await screen.findByTestId("first-steps");
@@ -207,6 +210,22 @@ describe("landscape canvas, honest states", () => {
     expect(steps.map((s) => s.getAttribute("data-state"))).toEqual(["current", "next", "next"]);
     expect(within(steps[0]).getByRole("link", { name: "Upload a file" })).toHaveAttribute("href", expect.stringMatching(/^\/admin\/runs(\?|$)/));
     expect(within(steps[2]).getByRole("heading", { name: "Read the landscape" })).toBeInTheDocument();
+  });
+
+  it("with no system but uploaded files, lists the uploaded objects and says where their records are", async () => {
+    vi.spyOn(landscapeApi, "getLandscape").mockResolvedValue({ ...landscapeFixture, systems: [], cells: [], objects: [] });
+    vi.spyOn(workApi, "getSummary").mockResolvedValue({
+      version_id: null, scope: null, built: true,
+      objects: [{ module: "business_partner", records: 263, open: 263, issues: 300, critical: 40, proposed: 0, overdue: 0, statuses: { to_fix: 263 } }, { module: "material_master", records: 5104, open: 5104, issues: 5200, critical: 10, proposed: 0, overdue: 0, statuses: { to_fix: 5104 } }],
+      totals: { records: 5367, open: 5367, issues: 5500, critical: 50, proposed: 0, overdue: 0 },
+    });
+    renderWithQuery(<LandscapeCanvas />);
+    const sentence = await screen.findByTestId("landscape-sentence");
+    await waitFor(() => expect(sentence).toHaveTextContent("No SAP system is connected yet, but 2 objects came from uploaded files: 5,367 records to fix are on Work and their runs on Runs."));
+    const block = screen.getByTestId("uploaded-objects");
+    expect(within(block).getByRole("link", { name: /Business partner/ })).toHaveAttribute("href", expect.stringContaining("/work?module=business_partner"));
+    expect(within(block).getByRole("link", { name: "Connect a system to attach them" })).toHaveAttribute("href", expect.stringMatching(/^\/s\/new/));
+    expect(screen.queryByTestId("first-steps")).toBeNull();
   });
 
   it("systems with no run yet say so: zero objects scored, rows empty with their reason", async () => {

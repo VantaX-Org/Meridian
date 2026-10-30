@@ -4298,6 +4298,11 @@ export const en = {
   "The timeline shows the last {runsCount} finished {runsCount, plural, one {run} other {runs}}, the latest on {run_at}.": "The timeline shows the last {runsCount} finished {runsCount, plural, one {run} other {runs}}, the latest on {run_at}.",
   "Open Administration": "Open Administration",
   "{slot}:": "{slot}:",
+  "No SAP system is connected yet, but {count} {count, plural, one {object} other {objects}} came from uploaded files: {open} records to fix are on Work and their runs on Runs.": "No SAP system is connected yet, but {count} {count, plural, one {object} other {objects}} came from uploaded files: {open} records to fix are on Work and their runs on Runs.",
+  "Objects from uploaded files": "Objects from uploaded files",
+  "Not attached to a system": "Not attached to a system",
+  "{open} to fix, {records} records with an issue": "{open} to fix, {records} records with an issue",
+  "Connect a system to attach them": "Connect a system to attach them",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

@@ -488,3 +488,4 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-estnote { color: var(--m2-meta); }
 /* The phone ledger: the record key and the rule id never run together. */
 .m2-keyrule { display: inline-flex; flex-wrap: wrap; gap: 0 var(--m2-s2); }
+.m2-mlist.m2-mlist-all { display: block; }

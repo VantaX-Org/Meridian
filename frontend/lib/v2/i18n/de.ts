@@ -4299,4 +4299,9 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The timeline shows the last {runsCount} finished {runsCount, plural, one {run} other {runs}}, the latest on {run_at}.": "Die Zeitleiste zeigt {runsCount, plural, one {den letzten abgeschlossenen Lauf} other {die letzten # abgeschlossenen Läufe}}, den neuesten am {run_at}.",
   "Open Administration": "Administration öffnen",
   "{slot}:": "{slot}:",
+  "No SAP system is connected yet, but {count} {count, plural, one {object} other {objects}} came from uploaded files: {open} records to fix are on Work and their runs on Runs.": "Noch ist kein SAP-System verbunden, aber {count} {count, plural, one {Objekt stammt} other {Objekte stammen}} aus hochgeladenen Dateien: {open} zu korrigierende Datensätze stehen unter Arbeit, ihre Läufe unter Läufe.",
+  "Objects from uploaded files": "Objekte aus hochgeladenen Dateien",
+  "Not attached to a system": "Keinem System zugeordnet",
+  "{open} to fix, {records} records with an issue": "{open} zu korrigieren, {records} Datensätze mit einem Problem",
+  "Connect a system to attach them": "System verbinden, um sie zuzuordnen",
 };

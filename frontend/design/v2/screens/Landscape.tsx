@@ -6,11 +6,12 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { MigrationWave } from "@/types/api";
 import { useWaves } from "@/lib/v2/admin-queries";
 import { daysUntil, groupByWave, nextWave, type WaveGroup } from "@/lib/v2/waves";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatModuleName } from "@/lib/format";
 import type { Landscape, LandscapeCell, LandscapeSystem, WorkRow } from "@/lib/api/v2/types";
 import { useOpenItem, useRunParam, useV2Session, type V2Persona } from "@/lib/v2/hooks";
 import { useBatches, usePeople } from "@/lib/v2/approvals-queries";
 import { slaMet } from "@/lib/v2/people";
+import { useWorkSummary } from "@/lib/v2/work-queries";
 import { useLandscape, useStatus, useTopWork } from "@/lib/v2/queries";
 import { byMeasured, f1, int, moduleSlug, readingText, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { type GridColumn } from "../Grid";
@@ -603,6 +604,55 @@ export function FirstSteps({ connected, analysed }: { connected: boolean; analys
   );
 }
 
+/**
+ * No system is connected. Files uploaded without a system may already have records to fix (Work reads them): then the
+ * landscape lists those objects, says they came from uploads, and offers to attach them to a system.
+ */
+function NoSystemYet() {
+  const summary = useWorkSummary().data;
+  const session = useV2Session();
+  const uploaded = (summary?.objects ?? []).filter((o) => (o.records ?? 0) > 0 || (o.open ?? 0) > 0);
+  if (uploaded.length === 0) {
+    return (
+      <>
+        <PageTitle>{t("Landscape")}</PageTitle>
+        <p className="m2-finding" data-testid="landscape-sentence">
+          {t("No SAP system is connected yet. Connect one, extract it and run an analysis, and every object appears here with its score.")}
+        </p>
+        <FirstSteps connected={false} analysed={false} />
+      </>
+    );
+  }
+  const open = uploaded.reduce((n, o) => n + (o.open ?? 0), 0);
+  return (
+    <>
+      <PageTitle>{t("Landscape")}</PageTitle>
+      <p className="m2-finding" data-testid="landscape-sentence">
+        {t("No SAP system is connected yet, but {count} {count, plural, one {object} other {objects}} came from uploaded files: {open} records to fix are on Work and their runs on Runs.", { count: uploaded.length, open: int(open) })}
+      </p>
+      <section className="m2-sec" aria-label={t("Objects from uploaded files")} data-testid="uploaded-objects">
+        <div className="m2-sechead">
+          <h2 className="m2-h2">{t("Objects from uploaded files")}</h2>
+          <span className="m2-sub">{t("Not attached to a system")}</span>
+        </div>
+        <div className="m2-mlist m2-mlist-all">
+          {uploaded.map((o) => (
+            <V2Link key={o.module} href={`/work?module=${encodeURIComponent(o.module)}`} className="m2-lrow">
+              <span>{formatModuleName(o.module)}</span>
+              <span className="m2-c">{t("{open} to fix, {records} records with an issue", { open: int(o.open), records: int(o.records) })}</span>
+            </V2Link>
+          ))}
+        </div>
+        <div className="m2-cta">
+          <V2Link href="/work" className="m2-btn m2-next">{t("Open Work")}</V2Link>
+          <V2Link href="/runs" className="m2-btn">{t("Open the runs")}</V2Link>
+          {session.can("manage_systems") ? <V2Link href="/s/new" className="m2-btn">{t("Connect a system to attach them")}</V2Link> : null}
+        </div>
+      </section>
+    </>
+  );
+}
+
 /** The landscape canvas: the sentence, the next step, the coverage matrix and the next work. */
 export function LandscapeCanvas() {
   const run = useRunParam();
@@ -627,17 +677,7 @@ export function LandscapeCanvas() {
     );
   }
   if (!L) return <LandscapeSkeleton />;
-  if (L.systems.length === 0) {
-    return (
-      <>
-        <PageTitle>{t("Landscape")}</PageTitle>
-        <p className="m2-finding" data-testid="landscape-sentence">
-          {t("No SAP system is connected yet. Connect one, extract it and run an analysis, and every object appears here with its score.")}
-        </p>
-        <FirstSteps connected={false} analysed={false} />
-      </>
-    );
-  }
+  if (L.systems.length === 0) return <NoSystemYet />;
   const first = L.status_strip;
   return (
     <>
