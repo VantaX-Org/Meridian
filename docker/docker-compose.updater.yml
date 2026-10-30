@@ -18,6 +18,11 @@
 
 services:
   updater:
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
     # No `build:` key, deliberately — matches every other service in
     # docker-compose.customer.yml: customer hosts never fetch updater/
     # source or docker/Dockerfile.updater (see scripts/install.sh), they

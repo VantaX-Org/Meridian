@@ -118,7 +118,7 @@ RUN chmod +x /app/entrypoint.sh
 # only new images. Plain config, no application source.
 COPY docker/docker-compose.customer.yml docker/docker-compose.customer.ollama.yml docker/docker-compose.updater.yml docker/Dockerfile.rfc /deploy/docker/
 COPY docker/nginx/meridian.conf docker/nginx/nginx.conf /deploy/docker/nginx/
-COPY scripts/update.sh scripts/build-rfc-overlay.sh scripts/preflight.sh scripts/backup.sh scripts/restore.sh scripts/enable-local-ai.sh scripts/nginx-https.sh /deploy/scripts/
+COPY scripts/update.sh scripts/build-rfc-overlay.sh scripts/preflight.sh scripts/backup.sh scripts/restore.sh scripts/enable-local-ai.sh scripts/nginx-https.sh scripts/dns-overlay.sh /deploy/scripts/
 
 ENV PYTHONPATH=/app
 

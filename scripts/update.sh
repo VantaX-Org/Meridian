@@ -90,12 +90,14 @@ fi
 # SAP RFC overlay (scripts/build-rfc-overlay.sh) — present only on hosts that
 # built the NW RFC SDK into api/worker/beat. Rebuilt after every pull below.
 RFC_OVERLAY="$(dirname "$COMPOSE_FILE")/docker-compose.rfc.yml"
+# Container DNS overlay (scripts/dns-overlay.sh) — present only when .env sets MERIDIAN_DNS_1/2.
+DNS_OVERLAY="$(dirname "$COMPOSE_FILE")/docker-compose.dns.yml"
+
 dc() {
-    if [[ -f "$RFC_OVERLAY" ]]; then
-        docker compose -f "$COMPOSE_FILE" -f "$RFC_OVERLAY" "$@"
-    else
-        docker compose -f "$COMPOSE_FILE" "$@"
-    fi
+    local files=(-f "$COMPOSE_FILE")
+    [[ -f "$RFC_OVERLAY" ]] && files+=(-f "$RFC_OVERLAY")
+    [[ -f "$DNS_OVERLAY" ]] && files+=(-f "$DNS_OVERLAY")
+    docker compose "${files[@]}" "$@"
 }
 
 # The `updater` service is defined only in the docker-compose.updater.yml
@@ -527,6 +529,11 @@ assert_no_active_run
 pull_images
 sync_deployment_files
 reapply_https_nginx
+# The release compose file no longer pins public resolvers; keep MERIDIAN_DNS_1/2 from .env in force.
+if [[ -f scripts/dns-overlay.sh ]]; then
+    bash scripts/dns-overlay.sh "$(dirname "$COMPOSE_FILE")" >/dev/null \
+        || warn "Could not write the container DNS overlay from MERIDIAN_DNS_1/2"
+fi
 pull_dependencies
 rebuild_rfc_overlay
 

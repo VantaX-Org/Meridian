@@ -623,6 +623,13 @@ if [[ "$_compose_dir" != "$REPO_ROOT" ]]; then
     log ".env copied to ${_compose_dir}/.env"
 fi
 
+# Containers resolve through the host's resolver unless MERIDIAN_DNS_1/2 are set in .env, in which
+# case api and worker get them from a generated overlay (scripts/dns-overlay.sh).
+if _dns_overlay=$(bash "${SCRIPT_DIR}/dns-overlay.sh" "${_compose_dir}") && [[ -n "$_dns_overlay" ]]; then
+    COMPOSE_FILES+=(-f "$_dns_overlay")
+    log "Container DNS: MERIDIAN_DNS_1/2 from .env"
+fi
+
 # =============================================================================
 # SSL
 # =============================================================================

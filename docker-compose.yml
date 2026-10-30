@@ -8,8 +8,16 @@ volumes:
   storage_data:
   ollama_data:
 
+# Container log rotation (json-file): at most 5 files of 50 MB per container, so logs cannot fill the disk.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "5"
+
 services:
   db:
+    logging: *default-logging
     image: postgres:16-alpine
     container_name: meridian-db
     environment:
@@ -28,7 +36,8 @@ services:
       retries: 5
 
   redis:
-    image: redis:7-alpine
+    logging: *default-logging
+    image: redis:7.2-alpine  # 7.4 and later are not open source (RSALv2/SSPLv1)
     container_name: meridian-redis
     volumes:
       - redis_data:/data
@@ -44,7 +53,8 @@ services:
   # Object storage: Garage (S3-compatible), single node, configured on first
   # start by docker/garage/entrypoint.sh. The stack reaches it as minio:9000.
   storage:
-    image: ghcr.io/vantax-org/meridian-garage:latest  # docker/Dockerfile.garage
+    logging: *default-logging
+    image: ghcr.io/vantax-org/meridian-garage:${MERIDIAN_VERSION:-latest}  # docker/Dockerfile.garage
     container_name: meridian-storage
     environment:
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
@@ -72,7 +82,8 @@ services:
   #   docker compose --profile llm-bundled up -d    # Tier 2
   #   docker compose up -d                          # Tier 0 / 1 / 1.5 / 3
   ollama:
-    image: ollama/ollama:latest
+    logging: *default-logging
+    image: ollama/ollama:0.40.12
     container_name: meridian-ollama
     profiles: ["llm-bundled"]
     volumes:
@@ -87,7 +98,8 @@ services:
       retries: 5
 
   api:
-    image: ghcr.io/vantax-org/meridian-api:latest
+    logging: *default-logging
+    image: ghcr.io/vantax-org/meridian-api:${MERIDIAN_VERSION:-latest}
     platform: linux/amd64
     container_name: meridian-api
     env_file: .env
@@ -107,7 +119,8 @@ services:
       retries: 3
 
   worker:
-    image: ghcr.io/vantax-org/meridian-worker:latest
+    logging: *default-logging
+    image: ghcr.io/vantax-org/meridian-worker:${MERIDIAN_VERSION:-latest}
     platform: linux/amd64
     container_name: meridian-worker
     command: ["celery", "-A", "workers.celery_app", "worker", "--loglevel=info", "--concurrency=4"]
@@ -122,7 +135,8 @@ services:
     restart: unless-stopped
 
   beat:
-    image: ghcr.io/vantax-org/meridian-worker:latest
+    logging: *default-logging
+    image: ghcr.io/vantax-org/meridian-worker:${MERIDIAN_VERSION:-latest}
     platform: linux/amd64
     container_name: meridian-beat
     command: ["celery", "-A", "workers.celery_app", "beat", "--loglevel=info"]
@@ -134,7 +148,8 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: ghcr.io/vantax-org/meridian-frontend:latest
+    logging: *default-logging
+    image: ghcr.io/vantax-org/meridian-frontend:${MERIDIAN_VERSION:-latest}
     platform: linux/amd64
     container_name: meridian-frontend
     env_file: .env

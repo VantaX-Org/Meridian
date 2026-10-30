@@ -11,7 +11,7 @@ image:
 llm:
   provider: ollama
   model: llama3.1:70b
-  image: ollama/ollama:latest
+  image: ollama/ollama:0.40.12
   gpu:
     enabled: true
     count: 1
@@ -30,7 +30,7 @@ postgres:
 
 redis:
   enabled: true
-  image: redis:7-alpine
+  image: redis:7.2-alpine  # 7.4 and later are not open source (RSALv2/SSPLv1)
   storageSize: 5Gi
 
 storage:  # Garage object storage (docker/Dockerfile.garage)
