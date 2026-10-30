@@ -6,7 +6,7 @@ You are building **Meridian**, a customer-deployed SAP Data Quality and Master D
 
 ## What you are building
 
-Meridian analyses SAP data quality across **29 modules** and **800+ predefined validation checks** on data from **7 SAP system types** (ECC, S/4HANA Cloud, SuccessFactors, Concur, Ariba, eWMS, BTP). It ships as a customer-hosted Docker Compose stack — SAP data, findings, and reports never leave the customer's own environment.
+Meridian analyses SAP data quality across **29 modules** and **8,380 YAML validation rules** (5,623 enabled; the DDIC-derived rest ship disabled) on data from **7 SAP system types** (ECC, S/4HANA Cloud, SuccessFactors, Concur, Ariba, eWMS, BTP). It ships as a customer-hosted Docker Compose stack — SAP data, findings, and reports never leave the customer's own environment.
 
 The product includes:
 - **Data Quality Engine** — deterministic checks with DAMA DMBOK scoring (6 dimensions, record-level pass rates)
@@ -65,12 +65,12 @@ meridian/
 ├── .github/workflows/               ← CI/CD (build, test, release, deploy)
 │
 ├── api/                             ← FastAPI application
-│   ├── main.py                      ← 45 registered routers + GzipMiddleware
+│   ├── main.py                      ← 120 registered routers + GzipMiddleware
 │   ├── middleware/
 │   │   ├── tenant.py                ← JWT → tenant_id → Postgres RLS
 │   │   ├── licence.py               ← module entitlement enforcement
 │   │   └── cache.py                 ← Redis response caching decorator
-│   ├── routes/                      ← all API endpoints (45 route modules)
+│   ├── routes/                      ← all API endpoints (125 route modules)
 │   │   ├── connectivity.py          ← module-aware extraction, config sync, health
 │   │   ├── spro_config.py           ← SPRO configuration reader
 │   │   ├── config_impact.py         ← feature-level impact analysis
@@ -86,7 +86,7 @@ meridian/
 │
 ├── agents/                          ← LangGraph agents
 │   ├── orchestrator.py              ← 6-node graph: analyst → config_matching → config_impact → remediation → readiness → report
-│   ├── config_impact.py             ← deterministic feature impact (52 rules)
+│   ├── config_impact.py             ← deterministic feature impact (53 rules)
 │   └── state.py                     ← AgentState TypedDict
 │
 ├── checks/                          ← deterministic check engine + YAML rules
@@ -117,27 +117,26 @@ meridian/
 │   │   ├── run_config_sync.py       ← SPRO/FO config sync
 │   │   ├── run_health_check.py      ← connection health + check_all_systems
 │   │   └── ...                      ← cleaning, sync, PDF, notifications, etc.
-│   └── scheduler.py                 ← 12 beat tasks inc. health check every 30min
+│   └── scheduler.py                 ← 31 beat tasks inc. health check every 30min
 │
-├── db/                              ← SQLAlchemy schema + Alembic migrations (099)
+├── db/                              ← SQLAlchemy schema + Alembic migrations (head 117)
 │   ├── schema.py                    ← all models inc. ConfigImpactResult, ConfigSnapshot, SystemModuleMap
-│   ├── migrations/versions/         ← 97 migrations (head 099)
-│   └── seeds/config_impact_rules.yaml ← 52 feature impact rules
+│   ├── migrations/versions/         ← 115 migration files (head 117)
+│   └── seeds/config_impact_rules.yaml ← 53 feature impact rules
 │
 ├── llm/provider.py                  ← swappable LLM with request_timeout=120
 │
-├── frontend/                        ← Next.js 15 dashboard
+├── frontend/                        ← Next.js 16 dashboard (16.4.1)
 │   ├── app/(v2)/                    ← the one interface at the root: landscape /, /o/{system}/{module}, /r/{check_id}, /work, /run, /runs, /people, /reports, /rules, /admin
 │   ├── app/(auth)/                  ← sign-in, invite, password and licence pages on the same tokens
 │   ├── design/v2/                   ← the component library: shell (map, canvas, inspector), ruler, grid, inspector kinds, screens, admin, tokens.css
 │   ├── lib/v2/                      ← hooks, i18n (en, de, ja), help index, keys, formatters
 │   ├── lib/api/                     ← typed API client modules inc. connectivity.ts
-│   └── components/                  ← domain components (e.g. mdm/) built on @/design
 │
 ├── cloudflare/                      ← Meridian HQ + licence worker
 ├── scripts/                         ← deploy, update, backup, package, export
 ├── helm/                            ← Kubernetes Helm chart
-└── tests/                           ← 30 test files (28 spec tests passing)
+└── tests/                           ← 518 pytest files (Playwright specs live in frontend/e2e, 19 files)
 ```
 
 ---
@@ -205,7 +204,7 @@ DQS = (Completeness × 0.25) + (Accuracy × 0.25) + (Consistency × 0.20)
 analyst → config_matching → config_impact → remediation → readiness → report_agent
 ```
 
-The `config_impact` node is deterministic (no LLM) — maps check_ids to blocked/degraded features using 52 rules from `db/seeds/config_impact_rules.yaml`.
+The `config_impact` node is deterministic (no LLM) — maps check_ids to blocked/degraded features using 53 rules from `db/seeds/config_impact_rules.yaml`.
 
 ---
 
@@ -299,7 +298,7 @@ disagree, follow DESIGN.md.
 - Check classes inherit from `checks/base.py:BaseCheck`, return `CheckResult` with `pass_rate`.
 - Regex/domain checks exclude nulls — null detection is sole responsibility of `null_check`.
 - `cross_field_check` uses `df.eval()`, not `df.query()`.
-- Frontend: Next.js 15 App Router, TypeScript strict, Tailwind v4, shadcn/ui. No `any` types.
+- Frontend: Next.js 16 App Router, TypeScript strict, Tailwind v4, shadcn/ui. No `any` types.
 - API calls through typed wrappers in `frontend/lib/api/`.
 
 ### Security standards
