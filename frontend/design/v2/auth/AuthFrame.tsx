@@ -1,6 +1,7 @@
 "use client";
 
-import { forwardRef, useId, useState, type ReactNode } from "react";
+import { forwardRef, useId, useRef, useState, type ReactNode } from "react";
+import { useWindowTitle } from "../parts";
 import "../system.css";
 import "./auth.css";
 import { Mark } from "../marks";
@@ -15,6 +16,8 @@ const appVersion = process.env.NEXT_PUBLIC_APP_VERSION;
  */
 export function AuthFrame({ title, lead, children }: { title: string; lead?: ReactNode; children: ReactNode }) {
   const theme = useTenantTheme();
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  useWindowTitle(titleRef);
   return (
     <main className="m2-auth" id="main">
       <div className="m2-auth-col">
@@ -24,7 +27,7 @@ export function AuthFrame({ title, lead, children }: { title: string; lead?: Rea
           <span>{productName(theme)}</span>
         </span>
         <div className="m2-auth-card">
-          <h1>{title}</h1>
+          <h1 ref={titleRef}>{title}</h1>
           {lead ? <p className="m2-auth-lead">{lead}</p> : null}
           {children}
         </div>

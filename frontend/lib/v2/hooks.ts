@@ -146,3 +146,26 @@ export function usePhone(): boolean {
     () => false,
   );
 }
+
+/**
+ * A canvas filter kept in the address (`?status=failed`), so a reload, Back or a shared link shows the same rows. The
+ * fallback is never written: choosing it removes the parameter. The inspector (`open`) and fixture mode are kept.
+ */
+export function useUrlParam<T extends string>(key: string, fallback: T, allowed?: readonly T[]): [T, (next: T) => void] {
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const raw = params.get(key);
+  const value = (raw !== null && (!allowed || (allowed as readonly string[]).includes(raw)) ? raw : fallback) as T;
+  const set = useCallback(
+    (next: T) => {
+      const q = new URLSearchParams(params.toString());
+      if (next === fallback) q.delete(key);
+      else q.set(key, next);
+      const qs = q.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [router, pathname, params, key, fallback],
+  );
+  return [value, set];
+}

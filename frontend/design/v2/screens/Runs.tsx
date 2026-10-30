@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { formatDate } from "@/lib/format";
 import { analyseRun, type VersionHead } from "@/lib/api/v2/runs";
 import type { Job, JobKind } from "@/types/jobs";
-import { useOpenItem, useV2Href, useV2Session } from "@/lib/v2/hooks";
+import { useOpenItem, useUrlParam, useV2Href, useV2Session } from "@/lib/v2/hooks";
 import { JOB_KIND_LABEL, JOB_STATUS_LABEL, jobObject, jobSeconds } from "@/lib/v2/jobs";
 import { useLandscape } from "@/lib/v2/queries";
 import { useSystemExtractions, useTimeline, useV2Jobs, useVersionsPage } from "@/lib/v2/runs-queries";
@@ -277,7 +277,7 @@ export function RunsCanvas() {
   const land = useLandscape(null);
   const jobs = useV2Jobs();
   const [system, setSystem] = useState("all");
-  const [status, setStatus] = useState("all");
+  const [status, setStatus] = useUrlParam<string>("status", "all");
   const [kind, setKind] = useState("all");
   const [jobStatus, setJobStatus] = useState("all");
   const [archived, setArchived] = useState(false);
@@ -323,7 +323,7 @@ export function RunsCanvas() {
             {t("Runs")}
           </V2Link>
           <V2Link href={link("jobs")} aria-current={view === "jobs" ? "page" : undefined}>
-            {`Jobs${jobs.active.length ? t(" ({activeCount} running)", { activeCount: jobs.active.length }) : ""}`}
+            {jobs.active.length ? t("Jobs ({activeCount} running)", { activeCount: jobs.active.length }) : t("Jobs")}
           </V2Link>
         </nav>
         <button type="button" className="m2-btn m2-strong" aria-expanded={starting} disabled={!session.can("analyse")} title={session.can("analyse") ? undefined : t("Starting a run needs the analyse permission")} onClick={() => setStarting((v) => !v)}>
@@ -334,7 +334,7 @@ export function RunsCanvas() {
 
       {view === "runs" ? (
         <section className="m2-sec" aria-label={t("Runs")} style={{ marginTop: "var(--m2-s4)" }}>
-          <div className="m2-filters">
+          <div className="m2-rfilters">
             <label>
               {t("System")}
               <select className="m2-sel" value={system} onChange={(e) => setSystem(e.target.value)}>
@@ -365,7 +365,7 @@ export function RunsCanvas() {
         </section>
       ) : (
         <section className="m2-sec" aria-label={t("Jobs")} style={{ marginTop: "var(--m2-s4)" }}>
-          <div className="m2-filters">
+          <div className="m2-rfilters">
             <label>
               {t("Kind")}
               <select className="m2-sel" value={kind} onChange={(e) => setKind(e.target.value)}>
