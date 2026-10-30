@@ -24,6 +24,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.middleware.cache import cached_json
 from api.services import stewardship
 from api.services.rbac import (
     _get_user_role,
@@ -87,6 +88,12 @@ async def _template(db: AsyncSession, t: str) -> tuple[dict, bool, str | None, A
 
 
 async def _active(db: AsyncSession, t: str) -> dict[str, list[str]]:
+    # Each slice scans every issue's record key (seconds apiece at millions); org values change rarely.
+    return await cached_json("stewardship", "active_slices", t, {}, 600, lambda: _scan_active(db, t),
+                             memo_fallback=True)
+
+
+async def _scan_active(db: AsyncSession, t: str) -> dict[str, list[str]]:
     out: dict[str, list[str]] = {}
     for kind, field in stewardship.SLICES.items():
         if not field:
