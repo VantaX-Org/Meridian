@@ -1,7 +1,7 @@
 # Architecture
 
 What the product is made of, how data moves through it, and where the boundaries are. Every count is
-measured in this repository at commit `5cf7161c` (tag `v0.0.511-25`, branch `m2-complete`); the command
+measured in this repository at commit `5cf7161c` (branch `m2-complete`, release v0.0.536); the command
 that reproduces it is named next to it or in [README.md](README.md). Older design notes
 (`docs/ARCHITECTURE.md`, `CLAUDE.md`) predate several figures here; where they differ, this document was
 measured and they were not (the differences are listed in [roadmap-and-debt.md](roadmap-and-debt.md), D-20).
