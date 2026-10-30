@@ -17,7 +17,7 @@ code, these documents say so.
 | [quality.md](quality.md) | How many tests exist at each layer, what CI runs on every PR, measured coverage, type safety, lint gates, end-to-end and accessibility evidence, performance evidence. |
 | [operations.md](operations.md) | Deployment, upgrade and migration, backup and restore, RPO and RTO, monitoring, retention, scaling, the licence worker's failure behaviour, the support model. |
 | [data-governance.md](data-governance.md) | What data is stored and where, what leaves the deployment, retention and deletion, GDPR-relevant processing, policy packs, sandbox mode, the audit trail. |
-| [roadmap-and-debt.md](roadmap-and-debt.md) | The technical debt register (35 items with location, expected behaviour, effort, risk) and what the architecture allows next. |
+| [roadmap-and-debt.md](roadmap-and-debt.md) | The technical debt register (35 items found by this review, the buyer's critique findings DR-1 to DR-5 and the PC items with a status each, and which items are fixed) and what the architecture allows next. |
 | [competitive-position.md](competitive-position.md) | A capability comparison with the SAP-specialist vendors (SAP Information Steward, SAP MDG, Syniti, Precisely with Winshuttle, SNP) and the general platforms (Informatica, Collibra, Ataccama, Monte Carlo, Soda), each Meridian claim tied to a route or screen, and what the competitors do better. |
 | [demo-script.md](demo-script.md) | A 30-minute buyer demo by role on fixture data (stated as such), a live demo from synthetic extracts, and a 10-minute technical deep dive with commands. |
 | [provenance.md](provenance.md) | How the code was produced (AI-assisted development with Claude Code under one principal engineer), commits by author, what that means for IP, the history available, and the review process. |
@@ -60,13 +60,28 @@ bash scripts/diligence_audit.sh --full
 | npm advisories, runtime | 0 frontend; 1 moderate in `cloudflare/portal` | `npm audit --omit=dev` |
 | Licences | 0 strong copyleft inside our images; 4 weak-copyleft Python packages, 14 LGPL optional sharp binaries, 1 CC-BY data package; Garage (AGPL) as a separate container | `scripts/diligence_licences.py` |
 
-## The five things a reviewer should read first
+## The things a reviewer should read first
+
+A buyer's critique on 30 October 2026 found material omissions in the first version of this package. They
+are now disclosed in the documents and logged in the register with a status:
+
+- **The demo runs on fixture data** (DR-1, demo-script.md): no buyer has seen the engine compute numbers
+  from SAP data.
+- **Live write-back to on-premise SAP sends nothing today** (DR-2): fixes leave as files; BAPI write-back
+  for three objects is being built.
+- **The licence is not enforceable as shipped** (DR-3, security.md F-11).
+- **The tenant is hard-coded** (DR-4, architecture.md section 3, security.md section 4).
+- **Most of the code was written with Claude Code under one principal engineer**, and the clone is shallow
+  (DR-5, provenance.md).
+- **On-premise extraction depends on `RFC_READ_TABLE`** (PC-1).
+
+And from this review:
 
 1. **The API image keeps its Python source** (security.md F-1, roadmap D-01): the strip step in
-   `docker/Dockerfile.api.prod` is a silent no-op. The IP-protection claim does not hold for that image
-   today; the fix is small.
+   `docker/Dockerfile.api.prod` is a silent no-op. Fixed in commit `213d8faa` on the backend remediation
+   line, not yet merged here.
 2. **The HTTPS block in nginx is never enabled by the installer** (D-11): a default install serves HTTP
-   unless the operator adds TLS.
+   unless the operator adds TLS. Fixed in commit `a79e9ea8`, not yet merged here.
 3. **Tenant isolation is enforced by Postgres**, not only by application code, and is tested both
    statically and against a live database (security.md section 5).
 4. **Every number is deterministic**; the model writes prose around aggregates, and the product runs with

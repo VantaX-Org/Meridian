@@ -5,6 +5,12 @@ that implements it and the test or command that proves it. What the review found
 findings") with a disposition for each; defects handed to the owning team carry a D-number from
 [roadmap-and-debt.md](roadmap-and-debt.md).
 
+**Update, 30 October 2026.** A buyer's critique tested this document and found two statements wrong (licence
+integrity and tenant resolution, corrected below) and several findings that have since been fixed. A fix
+named here by commit hash is on the backend remediation line and is **not yet merged** into the branch this
+package describes, so the code next to these documents still behaves as first written until that merge.
+"Being fixed (October 2026)" means work is under way and could not be verified here.
+
 Measured at commit `5cf7161c`. Reproduce with `bash scripts/diligence_audit.sh` (scanners, SBOMs, licence
 tables) and `bash scripts/diligence_audit.sh --full` with `MERIDIAN_TEST_DB_URL` set (live RLS count). The
 proof tests named below ran green for this document:
@@ -24,13 +30,13 @@ worker on Cloudflare. A longer per-asset model is in `docs/security/THREAT_MODEL
 | S | Stolen or forged session | browser, API | HS256 JWT signed with a per-tenant 256-bit secret, 24 h expiry, `tv` claim revoked on password change, reset and deactivation (`api/services/local_auth.py`); argon2id hashes; per-IP login limit 10/min and per-account lockout after 10 failures for 15 min (`api/routes/auth.py`) | the token sits in `localStorage`, readable by script after an XSS (D-12); no Content-Security-Policy (D-13) |
 | S | Forged single sign-on | OIDC | authorization code with PKCE S256, signed 10-minute state cookie, issuer, audience, azp, exp and nonce checked, `none` and HMAC refused (`api/services/oidc.py`); `tests/test_oidc_pg.py` | none known |
 | S | Stolen API key or SCIM token | service accounts | key `mk_<prefix>.<secret>`, secret shown once, stored as SHA-256, compared in constant time, 600 requests/min per key (`api/services/api_keys.py`); SCIM token hashed per tenant, 1,200 requests/min per IP (`api/routes/scim.py`) | keys have no default expiry |
-| T | Cross-tenant read or write | Postgres | RLS enabled and forced on every tenant table, non-superuser `meridian_app`, `SET LOCAL app.tenant_id` per transaction (sections 4, 5) | `system_update_log` not forced (D-07) |
+| T | Cross-tenant read or write | Postgres | RLS enabled and forced on every tenant table, non-superuser `meridian_app`, `SET LOCAL app.tenant_id` per transaction (sections 4, 5) | `system_update_log` not forced (D-07). The API serves one fixed tenant: `api/deps.py:get_tenant` returns the development tenant `00000000-0000-0000-0000-000000000001` and `api/middleware/local_auth.py` signs and checks every session with that tenant's secret, so in practice RLS fences one tenant (DR-4, being fixed October 2026) |
 | T | Tampered upload | `POST /api/v1/upload` | magic-byte check, 100 MB cap read in chunks, formula-injection prefix after column mapping (`api/routes/upload.py:_validate_magic_bytes`, `_sanitise_formula_injection`) | none known |
 | T | SQL injection | API, workers | SQLAlchemy `text()` with bound parameters; dynamic identifiers come from code constants; `tests/test_sql_param_intervals.py` | `api/deps.py:44` formats the tenant id into `SET LOCAL`; the value is a `uuid.UUID` from a verified token, not user text |
-| T | Tampered licence | API and licence worker | RS256-signed validation response checked with `LICENCE_PUBLIC_KEY`; offline RS256 token or HMAC-SHA256 file (`api/middleware/licence.py`) | none known |
-| R | A user denies a change | API | `AuditMiddleware` writes every POST, PUT, PATCH, DELETE under `/api/v1/` to `audit_log` (actor, path, status, IP, user agent); 33 modules write their own before/after rows (`write_audit`) | password sign-in, sign-out and password change are not audited (D-14) |
+| T | Tampered licence | API and licence worker | online: the licence worker's response is checked with RS256 against `LICENCE_SERVER_PUBLIC_KEY`, but only when that key is set; offline: an RS256 token (`MERIDIAN_LICENCE_TOKEN`, `MERIDIAN_OFFLINE_PUBLIC_KEY`) or an HMAC-SHA256 file checked with `LICENCE_SECRET` (`api/middleware/licence.py`) | **not enforceable as shipped.** `.env.example` leaves `LICENCE_SERVER_PUBLIC_KEY` blank and `_verify_response_signature` then accepts any response ("rollout passthrough"), so a customer can point `LICENCE_SERVER_URL` at any server answering `valid: true`; the HMAC file's secret is in the customer's own `.env`, so the customer can sign any licence file. Only the RS256 offline token is asymmetric (DR-3, being fixed October 2026) |
+| R | A user denies a change | API | `AuditMiddleware` writes every POST, PUT, PATCH, DELETE under `/api/v1/` to `audit_log` (actor, path, status, IP, user agent); 33 modules write their own before/after rows (`write_audit`) | password sign-in, sign-out and password change are not audited (D-14). Fixed in commit `24a551c0`: `auth.login`, `auth.login_failed` (email as typed, reason, address, user agent, never the password), `auth.lockout`, `auth.password_change`, and a new `POST /api/v1/auth/logout` writing `auth.logout` (`api/routes/auth.py`, `tests/test_auth_audit_pg.py`) |
 | I | SAP data leaves the customer | all egress | licence calls carry key and fingerprint only; the agent graph gets aggregates; sandbox mode holds every outbound delivery | optional AI helpers send sample values to the configured model (section 9) |
-| I | Internals in responses | API | one handler for unhandled errors returns a reference code and audits it (`api/server_error.py`, `tests/test_server_error_handler.py`) | `/docs` and `/openapi.json` are reachable without sign-in through nginx (D-15) |
+| I | Internals in responses | API | one handler for unhandled errors returns a reference code and audits it (`api/server_error.py`, `tests/test_server_error_handler.py`) | `/docs` and `/openapi.json` are reachable without sign-in through nginx (D-15). Fixed in commit `28c18f7c`: the API serves them only when `MERIDIAN_ENV=development` or `MERIDIAN_OPENAPI_PUBLIC=1` (`api/config.py`, `api/main.py`, `tests/test_security.py`) |
 | I | Secrets at rest | Postgres, backups | SAP passwords AES-256-GCM with per-tenant keys from `CREDENTIAL_MASTER_KEY`, rotation by `scripts/rotate-credential-key.py`; stored LLM keys Fernet under the tenant secret | `scripts/backup.sh` writes `.env` in clear unless `--encrypt` (D-16) |
 | D | Request floods | API | Redis fixed-window limits on login, forgot and reset password, invite, OIDC, upload (30/min per tenant), SCIM, public theme, client errors, API keys (`api/services/rate_limiter.py`) | the limiter fails open while Redis is down, by design |
 | D | Licence worker unreachable | API | last validated licence keeps serving 2 h after the first failure | licensed routes answer 403 after that (operations.md, section 8) |
@@ -73,6 +79,15 @@ worker on Cloudflare. A longer per-asset model is in `docs/security/THREAT_MODEL
 
 ## 4. Tenant isolation
 
+**What the code does today (corrected).** Tenant resolution is not taken from the token. `api/deps.py:get_tenant`
+returns a hard-coded development tenant (`00000000-0000-0000-0000-000000000001`, with a hard-coded list of
+licensed modules) in every mode, with the comment "For now, return dev tenant as fallback";
+`api/middleware/local_auth.py` loads the session signing secret for that tenant only; `TenantMiddleware`
+never reads the token's tenant claim. Row-level security below is real and tested, but every request runs as
+the same tenant, so a deployment is single-tenant in code, not only by contract. A hosted or
+multi-business-unit offering needs the tenant read from a verified token claim, a per-tenant secret cache,
+entitlements from the licence, and a cross-tenant API test (DR-4, being fixed October 2026).
+
 The API sets `SET LOCAL app.tenant_id` in `api/deps.py:get_db`; workers use `workers/db.py:tenant_session`,
 which runs `set_config('app.tenant_id', ...)` at the start of every transaction. Production connects as
 `meridian_app` (no superuser, no BYPASSRLS; migration 040; `scripts/meridian-deploy.sh` lines 574 to 576);
@@ -111,7 +126,7 @@ The 156 tables with RLS enabled, as listed in `docs/diligence/generated/counts.j
 | SAP passwords, OAuth client secrets | `system_credentials` (RLS) | encrypted as above; never returned by the API; decrypted only in the worker at connect time |
 | LLM API keys | tenant settings | Fernet (`api/services/crypto.py`) |
 | API keys, SCIM tokens, share-link tokens | database | SHA-256 digests only; the secret is shown once |
-| Licence key, `LICENCE_PUBLIC_KEY`, `MERIDIAN_OFFLINE_PUBLIC_KEY` | `.env` | public keys only on the customer side; signing keys stay in HQ |
+| Licence key, `LICENCE_SERVER_PUBLIC_KEY`, `MERIDIAN_OFFLINE_PUBLIC_KEY`, `LICENCE_SECRET` | `.env` | the two public keys are public; their signing keys stay in HQ. `LICENCE_SECRET` is a shared HMAC secret held by the customer, which is why an HMAC licence file can be forged by its holder (DR-3) |
 | Updater shared secret | `.env` | constant-time compare, fails closed |
 
 No secret is committed: `.env.example` holds empty values. Rotation of `JWT_SECRET` signs everybody out
@@ -123,7 +138,10 @@ No secret is committed: `.env.example` holds empty values. Rotation of `JWT_SECR
   `docker/nginx/meridian.conf`. That block ships commented out and no script in the repository uncomments it
   (D-11): an install that chooses self-signed or Let's Encrypt in `meridian-deploy.sh` gets certificates but
   nginx keeps serving HTTP on port 80. Until D-11 is fixed, TLS is the operator's step or a load balancer in
-  front.
+  front. Fixed in commit `a79e9ea8`: `scripts/nginx-https.sh` uncomments the 443 block and turns port 80
+  into a 301 to HTTPS (health probes stay on 80); `meridian-deploy.sh` runs it after creating certificates
+  and `update.sh` re-applies it after an update (`tests/test_nginx_https.py`). Self-signed or Let's Encrypt
+  modes then serve HTTPS; mode 1 (no certificates) still serves HTTP.
 - **In transit, inside the stack.** API, Postgres, Redis and Garage talk over the private Docker network
   `meridian-net`, unencrypted; only nginx publishes ports. Helm ships a NetworkPolicy
   (`helm/meridian/templates/network-policy.yaml`).
@@ -196,7 +214,8 @@ through `api/utils/llm_logger.py:log_llm_call` to `llm_audit_log` (readable at `
   enter and exit, purge, retention and compliance changes, share-link open and revoke, grid and
   configuration exports, OIDC sign-in events, API key create and revoke, server errors (with the reference).
 - **Gap.** Password sign-in success and failure, sign-out and password change are not in `audit_log`
-  (D-14). Reads are not audited except the exports above.
+  (D-14); fixed in commit `24a551c0` as described in section 1, not yet merged here. Reads are not audited
+  except the exports above.
 - **Retention.** `audit_days` (30 to 3,650) in the tenant retention policy; enforced by the nightly purge
   only after seven days of dry runs and with `MERIDIAN_PURGE_ENABLED` (see
   [data-governance.md](data-governance.md)). Export: `GET /api/v1/audit/export` (CSV stream, `tests/test_audit_export.py`).
@@ -268,16 +287,18 @@ defect logged for the team that owns the file, with the expected behaviour, in
 
 | ID | Finding | Severity | Disposition |
 |---|---|---|---|
-| F-1 | The API image keeps its Python source. `docker/Dockerfile.api.prod` lines 62 and 103 strip `.py` with `find . -path "./db/migrations" -prune -o -name "*.py" -type f -delete`; GNU find refuses `-prune` together with `-delete` and exits 1 without deleting anything (reproduced with findutils 4.9.0, the Debian bookworm version; `docs/diligence/generated/source-strip-check.txt`). The first instance also skips the `__pycache__` cleanup through `&&`, and `\|\| true` hides both. The worker image's final stage uses a plain `find -name "*.py" ! -name "__init__.py" -delete` and does strip, except `__init__.py`. | High for the IP-protection claim; no customer-data impact | Handed over (D-01). Expected: compile then delete with `find . -name "*.py" -not -path "./db/migrations/*" -delete`, also compile `db/` in the API image, and add a build step that fails if any `.py` outside `db/migrations` remains |
+| F-1 | The API image keeps its Python source. `docker/Dockerfile.api.prod` lines 62 and 103 strip `.py` with `find . -path "./db/migrations" -prune -o -name "*.py" -type f -delete`; GNU find refuses `-prune` together with `-delete` and exits 1 without deleting anything (reproduced with findutils 4.9.0, the Debian bookworm version; `docs/diligence/generated/source-strip-check.txt`). The first instance also skips the `__pycache__` cleanup through `&&`, and `\|\| true` hides both. The worker image's final stage uses a plain `find -name "*.py" ! -name "__init__.py" -delete` and does strip, except `__init__.py`. | High for the IP-protection claim; no customer-data impact | Fixed in commit `213d8faa`: both images compile `api llm sap workers db agents checks`, delete every `.py` outside `db/migrations` (including `__init__.py`) and fail the build if any source remains. Not yet merged here. Originally: handed over (D-01). Expected: compile then delete with `find . -name "*.py" -not -path "./db/migrations/*" -delete`, also compile `db/` in the API image, and add a build step that fails if any `.py` outside `db/migrations` remains |
 | F-2 | Optional AI helpers send sample values; redaction keys on SAP field names only (section 9) | Medium with a cloud LLM; none with Tier 2, Tier 3 or none | Disclosed. Recommendation: redact by mapped field after mapping, and offer "aggregates only" as a tenant switch (D-19) |
-| F-3 | HTTPS block in nginx is never enabled by any script (section 7) | High for a default install | Handed over (D-11) |
+| F-3 | HTTPS block in nginx is never enabled by any script (section 7) | High for a default install | Fixed in commit `a79e9ea8` (section 7); not yet merged here |
 | F-4 | No Content-Security-Policy on the frontend or nginx; session token in `localStorage` | Medium | Handed over (D-12, D-13) |
-| F-5 | Password sign-in, sign-out and password change not audited | Medium for audit evidence | Handed over (D-14) |
-| F-6 | `/docs` and `/openapi.json` public through nginx | Low (schema disclosure, no data) | Handed over (D-15) |
+| F-5 | Password sign-in, sign-out and password change not audited | Medium for audit evidence | Fixed in commit `24a551c0`; not yet merged here |
+| F-6 | `/docs` and `/openapi.json` public through nginx | Low (schema disclosure, no data) | Fixed in commit `28c18f7c`; not yet merged here |
 | F-7 | `scripts/backup.sh` writes `.env` (with `CREDENTIAL_MASTER_KEY` and `JWT_SECRET`) in clear unless `--encrypt` | Medium | Handed over (D-16); the runbook already recommends `--encrypt` for any copy leaving the host |
 | F-8 | `system_update_log` has RLS enabled but not forced | Low (platform rows written by the owner role) | Handed over (D-07) |
 | F-9 | CORS falls back to `*` without credentials when `CORS_ORIGINS` is empty (`api/main.py:352`) | Low: the API port is not published; browsers reach it through the same origin | Accepted; recommend failing closed outside development |
 | F-10 | No external penetration test on record (`docs/security/pentest-scope.md` is a scope, not a report) | Process | Recommend one before the first enterprise renewal |
+| F-11 | The licence is not enforceable: online response signatures are off unless `LICENCE_SERVER_PUBLIC_KEY` is set (blank in `.env.example`), and offline HMAC files are signed with a secret the customer holds (`api/middleware/licence.py` lines 134 to 145 and 437 to 444). Missed by the first version of this document, which said "none known" | High for revenue protection; none for customer data | DR-3: asymmetric signatures on both paths, enforcement on by default, fail closed. Being fixed (October 2026) |
+| F-12 | The tenant is hard-coded (section 4). The first version of this document and architecture.md said it came from the token | High for any hosted or multi-tenant plan; none for a single-customer deployment | DR-4: tenant from a verified token claim, per-tenant secrets, a cross-tenant API test. Being fixed (October 2026) |
 
 ## 16. Reporting a vulnerability
 

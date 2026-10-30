@@ -91,7 +91,7 @@ EWM as unsupported for that reason. The one live path that works today is an ODa
 ## 3. Tenancy and row-level security
 
 ```
-request ──> LocalAuthMiddleware (JWT, API key)  ──> TenantMiddleware (tenant_id from the token)
+request ──> LocalAuthMiddleware (JWT, API key)  ──> TenantMiddleware ──> get_tenant(): the fixed dev tenant (DR-4)
         ──> get_db(): SET LOCAL app.tenant_id = '<uuid>'  ──> every query
 Postgres: ENABLE + FORCE ROW LEVEL SECURITY, policy tenant_isolation:
           USING (tenant_id = current_setting('app.tenant_id')::uuid)
@@ -108,8 +108,15 @@ Role:     the API and workers connect as meridian_app (no superuser, no BYPASSRL
   shared engine (`workers/db.py`).
 - The non-superuser role is created by migration 040 and written into `.env` by `scripts/meridian-deploy.sh`
   (lines 574 to 576). `docs/ops/rls-hardening.md` is the runbook for deployments installed before 040.
-- A deployment is single-customer by design (EULA section 2), but the schema is multi-tenant, so the same
-  code serves several business units or a hosted model without change.
+- **Correction (30 October 2026).** The tenant is not taken from the token, as an earlier version of this
+  section said. `api/deps.py:get_tenant` returns a hard-coded development tenant
+  (`00000000-0000-0000-0000-000000000001`) in every mode, `api/middleware/local_auth.py` signs and checks
+  sessions with that tenant's secret only, and its licensed modules are a fixed list. RLS is enforced, but
+  every request runs as that one tenant.
+- A deployment is single-customer by design (EULA section 2). The schema is multi-tenant, so serving several
+  business units or a hosted model needs no schema change, but it does need the authentication work in
+  DR-4 ([roadmap-and-debt.md](roadmap-and-debt.md)): the tenant from a verified token claim, per-tenant
+  secrets, entitlements from the licence, and a cross-tenant API test.
 
 ## 4. The deterministic check engine
 
@@ -229,7 +236,9 @@ Install worker (cloudflare/install-worker)         ── serves the install scr
 The customer API sends the licence key and a SHA-256 machine fingerprint (hostname and MAC hash,
 `api/middleware/licence.py:_get_machine_fingerprint`) every 6 hours; it never sends SAP data. Offline and
 air-gapped installs verify an RS256 token (`MERIDIAN_LICENCE_TOKEN`) or an HMAC-signed file instead
-(`LICENCE_MODE=offline|airgap`). Behaviour when the licence worker is unreachable is in
+(`LICENCE_MODE=offline|airgap`). As shipped this does not protect revenue: the online response signature
+is checked only when `LICENCE_SERVER_PUBLIC_KEY` is set (blank in `.env.example`), and the HMAC file is
+signed with a secret the customer holds; only the RS256 token is asymmetric (DR-3, being fixed October 2026). Behaviour when the licence worker is unreachable is in
 [operations.md](operations.md), section 8.
 
 ## 9. Frontend
