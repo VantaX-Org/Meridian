@@ -5,6 +5,7 @@ import { resetWorkFixture } from "@/lib/api/v2/fixtures";
 import { RulesLibrary } from "../screens/RulesLibrary";
 import { stubLayout } from "./layout-stub";
 import { getUrl, setUrl } from "./nav-store";
+import * as rulelib from "@/lib/api/v2/rulelib";
 
 const h = vi.hoisted(() => ({ allowed: new Set<string>() }));
 
@@ -62,6 +63,19 @@ describe("the rules library", () => {
     expect(screen.getByRole("button", { name: "Clear the filters" }).parentElement).toHaveTextContent(/^\d+ of 794 rules\./);
     fireEvent.click(screen.getByRole("button", { name: "Clear the filters" }));
     await waitFor(() => expect(count(g)).toBeGreaterThan(30));
+  });
+
+  it("opens on one object from /rules?object=, pages through every rule and exports the grid", async () => {
+    const spy = vi.spyOn(rulelib, "getRuleList");
+    setUrl("/rules?fixture=1&object=business_partner");
+    render();
+    const g = await grid();
+    await waitFor(() => expect(count(g)).toBe(64));
+    expect(screen.getByRole("button", { name: "Clear the filters" }).parentElement).toHaveTextContent(/^64 of 794 rules\./);
+    expect(spy).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: /Share and export Rules library/ }));
+    expect(await screen.findByRole("menuitem", { name: /Export to CSV/ })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /Export to Excel/ })).toBeInTheDocument();
   });
 
   it("searches by code and by name", async () => {

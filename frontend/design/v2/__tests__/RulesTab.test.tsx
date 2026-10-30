@@ -103,6 +103,8 @@ describe("ranking", () => {
     await waitFor(() => expect(norm(rows[rows.length - 2])).toContain("and 72 more rules"));
     expect(norm(rows[rows.length - 2])).toContain("56,000"); // 4,200,000 less the 4,144,000 shown
     expect(norm(rows[rows.length - 1])).toContain("All 80 rules");
+    // The rest of the object's rules are one click away: the rules library filtered to this object.
+    expect(within(rows[rows.length - 2]).getByRole("link", { name: "and 72 more rules" })).toHaveAttribute("href", expect.stringContaining("/rules?object=material_master"));
     expect(norm(rows[rows.length - 1])).toContain("4,200,000");
   });
 

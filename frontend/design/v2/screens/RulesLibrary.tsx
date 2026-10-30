@@ -15,7 +15,8 @@ import { useLandscape } from "@/lib/v2/queries";
 import { filterRows, NO_FILTERS, rankRows, toRows, activeFilterCount, type LibFilters, type LibRow, type StateFilter } from "@/lib/v2/rules-library";
 import { int } from "@/lib/v2/score";
 import { sysKeys, useAllDrafts, useRefreshV2, useRuleList, useSuppressions } from "@/lib/v2/sys-queries";
-import { Grid, type GridColumn } from "../Grid";
+import { type GridColumn } from "../Grid";
+import { ToolGrid } from "../GridTools";
 import { ConfirmBar, Field, Gate } from "../forms";
 import { Sev } from "../inspector/rule";
 import { ResultFrame, useOutcome } from "../inspector/shared";
@@ -318,7 +319,8 @@ export function RulesLibrary() {
   const sup = useSuppressions();
   const landscape = useLandscape(null).data;
   const params = useSearchParams();
-  const [filters, setFilters] = useState<LibFilters>(() => ({ ...NO_FILTERS, module: params.get("module") ?? "" }));
+  // `/rules?object={module}` (an object's "and N more rules") or `?module=` opens the library on one object.
+  const [filters, setFilters] = useState<LibFilters>(() => ({ ...NO_FILTERS, module: params.get("object") ?? params.get("module") ?? "" }));
   const [view, setView] = useUrlParam<View>("view", "rules", ["rules", "drafts", "suppressions"]);
   const [editing, setEditing] = useState<RuleDraft | "new" | null>(null);
   const { outcome, pending, run } = useOutcome();
@@ -391,8 +393,11 @@ export function RulesLibrary() {
           ) : list.isLoading ? (
             <Skeleton width="100%" height={240} />
           ) : (
-            <Grid<LibRow>
+            <ToolGrid<LibRow>
               id="rules-library"
+              toolsTitle={t("Rules library")}
+              toolsRoute="rules"
+              toolsFilters={Object.fromEntries(Object.entries(filters).filter(([, v]) => v)) as Record<string, string>}
               ariaLabel={t("Rules library")}
               columns={columns}
               rows={shown}

@@ -144,3 +144,14 @@ describe("configuration words", () => {
     expect(areaFound({ area: "x", label: "Controlling", status: "loaded", tables_total: 0, tables_done: 0, objects: [] })).toBe("No controlling configuration found.");
   });
 });
+
+describe("grid CSV export", () => {
+  it("writes the headers, the cells as text, numbers as numbers, and keeps formulas as text", async () => {
+    const { gridCsv } = await import("./grid-export");
+    const cols = [
+      { id: "id", header: "Rule", cell: (r: { id: string; n: number }) => r.id },
+      { id: "n", header: "Failing, rows", numeric: true, cell: (r: { id: string; n: number }) => r.n.toLocaleString("en-US") },
+    ];
+    expect(gridCsv([{ id: "MM142", n: 3640 }, { id: "=HYPERLINK()", n: 0 }], cols)).toBe('Rule,"Failing, rows"\nMM142,3640\n\'=HYPERLINK(),0');
+  });
+});

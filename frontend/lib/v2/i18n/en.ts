@@ -4280,6 +4280,8 @@ export const en = {
   "Accept {count} suggested values for {check}?": "Accept {count} suggested values for {check}?",
   "Confirm a change to {count} rows": "Confirm a change to {count} rows",
   "Enter confirms, Escape keeps the rows as they are.": "Enter confirms, Escape keeps the rows as they are.",
+  "Export to CSV": "Export to CSV",
+  "The columns and rows on screen": "The columns and rows on screen",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

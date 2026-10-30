@@ -4281,4 +4281,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Accept {count} suggested values for {check}?": "{check} の提案値 {count} 件を適用しますか？",
   "Confirm a change to {count} rows": "{count} 行の変更を確認",
   "Enter confirms, Escape keeps the rows as they are.": "Enter で確定、Escape で行をそのままにします。",
+  "Export to CSV": "CSV にエクスポート",
+  "The columns and rows on screen": "画面上の列と行",
 };

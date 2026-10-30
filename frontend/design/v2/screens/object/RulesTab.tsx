@@ -250,7 +250,7 @@ function RulesTable(p: TableProps) {
           ))}
           <tr role="row" aria-rowindex={lines.length + 2} className="m2-rfoot">
             <td role="gridcell" colSpan={6} className="m2-meta">
-              {moreCount > 0 ? t("and {moreCount} more rules", { moreCount: int(moreCount) }) : t("No further rules")}
+              {moreCount > 0 ? <V2Link href={`/rules?object=${encodeURIComponent(p.module)}`} data-testid="more-rules">{t("and {moreCount} more rules", { moreCount: int(moreCount) })}</V2Link> : t("No further rules")}
               {p.more}
             </td>
             <td role="gridcell" className="m2-r"><Dash why={t("The count for the remaining rules is not summed here")} /></td>
@@ -306,7 +306,7 @@ function RulesList(p: TableProps) {
         </div>
       ))}
       <div className="m2-lrow m2-rl" role="listitem">
-        <span className="m2-meta">{moreCount > 0 ? t("and {moreCount} more rules", { moreCount: int(moreCount) }) : t("No further rules")}{p.more}</span>
+        <span className="m2-meta">{moreCount > 0 ? <V2Link href={`/rules?object=${encodeURIComponent(p.module)}`} data-testid="more-rules">{t("and {moreCount} more rules", { moreCount: int(moreCount) })}</V2Link> : t("No further rules")}{p.more}</span>
         <span className="m2-b">{moreCount > 0 && rest != null ? int(rest) : ""}</span>
       </div>
       </div>

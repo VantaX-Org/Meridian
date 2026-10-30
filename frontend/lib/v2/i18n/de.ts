@@ -4281,4 +4281,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Accept {count} suggested values for {check}?": "{count} vorgeschlagene Werte für {check} übernehmen?",
   "Confirm a change to {count} rows": "Änderung an {count} Zeilen bestätigen",
   "Enter confirms, Escape keeps the rows as they are.": "Eingabe bestätigt, Escape lässt die Zeilen unverändert.",
+  "Export to CSV": "Als CSV exportieren",
+  "The columns and rows on screen": "Die Spalten und Zeilen auf dem Bildschirm",
 };
