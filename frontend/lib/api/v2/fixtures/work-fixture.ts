@@ -565,6 +565,12 @@ interface IssueSpec {
   current: string;
 }
 
+/** Part `n` of `total` split over `parts`, whole numbers that add up to `total` (the remainder on the first part). */
+function shareOf(total: number, parts: number, n: number): number {
+  const each = Math.floor(total / parts);
+  return n === 0 ? total - each * (parts - 1) : each;
+}
+
 export function workRecord(module: string, key: string): WorkRecordDetail {
   const base = state.row(module, key);
   if (!base) fail(404, "This record does not fail any check in this run.");
@@ -577,7 +583,8 @@ export function workRecord(module: string, key: string): WorkRecordDetail {
     const status: WorkStatus = primary ? row.status : "to_fix";
     const suggestion = primary ? (row.suggested_value ?? null) : m.suggestion && hash(key + m.id) % 2 === 0 ? m.suggestion : null;
     return {
-      rule: { id: `rule-${m.id}`, name: m.message, dimension: m.dimension, authority: "shipped", cost_at_risk: m.records * 330, cost_per_record: 330 },
+      // The record's value at risk is the row's, shared over its issues: the inspector and the ledger read the same figure.
+      rule: { id: `rule-${m.id}`, name: m.message, dimension: m.dimension, authority: "shipped", cost_at_risk: m.records * 330, cost_per_record: shareOf(row.value_at_risk ?? 0, specs.length, n) },
       failing: m.records,
       others_failing: m.records - 1,
       population: 61816,

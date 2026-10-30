@@ -164,9 +164,11 @@ describe("the record inspector", () => {
     expect(also).toHaveTextContent(/on plant \d{4}/);
   });
 
-  it("says so when the record no longer fails anything", async () => {
+  it("an unknown or no longer failing record key is a not-found state that names the key", async () => {
     mount("material_master:MATNR=999");
-    expect(await screen.findByText(/does not fail any check in the latest run/)).toBeInTheDocument();
+    const nf = await screen.findByTestId("record-not-found");
+    expect(nf).toHaveTextContent("Record not found");
+    expect(nf).toHaveTextContent("No failing record with the key MATNR=999 is in the latest run.");
   });
 });
 

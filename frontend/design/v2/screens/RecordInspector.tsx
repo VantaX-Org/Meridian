@@ -262,7 +262,10 @@ export function RecordInspector({ id, onClose }: { id: string; onClose: () => vo
     <Loading />
   ) : detailQ.isError || !detail ? (
     (detailQ.error as { status?: number; response?: { status?: number } } | null)?.response?.status === 404 || (detailQ.error as { status?: number } | null)?.status === 404 ? (
-      <EmptyFrame>{tr("This record does not fail any check in the latest run. It may have been fixed since the list was read.")}</EmptyFrame>
+      <div data-testid="record-not-found">
+        <h3>{tr("Record not found")}</h3>
+        <EmptyFrame>{tr("No failing record with the key {key} is in the latest run. Check the key; a record fixed since the list was read also leaves it.", { key })}</EmptyFrame>
+      </div>
     ) : (
       <ErrorFrame onRetry={() => void detailQ.refetch()}>{tr("The record could not be read.")}</ErrorFrame>
     )

@@ -2,9 +2,9 @@
 
 import { useEffect, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatModuleName, MODULE_LABELS } from "@/lib/format";
 import type { Landscape, LandscapeCell, LandscapeSystem, Receipt } from "@/lib/api/v2/types";
-import { useOpenItem, useRunParam } from "@/lib/v2/hooks";
+import { useOpenItem, usePhone, useRunParam } from "@/lib/v2/hooks";
 import { useLandscape, useReceipt } from "@/lib/v2/queries";
 import { ANY_SYSTEM, f1, findSystem, int, moduleFromSlug, pct1, systemForModule, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { Explain } from "../Explain";
@@ -185,7 +185,7 @@ function resolve(landscape: Landscape | undefined, systemSegment: string, module
   const apiModule = moduleFromSlug(moduleSegment);
   const system = landscape ? findSystem(landscape.systems, decodeURIComponent(systemSegment)) : undefined;
   const cell = landscape && system ? landscape.cells.find((c) => c.system_id === system.id && c.module === apiModule) : undefined;
-  const label = landscape?.objects.find((o) => o.module === apiModule)?.label ?? apiModule.replace(/_/g, " ");
+  const label = landscape?.objects.find((o) => o.module === apiModule)?.label ?? formatModuleName(apiModule);
   return { system, cell, label };
 }
 
@@ -211,6 +211,7 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
   const { system, cell, label } = resolve(L.data, systemSegment, moduleSegment);
   const apiModule = moduleFromSlug(moduleSegment);
   const receiptQ = useReceipt(apiModule, run, Boolean(cell));
+  const phone = usePhone();
   const base = `/o/${systemSegment}/${moduleSegment}`;
   const query = run ? `?run=${run}` : "";
   // An address without its system (`/o/_/{module}`, from an old link): replace it with the system that holds the object.
@@ -248,19 +249,26 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
       </div>
     );
   }
-  if (!system) {
+  // An address that names no object Meridian knows is not found, never a page that looks real.
+  const known = L.data.objects.some((o) => o.module === apiModule) || Object.hasOwn(MODULE_LABELS, apiModule);
+  if (!system || !known) {
     return (
-      <>
-        <PageTitle>{label}</PageTitle>
+      <div data-testid="object-not-found">
+        <PageTitle>{tr("Object not found")}</PageTitle>
         <div className="m2-sec">
           <EmptyFrame action={<V2Link href="/" className="m2-btn">{tr("Open the landscape")}</V2Link>}>
-            {tr("No system matches this address. Open the landscape and choose an object from the map.")}
+            {!system
+              ? tr("No system matches this address. Open the landscape and choose an object from the map.")
+              : tr("{system} has no object called {segment}. Open the landscape and choose an object from the map.", { system: system.name, segment: decodeURIComponent(moduleSegment) })}
           </EmptyFrame>
         </div>
-      </>
+      </div>
     );
   }
   const receipt = receiptQ.data;
+  // The score's working (the receipt and the contracts) belongs to the Rules view; the other views keep the ruler and
+  // put their own content straight under it.
+  const onRules = pathname === base || pathname === `${base}/rules`;
   const tabs = (
     <nav className="m2-tabs" aria-label={tr("Views of {label}", { label })}>
       {TABS.map((t) => {
@@ -280,6 +288,7 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
     <>
       <PageTitle sub={system.name}>{label}</PageTitle>
       <RelatedObjects module={apiModule} system={systemSegment} systemId={system.id} label={label} />
+      {tabs}
       {!cell ? (
         <>
           <p className="m2-statusline">
@@ -293,13 +302,11 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
               {tr("No run yet. The ruler fills when an analysis scores this object.")}
             </EmptyFrame>
           </div>
-          {tabs}
           <div className="m2-tabpanel">{children}</div>
         </>
       ) : asOf ? (
         <>
           <AsOfView module={apiModule} label={label} asOf={asOf} />
-          {tabs}
           <div className="m2-tabpanel">{children}</div>
         </>
       ) : (
@@ -333,6 +340,7 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
               coverage={cell.coverage}
               lowConfidence={cell.low_confidence}
               selected
+              compact={phone}
               contract={contractMark(cell)}
               policy={policyMark(cell)}
             />
@@ -347,7 +355,7 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
               </p>
             </div>
           </div>
-          {receipt ? (
+          {!onRules ? null : receipt ? (
             <details className="m2-rdet" open>
               <summary>{tr("How {score} is made", { score: f1(receipt.score) })}</summary>
               <ReceiptTable receipt={receipt} />
@@ -355,8 +363,7 @@ export function ObjectFrame({ system: systemSegment, module: moduleSegment, chil
           ) : receiptQ.isError ? null : (
             <ReceiptSkeleton capRow={cell.cap_level != null} breaches={cell.breaches.length} />
           )}
-          <ObjectContractsBlock module={apiModule} label={label} run={run} />
-          {tabs}
+          {onRules ? <ObjectContractsBlock module={apiModule} label={label} run={run} /> : null}
           <div className="m2-tabpanel">{children}</div>
         </>
       )}
