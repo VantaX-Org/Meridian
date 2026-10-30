@@ -385,6 +385,35 @@ To delete **one run** by hand, open Runs, show archived runs and choose **Delete
 
 ---
 
+## Meridian 2 settings
+
+Most of what Meridian 2 added is set by an administrator in the product, not in `.env`, and is off until then:
+
+| Feature | Where it is set | Default |
+|---|---|---|
+| SCIM provisioning | Administration > Users: issue the SCIM token, map identity provider groups to roles | Off (no token) |
+| Brand theme | Administration > Settings > Appearance | Meridian's own |
+| Webhooks | Administration > Webhooks: endpoints, events, signing secret, test send | None |
+| Scheduled digests | Administration > Digests: audience, schedule, channel, preview, send now | None |
+| Sandbox mode | Administration > Settings > Sandbox: copy a run, try decisions, discard | Off |
+| Run cost (`run_cost`) | Administration > Settings > Cost model: per worker hour and per million records | Not set; run prediction then shows no cost |
+| Status page | `/status`, readable signed out | On |
+
+Environment settings (in `.env`, with these defaults when unset):
+
+| Variable | Default | What it does |
+|---|---|---|
+| `MERIDIAN_APP_URL` | (falls back to `SERVER_DOMAIN`) | Address links in digests, webhooks, invitations and resets start with |
+| `MERIDIAN_NL_LLM` | `0` | `1` lets the configured LLM map only the words of a plain-words question the fixed tables do not know; it never sees SAP data and each call is written to the LLM audit log |
+| `MERIDIAN_STATUS_QUEUES` | `celery` | Celery queues the status page watches |
+| `MERIDIAN_STATUS_QUEUE_WARN` | `100` | Waiting tasks that turn a queue amber on the status page |
+| `MERIDIAN_SIMULATION_TTL` | `86400` | Seconds a fix simulation result is kept |
+| `MERIDIAN_SIMULATION_TIME_LIMIT` | `3600` | Ceiling in seconds for one fix simulation task |
+| `MERIDIAN_DELTA_FULL_DAYS` | `7` | A delta extraction runs as a full one when the last full one is older than this |
+| `SMTP_*` or Microsoft Graph | unset | Email for digests; with neither set, an email digest is recorded as failed with the reason |
+
+The help panel's guide and recordings ship inside the API image (`frontend/docs/guide` and `frontend/docs/help-videos` are copied to `/app/docs`).
+
 ## Support & Contact
 
 ### Need Help?

@@ -54,6 +54,26 @@ auth:
   mode: local
   clerkSecretKey: ""
 
+# Address people open Meridian at; links in digests, webhooks, invitations and resets start with it.
+appUrl: ""
+
+# Email for digests, invitations and password resets (the password goes in secrets.smtpPassword).
+smtp:
+  host: ""
+  port: 587
+  user: ""
+  from: noreply@meridian.local
+
+# Meridian 2 settings (steps 8 to 10). SCIM, the brand theme, webhooks, digests, sandbox mode and the
+# run cost model are tenant settings made in Administration, not chart values.
+features:
+  nlLlm: false             # MERIDIAN_NL_LLM: the LLM maps only unknown words of a plain-words question
+  statusQueues: celery     # MERIDIAN_STATUS_QUEUES: Celery queues the status page watches
+  statusQueueWarn: 100     # MERIDIAN_STATUS_QUEUE_WARN: backlog that turns a queue amber
+  simulationTtl: 86400     # MERIDIAN_SIMULATION_TTL: seconds a fix simulation result is kept
+  simulationTimeLimit: 3600  # MERIDIAN_SIMULATION_TIME_LIMIT: ceiling for one simulation task
+  deltaFullDays: 7         # MERIDIAN_DELTA_FULL_DAYS: full extraction when the last full one is older
+
 secrets:
   dbPassword: ""
   minioPassword: ""

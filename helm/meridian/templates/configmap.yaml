@@ -17,3 +17,14 @@ data:
   MINIO_BUCKET_REPORTS: "meridian-reports"
   LICENCE_SERVER_URL: {{ .Values.licence.serverUrl | quote }}
   AUTH_MODE: {{ .Values.auth.mode | quote }}
+  MERIDIAN_APP_URL: {{ .Values.appUrl | quote }}
+  SMTP_HOST: {{ .Values.smtp.host | quote }}
+  SMTP_PORT: {{ .Values.smtp.port | quote }}
+  SMTP_USER: {{ .Values.smtp.user | quote }}
+  SMTP_FROM: {{ .Values.smtp.from | quote }}
+  MERIDIAN_NL_LLM: {{ ternary "1" "0" .Values.features.nlLlm | quote }}
+  MERIDIAN_STATUS_QUEUES: {{ .Values.features.statusQueues | quote }}
+  MERIDIAN_STATUS_QUEUE_WARN: {{ .Values.features.statusQueueWarn | quote }}
+  MERIDIAN_SIMULATION_TTL: {{ .Values.features.simulationTtl | quote }}
+  MERIDIAN_SIMULATION_TIME_LIMIT: {{ .Values.features.simulationTimeLimit | quote }}
+  MERIDIAN_DELTA_FULL_DAYS: {{ .Values.features.deltaFullDays | quote }}
