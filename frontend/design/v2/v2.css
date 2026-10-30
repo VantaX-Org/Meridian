@@ -44,7 +44,7 @@
 .m2-skip { position: absolute; left: var(--m2-s2); top: -48px; z-index: 200; background: var(--m2-sheet); color: var(--m2-fg); border: 1px solid var(--m2-line-2); border-radius: var(--m2-r2); padding: var(--m2-s2) var(--m2-s3); }
 .m2-skip:focus { top: var(--m2-s2); }
 /* A link inside a sentence is underlined as well as coloured, so it never relies on colour alone. */
-.m2-sysrow-st a, .m2-hs a, .m2-finding a, .m2-prov a, .m2-statusline a, .m2-sline a, .m2-banner a, .m2-formula a, .m2-breaches a, .m2-ih-sl a, .m2-sechead a, .m2-empty p a, .m2-ib p a, .m2-lrow .m2-c a { text-decoration: underline; text-underline-offset: 2px; }
+.m2-sysrow-st a, .m2-hs a, .m2-meta a, .m2-finding a, .m2-prov a, .m2-statusline a, .m2-sline a, .m2-banner a, .m2-formula a, .m2-breaches a, .m2-ih-sl a, .m2-sechead a, .m2-empty p a, .m2-ib p a, .m2-lrow .m2-c a { text-decoration: underline; text-underline-offset: 2px; }
 .m2-skel { display: inline-block; background: var(--m2-track); border-radius: var(--m2-r1); vertical-align: middle; }
 
 /* Top bar */
