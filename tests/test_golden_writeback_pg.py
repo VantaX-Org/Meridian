@@ -140,11 +140,12 @@ def test_golden_writeback_round_trip(app_engine, monkeypatch):  # noqa: F811
             legacy = (await c.post(base, headers=alice)).json()
             assert legacy["writeback_supported"] is True and legacy["targets"][0]["system_id"] == t["system_id"]
 
-            # ECC: BAPI known, no verified parameter mapping -> unsupported; a file upload has no system
+            # ECC: BAPI_BUPA_CENTRAL_CHANGE carries the name and search term, not the grouping; a file upload has no system
             e = (await c.get(f"/api/v1/master-records/{ecc_rec}/writeback/preview", headers=alice)).json()
-            assert e["writeback_supported"] is False and "BAPI_BUPA_CENTRAL_DATA_SET" in e["message"]
-            r = await c.post(f"/api/v1/master-records/{ecc_rec}/writeback/requests", headers=alice)
-            assert r.status_code == 422
+            assert e["writeback_supported"] is True
+            ecc_fields = {x["field"]: x for x in e["targets"][0]["fields"]}
+            assert ecc_fields["BUT000.NAME_ORG1"]["target"] == "BAPI_BUPA_CENTRAL_CHANGE"
+            assert ecc_fields["BUT000.BU_GROUP"]["supported"] is False and ecc_fields["BUT000.BU_GROUP"]["reason"]
             f = (await c.get(f"/api/v1/master-records/{file_rec}/writeback/preview", headers=alice)).json()
             assert f["writeback_supported"] is False and f["targets"] == [] and "file upload" in f["message"]
             assert f["unresolved_sources"]

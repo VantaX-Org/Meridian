@@ -1,13 +1,16 @@
 """Golden-record write-back to SAP: plan, simulate and apply, per target system and field.
 
-Reuses the fix write-back machinery (api/routes/writeback.py): its BAPI_MAP and verified
-BAPI parameter mapping (``_bapi_params``), its live write-back switch and its four-eyes rule,
+Reuses the fix write-back machinery (api/routes/writeback.py and sap/bapi_writeback.py): the per-field
+BAPI mapping (``plan_field``) and record write (``write_record``), the live write-back switch and the four-eyes rule,
 plus the connector dispatch in api/services/connectivity_manager.py.
 
 What can be written (nothing is guessed):
-  - ABAP systems (ecc, s4hana_onprem, ewm): the BAPI named for the object in BAPI_MAP, and only
-    for fields with a verified parameter mapping in BAPI_FIELDS. That mapping is empty today, so
-    every field reports "no verified BAPI parameter mapping" and the system is unsupported.
+  - ABAP systems (ecc, s4hana_onprem, ewm): the field-level BAPI mappings of sap/bapi_writeback.py
+    (material master: BAPI_MATERIAL_SAVEDATA; business partner: BAPI_BUPA_CENTRAL_CHANGE and
+    BAPI_BUPA_ADDRESS_CHANGE; customer: BAPI_CUSTOMER_CHANGEFROMDATA1). Applying verifies each BAPI's
+    interface on the connected system, simulates (TESTRUN or no commit) and commits only when RETURN
+    has no E or A message. Every other field is reported unsupported with its reason; the classic
+    vendor master (LFA1) has no RFC-callable maintenance BAPI and is delivered by export.
   - S/4HANA Cloud and SAP BTP, business partner: OData PATCH of A_BusinessPartner for the
     BUT000 fields below (the property names come from sap/s4hana_cloud.py S4HC_TABLE_MAP).
   - Anything else: unsupported, with the reason.
@@ -87,8 +90,6 @@ def _norm(v: Any) -> str:
 
 def plan_target(system_type: str, domain: str, sap_object_key: str, golden_fields: dict) -> dict:
     """Which golden fields this system can take, and how. Never contacts SAP."""
-    from api.routes.writeback import BAPI_MAP, _bapi_params
-
     label = SYSTEM_LABELS.get(system_type, system_type)
     obj = DOMAIN_OBJECTS.get(domain)
     fields: list[dict] = []
@@ -99,7 +100,11 @@ def plan_target(system_type: str, domain: str, sap_object_key: str, golden_field
             for f, v in golden_fields.items()]}
 
     if system_type in RFC_TYPES:
-        bapi = BAPI_MAP.get(domain)
+        from sap.bapi_writeback import BAPI_OF_MODULE, VENDOR_REASON, plan_field
+
+        if domain == "accounts_payable":
+            return unsupported(VENDOR_REASON)
+        bapi = BAPI_OF_MODULE.get(domain)
         if not bapi or not obj:
             return unsupported(f"No write-back BAPI for {domain} on {label}")
         table, key = obj
@@ -111,14 +116,13 @@ def plan_target(system_type: str, domain: str, sap_object_key: str, golden_field
                 fields.append({"field": f, "golden_value": v, "target": None, "supported": False,
                                "reason": f"Not a {table} field"})
                 continue
-            fix = {"field": f"{table}.{bf}", "record_key": f"{key}={sap_object_key}", "proposed_value": v}
-            ok = _bapi_params(bapi, fix) is not None
-            fields.append({"field": f, "golden_value": v, "target": bapi if ok else None, "supported": ok,
-                           "reason": None if ok else f"No verified {bapi} parameter mapping for {table}.{bf}"})
+            p = plan_field(domain, f"{table}.{bf}", f"{key}={sap_object_key}")
+            fields.append({"field": f, "golden_value": v, "target": p.bapi if p.supported else None,
+                           "supported": p.supported, "reason": p.reason})
         supported = any(x["supported"] for x in fields)
         return {"supported": supported, "method": "rfc_bapi" if supported else None, "bapi": bapi,
                 "reason": None if supported else
-                f"{bapi} has no verified parameter mapping for these fields yet; load them with a remediation batch",
+                f"No BAPI mapping for these {table} fields; deliver them with the export",
                 "fields": fields}
 
     if system_type in ODATA_TYPES:
@@ -156,8 +160,7 @@ def run_target(conn: Any, system_type: str, domain: str, sap_object_key: str, pl
     Per-field ``result``: unsupported | unchanged | would_change (simulate) | written | error.
     Applying re-reads the current value first, so a repeated run writes nothing twice.
     """
-    from api.routes.writeback import _bapi_params
-    from sap.base import BAPICall, SAPConnectorError
+    from sap.base import SAPConnectorError
 
     fields = [dict(x) for x in plan["fields"]]
     # Applying writes only what the approver saw as a change in the simulation; the rest keep that result.
@@ -181,6 +184,7 @@ def run_target(conn: Any, system_type: str, domain: str, sap_object_key: str, pl
             x.update(result="error", message=f"Could not read the current value: {e}")
         return {**plan, "fields": fields}
 
+    changed = []
     for x in todo:
         x["current_value"] = cur[x["field"]]
         if _norm(cur[x["field"]]) == _norm(x["golden_value"]):
@@ -188,18 +192,32 @@ def run_target(conn: Any, system_type: str, domain: str, sap_object_key: str, pl
         elif not apply:
             x["result"] = "would_change"
         else:
+            changed.append(x)
+    if not changed:
+        return {**plan, "fields": fields}
+    if system_type in ODATA_TYPES:
+        for x in changed:
             try:
-                if system_type in ODATA_TYPES:
-                    conn.update_entity(ODATA_BP_ENTITY, sap_object_key, {x["target"]: x["golden_value"]})
-                else:
-                    table, key = DOMAIN_OBJECTS[domain]
-                    params = _bapi_params(plan["bapi"], {"field": f"{table}.{bare_field(x['field'], table)}",
-                                                         "record_key": f"{key}={sap_object_key}",
-                                                         "proposed_value": x["golden_value"]})
-                    conn.execute_bapi(BAPICall(bapi_name=plan["bapi"], params=params or {}))
+                conn.update_entity(ODATA_BP_ENTITY, sap_object_key, {x["target"]: x["golden_value"]})
                 x["result"] = "written"
             except SAPConnectorError as e:
                 x.update(result="error", message=str(e))
+        return {**plan, "fields": fields}
+
+    # ABAP: one BAPI write for the record's changed fields: interface check, simulation, commit only on a clean RETURN
+    from sap.bapi_writeback import write_record
+
+    table, key = DOMAIN_OBJECTS[domain]
+    res = write_record(conn, domain, f"{key}={sap_object_key}",
+                       {f"{table}.{bare_field(x['field'], table)}": x["golden_value"] for x in changed}, apply=True)
+    msgs = [m for m in res.simulate_messages + res.messages if m["type"] in ("E", "A")]
+    for x in changed:
+        if res.committed:
+            x["result"] = "written"
+        else:
+            reason = res.error or "; ".join(m["message"] for m in msgs) or "SAP did not commit the change"
+            x.update(result="error", message=reason)
+        x["sap_messages"] = res.simulate_messages + res.messages
     return {**plan, "fields": fields}
 
 
