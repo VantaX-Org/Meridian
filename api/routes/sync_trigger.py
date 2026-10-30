@@ -1,12 +1,11 @@
 """Run Sync API — trigger per-module re-analysis and report status."""
 
 import logging
-import os
 import re
 from typing import Any, Literal, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,7 +15,7 @@ from api.services.rbac import current_user_label, require_permission
 
 logger = logging.getLogger("meridian.sync_trigger")
 
-router = APIRouter(prefix="/api/v1/sync-trigger", tags=["sync_trigger"])
+router = APIRouter(prefix="/api/v1/sync-trigger", tags=["sync-trigger"])
 
 # Display name of every module id: the one Python copy of frontend/lib/format.ts MODULE_LABELS, cased by
 # frontend/DESIGN.md "Object names" (sentence case, SAP acronyms upper case, eWMS with a lower-case e).

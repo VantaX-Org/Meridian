@@ -184,7 +184,7 @@ def test_convert_object_approvals(owner: Engine, monkeypatch: pytest.MonkeyPatch
         def url(name: str) -> str:
             return f"/api/v1/users/{u[name]}/object-approvals/convert"
 
-        as_admin, as_ua = {"x-test-uid": u["admin"]}, {"x-test-uid": u["ua"]}
+        as_admin = {"x-test-uid": u["admin"]}
         # preview changes nothing
         r = await c.post(url("t1"), json={}, headers=as_admin)
         assert r.status_code == 200 and r.json()["skipped"] == ["material_master"], r.text

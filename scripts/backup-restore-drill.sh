@@ -55,8 +55,9 @@ for table in tenants users findings analysis_versions; do
 done
 
 # ─── 2. Take a backup ──────────────────────────────────────────────────────
-info "Running scripts/backup.sh --database-only --output $DRILL_ROOT"
-bash "${SCRIPT_DIR}/backup.sh" --database-only --output "$DRILL_ROOT" \
+# --plain-env: the drill runs unattended and deletes its bundle below; a real backup encrypts .env.
+info "Running scripts/backup.sh --database-only --plain-env --output $DRILL_ROOT"
+bash "${SCRIPT_DIR}/backup.sh" --database-only --plain-env --output "$DRILL_ROOT" \
     || fail "backup.sh failed"
 
 # Find the latest backup dir (highest timestamp).

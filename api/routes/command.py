@@ -13,7 +13,7 @@ from typing import Optional
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Query, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,19 +35,19 @@ GROUP_LABELS = {"record": "Records", "rule": "Rules", "object": "Objects", "run"
 
 
 class CommandItemOut(BaseModel):
-    id: str
-    title: str
-    href: str
+    id: str = Field(description="Item id.")
+    title: str = Field(description="Text shown in the command line.")
+    href: str = Field(description="Address the item opens.")
 
 
 class CommandGroupOut(BaseModel):
-    kind: str
-    label: str
-    items: list[CommandItemOut]
+    kind: str = Field(description="Group kind (systems, objects, rules, records, people, screens).")
+    label: str = Field(description="Group heading.")
+    items: list[CommandItemOut] = Field(description="Matching items.")
 
 
 class CommandOut(BaseModel):
-    groups: list[CommandGroupOut]
+    groups: list[CommandGroupOut] = Field(description="Matches grouped by kind.")
 
 
 def slug(value: str) -> str:
@@ -80,7 +80,7 @@ async def _records(db: AsyncSession, tenant: Tenant, request: Request, q: str, p
     out = []
     for r in rows:
         rid = f"{r['module']}:{r['record_key']}"
-        title = f"{_label(r['module'])} {_key_value(r['record_key'])}" + (f" · {r['name']}" if r["name"] else "")
+        title = f"{_label(r['module'])} {_key_value(r['record_key'])}" + (f", {r['name']}" if r["name"] else "")
         out.append({"id": rid, "title": title,
                     "href": _object_href(r["system_name"], r["module"], f"?open=record:{quote(rid, safe=':=|')}")})
     return out
@@ -94,7 +94,7 @@ async def _rules(db: AsyncSession, tenant: Tenant, q: str, n: int) -> list[dict]
         "AND (split_part(name, ':', 1) ILIKE :pre OR name ILIKE :any) "
         "ORDER BY split_part(name, ':', 1) LIMIT :n"),
         {"t": str(tenant.id), "pre": _like(q) + "%", "any": "%" + _like(q) + "%", "n": n})).mappings().all()
-    return [{"id": r["check_id"], "title": f"{r['check_id']} · {r['title']}" if r["title"] else r["check_id"],
+    return [{"id": r["check_id"], "title": f"{r['check_id']} {r['title']}" if r["title"] else r["check_id"],
              "href": f"/r/{quote(r['check_id'], safe='')}"} for r in rows]
 
 
@@ -121,7 +121,7 @@ async def _runs(db: AsyncSession, tenant: Tenant, q: str, n: int) -> list[dict]:
         {"t": str(tenant.id), "any": "%" + _like(q) + "%", "n": n})).mappings().all()
     return [{"id": r["id"],
              "title": (r["label"] or (f"Run {r['run_number']}" if r["run_number"] else "Run"))
-                      + f" · {r['run_at']:%Y-%m-%d}",
+                      + f", {r['run_at']:%Y-%m-%d}",
              "href": f"/run/{r['id']}"} for r in rows]
 
 
@@ -187,19 +187,19 @@ async def command(request: Request, q: str = Query("", max_length=200), limit: i
 
 
 class NLMatchOut(BaseModel):
-    phrase: str
-    slot: str
-    value: str | bool
-    label: str
+    phrase: str = Field(description="Words of the question matched.")
+    slot: str = Field(description="Filter parameter they set.")
+    value: str | bool = Field(description="Value they set.")
+    label: str = Field(description="The match in plain words.")
 
 
 class NLOut(BaseModel):
-    filter: dict[str, str | bool]             # the parameters GET /work/records accepts
-    href: str                                 # /work with the filter in the query string
-    explanation: str
-    unmatched_words: list[str]
-    matched: list[NLMatchOut]
-    llm_used: bool = False
+    filter: dict[str, str | bool] = Field(description="The parameters GET /work/records accepts.")
+    href: str = Field(description="The Work ledger address (/work) with the filter in the query string.")
+    explanation: str = Field(description="The filter in plain words.")
+    unmatched_words: list[str] = Field(description="Words the parser did not use.")
+    matched: list[NLMatchOut] = Field(description="Each phrase and the filter it set.")
+    llm_used: bool = Field(False, description="True when the model fallback (MERIDIAN_NL_LLM) parsed the question.")
 
 
 @router.get("/command/nl", response_model=NLOut)

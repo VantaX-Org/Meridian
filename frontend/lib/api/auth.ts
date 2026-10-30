@@ -37,6 +37,19 @@ export async function changeOwnPassword(currentPassword: string, newPassword: st
 }
 
 /**
+ * POST /api/v1/auth/logout: the server writes the sign-out to the audit log and clears its session
+ * cookie. Best effort: signing out locally never waits on or fails because of it.
+ */
+export async function logoutSession(token: string | null): Promise<void> {
+  if (!token) return;
+  try {
+    await apiClient.post("/api/v1/auth/logout", undefined, { headers: { Authorization: `Bearer ${token}` } });
+  } catch {
+    // already signed out, or offline: the local sign-out still happens
+  }
+}
+
+/**
  * Request a password-reset email. Always succeeds — the server never reveals
  * whether the account exists, to prevent enumeration.
  */

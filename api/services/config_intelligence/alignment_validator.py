@@ -259,7 +259,7 @@ class AlignmentValidator:
                         + ", ".join(missing_steps)
                     ),
                     affected_elements=missing_steps,
-                    remediation=f"Review and implement missing process steps",
+                    remediation="Review and implement missing process steps",
                     estimated_impact_zar=missing_count * self._unit("shadow_process_step"),
                 ))
 

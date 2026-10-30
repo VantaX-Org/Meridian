@@ -22,7 +22,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import checks.runner as runner  # noqa: E402
-from checks.frames import ParquetTable, TableFrames, tables_of  # noqa: E402
+from checks.frames import ParquetTable, TableFrames  # noqa: E402
 from sap.ddic import get_dictionary  # noqa: E402
 
 # the slowest rules of a production material_master run (60-270 s each)

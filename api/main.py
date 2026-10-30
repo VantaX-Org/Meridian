@@ -1,5 +1,4 @@
 import logging
-import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -172,7 +171,7 @@ async def lifespan(app: FastAPI):
         if settings.auth_mode == "local":
             try:
                 from sqlalchemy import text
-                from api.deps import engine, async_session_factory
+                from api.deps import async_session_factory
 
                 async with async_session_factory() as session:
                     result = await session.execute(
@@ -233,9 +232,10 @@ async def lifespan(app: FastAPI):
                         admin_id = str(_uuid.uuid4())
                         await session.execute(
                             text(
-                                "INSERT INTO users (id, tenant_id, email, name, role, password_hash, is_active) "
+                                "INSERT INTO users (id, tenant_id, email, name, role, password_hash, is_active, "
+                                "must_change_password) "
                                 "VALUES (:id, '00000000-0000-0000-0000-000000000001', "
-                                "'admin@meridian.local', 'Admin', 'platform_admin', :pw, true)"
+                                "'admin@meridian.local', 'Admin', 'platform_admin', :pw, true, true)"
                             ),
                             {"id": admin_id, "pw": default_pw},
                         )
@@ -249,7 +249,9 @@ async def lifespan(app: FastAPI):
                             {"id": admin_id},
                         )
                         await session.commit()
-                        logger.info("Default admin user created: admin@meridian.local / admin")
+                        # The seeded password is public: sign-in answers must_change_password and the
+                        # interface sends the administrator to the change screen first.
+                        logger.info("Default admin user created: admin@meridian.local (change the password at first sign-in)")
             except Exception as e:
                 logger.warning(f"Dev tenant init failed: {e}")
 
@@ -303,7 +305,11 @@ async def lifespan(app: FastAPI):
         logger.warning(f"Audit flush error: {e}")
 
 
-app = FastAPI(title="Meridian API", version="1.0.0", lifespan=lifespan)
+_API_DOCS = settings.api_docs_enabled()
+app = FastAPI(title="Meridian API", version="1.0.0", lifespan=lifespan,
+              docs_url="/docs" if _API_DOCS else None,
+              redoc_url="/redoc" if _API_DOCS else None,
+              openapi_url="/openapi.json" if _API_DOCS else None)
 # Unexpected exceptions only; HTTPException keeps FastAPI's own handler.
 app.add_exception_handler(Exception, unhandled_exception_handler)
 
@@ -501,3 +507,7 @@ app.include_router(auth_router)
 from api.routes.auth_oidc import admin_router as sso_admin_router, router as auth_oidc_router
 app.include_router(auth_oidc_router)
 app.include_router(sso_admin_router)
+
+from api.openapi_meta import install as _install_openapi
+
+_install_openapi(app)  # docstring summaries and tag descriptions in GET /openapi.json

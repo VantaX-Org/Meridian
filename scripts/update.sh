@@ -90,12 +90,14 @@ fi
 # SAP RFC overlay (scripts/build-rfc-overlay.sh) — present only on hosts that
 # built the NW RFC SDK into api/worker/beat. Rebuilt after every pull below.
 RFC_OVERLAY="$(dirname "$COMPOSE_FILE")/docker-compose.rfc.yml"
+# Container DNS overlay (scripts/dns-overlay.sh) — present only when .env sets MERIDIAN_DNS_1/2.
+DNS_OVERLAY="$(dirname "$COMPOSE_FILE")/docker-compose.dns.yml"
+
 dc() {
-    if [[ -f "$RFC_OVERLAY" ]]; then
-        docker compose -f "$COMPOSE_FILE" -f "$RFC_OVERLAY" "$@"
-    else
-        docker compose -f "$COMPOSE_FILE" "$@"
-    fi
+    local files=(-f "$COMPOSE_FILE")
+    [[ -f "$RFC_OVERLAY" ]] && files+=(-f "$RFC_OVERLAY")
+    [[ -f "$DNS_OVERLAY" ]] && files+=(-f "$DNS_OVERLAY")
+    docker compose "${files[@]}" "$@"
 }
 
 # The `updater` service is defined only in the docker-compose.updater.yml
@@ -179,6 +181,20 @@ sync_ollama_overlay() {  # sync_ollama_overlay <stage> <compose_dir>
     docker compose -f "$COMPOSE_FILE" -f "$resolved" up -d --no-deps ollama >/dev/null \
         && info "Ollama settings updated from the new release" \
         || warn "Ollama overlay updated but the container was not recreated — run: docker compose -f $COMPOSE_FILE -f $resolved up -d ollama"
+}
+
+# The release's meridian.conf ships with HTTPS commented out. An install that
+# has certificates (SSL mode 2 or 3) gets HTTPS and the port 80 redirect back
+# after the files are synced; nginx-https.sh is idempotent. Runs outside
+# sync_deployment_files so it also runs after update.sh re-executes itself.
+reapply_https_nginx() {
+    local compose_dir conf
+    compose_dir=$(dirname "$COMPOSE_FILE")
+    conf="$compose_dir/nginx/meridian.conf"
+    [[ -s "$compose_dir/nginx/certs/fullchain.pem" && -f "$conf" ]] || return 0
+    [[ -f scripts/nginx-https.sh ]] || { warn "scripts/nginx-https.sh missing - HTTPS not re-applied to $conf"; return 0; }
+    bash scripts/nginx-https.sh "$conf" && info "HTTPS kept enabled in nginx" \
+        || warn "Could not re-apply HTTPS to $conf"
 }
 
 sync_deployment_files() {
@@ -512,6 +528,12 @@ assert_no_active_run
 
 pull_images
 sync_deployment_files
+reapply_https_nginx
+# The release compose file no longer pins public resolvers; keep MERIDIAN_DNS_1/2 from .env in force.
+if [[ -f scripts/dns-overlay.sh ]]; then
+    bash scripts/dns-overlay.sh "$(dirname "$COMPOSE_FILE")" >/dev/null \
+        || warn "Could not write the container DNS overlay from MERIDIAN_DNS_1/2"
+fi
 pull_dependencies
 rebuild_rfc_overlay
 

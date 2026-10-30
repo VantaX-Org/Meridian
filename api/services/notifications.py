@@ -1,6 +1,5 @@
 """Notification service — create_notification utility for use across API and workers."""
 
-import json
 import logging
 import uuid
 from typing import Optional

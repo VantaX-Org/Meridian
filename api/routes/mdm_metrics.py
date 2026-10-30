@@ -12,12 +12,12 @@ Role visibility:
 from typing import Optional, Sequence
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.services.rbac import PERMISSIONS, dev_role_override, has_permission, require_permission
+from api.services.rbac import dev_role_override, has_permission, require_permission
 
 router = APIRouter(prefix="/api/v1", tags=["mdm-metrics"])
 

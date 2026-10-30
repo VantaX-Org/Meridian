@@ -22,7 +22,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.services.rbac import current_user_label, require_permission, _get_user_role
+from api.services.rbac import current_user_label, require_permission
 
 router = APIRouter(prefix="/api/v1", tags=["glossary"])
 logger = logging.getLogger("meridian.glossary")

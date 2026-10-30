@@ -7,9 +7,17 @@
 # Tier:         {{TIER}}
 # =========================================================
 
+# Container log rotation (json-file): at most 5 files of 50 MB per container, so logs cannot fill the disk.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "5"
+
 services:
   nginx:
-    image: ghcr.io/vantax-org/meridian-nginx:latest
+    logging: *default-logging
+    image: ghcr.io/vantax-org/meridian-nginx:${MERIDIAN_VERSION:-latest}
     restart: unless-stopped
     ports:
       - "80:80"
@@ -35,7 +43,8 @@ services:
       start_period: 15s
 
   api:
-    image: ghcr.io/vantax-org/meridian-api:latest
+    logging: *default-logging
+    image: ghcr.io/vantax-org/meridian-api:${MERIDIAN_VERSION:-latest}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     env_file: .env
@@ -63,14 +72,12 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
-    # Resolvers for SAP hosts + the licence server. Behind a corporate network set
-    # MERIDIAN_DNS_1/2 in .env to the internal DNS so SAP hostnames resolve.
-    dns:
-      - ${MERIDIAN_DNS_1:-8.8.8.8}
-      - ${MERIDIAN_DNS_2:-8.8.4.4}
+    # DNS: the host's resolver. Behind a corporate DNS set MERIDIAN_DNS_1 (and _2) in .env;
+    # meridian-deploy.sh and update.sh then write docker-compose.dns.yml next to this file.
 
   worker:
-    image: ghcr.io/vantax-org/meridian-worker:latest
+    logging: *default-logging
+    image: ghcr.io/vantax-org/meridian-worker:${MERIDIAN_VERSION:-latest}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     env_file: .env
@@ -88,14 +95,12 @@ services:
     networks:
       - meridian-net
     restart: unless-stopped
-    # Resolvers for SAP hosts + the licence server. Behind a corporate network set
-    # MERIDIAN_DNS_1/2 in .env to the internal DNS so SAP hostnames resolve.
-    dns:
-      - ${MERIDIAN_DNS_1:-8.8.8.8}
-      - ${MERIDIAN_DNS_2:-8.8.4.4}
+    # DNS: the host's resolver. Behind a corporate DNS set MERIDIAN_DNS_1 (and _2) in .env;
+    # meridian-deploy.sh and update.sh then write docker-compose.dns.yml next to this file.
 
   beat:
-    image: ghcr.io/vantax-org/meridian-worker:latest
+    logging: *default-logging
+    image: ghcr.io/vantax-org/meridian-worker:${MERIDIAN_VERSION:-latest}
     command: ["celery", "-A", "workers.celery_app", "beat", "--loglevel=info"]
     env_file: .env
     depends_on:
@@ -105,7 +110,8 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: ghcr.io/vantax-org/meridian-frontend:latest
+    logging: *default-logging
+    image: ghcr.io/vantax-org/meridian-frontend:${MERIDIAN_VERSION:-latest}
     expose:
       - "3000"
     env_file: .env
@@ -126,6 +132,7 @@ services:
       start_period: 30s
 
   db:
+    logging: *default-logging
     image: postgres:16-alpine
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -144,7 +151,8 @@ services:
       start_period: 10s
 
   redis:
-    image: redis:7-alpine
+    logging: *default-logging
+    image: redis:7.2-alpine  # 7.4 and later are not open source (RSALv2/SSPLv1)
     volumes:
       - redis_data:/data
     networks:
@@ -160,7 +168,8 @@ services:
   # Object storage: Garage (S3-compatible), single node, configured on first
   # start by docker/garage/entrypoint.sh. The stack reaches it as minio:9000.
   storage:
-    image: ghcr.io/vantax-org/meridian-garage:latest  # docker/Dockerfile.garage
+    logging: *default-logging
+    image: ghcr.io/vantax-org/meridian-garage:${MERIDIAN_VERSION:-latest}  # docker/Dockerfile.garage
     environment:
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
       - MINIO_PASSWORD=${MINIO_PASSWORD}

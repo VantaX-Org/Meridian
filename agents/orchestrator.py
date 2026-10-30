@@ -14,7 +14,7 @@ import logging
 
 from langgraph.graph import END, StateGraph
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from agents.analyst import analyst_node

@@ -214,7 +214,7 @@ def test_escalation_guards(owner: Engine, monkeypatch: pytest.MonkeyPatch) -> No
         def as_(who: str) -> dict[str, str]:
             return {"x-test-uid": u[who]}
 
-        grants = f"/api/v1/users/{{}}/grants"
+        grants = "/api/v1/users/{}/grants"
         # H1: no self-grant; no grant above the caller's own permissions; platform_admin only by one.
         r = await c.post(grants.format(u["mgr"]), json={"role_key": "platform_admin"}, headers=as_("mgr"))
         assert r.status_code == 403, r.text

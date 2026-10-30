@@ -15,6 +15,24 @@ DEFAULT_WEIGHTS = {
     "uniqueness": 0.10,
     "validity": 0.10,
 }
+# Rule dimensions outside the six DAMA ones that score under one of them. 68 rules declare
+# ``lifecycle`` (status and date progression of an object: is it still current) or ``freshness``
+# (age of the data); both are timeliness. Without this they matched none of the six and never
+# counted. The six weights are unchanged: these rules join timeliness's population.
+DIMENSION_ALIASES = {"lifecycle": "timeliness", "freshness": "timeliness"}
+
+
+def scoring_dimension(dimension: Optional[str]) -> str:
+    """The DAMA dimension a rule's declared dimension scores under (itself for the six)."""
+    d = (dimension or "").strip().lower()
+    return DIMENSION_ALIASES.get(d, d)
+
+
+def dimensions_scored_as(dimension: str) -> list[str]:
+    """Every declared dimension that scores under ``dimension`` (itself first, then its aliases)."""
+    return [dimension, *sorted(a for a, d in DIMENSION_ALIASES.items() if d == dimension)]
+
+
 # The one band set. Composite DQS at or above ``target`` passes (go), at or above
 # ``warning`` warns (conditional), else fails; below ``critical`` is the deepest band.
 DEFAULT_THRESHOLDS = {"target": 90.0, "warning": 75.0, "critical": 60.0}
@@ -220,7 +238,7 @@ def _legacy(findings: list[CheckResult], weights: dict, thresholds: dict, critic
     dims: dict[str, float] = {}
     coverage: dict[str, int] = {}
     for dim in DEFAULT_WEIGHTS:
-        rows = [f for f in findings if f.dimension == dim]
+        rows = [f for f in findings if scoring_dimension(f.dimension) == dim]
         coverage[dim] = len(rows)
         n = sum(f.total_count for f in rows)
         dims[dim] = (sum(f.pass_rate * f.total_count for f in rows) / n if n
@@ -260,7 +278,7 @@ def score_module(findings: list[CheckResult], tenant_config: dict, *, module: st
     dimension_coverage: dict[str, int] = {}
     rule_scores: dict[str, float] = {}
     for dim in DEFAULT_WEIGHTS:
-        dim_list = [f for f in findings if f.dimension == dim]
+        dim_list = [f for f in findings if scoring_dimension(f.dimension) == dim]
         dimension_coverage[dim] = len(dim_list)
         if not dim_list:
             # No checks measured this dimension. This used to be 100.0 "with coverage 0", relying

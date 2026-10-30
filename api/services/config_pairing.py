@@ -396,7 +396,7 @@ async def enqueue_config_load(db: AsyncSession, tid: str, sid: str, force: bool 
             "FROM sap_systems WHERE id = CAST(:sid AS uuid) ON CONFLICT (id) DO NOTHING"),
             {"lid": load_id, "tid": tid, "sid": sid})
         await db.commit()
-        jobs.start_job(tid, job_id, "config_load", f"Configuration load: {st}", status="queued",
+        jobs.start_job(tid, job_id, "config_load", f"Configuration load | {str(st).upper()}", status="queued",
                        system_id=sid, load_id=load_id)
         run_load_config.apply_async(args=(tid, sid, load_id, job_id), task_id=load_id)
         jobs.set_task_ids(tid, job_id, [load_id])

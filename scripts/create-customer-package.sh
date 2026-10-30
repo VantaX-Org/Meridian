@@ -279,6 +279,10 @@ echo "→ Adding installer (meridian-deploy.sh)..."
 sed "s|__GHCR_TOKEN__|${GHCR_READ_TOKEN}|g" \
   "${ROOT_DIR}/scripts/meridian-deploy.sh" > "${PKG_DIR}/scripts/meridian-deploy.sh"
 chmod +x "${PKG_DIR}/scripts/meridian-deploy.sh"
+# meridian-deploy.sh runs it to enable HTTPS in SSL modes 2 and 3
+install -m 0755 "${ROOT_DIR}/scripts/nginx-https.sh" "${PKG_DIR}/scripts/nginx-https.sh"
+# and this one to give containers MERIDIAN_DNS_1/2 from .env
+install -m 0755 "${ROOT_DIR}/scripts/dns-overlay.sh" "${PKG_DIR}/scripts/dns-overlay.sh"
 
 # ── Copy docker config files (needed by meridian-deploy.sh) ─────────────────
 echo "→ Adding docker configuration files..."

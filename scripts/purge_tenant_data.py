@@ -223,8 +223,6 @@ def main() -> int:
         leaked = sorted(set(purge) & KEEP)
         if leaked:
             raise SystemExit(f"refusing to run: KEEP tables reached the purge set: {leaked}")
-        emptiable = sorted(t for t in purge
-                           if t not in {"analysis_versions", "tenants"} and not t.startswith("alembic"))
         # version-keyed tables first, in the reviewed order from the purge service; the
         # rest by foreign key (children before parents)
         service = _service_order()

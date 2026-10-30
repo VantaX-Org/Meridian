@@ -18,7 +18,7 @@ from api.services import contract_enforcement as ce
 from api.services.contract_compliance import scope_modules
 from api.services.rbac import require_permission, scope_from_path
 
-router = APIRouter(prefix="/api/v1", tags=["contracts"])
+router = APIRouter(prefix="/api/v1", tags=["contract-enforcement"])
 
 
 @router.get("/contracts/{contract_id}/breaches", dependencies=[Depends(require_permission("view"))])

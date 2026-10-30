@@ -25,7 +25,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-from api.models.process_model import FieldRef, L4, L5, ProcessModelDocument
+from api.models.process_model import FieldRef, L5, ProcessModelDocument
 from sap.process_templates import extend_hierarchy, rule_modules_of
 
 L1Process = dict[str, Any]

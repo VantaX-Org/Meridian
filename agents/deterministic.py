@@ -99,8 +99,6 @@ def run_deterministic_analyst(findings_summary: list[dict]) -> list[RootCause]:
             if SEVERITY_WEIGHTS.get(sev, 0) > SEVERITY_WEIGHTS.get(max_severity, 0):
                 max_severity = sev
         
-        # Compute impact score: affected × severity weight
-        impact_score = total_affected * SEVERITY_WEIGHTS.get(max_severity, 1)
         
         # Build root cause description
         dimension_label = DIMENSION_LABELS.get(dimension, dimension)

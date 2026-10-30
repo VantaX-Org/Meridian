@@ -168,7 +168,7 @@ def test_migration_091_backfills_upload_and_merge_entries(app_engine):  # noqa: 
         legacy = {
             "A": {"NAME_ORG1": {"value": "Acme", "source_system": f"upload:{v_prd[:8]}"},
                   "CITY1": {"value": "Durban", "source_system": f"upload:{v_none[:8]}"},
-                  "TAXNUM": {"value": "ZA1", "source_system": f"merge:B"}},
+                  "TAXNUM": {"value": "ZA1", "source_system": "merge:B"}},
             "B": {"TAXNUM": {"value": "ZA1", "source_system": f"upload:{v_s4p[:8]}"}},
             "C": {"NAME_ORG1": {"value": "x", "source_system": "upload:zzzzzzzz"},
                   "BU_GROUP": {"value": "y", "source_system": "steward_override"}},

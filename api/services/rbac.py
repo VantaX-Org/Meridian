@@ -844,3 +844,29 @@ async def write_audit(
          "b": json.dumps(before) if before is not None else None,
          "af": json.dumps(after) if after is not None else None},
     )
+
+
+def write_audit_sync(
+    conn: Connection, tenant_id: uuid.UUID | str, request: Request, action: str,
+    entity_type: str, entity_id: str | None, before: dict | None, after: dict | None,
+    *, actor_user_id: str | None = None, actor_email: str | None = None, status_code: int = 200,
+) -> None:
+    """``write_audit`` for the synchronous auth routes (caller commits).
+
+    Sign-in runs before there is a session, so the actor is passed in rather than read from the request:
+    ``actor_user_id`` when the account is known, ``actor_email`` as typed. Records the client address (the
+    trusted-proxy-aware one the rate limiter uses) and user agent, and the response status. Never pass a
+    password or token in ``before``/``after``."""
+    from api.services.rate_limiter import _client_ip
+
+    conn.execute(
+        text("INSERT INTO audit_log (tenant_id, actor_user_id, actor_email, action, entity_type, entity_id, "
+             "method, path, status_code, ip, user_agent, before_json, after_json) "
+             "VALUES (CAST(:t AS uuid), CAST(:u AS uuid), :e, :a, :et, :ei, :m, :p, :sc, :ip, :ua, "
+             "CAST(:b AS jsonb), CAST(:af AS jsonb))"),
+        {"t": str(tenant_id), "u": actor_user_id, "e": actor_email, "a": action, "et": entity_type,
+         "ei": entity_id, "m": request.method, "p": request.url.path, "sc": status_code,
+         "ip": _client_ip(request), "ua": (request.headers.get("user-agent") or "")[:512] or None,
+         "b": json.dumps(before) if before is not None else None,
+         "af": json.dumps(after) if after is not None else None},
+    )

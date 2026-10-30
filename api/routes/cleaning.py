@@ -1,6 +1,5 @@
 """Cleaning engine API routes — 13 endpoints for cleaning queue + dedup."""
 
-import csv
 import io
 import logging
 import uuid
@@ -11,7 +10,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import func, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant

@@ -7,9 +7,6 @@ After RFC discovery, calls ai_impact_scorer.py for all golden records that chang
 """
 
 import logging
-import os
-import uuid
-from typing import Optional
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session

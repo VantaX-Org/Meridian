@@ -21,9 +21,8 @@ from __future__ import annotations
 
 import json
 import logging
-import random
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Optional
 
 from jinja2 import Template
 
@@ -366,7 +365,6 @@ def _measured_mean(scores: list[Optional[float]]) -> Optional[float]:
 def _compute_key_metrics(findings: list[dict], dqs_scores: dict) -> dict:
     """Compute key metrics for the narrative."""
     total_affected = sum(count_of(f, "affected_count") for f in findings)
-    total_records = sum(count_of(f, "total_count") for f in findings) or 1
     
     avg_pass_rate = mean_or((f.get("pass_rate") for f in findings), 100 if not findings else 0)
     
@@ -433,7 +431,6 @@ def generate_narrative(
     }
     
     # Render executive summary
-    template_obj = TEMPLATES[template_key]
     executive_summary = _render_template(template_key, context)
     
     # Build top risks and wins

@@ -148,6 +148,8 @@ def _rebuild_in_background(system_id: str, system_type: str, tenant_id: str,
         _REBUILDING.add(snapshot)
 
     def work() -> None:
+        from sqlalchemy.orm import Session
+
         try:
             _catalogue_for.cache_clear()
             with Session(get_sync_engine_for_background()) as s:

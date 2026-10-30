@@ -185,6 +185,19 @@ def _parse_sort(sort: Optional[str]) -> list[tuple[str, bool]]:
     return keys or [("severity", False)]
 
 
+def _sort_sql(order: list[tuple[str, bool]]) -> tuple[str, str]:
+    """(joins, ORDER BY terms) of a parsed sort over ``work_records w``, without the module/record-key tie-break: the
+    same order /work/records pages in, for the exports that must list the rows the screen shows in its order."""
+    joins = []
+    if any(k == "age" for k, _ in order):
+        joins.append(_FIRST_SEEN)
+    if any(k == "value" for k, _ in order):
+        joins.append(_VALUE_JOIN)
+    if any(k == "owner" for k, _ in order):
+        joins.append("LEFT JOIN users u ON u.id = w.assigned_to")
+    return "\n".join(joins), ", ".join(f"{_SORT_KEYS[k]} {_SORT_DIR.get(k, 'ASC')}" for k in order)
+
+
 def _cursor(sort: list[tuple[str, bool]], row) -> str:
     return base64.urlsafe_b64encode(json.dumps(
         [[f"{'-' if d else ''}{k}" for k, d in sort], [getattr(row, f"s{i}") for i in range(len(sort))],
@@ -1488,7 +1501,11 @@ async def export_sheet(
     due: Optional[str] = Query(None, pattern="^(overdue|today|week)$"),
     part: Optional[str] = Query(None, max_length=200),
     system: Optional[str] = Query(None, max_length=100),
+    batch_id: Optional[uuid.UUID] = Query(None, description="only the records with an item in this fix batch, in any state"),
+    policy: Optional[str] = Query(None, max_length=100, description="a policy pack or pack:class (sox:vendor_bank)"),
     q: Optional[str] = Query(None, max_length=200),
+    sort: Optional[str] = Query(None, max_length=80, description="the order of /work/records: severity, age, value, due "
+                                                                 "and/or owner, a leading minus for descending"),
     since: Optional[uuid.UUID] = Query(None, description=_SINCE_DESC),
     scope: WorkScope = _SCOPE,
     db: AsyncSession = Depends(get_db),
@@ -1496,14 +1513,16 @@ async def export_sheet(
     _perm: str = Depends(require_permission("export")),
 ):
     """The filtered work list (one run, or ``scope=current``) as a fix sheet: one row per record and failing check, with its current and
-    suggested value and blank New value / Decision / Reason columns to fill in and import back."""
-    from api.services.branded_xlsx import ROW_CAP, ColumnSpec, SheetSpec, build_workbook, xlsx_filename, xlsx_response
+    suggested value and blank New value / Decision / Reason columns to fill in and import back. Takes the filters and
+    the ``sort`` of /work/records (batch_id and policy included), so the sheet holds the rows the screen shows."""
+    from api.services.branded_xlsx import ROW_CAP, SheetSpec, build_workbook, xlsx_filename, xlsx_response
 
     await _rls(db, tenant)
     sel = await _rows(db, tenant, version_id, scope)
     vid = sel.vid or "current"
+    order_joins, order_by = _sort_sql(_parse_sort(sort))
     where, p = _records_where(tenant, sel, request, module, check_id, severity, status, assigned, proposed, q, due, part,
-                              system)
+                              system, batch_id, policy)
     await _since(db, tenant, sel, since, module, where, p)
     check_filter = "AND fr.check_id = :c" if check_id else ""
     rows = (await db.execute(text(f"""
@@ -1523,8 +1542,9 @@ async def export_sheet(
           JOIN finding_records fr ON fr.version_id = w.version_id AND fr.module = w.module AND fr.record_key = w.record_key
           JOIN findings f ON f.version_id = fr.version_id AND f.check_id = fr.check_id
           LEFT JOIN auto a ON a.version_id = fr.version_id AND a.check_id = fr.check_id AND a.record_key = fr.record_key
+          {order_joins}
          WHERE {' AND '.join(where)} {check_filter}
-         ORDER BY w.sev_rank, w.module, w.record_key, fr.check_id
+         ORDER BY {order_by}, w.module, w.record_key, fr.check_id
          LIMIT :lim"""), {**p, "lim": ROW_CAP + 1})).mappings().all()
     columns, items = _readable(rows)
     data = build_workbook(
@@ -1594,7 +1614,11 @@ async def export_per_object(
     due: Optional[str] = Query(None, pattern="^(overdue|today|week)$"),
     part: Optional[str] = Query(None, max_length=200),
     system: Optional[str] = Query(None, max_length=100),
+    batch_id: Optional[uuid.UUID] = Query(None, description="only the records with an item in this fix batch, in any state"),
+    policy: Optional[str] = Query(None, max_length=100, description="a policy pack or pack:class (sox:vendor_bank)"),
     q: Optional[str] = Query(None, max_length=200),
+    sort: Optional[str] = Query(None, max_length=80, description="the order of /work/records: severity, age, value, due "
+                                                                 "and/or owner, a leading minus for descending"),
     since: Optional[uuid.UUID] = Query(None, description=_SINCE_DESC),
     scope: WorkScope = _SCOPE,
     db: AsyncSession = Depends(get_db),
@@ -1616,8 +1640,9 @@ async def export_per_object(
     await _rls(db, tenant)
     sel = await _rows(db, tenant, version_id, scope)
     vid = sel.vid or "current"
+    order_joins, order_by = _sort_sql(_parse_sort(sort))
     where, p = _records_where(tenant, sel, request, None, check_id, severity, status, assigned, proposed, q, due, part,
-                              system)
+                              system, batch_id, policy)
     await _since(db, tenant, sel, since, None, where, p)
     check_filter = "AND fr.check_id = :c" if check_id else ""
     rows = (await db.execute(text(f"""
@@ -1640,8 +1665,9 @@ async def export_per_object(
           JOIN finding_records fr ON fr.version_id = w.version_id AND fr.module = w.module AND fr.record_key = w.record_key
           JOIN findings f ON f.version_id = fr.version_id AND f.check_id = fr.check_id
           LEFT JOIN auto a ON a.version_id = fr.version_id AND a.check_id = fr.check_id AND a.record_key = fr.record_key
+          {order_joins}
          WHERE {' AND '.join(where)} {check_filter}
-         ORDER BY w.module, w.sev_rank, w.record_key, fr.check_id
+         ORDER BY w.module, {order_by}, w.record_key, fr.check_id
          LIMIT :lim"""), {**p, "lim": ROW_CAP + 1})).mappings().all()
 
     by_object: dict[str, list[dict]] = {}

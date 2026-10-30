@@ -1,0 +1,13 @@
+# Lint configuration only: the Python dependencies live in requirements.txt / requirements.lock.
+[tool.ruff]
+target-version = "py312"
+extend-exclude = ["frontend", "cloudflare", "helm", "docs"]
+
+[tool.ruff.lint]
+# Syntax errors and pyflakes (undefined names, unused imports and locals). CI gate: unit-tests.yml.
+select = ["E9", "F"]
+
+[tool.ruff.lint.per-file-ignores]
+# pytest fixtures are imported from other test modules and named as parameters, which pyflakes
+# reads as an unused import (F401) redefined by the argument (F811).
+"tests/**" = ["F401", "F811"]

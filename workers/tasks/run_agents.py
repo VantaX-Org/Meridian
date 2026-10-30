@@ -8,7 +8,6 @@ import asyncio
 import json
 import logging
 import traceback
-import uuid
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session

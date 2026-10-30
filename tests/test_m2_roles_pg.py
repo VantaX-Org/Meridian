@@ -318,8 +318,8 @@ async def test_share_link_lifecycle(owner, monkeypatch):
         assert link["url"] == f"/share/{link['token']}" and link["state"] == {"tab": "rules"}
         stored, route = _q(owner, "SELECT token_hash, route FROM share_links WHERE id = :i", i=link["id"])[0]
         assert link["token"] not in stored and len(stored) == 64
-        # The table keeps the prefix migration 104 checks for; the API speaks the app's own address.
-        assert route == "/v2/o/ecc-production/material-master" and link["route"] == "/o/ecc-production/material-master"
+        # Stored as the app's own address since migration 117 (no /v2 prefix).
+        assert route == "/o/ecc-production/material-master" and link["route"] == "/o/ecc-production/material-master"
     c = await client_for(monkeypatch, tid, dan)
     async with c:
         res = await c.get(f"/api/v1/share-links/resolve/{link['token']}", headers=headers("viewer"))
@@ -577,7 +577,7 @@ def test_rls_isolates_every_new_table(owner):
                            "VALUES (:t, :c, 1, '{}', 'x')"), p)
             c.execute(text("INSERT INTO wave_gates (wave_id, tenant_id) VALUES (:w, :t)"), p)
             c.execute(text("INSERT INTO share_links (tenant_id, token_hash, route, created_by, expires_at) "
-                           "VALUES (:t, md5(random()::text), '/v2', 'x', now() + interval '1 day')"), p)
+                           "VALUES (:t, md5(random()::text), '/', 'x', now() + interval '1 day')"), p)
             c.execute(text("INSERT INTO assignment_templates (tenant_id, template) VALUES (:t, '{}')"), p)
             c.execute(text("INSERT INTO steward_assignments (tenant_id, module, slice_kind, slice_value, steward_user_id) "
                            "VALUES (:t, 'fi_gl', 'none', '*', :u)"), p)

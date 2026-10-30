@@ -272,7 +272,7 @@ def explain(matched: list[dict], ignored: list[str], unmatched: list[str]) -> st
 
 
 def href(filt: dict) -> str:
-    """The /work URL with the filter in the query string."""
+    """The /work URL (the Work ledger) with the filter in the query string."""
     params = {k: ("true" if v is True else v) for k, v in sorted(filt.items())}
     return WORK_HREF + ("?" + urlencode(params) if params else "")
 

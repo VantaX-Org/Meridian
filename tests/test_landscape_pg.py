@@ -170,7 +170,7 @@ async def test_receipt_arithmetic(seeded, client_for):
         assert (b["score"], b["capped"], b["cap_level"]) == (70.0, True, 70)
         assert b["weights"] == {"completeness": 0.25, "accuracy": 0.25, "consistency": 0.2, "timeliness": 0.1,
                                 "uniqueness": 0.1, "validity": 0.1}
-        assert b["formula"] == "DQS = 0.25·C + 0.25·A + 0.20·Cs + 0.10·T + 0.10·U + 0.10·V"
+        assert b["formula"] == "DQS = 0.25 × C + 0.25 × A + 0.20 × Cs + 0.10 × T + 0.10 × U + 0.10 × V"
         assert b["severity_weights"] == {"critical": 4.0, "high": 3.0, "medium": 2.0, "low": 1.0}
         assert b["cap_rule"] == "85 at one critical rule over tolerance, 70 at two or more"
         dims = {d["key"]: d for d in b["dimensions"]}

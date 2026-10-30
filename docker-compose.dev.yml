@@ -66,6 +66,14 @@ services:
       - EMAIL_FROM=${EMAIL_FROM:-noreply@meridian.local}
       # ── Observability ───────────────────────────────────────
       - SENTRY_DSN=${SENTRY_DSN:-}
+      # ── Meridian 2: links, plain-words questions, status page, simulation, delta ──
+      - MERIDIAN_APP_URL=${MERIDIAN_APP_URL:-http://localhost:3000}
+      - MERIDIAN_NL_LLM=${MERIDIAN_NL_LLM:-0}
+      - MERIDIAN_STATUS_QUEUES=${MERIDIAN_STATUS_QUEUES:-celery}
+      - MERIDIAN_STATUS_QUEUE_WARN=${MERIDIAN_STATUS_QUEUE_WARN:-100}
+      - MERIDIAN_SIMULATION_TTL=${MERIDIAN_SIMULATION_TTL:-86400}
+      - MERIDIAN_SIMULATION_TIME_LIMIT=${MERIDIAN_SIMULATION_TIME_LIMIT:-3600}
+      - MERIDIAN_DELTA_FULL_DAYS=${MERIDIAN_DELTA_FULL_DAYS:-7}
     volumes:
       - ./api:/app/api
       - ./agents:/app/agents

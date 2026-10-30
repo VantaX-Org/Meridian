@@ -4,17 +4,16 @@ Endpoints:
   GET /relationships  — returns all related objects across domains for a given object key
 """
 
-import copy
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.services.rbac import require_permission, has_permission, _get_user_role
+from api.services.rbac import require_permission, has_permission
 
 router = APIRouter(prefix="/api/v1", tags=["relationships"])
 logger = logging.getLogger("meridian.relationships")

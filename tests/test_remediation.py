@@ -124,11 +124,8 @@ def test_export_batch_cockpit_xlsx_builds_real_workbook():
     filename = disposition.split("filename=", 1)[1].strip('"')
     assert filename.startswith("meridian-")
 
-    async def _collect() -> bytes:
-        chunks = [c async for c in response.body_iterator]
-        return b"".join(chunks)
-
-    wb = openpyxl.load_workbook(io.BytesIO(asyncio.run(_collect())))
+    # a plain Response: the in-memory file is sent whole (a StreamingResponse dropped it behind the middlewares)
+    wb = openpyxl.load_workbook(io.BytesIO(response.body))
     assert "LFB1" in wb.sheetnames
     ws = wb["LFB1"]
     headers = [c.value for c in ws[1]]

@@ -983,7 +983,6 @@ def gen_recruiting_onboarding_deviation(n: int, seed: int) -> pd.DataFrame:
 
 def gen_learning_management_clean(n: int, seed: int) -> pd.DataFrame:
     random.seed(seed)
-    depts = ["FINANCE", "HR", "IT", "SALES", "OPS", "LEGAL"]
     rows = []
     for i in range(n):
         rows.append({

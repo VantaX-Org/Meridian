@@ -294,9 +294,9 @@ def normalise_scope(scope: Optional[dict]) -> dict:
 
 def _scope_filters(table: str, dictionary: Dictionary, scope: dict) -> list[str]:
     out = []
-    for key, field in SCOPE_FIELDS.items():
-        if scope.get(key) and dictionary.field(table, field) is not None:
-            out.append(f"{field} IN (" + ", ".join(f"'{v}'" for v in scope[key]) + ")")
+    for key, scope_field in SCOPE_FIELDS.items():
+        if scope.get(key) and dictionary.field(table, scope_field) is not None:
+            out.append(f"{scope_field} IN (" + ", ".join(f"'{v}'" for v in scope[key]) + ")")
     return out
 
 

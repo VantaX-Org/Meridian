@@ -12,7 +12,7 @@ from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _rls
 from api.services.rbac import require_permission, scope_from_path
 
-router = APIRouter(prefix="/api/v1", tags=["versions"])
+router = APIRouter(prefix="/api/v1", tags=["delta-extraction"])
 
 
 @router.get("/versions/{version_id}/changes",

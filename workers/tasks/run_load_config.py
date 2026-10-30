@@ -13,6 +13,22 @@ from workers.db import get_sync_engine
 logger = logging.getLogger("meridian.workers.load_config")
 
 
+_SENTENCES = {
+    "pyrfc_not_installed": "The SAP RFC library is not installed: build the API and worker images with INSTALL_PYRFC=true.",
+}
+
+
+def failure_sentence(error: str) -> str:
+    """What the job line shows: a sentence, never a connector's internal code (``pyrfc_not_installed: ...``)."""
+    code, sep, rest = error.partition(":")
+    if sep and code in _SENTENCES:
+        return _SENTENCES[code]
+    if sep and code and code.replace("_", "").isalpha() and code.islower() and "_" in code:
+        rest = rest.strip()
+        return (rest[:1].upper() + rest[1:]) if rest else error
+    return error
+
+
 def _fail(session: Session, tenant_id: str, load_id: str, job_id: str, error: str) -> None:
     session.rollback()
     session.execute(text("UPDATE config_loads SET status = 'failed', error = :e, finished_at = now() "
@@ -71,5 +87,5 @@ def run_load_config(self, tenant_id, system_id, load_id, job_id):
             return {"error": "timeout"}
         except Exception as e:
             logger.error("Config load failed: %s", e)
-            _fail(session, tenant_id, load_id, job_id, str(e)[:200])
+            _fail(session, tenant_id, load_id, job_id, failure_sentence(str(e))[:200])
             return {"error": str(e)[:200]}

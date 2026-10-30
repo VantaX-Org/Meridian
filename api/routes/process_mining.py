@@ -17,14 +17,15 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.server_error import server_failure
 from api.deps import Tenant, get_db, get_tenant
 
-router = APIRouter(prefix="/api/v1/process", tags=["process_mining"])
+router = APIRouter(prefix="/api/v1/process", tags=["process-mining"])
 logger = logging.getLogger("meridian.process_mining")
 
 
@@ -259,12 +260,9 @@ async def get_mining_graph(
         processes = generate_process_document(
             module, findings_by_check, spro_config, config_impact
         )
-    except Exception as e:
-        logger.exception("process_document build failed")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Process document build failed: {type(e).__name__}",
-        )
+    except Exception:
+        raise server_failure("The process document could not be built.", log=logger,
+                             what="process_document") from None
 
     if not processes:
         return MiningGraphResponse(

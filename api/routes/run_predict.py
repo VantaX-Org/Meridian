@@ -7,7 +7,7 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,53 +17,53 @@ from api.services import jobs, run_prediction as rp
 from api.services.rbac import require_permission
 from api.services.run_context import latest_run
 
-router = APIRouter(prefix="/api/v1/runs", tags=["runs"])
+router = APIRouter(prefix="/api/v1/runs", tags=["run-prediction"])
 
 
 class ObjectPredictionOut(BaseModel):
-    module: str
-    runs: int                                 # past runs the prediction reads (at most 8)
-    records: Optional[int] = None             # median records checked
-    seconds: Optional[float] = None           # median seconds per record x records
-    seconds_low: Optional[float] = None       # 25th percentile rate x records (lowest rate under 4 runs)
-    seconds_high: Optional[float] = None      # 75th percentile rate x records (highest rate under 4 runs)
-    confidence: str                           # high | medium | low | none
-    basis: str                                # full | delta | full (no delta run yet)
+    module: str = Field(description="Object (module id) predicted.")
+    runs: int = Field(description="Past runs the prediction reads (at most 8).")
+    records: Optional[int] = Field(None, description="Median records checked.")
+    seconds: Optional[float] = Field(None, description="Median seconds per record x records.")
+    seconds_low: Optional[float] = Field(None, description="25th percentile rate x records (lowest rate under 4 runs).")
+    seconds_high: Optional[float] = Field(None, description="75th percentile rate x records (highest rate under 4 runs).")
+    confidence: str = Field(description="Confidence of the prediction: high, medium, low or none.")
+    basis: str = Field(description="What the prediction reads: full, delta, or full (no delta run yet).")
 
 
 class TotalOut(BaseModel):
-    records: Optional[int] = None
-    seconds: Optional[float] = None
-    seconds_low: Optional[float] = None
-    seconds_high: Optional[float] = None
-    confidence: str
+    records: Optional[int] = Field(None, description="Records the run is expected to check.")
+    seconds: Optional[float] = Field(None, description="Expected duration in seconds.")
+    seconds_low: Optional[float] = Field(None, description="Low end of the expected duration in seconds.")
+    seconds_high: Optional[float] = Field(None, description="High end of the expected duration in seconds.")
+    confidence: str = Field(description="Lowest confidence across the objects: high, medium, low or none.")
 
 
 class CostOut(BaseModel):
-    amount: Optional[float] = None
-    low: Optional[float] = None
-    high: Optional[float] = None
-    currency: str
-    per_hour: Optional[float] = None
-    per_million_records: Optional[float] = None
+    amount: Optional[float] = Field(None, description="Expected cost of the run in the configured currency (run cost settings).")
+    low: Optional[float] = Field(None, description="Low end of the cost.")
+    high: Optional[float] = Field(None, description="High end of the cost.")
+    currency: str = Field(description="ISO 4217 currency code.")
+    per_hour: Optional[float] = Field(None, description="Configured cost per worker hour.")
+    per_million_records: Optional[float] = Field(None, description="Configured cost per million records checked.")
 
 
 class QueueOut(BaseModel):
-    broker: dict[str, int]                    # waiting tasks per Celery queue; empty when the broker is unreadable
-    waiting: int
-    running_jobs: int
-    queued_jobs: int
-    position: int                             # where a run started now would queue (1: next)
+    broker: dict[str, int] = Field(description="Waiting tasks per Celery queue; empty when the broker is unreadable.")
+    waiting: int = Field(description="Tasks waiting across the Celery queues.")
+    running_jobs: int = Field(description="Jobs of this tenant running now.")
+    queued_jobs: int = Field(description="Jobs of this tenant queued.")
+    position: int = Field(description="Where a run started now would queue (1: next).")
 
 
 class PredictOut(BaseModel):
-    system_id: Optional[str] = None
-    modules: list[str]
-    delta: bool
-    objects: list[ObjectPredictionOut]
-    total: TotalOut
-    cost: Optional[CostOut] = None
-    queue: QueueOut
+    system_id: Optional[str] = Field(None, description="SAP system the prediction is for.")
+    modules: list[str] = Field(description="Objects (module ids) in the run.")
+    delta: bool = Field(description="True for a delta run (only changed records).")
+    objects: list[ObjectPredictionOut] = Field(description="Prediction per object.")
+    total: TotalOut = Field(description="Prediction for the whole run.")
+    cost: Optional[CostOut] = Field(None, description="Expected cost, when a run cost is configured.")
+    queue: QueueOut = Field(description="Where a run started now would queue.")
 
 
 _RANK = {"none": 0, "low": 1, "medium": 2, "high": 3}

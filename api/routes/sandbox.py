@@ -16,7 +16,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,29 +27,29 @@ from api.services import sandbox
 from api.services.rbac import current_user_label, require_permission, write_audit
 from api.services.run_context import latest_run
 
-router = APIRouter(prefix="/api/v1/admin/sandbox", tags=["admin"])
+router = APIRouter(prefix="/api/v1/admin/sandbox", tags=["sandbox"])
 
 
 class EnterBody(BaseModel):
-    copy_run: bool = True       # copy the latest finished run into a sandbox run; false only turns the flag on
+    copy_run: bool = Field(True, description="Copy the latest finished run into a sandbox run; false only turns the flag on.")
 
 
 class SandboxOut(BaseModel):
-    sandbox: bool
-    since: Optional[datetime] = None
-    by: Optional[str] = None
-    runs: list[str]
-    skipped_deliveries: int
+    sandbox: bool = Field(description="True while the tenant is in sandbox mode: runs are copies, deliveries are held.")
+    since: Optional[datetime] = Field(None, description="When sandbox mode was entered.")
+    by: Optional[str] = Field(None, description="Who entered sandbox mode.")
+    runs: list[str] = Field(description="Sandbox run ids.")
+    skipped_deliveries: int = Field(description="Webhook, digest and notification deliveries held back while in sandbox.")
 
 
 class EnterOut(SandboxOut):
-    source_run_id: Optional[str] = None
-    sandbox_run_id: Optional[str] = None
-    copied: dict[str, int]
+    source_run_id: Optional[str] = Field(None, description="Run copied into the sandbox.")
+    sandbox_run_id: Optional[str] = Field(None, description="The sandbox copy of that run.")
+    copied: dict[str, int] = Field(description="Rows copied per table.")
 
 
 class ExitOut(SandboxOut):
-    discarded: dict[str, int]
+    discarded: dict[str, int] = Field(description="Sandbox rows discarded per table.")
 
 
 @router.get("", response_model=SandboxOut, dependencies=[Depends(require_permission("view"))])
@@ -79,6 +79,7 @@ async def enter_sandbox(request: Request, body: Optional[EnterBody] = None, db: 
                       {"sandbox": True, "source_run_id": source, "sandbox_run_id": vid, "copied": copied})
     mark_work_changed(db, tenant.id)  # the status strip, landscape and work summary now read the sandbox
     await db.commit()
+    await _rls(db, tenant)  # a new transaction: the tenant context of the one just committed may be gone
     return {**await sandbox.status(db, tenant.id), "source_run_id": source, "sandbox_run_id": vid, "copied": copied}
 
 
@@ -100,4 +101,5 @@ async def exit_sandbox(request: Request, db: AsyncSession = Depends(get_db), ten
                       {"sandbox": False, "discarded": discarded})
     mark_work_changed(db, tenant.id)
     await db.commit()
+    await _rls(db, tenant)  # a new transaction: the tenant context of the one just committed may be gone
     return {**await sandbox.status(db, tenant.id), "discarded": discarded}

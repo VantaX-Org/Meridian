@@ -12,9 +12,8 @@ Entire task wrapped in try/except — failure must not prevent weekly metric sna
 
 import json
 import logging
-import os
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta, timezone
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session

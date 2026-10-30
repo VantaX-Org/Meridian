@@ -299,24 +299,36 @@ class TestCorroboratedSapMapping:
 # ── Global exception handler ─────────────────────────────────────────────────
 
 
-class TestGlobalExceptionHandler:
-    """Tests for docs/openapi disabled in production."""
+class TestApiDocsVisibility:
+    """/docs, /redoc and /openapi.json answer only on a development deployment or with MERIDIAN_OPENAPI_PUBLIC."""
 
-    def test_docs_disabled_in_production(self):
+    def test_docs_hidden_in_production(self, monkeypatch):
         from api.config import Settings
 
-        prod_settings = Settings(auth_mode="clerk")
-        docs_url = "/docs" if prod_settings.auth_mode == "local" else None
-        openapi_url = "/openapi.json" if prod_settings.auth_mode == "local" else None
-        assert docs_url is None
-        assert openapi_url is None
+        monkeypatch.delenv("MERIDIAN_OPENAPI_PUBLIC", raising=False)
+        assert Settings(env="production").api_docs_enabled() is False
 
-    def test_docs_enabled_in_local_mode(self):
+    def test_docs_shown_in_development(self):
         from api.config import Settings
 
-        local_settings = Settings(auth_mode="local")
-        docs_url = "/docs" if local_settings.auth_mode == "local" else None
-        assert docs_url == "/docs"
+        assert Settings(env="development").api_docs_enabled() is True
+
+    def test_flag_opens_docs_in_production(self, monkeypatch):
+        from api.config import Settings
+
+        monkeypatch.setenv("MERIDIAN_OPENAPI_PUBLIC", "1")
+        assert Settings(env="production").api_docs_enabled() is True
+
+    def test_app_follows_the_setting(self):
+        """api.main builds the app's docs URLs from the setting; app.openapi() keeps working in-process."""
+        from api.config import settings
+        from api.main import app
+
+        on = settings.api_docs_enabled()
+        assert app.docs_url == ("/docs" if on else None)
+        assert app.redoc_url == ("/redoc" if on else None)
+        assert app.openapi_url == ("/openapi.json" if on else None)
+        assert "/api/v1/versions" in app.openapi()["paths"]
 
 
 # ── Sentry scrubber ──────────────────────────────────────────────────────────
@@ -372,7 +384,7 @@ class TestSentryScrubber:
             current["nested"] = {}
             current = current["nested"]
         current["value"] = "deep"
-        scrubbed = self._scrub(deeply_nested)
+        self._scrub(deeply_nested)
         # Should not crash — depth limit prevents infinite recursion
 
     def test_password_keys_redacted(self):

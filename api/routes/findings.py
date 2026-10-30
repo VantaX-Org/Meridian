@@ -48,13 +48,13 @@ _COMPLETE = finished_sql()
 
 async def _latest_version_ids(db: AsyncSession, tenant: Tenant) -> list[uuid.UUID]:
     """Current state: the latest complete run of each lineage (a system, or one uploaded
-    object set; see run_lineage) — never the same check counted once per historical run,
-    and never one upload standing in for every uploaded object."""
-    return list((await db.execute(text(f"""
-        SELECT DISTINCT ON ({lineage_sql()}) id FROM analysis_versions
-         WHERE tenant_id = :tid AND {_COMPLETE}
-         ORDER BY {lineage_sql()}, run_at DESC
-    """), {"tid": str(tenant.id)})).scalars().all())
+    object set; see run_lineage), and of each object within it — never the same check counted
+    once per historical run, and never one upload standing in for every uploaded object.
+    Callers keep each object once, from the newest of these runs (current_objects)."""
+    from api.services.current_state import latest_runs_sql
+
+    return list((await db.execute(text(latest_runs_sql("CAST(:tid AS uuid)")),
+                                  {"tid": str(tenant.id)})).scalars().all())
 
 
 async def _current_pairs(db: AsyncSession, tenant: Tenant) -> list[tuple[uuid.UUID, str]]:

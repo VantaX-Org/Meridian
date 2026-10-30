@@ -8,10 +8,8 @@ Notifies Admin and Steward users that rules await review.
 
 import json
 import logging
-import os
 import time
 import uuid
-from datetime import datetime, timezone
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session

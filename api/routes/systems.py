@@ -559,7 +559,7 @@ def _connection_test_once(system_type: str, params: dict, secrets_to_mask: list[
         if "pyrfc_not_installed" in str(e):
             return TestConnectionResponse(connected=False, message="PyRFC is not installed")
         return TestConnectionResponse(connected=False, message=f"Connection failed: {mask(str(e))}")
-    except Exception as e:
+    except Exception:
         # A missing endpoint field raised AttributeError inside the connector constructor,
         # outside SAPConnectorError's reach: the route 500'd and every UI surface read that as
         # "Could not reach the server." — our own defect disguised as a network outage. Name it

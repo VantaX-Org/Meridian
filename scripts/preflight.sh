@@ -99,12 +99,14 @@ if [[ -n "$SAP_HOST" ]]; then
     if [[ ! "$SAP_HOST" =~ ^[0-9.]+$ ]]; then
         getent hosts "$SAP_HOST" >/dev/null && pass "host resolves $SAP_HOST" || fail "host cannot resolve $SAP_HOST"
     fi
-    dns1=$(envval MERIDIAN_DNS_1); dns1=${dns1:-8.8.8.8}
-    if [[ "$SAP_HOST" =~ ^[0-9.]+$ ]] || docker run --rm --dns "$dns1" --entrypoint getent \
+    # Containers use the host's resolver unless MERIDIAN_DNS_1/2 are set (scripts/dns-overlay.sh).
+    dns1=$(envval MERIDIAN_DNS_1)
+    dns_args=(); [[ -n "$dns1" ]] && dns_args=(--dns "$dns1")
+    if [[ "$SAP_HOST" =~ ^[0-9.]+$ ]] || docker run --rm ${dns_args[@]+"${dns_args[@]}"} --entrypoint getent \
             ghcr.io/vantax-org/meridian-api:latest hosts "$SAP_HOST" >/dev/null 2>&1; then
-        pass "containers (DNS $dns1) resolve $SAP_HOST"
+        pass "containers (DNS ${dns1:-of the host}) resolve $SAP_HOST"
     else
-        fail "containers using DNS $dns1 cannot resolve $SAP_HOST — set MERIDIAN_DNS_1/2 in .env to the internal DNS"
+        fail "containers using DNS ${dns1:-of the host} cannot resolve $SAP_HOST — set MERIDIAN_DNS_1/2 in .env to the internal DNS"
     fi
     if [[ -n "$SAP_SYSNR" ]]; then
         port="33${SAP_SYSNR}"

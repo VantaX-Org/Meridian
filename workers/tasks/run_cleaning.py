@@ -4,12 +4,10 @@ Enqueued by run_checks.py after checks complete successfully.
 A cleaning failure must never affect the analysis result stored in findings.
 """
 
-import io
 import json
 import logging
 import traceback
 
-import pandas as pd
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 

@@ -128,9 +128,9 @@ def test_assign_sla_escalate_pause(engines):
         mm = _issue(s, tid, vid, "MM-1", "WERKS=P9|MATNR=1", module="material_master")
         other_mm = _issue(s, tid, vid, "MM-2", "MATNR=2", module="material_master", severity="low")
         done = _issue(s, tid, vid, "AP-3", "LIFNR=9", status="resolved")
-        q = str(s.execute(text("INSERT INTO stewardship_queue (tenant_id, item_type, source_id, domain, priority) "
-                               "VALUES (:t, 'merge_review', :src, 'business_partner', 2) RETURNING id"),
-                          {"t": tid, "src": str(uuid.uuid4())}).scalar())
+        s.execute(text("INSERT INTO stewardship_queue (tenant_id, item_type, source_id, domain, priority) "
+                       "VALUES (:t, 'merge_review', :src, 'business_partner', 2) RETURNING id"),
+                  {"t": tid, "src": str(uuid.uuid4())})
         s.commit()
     with _session(app, other) as s:
         foreign = _issue(s, other, ovid, "AP-2", "LIFNR=1")

@@ -148,6 +148,16 @@ class Settings(BaseSettings):
     # Observability
     sentry_dsn: Optional[str] = None
 
+    # The interactive API docs (/docs, /redoc) and /openapi.json answer only on a development
+    # deployment (MERIDIAN_ENV=development) or when this is set; otherwise they are 404, since nginx
+    # proxies them without sign-in.
+    openapi_public: bool = Field(default=False, validation_alias=AliasChoices("MERIDIAN_OPENAPI_PUBLIC",
+                                                                              "OPENAPI_PUBLIC"))
+
+    def api_docs_enabled(self) -> bool:
+        """Whether to serve /docs, /redoc and /openapi.json (see ``openapi_public``)."""
+        return self.openapi_public or self.env == "development"
+
     model_config = {"env_file": ".env", "case_sensitive": False, "extra": "ignore"}
 
 

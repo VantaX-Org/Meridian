@@ -14,7 +14,7 @@ def test_pptx_export_renders_a_slide_per_l1_and_l4() -> None:
 
     data = export_pptx(doc, meta)
 
-    prs = Presentation(io := __import__("io").BytesIO(data))
+    prs = Presentation(__import__("io").BytesIO(data))
     n_l1 = len(doc.l1)
     n_l4 = len(doc.all_l4())
     assert len(prs.slides) == 1 + n_l1 + n_l4  # title + per-L1 + per-L4

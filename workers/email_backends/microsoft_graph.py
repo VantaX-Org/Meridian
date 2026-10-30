@@ -1,6 +1,5 @@
 """Microsoft Graph API email backend for sending emails via Azure."""
 
-import json
 import logging
 import os
 from typing import Optional

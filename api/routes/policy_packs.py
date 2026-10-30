@@ -18,7 +18,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,25 +33,25 @@ router = APIRouter(prefix="/api/v1/policy-packs", tags=["policy-packs"])
 
 
 class RuleEvidenceOut(BaseModel):
-    check_id: str
-    measured: bool
-    module: Optional[str] = None
-    severity: Optional[str] = None
-    pass_rate: Optional[float] = None
-    failing_records: int
-    total_records: int
+    check_id: str = Field(description="Rule id.")
+    measured: bool = Field(description="True when the rule ran in the run read.")
+    module: Optional[str] = Field(None, description="Object (module id) of the rule.")
+    severity: Optional[str] = Field(None, description="Rule severity.")
+    pass_rate: Optional[float] = Field(None, description="Share of records passing, 0 to 100.")
+    failing_records: int = Field(description="Records failing.")
+    total_records: int = Field(description="Records checked.")
 
 
 class ClassOut(BaseModel):
-    id: str
-    label: str
-    authority: str
-    fields: list[str]
-    rules_count: int
-    rules_measured: int
-    pass_rate: Optional[float] = None
-    failing_records: int
-    breached: bool
+    id: str = Field(description="Data class id.")
+    label: str = Field(description="Data class name.")
+    authority: str = Field(description="Regulation or standard the class comes from.")
+    fields: list[str] = Field(description="SAP fields in the class.")
+    rules_count: int = Field(description="Rules that evidence the class.")
+    rules_measured: int = Field(description="Of those, rules measured.")
+    pass_rate: Optional[float] = Field(None, description="Mean pass rate of the measured rules.")
+    failing_records: int = Field(description="Failing records across the class's rules.")
+    breached: bool = Field(description="True when a critical rule of the class is over tolerance.")
 
 
 class ClassEvidenceOut(ClassOut):
@@ -59,40 +59,40 @@ class ClassEvidenceOut(ClassOut):
 
 
 class CoverageOut(BaseModel):
-    fields_classified: int
-    rules_evidencing: int
-    rules_measured: int
-    failing_records: int
-    classes_breached: int
+    fields_classified: int = Field(description="Distinct fields classified by the pack.")
+    rules_evidencing: int = Field(description="Distinct rules evidencing the pack.")
+    rules_measured: int = Field(description="Of those, rules measured.")
+    failing_records: int = Field(description="Failing records across the pack.")
+    classes_breached: int = Field(description="Data classes breached.")
 
 
 class PackOut(BaseModel):
-    id: str
-    name: str
-    authority: str
-    description: str
-    applied: bool
-    applied_at: Optional[datetime] = None
-    applied_by: Optional[str] = None
-    unapplied_at: Optional[datetime] = None
-    coverage: CoverageOut
-    classes: list[ClassOut]
+    id: str = Field(description="Policy pack id.")
+    name: str = Field(description="Policy pack name.")
+    authority: str = Field(description="Regulation or standard.")
+    description: str = Field(description="What the pack covers.")
+    applied: bool = Field(description="True when applied to this tenant.")
+    applied_at: Optional[datetime] = Field(None, description="When it was applied.")
+    applied_by: Optional[str] = Field(None, description="Who applied it.")
+    unapplied_at: Optional[datetime] = Field(None, description="When it was last removed.")
+    coverage: CoverageOut = Field(description="Coverage across the pack.")
+    classes: list[ClassOut] = Field(description="Data classes of the pack.")
 
 
 class PacksOut(BaseModel):
-    packs: list[PackOut]
-    applied: int
+    packs: list[PackOut] = Field(description="Policy packs shipped with Meridian.")
+    applied: int = Field(description="Packs applied to this tenant.")
 
 
 class EvidenceOut(BaseModel):
-    pack_id: str
-    name: str
-    authority: str
-    applied: bool
-    scope: str                      # "run" or "current"
-    run_id: Optional[str] = None
-    classes: list[ClassEvidenceOut]
-    coverage: CoverageOut
+    pack_id: str = Field(description="Policy pack id.")
+    name: str = Field(description="Policy pack name.")
+    authority: str = Field(description="Regulation or standard.")
+    applied: bool = Field(description="True when applied to this tenant.")
+    scope: str = Field(description="Evidence scope: run (one run) or current (the latest run per object).")
+    run_id: Optional[str] = Field(None, description="Run read when scope is run.")
+    classes: list[ClassEvidenceOut] = Field(description="Evidence per data class.")
+    coverage: CoverageOut = Field(description="Coverage across the pack.")
 
 
 def _coverage(classes: list[dict]) -> dict:

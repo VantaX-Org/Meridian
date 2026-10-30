@@ -32,7 +32,7 @@ from checks.profiling import is_sensitive
 log = logging.getLogger(__name__)
 
 STATUSES = ("to_fix", "proposed", "approved", "sent", "not_an_issue", "fixed")
-KEEP_RUNS = 2  # work rows kept per system: the newest runs, so the previous one can be compared
+KEEP_RUNS = 2  # work rows kept per object of a system: the newest runs, so the previous one can be compared
 
 SEV_RANK_SQL = ("CASE {c} WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 "
                 "WHEN 'low' THEN 3 ELSE 4 END")
@@ -292,14 +292,19 @@ def name_records(session, p: dict, frames) -> int:
 
 
 def prune(session, p: dict) -> int:
-    """Drop the work rows of a system's runs older than its KEEP_RUNS newest built ones."""
+    """Drop the work rows of each object of a system older than that object's KEEP_RUNS newest built runs.
+
+    Counted per object, not per system: a system whose objects are run apart (one upload or download per object)
+    otherwise lost the current run's work list of every object but the last two run (acceptance run, October 2026)."""
     old = session.execute(text("""
-        SELECT version_id FROM (
-            SELECT g.version_id, row_number() OVER (ORDER BY av.run_at DESC) AS n
-              FROM (SELECT DISTINCT version_id FROM work_records WHERE scope = :scope AND tenant_id = CAST(:tid AS uuid)) g
+        SELECT version_id, module FROM (
+            SELECT g.version_id, g.module,
+                   row_number() OVER (PARTITION BY g.module ORDER BY av.run_at DESC, av.id DESC) AS n
+              FROM (SELECT DISTINCT version_id, module FROM work_records
+                     WHERE scope = :scope AND tenant_id = CAST(:tid AS uuid)) g
               JOIN analysis_versions av ON av.id = g.version_id) r
-         WHERE n > :keep"""), {**p, "keep": KEEP_RUNS}).scalars().all()
-    for v in old:
-        session.execute(text("DELETE FROM work_records WHERE version_id = :v"), {"v": v})
-        session.execute(text("DELETE FROM work_groups WHERE version_id = :v"), {"v": v})
-    return len(old)
+         WHERE n > :keep"""), {**p, "keep": KEEP_RUNS}).all()
+    for v, m in old:
+        session.execute(text("DELETE FROM work_records WHERE version_id = :v AND module = :m"), {"v": v, "m": m})
+        session.execute(text("DELETE FROM work_groups WHERE version_id = :v AND module = :m"), {"v": v, "m": m})
+    return len({v for v, _ in old})

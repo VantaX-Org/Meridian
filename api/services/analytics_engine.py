@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
 from math import ceil
 from typing import Any
 
@@ -63,7 +62,7 @@ def _prediction_interval(
 ) -> tuple[float, float, float]:
     """Point forecast at ``x0`` and its two-sided prediction interval for a simple linear fit.
 
-    ``ŷ ± t(level, n−2) · s · sqrt(1 + 1/n + (x0 − x̄)² / Sxx)``, with ``s`` the residual
+    ``ŷ ± t(level, n−2) * s * sqrt(1 + 1/n + (x0 − x̄)² / Sxx)``, with ``s`` the residual
     standard error. All three values are clamped to the 0–100 score scale and rounded to
     one decimal. Needs at least three points on at least two distinct days."""
     from scipy.stats import t as student_t
@@ -600,7 +599,6 @@ class OperationalAnalytics:
         total_rejected = sum(m.get("rejected", 0) for m in cleaning_metrics)
         total_rolled_back = sum(m.get("rolled_back", 0) for m in cleaning_metrics)
         total_recommended = sum(m.get("recommended", 0) for m in cleaning_metrics)
-        total_verified = sum(m.get("verified", 0) for m in cleaning_metrics)
 
         # Period days (count unique periods)
         periods = set(m.get("period", "") for m in cleaning_metrics)

@@ -7,13 +7,12 @@ Meridian never posts to SAP; see api/services/remediation.py.
 """
 
 import hashlib
-import io
 import json
 import uuid
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -609,7 +608,7 @@ async def export_batch(
     await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), batch_id))
     await db.run_sync(lambda s: webhooks.batch_event(s, str(tenant.id), str(batch_id), "batch.sent"))
     await db.commit()
-    return StreamingResponse(io.BytesIO(data), media_type=_MEDIA[ext], headers={
+    return Response(content=data, media_type=_MEDIA[ext], headers={
         "Content-Disposition": f"attachment; filename={filename}",
         "X-Content-SHA256": digest,
         "Access-Control-Expose-Headers": "X-Content-SHA256"})
