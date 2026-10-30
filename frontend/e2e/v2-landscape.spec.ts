@@ -48,6 +48,20 @@ for (const size of SIZES) {
       const shot = (page: Page, name: string) => page.screenshot({ path: path.join(SHOTS, `${name}_${size.name}_${scheme}.png`) });
       const phone = size.width < 500;
 
+      test("landscape for SAP Basis: connections, extractions, failed jobs, authorisation errors and schedules", async ({ page }) => {
+        await prepare(page, scheme);
+        await page.goto("/?fixture=1&persona=basis", { waitUntil: "load" });
+        const home = page.getByTestId("basis-home");
+        await expect(home).toBeVisible(NAV);
+        await expect(home.getByTestId("basis-connections")).toContainText("Refused the credentials");
+        await expect(home.getByTestId("basis-extractions")).toContainText("400,662");
+        await expect(home.getByTestId("basis-failures")).toContainText("OData refused credentials");
+        await expect(home.getByTestId("basis-schedules")).toContainText("Changes only");
+        await axe(page, `basis home ${size.name} ${scheme}`);
+        await home.scrollIntoViewIfNeeded();
+        await shot(page, "basis-home");
+      });
+
       test("landscape: the sentence, the next step and the coverage matrix", async ({ page }) => {
         await prepare(page, scheme);
         await page.goto("/?fixture=1", { waitUntil: "load" });

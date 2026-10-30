@@ -12,6 +12,7 @@ import { useOpenItem, useRunParam, useV2Session, type V2Persona } from "@/lib/v2
 import { useBatches, usePeople } from "@/lib/v2/approvals-queries";
 import { slaMet } from "@/lib/v2/people";
 import { useWorkSummary } from "@/lib/v2/work-queries";
+import { BasisHome } from "./BasisHome";
 import { useLandscape, useStatus, useTopWork } from "@/lib/v2/queries";
 import { byMeasured, f1, int, moduleSlug, readingText, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { type GridColumn } from "../Grid";
@@ -703,8 +704,10 @@ export function LandscapeCanvas() {
       <div className="m2-cta">
         <NextStep landscape={L} persona={session.persona} waves={waves} />
       </div>
+      {session.persona === "basis" ? <BasisTasks landscape={L} /> : null}
+      {session.persona === "basis" ? <BasisHome landscape={L} /> : null}
       <Coverage landscape={L} run={run} view={view} waves={waves} />
-      {session.persona === "basis" ? <BasisTasks landscape={L} /> : <NextWork landscape={L} />}
+      {session.persona === "basis" ? null : <NextWork landscape={L} />}
     </>
   );
 }

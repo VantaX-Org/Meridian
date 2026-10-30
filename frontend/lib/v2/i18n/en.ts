@@ -4361,6 +4361,22 @@ export const en = {
   "Aletheia is a licensed mark. Its licence requires this attribution on every screen; it is not a second product.": "Aletheia is a licensed mark. Its licence requires this attribution on every screen; it is not a second product.",
   "licensed mark, attribution required": "licensed mark, attribution required",
   "TABLE-FIELD of the failing value.": "TABLE-FIELD of the failing value.",
+  "Refused the credentials": "Refused the credentials",
+  "Connections": "Connections",
+  "{count} {count, plural, one {system} other {systems}}": "{count} {count, plural, one {system} other {systems}}",
+  "No system is connected yet.": "No system is connected yet.",
+  "Last check": "Last check",
+  "What it said": "What it said",
+  "No connection test has run": "No connection test has run",
+  "Failed jobs to triage": "Failed jobs to triage",
+  "{count} open": "{count} open",
+  "No failed job is waiting. A job that fails and is not followed by a success of the same kind lands here.": "No failed job is waiting. A job that fails and is not followed by a success of the same kind lands here.",
+  "{JOB_KIND_LABEL} of {jobObject}": "{JOB_KIND_LABEL} of {jobObject}",
+  "Authorisation errors": "Authorisation errors",
+  "No refused credentials or missing authorisations in the connection tests and the jobs read.": "No refused credentials or missing authorisations in the connection tests and the jobs read.",
+  "Where": "Where",
+  "What SAP answered": "What SAP answered",
+  "No extraction is scheduled.": "No extraction is scheduled.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

@@ -141,6 +141,34 @@ describe("landscape canvas, fixture mode", () => {
     expect(screen.queryByRole("grid")).toBeNull();
   });
 
+  it("basis: a home of connections and their health, last extractions with volumes, failed jobs, authorisation errors and schedules", async () => {
+    visit("&persona=basis");
+    renderWithQuery(<LandscapeCanvas />);
+    const home = await screen.findByTestId("basis-home");
+    const conn = within(home).getByTestId("basis-connections");
+    await waitFor(() => expect(within(conn).getAllByRole("row")).toHaveLength(4));
+    expect(within(conn).getByRole("row", { name: /ECC production/ })).toHaveTextContent("Connected");
+    expect(within(conn).getByRole("row", { name: /SuccessFactors/ })).toHaveTextContent("Refused the credentials");
+    const ext = within(home).getByTestId("basis-extractions");
+    expect(within(ext).getByRole("row", { name: /ECC production/ })).toHaveTextContent("400,662");
+    expect(within(ext).getByRole("row", { name: /SuccessFactors/ })).toHaveTextContent("Not extracted");
+    const failed = within(home).getByTestId("basis-failures");
+    await waitFor(() => expect(within(failed).getAllByRole("row").length).toBeGreaterThan(1));
+    expect(failed).toHaveTextContent("OData refused credentials (HTTP 401).");
+    const auth = within(home).getByTestId("basis-auth");
+    expect(within(auth).getAllByRole("row", { name: /SuccessFactors/ }).length).toBeGreaterThan(0);
+    const sched = within(home).getByTestId("basis-schedules");
+    await waitFor(() => expect(within(sched).getAllByRole("row", { name: /ECC production/ }).length).toBe(2));
+    expect(sched).toHaveTextContent("Changes only");
+  });
+
+  it("basis: an authorisation error is told apart from other failures", async () => {
+    const { isAuthError } = await import("../screens/BasisHome");
+    expect(isAuthError("RFC_NO_AUTHORITY: no authorisation for S_TABU_DIS")).toBe(true);
+    expect(isAuthError("OData refused credentials (HTTP 401).")).toBe(true);
+    expect(isAuthError("Connection timed out after 30 s")).toBe(false);
+  });
+
   it("Your next work: the top 5 rows by value at risk in the grid, with View all N", async () => {
     renderWithQuery(<LandscapeCanvas />);
     const grid = await screen.findByRole("grid", { name: "Your next work" });
