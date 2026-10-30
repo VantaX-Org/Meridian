@@ -1,6 +1,6 @@
 # Lineage
 
-Lineage draws why a failing value matters: from the source table, to the field, to the rule that fails on it, to the S/4 feature it blocks or degrades. The **Lineage** tab of an object draws it for the failing rules with the highest value at risk. Open it from the object's tabs, for example `/v2/o/ecc-production/material-master/lineage`.
+Lineage draws why a failing value matters: from the source table, to the field, to the rule that fails on it, to the S/4 feature it blocks or degrades. The **Lineage** tab of an object draws it for the failing rules with the highest value at risk. Open it from the object's tabs, for example `/o/ecc-production/material-master/lineage`.
 
 ## What is on it
 

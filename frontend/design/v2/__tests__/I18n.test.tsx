@@ -26,7 +26,7 @@ beforeEach(() => {
   resetAdminFixture();
   resetKeptOutcomes();
   stubMatchMedia();
-  setUrl("/v2?fixture=1&open=preferences");
+  setUrl("/?fixture=1&open=preferences");
 });
 afterEach(() => {
   window.sessionStorage.clear();

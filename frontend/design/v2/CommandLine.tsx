@@ -14,12 +14,12 @@ const PLACES: CommandGroup = {
   kind: "action",
   get label() { return tr("Go to"); },
   items: [
-    { id: "landscape", get title() { return tr("Landscape"); }, href: "/v2" },
-    { id: "work", get title() { return tr("Work"); }, href: "/v2/work" },
-    { id: "runs", get title() { return tr("Runs"); }, href: "/v2/runs" },
-    { id: "people", get title() { return tr("People"); }, href: "/v2/people" },
-    { id: "rules", get title() { return tr("Rules"); }, href: "/v2/rules" },
-    { id: "connect", get title() { return tr("Connect a system"); }, href: "/v2/s/new" },
+    { id: "landscape", get title() { return tr("Landscape"); }, href: "/" },
+    { id: "work", get title() { return tr("Work"); }, href: "/work" },
+    { id: "runs", get title() { return tr("Runs"); }, href: "/runs" },
+    { id: "people", get title() { return tr("People"); }, href: "/people" },
+    { id: "rules", get title() { return tr("Rules"); }, href: "/rules" },
+    { id: "connect", get title() { return tr("Connect a system"); }, href: "/s/new" },
   ],
 };
 
@@ -36,8 +36,8 @@ interface Row {
  * ledger on the batches waiting for approval; "export" saves the fix sheet of the rows on screen (and, from another
  * screen, opens the ledger and exports its default rows).
  */
-export const WORK_APPROVALS = "/v2/work?filter=approvals";
-export const WORK_EXPORT = "/v2/work?export=1";
+export const WORK_APPROVALS = "/work?filter=approvals";
+export const WORK_EXPORT = "/work?export=1";
 function actionTarget(r: Row): { href: string; exportNow: boolean } {
   if (r.kind === "action" && r.id === "approvals") return { href: WORK_APPROVALS, exportNow: false };
   if (r.kind === "action" && (r.id === "export-fix-sheet" || r.id === "export")) return { href: WORK_EXPORT, exportNow: true };

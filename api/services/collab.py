@@ -56,17 +56,17 @@ def mention_tokens(body: str) -> list[str]:
 
 
 def link_for(kind: str, target_id: str) -> str:
-    """Where a notification about a target opens: the v2 canvas with the target in the inspector."""
+    """Where a notification about a target opens: its canvas, with the target in the inspector."""
     if kind == "object":
         system, _, module = target_id.partition(":")
-        return f"/v2/o/{system}/{module}" if module else "/v2"
+        return f"/o/{system}/{module}" if module else "/"
     if kind == "system":
-        return f"/v2?open=system:{target_id}"
+        return f"/?open=system:{target_id}"
     if kind == "wave":
-        return "/v2?open=waves"
+        return "/?open=waves"
     if kind == "contract":
-        return f"/v2?open=contract:{target_id}"
-    return f"/v2?open={kind}:{target_id}"
+        return f"/?open=contract:{target_id}"
+    return f"/?open={kind}:{target_id}"
 
 
 def _score(summary: Mapping[str, Any]) -> float | None:
@@ -189,7 +189,7 @@ def _fire_run_events(session, tenant_id: str, version_id: str) -> int:
             targets.append(("rule", e["check_id"]))
         title, body = _sentence(e, label)
         sent += notify_watchers_sync(session, tenant_id, e["event"], targets, title, body,
-                                     link_for("object", f"{sid}:{e['module']}") if sid else "/v2")
+                                     link_for("object", f"{sid}:{e['module']}") if sid else "/")
     return sent
 
 

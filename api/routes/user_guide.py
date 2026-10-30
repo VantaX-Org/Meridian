@@ -1,4 +1,4 @@
-"""The user guide as a PDF, for every signed-in user (the app shows the same chapters at /docs)."""
+"""The user guide as a PDF, for every signed-in user (the help panel shows the same chapters)."""
 
 import asyncio
 import logging

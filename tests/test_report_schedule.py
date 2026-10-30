@@ -240,7 +240,7 @@ def test_one_report_notification_per_send_without_the_full_address():
     _run(s)
     assert [n["type"] for n in s.notifications] == ["report", "report"]
     first = s.notifications[0]
-    assert first["uid"] is None and first["tid"] == TID and first["link"] == "/insights/reports"
+    assert first["uid"] is None and first["tid"] == TID and first["link"] == "/reports"
     assert first["title"] == "Board pack sent: October re-run"
     assert "a***@example.com" in first["body"] and "alice@" not in first["body"]
     assert "score 81.5" in first["body"]
@@ -255,7 +255,7 @@ def test_email_names_the_run_the_score_and_the_three_blockers():
     for cid in ("BP-001", "AP-014", "MM-007"):
         assert cid in body
     assert "12,345" in body and "The three biggest blockers" in body
-    assert "https://app.example/insights/reports" in body and "!" not in body.split("<body", 1)[1]
+    assert "https://app.example/reports" in body and "!" not in body.split("<body", 1)[1]
     assert [a[0] for a in attachments] == ["meridian_board_x.pdf", "workbook.xlsx"]
 
 

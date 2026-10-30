@@ -4,7 +4,7 @@
     {
       "video": "guide2-overview", "chapter": "overview", "params": "persona=lead",
       "steps": [
-        {"caption": "Meridian checks your SAP data against fixed rules and scores every object on every system.", "go": "/v2"},
+        {"caption": "Meridian checks your SAP data against fixed rules and scores every object on every system.", "go": "/"},
         {"caption": "Three surfaces: the map of systems and objects on the left, the canvas in the middle, the inspector on the right.", "point": {"text": "ECC production", "nth": 0}},
         {"caption": "The landscape is the start screen. One sentence says what holds the data back.", "point": {"testid": "landscape-sentence"}},
         {"caption": "Every cell is a small ruler: the shown score, the word capped, and the verdict.", "point": {"testid": "matrix-cell", "nth": 0}},
@@ -14,27 +14,27 @@
         {"caption": "Measured 71.8, the tick on the ruler. Capped at 70 by MM014 and MM031, two critical rules over tolerance.", "scroll": 300},
         {"caption": "The receipt adds the score up, dimension by dimension, then the cap and the score shown.", "scroll": 300},
         {"caption": "Every tab is a view of this object: rules, records, fixes, runs, readiness, processes, lineage, glossary, golden records.", "scroll": -600},
-        {"caption": "Rules are ranked by value at risk, each with what goes wrong in SAP while it fails.", "go": "/v2/o/ecc-production/material-master/rules"},
-        {"caption": "Select a rule and it opens in the inspector, beside the canvas.", "go": "/v2/o/ecc-production/material-master/rules?open=rule%3AMM014"},
+        {"caption": "Rules are ranked by value at risk, each with what goes wrong in SAP while it fails.", "go": "/o/ecc-production/material-master/rules"},
+        {"caption": "Select a rule and it opens in the inspector, beside the canvas.", "go": "/o/ecc-production/material-master/rules?open=rule%3AMM014"},
         {"caption": "Esc closes the inspector and returns you to where you were.", "press": "Escape"},
-        {"caption": "Work is the ledger: every failing record and field on one row, with the fix on the row.", "go": "/v2/work"},
+        {"caption": "Work is the ledger: every failing record and field on one row, with the fix on the row.", "go": "/work"},
         {"caption": "Current value, possible values, suggested value, new value and the decision.", "point": {"role": "grid", "name": "Work ledger"}},
         {"caption": "The chips filter by state: to fix, fix proposed, waiting for approval, exceptions.", "point": {"role": "group", "name": "Filter by state"}},
         {"caption": "Every fix waits in a batch for a second person. Four eyes has no bypass.", "click": {"role": "button", "name": "Waiting for approval", "exact": false}},
-        {"caption": "Runs: every measurement on one timeline, with the baseline marked.", "go": "/v2/runs"},
-        {"caption": "Compare two runs and Meridian says why each score moved.", "go": "/v2/run/b0500000-0000-4000-8000-000000000005/vs/d3229ded-0708-4967-9dfb-1b7f4fada953"},
-        {"caption": "People: who holds the open work, what waits for approval, and the SLA.", "go": "/v2/people"},
+        {"caption": "Runs: every measurement on one timeline, with the baseline marked.", "go": "/runs"},
+        {"caption": "Compare two runs and Meridian says why each score moved.", "go": "/run/b0500000-0000-4000-8000-000000000005/vs/d3229ded-0708-4967-9dfb-1b7f4fada953"},
+        {"caption": "People: who holds the open work, what waits for approval, and the SLA.", "go": "/people"},
         {"caption": "Press Command K, or slash, to open the command line.", "press": "Control+k"},
         {"caption": "Type a rule id, a material number, an object, or a word such as approve.", "fill": {"label": "Search or type a command", "text": "MM014"}},
         {"caption": "Enter opens the result.", "press": "Enter"},
-        {"caption": "Help is the question mark in the top bar: the chapter for this screen comes first.", "go": "/v2?open=help"},
-        {"caption": "Every number has its receipt. Nothing is guessed: every figure is a rule result over stored data.", "go": "/v2"}
+        {"caption": "Help is the question mark in the top bar: the chapter for this screen comes first.", "go": "/?open=help"},
+        {"caption": "Every number has its receipt. Nothing is guessed: every figure is a rule result over stored data.", "go": "/"}
       ]
     },
     {
       "video": "guide2-landscape", "chapter": "landscape", "params": "persona=lead",
       "steps": [
-        {"caption": "The landscape: every system and object with its score.", "go": "/v2"},
+        {"caption": "The landscape: every system and object with its score.", "go": "/"},
         {"caption": "The sentence says what holds the landscape back, and which rules would release objects if fixed.", "point": {"testid": "landscape-sentence"}},
         {"caption": "Records checked, rules measured and the run the figures come from.", "point": {"text": "records checked", "nth": 0}},
         {"caption": "The next-step button: one per role. Here, the no-go objects of the nearest wave.", "point": {"testid": "wave-next-step"}},
@@ -43,43 +43,43 @@
         {"caption": "Plant maintenance is flagged low coverage: fewer than 70% of its rules produced a result.", "point": {"text": "low coverage", "nth": 0}},
         {"caption": "Your next work: the top rows of the ledger, ranked by value at risk.", "scroll": 900},
         {"caption": "The footer names the run, the cost model and any failed job.", "scroll": 400},
-        {"caption": "Switch to Waves to group the objects under each migration wave.", "go": "/v2?view=waves"},
-        {"caption": "A data steward sees the same landscape with a different next step.", "go": "/v2?persona=steward"},
-        {"caption": "SAP Basis sees system tasks instead of records.", "go": "/v2?persona=basis"},
-        {"caption": "Open any cell to read the object behind it.", "go": "/v2/o/ecc-production/material-master"}
+        {"caption": "Switch to Waves to group the objects under each migration wave.", "go": "/?view=waves"},
+        {"caption": "A data steward sees the same landscape with a different next step.", "go": "/?persona=steward"},
+        {"caption": "SAP Basis sees system tasks instead of records.", "go": "/?persona=basis"},
+        {"caption": "Open any cell to read the object behind it.", "go": "/o/ecc-production/material-master"}
       ]
     },
     {
       "video": "guide2-object", "chapter": "object", "params": "persona=lead",
       "steps": [
-        {"caption": "An object is one area of SAP data scored as a whole on one system.", "go": "/v2/o/ecc-production/material-master"},
+        {"caption": "An object is one area of SAP data scored as a whole on one system.", "go": "/o/ecc-production/material-master"},
         {"caption": "The facts line: run, records checked, rules measured, records to fix, value at risk, features blocked, wave verdict.", "point": {"text": "records checked", "nth": 0}},
         {"caption": "Related objects, upstream and downstream. Fix upstream first.", "point": {"text": "upstream", "nth": 0}},
         {"caption": "The ruler: the tick is the measured score, the number is the score shown.", "point": {"testid": "ruler-score"}},
         {"caption": "Capped at 70 by MM014 and MM031: two critical rules over tolerance.", "scroll": 320},
         {"caption": "The receipt: each dimension's weight, score and points, then measured, cap and score shown.", "scroll": 260},
         {"caption": "Every i explains its figure from the run itself.", "click": {"role": "button", "name": "About Tolerance", "nth": 0, "optional": true}},
-        {"caption": "Rules, ranked by value at risk, with tolerance and whether each is over it.", "go": "/v2/o/ecc-production/material-master/rules"},
+        {"caption": "Rules, ranked by value at risk, with tolerance and whether each is over it.", "go": "/o/ecc-production/material-master/rules"},
         {"caption": "Pivot the rules by field, dimension, severity or S/4 feature.", "click": {"role": "button", "name": "By dimension"}},
-        {"caption": "Runs: the measured score over eight runs, and why it moved against the baseline.", "go": "/v2/o/ecc-production/material-master/runs"},
+        {"caption": "Runs: the measured score over eight runs, and why it moved against the baseline.", "go": "/o/ecc-production/material-master/runs"},
         {"caption": "The shown score moved only to 70.0, because the cap holds it.", "scroll": 900},
-        {"caption": "Readiness: the waves this object is in, and what its failing rules block in S/4HANA.", "go": "/v2/o/ecc-production/material-master/readiness"},
-        {"caption": "Fixes lists the object's fix batches.", "go": "/v2/o/ecc-production/material-master/fixes"},
+        {"caption": "Readiness: the waves this object is in, and what its failing rules block in S/4HANA.", "go": "/o/ecc-production/material-master/readiness"},
+        {"caption": "Fixes lists the object's fix batches.", "go": "/o/ecc-production/material-master/fixes"},
         {"caption": "Watch the object to hear about runs, score drops and new critical breaches.", "point": {"text": "Watching", "nth": 0}}
       ]
     },
     {
       "video": "guide2-rules", "chapter": "rules", "params": "persona=steward",
       "steps": [
-        {"caption": "A rule is a fixed check with an id, a field, a dimension and a severity.", "go": "/v2/r/MM014"},
+        {"caption": "A rule is a fixed check with an id, a field, a dimension and a severity.", "go": "/r/MM014"},
         {"caption": "The facts line: failing records across objects, the share, value at risk, over tolerance, features blocked.", "point": {"text": "failing across", "nth": 0}},
         {"caption": "Definition: the check class, the field, the expression and the SAP authority.", "point": {"text": "Expression", "nth": 0}},
         {"caption": "Versions: who changed the rule, when and why.", "scroll": 400},
         {"caption": "Scope: every object and system the rule runs on, with its failing count.", "scroll": 300},
-        {"caption": "The rule inspector holds the same facts beside any canvas.", "go": "/v2?open=rule%3AMM014"},
+        {"caption": "The rule inspector holds the same facts beside any canvas.", "go": "/?open=rule%3AMM014"},
         {"caption": "Tolerance: only critical rules carry one. Over it, the rule caps the score.", "point": {"text": "Tolerance", "nth": 0}},
         {"caption": "Comment on the rule, and watch it.", "scroll": 900, "in": "dialog"},
-        {"caption": "The rules library lists every rule of the tenant.", "go": "/v2/rules"},
+        {"caption": "The rules library lists every rule of the tenant.", "go": "/rules"},
         {"caption": "Filter by object, dimension, severity, check class and state.", "point": {"role": "grid", "name": "Rules library"}},
         {"caption": "Drafts run nowhere until they are reviewed and enabled.", "click": {"role": "button", "name": "Drafts", "exact": false}},
         {"caption": "New rule draft starts a rule in authoring.", "point": {"text": "New rule draft", "nth": 0}}
@@ -88,7 +88,7 @@
     {
       "video": "guide2-work", "chapter": "work", "params": "persona=steward",
       "steps": [
-        {"caption": "Work is the ledger: every failing record and field, ranked by value at risk.", "go": "/v2/work"},
+        {"caption": "Work is the ledger: every failing record and field, ranked by value at risk.", "go": "/work"},
         {"caption": "The chips are the filter: to fix, fix proposed, waiting for approval, exceptions.", "point": {"role": "group", "name": "Filter by state"}},
         {"caption": "Each row holds the current value, the possible values and the suggested value.", "point": {"role": "grid", "name": "Work ledger"}},
         {"caption": "Choose a decision: fix, not an issue or accept risk.", "select": {"label": "Decision for 000000000000000100", "value": "fix"}},
@@ -97,9 +97,9 @@
         {"caption": "Select rows with x or the checkboxes; Shift J extends the selection.", "check": {"role": "checkbox", "name": "Select row", "exact": false, "nth": 0}},
         {"caption": "The bulk bar acts on every selected row.", "check": {"role": "checkbox", "name": "Select row", "exact": false, "nth": 1}},
         {"caption": "By rule groups the rows under their rule, so a whole rule is decided at once.", "click": {"role": "button", "name": "By rule"}},
-        {"caption": "Open a record: every failing field, its possible values and the decision.", "go": "/v2/work?open=record%3Amaterial_master%3AMATNR%3D000000000000000100"},
+        {"caption": "Open a record: every failing field, its possible values and the decision.", "go": "/work?open=record%3Amaterial_master%3AMATNR%3D000000000000000100"},
         {"caption": "Feature impact, provenance and history are on the record too.", "scroll": 700, "in": "dialog"},
-        {"caption": "Export fix sheet saves the rows on screen to Excel, with the same columns.", "go": "/v2/work"},
+        {"caption": "Export fix sheet saves the rows on screen to Excel, with the same columns.", "go": "/work"},
         {"caption": "Fill it in offline and import it back: Meridian checks keys, fields and values before anything changes.", "point": {"text": "Import filled sheet", "nth": 0}},
         {"caption": "Share and export saves a view, exports any grid, or shares the page as a read-only link.", "point": {"text": "Share and export", "nth": 0}}
       ]
@@ -107,88 +107,88 @@
     {
       "video": "guide2-approvals", "chapter": "approvals", "params": "role=data_owner",
       "steps": [
-        {"caption": "Every value decided in Work waits in a fix batch until a second person approves it.", "go": "/v2/work?filter=approvals"},
+        {"caption": "Every value decided in Work waits in a fix batch until a second person approves it.", "go": "/work?filter=approvals"},
         {"caption": "Rows are grouped by batch, with who built it, the records, value at risk and the due date.", "point": {"text": "B-241", "nth": 0}},
-        {"caption": "Open the batch for its facts, its changes and the approval trail.", "go": "/v2/work?filter=approvals&open=batch%3AB-241"},
+        {"caption": "Open the batch for its facts, its changes and the approval trail.", "go": "/work?filter=approvals&open=batch%3AB-241"},
         {"caption": "Each change reads as the SAP field and the pair of values.", "point": {"text": "STK to EA", "nth": 0}},
         {"caption": "You cover for a colleague who is away: their approvals come to you as well.", "point": {"text": "You cover for", "nth": 0}},
         {"caption": "The approval trail: who drafted the batch and who proposed the values.", "scroll": 1400, "in": "dialog"},
         {"caption": "Approve acts on the whole batch. Send back asks for a reason the steward reads.", "point": {"role": "button", "name": "Send batch B-241 back", "nth": 0}, "in": "dialog"},
         {"caption": "Approval does not touch SAP. The batch is exported and loaded; the next run confirms each record.", "press": "Escape"},
-        {"caption": "Exceptions: records signed off as not an issue or an accepted risk, with the reason.", "go": "/v2/work?filter=exceptions"},
+        {"caption": "Exceptions: records signed off as not an issue or an accepted risk, with the reason.", "go": "/work?filter=exceptions"},
         {"caption": "Resolution, reason, who signed off and when. Reopen puts a record back to fix.", "point": {"text": "Reason", "nth": 0}}
       ]
     },
     {
       "video": "guide2-people", "chapter": "people", "params": "persona=lead",
       "steps": [
-        {"caption": "People lists owners and stewards with their open work, approvals waiting, overdue and SLA.", "go": "/v2/people"},
-        {"caption": "Open a person for their objects, open work and their own activity.", "go": "/v2/people?open=person%3Au-an"},
-        {"caption": "Balance work: even counts, whole objects, or by the assignment template.", "go": "/v2/people?open=balance"},
+        {"caption": "People lists owners and stewards with their open work, approvals waiting, overdue and SLA.", "go": "/people"},
+        {"caption": "Open a person for their objects, open work and their own activity.", "go": "/people?open=person%3Au-an"},
+        {"caption": "Balance work: even counts, whole objects, or by the assignment template.", "go": "/people?open=balance"},
         {"caption": "Propose a plan, read the moves, apply it. The notice has Undo.", "point": {"text": "Propose a plan", "nth": 0}},
-        {"caption": "Data contracts: what each consumer is promised, and whether it is met.", "go": "/v2/people?open=contracts"},
-        {"caption": "A contract has versions and breaches; a data owner approves it, never their own.", "go": "/v2/people?open=contract%3Act-1"},
-        {"caption": "Out of office: who covers your approvals and work between two dates.", "go": "/v2/people?open=away"},
-        {"caption": "Triage and SLA: days to resolve by severity, and the escalation chain.", "go": "/v2/work?open=triage"},
-        {"caption": "The inbox: approvals, SLA warnings, finished runs, mentions and digests.", "go": "/v2/work?open=inbox"},
+        {"caption": "Data contracts: what each consumer is promised, and whether it is met.", "go": "/people?open=contracts"},
+        {"caption": "A contract has versions and breaches; a data owner approves it, never their own.", "go": "/people?open=contract%3Act-1"},
+        {"caption": "Out of office: who covers your approvals and work between two dates.", "go": "/people?open=away"},
+        {"caption": "Triage and SLA: days to resolve by severity, and the escalation chain.", "go": "/work?open=triage"},
+        {"caption": "The inbox: approvals, SLA warnings, finished runs, mentions and digests.", "go": "/work?open=inbox"},
         {"caption": "Each item has one action; mark read when you are done.", "point": {"text": "Mark all read", "nth": 0}}
       ]
     },
     {
       "video": "guide2-runs", "chapter": "runs", "params": "role=sap_basis",
       "steps": [
-        {"caption": "A run is one measurement of your data. Runs lists them on a timeline.", "go": "/v2/runs"},
+        {"caption": "A run is one measurement of your data. Runs lists them on a timeline.", "go": "/runs"},
         {"caption": "The baseline is marked: comparisons measure against it.", "point": {"text": "baseline", "nth": 0}},
         {"caption": "Each run: system, trigger, records, rules, score range, status and duration.", "scroll": 300},
         {"caption": "A failed run says so; its job says why.", "point": {"text": "Failed", "nth": 0}},
-        {"caption": "Jobs lists every extraction, analysis and configuration load.", "go": "/v2/runs?view=jobs"},
+        {"caption": "Jobs lists every extraction, analysis and configuration load.", "go": "/runs?view=jobs"},
         {"caption": "Open a failed job for its stages, the error in plain words and Retry.", "click": {"text": "Employee central", "nth": 0}},
-        {"caption": "Start a run opens the start panel for an extraction or an analysis.", "go": "/v2/runs"},
+        {"caption": "Start a run opens the start panel for an extraction or an analysis.", "go": "/runs"},
         {"caption": "Choose the system and what to run.", "click": {"role": "button", "name": "Start a run"}},
-        {"caption": "Administration, Runs and jobs does the same per system, with schedules.", "go": "/v2/admin/runs"}
+        {"caption": "Administration, Runs and jobs does the same per system, with schedules.", "go": "/admin/runs"}
       ]
     },
     {
       "video": "guide2-run-compare", "chapter": "run-compare", "params": "persona=lead",
       "steps": [
-        {"caption": "One run: what it scored, object by object, and the jobs that made it.", "go": "/v2/run/d3229ded-0708-4967-9dfb-1b7f4fada953"},
+        {"caption": "One run: what it scored, object by object, and the jobs that made it.", "go": "/run/d3229ded-0708-4967-9dfb-1b7f4fada953"},
         {"caption": "15 objects scored: 2 go, 2 at risk, 11 no-go.", "point": {"text": "15 objects scored", "nth": 0}},
         {"caption": "Measured, then the score shown after the cap.", "scroll": 300},
         {"caption": "Pin as baseline, archive older runs, download the report, or compare.", "point": {"role": "button", "name": "Pin as baseline"}},
-        {"caption": "Compare: two runs side by side.", "go": "/v2/run/b0500000-0000-4000-8000-000000000005/vs/d3229ded-0708-4967-9dfb-1b7f4fada953"},
+        {"caption": "Compare: two runs side by side.", "go": "/run/b0500000-0000-4000-8000-000000000005/vs/d3229ded-0708-4967-9dfb-1b7f4fada953"},
         {"caption": "The method is stated: the common set of rules, and what counts as a change.", "point": {"text": "common set", "nth": 0}},
         {"caption": "By object: measured before and after, the change, and rules new, fixed, worse and better.", "scroll": 350},
         {"caption": "What changed: the rules newly failing, fixed, worse and better.", "scroll": 700},
-        {"caption": "On an object, Why the score moved says what the cap did.", "go": "/v2/o/ecc-production/material-master/runs"},
+        {"caption": "On an object, Why the score moved says what the cap did.", "go": "/o/ecc-production/material-master/runs"},
         {"caption": "The shown score moved only 69.8 to 70.0, because the cap holds it at 70.0.", "scroll": 1000}
       ]
     },
     {
       "video": "guide2-systems", "chapter": "systems", "params": "role=sap_basis",
       "steps": [
-        {"caption": "Meridian reads from SAP and never writes to it. Connect a system here.", "go": "/v2/s/new"},
+        {"caption": "Meridian reads from SAP and never writes to it. Connect a system here.", "go": "/s/new"},
         {"caption": "Choose the system type and fill in the connection, then test it.", "point": {"text": "System type", "nth": 0}},
         {"caption": "You can connect now and test later. Nothing is read until you extract.", "point": {"role": "button", "name": "Connect system"}},
-        {"caption": "The system canvas: health, type, last extraction and the last connection test.", "go": "/v2/s/a1b2c3d4-0001-4000-8000-000000000001"},
-        {"caption": "Test, load or extract opens the system inspector.", "go": "/v2/s/a1b2c3d4-0001-4000-8000-000000000001?open=system%3Aa1b2c3d4-0001-4000-8000-000000000001"},
+        {"caption": "The system canvas: health, type, last extraction and the last connection test.", "go": "/s/a1b2c3d4-0001-4000-8000-000000000001"},
+        {"caption": "Test, load or extract opens the system inspector.", "go": "/s/a1b2c3d4-0001-4000-8000-000000000001?open=system%3Aa1b2c3d4-0001-4000-8000-000000000001"},
         {"caption": "Choose the objects and the scope, then a dry run counts what an extraction would read.", "scroll": 600, "in": "dialog"},
-        {"caption": "Configuration: what Meridian read from the customising tables, by area.", "go": "/v2/s/a1b2c3d4-0001-4000-8000-000000000001?tab=configuration"},
+        {"caption": "Configuration: what Meridian read from the customising tables, by area.", "go": "/s/a1b2c3d4-0001-4000-8000-000000000001?tab=configuration"},
         {"caption": "A table that could not be read says why, and what the user needs.", "scroll": 900},
-        {"caption": "Schedules: full or changes only, on a rhythm, times in UTC.", "go": "/v2/s/a1b2c3d4-0001-4000-8000-000000000001?tab=schedules"},
-        {"caption": "Custom objects: Z tables and fields found across every system, with anomalies.", "go": "/v2/s/a1b2c3d4-0001-4000-8000-000000000001?tab=custom-objects"},
-        {"caption": "Connection settings: stored secrets are never shown; type new values to replace them.", "go": "/v2/s/a1b2c3d4-0001-4000-8000-000000000001?open=connection%3Aa1b2c3d4-0001-4000-8000-000000000001"}
+        {"caption": "Schedules: full or changes only, on a rhythm, times in UTC.", "go": "/s/a1b2c3d4-0001-4000-8000-000000000001?tab=schedules"},
+        {"caption": "Custom objects: Z tables and fields found across every system, with anomalies.", "go": "/s/a1b2c3d4-0001-4000-8000-000000000001?tab=custom-objects"},
+        {"caption": "Connection settings: stored secrets are never shown; type new values to replace them.", "go": "/s/a1b2c3d4-0001-4000-8000-000000000001?open=connection%3Aa1b2c3d4-0001-4000-8000-000000000001"}
       ]
     },
     {
       "video": "guide2-golden-records", "chapter": "golden-records", "params": "role=data_owner",
       "steps": [
-        {"caption": "A golden record is the one trusted version of a thing held more than once.", "go": "/v2/o/ecc-production/material-master/golden"},
+        {"caption": "A golden record is the one trusted version of a thing held more than once.", "go": "/o/ecc-production/material-master/golden"},
         {"caption": "Match candidates, best score first, each with Review.", "point": {"text": "pairs to review", "nth": 0}},
         {"caption": "Review opens the pair side by side: pick a value per field that differs.", "click": {"role": "link", "name": "Review the pair", "exact": false, "nth": 0}},
         {"caption": "Merge the pair, or mark it not a duplicate with the reason.", "scroll": 600, "in": "dialog"},
         {"caption": "Golden records: sources, survivorship, confidence, last merged and open conflicts.", "press": "Escape"},
         {"caption": "Open conflicts are fields where the sources disagree and no rule has settled it.", "scroll": 500},
-        {"caption": "Survivorship rules decide, field by field, which value survives.", "go": "/v2/o/ecc-production/material-master/golden?open=survivorship%3Amaterial_master"},
+        {"caption": "Survivorship rules decide, field by field, which value survives.", "go": "/o/ecc-production/material-master/golden?open=survivorship%3Amaterial_master"},
         {"caption": "Most recent, most complete, most frequent, trusted source, chain of systems, manual override.", "scroll": 500, "in": "dialog"},
         {"caption": "Save the rules; they apply at the next match run.", "scroll": 900, "in": "dialog"},
         {"caption": "Every merge and every not a duplicate is in the audit log.", "press": "Escape"}
@@ -197,43 +197,43 @@
     {
       "video": "guide2-glossary", "chapter": "glossary", "params": "persona=steward",
       "steps": [
-        {"caption": "The glossary: one business term per SAP field.", "go": "/v2/o/ecc-production/material-master/glossary"},
+        {"caption": "The glossary: one business term per SAP field.", "go": "/o/ecc-production/material-master/glossary"},
         {"caption": "Each term has a definition, its field, the owner, the status and the rules that cite it.", "point": {"role": "grid", "name": "Business terms of Material master"}},
         {"caption": "Under review means a data owner has not approved it yet.", "point": {"text": "Under review", "nth": 0}},
         {"caption": "Fields without a term: read by failing rules, with no term yet.", "scroll": 600},
         {"caption": "Add terms from the rule library drafts them; the owner approves each.", "point": {"text": "Add terms from the rule library", "nth": 0}},
-        {"caption": "Open a term for its fields, rules, review cycle and history.", "go": "/v2/o/ecc-production/material-master/glossary?open=term%3Agt-meins"},
+        {"caption": "Open a term for its fields, rules, review cycle and history.", "go": "/o/ecc-production/material-master/glossary?open=term%3Agt-meins"},
         {"caption": "A data owner edits and approves a term. Mark as reviewed keeps an active term current.", "scroll": 500, "in": "dialog"},
         {"caption": "Each term cites the rules that read its field, so the definition and the check agree.", "press": "Escape"},
         {"caption": "Search finds a term by its name, its definition or its SAP field.", "fill": {"label": "Search terms", "text": "unit"}},
-        {"caption": "The glossary is per object: every object has its own tab.", "go": "/v2/o/ecc-production/purchasing/glossary"}
+        {"caption": "The glossary is per object: every object has its own tab.", "go": "/o/ecc-production/purchasing/glossary"}
       ]
     },
     {
       "video": "guide2-lineage", "chapter": "lineage", "params": "persona=lead",
       "steps": [
-        {"caption": "Lineage draws why a failing value matters.", "go": "/v2/o/ecc-production/material-master/lineage"},
+        {"caption": "Lineage draws why a failing value matters.", "go": "/o/ecc-production/material-master/lineage"},
         {"caption": "From the source table, to the field, to the rule, to the S/4 feature it blocks.", "scroll": 520},
         {"caption": "Hover or focus a node to read its facts.", "point": {"text": "MM014", "nth": 0}},
         {"caption": "Features come from the impact model of the current run.", "point": {"text": "Migration cockpit: material load", "nth": 0}},
         {"caption": "Export as SVG for a slide or a document.", "point": {"text": "Export as SVG", "nth": 0}},
         {"caption": "Related objects in the header: fix the upstream one first.", "scroll": -800},
         {"caption": "The lineage draws the failing rules with the highest value at risk, so the drawing stays readable.", "scroll": 520},
-        {"caption": "The same features appear on the Readiness tab: blocked and degraded in S/4HANA.", "go": "/v2/o/ecc-production/material-master/readiness"},
+        {"caption": "The same features appear on the Readiness tab: blocked and degraded in S/4HANA.", "go": "/o/ecc-production/material-master/readiness"},
         {"caption": "Each feature names the rules behind it, so you know which fix releases it.", "scroll": 700},
-        {"caption": "Open a feature to read what it does and which records hold it back.", "go": "/v2/o/ecc-production/material-master/lineage"}
+        {"caption": "Open a feature to read what it does and which records hold it back.", "go": "/o/ecc-production/material-master/lineage"}
       ]
     },
     {
       "video": "guide2-processes", "chapter": "processes", "params": "persona=process",
       "steps": [
-        {"caption": "Processes shows which business process steps this object's data blocks.", "go": "/v2/o/ecc-production/material-master/processes"},
+        {"caption": "Processes shows which business process steps this object's data blocks.", "go": "/o/ecc-production/material-master/processes"},
         {"caption": "2 of 4 process steps are blocked by Material master: PTP step 3, PP step 1.", "scroll": 560},
         {"caption": "A blocked step names the activity, the field, its pass rate and failing records.", "scroll": 300},
         {"caption": "What if these rules were fixed: tick rules and see which steps would be ready.", "scroll": 600},
         {"caption": "Nothing is changed and no data is read.", "check": {"role": "checkbox", "name": "MM014", "exact": false, "nth": 0}},
-        {"caption": "Open a step to hand its blocking rule to a steward.", "go": "/v2/o/ecc-production/material-master/processes?open=step%3Amaterial_master%3APTP-GR-MIGO"},
-        {"caption": "The process designer: the model, its levels, and the fields each activity reads.", "go": "/v2/o/ecc-production/material-master/processes/design"},
+        {"caption": "Open a step to hand its blocking rule to a steward.", "go": "/o/ecc-production/material-master/processes?open=step%3Amaterial_master%3APTP-GR-MIGO"},
+        {"caption": "The process designer: the model, its levels, and the fields each activity reads.", "go": "/o/ecc-production/material-master/processes/design"},
         {"caption": "Save as a new version, then publish. The Processes tab shows it on the next run.", "scroll": 600},
         {"caption": "Versions keep every saved model with what changed.", "point": {"text": "Versions", "nth": 0}}
       ]
@@ -241,25 +241,25 @@
     {
       "video": "guide2-schedules", "chapter": "schedules", "params": "persona=lead",
       "steps": [
-        {"caption": "Reports are built from stored runs, so a number in a report matches the run it names.", "go": "/v2/reports"},
+        {"caption": "Reports are built from stored runs, so a number in a report matches the run it names.", "go": "/reports"},
         {"caption": "Every report: its run, format, who made it and the download.", "point": {"role": "grid", "name": "Reports"}},
         {"caption": "Schedules build a report from the latest run and send it.", "scroll": 600},
-        {"caption": "Open a schedule: report, which run, cadence, recipients.", "go": "/v2/reports?open=schedule%3Asch-1"},
+        {"caption": "Open a schedule: report, which run, cadence, recipients.", "go": "/reports?open=schedule%3Asch-1"},
         {"caption": "Run it now, pause, or delete. Files already made stay in the list.", "scroll": 800, "in": "dialog"},
-        {"caption": "Create a report from any run.", "go": "/v2/reports"},
+        {"caption": "Create a report from any run.", "go": "/reports"},
         {"caption": "Choose the report and the run it is built from.", "click": {"role": "button", "name": "Create a report"}},
         {"caption": "Reports come from a run: the board pack, the analyst workbook, the analysis and trend reports, the rule catalogue.", "press": "Escape"},
         {"caption": "A schedule that partly delivered or failed says so in Last result.", "point": {"text": "Partly delivered", "nth": 0}},
-        {"caption": "Channels that can take reports are set under Administration, Alerts.", "go": "/v2/admin/alerts?role=platform_admin"}
+        {"caption": "Channels that can take reports are set under Administration, Alerts.", "go": "/admin/alerts?role=platform_admin"}
       ]
     },
     {
       "video": "guide2-waves", "chapter": "waves", "params": "role=programme_lead",
       "steps": [
-        {"caption": "A wave is a set of objects moved together in one cutover.", "go": "/v2?view=waves"},
+        {"caption": "A wave is a set of objects moved together in one cutover.", "go": "/?view=waves"},
         {"caption": "Each wave: due date, go, at risk and no-go counts, and the gate state.", "point": {"text": "Gate not passed", "nth": 0}},
         {"caption": "The next step follows the nearest wave.", "point": {"testid": "wave-next-step"}},
-        {"caption": "Edit opens the migration waves panel.", "go": "/v2?view=waves&open=waves"},
+        {"caption": "Edit opens the migration waves panel.", "go": "/?view=waves&open=waves"},
         {"caption": "Name, target date and stage: plan, mock loads, dress rehearsal, cutover.", "point": {"text": "Stage", "nth": 0}},
         {"caption": "The gate: min score, zero criticals, contracts met, each with what fails it now.", "point": {"text": "Every object at 85.0 or more", "nth": 0}},
         {"caption": "The readiness certificate is not signed in this version; its link shows the checks.", "point": {"text": "Readiness certificate", "nth": 0}},
@@ -269,48 +269,47 @@
     {
       "video": "guide2-administration", "chapter": "administration", "params": "role=platform_admin",
       "steps": [
-        {"caption": "Administration: everything that sets up this tenant.", "go": "/v2/admin"},
-        {"caption": "Users: seats, roles as grants, invitations.", "go": "/v2/admin/users"},
-        {"caption": "Roles and permissions: built-in roles are fixed; copy one to change it.", "go": "/v2/admin/roles"},
-        {"caption": "Single sign-on with OpenID Connect, and the sign-in page rules.", "go": "/v2/admin/sso"},
-        {"caption": "View as a role: read-only, for support, and in the audit log.", "go": "/v2/admin/viewas"},
-        {"caption": "Settings: weights, score bands, the cap rule and tolerance, cost model and retention.", "go": "/v2/admin/settings"},
+        {"caption": "Administration: everything that sets up this tenant.", "go": "/admin"},
+        {"caption": "Users: seats, roles as grants, invitations.", "go": "/admin/users"},
+        {"caption": "Roles and permissions: built-in roles are fixed; copy one to change it.", "go": "/admin/roles"},
+        {"caption": "Single sign-on with OpenID Connect, and the sign-in page rules.", "go": "/admin/sso"},
+        {"caption": "View as a role: read-only, for support, and in the audit log.", "go": "/admin/viewas"},
+        {"caption": "Settings: weights, score bands, the cap rule and tolerance, cost model and retention.", "go": "/admin/settings"},
         {"caption": "One critical rule beyond its tolerance holds an object at 85; two or more at 70. The caps are fixed.", "point": {"text": "Cap rule and tolerance", "nth": 0}},
-        {"caption": "Stewardship: one owner per object, stewards per slice, and the gaps.", "go": "/v2/admin/stewardship"},
-        {"caption": "Configuration bundle: export the configuration as one file; import with a diff first.", "go": "/v2/admin/configbundle"},
-        {"caption": "Rules import and export: imported rules land as drafts, never live.", "go": "/v2/admin/rulesio"},
-        {"caption": "Audit log: every change, by whom and when, and every call to the language model.", "go": "/v2/admin/audit"},
-        {"caption": "Alerts: channels and thresholds. Alerts never carry record values.", "go": "/v2/admin/alerts"},
-        {"caption": "Jobs and system update: jobs, the platform version and health checks.", "go": "/v2/admin/system"}
+        {"caption": "Stewardship: one owner per object, stewards per slice, and the gaps.", "go": "/admin/stewardship"},
+        {"caption": "Configuration bundle: export the configuration as one file; import with a diff first.", "go": "/admin/configbundle"},
+        {"caption": "Rules import and export: imported rules land as drafts, never live.", "go": "/admin/rulesio"},
+        {"caption": "Audit log: every change, by whom and when, and every call to the language model.", "go": "/admin/audit"},
+        {"caption": "Alerts: channels and thresholds. Alerts never carry record values.", "go": "/admin/alerts"},
+        {"caption": "Jobs and system update: jobs, the platform version and health checks.", "go": "/admin/system"}
       ]
     },
     {
       "video": "guide2-preferences", "chapter": "preferences", "params": "persona=lead",
       "steps": [
-        {"caption": "Preferences belong to you, not the tenant. Every change is saved at once.", "go": "/v2?open=preferences"},
+        {"caption": "Preferences belong to you, not the tenant. Every change is saved at once.", "go": "/?open=preferences"},
         {"caption": "Theme and row density.", "point": {"role": "group", "name": "Theme"}},
         {"caption": "Number and date format, and your time zone. The sample line shows the result.", "point": {"testid": "format-sample"}},
         {"caption": "Start screen: open Meridian as another role's start screen. Your access does not change.", "scroll": 300, "in": "dialog"},
         {"caption": "Keyboard hints, your digest, and critical findings at once.", "scroll": 300, "in": "dialog"},
         {"caption": "What you hear about: the events that reach your inbox.", "scroll": 500, "in": "dialog"},
-        {"caption": "Use the current interface switches this browser back, if you need to.", "scroll": 600, "in": "dialog"},
-        {"caption": "Out of office is set from People: who covers your approvals while you are away.", "go": "/v2/people?open=away"},
-        {"caption": "Inbox and triage settings decide what reaches your inbox and who covers it.", "go": "/v2/work?open=triage"},
+        {"caption": "Out of office is set from People: who covers your approvals while you are away.", "go": "/people?open=away"},
+        {"caption": "Inbox and triage settings decide what reaches your inbox and who covers it.", "go": "/work?open=triage"},
         {"caption": "Your digest: daily, weekly or off.", "point": {"text": "Your digest", "nth": 0}},
-        {"caption": "Preferences open from your account menu, top right.", "go": "/v2?open=preferences"}
+        {"caption": "Preferences open from your account menu, top right.", "go": "/?open=preferences"}
       ]
     },
     {
       "video": "guide2-keyboard", "chapter": "keyboard", "params": "persona=steward",
       "steps": [
-        {"caption": "Meridian can be driven from the keyboard. Question mark shows every shortcut.", "go": "/v2/work"},
+        {"caption": "Meridian can be driven from the keyboard. Question mark shows every shortcut.", "go": "/work"},
         {"caption": "The shortcut sheet: everywhere, go to, tables, the ledger, the inspector, the command line.", "focus": "#m2-canvas", "press": "?"},
         {"caption": "Esc closes the top layer.", "press": "Escape"},
         {"caption": "Command K, or slash, opens the command line.", "press": "Control+k"},
         {"caption": "Type a rule id to open the rule.", "fill": {"label": "Search or type a command", "text": "MM014"}},
         {"caption": "Or a word such as approve.", "fill": {"label": "Search or type a command", "text": "approve"}},
         {"caption": "Enter opens it.", "press": "Enter"},
-        {"caption": "G then W goes to Work; g then l, r or p to Landscape, Runs or People.", "go": "/v2/work"},
+        {"caption": "G then W goes to Work; g then l, r or p to Landscape, Runs or People.", "go": "/work"},
         {"caption": "In the ledger, j and k move, x selects, Enter opens the row.", "focus": "#m2-canvas", "press": "j"},
         {"caption": "a accepts the suggested value, n marks not an issue, r accepts the risk, e exports the fix sheet.", "press": "j"},
         {"caption": "In the inspector, the square brackets step to the previous and next row.", "press": "Enter"}
@@ -319,98 +318,98 @@
     {
       "video": "guide2-persona-lead", "chapter": "persona-lead", "params": "role=programme_lead",
       "steps": [
-        {"caption": "Programme lead: how ready is each system and object for the next wave?", "go": "/v2"},
+        {"caption": "Programme lead: how ready is each system and object for the next wave?", "go": "/"},
         {"caption": "Step 1, Landscape: read the sentence and press the next step for your nearest wave.", "point": {"testid": "wave-next-step"}},
-        {"caption": "Step 2, Waves: open the wave and set its gate.", "go": "/v2?view=waves&open=waves"},
+        {"caption": "Step 2, Waves: open the wave and set its gate.", "go": "/?view=waves&open=waves"},
         {"caption": "Min score, zero criticals, contracts met. Save the gate.", "point": {"text": "Save the gate", "nth": 0}},
-        {"caption": "Step 3, an object: read why it is no-go. Measured, capped, by which rules.", "go": "/v2/o/ecc-production/material-master"},
-        {"caption": "Step 4, People: who holds the open work. Balance it if one person holds most.", "go": "/v2/people?open=balance"},
-        {"caption": "Step 5, Reports: schedule the board pack for the steering committee.", "go": "/v2/reports"},
+        {"caption": "Step 3, an object: read why it is no-go. Measured, capped, by which rules.", "go": "/o/ecc-production/material-master"},
+        {"caption": "Step 4, People: who holds the open work. Balance it if one person holds most.", "go": "/people?open=balance"},
+        {"caption": "Step 5, Reports: schedule the board pack for the steering committee.", "go": "/reports"},
         {"caption": "Share any page as a read-only link from Share and export.", "point": {"text": "Share and export", "nth": 0}},
-        {"caption": "Watch an object to hear about runs, score drops and new critical breaches.", "go": "/v2/o/ecc-production/material-master"}
+        {"caption": "Watch an object to hear about runs, score drops and new critical breaches.", "go": "/o/ecc-production/material-master"}
       ]
     },
     {
       "video": "guide2-persona-steward", "chapter": "persona-steward", "params": "role=data_steward",
       "steps": [
-        {"caption": "Data steward: decide the right value for each failing field.", "go": "/v2"},
+        {"caption": "Data steward: decide the right value for each failing field.", "go": "/"},
         {"caption": "Step 1, Landscape: press Accept the suggested values.", "click": {"text": "Accept the suggested values", "nth": 0}},
         {"caption": "Step 2, Work: your rows, ranked by value at risk.", "point": {"role": "grid", "name": "Work ledger"}},
         {"caption": "Accept a suggested value; the notice has Undo.", "select": {"label": "Decision for 000000000000000100", "value": "fix"}},
-        {"caption": "Step 3, a record: read the possible values and type the new value.", "go": "/v2/work?open=record%3Amaterial_master%3AMATNR%3D000000000000000100"},
-        {"caption": "Step 4, By rule: decide a whole rule at once, or export the fix sheet.", "go": "/v2/work"},
+        {"caption": "Step 3, a record: read the possible values and type the new value.", "go": "/work?open=record%3Amaterial_master%3AMATNR%3D000000000000000100"},
+        {"caption": "Step 4, By rule: decide a whole rule at once, or export the fix sheet.", "go": "/work"},
         {"caption": "By rule groups the rows to fix under their rule.", "click": {"role": "button", "name": "By rule"}},
-        {"caption": "Step 5, Waiting for approval: your batch waits for a data owner.", "go": "/v2/work?filter=approvals"}
+        {"caption": "Step 5, Waiting for approval: your batch waits for a data owner.", "go": "/work?filter=approvals"}
       ]
     },
     {
       "video": "guide2-persona-owner", "chapter": "persona-owner", "params": "role=data_owner",
       "steps": [
-        {"caption": "Data owner: you are accountable for your objects, and the second pair of eyes.", "go": "/v2"},
+        {"caption": "Data owner: you are accountable for your objects, and the second pair of eyes.", "go": "/"},
         {"caption": "Step 1, Landscape: how many batches wait for you, and your SLA.", "point": {"testid": "owner-line"}},
-        {"caption": "Step 2, the batch: the changes and the approval trail. Approve or send back.", "go": "/v2/work?open=batch%3AB-241"},
-        {"caption": "Step 3, Waiting for approval: every batch, grouped.", "go": "/v2/work?filter=approvals"},
-        {"caption": "Step 4, your object: watch it, and apply the steward template.", "go": "/v2/o/ecc-production/purchasing"},
-        {"caption": "Step 5, Out of office: who covers your approvals while you are away.", "go": "/v2/people?open=away"},
-        {"caption": "Contracts: approve them, never your own.", "go": "/v2/people?open=contract%3Act-1"},
-        {"caption": "Exceptions: records signed off as not an issue or an accepted risk, with the reason.", "go": "/v2/work?filter=exceptions"},
-        {"caption": "Triage and SLA: the days to resolve and the escalation chain after a breach.", "go": "/v2/work?open=triage"}
+        {"caption": "Step 2, the batch: the changes and the approval trail. Approve or send back.", "go": "/work?open=batch%3AB-241"},
+        {"caption": "Step 3, Waiting for approval: every batch, grouped.", "go": "/work?filter=approvals"},
+        {"caption": "Step 4, your object: watch it, and apply the steward template.", "go": "/o/ecc-production/purchasing"},
+        {"caption": "Step 5, Out of office: who covers your approvals while you are away.", "go": "/people?open=away"},
+        {"caption": "Contracts: approve them, never your own.", "go": "/people?open=contract%3Act-1"},
+        {"caption": "Exceptions: records signed off as not an issue or an accepted risk, with the reason.", "go": "/work?filter=exceptions"},
+        {"caption": "Triage and SLA: the days to resolve and the escalation chain after a breach.", "go": "/work?open=triage"}
       ]
     },
     {
       "video": "guide2-persona-basis", "chapter": "persona-basis", "params": "role=sap_basis",
       "steps": [
-        {"caption": "SAP Basis: connections, extractions, schedules and jobs.", "go": "/v2"},
+        {"caption": "SAP Basis: connections, extractions, schedules and jobs.", "go": "/"},
         {"caption": "Step 1, Landscape: your system tasks.", "scroll": 1500},
-        {"caption": "Step 2, the system: test the connection.", "go": "/v2/s/a1b2c3d4-0001-4000-8000-000000000001"},
-        {"caption": "Step 3, the inspector: choose objects, dry run, then extract or extract changes only.", "go": "/v2/s/a1b2c3d4-0001-4000-8000-000000000001?open=system%3Aa1b2c3d4-0001-4000-8000-000000000001"},
-        {"caption": "Step 4, Schedules: Changes only for routine runs.", "go": "/v2/s/a1b2c3d4-0001-4000-8000-000000000001?tab=schedules"},
-        {"caption": "Step 5, Runs: open a failed job and retry it.", "go": "/v2/runs?view=jobs"},
-        {"caption": "Field mappings and runs per system are under Administration.", "go": "/v2/admin/mappings"},
-        {"caption": "Configuration: what was read from the customising tables, and what could not be read and why.", "go": "/v2/s/a1b2c3d4-0001-4000-8000-000000000001?tab=configuration"},
-        {"caption": "Custom objects: Z tables and fields, with anomalies to investigate.", "go": "/v2/s/a1b2c3d4-0001-4000-8000-000000000001?tab=custom-objects"}
+        {"caption": "Step 2, the system: test the connection.", "go": "/s/a1b2c3d4-0001-4000-8000-000000000001"},
+        {"caption": "Step 3, the inspector: choose objects, dry run, then extract or extract changes only.", "go": "/s/a1b2c3d4-0001-4000-8000-000000000001?open=system%3Aa1b2c3d4-0001-4000-8000-000000000001"},
+        {"caption": "Step 4, Schedules: Changes only for routine runs.", "go": "/s/a1b2c3d4-0001-4000-8000-000000000001?tab=schedules"},
+        {"caption": "Step 5, Runs: open a failed job and retry it.", "go": "/runs?view=jobs"},
+        {"caption": "Field mappings and runs per system are under Administration.", "go": "/admin/mappings"},
+        {"caption": "Configuration: what was read from the customising tables, and what could not be read and why.", "go": "/s/a1b2c3d4-0001-4000-8000-000000000001?tab=configuration"},
+        {"caption": "Custom objects: Z tables and fields, with anomalies to investigate.", "go": "/s/a1b2c3d4-0001-4000-8000-000000000001?tab=custom-objects"}
       ]
     },
     {
       "video": "guide2-persona-process", "chapter": "persona-process", "params": "role=process_analyst",
       "steps": [
-        {"caption": "Process analyst: read the data through the business process.", "go": "/v2"},
+        {"caption": "Process analyst: read the data through the business process.", "go": "/"},
         {"caption": "Step 1, Landscape: press Open PTP step 3.", "point": {"text": "Open PTP step 3", "nth": 0}},
-        {"caption": "Step 2, Processes: which steps Material master blocks, and the fields behind them.", "go": "/v2/o/ecc-production/material-master/processes"},
+        {"caption": "Step 2, Processes: which steps Material master blocks, and the fields behind them.", "go": "/o/ecc-production/material-master/processes"},
         {"caption": "Step 3, What if: tick the rules to fix and see which steps would be ready.", "scroll": 1500},
-        {"caption": "Step 4, the step: hand its blocking rule to a steward.", "go": "/v2/o/ecc-production/material-master/processes?open=step%3Amaterial_master%3APTP-GR-MIGO"},
-        {"caption": "Step 5, the designer: map the fields each activity reads, then publish.", "go": "/v2/o/ecc-production/material-master/processes/design"},
+        {"caption": "Step 4, the step: hand its blocking rule to a steward.", "go": "/o/ecc-production/material-master/processes?open=step%3Amaterial_master%3APTP-GR-MIGO"},
+        {"caption": "Step 5, the designer: map the fields each activity reads, then publish.", "go": "/o/ecc-production/material-master/processes/design"},
         {"caption": "A step is blocked when a field it writes fails a critical or high rule, or passes under 70%.", "scroll": 700},
-        {"caption": "Comment on a rule from its inspector to tell the steward what the process needs.", "go": "/v2/o/ecc-production/material-master/rules?open=rule%3AMM014"},
-        {"caption": "Related objects in the header show which object to fix first.", "go": "/v2/o/ecc-production/material-master"}
+        {"caption": "Comment on a rule from its inspector to tell the steward what the process needs.", "go": "/o/ecc-production/material-master/rules?open=rule%3AMM014"},
+        {"caption": "Related objects in the header show which object to fix first.", "go": "/o/ecc-production/material-master"}
       ]
     },
     {
       "video": "guide2-persona-auditor", "chapter": "persona-auditor", "params": "role=auditor",
       "steps": [
-        {"caption": "Auditor and viewer: read every number and its receipt. Nothing you do changes data.", "go": "/v2"},
+        {"caption": "Auditor and viewer: read every number and its receipt. Nothing you do changes data.", "go": "/"},
         {"caption": "Step 1, Landscape: the same landscape, read-only.", "point": {"testid": "landscape-sentence"}},
-        {"caption": "Step 2, an object: the receipt and every i.", "go": "/v2/o/ecc-production/material-master"},
-        {"caption": "Step 3, Approvals: the four-eyes evidence.", "go": "/v2/work?filter=approvals"},
-        {"caption": "Step 4, Audit log: filter by person and dates, then export.", "go": "/v2/admin/audit"},
-        {"caption": "Step 5, a person's activity.", "go": "/v2/people?open=person%3Au-an"},
-        {"caption": "A share link opens one page read-only, as a viewer.", "go": "/v2/share/fx-token"},
-        {"caption": "Every comparison states its method: the common set of rules and what counts as a change.", "go": "/v2/run/b0500000-0000-4000-8000-000000000005/vs/d3229ded-0708-4967-9dfb-1b7f4fada953"},
-        {"caption": "A rule's versions and history sit side by side in its inspector.", "go": "/v2/r/MM014"}
+        {"caption": "Step 2, an object: the receipt and every i.", "go": "/o/ecc-production/material-master"},
+        {"caption": "Step 3, Approvals: the four-eyes evidence.", "go": "/work?filter=approvals"},
+        {"caption": "Step 4, Audit log: filter by person and dates, then export.", "go": "/admin/audit"},
+        {"caption": "Step 5, a person's activity.", "go": "/people?open=person%3Au-an"},
+        {"caption": "A share link opens one page read-only, as a viewer.", "go": "/share/fx-token"},
+        {"caption": "Every comparison states its method: the common set of rules and what counts as a change.", "go": "/run/b0500000-0000-4000-8000-000000000005/vs/d3229ded-0708-4967-9dfb-1b7f4fada953"},
+        {"caption": "A rule's versions and history sit side by side in its inspector.", "go": "/r/MM014"}
       ]
     },
     {
       "video": "guide2-persona-admin", "chapter": "persona-admin", "params": "role=platform_admin",
       "steps": [
-        {"caption": "Administrator: set the tenant up and keep it right.", "go": "/v2/admin"},
-        {"caption": "Step 1, Users: invite people and give each a role.", "go": "/v2/admin/users"},
-        {"caption": "Step 2, Single sign-on: connect your identity provider and test it.", "go": "/v2/admin/sso"},
-        {"caption": "Step 3, Settings: weights, bands, cap rule and tolerance, cost model, retention.", "go": "/v2/admin/settings"},
-        {"caption": "Step 4, Stewardship: owners and stewards, check the diff, apply, close the gaps.", "go": "/v2/admin/stewardship"},
-        {"caption": "Step 5, Jobs and system update: health checks and the platform version.", "go": "/v2/admin/system"},
-        {"caption": "Support: copy the diagnostics from help. They hold no record values and no secrets.", "go": "/v2/admin/system?open=help"},
-        {"caption": "View as a role: see the product as one role sees it, read-only, for support.", "go": "/v2/admin/viewas"},
-        {"caption": "Configuration bundle: move a configuration between tenants, with a diff first.", "go": "/v2/admin/configbundle"}
+        {"caption": "Administrator: set the tenant up and keep it right.", "go": "/admin"},
+        {"caption": "Step 1, Users: invite people and give each a role.", "go": "/admin/users"},
+        {"caption": "Step 2, Single sign-on: connect your identity provider and test it.", "go": "/admin/sso"},
+        {"caption": "Step 3, Settings: weights, bands, cap rule and tolerance, cost model, retention.", "go": "/admin/settings"},
+        {"caption": "Step 4, Stewardship: owners and stewards, check the diff, apply, close the gaps.", "go": "/admin/stewardship"},
+        {"caption": "Step 5, Jobs and system update: health checks and the platform version.", "go": "/admin/system"},
+        {"caption": "Support: copy the diagnostics from help. They hold no record values and no secrets.", "go": "/admin/system?open=help"},
+        {"caption": "View as a role: see the product as one role sees it, read-only, for support.", "go": "/admin/viewas"},
+        {"caption": "Configuration bundle: move a configuration between tenants, with a diff first.", "go": "/admin/configbundle"}
       ]
     }
   ]

@@ -31,7 +31,7 @@ function Harness() {
 
 beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
-  setUrl("/v2");
+  setUrl("/");
 });
 afterEach(() => window.sessionStorage.clear());
 
@@ -52,7 +52,7 @@ describe("?open round trip", () => {
   });
 
   it("opening writes ?open= into the URL, keeps the other query, and closing removes it", async () => {
-    setUrl("/v2/o/ecc-production/material-master?run=r1&fixture=1");
+    setUrl("/o/ecc-production/material-master?run=r1&fixture=1");
     renderWithQuery(<Harness />);
     fireEvent.click(screen.getByText("Open rule"));
     expect(getUrl()).toContain("open=rule%3AMM014");
@@ -67,7 +67,7 @@ describe("?open round trip", () => {
   });
 
   it("opens straight from a URL, as a shared link does", async () => {
-    setUrl(`/v2?open=system:${ECC.id}`);
+    setUrl(`/?open=system:${ECC.id}`);
     renderWithQuery(<Harness />);
     const dialog = await screen.findByRole("dialog");
     await waitFor(() => expect(dialog).toHaveAccessibleName(ECC.name));
@@ -76,7 +76,7 @@ describe("?open round trip", () => {
 
 describe("<Inspector>", () => {
   it("is a dialog named by its title, with the same anatomy for a system: status line, facts, actions", async () => {
-    setUrl(`/v2?open=system:${ECC.id}`);
+    setUrl(`/?open=system:${ECC.id}`);
     renderWithQuery(<Harness />);
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveAttribute("aria-labelledby");
@@ -88,7 +88,7 @@ describe("<Inspector>", () => {
   });
 
   it("says plainly that a system never extracted has not been extracted, and offers the extraction", async () => {
-    setUrl(`/v2?open=system:${SF.id}`);
+    setUrl(`/?open=system:${SF.id}`);
     renderWithQuery(<Harness />);
     expect(await screen.findByText("Not extracted yet")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Extract" })).toBeInTheDocument();
@@ -96,17 +96,17 @@ describe("<Inspector>", () => {
   });
 
   it("opens a rule with its scope, each object a link (the rule body is covered in RuleInspector.test.tsx)", async () => {
-    setUrl("/v2?open=rule:MM014");
+    setUrl("/?open=rule:MM014");
     renderWithQuery(<Harness />);
     const dialog = await screen.findByRole("dialog");
     const scope = await within(dialog).findByRole("region", { name: /^Scope/ });
     expect(dialog).toHaveTextContent("MM014");
-    expect(within(scope).getByRole("link", { name: "Material master" })).toHaveAttribute("href", expect.stringContaining("/v2/o/ecc-production/material-master"));
+    expect(within(scope).getByRole("link", { name: "Material master" })).toHaveAttribute("href", expect.stringContaining("/o/ecc-production/material-master"));
     expect(within(dialog).getByRole("link", { name: "Open the rule" })).toBeInTheDocument();
   });
 
   it("opens a record by its key: the title is the key in mono and the body is the record (see RecordInspector.test)", async () => {
-    setUrl("/v2?open=record:material_master%3AMATNR%3D000000000000000101");
+    setUrl("/?open=record:material_master%3AMATNR%3D000000000000000101");
     renderWithQuery(
       <ToastProvider>
         <Harness />
@@ -122,7 +122,7 @@ describe("<Inspector>", () => {
   });
 
   it("explains a system that is not in the tenant", async () => {
-    setUrl("/v2?open=system:missing");
+    setUrl("/?open=system:missing");
     renderWithQuery(<Harness />);
     expect(await screen.findByText(/This system is not in the tenant/)).toBeInTheDocument();
   });

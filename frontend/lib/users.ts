@@ -1,4 +1,5 @@
-import type { PillTone } from "@/design";
+/** The tone of a status word: neutral, information or a verdict. */
+type PillTone = "neutral" | "info" | "go" | "at-risk" | "no-go";
 import type { User, UserStatus } from "@/types/api";
 
 /** Invitations live seven days (api/services/local_auth.py INVITE_TTL_DAYS). */

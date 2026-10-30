@@ -276,7 +276,7 @@ def oidc_callback(request: Request, code: str | None = None, state: str | None =
         log.exception("OIDC callback failed")
         return _error_redirect("failed")
 
-    fragment = urlencode({"sso_token": token, "next": saved.get("nxt") or "/home"})
+    fragment = urlencode({"sso_token": token, "next": saved.get("nxt") or "/"})
     resp = RedirectResponse(f"/sign-in#{fragment}", status_code=302)
     _set_auth_cookie(resp, token, request)
     resp.delete_cookie(STATE_COOKIE, path=router.prefix)

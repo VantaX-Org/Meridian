@@ -1,6 +1,6 @@
 # An object and its tabs
 
-An object is one area of SAP data scored as a whole on one system, such as Material master on ECC production. The object canvas is where you read its score with the receipt that proves it, and where every view of the object lives as a tab: Rules, Records, Fixes, Runs, Readiness, Processes, Lineage, Glossary and Golden records. Open it from a cell on the landscape, from an object row in the map, or by typing its name in the command line. Its address is `/v2/o/{system}/{object}`, for example `/v2/o/ecc-production/material-master`.
+An object is one area of SAP data scored as a whole on one system, such as Material master on ECC production. The object canvas is where you read its score with the receipt that proves it, and where every view of the object lives as a tab: Rules, Records, Fixes, Runs, Readiness, Processes, Lineage, Glossary and Golden records. Open it from a cell on the landscape, from an object row in the map, or by typing its name in the command line. Its address is `/o/{system}/{object}`, for example `/o/ecc-production/material-master`.
 
 ## The header
 

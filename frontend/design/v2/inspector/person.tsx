@@ -87,7 +87,7 @@ function PersonBody({ id }: { id: string }) {
           <ul className="m2-breaches" data-testid="person-work">
             {byObject.map((o) => (
               <li key={o.module}>
-                <V2Link href={`/v2/work?filter=open&module=${o.module}&assigned=${p.is_me ? "me" : encodeURIComponent(p.id)}`}>{label(o.module)}</V2Link>
+                <V2Link href={`/work?filter=open&module=${o.module}&assigned=${p.is_me ? "me" : encodeURIComponent(p.id)}`}>{label(o.module)}</V2Link>
                 <span>{int(o.count)}</span>
               </li>
             ))}
@@ -123,7 +123,7 @@ function PersonBody({ id }: { id: string }) {
       )}
 
       <Actions>
-        <V2Link href={`/v2/work?filter=open&assigned=${p.is_me ? "me" : encodeURIComponent(p.id)}`} className="m2-btn m2-strong">
+        <V2Link href={`/work?filter=open&assigned=${p.is_me ? "me" : encodeURIComponent(p.id)}`} className="m2-btn m2-strong">
           {t("Open their work")}
         </V2Link>
         <ReassignMenu rows={rows} disabled={!can.assign || p.open_work === 0} subject={p.name} />

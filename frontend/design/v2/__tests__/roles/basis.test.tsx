@@ -15,7 +15,7 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 async function pick(role: string) {
-  visit(`/v2?open=system:${ECC.id}`, role);
+  visit(`/?open=system:${ECC.id}`, role);
   mount();
   fireEvent.click(await screen.findByRole("button", { name: "Extract" }));
   const picker = await screen.findByTestId("extract-picker");
@@ -44,7 +44,7 @@ describe("the SAP Basis jobs", () => {
   });
 
   it("a viewer sees the dry run but cannot start it", async () => {
-    visit(`/v2?open=system:${ECC.id}`, "viewer");
+    visit(`/?open=system:${ECC.id}`, "viewer");
     mount();
     expect(await screen.findByTestId("inspector")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Dry run" })).toBeNull();

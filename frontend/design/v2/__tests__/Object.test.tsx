@@ -14,7 +14,7 @@ let undo: () => void = () => undefined;
 beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
   undo = stubLayout();
-  setUrl("/v2/o/ecc-production/material-master");
+  setUrl("/o/ecc-production/material-master");
 });
 afterEach(() => {
   undo();
@@ -121,16 +121,16 @@ describe("tabs as route segments", () => {
     const nav = await screen.findByRole("navigation", { name: "Views of Material master" });
     const links = within(nav).getAllByRole("link");
     expect(links.map((l) => (l.firstChild as Text).textContent)).toEqual(["Rules", "Records", "Fixes", "Runs", "Readiness", "Processes", "Lineage", "Glossary", "Golden records"]);
-    expect(links[0]).toHaveAttribute("href", expect.stringMatching(/^\/v2\/o\/ecc-production\/material-master(\?|$)/));
-    expect(links[1]).toHaveAttribute("href", expect.stringContaining("/v2/o/ecc-production/material-master/records"));
-    expect(links[5]).toHaveAttribute("href", expect.stringContaining("/v2/o/ecc-production/material-master/processes"));
-    expect(links[8]).toHaveAttribute("href", expect.stringContaining("/v2/o/ecc-production/material-master/golden"));
+    expect(links[0]).toHaveAttribute("href", expect.stringMatching(/^\/o\/ecc-production\/material-master(\?|$)/));
+    expect(links[1]).toHaveAttribute("href", expect.stringContaining("/o/ecc-production/material-master/records"));
+    expect(links[5]).toHaveAttribute("href", expect.stringContaining("/o/ecc-production/material-master/processes"));
+    expect(links[8]).toHaveAttribute("href", expect.stringContaining("/o/ecc-production/material-master/golden"));
     expect(links[0]).toHaveAttribute("aria-current", "page");
     expect(links[1]).not.toHaveAttribute("aria-current");
   });
 
   it("marks the segment you are on", async () => {
-    setUrl("/v2/o/ecc-production/material-master/fixes");
+    setUrl("/o/ecc-production/material-master/fixes");
     frame();
     const nav = await screen.findByRole("navigation", { name: "Views of Material master" });
     expect(within(nav).getByRole("link", { name: "Fixes" })).toHaveAttribute("aria-current", "page");
@@ -160,7 +160,7 @@ describe("tabs as route segments", () => {
 
 describe("object canvas states", () => {
   it("an object with no run on its system draws the ruler empty and says No run yet", async () => {
-    setUrl("/v2/o/s-4hana-sandbox/material-master");
+    setUrl("/o/s-4hana-sandbox/material-master");
     frame("s-4hana-sandbox", "material-master");
     expect(await screen.findByText(/No run yet\. The ruler fills when an analysis scores this object\./)).toBeInTheDocument();
     expect(screen.getByRole("img")).toHaveAccessibleName("Material master: no run yet.");
@@ -171,7 +171,7 @@ describe("object canvas states", () => {
   it("an unknown system says so and links back to the landscape", async () => {
     frame("nowhere", "material-master");
     expect(await screen.findByText(/No system matches this address/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open the landscape" })).toHaveAttribute("href", expect.stringMatching(/^\/v2/));
+    expect(screen.getByRole("link", { name: "Open the landscape" })).toHaveAttribute("href", expect.stringMatching(/^\/(\?|$)/));
   });
 
   it("a failed landscape read is an error with Retry", async () => {
@@ -182,7 +182,7 @@ describe("object canvas states", () => {
 
   it("resolves a system by id as well as by slug", async () => {
     const id = landscapeFixture.systems[0].id;
-    setUrl(`/v2/o/${id}/material-master`);
+    setUrl(`/o/${id}/material-master`);
     frame(id, "material-master");
     expect(await screen.findByTestId("object-status")).toBeInTheDocument();
   });

@@ -22,7 +22,7 @@ beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
   resetObjectFixture();
   resetWorkFixture();
-  setUrl("/v2/o/ecc-production/material-master?fixture=1");
+  setUrl("/o/ecc-production/material-master?fixture=1");
 });
 afterEach(() => {
   window.sessionStorage.clear();

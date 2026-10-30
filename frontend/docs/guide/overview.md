@@ -1,6 +1,6 @@
 # Meridian in three minutes
 
-Meridian checks your SAP data against fixed rules, scores every object, lists every record that fails and routes each fix through a second person before it goes back to SAP. The new interface puts all of that on three surfaces: the **map** of systems and objects on the left, the **canvas** in the middle and the **inspector** on the right. There is no menu of pages. Every screen is a place on the map, every piece of work is a row in the ledger, and anything you select opens in the same inspector.
+Meridian checks your SAP data against fixed rules, scores every object, lists every record that fails and routes each fix through a second person before it goes back to SAP. It puts all of that on three surfaces: the **map** of systems and objects on the left, the **canvas** in the middle and the **inspector** on the right. There is no menu of pages. Every screen is a place on the map, every piece of work is a row in the ledger, and anything you select opens in the same inspector.
 
 ## The three surfaces
 

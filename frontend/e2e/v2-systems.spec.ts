@@ -1,6 +1,6 @@
 /**
  * Meridian 2, step 6b: the System canvas with its Configuration, Schedules and Custom objects views, the connection
- * form, the extraction scope editor and the inspectors behind them, in fixture mode (`/v2?fixture=1`), so the spec needs
+ * form, the extraction scope editor and the inspectors behind them, in fixture mode (`/?fixture=1`), so the spec needs
  * no API. At 1440 and 390, light and dark: each view is there, the verbs answer in their frames, no page scrolls
  * sideways, axe finds no critical or serious violation, and a screenshot of each lands in
  * e2e/__screenshots__/v2/system-*.png.
@@ -51,7 +51,7 @@ for (const size of SIZES) {
 
       test("Configuration lists the areas, and an area opens its objects", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto(`/v2/s/${ECC}?fixture=1&tab=configuration`, { waitUntil: "load", timeout: 90_000 });
+        await page.goto(`/s/${ECC}?fixture=1&tab=configuration`, { waitUntil: "load", timeout: 90_000 });
         const areas = page.getByTestId("config-areas");
         await expect(areas.getByRole("link")).toHaveCount(12, NAV);
         await expect(areas).toContainText("No authorisation to read this table");
@@ -66,7 +66,7 @@ for (const size of SIZES) {
 
       test("Configuration: source, drift log and comparison with the target", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto(`/v2/s/${ECC}?fixture=1&tab=configuration&part=compare`, { waitUntil: "load", timeout: 90_000 });
+        await page.goto(`/s/${ECC}?fixture=1&tab=configuration&part=compare`, { waitUntil: "load", timeout: 90_000 });
         await expect(page.getByTestId("compare-target")).toContainText("Compared with S/4HANA sandbox", NAV);
         await page.getByRole("button", { name: "Propose matches" }).click();
         await expect(page.getByText("2 matches sent to the steward queue")).toBeVisible();
@@ -79,7 +79,7 @@ for (const size of SIZES) {
 
       test("Schedules: add, pause and delete a schedule", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto(`/v2/s/${ECC}?fixture=1&tab=schedules`, { waitUntil: "load", timeout: 90_000 });
+        await page.goto(`/s/${ECC}?fixture=1&tab=schedules`, { waitUntil: "load", timeout: 90_000 });
         const table = page.getByTestId("system-schedules");
         await expect(table.getByRole("row")).toHaveCount(3, NAV);
         const form = page.getByRole("form", { name: "Add a schedule" });
@@ -101,7 +101,7 @@ for (const size of SIZES) {
 
       test("Custom objects: the registry, an object inspector and the anomaly decision", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto(`/v2/s/${ECC}?fixture=1&tab=custom-objects`, { waitUntil: "load", timeout: 90_000 });
+        await page.goto(`/s/${ECC}?fixture=1&tab=custom-objects`, { waitUntil: "load", timeout: 90_000 });
         await expect(page.getByTestId("z-registry").getByRole("row")).toHaveCount(6, NAV);
         await page.getByTestId("z-registry").getByRole("link", { name: "ZZPACKVAR" }).click();
         const dialog = page.getByRole("dialog", { name: "ZZPACKVAR" });
@@ -118,7 +118,7 @@ for (const size of SIZES) {
 
       test("Connection: edit settings, test, and the new-system canvas", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto(`/v2/s/${ECC}?fixture=1&open=connection:${ECC}`, { waitUntil: "load", timeout: 90_000 });
+        await page.goto(`/s/${ECC}?fixture=1&open=connection:${ECC}`, { waitUntil: "load", timeout: 90_000 });
         const form = page.getByRole("form", { name: "Connection settings of ECC production" });
         await expect(form).toBeVisible(NAV);
         await form.getByRole("button", { name: "Test connection" }).click();
@@ -128,7 +128,7 @@ for (const size of SIZES) {
         await shot(page, "connection");
         await axe(page, `connection ${size.name} ${scheme}`);
 
-        await page.goto("/v2/s/new?fixture=1", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/s/new?fixture=1", { waitUntil: "load", timeout: 90_000 });
         await page.getByRole("button", { name: "Connect system" }).click();
         await expect(page.getByText("Enter a system name")).toBeVisible(NAV);
         expect(await noSideways(page)).toBe(true);
@@ -138,7 +138,7 @@ for (const size of SIZES) {
 
       test("Scope: set inline when extracting", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto(`/v2/s/${ECC}?fixture=1&open=system:${ECC}`, { waitUntil: "load", timeout: 90_000 });
+        await page.goto(`/s/${ECC}?fixture=1&open=system:${ECC}`, { waitUntil: "load", timeout: 90_000 });
         const dialog = page.getByRole("dialog", { name: "ECC production" });
         await dialog.getByRole("button", { name: "Extract", exact: true }).click();
         await dialog.getByRole("checkbox", { name: /Material master/ }).check();

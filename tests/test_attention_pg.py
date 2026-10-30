@@ -284,7 +284,7 @@ def test_every_kind_fires_from_its_fixture(owner, full):
     conn = {i["system_name"]: i for i in k["connection"]}
     assert set(conn) == {"ERP prod", "Cloud HR"}
     assert (conn["ERP prod"]["severity"], conn["ERP prod"]["tier"], conn["ERP prod"]["href"]) == (
-        "critical", 1, f"/systems/{full['bad']}")
+        "critical", 1, f"/s/{full['bad']}")
     assert (conn["Cloud HR"]["severity"], conn["Cloud HR"]["tier"]) == ("medium", 4)
     assert conn["ERP prod"]["title"] == "ERP prod cannot be reached"
     assert conn["ERP prod"]["required_action"] == "manage_systems"
@@ -294,51 +294,51 @@ def test_every_kind_fires_from_its_fixture(owner, full):
     assert (reg["module"], reg["object"], reg["count"], reg["severity"], reg["tier"]) == (
         "material_master", "Material master", 1, "critical", 1)
     assert reg["title"] == "1 rule regressed on Material master"
-    assert reg["href"] == f"/fix?run={full['cur']}&module=material_master&check=MM003&st=to_fix"
+    assert reg["href"] == "/work?module=material_master&rule=MM003"
     assert reg["system_id"] == full["mm"] and reg["system_name"] == "Plant OK" and reg["required_action"] == "apply"
 
     (stale,) = k["stale_object"]
-    assert (stale["module"], stale["href"], stale["severity"]) == ("mm_purchasing", "/objects/mm_purchasing#monitor", "high")
+    assert (stale["module"], stale["href"], stale["severity"]) == ("mm_purchasing", "/o/_/mm-purchasing/runs", "high")
     assert "3 days ago" in stale["detail"] and "daily" in stale["detail"]
 
     (missed,) = k["schedule_missed"]
-    assert missed["module"] == "fi_gl" and missed["href"].endswith("?tab=health#schedules")
+    assert missed["module"] == "fi_gl" and missed["href"].endswith("?tab=schedules")
     (failed,) = k["schedule_failed"]
-    assert failed["module"] == "accounts_payable" and failed["href"].startswith("/admin/jobs?job=")
+    assert failed["module"] == "accounts_payable" and failed["href"].startswith("/runs?view=jobs&open=job:")
     assert not any(i["module"] == "controlling" for i in items)  # paused: a decision, nothing raised
 
     (job,) = k["job_failed"]  # the two failures of the last 24 h; old, running and untracked kinds ignored
-    assert (job["count"], job["system_id"], job["href"]) == (2, full["mm"], "/admin/jobs?job=job-a")
+    assert (job["count"], job["system_id"], job["href"]) == (2, full["mm"], "/runs?view=jobs&open=job:job-a")
     assert job["required_action"] == "trigger_sync"
 
     (cm,) = k["config_missing"]
-    assert cm["system_name"] == "Cloud HR" and cm["href"] == "/systems?config=not_loaded"
+    assert cm["system_name"] == "Cloud HR" and cm["href"].startswith("/s/") and cm["href"].endswith("?tab=configuration")
     (cd,) = k["config_drift"]
-    assert (cd["count"], cd["system_id"], cd["href"]) == (3, full["mm"], f"/systems/{full['mm']}?tab=config")  # not the 30-day-old one
+    assert (cd["count"], cd["system_id"], cd["href"]) == (3, full["mm"], f"/s/{full['mm']}?tab=configuration")  # not the 30-day-old one
 
     (ap_batch,) = [i for i in k["approvals"] if i["module"]]
     (ap_gold,) = [i for i in k["approvals"] if not i["module"]]
     assert ap_batch["count"] == 1 and ap_batch["title"] == "1 fix batch is waiting for approval on Material master"
-    assert ap_gold["count"] == 1 and ap_gold["href"] == "/inbox?kind=approvals"
+    assert ap_gold["count"] == 1 and ap_gold["href"] == "/work?filter=approvals"
     (sla,) = k["sla_breach"]
-    assert (sla["count"], sla["module"], sla["href"], sla["required_action"]) == (2, "material_master", "/inbox?due=overdue", "assign")
+    assert (sla["count"], sla["module"], sla["href"], sla["required_action"]) == (2, "material_master", "/work?due=overdue", "assign")
 
     (od,) = k["overdue_records"]
-    assert od["count"] == 3 and od["href"] == "/fix?module=material_master&due=overdue"
+    assert od["count"] == 3 and od["href"] == "/work?module=material_master&due=overdue"
     (ng,) = k["object_no_go"]
-    assert (ng["module"], ng["count"], ng["required_action"], ng["href"]) == ("business_partner", 2, "view", "/objects/business_partner")
+    assert (ng["module"], ng["count"], ng["required_action"], ng["href"]) == ("business_partner", 2, "view", "/o/_/business-partner")
     assert "40" in ng["detail"]
 
     (df,) = k["discovery_failed"]
-    assert df["system_name"] == "ERP prod" and df["href"].startswith("/process/runs/") and "PTP" in df["detail"]
+    assert df["system_name"] == "ERP prod" and df["href"] == "/runs?view=jobs" and "PTP" in df["detail"]
     (fd,) = k["fitness_drop"]
-    assert fd["system_name"] == "Plant OK" and fd["href"] == f"/process/otc?system={full['mm']}"
+    assert fd["system_name"] == "Plant OK" and fd["href"] == "/"
     assert "92%" in fd["detail"] and "80%" in fd["detail"]
 
-    assert k["rule_review"][0]["count"] == 2 and k["rule_review"][0]["href"] == "/rules/drafts?tab=ai"
+    assert k["rule_review"][0]["count"] == 2 and k["rule_review"][0]["href"] == "/rules?view=drafts"
     assert k["contract_breach"][0]["count"] == 1  # the latest check decides, not the older compliant one
 
-    assert k["access_requests"][0]["count"] == 1 and k["access_requests"][0]["href"] == "/admin/roles?tab=requests"
+    assert k["access_requests"][0]["count"] == 1 and k["access_requests"][0]["href"] == "/admin/users"
     assert k["invites_pending"][0]["count"] == 1
     assert k["dormant_users"][0]["count"] == 1 and k["grants_expiring"][0]["count"] == 1
     seats = k["seats"][0]

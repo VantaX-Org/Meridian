@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react";
 
 /**
- * Fixture mode: `/v2?fixture=1` answers every v2 read from lib/api/v2/fixtures instead of the API, so the interface
+ * Fixture mode: `/?fixture=1` answers every v2 read from lib/api/v2/fixtures instead of the API, so the interface
  * can be built, screenshotted and tested with no backend. The flag is kept for the tab (sessionStorage) so links that
  * do not carry the query keep working; `?fixture=0` turns it off.
  */

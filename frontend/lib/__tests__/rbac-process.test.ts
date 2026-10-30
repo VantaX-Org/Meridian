@@ -1,7 +1,7 @@
 // Mirrors tests/test_rbac_process_discovery.py: the `process` resource in the lib/rbac.ts port.
 import { describe, expect, it } from "vitest";
 import { RESOURCES, requestTargetFor, resourceMatrix } from "../rbac";
-import { permissionsPayload } from "../../e2e/fixtures/legacy-permissions";
+import { permissionsPayload } from "./legacy-permissions";
 
 describe("process resource", () => {
   it("is the last resource", () => {

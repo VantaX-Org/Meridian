@@ -19,6 +19,8 @@ from sqlalchemy.orm import Session
 from workers.celery_app import celery_app
 from workers.db import get_sync_engine
 
+from api.services import app_links
+
 logger = logging.getLogger("meridian.worker.rule_proposal_task")
 
 
@@ -270,7 +272,7 @@ Respond in JSON format only:
 def _notify_reviewers(session: Session, tenant_id: str, domain: str, count: int, *,
                       roles: tuple[str, ...] = ("admin", "steward", "ai_reviewer"),
                       title: str | None = None, body: str | None = None,
-                      link: str = "/settings?tab=ai-rules") -> None:
+                      link: str = app_links.RULE_DRAFTS) -> None:
     """Notify reviewer users (admin/steward/ai_reviewer by default) that items await review."""
     from api.services.notifications import create_notification_sync
     from api.services.rbac import persona_for

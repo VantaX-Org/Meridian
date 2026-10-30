@@ -82,7 +82,7 @@ async def test_comment_mentions_and_watchers_are_notified(owner, monkeypatch):
     notes = _q(owner, "SELECT user_id::text, type, link FROM notifications WHERE tenant_id = :t AND type IN ('mention','comment') "
                       "ORDER BY type", t=tid)
     assert [(u, k) for u, k, _ in notes] == [(cara, "comment"), (bob, "mention")]
-    assert all(link == f"/v2?open=record:{rec}" for _, _, link in notes)
+    assert all(link == f"/?open=record:{rec}" for _, _, link in notes)
     assert _audit(owner, tid, "comment.create") == 1
     c = await client_for(monkeypatch, tid, bob)
     async with c:
@@ -133,7 +133,7 @@ def test_run_events_reach_object_watchers(owner):
               t=tid, u=cara)
     kinds = [r[0] for r in rows]
     assert "run_finished" in kinds
-    assert all(r[2] == f"/v2/o/{s['ecc']}/material_master" for r in rows)
+    assert all(r[2] == f"/o/{s['ecc']}/material_master" for r in rows)
 
 
 @pytest.mark.anyio
@@ -179,7 +179,7 @@ async def test_delegation_routes_notifications_to_the_delegate(owner, monkeypatc
         assert (await c.get("/api/v1/delegations", headers=headers("approver"))).status_code == 403
     with Session(owner) as session:
         session.execute(text("SELECT set_config('app.tenant_id', :t, false)"), {"t": tid})
-        create_notification_sync(tid, cara, "approval", "Batch B-1 waits", "Approve it", "/v2/work", session)
+        create_notification_sync(tid, cara, "approval", "Batch B-1 waits", "Approve it", "/work", session)
         create_notification_sync(tid, cara, "digest", "Weekly digest", "x", None, session)
         session.commit()
     rows = _q(owner, "SELECT user_id::text, type, title FROM notifications WHERE tenant_id = :t ORDER BY title", t=tid)
@@ -308,20 +308,22 @@ async def test_share_link_lifecycle(owner, monkeypatch):
     tid, ann, dan = s["tid"], s["user"], s["dan"]
     c = await client_for(monkeypatch, tid, ann)
     async with c:
-        assert (await c.post("/api/v1/share-links", json={"route": "/v2"}, headers=headers("viewer"))).status_code == 403
+        assert (await c.post("/api/v1/share-links", json={"route": "/"}, headers=headers("viewer"))).status_code == 403
         assert (await c.post("/api/v1/share-links", json={"route": "/admin"}, headers=headers("auditor"))).status_code == 422
-        r = await c.post("/api/v1/share-links", json={"route": "/v2/o/ecc-production/material-master",
+        r = await c.post("/api/v1/share-links", json={"route": "/o/ecc-production/material-master",
                                                        "state": {"tab": "rules", "fixture": "1"}, "expires_in_days": 3},
                          headers=headers("auditor"))
         assert r.status_code == 201, r.text
         link = r.json()
-        assert link["url"] == f"/v2/share/{link['token']}" and link["state"] == {"tab": "rules"}
-        stored = _q(owner, "SELECT token_hash FROM share_links WHERE id = :i", i=link["id"])[0][0]
+        assert link["url"] == f"/share/{link['token']}" and link["state"] == {"tab": "rules"}
+        stored, route = _q(owner, "SELECT token_hash, route FROM share_links WHERE id = :i", i=link["id"])[0]
         assert link["token"] not in stored and len(stored) == 64
+        # The table keeps the prefix migration 104 checks for; the API speaks the app's own address.
+        assert route == "/v2/o/ecc-production/material-master" and link["route"] == "/o/ecc-production/material-master"
     c = await client_for(monkeypatch, tid, dan)
     async with c:
         res = await c.get(f"/api/v1/share-links/resolve/{link['token']}", headers=headers("viewer"))
-        assert res.status_code == 200 and res.json()["role"] == "viewer" and res.json()["route"].endswith("material-master")
+        assert res.status_code == 200 and res.json()["role"] == "viewer" and res.json()["route"] == "/o/ecc-production/material-master"
         assert (await c.get("/api/v1/share-links", params={"all": True}, headers=headers("viewer"))).status_code == 403
         assert (await c.delete(f"/api/v1/share-links/{link['id']}", headers=headers("viewer"))).status_code == 403
     c = await client_for(monkeypatch, tid, ann)

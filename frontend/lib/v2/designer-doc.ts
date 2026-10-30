@@ -1,5 +1,5 @@
 import type { L4, ProcessModelDocument } from "@/types/process-model";
-import { locate, patchActivity, findActivity, removeNode } from "@/app/(app)/insights/process/designer/_components/doc";
+import { locate, patchActivity, findActivity, removeNode } from "@/lib/v2/process-doc";
 import { t } from "@/lib/v2/i18n";
 
 export const LEVEL_WORD: Readonly<Record<1 | 2 | 3 | 4 | 5, string>> = {

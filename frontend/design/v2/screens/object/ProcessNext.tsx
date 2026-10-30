@@ -28,7 +28,7 @@ export function ProcessNextStep({ landscape }: { landscape: Landscape }) {
   const base = (i: number): string => {
     const c = cells[i];
     const s = landscape.systems.find((x) => x.id === c.system_id);
-    return `/v2/o/${systemSlug(s?.name ?? c.system_id)}/${moduleSlug(c.module)}/processes`;
+    return `/o/${systemSlug(s?.name ?? c.system_id)}/${moduleSlug(c.module)}/processes`;
   };
   for (let i = 0; i < cells.length; i++) {
     const step = firstBlockedStep(reads[i]?.data?.processes ?? []);

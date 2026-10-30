@@ -1,6 +1,6 @@
 # Approvals and exceptions
 
-Every value decided in Work waits in a fix batch until a second person approves it. That is the four-eyes rule, and it has no bypass: whoever drafted a batch cannot approve it. Exceptions are records signed off without a change, as **not an issue** or **accept risk**, with a reason. Both live in the Work ledger, under their own chips: **Waiting for approval** and **Exceptions**. Open approvals from the command line by typing "approve", or at `/v2/work?filter=approvals`.
+Every value decided in Work waits in a fix batch until a second person approves it. That is the four-eyes rule, and it has no bypass: whoever drafted a batch cannot approve it. Exceptions are records signed off without a change, as **not an issue** or **accept risk**, with a reason. Both live in the Work ledger, under their own chips: **Waiting for approval** and **Exceptions**. Open approvals from the command line by typing "approve", or at `/work?filter=approvals`.
 
 ## Waiting for approval
 

@@ -29,7 +29,7 @@ beforeEach(() => {
   resetKeptOutcomes();
   undo = stubLayout();
   h.allowed = "all";
-  setUrl("/v2/admin/licence?fixture=1");
+  setUrl("/admin/licence?fixture=1");
 });
 afterEach(() => {
   undo();
@@ -175,7 +175,7 @@ describe("Admin: settings", () => {
 
 describe("Admin: field mappings", () => {
   it("lists the standard fields with the customer column, and narrows by search", async () => {
-    setUrl("/v2/admin/mappings?fixture=1");
+    setUrl("/admin/mappings?fixture=1");
     renderWithQuery(<MappingsSection />);
     await waitFor(() => expect(dataRows("Field mappings")).toHaveLength(12));
     expect(norm(dataRows("Field mappings")[0])).toContain("MARA.MATNR");
@@ -187,7 +187,7 @@ describe("Admin: field mappings", () => {
 
   it("edits one mapping in its inspector and saves the column", async () => {
     const spy = vi.spyOn(adminApi, "updateFieldMapping");
-    setUrl("/v2/admin/mappings?fixture=1&open=mapping:fm-2");
+    setUrl("/admin/mappings?fixture=1&open=mapping:fm-2");
     renderWithQuery(
       <>
         <MappingsSection />
@@ -205,7 +205,7 @@ describe("Admin: field mappings", () => {
 
   it("resets the customised mappings after a confirmation", async () => {
     const spy = vi.spyOn(adminApi, "resetFieldMappings");
-    setUrl("/v2/admin/mappings?fixture=1");
+    setUrl("/admin/mappings?fixture=1");
     renderWithQuery(<MappingsSection />);
     await waitFor(() => expect(dataRows("Field mappings")).toHaveLength(12));
     fireEvent.click(screen.getByRole("button", { name: "Reset all to defaults" }));
@@ -218,7 +218,7 @@ describe("Admin: field mappings", () => {
 
   it("is read only without the manage field mappings permission", async () => {
     h.allowed = ["view"];
-    setUrl("/v2/admin/mappings?fixture=1");
+    setUrl("/admin/mappings?fixture=1");
     renderWithQuery(<MappingsSection />);
     await waitFor(() => expect(dataRows("Field mappings")).toHaveLength(12));
     expect(screen.queryByRole("button", { name: "Reset all to defaults" })).toBeNull();
@@ -229,7 +229,7 @@ describe("Admin: field mappings", () => {
 describe("Admin: reference data", () => {
   it("shows the lists loaded for a system and uploads a replacement", async () => {
     const spy = vi.spyOn(adminApi, "uploadReference");
-    setUrl("/v2/admin/reference?fixture=1");
+    setUrl("/admin/reference?fixture=1");
     renderWithQuery(<ReferenceSection />);
     const table = await screen.findByRole("table", { name: "Reference lists" });
     expect(norm(table)).toContain("Postal codes");
@@ -244,7 +244,7 @@ describe("Admin: reference data", () => {
   });
 
   it("a system with no list says so", async () => {
-    setUrl("/v2/admin/reference?fixture=1");
+    setUrl("/admin/reference?fixture=1");
     renderWithQuery(<ReferenceSection />);
     await screen.findByRole("table", { name: "Reference lists" });
     fireEvent.change(screen.getByLabelText("System"), { target: { value: "a1b2c3d4-0002-4000-8000-000000000002" } });
@@ -253,7 +253,7 @@ describe("Admin: reference data", () => {
 
   it("uploading needs the manage systems permission", async () => {
     h.allowed = ["view"];
-    setUrl("/v2/admin/reference?fixture=1");
+    setUrl("/admin/reference?fixture=1");
     renderWithQuery(<ReferenceSection />);
     expect(await screen.findByTestId("needs-permission")).toHaveTextContent("manage systems");
     expect(screen.queryByRole("button", { name: "Upload the list" })).toBeNull();

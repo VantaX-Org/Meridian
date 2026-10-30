@@ -17,7 +17,7 @@ You run the data programme: you need to know how ready each system and object is
 - **Wave gate criteria**: Migration waves panel, **Gate**, **Save the gate**.
 - **Gate status**: the Waves view, "Gate not passed, 2 of 3 not met".
 - **Readiness certificate**: the certificate link shows "not yet (the signed certificate arrives in step 9)"; a signed PDF is not produced in this version.
-- **Sign off a wave**: in the cockpit of the current interface for now; the panel shows "Not signed off." until then.
+- **Sign off a wave**: **Sign off** on the wave in the Migration waves panel (needs approve); only a wave whose verdict is go can be signed off, and any later change to the wave clears the sign-off.
 - **Balance work between stewards**: People, **Balance work** (even counts, whole objects or by the assignment template), applied with undo.
 - **Read data contracts and their breaches**: People, **Data contracts**.
 - **Watch objects**: **Watch** on the object header for run, score and breach notices.

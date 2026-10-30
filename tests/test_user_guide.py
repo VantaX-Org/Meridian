@@ -25,16 +25,27 @@ def test_markdown_subset_matches_the_app_renderer():
     assert "<script" not in str(ug.to_html("<script>alert(1)</script>", "x"))
 
 
+# Markdown in the guide's folder that is a reference, not a chapter: the table of old addresses and where they go.
+NOT_CHAPTERS = {"redirects"}
+
+
 def test_every_chapter_in_the_manifest_has_a_file_and_only_those():
     d = ug.guide_dir()
+    assert d.name == "guide", d  # the guide of the one interface, not the retired user guide
     m = ug.manifest(d)
     slugs = [p["slug"] for s in m["sections"] for p in s["pages"]]
     assert len(slugs) == len(set(slugs))
-    assert sorted(f.stem for f in d.glob("*.md")) == sorted(slugs)
+    assert sorted(f.stem for f in d.glob("*.md") if f.stem not in NOT_CHAPTERS) == sorted(slugs)
     for s in m["sections"]:
         for p in s["pages"]:
             first = (d / f"{p['slug']}.md").read_text(encoding="utf-8").splitlines()[0]
             assert first == f"# {p['title']}", p["slug"]
+
+
+def test_the_guide_index_shape_is_read_as_sections_of_pages(tmp_path: Path):
+    (tmp_path / "index.json").write_text(json.dumps({"title": "Guide", "sections": [
+        {"id": "screens", "label": "The screens", "chapters": [{"slug": "one", "title": "One", "summary": "s", "video": "v"}]}]}))
+    assert ug.manifest(tmp_path) == {"title": "Guide", "sections": [{"title": "The screens", "pages": [{"slug": "one", "title": "One"}]}]}
 
 
 def test_context_follows_the_manifest_and_skips_missing_chapters(tmp_path: Path):

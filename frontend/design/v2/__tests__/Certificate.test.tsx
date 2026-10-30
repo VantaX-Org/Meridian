@@ -34,7 +34,7 @@ afterEach(() => {
 });
 
 const open = (wave: string) => {
-  setUrl(`/v2?fixture=1&view=waves&open=certificate:${wave}`);
+  setUrl(`/?fixture=1&view=waves&open=certificate:${wave}`);
   return renderWithQuery(<Inspector />);
 };
 

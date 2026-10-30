@@ -33,7 +33,7 @@ const bodyOf = (method: string, path: string) => sent.mock.calls.find((c) => c[0
 describe("the survivorship editor", () => {
   beforeEach(() => {
     h.allowed = new Set(["mdm.write"]);
-    setUrl("/v2/o/ecc-production/material-master/golden?fixture=1&open=survivorship:material_master");
+    setUrl("/o/ecc-production/material-master/golden?fixture=1&open=survivorship:material_master");
   });
   const render = async () => {
     renderWithQuery(<Inspector />);
@@ -121,7 +121,7 @@ describe("the survivorship editor", () => {
 describe("the process designer", () => {
   beforeEach(() => {
     h.allowed = new Set(["analyse"]);
-    setUrl("/v2/o/ecc-production/material-master/processes/design?fixture=1");
+    setUrl("/o/ecc-production/material-master/processes/design?fixture=1");
   });
   const render = async () => {
     renderWithQuery(<ProcessDesigner system="ecc-production" module="material-master" />);

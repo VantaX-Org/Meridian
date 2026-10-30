@@ -61,7 +61,7 @@ class UserResponse(BaseModel):
     name: str
     role: str
     permissions: list[str] = []
-    home: str = "/home/lead"
+    home: str = "/"
 
 
 class LoginResponse(BaseModel):

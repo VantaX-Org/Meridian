@@ -16,6 +16,8 @@ from sqlalchemy.orm import Session
 from workers.celery_app import celery_app
 from workers.db import get_sync_engine
 
+from api.services import app_links
+
 logger = logging.getLogger("meridian.worker.cleaning")
 
 
@@ -193,7 +195,7 @@ def run_cleaning(self, version_id: str, tenant_id: str, object_type: str, parque
                     type="cleaning",
                     title=f"{len(candidates)} cleaning items need review",
                     body=f"Cleaning detection found {len(candidates)} candidates for {object_type}.",
-                    link="/cleaning",
+                    link=app_links.work(filter="proposed"),
                     session=notif_session,
                 )
                 notif_session.commit()

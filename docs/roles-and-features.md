@@ -20,8 +20,8 @@ server the client shows a dash, never an error.
 
 | | Before | After |
 |---|---|---|
-| Present | 29 | 82 |
-| Partial | 15 | 4 |
+| Present | 29 | 83 |
+| Partial | 15 | 3 |
 | Missing | 43 | 1 |
 | Rows | 87 | 87 |
 
@@ -29,7 +29,6 @@ What is still partial or missing after this step, and why:
 
 - **Readiness certificate** (lead): a stub (`GET /migration/waves/{id}/certificate`, `final: false`); the signed PDF is
   step 9.
-- **Wave sign-off from v2** (lead): signed off in the cockpit of the current interface; the Waves panel shows the state.
 - **Watch a system** (Basis): the API takes `target_kind=system` and the run worker notifies system watchers; the System
   inspector has no Watch button yet (System.tsx belongs to step 6b).
 - **Rule authoring in bulk from v2 Rules canvas** (steward): the import lives in Admin › Rules import and export; the
@@ -84,7 +83,7 @@ What is still partial or missing after this step, and why:
 | Wave gate criteria: min score, zero criticals, contracts met | Waves panel › Gate (Save the gate) | `PUT /migration/waves/{id}/gate` | analyse | partial | present | SAP Activate quality gates; Syniti readiness gates (inferred) |
 | Gate status on the Waves view | Landscape Waves view gate mark | `GET /migration/waves/gates` | view | missing | present | Monte Carlo data product health; Informatica scorecards |
 | Readiness certificate for a wave | Waves panel › certificate link | `GET /migration/waves/{id}/certificate` | view | missing | partial | SAP Activate quality gate sign-off |
-| Sign off a wave | current interface cockpit | `POST /migration/waves/{id}/signoff` | approve | partial | partial | SAP Migration Cockpit; Syniti |
+| Sign off a wave | Waves panel › Sign off (step 7, the cut-over) | `POST /migration/waves/{id}/signoff` | approve | partial | present | SAP Migration Cockpit; Syniti |
 | Balance work between stewards (by counts, objects or the template's slices) | People › Balance work | `POST /people/balance/plan`, `POST /people/balance/apply`, Undo `POST /actions/undo` | assign | missing | present | Informatica MDM task reassignment; Collibra workflow reassignment |
 | Read data contracts and their breaches | People › Data contracts | `GET /contracts`, `GET /contracts/{id}/detail` | view | missing | present | Soda data contracts; Monte Carlo data products |
 | Watch objects and get run, score and breach notices | Object canvas › Watch | `PUT /watches` | view | missing | present | Monte Carlo notifications; Soda alerts |
@@ -156,7 +155,7 @@ What is still partial or missing after this step, and why:
 | Read every canvas | All canvases, read-only | every GET | view | present | present | Collibra read-only consumers |
 | Audit log and export (auditor) | Admin › Audit log | `GET /audit`, `/audit/export` | view_audit | present | present | Collibra audit; Informatica audit |
 | A person's audit trail (auditor) | Person inspector › Activity | `GET /people/{id}/activity` | view_audit or manage_users (or self) | missing | present | Collibra user activity |
-| Open a read-only share link | `/v2/share/<token>`; bar "Shared view" | `GET /share-links/resolve/{token}` | view (signed in; viewer narrowing) | missing | present | GX Cloud shareable validation URLs; Monte Carlo shared incident links |
+| Open a read-only share link | `/share/<token>`; bar "Shared view" | `GET /share-links/resolve/{token}` | view (signed in; viewer narrowing) | missing | present | GX Cloud shareable validation URLs; Monte Carlo shared incident links |
 | Export a grid (auditor) | Share and export › Export to Excel | `POST /export/grid` | export | partial | present | Collibra export |
 | Read comments | Inspector › Comments | `GET /comments` | view | missing | present | Collibra |
 | Rule change trail joining versions and runs | none yet | `GET /rules/{id}/history`, `/rules/{id}/versions` | view | missing | missing | Collibra asset history |
@@ -165,7 +164,7 @@ What is still partial or missing after this step, and why:
 
 | Job | v2 verb | Endpoint | Permission | Before | After | Benchmark |
 |---|---|---|---|---|---|---|
-| Upload a file and analyse | Admin › Runs; current interface upload | `/upload`, `/versions/{id}/analyse` (rule set and modules options by the parallel builder) | upload, analyse | present | present | Soda scans; GX validations |
+| Upload a file and analyse | Admin › Runs and jobs › Upload a file (step 7) | `/upload`, `/versions/{id}/analyse` (rule set and modules options by the parallel builder) | upload, analyse | present | present | Soda scans; GX validations |
 | Export any grid | Share and export | `POST /export/grid` | export | partial | present | Collibra export |
 | Review AI-proposed rules (ai_reviewer) | Rules canvas › Learned (step 6b) | `/learned-rules/*` | review_ai_rules | present | present | Informatica CLAIRE rule suggestions |
 

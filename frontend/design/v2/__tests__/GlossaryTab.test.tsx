@@ -27,7 +27,7 @@ beforeEach(() => {
   granted = "all";
   resetMdmFixture();
   undo = stubLayout();
-  setUrl("/v2/o/ecc-production/material-master/glossary?fixture=1");
+  setUrl("/o/ecc-production/material-master/glossary?fixture=1");
 });
 afterEach(() => {
   undo();
@@ -114,7 +114,7 @@ describe("the Glossary tab", () => {
 
 describe("the term inspector", () => {
   const open = async (id = "gt-meins") => {
-    setUrl(`/v2/o/ecc-production/material-master/glossary?open=term:${id}&fixture=1`);
+    setUrl(`/o/ecc-production/material-master/glossary?open=term:${id}&fixture=1`);
     renderWithQuery(<Inspector />);
     const d = await screen.findByRole("dialog");
     await within(d).findByRole("region", { name: /Rules that cite it/ });

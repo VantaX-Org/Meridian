@@ -1,6 +1,6 @@
 /**
- * Meridian 2, step 6b: the rules library (/v2/rules), the survivorship editor and the process designer, in fixture mode
- * (`/v2?fixture=1`), so the spec needs no API. At 1440 and 390, light and dark: each screen is there, the verbs answer
+ * Meridian 2, step 6b: the rules library (/rules), the survivorship editor and the process designer, in fixture mode
+ * (`/?fixture=1`), so the spec needs no API. At 1440 and 390, light and dark: each screen is there, the verbs answer
  * in their frames, no page scrolls sideways, axe finds no critical or serious violation, and a screenshot of each lands
  * in e2e/__screenshots__/v2/rules-library-*.png, designer-*.png and system-survivorship-*.png.
  *
@@ -49,7 +49,7 @@ for (const size of SIZES) {
 
       test("the rules library lists, filters and opens a rule", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2/rules?fixture=1", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/rules?fixture=1", { waitUntil: "load", timeout: 90_000 });
         await expect(page.getByRole("heading", { level: 1 })).toHaveText("Rules", NAV);
         const grid = page.getByRole("grid", { name: "Rules library" });
         await expect(grid).toHaveAttribute("aria-rowcount", "39", NAV);
@@ -68,7 +68,7 @@ for (const size of SIZES) {
 
       test("drafts: create, edit and dry run", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2/rules?fixture=1&view=drafts", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/rules?fixture=1&view=drafts", { waitUntil: "load", timeout: 90_000 });
         await expect(page.getByTestId("drafts-table")).toBeVisible(NAV);
         await page.getByRole("button", { name: "Edit draft ZR000412" }).click();
         const form = page.getByRole("form", { name: "Edit draft" });
@@ -82,7 +82,7 @@ for (const size of SIZES) {
 
       test("the survivorship editor adds a rule and saves", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2/o/ecc-production/material-master/golden?fixture=1&open=survivorship:material_master", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/o/ecc-production/material-master/golden?fixture=1&open=survivorship:material_master", { waitUntil: "load", timeout: 90_000 });
         const dialog = page.getByRole("dialog", { name: "Survivorship rules" });
         await expect(dialog.getByRole("list", { name: "Survivorship rules" })).toBeVisible(NAV);
         await dialog.getByRole("button", { name: "Add a rule" }).click();
@@ -97,7 +97,7 @@ for (const size of SIZES) {
 
       test("the process designer edits the tree, maps a field and saves", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2/o/ecc-production/material-master/processes/design?fixture=1", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/o/ecc-production/material-master/processes/design?fixture=1", { waitUntil: "load", timeout: 90_000 });
         await expect(page.getByRole("heading", { level: 2, name: "Process designer" })).toBeVisible(NAV);
         await page.getByRole("button", { name: /^Post goods receipt/ }).click();
         const form = page.getByRole("form", { name: "Map a field to Check the material" });

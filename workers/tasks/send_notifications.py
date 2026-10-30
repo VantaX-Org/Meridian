@@ -30,6 +30,8 @@ from workers.celery_app import celery_app
 from workers.db import get_sync_engine
 from workers.email_backends.microsoft_graph import create_graph_client
 
+from api.services import app_links
+
 logger = logging.getLogger("meridian.worker.notifications")
 
 RESEND_API_URL = "https://api.resend.com/emails"
@@ -240,7 +242,7 @@ def _build_email_content(config: dict, version_data: dict, trigger: str) -> tupl
             numeric_last=True,
         ))
     from workers.tasks.send_user_invitation import _resolve_app_base_url
-    blocks.append(mail.button("Open in Meridian", f"{_resolve_app_base_url()}/insights/exec"))
+    blocks.append(mail.button("Open in Meridian", f"{_resolve_app_base_url()}{app_links.LANDSCAPE}"))
     title = subject.split(" — ", 1)[-1] if " — " in subject else subject
     body = mail.render_email(
         title=title.replace("Critical findings", "critical findings"),
@@ -415,7 +417,7 @@ def _notify_in_app(session: Session, tenant_id: str, version_id: str, breaches: 
     modules = sorted({b["module"] for b in breaches if b.get("module")})
     title = (f"DQ alert — {len(breaches)} thresholds crossed" if len(breaches) > 1
              else f"DQ alert — {breaches[0]['message']}")
-    link = f"/findings?version_id={version_id}" + (f"&module={modules[0]}" if len(modules) == 1 else "")
+    link = app_links.object_page(modules[0], run=str(version_id)) if len(modules) == 1 else app_links.run(str(version_id))
     create_notification_sync(tenant_id, None, "dq_alert", title[:200],
                              "\n".join(b["message"] for b in breaches), link, session)
     session.commit()
@@ -777,7 +779,7 @@ def _notify_users_critical(session: Session, tenant_id: str, alert: dict, recipi
     where = alert.get("system_name") or "your SAP data"
     title = f"{where}: {count} new critical rule(s) failing"
     body = alert_text(alert)
-    link = f"/findings?version_id={alert['version_id']}" if alert.get("version_id") else "/findings"
+    link = app_links.run(str(alert["version_id"])) if alert.get("version_id") else app_links.RUNS
     subject = f"Meridian critical alert — {where}"
     html_body = mail.render_email(title="Critical findings", blocks=[
         mail.paragraph(body), mail.button("Open findings", alert["links"]["findings"])])
@@ -856,9 +858,9 @@ def _send_user_digests(session: Session, tenant_id: str, period: str, recipients
             continue
         title, body = personal_digest(r.name, items, card)
         html_body = mail.render_email(title=heading, blocks=[
-            mail.paragraph(body), mail.button("Open Meridian", f"{base_url}/inbox")])
+            mail.paragraph(body), mail.button("Open Meridian", f"{base_url}{app_links.INBOX}")])
         _, sent, no_backend_written = _deliver_to_user(
-            session, tenant_id, r, "digest", key, heading, body, "/inbox", "digest",
+            session, tenant_id, r, "digest", key, heading, body, app_links.INBOX, "digest",
             f"Meridian {period} digest — {title}", html_body, backend, no_backend_written)
         emailed += sent
     return emailed

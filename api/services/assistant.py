@@ -28,6 +28,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any, Optional, Protocol
 
+from api.services import app_links
 from api.services import report_commentary as rc
 
 logger = logging.getLogger("meridian.assistant")
@@ -339,8 +340,9 @@ class NoRun(Exception):
 
 
 def _href(path: str, run: Optional[str] = None, **params: Optional[str]) -> str:
+    """``path`` (written as the page it used to be) as the page that does the job now, with ``run`` and the filters."""
     q = "&".join(f"{k}={v}" for k, v in (("run", run), *params.items()) if v)
-    return f"{path}?{q}" if q else path
+    return app_links.from_old(f"{path}?{q}" if q else path)
 
 
 def _sentences(text: str, n: int = MAX_SENTENCES) -> str:
@@ -380,7 +382,8 @@ def fact(statement: str, source: str, href: Optional[str] = None, value: Optiona
          checks: Optional[list[dict]] = None) -> dict:
     """One figure an answer is assembled from: what it says, where it comes from, the page that shows it and the
     rule checks it speaks to (``check``)."""
-    return {"statement": " ".join(str(statement).split()), "value": value, "source": source, "href": href,
+    return {"statement": " ".join(str(statement).split()), "value": value, "source": source,
+            "href": app_links.from_old(href) if href else href,
             "checks": [c for c in (checks or []) if c.get("check_id")][:MAX_CITATIONS]}
 
 
@@ -450,7 +453,8 @@ def _answer(intent: str, text: str, version_id: Optional[str], *, data: Optional
     if not grounded:
         logger.warning("assistant answer for intent %s holds a number no fact backs: %r", intent, text)
     return {"answer": text, "intent": intent, "data": data or None,
-            "chart": chart if data else None, "links": links or [], "ai": ai, "phrased": ai,
+            "chart": chart if data else None, "ai": ai, "phrased": ai,
+            "links": [{**link, "href": app_links.from_old(link["href"])} if link.get("href") else link for link in links or []],
             "version_id": version_id, "facts": facts, "coverage": round(coverage, 2), "grounded": grounded,
             "citations": citations(facts, version_id)}
 

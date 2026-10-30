@@ -1,8 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * Aurora acceptance suite: smoke, a11y, perf and visual regression, signed in
- * against the recorded API (e2e/fixtures.ts) so no backend is needed.
+ * The acceptance suite: every screen of the map, canvas and inspector in fixture mode (`?fixture=1`, the API answered
+ * from lib/api/v2/fixtures), axe on every page, the sign-in states and the redirects from old addresses. No backend.
  *
  * Locally:  npx playwright test            (starts `next dev`, or reuses one)
  *           PLAYWRIGHT_BASE_URL=http://localhost:3001 npx playwright test
@@ -27,13 +27,13 @@ export default defineConfig({
     launchOptions: process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {},
   },
   projects: [
-    // guided-tours.spec.ts (current interface) and guided-tours-v2.spec.ts (Meridian 2) are the help recording
-    // scripts: they only run under the `recording` project (RECORD_HELP=1), never in the acceptance suite.
-    { name: "chromium", use: { ...devices["Desktop Chrome"] }, testIgnore: /guided-tours(-v2)?\.spec\.ts/ },
+    // guided-tours-v2.spec.ts is the help recording script: it runs only under the `recording` project
+    // (RECORD_HELP=1), never in the acceptance suite.
+    { name: "chromium", use: { ...devices["Desktop Chrome"] }, testIgnore: /guided-tours-v2\.spec\.ts/ },
     ...(process.env.RECORD_HELP === "1"
       ? [{
           name: "recording",
-          testMatch: /guided-tours(-v2)?\.spec\.ts/,
+          testMatch: /guided-tours-v2\.spec\.ts/,
           fullyParallel: false,
           retries: 0,
           // raw captures land in help-videos-raw/<test-title>/*.webm; the workflow converts to mp4

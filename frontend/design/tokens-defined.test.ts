@@ -7,7 +7,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = path.resolve(__dirname, "..");
-const DIRS = ["app", "components", "design", "lib", "hooks"];
+const DIRS = ["app", "design", "lib", "hooks"];
 const EXT = /\.(tsx?|css)$/;
 
 function walk(dir: string, out: string[]): string[] {

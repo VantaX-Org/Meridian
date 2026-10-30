@@ -10,7 +10,7 @@ vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout:
 beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
   resetLedgerCache();
-  setUrl("/v2/o/ecc-production/material-master/records?fixture=1");
+  setUrl("/o/ecc-production/material-master/records?fixture=1");
 });
 afterEach(() => {
   window.sessionStorage.clear();
@@ -27,7 +27,7 @@ describe("the ledger slot", () => {
     renderWithQuery(<LedgerSlot label="Material master" scope={{ module: "material_master" }} loader={absent} />);
     const frame = await screen.findByTestId("empty-frame");
     expect(frame).toHaveTextContent("The ledger of failing records for Material master could not be loaded here");
-    expect(screen.getByRole("link", { name: "Open Work" })).toHaveAttribute("href", expect.stringContaining("/v2/work?module=material_master"));
+    expect(screen.getByRole("link", { name: "Open Work" })).toHaveAttribute("href", expect.stringContaining("/work?module=material_master"));
     expect(screen.queryByRole("alert")).toBeNull();
   });
 

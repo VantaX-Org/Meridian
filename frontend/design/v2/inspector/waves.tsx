@@ -69,6 +69,14 @@ export function WavesPanel({ onClose }: { onClose: () => void }) {
       });
       return { tone: "ok", title: t("{patchesCount} {patchesCount, plural, one {wave} other {waves}} updated", { patchesCount: patches.length }), detail: t("A changed wave needs a new sign-off.") };
     });
+  // Signing off is the data owner's or lead's decision (approve); the server refuses a wave whose verdict is not go.
+  const canSignOff = session.can("approve");
+  const signOff = (id: string, name: string) =>
+    void run(`signoff:${id}`, async () => {
+      await rep.signOffWave(id);
+      await refreshAdmin(qc, "waves");
+      return { tone: "ok", title: t("{name} signed off", { name }), detail: t("Any later change to the wave clears the sign-off.") };
+    });
   const create = () =>
     void run("create", async () => {
       const w = await rep.createWave({ name: fresh.name.trim(), modules: [], target_date: fresh.date || null, stage: fresh.stage, min_readiness: 95 });
@@ -105,6 +113,11 @@ export function WavesPanel({ onClose }: { onClose: () => void }) {
           <span className="m2-prov" style={{ margin: 0 }}>
             {w.signed_off_at ? t("Signed off {signed_off_at}. Any change clears the sign-off.", { signed_off_at: formatDate(w.signed_off_at) }) : t("Not signed off.")}
           </span>
+          {!w.signed_off_at && canSignOff ? (
+            <button type="button" className="m2-btn m2-sm" style={{ justifySelf: "start" }} disabled={pending !== null} onClick={() => signOff(w.id, w.name)}>
+              {pending === `signoff:${w.id}` ? t("Signing off…") : t("Sign off {name}", { name: w.name })}
+            </button>
+          ) : null}
           <WaveGateEditor waveId={w.id} />
           <details className="m2-ct" data-testid="wave-certificate">
             <summary>{t("Readiness certificate")}</summary>

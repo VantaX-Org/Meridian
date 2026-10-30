@@ -3,22 +3,21 @@
 /**
  * Persona gating from GET /api/v1/me/permissions (rbac.md §3.3, §5).
  *
- * `PermissionsProvider` is mounted once inside the (app) layout's AuthGuard.
+ * `PermissionsProvider` is mounted once inside the shell's AuthGuard (design/v2/shell/V2Shell.tsx).
  * Until the payload arrives every check answers false, so no mutating
  * control renders while loading (fail closed). `useRole().can()` reads the
  * same payload when a provider is present, so the existing page gates are
  * fail-closed and grant-aware without each page changing.
  *
- * The provider also owns the request-access Dialog: the four disabled
- * primaries open it from their tooltip, and a user-initiated scoped 403
- * (lib/api/client.ts `onAccessDenied`) opens it prefilled.
+ * The provider also holds what a request for access is about: a user-initiated scoped 403
+ * (lib/api/client.ts `onAccessDenied`) or `requestAccess` sets it, and the shell draws the
+ * request dialog for it (design/v2/RequestAccess.tsx); the library never imports the design.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getMyPermissions, type EffectivePermissions, type ScopeQuery, type ScopeRef } from "@/lib/api/me";
 import { onAccessDenied } from "@/lib/api/client";
 import { requestTargetFor, type RequestTarget } from "@/lib/rbac";
-import { RequestAccessDialog } from "@/components/request-access-dialog";
 
 export { RESOURCES, ACTIONS, LEGACY_ACTION_MAP, resourceMatrix, requestTargetFor } from "@/lib/rbac";
 
@@ -53,11 +52,14 @@ export interface Permissions {
   /** Systems and modules the user's grants cover; both null for anyone holding an unscoped grant. */
   scopeFilter: ScopeFilter;
   requestAccess: (target: RequestTarget) => void;
+  /** The access a request is being written for, or null; the shell's dialog reads it. */
+  accessTarget: RequestTarget | null;
+  closeAccessRequest: () => void;
 }
 
 const CLOSED: Permissions = {
   loading: true, data: undefined, has: () => false, can: () => false, scopes: [],
-  scopeFilter: { systems: null, modules: null }, requestAccess: () => {},
+  scopeFilter: { systems: null, modules: null }, requestAccess: () => {}, accessTarget: null, closeAccessRequest: () => {},
 };
 
 const PermissionsContext = createContext<Permissions | null>(null);
@@ -80,12 +82,13 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   const query = useQuery({ queryKey: ME_PERMISSIONS_KEY, queryFn: () => getMyPermissions() });
   const [target, setTarget] = useState<RequestTarget | null>(null);
   const requestAccess = useCallback((t: RequestTarget) => setTarget(t), []);
+  const closeAccessRequest = useCallback(() => setTarget(null), []);
 
   useEffect(() => onAccessDenied((denied) => setTarget(requestTargetFor(denied))), []);
 
   const data = query.data;
   const value = useMemo<Permissions>(() => {
-    if (!data) return { ...CLOSED, loading: query.isLoading, requestAccess };
+    if (!data) return { ...CLOSED, loading: query.isLoading, requestAccess, accessTarget: target, closeAccessRequest };
     const actions = new Set(data.actions);
     return {
       loading: false,
@@ -95,15 +98,12 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
       scopes: data.scopes,
       scopeFilter: scopeFilterOf(data),
       requestAccess,
+      accessTarget: target,
+      closeAccessRequest,
     };
-  }, [data, query.isLoading, requestAccess]);
+  }, [data, query.isLoading, requestAccess, target, closeAccessRequest]);
 
-  return (
-    <PermissionsContext.Provider value={value}>
-      {children}
-      <RequestAccessDialog target={target} onClose={() => setTarget(null)} />
-    </PermissionsContext.Provider>
-  );
+  return <PermissionsContext.Provider value={value}>{children}</PermissionsContext.Provider>;
 }
 
 /**

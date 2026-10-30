@@ -58,3 +58,5 @@ export const getWaves = async (): Promise<MigrationWave[]> => (await v2Get<{ wav
 export const createWave = (body: WaveCreate): Promise<MigrationWave> => v2Send("POST", "/migration/waves", body);
 export const updateWave = (id: string, body: WavePatch): Promise<MigrationWave> => v2Send("PATCH", `/migration/waves/${enc(id)}`, body);
 export const deleteWave = (id: string): Promise<void> => v2Send("DELETE", `/migration/waves/${enc(id)}`);
+/** POST /migration/waves/{id}/signoff: signs a wave off. Needs approve; the server refuses a wave whose verdict is not go (409). */
+export const signOffWave = (id: string): Promise<MigrationWave> => v2Send("POST", `/migration/waves/${enc(id)}/signoff`);

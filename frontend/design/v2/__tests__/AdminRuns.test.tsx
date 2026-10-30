@@ -29,7 +29,7 @@ beforeEach(() => {
   resetKeptOutcomes();
   undo = stubLayout(900, 2000);
   h.allowed = "all";
-  setUrl("/v2/admin/runs?fixture=1");
+  setUrl("/admin/runs?fixture=1");
 });
 afterEach(() => {
   undo();

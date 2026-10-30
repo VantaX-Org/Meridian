@@ -202,7 +202,7 @@ async def test_summary_objects_follow_the_filters(owner, monkeypatch):
 
 
 @pytest.mark.anyio
-async def test_command_action_hrefs_by_cookie(owner, monkeypatch):
+async def test_command_action_hrefs_whatever_the_old_cookie_says(owner, monkeypatch):
     s = seed_work(owner)
     client = await start(monkeypatch, s["tid"])
     async with client:
@@ -212,12 +212,11 @@ async def test_command_action_hrefs_by_cookie(owner, monkeypatch):
             group = next(g for g in r.json()["groups"] if g["kind"] == "action")
             return {i["id"]: i["href"] for i in group["items"]}
 
-        old = await hrefs()
-        assert old["approvals"] == "/inbox?kind=approvals" and old["export-fix-sheet"] == "/fix?action=export"
-        assert await hrefs(mn_ui="v1") == old
-        new = await hrefs(mn_ui="v2")
-        assert new["approvals"] == "/v2/work?filter=approvals" and new["export-fix-sheet"] == "/v2/work?export=1"
-        assert {k: v for k, v in new.items() if k.startswith("extract:")} == {k: v for k, v in old.items() if k.startswith("extract:")}
+        # One interface since the cut-over: the mn_ui cookie of the old switch no longer changes where an action goes.
+        new = await hrefs()
+        assert new["approvals"] == "/work?filter=approvals" and new["export-fix-sheet"] == "/work?export=1"
+        assert await hrefs(mn_ui="v1") == new and await hrefs(mn_ui="v2") == new
+        assert all(v.startswith("/?open=system:") for k, v in new.items() if k.startswith("extract:"))
 
 
 @pytest.mark.anyio

@@ -1,7 +1,7 @@
 import { t } from "@/lib/v2/i18n";
 /**
- * The help panel's data: the Meridian 2 guide, then the current interface's help centre and user guide
- * (lib/v2/help-data.json, built by scripts/help-index.mjs), which canvas and which route each chapter applies to, the
+ * The help panel's data: the Meridian guide (lib/v2/help-data.json, built by scripts/help-index.mjs from docs/guide),
+ * which canvas and which route each chapter applies to, the
  * walkthrough for each role's start screen, search over chapter text and recording captions, and the diagnostics
  * block for support.
  */
@@ -9,9 +9,9 @@ export interface HelpSection { heading: string; text: string }
 export interface WalkStep { screen: string; href: string; text: string }
 export interface HelpChapter {
   id: string;
-  kind: "v2" | "journey" | "guide";
-  /** "v2" for the new interface's guide; "current" for the chapters of the current interface. */
-  interface: "v2" | "current";
+  kind: "v2";
+  /** Every chapter is about the one interface (the help centre of the retired one went with it). */
+  interface: "v2";
   group: string;
   slug: string;
   title: string;
@@ -29,7 +29,7 @@ export interface HelpChapter {
   sections: HelpSection[];
 }
 export interface WhatsNewEntry { step: string; date: string; ref: string; text: string }
-export interface HelpIndex { title: string; guideTitle: string; v2Title: string; whatsNew: WhatsNewEntry[]; chapters: HelpChapter[] }
+export interface HelpIndex { title: string; v2Title: string; whatsNew: WhatsNewEntry[]; chapters: HelpChapter[] }
 
 /** Where a chapter's recording, poster and captions are served. */
 export const videoUrl = (video: string, ext: "mp4" | "jpg" | "vtt"): string => `/api/v1/docs/help-videos/${video}.${ext}`;
@@ -57,15 +57,15 @@ export const SCREEN_LABEL: Record<Screen, string> = {
 
 /** Which canvas the viewer is on, from the address. */
 export function screenOf(pathname: string): Screen | null {
-  if (pathname === "/v2" || pathname === "/v2/") return "landscape";
-  if (pathname.startsWith("/v2/o/")) return "object";
-  if (pathname.startsWith("/v2/r/")) return "rule";
-  if (pathname.startsWith("/v2/work")) return "work";
-  if (pathname.startsWith("/v2/run")) return "runs";
-  if (pathname.startsWith("/v2/s/")) return "system";
-  if (pathname.startsWith("/v2/people")) return "people";
-  if (pathname.startsWith("/v2/admin")) return "admin";
-  if (pathname.startsWith("/v2/reports")) return "reports";
+  if (pathname === "/" || pathname === "") return "landscape";
+  if (pathname.startsWith("/o/")) return "object";
+  if (pathname.startsWith("/r/")) return "rule";
+  if (pathname.startsWith("/work")) return "work";
+  if (pathname.startsWith("/run")) return "runs";
+  if (pathname.startsWith("/s/")) return "system";
+  if (pathname.startsWith("/people")) return "people";
+  if (pathname.startsWith("/admin")) return "admin";
+  if (pathname.startsWith("/reports")) return "reports";
   return null;
 }
 
@@ -96,41 +96,6 @@ const APPLIES: Record<string, Screen[]> = {
   "v2:persona-process": ["object"],
   "v2:persona-auditor": ["admin"],
   "v2:persona-admin": ["admin"],
-  "journey:first-login": ["landscape"],
-  "journey:connect-a-system": ["system", "landscape"],
-  "journey:first-analysis": ["runs", "system"],
-  "journey:first-fix": ["work", "object"],
-  "journey:steward-work": ["work"],
-  "journey:approver-work": ["work", "people"],
-  "journey:basis-operations": ["system", "runs", "admin"],
-  "journey:analyst-insights": ["object", "rule", "landscape"],
-  "journey:lead-reporting": ["landscape", "reports"],
-  "journey:authoring-rules": ["rule"],
-  "journey:golden-records": ["object"],
-  "journey:ask-meridian": ["landscape"],
-  "journey:admin-users": ["admin"],
-  "journey:admin-rules": ["rule", "admin"],
-  "journey:admin-runs": ["runs"],
-  "journey:admin-assigning-work": ["work", "people"],
-  "journey:admin-best-practices": ["admin"],
-  "guide:welcome": ["landscape"],
-  "guide:concepts": ["landscape", "object"],
-  "guide:roles": ["admin"],
-  "guide:todo": ["work"],
-  "guide:fix": ["work"],
-  "guide:approvals": ["work"],
-  "guide:objects": ["object"],
-  "guide:monitoring": ["runs"],
-  "guide:progress": ["runs", "reports"],
-  "guide:inbox": ["work"],
-  "guide:analysis": ["runs"],
-  "guide:mdm": ["object"],
-  "guide:rules": ["rule"],
-  "guide:data-in": ["system"],
-  "guide:admin": ["admin"],
-  "guide:shortcuts": ["landscape", "object", "work", "runs"],
-  "guide:troubleshooting": ["system", "runs"],
-  "guide:glossary": ["object"],
 };
 
 /** The canvases a chapter applies to. */
@@ -144,31 +109,31 @@ export const appliesTo = (id: string, screen: Screen | null): boolean => screen 
  * fails when a route has no row here, so a new canvas cannot ship without its chapter.
  */
 export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
-  "/v2": "v2:landscape",
-  "/v2/o/[system]/[module]": "v2:object",
-  "/v2/o/[system]/[module]/rules": "v2:object",
-  "/v2/o/[system]/[module]/records": "v2:work",
-  "/v2/o/[system]/[module]/fixes": "v2:approvals",
-  "/v2/o/[system]/[module]/runs": "v2:run-compare",
-  "/v2/o/[system]/[module]/readiness": "v2:waves",
-  "/v2/o/[system]/[module]/golden": "v2:golden-records",
-  "/v2/o/[system]/[module]/glossary": "v2:glossary",
-  "/v2/o/[system]/[module]/lineage": "v2:lineage",
-  "/v2/o/[system]/[module]/processes": "v2:processes",
-  "/v2/o/[system]/[module]/processes/design": "v2:processes",
-  "/v2/r/[id]": "v2:rules",
-  "/v2/rules": "v2:rules",
-  "/v2/work": "v2:work",
-  "/v2/people": "v2:people",
-  "/v2/runs": "v2:runs",
-  "/v2/run/[id]": "v2:run-compare",
-  "/v2/run/[id]/vs/[b]": "v2:run-compare",
-  "/v2/s/[id]": "v2:systems",
-  "/v2/s/new": "v2:systems",
-  "/v2/share/[token]": "v2:persona-auditor",
-  "/v2/reports": "v2:schedules",
-  "/v2/admin": "v2:administration",
-  "/v2/admin/[section]": "v2:administration",
+  "/": "v2:landscape",
+  "/o/[system]/[module]": "v2:object",
+  "/o/[system]/[module]/rules": "v2:object",
+  "/o/[system]/[module]/records": "v2:work",
+  "/o/[system]/[module]/fixes": "v2:approvals",
+  "/o/[system]/[module]/runs": "v2:run-compare",
+  "/o/[system]/[module]/readiness": "v2:waves",
+  "/o/[system]/[module]/golden": "v2:golden-records",
+  "/o/[system]/[module]/glossary": "v2:glossary",
+  "/o/[system]/[module]/lineage": "v2:lineage",
+  "/o/[system]/[module]/processes": "v2:processes",
+  "/o/[system]/[module]/processes/design": "v2:processes",
+  "/r/[id]": "v2:rules",
+  "/rules": "v2:rules",
+  "/work": "v2:work",
+  "/people": "v2:people",
+  "/runs": "v2:runs",
+  "/run/[id]": "v2:run-compare",
+  "/run/[id]/vs/[b]": "v2:run-compare",
+  "/s/[id]": "v2:systems",
+  "/s/new": "v2:systems",
+  "/share/[token]": "v2:persona-auditor",
+  "/reports": "v2:schedules",
+  "/admin": "v2:administration",
+  "/admin/[section]": "v2:administration",
 };
 
 /** The panels a `?open=` value opens, by its kind, and the chapter that explains each. They win over the route. */
@@ -200,19 +165,18 @@ const OPEN_CHAPTERS: Readonly<Record<string, string>> = {
   record: "v2:work",
 };
 
-/** The route pattern of an address: "/v2/o/ecc-production/material-master/golden" is "/v2/o/[system]/[module]/golden". */
+/** The route pattern of an address: "/o/ecc-production/material-master/golden" is "/o/[system]/[module]/golden". */
 export function routeOf(pathname: string): string | null {
   const seg = (pathname.replace(/\/+$/, "") || "/").split("/").slice(1);
-  if (seg[0] !== "v2") return null;
-  const [, a, b, c, d, e] = seg;
-  if (!a) return "/v2";
-  if (a === "o" && b && c) return `/v2/o/[system]/[module]${d ? `/${d}` : ""}${e ? `/${e}` : ""}`;
-  if (a === "r" && b) return "/v2/r/[id]";
-  if (a === "run" && b) return c === "vs" && d ? "/v2/run/[id]/vs/[b]" : "/v2/run/[id]";
-  if (a === "s" && b) return b === "new" ? "/v2/s/new" : "/v2/s/[id]";
-  if (a === "share" && b) return "/v2/share/[token]";
-  if (a === "admin") return b ? "/v2/admin/[section]" : "/v2/admin";
-  return `/v2/${a}`;
+  const [a, b, c, d, e] = seg;
+  if (!a) return "/";
+  if (a === "o" && b && c) return `/o/[system]/[module]${d ? `/${d}` : ""}${e ? `/${e}` : ""}`;
+  if (a === "r" && b) return "/r/[id]";
+  if (a === "run" && b) return c === "vs" && d ? "/run/[id]/vs/[b]" : "/run/[id]";
+  if (a === "s" && b) return b === "new" ? "/s/new" : "/s/[id]";
+  if (a === "share" && b) return "/share/[token]";
+  if (a === "admin") return b ? "/admin/[section]" : "/admin";
+  return `/${a}`;
 }
 
 /** The chapter for what the viewer looks at: an open panel's chapter first, then the ledger filter or view, then the route. */
@@ -224,8 +188,8 @@ export function chapterFor(pathname: string, search = ""): string | null {
     if (OPEN_CHAPTERS[kind]) return OPEN_CHAPTERS[kind];
   }
   const route = routeOf(pathname);
-  if (route === "/v2/work" && (q.get("filter") === "approvals" || q.get("filter") === "exceptions")) return "v2:approvals";
-  if (route === "/v2" && q.get("view") === "waves") return "v2:waves";
+  if (route === "/work" && (q.get("filter") === "approvals" || q.get("filter") === "exceptions")) return "v2:approvals";
+  if (route === "/" && q.get("view") === "waves") return "v2:waves";
   return route ? (ROUTE_CHAPTERS[route] ?? null) : null;
 }
 
@@ -243,13 +207,12 @@ export interface OrderContext {
   walkthrough?: string | null;
 }
 
-const onStart = (ctx: OrderContext): boolean => ctx.pathname !== undefined && routeOf(ctx.pathname) === "/v2" && !new URLSearchParams(ctx.search ?? "").get("view");
+const onStart = (ctx: OrderContext): boolean => ctx.pathname !== undefined && routeOf(ctx.pathname) === "/" && !new URLSearchParams(ctx.search ?? "").get("view");
 
 /**
  * The chapters in the order the panel lists them. On the start screen the viewer's walkthrough comes first; then the
  * chapter for the route or the open panel; then the other Meridian 2 chapters for this canvas (a chapter written mainly
- * for it before one that only touches it); then every other Meridian 2 chapter; then the current interface's chapters,
- * the ones for this canvas first.
+ * for it before one that only touches it); then every other chapter.
  */
 export function orderFor(chapters: readonly HelpChapter[], screen: Screen | null, ctx: OrderContext = {}): HelpChapter[] {
   const pin: string[] = [];
@@ -266,12 +229,11 @@ export function orderFor(chapters: readonly HelpChapter[], screen: Screen | null
       .map((x) => x.c);
     return [...on, ...list.filter((c) => !appliesTo(c.id, screen))];
   };
-  return [...pinned, ...byScreen(rest.filter((c) => c.interface === "v2")), ...byScreen(rest.filter((c) => c.interface !== "v2"))];
+  return [...pinned, ...byScreen(rest)];
 }
 
-/** True when the chapter belongs under "On this screen": a Meridian 2 chapter for this canvas, route, panel or start screen. */
+/** True when the chapter belongs under "On this screen": a chapter for this canvas, route, panel or start screen. */
 export function isHere(chapter: HelpChapter, screen: Screen | null, ctx: OrderContext = {}): boolean {
-  if (chapter.interface !== "v2") return false;
   if (onStart(ctx) && ctx.walkthrough === chapter.id) return true;
   if (ctx.pathname !== undefined && chapterFor(ctx.pathname, ctx.search) === chapter.id) return true;
   return appliesTo(chapter.id, screen);

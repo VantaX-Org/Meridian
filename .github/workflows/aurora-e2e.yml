@@ -1,11 +1,10 @@
 name: Aurora E2E
 
-# Typecheck + lint, Vitest with a coverage floor, token and contrast gates (the `checks` job, once), then
-# Playwright, signed in against the recorded API (frontend/e2e/fixtures.ts) and served from the production
-# build: perf alone on one worker so its budgets measure an idle machine, and every other spec (smoke and a11y
-# on every workspace route, the steward/basis/lead/insights journeys, run scope, persona and viewer gating, the
-# gap routes) sharded across parallel jobs. There is no visual-regression job: the Aurora shell was retired in
-# Wave 3 and its snapshots deleted with it.
+# Typecheck + lint, Vitest with a coverage floor, token, i18n and contrast gates (the `checks` job, once), then
+# Playwright against the production build (the image's standalone server): every screen of the map, canvas and
+# inspector in fixture mode (`?fixture=1`, the API answered from lib/api/v2/fixtures, so no backend), axe on every
+# page, the sign-in states, and the redirects from the retired interface's addresses (e2e/redirects.spec.ts). The
+# workflow and job names are kept from before the cut-over so required checks on the branch still match.
 
 on:
   push:
@@ -54,41 +53,47 @@ jobs:
       - name: Token lint
         run: npm run lint:tokens
 
+      - name: Every word translated (en, de, ja)
+        run: node scripts/i18n-extract.mjs
+
       - name: Contrast check
         run: npm run check:contrast
 
   e2e:
-    # One perf job on a single worker, and the rest of the browser suite split into shards of two workers each.
+    # The browser suite split into shards of two workers each. The help recordings (guided-tours-v2.spec.ts) run
+    # only in record-help-videos.yml.
     name: Aurora E2E (${{ matrix.name }})
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { name: perf, specs: "e2e/aurora-perf.spec.ts", shard: "1/1", workers: 1 }
-          - { name: "shard 1 of 6", specs: "", shard: "1/6", workers: 2 }
-          - { name: "shard 2 of 6", specs: "", shard: "2/6", workers: 2 }
-          - { name: "shard 3 of 6", specs: "", shard: "3/6", workers: 2 }
-          - { name: "shard 4 of 6", specs: "", shard: "4/6", workers: 2 }
-          - { name: "shard 5 of 6", specs: "", shard: "5/6", workers: 2 }
-          - { name: "shard 6 of 6", specs: "", shard: "6/6", workers: 2 }
+          - { name: "shard 1 of 4", shard: "1/4" }
+          - { name: "shard 2 of 4", shard: "2/4" }
+          - { name: "shard 3 of 4", shard: "3/4" }
+          - { name: "shard 4 of 4", shard: "4/4" }
     env:
       CI: "true"
       NEXT_TELEMETRY_DISABLED: "1"
-      # Every spec but perf. Fully parallel (playwright.config.ts), so shards split by test, not by file.
-      SHARDED_SPECS: >-
-        e2e/aurora-smoke.spec.ts
-        e2e/aurora-a11y.spec.ts
-        e2e/basis-failed-extraction.spec.ts
-        e2e/steward-accept-proposal.spec.ts
-        e2e/lead-failing-record-journey.spec.ts
-        e2e/insights-readiness-drill.spec.ts
-        e2e/run-scope-integrity.spec.ts
-        e2e/persona-gating.spec.ts
-        e2e/routes-18b.spec.ts
-        e2e/routes-b.spec.ts
-        e2e/viewer-gating.spec.ts
+      # Every acceptance spec. Fully parallel (playwright.config.ts), so shards split by test, not by file.
+      SPECS: >-
+        e2e/v2-a11y.spec.ts
+        e2e/v2-admin.spec.ts
+        e2e/v2-help.spec.ts
+        e2e/v2-landscape.spec.ts
+        e2e/v2-mdm.spec.ts
+        e2e/v2-object.spec.ts
+        e2e/v2-people.spec.ts
+        e2e/v2-roles.spec.ts
+        e2e/v2-rules.spec.ts
+        e2e/v2-runs.spec.ts
+        e2e/v2-status.spec.ts
+        e2e/v2-step9.spec.ts
+        e2e/v2-systems.spec.ts
+        e2e/v2-work.spec.ts
+        e2e/redirects.spec.ts
+        e2e/sign-in-states.spec.ts
     defaults:
       run:
         working-directory: frontend
@@ -118,9 +123,9 @@ jobs:
 
       - name: Run ${{ matrix.name }}
         run: |
-          npx playwright test ${{ matrix.specs || env.SHARDED_SPECS }} \
+          npx playwright test ${{ env.SPECS }} \
             --shard=${{ matrix.shard }} \
-            --workers=${{ matrix.workers }}
+            --workers=2
 
       - name: Upload Playwright report on failure
         if: failure()

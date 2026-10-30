@@ -28,36 +28,36 @@ const SCHEMES = ["light", "dark"] as const;
 
 /** Every v2 page the e2e suite visits, with an inspector open where the page has one worth checking. */
 const PAGES: { name: string; url: string }[] = [
-  { name: "landscape", url: "/v2?fixture=1" },
-  { name: "landscape-rule", url: "/v2?fixture=1&open=rule:MM014" },
-  { name: "landscape-basis-system", url: `/v2?fixture=1&persona=basis&open=system:${ECC}` },
-  { name: "landscape-waves", url: "/v2?fixture=1&view=waves" },
-  { name: "object", url: "/v2/o/ecc-production/material-master?fixture=1" },
-  { name: "object-rules", url: "/v2/o/ecc-production/material-master/rules?fixture=1" },
-  { name: "rule", url: "/v2/r/MM014?fixture=1" },
-  { name: "work", url: "/v2/work?fixture=1&persona=steward" },
-  { name: "work-approvals", url: "/v2/work?fixture=1&persona=owner&filter=approvals" },
-  { name: "runs", url: "/v2/runs?fixture=1" },
-  { name: "runs-jobs", url: "/v2/runs?fixture=1&view=jobs" },
-  { name: "people", url: "/v2/people?fixture=1&persona=owner" },
-  { name: "reports", url: "/v2/reports?fixture=1" },
-  { name: "system", url: `/v2/s/${ECC}?fixture=1` },
-  { name: "system-configuration", url: `/v2/s/${ECC}?fixture=1&tab=configuration` },
-  { name: "system-custom", url: `/v2/s/${ECC}?fixture=1&tab=custom-objects` },
-  { name: "connect", url: "/v2/s/new?fixture=1" },
-  { name: "rules-library", url: "/v2/rules?fixture=1" },
-  { name: "process-designer", url: "/v2/o/ecc-production/material-master/processes/design?fixture=1" },
-  { name: "object-golden", url: "/v2/o/ecc-production/material-master/golden?fixture=1" },
-  { name: "inbox", url: "/v2?fixture=1&open=inbox" },
-  { name: "preferences", url: "/v2?fixture=1&open=preferences" },
-  { name: "help", url: "/v2?fixture=1&open=help" },
-  { name: "admin", url: "/v2/admin?fixture=1" },
-  { name: "admin-users", url: "/v2/admin/users?fixture=1" },
-  { name: "admin-settings", url: "/v2/admin/settings?fixture=1" },
-  { name: "admin-system", url: "/v2/admin/system?fixture=1" },
-  { name: "admin-audit", url: "/v2/admin/audit?fixture=1" },
-  { name: "admin-runs", url: "/v2/admin/runs?fixture=1" },
-  { name: "status", url: "/v2/status?fixture=1" },
+  { name: "landscape", url: "/?fixture=1" },
+  { name: "landscape-rule", url: "/?fixture=1&open=rule:MM014" },
+  { name: "landscape-basis-system", url: `/?fixture=1&persona=basis&open=system:${ECC}` },
+  { name: "landscape-waves", url: "/?fixture=1&view=waves" },
+  { name: "object", url: "/o/ecc-production/material-master?fixture=1" },
+  { name: "object-rules", url: "/o/ecc-production/material-master/rules?fixture=1" },
+  { name: "rule", url: "/r/MM014?fixture=1" },
+  { name: "work", url: "/work?fixture=1&persona=steward" },
+  { name: "work-approvals", url: "/work?fixture=1&persona=owner&filter=approvals" },
+  { name: "runs", url: "/runs?fixture=1" },
+  { name: "runs-jobs", url: "/runs?fixture=1&view=jobs" },
+  { name: "people", url: "/people?fixture=1&persona=owner" },
+  { name: "reports", url: "/reports?fixture=1" },
+  { name: "system", url: `/s/${ECC}?fixture=1` },
+  { name: "system-configuration", url: `/s/${ECC}?fixture=1&tab=configuration` },
+  { name: "system-custom", url: `/s/${ECC}?fixture=1&tab=custom-objects` },
+  { name: "connect", url: "/s/new?fixture=1" },
+  { name: "rules-library", url: "/rules?fixture=1" },
+  { name: "process-designer", url: "/o/ecc-production/material-master/processes/design?fixture=1" },
+  { name: "object-golden", url: "/o/ecc-production/material-master/golden?fixture=1" },
+  { name: "inbox", url: "/?fixture=1&open=inbox" },
+  { name: "preferences", url: "/?fixture=1&open=preferences" },
+  { name: "help", url: "/?fixture=1&open=help" },
+  { name: "admin", url: "/admin?fixture=1" },
+  { name: "admin-users", url: "/admin/users?fixture=1" },
+  { name: "admin-settings", url: "/admin/settings?fixture=1" },
+  { name: "admin-system", url: "/admin/system?fixture=1" },
+  { name: "admin-audit", url: "/admin/audit?fixture=1" },
+  { name: "admin-runs", url: "/admin/runs?fixture=1" },
+  { name: "status", url: "/status?fixture=1" },
 ];
 
 async function prepare(page: Page, scheme: "light" | "dark", tag: string | null, reduced = false) {
@@ -148,7 +148,7 @@ for (const size of [
 
       test("the top bar, the map and the inspector hold the longer and the Japanese words", async ({ page }) => {
         await prepare(page, "light", loc.tag);
-        await open(page, "/v2?fixture=1");
+        await open(page, "/?fixture=1");
         expect(await noSideways(page)).toBe(true);
         expect(await noneClipped(page, ".m2-top button, .m2-top a")).toEqual([]);
         // Every control of the top bar keeps a usable width and none sits on another.
@@ -175,7 +175,7 @@ for (const size of [
           expect(overflow).toEqual([]);
         }
         await shot(page, "landscape");
-        await open(page, "/v2/o/ecc-production/material-master?fixture=1&open=rule:MM014");
+        await open(page, "/o/ecc-production/material-master?fixture=1&open=rule:MM014");
         const insp = page.getByTestId("inspector");
         await expect(insp).toBeVisible(NAV);
         expect(await noSideways(page)).toBe(true);
@@ -186,10 +186,10 @@ for (const size of [
         });
         expect(inspOverflow).toBeLessThanOrEqual(1);
         await shot(page, "object-inspector");
-        await open(page, "/v2/admin/users?fixture=1");
+        await open(page, "/admin/users?fixture=1");
         expect(await noSideways(page)).toBe(true);
         await shot(page, "admin-users");
-        await open(page, "/v2/work?fixture=1&persona=steward");
+        await open(page, "/work?fixture=1&persona=steward");
         expect(await noSideways(page)).toBe(true);
         await shot(page, "work");
       });
@@ -206,7 +206,7 @@ test.describe("200% zoom at 1440", () => {
   for (const loc of LOCALES) {
     test(`no sideways scroll and no clipped control, ${loc.lang}`, async ({ page }) => {
       await prepare(page, "light", loc.tag);
-      for (const url of ["/v2?fixture=1", "/v2/o/ecc-production/material-master?fixture=1", "/v2/work?fixture=1&persona=steward", "/v2/admin/settings?fixture=1", "/v2/admin/users?fixture=1", "/v2/status?fixture=1", "/v2?fixture=1&open=preferences"]) {
+      for (const url of ["/?fixture=1", "/o/ecc-production/material-master?fixture=1", "/work?fixture=1&persona=steward", "/admin/settings?fixture=1", "/admin/users?fixture=1", "/status?fixture=1", "/?fixture=1&open=preferences"]) {
         await open(page, url);
         expect(await noSideways(page), url).toBe(true);
         expect(await noneClipped(page, ".m2-top button, .m2-top a, .m2-canvas > * button, #m2-inspector button, .m2-stat-page button, .m2-stat-page a"), url).toEqual([]);
@@ -223,7 +223,7 @@ test.describe("reflow at 320", () => {
   test.setTimeout(300_000);
   test("no sideways page scroll on the main pages", async ({ page }) => {
     await prepare(page, "light", "de-DE");
-    for (const url of ["/v2?fixture=1", "/v2/o/ecc-production/material-master?fixture=1", "/v2/work?fixture=1&persona=steward", "/v2/admin/settings?fixture=1", "/v2/status?fixture=1"]) {
+    for (const url of ["/?fixture=1", "/o/ecc-production/material-master?fixture=1", "/work?fixture=1&persona=steward", "/admin/settings?fixture=1", "/status?fixture=1"]) {
       await page.goto(url, { waitUntil: "load", timeout: 90_000 });
       await expect(page.locator("h1").first()).toBeVisible(NAV);
       await page.waitForTimeout(1500);
@@ -266,7 +266,7 @@ test.describe("keyboard only", () => {
 
   test("skip links lead to the content, the map and the inspector", async ({ page }) => {
     await prepare(page, "light", null);
-    await open(page, "/v2?fixture=1&open=rule:MM014");
+    await open(page, "/?fixture=1&open=rule:MM014");
     // The inspector took focus when it opened; start from the top of the page, as a fresh visit would.
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     await page.mouse.click(2, 2);
@@ -290,11 +290,11 @@ test.describe("keyboard only", () => {
 
   test("flow 1: landscape to an object to the rule inspector", async ({ page }) => {
     await prepare(page, "light", null);
-    await open(page, "/v2?fixture=1");
+    await open(page, "/?fixture=1");
     await tabTo(page, /^Material master/);
     await focusVisible(page);
     await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(/\/v2\/o\/ecc-production\/material-master/, NAV);
+    await expect(page).toHaveURL(/\/o\/ecc-production\/material-master/, NAV);
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Material master", NAV);
     const grid = page.getByRole("grid", { name: "Rules for Material master" });
     await grid.focus();
@@ -311,7 +311,7 @@ test.describe("keyboard only", () => {
 
   test("flow 2: a ledger decision, then Undo from the keyboard", async ({ page }) => {
     await prepare(page, "light", null);
-    await open(page, "/v2/work?fixture=1&persona=steward");
+    await open(page, "/work?fixture=1&persona=steward");
     const grid = page.getByRole("grid", { name: "Work ledger" });
     await expect(grid).toBeVisible(NAV);
     const chips = page.getByRole("group", { name: "Filter by state" });
@@ -331,7 +331,7 @@ test.describe("keyboard only", () => {
 
   test("flow 3: approve a batch", async ({ page }) => {
     await prepare(page, "light", null);
-    await open(page, "/v2/work?fixture=1&persona=owner&filter=approvals");
+    await open(page, "/work?fixture=1&persona=owner&filter=approvals");
     await tabTo(page, /^Approve batch B-241$/);
     await focusVisible(page);
     await page.keyboard.press("Enter");
@@ -344,13 +344,13 @@ test.describe("keyboard only", () => {
 
   test("flow 4: start an extraction as Basis", async ({ page }) => {
     await prepare(page, "light", null);
-    await open(page, "/v2?fixture=1&persona=basis");
+    await open(page, "/?fixture=1&persona=basis");
     await tabTo(page, /^Extract SuccessFactors$/);
     await page.keyboard.press("Enter");
     const dialog = page.getByRole("dialog", { name: "SuccessFactors" });
     await expect(dialog).toBeVisible(NAV);
     await expect(dialog.getByRole("button", { name: "Close inspector" })).toBeFocused();
-    await page.goto(`/v2?fixture=1&persona=basis&open=system:${ECC}`, { waitUntil: "load" });
+    await page.goto(`/?fixture=1&persona=basis&open=system:${ECC}`, { waitUntil: "load" });
     const ecc = page.getByRole("dialog", { name: "ECC production" });
     await expect(ecc).toBeVisible(NAV);
     await tabTo(page, /^Extract$/);
@@ -367,7 +367,7 @@ test.describe("keyboard only", () => {
 
   test("flow 5: an administrator invites a user", async ({ page }) => {
     await prepare(page, "light", null);
-    await open(page, "/v2/admin/users?fixture=1");
+    await open(page, "/admin/users?fixture=1");
     await tabTo(page, /^Invite a user$/);
     await page.keyboard.press("Enter");
     const dialog = page.getByRole("dialog", { name: "Invite a user" });
@@ -387,11 +387,11 @@ test.describe("prefers-reduced-motion", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
   test("stops the notice's slide and the timeline's fade", async ({ page }) => {
     await prepare(page, "light", null, true);
-    await open(page, "/v2/runs?fixture=1");
+    await open(page, "/runs?fixture=1");
     const marks = await page.evaluate(() => Array.from(document.querySelectorAll(".m2-tl-mk")).map((el) => getComputedStyle(el).animationName));
     expect(marks.length).toBeGreaterThan(0);
     expect(new Set(marks)).toEqual(new Set(["none"]));
-    await open(page, "/v2/work?fixture=1&persona=owner&filter=approvals");
+    await open(page, "/work?fixture=1&persona=owner&filter=approvals");
     await page.getByRole("button", { name: "Approve batch B-241" }).first().click();
     const toast = page.locator(".m2-toast").first();
     await expect(toast).toBeVisible(NAV);
@@ -400,7 +400,7 @@ test.describe("prefers-reduced-motion", () => {
 
   test("without the preference the notice slides in", async ({ page }) => {
     await prepare(page, "light", null, false);
-    await open(page, "/v2/work?fixture=1&persona=owner&filter=approvals");
+    await open(page, "/work?fixture=1&persona=owner&filter=approvals");
     await page.getByRole("button", { name: "Approve batch B-241" }).first().click();
     const toast = page.locator(".m2-toast").first();
     await expect(toast).toBeVisible(NAV);

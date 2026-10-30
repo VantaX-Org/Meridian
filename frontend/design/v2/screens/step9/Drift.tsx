@@ -26,7 +26,7 @@ function Rescore({ a }: { a: DriftAlert }) {
     return (
       <span className="m2-v">
         <VerdictMark verdict="go" />
-        {tn("Re-score queued: {link}", { link: <V2Link href={`/v2/run/${encodeURIComponent(a.version_id)}`}>{t("open the run")}</V2Link> })}
+        {tn("Re-score queued: {link}", { link: <V2Link href={`/run/${encodeURIComponent(a.version_id)}`}>{t("open the run")}</V2Link> })}
       </span>
     );
   }
@@ -92,7 +92,7 @@ export function ConfigChanges({ systemId }: { systemId: string }) {
   const auto = useAutomation();
   const land = useLandscape(null).data;
   const system = land?.systems.find((s) => s.id === systemId);
-  const objectHref = (m: string) => (system ? `/v2/o/${systemSlug(system.name)}/${moduleSlug(m)}` : null);
+  const objectHref = (m: string) => (system ? `/o/${systemSlug(system.name)}/${moduleSlug(m)}` : null);
   const mine = (q.data?.alerts ?? []).filter((a) => a.system_id === systemId);
   return (
     <section className="m2-sec" style={{ marginTop: 0 }} aria-label={t("Configuration changes")} data-testid="config-changes">
@@ -140,7 +140,7 @@ export function DriftInbox() {
                 rescore: a.rescore_queued ? t("re-score queued") : t("not re-scored"),
               })}
             </span>
-            {a.system_id ? <V2Link href={`/v2/s/${encodeURIComponent(a.system_id)}?tab=changes`}>{t("Open the changes")}</V2Link> : null}
+            {a.system_id ? <V2Link href={`/s/${encodeURIComponent(a.system_id)}?tab=changes`}>{t("Open the changes")}</V2Link> : null}
           </li>
         ))}
       </ul>

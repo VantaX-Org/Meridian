@@ -107,7 +107,7 @@ function Body({ system, profileId, onClose }: { system: string; profileId: strin
         </p>
       ) : null}
       <p className="m2-prov">
-        <V2Link href={`/v2/s/${system}?tab=schedules`}>{t("All schedules of the system")}</V2Link>
+        <V2Link href={`/s/${system}?tab=schedules`}>{t("All schedules of the system")}</V2Link>
       </p>
     </>
   );

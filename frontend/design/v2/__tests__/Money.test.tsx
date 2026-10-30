@@ -33,7 +33,7 @@ const norm = (el: HTMLElement) => (el.textContent ?? "").replace(/\s+/g, " ").tr
 
 describe("impact in money", () => {
   it("shows the object's opportunity cost per month and since first blocked, in the response's currency", async () => {
-    setUrl("/v2/o/ecc-production/material-master/readiness?fixture=1");
+    setUrl("/o/ecc-production/material-master/readiness?fixture=1");
     renderWithQuery(<ReadinessTab system="ecc-production" module="material-master" />);
     const block = await screen.findByTestId("object-money");
     const line = await within(block).findByTestId("money-line");
@@ -55,8 +55,8 @@ describe("impact in money", () => {
   });
 
   it("ranks the waves by the value fixing them unblocks on the Waves view", async () => {
-    window.history.pushState({}, "", "/v2?fixture=1&view=waves");
-    setUrl("/v2?fixture=1&view=waves");
+    window.history.pushState({}, "", "/?fixture=1&view=waves");
+    setUrl("/?fixture=1&view=waves");
     renderWithQuery(<LandscapeCanvas />);
     const rank = await screen.findByTestId("waves-by-value");
     await waitFor(() => expect(within(rank).getAllByRole("listitem")).toHaveLength(3));

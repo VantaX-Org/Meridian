@@ -19,7 +19,7 @@ function tabOf(value: string | null): TabKey {
 }
 
 /**
- * The rule canvas, /v2/r/{check_id}: one rule across systems. The header is the rule's own statistics in a line (no
+ * The rule canvas, /r/{check_id}: one rule across systems. The header is the rule's own statistics in a line (no
  * ruler: a rule has no score of its own), then Definition, Failing records (the ledger scoped to the rule), Impact and
  * History. The content is the inspector's, laid out as a canvas.
  */
@@ -48,7 +48,7 @@ export function RuleCanvas({ id }: { id: string }) {
         <div className="m2-sec">
           <ErrorFrame onRetry={state.refetch}>{tr("This rule could not be read. It may not exist in this tenant, or the API may be unreachable.")}</ErrorFrame>
           <div style={{ marginTop: 16 }}>
-            <EmptyFrame action={<V2Link href="/v2/rules" className="m2-btn">{tr("Open the rules library")}</V2Link>}>
+            <EmptyFrame action={<V2Link href="/rules" className="m2-btn">{tr("Open the rules library")}</V2Link>}>
               {tr("The rules library lists every rule of the tenant; search it by code or name.")}
             </EmptyFrame>
           </div>
@@ -65,7 +65,7 @@ export function RuleCanvas({ id }: { id: string }) {
     else next.set("tab", key);
     next.delete("open");
     const qs = next.toString();
-    return `/v2/r/${encodeURIComponent(id)}${qs ? `?${qs}` : ""}`;
+    return `/r/${encodeURIComponent(id)}${qs ? `?${qs}` : ""}`;
   };
   return (
     <>
@@ -78,7 +78,7 @@ export function RuleCanvas({ id }: { id: string }) {
         ))}
       </p>
       <p className="m2-prov">
-        <V2Link href="/v2/rules">{tr("All rules")}</V2Link>
+        <V2Link href="/rules">{tr("All rules")}</V2Link>
       </p>
       <nav className="m2-tabs" aria-label={tr("Views of {id}", { id })}>
         {TABS.map((t) => (

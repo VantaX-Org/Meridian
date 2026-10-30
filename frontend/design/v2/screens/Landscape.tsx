@@ -87,7 +87,7 @@ function OwnerNext() {
   if (batches.isLoading) return null;
   if (!next) {
     return (
-      <V2Link href="/v2/people" className="m2-btn m2-next">
+      <V2Link href="/people" className="m2-btn m2-next">
         {t("See who holds the work")}
       </V2Link>
     );
@@ -120,7 +120,7 @@ export function NextStep({ landscape, persona, waves }: { landscape: Landscape; 
   if (persona === "owner") return <OwnerNext />;
   if (persona === "steward") {
     return (
-      <V2Link href="/v2/work" className="m2-btn m2-next">
+      <V2Link href="/work" className="m2-btn m2-next">
         {t("Accept the suggested values")}
       </V2Link>
     );
@@ -144,7 +144,7 @@ export function NextStep({ landscape, persona, waves }: { landscape: Landscape; 
     const due = daysUntil(wave.target_date);
     const when = wave.target_date ? t("due {target_date}{value}", { target_date: formatDate(wave.target_date), value: due != null ? (due < 0 ? t(", {value} {value, plural, one {day} other {days}} ago", { value: -due }) : due === 0 ? t(", today") : t(", in {due} {due, plural, one {day} other {days}}", { due })) : "" }) : t("no date set");
     const label = noGo > 0 ? t("Clear the {noGo} no-go {noGo, plural, one {object} other {objects}} in {name}", { noGo, name: wave.name }) : atRisk > 0 ? t("Review the {atRisk} at-risk {atRisk, plural, one {object} other {objects}} in {name}", { atRisk, name: wave.name }) : t("Open {name}", { name: wave.name });
-    const href = noGo > 0 ? "/v2/work?verdict=no-go" : atRisk > 0 ? "/v2/work?verdict=at-risk" : hrefFor({ kind: "waves", id: "" });
+    const href = noGo > 0 ? "/work?verdict=no-go" : atRisk > 0 ? "/work?verdict=at-risk" : hrefFor({ kind: "waves", id: "" });
     return (
       <>
         <V2Link href={href} className="m2-btn m2-next" data-testid="wave-next-step">
@@ -155,7 +155,7 @@ export function NextStep({ landscape, persona, waves }: { landscape: Landscape; 
     );
   }
   return (
-    <V2Link href="/v2/work?verdict=no-go" className="m2-btn m2-next">
+    <V2Link href="/work?verdict=no-go" className="m2-btn m2-next">
       {t("Open the no-go objects")}
     </V2Link>
   );
@@ -184,7 +184,7 @@ function SystemHead({ system }: { system: LandscapeSystem }) {
 
 function CellLink({ system, cell, label, selected, run }: { system: LandscapeSystem; cell: LandscapeCell; label: string; selected: boolean; run: string | null }) {
   const reading = readingText({ label, measured: cell.raw_score, score: cell.score, capped: cell.capped, capLevel: cell.cap_level, breaches: cell.breaches, dims: dimsOf(cell), records: cell.records_checked, rules: cell.rules_measured, coverage: cell.coverage, lowConfidence: cell.low_confidence });
-  const href = `/v2/o/${systemSlug(system.name)}/${moduleSlug(cell.module)}${run ? `?run=${run}` : ""}`;
+  const href = `/o/${systemSlug(system.name)}/${moduleSlug(cell.module)}${run ? `?run=${run}` : ""}`;
   const mark = contractMark(cell);
   return (
     <V2Link
@@ -372,7 +372,7 @@ export function Coverage({ landscape, run, view = "systems", waves = [] }: { lan
             const label = landscape.objects.find((o) => o.module === c.module)?.label ?? c.module;
             if (!s) return null;
             return (
-              <V2Link key={`${c.system_id}:${c.module}`} href={`/v2/o/${systemSlug(s.name)}/${moduleSlug(c.module)}${run ? `?run=${run}` : ""}`} className="m2-lrow" onClick={() => rememberCell(`${s.id}:${c.module}`)}>
+              <V2Link key={`${c.system_id}:${c.module}`} href={`/o/${systemSlug(s.name)}/${moduleSlug(c.module)}${run ? `?run=${run}` : ""}`} className="m2-lrow" onClick={() => rememberCell(`${s.id}:${c.module}`)}>
                 <span>{label}</span>
                 <span className="m2-v">
                   <VerdictMark verdict={c.verdict} />
@@ -417,7 +417,7 @@ function NextWork({ landscape }: { landscape: Landscape }) {
     <section className="m2-sec" aria-label={t("Your next work")}>
       <div className="m2-sechead">
         <h2 className="m2-h2">{t("Your next work")}</h2>
-        {total > 0 ? <V2Link href="/v2/work">{t("View all {total}", { total: int(total) })}</V2Link> : null}
+        {total > 0 ? <V2Link href="/work">{t("View all {total}", { total: int(total) })}</V2Link> : null}
       </div>
       <ToolGrid<WorkRow>
           toolsTitle={t("Top of the ledger")}
@@ -434,7 +434,7 @@ function NextWork({ landscape }: { landscape: Landscape }) {
         emptyFrame={
           <EmptyFrame
             action={
-              <V2Link href="/v2/runs" className="m2-btn">
+              <V2Link href="/runs" className="m2-btn">
                 {t("Open the runs")}
               </V2Link>
             }
@@ -542,7 +542,7 @@ export function LandscapeCanvas() {
         <div className="m2-sec">
           <EmptyFrame
             action={
-              <V2Link href="/systems" className="m2-btn m2-next">
+              <V2Link href="/s/new" className="m2-btn m2-next">
                 {t("Connect a system")}
               </V2Link>
             }
@@ -559,7 +559,7 @@ export function LandscapeCanvas() {
       {run ? (
         <div className="m2-banner" role="status">
           {t("Viewing one run. Scores come from that run; rows and counts always show the latest.")}{" "}
-          <V2Link href="/v2">{t("Back to the latest run")}</V2Link>
+          <V2Link href="/">{t("Back to the latest run")}</V2Link>
         </div>
       ) : null}
       <PageTitle sub={scopeName}>{t("Landscape")}</PageTitle>

@@ -1,0 +1,43 @@
+/*
+ * The signed-out pages (sign in, forgot and reset password, accept an invitation, licence needed) and the forced
+ * password change: one card on the ground, the mark and the product name above it, the version under it. The same
+ * tokens as the map, canvas and inspector; no picture, no gradient.
+ */
+.m2-root .m2-auth { min-height: 100dvh; display: grid; place-items: center; padding: var(--m2-s8) var(--m2-s4); background: var(--m2-bg); }
+.m2-root .m2-auth-col { width: 100%; max-width: 400px; display: grid; gap: var(--m2-s3); }
+.m2-root .m2-auth-brand { display: inline-flex; align-items: center; gap: var(--m2-s2); font-weight: 600; font-size: var(--m2-fs-16); line-height: var(--m2-lh-16); color: var(--m2-fg); min-width: 0; overflow-wrap: anywhere; }
+.m2-root .m2-auth-card { background: var(--m2-sheet); border: 1px solid var(--m2-line); border-radius: var(--m2-r2); padding: var(--m2-s6); display: grid; gap: var(--m2-s4); }
+.m2-root .m2-auth-card h1 { margin: 0; font-size: var(--m2-fs-20); line-height: var(--m2-lh-20); font-weight: 600; color: var(--m2-fg); }
+.m2-root .m2-auth-lead { margin: 0; font-size: var(--m2-fs-14); line-height: var(--m2-lh-14); color: var(--m2-ink-2); }
+.m2-root .m2-auth-form { display: grid; gap: var(--m2-s4); }
+.m2-root .m2-auth-form .m2-fld input { height: 36px; font-size: var(--m2-fs-14); }
+.m2-root .m2-auth .m2-btn { height: 36px; font-size: var(--m2-fs-14); }
+.m2-root .m2-auth .m2-btn.m2-wide { width: 100%; }
+.m2-root .m2-auth-row { display: flex; align-items: center; gap: var(--m2-s2); flex-wrap: wrap; }
+.m2-root .m2-auth-row > .m2-btn { flex: 1 1 0; }
+.m2-root .m2-auth-link { font-size: var(--m2-fs-13); color: var(--m2-data); text-decoration: underline; text-underline-offset: 2px; background: none; border: 0; padding: 0; cursor: pointer; justify-self: start; font: inherit; }
+.m2-root .m2-auth-meta { margin: 0; font-size: var(--m2-fs-12); line-height: var(--m2-lh-12); color: var(--m2-meta); }
+.m2-root .m2-auth-version { justify-self: end; font-variant-numeric: tabular-nums; }
+.m2-root .m2-auth-pw { position: relative; }
+.m2-root .m2-auth-pw input { padding-right: 72px; }
+.m2-root .m2-auth-pw .m2-auth-show { position: absolute; right: var(--m2-s1); top: 50%; transform: translateY(-50%); height: 28px; padding: 0 var(--m2-s2); border: 0; background: none; color: var(--m2-ink-2); font-size: var(--m2-fs-12); border-radius: var(--m2-r1); cursor: pointer; }
+.m2-root .m2-auth-pw .m2-auth-show:hover { background: var(--m2-hover); }
+.m2-root .m2-auth-pw .m2-auth-show:focus-visible { outline: var(--m2-focus-w) solid var(--m2-focus); outline-offset: 1px; }
+.m2-root .m2-auth-note { border: 1px solid var(--m2-line-2); border-left-width: 3px; border-radius: var(--m2-r2); padding: var(--m2-s2) var(--m2-s3); font-size: var(--m2-fs-13); line-height: var(--m2-lh-13); color: var(--m2-ink-2); display: grid; gap: var(--m2-s1); }
+.m2-root .m2-auth-note:focus { outline: none; }
+.m2-root .m2-auth-note strong { color: var(--m2-fg); font-weight: 600; }
+.m2-root .m2-auth-note[data-tone="danger"] { border-left-color: var(--m2-crit); }
+.m2-root .m2-auth-note[data-tone="warning"] { border-left-color: var(--m2-high); }
+.m2-root .m2-auth-note[data-tone="info"] { border-left-color: var(--m2-info); }
+.m2-root .m2-auth-note a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.m2-root .m2-auth-facts { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: var(--m2-s1) var(--m2-s3); margin: 0; font-size: var(--m2-fs-13); line-height: var(--m2-lh-13); }
+.m2-root .m2-auth-facts dt { color: var(--m2-meta); }
+.m2-root .m2-auth-facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.m2-root .m2-auth-tenant { display: block; height: 32px; width: auto; max-width: 160px; object-fit: contain; }
+.m2-root .m2-auth-wait { min-height: 100dvh; display: grid; place-items: center; background: var(--m2-bg); color: var(--m2-ink-3); font-size: var(--m2-fs-14); padding: var(--m2-s4); }
+.m2-root .m2-auth-wait > .m2-auth-col { justify-items: stretch; }
+.m2-root .m2-auth-list { margin: 0; padding-left: var(--m2-s4); }
+@media (max-width: 480px) {
+  .m2-root .m2-auth { padding: var(--m2-s4); place-items: start center; }
+  .m2-root .m2-auth-card { padding: var(--m2-s4); }
+}

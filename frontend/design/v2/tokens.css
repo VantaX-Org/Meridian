@@ -1,7 +1,7 @@
 /*
  * Meridian 2 tokens. The second file lint:tokens accepts raw colour in (scripts/lint-tokens.mjs TOKEN_FILES);
- * every other v2 file reads these through var(--m2-*). Everything is scoped to .m2-root so nothing here reaches
- * the current interface.
+ * every other v2 file reads these through var(--m2-*). Everything is scoped to .m2-root, so the root layout's base
+ * (design/tokens.css: the attribution strip, the global error page) stays apart from it.
  *
  * Light is white ground and white sheets with 1px rules; dark is true neutral steps. One data hue marks the
  * selected cell, the current run and the next-step button. Status hues are always paired with a shape and a word.

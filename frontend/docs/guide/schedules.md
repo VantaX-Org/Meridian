@@ -1,6 +1,6 @@
 # Reports and schedules
 
-Reports are files built from a stored run: the board pack, the analyst workbook, the analysis report, the trend report and the rule catalogue. Schedules build a report from the latest run and send it on a rhythm. Open Reports from the command line (type "reports") or at `/v2/reports`.
+Reports are files built from a stored run: the board pack, the analyst workbook, the analysis report, the trend report and the rule catalogue. Schedules build a report from the latest run and send it on a rhythm. Open Reports from the command line (type "reports") or at `/reports`.
 
 ## What is on it
 

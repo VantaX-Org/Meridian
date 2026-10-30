@@ -35,11 +35,11 @@ beforeEach(() => {
 });
 
 const canvas = (tab: string) => {
-  setUrl(`/v2/s/${ECC.id}?fixture=1&tab=${tab}`);
+  setUrl(`/s/${ECC.id}?fixture=1&tab=${tab}`);
   return renderWithQuery(<SystemCanvas id={ECC.id} />);
 };
 const open = (item: string) => {
-  setUrl(`/v2?fixture=1&open=${item}`);
+  setUrl(`/?fixture=1&open=${item}`);
   return renderWithQuery(<Inspector />);
 };
 const bodyOf = (method: string, path: string) => sent.mock.calls.find((c) => c[0] === method && c[1] === path)?.[2] as Record<string, unknown> | undefined;
@@ -235,7 +235,7 @@ describe("the connection form", () => {
   const fill = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
 
   it("connects a new system, validating first, and opens it", async () => {
-    setUrl("/v2/s/new?fixture=1");
+    setUrl("/s/new?fixture=1");
     renderWithQuery(<ConnectCanvas />);
     const form = await screen.findByRole("form", { name: "Connect a system" });
     fireEvent.click(within(form).getByRole("button", { name: "Connect system" }));
@@ -250,11 +250,11 @@ describe("the connection form", () => {
     fireEvent.click(within(form).getByRole("button", { name: "Connect system" }));
     await waitFor(() => expect(replace).toHaveBeenCalled());
     expect(bodyOf("POST", "/systems")).toMatchObject({ name: "ECC test", system_type: "ecc", host: "ecc-test.internal", client: "300", sysnr: "01", auth_type: "rfc", credentials: { password: "s3cret" } });
-    expect(String(replace.mock.calls.at(-1)?.[0])).toMatch(/\/v2\/s\/.+\?open=system:/);
+    expect(String(replace.mock.calls.at(-1)?.[0])).toMatch(/\/s\/.+\?open=system:/);
   });
 
   it("tests a draft before it is saved", async () => {
-    setUrl("/v2/s/new?fixture=1");
+    setUrl("/s/new?fixture=1");
     renderWithQuery(<ConnectCanvas />);
     fill("Name", "ECC test");
     fill("Host", "ecc-test.internal");

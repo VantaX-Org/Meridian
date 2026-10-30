@@ -15,8 +15,8 @@ const ECC = landscapeFixture.systems[0];
 let undo: () => void = () => undefined;
 
 function visit(search = "") {
-  window.history.pushState({}, "", `/v2?fixture=1${search}`);
-  setUrl(`/v2?fixture=1${search}`);
+  window.history.pushState({}, "", `/?fixture=1${search}`);
+  setUrl(`/?fixture=1${search}`);
 }
 
 beforeEach(() => {
@@ -67,7 +67,7 @@ describe("landscape canvas, fixture mode", () => {
     expect(within(cell).getByText("capped")).toBeInTheDocument();
     expect(within(cell).getByText("No-go")).toBeInTheDocument();
     expect(within(cell).getByText("61,816 rec, 913 rules")).toBeInTheDocument();
-    expect(cell).toHaveAttribute("href", expect.stringMatching(/^\/v2\/o\/ecc-production\/material-master/));
+    expect(cell).toHaveAttribute("href", expect.stringMatching(/^\/o\/ecc-production\/material-master/));
     expect(cell).toHaveAccessibleName("Material master, ECC production, 70.0 capped, No-go, 3 data contract thresholds breached, not enforced");
     const go = within(within(table).getByRole("row", { name: /G\/L accounts/ })).getByTestId("matrix-cell");
     expect(within(go).getByText("Go")).toBeInTheDocument();
@@ -104,7 +104,7 @@ describe("landscape canvas, fixture mode", () => {
   it("lead: the next step reads the wave data: it clears the no-go objects of the next wave", async () => {
     renderWithQuery(<LandscapeCanvas />);
     const next = await screen.findByRole("link", { name: "Clear the 3 no-go objects in Wave 1: finance foundations" });
-    expect(next).toHaveAttribute("href", expect.stringContaining("/v2/work?verdict=no-go"));
+    expect(next).toHaveAttribute("href", expect.stringContaining("/work?verdict=no-go"));
     expect(next).toHaveClass("m2-next");
     expect(text(screen.getByTestId("wave-next-when"))).toMatch(/^Wave 1: finance foundations: due 16 Nov 2026, .* 1 go, 0 at risk, 3 no-go\.$/);
   });
@@ -113,14 +113,14 @@ describe("landscape canvas, fixture mode", () => {
     vi.spyOn(reportsApi, "getWaves").mockResolvedValue([]);
     renderWithQuery(<LandscapeCanvas />);
     const next = await screen.findByRole("link", { name: "Open the no-go objects" });
-    expect(next).toHaveAttribute("href", expect.stringContaining("/v2/work?verdict=no-go"));
+    expect(next).toHaveAttribute("href", expect.stringContaining("/work?verdict=no-go"));
   });
 
   it("steward: the next step accepts the suggested values in Work", async () => {
     visit("&persona=steward");
     renderWithQuery(<LandscapeCanvas />);
     const next = await screen.findByRole("link", { name: "Accept the suggested values" });
-    expect(next).toHaveAttribute("href", expect.stringContaining("/v2/work"));
+    expect(next).toHaveAttribute("href", expect.stringContaining("/work"));
   });
 
   it("process analyst: the next step opens the first blocked process step, PTP step 3", async () => {
@@ -148,7 +148,7 @@ describe("landscape canvas, fixture mode", () => {
     const values = rows.map((r) => Number(text(within(r).getAllByRole("gridcell").at(-1) as HTMLElement).replace(/[^\d]/g, "")));
     expect(values).toEqual([...values].sort((a, b) => b - a));
     expect(within(grid).getByRole("columnheader", { name: "Value at risk" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "View all 25,712" })).toHaveAttribute("href", expect.stringContaining("/v2/work"));
+    expect(screen.getByRole("link", { name: "View all 25,712" })).toHaveAttribute("href", expect.stringContaining("/work"));
     expect(screen.getByText("Rows ranked by value at risk, cost model ZAR v3.")).toBeInTheDocument();
   });
 
@@ -196,7 +196,7 @@ describe("landscape canvas, honest states", () => {
     vi.spyOn(landscapeApi, "getLandscape").mockResolvedValue({ ...landscapeFixture, systems: [], cells: [], objects: [] });
     renderWithQuery(<LandscapeCanvas />);
     expect(await screen.findByText(/No SAP system is connected yet/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Connect a system" })).toHaveAttribute("href", "/systems");
+    expect(screen.getByRole("link", { name: "Connect a system" })).toHaveAttribute("href", expect.stringMatching(/^\/s\/new(\?|$)/));
   });
 
   it("systems with no run yet say so: zero objects scored, rows empty with their reason", async () => {

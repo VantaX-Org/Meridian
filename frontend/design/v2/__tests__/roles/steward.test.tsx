@@ -24,7 +24,7 @@ afterEach(() => {
 describe("the data steward's jobs", () => {
   it("comments on a record and mentions a colleague by @handle", async () => {
     const add = vi.spyOn(rolesApi, "addComment");
-    visit(`/v2/work?open=${encodeURIComponent(`record:${RECORD}`)}`, "data_steward");
+    visit(`/work?open=${encodeURIComponent(`record:${RECORD}`)}`, "data_steward");
     mount();
     const comments = await screen.findByTestId("comments");
     expect(norm(comments)).toContain("Check the unit with purchasing before Friday");
@@ -38,7 +38,7 @@ describe("the data steward's jobs", () => {
   });
 
   it("watches a record from its inspector", async () => {
-    visit(`/v2/work?open=${encodeURIComponent(`record:${RECORD}`)}`, "data_steward");
+    visit(`/work?open=${encodeURIComponent(`record:${RECORD}`)}`, "data_steward");
     mount();
     const watch = await screen.findByTestId("watch");
     const btn = within(watch).getByRole("button", { name: "Watch" });
@@ -48,13 +48,13 @@ describe("the data steward's jobs", () => {
   });
 
   it("is told to fix the upstream object first on the ledger of a dependent object", async () => {
-    visit("/v2/work?module=purchasing", "data_steward");
+    visit("/work?module=purchasing", "data_steward");
     mount(<WorkCanvas />);
     expect(norm(await screen.findByTestId("fix-hint"))).toBe("Fix Material master first: 3,640 upstream failures. Records there fail before this object can pass.");
   });
 
   it("saves the ledger's columns as a view shared with everyone", async () => {
-    visit("/v2/work", "data_steward");
+    visit("/work", "data_steward");
     mount(<WorkCanvas />);
     fireEvent.click(await screen.findByRole("button", { name: "Share and export Work" }));
     fireEvent.click(await screen.findByRole("menuitem", { name: "Save these columns as a view…" }));
@@ -69,7 +69,7 @@ describe("the data steward's jobs", () => {
   });
 
   it("sets out of office with someone who covers", async () => {
-    visit("/v2/people?open=away", "data_steward");
+    visit("/people?open=away", "data_steward");
     mount();
     const form = await screen.findByTestId("away-form");
     const who = within(form).getByRole("combobox", { name: "Who covers" });
@@ -83,7 +83,7 @@ describe("the data steward's jobs", () => {
   });
 
   it("may balance work (assign) and sees the button on People", async () => {
-    visit("/v2/people?open=balance", "data_steward");
+    visit("/people?open=balance", "data_steward");
     mount();
     expect(await screen.findByRole("button", { name: "Propose a plan" })).toBeEnabled();
   });

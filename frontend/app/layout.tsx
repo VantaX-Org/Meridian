@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { AuthProvider } from "@/lib/auth-provider";
-import { Attribution, Toaster } from "@/design";
+import { Attribution } from "@/design/brand/Attribution";
 import { Providers } from "@/lib/providers";
 import { themeBootScript } from "@/lib/theme";
 import brand from "../public/brand/brand.json";
@@ -54,7 +54,6 @@ export default function RootLayout({
         <body className="flex min-h-dvh flex-col font-sans antialiased">
           <Providers>
             {children}
-            <Toaster />
             <Attribution />
           </Providers>
         </body>

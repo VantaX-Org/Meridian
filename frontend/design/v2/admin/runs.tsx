@@ -4,8 +4,8 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { SyncProfile } from "@/types/api";
 import * as api from "@/lib/api/v2/admin";
-import { analyseRun, loadSystemConfig, retryJobById } from "@/lib/api/v2/runs";
-import { formatDate } from "@/lib/format";
+import { analyseRun, loadSystemConfig, retryJobById, uploadDataFile } from "@/lib/api/v2/runs";
+import { formatDate, MODULE_LABELS } from "@/lib/format";
 import { useOpenItem } from "@/lib/v2/hooks";
 import { refreshAdmin } from "@/lib/v2/admin-queries";
 import { JOB_KIND_LABEL, JOB_STATUS_LABEL, jobDoing } from "@/lib/v2/jobs";
@@ -164,6 +164,69 @@ function Analysis({ system }: { system: string }) {
       </div>
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       {!can ? <p className="m2-prov">{t("Starting an analysis needs the analyse permission.")}</p> : null}
+    </Block>
+  );
+}
+
+const UPLOAD_ACCEPT = ".csv,.tsv,.txt,.xlsx,.xls,.json,.parquet";
+const UPLOAD_MODULES = Object.keys(MODULE_LABELS).sort((a, b) => labelText(a).localeCompare(labelText(b)));
+
+/** A file of one object becomes a stored run and is analysed at once. Columns are matched by the field mappings. */
+function FileUpload({ system }: { system: string }) {
+  const qc = useQueryClient();
+  const can = useCan()("upload");
+  const systems = useSystemsExtended();
+  const [file, setFile] = useState<File | null>(null);
+  const [module, setModule] = useState("");
+  const [attach, setAttach] = useState(Boolean(system));
+  const [pct, setPct] = useState(0);
+  const { outcome, pending, run } = useOutcome("admin-upload");
+  const systemName = systems.data?.find((s) => s.id === system)?.name ?? null;
+  return (
+    <Block title={t("Upload a file")} hint={t("A file of one object (CSV, TSV, Excel, JSON or Parquet) becomes a new stored run and is analysed at once. Its columns are matched by the field mappings under Administration.")}>
+      <div className="m2-fgrid">
+        <Fld label={t("File")}>
+          <input type="file" accept={UPLOAD_ACCEPT} disabled={!can} data-testid="upload-file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+        </Fld>
+        <Fld label={t("Object")}>
+          <select value={module} disabled={!can} onChange={(e) => setModule(e.target.value)}>
+            <option value="">{t("Choose the object the file holds")}</option>
+            {UPLOAD_MODULES.map((m) => (
+              <option key={m} value={m}>
+                {labelText(m)}
+              </option>
+            ))}
+          </select>
+        </Fld>
+      </div>
+      {system && systemName ? (
+        <label className="m2-sw" style={{ marginTop: 8 }}>
+          <input type="checkbox" checked={attach} disabled={!can} onChange={(e) => setAttach(e.target.checked)} />
+          <span>{t("Attach the run to {name}", { name: systemName })}</span>
+        </label>
+      ) : null}
+      {outcome ? <ResultFrame outcome={outcome} /> : null}
+      <div className="m2-adm-acts">
+        <button
+          type="button"
+          className="m2-btn m2-next"
+          disabled={!can || !file || !module || pending !== null}
+          onClick={() =>
+            void run("upload", async () => {
+              if (!file) throw new Error(t("Choose a file first."));
+              setPct(0);
+              const r = await uploadDataFile(file, module, attach && system ? system : null, setPct);
+              setFile(null);
+              void qc.invalidateQueries({ queryKey: ["v2"] });
+              void qc.invalidateQueries({ queryKey: ["jobs"] });
+              return { tone: "ok", title: t("File uploaded, analysis started"), detail: t("{name} is being scored as {object}.", { name: file.name, object: labelText(module) }), job: r.job_id };
+            })
+          }
+        >
+          {pending === "upload" ? t("Uploading {pct}%", { pct }) : t("Upload and analyse")}
+        </button>
+      </div>
+      {!can ? <p className="m2-prov">{t("Uploading a file needs the upload permission.")}</p> : null}
     </Block>
   );
 }
@@ -470,7 +533,7 @@ export function RunsSection() {
   const systems = useSystemsExtended();
   const [picked, setPicked] = useState("");
   const system = picked || systems.data?.[0]?.id || "";
-  const allowed = can("trigger_sync") || can("analyse") || can("manage_systems");
+  const allowed = can("trigger_sync") || can("analyse") || can("manage_systems") || can("upload");
   if (!allowed) return <AdminPage title={t("Runs and jobs")}><NeedsPermission what={t("Starting runs")} permission="trigger_sync" /></AdminPage>;
   return (
     <AdminPage title={t("Runs and jobs")} lead={t("Start work here and follow it in the job line. Everything below acts on one system at a time.")}>
@@ -487,6 +550,7 @@ export function RunsSection() {
           <Schedules key={`s-${system}`} system={system} />
         </>
       )}
+      <FileUpload key={`u-${system}`} system={system} />
       <RecentJobs />
     </AdminPage>
   );

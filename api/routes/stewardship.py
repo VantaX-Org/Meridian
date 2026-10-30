@@ -21,6 +21,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services import app_links
 from api.services.notifications import create_notification
 from api.services.rbac import (actions_for, current_user_id, current_user_label, dev_role_override,
                                has_permission, require_permission, scope_from_path, user_grants)
@@ -598,7 +599,7 @@ async def handoff_rule(
     """), {"id": task_id, "tid": tid, "src": exc_id, "module": body.module, "prio": _SEV_PRIORITY[severity],
            "due": due_at, "assignee": str(body.assignee_id)})
     await create_notification(tid, str(body.assignee_id), "assignment", f"Handed to you: {body.check_id}",
-                              body.note[:200], f"/inbox?focus={task_id}", db)
+                              body.note[:200], app_links.work(assigned="me"), db)
     await db.commit()
     return HandoffOut(task_id=task_id, exception_id=exc_id, assigned_to=str(body.assignee_id),
                       due_at=due_at.isoformat())
@@ -640,7 +641,7 @@ async def assign_queue_item(
     tid = str(tenant.id)
     await db.run_sync(lambda s: apply_sla(s, tid, "queue", [item_id]))
     await create_notification(tid, body.user_id, "assignment", "A task was assigned to you",
-                              "Open your inbox to work it.", f"/inbox?focus={item_id}", db)
+                              "Open your work to start on it.", app_links.work(assigned="me"), db)
     await db.commit()
     return {"id": item_id, "status": "in_progress", "assigned_to": body.user_id}
 

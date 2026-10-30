@@ -10,7 +10,7 @@ vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout:
 
 beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
-  setUrl("/v2/o/ecc-production/material-master/readiness?fixture=1");
+  setUrl("/o/ecc-production/material-master/readiness?fixture=1");
 });
 afterEach(() => {
   window.sessionStorage.clear();
@@ -44,7 +44,7 @@ describe("wave membership and verdict", () => {
     vi.spyOn(objectApi, "getReadiness").mockResolvedValue({ threshold: 75, cells: [], configured: true });
     render();
     expect(await screen.findByText(/Material master is not in a migration wave yet/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open migration waves" })).toHaveAttribute("href", expect.stringContaining("/migration"));
+    expect(screen.getByRole("link", { name: "Open migration waves" })).toHaveAttribute("href", expect.stringContaining("open=waves"));
   });
 
   it("reads another object's own waves", async () => {

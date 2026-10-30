@@ -1,6 +1,6 @@
 # Run and Compare
 
-The **run canvas** shows one run: what it scored, object by object, and the jobs that made it. **Compare** puts two runs side by side and explains why each score moved. Open a run from the timeline or the Runs table (`/v2/run/{id}`); open a comparison with **Compare with** on a run or an object's Runs tab (`/v2/run/{earlier}/vs/{later}`).
+The **run canvas** shows one run: what it scored, object by object, and the jobs that made it. **Compare** puts two runs side by side and explains why each score moved. Open a run from the timeline or the Runs table (`/run/{id}`); open a comparison with **Compare with** on a run or an object's Runs tab (`/run/{earlier}/vs/{later}`).
 
 ## One run
 

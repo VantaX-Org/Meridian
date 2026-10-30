@@ -1,6 +1,6 @@
 # Waves and gates
 
-A migration wave is a set of objects moved together in one cutover, with a target date, a stage and a gate: the conditions every object must meet before the wave may go. The landscape's **Waves** view shows each wave with its verdict counts and gate state; the **Migration waves** panel is where the programme lead plans waves and sets gates. Open the view with **Waves** on the landscape (`/v2?view=waves`) and the panel with **Edit** on a wave (`?open=waves`).
+A migration wave is a set of objects moved together in one cutover, with a target date, a stage and a gate: the conditions every object must meet before the wave may go. The landscape's **Waves** view shows each wave with its verdict counts and gate state; the **Migration waves** panel is where the programme lead plans waves and sets gates. Open the view with **Waves** on the landscape (`/?view=waves`) and the panel with **Edit** on a wave (`?open=waves`).
 
 ## The Waves view
 
@@ -35,7 +35,7 @@ For each wave: **Name**, **Target date**, **Stage** (Plan, Mock load 1, Mock loa
 - **Programme lead** (analyse): plan waves, set gates, assign objects.
 - **Data owner**: read the gate state of their objects' waves.
 - **Everyone**: read the Waves view.
-- Signing a wave off is done in the cockpit of the current interface for now; the panel shows the state.
+- **Sign off** (approve): on each wave in the Migration waves panel, once its verdict is go. The panel shows who signed it off and when; any later change to the wave clears the sign-off.
 
 ## Keyboard
 

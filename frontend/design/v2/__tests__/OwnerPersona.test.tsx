@@ -15,7 +15,7 @@ vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout:
 let undo: () => void = () => undefined;
 
 function visit(search = "") {
-  const url = `/v2?fixture=1${search}`;
+  const url = `/?fixture=1${search}`;
   window.history.pushState({}, "", url);
   setUrl(url);
 }

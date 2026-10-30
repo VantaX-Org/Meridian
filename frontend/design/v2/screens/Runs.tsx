@@ -170,7 +170,7 @@ function RunsTable({ systemFilter, statusFilter, showArchived }: { systemFilter:
             return (
               <tr key={v.id} data-testid="run-row">
                 <th scope="row">
-                  <V2Link href={`/v2/run/${v.id}`} className="m2-rowlink">
+                  <V2Link href={`/run/${v.id}`} className="m2-rowlink">
                     {formatDate(v.run_at, "datetime")}
                   </V2Link>
                 </th>
@@ -261,7 +261,7 @@ function JobsTable({ kind, status }: { kind: string; status: string }) {
 }
 
 /**
- * `/v2/runs`: the timeline at full width, the table of runs (or of jobs, every kind, each opening the job inspector),
+ * `/runs`: the timeline at full width, the table of runs (or of jobs, every kind, each opening the job inspector),
  * filters by system and status, and "Start a run".
  */
 export function RunsCanvas() {
@@ -290,7 +290,7 @@ export function RunsCanvas() {
     if (v === "jobs") next.set("view", "jobs");
     else next.delete("view");
     const qs = next.toString();
-    return qs ? `/v2/runs?${qs}` : "/v2/runs";
+    return qs ? `/runs?${qs}` : "/runs";
   };
 
   return (
@@ -310,7 +310,7 @@ export function RunsCanvas() {
           <EmptyFrame>{t("Runs appear here once a system has been extracted and analysed.")}</EmptyFrame>
         ) : (
           <div className="m2-frame" style={{ padding: "var(--m2-s3) var(--m2-s4)" }}>
-            <RunTimelineChart runs={runs} selectedId={latest?.id ?? null} onPick={(id) => router.push(v2Href(`/v2/run/${id}`))} label={t("Runs on a date axis, choose one to open it")} fallbackWidth={900} />
+            <RunTimelineChart runs={runs} selectedId={latest?.id ?? null} onPick={(id) => router.push(v2Href(`/run/${id}`))} label={t("Runs on a date axis, choose one to open it")} fallbackWidth={900} />
           </div>
         )}
       </section>

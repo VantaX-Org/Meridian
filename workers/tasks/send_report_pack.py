@@ -28,13 +28,15 @@ from workers import email_templates as mail
 from workers.celery_app import celery_app
 from workers.db import get_sync_engine, tenant_session
 
+from api.services import app_links
+
 logger = logging.getLogger("meridian.worker.report_pack")
 
 CADENCES = ("weekly", "monthly")
 _SAST = ZoneInfo("Africa/Johannesburg")
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 PDF_MIME = "application/pdf"
-REPORTS_LINK = "/insights/reports"
+REPORTS_LINK = app_links.REPORTS
 
 
 def period_key(cadence: str, when: Optional[datetime] = None) -> str:

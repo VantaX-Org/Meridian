@@ -108,18 +108,18 @@ PERSONA_ALIAS: dict[str, str] = {
     "data_owner": "approver", "platform_admin": "admin",
 }
 
+# Everyone lands on the landscape; the page shapes its next step for the role (frontend/docs/guide/overview.md). The
+# keys are also the start screens a person may choose under Preferences (api/routes/preferences.py).
 PERSONA_HOME: dict[str, str] = {
-    "programme_lead": "/home/lead", "data_steward": "/home/steward",
-    "data_owner": "/home/steward", "analyst": "/home/lead", "sap_basis": "/home/basis",
-    "platform_admin": "/home/lead", "auditor": "/home/lead", "viewer": "/home/lead",
-    "process_analyst": "/home/process",
+    "programme_lead": "/", "data_steward": "/", "data_owner": "/", "analyst": "/", "sap_basis": "/",
+    "platform_admin": "/", "auditor": "/", "viewer": "/", "process_analyst": "/",
 }
 
 
 def home_for(role: str) -> str:
     """Default landing page for a role key (legacy keys follow their persona)."""
     legacy_to_persona = {v: k for k, v in PERSONA_ALIAS.items()}
-    return PERSONA_HOME.get(legacy_to_persona.get(role, role), "/home/lead")
+    return PERSONA_HOME.get(legacy_to_persona.get(role, role), "/")
 
 
 def _perms(role: str) -> set[str]:

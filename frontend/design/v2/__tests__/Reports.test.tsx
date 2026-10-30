@@ -27,7 +27,7 @@ beforeEach(() => {
   resetKeptOutcomes();
   undo = stubLayout();
   h.allowed = "all";
-  setUrl("/v2/reports?fixture=1");
+  setUrl("/reports?fixture=1");
 });
 afterEach(() => {
   undo();
@@ -95,7 +95,7 @@ describe("the reports canvas", () => {
 
   it("creates a report from a kind, a run and an object: the catalogue's address for them is what is built", async () => {
     const build = vi.spyOn(rep, "buildReport").mockResolvedValue("workbook.xlsx");
-    setUrl("/v2/reports?fixture=1&open=report:new");
+    setUrl("/reports?fixture=1&open=report:new");
     page();
     const dialog = await screen.findByRole("dialog", { name: "Create a report" });
     await within(dialog).findByRole("option", { name: "Analyst workbook" });
@@ -111,7 +111,7 @@ describe("the reports canvas", () => {
   });
 
   it("an object report waits for an object", async () => {
-    setUrl("/v2/reports?fixture=1&open=report:new");
+    setUrl("/reports?fixture=1&open=report:new");
     page();
     const dialog = await screen.findByRole("dialog", { name: "Create a report" });
     await within(dialog).findByRole("option", { name: "Object report" });
@@ -132,7 +132,7 @@ describe("the reports canvas", () => {
 describe("schedules", () => {
   it("creates one: name, report, cadence and at least one recipient", async () => {
     const create = vi.spyOn(rep, "createSchedule");
-    setUrl("/v2/reports?fixture=1&open=schedule:new");
+    setUrl("/reports?fixture=1&open=schedule:new");
     page();
     const dialog = await screen.findByRole("dialog", { name: "Schedule a report" });
     const go = within(dialog).getByRole("button", { name: "Create the schedule" });
@@ -148,7 +148,7 @@ describe("schedules", () => {
 
   it("a monthly schedule asks for the day of the month and sends that, not a weekday", async () => {
     const create = vi.spyOn(rep, "createSchedule");
-    setUrl("/v2/reports?fixture=1&open=schedule:new");
+    setUrl("/reports?fixture=1&open=schedule:new");
     page();
     const dialog = await screen.findByRole("dialog", { name: "Schedule a report" });
     fireEvent.change(within(dialog).getByLabelText("Name"), { target: { value: "Month end" } });
@@ -162,7 +162,7 @@ describe("schedules", () => {
 
   it("edits one, and Undo in the notice puts the old schedule back", async () => {
     const update = vi.spyOn(rep, "updateSchedule");
-    setUrl("/v2/reports?fixture=1&open=schedule:sch-1");
+    setUrl("/reports?fixture=1&open=schedule:sch-1");
     page();
     const dialog = await screen.findByRole("dialog", { name: "Board pack for the steering committee" });
     await within(dialog).findByRole("checkbox", { name: /Pieter van der Merwe/ });
@@ -179,7 +179,7 @@ describe("schedules", () => {
 
   it("pauses and resumes: the grid says Paused and the next run goes", async () => {
     const update = vi.spyOn(rep, "updateSchedule");
-    setUrl("/v2/reports?fixture=1&open=schedule:sch-1");
+    setUrl("/reports?fixture=1&open=schedule:sch-1");
     page();
     const dialog = await screen.findByRole("dialog", { name: "Board pack for the steering committee" });
     fireEvent.click(await within(dialog).findByRole("button", { name: "Pause" }));
@@ -193,7 +193,7 @@ describe("schedules", () => {
   it("runs one now, and deletes it only after a confirmation", async () => {
     const run = vi.spyOn(rep, "runScheduleNow");
     const del = vi.spyOn(rep, "deleteSchedule");
-    setUrl("/v2/reports?fixture=1&open=schedule:sch-2");
+    setUrl("/reports?fixture=1&open=schedule:sch-2");
     page();
     const dialog = await screen.findByRole("dialog", { name: "Analyst workbook, monthly" });
     fireEvent.click(await within(dialog).findByRole("button", { name: "Run it now" }));

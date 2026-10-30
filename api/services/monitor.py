@@ -17,6 +17,7 @@ from typing import Optional
 
 from sqlalchemy import text
 
+from api.services import app_links
 from api.services.record_issues import DIFF_SQL
 from api.services.run_lineage import lineage_sql, same_lineage_as
 
@@ -111,8 +112,8 @@ def notify(session, tenant_id: str, version_id: str, summary: dict) -> None:
         tenant_id=tenant_id, user_id=None, type="monitor",
         title=f"{n} record(s) failing again since the post-cleanup baseline",
         body=f"{k} rule(s) regressed.{batch}",
-        link=f"/workbench?tab=batches&batch={summary['batch_id']}" if summary["batch_id"]
-        else f"/versions?v2={version_id}",
+        link=app_links.work(batch=str(summary["batch_id"])) if summary["batch_id"]
+        else app_links.run(str(version_id)),
         session=session)
 
     from workers.tasks.send_notifications import _channels, build_alert, deliver

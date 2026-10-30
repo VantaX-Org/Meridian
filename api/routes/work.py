@@ -27,6 +27,7 @@ from api.deps import Tenant, get_db, get_tenant
 from api.middleware.cache import cached_json
 from api.routes.record_issues import _rls
 from api.routes.sync_trigger import module_label
+from api.services import app_links
 from api.services import sandbox, undo, work_analytics, work_counts, worklist
 from api.services.worklist import CLEANING_VALUE_MATCH
 from api.services.current_state import current_pairs, pairs_clause, run_ids
@@ -1065,7 +1066,6 @@ async def _mdm_links(db: AsyncSession, tenant: Tenant, module: str, record_key: 
     """The golden record that keys this record and its open duplicate candidates. Best effort under a short
     statement timeout: a slow MDM table never holds the panel up (the fields are None then)."""
     import logging
-    from urllib.parse import urlencode
 
     from sqlalchemy.exc import SQLAlchemyError
 
@@ -1080,14 +1080,13 @@ async def _mdm_links(db: AsyncSession, tenant: Tenant, module: str, record_key: 
                  ORDER BY (status = 'golden') DESC, updated_at DESC LIMIT 1"""), p)).mappings().first()
             if g:
                 out["golden_record"] = {"id": g["id"], "status": g["status"], "key": g["sap_object_key"],
-                                        "href": f"/mdm/golden/{g['id']}"}
+                                        "href": app_links.opened(app_links.object_page(module, "golden"), "golden", g["id"])}
             n = (await db.execute(text("""
                 SELECT count(*) FROM dedup_candidates
                  WHERE tenant_id = :t AND object_type = :m AND status = 'pending'
                    AND (record_key_a = ANY(:keys) OR record_key_b = ANY(:keys))"""), p)).scalar() or 0
             # Match review, filtered to this record's pairs from the cleaning engine (the source counted here).
-            out["duplicates"] = {"open": int(n), "href": "/mdm/golden/merge?" + urlencode(
-                {"source": "cleaning", "object": module, "record": record_key})}
+            out["duplicates"] = {"open": int(n), "href": app_links.object_page(module, "golden")}
             await db.execute(text("SET LOCAL statement_timeout = DEFAULT"))
     except SQLAlchemyError as e:  # a timeout or a missing MDM table: the panel shows the record without these links
         logging.getLogger(__name__).info("work record: MDM links skipped for %s: %s", module, type(e).__name__)

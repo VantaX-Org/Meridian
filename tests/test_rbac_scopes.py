@@ -151,7 +151,7 @@ def test_effective_permissions_shape_and_narrowing() -> None:
     tid = uuid.uuid4()
     wide = asyncio.run(rbac.effective_permissions(db, tid, "u1", "viewer"))  # type: ignore[arg-type]
     assert set(wide.model_dump()) == {"role", "roles", "actions", "resources", "scopes", "home"}
-    assert wide.home == "/home/lead" and "approve" in wide.actions
+    assert wide.home == "/" and "approve" in wide.actions
     assert [s.model_dump() for s in wide.scopes] == [{"system_id": str(SYS_A), "module": "material_master"}]
     assert wide.resources["fixes"]["approve"] is True
     assert set(wide.resources) == set(RESOURCES)
@@ -164,9 +164,10 @@ def test_effective_permissions_shape_and_narrowing() -> None:
 
 
 def test_home_for_persona_and_legacy_keys() -> None:
-    assert rbac.home_for("sap_basis") == "/home/basis"
-    assert rbac.home_for("steward") == "/home/steward" and rbac.home_for("manager") == "/home/lead"
-    assert rbac.home_for("data_owner") == "/home/steward"
+    # One interface: every role lands on the landscape, which shapes its next step for the role.
+    assert rbac.home_for("sap_basis") == "/"
+    assert rbac.home_for("steward") == "/" and rbac.home_for("manager") == "/"
+    assert rbac.home_for("data_owner") == "/" and rbac.home_for("unknown_role") == "/"
 
 
 def test_migration_077_chains_from_076() -> None:

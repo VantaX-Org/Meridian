@@ -16,7 +16,7 @@ beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
   resetRunsFixture();
   push.mockClear();
-  setUrl("/v2?fixture=1");
+  setUrl("/?fixture=1");
 });
 afterEach(() => {
   window.sessionStorage.clear();
@@ -133,14 +133,14 @@ describe("<RunTimelineMenu>, the run control in the top bar", () => {
   });
 
   it("on a run page, picking a run goes to that run", async () => {
-    setUrl(`/v2/run/${LATEST.id}?fixture=1`);
+    setUrl(`/run/${LATEST.id}?fixture=1`);
     renderWithQuery(<RunTimelineMenu />);
     fireEvent.click(await screen.findByRole("button", { name: /^Run 16 Oct/ }));
     fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: /^Run 9 Oct 2026/ }));
-    expect(getUrl()).toContain(`/v2/run/${RUNS[6].id}`);
+    expect(getUrl()).toContain(`/run/${RUNS[6].id}`);
   });
 
-  it("Compare with… picks a second run (the baseline by default) and opens /v2/run/{a}/vs/{b}, the earlier first", async () => {
+  it("Compare with… picks a second run (the baseline by default) and opens /run/{a}/vs/{b}, the earlier first", async () => {
     renderWithQuery(<RunTimelineMenu />);
     fireEvent.click(await screen.findByRole("button", { name: /^Run 16 Oct/ }));
     const dialog = await screen.findByRole("dialog");
@@ -148,12 +148,12 @@ describe("<RunTimelineMenu>, the run control in the top bar", () => {
     await waitFor(() => expect(select).toHaveValue(BASELINE.id));
     expect(within(select).getByRole("option", { name: "2 Oct 2026, 05:09 (baseline)" })).toBeInTheDocument();
     fireEvent.click(within(dialog).getByRole("button", { name: "Compare with…" }));
-    expect(getUrl()).toContain(`/v2/run/${BASELINE.id}/vs/${LATEST.id}`);
+    expect(getUrl()).toContain(`/run/${BASELINE.id}/vs/${LATEST.id}`);
     fireEvent.click(await screen.findByRole("button", { name: /^Run 16 Oct/ }));
     const again = within(await screen.findByRole("dialog")).getByRole("combobox", { name: "Compare with" });
     fireEvent.change(again, { target: { value: RUNS[0].id } });
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Compare with…" }));
-    expect(getUrl()).toContain(`/v2/run/${RUNS[0].id}/vs/${LATEST.id}`);
+    expect(getUrl()).toContain(`/run/${RUNS[0].id}/vs/${LATEST.id}`);
   });
 
   it("Esc closes it and gives focus back to the button", async () => {
@@ -167,7 +167,7 @@ describe("<RunTimelineMenu>, the run control in the top bar", () => {
   });
 
   it("the scope's system limits the timeline to its runs; a system with none says so", async () => {
-    setUrl("/v2?fixture=1&system=s-4hana-sandbox");
+    setUrl("/?fixture=1&system=s-4hana-sandbox");
     renderWithQuery(<RunTimelineMenu />);
     const button = await screen.findByRole("button", { name: "No run yet" });
     fireEvent.click(button);

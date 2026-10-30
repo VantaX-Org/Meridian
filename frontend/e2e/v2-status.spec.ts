@@ -1,7 +1,7 @@
 /**
  * Meridian 2, step 8: the status page and the enterprise admin screens, in fixture mode (`?fixture=1`).
  *
- *   - /v2/status reads signed out (no session cookie), /status reads signed in; components, one 30-day bar, incidents
+ *   - /status reads signed out (no session cookie), /status reads signed in; components, one 30-day bar, incidents
  *     and maintenance; it reads again every minute; axe finds no critical or serious violation; no sideways scroll.
  *   - The status strip's health word links to it.
  *   - Admin, Settings, Appearance (contrast shown and refused below 4.5:1, the accent applied) and Admin, Users,
@@ -54,8 +54,8 @@ for (const size of SIZES) {
 
       test("the status page reads signed out: components, 30 days, incidents and maintenance", async ({ page }) => {
         await prepare(page, scheme, false);
-        await page.goto("/v2/status?fixture=1", { waitUntil: "load", timeout: 90_000 });
-        await expect(page).toHaveURL(/\/v2\/status/);
+        await page.goto("/status?fixture=1", { waitUntil: "load", timeout: 90_000 });
+        await expect(page).toHaveURL(/\/status/);
         await expect(page.getByRole("heading", { level: 1, name: "Status" })).toBeVisible(NAV);
         await expect(page.getByTestId("status-overall")).toContainText("Degraded");
         await expect(page.getByRole("region", { name: "Components and their state" }).getByRole("row")).toHaveCount(7);
@@ -74,7 +74,7 @@ for (const size of SIZES) {
 
       test("Admin, Settings, Appearance: contrast as numbers, refused below 4.5:1, applied when saved", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2/admin/settings?fixture=1", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/admin/settings?fixture=1", { waitUntil: "load", timeout: 90_000 });
         const block = page.getByRole("region", { name: "Appearance" });
         await expect(block.getByLabel("Use our own accent colour")).toBeVisible(NAV);
         await block.getByLabel("Use our own accent colour").check();
@@ -101,7 +101,7 @@ for (const size of SIZES) {
 
       test("Admin, Users, Provisioning: the token shown once and the group mapping", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/v2/admin/users?fixture=1", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/admin/users?fixture=1", { waitUntil: "load", timeout: 90_000 });
         const card = page.getByTestId("scim-card");
         await expect(card.getByText("Active")).toBeVisible(NAV);
         await expect(card).toContainText("/scim/v2");
@@ -131,26 +131,29 @@ test.describe("status: signed in, the health word, and the minute refresh", () =
     await expect(page.getByRole("link", { name: "Back to Meridian" })).toBeVisible();
   });
 
-  test("/status sends someone signed out to sign in; /v2/status does not", async ({ page }) => {
+  test("/status reads signed out too, with Sign in instead of the way back; /v2/status redirects to it", async ({ page }) => {
     await prepare(page, "light", false);
-    await page.goto("/status?fixture=1", { waitUntil: "load", timeout: 90_000 });
-    await expect(page).toHaveURL(/\/sign-in/);
+    await page.goto("/v2/status?fixture=1", { waitUntil: "load", timeout: 90_000 });
+    await expect(page).toHaveURL(/\/status\?fixture=1/);
+    await expect(page.getByTestId("status-overall")).toContainText("Degraded", NAV);
+    await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Back to Meridian" })).toHaveCount(0);
   });
 
   test("the status strip's health word opens the status page", async ({ page }) => {
     await prepare(page, "light");
-    await page.goto("/v2?fixture=1", { waitUntil: "load", timeout: 90_000 });
+    await page.goto("/?fixture=1", { waitUntil: "load", timeout: 90_000 });
     const word = page.getByTestId("status-health");
     await expect(word).toContainText("Degraded", NAV);
     await word.click();
-    await expect(page).toHaveURL(/\/v2\/status/, NAV);
+    await expect(page).toHaveURL(/\/status/, NAV);
     await expect(page.getByRole("heading", { level: 1, name: "Status" })).toBeVisible(NAV);
   });
 
   test("reads the status again every minute", async ({ page }) => {
     await page.clock.install({ time: new Date("2026-10-20T08:00:10Z") });
     await prepare(page, "light", false);
-    await page.goto("/v2/status?fixture=1", { waitUntil: "load", timeout: 90_000 });
+    await page.goto("/status?fixture=1", { waitUntil: "load", timeout: 90_000 });
     const updated = page.getByText(/^Checked .* This page reads the status again every minute\.$/);
     await expect(updated).toContainText("08:00", NAV);
     await page.clock.fastForward(61_000);

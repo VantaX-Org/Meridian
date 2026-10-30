@@ -145,7 +145,7 @@ function Maintenance({ page }: { page: StatusPage }) {
 }
 
 /**
- * The status page: `/v2/status` (readable signed out) and `/status` (signed in). Components and their state, the
+ * The status page at `/status`, readable signed out and signed in. Components and their state, the
  * 30-day uptime bar, incidents and planned maintenance, read from GET /status/page and read again every 60 seconds.
  */
 export function StatusScreen({ signedIn = false }: { signedIn?: boolean }) {
@@ -165,7 +165,7 @@ export function StatusScreen({ signedIn = false }: { signedIn?: boolean }) {
           <span>{productName(theme)}</span>
         </span>
         {signedIn ? (
-          <V2Link href="/v2" className="m2-btn m2-sm">
+          <V2Link href="/" className="m2-btn m2-sm">
             {t("Back to Meridian")}
           </V2Link>
         ) : (

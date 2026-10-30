@@ -35,8 +35,8 @@ afterEach(() => {
 
 const text = (el: HTMLElement) => (el.textContent ?? "").replace(/\s+/g, " ").trim();
 const visit = (search = "") => {
-  window.history.pushState({}, "", `/v2?fixture=1${search}`);
-  setUrl(`/v2?fixture=1${search}`);
+  window.history.pushState({}, "", `/?fixture=1${search}`);
+  setUrl(`/?fixture=1${search}`);
 };
 const page = () =>
   renderWithQuery(

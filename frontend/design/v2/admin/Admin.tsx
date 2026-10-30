@@ -33,11 +33,11 @@ export function AdminMap({ open, onClose, phone }: { open: boolean; onClose: () 
         </button>
       </div>
       <nav className="m2-mnav" aria-label={t("Administration sections")}>
-        <V2Link href="/v2" className="m2-mi">
+        <V2Link href="/" className="m2-mi">
           <span>{t("Back to the landscape")}</span>
           <kbd className="m2-kb">g l</kbd>
         </V2Link>
-        <V2Link href="/v2/admin" className="m2-mi" aria-current={pathname === "/v2/admin" ? "page" : undefined}>
+        <V2Link href="/admin" className="m2-mi" aria-current={pathname === "/admin" ? "page" : undefined}>
           <span>{t("All of administration")}</span>
         </V2Link>
         {groups.map((g) => (
@@ -46,7 +46,7 @@ export function AdminMap({ open, onClose, phone }: { open: boolean; onClose: () 
             {sections
               .filter((s) => s.group === g)
               .map((s) => (
-                <V2Link key={s.slug} href={`/v2/admin/${s.slug}`} className="m2-mi" aria-current={pathname === `/v2/admin/${s.slug}` ? "page" : undefined}>
+                <V2Link key={s.slug} href={`/admin/${s.slug}`} className="m2-mi" aria-current={pathname === `/admin/${s.slug}` ? "page" : undefined}>
                   <span>{s.label}</span>
                 </V2Link>
               ))}
@@ -57,7 +57,7 @@ export function AdminMap({ open, onClose, phone }: { open: boolean; onClose: () 
   );
 }
 
-/** /v2/admin: every section with the one sentence that says what it is for. */
+/** /admin: every section with the one sentence that says what it is for. */
 export function AdminHome() {
   const can = useCan();
   if (!canAdminister(can)) {
@@ -78,7 +78,7 @@ export function AdminHome() {
               .filter((s) => s.group === g)
               .map((s) => (
                 <li key={s.slug}>
-                  <V2Link href={`/v2/admin/${s.slug}`} className="m2-hitem" style={{ display: "grid" }}>
+                  <V2Link href={`/admin/${s.slug}`} className="m2-hitem" style={{ display: "grid" }}>
                     <span className="m2-ht">{s.label}</span>
                     <span className="m2-hs2">{s.lead}</span>
                   </V2Link>
@@ -140,14 +140,14 @@ function Section({ slug }: { slug: AdminSlug }) {
   }
 }
 
-/** /v2/admin/<section>: one section in the content pane. */
+/** /admin/<section>: one section in the content pane. */
 export function AdminCanvas({ section }: { section: string }) {
   if (!isAdminSlug(section)) {
     return (
       <AdminPage title={t("Administration")}>
         <EmptyFrame
           action={
-            <V2Link href="/v2/admin" className="m2-btn">
+            <V2Link href="/admin" className="m2-btn">
               {t("All of administration")}
             </V2Link>
           }

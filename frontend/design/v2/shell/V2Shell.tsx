@@ -2,14 +2,14 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { AuthGuard } from "@/components/auth/auth-guard";
+import { AuthGuard } from "../auth/Guard";
 import { useAuth } from "@/context/auth-context";
 import { usePreferencesSync } from "@/hooks/use-preferences";
 import { PermissionsProvider } from "@/lib/permissions";
+import { RequestAccessHost } from "../RequestAccess";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { createDispatcher, gridRegistry, ledgerRegistry, type GoDestination, type KeyContext } from "@/lib/v2/keys";
 import { useOpenItem, usePhone, useV2Href } from "@/lib/v2/hooks";
-import { setUiCookie, UI_V2 } from "@/lib/v2/switch";
 import { useApplyKeyHints } from "@/lib/v2/prefs";
 import { readPrefs, subscribePreferences } from "@/lib/preferences";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
@@ -28,7 +28,7 @@ import { useDocumentLang } from "./Standalone";
 
 export { usePhone };
 
-const DESTINATION: Record<GoDestination, string> = { landscape: "/v2", work: "/v2/work", runs: "/v2/runs", people: "/v2/people" };
+const DESTINATION: Record<GoDestination, string> = { landscape: "/", work: "/work", runs: "/runs", people: "/people" };
 
 function ChromeBody({ children }: { children: ReactNode }) {
   const fixture = useFixture();
@@ -45,8 +45,6 @@ function ChromeBody({ children }: { children: ReactNode }) {
   // Numbers and dates are written at render, so a change of locale redraws everything but the inspector that changed it.
   const localeKey = useSyncExternalStore(subscribePreferences, () => readPrefs().locale ?? "", () => "");
 
-  // The cookie that says "this browser prefers the new interface" is set by arriving here.
-  useEffect(() => setUiCookie(UI_V2), []);
   // The map sheet closes when you go somewhere.
   useEffect(() => setMapOpen(false), [pathname]);
 
@@ -123,7 +121,7 @@ function ChromeBody({ children }: { children: ReactNode }) {
       {fixture ? <FixtureJobLine /> : <LiveJobLine />}
       <RoleBanners />
       <div className="m2-main">
-        {pathname.startsWith("/v2/admin") ? <AdminMap key={localeKey} open={mapOpen} onClose={() => setMapOpen(false)} phone={phone} /> : <MapPane key={localeKey} open={mapOpen} onClose={() => setMapOpen(false)} phone={phone} />}
+        {pathname.startsWith("/admin") ? <AdminMap key={localeKey} open={mapOpen} onClose={() => setMapOpen(false)} phone={phone} /> : <MapPane key={localeKey} open={mapOpen} onClose={() => setMapOpen(false)} phone={phone} />}
         {phone && mapOpen ? <div className="m2-scrim" onClick={() => setMapOpen(false)} aria-hidden="true" /> : null}
         <div className="m2-sheetwrap">
           <div className="m2-cwrap">
@@ -180,6 +178,7 @@ export function V2Shell({ children }: { children: ReactNode }) {
       <PermissionsProvider>
         <PreferencesSync />
         {inner}
+        <RequestAccessHost />
       </PermissionsProvider>
     </AuthGuard>
   );

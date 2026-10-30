@@ -1,9 +1,8 @@
 /**
- * Builds the help index the v2 help panel searches. Meridian 2 chapters come first: every chapter of the new guide
- * (docs/guide), with its recording, the recording's caption lines (docs/guide/tours.json) and, for a role's
- * walkthrough, its five steps. Then the current interface's help-centre chapters (docs/help-centre) and user-guide
- * pages (docs/user-guide), kept until the current interface is removed. Also the dated "What's new" lines of the new
- * interface (docs/guide/whats-new.json), newest first, and each recording's length from docs/help-videos/manifest.json.
+ * Builds the index the help panel searches: every chapter of the guide (docs/guide), with its recording, the
+ * recording's caption lines (docs/guide/tours.json) and, for a role's walkthrough, its five steps. Also the dated
+ * "What's new" lines (docs/guide/whats-new.json), newest first, and each recording's length from
+ * docs/help-videos/manifest.json.
  * `node scripts/help-index.mjs` writes lib/v2/help-data.json; lib/v2/help.test.ts fails when the file is out of date.
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -27,8 +26,6 @@ export function sectionsOf(md) {
   return out;
 }
 
-const firstParagraph = (md) => (md.replace(/^# .*\n/, "").trim().split(/\n\s*\n/)[0] ?? "").replace(/\s+/g, " ").slice(0, 200);
-
 /** "6c" sorts after "6b" after "6" after "5". */
 export function stepRank(step) {
   const m = /^(\d+)([a-z]?)$/.exec(String(step));
@@ -45,8 +42,6 @@ export function buildHelpIndex() {
   const tours = JSON.parse(read("docs", "guide", "tours.json")).tours;
   const manifestPath = path.join(root, "docs", "help-videos", "manifest.json");
   const manifest = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, "utf8")).videos : {};
-  const journeys = JSON.parse(read("docs", "help-centre", "index.json"));
-  const guide = JSON.parse(read("docs", "user-guide", "index.json"));
   const chapters = [];
   for (const section of v2.sections) {
     for (const c of section.chapters) {
@@ -70,20 +65,8 @@ export function buildHelpIndex() {
       });
     }
   }
-  for (const section of journeys.sections) {
-    for (const c of section.chapters) {
-      const md = read("docs", "help-centre", `${c.slug}.md`);
-      chapters.push({ id: `journey:${c.slug}`, kind: "journey", interface: "current", group: section.label, slug: c.slug, title: c.title, summary: c.summary, audiences: c.audiences, video: c.video, seconds: null, captions: [], persona: null, walkthrough: null, sections: sectionsOf(md) });
-    }
-  }
-  for (const section of guide.sections) {
-    for (const p of section.pages) {
-      const md = read("docs", "user-guide", `${p.slug}.md`);
-      chapters.push({ id: `guide:${p.slug}`, kind: "guide", interface: "current", group: section.title, slug: p.slug, title: p.title, summary: firstParagraph(md), audiences: [], video: null, seconds: null, captions: [], persona: null, walkthrough: null, sections: sectionsOf(md) });
-    }
-  }
   const whatsNew = orderWhatsNew(JSON.parse(read("docs", "guide", "whats-new.json")));
-  return { title: journeys.title, guideTitle: guide.title, v2Title: v2.title, whatsNew, chapters };
+  return { title: v2.title, v2Title: v2.title, whatsNew, chapters };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

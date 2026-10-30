@@ -20,7 +20,7 @@ beforeEach(() => {
   resetKeptOutcomes();
   refreshTenantTheme();
   setLang("en");
-  setUrl("/v2/admin/settings?fixture=1");
+  setUrl("/admin/settings?fixture=1");
   window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null, addEventListener: () => undefined, removeEventListener: () => undefined, addListener: () => undefined, removeListener: () => undefined, dispatchEvent: () => false })) as typeof window.matchMedia;
 });
 afterEach(() => {
@@ -142,7 +142,7 @@ describe("Admin › Settings › Appearance", () => {
   it("the shell root and the top bar take the tenant's accent, logo and name; About keeps the Meridian mark", async () => {
     await ent.putThemeSettings({ product_name_override: "Acme Data Quality", accent: "#1b3f8f", accent_dark: null, logo_url: null });
     refreshTenantTheme();
-    setUrl("/v2?fixture=1");
+    setUrl("/?fixture=1");
     renderWithQuery(<V2Shell><h1>Page</h1></V2Shell>);
     await waitFor(() => {
       expect(document.querySelector(".m2-root")).toHaveAttribute("data-tenant-accent", "");
@@ -205,7 +205,7 @@ describe("Admin › System › diagnostics bundle", () => {
   });
 
   it("the Contact support panel attaches the server's JSON summary", async () => {
-    setUrl("/v2?fixture=1&open=help");
+    setUrl("/?fixture=1&open=help");
     renderWithQuery(<V2Shell><h1>Page</h1></V2Shell>);
     const dialog = await screen.findByRole("dialog", { name: "Help" });
     const summary = await within(dialog).findByTestId("diagnostics-summary");

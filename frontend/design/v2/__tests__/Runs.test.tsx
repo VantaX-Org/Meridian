@@ -16,7 +16,7 @@ beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
   resetRunsFixture();
   push.mockClear();
-  setUrl("/v2/runs?fixture=1");
+  setUrl("/runs?fixture=1");
 });
 afterEach(() => {
   window.sessionStorage.clear();
@@ -53,7 +53,7 @@ describe("Runs canvas", () => {
     renderWithQuery(<RunsCanvas />);
     const chart = await screen.findByTestId("run-timeline");
     fireEvent.click(within(chart).getAllByRole("button")[2]);
-    expect(getUrl()).toContain(`/v2/run/${RUNS[2].id}`);
+    expect(getUrl()).toContain(`/run/${RUNS[2].id}`);
   });
 
   it("tabulates the runs: date, system, label, trigger, records, rules, score, status, duration", async () => {
@@ -70,7 +70,7 @@ describe("Runs canvas", () => {
     expect(within(failed).getAllByText("—").length).toBeGreaterThan(2);
     const baseline = rows.find((r) => /Baseline/.test(norm(r))) as HTMLElement;
     expect(norm(baseline)).toContain("2 Oct 2026");
-    expect(within(rows[0]).getByRole("link", { name: "16 Oct 2026, 05:17" })).toHaveAttribute("href", expect.stringContaining(`/v2/run/${RUNS[7].id}`));
+    expect(within(rows[0]).getByRole("link", { name: "16 Oct 2026, 05:17" })).toHaveAttribute("href", expect.stringContaining(`/run/${RUNS[7].id}`));
   });
 
   it("filters by system and by status", async () => {
@@ -104,14 +104,14 @@ describe("Runs canvas", () => {
   });
 
   it("a run with nothing to show says so", async () => {
-    setUrl("/v2/runs?fixture=1&system=successfactors");
+    setUrl("/runs?fixture=1&system=successfactors");
     renderWithQuery(<RunsCanvas />);
     expect(await screen.findByText("Runs appear here once a system has been extracted and analysed.")).toBeInTheDocument();
   });
 });
 
 describe("Runs canvas, the Jobs view", () => {
-  beforeEach(() => setUrl("/v2/runs?fixture=1&view=jobs"));
+  beforeEach(() => setUrl("/runs?fixture=1&view=jobs"));
 
   it("shows every job with its kind, object, system, state, progress, start and duration", async () => {
     renderWithQuery(<RunsCanvas />);

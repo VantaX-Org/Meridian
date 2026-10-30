@@ -686,7 +686,7 @@ def test_baseline_monitor_drafts_regressions(app_engine, monkeypatch):
         assert c.execute(text("SELECT metadata->'monitor'->>'new_records' FROM analysis_versions WHERE id = :v"),
                          {"v": v3}).scalar() == "1"
         assert c.execute(text("SELECT link FROM notifications WHERE type = 'monitor' ORDER BY created_at LIMIT 1")
-                         ).scalar() == f"/workbench?tab=batches&batch={batch.id}"
+                         ).scalar() == f"/work?batch={batch.id}"
         st = monitor.status(c)
         assert [(x["scope"], x["baseline"]["id"], x["latest"]["id"]) for x in st] == [(sid, v1, v3)]
 

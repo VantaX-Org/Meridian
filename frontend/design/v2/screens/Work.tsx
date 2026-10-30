@@ -470,7 +470,7 @@ export function WorkCanvas() {
             {tr("Clear filters")}
           </button>
         ) : (
-          <V2Link href="/v2/runs" className="m2-btn">
+          <V2Link href="/runs" className="m2-btn">
             {tr("Open the runs")}
           </V2Link>
         )

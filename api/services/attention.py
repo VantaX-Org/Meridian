@@ -25,13 +25,13 @@ import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Awaitable, Callable, Optional
-from urllib.parse import urlencode
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.middleware.cache import _build_cache_key, get_redis, invalidate_tenant_cache
 from api.routes.sync_trigger import module_label
+from api.services import app_links
 from api.services import jobs, object_monitor
 from api.services.api_keys import NOT_SERVICE_USER_SQL
 from api.services.current_state import pairs_clause
@@ -128,10 +128,12 @@ def _every(seconds: Optional[int]) -> str:
 
 
 def _fix_href(**f: Any) -> str:
-    """frontend/lib/drill.ts ``fixHref``: same parameter order, omitted filters stay off the URL."""
-    order = ("run", "module", "check", "sev", "st", "mine", "assignee", "sugg", "due", "system", "part", "q", "record")
-    q = [(k, str(f[k])) for k in order if f.get(k)]
-    return f"/fix?{urlencode(q)}" if q else "/fix"
+    """The Work ledger with the filter an item is about (frontend/lib/v2/work.ts reads the same keys)."""
+    if f.get("record") and f.get("module"):
+        return app_links.record(str(f["module"]), str(f["record"]))
+    return app_links.work(
+        filter="proposed" if f.get("sugg") else None, module=f.get("module"), rule_id=f.get("check"),
+        severity=f.get("sev"), assigned="me" if f.get("mine") else f.get("assignee"), due=f.get("due"))
 
 
 def _approvals_title(n: int, label: Optional[str], golden: bool) -> str:
@@ -206,7 +208,7 @@ async def _connection(c: _Ctx) -> list[Item]:
                          detail=f"Last checked {_ago(s['last_health_check'], c.now)}. "
                                 + ("Data cannot be read until the connection works." if bad
                                    else "Some reads may fail until it recovers."),
-                         href=f"/systems/{s['id']}", system_id=s["id"], system_name=s["name"],
+                         href=app_links.system(s["id"]), system_id=s["id"], system_name=s["name"],
                          since=s["last_health_check"]))
     return out
 
@@ -216,7 +218,7 @@ async def _config_missing(c: _Ctx) -> list[Item]:
 
     return [_item("config_missing", severity="medium", title=f"The configuration of {s['name']} is not loaded",
                   detail="Load it so Meridian can check your data against how SAP is set up.",
-                  href="/systems?config=not_loaded", system_id=s["id"], system_name=s["name"], since=s["created_at"])
+                  href=app_links.system(s["id"], "configuration"), system_id=s["id"], system_name=s["name"], since=s["created_at"])
             for s in c.systems.values()
             if s["is_active"] and not s["has_config"] and not no_config_api(s["system_type"])]
 
@@ -231,7 +233,7 @@ async def _config_drift(c: _Ctx) -> list[Item]:
                   title=f"{_n(r.n, 'configuration change')} detected"
                         + (f" on {c.name(r.system_id)}" if c.name(r.system_id) else ""),
                   detail="Found in the last 7 days. Check that they were intended.",
-                  href=f"/systems/{r.system_id}?tab=config" if r.system_id else "/systems", since=r.since)
+                  href=app_links.system(r.system_id, "configuration") if r.system_id else app_links.LANDSCAPE, since=r.since)
             for r in rows]
 
 
@@ -261,7 +263,7 @@ async def _monitor(c: _Ctx) -> list[Item]:
                 since=r["last_run_at"], title=f"{label} has not been checked on schedule",
                 detail=f"The last check was {_ago(r['last_run_at'], c.now)}; it runs "
                        f"{_every(r['cadence']['interval_seconds'])}.",
-                href=f"/objects/{module}#monitor"))
+                href=app_links.object_page(module, "runs")))
     return out
 
 
@@ -279,7 +281,7 @@ async def _schedules(c: _Ctx) -> list[Item]:
                          system_name=c.name(r.system_id), since=r.since,
                          title=f"The scheduled check of {module_label(r.module)} did not start",
                          detail=f"It was due {_ago(r.since, c.now)}. Check that the schedule is running.",
-                         href=f"/systems/{r.system_id}?tab=health#schedules"))
+                         href=app_links.system(r.system_id, "schedules")))
     groups: dict[tuple, list] = {}
     for r in await c.q("""
             SELECT sp.system_id::text AS system_id, sp.domain AS module, l.id::text AS run_id, l.started_at
@@ -295,7 +297,7 @@ async def _schedules(c: _Ctx) -> list[Item]:
                          system_name=c.name(sid), since=min(x.started_at for x in rs),
                          title=f"The last scheduled check of {module_label(module)} failed",
                          detail=f"It failed {_ago(rs[0].started_at, c.now)}. Retry it once the cause is fixed.",
-                         href=f"/admin/jobs?job={rs[0].run_id}"))
+                         href=app_links.job(rs[0].run_id)))
     return out
 
 
@@ -317,7 +319,7 @@ async def _failed_jobs(c: _Ctx) -> list[Item]:
         item = _item("job_failed", severity="high", count=len(js), system_id=sid, system_name=c.name(sid),
                      since=oldest, title=f"{_n(len(js), 'background job')} failed in the last 24 hours"
                      + (f" on {c.name(sid)}" if c.name(sid) else ""),
-                     detail=f"The latest failed {_ago(newest, c.now)}.", href=f"/admin/jobs?job={js[0]['id']}")
+                     detail=f"The latest failed {_ago(newest, c.now)}.", href=app_links.job(js[0]["id"]))
         if not any(j["kind"] in SYNC_JOB_KINDS for j in js):
             item["required_action"] = "analyse"
         out.append(item)
@@ -371,7 +373,7 @@ async def _no_go(c: _Ctx) -> list[Item]:
                          since=runs[p["version_id"]].run_at, title=f"{module_label(p['module'])} is rated No-go",
                          detail=f"The score is {score:.0f}, below the warning level of {thresholds['warning']:.0f}. "
                                 f"{_n(k, 'critical or high rule')} {_is(k)} failing.",
-                         href=f"/objects/{p['module']}"))
+                         href=app_links.object_page(p["module"])))
     return out
 
 
@@ -391,7 +393,7 @@ async def _approvals(c: _Ctx) -> list[Item]:
         out.append(_item("approvals", severity="high", count=g["n"], module=module, since=g["since"],
                          title=_approvals_title(g["n"], module_label(module), False),
                          detail="A second person has to approve them before they can be exported.",
-                         href="/inbox?kind=approvals", by=g["by"], golden=False, label=module_label(module)))
+                         href=app_links.work(filter="approvals"), by=g["by"], golden=False, label=module_label(module)))
     if (await c.q("SELECT to_regclass('golden_writeback_requests') AS reg"))[0].reg:
         rows = await c.q("""
             SELECT requested_by AS by, count(*) AS n, min(created_at) AS since FROM golden_writeback_requests
@@ -401,7 +403,7 @@ async def _approvals(c: _Ctx) -> list[Item]:
             out.append(_item("approvals", severity="high", count=n, since=min(r.since for r in rows),
                              title=_approvals_title(n, None, True),
                              detail="A second person has to approve them before they are written to SAP.",
-                             href="/inbox?kind=approvals", by={r.by: r.n for r in rows}, golden=True, label=None))
+                             href=app_links.work(filter="approvals"), by={r.by: r.n for r in rows}, golden=True, label=None))
     return out
 
 
@@ -412,7 +414,7 @@ async def _sla(c: _Ctx) -> list[Item]:
            AND due_at < CAST(:now AS timestamptz) GROUP BY domain""", open=list(INBOX_OPEN))
     return [_item("sla_breach", severity="high", count=r.n, module=r.module, since=r.since,
                   title=f"{_n(r.n, 'inbox item')} {_is(r.n)} overdue in {module_label(r.module)}",
-                  detail="They passed their due date. Assign or resolve them.", href="/inbox?due=overdue")
+                  detail="They passed their due date. Assign or resolve them.", href=app_links.work(due="overdue"))
             for r in rows]
 
 
@@ -432,7 +434,7 @@ async def _discovery(c: _Ctx) -> list[Item]:
                          title=f"Process discovery failed on {c.name(sid) or 'a system'}",
                          detail=f"The latest run for {', '.join(r.l1.upper() for r in rs)} failed "
                                 f"{_ago(rs[0].started_at, c.now)}.",
-                         href=f"/process/runs/{rs[0].id}"))
+                         href=app_links.JOBS))
     runs: dict[tuple, dict[int, float]] = {}
     for r in await c.q("""
             SELECT system_id::text AS system_id, l1, fitness, n FROM (
@@ -452,7 +454,7 @@ async def _discovery(c: _Ctx) -> list[Item]:
         out.append(_item("fitness_drop", severity="medium", count=len(ds), system_id=sid, system_name=c.name(sid),
                          title=f"Process fitness dropped on {c.name(sid) or 'a system'}",
                          detail=f"{l1.upper()} fell from {before * 100:.0f}% to {after * 100:.0f}% between the last two runs.",
-                         href=f"/process/{l1}?system={sid}"))
+                         href=app_links.LANDSCAPE))
     return out
 
 
@@ -488,7 +490,7 @@ async def _discovery_due(c: _Ctx) -> list[Item]:
                          since=rs[0].done_at,
                          title=f"Process discovery on {c.name(sid) or 'a system'} has not run on schedule",
                          detail=f"The last run for {names} was {_ago(rs[0].done_at, c.now)}. Run it again.",
-                         href=f"/process/runs?system={sid}"))
+                         href=app_links.JOBS))
     return out
 
 
@@ -507,7 +509,7 @@ async def _rules(c: _Ctx) -> list[Item]:
         return []
     return [_item("rule_review", severity="low", count=n, since=r.since,
                   title=f"{_n(n, 'rule proposal')} {_is(n)} waiting for review",
-                  detail="Drafts and learned rules need a decision before they run.", href="/rules/drafts?tab=ai")]
+                  detail="Drafts and learned rules need a decision before they run.", href=app_links.RULE_DRAFTS)]
 
 
 async def _contracts(c: _Ctx) -> list[Item]:
@@ -521,7 +523,7 @@ async def _contracts(c: _Ctx) -> list[Item]:
         return []
     return [_item("contract_breach", severity="medium", count=r.n, since=r.since,
                   title=f"{_n(r.n, 'data contract')} {_is(r.n)} not met",
-                  detail="The latest check found values outside the agreed limits.", href="/rules/contracts")]
+                  detail="The latest check found values outside the agreed limits.", href=app_links.CONTRACTS)]
 
 
 async def _admin(c: _Ctx) -> list[Item]:
@@ -535,7 +537,7 @@ async def _admin(c: _Ctx) -> list[Item]:
     if r.n:
         out.append(_item("access_requests", severity="high", count=r.n, since=r.since,
                          title=f"{_n(r.n, 'access request')} {_is(r.n)} waiting for a decision",
-                         detail="People are waiting to be granted access.", href="/admin/roles?tab=requests"))
+                         detail="People are waiting to be granted access.", href=app_links.admin("users")))
     r = (await c.q(f"""
         SELECT count(*) AS n, min(COALESCE(invited_at, created_at)) AS since FROM users
          WHERE tenant_id = CAST(:t AS uuid) AND is_active AND {NOT_SERVICE}
@@ -545,7 +547,7 @@ async def _admin(c: _Ctx) -> list[Item]:
         out.append(_item("invites_pending", severity="medium", count=r.n, since=r.since,
                          title=f"{_n(r.n, 'invitation')} {'was' if r.n == 1 else 'were'} not accepted",
                          detail="They were sent more than 7 days ago or could not be sent.",
-                         href="/admin/users?status=invited"))
+                         href=app_links.admin("users")))
     used, limit = await seats_for(c.db, Tenant(uuid.UUID(c.t), "", []))
     days = get_cached_manifest().get("days_remaining")
     full = limit is not None and used / limit >= SEAT_WARN
@@ -557,7 +559,7 @@ async def _admin(c: _Ctx) -> list[Item]:
                    else "The licence is about to end"),
             detail=" ".join(([f"{used} of {limit} seats are in use."] if full else [])
                             + ([f"The licence ends in {_n(int(days), 'day')}."] if ending else [])),
-            href="/admin/licence"))
+            href=app_links.admin("licence")))
     r = (await c.q("""
         SELECT count(*) AS n, min(expires_at) AS since FROM user_role_scopes
          WHERE tenant_id = CAST(:t AS uuid) AND expires_at > CAST(:now AS timestamptz)
@@ -565,7 +567,7 @@ async def _admin(c: _Ctx) -> list[Item]:
     if r.n:
         out.append(_item("grants_expiring", severity="low", count=r.n, since=r.since,
                          title=f"{_n(r.n, 'access grant')} will expire within 14 days",
-                         detail="Renew them or let them lapse.", href="/admin/roles?tab=users&expiring=1"))
+                         detail="Renew them or let them lapse.", href=app_links.admin("roles")))
     r = (await c.q(f"""
         SELECT count(*) AS n, min(COALESCE(last_login, invited_at, created_at)) AS since FROM users
          WHERE tenant_id = CAST(:t AS uuid) AND is_active AND {NOT_SERVICE} AND (
@@ -576,7 +578,7 @@ async def _admin(c: _Ctx) -> list[Item]:
     if r.n:
         out.append(_item("dormant_users", severity="low", count=r.n, since=r.since,
                          title=f"{_n(r.n, 'user')} {'has' if r.n == 1 else 'have'} not signed in for 90 days",
-                         detail="Consider suspending their accounts.", href="/admin/users?status=dormant"))
+                         detail="Consider suspending their accounts.", href=app_links.admin("users")))
     r = (await c.q("""
         SELECT count(*) AS n, min(expires_at) AS since FROM api_keys
          WHERE tenant_id = CAST(:t AS uuid) AND revoked_at IS NULL AND expires_at > CAST(:now AS timestamptz)
@@ -585,7 +587,7 @@ async def _admin(c: _Ctx) -> list[Item]:
         out.append(_item("api_key_expiring", severity="low", count=r.n, since=r.since,
                          title=f"{_n(r.n, 'API key')} will expire within 14 days",
                          detail="Create a replacement before the scripts using it stop working.",
-                         href="/admin/roles?tab=keys"))
+                         href=app_links.admin("apikeys")))
     return out
 
 

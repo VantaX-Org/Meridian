@@ -177,6 +177,23 @@ export function systemSlug(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 
+/**
+ * The system segment of an address that names an object but not its system (`/o/_/material-master`): the redirects
+ * from the old object pages use it, and the object canvas replaces it with the system that holds the object. No system
+ * slug can be "_" (a slug is lower-case letters, digits and hyphens).
+ */
+export const ANY_SYSTEM = "_";
+
+/** The system that holds an object: the one with the most records checked for it, else the first that lists it. */
+export function systemForModule<S extends { id: string }, C extends { system_id: string; module: string; records_checked?: number | null }>(systems: readonly S[], cells: readonly C[], module: string): S | undefined {
+  const held = cells.filter((c) => c.module === module).sort((a, b) => (b.records_checked ?? 0) - (a.records_checked ?? 0));
+  for (const c of held) {
+    const s = systems.find((x) => x.id === c.system_id);
+    if (s) return s;
+  }
+  return undefined;
+}
+
 /** Finds a system by the URL segment: its slug, its id, or its name in any case. */
 export function findSystem<T extends { id: string; name: string }>(systems: readonly T[], segment: string): T | undefined {
   const s = segment.toLowerCase();

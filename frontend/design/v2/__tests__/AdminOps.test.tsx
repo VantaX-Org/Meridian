@@ -29,7 +29,7 @@ beforeEach(() => {
   resetKeptOutcomes();
   undo = stubLayout(900, 3000);
   h.allowed = "all";
-  setUrl("/v2/admin/audit?fixture=1");
+  setUrl("/admin/audit?fixture=1");
 });
 afterEach(() => {
   undo();
@@ -120,7 +120,7 @@ describe("Admin: audit log", () => {
 
 describe("Admin: alerts and notifications", () => {
   it("lists the channels with their digest, board pack and status, and the score floors", async () => {
-    setUrl("/v2/admin/alerts?fixture=1");
+    setUrl("/admin/alerts?fixture=1");
     withInspector(<AlertsSection />);
     await waitFor(() => expect(dataRows("Alert channels")).toHaveLength(3));
     expect(norm(dataRows("Alert channels")[0])).toContain("dq-team@demo-corp.example");
@@ -132,7 +132,7 @@ describe("Admin: alerts and notifications", () => {
 
   it("saves thresholds and floors together", async () => {
     const spy = vi.spyOn(adminApi, "saveAlertThresholds");
-    setUrl("/v2/admin/alerts?fixture=1");
+    setUrl("/admin/alerts?fixture=1");
     withInspector(<AlertsSection />);
     fireEvent.change(await screen.findByLabelText("Critical failing rules"), { target: { value: "2" } });
     fireEvent.change(screen.getByLabelText("Material master floor"), { target: { value: "70" } });
@@ -144,7 +144,7 @@ describe("Admin: alerts and notifications", () => {
 
   it("adds a channel in its inspector; an email address is checked first", async () => {
     const spy = vi.spyOn(adminApi, "createChannel");
-    setUrl("/v2/admin/alerts?fixture=1&open=channel:new");
+    setUrl("/admin/alerts?fixture=1&open=channel:new");
     withInspector(<AlertsSection />);
     const dialog = await screen.findByRole("dialog", { name: "Add a channel" });
     const add = within(dialog).getByRole("button", { name: "Add the channel" });
@@ -160,7 +160,7 @@ describe("Admin: alerts and notifications", () => {
     const update = vi.spyOn(adminApi, "updateChannel");
     const test = vi.spyOn(adminApi, "testChannel");
     const remove = vi.spyOn(adminApi, "deleteChannel");
-    setUrl("/v2/admin/alerts?fixture=1&open=channel:ch-2");
+    setUrl("/admin/alerts?fixture=1&open=channel:ch-2");
     withInspector(<AlertsSection />);
     const dialog = await screen.findByRole("dialog", { name: "Microsoft Teams: outlook.office.com" });
     fireEvent.click(within(dialog).getByLabelText("Send new critical findings at once"));
@@ -178,14 +178,14 @@ describe("Admin: alerts and notifications", () => {
 
   it("warns when no channel is set up", async () => {
     vi.spyOn(adminApi, "listChannels").mockResolvedValue([]);
-    setUrl("/v2/admin/alerts?fixture=1");
+    setUrl("/admin/alerts?fixture=1");
     withInspector(<AlertsSection />);
     expect(await screen.findByText(/Alerts stay in the app: no channel is set up/)).toBeInTheDocument();
   });
 
   it("alerts are read only without the manage settings permission", async () => {
     h.allowed = ["view"];
-    setUrl("/v2/admin/alerts?fixture=1");
+    setUrl("/admin/alerts?fixture=1");
     withInspector(<AlertsSection />);
     await waitFor(() => expect(dataRows("Alert channels")).toHaveLength(3));
     expect(screen.queryByRole("button", { name: "Add a channel" })).toBeNull();
@@ -194,7 +194,7 @@ describe("Admin: alerts and notifications", () => {
 
   it("saves the default digest", async () => {
     const spy = vi.spyOn(adminApi, "saveDefaultDigest");
-    setUrl("/v2/admin/notifications?fixture=1");
+    setUrl("/admin/notifications?fixture=1");
     renderWithQuery(<NotificationsSection />);
     expect(await screen.findByLabelText("Email")).toHaveValue("dq-team@demo-corp.example");
     fireEvent.click(screen.getByLabelText("Daily digest"));
@@ -206,7 +206,7 @@ describe("Admin: alerts and notifications", () => {
 
 describe("Admin: jobs and system update", () => {
   it("lists jobs, filters to the failed ones, and opens one in its inspector", async () => {
-    setUrl("/v2/admin/system?fixture=1");
+    setUrl("/admin/system?fixture=1");
     withInspector(<SystemSection />);
     await waitFor(() => expect(dataRows("Jobs").length).toBeGreaterThanOrEqual(4));
     fireEvent.change(screen.getByLabelText("Show"), { target: { value: "failed" } });
@@ -218,7 +218,7 @@ describe("Admin: jobs and system update", () => {
 
   it("runs an update after a confirmation, and follows it", async () => {
     const spy = vi.spyOn(adminApi, "triggerUpdate");
-    setUrl("/v2/admin/system?fixture=1");
+    setUrl("/admin/system?fixture=1");
     renderWithQuery(<SystemSection />);
     fireEvent.click(await screen.findByRole("button", { name: "Update to 0.1.2" }));
     const dialog = await screen.findByRole("dialog", { name: "Update to 0.1.2" });
@@ -229,7 +229,7 @@ describe("Admin: jobs and system update", () => {
   });
 
   it("reads the health checks and counts them", async () => {
-    setUrl("/v2/admin/system?fixture=1");
+    setUrl("/admin/system?fixture=1");
     renderWithQuery(<SystemSection />);
     const table = await screen.findByRole("table", { name: "Health checks" });
     expect(within(table).getAllByRole("row")).toHaveLength(7);
@@ -238,7 +238,7 @@ describe("Admin: jobs and system update", () => {
 
   it("without the manage system permission there is no update and no health check", async () => {
     h.allowed = ["view"];
-    setUrl("/v2/admin/system?fixture=1");
+    setUrl("/admin/system?fixture=1");
     renderWithQuery(<SystemSection />);
     await waitFor(() => expect(dataRows("Jobs").length).toBeGreaterThan(0));
     expect(screen.queryByRole("button", { name: /^Update to/ })).toBeNull();

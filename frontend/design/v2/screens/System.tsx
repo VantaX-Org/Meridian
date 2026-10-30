@@ -69,7 +69,7 @@ function Overview({ id }: { id: string }) {
                 {cells.map((c) => (
                   <tr key={c.module}>
                     <th scope="row">
-                      <V2Link href={`/v2/o/${systemSlug(system?.name ?? "")}/${moduleSlug(c.module)}`}>{L?.objects.find((o) => o.module === c.module)?.label ?? c.module}</V2Link>
+                      <V2Link href={`/o/${systemSlug(system?.name ?? "")}/${moduleSlug(c.module)}`}>{L?.objects.find((o) => o.module === c.module)?.label ?? c.module}</V2Link>
                     </th>
                     <td className="m2-r">{f1(c.score)}</td>
                     <td>
@@ -170,7 +170,7 @@ function Extractions({ id }: { id: string }) {
                 <td className="m2-r">{int(records)}</td>
                 <td>
                   {v.analysed_at ? (
-                    <V2Link href={`/v2/run/${v.id}`} className="m2-rowlink">
+                    <V2Link href={`/run/${v.id}`} className="m2-rowlink">
                       {tr("Open the run")}
                     </V2Link>
                   ) : (
@@ -194,7 +194,7 @@ function Extractions({ id }: { id: string }) {
 }
 
 /**
- * `/v2/s/{id}`: one system. Overview, Extractions, Configuration, Schedules and Custom objects as views of the one page
+ * `/s/{id}`: one system. Overview, Extractions, Configuration, Schedules and Custom objects as views of the one page
  * (`?tab=`). Configuration, Schedules and Custom objects are views of their own, with the verbs the viewer may use.
  */
 export function SystemCanvas({ id }: { id: string }) {
@@ -203,14 +203,15 @@ export function SystemCanvas({ id }: { id: string }) {
   const land = useLandscape(null);
   const ext = useSystemsExtended().data?.find((s) => s.id === id);
   const system = land.data?.systems.find((s) => s.id === id);
-  const tab: TabKey = SYSTEM_TABS.find((t) => t.key === params.get("tab"))?.key ?? "overview";
+  // An old address names a tab by its old word (`?tab=config`, `?tab=health`): it opens the same view.
+  const tab: TabKey = SYSTEM_TABS.find((t) => t.key === params.get("tab") || t.old === params.get("tab"))?.key ?? "overview";
   const href = (key: TabKey) => {
     const next = new URLSearchParams(params.toString());
     next.delete("open");
     if (key === "overview") next.delete("tab");
     else next.set("tab", key);
     const qs = next.toString();
-    return qs ? `/v2/s/${id}?${qs}` : `/v2/s/${id}`;
+    return qs ? `/s/${id}?${qs}` : `/s/${id}`;
   };
 
   if (land.isError) {
@@ -228,7 +229,7 @@ export function SystemCanvas({ id }: { id: string }) {
       <>
         <PageTitle>{tr("System")}</PageTitle>
         <div className="m2-sec">
-          <EmptyFrame action={<V2Link href="/v2" className="m2-btn">{tr("Back to the landscape")}</V2Link>}>{tr("This system is not in the tenant. It may have been removed.")}</EmptyFrame>
+          <EmptyFrame action={<V2Link href="/" className="m2-btn">{tr("Back to the landscape")}</V2Link>}>{tr("This system is not in the tenant. It may have been removed.")}</EmptyFrame>
         </div>
       </>
     );

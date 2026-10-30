@@ -59,12 +59,12 @@ export function RoleBanners() {
   return null;
 }
 
-/** `/v2/share/<token>`: resolves the link, enters the read-only shared view and opens the page it points at. */
+/** `/share/<token>`: resolves the link, enters the read-only shared view and opens the page it points at. */
 export function ShareLanding() {
   const pathname = usePathname();
   const router = useRouter();
   const href = useV2Href();
-  const token = decodeURIComponent(pathname.split("/v2/share/")[1] ?? "").split("/")[0];
+  const token = decodeURIComponent(pathname.split("/share/")[1] ?? "").split("/")[0];
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     let alive = true;

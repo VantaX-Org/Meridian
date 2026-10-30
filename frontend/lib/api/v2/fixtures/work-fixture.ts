@@ -7,7 +7,7 @@ import type { RuleRow, WorkPage, WorkRow, WorkStatus } from "../types";
 import type { DecideResult, GroupResult, ImportResult, RecordLinks, SavedView, UndoResult, WorkFilters } from "../work";
 
 /**
- * The Work ledger in fixture mode (`/v2/work?fixture=1`): a small in-memory copy of the work list that answers the same
+ * The Work ledger in fixture mode (`/work?fixture=1`): a small in-memory copy of the work list that answers the same
  * reads as the API and applies the same writes, so deciding, undoing, saving a view and exporting can be built,
  * screenshotted and tested with no backend. The headline numbers are the prototype's (25,712 to fix, 3,418 with a
  * suggested value, 612 waiting for approval, 48 exceptions); the rows are a sample of them, as the first page of a

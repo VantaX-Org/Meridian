@@ -40,9 +40,9 @@ COPY db/ db/
 COPY agents/ agents/
 COPY checks/ checks/
 COPY templates/ templates/
-# the user guide's chapters (the app shows them at /docs; the API renders them as the PDF manual)
-COPY frontend/docs/user-guide/ docs/user-guide/
-# help-centre training recordings (the app shows the chapters at /help; the API serves the videos)
+# the guide's chapters (the help panel shows them; the API renders them as the PDF manual)
+COPY frontend/docs/guide/ docs/guide/
+# the guide's recordings (the help panel plays them; the API serves them)
 COPY frontend/docs/help-videos/ docs/help-videos/
 
 # Compile all Python source to .pyc bytecode (exclude migrations - they must stay as .py)

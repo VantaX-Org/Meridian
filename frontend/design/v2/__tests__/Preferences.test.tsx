@@ -8,7 +8,6 @@ import { readPrefs, resetPreferencesCache } from "@/lib/preferences";
 import { f1, int, pct1 } from "@/lib/v2/score";
 import { fixed, v2Locale, whole } from "@/lib/v2/format";
 import { readKeyHints, readPersonaOverride } from "@/lib/v2/prefs";
-import { readUiCookie } from "@/lib/v2/switch";
 import { V2Shell } from "../shell/V2Shell";
 import { resetKeptOutcomes } from "../inspector/shared";
 import { setUrl } from "./nav-store";
@@ -28,11 +27,10 @@ beforeEach(() => {
   resetAdminFixture();
   resetKeptOutcomes();
   stubMatchMedia();
-  document.cookie = "mn_ui=; Path=/; Max-Age=0";
   delete document.documentElement.dataset.theme;
   delete document.documentElement.dataset.density;
   delete document.documentElement.dataset.m2Hints;
-  setUrl("/v2?fixture=1&open=preferences");
+  setUrl("/?fixture=1&open=preferences");
 });
 afterEach(() => {
   window.sessionStorage.clear();
@@ -131,29 +129,23 @@ describe("the preferences panel", () => {
     fireEvent.click(within(dialog).getByLabelText("Tell me at once about critical findings"));
     expect(readPrefs().notifications).toMatchObject({ digest: "daily", immediate_critical: true });
     expect(patch).toHaveBeenCalledWith({ notifications: { digest: "daily" } });
-    expect(within(dialog).getByRole("link", { name: "Inbox and triage settings" })).toHaveAttribute("href", "/v2/work?open=triage&fixture=1");
+    expect(within(dialog).getByRole("link", { name: "Inbox and triage settings" })).toHaveAttribute("href", "/work?open=triage&fixture=1");
   });
 
-  it("the interface switch sets the cookie that sends this browser to the current interface", async () => {
+  it("has no switch to a second interface", async () => {
     mount();
     const dialog = await panel();
-    expect(readUiCookie()).toBe("v2");
-    const box = within(dialog).getByLabelText("Use the current interface");
-    expect(box).not.toBeChecked();
-    fireEvent.click(box);
-    expect(readUiCookie()).toBeNull();
-    expect(await within(dialog).findByTestId("action-result")).toHaveTextContent("The current interface opens next time");
-    expect(box).toBeChecked();
+    expect(within(dialog).queryByLabelText(/current interface/)).toBeNull();
   });
 
   it("opens from the account menu, and the menu has Preferences and Reports", async () => {
-    setUrl("/v2?fixture=1");
+    setUrl("/?fixture=1");
     mount();
     fireEvent.click(screen.getByRole("button", { name: /^Account/ }));
     const menu = await screen.findByRole("menu", { name: "Account" });
     const prefs = within(menu).getByRole("menuitem", { name: "Preferences" });
     expect(prefs.getAttribute("href")).toContain("open=preferences");
-    expect(within(menu).getByRole("menuitem", { name: "Reports" })).toHaveAttribute("href", "/v2/reports?fixture=1");
-    expect(within(menu).getByRole("menuitem", { name: "Administration" })).toHaveAttribute("href", "/v2/admin?fixture=1");
+    expect(within(menu).getByRole("menuitem", { name: "Reports" })).toHaveAttribute("href", "/reports?fixture=1");
+    expect(within(menu).getByRole("menuitem", { name: "Administration" })).toHaveAttribute("href", "/admin?fixture=1");
   });
 });

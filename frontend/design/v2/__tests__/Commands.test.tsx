@@ -11,9 +11,9 @@ vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout:
 
 beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
-  window.history.pushState({}, "", "/v2?fixture=1");
+  window.history.pushState({}, "", "/?fixture=1");
   push.mockClear();
-  setUrl("/v2?fixture=1");
+  setUrl("/?fixture=1");
 });
 afterEach(() => {
   window.sessionStorage.clear();
@@ -45,14 +45,14 @@ describe("the command line's actions", () => {
     const { dialog, input } = await ask("approve");
     await within(dialog).findByText("Approvals waiting 612");
     fireEvent.keyDown(input, { key: "Enter" });
-    expect(push).toHaveBeenCalledWith(expect.stringContaining("/v2/work?filter=approvals"));
+    expect(push).toHaveBeenCalledWith(expect.stringContaining("/work?filter=approvals"));
   });
 
   it("export from another screen opens the ledger with ?export=1, which exports what the ledger shows", async () => {
     const { dialog, input } = await ask("export");
     await within(dialog).findByText("Export fix sheet");
     fireEvent.keyDown(input, { key: "Enter" });
-    expect(push).toHaveBeenCalledWith(expect.stringContaining("/v2/work?export=1"));
+    expect(push).toHaveBeenCalledWith(expect.stringContaining("/work?export=1"));
   });
 
   it("export on the ledger exports the rows on screen without leaving it", async () => {
@@ -80,7 +80,7 @@ describe("the command line's actions", () => {
     const { dialog, input } = await ask("ap");
     await within(dialog).findByText("Approvals waiting 3");
     fireEvent.keyDown(input, { key: "Enter" });
-    expect(push).toHaveBeenCalledWith(expect.stringContaining("/v2/work?filter=approvals"));
+    expect(push).toHaveBeenCalledWith(expect.stringContaining("/work?filter=approvals"));
     expect(push).not.toHaveBeenCalledWith(expect.stringContaining("/inbox"));
   });
 

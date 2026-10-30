@@ -1,11 +1,11 @@
 """The user guide as one PDF.
 
-The guide's chapters are the markdown files the app shows at /docs (``frontend/docs/user-guide``; in
-the API image they are copied to ``docs/user-guide``). ``index.json`` there gives the sections, the
-chapter order and the titles, so the app and this PDF never disagree. The markdown subset matches the
-app's renderer (frontend/lib/help/markdown.tsx): headings, paragraphs, bullet and numbered lists,
-fenced code, and inline code, bold and links. A link to another chapter becomes a link inside the PDF;
-a link to an app page is printed as its label.
+The guide's chapters are the markdown files the app's help panel shows (``frontend/docs/guide``; in the
+API image they are copied to ``docs/guide``). ``index.json`` there gives the sections (``label``), the
+chapter order and the titles (``chapters``), so the help panel and this PDF never disagree; the older
+manifest shape (``title`` and ``pages``) is still read. The markdown subset: headings, paragraphs,
+bullet and numbered lists, fenced code, and inline code, bold and links. A link to another chapter
+becomes a link inside the PDF; a link to an app page is printed as its label.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from typing import Optional
 from markupsafe import Markup, escape
 
 _ROOT = Path(__file__).resolve().parents[2]
-_CANDIDATES = (_ROOT / "frontend" / "docs" / "user-guide", _ROOT / "docs" / "user-guide")
+_CANDIDATES = (_ROOT / "frontend" / "docs" / "guide", _ROOT / "docs" / "guide")
 _INLINE = re.compile(r"(`[^`]+`)|(\*\*[^*]+\*\*)|(\[[^\]]+\]\([^)]+\))")
 _CHAPTER_LINK = re.compile(r"^/docs\?page=([\w-]+)$")
 
@@ -34,7 +34,14 @@ def guide_dir() -> Path:
 
 
 def manifest(d: Optional[Path] = None) -> dict:
-    return json.loads(((d or guide_dir()) / "index.json").read_text(encoding="utf-8"))
+    """The guide's index as sections of ``{"title", "pages": [{"slug", "title"}]}``, whichever shape the file uses."""
+    raw = json.loads(((d or guide_dir()) / "index.json").read_text(encoding="utf-8"))
+    sections = [
+        {"title": s.get("title") or s.get("label") or "",
+         "pages": [{"slug": p["slug"], "title": p["title"]} for p in (s.get("pages") or s.get("chapters") or [])]}
+        for s in raw.get("sections", [])
+    ]
+    return {"title": raw.get("title"), "sections": sections}
 
 
 def _inline(text: str) -> Markup:

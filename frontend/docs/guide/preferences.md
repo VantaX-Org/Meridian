@@ -11,7 +11,6 @@ Preferences is how Meridian looks and reads for you, where it starts, and what i
 - **Notifications**: the digest of your open items (Off, Daily, Weekly), "Tell me at once about critical findings" and "Also email me". **Inbox and triage settings** opens triage.
 - **What you hear about**: the events that reach your inbox, such as run finished, score drop, new critical breach, batch waiting and mentions, each on or off.
 - **Out of office**: set from People, Out of office, or `?open=away`.
-- **Interface**: **Use the current interface** switches this browser back to the current interface. You can return from its account menu.
 
 ## The numbers and where they come from
 

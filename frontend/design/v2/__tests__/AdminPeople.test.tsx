@@ -28,7 +28,7 @@ beforeEach(() => {
   resetKeptOutcomes();
   undo = stubLayout();
   h.allowed = "all";
-  setUrl("/v2/admin/users?fixture=1");
+  setUrl("/admin/users?fixture=1");
 });
 afterEach(() => {
   undo();
@@ -117,7 +117,7 @@ describe("Admin: users", () => {
 
 describe("Admin: roles and permissions", () => {
   it("lists the roles, the matrix of what each may do, the open requests and the history", async () => {
-    setUrl("/v2/admin/roles?fixture=1");
+    setUrl("/admin/roles?fixture=1");
     page(<RolesSection />);
     await screen.findByRole("grid", { name: "Roles" });
     await waitFor(() => expect(dataRows("Roles")).toHaveLength(9));
@@ -129,7 +129,7 @@ describe("Admin: roles and permissions", () => {
 
   it("grants an access request with the role chosen", async () => {
     const spy = vi.spyOn(adminApi, "decideAccessRequest");
-    setUrl("/v2/admin/roles?fixture=1");
+    setUrl("/admin/roles?fixture=1");
     page(<RolesSection />);
     fireEvent.click(await screen.findByRole("button", { name: "Grant" }));
     const dialog = await screen.findByRole("dialog", { name: "Grant access" });
@@ -144,7 +144,7 @@ describe("Admin: roles and permissions", () => {
 
   it("a built-in role is read only; a custom role saves exactly the permissions ticked", async () => {
     const put = vi.spyOn(adminApi, "putRolePermissions");
-    setUrl("/v2/admin/roles?fixture=1&open=role:viewer");
+    setUrl("/admin/roles?fixture=1&open=role:viewer");
     const first = page(<RolesSection />);
     const dialog = await screen.findByRole("dialog", { name: "Viewer" });
     await within(dialog).findByRole("table", { name: "Permissions by resource and action" });
@@ -153,7 +153,7 @@ describe("Admin: roles and permissions", () => {
     expect(within(dialog).getByRole("button", { name: "Copy to change it" })).toBeInTheDocument();
     first.unmount();
 
-    setUrl("/v2/admin/roles?fixture=1&open=role:finance_reviewer");
+    setUrl("/admin/roles?fixture=1&open=role:finance_reviewer");
     page(<RolesSection />);
     const custom = await screen.findByRole("dialog", { name: "Finance reviewer" });
     const box = await within(custom).findByRole("checkbox", { name: "glossary create" });
@@ -172,7 +172,7 @@ describe("Admin: roles and permissions", () => {
 
   it("creates a role as a copy of another", async () => {
     const spy = vi.spyOn(adminApi, "createRole");
-    setUrl("/v2/admin/roles?fixture=1&open=role:new");
+    setUrl("/admin/roles?fixture=1&open=role:new");
     page(<RolesSection />);
     const dialog = await screen.findByRole("dialog", { name: "Create a role" });
     fireEvent.change(within(dialog).getByLabelText("Name"), { target: { value: "Audit liaison" } });
@@ -187,7 +187,7 @@ describe("Admin: roles and permissions", () => {
 describe("Admin: single sign-on and the sign-in page", () => {
   it("tests the issuer typed in the form, and says what the provider answered", async () => {
     const spy = vi.spyOn(adminApi, "testSso");
-    setUrl("/v2/admin/sso?fixture=1");
+    setUrl("/admin/sso?fixture=1");
     renderWithQuery(<SsoSection part="sso" />);
     const issuer = await screen.findByLabelText("Issuer address");
     expect(issuer).toHaveValue("https://login.demo-corp.example/tenant-4f2a/v2.0");
@@ -199,7 +199,7 @@ describe("Admin: single sign-on and the sign-in page", () => {
 
   it("keeps the stored secret when only the display name changes; asks for it again when the issuer changes", async () => {
     const spy = vi.spyOn(adminApi, "saveSso");
-    setUrl("/v2/admin/sso?fixture=1");
+    setUrl("/admin/sso?fixture=1");
     renderWithQuery(<SsoSection part="sso" />);
     const issuer = await screen.findByLabelText("Issuer address");
     expect(screen.getByLabelText(/Client secret/)).toHaveAttribute("placeholder", "Stored. Leave blank to keep it");
@@ -215,7 +215,7 @@ describe("Admin: single sign-on and the sign-in page", () => {
 
   it("requiring single sign-on is confirmed first", async () => {
     const spy = vi.spyOn(adminApi, "saveSso");
-    setUrl("/v2/admin/signin?fixture=1");
+    setUrl("/admin/signin?fixture=1");
     renderWithQuery(<SsoSection part="signin" />);
     fireEvent.click(await screen.findByLabelText(/Require single sign-on/));
     fireEvent.click(screen.getByRole("button", { name: "Save sign-in settings" }));
@@ -228,7 +228,7 @@ describe("Admin: single sign-on and the sign-in page", () => {
 
   it("turns single sign-on off after a confirmation", async () => {
     const spy = vi.spyOn(adminApi, "removeSso");
-    setUrl("/v2/admin/sso?fixture=1");
+    setUrl("/admin/sso?fixture=1");
     renderWithQuery(<SsoSection part="sso" />);
     fireEvent.click(await screen.findByRole("button", { name: "Turn off single sign-on" }));
     const dialog = await screen.findByRole("dialog", { name: "Turn off single sign-on" });
@@ -247,7 +247,7 @@ describe("Admin: single sign-on and the sign-in page", () => {
 
 describe("Admin: API keys", () => {
   it("lists keys with their roles, status and last use", async () => {
-    setUrl("/v2/admin/apikeys?fixture=1");
+    setUrl("/admin/apikeys?fixture=1");
     page(<ApiKeysSection />);
     await screen.findByText("BI export job");
     const rows = dataRows("API keys");
@@ -261,7 +261,7 @@ describe("Admin: API keys", () => {
 
   it("creates a key with a scoped role and shows the secret once", async () => {
     const spy = vi.spyOn(adminApi, "createApiKey");
-    setUrl("/v2/admin/apikeys?fixture=1&open=apikey:new");
+    setUrl("/admin/apikeys?fixture=1&open=apikey:new");
     page(<ApiKeysSection />);
     const dialog = await screen.findByRole("dialog", { name: "Create an API key" });
     fireEvent.change(within(dialog).getByLabelText("Name"), { target: { value: "Nightly export" } });
@@ -278,7 +278,7 @@ describe("Admin: API keys", () => {
 
   it("revokes a key only after a confirmation", async () => {
     const spy = vi.spyOn(adminApi, "revokeApiKey");
-    setUrl("/v2/admin/apikeys?fixture=1&open=apikey:key-2");
+    setUrl("/admin/apikeys?fixture=1&open=apikey:key-2");
     page(<ApiKeysSection />);
     const dialog = await screen.findByRole("dialog", { name: "ERP monitor (read only)" });
     fireEvent.click(within(dialog).getByRole("button", { name: "Revoke the key" }));

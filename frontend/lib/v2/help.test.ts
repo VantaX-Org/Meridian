@@ -14,13 +14,13 @@ const chapters = data.chapters as unknown as HelpChapter[];
 const v2 = chapters.filter((c) => c.interface === "v2");
 const whatsNew = data.whatsNew as WhatsNewEntry[];
 const byId = (id: string) => chapters.find((c) => c.id === id) as HelpChapter;
-const diag = { version: "0.1.1", tenant: "Demo Corp", tenantId: "t-demo", licence: "enterprise, active", user: "a@demo.example", screen: "/v2/admin/users", time: "2026-10-29T09:30:00.000Z", browser: "Test" };
+const diag = { version: "0.1.1", tenant: "Demo Corp", tenantId: "t-demo", licence: "enterprise, active", user: "a@demo.example", screen: "/admin/users", time: "2026-10-29T09:30:00.000Z", browser: "Test" };
 
 const ROOT = path.join(__dirname, "..", "..");
 const APP = path.join(ROOT, "app", "(v2)");
 const MANIFEST = path.join(ROOT, "docs", "help-videos", "manifest.json");
 
-/** Every page.tsx under app/(v2) as its route pattern: "/v2/o/[system]/[module]/golden". */
+/** Every page.tsx under app/(v2) as its route pattern: "/o/[system]/[module]/golden". */
 function v2Routes(dir = APP, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
     const p = path.join(dir, name);
@@ -33,17 +33,14 @@ function v2Routes(dir = APP, out: string[] = []): string[] {
 const sample = (route: string) => route.replace("[system]", "ecc-production").replace("[module]", "material-master").replace("[section]", "users").replace("[token]", "fx-token").replace("[b]", "r2").replace("[id]", "r1");
 
 describe("the help index", () => {
-  it("is the one the build script writes from docs/guide, docs/help-centre and docs/user-guide", () => {
+  it("is the one the build script writes from docs/guide", () => {
     expect(JSON.parse(JSON.stringify(buildHelpIndex()))).toEqual(data);
   });
 
-  it("lists the Meridian 2 chapters first, then the current interface's chapters, each marked", () => {
+  it("lists the guide's chapters and nothing of the retired interface", () => {
     expect(v2).toHaveLength(26);
-    expect(chapters.filter((c) => c.kind === "journey")).toHaveLength(17);
-    expect(chapters.filter((c) => c.kind === "guide")).toHaveLength(18);
-    const firstCurrent = chapters.findIndex((c) => c.interface === "current");
-    expect(chapters.slice(0, firstCurrent).every((c) => c.interface === "v2")).toBe(true);
-    expect(chapters.slice(firstCurrent).every((c) => c.interface === "current")).toBe(true);
+    expect(chapters).toHaveLength(26);
+    expect(chapters.every((c) => c.kind === "v2" && c.interface === "v2")).toBe(true);
     expect(chapters.every((c) => c.sections.length > 0 && c.title && c.summary)).toBe(true);
   });
 
@@ -79,7 +76,7 @@ describe("every v2 route has a chapter", () => {
 
   it("finds the pages of app/(v2)", () => {
     expect(routes.length).toBeGreaterThanOrEqual(25);
-    expect(routes).toContain("/v2/o/[system]/[module]/golden");
+    expect(routes).toContain("/o/[system]/[module]/golden");
   });
 
   it.each(v2Routes())("%s maps to a Meridian 2 chapter that exists", (route) => {
@@ -91,13 +88,13 @@ describe("every v2 route has a chapter", () => {
   });
 
   it("an open panel or a ledger filter names its own chapter", () => {
-    expect(chapterFor("/v2", "?open=preferences")).toBe("v2:preferences");
-    expect(chapterFor("/v2", "open=waves")).toBe("v2:waves");
-    expect(chapterFor("/v2", "view=waves")).toBe("v2:waves");
-    expect(chapterFor("/v2/work", "filter=approvals")).toBe("v2:approvals");
-    expect(chapterFor("/v2/work", "open=batch:B-241")).toBe("v2:approvals");
-    expect(chapterFor("/v2/o/ecc-production/material-master/golden", "open=survivorship:material_master")).toBe("v2:golden-records");
-    expect(chapterFor("/v2/work", "open=help")).toBe("v2:work");
+    expect(chapterFor("/", "?open=preferences")).toBe("v2:preferences");
+    expect(chapterFor("/", "open=waves")).toBe("v2:waves");
+    expect(chapterFor("/", "view=waves")).toBe("v2:waves");
+    expect(chapterFor("/work", "filter=approvals")).toBe("v2:approvals");
+    expect(chapterFor("/work", "open=batch:B-241")).toBe("v2:approvals");
+    expect(chapterFor("/o/ecc-production/material-master/golden", "open=survivorship:material_master")).toBe("v2:golden-records");
+    expect(chapterFor("/work", "open=help")).toBe("v2:work");
     expect(chapterFor("/inbox")).toBeNull();
   });
 });
@@ -146,13 +143,13 @@ describe("every chapter has a recording", () => {
 
 describe("which chapters come first", () => {
   it("reads the canvas from the address", () => {
-    expect(screenOf("/v2")).toBe("landscape");
-    expect(screenOf("/v2/o/ecc-production/material-master/rules")).toBe("object");
-    expect(screenOf("/v2/r/MM031")).toBe("rule");
-    expect(screenOf("/v2/work")).toBe("work");
-    expect(screenOf("/v2/run/abc/vs/def")).toBe("runs");
-    expect(screenOf("/v2/s/a1")).toBe("system");
-    expect(screenOf("/v2/admin/users")).toBe("admin");
+    expect(screenOf("/")).toBe("landscape");
+    expect(screenOf("/o/ecc-production/material-master/rules")).toBe("object");
+    expect(screenOf("/r/MM031")).toBe("rule");
+    expect(screenOf("/work")).toBe("work");
+    expect(screenOf("/run/abc/vs/def")).toBe("runs");
+    expect(screenOf("/s/a1")).toBe("system");
+    expect(screenOf("/admin/users")).toBe("admin");
     expect(screenOf("/inbox")).toBeNull();
   });
 
@@ -161,7 +158,7 @@ describe("which chapters come first", () => {
   });
 
   it("on the start screen the role's walkthrough comes first, then the landscape chapter", () => {
-    const ctx = { pathname: "/v2", search: "", walkthrough: walkthroughFor("steward", null) };
+    const ctx = { pathname: "/", search: "", walkthrough: walkthroughFor("steward", null) };
     const order = orderFor(chapters, "landscape", ctx);
     expect(order.slice(0, 2).map((c) => c.id)).toEqual(["v2:persona-steward", "v2:landscape"]);
     expect(isHere(order[0], "landscape", ctx)).toBe(true);
@@ -171,15 +168,14 @@ describe("which chapters come first", () => {
     expect(walkthroughFor("basis", "sap_basis")).toBe("v2:persona-basis");
   });
 
-  it("elsewhere the route's chapter comes first, every v2 chapter before the current interface's", () => {
-    const golden = orderFor(chapters, "object", { pathname: "/v2/o/ecc-production/material-master/golden", walkthrough: "v2:persona-lead" });
+  it("elsewhere the route's chapter comes first, then the chapters for this canvas", () => {
+    const golden = orderFor(chapters, "object", { pathname: "/o/ecc-production/material-master/golden", walkthrough: "v2:persona-lead" });
     expect(golden[0].id).toBe("v2:golden-records");
-    expect(golden.findIndex((c) => c.interface === "current")).toBe(v2.length);
-    expect(orderFor(chapters, "admin", { pathname: "/v2/admin/users" })[0].id).toBe("v2:administration");
-    expect(orderFor(chapters, "work", { pathname: "/v2/work", search: "filter=approvals" })[0].id).toBe("v2:approvals");
+    expect(golden).toHaveLength(v2.length);
+    expect(orderFor(chapters, "admin", { pathname: "/admin/users" })[0].id).toBe("v2:administration");
+    expect(orderFor(chapters, "work", { pathname: "/work", search: "filter=approvals" })[0].id).toBe("v2:approvals");
     const plain = orderFor(chapters, "work");
-    expect(plain.filter((c) => appliesTo(c.id, "work") && c.interface === "v2")).toEqual(plain.slice(0, plain.filter((c) => appliesTo(c.id, "work") && c.interface === "v2").length));
-    expect(isHere(byId("journey:first-fix"), "work", {})).toBe(false);
+    expect(plain.filter((c) => appliesTo(c.id, "work"))).toEqual(plain.slice(0, plain.filter((c) => appliesTo(c.id, "work")).length));
   });
 });
 
@@ -187,7 +183,7 @@ describe("searching help", () => {
   it("needs every word, finds them in the text and puts a title match first", () => {
     const hits = searchHelp(chapters, "golden records");
     expect(hits[0].chapter.id).toBe("v2:golden-records");
-    expect(hits.map((h) => h.chapter.id)).toContain("guide:mdm");
+    expect(hits.map((h) => h.chapter.id)).toContain("v2:persona-owner");
     expect(hits.every((h) => h.sections.length > 0)).toBe(true);
     expect(searchHelp(chapters, "zzzqq")).toEqual([]);
     expect(searchHelp(chapters, "  ")).toHaveLength(chapters.length);
@@ -211,8 +207,8 @@ describe("searching help", () => {
 });
 
 describe("what's new", () => {
-  it("has one dated line for each step from 0 to 6c, newest first", () => {
-    expect(whatsNew.map((w) => w.step)).toEqual(["6c", "6b", "6", "5", "4", "3", "2", "1", "0"]);
+  it("has one dated line for each step from 0 to the cut-over (7), newest first", () => {
+    expect(whatsNew.map((w) => w.step)).toEqual(["7", "6c", "6b", "6", "5", "4", "3", "2", "1", "0"]);
     for (const w of whatsNew) {
       expect(w.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(w.text).not.toContain("\n");
@@ -235,13 +231,13 @@ describe("the support block", () => {
     const text = diagnosticsText(diag);
     expect(text).toContain("Meridian 0.1.1");
     expect(text).toContain("Tenant: Demo Corp (t-demo)");
-    expect(text).toContain("Screen: /v2/admin/users");
+    expect(text).toContain("Screen: /admin/users");
     expect(text.split("\n")).toHaveLength(7);
   });
 
   it("has a reference that is the same for the same moment and different for another screen", () => {
     expect(diagnosticsRef(diag)).toMatch(/^MN-[0-9A-F]{4}-1029$/);
     expect(diagnosticsRef(diag)).toBe(diagnosticsRef({ ...diag }));
-    expect(diagnosticsRef({ ...diag, screen: "/v2/work" })).not.toBe(diagnosticsRef(diag));
+    expect(diagnosticsRef({ ...diag, screen: "/work" })).not.toBe(diagnosticsRef(diag));
   });
 });

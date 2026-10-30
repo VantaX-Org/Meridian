@@ -64,23 +64,23 @@ async def test_records_rules_objects_runs_people(seeded, client_for):
             assert "material_master:MATNR=000000000000000101|WERKS=3000" in ids, q
         item = (await _cmd(client, "101"))["record"]["items"][0]
         assert item["title"] == "Material master 000000000000000101 · Hex bolt M8 zinc"
-        assert item["href"] == "/v2/o/ecc-production/material-master?open=record:material_master:MATNR=000000000000000101|WERKS=3000"
+        assert item["href"] == "/o/ecc-production/material-master?open=record:material_master:MATNR=000000000000000101|WERKS=3000"
         assert "record" not in await _cmd(client, "zzz-nothing")
 
         # rules by check_id prefix and by name
         g = await _cmd(client, "MM0")
         assert [i["id"] for i in g["rule"]["items"]] == ["MM014", "MM031"]
-        assert g["rule"]["items"][0] == {"id": "MM014", "title": "MM014 · Base unit of measure not valid", "href": "/v2/r/MM014"}
+        assert g["rule"]["items"][0] == {"id": "MM014", "title": "MM014 · Base unit of measure not valid", "href": "/r/MM014"}
         assert [i["id"] for i in (await _cmd(client, "group missing"))["rule"]["items"]] == ["MM031"]
 
         # objects by label, runs by label, people by name
         g = await _cmd(client, "material")
         assert g["object"]["items"] == [{"id": "material_master", "title": "Material master",
-                                         "href": "/v2/o/ecc-production/material-master"}]
+                                         "href": "/o/ecc-production/material-master"}]
         g = await _cmd(client, "ECC production")
-        assert g["run"]["items"][0]["id"] == seeded["run"] and g["run"]["items"][0]["href"] == f"/v2/run/{seeded['run']}"
+        assert g["run"]["items"][0]["id"] == seeded["run"] and g["run"]["items"][0]["href"] == f"/run/{seeded['run']}"
         g = await _cmd(client, "ann")
-        assert g["person"]["items"] == [{"id": seeded["user"], "title": "Ann Steward", "href": f"/v2/people?open=person:{seeded['user']}"}]
+        assert g["person"]["items"] == [{"id": seeded["user"], "title": "Ann Steward", "href": f"/people?open=person:{seeded['user']}"}]
 
         # limit caps the items over all groups
         total = lambda groups: sum(len(x["items"]) for x in groups.values())
@@ -94,7 +94,7 @@ async def test_actions_are_gated_by_permission(seeded, client_for):
     async with client:
         g = await _cmd(client, "approve")
         assert [i["title"] for i in g["action"]["items"]] == ["Approvals waiting 1"]
-        assert g["action"]["items"][0]["href"] == "/inbox?kind=approvals"
+        assert g["action"]["items"][0]["href"] == "/work?filter=approvals"
         assert [i["title"] for i in (await _cmd(client, "export"))["action"]["items"]] == ["Export fix sheet"]
         assert [i["title"] for i in (await _cmd(client, "extract"))["action"]["items"]] == ["Extract ECC production", "Extract Spare system"]
         assert [i["title"] for i in (await _cmd(client, "extract spare"))["action"]["items"]] == ["Extract Spare system"]

@@ -9,7 +9,7 @@ vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout:
 
 beforeEach(() => {
   reset();
-  visit("/v2/admin", "platform_admin");
+  visit("/admin", "platform_admin");
 });
 afterEach(() => vi.restoreAllMocks());
 

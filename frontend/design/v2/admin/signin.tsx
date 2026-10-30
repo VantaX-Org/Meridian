@@ -107,7 +107,7 @@ function SsoForm({ saved, part }: { saved: SsoConfig; part: "sso" | "signin" }) 
           {!configured ? (
             <Note tone="warn">
               {t("Single sign-on is not set up yet, so there is nothing to show on the sign-in page. Set it up under ")}
-              <V2Link href="/v2/admin/sso">{t("Single sign-on")}</V2Link>
+              <V2Link href="/admin/sso">{t("Single sign-on")}</V2Link>
               {" first."}
             </Note>
           ) : null}

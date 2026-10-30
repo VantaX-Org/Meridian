@@ -1,11 +1,10 @@
 name: Record help videos
 
-# Produces the help centre's training recordings: runs e2e/guided-tours.spec.ts (current interface) and
-# e2e/guided-tours-v2.spec.ts (Meridian 2, fixture mode, captions as WebVTT) under the
-# `recording` Playwright project (recordVideo on, pinned clock, HAR fixtures — deterministic
-# screens, demo data only), converts the webm captures to faststart mp4, and uploads them as an
-# artifact. A maintainer reviews the artifact and commits the mp4s into frontend/docs/help-videos/
-# (they ship inside the API image and are served at /api/v1/docs/help-videos/<name>.mp4).
+# Produces the guide's recordings: runs e2e/guided-tours-v2.spec.ts (fixture mode, captions as WebVTT) under the
+# `recording` Playwright project (recordVideo on, demo data only, deterministic screens), converts each capture to a
+# faststart mp4 with its poster and captions (scripts/help-videos.mjs), and uploads them as an artifact. A maintainer
+# reviews the artifact and commits the files into frontend/docs/help-videos/ (they ship inside the API image and are
+# served at /api/v1/docs/help-videos/<name>).
 #
 # Videos are deliberately NOT auto-committed: a training video is a published claim about the
 # product, so a human watches it before it ships.
@@ -14,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       journeys:
-        description: "Only record these journeys (comma-separated video keys; empty = all)"
+        description: "Only record these tours (comma-separated video keys such as guide2-work; empty = all)"
         required: false
         default: ""
 
@@ -59,44 +58,14 @@ jobs:
             RECORD_HELP=1 npx playwright test --project=recording --workers=1
           fi
 
-      - name: Convert webm captures to mp4
+      # Each tour: mp4, poster frame (.jpg) and captions (.vtt), lengths in manifest.json, then the help index so the
+      # panel shows each recording's length.
+      - name: Convert the tours
         run: |
-          mkdir -p docs/help-videos
-          out_root="$PWD/docs/help-videos"
-          n=0; bad=0
-          # -print0/null-read: immune to any path oddity; -nostdin: ffmpeg must not eat the
-          # loop's input stream; key from the test-title directory (guided-tours-<key>-recording),
-          # validated; absolute output; one bad capture warns instead of killing the step.
-          while IFS= read -r -d '' f; do
-            key=$(basename "$(dirname "$f")" | sed -E 's/^guided-tours-//; s/-recording$//')
-            if ! echo "$key" | grep -qE '^help-[a-z0-9-]+$'; then
-              echo "SKIP (no video key in path): $f"; bad=$((bad+1)); continue
-            fi
-            if ffmpeg -nostdin -y -loglevel error -i "$f" -c:v libx264 -preset slow -crf 23 \
-                 -pix_fmt yuv420p -movflags +faststart -an "$out_root/$key.mp4"; then
-              d=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$out_root/$key.mp4" 2>/dev/null || echo "?")
-              s=$(stat -c %s "$out_root/$key.mp4" 2>/dev/null || echo "?")
-              echo "OK  $key  duration=${d}s bytes=$s"
-              n=$((n+1))
-            else
-              echo "FAIL to convert: $f"; bad=$((bad+1))
-            fi
-          done < <(find "$PWD/help-videos-raw" -name '*.webm' -print0 2>/dev/null)
-          echo "converted=$n skipped_or_failed=$bad"
-          # Meridian 2 tours (e2e/guided-tours-v2.spec.ts) write caption sidecars; they are converted below.
-          [ "$n" -gt 0 ] || ls help-videos-raw/captions/*.json >/dev/null 2>&1 || { echo "no recordings produced"; exit 1; }
+          ls help-videos-raw/captions/*.json >/dev/null 2>&1 || { echo "no recordings produced"; exit 1; }
+          node scripts/help-videos.mjs
+          node scripts/help-index.mjs
           ls -la docs/help-videos/
-
-      # The Meridian 2 tours: mp4, poster frame (.jpg) and captions (.vtt) per tour, lengths in manifest.json,
-      # then the help index so the panel shows each recording's length.
-      - name: Convert the Meridian 2 tours
-        run: |
-          if ls help-videos-raw/captions/*.json >/dev/null 2>&1; then
-            node scripts/help-videos.mjs
-            node scripts/help-index.mjs
-          else
-            echo "no Meridian 2 tour was recorded"
-          fi
 
       - uses: actions/upload-artifact@v4
         with:

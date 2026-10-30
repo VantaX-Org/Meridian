@@ -418,8 +418,8 @@ def test_next_is_never_an_open_redirect() -> None:
     from api.services.oidc import safe_next
 
     for bad in ("https://evil.test", "//evil.test", "/\\evil.test", "javascript:alert(1)", "", None, "/a\nb"):
-        assert safe_next(bad) == "/home"
-    assert safe_next("/objects?x=1") == "/objects?x=1"
+        assert safe_next(bad) == "/"
+    assert safe_next("/work?x=1") == "/work?x=1"
 
 
 def test_migration_098_up_and_down(owner: Engine) -> None:

@@ -147,10 +147,10 @@ describe("the other fixture reads", () => {
 
 describe("withFixture", () => {
   it("appends fixture=1 to a href, once, before a hash, only when on", () => {
-    expect(withFixture("/v2", true)).toBe("/v2?fixture=1");
-    expect(withFixture("/v2?a=1", true)).toBe("/v2?a=1&fixture=1");
-    expect(withFixture("/v2?fixture=1", true)).toBe("/v2?fixture=1");
-    expect(withFixture("/v2#x", true)).toBe("/v2?fixture=1#x");
-    expect(withFixture("/v2", false)).toBe("/v2");
+    expect(withFixture("/", true)).toBe("/?fixture=1");
+    expect(withFixture("/?a=1", true)).toBe("/?a=1&fixture=1");
+    expect(withFixture("/?fixture=1", true)).toBe("/?fixture=1");
+    expect(withFixture("/#x", true)).toBe("/?fixture=1#x");
+    expect(withFixture("/", false)).toBe("/");
   });
 });

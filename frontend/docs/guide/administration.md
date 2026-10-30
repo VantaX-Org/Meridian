@@ -1,6 +1,6 @@
 # Administration
 
-Administration is everything that sets up the tenant: who can sign in, what the licence covers, how scoring and alerts behave, and the state of the platform. It opens from your account menu, **Administration**, for anyone who holds an administrative permission, at `/v2/admin`. "Everything that sets up this tenant: who can sign in, what the licence covers, how scoring and alerts behave, and the state of the platform. Each section opens in this column." You see only the sections your role opens; the rest say which permission they need.
+Administration is everything that sets up the tenant: who can sign in, what the licence covers, how scoring and alerts behave, and the state of the platform. It opens from your account menu, **Administration**, for anyone who holds an administrative permission, at `/admin`. "Everything that sets up this tenant: who can sign in, what the licence covers, how scoring and alerts behave, and the state of the platform. Each section opens in this column." You see only the sections your role opens; the rest say which permission they need.
 
 ## People and access
 
@@ -35,12 +35,12 @@ Administration is everything that sets up the tenant: who can sign in, what the 
 
 ## Operations
 
-- **Runs and jobs**: start an extraction (objects, company codes, plants, document dates, analyse straight after), start an analysis of a stored extraction, load the configuration, scheduled runs and recent jobs with **Retry**.
+- **Runs and jobs**: start an extraction (objects, company codes, plants, document dates, analyse straight after), start an analysis of a stored extraction, load the configuration, scheduled runs, **Upload a file** (a CSV, TSV, Excel, JSON or Parquet file of one object becomes a run and is analysed at once; its columns are matched by the field mappings; needs upload) and recent jobs with **Retry**.
 - **Jobs and system update**: jobs by state and kind, the platform version and **Update to** the latest when Meridian HQ knows one, and **Health checks** (database, cache and queue, background workers, licence, email delivery, file storage): "Each check says what it found and what needs fixing. They refresh every 30 seconds."
 
 ## Provisioning, theming and compliance
 
-These are set through the API in this version; the new interface has no screen for them yet:
+These are set through the API in this version; there is no screen for them yet:
 
 - **SCIM provisioning**: SCIM 2.0 under `/scim/v2`, authenticated by a per-tenant token issued, rotated and revoked at `POST /api/v1/admin/scim/token`. Map identity-provider groups to roles at `GET/PUT /api/v1/admin/scim/group-roles`. Only grants SCIM made are removed, and the last active administrator is never left without admin.
 - **Theming**: `GET/PUT /api/v1/settings/theme` sets the tenant's colours and logo (PNG or SVG), with contrast checks.

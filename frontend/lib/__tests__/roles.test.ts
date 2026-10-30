@@ -1,6 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { LEGACY_ROLE_KEYS, ROLES, grantLabel, grantScopeLabel, grantableRoles, roleLabel } from "@/lib/roles";
 
 describe("grants", () => {
@@ -32,9 +30,4 @@ describe("roleLabel", () => {
     expect(roleLabel("new_role")).toBe("New role");
   });
 
-  it("is what the account menu shows for the signed-in role", () => {
-    const src = readFileSync(join(__dirname, "../../components/user-menu.tsx"), "utf8");
-    expect(src).toContain("roleLabel(user.role)");
-    expect(src).not.toContain("{user.role}");
-  });
 });

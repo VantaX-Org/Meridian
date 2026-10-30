@@ -77,7 +77,7 @@ export function CompareControl({ id, runs }: { id: string; runs: readonly Timeli
           </option>
         ))}
       </select>
-      <V2Link href={`/v2/run/${a}/vs/${b}`} className="m2-btn">
+      <V2Link href={`/run/${a}/vs/${b}`} className="m2-btn">
         {tr("Compare")}
       </V2Link>
     </span>
@@ -113,7 +113,7 @@ function ObjectTable({ cells, labelOf, systemName, run }: { cells: LandscapeCell
           {cells.map((c) => (
             <tr key={c.module}>
               <th scope="row">
-                <V2Link href={`/v2/o/${systemSlug(systemName)}/${moduleSlug(c.module)}?run=${run}`}>{labelOf(c.module)}</V2Link>
+                <V2Link href={`/o/${systemSlug(systemName)}/${moduleSlug(c.module)}?run=${run}`}>{labelOf(c.module)}</V2Link>
               </th>
               <td className="m2-r">{f1(c.raw_score)}</td>
               <td className="m2-r">
@@ -193,7 +193,7 @@ export function RunJobs({ runId }: { runId: string }) {
 }
 
 /**
- * `/v2/run/{id}`: one run. Its status line, what it scored object by object, the actions on it and the jobs that made
+ * `/run/{id}`: one run. Its status line, what it scored object by object, the actions on it and the jobs that made
  * it. Scores are the run's own (the landscape read scoped to it), never the current state.
  */
 export function RunCanvas({ id }: { id: string }) {
@@ -283,7 +283,7 @@ export function RunCanvas({ id }: { id: string }) {
       ) : null}
 
       <div className="m2-cta" data-testid="run-actions">
-        <V2Link href={`/v2?run=${id}`} className="m2-btn m2-next">
+        <V2Link href={`/?run=${id}`} className="m2-btn m2-next">
           {tr("Show scores from this run")}
         </V2Link>
         <button
@@ -386,7 +386,7 @@ export function RunCanvas({ id }: { id: string }) {
         ) : land.isError ? (
           <ErrorFrame onRetry={() => void land.refetch()}>{tr("The objects of this run could not be read.")}</ErrorFrame>
         ) : cells.length === 0 ? (
-          <EmptyFrame action={<V2Link href="/v2/runs" className="m2-btn">{tr("All runs")}</V2Link>}>
+          <EmptyFrame action={<V2Link href="/runs" className="m2-btn">{tr("All runs")}</V2Link>}>
             {v?.status === "failed" ? tr("This run failed before it scored any object.") : tr("This run has no scored object.")}
           </EmptyFrame>
         ) : (

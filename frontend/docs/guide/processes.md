@@ -1,6 +1,6 @@
 # Processes and the designer
 
-The **Processes** tab of an object shows which business process steps its data blocks: Procure to Pay, Plan to Produce, Order to Cash and the others, down to the step, the transaction and the field. The **process designer** is where the process model is edited. Open the tab from the object's tabs (`/v2/o/{system}/{object}/processes`) and the designer with **Open the designer** (`.../processes/design`).
+The **Processes** tab of an object shows which business process steps its data blocks: Procure to Pay, Plan to Produce, Order to Cash and the others, down to the step, the transaction and the field. The **process designer** is where the process model is edited. Open the tab from the object's tabs (`/o/{system}/{object}/processes`) and the designer with **Open the designer** (`.../processes/design`).
 
 ## What is on the Processes tab
 
