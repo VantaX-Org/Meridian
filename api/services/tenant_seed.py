@@ -16,29 +16,41 @@ import logging
 from functools import lru_cache
 from pathlib import Path
 
-import yaml
 from sqlalchemy import text
 
 logger = logging.getLogger("meridian.tenant_seed")
 
 _ROOT = Path(__file__).resolve().parents[2]
-_CATEGORIES = ("ecc", "successfactors", "warehouse", "concur", "ariba")
 
 
 @lru_cache(maxsize=1)
 def raw_rules() -> tuple[tuple[str, str, str, dict], ...]:
     """Every shipped YAML rule as (category, yaml file, module, full rule dict)."""
+    from checks.rule_files import rule_files
+    return _rules_of(rule_files())  # each file parsed once per process, shared with checks.lifecycle
+
+
+def _rules_of(paths: list[Path]) -> tuple[tuple[str, str, str, dict], ...]:
+    from checks.rule_files import parsed
+
     out = []
-    for category in _CATEGORIES:
-        for path in sorted((_ROOT / "checks" / "rules" / category).glob("*.yaml")):
-            if path.name == "column_map.yaml":
-                continue
-            doc = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-            module = doc.get("module") or path.stem
-            for r in doc.get("rules") or []:
-                if isinstance(r, dict) and r.get("id"):
-                    out.append((category, f"{category}/{path.name}", module, r))
+    for path in paths:
+        category = path.parent.name
+        doc = parsed(path)
+        module = doc.get("module") or path.stem
+        for r in doc.get("rules") or []:
+            if isinstance(r, dict) and r.get("id"):
+                out.append((category, f"{category}/{path.name}", module, r))
     return tuple(out)
+
+
+def raw_rules_for(rule_id: str) -> tuple[tuple[str, str, str, dict], ...]:
+    """The entries of ``raw_rules()`` for one rule id, parsing only the files that can hold it."""
+    if raw_rules.cache_info().currsize:
+        return tuple(e for e in raw_rules() if str(e[3]["id"]) == rule_id)
+    from checks.rule_files import doc_module, files_with, rules_in_file
+    return tuple((path.parent.name, f"{path.parent.name}/{path.name}", doc_module(path) or path.stem, r)
+                 for path in files_with(rule_id) for r in rules_in_file(path, rule_id))
 
 
 @lru_cache(maxsize=1)

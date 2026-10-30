@@ -145,8 +145,8 @@ class RuleScopeOut(BaseModel):
 
 def _shipped(check_id: str, module: Optional[str]) -> tuple[Optional[str], dict]:
     """(module, rule) of the shipped YAML rule: the requested module, else the first module that ships it."""
-    from api.services.rule_coverage import shipped
-    table = shipped()
+    from api.services.rule_coverage import shipped_for
+    table = shipped_for(check_id)  # only this rule's file: the whole catalogue takes seconds to parse (D-36)
     if module and (check_id, module) in table:
         return module, table[(check_id, module)]
     for (cid, mod), rule in sorted(table.items()):
@@ -196,8 +196,8 @@ async def rule_scope(check_id: str, module: Optional[str] = Query(None, max_leng
              "expression": next((str(y[k]) for k in _EXPRESSION_KEYS if y.get(k) is not None), None),
              "params": {k: v for k, v in y.items() if k not in _NOT_PARAMS and k not in _EXPRESSION_KEYS and v is not None}}
     elif trow:
-        from api.services.rule_coverage import describe
-        meta = describe(dict(trow))
+        from api.services.rule_coverage import describe, shipped_for
+        meta = describe(dict(trow), shipped_for(check_id))
         cond = trow["conditions"]
         cond = json.loads(cond) if isinstance(cond, str) else cond
         cond = (cond[0] if isinstance(cond, list) and cond else cond) if cond else {}

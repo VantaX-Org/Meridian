@@ -45,12 +45,16 @@ AUTHORED_REQUIRED = ("module", "check_class", "field", "severity", "message")
 @lru_cache(maxsize=1)
 def shipped_rules() -> dict[str, tuple[dict, str]]:
     """Every shipped YAML rule by id -> (rule, path relative to checks/rules)."""
-    from checks.runner import CATEGORIES, RULES_DIR
+    from checks.rule_files import rule_files
+    return _rules_in(sorted(rule_files()))
+
+
+def _rules_in(paths: list) -> dict[str, tuple[dict, str]]:
+    """rule id -> (rule, path relative to checks/rules) over ``paths``; a later file wins an id."""
+    from checks.rule_files import RULES_DIR, parsed
     out: dict[str, tuple[dict, str]] = {}
-    for path in sorted(p for c in CATEGORIES for p in (RULES_DIR / c).glob("*.yaml")):
-        doc = yaml.safe_load(path.read_text()) or {}
-        if not isinstance(doc, dict):
-            continue
+    for path in paths:
+        doc = parsed(path)
         for rule in doc.get("rules") or []:
             if isinstance(rule, dict) and rule.get("id"):
                 out[rule["id"]] = ({**rule, "module": rule.get("module") or doc.get("module")},
@@ -58,12 +62,25 @@ def shipped_rules() -> dict[str, tuple[dict, str]]:
     return out
 
 
+def shipped_rule(rule_id: str) -> tuple[dict, str] | None:
+    """(rule, source) of one shipped rule, the same as ``shipped_rules().get(rule_id)``, parsing only the files
+    that can hold it (checks/rule_files.files_with)."""
+    if shipped_rules.cache_info().currsize:
+        return shipped_rules().get(rule_id)
+    from checks.rule_files import RULES_DIR, doc_module, files_with, rules_in_file
+    hit = None
+    for path in sorted(files_with(rule_id)):  # a later file wins an id, as in shipped_rules
+        for rule in rules_in_file(path, rule_id):
+            hit = ({**rule, "module": rule.get("module") or doc_module(path)}, str(path.relative_to(RULES_DIR)))
+    return hit
+
+
 def rule_hash(rule: dict) -> str:
     return hashlib.sha256(json.dumps(rule, sort_keys=True, default=str).encode()).hexdigest()[:16]
 
 
 def shipped_info(rule_id: str) -> dict | None:
-    hit = shipped_rules().get(rule_id)
+    hit = shipped_rule(rule_id)
     if not hit:
         return None
     from api.services.version import APP_VERSION
