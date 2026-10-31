@@ -33,7 +33,7 @@ The landscape is the start screen for every role. It answers three questions in 
 ## What you can do, by role
 
 - **Programme lead**: follow the next step ("Clear the 3 no-go objects in Wave 1: finance foundations"), switch to **Waves**, open any cell, share the page from **Share and export**, export the grid to Excel.
-- **Data steward**: "Accept the suggested values" opens Work with your rows; Your next work lists your highest-value records.
+- **Data steward**: "Accept N suggested values for" the top rule opens Work on that rule's rows; Your next work lists your highest-value records.
 - **Data owner**: the line under the sentence says how many batches wait for you and your SLA, for example "2 batches wait for your approval, SLA met on 92% of your open work"; the button is "Approve batch B-241".
 - **SAP Basis**: the Basis home above the matrix; the button extracts or analyses the system that needs it first; the task list shows every system's state.
 - **Process analyst**: "Open PTP step 3" opens the first blocked process step.

@@ -66,7 +66,7 @@ for (const size of SIZES) {
         await expect(help.getByRole("heading", { name: "On this screen" })).toBeVisible(NAV);
         expect((await titles(page, "Help for this screen")).slice(0, 2)).toEqual(["Walkthrough: data steward", "Landscape"]);
         await expect(help.getByRole("heading", { name: "Current interface", exact: true })).toHaveCount(0);
-        await expect(help.getByTestId("whats-new").getByRole("listitem")).toHaveCount(12);
+        await expect(help.getByTestId("whats-new").getByRole("listitem")).toHaveCount(13);
         await page.waitForLoadState("networkidle");
         await shot(page, "help-index");
         await axe(page, `help index ${size.name} ${scheme}`);

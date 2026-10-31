@@ -23,7 +23,7 @@ Verdicts come from the score bands: **Go**, **At risk** and **No-go**. Value at 
 Everyone lands on the **Landscape**, shaped for their role by one **next-step button**:
 
 - Programme lead: "Clear the 3 no-go objects in Wave 1: finance foundations".
-- Data steward: "Accept the suggested values".
+- Data steward: "Accept N suggested values for" the top rule.
 - Data owner: "Approve batch B-241".
 - SAP Basis: "Extract SuccessFactors" (the system not yet extracted), with the Basis home above the matrix: connections, extractions, failed jobs, authorisation errors and schedules.
 - Platform admin: "Open Administration".

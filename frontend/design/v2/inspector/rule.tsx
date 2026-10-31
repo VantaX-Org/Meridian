@@ -383,7 +383,7 @@ function RunLine({ run, view }: { run: RuleRun; view: RuleView }) {
   const label = view.scope.objects.find((o) => o.module === run.module)?.label ?? run.module.replace(/_/g, " ");
   return (
     <>
-      <V2Link href={hrefFor({ kind: "run", id: run.version_id })}>{tr("Run {run_at}", { run_at: formatDate(run.run_at, "date") })}</V2Link>
+      <V2Link className="m2-ul" href={hrefFor({ kind: "run", id: run.version_id })}>{tr("Run {run_at}", { run_at: formatDate(run.run_at, "date") })}</V2Link>
       {tr(": {affected_count} failing in {label}{value}", { affected_count: int(run.affected_count), label, value: run.suppressed ? tr(", suppressed") : "" })}
     </>
   );

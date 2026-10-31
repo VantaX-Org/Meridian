@@ -283,7 +283,7 @@ test("12. admin: sandbox mode entered and left from Settings", async ({ page, re
   await signIn(page, "admin");
   try {
     await page.goto("/admin/settings");
-    const enter = page.getByRole("button", { name: "Enter sandbox mode" });
+    const enter = page.getByRole("switch", { name: "Enter sandbox mode" });
     await expect(enter).toBeVisible({ timeout: 45_000 });
     await enter.click();
     await page.getByRole("button", { name: "Copy the latest run and enter" }).click();
@@ -291,7 +291,7 @@ test("12. admin: sandbox mode entered and left from Settings", async ({ page, re
     note((await page.getByText(/Runs copied/).locator("..").innerText()).replace(/\s+/g, " "));
     await page.getByRole("button", { name: "Exit sandbox mode" }).click();
     await page.getByRole("button", { name: "Discard the sandbox and exit" }).click();
-    await expect(page.getByRole("button", { name: "Enter sandbox mode" })).toBeVisible({ timeout: 45_000 });
+    await expect(page.getByRole("switch", { name: "Enter sandbox mode" })).toBeVisible({ timeout: 45_000 });
     await expect(page.getByText("Sandbox: nothing leaves this deployment.")).toHaveCount(0);
   } finally {
     await apiPost(request, "admin", "/admin/sandbox/exit"); // never leave the tenant in sandbox mode

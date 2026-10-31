@@ -267,7 +267,7 @@ async def back_after_clean(weeks: int = Query(12, ge=2, le=52), db: AsyncSession
            AND e.created_at >= {since}
          GROUP BY 1 ORDER BY 1"""), p)).mappings().all()
     rules = (await db.execute(text(f"""
-        SELECT ri.check_id,
+        SELECT * FROM (SELECT ri.check_id,
                count(*) FILTER (WHERE e.action = 'reopened') AS back,
                count(*) FILTER (WHERE e.action = 'auto_resolved') AS fixed,
                count(*) FILTER (WHERE e.action = 'reopened' AND e.created_at >= now() - interval '28 days') AS back_recent,
@@ -276,7 +276,7 @@ async def back_after_clean(weeks: int = Query(12, ge=2, le=52), db: AsyncSession
           FROM record_issue_events e JOIN record_issues ri ON ri.id = e.issue_id AND ri.tenant_id = e.tenant_id
          WHERE e.tenant_id = CAST(:t AS uuid) AND e.action IN ('reopened', 'auto_resolved')
            AND e.created_at >= {since}
-         GROUP BY ri.check_id HAVING count(*) FILTER (WHERE e.action = 'reopened') > 0
+         GROUP BY ri.check_id HAVING count(*) FILTER (WHERE e.action = 'reopened') > 0) r
          ORDER BY back_recent - back_before DESC, back DESC LIMIT 25"""), p)).mappings().all()
     batches = (await db.execute(text(f"""
         SELECT b.id::text AS id, b.created_at,

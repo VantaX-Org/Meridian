@@ -180,7 +180,8 @@ for (const size of SIZES) {
         const stat = page.getByTestId("rule-stat-line");
         await expect(stat).toContainText("High");
         await expect(stat).toContainText("4,212 failing across 2 objects");
-        await expect(page.getByRole("navigation", { name: "Views of MM142" }).getByRole("link")).toHaveCount(5);
+        await expect(page.getByRole("navigation", { name: "Views of MM142" }).getByRole("link")).toHaveCount(6);
+        await page.getByRole("navigation", { name: "Views of MM142" }).getByRole("link", { name: "Definition" }).click();
         await expect(page.getByRole("region", { name: "Definition" })).toBeVisible();
         expect(await noSideScroll(page)).toBe(true);
         await page.waitForLoadState("networkidle");

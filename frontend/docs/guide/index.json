@@ -51,7 +51,7 @@
         {
           "slug": "persona-steward", "title": "Walkthrough: data steward", "summary": "Accept suggested values, decide a record, work a rule at once, the fix sheet, and your draft batch.", "video": "guide2-persona-steward", "persona": "steward",
           "walkthrough": [
-            { "screen": "Landscape", "href": "/", "text": "Press Accept the suggested values: Work opens on your rows." },
+            { "screen": "Landscape", "href": "/", "text": "Press Accept N suggested values for the top rule: Work opens on that rule's rows." },
             { "screen": "Work", "href": "/work", "text": "Select the top rows and press a to accept their suggested values. The notice has Undo." },
             { "screen": "A record", "href": "/work?open=record%3Amaterial_master%3AMATNR%3D000000000000000100", "text": "Open a row without a suggestion, read the possible values and type the New value." },
             { "screen": "By rule", "href": "/work", "text": "Switch to By rule and decide a whole rule, or export the fix sheet with e." },

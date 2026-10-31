@@ -1,49 +1,49 @@
 WEBVTT
 
 1
-00:00:00.550 --> 00:00:08.763
+00:00:00.003 --> 00:00:05.565
 SAP Basis: connections, extractions, schedules and jobs.
 
 2
-00:00:08.763 --> 00:00:16.146
+00:00:05.565 --> 00:00:10.917
 Step 1, the Basis home: each connection and what its last test said.
 
 3
-00:00:16.146 --> 00:00:23.604
+00:00:10.917 --> 00:00:16.581
 The last extraction of each system with its records, and whether it was analysed.
 
 4
-00:00:23.604 --> 00:00:30.132
+00:00:16.581 --> 00:00:21.917
 Failed jobs to triage, and the authorisation errors among the tests and jobs.
 
 5
-00:00:30.132 --> 00:00:36.445
+00:00:21.917 --> 00:00:27.161
 The extraction schedules, with the next run and the mode.
 
 6
-00:00:36.445 --> 00:00:45.099
+00:00:27.161 --> 00:00:32.671
 Step 2, the system: test the connection.
 
 7
-00:00:45.099 --> 00:00:54.207
+00:00:32.671 --> 00:00:38.787
 Step 3, the inspector: choose objects, dry run, then extract or extract changes only.
 
 8
-00:00:54.207 --> 00:01:04.223
+00:00:38.787 --> 00:00:44.281
 Step 4, Schedules: Changes only for routine runs.
 
 9
-00:01:04.223 --> 00:01:12.287
+00:00:44.281 --> 00:00:49.787
 Step 5, Runs: open a failed job and retry it.
 
 10
-00:01:12.287 --> 00:01:20.115
+00:00:49.787 --> 00:00:55.242
 Field mappings and Start and schedule are under Administration.
 
 11
-00:01:20.115 --> 00:01:28.974
+00:00:55.242 --> 00:01:01.819
 Configuration: what was read from the customising tables, and what could not be read and why.
 
 12
-00:01:28.974 --> 00:01:37.806
+00:01:01.819 --> 00:01:07.338
 Custom objects: Z tables and fields, with anomalies to investigate.

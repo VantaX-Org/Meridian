@@ -148,7 +148,7 @@ function OwnerLine() {
 function StewardNext() {
   const top = (useWorkGroups({}).data?.groups ?? []).filter((g) => g.proposed > 0).sort((a, b) => b.proposed - a.proposed)[0];
   return (
-    <V2Link href={top ? `/work?assigned=me&rule=${encodeURIComponent(top.check_id)}` : "/work"} className="m2-btn m2-next" data-testid="steward-next">
+    <V2Link href={top ? `/work?rule=${encodeURIComponent(top.check_id)}` : "/work"} className="m2-btn m2-next" data-testid="steward-next">
       {top ? t("Accept {count} suggested {count2, plural, one {value} other {values}} for {check}", { count: int(top.proposed), count2: top.proposed, check: top.check_id }) : t("Accept the suggested values")}
     </V2Link>
   );

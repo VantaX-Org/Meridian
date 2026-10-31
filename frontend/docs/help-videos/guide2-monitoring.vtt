@@ -1,0 +1,29 @@
+WEBVTT
+
+1
+00:00:00.004 --> 00:00:06.982
+A clean is never one-off. After a batch loads, the next run shows which records failed again.
+
+2
+00:00:06.982 --> 00:00:13.321
+Per system: the score before and after the batch, records failing again and records fixed since.
+
+3
+00:00:13.321 --> 00:00:19.308
+Rules failing again names the checks behind the records that came back on each system.
+
+4
+00:00:19.308 --> 00:00:26.298
+Failing again by week, against the records fixed. A rising line means the source keeps creating bad data.
+
+5
+00:00:26.298 --> 00:00:33.959
+Drift by rule names the rules that come back, so the fix goes upstream to the process, not the record.
+
+6
+00:00:33.959 --> 00:00:41.276
+Before and change show how far each rule has moved since the batch, so a growing gap stands out.
+
+7
+00:00:41.276 --> 00:00:46.275
+Still clean by batch: each loaded batch with the records that stayed fixed.
