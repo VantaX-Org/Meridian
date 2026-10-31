@@ -2,6 +2,8 @@
 
 Administration is everything that sets up the tenant: who can sign in, what the licence covers, how scoring and alerts behave, and the state of the platform. It opens from your account menu, **Administration**, for anyone who holds an administrative permission, at `/admin`. "Everything that sets up this tenant: who can sign in, what the licence covers, how scoring and alerts behave, and the state of the platform. Each section opens in this column." You see only the sections your role opens; the rest say which permission they need.
 
+The banner on top says "Health of the setup" and names the first thing that needs an administrator, in this order: "The licence is not valid" (button **Open the licence**), "The licence ends in 21 days" (from 30 days before the end, no-go from 7), "2 people are waiting for access" (**Answer the access requests**) and "3 invitations need attention" (**Open users**). With none of these the headline reads "Nothing in the setup needs attention" and "The licence is valid, nobody is waiting for access and every invitation is on its way." Three figures: **Seats in use**, **Waiting for access** and **Licence** (the days left). **People by role** under it is a horizontal bar per role: "A person with several roles counts in each." Aletheia is docked on the right of the Administration pages.
+
 ## People and access
 
 - **Users**: "7 of 25 seats. A person's roles are grants: open a row to add or remove them." **Invite a user**, **Import users**, filters by role and status (Invited, Invite expired, Active, Locked, Suspended). A banner warns about invitations older than 7 days. Opening a person shows their grants, what they can do now and every action on the account. Needs manage users.
@@ -44,7 +46,7 @@ Administration is everything that sets up the tenant: who can sign in, what the 
 ## Provisioning, theming and compliance
 
 - **Provisioning (SCIM)**, under Users: "Microsoft Entra ID, Okta and other identity providers create, update and suspend people here through SCIM 2.0. Give them the base URL and a token." **Create a token**, **Rotate the token** (the old one stops at once), **Revoke**, and **Group to role**: "A person in one of these identity provider groups gets its role. Saving re-syncs everyone in a SCIM group at once." Only grants SCIM made are removed, and the last active administrator is never left without admin.
-- **Appearance**, under Settings: the tenant's accent, logo and name, with the contrast of the accent checked before it is saved.
+- **Appearance**, under Settings: the tenant's accent, logo and name, and a **Dark-mode accent** for people who choose the dark theme, with the contrast of the accent checked before it is saved. Light is the default theme; each person can switch to dark under Preferences, Display.
 - **Compliance**, under Settings: data residency, retention days per table family, encryption flags and the last backup.
 
 ## Sign-in, audit and tenancy

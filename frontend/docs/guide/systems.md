@@ -42,9 +42,13 @@ Which path read each table is on the extraction job's **Tables** list (**Read th
 
 ## The system canvas
 
-The header gives the health ("Connected"), the type and protocol ("ECC, RFC"), the last extraction and its records, and the last connection test. **Test, load or extract** opens the system inspector; **Connection settings** opens the connection editor. Five views:
+The header gives the health ("Connected"), the type and protocol ("ECC, RFC"), the last extraction and its records, and the last connection test. **Test, load or extract** opens the system inspector; **Connection settings** opens the connection editor.
 
-- **Overview**: "What the latest run scored", object by object, and **Recent jobs** from the job registry.
+The banner under it says "State of the system" and puts the one thing to know in its headline: "An extraction from ECC production is running, 40% done", "The latest extraction from ECC production failed", "ECC production is connected", "The connection to ECC production has not been tested yet", or "The connection to ECC production needs attention". The line under it says when it was last extracted ("The last extraction was on 16 Oct 2026, 05:09." or "It has never been extracted."). Three figures: **Objects extracted**, **Extractions kept** ("to compare against") and **Objects scored** ("by the latest run"). Aletheia is docked on the right, as on every screen.
+
+Five views:
+
+- **Overview**: **Records per object**, a horizontal bar per object: "What the latest extraction, on 16 Oct 2026, 05:09, read from each object." Then "What the latest run scored", object by object, and **Recent jobs** from the job registry.
 - **Extractions**: the stored extractions of this system and whether each was analysed.
 - **Configuration**: the configuration Meridian read from the system's customising tables, by area (enterprise structure, financial accounting, controlling, materials management and so on), each with "Loaded, 3 of 3 objects" and what it found, such as "4 company codes, 11 plants". **Load again**, **Discover now**, the **Drift log** and **Compare with target** (the target system chosen in the connection settings, or the SAP standard baseline). A table that could not be read says why, for example "T500P: No authorisation to read this table. The user needs read access to it."
 - **Schedules**: "Each schedule extracts the object again and re-runs its checks, so trends and alerts see every run. Times are UTC." Add a schedule with an object, a rhythm (daily, weekly, monthly, hourly or a custom cron) and a mode: **Full extraction** or **Changes only**. "Changes only reads the records SAP changed since the last download, with a full download at least once a week." Pause or delete a schedule from its row.

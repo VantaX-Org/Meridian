@@ -8,6 +8,8 @@ Meridian checks your SAP data against fixed rules, scores every object, lists ev
 - **The canvas** shows the place you chose: the landscape, one object with its tabs, one rule, the Work ledger, a run or a comparison of two runs, a system, People, Reports or Administration.
 - **The inspector** opens beside the canvas when you select a row: a record, a rule, a run, a job, a batch, a person, a system. It always has the same order: title, status line, facts, actions, history. `Esc` closes it and returns you to where you were.
 
+Every main screen follows the same layout. A **banner** on top says the state in one plain sentence, such as the go-live verdict on the landscape or "25,712 records to fix" on Work, with a short line explaining it, up to three figures and one button for the next thing to do. Under it sits the screen's **chart**, horizontal bars that all start from zero so lengths compare directly, or the landscape's heat map of systems and objects. **Aletheia**, the grounded assistant, is docked on the right of the page; on a narrow screen it moves under the page. Every table shows the description beside each code: the rule name beside the rule id, the field text beside the SAP field, and so on. Meridian opens in a light theme; dark is a choice under Preferences.
+
 The top bar holds the scope (which systems), the run you are reading, the command line (`⌘K` or `/`), the inbox count, help (`?`) and your account menu with Preferences and, for administrators, Administration.
 
 ## The numbers on every screen
