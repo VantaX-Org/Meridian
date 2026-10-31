@@ -7,7 +7,7 @@ import { useFixture } from "@/lib/api/v2/fixture";
 import { formatDate } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { ResultFrame, useOutcome } from "../inspector/shared";
-import { Block, Loaded, StatusWord, useCan, useUnsaved } from "./kit";
+import { Block, Fld, Loaded, StatusWord, useCan, useUnsaved } from "./kit";
 
 /** A row as typed: the times are datetime-local strings in the browser's zone. */
 type Draft = { title: string; start: string; end: string; detail: string };
@@ -45,34 +45,28 @@ function Editor({ initial }: { initial: MaintenanceWindow[] }) {
   return (
     <>
       {rows.length ? (
-        <div className="m2-frame" tabIndex={0}>
-          <table className="m2-tbl" aria-label={t("Maintenance windows")}>
-            <thead>
-              <tr>
-                <th scope="col">{t("Title")}</th>
-                <th scope="col">{t("Starts")}</th>
-                <th scope="col">{t("Ends")}</th>
-                <th scope="col">{t("What users see")}</th>
-                <th scope="col" />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r, i) => (
-                <tr key={i}>
-                  <td>
-                    <input className="m2-inp" maxLength={120} aria-label={t("Title of window {n}", { n: i + 1 })} value={r.title} onChange={(e) => set(i, { title: e.target.value })} />
-                    {bad[i] ? <p className="m2-prov" role="alert">{bad[i]}</p> : null}
-                  </td>
-                  <td><input className="m2-inp" type="datetime-local" aria-label={t("Start of window {n}", { n: i + 1 })} value={r.start} onChange={(e) => set(i, { start: e.target.value })} /></td>
-                  <td><input className="m2-inp" type="datetime-local" aria-label={t("End of window {n}", { n: i + 1 })} value={r.end} onChange={(e) => set(i, { end: e.target.value })} /></td>
-                  <td><input className="m2-inp" maxLength={500} aria-label={t("Detail of window {n}", { n: i + 1 })} value={r.detail} placeholder={t("Optional")} onChange={(e) => set(i, { detail: e.target.value })} /></td>
-                  <td>
-                    <button type="button" className="m2-btn m2-sm m2-ghost" onClick={() => setRows(rows.filter((_, n) => n !== i))}>{t("Remove")}</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="m2-procs" role="group" aria-label={t("Maintenance windows")}>
+          {rows.map((r, i) => (
+            <fieldset key={i} className="m2-mwin">
+              <div className="m2-fgrid">
+                <Fld label={t("Title")} error={bad[i]}>
+                  <input maxLength={120} aria-label={t("Title of window {n}", { n: i + 1 })} value={r.title} onChange={(e) => set(i, { title: e.target.value })} />
+                </Fld>
+                <Fld label={t("What users see")}>
+                  <input maxLength={500} aria-label={t("Detail of window {n}", { n: i + 1 })} value={r.detail} placeholder={t("Optional")} onChange={(e) => set(i, { detail: e.target.value })} />
+                </Fld>
+                <Fld label={t("Starts")}>
+                  <input type="datetime-local" aria-label={t("Start of window {n}", { n: i + 1 })} value={r.start} onChange={(e) => set(i, { start: e.target.value })} />
+                </Fld>
+                <Fld label={t("Ends")}>
+                  <input type="datetime-local" aria-label={t("End of window {n}", { n: i + 1 })} value={r.end} onChange={(e) => set(i, { end: e.target.value })} />
+                </Fld>
+              </div>
+              <div className="m2-adm-acts">
+                <button type="button" className="m2-btn m2-sm m2-ghost" onClick={() => setRows(rows.filter((_, n) => n !== i))}>{t("Remove")}</button>
+              </div>
+            </fieldset>
+          ))}
         </div>
       ) : (
         <p className="m2-prov">{t("No maintenance is scheduled. The public status page shows none.")}</p>
