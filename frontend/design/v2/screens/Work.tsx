@@ -43,7 +43,7 @@ import { PAGE, allWorkRows, useGroupRows, useWorkGroups, useWorkRows, useWorkSum
 import { Grid, type GridColumn, type GridHandle } from "../Grid";
 import { IconChevron, IconClose, SeverityMark } from "../marks";
 import { MenuButton, type MenuEntry } from "../Menu";
-import { Coded, Dash, Dot, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
+import { Coded, Dash, Dot, EmptyFrame, ErrorFrame, Mono, PageTitle, V2Link } from "../parts";
 import { usePhone } from "@/lib/v2/hooks";
 import { useToast } from "../Toast";
 import "../approvals.css";
@@ -57,6 +57,8 @@ import { BulkActions, CurrentValue, DecisionCell, NewValueCell, OwnerCell, Possi
 import { GridTools, useGridKey } from "../GridTools";
 import { FixOrderHint } from "./object/Related";
 import { WorkTabs } from "./WorkTabs";
+import { AletheiaDock } from "./CommandCentre";
+import { WorkBanner, WorkBreakdown, type Bar } from "./work-banner";
 import { t as tr, lc } from "@/lib/v2/i18n";
 import { whole } from "@/lib/v2/format";
 import { formatDate } from "@/lib/format";
@@ -434,6 +436,29 @@ export function WorkCanvas() {
   const text = sentence({ persona: session.persona, chip: state.chip, summary, objectLabel, module: state.module });
   const topGroup = (groupsQ.data?.groups ?? []).find((g) => g.proposed > 0 && (!state.module || g.module === state.module) && (!state.rule || g.check_id === state.rule));
   const headers = useMemo(() => keyHeaders(recordRows), [recordRows]);
+  // The banner and the bars read the object in force, else every object.
+  const objs = (summary?.objects ?? []).filter((o) => !state.module || o.module === state.module);
+  const fig = state.module ? { open: objs[0]?.open ?? 0, critical: objs[0]?.critical ?? 0, proposed: objs[0]?.proposed ?? 0 } : { open: summary?.totals.open ?? 0, critical: summary?.totals.critical ?? 0, proposed: summary?.totals.proposed ?? 0 };
+  const waiting = counts.get("approvals") ?? 0;
+  const topRule = (groupsQ.data?.groups ?? []).filter((g) => g.open > 0 && (!state.module || g.module === state.module)).sort((a, b) => b.open - a.open)[0];
+  const bars: Bar[] = state.module
+    ? (groupsQ.data?.groups ?? []).filter((g) => g.open > 0 && g.module === state.module).sort((a, b) => b.open - a.open).slice(0, 6).map((g) => ({ key: g.check_id, label: <Coded code={g.check_id} text={g.message} />, n: g.open, active: state.rule === g.check_id, onPick: () => go({ rule: state.rule === g.check_id ? null : g.check_id, group: false }) }))
+    : [...(summary?.objects ?? [])].filter((o) => o.open > 0).sort((a, b) => b.open - a.open).slice(0, 8).map((o) => ({ key: o.module, label: objectName(o.module, labels), n: o.open, active: false, onPick: () => go({ module: o.module }) }));
+  // One action, chosen by the data: accept what is ready, else approve what waits, else start on the biggest rule.
+  const action =
+    session.persona === "steward" && can.apply && topGroup && state.chip !== "approvals" && state.chip !== "exceptions" ? (
+      <button type="button" className="m2-btn m2-next" onClick={() => ask(topGroup.proposed, tr("Accept {count} suggested values for {check}?", { count: int(topGroup.proposed), check: topGroup.check_id }), tr("Accept {count} values", { count: int(topGroup.proposed) }), () => void actions.acceptRule(topGroup.check_id, topGroup.proposed, topGroup.version_id, recordRows))}>
+        {tr("Accept the {proposed} suggested {proposed2, plural, one {value} other {values}}", { proposed: int(topGroup.proposed), proposed2: topGroup.proposed })}
+      </button>
+    ) : can.approve && waiting > 0 && state.chip !== "approvals" ? (
+      <button type="button" className="m2-btn m2-next" onClick={() => go({ chip: "approvals", group: false })}>
+        {tr("Review the {waiting} waiting for approval", { waiting: int(waiting) })}
+      </button>
+    ) : topRule && state.rule !== topRule.check_id ? (
+      <button type="button" className="m2-btn m2-next" onClick={() => go({ module: topRule.module, rule: topRule.check_id, group: false })}>
+        {tr("Start with the {n} records failing {check}", { n: int(topRule.open), check: topRule.check_id })}
+      </button>
+    ) : null;
   // The ledger's own density when the address or a saved view gives one, else the one in Preferences.
   const shellDensity = useDensity();
   const density: Density = state.density ?? shellDensity;
@@ -446,7 +471,7 @@ export function WorkCanvas() {
       { id: "record", header: headers.first, width: 170, pin: true, locked: true, title: tr("{first}, as SAP shows it (leading zeros of a numeric key left out; the full key is on hover). Pinned.", { first: headers.first }), cell: r((x) => <KeyText value={keyValue(x, 0) ?? x.record_key} />) },
       { id: "second", header: headers.second, width: 70, title: tr("{second}, the second part of the record key. A dash when the record has none.", { second: headers.second }), cell: r((x) => (keyValue(x, 1) ? <Mono>{keyValue(x, 1)}</Mono> : <Dash why={tr("This record has no second key part")} />)) },
       { id: "name", header: tr("Name"), width: 170, title: tr("The record's name."), cell: r((x) => (x.name ? <span title={x.name}>{x.name}</span> : <Dash />)) },
-      { id: "rule", header: tr("Rule"), width: 230, title: tr("What the rule that rejected the value says, with its check id."), cell: r((x) => (x.checks[0] ? <Coded code={x.checks[0]} text={x.top_message} /> : <Dash />)) },
+      { id: "rule", header: tr("Rule"), width: 300, title: tr("What the rule that rejected the value says, with its check id."), cell: r((x) => (x.checks[0] ? <Coded code={x.checks[0]} text={x.top_message} /> : <Dash />)) },
       {
         id: "severity",
         header: tr("Severity"),
@@ -460,17 +485,17 @@ export function WorkCanvas() {
         )),
       },
       { id: "current", header: tr("Current value"), width: 150, title: tr("The value held in SAP at extraction, with its meaning where the rule gives one."), cell: r((x) => <CurrentValue value={x.current_value} label={x.current_label} />) },
-      { id: "suggested", header: tr("Suggested value"), width: 150, title: tr("The value the rules propose. Blank when no single value is right."), cell: r((x) => (x.suggested_value ? <Coded code={x.suggested_value} text={x.suggested_label} first /> : <Dash why={tr("No suggested value for this row")} />)) },
+      { id: "suggested", header: tr("Suggested value"), width: 210, title: tr("The value the rules propose. Blank when no single value is right."), cell: r((x) => (x.suggested_value ? <Coded code={x.suggested_value} text={x.suggested_label} first /> : <Dash why={tr("No suggested value for this row")} />)) },
       { id: "newvalue", header: tr("New value"), width: 130, locked: true, title: tr("The value to write back. Type and press Enter, paste a column, or fill down with ⌘D."), cell: r((x) => <NewValueCell row={x} h={h} />) },
       { id: "decision", header: tr("Decision"), width: 130, locked: true, title: tr("fix, not an issue or accept risk. The last two ask for a reason."), cell: r((x) => <DecisionCell row={x} h={h} onChoose={onChoose} />) },
       { id: "fdesc", header: tr("Field description"), width: 150, defaultHidden: true, title: tr("Business name of the failing field."), cell: r((x) => (x.field_description ? <span title={x.field_description}>{x.field_description}</span> : <Dash why={tr("The API has no description for this field yet")} />)) },
-      { id: "sapfield", header: tr("SAP field"), width: 230, title: tr("TABLE-FIELD of the failing value."), cell: r((x) => (x.top_field ? <Coded code={x.top_field} text={x.field_description} /> : <Dash />)) },
+      { id: "sapfield", header: tr("SAP field"), width: 300, title: tr("TABLE-FIELD of the failing value."), cell: r((x) => (x.top_field ? <Coded code={x.top_field} text={x.field_description} /> : <Dash />)) },
       { id: "problem", header: tr("Problem"), width: 230, defaultHidden: true, title: tr("What the rule found wrong with the value."), cell: r((x) => (x.top_message ? <span title={x.top_message}>{x.top_message}</span> : <Dash />)) },
       { id: "possible", header: tr("Possible values"), width: 200, defaultHidden: true, title: tr("Values the rule accepts. Open the row for the full list with meanings."), cell: r((x) => <PossibleValuesCell row={x} />) },
       { id: "first", header: tr("First seen"), width: 100, defaultHidden: true, title: tr("The date the oldest failing issue of this row was first seen."), cell: r((x) => (x.first_seen_at ? <span title={formatDate(x.first_seen_at, "date")}>{formatDate(x.first_seen_at, "day")}</span> : <Dash />)) },
       { id: "days", header: tr("Days open"), width: 90, defaultHidden: true, numeric: true, title: tr("Days since this row was first seen."), cell: r((x) => { const d = daysOpen(x.first_seen_at, now); return d == null ? <Dash /> : <>{int(d)}</>; }) },
       { id: "owner", header: tr("Owner"), width: 70, title: tr("The steward the row is assigned to, by initials."), cell: r((x) => <OwnerCell row={x} h={h} />) },
-      { id: "value", header: tr("Value at risk"), width: 120, numeric: true, title: tr("Cost-model estimate of what this failing value costs."), cell: r((x) => (x.value_at_risk == null ? <Dash /> : <Money amount={x.value_at_risk} compact={false} />)) },
+      { id: "value", header: tr("Value at risk"), width: 150, numeric: true, title: tr("Cost-model estimate of what this failing value costs."), cell: r((x) => (x.value_at_risk == null ? <Dash /> : <Money amount={x.value_at_risk} compact={false} />)) },
     ];
     if (state.chip === "exceptions") {
       // Signed off: what the decision was, why, by whom and when; stewards can reopen it.
@@ -665,38 +690,13 @@ export function WorkCanvas() {
             ))}
           </ul>
   ) : null;
+  const moreEntries: MenuEntry[] = [
+    { kind: "item", id: "export-sheet", label: tr("Export fix sheet"), kbd: "e", disabled: pastRun, onSelect: () => void doExport() },
+    { kind: "item", id: "export-object", label: tr("Export by object"), sub: tr("One sheet per object, with each record's value at risk"), disabled: pastRun, onSelect: () => void doExport(true) },
+    ...(can.apply ? [{ kind: "item", id: "import", label: tr("Import filled sheet"), onSelect: () => setImportOpen((v) => !v) } as MenuEntry] : []),
+  ];
   const toolbar = (
     <div className="m2-tool" role="toolbar" aria-label={tr("Ledger controls")}>
-      <div className="m2-seg" role="group" aria-label={tr("Grouping")}>
-        <button type="button" aria-pressed={!grouped} onClick={() => go({ group: false })}>
-          {tr("Flat")}
-        </button>
-        <button type="button" aria-pressed={grouped} disabled={!GROUPABLE.has(state.chip) || narrowed} title={narrowed ? tr("Grouping by rule does not apply to a policy class or a past run") : GROUPABLE.has(state.chip) ? undefined : tr("Grouping applies to rows to fix")} onClick={() => go({ group: true })}>
-          {tr("By rule")}
-        </button>
-      </div>
-      <label className="m2-selbox">
-        <span className="m2-meta">{tr("Sort")}</span>
-        <select className="m2-sel" aria-label={tr("Sort by")} value={state.sort} onChange={(e) => go({ sort: e.target.value as SortKey })}>
-          {(Object.keys(SORT_LABEL) as SortKey[]).map((k) => (
-            <option key={k} value={k}>
-              {SORT_LABEL[k]}
-            </option>
-          ))}
-        </select>
-      </label>
-      <div className="m2-seg m2-only-wide" role="group" aria-label={tr("Row density")}>
-        {(["compact", "comfortable"] as Density[]).map((d) => (
-          <button key={d} type="button" aria-pressed={density === d} title={d === "compact" ? tr("Rows 28 pixels") : tr("Rows 36 pixels")} onClick={() => go({ density: d })}>
-            {d === "compact" ? tr("Compact") : tr("Comfortable")}
-          </button>
-        ))}
-      </div>
-      <MenuButton label={tr("Views")} entries={viewEntries} className="m2-btn m2-sm">
-        {tr("Views")}
-        <Dot />
-        {view?.name ?? tr("Unsaved")}
-      </MenuButton>
       <label className="m2-selbox">
         <span className="m2-meta">{tr("Object")}</span>
         <select className="m2-sel" aria-label={tr("Object")} value={state.module ?? ""} onChange={(e) => go({ module: e.target.value || null })}>
@@ -708,40 +708,68 @@ export function WorkCanvas() {
           ))}
         </select>
       </label>
-      <label className="m2-selbox">
-        <span className="m2-meta">{tr("Wave")}</span>
-        <select className="m2-sel" aria-label={tr("Wave")} value={state.wave ?? ""} onChange={(e) => go({ wave: e.target.value || null })} data-testid="work-wave">
-          <option value="">{tr("All waves")}</option>
-          {(waves ?? []).map((w) => (
-            <option key={w.id} value={w.id}>
-              {w.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="m2-selbox">
-        <span className="m2-meta">{tr("As of run")}</span>
-        <select className="m2-sel" aria-label={tr("As of run")} value={state.asOf ?? ""} onChange={(e) => go({ asOf: e.target.value || null, group: false })} data-testid="as-of-run">
-          <option value="">{tr("Today")}</option>
-          {(runList.data?.versions ?? []).map((v) => (
-            <option key={v.id} value={v.id}>
-              {formatDate(v.run_at, "datetime")}
-            </option>
-          ))}
-        </select>
-      </label>
-      <span className="m2-tool-sp" />
-      <button type="button" className="m2-btn m2-sm" disabled={pastRun} title={pastRun ? tr("The fix sheet reads today's rows, not a past run; clear the run to export") : undefined} onClick={() => void doExport()}>
-        {tr("Export fix sheet")}{" "}<kbd className="m2-kb">e</kbd>
-      </button>
-      <button type="button" className="m2-btn m2-sm" disabled={pastRun} title={pastRun ? tr("The fix sheet reads today's rows, not a past run; clear the run to export") : tr("One sheet per object, with each record's value at risk")} onClick={() => void doExport(true)}>
-        {tr("Export by object")}
-      </button>
-      {can.apply ? (
-        <button type="button" className="m2-btn m2-sm" aria-expanded={importOpen} onClick={() => setImportOpen((v) => !v)}>
-          {tr("Import filled sheet")}
+      <div className="m2-seg" role="group" aria-label={tr("Grouping")}>
+        <button type="button" aria-pressed={!grouped} onClick={() => go({ group: false })}>
+          {tr("Flat")}
         </button>
-      ) : null}
+        <button type="button" aria-pressed={grouped} disabled={!GROUPABLE.has(state.chip) || narrowed} title={narrowed ? tr("Grouping by rule does not apply to a policy class or a past run") : GROUPABLE.has(state.chip) ? undefined : tr("Grouping applies to rows to fix")} onClick={() => go({ group: true })}>
+          {tr("By rule")}
+        </button>
+      </div>
+      <span className="m2-tool-sp" />
+      <MenuButton label={tr("More")} entries={moreEntries} className="m2-btn m2-sm" align="end">
+        {tr("More")}
+      </MenuButton>
+      <details className="m2-wk-more" open={phone || undefined}>
+        <summary className="m2-btn m2-sm">{tr("More filters")}</summary>
+        <div className="m2-wk-more-body">
+          <label className="m2-selbox">
+            <span className="m2-meta">{tr("Sort")}</span>
+            <select className="m2-sel" aria-label={tr("Sort by")} value={state.sort} onChange={(e) => go({ sort: e.target.value as SortKey })}>
+              {(Object.keys(SORT_LABEL) as SortKey[]).map((k) => (
+                <option key={k} value={k}>
+                  {SORT_LABEL[k]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="m2-selbox">
+            <span className="m2-meta">{tr("Wave")}</span>
+            <select className="m2-sel" aria-label={tr("Wave")} value={state.wave ?? ""} onChange={(e) => go({ wave: e.target.value || null })} data-testid="work-wave">
+              <option value="">{tr("All waves")}</option>
+              {(waves ?? []).map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="m2-selbox">
+            <span className="m2-meta">{tr("As of run")}</span>
+            <select className="m2-sel" aria-label={tr("As of run")} value={state.asOf ?? ""} onChange={(e) => go({ asOf: e.target.value || null, group: false })} data-testid="as-of-run">
+              <option value="">{tr("Today")}</option>
+              {(runList.data?.versions ?? []).map((v) => (
+                <option key={v.id} value={v.id}>
+                  {formatDate(v.run_at, "datetime")}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="m2-seg m2-only-wide" role="group" aria-label={tr("Row density")}>
+            {(["compact", "comfortable"] as Density[]).map((d) => (
+              <button key={d} type="button" aria-pressed={density === d} title={d === "compact" ? tr("Rows 28 pixels") : tr("Rows 36 pixels")} onClick={() => go({ density: d })}>
+                {d === "compact" ? tr("Compact") : tr("Comfortable")}
+              </button>
+            ))}
+          </div>
+          <MenuButton label={tr("Views")} entries={viewEntries} className="m2-btn m2-sm">
+            {tr("Views")}
+            <Dot />
+            {view?.name ?? tr("Unsaved")}
+          </MenuButton>
+          <p className="m2-prov">{tr("Rows are read from the latest run of each object{value}.", { value: status?.cost_model ? tr(". Value at risk is from cost model {cost_model}", { cost_model: status.cost_model }) : "" })}{" "}{tr("Each count is of records, not issues: one record with three failed rules counts once. Chip counts follow the object, rule and person filters.")}</p>
+        </div>
+      </details>
     </div>
   );
 
@@ -753,18 +781,12 @@ export function WorkCanvas() {
   const loadedNote = !grouped && SORTS_LOADED_ROWS.has(state.sort) && (hasMore || (total ?? 0) > shown) ? tr("Sorted by {SORT_LABEL} within the rows loaded.", { SORT_LABEL: SORT_LABEL[state.sort].toLowerCase() }) : "";
 
   return (
-    <div onDragOver={(e) => can.apply && e.preventDefault()} onDrop={onDrop} data-testid="work-ledger">
+    <div className="m2-cc" onDragOver={(e) => can.apply && e.preventDefault()} onDrop={onDrop} data-testid="work-ledger">
+      <div className="m2-cc-main m2-wk-main">
       <PageTitle sub={objectLabel ?? tr("All objects")}>{tr("Work")}</PageTitle>
       <WorkTabs current="ledger" />
-      {text ? (
-        <p className="m2-finding" data-testid="work-sentence">
-          {text}
-        </p>
-      ) : summaryQ.isPending ? (
-        <p className="m2-finding" aria-busy="true">
-          <Skeleton width={420} height={16} />
-        </p>
-      ) : null}
+      <WorkBanner why={text} open={fig.open} critical={fig.critical} proposed={fig.proposed} pending={summaryQ.isPending} action={action} />
+      <WorkBreakdown title={state.module ? tr("Open records by rule") : tr("Open records by object")} bars={bars} />
       <FixOrderHint module={state.module} />
       {state.asOf ? (
         <div className="m2-asof" role="status" data-testid="ledger-as-of">
@@ -775,21 +797,6 @@ export function WorkCanvas() {
           <button type="button" className="m2-btn m2-sm" onClick={() => go({ asOf: null })}>
             {tr("Back to today")}
           </button>
-        </div>
-      ) : null}
-      <p className="m2-prov m2-only-wide">{tr("Rows are read from the latest run of each object{value}.", { value: status?.cost_model ? tr(". Value at risk is from cost model {cost_model}", { cost_model: status.cost_model }) : "" })}{" "}{tr("Each count is of records, not issues: one record with three failed rules counts once. Chip counts follow the object, rule and person filters.")}</p>
-      {session.persona === "steward" && can.apply && topGroup && state.chip !== "approvals" && state.chip !== "exceptions" ? (
-        <div className="m2-cta">
-          <button type="button" className="m2-btn m2-next" onClick={() => ask(topGroup.proposed, tr("Accept {count} suggested values for {check}?", { count: int(topGroup.proposed), check: topGroup.check_id }), tr("Accept {count} values", { count: int(topGroup.proposed) }), () => void actions.acceptRule(topGroup.check_id, topGroup.proposed, topGroup.version_id, recordRows))}>
-            {tr("Accept the {proposed} suggested {proposed2, plural, one {value} other {values}}", { proposed: int(topGroup.proposed), proposed2: topGroup.proposed })}
-          </button>
-          <span className="m2-meta m2-only-wide">
-            {tr("for")}{" "}<Mono>{topGroup.check_id}</Mono>{tr(", the rule with the most at risk")}
-          </span>
-        </div>
-      ) : session.persona === "steward" && can.apply && groupsQ.isPending ? (
-        <div className="m2-cta" aria-busy="true">
-          <Skeleton width={260} height={36} />
         </div>
       ) : null}
       <div className="m2-ledger-head">
@@ -961,6 +968,8 @@ export function WorkCanvas() {
           }}
         />
       ) : null}
+      </div>
+      <AletheiaDock />
     </div>
   );
 }

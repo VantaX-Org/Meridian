@@ -51,6 +51,11 @@ function mount(search = "") {
   );
 }
 
+// Exports and the import live behind the More menu.
+const more = async (name: string | RegExp) => {
+  fireEvent.click(await screen.findByRole("button", { name: "More" }));
+  fireEvent.click(await screen.findByRole("menuitem", { name }));
+};
 const ledger = () => screen.findByRole("grid", { name: "Work ledger" });
 const rowFor = (grid: HTMLElement, key: string) => within(grid).getByTitle(key).closest('[role="row"]') as HTMLElement;
 const KEY_100 = "000000000000000100"; // MM142, suggested EA
@@ -392,7 +397,7 @@ describe("the Work ledger, fixture mode", () => {
     const spy = vi.spyOn(workApi, "exportFixSheet").mockResolvedValue({ filename: "fix-sheet.xlsx" });
     mount("&filter=proposed");
     await ledger();
-    fireEvent.click(await screen.findByRole("button", { name: /Export fix sheet/ }));
+    await more(/Export fix sheet/);
     await waitFor(() => expect(spy).toHaveBeenCalled());
     expect(spy.mock.calls[0][0]).toMatchObject({ status: "to_fix", proposed: true });
     expect(await screen.findByText("Fix sheet saved as fix-sheet.xlsx")).toBeInTheDocument();
@@ -402,10 +407,10 @@ describe("the Work ledger, fixture mode", () => {
     const sheet = vi.spyOn(workApi, "exportFixSheet").mockResolvedValue({ filename: "fix-sheet.xlsx" });
     const byObject = vi.spyOn(workApi, "exportFixSheetByObject").mockResolvedValue({ filename: "records-to-fix-by-object.xlsx" });
     mount("&batch=b-1&policy=sox&sort=age");
-    fireEvent.click(await screen.findByRole("button", { name: /Export fix sheet/ }));
+    await more(/Export fix sheet/);
     await waitFor(() => expect(sheet).toHaveBeenCalled());
     expect(sheet.mock.calls[0][0]).toMatchObject({ batch_id: "b-1", policy: "sox", sort: "-age,-value" });
-    fireEvent.click(screen.getByRole("button", { name: "Export by object" }));
+    await more(/^Export by object/);
     await waitFor(() => expect(byObject).toHaveBeenCalled());
     expect(byObject.mock.calls[0][0]).toMatchObject({ batch_id: "b-1", policy: "sox", sort: "-age,-value" });
   });
@@ -455,7 +460,7 @@ describe("the Work ledger, fixture mode", () => {
     const spy = vi.spyOn(workApi, "importFixSheet");
     mount();
     await ledger();
-    fireEvent.click(await screen.findByRole("button", { name: "Import filled sheet" }));
+    await more("Import filled sheet");
     const file = new File(["x"], "fix-sheet-filled.xlsx");
     fireEvent.change(screen.getByLabelText("Choose a filled fix sheet"), { target: { files: [file] } });
     await waitFor(() => expect(spy).toHaveBeenCalledWith(file));
@@ -467,7 +472,7 @@ describe("the Work ledger, fixture mode", () => {
   it("Import refuses a file that is not a fix sheet with the server's sentence in the frame", async () => {
     mount();
     await ledger();
-    fireEvent.click(await screen.findByRole("button", { name: "Import filled sheet" }));
+    await more("Import filled sheet");
     fireEvent.change(screen.getByLabelText("Choose a filled fix sheet"), { target: { files: [new File(["x"], "notes.txt")] } });
     expect(await screen.findByTestId("error-frame")).toHaveTextContent("This is not an .xlsx file.");
   });
@@ -713,7 +718,8 @@ describe("read-only", () => {
     expect(within(grid).queryByLabelText(`New value for ${KEY_232}`)).toBeNull();
     expect(within(grid).queryByLabelText(`Decision for ${KEY_232}`)).toBeNull();
     expect(within(grid).queryByRole("checkbox")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Import filled sheet" })).toBeNull();
+    fireEvent.click(await screen.findByRole("button", { name: "More" }));
+    expect(screen.queryByRole("menuitem", { name: "Import filled sheet" })).toBeNull();
     expect(screen.queryByRole("button", { name: /Accept the .* suggested/ })).toBeNull();
   });
 });
