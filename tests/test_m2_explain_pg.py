@@ -124,7 +124,8 @@ async def test_value_at_risk_failing_pct_and_open_work(owner, monkeypatch):
 
         w = (await client.get("/api/v1/explain/open_work", params={"module": "material_master"}, headers=headers())).json()
         assert w["text"].startswith("3 records of Material master still need work in the run of 16 Oct 2026: 2 to fix, 1 with a proposed fix.")
-        assert rows(w) == {"To fix": 2, "With a proposed fix": 1, "Approved": 0, "Sent to SAP": 0, "Open work": 3}
+        assert rows(w) == {"To fix": 2, "With a proposed fix": 1, "Approved": 0, "Exported, waiting for the SAP load": 0,
+                           "Sent to SAP": 0, "Open work": 3}
         # a run whose work list is not built has no count
         with owner.begin() as conn:
             conn.execute(text("UPDATE analysis_versions SET metadata = metadata - 'worklist_built_at' WHERE id = :r"), {"r": s["run"]})
