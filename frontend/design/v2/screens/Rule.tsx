@@ -3,6 +3,8 @@
 import { useSearchParams } from "next/navigation";
 import { RuleActions, RuleAuthority, RuleBlocks, RuleContract, RuleDefinition, RuleFacts, RuleHistory, RuleLineage, RuleProve, RuleScopeSection, RuleVersions, SectionLevel, ruleStatLine, useRule } from "../inspector/rule";
 import { EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
+import { int } from "@/lib/v2/score";
+import { CcBanner, CcPage } from "./cc-parts";
 import { LedgerSlot } from "./object/LedgerSlot";
 import { RuleOverview } from "./RuleOverview";
 import { t as tr } from "@/lib/v2/i18n";
@@ -72,10 +74,35 @@ export function RuleCanvas({ id }: { id: string }) {
     return `/r/${encodeURIComponent(id)}${qs ? `?${qs}` : ""}`;
   };
   return (
-    <>
-      <PageTitle sub={name}>
-        <Mono>{id}</Mono>
-      </PageTitle>
+    <CcPage>
+      <PageTitle sub={name ? <Mono>{id}</Mono> : undefined}>{name ?? <Mono>{id}</Mono>}</PageTitle>
+      <CcBanner
+        testId="rule-banner"
+        label={tr("Rule summary")}
+        eyebrow={tr("This rule")}
+        verdict={v.scope.failing_records === 0 ? "go" : v.overTolerance === false ? "at-risk" : "no-go"}
+        headline={
+          v.scope.failing_records === 0
+            ? tr("No record fails this rule")
+            : tr("{n} {count, plural, one {record fails} other {records fail}} this rule", { n: int(v.scope.failing_records), count: v.scope.failing_records })
+        }
+        why={
+          v.scope.definition.field ? (
+            <>
+              {tr("It checks")} {v.row?.field_description ? <>{v.row.field_description} <span className="m2-meta"><Mono>{v.scope.definition.field}</Mono></span></> : <Mono>{v.scope.definition.field}</Mono>}
+            </>
+          ) : undefined
+        }
+        figs={[
+          { label: tr("Failing records"), value: int(v.scope.failing_records), note: v.failingPct != null ? tr("{pct2} of records checked", { pct2: `${v.failingPct.toFixed(2)}%` }) : undefined },
+          { label: tr("Objects affected"), value: int(v.scope.objects.length) },
+        ]}
+        action={
+          <V2Link href={href("failing")} className="m2-btn m2-next">
+            {tr("Show the failing records")}
+          </V2Link>
+        }
+      />
       <p className="m2-statusline" data-testid="rule-stat-line">
         {ruleStatLine(v).map((t) => (
           <span key={t}>{t}</span>
@@ -127,6 +154,6 @@ export function RuleCanvas({ id }: { id: string }) {
           )}
         </SectionLevel>
       </div>
-    </>
+    </CcPage>
   );
 }

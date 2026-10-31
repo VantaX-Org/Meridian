@@ -10,7 +10,7 @@ import { archiveRuns, downloadRunReport, pinBaseline, restoreRuns, type Timeline
 import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { JOB_KIND_LABEL, JOB_STATUS_LABEL, jobObject, jobSeconds } from "@/lib/v2/jobs";
 import { useLandscape, v2Keys } from "@/lib/v2/queries";
-import { useTimeline, useV2Jobs, useVersionHead, useVersionsPage } from "@/lib/v2/runs-queries";
+import { useCompareSummary, useTimeline, useV2Jobs, useVersionHead, useVersionsPage } from "@/lib/v2/runs-queries";
 import { f1, int, moduleSlug, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { VerdictMark } from "../marks";
 import { ChartFrame, ChartTable, DIST_H, Distribution, STACK_H, StackedBar, scoreDomain, severityParts } from "../charts";
@@ -22,6 +22,8 @@ import { t as tr, lc } from "@/lib/v2/i18n";
 import { baselineRefusalOf, type BaselineRefusal } from "@/lib/api/v2/step9";
 import { breachWords } from "@/lib/v2/step9";
 import { moduleText } from "@/lib/v2/labels";
+import { ObjectChangeBars } from "./Compare";
+import { CcBanner, CcPage } from "./cc-parts";
 import "../basis.css";
 
 /**
@@ -311,6 +313,25 @@ function ProveThree({ run, modules }: { run: string; modules: string[] }) {
   );
 }
 
+/** What moved since the run before it, in words and as one diverging bar per object. */
+function SincePrevious({ id, prevId, prevAt }: { id: string; prevId: string; prevAt: string | null }) {
+  const q = useCompareSummary(prevId, id);
+  const S = q.data;
+  if (!S) return null;
+  const up = S.objects.filter((o) => (o.score_change ?? 0) > 0).length;
+  const dn = S.objects.filter((o) => (o.score_change ?? 0) < 0).length;
+  return (
+    <section className="m2-cc-card" aria-label={tr("Since the run before")} data-testid="run-since">
+      <h3>{tr("Since the run before, on {run_at}", { run_at: formatDate(prevAt, "date") })}</h3>
+      <p className="m2-cc-lede">
+        {tr("{up} {up, plural, one {object scored} other {objects scored}} higher and {dn} lower. {newly} rules started failing and {fixed} stopped.", { up, dn, newly: int(S.totals.newly_failing), fixed: int(S.totals.fixed) })}{" "}
+        <V2Link href={`/run/${prevId}/vs/${id}`}>{tr("See every change")}</V2Link>
+      </p>
+      <ObjectChangeBars S={S} />
+    </section>
+  );
+}
+
 export function RunCanvas({ id }: { id: string }) {
   const qc = useQueryClient();
   const session = useV2Session();
@@ -360,8 +381,13 @@ export function RunCanvas({ id }: { id: string }) {
       ].filter(Boolean)
     : [];
 
+  const verdict = counts["no-go"] ? "no-go" : counts["at-risk"] ? "at-risk" : "go";
+  const runsOfSystem = (timeline.data?.runs ?? []).filter((r) => !meta?.system_id || r.system_id === meta.system_id);
+  const at = runsOfSystem.findIndex((r) => r.id === id);
+  const prev = at > 0 ? runsOfSystem[at - 1] : null;
+
   return (
-    <>
+    <CcPage>
       <PageTitle sub={system?.name}>{v ? tr("Run {run_at}", { run_at: formatDate(v.run_at, "datetime") }) : tr("Run")}</PageTitle>
       <p className="m2-statusline" data-testid="run-status-line">
         {v ? (
@@ -392,15 +418,32 @@ export function RunCanvas({ id }: { id: string }) {
         )}
       </p>
       {cells.length > 0 ? (
-        <p className="m2-finding" data-testid="run-sentence">
-          {tr("{cellsCount} {cellsCount, plural, one {object} other {objects}} scored: {go} go, {counts} at risk, {counts2} no-go.", { cellsCount: cells.length, go: counts.go ?? 0, counts: counts["at-risk"] ?? 0, counts2: counts["no-go"] ?? 0 })}
-        </p>
+        <CcBanner
+          testId="run-banner"
+          label={tr("Run verdict")}
+          eyebrow={tr("This run")}
+          verdict={verdict}
+          headline={VERDICT_LABEL[verdict]}
+          why={
+            <span data-testid="run-sentence">
+              {tr("{cellsCount} {cellsCount, plural, one {object} other {objects}} scored: {go} go, {counts} at risk, {counts2} no-go.", { cellsCount: cells.length, go: counts.go ?? 0, counts: counts["at-risk"] ?? 0, counts2: counts["no-go"] ?? 0 })}
+            </span>
+          }
+          figs={[
+            { label: tr("Ready"), value: int(counts.go ?? 0), note: tr("of {n} objects", { n: int(cells.length) }) },
+            { label: tr("At risk"), value: int(counts["at-risk"] ?? 0), note: tr("below target") },
+            { label: tr("Blocking"), value: int(counts["no-go"] ?? 0), note: tr("block go-live") },
+          ]}
+          action={
+            <V2Link href={`/?run=${id}`} className="m2-btn m2-next">
+              {tr("Show scores from this run")}
+            </V2Link>
+          }
+        />
       ) : null}
+      {prev ? <SincePrevious id={id} prevId={prev.id} prevAt={prev.run_at} /> : null}
 
       <div className="m2-cta" data-testid="run-actions">
-        <V2Link href={`/?run=${id}`} className="m2-btn m2-next">
-          {tr("Show scores from this run")}
-        </V2Link>
         <button
           type="button"
           className="m2-btn"
@@ -514,6 +557,6 @@ export function RunCanvas({ id }: { id: string }) {
       <ProveThree run={id} modules={[...new Set(cells.map((c) => c.module))]} />
 
       <RunJobs runId={id} />
-    </>
+    </CcPage>
   );
 }

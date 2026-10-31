@@ -631,3 +631,25 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-cc-wback { fill: var(--m2-crit); }
 @media (max-width: 1200px) { .m2-cc { grid-template-columns: minmax(0, 1fr); } .m2-cc-dock { position: static; max-height: 480px; } }
 @media (max-width: 900px) { .m2-cc-banner, .m2-cc-row { grid-template-columns: minmax(0, 1fr); } }
+
+/* Command centre: runs, people, rules */
+.m2-cc-hbars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--m2-s2); }
+.m2-cc-hbars li { display: grid; grid-template-columns: minmax(120px, 30%) minmax(0, 1fr) minmax(64px, auto); gap: var(--m2-s3); align-items: center; font-size: var(--m2-fs-13); }
+.m2-cc-hlabel { min-width: 0; display: flex; flex-direction: column; gap: var(--m2-s1); overflow-wrap: anywhere; }
+.m2-cc-track { position: relative; display: block; height: 10px; border-radius: var(--m2-r1); background: var(--m2-line); }
+.m2-cc-track > span { position: absolute; top: 0; left: 0; height: 100%; border-radius: var(--m2-r1); background: var(--m2-data); }
+.m2-cc-track > span[data-tone="crit"] { background: var(--m2-crit); }
+.m2-cc-track > span[data-tone="warn"] { background: var(--m2-warn); }
+.m2-cc-track > span[data-tone="pass"] { background: var(--m2-pass); }
+.m2-cc-hval { text-align: right; font-variant-numeric: tabular-nums; color: var(--m2-ink-2); }
+.m2-cc-delta .m2-cc-track::after { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--m2-ink-3); }
+.m2-cc-legend + .m2-cc-hbars { margin-top: var(--m2-s2); }
+.m2-cc-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--m2-s4); }
+.m2-cc-lede { margin: 0; font-size: var(--m2-fs-14); color: var(--m2-ink-2); max-width: 70ch; }
+@media (max-width: 900px) { .m2-cc-split { grid-template-columns: minmax(0, 1fr); } .m2-cc-hbars li { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .m2-cc-hbars .m2-cc-hlabel { grid-column: 1 / -1; } }
+.m2-cc-banner { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); }
+.m2-cc-banner .m2-cc-act { grid-column: 1 / -1; justify-self: start; }
+.m2-cc-figs dd { font-size: var(--m2-fs-24); }
+.m2-cc-figs > div { min-width: 0; padding-left: var(--m2-s3); }
+.m2-cc-figs dd, .m2-cc-figs span { overflow-wrap: anywhere; white-space: normal; }
+.m2-cc-lede { margin-bottom: var(--m2-s4); }
