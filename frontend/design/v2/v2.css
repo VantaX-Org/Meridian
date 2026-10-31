@@ -699,3 +699,7 @@ select.m2-sel:hover, input.m2-inp:hover { border-color: var(--m2-ink-3); }
 .m2-cc-figs > div { min-width: 0; padding-left: var(--m2-s3); }
 .m2-cc-figs dd { overflow-wrap: anywhere; white-space: normal; }
 .m2-cc-lede { margin-bottom: var(--m2-s4); }
+
+/* Command centre: system */
+.m2-cc-sysbars { margin-top: var(--m2-s4); }
+.m2-cc-sysbars .m2-cc-lede { margin-bottom: var(--m2-s2); }
