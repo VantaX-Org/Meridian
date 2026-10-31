@@ -45,6 +45,16 @@ The Record links page, under Record links in the map, shows which records are li
 
 Roles without permission to see AI confidence see a dash instead of the confidence of an inferred link.
 
+## Record issues
+
+The Issues page, under Issues in the map, is the steward work list. Each issue is one record failing one rule, carried from run to run with its status, the person it is assigned to, its due date and its history. The banner counts the issues still to close, with those in progress, those waiting on SAP or on the requester, and those closed. Under it:
+
+- **Where the issues stand.** How many issues are in each status.
+- **Status buttons and filter.** Show one status or all of them, then narrow by severity, by who the issue is assigned to (you, no one or anyone) and by record key. Users with the export permission can export the list to Excel with the same filters.
+- **Issues.** Each issue with the record, the rule and the field it failed on, the severity, the status, the assignee, the due date with whether it is on time, and how often it has been reopened. The list is ordered most severe first, a hundred to a page.
+- **Change the selected issues.** Tick issues to move them to another status, assign them or add a note. Accepting an issue needs the approve permission and a resolution (risk accepted or false positive); a false positive needs a reason. Resolving needs the resolution fixed in the source. Other moves and assignments need the assign permission.
+- **One issue.** Open a record to see the runs that found it failing or clean, and who did what to it. Users who may analyse can add a comment.
+
 ## What is on it
 
 - **The banner.** One sentence at the top: how many records failed a rule again since the last run and how many were fixed, with both figures beside it. Aletheia is docked on the right, as on every main screen.
