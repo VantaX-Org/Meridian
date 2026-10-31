@@ -5888,4 +5888,5 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Your role cannot read the migration analyses.": "あなたのロールでは移行分析を読み込めません。",
   "Value outside the field's domain": "項目のドメイン外の値",
   "Source field to S/4HANA field, with each field's description": "ソース項目から S/4HANA 項目へ、各項目の説明付き",
+  "Migration": "マイグレーション",
 };

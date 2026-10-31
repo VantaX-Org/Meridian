@@ -5887,6 +5887,7 @@ export const en = {
   "Your role cannot read the migration analyses.": "Your role cannot read the migration analyses.",
   "Value outside the field's domain": "Value outside the field's domain",
   "Source field to S/4HANA field, with each field's description": "Source field to S/4HANA field, with each field's description",
+  "Migration": "Migration",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
