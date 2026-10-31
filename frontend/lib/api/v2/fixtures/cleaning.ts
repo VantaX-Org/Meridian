@@ -4,7 +4,7 @@
  * of the applied list and writes an audit row, as the route does. The deadlines are relative to now so one proposal
  * is always past its window and the others are not.
  */
-import type { CleaningAudit, CleaningGroup, CleaningItem, CleaningMetric, Proposal } from "../cleaning";
+import type { CleaningAudit, CleaningGroup, CleaningItem, CleaningMetric, DedupCandidate, MergePreview, Proposal } from "../cleaning";
 
 export const NONE_CLEANING = Symbol("not a cleaning path");
 
@@ -86,7 +86,33 @@ export const resetCleaningFixture = (): void => {
   extraAudit = [];
   decided = new Map();
   appliedNow = new Map();
+  merged = new Set();
 };
+
+// The pairs the cleaning engine found, each with the two records it compared.
+const DEDUP: [DedupCandidate, Record<string, string>, Record<string, string>][] = [
+  [
+    { id: "dd-1", object_type: "business_partner", record_key_a: "0000100231", record_key_b: "0000100877", match_score: 94, match_method: "fuzzy", status: "pending", created_at: "2026-10-30T06:10:00Z",
+      match_fields: { NAME_ORG1: { a: "Komatsu Mining Corp", b: "Komatsu Mining Corp.", method: "fuzzy", score: 97 }, STCD1: { a: "4410187263", b: "4410187263", method: "exact" } } },
+    { PARTNER: "0000100231", NAME_ORG1: "Komatsu Mining Corp", STCD1: "4410187263", CITY1: "Milwaukee", TEL_NUMBER: "" },
+    { PARTNER: "0000100877", NAME_ORG1: "Komatsu Mining Corp.", STCD1: "4410187263", CITY1: "Milwaukee", TEL_NUMBER: "+1 414 671 4400" },
+  ],
+  [
+    { id: "dd-2", object_type: "material_master", record_key_a: "000000000010004711", record_key_b: "000000000010006640", match_score: 88, match_method: "fuzzy", status: "pending", created_at: "2026-10-30T06:10:00Z",
+      match_fields: { MAKTX: { a: "Hydraulic pump seal kit", b: "Seal kit, hydraulic pump", method: "token_sort", score: 88 } } },
+    { MATNR: "000000000010004711", MAKTX: "Hydraulic pump seal kit", MEINS: "EA", EAN11: "" },
+    { MATNR: "000000000010006640", MAKTX: "Seal kit, hydraulic pump", MEINS: "EA", EAN11: "4006381333931" },
+  ],
+];
+let merged = new Set<string>();
+
+function preview(a: Record<string, string>, b: Record<string, string>): MergePreview {
+  // As the route does: each field keeps the longer of the two values.
+  return Object.fromEntries([...new Set([...Object.keys(a), ...Object.keys(b)])].sort().map((f) => {
+    const va = a[f] ?? "", vb = b[f] ?? "";
+    return [f, { a: va, b: vb, survivor: va.length >= vb.length ? va : vb }];
+  }));
+}
 
 const statusOf = (p: (typeof PROPOSALS)[number]) => decided.get(p[0]) ?? p[8];
 
@@ -145,6 +171,10 @@ export function cleaningRead(path: string, params: Record<string, unknown> = {})
     const items = applied();
     return { items, total: items.length, page: 1, per_page: 100 };
   }
+  if (path === "/dedup/candidates") {
+    const items = DEDUP.map(([c]) => c).filter((c) => !merged.has(c.id));
+    return { items, total: items.length, page: 1, per_page: 50 };
+  }
   if (path === "/cleaning/audit") {
     const items = [
       ...extraAudit,
@@ -158,6 +188,19 @@ export function cleaningRead(path: string, params: Record<string, unknown> = {})
 export function cleaningWrite(method: string, path: string, body: Record<string, unknown> = {}): unknown {
   if (method !== "POST") return NONE_CLEANING;
   if (path === "/ai/feedback") return { id: "fb-1", status: "recorded" };
+  if (path === "/dedup/preview") {
+    const hit = DEDUP.find(([c]) => c.record_key_a === body.record_key_a && c.record_key_b === body.record_key_b);
+    return { merge_preview: hit ? preview(hit[1], hit[2]) : {}, record_key_a: body.record_key_a, record_key_b: body.record_key_b };
+  }
+  if (path === "/dedup/merge") {
+    const hit = DEDUP.find(([c]) => c.id === body.candidate_id);
+    if (!hit) return refuse("Dedup candidate not found");
+    if (merged.has(hit[0].id)) return refuse("This candidate has already been merged");
+    if (![hit[0].record_key_a, hit[0].record_key_b].includes(String(body.survivor_key))) return refuse("survivor_key must be one of the candidate's two records.");
+    if (!String(body.reason ?? "").trim()) return refuse("A reason is required");
+    merged.add(hit[0].id);
+    return { status: "merged", survivor_key: body.survivor_key };
+  }
   if (path === "/cleaning/bulk-approve") {
     const min = Number(body.min_confidence ?? 0);
     const hit = PROPOSALS.filter((p) => ["detected", "recommended"].includes(statusOf(p)) && (!body.kind || p[2] === body.kind) && p[5] >= min);

@@ -7,6 +7,9 @@
  *   GET  /cleaning/queue?status=applied        (the applied proposals; each can be rolled back until its deadline)
  *   GET  /cleaning/audit                       (every decision on a proposal, newest first; needs the export permission)
  *   POST /cleaning/rollback/{id}               (needs the apply permission)
+ *   GET  /dedup/candidates                     (pairs the cleaning engine found to be the same record, still pending)
+ *   POST /dedup/preview                        (the fields of both records side by side)
+ *   POST /dedup/merge                          (keeps the survivor and merges the other into it; needs approve and a reason)
  */
 import { v2Get, v2Send } from "./client";
 
@@ -97,3 +100,22 @@ export const approveGroup = (g: Pick<CleaningGroup, "version_id" | "kind">, min_
   v2Send<{ approved_count: number }>("POST", "/cleaning/bulk-approve", { version_id: g.version_id ?? undefined, kind: g.kind, min_confidence });
 export const sendAiFeedback = (queue_item_id: string, domain: string, correction_reason: string) =>
   v2Send<{ id: string; status: string }>("POST", "/ai/feedback", { queue_item_id, steward_decision: "reject", correction_reason, domain });
+
+export interface DedupCandidate {
+  id: string;
+  object_type: string;
+  record_key_a: string;
+  record_key_b: string;
+  match_score: number;
+  match_method: string | null;
+  match_fields: Record<string, { a?: string; b?: string; method?: string; score?: number }> | null;
+  status: string;
+  created_at: string | null;
+}
+export type MergePreview = Record<string, { a: string; b: string; survivor: string }>;
+
+export const getDedupCandidates = () => v2Get<{ items: DedupCandidate[]; total: number }>("/dedup/candidates", { per_page: 50 });
+export const previewDedup = (c: Pick<DedupCandidate, "record_key_a" | "record_key_b" | "object_type">) =>
+  v2Send<{ merge_preview: MergePreview }>("POST", "/dedup/preview", { record_key_a: c.record_key_a, record_key_b: c.record_key_b, object_type: c.object_type });
+export const mergeDedup = (candidate_id: string, survivor_key: string, reason: string) =>
+  v2Send<{ status: string }>("POST", "/dedup/merge", { candidate_id, survivor_key, reason });

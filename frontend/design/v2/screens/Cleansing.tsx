@@ -4,8 +4,8 @@ import { useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { errorSentence } from "@/lib/api/v2/client";
 import {
-  applyProposal, approveGroup, approveProposal, CONFIDENT, getAppliedCleaning, getCleaningAudit, getCleaningGroups, getCleaningMetrics, getProposals, rejectProposal,
-  rollbackCleaning, sendAiFeedback, WAITING, type CleaningGroup, type CleaningItem, type CleaningMetric, type Proposal, type RecordData,
+  applyProposal, approveGroup, approveProposal, CONFIDENT, getAppliedCleaning, getDedupCandidates, mergeDedup, previewDedup, getCleaningAudit, getCleaningGroups, getCleaningMetrics, getProposals, rejectProposal,
+  rollbackCleaning, sendAiFeedback, WAITING, type CleaningGroup, type CleaningItem, type CleaningMetric, type DedupCandidate, type Proposal, type RecordData,
 } from "@/lib/api/v2/cleaning";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { formatDate } from "@/lib/format";
@@ -121,6 +121,7 @@ export function Cleansing() {
       </Panel>
 
       <Proposals />
+      <Duplicates />
 
       <div className="m2-cc-split">
         <Trend weeks={weeks} />
@@ -464,6 +465,122 @@ function GroupItems({ group, decide }: { group: CleaningGroup; decide: ReturnTyp
         </li>
       ))}
     </ul>
+  );
+}
+
+function Duplicates() {
+  const { can } = useV2Session();
+  const pairs = useCleaning("dedup", getDedupCandidates);
+  const [open, setOpen] = useState<string | null>(null);
+  return (
+    <Panel title={t("Duplicate records to merge")} meta={pairs.data ? t("{n} pairs the cleaning engine found to be the same record", { n: int(pairs.data.total) }) : undefined} testId="cleansing-dedup">
+      {pairs.isPending ? <Skeleton width="100%" height={80} /> : status(pairs.error) === 403 ? (
+        <Dash why={t("Your role cannot see the duplicate records.")} />
+      ) : pairs.isError ? <Dash why={t("The duplicate records could not be read.")} /> : pairs.data.items.length === 0 ? (
+        <EmptyFrame>{t("No duplicate pair is waiting to be merged.")}</EmptyFrame>
+      ) : (
+        <ScrollFrame label={t("Duplicate records table, scrollable")}>
+          <table className="m2-tbl m2-cards">
+            <thead>
+              <tr>
+                <th scope="col">{t("Records")}</th>
+                <th scope="col">{t("Object")}</th>
+                <th scope="col">{t("Matched on")}</th>
+                <th scope="col" className="m2-num">{t("Match score")}</th>
+                <th scope="col"><span className="m2-sr">{t("Action")}</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {pairs.data.items.map((c) => [
+                <tr key={c.id} data-testid={`cleansing-dedup-${c.id}`}>
+                  <th scope="row" className="m2-card-lead"><Mono>{c.record_key_a}</Mono> {t("and")} <Mono>{c.record_key_b}</Mono></th>
+                  <td data-label={t("Object")}>{moduleText(c.object_type)}</td>
+                  <td data-label={t("Matched on")}>
+                    {Object.keys(c.match_fields ?? {}).length ? Object.keys(c.match_fields ?? {}).map((f, i) => <span key={f}>{i ? ", " : ""}<Mono>{f}</Mono> {labelText(f)}</span>) : <Dash />}
+                  </td>
+                  <td data-label={t("Match score")} className="m2-num">{f1(c.match_score)}</td>
+                  <td data-label={t("Action")}>
+                    <button type="button" className="m2-btn" aria-expanded={open === c.id} onClick={() => setOpen(open === c.id ? null : c.id)} data-testid={`cleansing-dedup-open-${c.id}`}>
+                      {open === c.id ? t("Close") : can("approve") ? t("Compare and merge") : t("Compare")}
+                    </button>
+                  </td>
+                </tr>,
+                open === c.id ? (
+                  <tr key={`${c.id}-merge`}>
+                    <td colSpan={5}><Merge pair={c} onDone={() => setOpen(null)} /></td>
+                  </tr>
+                ) : null,
+              ])}
+            </tbody>
+          </table>
+        </ScrollFrame>
+      )}
+    </Panel>
+  );
+}
+
+function Merge({ pair, onDone }: { pair: DedupCandidate; onDone: () => void }) {
+  const { can } = useV2Session();
+  const toast = useToast();
+  const qc = useQueryClient();
+  const fixture = useFixture();
+  const fields = useQuery({ queryKey: ["cleaning", fixture, "dedup-preview", pair.id], queryFn: () => previewDedup(pair), staleTime: 60_000 });
+  const [survivor, setSurvivor] = useState(pair.record_key_a);
+  const [reason, setReason] = useState("");
+  const merge = useMutation({
+    mutationFn: () => mergeDedup(pair.id, survivor, reason.trim()),
+    onSuccess: () => {
+      toast.show(t("{b} was merged into {a}.", { a: survivor, b: survivor === pair.record_key_a ? pair.record_key_b : pair.record_key_a }));
+      void qc.invalidateQueries({ queryKey: ["cleaning"] });
+      onDone();
+    },
+    onError: (e) => toast.show(errorSentence(e, t("The records could not be merged.")), "error"),
+  });
+  if (fields.isPending) return <Skeleton width="100%" height={80} />;
+  if (fields.isError) return <Dash why={t("The two records could not be compared.")} />;
+  const rows = Object.entries(fields.data.merge_preview);
+  return (
+    <div data-testid={`cleansing-dedup-merge-${pair.id}`}>
+      {rows.length ? (
+        <table className="m2-tbl">
+          <thead>
+            <tr>
+              <th scope="col">{t("Field")}</th>
+              <th scope="col"><Mono>{pair.record_key_a}</Mono></th>
+              <th scope="col"><Mono>{pair.record_key_b}</Mono></th>
+              <th scope="col">{t("Suggested value")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(([f, v]) => (
+              <tr key={f}>
+                <th scope="row"><Mono>{f}</Mono> {labelText(f)}</th>
+                <td>{v.a || <Dash />}</td>
+                <td>{v.b || <Dash />}</td>
+                <td>{v.survivor || <Dash />}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : <Dash why={t("The cleaning queue holds no data for these records.")} />}
+      {can("approve") ? (
+        <form
+          className="m2-row-actions"
+          onSubmit={(e) => { e.preventDefault(); if (reason.trim()) merge.mutate(); }}
+        >
+          <fieldset className="m2-row-actions">
+            <legend className="m2-meta">{t("Keep")}</legend>
+            {[pair.record_key_a, pair.record_key_b].map((k) => (
+              <label key={k}>
+                <input type="radio" name={`survivor-${pair.id}`} checked={survivor === k} onChange={() => setSurvivor(k)} data-testid={`cleansing-dedup-keep-${k}`} /> <Mono>{k}</Mono>
+              </label>
+            ))}
+          </fieldset>
+          <input className="m2-inp" aria-label={t("Why are these the same record?")} placeholder={t("Why are these the same record?")} value={reason} onChange={(e) => setReason(e.target.value)} data-testid={`cleansing-dedup-reason-${pair.id}`} />
+          <button type="submit" className="m2-btn m2-next" disabled={!reason.trim() || merge.isPending} data-testid={`cleansing-dedup-merge-btn-${pair.id}`}>{t("Merge")}</button>
+        </form>
+      ) : null}
+    </div>
   );
 }
 

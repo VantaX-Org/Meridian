@@ -5728,6 +5728,19 @@ export const en = {
   "Why is this proposal wrong?": "Why is this proposal wrong?",
   "Write to SAP": "Write to SAP",
   "Your role cannot see the cleansing proposals.": "Your role cannot see the cleansing proposals.",
+  "{b} was merged into {a}.": "{b} was merged into {a}.",
+  "{n} pairs the cleaning engine found to be the same record": "{n} pairs the cleaning engine found to be the same record",
+  "Compare and merge": "Compare and merge",
+  "Duplicate records table, scrollable": "Duplicate records table, scrollable",
+  "Duplicate records to merge": "Duplicate records to merge",
+  "Matched on": "Matched on",
+  "No duplicate pair is waiting to be merged.": "No duplicate pair is waiting to be merged.",
+  "The cleaning queue holds no data for these records.": "The cleaning queue holds no data for these records.",
+  "The duplicate records could not be read.": "The duplicate records could not be read.",
+  "The records could not be merged.": "The records could not be merged.",
+  "The two records could not be compared.": "The two records could not be compared.",
+  "Why are these the same record?": "Why are these the same record?",
+  "Your role cannot see the duplicate records.": "Your role cannot see the duplicate records.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
