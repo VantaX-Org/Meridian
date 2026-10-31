@@ -91,6 +91,9 @@ export function GoLiveBanner({ landscape, waves }: { landscape: Landscape; waves
         <V2Link href="/config" className="m2-btn">
           {t("Open the configuration")}
         </V2Link>
+        <V2Link href="/cleansing" className="m2-btn">
+          {t("Open cleansing")}
+        </V2Link>
       </div>
     </section>
   );

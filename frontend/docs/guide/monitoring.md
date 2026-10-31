@@ -2,6 +2,16 @@
 
 Cleaning a record is not the end of the job. Monitoring, under Work, shows whether records that a batch fixed stay fixed, and which rules keep pulling them back. Open it from the Monitor tab at the top of the Work ledger, or from **Open monitoring** on the **Cleaned and watched** card of the landscape and Work.
 
+## Cleansing
+
+The Cleansing page, under Cleansing in the map, shows what the cleaning engine did. The banner gives the records cleansed in SAP and rolled back at the latest weekly snapshot. Under it:
+
+- **Where every proposal stands.** One bar split by status: waiting for a decision, approved, cleansed in SAP, rolled back and rejected.
+- **Records cleansed, week by week.** The cleansed count at each weekly snapshot. The snapshots are counts at a point in time, so the weeks are never added together.
+- **Cleansed by object.** Records in SAP per object, with the share of that object's proposals.
+- **Applied changes you can still undo.** Each change applied to SAP, with the fields it changed (before and after) and the deadline. Users who may apply fixes can roll a change back for 72 hours; after that the button is disabled.
+- **Audit trail.** The last 25 decisions with who made them. Roles without the export permission see a dash instead.
+
 ## What is on it
 
 - **The banner.** One sentence at the top: how many records failed a rule again since the last run and how many were fixed, with both figures beside it. Aletheia is docked on the right, as on every main screen.
