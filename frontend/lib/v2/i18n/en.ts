@@ -5001,6 +5001,23 @@ export const en = {
   "How long each run took": "How long each run took",
   "Run duration": "Run duration",
   "Score over time": "Score over time",
+  "Records per object": "Records per object",
+  "What the latest extraction, on {when}, read from each object.": "What the latest extraction, on {when}, read from each object.",
+  "Records per object in the latest extraction": "Records per object in the latest extraction",
+  "An extraction from {name} is running, {pct}% done": "An extraction from {name} is running, {pct}% done",
+  "The latest extraction from {name} failed": "The latest extraction from {name} failed",
+  "{name} is connected": "{name} is connected",
+  "The connection to {name} has not been tested yet": "The connection to {name} has not been tested yet",
+  "The connection to {name} needs attention": "The connection to {name} needs attention",
+  "The last extraction was on {when}.": "The last extraction was on {when}.",
+  "It has never been extracted.": "It has never been extracted.",
+  "State of the system": "State of the system",
+  "Objects extracted": "Objects extracted",
+  "in the latest extraction": "in the latest extraction",
+  "Extractions kept": "Extractions kept",
+  "to compare against": "to compare against",
+  "Objects scored": "Objects scored",
+  "by the latest run": "by the latest run",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

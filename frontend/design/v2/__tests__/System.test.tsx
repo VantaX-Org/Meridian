@@ -172,6 +172,9 @@ describe("the system canvas", () => {
     canvas();
     const table = await screen.findByTestId("system-objects");
     expect(within(table).getAllByRole("row")).toHaveLength(16);
+    expect(norm(screen.getByTestId("system-banner"))).toContain("ECC production is connected");
+    const chart = await screen.findByRole("list", { name: "Records per object in the latest extraction" });
+    expect(within(chart).getAllByRole("listitem").length).toBeGreaterThan(0);
     expect(await screen.findByText("Extraction, 15 objects")).toBeInTheDocument();
   });
 
