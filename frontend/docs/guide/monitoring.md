@@ -63,6 +63,7 @@ The Action centre, second in the map, lists everything that needs you, most urge
 - **What needs attention, by kind.** How many items of each kind.
 - **Act on these.** Each item with what happened, its severity, the system and object, when it started and how many records or items it covers. The button opens the screen where you resolve it.
 
+## What is on it
 
 - **The banner.** One sentence at the top: how many records failed a rule again since the last run and how many were fixed, with both figures beside it. Aletheia is docked on the right, as on every main screen.
 - **Per system.** One row per connected system with the score then (the run before the clean), the score now, the change, how many records have failed again and how many were fixed since.
