@@ -8,7 +8,7 @@ import { useFixture } from "@/lib/api/v2/fixture";
 import { simulateFix } from "@/lib/api/v2/step9";
 import { formatDate } from "@/lib/format";
 import { useWaves } from "@/lib/v2/admin-queries";
-import { courseOf, fitLine, lineAt, maxHorizon, readAt, type GoLiveReading } from "@/lib/v2/forecast";
+import { bands, courseOf, fitLine, lineAt, maxHorizon, readAt, type GoLiveReading } from "@/lib/v2/forecast";
 import { t } from "@/lib/v2/i18n";
 import { moduleText, moneyCompactText } from "@/lib/v2/labels";
 import { DASH, f1, int, moduleSlug, VERDICT_LABEL } from "@/lib/v2/score";
@@ -33,7 +33,7 @@ interface Row {
   failed: boolean;
 }
 
-const ROW_H = 56;
+const ROW_H = 72;
 const PAD_L = 168;
 const PAD_R = 16;
 
@@ -137,6 +137,11 @@ function Runway({ rows, target, goLiveDay, sinceRun, selected, onPick }: { rows:
   const first = Math.min(-7, ...rows.flatMap((r) => r.forecast?.history.map((h) => h.day) ?? []));
   const last = Math.max(7, goLiveDay ?? 0, ...rows.map((r) => (r.forecast ? (maxHorizon(r.forecast) ?? 0) : 0)));
   const x = (d: number) => PAD_L + ((d - first) / (last - first || 1)) * (width - PAD_L - PAD_R);
+  // One score band for every row so the slopes compare: the lowest score drawn, a few points of air, up to 100.
+  const lows = rows.flatMap((r) => (r.forecast ? [...r.forecast.history.map((h) => h.score), ...bands(r.forecast).map((b) => b[1])] : []));
+  const floor = Math.max(0, Math.floor((Math.min(target ?? 100, ...lows) - 5) / 5) * 5);
+  // Today and go-live labels push apart when the two lines nearly touch.
+  const close = goLiveDay != null && Math.abs(x(goLiveDay) - x(sinceRun)) < 64;
   return (
     <section className="m2-ck-panel" aria-label={t("Runway")}>
       <div className="m2-ck-head">
@@ -146,15 +151,15 @@ function Runway({ rows, target, goLiveDay, sinceRun, selected, onPick }: { rows:
       <div ref={ref} className="m2-fd-runway" data-testid="runway">
         <svg width={width} height={rows.length * ROW_H + 24} role="img" aria-label={t("Forecast runway of {n} objects", { n: rows.length })}>
           <line className="m2-fd-today" x1={x(sinceRun)} x2={x(sinceRun)} y1={0} y2={rows.length * ROW_H} />
-          <text className="m2-fd-axis" x={x(sinceRun)} y={rows.length * ROW_H + 16} textAnchor="middle">{t("Today")}</text>
+          <text className="m2-fd-axis" x={x(sinceRun)} y={rows.length * ROW_H + 16} textAnchor={close ? "end" : "middle"}>{t("Today")}</text>
           {goLiveDay != null ? (
             <>
               <line className="m2-fd-golive" x1={x(goLiveDay)} x2={x(goLiveDay)} y1={0} y2={rows.length * ROW_H} />
-              <text className="m2-fd-axis" x={x(goLiveDay)} y={rows.length * ROW_H + 16} textAnchor="middle">{t("Go-live")}</text>
+              <text className="m2-fd-axis" x={x(goLiveDay)} y={rows.length * ROW_H + 16} textAnchor={close ? "start" : "middle"}>{t("Go-live")}</text>
             </>
           ) : null}
           {rows.map((r, i) => (
-            <RunwayRow key={r.module} row={r} top={i * ROW_H} x={x} target={target} goLiveDay={goLiveDay} on={r.module === selected} onPick={onPick} />
+            <RunwayRow key={r.module} row={r} top={i * ROW_H} x={x} floor={floor} target={target} goLiveDay={goLiveDay} on={r.module === selected} onPick={onPick} />
           ))}
         </svg>
       </div>
@@ -162,13 +167,14 @@ function Runway({ rows, target, goLiveDay, sinceRun, selected, onPick }: { rows:
   );
 }
 
-function RunwayRow({ row, top, x, target, goLiveDay, on, onPick }: { row: Row; top: number; x: (d: number) => number; target: number | null; goLiveDay: number | null; on: boolean; onPick: (m: string) => void }) {
+function RunwayRow({ row, top, x, floor, target, goLiveDay, on, onPick }: { row: Row; top: number; x: (d: number) => number; floor: number; target: number | null; goLiveDay: number | null; on: boolean; onPick: (m: string) => void }) {
   const h = ROW_H - 12;
-  const y = (s: number) => top + 6 + h - (s / 100) * h;
+  const y = (s: number) => top + 6 + h - ((Math.max(floor, s) - floor) / (100 - floor || 1)) * h;
   const f = row.forecast;
   const line = f ? fitLine(f.history) : null;
   const max = f ? maxHorizon(f) : null;
-  const end = max == null ? null : Math.min(max, goLiveDay ?? max);
+  // The line runs to the furthest stored horizon so the reader sees where it meets the target, past go-live too.
+  const end = max;
   const cone: string[] = [];
   if (f && end != null) {
     const steps = Array.from({ length: 13 }, (_, k) => (k / 12) * end);
@@ -187,7 +193,7 @@ function RunwayRow({ row, top, x, target, goLiveDay, on, onPick }: { row: Row; t
           <span className="m2-meta">{row.loading ? t("Reading forecast") : row.failed ? t("Forecast unavailable") : !f ? t("Too little history") : score == null ? t("Go-live beyond forecast") : t("{score} at go-live", { score: f1(score) })}</span>
         </button>
       </foreignObject>
-      {target != null ? <line className="m2-fd-target" x1={x(f?.history[0]?.day ?? 0)} x2={x(goLiveDay ?? end ?? 0)} y1={y(target)} y2={y(target)} /> : null}
+      {target != null ? <line className="m2-fd-target" x1={x(f?.history[0]?.day ?? 0)} x2={x(Math.max(goLiveDay ?? 0, end ?? 0))} y1={y(target)} y2={y(target)} /> : null}
       {cone.length ? <polygon className="m2-fd-cone" points={cone.join(" ")} /> : null}
       {f ? <polyline className="m2-fd-hist" points={f.history.map((p) => `${x(p.day)},${y(p.score)}`).join(" ")} /> : null}
       {f?.history.map((p) => <circle key={p.day} className="m2-fd-dot" cx={x(p.day)} cy={y(p.score)} r={2} />)}
