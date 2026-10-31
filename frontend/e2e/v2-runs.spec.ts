@@ -208,7 +208,7 @@ for (const size of SIZES) {
         await page.goto(`/s/${ECC}?fixture=1`, { waitUntil: "load", timeout: 90_000 });
         await expect(page.getByRole("heading", { level: 1 })).toContainText("ECC production", NAV);
         await expect(page.getByTestId("system-status-line")).toContainText("Connected");
-        await expect(page.getByRole("navigation", { name: "Views of ECC production" }).getByRole("link")).toHaveCount(6);
+        await expect(page.getByRole("navigation", { name: "Views of ECC production" }).getByRole("link")).toHaveCount(7);
         await expect(page.getByTestId("system-objects")).toBeVisible();
         expect(await noSideways(page)).toBe(true);
         await page.waitForLoadState("networkidle");
