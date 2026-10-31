@@ -99,7 +99,7 @@
         {"caption": "Command Z takes the last change back.", "focus": "#m2-canvas", "press": "Control+z"},
         {"caption": "Select rows with x or the checkboxes; Shift J extends the selection.", "check": {"role": "checkbox", "name": "Select row", "exact": false, "nth": 0}},
         {"caption": "The bulk bar acts on every selected row.", "check": {"role": "checkbox", "name": "Select row", "exact": false, "nth": 1}},
-        {"caption": "A change of more than 25 rows waits on a confirmation bar with the count.", "click": {"text": "Accept the 112 suggested values", "nth": 0}},
+        {"caption": "A change of more than 25 rows waits on a confirmation bar with the count.", "click": {"text": "Accept 112 suggested values on MM142", "nth": 0}},
         {"caption": "Enter confirms; Escape keeps the rows as they are.", "press": "Escape"},
         {"caption": "By rule groups the rows under their rule, so a whole rule is decided at once.", "click": {"role": "button", "name": "By rule"}},
         {"caption": "Open a record: every failing field, its possible values and the decision.", "go": "/work?open=record%3Amaterial_master%3AMATNR%3D000000000000000100"},

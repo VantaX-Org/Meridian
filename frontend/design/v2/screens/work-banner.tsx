@@ -12,7 +12,7 @@ export function WorkBanner({ why, open, critical, proposed, action, pending }: {
     <section className="m2-cc-banner m2-wk-banner" data-verdict={critical > 0 ? "no-go" : open > 0 ? "at-risk" : "go"} aria-label={t("Open work")} data-testid="work-banner">
       <div className="m2-cc-verdict">
         <span className="m2-cc-eyebrow">{t("Open work")}</span>
-        {pending ? <Skeleton width={260} height={24} /> : <strong>{t("{open} records to fix", { open: int(open) })}</strong>}
+        {pending ? <Skeleton width={260} height={24} /> : <strong>{t("{open} records open", { open: int(open) })}</strong>}
         {why ? (
           <span className="m2-cc-why" data-testid="work-sentence">
             {why}
@@ -20,11 +20,6 @@ export function WorkBanner({ why, open, critical, proposed, action, pending }: {
         ) : null}
       </div>
       <dl className="m2-cc-figs">
-        <div>
-          <dt>{t("Open records")}</dt>
-          <dd>{int(open)}</dd>
-          <dd className="m2-cc-note">{t("still failing a rule")}</dd>
-        </div>
         <div>
           <dt>{t("Critical")}</dt>
           <dd>{int(critical)}</dd>

@@ -148,7 +148,7 @@ describe("the Work ledger, fixture mode", () => {
   it("the steward's next step accepts the suggested values of the top rule, with the server's count in the notice", async () => {
     const spy = vi.spyOn(workApi, "postAcceptAll");
     mount();
-    const next = await screen.findByRole("button", { name: "Accept the 112 suggested values" });
+    const next = await screen.findByRole("button", { name: "Accept 112 suggested values on MM142" });
     fireEvent.click(next);
     // Over 25 values: the confirmation bar first.
     expect(await screen.findByTestId("bulk-confirm")).toHaveTextContent("Accept 112 suggested values for MM142?");
@@ -157,7 +157,7 @@ describe("the Work ledger, fixture mode", () => {
     await waitFor(() => expect(spy).toHaveBeenCalledWith("MM142", expect.any(String)));
     expect(await screen.findByText(/Accepted 112 suggested values for MM142/)).toBeInTheDocument();
     // The count moved: the next rule's values are now the next step.
-    expect(await screen.findByRole("button", { name: "Accept the 640 suggested values" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /^Accept 640 suggested values on / })).toBeInTheDocument();
   });
 
   it("shows the bulk bar for the selected rows: N records, accept, set value, not an issue, accept risk, assign", async () => {
@@ -720,6 +720,6 @@ describe("read-only", () => {
     expect(within(grid).queryByRole("checkbox")).toBeNull();
     fireEvent.click(await screen.findByRole("button", { name: "More" }));
     expect(screen.queryByRole("menuitem", { name: "Import filled sheet" })).toBeNull();
-    expect(screen.queryByRole("button", { name: /Accept the .* suggested/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Accept .* suggested values on/ })).toBeNull();
   });
 });

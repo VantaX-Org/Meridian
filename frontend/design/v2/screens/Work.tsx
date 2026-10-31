@@ -58,6 +58,7 @@ import { GridTools, useGridKey } from "../GridTools";
 import { FixOrderHint } from "./object/Related";
 import { WorkTabs } from "./WorkTabs";
 import { AletheiaDock } from "./CommandCentre";
+import { FixPipeline, RuleBoard } from "./Cockpit";
 import { WorkBanner, WorkBreakdown, type Bar } from "./work-banner";
 import { t as tr, lc } from "@/lib/v2/i18n";
 import { whole } from "@/lib/v2/format";
@@ -448,7 +449,7 @@ export function WorkCanvas() {
   const action =
     session.persona === "steward" && can.apply && topGroup && state.chip !== "approvals" && state.chip !== "exceptions" ? (
       <button type="button" className="m2-btn m2-next" onClick={() => ask(topGroup.proposed, tr("Accept {count} suggested values for {check}?", { count: int(topGroup.proposed), check: topGroup.check_id }), tr("Accept {count} values", { count: int(topGroup.proposed) }), () => void actions.acceptRule(topGroup.check_id, topGroup.proposed, topGroup.version_id, recordRows))}>
-        {tr("Accept the {proposed} suggested {proposed2, plural, one {value} other {values}}", { proposed: int(topGroup.proposed), proposed2: topGroup.proposed })}
+        {tr("Accept {count} suggested values on {check}", { count: int(topGroup.proposed), check: topGroup.check_id })}
       </button>
     ) : can.approve && waiting > 0 && state.chip !== "approvals" ? (
       <button type="button" className="m2-btn m2-next" onClick={() => go({ chip: "approvals", group: false })}>
@@ -786,6 +787,8 @@ export function WorkCanvas() {
       <PageTitle sub={objectLabel ?? tr("All objects")}>{tr("Work")}</PageTitle>
       <WorkTabs current="ledger" />
       <WorkBanner why={text} open={fig.open} critical={fig.critical} proposed={fig.proposed} pending={summaryQ.isPending} action={action} />
+      <RuleBoard label={(m) => objectName(m, labels)} module={state.module} limit={8} />
+      <FixPipeline label={(m) => objectName(m, labels)} module={state.module} />
       <WorkBreakdown title={state.module ? tr("Open records by rule") : tr("Open records by object")} bars={bars} />
       <FixOrderHint module={state.module} />
       {state.asOf ? (

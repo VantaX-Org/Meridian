@@ -1,7 +1,8 @@
 "use client";
 
 import { Welcome } from "./Welcome";
-import { AletheiaDock, CommandRow, GoLiveBanner, HeatMap } from "./CommandCentre";
+import { AletheiaDock, CommandRow, GoLiveBanner } from "./CommandCentre";
+import { FixPipeline, ReadinessMatrix, RiskWaterfall, RuleBoard } from "./Cockpit";
 import { Explain } from "../Explain";
 import { Fragment, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -698,7 +699,7 @@ function NoSystemYet() {
   );
 }
 
-/** The landscape canvas: the go-live banner, the heat map, the docked Aletheia, the coverage matrix and the next work. */
+/** The landscape canvas: the go-live banner, the readiness matrix, the fix pipeline, value at risk, the failing rules, the docked Aletheia, the coverage matrix and the next work. */
 export function LandscapeCanvas() {
   const run = useRunParam();
   const q = useLandscape(run);
@@ -724,6 +725,7 @@ export function LandscapeCanvas() {
   if (!L) return <LandscapeSkeleton />;
   if (L.systems.length === 0) return <NoSystemYet />;
   const first = L.status_strip;
+  const label = (m: string) => L.objects.find((o) => o.module === m)?.label ?? formatModuleName(m);
   return (
     <>
       {run ? (
@@ -735,6 +737,7 @@ export function LandscapeCanvas() {
       <PageTitle sub={scopeName}>{t("Landscape")}</PageTitle>
       <Welcome />
       <GoLiveBanner landscape={L} waves={waves} />
+      {L.cells.length ? <ReadinessMatrix landscape={L} run={run} /> : null}
       <div className="m2-cc">
         <div className="m2-cc-main">
           <p className="m2-finding" data-testid="landscape-sentence">
@@ -747,8 +750,16 @@ export function LandscapeCanvas() {
             <Dot />
             {first.run_at ? t("run {run_at}", { run_at: formatDate(first.run_at, "datetime") }) : t("no run yet")}
           </p>
-          {L.cells.length ? <HeatMap landscape={L} run={run} /> : null}
-          {L.cells.length ? <CommandRow landscape={L} /> : null}
+          {L.cells.length ? (
+            <>
+              <div className="m2-ck-row">
+                <FixPipeline label={label} />
+                <RiskWaterfall />
+              </div>
+              <RuleBoard label={label} />
+              <CommandRow landscape={L} />
+            </>
+          ) : null}
           <NextList quiet />
         </div>
         <AletheiaDock />
