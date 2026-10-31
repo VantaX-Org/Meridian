@@ -47,7 +47,7 @@ function Refusal({ r }: { r: GateRefusal }) {
             <V2Link href={`/o/${ANY_SYSTEM}/${moduleSlug(o.module)}`}>
               <b>{moduleText(o.module)}</b>
             </V2Link>
-            <span>{o.reason === "never measured" ? t("never measured") : t("critical rules over tolerance")}</span>
+            <span>{o.reason === "never measured" ? t("never measured") : t("critical rules failing")}</span>
             {(o.rules ?? []).map((id) => (
               <V2Link key={id} href={hrefFor({ kind: "rule", id })} className="m2-mono">
                 {id}
@@ -192,7 +192,7 @@ export function CertificateBlock({ waveId, waveName }: { waveId: string; waveNam
       <p className="m2-prov" style={{ marginTop: 0 }}>
         {list.required_signers.length ? t("Required signers: {list}.", { list: list.required_signers.map((s) => `${s.name} (${s.modules.map(moduleText).join(", ")})`).join("; ") }) : t("No object of this wave has an owner, so a programme lead signs.")}
       </p>
-      {list.versions.length === 0 ? <EmptyFrame>{t("No certificate has been issued for {name}. Issue one when every object is measured and no critical rule is over tolerance.", { name: waveName })}</EmptyFrame> : null}
+      {list.versions.length === 0 ? <EmptyFrame>{t("No certificate has been issued for {name}. Issue one when every object is measured and no critical rule is failing.", { name: waveName })}</EmptyFrame> : null}
       <ul className="m2-s9-list" aria-label={t("Certificate versions of {name}", { name: waveName })} style={{ border: 0 }}>
         {list.versions.map((v, i) => (
           <Version key={v.id} waveId={waveId} v={v} list={list} rights={rights} latest={i === 0} me={session.id} />

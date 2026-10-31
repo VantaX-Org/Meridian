@@ -157,7 +157,7 @@ export function ruleStatLine(v: RuleView): string[] {
   out.push(tr("{failing_records} failing across {objectsCount} {objectsCount, plural, one {object} other {objects}}", { failing_records: int(s.failing_records), objectsCount: s.objects.length }));
   if (v.failingPct != null) out.push(tr("{pct2} of records checked", { pct2: pct2(v.failingPct) }));
   if (v.row?.value_at_risk != null) out.push(tr("{formatMoneyCompact} at risk, estimated", { formatMoneyCompact: moneyCompactText(v.row.value_at_risk, v.currency) }));
-  if (v.overTolerance != null) out.push(v.overTolerance ? tr("over tolerance") : tr("within tolerance"));
+  if (v.overTolerance != null) out.push(v.overTolerance ? tr("fails on too many records") : tr("within the allowed limit"));
   if (s.features.length > 0) out.push(tr("blocks {featuresCount} S/4 {featuresCount, plural, one {feature} other {features}}", { featuresCount: s.features.length }));
   return out;
 }
@@ -799,7 +799,7 @@ export function RuleInspectorBody({ id, landscape }: { id: string; landscape?: L
     return (
       <>
         <ErrorFrame onRetry={s.refetch}>{tr("This rule could not be read. It may not run on any object yet.")}</ErrorFrame>
-        {capped > 0 ? <p className="m2-prov">{tr("It is a critical rule over tolerance in {capped} {capped, plural, one {object} other {objects}}.", { capped })}</p> : null}
+        {capped > 0 ? <p className="m2-prov">{tr("It fails on too many records in {capped} {capped, plural, one {object} other {objects}}, so it holds their score down.", { capped })}</p> : null}
         <div className="m2-acts" style={{ marginTop: "var(--m2-s4)" }}>
           <V2Link href={`/r/${encodeURIComponent(id)}`} className="m2-btn m2-strong">
             {tr("Open the rule")}

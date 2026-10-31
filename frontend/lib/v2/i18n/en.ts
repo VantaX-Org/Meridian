@@ -4916,6 +4916,14 @@ export const en = {
   "ready to accept": "ready to accept",
   "{n} open": "{n} open",
   "Nothing is open.": "Nothing is open.",
+  "fails on too many records": "fails on too many records",
+  "within the allowed limit": "within the allowed limit",
+  "It fails on too many records in {capped} {capped, plural, one {object} other {objects}}, so it holds their score down.": "It fails on too many records in {capped} {capped, plural, one {object} other {objects}}, so it holds their score down.",
+  "Held at {cap}.0 because {breachesCount, plural, one {# critical rule fails} other {# critical rules fail}}": "Held at {cap}.0 because {breachesCount, plural, one {# critical rule fails} other {# critical rules fail}}",
+  "Nothing holds the score down": "Nothing holds the score down",
+  "critical rules failing": "critical rules failing",
+  "No certificate has been issued for {name}. Issue one when every object is measured and no critical rule is failing.": "No certificate has been issued for {name}. Issue one when every object is measured and no critical rule is failing.",
+  "Failing critical rules, at most": "Failing critical rules, at most",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

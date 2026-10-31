@@ -4917,4 +4917,12 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "ready to accept": "bereit zur Übernahme",
   "{n} open": "{n} offen",
   "Nothing is open.": "Nichts ist offen.",
+  "fails on too many records": "scheitert an zu vielen Datensätzen",
+  "within the allowed limit": "innerhalb der zulässigen Grenze",
+  "It fails on too many records in {capped} {capped, plural, one {object} other {objects}}, so it holds their score down.": "Sie scheitert an zu vielen Datensätzen in {capped} {capped, plural, one {Objekt} other {Objekten}} und hält deren Bewertung niedrig.",
+  "Held at {cap}.0 because {breachesCount, plural, one {# critical rule fails} other {# critical rules fail}}": "Bei {cap}.0 gehalten, weil {breachesCount, plural, one {# kritische Regel scheitert} other {# kritische Regeln scheitern}}",
+  "Nothing holds the score down": "Nichts hält die Bewertung niedrig",
+  "critical rules failing": "kritische Regeln scheitern",
+  "No certificate has been issued for {name}. Issue one when every object is measured and no critical rule is failing.": "Für {name} wurde kein Zertifikat ausgestellt. Stellen Sie eines aus, wenn jedes Objekt gemessen ist und keine kritische Regel scheitert.",
+  "Failing critical rules, at most": "Scheiternde kritische Regeln, höchstens",
 };

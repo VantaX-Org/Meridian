@@ -4917,4 +4917,12 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "ready to accept": "承認可能",
   "{n} open": "未対応 {n}件",
   "Nothing is open.": "未対応はありません。",
+  "fails on too many records": "失敗するレコードが多すぎます",
+  "within the allowed limit": "許容範囲内",
+  "It fails on too many records in {capped} {capped, plural, one {object} other {objects}}, so it holds their score down.": "{capped} 個のオブジェクトで失敗するレコードが多すぎるため、それらのスコアを抑えています。",
+  "Held at {cap}.0 because {breachesCount, plural, one {# critical rule fails} other {# critical rules fail}}": "{breachesCount, plural, other {# 件の重大ルールが失敗している}}ため {cap}.0 に抑えられています",
+  "Nothing holds the score down": "スコアを抑えているものはありません",
+  "critical rules failing": "失敗している重大ルール",
+  "No certificate has been issued for {name}. Issue one when every object is measured and no critical rule is failing.": "{name} の証明書はまだ発行されていません。すべてのオブジェクトが測定され、失敗している重大ルールがなくなったら発行してください。",
+  "Failing critical rules, at most": "失敗している重大ルールの上限",
 };

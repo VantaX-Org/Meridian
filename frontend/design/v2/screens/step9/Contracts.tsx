@@ -34,7 +34,7 @@ function ThresholdFields({ draft, set, disabled, idPrefix }: { draft: Draft; set
         <input id={`${idPrefix}-min`} type="number" min={0} max={100} value={draft.min_score} disabled={disabled} onChange={(e) => set({ ...draft, min_score: e.target.value })} />
       </label>
       <label htmlFor={`${idPrefix}-crit`}>
-        {t("Critical rules over tolerance, at most")}
+        {t("Failing critical rules, at most")}
         <input id={`${idPrefix}-crit`} type="number" min={0} value={draft.max_critical} disabled={disabled} onChange={(e) => set({ ...draft, max_critical: e.target.value })} />
       </label>
       {DIMENSIONS.map((d) => (
