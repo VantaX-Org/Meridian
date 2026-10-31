@@ -67,7 +67,7 @@ for (const size of SIZES) {
         await page.goto("/?fixture=1", { waitUntil: "load" });
         await expect(page.getByRole("heading", { level: 1 })).toHaveText(/Landscape/);
         await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
-        await expect(page.getByTestId("landscape-sentence")).toContainText("11 of 15 objects are held under 85 by 30 critical rules over tolerance");
+        await expect(page.getByTestId("landscape-sentence")).toContainText("11 of 15 objects cannot reach 85 yet, because 30 critical rules fail on too many records");
         // With migration waves in the fixture the lead's next step clears the no-go objects of the next wave.
         await expect(page.getByRole("link", { name: "Clear the 3 no-go objects in Wave 1: finance foundations" })).toBeVisible();
 
@@ -102,7 +102,7 @@ for (const size of SIZES) {
         else await page.getByTestId("matrix-cell").first().click();
         await expect(page).toHaveURL(/\/o\/ecc-production\/material-master/, NAV);
         await expect(page.getByRole("heading", { level: 1 })).toContainText("Material master", NAV);
-        await expect(page.getByTestId("cap-sentence")).toContainText("Capped at 70 by MM003 and MM035");
+        await expect(page.getByTestId("cap-sentence")).toContainText("Held at 70 because");
         await expect(page.locator('svg[data-size="240"]')).toBeVisible();
         await expect(page.getByTestId("receipt")).toBeVisible();
         await expect(page.getByTestId("receipt-footer")).toContainText("tolerance 10% of rows or 25 rows");

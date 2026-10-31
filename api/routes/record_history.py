@@ -27,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _rls
+from api.services.rule_text import rule_messages
 from api.services.rbac import require_permission, scope_from_path
 from api.services.version_status import finished_sql
 
@@ -288,4 +289,5 @@ async def back_after_clean(weeks: int = Query(12, ge=2, le=52), db: AsyncSession
          WHERE b.tenant_id = CAST(:t AS uuid) AND b.created_at >= {since}
          GROUP BY b.id HAVING count(*) FILTER (WHERE i.recon_status = 'fixed') > 0
          ORDER BY b.created_at"""), p)).mappings().all()
-    return {"weeks": [dict(r) for r in weekly], "rules": [dict(r) for r in rules], "batches": [dict(r) for r in batches]}
+    said = await rule_messages(db, tenant.id, (r["check_id"] for r in rules))
+    return {"weeks": [dict(r) for r in weekly], "rules": [{**r, "message": said.get(r["check_id"])} for r in rules], "batches": [dict(r) for r in batches]}

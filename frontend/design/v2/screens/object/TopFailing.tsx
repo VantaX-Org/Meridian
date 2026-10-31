@@ -20,36 +20,34 @@ function Trend({ id }: { id: string }) {
   return <Sparkline values={vals} width={96} height={20} domain={[0, Math.max(...vals, 1)]} label={t("Failing rows over the last {n} runs", { n: String(vals.length) })} testId={`top-trend-${id}`} />;
 }
 
-/** The object's worst rules by value at risk, each with its run-by-run trend. */
+/** The object's worst rules by value at risk: the message, the rule id and SAP field with its business label, and a bar. */
 export function TopFailing({ module, run }: { module: string; run: string | null }) {
   const rows = useObjectRules(module, run).data;
   const { hrefFor } = useOpenItem();
   const top = rankRules((rows ?? []).filter((r) => r.affected_count > 0)).slice(0, 5);
   if (!top.length) return null;
+  const max = Math.max(1, ...top.map((r) => r.affected_count));
   return (
-    <section className="m2-sec" data-testid="top-failing">
-      <h2 className="m2-h2">{t("Top failing rules")}</h2>
-      <table className="m2-tbl">
-        <thead>
-          <tr>
-            <th scope="col">{t("Rule")}</th>
-            <th scope="col" className="m2-r">{t("Failing rows")}</th>
-            <th scope="col">{t("Trend")}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {top.map((r) => (
-            <tr key={r.check_id}>
-              <td>
-                <SeverityMark severity={r.severity} />{" "}
-                <V2Link href={hrefFor({ kind: "rule", id: r.check_id })} className="m2-mono">{r.check_id}</V2Link> {r.name}
-              </td>
-              <td className="m2-r">{int(r.affected_count)}</td>
-              <td><Trend id={r.check_id} /></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <section className="m2-cc-card" aria-label={t("Top failing rules")} data-testid="top-failing">
+      <h3>{t("Top failing rules")}</h3>
+      <ol className="m2-cc-bars">
+        {top.map((r) => (
+          <li key={r.check_id}>
+            <V2Link href={hrefFor({ kind: "rule", id: r.check_id })}>
+              <span className="m2-cc-bmsg"><SeverityMark severity={r.severity} /> {r.name}</span>
+              <span className="m2-cc-bmeta">
+                <span className="m2-mono">{r.check_id}</span>
+                {r.field ? <span><span className="m2-mono">{r.field}</span>{r.field_description ? ` ${r.field_description}` : ""}</span> : null}
+                <Trend id={r.check_id} />
+                <span>{t("{n} failing", { n: int(r.affected_count) })}</span>
+              </span>
+              <span className="m2-cc-bar" aria-hidden="true">
+                <span style={{ width: `${(r.affected_count / max) * 100}%` }} />
+              </span>
+            </V2Link>
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }

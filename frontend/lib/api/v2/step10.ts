@@ -57,6 +57,8 @@ export interface PolicyPack {
 
 export interface PolicyRuleEvidence {
   check_id: string;
+  /** The rule's title; null when the tenant has no rule row for it. */
+  name?: string | null;
   measured: boolean;
   module: string | null;
   severity: string | null;

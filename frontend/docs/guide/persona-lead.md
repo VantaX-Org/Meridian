@@ -4,7 +4,7 @@ You run the data programme: you need to know how ready each system and object is
 
 ## Your first five steps
 
-1. **Landscape**: read the sentence and press the next step, for example "Clear the 3 no-go objects in Wave 1: finance foundations".
+1. **Landscape**: read the go-live banner on top (the verdict for your next wave, what blocks it, days to go-live and the cost of waiting), then press the next step, for example "Clear the 3 no-go objects in Wave 1: finance foundations".
 2. **Waves**: switch the landscape to **Waves**, open **Edit** on the wave and set its gate: min score, zero criticals, contracts met. **Save the gate**.
 3. **An object**: open a no-go object and read its receipt: measured, capped, by which critical rules.
 4. **People**: see who holds the open work and **Balance work** if one person holds most of it.

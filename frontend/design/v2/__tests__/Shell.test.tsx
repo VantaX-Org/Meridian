@@ -117,7 +117,7 @@ describe("map", () => {
     expect(norm(mm)).toContain("25,712");
     expect(norm(mm)).toContain("70.0");
     expect(mm.querySelector('svg[data-size="48"]')).not.toBeNull();
-    expect(mm.getAttribute("title")).toContain("capped at 70 by MM003 and MM035");
+    expect(mm.getAttribute("title")).toContain("held down from 71.8 because MM003 and MM035 fail");
     expect(map.querySelectorAll(".m2-orow")).toHaveLength(15);
   });
 

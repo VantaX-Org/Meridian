@@ -7,6 +7,11 @@ Work is the one list of everything that needs a person: every failing record and
 - **Ledger and Monitor**: the two views of Work, as tabs at the top. **Ledger** is the list described here; **Monitor** (`/work/monitor`) shows whether records a batch fixed stay fixed: see the Post-clean monitoring chapter.
 
 - **The title and scope**: "Work" and the objects in scope, such as "All objects". Click an object in the map to scope the ledger to it.
+- **The banner**: the small line says "Open work", the headline counts it ("26,600 records open") and the work sentence follows. Two figures: **Critical** ("fix these first") and **With a suggested value** ("ready to accept"). The one button depends on your role and the list. A steward who can accept fixes sees **Accept 112 suggested values on MM142**, which accepts the suggested values of the rule with the most of them after you confirm. The button names the rule, so the count is that rule's, not the 3,418 suggested across all rules. An approver with rows waiting sees **Review the 12 waiting for approval**. Otherwise the button is **Start with the 2,904 records failing MM003**, which filters the ledger to the rule with the most open records.
+- **Rules failing the most records**: under the banner, the eight rules with the most failing records, each with its description, the object, severity, failing count, the share of checked records that fail, a sparkline of failing records over the last runs, how many have a suggested value, and the object owner. Narrow Work to one object and the board shows that object's rules.
+- **Fix pipeline**: records at each step from to fix to waiting for approval, approved, waiting for the SAP load, sent to SAP and fixed, then the same split per object.
+- **The breakdown chart**: **Open records by object**, a horizontal bar per object (the eight with most open records), all on one scale from zero, with "1,420 open" at the end of each row. With an object in scope it becomes **Open records by rule** (the six worst rules, each rule id beside its message). Select a bar to filter the ledger to it. Beside it, **Cleaned and watched** shows the records fixed this week and how many failed again (see the Post-clean monitoring chapter).
+- **Aletheia**, docked on the right: ask about the open work in plain words; every number in the answer is checked against the run's facts (see the Ask Meridian chapter).
 - **The sentence**: what the current filter holds, for example "25,712 records to fix, ranked by value at risk." and, under it, "Rows are read from the latest run of each object. Value at risk is from cost model ZAR."
 - **The state chips**: **To fix**, **Fix proposed**, **Waiting for approval** and **Exceptions**, each with its count. The chips are the filter.
 - **The Policy chip**: narrows the ledger to the records failing a rule that evidences an applied policy pack or one of its classes, for example "Policy: Vendor bank data (SOX financial controls)" (`policy=sox:vendor_bank`).
@@ -44,7 +49,7 @@ Every change shows a notice at the bottom of the screen, such as "Accepted 1 sug
 - **Select rows** with the checkboxes, `x`, or `Shift+J` and `Shift+K` to extend. The bulk bar offers **Value for all selected rows**, accept the suggested values, not an issue, accept risk and **Assign…**.
 - **Fill down**: select the rows, then press `⌘D` in the New value you want to copy: "Filled EA down 12 rows".
 - **Paste a column** of values from Excel into a New value cell to fill the selected rows.
-- **Accept all suggested** in a rule group, or the next-step button "Accept the 112 suggested values".
+- **Accept all suggested** in a rule group, or the next-step button "Accept 112 suggested values on MM142".
 - **By rule** groups the rows to fix under their rule, so you can decide a whole rule at once.
 
 Accepted and entered values go into your draft fix batch. They wait there for a second person: see the Approvals and exceptions chapter.

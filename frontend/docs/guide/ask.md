@@ -1,12 +1,12 @@
 # Ask Meridian
 
-Ask Meridian answers questions about the current run in plain words. It is grounded: the answer may use only the facts Meridian measured, and every number in it must match one of those facts. Open it with the Ask Meridian button in the top bar, or type a question in the command line and choose Ask Meridian.
+Ask Meridian answers questions about the current run in plain words. It is grounded: the answer may use only the facts Meridian measured, and every number in it must match one of those facts. The same answers are in two places. **Aletheia** is docked on the right of every main screen: the landscape, an object, a rule, Work, Runs, a run and a comparison, People, Requests, the rules library, Reports, a system and Administration. Its header reads "Grounded answers from this run. Every number is checked against a fact, with the rules cited." On a narrow screen the panel moves under the page. **Ask Meridian** in the top bar opens the same answers in a panel of its own, and you can also type a question in the command line and choose Ask Meridian.
 
 ## What is on it
 
-- **Your question** and a few suggested ones, such as what is holding the score down or which objects are under 85.
+- **Your question**, typed in the box ("Ask about this run") and sent with **Ask**, and three suggested ones: "What is holding the score down?", "Which objects are under 85?" and "What is the money at risk?".
 - **The answer**, marked either "Grounded, every number matches a fact" or "Not answered" when the draft quoted a figure that is not a fact.
-- **Facts used** and **Rules cited**, so you can open the rule or object behind each sentence.
+- **Facts used**, with "Coverage" saying how much of the question the facts cover, and **Rules cited**, so you can open the rule or object behind each sentence. The intent Meridian read from your question is shown, and "Reworded by model" when a language model phrased the sentence.
 - The Aletheia mark, which identifies the grounded intelligence that checks the answer.
 
 ## The numbers and where they come from

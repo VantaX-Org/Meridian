@@ -11,7 +11,8 @@ import { useBatch, useBatchEvents, useBatches } from "@/lib/v2/approvals-queries
 import { int } from "@/lib/v2/score";
 import type { RowRef } from "@/lib/v2/work-actions";
 import { Actions, Fact, Facts, InspectorFrame } from "../Inspector";
-import { EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
+import { describeField } from "@/lib/v2/sap-fields";
+import { Coded, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { BatchButtons, ReassignMenu, day, money, useBatchControls } from "../screens/batch-parts";
 import { KeyText, keyValue } from "../screens/work-parts";
 import { useToast } from "../Toast";
@@ -62,7 +63,7 @@ function Records({ id, total }: { id: string; total: number }) {
               <Mono>{it.check_id}</Mono>
             </span>
             <span className="m2-rl-sub">
-              {it.field ? <Mono>{it.field}</Mono> : null}
+              {it.field ? <Coded code={it.field} text={describeField(it.field)} /> : null}
               {it.field ? " " : null}
               {it.current_value ? <Mono>{it.current_value}</Mono> : "blank"}
               {" to "}

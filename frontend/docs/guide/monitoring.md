@@ -1,9 +1,10 @@
 # Post-clean monitoring
 
-Cleaning a record is not the end of the job. Monitoring, under Work, shows whether records that a batch fixed stay fixed, and which rules keep pulling them back. Open it from the Monitor tab at the top of the Work ledger.
+Cleaning a record is not the end of the job. Monitoring, under Work, shows whether records that a batch fixed stay fixed, and which rules keep pulling them back. Open it from the Monitor tab at the top of the Work ledger, or from **Open monitoring** on the **Cleaned and watched** card of the landscape and Work.
 
 ## What is on it
 
+- **The banner.** One sentence at the top: how many records failed a rule again since the last run and how many were fixed, with both figures beside it. Aletheia is docked on the right, as on every main screen.
 - **Per system.** One row per connected system with the score then (the run before the clean), the score now, the change, how many records have failed again and how many were fixed since.
 - **Failing again after a clean, by week.** A weekly bar chart over the last twelve weeks: records that failed again after a batch fixed them, set against records that were fixed again.
 - **Drift by rule.** The rules whose records fail again most often, with the count for each. Open a rule to see which records came back and why.

@@ -6,10 +6,11 @@ import { queryKeys } from "@/lib/query-keys";
 import { formatDate } from "@/lib/format";
 import { int, f1 } from "@/lib/v2/score";
 import { t } from "@/lib/v2/i18n";
-import { EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
+import { Coded, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { batchLabel } from "@/lib/v2/batches";
 import { ChartFrame, ChartTable, DeltaBar, TrendChart, niceTicks } from "../charts";
 import { WorkTabs } from "./WorkTabs";
+import { CcBanner, CcPage } from "./cc-parts";
 import "../approvals.css";
 
 /** Post-clean monitoring: per system, the records that failed a rule they passed at the last run, and what has been fixed since. */
@@ -19,42 +20,52 @@ export function WorkMonitor() {
   const back = items.reduce((n, i) => n + (i.monitor?.new_records ?? 0), 0);
   const fixed = items.reduce((n, i) => n + (i.monitor?.resolved_records ?? 0), 0);
   return (
-    <div data-testid="work-monitor">
-      <PageTitle>{t("Work")}</PageTitle>
-      <WorkTabs current="monitor" />
-      {q.isPending ? (
-        <Skeleton width={420} height={16} />
-      ) : q.isError ? (
-        <ErrorFrame onRetry={() => void q.refetch()}>{t("The monitor could not be read.")}</ErrorFrame>
-      ) : items.length === 0 ? (
-        <EmptyFrame>{t("Nothing to monitor yet. Once a run follows a cleaning batch, records that fail again show here.")}</EmptyFrame>
-      ) : (
-        <>
-          <p className="m2-finding">
-            {t("{back} records failed a rule again since the last run, {fixed} were fixed.", { back: int(back), fixed: int(fixed) })}
-          </p>
-          <table className="m2-tbl" data-testid="monitor-table">
-            <thead>
-              <tr>
-                <th>{t("System")}</th>
-                <th scope="col" className="m2-r">{t("Score then")}</th>
-                <th scope="col" className="m2-r">{t("Score now")}</th>
-                <th scope="col" className="m2-r">{t("Failing again")}</th>
-                <th scope="col" className="m2-r">{t("Fixed since")}</th>
-                <th>{t("Rules failing again")}</th>
-                <th>{t("Batch")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((i) => (
-                <Row key={i.lineage ?? i.scope} i={i} />
-              ))}
-            </tbody>
-          </table>
-          <Trend />
-        </>
-      )}
-    </div>
+    <CcPage>
+      <div data-testid="work-monitor">
+        <PageTitle>{t("Work")}</PageTitle>
+        <WorkTabs current="monitor" />
+        {q.isPending ? (
+          <Skeleton width={420} height={16} />
+        ) : q.isError ? (
+          <ErrorFrame onRetry={() => void q.refetch()}>{t("The monitor could not be read.")}</ErrorFrame>
+        ) : items.length === 0 ? (
+          <EmptyFrame>{t("Nothing to monitor yet. Once a run follows a cleaning batch, records that fail again show here.")}</EmptyFrame>
+        ) : (
+          <>
+            <CcBanner
+              testId="monitor-banner"
+              label={t("Monitor")}
+              eyebrow={t("Monitor")}
+              verdict={back > 0 ? "at-risk" : "go"}
+              headline={t("{back} records failed a rule again since the last run, {fixed} were fixed.", { back: int(back), fixed: int(fixed) })}
+              figs={[
+                { label: t("Failing again"), value: int(back) },
+                { label: t("Fixed since"), value: int(fixed) },
+              ]}
+            />
+            <table className="m2-tbl" data-testid="monitor-table">
+              <thead>
+                <tr>
+                  <th>{t("System")}</th>
+                  <th scope="col" className="m2-r">{t("Score then")}</th>
+                  <th scope="col" className="m2-r">{t("Score now")}</th>
+                  <th scope="col" className="m2-r">{t("Failing again")}</th>
+                  <th scope="col" className="m2-r">{t("Fixed since")}</th>
+                  <th>{t("Rules failing again")}</th>
+                  <th>{t("Batch")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((i) => (
+                  <Row key={i.lineage ?? i.scope} i={i} />
+                ))}
+              </tbody>
+            </table>
+            <Trend />
+          </>
+        )}
+      </div>
+    </CcPage>
   );
 }
 
@@ -79,6 +90,7 @@ function Row({ i }: { i: MonitorItem }) {
                 <V2Link href={`/r/${encodeURIComponent(c.check_id)}`}>
                   <Mono>{c.check_id}</Mono>
                 </V2Link>{" "}
+                {c.name ? <span>{c.name}</span> : null}{" "}
                 <span className="m2-meta">{int(c.new)}</span>
               </div>
             ))
@@ -140,7 +152,7 @@ function Trend() {
                 <tr key={r.check_id}>
                   <td>
                     <V2Link href={`/r/${encodeURIComponent(r.check_id)}`}>
-                      <Mono>{r.check_id}</Mono>
+                      <Coded code={r.check_id} text={r.message} />
                     </V2Link>
                   </td>
                   <td className="m2-r">{int(r.back_before)}</td>

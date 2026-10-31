@@ -14,7 +14,8 @@ import { useScopeSystem } from "@/lib/v2/scope";
 import { f1, int } from "@/lib/v2/score";
 import { RunTimelineChart, kindWord, triggerOf } from "../RunTimeline";
 import { VerdictMark } from "../marks";
-import { ChartFrame, ChartTable, MULTI_H, SmallMultiples, scoreDomain } from "../charts";
+import { ChartFrame, ChartTable, MULTI_H, SmallMultiples, TrendChart, niceTicks, scoreDomain } from "../charts";
+import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Dash, EmptyFrame, ErrorFrame, PageTitle, Skeleton, V2Link } from "../parts";
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import { duration } from "../shell/StatusStrip";
@@ -300,15 +301,47 @@ export function RunsCanvas() {
     return qs ? `/runs?${qs}` : "/runs";
   };
 
+  const prev = runs.length > 1 ? runs[runs.length - 2] : null;
+  const nowScore = latest ? meanScore(latest) : null;
+  const prevScore = prev ? meanScore(prev) : null;
+  const delta = nowScore != null && prevScore != null ? nowScore - prevScore : null;
+  const startButton = (
+    <button type="button" className="m2-btn m2-next" aria-expanded={starting} disabled={!session.can("analyse")} title={session.can("analyse") ? undefined : t("Starting a run needs the analyse permission")} onClick={() => setStarting((v) => !v)}>
+      {t("Start a run")}
+    </button>
+  );
+
   return (
-    <>
+    <CcPage>
       <PageTitle sub={scope?.name}>{t("Runs")}</PageTitle>
-      <p className="m2-finding">
-        {latest ? t("The timeline shows the last {runsCount} finished {runsCount, plural, one {run} other {runs}}, the latest on {run_at}.", { runsCount: runs.length, run_at: formatDate(latest.run_at, "date") }) : t("No run has finished for this scope yet.")}
-        {baseline ? t(" The baseline is {run_at}.", { run_at: formatDate(baseline.run_at, "date") }) : ""}
-      </p>
+      <CcBanner
+        testId="runs-banner"
+        label={t("Latest run")}
+        eyebrow={t("Latest run")}
+        headline={latest ? t("Finished on {run_at}", { run_at: formatDate(latest.run_at, "date") }) : t("No run has finished yet")}
+        verdict={delta == null ? undefined : delta < -0.05 ? "at-risk" : "go"}
+        why={
+          delta == null
+            ? t("A second run is needed to say whether the data got better or worse.")
+            : delta < -0.05
+              ? t("The average score fell by {n} points since the run before.", { n: f1(Math.abs(delta)) })
+              : delta > 0.05
+                ? t("The average score rose by {n} points since the run before.", { n: f1(delta) })
+                : t("The average score did not change since the run before.")
+        }
+        figs={[
+          { label: t("Runs shown"), value: int(runs.length), note: baseline ? t("baseline {run_at}", { run_at: formatDate(baseline.run_at, "date") }) : t("no baseline set") },
+          { label: t("Average score"), value: f1(nowScore), note: t("out of 100") },
+          { label: t("Took"), value: latest?.duration_s != null ? duration(latest.duration_s) : "—", note: t("latest run") },
+        ]}
+        action={startButton}
+      />
 
       <section className="m2-sec" aria-label={t("Timeline")}>
+        <p className="m2-cc-lede">
+          {latest ? t("The timeline shows the last {runsCount} finished {runsCount, plural, one {run} other {runs}}, the latest on {run_at}.", { runsCount: runs.length, run_at: formatDate(latest.run_at, "date") }) : t("No run has finished for this scope yet.")}
+          {baseline ? t(" The baseline is {run_at}.", { run_at: formatDate(baseline.run_at, "date") }) : ""}
+        </p>
         {timeline.isLoading ? (
           <Skeleton width="100%" height={100} />
         ) : timeline.isError ? (
@@ -316,9 +349,24 @@ export function RunsCanvas() {
         ) : runs.length === 0 ? (
           <EmptyFrame>{t("Runs appear here once a system has been extracted and analysed.")}</EmptyFrame>
         ) : (
-          <div className="m2-frame" style={{ padding: "var(--m2-s3) var(--m2-s4)" }}>
-            <RunTimelineChart runs={runs} selectedId={latest?.id ?? null} onPick={(id) => router.push(v2Href(`/run/${id}`))} label={t("Runs on a date axis, choose one to open it")} fallbackWidth={900} />
-          </div>
+          <>
+            <div className="m2-cc-split">
+              <RunScoreTrend runs={runs} />
+              <section className="m2-cc-card" aria-label={t("How long each run took")} data-testid="runs-durations">
+                <h3>{t("How long each run took")}</h3>
+                <CcHBars
+                  label={t("Run duration")}
+                  rows={runs
+                    .filter((r) => r.duration_s != null)
+                    .slice(-8)
+                    .map((r) => ({ key: r.id, label: r.run_at ? formatDate(r.run_at, "date") : r.id.slice(0, 8), value: r.duration_s as number, text: duration(r.duration_s as number) }))}
+                />
+              </section>
+            </div>
+            <div className="m2-frame" style={{ padding: "var(--m2-s3) var(--m2-s4)", marginTop: "var(--m2-s4)" }}>
+              <RunTimelineChart runs={runs} selectedId={latest?.id ?? null} onPick={(id) => router.push(v2Href(`/run/${id}`))} label={t("Runs on a date axis, choose one to open it")} fallbackWidth={900} />
+            </div>
+          </>
         )}
       </section>
 
@@ -331,9 +379,6 @@ export function RunsCanvas() {
             {jobs.active.length ? t("Jobs ({activeCount} running)", { activeCount: jobs.active.length }) : t("Jobs")}
           </V2Link>
         </nav>
-        <button type="button" className="m2-btn m2-strong" aria-expanded={starting} disabled={!session.can("analyse")} title={session.can("analyse") ? undefined : t("Starting a run needs the analyse permission")} onClick={() => setStarting((v) => !v)}>
-          {t("Start a run")}
-        </button>
       </div>
       {starting ? <StartRun onClose={() => setStarting(false)} /> : null}
 
@@ -396,7 +441,40 @@ export function RunsCanvas() {
         </section>
       )}
       {view === "runs" ? <ObjectTrends runs={runs} labelOf={(m) => land.data?.objects.find((o) => o.module === m)?.label ?? m} state={timeline.isLoading ? "loading" : timeline.isError ? "error" : "ready"} onRetry={() => void timeline.refetch()} /> : null}
-    </>
+    </CcPage>
+  );
+}
+
+/** The mean of the objects' measured scores in one run. */
+export function meanScore(r: TimelineRun): number | null {
+  const vs = Object.values(r.objects)
+    .map((o) => o.raw_score ?? o.score)
+    .filter((v): v is number => v != null);
+  return vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : null;
+}
+
+function RunScoreTrend({ runs }: { runs: readonly TimelineRun[] }) {
+  const points = runs.map((r) => {
+    const full = r.run_at ? formatDate(r.run_at, "date") : (r.label ?? r.id.slice(0, 6));
+    const label = r.run_at ? formatDate(r.run_at, "day") : full;
+    const value = meanScore(r);
+    return { id: r.id, label, title: t("{label}: average score {score}", { label: full, score: f1(value) }), value };
+  });
+  const known = points.map((p) => p.value).filter((v): v is number => v != null);
+  const ticks = niceTicks(Math.max(0, Math.min(...known, 100) - 5), Math.min(100, Math.max(...known, 0) + 5), 4);
+  return (
+    <ChartFrame
+      title={t("Score over time")}
+      sub={t("Average object score, last {n} runs", { n: points.length })}
+      height={160}
+      level={3}
+      state={known.length < 2 ? "empty" : "ready"}
+      empty={t("Two runs are needed to draw a trend.")}
+      testId="runs-trend"
+      table={<ChartTable caption={t("Average score by run")} head={[t("Run"), t("Score")]} rows={points.map((p) => [p.label, f1(p.value)])} />}
+    >
+      <TrendChart points={points} domain={[ticks[0], ticks[ticks.length - 1]] as const} ticks={ticks} height={160} label={t("Average object score by run")} yLabel={t("score")} format={f1} />
+    </ChartFrame>
   );
 }
 

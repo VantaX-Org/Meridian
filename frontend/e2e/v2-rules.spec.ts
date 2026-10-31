@@ -53,9 +53,9 @@ for (const size of SIZES) {
         await expect(page.getByRole("heading", { level: 1 })).toHaveText("Rules", NAV);
         const grid = page.getByRole("grid", { name: "Rules library" });
         await expect(grid).toHaveAttribute("aria-rowcount", "795", NAV);
-        await page.getByLabel("Object").selectOption("business_partner");
+        await page.getByLabel("Object", { exact: true }).selectOption("business_partner");
         await expect(grid).toHaveAttribute("aria-rowcount", "65");
-        await page.getByLabel("Object").selectOption("");
+        await page.getByLabel("Object", { exact: true }).selectOption("");
         await page.getByRole("searchbox", { name: "Search" }).fill("MM142");
         await expect(grid).toHaveAttribute("aria-rowcount", "2");
         await grid.getByRole("row").nth(1).click();

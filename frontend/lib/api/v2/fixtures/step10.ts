@@ -152,7 +152,8 @@ const passRate = (f: FixtureFinding): number => Math.round((1 - f.failing / f.to
 function classEvidence(c: ClassDef, found: Record<string, FixtureFinding>): PolicyClass & { rules: PolicyRuleEvidence[] } {
   const rules: PolicyRuleEvidence[] = c.rules.map((id) => {
     const f = found[id];
-    return f ? { check_id: id, measured: true, module: f.module, severity: f.severity, pass_rate: passRate(f), failing_records: f.failing, total_records: f.total } : { check_id: id, measured: false, module: null, severity: null, pass_rate: null, failing_records: 0, total_records: 0 };
+    const name = LIBRARY.find((x) => x.check_id === id)?.name ?? null;
+    return f ? { check_id: id, name, measured: true, module: f.module, severity: f.severity, pass_rate: passRate(f), failing_records: f.failing, total_records: f.total } : { check_id: id, name, measured: false, module: null, severity: null, pass_rate: null, failing_records: 0, total_records: 0 };
   });
   const measured = rules.filter((r) => r.measured);
   const rates = measured.map((r) => r.pass_rate).filter((x): x is number => x != null);

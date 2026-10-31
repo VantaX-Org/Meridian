@@ -659,7 +659,7 @@ async def records(
     more = len(rows) > limit
     rows = rows[:limit]
     extra = await _row_extras(db, tenant, rows)
-    fields = await _row_fields(db, tenant, request, rows)
+    fields = await _row_fields(db, tenant, request, rows, {k: v["suggested_value"] for k, v in extra.items()})
     total = (await db.execute(text(f"SELECT count(*) FROM (SELECT 1 FROM work_records w WHERE {' AND '.join(where)} "
                                    f"LIMIT {COUNT_CAP + 1}) x"), p)).scalar() or 0
     return {
@@ -733,20 +733,29 @@ def _field_value(check) -> Optional[str]:
     return None if value is None else str(value)
 
 
-_NO_FIELDS = {"value_at_risk": None, "current_value": None, "field_description": None, "possible_values": None,
+_NO_FIELDS = {"value_at_risk": None, "current_value": None, "current_label": None, "suggested_label": None, "field_description": None, "possible_values": None,
               "possible_values_total": None, "new_value": None, "resolution": None, "batch_id": None, "batch_name": None,
               "resolution_note": None, "resolved_by": None, "resolved_at": None}
 
 
-async def _row_fields(db: AsyncSession, tenant: Tenant, request: Request, rows) -> dict[tuple[str, str, str], dict]:
+def _meaning(value: Optional[str], allowed: Optional[list[dict]]) -> Optional[str]:
+    """What a value means in the rule's value list (EA: "each"), None when the list does not say."""
+    return next((a["label"] for a in allowed or [] if value is not None and a["value"] == str(value) and a["label"]), None)
+
+
+async def _row_fields(db: AsyncSession, tenant: Tenant, request: Request, rows,
+                      suggested: Optional[dict] = None) -> dict[tuple[str, str, str], dict]:
     """The readable fields of one page of rows, keyed (version_id, module, record_key), from one batched read of the
     page's failing checks (no query per row): the value at risk (each check's cost at risk shared over the records it
     fails on, summed, as the per-object export attributes it; None when no check is priced), the first failing field's
     current value, description and the rule's possible values (api/services/fix_sheet.py, as the fix sheet writes
-    them), the value waiting in the user's draft batch for a proposed record, and the sign-off's resolution."""
+    them), the meaning of the current and the suggested value where the rule's value list gives one (current_label,
+    suggested_label: "each" for EA; None otherwise, never invented), the value waiting in the user's draft batch for a
+    proposed record, and the sign-off's resolution."""
     if not rows:
         return {}
     from api.services import fix_sheet as fs
+    suggested = suggested or {}
 
     keys = {"t": str(tenant.id), "kv": [r.version_id for r in rows], "km": [r.module for r in rows],
             "kk": [r.record_key for r in rows]}
@@ -832,6 +841,8 @@ async def _row_fields(db: AsyncSession, tenant: Tenant, request: Request, rows) 
         out[key] = {
             "value_at_risk": round(sum(priced), 2) if priced else None,
             "current_value": _field_value(first),
+            "current_label": _meaning(_field_value(first), allowed),
+            "suggested_label": _meaning(suggested.get(key), allowed),
             "field_description": fs.field_label(first["field"]) if first else None,
             "possible_values": allowed[:fs.POSSIBLE_VALUES_SHOWN] if allowed else None,
             "possible_values_total": len(allowed) if allowed else None,

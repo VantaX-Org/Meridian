@@ -22,21 +22,23 @@ import { Sev } from "../inspector/rule";
 import { ResultFrame, useOutcome } from "../inspector/shared";
 import "../object.css";
 import { ScrollFrame } from "./object/ScrollFrame";
-import { Dash, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton } from "../parts";
+import { Coded, Dash, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
+import { CcBanner, CcHBars, CcPage } from "./cc-parts";
+import { RuleBoard } from "./Cockpit";
 import { t, tx } from "@/lib/v2/i18n";
 
 type View = "rules" | "drafts" | "suppressions";
 
 const columns: GridColumn<LibRow>[] = [
-  { id: "rule", get header() { return t("Rule"); }, width: 300, pin: true, locked: true, cell: (r) => (<><span className="m2-mono">{r.checkId}</span> {r.message}</>) },
+  { id: "rule", get header() { return t("Rule"); }, width: 300, pin: true, locked: true, cell: (r) => <Coded code={r.checkId} text={r.message} /> },
   { id: "object", get header() { return t("Object"); }, width: 170, cell: (r) => labelOf(r.module) },
   { id: "severity", get header() { return t("Severity"); }, width: 110, cell: (r) => <Sev severity={r.severity} /> },
-  { id: "dimension", get header() { return t("Dimension"); }, width: 120, cell: (r) => (r.dimension ? labelOf(r.dimension) : <Dash why={t("Read from the object's rules when you filter by dimension")} />) },
-  { id: "class", get header() { return t("Class"); }, width: 150, cell: (r) => (r.checkClass ? labelOf(r.checkClass) : <Dash why={t("Read from the object's rules when you filter by class")} />) },
   { id: "failing", get header() { return t("Failing"); }, width: 90, numeric: true, cell: (r) => (r.failing == null ? <Dash why={t("Not run yet")} /> : int(r.failing)) },
   { id: "pass", get header() { return t("Pass rate"); }, width: 90, numeric: true, cell: (r) => (r.passRate == null ? <Dash why={t("Not run yet")} /> : `${r.passRate.toFixed(1)}%`) },
   { id: "state", get header() { return t("State"); }, width: 110, cell: (r) => (r.suppressed ? t("Suppressed") : r.enabled ? t("Enabled") : t("Disabled")) },
   { id: "source", get header() { return t("Source"); }, width: 90, cell: (r) => (r.source === "yaml" ? t("Shipped") : t("Custom")) },
+  { id: "dimension", get header() { return t("Dimension"); }, width: 120, cell: (r) => (r.dimension ? labelOf(r.dimension) : <Dash why={t("Read from the object's rules when you filter by dimension")} />) },
+  { id: "class", get header() { return t("Class"); }, width: 150, cell: (r) => (r.checkClass ? labelOf(r.checkClass) : <Dash why={t("Read from the object's rules when you filter by class")} />) },
 ];
 
 function FilterBar({ f, set, modules }: { f: LibFilters; set: (f: LibFilters) => void; modules: string[] }) {
@@ -269,7 +271,7 @@ function Suppressions({ canEnd }: { canEnd: boolean }) {
             <tbody>
               {items.map((s) => (
                 <tr key={s.id}>
-                  <th scope="row"><Mono>{s.check_id}</Mono></th>
+                  <th scope="row"><Coded code={s.check_id} text={s.message} /></th>
                   <td>{s.reason}</td>
                   <td>{formatDate(s.expires_at, "date")}</td>
                   <td>
@@ -351,9 +353,53 @@ export function RulesLibrary() {
     { key: "suppressions", label: suppressed.size ? t("Suppressed {count}", { count: suppressed.size }) : t("Suppressed"), show: true },
   ];
 
+  const failingRows = rows.filter((r) => (r.failing ?? 0) > 0 && r.enabled && !r.suppressed);
+  const worst = [...failingRows].sort((a, b) => (b.failing ?? 0) - (a.failing ?? 0))[0];
+  const byModule = new Map<string, number>();
+  for (const r of failingRows) byModule.set(r.module, (byModule.get(r.module) ?? 0) + 1);
+  const moduleBars = [...byModule.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([m, n]) => ({ key: m, label: labelOf(m), value: n, tone: "crit" as const, text: t("{n} failing {count, plural, one {rule} other {rules}}", { n, count: n }) }));
+
   return (
-    <>
+    <CcPage>
       <PageTitle>{t("Rules")}</PageTitle>
+      {!list.isLoading && !list.isError ? (
+        <>
+          <CcBanner
+            testId="rules-banner"
+            label={t("Rules summary")}
+            eyebrow={t("Rules library")}
+            verdict={failingRows.length > 0 ? "no-go" : "go"}
+            headline={failingRows.length > 0 ? t("{n} {count, plural, one {rule fails} other {rules fail}} on live data", { n: int(failingRows.length), count: failingRows.length }) : t("No enabled rule fails")}
+            why={worst ? <>{t("The worst is")} <Coded code={worst.checkId} text={worst.message} />, {t("{n} failing records", { n: int(worst.failing ?? 0) })}</> : undefined}
+            figs={[
+              { label: t("Rules"), value: int(rows.length), note: t("across {n} objects", { n: modules.length }) },
+              { label: t("Enabled"), value: int(rows.filter((r) => r.enabled).length), note: t("run on every analysis") },
+              { label: t("Suppressed"), value: int(suppressed.size), note: t("kept out of the score") },
+            ]}
+            action={
+              worst ? (
+                <V2Link href={`/r/${encodeURIComponent(worst.checkId)}`} className="m2-btn m2-next">
+                  {t("Open the worst failing rule")}
+                </V2Link>
+              ) : canManage ? (
+                <button type="button" className="m2-btn m2-next" onClick={() => { setView("drafts"); setEditing("new"); }}>
+                  {t("New rule draft")}
+                </button>
+              ) : undefined
+            }
+          />
+          {moduleBars.length > 0 ? (
+            <section className="m2-cc-card" aria-label={t("Failing rules by object")} data-testid="rules-by-object">
+              <h3>{t("Failing rules by object")}</h3>
+              <CcHBars rows={moduleBars} label={t("Failing rules by object")} />
+            </section>
+          ) : null}
+          <RuleBoard label={labelOf} />
+        </>
+      ) : null}
       <p className="m2-statusline" data-testid="rules-status-line">
         <span>{list.isLoading ? t("Reading the rules") : t("{total} rules across {modulesCount} objects", { total: int(list.data?.total ?? 0), modulesCount: modules.length })}</span>
         {rows.length ? <span>{t("{filterCount} enabled", { filterCount: rows.filter((r) => r.enabled).length })}</span> : null}
@@ -425,6 +471,6 @@ export function RulesLibrary() {
           {outcome ? <ResultFrame outcome={outcome} /> : null}
         </>
       )}
-    </>
+    </CcPage>
   );
 }

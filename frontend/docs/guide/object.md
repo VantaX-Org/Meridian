@@ -4,7 +4,11 @@ An object is one area of SAP data scored as a whole on one system, such as Mater
 
 ## The header
 
-The tabs sit under the title: **Rules** (with its count), **Records** (with the records to fix), **Fixes**, **Runs**, **Readiness**, **Processes**, **Lineage**, **Glossary** and **Golden records**. The object opens on Rules, which carries the ruler and the receipt.
+Under the title, the **S/4 readiness** banner says where the object stands. The small line names it ("Material master on ECC production: S/4 readiness"), the headline is its verdict (**Go**, **At risk** or **No-go**) and the line under it is the receipt sentence, such as "Capped at 70 by MM003 and MM035, two critical rules over tolerance." Two figures follow: **Records to fix**, "of 61,816 checked", and **Money at risk**, per month from the cost model ("estimate, default costs" while the shipped costs are in use, "no cost model" without one). The one button is **Fix 2 blockers** while critical rules are over tolerance (it opens Work on this object's critical rows), otherwise **Fix 25,712 records**, and **Review the runs** when nothing is left to fix.
+
+Aletheia is docked on the right of the page, as on every screen: ask about this object in plain words and the answer is checked against the run's facts (see the Ask Meridian chapter).
+
+The tabs sit under the banner: **Rules** (with its count), **Records** (with the records to fix), **Fixes**, **Runs**, **Readiness**, **Processes**, **Lineage**, **Glossary** and **Golden records**. The object opens on Rules, which carries the ruler and the receipt.
 
 
 - **Watch**: "You hear about runs, score drops, new critical breaches and comments on Material master." Watching is per person; what reaches you is set under Preferences, What you hear about.
@@ -24,7 +28,9 @@ The receipt table then adds the score up: one row per dimension with its weight,
 
 **As of** in the run menu shows the object as it stood when an earlier run finished: a band says so, the ruler and the rules are that run's, and **Back to today** returns.
 
-**Top failing rules**, on the Rules tab under the ruler, lists the five failing rules with the highest value at risk: each with its severity, id and name, its failing rows and a small trend of its failing rows over its last runs. Select a rule id to open the rule.
+**Score by dimension**, on the Rules tab, is a bar chart of the six dimensions on one scale from 0 to 100: each bar is the dimension's score, with its share of the score beside the name ("25% of the score") and the value at the end of the row, or "not measured" when no rule of that dimension produced a result. The shortest bar is the dimension that costs the most.
+
+**Top failing rules**, beside it, lists the five failing rules with the highest value at risk: each with its severity and name, the rule id, the SAP field with its description beside it (`MARA-MEINS` Base unit of measure), a small trend of its failing rows over its last runs ("Failing rows over the last 8 runs") and "2,904 failing", with a bar sized to the worst of the five. Select a rule to open it.
 
 **Critical rules over tolerance** lists the rules behind the cap with their failing records and share, for example "MM003 Material type is mandatory - determines procurement and storage behaviour, 2,904 failing, 4.7%" and "MM035 Valuation class is mandatory for FI account determination, 1,420 failing, 2.3%".
 
@@ -40,6 +46,8 @@ The receipt table then adds the score up: one row per dimension with its weight,
 
 ## The numbers and where they come from
 
+- **Score by dimension** reads the dimension scores of the run in the top bar; the shares are the dimension weights under Administration, Settings.
+- **Records to fix** in the banner is the open rows of this object in Work; **Money at risk** is the cost-model estimate for its failing rules.
 - **Top failing rules** are ranked by value at risk among the rules with failing rows in the run; the trend is read from each rule's own history.
 - **Blockers** comes from the feature impact of the run: the failing rows of each rule that blocks or degrades a feature.
 - **Readiness by object** takes the verdict and blocking gaps from the waves' readiness and the ruler from the run in the top bar.

@@ -233,7 +233,7 @@ for (const size of SIZES) {
         const waves = page.getByRole("table", { name: "Waves that include Material master" });
         await expect(waves).toBeVisible(NAV);
         await expect(waves.getByRole("row")).toHaveCount(3);
-        await expect(page.getByTestId("cap-statement")).toContainText("Held at 70 by MM003 and MM035");
+        await expect(page.getByTestId("cap-statement")).toContainText("Held at 70 because two critical rules fail: MM003 and MM035");
         await expect(page.getByRole("heading", { name: /Blocked in S\/4HANA/ })).toBeVisible();
         await expect(page.getByLabel("S/4HANA features").getByRole("link", { name: "Migration cockpit: material load" })).toBeVisible(NAV);
         await expect(page.getByRole("heading", { name: /Degraded in S\/4HANA/ })).toBeVisible();

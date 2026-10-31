@@ -4,7 +4,9 @@ Every number in Meridian comes from a rule: a fixed, deterministic check with an
 
 ## The rule canvas
 
-The title is the rule id and name, for example "MM142 Base unit of measure MEINS must reference a valid entry in T006". The facts line under it reads like "High, Consistency, 4,212 failing across 2 objects, 4.99% of records checked, ZAR 1.18 m at risk, estimated, within tolerance, blocks 3 S/4 features".
+The title is the rule name, for example "Base unit of measure MEINS must reference a valid entry in T006", with the rule id (`MM142`) under it and **All rules** to go back to the library. The banner says "This rule" and counts the failures in its headline ("4,212 records fail this rule", or "No record fails this rule"); the line under it says what the rule checks, in words and with the SAP field ("It checks Base unit of measure `MARA-MEINS`"). Two figures: **Failing records**, with the share of records checked under it ("4.99% of records checked"), and **Objects affected**. The one button is **Show the failing records**. Aletheia is docked on the right.
+
+The facts line under it reads like "High, Consistency, 4,212 failing across 2 objects, 4.99% of records checked, ZAR 1.18 m at risk, estimated, within tolerance, blocks 3 S/4 features".
 
 Six tabs follow. The rule opens on **Overview**:
 
@@ -36,6 +38,8 @@ Cloud sources (SuccessFactors, Concur, Ariba) have no SE16: the section says so 
 Selecting a rule anywhere opens the inspector with the same facts: severity, dimension, field, **Tolerance** (for example "25 rows" on `MM003`; only critical rules carry a tolerance, so a high rule such as `MM142` reads within tolerance), **Over tolerance**, failing records by object, **Failing %** ("4.99% of 84,456 records checked") and **Value at risk**. Below come the definition, scope, the features it blocks, lineage, versions, contract, **Prove in SAP**, history, **Watch** and **Comments**.
 
 ## The rules library
+
+The banner on top says "Rules library". Its headline counts the enabled rules that fail ("312 rules fail on live data", or "No enabled rule fails") and the line under it names the worst, the rule with most failing records, with its id beside its message ("The worst is MM003 Material type is mandatory, 2,904 failing records"). Three figures: **Rules** ("across 15 objects"), **Enabled** ("run on every analysis") and **Suppressed** ("kept out of the score"). The one button is **Open the worst failing rule**; with nothing failing a rule manager sees **New rule draft** instead. **Failing rules by object** under it is a horizontal bar per object, the eight with most failing rules, with "41 failing rules" at the end of the row. Aletheia is docked on the right.
 
 The library title says what is there, for example "794 rules across 15 objects, 794 enabled". It reads every page of the rule list, opens filtered to an object from that object's Rules tab, and its **Share and export** offers Excel and a CSV of the columns and rows on screen. Three views: **All rules**, **Drafts** and **Suppressed**. Filter by object, dimension, severity, check class and state; the table shows rule, object, severity, dimension, class, failing records, pass rate, state and source. **New rule draft** starts a rule in authoring; a draft runs nowhere until it is reviewed and enabled.
 

@@ -90,6 +90,7 @@ function Evidence({ id }: { id: string }) {
                             <V2Link href={hrefFor({ kind: "rule", id: r.check_id })}>
                               <Mono>{r.check_id}</Mono>
                             </V2Link>
+                            {r.name ? <span className="m2-meta"> {r.name}</span> : null}
                           </th>
                           <td>
                             {r.measured ? (

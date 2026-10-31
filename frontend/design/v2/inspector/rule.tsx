@@ -17,7 +17,8 @@ import { int, moduleSlug, systemSlug } from "@/lib/v2/score";
 import { Explain } from "../Explain";
 import "../object.css";
 import { SeverityMark, type SeverityKey } from "../marks";
-import { Dash, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
+import { describeField } from "@/lib/v2/sap-fields";
+import { Coded, Dash, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { CollabSections } from "./collab";
 import { t as tr, lc, tx } from "@/lib/v2/i18n";
 import { labelText, moneyCompactText } from "@/lib/v2/labels";
@@ -156,7 +157,7 @@ export function ruleStatLine(v: RuleView): string[] {
   out.push(tr("{failing_records} failing across {objectsCount} {objectsCount, plural, one {object} other {objects}}", { failing_records: int(s.failing_records), objectsCount: s.objects.length }));
   if (v.failingPct != null) out.push(tr("{pct2} of records checked", { pct2: pct2(v.failingPct) }));
   if (v.row?.value_at_risk != null) out.push(tr("{formatMoneyCompact} at risk, estimated", { formatMoneyCompact: moneyCompactText(v.row.value_at_risk, v.currency) }));
-  if (v.overTolerance != null) out.push(v.overTolerance ? tr("over tolerance") : tr("within tolerance"));
+  if (v.overTolerance != null) out.push(v.overTolerance ? tr("fails on too many records") : tr("within the allowed limit"));
   if (s.features.length > 0) out.push(tr("blocks {featuresCount} S/4 {featuresCount, plural, one {feature} other {features}}", { featuresCount: s.features.length }));
   return out;
 }
@@ -175,7 +176,7 @@ export function RuleFacts({ view }: { view: RuleView }) {
         <Fact label={tr("Dimension")}>{s.definition.dimension ? DIM_WORD(s.definition.dimension) : <Dash />}</Fact>
         <Fact label={tr("Field")}>
           {fieldWords ? <>{fieldWords} </> : null}
-          {s.definition.field ? <Mono>{s.definition.field}</Mono> : <Dash />}
+          {s.definition.field ? <Coded code={s.definition.field} text={describeField(s.definition.field)} /> : <Dash />}
         </Fact>
         <Fact label={<>{tr("Tolerance")}{" "}<Explain metric="tolerance" label={tr("Tolerance")} module={primary} /></>}>
           {view.severity === "critical" && view.tolerance ? tr("{rows} rows", { rows: int(view.tolerance.rows) }) : <Dash why={tr("Only critical rules carry a tolerance")} />}
@@ -207,7 +208,7 @@ export function RuleDefinition({ view }: { view: RuleView }) {
     <Sec title={tr("Definition")}>
       <Facts>
         <Fact label={tr("Check class")}>{d.check_class ? <span title={d.check_class}>{tx(checkClassLabel(d.check_class))}</span> : <Dash />}</Fact>
-        <Fact label={tr("Field")}>{d.field ? <Mono>{d.field}</Mono> : <Dash />}</Fact>
+        <Fact label={tr("Field")}>{d.field ? <Coded code={d.field} text={describeField(d.field)} /> : <Dash />}</Fact>
         <Fact label={tr("Expression")}>{d.expression ? <Mono>{d.expression}</Mono> : <Dash why={tr("The rule has no stored expression")} />}</Fact>
         {params.map(([k, v]) => (
           <Fact key={k} label={<span title={k}>{labelText(k)}</span>}>
@@ -798,7 +799,7 @@ export function RuleInspectorBody({ id, landscape }: { id: string; landscape?: L
     return (
       <>
         <ErrorFrame onRetry={s.refetch}>{tr("This rule could not be read. It may not run on any object yet.")}</ErrorFrame>
-        {capped > 0 ? <p className="m2-prov">{tr("It is a critical rule over tolerance in {capped} {capped, plural, one {object} other {objects}}.", { capped })}</p> : null}
+        {capped > 0 ? <p className="m2-prov">{tr("It fails on too many records in {capped} {capped, plural, one {object} other {objects}}, so it holds their score down.", { capped })}</p> : null}
         <div className="m2-acts" style={{ marginTop: "var(--m2-s4)" }}>
           <V2Link href={`/r/${encodeURIComponent(id)}`} className="m2-btn m2-strong">
             {tr("Open the rule")}
