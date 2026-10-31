@@ -5147,6 +5147,21 @@ export const en = {
   "What if": "What if",
   "What if, for {object}": "What if, for {object}",
   "Open the flight deck": "Open the flight deck",
+  "The landscape could not be read.": "The landscape could not be read.",
+  "Run an analysis to see the landscape atlas.": "Run an analysis to see the landscape atlas.",
+  "Landscape atlas": "Landscape atlas",
+  "{ready} of {scored} objects at 85 or above": "{ready} of {scored} objects at 85 or above",
+  "After the {system} run of {date}: {up} objects moved up, {down} moved down.": "After the {system} run of {date}: {up} objects moved up, {down} moved down.",
+  "Below 70": "Below 70",
+  "objects": "objects",
+  "Replay the runs": "Replay the runs",
+  "Play from here": "Play from here",
+  "Mosaic": "Mosaic",
+  "Objects at 85 and up after each run. Select a run to see the landscape as it stood.": "Objects at 85 and up after each run. Select a run to see the landscape as it stood.",
+  "{date}: {n} objects at 85 and up": "{date}: {n} objects at 85 and up",
+  "{object}: {score}, {records} records": "{object}: {score}, {records} records",
+  "not scored": "not scored",
+  "Open the atlas": "Open the atlas",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

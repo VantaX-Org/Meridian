@@ -22,6 +22,12 @@ The landscape is the start screen for every role. It answers three questions in 
 - **Objects from uploaded files**: when no system is connected but files have been uploaded, the landscape lists those objects with their records to fix, says they came from uploaded files, and offers Work, Runs and connecting a system.
 - **Ask Meridian**, in the top bar on every page, opens the same grounded answers in a panel of its own.
 
+## The landscape atlas
+
+**Open the atlas** on the landscape opens a mosaic of every object of every system. Each tile is one object: its size follows the records it checks, its shade follows its score band (95 and up, 85 to 95, 70 to 85, below 70) and it prints the score and the change the shown run made. A tile with a heavy border moved in that run.
+
+The **Runs** strip under the banner has one bar per stored run, oldest first, counting the objects at 85 and up after that run. Select a bar to see the landscape as it stood after that run, or press **Replay the runs** to step through them. Objects the run did not score keep their last stored score; nothing is interpolated between runs. Select a tile to open that object at that run.
+
 ## The numbers and where they come from
 
 - **The banner's verdict** is the worst verdict among the objects of the next wave: one no-go object makes it No-go. Without a planned wave it covers every object on the landscape.
