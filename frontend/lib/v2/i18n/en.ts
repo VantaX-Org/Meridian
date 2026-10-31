@@ -6470,6 +6470,16 @@ export const en = {
   "Settings that exist but no transaction uses.": "Settings that exist but no transaction uses.",
   "Shadow process": "Shadow process",
   "Unused licence": "Unused licence",
+  "{gaps, plural, one {# step has} other {# steps have}} no rule guarding {n, plural, one {it} other {them}}, of {total}.": "{gaps, plural, one {# step has} other {# steps have}} no rule guarding {n, plural, one {it} other {them}}, of {total}.",
+  "Every one of the {n, plural, one {# step} other {# steps}} has a rule guarding it.": "Every one of the {n, plural, one {# step} other {# steps}} has a rule guarding it.",
+  "Every process step behind a KPI or process, with the rules that read its fields": "Every process step behind a KPI or process, with the rules that read its fields",
+  "Fields no rule reads": "Fields no rule reads",
+  "KPI or process": "KPI or process",
+  "Rules guarding each KPI": "Rules guarding each KPI",
+  "The lineage model maps no KPI or process.": "The lineage model maps no KPI or process.",
+  "The lineage model puts no process step behind this KPI.": "The lineage model puts no process step behind this KPI.",
+  "The rules guarding this KPI could not be read.": "The rules guarding this KPI could not be read.",
+  "Weakest pass rate": "Weakest pass rate",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import { Value } from "../screens/Value";
 import { stubLayout } from "./layout-stub";
@@ -35,5 +35,20 @@ describe("Value delivered", () => {
     const rows = within(await screen.findByTestId("val-months")).getAllByRole("row").slice(1);
     expect(rows[0].querySelector("th")?.textContent).toBe("2026-09");
     expect(rows).toHaveLength(6);
+  });
+
+  it("lists the steps behind a KPI and puts an unguarded process step first", async () => {
+    renderWithQuery(<Value />);
+    const panel = await screen.findByTestId("val-guards");
+    const pick = await within(panel).findByRole("combobox", { name: "KPI or process" });
+    fireEvent.change(pick, { target: { value: "kpi:dpo" } });
+    await waitFor(() => expect(within(panel).getByTestId("val-guards-sum").textContent).toBe("Every one of the 3 steps has a rule guarding it."));
+    expect(within(panel).getAllByRole("row").slice(1)[0].querySelector("th")?.textContent).toContain("Payment Parameters");
+    expect(panel.textContent).toContain("MIRO");
+    fireEvent.change(pick, { target: { value: "process:PM" } });
+    await waitFor(() => expect(within(panel).getByTestId("val-guards-sum").textContent).toBe("1 step has no rule guarding it, of 9."));
+    const first = within(panel).getAllByRole("row")[1];
+    expect(first.querySelector("th")?.textContent).toContain("Priority");
+    expect(first.textContent).toContain("None");
   });
 });

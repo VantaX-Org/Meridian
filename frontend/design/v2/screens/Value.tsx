@@ -1,15 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { getValue, type ImpactCategory, type Value as ValueData } from "@/lib/api/v2/analytics";
+import { getGuards, getLineageModel, type GuardStep } from "@/lib/api/v2/lineage";
 import { money } from "@/lib/v2/format";
 import { t } from "@/lib/v2/i18n";
 import { f1, int } from "@/lib/v2/score";
 import { Sparkline } from "../charts";
-import { EmptyFrame, ErrorFrame, Skeleton } from "../parts";
+import { EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
 import { CcBanner, CcPage } from "./cc-parts";
-import { retry, Section, status, Table } from "./WorkAnalytics";
+import { pctOf, retry, Section, status, Table } from "./WorkAnalytics";
 
 /**
  * Value delivered: the latest finished run priced into eight kinds of business loss from the tenant cost model, the
@@ -85,6 +87,7 @@ export function Value() {
       />
       <ImpactPanel rows={impacts} />
       <MonthsPanel rows={months} currency={cur} />
+      <GuardsPanel />
     </CcPage>
   );
 }
@@ -135,6 +138,61 @@ function MonthsPanel({ rows, currency }: { rows: ValueData["cost_avoidance_histo
               </tr>
             ))}
           </Table>
+        </>
+      )}
+    </Section>
+  );
+}
+
+/** Steps no rule guards first, then the weakest guard, so the exposed step heads the list. */
+const exposure = (a: GuardStep, b: GuardStep) =>
+  Number(b.guard_count === 0) - Number(a.guard_count === 0) || (a.min_pass_rate ?? 101) - (b.min_pass_rate ?? 101);
+
+/**
+ * Rules guarding a KPI or process: every process step the lineage model puts behind it, the rules reading its fields,
+ * the weakest of their latest pass rates and the fields no rule reads (api/routes/lineage.py /guards).
+ */
+function GuardsPanel() {
+  const f = useFixture();
+  const model = useQuery({ queryKey: ["v2", "lineage", "model", f], queryFn: getLineageModel, staleTime: 300_000, retry });
+  const [pick, setPick] = useState<string | null>(null);
+  const node = pick ?? model.data?.kpis[0]?.id ?? null;
+  const q = useQuery({ queryKey: ["v2", "lineage", "guards", f, node], queryFn: () => getGuards(node as string), enabled: node !== null, staleTime: 60_000, retry });
+  const title = t("Rules guarding each KPI");
+  const l1 = (model.data?.processes ?? []).filter((p) => !p.id.includes("-"));
+  return (
+    <Section q={model} title={title} meta={t("Every process step behind a KPI or process, with the rules that read its fields")} testId="val-guards">
+      {(m) => m.kpis.length + l1.length === 0 ? <EmptyFrame>{t("The lineage model maps no KPI or process.")}</EmptyFrame> : (
+        <>
+          <label className="m2-meta">
+            {t("KPI or process")}{" "}
+            <select className="m2-sel" value={node ?? ""} onChange={(e) => setPick(e.target.value)}>
+              <optgroup label={t("KPIs")}>{m.kpis.map((k) => <option key={k.id} value={k.id}>{k.label}</option>)}</optgroup>
+              <optgroup label={t("Processes")}>{l1.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</optgroup>
+            </select>
+          </label>
+          {q.isPending ? <Skeleton width="100%" height={120} /> : q.isError ? (
+            <ErrorFrame onRetry={() => void q.refetch()}>{t("The rules guarding this KPI could not be read.")}</ErrorFrame>
+          ) : q.data.steps.length === 0 ? <EmptyFrame>{t("The lineage model puts no process step behind this KPI.")}</EmptyFrame> : (
+            <>
+              <p className="m2-meta" data-testid="val-guards-sum">
+                {q.data.coverage_gaps.length
+                  ? t("{gaps, plural, one {# step has} other {# steps have}} no rule guarding {n, plural, one {it} other {them}}, of {total}.", { gaps: q.data.coverage_gaps.length, n: q.data.coverage_gaps.length, total: q.data.steps.length })
+                  : t("Every one of the {n, plural, one {# step} other {# steps}} has a rule guarding it.", { n: q.data.steps.length })}
+              </p>
+              <Table title={title} head={[t("Process step"), t("Transaction"), t("Rules"), t("Weakest pass rate"), t("Fields no rule reads")]}>
+                {[...q.data.steps].sort(exposure).map((s) => (
+                  <tr key={s.id} data-gap={s.guard_count === 0 ? "true" : undefined}>
+                    <th scope="row" className="m2-card-lead">{s.label}{s.l2 ? <> <span className="m2-meta"><Mono>{s.l2}</Mono></span></> : null}</th>
+                    <td data-label={t("Transaction")}>{s.tcode ? <Mono>{s.tcode}</Mono> : f1(null)}</td>
+                    <td data-label={t("Rules")} className="m2-num">{s.guard_count ? int(s.guard_count) : t("None")}</td>
+                    <td data-label={t("Weakest pass rate")} className="m2-num">{pctOf(s.min_pass_rate)}</td>
+                    <td data-label={t("Fields no rule reads")}>{s.unguarded_fields.length ? <Mono>{s.unguarded_fields.join(", ")}</Mono> : t("None")}</td>
+                  </tr>
+                ))}
+              </Table>
+            </>
+          )}
         </>
       )}
     </Section>

@@ -62,3 +62,40 @@ export const getRuleLineage = (checkId: string): Promise<LineageGraph> =>
 
 export const getBlastRadius = (versionId: string, checkId: string): Promise<BlastRadius> =>
   v2Get(`/lineage/blast-radius/${encodeURIComponent(versionId)}/${encodeURIComponent(checkId)}`);
+
+export interface LineageModel {
+  model_version: number;
+  node_counts: Record<string, number>;
+  edge_count: number;
+  kpis: { id: string; label: string }[];
+  processes: { id: string; label: string }[];
+  features: { id: string; label: string }[];
+  warnings: string[];
+}
+
+export interface GuardStep {
+  id: string;
+  label: string;
+  l2: string | null;
+  tcode: string | null;
+  fields: { field: string; checks: { check_id: string; pass_rate?: number | null; affected_count?: number | null; severity?: string | null }[] }[];
+  guard_count: number;
+  /** The lowest pass rate of the rules guarding the step, in percent; null when none has run. */
+  min_pass_rate: number | null;
+  unguarded_fields: string[];
+}
+
+export interface Guards {
+  node: string;
+  model_version: number;
+  version_id: string | null;
+  steps: GuardStep[];
+  /** Step ids no rule guards. */
+  coverage_gaps: string[];
+}
+
+/** GET /lineage/model: the KPIs, processes and features the lineage model knows. */
+export const getLineageModel = (): Promise<LineageModel> => v2Get("/lineage/model");
+
+/** GET /lineage/guards: the rules guarding each process step behind a KPI, process, feature or step. */
+export const getGuards = (node: string): Promise<Guards> => v2Get("/lineage/guards", { node });

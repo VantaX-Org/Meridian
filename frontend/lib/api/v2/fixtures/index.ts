@@ -4,6 +4,7 @@ import workJson from "./work.json";
 import runsJson from "./runs.json";
 import rulesJson from "./rules.json";
 import lineageJson from "./lineage.json";
+import guardsJson from "./guards.json";
 import type { CommandGroup, CommandResult, Landscape, Receipt, RuleRow, RunList, StatusStrip, WorkPage } from "../types";
 import { moduleSlug, systemSlug } from "@/lib/v2/score";
 import { fixtureParam } from "../fixture";
@@ -239,6 +240,13 @@ function lineageRead(path: string, params: Params): unknown {
     const id = String(params.node ?? "").replace(/^check:/, "");
     if (!lin.graph[id]) throw new FixtureNotFound(path);
     return lin.graph[id];
+  }
+  const guards = guardsJson as { model: unknown; guards: Record<string, unknown> };
+  if (path === "/lineage/model") return guards.model;
+  if (path === "/lineage/guards") {
+    const g = guards.guards[String(params.node ?? "")];
+    if (!g) throw new FixtureNotFound(path);
+    return { ...(g as object), version_id: null };
   }
   const blast = /^\/lineage\/blast-radius\/([^/]+)\/([^/]+)$/.exec(path);
   if (blast) {
