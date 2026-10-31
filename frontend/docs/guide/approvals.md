@@ -33,6 +33,14 @@ The sentence reads "48 records are signed off as not an issue or an accepted ris
 - **Due** comes from the SLA days for the batch's worst severity, set under Triage and SLA.
 - **Fixed** is set only by a run: a value waiting for approval, approved or sent to SAP never counts as fixed.
 
+## Change requests
+
+**Requests** in the map lists change requests: a request to create a material, customer, vendor or business partner in SAP, or to change one. The views are **Mine**, **To approve** and **All**, with filters by status, object and kind. Each row opens the request on the right (`?open=request:{id}`).
+
+- **New request**: choose the object and the kind, give the SAP key when you change a record, a title, and the fields, one `TABLE.FIELD=value` per line. **Check** saves a draft and runs the rule pre-checks and the duplicate search: failed rules link to the rule and likely duplicates to the golden record, with how alike they are. **Submit for approval** sends it into the approval workflow once the check shows no problem. Needs the master data write permission.
+- **The request inspector** shows the proposed values, the checks, the approval steps with who decided each and when, the history, comments and attachments. The requester can cancel a request that is not finished; a request that failed in SAP can be retried once you have checked in SAP that the record does not exist; a request with a load file can be exported.
+- **Your decision**: when a step waits for you, the inspector of the request shows **Approve**, and **Reject** with a reason the requester reads. The step, its due time and whether you decide on behalf of someone are stated.
+
 ## Out of office and escalation
 
 - When an approver is away, their approvals go to the deputy they named under Preferences, Out of office. The batch inspector says so, for example "You cover for T. Mokoena until 30 Oct 2026: their approvals and assigned work come to you as well." Four eyes still holds: nobody approves their own batch.

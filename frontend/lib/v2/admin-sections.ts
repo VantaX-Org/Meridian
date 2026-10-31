@@ -1,6 +1,6 @@
 import { t } from "@/lib/v2/i18n";
 /** The sections of the Admin canvas, in the order the left index lists them, with the permission each one needs. */
-export type AdminSlug = "users" | "roles" | "sso" | "signin" | "apikeys" | "licence" | "billing" | "settings" | "mappings" | "reference" | "audit" | "alerts" | "notifications" | "webhooks" | "runs" | "system" | Step10Slug | CapabilitySlug;
+export type AdminSlug = "users" | "roles" | "sso" | "signin" | "apikeys" | "licence" | "billing" | "settings" | "mappings" | "reference" | "audit" | "alerts" | "notifications" | "webhooks" | "runs" | "system" | "workflows" | Step10Slug | CapabilitySlug;
 /** Step 10: policy packs and scheduled digests. */
 export type Step10Slug = "policypacks" | "digests";
 /** Step 6c, the role capability audit (design/v2/admin/capabilities.tsx). */
@@ -24,6 +24,7 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
   { slug: "viewas", get label() { return t("View as a role"); }, get group() { return t("People and access"); }, get lead() { return t("See the product as one role sees it, read-only, for support."); }, needs: ["manage_users"] },
   { slug: "sharelinks", get label() { return t("Share links"); }, get group() { return t("People and access"); }, get lead() { return t("Read-only links to a page: who shared what, until when, and revoke."); }, needs: ["manage_users"] },
   { slug: "delegations", get label() { return t("Out of office"); }, get group() { return t("People and access"); }, get lead() { return t("Who is away and who covers their approvals."); }, needs: ["manage_users"] },
+  { slug: "workflows", get label() { return t("Approval workflows"); }, get group() { return t("People and access"); }, get lead() { return t("Who approves fix batches and change requests, in which order, and when a step applies."); }, needs: ["manage_workflows"] },
   { slug: "apikeys", get label() { return t("API keys"); }, get group() { return t("People and access"); }, get lead() { return t("Keys for scripts and other systems, each with its own roles."); }, needs: ["manage_users"] },
   { slug: "licence", get label() { return t("Licence"); }, get group() { return t("Tenant"); }, get lead() { return t("What this deployment is licensed for: modules, seats and validity."); }, needs: ["view", "manage_system", "manage_settings", "manage_users"] },
   { slug: "billing", get label() { return t("Billing"); }, get group() { return t("Tenant"); }, get lead() { return t("Resolved exceptions by billing tier, on top of the base fee."); }, needs: ["manage_settings"] },

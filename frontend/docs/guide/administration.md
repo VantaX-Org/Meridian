@@ -11,6 +11,7 @@ Administration is everything that sets up the tenant: who can sign in, what the 
 - **View as a role**: "See the product as one role sees it, to answer a support question or check a role before you grant it. Everything is read-only while you view as a role, and starting and stopping are in the audit log." The top bar shows "Viewing as" until you stop.
 - **Share links**: "Read-only links to one page, opened as a viewer by people of this tenant until they expire. Revoke one and it stops working at once."
 - **Out of office**: "Who is away and who covers their approvals and assigned work. Each person sets their own from Preferences; an administrator can end one."
+- **Approval workflows**: who approves fix batches and change requests, in which order, and when a step applies. Each workflow lists its versions with the active one marked. Edit the definition of the next version as JSON, try it with **Dry run** on sample facts (which steps apply, the approvers and how long each has), then **Save as a new version**, active at once or not. **Activate** an older version to go back to it; approvals already under way keep the version they started with. Needs manage workflows.
 - **API keys**: "A key acts as its own service account with only the roles you give it, and shows in the audit log under its name. The key itself is shown once, when you create it."
 
 ## Tenant

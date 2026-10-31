@@ -96,11 +96,11 @@ describe("top bar", () => {
 });
 
 describe("map", () => {
-  it("lists Landscape, Work, Runs and People, with the open-work count on Work and a neutral active pill", async () => {
+  it("lists Landscape, Work, Runs, People and Requests, with the open-work count on Work and a neutral active pill", async () => {
     mount();
     const nav = screen.getByRole("navigation", { name: "Places" });
     const links = within(nav).getAllByRole("link");
-    expect(links.map((l) => (l.firstChild as HTMLElement).textContent)).toEqual(["Landscape", "Work", "Runs", "People"]);
+    expect(links.map((l) => (l.firstChild as HTMLElement).textContent)).toEqual(["Landscape", "Work", "Runs", "People", "Requests"]);
     expect(links[0]).toHaveAttribute("aria-current", "page");
     expect(links[1]).not.toHaveAttribute("aria-current");
     await waitFor(() => expect(links[1]).toHaveTextContent("25,712"));
