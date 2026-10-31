@@ -106,7 +106,7 @@ for (const size of SIZES) {
         await expect(page.locator('svg[data-size="240"]')).toBeVisible();
         await expect(page.getByTestId("receipt")).toBeVisible();
         await expect(page.getByTestId("receipt-footer")).toContainText("tolerance 10% of rows or 25 rows");
-        await expect(page.getByRole("navigation", { name: "Views of Material master" }).getByRole("link")).toHaveCount(9);
+        await expect(page.getByRole("navigation", { name: "Views of Material master" }).getByRole("link")).toHaveCount(10);
         await expect(page.getByRole(phone ? "list" : "grid", { name: "Rules for Material master" })).toBeVisible(); // two-line rows on a phone
         await page.waitForLoadState("networkidle");
         await shot(page, "object");
