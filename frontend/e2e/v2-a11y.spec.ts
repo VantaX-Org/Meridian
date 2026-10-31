@@ -236,6 +236,7 @@ test.describe("reflow at 320", () => {
 
 /** Presses Tab until the focused element matches, up to a limit; fails when it never does. */
 async function tabTo(page: Page, accessibleName: RegExp, limit = 80) {
+  const seen: string[] = [];
   for (let i = 0; i < limit; i++) {
     await page.keyboard.press("Tab");
     const name = await page.evaluate(() => {
@@ -245,8 +246,17 @@ async function tabTo(page: Page, accessibleName: RegExp, limit = 80) {
       return (el.getAttribute("aria-label") ?? label ?? el.textContent ?? "").trim();
     });
     if (accessibleName.test(name)) return;
+    seen.push(name.slice(0, 40));
   }
-  throw new Error(`Tab never reached ${accessibleName}`);
+  throw new Error(`Tab never reached ${accessibleName}; focus went: ${seen.join(" | ")}`);
+}
+
+/** Takes the skip link to the canvas, as a keyboard user would, so the map's length does not count. */
+async function skipToContent(page: Page) {
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("link", { name: "Skip to content" })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/#m2-canvas/);
 }
 
 /** The focused element draws a visible ring (an outline or a box shadow), not colour alone. */
@@ -332,6 +342,7 @@ test.describe("keyboard only", () => {
   test("flow 3: approve a batch", async ({ page }) => {
     await prepare(page, "light", null);
     await open(page, "/work?fixture=1&persona=owner&filter=approvals");
+    await skipToContent(page);
     await tabTo(page, /^Approve batch B-241$/);
     await focusVisible(page);
     await page.keyboard.press("Enter");
@@ -345,6 +356,7 @@ test.describe("keyboard only", () => {
   test("flow 4: start an extraction as Basis", async ({ page }) => {
     await prepare(page, "light", null);
     await open(page, "/?fixture=1&persona=basis");
+    await skipToContent(page);
     await tabTo(page, /^Fix the SuccessFactors sign-in$/);
     await page.keyboard.press("Enter");
     const dialog = page.getByRole("dialog", { name: "SuccessFactors" });
