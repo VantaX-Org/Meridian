@@ -142,7 +142,7 @@ export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/work": "v2:work",
   "/work/monitor": "v2:monitoring",
   "/work/analytics": "v2:monitoring",
-  "/work/exceptions": "v2:work",
+  "/work/exceptions": "v2:work", "/work/triage": "v2:work",
   "/migration": "v2:waves",
   "/s4": "v2:waves",
   "/insights": "v2:monitoring",
@@ -208,6 +208,7 @@ export function routeOf(pathname: string): string | null {
   if (a === "work" && b === "monitor") return "/work/monitor";
   if (a === "work" && b === "analytics") return "/work/analytics";
   if (a === "work" && b === "exceptions") return "/work/exceptions";
+  if (a === "work" && b === "triage") return "/work/triage";
   return `/${a}`;
 }
 
