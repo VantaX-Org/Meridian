@@ -74,8 +74,8 @@ export function useBatchControls(onResult?: (o: Outcome) => void) {
       try {
         const r = await actions.sendToSap(b.id, b.records);
         const sum = r.sha256 ? t(", sha256 {sha256}", { sha256: r.sha256.slice(0, 12) }) : "";
-        onResult?.({ tone: "ok", title: t("Sent to SAP, {records} {records2, plural, one {record} other {records}}", { records: int(r.records ?? b.records), records2: (r.records ?? b.records) }), detail: t("{filename}{sum}. Load it into SAP with the Migration Cockpit.", { filename: r.filename, sum }), job: r.job_id });
-        if (!onResult) toast.show(t("Sent batch {label} to SAP as {filename}", { label: b.label, filename: r.filename }));
+        onResult?.({ tone: "ok", title: t("Load file exported, {records} {records2, plural, one {record} other {records}}", { records: int(r.records ?? b.records), records2: (r.records ?? b.records) }), detail: t("{filename}{sum}. Load it into SAP with the Migration Cockpit, then confirm the load on the batch.", { filename: r.filename, sum }), job: r.job_id });
+        if (!onResult) toast.show(t("Exported the load file of batch {label} as {filename}", { label: b.label, filename: r.filename }));
       } catch (e) {
         fail(e, t("The batch could not be sent to SAP."));
       } finally {
@@ -101,7 +101,7 @@ export function useBatchControls(onResult?: (o: Outcome) => void) {
     />
   ) : null;
 
-  return { can, busy, approve, send, askSendBack: setBack, dialog };
+  return { can, busy, approve, send, askSendBack: setBack, dialog, actions };
 }
 
 export type BatchControls = ReturnType<typeof useBatchControls>;

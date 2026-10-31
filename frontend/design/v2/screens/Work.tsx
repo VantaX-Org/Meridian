@@ -73,7 +73,7 @@ const itemId = (it: Item): string => (it.kind === "row" ? recordItemId(it.row) :
 const GROUP_ROWS = 25;
 const COLUMNS_ID = "work-ledger";
 const GROUPABLE: ReadonlySet<ChipId | null> = new Set<ChipId | null>(["tofix", "proposed", null]);
-const OPEN_STATUSES = new Set(["to_fix", "proposed", "approved", "sent"]);
+const OPEN_STATUSES = new Set(["to_fix", "proposed", "approved", "awaiting_load", "sent"]);
 
 /** After a change, which rows still belong to the list the chip asks for. */
 function belongs(row: WorkRow, chip: ChipId | null, batch: string | null = null): boolean {

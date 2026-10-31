@@ -110,6 +110,17 @@ function BatchBody({ b }: { b: BatchRow }) {
     }
   };
   const mine = b.ownerId != null && b.ownerId === can.me;
+  const [loading, setLoading] = useState(false);
+  const confirmLoad = async () => {
+    setLoading(true);
+    try {
+      await controls.actions.confirmLoaded(b.id, b.label, null);
+    } catch (e) {
+      toast.show(errorSentence(e, tr("The load could not be confirmed.")), "error");
+    } finally {
+      setLoading(false);
+    }
+  };
   // Live write-back is offered only when the API says this deployment writes to SAP itself (GET /settings).
   // It stays mounted once the batch is Sent to SAP, so the answer of the send is still shown after the refetch.
   const liveOn = useTenantSettings().data?.live_writeback === true;
@@ -130,6 +141,7 @@ function BatchBody({ b }: { b: BatchRow }) {
         <Fact label={tr("Records")}>{int(b.records)}</Fact>
         <Fact label={tr("Value at risk")}>{money(b.valueAtRisk)}</Fact>
         {b.approvedBy ? <Fact label={tr("Approved by")}>{`${b.approvedBy}, ${day(b.approvedAt)}`}</Fact> : null}
+        {b.status === "awaiting_load" ? <Fact label={tr("Load file exported")}>{day(b.sentAt)}</Fact> : null}
         {b.status === "exported" ? <Fact label={tr("Sent to SAP")}>{day(b.sentAt)}</Fact> : null}
       </Facts>
       {b.returned ? (
@@ -155,6 +167,11 @@ function BatchBody({ b }: { b: BatchRow }) {
         <button type="button" className="m2-btn" disabled={sheet} onClick={() => void download()}>
           {tr("Download sheet")}
         </button>
+        {b.status === "awaiting_load" && can.confirmLoad ? (
+          <button type="button" className="m2-btn m2-btn-primary" disabled={mine || loading} title={mine ? tr("You built this batch; a second person confirms the load.") : undefined} onClick={() => void confirmLoad()}>
+            {tr("Loaded in SAP")}
+          </button>
+        ) : null}
         {b.status !== "exported" ? <ReassignMenu rows={rows} disabled={!can.assign} subject={tr("batch {label}", { label: b.label })} /> : null}
       </Actions>
       {b.status === "draft" && !can.approve ? <p className="m2-prov">{tr("Approving needs the approve permission, which your role does not hold.")}</p> : null}
@@ -162,6 +179,7 @@ function BatchBody({ b }: { b: BatchRow }) {
       {b.status === "draft" && can.approve && !mine ? <p className="m2-prov">{tr("Approving acts on the whole batch. You can take it back from the notice that follows.")}</p> : null}
       {b.status === "approved" && !live ? <p className="m2-prov">{tr("Send to SAP hands the approved values over as a Migration Cockpit file. It cannot be taken back.")}</p> : null}
       {b.status === "approved" && live ? <p className="m2-prov">{tr("Export load file hands the approved values over as a Migration Cockpit file instead of writing them live. It cannot be taken back.")}</p> : null}
+      {b.status === "awaiting_load" ? <p className="m2-prov" data-testid="batch-awaiting-load">{tr("The load file is out and waits for the SAP load. Once it is loaded in SAP, an approver or SAP Basis confirms it here; the next run then checks the records.")}</p> : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       {liveOn && b.status !== "draft" ? <LiveWriteback b={b} can={can} /> : null}
       {controls.dialog}

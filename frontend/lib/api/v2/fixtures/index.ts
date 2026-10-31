@@ -128,6 +128,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
     if (method === "POST" && batch) return wf.batchFixture(batch[2] as "approve" | "send-back", decodeURIComponent(batch[1]), (body as { note?: string } | undefined)?.note);
     const send = /^\/remediation\/batches\/([^/]+)\/export$/.exec(path);
     if (method === "POST" && send) return wf.sendBatchFixture(decodeURIComponent(send[1]));
+    const loaded = /^\/remediation\/batches\/([^/]+)\/loaded$/.exec(path);
+    if (method === "POST" && loaded) return wf.loadedBatchFixture(decodeURIComponent(loaded[1]));
     const live = /^\/writeback\/batches\/([^/]+)\/(check|send)$/.exec(path);
     if (method === "POST" && live) return live[2] === "check" ? wf.writebackCheckFixture(decodeURIComponent(live[1])) : wf.writebackSendFixture(decodeURIComponent(live[1]));
     const read = /^\/notifications\/([^/]+)\/read$/.exec(path);

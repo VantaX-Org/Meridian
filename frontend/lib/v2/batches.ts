@@ -8,10 +8,11 @@ import type { WorkRow } from "@/lib/api/v2/types";
 import { t } from "@/lib/v2/i18n";
 import { whole } from "./format";
 
-export type BatchStatus = "draft" | "approved" | "exported";
+export type BatchStatus = "draft" | "approved" | "awaiting_load" | "exported";
 
-/** A draft batch waits for a second person; an approved one is ready for SAP; an exported one has gone. */
-export const BATCH_STATUS_LABEL: Record<BatchStatus, string> = { get draft() { return t("Waiting for approval"); }, get approved() { return t("Approved"); }, get exported() { return t("Sent to SAP"); } };
+/** A draft batch waits for a second person; an approved one is ready for SAP; awaiting_load has its load file out and
+ * waits for someone to load it in SAP; an exported one has gone. */
+export const BATCH_STATUS_LABEL: Record<BatchStatus, string> = { get draft() { return t("Waiting for approval"); }, get approved() { return t("Approved"); }, get awaiting_load() { return t("Exported, waiting for the SAP load"); }, get exported() { return t("Sent to SAP"); } };
 
 /** "B-1A2B3C" for an id the database made; an id that already reads as a label (B-241) is kept. */
 export function batchLabel(id: string): string {
@@ -96,7 +97,9 @@ const EVENT_WORD: Record<string, string> = {
   get accepted() { return t("Suggestions accepted"); },
   get approved() { return t("Approved"); },
   get sent_back() { return t("Sent back"); },
-  get exported() { return t("Sent to SAP"); },
+  get exported() { return t("Load file exported"); },
+  get loaded() { return t("Loaded in SAP"); },
+  get held_out() { return t("Held out, no new value"); },
   get reconciled() { return t("Checked against the next run"); },
 };
 

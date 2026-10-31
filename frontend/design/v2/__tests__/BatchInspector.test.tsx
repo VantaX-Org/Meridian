@@ -7,6 +7,7 @@ import * as adminApi from "@/lib/api/v2/admin";
 import { fixtureWrite, resetAdminFixture } from "@/lib/api/v2/fixtures";
 import type { BatchWritebackCheck, BatchWritebackSend } from "@/lib/api/v2/batches";
 import { resetWorkFixture } from "@/lib/api/v2/fixtures";
+import { setFixtureBatchStatus } from "@/lib/api/v2/fixtures/work-fixture";
 import { resetActions } from "@/lib/v2/undo";
 import { clearPatches } from "@/lib/v2/work-overrides";
 import { Inspector } from "../Inspector";
@@ -131,7 +132,7 @@ describe("the batch inspector", () => {
     fireEvent.click(within(insp).getByRole("button", { name: "Send batch B-236 to SAP" }));
     await waitFor(() => expect(send).toHaveBeenCalledWith("B-236", 180));
     const result = await within(insp).findByTestId("action-result");
-    expect(text(result)).toContain("Sent to SAP, 180 records");
+    expect(text(result)).toContain("Load file exported, 180 records");
     expect(text(result)).toContain("remediation-cockpit_xlsx-B-236.xlsx");
     expect(text(result)).toContain("sha256 9f2c4e1a7b3d");
     await waitFor(() => expect(fact(insp, "Status")).toContain("Sent to SAP"));
@@ -292,5 +293,17 @@ describe("live write-back of an approved batch", () => {
     fireEvent.click(within(live).getByRole("button", { name: "Check with SAP" }));
     await within(live).findByTestId("writeback-check");
     expect(within(live).getByRole("button", { name: "Send to SAP" })).toBeEnabled();
+  });
+
+  it("names a batch whose load file waits for the SAP load and lets a second person confirm the load", async () => {
+    setFixtureBatchStatus("B-241", "awaiting_load");
+    const loaded = vi.spyOn(batchApi, "confirmBatchLoaded");
+    mount("B-241");
+    const insp = await body("Batch B-241");
+    expect(fact(insp, "Status")).toContain("Exported, waiting for the SAP load");
+    expect(within(insp).getByTestId("batch-awaiting-load")).toHaveTextContent("an approver or SAP Basis confirms it here");
+    fireEvent.click(within(insp).getByRole("button", { name: "Loaded in SAP" }));
+    await waitFor(() => expect(loaded).toHaveBeenCalledWith("B-241", null));
+    await waitFor(() => expect(fact(insp, "Status")).toContain("Sent to SAP"));
   });
 });
