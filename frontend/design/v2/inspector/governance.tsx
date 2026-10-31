@@ -7,6 +7,7 @@ import { useAssignable } from "@/lib/v2/approvals-queries";
 import { failureText } from "@/lib/v2/errors";
 import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { notFound, refreshRoles, useEscalationChain, useWaveGates } from "@/lib/v2/roles-queries";
+import { useCertificates } from "@/lib/v2/step9-queries";
 import { int } from "@/lib/v2/score";
 import { VerdictMark } from "../marks";
 import { Dash, Mono, Skeleton, V2Link } from "../parts";
@@ -164,6 +165,8 @@ function GateForm({ g }: { g: WaveGate }) {
   const [zero, setZero] = useState(g.gate.zero_criticals);
   const [contracts, setContracts] = useState(g.gate.contracts_met);
   const [error, setError] = useState<string | null>(null);
+  const cert = useCertificates(g.wave_id).data;
+  const latest = cert?.versions[0];
   const canEdit = session.can("analyse") && !session.shared && !session.viewAs;
   const save = async () => {
     setError(null);
@@ -198,7 +201,7 @@ function GateForm({ g }: { g: WaveGate }) {
         </span>
       ) : null}
       <span className="m2-meta">
-        {tr("Readiness certificate: {value}.", { value: g.status.passed ? tr("a draft is ready") : tr("not yet") })}{" "}
+        {tr("Readiness certificate: {value}.", { value: latest ? (latest.status === "signed" ? tr("Version {version}, signed", { version: latest.version }) : tr("Version {version}, waiting for signatures", { version: latest.version })) : cert ? tr("Not issued") : tr("not yet") })}{" "}
         <V2Link href={hrefFor({ kind: "certificate", id: g.wave_id })}>{tr("Open the certificate")}</V2Link>
       </span>
       {error ? (

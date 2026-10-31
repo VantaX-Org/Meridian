@@ -320,9 +320,12 @@ export interface ReadinessCell {
   dqs: number | null;
   score: number | null;
   records_blocked: number;
+  /** The wave's one threshold: its gate's minimum score, else its own, else the tenant's. */
+  threshold?: number | null;
 }
 
 export interface Readiness {
+  /** The waves' one threshold when they share it, else null (each cell then names its own). */
   threshold: number | null;
   cells: ReadinessCell[];
   configured: boolean;

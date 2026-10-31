@@ -128,6 +128,8 @@ export function CompareControl({ id, runs }: { id: string; runs: readonly Timeli
   const other = picked ?? (base ?? prev)?.id ?? null;
   if (others.length === 0) return null;
   const t = (rid: string) => new Date(runs.find((r) => r.id === rid)?.run_at ?? 0).getTime();
+  // The newest run of the same objects at least 30 days before this one: the month-on-month view in one click (F31).
+  const monthAgo = others.find((r) => shares(r) && new Date(r.run_at ?? 0).getTime() <= t(id) - 30 * 86_400_000);
   const [a, b] = other ? (t(other) <= t(id) ? [other, id] : [id, other]) : [id, id];
   return (
     <span className="m2-pop-cmp">
@@ -144,6 +146,11 @@ export function CompareControl({ id, runs }: { id: string; runs: readonly Timeli
       <V2Link href={`/run/${a}/vs/${b}`} className="m2-btn">
         {tr("Compare")}
       </V2Link>
+      {monthAgo ? (
+        <V2Link href={`/run/${monthAgo.id}/vs/${id}`} title={formatDate(monthAgo.run_at, "datetime")}>
+          {tr("Compare with last month")}
+        </V2Link>
+      ) : null}
     </span>
   );
 }

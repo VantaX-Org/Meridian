@@ -20,11 +20,36 @@ export function dimsOf(cell: LandscapeCell): (number | null)[] {
   return DIMENSIONS.map((d) => cell.dimensions[d.key] ?? null);
 }
 
-function ObjectRow({ system, cell, label, current, fixtureRun, trend }: { system: LandscapeSystem; cell: LandscapeCell; label: string; current: boolean; fixtureRun: string | null; trend: readonly (number | null)[] }) {
+/** An object's measured score over the last runs, drawn on its own range (at least 6 points tall); nothing under two points. */
+export function ScoreTrend({ trend, label }: { trend: readonly (number | null)[]; label: string }) {
   const known = trend.filter((v): v is number => v != null);
-  const mid = known.length ? (Math.min(...known) + Math.max(...known)) / 2 : 0;
-  const half = known.length ? Math.max(3, (Math.max(...known) - Math.min(...known)) / 2) : 3;
-  const domain = [mid - half, mid + half] as const;
+  if (known.length < 2) return null;
+  const mid = (Math.min(...known) + Math.max(...known)) / 2;
+  const half = Math.max(3, (Math.max(...known) - Math.min(...known)) / 2);
+  return (
+    <Sparkline
+      values={trend}
+      width={48}
+      height={8}
+      domain={[mid - half, mid + half]}
+      label={t("{label}, measured score over the last {count} runs: {first} to {last}", { label, count: trend.length, first: f1(known[0]), last: f1(known[known.length - 1]) })}
+      testId="map-spark"
+    />
+  );
+}
+
+/** The trend of each object of one system, from the run timeline (the same read the run picker makes). */
+export function useTrends(systemId: string, modules: readonly string[]): Map<string, (number | null)[]> {
+  const timeline = useTimeline(systemId, 8).data?.runs;
+  const key = modules.join(",");
+  return useMemo(() => {
+    const out = new Map<string, (number | null)[]>();
+    for (const m of key.split(",")) out.set(m, (timeline ?? []).map((r) => r.objects[m]?.raw_score ?? r.objects[m]?.score ?? null));
+    return out;
+  }, [timeline, key]);
+}
+
+function ObjectRow({ system, cell, label, current, fixtureRun, trend }: { system: LandscapeSystem; cell: LandscapeCell; label: string; current: boolean; fixtureRun: string | null; trend: readonly (number | null)[] }) {
   const reading = readingText({ label, measured: cell.raw_score, score: cell.score, capped: cell.capped, capLevel: cell.cap_level, breaches: cell.breaches, dims: dimsOf(cell), records: cell.records_checked, rules: cell.rules_measured, coverage: cell.coverage, lowConfidence: cell.low_confidence });
   const href = `/o/${systemSlug(system.name)}/${moduleSlug(cell.module)}${fixtureRun ? `?run=${fixtureRun}` : ""}`;
   return (
@@ -53,16 +78,7 @@ function ObjectRow({ system, cell, label, current, fixtureRun, trend }: { system
           lowConfidence={cell.low_confidence}
           showScore={false}
         />
-        {trend.filter((v) => v != null).length > 1 ? (
-          <Sparkline
-            values={trend}
-            width={48}
-            height={8}
-            domain={domain}
-            label={t("{label}, measured score over the last {count} runs: {first} to {last}", { label, count: trend.length, first: f1(trend.find((v) => v != null) ?? null), last: f1([...trend].reverse().find((v) => v != null) ?? null) })}
-            testId="map-spark"
-          />
-        ) : null}
+        <ScoreTrend trend={trend} label={label} />
       </span>
     </V2Link>
   );
@@ -74,12 +90,7 @@ function ObjectRow({ system, cell, label, current, fixtureRun, trend }: { system
  * 8 pixels; the ruler beside it carries the level.
  */
 function SystemObjects({ system, landscape, cells, pathname, run }: { system: LandscapeSystem; landscape: Landscape; cells: LandscapeCell[]; pathname: string; run: string | null }) {
-  const timeline = useTimeline(system.id, 8).data?.runs;
-  const trends = useMemo(() => {
-    const out = new Map<string, (number | null)[]>();
-    for (const c of cells) out.set(c.module, (timeline ?? []).map((r) => r.objects[c.module]?.raw_score ?? r.objects[c.module]?.score ?? null));
-    return out;
-  }, [timeline, cells]);
+  const trends = useTrends(system.id, cells.map((c) => c.module));
   return (
     <>
       {cells.map((c) => {

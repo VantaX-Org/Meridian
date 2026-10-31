@@ -25,8 +25,9 @@ export const STAGES: { value: WaveStage; label: string }[] = [
   { value: "cutover", get label() { return t("Cutover"); } },
 ];
 
-/** `?open=waves`: which objects move in which wave, and when. Changing waves needs the analyse permission. */
-export function WavesPanel({ onClose }: { onClose: () => void }) {
+/** `?open=waves`: which objects move in which wave, and when. `?open=waves:{id}` opens that wave first, its gate
+ * on top, the others collapsed. Changing waves needs the analyse permission. */
+export function WavesPanel({ id = "", onClose }: { id?: string; onClose: () => void }) {
   const qc = useQueryClient();
   const session = useV2Session();
   const run0 = useRunParam();
@@ -42,6 +43,8 @@ export function WavesPanel({ onClose }: { onClose: () => void }) {
   const [fresh, setFresh] = useState({ name: "", date: "", stage: "plan" as WaveStage });
   const [removing, setRemoving] = useState<string | null>(null);
   const list = sortWaves(waves.data ?? []);
+  const chosen = list.some((w) => w.id === id) ? id : "";
+  const shown = chosen ? [...list.filter((w) => w.id === chosen), ...list.filter((w) => w.id !== chosen)] : list;
   const objects = landscape.data?.objects ?? [];
   const current = (module: string): string => choice[module] ?? waveOf(module, list)?.id ?? "";
   const modulesChanged = reassign(list, Object.fromEntries(Object.entries(choice).filter(([m, id]) => (waveOf(m, list)?.id ?? "") !== id)));
@@ -90,8 +93,10 @@ export function WavesPanel({ onClose }: { onClose: () => void }) {
       {waves.isError ? <ErrorFrame onRetry={() => void waves.refetch()}>{t("The waves could not be read.")}</ErrorFrame> : null}
       {waves.isLoading ? <Skeleton width="100%" height={100} /> : null}
       {waves.isSuccess && list.length === 0 ? <EmptyFrame>{t("No wave exists yet. Add the first one below, then assign objects to it.")}</EmptyFrame> : null}
-      {list.map((w) => (
-        <div key={w.id} className="m2-aform" style={{ marginBottom: "var(--m2-s4)", paddingBottom: "var(--m2-s3)", borderBottom: "1px solid var(--m2-rule)" }} role="group" aria-label={t("Wave {name}", { name: w.name })}>
+      {shown.map((w) => {
+        const gate = <WaveGateEditor waveId={w.id} />;
+        const form = (
+        <div className="m2-aform" style={{ marginBottom: "var(--m2-s4)", paddingBottom: "var(--m2-s3)", borderBottom: "1px solid var(--m2-rule)" }} role="group" aria-label={t("Wave {name}", { name: w.name })}>
           <label>
             {t("Name")}
             <input value={names[w.id] ?? w.name} disabled={!allowed} onChange={(e) => setNames({ ...names, [w.id]: e.target.value })} />
@@ -118,7 +123,7 @@ export function WavesPanel({ onClose }: { onClose: () => void }) {
               {pending === `signoff:${w.id}` ? t("Signing off…") : t("Sign off {name}", { name: w.name })}
             </button>
           ) : null}
-          <WaveGateEditor waveId={w.id} />
+          {w.id === chosen ? null : gate}
           <details className="m2-ct" data-testid="wave-certificate">
             <summary>{t("Readiness certificate")}</summary>
             <CertificateBlock waveId={w.id} waveName={w.name} />
@@ -129,7 +134,15 @@ export function WavesPanel({ onClose }: { onClose: () => void }) {
             </button>
           ) : null}
         </div>
-      ))}
+        );
+        if (!chosen || w.id === chosen) return <div key={w.id}>{w.id === chosen ? gate : null}{form}</div>;
+        return (
+          <details key={w.id} className="m2-ct">
+            <summary>{w.name}</summary>
+            {form}
+          </details>
+        );
+      })}
       {allowed ? (
         <>
           <h3>{t("Add a wave")}</h3>

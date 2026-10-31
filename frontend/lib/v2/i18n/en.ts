@@ -1600,7 +1600,6 @@ export const en = {
   "{go} go, {at_risk} at risk, {no_go} no-go": "{go} go, {at_risk} at risk, {no_go} no-go",
   "No object is assigned to this wave yet.": "No object is assigned to this wave yet.",
   "the score of {label}": "the score of {label}",
-  "{name}: {go} go, {counts} at risk, {counts2} no-go": "{name}: {go} go, {counts} at risk, {counts2} no-go",
   "{records_checked} records checked, {rules_measured} rules measured": "{records_checked} records checked, {rules_measured} rules measured",
   "Record": "Record",
   "Problem": "Problem",
@@ -2747,7 +2746,6 @@ export const en = {
   "Contracts met": "Contracts met",
   "Save the gate": "Save the gate",
   "Readiness certificate: {value}.": "Readiness certificate: {value}.",
-  "a draft is ready": "a draft is ready",
   "not yet": "not yet",
   "{s} seconds": "{s} seconds",
   "{value} minutes": "{value} minutes",
@@ -3097,7 +3095,6 @@ export const en = {
   "{l1Id} step {number}": "{l1Id} step {number}",
   "A step is blocked when a field it writes fails a critical or high rule, or passes under 70%. Failing counts are records, and a record can fail several rules.": "A step is blocked when a field it writes fails a critical or high rule, or passes under 70%. Failing counts are records, and a record can fail several rules.",
   "The readiness of {label} could not be read for this run.": "The readiness of {label} could not be read for this run.",
-  "Wave threshold {threshold}": "Wave threshold {threshold}",
   "The migration waves could not be read.": "The migration waves could not be read.",
   "Open migration waves": "Open migration waves",
   "{label} is not in a migration wave yet. A lead adds it to a wave, and its verdict appears here.": "{label} is not in a migration wave yet. A lead adds it to a wave, and its verdict appears here.",
@@ -4575,6 +4572,10 @@ export const en = {
   "Welcome to {product}, {name}": "Welcome to {product}, {name}",
   "Your objects are on the map; the approvals waiting for you are on Work.": "Your objects are on the map; the approvals waiting for you are on Work.",
   "Your work starts on Work: the records to fix, the ones that hold the most back first.": "Your work starts on Work: the records to fix, the ones that hold the most back first.",
+  "Gate: min score {score}": "Gate: min score {score}",
+  "No readiness score in this wave's run": "No readiness score in this wave's run",
+  "Readiness and records blocked are not shown: no migration run has a readiness score for {label} yet. The verdict comes from its blocking gaps and its score.": "Readiness and records blocked are not shown: no migration run has a readiness score for {label} yet. The verdict comes from its blocking gaps and its score.",
+  "Compare with last month": "Compare with last month",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

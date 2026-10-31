@@ -182,7 +182,7 @@ function gateOf(waveId: string, name: string, modules: string[], s: State): Wave
     const below = cells.filter((c) => c.score !== null && c.score < (gate.min_score ?? 0)).map((c) => label(c.module));
     const missing = modules.filter((m) => !cells.some((c) => c.module === m)).map(label);
     const ok = !below.length && !missing.length;
-    checks.push({ key: "min_score", label: `Every object at ${gate.min_score.toFixed(1)} or more`, passed: ok, detail: ok ? `Every object is at or above ${gate.min_score.toFixed(1)}.` : [below.length ? `below ${gate.min_score.toFixed(1)}: ${below.join(", ")}` : "", missing.length ? `not measured: ${missing.join(", ")}` : ""].filter(Boolean).join("; ") });
+    checks.push({ key: "min_score", label: `Gate: min score ${gate.min_score.toFixed(1)}`, passed: ok, detail: ok ? `Every object is at or above ${gate.min_score.toFixed(1)}.` : [below.length ? `below ${gate.min_score.toFixed(1)}: ${below.join(", ")}` : "", missing.length ? `not measured: ${missing.join(", ")}` : ""].filter(Boolean).join("; ") });
   }
   if (gate.zero_criticals) {
     const crit = cells.filter((c) => c.breaches.length).map((c) => label(c.module));

@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { formatDate } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
+import { ANY_SYSTEM, moduleSlug } from "@/lib/v2/score";
 import { downloadCertificate, gateRefusalOf, issueCertificate, signCertificate, type CertificateList, type CertVersion, type GateRefusal } from "@/lib/api/v2/step9";
 import { useWaves } from "@/lib/v2/admin-queries";
 import { failureText } from "@/lib/v2/errors";
@@ -43,7 +44,9 @@ function Refusal({ r }: { r: GateRefusal }) {
       <ul className="m2-cert-sig">
         {r.objects.map((o) => (
           <li key={o.module}>
-            <b>{moduleText(o.module)}</b>
+            <V2Link href={`/o/${ANY_SYSTEM}/${moduleSlug(o.module)}`}>
+              <b>{moduleText(o.module)}</b>
+            </V2Link>
             <span>{o.reason === "never measured" ? t("never measured") : t("critical rules over tolerance")}</span>
             {(o.rules ?? []).map((id) => (
               <V2Link key={id} href={hrefFor({ kind: "rule", id })} className="m2-mono">

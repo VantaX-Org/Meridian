@@ -166,6 +166,13 @@ describe("Compare with: the default partner", () => {
     renderWithQuery(<CompareControl id="bp2" runs={runs} />);
     expect(screen.getByLabelText("Compare with")).toHaveValue("bp1");
   });
+
+  it("offers the run of the same objects a month before in one click", async () => {
+    const { CompareControl } = await import("../screens/Run");
+    const runs = [run("bp0", "2026-09-20T04:00:00Z", ["business_partner"]), run("mm0", "2026-09-25T04:00:00Z", ["material_master"]), run("bp1", "2026-10-20T04:00:00Z", ["business_partner"]), run("bp2", "2026-10-30T04:15:00Z", ["business_partner"])];
+    renderWithQuery(<CompareControl id="bp2" runs={runs} />);
+    expect(screen.getByRole("link", { name: "Compare with last month" })).toHaveAttribute("href", expect.stringContaining("/run/bp0/vs/bp2"));
+  });
 });
 
 describe("the trigger of a run", () => {

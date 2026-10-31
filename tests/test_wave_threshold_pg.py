@@ -45,7 +45,7 @@ async def test_readiness_cockpit_and_gate_read_the_same_number(monkeypatch):
             assert cockpit["threshold"] == 85.0
             gates = {g["wave_id"]: g for g in (await client.get("/api/v1/migration/waves/gates", headers=H)).json()["gates"]}
             assert gates[w1]["gate"]["min_score"] == 85.0
-            assert gates[w1]["status"]["checks"][0]["label"] == "Every object at 85.0 or more"
+            assert gates[w1]["status"]["checks"][0]["label"] == "Gate: min score 85.0"
             listed = {x["id"]: x for x in (await client.get("/api/v1/migration/waves", headers=H)).json()["waves"]}
             assert str(listed[w1]["id"]) == w1
             with seed.tenant_conn(eng, w["tid"]) as c:

@@ -16,7 +16,7 @@ export type OpenKind = "record" | "rule" | "run" | "system" | "feature" | "job" 
 export type Step10Kind = "policypack" | "digest";
 /** Step 9: a webhook (`webhook:<id>` or `webhook:new`), one delivery (`delivery:<webhook id>:<delivery id>`) and a wave's readiness certificate (`certificate:<wave id>`). */
 export type Step9Kind = "webhook" | "delivery" | "certificate";
-/** The administration, report and panel kinds: `?open=user:<id>` and so on. `preferences`, `help` and `waves` carry no id. */
+/** The administration, report and panel kinds: `?open=user:<id>` and so on. `preferences` and `help` carry no id; `waves` may name one wave (`waves:<id>`). */
 export type AdminKind = "user" | "role" | "apikey" | "audit" | "channel" | "mapping" | "report" | "schedule" | "preferences" | "help" | "waves" | RoleKind;
 /** Step 6c: a data contract (`contract:<id>`), and the bare panels: contracts, balance work, out of office. */
 export type RoleKind = "contract" | "contracts" | "balance" | "away";
@@ -27,7 +27,7 @@ export interface OpenItem {
   id: string;
 }
 
-const KINDS: readonly OpenKind[] = ["record", "rule", "run", "system", "feature", "job", "batch", "person", "golden", "term", "step", "user", "role", "apikey", "audit", "channel", "mapping", "report", "schedule", "connection", "config", "syncschedule", "zobject", "survivorship", "contract", "webhook", "delivery", "certificate", "policypack", "digest"];
+const KINDS: readonly OpenKind[] = ["record", "rule", "run", "system", "feature", "job", "batch", "person", "golden", "term", "step", "user", "role", "apikey", "audit", "channel", "mapping", "report", "schedule", "connection", "config", "syncschedule", "zobject", "survivorship", "contract", "webhook", "delivery", "certificate", "policypack", "digest", "waves"];
 
 /** Parses `?open=<kind>:<id>`. The id may itself contain colons (a record id is module:key). Null for anything else. */
 export function parseOpen(value: string | null | undefined): OpenItem | null {

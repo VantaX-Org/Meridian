@@ -21,7 +21,7 @@ import { IconCheck, VerdictMark } from "../marks";
 import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { Ruler } from "../Ruler";
 import { ProcessNextStep } from "./object/ProcessNext";
-import { dimsOf } from "../shell/MapPane";
+import { dimsOf, ScoreTrend, useTrends } from "../shell/MapPane";
 import { GateMark } from "../inspector/governance";
 import { ToolGrid } from "../GridTools";
 import { contractMark } from "@/lib/v2/step9";
@@ -205,6 +205,7 @@ function CellLink({ system, cell, label, selected, run }: { system: LandscapeSys
   const href = `/o/${systemSlug(system.name)}/${moduleSlug(cell.module)}${run ? `?run=${run}` : ""}`;
   const mark = contractMark(cell);
   const pmark = policyMark(cell);
+  const trend = useTrends(system.id, [cell.module]).get(cell.module) ?? [];
   return (
     <V2Link
       href={href}
@@ -232,6 +233,7 @@ function CellLink({ system, cell, label, selected, run }: { system: LandscapeSys
         contract={mark}
         policy={pmark}
       />
+      <ScoreTrend trend={trend} label={label} />
       <span className="m2-cell-vd m2-v">
         <VerdictMark verdict={cell.verdict} />
         {VERDICT_LABEL[cell.verdict]}
@@ -264,7 +266,7 @@ function WaveHeadText({ group }: { group: WaveGroup }) {
         <>
           {" "}
           <GateMark waveId={w.id} />{" "}
-          <V2Link href={hrefFor({ kind: "waves", id: "" })} aria-label={t("Edit {name}", { name: w.name })}>
+          <V2Link href={hrefFor({ kind: "waves", id: w.id })} aria-label={t("Edit {name}", { name: w.name })}>
             {t("Edit")}
           </V2Link>{" "}
           <V2Link href={hrefFor({ kind: "certificate", id: w.id })} aria-label={t("Readiness certificate of {name}", { name: w.name })} data-testid="wave-certificate-link">
@@ -313,6 +315,30 @@ export function Coverage({ landscape, run, view = "systems", waves = [] }: { lan
   // Rows rank by the lowest measured score of the object on the systems shown, so objects the cap ties still rank.
   const rank = new Map(byMeasured(visible).map((c, i) => [c.module, i] as const));
   const objectsByMeasured = [...landscape.objects].sort((a, b) => (rank.get(a.module) ?? 1e9) - (rank.get(b.module) ?? 1e9));
+  // At phone width the cells are a list; by wave, each wave's heading (gate, Edit, Certificate) leads its cells (F35).
+  const phoneCells = byMeasured(landscape.cells).filter((c) => !chosen || systemSlug(landscape.systems.find((s) => s.id === c.system_id)?.name ?? "") === chosen);
+  const phoneRow = (c: LandscapeCell) => {
+            const s = landscape.systems.find((x) => x.id === c.system_id);
+            const label = landscape.objects.find((o) => o.module === c.module)?.label ?? c.module;
+            if (!s) return null;
+            return (
+              <V2Link key={`${c.system_id}:${c.module}`} href={`/o/${systemSlug(s.name)}/${moduleSlug(c.module)}${run ? `?run=${run}` : ""}`} className="m2-lrow" onClick={() => rememberCell(`${s.id}:${c.module}`)}>
+                <span>{label}</span>
+                <span className="m2-v">
+                  <VerdictMark verdict={c.verdict} />
+                  {VERDICT_LABEL[c.verdict]}
+                </span>
+                <span className="m2-c">
+                  <Ruler size={48} dims={dimsOf(c)} measured={c.raw_score} score={c.score} capped={c.capped} capLevel={c.cap_level} breaches={c.breaches} label={label} records={c.records_checked} rules={c.rules_measured} coverage={c.coverage} lowConfidence={c.low_confidence} contract={contractMark(c)} policy={policyMark(c)} />
+                </span>
+                <span className="m2-c">
+                  {t("{records_checked} records checked, {rules_measured} rules measured", { records_checked: int(c.records_checked), rules_measured: int(c.rules_measured) })}
+                  {c.low_confidence ? <span className="m2-lcm">{t("low coverage")}</span> : null}
+                  {landscape.systems.length > 1 ? `, ${s.name}` : ""}
+                </span>
+              </V2Link>
+            );
+  };
   return (
     <section className="m2-sec" aria-label={t("Coverage matrix")}>
       <div className="m2-sechead">
@@ -383,35 +409,16 @@ export function Coverage({ landscape, run, view = "systems", waves = [] }: { lan
         </table>
       </div>
       <div className="m2-mlist">
-        {groups ? (
-          <p className="m2-prov" data-testid="wave-list-note">
-            {groups.map((g) => t("{name}: {go} go, {counts} at risk, {counts2} no-go", { name: g.wave?.name ?? t("Not in a wave"), go: g.counts.go, counts: g.counts["at-risk"], counts2: g.counts["no-go"] })).join(". ")}.
-          </p>
-        ) : null}
-        {byMeasured(landscape.cells)
-          .filter((c) => !chosen || systemSlug(landscape.systems.find((s) => s.id === c.system_id)?.name ?? "") === chosen)
-          .map((c) => {
-            const s = landscape.systems.find((x) => x.id === c.system_id);
-            const label = landscape.objects.find((o) => o.module === c.module)?.label ?? c.module;
-            if (!s) return null;
-            return (
-              <V2Link key={`${c.system_id}:${c.module}`} href={`/o/${systemSlug(s.name)}/${moduleSlug(c.module)}${run ? `?run=${run}` : ""}`} className="m2-lrow" onClick={() => rememberCell(`${s.id}:${c.module}`)}>
-                <span>{label}</span>
-                <span className="m2-v">
-                  <VerdictMark verdict={c.verdict} />
-                  {VERDICT_LABEL[c.verdict]}
-                </span>
-                <span className="m2-c">
-                  <Ruler size={48} dims={dimsOf(c)} measured={c.raw_score} score={c.score} capped={c.capped} capLevel={c.cap_level} breaches={c.breaches} label={label} records={c.records_checked} rules={c.rules_measured} coverage={c.coverage} lowConfidence={c.low_confidence} contract={contractMark(c)} policy={policyMark(c)} />
-                </span>
-                <span className="m2-c">
-                  {t("{records_checked} records checked, {rules_measured} rules measured", { records_checked: int(c.records_checked), rules_measured: int(c.rules_measured) })}
-                  {c.low_confidence ? <span className="m2-lcm">{t("low coverage")}</span> : null}
-                  {landscape.systems.length > 1 ? `, ${s.name}` : ""}
-                </span>
-              </V2Link>
-            );
-          })}
+        {groups
+          ? groups.map((g) => (
+              <Fragment key={g.wave?.id ?? "none"}>
+                <p className="m2-prov" data-testid="wave-head-list">
+                  <WaveHeadText group={g} />
+                </p>
+                {phoneCells.filter((c) => g.modules.includes(c.module)).map(phoneRow)}
+              </Fragment>
+            ))
+          : phoneCells.map(phoneRow)}
       </div>
       {groups ? <WavesByValue /> : null}
     </section>
