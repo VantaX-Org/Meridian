@@ -43,6 +43,8 @@ export const LEGACY_ACTION_MAP: Readonly<Record<string, readonly Pair[]>> = {
   manage_settings: [["analysis", "admin"], ["reports", "admin"], ["rules", "admin"]],
   // Triage teams, assignment rules and SLA policies; business hours and holidays stay manage_settings.
   manage_triage: [["stewardship", "admin"]],
+  // Approval workflow definitions (api/routes/workflows.py): create, version and activate; the administrator only.
+  manage_workflows: [["fixes", "admin"]],
   manage_llm: [["llm", "admin"]],
   manage_users: [["users", "admin"]],
   view_audit: [["audit", "view"], ["audit", "export"]],
