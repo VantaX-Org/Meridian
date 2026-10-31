@@ -175,6 +175,11 @@ export function cleaningRead(path: string, params: Record<string, unknown> = {})
     const items = DEDUP.map(([c]) => c).filter((c) => !merged.has(c.id));
     return { items, total: items.length, page: 1, per_page: 50 };
   }
+  if (path === "/cleaning/export-options") {
+    const all = [...new Map([...proposals(), ...applied()].map((r) => [r.id, r])).values()];
+    const count = (key: "object_type" | "status") => [...new Set(all.map((r) => r[key]))].sort().map((value) => ({ value, count: all.filter((r) => r[key] === value).length }));
+    return { object_types: count("object_type"), statuses: count("status") };
+  }
   if (path === "/cleaning/audit") {
     const items = [
       ...extraAudit,

@@ -7,11 +7,27 @@
  *   GET  /cleaning/queue?status=applied        (the applied proposals; each can be rolled back until its deadline)
  *   GET  /cleaning/audit                       (every decision on a proposal, newest first; needs the export permission)
  *   POST /cleaning/rollback/{id}               (needs the apply permission)
+ *   GET  /cleaning/export-options              (the objects and statuses in the queue with counts; needs export)
+ *   GET  /cleaning/export/{format}?status=     (the load file: csv, xlsx, lsmw, bapi, idoc or sf_csv; needs export)
  *   GET  /dedup/candidates                     (pairs the cleaning engine found to be the same record, still pending)
  *   POST /dedup/preview                        (the fields of both records side by side)
  *   POST /dedup/merge                          (keeps the survivor and merges the other into it; needs approve and a reason)
  */
 import { v2Get, v2Send } from "./client";
+import { v2Download } from "./download";
+
+export interface ExportOptions {
+  object_types: { value: string; count: number }[];
+  statuses: { value: string; count: number }[];
+}
+export const getExportOptions = (): Promise<ExportOptions> => v2Get("/cleaning/export-options");
+
+export const EXPORT_FORMATS = ["csv", "xlsx", "lsmw", "bapi", "idoc", "sf_csv"] as const;
+export type ExportFormat = (typeof EXPORT_FORMATS)[number];
+const EXT: Record<ExportFormat, string> = { csv: "csv", xlsx: "xlsx", lsmw: "txt", bapi: "json", idoc: "json", sf_csv: "csv" };
+/** Saves the load file for one status, across all objects unless one is named. Returns the saved file name. */
+export const exportCleaning = (format: ExportFormat, status: string, objectType?: string): Promise<string> =>
+  v2Download(`/cleaning/export/${format}`, { status, object_type: objectType }, `cleaning-${status}-${objectType || "all"}.${EXT[format]}`);
 
 export interface CleaningMetric {
   period: string;

@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { errorSentence } from "@/lib/api/v2/client";
 import {
-  applyProposal, approveGroup, approveProposal, CONFIDENT, getAppliedCleaning, getDedupCandidates, mergeDedup, previewDedup, getCleaningAudit, getCleaningGroups, getCleaningMetrics, getProposals, rejectProposal,
+  applyProposal, approveGroup, EXPORT_FORMATS, exportCleaning, getExportOptions, type ExportFormat, approveProposal, CONFIDENT, getAppliedCleaning, getDedupCandidates, mergeDedup, previewDedup, getCleaningAudit, getCleaningGroups, getCleaningMetrics, getProposals, rejectProposal,
   rollbackCleaning, sendAiFeedback, WAITING, type CleaningGroup, type CleaningItem, type CleaningMetric, type DedupCandidate, type Proposal, type RecordData,
 } from "@/lib/api/v2/cleaning";
 import { useFixture } from "@/lib/api/v2/fixture";
@@ -18,6 +18,7 @@ import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { useToast } from "../Toast";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { ScrollFrame } from "./object/ScrollFrame";
+import { Fld } from "../admin/kit";
 
 /**
  * Cleansing: what the cleaning engine proposed, what was applied to SAP and what was undone. The weekly task stores a
@@ -146,6 +147,7 @@ export function Cleansing() {
       </div>
 
       <Rollbacks query={queue} />
+      <Export />
 
       <Panel title={t("Audit trail")} meta={audit.data ? t("The last {n} decisions", { n: int(audit.data.items.length) }) : undefined} testId="cleansing-audit">
         {audit.isPending ? <Skeleton width="100%" height={120} /> : status(audit.error) === 403 ? (
@@ -595,6 +597,63 @@ function Changes({ item }: { item: CleaningItem }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+const FORMAT: Record<ExportFormat, () => string> = {
+  csv: () => t("CSV for review, with the record key"),
+  xlsx: () => t("Excel for review, one sheet per object"),
+  lsmw: () => t("LSMW load file"),
+  bapi: () => t("BAPI calls (JSON)"),
+  idoc: () => t("IDoc segments (JSON)"),
+  sf_csv: () => t("SuccessFactors import CSV"),
+};
+
+/** The corrected records as a file to review or to load into SAP, for one status and one object or all of them. */
+function Export() {
+  const { can } = useV2Session();
+  const allowed = can("export");
+  const fixture = useFixture();
+  const toast = useToast();
+  const opts = useQuery({ queryKey: ["cleaning", fixture, "export-options"], queryFn: getExportOptions, enabled: allowed, staleTime: 60_000 });
+  const [picked, setPicked] = useState<string | null>(null);
+  const [object, setObject] = useState("");
+  const [format, setFormat] = useState<ExportFormat>("xlsx");
+  const save = useMutation({
+    mutationFn: (st: string) => exportCleaning(format, st, object || undefined),
+    onSuccess: (name) => toast.show(t("Saved {name}.", { name })),
+    onError: (e) => toast.show(errorSentence(e, t("The file could not be built.")), "error"),
+  });
+  if (!allowed) return null;
+  const statuses = opts.data?.statuses ?? [];
+  const st = picked ?? (statuses.find((x) => x.value === "approved") ?? statuses[0])?.value ?? "";
+  const label = (v: string) => ACTION[v]?.() ?? labelText(v);
+  return (
+    <Panel title={t("Export the corrected records")} meta={t("A file to review, or to load into SAP with LSMW, a BAPI or IDocs. Nothing changes in SAP until the file is loaded.")} testId="cleansing-export">
+      {opts.isPending ? <Skeleton width="100%" height={60} /> : opts.isError ? <Dash why={t("The export options could not be read.")} /> : statuses.length === 0 ? (
+        <EmptyFrame>{t("The cleansing queue is empty, so there is nothing to export.")}</EmptyFrame>
+      ) : (
+        <form className="m2-fbar" aria-label={t("Export the corrected records")} onSubmit={(e) => { e.preventDefault(); save.mutate(st); }}>
+          <Fld label={t("Status")}>
+            <select value={st} onChange={(e) => setPicked(e.target.value)}>
+              {statuses.map((x) => <option key={x.value} value={x.value}>{t("{label} ({n})", { label: label(x.value), n: int(x.count) })}</option>)}
+            </select>
+          </Fld>
+          <Fld label={t("Object")}>
+            <select value={object} onChange={(e) => setObject(e.target.value)}>
+              <option value="">{t("All objects")}</option>
+              {(opts.data?.object_types ?? []).map((x) => <option key={x.value} value={x.value}>{t("{label} {code} ({n})", { label: moduleText(x.value), code: x.value, n: int(x.count) })}</option>)}
+            </select>
+          </Fld>
+          <Fld label={t("Format")}>
+            <select value={format} onChange={(e) => setFormat(e.target.value as ExportFormat)}>
+              {EXPORT_FORMATS.map((f) => <option key={f} value={f}>{FORMAT[f]()}</option>)}
+            </select>
+          </Fld>
+          <button type="submit" className="m2-btn" disabled={!st || save.isPending}>{save.isPending ? t("Building the file…") : t("Download")}</button>
+        </form>
+      )}
+    </Panel>
   );
 }
 

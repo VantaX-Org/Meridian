@@ -6487,6 +6487,20 @@ export const en = {
   "The steward assignments": "The steward assignments",
   "The template": "The template",
   "Who stewards each object and slice now, and whether the template or a person set it.": "Who stewards each object and slice now, and whether the template or a person set it.",
+  "{label} ({n})": "{label} ({n})",
+  "{label} {code} ({n})": "{label} {code} ({n})",
+  "A file to review, or to load into SAP with LSMW, a BAPI or IDocs. Nothing changes in SAP until the file is loaded.": "A file to review, or to load into SAP with LSMW, a BAPI or IDocs. Nothing changes in SAP until the file is loaded.",
+  "BAPI calls (JSON)": "BAPI calls (JSON)",
+  "Building the file…": "Building the file…",
+  "CSV for review, with the record key": "CSV for review, with the record key",
+  "Excel for review, one sheet per object": "Excel for review, one sheet per object",
+  "Export the corrected records": "Export the corrected records",
+  "IDoc segments (JSON)": "IDoc segments (JSON)",
+  "LSMW load file": "LSMW load file",
+  "SuccessFactors import CSV": "SuccessFactors import CSV",
+  "The cleansing queue is empty, so there is nothing to export.": "The cleansing queue is empty, so there is nothing to export.",
+  "The export options could not be read.": "The export options could not be read.",
+  "The file could not be built.": "The file could not be built.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
