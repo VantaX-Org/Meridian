@@ -6,6 +6,7 @@
                                            ``wave`` and ``verdict`` narrow it to a migration wave's (no-go) objects
   GET  /work/records/{module}/{key}        one record: every failing check, current and suggested value, status
   GET  /work/search                        a record by key or name, across objects
+  GET  /work/exceptions/export             every signed-off record of the filter (not the page), with the count
   POST /work/decide                        accept / edit / not an issue / undo / assign, for records
   POST /work/groups/{check_id}/accept-all  every machine-proposed value of a group, into my draft batch
 
@@ -1647,6 +1648,94 @@ async def export_sheet(
         sheets=[SheetSpec(title=SHEET, rows=items, columns=columns, note=_FILL_NOTE)],
     )
     return xlsx_response(data, xlsx_filename("fix-sheet", vid))
+
+
+_EXCEPTIONS_SQL = """
+    SELECT w.module, w.record_key, w.name, ri.check_id, ri.resolution, e.note,
+           COALESCE(NULLIF(u.name, ''), e.user_label) AS signed_by, ri.resolved_at
+      FROM work_records w
+      JOIN record_issues ri ON ri.tenant_id = w.tenant_id AND ri.scope = w.scope AND ri.record_key = w.record_key
+                           AND ri.check_id = ANY(w.checks) AND ri.status = 'accepted'
+                           AND ri.resolution IN ('false_positive', 'accepted_risk')
+      LEFT JOIN LATERAL (SELECT ev.note, ev.user_id, ev.user_label FROM record_issue_events ev
+                          WHERE ev.issue_id = ri.id AND ev.tenant_id = ri.tenant_id AND ev.action = 'status'
+                            AND ev.to_value = 'accepted' ORDER BY ev.created_at DESC LIMIT 1) e ON true
+      LEFT JOIN users u ON u.id = e.user_id AND u.tenant_id = ri.tenant_id
+     WHERE {where}
+     ORDER BY w.module, w.record_key, ri.check_id
+     LIMIT :lim"""
+
+_RESOLUTION = {"false_positive": "Not an issue", "accepted_risk": "Accepted risk"}
+
+
+@router.get("/exceptions/export")
+async def export_exceptions(
+    request: Request,
+    version_id: Optional[uuid.UUID] = None,
+    module: Optional[str] = None,
+    check_id: Optional[str] = None,
+    severity: Optional[str] = Query(None, pattern="^(critical|high|medium|low|blocking)$"),
+    assigned: Optional[str] = None,
+    part: Optional[str] = Query(None, max_length=200),
+    system: Optional[str] = Query(None, max_length=100),
+    policy: Optional[str] = Query(None, max_length=100, description="a policy pack or pack:class (sox:vendor_bank)"),
+    q: Optional[str] = Query(None, max_length=200),
+    wave: Optional[uuid.UUID] = Query(None, description=_WAVE_DESC),
+    verdict: Optional[str] = Query(None, pattern=_VERDICT_PATTERN, description=_VERDICT_DESC),
+    scope: WorkScope = _SCOPE,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _perm: str = Depends(require_permission("export")),
+):
+    """Every record signed off as not an issue or an accepted risk under the filter of /work/records (status
+    not_an_issue), not the page on screen: one row per record and rule with the decision, the reason, who signed it
+    off and when. The record count is on the cover and in ``X-Record-Count``, the row count in ``X-Row-Count``
+    (``X-Row-Cap`` is set when the sheet was cut at the workbook's row cap). Audited."""
+    from api.services import fix_sheet as fs
+    from api.services.branded_xlsx import ROW_CAP, ColumnSpec, SheetSpec, build_workbook, xlsx_filename
+    from api.services.rbac import write_audit
+
+    await _rls(db, tenant)
+    sel = await _rows(db, tenant, version_id, scope)
+    where, p = _records_where(tenant, sel, request, module, check_id, severity, "not_an_issue", assigned, None, q,
+                              None, part, system, None, policy)
+    wclauses, wp, _wave = await _wave_filter(db, tenant, wave, verdict)
+    where += wclauses
+    p.update(wp)
+    records = int((await db.execute(text(f"SELECT count(*) FROM work_records w WHERE {' AND '.join(where)}"), p)).scalar()
+                  or 0)
+    rows = [dict(r) for r in (await db.execute(text(_EXCEPTIONS_SQL.format(where=" AND ".join(where))),
+                                               {**p, "lim": ROW_CAP + 1})).mappings().all()]
+    capped = len(rows) > ROW_CAP
+    rows = rows[:ROW_CAP]
+    for r in rows:
+        r.update(object_name=module_label(r["module"]), record_text=fs.readable_key(r["record_key"]),
+                 decision=_RESOLUTION.get(r["resolution"], r["resolution"]))
+    cols = [ColumnSpec(key="object_name", header="Object name"), ColumnSpec(key="record_text", header="Record"),
+            ColumnSpec(key="name", header="Name"), ColumnSpec(key="check_id", header="Rule", kind="mono"),
+            ColumnSpec(key="decision", header="Decision"), ColumnSpec(key="note", header="Reason"),
+            ColumnSpec(key="signed_by", header="Signed off by"),
+            ColumnSpec(key="resolved_at", header="Signed off at", kind="datetime"),
+            ColumnSpec(key="record_key", header="Record key", kind="mono", muted=True)]
+    note = (f"{records} {'record is' if records == 1 else 'records are'} signed off under this filter; this sheet "
+            f"holds all of them, {len(rows)} {'row' if len(rows) == 1 else 'rows'} (one per record and rule).")
+    if capped:
+        note = (f"{records} records are signed off under this filter; the sheet stops at {ROW_CAP} rows. Narrow the "
+                "filter to export the rest.")
+    vid = sel.vid or "current"
+    data = build_workbook(tenant_name=tenant.name, run_label=None, run_id=vid, title="Signed-off records",
+                          sheets=[SheetSpec(title="Signed off", rows=rows, columns=cols, note=note)])
+    await write_audit(db, tenant.id, request, "export.exceptions", "work", vid, None,
+                      {"records": records, "rows": len(rows), "capped": capped})
+    await db.commit()
+    headers = {"Content-Disposition": f'attachment; filename="{xlsx_filename("signed-off-records", vid)}"',
+               "X-Record-Count": str(records), "X-Row-Count": str(len(rows)),
+               "Access-Control-Expose-Headers": "X-Record-Count, X-Row-Count, X-Row-Cap"}
+    if capped:
+        headers["X-Row-Cap"] = str(ROW_CAP)
+    from fastapi.responses import Response
+    return Response(content=data, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers=headers)
 
 
 _FILL_NOTE = ("Fill in New value (one of the Possible values, its code only), or pick a Decision (fix, not an issue, "
