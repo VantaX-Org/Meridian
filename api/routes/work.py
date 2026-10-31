@@ -1165,6 +1165,20 @@ async def _my_draft(db: AsyncSession, tenant: Tenant, request: Request) -> str:
     return bid
 
 
+async def _tell_owners(db: AsyncSession, tenant: Tenant, draft: Optional[str]) -> list:
+    """Values went into a draft batch: the owners of its objects (and their deputies) are told it waits, once per
+    batch and round (api/services/handoff_notices.py). Returns the emails to queue after the commit."""
+    if not draft:
+        return []
+    from api.services import handoff_notices
+    return await db.run_sync(lambda s: handoff_notices.batch_waiting(s, str(tenant.id), draft))
+
+
+def _dispatch(mails: list) -> None:
+    from api.services import handoff_notices
+    handoff_notices.dispatch(mails)
+
+
 async def _event(db, tenant: Tenant, request: Request, issue_ids: list[str], action: str, frm, to, note) -> None:
     if issue_ids:
         await db.execute(text("""
@@ -1190,7 +1204,9 @@ async def decide(
         "version_id": str(body.version_id) if body.version_id else None,
         "items": [{"module": d.module, "record_key": d.record_key, "check_id": d.check_id, "action": d.action,
                    "value": d.value, "assignee": d.assignee} for d in body.items]})
+    mails = await _tell_owners(db, tenant, out["draft_batch_id"])
     await db.commit()
+    _dispatch(mails)
     work_analytics.forget(tenant.id)
     return out
 
@@ -1401,7 +1417,9 @@ async def accept_all(
         await db.run_sync(lambda s: worklist.refresh(s, str(tenant.id), scope, [(check_id, k) for k, _i, _j in rows]))
     action_id = await rec.save(db, tenant, request, "accept_all", {"check_id": check_id, "version_id": vid,
                                                                    "records": len(rows)})
+    mails = await _tell_owners(db, tenant, draft if rows else None)
     await db.commit()
+    _dispatch(mails)
     work_analytics.forget(tenant.id)
     return {"accepted": len(rows), "draft_batch_id": draft, "action_id": action_id}
 
@@ -1478,7 +1496,9 @@ async def set_value(
         await db.run_sync(lambda s: worklist.refresh(s, str(tenant.id), scope, [(check_id, k) for k, _i, _j in rows]))
     action_id = await rec.save(db, tenant, request, "set_value", {"check_id": check_id, "version_id": vid,
                                                                   "value": body.value, "records": len(rows)})
+    mails = await _tell_owners(db, tenant, draft if rows else None)
     await db.commit()
+    _dispatch(mails)
     work_analytics.forget(tenant.id)
     return {"updated": len(rows), "draft_batch_id": draft, "action_id": action_id}
 
@@ -1800,9 +1820,11 @@ async def import_sheet(
             updated += out["updated"]
             rows_n += len(kept)
             draft = out["draft_batch_id"] or draft
+        mails = await _tell_owners(db, tenant, draft)
         await db.commit()
     except BaseException:
         await db.rollback()
         raise
+    _dispatch(mails)
     work_analytics.forget(tenant.id)
     return {"updated": updated, "draft_batch_id": draft, "rows": rows_n, "skipped": skipped[:50]}

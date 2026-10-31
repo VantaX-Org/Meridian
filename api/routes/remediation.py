@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _row, _rls, _where
-from api.services import attention, remediation, undo, webhooks, workflow, worklist
+from api.services import attention, handoff_notices, remediation, undo, webhooks, workflow, worklist
 from api.services.rbac import current_user_id, current_user_label, require_permission, scope_from_path
 
 router = APIRouter(prefix="/api/v1/remediation", tags=["remediation"])
@@ -136,6 +136,12 @@ async def _items(db: AsyncSession, batch_id) -> list[dict]:
 _auto_approvable = remediation.auto_approvable
 
 
+async def _tell_owners(db: AsyncSession, tenant: Tenant, batch_id) -> list:
+    """The batch waits for approval: its objects' owners and their deputies are told (inbox and email), once per
+    batch and round. Returns the emails to queue after the commit (api/services/handoff_notices.py)."""
+    return await db.run_sync(lambda s: handoff_notices.batch_waiting(s, str(tenant.id), str(batch_id)))
+
+
 async def _event(db, tenant, batch_id, action, request, item_ids=None, to_value=None):
     """One audit row per item (or one batch-level row when no items given)."""
     p = {"tid": str(tenant.id), "bid": str(batch_id), "action": action, "to": to_value,
@@ -190,7 +196,9 @@ async def create_batch(
     await db.run_sync(lambda s: notify_batch_waiting_sync(s, str(tenant.id), str(out["id"]), body.name,
                                                           [i["module"] for i in issues], uid))
     await db.run_sync(lambda s: webhooks.batch_event(s, str(tenant.id), str(out["id"]), "batch.waiting"))
+    mails = await _tell_owners(db, tenant, out["id"])
     await db.commit()
+    handoff_notices.dispatch(mails)
     return out
 
 
@@ -244,7 +252,9 @@ async def create_batch_from_cleaning(
     out = await db.run_sync(lambda s: remediation.store_batch(s, str(tenant.id), body.name, filt, items, uid, label))
     await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), out["id"]))
     await db.run_sync(lambda s: webhooks.batch_event(s, str(tenant.id), str(out["id"]), "batch.waiting"))
+    mails = await _tell_owners(db, tenant, out["id"])
     await db.commit()
+    handoff_notices.dispatch(mails)
     return out
 
 
@@ -272,7 +282,9 @@ async def create_batch_from_simulation(
     out = await db.run_sync(lambda s: remediation.store_batch(s, str(tenant.id), body.name, filt, items, uid, label))
     await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), out["id"]))
     await db.run_sync(lambda s: webhooks.batch_event(s, str(tenant.id), str(out["id"]), "batch.waiting"))
+    mails = await _tell_owners(db, tenant, out["id"])
     await db.commit()
+    handoff_notices.dispatch(mails)
     return out
 
 

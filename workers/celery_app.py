@@ -87,6 +87,7 @@ import workers.tasks.report_schedules  # noqa: F401 — scheduled reports (beat)
 import workers.tasks.webhooks  # outbound webhook deliveries (beat)
 import workers.tasks.workflows  # noqa: F401 — approval steps past due climb the escalation chain (beat)
 import workers.tasks.change_requests  # noqa: F401 — approved master data change requests written to SAP
+import workers.tasks.handoff_notices  # noqa: F401 — the emails of hand-off notices (batch waiting, approved, ...)
 import workers.tasks.fix_mining  # learned rules from stewards' fixes (beat)
 import workers.tasks.digests  # noqa: F401 — scheduled digests and executive mailouts (beat)
 import workers.scheduler  # noqa: F401, E402 — registers beat schedule

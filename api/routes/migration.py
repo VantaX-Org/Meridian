@@ -731,7 +731,10 @@ async def blocker_fix_batch(
     uid, label = current_user_id(request), current_user_label()
     out = await db.run_sync(lambda s: remediation.draft_batch(s, str(tenant.id), name, body.model_dump_json(),
                                                               issues, uid, label))
+    from api.services import handoff_notices  # the owners of its objects are told it waits (inbox and email)
+    mails = await db.run_sync(lambda s: handoff_notices.batch_waiting(s, str(tenant.id), str(out["id"])))
     await db.commit()
+    handoff_notices.dispatch(mails)
     return out
 
 
