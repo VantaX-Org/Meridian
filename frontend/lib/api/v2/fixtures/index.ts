@@ -29,6 +29,7 @@ import { insightsRead, NONE_INSIGHTS } from "./insights";
 import { analyticsRead, NONE_ANALYTICS } from "./analytics";
 import { NONE_S4, s4Read } from "./s4";
 import { NONE_SCORE, scoreRead } from "./score";
+import { designRead, designWrite, NONE_DESIGN } from "./design";
 import { linksRead, NONE_LINKS } from "./links";
 import { attentionRead, NONE_ATTENTION } from "./attention";
 import { materialsRead, NONE_MATERIALS } from "./materials";
@@ -137,6 +138,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (step9 !== NONE_STEP9) return step9 as T;
   const cfg = configWrite(method, path);
   if (cfg !== NONE_CONFIG) return cfg as T;
+  const dw = designWrite(method, path);
+  if (dw !== NONE_DESIGN) return dw as T;
   const cl = cleaningWrite(method, path, (body ?? {}) as Record<string, unknown>);
   if (cl !== NONE_CLEANING) return cl as T;
   const pd = discoveryWrite(method, path, body);
@@ -307,6 +310,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (s4 !== NONE_S4) return s4 as T;
   const sc = scoreRead(path);
   if (sc !== NONE_SCORE) return sc as T;
+  const ds = designRead(path, params);
+  if (ds !== NONE_DESIGN) return ds as T;
   const lk = linksRead(path, params);
   if (lk !== NONE_LINKS) return lk as T;
   const iss = issuesRead(path, params);

@@ -13,6 +13,7 @@ import { labelText } from "@/lib/v2/labels";
 import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 import { Configuration } from "./system/Configuration";
 import { CustomObjects } from "./system/CustomObjects";
+import { SourceDesign } from "./system/SourceDesign";
 import { Schedules } from "./system/Schedules";
 import { useState, type ReactNode } from "react";
 import { ChangeLog } from "./step9/ChangeLog";
@@ -28,6 +29,7 @@ export const SYSTEM_TABS = [
   { key: "changes", get label() { return tr("Configuration changes"); }, old: "changes" },
   { key: "schedules", get label() { return tr("Schedules"); }, old: "health" },
   { key: "custom-objects", get label() { return tr("Custom objects"); }, old: "custom" },
+  { key: "design", get label() { return tr("Source design"); }, old: "design" },
 ] as const;
 type TabKey = (typeof SYSTEM_TABS)[number]["key"];
 
@@ -323,7 +325,7 @@ export function SystemCanvas({ id }: { id: string }) {
         ))}
       </nav>
       <div className="m2-tabpanel">
-        {tab === "overview" ? <Overview id={id} /> : tab === "extractions" ? <Extractions id={id} /> : tab === "configuration" ? <Configuration id={id} /> : tab === "changes" ? <ConfigChanges systemId={id} /> : tab === "schedules" ? <Schedules id={id} /> : <CustomObjects id={id} />}
+        {tab === "overview" ? <Overview id={id} /> : tab === "extractions" ? <Extractions id={id} /> : tab === "configuration" ? <Configuration id={id} /> : tab === "changes" ? <ConfigChanges systemId={id} /> : tab === "schedules" ? <Schedules id={id} /> : tab === "design" ? <SourceDesign id={id} /> : <CustomObjects id={id} />}
       </div>
     </CcPage>
   );

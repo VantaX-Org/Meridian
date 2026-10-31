@@ -21,6 +21,7 @@ You keep the plumbing healthy: connections, extractions, schedules, configuratio
 - **The read-only SAP role and the table reader**: `docs/sap/authorisation-role-template.md` lists the S_RFC function modules and the S_TABU_NAM tables; `MERIDIAN_RFC_READ_FUNCTION` in `.env` chooses `RFC_READ_TABLE` (default), `/BODS/RFC_READ_TABLE2`, `BBP_RFC_READ_TABLE` or `auto`.
 - **Load configuration and compare with the target**: the system's Configuration view.
 - **Custom objects**: the system's Custom objects view.
+- **Source design**: the system's data dictionary against the SAP standard, configuration deviation and drift between discoveries.
 - **Watch a system**: possible through the API only; the System inspector has no Watch button yet.
 
 ## The numbers you watch
