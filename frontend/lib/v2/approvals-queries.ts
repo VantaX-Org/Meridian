@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { getBatch, getBatchEvents, getBatches, getWritebackMode } from "@/lib/api/v2/batches";
 import { getNotifications, getUnread, putRead, putReadAll } from "@/lib/api/v2/inbox";
-import { getPeople } from "@/lib/api/v2/people";
+import { getNextSteps, getPeople } from "@/lib/api/v2/people";
 import { getAssignable, getPreferences, getSlaPolicies, patchDigest, putSlaPolicy, type Digest, type SlaPolicy } from "@/lib/api/v2/triage";
 import { getWork } from "@/lib/api/v2/work";
 import { toBatchRow, withRecords, type BatchRow } from "./batches";
@@ -17,6 +17,7 @@ export const approvalKeys = {
   events: (fx: boolean, id: string) => ["v2", "batch-events", fx, id] as const,
   mode: (fx: boolean) => ["v2", "writeback-mode", fx] as const,
   people: (fx: boolean) => ["v2", "people", fx] as const,
+  next: (fx: boolean) => ["v2", "people-next", fx] as const,
   personWork: (fx: boolean, id: string) => ["v2", "person-work", fx, id] as const,
   notifications: (fx: boolean) => ["v2", "notifications", fx] as const,
   unread: (fx: boolean) => ["v2", "notifications-unread", fx] as const,
@@ -55,6 +56,12 @@ export function useWritebackLive(enabled: boolean) {
 export function usePeople() {
   const fx = useFixture();
   return useQuery({ queryKey: approvalKeys.people(fx), queryFn: getPeople, staleTime: STALE });
+}
+
+/** What waits for the caller (GET /people/next), in the order to do it. */
+export function useNextSteps() {
+  const fx = useFixture();
+  return useQuery({ queryKey: approvalKeys.next(fx), queryFn: getNextSteps, staleTime: STALE });
 }
 
 /** A person's open work, the first page of it: grouped by object in their inspector. */

@@ -69,6 +69,8 @@ describe("the batch inspector", () => {
     expect(fact(insp, "Value at risk")).toContain("ZAR 413 k");
     expect(fact(insp, "Created")).toMatch(/14 Oct/);
     expect(fact(insp, "Due")).toMatch(/23 Oct/);
+    // F06/F07: the SLA clock for the steward and the owner while the batch waits.
+    expect(text(within(insp).getByTestId("batch-sla"))).toMatch(/^(Due today\.|Due in \d+ days?\.|\d+ days? past the due date\.)$/);
   });
 
   it("lists the first 50 records and links to the ledger filtered to the batch", async () => {

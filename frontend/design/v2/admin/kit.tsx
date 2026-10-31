@@ -7,6 +7,8 @@ import { relTime } from "@/lib/v2/format";
 import { formatDate } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/error";
 import { useV2Session } from "@/lib/v2/hooks";
+import { usePermissions } from "@/lib/permissions";
+import { requestTargetFor } from "@/lib/rbac";
 import { VerdictMark } from "../marks";
 import { ErrorFrame, PageTitle, Skeleton } from "../parts";
 import { useToast } from "../Toast";
@@ -170,7 +172,18 @@ export function NeedsPermission({ what, permission }: { what: string; permission
   return (
     <div className="m2-empty" data-testid="needs-permission">
       <p>{t("{what} needs the {replace} permission. Ask an administrator to grant it.", { what, replace: permission.replace(/_/g, " ") })}</p>
+      <RequestAccess permission={permission} />
     </div>
+  );
+}
+
+/** Opens the shell's request-access dialog for a permission the viewer lacks (POST /me/access-requests). */
+export function RequestAccess({ permission }: { permission: string }) {
+  const { requestAccess } = usePermissions();
+  return (
+    <button type="button" className="m2-btn m2-sm" data-testid="request-access" onClick={() => requestAccess(requestTargetFor({ resource: null, action: permission }))}>
+      {t("Request access")}
+    </button>
   );
 }
 

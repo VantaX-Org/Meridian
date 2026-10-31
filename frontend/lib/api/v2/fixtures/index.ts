@@ -135,6 +135,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
     const read = /^\/notifications\/([^/]+)\/read$/.exec(path);
     if (method === "PUT" && path === "/notifications/read-all") return ap.readAllFixture();
     if (method === "PUT" && read) return ap.readFixture(decodeURIComponent(read[1]));
+    const remind = /^\/people\/([^/]+)\/remind$/.exec(path);
+    if (method === "POST" && remind) return ap.remindFixture(decodeURIComponent(remind[1]));
     if (method === "PUT" && path === "/triage/sla-policies") return ap.putPolicyFixture(body as never);
     if (method === "PUT" && path === "/views") return wf.putViewFixture(body as never);
     const mdm = mdmFixtureWrite(method, path, body);
@@ -218,6 +220,7 @@ export function fixtureResponse<T>(path: string, params: Params): T {
     if (batchOne) return wf.batchFixtureDetail(decodeURIComponent(batchOne[1]));
     if (path === "/writeback/approvals") return { approvals: [], live_enabled: false };
     if (path === "/people") return ap.peopleFixture();
+    if (path === "/people/next") return ap.nextFixture();
     if (path === "/notifications") return ap.notificationsFixture(Number(params.limit ?? 50));
     if (path === "/notifications/unread-count") return ap.unreadFixture();
     if (path === "/triage/sla-policies") return ap.policiesFixture();

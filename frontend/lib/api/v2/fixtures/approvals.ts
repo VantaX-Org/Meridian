@@ -1,5 +1,5 @@
 import type { Notification } from "@/types/api";
-import type { Person } from "../people";
+import type { NextStep, Person } from "../people";
 import type { AssignableUser, Digest, SlaPolicy } from "../triage";
 import { batchesFixture } from "./work-fixture";
 
@@ -50,6 +50,25 @@ export function peopleFixture(): { people: Person[] } {
   }));
   people.sort((a, b) => Number(b.is_me) - Number(a.is_me) || b.open_work - a.open_work || a.name.localeCompare(b.name));
   return { people };
+}
+
+/** GET /people/next for Demo user: the drafts of others to approve, their own sent back, their overdue work. */
+export function nextFixture(): { items: NextStep[] } {
+  const batches = batchesFixture().items.filter((b) => b.items > 0);
+  const step = (kind: NextStep["kind"], id: string, title: string, href: string, count = 1, due_at: string | null = null): NextStep => ({ kind, id, title, count, due_at, href });
+  const items: NextStep[] = [
+    ...batches.filter((b) => b.status === "draft" && b.created_by !== ME).map((b) => step("approve_batch", b.id, b.name, `/?open=batch:${b.id}`, 1, b.due_at ?? null)),
+    ...batches.filter((b) => b.status === "draft" && b.created_by === ME && (b.filter as { returned?: unknown }).returned).map((b) => step("sent_back", b.id, b.name, `/?open=batch:${b.id}`)),
+  ];
+  const late = BASE[ME].overdue;
+  if (late) items.push(step("overdue", ME, "", "/work?assigned=me&due=overdue", late));
+  return { items };
+}
+
+/** POST /people/{id}/remind. */
+export function remindFixture(id: string): { user_id: string; status: string } {
+  if (!USERS.some((u) => u.id === id)) fail(404, "No such person.");
+  return { user_id: id, status: "sent" };
 }
 
 export const assignableFixture = (): AssignableUser[] => USERS;

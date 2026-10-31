@@ -69,6 +69,10 @@ describe("the inbox panel", () => {
     expect(today[0].querySelector("svg.m2-vm")).not.toBeNull();
     // Times for today, dates before.
     expect(text(today[0])).toMatch(/08:41/);
+    // The next steps lead the panel: the batches waiting on the caller and their overdue rows, each with its action.
+    const next = within(panel).getByRole("region", { name: "Next steps" });
+    expect(await within(next).findByRole("link", { name: "Open the ledger" })).toHaveAttribute("href", expect.stringContaining("/work?assigned=me&due=overdue"));
+    expect(text(next)).toContain("3 records assigned to you are past the due date.");
     expect(text(earlier[earlier.length - 1])).toMatch(/\d{1,2} \w{3} \d{4}/);
   });
 

@@ -12,7 +12,7 @@ import type { Landscape, LandscapeCell, LandscapeSystem, WorkRow } from "@/lib/a
 import { useOpenItem, useRunParam, useV2Session, type V2Persona } from "@/lib/v2/hooks";
 import { useBatches, usePeople } from "@/lib/v2/approvals-queries";
 import { slaMet } from "@/lib/v2/people";
-import { useWorkSummary } from "@/lib/v2/work-queries";
+import { useWorkGroups, useWorkSummary } from "@/lib/v2/work-queries";
 import { useSystemsExtended } from "@/lib/v2/runs-queries";
 import { BasisHome } from "./BasisHome";
 import { useLandscape, useStatus, useTopWork } from "@/lib/v2/queries";
@@ -24,6 +24,8 @@ import { Ruler } from "../Ruler";
 import { ProcessNextStep } from "./object/ProcessNext";
 import { dimsOf, ScoreTrend, useTrends } from "../shell/MapPane";
 import { GateMark } from "../inspector/governance";
+import { NextList } from "../inspector/inbox";
+import { RequestAccess } from "../admin/kit";
 import { ToolGrid } from "../GridTools";
 import { contractMark } from "@/lib/v2/step9";
 import { policyMark } from "@/lib/v2/step10";
@@ -140,17 +142,21 @@ function OwnerLine() {
   );
 }
 
+/** The steward's next step: the rule with the most suggested values, opened on their own rows with the accept bar ready. */
+function StewardNext() {
+  const top = (useWorkGroups({}).data?.groups ?? []).filter((g) => g.proposed > 0).sort((a, b) => b.proposed - a.proposed)[0];
+  return (
+    <V2Link href={top ? `/work?assigned=me&rule=${encodeURIComponent(top.check_id)}` : "/work"} className="m2-btn m2-next" data-testid="steward-next">
+      {top ? t("Accept {count} suggested {count2, plural, one {value} other {values}} for {check}", { count: int(top.proposed), count2: top.proposed, check: top.check_id }) : t("Accept the suggested values")}
+    </V2Link>
+  );
+}
+
 /** The next-step button, by persona. One per canvas. */
 export function NextStep({ landscape, persona, waves }: { landscape: Landscape; persona: V2Persona; waves?: readonly MigrationWave[] }) {
   const { hrefFor } = useOpenItem();
   if (persona === "owner") return <OwnerNext />;
-  if (persona === "steward") {
-    return (
-      <V2Link href="/work" className="m2-btn m2-next">
-        {t("Accept the suggested values")}
-      </V2Link>
-    );
-  }
+  if (persona === "steward") return <StewardNext />;
   if (persona === "process") return <ProcessNextStep landscape={landscape} />;
   if (persona === "admin") {
     return (
@@ -610,7 +616,10 @@ export function FirstSteps({ connected, analysed }: { connected: boolean; analys
               ) : null}
             </>
           ) : (
-            <span className="m2-meta">{t("Connecting a system needs the manage systems permission. Ask an administrator to grant it.")}</span>
+            <>
+              <span className="m2-meta">{t("Connecting a system needs the manage systems permission. Ask an administrator to grant it.")}</span>
+              <RequestAccess permission="manage_systems" />
+            </>
           ),
         )}
         {step(
@@ -622,7 +631,10 @@ export function FirstSteps({ connected, analysed }: { connected: boolean; analys
               {t("Run analysis")}
             </V2Link>
           ) : (
-            <span className="m2-meta">{t("Running an analysis needs the analyse permission. Ask an administrator to grant it.")}</span>
+            <>
+              <span className="m2-meta">{t("Running an analysis needs the analyse permission. Ask an administrator to grant it.")}</span>
+              <RequestAccess permission="analyse" />
+            </>
           ),
         )}
         {step(
@@ -721,6 +733,7 @@ export function LandscapeCanvas() {
       ) : null}
       <PageTitle sub={scopeName}>{t("Landscape")}</PageTitle>
       <Welcome />
+      <NextList quiet />
       <p className="m2-finding" data-testid="landscape-sentence">
         <LandscapeSentence landscape={L} />
       </p>
