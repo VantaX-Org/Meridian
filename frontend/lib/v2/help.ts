@@ -127,6 +127,7 @@ export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/processes": "v2:processes",
   "/cleansing": "v2:monitoring",
   "/mining": "v2:monitoring",
+  "/mdm": "v2:monitoring",
   "/o/[system]/[module]/golden": "v2:golden-records",
   "/o/[system]/[module]/glossary": "v2:glossary",
   "/o/[system]/[module]/lineage": "v2:lineage",

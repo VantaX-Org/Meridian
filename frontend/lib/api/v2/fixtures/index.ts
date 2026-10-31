@@ -22,6 +22,7 @@ import { NONE_REQ, requestsDownload, requestsRead, requestsWrite, resetRequestsF
 import { configRead, configWrite, NONE_CONFIG } from "./config";
 import { cleaningRead, cleaningWrite, NONE_CLEANING, resetCleaningFixture } from "./cleaning";
 import { matchRead, matchWrite, NONE_MATCH } from "./match-rules";
+import { mdmHealthRead, NONE_MDM_HEALTH } from "./mdm-health";
 import { miningRead, miningWrite, NONE_MINING } from "./mining";
 import { discoveryDownload, discoveryRead, discoveryWrite, NONE_DISCOVERY, resetDiscoveryFixture } from "./discovery";
 import { guardDecision, NONE_STEP10, receiptPolicy, resetStep10Fixture, step10Read, step10Write, withPolicyMarks, withSandbox } from "./step10";
@@ -277,6 +278,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (pd !== NONE_DISCOVERY) return pd as T;
   const mn = miningRead(path);
   if (mn !== NONE_MINING) return mn as T;
+  const mh = mdmHealthRead(path);
+  if (mh !== NONE_MDM_HEALTH) return mh as T;
   const mr = matchRead(path);
   if (mr !== NONE_MATCH) return mr as T;
   const rolesStep = rolesFixtureResponse(path, params);

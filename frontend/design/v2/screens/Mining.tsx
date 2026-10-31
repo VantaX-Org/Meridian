@@ -314,7 +314,7 @@ function MineAction() {
   );
 }
 
-function Panel({ title, meta, testId, children }: { title: string; meta?: string; testId: string; children: ReactNode }) {
+export function Panel({ title, meta, testId, children }: { title: string; meta?: string; testId: string; children: ReactNode }) {
   return (
     <section className="m2-ck-panel" aria-label={title} data-testid={testId}>
       <header className="m2-ck-head">

@@ -24,6 +24,16 @@ The Data mining page, under Data mining in the map, shows what the mining tasks 
 
 Users who may change master data can press **Mine the latest runs** to mine the latest run of every object again. A role that cannot read the mining results sees a dash in each list.
 
+## MDM health
+
+The MDM health page, under MDM health in the map, shows the daily snapshot of how well master data is governed. The banner gives the health score out of 100 and its change over the last 90 days, with the golden records, the open stewardship items and the share of systems synced beside it. Under it:
+
+- **What makes the score.** The four shares the score is built from, each with its weight and the points it adds: golden record coverage (40%), match confidence (30%), steward SLA (20%) and source consistency (10%). The points add up to the score. A small line beside each share shows its last 90 days.
+- **Health score, day by day.** The score at each daily snapshot on a 0 to 100 scale.
+- **Stewardship backlog, day by day.** The open stewardship items at each snapshot.
+
+The snapshot runs once a day. Until the first one has run the page says so, and the charts need two days of snapshots before they draw a line. Viewers and process analysts see no figures.
+
 ## What is on it
 
 - **The banner.** One sentence at the top: how many records failed a rule again since the last run and how many were fixed, with both figures beside it. Aletheia is docked on the right, as on every main screen.
