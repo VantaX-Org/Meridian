@@ -6556,4 +6556,12 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "When this field is set": "Wenn dieses Feld gesetzt ist",
   "Where one field's value decides another's in almost every record. Each one can become a rule.": "Wo der Wert eines Felds in fast jedem Satz den eines anderen bestimmt. Jede kann zur Regel werden.",
   "Withheld: the field holds personal data": "Verborgen: das Feld enthält personenbezogene Daten",
+  "{n} {n, plural, one {pair is} other {pairs are}} on the stewardship queue as merge decisions.": "{n} {n, plural, one {Paar steht} other {Paare stehen}} als Zusammenführungsentscheidung in der Stewardship-Warteschlange.",
+  "Choose pairs to send to a steward": "Paare für einen Steward auswählen",
+  "Choose the pair {a} and {b}": "Paar {a} und {b} auswählen",
+  "Due date, empty for 48 hours": "Fälligkeitsdatum, leer für 48 Stunden",
+  "Normal": "Normal",
+  "Send {n} to a steward": "{n} an einen Steward senden",
+  "Send pairs to the stewardship queue": "Paare an die Stewardship-Warteschlange senden",
+  "Urgent": "Dringend",
 };

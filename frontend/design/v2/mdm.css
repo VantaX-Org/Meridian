@@ -10,6 +10,7 @@
 .m2-pairs { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--m2-line); }
 .m2-pairs li { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: var(--m2-s3); align-items: center; min-height: 40px; padding: var(--m2-s1) 0; border-bottom: 1px solid var(--m2-line); font-size: var(--m2-fs-13); }
 .m2-pairs li[data-open="true"] { background: var(--m2-active); }
+.m2-pairs[data-pick] li { grid-template-columns: 24px 56px minmax(0, 1fr) auto; }
 .m2-pscore { font-variant-numeric: tabular-nums; font-weight: 600; }
 .m2-pkeys { min-width: 0; overflow-wrap: anywhere; }
 .m2-pager { display: flex; flex-wrap: wrap; align-items: center; gap: var(--m2-s3); }
@@ -84,6 +85,7 @@ svg.m2-lineage.m2-lgx { max-width: none; height: auto; }
 
 @media (max-width: 760px) {
   .m2-pairs li { grid-template-columns: 48px minmax(0, 1fr) auto; }
+  .m2-pairs[data-pick] li { grid-template-columns: 24px 48px minmax(0, 1fr) auto; }
   .m2-sin input { height: 36px; width: 100%; }
   .m2-sin { flex: 1 1 100%; }
   .m2-step-d > summary { min-height: 44px; }

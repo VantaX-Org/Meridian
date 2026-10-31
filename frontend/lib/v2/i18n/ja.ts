@@ -6556,4 +6556,12 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "When this field is set": "この項目の値が",
   "Where one field's value decides another's in almost every record. Each one can become a rule.": "ほぼすべてのレコードで、ある項目の値が別の項目の値を決めている箇所です。それぞれルールにできます。",
   "Withheld: the field holds personal data": "非表示: 個人データを含む項目です",
+  "{n} {n, plural, one {pair is} other {pairs are}} on the stewardship queue as merge decisions.": "{n} 件のペアを統合判断としてスチュワードシップキューに追加しました。",
+  "Choose pairs to send to a steward": "スチュワードに送るペアを選択",
+  "Choose the pair {a} and {b}": "ペア {a} と {b} を選択",
+  "Due date, empty for 48 hours": "期限日（空欄なら 48 時間）",
+  "Normal": "通常",
+  "Send {n} to a steward": "{n} 件をスチュワードに送る",
+  "Send pairs to the stewardship queue": "ペアをスチュワードシップキューに送る",
+  "Urgent": "緊急",
 };

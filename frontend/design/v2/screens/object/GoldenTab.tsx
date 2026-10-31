@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { formatDate } from "@/lib/format";
-import { GOLDEN_PAGE, type GoldenRow, type SurvivorshipRule } from "@/lib/api/v2/mdm";
-import { useOpenItem, useRunParam } from "@/lib/v2/hooks";
+import { GOLDEN_PAGE, proposeMerges, type GoldenRow, type SurvivorshipRule } from "@/lib/api/v2/mdm";
+import { useOpenItem, useRunParam, useV2Session } from "@/lib/v2/hooks";
 import { useGoldenRecords, useMatchPairs, useSurvivorship } from "@/lib/v2/mdm-queries";
 import { useNarrow } from "@/lib/v2/narrow";
 import { useLandscape } from "@/lib/v2/queries";
@@ -13,6 +13,7 @@ import "../../mdm.css";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../../parts";
 import { ToolGrid } from "../../GridTools";
 import { t } from "@/lib/v2/i18n";
+import { ResultFrame, useOutcome } from "../../inspector/shared";
 
 export const RULE_LABEL: Record<string, string> = {
   get most_recent() { return t("Most recent"); },
@@ -78,6 +79,12 @@ function Candidates({ module, label }: { module: string; label: string }) {
   const { hrefFor, open } = useOpenItem();
   const [limit, setLimit] = useState(5);
   const q = useMatchPairs(module, limit);
+  const canQueue = useV2Session().can("approve");
+  const [chosen, setChosen] = useState<string[]>([]);
+  const [priority, setPriority] = useState(3);
+  const [due, setDue] = useState("");
+  const { outcome, pending, run } = useOutcome();
+  const toggle = (id: string) => setChosen(chosen.includes(id) ? chosen.filter((x) => x !== id) : [...chosen, id]);
   const waiting = q.data?.bands.review ?? q.data?.total ?? 0;
   return (
     <section aria-label={t("Match candidates")} className="m2-sec">
@@ -93,9 +100,10 @@ function Candidates({ module, label }: { module: string; label: string }) {
         <p className="m2-rp m2-meta">{t("No pair of {label} records is waiting for a steward. Pairs appear when a match run scores two records between the review floor and the auto-merge score.", { label: label.toLowerCase() })}</p>
       ) : (
         <>
-          <ul className="m2-pairs" aria-label={t("Pairs to review")}>
+          <ul className="m2-pairs" data-pick={canQueue ? "true" : undefined} aria-label={t("Pairs to review")}>
             {q.data.pairs.map((p) => (
               <li key={p.id} data-open={open?.kind === "golden" && open.id === `pair:${p.id}` ? "true" : undefined}>
+                {canQueue ? <input type="checkbox" checked={chosen.includes(p.id)} onChange={() => toggle(p.id)} aria-label={t("Choose the pair {a} and {b}", { a: p.a, b: p.b })} /> : null}
                 <span className="m2-pscore">{p.total.toFixed(2)}</span>
                 <span className="m2-pkeys">
                   <Mono>{shortKey(p.a)}</Mono> <span className="m2-meta">{t("and")}</span> <Mono>{shortKey(p.b)}</Mono>
@@ -114,6 +122,32 @@ function Candidates({ module, label }: { module: string; label: string }) {
               </button>
             ) : null}
           </p>
+          {canQueue ? (
+            <div className="m2-adm-acts" aria-label={t("Send pairs to the stewardship queue")}>
+              <select className="m2-inp m2-sm" aria-label={t("Priority")} value={priority} onChange={(e) => setPriority(Number(e.target.value))}>
+                <option value={1}>{t("Urgent")}</option>
+                <option value={3}>{t("Normal")}</option>
+                <option value={5}>{t("Low")}</option>
+              </select>
+              <input className="m2-inp m2-sm" type="date" aria-label={t("Due date, empty for 48 hours")} value={due} onChange={(e) => setDue(e.target.value)} />
+              <button
+                type="button"
+                className="m2-btn m2-sm"
+                disabled={chosen.length === 0 || pending !== null}
+                onClick={() =>
+                  void run("queue", async () => {
+                    const due_at = due ? new Date(`${due}T23:59:59`).toISOString() : undefined;
+                    const r = await proposeMerges(chosen.map((match_score_id) => ({ match_score_id, priority, due_at })));
+                    setChosen([]);
+                    return { tone: "ok", title: t("{n} {n, plural, one {pair is} other {pairs are}} on the stewardship queue as merge decisions.", { n: r.created.length }) };
+                  })
+                }
+              >
+                {pending === "queue" ? t("Sending…") : chosen.length ? t("Send {n} to a steward", { n: chosen.length }) : t("Choose pairs to send to a steward")}
+              </button>
+            </div>
+          ) : null}
+          {outcome ? <ResultFrame outcome={outcome} /> : null}
         </>
       )}
     </section>

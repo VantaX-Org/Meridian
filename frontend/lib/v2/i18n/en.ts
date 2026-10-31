@@ -6555,6 +6555,14 @@ export const en = {
   "When this field is set": "When this field is set",
   "Where one field's value decides another's in almost every record. Each one can become a rule.": "Where one field's value decides another's in almost every record. Each one can become a rule.",
   "Withheld: the field holds personal data": "Withheld: the field holds personal data",
+  "{n} {n, plural, one {pair is} other {pairs are}} on the stewardship queue as merge decisions.": "{n} {n, plural, one {pair is} other {pairs are}} on the stewardship queue as merge decisions.",
+  "Choose pairs to send to a steward": "Choose pairs to send to a steward",
+  "Choose the pair {a} and {b}": "Choose the pair {a} and {b}",
+  "Due date, empty for 48 hours": "Due date, empty for 48 hours",
+  "Normal": "Normal",
+  "Send {n} to a steward": "Send {n} to a steward",
+  "Send pairs to the stewardship queue": "Send pairs to the stewardship queue",
+  "Urgent": "Urgent",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

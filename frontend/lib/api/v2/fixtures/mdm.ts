@@ -410,6 +410,11 @@ export function mdmFixtureWrite(method: string, path: string, body: unknown): un
     state.decidedPairs.add(id);
     return { match_score_id: id, constraint_id: `pc-${id}`, kind: "do_not_match", event_id: `ev-${id}` };
   }
+  if (method === "POST" && path === "/insights/duplicates/merge-proposals") {
+    const pairs = (b.pairs as { match_score_id: string }[]) ?? [];
+    for (const p of pairs) pairDetail(p.match_score_id);
+    return { created: pairs.map((p) => `sq-${p.match_score_id}`) };
+  }
   const unmerge = /^\/master-records\/([^/]+)\/unmerge$/.exec(path);
   if (method === "POST" && unmerge) {
     const id = decodeURIComponent(unmerge[1]);
