@@ -1,7 +1,8 @@
 """Audit log API — read-only access to general mutation audit_log rows.
 
 Mutations are appended automatically by api.middleware.audit. This route
-is the admin-facing viewer. Admin role (manage_users permission) required.
+is the viewer, for view audit (the auditor) or manage users (the administrator).
+GET /audit/actors lists the people in the log (ids and names) for the Who filter.
 """
 
 import csv
@@ -95,6 +96,34 @@ def _entry(row) -> dict:
     if d.get("created_at"):
         d["created_at"] = d["created_at"].isoformat()
     return d
+
+
+class AuditActor(BaseModel):
+    id: str
+    name: str
+
+
+class AuditActorsOut(BaseModel):
+    actors: list[AuditActor]
+
+
+@router.get("/audit/actors", response_model=AuditActorsOut)
+async def list_audit_actors(
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_any_permission("view_audit", "manage_users")),
+) -> AuditActorsOut:
+    """The people of this tenant who appear in its audit log, for the log's Who filter (``actor_user_id``): their
+    id and name only, never an email or a role. Read with view audit, so an auditor filters by person without the
+    user administration (manage users)."""
+    await _set_rls(db, tenant.id)
+    rows = (await db.execute(text("""
+        SELECT u.id::text AS id, NULLIF(btrim(u.name), '') AS name
+          FROM users u
+         WHERE u.tenant_id = :tid
+           AND EXISTS (SELECT 1 FROM audit_log a WHERE a.tenant_id = u.tenant_id AND a.actor_user_id = u.id)
+         ORDER BY lower(COALESCE(NULLIF(btrim(u.name), ''), u.id::text)), u.id"""), {"tid": str(tenant.id)})).all()
+    return AuditActorsOut(actors=[AuditActor(id=r.id, name=r.name or f"User {r.id[:8]}") for r in rows])
 
 
 @router.get("/audit")
