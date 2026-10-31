@@ -88,10 +88,51 @@ def build_items(issues: Iterable[dict], frames) -> list[dict]:
     return out
 
 
+# What a screen or a sheet writes for "no new value": never a value to approve, export or send (F12).
+PLACEHOLDERS: frozenset[str] = frozenset({"no value yet", "no value", "(no value yet)", "(no value)", "(blank)",
+                                          "<blank>", "(empty)", "<empty>"})
+_PLACEHOLDER_SQL = ", ".join(f"'{p}'" for p in sorted(PLACEHOLDERS))
+
+
+def has_value(v: object) -> bool:
+    """A proposed value that can be loaded: not missing, not blank, not a placeholder such as "no value yet"."""
+    if v is None:
+        return False
+    t = str(v).strip()
+    return bool(t) and t.lower() not in PLACEHOLDERS
+
+
+def has_value_sql(col: str) -> str:
+    """``has_value`` in SQL over the column ``col``."""
+    return f"(NULLIF(btrim({col}), '') IS NOT NULL AND lower(btrim({col})) NOT IN ({_PLACEHOLDER_SQL}))"
+
+
+def blank_items(items: list[dict]) -> list[dict]:
+    """The changes of a batch that carry no new value: held out of approval, export and send."""
+    return [i for i in items if not has_value(i.get("proposed_value"))]
+
+
+def short_key(record_key: str) -> str:
+    """A record key as SAP shows it, leading zeros of numbers dropped: ``MATNR=000700|WERKS=3000`` as 700 / 3000."""
+    parts = [p.split("=", 1)[-1] for p in str(record_key).split("|")]
+    return " / ".join((p.lstrip("0") or "0") if p.isdigit() else p for p in parts)
+
+
+def blank_sentence(blank: list[dict], others: int, limit: int = 10) -> str:
+    """The refusal of an approval that holds changes without a value: how many, which, and the way on."""
+    n = len({(i.get("module"), i.get("record_key")) for i in blank})
+    shown = [f"{(i.get('field') or i.get('check_id') or '').replace('.', '-')} on {short_key(i['record_key'])}"
+             for i in blank[:limit]]
+    more = f" and {len(blank) - limit} more" if len(blank) > limit else ""
+    rec = "record has" if n == 1 else "records have"
+    return (f"{n} {rec} no new value: {', '.join(shown)}{more}. Enter their values, approve the other {others} "
+            f"without them, or send the batch back.")
+
+
 def auto_approvable(item: dict) -> bool:
     """A self-verified high-confidence rule proposal a second person may accept in bulk."""
     return item.get("proposal_source") == "rule" and item.get("confidence") == "high" \
-        and item.get("proposed_value") is not None
+        and has_value(item.get("proposed_value"))
 
 
 # object type → (anchor table, its business key) for cleaning rows whose record_key is a bare number
@@ -208,8 +249,8 @@ def _key_parts(record_key: str) -> dict[str, str]:
 
 
 def _exportable(items: list[dict]) -> list[dict]:
-    """Items with a value to load; blank proposals stay with the steward."""
-    return [i for i in items if i.get("field") and i.get("proposed_value") is not None]
+    """Items with a value to load; blank proposals and placeholders ("no value yet") stay with the steward."""
+    return [i for i in items if i.get("field") and has_value(i.get("proposed_value"))]
 
 
 def cockpit_sheets(items: list[dict], dictionary=None) -> dict[str, pd.DataFrame]:

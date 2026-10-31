@@ -130,7 +130,8 @@ async def _batch_extras(db: AsyncSession, tenant: Tenant, batches: list[dict]) -
 async def _items(db: AsyncSession, batch_id) -> list[dict]:
     rows = await db.execute(text("SELECT * FROM remediation_items WHERE batch_id = :id "
                                  "ORDER BY module, check_id, record_key"), {"id": batch_id})
-    return [{**(i := _row(r)), "auto_approvable": _auto_approvable(i)} for r in rows.fetchall()]
+    return [{**(i := _row(r)), "auto_approvable": _auto_approvable(i),
+             "no_value": not remediation.has_value(i.get("proposed_value"))} for r in rows.fetchall()]
 
 
 _auto_approvable = remediation.auto_approvable
@@ -297,13 +298,14 @@ async def list_batches(
     await _rls(db, tenant)
     rows = await db.execute(text("""
         SELECT b.*, COUNT(i.id) AS items,
-               COUNT(i.id) FILTER (WHERE i.proposed_value IS NOT NULL) AS with_proposal,
+               COUNT(i.id) FILTER (WHERE {has}) AS with_proposal,
+               COUNT(i.id) FILTER (WHERE NOT {has}) AS no_value,
                COUNT(i.id) FILTER (WHERE i.proposal_source = 'rule' AND i.confidence = 'high') AS auto_approvable,
                COUNT(i.id) FILTER (WHERE i.recon_status = 'fixed') AS fixed,
                COUNT(i.id) FILTER (WHERE i.recon_status = 'still_failing') AS still_failing
           FROM remediation_batches b LEFT JOIN remediation_items i ON i.batch_id = b.id
          WHERE b.tenant_id = :tid GROUP BY b.id ORDER BY b.created_at DESC
-    """), {"tid": str(tenant.id)})
+    """.replace("{has}", remediation.has_value_sql("i.proposed_value"))), {"tid": str(tenant.id)})
     items = [_row(r) for r in rows.fetchall()]
     extras = await _batch_extras(db, tenant, items)
     return {"items": [{**b, **extras[b["id"]]} for b in items]}
@@ -397,7 +399,8 @@ async def accept_high_confidence(
         raise HTTPException(status_code=403, detail="The batch creator cannot accept its proposals.")
     ids = [r[0] for r in (await db.execute(text(
         "UPDATE remediation_items SET accepted = true, updated_at = now() WHERE batch_id = :bid "
-        "AND proposal_source = 'rule' AND confidence = 'high' AND proposed_value IS NOT NULL AND NOT accepted "
+        f"AND proposal_source = 'rule' AND confidence = 'high' AND {remediation.has_value_sql('proposed_value')} "
+        "AND NOT accepted "
         "RETURNING id"), {"bid": batch_id})).fetchall()]
     await _event(db, tenant, batch_id, "accepted", request, item_ids=ids)
     await db.commit()
@@ -406,6 +409,9 @@ async def accept_high_confidence(
 
 class ApproveBody(BaseModel):
     comment: Optional[str] = Field(None, max_length=4000, description="told to the steward who built the batch")
+    without_blank: bool = Field(False, description="approve the changes that have a new value; the ones without "
+                                                   "(blank, or a placeholder such as 'no value yet') are held out: "
+                                                   "never exported or sent")
 
 
 @router.post("/batches/{batch_id}/approve")
@@ -431,6 +437,15 @@ async def approve_batch(
             "AND user_id = CAST(:uid AS uuid) LIMIT 1"), {"bid": batch_id, "uid": uid})).first():
         # a monitor-drafted batch has no human creator: whoever accepted its proposals is the first pair of eyes
         raise HTTPException(status_code=403, detail="You accepted this batch's proposals; a second person must approve it.")
+    # F12: changes without a new value are never approved unseen: refused with the records, or held out on request
+    items = await _items(db, batch_id)
+    blank = remediation.blank_items(items)
+    if blank and not (body and body.without_blank):
+        valued = len({(i["module"], i["record_key"]) for i in items} - {(i["module"], i["record_key"]) for i in blank})
+        raise HTTPException(status_code=409, detail=remediation.blank_sentence(blank, valued))
+    if blank and len(blank) == len(items):
+        raise HTTPException(status_code=409, detail="No change of this batch has a new value; there is nothing to "
+                                                    "approve. Enter the values or send the batch back.")
     # The approval runs through the tenant's workflow for fix batches (api/services/workflow.py); its default, one
     # four-eyes step for anyone holding approve except the creator, is the rule above. The batch is approved once the
     # workflow is: a definition with more steps leaves it a draft until its last step is approved.
@@ -451,6 +466,8 @@ async def approve_batch(
                           "approved_by_label = :label, approved_at = now() WHERE id = :id"),
                      {"uid": uid, "label": current_user_label(), "id": batch_id})
     await _event(db, tenant, batch_id, "approved", request)
+    if blank:  # the approver saw them and approved the rest: each held-out change keeps that in its trail
+        await _event(db, tenant, batch_id, "held_out", request, item_ids=[i["id"] for i in blank], to_value="no value")
     await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), batch_id))
     action_id = await rec.save(db, tenant, request, "approve_batch", {"batch_id": str(batch_id), "name": b["name"]})
     await db.run_sync(lambda s: webhooks.batch_event(s, str(tenant.id), str(batch_id), "batch.approved"))

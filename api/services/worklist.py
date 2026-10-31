@@ -27,6 +27,7 @@ from sqlalchemy import text
 
 from api.middleware.cache import mark_work_changed
 from api.services.record_issues import _copy, scope_of
+from api.services.remediation import has_value_sql
 from checks.profiling import is_sensitive
 
 log = logging.getLogger(__name__)
@@ -46,9 +47,10 @@ _STATUS_ROWS = f"""
            CASE WHEN ri.status = 'resolved' THEN 5
                 WHEN ri.status = 'accepted' THEN 4
                 WHEN rem.recon_status = 'still_failing' THEN 0
+                WHEN NOT {has_value_sql('rem.proposed_value')} THEN 0  -- no new value (blank, "no value yet"): still to fix in any batch
                 WHEN rem.batch_status = 'exported' THEN 3
                 WHEN rem.batch_status = 'approved' THEN 2
-                WHEN rem.batch_status = 'draft' AND rem.proposed_value IS NOT NULL THEN 1
+                WHEN rem.batch_status = 'draft' THEN 1
                 ELSE 0 END AS status_rank,
            ri.assigned_to, CASE WHEN ri.status NOT IN ('resolved', 'accepted') THEN ri.due_at END AS due_at
       FROM finding_records fr
