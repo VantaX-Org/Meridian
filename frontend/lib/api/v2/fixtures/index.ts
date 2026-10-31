@@ -38,6 +38,7 @@ import { issuesRead, issuesWrite, NONE_ISSUES, resetIssuesFixture } from "./issu
 import { exceptionsRead, exceptionsWrite, NONE_EXCEPTIONS, resetExceptionsFixture } from "./exceptions";
 import { NONE_TRIAGE, resetTriageFixture, triageRead, triageWrite } from "./triage";
 import { NONE_MAINTENANCE, maintenanceRead, maintenanceWrite, resetMaintenanceFixture } from "./maintenance";
+import { NONE_LLM, llmRead, llmWrite, resetLlmFixture } from "./llm";
 import { NONE_SYNC_TRIGGER, resetSyncTriggerFixture, syncTriggerRead, syncTriggerWrite } from "./syncTrigger";
 import { NONE_SIMULATIONS, simulationsRead, simulationsWrite, resetSimulationsFixture } from "./simulations";
 import { miningRead, miningWrite, NONE_MINING } from "./mining";
@@ -164,6 +165,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (tw !== NONE_TRIAGE) return tw as T;
   const mw = maintenanceWrite(method, path, body);
   if (mw !== NONE_MAINTENANCE) return mw as T;
+  const lw = llmWrite(method, path, body);
+  if (lw !== NONE_LLM) return lw as T;
   const stw = syncTriggerWrite(method, path, body);
   if (stw !== NONE_SYNC_TRIGGER) return stw as T;
   const sw = simulationsWrite(method, path, body);
@@ -225,6 +228,7 @@ export const resetWorkFixture = (): void => {
   resetExceptionsFixture();
   resetTriageFixture();
   resetMaintenanceFixture();
+  resetLlmFixture();
   resetSyncTriggerFixture();
   resetSimulationsFixture();
   resetCleaningFixture();
@@ -350,6 +354,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (tri !== NONE_TRIAGE) return tri as T;
   const mnt = maintenanceRead(path);
   if (mnt !== NONE_MAINTENANCE) return mnt as T;
+  const llm = llmRead(path);
+  if (llm !== NONE_LLM) return llm as T;
   const str = syncTriggerRead(path);
   if (str !== NONE_SYNC_TRIGGER) return str as T;
   const sim = simulationsRead(path);
