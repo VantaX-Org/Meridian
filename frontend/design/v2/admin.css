@@ -115,3 +115,8 @@ html[data-m2-hints="off"] .m2-root .m2-kb { display: none; }
 .m2-root .m2-switch-knob { position: absolute; top: 50%; transform: translateY(-50%); width: var(--m2-s3); height: var(--m2-s3); left: var(--m2-s1); border-radius: 50%; background: var(--m2-ink-3); }
 .m2-root .m2-switch[aria-checked="true"] .m2-switch-knob { left: calc(var(--m2-s8) - var(--m2-s3) - var(--m2-s1)); background: var(--m2-on-data); }
 .m2-root .m2-switch:disabled { opacity: .6; cursor: default; }
+
+/* Command centre: admin */
+/* The admin index takes the map column, so between 1201 and 1500 px the dock narrows to keep the section readable. */
+@media (min-width: 1201px) and (max-width: 1500px) { .m2-main:has([data-testid="admin-index"]) .m2-cc { grid-template-columns: minmax(0, 1fr) 300px; } }
+.m2-root .m2-cc-main > .m2-cc-banner { margin-bottom: 0; }
