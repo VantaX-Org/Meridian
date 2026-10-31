@@ -1119,7 +1119,9 @@ class RemediationBatch(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     name = Column(Text, nullable=False)
-    status = Column(Text, nullable=False, server_default="draft")  # draft|approved|exported
+    # draft|approved|awaiting_load (load file exported, waiting for the SAP load)|exported (sent to SAP: written by
+    # BAPI, or the load confirmed); migration 121
+    status = Column(Text, nullable=False, server_default="draft")
     filter = Column(JSONB, nullable=False, server_default="{}")
     created_by = Column(UUID(as_uuid=True), nullable=True)
     created_by_label = Column(Text, nullable=True)
@@ -1128,6 +1130,30 @@ class RemediationBatch(Base):
     approved_by_label = Column(Text, nullable=True)
     approved_at = Column(DateTime(timezone=True), nullable=True)
     exported_at = Column(DateTime(timezone=True), nullable=True)
+    exported_by = Column(UUID(as_uuid=True), nullable=True)
+    exported_by_label = Column(Text, nullable=True)
+    loaded_at = Column(DateTime(timezone=True), nullable=True)
+    loaded_by = Column(UUID(as_uuid=True), nullable=True)
+    loaded_by_label = Column(Text, nullable=True)
+    load_note = Column(Text, nullable=True)
+
+
+class RemediationBatchVerification(Base):
+    """What the first run after a batch's export found for its records (migration 121): one row per batch and run."""
+    __tablename__ = "remediation_batch_verifications"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    batch_id = Column(UUID(as_uuid=True), ForeignKey("remediation_batches.id", ondelete="CASCADE"), nullable=False)
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="CASCADE"), nullable=False)
+    run_at = Column(DateTime(timezone=True), nullable=True)
+    records = Column(Integer, nullable=False, server_default="0")
+    fixed = Column(Integer, nullable=False, server_default="0")
+    still_failing = Column(Integer, nullable=False, server_default="0")
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (UniqueConstraint("batch_id", "version_id", name="uq_remediation_batch_verifications"),
+                      Index("ix_remediation_batch_verifications_batch", "tenant_id", "batch_id", "created_at"))
 
 
 class RemediationItem(Base):
@@ -1494,7 +1520,7 @@ class NotificationDelivery(Base):
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     channel = Column(Text, nullable=False)  # email | in_app
-    kind = Column(Text, nullable=False)  # critical | digest | test
+    kind = Column(Text, nullable=False)  # critical | digest | test | event (a hand-off notice, migration 121)
     status = Column(Text, nullable=False)  # pending | sent | failed | no_backend | skipped
     error = Column(Text, nullable=True)
     #: idempotency key claimed before sending: version id, daily:<date>, weekly:<year>-W<week>, test:<uuid>
@@ -2173,6 +2199,7 @@ class AccessRequest(Base):
     system_id = Column(UUID(as_uuid=True), nullable=True)
     module = Column(Text, nullable=True)
     reason = Column(Text, nullable=True)
+    permission = Column(Text, nullable=True)  # the action asked for by name, e.g. manage_digests (migration 121)
     status = Column(Text, nullable=False, server_default="open")
     decided_by = Column(UUID(as_uuid=True), nullable=True)
     decided_at = Column(DateTime(timezone=True), nullable=True)
