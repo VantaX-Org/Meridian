@@ -14,6 +14,7 @@ import { useRequests } from "@/lib/v2/requests-queries";
 import { t } from "@/lib/v2/i18n";
 import { kindWord, objectWord, PrecheckView, statusWord } from "../inspector/request";
 import { EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
+import { CcBanner, CcHBars, CcPage } from "./cc-parts";
 
 const VIEWS: readonly RequestView[] = ["mine", "to_approve", "all"];
 const OBJECTS: readonly RequestObject[] = ["material", "customer", "vendor", "business_partner"];
@@ -179,9 +180,46 @@ export function RequestsCanvas() {
   const q = useRequests({ view, status: status === "all" ? undefined : status, object: object === "all" ? undefined : object, kind: kind === "all" ? undefined : kind });
   const rows = q.data?.items ?? [];
   const canWrite = session.can("mdm.write") && !session.shared;
+  const waiting = rows.filter((r) => r.status === "submitted" || r.status === "in_approval").length;
+  const failed = rows.filter((r) => r.status === "failed").length;
+  const drafts = rows.filter((r) => r.status === "draft").length;
+  const counts = new Map<string, number>();
+  for (const r of rows) {
+    const who = r.requester_label ?? "";
+    if (who) counts.set(who, (counts.get(who) ?? 0) + 1);
+  }
+  const byPerson = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([who, n]) => ({ key: who, label: who, value: n, text: t("{n} {count, plural, one {request} other {requests}}", { n, count: n }) }));
   return (
+    <CcPage>
     <div data-testid="requests-canvas">
       <PageTitle sub={t("Create and change master data with approval")}>{t("Requests")}</PageTitle>
+      <CcBanner
+        testId="requests-banner"
+        label={t("Requests")}
+        eyebrow={t("Change requests")}
+        verdict={failed > 0 ? "no-go" : waiting > 0 ? "at-risk" : "go"}
+        headline={waiting > 0 ? t("{n} {waiting, plural, one {request waits} other {requests wait}} for approval", { n: waiting, waiting }) : t("No request waits for approval")}
+        why={failed > 0 ? t("{n} {failed, plural, one {request} other {requests}} failed to reach SAP and need a new look.", { n: failed, failed }) : t("Nothing has failed in this list.")}
+        figs={[
+          { label: t("Waiting"), value: waiting, note: t("submitted or in approval") },
+          { label: t("Failed"), value: failed, note: t("did not reach SAP") },
+          { label: t("Drafts"), value: drafts, note: t("not yet submitted") },
+        ]}
+        action={
+          <button type="button" className="m2-btn m2-next" aria-expanded={composing} disabled={!canWrite} title={canWrite ? undefined : t("A new request needs the master data write permission")} onClick={() => setComposing((c) => !c)}>
+            {t("New request")}
+          </button>
+        }
+      />
+      {byPerson.length > 0 ? (
+        <section className="m2-cc-card" aria-label={t("Requests per person")} data-testid="requests-workload">
+          <h3>{t("Requests per person")}</h3>
+          <CcHBars label={t("Requests per person")} rows={byPerson} />
+        </section>
+      ) : null}
       <div className="m2-cta">
         <div className="m2-seg" role="group" aria-label={t("Requests views")}>
           {VIEWS.map((v) => (
@@ -190,9 +228,6 @@ export function RequestsCanvas() {
             </button>
           ))}
         </div>
-        <button type="button" className="m2-btn m2-strong" aria-expanded={composing} disabled={!canWrite} title={canWrite ? undefined : t("A new request needs the master data write permission")} onClick={() => setComposing((c) => !c)}>
-          {t("New request")}
-        </button>
       </div>
       {composing ? (
         <NewRequest
@@ -247,5 +282,6 @@ export function RequestsCanvas() {
         <Table rows={rows} />
       )}
     </div>
+    </CcPage>
   );
 }
