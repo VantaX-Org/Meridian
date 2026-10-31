@@ -43,7 +43,7 @@ THROUGHPUT_DAYS = 30
 RUNS_SHOWN = 20
 TOP = 20
 CLOSED = ("resolved", "accepted")
-OPEN_WORK = ("to_fix", "proposed", "approved", "sent")
+OPEN_WORK = ("to_fix", "proposed", "approved", "awaiting_load", "sent")
 # Organisational units a record key can carry, in the order the page shows them.
 ORG_UNITS: dict[str, str] = {
     "BUKRS": "Company code",
@@ -423,8 +423,8 @@ def _dimensions(rows: list, total: int | None) -> list[dict]:
 _PROPOSAL_SQL = f"""
     SELECT i.proposal_source AS source,
            count(*) FILTER (WHERE i.proposed_value IS NOT NULL) AS proposed,
-           count(*) FILTER (WHERE i.proposed_value IS NOT NULL AND (i.accepted OR b.status IN ('approved', 'exported'))) AS approved,
-           count(*) FILTER (WHERE i.proposed_value IS NOT NULL AND b.status = 'exported') AS exported,
+           count(*) FILTER (WHERE i.proposed_value IS NOT NULL AND (i.accepted OR b.status IN ('approved', 'awaiting_load', 'exported'))) AS approved,
+           count(*) FILTER (WHERE i.proposed_value IS NOT NULL AND b.status IN ('awaiting_load', 'exported')) AS exported,
            count(*) FILTER (WHERE i.recon_status = 'fixed') AS fixed,
            count(*) FILTER (WHERE i.recon_status = 'still_failing') AS still_failing
       FROM remediation_items i JOIN remediation_batches b ON b.id = i.batch_id

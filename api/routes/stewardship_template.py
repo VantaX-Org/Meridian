@@ -60,7 +60,7 @@ async def _open_criticals(db: AsyncSession, tenant: Tenant, modules: list[str]) 
     clause = pairs_clause("c", pairs, params)
     rows = (await db.execute(text(  # work_counts, migration 108
         f"SELECT c.module, sum(c.count)::bigint FROM work_counts c WHERE c.tenant_id = CAST(:t AS uuid) AND {clause} "
-        "AND c.severity = 'critical' AND c.status IN ('to_fix', 'proposed', 'approved', 'sent') GROUP BY c.module "
+        "AND c.severity = 'critical' AND c.status IN ('to_fix', 'proposed', 'approved', 'awaiting_load', 'sent') GROUP BY c.module "
         "HAVING sum(c.count) <> 0"),
         params)).fetchall()
     return {r[0]: int(r[1]) for r in rows}

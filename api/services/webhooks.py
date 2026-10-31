@@ -30,7 +30,8 @@ from typing import Any
 
 from sqlalchemy import text
 
-EVENTS = ("run.finished", "run.failed", "batch.waiting", "batch.approved", "batch.sent", "score.dropped",
+EVENTS = ("run.finished", "run.failed", "batch.waiting", "batch.approved", "batch.exported", "batch.sent",
+          "batch.verified", "score.dropped",
           "breach.new", "config.drift", "certificate.signed", "digest.sent",
           # master data change requests (api/services/change_requests.py)
           "change_request.submitted", "change_request.approved", "change_request.rejected",
@@ -300,7 +301,8 @@ def run_failed(session, tenant_id: str, version_id: str) -> int:
 
 
 def batch_event(session, tenant_id: str, batch_id: str, event: str) -> int:
-    """batch.waiting / batch.approved / batch.sent: the batch, its size and the objects and rules it touches."""
+    """batch.waiting / batch.approved / batch.exported (load file out, waiting for the SAP load) / batch.sent
+    (written by BAPI, or the load confirmed): the batch, its size and the objects and rules it touches."""
     b = session.execute(text(
         "SELECT id::text, name, status, created_by_label, approved_by_label FROM remediation_batches "
         "WHERE id = CAST(:b AS uuid) AND tenant_id = :t"), {"b": batch_id, "t": str(tenant_id)}).mappings().first()

@@ -4,7 +4,7 @@
 on vendor bank data in ECC production" into the filter set GET /work/records accepts:
 
   module        an object (material_master)                    status    open | all | to_fix | proposed | approved |
-  severity      critical | high | medium | low | blocking                sent | not_an_issue | fixed
+  severity      critical | high | medium | low | blocking                awaiting_load | sent | not_an_issue | fixed
   assigned      me | unassigned | a user id                     due       overdue | today | week
   system        a source system id, or upload                   proposed  true (records with a proposed value)
   policy        a policy pack, or pack:class (sap/policy_packs.yaml)        check_id  a rule id (MM001)
@@ -60,7 +60,8 @@ STATUS = {
     "to fix": "to_fix", "unfixed": "to_fix", "todo": "to_fix", "not started": "to_fix",
     "proposed": "proposed", "suggested": "proposed",
     "approved": "approved",
-    "sent": "sent", "exported": "sent", "written back": "sent", "loaded": "sent",
+    "awaiting load": "awaiting_load", "waiting for the load": "awaiting_load", "exported": "awaiting_load",
+    "sent": "sent", "written back": "sent", "loaded": "sent",
     "not an issue": "not_an_issue", "false positive": "not_an_issue", "false positives": "not_an_issue",
     "dismissed": "not_an_issue",
     "fixed": "fixed", "resolved": "fixed", "done": "fixed", "closed": "fixed", "cleaned": "fixed",

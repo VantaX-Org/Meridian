@@ -303,7 +303,8 @@ def mass_change(items: list[dict]) -> pd.DataFrame:
 
 
 def reconcile(session, tenant_id: str, version_id: str, scope: str, checks: Optional[list[str]] = None) -> int:
-    """Mark exported batch items fixed / still failing from this run.
+    """Mark exported batch items fixed / still failing from this run: a batch sent to SAP, and one whose load file
+    waits for the SAP load (the run may show the load happened before anyone confirmed it).
 
     ``record_issues.track`` calls this once per check batch (``checks``), inside that batch's
     transaction, while ``tmp_present`` (the records evaluated in this run) is populated; the batch's
@@ -327,7 +328,7 @@ def reconcile(session, tenant_id: str, version_id: str, scope: str, checks: Opti
                    THEN 'still_failing' ELSE 'fixed' END,
                    recon_version = :vid, updated_at = now()
               FROM remediation_batches b
-             WHERE b.id = i.batch_id AND b.status = 'exported' AND i.tenant_id = :tid AND i.scope = :scope
+             WHERE b.id = i.batch_id AND b.status IN ('awaiting_load', 'exported') AND i.tenant_id = :tid AND i.scope = :scope
                AND (CAST(:checks AS text[]) IS NULL OR i.check_id = ANY(CAST(:checks AS text[])))
                AND b.exported_at < (SELECT run_at FROM analysis_versions WHERE id = :vid)
                AND (EXISTS (SELECT 1 FROM finding_records fr WHERE fr.version_id = :vid

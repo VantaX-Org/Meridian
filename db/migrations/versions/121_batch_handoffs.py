@@ -4,9 +4,9 @@ Revision ID: 121
 Revises: 120
 Create Date: 2026-10-31
 
-* remediation_batches: a batch exported as a load file waits for the SAP load (status ``awaiting_load``, a value of the
-  free-text status column) until someone confirms the load (``exported``, read as "Sent to SAP" as before, so old
-  batches keep their meaning). ``exported_by`` / ``exported_by_label`` say who downloaded the load file,
+* remediation_batches: a batch exported as a load file waits for the SAP load (status ``awaiting_load``, added to the
+  status check) until someone confirms the load (``exported``, read as "Sent to SAP" as before, so old batches keep
+  their meaning). ``exported_by`` / ``exported_by_label`` say who downloaded the load file,
   ``loaded_at`` / ``loaded_by`` / ``loaded_by_label`` / ``load_note`` who confirmed the load in SAP.
 * remediation_batch_verifications: per batch and run, what the first run after the export found for the batch's
   records (fixed, still failing). One row per (batch, run), written once by the worker that follows the run.
@@ -41,6 +41,9 @@ _BATCH_COLUMNS = (
 def upgrade() -> None:
     for name, type_ in _BATCH_COLUMNS:
         op.add_column("remediation_batches", sa.Column(name, type_, nullable=True))
+    op.drop_constraint("ck_remediation_batches_status", "remediation_batches", type_="check")
+    op.create_check_constraint("ck_remediation_batches_status", "remediation_batches",
+                               "status IN ('draft', 'approved', 'awaiting_load', 'exported')")
 
     op.create_table(
         "remediation_batch_verifications",
@@ -88,5 +91,8 @@ def downgrade() -> None:
     op.execute("UPDATE remediation_batches SET status = 'exported' WHERE status = 'awaiting_load'")
     if forced:
         op.execute("ALTER TABLE remediation_batches FORCE ROW LEVEL SECURITY")
+    op.drop_constraint("ck_remediation_batches_status", "remediation_batches", type_="check")
+    op.create_check_constraint("ck_remediation_batches_status", "remediation_batches",
+                               "status IN ('draft', 'approved', 'exported')")
     for name, _ in reversed(_BATCH_COLUMNS):
         op.drop_column("remediation_batches", name)

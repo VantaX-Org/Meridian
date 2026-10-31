@@ -280,3 +280,60 @@ def batch_decided(session: Session, tenant_id: str, batch_id: str, decision: str
     except Exception as exc:  # noqa: BLE001 - a notice never costs the decision
         logger.warning("batch decision notice not written: %s", type(exc).__name__)
         return []
+
+
+def _basis_people(session: Session, tid: str) -> list[str]:
+    """The SAP Basis people of the tenant (the persona role, tenant-wide): who loads a file when nobody is named."""
+    from api.services.workflow import Assignee, resolve
+    return resolve(session, tid, Assignee(rule="role", roles=["sap_basis"]), {}, None)
+
+
+def batch_awaiting_load(session: Session, tenant_id: str, batch_id: str, loader_id: Optional[str],
+                        actor_id: Optional[str], actor_label: Optional[str]) -> list[EmailJob]:
+    """The load file of an approved batch was exported: tell the person named to load it (else the SAP Basis
+    people) and the steward who built it. Once per batch. Never raises."""
+    try:
+        with session.begin_nested():
+            tid = str(tenant_id)
+            b = _batch_row(session, tid, str(batch_id))
+            if b is None:
+                return []
+            who = actor_label or "An approver"
+            link = batch_link(str(batch_id))
+            loaders = [loader_id] if loader_id else _basis_people(session, tid)
+            jobs = notify(session, tid, loaders, type_="batch_awaiting_load",
+                          title=f"Load file of fix batch {b['name']} waits for the SAP load",
+                          body=(f"{who} exported the load file of the approved fix batch {b['name']}. Load it into "
+                                "SAP, then confirm with Loaded in SAP so the batch reads Sent to SAP."),
+                          link=link, key=f"batch_awaiting_load:{batch_id}", skip=[actor_id], button="Open the batch")
+            jobs += notify(session, tid, [b["created_by"]], type_="batch_awaiting_load",
+                           title=f"Fix batch {b['name']} is exported, waiting for the SAP load",
+                           body=(f"{who} exported the load file of your fix batch {b['name']}. It reads Sent to SAP "
+                                 "once the load is confirmed."),
+                           link=link, key=f"batch_exported:{batch_id}", skip=[actor_id, *loaders],
+                           button="Open the batch")
+            return jobs
+    except Exception as exc:  # noqa: BLE001 - a notice never costs the export
+        logger.warning("batch export notice not written: %s", type(exc).__name__)
+        return []
+
+
+def batch_loaded(session: Session, tenant_id: str, batch_id: str, actor_id: Optional[str],
+                 actor_label: Optional[str], note: Optional[str]) -> list[EmailJob]:
+    """Someone confirmed the batch's load in SAP: tell the steward and the approver. Once per batch. Never raises."""
+    try:
+        with session.begin_nested():
+            tid = str(tenant_id)
+            b = _batch_row(session, tid, str(batch_id))
+            if b is None:
+                return []
+            who = actor_label or "Someone"
+            return notify(session, tid, [b["created_by"], b["approved_by"]], type_="batch_loaded",
+                          title=f"Fix batch {b['name']} is loaded in SAP",
+                          body=(f"{who} confirmed the load of the fix batch {b['name']} in SAP."
+                                + (f' "{note}"' if note else "") + " The next run verifies its records."),
+                          link=batch_link(str(batch_id)), key=f"batch_loaded:{batch_id}", skip=[actor_id],
+                          button="Open the batch")
+    except Exception as exc:  # noqa: BLE001 - a notice never costs the confirmation
+        logger.warning("batch loaded notice not written: %s", type(exc).__name__)
+        return []

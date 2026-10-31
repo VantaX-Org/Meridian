@@ -39,8 +39,8 @@ from api.services.run_context import latest_run
 
 router = APIRouter(prefix="/api/v1/work", tags=["work"])
 
-Status = Literal["to_fix", "proposed", "approved", "sent", "not_an_issue", "fixed"]
-OPEN = ("to_fix", "proposed", "approved", "sent")
+Status = Literal["to_fix", "proposed", "approved", "awaiting_load", "sent", "not_an_issue", "fixed"]
+OPEN = ("to_fix", "proposed", "approved", "awaiting_load", "sent")
 PAGE = 50
 COUNT_CAP = 100_000
 MAX_ACCEPT = 50_000
@@ -238,7 +238,7 @@ async def summary(
     module: Optional[str] = None,
     check_id: Optional[str] = None,
     severity: Optional[str] = Query(None, pattern="^(critical|high|medium|low|blocking)$"),
-    status: Optional[str] = Query(None, pattern="^(open|all|to_fix|proposed|approved|sent|not_an_issue|fixed)$"),
+    status: Optional[str] = Query(None, pattern="^(open|all|to_fix|proposed|approved|awaiting_load|sent|not_an_issue|fixed)$"),
     assigned: Optional[str] = Query(None, description="'me', 'unassigned' or a user id"),
     proposed: Optional[bool] = None,
     due: Optional[str] = Query(None, pattern="^(overdue|today|week)$"),
@@ -540,7 +540,7 @@ async def records(
     module: Optional[str] = None,
     check_id: Optional[str] = None,
     severity: Optional[str] = Query(None, pattern="^(critical|high|medium|low|blocking)$", description="blocking = critical or high"),
-    status: Optional[str] = Query("open", pattern="^(open|all|to_fix|proposed|approved|sent|not_an_issue|fixed)$"),
+    status: Optional[str] = Query("open", pattern="^(open|all|to_fix|proposed|approved|awaiting_load|sent|not_an_issue|fixed)$"),
     assigned: Optional[str] = Query(None, description="'me', 'unassigned' or a user id"),
     proposed: Optional[bool] = None,
     due: Optional[str] = Query(None, pattern="^(overdue|today|week)$", description="SLA: past due, due within a day, or due within seven days"),
@@ -925,7 +925,8 @@ async def record(
                           "why": "Proposed by the cleaning engine"}
         status = ("fixed" if r["issue_status"] == "resolved" else "not_an_issue" if r["issue_status"] == "accepted"
                   else "to_fix" if r["recon_status"] == "still_failing"
-                  else "sent" if r["batch_status"] == "exported" else "approved" if r["batch_status"] == "approved"
+                  else "sent" if r["batch_status"] == "exported"
+                  else "awaiting_load" if r["batch_status"] == "awaiting_load" else "approved" if r["batch_status"] == "approved"
                   else "proposed" if r["batch_status"] == "draft" and r["decided_value"] is not None else "to_fix")
         failing = r["group_records"] if r["group_records"] is not None else (r["affected_count"] or 0)
         population = r["total_count"] or None
@@ -1386,7 +1387,7 @@ async def accept_all(
                    AND COALESCE(ri.status, 'open') IN ('open', 'in_progress')
                    AND NOT EXISTS (SELECT 1 FROM remediation_items i JOIN remediation_batches b ON b.id = i.batch_id
                                     WHERE i.tenant_id = fr.tenant_id AND i.scope = :scope AND i.check_id = fr.check_id
-                                      AND i.record_key = fr.record_key AND b.status IN ('approved', 'exported'))
+                                      AND i.record_key = fr.record_key AND b.status IN ('approved', 'awaiting_load', 'exported'))
                  LIMIT :cap),
              old AS (SELECT record_key, to_jsonb(r) AS j FROM remediation_items r
                       WHERE r.batch_id = CAST(:b AS uuid) AND r.check_id = :c),
@@ -1524,7 +1525,7 @@ async def export_sheet(
     module: Optional[str] = None,
     check_id: Optional[str] = None,
     severity: Optional[str] = Query(None, pattern="^(critical|high|medium|low|blocking)$", description="blocking = critical or high"),
-    status: Optional[str] = Query("open", pattern="^(open|all|to_fix|proposed|approved|sent|not_an_issue|fixed)$"),
+    status: Optional[str] = Query("open", pattern="^(open|all|to_fix|proposed|approved|awaiting_load|sent|not_an_issue|fixed)$"),
     assigned: Optional[str] = None,
     proposed: Optional[bool] = None,
     due: Optional[str] = Query(None, pattern="^(overdue|today|week)$"),
@@ -1637,7 +1638,7 @@ async def export_per_object(
     version_id: Optional[uuid.UUID] = None,
     check_id: Optional[str] = None,
     severity: Optional[str] = Query(None, pattern="^(critical|high|medium|low|blocking)$", description="blocking = critical or high"),
-    status: Optional[str] = Query("open", pattern="^(open|all|to_fix|proposed|approved|sent|not_an_issue|fixed)$"),
+    status: Optional[str] = Query("open", pattern="^(open|all|to_fix|proposed|approved|awaiting_load|sent|not_an_issue|fixed)$"),
     assigned: Optional[str] = None,
     proposed: Optional[bool] = None,
     due: Optional[str] = Query(None, pattern="^(overdue|today|week)$"),

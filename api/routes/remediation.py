@@ -1,8 +1,10 @@
 """Remediation batches — fix files for a human-controlled SAP load.
 
 draft (steward edits proposed values; a second person may bulk-accept the
-high-confidence auto_fix proposals) → approved (a second person) → exported
-(Migration Cockpit staging XLSX/CSV or a generic LSMW / mass-change CSV).
+high-confidence auto_fix proposals) → approved (a second person) → awaiting_load
+(the load file is exported: Migration Cockpit staging XLSX/CSV or a generic LSMW /
+mass-change CSV) → exported, read "Sent to SAP" (an approver or SAP Basis confirmed
+the load: POST /batches/{id}/loaded; or live write-back committed it by BAPI).
 Meridian never posts to SAP; see api/services/remediation.py.
 """
 
@@ -20,7 +22,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _row, _rls, _where
 from api.services import attention, handoff_notices, remediation, undo, webhooks, workflow, worklist
-from api.services.rbac import current_user_id, current_user_label, require_permission, scope_from_path
+from api.services.rbac import (current_user_id, current_user_label, require_any_permission, require_permission,
+                               scope_from_path)
 
 router = APIRouter(prefix="/api/v1/remediation", tags=["remediation"])
 
@@ -618,11 +621,18 @@ async def export_batch(
     format: ExportFormat = Query("cockpit_xlsx"),
     cr_type: Optional[str] = Query(None, max_length=40, pattern=r"^[A-Z0-9_]+$",
                                    description="mdg_cr_json only: the change-request type"),
+    loader_id: Optional[uuid.UUID] = Query(None, description="who loads the file into SAP; told in the inbox and by "
+                                                             "email (default: the SAP Basis people)"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _perm: str = Depends(require_permission("export", scope=scope_from_path)),
 ):
-    """Approved batch as a load file. Items without a proposed value are left out."""
+    """Approved batch as a load file. Items without a proposed value are left out.
+
+    The first export of an approved batch moves it to ``awaiting_load`` ("Exported, waiting for the SAP load") with
+    who exported it and when: nothing reached SAP yet. The loader (``loader_id``, else the SAP Basis people) and the
+    steward are told; ``POST /batches/{id}/loaded`` confirms the load and the batch reads Sent to SAP (``exported``).
+    Exporting again (another format, a lost file) changes nothing but the package trail."""
     b = await _batch(db, tenant, batch_id)
     if b["status"] == "draft":
         raise HTTPException(status_code=409, detail="Approve the batch before exporting it.")
@@ -679,8 +689,24 @@ async def export_batch(
         filename = xlsx_filename(f"remediation-{format}", str(batch_id))
     else:
         filename = f"remediation_{batch_id}_{format}.{ext}"
-    await db.execute(text("UPDATE remediation_batches SET status = 'exported', exported_at = now() WHERE id = :id"),
-                     {"id": batch_id})
+    first = b["status"] == "approved"
+    if loader_id is not None and not (await db.execute(
+            text("SELECT 1 FROM users WHERE id = :u AND tenant_id = :t AND is_active"),
+            {"u": loader_id, "t": str(tenant.id)})).scalar():
+        raise HTTPException(status_code=404, detail="The person to load the file was not found.")
+    # one statement: the first export of an approved batch waits for the SAP load; a re-export keeps the status
+    await db.execute(text("""
+        UPDATE remediation_batches
+           SET status = CASE WHEN status = 'approved' THEN 'awaiting_load' ELSE status END,
+               exported_at = CASE WHEN status = 'approved' THEN now() ELSE COALESCE(exported_at, now()) END,
+               exported_by = CASE WHEN status = 'approved' THEN CAST(:uid AS uuid) ELSE exported_by END,
+               exported_by_label = CASE WHEN status = 'approved' THEN CAST(:label AS text) ELSE exported_by_label END,
+               filter = CASE WHEN status = 'approved' AND CAST(:loader AS text) IS NOT NULL
+                             THEN COALESCE(filter, '{}'::jsonb) || jsonb_build_object('loader_id', CAST(:loader AS text))
+                             ELSE filter END
+         WHERE id = :id AND tenant_id = :tid"""),
+        {"id": batch_id, "tid": str(tenant.id), "uid": uid, "label": current_user_label(),
+         "loader": str(loader_id) if loader_id else None})
     await db.execute(text(
         "INSERT INTO export_packages (tenant_id, batch_id, format, filename, sha256, size_bytes, item_count, "
         "created_by, created_by_label, approved_by_label) VALUES (:tid, :bid, :fmt, :fn, :sha, :size, :cnt, "
@@ -688,13 +714,60 @@ async def export_batch(
         {"tid": str(tenant.id), "bid": batch_id, "fmt": format, "fn": filename, "sha": digest, "size": len(data),
          "cnt": len(items), "uid": uid, "label": current_user_label(), "approved_label": b["approved_by_label"]})
     await _event(db, tenant, batch_id, "exported", request, to_value=format)
-    await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), batch_id))
-    await db.run_sync(lambda s: webhooks.batch_event(s, str(tenant.id), str(batch_id), "batch.sent"))
+    mails: list = []
+    if first:
+        await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), batch_id))
+        await db.run_sync(lambda s: webhooks.batch_event(s, str(tenant.id), str(batch_id), "batch.exported"))
+        mails = await db.run_sync(lambda s: handoff_notices.batch_awaiting_load(
+            s, str(tenant.id), str(batch_id), str(loader_id) if loader_id else None, uid, current_user_label()))
     await db.commit()
+    handoff_notices.dispatch(mails)
+    if first:
+        attention.invalidate(tenant.id)
     return Response(content=data, media_type=_MEDIA[ext], headers={
         "Content-Disposition": f"attachment; filename={filename}",
         "X-Content-SHA256": digest,
         "Access-Control-Expose-Headers": "X-Content-SHA256"})
+
+
+class LoadedBody(BaseModel):
+    note: Optional[str] = Field(None, max_length=4000, description="how it was loaded, e.g. the LTMC project")
+
+
+@router.post("/batches/{batch_id}/loaded",
+             dependencies=[Depends(require_any_permission("approve", "manage_systems"))])
+async def confirm_loaded(
+    batch_id: uuid.UUID,
+    request: Request,
+    body: Optional[LoadedBody] = None,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """The batch's load file was loaded in SAP: an approver or SAP Basis confirms it, and the batch and its records
+    read Sent to SAP (``exported``), with who confirmed and when. The next run that covers its records verifies the
+    load (GET /batches/{id}: ``verification``). Not by the person who built the batch."""
+    b = await _batch(db, tenant, batch_id)
+    if b["status"] != "awaiting_load":
+        raise HTTPException(status_code=409, detail=(
+            "This batch is already sent to SAP." if b["status"] == "exported" else
+            f"This batch is {b['status']}: only a batch whose load file waits for the SAP load can be confirmed."))
+    uid = current_user_id(request)
+    if b["created_by"] and uid and uid == b["created_by"]:
+        raise HTTPException(status_code=403, detail="The batch creator cannot confirm its load; a second person does.")
+    note = ((body.note if body else None) or "").strip() or None
+    await db.execute(text(
+        "UPDATE remediation_batches SET status = 'exported', loaded_at = now(), loaded_by = CAST(:uid AS uuid), "
+        "loaded_by_label = :label, load_note = :note WHERE id = :id AND tenant_id = :tid AND status = 'awaiting_load'"),
+        {"uid": uid, "label": current_user_label(), "note": note, "id": batch_id, "tid": str(tenant.id)})
+    await _event(db, tenant, batch_id, "loaded", request, to_value=note)
+    await db.run_sync(lambda s: worklist.refresh_batch(s, str(tenant.id), batch_id))
+    await db.run_sync(lambda s: webhooks.batch_event(s, str(tenant.id), str(batch_id), "batch.sent"))
+    mails = await db.run_sync(lambda s: handoff_notices.batch_loaded(s, str(tenant.id), str(batch_id), uid,
+                                                                     current_user_label(), note))
+    await db.commit()
+    handoff_notices.dispatch(mails)
+    attention.invalidate(tenant.id)
+    return {"id": str(batch_id), "status": "exported", "loaded_by": current_user_label(), "load_note": note}
 
 
 @router.get("/batches/{batch_id}/diff")

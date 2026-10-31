@@ -418,7 +418,8 @@ async def _open_work(c: _Ctx) -> dict:
         "GROUP BY status HAVING sum(count) <> 0"),  # migration 108
         c.p)).fetchall()}
     open_n = sum(by.get(s, 0) for s in OPEN_WORK)
-    labels = {"to_fix": "to fix", "proposed": "with a proposed fix", "approved": "approved", "sent": "sent to SAP"}
+    labels = {"to_fix": "to fix", "proposed": "with a proposed fix", "approved": "approved",
+              "awaiting_load": "exported and waiting for the SAP load", "sent": "sent to SAP"}
     parts = [f"{_count(by[s])} {labels[s]}" for s in OPEN_WORK if by.get(s)]
     sentences = [f"{_count(open_n)} {'record' if open_n == 1 else 'records'} of {c.label} still need work in the run of {_when(c.run_at)}"
                  + (f": {', '.join(parts)}." if parts else "."),
@@ -426,7 +427,8 @@ async def _open_work(c: _Ctx) -> dict:
     if by.get("fixed") or by.get("not_an_issue"):
         sentences.append(f"Records already fixed ({_count(by.get('fixed', 0))}) or signed off as not an issue "
                          f"({_count(by.get('not_an_issue', 0))}) do not count.")
-    names = {"to_fix": "To fix", "proposed": "With a proposed fix", "approved": "Approved", "sent": "Sent to SAP"}
+    names = {"to_fix": "To fix", "proposed": "With a proposed fix", "approved": "Approved",
+             "awaiting_load": "Exported, waiting for the SAP load", "sent": "Sent to SAP"}
     rows = [(names[s], by.get(s, 0), "records") for s in OPEN_WORK] + [("Open work", open_n, "records")]
     return _out(c, "open_work", f"What is left to do in {c.label}", sentences, rows)
 
