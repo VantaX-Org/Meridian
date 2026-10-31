@@ -39,10 +39,10 @@ function CapStatement({ receipt }: { receipt: Receipt }) {
       {!receipt.capped || n === 0
         ? t("No critical rule is holding this score down, so readiness follows the measured score of {measured}.", { measured: f1(receipt.measured) })
         : n === 1
-          ? tn("Held at {cap} by {rule}, one critical rule over tolerance. Measured {measured}, shown {score}.", { cap: receipt.cap_level, rule: link(ids[0]), measured: f1(receipt.measured), score: f1(receipt.score) })
+          ? tn("Held at {cap} because one critical rule fails: {rule}. Measured {measured}, shown {score}.", { cap: receipt.cap_level, rule: link(ids[0]), measured: f1(receipt.measured), score: f1(receipt.score) })
           : n === 2
-            ? tn("Held at {cap} by {rule} and {rule2}, two critical rules over tolerance. Measured {measured}, shown {score}.", { cap: receipt.cap_level, rule: link(ids[0]), rule2: link(ids[1]), measured: f1(receipt.measured), score: f1(receipt.score) })
-            : tn("Held at {cap} by {n} critical rules over tolerance, among them {rule} and {rule2}. Measured {measured}, shown {score}.", { cap: receipt.cap_level, n, rule: link(ids[0]), rule2: link(ids[1]), measured: f1(receipt.measured), score: f1(receipt.score) })}{" "}
+            ? tn("Held at {cap} because two critical rules fail: {rule} and {rule2}. Measured {measured}, shown {score}.", { cap: receipt.cap_level, rule: link(ids[0]), rule2: link(ids[1]), measured: f1(receipt.measured), score: f1(receipt.score) })
+            : tn("Held at {cap} because {n} critical rules fail, including {rule} and {rule2}. Measured {measured}, shown {score}.", { cap: receipt.cap_level, n, rule: link(ids[0]), rule2: link(ids[1]), measured: f1(receipt.measured), score: f1(receipt.score) })}{" "}
       {t("Cap rule: {cap_rule}.", { cap_rule: receipt.cap_rule })}
     </p>
   );
