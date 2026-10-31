@@ -63,6 +63,17 @@ The Action centre, second in the map, lists everything that needs you, most urge
 - **What needs attention, by kind.** How many items of each kind.
 - **Act on these.** Each item with what happened, its severity, the system and object, when it started and how many records or items it covers. The button opens the screen where you resolve it.
 
+## Material 360
+
+The Material 360 page, under Material 360 in the map, shows one material across every view and organisational level. Type a material number; leading zeros may be left off. The banner gives the description, the material type, group and base unit, with the rules it fails, the views missing and the plants phasing it out beside it. Under it:
+
+- **Views by level.** A grid of the material views (basic data, sales, purchasing, MRP, storage, accounting and the rest) against each level that carries them: client, plant, sales area, valuation area and storage location. Each cell says whether the view is maintained, missing or not needed there, and marks it failing when a rule fails on that view at that level. A view the material type does not expect says so.
+- **Rules failing, by view.** Each failing rule with its description, the view and level, the field, the value found, the severity and a link to its issue when one is open.
+- **Follow-up chain.** For each plant phasing the material out, the chain of follow-up materials with their MRP type and discontinuation date, and what is wrong with each link: a successor that does not exist, is blocked or not planned, a loop or a dead end. Under it, the bills of material that still use the material.
+- **Materials that look like it.** Other materials whose description, EAN or attributes match, with the match score. Open one to see it the same way.
+
+If the material is not in the material master, or no run has data yet, the page says so.
+
 ## What is on it
 
 - **The banner.** One sentence at the top: how many records failed a rule again since the last run and how many were fixed, with both figures beside it. Aletheia is docked on the right, as on every main screen.
