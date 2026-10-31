@@ -28,6 +28,7 @@ import { migrationRead, migrationWrite, NONE_MIGRATION } from "./migration";
 import { insightsRead, NONE_INSIGHTS } from "./insights";
 import { analyticsRead, NONE_ANALYTICS } from "./analytics";
 import { NONE_S4, s4Read } from "./s4";
+import { NONE_SCORE, scoreRead } from "./score";
 import { linksRead, NONE_LINKS } from "./links";
 import { attentionRead, NONE_ATTENTION } from "./attention";
 import { materialsRead, NONE_MATERIALS } from "./materials";
@@ -304,6 +305,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (an !== NONE_ANALYTICS) return an as T;
   const s4 = s4Read(path);
   if (s4 !== NONE_S4) return s4 as T;
+  const sc = scoreRead(path);
+  if (sc !== NONE_SCORE) return sc as T;
   const lk = linksRead(path, params);
   if (lk !== NONE_LINKS) return lk as T;
   const iss = issuesRead(path, params);

@@ -123,6 +123,15 @@ Value delivered, under Forecast and plan on the map, prices what the latest fini
 
 Only the latest run is priced, so the figures never add the same failing records twice across runs.
 
+## Score lens
+
+Score lens, under Value delivered on the map, scores every run two ways. The first is the score as it was recorded when the run finished, with the weights in force then. The second re-weights the same run under today's weights, so a change of weights never reads as a change in the data. The banner shows the latest run both ways, how many points the weight change accounts for, and the config-aware score. Under it:
+
+- **Score under today's weights, run by run.** A trend line over the runs, oldest on the left. The table under the chart gives both scores for each run.
+- **Each run, then and now.** Each run with its score then, its score under today's weights, the change the weights make, and whether the weights were recorded with the run. Runs scored before weights were recorded are re-weighted from the default weights, and the table says so.
+- **Each module across the runs.** One row per module with a sparkline of its score, the latest score, the score as recorded then and the change since the first run.
+- **Config-aware score.** The latest run counted only over the rules that your loaded SAP configuration says apply. A rule for batch management does not count when batch management is not active in any plant. The panel shows when the configuration was loaded, the score per process and per module, and the reasons rules do not apply with how many rules each covers. When no configuration is loaded every rule counts by default and the panel says so.
+
 ## What is on it
 
 - **The banner.** One sentence at the top: how many records failed a rule again since the last run and how many were fixed, with both figures beside it. Aletheia is docked on the right, as on every main screen.
