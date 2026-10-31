@@ -45,3 +45,17 @@ Open a step for its transaction, its activities and fields, the rules failing on
 - **"Choose at least one rule."** The simulation needs a ticked rule.
 - **Every step is Ready but the object is No-go**: the failing rules are on fields no activity reads. Map them in the designer.
 - **Your edits do not show on the Processes tab**: they show on the next run, and only once the model is published.
+
+## Configuration
+
+**Configuration** (`/config`, in the map under Requests and in the command line) shows the SAP configuration Meridian reads back out of the transactions of the latest run. Nothing on it is typed in by hand: every setting, step and finding comes from the stored config run.
+
+- **The headline**: "14 configuration findings, R 2.1m at stake", with the average health across the areas, the critical and high findings, and the share of settings that carry transactions.
+- **Processes**: each end-to-end flow (Procure-to-pay `PTP`, Order-to-cash `OTC`, Record-to-report `RTR` and the others) as a chain of steps. Each step is sized by the documents that reached it and names its SAP table; the red share is its exceptions, the step with the most exceptions is marked, and the days are the wait before the next step. A step the system never ran is drawn hollow and reads "Not found".
+- **Health by area**: 100 less 3 per critical, 2 per high, 1 per medium and half per low finding, per area such as Finance `FI` or Materials management `MM`.
+- **Settings in use**: the share of each area's configured values that carry at least one transaction. Low shares are settings that were configured and never used.
+- **Findings**: worst first, each with its severity, what was found, the fix, the area, the settings it touches and the amount at stake.
+- **Changes since the last run**: settings added, removed or changed between the last two config runs.
+- **Read the configuration again** (analysts and above) queues a new config run on the latest analysed version; the figures change when it ends.
+
+When no config run exists yet, the page says "Run an analysis on an SAP system to read its configuration."

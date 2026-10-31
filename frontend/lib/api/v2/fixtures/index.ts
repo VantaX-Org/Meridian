@@ -19,6 +19,7 @@ import { adminFixtureResponse, adminFixtureWrite, fixtureDownload as adminFixtur
 import { enterpriseFixtureDownload, enterpriseFixtureResponse, enterpriseFixtureWrite, NONE_ENTERPRISE } from "./enterprise";
 import { NONE_STEP9, receiptContractBreaches, resetStep9Fixture, step9Download, step9Read, step9Write, withContractMarks } from "./step9";
 import { NONE_REQ, requestsDownload, requestsRead, requestsWrite, resetRequestsFixture } from "./requests";
+import { configRead, configWrite, NONE_CONFIG } from "./config";
 import { guardDecision, NONE_STEP10, receiptPolicy, resetStep10Fixture, step10Read, step10Write, withPolicyMarks, withSandbox } from "./step10";
 
 /**
@@ -119,6 +120,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (method === "POST" && (path === "/work/decide" || /^\/work\/groups\/[^/]+\/(accept-all|set-value)$/.test(path))) guardDecision();
   const step9 = step9Write(method, path, body);
   if (step9 !== NONE_STEP9) return step9 as T;
+  const cfg = configWrite(method, path);
+  if (cfg !== NONE_CONFIG) return cfg as T;
   const roles = rolesFixtureWrite(method, path, body, params);
   if (roles !== NONE_ROLES) return roles as T;
   const out = ((): unknown => {
@@ -252,6 +255,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (lin !== undefined) return lin as T;
   const fc = forecastRead(path);
   if (fc !== undefined) return fc as T;
+  const cfg = configRead(path);
+  if (cfg !== NONE_CONFIG) return cfg as T;
   const rolesStep = rolesFixtureResponse(path, params);
   if (rolesStep !== NONE_ROLES) return rolesStep as T;
   const ent = enterpriseFixtureResponse(path);

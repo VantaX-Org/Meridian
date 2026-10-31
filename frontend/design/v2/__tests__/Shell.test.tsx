@@ -100,7 +100,7 @@ describe("map", () => {
     mount();
     const nav = screen.getByRole("navigation", { name: "Places" });
     const links = within(nav).getAllByRole("link");
-    expect(links.map((l) => (l.firstChild as HTMLElement).textContent)).toEqual(["Landscape", "Work", "Runs", "People", "Requests"]);
+    expect(links.map((l) => (l.firstChild as HTMLElement).textContent)).toEqual(["Landscape", "Work", "Runs", "People", "Requests", "Configuration"]);
     expect(links[0]).toHaveAttribute("aria-current", "page");
     expect(links[1]).not.toHaveAttribute("aria-current");
     await waitFor(() => expect(links[1]).toHaveTextContent("25,712"));
