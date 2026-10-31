@@ -194,15 +194,13 @@ for (const size of SIZES) {
         await axe(page, `system inspector ${size.name} ${scheme}`);
       });
 
-      test("the Basis next step opens the system inspector on the system that was never extracted", async ({ page }) => {
+      test("the Basis next step opens the connection settings of the system whose sign-in SAP refused", async ({ page }) => {
         await prepare(page, scheme);
         await page.goto("/?fixture=1&persona=basis", { waitUntil: "load" });
-        await page.getByRole("link", { name: "Extract SuccessFactors" }).click();
+        await page.getByRole("link", { name: "Fix the SuccessFactors sign-in" }).click();
         const dialog = page.getByRole("dialog", { name: "SuccessFactors" });
         await expect(dialog).toBeVisible(NAV);
-        await expect(dialog.getByText("Sign-in refused")).toBeVisible();
-        await dialog.getByRole("button", { name: "Test connection" }).click();
-        await expect(dialog.getByTestId("action-result")).toContainText("OData connection failed");
+        await expect(dialog.getByRole("button", { name: "Test connection" })).toBeVisible(NAV);
       });
 
       test("the System canvas: health, its views, and the Configuration view", async ({ page }) => {

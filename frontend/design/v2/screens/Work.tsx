@@ -13,6 +13,7 @@ import { ledgerRegistry, type LedgerTarget } from "@/lib/v2/keys";
 import { refreshV2, useLandscape, useStatus } from "@/lib/v2/queries";
 import { int } from "@/lib/v2/score";
 import {
+  BATCH_CHIPS,
   CHIPS,
   STATUS_LABEL,
   SORT_LABEL,
@@ -38,7 +39,7 @@ import {
 import { ConfirmBar } from "../forms";
 import { needsConfirm, useWorkActions, useWorkCan, type DecideKind } from "@/lib/v2/work-actions";
 import { patched, usePatches } from "@/lib/v2/work-overrides";
-import { PAGE, useGroupRows, useWorkGroups, useWorkRows, useWorkSummary, useWorkViews } from "@/lib/v2/work-queries";
+import { PAGE, allWorkRows, useGroupRows, useWorkGroups, useWorkRows, useWorkSummary, useWorkViews } from "@/lib/v2/work-queries";
 import { Grid, type GridColumn, type GridHandle } from "../Grid";
 import { IconChevron, IconClose, SeverityMark } from "../marks";
 import { MenuButton, type MenuEntry } from "../Menu";
@@ -51,11 +52,12 @@ import { ResultFrame } from "../inspector/shared";
 import type { Outcome } from "../inspector/shared";
 import { BATCH_STATUS_LABEL, batchLabel, groupByBatch, sentLine, type BatchRow } from "@/lib/v2/batches";
 import { useBatches } from "@/lib/v2/approvals-queries";
-import { BulkActions, CurrentValue, DecisionCell, NewValueCell, OwnerCell, PossibleValuesCell, PromptDialog, keyValue, rowKeyOf, type LedgerHandlers } from "./work-parts";
+import { useWaves } from "@/lib/v2/admin-queries";
+import { BulkActions, CurrentValue, DecisionCell, NewValueCell, OwnerCell, PossibleValuesCell, KeyText, PromptDialog, keyValue, rowKeyOf, type LedgerHandlers } from "./work-parts";
 import { GridTools, useGridKey } from "../GridTools";
 import { FixOrderHint } from "./object/Related";
 import { t as tr, lc } from "@/lib/v2/i18n";
-import { alphaOut, whole } from "@/lib/v2/format";
+import { whole } from "@/lib/v2/format";
 import { formatDate } from "@/lib/format";
 import { useRunList } from "@/lib/v2/queries";
 import { policyLabel } from "@/lib/v2/step10";
@@ -143,14 +145,14 @@ export function WorkCanvas() {
   const state = useMemo(() => readState(new URLSearchParams(search), view), [search, view]);
   const filters = useMemo(() => filtersOf(state), [state]);
 
-  const summaryQ = useWorkSummary();
+  const summaryQ = useWorkSummary({ wave: state.wave ?? undefined, verdict: state.verdict ?? undefined });
   const landscape = useLandscape(null).data;
   const status = useStatus().data;
   const labels = useMemo(() => new Map((landscape?.objects ?? []).map((o) => [o.module, o.label] as const)), [landscape]);
   const summary = summaryQ.data;
   const counts = useMemo(() => new Map(CHIPS.map((c) => [c.id, c.count(summary, state.module)] as const)), [summary, state.module]);
 
-  const batchesQ = useBatches(state.chip === "approvals" || Boolean(state.batch));
+  const batchesQ = useBatches(BATCH_CHIPS.has(state.chip) || Boolean(state.batch));
   const [sent, setSent] = useState<Outcome | null>(null);
   const controls = useBatchControls(setSent);
   const wc = useWorkCan();
@@ -162,6 +164,10 @@ export function WorkCanvas() {
   const grouped = state.group && GROUPABLE.has(state.chip) && !narrowed;
   const packs = usePolicyPacks().data?.packs;
   const runList = useRunList();
+  const waves = useWaves().data;
+  // At phone width the chips and one Filters button sit above the rows; the tags and the toolbar open under it (F28).
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const showFilters = !phone || filtersOpen;
   const asOfRun = state.asOf ? runList.data?.versions.find((v) => v.id === state.asOf) : undefined;
   const groupsQ = useWorkGroups({ module: state.module ?? undefined, severity: state.severity ?? undefined }, true);
   const rowsQ = useWorkRows(filters, state.sort, !grouped && !viewPending);
@@ -203,6 +209,18 @@ export function WorkCanvas() {
         batchesQ.rows.filter((b) => b.status === "approved").forEach((batch) => out.push({ kind: "batch", batch }));
         batchesQ.rows.filter((b) => b.status === "exported").sort((a, b) => (b.sentAt ?? "").localeCompare(a.sentAt ?? "")).slice(0, 5).forEach((batch) => out.push({ kind: "batch", batch }));
       }
+      return out;
+    }
+    if (!grouped && BATCH_CHIPS.has(state.chip)) {
+      // Approved, Sent to SAP and Fixed: the rows under the batch that carried them (F10).
+      const { groups: under, loose } = groupByBatch(batchesQ.rows, flatRows);
+      const out: Item[] = [];
+      for (const g of under) {
+        if (g.rows.length === 0) continue;
+        out.push({ kind: "batch", batch: g.batch });
+        g.rows.forEach((row) => out.push({ kind: "row", row }));
+      }
+      loose.forEach((row) => out.push({ kind: "row", row }));
       return out;
     }
     if (!grouped && state.batch) {
@@ -414,7 +432,7 @@ export function WorkCanvas() {
   const [gridKey, bumpGrid] = useGridKey(COLUMNS_ID);
   const objectLabel = state.module ? objectName(state.module, labels) : null;
   const text = sentence({ persona: session.persona, chip: state.chip, summary, objectLabel, module: state.module });
-  const topGroup = (groupsQ.data?.groups ?? []).find((g) => g.proposed > 0 && (!state.module || g.module === state.module));
+  const topGroup = (groupsQ.data?.groups ?? []).find((g) => g.proposed > 0 && (!state.module || g.module === state.module) && (!state.rule || g.check_id === state.rule));
   const headers = useMemo(() => keyHeaders(recordRows), [recordRows]);
   // The ledger's own density when the address or a saved view gives one, else the one in Preferences.
   const shellDensity = useDensity();
@@ -516,6 +534,7 @@ export function WorkCanvas() {
   if (state.batch) tags.push({ key: "batch", label: tr("Batch {batchLabel}", { batchLabel: batchLabel(state.batch) }), clear: () => go({ batch: null }) });
   if (state.due) tags.push({ key: "due", label: state.due === "overdue" ? tr("Overdue") : state.due === "week" ? tr("Due this week") : tr("Due soon"), clear: () => go({ due: null }) });
   if (state.policy) tags.push({ key: "policy", label: tr("Policy: {label}", { label: policyLabel(state.policy, packs) }), clear: () => go({ policy: null }) });
+  if (state.wave || state.verdict) tags.push({ key: "wave", label: summary?.wave?.name ?? (state.wave ? tr("Wave {id}", { id: state.wave }) : tr("Verdict {verdict}", { verdict: state.verdict ?? "" })), clear: () => go({ wave: null, verdict: null }) });
   if (state.system) tags.push({ key: "system", label: tr("System {name}", { name: landscape?.systems.find((x) => x.id === state.system)?.name ?? (state.system === "upload" ? tr("file uploads") : state.system) }), clear: () => go({ system: null }) });
 
   const shown = grouped ? recordRows.length : flatRows.length;
@@ -678,6 +697,17 @@ export function WorkCanvas() {
         </select>
       </label>
       <label className="m2-selbox">
+        <span className="m2-meta">{tr("Wave")}</span>
+        <select className="m2-sel" aria-label={tr("Wave")} value={state.wave ?? ""} onChange={(e) => go({ wave: e.target.value || null })} data-testid="work-wave">
+          <option value="">{tr("All waves")}</option>
+          {(waves ?? []).map((w) => (
+            <option key={w.id} value={w.id}>
+              {w.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="m2-selbox">
         <span className="m2-meta">{tr("As of run")}</span>
         <select className="m2-sel" aria-label={tr("As of run")} value={state.asOf ?? ""} onChange={(e) => go({ asOf: e.target.value || null, group: false })} data-testid="as-of-run">
           <option value="">{tr("Today")}</option>
@@ -734,7 +764,7 @@ export function WorkCanvas() {
           </button>
         </div>
       ) : null}
-      <p className="m2-prov m2-only-wide">{tr("Rows are read from the latest run of each object{value}.", { value: status?.cost_model ? tr(". Value at risk is from cost model {cost_model}", { cost_model: status.cost_model }) : "" })}</p>
+      <p className="m2-prov m2-only-wide">{tr("Rows are read from the latest run of each object{value}.", { value: status?.cost_model ? tr(". Value at risk is from cost model {cost_model}", { cost_model: status.cost_model }) : "" })}{" "}{tr("Each count is of records, not issues: one record with three failed rules counts once. Chip counts follow the object, rule and person filters.")}</p>
       {session.persona === "steward" && can.apply && topGroup && state.chip !== "approvals" && state.chip !== "exceptions" ? (
         <div className="m2-cta">
           <button type="button" className="m2-btn m2-next" onClick={() => ask(topGroup.proposed, tr("Accept {count} suggested values for {check}?", { count: int(topGroup.proposed), check: topGroup.check_id }), tr("Accept {count} values", { count: int(topGroup.proposed) }), () => void actions.acceptRule(topGroup.check_id, topGroup.proposed, topGroup.version_id, recordRows))}>
@@ -750,8 +780,13 @@ export function WorkCanvas() {
         </div>
       ) : null}
       <div className="m2-ledger-head">
-        <Chips state={state} counts={counts} set={(chip) => go({ chip, group: chip === "approvals" || chip === "exceptions" ? false : state.group })} groupRef={chipsRef} policy={<PolicyChip value={state.policy} onChange={(policy) => go({ policy, group: false })} />} />
-        {tags.length ? (
+        <Chips state={state} counts={counts} set={(chip) => go({ chip, group: BATCH_CHIPS.has(chip) || chip === "exceptions" ? false : state.group })} groupRef={chipsRef} policy={<PolicyChip value={state.policy} onChange={(policy) => go({ policy, group: false })} />} />
+        {phone ? (
+          <button type="button" className="m2-btn m2-sm" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((v) => !v)} data-testid="work-filters">
+            {tags.length ? tr("Filters ({count})", { count: tags.length }) : tr("Filters")}
+          </button>
+        ) : null}
+        {showFilters && tags.length ? (
           <ul className="m2-tags" aria-label={tr("Filters in force")}>
             {tags.map((t) => (
               <li key={t.key}>
@@ -764,7 +799,7 @@ export function WorkCanvas() {
           </ul>
         ) : null}
       </div>
-      {toolbar}
+      {showFilters ? toolbar : null}
       {importOpen ? (
         <div className="m2-drop" data-testid="import-panel">
           <span>
@@ -826,7 +861,7 @@ export function WorkCanvas() {
         <Grid<Item>
           key={gridKey}
           id={COLUMNS_ID}
-          toolbar={<GridTools gridId={COLUMNS_ID} route="work" title={tr("Work")} columns={columns} rows={items} filters={Object.fromEntries(Object.entries({ module: state.module, rule: state.rule, severity: state.severity, assigned: state.assigned }).filter(([, v]) => v)) as Record<string, string>} onColumns={bumpGrid} />}
+          toolbar={<GridTools gridId={COLUMNS_ID} route="work" title={tr("Work")} columns={columns} rows={items} allRows={grouped ? undefined : async () => visible(await allWorkRows(filters, state.sort)).map<Item>((row) => ({ kind: "row", row }))} filters={Object.fromEntries(Object.entries({ module: state.module, rule: state.rule, severity: state.severity, assigned: state.assigned, wave: summary?.wave?.name ?? state.wave }).filter(([, v]) => v)) as Record<string, string>} onColumns={bumpGrid} />}
           handleRef={gridHandle}
           ariaLabel={tr("Work ledger")}
           columns={columns}
@@ -913,16 +948,6 @@ export function WorkCanvas() {
 }
 
 /** Phone: each row is two lines in a list; editing happens in the inspector. */
-/** A record key as SAP shows it (ALPHA conversion), the full key in the title and in what is copied. */
-function KeyText({ value }: { value: string }) {
-  const shown = alphaOut(value);
-  return (
-    <span className="m2-mono" title={shown === value ? undefined : value} data-key={value}>
-      {shown}
-    </span>
-  );
-}
-
 function LedgerList({
   items,
   loading,

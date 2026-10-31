@@ -288,6 +288,9 @@ export interface FxBatch {
   due_at: string | null;
   returned: { by: string; note: string; at: string } | null;
   events: { action: string; user_label: string; at: string; note: string | null }[];
+  /** Changes without a new value: approval is refused until they are held out (F12). */
+  blank?: number;
+  verification?: BatchRowApi["verification"];
 }
 
 function buildBatches(): FxBatch[] {
@@ -303,10 +306,10 @@ function buildBatches(): FxBatch[] {
   const created = (name: string, at: string) => ({ action: "created", user_label: name, at, note: null });
   return [
     b({ id: "B-241", name: "Unit of measure and material type", status: "draft", created_by: "u-rg", created_by_label: "R. Govender", steward_label: "A. Naidoo", created_at: "2026-10-14T08:10:00Z", items: 328, value_at_risk: 412600, due_at: "2026-10-23T00:00:00Z", events: [created("R. Govender", "2026-10-14T08:10:00Z"), { action: "proposed", user_label: "A. Naidoo", at: "2026-10-14T15:42:00Z", note: null }] }),
-    b({ id: "B-238", name: "Purchasing and MRP data", status: "draft", created_by: "u-an", created_by_label: "A. Naidoo", steward_label: "A. Naidoo", created_at: "2026-10-13T10:30:00Z", items: 272, value_at_risk: 233400, due_at: "2026-10-28T00:00:00Z", events: [created("A. Naidoo", "2026-10-13T10:30:00Z")] }),
+    b({ id: "B-238", name: "Purchasing and MRP data", status: "draft", blank: 3, created_by: "u-an", created_by_label: "A. Naidoo", steward_label: "A. Naidoo", created_at: "2026-10-13T10:30:00Z", items: 272, value_at_risk: 233400, due_at: "2026-10-28T00:00:00Z", events: [created("A. Naidoo", "2026-10-13T10:30:00Z")] }),
     b({ id: "B-244", name: "Fixes by Demo user", status: "draft", created_by: "u-me", created_by_label: "Demo user", steward_label: "Demo user", created_at: "2026-10-16T08:02:00Z", items: 12, value_at_risk: 9800, due_at: null, events: [created("Demo user", "2026-10-16T08:02:00Z")] }),
     b({ id: "B-236", name: "Material groups", status: "approved", created_by: "u-an", created_by_label: "A. Naidoo", steward_label: "A. Naidoo", created_at: "2026-10-09T09:00:00Z", approved_by: "u-tm", approved_by_label: "T. Mokoena", approved_at: "2026-10-15T11:05:00Z", items: 180, value_at_risk: 121300, due_at: "2026-10-30T00:00:00Z", events: [created("A. Naidoo", "2026-10-09T09:00:00Z"), { action: "approved", user_label: "T. Mokoena", at: "2026-10-15T11:05:00Z", note: null }] }),
-    b({ id: "B-229", name: "Valuation classes", status: "exported", created_by: "u-rg", created_by_label: "R. Govender", steward_label: "R. Govender", created_at: "2026-10-02T09:00:00Z", approved_by: "u-tm", approved_by_label: "T. Mokoena", approved_at: "2026-10-08T10:00:00Z", exported_at: "2026-10-09T13:20:00Z", items: 96, value_at_risk: 64200, due_at: "2026-10-09T00:00:00Z", events: [created("R. Govender", "2026-10-02T09:00:00Z"), { action: "approved", user_label: "T. Mokoena", at: "2026-10-08T10:00:00Z", note: null }, { action: "exported", user_label: "R. Govender", at: "2026-10-09T13:20:00Z", note: "cockpit_xlsx" }] }),
+    b({ id: "B-229", name: "Valuation classes", status: "exported", created_by: "u-rg", created_by_label: "R. Govender", steward_label: "R. Govender", created_at: "2026-10-02T09:00:00Z", approved_by: "u-tm", approved_by_label: "T. Mokoena", approved_at: "2026-10-08T10:00:00Z", exported_at: "2026-10-09T13:20:00Z", items: 96, value_at_risk: 64200, due_at: "2026-10-09T00:00:00Z", events: [created("R. Govender", "2026-10-02T09:00:00Z"), { action: "approved", user_label: "T. Mokoena", at: "2026-10-08T10:00:00Z", note: null }, { action: "exported", user_label: "R. Govender", at: "2026-10-09T13:20:00Z", note: "cockpit_xlsx" }], verification: { version_id: VERSION, run_at: "2026-10-12T06:00:00Z", records: 96, fixed: 88, still_failing: 8, verified_at: "2026-10-12T06:20:00Z", sentence: "Verified on run 12 Oct 2026: 88 fixed, 8 still failing." } }),
   ];
 }
 
@@ -481,6 +484,9 @@ export function workRecords(p: Params): WorkPage {
   return { version_id: null, total, total_capped: false, next: offset + limit < all.length ? String(offset + limit) : null, items };
 }
 
+/** The wave names the summary echoes for `?wave=` (the migration fixture's waves). */
+const FX_WAVES: Record<string, string> = { "w-1": "Wave 1: finance foundations", "w-2": "Wave 2: master data", "w-3": "Wave 3: operations" };
+
 export function workSummary(p: Params): WorkSummary {
   const c = state.counts();
   const on = !p.module || p.module === MODULE;
@@ -506,6 +512,7 @@ export function workSummary(p: Params): WorkSummary {
     built: true,
     objects,
     totals: { records: obj.records, open: obj.open, issues: obj.issues, critical: obj.critical, proposed: obj.proposed, overdue: obj.overdue },
+    wave: p.wave || p.verdict ? { id: p.wave ? String(p.wave) : null, name: p.wave ? (FX_WAVES[String(p.wave)] ?? null) : null, verdict: p.verdict ? String(p.verdict) : null, objects: [{ system_id: "ecc-prd", module: MODULE }] } : null,
   };
 }
 
@@ -821,7 +828,7 @@ function moveRows(batch: string, from: WorkStatus, to: WorkStatus, before: Map<s
 }
 
 /** Approve a draft batch, or send one back (a draft stays a draft and is marked returned; an approved one goes back to draft). */
-export function batchFixture(kind: "approve" | "send-back", id: string, note?: string): { id: string; status: string; action_id: string } {
+export function batchFixture(kind: "approve" | "send-back", id: string, note?: string, withoutBlank = false): { id: string; status: string; action_id: string } {
   const b = findBatch(id);
   const snapshot: FxBatch = { ...b, returned: b.returned ? { ...b.returned } : null, events: [...b.events] };
   const before = new Map<string, Override | null>();
@@ -829,6 +836,8 @@ export function batchFixture(kind: "approve" | "send-back", id: string, note?: s
   if (kind === "approve") {
     if (b.status !== "draft") fail(409, `Batch is already ${b.status}.`);
     if (b.created_by === ME_ID) fail(403, "The batch creator cannot approve it.");
+    if (b.blank && !withoutBlank) fail(409, `${b.blank} records have no new value: MARA-MATKL on 3000 / 1000, MARA-MATKL on 3029 / 1000, MARA-MATKL on 3058 / 1000. Enter their values, approve the other ${b.items - b.blank} without them, or send the batch back.`);
+    b.blank = 0;
     b.status = "approved";
     b.approved_by = ME_ID;
     b.approved_by_label = ME_LABEL;
@@ -999,6 +1008,7 @@ export function batchesFixture(): { items: BatchRowApi[] } {
     value_at_risk: b.value_at_risk,
     due_at: b.due_at,
     steward_label: b.steward_label,
+    verification: b.verification ?? null,
   }));
   return { items };
 }
@@ -1022,7 +1032,7 @@ export function batchFixtureDetail(id: string): BatchDetail {
       grain: null,
       field: m.field,
       current_value: row?.current_value ?? currentFor(rule, `${id}${i}`),
-      proposed_value: row?.new_value ?? m.suggestion,
+      proposed_value: i < (b.blank ?? 0) ? null : (row?.new_value ?? m.suggestion),
       proposal_source: "steward",
       confidence: null,
       accepted: b.status !== "draft",

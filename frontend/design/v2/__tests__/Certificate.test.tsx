@@ -83,6 +83,7 @@ describe("the readiness certificate of a wave", () => {
     expect(refusal).toHaveTextContent("The wave is not ready to certify.");
     expect(refusal).toHaveTextContent("Material master");
     expect(within(refusal).getByRole("link", { name: "MM003" })).toBeInTheDocument();
+    expect(within(refusal).getByRole("link", { name: "Material master" })).toHaveAttribute("href", expect.stringContaining("/o/_/material-master"));
   });
 
   it("issues a version when every object of the wave is clear", async () => {

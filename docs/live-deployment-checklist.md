@@ -46,6 +46,9 @@ numbers, **V** the vendor's deployment engineer (on a call; never with access to
 - [ ] **A** Administration, Single sign-on: connect the identity provider and **Test sign-in**, if the customer uses
       one. Keep the administrator's password sign-in as the way in if the provider is down.
 - [ ] **A** Administration, Audit log: `auth.login` and `auth.password_change` are recorded.
+- [ ] **A** Invite the SAP Basis colleague now, so section 5 does not wait on them: the start screen of a new tenant
+      offers **Invite SAP Basis**, which opens the invitation with the SAP Basis role. Invite the SAP team that will
+      prove the rules in section 8 as well (Administration, Users, **Invite a user**, role Analyst or Auditor).
 
 ## 4. Licence (training module 2)
 

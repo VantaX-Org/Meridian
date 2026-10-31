@@ -2,12 +2,12 @@
 
 import { Sparkline } from "../charts";
 import { Money } from "../Money";
-import { createContext, useContext, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { checkClassLabel, formatDate } from "@/lib/format";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { getObjectRules, getReceipt } from "@/lib/api/v2/landscape";
-import { downloadReconciliationWorkbook, handOffRule, suppressRule, type Reconcile, type ReconcileCondition, type RuleRun, type RuleScope, type SelectionLine } from "@/lib/api/v2/object";
+import { downloadReconciliationWorkbook, handOffRule, noteProved, suppressRule, type Reconcile, type ReconcileCondition, type RuleRun, type RuleScope, type SelectionLine } from "@/lib/api/v2/object";
 import type { Landscape, Receipt, RuleRow } from "@/lib/api/v2/types";
 import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { v2Keys } from "@/lib/v2/queries";
@@ -576,6 +576,9 @@ export function RuleProve({ view }: { view: RuleView }) {
   const [pick, setPick] = useState(0);
   const obj = objects[Math.min(pick, Math.max(0, objects.length - 1))];
   const q = useRuleReconcile(view.id, obj?.run_id);
+  useEffect(() => {
+    if (obj?.run_id) noteProved(obj.run_id, view.id);
+  }, [obj?.run_id, view.id]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const download = () => {
@@ -619,7 +622,7 @@ export function RuleProve({ view }: { view: RuleView }) {
               </button>
             </div>
           ) : null}
-          <p className="m2-prov">{tr("The workbook holds the ten rules with the most failing records in this run, with empty SE16 count and match columns for your team.")}</p>
+          <p className="m2-prov">{tr("The workbook leads with the rules you opened here, then the ten rules with the most failing records in this run, with empty SE16 count and match columns for your team.")}</p>
           {msg ? <p role="status" className="m2-prov">{msg}</p> : null}
         </div>
       )}
@@ -795,6 +798,7 @@ export function RuleInspectorBody({ id, landscape }: { id: string; landscape?: L
     <SectionLevel level="h3">
       <p className="m2-rname" data-testid="rule-name">{v.scope.name ?? v.scope.definition.message ?? tr("Rule")}</p>
       <RuleFacts view={v} />
+      <RuleProve view={v} />
       <RuleDefinition view={v} />
       <RuleAuthority view={v} />
       <RuleScopeSection view={v} />
@@ -802,7 +806,6 @@ export function RuleInspectorBody({ id, landscape }: { id: string; landscape?: L
       <RuleLineage view={v} />
       <RuleVersions view={v} />
       <RuleContract view={v} />
-      <RuleProve view={v} />
       <RuleActions view={v} />
       <RuleHistory view={v} />
       <CollabSections kind="rule" id={v.id} label={tr("rule {id}", { id: v.id })} />

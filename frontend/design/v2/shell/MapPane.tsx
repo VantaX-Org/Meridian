@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { formatDate } from "@/lib/format";
 import type { Landscape, LandscapeCell, LandscapeSystem } from "@/lib/api/v2/types";
-import { useOpenItem, useRunParam } from "@/lib/v2/hooks";
+import { useOpenItem, useRunParam, useV2Session } from "@/lib/v2/hooks";
+import "../basis.css";
 import { useCounts, useLandscape } from "@/lib/v2/queries";
 import { DIMENSIONS } from "@/lib/api/v2/types";
 import { byMeasured, f1, int, moduleSlug, readingText, systemSlug } from "@/lib/v2/score";
@@ -20,11 +21,36 @@ export function dimsOf(cell: LandscapeCell): (number | null)[] {
   return DIMENSIONS.map((d) => cell.dimensions[d.key] ?? null);
 }
 
-function ObjectRow({ system, cell, label, current, fixtureRun, trend }: { system: LandscapeSystem; cell: LandscapeCell; label: string; current: boolean; fixtureRun: string | null; trend: readonly (number | null)[] }) {
+/** An object's measured score over the last runs, drawn on its own range (at least 6 points tall); nothing under two points. */
+export function ScoreTrend({ trend, label }: { trend: readonly (number | null)[]; label: string }) {
   const known = trend.filter((v): v is number => v != null);
-  const mid = known.length ? (Math.min(...known) + Math.max(...known)) / 2 : 0;
-  const half = known.length ? Math.max(3, (Math.max(...known) - Math.min(...known)) / 2) : 3;
-  const domain = [mid - half, mid + half] as const;
+  if (known.length < 2) return null;
+  const mid = (Math.min(...known) + Math.max(...known)) / 2;
+  const half = Math.max(3, (Math.max(...known) - Math.min(...known)) / 2);
+  return (
+    <Sparkline
+      values={trend}
+      width={48}
+      height={8}
+      domain={[mid - half, mid + half]}
+      label={t("{label}, measured score over the last {count} runs: {first} to {last}", { label, count: trend.length, first: f1(known[0]), last: f1(known[known.length - 1]) })}
+      testId="map-spark"
+    />
+  );
+}
+
+/** The trend of each object of one system, from the run timeline (the same read the run picker makes). */
+export function useTrends(systemId: string, modules: readonly string[]): Map<string, (number | null)[]> {
+  const timeline = useTimeline(systemId, 8).data?.runs;
+  const key = modules.join(",");
+  return useMemo(() => {
+    const out = new Map<string, (number | null)[]>();
+    for (const m of key.split(",")) out.set(m, (timeline ?? []).map((r) => r.objects[m]?.raw_score ?? r.objects[m]?.score ?? null));
+    return out;
+  }, [timeline, key]);
+}
+
+function ObjectRow({ system, cell, label, current, fixtureRun, trend }: { system: LandscapeSystem; cell: LandscapeCell; label: string; current: boolean; fixtureRun: string | null; trend: readonly (number | null)[] }) {
   const reading = readingText({ label, measured: cell.raw_score, score: cell.score, capped: cell.capped, capLevel: cell.cap_level, breaches: cell.breaches, dims: dimsOf(cell), records: cell.records_checked, rules: cell.rules_measured, coverage: cell.coverage, lowConfidence: cell.low_confidence });
   const href = `/o/${systemSlug(system.name)}/${moduleSlug(cell.module)}${fixtureRun ? `?run=${fixtureRun}` : ""}`;
   return (
@@ -53,16 +79,7 @@ function ObjectRow({ system, cell, label, current, fixtureRun, trend }: { system
           lowConfidence={cell.low_confidence}
           showScore={false}
         />
-        {trend.filter((v) => v != null).length > 1 ? (
-          <Sparkline
-            values={trend}
-            width={48}
-            height={8}
-            domain={domain}
-            label={t("{label}, measured score over the last {count} runs: {first} to {last}", { label, count: trend.length, first: f1(trend.find((v) => v != null) ?? null), last: f1([...trend].reverse().find((v) => v != null) ?? null) })}
-            testId="map-spark"
-          />
-        ) : null}
+        <ScoreTrend trend={trend} label={label} />
       </span>
     </V2Link>
   );
@@ -74,12 +91,7 @@ function ObjectRow({ system, cell, label, current, fixtureRun, trend }: { system
  * 8 pixels; the ruler beside it carries the level.
  */
 function SystemObjects({ system, landscape, cells, pathname, run }: { system: LandscapeSystem; landscape: Landscape; cells: LandscapeCell[]; pathname: string; run: string | null }) {
-  const timeline = useTimeline(system.id, 8).data?.runs;
-  const trends = useMemo(() => {
-    const out = new Map<string, (number | null)[]>();
-    for (const c of cells) out.set(c.module, (timeline ?? []).map((r) => r.objects[c.module]?.raw_score ?? r.objects[c.module]?.score ?? null));
-    return out;
-  }, [timeline, cells]);
+  const trends = useTrends(system.id, cells.map((c) => c.module));
   return (
     <>
       {cells.map((c) => {
@@ -116,6 +128,7 @@ export function MapPane({ open, onClose, phone }: { open: boolean; onClose: () =
   const run = useRunParam();
   const q = useLandscape(run);
   const counts = useCounts();
+  const { can } = useV2Session();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const current = (href: string, exact = false) => (exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
   const L = q.data;
@@ -158,8 +171,14 @@ export function MapPane({ open, onClose, phone }: { open: boolean; onClose: () =
           <span>{t("People")}</span>
           <kbd className="m2-kb">g p</kbd>
         </V2Link>
+        <V2Link href="/requests" className="m2-mi" aria-current={current("/requests") ? "page" : undefined}>
+          <span>{t("Requests")}</span>
+        </V2Link>
       </nav>
-      <div className="m2-mgrp">{t("Systems")}</div>
+      <div className="m2-mgrp m2-mgrp-act">
+        <span>{t("Systems")}</span>
+        {can("manage_systems") ? <V2Link href="/s/new" data-testid="map-connect">{t("Connect a system")}</V2Link> : null}
+      </div>
       {q.isError ? (
         <ErrorFrame onRetry={() => void q.refetch()}>{t("The systems could not be read.")}</ErrorFrame>
       ) : !L ? (

@@ -201,9 +201,23 @@ export function getRuleReconcile(checkId: string, run: string): Promise<Reconcil
   return v2Get<Reconcile>(`/rules/${encodeURIComponent(checkId)}/reconcile`, { run });
 }
 
-/** The reconciliation workbook of a run: the `top` rules with the most failing records, one sheet each. */
+/** The rules a person opened under Prove in SAP in this session, per run, in the order opened. */
+const proved = new Map<string, string[]>();
+
+export function noteProved(run: string, checkId: string): void {
+  const ids = proved.get(run) ?? [];
+  if (!ids.includes(checkId)) proved.set(run, [...ids, checkId]);
+}
+
+export function provedRules(run: string): string[] {
+  return proved.get(run) ?? [];
+}
+
+/** The reconciliation workbook of a run: the rules opened under Prove in SAP first, then the `top` rules with the most
+ *  failing records, one sheet each. */
 export function downloadReconciliationWorkbook(run: string, top = 10): Promise<string> {
-  return v2Download(`/runs/${encodeURIComponent(run)}/reconciliation.xlsx`, { top }, "meridian-reconciliation.xlsx");
+  const rules = provedRules(run).join(",") || undefined;
+  return v2Download(`/runs/${encodeURIComponent(run)}/reconciliation.xlsx`, { top, rules }, "meridian-reconciliation.xlsx");
 }
 
 /* ---- GET /rules/{check_id}/history ---- */
@@ -320,9 +334,12 @@ export interface ReadinessCell {
   dqs: number | null;
   score: number | null;
   records_blocked: number;
+  /** The wave's one threshold: its gate's minimum score, else its own, else the tenant's. */
+  threshold?: number | null;
 }
 
 export interface Readiness {
+  /** The waves' one threshold when they share it, else null (each cell then names its own). */
   threshold: number | null;
   cells: ReadinessCell[];
   configured: boolean;

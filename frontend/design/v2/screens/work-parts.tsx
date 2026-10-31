@@ -11,6 +11,7 @@ import { recordsByModule } from "@/lib/v2/step9";
 import { moduleText } from "@/lib/v2/labels";
 import { SimulateDialog } from "./step9/Simulation";
 import { t } from "@/lib/v2/i18n";
+import { alphaOut } from "@/lib/v2/format";
 
 /** What the cells and the bulk bar call. The ledger supplies them; they are read when an event fires, never while drawing. */
 export interface LedgerHandlers {
@@ -32,6 +33,16 @@ export const rowKeyOf = (r: Pick<WorkRow, "module" | "record_key">) => `${r.modu
 /** The first key part's value ("000000000000000101"), leading zeros kept. */
 export function keyValue(row: Pick<WorkRow, "record_key">, index: number): string | null {
   return splitKey(row.record_key)[index]?.value ?? null;
+}
+
+/** A record key as SAP shows it (ALPHA conversion), the full key in the title and in what is copied. */
+export function KeyText({ value }: { value: string }) {
+  const shown = alphaOut(value);
+  return (
+    <span className="m2-mono" title={shown === value ? undefined : value} data-key={value}>
+      {shown}
+    </span>
+  );
 }
 
 export function PossibleValuesCell({ row }: { row: WorkRow }) {

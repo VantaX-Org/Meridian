@@ -89,6 +89,11 @@ export function ReadinessTab({ module: moduleSegment }: { system: string; module
 
   const cells = useMemo(() => (readinessQ.data?.cells ?? []).filter((c) => c.module === apiModule), [readinessQ.data, apiModule]);
   const mine = useMemo(() => (impactQ.data ?? []).filter((r) => r.status !== "ok" && rulesOf(r, apiModule).length > 0), [impactQ.data, apiModule]);
+  // One threshold word (F16): the gate's minimum score the object's waves hold it to, when they agree.
+  const thresholds = [...new Set(cells.map((c) => c.threshold ?? readinessQ.data?.threshold ?? null))];
+  const gateMin = thresholds.length === 1 ? thresholds[0] : null;
+  // A run without a readiness score for this object leaves readiness and records blocked unmeasured (F19).
+  const scored = cells.some((c) => c.score != null);
   const blocked = mine.filter((r) => r.status === "blocked");
   const degraded = mine.filter((r) => r.status === "degraded");
 
@@ -106,7 +111,7 @@ export function ReadinessTab({ module: moduleSegment }: { system: string; module
       <section aria-label={t("Waves")}>
         <div className="m2-sechead">
           <h2 className="m2-h2">{t("Migration waves")}</h2>
-          {readinessQ.data?.threshold != null ? <span className="m2-sub">{t("Wave threshold {threshold}", { threshold: f1(readinessQ.data.threshold) })}</span> : null}
+          {gateMin != null ? <span className="m2-sub">{t("Gate: min score {score}", { score: f1(gateMin) })}</span> : null}
         </div>
         {readinessQ.isPending ? (
           <Skeleton width="60%" height={14} />
@@ -125,8 +130,8 @@ export function ReadinessTab({ module: moduleSegment }: { system: string; module
                   <th scope="col">{t("Verdict")}</th>
                   <th scope="col" className="m2-r">{t("Blocking gaps")}</th>
                   <th scope="col" className="m2-r">{t("Score")}</th>
-                  <th scope="col" className="m2-r">{t("Readiness")}</th>
-                  <th scope="col" className="m2-r">{t("Records blocked")}</th>
+                  {scored ? <th scope="col" className="m2-r">{t("Readiness")}</th> : null}
+                  {scored ? <th scope="col" className="m2-r">{t("Records blocked")}</th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -141,14 +146,19 @@ export function ReadinessTab({ module: moduleSegment }: { system: string; module
                     </td>
                     <td className="m2-r">{int(c.blocker_count)}</td>
                     <td className="m2-r">{c.dqs == null ? <Dash /> : f1(c.dqs)}</td>
-                    <td className="m2-r">{c.score == null ? <Dash /> : f1(c.score)}</td>
-                    <td className="m2-r">{int(c.records_blocked)}</td>
+                    {scored ? <td className="m2-r">{c.score == null ? <Dash why={t("No readiness score in this wave's run")} /> : f1(c.score)}</td> : null}
+                    {scored ? <td className="m2-r">{c.score == null ? <Dash why={t("No readiness score in this wave's run")} /> : int(c.records_blocked)}</td> : null}
                   </tr>
                 ))}
               </tbody>
             </table>
 </ScrollFrame>
         )}
+        {cells.length > 0 && !scored ? (
+          <p className="m2-prov" data-testid="readiness-unscored">
+            {t("Readiness and records blocked are not shown: no migration run has a readiness score for {label} yet. The verdict comes from its blocking gaps and its score.", { label })}
+          </p>
+        ) : null}
         {receipt ? <CapStatement receipt={receipt} /> : null}
       </section>
 

@@ -30,7 +30,7 @@ describe("wave membership and verdict", () => {
       ["Wave 1", "No-go", "2", "70.0", "62.4", "6,544"],
       ["Wave 2", "No-go", "5", "70.0", "62.4", "6,544"],
     ]);
-    expect(screen.getByText("Wave threshold 75.0")).toBeInTheDocument();
+    expect(screen.getByText("Gate: min score 75.0")).toBeInTheDocument();
   });
 
   it("draws the verdict mark beside the word, never the word alone", async () => {
@@ -50,7 +50,9 @@ describe("wave membership and verdict", () => {
   it("reads another object's own waves", async () => {
     render("mm_purchasing");
     const t = await screen.findByRole("table", { name: "Waves that include MM purchasing" });
-    expect(within(t).getAllByRole("row").slice(1).map(cells)).toEqual([["Wave 2", "No-go", "2", "70.0", "—", "0"]]);
+    // No readiness score for it: the two unmeasured columns are hidden, with the reason.
+    expect(within(t).getAllByRole("row").slice(1).map(cells)).toEqual([["Wave 2", "No-go", "2", "70.0"]]);
+    expect(screen.getByTestId("readiness-unscored")).toHaveTextContent("Readiness and records blocked are not shown");
   });
 });
 

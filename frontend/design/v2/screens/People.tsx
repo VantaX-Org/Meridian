@@ -3,7 +3,10 @@
 import "../approvals.css";
 import { useMemo, useState } from "react";
 import { formatDate } from "@/lib/format";
-import type { Person } from "@/lib/api/v2/people";
+import { useMutation } from "@tanstack/react-query";
+import { remindPerson, type Person } from "@/lib/api/v2/people";
+import { errorSentence } from "@/lib/api/v2/client";
+import { useToast } from "../Toast";
 import { useOpenItem, usePhone } from "@/lib/v2/hooks";
 import { PEOPLE_SORT_LABEL, objectsLine, roleWord, slaMet, sortPeople, type PeopleSort } from "@/lib/v2/people";
 import { usePeople } from "@/lib/v2/approvals-queries";
@@ -25,6 +28,21 @@ function Head({ label, k, sort, reverse, set, right }: { label: string; k: Peopl
         {label}
       </button>
     </th>
+  );
+}
+
+/** Sends the person a notice about their overdue work (POST /people/{id}/remind); the API sends at most one a day. */
+function RemindButton({ id, name }: { id: string; name: string }) {
+  const toast = useToast();
+  const m = useMutation({
+    mutationFn: () => remindPerson(id),
+    onSuccess: () => toast.show(t("{name} was reminded of their overdue work.", { name })),
+    onError: (e) => toast.show(errorSentence(e, t("The reminder could not be sent.")), "error"),
+  });
+  return (
+    <button type="button" className="m2-btn m2-sm" disabled={m.isPending || m.isSuccess} onClick={() => m.mutate()} aria-label={t("Remind {name}", { name })}>
+      {t("Remind")}
+    </button>
   );
 }
 
@@ -92,7 +110,7 @@ export function PeopleCanvas() {
         {unassigned != null && summary ? <>{" "}{t("{unassigned} of the {total} open records are assigned to nobody.", { unassigned: int(unassigned), total: int(summary.totals.open) })}</> : null}
       </p>
       <p className="m2-prov">
-        {t("Counts are read from the work assigned in the latest state.")}{" "}<V2Link href={hrefFor({ kind: "triage", id: "" })}>{t("Triage and SLA")}</V2Link>
+        {t("Counts are read from the work assigned in the latest state. Open counts the records assigned to the person that are not yet signed off; To approve counts the fix batches that wait for their approval; Overdue counts their open records past the due date; Total counts every open record, assigned or not.")}{" "}<V2Link href={hrefFor({ kind: "triage", id: "" })}>{t("Triage and SLA")}</V2Link>
       </p>
       <PeopleActions />
       {phone ? (
@@ -158,7 +176,16 @@ export function PeopleCanvas() {
                     <td title={p.objects_owned.map((o) => `${o.label} (${o.as})`).join(", ") || undefined}>{objs ?? <Dash why={t("Owns or stewards no object")} />}</td>
                     <td className="m2-r">{int(p.open_work)}</td>
                     <td className="m2-r">{int(p.approvals_waiting)}</td>
-                    <td className="m2-r">{int(p.overdue)}</td>
+                    <td className="m2-r">
+                      {p.overdue > 0 ? (
+                        <>
+                          <V2Link href={`/work?assigned=${encodeURIComponent(p.id)}&due=overdue`} data-testid="person-overdue">{int(p.overdue)}</V2Link>
+                          {p.is_me ? null : <> <RemindButton id={p.id} name={p.name} /></>}
+                        </>
+                      ) : (
+                        int(p.overdue)
+                      )}
+                    </td>
                     <td className="m2-r" title={p.sla_met_pct == null ? slaNote() : undefined}>
                       {met == null ? <Dash why={t("No open work")} /> : `${met}%`}
                     </td>

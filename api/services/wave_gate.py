@@ -66,7 +66,7 @@ def gate_checks(gate: Mapping[str, Any], wave: Mapping[str, Any], cells: Iterabl
         detail = (f"Every object is at or above {min_score:.1f}." if ok else
                   "; ".join(x for x in (f"below {min_score:.1f}: {', '.join(below)}" if below else "",
                                        f"not measured: {', '.join(missing)}" if missing else "") if x))
-        checks.append({"key": "min_score", "label": f"Every object at {min_score:.1f} or more", "passed": ok,
+        checks.append({"key": "min_score", "label": f"Gate: min score {min_score:.1f}", "passed": ok,
                        "detail": detail})
     if gate.get("zero_criticals"):
         crit = sorted({c["module"] for c in mine if (c.get("critical_over_tolerance") or 0) > 0 or c.get("breaches")})

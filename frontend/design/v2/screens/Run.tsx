@@ -1,13 +1,15 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { useFixture } from "@/lib/api/v2/fixture";
+import { getObjectRules } from "@/lib/api/v2/landscape";
 import { formatDate } from "@/lib/format";
-import type { LandscapeCell } from "@/lib/api/v2/types";
+import type { LandscapeCell, RuleRow } from "@/lib/api/v2/types";
 import { archiveRuns, downloadRunReport, pinBaseline, restoreRuns, type TimelineRun } from "@/lib/api/v2/runs";
 import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { JOB_KIND_LABEL, JOB_STATUS_LABEL, jobObject, jobSeconds } from "@/lib/v2/jobs";
-import { useLandscape } from "@/lib/v2/queries";
+import { useLandscape, v2Keys } from "@/lib/v2/queries";
 import { useTimeline, useV2Jobs, useVersionHead, useVersionsPage } from "@/lib/v2/runs-queries";
 import { f1, int, moduleSlug, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { VerdictMark } from "../marks";
@@ -20,6 +22,7 @@ import { t as tr, lc } from "@/lib/v2/i18n";
 import { baselineRefusalOf, type BaselineRefusal } from "@/lib/api/v2/step9";
 import { breachWords } from "@/lib/v2/step9";
 import { moduleText } from "@/lib/v2/labels";
+import "../basis.css";
 
 /**
  * The shape of a run in two figures: how its objects spread over the measured score, against the verdict bands, and
@@ -128,6 +131,8 @@ export function CompareControl({ id, runs }: { id: string; runs: readonly Timeli
   const other = picked ?? (base ?? prev)?.id ?? null;
   if (others.length === 0) return null;
   const t = (rid: string) => new Date(runs.find((r) => r.id === rid)?.run_at ?? 0).getTime();
+  // The newest run of the same objects at least 30 days before this one: the month-on-month view in one click (F31).
+  const monthAgo = others.find((r) => shares(r) && new Date(r.run_at ?? 0).getTime() <= t(id) - 30 * 86_400_000);
   const [a, b] = other ? (t(other) <= t(id) ? [other, id] : [id, other]) : [id, id];
   return (
     <span className="m2-pop-cmp">
@@ -144,6 +149,11 @@ export function CompareControl({ id, runs }: { id: string; runs: readonly Timeli
       <V2Link href={`/run/${a}/vs/${b}`} className="m2-btn">
         {tr("Compare")}
       </V2Link>
+      {monthAgo ? (
+        <V2Link href={`/run/${monthAgo.id}/vs/${id}`} title={formatDate(monthAgo.run_at, "datetime")}>
+          {tr("Compare with last month")}
+        </V2Link>
+      ) : null}
     </span>
   );
 }
@@ -260,6 +270,47 @@ export function RunJobs({ runId }: { runId: string }) {
  * `/run/{id}`: one run. Its status line, what it scored object by object, the actions on it and the jobs that made
  * it. Scores are the run's own (the landscape read scoped to it), never the current state.
  */
+/** The three kinds of rule the SAP team proves by hand before go-live (docs/live-deployment-checklist.md section 8). */
+const PROVE_KINDS: { kind: () => string; classes: string[] }[] = [
+  { kind: () => tr("Completeness"), classes: ["null_check"] },
+  { kind: () => tr("Value list"), classes: ["referential_check", "domain_value_check"] },
+  { kind: () => tr("Join or condition"), classes: ["exists_check", "cross_field_check", "uniqueness_check"] },
+];
+
+/** Prove three rules: the most failing rule of each kind in this run, each opening at Prove in SAP. */
+export function proveThree(rules: readonly RuleRow[]): { kind: () => string; rule: RuleRow }[] {
+  const failing = [...rules].filter((r) => r.affected_count > 0).sort((a, b) => b.affected_count - a.affected_count);
+  return PROVE_KINDS.flatMap(({ kind, classes }) => {
+    const rule = failing.find((r) => classes.includes(r.check_class ?? ""));
+    return rule ? [{ kind, rule }] : [];
+  });
+}
+
+function ProveThree({ run, modules }: { run: string; modules: string[] }) {
+  const fixture = useFixture();
+  const qs = useQueries({ queries: modules.map((m) => ({ queryKey: v2Keys.rules(fixture, m, run, 0), queryFn: () => getObjectRules(m, run), staleTime: 30_000 })) });
+  const picks = proveThree(qs.flatMap((q) => q.data ?? []));
+  if (picks.length === 0) return null;
+  return (
+    <section className="m2-sec" aria-label={tr("Prove three rules")} data-testid="run-prove-three">
+      <div className="m2-sechead">
+        <h2 className="m2-h2">{tr("Prove three rules")}</h2>
+        <span className="m2-sub">{tr("Count them in SE16 before anyone acts on a number")}</span>
+      </div>
+      <ul className="m2-prove3">
+        {picks.map(({ kind, rule }) => (
+          <li key={rule.check_id}>
+            <V2Link href={`/r/${encodeURIComponent(rule.check_id)}?tab=prove`}>
+              <span className="m2-meta">{kind()}</span> <span className="m2-mono">{rule.check_id}</span> {rule.name}
+            </V2Link>
+            <span className="m2-meta"> {tr("{count} failing", { count: int(rule.affected_count) })}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export function RunCanvas({ id }: { id: string }) {
   const qc = useQueryClient();
   const session = useV2Session();
@@ -459,6 +510,8 @@ export function RunCanvas({ id }: { id: string }) {
           <ObjectTable cells={cells} labelOf={labelOf} systemName={system?.name ?? ""} run={id} />
         )}
       </section>
+
+      <ProveThree run={id} modules={[...new Set(cells.map((c) => c.module))]} />
 
       <RunJobs runId={id} />
     </>

@@ -42,6 +42,12 @@ async function axe(page: Page, label: string) {
   expect(blockers, `${label}\n${summary}`).toEqual([]);
 }
 
+// At phone width the filter tags sit under the Filters button (F28).
+async function filtersInForce(page: Page) {
+  if ((page.viewportSize()?.width ?? 1440) < 500) await page.getByTestId("work-filters").click(NAV);
+  return page.getByRole("list", { name: "Filters in force" });
+}
+
 const noSideways = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
 
 for (const size of SIZES) {
@@ -79,7 +85,7 @@ for (const size of SIZES) {
       test("the Policy chip on the Work ledger", async ({ page }) => {
         await prepare(page, scheme);
         await page.goto("/work?fixture=1&policy=sox:inventory_valuation&filter=open", { waitUntil: "load" });
-        await expect(page.getByRole("list", { name: "Filters in force" })).toContainText("Policy: Inventory valuation (SOX financial controls)", NAV);
+        await expect(await filtersInForce(page)).toContainText("Policy: Inventory valuation (SOX financial controls)", NAV);
         expect(await noSideways(page)).toBe(true);
         await shot(page, "work-policy");
       });
@@ -180,7 +186,7 @@ for (const size of SIZES) {
         await shot(page, "command-nl");
         await dialog.getByRole("button", { name: "Open in Work" }).click();
         await expect(page).toHaveURL(/\/work\?.*severity=critical.*filter=open/, NAV);
-        await expect(page.getByRole("list", { name: "Filters in force" })).toContainText("Severity critical", NAV);
+        await expect(await filtersInForce(page)).toContainText("Severity critical", NAV);
       });
     });
   }

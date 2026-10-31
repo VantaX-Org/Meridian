@@ -56,6 +56,7 @@ const DeliveryInspector = dynamic<BodyProps>(() => import("./webhook").then((m) 
 const WebhookInspector = dynamic<BodyProps>(() => import("./webhook").then((m) => m.WebhookInspector as ComponentType<BodyProps>), { loading: InspectorLoading });
 const DigestInspector = dynamic<BodyProps>(() => import("./step10").then((m) => m.DigestInspector as ComponentType<BodyProps>), { loading: InspectorLoading });
 const PolicyPackInspector = dynamic<BodyProps>(() => import("./step10").then((m) => m.PolicyPackInspector as ComponentType<BodyProps>), { loading: InspectorLoading });
+const RequestInspector = dynamic<BodyProps>(() => import("./request").then((m) => m.RequestInspector as ComponentType<BodyProps>), { loading: InspectorLoading });
 
 interface BodyProps {
   id: string;
@@ -71,6 +72,7 @@ export const INSPECTOR_BODIES: Partial<Record<OpenKind, ComponentType<BodyProps>
   system: SystemInspector,
   job: JobInspector,
   batch: BatchInspector,
+  request: RequestInspector,
   person: PersonInspector,
   inbox: InboxPanel,
   triage: TriagePanel,

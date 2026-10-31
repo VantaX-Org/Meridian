@@ -267,7 +267,7 @@
         {"caption": "The next step follows the nearest wave.", "point": {"testid": "wave-next-step"}},
         {"caption": "Edit opens the migration waves panel.", "go": "/?view=waves&open=waves"},
         {"caption": "Name, target date and stage: plan, mock loads, dress rehearsal, cutover.", "point": {"text": "Stage", "nth": 0}},
-        {"caption": "The gate: min score, zero criticals, contracts met, each with what fails it now.", "point": {"text": "Every object at 85.0 or more", "nth": 0}},
+        {"caption": "The gate: min score, zero criticals, contracts met, each with what fails it now.", "point": {"text": "Gate: min score 85.0", "nth": 0}},
         {"caption": "The readiness certificate is not signed in this version; its link shows the checks.", "point": {"text": "Readiness certificate", "nth": 0}},
         {"caption": "Assign each object to a wave, then save the changes.", "scroll": 1600, "in": "dialog"}
       ]

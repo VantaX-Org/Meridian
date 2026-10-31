@@ -1,16 +1,19 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useId, useRef, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode } from "react";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { writeClipboard } from "@/lib/browser";
 import { relTime } from "@/lib/v2/format";
 import { formatDate } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/error";
 import { useV2Session } from "@/lib/v2/hooks";
+import { usePermissions } from "@/lib/permissions";
+import { requestTargetFor } from "@/lib/rbac";
 import { VerdictMark } from "../marks";
 import { ErrorFrame, PageTitle, Skeleton } from "../parts";
 import { useToast } from "../Toast";
 import "../admin.css";
+import "../basis.css";
 import { t } from "@/lib/v2/i18n";
 
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
@@ -18,8 +21,73 @@ const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:n
 /** The viewer's `can(action)`: true for everything in fixture mode. */
 export const useCan = (): ((action: string) => boolean) => useV2Session().can;
 
+/* Unsaved changes: every form that differs from what it loaded registers here, so its block heading, the admin index
+   and a leave warning can say so. */
+const unsaved = new Set<string>();
+const listeners = new Set<() => void>();
+function markUnsaved(id: string, on: boolean): void {
+  if (on === unsaved.has(id)) return;
+  if (on) unsaved.add(id);
+  else unsaved.delete(id);
+  listeners.forEach((f) => f());
+}
+const subscribe = (f: () => void) => (listeners.add(f), () => void listeners.delete(f));
+/** How many forms on the page hold changes nobody saved. */
+export const useUnsavedCount = (): number => useSyncExternalStore(subscribe, () => unsaved.size, () => 0);
+const BlockDirty = createContext<((on: boolean) => void) | null>(null);
+
+/** Registers `on` as unsaved changes for as long as the caller is mounted. */
+function useMark(on: boolean): void {
+  const id = useId();
+  useEffect(() => {
+    markUnsaved(id, on);
+    return () => markUnsaved(id, false);
+  }, [id, on]);
+}
+
+/**
+ * True once `value` differs from what it was on the first render; the enclosing Block shows **Unsaved** while it does.
+ * A form remounts (by key) on what it saved, so a save clears it.
+ */
+export function useUnsaved(value: unknown): boolean {
+  const [first] = useState(() => JSON.stringify(value));
+  const on = JSON.stringify(value) !== first;
+  const setBlock = useContext(BlockDirty);
+  useMark(on);
+  useEffect(() => {
+    setBlock?.(on);
+    return () => setBlock?.(false);
+  }, [setBlock, on]);
+  return on;
+}
+
+/** Asks before leaving the page, by link or by closing the tab, while any form holds unsaved changes. */
+function useLeaveWarning(): void {
+  const n = useUnsavedCount();
+  useEffect(() => {
+    if (n === 0) return;
+    const message = t("You have unsaved changes. Leave without saving them?");
+    const unload = (e: BeforeUnloadEvent) => e.preventDefault();
+    const click = (e: MouseEvent) => {
+      const a = e.target instanceof Element ? e.target.closest("a[href]") : null;
+      if (!a || a.getAttribute("href")?.startsWith("#") || new URL(a.getAttribute("href") ?? "", location.href).pathname === location.pathname) return;
+      if (!window.confirm(message)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    window.addEventListener("beforeunload", unload);
+    document.addEventListener("click", click, true);
+    return () => {
+      window.removeEventListener("beforeunload", unload);
+      document.removeEventListener("click", click, true);
+    };
+  }, [n]);
+}
+
 /** A canvas of the Admin area: the h1, one sentence under it and the actions that belong to the whole canvas. */
 export function AdminPage({ title, lead, actions, children }: { title: ReactNode; lead?: ReactNode; actions?: ReactNode; children: ReactNode }) {
+  useLeaveWarning();
   return (
     <>
       <PageTitle>{title}</PageTitle>
@@ -30,13 +98,21 @@ export function AdminPage({ title, lead, actions, children }: { title: ReactNode
   );
 }
 
-/** A titled block of a canvas. */
-export function Block({ title, hint, children, id }: { title?: ReactNode; hint?: ReactNode; children: ReactNode; id?: string }) {
+/** A titled block of a canvas. `dirty` (or a form inside calling `useUnsaved`) marks its heading **Unsaved**. */
+export function Block({ title, hint, children, id, dirty }: { title?: ReactNode; hint?: ReactNode; children: ReactNode; id?: string; dirty?: boolean }) {
+  const [inner, setInner] = useState(false);
+  useMark(!!dirty);
+  const shown = dirty || inner;
   return (
     <section className="m2-adm-blk" aria-label={typeof title === "string" ? title : undefined} id={id}>
-      {title ? <h2>{title}</h2> : null}
+      {title ? (
+        <h2>
+          {title}
+          {shown ? <span className="m2-dirty" data-testid="unsaved">{t("Unsaved")}</span> : null}
+        </h2>
+      ) : null}
       {hint ? <p className="m2-adm-hint">{hint}</p> : null}
-      {children}
+      <BlockDirty.Provider value={setInner}>{children}</BlockDirty.Provider>
     </section>
   );
 }
@@ -96,7 +172,18 @@ export function NeedsPermission({ what, permission }: { what: string; permission
   return (
     <div className="m2-empty" data-testid="needs-permission">
       <p>{t("{what} needs the {replace} permission. Ask an administrator to grant it.", { what, replace: permission.replace(/_/g, " ") })}</p>
+      <RequestAccess permission={permission} />
     </div>
+  );
+}
+
+/** Opens the shell's request-access dialog for a permission the viewer lacks (POST /me/access-requests). */
+export function RequestAccess({ permission }: { permission: string }) {
+  const { requestAccess } = usePermissions();
+  return (
+    <button type="button" className="m2-btn m2-sm" data-testid="request-access" onClick={() => requestAccess(requestTargetFor({ resource: null, action: permission }))}>
+      {t("Request access")}
+    </button>
   );
 }
 

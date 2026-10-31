@@ -17,6 +17,8 @@ export interface BatchRowApi extends BatchSummary {
   value_at_risk?: number | null;
   due_at?: string | null;
   steward_label?: string | null;
+  /** The first run after the load: how many records of the batch it found fixed, and how many still fail. */
+  verification?: { version_id: string; run_at: string | null; records: number; fixed: number; still_failing: number; verified_at: string | null; sentence: string } | null;
 }
 
 export const getBatches = (): Promise<{ items: BatchRowApi[] }> => v2Get("/remediation/batches");
@@ -113,10 +115,11 @@ function save(blob: Blob, filename: string): void {
  * (status awaiting_load, Exported, waiting for the SAP load, until someone confirms the load). Meridian hands the load file; a person loads it, so the result is the file's
  * name and checksum. The batch creator is refused (403, the server's own sentence).
  */
-export async function sendBatchToSap(id: string, records: number | null, format: ExportFormat = "cockpit_xlsx"): Promise<SendResult> {
-  if (fixtureActive()) return fixtureWrite<SendResult>("POST", `/remediation/batches/${enc(id)}/export`, { format }, {});
+export async function sendBatchToSap(id: string, records: number | null, loaderId: string | null = null, format: ExportFormat = "cockpit_xlsx"): Promise<SendResult> {
+  const params = loaderId ? { format, loader_id: loaderId } : { format };
+  if (fixtureActive()) return fixtureWrite<SendResult>("POST", `/remediation/batches/${enc(id)}/export`, params, {});
   try {
-    const res = await apiClient.post<Blob>(`/api/v1/remediation/batches/${enc(id)}/export`, undefined, { params: { format }, responseType: "blob" });
+    const res = await apiClient.post<Blob>(`/api/v1/remediation/batches/${enc(id)}/export`, undefined, { params, responseType: "blob" });
     const disposition = (res.headers?.["content-disposition"] as string | undefined) ?? "";
     const filename = decodeURIComponent(/filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1] ?? /filename="?([^";]+)"?/i.exec(disposition)?.[1] ?? `remediation_${id}.xlsx`);
     save(res.data, filename);

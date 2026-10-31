@@ -175,6 +175,10 @@ function SystemBody({ system, ext }: { system: LandscapeSystem; ext: SAPSystemEx
   const loadState = config.data;
   return (
     <>
+      <p className="m2-prov">
+        <V2Link href={`/s/${system.id}`}>{t("Open the system")}</V2Link>
+        {t(" for extractions, configuration, schedules and custom objects.")}
+      </p>
       <Facts>
         <Fact label={t("Health")}>
           <HealthWord health={health} />
@@ -226,10 +230,6 @@ function SystemBody({ system, ext }: { system: LandscapeSystem; ext: SAPSystemEx
           <ExtractPicker system={system} allowAnalyse={analyse} onDone={() => undefined} />
         </div>
       ) : null}
-      <p className="m2-prov">
-        <V2Link href={`/s/${system.id}`}>{t("Open the system")}</V2Link>
-        {t(" for extractions, configuration, schedules and custom objects.")}
-      </p>
     </>
   );
 }

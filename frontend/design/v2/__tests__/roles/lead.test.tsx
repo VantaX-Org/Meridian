@@ -25,7 +25,7 @@ describe("the programme lead's jobs", () => {
   it("sees each wave's gate on the Waves view of the landscape", async () => {
     visit("/?view=waves", "programme_lead");
     mount(<LandscapeCanvas />);
-    const marks = await screen.findAllByTestId("gate-mark");
+    const marks = await within(await screen.findByTestId("coverage-matrix")).findAllByTestId("gate-mark");
     expect(marks.map(norm)).toEqual(["Gate not passed, 2 of 3 not met", "Gate not passed, 2 of 2 not met"]);
   });
 
@@ -38,7 +38,7 @@ describe("the programme lead's jobs", () => {
     fireEvent.change(within(third).getByRole("spinbutton", { name: /minimum score/ }), { target: { value: "80" } });
     fireEvent.click(within(third).getByRole("button", { name: "Save the gate" }));
     await waitFor(() => expect(rolesAudit().map((a) => a.action)).toContain("wave_gate.update"));
-    await waitFor(() => expect(norm(screen.getAllByTestId("wave-gate")[2])).toContain("Every object at 80.0 or more"));
+    await waitFor(() => expect(norm(screen.getAllByTestId("wave-gate")[2])).toContain("Gate: min score 80.0"));
     expect(norm(screen.getAllByTestId("wave-gate")[2])).toContain("Readiness certificate");
   });
 

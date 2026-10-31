@@ -46,8 +46,8 @@ export function useBatchActions() {
   }, [qc]);
 
   const approve = useCallback(
-    async (id: string, label: string) => {
-      const r = await postApproveBatch(id);
+    async (id: string, label: string, withoutBlank = false) => {
+      const r = await postApproveBatch(id, withoutBlank);
       const text = t("Approved batch {label}", { label });
       if (r.action_id) toast.done({ ids: [r.action_id], label: text });
       else toast.show(text);
@@ -70,8 +70,8 @@ export function useBatchActions() {
   );
 
   const sendToSap = useCallback(
-    async (id: string, records: number | null): Promise<SendResult> => {
-      const r = await sendBatchToSap(id, records);
+    async (id: string, records: number | null, loaderId: string | null = null): Promise<SendResult> => {
+      const r = await sendBatchToSap(id, records, loaderId);
       await settle();
       return r;
     },

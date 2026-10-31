@@ -424,6 +424,8 @@ def _webhook(session, tid: str, name: str, data: dict) -> None:
 
 def link_of(kind: str, object_id: str) -> str:
     from api.services.collab import link_for
+    if kind == "change_request":
+        return f"/requests?open=request:{object_id}"
     return link_for("batch" if kind == "fix_batch" else kind, str(object_id))
 
 

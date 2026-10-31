@@ -10,7 +10,7 @@ import { objectsLine, roleWord, slaMet, slaWord, sortPeople, workByObject } from
 import { filtersOf, readState, toParams } from "./work";
 
 const row = (over: Partial<WorkRow>): WorkRow => ({ module: "material_master", record_key: "MATNR=1", name: null, issues: 1, severity: "high", checks: ["MM142"], proposed: 0, status: "proposed", top_message: null, top_field: null, ...over });
-const batch = (over: Partial<BatchRow>): BatchRow => ({ id: "B-1", label: "B-1", name: "x", status: "draft", owner: null, ownerId: null, steward: null, records: 1, valueAtRisk: null, dueAt: null, createdAt: "2026-10-01T00:00:00Z", approvedBy: null, approvedAt: null, sentAt: null, returned: null, ...over });
+const batch = (over: Partial<BatchRow>): BatchRow => ({ id: "B-1", label: "B-1", name: "x", status: "draft", owner: null, ownerId: null, steward: null, records: 1, valueAtRisk: null, dueAt: null, createdAt: "2026-10-01T00:00:00Z", approvedBy: null, approvedAt: null, sentAt: null, returned: null, verification: null, ...over });
 const person = (over: Partial<Person>): Person => ({ id: "u", name: "A", email: null, role: "viewer", is_me: false, objects_owned: [], open_work: 0, approvals_waiting: 0, overdue: 0, sla_hours: null, breaches_this_month: 0, last_action_at: null, ...over });
 
 describe("batches", () => {

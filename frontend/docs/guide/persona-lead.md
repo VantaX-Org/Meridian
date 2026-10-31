@@ -16,7 +16,7 @@ You run the data programme: you need to know how ready each system and object is
 - **Plan waves (objects, dates, stages)**: Migration waves panel, **Add a wave**, **Objects**.
 - **Wave gate criteria**: Migration waves panel, **Gate**, **Save the gate**.
 - **Gate status**: the Waves view, "Gate not passed, 2 of 3 not met".
-- **Readiness certificate**: the certificate link shows "not yet (the signed certificate arrives in step 9)"; a signed PDF is not produced in this version.
+- **Readiness certificate**: the waves panel shows the latest issued version and its state ("Version 2, waiting for signatures", "Version 2, signed" or "Not issued"); the certificate link opens it to issue a version, sign it or download its PDF.
 - **Sign off a wave**: **Sign off** on the wave in the Migration waves panel (needs approve); only a wave whose verdict is go can be signed off, and any later change to the wave clears the sign-off.
 - **Balance work between stewards**: People, **Balance work** (even counts, whole objects or by the assignment template), applied with undo.
 - **Read data contracts and their breaches**: People, **Data contracts**.

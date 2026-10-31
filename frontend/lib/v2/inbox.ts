@@ -46,6 +46,13 @@ const KIND: Record<string, KindMark> = {
   report: { get word() { return t("Report"); }, severity: "low" },
   info: { get word() { return t("Notice"); }, severity: "low" },
   config_drift: { get word() { return t("Configuration"); }, severity: "medium" },
+  batch_waiting: { get word() { return t("Approval"); }, severity: "medium" },
+  batch_approved: { get word() { return t("Approved"); }, severity: "low" },
+  batch_sent_back: { get word() { return t("Sent back"); }, severity: "high" },
+  batch_awaiting_load: { get word() { return t("SAP load"); }, severity: "medium" },
+  batch_loaded: { get word() { return t("Loaded"); }, severity: "low" },
+  access_request: { get word() { return t("Access request"); }, severity: "medium" },
+  reminder: { get word() { return t("Reminder"); }, severity: "high" },
 };
 
 export const kindOf = (type: string): KindMark => KIND[type] ?? { word: t("Notice"), severity: "low" };

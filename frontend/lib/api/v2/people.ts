@@ -1,4 +1,4 @@
-import { v2Get } from "./client";
+import { v2Get, v2Send } from "./client";
 
 export interface PersonObject {
   module: string;
@@ -27,3 +27,18 @@ export interface Person {
 }
 
 export const getPeople = (): Promise<{ people: Person[] }> => v2Get("/people");
+
+/** One step of GET /people/next: what waits for the caller, in the order to do it, each with its one action. */
+export interface NextStep {
+  kind: "task" | "approve_batch" | "sent_back" | "load" | "overdue" | "job_failed";
+  id: string;
+  title: string;
+  count: number;
+  due_at: string | null;
+  href: string;
+}
+
+export const getNextSteps = (): Promise<{ items: NextStep[] }> => v2Get("/people/next");
+
+/** POST /people/{id}/remind: an inbox notice (and email) about their overdue work, once a day. */
+export const remindPerson = (id: string): Promise<{ user_id: string; status: string }> => v2Send("POST", `/people/${encodeURIComponent(id)}/remind`);

@@ -47,6 +47,13 @@ const page = () =>
   );
 
 describe("the Waves view of the landscape", () => {
+  it("draws each object's score trend in its matrix cell", async () => {
+    visit();
+    page();
+    const matrix = await screen.findByTestId("coverage-matrix");
+    await waitFor(() => expect(within(matrix).getAllByTestId("map-spark").length).toBeGreaterThan(0));
+  });
+
   it("is a toggle in the matrix header that puts the choice in the address", async () => {
     visit();
     page();
@@ -100,11 +107,20 @@ describe("the Waves view of the landscape", () => {
     visit("&view=waves");
     page();
     await waitFor(() => expect(screen.getAllByTestId("wave-head")).toHaveLength(4));
-    const edit = screen.getByRole("link", { name: "Edit Wave 2: master data" });
-    expect(edit.getAttribute("href")).toContain("open=waves");
+    const edit = within(screen.getByTestId("coverage-matrix")).getByRole("link", { name: "Edit Wave 2: master data" });
+    expect(decodeURIComponent(edit.getAttribute("href") as string)).toContain("open=waves:w-2");
     // Following the link is the router's job; here the address it leads to is opened.
     setUrl(edit.getAttribute("href") as string);
     expect(await screen.findByRole("dialog", { name: "Migration waves" })).toBeInTheDocument();
+  });
+
+  it("at phone width the list keeps each wave's heading with its gate, Edit and Certificate", async () => {
+    visit("&view=waves");
+    page();
+    await waitFor(() => expect(screen.getAllByTestId("wave-head-list")).toHaveLength(4));
+    const head = screen.getAllByTestId("wave-head-list")[1];
+    expect(within(head).getByRole("link", { name: "Edit Wave 2: master data" })).toBeInTheDocument();
+    expect(within(head).getByTestId("wave-certificate-link")).toBeInTheDocument();
   });
 });
 
@@ -141,6 +157,16 @@ describe("the waves editor", () => {
     expect(calls["w-3"]).toEqual({ target_date: "2027-03-01", modules: ["sd_sales_orders", "plant_maintenance"] });
     expect(await within(dialog).findByTestId("action-result")).toHaveTextContent("3 waves updated");
     await waitFor(() => expect(within(dialog).getByLabelText("Wave of MM purchasing")).toHaveValue("w-1"));
+  });
+
+  it("opened on one wave shows that wave first with its gate on top, the others collapsed", async () => {
+    visit("&open=waves:w-2");
+    page();
+    const dialog = await screen.findByRole("dialog", { name: "Migration waves" });
+    const groups = await within(dialog).findAllByRole("group", { name: /^Wave Wave/ });
+    expect(groups[0]).toHaveAccessibleName("Wave Wave 2: master data");
+    expect(groups[0].closest("details")).toBeNull();
+    expect(groups[1].closest("details")).not.toHaveAttribute("open");
   });
 
   it("adds a wave with a name, a date and a stage", async () => {

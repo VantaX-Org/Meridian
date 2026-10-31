@@ -72,7 +72,7 @@ const asOutcome = (r: TestConnectionResponse): Outcome => ({ connected: r.connec
  * credentials, Test connection, rotate credentials and remove. Secrets are never shown; an empty secret keeps the
  * stored one. Needs manage_systems; without it the form says so and nothing is sent.
  */
-export function ConnectionForm({ system, onSaved, onRemoved }: { system?: SAPSystemExtended; onSaved?: (s: { id: string; name: string }) => void; onRemoved?: () => void }) {
+export function ConnectionForm({ system, onSaved, onRemoved, saveLabel }: { system?: SAPSystemExtended; onSaved?: (s: { id: string; name: string }) => void | Promise<void>; onRemoved?: () => void; saveLabel?: string }) {
   const { can } = useV2Session();
   const refresh = useRefreshV2();
   const others = useSystemsExtended().data ?? [];
@@ -146,7 +146,7 @@ export function ConnectionForm({ system, onSaved, onRemoved }: { system?: SAPSys
         });
         setDone(tr("{name} is saved.", { name: saved.name }));
         refresh();
-        onSaved?.({ id: saved.id, name: saved.name });
+        await onSaved?.({ id: saved.id, name: saved.name });
       } else {
         const saved = await registerSystem({ ...body(), ...(description ? { description } : {}) });
         refresh();
@@ -329,7 +329,7 @@ export function ConnectionForm({ system, onSaved, onRemoved }: { system?: SAPSys
           {pending === "test" ? tr("Testing…") : tr("Test connection")}
         </button>
         <button type="submit" className="m2-btn m2-strong" disabled={!allowed || pending !== null}>
-          {pending === "save" ? tr("Saving…") : system ? tr("Save changes") : tr("Connect system")}
+          {pending === "save" ? tr("Saving…") : saveLabel ?? (system ? tr("Save changes") : tr("Connect system"))}
         </button>
         {system && allowed ? (
           <button type="button" className="m2-btn m2-ghost" aria-expanded={removing} onClick={() => setRemoving((x) => !x)}>

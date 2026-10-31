@@ -79,13 +79,13 @@ const grantBody = (s: Scope, expires?: string) => ({ role_key: s.role, system_id
 
 /* ── User ── */
 
-function InviteUser({ onClose }: { onClose: () => void }) {
+function InviteUser({ onClose, role = "viewer" }: { onClose: () => void; role?: string }) {
   const qc = useQueryClient();
   const { openItem } = useOpenItem();
   const roles = useRoles();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
-  const [scope, setScope] = useState<Scope>({ role: "viewer", system: "", module: "" });
+  const [scope, setScope] = useState<Scope>({ role, system: "", module: "" });
   const { outcome, pending, run } = useOutcome();
   const [created, setCreated] = useState<string | null>(null);
   const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
@@ -435,7 +435,8 @@ function UserBody({ user }: { user: User }) {
 
 export function UserInspector({ id, onClose }: { id: string; onClose: () => void }) {
   const q = useUsers({}, id !== "new");
-  if (id === "new") return <InviteUser onClose={onClose} />;
+  // `user:new` invites; `user:new:<role key>` starts the invitation with that role (Invite SAP Basis on a new tenant).
+  if (id === "new" || id.startsWith("new:")) return <InviteUser onClose={onClose} role={id.slice(4) || undefined} />;
   const user = q.data?.users.find((u) => u.id === id);
   return (
     <InspectorFrame title={user?.name ?? t("User")} status={user ? `${user.email}, ${userStatusText(userStatus(user))}` : undefined} onClose={onClose}>

@@ -12,7 +12,8 @@ import type { Landscape, LandscapeCell, LandscapeSystem, WorkRow } from "@/lib/a
 import { useOpenItem, useRunParam, useV2Session, type V2Persona } from "@/lib/v2/hooks";
 import { useBatches, usePeople } from "@/lib/v2/approvals-queries";
 import { slaMet } from "@/lib/v2/people";
-import { useWorkSummary } from "@/lib/v2/work-queries";
+import { useWorkGroups, useWorkSummary } from "@/lib/v2/work-queries";
+import { useSystemsExtended } from "@/lib/v2/runs-queries";
 import { BasisHome } from "./BasisHome";
 import { useLandscape, useStatus, useTopWork } from "@/lib/v2/queries";
 import { byMeasured, f1, int, moduleSlug, readingText, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
@@ -21,8 +22,10 @@ import { IconCheck, VerdictMark } from "../marks";
 import { Dash, Dot, EmptyFrame, ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import { Ruler } from "../Ruler";
 import { ProcessNextStep } from "./object/ProcessNext";
-import { dimsOf } from "../shell/MapPane";
+import { dimsOf, ScoreTrend, useTrends } from "../shell/MapPane";
 import { GateMark } from "../inspector/governance";
+import { NextList } from "../inspector/inbox";
+import { RequestAccess } from "../admin/kit";
 import { ToolGrid } from "../GridTools";
 import { contractMark } from "@/lib/v2/step9";
 import { policyMark } from "@/lib/v2/step10";
@@ -103,6 +106,27 @@ function OwnerNext() {
   );
 }
 
+/** Basis: a system whose credentials SAP refused comes first, then the next one to extract or analyse. */
+function BasisNext({ landscape }: { landscape: Landscape }) {
+  const { hrefFor } = useOpenItem();
+  const refused = (useSystemsExtended().data ?? []).find((x) => x.health_status === "auth_failed");
+  if (refused) {
+    return (
+      <V2Link href={hrefFor({ kind: "connection", id: refused.id })} className="m2-btn m2-next" data-testid="basis-fix-signin">
+        {t("Fix the {name} sign-in", { name: refused.name })}
+      </V2Link>
+    );
+  }
+  const s = landscape.systems.find((x) => x.state === "not_extracted") ?? landscape.systems.find((x) => x.state === "extracted") ?? landscape.systems[0];
+  if (!s) return null;
+  const label = s.state === "extracted" ? t("Run analysis on {name}", { name: s.name }) : t("Extract {name}", { name: s.name });
+  return (
+    <V2Link href={hrefFor({ kind: "system", id: s.id })} className="m2-btn m2-next">
+      {label}
+    </V2Link>
+  );
+}
+
 /** What waits for the owner and how their SLA stands, under the landscape sentence. */
 function OwnerLine() {
   const people = usePeople().data?.people;
@@ -118,17 +142,21 @@ function OwnerLine() {
   );
 }
 
+/** The steward's next step: the rule with the most suggested values, opened on their own rows with the accept bar ready. */
+function StewardNext() {
+  const top = (useWorkGroups({}).data?.groups ?? []).filter((g) => g.proposed > 0).sort((a, b) => b.proposed - a.proposed)[0];
+  return (
+    <V2Link href={top ? `/work?assigned=me&rule=${encodeURIComponent(top.check_id)}` : "/work"} className="m2-btn m2-next" data-testid="steward-next">
+      {top ? t("Accept {count} suggested {count2, plural, one {value} other {values}} for {check}", { count: int(top.proposed), count2: top.proposed, check: top.check_id }) : t("Accept the suggested values")}
+    </V2Link>
+  );
+}
+
 /** The next-step button, by persona. One per canvas. */
 export function NextStep({ landscape, persona, waves }: { landscape: Landscape; persona: V2Persona; waves?: readonly MigrationWave[] }) {
   const { hrefFor } = useOpenItem();
   if (persona === "owner") return <OwnerNext />;
-  if (persona === "steward") {
-    return (
-      <V2Link href="/work" className="m2-btn m2-next">
-        {t("Accept the suggested values")}
-      </V2Link>
-    );
-  }
+  if (persona === "steward") return <StewardNext />;
   if (persona === "process") return <ProcessNextStep landscape={landscape} />;
   if (persona === "admin") {
     return (
@@ -144,16 +172,7 @@ export function NextStep({ landscape, persona, waves }: { landscape: Landscape; 
       </V2Link>
     );
   }
-  if (persona === "basis") {
-    const s = landscape.systems.find((x) => x.state === "not_extracted") ?? landscape.systems.find((x) => x.state === "extracted") ?? landscape.systems[0];
-    if (!s) return null;
-    const label = s.state === "extracted" ? t("Run analysis on {name}", { name: s.name }) : t("Extract {name}", { name: s.name });
-    return (
-      <V2Link href={hrefFor({ kind: "system", id: s.id })} className="m2-btn m2-next">
-        {label}
-      </V2Link>
-    );
-  }
+  if (persona === "basis") return <BasisNext landscape={landscape} />;
   const wave = waves && waves.length ? nextWave(waves) : null;
   if (wave) {
     const [group] = groupByWave(landscape, [wave], landscape.cells);
@@ -205,6 +224,7 @@ function CellLink({ system, cell, label, selected, run }: { system: LandscapeSys
   const href = `/o/${systemSlug(system.name)}/${moduleSlug(cell.module)}${run ? `?run=${run}` : ""}`;
   const mark = contractMark(cell);
   const pmark = policyMark(cell);
+  const trend = useTrends(system.id, [cell.module]).get(cell.module) ?? [];
   return (
     <V2Link
       href={href}
@@ -232,6 +252,7 @@ function CellLink({ system, cell, label, selected, run }: { system: LandscapeSys
         contract={mark}
         policy={pmark}
       />
+      <ScoreTrend trend={trend} label={label} />
       <span className="m2-cell-vd m2-v">
         <VerdictMark verdict={cell.verdict} />
         {VERDICT_LABEL[cell.verdict]}
@@ -264,7 +285,7 @@ function WaveHeadText({ group }: { group: WaveGroup }) {
         <>
           {" "}
           <GateMark waveId={w.id} />{" "}
-          <V2Link href={hrefFor({ kind: "waves", id: "" })} aria-label={t("Edit {name}", { name: w.name })}>
+          <V2Link href={hrefFor({ kind: "waves", id: w.id })} aria-label={t("Edit {name}", { name: w.name })}>
             {t("Edit")}
           </V2Link>{" "}
           <V2Link href={hrefFor({ kind: "certificate", id: w.id })} aria-label={t("Readiness certificate of {name}", { name: w.name })} data-testid="wave-certificate-link">
@@ -313,6 +334,30 @@ export function Coverage({ landscape, run, view = "systems", waves = [] }: { lan
   // Rows rank by the lowest measured score of the object on the systems shown, so objects the cap ties still rank.
   const rank = new Map(byMeasured(visible).map((c, i) => [c.module, i] as const));
   const objectsByMeasured = [...landscape.objects].sort((a, b) => (rank.get(a.module) ?? 1e9) - (rank.get(b.module) ?? 1e9));
+  // At phone width the cells are a list; by wave, each wave's heading (gate, Edit, Certificate) leads its cells (F35).
+  const phoneCells = byMeasured(landscape.cells).filter((c) => !chosen || systemSlug(landscape.systems.find((s) => s.id === c.system_id)?.name ?? "") === chosen);
+  const phoneRow = (c: LandscapeCell) => {
+            const s = landscape.systems.find((x) => x.id === c.system_id);
+            const label = landscape.objects.find((o) => o.module === c.module)?.label ?? c.module;
+            if (!s) return null;
+            return (
+              <V2Link key={`${c.system_id}:${c.module}`} href={`/o/${systemSlug(s.name)}/${moduleSlug(c.module)}${run ? `?run=${run}` : ""}`} className="m2-lrow" onClick={() => rememberCell(`${s.id}:${c.module}`)}>
+                <span>{label}</span>
+                <span className="m2-v">
+                  <VerdictMark verdict={c.verdict} />
+                  {VERDICT_LABEL[c.verdict]}
+                </span>
+                <span className="m2-c">
+                  <Ruler size={48} dims={dimsOf(c)} measured={c.raw_score} score={c.score} capped={c.capped} capLevel={c.cap_level} breaches={c.breaches} label={label} records={c.records_checked} rules={c.rules_measured} coverage={c.coverage} lowConfidence={c.low_confidence} contract={contractMark(c)} policy={policyMark(c)} />
+                </span>
+                <span className="m2-c">
+                  {t("{records_checked} records checked, {rules_measured} rules measured", { records_checked: int(c.records_checked), rules_measured: int(c.rules_measured) })}
+                  {c.low_confidence ? <span className="m2-lcm">{t("low coverage")}</span> : null}
+                  {landscape.systems.length > 1 ? `, ${s.name}` : ""}
+                </span>
+              </V2Link>
+            );
+  };
   return (
     <section className="m2-sec" aria-label={t("Coverage matrix")}>
       <div className="m2-sechead">
@@ -383,35 +428,16 @@ export function Coverage({ landscape, run, view = "systems", waves = [] }: { lan
         </table>
       </div>
       <div className="m2-mlist">
-        {groups ? (
-          <p className="m2-prov" data-testid="wave-list-note">
-            {groups.map((g) => t("{name}: {go} go, {counts} at risk, {counts2} no-go", { name: g.wave?.name ?? t("Not in a wave"), go: g.counts.go, counts: g.counts["at-risk"], counts2: g.counts["no-go"] })).join(". ")}.
-          </p>
-        ) : null}
-        {byMeasured(landscape.cells)
-          .filter((c) => !chosen || systemSlug(landscape.systems.find((s) => s.id === c.system_id)?.name ?? "") === chosen)
-          .map((c) => {
-            const s = landscape.systems.find((x) => x.id === c.system_id);
-            const label = landscape.objects.find((o) => o.module === c.module)?.label ?? c.module;
-            if (!s) return null;
-            return (
-              <V2Link key={`${c.system_id}:${c.module}`} href={`/o/${systemSlug(s.name)}/${moduleSlug(c.module)}${run ? `?run=${run}` : ""}`} className="m2-lrow" onClick={() => rememberCell(`${s.id}:${c.module}`)}>
-                <span>{label}</span>
-                <span className="m2-v">
-                  <VerdictMark verdict={c.verdict} />
-                  {VERDICT_LABEL[c.verdict]}
-                </span>
-                <span className="m2-c">
-                  <Ruler size={48} dims={dimsOf(c)} measured={c.raw_score} score={c.score} capped={c.capped} capLevel={c.cap_level} breaches={c.breaches} label={label} records={c.records_checked} rules={c.rules_measured} coverage={c.coverage} lowConfidence={c.low_confidence} contract={contractMark(c)} policy={policyMark(c)} />
-                </span>
-                <span className="m2-c">
-                  {t("{records_checked} records checked, {rules_measured} rules measured", { records_checked: int(c.records_checked), rules_measured: int(c.rules_measured) })}
-                  {c.low_confidence ? <span className="m2-lcm">{t("low coverage")}</span> : null}
-                  {landscape.systems.length > 1 ? `, ${s.name}` : ""}
-                </span>
-              </V2Link>
-            );
-          })}
+        {groups
+          ? groups.map((g) => (
+              <Fragment key={g.wave?.id ?? "none"}>
+                <p className="m2-prov" data-testid="wave-head-list">
+                  <WaveHeadText group={g} />
+                </p>
+                {phoneCells.filter((c) => g.modules.includes(c.module)).map(phoneRow)}
+              </Fragment>
+            ))
+          : phoneCells.map(phoneRow)}
       </div>
       {groups ? <WavesByValue /> : null}
     </section>
@@ -544,6 +570,8 @@ export function FirstSteps({ connected, analysed }: { connected: boolean; analys
   const canConnect = session.can("manage_systems");
   const canUpload = session.can("upload");
   const canRun = session.can("analyse");
+  const canInvite = session.can("manage_users");
+  const { hrefFor } = useOpenItem();
   const current = !connected ? 1 : !analysed ? 2 : 3;
   const step = (n: number, title: string, body: ReactNode, action: ReactNode) => (
     <li className="m2-start-step" data-state={n < current ? "done" : n === current ? "current" : "next"} aria-current={n === current ? "step" : undefined}>
@@ -581,9 +609,17 @@ export function FirstSteps({ connected, analysed }: { connected: boolean; analys
                   {t("Upload a file")}
                 </V2Link>
               ) : null}
+              {canInvite ? (
+                <V2Link href={hrefFor({ kind: "user", id: "new:sap_basis" })} className="m2-btn" data-testid="invite-basis">
+                  {t("Invite SAP Basis")}
+                </V2Link>
+              ) : null}
             </>
           ) : (
-            <span className="m2-meta">{t("Connecting a system needs the manage systems permission. Ask an administrator to grant it.")}</span>
+            <>
+              <span className="m2-meta">{t("Connecting a system needs the manage systems permission. Ask an administrator to grant it.")}</span>
+              <RequestAccess permission="manage_systems" />
+            </>
           ),
         )}
         {step(
@@ -595,7 +631,10 @@ export function FirstSteps({ connected, analysed }: { connected: boolean; analys
               {t("Run analysis")}
             </V2Link>
           ) : (
-            <span className="m2-meta">{t("Running an analysis needs the analyse permission. Ask an administrator to grant it.")}</span>
+            <>
+              <span className="m2-meta">{t("Running an analysis needs the analyse permission. Ask an administrator to grant it.")}</span>
+              <RequestAccess permission="analyse" />
+            </>
           ),
         )}
         {step(
@@ -694,6 +733,7 @@ export function LandscapeCanvas() {
       ) : null}
       <PageTitle sub={scopeName}>{t("Landscape")}</PageTitle>
       <Welcome />
+      <NextList quiet />
       <p className="m2-finding" data-testid="landscape-sentence">
         <LandscapeSentence landscape={L} />
       </p>

@@ -149,14 +149,15 @@ for (const size of SIZES) {
         await axe(page, `exceptions ${size.name} ${scheme}`);
       });
 
-      test("an approved batch is sent to SAP: the result sits in the frame and the batch reads as sent", async ({ page }) => {
+      test("an approved batch is exported as a load file: the result sits in the frame and the batch reads as sent", async ({ page }) => {
         await prepare(page, scheme);
         await page.goto("/work?fixture=1&persona=steward&filter=open&batch=B-236", { waitUntil: "load", timeout: 90_000 });
-        const send = page.getByRole("button", { name: "Send batch B-236 to SAP" });
+        const send = page.getByRole("button", { name: "Export batch B-236 as a load file" });
         await expect(send).toBeVisible(NAV);
         await page.waitForLoadState("networkidle");
         await shot(page, "work-approvals-send");
         await send.click();
+        await page.getByRole("dialog", { name: "Export the load file" }).getByRole("button", { name: "Export load file" }).click();
         const result = page.getByTestId("action-result");
         await expect(result).toContainText("Load file exported, 180 records", NAV);
         await expect(page.getByTestId("batch-row-B-236")).toContainText(/Sent to SAP, 180 records/, NAV);
