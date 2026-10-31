@@ -141,6 +141,7 @@ export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/rules": "v2:rules",
   "/work": "v2:work",
   "/work/monitor": "v2:monitoring",
+  "/work/analytics": "v2:monitoring",
   "/people": "v2:people",
   "/requests": "v2:approvals",
   "/runs": "v2:runs",
@@ -198,6 +199,7 @@ export function routeOf(pathname: string): string | null {
   if (a === "share" && b) return "/share/[token]";
   if (a === "admin") return b ? "/admin/[section]" : "/admin";
   if (a === "work" && b === "monitor") return "/work/monitor";
+  if (a === "work" && b === "analytics") return "/work/analytics";
   return `/${a}`;
 }
 

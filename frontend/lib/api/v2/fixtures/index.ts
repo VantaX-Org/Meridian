@@ -23,6 +23,7 @@ import { configRead, configWrite, NONE_CONFIG } from "./config";
 import { cleaningRead, cleaningWrite, NONE_CLEANING, resetCleaningFixture } from "./cleaning";
 import { matchRead, matchWrite, NONE_MATCH } from "./match-rules";
 import { mdmHealthRead, NONE_MDM_HEALTH } from "./mdm-health";
+import { NONE_WORK_ANALYTICS, workAnalyticsRead } from "./work-analytics";
 import { linksRead, NONE_LINKS } from "./links";
 import { attentionRead, NONE_ATTENTION } from "./attention";
 import { materialsRead, NONE_MATERIALS } from "./materials";
@@ -287,6 +288,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (mn !== NONE_MINING) return mn as T;
   const mh = mdmHealthRead(path);
   if (mh !== NONE_MDM_HEALTH) return mh as T;
+  const wa = workAnalyticsRead(path);
+  if (wa !== NONE_WORK_ANALYTICS) return wa as T;
   const lk = linksRead(path, params);
   if (lk !== NONE_LINKS) return lk as T;
   const iss = issuesRead(path, params);

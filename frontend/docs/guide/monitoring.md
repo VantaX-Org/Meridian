@@ -77,6 +77,20 @@ The Material 360 page, under Material 360 in the map, shows one material across 
 
 If the material is not in the material master, or no run has data yet, the page says so.
 
+## Work analytics
+
+The Analytics tab, third at the top of the Work ledger, shows how fast the steward work list is being worked down. Every figure covers each object at its latest complete run. The banner counts the issues still open, with the records that carry an open issue, the issues closed in the last seven days and the pace closed a day. Its sentence says when the list will be clear at that pace, or that it is not getting shorter. Under it:
+
+- **Open issues, day by day.** The open issues at the end of each day, with those found and those closed.
+- **What the latest run changed.** Per object, the issues the latest run found new, fixed and still failing against the run before, with the rules newly failing and the rules recovered.
+- **Time to fix.** From found to fixed over the last 180 days: the median and the slowest tenth, by severity, by object and for the slowest rules.
+- **Decisions per person.** Each steward's decisions over the last weeks, split by kind, with a small line for each day. Under it, the open work per assignee with the critical and overdue items.
+- **Issues that came back.** The rules and the systems whose issues reopen most after they were closed, with the rate.
+- **Where the failing records sit.** The records with an open issue by organisational unit, such as plant or company code, with the share of each value.
+- **How good the proposals are.** For each source of proposals (rules, the cleaning engine, steward edits and simulations), how many were approved and how many were still fixed at the next run. A source with nothing proposed shows a dash.
+
+A role that cannot read a list sees a short note in its place.
+
 ## What is on it
 
 - **The banner.** One sentence at the top: how many records failed a rule again since the last run and how many were fixed, with both figures beside it. Aletheia is docked on the right, as on every main screen.
