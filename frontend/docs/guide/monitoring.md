@@ -12,6 +12,18 @@ The Cleansing page, under Cleansing in the map, shows what the cleaning engine d
 - **Applied changes you can still undo.** Each change applied to SAP, with the fields it changed (before and after) and the deadline. Users who may apply fixes can roll a change back for 72 hours; after that the button is disabled.
 - **Audit trail.** The last 25 decisions with who made them. Roles without the export permission see a dash instead.
 
+## Data mining
+
+The Data mining page, under Data mining in the map, shows what the mining tasks found by comparing records and values rather than by running the rules. Every list keeps each object at its latest complete run, so it is the current state. The banner counts the likely duplicate pairs and outliers, with the patterns of the last 30 days, the share of analysed objects mined and the runs mined beside it. Under it:
+
+- **Findings by object.** Duplicate pairs and outliers per object, most first.
+- **Patterns.** The outliers grouped by field and the duplicates grouped by object, with severity, how often each was found and the confidence.
+- **Likely duplicates.** Each pair of records with the match score and the fields whose values are the same, each with its description.
+- **Outliers.** Each value far from the rest of its field, with the usual range or how many standard deviations it sits from the average, and how it was found.
+- **Fields that depend on each other.** Pairs of fields whose values move together or where one decides the other, strongest first. These are candidates for a cross-field rule.
+
+Users who may change master data can press **Mine the latest runs** to mine the latest run of every object again. A role that cannot read the mining results sees a dash in each list.
+
 ## What is on it
 
 - **The banner.** One sentence at the top: how many records failed a rule again since the last run and how many were fixed, with both figures beside it. Aletheia is docked on the right, as on every main screen.

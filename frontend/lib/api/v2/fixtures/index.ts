@@ -21,6 +21,7 @@ import { NONE_STEP9, receiptContractBreaches, resetStep9Fixture, step9Download, 
 import { NONE_REQ, requestsDownload, requestsRead, requestsWrite, resetRequestsFixture } from "./requests";
 import { configRead, configWrite, NONE_CONFIG } from "./config";
 import { cleaningRead, cleaningWrite, NONE_CLEANING, resetCleaningFixture } from "./cleaning";
+import { miningRead, miningWrite, NONE_MINING } from "./mining";
 import { discoveryDownload, discoveryRead, discoveryWrite, NONE_DISCOVERY, resetDiscoveryFixture } from "./discovery";
 import { guardDecision, NONE_STEP10, receiptPolicy, resetStep10Fixture, step10Read, step10Write, withPolicyMarks, withSandbox } from "./step10";
 
@@ -128,6 +129,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (cl !== NONE_CLEANING) return cl as T;
   const pd = discoveryWrite(method, path, body);
   if (pd !== NONE_DISCOVERY) return pd as T;
+  const mn = miningWrite(method, path, body);
+  if (mn !== NONE_MINING) return mn as T;
   const roles = rolesFixtureWrite(method, path, body, params);
   if (roles !== NONE_ROLES) return roles as T;
   const out = ((): unknown => {
@@ -269,6 +272,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (cl !== NONE_CLEANING) return cl as T;
   const pd = discoveryRead(path, params);
   if (pd !== NONE_DISCOVERY) return pd as T;
+  const mn = miningRead(path);
+  if (mn !== NONE_MINING) return mn as T;
   const rolesStep = rolesFixtureResponse(path, params);
   if (rolesStep !== NONE_ROLES) return rolesStep as T;
   const ent = enterpriseFixtureResponse(path);

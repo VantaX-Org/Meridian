@@ -42,6 +42,7 @@ export function placeIndex(can: (action: string) => boolean): { id: string; titl
     { id: "config", title: tr("Configuration"), href: "/config" },
     { id: "cleansing", title: tr("Cleansing"), href: "/cleansing" },
     { id: "processes", title: tr("Process discovery"), href: "/processes" },
+    { id: "mining", title: tr("Data mining"), href: "/mining" },
     { id: "ask", title: tr("Ask Meridian"), href: "/?open=ask" },
     { id: "waves", title: tr("Waves"), href: "/?view=waves" },
     { id: "status", title: tr("Status"), href: "/status" },
