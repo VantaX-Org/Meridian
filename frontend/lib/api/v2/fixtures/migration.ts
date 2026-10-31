@@ -53,9 +53,10 @@ const records = [
 
 const def = (type: string, length: number, description: string, check_table: string | null = null) => ({ type, length, decimals: 0, check_table, description });
 let fieldMap: FieldMapping[] = [
-  { id: "fm-1", module: "material_master", source_field: "MARA.MTART", dest_system_type: "s4hana", dest_table: "MARA", dest_field: "MTART", value_map: true, origin: "seeded", transform_note: null, is_confirmed: true, source_def: def("CHAR", 4, "Material type", "T134"), target_def: def("CHAR", 4, "Material type", "T134") },
-  { id: "fm-2", module: "material_master", source_field: "MAKT.MAKTX", dest_system_type: "s4hana", dest_table: "MAKT", dest_field: "MAKTX", value_map: false, origin: "seeded", transform_note: "Shorten to 40 characters", is_confirmed: false, source_def: def("CHAR", 70, "Material description (legacy Z length)"), target_def: def("CHAR", 40, "Material description") },
-  { id: "fm-3", module: "material_master", source_field: "MARA.ZZOLD", dest_system_type: "s4hana", dest_table: null, dest_field: null, value_map: false, origin: "manual", transform_note: "Not migrated", is_confirmed: true, source_def: def("CHAR", 10, "Old material reference"), target_def: null },
+  { id: "fm-1", module: "material_master", source_field: "MARA.MTART", dest_system_type: "s4hana", dest_table: "MARA", dest_field: "MTART", value_map: true, origin: "identity", transform_note: null, is_confirmed: true, source_def: def("CHAR", 4, "Material type", "T134"), target_def: def("CHAR", 4, "Material type", "T134") },
+  { id: "fm-2", module: "material_master", source_field: "MAKT.MAKTX", dest_system_type: "s4hana", dest_table: "MAKT", dest_field: "MAKTX", value_map: false, origin: "sap_standard", transform_note: "Shorten to 40 characters", is_confirmed: false, source_def: def("CHAR", 70, "Material description (legacy Z length)"), target_def: def("CHAR", 40, "Material description") },
+  { id: "fm-3", module: "material_master", source_field: "MARA.ZZOLD", dest_system_type: "s4hana", dest_table: null, dest_field: null, value_map: false, origin: "steward", transform_note: "Not migrated", is_confirmed: true, source_def: def("CHAR", 10, "Old material reference"), target_def: null },
+  { id: "fm-4", module: "material_master", source_field: "MARC.PLIFZ", dest_system_type: "s4hana", dest_table: "MARC", dest_field: "PLIFZ", value_map: false, origin: "identity", transform_note: null, is_confirmed: false, source_def: def("NUMC", 3, "Planned delivery time in days"), target_def: def("DEC", 3, "Planned delivery time in days") },
 ];
 let valueMap: ValueEntry[] = [
   { id: "vm-1", target_field: "MARA.MTART", source_value: "ZFRT", target_value: "FERT", note: "Finished goods", updated_at: "2026-10-28T10:00:00Z" },
@@ -93,7 +94,7 @@ export function migrationWrite(method: string, path: string, body: unknown): unk
   if (method === "POST" && path === "/migration/analyze") return { run_id: `mig-${++seq}`, task_id: "t-fixture", status: "queued", mode: b.mode, modules: b.modules };
   if (method === "POST" && path === "/migration/field-map/seed") return { seeded: 0, module: b.module, dest_system_type: b.dest_system_type };
   if (method === "POST" && path === "/migration/field-map") {
-    const row = { id: `fm-${++seq}`, module: String(b.module), source_field: String(b.source_field), dest_system_type: String(b.dest_system_type), dest_table: (b.dest_table as string) ?? null, dest_field: (b.dest_field as string) ?? null, value_map: false, origin: "manual", transform_note: (b.transform_note as string) ?? null, is_confirmed: false, source_def: null, target_def: null };
+    const row = { id: `fm-${++seq}`, module: String(b.module), source_field: String(b.source_field), dest_system_type: String(b.dest_system_type), dest_table: (b.dest_table as string) ?? null, dest_field: (b.dest_field as string) ?? null, value_map: false, origin: "steward", transform_note: (b.transform_note as string) ?? null, is_confirmed: false, source_def: null, target_def: null };
     fieldMap = [...fieldMap, row];
     return row;
   }

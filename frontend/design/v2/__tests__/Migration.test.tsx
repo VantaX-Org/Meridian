@@ -38,5 +38,9 @@ describe("Migration analysis", () => {
     const map = await screen.findByTestId("mig-field-map");
     await within(map).findAllByRole("row");
     expect(map.textContent).toContain("MAKTX");
+    expect(map.textContent).toContain("Shortened from 70 to 40 characters");
+    expect(map.textContent).toContain("Type changes from NUMC to DEC");
+    expect(map.textContent).toContain("Needs a transformation");
+    expect(within(map).getByTestId("mig-delta-bars").textContent).toContain("Change with no transformation yet");
   });
 });

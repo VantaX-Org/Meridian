@@ -12,6 +12,7 @@ import {
 import { formatDate, formatModuleName } from "@/lib/format";
 import { useUrlParam, useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
+import { fieldDelta, needsTransform, type Delta, type DeltaKind } from "@/lib/v2/field-delta";
 import { useLandscape } from "@/lib/v2/queries";
 import { f1, int } from "@/lib/v2/score";
 import { Sev } from "../inspector/rule";
@@ -78,6 +79,23 @@ function Table({ title, head, children }: { title: string; head: string[]; child
     </ScrollFrame>
   );
 }
+
+const DELTA: Record<DeltaKind, (d: Delta) => string> = {
+  dropped: () => t("Not carried to the target"),
+  unknown: () => t("Definition not in the dictionary"),
+  type: (d) => t("Type changes from {a} to {b}", { a: String(d.from), b: String(d.to) }),
+  shorter: (d) => t("Shortened from {a} to {b} characters", { a: int(Number(d.from)), b: int(Number(d.to)) }),
+  longer: (d) => t("Lengthened from {a} to {b} characters", { a: int(Number(d.from)), b: int(Number(d.to)) }),
+  decimals: (d) => t("Decimals change from {a} to {b}", { a: int(Number(d.from)), b: int(Number(d.to)) }),
+  check_table: (d) => t("Checked against {b} instead of {a}", { a: d.from ? String(d.from) : t("no table"), b: d.to ? String(d.to) : t("no table") }),
+  same: () => t("Same definition"),
+};
+const ORIGIN: Record<string, () => string> = {
+  identity: () => t("Same field name"),
+  sap_standard: () => t("SAP standard conversion"),
+  steward: () => t("Set by a steward"),
+};
+const defText = (d: FieldDef | null) => d?.type ? [d.type, int(d.length), d.decimals ? t("{n} decimals", { n: int(d.decimals) }) : null, d.check_table].filter(Boolean).join(" ") : f1(null);
 
 /** TABLE.FIELD with its dictionary description beside it. */
 function Field({ name, def }: { name: string | null; def?: FieldDef | null }) {
@@ -370,8 +388,18 @@ function FieldMapPanel({ modules }: { modules: string[] }) {
   const edit = can("analyse");
   const title = t("Field map");
   const rows = q.data?.mappings ?? [];
+  const deltas = rows.map(fieldDelta);
+  const count = (f: (d: Delta[], i: number) => boolean) => deltas.filter(f).length;
+  const bars = [
+    { key: "same", label: t("Load as read"), value: count((d) => d[0].kind === "same" || d.every((x) => x.kind === "longer")), tone: "pass" as const },
+    { key: "change", label: t("Definition changes"), value: count((d) => d.some((x) => x.kind !== "longer" && x.kind !== "same" && x.kind !== "dropped" && x.kind !== "unknown")), tone: "warn" as const },
+    { key: "open", label: t("Change with no transformation yet"), value: count((_, i) => needsTransform(rows[i])), tone: "crit" as const },
+    { key: "values", label: t("Values translated by a value map"), value: rows.filter((m) => m.value_map).length, tone: "data" as const },
+    { key: "dropped", label: t("Not carried to the target"), value: count((d) => d[0].kind === "dropped"), tone: "data" as const },
+    { key: "unconfirmed", label: t("Not confirmed"), value: rows.filter((m) => !m.is_confirmed).length, tone: "warn" as const },
+  ].map((b) => ({ ...b, text: int(b.value) }));
   return (
-    <Panel title={title} meta={t("Source field to S/4HANA field, with each field's description")} testId="mig-field-map">
+    <Panel title={title} meta={t("Each field as read from the source, the target field it loads into, what changes between them and the transformation that bridges it")} testId="mig-field-map">
       <form className="m2-rfilters" onSubmit={(e) => e.preventDefault()}>
         <label>{t("Object")}
           <select className="m2-sel" value={module} onChange={(e) => { setModule(e.target.value); setValueField(null); }}>
@@ -383,16 +411,27 @@ function FieldMapPanel({ modules }: { modules: string[] }) {
       {q.isPending ? <Skeleton width="100%" height={120} /> : q.isError ? (
         status(q.error) === 403 ? <EmptyFrame>{t("Your role cannot read the field map.")}</EmptyFrame> : <ErrorFrame onRetry={() => void q.refetch()}>{t("The field map could not be read.")}</ErrorFrame>
       ) : rows.length === 0 ? <EmptyFrame>{t("No field is mapped for this object yet.")}</EmptyFrame> : (
-        <Table title={title} head={[t("Source field"), t("Source type"), t("Target field"), t("Target type"), t("Note"), t("Confirmed"), ""]}>
-          {rows.map((m) => {
+        <>
+        <CcHBars label={t("Delta between source and target")} testId="mig-delta-bars" rows={bars} />
+        <Table title={title} head={[t("Source field"), t("Source definition"), t("Target field"), t("Target definition"), t("Delta"), t("Transformation"), t("Confirmed"), ""]}>
+          {rows.map((m, i) => {
             const target = m.dest_table && m.dest_field ? `${m.dest_table}.${m.dest_field}` : null;
+            const open = needsTransform(m);
             return (
               <tr key={m.id}>
                 <th scope="row" className="m2-card-lead"><Field name={m.source_field} def={m.source_def} /></th>
-                <td data-label={t("Source type")}>{m.source_def?.type ? `${m.source_def.type} ${int(m.source_def.length)}` : f1(null)}</td>
+                <td data-label={t("Source definition")} className="m2-mono">{defText(m.source_def)}</td>
                 <td data-label={t("Target field")}>{target ? <Field name={target} def={m.target_def} /> : t("Not migrated")}</td>
-                <td data-label={t("Target type")}>{m.target_def?.type ? `${m.target_def.type} ${int(m.target_def.length)}` : f1(null)}</td>
-                <td data-label={t("Note")}>{m.transform_note ?? f1(null)}</td>
+                <td data-label={t("Target definition")} className="m2-mono">{defText(m.target_def)}</td>
+                <td data-label={t("Delta")}><ul className="m2-plain">{deltas[i].map((d) => <li key={d.kind}>{DELTA[d.kind](d)}</li>)}</ul></td>
+                <td data-label={t("Transformation")}>
+                  <ul className="m2-plain">
+                    {m.transform_note ? <li>{m.transform_note}</li> : null}
+                    {m.value_map ? <li>{t("Values translated by a value map")}</li> : null}
+                    {open ? <li><Sev severity="high" /> {t("Needs a transformation")}</li> : !m.transform_note && !m.value_map ? <li>{t("Copied as read")}</li> : null}
+                    {m.origin ? <li className="m2-meta">{ORIGIN[m.origin]?.() ?? m.origin}</li> : null}
+                  </ul>
+                </td>
                 <td data-label={t("Confirmed")}>{m.is_confirmed ? t("Yes") : t("No")}</td>
                 <td>
                   {m.value_map && target ? <button type="button" className="m2-btn" aria-pressed={valueField === target} onClick={() => setValueField(target)}>{t("Values")}</button> : null}{" "}
@@ -403,6 +442,7 @@ function FieldMapPanel({ modules }: { modules: string[] }) {
             );
           })}
         </Table>
+        </>
       )}
       {valueField ? <ValueMap module={module} field={valueField} /> : null}
     </Panel>
