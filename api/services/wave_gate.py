@@ -11,7 +11,31 @@ system's. An object of the wave with no measured cell fails the score check (not
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
-from typing import Any
+from typing import Any, Optional
+
+
+def wave_threshold(gate_min_score: Optional[float], wave_min_dqs: Optional[float],
+                   default: Optional[float] = None) -> Optional[float]:
+    """The one score threshold of a wave (F16): its gate's minimum score when the gate sets one (what decides go),
+    else the wave's own minimum DQS, else ``default`` (the tenant's readiness threshold). The Readiness grid, the
+    wave cockpit and the gate all read it here, so a wave never shows two numbers."""
+    for v in (gate_min_score, wave_min_dqs, default):
+        if v is not None:
+            return float(v)
+    return None
+
+
+async def gate_scores(db, tenant_id: str, wave_ids: Iterable[str]) -> dict[str, Optional[float]]:
+    """{wave id: its gate's min_score} for the waves that have a gate (one read)."""
+    from sqlalchemy import text
+
+    ids = [str(w) for w in wave_ids]
+    if not ids:
+        return {}
+    rows = (await db.execute(text(
+        "SELECT wave_id::text, min_score FROM wave_gates WHERE tenant_id = CAST(:t AS uuid) "
+        "AND wave_id = ANY(CAST(:ids AS uuid[]))"), {"t": str(tenant_id), "ids": ids})).fetchall()
+    return {r[0]: r[1] for r in rows}
 
 
 def _names(c: Mapping[str, Any]) -> set[str]:

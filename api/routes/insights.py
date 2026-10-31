@@ -129,19 +129,26 @@ async def get_readiness(
         return out
 
     state_dqs = await current_dqs() if current else None
+    from api.services.wave_gate import gate_scores, wave_threshold
+    gates = await gate_scores(db, str(tenant.id), [w.id for w in waves])
     cells = []
+    thresholds: dict[str, float | None] = {}
     for w in waves:
         run = (await db.execute(text(run_sql), {"t": str(tenant.id), "wid": str(w.id), "vid": vid})).fetchone() or fallback
         dqs = state_dqs if state_dqs is not None else await dqs_for(run[1] if run else None)
+        # one threshold per wave: its gate's minimum score, else its own min_dqs, else the tenant's (F16)
+        thresholds[w.name] = wave_threshold(gates.get(str(w.id)), w.min_dqs, dqs_threshold)
         cells += build_wave_cells(w.name, list(w.modules or []), (run[0] if run else {}) or {}, dqs,
-                                  w.min_readiness, w.min_dqs if w.min_dqs is not None else dqs_threshold)
+                                  w.min_readiness, thresholds[w.name])
     resolved = fallback[1] if fallback else version_id
     return {
         # Not a single source-of-truth version: each cell may read its own wave's latest run.
         # This is the tenant's latest analysed version (or the requested one), for drill links only;
         # null under scope=current, which is no one run's.
         "version_id": None if current else (str(resolved) if resolved else None),
-        "threshold": dqs_threshold,
+        # the waves' one threshold when they share it, else null (each cell then names its own, ``threshold``)
+        "threshold": next(iter(set(thresholds.values()))) if len(set(thresholds.values())) == 1 else None,
+        "thresholds": thresholds,
         "cells": [c.__dict__ for c in cells],
         "configured": True,
         **scope_fields,

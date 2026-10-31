@@ -23,6 +23,7 @@ class ReadinessCell:
     dqs: float | None
     score: float | None
     records_blocked: int
+    threshold: float | None = None  # the wave's one threshold the DQS was held to (wave_gate.wave_threshold)
 
 
 def cell_verdict(engine_verdict: str | None, score: float | None, dqs: float | None,
@@ -63,10 +64,10 @@ def build_wave_cells(wave: str, modules: list[str], gap_summary: dict[str, dict]
         mr = gap_summary.get(module)
         dqs = dqs_by_module.get(module)
         if mr is None:
-            cells.append(ReadinessCell(module, wave, "no_go", 0, dqs, None, 0))
+            cells.append(ReadinessCell(module, wave, "no_go", 0, dqs, None, 0, min_dqs))
             continue
         score = mr.get("score")
         cells.append(ReadinessCell(
             module, wave, cell_verdict(mr.get("verdict"), score, dqs, min_readiness, min_dqs),
-            module_blocking_gaps(mr), dqs, score, int(mr.get("blocked_records") or 0)))
+            module_blocking_gaps(mr), dqs, score, int(mr.get("blocked_records") or 0), min_dqs))
     return cells
