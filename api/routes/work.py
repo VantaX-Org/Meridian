@@ -2,7 +2,8 @@
 
   GET  /work/summary                       per object: records to fix, issues, by work status
   GET  /work/groups                        what fails, ranked: (check × object) with counts
-  GET  /work/records                       failing records, worst first, keyset paged; each with its age and suggestion
+  GET  /work/records                       failing records, worst first, keyset paged; each with its age and suggestion;
+                                           ``wave`` and ``verdict`` narrow it to a migration wave's (no-go) objects
   GET  /work/records/{module}/{key}        one record: every failing check, current and suggested value, status
   GET  /work/search                        a record by key or name, across objects
   POST /work/decide                        accept / edit / not an issue / undo / assign, for records
@@ -47,6 +48,10 @@ MAX_ACCEPT = 50_000
 SEVERITIES = ("critical", "high", "medium", "low")
 _SINCE_DESC = ("a baseline run id: only records failing a check they did not fail in that run (the monitor's new "
                "failing records); needs one run, not scope=current")
+_WAVE_DESC = "a migration wave id: only the records of that wave's objects (on its source system when it has one)"
+_VERDICT_DESC = ("go, at-risk or no-go: only the objects with that verdict on the landscape (current state); with "
+                 "wave, the wave's objects with that verdict (wave=<id>&verdict=no-go: the wave's no-go objects)")
+_VERDICT_PATTERN = "^(go|at-risk|at_risk|no-go|no_go)$"
 
 
 async def _run(db: AsyncSession, tenant: Tenant, version_id: Optional[uuid.UUID]) -> tuple[str, str]:
@@ -246,6 +251,8 @@ async def summary(
     system: Optional[str] = Query(None, max_length=100),
     q: Optional[str] = Query(None, max_length=200),
     since: Optional[uuid.UUID] = Query(None, description=_SINCE_DESC),
+    wave: Optional[uuid.UUID] = Query(None, description=_WAVE_DESC),
+    verdict: Optional[str] = Query(None, pattern=_VERDICT_PATTERN, description=_VERDICT_DESC),
     scope: WorkScope = _SCOPE,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
@@ -259,13 +266,14 @@ async def summary(
     await _rls(db, tenant)
     filters = {"version_id": version_id, "module": module, "check_id": check_id, "severity": severity, "status": status,
                "assigned": assigned, "proposed": proposed, "due": due, "part": part, "system": system, "q": q,
-               "since": since, "scope": scope, "latest": await latest_run(db, tenant.id),
+               "since": since, "scope": scope, "latest": await latest_run(db, tenant.id), "wave": wave,
+               "verdict": verdict,
                # "me" is the caller: their own key
                "me": current_user_id(request) if assigned == "me" else None}
 
     async def produce() -> dict:
         return jsonable_encoder(await _summary(request, version_id, module, check_id, severity, status, assigned,
-                                               proposed, due, part, system, q, since, scope, db, tenant))
+                                               proposed, due, part, system, q, since, scope, db, tenant, wave, verdict))
 
     return await cached_json(SUMMARY_CACHE_PREFIX, "work_summary", tenant.id, filters, SUMMARY_TTL_SECONDS, produce)
 
@@ -286,14 +294,18 @@ class _SummaryRow(NamedTuple):
 
 
 async def _summary(request: Request, version_id, module, check_id, severity, status, assigned, proposed, due, part,
-                   system, q, since, scope, db: AsyncSession, tenant: Tenant) -> dict:
+                   system, q, since, scope, db: AsyncSession, tenant: Tenant, wave: Optional[uuid.UUID] = None,
+                   verdict: Optional[str] = None) -> dict:
     sel = await _rows(db, tenant, version_id, scope)
+    wclauses, wp, wave_info = await _wave_filter(db, tenant, wave, verdict)
     # objects follow module, check_id, severity and system when given (status, assignee and the rest stay off: the
     # chips count every status of the objects shown). work_counts (migration 108) answers every filter but check_id;
     # overdue (due_at < now()) is time-dependent, so it is always counted live, on the partial index of due records.
     owhere, p = _records_where(tenant, sel, request, module, check_id, severity, "all", None, None, None, None, None,
                                system)
-    if check_id is None:
+    owhere += wclauses
+    p.update(wp)
+    if check_id is None and not wclauses:
         cp: dict = {}
         cwhere = work_counts.where(sel, cp, module, severity, system)
         counted = (await db.execute(text(f"""
@@ -332,12 +344,14 @@ async def _summary(request: Request, version_id, module, check_id, severity, sta
     unbuilt = await _unbuilt(db, tenant, sel)
     ids = run_ids(sel.pairs) if sel.pairs is not None else [sel.vid]
     totals = {k: sum(o[k] for o in out) for k in ("records", "open", "issues", "critical", "proposed", "overdue")}
-    filters = (module, check_id, severity, status, assigned, proposed, due, part, system, q, since)
+    filters = (module, check_id, severity, status, assigned, proposed, due, part, system, q, since, wave, verdict)
     if any(f is not None for f in filters):
         where, fp = _records_where(tenant, sel, request, module, check_id, severity, status or "open", assigned,
                                    proposed, q, due, part, system)
+        where += wclauses
+        fp.update(wp)
         await _since(db, tenant, sel, since, module, where, fp)
-        if all(f is None for f in (check_id, assigned, proposed, due, part, q, since)):
+        if all(f is None for f in (check_id, assigned, proposed, due, part, q, since, wave, verdict)):
             # module, severity, system and status only: work_counts, plus the live overdue count
             cp = {}
             cwhere = work_counts.where(sel, cp, module, severity, system, status or "open")
@@ -359,7 +373,7 @@ async def _summary(request: Request, version_id, module, check_id, severity, sta
                   "critical": int(f["critical"]), "proposed": int(f["proposed"]), "overdue": int(f["overdue"])}
     return {"version_id": sel.vid, "scope": sel.scope, "mode": "current" if sel.current else "run",
             "version_ids": ids, "unbuilt": unbuilt, "built": len(unbuilt) < len(ids), "objects": out,
-            "totals": totals}
+            "totals": totals, "wave": wave_info}
 
 
 @router.get("/groups")
@@ -406,6 +420,46 @@ async def groups(
         built = await _built(db, sel.vid)
     return {"version_id": sel.vid, "built": built, "total": int(total or 0),
             "groups": [{**dict(r), "open": sum(int((r["statuses"] or {}).get(s, 0)) for s in OPEN)} for r in rows]}
+
+
+
+
+async def _wave_filter(db: AsyncSession, tenant: Tenant, wave: Optional[uuid.UUID],
+                       verdict: Optional[str]) -> tuple[list[str], dict, Optional[dict]]:
+    """(where clauses over work_records ``w``, their parameters, the wave and objects as the screen names them) for
+    the ``wave`` and ``verdict`` filters (F14). The verdict is the landscape's (GET /landscape, current state), so
+    "the 3 no-go objects of Wave 1" here are the ones the landscape counts; 404 for an unknown wave."""
+    if wave is None and verdict is None:
+        return [], {}, None
+    w = None
+    if wave is not None:
+        w = (await db.execute(text(
+            "SELECT id::text AS id, name, modules, source_system_id::text AS source FROM migration_waves "
+            "WHERE id = :w AND tenant_id = CAST(:t AS uuid)"), {"w": wave, "t": str(tenant.id)})).mappings().first()
+        if w is None:
+            raise HTTPException(status_code=404, detail="Wave not found.")
+    mods = list(w["modules"] or []) if w else None
+    v = verdict.replace("_", "-") if verdict else None
+    p: dict = {}
+    if v is None:  # the wave's objects, whatever their verdict
+        clauses = ["w.module = ANY(CAST(:wv_mods AS text[]))"]
+        p["wv_mods"] = mods
+        if w["source"]:
+            clauses.append("w.scope = :wv_src")
+            p["wv_src"] = w["source"]
+        objects = [{"system_id": w["source"], "module": m} for m in mods]
+    else:
+        from api.routes.landscape import _landscape
+        cells = (await _landscape("current", None, db, tenant))["cells"]
+        pairs = sorted({(str(c["system_id"]), c["module"]) for c in cells if c.get("verdict") == v
+                        and (mods is None or c["module"] in mods)
+                        and (w is None or not w["source"] or str(c["system_id"]) == w["source"])})
+        clauses = ["(w.scope, w.module) IN (SELECT * FROM unnest(CAST(:wv_s AS text[]), CAST(:wv_m AS text[])))"
+                   if pairs else "FALSE"]
+        p.update(wv_s=[a for a, _ in pairs], wv_m=[b for _, b in pairs])
+        objects = [{"system_id": a, "module": b} for a, b in pairs]
+    info = {"id": w["id"] if w else None, "name": w["name"] if w else None, "verdict": v, "objects": objects}
+    return clauses, p, info
 
 
 def _records_where(tenant: Tenant, sel: "_Rows | str", request: Request, module, check_id, severity, status, assigned,
@@ -550,6 +604,8 @@ async def records(
     policy: Optional[str] = Query(None, max_length=100, description="a policy pack or pack:class (sox:vendor_bank): "
                                                                     "records failing a rule that evidences it"),
     q: Optional[str] = Query(None, max_length=200),
+    wave: Optional[uuid.UUID] = Query(None, description=_WAVE_DESC),
+    verdict: Optional[str] = Query(None, pattern=_VERDICT_PATTERN, description=_VERDICT_DESC),
     after: Optional[str] = Query(None, description="cursor from the previous page"),
     limit: int = Query(PAGE, ge=1, le=500),
     sort: Optional[str] = Query(None, max_length=80, description="severity, age, value (value at risk), due and/or owner, comma "
@@ -577,6 +633,9 @@ async def records(
     order = _parse_sort(sort)
     where, p = _records_where(tenant, sel, request, module, check_id, severity, status, assigned, proposed, q, due, part,
                               system, batch_id, policy)
+    wclauses, wp, wave_info = await _wave_filter(db, tenant, wave, verdict)
+    where += wclauses
+    p.update(wp)
     await _since(db, tenant, sel, since, module, where, p)
     exprs = [_SORT_KEYS[k] for k in order]
     page_where = list(where)
@@ -605,6 +664,7 @@ async def records(
     return {
         "version_id": sel.vid, "total": min(total, COUNT_CAP), "total_capped": total > COUNT_CAP,
         "next": _cursor(order, rows[-1]) if more and rows else None,
+        "wave": wave_info,  # with wave or verdict: the wave and the objects the filter kept, else None
         "cost_model": await cost_model_meta.for_tenant(db, tenant.id),  # what each value_at_risk is priced by
         "items": [{"module": r.module, "version_id": r.version_id, "record_key": r.record_key, "name": r.name, "issues": r.issues,
                    "severity": SEVERITIES[r.sev_rank] if r.sev_rank < 4 else "info", "checks": list(r.checks),
@@ -1537,6 +1597,8 @@ async def export_sheet(
     sort: Optional[str] = Query(None, max_length=80, description="the order of /work/records: severity, age, value, due "
                                                                  "and/or owner, a leading minus for descending"),
     since: Optional[uuid.UUID] = Query(None, description=_SINCE_DESC),
+    wave: Optional[uuid.UUID] = Query(None, description=_WAVE_DESC),
+    verdict: Optional[str] = Query(None, pattern=_VERDICT_PATTERN, description=_VERDICT_DESC),
     scope: WorkScope = _SCOPE,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
@@ -1553,6 +1615,9 @@ async def export_sheet(
     order_joins, order_by = _sort_sql(_parse_sort(sort))
     where, p = _records_where(tenant, sel, request, module, check_id, severity, status, assigned, proposed, q, due, part,
                               system, batch_id, policy)
+    wclauses, wp, _wave = await _wave_filter(db, tenant, wave, verdict)
+    where += wclauses
+    p.update(wp)
     await _since(db, tenant, sel, since, module, where, p)
     check_filter = "AND fr.check_id = :c" if check_id else ""
     rows = (await db.execute(text(f"""
@@ -1650,6 +1715,8 @@ async def export_per_object(
     sort: Optional[str] = Query(None, max_length=80, description="the order of /work/records: severity, age, value, due "
                                                                  "and/or owner, a leading minus for descending"),
     since: Optional[uuid.UUID] = Query(None, description=_SINCE_DESC),
+    wave: Optional[uuid.UUID] = Query(None, description=_WAVE_DESC),
+    verdict: Optional[str] = Query(None, pattern=_VERDICT_PATTERN, description=_VERDICT_DESC),
     scope: WorkScope = _SCOPE,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
@@ -1673,6 +1740,9 @@ async def export_per_object(
     order_joins, order_by = _sort_sql(_parse_sort(sort))
     where, p = _records_where(tenant, sel, request, None, check_id, severity, status, assigned, proposed, q, due, part,
                               system, batch_id, policy)
+    wclauses, wp, _wave = await _wave_filter(db, tenant, wave, verdict)
+    where += wclauses
+    p.update(wp)
     await _since(db, tenant, sel, since, None, where, p)
     check_filter = "AND fr.check_id = :c" if check_id else ""
     rows = (await db.execute(text(f"""
