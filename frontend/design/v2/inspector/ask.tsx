@@ -83,6 +83,7 @@ function Answer({ a }: { a: AskAnswer }) {
           ))}
         </p>
       ) : null}
+      <Feedback runId={a.version_id ?? null} />
       {a.links.length ? (
         <footer className="m2-ask-links">
           {a.links.map((l) => (
@@ -93,6 +94,38 @@ function Answer({ a }: { a: AskAnswer }) {
         </footer>
       ) : null}
     </article>
+  );
+}
+
+/** POST /insights/feedback: one vote per answer, so the team can see which answers helped. */
+function Feedback({ runId }: { runId: string | null }) {
+  const [vote, setVote] = useState<"up" | "down" | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const send = async (v: "up" | "down") => {
+    setBusy(true);
+    setError(null);
+    try {
+      await v2Post("/insights/feedback", { surface: "aletheia", run_id: runId, vote: v });
+      setVote(v);
+    } catch (e) {
+      setError(failureText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (vote) return <p className="m2-ask-cov" role="status">{t("Thanks, your feedback is recorded.")}</p>;
+  return (
+    <div className="m2-ask-vote" role="group" aria-label={t("Was this answer helpful?")}>
+      <span className="m2-ask-cov">{t("Was this answer helpful?")}</span>
+      <button type="button" className="m2-btn" disabled={busy} onClick={() => void send("up")}>
+        {t("Helpful")}
+      </button>
+      <button type="button" className="m2-btn" disabled={busy} onClick={() => void send("down")}>
+        {t("Not helpful")}
+      </button>
+      {error ? <span role="alert">{error}</span> : null}
+    </div>
   );
 }
 

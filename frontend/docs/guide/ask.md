@@ -7,6 +7,7 @@ Ask Meridian answers questions about the current run in plain words. It is groun
 - **Your question**, typed in the box ("Ask about this run") and sent with **Ask**, and three suggested ones: "What is holding the score down?", "Which objects are under 85?" and "What is the money at risk?".
 - **The answer**, marked either "Grounded, every number matches a fact" or "Not answered" when the draft quoted a figure that is not a fact.
 - **Facts used**, with "Coverage" saying how much of the question the facts cover, and **Rules cited**, so you can open the rule or object behind each sentence. The intent Meridian read from your question is shown, and "Reworded by model" when a language model phrased the sentence.
+- **Was this answer helpful?** Under each answer, press **Helpful** or **Not helpful**. One vote per answer is recorded with the run it came from, so the team can see which answers worked; after the vote the buttons give way to a thank you.
 - The Aletheia mark, which identifies the grounded intelligence that checks the answer.
 
 ## The numbers and where they come from

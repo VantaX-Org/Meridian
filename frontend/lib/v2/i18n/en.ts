@@ -5694,6 +5694,10 @@ export const en = {
   "The proposal was not approved. {detail}": "The proposal was not approved. {detail}",
   "Not approved": "Not approved",
   "Proposal approved and added to the match rules": "Proposal approved and added to the match rules",
+  "Was this answer helpful?": "Was this answer helpful?",
+  "Helpful": "Helpful",
+  "Not helpful": "Not helpful",
+  "Thanks, your feedback is recorded.": "Thanks, your feedback is recorded.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

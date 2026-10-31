@@ -5695,4 +5695,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "The proposal was not approved. {detail}": "提案は承認されませんでした。{detail}",
   "Not approved": "未承認",
   "Proposal approved and added to the match rules": "提案を承認し、マッチングルールに追加しました",
+  "Was this answer helpful?": "この回答は役に立ちましたか?",
+  "Helpful": "役に立った",
+  "Not helpful": "役に立たなかった",
+  "Thanks, your feedback is recorded.": "ありがとうございます。フィードバックを記録しました。",
 };

@@ -392,6 +392,11 @@ export function fixturePost<T>(path: string, body: unknown, params: Record<strin
       citations: [],
     } as T;
   }
+  if (path === "/insights/feedback") {
+    const vote = (body as { vote?: string }).vote;
+    if (vote !== "up" && vote !== "down") throw Object.assign(new Error("vote must be up or down"), { status: 422, response: { status: 422, data: { detail: "vote must be up or down" } } });
+    return { id: "fb-001", status: "recorded" } as T;
+  }
   void params;
   throw new FixtureNotFound(path);
 }

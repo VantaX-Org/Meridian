@@ -5695,4 +5695,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The proposal was not approved. {detail}": "Der Vorschlag wurde nicht genehmigt. {detail}",
   "Not approved": "Nicht genehmigt",
   "Proposal approved and added to the match rules": "Vorschlag genehmigt und in die Abgleichsregeln übernommen",
+  "Was this answer helpful?": "War diese Antwort hilfreich?",
+  "Helpful": "Hilfreich",
+  "Not helpful": "Nicht hilfreich",
+  "Thanks, your feedback is recorded.": "Danke, Ihr Feedback ist gespeichert.",
 };
