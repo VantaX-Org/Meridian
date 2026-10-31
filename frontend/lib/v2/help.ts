@@ -143,6 +143,7 @@ export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/work/monitor": "v2:monitoring",
   "/work/analytics": "v2:monitoring",
   "/migration": "v2:waves",
+  "/s4": "v2:waves",
   "/insights": "v2:monitoring",
   "/forecast": "v2:monitoring",
   "/value": "v2:monitoring",
