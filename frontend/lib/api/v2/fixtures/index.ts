@@ -24,6 +24,7 @@ import { cleaningRead, cleaningWrite, NONE_CLEANING, resetCleaningFixture } from
 import { matchRead, matchWrite, NONE_MATCH } from "./match-rules";
 import { mdmHealthRead, NONE_MDM_HEALTH } from "./mdm-health";
 import { NONE_WORK_ANALYTICS, workAnalyticsRead } from "./work-analytics";
+import { migrationRead, migrationWrite, NONE_MIGRATION } from "./migration";
 import { linksRead, NONE_LINKS } from "./links";
 import { attentionRead, NONE_ATTENTION } from "./attention";
 import { materialsRead, NONE_MATERIALS } from "./materials";
@@ -138,6 +139,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (pd !== NONE_DISCOVERY) return pd as T;
   const mn = miningWrite(method, path, body);
   if (mn !== NONE_MINING) return mn as T;
+  const mg = migrationWrite(method, path, body);
+  if (mg !== NONE_MIGRATION) return mg as T;
   const mr = matchWrite(method, path, body);
   if (mr !== NONE_MATCH) return mr as T;
   const iw = issuesWrite(method, path, body);
@@ -290,6 +293,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (mh !== NONE_MDM_HEALTH) return mh as T;
   const wa = workAnalyticsRead(path);
   if (wa !== NONE_WORK_ANALYTICS) return wa as T;
+  const mg = migrationRead(path, params);
+  if (mg !== NONE_MIGRATION) return mg as T;
   const lk = linksRead(path, params);
   if (lk !== NONE_LINKS) return lk as T;
   const iss = issuesRead(path, params);

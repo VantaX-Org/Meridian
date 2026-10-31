@@ -40,6 +40,19 @@ The flight deck at `/go-live` reads the next wave with a go-live date against th
 - **What if**: pick an object, tick the top fixes, and read the score, gates and verdict it would reach if those rules passed. Nothing is changed in SAP.
 - Forecasts need three daily scores; an object with fewer shows **Forecast unavailable** instead of a guessed line.
 
+## Migration analysis
+
+The Migration analysis page, under Migration in the map, shows how ready the source data is to load into the target system. The banner gives the verdict of the latest finished analysis (ready to load, ready with conditions or not ready to load), with the readiness score, the critical gaps and the records that will not load beside it. Under it:
+
+- **Start an analysis.** Users who may analyse choose the kind of analysis (a dry run against S/4HANA, source to target, or source to source), the systems and the objects, then press **Start**. The analysis runs in the background and appears in the list when it finishes.
+- **Analyses.** Each analysis with its kind, objects, verdict, score, critical gaps and records blocked. Press **Open** to see one; the latest finished analysis opens by default.
+- **Gaps by kind.** The gaps of the open analysis grouped by kind and severity: values with no target value, values longer than the target field, fields the target no longer has, keys that collide, values outside a check table and fields not yet mapped.
+- **Field-level gaps.** Each gap with the record, the source field and value, the target field and value, the severity and why it will not load. Filter by object, kind, severity or text; the object filter stays in the address. Users with the export permission can export the list to Excel with the same filters.
+- **Records.** The records that will not load, with the reasons, and the records that are ready to load.
+- **Field map.** For each object, each source field with the S/4HANA field it maps to and both descriptions. Users who may analyse can propose the map from the source, confirm a mapping or remove it. A field that needs a value map has a **Values** button: it lists the source values found in the latest analysis with how many records carry each, and the target value saved for each one.
+
+Every gap comes from the target data dictionary or configuration; a gap that is not grounded in either says so. Nothing is estimated: an analysis that has not finished shows a dash.
+
 ## What you can do, by role
 
 - **Programme lead** (analyse): plan waves, set gates, assign objects.

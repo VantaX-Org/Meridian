@@ -1,0 +1,117 @@
+/**
+ * Migration analysis fixture, shaped like api/routes/migration.py: two analyses of the ECC production material and
+ * business partner data against S/4HANA, their gaps, the records that will not load, and an editable field map and
+ * value map. Writes change the in-memory map until the page reloads.
+ */
+import type { FieldMapping, ValueEntry } from "../migration";
+
+export const NONE_MIGRATION = Symbol("not a migration path");
+
+const ECC = "a1b2c3d4-0001-4000-8000-000000000001";
+const S4 = "a1b2c3d4-0002-4000-8000-000000000002";
+
+const runs = [
+  {
+    id: "mig-0002", mode: "source_to_destination", source_system_id: ECC, dest_system_id: S4, source_version_id: "v-mm",
+    target_release: "s4hana", target_connected: true, modules: ["material_master", "business_partner"], status: "completed",
+    readiness_verdict: "no-go", readiness_score: 87.4, critical_count: 3, records_total: 48_210, records_blocked: 6_071,
+    error_detail: null, created_at: "2026-10-30T06:12:00Z", completed_at: "2026-10-30T06:41:00Z",
+  },
+  {
+    id: "mig-0001", mode: "s4_dry_run", source_system_id: ECC, dest_system_id: null, source_version_id: "v-mm",
+    target_release: "s4hana", target_connected: false, modules: ["material_master"], status: "completed",
+    readiness_verdict: "conditional", readiness_score: 92.1, critical_count: 0, records_total: 31_500, records_blocked: 2_488,
+    error_detail: null, created_at: "2026-10-22T09:03:00Z", completed_at: "2026-10-22T09:20:00Z",
+  },
+];
+
+const gaps = [
+  { module: "material_master", gap_type: "value_unmapped", severity: "critical", grounded: true, n: 3_120, records: 2_904, fields: 2 },
+  { module: "material_master", gap_type: "length_truncation", severity: "high", grounded: true, n: 1_412, records: 1_412, fields: 1 },
+  { module: "material_master", gap_type: "obsolete_target", severity: "critical", grounded: true, n: 2, records: 0, fields: 2 },
+  { module: "business_partner", gap_type: "key_collision", severity: "critical", grounded: true, n: 214, records: 428, fields: 1 },
+  { module: "business_partner", gap_type: "check_table_value", severity: "medium", grounded: true, n: 1_327, records: 1_327, fields: 1 },
+  { module: "material_master", gap_type: "unmapped_field", severity: "low", grounded: false, n: 18, records: 0, fields: 18 },
+];
+
+const findings = [
+  { module: "material_master", source_table: "MARA", record_key: "000000000010004711", source_field: "MARA.MTART", source_value: "ZROH", dest_table: "MARA", target_field: "MARA.MTART", target_value: null, gap_type: "value_unmapped", severity: "critical", detail: "ZROH is not a material type in the target and has no value map entry.", provenance: "target_dictionary", grounded: true },
+  { module: "material_master", source_table: "MARA", record_key: "000000000010004712", source_field: "MARA.MTART", source_value: "ZROH", dest_table: "MARA", target_field: "MARA.MTART", target_value: null, gap_type: "value_unmapped", severity: "critical", detail: "ZROH is not a material type in the target and has no value map entry.", provenance: "target_dictionary", grounded: true },
+  { module: "material_master", source_table: "MAKT", record_key: "000000000010009001", source_field: "MAKT.MAKTX", source_value: "Hydraulic hose assembly 3/4in 2-wire braid 1.2m with crimped fittings", dest_table: "MAKT", target_field: "MAKT.MAKTX", target_value: "Hydraulic hose assembly 3/4in 2-wire", gap_type: "length_truncation", severity: "high", detail: "The value is 70 characters; the target field holds 40.", provenance: "target_dictionary", grounded: true },
+  { module: "material_master", source_table: "MARA", record_key: null, source_field: "MARA.ZZOLD", source_value: null, dest_table: "MARA", target_field: "MARA.ZZOLD", target_value: null, gap_type: "obsolete_target", severity: "critical", detail: "The field does not exist in the target release.", provenance: "target_dictionary", grounded: true },
+  { module: "business_partner", source_table: "KNA1", record_key: "0000100234", source_field: "KNA1.KUNNR", source_value: "0000100234", dest_table: "BUT000", target_field: "BUT000.PARTNER", target_value: "0000100234", gap_type: "key_collision", severity: "critical", detail: "A supplier with the same number becomes the same business partner.", provenance: "target_dictionary", grounded: true },
+  { module: "business_partner", source_table: "KNA1", record_key: "0000100871", source_field: "KNA1.LAND1", source_value: "UK", dest_table: "BUT020", target_field: "ADRC.COUNTRY", target_value: null, gap_type: "check_table_value", severity: "medium", detail: "UK is not in check table T005; the target expects GB.", provenance: "target_config", grounded: true },
+];
+
+const records = [
+  { module: "material_master", source_table: "MARA", record_key: "000000000010004711", status: "load_fail", reasons: ["MARA.MTART: ZROH has no target value"] },
+  { module: "material_master", source_table: "MARA", record_key: "000000000010004712", status: "load_fail", reasons: ["MARA.MTART: ZROH has no target value"] },
+  { module: "business_partner", source_table: "KNA1", record_key: "0000100234", status: "load_fail", reasons: ["Business partner number collides with supplier 0000100234"] },
+  { module: "material_master", source_table: "MARA", record_key: "000000000010000001", status: "load_ready", reasons: [] },
+  { module: "material_master", source_table: "MARA", record_key: "000000000010000002", status: "load_ready", reasons: [] },
+];
+
+const def = (type: string, length: number, description: string, check_table: string | null = null) => ({ type, length, decimals: 0, check_table, description });
+let fieldMap: FieldMapping[] = [
+  { id: "fm-1", module: "material_master", source_field: "MARA.MTART", dest_system_type: "s4hana", dest_table: "MARA", dest_field: "MTART", value_map: true, origin: "seeded", transform_note: null, is_confirmed: true, source_def: def("CHAR", 4, "Material type", "T134"), target_def: def("CHAR", 4, "Material type", "T134") },
+  { id: "fm-2", module: "material_master", source_field: "MAKT.MAKTX", dest_system_type: "s4hana", dest_table: "MAKT", dest_field: "MAKTX", value_map: false, origin: "seeded", transform_note: "Shorten to 40 characters", is_confirmed: false, source_def: def("CHAR", 70, "Material description (legacy Z length)"), target_def: def("CHAR", 40, "Material description") },
+  { id: "fm-3", module: "material_master", source_field: "MARA.ZZOLD", dest_system_type: "s4hana", dest_table: null, dest_field: null, value_map: false, origin: "manual", transform_note: "Not migrated", is_confirmed: true, source_def: def("CHAR", 10, "Old material reference"), target_def: null },
+];
+let valueMap: ValueEntry[] = [
+  { id: "vm-1", target_field: "MARA.MTART", source_value: "ZFRT", target_value: "FERT", note: "Finished goods", updated_at: "2026-10-28T10:00:00Z" },
+];
+let seq = 10;
+
+export function migrationRead(path: string, params: Record<string, unknown> = {}): unknown {
+  if (path === "/migration/runs") return { runs };
+  const m = /^\/migration\/runs\/([^/]+)(\/.+)?$/.exec(path);
+  if (m) {
+    const r = runs.find((x) => x.id === m[1]);
+    if (!r) return NONE_MIGRATION;
+    const rest = m[2] ?? "";
+    if (rest === "") return { run: r, gap_breakdown: r.id === "mig-0002" ? gaps : gaps.filter((g) => g.module === "material_master" && g.gap_type !== "obsolete_target"), structural_critical: r.id === "mig-0002" ? 2 : 0 };
+    if (rest === "/findings") {
+      const q = String(params.search ?? "").toLowerCase();
+      const items = findings.filter((f) => (!params.module || f.module === params.module) && (!params.gap_type || f.gap_type === params.gap_type) && (!params.severity || f.severity === params.severity) && (!q || JSON.stringify(f).toLowerCase().includes(q)));
+      const off = Number(params.offset ?? 0);
+      return { total: items.length, items: items.slice(off, off + Number(params.limit ?? 50)) };
+    }
+    if (rest === "/records") {
+      const rows = records.filter((x) => x.status === params.status);
+      return { total: params.status === "load_fail" ? r.records_blocked : (r.records_total ?? 0) - (r.records_blocked ?? 0), rows };
+    }
+    if (rest === "/value-candidates") return { target_field: params.target_field, values: [{ source_value: "ZROH", records: 2_904 }, { source_value: "ZFRT", records: 611 }, { source_value: "HALB", records: 4_020 }] };
+    return NONE_MIGRATION;
+  }
+  if (path === "/migration/field-map") return { mappings: fieldMap.filter((f) => (!params.module || f.module === params.module) && (!params.dest_system_type || f.dest_system_type === params.dest_system_type)) };
+  if (path === "/migration/value-map") return { entries: valueMap.filter((v) => !params.target_field || v.target_field === params.target_field) };
+  return NONE_MIGRATION;
+}
+
+export function migrationWrite(method: string, path: string, body: unknown): unknown {
+  const b = (body ?? {}) as Record<string, unknown>;
+  if (method === "POST" && path === "/migration/analyze") return { run_id: `mig-${++seq}`, task_id: "t-fixture", status: "queued", mode: b.mode, modules: b.modules };
+  if (method === "POST" && path === "/migration/field-map/seed") return { seeded: 0, module: b.module, dest_system_type: b.dest_system_type };
+  if (method === "POST" && path === "/migration/field-map") {
+    const row = { id: `fm-${++seq}`, module: String(b.module), source_field: String(b.source_field), dest_system_type: String(b.dest_system_type), dest_table: (b.dest_table as string) ?? null, dest_field: (b.dest_field as string) ?? null, value_map: false, origin: "manual", transform_note: (b.transform_note as string) ?? null, is_confirmed: false, source_def: null, target_def: null };
+    fieldMap = [...fieldMap, row];
+    return row;
+  }
+  const fm = /^\/migration\/field-map\/([^/]+)$/.exec(path);
+  if (fm && method === "PUT") {
+    fieldMap = fieldMap.map((f) => (f.id === fm[1] ? { ...f, ...(b as object) } : f));
+    return fieldMap.find((f) => f.id === fm[1]);
+  }
+  if (fm && method === "DELETE") { fieldMap = fieldMap.filter((f) => f.id !== fm[1]); return { deleted: true }; }
+  if (method === "PUT" && path === "/migration/value-map") {
+    const entries = (b.entries ?? []) as { source_value: string; target_value: string; note?: string }[];
+    for (const e of entries) {
+      valueMap = [...valueMap.filter((v) => !(v.target_field === b.target_field && v.source_value === e.source_value)),
+        { id: `vm-${++seq}`, target_field: String(b.target_field), source_value: e.source_value, target_value: e.target_value, note: e.note ?? null, updated_at: new Date().toISOString() }];
+    }
+    return { saved: entries.length };
+  }
+  const vm = /^\/migration\/value-map\/([^/]+)$/.exec(path);
+  if (vm && method === "DELETE") { valueMap = valueMap.filter((v) => v.id !== vm[1]); return { deleted: true }; }
+  return NONE_MIGRATION;
+}
