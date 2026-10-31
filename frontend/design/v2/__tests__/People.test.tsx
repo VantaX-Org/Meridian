@@ -144,7 +144,7 @@ describe("the person inspector", () => {
     const list = within(insp).getByTestId("person-approvals");
     expect(within(list).getAllByRole("listitem")).toHaveLength(3);
     fireEvent.click(within(list).getByRole("button", { name: "Approve batch B-241" }));
-    await waitFor(() => expect(approve).toHaveBeenCalledWith("B-241"));
+    await waitFor(() => expect(approve).toHaveBeenCalledWith("B-241", false));
     await waitFor(() => expect(within(insp).getByTestId("person-approvals").querySelectorAll("li")).toHaveLength(2));
   });
 
