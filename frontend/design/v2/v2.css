@@ -861,3 +861,5 @@ a.m2-at-tile[data-band="3"] { background: var(--m2-crit-bg); color: var(--m2-cri
 @media (max-width: 900px) { .m2-cf-flows { grid-template-columns: minmax(0, 1fr); } }
 .m2-cl-changes { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--m2-s1); }
 .m2-cl-changes s { color: var(--m2-ink-3); }
+.m2-cl-items { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--m2-s3); }
+.m2-cl-items > li { display: flex; flex-direction: column; gap: var(--m2-s2); padding-bottom: var(--m2-s3); border-bottom: 1px solid var(--m2-rule); }

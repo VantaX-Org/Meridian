@@ -50,3 +50,50 @@ export const getCleaningMetrics = () => v2Get<{ metrics: CleaningMetric[] }>("/c
 export const getAppliedCleaning = () => v2Get<{ items: CleaningItem[]; total: number }>("/cleaning/queue", { status: "applied", per_page: 100 });
 export const getCleaningAudit = () => v2Get<{ items: CleaningAudit[]; total: number }>("/cleaning/audit", { per_page: 25 });
 export const rollbackCleaning = (id: string) => v2Send<{ id: string; status: string }>("POST", `/cleaning/rollback/${encodeURIComponent(id)}`);
+
+/*
+ * Proposals still waiting for a decision (api/routes/cleaning.py):
+ *   GET  /cleaning/queue/groups                 (the waiting proposals by run, object and what they do)
+ *   GET  /cleaning/queue?status=&version_id=&kind=  (one group's proposals, or the approved ones)
+ *   POST /cleaning/approve/{id}  {notes?}       (needs approve)
+ *   POST /cleaning/reject/{id}   {reason}       (needs approve)
+ *   POST /cleaning/bulk-approve  {version_id?, kind?, min_confidence?}  (one group at or above a confidence)
+ *   POST /cleaning/apply/{id}                   (an approved proposal; needs apply)
+ *   POST /ai/feedback                           (a rejection teaches Aletheia; needs ai_feedback)
+ */
+export interface CleaningGroup {
+  version_id: string | null;
+  object_type: string;
+  kind: string;
+  rule_name: string | null;
+  records: number;
+  avg_confidence: number;
+  confident: number;
+  run_label: string | null;
+  run_at: string | null;
+}
+
+export interface Proposal extends CleaningItem {
+  confidence: number | null;
+  version_id: string | null;
+  rule_id: string | null;
+  priority: number | null;
+  detected_at: string | null;
+  merge_preview: RecordData;
+}
+
+export const WAITING = "detected,recommended";
+/** The confidence the groups count as confident, as the route does (0.85). */
+export const CONFIDENT = 0.85;
+
+export const getCleaningGroups = () => v2Get<{ groups: CleaningGroup[]; records: number; confident: number; runs: number }>("/cleaning/queue/groups");
+export const getProposals = (p: { status: string; version_id?: string | null; kind?: string }) =>
+  v2Get<{ items: Proposal[]; total: number }>("/cleaning/queue", { status: p.status, version_id: p.version_id ?? undefined, kind: p.kind, per_page: 50 });
+const one = (verb: string, id: string, body?: unknown) => v2Send<{ id: string; status: string }>("POST", `/cleaning/${verb}/${encodeURIComponent(id)}`, body ?? {});
+export const approveProposal = (id: string) => one("approve", id);
+export const rejectProposal = (id: string, reason: string) => one("reject", id, { reason });
+export const applyProposal = (id: string) => one("apply", id);
+export const approveGroup = (g: Pick<CleaningGroup, "version_id" | "kind">, min_confidence: number) =>
+  v2Send<{ approved_count: number }>("POST", "/cleaning/bulk-approve", { version_id: g.version_id ?? undefined, kind: g.kind, min_confidence });
+export const sendAiFeedback = (queue_item_id: string, domain: string, correction_reason: string) =>
+  v2Send<{ id: string; status: string }>("POST", "/ai/feedback", { queue_item_id, steward_decision: "reject", correction_reason, domain });

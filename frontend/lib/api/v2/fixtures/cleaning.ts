@@ -4,7 +4,7 @@
  * of the applied list and writes an audit row, as the route does. The deadlines are relative to now so one proposal
  * is always past its window and the others are not.
  */
-import type { CleaningAudit, CleaningItem, CleaningMetric } from "../cleaning";
+import type { CleaningAudit, CleaningGroup, CleaningItem, CleaningMetric, Proposal } from "../cleaning";
 
 export const NONE_CLEANING = Symbol("not a cleaning path");
 
@@ -61,18 +61,67 @@ const AUDIT_SEED: [string, string, string, string, number][] = [
   ["rolled_back", "Thandi Mokoena", "MATNR 000000000010002208", "material_master", 50],
 ];
 
+// Proposals still to decide: id, object, kind, what it does, run, record key, confidence, before, after, status at start
+const RUN = { version_id: "run-30", run_label: "Run 30", run_at: "2026-10-30T04:10:00Z" };
+const PROPOSALS: [string, string, string, string, string, number, Record<string, string>, Record<string, string>, string][] = [
+  ["cq-2001", "material_master", "MEINS", "Base unit in upper case", "MATNR 000000000010006120", 0.97, { MEINS: "ea" }, { MEINS: "EA" }, "recommended"],
+  ["cq-2002", "material_master", "MEINS", "Base unit in upper case", "MATNR 000000000010006121", 0.95, { MEINS: "pc" }, { MEINS: "PC" }, "recommended"],
+  ["cq-2003", "material_master", "MEINS", "Base unit in upper case", "MATNR 000000000010006188", 0.71, { MEINS: "e" }, { MEINS: "EA" }, "detected"],
+  ["cq-2004", "material_master", "GEWEI", "Weight unit set where a gross weight is given", "MATNR 000000000010006202", 0.91, { GEWEI: "", BRGEW: "3.1" }, { GEWEI: "KG", BRGEW: "3.1" }, "recommended"],
+  ["cq-2005", "material_master", "GEWEI", "Weight unit set where a gross weight is given", "MATNR 000000000010006230", 0.62, { GEWEI: "", BRGEW: "410" }, { GEWEI: "G", BRGEW: "410" }, "detected"],
+  ["cq-2006", "business_partner", "TEL_NUMBER", "Telephone number in international format", "PARTNER 0001000520", 0.93, { TEL_NUMBER: "011 555 0144" }, { TEL_NUMBER: "+27 11 555 0144" }, "recommended"],
+  ["cq-2007", "business_partner", "TEL_NUMBER", "Telephone number in international format", "PARTNER 0001000533", 0.58, { TEL_NUMBER: "555 0101" }, { TEL_NUMBER: "+27 555 0101" }, "detected"],
+  ["cq-2008", "sd_customer_master", "REGIO", "Region code in upper case", "KUNNR 0000200402", 0.96, { REGIO: "kzn" }, { REGIO: "KZN" }, "approved"],
+  ["cq-2009", "material_master", "MEINS", "Base unit in upper case", "MATNR 000000000010006099", 0.98, { MEINS: "kg" }, { MEINS: "KG" }, "approved"],
+];
+const RULE_ID: Record<string, string> = { MEINS: "MM014", GEWEI: "MM031", TEL_NUMBER: "BP022", REGIO: "SD008" };
+
 let rolledBack = new Set<string>();
 let extraAudit: CleaningAudit[] = [];
+let decided = new Map<string, string>();
+let appliedNow = new Map<string, string>();
 
 export const resetCleaningFixture = (): void => {
   rolledBack = new Set();
   extraAudit = [];
+  decided = new Map();
+  appliedNow = new Map();
+};
+
+const statusOf = (p: (typeof PROPOSALS)[number]) => decided.get(p[0]) ?? p[8];
+
+function proposals(): Proposal[] {
+  return PROPOSALS.map((p) => {
+    const [id, object_type, kind, , record_key, confidence, before, after] = p;
+    return {
+      id, object_type, status: statusOf(p), record_key, confidence, priority: null, detected_at: RUN.run_at,
+      applied_at: appliedNow.get(id) ?? null, rollback_deadline: null, record_data_before: before, record_data_after: after,
+      merge_preview: {}, version_id: RUN.version_id, rule_id: RULE_ID[kind],
+    };
+  });
+}
+
+function groups(): { groups: CleaningGroup[]; records: number; confident: number; runs: number } {
+  const open = PROPOSALS.filter((p) => ["detected", "recommended"].includes(statusOf(p)));
+  const by = new Map<string, (typeof PROPOSALS)[number][]>();
+  for (const p of open) by.set(`${p[1]}|${p[2]}`, [...(by.get(`${p[1]}|${p[2]}`) ?? []), p]);
+  const out = [...by.values()].map((ps): CleaningGroup => ({
+    version_id: RUN.version_id, object_type: ps[0][1], kind: ps[0][2], rule_name: ps[0][3], records: ps.length,
+    avg_confidence: ps.reduce((a, p) => a + p[5], 0) / ps.length, confident: ps.filter((p) => p[5] >= 0.85).length,
+    run_label: RUN.run_label, run_at: RUN.run_at,
+  })).sort((a, b) => b.records - a.records);
+  return { groups: out, records: open.length, confident: open.filter((p) => p[5] >= 0.85).length, runs: out.length ? 1 : 0 };
+}
+
+const audit = (action: string, p: (typeof PROPOSALS)[number]) => {
+  extraAudit = [{ id: `ca-${action}-${p[0]}`, action, actor_name: "Demo user", record_key: p[4], object_type: p[1], created_at: new Date().toISOString() }, ...extraAudit];
 };
 
 const ago = (h: number) => new Date(Date.now() - h * HOUR).toISOString();
 
 function applied(): CleaningItem[] {
-  return APPLIED.filter(([id]) => !rolledBack.has(id)).map(([id, object_type, record_key, h, before, after]) => ({
+  const now = proposals().filter((p) => p.status === "applied").map((p) => ({ ...p, rollback_deadline: new Date(Date.now() + 72 * HOUR).toISOString() }));
+  return [...now, ...APPLIED.filter(([id]) => !rolledBack.has(id)).map(([id, object_type, record_key, h, before, after]) => ({
     id,
     object_type,
     status: "applied",
@@ -81,11 +130,17 @@ function applied(): CleaningItem[] {
     rollback_deadline: ago(h - 72),
     record_data_before: before,
     record_data_after: after,
-  }));
+  }))];
 }
 
-export function cleaningRead(path: string): unknown {
+export function cleaningRead(path: string, params: Record<string, unknown> = {}): unknown {
   if (path === "/cleaning/metrics") return { metrics: METRICS };
+  if (path === "/cleaning/queue/groups") return groups();
+  if (path === "/cleaning/queue" && params.status && params.status !== "applied") {
+    const want = String(params.status).split(",");
+    const items = proposals().filter((p, i) => want.includes(p.status) && (!params.kind || PROPOSALS[i][2] === params.kind));
+    return { items, total: items.length, page: 1, per_page: 50 };
+  }
   if (path === "/cleaning/queue") {
     const items = applied();
     return { items, total: items.length, page: 1, per_page: 100 };
@@ -100,8 +155,35 @@ export function cleaningRead(path: string): unknown {
   return NONE_CLEANING;
 }
 
-export function cleaningWrite(method: string, path: string): unknown {
-  const m = method === "POST" ? /^\/cleaning\/rollback\/([^/]+)$/.exec(path) : null;
+export function cleaningWrite(method: string, path: string, body: Record<string, unknown> = {}): unknown {
+  if (method !== "POST") return NONE_CLEANING;
+  if (path === "/ai/feedback") return { id: "fb-1", status: "recorded" };
+  if (path === "/cleaning/bulk-approve") {
+    const min = Number(body.min_confidence ?? 0);
+    const hit = PROPOSALS.filter((p) => ["detected", "recommended"].includes(statusOf(p)) && (!body.kind || p[2] === body.kind) && p[5] >= min);
+    for (const p of hit) { decided.set(p[0], "approved"); audit("approved", p); }
+    return { approved_count: hit.length, skipped_count: 0 };
+  }
+  const d = /^\/cleaning\/(approve|reject|apply)\/([^/]+)$/.exec(path);
+  if (d) {
+    const p = PROPOSALS.find((r) => r[0] === decodeURIComponent(d[2]));
+    if (!p) return refuse("Item not found");
+    const st = statusOf(p);
+    if (d[1] === "apply") {
+      if (st !== "approved") return refuse("Item must be approved before applying");
+      decided.set(p[0], "applied");
+      appliedNow.set(p[0], new Date().toISOString());
+      audit("applied", p);
+      return { id: p[0], status: "applied", rollback_deadline: new Date(Date.now() + 72 * HOUR).toISOString() };
+    }
+    if (!["detected", "recommended"].includes(st)) return refuse(`Item is ${st}`);
+    if (d[1] === "reject" && !String(body.reason ?? "").trim()) return refuse("A reason is required");
+    const to = d[1] === "approve" ? "approved" : "rejected";
+    decided.set(p[0], to);
+    audit(to, p);
+    return { id: p[0], status: to };
+  }
+  const m = /^\/cleaning\/rollback\/([^/]+)$/.exec(path);
   if (!m) return NONE_CLEANING;
   const id = decodeURIComponent(m[1]);
   const row = APPLIED.find((r) => r[0] === id);

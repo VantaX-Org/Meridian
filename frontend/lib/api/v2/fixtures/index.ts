@@ -131,7 +131,7 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (step9 !== NONE_STEP9) return step9 as T;
   const cfg = configWrite(method, path);
   if (cfg !== NONE_CONFIG) return cfg as T;
-  const cl = cleaningWrite(method, path);
+  const cl = cleaningWrite(method, path, (body ?? {}) as Record<string, unknown>);
   if (cl !== NONE_CLEANING) return cl as T;
   const pd = discoveryWrite(method, path, body);
   if (pd !== NONE_DISCOVERY) return pd as T;
@@ -279,7 +279,7 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (fc !== undefined) return fc as T;
   const cfg = configRead(path);
   if (cfg !== NONE_CONFIG) return cfg as T;
-  const cl = cleaningRead(path);
+  const cl = cleaningRead(path, params);
   if (cl !== NONE_CLEANING) return cl as T;
   const pd = discoveryRead(path, params);
   if (pd !== NONE_DISCOVERY) return pd as T;

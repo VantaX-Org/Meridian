@@ -1,9 +1,12 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { errorSentence } from "@/lib/api/v2/client";
-import { getAppliedCleaning, getCleaningAudit, getCleaningMetrics, rollbackCleaning, type CleaningItem, type CleaningMetric, type RecordData } from "@/lib/api/v2/cleaning";
+import {
+  applyProposal, approveGroup, approveProposal, CONFIDENT, getAppliedCleaning, getCleaningAudit, getCleaningGroups, getCleaningMetrics, getProposals, rejectProposal,
+  rollbackCleaning, sendAiFeedback, WAITING, type CleaningGroup, type CleaningItem, type CleaningMetric, type Proposal, type RecordData,
+} from "@/lib/api/v2/cleaning";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { formatDate } from "@/lib/format";
 import { useV2Session } from "@/lib/v2/hooks";
@@ -99,7 +102,7 @@ export function Cleansing() {
           { label: t("Approved, not yet in SAP"), value: int(s.approved), note: t("written at the next apply") },
           { label: t("Verified"), value: int(s.verified), note: t("applied and read back from SAP") },
         ]}
-        action={<V2Link href="/work" className="m2-btn m2-next" data-testid="cleansing-review">{t("Review the proposals")}</V2Link>}
+        action={<a href="#cleansing-proposals" className="m2-btn m2-next" data-testid="cleansing-review">{t("Review the proposals")}</a>}
       />
 
       <Panel title={t("Where every proposal stands")} meta={t("The latest snapshot of the queue, all objects.")} testId="cleansing-status">
@@ -116,6 +119,8 @@ export function Cleansing() {
           ]}
         />
       </Panel>
+
+      <Proposals />
 
       <div className="m2-cc-split">
         <Trend weeks={weeks} />
@@ -265,6 +270,200 @@ function Rollbacks({ query }: { query: ReturnType<typeof useCleaning<{ items: Cl
         </ScrollFrame>
       )}
     </Panel>
+  );
+}
+
+const pct = (c: number | null | undefined) => (c == null ? DASH : t("{n}%", { n: int(Math.round(c * 100)) }));
+
+/** What a group of proposals does: the rule's name, or the field it sets, or a merge or a link to the golden record. */
+function what(g: CleaningGroup): ReactNode {
+  if (g.rule_name) return g.rule_name;
+  if (g.kind === "duplicate") return t("Merge duplicate records");
+  if (g.kind === "match") return t("Link to the golden record");
+  return <span><Mono>{g.kind}</Mono> {labelText(g.kind)}</span>;
+}
+
+function useDecide() {
+  const toast = useToast();
+  const qc = useQueryClient();
+  const done = (msg: string) => () => {
+    toast.show(msg);
+    void qc.invalidateQueries({ queryKey: ["cleaning"] });
+  };
+  const fail = (msg: string) => (e: unknown) => toast.show(errorSentence(e, msg), "error");
+  return {
+    group: useMutation({
+      mutationFn: (g: CleaningGroup) => approveGroup(g, CONFIDENT),
+      onSuccess: (r) => done(t("{n} proposals approved. They are written to SAP when applied.", { n: int(r.approved_count) }))(),
+      onError: fail(t("The proposals could not be approved.")),
+    }),
+    approve: useMutation({ mutationFn: approveProposal, onSuccess: done(t("The proposal was approved.")), onError: fail(t("The proposal could not be approved.")) }),
+    reject: useMutation({
+      mutationFn: async ({ item, reason }: { item: Proposal; reason: string }) => {
+        const r = await rejectProposal(item.id, reason);
+        // Teaches Aletheia which proposals stewards turn down; a failure here must not undo the rejection.
+        await sendAiFeedback(item.id, item.object_type, reason).catch(() => undefined);
+        return r;
+      },
+      onSuccess: done(t("The proposal was rejected. The reason is kept in the audit trail.")),
+      onError: fail(t("The proposal could not be rejected.")),
+    }),
+    apply: useMutation({ mutationFn: applyProposal, onSuccess: done(t("The change was written to SAP. It can be rolled back for 72 hours.")), onError: fail(t("The change could not be applied.")) }),
+  };
+}
+
+function Proposals() {
+  const { can } = useV2Session();
+  const groups = useCleaning("groups", getCleaningGroups);
+  const approved = useCleaning("approved", () => getProposals({ status: "approved" }));
+  const decide = useDecide();
+  const [open, setOpen] = useState<string | null>(null);
+  const key = (g: CleaningGroup) => `${g.version_id ?? ""}|${g.object_type}|${g.kind}`;
+  const list = groups.data?.groups ?? [];
+  return (
+    <>
+      <span id="cleansing-proposals" />
+      <Panel
+        title={t("Proposals to decide")}
+        meta={groups.data ? t("{n} proposals in {g} groups, {c} at {p} confidence or more", { n: int(groups.data.records), g: int(list.length), c: int(groups.data.confident), p: pct(CONFIDENT) }) : undefined}
+        testId="cleansing-proposals"
+      >
+        {groups.isPending ? <Skeleton width="100%" height={120} /> : status(groups.error) === 403 ? (
+          <Dash why={t("Your role cannot see the cleansing proposals.")} />
+        ) : groups.isError ? <Dash why={t("The proposals could not be read.")} /> : list.length === 0 ? (
+          <EmptyFrame>{t("No proposal is waiting for a decision.")}</EmptyFrame>
+        ) : (
+          <ScrollFrame label={t("Proposals table, scrollable")}>
+            <table className="m2-tbl m2-cards">
+              <thead>
+                <tr>
+                  <th scope="col">{t("What it does")}</th>
+                  <th scope="col">{t("Object")}</th>
+                  <th scope="col">{t("Run")}</th>
+                  <th scope="col" className="m2-num">{t("Records")}</th>
+                  <th scope="col" className="m2-num">{t("Average confidence")}</th>
+                  <th scope="col" className="m2-num">{t("Confident")}</th>
+                  <th scope="col"><span className="m2-sr">{t("Action")}</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {list.map((g) => {
+                  const k = key(g);
+                  return [
+                    <tr key={k} data-testid={`cleansing-group-${g.kind}`}>
+                      <th scope="row" className="m2-card-lead">{what(g)}</th>
+                      <td data-label={t("Object")}>{moduleText(g.object_type)} <Mono>{g.object_type}</Mono></td>
+                      <td data-label={t("Run")}>{g.run_label ?? (g.run_at ? formatDate(g.run_at, "date") : DASH)}</td>
+                      <td data-label={t("Records")} className="m2-num">{int(g.records)}</td>
+                      <td data-label={t("Average confidence")} className="m2-num">{pct(g.avg_confidence)}</td>
+                      <td data-label={t("Confident")} className="m2-num">{int(g.confident)}</td>
+                      <td data-label={t("Action")} className="m2-row-actions">
+                        {can("approve") ? (
+                          <button type="button" className="m2-btn m2-next" disabled={!g.confident || decide.group.isPending} onClick={() => decide.group.mutate(g)} data-testid={`cleansing-approve-group-${g.kind}`}>
+                            {t("Approve the {n} confident", { n: int(g.confident) })}
+                          </button>
+                        ) : null}
+                        <button type="button" className="m2-btn" aria-expanded={open === k} onClick={() => setOpen(open === k ? null : k)} data-testid={`cleansing-open-${g.kind}`}>
+                          {open === k ? t("Close") : t("Open")}
+                        </button>
+                      </td>
+                    </tr>,
+                    open === k ? (
+                      <tr key={`${k}-items`}>
+                        <td colSpan={7}><GroupItems group={g} decide={decide} /></td>
+                      </tr>
+                    ) : null,
+                  ];
+                })}
+              </tbody>
+            </table>
+          </ScrollFrame>
+        )}
+      </Panel>
+
+      <Panel
+        title={t("Approved, waiting to be written to SAP")}
+        meta={approved.data ? t("{n} approved", { n: int(approved.data.total) }) : undefined}
+        testId="cleansing-approved"
+      >
+        {approved.isPending ? <Skeleton width="100%" height={80} /> : approved.isError ? <Dash why={t("The approved proposals could not be read.")} /> : approved.data.items.length === 0 ? (
+          <EmptyFrame>{t("No approved proposal is waiting to be applied.")}</EmptyFrame>
+        ) : (
+          <ScrollFrame label={t("Approved proposals table, scrollable")}>
+            <table className="m2-tbl m2-cards">
+              <thead>
+                <tr>
+                  <th scope="col">{t("Record")}</th>
+                  <th scope="col">{t("Object")}</th>
+                  <th scope="col">{t("Change")}</th>
+                  <th scope="col" className="m2-num">{t("Confidence")}</th>
+                  <th scope="col"><span className="m2-sr">{t("Action")}</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {approved.data.items.map((i) => (
+                  <tr key={i.id} data-testid={`cleansing-approved-${i.id}`}>
+                    <th scope="row" className="m2-card-lead"><Mono>{i.record_key}</Mono></th>
+                    <td data-label={t("Object")}>{moduleText(i.object_type)}</td>
+                    <td data-label={t("Change")}><Changes item={i} /></td>
+                    <td data-label={t("Confidence")} className="m2-num">{pct(i.confidence)}</td>
+                    <td data-label={t("Action")}>
+                      {can("apply") ? (
+                        <button type="button" className="m2-btn m2-next" disabled={decide.apply.isPending} onClick={() => decide.apply.mutate(i.id)} data-testid={`cleansing-apply-${i.id}`}>
+                          {t("Write to SAP")}
+                        </button>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </ScrollFrame>
+        )}
+      </Panel>
+    </>
+  );
+}
+
+function GroupItems({ group, decide }: { group: CleaningGroup; decide: ReturnType<typeof useDecide> }) {
+  const { can } = useV2Session();
+  const items = useCleaning(`items-${group.version_id}-${group.kind}`, () => getProposals({ status: WAITING, version_id: group.version_id, kind: group.kind }));
+  const [rejecting, setRejecting] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
+  if (items.isPending) return <Skeleton width="100%" height={80} />;
+  if (items.isError) return <Dash why={t("The proposals in this group could not be read.")} />;
+  const rows = items.data.items.filter((i) => i.object_type === group.object_type);
+  if (!rows.length) return <EmptyFrame>{t("Every proposal in this group has been decided.")}</EmptyFrame>;
+  return (
+    <ul className="m2-cl-items" data-testid={`cleansing-items-${group.kind}`}>
+      {rows.map((i) => (
+        <li key={i.id} data-testid={`cleansing-item-${i.id}`}>
+          <div><Mono>{i.record_key}</Mono> <span className="m2-meta">{t("{p} confidence", { p: pct(i.confidence) })}</span></div>
+          <Changes item={i} />
+          {can("approve") ? (
+            rejecting === i.id ? (
+              <form
+                className="m2-row-actions"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!reason.trim()) return;
+                  decide.reject.mutate({ item: i, reason: reason.trim() }, { onSuccess: () => { setRejecting(null); setReason(""); } });
+                }}
+              >
+                <input className="m2-inp" aria-label={t("Why is this proposal wrong?")} placeholder={t("Why is this proposal wrong?")} value={reason} onChange={(e) => setReason(e.target.value)} data-testid={`cleansing-reason-${i.id}`} autoFocus />
+                <button type="submit" className="m2-btn m2-next" disabled={!reason.trim() || decide.reject.isPending} data-testid={`cleansing-confirm-reject-${i.id}`}>{t("Reject")}</button>
+                <button type="button" className="m2-btn" onClick={() => { setRejecting(null); setReason(""); }}>{t("Cancel")}</button>
+              </form>
+            ) : (
+              <div className="m2-row-actions">
+                <button type="button" className="m2-btn m2-next" disabled={decide.approve.isPending} onClick={() => decide.approve.mutate(i.id)} data-testid={`cleansing-approve-${i.id}`}>{t("Approve")}</button>
+                <button type="button" className="m2-btn" onClick={() => { setRejecting(i.id); setReason(""); }} data-testid={`cleansing-reject-${i.id}`}>{t("Reject")}</button>
+              </div>
+            )
+          ) : null}
+        </li>
+      ))}
+    </ul>
   );
 }
 
